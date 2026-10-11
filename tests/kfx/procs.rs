@@ -5,7 +5,8 @@ use kayak_rt::*;
 // Procedures as values, and poly: map and fold over any element types, a
 // global procedure and lambdas as arguments, a closure that captures, one
 // that makes another, a procedure in a datatype, and a call whose operator
-// is an expression.
+// is an expression. A lambda's parameter whose type the arguments before
+// it do not give is written (x T), as rustc needs it.
 
 pub type Strings = List<Str>;
 
@@ -80,11 +81,11 @@ pub fn main() -> Str {
     let xs = cons(1i64, cons(2i64, cons(3i64, nil())));
     let k = 100i64;
     let shows = map(&i64_to_string, map(&add1, xs));
-    words(cons(words(shows), cons(words(map(lambda1(move |x| {
+    words(cons(words(shows), cons(words(map(lambda1(move |x: i64| {
         i64_to_string(i64_star(x, 10i64))
     }), xs)), cons(words(map(&i64_to_string, map(adder(k), xs))), cons(i64_to_string((adder(3i64))(4i64)), cons(i64_to_string(twice(&add1, 0i64)), cons(twice(lambda1(move |s: Str| {
         string_append(s, "!")
-    }), "hey"), cons(i64_to_string(fold(lambda2(move |acc, x| {
+    }), "hey"), cons(i64_to_string(fold(lambda2(move |acc: i64, x: i64| {
         i64_plus(acc, x)
     }), 0i64, xs)), cons(apply_op(op("plus", lambda2(move |a, b| {
         i64_plus(a, b)

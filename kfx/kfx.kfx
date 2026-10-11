@@ -124,9 +124,16 @@
 
 (define digits-value (subr kfx (chars i64) i64)
   (lambda (cs n)
+    "Digits onto `n`, negated: so that -9223372036854775808, whose
+     magnitude is no i64, reads. A literal past an i64 is refused, as FX-26
+     refuses it where an i64 is expected."
     (if (null? cs)
         n
-        (digits-value (cdr cs) (i64+ (i64* n 10) (i64- (char->i64 (car cs)) 48))))))
+        (let ((d (i64- (char->i64 (car cs)) 48)))
+          (if (or (i64< n -922337203685477580)
+                  (and (i64= n -922337203685477580) (i64> d 8)))
+              (error "kfx: a literal past an i64")
+              (digits-value (cdr cs) (i64- (i64* n 10) d)))))))
 
 (define numeric? (subr kfx (chars) bool)
   (lambda (cs)
@@ -138,8 +145,12 @@
   (lambda (s)
     (let ((cs (string-chars s)))
       (cond ((not (numeric? cs)) (sym s))
-            ((char=? (car cs) #\-) (num (i64- 0 (digits-value (cdr cs) 0))))
-            (else (num (digits-value cs 0)))))))
+            ((char=? (car cs) #\-) (num (digits-value (cdr cs) 0)))
+            (else
+             (let ((negated (digits-value cs 0)))
+               (if (i64= negated -9223372036854775808)
+                   (error "kfx: a literal past an i64")
+                   (num (i64- 0 negated)))))))))
 
 (define char-named (subr kfx (string) char)
   (lambda (s)
@@ -341,6 +352,7 @@
                 ((string=? s "bool") (put "bool" acc))
                 ((string=? s "char") (put "char" acc))
                 ((string=? s "unit") (put "()" acc))
+                ((string=? s "void") (put "!" acc))
                 ((string=? s "string") (put "Str" acc))
                 ((string-member? s (ctx-datatypes c)) (put (camel s) (put "&'static " acc)))
                 (else (put (camel s) acc))))
@@ -360,7 +372,7 @@
   (put-types (subr kfx (ctx sexps chars) chars)
     (lambda (c types acc)
       "Types, separated by commas."
-      (put-sep (lambda (t acc) (put-type c t acc)) ", " types acc))))
+      (put-sep (lambda ((t sexp) acc) (put-type c t acc)) ", " types acc))))
 
 (define put-var (subr kfx (ctx string chars) chars)
   (lambda (c s acc)
@@ -402,7 +414,7 @@
 (define put-names (subr kfx (sexps chars) chars)
   (lambda (xs acc)
     "Names, separated by commas."
-    (put-sep (lambda (x acc) (put (mangle (sym-name x)) acc)) ", " xs acc)))
+    (put-sep (lambda ((x sexp) acc) (put (mangle (sym-name x)) acc)) ", " xs acc)))
 
 "Self tail calls. Rust has no tail calls, so a procedure that calls itself
  last is a `loop`: the call assigns its parameters and `continue`s, and
@@ -429,7 +441,7 @@
   (lambda (t names)
     "`t`, under bindings of `names`."
     (tagcase t
-      (returns (f ps live) (if (and live (any? (lambda (x) (string-member? x ps)) names)) (returns f ps #f) t))
+      (returns (f ps live) (if (and live (any? (lambda ((x string)) (string-member? x ps)) names)) (returns f ps #f) t))
       (else other t))))
 
 (define returns? (subr kfx (tail) bool)
@@ -499,7 +511,7 @@
 (define put-strings (subr kfx (strings chars) chars)
   (lambda (xs acc)
     "Names, mangled, separated by commas."
-    (put-sep (lambda (x acc) (put (mangle x) acc)) ", " xs acc)))
+    (put-sep (lambda ((x string) acc) (put (mangle x) acc)) ", " xs acc)))
 
 "Every writer of an expression takes `n`, the indentation of the line it
  starts on, and `t`, where the expression stands."
@@ -549,7 +561,7 @@
   (put-joined (subr kfx (ctx sexps string i64 chars) chars)
     (lambda (c xs sep n acc)
       "Expressions separated by `sep`."
-      (put-sep (lambda (x acc) (put-exp c x n (value) acc)) sep xs acc)))
+      (put-sep (lambda ((x sexp) acc) (put-exp c x n (value) acc)) sep xs acc)))
 
   (put-stmts (subr kfx (ctx sexps i64 tail chars) chars)
     (lambda (c es n t acc)
@@ -906,6 +918,984 @@
              (put-tops c (cdr forms) (put (if doc "\n" "\n\n") acc))))
           (else (put-tops c (cdr forms) (put-top c (car forms) acc))))))
 
+"Checking (TODO.md, section 13): KFX's types and effects, so that kfx
+ refuses what is not KFX without Fixpt. KFX is a subset of FX-26 (PLAN.md,
+ K1): this checker may refuse what FX-26 accepts, never accept what it
+ refuses. Where FX-26 is clever, it is plain instead:
+ - every recursive procedure says `spin` (FX-26 proves termination);
+ - a call of a procedure that is a value, and a global procedure named as
+   a value, are `spin` (FX-26 says when they may loop);
+ - a `poly` is over types, and a list at `acyclic`.
+ Bidirectional, as FX-26's checking is: `check` knows the type expected,
+ `synth` finds it. A `poly` procedure's call is instantiated by
+ inference variables, solved by the arguments in order, those that are
+ lambdas last."
+
+(define-datatype ty
+  (ty-i64)
+  (ty-bool)
+  (ty-char)
+  (ty-unit)
+  (ty-string)
+  (ty-void)
+  (ty-list ty)
+  (ty-data string)
+  (ty-proc strings (listof ty acyclic) ty)
+  (ty-var string)
+  (ty-meta i64))
+
+"`ty-void` is `error`'s result, below every type. A `ty-proc`'s strings
+ are its latent effect, a set of atoms: `spin`, `@globals` (every global
+ read), and `g:` and a name (that global read). `ty-var` is a `poly`'s
+ type variable, `ty-meta` an inference variable."
+
+(define-type tys (listof ty acyclic))
+
+(define-datatype scheme (scheme strings ty))
+
+"A name in scope: its type, over its type variables, and where it is
+ defined: `local`, `global` (the program's, so naming it reads it), or
+ `prim` (kayak-rt's, and the prelude's)."
+(define-datatype bind (bind string scheme string))
+(define-type binds (listof bind acyclic))
+
+(define-datatype variant (variant string tys))
+(define-type variants (listof variant acyclic))
+(define-datatype dt (dt string variants))
+(define-type dts (listof dt acyclic))
+
+(define-datatype alias (alias string sexp))
+(define-type aliases (listof alias acyclic))
+
+(define-datatype effdef (effdef string strings))
+(define-type effdefs (listof effdef acyclic))
+
+"What a checker of a definition knows: the names in scope, the datatypes,
+ the type abbreviations, the effect abbreviations, the definition being
+ checked (for messages), and its recursive group (whose calls are `spin`)."
+(define-datatype cv (cv binds dts aliases effdefs string strings))
+
+"Inference variables solved so far, and the next one's number."
+(define-datatype sb (sb i64 ty))
+(define-type sbs (listof sb acyclic))
+(define-datatype st (st sbs i64))
+
+"What checking an expression gives: its type, its effect, and the state."
+(define-datatype res (res ty strings st))
+
+"Messages"
+
+(define-rec
+  (show-sexp (subr kfx (sexp) string)
+    (lambda (e)
+      (tagcase e
+        (sym (s) s)
+        (str (s) (string-append "\"" (string-append s "\"")))
+        (num (k) (i64->string k))
+        (chr (c) (string-append "#\\" (char->string c)))
+        (lst (xs) (string-append "(" (string-append (show-sexps xs) ")"))))))
+  (show-sexps (subr kfx (sexps) string)
+    (lambda (xs)
+      (cond ((null? xs) "")
+            ((null? (cdr xs)) (show-sexp (car xs)))
+            (else (string-append (show-sexp (car xs)) (string-append " " (show-sexps (cdr xs)))))))))
+
+(define cv-where (subr kfx (cv) string)
+  (lambda (v) (tagcase v (cv (bs ds as es here group) here))))
+
+(define refuse (subr kfx (cv string) void)
+  (lambda (v message)
+    (error (string-append "kfx: in " (string-append (cv-where v) (string-append ": " message))))))
+
+"Effects"
+
+(define effs-union (subr kfx (strings strings) strings)
+  (lambda (a b)
+    (cond ((null? a) b)
+          ((string-member? (car a) b) (effs-union (cdr a) b))
+          (else (effs-union (cdr a) (cons (car a) b))))))
+
+(define global-atom? (subr kfx (string) bool)
+  (lambda (x) (char=? (string-ref-i64 x 0) #\g)))
+
+(define effs-within? (subr kfx (strings strings) bool)
+  (lambda (a b)
+    "Whether effect `a` is within `b`: a read of one global is within a
+     read of all of them."
+    (or (null? a)
+        (and (or (string-member? (car a) b)
+                 (and (global-atom? (car a)) (string-member? "@globals" b)))
+             (effs-within? (cdr a) b)))))
+
+(define words-of (subr kfx (strings) string)
+  (lambda (xs)
+    (cond ((null? xs) "")
+          ((null? (cdr xs)) (car xs))
+          (else (string-append (car xs) (string-append " " (words-of (cdr xs))))))))
+
+(define show-effs (subr kfx (strings) string)
+  (lambda (es)
+    (if (null? es) "pure" (string-append "(" (string-append (words-of es) ")")))))
+
+(define find-effdef (subr kfx (cv string effdefs) strings)
+  (lambda (v name es)
+    (if (null? es)
+        (refuse v (string-append "an effect KFX does not have: " name))
+        (tagcase (car es)
+          (effdef (n atoms) (if (string=? n name) atoms (find-effdef v name (cdr es))))))))
+
+(define cv-effdefs (subr kfx (cv) effdefs)
+  (lambda (v) (tagcase v (cv (bs ds as es here group) es))))
+
+(define-rec
+  (parse-effect (subr kfx (cv sexp) strings)
+    (lambda (v e)
+      (tagcase e
+        (sym (s)
+          (cond ((string=? s "pure") nil)
+                ((string=? s "spin") (list "spin"))
+                (else (find-effdef v s (cv-effdefs v)))))
+        (lst (xs)
+          (cond ((sym-is? (car xs) "maxeff") (parse-effects v (cdr xs)))
+                ((and (sym-is? (car xs) "read") (sym-is? (second xs) "@globals")) (list "@globals"))
+                ((and (sym-is? (car xs) "read") (head-is? (second xs) "globals"))
+                 (map (lambda ((g sexp)) (string-append "g:" (sym-name g))) (cdr (items (second xs)))))
+                (else (refuse v (string-append "an effect KFX does not have: " (show-sexp e))))))
+        (else other (refuse v (string-append "an effect KFX does not have: " (show-sexp e)))))))
+  (parse-effects (subr kfx (cv sexps) strings)
+    (lambda (v es)
+      (if (null? es) nil (effs-union (parse-effect v (car es)) (parse-effects v (cdr es)))))))
+
+"Types"
+
+(define cv-dts (subr kfx (cv) dts) (lambda (v) (tagcase v (cv (bs ds as es here group) ds))))
+(define cv-aliases (subr kfx (cv) aliases) (lambda (v) (tagcase v (cv (bs ds as es here group) as))))
+(define cv-binds (subr kfx (cv) binds) (lambda (v) (tagcase v (cv (bs ds as es here group) bs))))
+(define cv-group (subr kfx (cv) strings) (lambda (v) (tagcase v (cv (bs ds as es here group) group))))
+
+(define dt-named? (subr kfx (string dts) bool)
+  (lambda (name ds)
+    (any? (lambda ((d dt)) (tagcase d (dt (n vs) (string=? n name)))) ds)))
+
+(define find-alias (subr kfx (string aliases) sexps)
+  (lambda (name as)
+    "The abbreviated type, as a list of one, or none."
+    (cond ((null? as) nil)
+          (else (tagcase (car as)
+                  (alias (n t) (if (string=? n name) (list t) (find-alias name (cdr as)))))))))
+
+(define-rec
+  (parse-type (subr kfx (cv strings sexp) ty)
+    (lambda (v tvars t)
+      "`tvars`: the type variables in scope."
+      (tagcase t
+        (sym (s)
+          (cond ((string=? s "i64") (ty-i64))
+                ((string=? s "bool") (ty-bool))
+                ((string=? s "char") (ty-char))
+                ((string=? s "unit") (ty-unit))
+                ((string=? s "string") (ty-string))
+                ((string=? s "void") (ty-void))
+                ((string=? s "int")
+                 (refuse v "KFX has no int, whose + makes a bignum; write i64, whose i64+ wraps"))
+                ((string-member? s tvars) (ty-var s))
+                ((dt-named? s (cv-dts v)) (ty-data s))
+                (else
+                 (let ((found (find-alias s (cv-aliases v))))
+                   (if (null? found)
+                       (refuse v (string-append "no type is named " s))
+                       (parse-type v tvars (car found)))))))
+        (lst (xs)
+          (cond ((sym-is? (car xs) "listof")
+                 (if (sym-is? (third xs) "acyclic")
+                     (ty-list (parse-type v tvars (second xs)))
+                     (refuse v (string-append "KFX-0's lists are at acyclic: " (show-sexp t)))))
+                ((sym-is? (car xs) "subr")
+                 (ty-proc (parse-effect v (second xs))
+                          (parse-types v tvars (items (third xs)))
+                          (parse-type v tvars (fourth xs))))
+                (else (refuse v (string-append "a type KFX does not have: " (show-sexp t))))))
+        (else other (refuse v (string-append "a type KFX does not have: " (show-sexp t)))))))
+  (parse-types (subr kfx (cv strings sexps) tys)
+    (lambda (v tvars ts) (map (lambda ((t sexp)) (parse-type v tvars t)) ts))))
+
+(define poly-binders (subr kfx (cv sexp) strings)
+  (lambda (v t)
+    "A definition's type's type variables: a poly at its top, over types."
+    (if (head-is? t "poly")
+        (map (lambda ((b sexp))
+               (let ((b (items b)))
+                 (if (sym-is? (second b) "type")
+                     (sym-name (car b))
+                     (refuse v (string-append "KFX's poly is over types: " (show-sexp (lst b)))))))
+             (items (second (items t))))
+        nil)))
+
+(define parse-scheme (subr kfx (cv sexp) scheme)
+  (lambda (v t)
+    (let ((tvars (poly-binders v t)))
+      (scheme tvars (parse-type v tvars (if (head-is? t "poly") (third (items t)) t))))))
+
+(define-rec
+  (show-ty (subr kfx (st ty) string)
+    (lambda (s t)
+      (tagcase (walk s t)
+        (ty-i64 () "i64")
+        (ty-bool () "bool")
+        (ty-char () "char")
+        (ty-unit () "unit")
+        (ty-string () "string")
+        (ty-void () "void")
+        (ty-list (e) (string-append "(listof " (string-append (show-ty s e) " acyclic)")))
+        (ty-data (d) d)
+        (ty-proc (es ps r)
+          (string-append "(subr " (string-append (show-effs es) (string-append " ("
+            (string-append (show-tys s ps) (string-append ") " (string-append (show-ty s r) ")")))))))
+        (ty-var (n) n)
+        (ty-meta (k) (string-append "?" (i64->string k))))))
+  (show-tys (subr kfx (st tys) string)
+    (lambda (s ts)
+      (cond ((null? ts) "")
+            ((null? (cdr ts)) (show-ty s (car ts)))
+            (else (string-append (show-ty s (car ts)) (string-append " " (show-tys s (cdr ts))))))))
+  (walk (subr kfx (st ty) ty)
+    (lambda (s t)
+      "`t`, its inference variable replaced by its solution, if it has one."
+      (tagcase t
+        (ty-meta (k)
+          (tagcase s
+            (st (subst next)
+              (let ((found (lookup-meta k subst)))
+                (if (null? found) t (walk s (car found)))))))
+        (else other t))))
+  (lookup-meta (subr kfx (i64 sbs) tys)
+    (lambda (k subst)
+      (cond ((null? subst) nil)
+            (else (tagcase (car subst)
+                    (sb (j t) (if (i64= j k) (list t) (lookup-meta k (cdr subst))))))))))
+
+(define-rec
+  (has-meta? (subr kfx (st ty) bool)
+    (lambda (s t)
+      "Whether `t` has an inference variable not solved yet."
+      (tagcase (walk s t)
+        (ty-meta (k) #t)
+        (ty-list (e) (has-meta? s e))
+        (ty-proc (es ps r) (or (has-meta? s r) (any? (lambda ((p ty)) (has-meta? s p)) ps)))
+        (else other #f)))))
+
+(define fresh (subr kfx (st) res)
+  (lambda (s)
+    "A new inference variable."
+    (tagcase s (st (subst next) (res (ty-meta next) nil (st subst (i64+ next 1)))))))
+
+(define solve (subr kfx (st i64 ty) st)
+  (lambda (s k t)
+    (tagcase s (st (subst next) (st (cons (sb k t) subst) next)))))
+
+(define-rec
+  (occurs? (subr kfx (st i64 ty) bool)
+    (lambda (s k t)
+      (tagcase (walk s t)
+        (ty-meta (j) (i64= j k))
+        (ty-list (e) (occurs? s k e))
+        (ty-proc (es ps r) (or (occurs? s k r) (any? (lambda ((p ty)) (occurs? s k p)) ps)))
+        (else other #f)))))
+
+(define same-base? (subr kfx (ty ty) bool)
+  (lambda (a e)
+    (tagcase a
+      (ty-i64 () (tagcase e (ty-i64 () #t) (else other #f)))
+      (ty-bool () (tagcase e (ty-bool () #t) (else other #f)))
+      (ty-char () (tagcase e (ty-char () #t) (else other #f)))
+      (ty-unit () (tagcase e (ty-unit () #t) (else other #f)))
+      (ty-string () (tagcase e (ty-string () #t) (else other #f)))
+      (else other #f))))
+
+(define-rec
+  (fits (subr kfx (cv st ty ty) st)
+    (lambda (v s actual expected)
+      "That a value of type `actual` may stand where `expected` is: the two
+       the same, inference variables solved to make them so, but for
+       `void`, which fits anything, and a procedure, whose latent effect
+       may be within the one expected."
+      (let ((a (walk s actual)) (e (walk s expected)))
+        (tagcase a
+          (ty-void () s)
+          (ty-meta (k)
+            (tagcase e
+              (ty-meta (j) (if (i64= j k) s (solve s k e)))
+              (else other
+                (if (occurs? s k e) (mismatch v s a e) (solve s k e)))))
+          (else other
+            (tagcase e
+              (ty-meta (j) (if (occurs? s j a) (mismatch v s a e) (solve s j a)))
+              (else other (fits-shapes v s a e))))))))
+  (fits-shapes (subr kfx (cv st ty ty) st)
+    (lambda (v s a e)
+      (tagcase a
+        (ty-list (x) (tagcase e (ty-list (y) (fits v s x y)) (else other (mismatch v s a e))))
+        (ty-data (x) (tagcase e (ty-data (y) (if (string=? x y) s (mismatch v s a e))) (else other (mismatch v s a e))))
+        (ty-var (x) (tagcase e (ty-var (y) (if (string=? x y) s (mismatch v s a e))) (else other (mismatch v s a e))))
+        (ty-proc (aes aps ar)
+          (tagcase e
+            (ty-proc (ees eps er)
+              (cond ((not (i64= (size aps) (size eps))) (mismatch v s a e))
+                    ((not (effs-within? aes ees)) (mismatch v s a e))
+                    (else (fits v (fits-all v s eps aps) ar er))))
+            (else other (mismatch v s a e))))
+        (else other (if (same-base? a e) s (mismatch v s a e))))))
+  (fits-all (subr kfx (cv st tys tys) st)
+    (lambda (v s actuals expecteds)
+      "Parameters: each expected parameter's type stands for the actual's."
+      (if (null? actuals)
+          s
+          (fits-all v (fits v s (car actuals) (car expecteds)) (cdr actuals) (cdr expecteds)))))
+  (mismatch (subr kfx (cv st ty ty) st)
+    (lambda (v s a e)
+      (refuse v (string-append "a " (string-append (show-ty s a)
+                (string-append " is here, where a " (string-append (show-ty s e) " is expected"))))))))
+
+"A scheme's instance: each type variable an inference variable."
+(define-datatype inst (inst ty st))
+
+(define-rec
+  (instantiate (subr kfx (st scheme) inst)
+    (lambda (s sc)
+      (tagcase sc
+        (scheme (tvars t) (instantiate-vars s tvars t)))))
+  (instantiate-vars (subr kfx (st strings ty) inst)
+    (lambda (s tvars t)
+      (if (null? tvars)
+          (inst t s)
+          (tagcase (fresh s)
+            (res (m es s)
+              (instantiate-vars s (cdr tvars) (replace-var (car tvars) m t)))))))
+  (replace-var (subr kfx (string ty ty) ty)
+    (lambda (name m t)
+      (tagcase t
+        (ty-var (n) (if (string=? n name) m t))
+        (ty-list (e) (ty-list (replace-var name m e)))
+        (ty-proc (es ps r) (ty-proc es (map (lambda ((p ty)) (replace-var name m p)) ps) (replace-var name m r)))
+        (else other t)))))
+
+"The names in scope"
+
+(define find-bind (subr kfx (string binds) binds)
+  (lambda (name bs)
+    "The innermost binding of `name`, as a list of one, or none."
+    (cond ((null? bs) nil)
+          (else (tagcase (car bs)
+                  (bind (n sc where) (if (string=? n name) (list (car bs)) (find-bind name (cdr bs)))))))))
+
+(define keyword? (subr kfx (string) bool)
+  (lambda (name)
+    "FX-26's keywords, which name nothing (fixpt's top.rs, KEYWORDS)."
+    (or (string=? name "lambda") (string=? name "plambda") (string=? name "proj") (string=? name "if")
+        (string=? name "letrec") (string=? name "let") (string=? name "begin") (string=? name "define")
+        (string=? name "define*") (string=? name "define-type") (string=? name "define-generative") (string=? name "subr")
+        (string=? name "poly") (string=? name "ref") (string=? name "pairof") (string=? name "dletrec")
+        (string=? name "void") (string=? name "pure") (string=? name "maxeff") (string=? name "read")
+        (string=? name "write") (string=? name "alloc") (string=? name "goto") (string=? name "comefrom")
+        (string=? name "region") (string=? name "effect") (string=? name "type") (string=? name "prompt")
+        (string=? name "prompt-tag") (string=? name "composable") (string=? name "mark-key") (string=? name "listof")
+        (string=? name "cond") (string=? name "case") (string=? name "else") (string=? name "and")
+        (string=? name "or") (string=? name "let*") (string=? name "define-effect") (string=? name "module-parameters")
+        (string=? name "the") (string=? name "bloblet") (string=? name "fields") (string=? name "frozen")
+        (string=? name "arrayof") (string=? name "icell") (string=? name "await") (string=? name "define-rec")
+        (string=? name "letrena") (string=? name "letreap") (string=? name "rlambda") (string=? name "quote")
+        (string=? name "productof") (string=? name "sumof") (string=? name "product") (string=? name "extract")
+        (string=? name "sum") (string=? name "tagcase") (string=? name "module") (string=? name "moduleof")
+        (string=? name "with") (string=? name "select") (string=? name "load-module") (string=? name "define-datatype")
+        (string=? name "make-bloblet") (string=? name "bloblet-ref") (string=? name "bloblet-set!") (string=? name "bloblet-freeze")
+        (string=? name "bloblet-byte") (string=? name "bloblet-set-byte!") (string=? name "bloblet-bytes") (string=? name "rmake-bloblet")
+        (string=? name "dlambda") (string=? name "=>") (string=? name "blobref-at") (string=? name "blobref+")
+        (string=? name "blobref-owner") (string=? name "blobref-offset") (string=? name "blobref-get") (string=? name "blobref-set!")
+        (string=? name "blobref-index") (string=? name "blobref-variant!"))))
+
+(define bind-onto (subr kfx (binds binds) binds)
+  (lambda (xs ys) (if (null? xs) ys (bind-onto (cdr xs) (cons (car xs) ys)))))
+
+(define with-binds (subr kfx (cv binds) cv)
+  (lambda (v more)
+    (tagcase v (cv (bs ds as es here group) (cv (bind-onto more bs) ds as es here group)))))
+
+(define local (subr kfx (cv string ty) bind)
+  (lambda (v name t)
+    "A local may be named by a keyword, as FX-26 has it; it may not then be
+     called, since FX-26 reads such a call as its form (`synth-call`)."
+    (bind name (scheme nil t) "local")))
+
+"Expressions"
+
+(define with-effs (subr kfx (res strings) res)
+  (lambda (r es) (tagcase r (res (t es0 s) (res t (effs-union es es0) s)))))
+
+(define proc-type? (subr kfx (st ty) bool)
+  (lambda (s t) (tagcase (walk s t) (ty-proc (es ps r) #t) (else other #f))))
+
+(define naming-effs (subr kfx (st string string ty) strings)
+  (lambda (s name where t)
+    "What naming a name does: a global is read, and a global procedure
+     named as a value may be called from anywhere, so may loop."
+    (cond ((not (string=? where "global")) nil)
+          ((proc-type? s t) (list "spin" (string-append "g:" name)))
+          (else (list (string-append "g:" name))))))
+
+(define literal-int (subr kfx (cv) void)
+  (lambda (v)
+    (refuse v "a literal with nothing expected is an int, which KFX does not have: write (the i64 n)")))
+
+(define void? (subr kfx (st ty) bool)
+  (lambda (s t) (tagcase (walk s t) (ty-void () #t) (else other #f))))
+
+(define next-expected (subr kfx (st ty tys) tys)
+  (lambda (s t expected)
+    "What the branches after one of type `t` are checked against: the type
+     expected, if known, else `t`, unless that is `void`, which says
+     nothing."
+    (cond ((not (null? expected)) expected)
+          ((void? s t) nil)
+          (else (list t)))))
+
+(define joined (subr kfx (st ty ty tys) ty)
+  (lambda (s t rest expected)
+    "The type of branches, the first of type `t` and the rest of `rest`."
+    (cond ((not (null? expected)) (car expected))
+          ((void? s t) rest)
+          (else t))))
+
+(define control-form? (subr kfx (string) bool)
+  (lambda (h)
+    (or (string=? h "if") (string=? h "cond") (string=? h "case") (string=? h "tagcase")
+        (string=? h "let") (string=? h "let*") (string=? h "begin"))))
+
+(define all-chars? (subr kfx (sexps) bool)
+  (lambda (xs) (not (any? (lambda ((x sexp)) (tagcase x (chr (c) #f) (else other #t))) xs))))
+
+(define bind-fields (subr kfx (cv sexps tys) binds)
+  (lambda (v names types)
+    (if (null? names)
+        nil
+        (cons (local v (sym-name (car names)) (car types)) (bind-fields v (cdr names) (cdr types))))))
+
+(define bind-params (subr kfx (cv sexps tys) binds)
+  (lambda (v params types)
+    (if (null? params)
+        nil
+        (cons (local v (param-name (car params)) (car types)) (bind-params v (cdr params) (cdr types))))))
+
+(define find-dt (subr kfx (string dts) (listof variants acyclic))
+  (lambda (d ds)
+    (cond ((null? ds) nil)
+          (else (tagcase (car ds) (dt (n vs) (if (string=? n d) (list vs) (find-dt d (cdr ds)))))))))
+
+(define variants-of (subr kfx (cv string) variants)
+  (lambda (v d)
+    (let ((found (find-dt d (cv-dts v))))
+      (if (null? found) (refuse v (string-append "no datatype is named " d)) (car found)))))
+
+(define variant-fields (subr kfx (cv string string variants) tys)
+  (lambda (v d tag vs)
+    (cond ((null? vs)
+           (refuse v (string-append tag (string-append " is no tag of " (string-append d ", or has an arm already")))))
+          (else (tagcase (car vs)
+                  (variant (t fields) (if (string=? t tag) fields (variant-fields v d tag (cdr vs)))))))))
+
+(define without-tag (subr kfx (string variants) variants)
+  (lambda (tag vs)
+    (cond ((null? vs) nil)
+          (else (tagcase (car vs)
+                  (variant (t fields) (if (string=? t tag) (cdr vs) (cons (car vs) (without-tag tag (cdr vs))))))))))
+
+(define-rec
+  (synth (subr kfx (cv st sexp) res)
+    (lambda (v s e)
+      (tagcase e
+        (num (k) (literal-int v))
+        (chr (c) (res (ty-char) nil s))
+        (str (x) (res (ty-string) nil s))
+        (sym (name) (synth-name v s name))
+        (lst (xs)
+          (tagcase (car xs)
+            (sym (h) (synth-form v s e h (cdr xs)))
+            (else head (synth-call-of v s (synth v s head) (cdr xs) (list "spin"))))))))
+
+  (synth-name (subr kfx (cv st string) res)
+    (lambda (v s name)
+      (cond ((or (string=? name "#t") (string=? name "#f")) (res (ty-bool) nil s))
+            ((string=? name "#u") (res (ty-unit) nil s))
+            (else
+             (let ((found (find-bind name (cv-binds v))))
+               (if (null? found)
+                   (refuse v (string-append "nothing is named " name))
+                   (tagcase (car found)
+                     (bind (n sc where)
+                       (tagcase (instantiate s sc)
+                         (inst (t s) (res t (naming-effs s name where t) s)))))))))))
+
+  (check (subr kfx (cv st sexp ty) res)
+    (lambda (v s e expected)
+      (let ((x (walk s expected)))
+        (tagcase e
+          (num (k)
+            (tagcase x
+              (ty-i64 () (res x nil s))
+              (ty-meta (m) (literal-int v))
+              (else other (refuse v (string-append "a literal is here, where a "
+                                                   (string-append (show-ty s x) " is expected"))))))
+          (lst (xs)
+            (tagcase (car xs)
+              (sym (h) (check-form v s e h (cdr xs) x))
+              (else other (check-by-synth v s e x))))
+          (sym (name)
+            (if (string=? name "nil")
+                (tagcase x
+                  (ty-list (el) (res x nil s))
+                  (else other (check-by-synth v s e x)))
+                (check-by-synth v s e x)))
+          (else other (check-by-synth v s e x))))))
+
+  (check-by-synth (subr kfx (cv st sexp ty) res)
+    (lambda (v s e expected)
+      (tagcase (synth v s e)
+        (res (t es s) (res expected es (fits v s t expected))))))
+
+  (body (subr kfx (cv st sexps tys) res)
+    (lambda (v s es expected)
+      "A body: each expression but the last for its effect, the last
+       checked against `expected` if it has one type in it, else found."
+      (if (null? (cdr es))
+          (if (null? expected) (synth v s (car es)) (check v s (car es) (car expected)))
+          (tagcase (synth-any v s (car es))
+            (res (t es0 s) (with-effs (body v s (cdr es) expected) es0))))))
+
+  (synth-any (subr kfx (cv st sexp) res)
+    (lambda (v s e)
+      "An expression whose value is dropped: a string is a comment."
+      (tagcase e
+        (str (x) (res (ty-unit) nil s))
+        (else other (synth v s e)))))
+
+  (synth-form (subr kfx (cv st sexp string sexps) res)
+    (lambda (v s e h xs)
+      (cond ((string=? h "the")
+             (check v s (second xs) (parse-type v nil (car xs))))
+            ((string=? h "lambda") (synth-lambda v s (items (car xs)) (cdr xs)))
+            ((string=? h "list")
+             (if (null? xs)
+                 (tagcase (fresh s) (res (m es s) (res (ty-list m) nil s)))
+                 (tagcase (synth v s (car xs))
+                   (res (t es0 s)
+                     (with-effs (check v s e (ty-list t)) es0)))))
+            ((control-form? h) (body-form v s h xs nil))
+            ((string=? h "and") (bools v s xs))
+            ((string=? h "or") (bools v s xs))
+            (else (synth-call v s h xs)))))
+
+  (check-form (subr kfx (cv st sexp string sexps ty) res)
+    (lambda (v s e h xs expected)
+      (cond ((control-form? h) (body-form v s h xs (list expected)))
+            ((and (string=? h "lambda") (proc-type? s expected))
+             (check-lambda v s (items (car xs)) (cdr xs) (walk s expected)))
+            ((and (string=? h "list") (tagcase expected (ty-list (el) #t) (else other #f)))
+             (tagcase expected
+               (ty-list (el) (res expected (elements v s xs el) s))
+               (else other (check-by-synth v s e expected))))
+            (else (check-by-synth v s e expected)))))
+
+  (elements (subr kfx (cv st sexps ty) strings)
+    (lambda (v s xs el)
+      "The effect of a list's elements, each checked as `el`; the state is
+       dropped, since `el` is known."
+      (if (null? xs)
+          nil
+          (tagcase (check v s (car xs) el)
+            (res (t es s) (effs-union es (elements v s (cdr xs) el)))))))
+
+  (bools (subr kfx (cv st sexps) res)
+    (lambda (v s xs)
+      (if (null? xs)
+          (res (ty-bool) nil s)
+          (tagcase (check v s (car xs) (ty-bool))
+            (res (t es s) (with-effs (bools v s (cdr xs)) es))))))
+
+  (body-form (subr kfx (cv st string sexps tys) res)
+    (lambda (v s h xs expected)
+      "`if`, `cond`, `case`, `tagcase`, `let`, `let*` and `begin`: forms
+       whose last parts give the value; `expected` is the type, if known."
+      (cond ((string=? h "if")
+             (tagcase (check v s (car xs) (ty-bool))
+               (res (t es s) (with-effs (arms v s (cdr xs) expected) es))))
+            ((string=? h "begin") (body v s xs expected))
+            ((string=? h "let")
+             (let-values v s (items (car xs)) (cdr xs) expected nil #f))
+            ((string=? h "let*")
+             (let-values v s (items (car xs)) (cdr xs) expected nil #t))
+            ((string=? h "cond") (cond-clauses v s xs expected))
+            ((string=? h "case")
+             (tagcase (check v s (car xs) (ty-char))
+               (res (t es s) (with-effs (case-arms v s (cdr xs) expected) es))))
+            (else
+             (tagcase (synth v s (car xs))
+               (res (t es s)
+                 (tagcase (walk s t)
+                   (ty-data (d) (with-effs (tag-arms v s d (cdr xs) (variants-of v d) expected) es))
+                   (else other (refuse v (string-append "tagcase of a " (string-append (show-ty s t) ", no datatype")))))))))))
+
+  (arms (subr kfx (cv st sexps tys) res)
+    (lambda (v s branches expected)
+      "Branches of one type: the first found, if none is expected, and the
+       rest checked against it."
+      (tagcase (body v s (list (car branches)) expected)
+        (res (t es s)
+          (if (null? (cdr branches))
+              (res t es s)
+              (tagcase (arms v s (cdr branches) (next-expected s t expected))
+                (res (t2 es2 s) (res (joined s t t2 expected) (effs-union es es2) s))))))))
+
+  (cond-clauses (subr kfx (cv st sexps tys) res)
+    (lambda (v s clauses expected)
+      (let ((clause (items (car clauses))))
+        (if (sym-is? (car clause) "else")
+            (if (null? (cdr clauses))
+                (body v s (cdr clause) expected)
+                (refuse v "a cond's else is its last clause"))
+            (if (null? (cdr clauses))
+                (refuse v "a cond needs an else: FX has no unspecified value")
+                (tagcase (check v s (car clause) (ty-bool))
+                  (res (t0 es0 s)
+                    (tagcase (body v s (cdr clause) expected)
+                      (res (t es s)
+                        (tagcase (cond-clauses v s (cdr clauses) (next-expected s t expected))
+                          (res (t2 es2 s)
+                            (res (joined s t t2 expected) (effs-union es0 (effs-union es es2)) s))))))))))))
+
+  (case-arms (subr kfx (cv st sexps tys) res)
+    (lambda (v s cases expected)
+      (let ((arm (items (car cases))))
+        (cond ((sym-is? (car arm) "else")
+               (if (null? (cdr cases))
+                   (body v s (cdr arm) expected)
+                   (refuse v "a case's else is its last arm")))
+              ((null? (cdr cases)) (refuse v "a case needs an else: FX has no unspecified value"))
+              ((not (all-chars? (items (car arm))))
+               (refuse v "KFX's case is on characters: FX-26's compares integers as ints"))
+              (else
+               (tagcase (body v s (cdr arm) expected)
+                 (res (t es s)
+                   (tagcase (case-arms v s (cdr cases) (next-expected s t expected))
+                     (res (t2 es2 s) (res (joined s t t2 expected) (effs-union es es2) s))))))))))
+
+  (tag-arms (subr kfx (cv st string sexps variants tys) res)
+    (lambda (v s d tagged vs expected)
+      "A tagcase's arms; `vs` are the variants no arm has taken yet."
+      (if (null? tagged)
+          (if (null? vs)
+              (if (null? expected) (refuse v "a tagcase with no arms") (res (car expected) nil s))
+              (refuse v (string-append "a tagcase of a " (string-append d " with no else, and no arm for each tag"))))
+          (let* ((arm (items (car tagged)))
+                 (tag (sym-name (car arm))))
+            (if (string=? tag "else")
+                (if (null? (cdr tagged))
+                    (body (with-binds v (list (local v (sym-name (second arm)) (ty-data d))))
+                          s (cdr (cdr arm)) expected)
+                    (refuse v "a tagcase's else is its last arm"))
+                (let* ((fields (variant-fields v d tag vs))
+                       (names (items (second arm))))
+                  (if (not (i64= (size names) (size fields)))
+                      (refuse v (string-append "the arm for " (string-append tag " names the wrong number of fields")))
+                      (tagcase (body (with-binds v (bind-fields v names fields)) s (cdr (cdr arm)) expected)
+                        (res (t es s)
+                          (tagcase (tag-arms v s d (cdr tagged) (without-tag tag vs) (next-expected s t expected))
+                            (res (t2 es2 s) (res (joined s t t2 expected) (effs-union es es2) s))))))))))))
+
+  (let-values (subr kfx (cv st sexps sexps tys binds bool) res)
+    (lambda (v s bindings forms expected bound sequential)
+      "A `let`'s or `let*`'s bindings, then its body. `bound`: those made
+       so far, which a `let*`'s next binding sees and a `let`'s does not."
+      (if (null? bindings)
+          (body (with-binds v bound) s forms expected)
+          (let* ((b (items (car bindings)))
+                 (sees (if sequential (with-binds v bound) v)))
+            (tagcase (synth sees s (second b))
+              (res (t es s)
+                (with-effs (let-values v s (cdr bindings) forms expected
+                                       (cons (local v (sym-name (car b)) t) bound) sequential)
+                           es)))))))
+
+  (synth-lambda (subr kfx (cv st sexps sexps) res)
+    (lambda (v s params forms)
+      "A lambda with nothing expected: its parameters' types written."
+      (let ((types (map (lambda ((p sexp))
+                          (tagcase p
+                            (lst (pt) (parse-type v nil (second pt)))
+                            (else other (refuse v (string-append "a lambda with nothing expected needs its parameters' types: " (show-sexp other))))))
+                        params)))
+        (tagcase (body (with-binds v (bind-params v params types)) s forms nil)
+          (res (r es s) (res (ty-proc es types r) nil s))))))
+
+  (check-lambda (subr kfx (cv st sexps sexps ty) res)
+    (lambda (v s params forms expected)
+      (tagcase expected
+        (ty-proc (ees eps er)
+          (if (not (i64= (size params) (size eps)))
+              (refuse v "a lambda of the wrong number of parameters")
+              (let ((s (check-written-params v s params eps)))
+                (tagcase (body (with-binds v (bind-params v params eps)) s forms (list er))
+                  (res (r es s)
+                    (if (effs-within? es ees)
+                        (res expected nil s)
+                        (refuse v (string-append "a lambda whose effect " (string-append (show-effs es)
+                                  (string-append " is not within " (show-effs ees)))))))))))
+        (else other (refuse v "a lambda where no procedure is expected")))))
+
+  (check-written-params (subr kfx (cv st sexps tys) st)
+    (lambda (v s params types)
+      "A parameter written `(x T)` must be of the type expected. One written
+       `x` must have its type known already, from the arguments before the
+       lambda: rustc, which checks a call's arguments in order, finds a
+       closure's parameter types no other way."
+      (if (null? params)
+          s
+          (check-written-params v
+                                (tagcase (car params)
+                                  (lst (pt) (fits v s (car types) (parse-type v nil (second pt))))
+                                  (else other
+                                    (if (has-meta? s (car types))
+                                        (refuse v (string-append "the type of the lambda's parameter "
+                                                    (string-append (show-sexp other)
+                                                      " is not known from the arguments before it: write it as (x T)")))
+                                        s)))
+                                (cdr params) (cdr types)))))
+
+  (synth-call (subr kfx (cv st string sexps) res)
+    (lambda (v s h args)
+      "A call of a name: a procedure in this group is `spin`, one that is a
+       local's value is a call of a procedure not known, so `spin` too."
+      (let ((found (find-bind h (cv-binds v))))
+        (cond ((keyword? h)
+               (refuse v (string-append "a call of " (string-append h ", which FX-26 reads as its form, not a call"))))
+              ((null? found)
+               (refuse v (string-append "nothing is named " h)))
+              (else
+              (tagcase (car found)
+                (bind (n sc where)
+                  (tagcase (instantiate s sc)
+                    (inst (t s)
+                      (synth-call-of v s (res t nil s) args
+                                     (effs-union
+                                       (if (string=? where "global") (list (string-append "g:" h)) nil)
+                                       (if (or (string=? where "local") (string-member? h (cv-group v)))
+                                           (list "spin")
+                                           nil))))))))))))
+
+  (synth-call-of (subr kfx (cv st res sexps strings) res)
+    (lambda (v s callee args more)
+      "A call of the procedure `callee` is: its arguments checked against
+       its parameters, in order; its effect, the callee's latent effect, the
+       arguments' and `more`. In order, not lambdas last as FX-26 does,
+       since rustc finds a closure's parameter types only from what comes
+       before it: see `check-written-params`."
+      (tagcase callee
+        (res (t es0 s)
+          (tagcase (walk s t)
+            (ty-proc (latent ps r)
+              (if (not (i64= (size ps) (size args)))
+                  (refuse v (string-append "a call of the wrong number of arguments: "
+                                           (show-sexps args)))
+                  (tagcase (call-args v s args ps)
+                    (res (u es1 s)
+                      (res r (effs-union latent (effs-union more (effs-union es0 es1))) s)))))
+            (else other (refuse v (string-append "a call of a " (string-append (show-ty s t) ", no procedure")))))))))
+
+  (call-args (subr kfx (cv st sexps tys) res)
+    (lambda (v s args ps)
+      (if (null? args)
+          (res (ty-unit) nil s)
+          (tagcase (check v s (car args) (car ps))
+            (res (t es s) (with-effs (call-args v s (cdr args) (cdr ps)) es)))))))
+
+"Definitions"
+
+(define primitives string
+  "(i64+ (subr pure (i64 i64) i64)) (i64- (subr pure (i64 i64) i64)) (i64* (subr pure (i64 i64) i64))
+   (i64-quotient (subr pure (i64 i64) i64)) (i64-remainder (subr pure (i64 i64) i64))
+   (i64-and (subr pure (i64 i64) i64)) (i64-or (subr pure (i64 i64) i64)) (i64-xor (subr pure (i64 i64) i64))
+   (i64-not (subr pure (i64) i64))
+   (i64= (subr pure (i64 i64) bool)) (i64< (subr pure (i64 i64) bool)) (i64> (subr pure (i64 i64) bool))
+   (i64<= (subr pure (i64 i64) bool)) (i64>= (subr pure (i64 i64) bool))
+   (not (subr pure (bool) bool))
+   (char=? (subr pure (char char) bool)) (char-whitespace? (subr pure (char) bool))
+   (char-numeric? (subr pure (char) bool)) (char-alphabetic? (subr pure (char) bool))
+   (char-upcase (subr pure (char) char)) (char->string (subr pure (char) string))
+   (string-append (subr pure (string string) string)) (string=? (subr pure (string string) bool))
+   (list->string (subr pure ((listof char acyclic)) string))
+   (error (subr pure (string) void))
+   (string-length-i64 (subr pure (string) i64)) (string-ref-i64 (subr pure (string i64) char))
+   (char->i64 (subr pure (char) i64)) (i64->string (subr pure (i64) string))
+   (nil (poly ((t type)) (listof t acyclic)))
+   (cons (poly ((t type)) (subr pure (t (listof t acyclic)) (listof t acyclic))))
+   (car (poly ((t type)) (subr pure ((listof t acyclic)) t)))
+   (cdr (poly ((t type)) (subr pure ((listof t acyclic)) (listof t acyclic))))
+   (null? (poly ((t type)) (subr pure ((listof t acyclic)) bool)))")
+
+"kayak-rt's primitives at KFX's types: the prelude's (kfx/prelude.fx), and
+ FX-26's standard environment's at `acyclic`, where making and reading
+ lists are pure."
+
+(define prim-binds (subr kfx (cv) binds)
+  (lambda (v)
+    (map (lambda ((p sexp))
+           (let ((xs (items p)))
+             (bind (sym-name (car xs)) (parse-scheme v (second xs)) "prim")))
+         (read-all (string-chars primitives)))))
+
+(define datatype-of (subr kfx (cv sexps) dt)
+  (lambda (v xs)
+    "A define-datatype's name and variants."
+    (dt (sym-name (car xs))
+        (map (lambda ((vt sexp))
+               (let ((ys (items vt)))
+                 (variant (sym-name (car ys)) (parse-types v nil (cdr ys)))))
+             (cdr xs)))))
+
+(define constructors (subr kfx (dt) binds)
+  (lambda (d)
+    (tagcase d
+      (dt (name vs)
+        (map (lambda ((vt variant))
+               (tagcase vt
+                 (variant (tag fields) (bind tag (scheme nil (ty-proc nil fields (ty-data name))) "global"))))
+             vs)))))
+
+"Types and datatypes are declared ahead: every one is in scope in every
+ definition, as FX-26 has it. Effect abbreviations and values are seen
+ only after their definitions."
+
+(define declare-types (subr kfx (sexps aliases) aliases)
+  (lambda (forms as)
+    (cond ((null? forms) as)
+          ((head-is? (car forms) "define-type")
+           (let ((xs (items (car forms))))
+             (declare-types (cdr forms) (cons (alias (sym-name (second xs)) (third xs)) as))))
+          (else (declare-types (cdr forms) as)))))
+
+(define datatype-names (subr kfx (sexps dts) dts)
+  (lambda (forms ds)
+    "The datatypes' names, before their variants' types can be read."
+    (cond ((null? forms) ds)
+          ((head-is? (car forms) "define-datatype")
+           (datatype-names (cdr forms) (cons (dt (sym-name (second (items (car forms)))) nil) ds)))
+          (else (datatype-names (cdr forms) ds)))))
+
+(define with-effdef (subr kfx (cv sexps) cv)
+  (lambda (v xs)
+    "`v`, with a define-effect's abbreviation."
+    (tagcase v
+      (cv (bs ds as es here group)
+        (cv bs ds as (cons (effdef (sym-name (second xs)) (parse-effect v (third xs))) es) here group)))))
+
+(define declare-datatypes (subr kfx (cv sexps dts) dts)
+  (lambda (v forms ds)
+    "Each datatype's variants' types, as an effect abbreviation before it
+     has them read."
+    (cond ((null? forms) ds)
+          ((head-is? (car forms) "define-datatype")
+           (declare-datatypes v (cdr forms) (cons (datatype-of v (cdr (items (car forms)))) ds)))
+          ((head-is? (car forms) "define-effect")
+           (declare-datatypes (with-effdef v (items (car forms))) (cdr forms) ds))
+          (else (declare-datatypes v (cdr forms) ds)))))
+
+(define at (subr kfx (cv string strings) cv)
+  (lambda (v here group)
+    (tagcase v (cv (bs ds as es h g) (cv bs ds as es here group)))))
+
+(define global (subr kfx (cv string scheme) bind)
+  (lambda (v name sc)
+    (if (keyword? name)
+        (refuse v (string-append "a keyword names nothing: " name))
+        (bind name sc "global"))))
+
+(define new-state (subr kfx () st) (lambda () (st nil 0)))
+
+(define check-procedure (subr kfx (cv sexp scheme) cv)
+  (lambda (v defined sc)
+    "A procedure's lambda against its type; `v` already has its name."
+    (let ((lam (items (if (head-is? defined "plambda") (third (items defined)) defined))))
+      (tagcase sc
+        (scheme (tvars t)
+          (tagcase (check-lambda v (new-state) (items (second lam)) (cdr (cdr lam)) t)
+            (res (u es s) v)))))))
+
+(define variants-dt (subr kfx (cv string) (listof dt acyclic))
+  (lambda (v d)
+    (let ((found (find-dt d (cv-dts v))))
+      (if (null? found)
+          (refuse v (string-append "no datatype is named " d))
+          (list (dt d (car found)))))))
+
+(define check-rec (subr kfx (cv sexps) cv)
+  (lambda (v bindings)
+    "A define-rec: every member in scope in each, and each a lambda."
+    (let* ((names (map (lambda ((b sexp)) (sym-name (car (items b)))) bindings))
+           (named (with-binds v (map (lambda ((b sexp))
+                                       (let ((ys (items b)))
+                                         (global v (sym-name (car ys)) (parse-scheme v (second ys)))))
+                                     bindings))))
+      (begin
+        (map (lambda ((b sexp))
+               (let ((ys (items b)))
+                 (if (procedure? (third ys))
+                     (check-procedure (at named (sym-name (car ys)) names) (third ys)
+                                      (parse-scheme v (second ys)))
+                     (refuse v "a define-rec binds only lambdas"))))
+             bindings)
+        named))))
+
+(define check-top (subr kfx (cv sexp) cv)
+  (lambda (v form)
+    "One top-level form, which may add to what the forms after it see."
+    (tagcase form
+      (str (x) v)
+      (lst (xs)
+        (let ((h (if (null? xs) "" (tagcase (car xs) (sym (n) n) (else other "")))))
+          (cond ((string=? h "define-effect") (with-effdef v xs))
+                ((string=? h "define-type") v)
+                ((string=? h "define-datatype")
+                 (let ((d (car (variants-dt v (sym-name (second xs))))))
+                   (with-binds v (constructors d))))
+                ((string=? h "define")
+                 (if (not (i64= (size xs) 4))
+                     (refuse v "a definition needs a type")
+                     (let* ((name (sym-name (second xs)))
+                            (v (at v name (list name)))
+                            (sc (parse-scheme v (third xs)))
+                            (named (with-binds v (list (global v name sc)))))
+                       (if (procedure? (fourth xs))
+                           (check-procedure named (fourth xs) sc)
+                           (tagcase sc
+                             (scheme (tvars t)
+                               (if (null? tvars)
+                                   (tagcase (check v (new-state) (fourth xs) t) (res (u es s) named))
+                                   (refuse v "a poly constant: only a procedure may be poly"))))))))
+                ((string=? h "define-rec") (check-rec v (cdr xs)))
+                (else (tagcase (synth (at v "a top-level expression" nil) (new-state) form)
+                        (res (t es s) v))))))
+      (else other (tagcase (synth (at v "a top-level expression" nil) (new-state) form) (res (t es s) v))))))
+
+(define check-tops (subr kfx (cv sexps) cv)
+  (lambda (v forms) (if (null? forms) v (check-tops (check-top v (car forms)) (cdr forms)))))
+
+(define check-program (subr kfx (sexps) unit)
+  (lambda (forms)
+    "Every form, in order; the first error stops the compiler."
+    (let* ((start (cv nil nil (declare-types forms nil) nil "a type" nil))
+           (named (tagcase start (cv (bs ds as es here group) (cv bs (datatype-names forms nil) as es here group))))
+           (typed (tagcase named (cv (bs ds as es here group) (cv bs (declare-datatypes named forms nil) as es here group))))
+           (v (with-binds typed (prim-binds typed))))
+      (begin (check-tops v forms) #u))))
+
 (define header string
   "// Generated by kfx from KFX-0 source: edit that, and regenerate (PLAN.md, section 1).\n\nuse kayak_rt::*;\n\n")
 
@@ -913,5 +1903,6 @@
   (lambda (src)
     "A KFX-0 program's text, as Rust."
     (let* ((forms (read-all (string-chars src)))
+           (checked (check-program forms))
            (c (collect forms (ctx nil nil nil nil))))
       (rev->string (put-tops c forms (put header nil))))))

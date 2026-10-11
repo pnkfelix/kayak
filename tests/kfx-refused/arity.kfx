@@ -1,0 +1,4 @@
+"A call with the wrong number of arguments."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f (subr kfx (i64 i64) i64) (lambda (a b) a))
+(define g (subr kfx () i64) (lambda () (f 1)))

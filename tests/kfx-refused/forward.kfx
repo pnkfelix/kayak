@@ -1,0 +1,4 @@
+"A name used before its definition: a definition sees only those before it."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f (subr kfx (i64) i64) (lambda (n) (g n)))
+(define g (subr kfx (i64) i64) (lambda (n) n))

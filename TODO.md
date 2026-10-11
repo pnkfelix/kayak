@@ -24,12 +24,21 @@ A Rust error in generated code names a line of `kfx.rs`, and a run-time
 `error` names nothing. Start with a `// kfx: line` comment per item: the
 reader would keep each datum's line, which `sexp` does not carry yet.
 
-## 13. A KFX checker, in KFX
+## 13. The checker: what it does not do yet
 
-Fixpt checks types and effects in stage 0. A checker of KFX's own would
-let `kfx` build without Fixpt and still refuse what is not KFX: today it
-refuses `int` and a few shapes, and translates anything else it reads.
-The verdicts to agree with are Fixpt's.
+What it does is `DONE.md` §13. What is left:
+- **`the` and lambdas' parameter types inside a `poly` procedure** are
+  read with no type variables in scope, so `(the a e)` there is refused
+  ("no type is named a"): stricter, not wrong. The type variables belong
+  in `cv`.
+- **Effect polymorphism**: a `poly` over effects is refused by the
+  checker, though the emitter would erase it.
+- **Messages name the definition, not the line**, as §7 says.
+- **`spin` for every recursion**: where FX-26 proves termination
+  (size-change), KFX cannot. Porting a termination check would let
+  KFX procedures be `pure`.
+- **What it does not check that rustc does**: nothing known. Each such
+  case, when found, belongs in `tests/kfx-stricter` or `kfx-refused`.
 
 ## 14. Places as lifetimes
 
@@ -90,9 +99,6 @@ flat sums already store their tag "as Rust stores a discriminant"
 
 - **Strings are ASCII.** `string-ref-i64` is a byte index, and a byte past
   ASCII is an error where it is read.
-- **A number literal past `i64` wraps** as the reader reads it
-  (`digits-value`), and the Rust gets the wrapped value. It should be
-  refused.
 - **`tagcase_`**, the name a `tagcase` binds, could be a KFX name's
   mangling (`tagcase-`).
 - **`(define x e)` with no type** is refused; FX-26 allows it.
@@ -120,11 +126,6 @@ flat sums already store their tag "as Rust stores a discriminant"
 - **`case` on an `i64`** is refused by FX-26, whose `case` compares integer
   keys as `int`s; KFX's `case` is on characters, and an `i64` dispatch is a
   `cond`. A request for Fixpt, if it matters: `case` on fixed-width keys.
-- **A literal with nothing expected is an `int`** in FX-26, so `(let ((n
-  1)) …)` binds an `int`, which KFX does not have: `(the i64 1)`. The
-  compiler does not see this (it writes `1i64` regardless); Fixpt does.
-- **FX-26's keywords** (`sum`, `product`, `extract`, …) cannot name a
-  procedure; the compiler does not know them, and Fixpt refuses them.
 - **Shifts**: `i64-shl` and `i64-shr` take their count as an `int`; KFX
   has none, so they are not in the corpus. A prelude `i64-shl-i64`, when
   wanted.
@@ -164,6 +165,24 @@ To decide (the user's): KFX reinstates the rule itself, in its checker
 
 **Deferred** (the user, 2026-10-11): regions, and `&mut`, wait until
 this is settled; KFX avoids both meanwhile.
+
+**Fixpt's answer** (2026-10-11, `fixpt/docs/research/region-anti-aliasing.md`,
+on Fixpt's `origin/main`, past the pin). A survey found the full rule
+costly (274 places would break, mostly `append` and `reverse`'s two-region
+types) and Rust's own (aliasing XOR mutation) nearly free (9). Built, in
+`31eebfb`: an opt-in `distinct` on a region binder, `(poly ((r1 region
+distinct) (r2 region)) …)`, refused at any instantiation that does not give
+`r1` a region provably apart from the other binders' and from the
+procedure's type's. Proposed next there: `blobref-split`, flat data's
+`split_at_mut`, whose pieces refuse `blobref+`.
+
+What it gives kayak: `&mut` between parameters at `distinct` regions, and
+for flat data (§15) down to `split_at_mut`; not `&mut` into heap data,
+which may share within a region and would need a substructural
+discipline. KFX's heap data is all frozen (`acyclic`), so `&` covers it,
+as today. So the first `&mut` is flat data: a written `distinct` region
+`&'r mut`, a read one `&'r`, `blobref-split` `split_at_mut`. That needs
+no GhostCell tokens: Fixpt checks the distinctness, in stage 0.
 
 The hard part either way is effect polymorphism: a latent effect that is
 a variable, or a `maxeff` over regions, needs a procedure generic over

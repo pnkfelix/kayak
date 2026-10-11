@@ -1,7 +1,8 @@
 "Procedures as values, and poly: map and fold over any element types, a
  global procedure and lambdas as arguments, a closure that captures, one
  that makes another, a procedure in a datatype, and a call whose operator
- is an expression."
+ is an expression. A lambda's parameter whose type the arguments before
+ it do not give is written (x T), as rustc needs it."
 
 (define-effect kfx (maxeff (read @globals) spin))
 
@@ -48,12 +49,12 @@
            (shows (map i64->string (map add1 xs))))
       (words
        (list (words shows)
-             (words (map (lambda (x) (i64->string (i64* x 10))) xs))
+             (words (map (lambda ((x i64)) (i64->string (i64* x 10))) xs))
              (words (map i64->string (map (adder k) xs)))
              (i64->string ((adder 3) 4))
              (i64->string (twice add1 0))
              (twice (lambda ((s string)) (string-append s "!")) "hey")
-             (i64->string (fold (lambda (acc x) (i64+ acc x)) 0 xs))
+             (i64->string (fold (lambda ((acc i64) (x i64)) (i64+ acc x)) 0 xs))
              (apply-op (op "plus" (lambda (a b) (i64+ a b))) 2 3)
              (apply-op (op "times" i64*-wrapped) 2 3))))))
 

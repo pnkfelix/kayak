@@ -246,3 +246,50 @@ of the same walks (`sym-names`, `param-names`, `strings-size`, …), and one
 higher-order `put-sep` writes every comma-separated list (names, types,
 expressions). FX-26 infers the lambdas' parameter types from `put-sep`'s
 signature, as rustc does from the generated `lambda2`.
+
+## 13. A KFX checker, in KFX (2026-10-11)
+
+`kfx` checks a program's types and effects before it writes any Rust, and
+refuses, naming the definition and saying why, what is not KFX: so it
+needs neither Fixpt nor rustc's messages to refuse. About 700 lines of
+the compiler's 1900; bidirectional, as FX-26's checking is. A `poly`
+procedure's call is instantiated with inference variables, solved as the
+arguments are checked; effects are sets of atoms (`spin`, `@globals`, a
+global read), and a procedure's body's effect must be within its type's.
+KFX's types are those of PLAN.md §2, its lists at `acyclic`, the
+primitives typed in a table at KFX's types (where making and reading
+lists at `acyclic` are pure).
+
+K1 is that it accepts nothing FX-26 refuses. Where FX-26 is clever, it is
+plain: every recursion says `spin` (FX-26 proves termination by
+size-change); a call of a procedure value, and a global procedure named
+as a value, are `spin`; `poly` is over types. And two rules come from
+Rust, not FX-26:
+- **A call's arguments are checked in order.** FX-26 checks lambdas last;
+  rustc finds a closure's parameter types only from the arguments before
+  it, since the generated closure is inside a `lambdaN(…)` call, checked
+  in order. So a lambda parameter whose type no earlier argument gives
+  must be written `(x T)`. Found when generation 1 did not build: four
+  of the compiler's own lambdas were so.
+- **A keyword may name a local but not be called** (`(sum 1 2)` is FX-26's
+  sum form, whatever `sum` is bound to), nor name a global. The first
+  version refused keywords as locals altogether; the compiler's own
+  `put-define` has a parameter named `type`, which FX-26 accepts.
+
+Also: a number literal past an `i64` is refused as it is read; digits are
+accumulated negated, so that `-9223372036854775808` reads.
+
+Tests, in `scripts/corpus.py`:
+- the corpus and the compiler itself, which it accepts;
+- `tests/kfx-refused`, 14 programs FX-26 refuses, which it must refuse
+  too: wrong types, unbound and forward names, effects, `spin`, `cond`
+  without `else`, `tagcase` arms missing, mistaken and of the wrong shape,
+  arity, a literal past `i64`, branches, a lambda's effect, a keyword
+  called. Each refused by both, for the same reason;
+- `tests/kfx-stricter`, 4 programs FX-26 accepts and KFX refuses on
+  purpose: `int`, a literal with nothing expected, a recursion FX-26
+  proves ends, and a lambda before the argument that types it.
+
+The bootstrap's second step needed none: the checker accepted the
+compiler as soon as it built. Stage 0 now runs it too, under Fixpt, in
+0.75 s; the Rust compiler checks and translates its own source in 10 ms.

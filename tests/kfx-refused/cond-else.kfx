@@ -1,0 +1,3 @@
+"A cond with no else: FX has no unspecified value."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f (subr kfx (i64) i64) (lambda (n) (cond ((i64= n 0) 1))))

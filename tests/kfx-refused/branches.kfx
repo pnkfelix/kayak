@@ -1,0 +1,3 @@
+"Branches of different types."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f (subr kfx (bool) i64) (lambda (b) (if b 1 "one")))

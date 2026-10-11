@@ -1,0 +1,4 @@
+"A tagcase with an arm missing, and no else."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-datatype t (a) (b i64))
+(define f (subr kfx (t) i64) (lambda (x) (tagcase x (a () 0))))

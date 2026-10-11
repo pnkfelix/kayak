@@ -1,0 +1,5 @@
+"A datatype tag that is not the scrutinee's."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-datatype t (a) (b i64))
+(define-datatype u (c))
+(define f (subr kfx (t) i64) (lambda (x) (tagcase x (a () 0) (c () 1) (else y 2))))

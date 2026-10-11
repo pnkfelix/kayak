@@ -1,0 +1,5 @@
+"A lambda whose effect is not within the one expected."
+(define-effect kfx (maxeff (read @globals) spin))
+(define spin! (subr kfx (i64) i64) (lambda (n) n))
+(define call (subr kfx ((subr pure (i64) i64)) i64) (lambda (f) (f 1)))
+(define g (subr kfx () i64) (lambda () (call (lambda ((n i64)) (spin! n)))))

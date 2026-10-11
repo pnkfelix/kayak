@@ -1,0 +1,3 @@
+"A call of a local named by a keyword: FX-26 reads (sum 1 2) as its sum form."
+(define-effect kfx (maxeff (read @globals) spin))
+(define g (subr kfx ((subr kfx (i64 i64) i64)) i64) (lambda (sum) (sum 1 2)))

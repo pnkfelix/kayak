@@ -1,0 +1,3 @@
+"A recursion that may not end, which says no spin."
+(define-effect kfx (maxeff (read @globals) spin))
+(define spins (subr (read @globals) (i64) i64) (lambda (n) (spins n)))

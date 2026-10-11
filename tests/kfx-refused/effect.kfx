@@ -1,0 +1,4 @@
+"A pure procedure that calls one that is not."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f (subr kfx (i64) i64) (lambda (n) n))
+(define g (subr pure (i64) i64) (lambda (n) (f n)))

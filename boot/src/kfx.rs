@@ -255,13 +255,21 @@ pub fn string_body(mut cs: Chars, mut acc: Chars) -> &'static Tok {
     }
 }
 
+/// Digits onto `n`, negated: so that -9223372036854775808, whose
+/// magnitude is no i64, reads. A literal past an i64 is refused, as FX-26
+/// refuses it where an i64 is expected.
 pub fn digits_value(mut cs: Chars, mut n: i64) -> i64 {
     loop {
         if null_p(cs) {
             return n;
         } else {
-            (cs, n) = (cdr(cs), i64_plus(i64_star(n, 10i64), i64_minus(char_to_i64(car(cs)), 48i64)));
-            continue;
+            let d = i64_minus(char_to_i64(car(cs)), 48i64);
+            if (i64_lt(n, -922337203685477580i64) || (i64_eq(n, -922337203685477580i64) && i64_gt(d, 8i64))) {
+                return error("kfx: a literal past an i64");
+            } else {
+                (cs, n) = (cdr(cs), i64_minus(i64_star(n, 10i64), d));
+                continue;
+            }
         }
     }
 }
@@ -275,9 +283,14 @@ pub fn token_atom(s: Str) -> &'static Sexp {
     if not(numeric_p(cs)) {
         sym(s)
     } else if char_eq_p(car(cs), '-') {
-        num(i64_minus(0i64, digits_value(cdr(cs), 0i64)))
+        num(digits_value(cdr(cs), 0i64))
     } else {
-        num(digits_value(cs, 0i64))
+        let negated = digits_value(cs, 0i64);
+        if i64_eq(negated, -9223372036854775808i64) {
+            error("kfx: a literal past an i64")
+        } else {
+            num(i64_minus(0i64, negated))
+        }
     }
 }
 
@@ -710,6 +723,8 @@ pub fn put_type(c: &'static Ctx, t: &'static Sexp, acc: Chars) -> Chars {
                 put("char", acc)
             } else if string_eq_p(s, "unit") {
                 put("()", acc)
+            } else if string_eq_p(s, "void") {
+                put("!", acc)
             } else if string_eq_p(s, "string") {
                 put("Str", acc)
             } else if string_member_p(s, ctx_datatypes(c)) {
@@ -741,7 +756,7 @@ pub fn put_type(c: &'static Ctx, t: &'static Sexp, acc: Chars) -> Chars {
 
 /// Types, separated by commas.
 pub fn put_types(c: &'static Ctx, types: Sexps, acc: Chars) -> Chars {
-    put_sep(lambda2(move |t, acc| {
+    put_sep(lambda2(move |t: &'static Sexp, acc| {
         put_type(c, t, acc)
     }), ", ", types, acc)
 }
@@ -834,7 +849,7 @@ pub fn comment_text(e: &'static Sexp) -> Str {
 
 /// Names, separated by commas.
 pub fn put_names(xs: Sexps, acc: Chars) -> Chars {
-    put_sep(lambda2(move |x, acc| {
+    put_sep(lambda2(move |x: &'static Sexp, acc| {
         put(mangle(sym_name(x)), acc)
     }), ", ", xs, acc)
 }
@@ -884,7 +899,7 @@ pub fn hide(t: &'static Tail, names: Strings) -> &'static Tail {
     let tagcase_ = t;
     match *tagcase_ {
         Tail::Returns(f, ps, live) => {
-            if (live && any_p(lambda1(move |x| {
+            if (live && any_p(lambda1(move |x: Str| {
                 string_member_p(x, ps)
             }), names)) {
                 returns(f, ps, false)
@@ -1015,7 +1030,7 @@ pub fn changes(ps: Strings, args: Sexps) -> &'static Assign {
 
 /// Names, mangled, separated by commas.
 pub fn put_strings(xs: Strings, acc: Chars) -> Chars {
-    put_sep(lambda2(move |x, acc| {
+    put_sep(lambda2(move |x: Str, acc| {
         put(mangle(x), acc)
     }), ", ", xs, acc)
 }
@@ -1100,7 +1115,7 @@ pub fn put_continue(c: &'static Ctx, args: Sexps, n: i64, t: &'static Tail, acc:
 
 /// Expressions separated by `sep`.
 pub fn put_joined(c: &'static Ctx, xs: Sexps, sep: Str, n: i64, acc: Chars) -> Chars {
-    put_sep(lambda2(move |x, acc| {
+    put_sep(lambda2(move |x: &'static Sexp, acc| {
         put_exp(c, x, n, value(), acc)
     }), sep, xs, acc)
 }
@@ -1624,6 +1639,2028 @@ pub fn put_tops(mut c: &'static Ctx, mut forms: Sexps, mut acc: Chars) -> Chars 
     }
 }
 
+// Checking (TODO.md, section 13): KFX's types and effects, so that kfx
+// refuses what is not KFX without Fixpt. KFX is a subset of FX-26 (PLAN.md,
+// K1): this checker may refuse what FX-26 accepts, never accept what it
+// refuses. Where FX-26 is clever, it is plain instead:
+// - every recursive procedure says `spin` (FX-26 proves termination);
+// - a call of a procedure that is a value, and a global procedure named as
+// a value, are `spin` (FX-26 says when they may loop);
+// - a `poly` is over types, and a list at `acyclic`.
+// Bidirectional, as FX-26's checking is: `check` knows the type expected,
+// `synth` finds it. A `poly` procedure's call is instantiated by
+// inference variables, solved by the arguments in order, those that are
+// lambdas last.
+pub enum Ty {
+    TyI64(),
+    TyBool(),
+    TyChar(),
+    TyUnit(),
+    TyString(),
+    TyVoid(),
+    TyList(&'static Ty),
+    TyData(Str),
+    TyProc(Strings, List<&'static Ty>, &'static Ty),
+    TyVar(Str),
+    TyMeta(i64),
+}
+
+pub fn ty_i64() -> &'static Ty {
+    alloc(Ty::TyI64())
+}
+
+pub fn ty_bool() -> &'static Ty {
+    alloc(Ty::TyBool())
+}
+
+pub fn ty_char() -> &'static Ty {
+    alloc(Ty::TyChar())
+}
+
+pub fn ty_unit() -> &'static Ty {
+    alloc(Ty::TyUnit())
+}
+
+pub fn ty_string() -> &'static Ty {
+    alloc(Ty::TyString())
+}
+
+pub fn ty_void() -> &'static Ty {
+    alloc(Ty::TyVoid())
+}
+
+pub fn ty_list(f0: &'static Ty) -> &'static Ty {
+    alloc(Ty::TyList(f0))
+}
+
+pub fn ty_data(f0: Str) -> &'static Ty {
+    alloc(Ty::TyData(f0))
+}
+
+pub fn ty_proc(f0: Strings, f1: List<&'static Ty>, f2: &'static Ty) -> &'static Ty {
+    alloc(Ty::TyProc(f0, f1, f2))
+}
+
+pub fn ty_var(f0: Str) -> &'static Ty {
+    alloc(Ty::TyVar(f0))
+}
+
+pub fn ty_meta(f0: i64) -> &'static Ty {
+    alloc(Ty::TyMeta(f0))
+}
+
+// `ty-void` is `error`'s result, below every type. A `ty-proc`'s strings
+// are its latent effect, a set of atoms: `spin`, `@globals` (every global
+// read), and `g:` and a name (that global read). `ty-var` is a `poly`'s
+// type variable, `ty-meta` an inference variable.
+pub type Tys = List<&'static Ty>;
+
+pub enum Scheme {
+    Scheme(Strings, &'static Ty),
+}
+
+pub fn scheme(f0: Strings, f1: &'static Ty) -> &'static Scheme {
+    alloc(Scheme::Scheme(f0, f1))
+}
+
+// A name in scope: its type, over its type variables, and where it is
+// defined: `local`, `global` (the program's, so naming it reads it), or
+// `prim` (kayak-rt's, and the prelude's).
+pub enum Bind {
+    Bind(Str, &'static Scheme, Str),
+}
+
+pub fn bind(f0: Str, f1: &'static Scheme, f2: Str) -> &'static Bind {
+    alloc(Bind::Bind(f0, f1, f2))
+}
+
+pub type Binds = List<&'static Bind>;
+
+pub enum Variant {
+    Variant(Str, Tys),
+}
+
+pub fn variant(f0: Str, f1: Tys) -> &'static Variant {
+    alloc(Variant::Variant(f0, f1))
+}
+
+pub type Variants = List<&'static Variant>;
+
+pub enum Dt {
+    Dt(Str, Variants),
+}
+
+pub fn dt(f0: Str, f1: Variants) -> &'static Dt {
+    alloc(Dt::Dt(f0, f1))
+}
+
+pub type Dts = List<&'static Dt>;
+
+pub enum Alias {
+    Alias(Str, &'static Sexp),
+}
+
+pub fn alias(f0: Str, f1: &'static Sexp) -> &'static Alias {
+    alloc(Alias::Alias(f0, f1))
+}
+
+pub type Aliases = List<&'static Alias>;
+
+pub enum Effdef {
+    Effdef(Str, Strings),
+}
+
+pub fn effdef(f0: Str, f1: Strings) -> &'static Effdef {
+    alloc(Effdef::Effdef(f0, f1))
+}
+
+pub type Effdefs = List<&'static Effdef>;
+
+// What a checker of a definition knows: the names in scope, the datatypes,
+// the type abbreviations, the effect abbreviations, the definition being
+// checked (for messages), and its recursive group (whose calls are `spin`).
+pub enum Cv {
+    Cv(Binds, Dts, Aliases, Effdefs, Str, Strings),
+}
+
+pub fn cv(f0: Binds, f1: Dts, f2: Aliases, f3: Effdefs, f4: Str, f5: Strings) -> &'static Cv {
+    alloc(Cv::Cv(f0, f1, f2, f3, f4, f5))
+}
+
+// Inference variables solved so far, and the next one's number.
+pub enum Sb {
+    Sb(i64, &'static Ty),
+}
+
+pub fn sb(f0: i64, f1: &'static Ty) -> &'static Sb {
+    alloc(Sb::Sb(f0, f1))
+}
+
+pub type Sbs = List<&'static Sb>;
+
+pub enum St {
+    St(Sbs, i64),
+}
+
+pub fn st(f0: Sbs, f1: i64) -> &'static St {
+    alloc(St::St(f0, f1))
+}
+
+// What checking an expression gives: its type, its effect, and the state.
+pub enum Res {
+    Res(&'static Ty, Strings, &'static St),
+}
+
+pub fn res(f0: &'static Ty, f1: Strings, f2: &'static St) -> &'static Res {
+    alloc(Res::Res(f0, f1, f2))
+}
+
+// Messages
+pub fn show_sexp(e: &'static Sexp) -> Str {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Sym(s) => {
+            s
+        }
+        Sexp::Str(s) => {
+            string_append("\"", string_append(s, "\""))
+        }
+        Sexp::Num(k) => {
+            i64_to_string(k)
+        }
+        Sexp::Chr(c) => {
+            string_append("#\\", char_to_string(c))
+        }
+        Sexp::Lst(xs) => {
+            string_append("(", string_append(show_sexps(xs), ")"))
+        }
+    }
+}
+
+pub fn show_sexps(xs: Sexps) -> Str {
+    if null_p(xs) {
+        ""
+    } else if null_p(cdr(xs)) {
+        show_sexp(car(xs))
+    } else {
+        string_append(show_sexp(car(xs)), string_append(" ", show_sexps(cdr(xs))))
+    }
+}
+
+pub fn cv_where(v: &'static Cv) -> Str {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, r#as, es, here, group) => {
+            here
+        }
+    }
+}
+
+pub fn refuse(v: &'static Cv, message: Str) -> ! {
+    error(string_append("kfx: in ", string_append(cv_where(v), string_append(": ", message))))
+}
+
+// Effects
+pub fn effs_union(mut a: Strings, mut b: Strings) -> Strings {
+    loop {
+        if null_p(a) {
+            return b;
+        } else if string_member_p(car(a), b) {
+            a = cdr(a);
+            continue;
+        } else {
+            (a, b) = (cdr(a), cons(car(a), b));
+            continue;
+        }
+    }
+}
+
+pub fn global_atom_p(x: Str) -> bool {
+    char_eq_p(string_ref_i64(x, 0i64), 'g')
+}
+
+/// Whether effect `a` is within `b`: a read of one global is within a
+/// read of all of them.
+pub fn effs_within_p(a: Strings, b: Strings) -> bool {
+    (null_p(a) || ((string_member_p(car(a), b) || (global_atom_p(car(a)) && string_member_p("@globals", b))) && effs_within_p(cdr(a), b)))
+}
+
+pub fn words_of(xs: Strings) -> Str {
+    if null_p(xs) {
+        ""
+    } else if null_p(cdr(xs)) {
+        car(xs)
+    } else {
+        string_append(car(xs), string_append(" ", words_of(cdr(xs))))
+    }
+}
+
+pub fn show_effs(es: Strings) -> Str {
+    if null_p(es) {
+        "pure"
+    } else {
+        string_append("(", string_append(words_of(es), ")"))
+    }
+}
+
+pub fn find_effdef(mut v: &'static Cv, mut name: Str, mut es: Effdefs) -> Strings {
+    loop {
+        if null_p(es) {
+            return refuse(v, string_append("an effect KFX does not have: ", name));
+        } else {
+            let tagcase_ = car(es);
+            match *tagcase_ {
+                Effdef::Effdef(n, atoms) => {
+                    if string_eq_p(n, name) {
+                        return atoms;
+                    } else {
+                        es = cdr(es);
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn cv_effdefs(v: &'static Cv) -> Effdefs {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, r#as, es, here, group) => {
+            es
+        }
+    }
+}
+
+pub fn parse_effect(v: &'static Cv, e: &'static Sexp) -> Strings {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Sym(s) => {
+            if string_eq_p(s, "pure") {
+                nil()
+            } else if string_eq_p(s, "spin") {
+                cons("spin", nil())
+            } else {
+                find_effdef(v, s, cv_effdefs(v))
+            }
+        }
+        Sexp::Lst(xs) => {
+            if sym_is_p(car(xs), "maxeff") {
+                parse_effects(v, cdr(xs))
+            } else if (sym_is_p(car(xs), "read") && sym_is_p(second(xs), "@globals")) {
+                cons("@globals", nil())
+            } else if (sym_is_p(car(xs), "read") && head_is_p(second(xs), "globals")) {
+                map(lambda1(move |g: &'static Sexp| {
+                    string_append("g:", sym_name(g))
+                }), cdr(items(second(xs))))
+            } else {
+                refuse(v, string_append("an effect KFX does not have: ", show_sexp(e)))
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            refuse(v, string_append("an effect KFX does not have: ", show_sexp(e)))
+        }
+    }
+}
+
+pub fn parse_effects(v: &'static Cv, es: Sexps) -> Strings {
+    if null_p(es) {
+        nil()
+    } else {
+        effs_union(parse_effect(v, car(es)), parse_effects(v, cdr(es)))
+    }
+}
+
+// Types
+pub fn cv_dts(v: &'static Cv) -> Dts {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, r#as, es, here, group) => {
+            ds
+        }
+    }
+}
+
+pub fn cv_aliases(v: &'static Cv) -> Aliases {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, r#as, es, here, group) => {
+            r#as
+        }
+    }
+}
+
+pub fn cv_binds(v: &'static Cv) -> Binds {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, r#as, es, here, group) => {
+            bs
+        }
+    }
+}
+
+pub fn cv_group(v: &'static Cv) -> Strings {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, r#as, es, here, group) => {
+            group
+        }
+    }
+}
+
+pub fn dt_named_p(name: Str, ds: Dts) -> bool {
+    any_p(lambda1(move |d: &'static Dt| {
+        let tagcase_ = d;
+        match *tagcase_ {
+            Dt::Dt(n, vs) => {
+                string_eq_p(n, name)
+            }
+        }
+    }), ds)
+}
+
+/// The abbreviated type, as a list of one, or none.
+pub fn find_alias(mut name: Str, mut r#as: Aliases) -> Sexps {
+    loop {
+        if null_p(r#as) {
+            return nil();
+        } else {
+            let tagcase_ = car(r#as);
+            match *tagcase_ {
+                Alias::Alias(n, t) => {
+                    if string_eq_p(n, name) {
+                        return cons(t, nil());
+                    } else {
+                        r#as = cdr(r#as);
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// `tvars`: the type variables in scope.
+pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) -> &'static Ty {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Sexp::Sym(s) => {
+                if string_eq_p(s, "i64") {
+                    return ty_i64();
+                } else if string_eq_p(s, "bool") {
+                    return ty_bool();
+                } else if string_eq_p(s, "char") {
+                    return ty_char();
+                } else if string_eq_p(s, "unit") {
+                    return ty_unit();
+                } else if string_eq_p(s, "string") {
+                    return ty_string();
+                } else if string_eq_p(s, "void") {
+                    return ty_void();
+                } else if string_eq_p(s, "int") {
+                    return refuse(v, "KFX has no int, whose + makes a bignum; write i64, whose i64+ wraps");
+                } else if string_member_p(s, tvars) {
+                    return ty_var(s);
+                } else if dt_named_p(s, cv_dts(v)) {
+                    return ty_data(s);
+                } else {
+                    let found = find_alias(s, cv_aliases(v));
+                    if null_p(found) {
+                        return refuse(v, string_append("no type is named ", s));
+                    } else {
+                        t = car(found);
+                        continue;
+                    }
+                }
+            }
+            Sexp::Lst(xs) => {
+                if sym_is_p(car(xs), "listof") {
+                    if sym_is_p(third(xs), "acyclic") {
+                        return ty_list(parse_type(v, tvars, second(xs)));
+                    } else {
+                        return refuse(v, string_append("KFX-0's lists are at acyclic: ", show_sexp(t)));
+                    }
+                } else if sym_is_p(car(xs), "subr") {
+                    return ty_proc(parse_effect(v, second(xs)), parse_types(v, tvars, items(third(xs))), parse_type(v, tvars, fourth(xs)));
+                } else {
+                    return refuse(v, string_append("a type KFX does not have: ", show_sexp(t)));
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                return refuse(v, string_append("a type KFX does not have: ", show_sexp(t)));
+            }
+        }
+    }
+}
+
+pub fn parse_types(v: &'static Cv, tvars: Strings, ts: Sexps) -> Tys {
+    map(lambda1(move |t: &'static Sexp| {
+        parse_type(v, tvars, t)
+    }), ts)
+}
+
+/// A definition's type's type variables: a poly at its top, over types.
+pub fn poly_binders(v: &'static Cv, t: &'static Sexp) -> Strings {
+    if head_is_p(t, "poly") {
+        map(lambda1(move |b: &'static Sexp| {
+            let b = items(b);
+            if sym_is_p(second(b), "type") {
+                sym_name(car(b))
+            } else {
+                refuse(v, string_append("KFX's poly is over types: ", show_sexp(lst(b))))
+            }
+        }), items(second(items(t))))
+    } else {
+        nil()
+    }
+}
+
+pub fn parse_scheme(v: &'static Cv, t: &'static Sexp) -> &'static Scheme {
+    let tvars = poly_binders(v, t);
+    scheme(tvars, parse_type(v, tvars, if head_is_p(t, "poly") {
+        third(items(t))
+    } else {
+        t
+    }))
+}
+
+pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
+    let tagcase_ = walk(s, t);
+    match *tagcase_ {
+        Ty::TyI64() => {
+            "i64"
+        }
+        Ty::TyBool() => {
+            "bool"
+        }
+        Ty::TyChar() => {
+            "char"
+        }
+        Ty::TyUnit() => {
+            "unit"
+        }
+        Ty::TyString() => {
+            "string"
+        }
+        Ty::TyVoid() => {
+            "void"
+        }
+        Ty::TyList(e) => {
+            string_append("(listof ", string_append(show_ty(s, e), " acyclic)"))
+        }
+        Ty::TyData(d) => {
+            d
+        }
+        Ty::TyProc(es, ps, r) => {
+            string_append("(subr ", string_append(show_effs(es), string_append(" (", string_append(show_tys(s, ps), string_append(") ", string_append(show_ty(s, r), ")"))))))
+        }
+        Ty::TyVar(n) => {
+            n
+        }
+        Ty::TyMeta(k) => {
+            string_append("?", i64_to_string(k))
+        }
+    }
+}
+
+pub fn show_tys(s: &'static St, ts: Tys) -> Str {
+    if null_p(ts) {
+        ""
+    } else if null_p(cdr(ts)) {
+        show_ty(s, car(ts))
+    } else {
+        string_append(show_ty(s, car(ts)), string_append(" ", show_tys(s, cdr(ts))))
+    }
+}
+
+/// `t`, its inference variable replaced by its solution, if it has one.
+pub fn walk(mut s: &'static St, mut t: &'static Ty) -> &'static Ty {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Ty::TyMeta(k) => {
+                let tagcase_ = s;
+                match *tagcase_ {
+                    St::St(subst, next) => {
+                        let found = lookup_meta(k, subst);
+                        if null_p(found) {
+                            return t;
+                        } else {
+                            t = car(found);
+                            continue;
+                        }
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                return t;
+            }
+        }
+    }
+}
+
+pub fn lookup_meta(mut k: i64, mut subst: Sbs) -> Tys {
+    loop {
+        if null_p(subst) {
+            return nil();
+        } else {
+            let tagcase_ = car(subst);
+            match *tagcase_ {
+                Sb::Sb(j, t) => {
+                    if i64_eq(j, k) {
+                        return cons(t, nil());
+                    } else {
+                        subst = cdr(subst);
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Whether `t` has an inference variable not solved yet.
+pub fn has_meta_p(mut s: &'static St, mut t: &'static Ty) -> bool {
+    loop {
+        let tagcase_ = walk(s, t);
+        match *tagcase_ {
+            Ty::TyMeta(k) => {
+                return true;
+            }
+            Ty::TyList(e) => {
+                t = e;
+                continue;
+            }
+            Ty::TyProc(es, ps, r) => {
+                return (has_meta_p(s, r) || any_p(lambda1(move |p: &'static Ty| {
+                    has_meta_p(s, p)
+                }), ps));
+            }
+            _ => {
+                let other = tagcase_;
+                return false;
+            }
+        }
+    }
+}
+
+/// A new inference variable.
+pub fn fresh(s: &'static St) -> &'static Res {
+    let tagcase_ = s;
+    match *tagcase_ {
+        St::St(subst, next) => {
+            res(ty_meta(next), nil(), st(subst, i64_plus(next, 1i64)))
+        }
+    }
+}
+
+pub fn solve(s: &'static St, k: i64, t: &'static Ty) -> &'static St {
+    let tagcase_ = s;
+    match *tagcase_ {
+        St::St(subst, next) => {
+            st(cons(sb(k, t), subst), next)
+        }
+    }
+}
+
+pub fn occurs_p(mut s: &'static St, mut k: i64, mut t: &'static Ty) -> bool {
+    loop {
+        let tagcase_ = walk(s, t);
+        match *tagcase_ {
+            Ty::TyMeta(j) => {
+                return i64_eq(j, k);
+            }
+            Ty::TyList(e) => {
+                t = e;
+                continue;
+            }
+            Ty::TyProc(es, ps, r) => {
+                return (occurs_p(s, k, r) || any_p(lambda1(move |p: &'static Ty| {
+                    occurs_p(s, k, p)
+                }), ps));
+            }
+            _ => {
+                let other = tagcase_;
+                return false;
+            }
+        }
+    }
+}
+
+pub fn same_base_p(a: &'static Ty, e: &'static Ty) -> bool {
+    let tagcase_ = a;
+    match *tagcase_ {
+        Ty::TyI64() => {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Ty::TyI64() => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Ty::TyBool() => {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Ty::TyBool() => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Ty::TyChar() => {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Ty::TyChar() => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Ty::TyUnit() => {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Ty::TyUnit() => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Ty::TyString() => {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Ty::TyString() => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+/// That a value of type `actual` may stand where `expected` is: the two
+/// the same, inference variables solved to make them so, but for
+/// `void`, which fits anything, and a procedure, whose latent effect
+/// may be within the one expected.
+pub fn fits(v: &'static Cv, s: &'static St, actual: &'static Ty, expected: &'static Ty) -> &'static St {
+    let (a, e) = (walk(s, actual), walk(s, expected));
+    let tagcase_ = a;
+    match *tagcase_ {
+        Ty::TyVoid() => {
+            s
+        }
+        Ty::TyMeta(k) => {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Ty::TyMeta(j) => {
+                    if i64_eq(j, k) {
+                        s
+                    } else {
+                        solve(s, k, e)
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    if occurs_p(s, k, e) {
+                        mismatch(v, s, a, e)
+                    } else {
+                        solve(s, k, e)
+                    }
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            let tagcase_ = e;
+            match *tagcase_ {
+                Ty::TyMeta(j) => {
+                    if occurs_p(s, j, a) {
+                        mismatch(v, s, a, e)
+                    } else {
+                        solve(s, j, a)
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    fits_shapes(v, s, a, e)
+                }
+            }
+        }
+    }
+}
+
+pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static Ty) -> &'static St {
+    let tagcase_ = a;
+    match *tagcase_ {
+        Ty::TyList(x) => {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Ty::TyList(y) => {
+                    fits(v, s, x, y)
+                }
+                _ => {
+                    let other = tagcase_;
+                    mismatch(v, s, a, e)
+                }
+            }
+        }
+        Ty::TyData(x) => {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Ty::TyData(y) => {
+                    if string_eq_p(x, y) {
+                        s
+                    } else {
+                        mismatch(v, s, a, e)
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    mismatch(v, s, a, e)
+                }
+            }
+        }
+        Ty::TyVar(x) => {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Ty::TyVar(y) => {
+                    if string_eq_p(x, y) {
+                        s
+                    } else {
+                        mismatch(v, s, a, e)
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    mismatch(v, s, a, e)
+                }
+            }
+        }
+        Ty::TyProc(aes, aps, ar) => {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Ty::TyProc(ees, eps, er) => {
+                    if not(i64_eq(size(aps), size(eps))) {
+                        mismatch(v, s, a, e)
+                    } else if not(effs_within_p(aes, ees)) {
+                        mismatch(v, s, a, e)
+                    } else {
+                        fits(v, fits_all(v, s, eps, aps), ar, er)
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    mismatch(v, s, a, e)
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            if same_base_p(a, e) {
+                s
+            } else {
+                mismatch(v, s, a, e)
+            }
+        }
+    }
+}
+
+/// Parameters: each expected parameter's type stands for the actual's.
+pub fn fits_all(mut v: &'static Cv, mut s: &'static St, mut actuals: Tys, mut expecteds: Tys) -> &'static St {
+    loop {
+        if null_p(actuals) {
+            return s;
+        } else {
+            (s, actuals, expecteds) = (fits(v, s, car(actuals), car(expecteds)), cdr(actuals), cdr(expecteds));
+            continue;
+        }
+    }
+}
+
+pub fn mismatch(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static Ty) -> &'static St {
+    refuse(v, string_append("a ", string_append(show_ty(s, a), string_append(" is here, where a ", string_append(show_ty(s, e), " is expected")))))
+}
+
+// A scheme's instance: each type variable an inference variable.
+pub enum Inst {
+    Inst(&'static Ty, &'static St),
+}
+
+pub fn inst(f0: &'static Ty, f1: &'static St) -> &'static Inst {
+    alloc(Inst::Inst(f0, f1))
+}
+
+pub fn instantiate(s: &'static St, sc: &'static Scheme) -> &'static Inst {
+    let tagcase_ = sc;
+    match *tagcase_ {
+        Scheme::Scheme(tvars, t) => {
+            instantiate_vars(s, tvars, t)
+        }
+    }
+}
+
+pub fn instantiate_vars(s: &'static St, tvars: Strings, t: &'static Ty) -> &'static Inst {
+    if null_p(tvars) {
+        inst(t, s)
+    } else {
+        let tagcase_ = fresh(s);
+        match *tagcase_ {
+            Res::Res(m, es, s) => {
+                instantiate_vars(s, cdr(tvars), replace_var(car(tvars), m, t))
+            }
+        }
+    }
+}
+
+pub fn replace_var(name: Str, m: &'static Ty, t: &'static Ty) -> &'static Ty {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyVar(n) => {
+            if string_eq_p(n, name) {
+                m
+            } else {
+                t
+            }
+        }
+        Ty::TyList(e) => {
+            ty_list(replace_var(name, m, e))
+        }
+        Ty::TyProc(es, ps, r) => {
+            ty_proc(es, map(lambda1(move |p: &'static Ty| {
+                replace_var(name, m, p)
+            }), ps), replace_var(name, m, r))
+        }
+        _ => {
+            let other = tagcase_;
+            t
+        }
+    }
+}
+
+// The names in scope
+/// The innermost binding of `name`, as a list of one, or none.
+pub fn find_bind(mut name: Str, mut bs: Binds) -> Binds {
+    loop {
+        if null_p(bs) {
+            return nil();
+        } else {
+            let tagcase_ = car(bs);
+            match *tagcase_ {
+                Bind::Bind(n, sc, r#where) => {
+                    if string_eq_p(n, name) {
+                        return cons(car(bs), nil());
+                    } else {
+                        bs = cdr(bs);
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// FX-26's keywords, which name nothing (fixpt's top.rs, KEYWORDS).
+pub fn keyword_p(name: Str) -> bool {
+    (string_eq_p(name, "lambda") || string_eq_p(name, "plambda") || string_eq_p(name, "proj") || string_eq_p(name, "if") || string_eq_p(name, "letrec") || string_eq_p(name, "let") || string_eq_p(name, "begin") || string_eq_p(name, "define") || string_eq_p(name, "define*") || string_eq_p(name, "define-type") || string_eq_p(name, "define-generative") || string_eq_p(name, "subr") || string_eq_p(name, "poly") || string_eq_p(name, "ref") || string_eq_p(name, "pairof") || string_eq_p(name, "dletrec") || string_eq_p(name, "void") || string_eq_p(name, "pure") || string_eq_p(name, "maxeff") || string_eq_p(name, "read") || string_eq_p(name, "write") || string_eq_p(name, "alloc") || string_eq_p(name, "goto") || string_eq_p(name, "comefrom") || string_eq_p(name, "region") || string_eq_p(name, "effect") || string_eq_p(name, "type") || string_eq_p(name, "prompt") || string_eq_p(name, "prompt-tag") || string_eq_p(name, "composable") || string_eq_p(name, "mark-key") || string_eq_p(name, "listof") || string_eq_p(name, "cond") || string_eq_p(name, "case") || string_eq_p(name, "else") || string_eq_p(name, "and") || string_eq_p(name, "or") || string_eq_p(name, "let*") || string_eq_p(name, "define-effect") || string_eq_p(name, "module-parameters") || string_eq_p(name, "the") || string_eq_p(name, "bloblet") || string_eq_p(name, "fields") || string_eq_p(name, "frozen") || string_eq_p(name, "arrayof") || string_eq_p(name, "icell") || string_eq_p(name, "await") || string_eq_p(name, "define-rec") || string_eq_p(name, "letrena") || string_eq_p(name, "letreap") || string_eq_p(name, "rlambda") || string_eq_p(name, "quote") || string_eq_p(name, "productof") || string_eq_p(name, "sumof") || string_eq_p(name, "product") || string_eq_p(name, "extract") || string_eq_p(name, "sum") || string_eq_p(name, "tagcase") || string_eq_p(name, "module") || string_eq_p(name, "moduleof") || string_eq_p(name, "with") || string_eq_p(name, "select") || string_eq_p(name, "load-module") || string_eq_p(name, "define-datatype") || string_eq_p(name, "make-bloblet") || string_eq_p(name, "bloblet-ref") || string_eq_p(name, "bloblet-set!") || string_eq_p(name, "bloblet-freeze") || string_eq_p(name, "bloblet-byte") || string_eq_p(name, "bloblet-set-byte!") || string_eq_p(name, "bloblet-bytes") || string_eq_p(name, "rmake-bloblet") || string_eq_p(name, "dlambda") || string_eq_p(name, "=>") || string_eq_p(name, "blobref-at") || string_eq_p(name, "blobref+") || string_eq_p(name, "blobref-owner") || string_eq_p(name, "blobref-offset") || string_eq_p(name, "blobref-get") || string_eq_p(name, "blobref-set!") || string_eq_p(name, "blobref-index") || string_eq_p(name, "blobref-variant!"))
+}
+
+pub fn bind_onto(mut xs: Binds, mut ys: Binds) -> Binds {
+    loop {
+        if null_p(xs) {
+            return ys;
+        } else {
+            (xs, ys) = (cdr(xs), cons(car(xs), ys));
+            continue;
+        }
+    }
+}
+
+pub fn with_binds(v: &'static Cv, more: Binds) -> &'static Cv {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, r#as, es, here, group) => {
+            cv(bind_onto(more, bs), ds, r#as, es, here, group)
+        }
+    }
+}
+
+/// A local may be named by a keyword, as FX-26 has it; it may not then be
+/// called, since FX-26 reads such a call as its form (`synth-call`).
+pub fn local(v: &'static Cv, name: Str, t: &'static Ty) -> &'static Bind {
+    bind(name, scheme(nil(), t), "local")
+}
+
+// Expressions
+pub fn with_effs(r: &'static Res, es: Strings) -> &'static Res {
+    let tagcase_ = r;
+    match *tagcase_ {
+        Res::Res(t, es0, s) => {
+            res(t, effs_union(es, es0), s)
+        }
+    }
+}
+
+pub fn proc_type_p(s: &'static St, t: &'static Ty) -> bool {
+    let tagcase_ = walk(s, t);
+    match *tagcase_ {
+        Ty::TyProc(es, ps, r) => {
+            true
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+/// What naming a name does: a global is read, and a global procedure
+/// named as a value may be called from anywhere, so may loop.
+pub fn naming_effs(s: &'static St, name: Str, r#where: Str, t: &'static Ty) -> Strings {
+    if not(string_eq_p(r#where, "global")) {
+        nil()
+    } else if proc_type_p(s, t) {
+        cons("spin", cons(string_append("g:", name), nil()))
+    } else {
+        cons(string_append("g:", name), nil())
+    }
+}
+
+pub fn literal_int(v: &'static Cv) -> ! {
+    refuse(v, "a literal with nothing expected is an int, which KFX does not have: write (the i64 n)")
+}
+
+pub fn void_p(s: &'static St, t: &'static Ty) -> bool {
+    let tagcase_ = walk(s, t);
+    match *tagcase_ {
+        Ty::TyVoid() => {
+            true
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+/// What the branches after one of type `t` are checked against: the type
+/// expected, if known, else `t`, unless that is `void`, which says
+/// nothing.
+pub fn next_expected(s: &'static St, t: &'static Ty, expected: Tys) -> Tys {
+    if not(null_p(expected)) {
+        expected
+    } else if void_p(s, t) {
+        nil()
+    } else {
+        cons(t, nil())
+    }
+}
+
+/// The type of branches, the first of type `t` and the rest of `rest`.
+pub fn joined(s: &'static St, t: &'static Ty, rest: &'static Ty, expected: Tys) -> &'static Ty {
+    if not(null_p(expected)) {
+        car(expected)
+    } else if void_p(s, t) {
+        rest
+    } else {
+        t
+    }
+}
+
+pub fn control_form_p(h: Str) -> bool {
+    (string_eq_p(h, "if") || string_eq_p(h, "cond") || string_eq_p(h, "case") || string_eq_p(h, "tagcase") || string_eq_p(h, "let") || string_eq_p(h, "let*") || string_eq_p(h, "begin"))
+}
+
+pub fn all_chars_p(xs: Sexps) -> bool {
+    not(any_p(lambda1(move |x: &'static Sexp| {
+        let tagcase_ = x;
+        match *tagcase_ {
+            Sexp::Chr(c) => {
+                false
+            }
+            _ => {
+                let other = tagcase_;
+                true
+            }
+        }
+    }), xs))
+}
+
+pub fn bind_fields(v: &'static Cv, names: Sexps, types: Tys) -> Binds {
+    if null_p(names) {
+        nil()
+    } else {
+        cons(local(v, sym_name(car(names)), car(types)), bind_fields(v, cdr(names), cdr(types)))
+    }
+}
+
+pub fn bind_params(v: &'static Cv, params: Sexps, types: Tys) -> Binds {
+    if null_p(params) {
+        nil()
+    } else {
+        cons(local(v, param_name(car(params)), car(types)), bind_params(v, cdr(params), cdr(types)))
+    }
+}
+
+pub fn find_dt(mut d: Str, mut ds: Dts) -> List<Variants> {
+    loop {
+        if null_p(ds) {
+            return nil();
+        } else {
+            let tagcase_ = car(ds);
+            match *tagcase_ {
+                Dt::Dt(n, vs) => {
+                    if string_eq_p(n, d) {
+                        return cons(vs, nil());
+                    } else {
+                        ds = cdr(ds);
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn variants_of(v: &'static Cv, d: Str) -> Variants {
+    let found = find_dt(d, cv_dts(v));
+    if null_p(found) {
+        refuse(v, string_append("no datatype is named ", d))
+    } else {
+        car(found)
+    }
+}
+
+pub fn variant_fields(mut v: &'static Cv, mut d: Str, mut tag: Str, mut vs: Variants) -> Tys {
+    loop {
+        if null_p(vs) {
+            return refuse(v, string_append(tag, string_append(" is no tag of ", string_append(d, ", or has an arm already"))));
+        } else {
+            let tagcase_ = car(vs);
+            match *tagcase_ {
+                Variant::Variant(t, fields) => {
+                    if string_eq_p(t, tag) {
+                        return fields;
+                    } else {
+                        vs = cdr(vs);
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn without_tag(tag: Str, vs: Variants) -> Variants {
+    if null_p(vs) {
+        nil()
+    } else {
+        let tagcase_ = car(vs);
+        match *tagcase_ {
+            Variant::Variant(t, fields) => {
+                if string_eq_p(t, tag) {
+                    cdr(vs)
+                } else {
+                    cons(car(vs), without_tag(tag, cdr(vs)))
+                }
+            }
+        }
+    }
+}
+
+pub fn synth(v: &'static Cv, s: &'static St, e: &'static Sexp) -> &'static Res {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Num(k) => {
+            literal_int(v)
+        }
+        Sexp::Chr(c) => {
+            res(ty_char(), nil(), s)
+        }
+        Sexp::Str(x) => {
+            res(ty_string(), nil(), s)
+        }
+        Sexp::Sym(name) => {
+            synth_name(v, s, name)
+        }
+        Sexp::Lst(xs) => {
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Sexp::Sym(h) => {
+                    synth_form(v, s, e, h, cdr(xs))
+                }
+                _ => {
+                    let head = tagcase_;
+                    synth_call_of(v, s, synth(v, s, head), cdr(xs), cons("spin", nil()))
+                }
+            }
+        }
+    }
+}
+
+pub fn synth_name(v: &'static Cv, s: &'static St, name: Str) -> &'static Res {
+    if (string_eq_p(name, "#t") || string_eq_p(name, "#f")) {
+        res(ty_bool(), nil(), s)
+    } else if string_eq_p(name, "#u") {
+        res(ty_unit(), nil(), s)
+    } else {
+        let found = find_bind(name, cv_binds(v));
+        if null_p(found) {
+            refuse(v, string_append("nothing is named ", name))
+        } else {
+            let tagcase_ = car(found);
+            match *tagcase_ {
+                Bind::Bind(n, sc, r#where) => {
+                    let tagcase_ = instantiate(s, sc);
+                    match *tagcase_ {
+                        Inst::Inst(t, s) => {
+                            res(t, naming_effs(s, name, r#where, t), s)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn check(v: &'static Cv, s: &'static St, e: &'static Sexp, expected: &'static Ty) -> &'static Res {
+    let x = walk(s, expected);
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Num(k) => {
+            let tagcase_ = x;
+            match *tagcase_ {
+                Ty::TyI64() => {
+                    res(x, nil(), s)
+                }
+                Ty::TyMeta(m) => {
+                    literal_int(v)
+                }
+                _ => {
+                    let other = tagcase_;
+                    refuse(v, string_append("a literal is here, where a ", string_append(show_ty(s, x), " is expected")))
+                }
+            }
+        }
+        Sexp::Lst(xs) => {
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Sexp::Sym(h) => {
+                    check_form(v, s, e, h, cdr(xs), x)
+                }
+                _ => {
+                    let other = tagcase_;
+                    check_by_synth(v, s, e, x)
+                }
+            }
+        }
+        Sexp::Sym(name) => {
+            if string_eq_p(name, "nil") {
+                let tagcase_ = x;
+                match *tagcase_ {
+                    Ty::TyList(el) => {
+                        res(x, nil(), s)
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        check_by_synth(v, s, e, x)
+                    }
+                }
+            } else {
+                check_by_synth(v, s, e, x)
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            check_by_synth(v, s, e, x)
+        }
+    }
+}
+
+pub fn check_by_synth(v: &'static Cv, s: &'static St, e: &'static Sexp, expected: &'static Ty) -> &'static Res {
+    let tagcase_ = synth(v, s, e);
+    match *tagcase_ {
+        Res::Res(t, es, s) => {
+            res(expected, es, fits(v, s, t, expected))
+        }
+    }
+}
+
+/// A body: each expression but the last for its effect, the last
+/// checked against `expected` if it has one type in it, else found.
+pub fn body(v: &'static Cv, s: &'static St, es: Sexps, expected: Tys) -> &'static Res {
+    if null_p(cdr(es)) {
+        if null_p(expected) {
+            synth(v, s, car(es))
+        } else {
+            check(v, s, car(es), car(expected))
+        }
+    } else {
+        let tagcase_ = synth_any(v, s, car(es));
+        match *tagcase_ {
+            Res::Res(t, es0, s) => {
+                with_effs(body(v, s, cdr(es), expected), es0)
+            }
+        }
+    }
+}
+
+/// An expression whose value is dropped: a string is a comment.
+pub fn synth_any(v: &'static Cv, s: &'static St, e: &'static Sexp) -> &'static Res {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Str(x) => {
+            res(ty_unit(), nil(), s)
+        }
+        _ => {
+            let other = tagcase_;
+            synth(v, s, e)
+        }
+    }
+}
+
+pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: Sexps) -> &'static Res {
+    if string_eq_p(h, "the") {
+        check(v, s, second(xs), parse_type(v, nil(), car(xs)))
+    } else if string_eq_p(h, "lambda") {
+        synth_lambda(v, s, items(car(xs)), cdr(xs))
+    } else if string_eq_p(h, "list") {
+        if null_p(xs) {
+            let tagcase_ = fresh(s);
+            match *tagcase_ {
+                Res::Res(m, es, s) => {
+                    res(ty_list(m), nil(), s)
+                }
+            }
+        } else {
+            let tagcase_ = synth(v, s, car(xs));
+            match *tagcase_ {
+                Res::Res(t, es0, s) => {
+                    with_effs(check(v, s, e, ty_list(t)), es0)
+                }
+            }
+        }
+    } else if control_form_p(h) {
+        body_form(v, s, h, xs, nil())
+    } else if string_eq_p(h, "and") {
+        bools(v, s, xs)
+    } else if string_eq_p(h, "or") {
+        bools(v, s, xs)
+    } else {
+        synth_call(v, s, h, xs)
+    }
+}
+
+pub fn check_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: Sexps, expected: &'static Ty) -> &'static Res {
+    if control_form_p(h) {
+        body_form(v, s, h, xs, cons(expected, nil()))
+    } else if (string_eq_p(h, "lambda") && proc_type_p(s, expected)) {
+        check_lambda(v, s, items(car(xs)), cdr(xs), walk(s, expected))
+    } else if (string_eq_p(h, "list") && {
+        let tagcase_ = expected;
+        match *tagcase_ {
+            Ty::TyList(el) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        let tagcase_ = expected;
+        match *tagcase_ {
+            Ty::TyList(el) => {
+                res(expected, elements(v, s, xs, el), s)
+            }
+            _ => {
+                let other = tagcase_;
+                check_by_synth(v, s, e, expected)
+            }
+        }
+    } else {
+        check_by_synth(v, s, e, expected)
+    }
+}
+
+/// The effect of a list's elements, each checked as `el`; the state is
+/// dropped, since `el` is known.
+pub fn elements(v: &'static Cv, s: &'static St, xs: Sexps, el: &'static Ty) -> Strings {
+    if null_p(xs) {
+        nil()
+    } else {
+        let tagcase_ = check(v, s, car(xs), el);
+        match *tagcase_ {
+            Res::Res(t, es, s) => {
+                effs_union(es, elements(v, s, cdr(xs), el))
+            }
+        }
+    }
+}
+
+pub fn bools(v: &'static Cv, s: &'static St, xs: Sexps) -> &'static Res {
+    if null_p(xs) {
+        res(ty_bool(), nil(), s)
+    } else {
+        let tagcase_ = check(v, s, car(xs), ty_bool());
+        match *tagcase_ {
+            Res::Res(t, es, s) => {
+                with_effs(bools(v, s, cdr(xs)), es)
+            }
+        }
+    }
+}
+
+/// `if`, `cond`, `case`, `tagcase`, `let`, `let*` and `begin`: forms
+/// whose last parts give the value; `expected` is the type, if known.
+pub fn body_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Tys) -> &'static Res {
+    if string_eq_p(h, "if") {
+        let tagcase_ = check(v, s, car(xs), ty_bool());
+        match *tagcase_ {
+            Res::Res(t, es, s) => {
+                with_effs(arms(v, s, cdr(xs), expected), es)
+            }
+        }
+    } else if string_eq_p(h, "begin") {
+        body(v, s, xs, expected)
+    } else if string_eq_p(h, "let") {
+        let_values(v, s, items(car(xs)), cdr(xs), expected, nil(), false)
+    } else if string_eq_p(h, "let*") {
+        let_values(v, s, items(car(xs)), cdr(xs), expected, nil(), true)
+    } else if string_eq_p(h, "cond") {
+        cond_clauses(v, s, xs, expected)
+    } else if string_eq_p(h, "case") {
+        let tagcase_ = check(v, s, car(xs), ty_char());
+        match *tagcase_ {
+            Res::Res(t, es, s) => {
+                with_effs(case_arms(v, s, cdr(xs), expected), es)
+            }
+        }
+    } else {
+        let tagcase_ = synth(v, s, car(xs));
+        match *tagcase_ {
+            Res::Res(t, es, s) => {
+                let tagcase_ = walk(s, t);
+                match *tagcase_ {
+                    Ty::TyData(d) => {
+                        with_effs(tag_arms(v, s, d, cdr(xs), variants_of(v, d), expected), es)
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        refuse(v, string_append("tagcase of a ", string_append(show_ty(s, t), ", no datatype")))
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Branches of one type: the first found, if none is expected, and the
+/// rest checked against it.
+pub fn arms(v: &'static Cv, s: &'static St, branches: Sexps, expected: Tys) -> &'static Res {
+    let tagcase_ = body(v, s, cons(car(branches), nil()), expected);
+    match *tagcase_ {
+        Res::Res(t, es, s) => {
+            if null_p(cdr(branches)) {
+                res(t, es, s)
+            } else {
+                let tagcase_ = arms(v, s, cdr(branches), next_expected(s, t, expected));
+                match *tagcase_ {
+                    Res::Res(t2, es2, s) => {
+                        res(joined(s, t, t2, expected), effs_union(es, es2), s)
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn cond_clauses(v: &'static Cv, s: &'static St, clauses: Sexps, expected: Tys) -> &'static Res {
+    let clause = items(car(clauses));
+    if sym_is_p(car(clause), "else") {
+        if null_p(cdr(clauses)) {
+            body(v, s, cdr(clause), expected)
+        } else {
+            refuse(v, "a cond's else is its last clause")
+        }
+    } else {
+        if null_p(cdr(clauses)) {
+            refuse(v, "a cond needs an else: FX has no unspecified value")
+        } else {
+            let tagcase_ = check(v, s, car(clause), ty_bool());
+            match *tagcase_ {
+                Res::Res(t0, es0, s) => {
+                    let tagcase_ = body(v, s, cdr(clause), expected);
+                    match *tagcase_ {
+                        Res::Res(t, es, s) => {
+                            let tagcase_ = cond_clauses(v, s, cdr(clauses), next_expected(s, t, expected));
+                            match *tagcase_ {
+                                Res::Res(t2, es2, s) => {
+                                    res(joined(s, t, t2, expected), effs_union(es0, effs_union(es, es2)), s)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn case_arms(v: &'static Cv, s: &'static St, cases: Sexps, expected: Tys) -> &'static Res {
+    let arm = items(car(cases));
+    if sym_is_p(car(arm), "else") {
+        if null_p(cdr(cases)) {
+            body(v, s, cdr(arm), expected)
+        } else {
+            refuse(v, "a case's else is its last arm")
+        }
+    } else if null_p(cdr(cases)) {
+        refuse(v, "a case needs an else: FX has no unspecified value")
+    } else if not(all_chars_p(items(car(arm)))) {
+        refuse(v, "KFX's case is on characters: FX-26's compares integers as ints")
+    } else {
+        let tagcase_ = body(v, s, cdr(arm), expected);
+        match *tagcase_ {
+            Res::Res(t, es, s) => {
+                let tagcase_ = case_arms(v, s, cdr(cases), next_expected(s, t, expected));
+                match *tagcase_ {
+                    Res::Res(t2, es2, s) => {
+                        res(joined(s, t, t2, expected), effs_union(es, es2), s)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// A tagcase's arms; `vs` are the variants no arm has taken yet.
+pub fn tag_arms(v: &'static Cv, s: &'static St, d: Str, tagged: Sexps, vs: Variants, expected: Tys) -> &'static Res {
+    if null_p(tagged) {
+        if null_p(vs) {
+            if null_p(expected) {
+                refuse(v, "a tagcase with no arms")
+            } else {
+                res(car(expected), nil(), s)
+            }
+        } else {
+            refuse(v, string_append("a tagcase of a ", string_append(d, " with no else, and no arm for each tag")))
+        }
+    } else {
+        let arm = items(car(tagged));
+        let tag = sym_name(car(arm));
+        if string_eq_p(tag, "else") {
+            if null_p(cdr(tagged)) {
+                body(with_binds(v, cons(local(v, sym_name(second(arm)), ty_data(d)), nil())), s, cdr(cdr(arm)), expected)
+            } else {
+                refuse(v, "a tagcase's else is its last arm")
+            }
+        } else {
+            let fields = variant_fields(v, d, tag, vs);
+            let names = items(second(arm));
+            if not(i64_eq(size(names), size(fields))) {
+                refuse(v, string_append("the arm for ", string_append(tag, " names the wrong number of fields")))
+            } else {
+                let tagcase_ = body(with_binds(v, bind_fields(v, names, fields)), s, cdr(cdr(arm)), expected);
+                match *tagcase_ {
+                    Res::Res(t, es, s) => {
+                        let tagcase_ = tag_arms(v, s, d, cdr(tagged), without_tag(tag, vs), next_expected(s, t, expected));
+                        match *tagcase_ {
+                            Res::Res(t2, es2, s) => {
+                                res(joined(s, t, t2, expected), effs_union(es, es2), s)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// A `let`'s or `let*`'s bindings, then its body. `bound`: those made
+/// so far, which a `let*`'s next binding sees and a `let`'s does not.
+pub fn let_values(v: &'static Cv, s: &'static St, bindings: Sexps, forms: Sexps, expected: Tys, bound: Binds, sequential: bool) -> &'static Res {
+    if null_p(bindings) {
+        body(with_binds(v, bound), s, forms, expected)
+    } else {
+        let b = items(car(bindings));
+        let sees = if sequential {
+            with_binds(v, bound)
+        } else {
+            v
+        };
+        let tagcase_ = synth(sees, s, second(b));
+        match *tagcase_ {
+            Res::Res(t, es, s) => {
+                with_effs(let_values(v, s, cdr(bindings), forms, expected, cons(local(v, sym_name(car(b)), t), bound), sequential), es)
+            }
+        }
+    }
+}
+
+/// A lambda with nothing expected: its parameters' types written.
+pub fn synth_lambda(v: &'static Cv, s: &'static St, params: Sexps, forms: Sexps) -> &'static Res {
+    let types = map(lambda1(move |p: &'static Sexp| {
+        let tagcase_ = p;
+        match *tagcase_ {
+            Sexp::Lst(pt) => {
+                parse_type(v, nil(), second(pt))
+            }
+            _ => {
+                let other = tagcase_;
+                refuse(v, string_append("a lambda with nothing expected needs its parameters' types: ", show_sexp(other)))
+            }
+        }
+    }), params);
+    let tagcase_ = body(with_binds(v, bind_params(v, params, types)), s, forms, nil());
+    match *tagcase_ {
+        Res::Res(r, es, s) => {
+            res(ty_proc(es, types, r), nil(), s)
+        }
+    }
+}
+
+pub fn check_lambda(v: &'static Cv, s: &'static St, params: Sexps, forms: Sexps, expected: &'static Ty) -> &'static Res {
+    let tagcase_ = expected;
+    match *tagcase_ {
+        Ty::TyProc(ees, eps, er) => {
+            if not(i64_eq(size(params), size(eps))) {
+                refuse(v, "a lambda of the wrong number of parameters")
+            } else {
+                let s = check_written_params(v, s, params, eps);
+                let tagcase_ = body(with_binds(v, bind_params(v, params, eps)), s, forms, cons(er, nil()));
+                match *tagcase_ {
+                    Res::Res(r, es, s) => {
+                        if effs_within_p(es, ees) {
+                            res(expected, nil(), s)
+                        } else {
+                            refuse(v, string_append("a lambda whose effect ", string_append(show_effs(es), string_append(" is not within ", show_effs(ees)))))
+                        }
+                    }
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            refuse(v, "a lambda where no procedure is expected")
+        }
+    }
+}
+
+/// A parameter written `(x T)` must be of the type expected. One written
+/// `x` must have its type known already, from the arguments before the
+/// lambda: rustc, which checks a call's arguments in order, finds a
+/// closure's parameter types no other way.
+pub fn check_written_params(mut v: &'static Cv, mut s: &'static St, mut params: Sexps, mut types: Tys) -> &'static St {
+    loop {
+        if null_p(params) {
+            return s;
+        } else {
+            (s, params, types) = ({
+                let tagcase_ = car(params);
+                match *tagcase_ {
+                    Sexp::Lst(pt) => {
+                        fits(v, s, car(types), parse_type(v, nil(), second(pt)))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        if has_meta_p(s, car(types)) {
+                            refuse(v, string_append("the type of the lambda's parameter ", string_append(show_sexp(other), " is not known from the arguments before it: write it as (x T)")))
+                        } else {
+                            s
+                        }
+                    }
+                }
+            }, cdr(params), cdr(types));
+            continue;
+        }
+    }
+}
+
+/// A call of a name: a procedure in this group is `spin`, one that is a
+/// local's value is a call of a procedure not known, so `spin` too.
+pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps) -> &'static Res {
+    let found = find_bind(h, cv_binds(v));
+    if keyword_p(h) {
+        refuse(v, string_append("a call of ", string_append(h, ", which FX-26 reads as its form, not a call")))
+    } else if null_p(found) {
+        refuse(v, string_append("nothing is named ", h))
+    } else {
+        let tagcase_ = car(found);
+        match *tagcase_ {
+            Bind::Bind(n, sc, r#where) => {
+                let tagcase_ = instantiate(s, sc);
+                match *tagcase_ {
+                    Inst::Inst(t, s) => {
+                        synth_call_of(v, s, res(t, nil(), s), args, effs_union(if string_eq_p(r#where, "global") {
+                            cons(string_append("g:", h), nil())
+                        } else {
+                            nil()
+                        }, if (string_eq_p(r#where, "local") || string_member_p(h, cv_group(v))) {
+                            cons("spin", nil())
+                        } else {
+                            nil()
+                        }))
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// A call of the procedure `callee` is: its arguments checked against
+/// its parameters, in order; its effect, the callee's latent effect, the
+/// arguments' and `more`. In order, not lambdas last as FX-26 does,
+/// since rustc finds a closure's parameter types only from what comes
+/// before it: see `check-written-params`.
+pub fn synth_call_of(v: &'static Cv, s: &'static St, callee: &'static Res, args: Sexps, more: Strings) -> &'static Res {
+    let tagcase_ = callee;
+    match *tagcase_ {
+        Res::Res(t, es0, s) => {
+            let tagcase_ = walk(s, t);
+            match *tagcase_ {
+                Ty::TyProc(latent, ps, r) => {
+                    if not(i64_eq(size(ps), size(args))) {
+                        refuse(v, string_append("a call of the wrong number of arguments: ", show_sexps(args)))
+                    } else {
+                        let tagcase_ = call_args(v, s, args, ps);
+                        match *tagcase_ {
+                            Res::Res(u, es1, s) => {
+                                res(r, effs_union(latent, effs_union(more, effs_union(es0, es1))), s)
+                            }
+                        }
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    refuse(v, string_append("a call of a ", string_append(show_ty(s, t), ", no procedure")))
+                }
+            }
+        }
+    }
+}
+
+pub fn call_args(v: &'static Cv, s: &'static St, args: Sexps, ps: Tys) -> &'static Res {
+    if null_p(args) {
+        res(ty_unit(), nil(), s)
+    } else {
+        let tagcase_ = check(v, s, car(args), car(ps));
+        match *tagcase_ {
+            Res::Res(t, es, s) => {
+                with_effs(call_args(v, s, cdr(args), cdr(ps)), es)
+            }
+        }
+    }
+}
+
+// Definitions
+pub fn primitives() -> Str {
+    "(i64+ (subr pure (i64 i64) i64)) (i64- (subr pure (i64 i64) i64)) (i64* (subr pure (i64 i64) i64))\n   (i64-quotient (subr pure (i64 i64) i64)) (i64-remainder (subr pure (i64 i64) i64))\n   (i64-and (subr pure (i64 i64) i64)) (i64-or (subr pure (i64 i64) i64)) (i64-xor (subr pure (i64 i64) i64))\n   (i64-not (subr pure (i64) i64))\n   (i64= (subr pure (i64 i64) bool)) (i64< (subr pure (i64 i64) bool)) (i64> (subr pure (i64 i64) bool))\n   (i64<= (subr pure (i64 i64) bool)) (i64>= (subr pure (i64 i64) bool))\n   (not (subr pure (bool) bool))\n   (char=? (subr pure (char char) bool)) (char-whitespace? (subr pure (char) bool))\n   (char-numeric? (subr pure (char) bool)) (char-alphabetic? (subr pure (char) bool))\n   (char-upcase (subr pure (char) char)) (char->string (subr pure (char) string))\n   (string-append (subr pure (string string) string)) (string=? (subr pure (string string) bool))\n   (list->string (subr pure ((listof char acyclic)) string))\n   (error (subr pure (string) void))\n   (string-length-i64 (subr pure (string) i64)) (string-ref-i64 (subr pure (string i64) char))\n   (char->i64 (subr pure (char) i64)) (i64->string (subr pure (i64) string))\n   (nil (poly ((t type)) (listof t acyclic)))\n   (cons (poly ((t type)) (subr pure (t (listof t acyclic)) (listof t acyclic))))\n   (car (poly ((t type)) (subr pure ((listof t acyclic)) t)))\n   (cdr (poly ((t type)) (subr pure ((listof t acyclic)) (listof t acyclic))))\n   (null? (poly ((t type)) (subr pure ((listof t acyclic)) bool)))"
+}
+
+// kayak-rt's primitives at KFX's types: the prelude's (kfx/prelude.fx), and
+// FX-26's standard environment's at `acyclic`, where making and reading
+// lists are pure.
+pub fn prim_binds(v: &'static Cv) -> Binds {
+    map(lambda1(move |p: &'static Sexp| {
+        let xs = items(p);
+        bind(sym_name(car(xs)), parse_scheme(v, second(xs)), "prim")
+    }), read_all(string_chars(primitives())))
+}
+
+/// A define-datatype's name and variants.
+pub fn datatype_of(v: &'static Cv, xs: Sexps) -> &'static Dt {
+    dt(sym_name(car(xs)), map(lambda1(move |vt: &'static Sexp| {
+        let ys = items(vt);
+        variant(sym_name(car(ys)), parse_types(v, nil(), cdr(ys)))
+    }), cdr(xs)))
+}
+
+pub fn constructors(d: &'static Dt) -> Binds {
+    let tagcase_ = d;
+    match *tagcase_ {
+        Dt::Dt(name, vs) => {
+            map(lambda1(move |vt: &'static Variant| {
+                let tagcase_ = vt;
+                match *tagcase_ {
+                    Variant::Variant(tag, fields) => {
+                        bind(tag, scheme(nil(), ty_proc(nil(), fields, ty_data(name))), "global")
+                    }
+                }
+            }), vs)
+        }
+    }
+}
+
+// Types and datatypes are declared ahead: every one is in scope in every
+// definition, as FX-26 has it. Effect abbreviations and values are seen
+// only after their definitions.
+pub fn declare_types(mut forms: Sexps, mut r#as: Aliases) -> Aliases {
+    loop {
+        if null_p(forms) {
+            return r#as;
+        } else if head_is_p(car(forms), "define-type") {
+            let xs = items(car(forms));
+            (forms, r#as) = (cdr(forms), cons(alias(sym_name(second(xs)), third(xs)), r#as));
+            continue;
+        } else {
+            forms = cdr(forms);
+            continue;
+        }
+    }
+}
+
+/// The datatypes' names, before their variants' types can be read.
+pub fn datatype_names(mut forms: Sexps, mut ds: Dts) -> Dts {
+    loop {
+        if null_p(forms) {
+            return ds;
+        } else if head_is_p(car(forms), "define-datatype") {
+            (forms, ds) = (cdr(forms), cons(dt(sym_name(second(items(car(forms)))), nil()), ds));
+            continue;
+        } else {
+            forms = cdr(forms);
+            continue;
+        }
+    }
+}
+
+/// `v`, with a define-effect's abbreviation.
+pub fn with_effdef(v: &'static Cv, xs: Sexps) -> &'static Cv {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, r#as, es, here, group) => {
+            cv(bs, ds, r#as, cons(effdef(sym_name(second(xs)), parse_effect(v, third(xs))), es), here, group)
+        }
+    }
+}
+
+/// Each datatype's variants' types, as an effect abbreviation before it
+/// has them read.
+pub fn declare_datatypes(mut v: &'static Cv, mut forms: Sexps, mut ds: Dts) -> Dts {
+    loop {
+        if null_p(forms) {
+            return ds;
+        } else if head_is_p(car(forms), "define-datatype") {
+            (forms, ds) = (cdr(forms), cons(datatype_of(v, cdr(items(car(forms)))), ds));
+            continue;
+        } else if head_is_p(car(forms), "define-effect") {
+            (v, forms) = (with_effdef(v, items(car(forms))), cdr(forms));
+            continue;
+        } else {
+            forms = cdr(forms);
+            continue;
+        }
+    }
+}
+
+pub fn at(v: &'static Cv, here: Str, group: Strings) -> &'static Cv {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, r#as, es, h, g) => {
+            cv(bs, ds, r#as, es, here, group)
+        }
+    }
+}
+
+pub fn global(v: &'static Cv, name: Str, sc: &'static Scheme) -> &'static Bind {
+    if keyword_p(name) {
+        refuse(v, string_append("a keyword names nothing: ", name))
+    } else {
+        bind(name, sc, "global")
+    }
+}
+
+pub fn new_state() -> &'static St {
+    st(nil(), 0i64)
+}
+
+/// A procedure's lambda against its type; `v` already has its name.
+pub fn check_procedure(v: &'static Cv, defined: &'static Sexp, sc: &'static Scheme) -> &'static Cv {
+    let lam = items(if head_is_p(defined, "plambda") {
+        third(items(defined))
+    } else {
+        defined
+    });
+    let tagcase_ = sc;
+    match *tagcase_ {
+        Scheme::Scheme(tvars, t) => {
+            let tagcase_ = check_lambda(v, new_state(), items(second(lam)), cdr(cdr(lam)), t);
+            match *tagcase_ {
+                Res::Res(u, es, s) => {
+                    v
+                }
+            }
+        }
+    }
+}
+
+pub fn variants_dt(v: &'static Cv, d: Str) -> List<&'static Dt> {
+    let found = find_dt(d, cv_dts(v));
+    if null_p(found) {
+        refuse(v, string_append("no datatype is named ", d))
+    } else {
+        cons(dt(d, car(found)), nil())
+    }
+}
+
+/// A define-rec: every member in scope in each, and each a lambda.
+pub fn check_rec(v: &'static Cv, bindings: Sexps) -> &'static Cv {
+    let names = map(lambda1(move |b: &'static Sexp| {
+        sym_name(car(items(b)))
+    }), bindings);
+    let named = with_binds(v, map(lambda1(move |b: &'static Sexp| {
+        let ys = items(b);
+        global(v, sym_name(car(ys)), parse_scheme(v, second(ys)))
+    }), bindings));
+    map(lambda1(move |b: &'static Sexp| {
+        let ys = items(b);
+        if procedure_p(third(ys)) {
+            check_procedure(at(named, sym_name(car(ys)), names), third(ys), parse_scheme(v, second(ys)))
+        } else {
+            refuse(v, "a define-rec binds only lambdas")
+        }
+    }), bindings);
+    named
+}
+
+/// One top-level form, which may add to what the forms after it see.
+pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
+    let tagcase_ = form;
+    match *tagcase_ {
+        Sexp::Str(x) => {
+            v
+        }
+        Sexp::Lst(xs) => {
+            let h = if null_p(xs) {
+                ""
+            } else {
+                let tagcase_ = car(xs);
+                match *tagcase_ {
+                    Sexp::Sym(n) => {
+                        n
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        ""
+                    }
+                }
+            };
+            if string_eq_p(h, "define-effect") {
+                with_effdef(v, xs)
+            } else if string_eq_p(h, "define-type") {
+                v
+            } else if string_eq_p(h, "define-datatype") {
+                let d = car(variants_dt(v, sym_name(second(xs))));
+                with_binds(v, constructors(d))
+            } else if string_eq_p(h, "define") {
+                if not(i64_eq(size(xs), 4i64)) {
+                    refuse(v, "a definition needs a type")
+                } else {
+                    let name = sym_name(second(xs));
+                    let v = at(v, name, cons(name, nil()));
+                    let sc = parse_scheme(v, third(xs));
+                    let named = with_binds(v, cons(global(v, name, sc), nil()));
+                    if procedure_p(fourth(xs)) {
+                        check_procedure(named, fourth(xs), sc)
+                    } else {
+                        let tagcase_ = sc;
+                        match *tagcase_ {
+                            Scheme::Scheme(tvars, t) => {
+                                if null_p(tvars) {
+                                    let tagcase_ = check(v, new_state(), fourth(xs), t);
+                                    match *tagcase_ {
+                                        Res::Res(u, es, s) => {
+                                            named
+                                        }
+                                    }
+                                } else {
+                                    refuse(v, "a poly constant: only a procedure may be poly")
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if string_eq_p(h, "define-rec") {
+                check_rec(v, cdr(xs))
+            } else {
+                let tagcase_ = synth(at(v, "a top-level expression", nil()), new_state(), form);
+                match *tagcase_ {
+                    Res::Res(t, es, s) => {
+                        v
+                    }
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            let tagcase_ = synth(at(v, "a top-level expression", nil()), new_state(), form);
+            match *tagcase_ {
+                Res::Res(t, es, s) => {
+                    v
+                }
+            }
+        }
+    }
+}
+
+pub fn check_tops(mut v: &'static Cv, mut forms: Sexps) -> &'static Cv {
+    loop {
+        if null_p(forms) {
+            return v;
+        } else {
+            (v, forms) = (check_top(v, car(forms)), cdr(forms));
+            continue;
+        }
+    }
+}
+
+/// Every form, in order; the first error stops the compiler.
+pub fn check_program(forms: Sexps) -> () {
+    let start = cv(nil(), nil(), declare_types(forms, nil()), nil(), "a type", nil());
+    let named = {
+        let tagcase_ = start;
+        match *tagcase_ {
+            Cv::Cv(bs, ds, r#as, es, here, group) => {
+                cv(bs, datatype_names(forms, nil()), r#as, es, here, group)
+            }
+        }
+    };
+    let typed = {
+        let tagcase_ = named;
+        match *tagcase_ {
+            Cv::Cv(bs, ds, r#as, es, here, group) => {
+                cv(bs, declare_datatypes(named, forms, nil()), r#as, es, here, group)
+            }
+        }
+    };
+    let v = with_binds(typed, prim_binds(typed));
+    check_tops(v, forms);
+    ()
+}
+
 pub fn header() -> Str {
     "// Generated by kfx from KFX-0 source: edit that, and regenerate (PLAN.md, section 1).\n\nuse kayak_rt::*;\n\n"
 }
@@ -1631,6 +3668,7 @@ pub fn header() -> Str {
 /// A KFX-0 program's text, as Rust.
 pub fn compile(src: Str) -> Str {
     let forms = read_all(string_chars(src));
+    let checked = check_program(forms);
     let c = collect(forms, ctx(nil(), nil(), nil(), nil()));
     rev_to_string(put_tops(c, forms, put(header(), nil())))
 }

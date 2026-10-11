@@ -160,6 +160,12 @@ _eq _slash`; a `-` alone or last is `_minus`. So `string->list` is
 `string_to_list`, `char=?` is `char_eq_p`, `i64-` is `i64_minus`, and
 `i64<=` is `i64_lt_eq`.
 
+**Checked first.** `kfx` checks types and effects before it writes Rust
+(`DONE.md` §13). Two of its rules are Rust's, not FX-26's: a call's
+arguments are checked in order, so a lambda's parameter whose type no
+earlier argument gives is written `(x T)`; and a keyword may name a local
+but not be called.
+
 A name as a value is a local, a constant (`x()`), or else a global
 procedure (`&f`), the program's or `kayak-rt`'s: the emitter keeps the
 names bound where it is, from parameters, `let`, `let*` and `tagcase`.
@@ -175,8 +181,11 @@ inferred), and no `letrec` of local procedures.
 - **K1. KFX ⊂ FX-26.** Every KFX program is an FX-26 program with the
   same answer. KFX may refuse FX-26 programs, never reinterpret them,
   and takes no licence: with `int` gone, every construct means in Rust
-  what it means in FX-26. The check is stage 0 itself, run before each
-  commit.
+  what it means in FX-26. Checked three ways: stage 0 (Fixpt runs the
+  compiler), the corpus (each program's answer, by Fixpt and by its
+  Rust), and `kfx`'s own checker, which refuses what Fixpt refuses
+  (`tests/kfx-refused`) and, on purpose, a little more
+  (`tests/kfx-stricter`).
 - **K2. The bootstrap is a fixed point:** `scripts/fixpoint.sh`.
 - **K3. Output is deterministic:** no hash-map order, no addresses, no
   clocks. Without this, K2 cannot hold.

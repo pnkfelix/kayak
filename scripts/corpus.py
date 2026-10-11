@@ -12,6 +12,12 @@ crates/kfx-corpus builds every NAME.rs, and its test requires each one's
 answer to be NAME.out: K1, program by program. --bless rewrites the files
 instead of checking them. With no Fixpt clone the answers are not checked,
 and the script says so.
+
+And two directories of programs kfx must refuse:
+  tests/kfx-refused   FX-26 refuses each too: K1's other half, that KFX
+                      accepts nothing FX-26 refuses;
+  tests/kfx-stricter  FX-26 accepts each: where KFX is stricter, on
+                      purpose, each program saying why.
 """
 
 import os
@@ -56,6 +62,28 @@ def answer(binary, path, tmp):
     if r.returncode != 0:
         return None, r.stderr
     return r.stdout, None
+
+
+def refused(compiler, interpreter, kind, wrong):
+    directory = os.path.join(ROOT, "tests", kind)
+    names = sorted(f[:-4] for f in os.listdir(directory) if f.endswith(".kfx"))
+    tmp = os.path.join(directory, ".stage0.fx")
+    for n in names:
+        src = os.path.join(directory, n + ".kfx")
+        if run([compiler, src]).returncode == 0:
+            wrong.append("%s/%s: kfx accepts it" % (kind, n))
+        if interpreter is not None:
+            with open(os.path.join(ROOT, "kfx", "prelude.fx")) as f:
+                text = f.read()
+            with open(src) as f:
+                text += "\n" + f.read()
+            with open(tmp, "w") as f:
+                f.write(text)
+            accepted = run([interpreter, "--dialect", "fx26", "eval", tmp]).returncode == 0
+            os.remove(tmp)
+            if accepted != (kind == "kfx-stricter"):
+                wrong.append("%s/%s: Fixpt %s it" % (kind, n, "accepts" if accepted else "refuses"))
+    return len(names)
 
 
 def lib(names):
@@ -105,7 +133,8 @@ def main():
         src = os.path.join(CORPUS, n + ".kfx")
         r = run([compiler, src])
         if r.returncode != 0:
-            wrong.append("%s: kfx fails: %s" % (n, r.stderr.strip().splitlines()[-1:]))
+            said = [l for l in r.stderr.splitlines() if l.startswith("kfx:")]
+            wrong.append("%s: kfx refuses it: %s" % (n, (said or r.stderr.strip().splitlines()[-1:])[0]))
             continue
         keep(os.path.join(CORPUS, n + ".rs"), r.stdout)
         if interpreter is not None:
@@ -118,11 +147,13 @@ def main():
     if os.path.exists(tmp):
         os.remove(tmp)
     keep(LIB, lib(names))
+    counts = [refused(compiler, interpreter, kind, wrong) for kind in ("kfx-refused", "kfx-stricter")]
     for w in wrong:
         print("corpus: " + w)
     if wrong:
         sys.exit(1)
-    print("corpus: %d programs %s" % (len(names), "blessed" if bless else "agree"))
+    print("corpus: %d programs %s; %d refused by both, %d by KFX alone"
+          % (len(names), "blessed" if bless else "agree", counts[0], counts[1]))
 
 
 main()
