@@ -1,0 +1,4 @@
+"A tagcase of a sum, a tag left out, and no else."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type shape (sumof (circle i64) (rect (productof (w i64) (h i64)))))
+(define f (subr pure (shape) i64) (lambda (s) (tagcase s (circle r r))))

@@ -28,7 +28,8 @@ def run(args, **kw):
 
 def forms(text):
     """The top-level forms' heads and sizes: (head, items), where items is
-    what each binds, for definitions; a string's head is `"`."""
+    what each binds, for definitions; a string's head is `"`, and a name's
+    or a number's, an expression's."""
     out, i, n = [], 0, len(text)
     while i < n:
         c = text[i]
@@ -50,7 +51,7 @@ def forms(text):
             j = i
             while j < n and text[j] not in " \t\r\n()":
                 j += 1
-            out.append(("atom", 1))
+            out.append(("expression", 1))
             i = j
     return out
 

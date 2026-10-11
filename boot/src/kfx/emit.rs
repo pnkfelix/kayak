@@ -138,6 +138,103 @@ pub fn fact_at_p(c: &'static Ctx, e: &'static Sexp, what: Str) -> bool {
     }
 }
 
+/// What the checker found about the list `e` that begins `prefix`, the
+/// rest of it; or ``.
+pub fn fact_with(c: &'static Ctx, e: &'static Sexp, prefix: Str) -> Str {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Lst(xs, src_file, src_line, src_pos) => {
+            let tagcase_ = c;
+            match *tagcase_ {
+                Ctx::Ctx(ds, ts, ks, ls, xs2, fs, ms, es, mods) => {
+                    let found = concat(map(lambda1(move |f: &'static Fact| {
+                        let tagcase_ = f;
+                        match *tagcase_ {
+                            Fact::Fact(ff, fp, fw) => {
+                                if (i64_eq(fp, src_pos) && string_eq_p(ff, src_file) && has_prefix_p(fw, prefix)) {
+                                    the::<Strings>(cons(after_prefix(fw, prefix), nil()))
+                                } else {
+                                    nil()
+                                }
+                            }
+                        }
+                    }), fs));
+                    if null_p(found) {
+                        str_lit("")
+                    } else {
+                        car(found)
+                    }
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("")
+        }
+    }
+}
+
+// Products and sums, FX-26's structural data (check.kfx, `ty-shape`): one
+// generic Rust type for each list of labels, a tuple struct for a product,
+// `Product_a_b<A0, A1>`, and an enum for a sum, `Sum_leaf_node<A0, A1>`,
+// a sum's values references, as a datatype's are. The name holds the labels,
+// so that two products of the same labels and types are one type, as in
+// FX-26.
+pub fn concat_strings(xs: Strings) -> Str {
+    if null_p(xs) {
+        str_lit("")
+    } else {
+        string_append(car(xs), concat_strings(cdr(xs)))
+    }
+}
+
+pub fn reverse_strings(mut xs: Strings, mut acc: Strings) -> Strings {
+    loop {
+        if null_p(xs) {
+            return acc;
+        } else {
+            (xs, acc) = (cdr(xs), cons(car(xs), acc));
+            continue;
+        }
+    }
+}
+
+pub fn split_words_from(mut cs: Chars, mut word: Chars, mut acc: Strings) -> Strings {
+    loop {
+        if null_p(cs) {
+            if null_p(word) {
+                return acc;
+            } else {
+                return cons(rev_to_string(word), acc);
+            }
+        } else if char_eq_p(car(cs), ' ') {
+            (cs, word, acc) = (cdr(cs), nil(), if null_p(word) {
+                acc
+            } else {
+                cons(rev_to_string(word), acc)
+            });
+            continue;
+        } else {
+            (cs, word) = (cdr(cs), cons(car(cs), word));
+            continue;
+        }
+    }
+}
+
+pub fn split_words(s: Str) -> Strings {
+    reverse_strings(split_words_from(string_chars(s), nil(), nil()), nil())
+}
+
+pub fn shape_name(product: bool, labels: Strings) -> Str {
+    string_append(if product {
+        str_lit("Product")
+    } else {
+        str_lit("Sum")
+    }, concat_strings(map(lambda1(move |l: Str| {
+        string_append(str_lit("_"), mangle(l))
+    }), labels)))
+}
+
 pub fn ctx_datatypes(c: &'static Ctx) -> Strings {
     let tagcase_ = c;
     match *tagcase_ {
@@ -637,6 +734,21 @@ pub fn put_type(c: &'static Ctx, t: &'static Sexp, acc: Chars) -> Chars {
                 put(str_lit(">"), put_type(c, third(xs), put(str_lit(", "), put_type(c, second(xs), put(str_lit("Tag<"), acc)))))
             } else if sym_is_p(car(xs), str_lit("select")) {
                 put(type_path(c, sym_name(second(xs)), sym_name(third(xs))), acc)
+            } else if (sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("sumof"))) {
+                let product = sym_is_p(car(xs), str_lit("productof"));
+                let fs = map(&items, cdr(xs));
+                let acc = put(shape_name(product, map(lambda1(move |f: Sexps| {
+                    label_of(car(f))
+                }), fs)), if product {
+                    acc
+                } else {
+                    put(str_lit("&'static "), acc)
+                });
+                if null_p(fs) {
+                    acc
+                } else {
+                    put(str_lit(">"), put_types(c, map(&second, fs), put(str_lit("<"), acc)))
+                }
             } else if sym_is_p(car(xs), str_lit("poly")) {
                 error(str_lit("kfx: a poly type is only a definition's, at its top"))
             } else if {
@@ -1109,7 +1221,18 @@ pub fn tag_arms_tail_calls_p(t: &'static Tail, arms: Sexps) -> bool {
         false
     } else {
         let arm = items(car(arms));
-        let bound = if sym_is_p(car(arm), str_lit("else")) {
+        let bound = if (sym_is_p(car(arm), str_lit("else")) || {
+            let tagcase_ = second(arm);
+            match *tagcase_ {
+                Sexp::Sym(x) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }) {
             the::<Strings>(cons(sym_name(second(arm)), nil()))
         } else {
             map(&sym_name, items(second(arm)))
@@ -1298,7 +1421,7 @@ pub fn put_stmts(mut c: &'static Ctx, mut es: Sexps, mut n: i64, mut t: &'static
             (c, es, t, acc) = (with_locals(c, names), cdr(xs), hide(t, names), put_letrec(c, bindings, names, n, acc));
             continue;
         } else if head_is_p(e, str_lit("tagcase")) {
-            return put_tagcase(c, cdr(items(e)), n, t, acc);
+            return put_tagcase(c, e, cdr(items(e)), n, t, acc);
         } else {
             return put_exp(c, e, n, t, acc);
         }
@@ -1406,14 +1529,26 @@ pub fn put_case_arms(c: &'static Ctx, kind: Str, arms: Sexps, n: i64, t: &'stati
     }
 }
 
-pub fn put_tagcase_arms(c: &'static Ctx, arms: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
+pub fn put_tagcase_arms(c: &'static Ctx, sum: Str, arms: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
     if null_p(arms) {
         acc
     } else {
         let arm = items(car(arms));
         let tag = sym_name(car(arm));
         let else_p = string_eq_p(tag, str_lit("else"));
-        let bound = if else_p {
+        let whole_p = {
+            let tagcase_ = second(arm);
+            match *tagcase_ {
+                Sexp::Sym(x) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        };
+        let bound = if (else_p || whole_p) {
             the::<Strings>(cons(sym_name(second(arm)), nil()))
         } else {
             map(&sym_name, items(second(arm)))
@@ -1426,26 +1561,54 @@ pub fn put_tagcase_arms(c: &'static Ctx, arms: Sexps, n: i64, t: &'static Tail, 
             let acc = put(mangle(sym_name(second(arm))), acc);
             put_nl(i64_plus(n, 1i64), put(str_lit(" = tagcase_;"), acc))
         } else {
-            let acc = put(datatype_path(tag_datatype(tag, ctx_tags(c))), acc);
+            let acc = put(if string_eq_p(sum, str_lit("")) {
+                datatype_path(tag_datatype(tag, ctx_tags(c)))
+            } else {
+                sum
+            }, acc);
             let acc = put(str_lit("::"), acc);
             let acc = put(camel(tag), acc);
             let acc = put(str_lit("("), acc);
-            let acc = put_names(items(second(arm)), acc);
-            put_nl(i64_plus(n, 1i64), put(str_lit(") => {"), acc))
+            if string_eq_p(sum, str_lit("")) {
+                put_nl(i64_plus(n, 1i64), put(str_lit(") => {"), put_names(items(second(arm)), acc)))
+            } else if whole_p {
+                put_nl(i64_plus(n, 1i64), put(str_lit(") => {"), put(mangle(sym_name(second(arm))), acc)))
+            } else {
+                put_fields_of(items(second(arm)), 0i64, i64_plus(n, 1i64), put_nl(i64_plus(n, 1i64), put(str_lit("product_) => {"), acc)))
+            }
         };
         let acc = put_stmts(with_locals(c, bound), cdr(cdr(arm)), i64_plus(n, 1i64), hide(t, bound), acc);
         let acc = put(str_lit("}"), put_nl(n, acc));
-        put_tagcase_arms(c, cdr(arms), n, t, acc)
+        put_tagcase_arms(c, sum, cdr(arms), n, t, acc)
     }
 }
 
-/// A `tagcase` as statements: its value bound once, then a `match`.
-pub fn put_tagcase(c: &'static Ctx, xs: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
+/// A sum's member, a product, taken apart: a `let` for each field.
+pub fn put_fields_of(mut names: Sexps, mut i: i64, mut n: i64, mut acc: Chars) -> Chars {
+    loop {
+        if null_p(names) {
+            return acc;
+        } else {
+            (names, i, acc) = (cdr(names), i64_plus(i, 1i64), put_nl(n, put(str_lit(";"), put(i64_to_string(i), put(str_lit(" = product_."), put(mangle(sym_name(car(names))), put(str_lit("let "), acc)))))));
+            continue;
+        }
+    }
+}
+
+/// A `tagcase` as statements: its value bound once, then a `match`; of a
+/// sum, its enum's name from the tags the checker found.
+pub fn put_tagcase(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
+    let tags = fact_with(c, e, str_lit("tagcase-sum "));
+    let sum = if string_eq_p(tags, str_lit("")) {
+        str_lit("")
+    } else {
+        shape_name(false, split_words(tags))
+    };
     let acc = put(str_lit("let tagcase_ = "), acc);
     let acc = put_exp(c, car(xs), n, value(), acc);
     let acc = put_nl(n, put(str_lit(";"), acc));
     let acc = put(str_lit("match *tagcase_ {"), acc);
-    let acc = put_tagcase_arms(c, cdr(xs), i64_plus(n, 1i64), t, acc);
+    let acc = put_tagcase_arms(c, sum, cdr(xs), i64_plus(n, 1i64), t, acc);
     put(str_lit("}"), put_nl(n, acc))
 }
 
@@ -1565,6 +1728,27 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
         put(str_lit("}"), put_nl(n, acc))
     } else if string_eq_p(h, str_lit("lambda")) {
         put_lambda(c, e, items(car(xs)), cdr(xs), n, acc)
+    } else if string_eq_p(h, str_lit("product")) {
+        let fs = map(&items, xs);
+        let acc = put(shape_name(true, map(lambda1(move |f: Sexps| {
+            label_of(car(f))
+        }), fs)), acc);
+        put(str_lit(")"), put_joined(c, map(&second, fs), str_lit(", "), n, put(str_lit("("), acc)))
+    } else if string_eq_p(h, str_lit("extract")) {
+        put(fact_with(c, e, str_lit("extract-index ")), put(str_lit("."), put_exp(c, car(xs), n, value(), acc)))
+    } else if string_eq_p(h, str_lit("sum")) {
+        // A sum's enum written with its type's arguments, which only the type
+        // expected, as the checker found it, says.
+        let ty = car(read_all(string_chars(fact_with(c, e, str_lit("sum-type "))), str_lit(""), 1i64));
+        let fs = map(&items, cdr(items(ty)));
+        let acc = put(str_lit("alloc("), acc);
+        let acc = put(shape_name(false, map(lambda1(move |f: Sexps| {
+            label_of(car(f))
+        }), fs)), acc);
+        let acc = put(str_lit(">::"), put_types(c, map(&second, fs), put(str_lit("::<"), acc)));
+        let acc = put(camel(label_of(car(xs))), acc);
+        let acc = put(str_lit("("), acc);
+        put(str_lit("))"), put_exp(c, second(xs), n, value(), acc))
     } else if string_eq_p(h, str_lit("list")) {
         put_list(c, xs, n, acc)
     } else if string_eq_p(h, str_lit("the")) {
@@ -1973,6 +2157,173 @@ pub fn definition_p(e: &'static Sexp) -> bool {
     (head_is_p(e, str_lit("define")) || head_is_p(e, str_lit("define*")) || head_is_p(e, str_lit("define-rec")) || module_def_p(e) || head_is_p(e, str_lit("define-datatype")) || head_is_p(e, str_lit("define-type")) || head_is_p(e, str_lit("define-generative")))
 }
 
+// The shapes a program has, each declared once: every `productof`,
+// `sumof` and `product` in it, and in the types the checker elaborated and
+// found for sums. A shape's key is `P` or `S`, then its labels.
+/// The key of the shape `e` writes, if it writes one.
+pub fn shape_key(e: &'static Sexp) -> Strings {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            if (not(null_p(xs)) && (sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("product")) || sym_is_p(car(xs), str_lit("sumof"))) && not(any_p(lambda1(move |x: &'static Sexp| {
+                let tagcase_ = x;
+                match *tagcase_ {
+                    Sexp::Lst(ys, f2, l2, p2) => {
+                        null_p(ys)
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        true
+                    }
+                }
+            }), cdr(xs)))) {
+                the::<Strings>(cons(string_append(if sym_is_p(car(xs), str_lit("sumof")) {
+                    str_lit("S")
+                } else {
+                    str_lit("P")
+                }, concat_strings(map(lambda1(move |x: &'static Sexp| {
+                    string_append(str_lit(" "), label_of(car(items(x))))
+                }), cdr(xs)))), nil()))
+            } else {
+                nil()
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            nil()
+        }
+    }
+}
+
+pub fn shapes_in(e: &'static Sexp, acc: Strings) -> Strings {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            let (acc, key) = (shapes_in_all(xs, acc), shape_key(e));
+            if (null_p(key) || string_member_p(car(key), acc)) {
+                acc
+            } else {
+                cons(car(key), acc)
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            acc
+        }
+    }
+}
+
+pub fn shapes_in_all(mut es: Sexps, mut acc: Strings) -> Strings {
+    loop {
+        if null_p(es) {
+            return acc;
+        } else {
+            (es, acc) = (cdr(es), shapes_in(car(es), acc));
+            continue;
+        }
+    }
+}
+
+pub fn program_shapes(c: &'static Ctx, forms: Sexps) -> Strings {
+    let tagcase_ = c;
+    match *tagcase_ {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            reverse_strings(shapes_in_all(onto(map(lambda1(move |x: &'static Typed| {
+                let tagcase_ = x;
+                match *tagcase_ {
+                    Typed::Typed(n, t) => {
+                        t
+                    }
+                }
+            }), xs), concat(map(lambda1(move |f: &'static Fact| {
+                let tagcase_ = f;
+                match *tagcase_ {
+                    Fact::Fact(ff, fp, fw) => {
+                        if has_prefix_p(fw, str_lit("sum-type ")) {
+                            read_all(string_chars(after_prefix(fw, str_lit("sum-type "))), str_lit(""), 1i64)
+                        } else {
+                            nil()
+                        }
+                    }
+                }
+            }), fs))), shapes_in_all(forms, nil())), nil())
+        }
+    }
+}
+
+pub fn put_params_of(mut i: i64, mut n: i64, mut acc: Chars) -> Chars {
+    loop {
+        if i64_lt(i, n) {
+            (i, acc) = (i64_plus(i, 1i64), put(i64_to_string(i), put(if i64_eq(i, 0i64) {
+                str_lit("A")
+            } else {
+                str_lit(", A")
+            }, acc)));
+            continue;
+        } else {
+            return acc;
+        }
+    }
+}
+
+pub fn put_generic_params(n: i64, acc: Chars) -> Chars {
+    if i64_eq(n, 0i64) {
+        acc
+    } else {
+        put(str_lit(">"), put_params_of(0i64, n, put(str_lit("<"), acc)))
+    }
+}
+
+pub fn put_variants_of(mut tags: Strings, mut i: i64, mut acc: Chars) -> Chars {
+    loop {
+        if null_p(tags) {
+            return acc;
+        } else {
+            (tags, i, acc) = (cdr(tags), i64_plus(i, 1i64), put(str_lit("),\n"), put(i64_to_string(i), put(str_lit("(A"), put(camel(car(tags)), put(str_lit("    "), acc))))));
+            continue;
+        }
+    }
+}
+
+/// Each shape's declaration, and, for `kfx --toplevel`, its `Show`, as
+/// Fixpt writes one: `#<product of 2>`, `#<sum leaf>`.
+pub fn put_shape_decls(keys: Strings, shows: bool, acc: Chars) -> Chars {
+    if null_p(keys) {
+        acc
+    } else {
+        let key = car(keys);
+        let product = string_eq_p(substring_of(key, 1i64), str_lit("P"));
+        let labels = split_words(after_prefix(key, substring_of(key, 1i64)));
+        let name = shape_name(product, labels);
+        let n = size(labels);
+        let acc = put(str_lit("#[allow(non_camel_case_types)]\n"), acc);
+        let acc = if product {
+            put(str_lit(");\n\n"), put_sep(lambda2(move |i: i64, acc: Chars| {
+                put(i64_to_string(i), put(str_lit("pub A"), acc))
+            }), str_lit(", "), counting(0i64, n), put(str_lit("("), put_generic_params(n, put(name, put(str_lit("#[derive(Clone, Copy)]\npub struct "), acc))))))
+        } else {
+            put(str_lit("}\n\n"), put_variants_of(labels, 0i64, put(str_lit(" {\n"), put_generic_params(n, put(name, put(str_lit("pub enum "), acc))))))
+        };
+        let acc = if not(shows) {
+            acc
+        } else {
+            let acc = put(str_lit(" {\n    fn show(&self, out: &mut String) {\n"), put_generic_params(n, put(name, put(str_lit(" Show for "), put_generic_params(n, put(str_lit("impl"), acc))))));
+            put(str_lit("    }\n}\n\n"), if product {
+                put(str_lit(">\");\n"), put(i64_to_string(n), put(str_lit("        out.push_str(\"#<product of "), acc)))
+            } else {
+                put(str_lit("        }\n"), put_sep(lambda2(move |l: Str, acc: Chars| {
+                    put(str_lit(">\"),\n"), put(l, put(str_lit("(..) => out.push_str(\"#<sum "), put(camel(l), put(str_lit("::"), put(name, put(str_lit("            "), acc)))))))
+                }), str_lit(""), labels, put(str_lit("        match self {\n"), acc)))
+            })
+        };
+        put_shape_decls(cdr(keys), shows, acc)
+    }
+}
+
+pub fn put_shapes(c: &'static Ctx, forms: Sexps, shows: bool, acc: Chars) -> Chars {
+    put_shape_decls(program_shapes(c, forms), shows, acc)
+}
+
 // A program's top-level expressions, for running Fixpt's programs as Rust
 // (`kfx --toplevel`, scripts/run-fixpt-programs.py): a `Show` for each
 // datatype, writing a value as Fixpt does, `#<sum TAG>`; and
@@ -2044,8 +2395,32 @@ pub fn put_show_generatives(forms: Sexps, acc: Chars) -> Chars {
 }
 
 pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
-    let xs = items(form);
-    let h = sym_name(car(xs));
+    let xs = {
+        let tagcase_ = form;
+        match *tagcase_ {
+            Sexp::Lst(ys, f, l, p) => {
+                ys
+            }
+            _ => {
+                let other = tagcase_;
+                nil()
+            }
+        }
+    };
+    let h = if null_p(xs) {
+        str_lit("")
+    } else {
+        let tagcase_ = car(xs);
+        match *tagcase_ {
+            Sexp::Sym(n) => {
+                n
+            }
+            _ => {
+                let other = tagcase_;
+                str_lit("")
+            }
+        }
+    };
     if string_eq_p(h, str_lit("define-effect")) {
         acc
     } else if string_eq_p(h, str_lit("define-type")) {

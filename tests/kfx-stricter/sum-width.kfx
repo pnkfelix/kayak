@@ -1,0 +1,6 @@
+"A sum of fewer tags where one of more is expected: FX-26's width
+ subtyping; to Rust, two enums (C22)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type shape (sumof (circle i64) (rect (productof (w i64) (h i64)))))
+(define one (sumof (circle i64)) (sum circle 1))
+(define s shape one)

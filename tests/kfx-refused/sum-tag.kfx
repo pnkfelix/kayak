@@ -1,0 +1,4 @@
+"A tag the sum has not."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type shape (sumof (circle i64) (rect (productof (w i64) (h i64)))))
+(define s shape (sum square 3))

@@ -1,0 +1,4 @@
+"A sum whose type nothing says: FX-26 finds (sumof (circle int)); KFX, which
+ writes the enum of its type, refuses it (C22)."
+(define-effect kfx (maxeff (read @globals) spin))
+(sum circle 5)

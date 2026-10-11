@@ -1,0 +1,4 @@
+"A label the product has not."
+(define-effect kfx (maxeff (read @globals) spin))
+(define p (productof (x i64) (y i64)) (product (x 1) (y 2)))
+(define z i64 (extract p z))

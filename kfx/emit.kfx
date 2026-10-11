@@ -58,6 +58,54 @@
       (lst (xs src-file src-line src-pos) (ctx-fact? c src-file src-pos what))
       (else other #f))))
 
+(define fact-with (subr kfx (ctx sexp string) string)
+  (lambda (c e prefix)
+    "What the checker found about the list `e` that begins `prefix`, the
+     rest of it; or ``."
+    (tagcase e
+      (lst (xs src-file src-line src-pos)
+        (tagcase c
+          (ctx (ds ts ks ls xs2 fs ms es mods)
+            (let ((found (concat (map (lambda ((f fact))
+                                        (tagcase f
+                                          (fact (ff fp fw)
+                                            (if (and (i64= fp src-pos) (string=? ff src-file) (has-prefix? fw prefix))
+                                                (the strings (list (after-prefix fw prefix)))
+                                                nil))))
+                                      fs))))
+              (if (null? found) "" (car found))))))
+      (else other ""))))
+
+"Products and sums, FX-26's structural data (check.kfx, `ty-shape`): one
+ generic Rust type for each list of labels, a tuple struct for a product,
+ `Product_a_b<A0, A1>`, and an enum for a sum, `Sum_leaf_node<A0, A1>`,
+ a sum's values references, as a datatype's are. The name holds the labels,
+ so that two products of the same labels and types are one type, as in
+ FX-26."
+
+(define-rec
+  (concat-strings (subr kfx (strings) string)
+    (lambda (xs) (if (null? xs) "" (string-append (car xs) (concat-strings (cdr xs)))))))
+
+(define-rec
+  (reverse-strings (subr kfx (strings strings) strings)
+    (lambda (xs acc) (if (null? xs) acc (reverse-strings (cdr xs) (cons (car xs) acc))))))
+
+(define-rec
+  (split-words-from (subr kfx (chars chars strings) strings)
+    (lambda (cs word acc)
+      (cond ((null? cs) (if (null? word) acc (cons (rev->string word) acc)))
+            ((char=? (car cs) #\space) (split-words-from (cdr cs) nil (if (null? word) acc (cons (rev->string word) acc))))
+            (else (split-words-from (cdr cs) (cons (car cs) word) acc))))))
+
+(define split-words (subr kfx (string) strings)
+  (lambda (s) (reverse-strings (split-words-from (string-chars s) nil nil) nil)))
+
+(define shape-name (subr kfx (bool strings) string)
+  (lambda (product labels)
+    (string-append (if product "Product" "Sum")
+                   (concat-strings (map (lambda ((l string)) (string-append "_" (mangle l))) labels)))))
+
 (define ctx-datatypes (subr kfx (ctx) strings)
   (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms es mods) ds))))
 
@@ -330,6 +378,12 @@
                  (put ">" (put-type c (third xs) (put ", " (put-type c (second xs) (put "Tag<" acc))))))
                 ((sym-is? (car xs) "select")
                  (put (type-path c (sym-name (second xs)) (sym-name (third xs))) acc))
+                ((or (sym-is? (car xs) "productof") (sym-is? (car xs) "sumof"))
+                 (let* ((product (sym-is? (car xs) "productof"))
+                        (fs (map items (cdr xs)))
+                        (acc (put (shape-name product (map (lambda ((f sexps)) (label-of (car f))) fs))
+                                  (if product acc (put "&'static " acc)))))
+                   (if (null? fs) acc (put ">" (put-types c (map second fs) (put "<" acc))))))
                 ((sym-is? (car xs) "poly")
                  (error "kfx: a poly type is only a definition's, at its top"))
                 ((tagcase (car xs) (sym (n) (not (null? (find-family-of c n)))) (else other #f))
@@ -577,7 +631,7 @@
       (if (null? arms)
           #f
           (let* ((arm (items (car arms)))
-                 (bound (if (sym-is? (car arm) "else")
+                 (bound (if (or (sym-is? (car arm) "else") (tagcase (second arm) (sym (x) #t) (else other #f)))
                             (the strings (list (sym-name (second arm))))
                             (map sym-name (items (second arm))))))
             (or (tail-calls? (hide t bound) (last (cdr (cdr arm))))
@@ -691,7 +745,7 @@
                       (names (map binding-name bindings)))
                  (put-stmts (with-locals c names) (cdr xs) n (hide t names)
                             (put-letrec c bindings names n acc))))
-              ((head-is? e "tagcase") (put-tagcase c (cdr (items e)) n t acc))
+              ((head-is? e "tagcase") (put-tagcase c e (cdr (items e)) n t acc))
               (else (put-exp c e n t acc))))))
 
   (put-block (subr kfx (ctx sexps i64 tail chars) chars)
@@ -773,14 +827,15 @@
                  (acc (put-block c (cdr arm) n t acc)))
             (put-case-arms c kind (cdr arms) n t acc)))))
 
-  (put-tagcase-arms (subr kfx (ctx sexps i64 tail chars) chars)
-    (lambda (c arms n t acc)
+  (put-tagcase-arms (subr kfx (ctx string sexps i64 tail chars) chars)
+    (lambda (c sum arms n t acc)
       (if (null? arms)
           acc
           (let* ((arm (items (car arms)))
                  (tag (sym-name (car arm)))
                  (else? (string=? tag "else"))
-                 (bound (if else?
+                 (whole? (tagcase (second arm) (sym (x) #t) (else other #f)))
+                 (bound (if (or else? whole?)
                             (the strings (list (sym-name (second arm))))
                             (map sym-name (items (second arm)))))
                  (acc (put-nl n acc))
@@ -790,24 +845,37 @@
                                  (acc (put "let " acc))
                                  (acc (put (mangle (sym-name (second arm))) acc)))
                             (put-nl (i64+ n 1) (put " = tagcase_;" acc)))
-                          (let* ((acc (put (datatype-path (tag-datatype tag (ctx-tags c))) acc))
+                          (let* ((acc (put (if (string=? sum "") (datatype-path (tag-datatype tag (ctx-tags c))) sum) acc))
                                  (acc (put "::" acc))
                                  (acc (put (camel tag) acc))
-                                 (acc (put "(" acc))
-                                 (acc (put-names (items (second arm)) acc)))
-                            (put-nl (i64+ n 1) (put ") => {" acc)))))
+                                 (acc (put "(" acc)))
+                            (cond ((string=? sum "") (put-nl (i64+ n 1) (put ") => {" (put-names (items (second arm)) acc))))
+                                  (whole? (put-nl (i64+ n 1) (put ") => {" (put (mangle (sym-name (second arm))) acc))))
+                                  (else (put-fields-of (items (second arm)) 0 (i64+ n 1)
+                                                       (put-nl (i64+ n 1) (put "product_) => {" acc))))))))
                  (acc (put-stmts (with-locals c bound) (cdr (cdr arm)) (i64+ n 1) (hide t bound) acc))
                  (acc (put "}" (put-nl n acc))))
-            (put-tagcase-arms c (cdr arms) n t acc)))))
+            (put-tagcase-arms c sum (cdr arms) n t acc)))))
 
-  (put-tagcase (subr kfx (ctx sexps i64 tail chars) chars)
-    (lambda (c xs n t acc)
-      "A `tagcase` as statements: its value bound once, then a `match`."
-      (let* ((acc (put "let tagcase_ = " acc))
+  (put-fields-of (subr kfx (sexps i64 i64 chars) chars)
+    (lambda (names i n acc)
+      "A sum's member, a product, taken apart: a `let` for each field."
+      (if (null? names)
+          acc
+          (put-fields-of (cdr names) (i64+ i 1) n
+                         (put-nl n (put ";" (put (i64->string i) (put " = product_." (put (mangle (sym-name (car names))) (put "let " acc))))))))))
+
+  (put-tagcase (subr kfx (ctx sexp sexps i64 tail chars) chars)
+    (lambda (c e xs n t acc)
+      "A `tagcase` as statements: its value bound once, then a `match`; of a
+       sum, its enum's name from the tags the checker found."
+      (let* ((tags (fact-with c e "tagcase-sum "))
+             (sum (if (string=? tags "") "" (shape-name #f (split-words tags))))
+             (acc (put "let tagcase_ = " acc))
              (acc (put-exp c (car xs) n (value) acc))
              (acc (put-nl n (put ";" acc)))
              (acc (put "match *tagcase_ {" acc))
-             (acc (put-tagcase-arms c (cdr xs) (i64+ n 1) t acc)))
+             (acc (put-tagcase-arms c sum (cdr xs) (i64+ n 1) t acc)))
         (put "}" (put-nl n acc)))))
 
   (put-lambda (subr kfx (ctx sexp sexps sexps i64 chars) chars)
@@ -896,6 +964,23 @@
                     (acc (put-case-arms c (case-kind c e) (cdr xs) (i64+ n 1) t acc)))
                (put "}" (put-nl n acc))))
             ((string=? h "lambda") (put-lambda c e (items (car xs)) (cdr xs) n acc))
+            ((string=? h "product")
+             (let* ((fs (map items xs))
+                    (acc (put (shape-name #t (map (lambda ((f sexps)) (label-of (car f))) fs)) acc)))
+               (put ")" (put-joined c (map second fs) ", " n (put "(" acc)))))
+            ((string=? h "extract")
+             (put (fact-with c e "extract-index ") (put "." (put-exp c (car xs) n (value) acc))))
+            ((string=? h "sum")
+             "A sum's enum written with its type's arguments, which only the type
+              expected, as the checker found it, says."
+             (let* ((ty (car (read-all (string-chars (fact-with c e "sum-type ")) "" 1)))
+                    (fs (map items (cdr (items ty))))
+                    (acc (put "alloc(" acc))
+                    (acc (put (shape-name #f (map (lambda ((f sexps)) (label-of (car f))) fs)) acc))
+                    (acc (put ">::" (put-types c (map second fs) (put "::<" acc))))
+                    (acc (put (camel (label-of (car xs))) acc))
+                    (acc (put "(" acc)))
+               (put "))" (put-exp c (second xs) n (value) acc))))
             ((string=? h "list") (put-list c xs n acc))
             ((string=? h "the")
              "`the::<T>(e)`: the type said to rustc too, which may need it where
@@ -1160,6 +1245,101 @@
     (or (head-is? e "define") (head-is? e "define*") (head-is? e "define-rec") (module-def? e)
         (head-is? e "define-datatype") (head-is? e "define-type") (head-is? e "define-generative"))))
 
+"The shapes a program has, each declared once: every `productof`,
+ `sumof` and `product` in it, and in the types the checker elaborated and
+ found for sums. A shape's key is `P` or `S`, then its labels."
+
+(define shape-key (subr kfx (sexp) strings)
+  (lambda (e)
+    "The key of the shape `e` writes, if it writes one."
+    (tagcase e
+      (lst (xs f l p)
+        (if (and (not (null? xs))
+                 (or (sym-is? (car xs) "productof") (sym-is? (car xs) "product") (sym-is? (car xs) "sumof"))
+                 (not (any? (lambda ((x sexp)) (tagcase x (lst (ys f2 l2 p2) (null? ys)) (else other #t))) (cdr xs))))
+            (the strings
+              (list (string-append (if (sym-is? (car xs) "sumof") "S" "P")
+                                   (concat-strings (map (lambda ((x sexp)) (string-append " " (label-of (car (items x))))) (cdr xs))))))
+            nil))
+      (else other nil))))
+
+(define-rec
+  (shapes-in (subr kfx (sexp strings) strings)
+    (lambda (e acc)
+      (tagcase e
+        (lst (xs f l p)
+          (let ((acc (shapes-in-all xs acc))
+                (key (shape-key e)))
+            (if (or (null? key) (string-member? (car key) acc)) acc (cons (car key) acc))))
+        (else other acc))))
+  (shapes-in-all (subr kfx (sexps strings) strings)
+    (lambda (es acc) (if (null? es) acc (shapes-in-all (cdr es) (shapes-in (car es) acc))))))
+
+(define program-shapes (subr kfx (ctx sexps) strings)
+  (lambda (c forms)
+    (tagcase c
+      (ctx (ds ts ks ls xs fs ms es mods)
+        (reverse-strings
+         (shapes-in-all (onto (map (lambda ((x typed)) (tagcase x (typed (n t) t))) xs)
+                              (concat (map (lambda ((f fact))
+                                             (tagcase f
+                                               (fact (ff fp fw)
+                                                 (if (has-prefix? fw "sum-type ")
+                                                     (read-all (string-chars (after-prefix fw "sum-type ")) "" 1)
+                                                     nil))))
+                                           fs)))
+                        (shapes-in-all forms nil))
+         nil)))))
+
+(define-rec
+  (put-params-of (subr kfx (i64 i64 chars) chars)
+    (lambda (i n acc)
+      (if (i64< i n)
+          (put-params-of (i64+ i 1) n (put (i64->string i) (put (if (i64= i 0) "A" ", A") acc)))
+          acc))))
+
+(define put-generic-params (subr kfx (i64 chars) chars)
+  (lambda (n acc) (if (i64= n 0) acc (put ">" (put-params-of 0 n (put "<" acc))))))
+
+(define-rec
+  (put-variants-of (subr kfx (strings i64 chars) chars)
+    (lambda (tags i acc)
+      (if (null? tags)
+          acc
+          (put-variants-of (cdr tags) (i64+ i 1)
+                           (put "),\n" (put (i64->string i) (put "(A" (put (camel (car tags)) (put "    " acc))))))))))
+
+(define put-shape-decls (subr kfx (strings bool chars) chars)
+  (lambda (keys shows acc)
+    "Each shape's declaration, and, for `kfx --toplevel`, its `Show`, as
+     Fixpt writes one: `#<product of 2>`, `#<sum leaf>`."
+    (if (null? keys)
+        acc
+        (let* ((key (car keys))
+               (product (string=? (substring-of key 1) "P"))
+               (labels (split-words (after-prefix key (substring-of key 1))))
+               (name (shape-name product labels))
+               (n (size labels))
+               (acc (put "#[allow(non_camel_case_types)]\n" acc))
+               (acc (if product
+                        (put ");\n\n" (put-sep (lambda ((i i64) (acc chars)) (put (i64->string i) (put "pub A" acc))) ", " (counting 0 n)
+                                             (put "(" (put-generic-params n (put name (put "#[derive(Clone, Copy)]\npub struct " acc))))))
+                        (put "}\n\n" (put-variants-of labels 0 (put " {\n" (put-generic-params n (put name (put "pub enum " acc))))))))
+               (acc (if (not shows)
+                        acc
+                        (let ((acc (put " {\n    fn show(&self, out: &mut String) {\n" (put-generic-params n (put name (put " Show for " (put-generic-params n (put "impl" acc))))))))
+                          (put "    }\n}\n\n"
+                               (if product
+                                   (put ">\");\n" (put (i64->string n) (put "        out.push_str(\"#<product of " acc)))
+                                   (put "        }\n"
+                                        (put-sep (lambda ((l string) (acc chars))
+                                                   (put ">\"),\n" (put l (put "(..) => out.push_str(\"#<sum " (put (camel l) (put "::" (put name (put "            " acc))))))))
+                                                 "" labels (put "        match self {\n" acc)))))))))
+          (put-shape-decls (cdr keys) shows acc)))))
+
+(define put-shapes (subr kfx (ctx sexps bool chars) chars)
+  (lambda (c forms shows acc) (put-shape-decls (program-shapes c forms) shows acc)))
+
 "A program's top-level expressions, for running Fixpt's programs as Rust
  (`kfx --toplevel`, scripts/run-fixpt-programs.py): a `Show` for each
  datatype, writing a value as Fixpt does, `#<sum TAG>`; and
@@ -1218,8 +1398,8 @@
 (define-rec
   (put-top (subr kfx (ctx sexp chars) chars)
     (lambda (c form acc)
-      (let* ((xs (items form))
-             (h (sym-name (car xs))))
+      (let* ((xs (tagcase form (lst (ys f l p) ys) (else other nil)))
+             (h (if (null? xs) "" (tagcase (car xs) (sym (n) n) (else other "")))))
         (cond ((string=? h "define-effect") acc)
               ((string=? h "define-type")
                (let* ((acc (put "pub type " acc))

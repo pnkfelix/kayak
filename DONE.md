@@ -659,3 +659,16 @@ The reader read them as an error; FX-26 reads them as `int`s. Now a
 datum of its own, `big`, its digits kept: an `int`, or a `nat` if not
 negative, refused where an `i64` is expected; in Rust `int_text("...")`.
 A `case` on an int may compare with one. 56 of Fixpt's programs accepted.
+
+## Products and sums (2026-10-11)
+
+FX-26's structural data (C22): `productof`/`product`/`extract` and
+`sumof`/`sum`/`tagcase` (a member bound whole, `(tag x ...)`, or a product
+taken apart, `(tag (a b) ...)`), as one generic tuple struct or enum for
+each list of labels, declared where the program's file begins.
+`tests/kfx/shapes.kfx`; `kfx-refused/sum-tag`, `sum-arms`,
+`extract-label`; `kfx-stricter/sum-unknown`, `sum-width`.
+
+Found on the way: a name or number at the top level made the emitter
+fail; and `run-fixpt-programs.py` counted none of their values. 60 of
+Fixpt's programs accepted, all agreeing.

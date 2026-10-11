@@ -34,6 +34,7 @@ pub enum Ty {
     TyRconst(Str),
     TyTag(&'static Ty, &'static Ty, Strings, &'static Ty),
     TyProc(Strings, List<&'static Ty>, &'static Ty),
+    TyShape(bool, Strings, List<&'static Ty>),
     TyVar(Str),
     TyMeta(i64),
 }
@@ -102,6 +103,10 @@ pub fn ty_proc(f0: Strings, f1: List<&'static Ty>, f2: &'static Ty) -> &'static 
     alloc(Ty::TyProc(f0, f1, f2))
 }
 
+pub fn ty_shape(f0: bool, f1: Strings, f2: List<&'static Ty>) -> &'static Ty {
+    alloc(Ty::TyShape(f0, f1, f2))
+}
+
 pub fn ty_var(f0: Str) -> &'static Ty {
     alloc(Ty::TyVar(f0))
 }
@@ -119,7 +124,9 @@ pub fn ty_meta(f0: i64) -> &'static Ty {
 // `ty-void` is `error`'s result, below every type. A `ty-proc`'s strings
 // are its latent effect, a set of atoms: `spin`, `@globals` (every global
 // read), and `g:` and a name (that global read). `ty-var` is a `poly`'s
-// type variable, `ty-meta` an inference variable.
+// type variable, `ty-meta` an inference variable. `ty-shape` is FX-26's structural
+// data, immutable and in no region: a product (`#t`) or a sum, its labels
+// or tags in order, and their types.
 pub type Tys = List<&'static Ty>;
 
 pub enum Scheme {
@@ -346,6 +353,33 @@ pub fn drop_chars(mut cs: List<char>, mut n: i64) -> List<char> {
 
 pub fn after_prefix(x: Str, p: Str) -> Str {
     list_to_string(drop_chars(string_to_list(x), string_length_i64(p)))
+}
+
+pub fn strings_eq_p(a: Strings, b: Strings) -> bool {
+    if null_p(a) {
+        null_p(b)
+    } else if null_p(b) {
+        false
+    } else {
+        (string_eq_p(car(a), car(b)) && strings_eq_p(cdr(a), cdr(b)))
+    }
+}
+
+/// A product's label or a sum's tag, as written: a name or a number.
+pub fn label_of(e: &'static Sexp) -> Str {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Sym(n) => {
+            n
+        }
+        Sexp::Num(k, f, p) => {
+            i64_to_string(k)
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("")
+        }
+    }
 }
 
 /// Whether effect `es` may abort: a `goto` on some region. Such a
@@ -587,6 +621,11 @@ pub fn replace_var(name: Str, m: &'static Ty, t: &'static Ty) -> &'static Ty {
         Ty::TyFlat(e, r) => {
             ty_flat(replace_var(name, m, e), replace_var(name, m, r))
         }
+        Ty::TyShape(p, ls, ts) => {
+            ty_shape(p, ls, map(lambda1(move |x: &'static Ty| {
+                replace_var(name, m, x)
+            }), ts))
+        }
         Ty::TyTag(a, h, d, r) => {
             ty_tag(replace_var(name, m, a), replace_var(name, m, h), rename_region(d, name, m), replace_var(name, m, r))
         }
@@ -817,6 +856,9 @@ pub fn knot_in(mut v: &'static Cv, mut res: &'static dyn Fn(Str) -> Str, mut t: 
             Ty::TyTag(a, h, d, r) => {
                 return first_knot(v, res, cons(a, cons(h, nil())), nil(), false, seen);
             }
+            Ty::TyShape(p, ls, ts) => {
+                return first_knot(v, res, ts, kept, every, seen);
+            }
             Ty::TyData(d, args) => {
                 if string_member_p(d, seen) {
                     return nil();
@@ -955,6 +997,32 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     }), ty_ref(parse_type(v, tvars, second(xs)), parse_mutable_region(v, tvars, third(xs))));
                 } else if sym_is_p(car(xs), str_lit("prompt-tag")) {
                     return ty_tag(parse_type(v, tvars, second(xs)), parse_type(v, tvars, third(xs)), parse_effect(v, tvars, fourth(xs)), parse_mutable_region(v, tvars, car(cdr(cdr(cdr(cdr(xs)))))));
+                } else if (sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("sumof"))) {
+                    let fields = map(&items, cdr(xs));
+                    if (any_p(lambda1(move |f: Sexps| {
+                        not(i64_eq(size(f), 2i64))
+                    }), fields) || any_p(lambda1(move |f: Sexps| {
+                        string_eq_p(label_of(car(f)), str_lit(""))
+                    }), fields) || (sym_is_p(car(xs), str_lit("sumof")) && any_p(lambda1(move |f: Sexps| {
+                        let tagcase_ = car(f);
+                        match *tagcase_ {
+                            Sexp::Sym(n) => {
+                                false
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                true
+                            }
+                        }
+                    }), fields))) {
+                        return refuse(v, string_append(str_lit("a type KFX does not have: "), show_sexp(t)));
+                    } else {
+                        return ty_shape(sym_is_p(car(xs), str_lit("productof")), map(lambda1(move |f: Sexps| {
+                            label_of(car(f))
+                        }), fields), map(lambda1(move |f: Sexps| {
+                            parse_type(v, tvars, second(f))
+                        }), fields));
+                    }
                 } else if sym_is_p(car(xs), str_lit("select")) {
                     let name = string_append(name_of(v, second(xs)), string_append(str_lit(" "), name_of(v, third(xs))));
                     if null_p(find_alias(name, cv_aliases(v))) {
@@ -1135,6 +1203,13 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
                 string_append(str_lit("("), string_append(d, string_append(str_lit(" "), string_append(show_tys(s, args), str_lit(")")))))
             }
         }
+        Ty::TyShape(p, ls, ts) => {
+            string_append(if p {
+                str_lit("(productof")
+            } else {
+                str_lit("(sumof")
+            }, string_append(show_fields(s, ls, ts), str_lit(")")))
+        }
         Ty::TyFlat(e, r) => {
             string_append(str_lit("(flatarrayof "), string_append(show_ty(s, e), string_append(str_lit(" "), string_append(show_ty(s, r), str_lit(")")))))
         }
@@ -1156,6 +1231,14 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
         Ty::TyMeta(k) => {
             string_append(str_lit("?"), i64_to_string(k))
         }
+    }
+}
+
+pub fn show_fields(s: &'static St, ls: Strings, ts: Tys) -> Str {
+    if (null_p(ls) || null_p(ts)) {
+        str_lit("")
+    } else {
+        string_append(str_lit(" ("), string_append(car(ls), string_append(str_lit(" "), string_append(show_ty(s, car(ts)), string_append(str_lit(")"), show_fields(s, cdr(ls), cdr(ts)))))))
     }
 }
 
@@ -1229,6 +1312,11 @@ pub fn has_meta_p(s: &'static St, t: &'static Ty) -> bool {
         Ty::TyFlat(e, r) => {
             (has_meta_p(s, e) || has_meta_p(s, r))
         }
+        Ty::TyShape(p, ls, ts) => {
+            any_p(lambda1(move |x: &'static Ty| {
+                has_meta_p(s, x)
+            }), ts)
+        }
         Ty::TyTag(a, h, d, r) => {
             (has_meta_p(s, a) || has_meta_p(s, h) || has_meta_p(s, r))
         }
@@ -1300,6 +1388,11 @@ pub fn occurs_p(s: &'static St, k: i64, t: &'static Ty) -> bool {
         }
         Ty::TyFlat(e, r) => {
             (occurs_p(s, k, e) || occurs_p(s, k, r))
+        }
+        Ty::TyShape(p, ls, ts) => {
+            any_p(lambda1(move |x: &'static Ty| {
+                occurs_p(s, k, x)
+            }), ts)
         }
         Ty::TyTag(a, h, d, r) => {
             (occurs_p(s, k, a) || occurs_p(s, k, h) || occurs_p(s, k, r))
@@ -1503,6 +1596,11 @@ pub fn zonk(s: &'static St, t: &'static Ty) -> &'static Ty {
         Ty::TyFlat(e, r) => {
             ty_flat(zonk(s, e), zonk(s, r))
         }
+        Ty::TyShape(p, ls, ts) => {
+            ty_shape(p, ls, map(lambda1(move |x: &'static Ty| {
+                zonk(s, x)
+            }), ts))
+        }
         Ty::TyTag(a, h, d, r) => {
             ty_tag(zonk(s, a), zonk(s, h), d, zonk(s, r))
         }
@@ -1666,6 +1764,26 @@ pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static T
                 }
             }
         }
+        Ty::TyShape(p, ls, ts) => {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Ty::TyShape(q, ms, us) => {
+                    if (if p {
+                        q
+                    } else {
+                        not(q)
+                    } && strings_eq_p(ls, ms) && i64_eq(size(ts), size(us))) {
+                        fits_each(v, s, ts, us)
+                    } else {
+                        mismatch(v, s, a, e)
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    mismatch(v, s, a, e)
+                }
+            }
+        }
         Ty::TyRef(x, xr) => {
             let tagcase_ = e;
             match *tagcase_ {
@@ -1767,6 +1885,19 @@ pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static T
             } else {
                 mismatch(v, s, a, e)
             }
+        }
+    }
+}
+
+/// Fields, or a sum's members: each actual's type standing for the
+/// expected's, covariant.
+pub fn fits_each(mut v: &'static Cv, mut s: &'static St, mut actuals: Tys, mut expecteds: Tys) -> &'static St {
+    loop {
+        if null_p(actuals) {
+            return s;
+        } else {
+            (s, actuals, expecteds) = (fits(v, s, car(actuals), car(expecteds)), cdr(actuals), cdr(expecteds));
+            continue;
         }
     }
 }
@@ -2045,6 +2176,11 @@ pub fn mentions_p(s: &'static St, t: &'static Ty, r: Str) -> bool {
         }
         Ty::TyFlat(e, x) => {
             (mentions_p(s, e, r) || mentions_p(s, x, r))
+        }
+        Ty::TyShape(p, ls, ts) => {
+            any_p(lambda1(move |x: &'static Ty| {
+                mentions_p(s, x, r)
+            }), ts)
         }
         Ty::TyTag(a, h, d, x) => {
             (mentions_p(s, a, r) || mentions_p(s, h, r) || mentions_p(s, x, r) || not(string_eq_p(words_of(masked(d, r)), words_of(d))))
@@ -3114,7 +3250,30 @@ pub fn walk_arms(mut c: &'static Wc, mut st: &'static Ws, mut whole: Trackeds, m
                     }
                 }), whole))), nil()))), st, cdr(cdr(arm)))
             } else {
-                walk_all(in_scope(c, fields_known(c, whole, sym_name(car(arm)), items(second(arm)), 0i64)), st, cdr(cdr(arm)))
+                walk_all(in_scope(c, {
+                    let tagcase_ = second(arm);
+                    match *tagcase_ {
+                        Sexp::Sym(x) => {
+                            // A sum's member, bound whole: a part, its type not known here.
+                            the::<Knowns>(cons(known(x, concat(map(lambda1(move |t: &'static Tracked| {
+                                let tagcase_ = t;
+                                match *tagcase_ {
+                                    Tracked::Part(p, s, ty) => {
+                                        the::<Trackeds>(cons(part(p, true, nil()), nil()))
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        nil()
+                                    }
+                                }
+                            }), whole))), nil()))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            fields_known(c, whole, sym_name(car(arm)), items(second(arm)), 0i64)
+                        }
+                    }
+                }), st, cdr(cdr(arm)))
             }, cdr(arms));
             continue;
         }
@@ -3573,6 +3732,179 @@ pub fn knot_free_call(v: &'static Cv, r: &'static Res) -> &'static Res {
     }
 }
 
+/// A type as written: for the emitter, which reads no effects, so a
+/// procedure's is written `pure`.
+pub fn ty_sexp(v: &'static Cv, s: &'static St, t: &'static Ty) -> &'static Sexp {
+    let tagcase_ = walk(s, t);
+    match *tagcase_ {
+        Ty::TyI64() => {
+            sym(str_lit("i64"))
+        }
+        Ty::TyInt() => {
+            sym(str_lit("int"))
+        }
+        Ty::TyNat() => {
+            sym(str_lit("nat"))
+        }
+        Ty::TyF64() => {
+            sym(str_lit("f64"))
+        }
+        Ty::TyBool() => {
+            sym(str_lit("bool"))
+        }
+        Ty::TyChar() => {
+            sym(str_lit("char"))
+        }
+        Ty::TyUnit() => {
+            sym(str_lit("unit"))
+        }
+        Ty::TyString() => {
+            sym(str_lit("string"))
+        }
+        Ty::TyVoid() => {
+            sym(str_lit("void"))
+        }
+        Ty::TyList(e, r) => {
+            lst(cons(sym(str_lit("listof")), cons(ty_sexp(v, s, e), cons(ty_sexp(v, s, r), nil()))), str_lit(""), 0i64, 0i64)
+        }
+        Ty::TyData(d, args) => {
+            if null_p(args) {
+                sym(d)
+            } else {
+                lst(cons(sym(d), map(lambda1(move |x: &'static Ty| {
+                    ty_sexp(v, s, x)
+                }), args)), str_lit(""), 0i64, 0i64)
+            }
+        }
+        Ty::TyFlat(e, r) => {
+            lst(cons(sym(str_lit("flatarrayof")), cons(ty_sexp(v, s, e), cons(ty_sexp(v, s, r), nil()))), str_lit(""), 0i64, 0i64)
+        }
+        Ty::TyShape(p, ls, ts) => {
+            lst(cons(sym(if p {
+                str_lit("productof")
+            } else {
+                str_lit("sumof")
+            }), fields_sexp(v, s, ls, ts)), str_lit(""), 0i64, 0i64)
+        }
+        Ty::TyTag(a, h, d, r) => {
+            lst(cons(sym(str_lit("prompt-tag")), cons(ty_sexp(v, s, a), cons(ty_sexp(v, s, h), cons(sym(str_lit("pure")), cons(ty_sexp(v, s, r), nil()))))), str_lit(""), 0i64, 0i64)
+        }
+        Ty::TyRef(e, r) => {
+            lst(cons(sym(str_lit("ref")), cons(ty_sexp(v, s, e), cons(ty_sexp(v, s, r), nil()))), str_lit(""), 0i64, 0i64)
+        }
+        Ty::TyRconst(n) => {
+            sym(n)
+        }
+        Ty::TyProc(es, ps, r) => {
+            lst(cons(sym(str_lit("subr")), cons(if escapes_p(es) {
+                lst(cons(sym(str_lit("goto")), cons(sym(str_lit("@escape")), nil())), str_lit(""), 0i64, 0i64)
+            } else {
+                sym(str_lit("pure"))
+            }, cons(lst(map(lambda1(move |p: &'static Ty| {
+                ty_sexp(v, s, p)
+            }), ps), str_lit(""), 0i64, 0i64), cons(ty_sexp(v, s, r), nil())))), str_lit(""), 0i64, 0i64)
+        }
+        Ty::TyVar(n) => {
+            refuse(v, string_append(str_lit("a definition with no type, of a type over "), string_append(n, str_lit(": write its type"))))
+        }
+        Ty::TyMeta(k) => {
+            refuse(v, str_lit("a definition with no type, whose type is not known whole: write it"))
+        }
+    }
+}
+
+pub fn fields_sexp(v: &'static Cv, s: &'static St, ls: Strings, ts: Tys) -> Sexps {
+    if (null_p(ls) || null_p(ts)) {
+        nil()
+    } else {
+        cons(lst(cons(sym(car(ls)), cons(ty_sexp(v, s, car(ts)), nil())), str_lit(""), 0i64, 0i64), fields_sexp(v, s, cdr(ls), cdr(ts)))
+    }
+}
+
+pub fn member_type(mut l: Str, mut ls: Strings, mut ts: Tys) -> &'static Ty {
+    loop {
+        if string_eq_p(car(ls), l) {
+            return car(ts);
+        } else {
+            (ls, ts) = (cdr(ls), cdr(ts));
+            continue;
+        }
+    }
+}
+
+/// A tagcase arm of a sum, as a datatype's: `(tag x body ...)`, binding
+/// the member, is `(tag (x) body ...)`.
+pub fn sum_arm(arm: &'static Sexp) -> &'static Sexp {
+    let tagcase_ = arm;
+    match *tagcase_ {
+        Sexp::Lst(xs, file, line, pos) => {
+            if (sym_is_p(car(xs), str_lit("else")) || null_p(cdr(xs))) {
+                arm
+            } else {
+                let tagcase_ = second(xs);
+                match *tagcase_ {
+                    Sexp::Sym(x) => {
+                        lst(cons(car(xs), cons(lst(cons(second(xs), nil()), str_lit(""), 0i64, 0i64), cdr(cdr(xs)))), file, line, pos)
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        arm
+                    }
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            arm
+        }
+    }
+}
+
+/// A sum's tags as variants: a member taken apart by its arm, `(tag (x y)
+/// ...)`, of the fields of the product it is; else of the member.
+pub fn sum_variants(v: &'static Cv, ls: Strings, ts: Tys, arms: Sexps) -> Variants {
+    if null_p(ls) {
+        nil()
+    } else {
+        let arm = concat(map(lambda1(move |a: &'static Sexp| {
+            if (not(null_p(items(a))) && string_eq_p(label_of(car(items(a))), car(ls))) {
+                the::<Sexps>(cons(a, nil()))
+            } else {
+                nil()
+            }
+        }), arms));
+        cons(variant(car(ls), if (not(null_p(arm)) && i64_gt(size(items(car(arm))), 1i64) && {
+            let tagcase_ = second(items(car(arm)));
+            match *tagcase_ {
+                Sexp::Lst(xs, f, l, p) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }) {
+            let tagcase_ = car(ts);
+            match *tagcase_ {
+                Ty::TyShape(p, ms, us) => {
+                    if p {
+                        us
+                    } else {
+                        refuse(v, string_append(str_lit("the arm for "), string_append(car(ls), str_lit(" takes apart a sum"))))
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    refuse(v, string_append(str_lit("the arm for "), string_append(car(ls), str_lit(" takes apart no product"))))
+                }
+            }
+        } else {
+            cons(car(ts), nil())
+        }), sum_variants(v, cdr(ls), cdr(ts), arms))
+    }
+}
+
 pub fn control_form_p(h: Str) -> bool {
     (string_eq_p(h, str_lit("if")) || string_eq_p(h, str_lit("cond")) || string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("tagcase")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("with")))
 }
@@ -3969,6 +4301,34 @@ pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
         check(v, s, second(xs), parse_type(v, cv_tvars(v), car(xs)))
     } else if string_eq_p(h, str_lit("prompt")) {
         prompt_form(v, s, xs, nil())
+    } else if string_eq_p(h, str_lit("product")) {
+        product_form(v, s, xs, nil())
+    } else if string_eq_p(h, str_lit("sum")) {
+        refuse(v, str_lit("a sum whose type is not known here: write it, (the (sumof ...) (sum ...))"))
+    } else if string_eq_p(h, str_lit("extract")) {
+        if not(i64_eq(size(xs), 2i64)) {
+            refuse(v, str_lit("(extract e label)"))
+        } else {
+            let tagcase_ = synth(v, s, car(xs));
+            match *tagcase_ {
+                Res::Res(t, es, s) => {
+                    let tagcase_ = walk(s, t);
+                    match *tagcase_ {
+                        Ty::TyShape(p, ls, ts) => {
+                            if (p && string_member_p(label_of(second(xs)), ls)) {
+                                res(member_type(label_of(second(xs)), ls, ts), es, note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("extract-index "), i64_to_string(index_of(label_of(second(xs)), ls, 0i64)))))
+                            } else {
+                                refuse(v, string_append(str_lit("no field "), string_append(label_of(second(xs)), string_append(str_lit(" in a "), show_ty(s, t)))))
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            refuse(v, string_append(str_lit("an extract from a "), string_append(show_ty(s, t), str_lit(", no product"))))
+                        }
+                    }
+                }
+            }
+        }
     } else if string_eq_p(h, str_lit("lambda")) {
         synth_lambda(v, s, items(car(xs)), cdr(xs))
     } else if string_eq_p(h, str_lit("list")) {
@@ -4003,6 +4363,10 @@ pub fn check_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
         body_form(v, s, h, xs, cons(expected, nil()))
     } else if string_eq_p(h, str_lit("prompt")) {
         prompt_form(v, s, xs, cons(expected, nil()))
+    } else if string_eq_p(h, str_lit("product")) {
+        product_form(v, s, xs, cons(expected, nil()))
+    } else if string_eq_p(h, str_lit("sum")) {
+        sum_form(v, s, xs, expected)
     } else if (string_eq_p(h, str_lit("lambda")) && proc_type_p(s, expected)) {
         check_lambda(v, s, items(car(xs)), cdr(xs), walk(s, expected))
     } else if (string_eq_p(h, str_lit("list")) && {
@@ -4037,7 +4401,7 @@ pub fn check_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
                 check_by_synth(v, s, e, expected)
             }
         }
-    } else if (string_eq_p(h, str_lit("the")) || string_eq_p(h, str_lit("and")) || string_eq_p(h, str_lit("or")) || string_eq_p(h, str_lit("lambda")) || string_eq_p(h, str_lit("list"))) {
+    } else if (string_eq_p(h, str_lit("the")) || string_eq_p(h, str_lit("and")) || string_eq_p(h, str_lit("or")) || string_eq_p(h, str_lit("lambda")) || string_eq_p(h, str_lit("list")) || string_eq_p(h, str_lit("extract"))) {
         check_by_synth(v, s, e, expected)
     } else {
         synth_call(v, s, h, xs, cons(expected, nil()))
@@ -4157,12 +4521,140 @@ pub fn body_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Ty
                     Ty::TyData(d, args) => {
                         with_effs(tag_arms(v, s, walk(s, t), cdr(xs), instantiate_variants(family_of(v, d), args, variants_of(v, d)), expected), es)
                     }
+                    Ty::TyShape(p, ls, ts) => {
+                        if p {
+                            refuse(v, string_append(str_lit("tagcase of a "), string_append(show_ty(s, t), str_lit(", no sum"))))
+                        } else {
+                            let arms = cdr(xs);
+                            with_effs(tag_arms(v, note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("tagcase-sum "), words_of(ls))), walk(s, t), map(&sum_arm, arms), sum_variants(v, ls, ts, arms), expected), es)
+                        }
+                    }
                     _ => {
                         let other = tagcase_;
                         refuse(v, string_append(str_lit("tagcase of a "), string_append(show_ty(s, t), str_lit(", no datatype"))))
                     }
                 }
             }
+        }
+    }
+}
+
+/// `(product (l e) ...)`: each field checked against the type expected
+/// of it, if a product of those labels is expected, else found.
+pub fn product_form(v: &'static Cv, s: &'static St, fields: Sexps, expected: Tys) -> &'static Res {
+    let fs = map(&items, fields);
+    let ls = map(lambda1(move |f: Sexps| {
+        label_of(car(f))
+    }), fs);
+    let want = if null_p(expected) {
+        nil()
+    } else {
+        let tagcase_ = walk(s, car(expected));
+        match *tagcase_ {
+            Ty::TyShape(p, ms, us) => {
+                if (p && strings_eq_p(ls, ms)) {
+                    us
+                } else {
+                    nil()
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                nil()
+            }
+        }
+    };
+    if any_p(lambda1(move |f: Sexps| {
+        (not(i64_eq(size(f), 2i64)) || string_eq_p(label_of(car(f)), str_lit("")))
+    }), fs) {
+        refuse(v, str_lit("a product's fields are each (label value)"))
+    } else {
+        let tagcase_ = product_values(v, s, map(&second, fs), want);
+        match *tagcase_ {
+            Res::Res(t, es, s) => {
+                let tagcase_ = t;
+                match *tagcase_ {
+                    Ty::TyShape(p, ms, us) => {
+                        let r = res(ty_shape(true, ls, us), es, s);
+                        if null_p(expected) {
+                            r
+                        } else {
+                            let tagcase_ = r;
+                            match *tagcase_ {
+                                Res::Res(t2, es2, s2) => {
+                                    res(t2, es2, fits(v, s2, t2, car(expected)))
+                                }
+                            }
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        refuse(v, str_lit("a product"))
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Values, each checked against its type in `want` if there is one;
+/// their types as a sum of no tags, a carrier.
+pub fn product_values(v: &'static Cv, s: &'static St, es: Sexps, want: Tys) -> &'static Res {
+    if null_p(es) {
+        res(ty_shape(true, nil(), nil()), nil(), s)
+    } else {
+        let tagcase_ = if null_p(want) {
+            synth(v, s, car(es))
+        } else {
+            check(v, s, car(es), car(want))
+        };
+        match *tagcase_ {
+            Res::Res(t, es0, s) => {
+                let tagcase_ = product_values(v, s, cdr(es), if null_p(want) {
+                    nil()
+                } else {
+                    cdr(want)
+                });
+                match *tagcase_ {
+                    Res::Res(rest, es1, s) => {
+                        let tagcase_ = rest;
+                        match *tagcase_ {
+                            Ty::TyShape(p, ls, ts) => {
+                                res(ty_shape(true, ls, cons(t, ts)), effs_union(es0, es1), s)
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                res(rest, es1, s)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// `(sum tag e)`, where a sum with that tag is expected: its type known
+/// whole, which the emitter is told, for Rust's sake.
+pub fn sum_form(v: &'static Cv, s: &'static St, xs: Sexps, expected: &'static Ty) -> &'static Res {
+    let tagcase_ = walk(s, expected);
+    match *tagcase_ {
+        Ty::TyShape(p, ls, ts) => {
+            let tag = label_of(car(xs));
+            if (p || not(string_member_p(tag, ls)) || not(i64_eq(size(xs), 2i64))) {
+                refuse(v, string_append(str_lit("a sum tagged "), string_append(tag, string_append(str_lit(", where a "), string_append(show_ty(s, expected), str_lit(" is expected"))))))
+            } else {
+                let tagcase_ = check(v, s, second(xs), member_type(tag, ls, ts));
+                match *tagcase_ {
+                    Res::Res(t, es, s) => {
+                        res(expected, es, note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("sum-type "), show_sexp(ty_sexp(v, s, zonk(s, expected))))))
+                    }
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            refuse(v, str_lit("a sum whose type is not known here: write it, (the (sumof ...) (sum ...))"))
         }
     }
 }
@@ -5393,80 +5885,6 @@ pub enum Elab {
 
 pub fn elab(f0: &'static Cv, f1: Typeds) -> &'static Elab {
     alloc(Elab::Elab(f0, f1))
-}
-
-/// A type as written: for the emitter, which reads no effects, so a
-/// procedure's is written `pure`.
-pub fn ty_sexp(v: &'static Cv, s: &'static St, t: &'static Ty) -> &'static Sexp {
-    let tagcase_ = walk(s, t);
-    match *tagcase_ {
-        Ty::TyI64() => {
-            sym(str_lit("i64"))
-        }
-        Ty::TyInt() => {
-            sym(str_lit("int"))
-        }
-        Ty::TyNat() => {
-            sym(str_lit("nat"))
-        }
-        Ty::TyF64() => {
-            sym(str_lit("f64"))
-        }
-        Ty::TyBool() => {
-            sym(str_lit("bool"))
-        }
-        Ty::TyChar() => {
-            sym(str_lit("char"))
-        }
-        Ty::TyUnit() => {
-            sym(str_lit("unit"))
-        }
-        Ty::TyString() => {
-            sym(str_lit("string"))
-        }
-        Ty::TyVoid() => {
-            sym(str_lit("void"))
-        }
-        Ty::TyList(e, r) => {
-            lst(cons(sym(str_lit("listof")), cons(ty_sexp(v, s, e), cons(ty_sexp(v, s, r), nil()))), str_lit(""), 0i64, 0i64)
-        }
-        Ty::TyData(d, args) => {
-            if null_p(args) {
-                sym(d)
-            } else {
-                lst(cons(sym(d), map(lambda1(move |x: &'static Ty| {
-                    ty_sexp(v, s, x)
-                }), args)), str_lit(""), 0i64, 0i64)
-            }
-        }
-        Ty::TyFlat(e, r) => {
-            lst(cons(sym(str_lit("flatarrayof")), cons(ty_sexp(v, s, e), cons(ty_sexp(v, s, r), nil()))), str_lit(""), 0i64, 0i64)
-        }
-        Ty::TyTag(a, h, d, r) => {
-            lst(cons(sym(str_lit("prompt-tag")), cons(ty_sexp(v, s, a), cons(ty_sexp(v, s, h), cons(sym(str_lit("pure")), cons(ty_sexp(v, s, r), nil()))))), str_lit(""), 0i64, 0i64)
-        }
-        Ty::TyRef(e, r) => {
-            lst(cons(sym(str_lit("ref")), cons(ty_sexp(v, s, e), cons(ty_sexp(v, s, r), nil()))), str_lit(""), 0i64, 0i64)
-        }
-        Ty::TyRconst(n) => {
-            sym(n)
-        }
-        Ty::TyProc(es, ps, r) => {
-            lst(cons(sym(str_lit("subr")), cons(if escapes_p(es) {
-                lst(cons(sym(str_lit("goto")), cons(sym(str_lit("@escape")), nil())), str_lit(""), 0i64, 0i64)
-            } else {
-                sym(str_lit("pure"))
-            }, cons(lst(map(lambda1(move |p: &'static Ty| {
-                ty_sexp(v, s, p)
-            }), ps), str_lit(""), 0i64, 0i64), cons(ty_sexp(v, s, r), nil())))), str_lit(""), 0i64, 0i64)
-        }
-        Ty::TyVar(n) => {
-            refuse(v, string_append(str_lit("a definition with no type, of a type over "), string_append(n, str_lit(": write its type"))))
-        }
-        Ty::TyMeta(k) => {
-            refuse(v, str_lit("a definition with no type, whose type is not known whole: write it"))
-        }
-    }
 }
 
 /// `(define x e)`: `e`'s type found, `x` not in scope in `e` (as FX-26

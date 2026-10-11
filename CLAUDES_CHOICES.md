@@ -284,3 +284,24 @@ Answers `PLAN.md` Q3 (`docs/research/escapes.md` §5).
   region must say `spin` (`no_knot`), checked on written types and on
   each call's instance, a generative type's arguments taken as kept
   everywhere (more cautious than FX-26).
+
+## C22. Products and sums: a generic Rust type per list of labels (2026-10-11)
+
+- **Chosen:** FX-26's structural `(productof (l T) ...)` is a tuple struct
+  `Product_l..<A0, ...>`, `(sumof (tag T) ...)` an enum `Sum_tag..<A0,
+  ...>` whose values are `&'static` references, as a datatype's are; one
+  of each for each list of labels the program writes, declared at the top
+  of its file (in `mod.rs` for a program of several). Two products of the
+  same labels and types are so one Rust type, as one FX-26 type.
+  `(extract e l)` is `e.i`, the index the checker found; a `(sum tag e)`
+  is checked against the sum expected, whose type, which Rust's enum
+  wants as arguments, the checker gives the emitter.
+- **Not chosen, for now:** a sum whose type nothing says (FX-26 finds a
+  sum of its one tag), and width subtyping, a sum of fewer tags standing
+  for one of more: each would be a conversion between two enums
+  (`kfx-stricter/sum-*`); recursive types through an abbreviation (Rust's
+  aliases cannot be: a generative type or a datatype can); numbered tags
+  and flat sums.
+- **Why:** labels in order are the type's identity in FX-26; a name made
+  of them is that identity in Rust, with no declaration the programmer
+  writes.

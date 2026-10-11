@@ -30,6 +30,7 @@
   (ty-rconst string)
   (ty-tag ty ty strings ty)
   (ty-proc strings (listof ty acyclic) ty)
+  (ty-shape bool strings (listof ty acyclic))
   (ty-var string)
   (ty-meta i64))
 
@@ -42,7 +43,9 @@
  `ty-void` is `error`'s result, below every type. A `ty-proc`'s strings
  are its latent effect, a set of atoms: `spin`, `@globals` (every global
  read), and `g:` and a name (that global read). `ty-var` is a `poly`'s
- type variable, `ty-meta` an inference variable."
+ type variable, `ty-meta` an inference variable. `ty-shape` is FX-26's structural
+ data, immutable and in no region: a product (`#t`) or a sum, its labels
+ or tags in order, and their types."
 
 (define-type tys (listof ty acyclic))
 
@@ -147,6 +150,18 @@
 
 (define after-prefix (subr kfx (string string) string)
   (lambda (x p) (list->string (drop-chars (string->list x) (string-length-i64 p)))))
+
+(define-rec
+  (strings=? (subr kfx (strings strings) bool)
+    (lambda (a b)
+      (cond ((null? a) (null? b))
+            ((null? b) #f)
+            (else (and (string=? (car a) (car b)) (strings=? (cdr a) (cdr b))))))))
+
+(define label-of (subr kfx (sexp) string)
+  (lambda (e)
+    "A product's label or a sum's tag, as written: a name or a number."
+    (tagcase e (sym (n) n) (num (k f p) (i64->string k)) (else other ""))))
 
 (define escapes? (subr kfx (strings) bool)
   (lambda (es)
@@ -277,6 +292,7 @@
         (ty-var (n) (if (string=? n name) m t))
         (ty-list (e r) (ty-list (replace-var name m e) (replace-var name m r)))
         (ty-flat (e r) (ty-flat (replace-var name m e) (replace-var name m r)))
+        (ty-shape (p ls ts) (ty-shape p ls (map (lambda ((x ty)) (replace-var name m x)) ts)))
         (ty-tag (a h d r) (ty-tag (replace-var name m a) (replace-var name m h) (rename-region d name m) (replace-var name m r)))
         (ty-data (d args) (ty-data d (map (lambda ((x ty)) (replace-var name m x)) args)))
         (ty-ref (e r) (ty-ref (replace-var name m e) (replace-var name m r)))
@@ -370,6 +386,7 @@
           (let ((found (reads-kept (map res es) kept every)))
             (if (null? found) (first-knot v res (cons r ps) nil #f seen) found)))
         (ty-tag (a h d r) (first-knot v res (list a h) nil #f seen))
+        (ty-shape (p ls ts) (first-knot v res ts kept every seen))
         (ty-data (d args)
           (if (string-member? d seen)
               nil
@@ -447,6 +464,16 @@
                 ((sym-is? (car xs) "prompt-tag")
                  (ty-tag (parse-type v tvars (second xs)) (parse-type v tvars (third xs))
                          (parse-effect v tvars (fourth xs)) (parse-mutable-region v tvars (car (cdr (cdr (cdr (cdr xs))))))))
+                ((or (sym-is? (car xs) "productof") (sym-is? (car xs) "sumof"))
+                 (let ((fields (map items (cdr xs))))
+                   (if (or (any? (lambda ((f sexps)) (not (i64= (size f) 2))) fields)
+                           (any? (lambda ((f sexps)) (string=? (label-of (car f)) "")) fields)
+                           (and (sym-is? (car xs) "sumof")
+                                (any? (lambda ((f sexps)) (tagcase (car f) (sym (n) #f) (else other #t))) fields)))
+                       (refuse v (string-append "a type KFX does not have: " (show-sexp t)))
+                       (ty-shape (sym-is? (car xs) "productof")
+                                 (map (lambda ((f sexps)) (label-of (car f))) fields)
+                                 (map (lambda ((f sexps)) (parse-type v tvars (second f))) fields)))))
                 ((sym-is? (car xs) "select")
                  (let ((name (string-append (name-of v (second xs)) (string-append " " (name-of v (third xs))))))
                    (if (null? (find-alias name (cv-aliases v)))
@@ -544,6 +571,7 @@
         (ty-void () "void")
         (ty-list (e r) (string-append "(listof " (string-append (show-ty s e) (string-append " " (string-append (show-ty s r) ")")))))
         (ty-data (d args) (if (null? args) d (string-append "(" (string-append d (string-append " " (string-append (show-tys s args) ")"))))))
+        (ty-shape (p ls ts) (string-append (if p "(productof" "(sumof") (string-append (show-fields s ls ts) ")")))
         (ty-flat (e r) (string-append "(flatarrayof " (string-append (show-ty s e) (string-append " " (string-append (show-ty s r) ")")))))
         (ty-ref (e r) (string-append "(ref " (string-append (show-ty s e) (string-append " " (string-append (show-ty s r) ")")))))
         (ty-rconst (n) n)
@@ -555,6 +583,12 @@
             (string-append (show-tys s ps) (string-append ") " (string-append (show-ty s r) ")")))))))
         (ty-var (n) n)
         (ty-meta (k) (string-append "?" (i64->string k))))))
+  (show-fields (subr kfx (st strings tys) string)
+    (lambda (s ls ts)
+      (if (or (null? ls) (null? ts))
+          ""
+          (string-append " (" (string-append (car ls) (string-append " " (string-append (show-ty s (car ts))
+            (string-append ")" (show-fields s (cdr ls) (cdr ts))))))))))
   (show-tys (subr kfx (st tys) string)
     (lambda (s ts)
       (cond ((null? ts) "")
@@ -584,6 +618,7 @@
         (ty-meta (k) #t)
         (ty-list (e r) (or (has-meta? s e) (has-meta? s r)))
         (ty-flat (e r) (or (has-meta? s e) (has-meta? s r)))
+        (ty-shape (p ls ts) (any? (lambda ((x ty)) (has-meta? s x)) ts))
         (ty-tag (a h d r) (or (has-meta? s a) (has-meta? s h) (has-meta? s r)))
         (ty-data (d args) (any? (lambda ((x ty)) (has-meta? s x)) args))
         (ty-ref (e r) (or (has-meta? s e) (has-meta? s r)))
@@ -613,6 +648,7 @@
         (ty-meta (j) (i64= j k))
         (ty-list (e r) (or (occurs? s k e) (occurs? s k r)))
         (ty-flat (e r) (or (occurs? s k e) (occurs? s k r)))
+        (ty-shape (p ls ts) (any? (lambda ((x ty)) (occurs? s k x)) ts))
         (ty-tag (a h d r) (or (occurs? s k a) (occurs? s k h) (occurs? s k r)))
         (ty-data (d args) (any? (lambda ((x ty)) (occurs? s k x)) args))
         (ty-ref (e r) (or (occurs? s k e) (occurs? s k r)))
@@ -677,6 +713,7 @@
       (tagcase (walk s t)
         (ty-list (e r) (ty-list (zonk s e) (zonk s r)))
         (ty-flat (e r) (ty-flat (zonk s e) (zonk s r)))
+        (ty-shape (p ls ts) (ty-shape p ls (map (lambda ((x ty)) (zonk s x)) ts)))
         (ty-tag (a h d r) (ty-tag (zonk s a) (zonk s h) d (zonk s r)))
         (ty-data (d args) (ty-data d (map (lambda ((x ty)) (zonk s x)) args)))
         (ty-ref (e r) (ty-ref (zonk s e) (zonk s r)))
@@ -742,6 +779,13 @@
       (tagcase a
         (ty-list (x xr) (tagcase e (ty-list (y yr) (fits v (fits v s x y) xr yr)) (else other (mismatch v s a e))))
         (ty-flat (x xr) (tagcase e (ty-flat (y yr) (fits v (fits v s x y) xr yr)) (else other (mismatch v s a e))))
+        (ty-shape (p ls ts)
+          (tagcase e
+            (ty-shape (q ms us)
+              (if (and (if p q (not q)) (strings=? ls ms) (i64= (size ts) (size us)))
+                  (fits-each v s ts us)
+                  (mismatch v s a e)))
+            (else other (mismatch v s a e))))
         (ty-ref (x xr) (tagcase e (ty-ref (y yr) (fits v (fits v s x y) xr yr)) (else other (mismatch v s a e))))
         (ty-rconst (x) (tagcase e (ty-rconst (y) (if (string=? x y) s (mismatch v s a e))) (else other (mismatch v s a e))))
         (ty-tag (xa xh xd xr)
@@ -764,6 +808,13 @@
                     (else (fits v (fits-all v (car (fit-effs s aes ees)) eps aps) ar er))))
             (else other (mismatch v s a e))))
         (else other (if (same-base? a e) s (mismatch v s a e))))))
+  (fits-each (subr kfx (cv st tys tys) st)
+    (lambda (v s actuals expecteds)
+      "Fields, or a sum's members: each actual's type standing for the
+       expected's, covariant."
+      (if (null? actuals)
+          s
+          (fits-each v (fits v s (car actuals) (car expecteds)) (cdr actuals) (cdr expecteds)))))
   (fits-all (subr kfx (cv st tys tys) st)
     (lambda (v s actuals expecteds)
       "Parameters: each expected parameter's type stands for the actual's."
@@ -924,6 +975,7 @@
         (ty-var (n) (string=? n r))
         (ty-list (e x) (or (mentions? s e r) (mentions? s x r)))
         (ty-flat (e x) (or (mentions? s e r) (mentions? s x r)))
+        (ty-shape (p ls ts) (any? (lambda ((x ty)) (mentions? s x r)) ts))
         (ty-tag (a h d x) (or (mentions? s a r) (mentions? s h r) (mentions? s x r)
                               (not (string=? (words-of (masked d r)) (words-of d)))))
         (ty-ref (e x) (or (mentions? s e r) (mentions? s x r)))
@@ -1385,7 +1437,14 @@
                                                      (concat (map (lambda ((t tracked)) (tagcase t (part (p s ty) (the trackeds (list t))) (else other nil)))
                                                                   whole))))))
                             st (cdr (cdr arm)))
-                  (walk-all (in-scope c (fields-known c whole (sym-name (car arm)) (items (second arm)) 0))
+                  (walk-all (in-scope c (tagcase (second arm)
+                                          (sym (x)
+                                            "A sum's member, bound whole: a part, its type not known here."
+                                            (the knowns
+                                              (list (known x (concat (map (lambda ((t tracked))
+                                                                            (tagcase t (part (p s ty) (the trackeds (list (part p #t nil)))) (else other nil)))
+                                                                          whole))))))
+                                          (else other (fields-known c whole (sym-name (car arm)) (items (second arm)) 0))))
                             st (cdr (cdr arm))))
               whole (cdr arms))))))
 
@@ -1606,6 +1665,77 @@
       (res (t es s)
         (begin (no-knot v (lambda ((x string)) (resolve-atom s x)) (zonk s t)) r)))))
 
+(define-rec
+  (ty-sexp (subr kfx (cv st ty) sexp)
+    (lambda (v s t)
+      "A type as written: for the emitter, which reads no effects, so a
+       procedure's is written `pure`."
+      (tagcase (walk s t)
+        (ty-i64 () (sym "i64"))
+        (ty-int () (sym "int"))
+        (ty-nat () (sym "nat"))
+        (ty-f64 () (sym "f64"))
+        (ty-bool () (sym "bool"))
+        (ty-char () (sym "char"))
+        (ty-unit () (sym "unit"))
+        (ty-string () (sym "string"))
+        (ty-void () (sym "void"))
+        (ty-list (e r) (lst (list (sym "listof") (ty-sexp v s e) (ty-sexp v s r)) "" 0 0))
+        (ty-data (d args)
+          (if (null? args) (sym d) (lst (cons (sym d) (map (lambda ((x ty)) (ty-sexp v s x)) args)) "" 0 0)))
+        (ty-flat (e r) (lst (list (sym "flatarrayof") (ty-sexp v s e) (ty-sexp v s r)) "" 0 0))
+        (ty-shape (p ls ts)
+          (lst (cons (sym (if p "productof" "sumof")) (fields-sexp v s ls ts)) "" 0 0))
+        (ty-tag (a h d r) (lst (list (sym "prompt-tag") (ty-sexp v s a) (ty-sexp v s h) (sym "pure") (ty-sexp v s r)) "" 0 0))
+        (ty-ref (e r) (lst (list (sym "ref") (ty-sexp v s e) (ty-sexp v s r)) "" 0 0))
+        (ty-rconst (n) (sym n))
+        (ty-proc (es ps r)
+          (lst (list (sym "subr") (if (escapes? es) (lst (list (sym "goto") (sym "@escape")) "" 0 0) (sym "pure"))
+                     (lst (map (lambda ((p ty)) (ty-sexp v s p)) ps) "" 0 0) (ty-sexp v s r)) "" 0 0))
+        (ty-var (n) (refuse v (string-append "a definition with no type, of a type over " (string-append n ": write its type"))))
+        (ty-meta (k) (refuse v "a definition with no type, whose type is not known whole: write it")))))
+  (fields-sexp (subr kfx (cv st strings tys) sexps)
+    (lambda (v s ls ts)
+      (if (or (null? ls) (null? ts))
+          nil
+          (cons (lst (list (sym (car ls)) (ty-sexp v s (car ts))) "" 0 0) (fields-sexp v s (cdr ls) (cdr ts)))))))
+
+(define-rec
+  (member-type (subr kfx (string strings tys) ty)
+    (lambda (l ls ts)
+      (if (string=? (car ls) l) (car ts) (member-type l (cdr ls) (cdr ts))))))
+
+(define sum-arm (subr kfx (sexp) sexp)
+  (lambda (arm)
+    "A tagcase arm of a sum, as a datatype's: `(tag x body ...)`, binding
+     the member, is `(tag (x) body ...)`."
+    (tagcase arm
+      (lst (xs file line pos)
+        (if (or (sym-is? (car xs) "else") (null? (cdr xs)))
+            arm
+            (tagcase (second xs)
+              (sym (x) (lst (cons (car xs) (cons (lst (list (second xs)) "" 0 0) (cdr (cdr xs)))) file line pos))
+              (else other arm))))
+      (else other arm))))
+
+(define sum-variants (subr kfx (cv strings tys sexps) variants)
+  (lambda (v ls ts arms)
+    "A sum's tags as variants: a member taken apart by its arm, `(tag (x y)
+     ...)`, of the fields of the product it is; else of the member."
+    (if (null? ls)
+        nil
+        (let ((arm (concat (map (lambda ((a sexp))
+                                  (if (and (not (null? (items a))) (string=? (label-of (car (items a))) (car ls))) (the sexps (list a)) nil))
+                                arms))))
+          (cons (variant (car ls)
+                         (if (and (not (null? arm)) (i64> (size (items (car arm))) 1)
+                                  (tagcase (second (items (car arm))) (lst (xs f l p) #t) (else other #f)))
+                             (tagcase (car ts)
+                               (ty-shape (p ms us) (if p us (refuse v (string-append "the arm for " (string-append (car ls) " takes apart a sum")))))
+                               (else other (refuse v (string-append "the arm for " (string-append (car ls) " takes apart no product")))))
+                             (list (car ts))))
+                (sum-variants v (cdr ls) (cdr ts) arms))))))
+
 (define control-form? (subr kfx (string) bool)
   (lambda (h)
     (or (string=? h "if") (string=? h "cond") (string=? h "case") (string=? h "tagcase")
@@ -1790,6 +1920,21 @@
       (cond ((string=? h "the")
              (check v s (second xs) (parse-type v (cv-tvars v) (car xs))))
             ((string=? h "prompt") (prompt-form v s xs nil))
+            ((string=? h "product") (product-form v s xs nil))
+            ((string=? h "sum") (refuse v "a sum whose type is not known here: write it, (the (sumof ...) (sum ...))"))
+            ((string=? h "extract")
+             (if (not (i64= (size xs) 2))
+                 (refuse v "(extract e label)")
+                 (tagcase (synth v s (car xs))
+                   (res (t es s)
+                     (tagcase (walk s t)
+                       (ty-shape (p ls ts)
+                         (if (and p (string-member? (label-of (second xs)) ls))
+                             (res (member-type (label-of (second xs)) ls ts) es
+                                  (note-fact s (cv-file v) (cv-pos v)
+                                             (string-append "extract-index " (i64->string (index-of (label-of (second xs)) ls 0)))))
+                             (refuse v (string-append "no field " (string-append (label-of (second xs)) (string-append " in a " (show-ty s t)))))))
+                       (else other (refuse v (string-append "an extract from a " (string-append (show-ty s t) ", no product")))))))))
             ((string=? h "lambda") (synth-lambda v s (items (car xs)) (cdr xs)))
             ((string=? h "list")
              (if (null? xs)
@@ -1806,6 +1951,8 @@
     (lambda (v s e h xs expected)
       (cond ((control-form? h) (body-form v s h xs (list expected)))
             ((string=? h "prompt") (prompt-form v s xs (list expected)))
+            ((string=? h "product") (product-form v s xs (list expected)))
+            ((string=? h "sum") (sum-form v s xs expected))
             ((and (string=? h "lambda") (proc-type? s expected))
              (check-lambda v s (items (car xs)) (cdr xs) (walk s expected)))
             ((and (string=? h "list") (tagcase expected (ty-list (el r) #t) (else other #f)))
@@ -1816,7 +1963,8 @@
                      (tagcase (region-of v s r)
                        (res (rr rn s) (res expected (effs-union (list (string-append "alloc:" (region-string s rr))) es) s))))))
                (else other (check-by-synth v s e expected))))
-            ((or (string=? h "the") (string=? h "and") (string=? h "or") (string=? h "lambda") (string=? h "list"))
+            ((or (string=? h "the") (string=? h "and") (string=? h "or") (string=? h "lambda") (string=? h "list")
+                 (string=? h "extract"))
              (check-by-synth v s e expected))
             (else (synth-call v s h xs (list expected))))))
 
@@ -1884,7 +2032,63 @@
                                           (instantiate-variants (family-of v d) args (variants-of v d))
                                           expected)
                                 es))
+                   (ty-shape (p ls ts)
+                     (if p
+                         (refuse v (string-append "tagcase of a " (string-append (show-ty s t) ", no sum")))
+                         (let ((arms (cdr xs)))
+                           (with-effs (tag-arms v (note-fact s (cv-file v) (cv-pos v) (string-append "tagcase-sum " (words-of ls)))
+                                                (walk s t) (map sum-arm arms) (sum-variants v ls ts arms) expected)
+                                      es))))
                    (else other (refuse v (string-append "tagcase of a " (string-append (show-ty s t) ", no datatype")))))))))))
+
+  (product-form (subr kfx (cv st sexps tys) res)
+    (lambda (v s fields expected)
+      "`(product (l e) ...)`: each field checked against the type expected
+       of it, if a product of those labels is expected, else found."
+      (let* ((fs (map items fields))
+             (ls (map (lambda ((f sexps)) (label-of (car f))) fs))
+             (want (if (null? expected) nil
+                       (tagcase (walk s (car expected))
+                         (ty-shape (p ms us) (if (and p (strings=? ls ms)) us nil))
+                         (else other nil)))))
+        (if (any? (lambda ((f sexps)) (or (not (i64= (size f) 2)) (string=? (label-of (car f)) ""))) fs)
+            (refuse v "a product's fields are each (label value)")
+            (tagcase (product-values v s (map second fs) want)
+              (res (t es s)
+                (tagcase t
+                  (ty-shape (p ms us)
+                    (let ((r (res (ty-shape #t ls us) es s)))
+                      (if (null? expected) r (tagcase r (res (t2 es2 s2) (res t2 es2 (fits v s2 t2 (car expected))))))))
+                  (else other (refuse v "a product")))))))))
+
+  (product-values (subr kfx (cv st sexps tys) res)
+    (lambda (v s es want)
+      "Values, each checked against its type in `want` if there is one;
+       their types as a sum of no tags, a carrier."
+      (if (null? es)
+          (res (ty-shape #t nil nil) nil s)
+          (tagcase (if (null? want) (synth v s (car es)) (check v s (car es) (car want)))
+            (res (t es0 s)
+              (tagcase (product-values v s (cdr es) (if (null? want) nil (cdr want)))
+                (res (rest es1 s)
+                  (tagcase rest
+                    (ty-shape (p ls ts) (res (ty-shape #t ls (cons t ts)) (effs-union es0 es1) s))
+                    (else other (res rest es1 s))))))))))
+
+  (sum-form (subr kfx (cv st sexps ty) res)
+    (lambda (v s xs expected)
+      "`(sum tag e)`, where a sum with that tag is expected: its type known
+       whole, which the emitter is told, for Rust's sake."
+      (tagcase (walk s expected)
+        (ty-shape (p ls ts)
+          (let ((tag (label-of (car xs))))
+            (if (or p (not (string-member? tag ls)) (not (i64= (size xs) 2)))
+                (refuse v (string-append "a sum tagged " (string-append tag (string-append ", where a " (string-append (show-ty s expected) " is expected")))))
+                (tagcase (check v s (second xs) (member-type tag ls ts))
+                  (res (t es s)
+                    (res expected es (note-fact s (cv-file v) (cv-pos v)
+                                                (string-append "sum-type " (show-sexp (ty-sexp v s (zonk s expected)))))))))))
+        (else other (refuse v "a sum whose type is not known here: write it, (the (sumof ...) (sum ...))")))))
 
   (arms (subr kfx (cv st sexps tys) res)
     (lambda (v s branches expected)
@@ -2626,34 +2830,6 @@
 (define-datatype typed (typed string sexp))
 (define-type typeds (listof typed acyclic))
 (define-datatype elab (elab cv typeds))
-
-(define-rec
-  (ty-sexp (subr kfx (cv st ty) sexp)
-    (lambda (v s t)
-      "A type as written: for the emitter, which reads no effects, so a
-       procedure's is written `pure`."
-      (tagcase (walk s t)
-        (ty-i64 () (sym "i64"))
-        (ty-int () (sym "int"))
-        (ty-nat () (sym "nat"))
-        (ty-f64 () (sym "f64"))
-        (ty-bool () (sym "bool"))
-        (ty-char () (sym "char"))
-        (ty-unit () (sym "unit"))
-        (ty-string () (sym "string"))
-        (ty-void () (sym "void"))
-        (ty-list (e r) (lst (list (sym "listof") (ty-sexp v s e) (ty-sexp v s r)) "" 0 0))
-        (ty-data (d args)
-          (if (null? args) (sym d) (lst (cons (sym d) (map (lambda ((x ty)) (ty-sexp v s x)) args)) "" 0 0)))
-        (ty-flat (e r) (lst (list (sym "flatarrayof") (ty-sexp v s e) (ty-sexp v s r)) "" 0 0))
-        (ty-tag (a h d r) (lst (list (sym "prompt-tag") (ty-sexp v s a) (ty-sexp v s h) (sym "pure") (ty-sexp v s r)) "" 0 0))
-        (ty-ref (e r) (lst (list (sym "ref") (ty-sexp v s e) (ty-sexp v s r)) "" 0 0))
-        (ty-rconst (n) (sym n))
-        (ty-proc (es ps r)
-          (lst (list (sym "subr") (if (escapes? es) (lst (list (sym "goto") (sym "@escape")) "" 0 0) (sym "pure"))
-                     (lst (map (lambda ((p ty)) (ty-sexp v s p)) ps) "" 0 0) (ty-sexp v s r)) "" 0 0))
-        (ty-var (n) (refuse v (string-append "a definition with no type, of a type over " (string-append n ": write its type"))))
-        (ty-meta (k) (refuse v "a definition with no type, whose type is not known whole: write it"))))))
 
 (define check-untyped (subr kfx (cv sexp) elab)
   (lambda (v form)
