@@ -136,14 +136,6 @@ Escapes are done (`DONE.md`, C18). Left:
     than as a call's argument or `the`'s (`list`, branches, a product): a
     Rust error, the closure not lifted to return `Ok`;
 
-  - type-level names (types, datatypes and tags, module and abstract
-    types, type variables, labels, module names) may still camel-case or
-    mangle alike (`point` and `point-`), or carry a `_`: a Rust error, not
-    a wrong answer (the seventh probe); C27's rule for values could be
-    theirs too;
-  - names that differ only in case, or in `-` and `_`, may collide in Rust
-    (two types `has` and `Has`; labels `a-b` and `a_b`): a Rust error, not
-    a wrong answer;
 - **`tagcase_`**, the name a `tagcase` binds, could be a KFX name's
   mangling (`tagcase-`).
 - **`(define x e)` with no type** is refused; FX-26 allows it.

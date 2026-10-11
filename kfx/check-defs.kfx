@@ -85,7 +85,7 @@
   (lambda (v table file wher)
     (map (lambda ((p sexp))
            (let ((xs (items p)))
-             (bind (name-of v (car xs)) (parse-scheme v (second xs)) wher)))
+             (bind (name-of v (car xs)) (parse-scheme-of v (second xs) #f) wher)))
          (read-all (string-chars table) file 1))))
 
 (define prim-binds (subr kfx (cv) binds)
@@ -470,6 +470,16 @@
                    (refuse v "two types or modules named alike in Rust (camel-cased, as `point` and `point-`)")
                    #u)))
            (type-scopes forms))
+      (map (lambda ((f sexp))
+             (if (and (or (head-is? f "define-type") (head-is? f "define-datatype"))
+                      (tagcase (second (items f)) (lst (ys fl ln ps) #t) (else other #f)))
+                 (tagcase f
+                   (lst (xs file line pos)
+                     (let ((v (near v file line pos)))
+                       (type-binders-apart v (family-params v (second xs)) (concat (type-scopes forms)))))
+                   (else other #u))
+                 #u))
+           forms)
       #u)))
 
 "Elaboration. A definition with no type, `(define x e)`, has the type the

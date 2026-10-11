@@ -1,0 +1,7 @@
+"A type variable named as a datatype: FX-26's hides the datatype, as
+ Rust's type parameter would; but the Rust names the datatype where the
+ FX-26 does not, so KFX names them apart."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-datatype t (mk i64))
+(define f (poly ((t type)) (subr pure (t i64) i64)) (lambda (x n) n))
+(f 1 2)

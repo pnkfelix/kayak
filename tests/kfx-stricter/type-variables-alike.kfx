@@ -1,0 +1,4 @@
+"Two type variables one Rust name, camel-cased: `a` and `a-` are `A`."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f (poly ((a type) (a- type)) (subr pure (a a-) i64)) (lambda (x y) 1))
+(f 1 2)

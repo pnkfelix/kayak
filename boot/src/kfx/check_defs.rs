@@ -23,7 +23,7 @@ pub fn prelude() -> Str {
 pub fn table_binds(v: &'static Cv, table: Str, file: Str, wher: Str) -> Binds {
     map(lambda1(move |p: &'static Sexp| {
         let xs = items(p);
-        bind(name_of(v, car(xs)), parse_scheme(v, second(xs)), wher)
+        bind(name_of(v, car(xs)), parse_scheme_of(v, second(xs), false), wher)
     }), read_all(string_chars(table), file, 1i64))
 }
 
@@ -723,6 +723,34 @@ pub fn type_names_free(v: &'static Cv, forms: Sexps) -> () {
             ()
         }
     }), type_scopes(forms));
+    map(lambda1(move |f: &'static Sexp| {
+        if ((head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-datatype"))) && {
+            let tagcase_ = second(items(f));
+            match *tagcase_ {
+                Sexp::Lst(ys, fl, ln, ps) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }) {
+            let tagcase_ = f;
+            match *tagcase_ {
+                Sexp::Lst(xs, file, line, pos) => {
+                    let v = near(v, file, line, pos);
+                    type_binders_apart(v, family_params(v, second(xs)), concat(type_scopes(forms)))
+                }
+                _ => {
+                    let other = tagcase_;
+                    ()
+                }
+            }
+        } else {
+            ()
+        }
+    }), forms);
     ()
 }
 

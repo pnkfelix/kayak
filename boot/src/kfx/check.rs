@@ -1279,41 +1279,106 @@ pub fn family_params(v: &'static Cv, head: &'static Sexp) -> Strings {
     }
 }
 
+/// A type's name as its own Rust scope writes it: `m t` and `m..t` are `t`.
+pub fn bare_type_name(mut cs: Chars, mut acc: Chars) -> Str {
+    loop {
+        if null_p(cs) {
+            return rev_to_string(acc);
+        } else if (char_eq_p(car(cs), ' ') || char_eq_p(car(cs), '.')) {
+            (cs, acc) = (cdr(cs), nil());
+            continue;
+        } else {
+            (cs, acc) = (cdr(cs), cons(car(cs), acc));
+            continue;
+        }
+    }
+}
+
+/// Type variables, a poly's or a family's, each a Rust type parameter of
+/// its name camel-cased: each a KFX name (C27), none named as a type the
+/// Rust names, as another of them, or as a type `types` has, which it
+/// would hide in Rust and not in FX-26. A region's, with `'`, is none.
+pub fn type_binders_apart(v: &'static Cv, tvars: Strings, types: Strings) -> () {
+    let (reserved, theirs, tvars) = (the::<Strings>(kayak_rt::cons(str_lit("Str"), kayak_rt::cons(str_lit("List"), kayak_rt::cons(str_lit("Cons"), kayak_rt::cons(str_lit("Int"), kayak_rt::cons(str_lit("Tag"), kayak_rt::cons(str_lit("Unwind"), kayak_rt::cons(str_lit("Ref"), kayak_rt::cons(str_lit("FlatArray"), kayak_rt::cons(str_lit("Knot"), kayak_rt::cons(str_lit("Show"), kayak_rt::cons(str_lit("OnceCell"), kayak_rt::cons(str_lit("Fn"), kayak_rt::cons(str_lit("Result"), kayak_rt::cons(str_lit("Ok"), kayak_rt::cons(str_lit("Err"), kayak_rt::cons(str_lit("String"), kayak_rt::cons(str_lit("Copy"), kayak_rt::cons(str_lit("Clone"), kayak_rt::cons(str_lit("Self"), kayak_rt::cons(str_lit("Module"), kayak_rt::cons(str_lit("Void"), kayak_rt::nil())))))))))))))))))))))), map(lambda1(move |t: Str| {
+        camel(bare_type_name(string_chars(t), nil()))
+    }), types), concat(map(lambda1(move |n: Str| {
+        if has_prefix_p(n, str_lit("'")) {
+            nil()
+        } else {
+            the::<Strings>(kayak_rt::cons(n, kayak_rt::nil()))
+        }
+    }), tvars)));
+    map(lambda1(move |n: Str| {
+        if not(kfx_name_p(n)) {
+            match refuse(v, string_append(str_lit("a type variable's name KFX's names are not (C27): "), n)) {}
+        } else if string_member_p(camel(n), reserved) {
+            match refuse(v, string_append(str_lit("a type variable named as a type the Rust names: "), n)) {}
+        } else if string_member_p(camel(n), theirs) {
+            match refuse(v, string_append(str_lit("a type variable named as a type, which it would hide in Rust: "), n)) {}
+        } else {
+            ()
+        }
+    }), tvars);
+    if repeated_p(map(&camel, tvars)) {
+        match refuse(v, str_lit("two type variables named alike in Rust (camel-cased, as `a` and `a-`)")) {}
+    } else {
+        ()
+    }
+}
+
 /// A definition's type's variables: a poly at its top, over types, and
-/// regions, whose names begin with `'`.
-pub fn poly_binders(v: &'static Cv, t: &'static Sexp) -> Strings {
+/// regions, whose names begin with `'`; the program's `own`, held apart
+/// from its types (a primitive's not).
+pub fn poly_binders(v: &'static Cv, t: &'static Sexp, own: bool) -> Strings {
     if head_is_p(t, str_lit("poly")) {
-        map(lambda1(move |b: &'static Sexp| {
+        let tvars = map(lambda1(move |b: &'static Sexp| {
             let b = items(b);
             if not(i64_eq(size(b), 2i64)) {
                 match refuse(v, string_append(str_lit("a binder KFX-0 does not have (distinct regions are to come): "), show_sexp(lst(b, str_lit(""), 0i64, 0i64)))) {}
             } else if sym_is_p(second(b), str_lit("type")) {
-                // A type variable, a Rust type parameter of its name, camel-cased:
-                // not one of the types the generated Rust names.
-                let n = name_of(v, car(b));
-                if (rust_keyword_clash_p(n) || string_member_p(camel(n), kayak_rt::cons(str_lit("Str"), kayak_rt::cons(str_lit("List"), kayak_rt::cons(str_lit("Cons"), kayak_rt::cons(str_lit("Int"), kayak_rt::cons(str_lit("Tag"), kayak_rt::cons(str_lit("Unwind"), kayak_rt::cons(str_lit("Ref"), kayak_rt::cons(str_lit("FlatArray"), kayak_rt::cons(str_lit("Knot"), kayak_rt::cons(str_lit("Show"), kayak_rt::cons(str_lit("OnceCell"), kayak_rt::cons(str_lit("Fn"), kayak_rt::cons(str_lit("Result"), kayak_rt::cons(str_lit("Ok"), kayak_rt::cons(str_lit("Err"), kayak_rt::cons(str_lit("String"), kayak_rt::cons(str_lit("Copy"), kayak_rt::cons(str_lit("Clone"), kayak_rt::cons(str_lit("Self"), kayak_rt::cons(str_lit("Module"), kayak_rt::cons(str_lit("Void"), kayak_rt::nil())))))))))))))))))))))) || false) {
-                    match refuse(v, string_append(str_lit("a type variable named as a type the Rust names: "), n)) {}
-                } else {
-                    n
-                }
+                name_of(v, car(b))
             } else if sym_is_p(second(b), str_lit("region")) {
                 string_append(str_lit("'"), name_of(v, car(b)))
             } else {
                 match refuse(v, string_append(str_lit("KFX's poly is over types and regions: "), show_sexp(lst(b, str_lit(""), 0i64, 0i64)))) {}
             }
-        }), items(second(items(t))))
+        }), items(second(items(t))));
+        if own {
+            type_binders_apart(v, tvars, onto(map(lambda1(move |d: &'static Dt| {
+                let tagcase_ = d;
+                match *tagcase_ {
+                    Dt::Dt(n, ps, vs) => {
+                        n
+                    }
+                }
+            }), cv_dts(v)), map(lambda1(move |a: &'static Alias| {
+                let tagcase_ = a;
+                match *tagcase_ {
+                    Alias::Alias(n, ps, body) => {
+                        n
+                    }
+                }
+            }), cv_aliases(v))))
+        } else {
+            ()
+        };
+        tvars
     } else {
         nil()
     }
 }
 
-pub fn parse_scheme(v: &'static Cv, t: &'static Sexp) -> &'static Scheme {
-    let tvars = poly_binders(v, t);
+pub fn parse_scheme_of(v: &'static Cv, t: &'static Sexp, own: bool) -> &'static Scheme {
+    let tvars = poly_binders(v, t, own);
     scheme(tvars, parse_type(v, tvars, if head_is_p(t, str_lit("poly")) {
         third(items(t))
     } else {
         t
     }))
+}
+
+pub fn parse_scheme(v: &'static Cv, t: &'static Sexp) -> &'static Scheme {
+    parse_scheme_of(v, t, true)
 }
 
 pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {

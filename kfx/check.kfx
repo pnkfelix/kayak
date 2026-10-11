@@ -629,36 +629,67 @@
              (cdr xs)))
       (else other nil))))
 
-(define poly-binders (subr kfx (cv sexp) strings)
-  (lambda (v t)
+(define-rec
+  (bare-type-name (subr kfx (chars chars) string)
+    (lambda (cs acc)
+      "A type's name as its own Rust scope writes it: `m t` and `m..t` are `t`."
+      (cond ((null? cs) (rev->string acc))
+            ((or (char=? (car cs) #\space) (char=? (car cs) #\.)) (bare-type-name (cdr cs) nil))
+            (else (bare-type-name (cdr cs) (cons (car cs) acc)))))))
+
+(define type-binders-apart (subr kfx (cv strings strings) unit)
+  (lambda (v tvars types)
+    "Type variables, a poly's or a family's, each a Rust type parameter of
+     its name camel-cased: each a KFX name (C27), none named as a type the
+     Rust names, as another of them, or as a type `types` has, which it
+     would hide in Rust and not in FX-26. A region's, with `'`, is none."
+    (let ((reserved (the strings (list "Str" "List" "Cons" "Int" "Tag" "Unwind" "Ref" "FlatArray" "Knot" "Show" "OnceCell" "Fn"
+                          "Result" "Ok" "Err" "String" "Copy" "Clone" "Self" "Module" "Void")))
+          (theirs (map (lambda ((t string)) (camel (bare-type-name (string-chars t) nil))) types))
+          (tvars (concat (map (lambda ((n string)) (if (has-prefix? n "'") nil (the strings (list n)))) tvars))))
+      (begin
+        (map (lambda ((n string))
+               (cond ((not (kfx-name? n)) (refuse v (string-append "a type variable's name KFX's names are not (C27): " n)))
+                     ((string-member? (camel n) reserved)
+                      (refuse v (string-append "a type variable named as a type the Rust names: " n)))
+                     ((string-member? (camel n) theirs)
+                      (refuse v (string-append "a type variable named as a type, which it would hide in Rust: " n)))
+                     (else #u)))
+             tvars)
+        (if (repeated? (map camel tvars))
+            (refuse v "two type variables named alike in Rust (camel-cased, as `a` and `a-`)")
+            #u)))))
+
+(define poly-binders (subr kfx (cv sexp bool) strings)
+  (lambda (v t own)
     "A definition's type's variables: a poly at its top, over types, and
-     regions, whose names begin with `'`."
+     regions, whose names begin with `'`; the program's `own`, held apart
+     from its types (a primitive's not)."
     (if (head-is? t "poly")
+        (let ((tvars
         (map (lambda ((b sexp))
                (let ((b (items b)))
                  (cond ((not (i64= (size b) 2))
                         (refuse v (string-append "a binder KFX-0 does not have (distinct regions are to come): "
                                                  (show-sexp (lst b "" 0 0)))))
-                       ((sym-is? (second b) "type")
-                        "A type variable, a Rust type parameter of its name, camel-cased:
-                         not one of the types the generated Rust names."
-                        (let ((n (name-of v (car b))))
-                          (if (or (rust-keyword-clash? n)
-                                  (string-member? (camel n) (list "Str" "List" "Cons" "Int" "Tag" "Unwind" "Ref" "FlatArray"
-                                                                  "Knot" "Show" "OnceCell" "Fn" "Result" "Ok" "Err" "String"
-                                                                  "Copy" "Clone" "Self" "Module" "Void"))
-                                  #f)
-                              (refuse v (string-append "a type variable named as a type the Rust names: " n))
-                              n)))
+                       ((sym-is? (second b) "type") (name-of v (car b)))
                        ((sym-is? (second b) "region") (string-append "'" (name-of v (car b))))
                        (else (refuse v (string-append "KFX's poly is over types and regions: " (show-sexp (lst b "" 0 0))))))))
-             (items (second (items t))))
+             (items (second (items t))))))
+          (begin
+            (if own (type-binders-apart v tvars (onto (map (lambda ((d dt)) (tagcase d (dt (n ps vs) n))) (cv-dts v))
+                                              (map (lambda ((a alias)) (tagcase a (alias (n ps body) n))) (cv-aliases v))))
+                #u)
+            tvars))
         nil)))
 
-(define parse-scheme (subr kfx (cv sexp) scheme)
-  (lambda (v t)
-    (let ((tvars (poly-binders v t)))
+(define parse-scheme-of (subr kfx (cv sexp bool) scheme)
+  (lambda (v t own)
+    (let ((tvars (poly-binders v t own)))
       (scheme tvars (parse-type v tvars (if (head-is? t "poly") (third (items t)) t))))))
+
+(define parse-scheme (subr kfx (cv sexp) scheme)
+  (lambda (v t) (parse-scheme-of v t #t)))
 
 (define-rec
   (show-ty (subr kfx (st ty) string)

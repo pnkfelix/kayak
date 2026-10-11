@@ -399,6 +399,13 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
   them only as `r#type` or not at all (`self`), and a reader of the Rust
   is better without either. `mangle` keeps writing `r#` for them, which
   the compiler no longer needs (`kfx-stricter/rust-keyword`, `self-name`).
+- **Then:** a type variable, a `poly`'s or a family's, is held to the same
+  rule (`kfx-name?`), and none two in one binder camel-case alike (`a`,
+  `a-`), and none camel-cases as a type the program defines, anywhere in
+  it: Rust's type parameter would hide that type where FX-26's hides it
+  only in name. Stricter than scope by scope, and simpler. With the
+  checks on types, tags and labels before it, every type-level name a
+  probe found colliding in Rust is refused in the front end.
 
 ## C28. `void` is an empty enum, `kayak_rt::Void` (the user's, 2026-10-11)
 

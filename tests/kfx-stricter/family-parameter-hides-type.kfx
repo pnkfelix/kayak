@@ -1,0 +1,6 @@
+"A family's parameter named as another type: in Rust, it would hide it."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-datatype (holder (t type)) (bx t))
+(define-type t i64)
+(define b (holder i64) (bx 1))
+1

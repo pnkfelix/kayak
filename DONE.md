@@ -903,3 +903,13 @@ the file it was read from and its offset there (`sym`, `str`, `chr` and
 the checker's facts about any datum, a name too: for what the checker
 learns about a name's use (a poly value's type arguments, a global
 procedure shown at the top level), which waited on it.
+
+## Type variables held apart (2026-10-11)
+
+A type variable, a `poly`'s or a family's, is a KFX name, no two of one
+binder camel-case alike, and none is named as a type the program defines
+(C27's addendum; `kfx-stricter/type-variable-hides-type`,
+`type-variables-alike`, `family-parameter-hides-type`). A primitive's own
+type variables are exempt. The two TODO entries on type-level names
+colliding were partly stale (types, tags and labels already had these
+checks) and are closed.
