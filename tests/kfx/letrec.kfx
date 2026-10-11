@@ -1,0 +1,31 @@
+"letrec: procedures that call themselves and each other, made where they
+ are used, closing over what is around them. In Rust, closures tied
+ through knots, as FX-26's I-cells tie them."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define count-to (subr kfx (i64 i64) string)
+  (lambda (n step)
+    (letrec ((go (subr kfx (i64 string) string)
+               (lambda (i acc)
+                 (if (i64> i n) acc (go (i64+ i step) (string-append acc (i64->string i)))))))
+      (go 0 ""))))
+
+(define parity (subr kfx (i64) string)
+  (lambda (n)
+    (letrec ((ev? (subr kfx (i64) bool) (lambda (k) (if (i64= k 0) #t (od? (i64- k 1)))))
+             (od? (subr kfx (i64) bool) (lambda (k) (if (i64= k 0) #f (ev? (i64- k 1))))))
+      (if (ev? n) "even" "odd"))))
+
+(define shadow (subr kfx (i64) i64)
+  (lambda (x)
+    "A parameter named as the procedure is: inside, the parameter."
+    (letrec ((f (subr kfx (i64) i64) (lambda (f) (i64* f 2))))
+      (f x))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (string-append (count-to 9 3)
+      (string-append " " (string-append (parity 10)
+        (string-append " " (string-append (parity 7)
+          (string-append " " (i64->string (shadow 21))))))))))

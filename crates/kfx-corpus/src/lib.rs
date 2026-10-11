@@ -33,6 +33,11 @@ pub mod families;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/letrec.rs"]
+pub mod letrec;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/lets.rs"]
 pub mod lets;
 
@@ -97,6 +102,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("data", data::main),
     ("define-star", define_star::main),
     ("families", families::main),
+    ("letrec", letrec::main),
     ("lets", lets::main),
     ("lists", lists::main),
     ("mutable", mutable::main),

@@ -211,12 +211,32 @@
       "Types, separated by commas."
       (put-sep (lambda ((t sexp) acc) (put-type c t acc)) ", " types acc))))
 
+(define local-kind (subr kfx (string strings) string)
+  (lambda (s ls)
+    "What `s` is where it is named: `local`, `knot` (a procedure of a
+     `letrec`, in its group's lambdas, before it is made: reached through
+     its knot), or `` (not bound locally). The innermost binding counts."
+    (cond ((null? ls) "")
+          ((string=? (car ls) s) "local")
+          ((string=? (car ls) (string-append "%knot " s)) "knot")
+          (else (local-kind s (cdr ls))))))
+
+(define callee (subr kfx (ctx string) string)
+  (lambda (c h)
+    "A call's operator: a knot's procedure, a constant's value (a
+     procedure a definition made, not a lambda), or a name."
+    (let ((kind (local-kind h (ctx-locals c))))
+      (cond ((string=? kind "knot") (string-append "(" (string-append (mangle h) "__knot.get())")))
+            ((and (string=? kind "") (string-member? h (ctx-constants c))) (string-append (mangle h) "()"))
+            (else (mangle h))))))
+
 (define put-var (subr kfx (ctx string chars) chars)
   (lambda (c s acc)
     (cond ((string=? s "#t") (put "true" acc))
           ((string=? s "#f") (put "false" acc))
           ((string=? s "#u") (put "()" acc))
-          ((string-member? s (ctx-locals c)) (put (mangle s) acc))
+          ((string=? (local-kind s (ctx-locals c)) "knot") (put ".get()" (put "__knot" (put (mangle s) acc))))
+          ((string=? (local-kind s (ctx-locals c)) "local") (put (mangle s) acc))
           ((or (string=? s "nil") (string-member? s (ctx-constants c)))
            (put "()" (put (mangle s) acc)))
           (else (put (mangle s) (put "&" acc))))))
@@ -290,7 +310,7 @@
   (lambda (e)
     "The forms whose last parts stand where they do."
     (or (head-is? e "if") (head-is? e "cond") (head-is? e "case") (head-is? e "tagcase")
-        (head-is? e "let") (head-is? e "let*") (head-is? e "begin"))))
+        (head-is? e "let") (head-is? e "let*") (head-is? e "begin") (head-is? e "letrec"))))
 
 (define-rec
   (tail-calls? (subr kfx (tail sexp) bool)
@@ -304,7 +324,7 @@
             ((head-is? e "cond") (arms-tail-calls? t (cdr (items e))))
             ((head-is? e "case") (arms-tail-calls? t (cdr (cdr (items e)))))
             ((head-is? e "tagcase") (tag-arms-tail-calls? t (cdr (cdr (items e)))))
-            ((or (head-is? e "let") (head-is? e "let*"))
+            ((or (head-is? e "let") (head-is? e "let*") (head-is? e "letrec"))
              (let ((xs (cdr (items e))))
                (tail-calls? (hide t (map binding-name (items (car xs)))) (last (cdr xs)))))
             ((head-is? e "begin") (tail-calls? t (last (cdr (items e)))))
@@ -417,6 +437,12 @@
                                 (put-let c (items (car xs)) n acc)
                                 (put-let* c (items (car xs)) n acc)))))
               ((head-is? e "begin") (put-stmts c (cdr (items e)) n t acc))
+              ((head-is? e "letrec")
+               (let* ((xs (cdr (items e)))
+                      (bindings (items (car xs)))
+                      (names (map binding-name bindings)))
+                 (put-stmts (with-locals c names) (cdr xs) n (hide t names)
+                            (put-letrec c bindings names n acc))))
               ((head-is? e "tagcase") (put-tagcase c (cdr (items e)) n t acc))
               (else (put-exp c e n t acc))))))
 
@@ -551,6 +577,32 @@
                        (else name (put (mangle (sym-name name)) acc)))))
             (put-lambda-params c (cdr params) (if (null? (cdr params)) acc (put ", " acc)))))))
 
+  (put-letrec (subr kfx (ctx sexps strings i64 chars) chars)
+    (lambda (c bindings names n acc)
+      "A letrec's procedures, made through knots: each knot made, then each
+       closure, whose group it reaches through the knots, then each knot
+       tied; a statement a line."
+      (let* ((inside (with-locals c (map (lambda ((x string)) (string-append "%knot " x)) names)))
+             (acc (put-sep (lambda ((b sexp) (acc chars))
+                             (let* ((ys (items b))
+                                    (acc (put "let " acc))
+                                    (acc (put (mangle (sym-name (car ys))) acc))
+                                    (acc (put "__knot = knot::<" acc))
+                                    (acc (put-type c (second ys) acc)))
+                               (put-nl n (put ">();" acc))))
+                           "" bindings acc))
+             (acc (put-sep (lambda ((b sexp) (acc chars))
+                             (let* ((ys (items b))
+                                    (acc (put "let " acc))
+                                    (acc (put (mangle (sym-name (car ys))) acc))
+                                    (acc (put " = " acc))
+                                    (acc (put-exp inside (third ys) n (value) acc)))
+                               (put-nl n (put ";" acc))))
+                           "" bindings acc)))
+        (put-sep (lambda ((x string) (acc chars))
+                   (put-nl n (put ");" (put (mangle x) (put "__knot.set(" (put (mangle x) acc))))))
+                 "" names acc))))
+
   (put-list (subr kfx (ctx sexps i64 chars) chars)
     (lambda (c xs n acc)
       (if (null? xs)
@@ -587,8 +639,9 @@
             ((string=? h "lambda") (put-lambda c (items (car xs)) (cdr xs) n acc))
             ((string=? h "list") (put-list c xs n acc))
             ((string=? h "the") (put-exp c (second xs) n (value) acc))
-            ((null? xs) (put "()" (put (mangle h) acc)))
-            (else (put ")" (put-joined c xs ", " n (put "(" (put (mangle h) acc)))))))))
+            ((string=? h "letrec") (put-block c (list e) n t acc))
+            ((null? xs) (put "()" (put (callee c h) acc)))
+            (else (put ")" (put-joined c xs ", " n (put "(" (put (callee c h) acc)))))))))
 
 "Top-level forms"
 

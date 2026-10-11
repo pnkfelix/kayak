@@ -1,0 +1,2 @@
+"A letrec binds only lambdas: a knot of anything else could be seen half tied."
+(define f (subr pure () i64) (lambda () (letrec ((x i64 1)) x)))

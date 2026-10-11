@@ -126,9 +126,6 @@ Flat arrays of `i64` and references are done (`DONE.md` §15). Left:
   `f::<T>`.
 - **A `lambda` of more than four parameters** has no `lambdaN` in
   `kayak-rt`.
-- **A local `letrec`** of procedures is not translated: a closure cannot
-  name itself. The compiler's own source needs none (it lifts them to
-  the top level).
 - **Warnings in generated code** are all allowed. Unused bindings (a
   `tagcase` arm ignoring fields) are the common ones; whether the emitter
   should avoid them is open.

@@ -459,3 +459,18 @@ region in a type, which Fixpt refuses; now refused
 (`kfx-refused/globals-region`). The harness had called that program
 skipped; a program `kfx` accepts and Fixpt refuses is now a failure.
 24 of Fixpt's programs accepted, all agreeing. `tests/kfx/families.kfx`.
+
+## `letrec` (2026-10-11)
+
+`(letrec ((f T lambda) ...) body ...)`: in the checker, `let` with written
+types, every procedure in scope in each lambda and in the body. In Rust,
+closures cannot name themselves, so each is reached through a `Knot`
+(`kayak-rt`), a cell made empty, then tied once the closures are made,
+as FX-26's I-cells tie a knot; FX-26's `letrec` binds only lambdas, so no
+knot is read untied. The emitter knows a group's names as knots inside
+its lambdas (`local-kind`), the innermost binding counting, so a
+parameter named as the procedure is the parameter. Also: a call of a
+constant whose value is a procedure (a definition made by a `letrec`,
+not a lambda) calls its `fn` first, `fib()(…)`, which Fixpt's
+`redefine/local-fib.fx` found. `tests/kfx/letrec.kfx`, and
+`kfx-refused/letrec-value`. 28 of Fixpt's programs accepted, all agreeing.

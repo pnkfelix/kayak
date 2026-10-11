@@ -1540,7 +1540,7 @@ pub fn name_regions(v: &'static Cv, s: &'static St, es: Strings, regions: List<i
 }
 
 pub fn control_form_p(h: Str) -> bool {
-    (string_eq_p(h, str_lit("if")) || string_eq_p(h, str_lit("cond")) || string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("tagcase")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("begin")))
+    (string_eq_p(h, str_lit("if")) || string_eq_p(h, str_lit("cond")) || string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("tagcase")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("letrec")))
 }
 
 pub fn all_chars_p(xs: Sexps) -> bool {
@@ -1949,6 +1949,8 @@ pub fn body_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Ty
         let_values(v, s, items(car(xs)), cdr(xs), expected, nil(), false)
     } else if string_eq_p(h, str_lit("let*")) {
         let_values(v, s, items(car(xs)), cdr(xs), expected, nil(), true)
+    } else if string_eq_p(h, str_lit("letrec")) {
+        letrec_form(v, s, items(car(xs)), cdr(xs), expected)
     } else if string_eq_p(h, str_lit("cond")) {
         cond_clauses(v, s, xs, expected)
     } else if string_eq_p(h, str_lit("case")) {
@@ -2115,6 +2117,39 @@ pub fn let_values(v: &'static Cv, s: &'static St, bindings: Sexps, forms: Sexps,
         match *tagcase_ {
             Res::Res(t, es, s) => {
                 with_effs(let_values(v, s, cdr(bindings), forms, expected, cons(local(v, name_of(v, car(b)), t), bound), sequential), es)
+            }
+        }
+    }
+}
+
+/// `(letrec ((f T lambda) ...) body ...)`: each procedure's type written,
+/// every one in scope in each lambda and in the body.
+pub fn letrec_form(v: &'static Cv, s: &'static St, bindings: Sexps, forms: Sexps, expected: Tys) -> &'static Res {
+    let w = with_binds(v, map(lambda1(move |b: &'static Sexp| {
+        let ys = items(b);
+        local(v, name_of(v, car(ys)), parse_type(v, nil(), second(ys)))
+    }), bindings));
+    let tagcase_ = letrec_lambdas(w, s, bindings);
+    match *tagcase_ {
+        Res::Res(u, es, s) => {
+            body(w, s, forms, expected)
+        }
+    }
+}
+
+pub fn letrec_lambdas(v: &'static Cv, s: &'static St, bindings: Sexps) -> &'static Res {
+    if null_p(bindings) {
+        res(ty_unit(), nil(), s)
+    } else {
+        let ys = items(car(bindings));
+        if not(head_is_p(third(ys), str_lit("lambda"))) {
+            refuse(v, str_lit("a letrec binds only lambdas"))
+        } else {
+            let tagcase_ = check(v, s, third(ys), parse_type(v, nil(), second(ys)));
+            match *tagcase_ {
+                Res::Res(t, es, s) => {
+                    letrec_lambdas(v, s, cdr(bindings))
+                }
             }
         }
     }

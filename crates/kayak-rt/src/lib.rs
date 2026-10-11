@@ -104,6 +104,28 @@ pub fn lambda4<A, B, C, D, R>(
     alloc(f)
 }
 
+/// A `letrec`'s knot: a procedure's place, empty until the procedure is
+/// made, so that the procedures of a group, closures that cannot name
+/// themselves, can name each other through it. FX-26's `letrec` binds only
+/// lambdas, so no knot is read before it is tied.
+pub struct Knot<T>(Cell<Option<T>>);
+
+impl<T: Copy> Knot<T> {
+    pub fn get(&self) -> T {
+        self.0
+            .get()
+            .unwrap_or_else(|| fail("letrec: a procedure used before it is made"))
+    }
+
+    pub fn set(&self, v: T) {
+        self.0.set(Some(v))
+    }
+}
+
+pub fn knot<T: Copy + 'static>() -> &'static Knot<T> {
+    alloc(Knot(Cell::new(None)))
+}
+
 // Lists.
 
 pub fn nil<T>() -> List<T> {

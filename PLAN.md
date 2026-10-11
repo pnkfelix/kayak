@@ -126,6 +126,7 @@ is no `Drop`, no `Rc` and no `.clone()`.
 | a call of a `poly` procedure                          | inferred, by FX-26 and by rustc alike: no `proj`            |
 | `if`, `cond`, `and`, `or`                             | `if`/`else`, `&&`, `\|\|`                                   |
 | `let`, `let*`, `begin`                                | blocks of `let`s and statements                             |
+| `(letrec ((f T lambda) …) body)`                      | closures tied through `Knot`s, as FX-26's I-cells tie them  |
 | `(case k ((d …) e) … (else e))` on chars             | `match k { d \| … => e, …, _ => e }`                        |
 | `(tagcase e (tag (x …) body) … [(else y body)])`      | `match *e { T::Tag(x, …) => body, … }`                      |
 | `nil`                                                 | `nil()`                                                     |
@@ -199,7 +200,7 @@ names bound where it is, from parameters, `let`, `let*` and `tagcase`.
 
 KFX-0 has no regions but `acyclic`, and no `poly` over anything but
 types and effects (`TODO.md` §14, §18), no `proj` (instantiation is
-inferred), and no `letrec` of local procedures.
+inferred).
 
 ---
 

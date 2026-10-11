@@ -663,7 +663,7 @@
 (define control-form? (subr kfx (string) bool)
   (lambda (h)
     (or (string=? h "if") (string=? h "cond") (string=? h "case") (string=? h "tagcase")
-        (string=? h "let") (string=? h "let*") (string=? h "begin"))))
+        (string=? h "let") (string=? h "let*") (string=? h "begin") (string=? h "letrec"))))
 
 (define all-chars? (subr kfx (sexps) bool)
   (lambda (xs) (not (any? (lambda ((x sexp)) (tagcase x (chr (c) #f) (else other #t))) xs))))
@@ -853,6 +853,7 @@
              (let-values v s (items (car xs)) (cdr xs) expected nil #f))
             ((string=? h "let*")
              (let-values v s (items (car xs)) (cdr xs) expected nil #t))
+            ((string=? h "letrec") (letrec-form v s (items (car xs)) (cdr xs) expected))
             ((string=? h "cond") (cond-clauses v s xs expected))
             ((string=? h "case")
              (tagcase (check v s (car xs) (ty-char))
@@ -948,6 +949,27 @@
                 (with-effs (let-values v s (cdr bindings) forms expected
                                        (cons (local v (name-of v (car b)) t) bound) sequential)
                            es)))))))
+
+  (letrec-form (subr kfx (cv st sexps sexps tys) res)
+    (lambda (v s bindings forms expected)
+      "`(letrec ((f T lambda) ...) body ...)`: each procedure's type written,
+       every one in scope in each lambda and in the body."
+      (let ((w (with-binds v (map (lambda ((b sexp))
+                                    (let ((ys (items b)))
+                                      (local v (name-of v (car ys)) (parse-type v nil (second ys)))))
+                                  bindings))))
+        (tagcase (letrec-lambdas w s bindings)
+          (res (u es s) (body w s forms expected))))))
+
+  (letrec-lambdas (subr kfx (cv st sexps) res)
+    (lambda (v s bindings)
+      (if (null? bindings)
+          (res (ty-unit) nil s)
+          (let ((ys (items (car bindings))))
+            (if (not (head-is? (third ys) "lambda"))
+                (refuse v "a letrec binds only lambdas")
+                (tagcase (check v s (third ys) (parse-type v nil (second ys)))
+                  (res (t es s) (letrec-lambdas v s (cdr bindings)))))))))
 
   (synth-lambda (subr kfx (cv st sexps sexps) res)
     (lambda (v s params forms)

@@ -452,6 +452,37 @@ pub fn put_types(c: &'static Ctx, types: Sexps, acc: Chars) -> Chars {
     }), str_lit(", "), types, acc)
 }
 
+/// What `s` is where it is named: `local`, `knot` (a procedure of a
+/// `letrec`, in its group's lambdas, before it is made: reached through
+/// its knot), or `` (not bound locally). The innermost binding counts.
+pub fn local_kind(mut s: Str, mut ls: Strings) -> Str {
+    loop {
+        if null_p(ls) {
+            return str_lit("");
+        } else if string_eq_p(car(ls), s) {
+            return str_lit("local");
+        } else if string_eq_p(car(ls), string_append(str_lit("%knot "), s)) {
+            return str_lit("knot");
+        } else {
+            ls = cdr(ls);
+            continue;
+        }
+    }
+}
+
+/// A call's operator: a knot's procedure, a constant's value (a
+/// procedure a definition made, not a lambda), or a name.
+pub fn callee(c: &'static Ctx, h: Str) -> Str {
+    let kind = local_kind(h, ctx_locals(c));
+    if string_eq_p(kind, str_lit("knot")) {
+        string_append(str_lit("("), string_append(mangle(h), str_lit("__knot.get())")))
+    } else if (string_eq_p(kind, str_lit("")) && string_member_p(h, ctx_constants(c))) {
+        string_append(mangle(h), str_lit("()"))
+    } else {
+        mangle(h)
+    }
+}
+
 pub fn put_var(c: &'static Ctx, s: Str, acc: Chars) -> Chars {
     if string_eq_p(s, str_lit("#t")) {
         put(str_lit("true"), acc)
@@ -459,7 +490,9 @@ pub fn put_var(c: &'static Ctx, s: Str, acc: Chars) -> Chars {
         put(str_lit("false"), acc)
     } else if string_eq_p(s, str_lit("#u")) {
         put(str_lit("()"), acc)
-    } else if string_member_p(s, ctx_locals(c)) {
+    } else if string_eq_p(local_kind(s, ctx_locals(c)), str_lit("knot")) {
+        put(str_lit(".get()"), put(str_lit("__knot"), put(mangle(s), acc)))
+    } else if string_eq_p(local_kind(s, ctx_locals(c)), str_lit("local")) {
         put(mangle(s), acc)
     } else if (string_eq_p(s, str_lit("nil")) || string_member_p(s, ctx_constants(c))) {
         put(str_lit("()"), put(mangle(s), acc))
@@ -617,7 +650,7 @@ pub fn self_call_p(t: &'static Tail, e: &'static Sexp) -> bool {
 
 /// The forms whose last parts stand where they do.
 pub fn control_p(e: &'static Sexp) -> bool {
-    (head_is_p(e, str_lit("if")) || head_is_p(e, str_lit("cond")) || head_is_p(e, str_lit("case")) || head_is_p(e, str_lit("tagcase")) || head_is_p(e, str_lit("let")) || head_is_p(e, str_lit("let*")) || head_is_p(e, str_lit("begin")))
+    (head_is_p(e, str_lit("if")) || head_is_p(e, str_lit("cond")) || head_is_p(e, str_lit("case")) || head_is_p(e, str_lit("tagcase")) || head_is_p(e, str_lit("let")) || head_is_p(e, str_lit("let*")) || head_is_p(e, str_lit("begin")) || head_is_p(e, str_lit("letrec")))
 }
 
 /// Whether `e`, standing at `t`, makes a self tail call: whether its
@@ -635,7 +668,7 @@ pub fn tail_calls_p(mut t: &'static Tail, mut e: &'static Sexp) -> bool {
             return arms_tail_calls_p(t, cdr(cdr(items(e))));
         } else if head_is_p(e, str_lit("tagcase")) {
             return tag_arms_tail_calls_p(t, cdr(cdr(items(e))));
-        } else if (head_is_p(e, str_lit("let")) || head_is_p(e, str_lit("let*"))) {
+        } else if (head_is_p(e, str_lit("let")) || head_is_p(e, str_lit("let*")) || head_is_p(e, str_lit("letrec"))) {
             let xs = cdr(items(e));
             (t, e) = (hide(t, map(&binding_name, items(car(xs)))), last(cdr(xs)));
             continue;
@@ -824,6 +857,12 @@ pub fn put_stmts(mut c: &'static Ctx, mut es: Sexps, mut n: i64, mut t: &'static
         } else if head_is_p(e, str_lit("begin")) {
             es = cdr(items(e));
             continue;
+        } else if head_is_p(e, str_lit("letrec")) {
+            let xs = cdr(items(e));
+            let bindings = items(car(xs));
+            let names = map(&binding_name, bindings);
+            (c, es, t, acc) = (with_locals(c, names), cdr(xs), hide(t, names), put_letrec(c, bindings, names, n, acc));
+            continue;
         } else if head_is_p(e, str_lit("tagcase")) {
             return put_tagcase(c, cdr(items(e)), n, t, acc);
         } else {
@@ -1001,6 +1040,34 @@ pub fn put_lambda_params(c: &'static Ctx, params: Sexps, acc: Chars) -> Chars {
     }
 }
 
+/// A letrec's procedures, made through knots: each knot made, then each
+/// closure, whose group it reaches through the knots, then each knot
+/// tied; a statement a line.
+pub fn put_letrec(c: &'static Ctx, bindings: Sexps, names: Strings, n: i64, acc: Chars) -> Chars {
+    let inside = with_locals(c, map(lambda1(move |x: Str| {
+        string_append(str_lit("%knot "), x)
+    }), names));
+    let acc = put_sep(lambda2(move |b: &'static Sexp, acc: Chars| {
+        let ys = items(b);
+        let acc = put(str_lit("let "), acc);
+        let acc = put(mangle(sym_name(car(ys))), acc);
+        let acc = put(str_lit("__knot = knot::<"), acc);
+        let acc = put_type(c, second(ys), acc);
+        put_nl(n, put(str_lit(">();"), acc))
+    }), str_lit(""), bindings, acc);
+    let acc = put_sep(lambda2(move |b: &'static Sexp, acc: Chars| {
+        let ys = items(b);
+        let acc = put(str_lit("let "), acc);
+        let acc = put(mangle(sym_name(car(ys))), acc);
+        let acc = put(str_lit(" = "), acc);
+        let acc = put_exp(inside, third(ys), n, value(), acc);
+        put_nl(n, put(str_lit(";"), acc))
+    }), str_lit(""), bindings, acc);
+    put_sep(lambda2(move |x: Str, acc: Chars| {
+        put_nl(n, put(str_lit(");"), put(mangle(x), put(str_lit("__knot.set("), put(mangle(x), acc)))))
+    }), str_lit(""), names, acc)
+}
+
 pub fn put_list(c: &'static Ctx, xs: Sexps, n: i64, acc: Chars) -> Chars {
     if null_p(xs) {
         put(str_lit("nil()"), acc)
@@ -1050,10 +1117,12 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
         put_list(c, xs, n, acc)
     } else if string_eq_p(h, str_lit("the")) {
         put_exp(c, second(xs), n, value(), acc)
+    } else if string_eq_p(h, str_lit("letrec")) {
+        put_block(c, cons(e, nil()), n, t, acc)
     } else if null_p(xs) {
-        put(str_lit("()"), put(mangle(h), acc))
+        put(str_lit("()"), put(callee(c, h), acc))
     } else {
-        put(str_lit(")"), put_joined(c, xs, str_lit(", "), n, put(str_lit("("), put(mangle(h), acc))))
+        put(str_lit(")"), put_joined(c, xs, str_lit(", "), n, put(str_lit("("), put(callee(c, h), acc))))
     }
 }
 
