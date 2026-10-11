@@ -1,0 +1,37 @@
+"Constants that allocate (CLAUDES_CHOICES.md C21): made once, at their
+ first use, and kept, as FX-26 makes them once, where they are defined.
+ A cell defined at the top level is one cell, however often it is named."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-effect counting (maxeff kfx (read @c) (write @c)))
+
+(define cell (ref i64 @c) (new 40))
+
+(define bump! (subr counting () i64)
+  (lambda () (begin (set cell (i64+ (get cell) 1)) (get cell))))
+
+"A procedure over state of its own, made once."
+(define next! (subr (maxeff kfx (read @n) (write @n)) () i64)
+  (let ((n (the (ref i64 @n) (new 0))))
+    (lambda () (begin (set n (i64+ (get n) 10)) (get n)))))
+
+"A constant found, not written, that allocates too."
+(define tally (the (ref i64 @c) (new 7)))
+
+(define main (subr (maxeff counting (read @n) (write @n)) () string)
+  (lambda ()
+    (let* ((a (bump!))
+           (b (bump!))
+           (c (next!))
+           (d (next!)))
+      (begin
+        (set tally (i64+ (get tally) 1))
+        (string-append (i64->string a)
+          (string-append " "
+            (string-append (i64->string b)
+              (string-append " "
+                (string-append (i64->string c)
+                  (string-append " "
+                    (string-append (i64->string d)
+                      (string-append " " (i64->string (get tally))))))))))))))

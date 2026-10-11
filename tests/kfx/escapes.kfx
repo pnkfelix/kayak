@@ -65,5 +65,3 @@
            (i64->string (first-over (list 1 2) 4))
            (i64->string (nested (list 4 7) 7))
            (i64->string (nested (list 4 7) 8))))))
-
-(main)

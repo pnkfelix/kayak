@@ -964,6 +964,9 @@
 
 (define put-define (subr kfx (ctx sexp sexp sexp chars) chars)
   (lambda (c name type defined acc)
+    "A definition, a `fn`: a procedure's of its parameters; a constant's of
+     none, run at each use, or, if it allocates, made at its first use and
+     kept (C21)."
     (let* ((binders (if (head-is? type "poly") (items (second (items type))) nil))
            (type (unpoly type))
            (defined (unpoly defined))
@@ -998,7 +1001,16 @@
           (let* ((acc (put-nl 2 (put "loop {" (put-nl 1 acc))))
                  (acc (put-stmts inner body 2 t acc)))
             (put "\n    }\n}\n\n" acc))
-          (put "\n}\n\n" (put-stmts inner body 1 (if fallible (ok-value) (value)) (put-nl 1 acc)))))))
+          (if (and (not lambda?) (fact-at? c defined "once"))
+              (let* ((acc (put-nl 1 acc))
+                     (acc (put "thread_local!(static ONCE: OnceCell<" acc))
+                     (acc (put-type c type acc))
+                     (acc (put "> = const { OnceCell::new() });" acc))
+                     (acc (put-nl 1 acc))
+                     (acc (put "once(&ONCE, || {" acc))
+                     (acc (put-stmts inner body 2 (value) (put-nl 2 acc))))
+                (put "\n    })\n}\n\n" acc))
+              (put "\n}\n\n" (put-stmts inner body 1 (if fallible (ok-value) (value)) (put-nl 1 acc))))))))
 
 (define put-rec (subr kfx (ctx sexps chars) chars)
   (lambda (c bindings acc)

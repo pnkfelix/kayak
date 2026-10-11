@@ -1,0 +1,8 @@
+"A constant whose value reads mutable data: FX-26 reads it where the
+ constant is defined, KFX at its first use, which may be after a write
+ (C21); so KFX refuses it."
+(define-effect kfx (maxeff (read @globals) spin))
+(define cell (ref i64 @c) (new 1))
+(define seen i64 (get cell))
+(set cell 2)
+seen

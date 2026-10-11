@@ -61,5 +61,3 @@
            (string-append " "
             (string-append (int->string (ack 2 3))
              (string-append " " (if (ev? 10) "even" "odd")))))))))))))
-
-(main)

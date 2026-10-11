@@ -606,3 +606,23 @@ parameter types on the closure.
 moving bound, a member given away, nothing smaller, `i64`, a shadowed
 `-`), each refused by Fixpt too, for the same reason. 50 of Fixpt's
 programs accepted, all agreeing.
+
+## Constants made once; no knots through the store (2026-10-11)
+
+A constant whose value allocates is made at its first use and kept
+(C21): `thread_local!` and `kayak_rt::once`. Its value may read globals
+and allocate; one that reads mutable data is refused, since it would be
+read later than FX-26 reads it (`kfx-stricter/constant-reads`).
+`tests/kfx/constants.kfx`: a cell at the top level, a closure over state
+of its own, both one however often named.
+
+`run-fixpt-programs` then found three programs `kfx` accepted and Fixpt
+refuses: knots through the store, a procedure kept at a region reading
+that region without `spin`, now reachable since constants may make
+cells. FX-26's `no_knot` is KFX's too, on written types and on each
+call's instance (`kfx-refused/knot-store`, `knot-generative`).
+
+Also: the corpus's programs no longer end with `(main)`, which made Fixpt
+run `main` twice, a difference once `main` has state.
+
+55 of Fixpt's programs accepted, all agreeing.

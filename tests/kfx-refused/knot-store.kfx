@@ -1,0 +1,5 @@
+"A procedure kept in a ref at @b whose effect reads @b: fetched from @b by
+ a procedure fetched from @b, it could loop with no recursive call, so
+ its type must say spin (FX-26's no_knot)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define r (ref (subr (read @b) () i64) @b) (new (lambda () 1)))

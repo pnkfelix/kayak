@@ -12,13 +12,16 @@
 mod escape;
 mod float;
 mod int;
+mod once;
 mod show;
 
 pub use escape::*;
 pub use float::*;
 pub use int::*;
+pub use once::*;
 pub use show::*;
 use std::cell::Cell;
+pub use std::cell::OnceCell;
 
 /// `string`: text, and whether it is ASCII, found when the string is made.
 #[derive(Clone, Copy, PartialEq, Eq)]

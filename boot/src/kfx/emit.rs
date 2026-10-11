@@ -1663,6 +1663,9 @@ pub fn unpoly(e: &'static Sexp) -> &'static Sexp {
     }
 }
 
+/// A definition, a `fn`: a procedure's of its parameters; a constant's of
+/// none, run at each use, or, if it allocates, made at its first use and
+/// kept (C21).
 pub fn put_define(c: &'static Ctx, name: &'static Sexp, r#type: &'static Sexp, defined: &'static Sexp, acc: Chars) -> Chars {
     let binders = if head_is_p(r#type, str_lit("poly")) {
         items(second(items(r#type)))
@@ -1725,11 +1728,22 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, r#type: &'static Sexp, d
         let acc = put_stmts(inner, body, 2i64, t, acc);
         put(str_lit("\n    }\n}\n\n"), acc)
     } else {
-        put(str_lit("\n}\n\n"), put_stmts(inner, body, 1i64, if fallible {
-            ok_value()
+        if (not(lambda_p) && fact_at_p(c, defined, str_lit("once"))) {
+            let acc = put_nl(1i64, acc);
+            let acc = put(str_lit("thread_local!(static ONCE: OnceCell<"), acc);
+            let acc = put_type(c, r#type, acc);
+            let acc = put(str_lit("> = const { OnceCell::new() });"), acc);
+            let acc = put_nl(1i64, acc);
+            let acc = put(str_lit("once(&ONCE, || {"), acc);
+            let acc = put_stmts(inner, body, 2i64, value(), put_nl(2i64, acc));
+            put(str_lit("\n    })\n}\n\n"), acc)
         } else {
-            value()
-        }, put_nl(1i64, acc)))
+            put(str_lit("\n}\n\n"), put_stmts(inner, body, 1i64, if fallible {
+                ok_value()
+            } else {
+                value()
+            }, put_nl(1i64, acc)))
+        }
     }
 }
 

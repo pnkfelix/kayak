@@ -76,5 +76,3 @@
              (with stack (shown (the (select stack items) (list 7 8))))
              (i64->string (with geometry (area (rect 3 4))))
              (if (big? ((with geometry circle) 20)) "big" "small"))))))
-
-(main)

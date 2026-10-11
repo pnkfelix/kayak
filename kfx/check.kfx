@@ -332,6 +332,74 @@
            (cons (car tvars) (expanding (cdr tvars))))
           (else (expanding (cdr tvars))))))
 
+"A knot through the store (FX-26's `no_knot`): a procedure kept in
+ storage at a region, whose latent effect reads that region and does not
+ say `spin`, could be fetched from there by a procedure fetched from
+ there, a loop with no recursive call, which only its type shows. The
+ regions a type keeps things in: a `ref`'s, a list's not `acyclic`; a
+ datatype keeps where its fields do; what a generative type is given, KFX
+ takes as kept everywhere, more cautious than FX-26. `res` resolves an
+ effect's inference variables."
+
+(define region-name-of (subr kfx (ty) string)
+  (lambda (r) (tagcase r (ty-var (n) n) (ty-rconst (n) n) (ty-meta (k) (meta-name k)) (else other "?"))))
+
+(define reads-kept (subr kfx (strings strings bool) strings)
+  (lambda (atoms kept every)
+    (if (string-member? "spin" atoms)
+        nil
+        (concat (map (lambda ((x string))
+                       (if (and (has-prefix? x "read:")
+                                (or (string-member? (after-prefix x "read:") kept)
+                                    (and every (not (string=? (after-prefix x "read:") "acyclic")))))
+                           (the strings (list (after-prefix x "read:")))
+                           nil))
+                     atoms)))))
+
+(define-rec
+  (knot-in (subr kfx (cv (subr kfx (string) string) ty strings bool strings) strings)
+    (lambda (v res t kept every seen)
+      "The region of a knot `t` ties, kept in `kept` (everywhere, if
+       `every`); or none."
+      (tagcase t
+        (ty-ref (a r) (knot-in v res a (cons (region-name-of r) kept) every seen))
+        (ty-list (a r)
+          (knot-in v res a (if (string=? (region-name-of r) "acyclic") kept (cons (region-name-of r) kept)) every seen))
+        (ty-proc (es ps r)
+          (let ((found (reads-kept (map res es) kept every)))
+            (if (null? found) (first-knot v res (cons r ps) nil #f seen) found)))
+        (ty-tag (a h d r) (first-knot v res (list a h) nil #f seen))
+        (ty-data (d args)
+          (if (string-member? d seen)
+              nil
+              (let ((found (find-family d (cv-dts v))))
+                (if (null? found)
+                    nil
+                    (tagcase (car found)
+                      (dt (n ps vs)
+                        (if (null? vs)
+                            (first-knot v res args kept #t (cons d seen))
+                            (first-knot v res
+                                        (concat (map (lambda ((x variant))
+                                                       (tagcase x (variant (tag fs) (map (lambda ((f ty)) (substitute ps args f)) fs))))
+                                                     vs))
+                                        kept every (cons d seen)))))))))
+        (else other nil))))
+  (first-knot (subr kfx (cv (subr kfx (string) string) tys strings bool strings) strings)
+    (lambda (v res ts kept every seen)
+      (if (null? ts)
+          nil
+          (let ((found (knot-in v res (car ts) kept every seen)))
+            (if (null? found) (first-knot v res (cdr ts) kept every seen) found))))))
+
+(define no-knot (subr kfx (cv (subr kfx (string) string) ty) ty)
+  (lambda (v res t)
+    (let ((found (knot-in v res t nil #f nil)))
+      (if (null? found)
+          t
+          (refuse v (string-append "a procedure kept in " (string-append (car found) (string-append " reads " (string-append (car found)
+                    ", so it could reach itself: it must say spin")))))))))
+
 (define-rec
   (parse-type (subr kfx (cv strings sexp) ty)
     (lambda (v tvars t)
@@ -368,13 +436,13 @@
                                  (else (parse-type v (cons (string-append "%expanding " s) tvars) body))))))))))
         (lst (xs src-file src-line src-pos)
           (cond ((sym-is? (car xs) "listof")
-                 (ty-list (parse-type v tvars (second xs)) (parse-region v tvars (third xs))))
+                 (no-knot v (lambda ((x string)) x) (ty-list (parse-type v tvars (second xs)) (parse-region v tvars (third xs)))))
                 ((sym-is? (car xs) "flatarrayof")
                  (if (sym-is? (second xs) "i64")
                      (ty-flat (ty-i64) (parse-mutable-region v tvars (third xs)))
                      (refuse v (string-append "KFX-0's flat arrays are of i64: " (show-sexp t)))))
                 ((sym-is? (car xs) "ref")
-                 (ty-ref (parse-type v tvars (second xs)) (parse-mutable-region v tvars (third xs))))
+                 (no-knot v (lambda ((x string)) x) (ty-ref (parse-type v tvars (second xs)) (parse-mutable-region v tvars (third xs)))))
                 ((sym-is? (car xs) "prompt-tag")
                  (ty-tag (parse-type v tvars (second xs)) (parse-type v tvars (third xs))
                          (parse-effect v tvars (fourth xs)) (parse-mutable-region v tvars (car (cdr (cdr (cdr (cdr xs))))))))
@@ -388,7 +456,7 @@
                           (parse-types v tvars (items (third xs)))
                           (parse-type v tvars (fourth xs))))
                 ((tagcase (car xs) (sym (n) (or (dt-named? n (cv-dts v)) (not (null? (find-alias n (cv-aliases v)))))) (else other #f))
-                 (parse-application v tvars (name-of v (car xs)) (cdr xs)))
+                 (no-knot v (lambda ((x string)) x) (parse-application v tvars (name-of v (car xs)) (cdr xs))))
                 (else (refuse v (string-append "a type KFX does not have: " (show-sexp t))))))
         (else other (refuse v (string-append "a type KFX does not have: " (show-sexp t)))))))
   (parse-types (subr kfx (cv strings sexps) tys)
@@ -600,6 +668,19 @@
           (string-append (atom-kind x)
                          (region-string s (ty-meta (meta-number r))))
           x))))
+
+(define-rec
+  (zonk (subr kfx (st ty) ty)
+    (lambda (s t)
+      "`t`, every inference variable in it replaced by its solution."
+      (tagcase (walk s t)
+        (ty-list (e r) (ty-list (zonk s e) (zonk s r)))
+        (ty-flat (e r) (ty-flat (zonk s e) (zonk s r)))
+        (ty-tag (a h d r) (ty-tag (zonk s a) (zonk s h) d (zonk s r)))
+        (ty-data (d args) (ty-data d (map (lambda ((x ty)) (zonk s x)) args)))
+        (ty-ref (e r) (ty-ref (zonk s e) (zonk s r)))
+        (ty-proc (es ps r) (ty-proc es (map (lambda ((p ty)) (zonk s p)) ps) (zonk s r)))
+        (else other other)))))
 
 (define region-ty (subr kfx (string) ty)
   (lambda (r)
@@ -1483,6 +1564,13 @@
                   (and (not (tagcase w2 (ws (calls passed escaped) escaped)))
                        (ends? (tagcase w2 (ws (calls passed escaped) calls)))))))))))
 
+(define knot-free-call (subr kfx (cv res) res)
+  (lambda (v r)
+    "A call's value, whose type, an instance, ties no knot through the store."
+    (tagcase r
+      (res (t es s)
+        (begin (no-knot v (lambda ((x string)) (resolve-atom s x)) (zonk s t)) r)))))
+
 (define control-form? (subr kfx (string) bool)
   (lambda (h)
     (or (string=? h "if") (string=? h "cond") (string=? h "case") (string=? h "tagcase")
@@ -1935,13 +2023,13 @@
                 (bind (n sc where)
                   (tagcase (instantiate s sc)
                     (inst (t s regions)
-                      (synth-call-of v s (res t nil s) args regions expected
+                      (knot-free-call v (synth-call-of v s (res t nil s) args regions expected
                                      (effs-union
                                        (if (string=? where "global") (list (string-append "g:" h)) nil)
                                        (if (or (string=? where "local")
                                                (and (string-member? h (cv-group v)) (or (string=? where "global") (string=? where "item"))))
                                            (list "spin")
-                                           nil))))))))))))
+                                           nil)))))))))))))
 
   (nat-args? (subr kfx (cv st sexps) bool)
     (lambda (v s args)
@@ -2303,6 +2391,21 @@
      that its calls of itself need no `spin` (`terminates?`)."
     (tagcase sc (scheme (tvars t) (terminates? v (list name) (list t) (list defined))))))
 
+(define constant-made (subr kfx (cv st sexp strings) st)
+  (lambda (v s e es)
+    "A constant's value, of effect `es`: it may read globals, and allocate,
+     and is then made once, at its first use, and kept (C21), which the
+     emitter is told; nothing else, since when it is made is not when
+     FX-26 makes it, where it is defined."
+    (cond ((any? (lambda ((x string))
+                   (not (or (string=? x "spin") (string=? x "@globals") (global-atom? x) (has-prefix? x "alloc:"))))
+                 es)
+           (refuse v (string-append "a constant whose value has the effect " (string-append (show-effs es)
+                     ": KFX makes a constant at its first use, so its value may only read globals and allocate"))))
+          ((any? (lambda ((x string)) (has-prefix? x "alloc:")) es)
+           (tagcase e (lst (xs file line pos) (note-fact s file pos "once")) (else other s)))
+          (else s))))
+
 (define check-procedure (subr kfx (cv sexp scheme) cv)
   (lambda (v defined sc)
     "A procedure's lambda against its type; `v` already has its name."
@@ -2415,13 +2518,7 @@
                              (scheme (tvars t)
                                (if (null? tvars)
                                    (tagcase (check v (new-state) (fourth xs) t)
-                                     (res (u es s)
-                                       (if (any? (lambda ((x string))
-                                                   (not (or (string=? x "spin") (string=? x "@globals") (global-atom? x))))
-                                                 es)
-                                           (refuse v (string-append "a constant whose value has the effect " (string-append (show-effs es)
-                                                     ": KFX's constant is a fn, run at each use, so its value may only read globals")))
-                                           (with-facts named (st-facts s)))))
+                                     (res (u es s) (with-facts named (st-facts (constant-made v s (fourth xs) es)))))
                                    (refuse v "a poly constant: only a procedure may be poly"))))))))
                 ((string=? h "define-rec") (check-rec v (cdr xs)))
                 ((string=? h "define*") (check-define* v xs))
@@ -2451,19 +2548,6 @@
 (define-datatype typed (typed string sexp))
 (define-type typeds (listof typed acyclic))
 (define-datatype elab (elab cv typeds))
-
-(define-rec
-  (zonk (subr kfx (st ty) ty)
-    (lambda (s t)
-      "`t`, every inference variable in it replaced by its solution."
-      (tagcase (walk s t)
-        (ty-list (e r) (ty-list (zonk s e) (zonk s r)))
-        (ty-flat (e r) (ty-flat (zonk s e) (zonk s r)))
-        (ty-tag (a h d r) (ty-tag (zonk s a) (zonk s h) d (zonk s r)))
-        (ty-data (d args) (ty-data d (map (lambda ((x ty)) (zonk s x)) args)))
-        (ty-ref (e r) (ty-ref (zonk s e) (zonk s r)))
-        (ty-proc (es ps r) (ty-proc es (map (lambda ((p ty)) (zonk s p)) ps) (zonk s r)))
-        (else other other)))))
 
 (define-rec
   (ty-sexp (subr kfx (cv st ty) sexp)
@@ -2503,15 +2587,10 @@
            (e (third xs)))
       (tagcase (synth v (new-state) e)
         (res (t es s)
-          (let ((written (ty-sexp v s t)))
-            (if (and (not (procedure? e))
-                     (any? (lambda ((x string))
-                             (not (or (string=? x "spin") (string=? x "@globals") (global-atom? x))))
-                           es))
-                (refuse v (string-append "a constant whose value has the effect " (string-append (show-effs es)
-                          ": KFX's constant is a fn, run at each use, so its value may only read globals")))
-                (elab (with-facts (with-binds v (list (global v name (scheme nil (zonk s t))))) (st-facts s))
-                      (list (typed name written))))))))))
+          (let ((written (ty-sexp v s t))
+                (s (if (procedure? e) s (constant-made v s e es))))
+            (elab (with-facts (with-binds v (list (global v name (scheme nil (zonk s t))))) (st-facts s))
+                  (list (typed name written)))))))))
 
 "Modules (CLAUDES_CHOICES.md C19): `(define m (module item ...))` at the
  top level, a Rust `mod`. Its items are a program's definitions, each

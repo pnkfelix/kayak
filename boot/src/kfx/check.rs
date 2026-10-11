@@ -744,6 +744,139 @@ pub fn expanding(mut tvars: Strings) -> Strings {
     }
 }
 
+// A knot through the store (FX-26's `no_knot`): a procedure kept in
+// storage at a region, whose latent effect reads that region and does not
+// say `spin`, could be fetched from there by a procedure fetched from
+// there, a loop with no recursive call, which only its type shows. The
+// regions a type keeps things in: a `ref`'s, a list's not `acyclic`; a
+// datatype keeps where its fields do; what a generative type is given, KFX
+// takes as kept everywhere, more cautious than FX-26. `res` resolves an
+// effect's inference variables.
+pub fn region_name_of(r: &'static Ty) -> Str {
+    let tagcase_ = r;
+    match *tagcase_ {
+        Ty::TyVar(n) => {
+            n
+        }
+        Ty::TyRconst(n) => {
+            n
+        }
+        Ty::TyMeta(k) => {
+            meta_name(k)
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("?")
+        }
+    }
+}
+
+pub fn reads_kept(atoms: Strings, kept: Strings, every: bool) -> Strings {
+    if string_member_p(str_lit("spin"), atoms) {
+        nil()
+    } else {
+        concat(map(lambda1(move |x: Str| {
+            if (has_prefix_p(x, str_lit("read:")) && (string_member_p(after_prefix(x, str_lit("read:")), kept) || (every && not(string_eq_p(after_prefix(x, str_lit("read:")), str_lit("acyclic")))))) {
+                the::<Strings>(cons(after_prefix(x, str_lit("read:")), nil()))
+            } else {
+                nil()
+            }
+        }), atoms))
+    }
+}
+
+/// The region of a knot `t` ties, kept in `kept` (everywhere, if
+/// `every`); or none.
+pub fn knot_in(mut v: &'static Cv, mut res: &'static dyn Fn(Str) -> Str, mut t: &'static Ty, mut kept: Strings, mut every: bool, mut seen: Strings) -> Strings {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Ty::TyRef(a, r) => {
+                (t, kept) = (a, cons(region_name_of(r), kept));
+                continue;
+            }
+            Ty::TyList(a, r) => {
+                (t, kept) = (a, if string_eq_p(region_name_of(r), str_lit("acyclic")) {
+                    kept
+                } else {
+                    cons(region_name_of(r), kept)
+                });
+                continue;
+            }
+            Ty::TyProc(es, ps, r) => {
+                let found = reads_kept(map(res, es), kept, every);
+                if null_p(found) {
+                    return first_knot(v, res, cons(r, ps), nil(), false, seen);
+                } else {
+                    return found;
+                }
+            }
+            Ty::TyTag(a, h, d, r) => {
+                return first_knot(v, res, cons(a, cons(h, nil())), nil(), false, seen);
+            }
+            Ty::TyData(d, args) => {
+                if string_member_p(d, seen) {
+                    return nil();
+                } else {
+                    let found = find_family(d, cv_dts(v));
+                    if null_p(found) {
+                        return nil();
+                    } else {
+                        let tagcase_ = car(found);
+                        match *tagcase_ {
+                            Dt::Dt(n, ps, vs) => {
+                                if null_p(vs) {
+                                    return first_knot(v, res, args, kept, true, cons(d, seen));
+                                } else {
+                                    return first_knot(v, res, concat(map(lambda1(move |x: &'static Variant| {
+                                        let tagcase_ = x;
+                                        match *tagcase_ {
+                                            Variant::Variant(tag, fs) => {
+                                                map(lambda1(move |f: &'static Ty| {
+                                                    substitute(ps, args, f)
+                                                }), fs)
+                                            }
+                                        }
+                                    }), vs)), kept, every, cons(d, seen));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                return nil();
+            }
+        }
+    }
+}
+
+pub fn first_knot(mut v: &'static Cv, mut res: &'static dyn Fn(Str) -> Str, mut ts: Tys, mut kept: Strings, mut every: bool, mut seen: Strings) -> Strings {
+    loop {
+        if null_p(ts) {
+            return nil();
+        } else {
+            let found = knot_in(v, res, car(ts), kept, every, seen);
+            if null_p(found) {
+                ts = cdr(ts);
+                continue;
+            } else {
+                return found;
+            }
+        }
+    }
+}
+
+pub fn no_knot(v: &'static Cv, res: &'static dyn Fn(Str) -> Str, t: &'static Ty) -> &'static Ty {
+    let found = knot_in(v, res, t, nil(), false, nil());
+    if null_p(found) {
+        t
+    } else {
+        refuse(v, string_append(str_lit("a procedure kept in "), string_append(car(found), string_append(str_lit(" reads "), string_append(car(found), str_lit(", so it could reach itself: it must say spin"))))))
+    }
+}
+
 /// `tvars`: the type variables in scope.
 pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) -> &'static Ty {
     loop {
@@ -804,7 +937,9 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
             }
             Sexp::Lst(xs, src_file, src_line, src_pos) => {
                 if sym_is_p(car(xs), str_lit("listof")) {
-                    return ty_list(parse_type(v, tvars, second(xs)), parse_region(v, tvars, third(xs)));
+                    return no_knot(v, lambda1(move |x: Str| {
+                        x
+                    }), ty_list(parse_type(v, tvars, second(xs)), parse_region(v, tvars, third(xs))));
                 } else if sym_is_p(car(xs), str_lit("flatarrayof")) {
                     if sym_is_p(second(xs), str_lit("i64")) {
                         return ty_flat(ty_i64(), parse_mutable_region(v, tvars, third(xs)));
@@ -812,7 +947,9 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                         return refuse(v, string_append(str_lit("KFX-0's flat arrays are of i64: "), show_sexp(t)));
                     }
                 } else if sym_is_p(car(xs), str_lit("ref")) {
-                    return ty_ref(parse_type(v, tvars, second(xs)), parse_mutable_region(v, tvars, third(xs)));
+                    return no_knot(v, lambda1(move |x: Str| {
+                        x
+                    }), ty_ref(parse_type(v, tvars, second(xs)), parse_mutable_region(v, tvars, third(xs))));
                 } else if sym_is_p(car(xs), str_lit("prompt-tag")) {
                     return ty_tag(parse_type(v, tvars, second(xs)), parse_type(v, tvars, third(xs)), parse_effect(v, tvars, fourth(xs)), parse_mutable_region(v, tvars, car(cdr(cdr(cdr(cdr(xs)))))));
                 } else if sym_is_p(car(xs), str_lit("select")) {
@@ -837,7 +974,9 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                         }
                     }
                 } {
-                    return parse_application(v, tvars, name_of(v, car(xs)), cdr(xs));
+                    return no_knot(v, lambda1(move |x: Str| {
+                        x
+                    }), parse_application(v, tvars, name_of(v, car(xs)), cdr(xs)));
                 } else {
                     return refuse(v, string_append(str_lit("a type KFX does not have: "), show_sexp(t)));
                 }
@@ -1348,6 +1487,39 @@ pub fn resolve_atom(s: &'static St, x: Str) -> Str {
         string_append(atom_kind(x), region_string(s, ty_meta(meta_number(r))))
     } else {
         x
+    }
+}
+
+/// `t`, every inference variable in it replaced by its solution.
+pub fn zonk(s: &'static St, t: &'static Ty) -> &'static Ty {
+    let tagcase_ = walk(s, t);
+    match *tagcase_ {
+        Ty::TyList(e, r) => {
+            ty_list(zonk(s, e), zonk(s, r))
+        }
+        Ty::TyFlat(e, r) => {
+            ty_flat(zonk(s, e), zonk(s, r))
+        }
+        Ty::TyTag(a, h, d, r) => {
+            ty_tag(zonk(s, a), zonk(s, h), d, zonk(s, r))
+        }
+        Ty::TyData(d, args) => {
+            ty_data(d, map(lambda1(move |x: &'static Ty| {
+                zonk(s, x)
+            }), args))
+        }
+        Ty::TyRef(e, r) => {
+            ty_ref(zonk(s, e), zonk(s, r))
+        }
+        Ty::TyProc(es, ps, r) => {
+            ty_proc(es, map(lambda1(move |p: &'static Ty| {
+                zonk(s, p)
+            }), ps), zonk(s, r))
+        }
+        _ => {
+            let other = tagcase_;
+            other
+        }
     }
 }
 
@@ -3322,6 +3494,19 @@ pub fn terminates_p(v: &'static Cv, names: Strings, types: Tys, defined: Sexps) 
     }
 }
 
+/// A call's value, whose type, an instance, ties no knot through the store.
+pub fn knot_free_call(v: &'static Cv, r: &'static Res) -> &'static Res {
+    let tagcase_ = r;
+    match *tagcase_ {
+        Res::Res(t, es, s) => {
+            no_knot(v, lambda1(move |x: Str| {
+                resolve_atom(s, x)
+            }), zonk(s, t));
+            r
+        }
+    }
+}
+
 pub fn control_form_p(h: Str) -> bool {
     (string_eq_p(h, str_lit("if")) || string_eq_p(h, str_lit("cond")) || string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("tagcase")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("with")))
 }
@@ -4177,7 +4362,7 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
                 let tagcase_ = instantiate(s, sc);
                 match *tagcase_ {
                     Inst::Inst(t, s, regions) => {
-                        synth_call_of(v, s, res(t, nil(), s), args, regions, expected, effs_union(if string_eq_p(r#where, str_lit("global")) {
+                        knot_free_call(v, synth_call_of(v, s, res(t, nil(), s), args, regions, expected, effs_union(if string_eq_p(r#where, str_lit("global")) {
                             cons(string_append(str_lit("g:"), h), nil())
                         } else {
                             nil()
@@ -4185,7 +4370,7 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
                             cons(str_lit("spin"), nil())
                         } else {
                             nil()
-                        }))
+                        })))
                     }
                 }
             }
@@ -4718,6 +4903,33 @@ pub fn ends_alone_p(v: &'static Cv, name: Str, sc: &'static Scheme, defined: &'s
     }
 }
 
+/// A constant's value, of effect `es`: it may read globals, and allocate,
+/// and is then made once, at its first use, and kept (C21), which the
+/// emitter is told; nothing else, since when it is made is not when
+/// FX-26 makes it, where it is defined.
+pub fn constant_made(v: &'static Cv, s: &'static St, e: &'static Sexp, es: Strings) -> &'static St {
+    if any_p(lambda1(move |x: Str| {
+        not((string_eq_p(x, str_lit("spin")) || string_eq_p(x, str_lit("@globals")) || global_atom_p(x) || has_prefix_p(x, str_lit("alloc:"))))
+    }), es) {
+        refuse(v, string_append(str_lit("a constant whose value has the effect "), string_append(show_effs(es), str_lit(": KFX makes a constant at its first use, so its value may only read globals and allocate"))))
+    } else if any_p(lambda1(move |x: Str| {
+        has_prefix_p(x, str_lit("alloc:"))
+    }), es) {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Lst(xs, file, line, pos) => {
+                note_fact(s, file, pos, str_lit("once"))
+            }
+            _ => {
+                let other = tagcase_;
+                s
+            }
+        }
+    } else {
+        s
+    }
+}
+
 /// A procedure's lambda against its type; `v` already has its name.
 pub fn check_procedure(v: &'static Cv, defined: &'static Sexp, sc: &'static Scheme) -> &'static Cv {
     let lam = items(if head_is_p(defined, str_lit("plambda")) {
@@ -4925,13 +5137,7 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                                     let tagcase_ = check(v, new_state(), fourth(xs), t);
                                     match *tagcase_ {
                                         Res::Res(u, es, s) => {
-                                            if any_p(lambda1(move |x: Str| {
-                                                not((string_eq_p(x, str_lit("spin")) || string_eq_p(x, str_lit("@globals")) || global_atom_p(x)))
-                                            }), es) {
-                                                refuse(v, string_append(str_lit("a constant whose value has the effect "), string_append(show_effs(es), str_lit(": KFX's constant is a fn, run at each use, so its value may only read globals"))))
-                                            } else {
-                                                with_facts(named, st_facts(s))
-                                            }
+                                            with_facts(named, st_facts(constant_made(v, s, fourth(xs), es)))
                                         }
                                     }
                                 } else {
@@ -5013,39 +5219,6 @@ pub enum Elab {
 
 pub fn elab(f0: &'static Cv, f1: Typeds) -> &'static Elab {
     alloc(Elab::Elab(f0, f1))
-}
-
-/// `t`, every inference variable in it replaced by its solution.
-pub fn zonk(s: &'static St, t: &'static Ty) -> &'static Ty {
-    let tagcase_ = walk(s, t);
-    match *tagcase_ {
-        Ty::TyList(e, r) => {
-            ty_list(zonk(s, e), zonk(s, r))
-        }
-        Ty::TyFlat(e, r) => {
-            ty_flat(zonk(s, e), zonk(s, r))
-        }
-        Ty::TyTag(a, h, d, r) => {
-            ty_tag(zonk(s, a), zonk(s, h), d, zonk(s, r))
-        }
-        Ty::TyData(d, args) => {
-            ty_data(d, map(lambda1(move |x: &'static Ty| {
-                zonk(s, x)
-            }), args))
-        }
-        Ty::TyRef(e, r) => {
-            ty_ref(zonk(s, e), zonk(s, r))
-        }
-        Ty::TyProc(es, ps, r) => {
-            ty_proc(es, map(lambda1(move |p: &'static Ty| {
-                zonk(s, p)
-            }), ps), zonk(s, r))
-        }
-        _ => {
-            let other = tagcase_;
-            other
-        }
-    }
 }
 
 /// A type as written: for the emitter, which reads no effects, so a
@@ -5132,14 +5305,12 @@ pub fn check_untyped(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
     let tagcase_ = synth(v, new_state(), e);
     match *tagcase_ {
         Res::Res(t, es, s) => {
-            let written = ty_sexp(v, s, t);
-            if (not(procedure_p(e)) && any_p(lambda1(move |x: Str| {
-                not((string_eq_p(x, str_lit("spin")) || string_eq_p(x, str_lit("@globals")) || global_atom_p(x)))
-            }), es)) {
-                refuse(v, string_append(str_lit("a constant whose value has the effect "), string_append(show_effs(es), str_lit(": KFX's constant is a fn, run at each use, so its value may only read globals"))))
+            let (written, s) = (ty_sexp(v, s, t), if procedure_p(e) {
+                s
             } else {
-                elab(with_facts(with_binds(v, cons(global(v, name, scheme(nil(), zonk(s, t))), nil())), st_facts(s)), cons(typed(name, written), nil()))
-            }
+                constant_made(v, s, e, es)
+            });
+            elab(with_facts(with_binds(v, cons(global(v, name, scheme(nil(), zonk(s, t))), nil())), st_facts(s)), cons(typed(name, written), nil()))
         }
     }
 }

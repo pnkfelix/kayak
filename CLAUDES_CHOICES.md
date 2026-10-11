@@ -264,3 +264,23 @@ Answers `PLAN.md` Q3 (`docs/research/escapes.md` §5).
 - **Left stricter:** a call of a procedure a local names is `spin` in
   KFX; FX-26 takes its latent effect, unless its type is recursive through
   a parameter (`kfx-stricter/local-call`).
+
+## C21. A constant that allocates is made once, at its first use (2026-10-11)
+
+- **Chosen:** a constant whose value allocates (a cell, a tag, a closure
+  over state of its own) is a `fn` that makes it the first time and keeps
+  it, in a thread-local `OnceCell` (`kayak_rt::once`); its value may read
+  globals and allocate, nothing more. Other constants stay `fn`s run at
+  each use.
+- **Not chosen:** refusing them (as before: 14 of Fixpt's programs);
+  making every constant at start-up, in order, which Rust's statics do not
+  do without `unsafe` or a constructor the program calls.
+- **Why:** FX-26 makes a constant once, where it is defined. Made at its
+  first use instead, an allocation is not seen to be later: only reading
+  mutable data, or writing it, would show when, and the checker refuses
+  those (`kfx-stricter/constant-reads`).
+- **With it,** FX-26's rule against knots through the store had to be
+  KFX's too: a procedure kept at a region whose latent effect reads that
+  region must say `spin` (`no_knot`), checked on written types and on
+  each call's instance, a generative type's arguments taken as kept
+  everywhere (more cautious than FX-26).
