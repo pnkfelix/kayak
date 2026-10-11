@@ -142,14 +142,16 @@ is no `Drop`, no `Rc` and no `.clone()`.
 | `(case k ((d …) e) … (else e))` on chars, bools       | `match k { d \| … => e, …, _ => e }`                        |
 | … on an `int` or a string                             | `match k { case_ if _eq(case_, d) \|\| … => e, … }`         |
 | `(tagcase e (tag (x …) body) … [(else y body)])`      | `match *e { T::Tag(x, …) => body, … }`                      |
-| `(productof (l T) …)`; `(product (l e) …)`; `extract` | `Product_l…<T…>`, a tuple struct per list of labels; `.i` (C22) |
-| `(sumof (tag T) …)`; `(sum tag e)`                    | `&'static Sum_tag…<T…>`, an enum per list of tags (C22)     |
+| `(productof (l T) …)`; `(product (l e) …)`; `extract` | `Product_1l…<T…>`, a tuple struct per list of labels; `.i` (C22) |
+| `(sumof (tag T) …)`; `(sum tag e)`                    | `&'static Sum_3tag…<T…>`, an enum per list of tags (C22)    |
+| `i32`, `u32`, `u64`; `u32+`, `u32-shl`, `int->u32`, …  | Rust's; `wrapping_add`, …; literals `5u32`                  |
 | `(prompt-tag A H D R)`; `make-continuation-prompt-tag` | `Tag<A, H>` (C18)                                           |
 | a procedure whose effect may `goto`                   | `fn … -> Result<R, Unwind>`; its calls `?` (C18)            |
 | `(abort-current-continuation t v)`                    | `return Err(unwind(t, v))`                                  |
 | `(prompt t body handler)`                             | a closure returning a `Result`, matched (C18)               |
 | `(define m (module item …))`, top level               | `pub mod m { use super::*; … }` (C19)                       |
 | `(with m e)`; `(select m t)`                          | paths: `m::x`, `m::T`; a generative type's field private    |
+| `(include n)`, `(hide item …)` in a module            | `pub use super::n::{x, T};`, plain `use` when hidden        |
 | `(define-type s (moduleof (abs t type) (val x T) …))` | `pub trait S { type T; fn x() -> …; }` (C24)                |
 | a top-level procedure's parameter of type `s`         | a type parameter `<M: S>`; a module given, `m::Module` (C24) |
 | `nil`                                                 | `nil()`                                                     |
