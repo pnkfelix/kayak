@@ -1,0 +1,3 @@
+"A read, through a region binder, that the effect does not say."
+(define-effect kfx (maxeff (read @globals) spin))
+(define peek (poly ((r region)) (subr kfx ((flatarrayof i64 r)) i64)) (lambda (a) (flatarray-ref-i64 a 0)))

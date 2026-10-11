@@ -112,6 +112,10 @@ is no `Drop`, no `Rc` and no `.clone()`.
 | `(e a …)`, `e` an expression                          | `(e)(a, …)`                                                 |
 | a global procedure named as a value                   | `&f`: a reference to its `fn`, promoted to `'static`        |
 | `(subr E (T…) R)` as a value's type                   | `&'static dyn Fn(T…) -> R`                                  |
+| `(ref T R)`; `new`, `get`, `set`                      | `Ref<T>` = `&'static Cell<T>`; `Cell::new`, `get`, `set`    |
+| `(flatarrayof i64 R)`; the prelude's `…-i64` forms    | `FlatArray<i64>` = `&'static [Cell<i64>]`, bounds checked   |
+| a region, `@a` or a `poly`'s `(r region)`             | erased: every region's place is the heap, so `'static`      |
+| `(read R)`, `(write R)`, `(alloc R)`                  | erased, as every effect is; checked by `kfx` and Fixpt      |
 | `(lambda (x …) body)` as a value                      | `lambdaN(move \|x, …\| { body })`, `N` its arity          |
 | `(poly ((a type) …) T)`, a definition's type          | `fn f<A: Copy + 'static, …>`; an effect binder is erased    |
 | a call of a `poly` procedure                          | inferred, by FX-26 and by rustc alike: no `proj`            |
@@ -169,6 +173,12 @@ Since the modules import by glob, KFX defines each name once, and never a
 primitive's or `kayak-rt`'s. No FX-26 modules yet: theirs are first-class
 values, reached by `with` and `select`, and a loaded file sees only the
 standard environment, neither of which maps trivially (`TODO.md` §19).
+
+**Mutable data is cells** (2026-10-11; `CLAUDES_CHOICES.md` C9, C10). A
+reference and a flat array are shared and aliasable, in FX-26 as in a
+Rust `Cell`: any copy may write, every copy sees it. Not `&mut`, which
+needs the one live reference that a `Copy` value cannot promise. Regions
+are checked (effects on them, by `kfx` and Fixpt) and erased in Rust.
 
 **Checked first.** `kfx` checks types and effects before it writes Rust
 (`DONE.md` §13). Two of its rules are Rust's, not FX-26's: a call's

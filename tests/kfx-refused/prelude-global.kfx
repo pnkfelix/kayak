@@ -1,0 +1,2 @@
+"A pure procedure that calls the prelude's: to FX-26 the prelude's are globals, and calling one reads it."
+(define len (subr pure (string) i64) (lambda (s) (string-length-i64 s)))

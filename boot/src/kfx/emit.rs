@@ -201,6 +201,10 @@ pub fn put_type(c: &'static Ctx, t: &'static Sexp, acc: Chars) -> Chars {
         Sexp::Lst(xs, src_file, src_line) => {
             if sym_is_p(car(xs), "listof") {
                 put(">", put_type(c, second(xs), put("List<", acc)))
+            } else if sym_is_p(car(xs), "flatarrayof") {
+                put(">", put_type(c, second(xs), put("FlatArray<", acc)))
+            } else if sym_is_p(car(xs), "ref") {
+                put(">", put_type(c, second(xs), put("Ref<", acc)))
             } else if sym_is_p(car(xs), "subr") {
                 let acc = put("&'static dyn Fn(", acc);
                 let acc = put_types(c, items(third(xs)), acc);
@@ -863,7 +867,9 @@ pub fn put_params(c: &'static Ctx, names: Sexps, types: Sexps, mutable: bool, ac
 }
 
 /// A poly's binders as a fn's generics: a type is a Rust type parameter,
-/// `Copy` and `'static` as every KFX value is; an effect is erased.
+/// `Copy` and `'static` as every KFX value is; an effect is erased, and so,
+/// until places come (TODO.md section 14), is a region, every one's place
+/// being the heap.
 pub fn put_generics(mut binders: Sexps, mut first: bool, mut acc: Chars) -> Chars {
     loop {
         if null_p(binders) {
@@ -883,7 +889,7 @@ pub fn put_generics(mut binders: Sexps, mut first: bool, mut acc: Chars) -> Char
                 }, acc);
                 let acc = put(camel(sym_name(car(b))), acc);
                 return put_generics(cdr(binders), false, put(": Copy + 'static", acc));
-            } else if string_eq_p(kind, "effect") {
+            } else if (string_eq_p(kind, "effect") || string_eq_p(kind, "region")) {
                 binders = cdr(binders);
                 continue;
             } else {

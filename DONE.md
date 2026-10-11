@@ -337,3 +337,33 @@ f: a string is here, where a i64 is expected`.
 
 What is left is in `TODO.md` §7: positions of atoms, columns, and
 positions in generated Rust.
+
+## 15. Mutable data: flat arrays of i64, and references (2026-10-11)
+
+KFX's first mutable data, and its first regions.
+- `(ref T R)` with `new`, `get` and `set`, and `(flatarrayof i64 R)`
+  through the prelude's `make-flatarray-i64`, `flatarray-ref-i64`,
+  `flatarray-set-i64!` and `flatarray-length-i64` (FX-26's take `int`s).
+  In Rust, cells (C9): `&'static Cell<T>`, `&'static [Cell<i64>]`, bounds
+  checked as FX-26 checks them.
+- Regions: constants `@a`, and `(r region)` binders of a `poly`, erased in
+  Rust (C10). The checker has region types and effect atoms `read:R`,
+  `write:R`, `alloc:R`; a call instantiates its region binders with
+  inference variables, which the expected type, fitted first, and the
+  arguments solve; its latent effect then names the regions found, and
+  one still unsolved is refused (C13).
+- A constant may only read globals (C11).
+- **A K1 hole, closed:** the prelude's names had been bound as primitives,
+  with no effect; to FX-26 they are globals, and calling one reads it. A
+  `pure` procedure calling `string-length-i64` was accepted by `kfx` and
+  refused by Fixpt (`tests/kfx-refused/prelude-global`).
+- `tests/kfx/mutable.kfx`: arrays filled, summed and sorted in place by
+  region-polymorphic procedures, copied across two regions, a cell
+  written through one name and read through another, a cell in a
+  datatype, and closures sharing it. Rust's answer is Fixpt's.
+  Refused by both: a write and a read the effect does not say, and the
+  prelude case; by KFX alone: a constant making an array, a `distinct`
+  binder, a region no one names.
+
+Also: the pin moved to Fixpt `95c5605`; `onto` and `concat` moved to
+`base.kfx`, the checker needing them.

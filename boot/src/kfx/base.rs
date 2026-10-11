@@ -59,6 +59,22 @@ pub fn last<A: Copy + 'static>(mut xs: List<A>) -> A {
     }
 }
 
+pub fn onto<A: Copy + 'static>(xs: List<A>, ys: List<A>) -> List<A> {
+    if null_p(xs) {
+        ys
+    } else {
+        cons(car(xs), onto(cdr(xs), ys))
+    }
+}
+
+pub fn concat<A: Copy + 'static>(xss: List<List<A>>) -> List<A> {
+    if null_p(xss) {
+        nil()
+    } else {
+        onto(car(xss), concat(cdr(xss)))
+    }
+}
+
 // Characters and strings
 pub fn rev_onto(mut xs: Chars, mut acc: Chars) -> Chars {
     loop {

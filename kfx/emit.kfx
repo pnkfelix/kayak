@@ -98,6 +98,10 @@
         (lst (xs src-file src-line)
           (cond ((sym-is? (car xs) "listof")
                  (put ">" (put-type c (second xs) (put "List<" acc))))
+                ((sym-is? (car xs) "flatarrayof")
+                 (put ">" (put-type c (second xs) (put "FlatArray<" acc))))
+                ((sym-is? (car xs) "ref")
+                 (put ">" (put-type c (second xs) (put "Ref<" acc))))
                 ((sym-is? (car xs) "subr")
                  (let* ((acc (put "&'static dyn Fn(" acc))
                         (acc (put-types c (items (third xs)) acc))
@@ -508,7 +512,9 @@
 (define put-generics (subr kfx (sexps bool chars) chars)
   (lambda (binders first acc)
     "A poly's binders as a fn's generics: a type is a Rust type parameter,
-     `Copy` and `'static` as every KFX value is; an effect is erased."
+     `Copy` and `'static` as every KFX value is; an effect is erased, and so,
+     until places come (TODO.md section 14), is a region, every one's place
+     being the heap."
     (if (null? binders)
         (if first acc (put ">" acc))
         (let* ((b (items (car binders)))
@@ -517,7 +523,7 @@
                  (let* ((acc (put (if first "<" ", ") acc))
                         (acc (put (camel (sym-name (car b))) acc)))
                    (put-generics (cdr binders) #f (put ": Copy + 'static" acc))))
-                ((string=? kind "effect") (put-generics (cdr binders) first acc))
+                ((or (string=? kind "effect") (string=? kind "region")) (put-generics (cdr binders) first acc))
                 (else (error (string-append "kfx: KFX-0 has no poly over a " kind))))))))
 
 (define unpoly (subr kfx (sexp) sexp)

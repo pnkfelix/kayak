@@ -34,6 +34,12 @@
 (define last (poly ((a type)) (subr kfx ((listof a acyclic)) a))
   (lambda (xs) (if (null? (cdr xs)) (car xs) (last (cdr xs)))))
 
+(define onto (poly ((a type)) (subr kfx ((listof a acyclic) (listof a acyclic)) (listof a acyclic)))
+  (lambda (xs ys) (if (null? xs) ys (cons (car xs) (onto (cdr xs) ys)))))
+
+(define concat (poly ((a type)) (subr kfx ((listof (listof a acyclic) acyclic)) (listof a acyclic)))
+  (lambda (xss) (if (null? xss) nil (onto (car xss) (concat (cdr xss))))))
+
 "Characters and strings"
 
 (define rev-onto (subr kfx (chars chars) chars)

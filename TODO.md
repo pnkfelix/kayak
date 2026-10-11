@@ -88,12 +88,18 @@ This is what makes memory reclaimable without a collector. Today's
 `'static` everywhere is the rule's degenerate case: every region's place
 is the heap.
 
-## 15. Flat data and `blobref`
+## 15. Flat data: what is left
 
-Flat products, sums and arrays, and `(blobref B F)`, as `#[repr(C)]`
-structs, `#[repr(u8)]` enums, `[F; n]`, and references into them. Keyed
-flat sums already store their tag "as Rust stores a discriminant"
-(`fixpt/docs/fx26.md`, "Flat sums").
+Flat arrays of `i64` and references are done (`DONE.md` §15). Left:
+- other element types (`f64` first, which needs real literals and
+  arithmetic in KFX), through a `(flatlayout T)` as a Rust trait;
+- flat products and arrays reached through `blobref`, as `#[repr(C)]`
+  structs of cells: `extract` a field's `&Cell`, `blobref-index` an
+  element's; not `blobref-at` or `blobref+`, which step by bytes;
+- flat sums: a variant written in place (`blobref-variant!`) has no safe
+  Rust form over a `Cell`, short of a tag cell and a union;
+- `distinct` region binders, checked as Fixpt does;
+- masking, with `letregion` (§14).
 
 ## 16. Escapes, then FX-26 at large
 
@@ -195,8 +201,14 @@ distinct) (r2 region)) …)`, refused at any instantiation that does not give
 procedure's type's. Proposed next there: `blobref-split`, flat data's
 `split_at_mut`, whose pieces refuse `blobref+`.
 
-What it gives kayak: `&mut` between parameters at `distinct` regions, and
-for flat data (§15) down to `split_at_mut`; not `&mut` into heap data,
+**What kayak concluded** (2026-10-11, `CLAUDES_CHOICES.md` C9): since
+every KFX value is `Copy`, a reference can always be duplicated, so even
+at a `distinct` region two copies may alias, and `&mut` is out of reach
+without an affine discipline. Mutable data is cells. What `distinct`
+would still give is the checker's: effects on distinct regions commute.
+What Fixpt's note says it gives a Rust transpiler: `&mut` between
+parameters at `distinct` regions, and for flat data (§15) down to
+`split_at_mut`; not `&mut` into heap data,
 which may share within a region and would need a substructural
 discipline. KFX's heap data is all frozen (`acyclic`), so `&` covers it,
 as today. So the first `&mut` is flat data: a written `distinct` region

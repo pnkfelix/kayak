@@ -28,6 +28,11 @@ pub mod lists;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/mutable.rs"]
+pub mod mutable;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/names.rs"]
 pub mod names;
 
@@ -66,6 +71,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("data", data::main),
     ("lets", lets::main),
     ("lists", lists::main),
+    ("mutable", mutable::main),
     ("names", names::main),
     ("procs", procs::main),
     ("recursion", recursion::main),

@@ -79,3 +79,60 @@ The user approved strings as comments.
   wants.
 - **Why:** trivial, and equal to FX-26's meaning while `e` is pure; the
   compiler's one constant is a string.
+
+## C9. Mutable data is cells, not `&mut` (2026-10-11)
+
+- **Chosen:** `(ref T R)` is `&'static Cell<T>`, and `(flatarrayof i64 R)`
+  `&'static [Cell<i64>]`.
+- **Not chosen:** `&mut`, which draft plans (TODO §18) and my own
+  suggestion to the user had pointed at for flat data.
+- **Why:** every KFX value is `Copy` (C3), so a reference can always be
+  duplicated, and two copies alias, which FX-26 allows and `&mut` forbids.
+  Fixpt's `distinct` says two *regions* do not overlap, not that a region
+  holds one live reference; `&mut` needs an affine discipline that KFX
+  does not have. A `Cell` means exactly what FX-26's mutable data means.
+
+## C10. Regions erased to `'static`, for now (2026-10-11)
+
+- **Chosen:** a region, constant or variable, is erased in Rust; the
+  checker still checks effects on regions.
+- **Not chosen:** a region variable as a lifetime parameter (TODO §14's
+  rule), which a closure capturing such a reference would break, since
+  `lambdaN` wants `'static`.
+- **Why:** every allocation is the heap's, which is never freed, so every
+  reference is `'static` already; lifetimes earn their place with places
+  (`letrena`), and come with them.
+
+## C11. A constant's value may only read globals (2026-10-11)
+
+- **Chosen:** the checker refuses a constant whose value has an effect
+  other than reading globals (or `spin`), e.g. one that makes a flat
+  array.
+- **Not chosen:** a constant evaluated once in Rust, with a `static`
+  `OnceLock`, which a `Cell` (not `Sync`) cannot be in; or a
+  `thread_local!`, more runtime than the mapping wants.
+- **Why:** a constant is `fn x() -> T`, run at each use (C8); with
+  mutable data, that would make a new array at each use where FX-26
+  makes one. Stricter than FX-26 (`tests/kfx-stricter/constant-mutable`).
+
+## C12. Flat arrays of i64 alone, through the prelude (2026-10-11)
+
+- **Chosen:** `make-flatarray-i64`, `flatarray-ref-i64`,
+  `flatarray-set-i64!`, `flatarray-length-i64`, defined in the prelude
+  over FX-26's, with sizes and indices at `i64`.
+- **Not chosen:** FX-26's own forms, which take `int` indices and a
+  `(flatlayout T)`, for any of six scalar types.
+- **Why:** KFX has `i64` alone among numbers so far; a layout argument
+  would be a dictionary with no Rust counterpart yet (a trait would be).
+  Other element types when KFX has the types.
+
+## C13. A region the call does not say is refused (2026-10-11)
+
+- **Chosen:** a call whose latent effect names a region binder that
+  neither the arguments nor the expected type solve is refused: "write
+  it, (the T e)". So are `distinct` binders, for now.
+- **Not chosen:** FX-26's fresh region and its masking, so that a
+  procedure making and using its own array is `pure`.
+- **Why:** masking is a rule the checker would have to get exactly right
+  to keep K1; refusing is safe. With places (TODO §14), a `letregion`
+  says the region, and masking comes with it.

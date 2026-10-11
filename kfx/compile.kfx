@@ -30,12 +30,6 @@
 (define-type sources (listof source acyclic))
 (define-type outputs (listof output acyclic))
 
-(define onto (poly ((a type)) (subr kfx ((listof a acyclic) (listof a acyclic)) (listof a acyclic)))
-  (lambda (xs ys) (if (null? xs) ys (cons (car xs) (onto (cdr xs) ys)))))
-
-(define concat (poly ((a type)) (subr kfx ((listof (listof a acyclic) acyclic)) (listof a acyclic)))
-  (lambda (xss) (if (null? xss) nil (onto (car xss) (concat (cdr xss))))))
-
 (define source-forms (subr kfx (source) sexps)
   (lambda (s) (tagcase s (source (name text) (read-all (string-chars text) (string-append name ".kfx") 1)))))
 

@@ -22,11 +22,20 @@
   (ty-void)
   (ty-list ty)
   (ty-data string)
+  (ty-flat ty ty)
+  (ty-ref ty ty)
+  (ty-rconst string)
   (ty-proc strings (listof ty acyclic) ty)
   (ty-var string)
   (ty-meta i64))
 
-"`ty-void` is `error`'s result, below every type. A `ty-proc`'s strings
+"`ty-flat` and `ty-ref` are a flat array and a reference, each with its
+ element's type and its region: a `ty-rconst` (`@a`), a `ty-var` (a poly's
+ region binder, named with a `'` first, so no type variable is one), or a
+ `ty-meta`. Their effects' atoms are `read:`, `write:` and `alloc:` and a
+ region's name.
+
+ `ty-void` is `error`'s result, below every type. A `ty-proc`'s strings
  are its latent effect, a set of atoms: `spin`, `@globals` (every global
  read), and `g:` and a name (that global read). `ty-var` is a `poly`'s
  type variable, `ty-meta` an inference variable."
@@ -136,24 +145,39 @@
 (define cv-effdefs (subr kfx (cv) effdefs)
   (lambda (v) (tagcase v (cv (bs ds as es here group file line) es))))
 
+(define region-name (subr kfx (cv strings sexp) string)
+  (lambda (v tvars r)
+    "A region's name: a constant, `@a`, or a poly's region binder, `'r`."
+    (let ((s (tagcase r (sym (n) n) (else other (refuse v (string-append "a region KFX does not have: " (show-sexp other)))))))
+      (cond ((char=? (string-ref-i64 s 0) #\@) s)
+            ((string-member? (string-append "'" s) tvars) (string-append "'" s))
+            (else (refuse v (string-append "a region KFX-0 does not have: " s)))))))
+
+(define parse-region (subr kfx (cv strings sexp) ty)
+  (lambda (v tvars r)
+    (let ((name (region-name v tvars r)))
+      (if (char=? (string-ref-i64 name 0) #\@) (ty-rconst name) (ty-var name)))))
+
 (define-rec
-  (parse-effect (subr kfx (cv sexp) strings)
-    (lambda (v e)
+  (parse-effect (subr kfx (cv strings sexp) strings)
+    (lambda (v tvars e)
       (tagcase e
         (sym (s)
           (cond ((string=? s "pure") nil)
                 ((string=? s "spin") (list "spin"))
                 (else (find-effdef v s (cv-effdefs v)))))
         (lst (xs src-file src-line)
-          (cond ((sym-is? (car xs) "maxeff") (parse-effects v (cdr xs)))
+          (cond ((sym-is? (car xs) "maxeff") (parse-effects v tvars (cdr xs)))
                 ((and (sym-is? (car xs) "read") (sym-is? (second xs) "@globals")) (list "@globals"))
                 ((and (sym-is? (car xs) "read") (head-is? (second xs) "globals"))
                  (map (lambda ((g sexp)) (string-append "g:" (sym-name g))) (cdr (items (second xs)))))
+                ((or (sym-is? (car xs) "read") (sym-is? (car xs) "write") (sym-is? (car xs) "alloc"))
+                 (list (string-append (sym-name (car xs)) (string-append ":" (region-name v tvars (second xs))))))
                 (else (refuse v (string-append "an effect KFX does not have: " (show-sexp e))))))
         (else other (refuse v (string-append "an effect KFX does not have: " (show-sexp e)))))))
-  (parse-effects (subr kfx (cv sexps) strings)
-    (lambda (v es)
-      (if (null? es) nil (effs-union (parse-effect v (car es)) (parse-effects v (cdr es)))))))
+  (parse-effects (subr kfx (cv strings sexps) strings)
+    (lambda (v tvars es)
+      (if (null? es) nil (effs-union (parse-effect v tvars (car es)) (parse-effects v tvars (cdr es)))))))
 
 "Types"
 
@@ -199,8 +223,14 @@
                  (if (sym-is? (third xs) "acyclic")
                      (ty-list (parse-type v tvars (second xs)))
                      (refuse v (string-append "KFX-0's lists are at acyclic: " (show-sexp t)))))
+                ((sym-is? (car xs) "flatarrayof")
+                 (if (sym-is? (second xs) "i64")
+                     (ty-flat (ty-i64) (parse-region v tvars (third xs)))
+                     (refuse v (string-append "KFX-0's flat arrays are of i64: " (show-sexp t)))))
+                ((sym-is? (car xs) "ref")
+                 (ty-ref (parse-type v tvars (second xs)) (parse-region v tvars (third xs))))
                 ((sym-is? (car xs) "subr")
-                 (ty-proc (parse-effect v (second xs))
+                 (ty-proc (parse-effect v tvars (second xs))
                           (parse-types v tvars (items (third xs)))
                           (parse-type v tvars (fourth xs))))
                 (else (refuse v (string-append "a type KFX does not have: " (show-sexp t))))))
@@ -210,13 +240,17 @@
 
 (define poly-binders (subr kfx (cv sexp) strings)
   (lambda (v t)
-    "A definition's type's type variables: a poly at its top, over types."
+    "A definition's type's variables: a poly at its top, over types, and
+     regions, whose names begin with `'`."
     (if (head-is? t "poly")
         (map (lambda ((b sexp))
                (let ((b (items b)))
-                 (if (sym-is? (second b) "type")
-                     (sym-name (car b))
-                     (refuse v (string-append "KFX's poly is over types: " (show-sexp (lst b "" 0)))))))
+                 (cond ((not (i64= (size b) 2))
+                        (refuse v (string-append "a binder KFX-0 does not have (distinct regions are to come): "
+                                                 (show-sexp (lst b "" 0)))))
+                       ((sym-is? (second b) "type") (sym-name (car b)))
+                       ((sym-is? (second b) "region") (string-append "'" (sym-name (car b))))
+                       (else (refuse v (string-append "KFX's poly is over types and regions: " (show-sexp (lst b "" 0))))))))
              (items (second (items t))))
         nil)))
 
@@ -237,6 +271,9 @@
         (ty-void () "void")
         (ty-list (e) (string-append "(listof " (string-append (show-ty s e) " acyclic)")))
         (ty-data (d) d)
+        (ty-flat (e r) (string-append "(flatarrayof " (string-append (show-ty s e) (string-append " " (string-append (show-ty s r) ")")))))
+        (ty-ref (e r) (string-append "(ref " (string-append (show-ty s e) (string-append " " (string-append (show-ty s r) ")")))))
+        (ty-rconst (n) n)
         (ty-proc (es ps r)
           (string-append "(subr " (string-append (show-effs es) (string-append " ("
             (string-append (show-tys s ps) (string-append ") " (string-append (show-ty s r) ")")))))))
@@ -270,6 +307,8 @@
       (tagcase (walk s t)
         (ty-meta (k) #t)
         (ty-list (e) (has-meta? s e))
+        (ty-flat (e r) (or (has-meta? s e) (has-meta? s r)))
+        (ty-ref (e r) (or (has-meta? s e) (has-meta? s r)))
         (ty-proc (es ps r) (or (has-meta? s r) (any? (lambda ((p ty)) (has-meta? s p)) ps)))
         (else other #f)))))
 
@@ -288,6 +327,8 @@
       (tagcase (walk s t)
         (ty-meta (j) (i64= j k))
         (ty-list (e) (occurs? s k e))
+        (ty-flat (e r) (or (occurs? s k e) (occurs? s k r)))
+        (ty-ref (e r) (or (occurs? s k e) (occurs? s k r)))
         (ty-proc (es ps r) (or (occurs? s k r) (any? (lambda ((p ty)) (occurs? s k p)) ps)))
         (else other #f)))))
 
@@ -324,6 +365,9 @@
     (lambda (v s a e)
       (tagcase a
         (ty-list (x) (tagcase e (ty-list (y) (fits v s x y)) (else other (mismatch v s a e))))
+        (ty-flat (x xr) (tagcase e (ty-flat (y yr) (fits v (fits v s x y) xr yr)) (else other (mismatch v s a e))))
+        (ty-ref (x xr) (tagcase e (ty-ref (y yr) (fits v (fits v s x y) xr yr)) (else other (mismatch v s a e))))
+        (ty-rconst (x) (tagcase e (ty-rconst (y) (if (string=? x y) s (mismatch v s a e))) (else other (mismatch v s a e))))
         (ty-data (x) (tagcase e (ty-data (y) (if (string=? x y) s (mismatch v s a e))) (else other (mismatch v s a e))))
         (ty-var (x) (tagcase e (ty-var (y) (if (string=? x y) s (mismatch v s a e))) (else other (mismatch v s a e))))
         (ty-proc (aes aps ar)
@@ -345,27 +389,49 @@
       (refuse v (string-append "a " (string-append (show-ty s a)
                 (string-append " is here, where a " (string-append (show-ty s e) " is expected"))))))))
 
-"A scheme's instance: each type variable an inference variable."
-(define-datatype inst (inst ty st))
+"A scheme's instance: each variable an inference variable; those for
+ regions are kept, so that a call's effect can name the regions found."
+(define-datatype inst (inst ty st (listof i64 acyclic)))
+
+(define rename-atoms (subr kfx (strings string string) strings)
+  (lambda (es from to)
+    "Effect atoms on region `from` made atoms on region `to`."
+    (map (lambda ((x string))
+           (cond ((string=? x (string-append "read:" from)) (string-append "read:" to))
+                 ((string=? x (string-append "write:" from)) (string-append "write:" to))
+                 ((string=? x (string-append "alloc:" from)) (string-append "alloc:" to))
+                 (else x)))
+         es)))
+
+(define meta-name (subr kfx (i64) string)
+  (lambda (k) (string-append "?" (i64->string k))))
 
 (define-rec
   (instantiate (subr kfx (st scheme) inst)
     (lambda (s sc)
       (tagcase sc
-        (scheme (tvars t) (instantiate-vars s tvars t)))))
-  (instantiate-vars (subr kfx (st strings ty) inst)
-    (lambda (s tvars t)
+        (scheme (tvars t) (instantiate-vars s tvars t nil)))))
+  (instantiate-vars (subr kfx (st strings ty (listof i64 acyclic)) inst)
+    (lambda (s tvars t regions)
       (if (null? tvars)
-          (inst t s)
+          (inst t s regions)
           (tagcase (fresh s)
             (res (m es s)
-              (instantiate-vars s (cdr tvars) (replace-var (car tvars) m t)))))))
+              (tagcase m
+                (ty-meta (k)
+                  (instantiate-vars s (cdr tvars) (replace-var (car tvars) m t)
+                                    (if (char=? (string-ref-i64 (car tvars) 0) #\') (cons k regions) regions)))
+                (else other (inst t s regions))))))))
   (replace-var (subr kfx (string ty ty) ty)
     (lambda (name m t)
       (tagcase t
         (ty-var (n) (if (string=? n name) m t))
         (ty-list (e) (ty-list (replace-var name m e)))
-        (ty-proc (es ps r) (ty-proc es (map (lambda ((p ty)) (replace-var name m p)) ps) (replace-var name m r)))
+        (ty-flat (e r) (ty-flat (replace-var name m e) (replace-var name m r)))
+        (ty-ref (e r) (ty-ref (replace-var name m e) (replace-var name m r)))
+        (ty-proc (es ps r)
+          (ty-proc (tagcase m (ty-meta (k) (rename-atoms es name (meta-name k))) (else other es))
+                   (map (lambda ((p ty)) (replace-var name m p)) ps) (replace-var name m r)))
         (else other t)))))
 
 "The names in scope"
@@ -461,6 +527,24 @@
           ((void? s t) rest)
           (else t))))
 
+(define name-regions (subr kfx (cv st strings (listof i64 acyclic)) strings)
+  (lambda (v s es regions)
+    "A call's latent effect, its regions' inference variables replaced by
+     the regions the arguments and the type expected found. A region still
+     not found is refused, where FX-26 would make one up."
+    (if (null? regions)
+        es
+        (let* ((k (car regions))
+               (found (tagcase (walk s (ty-meta k))
+                        (ty-rconst (n) n)
+                        (ty-var (n) n)
+                        (else other ""))))
+          (cond ((not (string=? found ""))
+                 (name-regions v s (rename-atoms es (meta-name k) found) (cdr regions)))
+                ((string=? (words-of (rename-atoms es (meta-name k) "")) (words-of es))
+                 (name-regions v s es (cdr regions)))
+                (else (refuse v "a region the call's arguments do not say, nor the type expected: write it, (the T e)")))))))
+
 (define control-form? (subr kfx (string) bool)
   (lambda (h)
     (or (string=? h "if") (string=? h "cond") (string=? h "case") (string=? h "tagcase")
@@ -516,7 +600,7 @@
           (let ((v (near v src-file src-line)))
             (tagcase (car xs)
               (sym (h) (synth-form v s e h (cdr xs)))
-              (else head (synth-call-of v s (synth v s head) (cdr xs) (list "spin")))))))))
+              (else head (synth-call-of v s (synth v s head) (cdr xs) nil nil (list "spin")))))))))
 
   (synth-name (subr kfx (cv st string) res)
     (lambda (v s name)
@@ -529,7 +613,7 @@
                    (tagcase (car found)
                      (bind (n sc where)
                        (tagcase (instantiate s sc)
-                         (inst (t s) (res t (naming-effs s name where t) s)))))))))))
+                         (inst (t s regions) (res t (naming-effs s name where t) s)))))))))))
 
   (check (subr kfx (cv st sexp ty) res)
     (lambda (v s e expected)
@@ -589,7 +673,7 @@
             ((control-form? h) (body-form v s h xs nil))
             ((string=? h "and") (bools v s xs))
             ((string=? h "or") (bools v s xs))
-            (else (synth-call v s h xs)))))
+            (else (synth-call v s h xs nil)))))
 
   (check-form (subr kfx (cv st sexp string sexps ty) res)
     (lambda (v s e h xs expected)
@@ -600,7 +684,9 @@
              (tagcase expected
                (ty-list (el) (res expected (elements v s xs el) s))
                (else other (check-by-synth v s e expected))))
-            (else (check-by-synth v s e expected)))))
+            ((or (string=? h "the") (string=? h "and") (string=? h "or") (string=? h "lambda") (string=? h "list"))
+             (check-by-synth v s e expected))
+            (else (synth-call v s h xs (list expected))))))
 
   (elements (subr kfx (cv st sexps ty) strings)
     (lambda (v s xs el)
@@ -767,8 +853,8 @@
                                         s)))
                                 (cdr params) (cdr types)))))
 
-  (synth-call (subr kfx (cv st string sexps) res)
-    (lambda (v s h args)
+  (synth-call (subr kfx (cv st string sexps tys) res)
+    (lambda (v s h args expected)
       "A call of a name: a procedure in this group is `spin`, one that is a
        local's value is a call of a procedure not known, so `spin` too."
       (let ((found (find-bind h (cv-binds v))))
@@ -780,18 +866,19 @@
               (tagcase (car found)
                 (bind (n sc where)
                   (tagcase (instantiate s sc)
-                    (inst (t s)
-                      (synth-call-of v s (res t nil s) args
+                    (inst (t s regions)
+                      (synth-call-of v s (res t nil s) args regions expected
                                      (effs-union
                                        (if (string=? where "global") (list (string-append "g:" h)) nil)
                                        (if (or (string=? where "local") (string-member? h (cv-group v)))
                                            (list "spin")
                                            nil))))))))))))
 
-  (synth-call-of (subr kfx (cv st res sexps strings) res)
-    (lambda (v s callee args more)
-      "A call of the procedure `callee` is: its arguments checked against
-       its parameters, in order; its effect, the callee's latent effect, the
+  (synth-call-of (subr kfx (cv st res sexps (listof i64 acyclic) tys strings) res)
+    (lambda (v s callee args regions expected more)
+      "A call of the procedure `callee` is: its result fitted to the type
+       `expected`, if one is, then its arguments checked against its
+       parameters, in order; its effect, the callee's latent effect, the
        arguments' and `more`. In order, not lambdas last as FX-26 does,
        since rustc finds a closure's parameter types only from what comes
        before it: see `check-written-params`."
@@ -802,9 +889,11 @@
               (if (not (i64= (size ps) (size args)))
                   (refuse v (string-append "a call of the wrong number of arguments: "
                                            (show-sexps args)))
-                  (tagcase (call-args v s args ps)
+                  (tagcase (call-args v (if (null? expected) s (fits v s r (car expected))) args ps)
                     (res (u es1 s)
-                      (res r (effs-union latent (effs-union more (effs-union es0 es1))) s)))))
+                      (res r (effs-union (name-regions v s latent regions)
+                                         (effs-union more (effs-union es0 es1)))
+                           s)))))
             (else other (refuse v (string-append "a call of a " (string-append (show-ty s t) ", no procedure")))))))))
 
   (call-args (subr kfx (cv st sexps tys) res)
@@ -830,8 +919,9 @@
    (string-append (subr pure (string string) string)) (string=? (subr pure (string string) bool))
    (list->string (subr pure ((listof char acyclic)) string))
    (error (subr pure (string) void))
-   (string-length-i64 (subr pure (string) i64)) (string-ref-i64 (subr pure (string i64) char))
-   (char->i64 (subr pure (char) i64)) (i64->string (subr pure (i64) string))
+   (new (poly ((r region) (t type)) (subr (alloc r) (t) (ref t r))))
+   (get (poly ((r region) (t type)) (subr (read r) ((ref t r)) t)))
+   (set (poly ((r region) (t type)) (subr (write r) ((ref t r) t) unit)))
    (nil (poly ((t type)) (listof t acyclic)))
    (cons (poly ((t type)) (subr pure (t (listof t acyclic)) (listof t acyclic))))
    (car (poly ((t type)) (subr pure ((listof t acyclic)) t)))
@@ -842,12 +932,28 @@
  FX-26's standard environment's at `acyclic`, where making and reading
  lists are pure."
 
-(define prim-binds (subr kfx (cv) binds)
-  (lambda (v)
+(define prelude string
+  "(string-length-i64 (subr pure (string) i64)) (string-ref-i64 (subr pure (string i64) char))
+   (char->i64 (subr pure (char) i64)) (i64->string (subr pure (i64) string))
+   (make-flatarray-i64 (poly ((r region)) (subr (alloc r) (i64 i64) (flatarrayof i64 r))))
+   (flatarray-ref-i64 (poly ((r region)) (subr (read r) ((flatarrayof i64 r) i64) i64)))
+   (flatarray-set-i64! (poly ((r region)) (subr (write r) ((flatarrayof i64 r) i64 i64) unit)))
+   (flatarray-length-i64 (poly ((r region)) (subr pure ((flatarrayof i64 r)) i64)))")
+
+"The prelude's (kfx/prelude.fx), at the types it gives them. To FX-26
+ they are globals, the prelude's definitions: calling one reads it."
+
+(define table-binds (subr kfx (cv string string string) binds)
+  (lambda (v table file where)
     (map (lambda ((p sexp))
            (let ((xs (items p)))
-             (bind (sym-name (car xs)) (parse-scheme v (second xs)) "prim")))
-         (read-all (string-chars primitives) "kayak-rt's primitives" 1))))
+             (bind (sym-name (car xs)) (parse-scheme v (second xs)) where)))
+         (read-all (string-chars table) file 1))))
+
+(define prim-binds (subr kfx (cv) binds)
+  (lambda (v)
+    (onto (table-binds v primitives "kayak-rt's primitives" "prim")
+          (table-binds v prelude "kfx/prelude.fx" "global"))))
 
 (define datatype-of (subr kfx (cv sexps) dt)
   (lambda (v xs)
@@ -892,7 +998,7 @@
     "`v`, with a define-effect's abbreviation."
     (tagcase v
       (cv (bs ds as es here group file line)
-        (cv bs ds as (cons (effdef (sym-name (second xs)) (parse-effect v (third xs))) es) here group file line)))))
+        (cv bs ds as (cons (effdef (sym-name (second xs)) (parse-effect v nil (third xs))) es) here group file line)))))
 
 (define declare-datatypes (subr kfx (cv sexps dts) dts)
   (lambda (v forms ds)
@@ -1003,7 +1109,14 @@
                            (tagcase sc
                              (scheme (tvars t)
                                (if (null? tvars)
-                                   (tagcase (check v (new-state) (fourth xs) t) (res (u es s) named))
+                                   (tagcase (check v (new-state) (fourth xs) t)
+                                     (res (u es s)
+                                       (if (any? (lambda ((x string))
+                                                   (not (or (string=? x "spin") (string=? x "@globals") (global-atom? x))))
+                                                 es)
+                                           (refuse v (string-append "a constant whose value has the effect " (string-append (show-effs es)
+                                                     ": KFX's constant is a fn, run at each use, so its value may only read globals")))
+                                           named)))
                                    (refuse v "a poly constant: only a procedure may be poly"))))))))
                 ((string=? h "define-rec") (check-rec v (cdr xs)))
                 (else (tagcase (synth (at v "a top-level expression" nil) (new-state) form)

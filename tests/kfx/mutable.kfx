@@ -1,0 +1,91 @@
+"Mutable data: flat arrays of i64s and references, at regions, read and
+ written by procedures polymorphic in their regions. In Rust, cells:
+ FX-26's mutable data may be aliased, and written through any alias, as
+ a Cell may."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-type strings (listof string acyclic))
+
+(define words (subr kfx (strings) string)
+  (lambda (xs)
+    (cond ((null? xs) "")
+          ((null? (cdr xs)) (car xs))
+          (else (string-append (car xs) (string-append " " (words (cdr xs))))))))
+
+(define fill! (poly ((r region)) (subr (maxeff kfx (write r)) ((flatarrayof i64 r) i64) unit))
+  (lambda (a i)
+    "a[i] := (i * 7) mod 10, for each i from `i`: a loop."
+    (if (i64< i (flatarray-length-i64 a))
+        (begin (flatarray-set-i64! a i (i64-remainder (i64* i 7) 10))
+               (fill! a (i64+ i 1)))
+        #u)))
+
+(define total (poly ((r region)) (subr (maxeff kfx (read r)) ((flatarrayof i64 r) i64 i64) i64))
+  (lambda (a i acc)
+    (if (i64< i (flatarray-length-i64 a))
+        (total a (i64+ i 1) (i64+ acc (flatarray-ref-i64 a i)))
+        acc)))
+
+(define show (poly ((r region)) (subr (maxeff kfx (read r)) ((flatarrayof i64 r) i64) string))
+  (lambda (a i)
+    (if (i64< i (flatarray-length-i64 a))
+        (string-append (i64->string (flatarray-ref-i64 a i)) (show a (i64+ i 1)))
+        "")))
+
+(define sink! (poly ((r region)) (subr (maxeff kfx (read r) (write r)) ((flatarrayof i64 r) i64) unit))
+  (lambda (a j)
+    "Moves a[j] down to where it belongs among a[0..j]: insertion."
+    (if (and (i64> j 0) (i64> (flatarray-ref-i64 a (i64- j 1)) (flatarray-ref-i64 a j)))
+        (let ((x (flatarray-ref-i64 a j)))
+          (begin (flatarray-set-i64! a j (flatarray-ref-i64 a (i64- j 1)))
+                 (flatarray-set-i64! a (i64- j 1) x)
+                 (sink! a (i64- j 1))))
+        #u)))
+
+(define sort! (poly ((r region)) (subr (maxeff kfx (read r) (write r)) ((flatarrayof i64 r) i64) unit))
+  (lambda (a i)
+    (if (i64< i (flatarray-length-i64 a))
+        (begin (sink! a i) (sort! a (i64+ i 1)))
+        #u)))
+
+(define copy! (poly ((r1 region) (r2 region))
+                (subr (maxeff kfx (read r1) (write r2)) ((flatarrayof i64 r1) (flatarrayof i64 r2) i64) unit))
+  (lambda (from to i)
+    "From one region to another: two region binders."
+    (if (i64< i (flatarray-length-i64 from))
+        (begin (flatarray-set-i64! to i (flatarray-ref-i64 from i)) (copy! from to (i64+ i 1)))
+        #u)))
+
+(define-datatype counter (counter string (ref i64 @c)))
+
+(define bump! (subr (maxeff kfx (read @c) (write @c)) (counter) i64)
+  (lambda (k)
+    (tagcase k
+      (counter (name cell) (begin (set cell (i64+ (get cell) 1)) (get cell))))))
+
+(define main (subr (maxeff kfx (read @a) (write @a) (alloc @a) (read @b) (write @b) (alloc @b)
+                           (read @c) (write @c) (alloc @c))
+                   () string)
+  (lambda ()
+    (let* ((a (the (flatarrayof i64 @a) (make-flatarray-i64 8 0)))
+           (b (the (flatarrayof i64 @b) (make-flatarray-i64 8 -1)))
+           (cell (the (ref i64 @c) (new 40)))
+           (alias cell)
+           (k (counter "k" cell))
+           (step (lambda () (bump! k))))
+      (begin
+        (fill! a 0)
+        "b is a copy of a, before a is sorted: two regions, two arrays."
+        (copy! a b 0)
+        (sort! a 0)
+        "A write through one name of a cell is seen through another."
+        (set alias (i64+ (get alias) 1))
+        (words
+         (list (show a 0) (show b 0)
+               (i64->string (total a 0 0)) (i64->string (total b 0 0))
+               (i64->string (get cell))
+               (i64->string (bump! k))
+               (i64->string (step))
+               (i64->string (step))
+               (i64->string (get alias))))))))

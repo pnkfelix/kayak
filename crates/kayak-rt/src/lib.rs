@@ -8,7 +8,15 @@
 //! Strings are ASCII, so that `string-ref` is an index; a byte past ASCII
 //! is an error where it is read.
 
+use std::cell::Cell;
+
 pub type Str = &'static str;
+
+/// `(ref T R)`: a cell, which any alias may read and write, as FX-26's may.
+pub type Ref<T> = &'static Cell<T>;
+
+/// `(flatarrayof T R)`: a flat array, raw elements in a row, each a cell.
+pub type FlatArray<T> = &'static [Cell<T>];
 
 pub struct Cons<T: 'static> {
     pub car: T,
@@ -180,6 +188,52 @@ pub fn char_to_i64(c: char) -> i64 {
 
 pub fn i64_to_string(n: i64) -> Str {
     leak_string(n.to_string())
+}
+
+// Mutable data: references and flat arrays. Regions are erased (every
+// one's place is the heap, so every reference `'static`); effects too.
+
+pub fn new<T: Copy>(v: T) -> Ref<T> {
+    alloc(Cell::new(v))
+}
+
+pub fn get<T: Copy>(r: Ref<T>) -> T {
+    r.get()
+}
+
+pub fn set<T: Copy>(r: Ref<T>, v: T) {
+    r.set(v)
+}
+
+pub fn make_flatarray_i64(n: i64, v: i64) -> FlatArray<i64> {
+    match usize::try_from(n) {
+        Ok(n) => Box::leak(
+            (0..n)
+                .map(|_| Cell::new(v))
+                .collect::<Vec<_>>()
+                .into_boxed_slice(),
+        ),
+        Err(_) => error("make-flatarray: a negative length"),
+    }
+}
+
+fn element<T>(a: &'static [Cell<T>], i: i64) -> &'static Cell<T> {
+    match usize::try_from(i).ok().and_then(|i| a.get(i)) {
+        Some(c) => c,
+        None => error("flatarray: index out of range"),
+    }
+}
+
+pub fn flatarray_ref_i64(a: FlatArray<i64>, i: i64) -> i64 {
+    element(a, i).get()
+}
+
+pub fn flatarray_set_i64_x(a: FlatArray<i64>, i: i64, v: i64) {
+    element(a, i).set(v)
+}
+
+pub fn flatarray_length_i64(a: FlatArray<i64>) -> i64 {
+    a.len() as i64
 }
 
 // Characters.

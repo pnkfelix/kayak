@@ -1,0 +1,3 @@
+"A distinct region binder: FX-26's prototype; KFX does not check distinctness yet."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f (poly ((r region distinct)) (subr (maxeff kfx (read r)) ((flatarrayof i64 r)) i64)) (lambda (a) (flatarray-ref-i64 a 0)))

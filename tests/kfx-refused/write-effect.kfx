@@ -1,0 +1,3 @@
+"A write to a region the procedure's effect does not say."
+(define-effect kfx (maxeff (read @globals) spin))
+(define poke (subr kfx ((flatarrayof i64 @a)) unit) (lambda (a) (flatarray-set-i64! a 0 1)))

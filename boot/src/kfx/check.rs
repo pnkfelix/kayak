@@ -26,6 +26,9 @@ pub enum Ty {
     TyVoid(),
     TyList(&'static Ty),
     TyData(Str),
+    TyFlat(&'static Ty, &'static Ty),
+    TyRef(&'static Ty, &'static Ty),
+    TyRconst(Str),
     TyProc(Strings, List<&'static Ty>, &'static Ty),
     TyVar(Str),
     TyMeta(i64),
@@ -63,6 +66,18 @@ pub fn ty_data(f0: Str) -> &'static Ty {
     alloc(Ty::TyData(f0))
 }
 
+pub fn ty_flat(f0: &'static Ty, f1: &'static Ty) -> &'static Ty {
+    alloc(Ty::TyFlat(f0, f1))
+}
+
+pub fn ty_ref(f0: &'static Ty, f1: &'static Ty) -> &'static Ty {
+    alloc(Ty::TyRef(f0, f1))
+}
+
+pub fn ty_rconst(f0: Str) -> &'static Ty {
+    alloc(Ty::TyRconst(f0))
+}
+
 pub fn ty_proc(f0: Strings, f1: List<&'static Ty>, f2: &'static Ty) -> &'static Ty {
     alloc(Ty::TyProc(f0, f1, f2))
 }
@@ -75,6 +90,12 @@ pub fn ty_meta(f0: i64) -> &'static Ty {
     alloc(Ty::TyMeta(f0))
 }
 
+// `ty-flat` and `ty-ref` are a flat array and a reference, each with its
+// element's type and its region: a `ty-rconst` (`@a`), a `ty-var` (a poly's
+// region binder, named with a `'` first, so no type variable is one), or a
+// `ty-meta`. Their effects' atoms are `read:`, `write:` and `alloc:` and a
+// region's name.
+//
 // `ty-void` is `error`'s result, below every type. A `ty-proc`'s strings
 // are its latent effect, a set of atoms: `spin`, `@globals` (every global
 // read), and `g:` and a name (that global read). `ty-var` is a `poly`'s
@@ -310,7 +331,39 @@ pub fn cv_effdefs(v: &'static Cv) -> Effdefs {
     }
 }
 
-pub fn parse_effect(v: &'static Cv, e: &'static Sexp) -> Strings {
+/// A region's name: a constant, `@a`, or a poly's region binder, `'r`.
+pub fn region_name(v: &'static Cv, tvars: Strings, r: &'static Sexp) -> Str {
+    let s = {
+        let tagcase_ = r;
+        match *tagcase_ {
+            Sexp::Sym(n) => {
+                n
+            }
+            _ => {
+                let other = tagcase_;
+                refuse(v, string_append("a region KFX does not have: ", show_sexp(other)))
+            }
+        }
+    };
+    if char_eq_p(string_ref_i64(s, 0i64), '@') {
+        s
+    } else if string_member_p(string_append("'", s), tvars) {
+        string_append("'", s)
+    } else {
+        refuse(v, string_append("a region KFX-0 does not have: ", s))
+    }
+}
+
+pub fn parse_region(v: &'static Cv, tvars: Strings, r: &'static Sexp) -> &'static Ty {
+    let name = region_name(v, tvars, r);
+    if char_eq_p(string_ref_i64(name, 0i64), '@') {
+        ty_rconst(name)
+    } else {
+        ty_var(name)
+    }
+}
+
+pub fn parse_effect(v: &'static Cv, tvars: Strings, e: &'static Sexp) -> Strings {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Sym(s) => {
@@ -324,13 +377,15 @@ pub fn parse_effect(v: &'static Cv, e: &'static Sexp) -> Strings {
         }
         Sexp::Lst(xs, src_file, src_line) => {
             if sym_is_p(car(xs), "maxeff") {
-                parse_effects(v, cdr(xs))
+                parse_effects(v, tvars, cdr(xs))
             } else if (sym_is_p(car(xs), "read") && sym_is_p(second(xs), "@globals")) {
                 cons("@globals", nil())
             } else if (sym_is_p(car(xs), "read") && head_is_p(second(xs), "globals")) {
                 map(lambda1(move |g: &'static Sexp| {
                     string_append("g:", sym_name(g))
                 }), cdr(items(second(xs))))
+            } else if (sym_is_p(car(xs), "read") || sym_is_p(car(xs), "write") || sym_is_p(car(xs), "alloc")) {
+                cons(string_append(sym_name(car(xs)), string_append(":", region_name(v, tvars, second(xs)))), nil())
             } else {
                 refuse(v, string_append("an effect KFX does not have: ", show_sexp(e)))
             }
@@ -342,11 +397,11 @@ pub fn parse_effect(v: &'static Cv, e: &'static Sexp) -> Strings {
     }
 }
 
-pub fn parse_effects(v: &'static Cv, es: Sexps) -> Strings {
+pub fn parse_effects(v: &'static Cv, tvars: Strings, es: Sexps) -> Strings {
     if null_p(es) {
         nil()
     } else {
-        effs_union(parse_effect(v, car(es)), parse_effects(v, cdr(es)))
+        effs_union(parse_effect(v, tvars, car(es)), parse_effects(v, tvars, cdr(es)))
     }
 }
 
@@ -460,8 +515,16 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     } else {
                         return refuse(v, string_append("KFX-0's lists are at acyclic: ", show_sexp(t)));
                     }
+                } else if sym_is_p(car(xs), "flatarrayof") {
+                    if sym_is_p(second(xs), "i64") {
+                        return ty_flat(ty_i64(), parse_region(v, tvars, third(xs)));
+                    } else {
+                        return refuse(v, string_append("KFX-0's flat arrays are of i64: ", show_sexp(t)));
+                    }
+                } else if sym_is_p(car(xs), "ref") {
+                    return ty_ref(parse_type(v, tvars, second(xs)), parse_region(v, tvars, third(xs)));
                 } else if sym_is_p(car(xs), "subr") {
-                    return ty_proc(parse_effect(v, second(xs)), parse_types(v, tvars, items(third(xs))), parse_type(v, tvars, fourth(xs)));
+                    return ty_proc(parse_effect(v, tvars, second(xs)), parse_types(v, tvars, items(third(xs))), parse_type(v, tvars, fourth(xs)));
                 } else {
                     return refuse(v, string_append("a type KFX does not have: ", show_sexp(t)));
                 }
@@ -480,15 +543,20 @@ pub fn parse_types(v: &'static Cv, tvars: Strings, ts: Sexps) -> Tys {
     }), ts)
 }
 
-/// A definition's type's type variables: a poly at its top, over types.
+/// A definition's type's variables: a poly at its top, over types, and
+/// regions, whose names begin with `'`.
 pub fn poly_binders(v: &'static Cv, t: &'static Sexp) -> Strings {
     if head_is_p(t, "poly") {
         map(lambda1(move |b: &'static Sexp| {
             let b = items(b);
-            if sym_is_p(second(b), "type") {
+            if not(i64_eq(size(b), 2i64)) {
+                refuse(v, string_append("a binder KFX-0 does not have (distinct regions are to come): ", show_sexp(lst(b, "", 0i64))))
+            } else if sym_is_p(second(b), "type") {
                 sym_name(car(b))
+            } else if sym_is_p(second(b), "region") {
+                string_append("'", sym_name(car(b)))
             } else {
-                refuse(v, string_append("KFX's poly is over types: ", show_sexp(lst(b, "", 0i64))))
+                refuse(v, string_append("KFX's poly is over types and regions: ", show_sexp(lst(b, "", 0i64))))
             }
         }), items(second(items(t))))
     } else {
@@ -531,6 +599,15 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
         }
         Ty::TyData(d) => {
             d
+        }
+        Ty::TyFlat(e, r) => {
+            string_append("(flatarrayof ", string_append(show_ty(s, e), string_append(" ", string_append(show_ty(s, r), ")"))))
+        }
+        Ty::TyRef(e, r) => {
+            string_append("(ref ", string_append(show_ty(s, e), string_append(" ", string_append(show_ty(s, r), ")"))))
+        }
+        Ty::TyRconst(n) => {
+            n
         }
         Ty::TyProc(es, ps, r) => {
             string_append("(subr ", string_append(show_effs(es), string_append(" (", string_append(show_tys(s, ps), string_append(") ", string_append(show_ty(s, r), ")"))))))
@@ -613,6 +690,12 @@ pub fn has_meta_p(mut s: &'static St, mut t: &'static Ty) -> bool {
                 t = e;
                 continue;
             }
+            Ty::TyFlat(e, r) => {
+                return (has_meta_p(s, e) || has_meta_p(s, r));
+            }
+            Ty::TyRef(e, r) => {
+                return (has_meta_p(s, e) || has_meta_p(s, r));
+            }
             Ty::TyProc(es, ps, r) => {
                 return (has_meta_p(s, r) || any_p(lambda1(move |p: &'static Ty| {
                     has_meta_p(s, p)
@@ -655,6 +738,12 @@ pub fn occurs_p(mut s: &'static St, mut k: i64, mut t: &'static Ty) -> bool {
             Ty::TyList(e) => {
                 t = e;
                 continue;
+            }
+            Ty::TyFlat(e, r) => {
+                return (occurs_p(s, k, e) || occurs_p(s, k, r));
+            }
+            Ty::TyRef(e, r) => {
+                return (occurs_p(s, k, e) || occurs_p(s, k, r));
             }
             Ty::TyProc(es, ps, r) => {
                 return (occurs_p(s, k, r) || any_p(lambda1(move |p: &'static Ty| {
@@ -805,6 +894,46 @@ pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static T
                 }
             }
         }
+        Ty::TyFlat(x, xr) => {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Ty::TyFlat(y, yr) => {
+                    fits(v, fits(v, s, x, y), xr, yr)
+                }
+                _ => {
+                    let other = tagcase_;
+                    mismatch(v, s, a, e)
+                }
+            }
+        }
+        Ty::TyRef(x, xr) => {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Ty::TyRef(y, yr) => {
+                    fits(v, fits(v, s, x, y), xr, yr)
+                }
+                _ => {
+                    let other = tagcase_;
+                    mismatch(v, s, a, e)
+                }
+            }
+        }
+        Ty::TyRconst(x) => {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Ty::TyRconst(y) => {
+                    if string_eq_p(x, y) {
+                        s
+                    } else {
+                        mismatch(v, s, a, e)
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    mismatch(v, s, a, e)
+                }
+            }
+        }
         Ty::TyData(x) => {
             let tagcase_ = e;
             match *tagcase_ {
@@ -882,32 +1011,65 @@ pub fn mismatch(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static Ty) 
     refuse(v, string_append("a ", string_append(show_ty(s, a), string_append(" is here, where a ", string_append(show_ty(s, e), " is expected")))))
 }
 
-// A scheme's instance: each type variable an inference variable.
+// A scheme's instance: each variable an inference variable; those for
+// regions are kept, so that a call's effect can name the regions found.
 pub enum Inst {
-    Inst(&'static Ty, &'static St),
+    Inst(&'static Ty, &'static St, List<i64>),
 }
 
-pub fn inst(f0: &'static Ty, f1: &'static St) -> &'static Inst {
-    alloc(Inst::Inst(f0, f1))
+pub fn inst(f0: &'static Ty, f1: &'static St, f2: List<i64>) -> &'static Inst {
+    alloc(Inst::Inst(f0, f1, f2))
+}
+
+/// Effect atoms on region `from` made atoms on region `to`.
+pub fn rename_atoms(es: Strings, from: Str, to: Str) -> Strings {
+    map(lambda1(move |x: Str| {
+        if string_eq_p(x, string_append("read:", from)) {
+            string_append("read:", to)
+        } else if string_eq_p(x, string_append("write:", from)) {
+            string_append("write:", to)
+        } else if string_eq_p(x, string_append("alloc:", from)) {
+            string_append("alloc:", to)
+        } else {
+            x
+        }
+    }), es)
+}
+
+pub fn meta_name(k: i64) -> Str {
+    string_append("?", i64_to_string(k))
 }
 
 pub fn instantiate(s: &'static St, sc: &'static Scheme) -> &'static Inst {
     let tagcase_ = sc;
     match *tagcase_ {
         Scheme::Scheme(tvars, t) => {
-            instantiate_vars(s, tvars, t)
+            instantiate_vars(s, tvars, t, nil())
         }
     }
 }
 
-pub fn instantiate_vars(s: &'static St, tvars: Strings, t: &'static Ty) -> &'static Inst {
+pub fn instantiate_vars(s: &'static St, tvars: Strings, t: &'static Ty, regions: List<i64>) -> &'static Inst {
     if null_p(tvars) {
-        inst(t, s)
+        inst(t, s, regions)
     } else {
         let tagcase_ = fresh(s);
         match *tagcase_ {
             Res::Res(m, es, s) => {
-                instantiate_vars(s, cdr(tvars), replace_var(car(tvars), m, t))
+                let tagcase_ = m;
+                match *tagcase_ {
+                    Ty::TyMeta(k) => {
+                        instantiate_vars(s, cdr(tvars), replace_var(car(tvars), m, t), if char_eq_p(string_ref_i64(car(tvars), 0i64), '\'') {
+                            cons(k, regions)
+                        } else {
+                            regions
+                        })
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        inst(t, s, regions)
+                    }
+                }
             }
         }
     }
@@ -926,8 +1088,25 @@ pub fn replace_var(name: Str, m: &'static Ty, t: &'static Ty) -> &'static Ty {
         Ty::TyList(e) => {
             ty_list(replace_var(name, m, e))
         }
+        Ty::TyFlat(e, r) => {
+            ty_flat(replace_var(name, m, e), replace_var(name, m, r))
+        }
+        Ty::TyRef(e, r) => {
+            ty_ref(replace_var(name, m, e), replace_var(name, m, r))
+        }
         Ty::TyProc(es, ps, r) => {
-            ty_proc(es, map(lambda1(move |p: &'static Ty| {
+            ty_proc({
+                let tagcase_ = m;
+                match *tagcase_ {
+                    Ty::TyMeta(k) => {
+                        rename_atoms(es, name, meta_name(k))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        es
+                    }
+                }
+            }, map(lambda1(move |p: &'static Ty| {
                 replace_var(name, m, p)
             }), ps), replace_var(name, m, r))
         }
@@ -1081,6 +1260,43 @@ pub fn joined(s: &'static St, t: &'static Ty, rest: &'static Ty, expected: Tys) 
     }
 }
 
+/// A call's latent effect, its regions' inference variables replaced by
+/// the regions the arguments and the type expected found. A region still
+/// not found is refused, where FX-26 would make one up.
+pub fn name_regions(mut v: &'static Cv, mut s: &'static St, mut es: Strings, mut regions: List<i64>) -> Strings {
+    loop {
+        if null_p(regions) {
+            return es;
+        } else {
+            let k = car(regions);
+            let found = {
+                let tagcase_ = walk(s, ty_meta(k));
+                match *tagcase_ {
+                    Ty::TyRconst(n) => {
+                        n
+                    }
+                    Ty::TyVar(n) => {
+                        n
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        ""
+                    }
+                }
+            };
+            if not(string_eq_p(found, "")) {
+                (es, regions) = (rename_atoms(es, meta_name(k), found), cdr(regions));
+                continue;
+            } else if string_eq_p(words_of(rename_atoms(es, meta_name(k), "")), words_of(es)) {
+                regions = cdr(regions);
+                continue;
+            } else {
+                return refuse(v, "a region the call's arguments do not say, nor the type expected: write it, (the T e)");
+            }
+        }
+    }
+}
+
 pub fn control_form_p(h: Str) -> bool {
     (string_eq_p(h, "if") || string_eq_p(h, "cond") || string_eq_p(h, "case") || string_eq_p(h, "tagcase") || string_eq_p(h, "let") || string_eq_p(h, "let*") || string_eq_p(h, "begin"))
 }
@@ -1206,7 +1422,7 @@ pub fn synth(v: &'static Cv, s: &'static St, e: &'static Sexp) -> &'static Res {
                 }
                 _ => {
                     let head = tagcase_;
-                    synth_call_of(v, s, synth(v, s, head), cdr(xs), cons("spin", nil()))
+                    synth_call_of(v, s, synth(v, s, head), cdr(xs), nil(), nil(), cons("spin", nil()))
                 }
             }
         }
@@ -1228,7 +1444,7 @@ pub fn synth_name(v: &'static Cv, s: &'static St, name: Str) -> &'static Res {
                 Bind::Bind(n, sc, r#where) => {
                     let tagcase_ = instantiate(s, sc);
                     match *tagcase_ {
-                        Inst::Inst(t, s) => {
+                        Inst::Inst(t, s, regions) => {
                             res(t, naming_effs(s, name, r#where, t), s)
                         }
                     }
@@ -1363,7 +1579,7 @@ pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
     } else if string_eq_p(h, "or") {
         bools(v, s, xs)
     } else {
-        synth_call(v, s, h, xs)
+        synth_call(v, s, h, xs, nil())
     }
 }
 
@@ -1394,8 +1610,10 @@ pub fn check_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
                 check_by_synth(v, s, e, expected)
             }
         }
-    } else {
+    } else if (string_eq_p(h, "the") || string_eq_p(h, "and") || string_eq_p(h, "or") || string_eq_p(h, "lambda") || string_eq_p(h, "list")) {
         check_by_synth(v, s, e, expected)
+    } else {
+        synth_call(v, s, h, xs, cons(expected, nil()))
     }
 }
 
@@ -1695,7 +1913,7 @@ pub fn check_written_params(mut v: &'static Cv, mut s: &'static St, mut params: 
 
 /// A call of a name: a procedure in this group is `spin`, one that is a
 /// local's value is a call of a procedure not known, so `spin` too.
-pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps) -> &'static Res {
+pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected: Tys) -> &'static Res {
     let found = find_bind(h, cv_binds(v));
     if keyword_p(h) {
         refuse(v, string_append("a call of ", string_append(h, ", which FX-26 reads as its form, not a call")))
@@ -1707,8 +1925,8 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps) -> &'stat
             Bind::Bind(n, sc, r#where) => {
                 let tagcase_ = instantiate(s, sc);
                 match *tagcase_ {
-                    Inst::Inst(t, s) => {
-                        synth_call_of(v, s, res(t, nil(), s), args, effs_union(if string_eq_p(r#where, "global") {
+                    Inst::Inst(t, s, regions) => {
+                        synth_call_of(v, s, res(t, nil(), s), args, regions, expected, effs_union(if string_eq_p(r#where, "global") {
                             cons(string_append("g:", h), nil())
                         } else {
                             nil()
@@ -1724,12 +1942,13 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps) -> &'stat
     }
 }
 
-/// A call of the procedure `callee` is: its arguments checked against
-/// its parameters, in order; its effect, the callee's latent effect, the
+/// A call of the procedure `callee` is: its result fitted to the type
+/// `expected`, if one is, then its arguments checked against its
+/// parameters, in order; its effect, the callee's latent effect, the
 /// arguments' and `more`. In order, not lambdas last as FX-26 does,
 /// since rustc finds a closure's parameter types only from what comes
 /// before it: see `check-written-params`.
-pub fn synth_call_of(v: &'static Cv, s: &'static St, callee: &'static Res, args: Sexps, more: Strings) -> &'static Res {
+pub fn synth_call_of(v: &'static Cv, s: &'static St, callee: &'static Res, args: Sexps, regions: List<i64>, expected: Tys, more: Strings) -> &'static Res {
     let tagcase_ = callee;
     match *tagcase_ {
         Res::Res(t, es0, s) => {
@@ -1739,10 +1958,14 @@ pub fn synth_call_of(v: &'static Cv, s: &'static St, callee: &'static Res, args:
                     if not(i64_eq(size(ps), size(args))) {
                         refuse(v, string_append("a call of the wrong number of arguments: ", show_sexps(args)))
                     } else {
-                        let tagcase_ = call_args(v, s, args, ps);
+                        let tagcase_ = call_args(v, if null_p(expected) {
+                            s
+                        } else {
+                            fits(v, s, r, car(expected))
+                        }, args, ps);
                         match *tagcase_ {
                             Res::Res(u, es1, s) => {
-                                res(r, effs_union(latent, effs_union(more, effs_union(es0, es1))), s)
+                                res(r, effs_union(name_regions(v, s, latent, regions), effs_union(more, effs_union(es0, es1))), s)
                             }
                         }
                     }
@@ -1771,17 +1994,27 @@ pub fn call_args(v: &'static Cv, s: &'static St, args: Sexps, ps: Tys) -> &'stat
 
 // Definitions
 pub fn primitives() -> Str {
-    "(i64+ (subr pure (i64 i64) i64)) (i64- (subr pure (i64 i64) i64)) (i64* (subr pure (i64 i64) i64))\n   (i64-quotient (subr pure (i64 i64) i64)) (i64-remainder (subr pure (i64 i64) i64))\n   (i64-and (subr pure (i64 i64) i64)) (i64-or (subr pure (i64 i64) i64)) (i64-xor (subr pure (i64 i64) i64))\n   (i64-not (subr pure (i64) i64))\n   (i64= (subr pure (i64 i64) bool)) (i64< (subr pure (i64 i64) bool)) (i64> (subr pure (i64 i64) bool))\n   (i64<= (subr pure (i64 i64) bool)) (i64>= (subr pure (i64 i64) bool))\n   (not (subr pure (bool) bool))\n   (char=? (subr pure (char char) bool)) (char-whitespace? (subr pure (char) bool))\n   (char-numeric? (subr pure (char) bool)) (char-alphabetic? (subr pure (char) bool))\n   (char-upcase (subr pure (char) char)) (char->string (subr pure (char) string))\n   (string-append (subr pure (string string) string)) (string=? (subr pure (string string) bool))\n   (list->string (subr pure ((listof char acyclic)) string))\n   (error (subr pure (string) void))\n   (string-length-i64 (subr pure (string) i64)) (string-ref-i64 (subr pure (string i64) char))\n   (char->i64 (subr pure (char) i64)) (i64->string (subr pure (i64) string))\n   (nil (poly ((t type)) (listof t acyclic)))\n   (cons (poly ((t type)) (subr pure (t (listof t acyclic)) (listof t acyclic))))\n   (car (poly ((t type)) (subr pure ((listof t acyclic)) t)))\n   (cdr (poly ((t type)) (subr pure ((listof t acyclic)) (listof t acyclic))))\n   (null? (poly ((t type)) (subr pure ((listof t acyclic)) bool)))"
+    "(i64+ (subr pure (i64 i64) i64)) (i64- (subr pure (i64 i64) i64)) (i64* (subr pure (i64 i64) i64))\n   (i64-quotient (subr pure (i64 i64) i64)) (i64-remainder (subr pure (i64 i64) i64))\n   (i64-and (subr pure (i64 i64) i64)) (i64-or (subr pure (i64 i64) i64)) (i64-xor (subr pure (i64 i64) i64))\n   (i64-not (subr pure (i64) i64))\n   (i64= (subr pure (i64 i64) bool)) (i64< (subr pure (i64 i64) bool)) (i64> (subr pure (i64 i64) bool))\n   (i64<= (subr pure (i64 i64) bool)) (i64>= (subr pure (i64 i64) bool))\n   (not (subr pure (bool) bool))\n   (char=? (subr pure (char char) bool)) (char-whitespace? (subr pure (char) bool))\n   (char-numeric? (subr pure (char) bool)) (char-alphabetic? (subr pure (char) bool))\n   (char-upcase (subr pure (char) char)) (char->string (subr pure (char) string))\n   (string-append (subr pure (string string) string)) (string=? (subr pure (string string) bool))\n   (list->string (subr pure ((listof char acyclic)) string))\n   (error (subr pure (string) void))\n   (new (poly ((r region) (t type)) (subr (alloc r) (t) (ref t r))))\n   (get (poly ((r region) (t type)) (subr (read r) ((ref t r)) t)))\n   (set (poly ((r region) (t type)) (subr (write r) ((ref t r) t) unit)))\n   (nil (poly ((t type)) (listof t acyclic)))\n   (cons (poly ((t type)) (subr pure (t (listof t acyclic)) (listof t acyclic))))\n   (car (poly ((t type)) (subr pure ((listof t acyclic)) t)))\n   (cdr (poly ((t type)) (subr pure ((listof t acyclic)) (listof t acyclic))))\n   (null? (poly ((t type)) (subr pure ((listof t acyclic)) bool)))"
 }
 
 // kayak-rt's primitives at KFX's types: the prelude's (kfx/prelude.fx), and
 // FX-26's standard environment's at `acyclic`, where making and reading
 // lists are pure.
-pub fn prim_binds(v: &'static Cv) -> Binds {
+pub fn prelude() -> Str {
+    "(string-length-i64 (subr pure (string) i64)) (string-ref-i64 (subr pure (string i64) char))\n   (char->i64 (subr pure (char) i64)) (i64->string (subr pure (i64) string))\n   (make-flatarray-i64 (poly ((r region)) (subr (alloc r) (i64 i64) (flatarrayof i64 r))))\n   (flatarray-ref-i64 (poly ((r region)) (subr (read r) ((flatarrayof i64 r) i64) i64)))\n   (flatarray-set-i64! (poly ((r region)) (subr (write r) ((flatarrayof i64 r) i64 i64) unit)))\n   (flatarray-length-i64 (poly ((r region)) (subr pure ((flatarrayof i64 r)) i64)))"
+}
+
+// The prelude's (kfx/prelude.fx), at the types it gives them. To FX-26
+// they are globals, the prelude's definitions: calling one reads it.
+pub fn table_binds(v: &'static Cv, table: Str, file: Str, r#where: Str) -> Binds {
     map(lambda1(move |p: &'static Sexp| {
         let xs = items(p);
-        bind(sym_name(car(xs)), parse_scheme(v, second(xs)), "prim")
-    }), read_all(string_chars(primitives()), "kayak-rt's primitives", 1i64))
+        bind(sym_name(car(xs)), parse_scheme(v, second(xs)), r#where)
+    }), read_all(string_chars(table), file, 1i64))
+}
+
+pub fn prim_binds(v: &'static Cv) -> Binds {
+    onto(table_binds(v, primitives(), "kayak-rt's primitives", "prim"), table_binds(v, prelude(), "kfx/prelude.fx", "global"))
 }
 
 /// A define-datatype's name and variants.
@@ -1846,7 +2079,7 @@ pub fn with_effdef(v: &'static Cv, xs: Sexps) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
         Cv::Cv(bs, ds, r#as, es, here, group, file, line) => {
-            cv(bs, ds, r#as, cons(effdef(sym_name(second(xs)), parse_effect(v, third(xs))), es), here, group, file, line)
+            cv(bs, ds, r#as, cons(effdef(sym_name(second(xs)), parse_effect(v, nil(), third(xs))), es), here, group, file, line)
         }
     }
 }
@@ -2029,7 +2262,13 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                                     let tagcase_ = check(v, new_state(), fourth(xs), t);
                                     match *tagcase_ {
                                         Res::Res(u, es, s) => {
-                                            named
+                                            if any_p(lambda1(move |x: Str| {
+                                                not((string_eq_p(x, "spin") || string_eq_p(x, "@globals") || global_atom_p(x)))
+                                            }), es) {
+                                                refuse(v, string_append("a constant whose value has the effect ", string_append(show_effs(es), ": KFX's constant is a fn, run at each use, so its value may only read globals")))
+                                            } else {
+                                                named
+                                            }
                                         }
                                     }
                                 } else {

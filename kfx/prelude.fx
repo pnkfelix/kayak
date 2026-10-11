@@ -18,3 +18,19 @@
 
 (define i64->string (subr pure (i64) string)
   (lambda (n) (int->string (i64->int n))))
+
+"Flat arrays of i64s (FX-26's flatarrayof), their sizes and indices at
+ i64. In Rust, a slice of Cells: FX-26's flat arrays may be aliased, and
+ written through any alias, as a Cell may."
+
+(define make-flatarray-i64 (poly ((r region)) (subr (alloc r) (i64 i64) (flatarrayof i64 r)))
+  (lambda (n v) (make-flatarray (i64-flat) (i64->int n) v)))
+
+(define flatarray-ref-i64 (poly ((r region)) (subr (read r) ((flatarrayof i64 r) i64) i64))
+  (lambda (a i) (flatarray-ref a (i64->int i))))
+
+(define flatarray-set-i64! (poly ((r region)) (subr (write r) ((flatarrayof i64 r) i64 i64) unit))
+  (lambda (a i v) (flatarray-set! a (i64->int i) v)))
+
+(define flatarray-length-i64 (poly ((r region)) (subr pure ((flatarrayof i64 r)) i64))
+  (lambda (a) (int->i64 (flatarray-length a))))
