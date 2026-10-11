@@ -353,6 +353,14 @@ pub fn string_length(s: Str) -> Int {
     i64_to_int(string_length_i64(s))
 }
 
+/// `string-ref` at an `int`, as FX-26 has it.
+pub fn string_ref(s: Str, i: Int) -> char {
+    if _lt(i, int_lit(0)) || _gt(i, int_lit(i64::MAX)) {
+        fail("string-ref: out of range")
+    }
+    string_ref_i64(s, int_to_i64(i))
+}
+
 pub fn length<T>(xs: List<T>) -> Int {
     list_length(xs)
 }

@@ -2684,7 +2684,7 @@
    (f64-truncate (subr pure (f64) f64)) (f64-round (subr pure (f64) f64))
    (f64-nan? (subr pure (f64) bool)) (f64-infinite? (subr pure (f64) bool)) (f64-finite? (subr pure (f64) bool))
    (int->f64 (subr pure (int) f64)) (f64->int (subr pure (f64) int)) (f64->string (subr pure (f64) string))
-   (string-length (subr pure (string) nat))
+   (string-length (subr pure (string) nat)) (string-ref (subr pure (string int) char))
    (length (poly ((t type)) (subr pure ((listof t acyclic)) nat)))
    (list-length (poly ((r region) (t type)) (subr (read r) ((listof t r)) nat)))
    (append (poly ((r1 region) (r2 region) (t type)) (subr (maxeff (read r1) (alloc r2)) ((listof t r1) (listof t r2)) (listof t r2))))
