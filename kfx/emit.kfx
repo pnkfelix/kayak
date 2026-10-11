@@ -621,6 +621,7 @@
                  (if (ctx-fact? c num-file num-pos "int")
                      (put ")" (put (i64->string k) (put "int_lit(" acc)))
                      (put "i64" (put (i64->string k) acc))))
+               (big (text f p) (put "\")" (put text (put "int_text(\"" acc))))
                (chr (ch) (put "'" (put-escaped (list ch) #\' (put "'" acc))))
                (real (x)
                  "As Rust writes a double: a digit after the point (`1.` is `1.0`)."

@@ -4,7 +4,7 @@
 (define-effect kfx (maxeff (read @globals) spin))
 
 (define int-class (subr pure (int) int)
-  (lambda (n) (case n ((0) 1) ((1 2 3) 2) (else 4))))
+  (lambda (n) (case n ((0) 1) ((1 2 3) 2) ((100000000000000000000) 3) (else 4))))
 
 (define char-class (subr pure (char) int)
   (lambda (c) (case c ((#\a #\e #\i) 1) ((#\space) 2) (else 3))))
@@ -26,7 +26,8 @@
   (lambda ()
     (let ((d (lambda ((acc int) (k int)) (+ (* acc 10) k))))
       (int->string
-       (d (d (d (d (d (d (d (d (int-class 0) (int-class 3)) (int-class -7)) (char-class #\space))
+       (+ (d (d (d (d (d (d (d (d (d (int-class 0) (int-class 3)) (int-class -7)) (int-class (* 10 10000000000000000000))) (char-class #\space))
                       (string-class "z")) (bool-class #f)) (string-class "w"))
              (count-vowels "kayak bootstraps" 0 0))
-          (char-class #\e))))))
+          (char-class #\e))
+       -123456789012345678901234567890)))))

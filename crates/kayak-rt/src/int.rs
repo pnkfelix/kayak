@@ -384,6 +384,20 @@ pub fn min(a: Int, b: Int) -> Int {
     if _lt(b, a) { b } else { a }
 }
 
+/// An integer literal past an `i64`, from its decimal digits, `-` first if
+/// it is negative.
+pub fn int_text(s: &str) -> Int {
+    let (negative, digits) = match s.strip_prefix('-') {
+        Some(rest) => (true, rest),
+        None => (false, s),
+    };
+    let ten = int_lit(10);
+    let n = digits.bytes().fold(int_lit(0), |n, d| {
+        _plus(_star(n, ten), int_lit(i64::from(d - b'0')))
+    });
+    if negative { _minus(int_lit(0), n) } else { n }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

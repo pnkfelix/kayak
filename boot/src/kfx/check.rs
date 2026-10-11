@@ -253,6 +253,9 @@ pub fn show_sexp(e: &'static Sexp) -> Str {
         Sexp::Num(k, num_file, num_pos) => {
             i64_to_string(k)
         }
+        Sexp::Big(text, f, p) => {
+            text
+        }
         Sexp::Chr(c) => {
             string_append(str_lit("#\\"), char_to_string(c))
         }
@@ -3617,6 +3620,9 @@ pub fn case_data_p(kind: Str, xs: Sexps) -> bool {
                 Sexp::Num(k, text, pos) => {
                     string_eq_p(kind, str_lit("int"))
                 }
+                Sexp::Big(text, f, p) => {
+                    string_eq_p(kind, str_lit("int"))
+                }
                 Sexp::Str(t) => {
                     string_eq_p(kind, str_lit("string"))
                 }
@@ -3765,6 +3771,9 @@ pub fn synth(v: &'static Cv, s: &'static St, e: &'static Sexp) -> &'static Res {
         Sexp::Num(k, num_file, num_pos) => {
             res(ty_int(), nil(), note_fact(s, num_file, num_pos, str_lit("int")))
         }
+        Sexp::Big(text, f, p) => {
+            res(ty_int(), nil(), s)
+        }
         Sexp::Chr(c) => {
             res(ty_char(), nil(), s)
         }
@@ -3851,6 +3860,29 @@ pub fn check(v: &'static Cv, s: &'static St, e: &'static Sexp, expected: &'stati
                 _ => {
                     let other = tagcase_;
                     refuse(v, string_append(str_lit("a literal is here, where a "), string_append(show_ty(s, x), str_lit(" is expected"))))
+                }
+            }
+        }
+        Sexp::Big(text, f, p) => {
+            // A literal past an i64: an `int`, or a `nat` if not negative.
+            let tagcase_ = x;
+            match *tagcase_ {
+                Ty::TyInt() => {
+                    res(x, nil(), s)
+                }
+                Ty::TyNat() => {
+                    if char_eq_p(string_ref_i64(text, 0i64), '-') {
+                        refuse(v, string_append(text, str_lit(" is no nat")))
+                    } else {
+                        res(x, nil(), s)
+                    }
+                }
+                Ty::TyMeta(m) => {
+                    res(ty_int(), nil(), solve(s, m, ty_int()))
+                }
+                _ => {
+                    let other = tagcase_;
+                    refuse(v, string_append(str_lit("a literal past an i64 is here, where a "), string_append(show_ty(s, x), str_lit(" is expected"))))
                 }
             }
         }
@@ -4523,6 +4555,9 @@ pub fn nat_args_p(v: &'static Cv, s: &'static St, args: Sexps) -> bool {
         match *tagcase_ {
             Sexp::Num(k, f, p) => {
                 not(i64_lt(k, 0i64))
+            }
+            Sexp::Big(text, f, p) => {
+                not(char_eq_p(string_ref_i64(text, 0i64), '-'))
             }
             _ => {
                 let other = tagcase_;

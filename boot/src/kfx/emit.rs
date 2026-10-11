@@ -1177,6 +1177,9 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
                     put(str_lit("i64"), put(i64_to_string(k), acc))
                 }
             }
+            Sexp::Big(text, f, p) => {
+                put(str_lit("\")"), put(text, put(str_lit("int_text(\""), acc)))
+            }
             Sexp::Chr(ch) => {
                 put(str_lit("'"), put_escaped(cons(ch, nil()), '\'', put(str_lit("'"), acc)))
             }

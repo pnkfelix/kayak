@@ -652,3 +652,10 @@ prompt for it can be running) is `unreachable_unwind`, failing as FX-26
 does when it runs; a lambda applied where it is made, that may abort, is a
 closure returning a `Result`, its call a `?` (`tests/kfx/escapes.kfx`);
 and whether a `Result` is returned is the innermost function's to say.
+
+## Integer literals past an i64 (2026-10-11)
+
+The reader read them as an error; FX-26 reads them as `int`s. Now a
+datum of its own, `big`, its digits kept: an `int`, or a `nat` if not
+negative, refused where an `i64` is expected; in Rust `int_text("...")`.
+A `case` on an int may compare with one. 56 of Fixpt's programs accepted.

@@ -98,6 +98,7 @@
         (sym (s) s)
         (str (s) (string-append "\"" (string-append s "\"")))
         (num (k num-file num-pos) (i64->string k))
+        (big (text f p) text)
         (chr (c) (string-append "#\\" (char->string c)))
         (real (t) t)
         (lst (xs src-file src-line src-pos) (string-append "(" (string-append (show-sexps xs) ")"))))))
@@ -1636,6 +1637,7 @@
                  (not (tagcase x
                         (chr (c) (string=? kind "char"))
                         (num (k text pos) (string=? kind "int"))
+                        (big (text f p) (string=? kind "int"))
                         (str (t) (string=? kind "string"))
                         (sym (n) (and (string=? kind "bool") (or (string=? n "#t") (string=? n "#f"))))
                         (else other #f))))
@@ -1698,6 +1700,7 @@
     (lambda (v s e)
       (tagcase e
         (num (k num-file num-pos) (res (ty-int) nil (note-fact s num-file num-pos "int")))
+        (big (text f p) (res (ty-int) nil s))
         (chr (c) (res (ty-char) nil s))
         (real (x) (res (ty-f64) nil s))
         (str (x) (res (ty-string) nil s))
@@ -1741,6 +1744,13 @@
               (ty-meta (m) (res (ty-int) nil (note-fact (solve s m (ty-int)) num-file num-pos "int")))
               (else other (refuse v (string-append "a literal is here, where a "
                                                    (string-append (show-ty s x) " is expected"))))))
+          (big (text f p)
+            "A literal past an i64: an `int`, or a `nat` if not negative."
+            (tagcase x
+              (ty-int () (res x nil s))
+              (ty-nat () (if (char=? (string-ref-i64 text 0) #\-) (refuse v (string-append text " is no nat")) (res x nil s)))
+              (ty-meta (m) (res (ty-int) nil (solve s m (ty-int))))
+              (else other (refuse v (string-append "a literal past an i64 is here, where a " (string-append (show-ty s x) " is expected"))))))
           (lst (xs src-file src-line src-pos)
             (let ((v (near v src-file src-line src-pos)))
               (tagcase (car xs)
@@ -2103,6 +2113,7 @@
       (or (null? args)
           (and (tagcase (car args)
                  (num (k f p) (not (i64< k 0)))
+                 (big (text f p) (not (char=? (string-ref-i64 text 0) #\-)))
                  (else other (tagcase (synth v s other) (res (t es s2) (nat? s2 t)))))
                (nat-args? v s (cdr args))))))
 

@@ -16,6 +16,7 @@ pub enum Sexp {
     Sym(Str),
     Str(Str),
     Num(i64, Str, i64),
+    Big(Str, Str, i64),
     Chr(char),
     Lst(List<&'static Sexp>, Str, i64, i64),
     Real(Str),
@@ -31,6 +32,10 @@ pub fn str(f0: Str) -> &'static Sexp {
 
 pub fn num(f0: i64, f1: Str, f2: i64) -> &'static Sexp {
     alloc(Sexp::Num(f0, f1, f2))
+}
+
+pub fn big(f0: Str, f1: Str, f2: i64) -> &'static Sexp {
+    alloc(Sexp::Big(f0, f1, f2))
 }
 
 pub fn chr(f0: char) -> &'static Sexp {
@@ -237,6 +242,55 @@ pub fn real_token_p(cs: Chars) -> bool {
     }, 0i64), 1i64)
 }
 
+pub fn digits_after_zeros(mut cs: Chars) -> Chars {
+    loop {
+        if (not(null_p(cs)) && not(null_p(cdr(cs))) && char_eq_p(car(cs), '0')) {
+            cs = cdr(cs);
+            continue;
+        } else {
+            return cs;
+        }
+    }
+}
+
+/// Whether digits `cs` are at most `most`, of as many digits.
+pub fn digits_at_most_p(mut cs: Chars, mut most: Chars) -> bool {
+    loop {
+        if null_p(cs) {
+            return true;
+        } else if i64_lt(char_to_i64(car(cs)), char_to_i64(car(most))) {
+            return true;
+        } else if i64_gt(char_to_i64(car(cs)), char_to_i64(car(most))) {
+            return false;
+        } else {
+            (cs, most) = (cdr(cs), cdr(most));
+            continue;
+        }
+    }
+}
+
+/// Whether an integer literal is an i64's; one past is an `int`'s alone.
+pub fn fits_i64_p(cs: Chars) -> bool {
+    let negative = char_eq_p(car(cs), '-');
+    let ds = digits_after_zeros(if negative {
+        cdr(cs)
+    } else {
+        cs
+    });
+    let n = size(ds);
+    if i64_lt(n, 19i64) {
+        true
+    } else if i64_gt(n, 19i64) {
+        false
+    } else {
+        digits_at_most_p(ds, string_chars(if negative {
+            str_lit("9223372036854775808")
+        } else {
+            str_lit("9223372036854775807")
+        }))
+    }
+}
+
 pub fn token_atom(s: Str, file: Str, line: i64, pos: i64) -> &'static Sexp {
     let cs = string_chars(s);
     if not(numeric_p(cs)) {
@@ -249,15 +303,12 @@ pub fn token_atom(s: Str, file: Str, line: i64, pos: i64) -> &'static Sexp {
         } else {
             read_error(file, line, string_append(str_lit("no number KFX reads: "), s))
         }
+    } else if not(fits_i64_p(cs)) {
+        big(s, file, pos)
     } else if char_eq_p(car(cs), '-') {
         num(digits_value(cdr(cs), 0i64, file, line), file, pos)
     } else {
-        let negated = digits_value(cs, 0i64, file, line);
-        if i64_eq(negated, -9223372036854775808i64) {
-            read_error(file, line, str_lit("a literal past an i64"))
-        } else {
-            num(i64_minus(0i64, negated), file, pos)
-        }
+        num(i64_minus(0i64, digits_value(cs, 0i64, file, line)), file, pos)
     }
 }
 
