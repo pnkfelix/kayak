@@ -1,0 +1,8 @@
+"helpers, as Fixpt's bench/helpers.fx, at i64: small procedures, inlined
+ by rustc."
+(define* dbl (subr pure (i64) i64) (lambda (x) (i64+ x x)))
+(define* sum2 (subr pure (i64 i64) i64) (lambda (a b) (i64+ (dbl a) (dbl b))))
+(define* step (subr pure (i64 i64) i64) (lambda (acc i) (i64- (i64+ acc (sum2 i 2)) (dbl i))))
+(define* run (subr spin (i64 i64 i64) i64)
+  (lambda (i n acc) (if (i64= i n) acc (run (i64+ i 1) n (step acc i)))))
+(run 0 3000000 0)

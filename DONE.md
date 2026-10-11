@@ -1067,3 +1067,13 @@ parameters `mut`, a call of itself an assignment and a `continue`. Fixpt's
 
 C30's arena computes a value's chunk from its index (each chunk twice the
 last), no walk: Fixpt's `bench/lists-region.fx` 45 ms to 7.8.
+
+## Benchmarks, and ports of them to KFX's paths (2026-10-11)
+
+`bench/ports/`: Fixpt's benchmarks as KFX does them well (`i64` for
+`int`, each round's list in a `letrena`'s arena); `scripts/bench.py` times
+the originals and the ports as kfx's Rust and on each of Fixpt's machines,
+answers compared. As Rust, the ports run as fast as Fixpt's fastest
+machine or faster (fib 1.2 ms to its 2.6, tak 0.5 to 1.0, lists 5.4 to
+6.0); `closures` 21 to its 14 (a closure each round, leaked).
+`helpers` and `loop` rustc computes whole at compile time.

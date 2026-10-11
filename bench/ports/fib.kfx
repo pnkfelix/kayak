@@ -1,0 +1,5 @@
+"fib, as Fixpt's bench/fib.fx, at i64: KFX's arithmetic that wraps, as
+ Rust's, not int's, checked for overflow at every step."
+(define* fib (subr spin (i64) i64)
+  (lambda (n) (if (i64< n 2) n (i64+ (fib (i64- n 1)) (fib (i64- n 2))))))
+(fib 30)

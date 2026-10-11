@@ -1,0 +1,5 @@
+"tak, as Fixpt's bench/tak.fx, at i64."
+(define* tak (subr spin (i64 i64 i64) i64)
+  (lambda (x y z)
+    (if (not (i64< y x)) z (tak (tak (i64- x 1) y z) (tak (i64- y 1) z x) (tak (i64- z 1) x y)))))
+(tak 22 16 8)

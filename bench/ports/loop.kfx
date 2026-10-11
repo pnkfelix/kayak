@@ -1,0 +1,8 @@
+"loop, as Fixpt's bench/loop.fx, at i64: a letrec's procedure that calls
+ itself last, a Rust loop. (Its name, loop, is Rust's keyword: counting.)"
+(define* count (subr spin (i64) i64)
+  (lambda (n)
+    (letrec ((counting (subr spin (i64 i64) i64)
+               (lambda (i acc) (if (i64= i n) acc (counting (i64+ i 1) (i64+ acc i))))))
+      (counting 0 0))))
+(count 10000000)

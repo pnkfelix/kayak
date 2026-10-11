@@ -1,0 +1,18 @@
+"closures, as Fixpt's bench/closures.fx, at i64: a closure made each
+ round and mapped over a list, the mapped list in the round's arena,
+ freed when the round ends; the list mapped over made once, at the heap."
+(define* upto (subr spin (i64 (listof i64 acyclic)) (listof i64 acyclic))
+  (lambda (n acc) (if (i64= n 0) acc (upto (i64- n 1) (cons n acc)))))
+(define* one-round (subr spin ((subr pure (i64) i64) (listof i64 acyclic)) i64)
+  (lambda (f xs)
+    (letrena r
+      (letrec ((map-add (subr (maxeff (alloc r) spin) ((listof i64 acyclic)) (listof i64 r))
+                 (lambda (ys) (if (null? ys) nil (rcons r (f (car ys)) (map-add (cdr ys))))))
+               (total (subr (maxeff (read r) spin) ((listof i64 r) i64) i64)
+                 (lambda (ys acc) (if (null? ys) acc (total (cdr ys) (i64+ acc (car ys)))))))
+        (total (map-add xs) 0)))))
+(define* go (subr spin (i64 i64 (listof i64 acyclic)) i64)
+  (lambda (k acc xs)
+    (if (i64= k 0) acc (go (i64- k 1) (i64+ acc (one-round (lambda ((x i64)) (i64+ x k)) xs)) xs))))
+(define* main (subr spin (i64) i64) (lambda (k) (go k 0 (upto 1000 nil))))
+(main 3000)
