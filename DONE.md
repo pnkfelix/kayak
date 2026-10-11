@@ -699,3 +699,12 @@ another order); `kfx-refused/module-arg-missing`, `module-param-abstract`;
 FX-26 checks them (`abs` of kind `type`, no name twice: found by
 `run-fixpt-programs`). Also C23: places, not now. 67 of Fixpt's programs
 accepted, all agreeing.
+
+## Effects in modules (2026-10-11)
+
+A module's `define-effect` is its own inside, `(select m e)` outside, and
+`with m` opens it, as FX-26 has them; one that may abort is refused (the
+emitter would need its fallibility through the module). A top-level
+effect that selects a module's is read where it stands, after the
+module. `tests/kfx/modules.kfx` (`cells`, `touches`). 68 of Fixpt's
+programs accepted, all agreeing.

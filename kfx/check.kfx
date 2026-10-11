@@ -248,6 +248,9 @@
                 (else (find-effdef v s (cv-effdefs v)))))
         (lst (xs src-file src-line src-pos)
           (cond ((sym-is? (car xs) "maxeff") (parse-effects v tvars (cdr xs)))
+                ((and (sym-is? (car xs) "select") (i64= (size xs) 3))
+                 "A module's effect, as the module defined at the top level gives it."
+                 (find-effdef v (string-append (name-of v (second xs)) (string-append " " (name-of v (third xs)))) (cv-effdefs v)))
                 ((and (sym-is? (car xs) "read") (sym-is? (second xs) "@globals")) (list "@globals"))
                 ((and (sym-is? (car xs) "read") (head-is? (second xs) "globals"))
                  (map (lambda ((g sexp)) (string-append "g:" (name-of v g))) (cdr (items (second xs)))))
@@ -1924,10 +1927,18 @@
 
 (define opened (subr kfx (cv string) cv)
   (lambda (v m)
-    "`v`, in a `(with m ...)`."
+    "`v`, in a `(with m ...)`: `m`'s values, types and effects."
     (tagcase v
       (cv (bs ds as es here group file line fs tv at)
-        (cv (bind-onto (opened-binds m bs) bs) ds (onto (opened-aliases m as) as) es here group file line fs tv at)))))
+        (cv (bind-onto (opened-binds m bs) bs) ds (onto (opened-aliases m as) as)
+            (onto (concat (map (lambda ((d effdef))
+                                 (tagcase d (effdef (n atoms)
+                                              (if (has-prefix? n (string-append m " "))
+                                                  (the effdefs (list (effdef (after-prefix n (string-append m " ")) atoms)))
+                                                  nil))))
+                               es))
+                  es)
+            here group file line fs tv at)))))
 
 (define case-data? (subr kfx (string sexps) bool)
   (lambda (kind xs)
@@ -2791,6 +2802,13 @@
       (cv (bs ds as es here group file line fs tv at)
         (cv bs ds as (cons (effdef (name-of v (second xs)) (parse-effect v nil (third xs))) es) here group file line fs tv at)))))
 
+(define-rec
+  (selects? (subr kfx (sexp) bool)
+    (lambda (e)
+      (tagcase e
+        (lst (xs f l p) (or (sym-is? (car xs) "select") (any? selects? xs)))
+        (else other #f)))))
+
 (define declare-datatypes (subr kfx (cv sexps dts) dts)
   (lambda (v forms ds)
     "Each datatype's variants' types, as an effect abbreviation before it
@@ -2801,7 +2819,9 @@
           ((head-is? (car forms) "define-generative")
            (declare-datatypes v (cdr forms)
                               (cons (dt (type-name v (car forms)) (type-params v (car forms)) nil) ds)))
-          ((head-is? (car forms) "define-effect")
+          ((and (head-is? (car forms) "define-effect") (not (selects? (car forms))))
+           "An effect abbreviation, for the datatypes' fields' types; one that
+            selects a module's is read where it stands, after the module."
            (declare-datatypes (with-effdef v (items (car forms))) (cdr forms) ds))
           (else (declare-datatypes v (cdr forms) ds)))))
 
@@ -3101,7 +3121,10 @@
                      (if (dt-named? name (cv-dts v))
                          (refuse v (string-append "a module's type named as the program's: KFX names them apart, " name))
                          (cons name (module-types v (cdr forms))))))
-                  ((or (head-is? f "define-effect") (head-is? f "include")
+                  ((and (head-is? f "define-effect") (i64= (size (items f)) 3)
+                        (escapes? (parse-effect v nil (third (items f)))))
+                   (refuse v "a module's effect that may abort, which KFX's modules do not have yet"))
+                  ((or (head-is? f "include")
                        (head-is? f "hide") (module-def? f))
                    (refuse v (string-append "an item KFX's modules do not have yet: " (show-sexp (car (items f))))))
                   (else (module-types v (cdr forms)))))))))
@@ -3168,6 +3191,19 @@
                 nil))
           forms))))
 
+(define module-effects (subr kfx (string sexps effdefs) effdefs)
+  (lambda (m forms es)
+    "A module's effect abbreviations, as `m e`: what each is, as the module
+     read it."
+    (concat (map (lambda ((f sexp))
+                   (if (head-is? f "define-effect")
+                       (let ((name (sym-name (second (items f)))))
+                         (concat (map (lambda ((d effdef))
+                                        (tagcase d (effdef (n atoms) (if (string=? n name) (the effdefs (list (effdef (string-append m (string-append " " n)) atoms))) nil))))
+                                      es)))
+                       nil))
+                 forms))))
+
 (define-rec
   (module-exports (subr kfx (string strings binds) binds)
     (lambda (m conversions bs)
@@ -3230,7 +3266,8 @@
             (cv (bs ds as es here group file line fs tv at)
               (elab (cv (cons made (bind-onto (module-exports m (map (lambda ((b bind)) (tagcase b (bind (n sc w) n))) conversions) bs)
                                               (cv-binds v)))
-                        ds (onto (module-aliases m names forms #f) (cv-aliases v)) (cv-effdefs v) here group file line fs tv at)
+                        ds (onto (module-aliases m names forms #f) (cv-aliases v))
+                        (onto (module-effects m forms es) (cv-effdefs v)) here group file line fs tv at)
                     found))))))))
 
 (define check-tops (subr kfx (cv sexps typeds) elab)

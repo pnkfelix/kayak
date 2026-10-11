@@ -118,6 +118,20 @@ pub mod geometry {
     }
 }
 
+// A module's effect, selected.
+pub mod cells {
+    use super::*;
+
+    pub fn bump_x(c: Ref<i64>) -> () {
+        set(c, i64_plus(get(c), 1i64))
+    }
+}
+
+pub fn bump_twice_x(c: Ref<i64>) -> () {
+    cells::bump_x(c);
+    cells::bump_x(c)
+}
+
 pub type Shape = &'static geometry::Shape;
 
 pub fn rect() -> &'static dyn Fn(i64, i64) -> &'static geometry::Shape {
@@ -156,6 +170,10 @@ pub fn main() -> Str {
         str_lit("big")
     } else {
         str_lit("small")
-    }, nil())))))))))))
+    }, cons({
+        let c = the::<Ref<i64>>(new(40i64));
+        bump_twice_x(c);
+        i64_to_string(get(c))
+    }, nil()))))))))))))
 }
 

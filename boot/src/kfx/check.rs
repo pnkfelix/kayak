@@ -535,6 +535,9 @@ pub fn parse_effect(v: &'static Cv, tvars: Strings, e: &'static Sexp) -> Strings
         Sexp::Lst(xs, src_file, src_line, src_pos) => {
             if sym_is_p(car(xs), str_lit("maxeff")) {
                 parse_effects(v, tvars, cdr(xs))
+            } else if (sym_is_p(car(xs), str_lit("select")) && i64_eq(size(xs), 3i64)) {
+                // A module's effect, as the module defined at the top level gives it.
+                find_effdef(v, string_append(name_of(v, second(xs)), string_append(str_lit(" "), name_of(v, third(xs)))), cv_effdefs(v))
             } else if (sym_is_p(car(xs), str_lit("read")) && sym_is_p(second(xs), str_lit("@globals"))) {
                 cons(str_lit("@globals"), nil())
             } else if (sym_is_p(car(xs), str_lit("read")) && head_is_p(second(xs), str_lit("globals"))) {
@@ -4254,12 +4257,23 @@ pub fn opened_aliases(mut m: Str, mut r#as: Aliases) -> Aliases {
     }
 }
 
-/// `v`, in a `(with m ...)`.
+/// `v`, in a `(with m ...)`: `m`'s values, types and effects.
 pub fn opened(v: &'static Cv, m: Str) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
         Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
-            cv(bind_onto(opened_binds(m, bs), bs), ds, onto(opened_aliases(m, r#as), r#as), es, here, group, file, line, fs, tv, at)
+            cv(bind_onto(opened_binds(m, bs), bs), ds, onto(opened_aliases(m, r#as), r#as), onto(concat(map(lambda1(move |d: &'static Effdef| {
+                let tagcase_ = d;
+                match *tagcase_ {
+                    Effdef::Effdef(n, atoms) => {
+                        if has_prefix_p(n, string_append(m, str_lit(" "))) {
+                            the::<Effdefs>(cons(effdef(after_prefix(n, string_append(m, str_lit(" "))), atoms), nil()))
+                        } else {
+                            nil()
+                        }
+                    }
+                }
+            }), es)), es), here, group, file, line, fs, tv, at)
         }
     }
 }
@@ -5863,6 +5877,19 @@ pub fn with_effdef(v: &'static Cv, xs: Sexps) -> &'static Cv {
     }
 }
 
+pub fn selects_p(e: &'static Sexp) -> bool {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            (sym_is_p(car(xs), str_lit("select")) || any_p(&selects_p, xs))
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
 /// Each datatype's variants' types, as an effect abbreviation before it
 /// has them read.
 pub fn declare_datatypes(mut v: &'static Cv, mut forms: Sexps, mut ds: Dts) -> Dts {
@@ -5875,7 +5902,9 @@ pub fn declare_datatypes(mut v: &'static Cv, mut forms: Sexps, mut ds: Dts) -> D
         } else if head_is_p(car(forms), str_lit("define-generative")) {
             (forms, ds) = (cdr(forms), cons(dt(type_name(v, car(forms)), type_params(v, car(forms)), nil()), ds));
             continue;
-        } else if head_is_p(car(forms), str_lit("define-effect")) {
+        } else if (head_is_p(car(forms), str_lit("define-effect")) && not(selects_p(car(forms)))) {
+            // An effect abbreviation, for the datatypes' fields' types; one that
+            // selects a module's is read where it stands, after the module.
             (v, forms) = (with_effdef(v, items(car(forms))), cdr(forms));
             continue;
         } else {
@@ -6426,7 +6455,9 @@ pub fn module_types(mut v: &'static Cv, mut forms: Sexps) -> Strings {
                 } else {
                     return cons(name, module_types(v, cdr(forms)));
                 }
-            } else if (head_is_p(f, str_lit("define-effect")) || head_is_p(f, str_lit("include")) || head_is_p(f, str_lit("hide")) || module_def_p(f)) {
+            } else if (head_is_p(f, str_lit("define-effect")) && i64_eq(size(items(f)), 3i64) && escapes_p(parse_effect(v, nil(), third(items(f))))) {
+                return refuse(v, str_lit("a module's effect that may abort, which KFX's modules do not have yet"));
+            } else if (head_is_p(f, str_lit("include")) || head_is_p(f, str_lit("hide")) || module_def_p(f)) {
                 return refuse(v, string_append(str_lit("an item KFX's modules do not have yet: "), show_sexp(car(items(f)))));
             } else {
                 forms = cdr(forms);
@@ -6519,6 +6550,30 @@ pub fn module_datatypes(v: &'static Cv, m: Str, forms: Sexps) -> Dts {
                     the::<Dts>(cons(dt(string_append(m, string_append(str_lit(".."), n)), ps, vs), nil()))
                 }
             }
+        } else {
+            nil()
+        }
+    }), forms))
+}
+
+/// A module's effect abbreviations, as `m e`: what each is, as the module
+/// read it.
+pub fn module_effects(m: Str, forms: Sexps, es: Effdefs) -> Effdefs {
+    concat(map(lambda1(move |f: &'static Sexp| {
+        if head_is_p(f, str_lit("define-effect")) {
+            let name = sym_name(second(items(f)));
+            concat(map(lambda1(move |d: &'static Effdef| {
+                let tagcase_ = d;
+                match *tagcase_ {
+                    Effdef::Effdef(n, atoms) => {
+                        if string_eq_p(n, name) {
+                            the::<Effdefs>(cons(effdef(string_append(m, string_append(str_lit(" "), n)), atoms), nil()))
+                        } else {
+                            nil()
+                        }
+                    }
+                }
+            }), es))
         } else {
             nil()
         }
@@ -6640,7 +6695,7 @@ pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
                                 n
                             }
                         }
-                    }), conversions), bs), cv_binds(v))), ds, onto(module_aliases(m, names, forms, false), cv_aliases(v)), cv_effdefs(v), here, group, file, line, fs, tv, at), found)
+                    }), conversions), bs), cv_binds(v))), ds, onto(module_aliases(m, names, forms, false), cv_aliases(v)), onto(module_effects(m, forms, es), cv_effdefs(v)), here, group, file, line, fs, tv, at), found)
                 }
             }
         }

@@ -46,6 +46,17 @@
     (define area (subr pure (shape) i64)
       (lambda (s) (tagcase s (circle (r) (i64* 3 (i64* r r))) (rect (w h) (i64* w h)))))))
 
+"A module's effect, selected."
+(define cells
+  (module
+    (define-effect touches (maxeff (read @heap) (write @heap)))
+    (define bump! (subr touches ((ref i64 @heap)) unit) (lambda (c) (set c (i64+ (get c) 1))))))
+
+(define-effect touches (select cells touches))
+
+(define bump-twice! (subr (maxeff touches kfx) ((ref i64 @heap)) unit)
+  (lambda (c) (with cells (begin (bump! c) (bump! c)))))
+
 (define-type shape (select geometry shape))
 
 (define rect (with geometry rect))
@@ -62,7 +73,7 @@
   (lambda (value n)
     (if (i64= n 0) value (with counter (count-to (value (twice zero)) (i64- n 1))))))
 
-(define main (subr kfx () string)
+(define main (subr (maxeff kfx (alloc @heap) (read @heap) (write @heap)) () string)
   (lambda ()
     (let ((push (the i64 10)))
       (words
@@ -75,4 +86,5 @@
              (with stack (with counter (i64->string (i64+ (value (inc zero)) (depth empty)))))
              (with stack (shown (the (select stack items) (list 7 8))))
              (i64->string (with geometry (area (rect 3 4))))
-             (if (big? ((with geometry circle) 20)) "big" "small"))))))
+             (if (big? ((with geometry circle) 20)) "big" "small")
+             (let ((c (the (ref i64 @heap) (new 40)))) (begin (bump-twice! c) (i64->string (get c)))))))))

@@ -1,0 +1,5 @@
+"A module's effect a program names, which the module does not give: FX-26
+ reads it only where it is used; KFX where it is defined."
+(define-effect kfx (maxeff (read @globals) spin))
+(define m (module (define x i64 1)))
+(define-effect e (select m touches))
