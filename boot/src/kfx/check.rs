@@ -2020,10 +2020,6 @@ pub fn reaches_p(v: &'static Cv, s: &'static St, body: &'static Sexp, tag: &'sta
     }), names_in(body))
 }
 
-pub fn control_form_p(h: Str) -> bool {
-    (string_eq_p(h, str_lit("if")) || string_eq_p(h, str_lit("cond")) || string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("tagcase")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("with")))
-}
-
 /// Module `m`'s values, as items, named as `m` names them.
 pub fn opened_binds(mut m: Str, mut bs: Binds) -> Binds {
     loop {
@@ -2043,6 +2039,1291 @@ pub fn opened_binds(mut m: Str, mut bs: Binds) -> Binds {
             }
         }
     }
+}
+
+// Termination (CLAUDES_CHOICES.md C20). A recursive group whose every run
+// ends needs no `spin`: FX-26's size-change check (Lee, Jones and
+// Ben-Amram; Fixpt's terminate.rs), its measures and no others, so that KFX
+// accepts no group FX-26 would not. Each call within the group is a graph
+// of how the callee's arguments relate to the caller's parameters: a part
+// of one (strictly smaller), the same, or nothing known. The measures:
+// parts, the `car` or `cdr` of a list at `acyclic` and a `tagcase` arm's
+// fields; and an `int` or `nat` less by a literal under a test bounding it
+// below by something fixed for the whole recursion, or greater, bounded
+// above. A member named other than as a call's operator spoils it all.
+
+// What is known of a value, of the member walked: the parameter, or a part
+// of it (strictly smaller), of a type if known; or an integer parameter
+// plus an offset.
+pub enum Tracked {
+    Part(i64, bool, Tys),
+    IntOf(i64, i64),
+}
+
+pub fn part(f0: i64, f1: bool, f2: Tys) -> &'static Tracked {
+    alloc(Tracked::Part(f0, f1, f2))
+}
+
+pub fn int_of(f0: i64, f1: i64) -> &'static Tracked {
+    alloc(Tracked::IntOf(f0, f1))
+}
+
+pub type Trackeds = List<&'static Tracked>;
+
+pub enum Known {
+    Known(Str, Trackeds),
+}
+
+pub fn known(f0: Str, f1: Trackeds) -> &'static Known {
+    alloc(Known::Known(f0, f1))
+}
+
+pub type Knowns = List<&'static Known>;
+
+// A parameter, bounded below (`#t`) or above.
+pub enum Guard {
+    Guard(i64, bool),
+}
+
+pub fn guard(f0: i64, f1: bool) -> &'static Guard {
+    alloc(Guard::Guard(f0, f1))
+}
+
+pub type Guards = List<&'static Guard>;
+
+// A size-change graph's edge: slots `3p + m`, `m` the measure (0 parts,
+// 1 down, 2 up), and whether it is strict.
+pub enum Edge {
+    Edge(i64, i64, bool),
+}
+
+pub fn edge(f0: i64, f1: i64, f2: bool) -> &'static Edge {
+    alloc(Edge::Edge(f0, f1, f2))
+}
+
+pub type Edges = List<&'static Edge>;
+
+pub enum Scall {
+    Scall(i64, i64, Edges),
+}
+
+pub fn scall(f0: i64, f1: i64, f2: Edges) -> &'static Scall {
+    alloc(Scall::Scall(f0, f1, f2))
+}
+
+pub type Scalls = List<&'static Scall>;
+
+pub type I64s = List<i64>;
+
+// A call's arguments: each the caller's parameter passed on unchanged, or -1.
+pub enum Passing {
+    Passing(i64, i64, I64s),
+}
+
+pub fn passing(f0: i64, f1: i64, f2: I64s) -> &'static Passing {
+    alloc(Passing::Passing(f0, f1, f2))
+}
+
+pub type Passings = List<&'static Passing>;
+
+pub enum Slot {
+    Slot(i64, i64),
+}
+
+pub fn slot(f0: i64, f1: i64) -> &'static Slot {
+    alloc(Slot::Slot(f0, f1))
+}
+
+pub type Slots = List<&'static Slot>;
+
+// The walk's context: the program's names; the members; the member walked;
+// the names bound on the way down; the guards; its `nat` parameters; the
+// parameters every call passes on unchanged.
+pub enum Wc {
+    Wc(&'static Cv, Strings, i64, Knowns, Guards, I64s, Slots),
+}
+
+pub fn wc(f0: &'static Cv, f1: Strings, f2: i64, f3: Knowns, f4: Guards, f5: I64s, f6: Slots) -> &'static Wc {
+    alloc(Wc::Wc(f0, f1, f2, f3, f4, f5, f6))
+}
+
+// What it found: the calls, what each passes on, and whether a member
+// escaped.
+pub enum Ws {
+    Ws(Scalls, Passings, bool),
+}
+
+pub fn ws(f0: Scalls, f1: Passings, f2: bool) -> &'static Ws {
+    alloc(Ws::Ws(f0, f1, f2))
+}
+
+pub fn index_of(mut x: Str, mut xs: Strings, mut i: i64) -> i64 {
+    loop {
+        if null_p(xs) {
+            return -1i64;
+        } else if string_eq_p(car(xs), x) {
+            return i;
+        } else {
+            (xs, i) = (cdr(xs), i64_plus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn nth_ty(mut ts: Tys, mut i: i64) -> Tys {
+    loop {
+        if null_p(ts) {
+            return nil();
+        } else if i64_eq(i, 0i64) {
+            return the::<Tys>(cons(car(ts), nil()));
+        } else {
+            (ts, i) = (cdr(ts), i64_minus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn bound_of(mut n: Str, mut ks: Knowns) -> List<Trackeds> {
+    loop {
+        if null_p(ks) {
+            return nil();
+        } else if {
+            let tagcase_ = car(ks);
+            match *tagcase_ {
+                Known::Known(m, t) => {
+                    string_eq_p(m, n)
+                }
+            }
+        } {
+            let tagcase_ = car(ks);
+            match *tagcase_ {
+                Known::Known(m, t) => {
+                    return the::<List<Trackeds>>(cons(t, nil()));
+                }
+            }
+        } else {
+            ks = cdr(ks);
+            continue;
+        }
+    }
+}
+
+pub fn wc_bound(c: &'static Wc, n: Str) -> List<Trackeds> {
+    let tagcase_ = c;
+    match *tagcase_ {
+        Wc::Wc(v, ms, cur, sc, gs, nats, inv) => {
+            bound_of(n, sc)
+        }
+    }
+}
+
+/// The member `n` names here, unless something on the way down hid it; or -1.
+pub fn wc_member(c: &'static Wc, n: Str) -> i64 {
+    let tagcase_ = c;
+    match *tagcase_ {
+        Wc::Wc(v, ms, cur, sc, gs, nats, inv) => {
+            if null_p(bound_of(n, sc)) {
+                index_of(n, ms, 0i64)
+            } else {
+                -1i64
+            }
+        }
+    }
+}
+
+/// The primitive `e` names, if it names one: no local hides it.
+pub fn std_op(c: &'static Wc, e: &'static Sexp) -> Str {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Sym(n) => {
+            let tagcase_ = c;
+            match *tagcase_ {
+                Wc::Wc(v, ms, cur, sc, gs, nats, inv) => {
+                    if (not(null_p(bound_of(n, sc))) || string_member_p(n, ms)) {
+                        str_lit("")
+                    } else {
+                        let found = find_bind(n, cv_binds(v));
+                        if (not(null_p(found)) && {
+                            let tagcase_ = car(found);
+                            match *tagcase_ {
+                                Bind::Bind(x, t, r#where) => {
+                                    string_eq_p(r#where, str_lit("prim"))
+                                }
+                            }
+                        }) {
+                            n
+                        } else {
+                            str_lit("")
+                        }
+                    }
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("")
+        }
+    }
+}
+
+pub fn literal_of(e: &'static Sexp) -> I64s {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Num(k, text, pos) => {
+            the::<I64s>(cons(k, nil()))
+        }
+        _ => {
+            let other = tagcase_;
+            nil()
+        }
+    }
+}
+
+pub fn shifted(ts: Trackeds, k: i64) -> Trackeds {
+    concat(map(lambda1(move |t: &'static Tracked| {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Tracked::IntOf(p, o) => {
+                the::<Trackeds>(cons(int_of(p, i64_plus(o, k)), nil()))
+            }
+            _ => {
+                let other = tagcase_;
+                nil()
+            }
+        }
+    }), ts))
+}
+
+/// What is known of `e`'s value.
+pub fn tracked_of(mut c: &'static Wc, mut e: &'static Sexp) -> Trackeds {
+    loop {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Sym(n) => {
+                let b = wc_bound(c, n);
+                if null_p(b) {
+                    return nil();
+                } else {
+                    return car(b);
+                }
+            }
+            Sexp::Lst(xs, src_file, src_line, src_pos) => {
+                let op = std_op(c, car(xs));
+                if sym_is_p(car(xs), str_lit("the")) {
+                    e = third(xs);
+                    continue;
+                } else if ((string_eq_p(op, str_lit("car")) || string_eq_p(op, str_lit("cdr"))) && i64_eq(size(xs), 2i64)) {
+                    return concat(map(lambda1(move |t: &'static Tracked| {
+                        let tagcase_ = t;
+                        match *tagcase_ {
+                            Tracked::Part(p, strict, ty) => {
+                                if null_p(ty) {
+                                    nil()
+                                } else {
+                                    let tagcase_ = car(ty);
+                                    match *tagcase_ {
+                                        Ty::TyList(el, r) => {
+                                            let tagcase_ = r;
+                                            match *tagcase_ {
+                                                Ty::TyRconst(rn) => {
+                                                    if string_eq_p(rn, str_lit("acyclic")) {
+                                                        the::<Trackeds>(cons(part(p, true, the::<Tys>(cons(if string_eq_p(op, str_lit("car")) {
+                                                            el
+                                                        } else {
+                                                            car(ty)
+                                                        }, nil()))), nil()))
+                                                    } else {
+                                                        nil()
+                                                    }
+                                                }
+                                                _ => {
+                                                    let other = tagcase_;
+                                                    nil()
+                                                }
+                                            }
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            nil()
+                                        }
+                                    }
+                                }
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                nil()
+                            }
+                        }
+                    }), tracked_of(c, second(xs))));
+                } else if ((string_eq_p(op, str_lit("+")) || string_eq_p(op, str_lit("-"))) && i64_eq(size(xs), 3i64)) {
+                    let (a, b) = (second(xs), third(xs));
+                    if not(null_p(literal_of(b))) {
+                        return shifted(tracked_of(c, a), if string_eq_p(op, str_lit("+")) {
+                            car(literal_of(b))
+                        } else {
+                            i64_minus(0i64, car(literal_of(b)))
+                        });
+                    } else if (string_eq_p(op, str_lit("+")) && not(null_p(literal_of(a)))) {
+                        return shifted(tracked_of(c, b), car(literal_of(a)));
+                    } else {
+                        return nil();
+                    }
+                } else {
+                    return nil();
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                return nil();
+            }
+        }
+    }
+}
+
+/// Whether `e` is the same at every call of the group: a literal, a name
+/// bound outside it, a parameter passed on unchanged, or a string's
+/// length, or the sum or difference of such.
+pub fn fixed_p(mut c: &'static Wc, mut e: &'static Sexp) -> bool {
+    loop {
+        let tagcase_ = c;
+        match *tagcase_ {
+            Wc::Wc(v, ms, cur, sc, gs, nats, inv) => {
+                let tagcase_ = e;
+                match *tagcase_ {
+                    Sexp::Num(k, text, pos) => {
+                        return true;
+                    }
+                    Sexp::Sym(n) => {
+                        let b = bound_of(n, sc);
+                        if null_p(b) {
+                            return not(string_member_p(n, ms));
+                        } else {
+                            return any_p(lambda1(move |t: &'static Tracked| {
+                                let tagcase_ = t;
+                                match *tagcase_ {
+                                    Tracked::Part(p, strict, ty) => {
+                                        (not(strict) && any_p(lambda1(move |x: &'static Slot| {
+                                            let tagcase_ = x;
+                                            match *tagcase_ {
+                                                Slot::Slot(i, j) => {
+                                                    (i64_eq(i, cur) && i64_eq(j, p))
+                                                }
+                                            }
+                                        }), inv))
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        false
+                                    }
+                                }
+                            }), car(b));
+                        }
+                    }
+                    Sexp::Lst(xs, src_file, src_line, src_pos) => {
+                        let op = std_op(c, car(xs));
+                        if sym_is_p(car(xs), str_lit("the")) {
+                            e = third(xs);
+                            continue;
+                        } else if ((string_eq_p(op, str_lit("string-length")) && i64_eq(size(xs), 2i64)) || ((string_eq_p(op, str_lit("+")) || string_eq_p(op, str_lit("-"))) && i64_eq(size(xs), 3i64))) {
+                            return not(any_p(lambda1(move |a: &'static Sexp| {
+                                not(fixed_p(c, a))
+                            }), cdr(xs)));
+                        } else {
+                            return false;
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// The bounds `op`, holding or not, puts on its left operand: below `#t`.
+pub fn bounds_put(op: Str, holds: bool) -> List<bool> {
+    if (((string_eq_p(op, str_lit("<")) || string_eq_p(op, str_lit("<="))) && holds) || ((string_eq_p(op, str_lit(">")) || string_eq_p(op, str_lit(">="))) && not(holds))) {
+        the::<List<bool>>(cons(false, nil()))
+    } else if (((string_eq_p(op, str_lit("<")) || string_eq_p(op, str_lit("<="))) && not(holds)) || ((string_eq_p(op, str_lit(">")) || string_eq_p(op, str_lit(">="))) && holds)) {
+        the::<List<bool>>(cons(true, nil()))
+    } else if (string_eq_p(op, str_lit("=")) && holds) {
+        the::<List<bool>>(cons(true, cons(false, nil())))
+    } else {
+        nil()
+    }
+}
+
+pub fn guards_on(c: &'static Wc, x: &'static Sexp, other: &'static Sexp, bounds: List<bool>) -> Guards {
+    if fixed_p(c, other) {
+        concat(map(lambda1(move |t: &'static Tracked| {
+            let tagcase_ = t;
+            match *tagcase_ {
+                Tracked::IntOf(p, o) => {
+                    map(lambda1(move |b: bool| {
+                        guard(p, b)
+                    }), bounds)
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil()
+                }
+            }
+        }), tracked_of(c, x)))
+    } else {
+        nil()
+    }
+}
+
+/// The bounds on parameters that `test` having the value `holds` shows.
+pub fn facts_of(mut c: &'static Wc, mut test: &'static Sexp, mut holds: bool) -> Guards {
+    loop {
+        let tagcase_ = test;
+        match *tagcase_ {
+            Sexp::Lst(xs, src_file, src_line, src_pos) => {
+                let op = std_op(c, car(xs));
+                if (string_eq_p(op, str_lit("not")) && i64_eq(size(xs), 2i64)) {
+                    (test, holds) = (second(xs), not(holds));
+                    continue;
+                } else if (i64_eq(size(xs), 3i64) && not(null_p(bounds_put(op, holds)))) {
+                    return onto(guards_on(c, second(xs), third(xs), bounds_put(op, holds)), guards_on(c, third(xs), second(xs), map(lambda1(move |b: bool| {
+                        not(b)
+                    }), bounds_put(op, holds))));
+                } else if (sym_is_p(car(xs), str_lit("and")) && holds && i64_gt(size(xs), 2i64)) {
+                    return concat(map(lambda1(move |a: &'static Sexp| {
+                        facts_of(c, a, true)
+                    }), cdr(xs)));
+                } else if (sym_is_p(car(xs), str_lit("or")) && not(holds) && i64_gt(size(xs), 2i64)) {
+                    return concat(map(lambda1(move |a: &'static Sexp| {
+                        facts_of(c, a, false)
+                    }), cdr(xs)));
+                } else {
+                    return nil();
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                return nil();
+            }
+        }
+    }
+}
+
+pub fn in_scope(c: &'static Wc, more: Knowns) -> &'static Wc {
+    let tagcase_ = c;
+    match *tagcase_ {
+        Wc::Wc(v, ms, cur, sc, gs, nats, inv) => {
+            wc(v, ms, cur, onto(more, sc), gs, nats, inv)
+        }
+    }
+}
+
+pub fn hiding(c: &'static Wc, names: Strings) -> &'static Wc {
+    in_scope(c, map(lambda1(move |n: Str| {
+        known(n, nil())
+    }), names))
+}
+
+pub fn guarded(c: &'static Wc, more: Guards) -> &'static Wc {
+    let tagcase_ = c;
+    match *tagcase_ {
+        Wc::Wc(v, ms, cur, sc, gs, nats, inv) => {
+            wc(v, ms, cur, sc, onto(more, gs), nats, inv)
+        }
+    }
+}
+
+pub fn has_bound_p(c: &'static Wc, p: i64, lower: bool) -> bool {
+    let tagcase_ = c;
+    match *tagcase_ {
+        Wc::Wc(v, ms, cur, sc, gs, nats, inv) => {
+            (any_p(lambda1(move |g: &'static Guard| {
+                let tagcase_ = g;
+                match *tagcase_ {
+                    Guard::Guard(q, b) => {
+                        (i64_eq(q, p) && eqv_bool_p(b, lower))
+                    }
+                }
+            }), gs) || (lower && any_p(lambda1(move |n: i64| {
+                i64_eq(n, p)
+            }), nats)))
+        }
+    }
+}
+
+/// A graph, kept in order of its edges' slots, with an edge more.
+pub fn with_edge(es: Edges, from: i64, to: i64, strict: bool) -> Edges {
+    if null_p(es) {
+        the::<Edges>(cons(edge(from, to, strict), nil()))
+    } else {
+        let tagcase_ = car(es);
+        match *tagcase_ {
+            Edge::Edge(f, t, s) => {
+                if (i64_eq(f, from) && i64_eq(t, to)) {
+                    cons(edge(f, t, (s || strict)), cdr(es))
+                } else if (i64_lt(from, f) || (i64_eq(from, f) && i64_lt(to, t))) {
+                    cons(edge(from, to, strict), es)
+                } else {
+                    cons(car(es), with_edge(cdr(es), from, to, strict))
+                }
+            }
+        }
+    }
+}
+
+/// The edges to argument `q`, from what is known of it.
+pub fn arg_edges(mut c: &'static Wc, mut q: i64, mut ts: Trackeds, mut g: Edges) -> Edges {
+    loop {
+        if null_p(ts) {
+            return g;
+        } else {
+            (ts, g) = (cdr(ts), {
+                let tagcase_ = car(ts);
+                match *tagcase_ {
+                    Tracked::Part(p, strict, ty) => {
+                        with_edge(g, i64_star(p, 3i64), i64_star(q, 3i64), strict)
+                    }
+                    Tracked::IntOf(p, off) => {
+                        let lo = has_bound_p(c, p, true);
+                        let hi = has_bound_p(c, p, false);
+                        let g = if (i64_lt(off, 0i64) && lo) {
+                            with_edge(g, i64_plus(i64_star(p, 3i64), 1i64), i64_plus(i64_star(q, 3i64), 1i64), true)
+                        } else if not(i64_gt(off, 0i64)) {
+                            with_edge(g, i64_plus(i64_star(p, 3i64), 1i64), i64_plus(i64_star(q, 3i64), 1i64), false)
+                        } else {
+                            g
+                        };
+                        if (i64_gt(off, 0i64) && hi) {
+                            with_edge(g, i64_plus(i64_star(p, 3i64), 2i64), i64_plus(i64_star(q, 3i64), 2i64), true)
+                        } else if not(i64_lt(off, 0i64)) {
+                            with_edge(g, i64_plus(i64_star(p, 3i64), 2i64), i64_plus(i64_star(q, 3i64), 2i64), false)
+                        } else {
+                            g
+                        }
+                    }
+                }
+            });
+            continue;
+        }
+    }
+}
+
+pub fn args_edges(mut c: &'static Wc, mut args: Sexps, mut q: i64, mut g: Edges) -> Edges {
+    loop {
+        if null_p(args) {
+            return g;
+        } else {
+            (args, q, g) = (cdr(args), i64_plus(q, 1i64), arg_edges(c, q, tracked_of(c, car(args)), g));
+            continue;
+        }
+    }
+}
+
+pub fn passed_on(c: &'static Wc, a: &'static Sexp) -> i64 {
+    let unchanged = concat(map(lambda1(move |t: &'static Tracked| {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Tracked::Part(p, strict, ty) => {
+                if strict {
+                    nil()
+                } else {
+                    the::<I64s>(cons(p, nil()))
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                nil()
+            }
+        }
+    }), tracked_of(c, a)));
+    if null_p(unchanged) {
+        -1i64
+    } else {
+        car(unchanged)
+    }
+}
+
+pub fn call_found(c: &'static Wc, st: &'static Ws, to: i64, args: Sexps) -> &'static Ws {
+    let tagcase_ = c;
+    match *tagcase_ {
+        Wc::Wc(v, ms, cur, sc, gs, nats, inv) => {
+            let tagcase_ = st;
+            match *tagcase_ {
+                Ws::Ws(calls, passed, escaped) => {
+                    ws(cons(scall(cur, to, args_edges(c, args, 0i64, nil())), calls), cons(passing(cur, to, map(lambda1(move |a: &'static Sexp| {
+                        passed_on(c, a)
+                    }), args)), passed), escaped)
+                }
+            }
+        }
+    }
+}
+
+pub fn escaping(st: &'static Ws) -> &'static Ws {
+    let tagcase_ = st;
+    match *tagcase_ {
+        Ws::Ws(calls, passed, escaped) => {
+            ws(calls, passed, true)
+        }
+    }
+}
+
+pub fn param_names(params: Sexps) -> Strings {
+    map(lambda1(move |p: &'static Sexp| {
+        let tagcase_ = p;
+        match *tagcase_ {
+            Sexp::Sym(n) => {
+                n
+            }
+            Sexp::Lst(xs, f, l, o) => {
+                sym_name(car(xs))
+            }
+            _ => {
+                let other = tagcase_;
+                str_lit("")
+            }
+        }
+    }), params)
+}
+
+/// What an arm of a `tagcase` on `whole` binds for its field `i`: a part,
+/// strictly smaller, of the type the variant says if the whole's is known.
+pub fn variant_part(v: &'static Cv, whole: Trackeds, tag: Str, i: i64) -> Trackeds {
+    concat(map(lambda1(move |t: &'static Tracked| {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Tracked::Part(p, strict, ty) => {
+                the::<Trackeds>(cons(part(p, true, if null_p(ty) {
+                    nil()
+                } else {
+                    let tagcase_ = car(ty);
+                    match *tagcase_ {
+                        Ty::TyData(d, args) => {
+                            let found = find_family(d, cv_dts(v));
+                            if null_p(found) {
+                                nil()
+                            } else {
+                                let tagcase_ = car(found);
+                                match *tagcase_ {
+                                    Dt::Dt(n, ps, vs) => {
+                                        let fs = concat(map(lambda1(move |x: &'static Variant| {
+                                            let tagcase_ = x;
+                                            match *tagcase_ {
+                                                Variant::Variant(vt, ft) => {
+                                                    if string_eq_p(vt, tag) {
+                                                        ft
+                                                    } else {
+                                                        nil()
+                                                    }
+                                                }
+                                            }
+                                        }), vs));
+                                        map(lambda1(move |f: &'static Ty| {
+                                            substitute(ps, args, f)
+                                        }), nth_ty(fs, i))
+                                    }
+                                }
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            nil()
+                        }
+                    }
+                }), nil()))
+            }
+            _ => {
+                let other = tagcase_;
+                nil()
+            }
+        }
+    }), whole))
+}
+
+pub fn walk_all(mut c: &'static Wc, mut st: &'static Ws, mut es: Sexps) -> &'static Ws {
+    loop {
+        if null_p(es) {
+            return st;
+        } else {
+            (st, es) = (walk_exp(c, st, car(es)), cdr(es));
+            continue;
+        }
+    }
+}
+
+pub fn walk_exp(mut c: &'static Wc, mut st: &'static Ws, mut e: &'static Sexp) -> &'static Ws {
+    loop {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Sym(n) => {
+                if i64_lt(wc_member(c, n), 0i64) {
+                    return st;
+                } else {
+                    return escaping(st);
+                }
+            }
+            Sexp::Lst(xs, src_file, src_line, src_pos) => {
+                let h = {
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n) => {
+                            n
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
+                    }
+                };
+                if string_eq_p(h, str_lit("if")) {
+                    let st = walk_exp(c, st, second(xs));
+                    return walk_exp(guarded(c, facts_of(c, second(xs), false)), walk_exp(guarded(c, facts_of(c, second(xs), true)), st, third(xs)), fourth(xs));
+                } else if string_eq_p(h, str_lit("cond")) {
+                    return walk_clauses(c, st, cdr(xs));
+                } else if string_eq_p(h, str_lit("case")) {
+                    return walk_all(c, walk_exp(c, st, second(xs)), concat(map(lambda1(move |arm: &'static Sexp| {
+                        cdr(items(arm))
+                    }), cdr(cdr(xs)))));
+                } else if string_eq_p(h, str_lit("tagcase")) {
+                    return walk_arms(c, walk_exp(c, st, second(xs)), tracked_of(c, second(xs)), cdr(cdr(xs)));
+                } else if string_eq_p(h, str_lit("let")) {
+                    let st = walk_all(c, st, map(lambda1(move |b: &'static Sexp| {
+                        second(items(b))
+                    }), items(second(xs))));
+                    return walk_all(in_scope(c, map(lambda1(move |b: &'static Sexp| {
+                        known(sym_name(car(items(b))), tracked_of(c, second(items(b))))
+                    }), items(second(xs)))), st, cdr(cdr(xs)));
+                } else if string_eq_p(h, str_lit("let*")) {
+                    return walk_let_star(c, st, items(second(xs)), cdr(cdr(xs)));
+                } else if string_eq_p(h, str_lit("letrec")) {
+                    let c = hiding(c, map(lambda1(move |b: &'static Sexp| {
+                        sym_name(car(items(b)))
+                    }), items(second(xs))));
+                    return walk_all(c, walk_all(c, st, map(lambda1(move |b: &'static Sexp| {
+                        third(items(b))
+                    }), items(second(xs)))), cdr(cdr(xs)));
+                } else if string_eq_p(h, str_lit("letregion")) {
+                    return walk_all(c, st, cdr(cdr(xs)));
+                } else if string_eq_p(h, str_lit("lambda")) {
+                    return walk_all(hiding(c, param_names(items(second(xs)))), st, cdr(cdr(xs)));
+                } else if string_eq_p(h, str_lit("the")) {
+                    e = third(xs);
+                    continue;
+                } else if string_eq_p(h, str_lit("with")) {
+                    let tagcase_ = c;
+                    match *tagcase_ {
+                        Wc::Wc(v, ms, cur, sc, gs, nats, inv) => {
+                            return walk_all(hiding(c, map(lambda1(move |b: &'static Bind| {
+                                let tagcase_ = b;
+                                match *tagcase_ {
+                                    Bind::Bind(n, t, w) => {
+                                        n
+                                    }
+                                }
+                            }), opened_binds(sym_name(second(xs)), cv_binds(v)))), st, cdr(cdr(xs)));
+                        }
+                    }
+                } else if (string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("and")) || string_eq_p(h, str_lit("or")) || string_eq_p(h, str_lit("list")) || string_eq_p(h, str_lit("prompt"))) {
+                    return walk_all(c, st, cdr(xs));
+                } else if (not(string_eq_p(h, str_lit(""))) && not(i64_lt(wc_member(c, h), 0i64))) {
+                    return walk_all(c, call_found(c, st, wc_member(c, h), cdr(xs)), cdr(xs));
+                } else {
+                    return walk_all(c, st, xs);
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                return st;
+            }
+        }
+    }
+}
+
+/// A `cond`, as the `if`s FX-26 reads it as: each clause's body under its
+/// test, and every clause after it under the test failing.
+pub fn walk_clauses(c: &'static Wc, st: &'static Ws, clauses: Sexps) -> &'static Ws {
+    if null_p(clauses) {
+        st
+    } else {
+        let clause = items(car(clauses));
+        if sym_is_p(car(clause), str_lit("else")) {
+            walk_all(c, st, cdr(clause))
+        } else {
+            let st = walk_exp(c, st, car(clause));
+            walk_clauses(guarded(c, facts_of(c, car(clause), false)), walk_all(guarded(c, facts_of(c, car(clause), true)), st, cdr(clause)), cdr(clauses))
+        }
+    }
+}
+
+pub fn walk_arms(mut c: &'static Wc, mut st: &'static Ws, mut whole: Trackeds, mut arms: Sexps) -> &'static Ws {
+    loop {
+        if null_p(arms) {
+            return st;
+        } else {
+            let arm = items(car(arms));
+            (st, arms) = (if sym_is_p(car(arm), str_lit("else")) {
+                walk_all(in_scope(c, the::<Knowns>(cons(known(sym_name(second(arm)), concat(map(lambda1(move |t: &'static Tracked| {
+                    let tagcase_ = t;
+                    match *tagcase_ {
+                        Tracked::Part(p, s, ty) => {
+                            the::<Trackeds>(cons(t, nil()))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            nil()
+                        }
+                    }
+                }), whole))), nil()))), st, cdr(cdr(arm)))
+            } else {
+                walk_all(in_scope(c, fields_known(c, whole, sym_name(car(arm)), items(second(arm)), 0i64)), st, cdr(cdr(arm)))
+            }, cdr(arms));
+            continue;
+        }
+    }
+}
+
+pub fn fields_known(c: &'static Wc, whole: Trackeds, tag: Str, names: Sexps, i: i64) -> Knowns {
+    if null_p(names) {
+        nil()
+    } else {
+        let tagcase_ = c;
+        match *tagcase_ {
+            Wc::Wc(v, ms, cur, sc, gs, nats, inv) => {
+                cons(known(sym_name(car(names)), variant_part(v, whole, tag, i)), fields_known(c, whole, tag, cdr(names), i64_plus(i, 1i64)))
+            }
+        }
+    }
+}
+
+pub fn walk_let_star(mut c: &'static Wc, mut st: &'static Ws, mut bindings: Sexps, mut body: Sexps) -> &'static Ws {
+    loop {
+        if null_p(bindings) {
+            return walk_all(c, st, body);
+        } else {
+            let b = items(car(bindings));
+            (c, st, bindings) = (in_scope(c, the::<Knowns>(cons(known(sym_name(car(b)), tracked_of(c, second(b))), nil()))), walk_exp(c, st, second(b)), cdr(bindings));
+            continue;
+        }
+    }
+}
+
+// A member of a group: its name, parameters, their types, and its body.
+pub enum RecMember {
+    RecMember(Str, Strings, Tys, Sexps),
+}
+
+pub fn rec_member(f0: Str, f1: Strings, f2: Tys, f3: Sexps) -> &'static RecMember {
+    alloc(RecMember::RecMember(f0, f1, f2, f3))
+}
+
+pub type RecMembers = List<&'static RecMember>;
+
+/// A definition's lambda, under a `plambda`: as a list of one, or none.
+pub fn lambda_of(e: &'static Sexp) -> Sexps {
+    if head_is_p(e, str_lit("plambda")) {
+        if head_is_p(third(items(e)), str_lit("lambda")) {
+            the::<Sexps>(cons(third(items(e)), nil()))
+        } else {
+            nil()
+        }
+    } else if head_is_p(e, str_lit("lambda")) {
+        the::<Sexps>(cons(e, nil()))
+    } else {
+        nil()
+    }
+}
+
+pub fn param_knowns(names: Strings, ts: Tys, j: i64) -> Knowns {
+    if (null_p(names) || null_p(ts)) {
+        nil()
+    } else {
+        cons(known(car(names), cons(part(j, false, the::<Tys>(cons(car(ts), nil()))), {
+            let tagcase_ = car(ts);
+            match *tagcase_ {
+                Ty::TyInt() => {
+                    the::<Trackeds>(cons(int_of(j, 0i64), nil()))
+                }
+                Ty::TyNat() => {
+                    the::<Trackeds>(cons(int_of(j, 0i64), nil()))
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil()
+                }
+            }
+        })), param_knowns(cdr(names), cdr(ts), i64_plus(j, 1i64)))
+    }
+}
+
+pub fn nat_params(mut ts: Tys, mut j: i64) -> I64s {
+    loop {
+        if null_p(ts) {
+            return nil();
+        } else if {
+            let tagcase_ = car(ts);
+            match *tagcase_ {
+                Ty::TyNat() => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        } {
+            return cons(j, nat_params(cdr(ts), i64_plus(j, 1i64)));
+        } else {
+            (ts, j) = (cdr(ts), i64_plus(j, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn walk_rec_members(mut v: &'static Cv, mut names: Strings, mut ms: RecMembers, mut i: i64, mut inv: Slots, mut st: &'static Ws) -> &'static Ws {
+    loop {
+        if null_p(ms) {
+            return st;
+        } else if {
+            let tagcase_ = st;
+            match *tagcase_ {
+                Ws::Ws(calls, passed, escaped) => {
+                    escaped
+                }
+            }
+        } {
+            return st;
+        } else {
+            let tagcase_ = car(ms);
+            match *tagcase_ {
+                RecMember::RecMember(n, ps, ts, body) => {
+                    (ms, i, st) = (cdr(ms), i64_plus(i, 1i64), walk_all(wc(v, names, i, param_knowns(ps, ts, 0i64), nil(), nat_params(ts, 0i64), inv), st, body));
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+pub fn slot_in_p(i: i64, j: i64, inv: Slots) -> bool {
+    any_p(lambda1(move |x: &'static Slot| {
+        let tagcase_ = x;
+        match *tagcase_ {
+            Slot::Slot(a, b) => {
+                (i64_eq(a, i) && i64_eq(b, j))
+            }
+        }
+    }), inv)
+}
+
+pub fn nth_i64(mut xs: I64s, mut i: i64) -> i64 {
+    loop {
+        if null_p(xs) {
+            return -1i64;
+        } else if i64_eq(i, 0i64) {
+            return car(xs);
+        } else {
+            (xs, i) = (cdr(xs), i64_minus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+/// The slots every call passes on unchanged, of those still thought so.
+pub fn kept_slots(inv: Slots, passed: Passings) -> Slots {
+    concat(map(lambda1(move |x: &'static Slot| {
+        let tagcase_ = x;
+        match *tagcase_ {
+            Slot::Slot(to, j) => {
+                if any_p(lambda1(move |p: &'static Passing| {
+                    let tagcase_ = p;
+                    match *tagcase_ {
+                        Passing::Passing(f, t, args) => {
+                            (i64_eq(t, to) && {
+                                let q = nth_i64(args, j);
+                                (i64_lt(q, 0i64) || not(slot_in_p(f, q, inv)))
+                            })
+                        }
+                    }
+                }), passed) {
+                    nil()
+                } else {
+                    the::<Slots>(cons(x, nil()))
+                }
+            }
+        }
+    }), inv))
+}
+
+pub fn invariant(mut inv: Slots, mut passed: Passings) -> Slots {
+    loop {
+        let next = kept_slots(inv, passed);
+        if i64_eq(size(next), size(inv)) {
+            return inv;
+        } else {
+            inv = next;
+            continue;
+        }
+    }
+}
+
+pub fn counting(from: i64, n: i64) -> I64s {
+    if i64_lt(from, n) {
+        cons(from, counting(i64_plus(from, 1i64), n))
+    } else {
+        nil()
+    }
+}
+
+pub fn all_slots(ms: RecMembers, i: i64) -> Slots {
+    if null_p(ms) {
+        nil()
+    } else {
+        let tagcase_ = car(ms);
+        match *tagcase_ {
+            RecMember::RecMember(n, ps, ts, body) => {
+                onto(map(lambda1(move |j: i64| {
+                    slot(i, j)
+                }), counting(0i64, size(ps))), all_slots(cdr(ms), i64_plus(i, 1i64)))
+            }
+        }
+    }
+}
+
+pub fn fold_to(mut b: Edges, mut x: i64, mut y: i64, mut s1: bool, mut out: Edges) -> Edges {
+    loop {
+        if null_p(b) {
+            return out;
+        } else {
+            (b, out) = (cdr(b), {
+                let tagcase_ = car(b);
+                match *tagcase_ {
+                    Edge::Edge(y2, z, s2) => {
+                        if i64_eq(y, y2) {
+                            with_edge(out, x, z, (s1 || s2))
+                        } else {
+                            out
+                        }
+                    }
+                }
+            });
+            continue;
+        }
+    }
+}
+
+pub fn fold_edges(mut a: Edges, mut b: Edges, mut out: Edges) -> Edges {
+    loop {
+        if null_p(a) {
+            return out;
+        } else {
+            (a, out) = (cdr(a), {
+                let tagcase_ = car(a);
+                match *tagcase_ {
+                    Edge::Edge(x, y, s1) => {
+                        fold_to(b, x, y, s1, out)
+                    }
+                }
+            });
+            continue;
+        }
+    }
+}
+
+pub fn compose(a: Edges, b: Edges) -> Edges {
+    fold_edges(a, b, nil())
+}
+
+pub fn edges_eq_p(a: Edges, b: Edges) -> bool {
+    if null_p(a) {
+        null_p(b)
+    } else if null_p(b) {
+        false
+    } else {
+        ({
+            let tagcase_ = car(a);
+            match *tagcase_ {
+                Edge::Edge(x, y, s) => {
+                    let tagcase_ = car(b);
+                    match *tagcase_ {
+                        Edge::Edge(x2, y2, s2) => {
+                            (i64_eq(x, x2) && i64_eq(y, y2) && eqv_bool_p(s, s2))
+                        }
+                    }
+                }
+            }
+        } && edges_eq_p(cdr(a), cdr(b)))
+    }
+}
+
+pub fn scall_eq_p(a: &'static Scall, b: &'static Scall) -> bool {
+    let tagcase_ = a;
+    match *tagcase_ {
+        Scall::Scall(f, g, es) => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Scall::Scall(f2, g2, es2) => {
+                    (i64_eq(f, f2) && i64_eq(g, g2) && edges_eq_p(es, es2))
+                }
+            }
+        }
+    }
+}
+
+// The closure of the calls under composition stops past this many.
+pub fn most_graphs() -> i64 {
+    500i64
+}
+
+/// Every path of calls, as a graph; none if there are too many.
+pub fn paths(calls: Scalls, all: Scalls, todo: Scalls) -> Scalls {
+    if null_p(todo) {
+        all
+    } else if i64_gt(size(all), most_graphs()) {
+        nil()
+    } else {
+        let tagcase_ = car(todo);
+        match *tagcase_ {
+            Scall::Scall(f, g, a) => {
+                close_over(calls, all, cdr(todo), f, a, concat(map(lambda1(move |x: &'static Scall| {
+                    let tagcase_ = x;
+                    match *tagcase_ {
+                        Scall::Scall(g2, h, b) => {
+                            if i64_eq(g2, g) {
+                                the::<Scalls>(cons(x, nil()))
+                            } else {
+                                nil()
+                            }
+                        }
+                    }
+                }), calls)))
+            }
+        }
+    }
+}
+
+pub fn close_over(mut calls: Scalls, mut all: Scalls, mut todo: Scalls, mut f: i64, mut a: Edges, mut nexts: Scalls) -> Scalls {
+    loop {
+        if null_p(nexts) {
+            return paths(calls, all, todo);
+        } else {
+            let tagcase_ = car(nexts);
+            match *tagcase_ {
+                Scall::Scall(g, h, b) => {
+                    let c = scall(f, h, compose(a, b));
+                    if any_p(lambda1(move |x: &'static Scall| {
+                        scall_eq_p(x, c)
+                    }), all) {
+                        nexts = cdr(nexts);
+                        continue;
+                    } else {
+                        (all, todo, nexts) = (cons(c, all), cons(c, todo), cdr(nexts));
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// The size-change criterion: every graph from a member to itself that is
+/// its own composition has a slot strictly smaller.
+pub fn ends_p(calls: Scalls) -> bool {
+    let all = paths(calls, calls, calls);
+    (not(null_p(all)) && not(any_p(lambda1(move |x: &'static Scall| {
+        let tagcase_ = x;
+        match *tagcase_ {
+            Scall::Scall(f, g, a) => {
+                (i64_eq(f, g) && edges_eq_p(compose(a, a), a) && not(any_p(lambda1(move |e: &'static Edge| {
+                    let tagcase_ = e;
+                    match *tagcase_ {
+                        Edge::Edge(p, q, s) => {
+                            (i64_eq(p, q) && s)
+                        }
+                    }
+                }), a)))
+            }
+        }
+    }), all)))
+}
+
+pub fn rec_members_of(names: Strings, types: Tys, lambdas: Sexps) -> RecMembers {
+    if null_p(names) {
+        nil()
+    } else {
+        cons(rec_member(car(names), param_names(items(second(items(car(lambdas))))), {
+            let tagcase_ = car(types);
+            match *tagcase_ {
+                Ty::TyProc(es, ps, r) => {
+                    ps
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil()
+                }
+            }
+        }, cdr(cdr(items(car(lambdas))))), rec_members_of(cdr(names), cdr(types), cdr(lambdas)))
+    }
+}
+
+/// Whether every run of the group ends: `names`, their types, and their
+/// lambdas. A member not a lambda, or named other than as a call's
+/// operator, and it does not.
+pub fn terminates_p(v: &'static Cv, names: Strings, types: Tys, defined: Sexps) -> bool {
+    let lambdas = map(&lambda_of, defined);
+    if any_p(lambda1(move |l: Sexps| {
+        null_p(l)
+    }), lambdas) {
+        false
+    } else {
+        let ms = rec_members_of(names, types, map(lambda1(move |l: Sexps| {
+            car(l)
+        }), lambdas));
+        let w1 = walk_rec_members(v, names, ms, 0i64, nil(), ws(nil(), nil(), false));
+        if {
+            let tagcase_ = w1;
+            match *tagcase_ {
+                Ws::Ws(calls, passed, escaped) => {
+                    escaped
+                }
+            }
+        } {
+            false
+        } else {
+            let inv = invariant(all_slots(ms, 0i64), {
+                let tagcase_ = w1;
+                match *tagcase_ {
+                    Ws::Ws(calls, passed, escaped) => {
+                        passed
+                    }
+                }
+            });
+            let w2 = if null_p(inv) {
+                w1
+            } else {
+                walk_rec_members(v, names, ms, 0i64, inv, ws(nil(), nil(), false))
+            };
+            (not({
+                let tagcase_ = w2;
+                match *tagcase_ {
+                    Ws::Ws(calls, passed, escaped) => {
+                        escaped
+                    }
+                }
+            }) && ends_p({
+                let tagcase_ = w2;
+                match *tagcase_ {
+                    Ws::Ws(calls, passed, escaped) => {
+                        calls
+                    }
+                }
+            }))
+        }
+    }
+}
+
+pub fn control_form_p(h: Str) -> bool {
+    (string_eq_p(h, str_lit("if")) || string_eq_p(h, str_lit("cond")) || string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("tagcase")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("with")))
 }
 
 /// Module `m`'s types, named as `m` names them.
@@ -2695,11 +3976,23 @@ pub fn let_values(v: &'static Cv, s: &'static St, bindings: Sexps, forms: Sexps,
 }
 
 /// `(letrec ((f T lambda) ...) body ...)`: each procedure's type written,
-/// every one in scope in each lambda and in the body.
+/// every one in scope in each lambda and in the body. A group whose every
+/// run ends is bound as `ends`, its calls no `spin`; else as locals.
 pub fn letrec_form(v: &'static Cv, s: &'static St, bindings: Sexps, forms: Sexps, expected: Tys) -> &'static Res {
+    let ends = terminates_p(v, map(lambda1(move |b: &'static Sexp| {
+        name_of(v, car(items(b)))
+    }), bindings), map(lambda1(move |b: &'static Sexp| {
+        parse_type(v, cv_tvars(v), second(items(b)))
+    }), bindings), map(lambda1(move |b: &'static Sexp| {
+        third(items(b))
+    }), bindings));
     let w = with_binds(v, map(lambda1(move |b: &'static Sexp| {
         let ys = items(b);
-        local(v, name_of(v, car(ys)), parse_type(v, cv_tvars(v), second(ys)))
+        bind(name_of(v, car(ys)), scheme(nil(), parse_type(v, cv_tvars(v), second(ys))), if ends {
+            str_lit("ends")
+        } else {
+            str_lit("local")
+        })
     }), bindings));
     let tagcase_ = letrec_lambdas(w, s, bindings);
     match *tagcase_ {
@@ -2888,7 +4181,7 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
                             cons(string_append(str_lit("g:"), h), nil())
                         } else {
                             nil()
-                        }, if (string_eq_p(r#where, str_lit("local")) || string_member_p(h, cv_group(v))) {
+                        }, if (string_eq_p(r#where, str_lit("local")) || (string_member_p(h, cv_group(v)) && (string_eq_p(r#where, str_lit("global")) || string_eq_p(r#where, str_lit("item"))))) {
                             cons(str_lit("spin"), nil())
                         } else {
                             nil()
@@ -3414,6 +4707,17 @@ pub fn no_reaching_itself(v: &'static Cv, group: Strings, sc: &'static Scheme) -
     }
 }
 
+/// Whether a definition of one procedure ends however it calls itself, so
+/// that its calls of itself need no `spin` (`terminates?`).
+pub fn ends_alone_p(v: &'static Cv, name: Str, sc: &'static Scheme, defined: &'static Sexp) -> bool {
+    let tagcase_ = sc;
+    match *tagcase_ {
+        Scheme::Scheme(tvars, t) => {
+            terminates_p(v, cons(name, nil()), cons(t, nil()), cons(defined, nil()))
+        }
+    }
+}
+
 /// A procedure's lambda against its type; `v` already has its name.
 pub fn check_procedure(v: &'static Cv, defined: &'static Sexp, sc: &'static Scheme) -> &'static Cv {
     let lam = items(if head_is_p(defined, str_lit("plambda")) {
@@ -3465,11 +4769,25 @@ pub fn check_rec(v: &'static Cv, bindings: Sexps) -> &'static Cv {
     let names = map(lambda1(move |b: &'static Sexp| {
         name_of(v, car(items(b)))
     }), bindings);
+    let ends = terminates_p(v, names, map(lambda1(move |b: &'static Sexp| {
+        let tagcase_ = parse_scheme(v, second(items(b)));
+        match *tagcase_ {
+            Scheme::Scheme(tvars, t) => {
+                t
+            }
+        }
+    }), bindings), map(lambda1(move |b: &'static Sexp| {
+        third(items(b))
+    }), bindings));
     let named = with_binds(v, map(lambda1(move |b: &'static Sexp| {
         let ys = items(b);
         global(v, name_of(v, car(ys)), parse_scheme(v, second(ys)))
     }), bindings));
-    check_members(named, bindings, names)
+    check_members(named, bindings, if ends {
+        nil()
+    } else {
+        names
+    })
 }
 
 pub fn global_reads(mut es: Strings) -> Strings {
@@ -3493,8 +4811,12 @@ pub fn global_reads(mut es: Strings) -> Strings {
 /// with the globals found.
 pub fn check_define_star(v: &'static Cv, xs: Sexps) -> &'static Cv {
     let name = name_of(v, second(xs));
-    let v = at(v, name, cons(name, nil()));
     let defined = fourth(xs);
+    let v = at(v, name, if ends_alone_p(v, name, parse_scheme(v, third(xs)), defined) {
+        nil()
+    } else {
+        cons(name, nil())
+    });
     let lam = items(if head_is_p(defined, str_lit("plambda")) {
         third(items(defined))
     } else {
@@ -3585,8 +4907,12 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                     refuse(v, str_lit("a definition needs a type"))
                 } else {
                     let name = name_of(v, second(xs));
-                    let v = at(v, name, cons(name, nil()));
                     let sc = parse_scheme(v, third(xs));
+                    let v = at(v, name, if ends_alone_p(v, name, sc, fourth(xs)) {
+                        nil()
+                    } else {
+                        cons(name, nil())
+                    });
                     let v = no_reaching_itself(v, cons(name, nil()), sc);
                     let named = with_binds(v, cons(global(v, name, sc), nil()));
                     if procedure_p(fourth(xs)) {

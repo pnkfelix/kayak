@@ -469,6 +469,29 @@
 (define returns? (subr kfx (tail) bool)
   (lambda (t) (tagcase t (returns (f ps live ok) #t) (else other #f))))
 
+(define-rec
+  (map2-params (subr kfx (sexps sexps) sexps)
+    (lambda (params types)
+      (if (or (null? params) (null? types))
+          params
+          (cons (tagcase (car params)
+                  (sym (n) (lst (list (car params) (car types)) "" 0 0))
+                  (else other other))
+                (map2-params (cdr params) (cdr types)))))))
+
+(define typed-lambda (subr kfx (sexp sexp) sexp)
+  (lambda (lam type)
+    "A letrec's lambda, its parameters given the types its binding's says,
+     so that Rust need not infer a closure's from its uses: it cannot, where
+     the first is a `match` (a lambda's place kept, for its facts)."
+    (tagcase lam
+      (lst (xs file line pos)
+        (lst (cons (car xs)
+                   (cons (lst (map2-params (items (second xs)) (items (third (items type)))) "" 0 0)
+                         (cdr (cdr xs))))
+             file line pos))
+      (else other lam))))
+
 (define abort? (subr kfx (ctx sexp) bool)
   (lambda (c e)
     "An abort: `return Err(...)` in Rust, so no value to return or wrap."
@@ -805,7 +828,7 @@
                                     (acc (put "let " acc))
                                     (acc (put (mangle (sym-name (car ys))) acc))
                                     (acc (put " = " acc))
-                                    (acc (put-exp inside (third ys) n (value) acc)))
+                                    (acc (put-exp inside (typed-lambda (third ys) (second ys)) n (value) acc)))
                                (put-nl n (put ";" acc))))
                            "" bindings acc)))
         (put-sep (lambda ((x string) (acc chars))

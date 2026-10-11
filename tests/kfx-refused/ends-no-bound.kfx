@@ -1,0 +1,4 @@
+"(= n 0) bounds nothing when it fails: (f -1) loops, so f says spin."
+(define-effect kfx (maxeff (read @globals) spin))
+(define g (subr pure (int) int)
+  (lambda (n) (letrec ((f (subr pure (int) int) (lambda (n) (if (= n 0) 0 (f (- n 1)))))) (f n))))

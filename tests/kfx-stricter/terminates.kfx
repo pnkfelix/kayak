@@ -1,3 +1,0 @@
-"A recursion FX-26 proves ends, by size-change, so needs no spin. KFX proves nothing, and wants spin."
-(define-effect kfx (maxeff (read @globals) spin))
-(define len (subr (read @globals) ((listof i64 acyclic)) i64) (lambda (xs) (if (null? xs) 0 (i64+ 1 (len (cdr xs))))))

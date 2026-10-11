@@ -244,3 +244,23 @@ Answers `PLAN.md` Q3 (`docs/research/escapes.md` §5).
   which is meant, and are what a reader of the Rust wants to see.
 - **Why a module's items may not reuse a global's name:** one name, one
   meaning in the emitter, which knows names, not scopes; KFX refuses more.
+
+## C20. Termination: FX-26's size-change check, a subset (2026-10-11)
+
+- **Chosen:** a recursive group (`define`, `define-rec`, `define*`,
+  `letrec`, and so a module's) whose every run ends needs no `spin`, by
+  FX-26's own check (Fixpt's `terminate.rs`): size-change graphs over
+  parts (`car`/`cdr` at `acyclic`, `tagcase` fields) and over `int` and
+  `nat` counting down to a fixed bound or up to one, closed under
+  composition. KFX's is a subset of it, measure for measure, so that KFX
+  accepts no group FX-26 does not: no `i64` measure (its subtraction
+  wraps; FX-26 has none), facts only from what FX-26's parse of `cond`,
+  `and`, `or` and `let*` gives (fewer where in doubt), and a smaller cap
+  on the graphs (500, FX-26's 4000).
+- **Not chosen:** KFX's own, broader rule (`i64`, say), which would make
+  KFX accept what FX-26 refuses: K1.
+- **Why:** pure recursion is what FX-26 programs write, and the check is
+  the checker's alone: the Rust is the same, `spin` erased.
+- **Left stricter:** a call of a procedure a local names is `spin` in
+  KFX; FX-26 takes its latent effect, unless its type is recursive through
+  a parameter (`kfx-stricter/local-call`).

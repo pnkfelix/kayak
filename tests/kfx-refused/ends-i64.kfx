@@ -1,0 +1,4 @@
+"FX-26 counts int and nat down, not i64, whose subtraction wraps."
+(define-effect kfx (maxeff (read @globals) spin))
+(define g (subr pure (i64) i64)
+  (lambda (n) (letrec ((f (subr pure (i64) i64) (lambda (n) (if (i64> n 0) (f (i64- n 1)) 0)))) (f n))))

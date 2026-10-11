@@ -1,0 +1,6 @@
+"A local named - is not subtraction: nothing is known to fall."
+(define-effect kfx (maxeff (read @globals) spin))
+(define g (subr pure (int) int)
+  (lambda (n)
+    (let ((- (lambda ((a int) (b int)) (+ a b))))
+      (letrec ((f (subr pure (int) int) (lambda (n) (if (> n 0) (f (- n 1)) 0)))) (f n)))))

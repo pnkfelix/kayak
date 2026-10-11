@@ -103,6 +103,11 @@ pub mod tails;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/terminate.rs"]
+pub mod terminate;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/two/mod.rs"]
 pub mod two;
 
@@ -141,6 +146,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("recursion", recursion::main),
     ("strings", strings::main),
     ("tails", tails::main),
+    ("terminate", terminate::main),
     ("two", two::main),
     ("unicode", unicode::main),
     ("untyped", untyped::main),

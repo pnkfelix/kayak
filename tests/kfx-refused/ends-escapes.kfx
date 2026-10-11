@@ -1,0 +1,5 @@
+"A member named as a value gives itself away: whoever calls it may loop."
+(define-effect kfx (maxeff (read @globals) spin))
+(define g (subr pure (int) int)
+  (lambda (x)
+    (letrec ((f (subr pure (int) int) (lambda (x) (if (> x 0) ((lambda ((h (subr pure (int) int))) (h (- x 1))) f) 0)))) (f x))))

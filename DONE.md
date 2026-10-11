@@ -586,3 +586,23 @@ latent effect reads itself (`(read (globals f))`), or a member of its
 it unless its type says `spin` (`no_reaching_itself`), recursive or not.
 `kfx` accepted it. Now refused, for `define`, `define-rec` and `define*`
 (`kfx-refused/reaches-itself`).
+
+## Termination: recursion that ends needs no `spin` (2026-10-11)
+
+FX-26's size-change check, a subset measure for measure (C20): a group
+whose calls pass parts of finite data (`car`/`cdr` at `acyclic`,
+`tagcase` fields), or `int`/`nat` counts down to a fixed bound or up to
+one, needs no `spin`; the parameters every call passes on unchanged are
+bounds too. For `define`, `define-rec`, `define*` and `letrec` (a group
+that ends is bound `ends`, its calls no `spin`). A group's `spin` is now
+only for calls of the global itself, not of a local that hides it.
+
+Found on the way: a `letrec`'s closure whose first use of a parameter is
+a `match` needs its type written; the emitter now writes the binding's
+parameter types on the closure.
+
+`tests/kfx/terminate.kfx` (lists, counts down and up, a tree, Ackermann,
+`ev?`/`od?` reading globals); `tests/kfx-refused/ends-*` (no bound, a
+moving bound, a member given away, nothing smaller, `i64`, a shadowed
+`-`), each refused by Fixpt too, for the same reason. 50 of Fixpt's
+programs accepted, all agreeing.

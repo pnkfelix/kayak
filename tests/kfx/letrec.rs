@@ -8,7 +8,7 @@ use kayak_rt::*;
 
 pub fn count_to(n: i64, step: i64) -> Str {
     let go__knot = knot::<&'static dyn Fn(i64, Str) -> Str>();
-    let go = lambda2(move |i, acc| {
+    let go = lambda2(move |i: i64, acc: Str| {
         if i64_gt(i, n) {
             acc
         } else {
@@ -22,14 +22,14 @@ pub fn count_to(n: i64, step: i64) -> Str {
 pub fn parity(n: i64) -> Str {
     let ev_p__knot = knot::<&'static dyn Fn(i64) -> bool>();
     let od_p__knot = knot::<&'static dyn Fn(i64) -> bool>();
-    let ev_p = lambda1(move |k| {
+    let ev_p = lambda1(move |k: i64| {
         if i64_eq(k, 0i64) {
             true
         } else {
             (od_p__knot.get())(i64_minus(k, 1i64))
         }
     });
-    let od_p = lambda1(move |k| {
+    let od_p = lambda1(move |k: i64| {
         if i64_eq(k, 0i64) {
             false
         } else {
@@ -48,7 +48,7 @@ pub fn parity(n: i64) -> Str {
 /// A parameter named as the procedure is: inside, the parameter.
 pub fn shadow(x: i64) -> i64 {
     let f__knot = knot::<&'static dyn Fn(i64) -> i64>();
-    let f = lambda1(move |f| {
+    let f = lambda1(move |f: i64| {
         i64_star(f, 2i64)
     });
     f__knot.set(f);

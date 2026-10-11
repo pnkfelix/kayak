@@ -1,0 +1,4 @@
+"A bound that moves as the count does bounds nothing."
+(define-effect kfx (maxeff (read @globals) spin))
+(define g (subr pure (int int) int)
+  (lambda (i n) (letrec ((f (subr pure (int int) int) (lambda (i n) (if (< i n) (f (+ i 1) (+ n 1)) i)))) (f i n))))

@@ -941,6 +941,41 @@ pub fn returns_p(t: &'static Tail) -> bool {
     }
 }
 
+pub fn map2_params(params: Sexps, types: Sexps) -> Sexps {
+    if (null_p(params) || null_p(types)) {
+        params
+    } else {
+        cons({
+            let tagcase_ = car(params);
+            match *tagcase_ {
+                Sexp::Sym(n) => {
+                    lst(cons(car(params), cons(car(types), nil())), str_lit(""), 0i64, 0i64)
+                }
+                _ => {
+                    let other = tagcase_;
+                    other
+                }
+            }
+        }, map2_params(cdr(params), cdr(types)))
+    }
+}
+
+/// A letrec's lambda, its parameters given the types its binding's says,
+/// so that Rust need not infer a closure's from its uses: it cannot, where
+/// the first is a `match` (a lambda's place kept, for its facts).
+pub fn typed_lambda(lam: &'static Sexp, r#type: &'static Sexp) -> &'static Sexp {
+    let tagcase_ = lam;
+    match *tagcase_ {
+        Sexp::Lst(xs, file, line, pos) => {
+            lst(cons(car(xs), cons(lst(map2_params(items(second(xs)), items(third(items(r#type)))), str_lit(""), 0i64, 0i64), cdr(cdr(xs)))), file, line, pos)
+        }
+        _ => {
+            let other = tagcase_;
+            lam
+        }
+    }
+}
+
 /// An abort: `return Err(...)` in Rust, so no value to return or wrap.
 pub fn abort_p(c: &'static Ctx, e: &'static Sexp) -> bool {
     (head_is_p(e, str_lit("abort-current-continuation")) && string_eq_p(local_kind(str_lit("abort-current-continuation"), ctx_locals(c)), str_lit("")))
@@ -1431,7 +1466,7 @@ pub fn put_letrec(c: &'static Ctx, bindings: Sexps, names: Strings, n: i64, acc:
         let acc = put(str_lit("let "), acc);
         let acc = put(mangle(sym_name(car(ys))), acc);
         let acc = put(str_lit(" = "), acc);
-        let acc = put_exp(inside, third(ys), n, value(), acc);
+        let acc = put_exp(inside, typed_lambda(third(ys), second(ys)), n, value(), acc);
         put_nl(n, put(str_lit(";"), acc))
     }), str_lit(""), bindings, acc);
     put_sep(lambda2(move |x: Str, acc: Chars| {

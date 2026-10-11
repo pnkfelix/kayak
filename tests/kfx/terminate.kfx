@@ -1,0 +1,65 @@
+"Recursion that ends needs no `spin` (CLAUDES_CHOICES.md C20): FX-26's
+ size-change check, over parts of finite data and integers counting down
+ to a bound or up to one."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-type ints (listof i64 acyclic))
+
+(define-datatype tree (leaf int) (node tree tree))
+
+"Over a list at `acyclic`: its `cdr` is smaller."
+(define len (subr pure (ints) int)
+  (lambda (xs)
+    (letrec ((go (subr pure (ints int) int)
+               (lambda (xs n) (if (null? xs) n (go (cdr xs) (+ n 1))))))
+      (go xs 0))))
+
+"Down to a bound below, and up to one above that every call passes on."
+(define count (subr pure (int) int)
+  (lambda (n)
+    (letrec ((c (subr pure (int) int) (lambda (n) (if (> n 0) (+ 1 (c (- n 1))) 0))))
+      (c n))))
+
+(define sum-to (subr pure (int) int)
+  (lambda (top)
+    (letrec ((up (subr pure (int int int) int)
+               (lambda (i n acc) (if (< i n) (up (+ i 1) n (+ acc i)) acc))))
+      (up 0 top 0))))
+
+"A tree, by its arms' fields; and Ackermann's function, by two measures."
+(define total (subr pure (tree) int)
+  (lambda (t)
+    (letrec ((walk (subr pure (tree) int)
+               (lambda (t) (tagcase t (leaf (n) n) (node (a b) (+ (walk a) (walk b)))))))
+      (walk t))))
+
+(define ack (subr pure (int int) int)
+  (lambda (m n)
+    (letrec ((a (subr pure (int int) int)
+               (lambda (m n)
+                 (cond ((<= m 0) (+ n 1))
+                       ((<= n 0) (a (- m 1) 1))
+                       (else (a (- m 1) (a m (- n 1))))))))
+      (a m n))))
+
+"A group of two, reading globals and no more: no `spin`."
+(define-rec
+  (ev? (subr (read @globals) (int) bool) (lambda (n) (if (<= n 0) #t (od? (- n 1)))))
+  (od? (subr (read @globals) (int) bool) (lambda (n) (if (<= n 0) #f (ev? (- n 1))))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (string-append
+     (int->string (len (list 1 2 3)))
+     (string-append " "
+      (string-append (int->string (count 5))
+       (string-append " "
+        (string-append (int->string (sum-to 10))
+         (string-append " "
+          (string-append (int->string (total (node (leaf 1) (node (leaf 2) (leaf 3)))))
+           (string-append " "
+            (string-append (int->string (ack 2 3))
+             (string-append " " (if (ev? 10) "even" "odd")))))))))))))
+
+(main)

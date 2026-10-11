@@ -1,0 +1,6 @@
+"An argument no smaller, only different."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-datatype tree (leaf int) (node tree tree))
+(define g (subr pure (tree tree) int)
+  (lambda (t u)
+    (letrec ((f (subr pure (tree tree) int) (lambda (t u) (tagcase t (leaf (n) n) (node (a b) (f u t)))))) (f t u))))
