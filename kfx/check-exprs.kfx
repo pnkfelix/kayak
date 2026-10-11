@@ -549,7 +549,9 @@
   (synth-form (subr kfx (cv st sexp string sexps) res)
     (lambda (v s e h xs)
       (cond ((string=? h "the")
-             (check v s (second xs) (parse-type v (cv-tvars v) (car xs))))
+             (let ((want (parse-type v (cv-tvars v) (car xs))))
+               (tagcase (check v s (second xs) want)
+                 (res (t es s) (res t es (lifted-args v s (list (second xs)) (list want) 0))))))
             ((string=? h "prompt") (prompt-form v s xs nil))
             ((string=? h "%found")
              "A definition's value in a module that includes another: found by

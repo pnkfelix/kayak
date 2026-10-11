@@ -133,8 +133,8 @@ Escapes are done (`DONE.md`, C18). Left:
   - a `nil` whose element type nothing fixes, `(let ((x nil)) 0)`: Rust
     cannot infer it (a Rust error, FX-26 accepts);
   - a procedure that cannot abort reaching a type that may by other ways
-    than as a call's argument (`the`, `list`, branches, a product): a Rust
-    error, the closure not lifted to return `Ok`;
+    than as a call's argument or `the`'s (`list`, branches, a product): a
+    Rust error, the closure not lifted to return `Ok`;
   - `void` in a type written (`(subr pure () void)` as a value, a field):
     Rust's `!` is unstable there; a value holding a `void` at the top
     level is a Rust error (both fail when run);

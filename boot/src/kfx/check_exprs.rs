@@ -1211,7 +1211,13 @@ pub fn synth_any(v: &'static Cv, s: &'static St, e: &'static Sexp) -> &'static R
 
 pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: Sexps) -> &'static Res {
     if string_eq_p(h, str_lit("the")) {
-        check(v, s, second(xs), parse_type(v, cv_tvars(v), car(xs)))
+        let want = parse_type(v, cv_tvars(v), car(xs));
+        let tagcase_ = check(v, s, second(xs), want);
+        match *tagcase_ {
+            Res::Res(t, es, s) => {
+                res(t, es, lifted_args(v, s, cons(second(xs), nil()), cons(want, nil()), 0i64))
+            }
+        }
     } else if string_eq_p(h, str_lit("prompt")) {
         prompt_form(v, s, xs, nil())
     } else if string_eq_p(h, str_lit("%found")) {

@@ -1961,7 +1961,7 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
         let acc = put(str_lit("the::<"), acc);
         let acc = put_type(c, car(xs), acc);
         let acc = put(str_lit(">("), acc);
-        let acc = put_exp(c, second(xs), n, value(), acc);
+        let acc = put_args(c, e, cdr(xs), 0i64, n, acc);
         put(str_lit(")"), acc)
     } else if (string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion"))) {
         put_block(c, cons(e, nil()), n, t, acc)

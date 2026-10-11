@@ -1100,7 +1100,7 @@
              (let* ((acc (put "the::<" acc))
                     (acc (put-type c (car xs) acc))
                     (acc (put ">(" acc))
-                    (acc (put-exp c (second xs) n (value) acc)))
+                    (acc (put-args c e (cdr xs) 0 n acc)))
                (put ")" acc)))
             ((or (string=? h "letrec") (string=? h "letregion")) (put-block c (list e) n t acc))
             ((abort? c e)
