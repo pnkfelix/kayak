@@ -1,0 +1,6 @@
+"A procedure that gives itself away, in a group that reads globals: whoever
+ is given it may call it again, so it says spin."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-rec
+  (f (subr (read @globals) (i64) i64) (lambda (n) (g f n)))
+  (g (subr (read @globals) ((subr (read @globals) (i64) i64) i64) i64) (lambda (h n) (h n))))

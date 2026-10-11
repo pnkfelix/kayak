@@ -930,14 +930,16 @@
 (define proc-type? (subr kfx (st ty) bool)
   (lambda (s t) (tagcase (walk s t) (ty-proc (es ps r) #t) (else other #f))))
 
-(define naming-effs (subr kfx (st string string ty) strings)
-  (lambda (s name where t)
-    "What naming a name does: a global is read, and a global procedure
-     named as a value may be called from anywhere, so may loop; a member of
-     a `letrec` that may not end, too."
+(define naming-effs (subr kfx (st string string ty strings) strings)
+  (lambda (s name where t group)
+    "What naming a name does: a global is read; a member of the group being
+     defined, named as a value, may be called by whoever is given it, and so
+     loop: `spin`, as FX-26 has it. A global defined before cannot be, since
+     nothing it reaches is defined after it (KFX defines each name once); a
+     `letrec` member that may not end can."
     (cond ((string=? where "rec") (list "spin"))
           ((not (string=? where "global")) nil)
-          ((proc-type? s t) (list "spin" (string-append "g:" name)))
+          ((and (proc-type? s t) (string-member? name group)) (list "spin" (string-append "g:" name)))
           (else (list (string-append "g:" name))))))
 
 (define-rec

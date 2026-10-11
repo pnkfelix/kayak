@@ -2102,15 +2102,17 @@ pub fn proc_type_p(s: &'static St, t: &'static Ty) -> bool {
     }
 }
 
-/// What naming a name does: a global is read, and a global procedure
-/// named as a value may be called from anywhere, so may loop; a member of
-/// a `letrec` that may not end, too.
-pub fn naming_effs(s: &'static St, name: Str, r#where: Str, t: &'static Ty) -> Strings {
+/// What naming a name does: a global is read; a member of the group being
+/// defined, named as a value, may be called by whoever is given it, and so
+/// loop: `spin`, as FX-26 has it. A global defined before cannot be, since
+/// nothing it reaches is defined after it (KFX defines each name once); a
+/// `letrec` member that may not end can.
+pub fn naming_effs(s: &'static St, name: Str, r#where: Str, t: &'static Ty, group: Strings) -> Strings {
     if string_eq_p(r#where, str_lit("rec")) {
         cons(str_lit("spin"), nil())
     } else if not(string_eq_p(r#where, str_lit("global"))) {
         nil()
-    } else if proc_type_p(s, t) {
+    } else if (proc_type_p(s, t) && string_member_p(name, group)) {
         cons(str_lit("spin"), cons(string_append(str_lit("g:"), name), nil()))
     } else {
         cons(string_append(str_lit("g:"), name), nil())

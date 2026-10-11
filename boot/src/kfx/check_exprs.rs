@@ -851,7 +851,7 @@ pub fn synth_name(v: &'static Cv, s: &'static St, name: Str) -> &'static Res {
                         let tagcase_ = instantiate(s, sc);
                         match *tagcase_ {
                             Inst::Inst(t, s, regions) => {
-                                res(t, naming_effs(s, name, r#where, t), s)
+                                res(t, naming_effs(s, name, r#where, t, cv_group(v)), s)
                             }
                         }
                     }

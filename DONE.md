@@ -724,3 +724,6 @@ And a `list` given for a parameter is found by itself only where the
 result expected fixed the parameter's type, not an earlier argument, as
 FX-26 does (`(map-pure f (list 1 2))` checks the list's literals as `i64`
 where `f` takes one).
+A global procedure named as a value is `spin` only within its own group,
+as FX-26 has it; one defined before cannot reach back, since KFX defines
+each name once (`kfx-refused/gives-itself`).

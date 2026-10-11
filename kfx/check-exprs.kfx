@@ -401,7 +401,7 @@
                        (if (string=? where "module")
                            (refuse v (string-append "a module as a value: KFX's modules are Rust's, opened by with: " name))
                            (tagcase (instantiate s sc)
-                             (inst (t s regions) (res t (naming-effs s name where t) s))))))))))))
+                             (inst (t s regions) (res t (naming-effs s name where t (cv-group v)) s))))))))))))
 
   (check (subr kfx (cv st sexp ty) res)
     (lambda (v s e expected)
