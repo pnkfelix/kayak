@@ -104,6 +104,7 @@ is no `Drop`, no `Rc` and no `.clone()`.
 | `i64`; `i64+`, `i64-`, `i64*`, `i64<`, `i64=`, …       | `i64`; `wrapping_add`, `wrapping_sub`, …, `<`, `==`, …      |
 | `int`; `+`, `-`, `*`, `quotient`, `=`, `<`, …          | `Int`, `kayak-rt`'s bignum; `_plus`, …: exactly FX-26's     |
 | a literal                                             | `5i64` where an `i64` is expected, else `int_lit(5)` (a fact) |
+| a literal past an `i64`                               | `int_text("…")`, an `int` (a `nat` up to 2^60 - 1, as FX-26) |
 | `bool`, `char`, `unit`                                | `bool`, `char`, `()`                                        |
 | `string`, a literal `"…"`                             | `Str`, a `&'static str` that knows if it is ASCII; `str_lit("…")` |
 | `(listof T R)`, at any region                         | `List<T>` = `Option<&'static Cons<T>>`: KFX writes no list  |
@@ -112,6 +113,7 @@ is no `Drop`, no `Rc` and no `.clone()`.
 | `(define-rec (f type lambda) …)`                      | the same, one `fn` each                                     |
 | a self call in tail position                          | the `fn`'s body in a `loop`: assignments, then `continue`   |
 | `(define x T e)`, not a lambda                        | `fn x() -> T { e }`; each use `x()` (`e` only reads globals, C11) |
+| … whose `e` allocates                                 | made at its first use and kept: `thread_local!`, `once` (C21) |
 | `(define x e)`, with no type                          | as with the type the checker finds (elaboration)            |
 | `(define* f T lambda)`                                | as `define`; the globals read are found, for the checker    |
 | `(define-datatype t (tag T…) …)`                      | `enum T { Tag(T…), … }` and `fn tag(…) -> &'static T`       |
@@ -137,8 +139,19 @@ is no `Drop`, no `Rc` and no `.clone()`.
 | `nat`                                                 | `Int`; below `int` in the checker                           |
 | `f64`; `f64+`, …, `f64-round`, `f64->string`, …       | `f64`; Rust's operations, written as Fixpt writes doubles   |
 | a real literal, `1.5`                                 | `1.5f64` (no exponent: KFX refuses `1e5`)                   |
-| `(case k ((d …) e) … (else e))` on chars             | `match k { d \| … => e, …, _ => e }`                        |
+| `(case k ((d …) e) … (else e))` on chars, bools       | `match k { d \| … => e, …, _ => e }`                        |
+| … on an `int` or a string                             | `match k { case_ if _eq(case_, d) \|\| … => e, … }`         |
 | `(tagcase e (tag (x …) body) … [(else y body)])`      | `match *e { T::Tag(x, …) => body, … }`                      |
+| `(productof (l T) …)`; `(product (l e) …)`; `extract` | `Product_l…<T…>`, a tuple struct per list of labels; `.i` (C22) |
+| `(sumof (tag T) …)`; `(sum tag e)`                    | `&'static Sum_tag…<T…>`, an enum per list of tags (C22)     |
+| `(prompt-tag A H D R)`; `make-continuation-prompt-tag` | `Tag<A, H>` (C18)                                           |
+| a procedure whose effect may `goto`                   | `fn … -> Result<R, Unwind>`; its calls `?` (C18)            |
+| `(abort-current-continuation t v)`                    | `return Err(unwind(t, v))`                                  |
+| `(prompt t body handler)`                             | a closure returning a `Result`, matched (C18)               |
+| `(define m (module item …))`, top level               | `pub mod m { use super::*; … }` (C19)                       |
+| `(with m e)`; `(select m t)`                          | paths: `m::x`, `m::T`; a generative type's field private    |
+| `(define-type s (moduleof (abs t type) (val x T) …))` | `pub trait S { type T; fn x() -> …; }` (C24)                |
+| a top-level procedure's parameter of type `s`         | a type parameter `<M: S>`; a module given, `m::Module` (C24) |
 | `nil`                                                 | `nil()`                                                     |
 | `(list a …)`                                          | nested `cons`                                               |
 | `(error "…")`                                         | `error("…")`, which returns `!`                             |
@@ -188,9 +201,15 @@ another, each seeing the definitions of those before it; to Rust, a
 module each, which imports every other's names and `kayak-rt`'s (`use
 super::*`), with a generated `mod.rs` declaring and re-exporting them.
 Since the modules import by glob, KFX defines each name once, and never a
-primitive's or `kayak-rt`'s. No FX-26 modules yet: theirs are first-class
-values, reached by `with` and `select`, and a loaded file sees only the
-standard environment, neither of which maps trivially (`TODO.md` §19).
+primitive's or `kayak-rt`'s. FX-26's own modules are KFX's where they are
+defined at the top level (C19) or given for a module parameter (C24);
+modules as values otherwise, and loaded files, are not yet (`TODO.md` §19).
+
+**What the checker proves, as FX-26's does** (C20, C21). Recursion that
+ends needs no `spin`, by FX-26's size-change check, a subset of it
+measure for measure; a procedure kept in storage at a region it reads
+must say `spin` (FX-26's `no_knot`); a global whose latent effect reads
+itself too. None of it changes the Rust: it is what K1 needs.
 
 **Mutable data is cells** (2026-10-11; `CLAUDES_CHOICES.md` C9, C10). A
 reference and a flat array are shared and aliasable, in FX-26 as in a
@@ -209,12 +228,12 @@ procedure (`&f`), the program's or `kayak-rt`'s: the emitter keeps the
 names bound where it is, from parameters, `let`, `let*` and `tagcase`.
 
 What KFX does not have, ranked by how often Fixpt's programs first need
-it (`docs/survey.md`): FX-26's modules as values, and their other items
-(`TODO.md` §19); kept
-continuations and marks (§16, `docs/research/escapes.md`); bloblets and flat
-data beyond `i64` arrays (§15); places, `letrena` (§14,
-`docs/research/places.md`); unions and `datum`; `f32`; higher kinds and
-`poly` over effects or sizes; `proj` (instantiation is inferred).
+it (`docs/survey.md`, rerun 2026-10-11: 67 of 286 accepted, all agreeing
+when run): `datum` and unions; bloblets and flat data beyond `i64` arrays
+(§15); modules as values, `include`, `extend`, `hide`, `load-module`
+(§19); places, `letrena` (§14, C23); `poly` over effects or sizes, higher
+kinds; fixed-width integers but `i64`, and `f32`; kept continuations and
+marks (§16); `proj` (instantiation is inferred).
 
 ---
 
@@ -261,8 +280,12 @@ a checker, messages with places, several files, mutable data and
 regions, strings of characters, untyped definitions, `define*`, `int`,
 type families, `letrec`, `letregion`, `nat`, `define-generative`, `f64`,
 escapes (the first place effects decide code generation: C18), modules
-defined at the top level (C19). Next, by the survey: more of modules,
-places.
+defined at the top level (C19) and given as parameters (C24),
+termination (C20), constants made once (C21), products and sums (C22),
+`case` beyond characters, literals past an `i64`. Each was then probed
+by programs written to find where `kfx` and Fixpt part: four K1 holes
+found that way, and fixed (`DONE.md`). Next, by the survey: `datum` and
+unions, flat data, more of modules.
 
 Then FX-26 at large, written in KFX. Two directions, not chosen yet:
 - **keep targeting Rust**, with a runtime that grows (a collector, as
