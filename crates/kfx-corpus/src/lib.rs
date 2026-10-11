@@ -18,6 +18,11 @@ pub mod bloblets;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/caller-place.rs"]
+pub mod caller_place;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/cases.rs"]
 pub mod cases;
 
@@ -98,6 +103,16 @@ pub mod letrena;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/letrena-nested.rs"]
+pub mod letrena_nested;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
+#[path = "../../../tests/kfx/letrena-poly.rs"]
+pub mod letrena_poly;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/lets.rs"]
 pub mod lets;
 
@@ -153,6 +168,16 @@ pub mod recursion;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/region-alias.rs"]
+pub mod region_alias;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
+#[path = "../../../tests/kfx/rlambda.rs"]
+pub mod rlambda;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/shapes.rs"]
 pub mod shapes;
 
@@ -194,6 +219,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("arith", arith::main),
     ("bignum", bignum::main),
     ("bloblets", bloblets::main),
+    ("caller-place", caller_place::main),
     ("cases", cases::main),
     ("constants", constants::main),
     ("control", control::main),
@@ -210,6 +236,8 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("letrec", letrec::main),
     ("letregion-nat", letregion_nat::main),
     ("letrena", letrena::main),
+    ("letrena-nested", letrena_nested::main),
+    ("letrena-poly", letrena_poly::main),
     ("lets", lets::main),
     ("lifted", lifted::main),
     ("lists", lists::main),
@@ -221,6 +249,8 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("places", places::main),
     ("procs", procs::main),
     ("recursion", recursion::main),
+    ("region-alias", region_alias::main),
+    ("rlambda", rlambda::main),
     ("shapes", shapes::main),
     ("strings", strings::main),
     ("tails", tails::main),

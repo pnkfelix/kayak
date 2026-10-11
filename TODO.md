@@ -157,9 +157,9 @@ Escapes are done (`DONE.md`, C18). Left:
   a list on the way back (`string-chars-from`) needs `with_big_stack`.
 - **Tail calls between procedures** of a `define-rec` are calls, and grow
   the stack: only a procedure's calls of itself loop.
-- **`proj`** is not translated: instantiation is left to inference, which
-  FX-26 and rustc both do. A call rustc cannot infer would need
-  `f::<T>`.
+- **`proj`** (C40) is checked, its arguments given in its binders' order;
+  in Rust, inference finds the generics (a turbofish where it cannot,
+  C29). Not yet of a primitive (`abort-current-continuation`, above).
 - **A `lambda` of more than four parameters** has no `lambdaN` in
   `kayak-rt`.
 - **Warnings in generated code** are all allowed. Unused bindings (a
