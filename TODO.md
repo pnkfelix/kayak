@@ -130,9 +130,6 @@ Escapes are done (`DONE.md`, C18). Left:
   - a list made where nothing says its region is at `%fresh`, one region
     for them all (FX-26 makes one for each): two such lists are joined
     where FX-26's may not be;
-  - a procedure that cannot abort reaching a type that may by other ways
-    than as a call's argument or `the`'s (`list`, branches, a product): a
-    Rust error, the closure not lifted to return `Ok`;
 
 - **A `cons`'s or `rcons`'s value is a pair to FX-26**, `(pairof T (listof
   T r) r)`, which it will not give where a procedure value wants a list

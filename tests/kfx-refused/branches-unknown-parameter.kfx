@@ -1,0 +1,12 @@
+"An if for a parameter whose type is not known yet (ap's region is said
+ by nothing before it): found by itself, as FX-26 finds it, its branches
+ of two types, one pure and one that may abort."
+(define-effect kfx (maxeff (read @globals) spin))
+(define inc (subr pure (i64) i64) (lambda (x) (i64+ x 1)))
+(define ap (poly ((r region)) (subr (maxeff kfx (goto r)) ((subr (maxeff kfx (goto r)) (i64) i64) i64) i64)) (lambda (k n) (k n)))
+(define f (subr kfx (bool) i64)
+  (lambda (c)
+    (letregion e
+      (let ((t (the (prompt-tag i64 i64 kfx e) (make-continuation-prompt-tag))))
+        (prompt t (ap (if c inc (lambda ((x i64)) (abort-current-continuation t x))) 3) (lambda ((v i64)) (i64* 2 v)))))))
+(f #t)

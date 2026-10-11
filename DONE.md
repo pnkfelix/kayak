@@ -993,3 +993,12 @@ none a K1 violation or a Rust error.
 As a `letrena` (C30): FX-26 types the two alike; a reap is collected as
 it runs and an arena is not, a difference only in when memory comes back.
 `tests/kfx/letreap` (Fixpt's `run/regions.fx`).
+
+## Lifting wherever, and branches found by themselves (2026-10-11)
+
+C35: `lift N` at any expression, not only a named argument: the probes'
+E0271s (a pure procedure in a list, a product, a branch where one that may
+abort is wanted) compile and agree. And a control form for a parameter
+not known whole is found by itself, as FX-26 finds it (K1: a probe's
+branches of two types). `tests/kfx/lifted`,
+`kfx-refused/branches-unknown-parameter`.

@@ -376,37 +376,6 @@
         (else other #f)))))
 
 (define-rec
-  (lifted-args (subr kfx (cv st sexps tys i64) st)
-    (lambda (v s args ps i)
-      "A procedure named as an argument that cannot abort, given for a
-       parameter that may: its Rust type returns no `Result`, so the emitter
-       wraps it in a closure that returns `Ok` (`lift-arg I N`, N its arity)."
-      (if (or (null? args) (null? ps))
-          s
-          (lifted-args v
-            (tagcase (car args)
-              (sym (n at-file at-pos)
-                (let ((found (find-bind n (cv-binds v))))
-                  (if (null? found)
-                      s
-                      (tagcase (car found)
-                        (bind (x sc w)
-                          (tagcase sc
-                            (scheme (tv t)
-                              (tagcase (walk s t)
-                                (ty-proc (es xs r)
-                                  (tagcase (walk s (car ps))
-                                    (ty-proc (ees eps er)
-                                      (if (and (escapes? ees) (not (escapes? es)))
-                                          (note-fact s (cv-file v) (cv-pos v)
-                                                     (string-append "lift-arg " (string-append (i64->string i) (string-append " " (i64->string (size xs))))))
-                                          s))
-                                    (else other s)))
-                                (else other s)))))))))
-              (else other s))
-            (cdr args) (cdr ps) (i64+ i 1))))))
-
-(define-rec
   (freshened (subr kfx (st ty) st)
     (lambda (s t)
       "`s`, a list's region in `t` that nothing solved made fresh, as FX-26
@@ -723,8 +692,23 @@
 
   (check-by-synth (subr kfx (cv st sexp ty) res)
     (lambda (v s e expected)
+      "An expression found, then fitted to what is expected: a procedure
+       that cannot abort where one that may is expected is lifted, its Rust
+       type returning no `Result` (`lift N` at it, `N` its arity, wherever
+       it stands: an argument, a list's element, a branch, a field)."
       (tagcase (synth v s e)
-        (res (t es s) (res expected es (fits v s t expected))))))
+        (res (t es s)
+          (res expected es
+               (let ((s (fits v s t expected)))
+                 (tagcase (walk s t)
+                   (ty-proc (pes ps r)
+                     (tagcase (walk s expected)
+                       (ty-proc (ees eps er)
+                         (if (and (escapes? ees) (not (escapes? pes)))
+                             (note-fact s (datum-file e) (datum-pos e) (string-append "lift " (i64->string (size ps))))
+                             s))
+                       (else other s)))
+                   (else other s))))))))
 
   (body (subr kfx (cv st sexps tys) res)
     (lambda (v s es expected)
@@ -747,7 +731,7 @@
       (cond ((string=? h "the")
              (let ((want (parse-type v (cv-tvars v) (car xs))))
                (tagcase (check v s (second xs) want)
-                 (res (t es s) (res t es (lifted-args v s (list (second xs)) (list want) 0))))))
+                 (res (t es s) (res t es s)))))
             ((string=? h "prompt") (prompt-form v s xs nil))
             ((string=? h "%found")
              "A definition's value in a module that includes another: found by
@@ -1673,7 +1657,7 @@
                   (tagcase (let ((s1 (if (null? expected) s (fits v s r (car expected)))))
                              (call-args v s1 args ps (fixed-by s s1 (concat (map metas-of ps)))))
                     (res (u es1 s0)
-                     (let ((s (lifted-args v s0 args ps 0)))
+                     (let ((s s0))
                       (tagcase (name-regions v s latent regions)
                         (res (u named s)
                           (res r (effs-union named (effs-union more (effs-union es0 es1)))
@@ -1708,9 +1692,13 @@
             ((eqv-bool? (deferred? (car args) (car ps)) later)
              (tagcase (cond ((not (null? (module-spec v (walk s (car ps)))))
                              (module-argument v s (car args) (walk s (car ps))))
-                            ((and (head-is? (car args) "list") (has-meta? s (car ps)))
-                             "A `list` for a parameter whose type is not known whole yet:
-                              found by itself, at a fresh region, as FX-26 finds it."
+                            ((and (or (head-is? (car args) "list")
+                                      (tagcase (car args) (lst (ys f l p) (and (not (null? ys)) (tagcase (car ys) (sym (h f2 p2) (control-form? h)) (else other #f)))) (else other #f)))
+                                  (has-open? s (car ps)))
+                             "A `list`, or a control form (an `if`, a `let`...), for a parameter
+                              whose type is not known whole yet: found by itself, as FX-26
+                              finds it, its branches then of one type (a `list` at a fresh
+                              region)."
                              (check-by-synth v s (car args) (car ps)))
                             (else (check v s (car args) (car ps))))
                (res (t es s) (with-effs (call-args-pass v s (cdr args) (cdr ps) later fixed) es))))

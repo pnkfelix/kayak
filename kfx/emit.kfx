@@ -904,13 +904,6 @@
     (lambda (i n acc)
       (if (i64< i n) (put-arg-names (i64+ i 1) n (put (i64->string i) (put (if (i64= i 0) "a__" ", a__") acc))) acc))))
 
-(define lifted-arity (subr kfx (ctx sexp i64) i64)
-  (lambda (c e i)
-    "The arity of the argument `i` of the call `e` the checker found must be
-     lifted to return a `Result`; or -1."
-    (let ((found (fact-with c e (string-append "lift-arg " (string-append (i64->string i) " ")))))
-      (if (string=? found "") -1 (i64- 0 (digits-value (string-chars found) 0 "" 0))))))
-
 (define abort? (subr kfx (ctx sexp) bool)
   (lambda (c e)
     "An abort: `return Err(...)` in Rust, so no value to return or wrap."
@@ -1089,6 +1082,19 @@
                  (put ";" (put-exp c e n (value) (put "return " acc)))))
             ((and (ok-value? t) (not (control? e)) (not (abort? c e)))
              (put ")" (put-exp c e n (value) (put "Ok(" acc))))
+            ((and (not (string=? (fact-with c e "lift ") ""))
+                  (not (string-member? (string-append "%lifted " (string-append (datum-file e) (i64->string (datum-pos e)))) (ctx-locals c))))
+             "A procedure that cannot abort where one that may is wanted: a
+              closure that returns its value `Ok`."
+             (let* ((lift (digits-number (fact-with c e "lift ")))
+                    (acc (put (i64->string lift) (put "lambda" acc)))
+                    (acc (put "(move |" acc))
+                    (acc (put-arg-names 0 lift acc))
+                    (acc (put "| Ok((" acc))
+                    (acc (put-exp (with-locals c (list (string-append "%lifted " (string-append (datum-file e) (i64->string (datum-pos e)))))) e n (value) acc))
+                    (acc (put ")(" acc))
+                    (acc (put-arg-names 0 lift acc)))
+               (put ")))" acc)))
             (else
              (tagcase e
                (num (k num-file num-pos)
@@ -1531,17 +1537,7 @@
        closure returning `Ok`."
       (if (null? xs)
           acc
-          (let* ((lift (lifted-arity c e i))
-                 (acc (if (i64< lift 0)
-                          (put-exp c (car xs) n (value) acc)
-                          (let* ((acc (put (i64->string lift) (put "lambda" acc)))
-                                 (acc (put "(move |" acc))
-                                 (acc (put-arg-names 0 lift acc))
-                                 (acc (put "| Ok((" acc))
-                                 (acc (put-exp c (car xs) n (value) acc))
-                                 (acc (put ")(" acc))
-                                 (acc (put-arg-names 0 lift acc)))
-                            (put ")))" acc)))))
+          (let* ((acc (put-exp c (car xs) n (value) acc)))
             (put-args c e (cdr xs) (i64+ i 1) n (if (null? (cdr xs)) acc (put ", " acc)))))))
 
   (put-letrena (subr kfx (ctx sexp sexps i64 chars) chars)

@@ -817,68 +817,6 @@ pub fn has_var_p(s: &'static St, t: &'static Ty) -> bool {
     }
 }
 
-/// A procedure named as an argument that cannot abort, given for a
-/// parameter that may: its Rust type returns no `Result`, so the emitter
-/// wraps it in a closure that returns `Ok` (`lift-arg I N`, N its arity).
-pub fn lifted_args(mut v: &'static Cv, mut s: &'static St, mut args: Sexps, mut ps: Tys, mut i: i64) -> &'static St {
-    loop {
-        if (null_p(args) || null_p(ps)) {
-            return s;
-        } else {
-            (s, args, ps, i) = ({
-                let tagcase_ = car(args);
-                match *tagcase_ {
-                    Sexp::Sym(n, at_file, at_pos) => {
-                        let found = find_bind(n, cv_binds(v));
-                        if null_p(found) {
-                            s
-                        } else {
-                            let tagcase_ = car(found);
-                            match *tagcase_ {
-                                Bind::Bind(x, sc, w) => {
-                                    let tagcase_ = sc;
-                                    match *tagcase_ {
-                                        Scheme::Scheme(tv, t) => {
-                                            let tagcase_ = walk(s, t);
-                                            match *tagcase_ {
-                                                Ty::TyProc(es, xs, r) => {
-                                                    let tagcase_ = walk(s, car(ps));
-                                                    match *tagcase_ {
-                                                        Ty::TyProc(ees, eps, er) => {
-                                                            if (escapes_p(ees) && not(escapes_p(es))) {
-                                                                note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("lift-arg "), string_append(i64_to_string(i), string_append(str_lit(" "), i64_to_string(size(xs))))))
-                                                            } else {
-                                                                s
-                                                            }
-                                                        }
-                                                        _ => {
-                                                            let other = tagcase_;
-                                                            s
-                                                        }
-                                                    }
-                                                }
-                                                _ => {
-                                                    let other = tagcase_;
-                                                    s
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        s
-                    }
-                }
-            }, cdr(args), cdr(ps), i64_plus(i, 1i64));
-            continue;
-        }
-    }
-}
-
 /// `s`, a list's region in `t` that nothing solved made fresh, as FX-26
 /// makes it where it finds a value by itself.
 pub fn freshened(mut s: &'static St, mut t: &'static Ty) -> &'static St {
@@ -1603,11 +1541,40 @@ pub fn check(v: &'static Cv, s: &'static St, e: &'static Sexp, expected: &'stati
     }
 }
 
+/// An expression found, then fitted to what is expected: a procedure
+/// that cannot abort where one that may is expected is lifted, its Rust
+/// type returning no `Result` (`lift N` at it, `N` its arity, wherever
+/// it stands: an argument, a list's element, a branch, a field).
 pub fn check_by_synth(v: &'static Cv, s: &'static St, e: &'static Sexp, expected: &'static Ty) -> &'static Res {
     let tagcase_ = synth(v, s, e);
     match *tagcase_ {
         Res::Res(t, es, s) => {
-            res(expected, es, fits(v, s, t, expected))
+            res(expected, es, {
+                let s = fits(v, s, t, expected);
+                let tagcase_ = walk(s, t);
+                match *tagcase_ {
+                    Ty::TyProc(pes, ps, r) => {
+                        let tagcase_ = walk(s, expected);
+                        match *tagcase_ {
+                            Ty::TyProc(ees, eps, er) => {
+                                if (escapes_p(ees) && not(escapes_p(pes))) {
+                                    note_fact(s, datum_file(e), datum_pos(e), string_append(str_lit("lift "), i64_to_string(size(ps))))
+                                } else {
+                                    s
+                                }
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                s
+                            }
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        s
+                    }
+                }
+            })
         }
     }
 }
@@ -1651,7 +1618,7 @@ pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
         let tagcase_ = check(v, s, second(xs), want);
         match *tagcase_ {
             Res::Res(t, es, s) => {
-                res(t, es, lifted_args(v, s, kayak_rt::cons(second(xs), kayak_rt::nil()), kayak_rt::cons(want, kayak_rt::nil()), 0i64))
+                res(t, es, s)
             }
         }
     } else if string_eq_p(h, str_lit("prompt")) {
@@ -3663,7 +3630,7 @@ pub fn synth_call_of(v: &'static Cv, s: &'static St, callee: &'static Res, args:
                         };
                         match *tagcase_ {
                             Res::Res(u, es1, s0) => {
-                                let s = lifted_args(v, s0, args, ps, 0i64);
+                                let s = s0;
                                 let tagcase_ = name_regions(v, s, latent, regions);
                                 match *tagcase_ {
                                     Res::Res(u, named, s) => {
@@ -3747,9 +3714,33 @@ pub fn call_args_pass(mut v: &'static Cv, mut s: &'static St, mut args: Sexps, m
         } else if eqv_bool_p(deferred_p(car(args), car(ps)), later) {
             let tagcase_ = if not(null_p(module_spec(v, walk(s, car(ps))))) {
                 module_argument(v, s, car(args), walk(s, car(ps)))
-            } else if (head_is_p(car(args), str_lit("list")) && has_meta_p(s, car(ps))) {
-                // A `list` for a parameter whose type is not known whole yet:
-                // found by itself, at a fresh region, as FX-26 finds it.
+            } else if ((head_is_p(car(args), str_lit("list")) || {
+                let tagcase_ = car(args);
+                match *tagcase_ {
+                    Sexp::Lst(ys, f, l, p) => {
+                        (not(null_p(ys)) && {
+                            let tagcase_ = car(ys);
+                            match *tagcase_ {
+                                Sexp::Sym(h, f2, p2) => {
+                                    control_form_p(h)
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
+                        })
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) && has_open_p(s, car(ps))) {
+                // A `list`, or a control form (an `if`, a `let`...), for a parameter
+                // whose type is not known whole yet: found by itself, as FX-26
+                // finds it, its branches then of one type (a `list` at a fresh
+                // region).
                 check_by_synth(v, s, car(args), car(ps))
             } else {
                 check(v, s, car(args), car(ps))

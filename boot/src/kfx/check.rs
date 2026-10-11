@@ -2305,6 +2305,79 @@ pub fn meta_number(r: Str) -> i64 {
     i64_minus(0i64, digits_value(cdr(string_chars(r)), 0i64, str_lit(""), 0i64))
 }
 
+pub fn chars_after_colon(mut cs: Chars) -> Str {
+    loop {
+        if null_p(cs) {
+            return str_lit("");
+        } else if char_eq_p(car(cs), ':') {
+            return rev_to_string(rev_onto(cdr(cs), nil::<char>()));
+        } else {
+            cs = cdr(cs);
+            continue;
+        }
+    }
+}
+
+pub fn effect_region(e: Str) -> Str {
+    chars_after_colon(string_chars(e))
+}
+
+/// Whether `t` has an inference variable not solved yet, a latent
+/// effect's region too (`(goto ?k)`): as FX-26 counts what a parameter's
+/// type mentions that is not known.
+pub fn open_effects_p(mut s: &'static St, mut t: &'static Ty) -> bool {
+    loop {
+        let tagcase_ = walk(s, t);
+        match *tagcase_ {
+            Ty::TyProc(es, ps, r) => {
+                return (any_p(lambda1(move |e: Str| {
+                    let at = effect_region(e);
+                    (has_prefix_p(at, str_lit("?")) && {
+                        let tagcase_ = walk(s, ty_meta(meta_number(at)));
+                        match *tagcase_ {
+                            Ty::TyMeta(k) => {
+                                true
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    })
+                }), es) || open_effects_p(s, r) || any_p(lambda1(move |p: &'static Ty| {
+                    open_effects_p(s, p)
+                }), ps));
+            }
+            Ty::TyList(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyRef(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyData(d, args) => {
+                return any_p(lambda1(move |x: &'static Ty| {
+                    open_effects_p(s, x)
+                }), args);
+            }
+            Ty::TyShape(p, ls, ts) => {
+                return any_p(lambda1(move |x: &'static Ty| {
+                    open_effects_p(s, x)
+                }), ts);
+            }
+            _ => {
+                let other = tagcase_;
+                return false;
+            }
+        }
+    }
+}
+
+pub fn has_open_p(s: &'static St, t: &'static Ty) -> bool {
+    (has_meta_p(s, t) || open_effects_p(s, t))
+}
+
 pub fn after_colon(mut cs: List<char>) -> List<char> {
     loop {
         if null_p(cs) {

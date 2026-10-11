@@ -1033,6 +1033,35 @@
     (i64- 0 (digits-value (cdr (string-chars r)) 0 "" 0))))
 
 (define-rec
+  (chars-after-colon (subr kfx (chars) string)
+    (lambda (cs) (cond ((null? cs) "") ((char=? (car cs) #\:) (rev->string (rev-onto (cdr cs) nil))) (else (chars-after-colon (cdr cs)))))))
+
+(define effect-region (subr kfx (string) string)
+  (lambda (e) (chars-after-colon (string-chars e))))
+
+(define-rec
+  (open-effects? (subr kfx (st ty) bool)
+    (lambda (s t)
+      "Whether `t` has an inference variable not solved yet, a latent
+       effect's region too (`(goto ?k)`): as FX-26 counts what a parameter's
+       type mentions that is not known."
+      (tagcase (walk s t)
+        (ty-proc (es ps r)
+          (or (any? (lambda ((e string))
+                      (let ((at (effect-region e)))
+                        (and (has-prefix? at "?") (tagcase (walk s (ty-meta (meta-number at))) (ty-meta (k) #t) (else other #f)))))
+                    es)
+              (open-effects? s r) (any? (lambda ((p ty)) (open-effects? s p)) ps)))
+        (ty-list (e r) (open-effects? s e))
+        (ty-ref (e r) (open-effects? s e))
+        (ty-data (d args) (any? (lambda ((x ty)) (open-effects? s x)) args))
+        (ty-shape (p ls ts) (any? (lambda ((x ty)) (open-effects? s x)) ts))
+        (else other #f)))))
+
+(define has-open? (subr kfx (st ty) bool)
+  (lambda (s t) (or (has-meta? s t) (open-effects? s t))))
+
+(define-rec
   (after-colon (subr kfx ((listof char acyclic)) (listof char acyclic))
     (lambda (cs)
       (cond ((null? cs) nil)

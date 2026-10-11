@@ -1,0 +1,39 @@
+"A procedure that cannot abort where one that may is expected, wherever it
+ stands: a list's element, a product's field, a branch, an argument. Its
+ Rust type returns no Result, so it is lifted: a closure that returns its
+ value Ok."
+(define-effect kfx (maxeff (read @globals) spin))
+(define inc (subr pure (i64) i64) (lambda (x) (i64+ x 1)))
+(define dbl (subr pure (i64) i64) (lambda (y) (i64* y 2)))
+(define apply-to (poly ((r region)) (subr (maxeff kfx (goto r)) ((prompt-tag i64 i64 kfx r) (subr (maxeff kfx (goto r)) (i64) i64) i64) i64))
+  (lambda (t f x) (f x)))
+
+(define in-a-list (subr kfx (bool) i64)
+  (lambda (c)
+    (letregion e
+      (let ((t (the (prompt-tag i64 i64 kfx e) (make-continuation-prompt-tag))))
+        (let ((fs (the (listof (subr (maxeff kfx (goto e)) (i64) i64) acyclic)
+                       (list inc (lambda ((x i64)) (if c (abort-current-continuation t x) x))))))
+          (prompt t (i64+ ((car fs) 1) ((car (cdr fs)) 7)) (lambda ((v i64)) (i64* v 10))))))))
+
+(define in-a-product (subr kfx () i64)
+  (lambda ()
+    (letregion e
+      (let ((t (the (prompt-tag i64 i64 kfx e) (make-continuation-prompt-tag))))
+        (let ((p (the (productof (k (subr (maxeff kfx (goto e)) (i64) i64))) (product (k inc)))))
+          (prompt t ((extract p k) 9) (lambda ((v i64)) v)))))))
+
+(define in-a-branch (subr kfx (i64) i64)
+  (lambda (a)
+    (letregion e
+      (let ((t (the (prompt-tag i64 i64 kfx e) (make-continuation-prompt-tag))))
+        (prompt t (apply-to t (if (i64> a 50) inc dbl) 100) (lambda ((v i64)) v))))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (string-append (i64->string (in-a-list #t))
+      (string-append " " (string-append (i64->string (in-a-list #f))
+        (string-append " " (string-append (i64->string (in-a-product))
+          (string-append " " (string-append (i64->string (in-a-branch 1))
+            (string-append " " (i64->string (in-a-branch 99))))))))))))
+(main)

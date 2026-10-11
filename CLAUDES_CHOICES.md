@@ -576,3 +576,18 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
   `rlambda`, `rmake-array`, `rmake-icell`; places in mutually recursive
   procedures (a group's needs are not summed together).
 
+## C35. A procedure lifted wherever it stands (2026-10-11)
+
+- **Chosen:** where an expression found by itself has the type of a
+  procedure that cannot abort and one that may is expected, the checker
+  notes `lift N` at that expression (every datum has a place now), and the
+  emitter writes it as a closure that returns its value `Ok`, wherever it
+  stands: a list's element, a product's field, a branch, an argument, a
+  `the`. It replaces `lift-arg`, which saw only a name given as an
+  argument (the fifth and seventh probes' E0271s).
+- **And** (K1): an `if`, a `let` or another control form given for a
+  parameter whose type is not known whole yet, its effects' regions
+  included, is found by itself, as FX-26 finds it (as a `list` was), so
+  that its branches must be of one type; KFX had checked each against the
+  parameter's type and accepted branches FX-26 refuses.
+
