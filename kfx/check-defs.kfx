@@ -11,6 +11,25 @@
    (i64= (subr pure (i64 i64) bool)) (i64< (subr pure (i64 i64) bool)) (i64> (subr pure (i64 i64) bool))
    (i64<= (subr pure (i64 i64) bool)) (i64>= (subr pure (i64 i64) bool))
    (not (subr pure (bool) bool))
+   (i32+ (subr pure (i32 i32) i32)) (i32- (subr pure (i32 i32) i32)) (i32* (subr pure (i32 i32) i32))
+   (i32-quotient (subr pure (i32 i32) i32)) (i32-remainder (subr pure (i32 i32) i32))
+   (i32-and (subr pure (i32 i32) i32)) (i32-or (subr pure (i32 i32) i32)) (i32-xor (subr pure (i32 i32) i32)) (i32-not (subr pure (i32) i32))
+   (i32-shl (subr pure (i32 int) i32)) (i32-shr (subr pure (i32 int) i32))
+   (i32= (subr pure (i32 i32) bool)) (i32< (subr pure (i32 i32) bool)) (i32> (subr pure (i32 i32) bool)) (i32<= (subr pure (i32 i32) bool)) (i32>= (subr pure (i32 i32) bool))
+   (int->i32 (subr pure (int) i32)) (i32->int (subr pure (i32) int))
+   (u32+ (subr pure (u32 u32) u32)) (u32- (subr pure (u32 u32) u32)) (u32* (subr pure (u32 u32) u32))
+   (u32-quotient (subr pure (u32 u32) u32)) (u32-remainder (subr pure (u32 u32) u32))
+   (u32-and (subr pure (u32 u32) u32)) (u32-or (subr pure (u32 u32) u32)) (u32-xor (subr pure (u32 u32) u32)) (u32-not (subr pure (u32) u32))
+   (u32-shl (subr pure (u32 int) u32)) (u32-shr (subr pure (u32 int) u32))
+   (u32= (subr pure (u32 u32) bool)) (u32< (subr pure (u32 u32) bool)) (u32> (subr pure (u32 u32) bool)) (u32<= (subr pure (u32 u32) bool)) (u32>= (subr pure (u32 u32) bool))
+   (int->u32 (subr pure (int) u32)) (u32->int (subr pure (u32) int))
+   (u64+ (subr pure (u64 u64) u64)) (u64- (subr pure (u64 u64) u64)) (u64* (subr pure (u64 u64) u64))
+   (u64-quotient (subr pure (u64 u64) u64)) (u64-remainder (subr pure (u64 u64) u64))
+   (u64-and (subr pure (u64 u64) u64)) (u64-or (subr pure (u64 u64) u64)) (u64-xor (subr pure (u64 u64) u64)) (u64-not (subr pure (u64) u64))
+   (u64-shl (subr pure (u64 int) u64)) (u64-shr (subr pure (u64 int) u64))
+   (u64= (subr pure (u64 u64) bool)) (u64< (subr pure (u64 u64) bool)) (u64> (subr pure (u64 u64) bool)) (u64<= (subr pure (u64 u64) bool)) (u64>= (subr pure (u64 u64) bool))
+   (int->u64 (subr pure (int) u64)) (u64->int (subr pure (u64) int))
+   (i64-shl (subr pure (i64 int) i64)) (i64-shr (subr pure (i64 int) i64))
    (+ (subr pure (int int) int)) (- (subr pure (int int) int)) (* (subr pure (int int) int))
    (quotient (subr pure (int int) int)) (remainder (subr pure (int int) int)) (modulo (subr pure (int int) int))
    (= (subr pure (int int) bool)) (< (subr pure (int int) bool)) (> (subr pure (int int) bool))
@@ -395,16 +414,16 @@
 
 (define type-names-free (subr kfx (cv sexps) unit)
   (lambda (v forms)
-    "No type is named as one of Rust's prelude or kayak-rt's, which the
-     generated Rust names too: `Str`, `List`, `Fn`, `Option`, ..."
+    "No type is named as one the generated Rust names: kayak-rt's (`Str`,
+     `List`, ...) and the few of Rust's it writes (`Fn`, `Result`, `Copy`,
+     ...); others of Rust's prelude a program's own type hides."
     (begin
       (map (lambda ((f sexp))
              (if (or (head-is? f "define-type") (head-is? f "define-datatype") (head-is? f "define-generative"))
-                 (let ((name (tagcase (second (items f)) (sym (n) n) (else other ""))))
+                 (let ((name (tagcase (second (items f)) (sym (n) n) (lst (ys fl ln ps) (tagcase (car ys) (sym (n) n) (else other ""))) (else other ""))))
                    (if (string-member? (camel name) (list "Str" "List" "Cons" "Int" "Tag" "Unwind" "Ref" "FlatArray" "Knot" "Show"
-                                                          "OnceCell" "Fn" "FnMut" "FnOnce" "Box" "Option" "Some" "None"
-                                                          "Result" "Ok" "Err" "String" "Vec" "Copy" "Clone" "Send" "Sync"
-                                                          "Sized" "Drop" "Default" "Iterator" "Self" "Module"))
+                                                          "OnceCell" "Fn" "Result" "Ok" "Err" "String" "Copy" "Clone"
+                                                          "Self" "Module"))
                        (refuse v (string-append "Rust or kayak-rt has a type " (string-append (camel name) " of its own")))
                        #u))
                  #u))

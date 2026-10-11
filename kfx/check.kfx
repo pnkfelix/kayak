@@ -365,6 +365,16 @@
           (else (tagcase (car bs)
                   (bind (n sc where) (if (string=? n name) (list (car bs)) (find-bind name (cdr bs)))))))))
 
+(define-rec
+  (conversion-bind (subr kfx (string binds) binds)
+    (lambda (name bs)
+      "A generative type's conversion, the global or item `name`: not a local
+       that hides it."
+      (cond ((null? bs) nil)
+            ((tagcase (car bs) (bind (n sc w) (and (string=? n name) (or (string=? w "global") (string=? w "item")))))
+             (the binds (list (car bs))))
+            (else (conversion-bind name (cdr bs)))))))
+
 "A knot through the store (FX-26's `no_knot`): a procedure kept in
  storage at a region, whose latent effect reads that region and does not
  say `spin`, could be fetched from there by a procedure fetched from
@@ -412,7 +422,7 @@
                     (tagcase (car found)
                       (dt (n ps vs)
                         (if (null? vs)
-                            (let ((down (find-bind (string-append "down-" d) (cv-binds v))))
+                            (let ((down (conversion-bind (string-append "down-" d) (cv-binds v))))
                               (first-knot v res
                                           (onto (if (null? down) nil
                                                     (tagcase (car down)
@@ -445,6 +455,12 @@
           (refuse v (string-append "a procedure kept in " (string-append (car found) (string-append " reads " (string-append (car found)
                     ", so it could reach itself: it must say spin")))))))))
 
+(define fixed-width? (subr kfx (string) bool)
+  (lambda (s)
+    "FX-26's fixed-width integers beside `i64`, whose arithmetic wraps: a type
+     named so, as a datatype is, of no variants; in Rust, Rust's."
+    (or (string=? s "i32") (string=? s "u32") (string=? s "u64"))))
+
 (define-rec
   (parse-type (subr kfx (cv strings sexp) ty)
     (lambda (v tvars t)
@@ -455,6 +471,7 @@
                 ((string=? s "int") (ty-int))
                 ((string=? s "nat") (ty-nat))
                 ((string=? s "f64") (ty-f64))
+                ((fixed-width? s) (ty-data s nil))
                 ((string=? s "bool") (ty-bool))
                 ((string=? s "char") (ty-char))
                 ((string=? s "unit") (ty-unit))
@@ -980,7 +997,7 @@
                          (tagcase (car found)
                            (dt (n ps vs)
                              (if (null? vs)
-                                 (let ((down (find-bind (string-append "down-" d) (cv-binds v))))
+                                 (let ((down (conversion-bind (string-append "down-" d) (cv-binds v))))
                                    (if (null? down)
                                        (not (has-prefix? d "%module "))
                                        (tagcase (car down)

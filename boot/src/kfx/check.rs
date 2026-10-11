@@ -816,6 +816,28 @@ pub fn find_bind(mut name: Str, mut bs: Binds) -> Binds {
     }
 }
 
+/// A generative type's conversion, the global or item `name`: not a local
+/// that hides it.
+pub fn conversion_bind(mut name: Str, mut bs: Binds) -> Binds {
+    loop {
+        if null_p(bs) {
+            return nil();
+        } else if {
+            let tagcase_ = car(bs);
+            match *tagcase_ {
+                Bind::Bind(n, sc, w) => {
+                    (string_eq_p(n, name) && (string_eq_p(w, str_lit("global")) || string_eq_p(w, str_lit("item"))))
+                }
+            }
+        } {
+            return the::<Binds>(cons(car(bs), nil()));
+        } else {
+            bs = cdr(bs);
+            continue;
+        }
+    }
+}
+
 // A knot through the store (FX-26's `no_knot`): a procedure kept in
 // storage at a region, whose latent effect reads that region and does not
 // say `spin`, could be fetched from there by a procedure fetched from
@@ -901,7 +923,7 @@ pub fn knot_in(mut v: &'static Cv, mut res: &'static dyn Fn(Str) -> Str, mut t: 
                         match *tagcase_ {
                             Dt::Dt(n, ps, vs) => {
                                 if null_p(vs) {
-                                    let down = find_bind(string_append(str_lit("down-"), d), cv_binds(v));
+                                    let down = conversion_bind(string_append(str_lit("down-"), d), cv_binds(v));
                                     return first_knot(v, res, onto(if null_p(down) {
                                         nil()
                                     } else {
@@ -976,6 +998,12 @@ pub fn no_knot(v: &'static Cv, res: &'static dyn Fn(Str) -> Str, t: &'static Ty)
     }
 }
 
+/// FX-26's fixed-width integers beside `i64`, whose arithmetic wraps: a type
+/// named so, as a datatype is, of no variants; in Rust, Rust's.
+pub fn fixed_width_p(s: Str) -> bool {
+    (string_eq_p(s, str_lit("i32")) || string_eq_p(s, str_lit("u32")) || string_eq_p(s, str_lit("u64")))
+}
+
 /// `tvars`: the type variables in scope.
 pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) -> &'static Ty {
     loop {
@@ -990,6 +1018,8 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     return ty_nat();
                 } else if string_eq_p(s, str_lit("f64")) {
                     return ty_f64();
+                } else if fixed_width_p(s) {
+                    return ty_data(s, nil());
                 } else if string_eq_p(s, str_lit("bool")) {
                     return ty_bool();
                 } else if string_eq_p(s, str_lit("char")) {
@@ -2192,7 +2222,7 @@ pub fn holds_procedure_p(mut v: &'static Cv, mut s: &'static St, mut t: &'static
                         match *tagcase_ {
                             Dt::Dt(n, ps, vs) => {
                                 if null_p(vs) {
-                                    let down = find_bind(string_append(str_lit("down-"), d), cv_binds(v));
+                                    let down = conversion_bind(string_append(str_lit("down-"), d), cv_binds(v));
                                     if null_p(down) {
                                         not(has_prefix_p(d, str_lit("%module ")))
                                     } else {

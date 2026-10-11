@@ -48,6 +48,11 @@ pub mod families;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/fixed.rs"]
+pub mod fixed;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/floats.rs"]
 pub mod floats;
 
@@ -155,6 +160,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("define-star", define_star::main),
     ("escapes", escapes::main),
     ("families", families::main),
+    ("fixed", fixed::main),
     ("floats", floats::main),
     ("generative", generative::main),
     ("letrec", letrec::main),

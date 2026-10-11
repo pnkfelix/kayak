@@ -1,0 +1,29 @@
+"Fixed-width integers beside i64: i32, u32, u64, whose arithmetic wraps
+ in FX-26 as in Rust; literals in their ranges; shifts by an int, modulo
+ the width."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+"FNV-1a, 32 bits."
+(define fnv (subr pure (u32 u32) u32)
+  (lambda (h c) (u32* (u32-xor h c) 16777619)))
+
+(define fnv-string (subr kfx (string i64 u32) u32)
+  (lambda (s i h)
+    (if (i64= i (string-length-i64 s))
+        h
+        (fnv-string s (i64+ i 1) (fnv h (int->u32 (i64->int (char->i64 (string-ref-i64 s i)))))))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (string-append
+     (int->string (u32->int (fnv-string "kayak" 0 2166136261)))
+     (string-append " "
+      (string-append (int->string (u64->int (u64+ 18446744073709551615 2)))
+       (string-append " "
+        (string-append (int->string (i32->int (i32+ 2147483647 1)))
+         (string-append " "
+          (string-append (int->string (u64->int (u64-shl 1 63)))
+           (string-append " "
+            (string-append (int->string (i32->int (i32-shr -8 1)))
+             (string-append " " (if (u32< 4294967295 0) "lt" "ge")))))))))))))

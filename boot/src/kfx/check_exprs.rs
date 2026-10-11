@@ -1043,6 +1043,19 @@ pub fn check(v: &'static Cv, s: &'static St, e: &'static Sexp, expected: &'stati
                 Ty::TyMeta(m) => {
                     res(ty_int(), nil(), note_fact(solve(s, m, ty_int()), num_file, num_pos, str_lit("int")))
                 }
+                Ty::TyData(d, args) => {
+                    if (string_eq_p(d, str_lit("i32")) && not(i64_lt(k, -2147483648i64)) && not(i64_gt(k, 2147483647i64))) {
+                        res(x, nil(), note_fact(s, num_file, num_pos, str_lit("fixed i32")))
+                    } else if (string_eq_p(d, str_lit("u32")) && not(i64_lt(k, 0i64)) && not(i64_gt(k, 4294967295i64))) {
+                        res(x, nil(), note_fact(s, num_file, num_pos, str_lit("fixed u32")))
+                    } else if (string_eq_p(d, str_lit("u64")) && not(i64_lt(k, 0i64))) {
+                        res(x, nil(), note_fact(s, num_file, num_pos, str_lit("fixed u64")))
+                    } else if fixed_width_p(d) {
+                        refuse(v, string_append(i64_to_string(k), string_append(str_lit(" is not a "), d)))
+                    } else {
+                        refuse(v, string_append(str_lit("a literal is here, where a "), string_append(show_ty(s, x), str_lit(" is expected"))))
+                    }
+                }
                 _ => {
                     let other = tagcase_;
                     refuse(v, string_append(str_lit("a literal is here, where a "), string_append(show_ty(s, x), str_lit(" is expected"))))
@@ -1061,6 +1074,13 @@ pub fn check(v: &'static Cv, s: &'static St, e: &'static Sexp, expected: &'stati
                 }
                 Ty::TyMeta(m) => {
                     res(ty_int(), nil(), solve(s, m, ty_int()))
+                }
+                Ty::TyData(d, args) => {
+                    if (string_eq_p(d, str_lit("u64")) && not(char_eq_p(string_ref_i64(text, 0i64), '-')) && (i64_lt(string_length_i64(text), 20i64) || (i64_eq(string_length_i64(text), 20i64) && digits_at_most_p(string_chars(text), string_chars(str_lit("18446744073709551615")))))) {
+                        res(x, nil(), note_fact(s, f, p, str_lit("fixed u64")))
+                    } else {
+                        refuse(v, string_append(text, string_append(str_lit(" is not a "), d)))
+                    }
                 }
                 _ => {
                     let other = tagcase_;

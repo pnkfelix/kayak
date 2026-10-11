@@ -15,6 +15,24 @@ impl Show for i64 {
     }
 }
 
+impl Show for i32 {
+    fn show(&self, out: &mut String) {
+        out.push_str(&self.to_string());
+    }
+}
+
+impl Show for u32 {
+    fn show(&self, out: &mut String) {
+        out.push_str(&self.to_string());
+    }
+}
+
+impl Show for u64 {
+    fn show(&self, out: &mut String) {
+        out.push_str(&self.to_string());
+    }
+}
+
 impl Show for f64 {
     fn show(&self, out: &mut String) {
         out.push_str(&crate::write_f64(*self));

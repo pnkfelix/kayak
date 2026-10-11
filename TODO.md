@@ -127,6 +127,23 @@ Escapes are done (`DONE.md`, C18). Left:
   - a `list` made under `with` or `letregion` is at `acyclic` to KFX and
     at a fresh region to FX-26, which then refuses it where `acyclic` is
     expected; KFX would need FX-26's masking of fresh regions;
+  - a list made where nothing says its region (`(let ((xs (list 1))) ...)`,
+    a list for a `poly` parameter only the result fixed) is at `acyclic`
+    to KFX and at a fresh region to FX-26, which refuses it where
+    `acyclic` is expected; the fourth probe's commonest finding. Giving it
+    a fresh region of its own (tried, 2026-10-11) needs FX-26's rule for
+    when an argument is checked against the type a parameter has from
+    the result expected, applied throughout, or the compiler's own source
+    no longer checks;
+  - a `nil` whose element type nothing fixes, `(let ((x nil)) 0)`: Rust
+    cannot infer it (a Rust error, FX-26 accepts);
+  - a `void` at the top level, `(error "x")`: `!` has no `Show` (both
+    fail when run);
+  - **for Fixpt** (found by the fourth probe): a procedure parameter of
+    type `(subr pure (a) b)` in a `poly` is called with no `spin`, and `a`
+    instantiated at a datatype holding such a procedure loops with no
+    recursive call; FX-26 accepts it, and so KFX does (it says what FX-26
+    says of `spin`, no more);
   - names that differ only in case, or in `-` and `_`, may collide in Rust
     (two types `has` and `Has`; labels `a-b` and `a_b`): a Rust error, not
     a wrong answer;

@@ -10,12 +10,14 @@
 //! is not counts characters (`CLAUDES_CHOICES.md`, C14).
 
 mod escape;
+mod fixed;
 mod float;
 mod int;
 mod once;
 mod show;
 
 pub use escape::*;
+pub use fixed::*;
 pub use float::*;
 pub use int::*;
 pub use once::*;

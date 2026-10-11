@@ -830,6 +830,8 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
                     return put(str_lit("Int"), acc);
                 } else if string_eq_p(s, str_lit("f64")) {
                     return put(str_lit("f64"), acc);
+                } else if fixed_width_p(s) {
+                    return put(s, acc);
                 } else if string_eq_p(s, str_lit("bool")) {
                     return put(str_lit("bool"), acc);
                 } else if string_eq_p(s, str_lit("char")) {
@@ -1488,12 +1490,22 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
             Sexp::Num(k, num_file, num_pos) => {
                 if ctx_fact_p(c, num_file, num_pos, str_lit("int")) {
                     put(str_lit(")"), put(i64_to_string(k), put(str_lit("int_lit("), acc)))
+                } else if ctx_fact_p(c, num_file, num_pos, str_lit("fixed i32")) {
+                    put(str_lit("i32"), put(i64_to_string(k), acc))
+                } else if ctx_fact_p(c, num_file, num_pos, str_lit("fixed u32")) {
+                    put(str_lit("u32"), put(i64_to_string(k), acc))
+                } else if ctx_fact_p(c, num_file, num_pos, str_lit("fixed u64")) {
+                    put(str_lit("u64"), put(i64_to_string(k), acc))
                 } else {
                     put(str_lit("i64"), put(i64_to_string(k), acc))
                 }
             }
             Sexp::Big(text, f, p) => {
-                put(str_lit("\")"), put(text, put(str_lit("int_text(\""), acc)))
+                if ctx_fact_p(c, f, p, str_lit("fixed u64")) {
+                    put(str_lit("u64"), put(text, acc))
+                } else {
+                    put(str_lit("\")"), put(text, put(str_lit("int_text(\""), acc)))
+                }
             }
             Sexp::Chr(ch) => {
                 put(str_lit("'"), put_escaped(cons(ch, nil()), '\'', put(str_lit("'"), acc)))

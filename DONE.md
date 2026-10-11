@@ -771,3 +771,31 @@ each definition's value by itself, then fits it (a literal there is an
 hides a global of the same name, as in FX-26. `tests/kfx/modules.kfx`'s
 `both`; `kfx-refused/module-hidden`. 70 of Fixpt's programs accepted, all
 agreeing.
+
+## Fixed-width integers; a fourth probe (2026-10-11)
+
+`i32`, `u32`, `u64` beside `i64`, as FX-26 has them: each `T+`, `T-`,
+`T*`, `T-quotient`, `T-remainder`, `T-and`, `T-or`, `T-xor`, `T-not`,
+`T-shl`, `T-shr` (the count an `int`, modulo the width), the comparisons,
+`int->T` (wrapping) and `T->int`, and `i64-shl`, `i64-shr`; a literal in
+its type's range where one is expected (`5u32`, `18446744073709551615u64`).
+In Rust, Rust's types and their `wrapping_` operations (`kayak-rt`'s
+`fixed.rs`). FX-26's `i32` and `u32` are `int`s too, where one is
+expected; KFX's are not, which Rust would need converted.
+`tests/kfx/fixed.kfx`; `kfx-refused/u32-range`, `i32-range`.
+
+A fourth probe (330 programs) on `spin`, joins and termination found: a
+local named `down-g` hiding a generative type's conversion, so its
+representation was not looked into (a K1 hole: now the conversion is the
+global's); Rust's path keywords (`self`, `super`, `crate`, `Self`) as
+names (now `self_`); type abbreviations with parameters not checked
+against the names the generated Rust uses. Left (`TODO.md` §17): a list
+made where nothing says its region, at `acyclic` to KFX and a fresh
+region to FX-26 (the commonest gap: FX-26 refuses it where `acyclic` is
+expected later; matching needs FX-26's rule for which argument fixed a
+parameter's type, tried and put back); a `nil` whose element type nothing
+fixes (a Rust error); a `void` at the top level (a Rust error; both fail
+when run); and self-application through a type variable, which FX-26
+accepts and loops on too (a question for Fixpt, `TODO.md` §17).
+
+73 of Fixpt's programs accepted, all agreeing.

@@ -30,6 +30,9 @@
   (lambda (s)
     "A KFX name as a Rust value's: `string->list` is `string_to_list`."
     (cond ((string=? s "-") "_minus")
+          ((or (string=? s "self") (string=? s "super") (string=? s "crate") (string=? s "Self"))
+           "Keywords no raw identifier may be: a trailing `_`."
+           (string-append s "_"))
           ((rust-keyword? s) (string-append "r#" s))
           (else (rev->string (mangle-chars (string-chars s) nil))))))
 

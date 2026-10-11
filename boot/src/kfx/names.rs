@@ -68,6 +68,9 @@ pub fn mangle_chars(mut cs: Chars, mut acc: Chars) -> Chars {
 pub fn mangle(s: Str) -> Str {
     if string_eq_p(s, str_lit("-")) {
         str_lit("_minus")
+    } else if (string_eq_p(s, str_lit("self")) || string_eq_p(s, str_lit("super")) || string_eq_p(s, str_lit("crate")) || string_eq_p(s, str_lit("Self"))) {
+        // Keywords no raw identifier may be: a trailing `_`.
+        string_append(s, str_lit("_"))
     } else if rust_keyword_p(s) {
         string_append(str_lit("r#"), s)
     } else {
