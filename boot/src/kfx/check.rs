@@ -1248,16 +1248,9 @@ pub fn poly_binders(v: &'static Cv, t: &'static Sexp) -> Strings {
                 refuse(v, string_append(str_lit("a binder KFX-0 does not have (distinct regions are to come): "), show_sexp(lst(b, str_lit(""), 0i64, 0i64))))
             } else if sym_is_p(second(b), str_lit("type")) {
                 // A type variable, a Rust type parameter of its name, camel-cased:
-                // not one of the types the generated Rust names, nor a datatype's.
+                // not one of the types the generated Rust names.
                 let n = name_of(v, car(b));
-                if (string_member_p(camel(n), cons(str_lit("Str"), cons(str_lit("List"), cons(str_lit("Cons"), cons(str_lit("Int"), cons(str_lit("Tag"), cons(str_lit("Unwind"), cons(str_lit("Ref"), cons(str_lit("FlatArray"), cons(str_lit("Knot"), cons(str_lit("Show"), cons(str_lit("OnceCell"), cons(str_lit("Fn"), cons(str_lit("Result"), cons(str_lit("Ok"), cons(str_lit("Err"), cons(str_lit("String"), cons(str_lit("Copy"), cons(str_lit("Clone"), cons(str_lit("Self"), cons(str_lit("Module"), nil()))))))))))))))))))))) || any_p(lambda1(move |d: &'static Dt| {
-                    let tagcase_ = d;
-                    match *tagcase_ {
-                        Dt::Dt(x, ps, vs) => {
-                            string_eq_p(camel(x), camel(n))
-                        }
-                    }
-                }), cv_dts(v))) {
+                if (string_member_p(camel(n), cons(str_lit("Str"), cons(str_lit("List"), cons(str_lit("Cons"), cons(str_lit("Int"), cons(str_lit("Tag"), cons(str_lit("Unwind"), cons(str_lit("Ref"), cons(str_lit("FlatArray"), cons(str_lit("Knot"), cons(str_lit("Show"), cons(str_lit("OnceCell"), cons(str_lit("Fn"), cons(str_lit("Result"), cons(str_lit("Ok"), cons(str_lit("Err"), cons(str_lit("String"), cons(str_lit("Copy"), cons(str_lit("Clone"), cons(str_lit("Self"), cons(str_lit("Module"), nil()))))))))))))))))))))) || false) {
                     refuse(v, string_append(str_lit("a type variable named as a type the Rust names: "), n))
                 } else {
                     n

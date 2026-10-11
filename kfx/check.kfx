@@ -604,12 +604,12 @@
                                                  (show-sexp (lst b "" 0 0)))))
                        ((sym-is? (second b) "type")
                         "A type variable, a Rust type parameter of its name, camel-cased:
-                         not one of the types the generated Rust names, nor a datatype's."
+                         not one of the types the generated Rust names."
                         (let ((n (name-of v (car b))))
                           (if (or (string-member? (camel n) (list "Str" "List" "Cons" "Int" "Tag" "Unwind" "Ref" "FlatArray"
                                                                   "Knot" "Show" "OnceCell" "Fn" "Result" "Ok" "Err" "String"
                                                                   "Copy" "Clone" "Self" "Module"))
-                                  (any? (lambda ((d dt)) (tagcase d (dt (x ps vs) (string=? (camel x) (camel n))))) (cv-dts v)))
+                                  #f)
                               (refuse v (string-append "a type variable named as a type the Rust names: " n))
                               n)))
                        ((sym-is? (second b) "region") (string-append "'" (name-of v (car b))))
