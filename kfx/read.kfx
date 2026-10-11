@@ -12,7 +12,8 @@
   (str string)
   (num i64 string i64)
   (chr char)
-  (lst (listof sexp acyclic) string i64 i64))
+  (lst (listof sexp acyclic) string i64 i64)
+  (real string))
 
 (define-type sexps (listof sexp acyclic))
 
@@ -96,10 +97,32 @@
          (or (char-numeric? (car cs))
              (and (char=? (car cs) #\-) (not (null? (cdr cs))) (char-numeric? (car (cdr cs))))))))
 
+(define has-char? (subr kfx (chars char) bool)
+  (lambda (cs c) (and (not (null? cs)) (or (char=? (car cs) c) (has-char? (cdr cs) c)))))
+
+(define point-count (subr kfx (chars i64) i64)
+  (lambda (cs n)
+    "How many points `cs` has, or -1 if it has a character that is no
+     digit and no point."
+    (cond ((null? cs) n)
+          ((char=? (car cs) #\.) (point-count (cdr cs) (i64+ n 1)))
+          ((char-numeric? (car cs)) (point-count (cdr cs) n))
+          (else -1))))
+
+(define real-token? (subr kfx (chars) bool)
+  (lambda (cs)
+    "Digits, after a `-` if any, with one point among them: a real, as FX-26
+     reads it (and Rust, written with a digit either side of the point)."
+    (i64= (point-count (if (char=? (car cs) #\-) (cdr cs) cs) 0) 1)))
+
 (define token-atom (subr kfx (string string i64 i64) sexp)
   (lambda (s file line pos)
     (let ((cs (string-chars s)))
       (cond ((not (numeric? cs)) (sym s))
+            ((or (has-char? cs #\e) (has-char? cs #\E))
+             (read-error file line (string-append "a number with an exponent, which KFX reads not: write it out, " s)))
+            ((has-char? cs #\.)
+             (if (real-token? cs) (real s) (read-error file line (string-append "no number KFX reads: " s))))
             ((char=? (car cs) #\-) (num (digits-value (cdr cs) 0 file line) file pos))
             (else
              (let ((negated (digits-value cs 0 file line)))

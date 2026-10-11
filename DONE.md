@@ -515,3 +515,17 @@ not a lambda) calls its `fn` first, `fib()(…)`, which Fixpt's
 - `run-fixpt-programs.py` counts a `define-generative`'s two lines.
 
 32 of Fixpt's programs accepted, all agreeing.
+
+## `f64` (2026-10-11)
+
+Real literals (a point, no exponent: FX-26's reading of an exponent was
+not what Rust's is), the type `f64`, and FX-26's double operations: the
+arithmetic, comparisons, `f64-min`, `f64-max`, `f64-abs`, `f64-neg`,
+`f64-sqrt`, the roundings (`f64-round` ties to even), the predicates, and
+`int->f64`, `f64->int` (exact, an error for a value not integral) and
+`f64->string`. In Rust, `f64` and its own operations, written as Fixpt
+writes a double (`fixpt-runtime`'s `format_flonum`, its writer's rule for
+values), read from Fixpt's source rather than guessed: an integral value
+below 1e21 with one decimal, any other as Rust writes it, `+inf.0`,
+`+nan.0`. `tests/kfx/floats.kfx`, every edge Fixpt's printer has, with
+Rust's answers Fixpt's.

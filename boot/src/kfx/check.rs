@@ -21,6 +21,7 @@ pub enum Ty {
     TyI64(),
     TyInt(),
     TyNat(),
+    TyF64(),
     TyBool(),
     TyChar(),
     TyUnit(),
@@ -46,6 +47,10 @@ pub fn ty_int() -> &'static Ty {
 
 pub fn ty_nat() -> &'static Ty {
     alloc(Ty::TyNat())
+}
+
+pub fn ty_f64() -> &'static Ty {
+    alloc(Ty::TyF64())
 }
 
 pub fn ty_bool() -> &'static Ty {
@@ -245,6 +250,9 @@ pub fn show_sexp(e: &'static Sexp) -> Str {
         }
         Sexp::Chr(c) => {
             string_append(str_lit("#\\"), char_to_string(c))
+        }
+        Sexp::Real(t) => {
+            t
         }
         Sexp::Lst(xs, src_file, src_line, src_pos) => {
             string_append(str_lit("("), string_append(show_sexps(xs), str_lit(")")))
@@ -693,6 +701,8 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     return ty_int();
                 } else if string_eq_p(s, str_lit("nat")) {
                     return ty_nat();
+                } else if string_eq_p(s, str_lit("f64")) {
+                    return ty_f64();
                 } else if string_eq_p(s, str_lit("bool")) {
                     return ty_bool();
                 } else if string_eq_p(s, str_lit("char")) {
@@ -889,6 +899,9 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
         }
         Ty::TyNat() => {
             str_lit("nat")
+        }
+        Ty::TyF64() => {
+            str_lit("f64")
         }
         Ty::TyBool() => {
             str_lit("bool")
@@ -1129,6 +1142,18 @@ pub fn same_base_p(a: &'static Ty, e: &'static Ty) -> bool {
                     true
                 }
                 Ty::TyInt() => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Ty::TyF64() => {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Ty::TyF64() => {
                     true
                 }
                 _ => {
@@ -1847,6 +1872,9 @@ pub fn synth(v: &'static Cv, s: &'static St, e: &'static Sexp) -> &'static Res {
         }
         Sexp::Chr(c) => {
             res(ty_char(), nil(), s)
+        }
+        Sexp::Real(x) => {
+            res(ty_f64(), nil(), s)
         }
         Sexp::Str(x) => {
             res(ty_string(), nil(), s)
@@ -2592,7 +2620,7 @@ pub fn call_args_pass(mut v: &'static Cv, mut s: &'static St, mut args: Sexps, m
 
 // Definitions
 pub fn primitives() -> Str {
-    str_lit("(i64+ (subr pure (i64 i64) i64)) (i64- (subr pure (i64 i64) i64)) (i64* (subr pure (i64 i64) i64))\n   (i64-quotient (subr pure (i64 i64) i64)) (i64-remainder (subr pure (i64 i64) i64))\n   (i64-and (subr pure (i64 i64) i64)) (i64-or (subr pure (i64 i64) i64)) (i64-xor (subr pure (i64 i64) i64))\n   (i64-not (subr pure (i64) i64))\n   (i64= (subr pure (i64 i64) bool)) (i64< (subr pure (i64 i64) bool)) (i64> (subr pure (i64 i64) bool))\n   (i64<= (subr pure (i64 i64) bool)) (i64>= (subr pure (i64 i64) bool))\n   (not (subr pure (bool) bool))\n   (+ (subr pure (int int) int)) (- (subr pure (int int) int)) (* (subr pure (int int) int))\n   (quotient (subr pure (int int) int)) (remainder (subr pure (int int) int)) (modulo (subr pure (int int) int))\n   (= (subr pure (int int) bool)) (< (subr pure (int int) bool)) (> (subr pure (int int) bool))\n   (<= (subr pure (int int) bool)) (>= (subr pure (int int) bool))\n   (int->string (subr pure (int) string)) (int->i64 (subr pure (int) i64)) (i64->int (subr pure (i64) int))\n   (zero? (subr pure (int) bool)) (max (subr pure (int int) int)) (min (subr pure (int int) int))\n   (string-length (subr pure (string) nat))\n   (length (poly ((t type)) (subr pure ((listof t acyclic)) nat)))\n   (list-length (poly ((r region) (t type)) (subr (read r) ((listof t r)) nat)))\n   (append (poly ((r1 region) (r2 region) (t type)) (subr (maxeff (read r1) (alloc r2)) ((listof t r1) (listof t r2)) (listof t r2))))\n   (reverse (poly ((r1 region) (r2 region) (t type)) (subr (maxeff (read r1) (alloc r2)) ((listof t r1)) (listof t r2))))\n   (char=? (subr pure (char char) bool)) (char-whitespace? (subr pure (char) bool))\n   (char-numeric? (subr pure (char) bool)) (char-alphabetic? (subr pure (char) bool))\n   (char-upcase (subr pure (char) char)) (char->string (subr pure (char) string))\n   (string-append (subr pure (string string) string)) (string=? (subr pure (string string) bool))\n   (list->string (poly ((r region)) (subr (read r) ((listof char r)) string)))\n   (string->list (poly ((r region)) (subr (alloc r) (string) (listof char r))))\n   (error (subr pure (string) void))\n   (new (poly ((r region) (t type)) (subr (alloc r) (t) (ref t r))))\n   (get (poly ((r region) (t type)) (subr (read r) ((ref t r)) t)))\n   (set (poly ((r region) (t type)) (subr (write r) ((ref t r) t) unit)))\n   (nil (poly ((r region) (t type)) (listof t r)))\n   (cons (poly ((r region) (t type)) (subr (alloc r) (t (listof t r)) (listof t r))))\n   (car (poly ((r region) (t type)) (subr (read r) ((listof t r)) t)))\n   (cdr (poly ((r region) (t type)) (subr (read r) ((listof t r)) (listof t r))))\n   (null? (poly ((r region) (t type)) (subr pure ((listof t r)) bool)))")
+    str_lit("(i64+ (subr pure (i64 i64) i64)) (i64- (subr pure (i64 i64) i64)) (i64* (subr pure (i64 i64) i64))\n   (i64-quotient (subr pure (i64 i64) i64)) (i64-remainder (subr pure (i64 i64) i64))\n   (i64-and (subr pure (i64 i64) i64)) (i64-or (subr pure (i64 i64) i64)) (i64-xor (subr pure (i64 i64) i64))\n   (i64-not (subr pure (i64) i64))\n   (i64= (subr pure (i64 i64) bool)) (i64< (subr pure (i64 i64) bool)) (i64> (subr pure (i64 i64) bool))\n   (i64<= (subr pure (i64 i64) bool)) (i64>= (subr pure (i64 i64) bool))\n   (not (subr pure (bool) bool))\n   (+ (subr pure (int int) int)) (- (subr pure (int int) int)) (* (subr pure (int int) int))\n   (quotient (subr pure (int int) int)) (remainder (subr pure (int int) int)) (modulo (subr pure (int int) int))\n   (= (subr pure (int int) bool)) (< (subr pure (int int) bool)) (> (subr pure (int int) bool))\n   (<= (subr pure (int int) bool)) (>= (subr pure (int int) bool))\n   (int->string (subr pure (int) string)) (int->i64 (subr pure (int) i64)) (i64->int (subr pure (i64) int))\n   (zero? (subr pure (int) bool)) (max (subr pure (int int) int)) (min (subr pure (int int) int))\n   (f64+ (subr pure (f64 f64) f64)) (f64- (subr pure (f64 f64) f64)) (f64* (subr pure (f64 f64) f64))\n   (f64/ (subr pure (f64 f64) f64)) (f64-min (subr pure (f64 f64) f64)) (f64-max (subr pure (f64 f64) f64))\n   (f64< (subr pure (f64 f64) bool)) (f64<= (subr pure (f64 f64) bool)) (f64> (subr pure (f64 f64) bool))\n   (f64>= (subr pure (f64 f64) bool)) (f64= (subr pure (f64 f64) bool))\n   (f64-abs (subr pure (f64) f64)) (f64-neg (subr pure (f64) f64)) (f64-sqrt (subr pure (f64) f64))\n   (f64-floor (subr pure (f64) f64)) (f64-ceiling (subr pure (f64) f64))\n   (f64-truncate (subr pure (f64) f64)) (f64-round (subr pure (f64) f64))\n   (f64-nan? (subr pure (f64) bool)) (f64-infinite? (subr pure (f64) bool)) (f64-finite? (subr pure (f64) bool))\n   (int->f64 (subr pure (int) f64)) (f64->int (subr pure (f64) int)) (f64->string (subr pure (f64) string))\n   (string-length (subr pure (string) nat))\n   (length (poly ((t type)) (subr pure ((listof t acyclic)) nat)))\n   (list-length (poly ((r region) (t type)) (subr (read r) ((listof t r)) nat)))\n   (append (poly ((r1 region) (r2 region) (t type)) (subr (maxeff (read r1) (alloc r2)) ((listof t r1) (listof t r2)) (listof t r2))))\n   (reverse (poly ((r1 region) (r2 region) (t type)) (subr (maxeff (read r1) (alloc r2)) ((listof t r1)) (listof t r2))))\n   (char=? (subr pure (char char) bool)) (char-whitespace? (subr pure (char) bool))\n   (char-numeric? (subr pure (char) bool)) (char-alphabetic? (subr pure (char) bool))\n   (char-upcase (subr pure (char) char)) (char->string (subr pure (char) string))\n   (string-append (subr pure (string string) string)) (string=? (subr pure (string string) bool))\n   (list->string (poly ((r region)) (subr (read r) ((listof char r)) string)))\n   (string->list (poly ((r region)) (subr (alloc r) (string) (listof char r))))\n   (error (subr pure (string) void))\n   (new (poly ((r region) (t type)) (subr (alloc r) (t) (ref t r))))\n   (get (poly ((r region) (t type)) (subr (read r) ((ref t r)) t)))\n   (set (poly ((r region) (t type)) (subr (write r) ((ref t r) t) unit)))\n   (nil (poly ((r region) (t type)) (listof t r)))\n   (cons (poly ((r region) (t type)) (subr (alloc r) (t (listof t r)) (listof t r))))\n   (car (poly ((r region) (t type)) (subr (read r) ((listof t r)) t)))\n   (cdr (poly ((r region) (t type)) (subr (read r) ((listof t r)) (listof t r))))\n   (null? (poly ((r region) (t type)) (subr pure ((listof t r)) bool)))")
 }
 
 // kayak-rt's primitives at KFX's types: the prelude's (kfx/prelude.fx), and
@@ -3161,6 +3189,9 @@ pub fn ty_sexp(v: &'static Cv, s: &'static St, t: &'static Ty) -> &'static Sexp 
         }
         Ty::TyNat() => {
             sym(str_lit("nat"))
+        }
+        Ty::TyF64() => {
+            sym(str_lit("f64"))
         }
         Ty::TyBool() => {
             sym(str_lit("bool"))

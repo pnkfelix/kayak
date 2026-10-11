@@ -135,6 +135,8 @@ is no `Drop`, no `Rc` and no `.clone()`.
 | `(letrec ((f T lambda) …) body)`                      | closures tied through `Knot`s, as FX-26's I-cells tie them  |
 | `(letregion r body)`                                  | a block: `r`'s data is the heap's; its effects masked       |
 | `nat`                                                 | `Int`; below `int` in the checker                           |
+| `f64`; `f64+`, …, `f64-round`, `f64->string`, …       | `f64`; Rust's operations, written as Fixpt writes doubles   |
+| a real literal, `1.5`                                 | `1.5f64` (no exponent: KFX refuses `1e5`)                   |
 | `(case k ((d …) e) … (else e))` on chars             | `match k { d \| … => e, …, _ => e }`                        |
 | `(tagcase e (tag (x …) body) … [(else y body)])`      | `match *e { T::Tag(x, …) => body, … }`                      |
 | `nil`                                                 | `nil()`                                                     |
@@ -210,7 +212,7 @@ What KFX does not have, ranked by how often Fixpt's programs first need
 it (`docs/survey.md`): FX-26's modules (`TODO.md` §19); escapes and
 delimited control (§16, `docs/research/escapes.md`); bloblets and flat
 data beyond `i64` arrays (§15); places, `letrena` (§14,
-`docs/research/places.md`); unions and `datum`; floats; higher kinds and
+`docs/research/places.md`); unions and `datum`; `f32`; higher kinds and
 `poly` over effects or sizes; `proj` (instantiation is inferred).
 
 ---

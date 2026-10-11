@@ -168,6 +168,7 @@
           (cond ((string=? s "i64") (put "i64" acc))
                 ((string=? s "int") (put "Int" acc))
                 ((string=? s "nat") (put "Int" acc))
+                ((string=? s "f64") (put "f64" acc))
                 ((string=? s "bool") (put "bool" acc))
                 ((string=? s "char") (put "char" acc))
                 ((string=? s "unit") (put "()" acc))
@@ -383,6 +384,9 @@
                      (put ")" (put (i64->string k) (put "int_lit(" acc)))
                      (put "i64" (put (i64->string k) acc))))
                (chr (ch) (put "'" (put-escaped (list ch) #\' (put "'" acc))))
+               (real (x)
+                 "As Rust writes a double: a digit after the point (`1.` is `1.0`)."
+                 (put "f64" (if (char=? (last (string-chars x)) #\.) (put "0" (put x acc)) (put x acc))))
                (str (s) (put "\")" (put-escaped (string-chars s) #\" (put "str_lit(\"" acc))))
                (sym (s) (put-var c s acc))
                (lst (xs src-file src-line src-pos)

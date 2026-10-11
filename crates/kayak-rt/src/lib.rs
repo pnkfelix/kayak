@@ -9,9 +9,11 @@
 //! ASCII, so that indexing one that is costs nothing, and indexing one that
 //! is not counts characters (`CLAUDES_CHOICES.md`, C14).
 
+mod float;
 mod int;
 mod show;
 
+pub use float::*;
 pub use int::*;
 pub use show::*;
 use std::cell::Cell;
@@ -74,7 +76,7 @@ pub fn error(message: Str) -> ! {
 }
 
 /// A run-time error of the runtime's own, as `error` is a program's.
-fn fail(message: &str) -> ! {
+pub(crate) fn fail(message: &str) -> ! {
     panic!("{message}")
 }
 

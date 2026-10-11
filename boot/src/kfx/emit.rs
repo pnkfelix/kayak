@@ -362,6 +362,8 @@ pub fn put_type(c: &'static Ctx, t: &'static Sexp, acc: Chars) -> Chars {
                 put(str_lit("Int"), acc)
             } else if string_eq_p(s, str_lit("nat")) {
                 put(str_lit("Int"), acc)
+            } else if string_eq_p(s, str_lit("f64")) {
+                put(str_lit("f64"), acc)
             } else if string_eq_p(s, str_lit("bool")) {
                 put(str_lit("bool"), acc)
             } else if string_eq_p(s, str_lit("char")) {
@@ -767,6 +769,14 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
             }
             Sexp::Chr(ch) => {
                 put(str_lit("'"), put_escaped(cons(ch, nil()), '\'', put(str_lit("'"), acc)))
+            }
+            Sexp::Real(x) => {
+                // As Rust writes a double: a digit after the point (`1.` is `1.0`).
+                put(str_lit("f64"), if char_eq_p(last(string_chars(x)), '.') {
+                    put(str_lit("0"), put(x, acc))
+                } else {
+                    put(x, acc)
+                })
             }
             Sexp::Str(s) => {
                 put(str_lit("\")"), put_escaped(string_chars(s), '"', put(str_lit("str_lit(\""), acc)))

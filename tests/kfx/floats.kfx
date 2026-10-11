@@ -1,0 +1,33 @@
+"f64: IEEE doubles, as FX-26's are, and as Rust's; written as Fixpt writes
+ them."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-type strings (listof string acyclic))
+
+(define words (subr kfx (strings) string)
+  (lambda (xs)
+    (cond ((null? xs) "")
+          ((null? (cdr xs)) (car xs))
+          (else (string-append (car xs) (string-append " " (words (cdr xs))))))))
+
+(define show (subr kfx (f64) string) (lambda (x) (f64->string x)))
+
+(define sum-to (subr kfx (f64 f64 f64) f64)
+  (lambda (i n acc) (if (f64> i n) acc (sum-to (f64+ i 1.0) n (f64+ acc (f64/ 1.0 i))))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (words
+     (list (show 1.5) (show 1.) (show -0.25) (show (f64+ 0.1 0.2))
+           (show 100.0) (show (f64* 1000000000000.0 1000000000000.0))
+           (show 123456789012345678901.0) (show 0.0000001)
+           (show (f64/ 1.0 0.0)) (show (f64/ -1.0 0.0)) (show (f64/ 0.0 0.0))
+           (show (f64-round 2.5)) (show (f64-round 3.5)) (show (f64-round -2.5))
+           (show (f64-floor -2.5)) (show (f64-ceiling -2.5)) (show (f64-truncate -2.5))
+           (show (f64-sqrt 2.0)) (show (f64-abs -3.0)) (show (f64-neg 3.0))
+           (show (f64-min 1.0 2.0)) (show (f64-max 1.0 2.0))
+           (int->string (f64->int 12345.0)) (int->string (f64->int -10000000000000000000.0))
+           (show (int->f64 (* 100000000000 100000000000)))
+           (if (f64< 0.1 0.2) "<" "not <") (if (f64-nan? (f64/ 0.0 0.0)) "nan" "not nan")
+           (show (sum-to 1.0 1000.0 0.0))))))

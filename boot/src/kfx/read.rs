@@ -18,6 +18,7 @@ pub enum Sexp {
     Num(i64, Str, i64),
     Chr(char),
     Lst(List<&'static Sexp>, Str, i64, i64),
+    Real(Str),
 }
 
 pub fn sym(f0: Str) -> &'static Sexp {
@@ -38,6 +39,10 @@ pub fn chr(f0: char) -> &'static Sexp {
 
 pub fn lst(f0: List<&'static Sexp>, f1: Str, f2: i64, f3: i64) -> &'static Sexp {
     alloc(Sexp::Lst(f0, f1, f2, f3))
+}
+
+pub fn real(f0: Str) -> &'static Sexp {
+    alloc(Sexp::Real(f0))
 }
 
 pub type Sexps = List<&'static Sexp>;
@@ -200,10 +205,50 @@ pub fn numeric_p(cs: Chars) -> bool {
     (not(null_p(cs)) && (char_numeric_p(car(cs)) || (char_eq_p(car(cs), '-') && not(null_p(cdr(cs))) && char_numeric_p(car(cdr(cs))))))
 }
 
+pub fn has_char_p(cs: Chars, c: char) -> bool {
+    (not(null_p(cs)) && (char_eq_p(car(cs), c) || has_char_p(cdr(cs), c)))
+}
+
+/// How many points `cs` has, or -1 if it has a character that is no
+/// digit and no point.
+pub fn point_count(mut cs: Chars, mut n: i64) -> i64 {
+    loop {
+        if null_p(cs) {
+            return n;
+        } else if char_eq_p(car(cs), '.') {
+            (cs, n) = (cdr(cs), i64_plus(n, 1i64));
+            continue;
+        } else if char_numeric_p(car(cs)) {
+            cs = cdr(cs);
+            continue;
+        } else {
+            return -1i64;
+        }
+    }
+}
+
+/// Digits, after a `-` if any, with one point among them: a real, as FX-26
+/// reads it (and Rust, written with a digit either side of the point).
+pub fn real_token_p(cs: Chars) -> bool {
+    i64_eq(point_count(if char_eq_p(car(cs), '-') {
+        cdr(cs)
+    } else {
+        cs
+    }, 0i64), 1i64)
+}
+
 pub fn token_atom(s: Str, file: Str, line: i64, pos: i64) -> &'static Sexp {
     let cs = string_chars(s);
     if not(numeric_p(cs)) {
         sym(s)
+    } else if (has_char_p(cs, 'e') || has_char_p(cs, 'E')) {
+        read_error(file, line, string_append(str_lit("a number with an exponent, which KFX reads not: write it out, "), s))
+    } else if has_char_p(cs, '.') {
+        if real_token_p(cs) {
+            real(s)
+        } else {
+            read_error(file, line, string_append(str_lit("no number KFX reads: "), s))
+        }
     } else if char_eq_p(car(cs), '-') {
         num(digits_value(cdr(cs), 0i64, file, line), file, pos)
     } else {
