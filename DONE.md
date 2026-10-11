@@ -1015,3 +1015,9 @@ are recorded in C36 and TODO.md.
 C35 to C37: of the sweep's 28 Rust errors, all but one compile and agree
 or are refused (a list of a global's procedures shown at the top level
 remains). No probe program gives a wrong value.
+
+## A letrena naming an outer one's place (2026-10-11)
+
+The inner `letrena`'s fn is given the outer place as any local, typed
+`&'r Region_R<'r, ...>`; the outer region's arenas hold what its whole
+body makes, the inner's included. `tests/kfx/letrena-nested`.

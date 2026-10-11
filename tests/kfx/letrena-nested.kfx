@@ -1,0 +1,15 @@
+"A letrena inside another, making in the outer one's place and its own:
+ the inner fn given the outer place, &'r Region_R<'r>, as any local, and
+ the outer region's arenas all its body makes, the inner's too."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f (subr kfx (i64) i64)
+  (lambda (n)
+    (letrena r
+      (let ((outer (the (ref i64 r) (rnew r n))))
+        (letrena s
+          (let* ((xs (the (listof i64 r) (rcons r (get outer) nil)))
+                 (ys (the (listof (listof i64 r) s) (rcons s xs nil))))
+            (begin (set outer (i64+ (get outer) 1))
+                   (i64+ (car (car ys)) (get outer)))))))))
+(define main (subr kfx () string) (lambda () (i64->string (f 20))))
+(main)

@@ -121,6 +121,8 @@ pub fn ty_sexp(v: &'static Cv, s: &'static St, t: &'static Ty) -> &'static Sexp 
                 lst(cons(sym(str_lit("arrayof"), str_lit(""), 0i64), map(lambda1(move |x: &'static Ty| {
                     ty_sexp(v, s, x)
                 }), args)), str_lit(""), 0i64, 0i64)
+            } else if string_eq_p(d, str_lit("%place")) {
+                lst(kayak_rt::cons(sym(str_lit("place"), str_lit(""), 0i64), kayak_rt::cons(ty_sexp(v, s, car(args)), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
             } else if string_eq_p(d, str_lit("%flat-sum")) {
                 lst(cons(sym(str_lit("sumof"), str_lit(""), 0i64), cons({
                     let tagcase_ = car(args);
@@ -281,6 +283,8 @@ pub fn settled_sexp(s: &'static St, t: &'static Ty, region: bool) -> &'static Se
                 lst(cons(sym(str_lit("arrayof"), str_lit(""), 0i64), map(lambda1(move |x: &'static Ty| {
                     settled_sexp(s, x, false)
                 }), args)), str_lit(""), 0i64, 0i64)
+            } else if string_eq_p(d, str_lit("%place")) {
+                lst(kayak_rt::cons(sym(str_lit("place"), str_lit(""), 0i64), kayak_rt::cons(settled_sexp(s, car(args), true), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
             } else if string_eq_p(d, str_lit("%flat-sum")) {
                 lst(cons(sym(str_lit("sumof"), str_lit(""), 0i64), cons({
                     let tagcase_ = car(args);
@@ -2545,10 +2549,6 @@ pub fn letrena_form(v: &'static Cv, s: &'static St, xs: Sexps, expected: Tys) ->
         }), used);
         if string_member_p(name, cv_tvars(v)) {
             match refuse(v, string_append(str_lit("a letrena of a region named already: "), r)) {}
-        } else if any_p(lambda1(move |t: &'static Ty| {
-            place_region(s, t)
-        }), types) {
-            match refuse(v, str_lit("a letrena whose body names another's place, which KFX does not write yet")) {}
         } else {
             let tagcase_ = found_then_fitted(v, body(with_binds(with_tvars(v, kayak_rt::cons(name, kayak_rt::cons(string_append(str_lit("%place "), name), kayak_rt::nil()))), kayak_rt::cons(local(v, r, ty_data(str_lit("%place"), kayak_rt::cons(ty_var(name), kayak_rt::nil()))), kayak_rt::nil())), s, forms, nil::<&'static Ty>()), expected);
             match *tagcase_ {

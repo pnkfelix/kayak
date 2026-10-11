@@ -146,7 +146,7 @@ Escapes are done (`DONE.md`, C18). Left:
   frozen bloblets; width; flat sums without a key (they need symbols);
   families over `flat`.
 - **`letrena`'s rest** (C30, C34): regions within a place, `(r region
-  p)`; families over a place; a nested `letrena` naming an outer place;
+  p)`; families over a place;
   `letrena` in a poly over types;
   `rlambda`, `rmake-array`, `rmake-icell`; places in mutually recursive
   procedures; `(proj ...)`.

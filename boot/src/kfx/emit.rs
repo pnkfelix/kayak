@@ -938,6 +938,14 @@ pub fn lifetimes_before(lives: Strings, l: Str) -> Strings {
     }
 }
 
+pub fn unquoted(n: Str) -> Str {
+    if has_prefix_p(n, str_lit("'")) {
+        after_prefix(n, str_lit("'"))
+    } else {
+        n
+    }
+}
+
 /// A reference's lifetime for data at region `r`: its `letrena`'s, or the heap's.
 pub fn owner_lifetime(c: &'static Ctx, r: &'static Sexp) -> Str {
     let l = region_lifetime(c, r);
@@ -1050,10 +1058,11 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
                     } else {
                         return put_type(c, fourth(xs), acc);
                     }
-                } else if (sym_is_p(car(xs), str_lit("place")) && string_member_p(string_append(str_lit("%placeparam "), sym_name(second(xs))), ctx_locals(c))) {
-                    return put(string_append(str_lit("&'"), string_append(mangle(sym_name(second(xs))), string_append(str_lit(" Place_"), camel(sym_name(second(xs)))))), acc);
+                } else if (sym_is_p(car(xs), str_lit("place")) && string_member_p(string_append(str_lit("%placeparam "), unquoted(sym_name(second(xs)))), ctx_locals(c))) {
+                    let p = unquoted(sym_name(second(xs)));
+                    return put(string_append(str_lit("&'"), string_append(mangle(p), string_append(str_lit(" Place_"), camel(p)))), acc);
                 } else if sym_is_p(car(xs), str_lit("place")) {
-                    let r = sym_name(second(xs));
+                    let r = unquoted(sym_name(second(xs)));
                     let lives = letrena_lifetimes(ctx_locals(c));
                     let life = string_append(str_lit("'"), mangle(r));
                     return put(string_append(str_lit("&"), string_append(life, string_append(str_lit(" Region_"), string_append(camel(r), string_append(str_lit("<"), string_append(words_of_sep(cons(life, lifetimes_before(lives, life)), str_lit(", ")), str_lit(">"))))))), acc);

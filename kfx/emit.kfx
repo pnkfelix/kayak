@@ -481,6 +481,9 @@
       "Of the `letrena`s' lifetimes, outermost first, those outside `l`."
       (if (or (null? lives) (string=? (car lives) l)) nil (cons (car lives) (lifetimes-before (cdr lives) l))))))
 
+(define unquoted (subr kfx (string) string)
+  (lambda (n) (if (has-prefix? n "'") (after-prefix n "'") n)))
+
 (define owner-lifetime (subr kfx (ctx sexp) string)
   (lambda (c r)
     "A reference's lifetime for data at region `r`: its `letrena`'s, or the heap's."
@@ -548,10 +551,11 @@
                    (if (fallible-effect? c (second xs))
                        (put ", Unwind>" (put-type c (fourth xs) (put "Result<" acc)))
                        (put-type c (fourth xs) acc))))
-                ((and (sym-is? (car xs) "place") (string-member? (string-append "%placeparam " (sym-name (second xs))) (ctx-locals c)))
-                 (put (string-append "&'" (string-append (mangle (sym-name (second xs))) (string-append " Place_" (camel (sym-name (second xs)))))) acc))
+                ((and (sym-is? (car xs) "place") (string-member? (string-append "%placeparam " (unquoted (sym-name (second xs)))) (ctx-locals c)))
+                 (let ((p (unquoted (sym-name (second xs)))))
+                   (put (string-append "&'" (string-append (mangle p) (string-append " Place_" (camel p)))) acc)))
                 ((sym-is? (car xs) "place")
-                 (let* ((r (sym-name (second xs)))
+                 (let* ((r (unquoted (sym-name (second xs))))
                         (lives (letrena-lifetimes (ctx-locals c)))
                         (life (string-append "'" (mangle r))))
                    (put (string-append "&" (string-append life (string-append " Region_" (string-append (camel r)
