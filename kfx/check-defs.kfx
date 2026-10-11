@@ -82,10 +82,10 @@
  they are globals, the prelude's definitions: calling one reads it."
 
 (define table-binds (subr kfx (cv string string string) binds)
-  (lambda (v table file where)
+  (lambda (v table file wher)
     (map (lambda ((p sexp))
            (let ((xs (items p)))
-             (bind (name-of v (car xs)) (parse-scheme v (second xs)) where)))
+             (bind (name-of v (car xs)) (parse-scheme v (second xs)) wher)))
          (read-all (string-chars table) file 1))))
 
 (define prim-binds (subr kfx (cv) binds)
@@ -141,13 +141,13 @@
       (else other nil))))
 
 (define declare-types (subr kfx (cv sexps aliases) aliases)
-  (lambda (v forms as)
-    (cond ((null? forms) as)
+  (lambda (v forms als)
+    (cond ((null? forms) als)
           ((head-is? (car forms) "define-type")
            (let ((xs (items (car forms))))
              (declare-types v (cdr forms)
-                            (cons (alias (type-name v (car forms)) (type-params v (car forms)) (third xs)) as))))
-          (else (declare-types v (cdr forms) as)))))
+                            (cons (alias (type-name v (car forms)) (type-params v (car forms)) (third xs)) als))))
+          (else (declare-types v (cdr forms) als)))))
 
 (define datatype-names (subr kfx (cv sexps dts) dts)
   (lambda (v forms ds)
@@ -162,8 +162,8 @@
   (lambda (v xs)
     "`v`, with a define-effect's abbreviation."
     (tagcase v
-      (cv (bs ds as es here group file line fs tv at)
-        (cv bs ds as (cons (effdef (name-of v (second xs)) (parse-effect v nil (third xs))) es) here group file line fs tv at)))))
+      (cv (bs ds als es here group file line fs tv at)
+        (cv bs ds als (cons (effdef (name-of v (second xs)) (parse-effect v nil (third xs))) es) here group file line fs tv at)))))
 
 (define-rec
   (selects? (subr kfx (sexp) bool)
@@ -190,7 +190,7 @@
 
 (define at (subr kfx (cv string strings) cv)
   (lambda (v here group)
-    (tagcase v (cv (bs ds as es h g file line fs tv at) (cv bs ds as es here group file line fs tv at)))))
+    (tagcase v (cv (bs ds als es h g file line fs tv at) (cv bs ds als es here group file line fs tv at)))))
 
 (define runtime-name? (subr kfx (string) bool)
   (lambda (name)
@@ -214,8 +214,8 @@
              (if (null? found)
                  (bind name sc (if (null? (find-bind "%module" (cv-binds v))) "global" "item"))
                  (tagcase (car found)
-                   (bind (n sc0 where)
-                     (if (string=? where "prim")
+                   (bind (n sc0 wher)
+                     (if (string=? wher "prim")
                          (refuse v (string-append name " is a primitive, which KFX does not define again"))
                          (refuse v (string-append name " is defined already: KFX defines each name once")))))))))))
 
@@ -237,17 +237,17 @@
     (if (null? bs)
         v
         (tagcase (car bs)
-          (bind (n sc where) (defined-once (with-binds v (list (global v n sc))) (cdr bs)))))))
+          (bind (n sc wher) (defined-once (with-binds v (list (global v n sc))) (cdr bs)))))))
 
 (define new-state (subr kfx () st) (lambda () (st nil 0 nil)))
 
 (define with-facts (subr kfx (cv facts) cv)
   (lambda (v more)
     "`v`, with a definition's facts."
-    (tagcase v (cv (bs ds as es here group file line fs tv at) (cv bs ds as es here group file line (onto more fs) tv at)))))
+    (tagcase v (cv (bs ds als es here group file line fs tv at) (cv bs ds als es here group file line (onto more fs) tv at)))))
 
 (define cv-facts (subr kfx (cv) facts)
-  (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv at) fs))))
+  (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) fs))))
 
 (define no-reaching-itself (subr kfx (cv strings scheme) cv)
   (lambda (v group sc)
@@ -614,7 +614,7 @@
       (if (null? bs)
           nil
           (tagcase (car bs)
-            (bind (n sc where)
+            (bind (n sc wher)
               (cond ((string=? n "%module") nil)
                     ((string-member? n conversions) (module-exports m conversions (cdr bs)))
                     (else (cons (bind (string-append m (string-append " " n)) sc "export")
@@ -716,24 +716,24 @@
     (included v (concat (map (lambda ((f sexp)) (if (head-is? f "hide") nil (the sexps (list f)))) written)))))
 
 (define renamed-aliases (subr kfx (string string aliases) aliases)
-  (lambda (n m as)
+  (lambda (n m als)
     "Module `n`'s types, opened, as module `m`'s: `m t`."
-    (map (lambda ((a alias)) (tagcase a (alias (t ps body) (alias (string-append m (string-append " " t)) ps body)))) as)))
+    (map (lambda ((a alias)) (tagcase a (alias (t ps body) (alias (string-append m (string-append " " t)) ps body)))) als)))
 
 (define without-aliases (subr kfx (strings string aliases) aliases)
-  (lambda (hidden m as)
+  (lambda (hidden m als)
     "A module's exported types, those hidden dropped."
     (concat (map (lambda ((a alias))
                    (tagcase a (alias (t ps body)
                                 (if (string-member? (after-prefix t (string-append m " ")) hidden) nil (the aliases (list a))))))
-                 as))))
+                 als))))
 
 (define check-module (subr kfx (cv sexp) elab)
   (lambda (v form)
     (let* ((xs (items form))
            (m (name-of v (second xs)))
            (v (at v m nil))
-           (made (tagcase (global v m (scheme nil (ty-unit))) (bind (n sc where) (bind n sc "module"))))
+           (made (tagcase (global v m (scheme nil (ty-unit))) (bind (n sc wher) (bind n sc "module"))))
            (written (cdr (items (third xs))))
            (forms (found-alone (unhidden written)))
            (hidden (onto (hidden-names written)
@@ -749,23 +749,23 @@
                                    (concat (map (lambda ((n string)) (opened-aliases n (cv-aliases v))) includes))))))
            (v (if (repeated? given) (refuse v "a name defined twice in this module, its own or included") v))
            (typed (tagcase v
-                    (cv (bs ds as es here group file line fs tv at)
+                    (cv (bs ds als es here group file line fs tv at)
                       (cv (bind-onto (concat (map (lambda ((n string)) (opened-binds n bs)) includes))
                                      (cons (bind "%module" (scheme nil (ty-unit)) m) bs))
                           (onto (module-dts m forms) ds)
                           (onto (module-aliases m names forms #t)
-                                (onto (concat (map (lambda ((n string)) (opened-aliases n as)) includes)) as))
+                                (onto (concat (map (lambda ((n string)) (opened-aliases n als)) includes)) als))
                           es here group file line fs tv at))))
            (datatypes (module-datatypes typed m forms))
            (typed (tagcase typed
-                    (cv (bs ds as es here group file line fs tv at)
-                      (cv bs (onto datatypes ds) as es here group file line fs tv at))))
+                    (cv (bs ds als es here group file line fs tv at)
+                      (cv bs (onto datatypes ds) als es here group file line fs tv at))))
            (conversions (module-conversions typed m forms))
            (inner (defined-once typed (onto conversions (concat (map constructors datatypes))))))
       (tagcase (check-items inner m forms nil)
         (elab (done found)
           (tagcase done
-            (cv (bs ds as es here group file line fs tv at)
+            (cv (bs ds als es here group file line fs tv at)
               (elab (cv (cons made (bind-onto (module-exports m (onto hidden (map (lambda ((b bind)) (tagcase b (bind (n sc w) n))) conversions)) bs)
                                               (cv-binds v)))
                         ds (onto (without-aliases hidden m (module-aliases m names forms #f))
@@ -810,7 +810,7 @@
     (let* ((empty (cv nil nil nil nil "a type" nil "the program" 0 nil nil 0))
            (start (cv nil nil (declare-types empty forms nil) nil "a type" nil "the program" 0 nil nil 0))
            (types (type-names-free start forms))
-           (named (tagcase start (cv (bs ds as es here group file line fs tv at) (cv bs (datatype-names start forms nil) as es here group file line fs tv at))))
-           (typed (tagcase named (cv (bs ds as es here group file line fs tv at) (cv bs (declare-datatypes named forms nil) as es here group file line fs tv at))))
+           (named (tagcase start (cv (bs ds als es here group file line fs tv at) (cv bs (datatype-names start forms nil) als es here group file line fs tv at))))
+           (typed (tagcase named (cv (bs ds als es here group file line fs tv at) (cv bs (declare-datatypes named forms nil) als es here group file line fs tv at))))
            (v (with-binds typed (prim-binds typed))))
       (tagcase (check-tops v forms nil) (elab (done found) (verdict found (cv-facts done)))))))

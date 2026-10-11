@@ -112,14 +112,14 @@
             (else (string-append (show-sexp (car xs)) (string-append " " (show-sexps (cdr xs)))))))))
 
 (define cv-where (subr kfx (cv) string)
-  (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv at) here))))
+  (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) here))))
 
 (define refuse (subr kfx (cv string) void)
   (lambda (v message)
     "An error, said where: the innermost list being checked, and the
      definition."
     (tagcase v
-      (cv (bs ds as es here group file line fs tv at)
+      (cv (bs ds als es here group file line fs tv at)
         (error (string-append "kfx: "
                  (string-append (if (i64= line 0) "" (string-append file (string-append ":" (string-append (i64->string line) ": "))))
                    (string-append "in " (string-append here (string-append ": " message))))))))))
@@ -221,7 +221,7 @@
           (effdef (n atoms) (if (string=? n name) atoms (find-effdef v name (cdr es))))))))
 
 (define cv-effdefs (subr kfx (cv) effdefs)
-  (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv at) es))))
+  (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) es))))
 
 (define region-name (subr kfx (cv strings sexp) string)
   (lambda (v tvars r)
@@ -329,16 +329,16 @@
 
 "Types"
 
-(define cv-dts (subr kfx (cv) dts) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv at) ds))))
-(define cv-aliases (subr kfx (cv) aliases) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv at) as))))
-(define cv-binds (subr kfx (cv) binds) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv at) bs))))
-(define cv-group (subr kfx (cv) strings) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv at) group))))
-(define cv-tvars (subr kfx (cv) strings) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv at) tv))))
+(define cv-dts (subr kfx (cv) dts) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) ds))))
+(define cv-aliases (subr kfx (cv) aliases) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) als))))
+(define cv-binds (subr kfx (cv) binds) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) bs))))
+(define cv-group (subr kfx (cv) strings) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) group))))
+(define cv-tvars (subr kfx (cv) strings) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) tv))))
 
 (define with-tvars (subr kfx (cv strings) cv)
   (lambda (v names)
     "`v`, with the type and region variables `names` in scope."
-    (tagcase v (cv (bs ds as es here group file line fs tv at) (cv bs ds as es here group file line fs (onto names tv) at)))))
+    (tagcase v (cv (bs ds als es here group file line fs tv at) (cv bs ds als es here group file line fs (onto names tv) at)))))
 
 (define dt-named? (subr kfx (string dts) bool)
   (lambda (name ds)
@@ -352,12 +352,12 @@
           (else (find-family name (cdr ds))))))
 
 (define find-alias (subr kfx (string aliases) (listof alias acyclic))
-  (lambda (name as)
+  (lambda (name als)
     "A type abbreviation, its parameters and what it stands for, as a list
      of one, or none."
-    (cond ((null? as) nil)
-          (else (tagcase (car as)
-                  (alias (n ps t) (if (string=? n name) (list (car as)) (find-alias name (cdr as)))))))))
+    (cond ((null? als) nil)
+          (else (tagcase (car als)
+                  (alias (n ps t) (if (string=? n name) (list (car als)) (find-alias name (cdr als)))))))))
 
 (define expanding (subr kfx (strings) strings)
   (lambda (tvars)
@@ -373,7 +373,7 @@
     "The innermost binding of `name`, as a list of one, or none."
     (cond ((null? bs) nil)
           (else (tagcase (car bs)
-                  (bind (n sc where) (if (string=? n name) (list (car bs)) (find-bind name (cdr bs)))))))))
+                  (bind (n sc wher) (if (string=? n name) (list (car bs)) (find-bind name (cdr bs)))))))))
 
 (define-rec
   (conversion-bind (subr kfx (string binds) binds)
@@ -394,6 +394,14 @@
       (and (not (i64< (string-length-i64 s) (string-length-i64 part)))
            (or (has-prefix? s part) (string-has? (after-prefix s (substring-of s 1)) part))))))
 
+(define rust-keyword-clash? (subr kfx (string) bool)
+  (lambda (n)
+    "Whether `n` is a Rust keyword, strict, reserved or weak, or is one as a
+     type's name (`self`, `Self`): KFX names none so (the user's, C27)."
+    (or (rust-keyword? n)
+        (string-member? n (list "self" "super" "crate" "union" "raw" "safe" "macro-rules"))
+        (string=? (camel n) "Self"))))
+
 (define kfx-name? (subr kfx (string) bool)
   (lambda (n)
     "Whether `n` may be a KFX name (C27): a lower-case letter or an operator's
@@ -401,6 +409,7 @@
      `__`); and none whose Rust name kayak-rt or the emitter writes."
     (let ((cs (string-chars n)))
       (and (not (null? cs))
+           (not (rust-keyword-clash? n))
            (or (char-lower? (car cs)) (has-char-in? "?!<>=+*/%-" (car cs)))
            (not (any? (lambda ((c char)) (not (or (char-lower? c) (char-numeric? c) (has-char-in? "?!<>=+*/%-" c)))) cs))
            (not (string-has? n "--"))
@@ -634,7 +643,8 @@
                         "A type variable, a Rust type parameter of its name, camel-cased:
                          not one of the types the generated Rust names."
                         (let ((n (name-of v (car b))))
-                          (if (or (string-member? (camel n) (list "Str" "List" "Cons" "Int" "Tag" "Unwind" "Ref" "FlatArray"
+                          (if (or (rust-keyword-clash? n)
+                                  (string-member? (camel n) (list "Str" "List" "Cons" "Int" "Tag" "Unwind" "Ref" "FlatArray"
                                                                   "Knot" "Show" "OnceCell" "Fn" "Result" "Ok" "Err" "String"
                                                                   "Copy" "Clone" "Self" "Module" "Void"))
                                   #f)
@@ -983,10 +993,10 @@
     "`v`, checking a list that began at `line` of `file`, at offset `pos`."
     (if (i64= line 0)
         v
-        (tagcase v (cv (bs ds as es here group f l fs tv at) (cv bs ds as es here group file line fs tv pos))))))
+        (tagcase v (cv (bs ds als es here group f l fs tv at) (cv bs ds als es here group file line fs tv pos))))))
 
-(define cv-file (subr kfx (cv) string) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv at) file))))
-(define cv-pos (subr kfx (cv) i64) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv at) at))))
+(define cv-file (subr kfx (cv) string) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) file))))
+(define cv-pos (subr kfx (cv) i64) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) at))))
 
 (define operator-char? (subr kfx (char) bool)
   (lambda (c) (has-char-in? "?!<>=+*/%" c)))
@@ -1030,7 +1040,7 @@
         (let ((clash (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (mangled-clash n (cv-binds v))))) more))))
           (if (not (null? clash))
               (refuse v (string-append "two names that are one in Rust: " (car clash)))
-              (tagcase v (cv (bs ds as es here group file line fs tv at) (cv (bind-onto more bs) ds as es here group file line fs tv at))))))))
+              (tagcase v (cv (bs ds als es here group file line fs tv at) (cv (bind-onto more bs) ds als es here group file line fs tv at))))))))
 
 (define local (subr kfx (cv string ty) bind)
   (lambda (v name t)
@@ -1047,14 +1057,14 @@
   (lambda (s t) (tagcase (walk s t) (ty-proc (es ps r) #t) (else other #f))))
 
 (define naming-effs (subr kfx (st string string ty strings) strings)
-  (lambda (s name where t group)
+  (lambda (s name wher t group)
     "What naming a name does: a global is read; a member of the group being
      defined, named as a value, may be called by whoever is given it, and so
      loop: `spin`, as FX-26 has it. A global defined before cannot be, since
      nothing it reaches is defined after it (KFX defines each name once); a
      `letrec` member that may not end can."
-    (cond ((string=? where "rec") (list "spin"))
-          ((not (string=? where "global")) nil)
+    (cond ((string=? wher "rec") (list "spin"))
+          ((not (string=? wher "global")) nil)
           ((and (proc-type? s t) (string-member? name group)) (list "spin" (string-append "g:" name)))
           (else (list (string-append "g:" name))))))
 
@@ -1191,7 +1201,7 @@
     (string=? h "+")))
 
 (define prim? (subr kfx (bind) bool)
-  (lambda (b) (tagcase b (bind (n sc where) (string=? where "prim")))))
+  (lambda (b) (tagcase b (bind (n sc wher) (string=? wher "prim")))))
 
 (define nat? (subr kfx (st ty) bool)
   (lambda (s t) (tagcase (walk s t) (ty-nat () #t) (else other #f))))
@@ -1231,7 +1241,7 @@
               (and (not (string=? n tag-name))
                    (let ((found (find-bind n (cv-binds v))))
                      (and (not (null? found))
-                          (tagcase (car found) (bind (b sc where) (tagcase sc (scheme (tvars t) (mentions? s t r)))))))))
+                          (tagcase (car found) (bind (b sc wher) (tagcase sc (scheme (tvars t) (mentions? s t r)))))))))
             (names-in body)))))
 
 (define opened-binds (subr kfx (string binds) binds)
@@ -1240,8 +1250,8 @@
     (if (null? bs)
         nil
         (tagcase (car bs)
-          (bind (n sc where)
-            (if (and (string=? where "export") (has-prefix? n (string-append m " ")))
+          (bind (n sc wher)
+            (if (and (string=? wher "export") (has-prefix? n (string-append m " ")))
                 (cons (bind (after-prefix n (string-append m " ")) sc "item") (opened-binds m (cdr bs)))
                 (opened-binds m (cdr bs))))))))
 

@@ -1,4 +1,5 @@
-"Names: the mangling, Rust's keywords, and names made of operators."
+"Names: the mangling, and names made of operators. (A Rust keyword is no
+ KFX name: tests/kfx-stricter/rust-keyword.kfx.)"
 
 (define-effect kfx (maxeff (read @globals) spin))
 
@@ -16,6 +17,6 @@
 
 (define main (subr kfx () string)
   (lambda ()
-    (let* ((type (the i64 1)) (match (bump! type)) (fn (i64* match 10)) (loop "x"))
-      (<+> (i64->string fn)
-           (<+> (i64->yes type) (<+> loop (if (empty-string? "") "empty" "full")))))))
+    (let* ((one (the i64 1)) (two! (bump! one)) (tw*n (i64* two! 10)) (x? "x"))
+      (<+> (i64->string tw*n)
+           (<+> (i64->yes one) (<+> x? (if (empty-string? "") "empty" "full")))))))

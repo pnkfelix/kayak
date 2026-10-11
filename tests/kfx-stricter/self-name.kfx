@@ -1,0 +1,5 @@
+"`self`, which Rust has no `r#self` for: FX-26 has it as a name; KFX
+ refuses it."
+(define-effect kfx (maxeff (read @globals) spin))
+(define id (subr pure (i64) i64) (lambda (self) self))
+(id 2)

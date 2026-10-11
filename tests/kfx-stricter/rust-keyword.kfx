@@ -1,0 +1,5 @@
+"A Rust keyword as a name: FX-26 has it; KFX refuses it, so that each
+ KFX name is the Rust name it mangles to, and none needs `r#`."
+(define-effect kfx (maxeff (read @globals) spin))
+(define type i64 1)
+(i64+ type 2)

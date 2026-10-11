@@ -167,20 +167,20 @@
     (if (or (head-is? e "poly") (head-is? e "plambda")) (third (items e)) e)))
 
 (define put-define (subr kfx (ctx sexp sexp sexp chars) chars)
-  (lambda (c name type defined acc)
+  (lambda (c name typ defined acc)
     "A definition, a `fn`: a procedure's of its parameters; a constant's of
      none, run at each use, or, if it allocates, made at its first use and
      kept (C21)."
-    (let* ((binders (if (head-is? type "poly") (items (second (items type))) nil))
-           (type (unpoly type))
+    (let* ((binders (if (head-is? typ "poly") (items (second (items typ))) nil))
+           (typ (unpoly typ))
            (defined (unpoly defined))
            (lambda? (head-is? defined "lambda"))
            (body (if lambda? (cdr (cdr (items defined))) (the sexps (list defined))))
            (doc? (and (comment? (car body)) (not (null? (cdr body)))))
            (acc (if doc? (put "\n" (put-comment (string-chars (comment-text (car body))) "///" 0 #t acc)) acc))
            (body (if doc? (cdr body) body))
-           (fallible (and lambda? (fallible-effect? c (second (items type)))))
-           (mparams (if lambda? (module-params c (items (second (items defined))) (items (third (items type)))) nil))
+           (fallible (and lambda? (fallible-effect? c (second (items typ)))))
+           (mparams (if lambda? (module-params c (items (second (items defined))) (items (third (items typ)))) nil))
            (t (if lambda?
                   (returns (sym-name name) (map param-name (items (second (items defined)))) (null? mparams) fallible)
                   (value)))
@@ -200,14 +200,14 @@
                                               ", " mparams (put "<" acc))))))
            (acc (if lambda?
                     (let* ((acc (put "(" acc))
-                           (acc (put-params c (unmoduled c (items (second (items defined))) (items (third (items type))) #t)
-                                            (unmoduled c (items (second (items defined))) (items (third (items type))) #f)
+                           (acc (put-params c (unmoduled c (items (second (items defined))) (items (third (items typ))) #t)
+                                            (unmoduled c (items (second (items defined))) (items (third (items typ))) #f)
                                             loops? acc))
                            (acc (put ") -> " acc)))
                       (if fallible
-                          (put ", Unwind>" (put-type c (fourth (items type)) (put "Result<" acc)))
-                          (put-type c (fourth (items type)) acc)))
-                    (put-type c type (put "() -> " acc))))
+                          (put ", Unwind>" (put-type c (fourth (items typ)) (put "Result<" acc)))
+                          (put-type c (fourth (items typ)) acc)))
+                    (put-type c typ (put "() -> " acc))))
            (acc (put " {" acc)))
       (if loops?
           (let* ((acc (put-nl 2 (put "loop {" (put-nl 1 acc))))
@@ -216,7 +216,7 @@
           (if (and (not lambda?) (fact-at? c defined "once"))
               (let* ((acc (put-nl 1 acc))
                      (acc (put "thread_local!(static ONCE: OnceCell<" acc))
-                     (acc (put-type c type acc))
+                     (acc (put-type c typ acc))
                      (acc (put "> = const { OnceCell::new() });" acc))
                      (acc (put-nl 1 acc))
                      (acc (put "once(&ONCE, || {" acc))

@@ -121,7 +121,7 @@
      is given, or else a type of no representation, for reading the
      moduleof alone; a description, what it describes."
     (tagcase v
-      (cv (bs ds as es here group file line fs tv at)
+      (cv (bs ds als es here group file line fs tv at)
         (let ((abs (spec-abs spec)))
           (cv bs
               (onto (map (lambda ((t string)) (dt (string-append (if (string=? m "") "%abstract" m) (string-append ".." t)) nil nil)) abs) ds)
@@ -130,7 +130,7 @@
                                                    (else (string-append (if (string=? m "") "%abstract" m) (string-append ".." t)))))))
                          abs)
                     (onto (map (lambda ((d sexps)) (alias (sym-name (second d)) nil (third d))) (spec-items spec "desc"))
-                          as))
+                          als))
               es here group file line fs tv at))))))
 
 (define spec-well-formed (subr kfx (cv sexp) unit)
@@ -152,7 +152,9 @@
       (if (or (repeated? (onto (spec-abs spec) (map (lambda ((d sexps)) (sym-name (second d))) (spec-items spec "desc"))))
               (repeated? (map (lambda ((d sexps)) (sym-name (second d))) (spec-items spec "val"))))
           (refuse v "a name appears twice in a module type")
-          #u))))
+          (if (any? rust-keyword-clash? (onto (spec-abs spec) (map (lambda ((d sexps)) (sym-name (second d))) (onto (spec-items spec "desc") (spec-items spec "val")))))
+              (refuse v "a module type's name that is a Rust keyword, which KFX's names are not (C27)")
+          #u)))))
 
 (define module-type-values (subr kfx (cv sexp) binds)
   (lambda (v spec)
@@ -377,22 +379,22 @@
         (else other #f)))))
 
 (define opened-aliases (subr kfx (string aliases) aliases)
-  (lambda (m as)
+  (lambda (m als)
     "Module `m`'s types, named as `m` names them."
-    (if (null? as)
+    (if (null? als)
         nil
-        (tagcase (car as)
+        (tagcase (car als)
           (alias (n ps body)
             (if (has-prefix? n (string-append m " "))
-                (cons (alias (after-prefix n (string-append m " ")) ps body) (opened-aliases m (cdr as)))
-                (opened-aliases m (cdr as))))))))
+                (cons (alias (after-prefix n (string-append m " ")) ps body) (opened-aliases m (cdr als)))
+                (opened-aliases m (cdr als))))))))
 
 (define opened (subr kfx (cv string) cv)
   (lambda (v m)
     "`v`, in a `(with m ...)`: `m`'s values, types and effects."
     (tagcase v
-      (cv (bs ds as es here group file line fs tv at)
-        (cv (bind-onto (opened-binds m bs) bs) ds (onto (opened-aliases m as) as)
+      (cv (bs ds als es here group file line fs tv at)
+        (cv (bind-onto (opened-binds m bs) bs) ds (onto (opened-aliases m als) als)
             (onto (concat (map (lambda ((d effdef))
                                  (tagcase d (effdef (n atoms)
                                               (if (has-prefix? n (string-append m " "))
@@ -512,15 +514,15 @@
                (if (null? found)
                    (refuse v (string-append "nothing is named " name))
                    (tagcase (car found)
-                     (bind (n sc where)
-                       (cond ((or (string=? where "module")
+                     (bind (n sc wher)
+                       (cond ((or (string=? wher "module")
                                   (not (null? (module-spec v (tagcase sc (scheme (tv t) t))))))
                               (refuse v (string-append "a module as a value: KFX's modules are Rust's, opened by with: " name)))
                              ((tagcase sc (scheme (tv t) (tagcase t (ty-proc (es ps r) (any? (lambda ((p ty)) (not (null? (module-spec v p)))) ps)) (else other #f))))
                               (refuse v (string-append "a procedure of a module parameter, a Rust generic fn, named as a value: " name)))
                              (else
                            (tagcase (instantiate s sc)
-                             (inst (t s regions) (res t (naming-effs s name where t (cv-group v)) s)))))))))))))
+                             (inst (t s regions) (res t (naming-effs s name wher t (cv-group v)) s)))))))))))))
 
   (check (subr kfx (cv st sexp ty) res)
     (lambda (v s e expected)
@@ -710,13 +712,13 @@
              (let* ((m (name-of v (car xs)))
                     (found (find-bind m (cv-binds v))))
                (cond ((and (not (null? found))
-                           (tagcase (car found) (bind (n sc where) (string=? where "local")))
-                           (not (null? (module-spec v (tagcase (car found) (bind (n sc where) (tagcase sc (scheme (tv t) t))))))))
+                           (tagcase (car found) (bind (n sc wher) (string=? wher "local")))
+                           (not (null? (module-spec v (tagcase (car found) (bind (n sc wher) (tagcase sc (scheme (tv t) t))))))))
                       "A module parameter's values, of its abstract types `m..t`."
-                      (let* ((spec (car (module-spec v (tagcase (car found) (bind (n sc where) (tagcase sc (scheme (tv t) t)))))))
+                      (let* ((spec (car (module-spec v (tagcase (car found) (bind (n sc wher) (tagcase sc (scheme (tv t) t)))))))
                              (w (module-scope v spec m "")))
                         (found-then-fitted v (body (with-binds w (module-type-values w spec)) s (cdr xs) nil) expected)))
-                     ((or (null? found) (not (tagcase (car found) (bind (n sc where) (string=? where "module")))))
+                     ((or (null? found) (not (tagcase (car found) (bind (n sc wher) (string=? wher "module")))))
                       (refuse v (string-append "KFX's with opens a module defined at the top level, or a module parameter, by its name: " m)))
                      (else (with-effs (found-then-fitted v (body (opened v m) s (cdr xs) nil) expected) (list (string-append "g:" m)))))))
             ((string=? h "cond") (cond-clauses v s xs expected))
@@ -1026,17 +1028,17 @@
                    (res (ty-nat) es (if (null? expected) s (fits v s (ty-nat) (car expected)))))))
               (else
               (tagcase (car found)
-                (bind (n sc where)
+                (bind (n sc wher)
                   (tagcase (instantiate s sc)
                     (inst (t s regions)
-                      (void-call v (and (string=? h "error") (string=? where "prim"))
+                      (void-call v (and (string=? h "error") (string=? wher "prim"))
                                  (and (not (null? expected)) (tagcase (walk s (car expected)) (ty-meta (k) #t) (else other #f)))
                       (poly-self-application v sc t (knot-free-call v (synth-call-of v s (res t nil s) args regions expected
                                      (effs-union
-                                       (if (string=? where "global") (list (string-append "g:" h)) nil)
-                                       (if (or (string=? where "rec")
-                                               (and (string=? where "local") (self-applicable? v s t))
-                                               (and (string-member? h (cv-group v)) (or (string=? where "global") (string=? where "item"))))
+                                       (if (string=? wher "global") (list (string-append "g:" h)) nil)
+                                       (if (or (string=? wher "rec")
+                                               (and (string=? wher "local") (self-applicable? v s t))
+                                               (and (string-member? h (cv-group v)) (or (string=? wher "global") (string=? wher "item"))))
                                            (list "spin")
                                            nil)))))))))))))))
 
@@ -1162,7 +1164,7 @@
       (let ((name (tagcase arg (sym (n) n) (else other ""))))
         (if (or (string=? name "")
                 (null? (find-bind name (cv-binds v)))
-                (not (tagcase (car (find-bind name (cv-binds v))) (bind (n sc where) (string=? where "module")))))
+                (not (tagcase (car (find-bind name (cv-binds v))) (bind (n sc wher) (string=? wher "module")))))
             (refuse v "KFX's module argument is a module defined at the top level, by its name")
             (res t (list (string-append "g:" name))
                  (conforms v s name (tagcase t (ty-data (d args) (after-prefix d "%module ")) (else other ""))

@@ -622,14 +622,14 @@
                 (map2-params (cdr params) (cdr types)))))))
 
 (define typed-lambda (subr kfx (sexp sexp) sexp)
-  (lambda (lam type)
+  (lambda (lam typ)
     "A letrec's lambda, its parameters given the types its binding's says,
      so that Rust need not infer a closure's from its uses: it cannot, where
      the first is a `match` (a lambda's place kept, for its facts)."
     (tagcase lam
       (lst (xs file line pos)
         (lst (cons (car xs)
-                   (cons (lst (map2-params (items (second xs)) (items (third (items type)))) "" 0 0)
+                   (cons (lst (map2-params (items (second xs)) (items (third (items typ)))) "" 0 0)
                          (cdr (cdr xs))))
              file line pos))
       (else other lam))))

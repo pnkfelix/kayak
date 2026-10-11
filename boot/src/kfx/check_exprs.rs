@@ -285,7 +285,7 @@ pub fn spec_abs(spec: &'static Sexp) -> Strings {
 pub fn module_scope(v: &'static Cv, spec: &'static Sexp, m: Str, actual: Str) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
             let abs = spec_abs(spec);
             cv(bs, onto(map(lambda1(move |t: Str| {
                 dt(string_append(if string_eq_p(m, str_lit("")) {
@@ -305,7 +305,7 @@ pub fn module_scope(v: &'static Cv, spec: &'static Sexp, m: Str, actual: Str) ->
                 }))
             }), abs), onto(map(lambda1(move |d: Sexps| {
                 alias(sym_name(second(d)), nil(), third(d))
-            }), spec_items(spec, str_lit("desc"))), r#as)), es, here, group, file, line, fs, tv, at)
+            }), spec_items(spec, str_lit("desc"))), als)), es, here, group, file, line, fs, tv, at)
         }
     }
 }
@@ -357,7 +357,13 @@ pub fn spec_well_formed(v: &'static Cv, spec: &'static Sexp) -> () {
     }), spec_items(spec, str_lit("val"))))) {
         match refuse(v, str_lit("a name appears twice in a module type")) {}
     } else {
-        ()
+        if any_p(&rust_keyword_clash_p, onto(spec_abs(spec), map(lambda1(move |d: Sexps| {
+            sym_name(second(d))
+        }), onto(spec_items(spec, str_lit("desc")), spec_items(spec, str_lit("val")))))) {
+            match refuse(v, str_lit("a module type's name that is a Rust keyword, which KFX's names are not (C27)")) {}
+        } else {
+            ()
+        }
     }
 }
 
@@ -853,18 +859,18 @@ pub fn raw_meta_p(t: &'static Ty) -> bool {
 }
 
 /// Module `m`'s types, named as `m` names them.
-pub fn opened_aliases(mut m: Str, mut r#as: Aliases) -> Aliases {
+pub fn opened_aliases(mut m: Str, mut als: Aliases) -> Aliases {
     loop {
-        if null_p(r#as) {
+        if null_p(als) {
             return nil();
         } else {
-            let tagcase_ = car(r#as);
+            let tagcase_ = car(als);
             match *tagcase_ {
                 Alias::Alias(n, ps, body) => {
                     if has_prefix_p(n, string_append(m, str_lit(" "))) {
-                        return cons(alias(after_prefix(n, string_append(m, str_lit(" "))), ps, body), opened_aliases(m, cdr(r#as)));
+                        return cons(alias(after_prefix(n, string_append(m, str_lit(" "))), ps, body), opened_aliases(m, cdr(als)));
                     } else {
-                        r#as = cdr(r#as);
+                        als = cdr(als);
                         continue;
                     }
                 }
@@ -877,8 +883,8 @@ pub fn opened_aliases(mut m: Str, mut r#as: Aliases) -> Aliases {
 pub fn opened(v: &'static Cv, m: Str) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
-            cv(bind_onto(opened_binds(m, bs), bs), ds, onto(opened_aliases(m, r#as), r#as), onto(concat(map(lambda1(move |d: &'static Effdef| {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+            cv(bind_onto(opened_binds(m, bs), bs), ds, onto(opened_aliases(m, als), als), onto(concat(map(lambda1(move |d: &'static Effdef| {
                 let tagcase_ = d;
                 match *tagcase_ {
                     Effdef::Effdef(n, atoms) => {
@@ -1142,8 +1148,8 @@ pub fn synth_name(v: &'static Cv, s: &'static St, name: Str) -> &'static Res {
         } else {
             let tagcase_ = car(found);
             match *tagcase_ {
-                Bind::Bind(n, sc, r#where) => {
-                    if (string_eq_p(r#where, str_lit("module")) || not(null_p(module_spec(v, {
+                Bind::Bind(n, sc, wher) => {
+                    if (string_eq_p(wher, str_lit("module")) || not(null_p(module_spec(v, {
                         let tagcase_ = sc;
                         match *tagcase_ {
                             Scheme::Scheme(tv, t) => {
@@ -1176,7 +1182,7 @@ pub fn synth_name(v: &'static Cv, s: &'static St, name: Str) -> &'static Res {
                         let tagcase_ = instantiate(s, sc);
                         match *tagcase_ {
                             Inst::Inst(t, s, regions) => {
-                                res(t, naming_effs(s, name, r#where, t, cv_group(v)), s)
+                                res(t, naming_effs(s, name, wher, t, cv_group(v)), s)
                             }
                         }
                     }
@@ -1586,14 +1592,14 @@ pub fn body_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Ty
         if (not(null_p(found)) && {
             let tagcase_ = car(found);
             match *tagcase_ {
-                Bind::Bind(n, sc, r#where) => {
-                    string_eq_p(r#where, str_lit("local"))
+                Bind::Bind(n, sc, wher) => {
+                    string_eq_p(wher, str_lit("local"))
                 }
             }
         } && not(null_p(module_spec(v, {
             let tagcase_ = car(found);
             match *tagcase_ {
-                Bind::Bind(n, sc, r#where) => {
+                Bind::Bind(n, sc, wher) => {
                     let tagcase_ = sc;
                     match *tagcase_ {
                         Scheme::Scheme(tv, t) => {
@@ -1607,7 +1613,7 @@ pub fn body_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Ty
             let spec = car(module_spec(v, {
                 let tagcase_ = car(found);
                 match *tagcase_ {
-                    Bind::Bind(n, sc, r#where) => {
+                    Bind::Bind(n, sc, wher) => {
                         let tagcase_ = sc;
                         match *tagcase_ {
                             Scheme::Scheme(tv, t) => {
@@ -1622,8 +1628,8 @@ pub fn body_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Ty
         } else if (null_p(found) || not({
             let tagcase_ = car(found);
             match *tagcase_ {
-                Bind::Bind(n, sc, r#where) => {
-                    string_eq_p(r#where, str_lit("module"))
+                Bind::Bind(n, sc, wher) => {
+                    string_eq_p(wher, str_lit("module"))
                 }
             }
         })) {
@@ -2210,11 +2216,11 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
     } else {
         let tagcase_ = car(found);
         match *tagcase_ {
-            Bind::Bind(n, sc, r#where) => {
+            Bind::Bind(n, sc, wher) => {
                 let tagcase_ = instantiate(s, sc);
                 match *tagcase_ {
                     Inst::Inst(t, s, regions) => {
-                        void_call(v, (string_eq_p(h, str_lit("error")) && string_eq_p(r#where, str_lit("prim"))), (not(null_p(expected)) && {
+                        void_call(v, (string_eq_p(h, str_lit("error")) && string_eq_p(wher, str_lit("prim"))), (not(null_p(expected)) && {
                             let tagcase_ = walk(s, car(expected));
                             match *tagcase_ {
                                 Ty::TyMeta(k) => {
@@ -2225,11 +2231,11 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
                                     false
                                 }
                             }
-                        }), poly_self_application(v, sc, t, knot_free_call(v, synth_call_of(v, s, res(t, nil(), s), args, regions, expected, effs_union(if string_eq_p(r#where, str_lit("global")) {
+                        }), poly_self_application(v, sc, t, knot_free_call(v, synth_call_of(v, s, res(t, nil(), s), args, regions, expected, effs_union(if string_eq_p(wher, str_lit("global")) {
                             kayak_rt::cons(string_append(str_lit("g:"), h), kayak_rt::nil())
                         } else {
                             nil()
-                        }, if (string_eq_p(r#where, str_lit("rec")) || (string_eq_p(r#where, str_lit("local")) && self_applicable_p(v, s, t)) || (string_member_p(h, cv_group(v)) && (string_eq_p(r#where, str_lit("global")) || string_eq_p(r#where, str_lit("item"))))) {
+                        }, if (string_eq_p(wher, str_lit("rec")) || (string_eq_p(wher, str_lit("local")) && self_applicable_p(v, s, t)) || (string_member_p(h, cv_group(v)) && (string_eq_p(wher, str_lit("global")) || string_eq_p(wher, str_lit("item"))))) {
                             kayak_rt::cons(str_lit("spin"), kayak_rt::nil())
                         } else {
                             nil()
@@ -2477,8 +2483,8 @@ pub fn module_argument(v: &'static Cv, s: &'static St, arg: &'static Sexp, t: &'
     if (string_eq_p(name, str_lit("")) || null_p(find_bind(name, cv_binds(v))) || not({
         let tagcase_ = car(find_bind(name, cv_binds(v)));
         match *tagcase_ {
-            Bind::Bind(n, sc, r#where) => {
-                string_eq_p(r#where, str_lit("module"))
+            Bind::Bind(n, sc, wher) => {
+                string_eq_p(wher, str_lit("module"))
             }
         }
     })) {

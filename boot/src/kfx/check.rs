@@ -288,7 +288,7 @@ pub fn show_sexps(xs: Sexps) -> Str {
 pub fn cv_where(v: &'static Cv) -> Str {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
             here
         }
     }
@@ -299,7 +299,7 @@ pub fn cv_where(v: &'static Cv) -> Str {
 pub fn refuse(v: &'static Cv, message: Str) -> Void {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
             error(string_append(str_lit("kfx: "), string_append(if i64_eq(line, 0i64) {
                 str_lit("")
             } else {
@@ -479,7 +479,7 @@ pub fn find_effdef(mut v: &'static Cv, mut name: Str, mut es: Effdefs) -> String
 pub fn cv_effdefs(v: &'static Cv) -> Effdefs {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
             es
         }
     }
@@ -689,7 +689,7 @@ pub fn substitute(params: Strings, args: Tys, t: &'static Ty) -> &'static Ty {
 pub fn cv_dts(v: &'static Cv) -> Dts {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
             ds
         }
     }
@@ -698,8 +698,8 @@ pub fn cv_dts(v: &'static Cv) -> Dts {
 pub fn cv_aliases(v: &'static Cv) -> Aliases {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
-            r#as
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+            als
         }
     }
 }
@@ -707,7 +707,7 @@ pub fn cv_aliases(v: &'static Cv) -> Aliases {
 pub fn cv_binds(v: &'static Cv) -> Binds {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
             bs
         }
     }
@@ -716,7 +716,7 @@ pub fn cv_binds(v: &'static Cv) -> Binds {
 pub fn cv_group(v: &'static Cv) -> Strings {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
             group
         }
     }
@@ -725,7 +725,7 @@ pub fn cv_group(v: &'static Cv) -> Strings {
 pub fn cv_tvars(v: &'static Cv) -> Strings {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
             tv
         }
     }
@@ -735,8 +735,8 @@ pub fn cv_tvars(v: &'static Cv) -> Strings {
 pub fn with_tvars(v: &'static Cv, names: Strings) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
-            cv(bs, ds, r#as, es, here, group, file, line, fs, onto(names, tv), at)
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+            cv(bs, ds, als, es, here, group, file, line, fs, onto(names, tv), at)
         }
     }
 }
@@ -775,18 +775,18 @@ pub fn find_family(mut name: Str, mut ds: Dts) -> List<&'static Dt> {
 
 /// A type abbreviation, its parameters and what it stands for, as a list
 /// of one, or none.
-pub fn find_alias(mut name: Str, mut r#as: Aliases) -> List<&'static Alias> {
+pub fn find_alias(mut name: Str, mut als: Aliases) -> List<&'static Alias> {
     loop {
-        if null_p(r#as) {
+        if null_p(als) {
             return nil();
         } else {
-            let tagcase_ = car(r#as);
+            let tagcase_ = car(als);
             match *tagcase_ {
                 Alias::Alias(n, ps, t) => {
                     if string_eq_p(n, name) {
-                        return kayak_rt::cons(car(r#as), kayak_rt::nil());
+                        return kayak_rt::cons(car(als), kayak_rt::nil());
                     } else {
-                        r#as = cdr(r#as);
+                        als = cdr(als);
                         continue;
                     }
                 }
@@ -818,7 +818,7 @@ pub fn find_bind(mut name: Str, mut bs: Binds) -> Binds {
         } else {
             let tagcase_ = car(bs);
             match *tagcase_ {
-                Bind::Bind(n, sc, r#where) => {
+                Bind::Bind(n, sc, wher) => {
                     if string_eq_p(n, name) {
                         return kayak_rt::cons(car(bs), kayak_rt::nil());
                     } else {
@@ -861,12 +861,18 @@ pub fn string_has_p(s: Str, part: Str) -> bool {
     (not(i64_lt(string_length_i64(s), string_length_i64(part))) && (has_prefix_p(s, part) || string_has_p(after_prefix(s, substring_of(s, 1i64)), part)))
 }
 
+/// Whether `n` is a Rust keyword, strict, reserved or weak, or is one as a
+/// type's name (`self`, `Self`): KFX names none so (the user's, C27).
+pub fn rust_keyword_clash_p(n: Str) -> bool {
+    (rust_keyword_p(n) || string_member_p(n, kayak_rt::cons(str_lit("self"), kayak_rt::cons(str_lit("super"), kayak_rt::cons(str_lit("crate"), kayak_rt::cons(str_lit("union"), kayak_rt::cons(str_lit("raw"), kayak_rt::cons(str_lit("safe"), kayak_rt::cons(str_lit("macro-rules"), kayak_rt::nil())))))))) || string_eq_p(camel(n), str_lit("Self")))
+}
+
 /// Whether `n` may be a KFX name (C27): a lower-case letter or an operator's
 /// character first, then those, digits and `-`; no `--` (the emitter's
 /// `__`); and none whose Rust name kayak-rt or the emitter writes.
 pub fn kfx_name_p(n: Str) -> bool {
     let cs = string_chars(n);
-    (not(null_p(cs)) && (char_lower_p(car(cs)) || has_char_in_p(str_lit("?!<>=+*/%-"), car(cs))) && not(any_p(lambda1(move |c: char| {
+    (not(null_p(cs)) && not(rust_keyword_clash_p(n)) && (char_lower_p(car(cs)) || has_char_in_p(str_lit("?!<>=+*/%-"), car(cs))) && not(any_p(lambda1(move |c: char| {
         not((char_lower_p(c) || char_numeric_p(c) || has_char_in_p(str_lit("?!<>=+*/%-"), c)))
     }), cs)) && not(string_has_p(n, str_lit("--"))) && not(string_member_p(mangle(n), kayak_rt::cons(str_lit("str_lit"), kayak_rt::cons(str_lit("int_lit"), kayak_rt::cons(str_lit("int_text"), kayak_rt::cons(str_lit("unreachable_unwind"), kayak_rt::cons(str_lit("kfx_toplevel"), kayak_rt::cons(str_lit("once"), kayak_rt::cons(str_lit("alloc"), kayak_rt::cons(str_lit("the"), kayak_rt::cons(str_lit("unwind"), kayak_rt::cons(str_lit("knot"), kayak_rt::cons(str_lit("lambda0"), kayak_rt::cons(str_lit("lambda1"), kayak_rt::cons(str_lit("lambda2"), kayak_rt::cons(str_lit("lambda3"), kayak_rt::cons(str_lit("lambda4"), kayak_rt::cons(str_lit("leak_string"), kayak_rt::cons(str_lit("with_big_stack"), kayak_rt::cons(str_lit("fail"), kayak_rt::cons(str_lit("make_continuation_prompt_tag"), kayak_rt::cons(str_lit("nil"), kayak_rt::cons(str_lit("cons"), kayak_rt::nil()))))))))))))))))))))))))
 }
@@ -1285,7 +1291,7 @@ pub fn poly_binders(v: &'static Cv, t: &'static Sexp) -> Strings {
                 // A type variable, a Rust type parameter of its name, camel-cased:
                 // not one of the types the generated Rust names.
                 let n = name_of(v, car(b));
-                if (string_member_p(camel(n), kayak_rt::cons(str_lit("Str"), kayak_rt::cons(str_lit("List"), kayak_rt::cons(str_lit("Cons"), kayak_rt::cons(str_lit("Int"), kayak_rt::cons(str_lit("Tag"), kayak_rt::cons(str_lit("Unwind"), kayak_rt::cons(str_lit("Ref"), kayak_rt::cons(str_lit("FlatArray"), kayak_rt::cons(str_lit("Knot"), kayak_rt::cons(str_lit("Show"), kayak_rt::cons(str_lit("OnceCell"), kayak_rt::cons(str_lit("Fn"), kayak_rt::cons(str_lit("Result"), kayak_rt::cons(str_lit("Ok"), kayak_rt::cons(str_lit("Err"), kayak_rt::cons(str_lit("String"), kayak_rt::cons(str_lit("Copy"), kayak_rt::cons(str_lit("Clone"), kayak_rt::cons(str_lit("Self"), kayak_rt::cons(str_lit("Module"), kayak_rt::cons(str_lit("Void"), kayak_rt::nil())))))))))))))))))))))) || false) {
+                if (rust_keyword_clash_p(n) || string_member_p(camel(n), kayak_rt::cons(str_lit("Str"), kayak_rt::cons(str_lit("List"), kayak_rt::cons(str_lit("Cons"), kayak_rt::cons(str_lit("Int"), kayak_rt::cons(str_lit("Tag"), kayak_rt::cons(str_lit("Unwind"), kayak_rt::cons(str_lit("Ref"), kayak_rt::cons(str_lit("FlatArray"), kayak_rt::cons(str_lit("Knot"), kayak_rt::cons(str_lit("Show"), kayak_rt::cons(str_lit("OnceCell"), kayak_rt::cons(str_lit("Fn"), kayak_rt::cons(str_lit("Result"), kayak_rt::cons(str_lit("Ok"), kayak_rt::cons(str_lit("Err"), kayak_rt::cons(str_lit("String"), kayak_rt::cons(str_lit("Copy"), kayak_rt::cons(str_lit("Clone"), kayak_rt::cons(str_lit("Self"), kayak_rt::cons(str_lit("Module"), kayak_rt::cons(str_lit("Void"), kayak_rt::nil())))))))))))))))))))))) || false) {
                     match refuse(v, string_append(str_lit("a type variable named as a type the Rust names: "), n)) {}
                 } else {
                     n
@@ -2149,8 +2155,8 @@ pub fn near(v: &'static Cv, file: Str, line: i64, pos: i64) -> &'static Cv {
     } else {
         let tagcase_ = v;
         match *tagcase_ {
-            Cv::Cv(bs, ds, r#as, es, here, group, f, l, fs, tv, at) => {
-                cv(bs, ds, r#as, es, here, group, file, line, fs, tv, pos)
+            Cv::Cv(bs, ds, als, es, here, group, f, l, fs, tv, at) => {
+                cv(bs, ds, als, es, here, group, file, line, fs, tv, pos)
             }
         }
     }
@@ -2159,7 +2165,7 @@ pub fn near(v: &'static Cv, file: Str, line: i64, pos: i64) -> &'static Cv {
 pub fn cv_file(v: &'static Cv) -> Str {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
             file
         }
     }
@@ -2168,7 +2174,7 @@ pub fn cv_file(v: &'static Cv) -> Str {
 pub fn cv_pos(v: &'static Cv) -> i64 {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
             at
         }
     }
@@ -2249,8 +2255,8 @@ pub fn with_binds(v: &'static Cv, more: Binds) -> &'static Cv {
         } else {
             let tagcase_ = v;
             match *tagcase_ {
-                Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
-                    cv(bind_onto(more, bs), ds, r#as, es, here, group, file, line, fs, tv, at)
+                Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+                    cv(bind_onto(more, bs), ds, als, es, here, group, file, line, fs, tv, at)
                 }
             }
         }
@@ -2291,10 +2297,10 @@ pub fn proc_type_p(s: &'static St, t: &'static Ty) -> bool {
 /// loop: `spin`, as FX-26 has it. A global defined before cannot be, since
 /// nothing it reaches is defined after it (KFX defines each name once); a
 /// `letrec` member that may not end can.
-pub fn naming_effs(s: &'static St, name: Str, r#where: Str, t: &'static Ty, group: Strings) -> Strings {
-    if string_eq_p(r#where, str_lit("rec")) {
+pub fn naming_effs(s: &'static St, name: Str, wher: Str, t: &'static Ty, group: Strings) -> Strings {
+    if string_eq_p(wher, str_lit("rec")) {
         kayak_rt::cons(str_lit("spin"), kayak_rt::nil())
-    } else if not(string_eq_p(r#where, str_lit("global"))) {
+    } else if not(string_eq_p(wher, str_lit("global"))) {
         nil()
     } else if (proc_type_p(s, t) && string_member_p(name, group)) {
         kayak_rt::cons(str_lit("spin"), kayak_rt::cons(string_append(str_lit("g:"), name), kayak_rt::nil()))
@@ -2571,8 +2577,8 @@ pub fn nat_op_p(h: Str) -> bool {
 pub fn prim_p(b: &'static Bind) -> bool {
     let tagcase_ = b;
     match *tagcase_ {
-        Bind::Bind(n, sc, r#where) => {
-            string_eq_p(r#where, str_lit("prim"))
+        Bind::Bind(n, sc, wher) => {
+            string_eq_p(wher, str_lit("prim"))
         }
     }
 }
@@ -2674,7 +2680,7 @@ pub fn reaches_p(v: &'static Cv, s: &'static St, body: &'static Sexp, tag: &'sta
             (not(null_p(found)) && {
                 let tagcase_ = car(found);
                 match *tagcase_ {
-                    Bind::Bind(b, sc, r#where) => {
+                    Bind::Bind(b, sc, wher) => {
                         let tagcase_ = sc;
                         match *tagcase_ {
                             Scheme::Scheme(tvars, t) => {
@@ -2696,8 +2702,8 @@ pub fn opened_binds(mut m: Str, mut bs: Binds) -> Binds {
         } else {
             let tagcase_ = car(bs);
             match *tagcase_ {
-                Bind::Bind(n, sc, r#where) => {
-                    if (string_eq_p(r#where, str_lit("export")) && has_prefix_p(n, string_append(m, str_lit(" ")))) {
+                Bind::Bind(n, sc, wher) => {
+                    if (string_eq_p(wher, str_lit("export")) && has_prefix_p(n, string_append(m, str_lit(" ")))) {
                         return cons(bind(after_prefix(n, string_append(m, str_lit(" "))), sc, str_lit("item")), opened_binds(m, cdr(bs)));
                     } else {
                         bs = cdr(bs);

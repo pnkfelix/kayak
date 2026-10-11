@@ -20,10 +20,10 @@ pub fn prelude() -> Str {
 
 // The prelude's (kfx/prelude.fx), at the types it gives them. To FX-26
 // they are globals, the prelude's definitions: calling one reads it.
-pub fn table_binds(v: &'static Cv, table: Str, file: Str, r#where: Str) -> Binds {
+pub fn table_binds(v: &'static Cv, table: Str, file: Str, wher: Str) -> Binds {
     map(lambda1(move |p: &'static Sexp| {
         let xs = items(p);
-        bind(name_of(v, car(xs)), parse_scheme(v, second(xs)), r#where)
+        bind(name_of(v, car(xs)), parse_scheme(v, second(xs)), wher)
     }), read_all(string_chars(table), file, 1i64))
 }
 
@@ -120,13 +120,13 @@ pub fn type_params(v: &'static Cv, form: &'static Sexp) -> Strings {
     }
 }
 
-pub fn declare_types(mut v: &'static Cv, mut forms: Sexps, mut r#as: Aliases) -> Aliases {
+pub fn declare_types(mut v: &'static Cv, mut forms: Sexps, mut als: Aliases) -> Aliases {
     loop {
         if null_p(forms) {
-            return r#as;
+            return als;
         } else if head_is_p(car(forms), str_lit("define-type")) {
             let xs = items(car(forms));
-            (forms, r#as) = (cdr(forms), cons(alias(type_name(v, car(forms)), type_params(v, car(forms)), third(xs)), r#as));
+            (forms, als) = (cdr(forms), cons(alias(type_name(v, car(forms)), type_params(v, car(forms)), third(xs)), als));
             continue;
         } else {
             forms = cdr(forms);
@@ -154,8 +154,8 @@ pub fn datatype_names(mut v: &'static Cv, mut forms: Sexps, mut ds: Dts) -> Dts 
 pub fn with_effdef(v: &'static Cv, xs: Sexps) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
-            cv(bs, ds, r#as, cons(effdef(name_of(v, second(xs)), parse_effect(v, nil(), third(xs))), es), here, group, file, line, fs, tv, at)
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+            cv(bs, ds, als, cons(effdef(name_of(v, second(xs)), parse_effect(v, nil(), third(xs))), es), here, group, file, line, fs, tv, at)
         }
     }
 }
@@ -200,8 +200,8 @@ pub fn declare_datatypes(mut v: &'static Cv, mut forms: Sexps, mut ds: Dts) -> D
 pub fn at(v: &'static Cv, here: Str, group: Strings) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, h, g, file, line, fs, tv, at) => {
-            cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at)
+        Cv::Cv(bs, ds, als, es, h, g, file, line, fs, tv, at) => {
+            cv(bs, ds, als, es, here, group, file, line, fs, tv, at)
         }
     }
 }
@@ -231,8 +231,8 @@ pub fn global(v: &'static Cv, name: Str, sc: &'static Scheme) -> &'static Bind {
         } else {
             let tagcase_ = car(found);
             match *tagcase_ {
-                Bind::Bind(n, sc0, r#where) => {
-                    if string_eq_p(r#where, str_lit("prim")) {
+                Bind::Bind(n, sc0, wher) => {
+                    if string_eq_p(wher, str_lit("prim")) {
                         match refuse(v, string_append(name, str_lit(" is a primitive, which KFX does not define again"))) {}
                     } else {
                         match refuse(v, string_append(name, str_lit(" is defined already: KFX defines each name once"))) {}
@@ -264,7 +264,7 @@ pub fn defined_once(mut v: &'static Cv, mut bs: Binds) -> &'static Cv {
         } else {
             let tagcase_ = car(bs);
             match *tagcase_ {
-                Bind::Bind(n, sc, r#where) => {
+                Bind::Bind(n, sc, wher) => {
                     (v, bs) = (with_binds(v, kayak_rt::cons(global(v, n, sc), kayak_rt::nil())), cdr(bs));
                     continue;
                 }
@@ -281,8 +281,8 @@ pub fn new_state() -> &'static St {
 pub fn with_facts(v: &'static Cv, more: Facts) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
-            cv(bs, ds, r#as, es, here, group, file, line, onto(more, fs), tv, at)
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+            cv(bs, ds, als, es, here, group, file, line, onto(more, fs), tv, at)
         }
     }
 }
@@ -290,7 +290,7 @@ pub fn with_facts(v: &'static Cv, more: Facts) -> &'static Cv {
 pub fn cv_facts(v: &'static Cv) -> Facts {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
             fs
         }
     }
@@ -954,7 +954,7 @@ pub fn module_exports(mut m: Str, mut conversions: Strings, mut bs: Binds) -> Bi
         } else {
             let tagcase_ = car(bs);
             match *tagcase_ {
-                Bind::Bind(n, sc, r#where) => {
+                Bind::Bind(n, sc, wher) => {
                     if string_eq_p(n, str_lit("%module")) {
                         return nil();
                     } else if string_member_p(n, conversions) {
@@ -1140,7 +1140,7 @@ pub fn unhidden_includes(v: &'static Cv, written: Sexps) -> Strings {
 }
 
 /// Module `n`'s types, opened, as module `m`'s: `m t`.
-pub fn renamed_aliases(n: Str, m: Str, r#as: Aliases) -> Aliases {
+pub fn renamed_aliases(n: Str, m: Str, als: Aliases) -> Aliases {
     map(lambda1(move |a: &'static Alias| {
         let tagcase_ = a;
         match *tagcase_ {
@@ -1148,11 +1148,11 @@ pub fn renamed_aliases(n: Str, m: Str, r#as: Aliases) -> Aliases {
                 alias(string_append(m, string_append(str_lit(" "), t)), ps, body)
             }
         }
-    }), r#as)
+    }), als)
 }
 
 /// A module's exported types, those hidden dropped.
-pub fn without_aliases(hidden: Strings, m: Str, r#as: Aliases) -> Aliases {
+pub fn without_aliases(hidden: Strings, m: Str, als: Aliases) -> Aliases {
     concat(map(lambda1(move |a: &'static Alias| {
         let tagcase_ = a;
         match *tagcase_ {
@@ -1164,7 +1164,7 @@ pub fn without_aliases(hidden: Strings, m: Str, r#as: Aliases) -> Aliases {
                 }
             }
         }
-    }), r#as))
+    }), als))
 }
 
 pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
@@ -1174,7 +1174,7 @@ pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
     let made = {
         let tagcase_ = global(v, m, scheme(nil(), ty_unit()));
         match *tagcase_ {
-            Bind::Bind(n, sc, r#where) => {
+            Bind::Bind(n, sc, wher) => {
                 bind(n, sc, str_lit("module"))
             }
         }
@@ -1226,12 +1226,12 @@ pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
     let typed = {
         let tagcase_ = v;
         match *tagcase_ {
-            Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
+            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
                 cv(bind_onto(concat(map(lambda1(move |n: Str| {
                     opened_binds(n, bs)
                 }), includes)), cons(bind(str_lit("%module"), scheme(nil(), ty_unit()), m), bs)), onto(module_dts(m, forms), ds), onto(module_aliases(m, names, forms, true), onto(concat(map(lambda1(move |n: Str| {
-                    opened_aliases(n, r#as)
-                }), includes)), r#as)), es, here, group, file, line, fs, tv, at)
+                    opened_aliases(n, als)
+                }), includes)), als)), es, here, group, file, line, fs, tv, at)
             }
         }
     };
@@ -1239,8 +1239,8 @@ pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
     let typed = {
         let tagcase_ = typed;
         match *tagcase_ {
-            Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
-                cv(bs, onto(datatypes, ds), r#as, es, here, group, file, line, fs, tv, at)
+            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+                cv(bs, onto(datatypes, ds), als, es, here, group, file, line, fs, tv, at)
             }
         }
     };
@@ -1251,7 +1251,7 @@ pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
         Elab::Elab(done, found) => {
             let tagcase_ = done;
             match *tagcase_ {
-                Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
+                Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
                     elab(cv(cons(made, bind_onto(module_exports(m, onto(hidden, map(lambda1(move |b: &'static Bind| {
                         let tagcase_ = b;
                         match *tagcase_ {
@@ -1353,16 +1353,16 @@ pub fn check_program(forms: Sexps) -> &'static Verdict {
     let named = {
         let tagcase_ = start;
         match *tagcase_ {
-            Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
-                cv(bs, datatype_names(start, forms, nil()), r#as, es, here, group, file, line, fs, tv, at)
+            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+                cv(bs, datatype_names(start, forms, nil()), als, es, here, group, file, line, fs, tv, at)
             }
         }
     };
     let typed = {
         let tagcase_ = named;
         match *tagcase_ {
-            Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
-                cv(bs, declare_datatypes(named, forms, nil()), r#as, es, here, group, file, line, fs, tv, at)
+            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+                cv(bs, declare_datatypes(named, forms, nil()), als, es, here, group, file, line, fs, tv, at)
             }
         }
     };

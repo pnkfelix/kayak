@@ -211,8 +211,8 @@ pub fn std_op(c: &'static Wc, e: &'static Sexp) -> Str {
                         if (not(null_p(found)) && {
                             let tagcase_ = car(found);
                             match *tagcase_ {
-                                Bind::Bind(x, t, r#where) => {
-                                    string_eq_p(r#where, str_lit("prim"))
+                                Bind::Bind(x, t, wher) => {
+                                    string_eq_p(wher, str_lit("prim"))
                                 }
                             }
                         }) {

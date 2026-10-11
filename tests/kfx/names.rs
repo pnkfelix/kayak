@@ -2,7 +2,8 @@
 
 use kayak_rt::*;
 
-// Names: the mangling, Rust's keywords, and names made of operators.
+// Names: the mangling, and names made of operators. (A Rust keyword is no
+// KFX name: tests/kfx-stricter/rust-keyword.kfx.)
 
 pub fn empty_string_p(s: Str) -> bool {
     i64_eq(string_length_i64(s), 0i64)
@@ -25,11 +26,11 @@ pub fn bump_x(n: i64) -> i64 {
 }
 
 pub fn main() -> Str {
-    let r#type = the::<i64>(1i64);
-    let r#match = bump_x(r#type);
-    let r#fn = i64_star(r#match, 10i64);
-    let r#loop = str_lit("x");
-    _lt_plus_gt(i64_to_string(r#fn), _lt_plus_gt(i64_to_yes(r#type), _lt_plus_gt(r#loop, if empty_string_p(str_lit("")) {
+    let one = the::<i64>(1i64);
+    let two_x = bump_x(one);
+    let tw_starn = i64_star(two_x, 10i64);
+    let x_p = str_lit("x");
+    _lt_plus_gt(i64_to_string(tw_starn), _lt_plus_gt(i64_to_yes(one), _lt_plus_gt(x_p, if empty_string_p(str_lit("")) {
         str_lit("empty")
     } else {
         str_lit("full")

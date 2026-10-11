@@ -331,13 +331,13 @@ pub fn unpoly(e: &'static Sexp) -> &'static Sexp {
 /// A definition, a `fn`: a procedure's of its parameters; a constant's of
 /// none, run at each use, or, if it allocates, made at its first use and
 /// kept (C21).
-pub fn put_define(c: &'static Ctx, name: &'static Sexp, r#type: &'static Sexp, defined: &'static Sexp, acc: Chars) -> Chars {
-    let binders = if head_is_p(r#type, str_lit("poly")) {
-        items(second(items(r#type)))
+pub fn put_define(c: &'static Ctx, name: &'static Sexp, typ: &'static Sexp, defined: &'static Sexp, acc: Chars) -> Chars {
+    let binders = if head_is_p(typ, str_lit("poly")) {
+        items(second(items(typ)))
     } else {
         nil()
     };
-    let r#type = unpoly(r#type);
+    let typ = unpoly(typ);
     let defined = unpoly(defined);
     let lambda_p = head_is_p(defined, str_lit("lambda"));
     let body = if lambda_p {
@@ -356,9 +356,9 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, r#type: &'static Sexp, d
     } else {
         body
     };
-    let fallible = (lambda_p && fallible_effect_p(c, second(items(r#type))));
+    let fallible = (lambda_p && fallible_effect_p(c, second(items(typ))));
     let mparams = if lambda_p {
-        module_params(c, items(second(items(defined))), items(third(items(r#type))))
+        module_params(c, items(second(items(defined))), items(third(items(typ))))
     } else {
         nil()
     };
@@ -394,15 +394,15 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, r#type: &'static Sexp, d
     };
     let acc = if lambda_p {
         let acc = put(str_lit("("), acc);
-        let acc = put_params(c, unmoduled(c, items(second(items(defined))), items(third(items(r#type))), true), unmoduled(c, items(second(items(defined))), items(third(items(r#type))), false), loops_p, acc);
+        let acc = put_params(c, unmoduled(c, items(second(items(defined))), items(third(items(typ))), true), unmoduled(c, items(second(items(defined))), items(third(items(typ))), false), loops_p, acc);
         let acc = put(str_lit(") -> "), acc);
         if fallible {
-            put(str_lit(", Unwind>"), put_type(c, fourth(items(r#type)), put(str_lit("Result<"), acc)))
+            put(str_lit(", Unwind>"), put_type(c, fourth(items(typ)), put(str_lit("Result<"), acc)))
         } else {
-            put_type(c, fourth(items(r#type)), acc)
+            put_type(c, fourth(items(typ)), acc)
         }
     } else {
-        put_type(c, r#type, put(str_lit("() -> "), acc))
+        put_type(c, typ, put(str_lit("() -> "), acc))
     };
     let acc = put(str_lit(" {"), acc);
     if loops_p {
@@ -413,7 +413,7 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, r#type: &'static Sexp, d
         if (not(lambda_p) && fact_at_p(c, defined, str_lit("once"))) {
             let acc = put_nl(1i64, acc);
             let acc = put(str_lit("thread_local!(static ONCE: OnceCell<"), acc);
-            let acc = put_type(c, r#type, acc);
+            let acc = put_type(c, typ, acc);
             let acc = put(str_lit("> = const { OnceCell::new() });"), acc);
             let acc = put_nl(1i64, acc);
             let acc = put(str_lit("once(&ONCE, || {"), acc);

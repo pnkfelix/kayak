@@ -885,3 +885,11 @@ one, `match f(...) {}`; an `error` for an inference variable,
 compile do now, but for a poly call whose type nothing fixes (`(mk)`,
 which wants `mk::<T>()`) and a global procedure shown at the top level,
 both for after every datum has a place.
+
+## No Rust keywords (2026-10-11)
+
+The user's: a Rust keyword (and `self`, `super`, `crate`, `union`, `raw`,
+`safe`, `macro-rules`, a type variable camel-cased `Self`) is no KFX name,
+wherever bound (C27's addendum). The compiler's own `as`, `where` and
+`type` are `als`, `wher`, `typ`; `tests/kfx/names` names no keyword, and
+`kfx-stricter/rust-keyword` and `self-name` show the refusal.

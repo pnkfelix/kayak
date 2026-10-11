@@ -1234,11 +1234,11 @@ pub fn map2_params(params: Sexps, types: Sexps) -> Sexps {
 /// A letrec's lambda, its parameters given the types its binding's says,
 /// so that Rust need not infer a closure's from its uses: it cannot, where
 /// the first is a `match` (a lambda's place kept, for its facts).
-pub fn typed_lambda(lam: &'static Sexp, r#type: &'static Sexp) -> &'static Sexp {
+pub fn typed_lambda(lam: &'static Sexp, typ: &'static Sexp) -> &'static Sexp {
     let tagcase_ = lam;
     match *tagcase_ {
         Sexp::Lst(xs, file, line, pos) => {
-            lst(cons(car(xs), cons(lst(map2_params(items(second(xs)), items(third(items(r#type)))), str_lit(""), 0i64, 0i64), cdr(cdr(xs)))), file, line, pos)
+            lst(cons(car(xs), cons(lst(map2_params(items(second(xs)), items(third(items(typ)))), str_lit(""), 0i64, 0i64), cdr(cdr(xs)))), file, line, pos)
         }
         _ => {
             let other = tagcase_;
