@@ -11,11 +11,11 @@ pub type Strings = List<Str>;
 
 pub fn words(xs: Strings) -> Str {
     if null_p(xs) {
-        ""
+        str_lit("")
     } else if null_p(cdr(xs)) {
         car(xs)
     } else {
-        string_append(car(xs), string_append(" ", words(cdr(xs))))
+        string_append(car(xs), string_append(str_lit(" "), words(cdr(xs))))
     }
 }
 
@@ -47,7 +47,7 @@ pub fn show(a: FlatArray<i64>, i: i64) -> Str {
     if i64_lt(i, flatarray_length_i64(a)) {
         string_append(i64_to_string(flatarray_ref_i64(a, i)), show(a, i64_plus(i, 1i64)))
     } else {
-        ""
+        str_lit("")
     }
 }
 
@@ -114,7 +114,7 @@ pub fn main() -> Str {
     let b = make_flatarray_i64(8i64, -1i64);
     let cell = new(40i64);
     let alias = cell;
-    let k = counter("k", cell);
+    let k = counter(str_lit("k"), cell);
     let step = lambda0(move || {
         bump_x(k)
     });

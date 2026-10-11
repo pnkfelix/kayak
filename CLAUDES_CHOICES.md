@@ -136,3 +136,19 @@ The user approved strings as comments.
 - **Why:** masking is a rule the checker would have to get exactly right
   to keep K1; refusing is safe. With places (TODO §14), a `letregion`
   says the region, and masking comes with it.
+
+## C14. Strings of characters, which know if they are ASCII (2026-10-11)
+
+Supersedes C4.
+- **Chosen:** `Str` is a `&'static str` and a flag, whether it is ASCII,
+  found when the string is made (`str_lit`, a `const fn`, for a literal).
+  `string-length-i64` and `string-ref-i64` count characters, as FX-26
+  does: at once for an ASCII string, by walking one that is not.
+- **Not chosen:** ASCII only (C4), which crashed on 70 of Fixpt's
+  programs, and gave a different answer from FX-26 for a string that is
+  not ASCII; strings of `char`s (`&'static [char]`), O(1) always but a
+  copy at every literal, and a conversion at every boundary with Rust.
+- **Why:** FX-26's strings are of characters. The flag keeps the common
+  case, ASCII, as fast as before; the reader takes its source with
+  `string->list`, in one pass, so a source that is not ASCII is read in
+  linear time too.

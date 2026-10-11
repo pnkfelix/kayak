@@ -75,7 +75,7 @@ pub fn skipped(f0: Chars, f1: i64) -> &'static Skipped {
 }
 
 pub fn read_error(file: Str, line: i64, message: Str) -> ! {
-    error(string_append("kfx: ", string_append(file, string_append(":", string_append(i64_to_string(line), string_append(": ", message))))))
+    error(string_append(str_lit("kfx: "), string_append(file, string_append(str_lit(":"), string_append(i64_to_string(line), string_append(str_lit(": "), message))))))
 }
 
 /// A comment's text, to the newline that ends it, which is left.
@@ -146,7 +146,7 @@ pub fn unescape(c: char) -> char {
 pub fn string_body(mut cs: Chars, mut acc: Chars, mut file: Str, mut start: i64, mut line: i64) -> &'static Got {
     loop {
         if null_p(cs) {
-            return read_error(file, start, "a string is not closed");
+            return read_error(file, start, str_lit("a string is not closed"));
         } else if char_eq_p(car(cs), '"') {
             return got(str(rev_to_string(acc)), cdr(cs), line);
         } else if char_eq_p(car(cs), '\\') {
@@ -172,7 +172,7 @@ pub fn digits_value(mut cs: Chars, mut n: i64, mut file: Str, mut line: i64) -> 
         } else {
             let d = i64_minus(char_to_i64(car(cs)), 48i64);
             if (i64_lt(n, -922337203685477580i64) || (i64_eq(n, -922337203685477580i64) && i64_gt(d, 8i64))) {
-                return read_error(file, line, "a literal past an i64");
+                return read_error(file, line, str_lit("a literal past an i64"));
             } else {
                 (cs, n) = (cdr(cs), i64_minus(i64_star(n, 10i64), d));
                 continue;
@@ -194,7 +194,7 @@ pub fn token_atom(s: Str, file: Str, line: i64) -> &'static Sexp {
     } else {
         let negated = digits_value(cs, 0i64, file, line);
         if i64_eq(negated, -9223372036854775808i64) {
-            read_error(file, line, "a literal past an i64")
+            read_error(file, line, str_lit("a literal past an i64"))
         } else {
             num(i64_minus(0i64, negated))
         }
@@ -204,14 +204,14 @@ pub fn token_atom(s: Str, file: Str, line: i64) -> &'static Sexp {
 pub fn char_named(s: Str, file: Str, line: i64) -> char {
     if i64_eq(string_length_i64(s), 1i64) {
         string_ref_i64(s, 0i64)
-    } else if string_eq_p(s, "space") {
+    } else if string_eq_p(s, str_lit("space")) {
         ' '
-    } else if string_eq_p(s, "newline") {
+    } else if string_eq_p(s, str_lit("newline")) {
         '\n'
-    } else if string_eq_p(s, "tab") {
+    } else if string_eq_p(s, str_lit("tab")) {
         '\t'
     } else {
-        read_error(file, line, string_append("no character is named ", s))
+        read_error(file, line, string_append(str_lit("no character is named "), s))
     }
 }
 
@@ -226,7 +226,7 @@ pub fn read_datum(cs: Chars, file: Str, line: i64) -> &'static Got {
             }
         }
     } else if char_eq_p(c, ')') {
-        read_error(file, line, "a ) with no (")
+        read_error(file, line, str_lit("a ) with no ("))
     } else if char_eq_p(c, '"') {
         string_body(cdr(cs), nil(), file, line, line)
     } else if (char_eq_p(c, '#') && not(null_p(cdr(cs))) && char_eq_p(car(cdr(cs)), '\\')) {
@@ -252,7 +252,7 @@ pub fn read_items(cs: Chars, file: Str, line: i64) -> &'static Gots {
     match *tagcase_ {
         Skipped::Skipped(cs, line) => {
             if null_p(cs) {
-                read_error(file, line, "a ( with no )")
+                read_error(file, line, str_lit("a ( with no )"))
             } else if char_eq_p(car(cs), ')') {
                 gots(nil(), cdr(cs), line)
             } else {
@@ -300,7 +300,7 @@ pub fn sym_name(e: &'static Sexp) -> Str {
         }
         _ => {
             let other = tagcase_;
-            error("kfx: a name is expected")
+            error(str_lit("kfx: a name is expected"))
         }
     }
 }
@@ -326,7 +326,7 @@ pub fn items(e: &'static Sexp) -> Sexps {
         }
         _ => {
             let other = tagcase_;
-            error("kfx: a list is expected")
+            error(str_lit("kfx: a list is expected"))
         }
     }
 }
@@ -373,6 +373,6 @@ pub fn param_name(param: &'static Sexp) -> Str {
 }
 
 pub fn procedure_p(e: &'static Sexp) -> bool {
-    (head_is_p(e, "lambda") || head_is_p(e, "plambda"))
+    (head_is_p(e, str_lit("lambda")) || head_is_p(e, str_lit("plambda")))
 }
 

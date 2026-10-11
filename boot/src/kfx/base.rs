@@ -91,16 +91,10 @@ pub fn rev_to_string(acc: Chars) -> Str {
     list_to_string(rev_onto(acc, nil()))
 }
 
-pub fn string_chars_from(s: Str, i: i64, n: i64) -> Chars {
-    if i64_lt(i, n) {
-        cons(string_ref_i64(s, i), string_chars_from(s, i64_plus(i, 1i64), n))
-    } else {
-        nil()
-    }
-}
-
+/// A string's characters, in one pass: indexing a string that is not
+/// ASCII counts characters from its start (CLAUDES_CHOICES.md, C14).
 pub fn string_chars(s: Str) -> Chars {
-    string_chars_from(s, 0i64, string_length_i64(s))
+    string_to_list(s)
 }
 
 pub fn put_from(mut s: Str, mut i: i64, mut n: i64, mut acc: Chars) -> Chars {

@@ -378,3 +378,14 @@ now refuses such a source, naming its line. Also: a name expected where
 there is none, and a type with parameters, are refused with a place;
 FX-26's forms that KFX lacks (`define*`, `proj`, `module`, …) are named as
 such, not as calls of keywords.
+
+## Strings of characters (2026-10-11)
+
+C14. In three steps through the bootstrap: the emitter wrote literals as
+`str_lit("…")`, and the reader took its source with FX-26's `string->list`
+(a primitive the checker had to know before the compiler could use it:
+the first try failed at generation 1, as it should); then `Str` became a
+struct that knows whether it is ASCII; then the driver's ASCII guard went,
+and the tidy test with it. `tests/kfx/unicode.kfx` takes lengths, indices
+and `char->i64` of strings that are not ASCII, with Rust's answers
+Fixpt's.

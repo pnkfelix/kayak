@@ -1,0 +1,35 @@
+"Strings of characters, not bytes — as FX-26 has them. This comment, and
+ the strings below, are not ASCII; their lengths and indices count
+ characters (CLAUDES_CHOICES.md, C14)."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-type strings (listof string acyclic))
+(define-type chars (listof char acyclic))
+
+(define words (subr kfx (strings) string)
+  (lambda (xs)
+    (cond ((null? xs) "")
+          ((null? (cdr xs)) (car xs))
+          (else (string-append (car xs) (string-append " " (words (cdr xs))))))))
+
+(define count-chars (subr kfx (chars i64) i64)
+  (lambda (cs n) (if (null? cs) n (count-chars (cdr cs) (i64+ n 1)))))
+
+(define reversed (subr kfx (chars chars) chars)
+  (lambda (cs acc) (if (null? cs) acc (reversed (cdr cs) (cons (car cs) acc)))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (let ((s "héllo, wörld — ∑"))
+      (words
+       (list s
+             (i64->string (string-length-i64 s))
+             (char->string (string-ref-i64 s 1))
+             (char->string (string-ref-i64 s 15))
+             (i64->string (char->i64 (string-ref-i64 s 1)))
+             (i64->string (count-chars (string->list s) 0))
+             (list->string (reversed (string->list "äbç") nil))
+             (char->string #\λ)
+             (if (char=? (string-ref-i64 "αβγ" 2) #\γ) "γ" "not γ")
+             (if (string=? (string-append "ü" "ber") "über") "same" "differ"))))))

@@ -35,13 +35,13 @@ pub fn depth(n: i64) -> i64 {
 
 pub fn main() -> Str {
     string_append(if even_p(1000i64) {
-        "even"
+        str_lit("even")
     } else {
-        "odd"
-    }, string_append(" ", string_append(if odd_p(7i64) {
-        "odd"
+        str_lit("odd")
+    }, string_append(str_lit(" "), string_append(if odd_p(7i64) {
+        str_lit("odd")
     } else {
-        "even"
-    }, string_append(" ", i64_to_string(depth(limit()))))))
+        str_lit("even")
+    }, string_append(str_lit(" "), i64_to_string(depth(limit()))))))
 }
 

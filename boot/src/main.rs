@@ -17,17 +17,6 @@ fn read(path: &Path) -> Str {
         eprintln!("kfx: cannot read {}: {e}", path.display());
         std::process::exit(1);
     });
-    // KFX's strings are ASCII, a byte a character (CLAUDES_CHOICES.md, C4),
-    // and so is its source: said here, where the line can be, rather than
-    // where the reader meets the byte.
-    if let Some(n) = text.lines().position(|l| !l.is_ascii()) {
-        eprintln!(
-            "kfx: {}:{}: not ASCII: KFX's sources are",
-            path.display(),
-            n + 1
-        );
-        std::process::exit(1);
-    }
     leak_string(text)
 }
 
@@ -36,7 +25,7 @@ fn read(path: &Path) -> Str {
 fn sources(manifest: &Path) -> List<&'static kfx::Source> {
     let dir = manifest.parent().unwrap_or(Path::new("."));
     let mut files: Vec<&'static kfx::Source> = Vec::new();
-    for line in read(manifest).lines() {
+    for line in read(manifest).as_str().lines() {
         let line = line.trim();
         if line.is_empty() || line.starts_with(';') {
             continue;
@@ -71,8 +60,8 @@ fn main() {
             });
             while let Some(c) = outputs {
                 let kfx::Output::Output(name, text) = *c.car;
-                let path = Path::new(dir).join(name);
-                std::fs::write(&path, text).unwrap_or_else(|e| {
+                let path = Path::new(dir).join(name.as_str());
+                std::fs::write(&path, text.as_str()).unwrap_or_else(|e| {
                     eprintln!("kfx: cannot write {}: {e}", path.display());
                     std::process::exit(1);
                 });

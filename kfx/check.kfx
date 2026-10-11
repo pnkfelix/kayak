@@ -925,6 +925,7 @@
    (char-upcase (subr pure (char) char)) (char->string (subr pure (char) string))
    (string-append (subr pure (string string) string)) (string=? (subr pure (string string) bool))
    (list->string (subr pure ((listof char acyclic)) string))
+   (string->list (subr pure (string) (listof char acyclic)))
    (error (subr pure (string) void))
    (new (poly ((r region) (t type)) (subr (alloc r) (t) (ref t r))))
    (get (poly ((r region) (t type)) (subr (read r) ((ref t r)) t)))

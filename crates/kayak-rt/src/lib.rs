@@ -5,12 +5,36 @@
 //! mangling of its FX-26 name: `string->list` is `string_to_list`, `char=?`
 //! is `char_eq_p`, `i64+` is `i64_plus`.
 //!
-//! Strings are ASCII, so that `string-ref` is an index; a byte past ASCII
-//! is an error where it is read.
+//! Strings are of characters, as FX-26's are: a `Str` knows whether it is
+//! ASCII, so that indexing one that is costs nothing, and indexing one that
+//! is not counts characters (`CLAUDES_CHOICES.md`, C14).
 
 use std::cell::Cell;
 
-pub type Str = &'static str;
+/// `string`: text, and whether it is ASCII, found when the string is made.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct Str {
+    text: &'static str,
+    ascii: bool,
+}
+
+impl Str {
+    pub fn as_str(self) -> &'static str {
+        self.text
+    }
+}
+
+impl std::fmt::Display for Str {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.text)
+    }
+}
+
+impl std::fmt::Debug for Str {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self.text)
+    }
+}
 
 /// `(ref T R)`: a cell, which any alias may read and write, as FX-26's may.
 pub type Ref<T> = &'static Cell<T>;
@@ -32,11 +56,20 @@ pub fn alloc<T>(v: T) -> &'static T {
 }
 
 pub fn leak_string(s: String) -> Str {
-    Box::leak(s.into_boxed_str())
+    let ascii = s.is_ascii();
+    Str {
+        text: Box::leak(s.into_boxed_str()),
+        ascii,
+    }
 }
 
 /// FX-26's `error`: a run-time error, which ends the run.
 pub fn error(message: Str) -> ! {
+    panic!("{}", message.text)
+}
+
+/// A run-time error of the runtime's own, as `error` is a program's.
+fn fail(message: &str) -> ! {
     panic!("{message}")
 }
 
@@ -79,14 +112,14 @@ pub fn cons<T>(car: T, cdr: List<T>) -> List<T> {
 pub fn car<T: Copy>(xs: List<T>) -> T {
     match xs {
         Some(p) => p.car,
-        None => error("car: nil"),
+        None => fail("car: nil"),
     }
 }
 
 pub fn cdr<T>(xs: List<T>) -> List<T> {
     match xs {
         Some(p) => p.cdr,
-        None => error("cdr: nil"),
+        None => fail("cdr: nil"),
     }
 }
 
@@ -118,7 +151,7 @@ pub fn i64_star(a: i64, b: i64) -> i64 {
 
 pub fn i64_quotient(a: i64, b: i64) -> i64 {
     if b == 0 {
-        error("i64-quotient: division by zero")
+        fail("i64-quotient: division by zero")
     } else {
         a.wrapping_div(b)
     }
@@ -126,7 +159,7 @@ pub fn i64_quotient(a: i64, b: i64) -> i64 {
 
 pub fn i64_remainder(a: i64, b: i64) -> i64 {
     if b == 0 {
-        error("i64-remainder: division by zero")
+        fail("i64-remainder: division by zero")
     } else {
         a.wrapping_rem(b)
     }
@@ -170,16 +203,25 @@ pub fn i64_gt_eq(a: i64, b: i64) -> bool {
 
 // The prelude (`kfx/prelude.fx`): FX-26's `int` primitives, at `i64`.
 
+/// Characters, as FX-26 counts: bytes, if the string is ASCII.
 pub fn string_length_i64(s: Str) -> i64 {
-    s.len() as i64
+    if s.ascii {
+        s.text.len() as i64
+    } else {
+        s.text.chars().count() as i64
+    }
 }
 
+/// The `i`th character: at once if the string is ASCII, else counted to.
 pub fn string_ref_i64(s: Str, i: i64) -> char {
-    match usize::try_from(i).ok().and_then(|i| s.as_bytes().get(i)) {
-        Some(&b) if b.is_ascii() => b as char,
-        Some(_) => error("string-ref: not ASCII"),
-        None => error("string-ref: out of range"),
-    }
+    let found = usize::try_from(i).ok().and_then(|i| {
+        if s.ascii {
+            s.text.as_bytes().get(i).map(|&b| b as char)
+        } else {
+            s.text.chars().nth(i)
+        }
+    });
+    found.unwrap_or_else(|| fail("string-ref: out of range"))
 }
 
 pub fn char_to_i64(c: char) -> i64 {
@@ -213,14 +255,14 @@ pub fn make_flatarray_i64(n: i64, v: i64) -> FlatArray<i64> {
                 .collect::<Vec<_>>()
                 .into_boxed_slice(),
         ),
-        Err(_) => error("make-flatarray: a negative length"),
+        Err(_) => fail("make-flatarray: a negative length"),
     }
 }
 
 fn element<T>(a: &'static [Cell<T>], i: i64) -> &'static Cell<T> {
     match usize::try_from(i).ok().and_then(|i| a.get(i)) {
         Some(c) => c,
-        None => error("flatarray: index out of range"),
+        None => fail("flatarray: index out of range"),
     }
 }
 
@@ -270,6 +312,18 @@ pub fn string_eq_p(a: Str, b: Str) -> bool {
 
 pub fn string_append(a: Str, b: Str) -> Str {
     leak_string(format!("{a}{b}"))
+}
+
+/// A string literal: `const`, so that a literal in a loop costs nothing.
+pub const fn str_lit(text: &'static str) -> Str {
+    Str {
+        text,
+        ascii: text.is_ascii(),
+    }
+}
+
+pub fn string_to_list(s: Str) -> List<char> {
+    s.text.chars().rev().fold(nil(), |rest, c| cons(c, rest))
 }
 
 pub fn list_to_string(mut cs: List<char>) -> Str {

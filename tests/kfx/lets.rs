@@ -5,7 +5,7 @@ use kayak_rt::*;
 // let binds in parallel, let* in sequence; begin and bodies sequence.
 
 pub fn show2(a: i64, b: i64) -> Str {
-    string_append(i64_to_string(a), string_append(",", i64_to_string(b)))
+    string_append(i64_to_string(a), string_append(str_lit(","), i64_to_string(b)))
 }
 
 pub fn swapped(a: i64, b: i64) -> Str {
@@ -31,6 +31,6 @@ pub fn shadowed(x: i64) -> i64 {
 
 pub fn main() -> Str {
     // A comment, then the value.
-    string_append(swapped(1i64, 2i64), string_append(" ", string_append(stepped(1i64), string_append(" ", i64_to_string(shadowed(3i64))))))
+    string_append(swapped(1i64, 2i64), string_append(str_lit(" "), string_append(stepped(1i64), string_append(str_lit(" "), i64_to_string(shadowed(3i64))))))
 }
 

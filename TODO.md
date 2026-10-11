@@ -112,8 +112,6 @@ Flat arrays of `i64` and references are done (`DONE.md` §15). Left:
 
 ## 17. Small things noticed
 
-- **Strings are ASCII.** `string-ref-i64` is a byte index, and a byte past
-  ASCII is an error where it is read.
 - **`tagcase_`**, the name a `tagcase` binds, could be a KFX name's
   mangling (`tagcase-`).
 - **`(define x e)` with no type** is refused; FX-26 allows it.

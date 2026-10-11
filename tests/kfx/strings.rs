@@ -8,39 +8,39 @@ pub type Strings = List<Str>;
 
 pub fn words(xs: Strings) -> Str {
     if null_p(xs) {
-        ""
+        str_lit("")
     } else if null_p(cdr(xs)) {
         car(xs)
     } else {
-        string_append(car(xs), string_append(" ", words(cdr(xs))))
+        string_append(car(xs), string_append(str_lit(" "), words(cdr(xs))))
     }
 }
 
 pub fn bracket(c: char) -> Str {
-    string_append("[", string_append(char_to_string(c), "]"))
+    string_append(str_lit("["), string_append(char_to_string(c), str_lit("]")))
 }
 
 pub fn main() -> Str {
-    words(cons("tab\there \"quoted\" back\\slash\n", cons(bracket('"'), cons(bracket('\\'), cons(bracket('\''), cons(bracket(' '), cons(bracket('('), cons(bracket(';'), cons(bracket('\t'), cons(bracket(char_upcase('q')), cons(if string_eq_p("abc", "abc") {
-        "same"
+    words(cons(str_lit("tab\there \"quoted\" back\\slash\n"), cons(bracket('"'), cons(bracket('\\'), cons(bracket('\''), cons(bracket(' '), cons(bracket('('), cons(bracket(';'), cons(bracket('\t'), cons(bracket(char_upcase('q')), cons(if string_eq_p(str_lit("abc"), str_lit("abc")) {
+        str_lit("same")
     } else {
-        "differ"
-    }, cons(if char_eq_p(string_ref_i64("xyz", 1i64), 'y') {
-        "y"
+        str_lit("differ")
+    }, cons(if char_eq_p(string_ref_i64(str_lit("xyz"), 1i64), 'y') {
+        str_lit("y")
     } else {
-        "not-y"
-    }, cons(i64_to_string(string_length_i64("hello")), cons(i64_to_string(char_to_i64('A')), cons(if char_whitespace_p('\t') {
-        "ws"
+        str_lit("not-y")
+    }, cons(i64_to_string(string_length_i64(str_lit("hello"))), cons(i64_to_string(char_to_i64('A')), cons(if char_whitespace_p('\t') {
+        str_lit("ws")
     } else {
-        "not-ws"
+        str_lit("not-ws")
     }, cons(if char_numeric_p('7') {
-        "digit"
+        str_lit("digit")
     } else {
-        "not-digit"
+        str_lit("not-digit")
     }, cons(if char_alphabetic_p('7') {
-        "alpha"
+        str_lit("alpha")
     } else {
-        "not-alpha"
+        str_lit("not-alpha")
     }, nil())))))))))))))))))
 }
 

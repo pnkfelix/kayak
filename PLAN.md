@@ -99,7 +99,7 @@ is no `Drop`, no `Rc` and no `.clone()`.
 | `i64`; `i64+`, `i64-`, `i64*`, `i64<`, `i64=`, …       | `i64`; `wrapping_add`, `wrapping_sub`, …, `<`, `==`, …      |
 | `int`                                                 | **refused**: its `+` makes a bignum, which Rust's does not  |
 | `bool`, `char`, `unit`                                | `bool`, `char`, `()`                                        |
-| `string`                                              | `Str` = `&'static str`; ASCII only, so `string-ref` is O(1) |
+| `string`, a literal `"…"`                             | `Str`, a `&'static str` that knows if it is ASCII; `str_lit("…")` |
 | `(listof T acyclic)`                                  | `List<T>` = `Option<&'static Cons<T>>`                      |
 | a `define-datatype` name `t`                          | `&'static T`, `enum T` holding its variants                 |
 | `(define f (subr kfx (T…) T) (lambda (x…) body))`     | `fn f(x: T, …) -> T { body }`                               |

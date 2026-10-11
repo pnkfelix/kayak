@@ -7,40 +7,40 @@ use super::*;
 
 // Names
 pub fn rust_keyword_p(s: Str) -> bool {
-    string_member_p(s, cons("as", cons("async", cons("await", cons("box", cons("break", cons("const", cons("continue", cons("do", cons("dyn", cons("else", cons("enum", cons("extern", cons("false", cons("final", cons("fn", cons("for", cons("gen", cons("if", cons("impl", cons("in", cons("let", cons("loop", cons("macro", cons("match", cons("mod", cons("move", cons("mut", cons("override", cons("priv", cons("pub", cons("ref", cons("return", cons("static", cons("struct", cons("trait", cons("true", cons("try", cons("type", cons("typeof", cons("unsafe", cons("unsized", cons("use", cons("virtual", cons("where", cons("while", cons("yield", nil())))))))))))))))))))))))))))))))))))))))))))))))
+    string_member_p(s, cons(str_lit("as"), cons(str_lit("async"), cons(str_lit("await"), cons(str_lit("box"), cons(str_lit("break"), cons(str_lit("const"), cons(str_lit("continue"), cons(str_lit("do"), cons(str_lit("dyn"), cons(str_lit("else"), cons(str_lit("enum"), cons(str_lit("extern"), cons(str_lit("false"), cons(str_lit("final"), cons(str_lit("fn"), cons(str_lit("for"), cons(str_lit("gen"), cons(str_lit("if"), cons(str_lit("impl"), cons(str_lit("in"), cons(str_lit("let"), cons(str_lit("loop"), cons(str_lit("macro"), cons(str_lit("match"), cons(str_lit("mod"), cons(str_lit("move"), cons(str_lit("mut"), cons(str_lit("override"), cons(str_lit("priv"), cons(str_lit("pub"), cons(str_lit("ref"), cons(str_lit("return"), cons(str_lit("static"), cons(str_lit("struct"), cons(str_lit("trait"), cons(str_lit("true"), cons(str_lit("try"), cons(str_lit("type"), cons(str_lit("typeof"), cons(str_lit("unsafe"), cons(str_lit("unsized"), cons(str_lit("use"), cons(str_lit("virtual"), cons(str_lit("where"), cons(str_lit("while"), cons(str_lit("yield"), nil())))))))))))))))))))))))))))))))))))))))))))))))
 }
 
 pub fn mangle_char(c: char) -> Str {
     match c {
         '-' => {
-            "_"
+            str_lit("_")
         }
         '?' => {
-            "_p"
+            str_lit("_p")
         }
         '!' => {
-            "_x"
+            str_lit("_x")
         }
         '+' => {
-            "_plus"
+            str_lit("_plus")
         }
         '*' => {
-            "_star"
+            str_lit("_star")
         }
         '/' => {
-            "_slash"
+            str_lit("_slash")
         }
         '<' => {
-            "_lt"
+            str_lit("_lt")
         }
         '>' => {
-            "_gt"
+            str_lit("_gt")
         }
         '=' => {
-            "_eq"
+            str_lit("_eq")
         }
         '%' => {
-            "_pct"
+            str_lit("_pct")
         }
         _ => {
             char_to_string(c)
@@ -53,10 +53,10 @@ pub fn mangle_chars(mut cs: Chars, mut acc: Chars) -> Chars {
         if null_p(cs) {
             return acc;
         } else if (char_eq_p(car(cs), '-') && not(null_p(cdr(cs))) && char_eq_p(car(cdr(cs)), '>')) {
-            (cs, acc) = (cdr(cdr(cs)), put("_to_", acc));
+            (cs, acc) = (cdr(cdr(cs)), put(str_lit("_to_"), acc));
             continue;
         } else if (char_eq_p(car(cs), '-') && null_p(cdr(cs))) {
-            return put("_minus", acc);
+            return put(str_lit("_minus"), acc);
         } else {
             (cs, acc) = (cdr(cs), put(mangle_char(car(cs)), acc));
             continue;
@@ -66,10 +66,10 @@ pub fn mangle_chars(mut cs: Chars, mut acc: Chars) -> Chars {
 
 /// A KFX name as a Rust value's: `string->list` is `string_to_list`.
 pub fn mangle(s: Str) -> Str {
-    if string_eq_p(s, "-") {
-        "_minus"
+    if string_eq_p(s, str_lit("-")) {
+        str_lit("_minus")
     } else if rust_keyword_p(s) {
-        string_append("r#", s)
+        string_append(str_lit("r#"), s)
     } else {
         rev_to_string(mangle_chars(string_chars(s), nil()))
     }

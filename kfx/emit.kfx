@@ -263,7 +263,7 @@
              (tagcase e
                (num (k) (put "i64" (put (i64->string k) acc)))
                (chr (ch) (put "'" (put-escaped (list ch) #\' (put "'" acc))))
-               (str (s) (put "\"" (put-escaped (string-chars s) #\" (put "\"" acc))))
+               (str (s) (put "\")" (put-escaped (string-chars s) #\" (put "str_lit(\"" acc))))
                (sym (s) (put-var c s acc))
                (lst (xs src-file src-line)
                  (tagcase (car xs)

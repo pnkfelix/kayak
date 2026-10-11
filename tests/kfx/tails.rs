@@ -9,11 +9,11 @@ pub type Strings = List<Str>;
 
 pub fn words(xs: Strings) -> Str {
     if null_p(xs) {
-        ""
+        str_lit("")
     } else if null_p(cdr(xs)) {
         car(xs)
     } else {
-        string_append(car(xs), string_append(" ", words(cdr(xs))))
+        string_append(car(xs), string_append(str_lit(" "), words(cdr(xs))))
     }
 }
 
@@ -33,7 +33,7 @@ pub fn count_up(mut i: i64, mut n: i64, mut acc: i64) -> i64 {
 pub fn swaps(mut a: i64, mut b: i64, mut k: i64) -> Str {
     loop {
         if i64_eq(k, 0i64) {
-            return string_append(i64_to_string(a), string_append("/", i64_to_string(b)));
+            return string_append(i64_to_string(a), string_append(str_lit("/"), i64_to_string(b)));
         } else {
             (a, b, k) = (b, a, i64_minus(k, 1i64));
             continue;

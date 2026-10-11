@@ -90,7 +90,7 @@ pub fn with_locals(c: &'static Ctx, names: Strings) -> &'static Ctx {
 pub fn tag_datatype(mut tag: Str, mut ts: Tagofs) -> Str {
     loop {
         if null_p(ts) {
-            return error(string_append("kfx: not a datatype's tag: ", tag));
+            return error(string_append(str_lit("kfx: not a datatype's tag: "), tag));
         } else {
             let tagcase_ = car(ts);
             match *tagcase_ {
@@ -122,10 +122,10 @@ pub fn note(form: &'static Sexp, c: &'static Ctx) -> &'static Ctx {
     let tagcase_ = c;
     match *tagcase_ {
         Ctx::Ctx(ds, ts, ks, ls) => {
-            if head_is_p(form, "define-datatype") {
+            if head_is_p(form, str_lit("define-datatype")) {
                 let d = sym_name(second(items(form)));
                 ctx(cons(d, ds), note_tags(cdr(cdr(items(form))), d, ts), ks, ls)
-            } else if (head_is_p(form, "define") && i64_eq(size(items(form)), 4i64) && not(procedure_p(fourth(items(form))))) {
+            } else if (head_is_p(form, str_lit("define")) && i64_eq(size(items(form)), 4i64) && not(procedure_p(fourth(items(form))))) {
                 ctx(ds, ts, cons(sym_name(second(items(form))), ks), ls)
             } else {
                 c
@@ -148,13 +148,13 @@ pub fn collect(mut forms: Sexps, mut c: &'static Ctx) -> &'static Ctx {
 // Writing Rust
 pub fn escape_char(c: char, q: char) -> Str {
     if char_eq_p(c, '\\') {
-        "\\\\"
+        str_lit("\\\\")
     } else if char_eq_p(c, q) {
-        string_append("\\", char_to_string(c))
+        string_append(str_lit("\\"), char_to_string(c))
     } else if char_eq_p(c, '\n') {
-        "\\n"
+        str_lit("\\n")
     } else if char_eq_p(c, '\t') {
-        "\\t"
+        str_lit("\\t")
     } else {
         char_to_string(c)
     }
@@ -178,47 +178,47 @@ pub fn put_type(c: &'static Ctx, t: &'static Sexp, acc: Chars) -> Chars {
     let tagcase_ = t;
     match *tagcase_ {
         Sexp::Sym(s) => {
-            if string_eq_p(s, "i64") {
-                put("i64", acc)
-            } else if string_eq_p(s, "int") {
-                error("kfx: KFX has no int, whose + makes a bignum; write i64, whose i64+ wraps")
-            } else if string_eq_p(s, "bool") {
-                put("bool", acc)
-            } else if string_eq_p(s, "char") {
-                put("char", acc)
-            } else if string_eq_p(s, "unit") {
-                put("()", acc)
-            } else if string_eq_p(s, "void") {
-                put("!", acc)
-            } else if string_eq_p(s, "string") {
-                put("Str", acc)
+            if string_eq_p(s, str_lit("i64")) {
+                put(str_lit("i64"), acc)
+            } else if string_eq_p(s, str_lit("int")) {
+                error(str_lit("kfx: KFX has no int, whose + makes a bignum; write i64, whose i64+ wraps"))
+            } else if string_eq_p(s, str_lit("bool")) {
+                put(str_lit("bool"), acc)
+            } else if string_eq_p(s, str_lit("char")) {
+                put(str_lit("char"), acc)
+            } else if string_eq_p(s, str_lit("unit")) {
+                put(str_lit("()"), acc)
+            } else if string_eq_p(s, str_lit("void")) {
+                put(str_lit("!"), acc)
+            } else if string_eq_p(s, str_lit("string")) {
+                put(str_lit("Str"), acc)
             } else if string_member_p(s, ctx_datatypes(c)) {
-                put(camel(s), put("&'static ", acc))
+                put(camel(s), put(str_lit("&'static "), acc))
             } else {
                 put(camel(s), acc)
             }
         }
         Sexp::Lst(xs, src_file, src_line) => {
-            if sym_is_p(car(xs), "listof") {
-                put(">", put_type(c, second(xs), put("List<", acc)))
-            } else if sym_is_p(car(xs), "flatarrayof") {
-                put(">", put_type(c, second(xs), put("FlatArray<", acc)))
-            } else if sym_is_p(car(xs), "ref") {
-                put(">", put_type(c, second(xs), put("Ref<", acc)))
-            } else if sym_is_p(car(xs), "subr") {
-                let acc = put("&'static dyn Fn(", acc);
+            if sym_is_p(car(xs), str_lit("listof")) {
+                put(str_lit(">"), put_type(c, second(xs), put(str_lit("List<"), acc)))
+            } else if sym_is_p(car(xs), str_lit("flatarrayof")) {
+                put(str_lit(">"), put_type(c, second(xs), put(str_lit("FlatArray<"), acc)))
+            } else if sym_is_p(car(xs), str_lit("ref")) {
+                put(str_lit(">"), put_type(c, second(xs), put(str_lit("Ref<"), acc)))
+            } else if sym_is_p(car(xs), str_lit("subr")) {
+                let acc = put(str_lit("&'static dyn Fn("), acc);
                 let acc = put_types(c, items(third(xs)), acc);
-                let acc = put(") -> ", acc);
+                let acc = put(str_lit(") -> "), acc);
                 put_type(c, fourth(xs), acc)
-            } else if sym_is_p(car(xs), "poly") {
-                error("kfx: a poly type is only a definition's, at its top")
+            } else if sym_is_p(car(xs), str_lit("poly")) {
+                error(str_lit("kfx: a poly type is only a definition's, at its top"))
             } else {
-                error("kfx: a type KFX-0 does not have")
+                error(str_lit("kfx: a type KFX-0 does not have"))
             }
         }
         _ => {
             let other = tagcase_;
-            error("kfx: a type KFX-0 does not have")
+            error(str_lit("kfx: a type KFX-0 does not have"))
         }
     }
 }
@@ -227,22 +227,22 @@ pub fn put_type(c: &'static Ctx, t: &'static Sexp, acc: Chars) -> Chars {
 pub fn put_types(c: &'static Ctx, types: Sexps, acc: Chars) -> Chars {
     put_sep(lambda2(move |t: &'static Sexp, acc| {
         put_type(c, t, acc)
-    }), ", ", types, acc)
+    }), str_lit(", "), types, acc)
 }
 
 pub fn put_var(c: &'static Ctx, s: Str, acc: Chars) -> Chars {
-    if string_eq_p(s, "#t") {
-        put("true", acc)
-    } else if string_eq_p(s, "#f") {
-        put("false", acc)
-    } else if string_eq_p(s, "#u") {
-        put("()", acc)
+    if string_eq_p(s, str_lit("#t")) {
+        put(str_lit("true"), acc)
+    } else if string_eq_p(s, str_lit("#f")) {
+        put(str_lit("false"), acc)
+    } else if string_eq_p(s, str_lit("#u")) {
+        put(str_lit("()"), acc)
     } else if string_member_p(s, ctx_locals(c)) {
         put(mangle(s), acc)
-    } else if (string_eq_p(s, "nil") || string_member_p(s, ctx_constants(c))) {
-        put("()", put(mangle(s), acc))
+    } else if (string_eq_p(s, str_lit("nil")) || string_member_p(s, ctx_constants(c))) {
+        put(str_lit("()"), put(mangle(s), acc))
     } else {
-        put(mangle(s), put("&", acc))
+        put(mangle(s), put(str_lit("&"), acc))
     }
 }
 
@@ -251,7 +251,7 @@ pub fn put_spaces(mut k: i64, mut acc: Chars) -> Chars {
         if i64_eq(k, 0i64) {
             return acc;
         } else {
-            (k, acc) = (i64_minus(k, 1i64), put("    ", acc));
+            (k, acc) = (i64_minus(k, 1i64), put(str_lit("    "), acc));
             continue;
         }
     }
@@ -259,7 +259,7 @@ pub fn put_spaces(mut k: i64, mut acc: Chars) -> Chars {
 
 /// A new line, indented `n` levels.
 pub fn put_nl(n: i64, acc: Chars) -> Chars {
-    put_spaces(n, put("\n", acc))
+    put_spaces(n, put(str_lit("\n"), acc))
 }
 
 /// A string literal where a body's value is not taken is a comment: KFX's
@@ -281,7 +281,7 @@ pub fn put_comment(mut cs: Chars, mut prefix: Str, mut n: i64, mut fresh: bool, 
             (cs, fresh) = (cdr(cs), true);
             continue;
         } else if fresh {
-            (cs, fresh, acc) = (cdr(cs), false, cons(car(cs), put(" ", put(prefix, acc))));
+            (cs, fresh, acc) = (cdr(cs), false, cons(car(cs), put(str_lit(" "), put(prefix, acc))));
             continue;
         } else {
             (cs, fresh, acc) = (cdr(cs), false, cons(car(cs), acc));
@@ -311,7 +311,7 @@ pub fn comment_text(e: &'static Sexp) -> Str {
         }
         _ => {
             let other = tagcase_;
-            ""
+            str_lit("")
         }
     }
 }
@@ -320,7 +320,7 @@ pub fn comment_text(e: &'static Sexp) -> Str {
 pub fn put_names(xs: Sexps, acc: Chars) -> Chars {
     put_sep(lambda2(move |x: &'static Sexp, acc| {
         put(mangle(sym_name(x)), acc)
-    }), ", ", xs, acc)
+    }), str_lit(", "), xs, acc)
 }
 
 // Self tail calls. Rust has no tail calls, so a procedure that calls itself
@@ -395,7 +395,7 @@ pub fn self_call_p(t: &'static Tail, e: &'static Sexp) -> bool {
 
 /// The forms whose last parts stand where they do.
 pub fn control_p(e: &'static Sexp) -> bool {
-    (head_is_p(e, "if") || head_is_p(e, "cond") || head_is_p(e, "case") || head_is_p(e, "tagcase") || head_is_p(e, "let") || head_is_p(e, "let*") || head_is_p(e, "begin"))
+    (head_is_p(e, str_lit("if")) || head_is_p(e, str_lit("cond")) || head_is_p(e, str_lit("case")) || head_is_p(e, str_lit("tagcase")) || head_is_p(e, str_lit("let")) || head_is_p(e, str_lit("let*")) || head_is_p(e, str_lit("begin")))
 }
 
 /// Whether `e`, standing at `t`, makes a self tail call: whether its
@@ -404,20 +404,20 @@ pub fn tail_calls_p(mut t: &'static Tail, mut e: &'static Sexp) -> bool {
     loop {
         if self_call_p(t, e) {
             return true;
-        } else if head_is_p(e, "if") {
+        } else if head_is_p(e, str_lit("if")) {
             let xs = cdr(items(e));
             return (tail_calls_p(t, second(xs)) || tail_calls_p(t, third(xs)));
-        } else if head_is_p(e, "cond") {
+        } else if head_is_p(e, str_lit("cond")) {
             return arms_tail_calls_p(t, cdr(items(e)));
-        } else if head_is_p(e, "case") {
+        } else if head_is_p(e, str_lit("case")) {
             return arms_tail_calls_p(t, cdr(cdr(items(e))));
-        } else if head_is_p(e, "tagcase") {
+        } else if head_is_p(e, str_lit("tagcase")) {
             return tag_arms_tail_calls_p(t, cdr(cdr(items(e))));
-        } else if (head_is_p(e, "let") || head_is_p(e, "let*")) {
+        } else if (head_is_p(e, str_lit("let")) || head_is_p(e, str_lit("let*"))) {
             let xs = cdr(items(e));
             (t, e) = (hide(t, map(&binding_name, items(car(xs)))), last(cdr(xs)));
             continue;
-        } else if head_is_p(e, "begin") {
+        } else if head_is_p(e, str_lit("begin")) {
             e = last(cdr(items(e)));
             continue;
         } else {
@@ -445,7 +445,7 @@ pub fn tag_arms_tail_calls_p(t: &'static Tail, arms: Sexps) -> bool {
         false
     } else {
         let arm = items(car(arms));
-        let bound = if sym_is_p(car(arm), "else") {
+        let bound = if sym_is_p(car(arm), str_lit("else")) {
             cons(sym_name(second(arm)), nil())
         } else {
             map(&sym_name, items(second(arm)))
@@ -485,7 +485,7 @@ pub fn changes(ps: Strings, args: Sexps) -> &'static Assign {
 pub fn put_strings(xs: Strings, acc: Chars) -> Chars {
     put_sep(lambda2(move |x: Str, acc| {
         put(mangle(x), acc)
-    }), ", ", xs, acc)
+    }), str_lit(", "), xs, acc)
 }
 
 // Every writer of an expression takes `n`, the indentation of the line it
@@ -494,18 +494,18 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
     if self_call_p(t, e) {
         put_continue(c, cdr(items(e)), n, t, acc)
     } else if (returns_p(t) && not(control_p(e))) {
-        put(";", put_exp(c, e, n, value(), put("return ", acc)))
+        put(str_lit(";"), put_exp(c, e, n, value(), put(str_lit("return "), acc)))
     } else {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Num(k) => {
-                put("i64", put(i64_to_string(k), acc))
+                put(str_lit("i64"), put(i64_to_string(k), acc))
             }
             Sexp::Chr(ch) => {
-                put("'", put_escaped(cons(ch, nil()), '\'', put("'", acc)))
+                put(str_lit("'"), put_escaped(cons(ch, nil()), '\'', put(str_lit("'"), acc)))
             }
             Sexp::Str(s) => {
-                put("\"", put_escaped(string_chars(s), '"', put("\"", acc)))
+                put(str_lit("\")"), put_escaped(string_chars(s), '"', put(str_lit("str_lit(\""), acc)))
             }
             Sexp::Sym(s) => {
                 put_var(c, s, acc)
@@ -518,13 +518,13 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
                     }
                     _ => {
                         let head = tagcase_;
-                        let acc = put("(", acc);
+                        let acc = put(str_lit("("), acc);
                         let acc = put_exp(c, head, n, value(), acc);
-                        let acc = put(")(", acc);
-                        put(")", if null_p(cdr(xs)) {
+                        let acc = put(str_lit(")("), acc);
+                        put(str_lit(")"), if null_p(cdr(xs)) {
                             acc
                         } else {
-                            put_joined(c, cdr(xs), ", ", n, acc)
+                            put_joined(c, cdr(xs), str_lit(", "), n, acc)
                         })
                     }
                 }
@@ -545,23 +545,23 @@ pub fn put_continue(c: &'static Ctx, args: Sexps, n: i64, t: &'static Tail, acc:
                         acc
                     } else if null_p(cdr(names)) {
                         let acc = put(mangle(car(names)), acc);
-                        let acc = put(" = ", acc);
+                        let acc = put(str_lit(" = "), acc);
                         let acc = put_exp(c, car(values), n, value(), acc);
-                        put_nl(n, put(";", acc))
+                        put_nl(n, put(str_lit(";"), acc))
                     } else {
-                        let acc = put("(", acc);
+                        let acc = put(str_lit("("), acc);
                         let acc = put_strings(names, acc);
-                        let acc = put(") = (", acc);
-                        let acc = put_joined(c, values, ", ", n, acc);
-                        put_nl(n, put(");", acc))
+                        let acc = put(str_lit(") = ("), acc);
+                        let acc = put_joined(c, values, str_lit(", "), n, acc);
+                        put_nl(n, put(str_lit(");"), acc))
                     };
-                    put("continue;", acc)
+                    put(str_lit("continue;"), acc)
                 }
             }
         }
         _ => {
             let other = tagcase_;
-            error("kfx: a self tail call where no procedure loops")
+            error(str_lit("kfx: a self tail call where no procedure loops"))
         }
     }
 }
@@ -581,24 +581,24 @@ pub fn put_stmts(mut c: &'static Ctx, mut es: Sexps, mut n: i64, mut t: &'static
         let e = car(es);
         if not(null_p(cdr(es))) {
             let acc = if comment_p(e) {
-                put_comment(string_chars(comment_text(e)), "//", n, true, acc)
+                put_comment(string_chars(comment_text(e)), str_lit("//"), n, true, acc)
             } else {
-                put(";", put_exp(c, e, n, value(), acc))
+                put(str_lit(";"), put_exp(c, e, n, value(), acc))
             };
             return put_stmts(c, cdr(es), n, t, put_nl(n, acc));
-        } else if (head_is_p(e, "let") || head_is_p(e, "let*")) {
+        } else if (head_is_p(e, str_lit("let")) || head_is_p(e, str_lit("let*"))) {
             let xs = cdr(items(e));
             let names = map(&binding_name, items(car(xs)));
-            (c, es, t, acc) = (with_locals(c, names), cdr(xs), hide(t, names), if head_is_p(e, "let") {
+            (c, es, t, acc) = (with_locals(c, names), cdr(xs), hide(t, names), if head_is_p(e, str_lit("let")) {
                 put_let(c, items(car(xs)), n, acc)
             } else {
                 put_let_star(c, items(car(xs)), n, acc)
             });
             continue;
-        } else if head_is_p(e, "begin") {
+        } else if head_is_p(e, str_lit("begin")) {
             es = cdr(items(e));
             continue;
-        } else if head_is_p(e, "tagcase") {
+        } else if head_is_p(e, str_lit("tagcase")) {
             return put_tagcase(c, cdr(items(e)), n, t, acc);
         } else {
             return put_exp(c, e, n, t, acc);
@@ -607,31 +607,31 @@ pub fn put_stmts(mut c: &'static Ctx, mut es: Sexps, mut n: i64, mut t: &'static
 }
 
 pub fn put_block(c: &'static Ctx, es: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
-    let acc = put_nl(i64_plus(n, 1i64), put("{", acc));
+    let acc = put_nl(i64_plus(n, 1i64), put(str_lit("{"), acc));
     let acc = put_stmts(c, es, i64_plus(n, 1i64), t, acc);
-    put("}", put_nl(n, acc))
+    put(str_lit("}"), put_nl(n, acc))
 }
 
 pub fn put_cond(c: &'static Ctx, clauses: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
     let clause = items(car(clauses));
-    if sym_is_p(car(clause), "else") {
+    if sym_is_p(car(clause), str_lit("else")) {
         put_block(c, cdr(clause), n, t, acc)
     } else {
-        let acc = put("if ", acc);
+        let acc = put(str_lit("if "), acc);
         let acc = put_exp(c, car(clause), n, value(), acc);
-        let acc = put(" ", acc);
+        let acc = put(str_lit(" "), acc);
         let acc = put_block(c, cdr(clause), n, t, acc);
-        let acc = put(" else ", acc);
+        let acc = put(str_lit(" else "), acc);
         put_cond(c, cdr(clauses), n, t, acc)
     }
 }
 
 pub fn put_let1(c: &'static Ctx, binding: &'static Sexp, n: i64, acc: Chars) -> Chars {
-    let acc = put("let ", acc);
+    let acc = put(str_lit("let "), acc);
     let acc = put(mangle(sym_name(car(items(binding)))), acc);
-    let acc = put(" = ", acc);
+    let acc = put(str_lit(" = "), acc);
     let acc = put_exp(c, second(items(binding)), n, value(), acc);
-    put_nl(n, put(";", acc))
+    put_nl(n, put(str_lit(";"), acc))
 }
 
 /// Each binding sees those before it.
@@ -651,7 +651,7 @@ pub fn put_binding_values(c: &'static Ctx, bindings: Sexps, n: i64, acc: Chars) 
     if null_p(cdr(bindings)) {
         acc
     } else {
-        put_binding_values(c, cdr(bindings), n, put(", ", acc))
+        put_binding_values(c, cdr(bindings), n, put(str_lit(", "), acc))
     }
 }
 
@@ -660,7 +660,7 @@ pub fn put_binding_names(bindings: Sexps, acc: Chars) -> Chars {
     if null_p(cdr(bindings)) {
         acc
     } else {
-        put_binding_names(cdr(bindings), put(", ", acc))
+        put_binding_names(cdr(bindings), put(str_lit(", "), acc))
     }
 }
 
@@ -671,11 +671,11 @@ pub fn put_let(c: &'static Ctx, bindings: Sexps, n: i64, acc: Chars) -> Chars {
     } else if null_p(cdr(bindings)) {
         put_let1(c, car(bindings), n, acc)
     } else {
-        let acc = put("let (", acc);
+        let acc = put(str_lit("let ("), acc);
         let acc = put_binding_names(bindings, acc);
-        let acc = put(") = (", acc);
+        let acc = put(str_lit(") = ("), acc);
         let acc = put_binding_values(c, bindings, n, acc);
-        put_nl(n, put(");", acc))
+        put_nl(n, put(str_lit(");"), acc))
     }
 }
 
@@ -685,12 +685,12 @@ pub fn put_case_arms(c: &'static Ctx, arms: Sexps, n: i64, t: &'static Tail, acc
     } else {
         let arm = items(car(arms));
         let acc = put_nl(n, acc);
-        let acc = if sym_is_p(car(arm), "else") {
-            put("_", acc)
+        let acc = if sym_is_p(car(arm), str_lit("else")) {
+            put(str_lit("_"), acc)
         } else {
-            put_joined(c, items(car(arm)), " | ", n, acc)
+            put_joined(c, items(car(arm)), str_lit(" | "), n, acc)
         };
-        let acc = put(" => ", acc);
+        let acc = put(str_lit(" => "), acc);
         let acc = put_block(c, cdr(arm), n, t, acc);
         put_case_arms(c, cdr(arms), n, t, acc)
     }
@@ -702,7 +702,7 @@ pub fn put_tagcase_arms(c: &'static Ctx, arms: Sexps, n: i64, t: &'static Tail, 
     } else {
         let arm = items(car(arms));
         let tag = sym_name(car(arm));
-        let else_p = string_eq_p(tag, "else");
+        let else_p = string_eq_p(tag, str_lit("else"));
         let bound = if else_p {
             cons(sym_name(second(arm)), nil())
         } else {
@@ -710,44 +710,44 @@ pub fn put_tagcase_arms(c: &'static Ctx, arms: Sexps, n: i64, t: &'static Tail, 
         };
         let acc = put_nl(n, acc);
         let acc = if else_p {
-            let acc = put("_ => {", acc);
+            let acc = put(str_lit("_ => {"), acc);
             let acc = put_nl(i64_plus(n, 1i64), acc);
-            let acc = put("let ", acc);
+            let acc = put(str_lit("let "), acc);
             let acc = put(mangle(sym_name(second(arm))), acc);
-            put_nl(i64_plus(n, 1i64), put(" = tagcase_;", acc))
+            put_nl(i64_plus(n, 1i64), put(str_lit(" = tagcase_;"), acc))
         } else {
             let acc = put(camel(tag_datatype(tag, ctx_tags(c))), acc);
-            let acc = put("::", acc);
+            let acc = put(str_lit("::"), acc);
             let acc = put(camel(tag), acc);
-            let acc = put("(", acc);
+            let acc = put(str_lit("("), acc);
             let acc = put_names(items(second(arm)), acc);
-            put_nl(i64_plus(n, 1i64), put(") => {", acc))
+            put_nl(i64_plus(n, 1i64), put(str_lit(") => {"), acc))
         };
         let acc = put_stmts(with_locals(c, bound), cdr(cdr(arm)), i64_plus(n, 1i64), hide(t, bound), acc);
-        let acc = put("}", put_nl(n, acc));
+        let acc = put(str_lit("}"), put_nl(n, acc));
         put_tagcase_arms(c, cdr(arms), n, t, acc)
     }
 }
 
 /// A `tagcase` as statements: its value bound once, then a `match`.
 pub fn put_tagcase(c: &'static Ctx, xs: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
-    let acc = put("let tagcase_ = ", acc);
+    let acc = put(str_lit("let tagcase_ = "), acc);
     let acc = put_exp(c, car(xs), n, value(), acc);
-    let acc = put_nl(n, put(";", acc));
-    let acc = put("match *tagcase_ {", acc);
+    let acc = put_nl(n, put(str_lit(";"), acc));
+    let acc = put(str_lit("match *tagcase_ {"), acc);
     let acc = put_tagcase_arms(c, cdr(xs), i64_plus(n, 1i64), t, acc);
-    put("}", put_nl(n, acc))
+    put(str_lit("}"), put_nl(n, acc))
 }
 
 /// A lambda as a value: a closure, `move`, since what it captures is
 /// `Copy`, made a `&'static dyn Fn` by `lambdaN`, `N` its arity.
 pub fn put_lambda(c: &'static Ctx, params: Sexps, body: Sexps, n: i64, acc: Chars) -> Chars {
-    let acc = put("lambda", acc);
+    let acc = put(str_lit("lambda"), acc);
     let acc = put(i64_to_string(size(params)), acc);
-    let acc = put("(move |", acc);
+    let acc = put(str_lit("(move |"), acc);
     let acc = put_lambda_params(c, params, acc);
-    let acc = put("| ", acc);
-    put(")", put_block(with_locals(c, map(&param_name, params)), body, n, value(), acc))
+    let acc = put(str_lit("| "), acc);
+    put(str_lit(")"), put_block(with_locals(c, map(&param_name, params)), body, n, value(), acc))
 }
 
 /// `x`, or `(x T)` as `x: T`.
@@ -759,7 +759,7 @@ pub fn put_lambda_params(c: &'static Ctx, params: Sexps, acc: Chars) -> Chars {
             let tagcase_ = car(params);
             match *tagcase_ {
                 Sexp::Lst(xt, src_file, src_line) => {
-                    put_type(c, second(xt), put(": ", put(mangle(sym_name(car(xt))), acc)))
+                    put_type(c, second(xt), put(str_lit(": "), put(mangle(sym_name(car(xt))), acc)))
                 }
                 _ => {
                     let name = tagcase_;
@@ -770,64 +770,64 @@ pub fn put_lambda_params(c: &'static Ctx, params: Sexps, acc: Chars) -> Chars {
         put_lambda_params(c, cdr(params), if null_p(cdr(params)) {
             acc
         } else {
-            put(", ", acc)
+            put(str_lit(", "), acc)
         })
     }
 }
 
 pub fn put_list(c: &'static Ctx, xs: Sexps, n: i64, acc: Chars) -> Chars {
     if null_p(xs) {
-        put("nil()", acc)
+        put(str_lit("nil()"), acc)
     } else {
-        let acc = put("cons(", acc);
+        let acc = put(str_lit("cons("), acc);
         let acc = put_exp(c, car(xs), n, value(), acc);
-        let acc = put(", ", acc);
+        let acc = put(str_lit(", "), acc);
         let acc = put_list(c, cdr(xs), n, acc);
-        put(")", acc)
+        put(str_lit(")"), acc)
     }
 }
 
 /// `e` is the whole form, `h` its head's name and `xs` the rest.
 pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
-    if string_eq_p(h, "if") {
-        let acc = put("if ", acc);
+    if string_eq_p(h, str_lit("if")) {
+        let acc = put(str_lit("if "), acc);
         let acc = put_exp(c, car(xs), n, value(), acc);
-        let acc = put(" ", acc);
+        let acc = put(str_lit(" "), acc);
         let acc = put_block(c, cons(second(xs), nil()), n, t, acc);
-        let acc = put(" else ", acc);
+        let acc = put(str_lit(" else "), acc);
         put_block(c, cons(third(xs), nil()), n, t, acc)
-    } else if string_eq_p(h, "cond") {
+    } else if string_eq_p(h, str_lit("cond")) {
         put_cond(c, xs, n, t, acc)
-    } else if string_eq_p(h, "and") {
+    } else if string_eq_p(h, str_lit("and")) {
         if null_p(xs) {
-            put("true", acc)
+            put(str_lit("true"), acc)
         } else {
-            put(")", put_joined(c, xs, " && ", n, put("(", acc)))
+            put(str_lit(")"), put_joined(c, xs, str_lit(" && "), n, put(str_lit("("), acc)))
         }
-    } else if string_eq_p(h, "or") {
+    } else if string_eq_p(h, str_lit("or")) {
         if null_p(xs) {
-            put("false", acc)
+            put(str_lit("false"), acc)
         } else {
-            put(")", put_joined(c, xs, " || ", n, put("(", acc)))
+            put(str_lit(")"), put_joined(c, xs, str_lit(" || "), n, put(str_lit("("), acc)))
         }
-    } else if (string_eq_p(h, "begin") || string_eq_p(h, "let") || string_eq_p(h, "let*") || string_eq_p(h, "tagcase")) {
+    } else if (string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("tagcase"))) {
         put_block(c, cons(e, nil()), n, t, acc)
-    } else if string_eq_p(h, "case") {
-        let acc = put("match ", acc);
+    } else if string_eq_p(h, str_lit("case")) {
+        let acc = put(str_lit("match "), acc);
         let acc = put_exp(c, car(xs), n, value(), acc);
-        let acc = put(" {", acc);
+        let acc = put(str_lit(" {"), acc);
         let acc = put_case_arms(c, cdr(xs), i64_plus(n, 1i64), t, acc);
-        put("}", put_nl(n, acc))
-    } else if string_eq_p(h, "lambda") {
+        put(str_lit("}"), put_nl(n, acc))
+    } else if string_eq_p(h, str_lit("lambda")) {
         put_lambda(c, items(car(xs)), cdr(xs), n, acc)
-    } else if string_eq_p(h, "list") {
+    } else if string_eq_p(h, str_lit("list")) {
         put_list(c, xs, n, acc)
-    } else if string_eq_p(h, "the") {
+    } else if string_eq_p(h, str_lit("the")) {
         put_exp(c, second(xs), n, value(), acc)
     } else if null_p(xs) {
-        put("()", put(mangle(h), acc))
+        put(str_lit("()"), put(mangle(h), acc))
     } else {
-        put(")", put_joined(c, xs, ", ", n, put("(", put(mangle(h), acc))))
+        put(str_lit(")"), put_joined(c, xs, str_lit(", "), n, put(str_lit("("), put(mangle(h), acc))))
     }
 }
 
@@ -851,17 +851,17 @@ pub fn put_params(c: &'static Ctx, names: Sexps, types: Sexps, mutable: bool, ac
             }
         };
         let acc = if mutable {
-            put("mut ", acc)
+            put(str_lit("mut "), acc)
         } else {
             acc
         };
         let acc = put(mangle(sym_name(name)), acc);
-        let acc = put(": ", acc);
+        let acc = put(str_lit(": "), acc);
         let acc = put_type(c, car(types), acc);
         put_params(c, cdr(names), cdr(types), mutable, if null_p(cdr(names)) {
             acc
         } else {
-            put(", ", acc)
+            put(str_lit(", "), acc)
         })
     }
 }
@@ -876,24 +876,24 @@ pub fn put_generics(mut binders: Sexps, mut first: bool, mut acc: Chars) -> Char
             if first {
                 return acc;
             } else {
-                return put(">", acc);
+                return put(str_lit(">"), acc);
             }
         } else {
             let b = items(car(binders));
             let kind = sym_name(second(b));
-            if string_eq_p(kind, "type") {
+            if string_eq_p(kind, str_lit("type")) {
                 let acc = put(if first {
-                    "<"
+                    str_lit("<")
                 } else {
-                    ", "
+                    str_lit(", ")
                 }, acc);
                 let acc = put(camel(sym_name(car(b))), acc);
-                return put_generics(cdr(binders), false, put(": Copy + 'static", acc));
-            } else if (string_eq_p(kind, "effect") || string_eq_p(kind, "region")) {
+                return put_generics(cdr(binders), false, put(str_lit(": Copy + 'static"), acc));
+            } else if (string_eq_p(kind, str_lit("effect")) || string_eq_p(kind, str_lit("region"))) {
                 binders = cdr(binders);
                 continue;
             } else {
-                return error(string_append("kfx: KFX-0 has no poly over a ", kind));
+                return error(string_append(str_lit("kfx: KFX-0 has no poly over a "), kind));
             }
         }
     }
@@ -901,7 +901,7 @@ pub fn put_generics(mut binders: Sexps, mut first: bool, mut acc: Chars) -> Char
 
 /// A poly type's body, or a plambda's: what is under the binders.
 pub fn unpoly(e: &'static Sexp) -> &'static Sexp {
-    if (head_is_p(e, "poly") || head_is_p(e, "plambda")) {
+    if (head_is_p(e, str_lit("poly")) || head_is_p(e, str_lit("plambda"))) {
         third(items(e))
     } else {
         e
@@ -909,14 +909,14 @@ pub fn unpoly(e: &'static Sexp) -> &'static Sexp {
 }
 
 pub fn put_define(c: &'static Ctx, name: &'static Sexp, r#type: &'static Sexp, defined: &'static Sexp, acc: Chars) -> Chars {
-    let binders = if head_is_p(r#type, "poly") {
+    let binders = if head_is_p(r#type, str_lit("poly")) {
         items(second(items(r#type)))
     } else {
         nil()
     };
     let r#type = unpoly(r#type);
     let defined = unpoly(defined);
-    let lambda_p = head_is_p(defined, "lambda");
+    let lambda_p = head_is_p(defined, str_lit("lambda"));
     let body = if lambda_p {
         cdr(cdr(items(defined)))
     } else {
@@ -924,7 +924,7 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, r#type: &'static Sexp, d
     };
     let doc_p = (comment_p(car(body)) && not(null_p(cdr(body))));
     let acc = if doc_p {
-        put("\n", put_comment(string_chars(comment_text(car(body))), "///", 0i64, true, acc))
+        put(str_lit("\n"), put_comment(string_chars(comment_text(car(body))), str_lit("///"), 0i64, true, acc))
     } else {
         acc
     };
@@ -944,24 +944,24 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, r#type: &'static Sexp, d
     } else {
         c
     };
-    let acc = put("pub fn ", acc);
+    let acc = put(str_lit("pub fn "), acc);
     let acc = put(mangle(sym_name(name)), acc);
     let acc = put_generics(binders, true, acc);
     let acc = if lambda_p {
-        let acc = put("(", acc);
+        let acc = put(str_lit("("), acc);
         let acc = put_params(c, items(second(items(defined))), items(third(items(r#type))), loops_p, acc);
-        let acc = put(") -> ", acc);
+        let acc = put(str_lit(") -> "), acc);
         put_type(c, fourth(items(r#type)), acc)
     } else {
-        put_type(c, r#type, put("() -> ", acc))
+        put_type(c, r#type, put(str_lit("() -> "), acc))
     };
-    let acc = put(" {", acc);
+    let acc = put(str_lit(" {"), acc);
     if loops_p {
-        let acc = put_nl(2i64, put("loop {", put_nl(1i64, acc)));
+        let acc = put_nl(2i64, put(str_lit("loop {"), put_nl(1i64, acc)));
         let acc = put_stmts(inner, body, 2i64, t, acc);
-        put("\n    }\n}\n\n", acc)
+        put(str_lit("\n    }\n}\n\n"), acc)
     } else {
-        put("\n}\n\n", put_stmts(inner, body, 1i64, value(), put_nl(1i64, acc)))
+        put(str_lit("\n}\n\n"), put_stmts(inner, body, 1i64, value(), put_nl(1i64, acc)))
     }
 }
 
@@ -982,11 +982,11 @@ pub fn put_variants(c: &'static Ctx, variants: Sexps, acc: Chars) -> Chars {
         acc
     } else {
         let v = items(car(variants));
-        let acc = put("    ", acc);
+        let acc = put(str_lit("    "), acc);
         let acc = put(camel(sym_name(car(v))), acc);
-        let acc = put("(", acc);
+        let acc = put(str_lit("("), acc);
         let acc = put_types(c, cdr(v), acc);
-        put_variants(c, cdr(variants), put("),\n", acc))
+        put_variants(c, cdr(variants), put(str_lit("),\n"), acc))
     }
 }
 
@@ -998,12 +998,12 @@ pub fn put_fields(c: &'static Ctx, types: Sexps, i: i64, typed: bool, acc: Chars
         let acc = if i64_eq(i, 0i64) {
             acc
         } else {
-            put(", ", acc)
+            put(str_lit(", "), acc)
         };
-        let acc = put("f", acc);
+        let acc = put(str_lit("f"), acc);
         let acc = put(i64_to_string(i), acc);
         let acc = if typed {
-            put_type(c, car(types), put(": ", acc))
+            put_type(c, car(types), put(str_lit(": "), acc))
         } else {
             acc
         };
@@ -1017,52 +1017,52 @@ pub fn put_constructors(c: &'static Ctx, d: Str, variants: Sexps, acc: Chars) ->
     } else {
         let v = items(car(variants));
         let tag = sym_name(car(v));
-        let acc = put("pub fn ", acc);
+        let acc = put(str_lit("pub fn "), acc);
         let acc = put(mangle(tag), acc);
-        let acc = put("(", acc);
+        let acc = put(str_lit("("), acc);
         let acc = put_fields(c, cdr(v), 0i64, true, acc);
-        let acc = put(") -> &'static ", acc);
+        let acc = put(str_lit(") -> &'static "), acc);
         let acc = put(camel(d), acc);
-        let acc = put(" {\n    alloc(", acc);
+        let acc = put(str_lit(" {\n    alloc("), acc);
         let acc = put(camel(d), acc);
-        let acc = put("::", acc);
+        let acc = put(str_lit("::"), acc);
         let acc = put(camel(tag), acc);
-        let acc = put("(", acc);
+        let acc = put(str_lit("("), acc);
         let acc = put_fields(c, cdr(v), 0i64, false, acc);
-        put_constructors(c, d, cdr(variants), put("))\n}\n\n", acc))
+        put_constructors(c, d, cdr(variants), put(str_lit("))\n}\n\n"), acc))
     }
 }
 
 pub fn put_datatype(c: &'static Ctx, xs: Sexps, acc: Chars) -> Chars {
     let d = sym_name(car(xs));
-    let acc = put("pub enum ", acc);
+    let acc = put(str_lit("pub enum "), acc);
     let acc = put(camel(d), acc);
-    let acc = put(" {\n", acc);
+    let acc = put(str_lit(" {\n"), acc);
     let acc = put_variants(c, cdr(xs), acc);
-    let acc = put("}\n\n", acc);
+    let acc = put(str_lit("}\n\n"), acc);
     put_constructors(c, d, cdr(xs), acc)
 }
 
 pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
     let xs = items(form);
     let h = sym_name(car(xs));
-    if string_eq_p(h, "define-effect") {
+    if string_eq_p(h, str_lit("define-effect")) {
         acc
-    } else if string_eq_p(h, "define-type") {
-        let acc = put("pub type ", acc);
+    } else if string_eq_p(h, str_lit("define-type")) {
+        let acc = put(str_lit("pub type "), acc);
         let acc = put(camel(sym_name(second(xs))), acc);
-        let acc = put(" = ", acc);
+        let acc = put(str_lit(" = "), acc);
         let acc = put_type(c, third(xs), acc);
-        put(";\n\n", acc)
-    } else if string_eq_p(h, "define-datatype") {
+        put(str_lit(";\n\n"), acc)
+    } else if string_eq_p(h, str_lit("define-datatype")) {
         put_datatype(c, cdr(xs), acc)
-    } else if string_eq_p(h, "define") {
+    } else if string_eq_p(h, str_lit("define")) {
         if i64_eq(size(xs), 4i64) {
             put_define(c, second(xs), third(xs), fourth(xs), acc)
         } else {
-            error(string_append("kfx: a definition needs a type: ", sym_name(second(xs))))
+            error(string_append(str_lit("kfx: a definition needs a type: "), sym_name(second(xs))))
         }
-    } else if string_eq_p(h, "define-rec") {
+    } else if string_eq_p(h, str_lit("define-rec")) {
         put_rec(c, cdr(xs), acc)
     } else {
         acc
@@ -1070,7 +1070,7 @@ pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
 }
 
 pub fn definition_p(e: &'static Sexp) -> bool {
-    (head_is_p(e, "define") || head_is_p(e, "define-rec") || head_is_p(e, "define-datatype") || head_is_p(e, "define-type"))
+    (head_is_p(e, str_lit("define")) || head_is_p(e, str_lit("define-rec")) || head_is_p(e, str_lit("define-datatype")) || head_is_p(e, str_lit("define-type")))
 }
 
 /// A string at the top level is a comment. A procedure's documentation is
@@ -1081,11 +1081,11 @@ pub fn put_tops(mut c: &'static Ctx, mut forms: Sexps, mut acc: Chars) -> Chars 
             return acc;
         } else if comment_p(car(forms)) {
             let doc = (not(null_p(cdr(forms))) && definition_p(second(forms)));
-            let acc = put_comment(string_chars(comment_text(car(forms))), "//", 0i64, true, acc);
+            let acc = put_comment(string_chars(comment_text(car(forms))), str_lit("//"), 0i64, true, acc);
             return put_tops(c, cdr(forms), put(if doc {
-                "\n"
+                str_lit("\n")
             } else {
-                "\n\n"
+                str_lit("\n\n")
             }, acc));
         } else {
             (forms, acc) = (cdr(forms), put_top(c, car(forms), acc));

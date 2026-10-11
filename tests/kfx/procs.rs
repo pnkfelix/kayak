@@ -34,10 +34,10 @@ pub fn fold<A: Copy + 'static, B: Copy + 'static>(mut f: &'static dyn Fn(B, A) -
 
 pub fn words(xs: Strings) -> Str {
     if null_p(xs) {
-        ""
+        str_lit("")
     } else {
         fold(lambda2(move |acc: Str, w: Str| {
-            string_append(acc, string_append(" ", w))
+            string_append(acc, string_append(str_lit(" "), w))
         }), car(xs), cdr(xs))
     }
 }
@@ -68,7 +68,7 @@ pub fn apply_op(o: &'static Op, a: i64, b: i64) -> Str {
     let tagcase_ = o;
     match *tagcase_ {
         Op::Op(name, f) => {
-            string_append(name, string_append("=", i64_to_string(f(a, b))))
+            string_append(name, string_append(str_lit("="), i64_to_string(f(a, b))))
         }
     }
 }
@@ -84,11 +84,11 @@ pub fn main() -> Str {
     words(cons(words(shows), cons(words(map(lambda1(move |x: i64| {
         i64_to_string(i64_star(x, 10i64))
     }), xs)), cons(words(map(&i64_to_string, map(adder(k), xs))), cons(i64_to_string((adder(3i64))(4i64)), cons(i64_to_string(twice(&add1, 0i64)), cons(twice(lambda1(move |s: Str| {
-        string_append(s, "!")
-    }), "hey"), cons(i64_to_string(fold(lambda2(move |acc: i64, x: i64| {
+        string_append(s, str_lit("!"))
+    }), str_lit("hey")), cons(i64_to_string(fold(lambda2(move |acc: i64, x: i64| {
         i64_plus(acc, x)
-    }), 0i64, xs)), cons(apply_op(op("plus", lambda2(move |a, b| {
+    }), 0i64, xs)), cons(apply_op(op(str_lit("plus"), lambda2(move |a, b| {
         i64_plus(a, b)
-    })), 2i64, 3i64), cons(apply_op(op("times", &i64_star_wrapped), 2i64, 3i64), nil()))))))))))
+    })), 2i64, 3i64), cons(apply_op(op(str_lit("times"), &i64_star_wrapped), 2i64, 3i64), nil()))))))))))
 }
 

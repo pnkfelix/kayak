@@ -10,14 +10,14 @@ pub fn empty_string_p(s: Str) -> bool {
 
 pub fn i64_to_yes(n: i64) -> Str {
     if i64_eq(n, 0i64) {
-        "no"
+        str_lit("no")
     } else {
-        "yes"
+        str_lit("yes")
     }
 }
 
 pub fn _lt_plus_gt(a: Str, b: Str) -> Str {
-    string_append(a, string_append("+", b))
+    string_append(a, string_append(str_lit("+"), b))
 }
 
 pub fn bump_x(n: i64) -> i64 {
@@ -28,11 +28,11 @@ pub fn main() -> Str {
     let r#type = 1i64;
     let r#match = bump_x(r#type);
     let r#fn = i64_star(r#match, 10i64);
-    let r#loop = "x";
-    _lt_plus_gt(i64_to_string(r#fn), _lt_plus_gt(i64_to_yes(r#type), _lt_plus_gt(r#loop, if empty_string_p("") {
-        "empty"
+    let r#loop = str_lit("x");
+    _lt_plus_gt(i64_to_string(r#fn), _lt_plus_gt(i64_to_yes(r#type), _lt_plus_gt(r#loop, if empty_string_p(str_lit("")) {
+        str_lit("empty")
     } else {
-        "full"
+        str_lit("full")
     })))
 }
 

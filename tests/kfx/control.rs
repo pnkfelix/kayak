@@ -8,34 +8,34 @@ pub type Strings = List<Str>;
 
 pub fn words(xs: Strings) -> Str {
     if null_p(xs) {
-        ""
+        str_lit("")
     } else if null_p(cdr(xs)) {
         car(xs)
     } else {
-        string_append(car(xs), string_append(" ", words(cdr(xs))))
+        string_append(car(xs), string_append(str_lit(" "), words(cdr(xs))))
     }
 }
 
 pub fn sign(n: i64) -> Str {
     if i64_lt(n, 0i64) {
-        "negative"
+        str_lit("negative")
     } else if i64_eq(n, 0i64) {
-        "zero"
+        str_lit("zero")
     } else {
-        "positive"
+        str_lit("positive")
     }
 }
 
 pub fn kind(c: char) -> Str {
     match c {
         'a' | 'e' | 'i' | 'o' | 'u' => {
-            "vowel"
+            str_lit("vowel")
         }
         ' ' | '\n' => {
-            "space"
+            str_lit("space")
         }
         _ => {
-            "other"
+            str_lit("other")
         }
     }
 }
@@ -43,45 +43,45 @@ pub fn kind(c: char) -> Str {
 /// FX-26's case compares integers as ints, so on an i64 it is a cond.
 pub fn small(n: i64) -> Str {
     if i64_eq(n, 0i64) {
-        "none"
+        str_lit("none")
     } else if (i64_eq(n, 1i64) || i64_eq(n, 2i64)) {
-        "few"
+        str_lit("few")
     } else if i64_eq(n, -1i64) {
-        "minus-one"
+        str_lit("minus-one")
     } else {
-        "many"
+        str_lit("many")
     }
 }
 
 pub fn both(a: bool, b: bool) -> Str {
     string_append(if (a && b) {
-        "and,"
+        str_lit("and,")
     } else {
-        "nand,"
+        str_lit("nand,")
     }, if (a || b) {
-        "or"
+        str_lit("or")
     } else {
-        "nor"
+        str_lit("nor")
     })
 }
 
 pub fn main() -> Str {
     words(cons(sign(-5i64), cons(sign(0i64), cons(sign(7i64), cons(kind('e'), cons(kind('\n'), cons(kind('z'), cons(small(0i64), cons(small(2i64), cons(small(-1i64), cons(small(9i64), cons(both(true, false), cons(both(true, true), cons(both(false, false), cons(if true {
-        "(and)"
+        str_lit("(and)")
     } else {
-        "not-(and)"
+        str_lit("not-(and)")
     }, cons(if false {
-        "(or)"
+        str_lit("(or)")
     } else {
-        "not-(or)"
+        str_lit("not-(or)")
     }, cons(if (true && true && false) {
-        "and3"
+        str_lit("and3")
     } else {
-        "not-and3"
+        str_lit("not-and3")
     }, cons(if (false || false || true) {
-        "or3"
+        str_lit("or3")
     } else {
-        "not-or3"
+        str_lit("not-or3")
     }, nil()))))))))))))))))))
 }
 

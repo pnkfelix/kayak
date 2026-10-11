@@ -10,7 +10,7 @@ fn every_program_gives_fixpts_answer() {
         let want = std::fs::read_to_string(format!("{dir}/{name}.out"))
             .unwrap_or_else(|e| panic!("{name}.out: {e}"));
         let got = kayak_rt::with_big_stack(main);
-        if got != want {
+        if got.as_str() != want {
             wrong.push(format!("{name}:\n  Fixpt: {want:?}\n  Rust:  {got:?}"));
         }
     }
@@ -32,5 +32,5 @@ fn self_tail_calls_run_in_constant_stack() {
         .unwrap()
         .join()
         .expect("tails.kfx overflows a small stack: its self tail calls do not loop");
-    assert!(got.starts_with("4499998500000 "), "{got}");
+    assert!(got.as_str().starts_with("4499998500000 "), "{got}");
 }

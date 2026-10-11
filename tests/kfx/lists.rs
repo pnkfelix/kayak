@@ -37,15 +37,15 @@ pub fn total(xs: Ints) -> i64 {
 
 pub fn show(xs: Ints) -> Str {
     if null_p(xs) {
-        ""
+        str_lit("")
     } else if null_p(cdr(xs)) {
         i64_to_string(car(xs))
     } else {
-        string_append(i64_to_string(car(xs)), string_append(" ", show(cdr(xs))))
+        string_append(i64_to_string(car(xs)), string_append(str_lit(" "), show(cdr(xs))))
     }
 }
 
 pub fn main() -> Str {
-    string_append(show(rev_onto(cons(1i64, cons(2i64, cons(3i64, nil()))), nil())), string_append(" | ", string_append(i64_to_string(total(count_from(0i64, 100000i64))), string_append(" | ", list_to_string(cons('o', cons('k', nil())))))))
+    string_append(show(rev_onto(cons(1i64, cons(2i64, cons(3i64, nil()))), nil())), string_append(str_lit(" | "), string_append(i64_to_string(total(count_from(0i64, 100000i64))), string_append(str_lit(" | "), list_to_string(cons('o', cons('k', nil())))))))
 }
 

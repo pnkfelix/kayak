@@ -49,12 +49,11 @@
 (define rev->string (subr kfx (chars) string)
   (lambda (acc) (list->string (rev-onto acc nil))))
 
-(define string-chars-from (subr kfx (string i64 i64) chars)
-  (lambda (s i n)
-    (if (i64< i n) (cons (string-ref-i64 s i) (string-chars-from s (i64+ i 1) n)) nil)))
-
 (define string-chars (subr kfx (string) chars)
-  (lambda (s) (string-chars-from s 0 (string-length-i64 s))))
+  (lambda (s)
+    "A string's characters, in one pass: indexing a string that is not
+     ASCII counts characters from its start (CLAUDES_CHOICES.md, C14)."
+    (string->list s)))
 
 (define put-from (subr kfx (string i64 i64 chars) chars)
   (lambda (s i n acc)
