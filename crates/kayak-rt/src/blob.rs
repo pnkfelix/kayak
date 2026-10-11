@@ -224,6 +224,94 @@ pub fn blobref_plus<B: Owner>(r: BlobRef<B>, d: Int) -> BlobRef<B> {
     r.plus(d)
 }
 
+// The typed fast path (C32): a bloblet whose suffix the program reads
+// only as one flat, from offset 0, by `extract` and `blobref-index`, never
+// byte by byte or at an offset of its own: its suffix is that flat, cells
+// and arrays of them, and a blobref a reference into it. No word is
+// shifted, no offset checked but an array's index.
+
+/// A flat as a suffix holds it, all zero bytes to begin with, as FX-26's
+/// suffix is.
+pub trait Flat {
+    fn zeroed() -> Self;
+}
+
+macro_rules! flat_scalar {
+    ($($t:ty),*) => {
+        $(impl Flat for Cell<$t> {
+            fn zeroed() -> Self {
+                Cell::new(0 as $t)
+            }
+        })*
+    };
+}
+
+flat_scalar!(i64, u64, f64, i32, u32);
+
+/// `(arrayof F n)` in a typed suffix: `n` `F`s, on the heap with the
+/// bloblet (a large one does not fit a stack).
+pub struct FlatArr<T, const N: usize>(Box<[T]>);
+
+impl<T: Flat, const N: usize> Flat for FlatArr<T, N> {
+    fn zeroed() -> Self {
+        FlatArr((0..N).map(|_| T::zeroed()).collect())
+    }
+}
+
+impl<T, const N: usize> FlatArr<T, N> {
+    /// `(blobref-index r i)`.
+    #[inline]
+    pub fn at(&self, i: Int) -> &T {
+        match i {
+            Int::Small(i) if (0..N as i64).contains(&i) => &self.0[i as usize],
+            _ => fail("blobref-index: out of range"),
+        }
+    }
+}
+
+/// A bloblet of a typed suffix, `S`.
+pub struct TBloblet<Fs, S> {
+    pub fields: Fs,
+    pub suffix: S,
+    bytes: usize,
+}
+
+impl<Fs, S: Flat> TBloblet<Fs, S> {
+    fn new(bytes: Int, fields: Fs) -> Self {
+        TBloblet {
+            fields,
+            suffix: S::zeroed(),
+            bytes: index_of(bytes, "make-bloblet: a negative size"),
+        }
+    }
+}
+
+/// `(make-bloblet bytes e …)` of a typed suffix.
+pub fn make_tbloblet<'a, Fs: 'a, S: Flat + 'a>(bytes: Int, fields: Fs) -> &'a TBloblet<Fs, S> {
+    crate::alloc(TBloblet::new(bytes, fields))
+}
+
+/// `(rmake-bloblet r bytes e …)` of a typed suffix.
+pub fn rmake_tbloblet<Fs, S: Flat, R: Holds<TBloblet<Fs, S>>>(
+    r: &R,
+    bytes: Int,
+    fields: Fs,
+) -> &TBloblet<Fs, S> {
+    r.arena().alloc(TBloblet::new(bytes, fields))
+}
+
+impl<Fs, S> crate::Show for TBloblet<Fs, S> {
+    fn show(&self, out: &mut String) {
+        out.push_str("#<bloblet>");
+    }
+}
+
+impl<Fs, S> TBloblet<Fs, S> {
+    pub fn byte_size(&self) -> usize {
+        self.bytes
+    }
+}
+
 impl<Fs> crate::Show for Bloblet<Fs> {
     fn show(&self, out: &mut String) {
         out.push_str("#<bloblet>");

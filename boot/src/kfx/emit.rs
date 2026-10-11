@@ -129,29 +129,35 @@ pub fn fact_at_p(c: &'static Ctx, e: &'static Sexp, what: Str) -> bool {
     ctx_fact_p(c, datum_file(e), datum_pos(e), what)
 }
 
+/// The rest of the first fact at `file`, `pos` that begins `prefix`; or
+/// ``. A search, not a list made: the emitter asks at every name.
+pub fn first_fact(mut fs: Facts, mut file: Str, mut pos: i64, mut prefix: Str) -> Str {
+    loop {
+        if null_p(fs) {
+            return str_lit("");
+        } else {
+            let tagcase_ = car(fs);
+            match *tagcase_ {
+                Fact::Fact(ff, fp, fw) => {
+                    if (i64_eq(fp, pos) && string_eq_p(ff, file) && has_prefix_p(fw, prefix)) {
+                        return after_prefix(fw, prefix);
+                    } else {
+                        fs = cdr(fs);
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// What the checker found about the datum `e` that begins `prefix`, the
 /// rest of it; or ``.
 pub fn fact_with(c: &'static Ctx, e: &'static Sexp, prefix: Str) -> Str {
     let tagcase_ = c;
     match *tagcase_ {
         Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-            let found = concat(map(lambda1(move |f: &'static Fact| {
-                let tagcase_ = f;
-                match *tagcase_ {
-                    Fact::Fact(ff, fp, fw) => {
-                        if (i64_eq(fp, datum_pos(e)) && string_eq_p(ff, datum_file(e)) && has_prefix_p(fw, prefix)) {
-                            the::<Strings>(kayak_rt::cons(after_prefix(fw, prefix), kayak_rt::nil()))
-                        } else {
-                            nil::<Str>()
-                        }
-                    }
-                }
-            }), fs));
-            if null_p(found) {
-                str_lit("")
-            } else {
-                car(found)
-            }
+            first_fact(fs, datum_file(e), datum_pos(e), prefix)
         }
     }
 }
@@ -665,6 +671,21 @@ pub fn note(form: &'static Sexp, c: &'static Ctx) -> &'static Ctx {
                 ctx(cons(d, ds), note_tags(cdr(cdr(items(form))), d, ts), ks, ls, xs, fs, note_family(second(items(form)), true, ms), es, mods)
             } else if (head_is_p(form, str_lit("define-type")) && head_is_p(third(items(form)), str_lit("moduleof"))) {
                 ctx(ds, ts, ks, ls, xs, fs, ms, es, cons(typed(string_append(str_lit("%moduleof "), sym_name(second(items(form)))), third(items(form))), mods))
+            } else if (head_is_p(form, str_lit("define-type")) && {
+                let tagcase_ = second(items(form));
+                match *tagcase_ {
+                    Sexp::Sym(n, f, p) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                // A type abbreviation's body, kept for the typed suffixes (C32), which
+                // compare types as written out.
+                ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms), es, cons(typed(string_append(str_lit("%alias "), sym_name(second(items(form)))), third(items(form))), mods))
             } else if (head_is_p(form, str_lit("define-type")) || head_is_p(form, str_lit("define-generative"))) {
                 ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms), es, mods)
             } else if head_is_p(form, str_lit("define-effect")) {
@@ -825,6 +846,37 @@ pub fn region_lifetime(c: &'static Ctx, r: &'static Sexp) -> Str {
     }
 }
 
+/// What the checker found at `file`, `pos` that begins `prefix`, the rest;
+/// or ``.
+pub fn fact_at_place(c: &'static Ctx, file: Str, pos: i64, prefix: Str) -> Str {
+    let tagcase_ = c;
+    match *tagcase_ {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            first_fact(fs, file, pos, prefix)
+        }
+    }
+}
+
+pub fn digits_number(s: Str) -> i64 {
+    i64_minus(0i64, digits_value(string_chars(s), 0i64, str_lit(""), 0i64))
+}
+
+pub fn uses_blobrefs_p(c: &'static Ctx) -> bool {
+    let tagcase_ = c;
+    match *tagcase_ {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            any_p(lambda1(move |f: &'static Fact| {
+                let tagcase_ = f;
+                match *tagcase_ {
+                    Fact::Fact(ff, fp, fw) => {
+                        has_prefix_p(fw, str_lit("blob-at "))
+                    }
+                }
+            }), fs)
+        }
+    }
+}
+
 /// A reference's lifetime for data at region `r`: its `letrena`'s, or the heap's.
 pub fn owner_lifetime(c: &'static Ctx, r: &'static Sexp) -> Str {
     let l = region_lifetime(c, r);
@@ -937,8 +989,12 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
                     } else {
                         return put_type(c, fourth(xs), acc);
                     }
+                } else if (sym_is_p(car(xs), str_lit("bloblet")) && not(null_p(typed_flat(c, t)))) {
+                    return put(str_lit(">"), put_flat(c, car(typed_flat(c, t)), put(str_lit(", "), put_fields_tuple(c, cdr(items(second(xs))), put(str_lit("TBloblet<"), put(str_lit(" "), put(owner_lifetime(c, third(xs)), put(str_lit("&"), acc))))))));
                 } else if sym_is_p(car(xs), str_lit("bloblet")) {
                     return put(str_lit(">"), put_fields_tuple(c, cdr(items(second(xs))), put(str_lit("Bloblet<"), put(str_lit(" "), put(owner_lifetime(c, third(xs)), put(str_lit("&"), acc))))));
+                } else if (sym_is_p(car(xs), str_lit("blobref")) && not(null_p(typed_flat(c, second(xs))))) {
+                    return put_flat(c, expand_aliases(c, third(xs)), put(str_lit(" "), put(owner_lifetime(c, third(items(expand_aliases(c, second(xs))))), put(str_lit("&"), acc))));
                 } else if sym_is_p(car(xs), str_lit("blobref")) {
                     return put(str_lit(">"), put_type(c, second(xs), put(str_lit("BlobRef<"), acc)));
                 } else if sym_is_p(car(xs), str_lit("prompt-tag")) {
@@ -999,6 +1055,175 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
                 let other = tagcase_;
                 return error(str_lit("kfx: a type KFX-0 does not have"));
             }
+        }
+    }
+}
+
+/// A flat in a typed suffix (C32): a scalar's cell, a product of them, an
+/// array of them, `FlatArr<T, n>`.
+pub fn put_flat(c: &'static Ctx, f: &'static Sexp, acc: Chars) -> Chars {
+    let tagcase_ = f;
+    match *tagcase_ {
+        Sexp::Sym(n, fl, p) => {
+            put(str_lit(">"), put_type(c, f, put(str_lit("std::cell::Cell<"), acc)))
+        }
+        Sexp::Lst(xs, fl, ln, p) => {
+            if sym_is_p(car(xs), str_lit("arrayof")) {
+                put(str_lit(">"), put(number_text(third(xs)), put(str_lit(", "), put_flat(c, second(xs), put(str_lit("FlatArr<"), acc)))))
+            } else {
+                let fs = map(&items, cdr(xs));
+                put(str_lit(">"), put_sep(lambda2(move |x: &'static Sexp, acc: List<char>| {
+                    put_flat(c, x, acc)
+                }), str_lit(", "), map(&second, fs), put(str_lit("<"), put(shape_name(true, map(lambda1(move |g: Sexps| {
+                    label_of(car(g))
+                }), fs)), acc))))
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            acc
+        }
+    }
+}
+
+/// A type, its abbreviations written out, as the checker's facts write it.
+pub fn expand_aliases(mut c: &'static Ctx, mut e: &'static Sexp) -> &'static Sexp {
+    loop {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Sym(n, fl, p) => {
+                let found = module_body(c, string_append(str_lit("%alias "), n));
+                if null_p(found) {
+                    return e;
+                } else {
+                    e = car(found);
+                    continue;
+                }
+            }
+            Sexp::Lst(xs, fl, ln, p) => {
+                if null_p(xs) {
+                    return e;
+                } else if (sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("sumof"))) {
+                    return lst(cons(car(xs), map(lambda1(move |g: &'static Sexp| {
+                        let tagcase_ = g;
+                        match *tagcase_ {
+                            Sexp::Lst(ys, f2, l2, p2) => {
+                                lst(kayak_rt::cons(car(ys), kayak_rt::cons(expand_aliases(c, second(ys)), kayak_rt::nil())), f2, l2, p2)
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                g
+                            }
+                        }
+                    }), cdr(xs))), fl, ln, p);
+                } else {
+                    return lst(cons(car(xs), map(lambda1(move |g: &'static Sexp| {
+                        expand_aliases(c, g)
+                    }), cdr(xs))), fl, ln, p);
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                return e;
+            }
+        }
+    }
+}
+
+/// A bloblet type's key: its fields, written out, whatever its region.
+pub fn owner_key(c: &'static Ctx, b: &'static Sexp) -> Str {
+    let b = expand_aliases(c, b);
+    if head_is_p(b, str_lit("bloblet")) {
+        rev_to_string(put_fields_tuple(c, cdr(items(second(items(b)))), nil::<char>()))
+    } else {
+        str_lit("")
+    }
+}
+
+/// The flat a bloblet type's suffix is typed as (C32), as a list of one;
+/// or none. Typed if the program makes a blobref into one only by
+/// `blobref-at` at offset 0, always of one flat, and never reads its
+/// bytes otherwise (`blobref+`, `-owner`, `-offset`, `bloblet-byte`...);
+/// and makes every one of literal size, room for that flat.
+pub fn typed_flat(c: &'static Ctx, b: &'static Sexp) -> Sexps {
+    let key = owner_key(c, b);
+    let fs = {
+        let tagcase_ = c;
+        match *tagcase_ {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                fs
+            }
+        }
+    };
+    let ats = concat(map(lambda1(move |f: &'static Fact| {
+        let tagcase_ = f;
+        match *tagcase_ {
+            Fact::Fact(file, pos, what) => {
+                if has_prefix_p(what, str_lit("blob-at ")) {
+                    let ts = read_all(string_chars(after_prefix(what, str_lit("blob-at "))), str_lit(""), 1i64);
+                    if string_eq_p(owner_key(c, car(ts)), key) {
+                        the::<List<&'static Fact>>(kayak_rt::cons(f, kayak_rt::nil()))
+                    } else {
+                        nil::<&'static Fact>()
+                    }
+                } else {
+                    nil::<&'static Fact>()
+                }
+            }
+        }
+    }), fs));
+    if (string_eq_p(key, str_lit("")) || null_p(ats)) {
+        nil::<&'static Sexp>()
+    } else {
+        let flat_of = lambda1(move |f: &'static Fact| {
+            let tagcase_ = f;
+            match *tagcase_ {
+                Fact::Fact(file, pos, what) => {
+                    second(read_all(string_chars(after_prefix(what, str_lit("blob-at "))), str_lit(""), 1i64))
+                }
+            }
+        });
+        let first = expand_aliases(c, flat_of(car(ats)));
+        let text = rev_to_string(put_flat(c, first, nil::<char>()));
+        let size = {
+            let tagcase_ = car(ats);
+            match *tagcase_ {
+                Fact::Fact(file, pos, what) => {
+                    fact_at_place(c, file, pos, str_lit("blob-size "))
+                }
+            }
+        };
+        let same = not(any_p(lambda1(move |f: &'static Fact| {
+            let tagcase_ = f;
+            match *tagcase_ {
+                Fact::Fact(file, pos, what) => {
+                    (not(ctx_fact_p(c, file, pos, str_lit("blob-zero"))) || not(string_eq_p(rev_to_string(put_flat(c, expand_aliases(c, flat_of(f)), nil::<char>())), text)))
+                }
+            }
+        }), ats));
+        let bytewise = any_p(lambda1(move |f: &'static Fact| {
+            let tagcase_ = f;
+            match *tagcase_ {
+                Fact::Fact(file, pos, what) => {
+                    (has_prefix_p(what, str_lit("blob-raw ")) && string_eq_p(owner_key(c, car(read_all(string_chars(after_prefix(what, str_lit("blob-raw "))), str_lit(""), 1i64))), key))
+                }
+            }
+        }), fs);
+        let short = any_p(lambda1(move |f: &'static Fact| {
+            let tagcase_ = f;
+            match *tagcase_ {
+                Fact::Fact(file, pos, what) => {
+                    (has_prefix_p(what, str_lit("blob-make ")) && string_eq_p(owner_key(c, car(read_all(string_chars(after_prefix(what, str_lit("blob-make "))), str_lit(""), 1i64))), key) && {
+                        let bytes = fact_at_place(c, file, pos, str_lit("blob-bytes "));
+                        (string_eq_p(bytes, str_lit("")) || i64_lt(digits_number(bytes), digits_number(size)))
+                    })
+                }
+            }
+        }), fs);
+        if (same && not(bytewise) && not(short)) {
+            the::<Sexps>(kayak_rt::cons(first, kayak_rt::nil()))
+        } else {
+            nil::<&'static Sexp>()
         }
     }
 }
@@ -1644,6 +1869,17 @@ pub fn put_held_impls(mut held: Strings, mut i: i64, mut region: Str, mut lives:
     }
 }
 
+/// The flat of the typed suffix (C32) of the owner the checker noted at
+/// `e` under `prefix`, as a list of one; or none.
+pub fn blob_typed(c: &'static Ctx, e: &'static Sexp, prefix: Str) -> Sexps {
+    let found = fact_with(c, e, prefix);
+    if string_eq_p(found, str_lit("")) {
+        nil::<&'static Sexp>()
+    } else {
+        typed_flat(c, car(read_all(string_chars(found), str_lit(""), 1i64)))
+    }
+}
+
 // Every writer of an expression takes `n`, the indentation of the line it
 // starts on, and `t`, where the expression stands.
 pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc: Chars) -> Chars {
@@ -2130,7 +2366,9 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
         }), fs)), acc);
         put(str_lit(")"), put_joined(c, map(&second, fs), str_lit(", "), n, put(str_lit("("), acc)))
     } else if string_eq_p(h, str_lit("extract")) {
-        if string_eq_p(fact_with(c, e, str_lit("blob-offset ")), str_lit("")) {
+        if not(null_p(blob_typed(c, e, str_lit("blob-owner ")))) {
+            put(str_lit(")"), put(fact_with(c, e, str_lit("blob-field ")), put(str_lit(")."), put_exp(c, car(xs), n, value(), put(str_lit("(&("), acc)))))
+        } else if string_eq_p(fact_with(c, e, str_lit("blob-offset ")), str_lit("")) {
             put(fact_with(c, e, str_lit("extract-index ")), put(str_lit("."), put_exp(c, car(xs), n, value(), acc)))
         } else {
             put(str_lit(")"), put(fact_with(c, e, str_lit("blob-offset ")), put(str_lit(").field("), put_exp(c, car(xs), n, value(), put(str_lit("("), acc)))))
@@ -2165,11 +2403,18 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
     } else if ((string_eq_p(h, str_lit("make-bloblet")) || string_eq_p(h, str_lit("rmake-bloblet"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
         // `make_bloblet(bytes, (Cell::new(e), ...,))`; in a region, `rmake_bloblet(r, ...)`.
         let placed = string_eq_p(h, str_lit("rmake-bloblet"));
-        let acc = put(if placed {
-            str_lit("rmake_bloblet(")
+        let flat = blob_typed(c, e, str_lit("blob-make "));
+        let acc = if null_p(flat) {
+            put(if placed {
+                str_lit("rmake_bloblet(")
+            } else {
+                str_lit("make_bloblet(")
+            }, acc)
+        } else if placed {
+            put(str_lit(", _>("), put_flat(c, car(flat), put(str_lit("rmake_tbloblet::<_, "), acc)))
         } else {
-            str_lit("make_bloblet(")
-        }, acc);
+            put(str_lit(">("), put_flat(c, car(flat), put(str_lit("make_tbloblet::<_, "), acc)))
+        };
         let acc = if placed {
             put(str_lit(", "), put_exp(c, car(xs), n, value(), acc))
         } else {
@@ -2195,16 +2440,29 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
         }
     } else if ((string_eq_p(h, str_lit("blobref-get")) || string_eq_p(h, str_lit("blobref-set!"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
         // A scalar's bytes, read or written as the checker found its flat.
-        let acc = put(fact_with(c, e, str_lit("blob-scalar ")), put(if string_eq_p(h, str_lit("blobref-get")) {
-            str_lit(").get_")
+        let acc = if null_p(blob_typed(c, e, str_lit("blob-owner "))) {
+            put(fact_with(c, e, str_lit("blob-scalar ")), put(if string_eq_p(h, str_lit("blobref-get")) {
+                str_lit(").get_")
+            } else {
+                str_lit(").set_")
+            }, put_exp(c, car(xs), n, value(), put(str_lit("("), acc))))
         } else {
-            str_lit(").set_")
-        }, put_exp(c, car(xs), n, value(), put(str_lit("("), acc))));
+            put(if string_eq_p(h, str_lit("blobref-get")) {
+                str_lit(").get")
+            } else {
+                str_lit(").set")
+            }, put_exp(c, car(xs), n, value(), put(str_lit("("), acc)))
+        };
         if string_eq_p(h, str_lit("blobref-get")) {
             put(str_lit("()"), acc)
         } else {
             put(str_lit(")"), put_exp(c, second(xs), n, value(), put(str_lit("("), acc)))
         }
+    } else if (string_eq_p(h, str_lit("blobref-index")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit("")) && not(null_p(blob_typed(c, e, str_lit("blob-owner "))))) {
+        put(str_lit(")"), put_exp(c, second(xs), n, value(), put(str_lit(").at("), put_exp(c, car(xs), n, value(), put(str_lit("("), acc)))))
+    } else if (string_eq_p(h, str_lit("blobref-at")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit("")) && not(null_p(blob_typed(c, e, str_lit("blob-at "))))) {
+        // A typed suffix's blobref at 0 (C32): a reference to it.
+        put(str_lit(").suffix)"), put_exp(c, car(xs), n, value(), put(str_lit("(&("), acc)))
     } else if (string_eq_p(h, str_lit("blobref-index")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
         let acc = put(str_lit(").index("), put_exp(c, car(xs), n, value(), put(str_lit("("), acc)));
         let acc = put_exp(c, second(xs), n, value(), acc);
@@ -2367,6 +2625,8 @@ pub fn held_type(c: &'static Ctx, r: Str, call: &'static Sexp) -> Str {
     let t = car(read_all(string_chars(fact_with(c, call, str_lit("rheld "))), str_lit(""), 1i64));
     if head_is_p(call, str_lit("rcons")) {
         string_append(str_lit("Cons<'"), string_append(mangle(r), string_append(str_lit(", "), string_append(rev_to_string(put_type(c, t, nil::<char>())), str_lit(">")))))
+    } else if (head_is_p(call, str_lit("rmake-bloblet")) && not(null_p(typed_flat(c, t)))) {
+        string_append(str_lit("TBloblet<"), string_append(rev_to_string(put_fields_tuple(c, cdr(items(second(items(t)))), nil::<char>())), string_append(str_lit(", "), string_append(rev_to_string(put_flat(c, car(typed_flat(c, t)), nil::<char>())), str_lit(">")))))
     } else if head_is_p(call, str_lit("rmake-bloblet")) {
         string_append(str_lit("Bloblet<"), string_append(rev_to_string(put_fields_tuple(c, cdr(items(second(items(t)))), nil::<char>())), str_lit(">")))
     } else {

@@ -75,10 +75,12 @@ pub type List<T> = ListAt<'static, T>;
 
 /// Allocation: the heap is never freed, so what it holds lives as long as
 /// anything wants, `'static` or a region's `'r`.
+#[inline]
 pub fn alloc<'a, T: 'a>(v: T) -> &'a T {
     Box::leak(Box::new(v))
 }
 
+#[inline]
 pub fn leak_string(s: String) -> Str {
     let ascii = s.is_ascii();
     Str {
@@ -94,6 +96,7 @@ pub fn leak_string(s: String) -> Str {
 #[derive(Clone, Copy)]
 pub enum Void {}
 
+#[inline]
 pub fn error(message: Str) -> ! {
     panic!("{}", message.text)
 }
@@ -107,22 +110,27 @@ pub(crate) fn fail(message: &str) -> ! {
 // `&'static dyn Fn` by the helper of its arity, so that its parameters'
 // and result's types are found from where it is used.
 
+#[inline]
 pub fn lambda0<'a, R>(f: impl Fn() -> R + 'a) -> &'a dyn Fn() -> R {
     alloc(f)
 }
 
+#[inline]
 pub fn lambda1<'a, A, R>(f: impl Fn(A) -> R + 'a) -> &'a dyn Fn(A) -> R {
     alloc(f)
 }
 
+#[inline]
 pub fn lambda2<'a, A, B, R>(f: impl Fn(A, B) -> R + 'a) -> &'a dyn Fn(A, B) -> R {
     alloc(f)
 }
 
+#[inline]
 pub fn lambda3<'a, A, B, C, R>(f: impl Fn(A, B, C) -> R + 'a) -> &'a dyn Fn(A, B, C) -> R {
     alloc(f)
 }
 
+#[inline]
 pub fn lambda4<'a, A, B, C, D, R>(f: impl Fn(A, B, C, D) -> R + 'a) -> &'a dyn Fn(A, B, C, D) -> R {
     alloc(f)
 }
@@ -145,20 +153,24 @@ impl<T: Copy> Knot<T> {
     }
 }
 
+#[inline]
 pub fn knot<'a, T: Copy + 'a>() -> &'a Knot<T> {
     alloc(Knot(Cell::new(None)))
 }
 
 // Lists.
 
+#[inline]
 pub fn nil<'r, T>() -> ListAt<'r, T> {
     None
 }
 
+#[inline]
 pub fn cons<'r, T>(car: T, cdr: ListAt<'r, T>) -> ListAt<'r, T> {
     Some(alloc(Cons { car, cdr }))
 }
 
+#[inline]
 pub fn car<T: Copy>(xs: ListAt<'_, T>) -> T {
     match xs {
         Some(p) => p.car,
@@ -166,6 +178,7 @@ pub fn car<T: Copy>(xs: ListAt<'_, T>) -> T {
     }
 }
 
+#[inline]
 pub fn cdr<'r, T>(xs: ListAt<'r, T>) -> ListAt<'r, T> {
     match xs {
         Some(p) => p.cdr,
@@ -173,12 +186,14 @@ pub fn cdr<'r, T>(xs: ListAt<'r, T>) -> ListAt<'r, T> {
     }
 }
 
+#[inline]
 pub fn null_p<T>(xs: ListAt<'_, T>) -> bool {
     xs.is_none()
 }
 
 // Booleans.
 
+#[inline]
 pub fn not(b: bool) -> bool {
     !b
 }
@@ -187,18 +202,22 @@ pub fn not(b: bool) -> bool {
 // does: `MIN / -1` is `MIN`, and a shift counts modulo 64. Division by zero
 // is an error in both.
 
+#[inline]
 pub fn i64_plus(a: i64, b: i64) -> i64 {
     a.wrapping_add(b)
 }
 
+#[inline]
 pub fn i64_minus(a: i64, b: i64) -> i64 {
     a.wrapping_sub(b)
 }
 
+#[inline]
 pub fn i64_star(a: i64, b: i64) -> i64 {
     a.wrapping_mul(b)
 }
 
+#[inline]
 pub fn i64_quotient(a: i64, b: i64) -> i64 {
     if b == 0 {
         fail("i64-quotient: division by zero")
@@ -207,6 +226,7 @@ pub fn i64_quotient(a: i64, b: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn i64_remainder(a: i64, b: i64) -> i64 {
     if b == 0 {
         fail("i64-remainder: division by zero")
@@ -215,38 +235,47 @@ pub fn i64_remainder(a: i64, b: i64) -> i64 {
     }
 }
 
+#[inline]
 pub fn i64_and(a: i64, b: i64) -> i64 {
     a & b
 }
 
+#[inline]
 pub fn i64_or(a: i64, b: i64) -> i64 {
     a | b
 }
 
+#[inline]
 pub fn i64_xor(a: i64, b: i64) -> i64 {
     a ^ b
 }
 
+#[inline]
 pub fn i64_not(a: i64) -> i64 {
     !a
 }
 
+#[inline]
 pub fn i64_eq(a: i64, b: i64) -> bool {
     a == b
 }
 
+#[inline]
 pub fn i64_lt(a: i64, b: i64) -> bool {
     a < b
 }
 
+#[inline]
 pub fn i64_gt(a: i64, b: i64) -> bool {
     a > b
 }
 
+#[inline]
 pub fn i64_lt_eq(a: i64, b: i64) -> bool {
     a <= b
 }
 
+#[inline]
 pub fn i64_gt_eq(a: i64, b: i64) -> bool {
     a >= b
 }
@@ -254,6 +283,7 @@ pub fn i64_gt_eq(a: i64, b: i64) -> bool {
 // The prelude (`kfx/prelude.fx`): FX-26's `int` primitives, at `i64`.
 
 /// Characters, as FX-26 counts: bytes, if the string is ASCII.
+#[inline]
 pub fn string_length_i64(s: Str) -> i64 {
     if s.ascii {
         s.text.len() as i64
@@ -263,6 +293,7 @@ pub fn string_length_i64(s: Str) -> i64 {
 }
 
 /// The `i`th character: at once if the string is ASCII, else counted to.
+#[inline]
 pub fn string_ref_i64(s: Str, i: i64) -> char {
     let found = usize::try_from(i).ok().and_then(|i| {
         if s.ascii {
@@ -274,10 +305,12 @@ pub fn string_ref_i64(s: Str, i: i64) -> char {
     found.unwrap_or_else(|| fail("string-ref: out of range"))
 }
 
+#[inline]
 pub fn char_to_i64(c: char) -> i64 {
     c as i64
 }
 
+#[inline]
 pub fn i64_to_string(n: i64) -> Str {
     leak_string(n.to_string())
 }
@@ -285,18 +318,22 @@ pub fn i64_to_string(n: i64) -> Str {
 // Mutable data: references and flat arrays. Regions are erased (every
 // one's place is the heap, so every reference `'static`); effects too.
 
+#[inline]
 pub fn new<'r, T: Copy>(v: T) -> RefAt<'r, T> {
     alloc(Cell::new(v))
 }
 
+#[inline]
 pub fn get<T: Copy>(r: RefAt<'_, T>) -> T {
     r.get()
 }
 
+#[inline]
 pub fn set<T: Copy>(r: RefAt<'_, T>, v: T) {
     r.set(v)
 }
 
+#[inline]
 pub fn make_flatarray_i64(n: i64, v: i64) -> FlatArray<i64> {
     match usize::try_from(n) {
         Ok(n) => Box::leak(
@@ -316,63 +353,76 @@ fn element<T>(a: &'static [Cell<T>], i: i64) -> &'static Cell<T> {
     }
 }
 
+#[inline]
 pub fn flatarray_ref_i64(a: FlatArray<i64>, i: i64) -> i64 {
     element(a, i).get()
 }
 
+#[inline]
 pub fn flatarray_set_i64_x(a: FlatArray<i64>, i: i64, v: i64) {
     element(a, i).set(v)
 }
 
+#[inline]
 pub fn flatarray_length_i64(a: FlatArray<i64>) -> i64 {
     a.len() as i64
 }
 
 // Characters.
 
+#[inline]
 pub fn char_eq_p(a: char, b: char) -> bool {
     a == b
 }
 
+#[inline]
 pub fn char_whitespace_p(c: char) -> bool {
     c.is_whitespace()
 }
 
 /// Any numeric character, as Fixpt's (`²`, `½`, `٣` too).
+#[inline]
 pub fn char_numeric_p(c: char) -> bool {
     c.is_numeric()
 }
 
+#[inline]
 pub fn char_alphabetic_p(c: char) -> bool {
     c.is_alphabetic()
 }
 
 /// Unicode's upper case, its first character where it is more than one
 /// (`ß` is `S`), as Fixpt's.
+#[inline]
 pub fn char_upcase(c: char) -> char {
     c.to_uppercase().next().unwrap_or(c)
 }
 
+#[inline]
 pub fn char_to_string(c: char) -> Str {
     leak_string(c.to_string())
 }
 
 // Strings.
 
+#[inline]
 pub fn string_eq_p(a: Str, b: Str) -> bool {
     a == b
 }
 
+#[inline]
 pub fn string_append(a: Str, b: Str) -> Str {
     leak_string(format!("{a}{b}"))
 }
 
 /// `nat`s, which are `Int`s: a string's length in characters, a list's.
+#[inline]
 pub fn string_length(s: Str) -> Int {
     i64_to_int(string_length_i64(s))
 }
 
 /// `string-ref` at an `int`, as FX-26 has it.
+#[inline]
 pub fn string_ref(s: Str, i: Int) -> char {
     if _lt(i, int_lit(0)) || _gt(i, int_lit(i64::MAX)) {
         fail("string-ref: out of range")
@@ -380,10 +430,12 @@ pub fn string_ref(s: Str, i: Int) -> char {
     string_ref_i64(s, int_to_i64(i))
 }
 
+#[inline]
 pub fn length<T>(xs: ListAt<'_, T>) -> Int {
     list_length(xs)
 }
 
+#[inline]
 pub fn list_length<T>(mut xs: ListAt<'_, T>) -> Int {
     let mut n = 0i64;
     while let Some(p) = xs {
@@ -393,6 +445,7 @@ pub fn list_length<T>(mut xs: ListAt<'_, T>) -> Int {
     i64_to_int(n)
 }
 
+#[inline]
 pub fn reverse<'b, T: Copy + 'b>(mut xs: ListAt<'_, T>) -> ListAt<'b, T> {
     let mut out = nil();
     while let Some(p) = xs {
@@ -402,6 +455,7 @@ pub fn reverse<'b, T: Copy + 'b>(mut xs: ListAt<'_, T>) -> ListAt<'b, T> {
     out
 }
 
+#[inline]
 pub fn append<'b, T: Copy + 'b>(xs: ListAt<'_, T>, ys: ListAt<'b, T>) -> ListAt<'b, T> {
     let mut items = Vec::new();
     let mut p = xs;
@@ -413,6 +467,7 @@ pub fn append<'b, T: Copy + 'b>(xs: ListAt<'_, T>, ys: ListAt<'b, T>) -> ListAt<
 }
 
 /// A string literal: `const`, so that a literal in a loop costs nothing.
+#[inline]
 pub const fn str_lit(text: &'static str) -> Str {
     Str {
         text,
@@ -420,10 +475,12 @@ pub const fn str_lit(text: &'static str) -> Str {
     }
 }
 
+#[inline]
 pub fn string_to_list(s: Str) -> List<char> {
     s.text.chars().rev().fold(nil(), |rest, c| cons(c, rest))
 }
 
+#[inline]
 pub fn list_to_string(mut cs: List<char>) -> Str {
     let mut s = String::new();
     while let Some(p) = cs {
@@ -435,6 +492,7 @@ pub fn list_to_string(mut cs: List<char>) -> Str {
 
 /// Runs `f` on a thread with a stack of 1 GiB: KFX-0 has no loops, and
 /// Rust no tail calls, so a walk of a long list is as deep as the list.
+#[inline]
 pub fn with_big_stack<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> T {
     std::thread::Builder::new()
         .stack_size(1 << 30)

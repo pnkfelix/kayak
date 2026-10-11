@@ -8,72 +8,91 @@ macro_rules! fixed {
     ($t:ident, $plus:ident, $minus:ident, $star:ident, $quot:ident, $rem:ident, $and:ident, $or:ident,
      $xor:ident, $not:ident, $shl:ident, $shr:ident, $eq:ident, $lt:ident, $gt:ident, $le:ident, $ge:ident,
      $from_int:ident, $to_int:ident, $to_string:ident) => {
+        #[inline]
         pub fn $plus(a: $t, b: $t) -> $t {
             a.wrapping_add(b)
         }
+        #[inline]
         pub fn $minus(a: $t, b: $t) -> $t {
             a.wrapping_sub(b)
         }
+        #[inline]
         pub fn $star(a: $t, b: $t) -> $t {
             a.wrapping_mul(b)
         }
+        #[inline]
         pub fn $quot(a: $t, b: $t) -> $t {
             if b == 0 {
                 fail(concat!(stringify!($t), "-quotient: division by zero"))
             }
             a.wrapping_div(b)
         }
+        #[inline]
         pub fn $rem(a: $t, b: $t) -> $t {
             if b == 0 {
                 fail(concat!(stringify!($t), "-remainder: division by zero"))
             }
             a.wrapping_rem(b)
         }
+        #[inline]
         pub fn $and(a: $t, b: $t) -> $t {
             a & b
         }
+        #[inline]
         pub fn $or(a: $t, b: $t) -> $t {
             a | b
         }
+        #[inline]
         pub fn $xor(a: $t, b: $t) -> $t {
             a ^ b
         }
+        #[inline]
         pub fn $not(a: $t) -> $t {
             !a
         }
         /// The count taken modulo the width, as FX-26's.
+        #[inline]
         pub fn $shl(a: $t, n: Int) -> $t {
             a.wrapping_shl(int_to_i64(n).rem_euclid(<$t>::BITS as i64) as u32)
         }
         /// Arithmetic if signed, else logical; the count modulo the width.
+        #[inline]
         pub fn $shr(a: $t, n: Int) -> $t {
             a.wrapping_shr(int_to_i64(n).rem_euclid(<$t>::BITS as i64) as u32)
         }
+        #[inline]
         pub fn $eq(a: $t, b: $t) -> bool {
             a == b
         }
+        #[inline]
         pub fn $lt(a: $t, b: $t) -> bool {
             a < b
         }
+        #[inline]
         pub fn $gt(a: $t, b: $t) -> bool {
             a > b
         }
+        #[inline]
         pub fn $le(a: $t, b: $t) -> bool {
             a <= b
         }
+        #[inline]
         pub fn $ge(a: $t, b: $t) -> bool {
             a >= b
         }
         /// Wraps, as FX-26's: the integer's low bits.
+        #[inline]
         pub fn $from_int(n: Int) -> $t {
             int_to_i64(n) as $t
         }
+        #[inline]
         pub fn $to_int(n: $t) -> Int {
             match i64::try_from(n) {
                 Ok(v) => int_lit(v),
                 Err(_) => int_text(&n.to_string()),
             }
         }
+        #[inline]
         pub fn $to_string(n: $t) -> Str {
             str_lit(Box::leak(n.to_string().into_boxed_str()))
         }
@@ -148,9 +167,11 @@ fixed!(
 );
 
 /// `i64-shl` and `i64-shr`, as the others'.
+#[inline]
 pub fn i64_shl(a: i64, n: Int) -> i64 {
     a.wrapping_shl(int_to_i64(n).rem_euclid(64) as u32)
 }
+#[inline]
 pub fn i64_shr(a: i64, n: Int) -> i64 {
     a.wrapping_shr(int_to_i64(n).rem_euclid(64) as u32)
 }

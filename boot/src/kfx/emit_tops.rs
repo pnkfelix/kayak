@@ -734,8 +734,9 @@ pub fn put_variants_of(mut tags: Strings, mut i: i64, mut acc: Chars) -> Chars {
 }
 
 /// Each shape's declaration, and, for `kfx --toplevel`, its `Show`, as
-/// Fixpt writes one: `#<product of 2>`, `#<sum leaf>`.
-pub fn put_shape_decls(keys: Strings, shows: bool, acc: Chars) -> Chars {
+/// Fixpt writes one: `#<product of 2>`, `#<sum leaf>`; with `flats`, a
+/// product's `Flat`, for a typed suffix (C32): its fields' zero bytes.
+pub fn put_shape_decls(keys: Strings, shows: bool, flats: bool, acc: Chars) -> Chars {
     if null_p(keys) {
         acc
     } else {
@@ -764,12 +765,20 @@ pub fn put_shape_decls(keys: Strings, shows: bool, acc: Chars) -> Chars {
                 }), str_lit(""), labels, put(str_lit("        match self {\n"), acc)))
             })
         };
-        put_shape_decls(cdr(keys), shows, acc)
+        put_shape_decls(cdr(keys), shows, flats, if (flats && product) {
+            put(str_lit("    }\n}\n\n"), put(str_lit(")\n"), put_sep(lambda2(move |i: i64, acc: Chars| {
+                put(str_lit("::zeroed()"), put(i64_to_string(i), put(str_lit("A"), acc)))
+            }), str_lit(", "), counting(0i64, n), put(str_lit("("), put(name, put(str_lit(" {\n    fn zeroed() -> Self {\n        "), put_generic_params(n, put(name, put(str_lit(" Flat for "), put(str_lit(">"), put_sep(lambda2(move |i: i64, acc: Chars| {
+                put(str_lit(": Flat"), put(i64_to_string(i), put(str_lit("A"), acc)))
+            }), str_lit(", "), counting(0i64, n), put(str_lit("impl<"), acc))))))))))))
+        } else {
+            acc
+        })
     }
 }
 
 pub fn put_shapes(c: &'static Ctx, forms: Sexps, shows: bool, acc: Chars) -> Chars {
-    put_shape_decls(program_shapes(c, forms), shows, acc)
+    put_shape_decls(program_shapes(c, forms), shows, uses_blobrefs_p(c), acc)
 }
 
 // A program's top-level expressions, for running Fixpt's programs as Rust

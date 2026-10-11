@@ -948,3 +948,13 @@ both, 12 by KFX alone (`f32`, width, flat sums, arrays of values, ...);
 none a K1 violation or a Rust error. Fixpt's programs kfx accepts: 71, all
 agreeing (a run-time failure in both counted so). And a K1 violation found
 on the way: a type named as an effect, now refused.
+
+## Typed suffixes, and KFX's code as fast as Rust written by hand (2026-10-11)
+
+C32: a bloblet type the program reads only as one flat from offset 0
+holds that flat typed, `TBloblet<Fs, S>`, and a blobref into it is a
+reference, `&'r S`; others keep C31's words. kayak-rt's small functions
+are `#[inline]`. On a million 24-byte products, KFX's generated code reads
+and writes as fast as a hand-written `#[repr(C)]` struct of cells (10.5
+and 5.0 ms against 10.4 and 4.9). The emitter's fact lookups are searches,
+no longer lists made: the compiler compiles itself in 0.46 s.

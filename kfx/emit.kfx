@@ -56,20 +56,25 @@
     "Whether the checker found `what` about the datum `e`."
     (ctx-fact? c (datum-file e) (datum-pos e) what)))
 
+(define-rec
+  (first-fact (subr kfx (facts string i64 string) string)
+    (lambda (fs file pos prefix)
+      "The rest of the first fact at `file`, `pos` that begins `prefix`; or
+       ``. A search, not a list made: the emitter asks at every name."
+      (if (null? fs)
+          ""
+          (tagcase (car fs)
+            (fact (ff fp fw)
+              (if (and (i64= fp pos) (string=? ff file) (has-prefix? fw prefix))
+                  (after-prefix fw prefix)
+                  (first-fact (cdr fs) file pos prefix))))))))
+
 (define fact-with (subr kfx (ctx sexp string) string)
   (lambda (c e prefix)
     "What the checker found about the datum `e` that begins `prefix`, the
      rest of it; or ``."
     (tagcase c
-      (ctx (ds ts ks ls xs fs ms es mods)
-        (let ((found (concat (map (lambda ((f fact))
-                                    (tagcase f
-                                      (fact (ff fp fw)
-                                        (if (and (i64= fp (datum-pos e)) (string=? ff (datum-file e)) (has-prefix? fw prefix))
-                                            (the strings (list (after-prefix fw prefix)))
-                                            nil))))
-                                  fs))))
-          (if (null? found) "" (car found)))))))
+      (ctx (ds ts ks ls xs fs ms es mods) (first-fact fs (datum-file e) (datum-pos e) prefix)))))
 
 "Products and sums, FX-26's structural data (check.kfx, `ty-shape`): one
  generic Rust type for each list of labels, a tuple struct for a product,
@@ -334,6 +339,11 @@
                       (note-family (second (items form)) #t ms) es mods)))
               ((and (head-is? form "define-type") (head-is? (third (items form)) "moduleof"))
                (ctx ds ts ks ls xs fs ms es (cons (typed (string-append "%moduleof " (sym-name (second (items form)))) (third (items form))) mods)))
+              ((and (head-is? form "define-type") (tagcase (second (items form)) (sym (n f p) #t) (else other #f)))
+               "A type abbreviation's body, kept for the typed suffixes (C32), which
+                compare types as written out."
+               (ctx ds ts ks ls xs fs (note-family (second (items form)) #f ms) es
+                    (cons (typed (string-append "%alias " (sym-name (second (items form)))) (third (items form))) mods)))
               ((or (head-is? form "define-type") (head-is? form "define-generative"))
                (ctx ds ts ks ls xs fs (note-family (second (items form)) #f ms) es mods))
               ((head-is? form "define-effect")
@@ -422,6 +432,21 @@
           (string-append "'" (mangle n))
           ""))))
 
+(define fact-at-place (subr kfx (ctx string i64 string) string)
+  (lambda (c file pos prefix)
+    "What the checker found at `file`, `pos` that begins `prefix`, the rest;
+     or ``."
+    (tagcase c (ctx (ds ts ks ls xs fs ms es mods) (first-fact fs file pos prefix)))))
+
+(define digits-number (subr kfx (string) i64)
+  (lambda (s) (i64- 0 (digits-value (string-chars s) 0 "" 0))))
+
+(define uses-blobrefs? (subr kfx (ctx) bool)
+  (lambda (c)
+    (tagcase c
+      (ctx (ds ts ks ls xs fs ms es mods)
+        (any? (lambda ((f fact)) (tagcase f (fact (ff fp fw) (has-prefix? fw "blob-at ")))) fs)))))
+
 (define owner-lifetime (subr kfx (ctx sexp) string)
   (lambda (c r)
     "A reference's lifetime for data at region `r`: its `letrena`'s, or the heap's."
@@ -489,9 +514,16 @@
                    (if (fallible-effect? c (second xs))
                        (put ", Unwind>" (put-type c (fourth xs) (put "Result<" acc)))
                        (put-type c (fourth xs) acc))))
+                ((and (sym-is? (car xs) "bloblet") (not (null? (typed-flat c t))))
+                 (put ">" (put-flat c (car (typed-flat c t))
+                                    (put ", " (put-fields-tuple c (cdr (items (second xs)))
+                                                                (put "TBloblet<" (put " " (put (owner-lifetime c (third xs)) (put "&" acc)))))))))
                 ((sym-is? (car xs) "bloblet")
                  (put ">" (put-fields-tuple c (cdr (items (second xs)))
                                             (put "Bloblet<" (put " " (put (owner-lifetime c (third xs)) (put "&" acc)))))))
+                ((and (sym-is? (car xs) "blobref") (not (null? (typed-flat c (second xs)))))
+                 (put-flat c (expand-aliases c (third xs))
+                           (put " " (put (owner-lifetime c (third (items (expand-aliases c (second xs))))) (put "&" acc)))))
                 ((sym-is? (car xs) "blobref")
                  (put ">" (put-type c (second xs) (put "BlobRef<" acc))))
                 ((sym-is? (car xs) "prompt-tag")
@@ -515,6 +547,91 @@
                        (if (null? args) acc (put ">" (put-types c args (put "<" acc))))))))
                 (else (error "kfx: a type KFX-0 does not have"))))
         (else other (error "kfx: a type KFX-0 does not have")))))
+
+  (put-flat (subr kfx (ctx sexp chars) chars)
+    (lambda (c f acc)
+      "A flat in a typed suffix (C32): a scalar's cell, a product of them, an
+       array of them, `FlatArr<T, n>`."
+      (tagcase f
+        (sym (n fl p) (put ">" (put-type c f (put "std::cell::Cell<" acc))))
+        (lst (xs fl ln p)
+          (cond ((sym-is? (car xs) "arrayof")
+                 (put ">" (put (number-text (third xs)) (put ", " (put-flat c (second xs) (put "FlatArr<" acc))))))
+                (else
+                 (let ((fs (map items (cdr xs))))
+                   (put ">" (put-sep (lambda ((x sexp) acc) (put-flat c x acc)) ", " (map second fs)
+                                     (put "<" (put (shape-name #t (map (lambda ((g sexps)) (label-of (car g))) fs)) acc))))))))
+        (else other acc))))
+
+  (expand-aliases (subr kfx (ctx sexp) sexp)
+    (lambda (c e)
+      "A type, its abbreviations written out, as the checker's facts write it."
+      (tagcase e
+        (sym (n fl p)
+          (let ((found (module-body c (string-append "%alias " n))))
+            (if (null? found) e (expand-aliases c (car found)))))
+        (lst (xs fl ln p)
+          (cond ((null? xs) e)
+                ((or (sym-is? (car xs) "productof") (sym-is? (car xs) "sumof"))
+                 (lst (cons (car xs) (map (lambda ((g sexp)) (tagcase g (lst (ys f2 l2 p2) (lst (list (car ys) (expand-aliases c (second ys))) f2 l2 p2)) (else other g)))
+                                          (cdr xs)))
+                      fl ln p))
+                (else (lst (cons (car xs) (map (lambda ((g sexp)) (expand-aliases c g)) (cdr xs))) fl ln p))))
+        (else other e))))
+
+  (owner-key (subr kfx (ctx sexp) string)
+    (lambda (c b)
+      "A bloblet type's key: its fields, written out, whatever its region."
+      (let ((b (expand-aliases c b)))
+        (if (head-is? b "bloblet")
+            (rev->string (put-fields-tuple c (cdr (items (second (items b)))) nil))
+            ""))))
+
+  (typed-flat (subr kfx (ctx sexp) sexps)
+    (lambda (c b)
+      "The flat a bloblet type's suffix is typed as (C32), as a list of one;
+       or none. Typed if the program makes a blobref into one only by
+       `blobref-at` at offset 0, always of one flat, and never reads its
+       bytes otherwise (`blobref+`, `-owner`, `-offset`, `bloblet-byte`...);
+       and makes every one of literal size, room for that flat."
+      (let* ((key (owner-key c b))
+             (fs (tagcase c (ctx (ds ts ks ls xs fs ms es mods) fs)))
+             (ats (concat (map (lambda ((f fact))
+                                 (tagcase f
+                                   (fact (file pos what)
+                                     (if (has-prefix? what "blob-at ")
+                                         (let ((ts (read-all (string-chars (after-prefix what "blob-at ")) "" 1)))
+                                           (if (string=? (owner-key c (car ts)) key) (the (listof fact acyclic) (list f)) nil))
+                                         nil))))
+                               fs))))
+        (if (or (string=? key "") (null? ats))
+            nil
+            (let* ((flat-of (lambda ((f fact)) (tagcase f (fact (file pos what) (second (read-all (string-chars (after-prefix what "blob-at ")) "" 1))))))
+                   (first (expand-aliases c (flat-of (car ats))))
+                   (text (rev->string (put-flat c first nil)))
+                   (size (tagcase (car ats) (fact (file pos what) (fact-at-place c file pos "blob-size "))))
+                   (same (not (any? (lambda ((f fact))
+                                      (tagcase f
+                                        (fact (file pos what)
+                                          (or (not (ctx-fact? c file pos "blob-zero"))
+                                              (not (string=? (rev->string (put-flat c (expand-aliases c (flat-of f)) nil)) text))))))
+                                    ats)))
+                   (bytewise (any? (lambda ((f fact))
+                                (tagcase f
+                                  (fact (file pos what)
+                                    (and (has-prefix? what "blob-raw ")
+                                         (string=? (owner-key c (car (read-all (string-chars (after-prefix what "blob-raw ")) "" 1))) key)))))
+                              fs))
+                   (short (any? (lambda ((f fact))
+                                  (tagcase f
+                                    (fact (file pos what)
+                                      (and (has-prefix? what "blob-make ")
+                                           (string=? (owner-key c (car (read-all (string-chars (after-prefix what "blob-make ")) "" 1))) key)
+                                           (let ((bytes (fact-at-place c file pos "blob-bytes ")))
+                                             (or (string=? bytes "")
+                                                 (i64< (digits-number bytes) (digits-number size))))))))
+                                fs)))
+              (if (and same (not bytewise) (not short)) (the sexps (list first)) nil))))))
 
   (put-fields-tuple (subr kfx (ctx sexps chars) chars)
     (lambda (c ts acc)
@@ -883,6 +1000,13 @@
                        (string-append "> { &self.a" (string-append (i64->string i) " } }"))))))))))))
                  (put-nl n acc)))))))
 
+(define blob-typed (subr kfx (ctx sexp string) sexps)
+  (lambda (c e prefix)
+    "The flat of the typed suffix (C32) of the owner the checker noted at
+     `e` under `prefix`, as a list of one; or none."
+    (let ((found (fact-with c e prefix)))
+      (if (string=? found "") nil (typed-flat c (car (read-all (string-chars found) "" 1)))))))
+
 "Every writer of an expression takes `n`, the indentation of the line it
  starts on, and `t`, where the expression stands."
 (define-rec
@@ -1212,9 +1336,11 @@
                     (acc (put (shape-name #t (map (lambda ((f sexps)) (label-of (car f))) fs)) acc)))
                (put ")" (put-joined c (map second fs) ", " n (put "(" acc)))))
             ((string=? h "extract")
-             (if (string=? (fact-with c e "blob-offset ") "")
-                 (put (fact-with c e "extract-index ") (put "." (put-exp c (car xs) n (value) acc)))
-                 (put ")" (put (fact-with c e "blob-offset ") (put ").field(" (put-exp c (car xs) n (value) (put "(" acc)))))))
+             (cond ((not (null? (blob-typed c e "blob-owner ")))
+                    (put ")" (put (fact-with c e "blob-field ") (put ")." (put-exp c (car xs) n (value) (put "(&(" acc))))))
+                   ((string=? (fact-with c e "blob-offset ") "")
+                    (put (fact-with c e "extract-index ") (put "." (put-exp c (car xs) n (value) acc))))
+                   (else (put ")" (put (fact-with c e "blob-offset ") (put ").field(" (put-exp c (car xs) n (value) (put "(" acc))))))))
             ((string=? h "sum")
              "A sum's enum written with its type's arguments, which only the type
               expected, as the checker found it, says."
@@ -1240,7 +1366,10 @@
             ((and (or (string=? h "make-bloblet") (string=? h "rmake-bloblet")) (string=? (local-kind h (ctx-locals c)) ""))
              "`make_bloblet(bytes, (Cell::new(e), ...,))`; in a region, `rmake_bloblet(r, ...)`."
              (let* ((placed (string=? h "rmake-bloblet"))
-                    (acc (put (if placed "rmake_bloblet(" "make_bloblet(") acc))
+                    (flat (blob-typed c e "blob-make "))
+                    (acc (cond ((null? flat) (put (if placed "rmake_bloblet(" "make_bloblet(") acc))
+                               (placed (put ", _>(" (put-flat c (car flat) (put "rmake_tbloblet::<_, " acc))))
+                               (else (put ">(" (put-flat c (car flat) (put "make_tbloblet::<_, " acc))))))
                     (acc (if placed (put ", " (put-exp c (car xs) n (value) acc)) acc))
                     (rest (if placed (cdr xs) xs))
                     (acc (put ", (" (put-exp c (car rest) n (value) acc)))
@@ -1254,10 +1383,17 @@
                    (put ")" (put-exp c (third xs) n (value) (put ".set(" acc))))))
             ((and (or (string=? h "blobref-get") (string=? h "blobref-set!")) (string=? (local-kind h (ctx-locals c)) ""))
              "A scalar's bytes, read or written as the checker found its flat."
-             (let ((acc (put (fact-with c e "blob-scalar ") (put (if (string=? h "blobref-get") ").get_" ").set_") (put-exp c (car xs) n (value) (put "(" acc))))))
+             (let ((acc (if (null? (blob-typed c e "blob-owner "))
+                            (put (fact-with c e "blob-scalar ") (put (if (string=? h "blobref-get") ").get_" ").set_") (put-exp c (car xs) n (value) (put "(" acc))))
+                            (put (if (string=? h "blobref-get") ").get" ").set") (put-exp c (car xs) n (value) (put "(" acc))))))
                (if (string=? h "blobref-get")
                    (put "()" acc)
                    (put ")" (put-exp c (second xs) n (value) (put "(" acc))))))
+            ((and (string=? h "blobref-index") (string=? (local-kind h (ctx-locals c)) "") (not (null? (blob-typed c e "blob-owner "))))
+             (put ")" (put-exp c (second xs) n (value) (put ").at(" (put-exp c (car xs) n (value) (put "(" acc))))))
+            ((and (string=? h "blobref-at") (string=? (local-kind h (ctx-locals c)) "") (not (null? (blob-typed c e "blob-at "))))
+             "A typed suffix's blobref at 0 (C32): a reference to it."
+             (put ").suffix)" (put-exp c (car xs) n (value) (put "(&(" acc))))
             ((and (string=? h "blobref-index") (string=? (local-kind h (ctx-locals c)) ""))
              (let* ((acc (put ").index(" (put-exp c (car xs) n (value) (put "(" acc))))
                     (acc (put-exp c (second xs) n (value) acc)))
@@ -1360,6 +1496,9 @@
       (let ((t (car (read-all (string-chars (fact-with c call "rheld ")) "" 1))))
         (cond ((head-is? call "rcons")
                (string-append "Cons<'" (string-append (mangle r) (string-append ", " (string-append (rev->string (put-type c t nil)) ">")))))
+              ((and (head-is? call "rmake-bloblet") (not (null? (typed-flat c t))))
+               (string-append "TBloblet<" (string-append (rev->string (put-fields-tuple c (cdr (items (second (items t)))) nil))
+                 (string-append ", " (string-append (rev->string (put-flat c (car (typed-flat c t)) nil)) ">")))))
               ((head-is? call "rmake-bloblet")
                (string-append "Bloblet<" (string-append (rev->string (put-fields-tuple c (cdr (items (second (items t)))) nil)) ">")))
               (else (string-append "std::cell::Cell<" (string-append (rev->string (put-type c t nil)) ">")))))))

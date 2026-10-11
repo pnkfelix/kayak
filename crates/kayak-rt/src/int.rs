@@ -24,6 +24,7 @@ pub struct Big {
 }
 
 /// A literal: KFX's literals are those of an `i64`.
+#[inline]
 pub fn int_lit(n: i64) -> Int {
     Int::Small(n)
 }
@@ -205,6 +206,7 @@ fn negate(w: Wide) -> Wide {
     }
 }
 
+#[inline]
 pub fn _plus(a: Int, b: Int) -> Int {
     if let (Int::Small(x), Int::Small(y)) = (a, b)
         && let Some(s) = x.checked_add(y)
@@ -214,6 +216,7 @@ pub fn _plus(a: Int, b: Int) -> Int {
     add(wide(a), wide(b))
 }
 
+#[inline]
 pub fn _minus(a: Int, b: Int) -> Int {
     if let (Int::Small(x), Int::Small(y)) = (a, b)
         && let Some(s) = x.checked_sub(y)
@@ -223,6 +226,7 @@ pub fn _minus(a: Int, b: Int) -> Int {
     add(wide(a), negate(wide(b)))
 }
 
+#[inline]
 pub fn _star(a: Int, b: Int) -> Int {
     if let (Int::Small(x), Int::Small(y)) = (a, b)
         && let Some(s) = x.checked_mul(y)
@@ -263,15 +267,18 @@ fn divide(a: Int, b: Int, name: &str) -> (Int, Int) {
     )
 }
 
+#[inline]
 pub fn quotient(a: Int, b: Int) -> Int {
     divide(a, b, "quotient").0
 }
 
+#[inline]
 pub fn remainder(a: Int, b: Int) -> Int {
     divide(a, b, "remainder").1
 }
 
 /// The remainder of the divisor's sign.
+#[inline]
 pub fn modulo(a: Int, b: Int) -> Int {
     let r = remainder(a, b);
     if sign(r) != 0 && sign(r) != sign(b) {
@@ -307,22 +314,27 @@ fn compare(a: Int, b: Int) -> Ordering {
     }
 }
 
+#[inline]
 pub fn _eq(a: Int, b: Int) -> bool {
     compare(a, b) == Ordering::Equal
 }
 
+#[inline]
 pub fn _lt(a: Int, b: Int) -> bool {
     compare(a, b) == Ordering::Less
 }
 
+#[inline]
 pub fn _gt(a: Int, b: Int) -> bool {
     compare(a, b) == Ordering::Greater
 }
 
+#[inline]
 pub fn _lt_eq(a: Int, b: Int) -> bool {
     compare(a, b) != Ordering::Greater
 }
 
+#[inline]
 pub fn _gt_eq(a: Int, b: Int) -> bool {
     compare(a, b) != Ordering::Less
 }
@@ -368,24 +380,29 @@ pub fn int_to_i64(n: Int) -> i64 {
     }
 }
 
+#[inline]
 pub fn i64_to_int(n: i64) -> Int {
     Int::Small(n)
 }
 
+#[inline]
 pub fn zero_p(n: Int) -> bool {
     matches!(n, Int::Small(0))
 }
 
+#[inline]
 pub fn max(a: Int, b: Int) -> Int {
     if _lt(a, b) { b } else { a }
 }
 
+#[inline]
 pub fn min(a: Int, b: Int) -> Int {
     if _lt(b, a) { b } else { a }
 }
 
 /// An integer literal past an `i64`, from its decimal digits, `-` first if
 /// it is negative.
+#[inline]
 pub fn int_text(s: &str) -> Int {
     let (negative, digits) = match s.strip_prefix('-') {
         Some(rest) => (true, rest),

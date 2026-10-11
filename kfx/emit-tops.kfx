@@ -409,10 +409,11 @@
           (put-variants-of (cdr tags) (i64+ i 1)
                            (put "),\n" (put (i64->string i) (put "(A" (put (camel (car tags)) (put "    " acc))))))))))
 
-(define put-shape-decls (subr kfx (strings bool chars) chars)
-  (lambda (keys shows acc)
+(define put-shape-decls (subr kfx (strings bool bool chars) chars)
+  (lambda (keys shows flats acc)
     "Each shape's declaration, and, for `kfx --toplevel`, its `Show`, as
-     Fixpt writes one: `#<product of 2>`, `#<sum leaf>`."
+     Fixpt writes one: `#<product of 2>`, `#<sum leaf>`; with `flats`, a
+     product's `Flat`, for a typed suffix (C32): its fields' zero bytes."
     (if (null? keys)
         acc
         (let* ((key (car keys))
@@ -435,10 +436,18 @@
                                         (put-sep (lambda ((l string) (acc chars))
                                                    (put ">\"),\n" (put l (put "(..) => out.push_str(\"#<sum " (put (camel l) (put "::" (put name (put "            " acc))))))))
                                                  "" labels (put "        match self {\n" acc)))))))))
-          (put-shape-decls (cdr keys) shows acc)))))
+          (put-shape-decls (cdr keys) shows flats
+                           (if (and flats product)
+                               (put "    }\n}\n\n"
+                                    (put ")\n"
+                                         (put-sep (lambda ((i i64) (acc chars)) (put "::zeroed()" (put (i64->string i) (put "A" acc)))) ", " (counting 0 n)
+                                                  (put "(" (put name (put " {\n    fn zeroed() -> Self {\n        " (put-generic-params n (put name (put " Flat for "
+                                                    (put ">" (put-sep (lambda ((i i64) (acc chars)) (put ": Flat" (put (i64->string i) (put "A" acc)))) ", " (counting 0 n)
+                                                                      (put "impl<" acc))))))))))))
+                               acc))))))
 
 (define put-shapes (subr kfx (ctx sexps bool chars) chars)
-  (lambda (c forms shows acc) (put-shape-decls (program-shapes c forms) shows acc)))
+  (lambda (c forms shows acc) (put-shape-decls (program-shapes c forms) shows (uses-blobrefs? c) acc)))
 
 "A program's top-level expressions, for running Fixpt's programs as Rust
  (`kfx --toplevel`, scripts/run-fixpt-programs.py): a `Show` for each

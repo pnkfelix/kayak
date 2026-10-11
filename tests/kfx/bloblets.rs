@@ -6,9 +6,21 @@ use kayak_rt::*;
 #[derive(Clone, Copy)]
 pub struct Product_1x_1n_1y<A0, A1, A2>(pub A0, pub A1, pub A2);
 
+impl<A0: Flat, A1: Flat, A2: Flat> Flat for Product_1x_1n_1y<A0, A1, A2> {
+    fn zeroed() -> Self {
+        Product_1x_1n_1y(A0::zeroed(), A1::zeroed(), A2::zeroed())
+    }
+}
+
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_1a_1b_1c_1d<A0, A1, A2, A3>(pub A0, pub A1, pub A2, pub A3);
+
+impl<A0: Flat, A1: Flat, A2: Flat, A3: Flat> Flat for Product_1a_1b_1c_1d<A0, A1, A2, A3> {
+    fn zeroed() -> Self {
+        Product_1a_1b_1c_1d(A0::zeroed(), A1::zeroed(), A2::zeroed(), A3::zeroed())
+    }
+}
 
 // Bloblets and blobrefs (C31): fields, each a cell, and a suffix of raw
 // bytes, words in Rust; a blobref its owner and a byte offset, read and
@@ -63,18 +75,18 @@ pub fn odd() -> BlobRef<O> {
 // A bloblet in a letrena's arena: a sum over a flat array of f64s.
 pub fn total(n: i64) -> f64 {
     {
-        #[derive(Default)] struct Region_R<'r> { a0: Arena<Bloblet<(std::cell::Cell<i64>,)>>, phantom_: std::marker::PhantomData<(&'r (),)> }
-        impl<'r> Holds<Bloblet<(std::cell::Cell<i64>,)>> for Region_R<'r> { fn arena(&self) -> &Arena<Bloblet<(std::cell::Cell<i64>,)>> { &self.a0 } }
+        #[derive(Default)] struct Region_R<'r> { a0: Arena<TBloblet<(std::cell::Cell<i64>,), FlatArr<std::cell::Cell<f64>, 100>>>, phantom_: std::marker::PhantomData<(&'r (),)> }
+        impl<'r> Holds<TBloblet<(std::cell::Cell<i64>,), FlatArr<std::cell::Cell<f64>, 100>>> for Region_R<'r> { fn arena(&self) -> &Arena<TBloblet<(std::cell::Cell<i64>,), FlatArr<std::cell::Cell<f64>, 100>>> { &self.a0 } }
         fn letrena__r<'r>(r: &'r Region_R<'r>, n: i64) -> f64 {
-            let b = the::<&'r Bloblet<(std::cell::Cell<i64>,)>>(rmake_bloblet(r, int_lit(800), (std::cell::Cell::new(n),)));
-            let xs = the::<BlobRef<&'r Bloblet<(std::cell::Cell<i64>,)>>>(blobref_at(b, int_lit(0)));
+            let b = the::<&'r TBloblet<(std::cell::Cell<i64>,), FlatArr<std::cell::Cell<f64>, 100>>>(rmake_tbloblet::<_, FlatArr<std::cell::Cell<f64>, 100>, _>(r, int_lit(800), (std::cell::Cell::new(n),)));
+            let xs = the::<&'r FlatArr<std::cell::Cell<f64>, 100>>((&(b).suffix));
             let fill__knot = knot::<&'r dyn Fn(i64) -> ()>();
             let add__knot = knot::<&'r dyn Fn(i64, f64) -> f64>();
             let fill = lambda1(move |i: i64| {
                 if i64_eq(i, (b).fields.0.get()) {
                     ()
                 } else {
-                    ((xs).index(i64_to_int(i), 8, 100)).set_f64(int_to_f64(i64_to_int(i)));
+                    ((xs).at(i64_to_int(i))).set(int_to_f64(i64_to_int(i)));
                     (fill__knot.get())(i64_plus(i, 1i64))
                 }
             });
@@ -82,7 +94,7 @@ pub fn total(n: i64) -> f64 {
                 if i64_eq(i, (b).fields.0.get()) {
                     acc
                 } else {
-                    (add__knot.get())(i64_plus(i, 1i64), f64_plus(acc, ((xs).index(i64_to_int(i), 8, 100)).get_f64()))
+                    (add__knot.get())(i64_plus(i, 1i64), f64_plus(acc, ((xs).at(i64_to_int(i))).get()))
                 }
             });
             fill__knot.set(fill);

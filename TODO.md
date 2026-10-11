@@ -140,8 +140,7 @@ Escapes are done (`DONE.md`, C18). Left:
   a list's, accepts it (K1). Nor does FX-26 type a literal in a pair
   constructor at what the list's type says (`(the i64 (car (cons 1
   nil)))`, `(rcons r k (rcons r 1 nil))`); KFX does.
-- **Bloblets' rest** (C31): the typed fast path (an owner type read as
-  one flat at offset 0, its suffix a `#[repr(C)]` struct of cells); `f32`;
+- **Bloblets' rest** (C31, C32): `f32`;
   frozen bloblets; width; flat sums, `blobref-variant!`, `tagcase` of a
   blobref; families over `flat`.
 - **`letrena`'s rest** (C30): places passed to procedures (`Holds<T>`

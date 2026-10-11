@@ -201,6 +201,15 @@ pub fn list_ref_i64(mut ts: Tys, mut i: i64) -> &'static Ty {
     }
 }
 
+/// `s`, `what` noted at the form being checked, if it is not ``.
+pub fn blob_noted(v: &'static Cv, s: &'static St, what: Str) -> &'static St {
+    if string_eq_p(what, str_lit("")) {
+        s
+    } else {
+        note_fact(s, cv_file(v), cv_pos(v), what)
+    }
+}
+
 // Turbofish: the types a poly procedure is called at, and a `nil`'s or an
 // empty list's element, which rustc may find nothing else to infer from.
 // Noted as inference variables, `turbofish-metas ?k ...`, at the call's or
@@ -1681,7 +1690,7 @@ pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
                             match *tagcase_ {
                                 Ty::TyShape(p, ls, ts) => {
                                     if string_member_p(label_of(second(xs)), ls) {
-                                        res(ty_data(str_lit("%blobref"), kayak_rt::cons(car(args), kayak_rt::cons(member_type(label_of(second(xs)), ls, ts), kayak_rt::nil()))), es, note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("blob-offset "), i64_to_string(field_offset(ls, ts, label_of(second(xs)))))))
+                                        res(ty_data(str_lit("%blobref"), kayak_rt::cons(car(args), kayak_rt::cons(member_type(label_of(second(xs)), ls, ts), kayak_rt::nil()))), es, note_fact(note_fact(note_types(s, cv_file(v), cv_pos(v), str_lit("blob-owner"), kayak_rt::cons(car(args), kayak_rt::nil())), cv_file(v), cv_pos(v), string_append(str_lit("blob-field "), i64_to_string(index_of(label_of(second(xs)), ls, 0i64)))), cv_file(v), cv_pos(v), string_append(str_lit("blob-offset "), i64_to_string(field_offset(ls, ts, label_of(second(xs)))))))
                                     } else {
                                         match refuse(v, string_append(str_lit("no field "), string_append(label_of(second(xs)), string_append(str_lit(" in a "), show_ty(s, t))))) {}
                                     }
@@ -2598,7 +2607,18 @@ pub fn blob_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Ty
                     let tagcase_ = call_args(v, s, rest, cons(ty_int(), cdr(args)), nil::<i64>());
                     match *tagcase_ {
                         Res::Res(u, es, s) => {
-                            res(want, effs_union(kayak_rt::cons(string_append(str_lit("alloc:"), region_string(s, car(args))), kayak_rt::nil()), es), s)
+                            res(want, effs_union(kayak_rt::cons(string_append(str_lit("alloc:"), region_string(s, car(args))), kayak_rt::nil()), es), blob_noted(v, note_types(s, cv_file(v), cv_pos(v), str_lit("blob-make"), kayak_rt::cons(want, kayak_rt::nil())), {
+                                let tagcase_ = car(rest);
+                                match *tagcase_ {
+                                    Sexp::Num(k, f, p) => {
+                                        string_append(str_lit("blob-bytes "), i64_to_string(k))
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        str_lit("")
+                                    }
+                                }
+                            }))
                         }
                     }
                 }
@@ -2671,7 +2691,7 @@ pub fn blob_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Ty
                         if not(string_eq_p(d, str_lit("%bloblet"))) {
                             match refuse(v, string_append(h, str_lit(" of no bloblet"))) {}
                         } else {
-                            let tagcase_ = call_args(v, s, cdr(xs), map(lambda1(move |x: &'static Sexp| {
+                            let tagcase_ = call_args(v, note_types(s, cv_file(v), cv_pos(v), str_lit("blob-raw"), kayak_rt::cons(b, kayak_rt::nil())), cdr(xs), map(lambda1(move |x: &'static Sexp| {
                                 ty_int()
                             }), cdr(xs)), nil::<i64>());
                             match *tagcase_ {
@@ -2716,7 +2736,29 @@ pub fn blob_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Ty
                             let tagcase_ = check(v, s, second(xs), ty_int());
                             match *tagcase_ {
                                 Res::Res(u, es, s) => {
-                                    res(car(expected), effs_union(es0, es), s)
+                                    res(car(expected), effs_union(es0, es), blob_noted(v, blob_noted(v, note_types(s, cv_file(v), cv_pos(v), str_lit("blob-at"), args), {
+                                        let tagcase_ = second(xs);
+                                        match *tagcase_ {
+                                            Sexp::Num(k, f, p) => {
+                                                if i64_eq(k, 0i64) {
+                                                    str_lit("blob-zero")
+                                                } else {
+                                                    str_lit("")
+                                                }
+                                            }
+                                            _ => {
+                                                let other = tagcase_;
+                                                str_lit("")
+                                            }
+                                        }
+                                    }), string_append(str_lit("blob-size "), {
+                                        let tagcase_ = flat_layout(walk(s, car(cdr(args))));
+                                        match *tagcase_ {
+                                            Layout::Layout(size, al) => {
+                                                i64_to_string(size)
+                                            }
+                                        }
+                                    })))
                                 }
                             }
                         }
@@ -2752,7 +2794,7 @@ pub fn blob_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Ty
                                         let tagcase_ = check(v, s, second(xs), ty_int());
                                         match *tagcase_ {
                                             Res::Res(u, es, s) => {
-                                                res(car(expected), effs_union(es0, es), fits(v, s, car(args2), car(args)))
+                                                res(car(expected), effs_union(es0, es), note_types(fits(v, s, car(args2), car(args)), cv_file(v), cv_pos(v), str_lit("blob-raw"), kayak_rt::cons(car(args2), kayak_rt::nil())))
                                             }
                                         }
                                     }
@@ -2801,10 +2843,11 @@ pub fn blob_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Ty
                                     }
                                 }
                             };
+                            let s = note_types(s, cv_file(v), cv_pos(v), str_lit("blob-owner"), kayak_rt::cons(owner, kayak_rt::nil()));
                             if string_eq_p(h, str_lit("blobref-owner")) {
-                                res(owner, es0, s)
+                                res(owner, es0, note_types(s, cv_file(v), cv_pos(v), str_lit("blob-raw"), kayak_rt::cons(owner, kayak_rt::nil())))
                             } else if string_eq_p(h, str_lit("blobref-offset")) {
-                                res(ty_int(), es0, s)
+                                res(ty_int(), es0, note_types(s, cv_file(v), cv_pos(v), str_lit("blob-raw"), kayak_rt::cons(owner, kayak_rt::nil())))
                             } else if string_eq_p(h, str_lit("blobref-index")) {
                                 let tagcase_ = flat;
                                 match *tagcase_ {

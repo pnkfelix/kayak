@@ -508,3 +508,31 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
   named as an effect (K1). `run-fixpt-programs.py` counts a program that
   fails when run in both as agreeing.
 
+## C32. A typed suffix, where the program allows one (2026-10-11)
+
+- **Chosen** (C31's plan, the user's): a bloblet type whose suffix the
+  program reads only as one flat, from offset 0, is typed: `TBloblet<Fs,
+  S>`, `S` the flat as Rust holds it (`Cell<f64>`; a product struct of
+  them, the emitter's own, given `Flat`; `FlatArr<T, n>`), and a blobref
+  into it a reference, `&'r S` (the user's first idea, `&'place
+  convert(T)`): `extract` is `&(r).1`, `blobref-index` `(r).at(i)`,
+  `blobref-get` `.get()`. Typed when, in the whole program, every
+  `blobref-at` into the type is at a literal 0 and of one flat, nothing
+  reads its bytes otherwise (`blobref+`, `-owner`, `-offset`,
+  `bloblet-byte`, `-set-byte!`, `-bytes`), and every one is made of a
+  literal size the flat fits in; else C31's words. Types are compared by
+  their fields written out (the emitter keeps type abbreviations' bodies),
+  whatever the region: a procedure poly over the region writes one type.
+- **Measured** (`scratchpad/perf`, a million 24-byte products, `x + y + n`
+  read, `n` bumped): C31's words 31 ms and 10 ms; typed, 16.5 and 5.0;
+  hand-written Rust 10.4 and 4.9. The rest was kayak-rt's small functions
+  not inlined across the crate (LTO closed it): they are `#[inline]`, and
+  KFX's code is hand-written Rust's, 10.5 and 5.0. A sum over a million
+  `f64`s in a flat array was even with a `Vec<f64>` already.
+- **And**: the emitter's fact lookups searched by making a list of every
+  match (`concat` of `map`), at each name since C29; a search, now. The
+  compiler compiles itself in 0.46 s (0.76 s this morning's way).
+- **Not chosen:** typing by the flat of each blobref alone (a suffix read
+  two ways would be two Rust types); deciding per bloblet value (a type is
+  Rust's per type).
+

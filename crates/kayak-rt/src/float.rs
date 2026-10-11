@@ -5,92 +5,114 @@
 
 use crate::{Int, Str, fail, i64_to_int, int_lit, int_to_string, leak_string};
 
+#[inline]
 pub fn f64_plus(a: f64, b: f64) -> f64 {
     a + b
 }
 
+#[inline]
 pub fn f64_minus(a: f64, b: f64) -> f64 {
     a - b
 }
 
+#[inline]
 pub fn f64_star(a: f64, b: f64) -> f64 {
     a * b
 }
 
+#[inline]
 pub fn f64_slash(a: f64, b: f64) -> f64 {
     a / b
 }
 
+#[inline]
 pub fn f64_min(a: f64, b: f64) -> f64 {
     a.min(b)
 }
 
+#[inline]
 pub fn f64_max(a: f64, b: f64) -> f64 {
     a.max(b)
 }
 
+#[inline]
 pub fn f64_lt(a: f64, b: f64) -> bool {
     a < b
 }
 
+#[inline]
 pub fn f64_lt_eq(a: f64, b: f64) -> bool {
     a <= b
 }
 
+#[inline]
 pub fn f64_gt(a: f64, b: f64) -> bool {
     a > b
 }
 
+#[inline]
 pub fn f64_gt_eq(a: f64, b: f64) -> bool {
     a >= b
 }
 
+#[inline]
 pub fn f64_eq(a: f64, b: f64) -> bool {
     a == b
 }
 
+#[inline]
 pub fn f64_abs(x: f64) -> f64 {
     x.abs()
 }
 
+#[inline]
 pub fn f64_neg(x: f64) -> f64 {
     -x
 }
 
+#[inline]
 pub fn f64_sqrt(x: f64) -> f64 {
     x.sqrt()
 }
 
+#[inline]
 pub fn f64_floor(x: f64) -> f64 {
     x.floor()
 }
 
+#[inline]
 pub fn f64_ceiling(x: f64) -> f64 {
     x.ceil()
 }
 
+#[inline]
 pub fn f64_truncate(x: f64) -> f64 {
     x.trunc()
 }
 
+#[inline]
 pub fn f64_round(x: f64) -> f64 {
     x.round_ties_even()
 }
 
+#[inline]
 pub fn f64_nan_p(x: f64) -> bool {
     x.is_nan()
 }
 
+#[inline]
 pub fn f64_infinite_p(x: f64) -> bool {
     x.is_infinite()
 }
 
+#[inline]
 pub fn f64_finite_p(x: f64) -> bool {
     x.is_finite()
 }
 
 /// A double as Fixpt writes a value: an integral one below 1e21 with one
 /// decimal, any other as Rust writes it.
+#[inline]
 pub fn write_f64(x: f64) -> String {
     if x.is_nan() {
         "+nan.0".into()
@@ -105,6 +127,7 @@ pub fn write_f64(x: f64) -> String {
 
 /// `f64->string`: as a value is written, and with `.0` if it would have no
 /// point, so that it reads back as a double (Fixpt's `format_flonum`).
+#[inline]
 pub fn f64_to_string(x: f64) -> Str {
     let s = write_f64(x);
     if x.is_finite() && !s.contains(['.', 'e', 'E']) {
@@ -115,6 +138,7 @@ pub fn f64_to_string(x: f64) -> Str {
 }
 
 /// Correctly rounded, through the decimal digits, as Rust reads them.
+#[inline]
 pub fn int_to_f64(n: Int) -> f64 {
     match n {
         Int::Small(v) => v as f64,

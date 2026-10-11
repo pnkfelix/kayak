@@ -81,6 +81,11 @@
   (list-ref-i64 (subr kfx (tys i64) ty)
     (lambda (ts i) (if (i64= i 0) (car ts) (list-ref-i64 (cdr ts) (i64- i 1))))))
 
+(define blob-noted (subr kfx (cv st string) st)
+  (lambda (v s what)
+    "`s`, `what` noted at the form being checked, if it is not ``."
+    (if (string=? what "") s (note-fact s (cv-file v) (cv-pos v) what))))
+
 "Turbofish: the types a poly procedure is called at, and a `nil`'s or an
  empty list's element, which rustc may find nothing else to infer from.
  Noted as inference variables, `turbofish-metas ?k ...`, at the call's or
@@ -759,7 +764,9 @@
                              (ty-shape (p ls ts)
                                (if (string-member? (label-of (second xs)) ls)
                                    (res (ty-data "%blobref" (list (car args) (member-type (label-of (second xs)) ls ts))) es
-                                        (note-fact s (cv-file v) (cv-pos v)
+                                        (note-fact (note-fact (note-types s (cv-file v) (cv-pos v) "blob-owner" (list (car args))) (cv-file v) (cv-pos v)
+                                                              (string-append "blob-field " (i64->string (index-of (label-of (second xs)) ls 0))))
+                                                   (cv-file v) (cv-pos v)
                                                    (string-append "blob-offset " (i64->string (field-offset ls ts (label-of (second xs)))))))
                                    (refuse v (string-append "no field " (string-append (label-of (second xs)) (string-append " in a " (show-ty s t)))))))
                              (else other (refuse v (string-append "an extract from a " (string-append (show-ty s t) ", no product")))))))
@@ -1181,7 +1188,10 @@
                      (let* ((s (if placed (fits v s (place-of v s (car xs)) (car args)) s))
                             (s (if placed (note-types s (cv-file v) (cv-pos v) "rheld" (list want)) s)))
                        (tagcase (call-args v s rest (cons (ty-int) (cdr args)) nil)
-                         (res (u es s) (res want (effs-union (list (string-append "alloc:" (region-string s (car args)))) es) s))))))
+                         (res (u es s)
+                           (res want (effs-union (list (string-append "alloc:" (region-string s (car args)))) es)
+                                (blob-noted v (note-types s (cv-file v) (cv-pos v) "blob-make" (list want))
+                                            (tagcase (car rest) (num (k f p) (string-append "blob-bytes " (i64->string k))) (else other "")))))))))
                (else other (refuse v "a bloblet whose type nothing says: (the (bloblet (fields T ...) R) (make-bloblet bytes e ...))")))))
           ((or (string=? h "bloblet-ref") (string=? h "bloblet-set!"))
            (begin
@@ -1209,7 +1219,7 @@
                    (ty-data (d args)
                      (if (not (string=? d "%bloblet"))
                          (refuse v (string-append h " of no bloblet"))
-                         (tagcase (call-args v s (cdr xs) (map (lambda ((x sexp)) (ty-int)) (cdr xs)) nil)
+                         (tagcase (call-args v (note-types s (cv-file v) (cv-pos v) "blob-raw" (list b)) (cdr xs) (map (lambda ((x sexp)) (ty-int)) (cdr xs)) nil)
                            (res (u es s)
                              (res (if (string=? h "bloblet-set-byte!") (ty-unit) (ty-int))
                                   (effs-union (cond ((string=? h "bloblet-bytes") nil)
@@ -1228,7 +1238,12 @@
                      (tagcase (check v s (car xs) (car args))
                        (res (b es0 s)
                          (tagcase (check v s (second xs) (ty-int))
-                           (res (u es s) (res (car expected) (effs-union es0 es) s)))))))
+                           (res (u es s)
+                             (res (car expected) (effs-union es0 es)
+                                  (blob-noted v
+                                    (blob-noted v (note-types s (cv-file v) (cv-pos v) "blob-at" args)
+                                                (tagcase (second xs) (num (k f p) (if (i64= k 0) "blob-zero" "")) (else other "")))
+                                    (string-append "blob-size " (tagcase (flat-layout (walk s (car (cdr args)))) (layout (size al) (i64->string size))))))))))))
                (else other (refuse v "which flat a new blobref points to is said by the type it is checked against: (the (blobref B F) (blobref-at b off))")))))
           ((string=? h "blobref+")
            (begin
@@ -1244,7 +1259,8 @@
                              (if (not (string=? d2 "%blobref"))
                                  (refuse v "blobref+ of no blobref")
                                  (tagcase (check v s (second xs) (ty-int))
-                                   (res (u es s) (res (car expected) (effs-union es0 es) (fits v s (car args2) (car args)))))))
+                                   (res (u es s) (res (car expected) (effs-union es0 es)
+                                                      (note-types (fits v s (car args2) (car args)) (cv-file v) (cv-pos v) "blob-raw" (list (car args2))))))))
                            (else other (refuse v "blobref+ of no blobref")))))))
                (else other (refuse v "which flat a new blobref points to is said by the type it is checked against: (the (blobref B F) (blobref+ r d))")))))
           (else
@@ -1259,10 +1275,11 @@
                          (refuse v (string-append h " of no blobref"))
                          (let* ((owner (walk s (car args)))
                                 (flat (walk s (car (cdr args))))
-                                (region (tagcase owner (ty-data (d2 a2) (car a2)) (else other (ty-unit)))))
+                                (region (tagcase owner (ty-data (d2 a2) (car a2)) (else other (ty-unit))))
+                                (s (note-types s (cv-file v) (cv-pos v) "blob-owner" (list owner))))
                            (cond
-                             ((string=? h "blobref-owner") (res owner es0 s))
-                             ((string=? h "blobref-offset") (res (ty-int) es0 s))
+                             ((string=? h "blobref-owner") (res owner es0 (note-types s (cv-file v) (cv-pos v) "blob-raw" (list owner))))
+                             ((string=? h "blobref-offset") (res (ty-int) es0 (note-types s (cv-file v) (cv-pos v) "blob-raw" (list owner))))
                              ((string=? h "blobref-index")
                               (tagcase flat
                                 (ty-data (d3 a3)
