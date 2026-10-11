@@ -1,0 +1,598 @@
+"terminate.kfx: which recursive groups end, so need no `spin` (check.kfx,
+ CLAUDES_CHOICES.md C20). Split from check.kfx, whose types it reads."
+
+"Termination (CLAUDES_CHOICES.md C20). A recursive group whose every run
+ ends needs no `spin`: FX-26's size-change check (Lee, Jones and
+ Ben-Amram; Fixpt's terminate.rs), its measures and no others, so that KFX
+ accepts no group FX-26 would not. Each call within the group is a graph
+ of how the callee's arguments relate to the caller's parameters: a part
+ of one (strictly smaller), the same, or nothing known. The measures:
+ parts, the `car` or `cdr` of a list at `acyclic` and a `tagcase` arm's
+ fields; and an `int` or `nat` less by a literal under a test bounding it
+ below by something fixed for the whole recursion, or greater, bounded
+ above. A member named other than as a call's operator spoils it all."
+
+"What is known of a value, of the member walked: the parameter, or a part
+ of it (strictly smaller), of a type if known; or an integer parameter
+ plus an offset."
+(define-datatype tracked (part i64 bool tys) (int-of i64 i64))
+(define-type trackeds (listof tracked acyclic))
+(define-datatype known (known string trackeds))
+(define-type knowns (listof known acyclic))
+"A parameter, bounded below (`#t`) or above."
+(define-datatype guard (guard i64 bool))
+(define-type guards (listof guard acyclic))
+"A size-change graph's edge: slots `3p + m`, `m` the measure (0 parts,
+ 1 down, 2 up), and whether it is strict."
+(define-datatype edge (edge i64 i64 bool))
+(define-type edges (listof edge acyclic))
+(define-datatype scall (scall i64 i64 edges))
+(define-type scalls (listof scall acyclic))
+(define-type i64s (listof i64 acyclic))
+"A call's arguments: each the caller's parameter passed on unchanged, or -1."
+(define-datatype passing (passing i64 i64 i64s))
+(define-type passings (listof passing acyclic))
+(define-datatype slot (slot i64 i64))
+(define-type slots (listof slot acyclic))
+
+"The walk's context: the program's names; the members; the member walked;
+ the names bound on the way down; the guards; its `nat` parameters; the
+ parameters every call passes on unchanged."
+(define-datatype wc (wc cv strings i64 knowns guards i64s slots))
+"What it found: the calls, what each passes on, and whether a member
+ escaped."
+(define-datatype ws (ws scalls passings bool))
+
+(define-rec
+  (index-of (subr kfx (string strings i64) i64)
+    (lambda (x xs i)
+      (cond ((null? xs) -1) ((string=? (car xs) x) i) (else (index-of x (cdr xs) (i64+ i 1)))))))
+
+(define-rec
+  (nth-ty (subr kfx (tys i64) tys)
+    (lambda (ts i)
+      (cond ((null? ts) nil) ((i64= i 0) (the tys (list (car ts)))) (else (nth-ty (cdr ts) (i64- i 1)))))))
+
+(define-rec
+  (bound-of (subr kfx (string knowns) (listof trackeds acyclic))
+    (lambda (n ks)
+      (cond ((null? ks) nil)
+            ((tagcase (car ks) (known (m t) (string=? m n))) (tagcase (car ks) (known (m t) (the (listof trackeds acyclic) (list t)))))
+            (else (bound-of n (cdr ks)))))))
+
+(define wc-bound (subr kfx (wc string) (listof trackeds acyclic))
+  (lambda (c n) (tagcase c (wc (v ms cur sc gs nats inv) (bound-of n sc)))))
+
+(define wc-member (subr kfx (wc string) i64)
+  (lambda (c n)
+    "The member `n` names here, unless something on the way down hid it; or -1."
+    (tagcase c (wc (v ms cur sc gs nats inv) (if (null? (bound-of n sc)) (index-of n ms 0) -1)))))
+
+(define std-op (subr kfx (wc sexp) string)
+  (lambda (c e)
+    "The primitive `e` names, if it names one: no local hides it."
+    (tagcase e
+      (sym (n)
+        (tagcase c
+          (wc (v ms cur sc gs nats inv)
+            (if (or (not (null? (bound-of n sc))) (string-member? n ms)) ""
+                (let ((found (find-bind n (cv-binds v))))
+                  (if (and (not (null? found)) (tagcase (car found) (bind (x t where) (string=? where "prim")))) n ""))))))
+      (else other ""))))
+
+(define literal-of (subr kfx (sexp) i64s)
+  (lambda (e)
+    "A literal's value, if FX-26's size-change check knows it: in [-2^60, 2^60)."
+    (tagcase e
+      (num (k text pos) (if (or (i64< k -1152921504606846976) (i64> k 1152921504606846975)) nil (the i64s (list k))))
+      (else other nil))))
+
+(define overflows? (subr kfx (i64 i64) bool)
+  (lambda (o k)
+    "Whether `o + k` is past an i64, where FX-26's `checked_add` gives up."
+    (if (i64> k 0)
+        (i64> o (i64- 9223372036854775807 k))
+        (i64< o (i64- -9223372036854775808 k)))))
+
+(define shifted (subr kfx (trackeds i64) trackeds)
+  (lambda (ts k)
+    "Each integer known, `k` more; one that would overflow known no longer."
+    (concat (map (lambda ((t tracked))
+                   (tagcase t
+                     (int-of (p o) (if (overflows? o k) nil (the trackeds (list (int-of p (i64+ o k))))))
+                     (else other nil)))
+                 ts))))
+
+(define-rec
+  (tracked-of (subr kfx (wc sexp) trackeds)
+    (lambda (c e)
+      "What is known of `e`'s value."
+      (tagcase e
+        (sym (n) (let ((b (wc-bound c n))) (if (null? b) nil (car b))))
+        (lst (xs src-file src-line src-pos)
+          (let ((op (std-op c (car xs))))
+            (cond ((sym-is? (car xs) "the") (tracked-of c (third xs)))
+                  ((and (or (string=? op "car") (string=? op "cdr")) (i64= (size xs) 2))
+                   (concat (map (lambda ((t tracked))
+                                  (tagcase t
+                                    (part (p strict ty)
+                                      (if (null? ty) nil
+                                          (tagcase (car ty)
+                                            (ty-list (el r)
+                                              (tagcase r
+                                                (ty-rconst (rn)
+                                                  (if (string=? rn "acyclic")
+                                                      (the trackeds (list (part p #t (the tys (list (if (string=? op "car") el (car ty)))))))
+                                                      nil))
+                                                (else other nil)))
+                                            (else other nil))))
+                                    (else other nil)))
+                                (tracked-of c (second xs)))))
+                  ((and (or (string=? op "+") (string=? op "-")) (i64= (size xs) 3))
+                   (let ((a (second xs)) (b (third xs)))
+                     (cond ((not (null? (literal-of b)))
+                            (cond ((string=? op "+") (shifted (tracked-of c a) (car (literal-of b))))
+                                  ((i64= (car (literal-of b)) -9223372036854775808) nil)
+                                  (else (shifted (tracked-of c a) (i64- 0 (car (literal-of b)))))))
+                           ((and (string=? op "+") (not (null? (literal-of a))))
+                            (shifted (tracked-of c b) (car (literal-of a))))
+                           (else nil))))
+                  (else nil))))
+        (else other nil)))))
+
+(define-rec
+  (fixed? (subr kfx (wc sexp) bool)
+    (lambda (c e)
+      "Whether `e` is the same at every call of the group: a literal, a name
+       bound outside it, a parameter passed on unchanged, or a string's
+       length, or the sum or difference of such."
+      (tagcase c
+        (wc (v ms cur sc gs nats inv)
+          (tagcase e
+            (num (k text pos) (not (null? (literal-of e))))
+            (sym (n)
+              (let ((b (bound-of n sc)))
+                (if (null? b)
+                    (not (string-member? n ms))
+                    (any? (lambda ((t tracked))
+                            (tagcase t
+                              (part (p strict ty) (and (not strict) (any? (lambda ((x slot)) (tagcase x (slot (i j) (and (i64= i cur) (i64= j p))))) inv)))
+                              (else other #f)))
+                          (car b)))))
+            (lst (xs src-file src-line src-pos)
+              (let ((op (std-op c (car xs))))
+                (cond ((sym-is? (car xs) "the") (fixed? c (third xs)))
+                      ((or (and (string=? op "string-length") (i64= (size xs) 2))
+                           (and (or (string=? op "+") (string=? op "-")) (i64= (size xs) 3)))
+                       (not (any? (lambda ((a sexp)) (not (fixed? c a))) (cdr xs))))
+                      (else #f))))
+            (else other #f)))))))
+
+(define bounds-put (subr kfx (string bool) (listof bool acyclic))
+  (lambda (op holds)
+    "The bounds `op`, holding or not, puts on its left operand: below `#t`."
+    (cond ((or (and (or (string=? op "<") (string=? op "<=")) holds) (and (or (string=? op ">") (string=? op ">=")) (not holds)))
+           (the (listof bool acyclic) (list #f)))
+          ((or (and (or (string=? op "<") (string=? op "<=")) (not holds)) (and (or (string=? op ">") (string=? op ">=")) holds))
+           (the (listof bool acyclic) (list #t)))
+          ((and (string=? op "=") holds) (the (listof bool acyclic) (list #t #f)))
+          (else nil))))
+
+(define guards-on (subr kfx (wc sexp sexp (listof bool acyclic)) guards)
+  (lambda (c x other bounds)
+    (if (fixed? c other)
+        (concat (map (lambda ((t tracked))
+                       (tagcase t
+                         (int-of (p o) (map (lambda ((b bool)) (guard p b)) bounds))
+                         (else other nil)))
+                     (tracked-of c x)))
+        nil)))
+
+(define-rec
+  (facts-of (subr kfx (wc sexp bool) guards)
+    (lambda (c test holds)
+      "The bounds on parameters that `test` having the value `holds` shows."
+      (tagcase test
+        (lst (xs src-file src-line src-pos)
+          (let ((op (std-op c (car xs))))
+            (cond ((and (string=? op "not") (i64= (size xs) 2)) (facts-of c (second xs) (not holds)))
+                  ((and (i64= (size xs) 3) (not (null? (bounds-put op holds))))
+                   (onto (guards-on c (second xs) (third xs) (bounds-put op holds))
+                         (guards-on c (third xs) (second xs) (map (lambda ((b bool)) (not b)) (bounds-put op holds)))))
+                  ((and (sym-is? (car xs) "and") holds (i64> (size xs) 2))
+                   (concat (map (lambda ((a sexp)) (facts-of c a #t)) (cdr xs))))
+                  ((and (sym-is? (car xs) "or") (not holds) (i64> (size xs) 2))
+                   (concat (map (lambda ((a sexp)) (facts-of c a #f)) (cdr xs))))
+                  (else nil))))
+        (else other nil)))))
+
+(define in-scope (subr kfx (wc knowns) wc)
+  (lambda (c more) (tagcase c (wc (v ms cur sc gs nats inv) (wc v ms cur (onto more sc) gs nats inv)))))
+
+(define hiding (subr kfx (wc strings) wc)
+  (lambda (c names) (in-scope c (map (lambda ((n string)) (known n nil)) names))))
+
+(define guarded (subr kfx (wc guards) wc)
+  (lambda (c more) (tagcase c (wc (v ms cur sc gs nats inv) (wc v ms cur sc (onto more gs) nats inv)))))
+
+(define has-bound? (subr kfx (wc i64 bool) bool)
+  (lambda (c p lower)
+    (tagcase c
+      (wc (v ms cur sc gs nats inv)
+        (or (any? (lambda ((g guard)) (tagcase g (guard (q b) (and (i64= q p) (eqv-bool? b lower))))) gs)
+            (and lower (any? (lambda ((n i64)) (i64= n p)) nats)))))))
+
+(define-rec
+  (with-edge (subr kfx (edges i64 i64 bool) edges)
+    (lambda (es from to strict)
+      "A graph, kept in order of its edges' slots, with an edge more."
+      (cond ((null? es) (the edges (list (edge from to strict))))
+            (else
+             (tagcase (car es)
+               (edge (f t s)
+                 (cond ((and (i64= f from) (i64= t to)) (cons (edge f t (or s strict)) (cdr es)))
+                       ((or (i64< from f) (and (i64= from f) (i64< to t))) (cons (edge from to strict) es))
+                       (else (cons (car es) (with-edge (cdr es) from to strict)))))))))))
+
+(define arg-edges (subr kfx (wc i64 trackeds edges) edges)
+  (lambda (c q ts g)
+    "The edges to argument `q`, from what is known of it."
+    (if (null? ts)
+        g
+        (arg-edges c q (cdr ts)
+          (tagcase (car ts)
+            (part (p strict ty) (with-edge g (i64* p 3) (i64* q 3) strict))
+            (int-of (p off)
+              (let* ((lo (has-bound? c p #t))
+                     (hi (has-bound? c p #f))
+                     (g (cond ((and (i64< off 0) lo) (with-edge g (i64+ (i64* p 3) 1) (i64+ (i64* q 3) 1) #t))
+                              ((not (i64> off 0)) (with-edge g (i64+ (i64* p 3) 1) (i64+ (i64* q 3) 1) #f))
+                              (else g))))
+                (cond ((and (i64> off 0) hi) (with-edge g (i64+ (i64* p 3) 2) (i64+ (i64* q 3) 2) #t))
+                      ((not (i64< off 0)) (with-edge g (i64+ (i64* p 3) 2) (i64+ (i64* q 3) 2) #f))
+                      (else g)))))))))
+
+(define-rec
+  (args-edges (subr kfx (wc sexps i64 edges) edges)
+    (lambda (c args q g)
+      (if (null? args) g (args-edges c (cdr args) (i64+ q 1) (arg-edges c q (tracked-of c (car args)) g))))))
+
+(define passed-on (subr kfx (wc sexp) i64)
+  (lambda (c a)
+    (let ((unchanged (concat (map (lambda ((t tracked)) (tagcase t (part (p strict ty) (if strict nil (the i64s (list p)))) (else other nil)))
+                                  (tracked-of c a)))))
+      (if (null? unchanged) -1 (car unchanged)))))
+
+(define call-found (subr kfx (wc ws i64 sexps) ws)
+  (lambda (c st to args)
+    (tagcase c
+      (wc (v ms cur sc gs nats inv)
+        (tagcase st
+          (ws (calls passed escaped)
+            (ws (cons (scall cur to (args-edges c args 0 nil)) calls)
+                (cons (passing cur to (map (lambda ((a sexp)) (passed-on c a)) args)) passed)
+                escaped)))))))
+
+(define escaping (subr kfx (ws) ws)
+  (lambda (st) (tagcase st (ws (calls passed escaped) (ws calls passed #t)))))
+
+(define param-names (subr kfx (sexps) strings)
+  (lambda (params)
+    (map (lambda ((p sexp)) (tagcase p (sym (n) n) (lst (xs f l o) (sym-name (car xs))) (else other ""))) params)))
+
+(define variant-part (subr kfx (cv trackeds string i64) trackeds)
+  (lambda (v whole tag i)
+    "What an arm of a `tagcase` on `whole` binds for its field `i`: a part,
+     strictly smaller, of the type the variant says if the whole's is known."
+    (concat
+     (map (lambda ((t tracked))
+            (tagcase t
+              (part (p strict ty)
+                (the trackeds
+                  (list (part p #t
+                          (if (null? ty) nil
+                              (tagcase (car ty)
+                                (ty-data (d args)
+                                  (let ((found (find-family d (cv-dts v))))
+                                    (if (null? found) nil
+                                        (tagcase (car found)
+                                          (dt (n ps vs)
+                                            (let ((fs (concat (map (lambda ((x variant)) (tagcase x (variant (vt ft) (if (string=? vt tag) ft nil)))) vs))))
+                                              (map (lambda ((f ty)) (substitute ps args f)) (nth-ty fs i))))))))
+                                (else other nil)))))))
+              (else other nil)))
+          whole))))
+
+(define-rec
+  (walk-all (subr kfx (wc ws sexps) ws)
+    (lambda (c st es) (if (null? es) st (walk-all c (walk-exp c st (car es)) (cdr es)))))
+
+  (walk-exp (subr kfx (wc ws sexp) ws)
+    (lambda (c st e)
+      (tagcase e
+        (sym (n) (if (i64< (wc-member c n) 0) st (escaping st)))
+        (lst (xs src-file src-line src-pos)
+          (let ((h (tagcase (car xs) (sym (n) n) (else other ""))))
+            (cond ((or (not (well-formed? h (cdr xs)))
+                       (and (or (string=? h "lambda") (string=? h "the")) (i64< (size xs) 3)))
+                   st)
+                  ((string=? h "if")
+                   (let ((st (walk-exp c st (second xs))))
+                     (walk-exp (guarded c (facts-of c (second xs) #f))
+                               (walk-exp (guarded c (facts-of c (second xs) #t)) st (third xs))
+                               (fourth xs))))
+                  ((string=? h "cond") (walk-clauses c st (cdr xs)))
+                  ((string=? h "case")
+                   (walk-all c (walk-exp c st (second xs))
+                             (concat (map (lambda ((arm sexp)) (cdr (items arm))) (cdr (cdr xs))))))
+                  ((string=? h "tagcase") (walk-arms c (walk-exp c st (second xs)) (tracked-of c (second xs)) (cdr (cdr xs))))
+                  ((string=? h "let")
+                   (let ((st (walk-all c st (map (lambda ((b sexp)) (second (items b))) (items (second xs))))))
+                     (walk-all (in-scope c (map (lambda ((b sexp)) (known (sym-name (car (items b))) (tracked-of c (second (items b)))))
+                                                (items (second xs))))
+                               st (cdr (cdr xs)))))
+                  ((string=? h "let*") (walk-let* c st (items (second xs)) (cdr (cdr xs))))
+                  ((string=? h "letrec")
+                   (let ((c (hiding c (map (lambda ((b sexp)) (sym-name (car (items b)))) (items (second xs))))))
+                     (walk-all c (walk-all c st (map (lambda ((b sexp)) (third (items b))) (items (second xs)))) (cdr (cdr xs)))))
+                  ((string=? h "letregion") (walk-all c st (cdr (cdr xs))))
+                  ((string=? h "lambda") (walk-all (hiding c (param-names (items (second xs)))) st (cdr (cdr xs))))
+                  ((string=? h "the") (walk-exp c st (third xs)))
+                  ((string=? h "with")
+                   (tagcase c
+                     (wc (v ms cur sc gs nats inv)
+                       (walk-all (hiding c (map (lambda ((b bind)) (tagcase b (bind (n t w) n)))
+                                                (opened-binds (sym-name (second xs)) (cv-binds v))))
+                                 st (cdr (cdr xs))))))
+                  ((or (string=? h "begin") (string=? h "and") (string=? h "or") (string=? h "list") (string=? h "prompt"))
+                   (walk-all c st (cdr xs)))
+                  ((and (not (string=? h "")) (not (i64< (wc-member c h) 0)))
+                   (walk-all c (call-found c st (wc-member c h) (cdr xs)) (cdr xs)))
+                  (else (walk-all c st xs)))))
+        (else other st))))
+
+  (walk-clauses (subr kfx (wc ws sexps) ws)
+    (lambda (c st clauses)
+      "A `cond`, as the `if`s FX-26 reads it as: each clause's body under its
+       test, and every clause after it under the test failing."
+      (if (null? clauses)
+          st
+          (let ((clause (items (car clauses))))
+            (if (sym-is? (car clause) "else")
+                (walk-all c st (cdr clause))
+                (let ((st (walk-exp c st (car clause))))
+                  (walk-clauses (guarded c (facts-of c (car clause) #f))
+                                (walk-all (guarded c (facts-of c (car clause) #t)) st (cdr clause))
+                                (cdr clauses))))))))
+
+  (walk-arms (subr kfx (wc ws trackeds sexps) ws)
+    (lambda (c st whole arms)
+      (if (null? arms)
+          st
+          (let ((arm (items (car arms))))
+            (walk-arms c
+              (if (sym-is? (car arm) "else")
+                  (walk-all (in-scope c (the knowns (list (known (sym-name (second arm))
+                                                     (concat (map (lambda ((t tracked)) (tagcase t (part (p s ty) (the trackeds (list t))) (else other nil)))
+                                                                  whole))))))
+                            st (cdr (cdr arm)))
+                  (walk-all (in-scope c (tagcase (second arm)
+                                          (sym (x)
+                                            "A sum's member, bound whole: a part, its type not known here."
+                                            (the knowns
+                                              (list (known x (concat (map (lambda ((t tracked))
+                                                                            (tagcase t (part (p s ty) (the trackeds (list (part p #t nil)))) (else other nil)))
+                                                                          whole))))))
+                                          (else other (fields-known c whole (sym-name (car arm)) (items (second arm)) 0))))
+                            st (cdr (cdr arm))))
+              whole (cdr arms))))))
+
+  (fields-known (subr kfx (wc trackeds string sexps i64) knowns)
+    (lambda (c whole tag names i)
+      (if (null? names)
+          nil
+          (tagcase c
+            (wc (v ms cur sc gs nats inv)
+              (cons (known (sym-name (car names)) (variant-part v whole tag i))
+                    (fields-known c whole tag (cdr names) (i64+ i 1))))))))
+
+  (walk-let* (subr kfx (wc ws sexps sexps) ws)
+    (lambda (c st bindings body)
+      (if (null? bindings)
+          (walk-all c st body)
+          (let ((b (items (car bindings))))
+            (walk-let* (in-scope c (the knowns (list (known (sym-name (car b)) (tracked-of c (second b))))))
+                       (walk-exp c st (second b))
+                       (cdr bindings) body))))))
+
+"A member of a group: its name, parameters, their types, and its body."
+(define-datatype rec-member (rec-member string strings tys sexps))
+(define-type rec-members (listof rec-member acyclic))
+
+(define lambda-of (subr kfx (sexp) sexps)
+  (lambda (e)
+    "A definition's lambda, under a `plambda`: as a list of one, or none."
+    (cond ((head-is? e "plambda") (if (head-is? (third (items e)) "lambda") (the sexps (list (third (items e)))) nil))
+          ((head-is? e "lambda") (the sexps (list e)))
+          (else nil))))
+
+(define-rec
+  (param-knowns (subr kfx (strings tys i64) knowns)
+    (lambda (names ts j)
+      (if (or (null? names) (null? ts))
+          nil
+          (cons (known (car names)
+                       (cons (part j #f (the tys (list (car ts))))
+                             (tagcase (car ts)
+                               (ty-int () (the trackeds (list (int-of j 0))))
+                               (ty-nat () (the trackeds (list (int-of j 0))))
+                               (else other nil))))
+                (param-knowns (cdr names) (cdr ts) (i64+ j 1)))))))
+
+(define-rec
+  (nat-params (subr kfx (tys i64) i64s)
+    (lambda (ts j)
+      (cond ((null? ts) nil)
+            ((tagcase (car ts) (ty-nat () #t) (else other #f)) (cons j (nat-params (cdr ts) (i64+ j 1))))
+            (else (nat-params (cdr ts) (i64+ j 1)))))))
+
+(define-rec
+  (walk-rec-members (subr kfx (cv strings rec-members i64 slots ws) ws)
+    (lambda (v names ms i inv st)
+      (cond ((null? ms) st)
+            ((tagcase st (ws (calls passed escaped) escaped)) st)
+            (else
+             (tagcase (car ms)
+               (rec-member (n ps ts body)
+                 (walk-rec-members v names (cdr ms) (i64+ i 1) inv
+                               (walk-all (wc v names i (param-knowns ps ts 0) nil (nat-params ts 0) inv) st body)))))))))
+
+(define slot-in? (subr kfx (i64 i64 slots) bool)
+  (lambda (i j inv) (any? (lambda ((x slot)) (tagcase x (slot (a b) (and (i64= a i) (i64= b j))))) inv)))
+
+(define-rec
+  (nth-i64 (subr kfx (i64s i64) i64)
+    (lambda (xs i) (cond ((null? xs) -1) ((i64= i 0) (car xs)) (else (nth-i64 (cdr xs) (i64- i 1)))))))
+
+(define kept-slots (subr kfx (slots passings) slots)
+  (lambda (inv passed)
+    "The slots every call passes on unchanged, of those still thought so."
+    (concat
+     (map (lambda ((x slot))
+            (tagcase x
+              (slot (to j)
+                (if (any? (lambda ((p passing))
+                            (tagcase p
+                              (passing (f t args)
+                                (and (i64= t to)
+                                     (let ((q (nth-i64 args j)))
+                                       (or (i64< q 0) (not (slot-in? f q inv))))))))
+                          passed)
+                    nil
+                    (the slots (list x))))))
+          inv))))
+
+(define-rec
+  (invariant (subr kfx (slots passings) slots)
+    (lambda (inv passed)
+      (let ((next (kept-slots inv passed)))
+        (if (i64= (size next) (size inv)) inv (invariant next passed))))))
+
+(define-rec
+  (counting (subr kfx (i64 i64) i64s)
+    (lambda (from n) (if (i64< from n) (cons from (counting (i64+ from 1) n)) nil))))
+
+(define-rec
+  (all-slots (subr kfx (rec-members i64) slots)
+    (lambda (ms i)
+      (if (null? ms)
+          nil
+          (tagcase (car ms)
+            (rec-member (n ps ts body)
+              (onto (map (lambda ((j i64)) (slot i j)) (counting 0 (size ps)))
+                    (all-slots (cdr ms) (i64+ i 1)))))))))
+
+(define-rec
+  (fold-to (subr kfx (edges i64 i64 bool edges) edges)
+    (lambda (b x y s1 out)
+      (if (null? b)
+          out
+          (fold-to (cdr b) x y s1
+            (tagcase (car b)
+              (edge (y2 z s2) (if (i64= y y2) (with-edge out x z (or s1 s2)) out))))))))
+
+(define-rec
+  (fold-edges (subr kfx (edges edges edges) edges)
+    (lambda (a b out)
+      (if (null? a)
+          out
+          (fold-edges (cdr a) b
+            (tagcase (car a)
+              (edge (x y s1)
+                (fold-to b x y s1 out))))))))
+
+(define compose (subr kfx (edges edges) edges)
+  (lambda (a b)
+    (fold-edges a b nil)))
+
+(define-rec
+  (edges=? (subr kfx (edges edges) bool)
+    (lambda (a b)
+      (cond ((null? a) (null? b))
+            ((null? b) #f)
+            (else
+             (and (tagcase (car a)
+                    (edge (x y s)
+                      (tagcase (car b) (edge (x2 y2 s2) (and (i64= x x2) (i64= y y2) (eqv-bool? s s2))))))
+                  (edges=? (cdr a) (cdr b))))))))
+
+(define scall=? (subr kfx (scall scall) bool)
+  (lambda (a b)
+    (tagcase a (scall (f g es) (tagcase b (scall (f2 g2 es2) (and (i64= f f2) (i64= g g2) (edges=? es es2))))))))
+
+"The closure of the calls under composition stops past this many."
+(define most-graphs i64 500)
+
+(define-rec
+  (paths (subr kfx (scalls scalls scalls) scalls)
+    (lambda (calls all todo)
+      "Every path of calls, as a graph; none if there are too many."
+      (cond ((null? todo) all)
+            ((i64> (size all) most-graphs) nil)
+            (else
+             (tagcase (car todo)
+               (scall (f g a)
+                 (close-over calls all (cdr todo) f a
+                         (concat (map (lambda ((x scall)) (tagcase x (scall (g2 h b) (if (i64= g2 g) (the scalls (list x)) nil)))) calls)))))))))
+
+  (close-over (subr kfx (scalls scalls scalls i64 edges scalls) scalls)
+    (lambda (calls all todo f a nexts)
+      (if (null? nexts)
+          (paths calls all todo)
+          (tagcase (car nexts)
+            (scall (g h b)
+              (let ((c (scall f h (compose a b))))
+                (if (any? (lambda ((x scall)) (scall=? x c)) all)
+                    (close-over calls all todo f a (cdr nexts))
+                    (close-over calls (cons c all) (cons c todo) f a (cdr nexts))))))))))
+
+(define ends? (subr kfx (scalls) bool)
+  (lambda (calls)
+    "The size-change criterion: every graph from a member to itself that is
+     its own composition has a slot strictly smaller."
+    (let ((all (paths calls calls calls)))
+      (and (not (null? all))
+           (not (any? (lambda ((x scall))
+                        (tagcase x
+                          (scall (f g a)
+                            (and (i64= f g) (edges=? (compose a a) a)
+                                 (not (any? (lambda ((e edge)) (tagcase e (edge (p q s) (and (i64= p q) s)))) a))))))
+                      all))))))
+
+(define-rec
+  (rec-members-of (subr kfx (strings tys sexps) rec-members)
+    (lambda (names types lambdas)
+      (if (null? names)
+          nil
+          (cons (rec-member (car names)
+                        (param-names (items (second (items (car lambdas)))))
+                        (tagcase (car types) (ty-proc (es ps r) ps) (else other nil))
+                        (cdr (cdr (items (car lambdas)))))
+                (rec-members-of (cdr names) (cdr types) (cdr lambdas)))))))
+
+(define terminates? (subr kfx (cv strings tys sexps) bool)
+  (lambda (v names types defined)
+    "Whether every run of the group ends: `names`, their types, and their
+     lambdas. A member not a lambda, or named other than as a call's
+     operator, and it does not."
+    (let ((lambdas (map lambda-of defined)))
+      (if (any? (lambda ((l sexps)) (null? l)) lambdas)
+          #f
+          (let* ((ms (rec-members-of names types (map (lambda ((l sexps)) (car l)) lambdas)))
+                 (w1 (walk-rec-members v names ms 0 nil (ws nil nil #f))))
+            (if (tagcase w1 (ws (calls passed escaped) escaped))
+                #f
+                (let* ((inv (invariant (all-slots ms 0) (tagcase w1 (ws (calls passed escaped) passed))))
+                       (w2 (if (null? inv) w1 (walk-rec-members v names ms 0 inv (ws nil nil #f)))))
+                  (and (not (tagcase w2 (ws (calls passed escaped) escaped)))
+                       (ends? (tagcase w2 (ws (calls passed escaped) calls)))))))))))

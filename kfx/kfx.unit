@@ -4,5 +4,8 @@ base.kfx
 read.kfx
 names.kfx
 check.kfx
+terminate.kfx
+check-exprs.kfx
+check-defs.kfx
 emit.kfx
 compile.kfx

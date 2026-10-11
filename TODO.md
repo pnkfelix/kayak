@@ -174,8 +174,7 @@ everywhere after its definition, and every Rust item is `pub`. FX-26's
 modules (`module`, `load-module`, `moduleof`, `with`, `select`) would give
 interfaces and abstraction; they are first-class values, so their mapping
 needs designing, perhaps a `moduleof` as a Rust module's `pub` surface,
-or a trait. Also: `check.kfx` is 1000 lines, and could be two (types and
-effects, then expressions and definitions).
+or a trait.
 
 ## 18. Research: regions as exclusive borrows (GhostCell tokens)
 
