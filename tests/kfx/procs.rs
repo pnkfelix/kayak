@@ -78,8 +78,8 @@ pub fn i64_star_wrapped(a: i64, b: i64) -> i64 {
 }
 
 pub fn main() -> Str {
-    let xs = cons(1i64, cons(2i64, cons(3i64, nil())));
-    let k = 100i64;
+    let xs = the::<Ints>(cons(1i64, cons(2i64, cons(3i64, nil()))));
+    let k = the::<i64>(100i64);
     let shows = map(&i64_to_string, map(&add1, xs));
     words(cons(words(shows), cons(words(map(lambda1(move |x: i64| {
         i64_to_string(i64_star(x, 10i64))

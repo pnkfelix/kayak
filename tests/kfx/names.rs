@@ -25,7 +25,7 @@ pub fn bump_x(n: i64) -> i64 {
 }
 
 pub fn main() -> Str {
-    let r#type = 1i64;
+    let r#type = the::<i64>(1i64);
     let r#match = bump_x(r#type);
     let r#fn = i64_star(r#match, 10i64);
     let r#loop = str_lit("x");

@@ -708,7 +708,7 @@ pub fn tag_arms_tail_calls_p(t: &'static Tail, arms: Sexps) -> bool {
     } else {
         let arm = items(car(arms));
         let bound = if sym_is_p(car(arm), str_lit("else")) {
-            cons(sym_name(second(arm)), nil())
+            the::<Strings>(cons(sym_name(second(arm)), nil()))
         } else {
             map(&sym_name, items(second(arm)))
         };
@@ -987,7 +987,7 @@ pub fn put_tagcase_arms(c: &'static Ctx, arms: Sexps, n: i64, t: &'static Tail, 
         let tag = sym_name(car(arm));
         let else_p = string_eq_p(tag, str_lit("else"));
         let bound = if else_p {
-            cons(sym_name(second(arm)), nil())
+            the::<Strings>(cons(sym_name(second(arm)), nil()))
         } else {
             map(&sym_name, items(second(arm)))
         };
@@ -1134,7 +1134,13 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
     } else if string_eq_p(h, str_lit("list")) {
         put_list(c, xs, n, acc)
     } else if string_eq_p(h, str_lit("the")) {
-        put_exp(c, second(xs), n, value(), acc)
+        // `the::<T>(e)`: the type said to rustc too, which may need it where
+        // FX-26's checker did (a tag's payload, a list nothing else types).
+        let acc = put(str_lit("the::<"), acc);
+        let acc = put_type(c, car(xs), acc);
+        let acc = put(str_lit(">("), acc);
+        let acc = put_exp(c, second(xs), n, value(), acc);
+        put(str_lit(")"), acc)
     } else if (string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion"))) {
         put_block(c, cons(e, nil()), n, t, acc)
     } else if null_p(xs) {
@@ -1233,7 +1239,7 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, r#type: &'static Sexp, d
     let body = if lambda_p {
         cdr(cdr(items(defined)))
     } else {
-        cons(defined, nil())
+        the::<Sexps>(cons(defined, nil()))
     };
     let doc_p = (comment_p(car(body)) && not(null_p(cdr(body))));
     let acc = if doc_p {

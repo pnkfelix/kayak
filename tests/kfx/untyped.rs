@@ -7,7 +7,7 @@ use kayak_rt::*;
 // are written, and one that uses both.
 
 pub fn base() -> i64 {
-    40i64
+    the::<i64>(40i64)
 }
 
 pub fn greeting() -> Str {
@@ -23,7 +23,7 @@ pub fn shout(s: Str) -> Str {
 }
 
 pub fn pair_up(x: i64) -> List<i64> {
-    cons(x, cons(add(x, base()), nil()))
+    the::<List<i64>>(cons(x, cons(add(x, base()), nil())))
 }
 
 pub fn main() -> Str {

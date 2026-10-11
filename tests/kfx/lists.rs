@@ -46,6 +46,6 @@ pub fn show(xs: Ints) -> Str {
 }
 
 pub fn main() -> Str {
-    string_append(show(rev_onto(cons(1i64, cons(2i64, cons(3i64, nil()))), nil())), string_append(str_lit(" | "), string_append(i64_to_string(total(count_from(0i64, 100000i64))), string_append(str_lit(" | "), list_to_string(cons('o', cons('k', nil())))))))
+    string_append(show(rev_onto(cons(1i64, cons(2i64, cons(3i64, nil()))), nil())), string_append(str_lit(" | "), string_append(i64_to_string(total(count_from(0i64, 100000i64))), string_append(str_lit(" | "), list_to_string(the::<Chars>(cons('o', cons('k', nil()))))))))
 }
 

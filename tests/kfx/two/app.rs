@@ -26,7 +26,7 @@ pub fn describe(s: &'static Shape) -> Str {
 }
 
 pub fn main() -> Str {
-    let ss = cons(circle(2i64), cons(rect(3i64, 4i64), nil()));
+    let ss = the::<Shapes>(cons(circle(2i64), cons(rect(3i64, 4i64), nil())));
     string_append(describe(car(ss)), string_append(str_lit(", "), string_append(describe(car(cdr(ss))), string_append(str_lit(": "), i64_to_string(total(ss))))))
 }
 

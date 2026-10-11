@@ -110,9 +110,9 @@ pub fn bump_x(k: &'static Counter) -> i64 {
 }
 
 pub fn main() -> Str {
-    let a = make_flatarray_i64(8i64, 0i64);
-    let b = make_flatarray_i64(8i64, -1i64);
-    let cell = new(40i64);
+    let a = the::<FlatArray<i64>>(make_flatarray_i64(8i64, 0i64));
+    let b = the::<FlatArray<i64>>(make_flatarray_i64(8i64, -1i64));
+    let cell = the::<Ref<i64>>(new(40i64));
     let alias = cell;
     let k = counter(str_lit("k"), cell);
     let step = lambda0(move || {

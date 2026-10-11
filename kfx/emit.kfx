@@ -646,7 +646,14 @@
                (put "}" (put-nl n acc))))
             ((string=? h "lambda") (put-lambda c (items (car xs)) (cdr xs) n acc))
             ((string=? h "list") (put-list c xs n acc))
-            ((string=? h "the") (put-exp c (second xs) n (value) acc))
+            ((string=? h "the")
+             "`the::<T>(e)`: the type said to rustc too, which may need it where
+              FX-26's checker did (a tag's payload, a list nothing else types)."
+             (let* ((acc (put "the::<" acc))
+                    (acc (put-type c (car xs) acc))
+                    (acc (put ">(" acc))
+                    (acc (put-exp c (second xs) n (value) acc)))
+               (put ")" acc)))
             ((or (string=? h "letrec") (string=? h "letregion")) (put-block c (list e) n t acc))
             ((null? xs) (put "()" (put (callee c h) acc)))
             (else (put ")" (put-joined c xs ", " n (put "(" (put (callee c h) acc)))))))))

@@ -9,10 +9,12 @@
 //! ASCII, so that indexing one that is costs nothing, and indexing one that
 //! is not counts characters (`CLAUDES_CHOICES.md`, C14).
 
+mod escape;
 mod float;
 mod int;
 mod show;
 
+pub use escape::*;
 pub use float::*;
 pub use int::*;
 pub use show::*;

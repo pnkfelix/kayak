@@ -93,11 +93,11 @@ pub fn swap<A: Copy + 'static, B: Copy + 'static>(p: &'static Both<A, B>) -> &'s
 }
 
 pub fn main() -> Str {
-    let kids = cons(leaf(1i64), cons(leaf(2i64), nil()));
-    let tree = node(cons(node(kids), cons(leaf(4i64), nil())));
-    let xs = cons(7i64, cons(8i64, cons(9i64, nil())));
-    let p = both(str_lit("x"), 5i64);
-    string_append(i64_to_string(total(tree)), string_append(str_lit(" "), string_append(i64_to_string(or_else(first(xs), 0i64)), string_append(str_lit(" "), string_append(i64_to_string(or_else(first(nil()), -1i64)), string_append(str_lit(" "), {
+    let kids = the::<List<&'static Rose<i64>>>(cons(leaf(1i64), cons(leaf(2i64), nil())));
+    let tree = the::<&'static Rose<i64>>(node(cons(node(kids), cons(leaf(4i64), nil()))));
+    let xs = the::<Ints>(cons(7i64, cons(8i64, cons(9i64, nil()))));
+    let p = the::<&'static Both<Str, i64>>(both(str_lit("x"), 5i64));
+    string_append(i64_to_string(total(tree)), string_append(str_lit(" "), string_append(i64_to_string(or_else(first(xs), 0i64)), string_append(str_lit(" "), string_append(i64_to_string(or_else(first(the::<Ints>(nil())), -1i64)), string_append(str_lit(" "), {
         let tagcase_ = swap(p);
         match *tagcase_ {
             Both::Both(n, s) => {
