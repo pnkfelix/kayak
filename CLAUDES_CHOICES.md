@@ -340,3 +340,32 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
 - **Why:** a module FX-26 passes is, where its giver is known, a static
   choice of code: Rust's monomorphised generics are exactly that, with no
   value at run time, and the trait says what the checker checked.
+
+## C25. `spin` for a call of a procedure given, as FX-26 has it, cautiously (2026-10-11)
+
+- **Chosen:** a call of a procedure a local names says `spin` only where
+  its type's parameters or result may hold a procedure (through lists,
+  cells, shapes, datatypes, a generative type's representation, or a type
+  not known yet); naming a global procedure as a value says `spin` only
+  within its own group. FX-26 says it for a type recursive through a
+  parameter; KFX's rule is a superset of that, so KFX accepts no loop
+  FX-26 would refuse.
+- **Not chosen:** `spin` for every such call (KFX's rule before), which
+  left no higher-order procedure `pure`.
+- **Known:** FX-26, and so KFX, accepts self-application through a `poly`
+  type variable (`(subr pure (a) b)`, `a` a datatype holding such a
+  procedure), which loops with no `spin` (a question for Fixpt, `TODO.md`
+  §17).
+
+## C26. A list made where nothing says its region is at a fresh region (2026-10-11)
+
+- **Chosen:** a `list` with no type to go by, or given for a parameter
+  whose type is not known whole yet, is at `%fresh`, a region of its own,
+  as FX-26's is at a fresh region: it fits no `acyclic` expected later.
+  Effects on it are pure, KFX's lists never being written.
+- **Not chosen:** `acyclic` for it (KFX's rule before: C16's), which made
+  KFX accept programs FX-26 refuses; one fresh region for each list
+  (FX-26's), which needs FX-26's masking of fresh regions where they are
+  not seen, throughout.
+- **Why:** the commonest K1 gap the probes found; this closes most of it
+  with no change to the Rust.
