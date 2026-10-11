@@ -47,6 +47,8 @@ What it does is `DONE.md` §13. What is left:
 
 ## 14. Places as lifetimes
 
+The cost, and what to decide: `docs/research/places.md`.
+
 A Rust lifetime says how long memory stays valid, and in FX-26 what has
 a memory lifetime is a *place*, not a region: a region is "a name in
 types and effects, erased before anything runs", a place "memory that
@@ -99,6 +101,9 @@ Flat arrays of `i64` and references are done (`DONE.md` §15). Left:
 
 ## 16. Escapes, then FX-26 at large
 
+The design, and what to decide: `docs/research/escapes.md`
+(`Result` by effect, recommended; the checker's facts carry the effects).
+
 - Prompts with only `(goto r)` as `Result` and `?`: the effect says which
   calls may abort, and so which `fn`s return a `Result`. The first place
   effects decide code generation.
@@ -137,6 +142,13 @@ Flat arrays of `i64` and references are done (`DONE.md` §15). Left:
   wanted.
 
 ## 19. Modules
+
+A first step that maps (2026-10-11): modules made at the top level and
+opened with `with`, as Rust `mod`s; a module's `define-generative` a
+newtype whose conversions are private to the `mod`, so that Rust's
+privacy enforces the abstraction too. Refused: modules as values passed,
+`let`-bound or sealed with `the`, and functors. `docs/survey.md`: 56 of
+Fixpt's programs first stop at `module`, many of them meant to be refused.
 
 Files are units in order, with no interfaces: every name is visible
 everywhere after its definition, and every Rust item is `pub`. FX-26's
