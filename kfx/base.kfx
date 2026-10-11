@@ -1,0 +1,72 @@
+"base.kfx: what the compiler's other files use, first of them all.
+
+ The compiler is the files kfx/kfx.unit lists, in order (PLAN.md,
+ section 1): to FX-26, one program, each file seeing those before it; to
+ Rust, a module each. Fixpt runs them, after kfx/prelude.fx, to make
+ boot/src/kfx/ (stage 0); the Rust built from that runs them again, and
+ must make the same files.
+
+ `compile` (compile.kfx) takes a program's text and gives its Rust: it
+ reads the text into `sexp`s (read.kfx), checks it (check.kfx), and
+ writes Rust (emit.kfx) onto a list of characters, newest first, which is
+ reversed once at the end."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-type chars (listof char acyclic))
+(define-type strings (listof string acyclic))
+
+"Lists, of anything"
+
+(define map (poly ((a type) (b type))
+              (subr kfx ((subr kfx (a) b) (listof a acyclic)) (listof b acyclic)))
+  (lambda (f xs) (if (null? xs) nil (cons (f (car xs)) (map f (cdr xs))))))
+
+(define any? (poly ((a type)) (subr kfx ((subr kfx (a) bool) (listof a acyclic)) bool))
+  (lambda (p xs) (and (not (null? xs)) (or (p (car xs)) (any? p (cdr xs))))))
+
+(define size-from (poly ((a type)) (subr kfx ((listof a acyclic) i64) i64))
+  (lambda (xs n) (if (null? xs) n (size-from (cdr xs) (i64+ n 1)))))
+
+(define size (poly ((a type)) (subr kfx ((listof a acyclic)) i64))
+  (lambda (xs) (size-from xs 0)))
+
+(define last (poly ((a type)) (subr kfx ((listof a acyclic)) a))
+  (lambda (xs) (if (null? (cdr xs)) (car xs) (last (cdr xs)))))
+
+"Characters and strings"
+
+(define rev-onto (subr kfx (chars chars) chars)
+  (lambda (xs acc)
+    (if (null? xs) acc (rev-onto (cdr xs) (cons (car xs) acc)))))
+
+(define rev->string (subr kfx (chars) string)
+  (lambda (acc) (list->string (rev-onto acc nil))))
+
+(define string-chars-from (subr kfx (string i64 i64) chars)
+  (lambda (s i n)
+    (if (i64< i n) (cons (string-ref-i64 s i) (string-chars-from s (i64+ i 1) n)) nil)))
+
+(define string-chars (subr kfx (string) chars)
+  (lambda (s) (string-chars-from s 0 (string-length-i64 s))))
+
+(define put-from (subr kfx (string i64 i64 chars) chars)
+  (lambda (s i n acc)
+    (if (i64< i n) (put-from s (i64+ i 1) n (cons (string-ref-i64 s i) acc)) acc)))
+
+(define put (subr kfx (string chars) chars)
+  (lambda (s acc)
+    "Adds `s` to the output `acc`."
+    (put-from s 0 (string-length-i64 s) acc)))
+
+(define put-sep (poly ((a type))
+                  (subr kfx ((subr kfx (a chars) chars) string (listof a acyclic) chars) chars))
+  (lambda (each sep xs acc)
+    "Each of `xs` added to `acc` by `each`, separated by `sep`."
+    (cond ((null? xs) acc)
+          ((null? (cdr xs)) (each (car xs) acc))
+          (else (put-sep each sep (cdr xs) (put sep (each (car xs) acc)))))))
+
+(define string-member? (subr kfx (string strings) bool)
+  (lambda (s xs)
+    (if (null? xs) #f (or (string=? s (car xs)) (string-member? s (cdr xs))))))

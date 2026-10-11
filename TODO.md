@@ -13,8 +13,8 @@ and abandoned also moves to `DONE.md`, with a short note on what was
 explored and why it was dropped.
 
 A change to the language the compiler is written in goes through the
-bootstrap in two steps: teach `kfx.kfx` the feature and regenerate
-`boot/`, and only then use it in `kfx.kfx` (`README.md`).
+bootstrap in two steps: teach the compiler (`kfx/`) the feature and
+regenerate `boot/`, and only then use it in the compiler (`README.md`).
 
 ---
 
@@ -129,6 +129,16 @@ flat sums already store their tag "as Rust stores a discriminant"
 - **Shifts**: `i64-shl` and `i64-shr` take their count as an `int`; KFX
   has none, so they are not in the corpus. A prelude `i64-shl-i64`, when
   wanted.
+
+## 19. Modules
+
+Files are units in order, with no interfaces: every name is visible
+everywhere after its definition, and every Rust item is `pub`. FX-26's
+modules (`module`, `load-module`, `moduleof`, `with`, `select`) would give
+interfaces and abstraction; they are first-class values, so their mapping
+needs designing, perhaps a `moduleof` as a Rust module's `pub` surface,
+or a trait. Also: `check.kfx` is 1000 lines, and could be two (types and
+effects, then expressions and definitions).
 
 ## 18. Research: regions as exclusive borrows (GhostCell tokens)
 

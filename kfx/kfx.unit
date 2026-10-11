@@ -1,2 +1,8 @@
-; The compiler: its files, in order (PLAN.md, section 1).
-kfx.kfx
+; The compiler: its files, in order (PLAN.md, section 1). Each sees the
+; definitions of those before it, as FX-26 has a program's forms.
+base.kfx
+read.kfx
+names.kfx
+check.kfx
+emit.kfx
+compile.kfx

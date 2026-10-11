@@ -1,0 +1,153 @@
+"read.kfx: the reader, from characters to `sexp`s, and taking them apart."
+
+"Reading"
+
+(define-datatype sexp
+  (sym string)
+  (str string)
+  (num i64)
+  (chr char)
+  (lst (listof sexp acyclic)))
+
+(define-type sexps (listof sexp acyclic))
+
+"A datum, and the text after it."
+(define-datatype got (got sexp chars))
+(define-datatype gots (gots sexps chars))
+(define-datatype tok (tok string chars))
+
+(define skip-line (subr kfx (chars) chars)
+  (lambda (cs)
+    (cond ((null? cs) cs)
+          ((char=? (car cs) #\newline) (cdr cs))
+          (else (skip-line (cdr cs))))))
+
+(define skip (subr kfx (chars) chars)
+  (lambda (cs)
+    "Skips whitespace and comments."
+    (cond ((null? cs) cs)
+          ((char-whitespace? (car cs)) (skip (cdr cs)))
+          ((char=? (car cs) #\;) (skip (skip-line (cdr cs))))
+          (else cs))))
+
+(define delimiter? (subr kfx (char) bool)
+  (lambda (c)
+    (or (char-whitespace? c) (char=? c #\() (char=? c #\)) (char=? c #\") (char=? c #\;))))
+
+(define token-chars (subr kfx (chars chars) tok)
+  (lambda (cs acc)
+    "A token's characters, onto `acc`, newest first."
+    (if (or (null? cs) (delimiter? (car cs)))
+        (tok (rev->string acc) cs)
+        (token-chars (cdr cs) (cons (car cs) acc)))))
+
+(define unescape (subr kfx (char) char)
+  (lambda (c) (case c ((#\n) #\newline) ((#\t) #\tab) (else c))))
+
+(define string-body (subr kfx (chars chars) tok)
+  (lambda (cs acc)
+    "A string's characters, after its opening quote."
+    (cond ((null? cs) (error "kfx: a string is not closed"))
+          ((char=? (car cs) #\") (tok (rev->string acc) (cdr cs)))
+          ((char=? (car cs) #\\)
+           (string-body (cdr (cdr cs)) (cons (unescape (car (cdr cs))) acc)))
+          (else (string-body (cdr cs) (cons (car cs) acc))))))
+
+(define digits-value (subr kfx (chars i64) i64)
+  (lambda (cs n)
+    "Digits onto `n`, negated: so that -9223372036854775808, whose
+     magnitude is no i64, reads. A literal past an i64 is refused, as FX-26
+     refuses it where an i64 is expected."
+    (if (null? cs)
+        n
+        (let ((d (i64- (char->i64 (car cs)) 48)))
+          (if (or (i64< n -922337203685477580)
+                  (and (i64= n -922337203685477580) (i64> d 8)))
+              (error "kfx: a literal past an i64")
+              (digits-value (cdr cs) (i64- (i64* n 10) d)))))))
+
+(define numeric? (subr kfx (chars) bool)
+  (lambda (cs)
+    (and (not (null? cs))
+         (or (char-numeric? (car cs))
+             (and (char=? (car cs) #\-) (not (null? (cdr cs))) (char-numeric? (car (cdr cs))))))))
+
+(define token-atom (subr kfx (string) sexp)
+  (lambda (s)
+    (let ((cs (string-chars s)))
+      (cond ((not (numeric? cs)) (sym s))
+            ((char=? (car cs) #\-) (num (digits-value (cdr cs) 0)))
+            (else
+             (let ((negated (digits-value cs 0)))
+               (if (i64= negated -9223372036854775808)
+                   (error "kfx: a literal past an i64")
+                   (num (i64- 0 negated)))))))))
+
+(define char-named (subr kfx (string) char)
+  (lambda (s)
+    (cond ((i64= (string-length-i64 s) 1) (string-ref-i64 s 0))
+          ((string=? s "space") #\space)
+          ((string=? s "newline") #\newline)
+          ((string=? s "tab") #\tab)
+          (else (error (string-append "kfx: no character is named " s))))))
+
+(define-rec
+  (read-datum (subr kfx (chars) got)
+    (lambda (cs)
+      (let ((c (car cs)))
+        (cond ((char=? c #\()
+               (tagcase (read-items (cdr cs)) (gots (xs after) (got (lst xs) after))))
+              ((char=? c #\)) (error "kfx: a ) with no ("))
+              ((char=? c #\")
+               (tagcase (string-body (cdr cs) nil) (tok (s after) (got (str s) after))))
+              ((and (char=? c #\#) (not (null? (cdr cs))) (char=? (car (cdr cs)) #\\))
+               (let ((name (cdr (cdr cs))))
+                 (tagcase (token-chars (cdr name) (list (car name)))
+                   (tok (s after) (got (chr (char-named s)) after)))))
+              (else
+               (tagcase (token-chars cs nil) (tok (s after) (got (token-atom s) after))))))))
+  (read-items (subr kfx (chars) gots)
+    (lambda (cs)
+      (let ((cs (skip cs)))
+        (cond ((null? cs) (error "kfx: a ( with no )"))
+              ((char=? (car cs) #\)) (gots nil (cdr cs)))
+              (else
+               (tagcase (read-datum cs)
+                 (got (x after)
+                   (tagcase (read-items after) (gots (xs rest) (gots (cons x xs) rest)))))))))))
+
+(define read-all (subr kfx (chars) sexps)
+  (lambda (cs)
+    (let ((cs (skip cs)))
+      (if (null? cs)
+          nil
+          (tagcase (read-datum cs) (got (x after) (cons x (read-all after))))))))
+
+"Taking `sexp`s apart"
+
+(define sym-name (subr kfx (sexp) string)
+  (lambda (e) (tagcase e (sym (s) s) (else other (error "kfx: a name is expected")))))
+
+(define sym-is? (subr kfx (sexp string) bool)
+  (lambda (e s) (tagcase e (sym (n) (string=? n s)) (else other #f))))
+
+(define items (subr kfx (sexp) sexps)
+  (lambda (e) (tagcase e (lst (xs) xs) (else other (error "kfx: a list is expected")))))
+
+(define head-is? (subr kfx (sexp string) bool)
+  (lambda (e s)
+    (tagcase e
+      (lst (xs) (and (not (null? xs)) (sym-is? (car xs) s)))
+      (else other #f))))
+
+(define second (subr kfx (sexps) sexp) (lambda (xs) (car (cdr xs))))
+(define third (subr kfx (sexps) sexp) (lambda (xs) (car (cdr (cdr xs)))))
+(define fourth (subr kfx (sexps) sexp) (lambda (xs) (car (cdr (cdr (cdr xs))))))
+
+(define param-name (subr kfx (sexp) string)
+  (lambda (param)
+    "A lambda's parameter's name: it is `x` or `(x T)`."
+    (sym-name (tagcase param (lst (xs) (car xs)) (else other other)))))
+
+(define procedure? (subr kfx (sexp) bool)
+  (lambda (e) (or (head-is? e "lambda") (head-is? e "plambda"))))

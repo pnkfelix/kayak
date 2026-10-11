@@ -44,7 +44,7 @@ clone at the new commit, write it into `FIXPT_REV`, run
 
 ```
                  stage 0                         stage 1
-kfx/kfx.kfx ──fixpt eval──▶ boot/src/kfx.rs ──cargo──▶ kfx ──kfx/kfx.kfx──▶ same kfx.rs
+kfx/kfx.unit ──fixpt eval──▶ boot/src/kfx/ ──cargo──▶ kfx ──kfx/kfx.unit──▶ the same files
 ```
 
 - **Stage 0 is Fixpt.** A KFX program is an FX-26 program, so Fixpt can
@@ -52,18 +52,18 @@ kfx/kfx.kfx ──fixpt eval──▶ boot/src/kfx.rs ──cargo──▶ kfx �
   prelude (`kfx/prelude.fx`, below), the compiler, and `(compile "…the
   source, escaped…")`, and runs `fixpt eval --raw` on it (with
   `--step-limit none`), which prints the string it gives exactly: that is
-  `boot/src/kfx.rs`. No transpiler is written by hand in Rust: the
+  `boot/src/kfx/`. No transpiler is written by hand in Rust: the
   transpiler is written once, in KFX.
 - **Stage 1** builds `boot/`, a Rust crate whose `main` (hand-written,
   ten lines) reads a file, calls the generated `compile`, and writes the
   result.
 - **The fixed point** (`scripts/fixpoint.sh`): the built `kfx` on
-  `kfx/kfx.kfx` gives `boot/src/kfx.rs`, byte for byte. Fixpt and the Rust
+  `kfx/kfx.unit` gives `boot/src/kfx/`, byte for byte. Fixpt and the Rust
   build run the same program on the same input, so they agree unless the
   mapping is wrong. A disagreement is a bug in the mapping, found on the
   compiler itself.
 - **Once it closes, Fixpt is no longer needed to build.** `boot/` is the
-  seed: change `kfx.kfx`, run the current `kfx` on it, rebuild, run
+  seed: change `kfx/`, run the current `kfx` on it, rebuild, run
   again, and commit once the output stops changing. Stage 0 stays as a
   check that KFX is still FX-26 (§3, K1).
 
@@ -160,6 +160,16 @@ _eq _slash`; a `-` alone or last is `_minus`. So `string->list` is
 `string_to_list`, `char=?` is `char_eq_p`, `i64-` is `i64_minus`, and
 `i64<=` is `i64_lt_eq`.
 
+**Programs of several files** (2026-10-11). A program is files in order,
+listed by a manifest (`NAME.unit`): to FX-26, the files one after
+another, each seeing the definitions of those before it; to Rust, a
+module each, which imports every other's names and `kayak-rt`'s (`use
+super::*`), with a generated `mod.rs` declaring and re-exporting them.
+Since the modules import by glob, KFX defines each name once, and never a
+primitive's or `kayak-rt`'s. No FX-26 modules yet: theirs are first-class
+values, reached by `with` and `select`, and a loaded file sees only the
+standard environment, neither of which maps trivially (`TODO.md` §19).
+
 **Checked first.** `kfx` checks types and effects before it writes Rust
 (`DONE.md` §13). Two of its rules are Rust's, not FX-26's: a call's
 arguments are checked in order, so a lambda's parameter whose type no
@@ -200,7 +210,7 @@ inferred), and no `letrec` of local procedures.
 
 1. `kayak-rt`: `List`, `Cons`, `Str`, and the primitives KFX-0's source
    uses, each named by the mangling.
-2. `kfx/kfx.kfx`: a reader, a first pass noting datatypes and constants,
+2. `kfx/` (then one file): a reader, a first pass noting datatypes and constants,
    and an emitter.
 3. `scripts/stage0.py`, then `boot/` building.
 4. `scripts/fixpoint.sh` passing.

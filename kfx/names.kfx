@@ -1,0 +1,46 @@
+"names.kfx: KFX's names as Rust's."
+
+"Names"
+
+(define rust-keyword? (subr kfx (string) bool)
+  (lambda (s)
+    (string-member? s (list "as" "async" "await" "box" "break" "const" "continue" "do"
+                            "dyn" "else" "enum" "extern" "false" "final" "fn" "for" "gen"
+                            "if" "impl" "in" "let" "loop" "macro" "match" "mod" "move"
+                            "mut" "override" "priv" "pub" "ref" "return" "static"
+                            "struct" "trait" "true" "try" "type" "typeof" "unsafe"
+                            "unsized" "use" "virtual" "where" "while" "yield"))))
+
+(define mangle-char (subr kfx (char) string)
+  (lambda (c)
+    (case c
+      ((#\-) "_") ((#\?) "_p") ((#\!) "_x") ((#\+) "_plus") ((#\*) "_star")
+      ((#\/) "_slash") ((#\<) "_lt") ((#\>) "_gt") ((#\=) "_eq") ((#\%) "_pct")
+      (else (char->string c)))))
+
+(define mangle-chars (subr kfx (chars chars) chars)
+  (lambda (cs acc)
+    (cond ((null? cs) acc)
+          ((and (char=? (car cs) #\-) (not (null? (cdr cs))) (char=? (car (cdr cs)) #\>))
+           (mangle-chars (cdr (cdr cs)) (put "_to_" acc)))
+          ((and (char=? (car cs) #\-) (null? (cdr cs))) (put "_minus" acc))
+          (else (mangle-chars (cdr cs) (put (mangle-char (car cs)) acc))))))
+
+(define mangle (subr kfx (string) string)
+  (lambda (s)
+    "A KFX name as a Rust value's: `string->list` is `string_to_list`."
+    (cond ((string=? s "-") "_minus")
+          ((rust-keyword? s) (string-append "r#" s))
+          (else (rev->string (mangle-chars (string-chars s) nil))))))
+
+(define camel-chars (subr kfx (chars bool chars) chars)
+  (lambda (cs up acc)
+    (cond ((null? cs) acc)
+          ((char=? (car cs) #\-) (camel-chars (cdr cs) #t acc))
+          (up (camel-chars (cdr cs) #f (cons (char-upcase (car cs)) acc)))
+          (else (camel-chars (cdr cs) #f (cons (car cs) acc))))))
+
+(define camel (subr kfx (string) string)
+  (lambda (s)
+    "A KFX name as a Rust type's: `got-list` is `GotList`."
+    (rev->string (camel-chars (string-chars s) #t nil))))

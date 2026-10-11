@@ -293,3 +293,26 @@ Tests, in `scripts/corpus.py`:
 The bootstrap's second step needed none: the checker accepted the
 compiler as soon as it built. Stage 0 now runs it too, under Fixpt, in
 0.75 s; the Rust compiler checks and translates its own source in 10 ms.
+
+## Programs of several files, and the compiler in six (2026-10-11)
+
+Done at the user's question of how to break up the compiler, without a
+TODO number of its own.
+- A manifest, `NAME.unit`, lists a program's files in order; `kfx
+  PROGRAM.unit DIR` writes a module per file and a `mod.rs`
+  (`compile-units`). Each module imports the others' names by glob, so
+  the checker refuses a name defined twice, a primitive defined again,
+  and `kayak-rt`'s own names (`tests/kfx-stricter`).
+- Stage 0 gets one string from Fixpt, so the outputs are bundled, each
+  after a line beginning `@@kfx-file`. The first splitter split anywhere
+  the marker appeared, and the compiler's own docstring and string
+  literal contain it: it now splits only at line starts, which no line of
+  generated Rust begins with.
+- The compiler is `kfx/base.kfx`, `read.kfx`, `names.kfx`, `check.kfx`,
+  `emit.kfx` and `compile.kfx`, and `boot/src/kfx/` a module of each. The
+  checker had borrowed `param-name` and `procedure?` from the emitter;
+  they moved to `read.kfx`, so the checker comes before the emitter.
+- In two steps, as ever: the compiler learnt manifests as one file (and
+  `boot/src/kfx.rs` became `boot/src/kfx/`, one module), then was split.
+  The corpus gains `tests/kfx/two`, a program of two files whose second
+  takes apart the first's datatype.

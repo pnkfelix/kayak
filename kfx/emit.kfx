@@ -1,0 +1,653 @@
+"emit.kfx: writing Rust."
+
+"What the program defines"
+
+"A tag, and its datatype's name."
+(define-datatype tagof (tagof string string))
+(define-type tagofs (listof tagof acyclic))
+
+"Datatypes' names, their tags, constants (definitions not of procedures),
+ and the names bound where an expression is. A name named as a value is
+ a local, a constant (a call of its `fn`), or else a global procedure (a
+ reference to its `fn`, the program's or kayak-rt's)."
+(define-datatype ctx (ctx strings tagofs strings strings))
+
+(define ctx-datatypes (subr kfx (ctx) strings)
+  (lambda (c) (tagcase c (ctx (ds ts ks ls) ds))))
+
+(define ctx-tags (subr kfx (ctx) tagofs)
+  (lambda (c) (tagcase c (ctx (ds ts ks ls) ts))))
+
+(define ctx-constants (subr kfx (ctx) strings)
+  (lambda (c) (tagcase c (ctx (ds ts ks ls) ks))))
+
+(define ctx-locals (subr kfx (ctx) strings)
+  (lambda (c) (tagcase c (ctx (ds ts ks ls) ls))))
+
+(define strings-onto (subr kfx (strings strings) strings)
+  (lambda (xs ys) (if (null? xs) ys (strings-onto (cdr xs) (cons (car xs) ys)))))
+
+(define with-locals (subr kfx (ctx strings) ctx)
+  (lambda (c names)
+    "`c`, where `names` are bound too."
+    (tagcase c (ctx (ds ts ks ls) (ctx ds ts ks (strings-onto names ls))))))
+
+(define tag-datatype (subr kfx (string tagofs) string)
+  (lambda (tag ts)
+    (if (null? ts)
+        (error (string-append "kfx: not a datatype's tag: " tag))
+        (tagcase (car ts)
+          (tagof (t d) (if (string=? t tag) d (tag-datatype tag (cdr ts))))))))
+
+(define note-tags (subr kfx (sexps string tagofs) tagofs)
+  (lambda (variants d ts)
+    (if (null? variants)
+        ts
+        (note-tags (cdr variants) d
+                   (cons (tagof (sym-name (car (items (car variants)))) d) ts)))))
+
+(define note (subr kfx (sexp ctx) ctx)
+  (lambda (form c)
+    (tagcase c
+      (ctx (ds ts ks ls)
+        (cond ((head-is? form "define-datatype")
+               (let ((d (sym-name (second (items form)))))
+                 (ctx (cons d ds) (note-tags (cdr (cdr (items form))) d ts) ks ls)))
+              ((and (head-is? form "define")
+                    (i64= (size (items form)) 4)
+                    (not (procedure? (fourth (items form)))))
+               (ctx ds ts (cons (sym-name (second (items form))) ks) ls))
+              (else c))))))
+
+(define collect (subr kfx (sexps ctx) ctx)
+  (lambda (forms c)
+    (if (null? forms) c (collect (cdr forms) (note (car forms) c)))))
+
+"Writing Rust"
+
+(define escape-char (subr kfx (char char) string)
+  (lambda (c q)
+    (cond ((char=? c #\\) "\\\\")
+          ((char=? c q) (string-append "\\" (char->string c)))
+          ((char=? c #\newline) "\\n")
+          ((char=? c #\tab) "\\t")
+          (else (char->string c)))))
+
+(define put-escaped (subr kfx (chars char chars) chars)
+  (lambda (cs q acc)
+    "`cs` as the inside of a Rust literal delimited by `q`."
+    (if (null? cs) acc (put-escaped (cdr cs) q (put (escape-char (car cs) q) acc)))))
+
+(define-rec
+  (put-type (subr kfx (ctx sexp chars) chars)
+    (lambda (c t acc)
+      "A type. A name that is no base type or datatype is a type abbreviation
+       or a type variable, either way a Rust type of the same name."
+      (tagcase t
+        (sym (s)
+          (cond ((string=? s "i64") (put "i64" acc))
+                ((string=? s "int")
+                 (error "kfx: KFX has no int, whose + makes a bignum; write i64, whose i64+ wraps"))
+                ((string=? s "bool") (put "bool" acc))
+                ((string=? s "char") (put "char" acc))
+                ((string=? s "unit") (put "()" acc))
+                ((string=? s "void") (put "!" acc))
+                ((string=? s "string") (put "Str" acc))
+                ((string-member? s (ctx-datatypes c)) (put (camel s) (put "&'static " acc)))
+                (else (put (camel s) acc))))
+        (lst (xs)
+          (cond ((sym-is? (car xs) "listof")
+                 (put ">" (put-type c (second xs) (put "List<" acc))))
+                ((sym-is? (car xs) "subr")
+                 (let* ((acc (put "&'static dyn Fn(" acc))
+                        (acc (put-types c (items (third xs)) acc))
+                        (acc (put ") -> " acc)))
+                   (put-type c (fourth xs) acc)))
+                ((sym-is? (car xs) "poly")
+                 (error "kfx: a poly type is only a definition's, at its top"))
+                (else (error "kfx: a type KFX-0 does not have"))))
+        (else other (error "kfx: a type KFX-0 does not have")))))
+
+  (put-types (subr kfx (ctx sexps chars) chars)
+    (lambda (c types acc)
+      "Types, separated by commas."
+      (put-sep (lambda ((t sexp) acc) (put-type c t acc)) ", " types acc))))
+
+(define put-var (subr kfx (ctx string chars) chars)
+  (lambda (c s acc)
+    (cond ((string=? s "#t") (put "true" acc))
+          ((string=? s "#f") (put "false" acc))
+          ((string=? s "#u") (put "()" acc))
+          ((string-member? s (ctx-locals c)) (put (mangle s) acc))
+          ((or (string=? s "nil") (string-member? s (ctx-constants c)))
+           (put "()" (put (mangle s) acc)))
+          (else (put (mangle s) (put "&" acc))))))
+
+(define put-spaces (subr kfx (i64 chars) chars)
+  (lambda (k acc) (if (i64= k 0) acc (put-spaces (i64- k 1) (put "    " acc)))))
+
+(define put-nl (subr kfx (i64 chars) chars)
+  (lambda (n acc)
+    "A new line, indented `n` levels."
+    (put-spaces n (put "\n" acc))))
+
+(define put-comment (subr kfx (chars string i64 bool chars) chars)
+  (lambda (cs prefix n fresh acc)
+    "A string literal where a body's value is not taken is a comment: KFX's
+     comments are strings, since `;` comments do not survive reading. Each of
+     its lines is written after `prefix` (`//` or `///`), leading spaces
+     dropped; `fresh` says no prefix has been written for this line yet."
+    (cond ((null? cs) acc)
+          ((char=? (car cs) #\newline)
+           (put-comment (cdr cs) prefix n #t (put-nl n (if fresh (put prefix acc) acc))))
+          ((and fresh (char=? (car cs) #\space)) (put-comment (cdr cs) prefix n #t acc))
+          (fresh (put-comment (cdr cs) prefix n #f (cons (car cs) (put " " (put prefix acc)))))
+          (else (put-comment (cdr cs) prefix n #f (cons (car cs) acc))))))
+
+(define comment? (subr kfx (sexp) bool)
+  (lambda (e) (tagcase e (str (s) #t) (else other #f))))
+
+(define comment-text (subr kfx (sexp) string)
+  (lambda (e) (tagcase e (str (s) s) (else other ""))))
+
+(define put-names (subr kfx (sexps chars) chars)
+  (lambda (xs acc)
+    "Names, separated by commas."
+    (put-sep (lambda ((x sexp) acc) (put (mangle (sym-name x)) acc)) ", " xs acc)))
+
+"Self tail calls. Rust has no tail calls, so a procedure that calls itself
+ last is a `loop`: the call assigns its parameters and `continue`s, and
+ everything else it could end with is `return`ed."
+
+(define-datatype tail
+  (value)
+  (returns string strings bool))
+
+"`value`: an expression whose value is used. `returns`: the last thing a
+ looping procedure does, with the procedure's name and parameters; the
+ flag is false where a binding hides a parameter, since an assignment
+ would then reach the binding, not the parameter."
+
+(define binding-name (subr kfx (sexp) string)
+  (lambda (binding) (sym-name (car (items binding)))))
+
+(define hide (subr kfx (tail strings) tail)
+  (lambda (t names)
+    "`t`, under bindings of `names`."
+    (tagcase t
+      (returns (f ps live) (if (and live (any? (lambda ((x string)) (string-member? x ps)) names)) (returns f ps #f) t))
+      (else other t))))
+
+(define returns? (subr kfx (tail) bool)
+  (lambda (t) (tagcase t (returns (f ps live) #t) (else other #f))))
+
+(define self-call? (subr kfx (tail sexp) bool)
+  (lambda (t e)
+    (tagcase t
+      (returns (f ps live)
+        (and live (head-is? e f) (i64= (size (cdr (items e))) (size ps))))
+      (else other #f))))
+
+(define control? (subr kfx (sexp) bool)
+  (lambda (e)
+    "The forms whose last parts stand where they do."
+    (or (head-is? e "if") (head-is? e "cond") (head-is? e "case") (head-is? e "tagcase")
+        (head-is? e "let") (head-is? e "let*") (head-is? e "begin"))))
+
+(define-rec
+  (tail-calls? (subr kfx (tail sexp) bool)
+    (lambda (t e)
+      "Whether `e`, standing at `t`, makes a self tail call: whether its
+       procedure loops."
+      (cond ((self-call? t e) #t)
+            ((head-is? e "if")
+             (let ((xs (cdr (items e))))
+               (or (tail-calls? t (second xs)) (tail-calls? t (third xs)))))
+            ((head-is? e "cond") (arms-tail-calls? t (cdr (items e))))
+            ((head-is? e "case") (arms-tail-calls? t (cdr (cdr (items e)))))
+            ((head-is? e "tagcase") (tag-arms-tail-calls? t (cdr (cdr (items e)))))
+            ((or (head-is? e "let") (head-is? e "let*"))
+             (let ((xs (cdr (items e))))
+               (tail-calls? (hide t (map binding-name (items (car xs)))) (last (cdr xs)))))
+            ((head-is? e "begin") (tail-calls? t (last (cdr (items e)))))
+            (else #f))))
+  (arms-tail-calls? (subr kfx (tail sexps) bool)
+    (lambda (t arms)
+      "A `cond`'s clauses, or a `case`'s arms: each a test or data, then a body."
+      (cond ((null? arms) #f)
+            ((tail-calls? t (last (cdr (items (car arms))))) #t)
+            (else (arms-tail-calls? t (cdr arms))))))
+  (tag-arms-tail-calls? (subr kfx (tail sexps) bool)
+    (lambda (t arms)
+      (if (null? arms)
+          #f
+          (let* ((arm (items (car arms)))
+                 (bound (if (sym-is? (car arm) "else")
+                            (the strings (list (sym-name (second arm))))
+                            (map sym-name (items (second arm))))))
+            (or (tail-calls? (hide t bound) (last (cdr (cdr arm))))
+                (tag-arms-tail-calls? t (cdr arms))))))))
+
+(define-datatype assign (assign strings sexps))
+
+(define changes (subr kfx (strings sexps) assign)
+  (lambda (ps args)
+    "The parameters a self tail call changes, and their new values: an
+     argument that is the parameter itself changes nothing."
+    (if (null? ps)
+        (assign nil nil)
+        (tagcase (changes (cdr ps) (cdr args))
+          (assign (names values)
+            (if (sym-is? (car args) (car ps))
+                (assign names values)
+                (assign (cons (car ps) names) (cons (car args) values))))))))
+
+(define put-strings (subr kfx (strings chars) chars)
+  (lambda (xs acc)
+    "Names, mangled, separated by commas."
+    (put-sep (lambda ((x string) acc) (put (mangle x) acc)) ", " xs acc)))
+
+"Every writer of an expression takes `n`, the indentation of the line it
+ starts on, and `t`, where the expression stands."
+(define-rec
+  (put-exp (subr kfx (ctx sexp i64 tail chars) chars)
+    (lambda (c e n t acc)
+      (cond ((self-call? t e) (put-continue c (cdr (items e)) n t acc))
+            ((and (returns? t) (not (control? e)))
+             (put ";" (put-exp c e n (value) (put "return " acc))))
+            (else
+             (tagcase e
+               (num (k) (put "i64" (put (i64->string k) acc)))
+               (chr (ch) (put "'" (put-escaped (list ch) #\' (put "'" acc))))
+               (str (s) (put "\"" (put-escaped (string-chars s) #\" (put "\"" acc))))
+               (sym (s) (put-var c s acc))
+               (lst (xs)
+                 (tagcase (car xs)
+                   (sym (h) (put-form c e h (cdr xs) n t acc))
+                   (else head
+                     (let* ((acc (put "(" acc))
+                            (acc (put-exp c head n (value) acc))
+                            (acc (put ")(" acc)))
+                       (put ")" (if (null? (cdr xs)) acc (put-joined c (cdr xs) ", " n acc))))))))))))
+
+  (put-continue (subr kfx (ctx sexps i64 tail chars) chars)
+    (lambda (c args n t acc)
+      "A self tail call: the parameters it changes assigned, all at once."
+      (tagcase t
+        (returns (f ps live)
+          (tagcase (changes ps args)
+            (assign (names values)
+              (let ((acc (cond ((null? names) acc)
+                               ((null? (cdr names))
+                                (let* ((acc (put (mangle (car names)) acc))
+                                       (acc (put " = " acc))
+                                       (acc (put-exp c (car values) n (value) acc)))
+                                  (put-nl n (put ";" acc))))
+                               (else
+                                (let* ((acc (put "(" acc))
+                                       (acc (put-strings names acc))
+                                       (acc (put ") = (" acc))
+                                       (acc (put-joined c values ", " n acc)))
+                                  (put-nl n (put ");" acc)))))))
+                (put "continue;" acc)))))
+        (else other (error "kfx: a self tail call where no procedure loops")))))
+
+  (put-joined (subr kfx (ctx sexps string i64 chars) chars)
+    (lambda (c xs sep n acc)
+      "Expressions separated by `sep`."
+      (put-sep (lambda ((x sexp) acc) (put-exp c x n (value) acc)) sep xs acc)))
+
+  (put-stmts (subr kfx (ctx sexps i64 tail chars) chars)
+    (lambda (c es n t acc)
+      "A body as the inside of a block: each expression on a line of its own,
+       the last standing at `t`. A last `let`, `let*`, `begin` or `tagcase`
+       is written into the block rather than as a block of its own."
+      (let ((e (car es)))
+        (cond ((not (null? (cdr es)))
+               (let ((acc (if (comment? e)
+                              (put-comment (string-chars (comment-text e)) "//" n #t acc)
+                              (put ";" (put-exp c e n (value) acc)))))
+                 (put-stmts c (cdr es) n t (put-nl n acc))))
+              ((or (head-is? e "let") (head-is? e "let*"))
+               (let* ((xs (cdr (items e)))
+                      (names (map binding-name (items (car xs)))))
+                 (put-stmts (with-locals c names) (cdr xs) n (hide t names)
+                            (if (head-is? e "let")
+                                (put-let c (items (car xs)) n acc)
+                                (put-let* c (items (car xs)) n acc)))))
+              ((head-is? e "begin") (put-stmts c (cdr (items e)) n t acc))
+              ((head-is? e "tagcase") (put-tagcase c (cdr (items e)) n t acc))
+              (else (put-exp c e n t acc))))))
+
+  (put-block (subr kfx (ctx sexps i64 tail chars) chars)
+    (lambda (c es n t acc)
+      (let* ((acc (put-nl (i64+ n 1) (put "{" acc)))
+             (acc (put-stmts c es (i64+ n 1) t acc)))
+        (put "}" (put-nl n acc)))))
+
+  (put-cond (subr kfx (ctx sexps i64 tail chars) chars)
+    (lambda (c clauses n t acc)
+      (let ((clause (items (car clauses))))
+        (if (sym-is? (car clause) "else")
+            (put-block c (cdr clause) n t acc)
+            (let* ((acc (put "if " acc))
+                   (acc (put-exp c (car clause) n (value) acc))
+                   (acc (put " " acc))
+                   (acc (put-block c (cdr clause) n t acc))
+                   (acc (put " else " acc)))
+              (put-cond c (cdr clauses) n t acc))))))
+
+  (put-let1 (subr kfx (ctx sexp i64 chars) chars)
+    (lambda (c binding n acc)
+      (let* ((acc (put "let " acc))
+             (acc (put (mangle (sym-name (car (items binding)))) acc))
+             (acc (put " = " acc))
+             (acc (put-exp c (second (items binding)) n (value) acc)))
+        (put-nl n (put ";" acc)))))
+
+  (put-let* (subr kfx (ctx sexps i64 chars) chars)
+    (lambda (c bindings n acc)
+      "Each binding sees those before it."
+      (if (null? bindings)
+          acc
+          (put-let* (with-locals c (map binding-name (list (car bindings)))) (cdr bindings) n
+                    (put-let1 c (car bindings) n acc)))))
+
+  (put-binding-values (subr kfx (ctx sexps i64 chars) chars)
+    (lambda (c bindings n acc)
+      (let ((acc (put-exp c (second (items (car bindings))) n (value) acc)))
+        (if (null? (cdr bindings))
+            acc
+            (put-binding-values c (cdr bindings) n (put ", " acc))))))
+
+  (put-binding-names (subr kfx (sexps chars) chars)
+    (lambda (bindings acc)
+      (let ((acc (put (mangle (sym-name (car (items (car bindings))))) acc)))
+        (if (null? (cdr bindings))
+            acc
+            (put-binding-names (cdr bindings) (put ", " acc))))))
+
+  (put-let (subr kfx (ctx sexps i64 chars) chars)
+    (lambda (c bindings n acc)
+      "`let` binds in parallel: more than one binding is a tuple."
+      (cond ((null? bindings) acc)
+            ((null? (cdr bindings)) (put-let1 c (car bindings) n acc))
+            (else
+             (let* ((acc (put "let (" acc))
+                    (acc (put-binding-names bindings acc))
+                    (acc (put ") = (" acc))
+                    (acc (put-binding-values c bindings n acc)))
+               (put-nl n (put ");" acc)))))))
+
+  (put-case-arms (subr kfx (ctx sexps i64 tail chars) chars)
+    (lambda (c arms n t acc)
+      (if (null? arms)
+          acc
+          (let* ((arm (items (car arms)))
+                 (acc (put-nl n acc))
+                 (acc (if (sym-is? (car arm) "else")
+                          (put "_" acc)
+                          (put-joined c (items (car arm)) " | " n acc)))
+                 (acc (put " => " acc))
+                 (acc (put-block c (cdr arm) n t acc)))
+            (put-case-arms c (cdr arms) n t acc)))))
+
+  (put-tagcase-arms (subr kfx (ctx sexps i64 tail chars) chars)
+    (lambda (c arms n t acc)
+      (if (null? arms)
+          acc
+          (let* ((arm (items (car arms)))
+                 (tag (sym-name (car arm)))
+                 (else? (string=? tag "else"))
+                 (bound (if else?
+                            (the strings (list (sym-name (second arm))))
+                            (map sym-name (items (second arm)))))
+                 (acc (put-nl n acc))
+                 (acc (if else?
+                          (let* ((acc (put "_ => {" acc))
+                                 (acc (put-nl (i64+ n 1) acc))
+                                 (acc (put "let " acc))
+                                 (acc (put (mangle (sym-name (second arm))) acc)))
+                            (put-nl (i64+ n 1) (put " = tagcase_;" acc)))
+                          (let* ((acc (put (camel (tag-datatype tag (ctx-tags c))) acc))
+                                 (acc (put "::" acc))
+                                 (acc (put (camel tag) acc))
+                                 (acc (put "(" acc))
+                                 (acc (put-names (items (second arm)) acc)))
+                            (put-nl (i64+ n 1) (put ") => {" acc)))))
+                 (acc (put-stmts (with-locals c bound) (cdr (cdr arm)) (i64+ n 1) (hide t bound) acc))
+                 (acc (put "}" (put-nl n acc))))
+            (put-tagcase-arms c (cdr arms) n t acc)))))
+
+  (put-tagcase (subr kfx (ctx sexps i64 tail chars) chars)
+    (lambda (c xs n t acc)
+      "A `tagcase` as statements: its value bound once, then a `match`."
+      (let* ((acc (put "let tagcase_ = " acc))
+             (acc (put-exp c (car xs) n (value) acc))
+             (acc (put-nl n (put ";" acc)))
+             (acc (put "match *tagcase_ {" acc))
+             (acc (put-tagcase-arms c (cdr xs) (i64+ n 1) t acc)))
+        (put "}" (put-nl n acc)))))
+
+  (put-lambda (subr kfx (ctx sexps sexps i64 chars) chars)
+    (lambda (c params body n acc)
+      "A lambda as a value: a closure, `move`, since what it captures is
+       `Copy`, made a `&'static dyn Fn` by `lambdaN`, `N` its arity."
+      (let* ((acc (put "lambda" acc))
+             (acc (put (i64->string (size params)) acc))
+             (acc (put "(move |" acc))
+             (acc (put-lambda-params c params acc))
+             (acc (put "| " acc)))
+        (put ")" (put-block (with-locals c (map param-name params)) body n (value) acc)))))
+
+  (put-lambda-params (subr kfx (ctx sexps chars) chars)
+    (lambda (c params acc)
+      "`x`, or `(x T)` as `x: T`."
+      (if (null? params)
+          acc
+          (let ((acc (tagcase (car params)
+                       (lst (xt) (put-type c (second xt) (put ": " (put (mangle (sym-name (car xt))) acc))))
+                       (else name (put (mangle (sym-name name)) acc)))))
+            (put-lambda-params c (cdr params) (if (null? (cdr params)) acc (put ", " acc)))))))
+
+  (put-list (subr kfx (ctx sexps i64 chars) chars)
+    (lambda (c xs n acc)
+      (if (null? xs)
+          (put "nil()" acc)
+          (let* ((acc (put "cons(" acc))
+                 (acc (put-exp c (car xs) n (value) acc))
+                 (acc (put ", " acc))
+                 (acc (put-list c (cdr xs) n acc)))
+            (put ")" acc)))))
+
+  (put-form (subr kfx (ctx sexp string sexps i64 tail chars) chars)
+    (lambda (c e h xs n t acc)
+      "`e` is the whole form, `h` its head's name and `xs` the rest."
+      (cond ((string=? h "if")
+             (let* ((acc (put "if " acc))
+                    (acc (put-exp c (car xs) n (value) acc))
+                    (acc (put " " acc))
+                    (acc (put-block c (list (second xs)) n t acc))
+                    (acc (put " else " acc)))
+               (put-block c (list (third xs)) n t acc)))
+            ((string=? h "cond") (put-cond c xs n t acc))
+            ((string=? h "and")
+             (if (null? xs) (put "true" acc) (put ")" (put-joined c xs " && " n (put "(" acc)))))
+            ((string=? h "or")
+             (if (null? xs) (put "false" acc) (put ")" (put-joined c xs " || " n (put "(" acc)))))
+            ((or (string=? h "begin") (string=? h "let") (string=? h "let*") (string=? h "tagcase"))
+             (put-block c (list e) n t acc))
+            ((string=? h "case")
+             (let* ((acc (put "match " acc))
+                    (acc (put-exp c (car xs) n (value) acc))
+                    (acc (put " {" acc))
+                    (acc (put-case-arms c (cdr xs) (i64+ n 1) t acc)))
+               (put "}" (put-nl n acc))))
+            ((string=? h "lambda") (put-lambda c (items (car xs)) (cdr xs) n acc))
+            ((string=? h "list") (put-list c xs n acc))
+            ((string=? h "the") (put-exp c (second xs) n (value) acc))
+            ((null? xs) (put "()" (put (mangle h) acc)))
+            (else (put ")" (put-joined c xs ", " n (put "(" (put (mangle h) acc)))))))))
+
+"Top-level forms"
+
+(define put-params (subr kfx (ctx sexps sexps bool chars) chars)
+  (lambda (c names types mutable acc)
+    "Parameters, from a lambda's names and its `subr` type's; `mut` if
+     `mutable`, for a procedure that loops."
+    (if (null? names)
+        acc
+        (let* ((name (tagcase (car names) (lst (xs) (car xs)) (else other other)))
+               (acc (if mutable (put "mut " acc) acc))
+               (acc (put (mangle (sym-name name)) acc))
+               (acc (put ": " acc))
+               (acc (put-type c (car types) acc)))
+          (put-params c (cdr names) (cdr types) mutable
+                      (if (null? (cdr names)) acc (put ", " acc)))))))
+
+(define put-generics (subr kfx (sexps bool chars) chars)
+  (lambda (binders first acc)
+    "A poly's binders as a fn's generics: a type is a Rust type parameter,
+     `Copy` and `'static` as every KFX value is; an effect is erased."
+    (if (null? binders)
+        (if first acc (put ">" acc))
+        (let* ((b (items (car binders)))
+               (kind (sym-name (second b))))
+          (cond ((string=? kind "type")
+                 (let* ((acc (put (if first "<" ", ") acc))
+                        (acc (put (camel (sym-name (car b))) acc)))
+                   (put-generics (cdr binders) #f (put ": Copy + 'static" acc))))
+                ((string=? kind "effect") (put-generics (cdr binders) first acc))
+                (else (error (string-append "kfx: KFX-0 has no poly over a " kind))))))))
+
+(define unpoly (subr kfx (sexp) sexp)
+  (lambda (e)
+    "A poly type's body, or a plambda's: what is under the binders."
+    (if (or (head-is? e "poly") (head-is? e "plambda")) (third (items e)) e)))
+
+(define put-define (subr kfx (ctx sexp sexp sexp chars) chars)
+  (lambda (c name type defined acc)
+    (let* ((binders (if (head-is? type "poly") (items (second (items type))) nil))
+           (type (unpoly type))
+           (defined (unpoly defined))
+           (lambda? (head-is? defined "lambda"))
+           (body (if lambda? (cdr (cdr (items defined))) (the sexps (list defined))))
+           (doc? (and (comment? (car body)) (not (null? (cdr body)))))
+           (acc (if doc? (put "\n" (put-comment (string-chars (comment-text (car body))) "///" 0 #t acc)) acc))
+           (body (if doc? (cdr body) body))
+           (t (if lambda?
+                  (returns (sym-name name) (map param-name (items (second (items defined)))) #t)
+                  (value)))
+           (loops? (and lambda? (tail-calls? t (last body))))
+           (inner (if lambda? (with-locals c (map param-name (items (second (items defined))))) c))
+           (acc (put "pub fn " acc))
+           (acc (put (mangle (sym-name name)) acc))
+           (acc (put-generics binders #t acc))
+           (acc (if lambda?
+                    (let* ((acc (put "(" acc))
+                           (acc (put-params c (items (second (items defined))) (items (third (items type)))
+                                            loops? acc))
+                           (acc (put ") -> " acc)))
+                      (put-type c (fourth (items type)) acc))
+                    (put-type c type (put "() -> " acc))))
+           (acc (put " {" acc)))
+      (if loops?
+          (let* ((acc (put-nl 2 (put "loop {" (put-nl 1 acc))))
+                 (acc (put-stmts inner body 2 t acc)))
+            (put "\n    }\n}\n\n" acc))
+          (put "\n}\n\n" (put-stmts inner body 1 (value) (put-nl 1 acc)))))))
+
+(define put-rec (subr kfx (ctx sexps chars) chars)
+  (lambda (c bindings acc)
+    (if (null? bindings)
+        acc
+        (let ((b (items (car bindings))))
+          (put-rec c (cdr bindings) (put-define c (car b) (second b) (third b) acc))))))
+
+(define put-variants (subr kfx (ctx sexps chars) chars)
+  (lambda (c variants acc)
+    (if (null? variants)
+        acc
+        (let* ((v (items (car variants)))
+               (acc (put "    " acc))
+               (acc (put (camel (sym-name (car v))) acc))
+               (acc (put "(" acc))
+               (acc (put-types c (cdr v) acc)))
+          (put-variants c (cdr variants) (put "),\n" acc))))))
+
+(define put-fields (subr kfx (ctx sexps i64 bool chars) chars)
+  (lambda (c types i typed acc)
+    "Fields `f0`, `f1`, ..., from `i`, with their types if `typed`."
+    (if (null? types)
+        acc
+        (let* ((acc (if (i64= i 0) acc (put ", " acc)))
+               (acc (put "f" acc))
+               (acc (put (i64->string i) acc))
+               (acc (if typed (put-type c (car types) (put ": " acc)) acc)))
+          (put-fields c (cdr types) (i64+ i 1) typed acc)))))
+
+(define put-constructors (subr kfx (ctx string sexps chars) chars)
+  (lambda (c d variants acc)
+    (if (null? variants)
+        acc
+        (let* ((v (items (car variants)))
+               (tag (sym-name (car v)))
+               (acc (put "pub fn " acc))
+               (acc (put (mangle tag) acc))
+               (acc (put "(" acc))
+               (acc (put-fields c (cdr v) 0 #t acc))
+               (acc (put ") -> &'static " acc))
+               (acc (put (camel d) acc))
+               (acc (put " {\n    alloc(" acc))
+               (acc (put (camel d) acc))
+               (acc (put "::" acc))
+               (acc (put (camel tag) acc))
+               (acc (put "(" acc))
+               (acc (put-fields c (cdr v) 0 #f acc)))
+          (put-constructors c d (cdr variants) (put "))\n}\n\n" acc))))))
+
+(define put-datatype (subr kfx (ctx sexps chars) chars)
+  (lambda (c xs acc)
+    (let* ((d (sym-name (car xs)))
+           (acc (put "pub enum " acc))
+           (acc (put (camel d) acc))
+           (acc (put " {\n" acc))
+           (acc (put-variants c (cdr xs) acc))
+           (acc (put "}\n\n" acc)))
+      (put-constructors c d (cdr xs) acc))))
+
+(define put-top (subr kfx (ctx sexp chars) chars)
+  (lambda (c form acc)
+    (let* ((xs (items form))
+           (h (sym-name (car xs))))
+      (cond ((string=? h "define-effect") acc)
+            ((string=? h "define-type")
+             (let* ((acc (put "pub type " acc))
+                    (acc (put (camel (sym-name (second xs))) acc))
+                    (acc (put " = " acc))
+                    (acc (put-type c (third xs) acc)))
+               (put ";\n\n" acc)))
+            ((string=? h "define-datatype") (put-datatype c (cdr xs) acc))
+            ((string=? h "define")
+             (if (i64= (size xs) 4)
+                 (put-define c (second xs) (third xs) (fourth xs) acc)
+                 (error (string-append "kfx: a definition needs a type: "
+                                       (sym-name (second xs))))))
+            ((string=? h "define-rec") (put-rec c (cdr xs) acc))
+            (else acc)))))
+
+(define definition? (subr kfx (sexp) bool)
+  (lambda (e)
+    (or (head-is? e "define") (head-is? e "define-rec")
+        (head-is? e "define-datatype") (head-is? e "define-type"))))
+
+(define put-tops (subr kfx (ctx sexps chars) chars)
+  (lambda (c forms acc)
+    "A string at the top level is a comment. A procedure's documentation is
+     a string first in its body, as a Lisp docstring is: see `put-define`."
+    (cond ((null? forms) acc)
+          ((comment? (car forms))
+           (let* ((doc (and (not (null? (cdr forms))) (definition? (second forms))))
+                  (acc (put-comment (string-chars (comment-text (car forms))) "//" 0 #t acc)))
+             (put-tops c (cdr forms) (put (if doc "\n" "\n\n") acc))))
+          (else (put-tops c (cdr forms) (put-top c (car forms) acc))))))
