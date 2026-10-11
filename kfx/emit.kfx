@@ -596,9 +596,10 @@
 
 (define hide (subr kfx (tail strings) tail)
   (lambda (t names)
-    "`t`, under bindings of `names`."
+    "`t`, under bindings of `names`: no longer a loop if one hides a
+     parameter, or the procedure's own name (a call of it is the local's)."
     (tagcase t
-      (returns (f ps live ok) (if (and live (any? (lambda ((x string)) (string-member? x ps)) names)) (returns f ps #f ok) t))
+      (returns (f ps live ok) (if (and live (any? (lambda ((x string)) (or (string=? x f) (string-member? x ps))) names)) (returns f ps #f ok) t))
       (else other t))))
 
 (define ok-value? (subr kfx (tail) bool)
@@ -932,7 +933,7 @@
                  (acc (cond ((sym-is? (car arm) "else") (put "_" acc))
                             ((or (string=? kind "int") (string=? kind "string"))
                              (put-sep (lambda ((d sexp) (acc chars))
-                                        (put ")" (put-exp c d n (value) (put (if (string=? kind "int") "_eq(case_, " "string_eq_p(case_, ") acc))))
+                                        (put ")" (put-exp c d n (value) (put (if (string=? kind "int") "kayak_rt::_eq(case_, " "kayak_rt::string_eq_p(case_, ") acc))))
                                       " || " (items (car arm)) (put "case_ if " acc)))
                             (else (put-joined c (items (car arm)) " | " n acc))))
                  (acc (put " => " acc))
@@ -1042,8 +1043,8 @@
   (put-list (subr kfx (ctx sexps i64 chars) chars)
     (lambda (c xs n acc)
       (if (null? xs)
-          (put "nil()" acc)
-          (let* ((acc (put "cons(" acc))
+          (put "kayak_rt::nil()" acc)
+          (let* ((acc (put "kayak_rt::cons(" acc))
                  (acc (put-exp c (car xs) n (value) acc))
                  (acc (put ", " acc))
                  (acc (put-list c (cdr xs) n acc)))

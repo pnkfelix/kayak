@@ -70,7 +70,7 @@ pub fn swap(p: Product_11_12<i64, i64>) -> Product_11_12<i64, i64> {
 }
 
 pub fn main() -> Str {
-    let shapes = the::<List<Shape>>(cons(alloc(Sum_6circle_4rect::<i64, Product_1w_1h<i64, i64>>::Rect(Product_1w_1h(3i64, 4i64))), cons(alloc(Sum_6circle_4rect::<i64, Product_1w_1h<i64, i64>>::Circle(2i64)), nil())));
+    let shapes = the::<List<Shape>>(kayak_rt::cons(alloc(Sum_6circle_4rect::<i64, Product_1w_1h<i64, i64>>::Rect(Product_1w_1h(3i64, 4i64))), kayak_rt::cons(alloc(Sum_6circle_4rect::<i64, Product_1w_1h<i64, i64>>::Circle(2i64)), kayak_rt::nil())));
     i64_to_string(i64_plus(i64_plus(area(car(shapes)), area(car(cdr(shapes)))), i64_plus(i64_star(100i64, origin().1), i64_plus(i64_star(1000i64, width(alloc(Sum_6circle_4rect::<i64, Product_1w_1h<i64, i64>>::Rect(Product_1w_1h(5i64, 6i64))))), i64_star(10000i64, swap(pair(7i64, 8i64)).0)))))
 }
 

@@ -7,13 +7,13 @@ use kayak_rt::*;
 
 pub fn int_class(n: Int) -> Int {
     match n {
-        case_ if _eq(case_, int_lit(0)) => {
+        case_ if kayak_rt::_eq(case_, int_lit(0)) => {
             int_lit(1)
         }
-        case_ if _eq(case_, int_lit(1)) || _eq(case_, int_lit(2)) || _eq(case_, int_lit(3)) => {
+        case_ if kayak_rt::_eq(case_, int_lit(1)) || kayak_rt::_eq(case_, int_lit(2)) || kayak_rt::_eq(case_, int_lit(3)) => {
             int_lit(2)
         }
-        case_ if _eq(case_, int_text("100000000000000000000")) => {
+        case_ if kayak_rt::_eq(case_, int_text("100000000000000000000")) => {
             int_lit(3)
         }
         _ => {
@@ -38,10 +38,10 @@ pub fn char_class(c: char) -> Int {
 
 pub fn string_class(s: Str) -> Int {
     match s {
-        case_ if string_eq_p(case_, str_lit("x")) => {
+        case_ if kayak_rt::string_eq_p(case_, str_lit("x")) => {
             int_lit(1)
         }
-        case_ if string_eq_p(case_, str_lit("yy")) || string_eq_p(case_, str_lit("z")) => {
+        case_ if kayak_rt::string_eq_p(case_, str_lit("yy")) || kayak_rt::string_eq_p(case_, str_lit("z")) => {
             int_lit(2)
         }
         _ => {

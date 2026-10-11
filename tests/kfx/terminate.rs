@@ -129,12 +129,12 @@ pub fn od_p(n: Int) -> bool {
 }
 
 pub fn main() -> Str {
-    string_append(int_to_string(len(cons(1i64, cons(2i64, cons(3i64, nil()))))), string_append(str_lit(" "), string_append(int_to_string(count(int_lit(5))), string_append(str_lit(" "), string_append(int_to_string(sum_to(int_lit(10))), string_append(str_lit(" "), string_append(int_to_string(total(node(leaf(int_lit(1)), node(leaf(int_lit(2)), leaf(int_lit(3)))))), string_append(str_lit(" "), string_append(int_to_string(ack(int_lit(2), int_lit(3))), string_append(str_lit(" "), string_append(if ev_p(int_lit(10)) {
+    string_append(int_to_string(len(kayak_rt::cons(1i64, kayak_rt::cons(2i64, kayak_rt::cons(3i64, kayak_rt::nil()))))), string_append(str_lit(" "), string_append(int_to_string(count(int_lit(5))), string_append(str_lit(" "), string_append(int_to_string(sum_to(int_lit(10))), string_append(str_lit(" "), string_append(int_to_string(total(node(leaf(int_lit(1)), node(leaf(int_lit(2)), leaf(int_lit(3)))))), string_append(str_lit(" "), string_append(int_to_string(ack(int_lit(2), int_lit(3))), string_append(str_lit(" "), string_append(if ev_p(int_lit(10)) {
         str_lit("even")
     } else {
         str_lit("odd")
     }, string_append(str_lit(" "), int_to_string(len(map_pure(lambda1(move |x: i64| {
         i64_star(x, 2i64)
-    }), cons(1i64, cons(2i64, cons(3i64, cons(4i64, nil())))))))))))))))))))
+    }), kayak_rt::cons(1i64, kayak_rt::cons(2i64, kayak_rt::cons(3i64, kayak_rt::cons(4i64, kayak_rt::nil())))))))))))))))))))
 }
 

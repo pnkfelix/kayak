@@ -1,0 +1,4 @@
+"A name whose Rust name kayak-rt writes (`str-lit` is `str_lit`): KFX
+ refuses it, so that it hides nothing the emitter calls (C27)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define str-lit i64 1)

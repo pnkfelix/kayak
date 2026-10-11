@@ -52,6 +52,14 @@
         (let ((n (i64- n 1)))
           (shadowed n (i64+ acc 1))))))
 
+"A local of the procedure's own name: its call is the local's, no loop."
+(define rebound (subr kfx (i64 i64) i64)
+  (lambda (n acc)
+    (if (i64= n 0)
+        acc
+        (let ((rebound (the (subr kfx (i64 i64) i64) (lambda (a b) (i64* 100 b)))))
+          (rebound (i64- n 1) (i64+ acc 1))))))
+
 (define main (subr kfx () string)
   (lambda ()
     (words
@@ -59,4 +67,5 @@
            (swaps 1 2 1000001)
            (i64->string (collatz 27 0))
            (i64->string (drain (more 1000000) 0))
-           (i64->string (shadowed 100 0))))))
+           (i64->string (shadowed 100 0))
+           (i64->string (rebound 3 0))))))

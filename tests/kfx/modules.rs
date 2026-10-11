@@ -208,14 +208,14 @@ pub fn count_to(value: i64, n: i64) -> i64 {
 
 pub fn main() -> Str {
     let push = the::<i64>(10i64);
-    words(cons(i64_to_string(counter::value(twice(counter::zero()))), cons(i64_to_string(count_to(5i64, 1i64)), cons(i64_to_string(count_to(5i64, 0i64)), cons(stack::shown(stack::push(3i64, stack::two())), cons(i64_to_string(stack::depth((stack::pusher())(4i64, stack::two()))), cons(i64_to_string(push), cons(i64_to_string(i64_plus(counter::value(counter::inc(counter::zero())), stack::depth(stack::empty()))), cons(stack::shown(the::<stack::Items>(cons(7i64, cons(8i64, nil())))), cons(i64_to_string(geometry::area(geometry::rect(3i64, 4i64))), cons(if big_p((&geometry::circle)(20i64)) {
+    words(kayak_rt::cons(i64_to_string(counter::value(twice(counter::zero()))), kayak_rt::cons(i64_to_string(count_to(5i64, 1i64)), kayak_rt::cons(i64_to_string(count_to(5i64, 0i64)), kayak_rt::cons(stack::shown(stack::push(3i64, stack::two())), kayak_rt::cons(i64_to_string(stack::depth((stack::pusher())(4i64, stack::two()))), kayak_rt::cons(i64_to_string(push), kayak_rt::cons(i64_to_string(i64_plus(counter::value(counter::inc(counter::zero())), stack::depth(stack::empty()))), kayak_rt::cons(stack::shown(the::<stack::Items>(kayak_rt::cons(7i64, kayak_rt::cons(8i64, kayak_rt::nil())))), kayak_rt::cons(i64_to_string(geometry::area(geometry::rect(3i64, 4i64))), kayak_rt::cons(if big_p((&geometry::circle)(20i64)) {
         str_lit("big")
     } else {
         str_lit("small")
-    }, cons({
+    }, kayak_rt::cons({
         let c = the::<Ref<i64>>(new(40i64));
         bump_twice_x(c);
         i64_to_string(get(c))
-    }, cons(i64_to_string(i64_plus(both::one(), (&both::shown)())), nil())))))))))))))
+    }, kayak_rt::cons(i64_to_string(i64_plus(both::one(), (&both::shown)())), kayak_rt::nil())))))))))))))
 }
 

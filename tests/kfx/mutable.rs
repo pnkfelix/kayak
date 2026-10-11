@@ -124,6 +124,6 @@ pub fn main() -> Str {
     sort_x(a, 0i64);
     // A write through one name of a cell is seen through another.
     set(alias, i64_plus(get(alias), 1i64));
-    words(cons(show(a, 0i64), cons(show(b, 0i64), cons(i64_to_string(total(a, 0i64, 0i64)), cons(i64_to_string(total(b, 0i64, 0i64)), cons(i64_to_string(get(cell)), cons(i64_to_string(bump_x(k)), cons(i64_to_string(step()), cons(i64_to_string(step()), cons(i64_to_string(get(alias)), nil()))))))))))
+    words(kayak_rt::cons(show(a, 0i64), kayak_rt::cons(show(b, 0i64), kayak_rt::cons(i64_to_string(total(a, 0i64, 0i64)), kayak_rt::cons(i64_to_string(total(b, 0i64, 0i64)), kayak_rt::cons(i64_to_string(get(cell)), kayak_rt::cons(i64_to_string(bump_x(k)), kayak_rt::cons(i64_to_string(step()), kayak_rt::cons(i64_to_string(step()), kayak_rt::cons(i64_to_string(get(alias)), kayak_rt::nil()))))))))))
 }
 

@@ -387,3 +387,7 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
   are searched only for a name that could clash (one with an operator's
   character, or whose mangling has one's). The compiler on itself takes
   0.4 s for it, not 0.08 s.
+- **Then** (the seventh probe): a KFX value's name is a lower-case letter
+  or an operator's character, then those, digits and `-`; no `--`; none
+  whose mangling kayak-rt or the emitter writes. The emitter's own calls
+  behind a program's back are qualified, `kayak_rt::cons`.

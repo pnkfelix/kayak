@@ -30,20 +30,20 @@ pub fn count_up(n: i64) -> i64 {
 /// `(the a ...)` inside a poly procedure: its type variable is in scope.
 pub fn firsts<A: Copy + 'static>(xs: List<A>, d: A) -> List<A> {
     if null_p(xs) {
-        the::<List<A>>(cons(d, nil()))
+        the::<List<A>>(kayak_rt::cons(d, kayak_rt::nil()))
     } else {
-        the::<List<A>>(cons(car(xs), nil()))
+        the::<List<A>>(kayak_rt::cons(car(xs), kayak_rt::nil()))
     }
 }
 
 pub fn main() -> Str {
     let n = string_length(str_lit("héllo"));
-    let xs = the::<List<Int>>(cons(int_lit(3), cons(int_lit(1), cons(int_lit(2), nil()))));
-    let ys = reverse(append(xs, the::<List<Int>>(cons(int_lit(9), nil()))));
-    words(cons(i64_to_string(count_up(20i64)), cons(int_to_string(n), cons(int_to_string(length(xs)), cons(int_to_string(_plus(n, int_lit(1))), cons(if zero_p(_minus(n, int_lit(5))) {
+    let xs = the::<List<Int>>(kayak_rt::cons(int_lit(3), kayak_rt::cons(int_lit(1), kayak_rt::cons(int_lit(2), kayak_rt::nil()))));
+    let ys = reverse(append(xs, the::<List<Int>>(kayak_rt::cons(int_lit(9), kayak_rt::nil()))));
+    words(kayak_rt::cons(i64_to_string(count_up(20i64)), kayak_rt::cons(int_to_string(n), kayak_rt::cons(int_to_string(length(xs)), kayak_rt::cons(int_to_string(_plus(n, int_lit(1))), kayak_rt::cons(if zero_p(_minus(n, int_lit(5))) {
         str_lit("zero")
     } else {
         str_lit("not zero")
-    }, cons(int_to_string(max(n, int_lit(2))), cons(int_to_string(min(n, int_lit(2))), cons(int_to_string(car(ys)), cons(int_to_string(car(firsts(xs, int_lit(0)))), nil()))))))))))
+    }, kayak_rt::cons(int_to_string(max(n, int_lit(2))), kayak_rt::cons(int_to_string(min(n, int_lit(2))), kayak_rt::cons(int_to_string(car(ys)), kayak_rt::cons(int_to_string(car(firsts(xs, int_lit(0)))), kayak_rt::nil()))))))))))
 }
 

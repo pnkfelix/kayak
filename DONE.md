@@ -847,3 +847,19 @@ FX-26 reads as an `int`, is refused; a double at 1e21 or more is shown
 with its point, as Fixpt shows it; `char-upcase` and `char-numeric?` are
 Unicode's, as Fixpt's. The probe's other differences are the documented
 gaps of `TODO.md` §17, and runs both fail.
+
+## A seventh probe, on names (2026-10-11)
+
+300 programs. Two wrong-answer classes, now closed: the emitter's own
+calls behind a program's back (`cons` and `nil` for `list`,
+`string_eq_p` and `_eq` for `case`) were captured by a local of that
+name (now `kayak_rt::cons` and the rest); and a self tail call through a
+`let` that rebinds the procedure's own name was a loop (`hide` now ends
+the loop for the procedure's name too; `tests/kfx/tails.kfx`'s
+`rebound`). And KFX's names are now what Rust can carry (C27): a
+lower-case letter or an operator's character first, then those, digits
+and `-`; no `--`; none whose Rust name kayak-rt or the emitter writes
+(`kfx-stricter/name-of-runtime`). Left (`TODO.md` §17): type-level names
+that camel-case alike (`point` and `point-`, `a-b` and `a--b` types, a
+type `mod-m` and a module parameter `m`), labels and module and type
+names with `_`: Rust errors, no wrong answers.

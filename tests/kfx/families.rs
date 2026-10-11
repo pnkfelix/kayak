@@ -93,9 +93,9 @@ pub fn swap<A: Copy + 'static, B: Copy + 'static>(p: &'static Both<A, B>) -> &'s
 }
 
 pub fn main() -> Str {
-    let kids = the::<List<&'static Rose<i64>>>(cons(leaf(1i64), cons(leaf(2i64), nil())));
+    let kids = the::<List<&'static Rose<i64>>>(kayak_rt::cons(leaf(1i64), kayak_rt::cons(leaf(2i64), kayak_rt::nil())));
     let tree = the::<&'static Rose<i64>>(node(cons(node(kids), cons(leaf(4i64), nil()))));
-    let xs = the::<Ints>(cons(7i64, cons(8i64, cons(9i64, nil()))));
+    let xs = the::<Ints>(kayak_rt::cons(7i64, kayak_rt::cons(8i64, kayak_rt::cons(9i64, kayak_rt::nil()))));
     let p = the::<&'static Both<Str, i64>>(both(str_lit("x"), 5i64));
     string_append(i64_to_string(total(tree)), string_append(str_lit(" "), string_append(i64_to_string(or_else(first(xs), 0i64)), string_append(str_lit(" "), string_append(i64_to_string(or_else(first(the::<Ints>(nil())), -1i64)), string_append(str_lit(" "), {
         let tagcase_ = swap(p);

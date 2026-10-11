@@ -78,17 +78,17 @@ pub fn i64_star_wrapped(a: i64, b: i64) -> i64 {
 }
 
 pub fn main() -> Str {
-    let xs = the::<Ints>(cons(1i64, cons(2i64, cons(3i64, nil()))));
+    let xs = the::<Ints>(kayak_rt::cons(1i64, kayak_rt::cons(2i64, kayak_rt::cons(3i64, kayak_rt::nil()))));
     let k = the::<i64>(100i64);
     let shows = map(&i64_to_string, map(&add1, xs));
-    words(cons(words(shows), cons(words(map(lambda1(move |x: i64| {
+    words(kayak_rt::cons(words(shows), kayak_rt::cons(words(map(lambda1(move |x: i64| {
         i64_to_string(i64_star(x, 10i64))
-    }), xs)), cons(words(map(&i64_to_string, map(adder(k), xs))), cons(i64_to_string((adder(3i64))(4i64)), cons(i64_to_string(twice(&add1, 0i64)), cons(twice(lambda1(move |s: Str| {
+    }), xs)), kayak_rt::cons(words(map(&i64_to_string, map(adder(k), xs))), kayak_rt::cons(i64_to_string((adder(3i64))(4i64)), kayak_rt::cons(i64_to_string(twice(&add1, 0i64)), kayak_rt::cons(twice(lambda1(move |s: Str| {
         string_append(s, str_lit("!"))
-    }), str_lit("hey")), cons(i64_to_string(fold(lambda2(move |acc: i64, x: i64| {
+    }), str_lit("hey")), kayak_rt::cons(i64_to_string(fold(lambda2(move |acc: i64, x: i64| {
         i64_plus(acc, x)
-    }), 0i64, xs)), cons(apply_op(op(str_lit("plus"), lambda2(move |a: i64, b: i64| {
+    }), 0i64, xs)), kayak_rt::cons(apply_op(op(str_lit("plus"), lambda2(move |a: i64, b: i64| {
         i64_plus(a, b)
-    })), 2i64, 3i64), cons(apply_op(op(str_lit("times"), &i64_star_wrapped), 2i64, 3i64), nil()))))))))))
+    })), 2i64, 3i64), kayak_rt::cons(apply_op(op(str_lit("times"), &i64_star_wrapped), 2i64, 3i64), kayak_rt::nil()))))))))))
 }
 

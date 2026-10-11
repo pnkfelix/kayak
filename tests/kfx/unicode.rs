@@ -44,14 +44,14 @@ pub fn reversed(mut cs: Chars, mut acc: Chars) -> Chars {
 
 pub fn main() -> Str {
     let s = str_lit("héllo, wörld — ∑");
-    words(cons(s, cons(i64_to_string(string_length_i64(s)), cons(char_to_string(string_ref_i64(s, 1i64)), cons(char_to_string(string_ref_i64(s, 15i64)), cons(i64_to_string(char_to_i64(string_ref_i64(s, 1i64))), cons(i64_to_string(count_chars(string_to_list(s), 0i64)), cons(list_to_string(reversed(string_to_list(str_lit("äbç")), nil())), cons(char_to_string('λ'), cons(if char_eq_p(string_ref_i64(str_lit("αβγ"), 2i64), 'γ') {
+    words(kayak_rt::cons(s, kayak_rt::cons(i64_to_string(string_length_i64(s)), kayak_rt::cons(char_to_string(string_ref_i64(s, 1i64)), kayak_rt::cons(char_to_string(string_ref_i64(s, 15i64)), kayak_rt::cons(i64_to_string(char_to_i64(string_ref_i64(s, 1i64))), kayak_rt::cons(i64_to_string(count_chars(string_to_list(s), 0i64)), kayak_rt::cons(list_to_string(reversed(string_to_list(str_lit("äbç")), nil())), kayak_rt::cons(char_to_string('λ'), kayak_rt::cons(if char_eq_p(string_ref_i64(str_lit("αβγ"), 2i64), 'γ') {
         str_lit("γ")
     } else {
         str_lit("not γ")
-    }, cons(if string_eq_p(string_append(str_lit("ü"), str_lit("ber")), str_lit("über")) {
+    }, kayak_rt::cons(if string_eq_p(string_append(str_lit("ü"), str_lit("ber")), str_lit("über")) {
         str_lit("same")
     } else {
         str_lit("differ")
-    }, nil())))))))))))
+    }, kayak_rt::nil())))))))))))
 }
 

@@ -104,7 +104,7 @@ pub fn ty_sexp(v: &'static Cv, s: &'static St, t: &'static Ty) -> &'static Sexp 
             sym(str_lit("void"))
         }
         Ty::TyList(e, r) => {
-            lst(cons(sym(str_lit("listof")), cons(ty_sexp(v, s, e), cons(ty_sexp(v, s, r), nil()))), str_lit(""), 0i64, 0i64)
+            lst(kayak_rt::cons(sym(str_lit("listof")), kayak_rt::cons(ty_sexp(v, s, e), kayak_rt::cons(ty_sexp(v, s, r), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
         }
         Ty::TyData(d, args) => {
             if null_p(args) {
@@ -116,7 +116,7 @@ pub fn ty_sexp(v: &'static Cv, s: &'static St, t: &'static Ty) -> &'static Sexp 
             }
         }
         Ty::TyFlat(e, r) => {
-            lst(cons(sym(str_lit("flatarrayof")), cons(ty_sexp(v, s, e), cons(ty_sexp(v, s, r), nil()))), str_lit(""), 0i64, 0i64)
+            lst(kayak_rt::cons(sym(str_lit("flatarrayof")), kayak_rt::cons(ty_sexp(v, s, e), kayak_rt::cons(ty_sexp(v, s, r), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
         }
         Ty::TyShape(p, ls, ts) => {
             lst(cons(sym(if p {
@@ -126,22 +126,22 @@ pub fn ty_sexp(v: &'static Cv, s: &'static St, t: &'static Ty) -> &'static Sexp 
             }), fields_sexp(v, s, ls, ts)), str_lit(""), 0i64, 0i64)
         }
         Ty::TyTag(a, h, d, r) => {
-            lst(cons(sym(str_lit("prompt-tag")), cons(ty_sexp(v, s, a), cons(ty_sexp(v, s, h), cons(sym(str_lit("pure")), cons(ty_sexp(v, s, r), nil()))))), str_lit(""), 0i64, 0i64)
+            lst(kayak_rt::cons(sym(str_lit("prompt-tag")), kayak_rt::cons(ty_sexp(v, s, a), kayak_rt::cons(ty_sexp(v, s, h), kayak_rt::cons(sym(str_lit("pure")), kayak_rt::cons(ty_sexp(v, s, r), kayak_rt::nil()))))), str_lit(""), 0i64, 0i64)
         }
         Ty::TyRef(e, r) => {
-            lst(cons(sym(str_lit("ref")), cons(ty_sexp(v, s, e), cons(ty_sexp(v, s, r), nil()))), str_lit(""), 0i64, 0i64)
+            lst(kayak_rt::cons(sym(str_lit("ref")), kayak_rt::cons(ty_sexp(v, s, e), kayak_rt::cons(ty_sexp(v, s, r), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
         }
         Ty::TyRconst(n) => {
             sym(n)
         }
         Ty::TyProc(es, ps, r) => {
-            lst(cons(sym(str_lit("subr")), cons(if escapes_p(es) {
-                lst(cons(sym(str_lit("goto")), cons(sym(str_lit("@escape")), nil())), str_lit(""), 0i64, 0i64)
+            lst(kayak_rt::cons(sym(str_lit("subr")), kayak_rt::cons(if escapes_p(es) {
+                lst(kayak_rt::cons(sym(str_lit("goto")), kayak_rt::cons(sym(str_lit("@escape")), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
             } else {
                 sym(str_lit("pure"))
-            }, cons(lst(map(lambda1(move |p: &'static Ty| {
+            }, kayak_rt::cons(lst(map(lambda1(move |p: &'static Ty| {
                 ty_sexp(v, s, p)
-            }), ps), str_lit(""), 0i64, 0i64), cons(ty_sexp(v, s, r), nil())))), str_lit(""), 0i64, 0i64)
+            }), ps), str_lit(""), 0i64, 0i64), kayak_rt::cons(ty_sexp(v, s, r), kayak_rt::nil())))), str_lit(""), 0i64, 0i64)
         }
         Ty::TyVar(n) => {
             refuse(v, string_append(str_lit("a definition with no type, of a type over "), string_append(n, str_lit(": write its type"))))
@@ -156,7 +156,7 @@ pub fn fields_sexp(v: &'static Cv, s: &'static St, ls: Strings, ts: Tys) -> Sexp
     if (null_p(ls) || null_p(ts)) {
         nil()
     } else {
-        cons(lst(cons(sym(car(ls)), cons(ty_sexp(v, s, car(ts)), nil())), str_lit(""), 0i64, 0i64), fields_sexp(v, s, cdr(ls), cdr(ts)))
+        cons(lst(kayak_rt::cons(sym(car(ls)), kayak_rt::cons(ty_sexp(v, s, car(ts)), kayak_rt::nil())), str_lit(""), 0i64, 0i64), fields_sexp(v, s, cdr(ls), cdr(ts)))
     }
 }
 
@@ -183,7 +183,7 @@ pub fn sum_arm(arm: &'static Sexp) -> &'static Sexp {
                 let tagcase_ = second(xs);
                 match *tagcase_ {
                     Sexp::Sym(x) => {
-                        lst(cons(car(xs), cons(lst(cons(second(xs), nil()), str_lit(""), 0i64, 0i64), cdr(cdr(xs)))), file, line, pos)
+                        lst(cons(car(xs), cons(lst(kayak_rt::cons(second(xs), kayak_rt::nil()), str_lit(""), 0i64, 0i64), cdr(cdr(xs)))), file, line, pos)
                     }
                     _ => {
                         let other = tagcase_;
@@ -207,7 +207,7 @@ pub fn sum_variants(v: &'static Cv, ls: Strings, ts: Tys, arms: Sexps) -> Varian
     } else {
         let arm = concat(map(lambda1(move |a: &'static Sexp| {
             if (not(null_p(items(a))) && string_eq_p(label_of(car(items(a))), car(ls))) {
-                the::<Sexps>(cons(a, nil()))
+                the::<Sexps>(kayak_rt::cons(a, kayak_rt::nil()))
             } else {
                 nil()
             }
@@ -239,7 +239,7 @@ pub fn sum_variants(v: &'static Cv, ls: Strings, ts: Tys, arms: Sexps) -> Varian
                 }
             }
         } else {
-            cons(car(ts), nil())
+            kayak_rt::cons(car(ts), kayak_rt::nil())
         }), sum_variants(v, cdr(ls), cdr(ts), arms))
     }
 }
@@ -253,7 +253,7 @@ pub fn sum_variants(v: &'static Cv, ls: Strings, ts: Tys, arms: Sexps) -> Varian
 pub fn spec_items(spec: &'static Sexp, kind: Str) -> List<Sexps> {
     concat(map(lambda1(move |x: &'static Sexp| {
         if head_is_p(x, kind) {
-            the::<List<Sexps>>(cons(items(x), nil()))
+            the::<List<Sexps>>(kayak_rt::cons(items(x), kayak_rt::nil()))
         } else {
             nil()
         }
@@ -265,7 +265,7 @@ pub fn spec_abs(spec: &'static Sexp) -> Strings {
         let tagcase_ = second(a);
         match *tagcase_ {
             Sexp::Sym(n) => {
-                the::<Strings>(cons(n, nil()))
+                the::<Strings>(kayak_rt::cons(n, kayak_rt::nil()))
             }
             Sexp::Lst(ns, f, l, p) => {
                 map(&sym_name, ns)
@@ -321,7 +321,7 @@ pub fn spec_well_formed(v: &'static Cv, spec: &'static Sexp) -> () {
             let tagcase_ = second(ys);
             match *tagcase_ {
                 Sexp::Sym(n) => {
-                    cons(n, nil())
+                    kayak_rt::cons(n, kayak_rt::nil())
                 }
                 Sexp::Lst(ns, f, l, p) => {
                     map(&sym_name, ns)
@@ -397,7 +397,7 @@ pub fn module_spec(v: &'static Cv, t: &'static Ty) -> Sexps {
                     let tagcase_ = car(found);
                     match *tagcase_ {
                         Alias::Alias(n, ps, body) => {
-                            the::<Sexps>(cons(body, nil()))
+                            the::<Sexps>(kayak_rt::cons(body, kayak_rt::nil()))
                         }
                     }
                 }
@@ -627,7 +627,7 @@ pub fn metas_of(t: &'static Ty) -> I64s {
     let tagcase_ = t;
     match *tagcase_ {
         Ty::TyMeta(k) => {
-            the::<I64s>(cons(k, nil()))
+            the::<I64s>(kayak_rt::cons(k, kayak_rt::nil()))
         }
         Ty::TyList(e, r) => {
             onto(metas_of(e), metas_of(r))
@@ -683,7 +683,7 @@ pub fn fixed_by(before: &'static St, after: &'static St, ks: I64s) -> I64s {
                 }
             }
         }) {
-            the::<I64s>(cons(k, nil()))
+            the::<I64s>(kayak_rt::cons(k, kayak_rt::nil()))
         } else {
             nil()
         }
@@ -757,7 +757,7 @@ pub fn opened(v: &'static Cv, m: Str) -> &'static Cv {
                 match *tagcase_ {
                     Effdef::Effdef(n, atoms) => {
                         if has_prefix_p(n, string_append(m, str_lit(" "))) {
-                            the::<Effdefs>(cons(effdef(after_prefix(n, string_append(m, str_lit(" "))), atoms), nil()))
+                            the::<Effdefs>(kayak_rt::cons(effdef(after_prefix(n, string_append(m, str_lit(" "))), atoms), kayak_rt::nil()))
                         } else {
                             nil()
                         }
@@ -880,7 +880,7 @@ pub fn find_dt(mut d: Str, mut ds: Dts) -> List<Variants> {
             match *tagcase_ {
                 Dt::Dt(n, ps, vs) => {
                     if string_eq_p(n, d) {
-                        return cons(vs, nil());
+                        return kayak_rt::cons(vs, kayak_rt::nil());
                     } else {
                         ds = cdr(ds);
                         continue;
@@ -997,7 +997,7 @@ pub fn synth(v: &'static Cv, s: &'static St, e: &'static Sexp) -> &'static Res {
                 }
                 _ => {
                     let head = tagcase_;
-                    synth_call_of(v, s, synth(v, s, head), cdr(xs), nil(), nil(), cons(str_lit("spin"), nil()))
+                    synth_call_of(v, s, synth(v, s, head), cdr(xs), nil(), nil(), kayak_rt::cons(str_lit("spin"), kayak_rt::nil()))
                 }
             }
         }
@@ -1215,7 +1215,7 @@ pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
         let tagcase_ = check(v, s, second(xs), want);
         match *tagcase_ {
             Res::Res(t, es, s) => {
-                res(t, es, lifted_args(v, s, cons(second(xs), nil()), cons(want, nil()), 0i64))
+                res(t, es, lifted_args(v, s, kayak_rt::cons(second(xs), kayak_rt::nil()), kayak_rt::cons(want, kayak_rt::nil()), 0i64))
             }
         }
     } else if string_eq_p(h, str_lit("prompt")) {
@@ -1238,7 +1238,7 @@ pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
         } {
             refuse(v, str_lit("a nil, in a module that includes another, where FX-26 finds a poly list"))
         } else if head_is_p(x, str_lit("the")) {
-            let tagcase_ = synth(v, s, lst(cons(sym(str_lit("%found")), cons(third(items(x)), nil())), str_lit(""), 0i64, 0i64));
+            let tagcase_ = synth(v, s, lst(kayak_rt::cons(sym(str_lit("%found")), kayak_rt::cons(third(items(x)), kayak_rt::nil())), str_lit(""), 0i64, 0i64));
             match *tagcase_ {
                 Res::Res(t, es, s) => {
                     let want = parse_type(v, cv_tvars(v), second(items(x)));
@@ -1341,13 +1341,13 @@ pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
 
 pub fn check_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: Sexps, expected: &'static Ty) -> &'static Res {
     if control_form_p(h) {
-        body_form(v, s, h, xs, cons(expected, nil()))
+        body_form(v, s, h, xs, kayak_rt::cons(expected, kayak_rt::nil()))
     } else if string_eq_p(h, str_lit("prompt")) {
-        prompt_form(v, s, xs, cons(expected, nil()))
+        prompt_form(v, s, xs, kayak_rt::cons(expected, kayak_rt::nil()))
     } else if string_eq_p(h, str_lit("%found")) {
         check_by_synth(v, s, e, expected)
     } else if string_eq_p(h, str_lit("product")) {
-        product_form(v, s, xs, cons(expected, nil()))
+        product_form(v, s, xs, kayak_rt::cons(expected, kayak_rt::nil()))
     } else if string_eq_p(h, str_lit("sum")) {
         sum_form(v, s, xs, expected)
     } else if (string_eq_p(h, str_lit("lambda")) && proc_type_p(s, expected)) {
@@ -1373,7 +1373,7 @@ pub fn check_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
                         let tagcase_ = region_of(v, s, r);
                         match *tagcase_ {
                             Res::Res(rr, rn, s) => {
-                                res(expected, effs_union(cons(string_append(str_lit("alloc:"), region_string(s, rr)), nil()), es), s)
+                                res(expected, effs_union(kayak_rt::cons(string_append(str_lit("alloc:"), region_string(s, rr)), kayak_rt::nil()), es), s)
                             }
                         }
                     }
@@ -1387,7 +1387,7 @@ pub fn check_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
     } else if (string_eq_p(h, str_lit("the")) || string_eq_p(h, str_lit("and")) || string_eq_p(h, str_lit("or")) || string_eq_p(h, str_lit("lambda")) || string_eq_p(h, str_lit("list")) || string_eq_p(h, str_lit("extract"))) {
         check_by_synth(v, s, e, expected)
     } else {
-        synth_call(v, s, h, xs, cons(expected, nil()))
+        synth_call(v, s, h, xs, kayak_rt::cons(expected, kayak_rt::nil()))
     }
 }
 
@@ -1494,7 +1494,7 @@ pub fn body_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Ty
         })) {
             refuse(v, string_append(str_lit("KFX's with opens a module defined at the top level, or a module parameter, by its name: "), m))
         } else {
-            with_effs(found_then_fitted(v, body(opened(v, m), s, cdr(xs), nil()), expected), cons(string_append(str_lit("g:"), m), nil()))
+            with_effs(found_then_fitted(v, body(opened(v, m), s, cdr(xs), nil()), expected), kayak_rt::cons(string_append(str_lit("g:"), m), kayak_rt::nil()))
         }
     } else if string_eq_p(h, str_lit("cond")) {
         cond_clauses(v, s, xs, expected)
@@ -1687,7 +1687,7 @@ pub fn sum_form(v: &'static Cv, s: &'static St, xs: Sexps, expected: &'static Ty
 /// Branches of one type: the first found, if none is expected, and the
 /// rest checked against it.
 pub fn arms(v: &'static Cv, s: &'static St, branches: Sexps, expected: Tys) -> &'static Res {
-    let tagcase_ = body(v, s, cons(car(branches), nil()), expected);
+    let tagcase_ = body(v, s, kayak_rt::cons(car(branches), kayak_rt::nil()), expected);
     match *tagcase_ {
         Res::Res(t, es, s) => {
             if null_p(cdr(branches)) {
@@ -1805,7 +1805,7 @@ pub fn tag_arms(v: &'static Cv, s: &'static St, whole: &'static Ty, tagged: Sexp
         let tag = name_of(v, car(arm));
         if string_eq_p(tag, str_lit("else")) {
             if null_p(cdr(tagged)) {
-                body(with_binds(v, cons(local(v, name_of(v, second(arm)), whole), nil())), s, cdr(cdr(arm)), expected)
+                body(with_binds(v, kayak_rt::cons(local(v, name_of(v, second(arm)), whole), kayak_rt::nil())), s, cdr(cdr(arm)), expected)
             } else {
                 refuse(v, str_lit("a tagcase's else is its last arm"))
             }
@@ -1888,7 +1888,7 @@ pub fn letregion_form(v: &'static Cv, s: &'static St, r: Str, forms: Sexps, expe
     if string_member_p(name, cv_tvars(v)) {
         refuse(v, string_append(str_lit("a letregion of a region named already: "), r))
     } else {
-        let tagcase_ = found_then_fitted(v, body(with_tvars(v, cons(name, nil())), s, forms, nil()), expected);
+        let tagcase_ = found_then_fitted(v, body(with_tvars(v, kayak_rt::cons(name, kayak_rt::nil())), s, forms, nil()), expected);
         match *tagcase_ {
             Res::Res(t, es, s) => {
                 if mentions_p(s, t, name) {
@@ -1964,7 +1964,7 @@ pub fn check_lambda(v: &'static Cv, s: &'static St, params: Sexps, forms: Sexps,
                 }), eps) && not(top_lambda_p(v)))) {
                     refuse(v, str_lit("a module parameter is a top-level procedure's, and no procedure gives a module back (C24)"))
                 } else {
-                    let tagcase_ = body(with_binds(v, cons(bind(str_lit("%toplambda"), scheme(nil(), ty_unit()), str_lit("no")), bind_params(v, params, eps))), s, forms, cons(er, nil()));
+                    let tagcase_ = body(with_binds(v, cons(bind(str_lit("%toplambda"), scheme(nil(), ty_unit()), str_lit("no")), bind_params(v, params, eps))), s, forms, kayak_rt::cons(er, kayak_rt::nil()));
                     match *tagcase_ {
                         Res::Res(r, es, s) => {
                             if not(null_p(fit_effs(s, es, ees))) {
@@ -2007,7 +2007,7 @@ pub fn lambda_effects(v: &'static Cv, s: &'static St, params: Sexps, forms: Sexp
             if not(i64_eq(size(params), size(eps))) {
                 refuse(v, str_lit("a lambda of the wrong number of parameters"))
             } else {
-                body(with_binds(v, bind_params(v, params, eps)), check_written_params(v, s, params, eps), forms, cons(er, nil()))
+                body(with_binds(v, bind_params(v, params, eps)), check_written_params(v, s, params, eps), forms, kayak_rt::cons(er, kayak_rt::nil()))
             }
         }
         _ => {
@@ -2062,7 +2062,7 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
     } else if null_p(found) {
         refuse(v, string_append(str_lit("nothing is named "), h))
     } else if (nat_op_p(h) && prim_p(car(found)) && i64_eq(size(args), 2i64) && nat_args_p(v, s, args)) {
-        let tagcase_ = call_args(v, s, args, cons(ty_nat(), cons(ty_nat(), nil())), nil());
+        let tagcase_ = call_args(v, s, args, kayak_rt::cons(ty_nat(), kayak_rt::cons(ty_nat(), kayak_rt::nil())), nil());
         match *tagcase_ {
             Res::Res(u, es, s) => {
                 res(ty_nat(), es, if null_p(expected) {
@@ -2080,11 +2080,11 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
                 match *tagcase_ {
                     Inst::Inst(t, s, regions) => {
                         knot_free_call(v, synth_call_of(v, s, res(t, nil(), s), args, regions, expected, effs_union(if string_eq_p(r#where, str_lit("global")) {
-                            cons(string_append(str_lit("g:"), h), nil())
+                            kayak_rt::cons(string_append(str_lit("g:"), h), kayak_rt::nil())
                         } else {
                             nil()
                         }, if (string_eq_p(r#where, str_lit("rec")) || (string_eq_p(r#where, str_lit("local")) && self_applicable_p(v, s, t)) || (string_member_p(h, cv_group(v)) && (string_eq_p(r#where, str_lit("global")) || string_eq_p(r#where, str_lit("item"))))) {
-                            cons(str_lit("spin"), nil())
+                            kayak_rt::cons(str_lit("spin"), kayak_rt::nil())
                         } else {
                             nil()
                         })))
@@ -2135,7 +2135,7 @@ pub fn abort_call(v: &'static Cv, s: &'static St, args: Sexps) -> &'static Res {
                         let tagcase_ = check(v, s, second(args), h);
                         match *tagcase_ {
                             Res::Res(u, es1, s) => {
-                                res(ty_void(), effs_union(cons(string_append(str_lit("goto:"), region_string(s, r)), nil()), effs_union(es0, es1)), s)
+                                res(ty_void(), effs_union(kayak_rt::cons(string_append(str_lit("goto:"), region_string(s, r)), kayak_rt::nil()), effs_union(es0, es1)), s)
                             }
                         }
                     }
@@ -2159,7 +2159,7 @@ pub fn make_tag_call(v: &'static Cv, s: &'static St, args: Sexps, expected: Tys)
         let tagcase_ = walk(s, car(expected));
         match *tagcase_ {
             Ty::TyTag(a, h, d, r) => {
-                res(car(expected), cons(string_append(str_lit("alloc:"), region_string(s, r)), nil()), s)
+                res(car(expected), kayak_rt::cons(string_append(str_lit("alloc:"), region_string(s, r)), kayak_rt::nil()), s)
             }
             _ => {
                 let other = tagcase_;
@@ -2237,7 +2237,7 @@ pub fn handler_of(v: &'static Cv, s: &'static St, e: &'static Sexp, h: &'static 
         refuse(v, str_lit("a prompt's handler is a lambda, in KFX"))
     } else {
         let lam = items(e);
-        let tagcase_ = lambda_effects(v, s, items(second(lam)), cdr(cdr(lam)), ty_proc(nil(), cons(h, nil()), a));
+        let tagcase_ = lambda_effects(v, s, items(second(lam)), cdr(cdr(lam)), ty_proc(nil(), kayak_rt::cons(h, kayak_rt::nil()), a));
         match *tagcase_ {
             Res::Res(u, es, s) => {
                 if escapes_p(es) {
@@ -2338,7 +2338,7 @@ pub fn module_argument(v: &'static Cv, s: &'static St, arg: &'static Sexp, t: &'
     })) {
         refuse(v, str_lit("KFX's module argument is a module defined at the top level, by its name"))
     } else {
-        res(t, cons(string_append(str_lit("g:"), name), nil()), conforms(v, s, name, {
+        res(t, kayak_rt::cons(string_append(str_lit("g:"), name), kayak_rt::nil()), conforms(v, s, name, {
             let tagcase_ = t;
             match *tagcase_ {
                 Ty::TyData(d, args) => {

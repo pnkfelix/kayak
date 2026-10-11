@@ -18,18 +18,18 @@ pub fn words(xs: Strings) -> Str {
 }
 
 pub fn main() -> Str {
-    words(cons(i64_to_string(i64_plus(9223372036854775807i64, 1i64)), cons(i64_to_string(i64_minus(-9223372036854775808i64, 1i64)), cons(i64_to_string(i64_star(4611686018427387904i64, 4i64)), cons(i64_to_string(i64_quotient(-9223372036854775808i64, -1i64)), cons(i64_to_string(i64_quotient(-7i64, 2i64)), cons(i64_to_string(i64_quotient(7i64, -2i64)), cons(i64_to_string(i64_remainder(-7i64, 2i64)), cons(i64_to_string(i64_remainder(-9223372036854775808i64, -1i64)), cons(i64_to_string(i64_and(12i64, 10i64)), cons(i64_to_string(i64_or(12i64, 10i64)), cons(i64_to_string(i64_xor(12i64, 10i64)), cons(i64_to_string(i64_not(0i64)), cons(if i64_lt_eq(3i64, 3i64) {
+    words(kayak_rt::cons(i64_to_string(i64_plus(9223372036854775807i64, 1i64)), kayak_rt::cons(i64_to_string(i64_minus(-9223372036854775808i64, 1i64)), kayak_rt::cons(i64_to_string(i64_star(4611686018427387904i64, 4i64)), kayak_rt::cons(i64_to_string(i64_quotient(-9223372036854775808i64, -1i64)), kayak_rt::cons(i64_to_string(i64_quotient(-7i64, 2i64)), kayak_rt::cons(i64_to_string(i64_quotient(7i64, -2i64)), kayak_rt::cons(i64_to_string(i64_remainder(-7i64, 2i64)), kayak_rt::cons(i64_to_string(i64_remainder(-9223372036854775808i64, -1i64)), kayak_rt::cons(i64_to_string(i64_and(12i64, 10i64)), kayak_rt::cons(i64_to_string(i64_or(12i64, 10i64)), kayak_rt::cons(i64_to_string(i64_xor(12i64, 10i64)), kayak_rt::cons(i64_to_string(i64_not(0i64)), kayak_rt::cons(if i64_lt_eq(3i64, 3i64) {
         str_lit("<=")
     } else {
         str_lit("not <=")
-    }, cons(if i64_gt_eq(2i64, 3i64) {
+    }, kayak_rt::cons(if i64_gt_eq(2i64, 3i64) {
         str_lit(">=")
     } else {
         str_lit("not >=")
-    }, cons(if i64_gt(4i64, 3i64) {
+    }, kayak_rt::cons(if i64_gt(4i64, 3i64) {
         str_lit(">")
     } else {
         str_lit("not >")
-    }, nil()))))))))))))))))
+    }, kayak_rt::nil()))))))))))))))))
 }
 

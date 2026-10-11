@@ -21,7 +21,7 @@ pub fn subst_descs(e: &'static Sexp, descs: List<Sexps>) -> &'static Sexp {
         Sexp::Sym(n) => {
             let found = concat(map(lambda1(move |d: Sexps| {
                 if string_eq_p(sym_name(second(d)), n) {
-                    the::<Sexps>(cons(third(d), nil()))
+                    the::<Sexps>(kayak_rt::cons(third(d), kayak_rt::nil()))
                 } else {
                     nil()
                 }
@@ -47,7 +47,7 @@ pub fn subst_descs(e: &'static Sexp, descs: List<Sexps>) -> &'static Sexp {
 pub fn spec_of(spec: &'static Sexp, kind: Str) -> List<Sexps> {
     concat(map(lambda1(move |x: &'static Sexp| {
         if head_is_p(x, kind) {
-            the::<List<Sexps>>(cons(items(x), nil()))
+            the::<List<Sexps>>(kayak_rt::cons(items(x), kayak_rt::nil()))
         } else {
             nil()
         }
@@ -59,7 +59,7 @@ pub fn abs_of(spec: &'static Sexp) -> Strings {
         let tagcase_ = second(a);
         match *tagcase_ {
             Sexp::Sym(n) => {
-                the::<Strings>(cons(n, nil()))
+                the::<Strings>(kayak_rt::cons(n, kayak_rt::nil()))
             }
             Sexp::Lst(ns, f, l, p) => {
                 map(&sym_name, ns)
@@ -128,7 +128,7 @@ pub fn module_impls(c: &'static Ctx) -> Strings {
                 match *tagcase_ {
                     Fact::Fact(ff, fp, fw) => {
                         if has_prefix_p(fw, str_lit("module-impl ")) {
-                            the::<Strings>(cons(after_prefix(fw, str_lit("module-impl ")), nil()))
+                            the::<Strings>(kayak_rt::cons(after_prefix(fw, str_lit("module-impl ")), kayak_rt::nil()))
                         } else {
                             nil()
                         }
@@ -343,7 +343,7 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, r#type: &'static Sexp, d
     let body = if lambda_p {
         cdr(cdr(items(defined)))
     } else {
-        the::<Sexps>(cons(defined, nil()))
+        the::<Sexps>(kayak_rt::cons(defined, kayak_rt::nil()))
     };
     let doc_p = (comment_p(car(body)) && not(null_p(cdr(body))));
     let acc = if doc_p {
@@ -625,13 +625,13 @@ pub fn shape_key(e: &'static Sexp) -> Strings {
                     }
                 }
             }), cdr(xs)))) {
-                the::<Strings>(cons(string_append(if sym_is_p(car(xs), str_lit("sumof")) {
+                the::<Strings>(kayak_rt::cons(string_append(if sym_is_p(car(xs), str_lit("sumof")) {
                     str_lit("S")
                 } else {
                     str_lit("P")
                 }, concat_strings(map(lambda1(move |x: &'static Sexp| {
                     string_append(str_lit(" "), label_of(car(items(x))))
-                }), cdr(xs)))), nil()))
+                }), cdr(xs)))), kayak_rt::nil()))
             } else {
                 nil()
             }
@@ -835,7 +835,7 @@ pub fn put_show_impls(mut forms: Sexps, mut acc: Chars) -> Chars {
 pub fn put_show_generatives(forms: Sexps, acc: Chars) -> Chars {
     put_show_impls(concat(map(lambda1(move |f: &'static Sexp| {
         if (head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype"))) {
-            the::<Sexps>(cons(f, nil()))
+            the::<Sexps>(kayak_rt::cons(f, kayak_rt::nil()))
         } else {
             nil()
         }
@@ -921,13 +921,13 @@ pub fn put_module(c: &'static Ctx, m: Str, written: Sexps, acc: Chars) -> Chars 
         if head_is_p(f, str_lit("hide")) {
             map(lambda1(move |g: &'static Sexp| {
                 if head_is_p(g, str_lit("include")) {
-                    lst(cons(sym(str_lit("%use")), cons(second(items(g)), nil())), str_lit(""), 0i64, 0i64)
+                    lst(kayak_rt::cons(sym(str_lit("%use")), kayak_rt::cons(second(items(g)), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
                 } else {
                     g
                 }
             }), cdr(items(f)))
         } else {
-            the::<Sexps>(cons(f, nil()))
+            the::<Sexps>(kayak_rt::cons(f, kayak_rt::nil()))
         }
     }), written));
     let outer = {
@@ -944,7 +944,7 @@ pub fn put_module(c: &'static Ctx, m: Str, written: Sexps, acc: Chars) -> Chars 
             }
         }
     };
-    let inner = with_locals(collect(forms, outer), cons(string_append(str_lit("%in "), m), nil()));
+    let inner = with_locals(collect(forms, outer), kayak_rt::cons(string_append(str_lit("%in "), m), kayak_rt::nil()));
     let body = put_tops(inner, forms, nil());
     let body = if string_member_p(str_lit("%toplevel"), ctx_locals(c)) {
         put_show_generatives(forms, body)
@@ -998,11 +998,11 @@ pub fn put_toplevel_lines(mut c: &'static Ctx, mut forms: Sexps, mut acc: Chars)
         } else if toplevel_form_p(car(forms)) {
             if fact_at_p(c, car(forms), str_lit("void")) {
                 let acc = put(str_lit("    let _: () = (|| -> Result<(), Unwind> { let _: () = "), acc);
-                let acc = put_exp(with_locals(c, cons(str_lit("%fallible"), nil())), car(forms), 1i64, value(), acc);
+                let acc = put_exp(with_locals(c, kayak_rt::cons(str_lit("%fallible"), kayak_rt::nil())), car(forms), 1i64, value(), acc);
                 return put_toplevel_lines(c, cdr(forms), put(str_lit("; Ok(()) })().unwrap_or_else(|u| unreachable_unwind(u));\n"), acc));
             } else {
-                let acc = put(str_lit("    show_line(&mut out_, (|| -> Result<_, Unwind> { Ok("), acc);
-                let acc = put_exp(with_locals(c, cons(str_lit("%fallible"), nil())), car(forms), 1i64, value(), acc);
+                let acc = put(str_lit("    kayak_rt::show_line(&mut out_, (|| -> Result<_, Unwind> { Ok("), acc);
+                let acc = put_exp(with_locals(c, kayak_rt::cons(str_lit("%fallible"), kayak_rt::nil())), car(forms), 1i64, value(), acc);
                 return put_toplevel_lines(c, cdr(forms), put(str_lit(") })().unwrap_or_else(|u| unreachable_unwind(u)));\n"), acc));
             }
         } else {
@@ -1016,6 +1016,6 @@ pub fn put_toplevel(c: &'static Ctx, forms: Sexps, acc: Chars) -> Chars {
     let acc = put_show_impls(forms, acc);
     let acc = put(str_lit("/// The program's top-level expressions' values, as Fixpt writes them.\npub fn kfx_toplevel() -> Str {\n    let mut out_ = String::new();\n"), acc);
     let acc = put_toplevel_lines(c, forms, acc);
-    put(str_lit("    shown(out_)\n}\n"), acc)
+    put(str_lit("    kayak_rt::shown(out_)\n}\n"), acc)
 }
 

@@ -66,22 +66,22 @@ pub fn both(a: bool, b: bool) -> Str {
 }
 
 pub fn main() -> Str {
-    words(cons(sign(-5i64), cons(sign(0i64), cons(sign(7i64), cons(kind('e'), cons(kind('\n'), cons(kind('z'), cons(small(0i64), cons(small(2i64), cons(small(-1i64), cons(small(9i64), cons(both(true, false), cons(both(true, true), cons(both(false, false), cons(if true {
+    words(kayak_rt::cons(sign(-5i64), kayak_rt::cons(sign(0i64), kayak_rt::cons(sign(7i64), kayak_rt::cons(kind('e'), kayak_rt::cons(kind('\n'), kayak_rt::cons(kind('z'), kayak_rt::cons(small(0i64), kayak_rt::cons(small(2i64), kayak_rt::cons(small(-1i64), kayak_rt::cons(small(9i64), kayak_rt::cons(both(true, false), kayak_rt::cons(both(true, true), kayak_rt::cons(both(false, false), kayak_rt::cons(if true {
         str_lit("(and)")
     } else {
         str_lit("not-(and)")
-    }, cons(if false {
+    }, kayak_rt::cons(if false {
         str_lit("(or)")
     } else {
         str_lit("not-(or)")
-    }, cons(if (true && true && false) {
+    }, kayak_rt::cons(if (true && true && false) {
         str_lit("and3")
     } else {
         str_lit("not-and3")
-    }, cons(if (false || false || true) {
+    }, kayak_rt::cons(if (false || false || true) {
         str_lit("or3")
     } else {
         str_lit("not-or3")
-    }, nil()))))))))))))))))))
+    }, kayak_rt::nil()))))))))))))))))))
 }
 

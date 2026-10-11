@@ -9,7 +9,7 @@
                             "if" "impl" "in" "let" "loop" "macro" "match" "mod" "move"
                             "mut" "override" "priv" "pub" "ref" "return" "static"
                             "struct" "trait" "true" "try" "type" "typeof" "unsafe"
-                            "unsized" "use" "virtual" "where" "while" "yield"))))
+                            "unsized" "use" "virtual" "where" "while" "yield" "abstract" "become"))))
 
 (define mangle-char (subr kfx (char) string)
   (lambda (c)

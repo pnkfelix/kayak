@@ -46,6 +46,6 @@ pub fn show(xs: Ints) -> Str {
 }
 
 pub fn main() -> Str {
-    string_append(show(rev_onto(cons(1i64, cons(2i64, cons(3i64, nil()))), nil())), string_append(str_lit(" | "), string_append(i64_to_string(total(count_from(0i64, 100000i64))), string_append(str_lit(" | "), list_to_string(the::<Chars>(cons('o', cons('k', nil()))))))))
+    string_append(show(rev_onto(kayak_rt::cons(1i64, kayak_rt::cons(2i64, kayak_rt::cons(3i64, kayak_rt::nil()))), nil())), string_append(str_lit(" | "), string_append(i64_to_string(total(count_from(0i64, 100000i64))), string_append(str_lit(" | "), list_to_string(the::<Chars>(kayak_rt::cons('o', kayak_rt::cons('k', kayak_rt::nil()))))))))
 }
 

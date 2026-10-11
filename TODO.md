@@ -145,6 +145,11 @@ Escapes are done (`DONE.md`, C18). Left:
     instantiated at a datatype holding such a procedure loops with no
     recursive call; FX-26 accepts it, and so KFX does (it says what FX-26
     says of `spin`, no more);
+  - type-level names (types, datatypes and tags, module and abstract
+    types, type variables, labels, module names) may still camel-case or
+    mangle alike (`point` and `point-`), or carry a `_`: a Rust error, not
+    a wrong answer (the seventh probe); C27's rule for values could be
+    theirs too;
   - names that differ only in case, or in `-` and `_`, may collide in Rust
     (two types `has` and `Has`; labels `a-b` and `a_b`): a Rust error, not
     a wrong answer;

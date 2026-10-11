@@ -21,26 +21,26 @@ pub fn bracket(c: char) -> Str {
 }
 
 pub fn main() -> Str {
-    words(cons(str_lit("tab\there \"quoted\" back\\slash\n"), cons(bracket('"'), cons(bracket('\\'), cons(bracket('\''), cons(bracket(' '), cons(bracket('('), cons(bracket(';'), cons(bracket('\t'), cons(bracket(char_upcase('q')), cons(if string_eq_p(str_lit("abc"), str_lit("abc")) {
+    words(kayak_rt::cons(str_lit("tab\there \"quoted\" back\\slash\n"), kayak_rt::cons(bracket('"'), kayak_rt::cons(bracket('\\'), kayak_rt::cons(bracket('\''), kayak_rt::cons(bracket(' '), kayak_rt::cons(bracket('('), kayak_rt::cons(bracket(';'), kayak_rt::cons(bracket('\t'), kayak_rt::cons(bracket(char_upcase('q')), kayak_rt::cons(if string_eq_p(str_lit("abc"), str_lit("abc")) {
         str_lit("same")
     } else {
         str_lit("differ")
-    }, cons(if char_eq_p(string_ref_i64(str_lit("xyz"), 1i64), 'y') {
+    }, kayak_rt::cons(if char_eq_p(string_ref_i64(str_lit("xyz"), 1i64), 'y') {
         str_lit("y")
     } else {
         str_lit("not-y")
-    }, cons(i64_to_string(string_length_i64(str_lit("hello"))), cons(i64_to_string(char_to_i64('A')), cons(if char_whitespace_p('\t') {
+    }, kayak_rt::cons(i64_to_string(string_length_i64(str_lit("hello"))), kayak_rt::cons(i64_to_string(char_to_i64('A')), kayak_rt::cons(if char_whitespace_p('\t') {
         str_lit("ws")
     } else {
         str_lit("not-ws")
-    }, cons(if char_numeric_p('7') {
+    }, kayak_rt::cons(if char_numeric_p('7') {
         str_lit("digit")
     } else {
         str_lit("not-digit")
-    }, cons(if char_alphabetic_p('7') {
+    }, kayak_rt::cons(if char_alphabetic_p('7') {
         str_lit("alpha")
     } else {
         str_lit("not-alpha")
-    }, nil())))))))))))))))))
+    }, kayak_rt::nil())))))))))))))))))
 }
 

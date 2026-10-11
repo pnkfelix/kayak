@@ -57,7 +57,7 @@ pub fn filter_typed(mut name: Str, mut xs: Typeds) -> Typeds {
                 }
             }
         } {
-            return cons(car(xs), nil());
+            return kayak_rt::cons(car(xs), kayak_rt::nil());
         } else {
             xs = cdr(xs);
             continue;
@@ -152,7 +152,7 @@ pub fn fact_with(c: &'static Ctx, e: &'static Sexp, prefix: Str) -> Str {
                         match *tagcase_ {
                             Fact::Fact(ff, fp, fw) => {
                                 if (i64_eq(fp, src_pos) && string_eq_p(ff, src_file) && has_prefix_p(fw, prefix)) {
-                                    the::<Strings>(cons(after_prefix(fw, prefix), nil()))
+                                    the::<Strings>(kayak_rt::cons(after_prefix(fw, prefix), kayak_rt::nil()))
                                 } else {
                                     nil()
                                 }
@@ -305,7 +305,7 @@ pub fn module_body(c: &'static Ctx, name: Str) -> Sexps {
                 match *tagcase_ {
                     Typed::Typed(n, body) => {
                         if string_eq_p(n, name) {
-                            the::<Sexps>(cons(body, nil()))
+                            the::<Sexps>(kayak_rt::cons(body, kayak_rt::nil()))
                         } else {
                             nil()
                         }
@@ -345,7 +345,7 @@ pub fn module_items(c: &'static Ctx, m: Str) -> Sexps {
                 if head_is_p(f, str_lit("include")) {
                     module_items(c, sym_name(second(items(f))))
                 } else {
-                    the::<Sexps>(cons(f, nil()))
+                    the::<Sexps>(kayak_rt::cons(f, kayak_rt::nil()))
                 }
             }), cdr(items(car(found)))))
         }
@@ -357,14 +357,14 @@ pub fn module_items(c: &'static Ctx, m: Str) -> Sexps {
             concat(map(lambda1(move |it: &'static Sexp| {
                 let ys = items(it);
                 if sym_is_p(car(ys), str_lit("val")) {
-                    the::<Sexps>(cons(lst(cons(sym(str_lit("define")), cons(second(ys), cons(third(ys), cons(if head_is_p(third(ys), str_lit("subr")) {
-                        lst(cons(sym(str_lit("lambda")), nil()), str_lit(""), 0i64, 0i64)
+                    the::<Sexps>(kayak_rt::cons(lst(kayak_rt::cons(sym(str_lit("define")), kayak_rt::cons(second(ys), kayak_rt::cons(third(ys), kayak_rt::cons(if head_is_p(third(ys), str_lit("subr")) {
+                        lst(kayak_rt::cons(sym(str_lit("lambda")), kayak_rt::nil()), str_lit(""), 0i64, 0i64)
                     } else {
                         sym(str_lit("#u"))
-                    }, nil())))), str_lit(""), 0i64, 0i64), nil()))
+                    }, kayak_rt::nil())))), str_lit(""), 0i64, 0i64), kayak_rt::nil()))
                 } else if sym_is_p(car(ys), str_lit("abs")) {
                     map(lambda1(move |t: &'static Sexp| {
-                        lst(cons(sym(str_lit("define-type")), cons(t, cons(sym(str_lit("i64")), nil()))), str_lit(""), 0i64, 0i64)
+                        lst(kayak_rt::cons(sym(str_lit("define-type")), kayak_rt::cons(t, kayak_rt::cons(sym(str_lit("i64")), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
                     }), {
                         let tagcase_ = second(ys);
                         match *tagcase_ {
@@ -373,7 +373,7 @@ pub fn module_items(c: &'static Ctx, m: Str) -> Sexps {
                             }
                             _ => {
                                 let other = tagcase_;
-                                cons(second(ys), nil())
+                                kayak_rt::cons(second(ys), kayak_rt::nil())
                             }
                         }
                     })
@@ -398,7 +398,7 @@ pub fn module_path(c: &'static Ctx, m: Str) -> Str {
 pub fn item_values(forms: Sexps) -> Strings {
     concat(map(lambda1(move |f: &'static Sexp| {
         if (head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) {
-            the::<Strings>(cons(sym_name(second(items(f))), nil()))
+            the::<Strings>(kayak_rt::cons(sym_name(second(items(f))), kayak_rt::nil()))
         } else if head_is_p(f, str_lit("define-rec")) {
             map(lambda1(move |b: &'static Sexp| {
                 sym_name(car(items(b)))
@@ -417,7 +417,7 @@ pub fn item_values(forms: Sexps) -> Strings {
 pub fn item_constants(forms: Sexps) -> Strings {
     concat(map(lambda1(move |f: &'static Sexp| {
         if (head_is_p(f, str_lit("define")) && not(procedure_p(last(items(f))))) {
-            the::<Strings>(cons(sym_name(second(items(f))), nil()))
+            the::<Strings>(kayak_rt::cons(sym_name(second(items(f))), kayak_rt::nil()))
         } else {
             nil()
         }
@@ -427,7 +427,7 @@ pub fn item_constants(forms: Sexps) -> Strings {
 pub fn item_types(forms: Sexps) -> Strings {
     concat(map(lambda1(move |f: &'static Sexp| {
         if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype"))) {
-            the::<Strings>(cons(sym_name(second(items(f))), nil()))
+            the::<Strings>(kayak_rt::cons(sym_name(second(items(f))), kayak_rt::nil()))
         } else {
             nil()
         }
@@ -616,7 +616,7 @@ pub fn filter_family(mut name: Str, mut ms: Families) -> Families {
                 }
             }
         } {
-            return cons(car(ms), nil());
+            return kayak_rt::cons(car(ms), kayak_rt::nil());
         } else {
             ms = cdr(ms);
             continue;
@@ -742,7 +742,7 @@ pub fn dotted_from(mut seen: Chars, mut cs: Chars) -> Strings {
         if (null_p(cs) || null_p(cdr(cs))) {
             return nil();
         } else if (char_eq_p(car(cs), '.') && char_eq_p(car(cdr(cs)), '.')) {
-            return the::<Strings>(cons(rev_to_string(seen), cons(list_to_string(cdr(cdr(cs))), nil())));
+            return the::<Strings>(kayak_rt::cons(rev_to_string(seen), kayak_rt::cons(list_to_string(cdr(cdr(cs))), kayak_rt::nil())));
         } else {
             (seen, cs) = (cons(car(cs), seen), cdr(cs));
             continue;
@@ -796,7 +796,7 @@ pub fn desc_type(mut c: &'static Ctx, mut s: Str, mut ls: Strings) -> Sexps {
             } else {
                 concat(map(lambda1(move |d: &'static Sexp| {
                     if (head_is_p(d, str_lit("desc")) && string_eq_p(sym_name(second(items(d))), s)) {
-                        the::<Sexps>(cons(third(items(d)), nil()))
+                        the::<Sexps>(kayak_rt::cons(third(items(d)), kayak_rt::nil()))
                     } else {
                         nil()
                     }
@@ -1152,13 +1152,14 @@ pub fn binding_name(binding: &'static Sexp) -> Str {
     sym_name(car(items(binding)))
 }
 
-/// `t`, under bindings of `names`.
+/// `t`, under bindings of `names`: no longer a loop if one hides a
+/// parameter, or the procedure's own name (a call of it is the local's).
 pub fn hide(t: &'static Tail, names: Strings) -> &'static Tail {
     let tagcase_ = t;
     match *tagcase_ {
         Tail::Returns(f, ps, live, ok) => {
             if (live && any_p(lambda1(move |x: Str| {
-                string_member_p(x, ps)
+                (string_eq_p(x, f) || string_member_p(x, ps))
             }), names)) {
                 returns(f, ps, false, ok)
             } else {
@@ -1219,7 +1220,7 @@ pub fn map2_params(params: Sexps, types: Sexps) -> Sexps {
             let tagcase_ = car(params);
             match *tagcase_ {
                 Sexp::Sym(n) => {
-                    lst(cons(car(params), cons(car(types), nil())), str_lit(""), 0i64, 0i64)
+                    lst(kayak_rt::cons(car(params), kayak_rt::cons(car(types), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
                 }
                 _ => {
                     let other = tagcase_;
@@ -1427,7 +1428,7 @@ pub fn tag_arms_tail_calls_p(t: &'static Tail, arms: Sexps) -> bool {
                 }
             }
         }) {
-            the::<Strings>(cons(sym_name(second(arm)), nil()))
+            the::<Strings>(kayak_rt::cons(sym_name(second(arm)), kayak_rt::nil()))
         } else {
             map(&sym_name, items(second(arm)))
         };
@@ -1508,7 +1509,7 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
                 }
             }
             Sexp::Chr(ch) => {
-                put(str_lit("'"), put_escaped(cons(ch, nil()), '\'', put(str_lit("'"), acc)))
+                put(str_lit("'"), put_escaped(kayak_rt::cons(ch, kayak_rt::nil()), '\'', put(str_lit("'"), acc)))
             }
             Sexp::Real(x) => {
                 // As Rust writes a double: a digit after the point (`1.` is `1.0`).
@@ -1666,7 +1667,7 @@ pub fn put_let_star(mut c: &'static Ctx, mut bindings: Sexps, mut n: i64, mut ac
         if null_p(bindings) {
             return acc;
         } else {
-            (c, bindings, acc) = (with_locals(c, map(&binding_name, cons(car(bindings), nil()))), cdr(bindings), put_let1(c, car(bindings), n, acc));
+            (c, bindings, acc) = (with_locals(c, map(&binding_name, kayak_rt::cons(car(bindings), kayak_rt::nil()))), cdr(bindings), put_let1(c, car(bindings), n, acc));
             continue;
         }
     }
@@ -1719,9 +1720,9 @@ pub fn put_case_arms(c: &'static Ctx, kind: Str, arms: Sexps, n: i64, t: &'stati
         } else if (string_eq_p(kind, str_lit("int")) || string_eq_p(kind, str_lit("string"))) {
             put_sep(lambda2(move |d: &'static Sexp, acc: Chars| {
                 put(str_lit(")"), put_exp(c, d, n, value(), put(if string_eq_p(kind, str_lit("int")) {
-                    str_lit("_eq(case_, ")
+                    str_lit("kayak_rt::_eq(case_, ")
                 } else {
-                    str_lit("string_eq_p(case_, ")
+                    str_lit("kayak_rt::string_eq_p(case_, ")
                 }, acc)))
             }), str_lit(" || "), items(car(arm)), put(str_lit("case_ if "), acc))
         } else {
@@ -1753,7 +1754,7 @@ pub fn put_tagcase_arms(c: &'static Ctx, sum: Str, arms: Sexps, n: i64, t: &'sta
             }
         };
         let bound = if (else_p || whole_p) {
-            the::<Strings>(cons(sym_name(second(arm)), nil()))
+            the::<Strings>(kayak_rt::cons(sym_name(second(arm)), kayak_rt::nil()))
         } else {
             map(&sym_name, items(second(arm)))
         };
@@ -1886,9 +1887,9 @@ pub fn put_letrec(c: &'static Ctx, bindings: Sexps, names: Strings, n: i64, acc:
 
 pub fn put_list(c: &'static Ctx, xs: Sexps, n: i64, acc: Chars) -> Chars {
     if null_p(xs) {
-        put(str_lit("nil()"), acc)
+        put(str_lit("kayak_rt::nil()"), acc)
     } else {
-        let acc = put(str_lit("cons("), acc);
+        let acc = put(str_lit("kayak_rt::cons("), acc);
         let acc = put_exp(c, car(xs), n, value(), acc);
         let acc = put(str_lit(", "), acc);
         let acc = put_list(c, cdr(xs), n, acc);
@@ -1902,9 +1903,9 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
         let acc = put(str_lit("if "), acc);
         let acc = put_exp(c, car(xs), n, value(), acc);
         let acc = put(str_lit(" "), acc);
-        let acc = put_block(c, cons(second(xs), nil()), n, t, acc);
+        let acc = put_block(c, kayak_rt::cons(second(xs), kayak_rt::nil()), n, t, acc);
         let acc = put(str_lit(" else "), acc);
-        put_block(c, cons(third(xs), nil()), n, t, acc)
+        put_block(c, kayak_rt::cons(third(xs), kayak_rt::nil()), n, t, acc)
     } else if string_eq_p(h, str_lit("cond")) {
         put_cond(c, xs, n, t, acc)
     } else if string_eq_p(h, str_lit("and")) {
@@ -1923,7 +1924,7 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
         // A `with` of one expression, no block: only its names are its.
         put_exp(with_opened(c, e), second(xs), n, opened_tail(c, e, t), acc)
     } else if (string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("tagcase")) || string_eq_p(h, str_lit("with"))) {
-        put_block(c, cons(e, nil()), n, t, acc)
+        put_block(c, kayak_rt::cons(e, kayak_rt::nil()), n, t, acc)
     } else if string_eq_p(h, str_lit("case")) {
         let acc = put(str_lit("match "), acc);
         let acc = put_exp(c, car(xs), n, value(), acc);
@@ -1964,7 +1965,7 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
         let acc = put_args(c, e, cdr(xs), 0i64, n, acc);
         put(str_lit(")"), acc)
     } else if (string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion"))) {
-        put_block(c, cons(e, nil()), n, t, acc)
+        put_block(c, kayak_rt::cons(e, kayak_rt::nil()), n, t, acc)
     } else if abort_p(c, e) {
         // An abort: an early return, where a `Result` is returned; else no
         // prompt can be running for its tag (the checker masked its region),
@@ -1993,7 +1994,7 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
             put(str_lit("::Module"), put(mangle(sym_name(x)), acc))
         }), str_lit(", "), concat(map(lambda1(move |x: &'static Sexp| {
             if module_name_p(c, x) {
-                the::<Sexps>(cons(x, nil()))
+                the::<Sexps>(kayak_rt::cons(x, kayak_rt::nil()))
             } else {
                 nil()
             }
@@ -2003,7 +2004,7 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
             if module_name_p(c, x) {
                 nil()
             } else {
-                the::<Sexps>(cons(x, nil()))
+                the::<Sexps>(kayak_rt::cons(x, kayak_rt::nil()))
             }
         }), xs)), str_lit(", "), n, acc);
         put_question(c, e, put(str_lit(")"), acc))
@@ -2045,13 +2046,13 @@ pub fn put_args(c: &'static Ctx, e: &'static Sexp, xs: Sexps, i: i64, n: i64, ac
 /// if the function written may abort, else none can come (the checker
 /// found the prompt contains every abort its body may make).
 pub fn put_prompt(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Chars) -> Chars {
-    let inner = with_locals(c, cons(str_lit("%fallible"), nil()));
+    let inner = with_locals(c, kayak_rt::cons(str_lit("%fallible"), kayak_rt::nil()));
     let acc = put_nl(i64_plus(n, 1i64), put(str_lit("{"), acc));
     let acc = put(str_lit("let prompt_tag__ = "), acc);
     let acc = put_exp(c, car(xs), i64_plus(n, 1i64), value(), acc);
     let acc = put_nl(i64_plus(n, 1i64), put(str_lit(";"), acc));
     let acc = put(str_lit("match (move || -> Result<_, Unwind> "), acc);
-    let acc = put_block(inner, cons(second(xs), nil()), i64_plus(n, 1i64), ok_value(), acc);
+    let acc = put_block(inner, kayak_rt::cons(second(xs), kayak_rt::nil()), i64_plus(n, 1i64), ok_value(), acc);
     let acc = put(str_lit(")() {"), acc);
     let acc = put_nl(i64_plus(n, 2i64), acc);
     let acc = put(str_lit("Ok(v_) => v_,"), acc);

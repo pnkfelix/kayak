@@ -386,7 +386,7 @@ pub fn read_datum(h: &'static Here, file: Str) -> &'static Got {
                 string_body(cdr(cs), nil(), file, line, line, i64_plus(pos, 1i64))
             } else if (char_eq_p(c, '#') && not(null_p(cdr(cs))) && char_eq_p(car(cdr(cs)), '\\')) {
                 let name = cdr(cdr(cs));
-                let tagcase_ = token_chars(cdr(name), cons(car(name), nil()), 1i64);
+                let tagcase_ = token_chars(cdr(name), kayak_rt::cons(car(name), kayak_rt::nil()), 1i64);
                 match *tagcase_ {
                     Tok::Tok(s, after, n) => {
                         got(chr(char_named(s, file, line)), here(after, line, i64_plus(pos, i64_plus(n, 2i64))))

@@ -531,7 +531,7 @@ pub fn parse_effect(v: &'static Cv, tvars: Strings, e: &'static Sexp) -> Strings
             if string_eq_p(s, str_lit("pure")) {
                 nil()
             } else if string_eq_p(s, str_lit("spin")) {
-                cons(str_lit("spin"), nil())
+                kayak_rt::cons(str_lit("spin"), kayak_rt::nil())
             } else {
                 find_effdef(v, s, cv_effdefs(v))
             }
@@ -543,7 +543,7 @@ pub fn parse_effect(v: &'static Cv, tvars: Strings, e: &'static Sexp) -> Strings
                 // A module's effect, as the module defined at the top level gives it.
                 find_effdef(v, string_append(name_of(v, second(xs)), string_append(str_lit(" "), name_of(v, third(xs)))), cv_effdefs(v))
             } else if (sym_is_p(car(xs), str_lit("read")) && sym_is_p(second(xs), str_lit("@globals"))) {
-                cons(str_lit("@globals"), nil())
+                kayak_rt::cons(str_lit("@globals"), kayak_rt::nil())
             } else if (sym_is_p(car(xs), str_lit("read")) && head_is_p(second(xs), str_lit("globals"))) {
                 map(lambda1(move |g: &'static Sexp| {
                     string_append(str_lit("g:"), name_of(v, g))
@@ -551,7 +551,7 @@ pub fn parse_effect(v: &'static Cv, tvars: Strings, e: &'static Sexp) -> Strings
             } else if sym_is_p(car(xs), str_lit("comefrom")) {
                 refuse(v, str_lit("a continuation kept (comefrom): KFX has escapes, not continuations, which Rust has not"))
             } else if (sym_is_p(car(xs), str_lit("read")) || sym_is_p(car(xs), str_lit("write")) || sym_is_p(car(xs), str_lit("alloc")) || sym_is_p(car(xs), str_lit("goto"))) {
-                cons(string_append(name_of(v, car(xs)), string_append(str_lit(":"), region_name(v, tvars, second(xs)))), nil())
+                kayak_rt::cons(string_append(name_of(v, car(xs)), string_append(str_lit(":"), region_name(v, tvars, second(xs)))), kayak_rt::nil())
             } else {
                 refuse(v, string_append(str_lit("an effect KFX does not have: "), show_sexp(e)))
             }
@@ -759,7 +759,7 @@ pub fn find_family(mut name: Str, mut ds: Dts) -> List<&'static Dt> {
                 }
             }
         } {
-            return cons(car(ds), nil());
+            return kayak_rt::cons(car(ds), kayak_rt::nil());
         } else {
             ds = cdr(ds);
             continue;
@@ -778,7 +778,7 @@ pub fn find_alias(mut name: Str, mut r#as: Aliases) -> List<&'static Alias> {
             match *tagcase_ {
                 Alias::Alias(n, ps, t) => {
                     if string_eq_p(n, name) {
-                        return cons(car(r#as), nil());
+                        return kayak_rt::cons(car(r#as), kayak_rt::nil());
                     } else {
                         r#as = cdr(r#as);
                         continue;
@@ -814,7 +814,7 @@ pub fn find_bind(mut name: Str, mut bs: Binds) -> Binds {
             match *tagcase_ {
                 Bind::Bind(n, sc, r#where) => {
                     if string_eq_p(n, name) {
-                        return cons(car(bs), nil());
+                        return kayak_rt::cons(car(bs), kayak_rt::nil());
                     } else {
                         bs = cdr(bs);
                         continue;
@@ -839,7 +839,7 @@ pub fn conversion_bind(mut name: Str, mut bs: Binds) -> Binds {
                 }
             }
         } {
-            return the::<Binds>(cons(car(bs), nil()));
+            return the::<Binds>(kayak_rt::cons(car(bs), kayak_rt::nil()));
         } else {
             bs = cdr(bs);
             continue;
@@ -880,7 +880,7 @@ pub fn reads_kept(atoms: Strings, kept: Strings, every: bool) -> Strings {
     } else {
         concat(map(lambda1(move |x: Str| {
             if (has_prefix_p(x, str_lit("read:")) && (string_member_p(after_prefix(x, str_lit("read:")), kept) || (every && not(string_eq_p(after_prefix(x, str_lit("read:")), str_lit("acyclic")))))) {
-                the::<Strings>(cons(after_prefix(x, str_lit("read:")), nil()))
+                the::<Strings>(kayak_rt::cons(after_prefix(x, str_lit("read:")), kayak_rt::nil()))
             } else {
                 nil()
             }
@@ -915,7 +915,7 @@ pub fn knot_in(mut v: &'static Cv, mut res: &'static dyn Fn(Str) -> Str, mut t: 
                 }
             }
             Ty::TyTag(a, h, d, r) => {
-                return first_knot(v, res, cons(a, cons(h, nil())), nil(), false, seen);
+                return first_knot(v, res, kayak_rt::cons(a, kayak_rt::cons(h, kayak_rt::nil())), nil(), false, seen);
             }
             Ty::TyShape(p, ls, ts) => {
                 return first_knot(v, res, ts, kept, every, seen);
@@ -945,7 +945,7 @@ pub fn knot_in(mut v: &'static Cv, mut res: &'static dyn Fn(Str) -> Str, mut t: 
                                                         let tagcase_ = t;
                                                         match *tagcase_ {
                                                             Ty::TyProc(es, xs, r) => {
-                                                                the::<Tys>(cons(substitute(ps, args, r), nil()))
+                                                                the::<Tys>(kayak_rt::cons(substitute(ps, args, r), kayak_rt::nil()))
                                                             }
                                                             _ => {
                                                                 let other = tagcase_;
@@ -1250,7 +1250,7 @@ pub fn poly_binders(v: &'static Cv, t: &'static Sexp) -> Strings {
                 // A type variable, a Rust type parameter of its name, camel-cased:
                 // not one of the types the generated Rust names.
                 let n = name_of(v, car(b));
-                if (string_member_p(camel(n), cons(str_lit("Str"), cons(str_lit("List"), cons(str_lit("Cons"), cons(str_lit("Int"), cons(str_lit("Tag"), cons(str_lit("Unwind"), cons(str_lit("Ref"), cons(str_lit("FlatArray"), cons(str_lit("Knot"), cons(str_lit("Show"), cons(str_lit("OnceCell"), cons(str_lit("Fn"), cons(str_lit("Result"), cons(str_lit("Ok"), cons(str_lit("Err"), cons(str_lit("String"), cons(str_lit("Copy"), cons(str_lit("Clone"), cons(str_lit("Self"), cons(str_lit("Module"), nil()))))))))))))))))))))) || false) {
+                if (string_member_p(camel(n), kayak_rt::cons(str_lit("Str"), kayak_rt::cons(str_lit("List"), kayak_rt::cons(str_lit("Cons"), kayak_rt::cons(str_lit("Int"), kayak_rt::cons(str_lit("Tag"), kayak_rt::cons(str_lit("Unwind"), kayak_rt::cons(str_lit("Ref"), kayak_rt::cons(str_lit("FlatArray"), kayak_rt::cons(str_lit("Knot"), kayak_rt::cons(str_lit("Show"), kayak_rt::cons(str_lit("OnceCell"), kayak_rt::cons(str_lit("Fn"), kayak_rt::cons(str_lit("Result"), kayak_rt::cons(str_lit("Ok"), kayak_rt::cons(str_lit("Err"), kayak_rt::cons(str_lit("String"), kayak_rt::cons(str_lit("Copy"), kayak_rt::cons(str_lit("Clone"), kayak_rt::cons(str_lit("Self"), kayak_rt::cons(str_lit("Module"), kayak_rt::nil()))))))))))))))))))))) || false) {
                     refuse(v, string_append(str_lit("a type variable named as a type the Rust names: "), n))
                 } else {
                     n
@@ -1400,7 +1400,7 @@ pub fn lookup_meta(mut k: i64, mut subst: Sbs) -> Tys {
             match *tagcase_ {
                 Sb::Sb(j, t) => {
                     if i64_eq(j, k) {
-                        return cons(t, nil());
+                        return kayak_rt::cons(t, kayak_rt::nil());
                     } else {
                         subst = cdr(subst);
                         continue;
@@ -1757,7 +1757,7 @@ pub fn open_atom(mut s: &'static St, mut x: Str, mut es: Strings) -> Strings {
             let y = resolve_atom(s, car(es));
             (region_atom_p(y) && string_eq_p(atom_kind(y), atom_kind(x)) && char_eq_p(string_ref_i64(atom_region(y), 0i64), '?'))
         } {
-            return cons(resolve_atom(s, car(es)), nil());
+            return kayak_rt::cons(resolve_atom(s, car(es)), kayak_rt::nil());
         } else {
             es = cdr(es);
             continue;
@@ -1770,13 +1770,13 @@ pub fn open_atom(mut s: &'static St, mut x: Str, mut es: Strings) -> Strings {
 pub fn fit_effs(mut s: &'static St, mut a: Strings, mut e: Strings) -> List<&'static St> {
     loop {
         if null_p(a) {
-            return cons(s, nil());
+            return kayak_rt::cons(s, kayak_rt::nil());
         } else {
             let x = resolve_atom(s, car(a));
             let es = map(lambda1(move |y: Str| {
                 resolve_atom(s, y)
             }), e);
-            if effs_within_p(cons(x, nil()), es) {
+            if effs_within_p(kayak_rt::cons(x, kayak_rt::nil()), es) {
                 a = cdr(a);
                 continue;
             } else if null_p(open_atom(s, x, e)) {
@@ -2145,12 +2145,26 @@ pub fn has_char_in_p(s: Str, c: char) -> bool {
     }), string_chars(s))
 }
 
-pub fn operator_char_p(c: char) -> bool {
-    has_char_in_p(str_lit("?!<>=+*/%"), c)
+pub fn char_lower_p(c: char) -> bool {
+    has_char_in_p(str_lit("abcdefghijklmnopqrstuvwxyz"), c)
 }
 
 pub fn string_has_p(s: Str, part: Str) -> bool {
     (not(i64_lt(string_length_i64(s), string_length_i64(part))) && (has_prefix_p(s, part) || string_has_p(after_prefix(s, substring_of(s, 1i64)), part)))
+}
+
+/// Whether `n` may be a KFX name (C27): a lower-case letter or an operator's
+/// character first, then those, digits and `-`; no `--` (the emitter's
+/// `__`); and none whose Rust name kayak-rt or the emitter writes.
+pub fn kfx_name_p(n: Str) -> bool {
+    let cs = string_chars(n);
+    (not(null_p(cs)) && (char_lower_p(car(cs)) || has_char_in_p(str_lit("?!<>=+*/%-"), car(cs))) && not(any_p(lambda1(move |c: char| {
+        not((char_lower_p(c) || char_numeric_p(c) || has_char_in_p(str_lit("?!<>=+*/%-"), c)))
+    }), cs)) && not(string_has_p(n, str_lit("--"))) && not(string_member_p(mangle(n), kayak_rt::cons(str_lit("str_lit"), kayak_rt::cons(str_lit("int_lit"), kayak_rt::cons(str_lit("int_text"), kayak_rt::cons(str_lit("unreachable_unwind"), kayak_rt::cons(str_lit("kfx_toplevel"), kayak_rt::cons(str_lit("once"), kayak_rt::cons(str_lit("alloc"), kayak_rt::cons(str_lit("the"), kayak_rt::cons(str_lit("unwind"), kayak_rt::cons(str_lit("knot"), kayak_rt::cons(str_lit("lambda0"), kayak_rt::cons(str_lit("lambda1"), kayak_rt::cons(str_lit("lambda2"), kayak_rt::cons(str_lit("lambda3"), kayak_rt::cons(str_lit("lambda4"), kayak_rt::cons(str_lit("leak_string"), kayak_rt::cons(str_lit("with_big_stack"), kayak_rt::cons(str_lit("fail"), kayak_rt::cons(str_lit("make_continuation_prompt_tag"), kayak_rt::cons(str_lit("nil"), kayak_rt::cons(str_lit("cons"), kayak_rt::nil()))))))))))))))))))))))))
+}
+
+pub fn operator_char_p(c: char) -> bool {
+    has_char_in_p(str_lit("?!<>=+*/%"), c)
 }
 
 /// Whether another name might mangle as `n` does: one with an operator's
@@ -2160,7 +2174,7 @@ pub fn might_clash_p(n: Str) -> bool {
         let m = mangle(n);
         any_p(lambda1(move |part: Str| {
             string_has_p(m, part)
-        }), cons(str_lit("_p"), cons(str_lit("_x"), cons(str_lit("_to_"), cons(str_lit("_plus"), cons(str_lit("_star"), cons(str_lit("_slash"), cons(str_lit("_lt"), cons(str_lit("_gt"), cons(str_lit("_eq"), cons(str_lit("_pct"), cons(str_lit("_minus"), nil()))))))))))))
+        }), kayak_rt::cons(str_lit("_p"), kayak_rt::cons(str_lit("_x"), kayak_rt::cons(str_lit("_to_"), kayak_rt::cons(str_lit("_plus"), kayak_rt::cons(str_lit("_star"), kayak_rt::cons(str_lit("_slash"), kayak_rt::cons(str_lit("_lt"), kayak_rt::cons(str_lit("_gt"), kayak_rt::cons(str_lit("_eq"), kayak_rt::cons(str_lit("_pct"), kayak_rt::cons(str_lit("_minus"), kayak_rt::nil()))))))))))))
     })
 }
 
@@ -2176,7 +2190,7 @@ pub fn mangled_clash(n: Str, bs: Binds) -> Strings {
             match *tagcase_ {
                 Bind::Bind(x, sc, w) => {
                     if (not(string_eq_p(x, n)) && not(has_prefix_p(x, str_lit("%"))) && not(has_char_in_p(x, ' ')) && string_eq_p(mangle(x), m)) {
-                        the::<Strings>(cons(string_append(n, string_append(str_lit(" and "), x)), nil()))
+                        the::<Strings>(kayak_rt::cons(string_append(n, string_append(str_lit(" and "), x)), kayak_rt::nil()))
                     } else {
                         nil()
                     }
@@ -2194,18 +2208,18 @@ pub fn with_binds(v: &'static Cv, more: Binds) -> &'static Cv {
         let tagcase_ = b;
         match *tagcase_ {
             Bind::Bind(n, sc, w) => {
-                (not(has_prefix_p(n, str_lit("%"))) && not(has_char_in_p(n, ' ')) && has_char_in_p(n, '_'))
+                (not(has_prefix_p(n, str_lit("%"))) && not(has_char_in_p(n, ' ')) && not(string_eq_p(w, str_lit("prim"))) && not(kfx_name_p(n)))
             }
         }
     }), more) {
-        refuse(v, string_append(str_lit("a name with a `_`, which KFX's names have not (it writes `-`): "), car(concat(map(lambda1(move |b: &'static Bind| {
+        refuse(v, string_append(str_lit("a name KFX's names are not (lower case, digits, `-` and `?!<>=+*/%`, no `--`, none Rust writes): "), car(concat(map(lambda1(move |b: &'static Bind| {
             let tagcase_ = b;
             match *tagcase_ {
                 Bind::Bind(n, sc, w) => {
-                    if has_char_in_p(n, '_') {
-                        the::<Strings>(cons(n, nil()))
-                    } else {
+                    if kfx_name_p(n) {
                         nil()
+                    } else {
+                        the::<Strings>(kayak_rt::cons(n, kayak_rt::nil()))
                     }
                 }
             }
@@ -2268,13 +2282,13 @@ pub fn proc_type_p(s: &'static St, t: &'static Ty) -> bool {
 /// `letrec` member that may not end can.
 pub fn naming_effs(s: &'static St, name: Str, r#where: Str, t: &'static Ty, group: Strings) -> Strings {
     if string_eq_p(r#where, str_lit("rec")) {
-        cons(str_lit("spin"), nil())
+        kayak_rt::cons(str_lit("spin"), kayak_rt::nil())
     } else if not(string_eq_p(r#where, str_lit("global"))) {
         nil()
     } else if (proc_type_p(s, t) && string_member_p(name, group)) {
-        cons(str_lit("spin"), cons(string_append(str_lit("g:"), name), nil()))
+        kayak_rt::cons(str_lit("spin"), kayak_rt::cons(string_append(str_lit("g:"), name), kayak_rt::nil()))
     } else {
-        cons(string_append(str_lit("g:"), name), nil())
+        kayak_rt::cons(string_append(str_lit("g:"), name), kayak_rt::nil())
     }
 }
 
@@ -2608,7 +2622,7 @@ pub fn names_in(e: &'static Sexp) -> Strings {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Sym(n) => {
-            cons(n, nil())
+            kayak_rt::cons(n, kayak_rt::nil())
         }
         Sexp::Lst(xs, src_file, src_line, src_pos) => {
             names_in_all(xs)

@@ -108,7 +108,19 @@ pub fn shadowed(n: i64, acc: i64) -> i64 {
     }
 }
 
+// A local of the procedure's own name: its call is the local's, no loop.
+pub fn rebound(n: i64, acc: i64) -> i64 {
+    if i64_eq(n, 0i64) {
+        acc
+    } else {
+        let rebound = the::<&'static dyn Fn(i64, i64) -> i64>(lambda2(move |a: i64, b: i64| {
+            i64_star(100i64, b)
+        }));
+        rebound(i64_minus(n, 1i64), i64_plus(acc, 1i64))
+    }
+}
+
 pub fn main() -> Str {
-    words(cons(i64_to_string(count_up(0i64, 3000000i64, 0i64)), cons(swaps(1i64, 2i64, 1000001i64), cons(i64_to_string(collatz(27i64, 0i64)), cons(i64_to_string(drain(more(1000000i64), 0i64)), cons(i64_to_string(shadowed(100i64, 0i64)), nil()))))))
+    words(kayak_rt::cons(i64_to_string(count_up(0i64, 3000000i64, 0i64)), kayak_rt::cons(swaps(1i64, 2i64, 1000001i64), kayak_rt::cons(i64_to_string(collatz(27i64, 0i64)), kayak_rt::cons(i64_to_string(drain(more(1000000i64), 0i64)), kayak_rt::cons(i64_to_string(shadowed(100i64, 0i64)), kayak_rt::cons(i64_to_string(rebound(3i64, 0i64)), kayak_rt::nil())))))))
 }
 
