@@ -66,6 +66,11 @@ pub mod two;
 #[path = "../../../tests/kfx/unicode.rs"]
 pub mod unicode;
 
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
+#[path = "../../../tests/kfx/untyped.rs"]
+pub mod untyped;
+
 /// A program's `main`, which gives its answer.
 pub type Main = fn() -> kayak_rt::Str;
 
@@ -84,4 +89,5 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("tails", tails::main),
     ("two", two::main),
     ("unicode", unicode::main),
+    ("untyped", untyped::main),
 ];

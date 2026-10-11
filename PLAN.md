@@ -106,6 +106,7 @@ is no `Drop`, no `Rc` and no `.clone()`.
 | `(define-rec (f type lambda) …)`                      | the same, one `fn` each                                     |
 | a self call in tail position                          | the `fn`'s body in a `loop`: assignments, then `continue`   |
 | `(define x T e)`, not a lambda                        | `fn x() -> T { e }`; each use `x()` (KFX-0: `e` pure)       |
+| `(define x e)`, with no type                          | as with the type the checker finds (elaboration)            |
 | `(define-datatype t (tag T…) …)`                      | `enum T { Tag(T…), … }` and `fn tag(…) -> &'static T`       |
 | `(define-effect …)`                                   | nothing                                                     |
 | `(f a …)`, `f` a global or a primitive                | `f(a, …)`; the primitives are `kayak_rt`'s                  |

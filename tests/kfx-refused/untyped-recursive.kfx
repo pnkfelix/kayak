@@ -1,0 +1,2 @@
+"A definition with no type that calls itself: not in scope in itself, in FX-26 as in KFX."
+(define f (lambda ((n i64)) (f n)))

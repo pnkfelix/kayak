@@ -10,19 +10,34 @@
  and the names bound where an expression is. A name named as a value is
  a local, a constant (a call of its `fn`), or else a global procedure (a
  reference to its `fn`, the program's or kayak-rt's)."
-(define-datatype ctx (ctx strings tagofs strings strings))
+(define-datatype ctx (ctx strings tagofs strings strings typeds))
+
+(define filter-typed (subr kfx (string typeds) typeds)
+  (lambda (name xs)
+    (cond ((null? xs) nil)
+          ((tagcase (car xs) (typed (n t) (string=? n name))) (list (car xs)))
+          (else (filter-typed name (cdr xs))))))
 
 (define ctx-datatypes (subr kfx (ctx) strings)
-  (lambda (c) (tagcase c (ctx (ds ts ks ls) ds))))
+  (lambda (c) (tagcase c (ctx (ds ts ks ls xs) ds))))
 
 (define ctx-tags (subr kfx (ctx) tagofs)
-  (lambda (c) (tagcase c (ctx (ds ts ks ls) ts))))
+  (lambda (c) (tagcase c (ctx (ds ts ks ls xs) ts))))
 
 (define ctx-constants (subr kfx (ctx) strings)
-  (lambda (c) (tagcase c (ctx (ds ts ks ls) ks))))
+  (lambda (c) (tagcase c (ctx (ds ts ks ls xs) ks))))
 
 (define ctx-locals (subr kfx (ctx) strings)
-  (lambda (c) (tagcase c (ctx (ds ts ks ls) ls))))
+  (lambda (c) (tagcase c (ctx (ds ts ks ls xs) ls))))
+
+(define ctx-typed (subr kfx (ctx string) sexps)
+  (lambda (c name)
+    "The type the checker found for a definition written with none, as a
+     list of one."
+    (tagcase c
+      (ctx (ds ts ks ls xs)
+        (map (lambda ((x typed)) (tagcase x (typed (n t) t)))
+             (filter-typed name xs))))))
 
 (define strings-onto (subr kfx (strings strings) strings)
   (lambda (xs ys) (if (null? xs) ys (strings-onto (cdr xs) (cons (car xs) ys)))))
@@ -30,7 +45,7 @@
 (define with-locals (subr kfx (ctx strings) ctx)
   (lambda (c names)
     "`c`, where `names` are bound too."
-    (tagcase c (ctx (ds ts ks ls) (ctx ds ts ks (strings-onto names ls))))))
+    (tagcase c (ctx (ds ts ks ls xs) (ctx ds ts ks (strings-onto names ls) xs)))))
 
 (define tag-datatype (subr kfx (string tagofs) string)
   (lambda (tag ts)
@@ -49,14 +64,14 @@
 (define note (subr kfx (sexp ctx) ctx)
   (lambda (form c)
     (tagcase c
-      (ctx (ds ts ks ls)
+      (ctx (ds ts ks ls xs)
         (cond ((head-is? form "define-datatype")
                (let ((d (sym-name (second (items form)))))
-                 (ctx (cons d ds) (note-tags (cdr (cdr (items form))) d ts) ks ls)))
+                 (ctx (cons d ds) (note-tags (cdr (cdr (items form))) d ts) ks ls xs)))
               ((and (head-is? form "define")
-                    (i64= (size (items form)) 4)
-                    (not (procedure? (fourth (items form)))))
-               (ctx ds ts (cons (sym-name (second (items form))) ks) ls))
+                    (or (i64= (size (items form)) 3) (i64= (size (items form)) 4))
+                    (not (procedure? (last (items form)))))
+               (ctx ds ts (cons (sym-name (second (items form))) ks) ls xs))
               (else c))))))
 
 (define collect (subr kfx (sexps ctx) ctx)
@@ -637,8 +652,7 @@
             ((string=? h "define")
              (if (i64= (size xs) 4)
                  (put-define c (second xs) (third xs) (fourth xs) acc)
-                 (error (string-append "kfx: a definition needs a type: "
-                                       (sym-name (second xs))))))
+                 (put-define c (second xs) (car (ctx-typed c (sym-name (second xs)))) (third xs) acc)))
             ((string=? h "define-rec") (put-rec c (cdr xs) acc))
             (else acc)))))
 

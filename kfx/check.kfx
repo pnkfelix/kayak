@@ -1158,16 +1158,90 @@
            forms)
       #u)))
 
-(define check-tops (subr kfx (cv sexps) cv)
-  (lambda (v forms) (if (null? forms) v (check-tops (check-top v (car forms)) (cdr forms)))))
+"Elaboration. A definition with no type, `(define x e)`, has the type the
+ checker finds for `e`; the emitter, which knows no types, is told it, as
+ though it had been written. It is never `poly`, and must be known whole."
 
-(define check-program (subr kfx (sexps) unit)
+(define-datatype typed (typed string sexp))
+(define-type typeds (listof typed acyclic))
+(define-datatype elab (elab cv typeds))
+
+(define-rec
+  (zonk (subr kfx (st ty) ty)
+    (lambda (s t)
+      "`t`, every inference variable in it replaced by its solution."
+      (tagcase (walk s t)
+        (ty-list (e) (ty-list (zonk s e)))
+        (ty-flat (e r) (ty-flat (zonk s e) (zonk s r)))
+        (ty-ref (e r) (ty-ref (zonk s e) (zonk s r)))
+        (ty-proc (es ps r) (ty-proc es (map (lambda ((p ty)) (zonk s p)) ps) (zonk s r)))
+        (else other other)))))
+
+(define-rec
+  (ty-sexp (subr kfx (cv st ty) sexp)
+    (lambda (v s t)
+      "A type as written: for the emitter, which reads no effects, so a
+       procedure's is written `pure`."
+      (tagcase (walk s t)
+        (ty-i64 () (sym "i64"))
+        (ty-bool () (sym "bool"))
+        (ty-char () (sym "char"))
+        (ty-unit () (sym "unit"))
+        (ty-string () (sym "string"))
+        (ty-void () (sym "void"))
+        (ty-list (e) (lst (list (sym "listof") (ty-sexp v s e) (sym "acyclic")) "" 0))
+        (ty-data (d) (sym d))
+        (ty-flat (e r) (lst (list (sym "flatarrayof") (ty-sexp v s e) (ty-sexp v s r)) "" 0))
+        (ty-ref (e r) (lst (list (sym "ref") (ty-sexp v s e) (ty-sexp v s r)) "" 0))
+        (ty-rconst (n) (sym n))
+        (ty-proc (es ps r)
+          (lst (list (sym "subr") (sym "pure") (lst (map (lambda ((p ty)) (ty-sexp v s p)) ps) "" 0) (ty-sexp v s r)) "" 0))
+        (ty-var (n) (refuse v (string-append "a definition with no type, of a type over " (string-append n ": write its type"))))
+        (ty-meta (k) (refuse v "a definition with no type, whose type is not known whole: write it"))))))
+
+(define check-untyped (subr kfx (cv sexp) elab)
+  (lambda (v form)
+    "`(define x e)`: `e`'s type found, `x` not in scope in `e` (as FX-26
+     has it, for a lambda too), and the type kept for the emitter."
+    (let* ((xs (items form))
+           (name (name-of v (second xs)))
+           (v (at v name nil))
+           (e (third xs)))
+      (tagcase (synth v (new-state) e)
+        (res (t es s)
+          (let ((written (ty-sexp v s t)))
+            (if (and (not (procedure? e))
+                     (any? (lambda ((x string))
+                             (not (or (string=? x "spin") (string=? x "@globals") (global-atom? x))))
+                           es))
+                (refuse v (string-append "a constant whose value has the effect " (string-append (show-effs es)
+                          ": KFX's constant is a fn, run at each use, so its value may only read globals")))
+                (elab (with-binds v (list (global v name (scheme nil (zonk s t)))))
+                      (list (typed name written))))))))))
+
+(define untyped? (subr kfx (sexp) bool)
+  (lambda (form) (and (head-is? form "define") (i64= (size (items form)) 3))))
+
+(define check-tops (subr kfx (cv sexps typeds) elab)
+  (lambda (v forms found)
+    "The forms in order; `found`, the types elaborated so far."
+    (cond ((null? forms) (elab v found))
+          ((untyped? (car forms))
+           (tagcase (car forms)
+             (lst (xs src-file src-line)
+               (tagcase (check-untyped (near v src-file src-line) (car forms))
+                 (elab (v2 more) (check-tops (at v2 "" nil) (cdr forms) (onto more found)))))
+             (else other (check-tops v (cdr forms) found))))
+          (else (check-tops (check-top v (car forms)) (cdr forms) found)))))
+
+(define check-program (subr kfx (sexps) typeds)
   (lambda (forms)
-    "Every form, in order; the first error stops the compiler."
+    "Every form, in order; the first error stops the compiler. What it gives
+     is the types of the definitions written with none."
     (let* ((empty (cv nil nil nil nil "a type" nil "the program" 0))
            (start (cv nil nil (declare-types empty forms nil) nil "a type" nil "the program" 0))
            (types (type-names-free start forms))
            (named (tagcase start (cv (bs ds as es here group file line) (cv bs (datatype-names start forms nil) as es here group file line))))
            (typed (tagcase named (cv (bs ds as es here group file line) (cv bs (declare-datatypes named forms nil) as es here group file line))))
            (v (with-binds typed (prim-binds typed))))
-      (begin (check-tops v forms) #u))))
+      (tagcase (check-tops v forms nil) (elab (done found) found)))))

@@ -1,0 +1,22 @@
+"Definitions with no type, whose types the checker finds and gives the
+ emitter (elaboration): a constant, a procedure whose parameters' types
+ are written, and one that uses both."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define base (the i64 40))
+
+(define greeting "hello")
+
+(define add (lambda ((a i64) (b i64)) (i64+ a b)))
+
+(define shout (lambda ((s string)) (string-append s "!")))
+
+(define pair-up (lambda ((x i64)) (the (listof i64 acyclic) (list x (add x base)))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (let ((xs (pair-up 2)))
+      (string-append (shout greeting)
+        (string-append " " (string-append (i64->string (car xs))
+          (string-append " " (i64->string (car (cdr xs))))))))))

@@ -23,17 +23,37 @@ pub type Tagofs = List<&'static Tagof>;
 // a local, a constant (a call of its `fn`), or else a global procedure (a
 // reference to its `fn`, the program's or kayak-rt's).
 pub enum Ctx {
-    Ctx(Strings, Tagofs, Strings, Strings),
+    Ctx(Strings, Tagofs, Strings, Strings, Typeds),
 }
 
-pub fn ctx(f0: Strings, f1: Tagofs, f2: Strings, f3: Strings) -> &'static Ctx {
-    alloc(Ctx::Ctx(f0, f1, f2, f3))
+pub fn ctx(f0: Strings, f1: Tagofs, f2: Strings, f3: Strings, f4: Typeds) -> &'static Ctx {
+    alloc(Ctx::Ctx(f0, f1, f2, f3, f4))
+}
+
+pub fn filter_typed(mut name: Str, mut xs: Typeds) -> Typeds {
+    loop {
+        if null_p(xs) {
+            return nil();
+        } else if {
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Typed::Typed(n, t) => {
+                    string_eq_p(n, name)
+                }
+            }
+        } {
+            return cons(car(xs), nil());
+        } else {
+            xs = cdr(xs);
+            continue;
+        }
+    }
 }
 
 pub fn ctx_datatypes(c: &'static Ctx) -> Strings {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs) => {
             ds
         }
     }
@@ -42,7 +62,7 @@ pub fn ctx_datatypes(c: &'static Ctx) -> Strings {
 pub fn ctx_tags(c: &'static Ctx) -> Tagofs {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs) => {
             ts
         }
     }
@@ -51,7 +71,7 @@ pub fn ctx_tags(c: &'static Ctx) -> Tagofs {
 pub fn ctx_constants(c: &'static Ctx) -> Strings {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs) => {
             ks
         }
     }
@@ -60,8 +80,26 @@ pub fn ctx_constants(c: &'static Ctx) -> Strings {
 pub fn ctx_locals(c: &'static Ctx) -> Strings {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs) => {
             ls
+        }
+    }
+}
+
+/// The type the checker found for a definition written with none, as a
+/// list of one.
+pub fn ctx_typed(c: &'static Ctx, name: Str) -> Sexps {
+    let tagcase_ = c;
+    match *tagcase_ {
+        Ctx::Ctx(ds, ts, ks, ls, xs) => {
+            map(lambda1(move |x: &'static Typed| {
+                let tagcase_ = x;
+                match *tagcase_ {
+                    Typed::Typed(n, t) => {
+                        t
+                    }
+                }
+            }), filter_typed(name, xs))
         }
     }
 }
@@ -81,8 +119,8 @@ pub fn strings_onto(mut xs: Strings, mut ys: Strings) -> Strings {
 pub fn with_locals(c: &'static Ctx, names: Strings) -> &'static Ctx {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls) => {
-            ctx(ds, ts, ks, strings_onto(names, ls))
+        Ctx::Ctx(ds, ts, ks, ls, xs) => {
+            ctx(ds, ts, ks, strings_onto(names, ls), xs)
         }
     }
 }
@@ -121,12 +159,12 @@ pub fn note_tags(mut variants: Sexps, mut d: Str, mut ts: Tagofs) -> Tagofs {
 pub fn note(form: &'static Sexp, c: &'static Ctx) -> &'static Ctx {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs) => {
             if head_is_p(form, str_lit("define-datatype")) {
                 let d = sym_name(second(items(form)));
-                ctx(cons(d, ds), note_tags(cdr(cdr(items(form))), d, ts), ks, ls)
-            } else if (head_is_p(form, str_lit("define")) && i64_eq(size(items(form)), 4i64) && not(procedure_p(fourth(items(form))))) {
-                ctx(ds, ts, cons(sym_name(second(items(form))), ks), ls)
+                ctx(cons(d, ds), note_tags(cdr(cdr(items(form))), d, ts), ks, ls, xs)
+            } else if (head_is_p(form, str_lit("define")) && (i64_eq(size(items(form)), 3i64) || i64_eq(size(items(form)), 4i64)) && not(procedure_p(last(items(form))))) {
+                ctx(ds, ts, cons(sym_name(second(items(form))), ks), ls, xs)
             } else {
                 c
             }
@@ -1060,7 +1098,7 @@ pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
         if i64_eq(size(xs), 4i64) {
             put_define(c, second(xs), third(xs), fourth(xs), acc)
         } else {
-            error(string_append(str_lit("kfx: a definition needs a type: "), sym_name(second(xs))))
+            put_define(c, second(xs), car(ctx_typed(c, sym_name(second(xs)))), third(xs), acc)
         }
     } else if string_eq_p(h, str_lit("define-rec")) {
         put_rec(c, cdr(xs), acc)

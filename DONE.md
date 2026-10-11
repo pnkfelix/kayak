@@ -389,3 +389,14 @@ struct that knows whether it is ASCII; then the driver's ASCII guard went,
 and the tidy test with it. `tests/kfx/unicode.kfx` takes lengths, indices
 and `char->i64` of strings that are not ASCII, with Rust's answers
 Fixpt's.
+
+## Definitions with no type: elaboration (2026-10-11)
+
+`(define x e)` is KFX now. The checker finds `e`'s type, as FX-26 does;
+the emitter, which knows no types, is told it, as though it had been
+written: `check-program` gives the elaborated types (`typed`), `ctx`
+carries them, and `put-top` writes such a definition with its type. The
+type is never `poly`, must be known whole (no inference variable left),
+and the name is not in scope in `e`, a lambda's body included, as in
+FX-26. A constant's value may only read globals, as a typed constant's
+(C11). `tests/kfx/untyped.kfx`, and `kfx-refused/untyped-recursive`.

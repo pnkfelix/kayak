@@ -2368,10 +2368,153 @@ pub fn type_names_free(v: &'static Cv, forms: Sexps) -> () {
     ()
 }
 
-pub fn check_tops(mut v: &'static Cv, mut forms: Sexps) -> &'static Cv {
+// Elaboration. A definition with no type, `(define x e)`, has the type the
+// checker finds for `e`; the emitter, which knows no types, is told it, as
+// though it had been written. It is never `poly`, and must be known whole.
+pub enum Typed {
+    Typed(Str, &'static Sexp),
+}
+
+pub fn typed(f0: Str, f1: &'static Sexp) -> &'static Typed {
+    alloc(Typed::Typed(f0, f1))
+}
+
+pub type Typeds = List<&'static Typed>;
+
+pub enum Elab {
+    Elab(&'static Cv, Typeds),
+}
+
+pub fn elab(f0: &'static Cv, f1: Typeds) -> &'static Elab {
+    alloc(Elab::Elab(f0, f1))
+}
+
+/// `t`, every inference variable in it replaced by its solution.
+pub fn zonk(s: &'static St, t: &'static Ty) -> &'static Ty {
+    let tagcase_ = walk(s, t);
+    match *tagcase_ {
+        Ty::TyList(e) => {
+            ty_list(zonk(s, e))
+        }
+        Ty::TyFlat(e, r) => {
+            ty_flat(zonk(s, e), zonk(s, r))
+        }
+        Ty::TyRef(e, r) => {
+            ty_ref(zonk(s, e), zonk(s, r))
+        }
+        Ty::TyProc(es, ps, r) => {
+            ty_proc(es, map(lambda1(move |p: &'static Ty| {
+                zonk(s, p)
+            }), ps), zonk(s, r))
+        }
+        _ => {
+            let other = tagcase_;
+            other
+        }
+    }
+}
+
+/// A type as written: for the emitter, which reads no effects, so a
+/// procedure's is written `pure`.
+pub fn ty_sexp(v: &'static Cv, s: &'static St, t: &'static Ty) -> &'static Sexp {
+    let tagcase_ = walk(s, t);
+    match *tagcase_ {
+        Ty::TyI64() => {
+            sym(str_lit("i64"))
+        }
+        Ty::TyBool() => {
+            sym(str_lit("bool"))
+        }
+        Ty::TyChar() => {
+            sym(str_lit("char"))
+        }
+        Ty::TyUnit() => {
+            sym(str_lit("unit"))
+        }
+        Ty::TyString() => {
+            sym(str_lit("string"))
+        }
+        Ty::TyVoid() => {
+            sym(str_lit("void"))
+        }
+        Ty::TyList(e) => {
+            lst(cons(sym(str_lit("listof")), cons(ty_sexp(v, s, e), cons(sym(str_lit("acyclic")), nil()))), str_lit(""), 0i64)
+        }
+        Ty::TyData(d) => {
+            sym(d)
+        }
+        Ty::TyFlat(e, r) => {
+            lst(cons(sym(str_lit("flatarrayof")), cons(ty_sexp(v, s, e), cons(ty_sexp(v, s, r), nil()))), str_lit(""), 0i64)
+        }
+        Ty::TyRef(e, r) => {
+            lst(cons(sym(str_lit("ref")), cons(ty_sexp(v, s, e), cons(ty_sexp(v, s, r), nil()))), str_lit(""), 0i64)
+        }
+        Ty::TyRconst(n) => {
+            sym(n)
+        }
+        Ty::TyProc(es, ps, r) => {
+            lst(cons(sym(str_lit("subr")), cons(sym(str_lit("pure")), cons(lst(map(lambda1(move |p: &'static Ty| {
+                ty_sexp(v, s, p)
+            }), ps), str_lit(""), 0i64), cons(ty_sexp(v, s, r), nil())))), str_lit(""), 0i64)
+        }
+        Ty::TyVar(n) => {
+            refuse(v, string_append(str_lit("a definition with no type, of a type over "), string_append(n, str_lit(": write its type"))))
+        }
+        Ty::TyMeta(k) => {
+            refuse(v, str_lit("a definition with no type, whose type is not known whole: write it"))
+        }
+    }
+}
+
+/// `(define x e)`: `e`'s type found, `x` not in scope in `e` (as FX-26
+/// has it, for a lambda too), and the type kept for the emitter.
+pub fn check_untyped(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
+    let xs = items(form);
+    let name = name_of(v, second(xs));
+    let v = at(v, name, nil());
+    let e = third(xs);
+    let tagcase_ = synth(v, new_state(), e);
+    match *tagcase_ {
+        Res::Res(t, es, s) => {
+            let written = ty_sexp(v, s, t);
+            if (not(procedure_p(e)) && any_p(lambda1(move |x: Str| {
+                not((string_eq_p(x, str_lit("spin")) || string_eq_p(x, str_lit("@globals")) || global_atom_p(x)))
+            }), es)) {
+                refuse(v, string_append(str_lit("a constant whose value has the effect "), string_append(show_effs(es), str_lit(": KFX's constant is a fn, run at each use, so its value may only read globals"))))
+            } else {
+                elab(with_binds(v, cons(global(v, name, scheme(nil(), zonk(s, t))), nil())), cons(typed(name, written), nil()))
+            }
+        }
+    }
+}
+
+pub fn untyped_p(form: &'static Sexp) -> bool {
+    (head_is_p(form, str_lit("define")) && i64_eq(size(items(form)), 3i64))
+}
+
+/// The forms in order; `found`, the types elaborated so far.
+pub fn check_tops(mut v: &'static Cv, mut forms: Sexps, mut found: Typeds) -> &'static Elab {
     loop {
         if null_p(forms) {
-            return v;
+            return elab(v, found);
+        } else if untyped_p(car(forms)) {
+            let tagcase_ = car(forms);
+            match *tagcase_ {
+                Sexp::Lst(xs, src_file, src_line) => {
+                    let tagcase_ = check_untyped(near(v, src_file, src_line), car(forms));
+                    match *tagcase_ {
+                        Elab::Elab(v2, more) => {
+                            (v, forms, found) = (at(v2, str_lit(""), nil()), cdr(forms), onto(more, found));
+                            continue;
+                        }
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    forms = cdr(forms);
+                    continue;
+                }
+            }
         } else {
             (v, forms) = (check_top(v, car(forms)), cdr(forms));
             continue;
@@ -2379,8 +2522,9 @@ pub fn check_tops(mut v: &'static Cv, mut forms: Sexps) -> &'static Cv {
     }
 }
 
-/// Every form, in order; the first error stops the compiler.
-pub fn check_program(forms: Sexps) -> () {
+/// Every form, in order; the first error stops the compiler. What it gives
+/// is the types of the definitions written with none.
+pub fn check_program(forms: Sexps) -> Typeds {
     let empty = cv(nil(), nil(), nil(), nil(), str_lit("a type"), nil(), str_lit("the program"), 0i64);
     let start = cv(nil(), nil(), declare_types(empty, forms, nil()), nil(), str_lit("a type"), nil(), str_lit("the program"), 0i64);
     let types = type_names_free(start, forms);
@@ -2401,7 +2545,11 @@ pub fn check_program(forms: Sexps) -> () {
         }
     };
     let v = with_binds(typed, prim_binds(typed));
-    check_tops(v, forms);
-    ()
+    let tagcase_ = check_tops(v, forms, nil());
+    match *tagcase_ {
+        Elab::Elab(done, found) => {
+            found
+        }
+    }
 }
 
