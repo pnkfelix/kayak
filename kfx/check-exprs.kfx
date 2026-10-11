@@ -132,10 +132,6 @@
                           as))
               es here group file line fs tv at))))))
 
-(define-rec
-  (repeated? (subr kfx (strings) bool)
-    (lambda (xs) (and (not (null? xs)) (or (string-member? (car xs) (cdr xs)) (repeated? (cdr xs)))))))
-
 (define spec-well-formed (subr kfx (cv sexp) unit)
   (lambda (v spec)
     "A moduleof's items each `(abs name type)`, `(abs (name ...) type)`,
@@ -143,7 +139,10 @@
     (begin
       (map (lambda ((x sexp))
              (let ((ys (items x)))
-               (cond ((and (sym-is? (car ys) "abs") (i64= (size ys) 3) (sym-is? (third ys) "type")) #u)
+               (cond ((and (sym-is? (car ys) "abs") (i64= (size ys) 3) (sym-is? (third ys) "type")
+                           (not (any? (lambda ((n string)) (or (string=? (camel n) "Self") (string=? (camel n) "Module")))
+                                      (tagcase (second ys) (sym (n) (list n)) (lst (ns f l p) (map sym-name ns)) (else other nil)))))
+                      #u)
                      ((and (or (sym-is? (car ys) "desc") (sym-is? (car ys) "val")) (i64= (size ys) 3)
                            (tagcase (second ys) (sym (n) #t) (else other #f)))
                       #u)
@@ -213,6 +212,28 @@
         (note-fact
          (fold-values v s m (module-type-values w spec))
          "" 0 (string-append "module-impl " (string-append m (string-append " " x))))))))
+
+(define top-lambda? (subr kfx (cv) bool)
+  (lambda (v)
+    "Whether the lambda checked is a top-level definition's, as a procedure of
+     a module parameter must be (C24)."
+    (let ((found (find-bind "%toplambda" (cv-binds v))))
+      (and (not (null? found)) (tagcase (car found) (bind (n sc w) (string=? w "yes")))))))
+
+(define-rec
+  (has-var? (subr kfx (st ty) bool)
+    (lambda (s t)
+      "Whether `t` mentions a type or region variable."
+      (tagcase (walk s t)
+        (ty-var (n) #t)
+        (ty-list (e r) (or (has-var? s e) (has-var? s r)))
+        (ty-flat (e r) (or (has-var? s e) (has-var? s r)))
+        (ty-ref (e r) (or (has-var? s e) (has-var? s r)))
+        (ty-tag (a h d r) (or (has-var? s a) (has-var? s h) (has-var? s r)))
+        (ty-data (d args) (any? (lambda ((x ty)) (has-var? s x)) args))
+        (ty-shape (p ls ts) (any? (lambda ((x ty)) (has-var? s x)) ts))
+        (ty-proc (es ps r) (or (has-var? s r) (any? (lambda ((x ty)) (has-var? s x)) ps)))
+        (else other #f)))))
 
 (define control-form? (subr kfx (string) bool)
   (lambda (h)
@@ -398,10 +419,14 @@
                    (refuse v (string-append "nothing is named " name))
                    (tagcase (car found)
                      (bind (n sc where)
-                       (if (string=? where "module")
-                           (refuse v (string-append "a module as a value: KFX's modules are Rust's, opened by with: " name))
+                       (cond ((or (string=? where "module")
+                                  (not (null? (module-spec v (tagcase sc (scheme (tv t) t))))))
+                              (refuse v (string-append "a module as a value: KFX's modules are Rust's, opened by with: " name)))
+                             ((tagcase sc (scheme (tv t) (tagcase t (ty-proc (es ps r) (any? (lambda ((p ty)) (not (null? (module-spec v p)))) ps)) (else other #f))))
+                              (refuse v (string-append "a procedure of a module parameter, a Rust generic fn, named as a value: " name)))
+                             (else
                            (tagcase (instantiate s sc)
-                             (inst (t s regions) (res t (naming-effs s name where t (cv-group v)) s))))))))))))
+                             (inst (t s regions) (res t (naming-effs s name where t (cv-group v)) s)))))))))))))
 
   (check (subr kfx (cv st sexp ty) res)
     (lambda (v s e expected)
@@ -488,7 +513,12 @@
                  (tagcase (fresh s) (res (m es s) (res (ty-list m (ty-rconst "acyclic")) nil s)))
                  (tagcase (synth v s (car xs))
                    (res (t es0 s)
-                     (with-effs (check v s e (ty-list t (ty-rconst "acyclic"))) es0)))))
+                     "Its first element's type, a `nat`'s an `int`: FX-26's is that
+                      element's own `(nat v)`, which no other `nat` is."
+                     (if (and (tagcase (walk s t) (ty-nat () #t) (else other #f)) (not (null? (cdr xs))))
+                         (refuse v "a list of nats: FX-26 types each its own (nat v), so no two share a list")
+                     (let ((t (tagcase (walk s t) (ty-nat () (ty-int)) (else other t))))
+                       (with-effs (check v s e (ty-list t (ty-rconst "acyclic"))) es0)))))))
             ((control-form? h) (body-form v s h xs nil))
             ((string=? h "and") (bools v s xs))
             ((string=? h "or") (bools v s xs))
@@ -560,10 +590,10 @@
                       "A module parameter's values, of its abstract types `m..t`."
                       (let* ((spec (car (module-spec v (tagcase (car found) (bind (n sc where) (tagcase sc (scheme (tv t) t)))))))
                              (w (module-scope v spec m "")))
-                        (body (with-binds w (module-type-values w spec)) s (cdr xs) expected)))
+                        (found-then-fitted v (body (with-binds w (module-type-values w spec)) s (cdr xs) nil) expected)))
                      ((or (null? found) (not (tagcase (car found) (bind (n sc where) (string=? where "module")))))
                       (refuse v (string-append "KFX's with opens a module defined at the top level, or a module parameter, by its name: " m)))
-                     (else (with-effs (body (opened v m) s (cdr xs) expected) (list (string-append "g:" m)))))))
+                     (else (with-effs (found-then-fitted v (body (opened v m) s (cdr xs) nil) expected) (list (string-append "g:" m)))))))
             ((string=? h "cond") (cond-clauses v s xs expected))
             ((string=? h "case")
              "On a character, an integer, a string or a boolean, the data
@@ -582,10 +612,12 @@
                (res (t es s)
                  (tagcase (walk s t)
                    (ty-data (d args)
+                     (if (null? (variants-of v d))
+                         (refuse v (string-append "tagcase of a " (string-append (show-ty s t) ", no sum")))
                      (with-effs (tag-arms v s (walk s t) (cdr xs)
                                           (instantiate-variants (family-of v d) args (variants-of v d))
                                           expected)
-                                es))
+                                es)))
                    (ty-shape (p ls ts)
                      (if p
                          (refuse v (string-append "tagcase of a " (string-append (show-ty s t) ", no sum")))
@@ -605,15 +637,17 @@
                        (tagcase (walk s (car expected))
                          (ty-shape (p ms us) (if (and p (strings=? ls ms)) us nil))
                          (else other nil)))))
-        (if (any? (lambda ((f sexps)) (or (not (i64= (size f) 2)) (string=? (label-of (car f)) ""))) fs)
-            (refuse v "a product's fields are each (label value)")
+        (cond ((any? (lambda ((f sexps)) (or (not (i64= (size f) 2)) (string=? (label-of (car f)) ""))) fs)
+               (refuse v "a product's fields are each (label value)"))
+              ((repeated? ls) (refuse v "a label appears twice in a product"))
+              (else
             (tagcase (product-values v s (map second fs) want)
               (res (t es s)
                 (tagcase t
                   (ty-shape (p ms us)
                     (let ((r (res (ty-shape #t ls us) es s)))
                       (if (null? expected) r (tagcase r (res (t2 es2 s2) (res t2 es2 (fits v s2 t2 (car expected))))))))
-                  (else other (refuse v "a product")))))))))
+                  (else other (refuse v "a product"))))))))))
 
   (product-values (subr kfx (cv st sexps tys) res)
     (lambda (v s es want)
@@ -653,7 +687,7 @@
           (if (null? (cdr branches))
               (res t es s)
               (tagcase (arms v s (cdr branches) (next-expected s t expected))
-                (res (t2 es2 s) (res (joined s t t2 expected) (effs-union es es2) s))))))))
+                (res (t2 es2 s) (res (joined s t t2 expected) (effs-union es es2) (join-state v s t t2 expected)))))))))
 
   (cond-clauses (subr kfx (cv st sexps tys) res)
     (lambda (v s clauses expected)
@@ -670,7 +704,7 @@
                       (res (t es s)
                         (tagcase (cond-clauses v s (cdr clauses) (next-expected s t expected))
                           (res (t2 es2 s)
-                            (res (joined s t t2 expected) (effs-union es0 (effs-union es es2)) s))))))))))))
+                            (res (joined s t t2 expected) (effs-union es0 (effs-union es es2)) (join-state v s t t2 expected)))))))))))))
 
   (case-arms (subr kfx (cv st string sexps tys) res)
     (lambda (v s kind cases expected)
@@ -689,7 +723,7 @@
                (tagcase (body v (case-data v s kind (items (car arm))) (cdr arm) expected)
                  (res (t es s)
                    (tagcase (case-arms v s kind (cdr cases) (next-expected s t expected))
-                     (res (t2 es2 s) (res (joined s t t2 expected) (effs-union es es2) s))))))))))
+                     (res (t2 es2 s) (res (joined s t t2 expected) (effs-union es es2) (join-state v s t t2 expected)))))))))))
 
   (case-data (subr kfx (cv st string sexps) st)
     (lambda (v s kind xs)
@@ -704,7 +738,7 @@
       "A tagcase's arms; `vs` are the variants no arm has taken yet."
       (if (null? tagged)
           (if (null? vs)
-              (if (null? expected) (refuse v "a tagcase with no arms") (res (car expected) nil s))
+              (res (if (null? expected) (ty-void) (car expected)) nil s)
               (refuse v (string-append "a tagcase of a " (string-append (show-ty s whole) " with no else, and no arm for each tag"))))
           (let* ((arm (items (car tagged)))
                  (tag (name-of v (car arm))))
@@ -720,7 +754,7 @@
                       (tagcase (body (with-binds v (bind-fields v names fields)) s (cdr (cdr arm)) expected)
                         (res (t es s)
                           (tagcase (tag-arms v s whole (cdr tagged) (without-tag tag vs) (next-expected s t expected))
-                            (res (t2 es2 s) (res (joined s t t2 expected) (effs-union es es2) s))))))))))))
+                            (res (t2 es2 s) (res (joined s t t2 expected) (effs-union es es2) (join-state v s t t2 expected)))))))))))))
 
   (let-values (subr kfx (cv st sexps sexps tys binds bool) res)
     (lambda (v s bindings forms expected bound sequential)
@@ -761,7 +795,7 @@
       (let ((name (string-append "'" r)))
         (if (string-member? name (cv-tvars v))
             (refuse v (string-append "a letregion of a region named already: " r))
-            (tagcase (body (with-tvars v (list name)) s forms expected)
+            (tagcase (found-then-fitted v (body (with-tvars v (list name)) s forms nil) expected)
               (res (t es s)
                 (if (mentions? s t name)
                     (refuse v (string-append "a letregion whose value's type mentions its region " r))
@@ -785,8 +819,10 @@
                             (lst (pt src-file src-line src-pos) (parse-type v (cv-tvars v) (second pt)))
                             (else other (refuse v (string-append "a lambda with nothing expected needs its parameters' types: " (show-sexp other))))))
                         params)))
+        (if (any? (lambda ((p ty)) (not (null? (module-spec v p)))) types)
+            (refuse v "a module parameter is a top-level procedure's (C24)")
         (tagcase (body (with-binds v (bind-params v params types)) s forms nil)
-          (res (r es s) (res (ty-proc es types r) nil (if (escapes? es) (note-fact s (cv-file v) (cv-pos v) "fallible") s)))))))
+          (res (r es s) (res (ty-proc es types r) nil (if (escapes? es) (note-fact s (cv-file v) (cv-pos v) "fallible") s))))))))
 
   (check-lambda (subr kfx (cv st sexps sexps ty) res)
     (lambda (v s params forms expected)
@@ -795,13 +831,22 @@
           (if (not (i64= (size params) (size eps)))
               (refuse v "a lambda of the wrong number of parameters")
               (let ((s (check-written-params v s params eps)))
-                (tagcase (body (with-binds v (bind-params v params eps)) s forms (list er))
+                (if (or (not (null? (module-spec v (walk s er))))
+                        (and (any? (lambda ((p ty)) (not (null? (module-spec v (walk s p))))) eps)
+                             (not (top-lambda? v))))
+                    (refuse v "a module parameter is a top-level procedure's, and no procedure gives a module back (C24)")
+                (tagcase (body (with-binds v (cons (bind "%toplambda" (scheme nil (ty-unit)) "no") (bind-params v params eps)))
+                               s forms (list er))
                   (res (r es s)
                     (if (not (null? (fit-effs s es ees)))
-                        (let ((s (car (fit-effs s es ees))))
+                        (let* ((s (car (fit-effs s es ees)))
+                               (s (if (any? (lambda ((p ty)) (or (has-meta? s p) (has-var? s p))) eps)
+                                      s
+                                      (note-fact s (cv-file v) (cv-pos v)
+                                                 (string-append "param-types " (show-sexp (lst (map (lambda ((p ty)) (ty-sexp v s (zonk s p))) eps) "" 0 0)))))))
                           (res expected nil (if (escapes? ees) (note-fact s (cv-file v) (cv-pos v) "fallible") s)))
                         (refuse v (string-append "a lambda whose effect " (string-append (show-effs es)
-                                  (string-append " is not within " (show-effs ees)))))))))))
+                                  (string-append " is not within " (show-effs ees))))))))))))
         (else other (refuse v "a lambda where no procedure is expected")))))
 
   (lambda-effects (subr kfx (cv st sexps sexps ty) res)

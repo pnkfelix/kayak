@@ -1,0 +1,5 @@
+"A tagcase of a generative type, which is no sum, though its only arm is
+ an else."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-generative g i64)
+(define f (subr pure (g) i64) (lambda (s) (tagcase s (else z 1))))

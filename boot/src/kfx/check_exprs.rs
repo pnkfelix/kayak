@@ -298,16 +298,28 @@ pub fn module_scope(v: &'static Cv, spec: &'static Sexp, m: Str, actual: Str) ->
     }
 }
 
-pub fn repeated_p(xs: Strings) -> bool {
-    (not(null_p(xs)) && (string_member_p(car(xs), cdr(xs)) || repeated_p(cdr(xs))))
-}
-
 /// A moduleof's items each `(abs name type)`, `(abs (name ...) type)`,
 /// `(desc name T)` or `(val name T)`; no name twice.
 pub fn spec_well_formed(v: &'static Cv, spec: &'static Sexp) -> () {
     map(lambda1(move |x: &'static Sexp| {
         let ys = items(x);
-        if (sym_is_p(car(ys), str_lit("abs")) && i64_eq(size(ys), 3i64) && sym_is_p(third(ys), str_lit("type"))) {
+        if (sym_is_p(car(ys), str_lit("abs")) && i64_eq(size(ys), 3i64) && sym_is_p(third(ys), str_lit("type")) && not(any_p(lambda1(move |n: Str| {
+            (string_eq_p(camel(n), str_lit("Self")) || string_eq_p(camel(n), str_lit("Module")))
+        }), {
+            let tagcase_ = second(ys);
+            match *tagcase_ {
+                Sexp::Sym(n) => {
+                    cons(n, nil())
+                }
+                Sexp::Lst(ns, f, l, p) => {
+                    map(&sym_name, ns)
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil()
+                }
+            }
+        }))) {
             ()
         } else if ((sym_is_p(car(ys), str_lit("desc")) || sym_is_p(car(ys), str_lit("val"))) && i64_eq(size(ys), 3i64) && {
             let tagcase_ = second(ys);
@@ -444,6 +456,61 @@ pub fn conforms(v: &'static Cv, s: &'static St, m: Str, x: Str, spec: &'static S
         }
     }), spec_items(spec, str_lit("desc")));
     note_fact(fold_values(v, s, m, module_type_values(w, spec)), str_lit(""), 0i64, string_append(str_lit("module-impl "), string_append(m, string_append(str_lit(" "), x))))
+}
+
+/// Whether the lambda checked is a top-level definition's, as a procedure of
+/// a module parameter must be (C24).
+pub fn top_lambda_p(v: &'static Cv) -> bool {
+    let found = find_bind(str_lit("%toplambda"), cv_binds(v));
+    (not(null_p(found)) && {
+        let tagcase_ = car(found);
+        match *tagcase_ {
+            Bind::Bind(n, sc, w) => {
+                string_eq_p(w, str_lit("yes"))
+            }
+        }
+    })
+}
+
+/// Whether `t` mentions a type or region variable.
+pub fn has_var_p(s: &'static St, t: &'static Ty) -> bool {
+    let tagcase_ = walk(s, t);
+    match *tagcase_ {
+        Ty::TyVar(n) => {
+            true
+        }
+        Ty::TyList(e, r) => {
+            (has_var_p(s, e) || has_var_p(s, r))
+        }
+        Ty::TyFlat(e, r) => {
+            (has_var_p(s, e) || has_var_p(s, r))
+        }
+        Ty::TyRef(e, r) => {
+            (has_var_p(s, e) || has_var_p(s, r))
+        }
+        Ty::TyTag(a, h, d, r) => {
+            (has_var_p(s, a) || has_var_p(s, h) || has_var_p(s, r))
+        }
+        Ty::TyData(d, args) => {
+            any_p(lambda1(move |x: &'static Ty| {
+                has_var_p(s, x)
+            }), args)
+        }
+        Ty::TyShape(p, ls, ts) => {
+            any_p(lambda1(move |x: &'static Ty| {
+                has_var_p(s, x)
+            }), ts)
+        }
+        Ty::TyProc(es, ps, r) => {
+            (has_var_p(s, r) || any_p(lambda1(move |x: &'static Ty| {
+                has_var_p(s, x)
+            }), ps))
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
 }
 
 pub fn control_form_p(h: Str) -> bool {
@@ -845,8 +912,35 @@ pub fn synth_name(v: &'static Cv, s: &'static St, name: Str) -> &'static Res {
             let tagcase_ = car(found);
             match *tagcase_ {
                 Bind::Bind(n, sc, r#where) => {
-                    if string_eq_p(r#where, str_lit("module")) {
+                    if (string_eq_p(r#where, str_lit("module")) || not(null_p(module_spec(v, {
+                        let tagcase_ = sc;
+                        match *tagcase_ {
+                            Scheme::Scheme(tv, t) => {
+                                t
+                            }
+                        }
+                    })))) {
                         refuse(v, string_append(str_lit("a module as a value: KFX's modules are Rust's, opened by with: "), name))
+                    } else if {
+                        let tagcase_ = sc;
+                        match *tagcase_ {
+                            Scheme::Scheme(tv, t) => {
+                                let tagcase_ = t;
+                                match *tagcase_ {
+                                    Ty::TyProc(es, ps, r) => {
+                                        any_p(lambda1(move |p: &'static Ty| {
+                                            not(null_p(module_spec(v, p)))
+                                        }), ps)
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        false
+                                    }
+                                }
+                            }
+                        }
+                    } {
+                        refuse(v, string_append(str_lit("a procedure of a module parameter, a Rust generic fn, named as a value: "), name))
                     } else {
                         let tagcase_ = instantiate(s, sc);
                         match *tagcase_ {
@@ -1037,7 +1131,36 @@ pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
             let tagcase_ = synth(v, s, car(xs));
             match *tagcase_ {
                 Res::Res(t, es0, s) => {
-                    with_effs(check(v, s, e, ty_list(t, ty_rconst(str_lit("acyclic")))), es0)
+                    // Its first element's type, a `nat`'s an `int`: FX-26's is that
+                    // element's own `(nat v)`, which no other `nat` is.
+                    if ({
+                        let tagcase_ = walk(s, t);
+                        match *tagcase_ {
+                            Ty::TyNat() => {
+                                true
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    } && not(null_p(cdr(xs)))) {
+                        refuse(v, str_lit("a list of nats: FX-26 types each its own (nat v), so no two share a list"))
+                    } else {
+                        let t = {
+                            let tagcase_ = walk(s, t);
+                            match *tagcase_ {
+                                Ty::TyNat() => {
+                                    ty_int()
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    t
+                                }
+                            }
+                        };
+                        with_effs(check(v, s, e, ty_list(t, ty_rconst(str_lit("acyclic")))), es0)
+                    }
                 }
             }
         }
@@ -1194,7 +1317,7 @@ pub fn body_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Ty
                 }
             }));
             let w = module_scope(v, spec, m, str_lit(""));
-            body(with_binds(w, module_type_values(w, spec)), s, cdr(xs), expected)
+            found_then_fitted(v, body(with_binds(w, module_type_values(w, spec)), s, cdr(xs), nil()), expected)
         } else if (null_p(found) || not({
             let tagcase_ = car(found);
             match *tagcase_ {
@@ -1205,7 +1328,7 @@ pub fn body_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Ty
         })) {
             refuse(v, string_append(str_lit("KFX's with opens a module defined at the top level, or a module parameter, by its name: "), m))
         } else {
-            with_effs(body(opened(v, m), s, cdr(xs), expected), cons(string_append(str_lit("g:"), m), nil()))
+            with_effs(found_then_fitted(v, body(opened(v, m), s, cdr(xs), nil()), expected), cons(string_append(str_lit("g:"), m), nil()))
         }
     } else if string_eq_p(h, str_lit("cond")) {
         cond_clauses(v, s, xs, expected)
@@ -1249,7 +1372,11 @@ pub fn body_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Ty
                 let tagcase_ = walk(s, t);
                 match *tagcase_ {
                     Ty::TyData(d, args) => {
-                        with_effs(tag_arms(v, s, walk(s, t), cdr(xs), instantiate_variants(family_of(v, d), args, variants_of(v, d)), expected), es)
+                        if null_p(variants_of(v, d)) {
+                            refuse(v, string_append(str_lit("tagcase of a "), string_append(show_ty(s, t), str_lit(", no sum"))))
+                        } else {
+                            with_effs(tag_arms(v, s, walk(s, t), cdr(xs), instantiate_variants(family_of(v, d), args, variants_of(v, d)), expected), es)
+                        }
                     }
                     Ty::TyShape(p, ls, ts) => {
                         if p {
@@ -1298,6 +1425,8 @@ pub fn product_form(v: &'static Cv, s: &'static St, fields: Sexps, expected: Tys
         (not(i64_eq(size(f), 2i64)) || string_eq_p(label_of(car(f)), str_lit("")))
     }), fs) {
         refuse(v, str_lit("a product's fields are each (label value)"))
+    } else if repeated_p(ls) {
+        refuse(v, str_lit("a label appears twice in a product"))
     } else {
         let tagcase_ = product_values(v, s, map(&second, fs), want);
         match *tagcase_ {
@@ -1401,7 +1530,7 @@ pub fn arms(v: &'static Cv, s: &'static St, branches: Sexps, expected: Tys) -> &
                 let tagcase_ = arms(v, s, cdr(branches), next_expected(s, t, expected));
                 match *tagcase_ {
                     Res::Res(t2, es2, s) => {
-                        res(joined(s, t, t2, expected), effs_union(es, es2), s)
+                        res(joined(s, t, t2, expected), effs_union(es, es2), join_state(v, s, t, t2, expected))
                     }
                 }
             }
@@ -1430,7 +1559,7 @@ pub fn cond_clauses(v: &'static Cv, s: &'static St, clauses: Sexps, expected: Ty
                             let tagcase_ = cond_clauses(v, s, cdr(clauses), next_expected(s, t, expected));
                             match *tagcase_ {
                                 Res::Res(t2, es2, s) => {
-                                    res(joined(s, t, t2, expected), effs_union(es0, effs_union(es, es2)), s)
+                                    res(joined(s, t, t2, expected), effs_union(es0, effs_union(es, es2)), join_state(v, s, t, t2, expected))
                                 }
                             }
                         }
@@ -1470,7 +1599,7 @@ pub fn case_arms(v: &'static Cv, s: &'static St, kind: Str, cases: Sexps, expect
                 let tagcase_ = case_arms(v, s, kind, cdr(cases), next_expected(s, t, expected));
                 match *tagcase_ {
                     Res::Res(t2, es2, s) => {
-                        res(joined(s, t, t2, expected), effs_union(es, es2), s)
+                        res(joined(s, t, t2, expected), effs_union(es, es2), join_state(v, s, t, t2, expected))
                     }
                 }
             }
@@ -1497,11 +1626,11 @@ pub fn case_data(v: &'static Cv, s: &'static St, kind: Str, xs: Sexps) -> &'stat
 pub fn tag_arms(v: &'static Cv, s: &'static St, whole: &'static Ty, tagged: Sexps, vs: Variants, expected: Tys) -> &'static Res {
     if null_p(tagged) {
         if null_p(vs) {
-            if null_p(expected) {
-                refuse(v, str_lit("a tagcase with no arms"))
+            res(if null_p(expected) {
+                ty_void()
             } else {
-                res(car(expected), nil(), s)
-            }
+                car(expected)
+            }, nil(), s)
         } else {
             refuse(v, string_append(str_lit("a tagcase of a "), string_append(show_ty(s, whole), str_lit(" with no else, and no arm for each tag"))))
         }
@@ -1526,7 +1655,7 @@ pub fn tag_arms(v: &'static Cv, s: &'static St, whole: &'static Ty, tagged: Sexp
                         let tagcase_ = tag_arms(v, s, whole, cdr(tagged), without_tag(tag, vs), next_expected(s, t, expected));
                         match *tagcase_ {
                             Res::Res(t2, es2, s) => {
-                                res(joined(s, t, t2, expected), effs_union(es, es2), s)
+                                res(joined(s, t, t2, expected), effs_union(es, es2), join_state(v, s, t, t2, expected))
                             }
                         }
                     }
@@ -1593,7 +1722,7 @@ pub fn letregion_form(v: &'static Cv, s: &'static St, r: Str, forms: Sexps, expe
     if string_member_p(name, cv_tvars(v)) {
         refuse(v, string_append(str_lit("a letregion of a region named already: "), r))
     } else {
-        let tagcase_ = body(with_tvars(v, cons(name, nil())), s, forms, expected);
+        let tagcase_ = found_then_fitted(v, body(with_tvars(v, cons(name, nil())), s, forms, nil()), expected);
         match *tagcase_ {
             Res::Res(t, es, s) => {
                 if mentions_p(s, t, name) {
@@ -1638,14 +1767,20 @@ pub fn synth_lambda(v: &'static Cv, s: &'static St, params: Sexps, forms: Sexps)
             }
         }
     }), params);
-    let tagcase_ = body(with_binds(v, bind_params(v, params, types)), s, forms, nil());
-    match *tagcase_ {
-        Res::Res(r, es, s) => {
-            res(ty_proc(es, types, r), nil(), if escapes_p(es) {
-                note_fact(s, cv_file(v), cv_pos(v), str_lit("fallible"))
-            } else {
-                s
-            })
+    if any_p(lambda1(move |p: &'static Ty| {
+        not(null_p(module_spec(v, p)))
+    }), types) {
+        refuse(v, str_lit("a module parameter is a top-level procedure's (C24)"))
+    } else {
+        let tagcase_ = body(with_binds(v, bind_params(v, params, types)), s, forms, nil());
+        match *tagcase_ {
+            Res::Res(r, es, s) => {
+                res(ty_proc(es, types, r), nil(), if escapes_p(es) {
+                    note_fact(s, cv_file(v), cv_pos(v), str_lit("fallible"))
+                } else {
+                    s
+                })
+            }
         }
     }
 }
@@ -1658,18 +1793,33 @@ pub fn check_lambda(v: &'static Cv, s: &'static St, params: Sexps, forms: Sexps,
                 refuse(v, str_lit("a lambda of the wrong number of parameters"))
             } else {
                 let s = check_written_params(v, s, params, eps);
-                let tagcase_ = body(with_binds(v, bind_params(v, params, eps)), s, forms, cons(er, nil()));
-                match *tagcase_ {
-                    Res::Res(r, es, s) => {
-                        if not(null_p(fit_effs(s, es, ees))) {
-                            let s = car(fit_effs(s, es, ees));
-                            res(expected, nil(), if escapes_p(ees) {
-                                note_fact(s, cv_file(v), cv_pos(v), str_lit("fallible"))
+                if (not(null_p(module_spec(v, walk(s, er)))) || (any_p(lambda1(move |p: &'static Ty| {
+                    not(null_p(module_spec(v, walk(s, p))))
+                }), eps) && not(top_lambda_p(v)))) {
+                    refuse(v, str_lit("a module parameter is a top-level procedure's, and no procedure gives a module back (C24)"))
+                } else {
+                    let tagcase_ = body(with_binds(v, cons(bind(str_lit("%toplambda"), scheme(nil(), ty_unit()), str_lit("no")), bind_params(v, params, eps))), s, forms, cons(er, nil()));
+                    match *tagcase_ {
+                        Res::Res(r, es, s) => {
+                            if not(null_p(fit_effs(s, es, ees))) {
+                                let s = car(fit_effs(s, es, ees));
+                                let s = if any_p(lambda1(move |p: &'static Ty| {
+                                    (has_meta_p(s, p) || has_var_p(s, p))
+                                }), eps) {
+                                    s
+                                } else {
+                                    note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("param-types "), show_sexp(lst(map(lambda1(move |p: &'static Ty| {
+                                        ty_sexp(v, s, zonk(s, p))
+                                    }), eps), str_lit(""), 0i64, 0i64))))
+                                };
+                                res(expected, nil(), if escapes_p(ees) {
+                                    note_fact(s, cv_file(v), cv_pos(v), str_lit("fallible"))
+                                } else {
+                                    s
+                                })
                             } else {
-                                s
-                            })
-                        } else {
-                            refuse(v, string_append(str_lit("a lambda whose effect "), string_append(show_effs(es), string_append(str_lit(" is not within "), show_effs(ees)))))
+                                refuse(v, string_append(str_lit("a lambda whose effect "), string_append(show_effs(es), string_append(str_lit(" is not within "), show_effs(ees)))))
+                            }
                         }
                     }
                 }

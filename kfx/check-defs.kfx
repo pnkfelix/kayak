@@ -268,7 +268,8 @@
 (define check-procedure (subr kfx (cv sexp scheme) cv)
   (lambda (v defined sc)
     "A procedure's lambda against its type; `v` already has its name."
-    (let ((lam (items (if (head-is? defined "plambda") (third (items defined)) defined))))
+    (let ((lam (items (if (head-is? defined "plambda") (third (items defined)) defined)))
+          (v (with-binds v (list (bind "%toplambda" (scheme nil (ty-unit)) "yes")))))
       (tagcase sc
         (scheme (tvars t)
           (tagcase (check-lambda (with-tvars v tvars) (new-state) (items (second lam)) (cdr (cdr lam)) t)
@@ -394,13 +395,17 @@
 
 (define type-names-free (subr kfx (cv sexps) unit)
   (lambda (v forms)
-    "No type is named as one of kayak-rt's: `Str`, `List`, `Cons`."
+    "No type is named as one of Rust's prelude or kayak-rt's, which the
+     generated Rust names too: `Str`, `List`, `Fn`, `Option`, ..."
     (begin
       (map (lambda ((f sexp))
              (if (or (head-is? f "define-type") (head-is? f "define-datatype") (head-is? f "define-generative"))
                  (let ((name (tagcase (second (items f)) (sym (n) n) (else other ""))))
-                   (if (or (string=? name "str") (string=? name "list") (string=? name "cons"))
-                       (refuse v (string-append "kayak-rt has a type " (string-append (camel name) " of its own")))
+                   (if (string-member? (camel name) (list "Str" "List" "Cons" "Int" "Tag" "Unwind" "Ref" "FlatArray" "Knot" "Show"
+                                                          "OnceCell" "Fn" "FnMut" "FnOnce" "Box" "Option" "Some" "None"
+                                                          "Result" "Ok" "Err" "String" "Vec" "Copy" "Clone" "Send" "Sync"
+                                                          "Sized" "Drop" "Default" "Iterator" "Self" "Module"))
+                       (refuse v (string-append "Rust or kayak-rt has a type " (string-append (camel name) " of its own")))
                        #u))
                  #u))
            forms)

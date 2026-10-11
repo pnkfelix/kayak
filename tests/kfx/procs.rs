@@ -47,7 +47,7 @@ pub fn add1(n: i64) -> i64 {
 }
 
 pub fn adder(n: i64) -> &'static dyn Fn(i64) -> i64 {
-    lambda1(move |m| {
+    lambda1(move |m: i64| {
         i64_plus(n, m)
     })
 }
@@ -87,7 +87,7 @@ pub fn main() -> Str {
         string_append(s, str_lit("!"))
     }), str_lit("hey")), cons(i64_to_string(fold(lambda2(move |acc: i64, x: i64| {
         i64_plus(acc, x)
-    }), 0i64, xs)), cons(apply_op(op(str_lit("plus"), lambda2(move |a, b| {
+    }), 0i64, xs)), cons(apply_op(op(str_lit("plus"), lambda2(move |a: i64, b: i64| {
         i64_plus(a, b)
     })), 2i64, 3i64), cons(apply_op(op(str_lit("times"), &i64_star_wrapped), 2i64, 3i64), nil()))))))))))
 }

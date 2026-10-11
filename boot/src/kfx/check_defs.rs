@@ -346,11 +346,11 @@ pub fn constant_made(v: &'static Cv, s: &'static St, e: &'static Sexp, es: Strin
 
 /// A procedure's lambda against its type; `v` already has its name.
 pub fn check_procedure(v: &'static Cv, defined: &'static Sexp, sc: &'static Scheme) -> &'static Cv {
-    let lam = items(if head_is_p(defined, str_lit("plambda")) {
+    let (lam, v) = (items(if head_is_p(defined, str_lit("plambda")) {
         third(items(defined))
     } else {
         defined
-    });
+    }), with_binds(v, cons(bind(str_lit("%toplambda"), scheme(nil(), ty_unit()), str_lit("yes")), nil())));
     let tagcase_ = sc;
     match *tagcase_ {
         Scheme::Scheme(tvars, t) => {
@@ -594,7 +594,8 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
     }
 }
 
-/// No type is named as one of kayak-rt's: `Str`, `List`, `Cons`.
+/// No type is named as one of Rust's prelude or kayak-rt's, which the
+/// generated Rust names too: `Str`, `List`, `Fn`, `Option`, ...
 pub fn type_names_free(v: &'static Cv, forms: Sexps) -> () {
     map(lambda1(move |f: &'static Sexp| {
         if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-datatype")) || head_is_p(f, str_lit("define-generative"))) {
@@ -610,8 +611,8 @@ pub fn type_names_free(v: &'static Cv, forms: Sexps) -> () {
                     }
                 }
             };
-            if (string_eq_p(name, str_lit("str")) || string_eq_p(name, str_lit("list")) || string_eq_p(name, str_lit("cons"))) {
-                refuse(v, string_append(str_lit("kayak-rt has a type "), string_append(camel(name), str_lit(" of its own"))))
+            if string_member_p(camel(name), cons(str_lit("Str"), cons(str_lit("List"), cons(str_lit("Cons"), cons(str_lit("Int"), cons(str_lit("Tag"), cons(str_lit("Unwind"), cons(str_lit("Ref"), cons(str_lit("FlatArray"), cons(str_lit("Knot"), cons(str_lit("Show"), cons(str_lit("OnceCell"), cons(str_lit("Fn"), cons(str_lit("FnMut"), cons(str_lit("FnOnce"), cons(str_lit("Box"), cons(str_lit("Option"), cons(str_lit("Some"), cons(str_lit("None"), cons(str_lit("Result"), cons(str_lit("Ok"), cons(str_lit("Err"), cons(str_lit("String"), cons(str_lit("Vec"), cons(str_lit("Copy"), cons(str_lit("Clone"), cons(str_lit("Send"), cons(str_lit("Sync"), cons(str_lit("Sized"), cons(str_lit("Drop"), cons(str_lit("Default"), cons(str_lit("Iterator"), cons(str_lit("Self"), cons(str_lit("Module"), nil())))))))))))))))))))))))))))))))))) {
+                refuse(v, string_append(str_lit("Rust or kayak-rt has a type "), string_append(camel(name), str_lit(" of its own"))))
             } else {
                 ()
             }

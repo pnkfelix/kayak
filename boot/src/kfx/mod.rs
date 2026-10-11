@@ -20,9 +20,9 @@ pub mod compile;
 pub use compile::*;
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
-pub struct Product_sym_is_p<A0>(pub A0);
+pub struct Product_8sym_is_p<A0>(pub A0);
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
-pub struct Product_string_eq_p<A0>(pub A0);
+pub struct Product_11string_eq_p<A0>(pub A0);
 

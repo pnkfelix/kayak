@@ -1,0 +1,4 @@
+"Branches found by themselves, where nothing is expected: an i64 and an
+ int, which FX-26 does not join."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f (subr pure (bool i64) i64) (lambda (c v) (let ((x (if c v 0))) x)))

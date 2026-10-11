@@ -101,10 +101,20 @@
 (define split-words (subr kfx (string) strings)
   (lambda (s) (reverse-strings (split-words-from (string-chars s) nil nil) nil)))
 
+(define plain-name (subr kfx (string) string)
+  (lambda (n)
+    "A mangled name without its raw identifier's `r#`."
+    (if (has-prefix? n "r#") (after-prefix n "r#") n)))
+
 (define shape-name (subr kfx (bool strings) string)
   (lambda (product labels)
+    "`Product_1x_1y`: each label as a Rust name, its length first, so that
+     no two lists of labels, nor a type the program names, share one."
     (string-append (if product "Product" "Sum")
-                   (concat-strings (map (lambda ((l string)) (string-append "_" (mangle l))) labels)))))
+                   (concat-strings (map (lambda ((l string))
+                                          (let ((n (plain-name (mangle l))))
+                                            (string-append "_" (string-append (i64->string (string-length-i64 n)) n))))
+                                        labels)))))
 
 (define ctx-datatypes (subr kfx (ctx) strings)
   (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms es mods) ds))))
@@ -165,7 +175,7 @@
 (define module-path (subr kfx (ctx string) string)
   (lambda (c m)
     "A module's Rust path: a module parameter's is its type parameter."
-    (if (string=? (param-module-type m (ctx-locals c)) "") (mangle m) (camel m))))
+    (if (string=? (param-module-type m (ctx-locals c)) "") (mangle m) (string-append "Mod" (camel m)))))
 
 (define item-values (subr kfx (sexps) strings)
   (lambda (forms)
@@ -380,6 +390,25 @@
     (if (null? (dotted d)) (camel d) (string-append (mangle (car (dotted d))) (string-append "::" (camel (car (cdr (dotted d)))))))))
 
 (define-rec
+  (desc-type (subr kfx (ctx string strings) sexps)
+    (lambda (c s ls)
+      "What a module parameter's described type `s`, opened by a `with`,
+       describes, as a list of one; or none."
+      (cond ((null? ls) nil)
+            ((has-prefix? (car ls) "%with ")
+             (let* ((m (after-prefix (car ls) "%with "))
+                    (x (param-module-type m (cdr ls)))
+                    (spec (if (string=? x "") nil (module-body c (string-append "%moduleof " x))))
+                    (found (if (null? spec) nil
+                               (concat (map (lambda ((d sexp))
+                                              (if (and (head-is? d "desc") (string=? (sym-name (second (items d))) s))
+                                                  (the sexps (list (third (items d))))
+                                                  nil))
+                                            (cdr (items (car spec))))))))
+               (if (null? found) (desc-type c s (cdr ls)) found)))
+            (else (desc-type c s (cdr ls)))))))
+
+(define-rec
   (put-type (subr kfx (ctx sexp chars) chars)
     (lambda (c t acc)
       "A type. A name that is no base type or datatype is a type abbreviation
@@ -397,6 +426,7 @@
                 ((string=? s "string") (put "Str" acc))
                 ((not (null? (dotted s))) (put (type-path c (car (dotted s)) (car (cdr (dotted s)))) acc))
                 ((string-member? s (ctx-datatypes c)) (put (camel s) (put "&'static " acc)))
+                ((not (null? (desc-type c s (ctx-locals c)))) (put-type c (car (desc-type c s (ctx-locals c))) acc))
                 ((not (string=? (opener (string-append "%type " s) (ctx-locals c)) ""))
                  (put (type-path c (opener (string-append "%type " s) (ctx-locals c)) s) acc))
                 (else (put (camel s) acc))))
@@ -609,6 +639,16 @@
           ((fact-at? c e "case string") "string")
           ((fact-at? c e "case bool") "bool")
           (else "char"))))
+
+(define lambda-params-typed (subr kfx (ctx sexp sexps) sexps)
+  (lambda (c e params)
+    "A lambda's parameters, each written with no type given the one the
+     checker found, where it found them all: Rust may not find a closure's
+     parameter's type from its uses."
+    (let ((found (fact-with c e "param-types ")))
+      (if (string=? found "")
+          params
+          (map2-params params (items (car (read-all (string-chars found) "" 1))))))))
 
 (define abort? (subr kfx (ctx sexp) bool)
   (lambda (c e)
@@ -932,7 +972,7 @@
       (let* ((acc (put "lambda" acc))
              (acc (put (i64->string (size params)) acc))
              (acc (put "(move |" acc))
-             (acc (put-lambda-params c params acc))
+             (acc (put-lambda-params c (lambda-params-typed c e params) acc))
              (acc (put "| " acc)))
         (if (fact-at? c e "fallible")
             (put ")" (put-block (with-locals c (cons "%fallible" (map param-name params))) body n (ok-value) acc))
@@ -1292,7 +1332,7 @@
            (acc (cond ((null? mparams) acc)
                       ((not (null? binders)) (error "kfx: a poly procedure with a module parameter, which KFX does not write yet"))
                       (else (put ">" (put-sep (lambda ((mp string) (acc chars))
-                                                (let ((ws (split-words mp))) (put (camel (car (cdr ws))) (put ": " (put (camel (car ws)) acc)))))
+                                                (let ((ws (split-words mp))) (put (camel (car (cdr ws))) (put ": " (put (camel (car ws)) (put "Mod" acc))))))
                                               ", " mparams (put "<" acc))))))
            (acc (if lambda?
                     (let* ((acc (put "(" acc))

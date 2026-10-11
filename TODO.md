@@ -124,6 +124,12 @@ Escapes are done (`DONE.md`, C18). Left:
     argument against its parameter when an earlier argument fixed its
     type (`tests/kfx/families.kfx`), and finds it alone when only the
     result expected did; KFX's rule is a `list` alone;
+  - a `list` made under `with` or `letregion` is at `acyclic` to KFX and
+    at a fresh region to FX-26, which then refuses it where `acyclic` is
+    expected; KFX would need FX-26's masking of fresh regions;
+  - names that differ only in case, or in `-` and `_`, may collide in Rust
+    (two types `has` and `Has`; labels `a-b` and `a_b`): a Rust error, not
+    a wrong answer;
   - a global procedure that cannot abort, named where one that may is
     expected, is a Rust type error (`&id` where a `Result` is returned):
     the emitter should wrap it in a closure returning `Ok`.

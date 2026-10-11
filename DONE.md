@@ -727,3 +727,24 @@ where `f` takes one).
 A global procedure named as a value is `spin` only within its own group,
 as FX-26 has it; one defined before cannot reach back, since KFX defines
 each name once (`kfx-refused/gives-itself`).
+
+## A third probe's findings (2026-10-11)
+
+524 programs on products and sums, module parameters and literals: no
+value differed. K1 holes, now closed: branches joined though FX-26 does
+not (each is now found by itself where nothing is expected, then fitted:
+a literal is an `int` beside an `i64`); a `with`'s or `letregion`'s body
+checked against the type expected rather than found and fitted; `*`,
+`max`, `min` of nats `nat` (`int` to FX-26); nats sharing a list, or an
+inference variable (FX-26 gives each its own `(nat v)`; KFX makes such a
+variable an `int`, and refuses a list of more than one); a label or tag
+given twice; a `tagcase` of a generative type. Rust that did not
+compile, now refused or written right: a closure whose parameters'
+types Rust could not find (the checker now gives them, where it found
+them whole); a procedure of a module parameter as a value, a lambda of
+one, a module given back; a description named under `with` on a module
+parameter; names that collided in Rust (shapes now `Product_1x_1y`,
+module parameters `ModM`, Rust's and kayak-rt's type names refused).
+Left (`TODO.md` §17): a nested call given the type expected (`(car
+(cons 5 ...))`), a `list` under `with` at `acyclic` where FX-26's is a
+fresh region, and names that differ only in case or in `-` and `_`.

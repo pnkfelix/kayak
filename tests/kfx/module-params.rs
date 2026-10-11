@@ -73,17 +73,17 @@ pub trait Starts {
     fn value(a0: Self::T) -> i64;
 }
 
-pub fn three<M: Steps>() -> i64 {
-    M::value(M::inc(M::inc(M::inc(M::zero()))))
+pub fn three<ModM: Steps>() -> i64 {
+    ModM::value(ModM::inc(ModM::inc(ModM::inc(ModM::zero()))))
 }
 
-pub fn start<M: Starts>() -> i64 {
-    M::value(M::zero())
+pub fn start<ModM: Starts>() -> i64 {
+    ModM::value(ModM::zero())
 }
 
 // A module parameter beside others.
-pub fn steps_from<M: Steps>(n: i64) -> i64 {
-    i64_plus(n, M::value(M::inc(M::zero())))
+pub fn steps_from<ModM: Steps>(n: i64) -> i64 {
+    i64_plus(n, ModM::value(ModM::inc(ModM::zero())))
 }
 
 pub fn main() -> Str {

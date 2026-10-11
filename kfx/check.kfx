@@ -152,6 +152,10 @@
   (lambda (x p) (list->string (drop-chars (string->list x) (string-length-i64 p)))))
 
 (define-rec
+  (repeated? (subr kfx (strings) bool)
+    (lambda (xs) (and (not (null? xs)) (or (string-member? (car xs) (cdr xs)) (repeated? (cdr xs)))))))
+
+(define-rec
   (strings=? (subr kfx (strings strings) bool)
     (lambda (a b)
       (cond ((null? a) (null? b))
@@ -495,9 +499,12 @@
                            (and (sym-is? (car xs) "sumof")
                                 (any? (lambda ((f sexps)) (tagcase (car f) (sym (n) #f) (else other #t))) fields)))
                        (refuse v (string-append "a type KFX does not have: " (show-sexp t)))
+                       (if (or (repeated? (map (lambda ((f sexps)) (label-of (car f))) fields))
+                               (repeated? (map (lambda ((f sexps)) (camel (label-of (car f)))) fields)))
+                           (refuse v (string-append "a label appears twice in " (show-sexp t)))
                        (ty-shape (sym-is? (car xs) "productof")
                                  (map (lambda ((f sexps)) (label-of (car f))) fields)
-                                 (map (lambda ((f sexps)) (parse-type v tvars (second f))) fields)))))
+                                 (map (lambda ((f sexps)) (parse-type v tvars (second f))) fields))))))
                 ((sym-is? (car xs) "select")
                  (let ((name (string-append (name-of v (second xs)) (string-append " " (name-of v (third xs))))))
                    (if (null? (find-alias name (cv-aliases v)))
@@ -796,7 +803,13 @@
                 (if (occurs? s k e) (mismatch v s a e) (solve s k e)))))
           (else other
             (tagcase e
-              (ty-meta (j) (if (occurs? s j a) (mismatch v s a e) (solve s j a)))
+              (ty-meta (j)
+                (cond ((occurs? s j a) (mismatch v s a e))
+                      ((tagcase a (ty-nat () #t) (else other #f))
+                       "A `nat` met by an inference variable makes it an `int`: FX-26's
+                        is the variable's own `(nat v)`, which no other `nat` is."
+                       (solve s j (ty-int)))
+                      (else (solve s j a))))
               (else other (fits-shapes v s a e))))))))
   (fits-shapes (subr kfx (cv st ty ty) st)
     (lambda (v s a e)
@@ -996,11 +1009,23 @@
 (define next-expected (subr kfx (st ty tys) tys)
   (lambda (s t expected)
     "What the branches after one of type `t` are checked against: the type
-     expected, if known, else `t`, unless that is `void`, which says
-     nothing."
-    (cond ((not (null? expected)) expected)
-          ((void? s t) nil)
-          (else (list t)))))
+     expected, if known; else nothing, each found by itself and then joined
+     (`join-state`), as FX-26 has it: a literal in one is an `int` though
+     another is an `i64`."
+    (if (null? expected) nil expected)))
+
+(define found-then-fitted (subr kfx (cv res tys) res)
+  (lambda (v r expected)
+    "A `with`'s or a `letregion`'s body, found by itself, as FX-26 finds it,
+     then fitted to the type expected."
+    (if (null? expected)
+        r
+        (tagcase r (res (t es s) (res (car expected) es (fits v s t (car expected))))))))
+
+(define join-state (subr kfx (cv st ty ty tys) st)
+  (lambda (v s t rest expected)
+    "Branches found by themselves agree: the rest's type fits the first's."
+    (if (or (not (null? expected)) (void? s t) (void? s rest)) s (fits v s rest t))))
 
 (define joined (subr kfx (st ty ty tys) ty)
   (lambda (s t rest expected)
@@ -1058,8 +1083,9 @@
 (define nat-op? (subr kfx (string) bool)
   (lambda (h)
     "The operations whose result is a `nat` when their operands are, as
-     FX-26 keeps a `nat` through them: a sum, a product, a larger, a smaller."
-    (or (string=? h "+") (string=? h "*") (string=? h "max") (string=? h "min"))))
+     FX-26 keeps a `nat` through them: a sum. (A product, a larger, a smaller
+     are `int`s to FX-26's checker.)"
+    (string=? h "+")))
 
 (define prim? (subr kfx (bind) bool)
   (lambda (b) (tagcase b (bind (n sc where) (string=? where "prim")))))

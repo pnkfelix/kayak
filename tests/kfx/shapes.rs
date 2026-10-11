@@ -4,38 +4,38 @@ use kayak_rt::*;
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
-pub struct Product_x_y<A0, A1>(pub A0, pub A1);
+pub struct Product_1x_1y<A0, A1>(pub A0, pub A1);
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
-pub struct Product_w_h<A0, A1>(pub A0, pub A1);
+pub struct Product_1w_1h<A0, A1>(pub A0, pub A1);
 
 #[allow(non_camel_case_types)]
-pub enum Sum_circle_rect<A0, A1> {
+pub enum Sum_6circle_4rect<A0, A1> {
     Circle(A0),
     Rect(A1),
 }
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
-pub struct Product_1_2<A0, A1>(pub A0, pub A1);
+pub struct Product_11_12<A0, A1>(pub A0, pub A1);
 
 // FX-26's products and sums, structural: a generic Rust type for each list
 // of labels, `Product_x_y<A0, A1>` a tuple struct, `Sum_circle_rect<A0, A1>`
 // an enum whose values are references.
 
-pub type Point = Product_x_y<i64, i64>;
+pub type Point = Product_1x_1y<i64, i64>;
 
-pub type Shape = &'static Sum_circle_rect<i64, Product_w_h<i64, i64>>;
+pub type Shape = &'static Sum_6circle_4rect<i64, Product_1w_1h<i64, i64>>;
 
 // A member taken apart, `(rect (w h) ...)`, or bound whole, `(rect q ...)`.
 pub fn area(s: Shape) -> i64 {
     let tagcase_ = s;
     match *tagcase_ {
-        Sum_circle_rect::Circle(r) => {
+        Sum_6circle_4rect::Circle(r) => {
             i64_star(3i64, i64_star(r, r))
         }
-        Sum_circle_rect::Rect(product_) => {
+        Sum_6circle_4rect::Rect(product_) => {
             let w = product_.0;
             let h = product_.1;
             i64_star(w, h)
@@ -46,7 +46,7 @@ pub fn area(s: Shape) -> i64 {
 pub fn width(s: Shape) -> i64 {
     let tagcase_ = s;
     match *tagcase_ {
-        Sum_circle_rect::Rect(q) => {
+        Sum_6circle_4rect::Rect(q) => {
             q.0
         }
         _ => {
@@ -57,20 +57,20 @@ pub fn width(s: Shape) -> i64 {
 }
 
 pub fn origin() -> Point {
-    Product_x_y(1i64, 2i64)
+    Product_1x_1y(1i64, 2i64)
 }
 
 // Positional labels, and a product of products.
-pub fn pair(a: i64, b: i64) -> Product_1_2<i64, i64> {
-    Product_1_2(a, b)
+pub fn pair(a: i64, b: i64) -> Product_11_12<i64, i64> {
+    Product_11_12(a, b)
 }
 
-pub fn swap(p: Product_1_2<i64, i64>) -> Product_1_2<i64, i64> {
-    Product_1_2(p.1, p.0)
+pub fn swap(p: Product_11_12<i64, i64>) -> Product_11_12<i64, i64> {
+    Product_11_12(p.1, p.0)
 }
 
 pub fn main() -> Str {
-    let shapes = the::<List<Shape>>(cons(alloc(Sum_circle_rect::<i64, Product_w_h<i64, i64>>::Rect(Product_w_h(3i64, 4i64))), cons(alloc(Sum_circle_rect::<i64, Product_w_h<i64, i64>>::Circle(2i64)), nil())));
-    i64_to_string(i64_plus(i64_plus(area(car(shapes)), area(car(cdr(shapes)))), i64_plus(i64_star(100i64, origin().1), i64_plus(i64_star(1000i64, width(alloc(Sum_circle_rect::<i64, Product_w_h<i64, i64>>::Rect(Product_w_h(5i64, 6i64))))), i64_star(10000i64, swap(pair(7i64, 8i64)).0)))))
+    let shapes = the::<List<Shape>>(cons(alloc(Sum_6circle_4rect::<i64, Product_1w_1h<i64, i64>>::Rect(Product_1w_1h(3i64, 4i64))), cons(alloc(Sum_6circle_4rect::<i64, Product_1w_1h<i64, i64>>::Circle(2i64)), nil())));
+    i64_to_string(i64_plus(i64_plus(area(car(shapes)), area(car(cdr(shapes)))), i64_plus(i64_star(100i64, origin().1), i64_plus(i64_star(1000i64, width(alloc(Sum_6circle_4rect::<i64, Product_1w_1h<i64, i64>>::Rect(Product_1w_1h(5i64, 6i64))))), i64_star(10000i64, swap(pair(7i64, 8i64)).0)))))
 }
 

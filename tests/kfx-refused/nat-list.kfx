@@ -1,0 +1,3 @@
+"Two nats in one list: FX-26 types each its own (nat v)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f (subr pure (nat nat) nat) (lambda (v w) (car (list v w))))

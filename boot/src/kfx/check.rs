@@ -355,6 +355,10 @@ pub fn after_prefix(x: Str, p: Str) -> Str {
     list_to_string(drop_chars(string_to_list(x), string_length_i64(p)))
 }
 
+pub fn repeated_p(xs: Strings) -> bool {
+    (not(null_p(xs)) && (string_member_p(car(xs), cdr(xs)) || repeated_p(cdr(xs))))
+}
+
 pub fn strings_eq_p(a: Strings, b: Strings) -> bool {
     if null_p(a) {
         null_p(b)
@@ -1069,11 +1073,19 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     }), fields))) {
                         return refuse(v, string_append(str_lit("a type KFX does not have: "), show_sexp(t)));
                     } else {
-                        return ty_shape(sym_is_p(car(xs), str_lit("productof")), map(lambda1(move |f: Sexps| {
+                        if (repeated_p(map(lambda1(move |f: Sexps| {
                             label_of(car(f))
-                        }), fields), map(lambda1(move |f: Sexps| {
-                            parse_type(v, tvars, second(f))
-                        }), fields));
+                        }), fields)) || repeated_p(map(lambda1(move |f: Sexps| {
+                            camel(label_of(car(f)))
+                        }), fields))) {
+                            return refuse(v, string_append(str_lit("a label appears twice in "), show_sexp(t)));
+                        } else {
+                            return ty_shape(sym_is_p(car(xs), str_lit("productof")), map(lambda1(move |f: Sexps| {
+                                label_of(car(f))
+                            }), fields), map(lambda1(move |f: Sexps| {
+                                parse_type(v, tvars, second(f))
+                            }), fields));
+                        }
                     }
                 } else if sym_is_p(car(xs), str_lit("select")) {
                     let name = string_append(name_of(v, second(xs)), string_append(str_lit(" "), name_of(v, third(xs))));
@@ -1776,6 +1788,21 @@ pub fn fits(v: &'static Cv, s: &'static St, actual: &'static Ty, expected: &'sta
                 Ty::TyMeta(j) => {
                     if occurs_p(s, j, a) {
                         mismatch(v, s, a, e)
+                    } else if {
+                        let tagcase_ = a;
+                        match *tagcase_ {
+                            Ty::TyNat() => {
+                                true
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    } {
+                        // A `nat` met by an inference variable makes it an `int`: FX-26's
+                        // is the variable's own `(nat v)`, which no other `nat` is.
+                        solve(s, j, ty_int())
                     } else {
                         solve(s, j, a)
                     }
@@ -2246,15 +2273,38 @@ pub fn void_p(s: &'static St, t: &'static Ty) -> bool {
 }
 
 /// What the branches after one of type `t` are checked against: the type
-/// expected, if known, else `t`, unless that is `void`, which says
-/// nothing.
+/// expected, if known; else nothing, each found by itself and then joined
+/// (`join-state`), as FX-26 has it: a literal in one is an `int` though
+/// another is an `i64`.
 pub fn next_expected(s: &'static St, t: &'static Ty, expected: Tys) -> Tys {
-    if not(null_p(expected)) {
-        expected
-    } else if void_p(s, t) {
+    if null_p(expected) {
         nil()
     } else {
-        cons(t, nil())
+        expected
+    }
+}
+
+/// A `with`'s or a `letregion`'s body, found by itself, as FX-26 finds it,
+/// then fitted to the type expected.
+pub fn found_then_fitted(v: &'static Cv, r: &'static Res, expected: Tys) -> &'static Res {
+    if null_p(expected) {
+        r
+    } else {
+        let tagcase_ = r;
+        match *tagcase_ {
+            Res::Res(t, es, s) => {
+                res(car(expected), es, fits(v, s, t, car(expected)))
+            }
+        }
+    }
+}
+
+/// Branches found by themselves agree: the rest's type fits the first's.
+pub fn join_state(v: &'static Cv, s: &'static St, t: &'static Ty, rest: &'static Ty, expected: Tys) -> &'static St {
+    if (not(null_p(expected)) || void_p(s, t) || void_p(s, rest)) {
+        s
+    } else {
+        fits(v, s, rest, t)
     }
 }
 
@@ -2355,9 +2405,10 @@ pub fn mentions_p(s: &'static St, t: &'static Ty, r: Str) -> bool {
 }
 
 /// The operations whose result is a `nat` when their operands are, as
-/// FX-26 keeps a `nat` through them: a sum, a product, a larger, a smaller.
+/// FX-26 keeps a `nat` through them: a sum. (A product, a larger, a smaller
+/// are `int`s to FX-26's checker.)
 pub fn nat_op_p(h: Str) -> bool {
-    (string_eq_p(h, str_lit("+")) || string_eq_p(h, str_lit("*")) || string_eq_p(h, str_lit("max")) || string_eq_p(h, str_lit("min")))
+    string_eq_p(h, str_lit("+"))
 }
 
 pub fn prim_p(b: &'static Bind) -> bool {

@@ -1,0 +1,3 @@
+"A sum's tag given twice."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type s (sumof (a i64) (a string)))
