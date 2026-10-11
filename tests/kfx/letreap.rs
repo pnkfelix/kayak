@@ -8,7 +8,8 @@ use kayak_rt::*;
 
 pub fn total(n: i64) -> i64 {
     {
-        #[derive(Default)] struct Region_R<'r> { a0: Arena<Cons<'r, i64>>, phantom_: std::marker::PhantomData<(&'r (),)> }
+        struct Region_R<'r> { a0: Arena<Cons<'r, i64>>, phantom_: std::marker::PhantomData<(&'r (),)> }
+        impl<'r> Default for Region_R<'r> { fn default() -> Self { Region_R { a0: Arena::default(), phantom_: std::marker::PhantomData } } }
         impl<'r> Holds<Cons<'r, i64>> for Region_R<'r> { fn arena(&self) -> &Arena<Cons<'r, i64>> { &self.a0 } }
         fn letrena__r<'r>(r: &'r Region_R<'r>, n: i64) -> i64 {
             let build__knot = knot::<&'r dyn Fn(i64, ListAt<'r, i64>) -> ListAt<'r, i64>>();

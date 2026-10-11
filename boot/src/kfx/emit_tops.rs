@@ -381,9 +381,15 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, typ: &'static Sexp, defi
             nil::<Str>()
         }
     }), binders));
-    let c = with_locals(c, concat(map(lambda1(move |p: Str| {
+    let c = with_locals(c, onto(concat(map(lambda1(move |p: Str| {
         the::<Strings>(kayak_rt::cons(string_append(str_lit("%letrena "), p), kayak_rt::cons(string_append(str_lit("%placeparam "), p), kayak_rt::nil())))
-    }), places)));
+    }), places)), concat(map(lambda1(move |b: &'static Sexp| {
+        if sym_is_p(second(items(b)), str_lit("type")) {
+            the::<Strings>(kayak_rt::cons(string_append(str_lit("%tvar "), sym_name(car(items(b)))), kayak_rt::nil()))
+        } else {
+            nil::<Str>()
+        }
+    }), binders))));
     let typ = unpoly(typ);
     let defined = unpoly(defined);
     let lambda_p = head_is_p(defined, str_lit("lambda"));

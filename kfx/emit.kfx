@@ -421,6 +421,20 @@
             (else (desc-type c s (cdr ls)))))))
 
 (define-rec
+  (run-together-strings (subr kfx (strings) string)
+    (lambda (xs) (if (null? xs) "" (string-append (car xs) (run-together-strings (cdr xs)))))))
+
+(define-rec
+  (type-params-in (subr kfx (strings) strings)
+    (lambda (ls)
+      "The type parameters of the procedure being written, `%tvar a` each,
+       camel-cased: a `letrena`'s fn and type declare them again, as a
+       nested item must (C30)."
+      (cond ((null? ls) nil)
+            ((has-prefix? (car ls) "%tvar ") (cons (camel (after-prefix (car ls) "%tvar ")) (type-params-in (cdr ls))))
+            (else (type-params-in (cdr ls)))))))
+
+(define-rec
   (words-of-sep (subr kfx (strings string) string)
     (lambda (xs sep)
       (cond ((null? xs) "")
@@ -559,7 +573,7 @@
                         (lives (letrena-lifetimes (ctx-locals c)))
                         (life (string-append "'" (mangle r))))
                    (put (string-append "&" (string-append life (string-append " Region_" (string-append (camel r)
-                          (string-append "<" (string-append (words-of-sep (cons life (lifetimes-before lives life)) ", ") ">"))))))
+                          (string-append "<" (string-append (words-of-sep (onto (cons life (lifetimes-before lives life)) (type-params-in (ctx-locals c))) ", ") ">"))))))
                         acc)))
                 ((and (sym-is? (car xs) "bloblet") (not (null? (typed-flat c t))))
                  (put ">" (put-flat c (car (typed-flat c t))
@@ -1031,13 +1045,13 @@
                            (put (string-append " a" (string-append (i64->string i) (string-append ": Arena<" (string-append (car held) ">,")))) acc))))))
 
 (define-rec
-  (put-held-impls (subr kfx (strings i64 string string i64 chars) chars)
-    (lambda (held i region lives n acc)
+  (put-held-impls (subr kfx (strings i64 string string string i64 chars) chars)
+    (lambda (held i region lives bounded n acc)
       "`Holds` for each type the region holds: its arena."
       (if (null? held)
           acc
-          (put-held-impls (cdr held) (i64+ i 1) region lives n
-            (put (string-append "impl<" (string-append lives (string-append "> Holds<" (string-append (car held)
+          (put-held-impls (cdr held) (i64+ i 1) region lives bounded n
+            (put (string-append "impl<" (string-append bounded (string-append "> Holds<" (string-append (car held)
                    (string-append "> for " (string-append region (string-append "<" (string-append lives
                      (string-append "> { fn arena(&self) -> &Arena<" (string-append (car held)
                        (string-append "> { &self.a" (string-append (i64->string i) " } }"))))))))))))
@@ -1555,7 +1569,9 @@
              (life (string-append "'" (mangle r)))
              (region (string-append "Region_" (camel r)))
              (outer (letrena-lifetimes (ctx-locals c)))
-             (lives (words-of-sep (cons life outer) ", "))
+             (tvars (type-params-in (ctx-locals c)))
+             (lives (words-of-sep (onto (cons life outer) tvars) ", "))
+             (lives-bounded (words-of-sep (onto (cons life outer) (map (lambda ((t string)) (string-append t ": Copy + 'static")) tvars)) ", "))
              (names (split-words (fact-with c e "letrena-names ")))
              (types (read-all (string-chars (fact-with c e "letrena-locals ")) "" 1))
              (fallible (fact-at? c e "fallible"))
@@ -1563,12 +1579,17 @@
              (held (distinct-strings (concat (map (lambda ((x sexp)) (held-at inner (string-append "'" r) x)) (datums-in (cdr xs))))))
              (n1 (i64+ n 1))
              (acc (put-nl n1 (put "{" acc)))
-             (acc (put (string-append "#[derive(Default)] struct " (string-append region (string-append "<" (string-append lives "> {")))) acc))
+             (acc (put (string-append "struct " (string-append region (string-append "<" (string-append lives-bounded "> {")))) acc))
              (acc (put-held-fields held 0 acc))
-             (acc (put (string-append " phantom_: std::marker::PhantomData<(" (string-append (words-of-sep (map (lambda ((l string)) (string-append "&" (string-append l " ()"))) (cons life outer)) ", ") ",)> }")) acc))
-             (acc (put-held-impls held 0 region lives n1 acc))
+             (acc (put (string-append " phantom_: std::marker::PhantomData<(" (string-append (words-of-sep (onto (map (lambda ((l string)) (string-append "&" (string-append l " ()"))) (cons life outer)) tvars) ", ") ",)> }")) acc))
              (acc (put-nl n1 acc))
-             (acc (put (string-append "fn letrena__" (string-append (mangle r) (string-append "<" (string-append (words-of-sep (onto outer (list life)) ", ") ">(")))) acc))
+             (acc (put (string-append "impl<" (string-append lives-bounded (string-append "> Default for " (string-append region (string-append "<" (string-append lives
+                         (string-append "> { fn default() -> Self { " (string-append region (string-append " { "
+                           (string-append (run-together-strings (map (lambda ((i i64)) (string-append "a" (string-append (i64->string i) ": Arena::default(), "))) (counting 0 (size held))))
+                             "phantom_: std::marker::PhantomData } } }")))))))))) acc))
+             (acc (put-held-impls held 0 region lives lives-bounded n1 acc))
+             (acc (put-nl n1 acc))
+             (acc (put (string-append "fn letrena__" (string-append (mangle r) (string-append "<" (string-append (words-of-sep (onto (onto outer (list life)) (map (lambda ((t string)) (string-append t ": Copy + 'static")) tvars)) ", ") ">(")))) acc))
              (acc (put (string-append (mangle r) (string-append ": &" (string-append life (string-append " " (string-append region (string-append "<" (string-append lives ">"))))))) acc))
              (acc (put-letrena-params inner names types acc))
              (acc (put ") -> " acc))

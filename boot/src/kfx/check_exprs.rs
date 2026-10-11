@@ -2503,10 +2503,6 @@ pub fn letrena_form(v: &'static Cv, s: &'static St, xs: Sexps, expected: Tys) ->
         }
     }) {
         match refuse(v, str_lit("(letrena r body ...)")) {}
-    } else if any_p(lambda1(move |t: Str| {
-        not((has_prefix_p(t, str_lit("'")) || has_prefix_p(t, str_lit("%"))))
-    }), cv_tvars(v)) {
-        match refuse(v, str_lit("a letrena in a procedure poly over types, which KFX does not write yet")) {}
     } else {
         let r = sym_name(car(xs));
         let name = string_append(str_lit("'"), r);

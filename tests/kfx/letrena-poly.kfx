@@ -1,0 +1,9 @@
+"A letrena in a procedure poly over types: its fn and its region's type
+ declare the type parameter again, A: Copy + 'static, as a nested Rust
+ item must, and the arena holds pairs of A."
+(define-effect kfx (maxeff (read @globals) spin))
+(define second-of (poly ((a type)) (subr kfx (a a) a))
+  (lambda (x y) (letrena r (let ((xs (the (listof a r) (rcons r x (rcons r y nil))))) (car (cdr xs))))))
+(define main (subr kfx () string)
+  (lambda () (string-append (i64->string (second-of (the i64 1) (the i64 2))) (second-of "a" "b"))))
+(main)

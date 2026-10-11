@@ -818,6 +818,30 @@ pub fn desc_type(mut c: &'static Ctx, mut s: Str, mut ls: Strings) -> Sexps {
     }
 }
 
+pub fn run_together_strings(xs: Strings) -> Str {
+    if null_p(xs) {
+        str_lit("")
+    } else {
+        string_append(car(xs), run_together_strings(cdr(xs)))
+    }
+}
+
+/// The type parameters of the procedure being written, `%tvar a` each,
+/// camel-cased: a `letrena`'s fn and type declare them again, as a
+/// nested item must (C30).
+pub fn type_params_in(mut ls: Strings) -> Strings {
+    loop {
+        if null_p(ls) {
+            return nil::<Str>();
+        } else if has_prefix_p(car(ls), str_lit("%tvar ")) {
+            return cons(camel(after_prefix(car(ls), str_lit("%tvar "))), type_params_in(cdr(ls)));
+        } else {
+            ls = cdr(ls);
+            continue;
+        }
+    }
+}
+
 pub fn words_of_sep(xs: Strings, sep: Str) -> Str {
     if null_p(xs) {
         str_lit("")
@@ -1065,7 +1089,7 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
                     let r = unquoted(sym_name(second(xs)));
                     let lives = letrena_lifetimes(ctx_locals(c));
                     let life = string_append(str_lit("'"), mangle(r));
-                    return put(string_append(str_lit("&"), string_append(life, string_append(str_lit(" Region_"), string_append(camel(r), string_append(str_lit("<"), string_append(words_of_sep(cons(life, lifetimes_before(lives, life)), str_lit(", ")), str_lit(">"))))))), acc);
+                    return put(string_append(str_lit("&"), string_append(life, string_append(str_lit(" Region_"), string_append(camel(r), string_append(str_lit("<"), string_append(words_of_sep(onto(cons(life, lifetimes_before(lives, life)), type_params_in(ctx_locals(c))), str_lit(", ")), str_lit(">"))))))), acc);
                 } else if (sym_is_p(car(xs), str_lit("bloblet")) && not(null_p(typed_flat(c, t)))) {
                     return put(str_lit(">"), put_flat(c, car(typed_flat(c, t)), put(str_lit(", "), put_fields_tuple(c, cdr(items(second(xs))), put(str_lit("TBloblet<"), put(str_lit(" "), put(owner_lifetime(c, third(xs)), put(str_lit("&"), acc))))))));
                 } else if sym_is_p(car(xs), str_lit("bloblet")) {
@@ -1936,12 +1960,12 @@ pub fn put_held_fields(mut held: Strings, mut i: i64, mut acc: Chars) -> Chars {
 }
 
 /// `Holds` for each type the region holds: its arena.
-pub fn put_held_impls(mut held: Strings, mut i: i64, mut region: Str, mut lives: Str, mut n: i64, mut acc: Chars) -> Chars {
+pub fn put_held_impls(mut held: Strings, mut i: i64, mut region: Str, mut lives: Str, mut bounded: Str, mut n: i64, mut acc: Chars) -> Chars {
     loop {
         if null_p(held) {
             return acc;
         } else {
-            (held, i, acc) = (cdr(held), i64_plus(i, 1i64), put(string_append(str_lit("impl<"), string_append(lives, string_append(str_lit("> Holds<"), string_append(car(held), string_append(str_lit("> for "), string_append(region, string_append(str_lit("<"), string_append(lives, string_append(str_lit("> { fn arena(&self) -> &Arena<"), string_append(car(held), string_append(str_lit("> { &self.a"), string_append(i64_to_string(i), str_lit(" } }"))))))))))))), put_nl(n, acc)));
+            (held, i, acc) = (cdr(held), i64_plus(i, 1i64), put(string_append(str_lit("impl<"), string_append(bounded, string_append(str_lit("> Holds<"), string_append(car(held), string_append(str_lit("> for "), string_append(region, string_append(str_lit("<"), string_append(lives, string_append(str_lit("> { fn arena(&self) -> &Arena<"), string_append(car(held), string_append(str_lit("> { &self.a"), string_append(i64_to_string(i), str_lit(" } }"))))))))))))), put_nl(n, acc)));
             continue;
         }
     }
@@ -2726,7 +2750,11 @@ pub fn put_letrena(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Ch
     let life = string_append(str_lit("'"), mangle(r));
     let region = string_append(str_lit("Region_"), camel(r));
     let outer = letrena_lifetimes(ctx_locals(c));
-    let lives = words_of_sep(cons(life, outer), str_lit(", "));
+    let tvars = type_params_in(ctx_locals(c));
+    let lives = words_of_sep(onto(cons(life, outer), tvars), str_lit(", "));
+    let lives_bounded = words_of_sep(onto(cons(life, outer), map(lambda1(move |t: Str| {
+        string_append(t, str_lit(": Copy + 'static"))
+    }), tvars)), str_lit(", "));
     let names = split_words(fact_with(c, e, str_lit("letrena-names ")));
     let types = read_all(string_chars(fact_with(c, e, str_lit("letrena-locals "))), str_lit(""), 1i64);
     let fallible = fact_at_p(c, e, str_lit("fallible"));
@@ -2740,14 +2768,20 @@ pub fn put_letrena(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Ch
     }), datums_in(cdr(xs)))));
     let n1 = i64_plus(n, 1i64);
     let acc = put_nl(n1, put(str_lit("{"), acc));
-    let acc = put(string_append(str_lit("#[derive(Default)] struct "), string_append(region, string_append(str_lit("<"), string_append(lives, str_lit("> {"))))), acc);
+    let acc = put(string_append(str_lit("struct "), string_append(region, string_append(str_lit("<"), string_append(lives_bounded, str_lit("> {"))))), acc);
     let acc = put_held_fields(held, 0i64, acc);
-    let acc = put(string_append(str_lit(" phantom_: std::marker::PhantomData<("), string_append(words_of_sep(map(lambda1(move |l: Str| {
+    let acc = put(string_append(str_lit(" phantom_: std::marker::PhantomData<("), string_append(words_of_sep(onto(map(lambda1(move |l: Str| {
         string_append(str_lit("&"), string_append(l, str_lit(" ()")))
-    }), cons(life, outer)), str_lit(", ")), str_lit(",)> }"))), acc);
-    let acc = put_held_impls(held, 0i64, region, lives, n1, acc);
+    }), cons(life, outer)), tvars), str_lit(", ")), str_lit(",)> }"))), acc);
     let acc = put_nl(n1, acc);
-    let acc = put(string_append(str_lit("fn letrena__"), string_append(mangle(r), string_append(str_lit("<"), string_append(words_of_sep(onto(outer, kayak_rt::cons(life, kayak_rt::nil())), str_lit(", ")), str_lit(">("))))), acc);
+    let acc = put(string_append(str_lit("impl<"), string_append(lives_bounded, string_append(str_lit("> Default for "), string_append(region, string_append(str_lit("<"), string_append(lives, string_append(str_lit("> { fn default() -> Self { "), string_append(region, string_append(str_lit(" { "), string_append(run_together_strings(map(lambda1(move |i: i64| {
+        string_append(str_lit("a"), string_append(i64_to_string(i), str_lit(": Arena::default(), ")))
+    }), counting(0i64, size(held)))), str_lit("phantom_: std::marker::PhantomData } } }"))))))))))), acc);
+    let acc = put_held_impls(held, 0i64, region, lives, lives_bounded, n1, acc);
+    let acc = put_nl(n1, acc);
+    let acc = put(string_append(str_lit("fn letrena__"), string_append(mangle(r), string_append(str_lit("<"), string_append(words_of_sep(onto(onto(outer, kayak_rt::cons(life, kayak_rt::nil())), map(lambda1(move |t: Str| {
+        string_append(t, str_lit(": Copy + 'static"))
+    }), tvars)), str_lit(", ")), str_lit(">("))))), acc);
     let acc = put(string_append(mangle(r), string_append(str_lit(": &"), string_append(life, string_append(str_lit(" "), string_append(region, string_append(str_lit("<"), string_append(lives, str_lit(">")))))))), acc);
     let acc = put_letrena_params(inner, names, types, acc);
     let acc = put(str_lit(") -> "), acc);

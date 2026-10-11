@@ -1133,8 +1133,6 @@
        the place's own region, and no letrena is in a poly over types."
       (cond ((or (i64< (size xs) 2) (tagcase (car xs) (sym (n f p) #f) (else other #t)))
              (refuse v "(letrena r body ...)"))
-            ((any? (lambda ((t string)) (not (or (has-prefix? t "'") (has-prefix? t "%")))) (cv-tvars v))
-             (refuse v "a letrena in a procedure poly over types, which KFX does not write yet"))
             (else
              (let* ((r (sym-name (car xs)))
                     (name (string-append "'" r))

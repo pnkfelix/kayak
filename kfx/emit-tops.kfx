@@ -196,7 +196,8 @@
      kept (C21)."
     (let* ((binders (if (head-is? typ "poly") (items (second (items typ))) nil))
            (places (concat (map (lambda ((b sexp)) (if (sym-is? (second (items b)) "place") (the strings (list (sym-name (car (items b))))) nil)) binders)))
-           (c (with-locals c (concat (map (lambda ((p string)) (the strings (list (string-append "%letrena " p) (string-append "%placeparam " p)))) places))))
+           (c (with-locals c (onto (concat (map (lambda ((p string)) (the strings (list (string-append "%letrena " p) (string-append "%placeparam " p)))) places))
+                                   (concat (map (lambda ((b sexp)) (if (sym-is? (second (items b)) "type") (the strings (list (string-append "%tvar " (sym-name (car (items b)))))) nil)) binders)))))
            (typ (unpoly typ))
            (defined (unpoly defined))
            (lambda? (head-is? defined "lambda"))

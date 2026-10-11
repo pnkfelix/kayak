@@ -1021,3 +1021,9 @@ remains). No probe program gives a wrong value.
 The inner `letrena`'s fn is given the outer place as any local, typed
 `&'r Region_R<'r, ...>`; the outer region's arenas hold what its whole
 body makes, the inner's included. `tests/kfx/letrena-nested`.
+
+## A letrena in a procedure poly over types (2026-10-11)
+
+Its fn and its region's type declare the procedure's type parameters
+again, `A: Copy + 'static`, as a nested Rust item must; the region's
+`Default` written out, a type parameter having none. `tests/kfx/letrena-poly`.
