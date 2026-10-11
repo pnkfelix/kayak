@@ -145,8 +145,6 @@ Escapes are done (`DONE.md`, C18). Left:
     instantiated at a datatype holding such a procedure loops with no
     recursive call; FX-26 accepts it, and so KFX does (it says what FX-26
     says of `spin`, no more);
-  - two names of no `_` that mangle alike (`a?` and `a-p`, both `a_p`) may
-    collide in Rust, one hiding the other (C27);
   - names that differ only in case, or in `-` and `_`, may collide in Rust
     (two types `has` and `Has`; labels `a-b` and `a_b`): a Rust error, not
     a wrong answer;

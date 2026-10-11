@@ -1,0 +1,4 @@
+"Two names that are one in Rust: `ok?` and a parameter `ok-p` (both `ok_p`)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define ok? (subr pure (i64) bool) (lambda (n) (i64> n 0)))
+(define f (subr kfx ((subr pure (i64) bool) i64) bool) (lambda (ok-p n) (ok? n)))

@@ -382,5 +382,8 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
   few), which a sixth probe showed incomplete: `(define i64_plus ...)`
   hid kayak-rt's `i64+`, and `(i64+ 1 2)` was not 3; a mangling one to one
   (it would rename kayak-rt's every function).
-- **Left:** two KFX names of no `_` may still mangle alike (`a?` and
-  `a-p`, both `a_p`); `TODO.md` §17.
+- **And:** two KFX names in scope that mangle alike (`ok?` and `ok-p`,
+  both `ok_p`) are refused where the second is bound; the names in scope
+  are searched only for a name that could clash (one with an operator's
+  character, or whose mangling has one's). The compiler on itself takes
+  0.4 s for it, not 0.08 s.

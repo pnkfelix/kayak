@@ -2138,6 +2138,47 @@ pub fn has_char_in_p(s: Str, c: char) -> bool {
     }), string_chars(s))
 }
 
+pub fn operator_char_p(c: char) -> bool {
+    has_char_in_p(str_lit("?!<>=+*/%"), c)
+}
+
+pub fn string_has_p(s: Str, part: Str) -> bool {
+    (not(i64_lt(string_length_i64(s), string_length_i64(part))) && (has_prefix_p(s, part) || string_has_p(after_prefix(s, substring_of(s, 1i64)), part)))
+}
+
+/// Whether another name might mangle as `n` does: one with an operator's
+/// character, or one whose mangling has what such a character's has.
+pub fn might_clash_p(n: Str) -> bool {
+    (any_p(&operator_char_p, string_chars(n)) || {
+        let m = mangle(n);
+        any_p(lambda1(move |part: Str| {
+            string_has_p(m, part)
+        }), cons(str_lit("_p"), cons(str_lit("_x"), cons(str_lit("_to_"), cons(str_lit("_plus"), cons(str_lit("_star"), cons(str_lit("_slash"), cons(str_lit("_lt"), cons(str_lit("_gt"), cons(str_lit("_eq"), cons(str_lit("_pct"), cons(str_lit("_minus"), nil()))))))))))))
+    })
+}
+
+/// Another name in scope, spelled otherwise, that Rust names as `n`: two
+/// KFX names one Rust name, one hiding the other (C27).
+pub fn mangled_clash(n: Str, bs: Binds) -> Strings {
+    if (has_prefix_p(n, str_lit("%")) || has_char_in_p(n, ' ') || not(might_clash_p(n))) {
+        nil()
+    } else {
+        let m = mangle(n);
+        concat(map(lambda1(move |b: &'static Bind| {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Bind::Bind(x, sc, w) => {
+                    if (not(string_eq_p(x, n)) && not(has_prefix_p(x, str_lit("%"))) && not(has_char_in_p(x, ' ')) && string_eq_p(mangle(x), m)) {
+                        the::<Strings>(cons(string_append(n, string_append(str_lit(" and "), x)), nil()))
+                    } else {
+                        nil()
+                    }
+                }
+            }
+        }), bs))
+    }
+}
+
 /// `v` with the names `more` binds; none with a `_`: KFX writes `-`, and
 /// every Rust name kfx and kayak-rt write that a KFX name could meet has
 /// a `_` (`i64_plus`, `tagcase_`), so none is ever hidden.
@@ -2163,10 +2204,22 @@ pub fn with_binds(v: &'static Cv, more: Binds) -> &'static Cv {
             }
         }), more)))))
     } else {
-        let tagcase_ = v;
-        match *tagcase_ {
-            Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
-                cv(bind_onto(more, bs), ds, r#as, es, here, group, file, line, fs, tv, at)
+        let clash = concat(map(lambda1(move |b: &'static Bind| {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Bind::Bind(n, sc, w) => {
+                    mangled_clash(n, cv_binds(v))
+                }
+            }
+        }), more));
+        if not(null_p(clash)) {
+            refuse(v, string_append(str_lit("two names that are one in Rust: "), car(clash)))
+        } else {
+            let tagcase_ = v;
+            match *tagcase_ {
+                Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
+                    cv(bind_onto(more, bs), ds, r#as, es, here, group, file, line, fs, tv, at)
+                }
             }
         }
     }

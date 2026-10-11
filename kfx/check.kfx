@@ -954,6 +954,40 @@
 (define has-char-in? (subr kfx (string char) bool)
   (lambda (s c) (any? (lambda ((x char)) (char=? x c)) (string-chars s))))
 
+(define operator-char? (subr kfx (char) bool)
+  (lambda (c) (has-char-in? "?!<>=+*/%" c)))
+
+(define-rec
+  (string-has? (subr kfx (string string) bool)
+    (lambda (s part)
+      (and (not (i64< (string-length-i64 s) (string-length-i64 part)))
+           (or (has-prefix? s part) (string-has? (after-prefix s (substring-of s 1)) part))))))
+
+(define might-clash? (subr kfx (string) bool)
+  (lambda (n)
+    "Whether another name might mangle as `n` does: one with an operator's
+     character, or one whose mangling has what such a character's has."
+    (or (any? operator-char? (string-chars n))
+        (let ((m (mangle n)))
+          (any? (lambda ((part string)) (string-has? m part))
+                (list "_p" "_x" "_to_" "_plus" "_star" "_slash" "_lt" "_gt" "_eq" "_pct" "_minus"))))))
+
+(define mangled-clash (subr kfx (string binds) strings)
+  (lambda (n bs)
+    "Another name in scope, spelled otherwise, that Rust names as `n`: two
+     KFX names one Rust name, one hiding the other (C27)."
+    (if (or (has-prefix? n "%") (has-char-in? n #\space) (not (might-clash? n)))
+        nil
+        (let ((m (mangle n)))
+          (concat (map (lambda ((b bind))
+                         (tagcase b
+                           (bind (x sc w)
+                             (if (and (not (string=? x n)) (not (has-prefix? x "%")) (not (has-char-in? x #\space))
+                                      (string=? (mangle x) m))
+                                 (the strings (list (string-append n (string-append " and " x))))
+                                 nil))))
+                       bs))))))
+
 (define with-binds (subr kfx (cv binds) cv)
   (lambda (v more)
     "`v` with the names `more` binds; none with a `_`: KFX writes `-`, and
@@ -964,7 +998,10 @@
               more)
         (refuse v (string-append "a name with a `_`, which KFX's names have not (it writes `-`): "
                                  (car (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (if (has-char-in? n #\_) (the strings (list n)) nil)))) more)))))
-        (tagcase v (cv (bs ds as es here group file line fs tv at) (cv (bind-onto more bs) ds as es here group file line fs tv at))))))
+        (let ((clash (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (mangled-clash n (cv-binds v))))) more))))
+          (if (not (null? clash))
+              (refuse v (string-append "two names that are one in Rust: " (car clash)))
+              (tagcase v (cv (bs ds as es here group file line fs tv at) (cv (bind-onto more bs) ds as es here group file line fs tv at))))))))
 
 (define local (subr kfx (cv string ty) bind)
   (lambda (v name t)
