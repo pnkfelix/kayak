@@ -1,9 +1,9 @@
 # What KFX lacks, by Fixpt's test programs
 
 **Rerun 2026-10-11, at the end of the day** (Fixpt `95c5605`): `kfx`
-accepts 71 of the 286; the 70 of them `scripts/run-fixpt-programs.py`
+accepts 73 of the 286; the 72 of them `scripts/run-fixpt-programs.py`
 runs (it skips those meant to run for ever) all agree with Fixpt, value
-for value. The first
+for value. (The table is of an earlier run that day, at 71.) The first
 refusals now:
 
 | programs | first refusal                                    | what it would take                                     |
