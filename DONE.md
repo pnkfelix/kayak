@@ -1062,3 +1062,8 @@ in a place of its name. `tests/kfx/places-mutual`.
 As a top-level procedure's does: its closure's body a `loop`, its
 parameters `mut`, a call of itself an assignment and a `continue`. Fixpt's
 `bench/loop.fx` (ten million calls) no longer overflows the stack.
+
+## The arena's chunks found, not walked (2026-10-11)
+
+C30's arena computes a value's chunk from its index (each chunk twice the
+last), no walk: Fixpt's `bench/lists-region.fx` 45 ms to 7.8.

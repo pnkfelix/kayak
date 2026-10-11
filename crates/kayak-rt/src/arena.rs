@@ -14,56 +14,49 @@
 use crate::{Cons, ListAt, RefAt};
 use std::cell::{Cell, OnceCell};
 
-struct Chunk<T> {
-    cells: Box<[OnceCell<T>]>,
-    next: OnceCell<Box<Chunk<T>>>,
-}
+/// The first chunk's cells; each chunk after has twice the last's.
+const FIRST: usize = 16;
 
-impl<T> Chunk<T> {
-    fn new(n: usize) -> Self {
-        Chunk {
-            cells: (0..n).map(|_| OnceCell::new()).collect(),
-            next: OnceCell::new(),
-        }
-    }
-}
+/// Chunks enough for any arena memory could hold: the last alone is
+/// `FIRST << 47` cells.
+const CHUNKS: usize = 48;
 
 /// Values of one type, freed together when the arena is.
 pub struct Arena<T> {
-    head: Chunk<T>,
+    chunks: [OnceCell<Box<[OnceCell<T>]>>; CHUNKS],
     used: Cell<usize>,
 }
 
 impl<T> Default for Arena<T> {
     fn default() -> Self {
         Arena {
-            head: Chunk::new(16),
+            chunks: std::array::from_fn(|_| OnceCell::new()),
             used: Cell::new(0),
         }
     }
 }
 
+/// The chunk the `i`th value is in, and where in it: chunk `k` holds
+/// `FIRST << k` cells, after `FIRST * (2^k - 1)` in the chunks before it,
+/// so no walk finds it (the chunk a current one, without a reference into
+/// the arena that safe Rust would not let it keep).
+#[inline]
+fn place(i: usize) -> (usize, usize) {
+    let q = i / FIRST + 1;
+    let k = (usize::BITS - 1 - q.leading_zeros()) as usize;
+    (k, i - FIRST * ((1 << k) - 1))
+}
+
 impl<T> Arena<T> {
-    /// `v`, kept in the arena: the next free cell, past the chunks that
-    /// are full (a walk of as many chunks as the arena has, a few: each is
-    /// twice the last).
+    /// `v`, kept in the arena, in the next free cell.
+    #[inline]
     pub fn alloc(&self, v: T) -> &T {
-        let mut i = self.used.get();
+        let i = self.used.get();
         self.used.set(i + 1);
-        let mut chunk = &self.head;
-        while i >= chunk.cells.len() {
-            i -= chunk.cells.len();
-            let n = chunk.cells.len() * 2;
-            chunk = chunk.next.get_or_init(|| Box::new(Chunk::new(n)));
-        }
-        let cell = &chunk.cells[i];
-        if cell.set(v).is_err() {
-            crate::fail("arena: a cell filled twice");
-        }
-        match cell.get() {
-            Some(v) => v,
-            None => crate::fail("arena: a cell not filled"),
-        }
+        let (k, at) = place(i);
+        let chunk =
+            self.chunks[k].get_or_init(|| (0..FIRST << k).map(|_| OnceCell::new()).collect());
+        chunk[at].get_or_init(|| v)
     }
 }
 
@@ -112,6 +105,18 @@ mod tests {
             xs = cdr(xs);
         }
         n
+    }
+
+    #[test]
+    fn places_follow_on() {
+        let mut want = (0, 0);
+        for i in 0..100_000 {
+            assert_eq!(place(i), want, "at {i}");
+            want.1 += 1;
+            if want.1 == FIRST << want.0 {
+                want = (want.0 + 1, 0);
+            }
+        }
     }
 
     #[test]

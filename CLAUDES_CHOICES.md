@@ -463,6 +463,12 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
   `alloc(&self, v) -> &T` needs no `unsafe`. One type an arena, as
   rustc's `TypedArena`s are, and a region a struct of them, as rustc's
   `arena_types!` makes. KFX's values are `Copy`: no destructor runs.
+- **Its chunks found, not walked** (2026-10-11): chunk `k` holds `16 << k`
+  cells, so the `i`th value's chunk and place are computed from `i`; the
+  chunks a fixed array of `OnceCell`s, made when first reached. A reference
+  to the current chunk kept in the arena is what safe Rust will not have
+  (it would point into the arena itself). Fixpt's `bench/lists-region.fx`:
+  45 ms the walk's way, 7.8 the found way (Fixpt's best machine, 7.2).
 - **A `fn`, not a block alone**: a block cannot name a lifetime, and a
   closure's or a `dyn Fn`'s parameter of an elided lifetime is a fresh
   one at each call; the `fn`'s `'r` is the region's, named in the types
