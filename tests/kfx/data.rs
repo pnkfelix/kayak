@@ -54,14 +54,17 @@ pub fn insert(k: i64, t: &'static Tree) -> &'static Tree {
     }
 }
 
-pub fn in_order(t: &'static Tree, rest: Str) -> Str {
-    let tagcase_ = t;
-    match *tagcase_ {
-        Tree::Leaf() => {
-            rest
-        }
-        Tree::Node(l, v, r) => {
-            in_order(l, string_append(i64_to_string(v), string_append(" ", in_order(r, rest))))
+pub fn in_order(mut t: &'static Tree, mut rest: Str) -> Str {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Tree::Leaf() => {
+                return rest;
+            }
+            Tree::Node(l, v, r) => {
+                (t, rest) = (l, string_append(i64_to_string(v), string_append(" ", in_order(r, rest))));
+                continue;
+            }
         }
     }
 }

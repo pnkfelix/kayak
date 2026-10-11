@@ -24,13 +24,6 @@ A Rust error in generated code names a line of `kfx.rs`, and a run-time
 `error` names nothing. Start with a `// kfx: line` comment per item: the
 reader would keep each datum's line, which `sexp` does not carry yet.
 
-## 10. Self tail calls as loops
-
-Rust has no tail calls, so a walk of a list is as deep as the list.
-`with_big_stack` gives the run 1 GiB, which is a workaround. A self tail
-call in a defined procedure can be its body in a `loop`, the call a
-reassignment and `continue`: local, and still a trivial mapping.
-
 ## 11. First-class procedures
 
 A call's operator is always a global's name. A `lambda` as a value would
@@ -117,6 +110,12 @@ flat sums already store their tag "as Rust stores a discriminant"
 - **`tagcase_`**, the name a `tagcase` binds, could be a KFX name's
   mangling (`tagcase-`).
 - **`(define x e)` with no type** is refused; FX-26 allows it.
+- **A looping procedure's parameters are all `mut`**, even those no self
+  tail call changes (`count-up`'s `n`). Only the changed ones need be.
+- **Non-tail recursion is still as deep as its data**: a walk that builds
+  a list on the way back (`string-chars-from`) needs `with_big_stack`.
+- **Tail calls between procedures** of a `define-rec` are calls, and grow
+  the stack: only a procedure's calls of itself loop.
 - **Warnings in generated code** are all allowed. Unused bindings (a
   `tagcase` arm ignoring fields) are the common ones; whether the emitter
   should avoid them is open.

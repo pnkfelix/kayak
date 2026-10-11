@@ -41,6 +41,11 @@ pub mod recursion;
 #[path = "../../../tests/kfx/strings.rs"]
 pub mod strings;
 
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
+#[path = "../../../tests/kfx/tails.rs"]
+pub mod tails;
+
 /// A program's `main`, which gives its answer.
 pub type Main = fn() -> kayak_rt::Str;
 
@@ -54,4 +59,5 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("names", names::main),
     ("recursion", recursion::main),
     ("strings", strings::main),
+    ("tails", tails::main),
 ];

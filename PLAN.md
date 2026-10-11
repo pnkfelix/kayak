@@ -104,6 +104,7 @@ is no `Drop`, no `Rc` and no `.clone()`.
 | a `define-datatype` name `t`                          | `&'static T`, `enum T` holding its variants                 |
 | `(define f (subr kfx (T…) T) (lambda (x…) body))`     | `fn f(x: T, …) -> T { body }`                               |
 | `(define-rec (f type lambda) …)`                      | the same, one `fn` each                                     |
+| a self call in tail position                          | the `fn`'s body in a `loop`: assignments, then `continue`   |
 | `(define x T e)`, not a lambda                        | `fn x() -> T { e }`; each use `x()` (KFX-0: `e` pure)       |
 | `(define-datatype t (tag T…) …)`                      | `enum T { Tag(T…), … }` and `fn tag(…) -> &'static T`       |
 | `(define-effect …)`                                   | nothing                                                     |

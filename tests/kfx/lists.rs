@@ -8,11 +8,14 @@ pub type Ints = List<i64>;
 
 pub type Chars = List<char>;
 
-pub fn rev_onto(xs: Ints, acc: Ints) -> Ints {
-    if null_p(xs) {
-        acc
-    } else {
-        rev_onto(cdr(xs), cons(car(xs), acc))
+pub fn rev_onto(mut xs: Ints, mut acc: Ints) -> Ints {
+    loop {
+        if null_p(xs) {
+            return acc;
+        } else {
+            (xs, acc) = (cdr(xs), cons(car(xs), acc));
+            continue;
+        }
     }
 }
 

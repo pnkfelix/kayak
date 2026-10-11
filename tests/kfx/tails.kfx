@@ -1,0 +1,62 @@
+"Self tail calls, which are loops: each of these runs in constant stack,
+ kfx-corpus's test runs main on a small one."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-type strings (listof string acyclic))
+
+(define words (subr kfx (strings) string)
+  (lambda (xs)
+    (cond ((null? xs) "")
+          ((null? (cdr xs)) (car xs))
+          (else (string-append (car xs) (string-append " " (words (cdr xs))))))))
+
+(define count-up (subr kfx (i64 i64 i64) i64)
+  (lambda (i n acc)
+    "`n` is passed on unchanged, so only `i` and `acc` are assigned."
+    (if (i64= i n) acc (count-up (i64+ i 1) n (i64+ acc i)))))
+
+(define swaps (subr kfx (i64 i64 i64) string)
+  (lambda (a b k)
+    "Swapping needs the assignment done all at once."
+    (if (i64= k 0)
+        (string-append (i64->string a) (string-append "/" (i64->string b)))
+        (swaps b a (i64- k 1)))))
+
+(define collatz (subr kfx (i64 i64) i64)
+  (lambda (n steps)
+    "Tail calls in a cond, and in a case's arms."
+    (cond ((i64= n 1) steps)
+          ((i64= (i64-remainder n 2) 0) (collatz (i64-quotient n 2) (i64+ steps 1)))
+          (else (case #\x
+                  ((#\x) (collatz (i64+ (i64* 3 n) 1) (i64+ steps 1)))
+                  (else steps))))))
+
+(define-datatype step
+  (more i64)
+  (done))
+
+(define drain (subr kfx (step i64) i64)
+  (lambda (s total)
+    "A tail call in a tagcase arm."
+    (tagcase s
+      (more (k) (if (i64= k 0) (drain (done) total) (drain (more (i64- k 1)) (i64+ total 1))))
+      (done () total))))
+
+(define shadowed (subr kfx (i64 i64) i64)
+  (lambda (n acc)
+    "A binding hides a parameter: the call under it stays a call, so
+     shallow, but still right."
+    (if (i64= n 0)
+        acc
+        (let ((n (i64- n 1)))
+          (shadowed n (i64+ acc 1))))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (words
+     (list (i64->string (count-up 0 3000000 0))
+           (swaps 1 2 1000001)
+           (i64->string (collatz 27 0))
+           (i64->string (drain (more 1000000) 0))
+           (i64->string (shadowed 100 0))))))

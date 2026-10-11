@@ -178,3 +178,29 @@ What writing them taught is in `TODO.md` §17: FX-26's `case` takes no
 **Abandoned: a test that generated Rust has no `unsafe` in it, by text.**
 The compiler's list of Rust's keywords has the string `"unsafe"`; the lint
 is the check.
+
+## 10. Self tail calls as loops (2026-10-11)
+
+A procedure that calls itself in tail position is a Rust `loop`: the call
+assigns the parameters it changes, all at once (`(a, b) = (b, a)`), and
+`continue`s; whatever else it could end with is `return`ed. Tail positions
+are a body's last expression and the arms of `if`, `cond`, `case`,
+`tagcase`, `let`, `let*` and `begin`. Under a binding that hides a
+parameter, a self call stays a call, since an assignment would reach the
+binding. A pre-scan (`tail-calls?`) decides whether a procedure loops, so
+one that does not is written as before.
+
+In the emitter, a `tail` datatype says where an expression stands:
+`value`, or `returns`, with the procedure's name and parameters and
+whether they are hidden.
+
+26 of the compiler's own procedures loop. `tests/kfx/tails.kfx` has each
+case (unchanged arguments, a swap, tail calls in `cond`, `case` and
+`tagcase`, a hidden parameter), and `kfx-corpus` runs it on a stack of
+256 KiB, which three million frames would overflow.
+
+The bootstrap caught a bug that Fixpt's check could not, since Fixpt only
+checks the compiler and does not run it on itself: the pre-scan gave a
+`case`'s key to the walk of its arms. Generation 1 failed on its own
+source. And the regenerating loop had copied that failure's empty output
+over the seed; restored from git, and generations are now kept apart.

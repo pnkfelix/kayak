@@ -16,3 +16,21 @@ fn every_program_gives_fixpts_answer() {
     }
     assert!(wrong.is_empty(), "{}", wrong.join("\n"));
 }
+
+/// `tails.kfx`'s procedures loop: run on a stack of 256 KiB, as no
+/// recursion three million deep could be.
+#[test]
+fn self_tail_calls_run_in_constant_stack() {
+    let (_, main) = kfx_corpus::PROGRAMS
+        .iter()
+        .find(|(name, _)| *name == "tails")
+        .expect("tails.kfx is in the corpus");
+    let main = *main;
+    let got = std::thread::Builder::new()
+        .stack_size(256 << 10)
+        .spawn(main)
+        .unwrap()
+        .join()
+        .expect("tails.kfx overflows a small stack: its self tail calls do not loop");
+    assert!(got.starts_with("4499998500000 "), "{got}");
+}
