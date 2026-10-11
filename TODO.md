@@ -197,6 +197,41 @@ interfaces and abstraction; they are first-class values, so their mapping
 needs designing, perhaps a `moduleof` as a Rust module's `pub` surface,
 or a trait.
 
+## 20. Performance: what the benchmarks showed (2026-10-11)
+
+`scripts/bench.py` times Fixpt's benchmarks and their ports
+(`bench/ports/`) as kfx's Rust and on Fixpt's machines. What they showed:
+
+- **Procedures over regions take no lifetimes**: a top-level procedure poly
+  over a region is at `'static`, so no arena's list can be given it (the
+  `closures` port keeps its helpers local for that). As C39 did for type
+  abbreviations: region binders as lifetime parameters, turbofish where
+  rustc cannot infer them.
+- **Heap allocation is a `malloc` each, never freed** (`cons`, `new`, a
+  closure): all but 1.5 ms of `lists`' 20. Bump allocation for the heap; a
+  decision first, the user's: an `unsafe` module, or a safe registry of
+  typed arenas (only `'static` types, `TypeId`'s).
+- **A closure that does not escape is leaked all the same**: `lambdaN` for
+  every lambda, one each round in `closures`. One the checker finds stays
+  within its scope could be a local, borrowed as `&dyn Fn`.
+- **`rlambda`'s closure is the heap's**, not its region's: a `Box<dyn Fn>`
+  in the region's arena would be freed with it.
+- **The arena's cells are `OnceCell`s**: a flag tested and set at each
+  allocation; the rest of `lists-region`'s gap to a bump. Safe, or the
+  same decision as the heap's.
+- **`int` is twice `i64`** (fib 4.2 ms to 1.2): `Int`'s small case could be
+  cheaper (a smaller representation, its overflow a branch rustc
+  predicts).
+- **Rust's keywords as names**: three of Fixpt's programs refused for one
+  alone (`loop`, `use`, `move`); a datum for the user's ruling (C27), not
+  against it.
+- **Benchmarks whose inputs rustc sees are computed at compile time**
+  (`helpers`, `loop`: 0.0 ms): a bench mode whose literals the emitter
+  gives `std::hint::black_box`.
+- **Tail calls between procedures grow the stack** (section 17).
+- Fixpt runs the `i64` ports slower than the `int` originals on every
+  machine: Fixpt's, if the user would tell its team.
+
 ## 18. Research: regions as exclusive borrows (GhostCell tokens)
 
 Places are lifetimes (§14), but regions are something else: permission
