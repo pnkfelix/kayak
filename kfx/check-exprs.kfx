@@ -1158,7 +1158,19 @@
       (tagcase r
         (res (t es s)
           (let ((open (any? (lambda ((k i64)) (tagcase (walk s (ty-meta k)) (ty-meta (j) #t) (else other #f))) ks)))
-            (cond ((and open
+            (cond ((and (or (string=? h "car") (string=? h "cdr")) (string=? wher "prim") (not (null? args))
+                        (or (head-is? (car args) "error")
+                            (tagcase (car args)
+                              (sym (n f p)
+                                (let ((found (find-bind n (cv-binds v))))
+                                  (and (not (null? found))
+                                       (tagcase (car found) (bind (m sc w) (tagcase sc (scheme (tv x) (void? s x))))))))
+                              (else other #f))))
+                   "FX-26's `car` and `cdr` are over a pair, `(pairof t1 t2 r)`: of a
+                    `void`, what the expected type does not say of the pair, nothing
+                    does."
+                   (refuse v (string-append "a type " (string-append h " is called at that nothing here says, as FX-26 finds it: say it, (the T ...)"))))
+                  ((and open
                         (not (and (string=? h "null?") (string=? wher "prim") (not (null? args))
                                   (or (tagcase (car args) (sym (n f p) #t) (else other #f)) (head-is? (car args) "error")))))
                    (refuse v (string-append "a type " (string-append h " is called at that nothing here says, as FX-26 finds it: say it, (the T ...)"))))

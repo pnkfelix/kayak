@@ -1,0 +1,5 @@
+"`car` of an `error`, its result expected: FX-26's `car` is over a pair,
+ `(pairof t1 t2 r)`, and nothing says the pair's rest, `t2`."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f (subr kfx () i64) (lambda () (car (error "x"))))
+(f)

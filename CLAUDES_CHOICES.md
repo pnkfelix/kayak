@@ -428,6 +428,8 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
   to type it are refused, as FX-26 refuses them (K1: KFX had accepted
   them). `null?`'s binder is FX-26's argument's whole type, so it is let
   open for a name or an `error` (stricter than FX-26 otherwise).
+  `car` and `cdr`, FX-26's over a pair `(pairof t1 t2 r)`, of an `error` or
+  a name of type `void`, are refused: nothing says the pair's other half.
 - **And:** what is left open is told to rustc, by the facts that every
   datum's place makes possible: each `nil` and empty `(list)` is written
   `nil::<T>()`, a program's poly procedure whose binder is its result's

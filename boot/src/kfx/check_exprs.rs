@@ -2492,7 +2492,36 @@ pub fn poly_settled(v: &'static Cv, h: Str, wher: Str, args: Sexps, ks: List<i64
                     }
                 }
             }), ks);
-            if (open && not((string_eq_p(h, str_lit("null?")) && string_eq_p(wher, str_lit("prim")) && not(null_p(args)) && ({
+            if ((string_eq_p(h, str_lit("car")) || string_eq_p(h, str_lit("cdr"))) && string_eq_p(wher, str_lit("prim")) && not(null_p(args)) && (head_is_p(car(args), str_lit("error")) || {
+                let tagcase_ = car(args);
+                match *tagcase_ {
+                    Sexp::Sym(n, f, p) => {
+                        let found = find_bind(n, cv_binds(v));
+                        (not(null_p(found)) && {
+                            let tagcase_ = car(found);
+                            match *tagcase_ {
+                                Bind::Bind(m, sc, w) => {
+                                    let tagcase_ = sc;
+                                    match *tagcase_ {
+                                        Scheme::Scheme(tv, x) => {
+                                            void_p(s, x)
+                                        }
+                                    }
+                                }
+                            }
+                        })
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            })) {
+                // FX-26's `car` and `cdr` are over a pair, `(pairof t1 t2 r)`: of a
+                // `void`, what the expected type does not say of the pair, nothing
+                // does.
+                match refuse(v, string_append(str_lit("a type "), string_append(h, str_lit(" is called at that nothing here says, as FX-26 finds it: say it, (the T ...)")))) {}
+            } else if (open && not((string_eq_p(h, str_lit("null?")) && string_eq_p(wher, str_lit("prim")) && not(null_p(args)) && ({
                 let tagcase_ = car(args);
                 match *tagcase_ {
                     Sexp::Sym(n, f, p) => {
