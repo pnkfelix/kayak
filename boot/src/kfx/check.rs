@@ -20,6 +20,7 @@ use super::*;
 pub enum Ty {
     TyI64(),
     TyInt(),
+    TyNat(),
     TyBool(),
     TyChar(),
     TyUnit(),
@@ -41,6 +42,10 @@ pub fn ty_i64() -> &'static Ty {
 
 pub fn ty_int() -> &'static Ty {
     alloc(Ty::TyInt())
+}
+
+pub fn ty_nat() -> &'static Ty {
+    alloc(Ty::TyNat())
 }
 
 pub fn ty_bool() -> &'static Ty {
@@ -170,14 +175,16 @@ pub type Effdefs = List<&'static Effdef>;
 
 // What a checker of a definition knows: the names in scope, the datatypes,
 // the type abbreviations, the effect abbreviations, the definition being
-// checked, its recursive group (whose calls are `spin`), and where the
-// innermost list being checked began (a file, a line; for messages).
+// checked, its recursive group (whose calls are `spin`), where the
+// innermost list being checked began (a file, a line; for messages), the
+// facts found so far, and the type and region variables in scope (a
+// `poly`'s binders, a `letregion`'s region).
 pub enum Cv {
-    Cv(Binds, Dts, Aliases, Effdefs, Str, Strings, Str, i64, Facts),
+    Cv(Binds, Dts, Aliases, Effdefs, Str, Strings, Str, i64, Facts, Strings),
 }
 
-pub fn cv(f0: Binds, f1: Dts, f2: Aliases, f3: Effdefs, f4: Str, f5: Strings, f6: Str, f7: i64, f8: Facts) -> &'static Cv {
-    alloc(Cv::Cv(f0, f1, f2, f3, f4, f5, f6, f7, f8))
+pub fn cv(f0: Binds, f1: Dts, f2: Aliases, f3: Effdefs, f4: Str, f5: Strings, f6: Str, f7: i64, f8: Facts, f9: Strings) -> &'static Cv {
+    alloc(Cv::Cv(f0, f1, f2, f3, f4, f5, f6, f7, f8, f9))
 }
 
 // Facts: what the checker found about a place, a file and an offset, for
@@ -258,7 +265,7 @@ pub fn show_sexps(xs: Sexps) -> Str {
 pub fn cv_where(v: &'static Cv) -> Str {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs) => {
+        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv) => {
             here
         }
     }
@@ -269,7 +276,7 @@ pub fn cv_where(v: &'static Cv) -> Str {
 pub fn refuse(v: &'static Cv, message: Str) -> ! {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs) => {
+        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv) => {
             error(string_append(str_lit("kfx: "), string_append(if i64_eq(line, 0i64) {
                 str_lit("")
             } else {
@@ -372,7 +379,7 @@ pub fn find_effdef(mut v: &'static Cv, mut name: Str, mut es: Effdefs) -> String
 pub fn cv_effdefs(v: &'static Cv) -> Effdefs {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs) => {
+        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv) => {
             es
         }
     }
@@ -553,7 +560,7 @@ pub fn substitute(mut params: Strings, mut args: Tys, mut t: &'static Ty) -> &'s
 pub fn cv_dts(v: &'static Cv) -> Dts {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs) => {
+        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv) => {
             ds
         }
     }
@@ -562,7 +569,7 @@ pub fn cv_dts(v: &'static Cv) -> Dts {
 pub fn cv_aliases(v: &'static Cv) -> Aliases {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs) => {
+        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv) => {
             r#as
         }
     }
@@ -571,7 +578,7 @@ pub fn cv_aliases(v: &'static Cv) -> Aliases {
 pub fn cv_binds(v: &'static Cv) -> Binds {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs) => {
+        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv) => {
             bs
         }
     }
@@ -580,8 +587,27 @@ pub fn cv_binds(v: &'static Cv) -> Binds {
 pub fn cv_group(v: &'static Cv) -> Strings {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs) => {
+        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv) => {
             group
+        }
+    }
+}
+
+pub fn cv_tvars(v: &'static Cv) -> Strings {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv) => {
+            tv
+        }
+    }
+}
+
+/// `v`, with the type and region variables `names` in scope.
+pub fn with_tvars(v: &'static Cv, names: Strings) -> &'static Cv {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv) => {
+            cv(bs, ds, r#as, es, here, group, file, line, fs, onto(names, tv))
         }
     }
 }
@@ -650,6 +676,8 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     return ty_i64();
                 } else if string_eq_p(s, str_lit("int")) {
                     return ty_int();
+                } else if string_eq_p(s, str_lit("nat")) {
+                    return ty_nat();
                 } else if string_eq_p(s, str_lit("bool")) {
                     return ty_bool();
                 } else if string_eq_p(s, str_lit("char")) {
@@ -835,6 +863,9 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
         }
         Ty::TyInt() => {
             str_lit("int")
+        }
+        Ty::TyNat() => {
+            str_lit("nat")
         }
         Ty::TyBool() => {
             str_lit("bool")
@@ -1059,6 +1090,21 @@ pub fn same_base_p(a: &'static Ty, e: &'static Ty) -> bool {
         Ty::TyInt() => {
             let tagcase_ = e;
             match *tagcase_ {
+                Ty::TyInt() => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Ty::TyNat() => {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Ty::TyNat() => {
+                    true
+                }
                 Ty::TyInt() => {
                     true
                 }
@@ -1396,8 +1442,8 @@ pub fn near(v: &'static Cv, file: Str, line: i64) -> &'static Cv {
     } else {
         let tagcase_ = v;
         match *tagcase_ {
-            Cv::Cv(bs, ds, r#as, es, here, group, f, l, fs) => {
-                cv(bs, ds, r#as, es, here, group, file, line, fs)
+            Cv::Cv(bs, ds, r#as, es, here, group, f, l, fs, tv) => {
+                cv(bs, ds, r#as, es, here, group, file, line, fs, tv)
             }
         }
     }
@@ -1406,8 +1452,8 @@ pub fn near(v: &'static Cv, file: Str, line: i64) -> &'static Cv {
 pub fn with_binds(v: &'static Cv, more: Binds) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs) => {
-            cv(bind_onto(more, bs), ds, r#as, es, here, group, file, line, fs)
+        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv) => {
+            cv(bind_onto(more, bs), ds, r#as, es, here, group, file, line, fs, tv)
         }
     }
 }
@@ -1539,8 +1585,55 @@ pub fn name_regions(v: &'static Cv, s: &'static St, es: Strings, regions: List<i
     }
 }
 
+/// Effects, those on region `r` removed.
+pub fn masked(mut es: Strings, mut r: Str) -> Strings {
+    loop {
+        if null_p(es) {
+            return nil();
+        } else if (string_eq_p(car(es), string_append(str_lit("read:"), r)) || string_eq_p(car(es), string_append(str_lit("write:"), r)) || string_eq_p(car(es), string_append(str_lit("alloc:"), r))) {
+            es = cdr(es);
+            continue;
+        } else {
+            return cons(car(es), masked(cdr(es), r));
+        }
+    }
+}
+
+/// Whether type `t` mentions region `r`, latent effects included.
+pub fn mentions_p(s: &'static St, t: &'static Ty, r: Str) -> bool {
+    let tagcase_ = walk(s, t);
+    match *tagcase_ {
+        Ty::TyVar(n) => {
+            string_eq_p(n, r)
+        }
+        Ty::TyList(e, x) => {
+            (mentions_p(s, e, r) || mentions_p(s, x, r))
+        }
+        Ty::TyFlat(e, x) => {
+            (mentions_p(s, e, r) || mentions_p(s, x, r))
+        }
+        Ty::TyRef(e, x) => {
+            (mentions_p(s, e, r) || mentions_p(s, x, r))
+        }
+        Ty::TyData(d, args) => {
+            any_p(lambda1(move |a: &'static Ty| {
+                mentions_p(s, a, r)
+            }), args)
+        }
+        Ty::TyProc(es, ps, x) => {
+            (not(string_eq_p(words_of(masked(es, r)), words_of(es))) || mentions_p(s, x, r) || any_p(lambda1(move |p: &'static Ty| {
+                mentions_p(s, p, r)
+            }), ps))
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
 pub fn control_form_p(h: Str) -> bool {
-    (string_eq_p(h, str_lit("if")) || string_eq_p(h, str_lit("cond")) || string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("tagcase")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("letrec")))
+    (string_eq_p(h, str_lit("if")) || string_eq_p(h, str_lit("cond")) || string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("tagcase")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion")))
 }
 
 pub fn all_chars_p(xs: Sexps) -> bool {
@@ -1742,6 +1835,13 @@ pub fn check(v: &'static Cv, s: &'static St, e: &'static Sexp, expected: &'stati
                 Ty::TyInt() => {
                     res(x, nil(), note_fact(s, num_file, num_pos, str_lit("int")))
                 }
+                Ty::TyNat() => {
+                    if i64_lt(k, 0i64) {
+                        refuse(v, string_append(i64_to_string(k), str_lit(" is no nat")))
+                    } else {
+                        res(x, nil(), note_fact(s, num_file, num_pos, str_lit("int")))
+                    }
+                }
                 Ty::TyMeta(m) => {
                     res(ty_int(), nil(), note_fact(solve(s, m, ty_int()), num_file, num_pos, str_lit("int")))
                 }
@@ -1831,7 +1931,7 @@ pub fn synth_any(v: &'static Cv, s: &'static St, e: &'static Sexp) -> &'static R
 
 pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: Sexps) -> &'static Res {
     if string_eq_p(h, str_lit("the")) {
-        check(v, s, second(xs), parse_type(v, nil(), car(xs)))
+        check(v, s, second(xs), parse_type(v, cv_tvars(v), car(xs)))
     } else if string_eq_p(h, str_lit("lambda")) {
         synth_lambda(v, s, items(car(xs)), cdr(xs))
     } else if string_eq_p(h, str_lit("list")) {
@@ -1951,6 +2051,8 @@ pub fn body_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Ty
         let_values(v, s, items(car(xs)), cdr(xs), expected, nil(), true)
     } else if string_eq_p(h, str_lit("letrec")) {
         letrec_form(v, s, items(car(xs)), cdr(xs), expected)
+    } else if string_eq_p(h, str_lit("letregion")) {
+        letregion_form(v, s, name_of(v, car(xs)), cdr(xs), expected)
     } else if string_eq_p(h, str_lit("cond")) {
         cond_clauses(v, s, xs, expected)
     } else if string_eq_p(h, str_lit("case")) {
@@ -2127,12 +2229,34 @@ pub fn let_values(v: &'static Cv, s: &'static St, bindings: Sexps, forms: Sexps,
 pub fn letrec_form(v: &'static Cv, s: &'static St, bindings: Sexps, forms: Sexps, expected: Tys) -> &'static Res {
     let w = with_binds(v, map(lambda1(move |b: &'static Sexp| {
         let ys = items(b);
-        local(v, name_of(v, car(ys)), parse_type(v, nil(), second(ys)))
+        local(v, name_of(v, car(ys)), parse_type(v, cv_tvars(v), second(ys)))
     }), bindings));
     let tagcase_ = letrec_lambdas(w, s, bindings);
     match *tagcase_ {
         Res::Res(u, es, s) => {
             body(w, s, forms, expected)
+        }
+    }
+}
+
+/// `(letregion r body ...)`: a region for the body's types, its data the
+/// heap's. What the body does to it is masked, and the value may not
+/// mention it, as in FX-26. A region named already is refused, so that
+/// masking, by name, masks nothing else.
+pub fn letregion_form(v: &'static Cv, s: &'static St, r: Str, forms: Sexps, expected: Tys) -> &'static Res {
+    let name = string_append(str_lit("'"), r);
+    if string_member_p(name, cv_tvars(v)) {
+        refuse(v, string_append(str_lit("a letregion of a region named already: "), r))
+    } else {
+        let tagcase_ = body(with_tvars(v, cons(name, nil())), s, forms, expected);
+        match *tagcase_ {
+            Res::Res(t, es, s) => {
+                if mentions_p(s, t, name) {
+                    refuse(v, string_append(str_lit("a letregion whose value's type mentions its region "), r))
+                } else {
+                    res(t, masked(es, name), s)
+                }
+            }
         }
     }
 }
@@ -2145,7 +2269,7 @@ pub fn letrec_lambdas(v: &'static Cv, s: &'static St, bindings: Sexps) -> &'stat
         if not(head_is_p(third(ys), str_lit("lambda"))) {
             refuse(v, str_lit("a letrec binds only lambdas"))
         } else {
-            let tagcase_ = check(v, s, third(ys), parse_type(v, nil(), second(ys)));
+            let tagcase_ = check(v, s, third(ys), parse_type(v, cv_tvars(v), second(ys)));
             match *tagcase_ {
                 Res::Res(t, es, s) => {
                     letrec_lambdas(v, s, cdr(bindings))
@@ -2161,7 +2285,7 @@ pub fn synth_lambda(v: &'static Cv, s: &'static St, params: Sexps, forms: Sexps)
         let tagcase_ = p;
         match *tagcase_ {
             Sexp::Lst(pt, src_file, src_line, src_pos) => {
-                parse_type(v, nil(), second(pt))
+                parse_type(v, cv_tvars(v), second(pt))
             }
             _ => {
                 let other = tagcase_;
@@ -2236,7 +2360,7 @@ pub fn check_written_params(mut v: &'static Cv, mut s: &'static St, mut params: 
                 let tagcase_ = car(params);
                 match *tagcase_ {
                     Sexp::Lst(pt, src_file, src_line, src_pos) => {
-                        fits(v, s, car(types), parse_type(v, nil(), second(pt)))
+                        fits(v, s, car(types), parse_type(v, cv_tvars(v), second(pt)))
                     }
                     _ => {
                         let other = tagcase_;
@@ -2341,7 +2465,7 @@ pub fn call_args(v: &'static Cv, s: &'static St, args: Sexps, ps: Tys) -> &'stat
 
 // Definitions
 pub fn primitives() -> Str {
-    str_lit("(i64+ (subr pure (i64 i64) i64)) (i64- (subr pure (i64 i64) i64)) (i64* (subr pure (i64 i64) i64))\n   (i64-quotient (subr pure (i64 i64) i64)) (i64-remainder (subr pure (i64 i64) i64))\n   (i64-and (subr pure (i64 i64) i64)) (i64-or (subr pure (i64 i64) i64)) (i64-xor (subr pure (i64 i64) i64))\n   (i64-not (subr pure (i64) i64))\n   (i64= (subr pure (i64 i64) bool)) (i64< (subr pure (i64 i64) bool)) (i64> (subr pure (i64 i64) bool))\n   (i64<= (subr pure (i64 i64) bool)) (i64>= (subr pure (i64 i64) bool))\n   (not (subr pure (bool) bool))\n   (+ (subr pure (int int) int)) (- (subr pure (int int) int)) (* (subr pure (int int) int))\n   (quotient (subr pure (int int) int)) (remainder (subr pure (int int) int)) (modulo (subr pure (int int) int))\n   (= (subr pure (int int) bool)) (< (subr pure (int int) bool)) (> (subr pure (int int) bool))\n   (<= (subr pure (int int) bool)) (>= (subr pure (int int) bool))\n   (int->string (subr pure (int) string)) (int->i64 (subr pure (int) i64)) (i64->int (subr pure (i64) int))\n   (char=? (subr pure (char char) bool)) (char-whitespace? (subr pure (char) bool))\n   (char-numeric? (subr pure (char) bool)) (char-alphabetic? (subr pure (char) bool))\n   (char-upcase (subr pure (char) char)) (char->string (subr pure (char) string))\n   (string-append (subr pure (string string) string)) (string=? (subr pure (string string) bool))\n   (list->string (poly ((r region)) (subr (read r) ((listof char r)) string)))\n   (string->list (poly ((r region)) (subr (alloc r) (string) (listof char r))))\n   (error (subr pure (string) void))\n   (new (poly ((r region) (t type)) (subr (alloc r) (t) (ref t r))))\n   (get (poly ((r region) (t type)) (subr (read r) ((ref t r)) t)))\n   (set (poly ((r region) (t type)) (subr (write r) ((ref t r) t) unit)))\n   (nil (poly ((r region) (t type)) (listof t r)))\n   (cons (poly ((r region) (t type)) (subr (alloc r) (t (listof t r)) (listof t r))))\n   (car (poly ((r region) (t type)) (subr (read r) ((listof t r)) t)))\n   (cdr (poly ((r region) (t type)) (subr (read r) ((listof t r)) (listof t r))))\n   (null? (poly ((r region) (t type)) (subr pure ((listof t r)) bool)))")
+    str_lit("(i64+ (subr pure (i64 i64) i64)) (i64- (subr pure (i64 i64) i64)) (i64* (subr pure (i64 i64) i64))\n   (i64-quotient (subr pure (i64 i64) i64)) (i64-remainder (subr pure (i64 i64) i64))\n   (i64-and (subr pure (i64 i64) i64)) (i64-or (subr pure (i64 i64) i64)) (i64-xor (subr pure (i64 i64) i64))\n   (i64-not (subr pure (i64) i64))\n   (i64= (subr pure (i64 i64) bool)) (i64< (subr pure (i64 i64) bool)) (i64> (subr pure (i64 i64) bool))\n   (i64<= (subr pure (i64 i64) bool)) (i64>= (subr pure (i64 i64) bool))\n   (not (subr pure (bool) bool))\n   (+ (subr pure (int int) int)) (- (subr pure (int int) int)) (* (subr pure (int int) int))\n   (quotient (subr pure (int int) int)) (remainder (subr pure (int int) int)) (modulo (subr pure (int int) int))\n   (= (subr pure (int int) bool)) (< (subr pure (int int) bool)) (> (subr pure (int int) bool))\n   (<= (subr pure (int int) bool)) (>= (subr pure (int int) bool))\n   (int->string (subr pure (int) string)) (int->i64 (subr pure (int) i64)) (i64->int (subr pure (i64) int))\n   (zero? (subr pure (int) bool)) (max (subr pure (int int) int)) (min (subr pure (int int) int))\n   (string-length (subr pure (string) nat))\n   (length (poly ((t type)) (subr pure ((listof t acyclic)) nat)))\n   (list-length (poly ((r region) (t type)) (subr (read r) ((listof t r)) nat)))\n   (append (poly ((r1 region) (r2 region) (t type)) (subr (maxeff (read r1) (alloc r2)) ((listof t r1) (listof t r2)) (listof t r2))))\n   (reverse (poly ((r1 region) (r2 region) (t type)) (subr (maxeff (read r1) (alloc r2)) ((listof t r1)) (listof t r2))))\n   (char=? (subr pure (char char) bool)) (char-whitespace? (subr pure (char) bool))\n   (char-numeric? (subr pure (char) bool)) (char-alphabetic? (subr pure (char) bool))\n   (char-upcase (subr pure (char) char)) (char->string (subr pure (char) string))\n   (string-append (subr pure (string string) string)) (string=? (subr pure (string string) bool))\n   (list->string (poly ((r region)) (subr (read r) ((listof char r)) string)))\n   (string->list (poly ((r region)) (subr (alloc r) (string) (listof char r))))\n   (error (subr pure (string) void))\n   (new (poly ((r region) (t type)) (subr (alloc r) (t) (ref t r))))\n   (get (poly ((r region) (t type)) (subr (read r) ((ref t r)) t)))\n   (set (poly ((r region) (t type)) (subr (write r) ((ref t r) t) unit)))\n   (nil (poly ((r region) (t type)) (listof t r)))\n   (cons (poly ((r region) (t type)) (subr (alloc r) (t (listof t r)) (listof t r))))\n   (car (poly ((r region) (t type)) (subr (read r) ((listof t r)) t)))\n   (cdr (poly ((r region) (t type)) (subr (read r) ((listof t r)) (listof t r))))\n   (null? (poly ((r region) (t type)) (subr pure ((listof t r)) bool)))")
 }
 
 // kayak-rt's primitives at KFX's types: the prelude's (kfx/prelude.fx), and
@@ -2470,8 +2594,8 @@ pub fn datatype_names(mut v: &'static Cv, mut forms: Sexps, mut ds: Dts) -> Dts 
 pub fn with_effdef(v: &'static Cv, xs: Sexps) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs) => {
-            cv(bs, ds, r#as, cons(effdef(name_of(v, second(xs)), parse_effect(v, nil(), third(xs))), es), here, group, file, line, fs)
+        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv) => {
+            cv(bs, ds, r#as, cons(effdef(name_of(v, second(xs)), parse_effect(v, nil(), third(xs))), es), here, group, file, line, fs, tv)
         }
     }
 }
@@ -2498,8 +2622,8 @@ pub fn declare_datatypes(mut v: &'static Cv, mut forms: Sexps, mut ds: Dts) -> D
 pub fn at(v: &'static Cv, here: Str, group: Strings) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, h, g, file, line, fs) => {
-            cv(bs, ds, r#as, es, here, group, file, line, fs)
+        Cv::Cv(bs, ds, r#as, es, h, g, file, line, fs, tv) => {
+            cv(bs, ds, r#as, es, here, group, file, line, fs, tv)
         }
     }
 }
@@ -2562,8 +2686,8 @@ pub fn new_state() -> &'static St {
 pub fn with_facts(v: &'static Cv, more: Facts) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs) => {
-            cv(bs, ds, r#as, es, here, group, file, line, onto(more, fs))
+        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv) => {
+            cv(bs, ds, r#as, es, here, group, file, line, onto(more, fs), tv)
         }
     }
 }
@@ -2571,7 +2695,7 @@ pub fn with_facts(v: &'static Cv, more: Facts) -> &'static Cv {
 pub fn cv_facts(v: &'static Cv) -> Facts {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs) => {
+        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv) => {
             fs
         }
     }
@@ -2587,7 +2711,7 @@ pub fn check_procedure(v: &'static Cv, defined: &'static Sexp, sc: &'static Sche
     let tagcase_ = sc;
     match *tagcase_ {
         Scheme::Scheme(tvars, t) => {
-            let tagcase_ = check_lambda(v, new_state(), items(second(lam)), cdr(cdr(lam)), t);
+            let tagcase_ = check_lambda(with_tvars(v, tvars), new_state(), items(second(lam)), cdr(cdr(lam)), t);
             match *tagcase_ {
                 Res::Res(u, es, s) => {
                     with_facts(v, st_facts(s))
@@ -2674,7 +2798,7 @@ pub fn check_define_star(v: &'static Cv, xs: Sexps) -> &'static Cv {
                     Ty::TyProc(declared, ps, r) => {
                         let wide = ty_proc(effs_union(cons(str_lit("@globals"), nil()), declared), ps, r);
                         let named = with_binds(v, cons(global(v, name, scheme(tvars, wide)), nil()));
-                        let found = lambda_effects(named, new_state(), items(second(lam)), cdr(cdr(lam)), wide);
+                        let found = lambda_effects(with_tvars(named, tvars), new_state(), items(second(lam)), cdr(cdr(lam)), wide);
                         let es = {
                             let tagcase_ = found;
                             match *tagcase_ {
@@ -2885,6 +3009,9 @@ pub fn ty_sexp(v: &'static Cv, s: &'static St, t: &'static Ty) -> &'static Sexp 
         Ty::TyInt() => {
             sym(str_lit("int"))
         }
+        Ty::TyNat() => {
+            sym(str_lit("nat"))
+        }
         Ty::TyBool() => {
             sym(str_lit("bool"))
         }
@@ -3022,22 +3149,22 @@ pub fn verdict_facts(x: &'static Verdict) -> Facts {
 /// Every form, in order; the first error stops the compiler. What it gives
 /// is the types of the definitions written with none.
 pub fn check_program(forms: Sexps) -> &'static Verdict {
-    let empty = cv(nil(), nil(), nil(), nil(), str_lit("a type"), nil(), str_lit("the program"), 0i64, nil());
-    let start = cv(nil(), nil(), declare_types(empty, forms, nil()), nil(), str_lit("a type"), nil(), str_lit("the program"), 0i64, nil());
+    let empty = cv(nil(), nil(), nil(), nil(), str_lit("a type"), nil(), str_lit("the program"), 0i64, nil(), nil());
+    let start = cv(nil(), nil(), declare_types(empty, forms, nil()), nil(), str_lit("a type"), nil(), str_lit("the program"), 0i64, nil(), nil());
     let types = type_names_free(start, forms);
     let named = {
         let tagcase_ = start;
         match *tagcase_ {
-            Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs) => {
-                cv(bs, datatype_names(start, forms, nil()), r#as, es, here, group, file, line, fs)
+            Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv) => {
+                cv(bs, datatype_names(start, forms, nil()), r#as, es, here, group, file, line, fs, tv)
             }
         }
     };
     let typed = {
         let tagcase_ = named;
         match *tagcase_ {
-            Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs) => {
-                cv(bs, declare_datatypes(named, forms, nil()), r#as, es, here, group, file, line, fs)
+            Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv) => {
+                cv(bs, declare_datatypes(named, forms, nil()), r#as, es, here, group, file, line, fs, tv)
             }
         }
     };

@@ -360,6 +360,8 @@ pub fn put_type(c: &'static Ctx, t: &'static Sexp, acc: Chars) -> Chars {
                 put(str_lit("i64"), acc)
             } else if string_eq_p(s, str_lit("int")) {
                 put(str_lit("Int"), acc)
+            } else if string_eq_p(s, str_lit("nat")) {
+                put(str_lit("Int"), acc)
             } else if string_eq_p(s, str_lit("bool")) {
                 put(str_lit("bool"), acc)
             } else if string_eq_p(s, str_lit("char")) {
@@ -650,7 +652,7 @@ pub fn self_call_p(t: &'static Tail, e: &'static Sexp) -> bool {
 
 /// The forms whose last parts stand where they do.
 pub fn control_p(e: &'static Sexp) -> bool {
-    (head_is_p(e, str_lit("if")) || head_is_p(e, str_lit("cond")) || head_is_p(e, str_lit("case")) || head_is_p(e, str_lit("tagcase")) || head_is_p(e, str_lit("let")) || head_is_p(e, str_lit("let*")) || head_is_p(e, str_lit("begin")) || head_is_p(e, str_lit("letrec")))
+    (head_is_p(e, str_lit("if")) || head_is_p(e, str_lit("cond")) || head_is_p(e, str_lit("case")) || head_is_p(e, str_lit("tagcase")) || head_is_p(e, str_lit("let")) || head_is_p(e, str_lit("let*")) || head_is_p(e, str_lit("begin")) || head_is_p(e, str_lit("letrec")) || head_is_p(e, str_lit("letregion")))
 }
 
 /// Whether `e`, standing at `t`, makes a self tail call: whether its
@@ -674,6 +676,9 @@ pub fn tail_calls_p(mut t: &'static Tail, mut e: &'static Sexp) -> bool {
             continue;
         } else if head_is_p(e, str_lit("begin")) {
             e = last(cdr(items(e)));
+            continue;
+        } else if head_is_p(e, str_lit("letregion")) {
+            e = last(cdr(cdr(items(e))));
             continue;
         } else {
             return false;
@@ -856,6 +861,9 @@ pub fn put_stmts(mut c: &'static Ctx, mut es: Sexps, mut n: i64, mut t: &'static
             continue;
         } else if head_is_p(e, str_lit("begin")) {
             es = cdr(items(e));
+            continue;
+        } else if head_is_p(e, str_lit("letregion")) {
+            es = cdr(cdr(items(e)));
             continue;
         } else if head_is_p(e, str_lit("letrec")) {
             let xs = cdr(items(e));
@@ -1117,7 +1125,7 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
         put_list(c, xs, n, acc)
     } else if string_eq_p(h, str_lit("the")) {
         put_exp(c, second(xs), n, value(), acc)
-    } else if string_eq_p(h, str_lit("letrec")) {
+    } else if (string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion"))) {
         put_block(c, cons(e, nil()), n, t, acc)
     } else if null_p(xs) {
         put(str_lit("()"), put(callee(c, h), acc))

@@ -1,0 +1,2 @@
+"A letregion whose value mentions its region: the region ends with the body."
+(define f (subr pure () unit) (lambda () (begin (letregion r (the (ref i64 r) (new 1))) #u)))

@@ -1,0 +1,43 @@
+"letregion: a region for typing alone, its data the heap's; what the body
+ does to it is masked, so a procedure keeping a private counter there is
+ pure. And nat, FX-26's natural numbers, below int: a string's length, a
+ list's."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-type strings (listof string acyclic))
+
+(define words (subr kfx (strings) string)
+  (lambda (xs)
+    (cond ((null? xs) "")
+          ((null? (cdr xs)) (car xs))
+          (else (string-append (car xs) (string-append " " (words (cdr xs))))))))
+
+(define count-up (subr pure (i64) i64)
+  (lambda (n)
+    "Pure: its counter is in a region the body makes, and masks."
+    (letregion r
+      (let ((c (the (ref i64 r) (new 0))))
+        (begin (set c (i64+ (get c) n))
+               (set c (i64* (get c) 2))
+               (get c))))))
+
+(define firsts (poly ((a type)) (subr kfx ((listof a acyclic) a) (listof a acyclic)))
+  (lambda (xs d)
+    "`(the a ...)` inside a poly procedure: its type variable is in scope."
+    (if (null? xs) (the (listof a acyclic) (list d)) (the (listof a acyclic) (list (car xs))))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (let* ((n (string-length "héllo"))
+           (xs (the (listof int acyclic) (list 3 1 2)))
+           (ys (reverse (append xs (the (listof int acyclic) (list 9))))))
+      (words
+       (list (i64->string (count-up 20))
+             (int->string n)
+             (int->string (length xs))
+             (int->string (+ n 1))
+             (if (zero? (- n 5)) "zero" "not zero")
+             (int->string (max n 2)) (int->string (min n 2))
+             (int->string (car ys))
+             (int->string (car (firsts xs 0))))))))

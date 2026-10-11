@@ -127,6 +127,8 @@ is no `Drop`, no `Rc` and no `.clone()`.
 | `if`, `cond`, `and`, `or`                             | `if`/`else`, `&&`, `\|\|`                                   |
 | `let`, `let*`, `begin`                                | blocks of `let`s and statements                             |
 | `(letrec ((f T lambda) …) body)`                      | closures tied through `Knot`s, as FX-26's I-cells tie them  |
+| `(letregion r body)`                                  | a block: `r`'s data is the heap's; its effects masked       |
+| `nat`                                                 | `Int`; below `int` in the checker                           |
 | `(case k ((d …) e) … (else e))` on chars             | `match k { d \| … => e, …, _ => e }`                        |
 | `(tagcase e (tag (x …) body) … [(else y body)])`      | `match *e { T::Tag(x, …) => body, … }`                      |
 | `nil`                                                 | `nil()`                                                     |

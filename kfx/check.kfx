@@ -16,6 +16,7 @@
 (define-datatype ty
   (ty-i64)
   (ty-int)
+  (ty-nat)
   (ty-bool)
   (ty-char)
   (ty-unit)
@@ -64,9 +65,11 @@
 
 "What a checker of a definition knows: the names in scope, the datatypes,
  the type abbreviations, the effect abbreviations, the definition being
- checked, its recursive group (whose calls are `spin`), and where the
- innermost list being checked began (a file, a line; for messages)."
-(define-datatype cv (cv binds dts aliases effdefs string strings string i64 facts))
+ checked, its recursive group (whose calls are `spin`), where the
+ innermost list being checked began (a file, a line; for messages), the
+ facts found so far, and the type and region variables in scope (a
+ `poly`'s binders, a `letregion`'s region)."
+(define-datatype cv (cv binds dts aliases effdefs string strings string i64 facts strings))
 
 "Facts: what the checker found about a place, a file and an offset, for
  the emitter, which knows no types. `int`: the number literal there is an
@@ -102,14 +105,14 @@
             (else (string-append (show-sexp (car xs)) (string-append " " (show-sexps (cdr xs)))))))))
 
 (define cv-where (subr kfx (cv) string)
-  (lambda (v) (tagcase v (cv (bs ds as es here group file line fs) here))))
+  (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv) here))))
 
 (define refuse (subr kfx (cv string) void)
   (lambda (v message)
     "An error, said where: the innermost list being checked, and the
      definition."
     (tagcase v
-      (cv (bs ds as es here group file line fs)
+      (cv (bs ds as es here group file line fs tv)
         (error (string-append "kfx: "
                  (string-append (if (i64= line 0) "" (string-append file (string-append ":" (string-append (i64->string line) ": "))))
                    (string-append "in " (string-append here (string-append ": " message))))))))))
@@ -165,7 +168,7 @@
           (effdef (n atoms) (if (string=? n name) atoms (find-effdef v name (cdr es))))))))
 
 (define cv-effdefs (subr kfx (cv) effdefs)
-  (lambda (v) (tagcase v (cv (bs ds as es here group file line fs) es))))
+  (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv) es))))
 
 (define region-name (subr kfx (cv strings sexp) string)
   (lambda (v tvars r)
@@ -251,10 +254,16 @@
 
 "Types"
 
-(define cv-dts (subr kfx (cv) dts) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs) ds))))
-(define cv-aliases (subr kfx (cv) aliases) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs) as))))
-(define cv-binds (subr kfx (cv) binds) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs) bs))))
-(define cv-group (subr kfx (cv) strings) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs) group))))
+(define cv-dts (subr kfx (cv) dts) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv) ds))))
+(define cv-aliases (subr kfx (cv) aliases) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv) as))))
+(define cv-binds (subr kfx (cv) binds) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv) bs))))
+(define cv-group (subr kfx (cv) strings) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv) group))))
+(define cv-tvars (subr kfx (cv) strings) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv) tv))))
+
+(define with-tvars (subr kfx (cv strings) cv)
+  (lambda (v names)
+    "`v`, with the type and region variables `names` in scope."
+    (tagcase v (cv (bs ds as es here group file line fs tv) (cv bs ds as es here group file line fs (onto names tv))))))
 
 (define dt-named? (subr kfx (string dts) bool)
   (lambda (name ds)
@@ -283,6 +292,7 @@
         (sym (s)
           (cond ((string=? s "i64") (ty-i64))
                 ((string=? s "int") (ty-int))
+                ((string=? s "nat") (ty-nat))
                 ((string=? s "bool") (ty-bool))
                 ((string=? s "char") (ty-char))
                 ((string=? s "unit") (ty-unit))
@@ -389,6 +399,7 @@
       (tagcase (walk s t)
         (ty-i64 () "i64")
         (ty-int () "int")
+        (ty-nat () "nat")
         (ty-bool () "bool")
         (ty-char () "char")
         (ty-unit () "unit")
@@ -471,6 +482,7 @@
     (tagcase a
       (ty-i64 () (tagcase e (ty-i64 () #t) (else other #f)))
       (ty-int () (tagcase e (ty-int () #t) (else other #f)))
+      (ty-nat () (tagcase e (ty-nat () #t) (ty-int () #t) (else other #f)))
       (ty-bool () (tagcase e (ty-bool () #t) (else other #f)))
       (ty-char () (tagcase e (ty-char () #t) (else other #f)))
       (ty-unit () (tagcase e (ty-unit () #t) (else other #f)))
@@ -591,11 +603,11 @@
     "`v`, checking a list that began at `line` of `file`."
     (if (i64= line 0)
         v
-        (tagcase v (cv (bs ds as es here group f l fs) (cv bs ds as es here group file line fs))))))
+        (tagcase v (cv (bs ds as es here group f l fs tv) (cv bs ds as es here group file line fs tv))))))
 
 (define with-binds (subr kfx (cv binds) cv)
   (lambda (v more)
-    (tagcase v (cv (bs ds as es here group file line fs) (cv (bind-onto more bs) ds as es here group file line fs)))))
+    (tagcase v (cv (bs ds as es here group file line fs tv) (cv (bind-onto more bs) ds as es here group file line fs tv)))))
 
 (define local (subr kfx (cv string ty) bind)
   (lambda (v name t)
@@ -660,10 +672,36 @@
           (res (r rn s)
             (name-regions v s (rename-atoms es (meta-name (car regions)) (region-string s r)) (cdr regions)))))))
 
+(define masked (subr kfx (strings string) strings)
+  (lambda (es r)
+    "Effects, those on region `r` removed."
+    (cond ((null? es) nil)
+          ((or (string=? (car es) (string-append "read:" r)) (string=? (car es) (string-append "write:" r))
+               (string=? (car es) (string-append "alloc:" r)))
+           (masked (cdr es) r))
+          (else (cons (car es) (masked (cdr es) r))))))
+
+(define-rec
+  (mentions? (subr kfx (st ty string) bool)
+    (lambda (s t r)
+      "Whether type `t` mentions region `r`, latent effects included."
+      (tagcase (walk s t)
+        (ty-var (n) (string=? n r))
+        (ty-list (e x) (or (mentions? s e r) (mentions? s x r)))
+        (ty-flat (e x) (or (mentions? s e r) (mentions? s x r)))
+        (ty-ref (e x) (or (mentions? s e r) (mentions? s x r)))
+        (ty-data (d args) (any? (lambda ((a ty)) (mentions? s a r)) args))
+        (ty-proc (es ps x)
+          (or (not (string=? (words-of (masked es r)) (words-of es)))
+              (mentions? s x r)
+              (any? (lambda ((p ty)) (mentions? s p r)) ps)))
+        (else other #f)))))
+
 (define control-form? (subr kfx (string) bool)
   (lambda (h)
     (or (string=? h "if") (string=? h "cond") (string=? h "case") (string=? h "tagcase")
-        (string=? h "let") (string=? h "let*") (string=? h "begin") (string=? h "letrec"))))
+        (string=? h "let") (string=? h "let*") (string=? h "begin") (string=? h "letrec")
+        (string=? h "letregion"))))
 
 (define all-chars? (subr kfx (sexps) bool)
   (lambda (xs) (not (any? (lambda ((x sexp)) (tagcase x (chr (c) #f) (else other #t))) xs))))
@@ -755,6 +793,10 @@
             (tagcase x
               (ty-i64 () (res x nil s))
               (ty-int () (res x nil (note-fact s num-file num-pos "int")))
+              (ty-nat ()
+                (if (i64< k 0)
+                    (refuse v (string-append (i64->string k) " is no nat"))
+                    (res x nil (note-fact s num-file num-pos "int"))))
               (ty-meta (m) (res (ty-int) nil (note-fact (solve s m (ty-int)) num-file num-pos "int")))
               (else other (refuse v (string-append "a literal is here, where a "
                                                    (string-append (show-ty s x) " is expected"))))))
@@ -795,7 +837,7 @@
   (synth-form (subr kfx (cv st sexp string sexps) res)
     (lambda (v s e h xs)
       (cond ((string=? h "the")
-             (check v s (second xs) (parse-type v nil (car xs))))
+             (check v s (second xs) (parse-type v (cv-tvars v) (car xs))))
             ((string=? h "lambda") (synth-lambda v s (items (car xs)) (cdr xs)))
             ((string=? h "list")
              (if (null? xs)
@@ -854,6 +896,7 @@
             ((string=? h "let*")
              (let-values v s (items (car xs)) (cdr xs) expected nil #t))
             ((string=? h "letrec") (letrec-form v s (items (car xs)) (cdr xs) expected))
+            ((string=? h "letregion") (letregion-form v s (name-of v (car xs)) (cdr xs) expected))
             ((string=? h "cond") (cond-clauses v s xs expected))
             ((string=? h "case")
              (tagcase (check v s (car xs) (ty-char))
@@ -956,10 +999,25 @@
        every one in scope in each lambda and in the body."
       (let ((w (with-binds v (map (lambda ((b sexp))
                                     (let ((ys (items b)))
-                                      (local v (name-of v (car ys)) (parse-type v nil (second ys)))))
+                                      (local v (name-of v (car ys)) (parse-type v (cv-tvars v) (second ys)))))
                                   bindings))))
         (tagcase (letrec-lambdas w s bindings)
           (res (u es s) (body w s forms expected))))))
+
+  (letregion-form (subr kfx (cv st string sexps tys) res)
+    (lambda (v s r forms expected)
+      "`(letregion r body ...)`: a region for the body's types, its data the
+       heap's. What the body does to it is masked, and the value may not
+       mention it, as in FX-26. A region named already is refused, so that
+       masking, by name, masks nothing else."
+      (let ((name (string-append "'" r)))
+        (if (string-member? name (cv-tvars v))
+            (refuse v (string-append "a letregion of a region named already: " r))
+            (tagcase (body (with-tvars v (list name)) s forms expected)
+              (res (t es s)
+                (if (mentions? s t name)
+                    (refuse v (string-append "a letregion whose value's type mentions its region " r))
+                    (res t (masked es name) s))))))))
 
   (letrec-lambdas (subr kfx (cv st sexps) res)
     (lambda (v s bindings)
@@ -968,7 +1026,7 @@
           (let ((ys (items (car bindings))))
             (if (not (head-is? (third ys) "lambda"))
                 (refuse v "a letrec binds only lambdas")
-                (tagcase (check v s (third ys) (parse-type v nil (second ys)))
+                (tagcase (check v s (third ys) (parse-type v (cv-tvars v) (second ys)))
                   (res (t es s) (letrec-lambdas v s (cdr bindings)))))))))
 
   (synth-lambda (subr kfx (cv st sexps sexps) res)
@@ -976,7 +1034,7 @@
       "A lambda with nothing expected: its parameters' types written."
       (let ((types (map (lambda ((p sexp))
                           (tagcase p
-                            (lst (pt src-file src-line src-pos) (parse-type v nil (second pt)))
+                            (lst (pt src-file src-line src-pos) (parse-type v (cv-tvars v) (second pt)))
                             (else other (refuse v (string-append "a lambda with nothing expected needs its parameters' types: " (show-sexp other))))))
                         params)))
         (tagcase (body (with-binds v (bind-params v params types)) s forms nil)
@@ -1019,7 +1077,7 @@
           s
           (check-written-params v
                                 (tagcase (car params)
-                                  (lst (pt src-file src-line src-pos) (fits v s (car types) (parse-type v nil (second pt))))
+                                  (lst (pt src-file src-line src-pos) (fits v s (car types) (parse-type v (cv-tvars v) (second pt))))
                                   (else other
                                     (if (has-meta? s (car types))
                                         (refuse v (string-append "the type of the lambda's parameter "
@@ -1093,6 +1151,12 @@
    (= (subr pure (int int) bool)) (< (subr pure (int int) bool)) (> (subr pure (int int) bool))
    (<= (subr pure (int int) bool)) (>= (subr pure (int int) bool))
    (int->string (subr pure (int) string)) (int->i64 (subr pure (int) i64)) (i64->int (subr pure (i64) int))
+   (zero? (subr pure (int) bool)) (max (subr pure (int int) int)) (min (subr pure (int int) int))
+   (string-length (subr pure (string) nat))
+   (length (poly ((t type)) (subr pure ((listof t acyclic)) nat)))
+   (list-length (poly ((r region) (t type)) (subr (read r) ((listof t r)) nat)))
+   (append (poly ((r1 region) (r2 region) (t type)) (subr (maxeff (read r1) (alloc r2)) ((listof t r1) (listof t r2)) (listof t r2))))
+   (reverse (poly ((r1 region) (r2 region) (t type)) (subr (maxeff (read r1) (alloc r2)) ((listof t r1)) (listof t r2))))
    (char=? (subr pure (char char) bool)) (char-whitespace? (subr pure (char) bool))
    (char-numeric? (subr pure (char) bool)) (char-alphabetic? (subr pure (char) bool))
    (char-upcase (subr pure (char) char)) (char->string (subr pure (char) string))
@@ -1203,8 +1267,8 @@
   (lambda (v xs)
     "`v`, with a define-effect's abbreviation."
     (tagcase v
-      (cv (bs ds as es here group file line fs)
-        (cv bs ds as (cons (effdef (name-of v (second xs)) (parse-effect v nil (third xs))) es) here group file line fs)))))
+      (cv (bs ds as es here group file line fs tv)
+        (cv bs ds as (cons (effdef (name-of v (second xs)) (parse-effect v nil (third xs))) es) here group file line fs tv)))))
 
 (define declare-datatypes (subr kfx (cv sexps dts) dts)
   (lambda (v forms ds)
@@ -1219,7 +1283,7 @@
 
 (define at (subr kfx (cv string strings) cv)
   (lambda (v here group)
-    (tagcase v (cv (bs ds as es h g file line fs) (cv bs ds as es here group file line fs)))))
+    (tagcase v (cv (bs ds as es h g file line fs tv) (cv bs ds as es here group file line fs tv)))))
 
 (define runtime-name? (subr kfx (string) bool)
   (lambda (name)
@@ -1259,10 +1323,10 @@
 (define with-facts (subr kfx (cv facts) cv)
   (lambda (v more)
     "`v`, with a definition's facts."
-    (tagcase v (cv (bs ds as es here group file line fs) (cv bs ds as es here group file line (onto more fs))))))
+    (tagcase v (cv (bs ds as es here group file line fs tv) (cv bs ds as es here group file line (onto more fs) tv)))))
 
 (define cv-facts (subr kfx (cv) facts)
-  (lambda (v) (tagcase v (cv (bs ds as es here group file line fs) fs))))
+  (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv) fs))))
 
 (define check-procedure (subr kfx (cv sexp scheme) cv)
   (lambda (v defined sc)
@@ -1270,7 +1334,7 @@
     (let ((lam (items (if (head-is? defined "plambda") (third (items defined)) defined))))
       (tagcase sc
         (scheme (tvars t)
-          (tagcase (check-lambda v (new-state) (items (second lam)) (cdr (cdr lam)) t)
+          (tagcase (check-lambda (with-tvars v tvars) (new-state) (items (second lam)) (cdr (cdr lam)) t)
             (res (u es s) (with-facts v (st-facts s)))))))))
 
 (define variants-dt (subr kfx (cv string) (listof dt acyclic))
@@ -1328,7 +1392,7 @@
                 (ty-proc (declared ps r)
                   (let* ((wide (ty-proc (effs-union (list "@globals") declared) ps r))
                          (named (with-binds v (list (global v name (scheme tvars wide)))))
-                         (found (lambda-effects named (new-state) (items (second lam)) (cdr (cdr lam)) wide))
+                         (found (lambda-effects (with-tvars named tvars) (new-state) (items (second lam)) (cdr (cdr lam)) wide))
                          (es (tagcase found (res (u es s) es)))
                          (fs (tagcase found (res (u es s) (st-facts s)))))
                     (if (effs-within? es (effs-union (list "@globals") declared))
@@ -1420,6 +1484,7 @@
       (tagcase (walk s t)
         (ty-i64 () (sym "i64"))
         (ty-int () (sym "int"))
+        (ty-nat () (sym "nat"))
         (ty-bool () (sym "bool"))
         (ty-char () (sym "char"))
         (ty-unit () (sym "unit"))
@@ -1485,10 +1550,10 @@
   (lambda (forms)
     "Every form, in order; the first error stops the compiler. What it gives
      is the types of the definitions written with none."
-    (let* ((empty (cv nil nil nil nil "a type" nil "the program" 0 nil))
-           (start (cv nil nil (declare-types empty forms nil) nil "a type" nil "the program" 0 nil))
+    (let* ((empty (cv nil nil nil nil "a type" nil "the program" 0 nil nil))
+           (start (cv nil nil (declare-types empty forms nil) nil "a type" nil "the program" 0 nil nil))
            (types (type-names-free start forms))
-           (named (tagcase start (cv (bs ds as es here group file line fs) (cv bs (datatype-names start forms nil) as es here group file line fs))))
-           (typed (tagcase named (cv (bs ds as es here group file line fs) (cv bs (declare-datatypes named forms nil) as es here group file line fs))))
+           (named (tagcase start (cv (bs ds as es here group file line fs tv) (cv bs (datatype-names start forms nil) as es here group file line fs tv))))
+           (typed (tagcase named (cv (bs ds as es here group file line fs tv) (cv bs (declare-datatypes named forms nil) as es here group file line fs tv))))
            (v (with-binds typed (prim-binds typed))))
       (tagcase (check-tops v forms nil) (elab (done found) (verdict found (cv-facts done)))))))

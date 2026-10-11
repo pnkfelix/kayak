@@ -474,3 +474,23 @@ constant whose value is a procedure (a definition made by a `letrec`,
 not a lambda) calls its `fn` first, `fib()(…)`, which Fixpt's
 `redefine/local-fib.fx` found. `tests/kfx/letrec.kfx`, and
 `kfx-refused/letrec-value`. 28 of Fixpt's programs accepted, all agreeing.
+
+## `letregion`, `nat`, and type variables in scope (2026-10-11)
+
+- `cv` has the type and region variables in scope, so `(the a e)`, a
+  lambda's written parameter types and a `letrec`'s types may name a
+  `poly`'s binders (a gap `TODO.md` §13 listed).
+- `(letregion r body ...)`: `r` in scope for the body's types; what the
+  body does to `r` masked, and a value whose type mentions `r` refused, as
+  in FX-26. A `letregion` naming a region already in scope is refused, so
+  that masking, by name, cannot mask an outer region's effects. In Rust,
+  a block: the region's data is the heap's.
+- `nat`: below `int` (a `nat` fits where an `int` is expected, not the
+  other way); a literal checks as one if it is not negative; `Int` in
+  Rust. `string-length`, `length` (of a list at `acyclic`, as FX-26's)
+  and `list-length` give `nat`s; arithmetic gives `int`s, where FX-26 may
+  keep a `nat` (stricter).
+- `zero?`, `max`, `min`, `append`, `reverse`.
+
+`tests/kfx/letregion-nat.kfx` (a pure procedure with a private counter),
+`kfx-refused/letregion-escape`. 30 of Fixpt's programs, all agreeing.

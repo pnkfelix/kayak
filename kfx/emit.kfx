@@ -167,6 +167,7 @@
         (sym (s)
           (cond ((string=? s "i64") (put "i64" acc))
                 ((string=? s "int") (put "Int" acc))
+                ((string=? s "nat") (put "Int" acc))
                 ((string=? s "bool") (put "bool" acc))
                 ((string=? s "char") (put "char" acc))
                 ((string=? s "unit") (put "()" acc))
@@ -310,7 +311,8 @@
   (lambda (e)
     "The forms whose last parts stand where they do."
     (or (head-is? e "if") (head-is? e "cond") (head-is? e "case") (head-is? e "tagcase")
-        (head-is? e "let") (head-is? e "let*") (head-is? e "begin") (head-is? e "letrec"))))
+        (head-is? e "let") (head-is? e "let*") (head-is? e "begin") (head-is? e "letrec")
+        (head-is? e "letregion"))))
 
 (define-rec
   (tail-calls? (subr kfx (tail sexp) bool)
@@ -328,6 +330,7 @@
              (let ((xs (cdr (items e))))
                (tail-calls? (hide t (map binding-name (items (car xs)))) (last (cdr xs)))))
             ((head-is? e "begin") (tail-calls? t (last (cdr (items e)))))
+            ((head-is? e "letregion") (tail-calls? t (last (cdr (cdr (items e))))))
             (else #f))))
   (arms-tail-calls? (subr kfx (tail sexps) bool)
     (lambda (t arms)
@@ -437,6 +440,7 @@
                                 (put-let c (items (car xs)) n acc)
                                 (put-let* c (items (car xs)) n acc)))))
               ((head-is? e "begin") (put-stmts c (cdr (items e)) n t acc))
+              ((head-is? e "letregion") (put-stmts c (cdr (cdr (items e))) n t acc))
               ((head-is? e "letrec")
                (let* ((xs (cdr (items e)))
                       (bindings (items (car xs)))
@@ -639,7 +643,7 @@
             ((string=? h "lambda") (put-lambda c (items (car xs)) (cdr xs) n acc))
             ((string=? h "list") (put-list c xs n acc))
             ((string=? h "the") (put-exp c (second xs) n (value) acc))
-            ((string=? h "letrec") (put-block c (list e) n t acc))
+            ((or (string=? h "letrec") (string=? h "letregion")) (put-block c (list e) n t acc))
             ((null? xs) (put "()" (put (callee c h) acc)))
             (else (put ")" (put-joined c xs ", " n (put "(" (put (callee c h) acc)))))))))
 

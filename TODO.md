@@ -36,10 +36,6 @@ Done is `DONE.md` §7. Left:
 ## 13. The checker: what it does not do yet
 
 What it does is `DONE.md` §13. What is left:
-- **`the` and lambdas' parameter types inside a `poly` procedure** are
-  read with no type variables in scope, so `(the a e)` there is refused
-  ("no type is named a"): stricter, not wrong. The type variables belong
-  in `cv`.
 - **Effect polymorphism**: a `poly` over effects is refused by the
   checker, though the emitter would erase it.
 - **Messages name the definition, not the line**, as §7 says.

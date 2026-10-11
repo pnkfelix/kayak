@@ -341,6 +341,43 @@ pub fn string_append(a: Str, b: Str) -> Str {
     leak_string(format!("{a}{b}"))
 }
 
+/// `nat`s, which are `Int`s: a string's length in characters, a list's.
+pub fn string_length(s: Str) -> Int {
+    i64_to_int(string_length_i64(s))
+}
+
+pub fn length<T>(xs: List<T>) -> Int {
+    list_length(xs)
+}
+
+pub fn list_length<T>(mut xs: List<T>) -> Int {
+    let mut n = 0i64;
+    while let Some(p) = xs {
+        n += 1;
+        xs = p.cdr;
+    }
+    i64_to_int(n)
+}
+
+pub fn reverse<T: Copy>(mut xs: List<T>) -> List<T> {
+    let mut out = nil();
+    while let Some(p) = xs {
+        out = cons(p.car, out);
+        xs = p.cdr;
+    }
+    out
+}
+
+pub fn append<T: Copy>(xs: List<T>, ys: List<T>) -> List<T> {
+    let mut items = Vec::new();
+    let mut p = xs;
+    while let Some(c) = p {
+        items.push(c.car);
+        p = c.cdr;
+    }
+    items.into_iter().rev().fold(ys, |rest, x| cons(x, rest))
+}
+
 /// A string literal: `const`, so that a literal in a loop costs nothing.
 pub const fn str_lit(text: &'static str) -> Str {
     Str {

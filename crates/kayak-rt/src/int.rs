@@ -372,6 +372,18 @@ pub fn i64_to_int(n: i64) -> Int {
     Int::Small(n)
 }
 
+pub fn zero_p(n: Int) -> bool {
+    matches!(n, Int::Small(0))
+}
+
+pub fn max(a: Int, b: Int) -> Int {
+    if _lt(a, b) { b } else { a }
+}
+
+pub fn min(a: Int, b: Int) -> Int {
+    if _lt(b, a) { b } else { a }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
