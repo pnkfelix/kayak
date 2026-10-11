@@ -1,0 +1,59 @@
+"Procedures as values, and poly: map and fold over any element types, a
+ global procedure and lambdas as arguments, a closure that captures, one
+ that makes another, a procedure in a datatype, and a call whose operator
+ is an expression."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-type strings (listof string acyclic))
+(define-type ints (listof i64 acyclic))
+
+(define map (poly ((a type) (b type))
+              (subr kfx ((subr kfx (a) b) (listof a acyclic)) (listof b acyclic)))
+  (lambda (f xs) (if (null? xs) nil (cons (f (car xs)) (map f (cdr xs))))))
+
+(define fold (poly ((a type) (b type))
+               (subr kfx ((subr kfx (b a) b) b (listof a acyclic)) b))
+  (lambda (f acc xs)
+    "A self tail call in a poly procedure: it loops too."
+    (if (null? xs) acc (fold f (f acc (car xs)) (cdr xs)))))
+
+(define words (subr kfx (strings) string)
+  (lambda (xs)
+    (if (null? xs)
+        ""
+        (fold (lambda ((acc string) (w string)) (string-append acc (string-append " " w)))
+              (car xs) (cdr xs)))))
+
+(define add1 (subr kfx (i64) i64) (lambda (n) (i64+ n 1)))
+
+(define adder (subr kfx (i64) (subr kfx (i64) i64))
+  (lambda (n) (lambda (m) (i64+ n m))))
+
+(define twice (poly ((a type)) (subr kfx ((subr kfx (a) a) a) a))
+  (lambda (f x) (f (f x))))
+
+(define-datatype op (op string (subr kfx (i64 i64) i64)))
+
+(define apply-op (subr kfx (op i64 i64) string)
+  (lambda (o a b)
+    (tagcase o (op (name f) (string-append name (string-append "=" (i64->string (f a b))))))))
+
+(define i64*-wrapped (subr kfx (i64 i64) i64) (lambda (a b) (i64* a b)))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (let* ((xs (the ints (list 1 2 3)))
+           (k (the i64 100))
+           (shows (map i64->string (map add1 xs))))
+      (words
+       (list (words shows)
+             (words (map (lambda (x) (i64->string (i64* x 10))) xs))
+             (words (map i64->string (map (adder k) xs)))
+             (i64->string ((adder 3) 4))
+             (i64->string (twice add1 0))
+             (twice (lambda ((s string)) (string-append s "!")) "hey")
+             (i64->string (fold (lambda (acc x) (i64+ acc x)) 0 xs))
+             (apply-op (op "plus" (lambda (a b) (i64+ a b))) 2 3)
+             (apply-op (op "times" i64*-wrapped) 2 3))))))
+

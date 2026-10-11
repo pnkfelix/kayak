@@ -24,18 +24,6 @@ A Rust error in generated code names a line of `kfx.rs`, and a run-time
 `error` names nothing. Start with a `// kfx: line` comment per item: the
 reader would keep each datum's line, which `sexp` does not carry yet.
 
-## 11. First-class procedures
-
-A call's operator is always a global's name. A `lambda` as a value would
-be `&'static dyn Fn(…) -> T`, allocated in the arena: `Copy`, with its
-captures `Copy` and moved.
-
-## 12. `poly` as generics, rank 1
-
-`poly` only at the top of a definition's type: `fn f<T: Copy + 'static>`.
-`proj` as a turbofish, its effect and region arguments dropped. Today the
-only polymorphism is the runtime's generics.
-
 ## 13. A KFX checker, in KFX
 
 Fixpt checks types and effects in stage 0. A checker of KFX's own would
@@ -105,8 +93,6 @@ flat sums already store their tag "as Rust stores a discriminant"
 - **A number literal past `i64` wraps** as the reader reads it
   (`digits-value`), and the Rust gets the wrapped value. It should be
   refused.
-- **A local named like a constant** is taken for the constant, and
-  written as a call (`x()`), since the emitter does not track locals.
 - **`tagcase_`**, the name a `tagcase` binds, could be a KFX name's
   mangling (`tagcase-`).
 - **`(define x e)` with no type** is refused; FX-26 allows it.
@@ -116,6 +102,14 @@ flat sums already store their tag "as Rust stores a discriminant"
   a list on the way back (`string-chars-from`) needs `with_big_stack`.
 - **Tail calls between procedures** of a `define-rec` are calls, and grow
   the stack: only a procedure's calls of itself loop.
+- **`proj`** is not translated: instantiation is left to inference, which
+  FX-26 and rustc both do. A call rustc cannot infer would need
+  `f::<T>`.
+- **A `lambda` of more than four parameters** has no `lambdaN` in
+  `kayak-rt`.
+- **A local `letrec`** of procedures is not translated: a closure cannot
+  name itself. The compiler's own source needs none (it lifts them to
+  the top level).
 - **Warnings in generated code** are all allowed. Unused bindings (a
   `tagcase` arm ignoring fields) are the common ones; whether the emitter
   should avoid them is open.

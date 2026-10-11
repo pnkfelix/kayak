@@ -33,6 +33,11 @@ pub mod names;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/procs.rs"]
+pub mod procs;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/recursion.rs"]
 pub mod recursion;
 
@@ -57,6 +62,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("lets", lets::main),
     ("lists", lists::main),
     ("names", names::main),
+    ("procs", procs::main),
     ("recursion", recursion::main),
     ("strings", strings::main),
     ("tails", tails::main),

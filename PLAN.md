@@ -109,6 +109,12 @@ is no `Drop`, no `Rc` and no `.clone()`.
 | `(define-datatype t (tag T…) …)`                      | `enum T { Tag(T…), … }` and `fn tag(…) -> &'static T`       |
 | `(define-effect …)`                                   | nothing                                                     |
 | `(f a …)`, `f` a global or a primitive                | `f(a, …)`; the primitives are `kayak_rt`'s                  |
+| `(e a …)`, `e` an expression                          | `(e)(a, …)`                                                 |
+| a global procedure named as a value                   | `&f`: a reference to its `fn`, promoted to `'static`        |
+| `(subr E (T…) R)` as a value's type                   | `&'static dyn Fn(T…) -> R`                                  |
+| `(lambda (x …) body)` as a value                      | `lambdaN(move \|x, …\| { body })`, `N` its arity          |
+| `(poly ((a type) …) T)`, a definition's type          | `fn f<A: Copy + 'static, …>`; an effect binder is erased    |
+| a call of a `poly` procedure                          | inferred, by FX-26 and by rustc alike: no `proj`            |
 | `if`, `cond`, `and`, `or`                             | `if`/`else`, `&&`, `\|\|`                                   |
 | `let`, `let*`, `begin`                                | blocks of `let`s and statements                             |
 | `(case k ((d …) e) … (else e))` on chars             | `match k { d \| … => e, …, _ => e }`                        |
@@ -154,10 +160,13 @@ _eq _slash`; a `-` alone or last is `_minus`. So `string->list` is
 `string_to_list`, `char=?` is `char_eq_p`, `i64-` is `i64_minus`, and
 `i64<=` is `i64_lt_eq`.
 
-KFX-0 has no first-class procedures (a call's operator is always a
-global's name), no `poly` of its own (the primitives' polymorphism is
-Rust generics in `kayak_rt`), and no regions but `acyclic`. These are the
-first things to add after the loop closes (§5).
+A name as a value is a local, a constant (`x()`), or else a global
+procedure (`&f`), the program's or `kayak-rt`'s: the emitter keeps the
+names bound where it is, from parameters, `let`, `let*` and `tagcase`.
+
+KFX-0 has no regions but `acyclic`, and no `poly` over anything but
+types and effects (`TODO.md` §14, §18), no `proj` (instantiation is
+inferred), and no `letrec` of local procedures.
 
 ---
 

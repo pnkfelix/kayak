@@ -204,3 +204,38 @@ checks the compiler and does not run it on itself: the pre-scan gave a
 `case`'s key to the walk of its arms. Generation 1 failed on its own
 source. And the regenerating loop had copied that failure's empty output
 over the seed; restored from git, and generations are now kept apart.
+
+## 11. First-class procedures, and 12. `poly` (2026-10-11)
+
+- A `(subr E (T…) R)` that is a value's type is `&'static dyn Fn(T…) -> R`:
+  `Copy`, as every KFX value is.
+- A `lambda` that is a value is `lambdaN(move |x, …| { body })`. The
+  helpers in `kayak-rt` take an `impl Fn` and give the `&'static dyn Fn`,
+  so that rustc finds the closure's parameter and result types from where
+  it is used, as FX-26's checking does: probed by hand first, `nil()` in a
+  closure's body included. A parameter written `(x T)` is `x: T`.
+- A global procedure named as a value is `&f`: a `fn` item promoted to
+  `'static`, coerced to `dyn Fn`.
+- A call whose operator is an expression, `((adder 3) 4)`, is
+  `(adder(3i64))(4i64)`.
+- A definition's type `(poly ((a type) …) T)` makes the `fn` generic,
+  `<A: Copy + 'static, …>`; an effect binder is erased, a region one
+  refused. Its value may be a `lambda` (FX-26 puts the binders in scope)
+  or a `plambda`. Instantiation is inferred, by FX-26 and rustc alike.
+
+**Scope.** That a name is a global procedure, not a local, is something
+the emitter had not known. A procedure the program defines could be
+listed, but a primitive (`i64->string`, named as `map`'s argument) cannot,
+since `kayak-rt` is not read. So the emitter now keeps the names bound
+where it writes (parameters, `let`, `let*`, `tagcase`'s fields): a name is
+a local, a constant, or else a global procedure. This also mends a hazard
+`TODO.md` §17 listed, a local named like a constant.
+
+`tests/kfx/procs.kfx`: `map` and `fold` over several types, a global
+procedure, a primitive and lambdas as arguments, a capturing closure, one
+that makes another, a procedure in a datatype, and an expression as an
+operator. Its first run found the primitive case.
+
+`scripts/regen.sh` regenerates through the bootstrap safely: only a
+successful run's output replaces the seed, and on failure the seed is
+restored.

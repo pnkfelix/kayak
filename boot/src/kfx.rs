@@ -491,19 +491,22 @@ pub fn tagof(f0: Str, f1: Str) -> &'static Tagof {
 
 pub type Tagofs = List<&'static Tagof>;
 
-// Datatypes' names, their tags, and constants: definitions not of lambdas.
+// Datatypes' names, their tags, constants (definitions not of procedures),
+// and the names bound where an expression is. A name named as a value is
+// a local, a constant (a call of its `fn`), or else a global procedure (a
+// reference to its `fn`, the program's or kayak-rt's).
 pub enum Ctx {
-    Ctx(Strings, Tagofs, Strings),
+    Ctx(Strings, Tagofs, Strings, Strings),
 }
 
-pub fn ctx(f0: Strings, f1: Tagofs, f2: Strings) -> &'static Ctx {
-    alloc(Ctx::Ctx(f0, f1, f2))
+pub fn ctx(f0: Strings, f1: Tagofs, f2: Strings, f3: Strings) -> &'static Ctx {
+    alloc(Ctx::Ctx(f0, f1, f2, f3))
 }
 
 pub fn ctx_datatypes(c: &'static Ctx) -> Strings {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks) => {
+        Ctx::Ctx(ds, ts, ks, ls) => {
             ds
         }
     }
@@ -512,7 +515,7 @@ pub fn ctx_datatypes(c: &'static Ctx) -> Strings {
 pub fn ctx_tags(c: &'static Ctx) -> Tagofs {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks) => {
+        Ctx::Ctx(ds, ts, ks, ls) => {
             ts
         }
     }
@@ -521,8 +524,38 @@ pub fn ctx_tags(c: &'static Ctx) -> Tagofs {
 pub fn ctx_constants(c: &'static Ctx) -> Strings {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks) => {
+        Ctx::Ctx(ds, ts, ks, ls) => {
             ks
+        }
+    }
+}
+
+pub fn ctx_locals(c: &'static Ctx) -> Strings {
+    let tagcase_ = c;
+    match *tagcase_ {
+        Ctx::Ctx(ds, ts, ks, ls) => {
+            ls
+        }
+    }
+}
+
+pub fn strings_onto(mut xs: Strings, mut ys: Strings) -> Strings {
+    loop {
+        if null_p(xs) {
+            return ys;
+        } else {
+            (xs, ys) = (cdr(xs), cons(car(xs), ys));
+            continue;
+        }
+    }
+}
+
+/// `c`, where `names` are bound too.
+pub fn with_locals(c: &'static Ctx, names: Strings) -> &'static Ctx {
+    let tagcase_ = c;
+    match *tagcase_ {
+        Ctx::Ctx(ds, ts, ks, ls) => {
+            ctx(ds, ts, ks, strings_onto(names, ls))
         }
     }
 }
@@ -558,15 +591,19 @@ pub fn note_tags(mut variants: Sexps, mut d: Str, mut ts: Tagofs) -> Tagofs {
     }
 }
 
+pub fn procedure_p(e: &'static Sexp) -> bool {
+    (head_is_p(e, "lambda") || head_is_p(e, "plambda"))
+}
+
 pub fn note(form: &'static Sexp, c: &'static Ctx) -> &'static Ctx {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks) => {
+        Ctx::Ctx(ds, ts, ks, ls) => {
             if head_is_p(form, "define-datatype") {
                 let d = sym_name(second(items(form)));
-                ctx(cons(d, ds), note_tags(cdr(cdr(items(form))), d, ts), ks)
-            } else if (head_is_p(form, "define") && i64_eq(size(items(form)), 4i64) && not(head_is_p(fourth(items(form)), "lambda"))) {
-                ctx(ds, ts, cons(sym_name(second(items(form))), ks))
+                ctx(cons(d, ds), note_tags(cdr(cdr(items(form))), d, ts), ks, ls)
+            } else if (head_is_p(form, "define") && i64_eq(size(items(form)), 4i64) && not(procedure_p(fourth(items(form))))) {
+                ctx(ds, ts, cons(sym_name(second(items(form))), ks), ls)
             } else {
                 c
             }
@@ -612,6 +649,8 @@ pub fn put_escaped(mut cs: Chars, mut q: char, mut acc: Chars) -> Chars {
     }
 }
 
+/// A type. A name that is no base type or datatype is a type abbreviation
+/// or a type variable, either way a Rust type of the same name.
 pub fn put_type(c: &'static Ctx, t: &'static Sexp, acc: Chars) -> Chars {
     let tagcase_ = t;
     match *tagcase_ {
@@ -637,6 +676,13 @@ pub fn put_type(c: &'static Ctx, t: &'static Sexp, acc: Chars) -> Chars {
         Sexp::Lst(xs) => {
             if sym_is_p(car(xs), "listof") {
                 put(">", put_type(c, second(xs), put("List<", acc)))
+            } else if sym_is_p(car(xs), "subr") {
+                let acc = put("&'static dyn Fn(", acc);
+                let acc = put_types(c, items(third(xs)), acc);
+                let acc = put(") -> ", acc);
+                put_type(c, fourth(xs), acc)
+            } else if sym_is_p(car(xs), "poly") {
+                error("kfx: a poly type is only a definition's, at its top")
             } else {
                 error("kfx: a type KFX-0 does not have")
             }
@@ -648,6 +694,20 @@ pub fn put_type(c: &'static Ctx, t: &'static Sexp, acc: Chars) -> Chars {
     }
 }
 
+/// Types, separated by commas.
+pub fn put_types(mut c: &'static Ctx, mut types: Sexps, mut acc: Chars) -> Chars {
+    loop {
+        if null_p(types) {
+            return acc;
+        } else if null_p(cdr(types)) {
+            return put_type(c, car(types), acc);
+        } else {
+            (types, acc) = (cdr(types), put(", ", put_type(c, car(types), acc)));
+            continue;
+        }
+    }
+}
+
 pub fn put_var(c: &'static Ctx, s: Str, acc: Chars) -> Chars {
     if string_eq_p(s, "#t") {
         put("true", acc)
@@ -655,10 +715,12 @@ pub fn put_var(c: &'static Ctx, s: Str, acc: Chars) -> Chars {
         put("false", acc)
     } else if string_eq_p(s, "#u") {
         put("()", acc)
+    } else if string_member_p(s, ctx_locals(c)) {
+        put(mangle(s), acc)
     } else if (string_eq_p(s, "nil") || string_member_p(s, ctx_constants(c))) {
         put("()", put(mangle(s), acc))
     } else {
-        put(mangle(s), acc)
+        put(mangle(s), put("&", acc))
     }
 }
 
@@ -994,7 +1056,23 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
                 put_var(c, s, acc)
             }
             Sexp::Lst(xs) => {
-                put_form(c, e, sym_name(car(xs)), cdr(xs), n, t, acc)
+                let tagcase_ = car(xs);
+                match *tagcase_ {
+                    Sexp::Sym(h) => {
+                        put_form(c, e, h, cdr(xs), n, t, acc)
+                    }
+                    _ => {
+                        let head = tagcase_;
+                        let acc = put("(", acc);
+                        let acc = put_exp(c, head, n, value(), acc);
+                        let acc = put(")(", acc);
+                        put(")", if null_p(cdr(xs)) {
+                            acc
+                        } else {
+                            put_joined(c, cdr(xs), ", ", n, acc)
+                        })
+                    }
+                }
             }
         }
     }
@@ -1056,13 +1134,14 @@ pub fn put_stmts(mut c: &'static Ctx, mut es: Sexps, mut n: i64, mut t: &'static
                 put(";", put_exp(c, e, n, value(), acc))
             };
             return put_stmts(c, cdr(es), n, t, put_nl(n, acc));
-        } else if head_is_p(e, "let") {
+        } else if (head_is_p(e, "let") || head_is_p(e, "let*")) {
             let xs = cdr(items(e));
-            (es, t, acc) = (cdr(xs), hide(t, binding_names(items(car(xs)))), put_let(c, items(car(xs)), n, acc));
-            continue;
-        } else if head_is_p(e, "let*") {
-            let xs = cdr(items(e));
-            (es, t, acc) = (cdr(xs), hide(t, binding_names(items(car(xs)))), put_let_star(c, items(car(xs)), n, acc));
+            let names = binding_names(items(car(xs)));
+            (c, es, t, acc) = (with_locals(c, names), cdr(xs), hide(t, names), if head_is_p(e, "let") {
+                put_let(c, items(car(xs)), n, acc)
+            } else {
+                put_let_star(c, items(car(xs)), n, acc)
+            });
             continue;
         } else if head_is_p(e, "begin") {
             es = cdr(items(e));
@@ -1103,12 +1182,13 @@ pub fn put_let1(c: &'static Ctx, binding: &'static Sexp, n: i64, acc: Chars) -> 
     put_nl(n, put(";", acc))
 }
 
+/// Each binding sees those before it.
 pub fn put_let_star(mut c: &'static Ctx, mut bindings: Sexps, mut n: i64, mut acc: Chars) -> Chars {
     loop {
         if null_p(bindings) {
             return acc;
         } else {
-            (bindings, acc) = (cdr(bindings), put_let1(c, car(bindings), n, acc));
+            (c, bindings, acc) = (with_locals(c, binding_names(cons(car(bindings), nil()))), cdr(bindings), put_let1(c, car(bindings), n, acc));
             continue;
         }
     }
@@ -1191,7 +1271,7 @@ pub fn put_tagcase_arms(c: &'static Ctx, arms: Sexps, n: i64, t: &'static Tail, 
             let acc = put_names(items(second(arm)), acc);
             put_nl(i64_plus(n, 1i64), put(") => {", acc))
         };
-        let acc = put_stmts(c, cdr(cdr(arm)), i64_plus(n, 1i64), hide(t, bound), acc);
+        let acc = put_stmts(with_locals(c, bound), cdr(cdr(arm)), i64_plus(n, 1i64), hide(t, bound), acc);
         let acc = put("}", put_nl(n, acc));
         put_tagcase_arms(c, cdr(arms), n, t, acc)
     }
@@ -1205,6 +1285,42 @@ pub fn put_tagcase(c: &'static Ctx, xs: Sexps, n: i64, t: &'static Tail, acc: Ch
     let acc = put("match *tagcase_ {", acc);
     let acc = put_tagcase_arms(c, cdr(xs), i64_plus(n, 1i64), t, acc);
     put("}", put_nl(n, acc))
+}
+
+/// A lambda as a value: a closure, `move`, since what it captures is
+/// `Copy`, made a `&'static dyn Fn` by `lambdaN`, `N` its arity.
+pub fn put_lambda(c: &'static Ctx, params: Sexps, body: Sexps, n: i64, acc: Chars) -> Chars {
+    let acc = put("lambda", acc);
+    let acc = put(i64_to_string(size(params)), acc);
+    let acc = put("(move |", acc);
+    let acc = put_lambda_params(c, params, acc);
+    let acc = put("| ", acc);
+    put(")", put_block(with_locals(c, param_names(params)), body, n, value(), acc))
+}
+
+/// `x`, or `(x T)` as `x: T`.
+pub fn put_lambda_params(c: &'static Ctx, params: Sexps, acc: Chars) -> Chars {
+    if null_p(params) {
+        acc
+    } else {
+        let acc = {
+            let tagcase_ = car(params);
+            match *tagcase_ {
+                Sexp::Lst(xt) => {
+                    put_type(c, second(xt), put(": ", put(mangle(sym_name(car(xt))), acc)))
+                }
+                _ => {
+                    let name = tagcase_;
+                    put(mangle(sym_name(name)), acc)
+                }
+            }
+        };
+        put_lambda_params(c, cdr(params), if null_p(cdr(params)) {
+            acc
+        } else {
+            put(", ", acc)
+        })
+    }
 }
 
 pub fn put_list(c: &'static Ctx, xs: Sexps, n: i64, acc: Chars) -> Chars {
@@ -1250,6 +1366,8 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
         let acc = put(" {", acc);
         let acc = put_case_arms(c, cdr(xs), i64_plus(n, 1i64), t, acc);
         put("}", put_nl(n, acc))
+    } else if string_eq_p(h, "lambda") {
+        put_lambda(c, items(car(xs)), cdr(xs), n, acc)
     } else if string_eq_p(h, "list") {
         put_list(c, xs, n, acc)
     } else if string_eq_p(h, "the") {
@@ -1296,7 +1414,54 @@ pub fn put_params(c: &'static Ctx, names: Sexps, types: Sexps, mutable: bool, ac
     }
 }
 
+/// A poly's binders as a fn's generics: a type is a Rust type parameter,
+/// `Copy` and `'static` as every KFX value is; an effect is erased.
+pub fn put_generics(mut binders: Sexps, mut first: bool, mut acc: Chars) -> Chars {
+    loop {
+        if null_p(binders) {
+            if first {
+                return acc;
+            } else {
+                return put(">", acc);
+            }
+        } else {
+            let b = items(car(binders));
+            let kind = sym_name(second(b));
+            if string_eq_p(kind, "type") {
+                let acc = put(if first {
+                    "<"
+                } else {
+                    ", "
+                }, acc);
+                let acc = put(camel(sym_name(car(b))), acc);
+                return put_generics(cdr(binders), false, put(": Copy + 'static", acc));
+            } else if string_eq_p(kind, "effect") {
+                binders = cdr(binders);
+                continue;
+            } else {
+                return error(string_append("kfx: KFX-0 has no poly over a ", kind));
+            }
+        }
+    }
+}
+
+/// A poly type's body, or a plambda's: what is under the binders.
+pub fn unpoly(e: &'static Sexp) -> &'static Sexp {
+    if (head_is_p(e, "poly") || head_is_p(e, "plambda")) {
+        third(items(e))
+    } else {
+        e
+    }
+}
+
 pub fn put_define(c: &'static Ctx, name: &'static Sexp, r#type: &'static Sexp, defined: &'static Sexp, acc: Chars) -> Chars {
+    let binders = if head_is_p(r#type, "poly") {
+        items(second(items(r#type)))
+    } else {
+        nil()
+    };
+    let r#type = unpoly(r#type);
+    let defined = unpoly(defined);
     let lambda_p = head_is_p(defined, "lambda");
     let body = if lambda_p {
         cdr(cdr(items(defined)))
@@ -1320,8 +1485,14 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, r#type: &'static Sexp, d
         value()
     };
     let loops_p = (lambda_p && tail_calls_p(t, last_sexp(body)));
+    let inner = if lambda_p {
+        with_locals(c, param_names(items(second(items(defined)))))
+    } else {
+        c
+    };
     let acc = put("pub fn ", acc);
     let acc = put(mangle(sym_name(name)), acc);
+    let acc = put_generics(binders, true, acc);
     let acc = if lambda_p {
         let acc = put("(", acc);
         let acc = put_params(c, items(second(items(defined))), items(third(items(r#type))), loops_p, acc);
@@ -1333,10 +1504,10 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, r#type: &'static Sexp, d
     let acc = put(" {", acc);
     if loops_p {
         let acc = put_nl(2i64, put("loop {", put_nl(1i64, acc)));
-        let acc = put_stmts(c, body, 2i64, t, acc);
+        let acc = put_stmts(inner, body, 2i64, t, acc);
         put("\n    }\n}\n\n", acc)
     } else {
-        put("\n}\n\n", put_stmts(c, body, 1i64, value(), put_nl(1i64, acc)))
+        put("\n}\n\n", put_stmts(inner, body, 1i64, value(), put_nl(1i64, acc)))
     }
 }
 
@@ -1352,20 +1523,6 @@ pub fn put_rec(mut c: &'static Ctx, mut bindings: Sexps, mut acc: Chars) -> Char
     }
 }
 
-/// A variant's fields' types, separated by commas.
-pub fn put_field_types(mut c: &'static Ctx, mut types: Sexps, mut acc: Chars) -> Chars {
-    loop {
-        if null_p(types) {
-            return acc;
-        } else if null_p(cdr(types)) {
-            return put_type(c, car(types), acc);
-        } else {
-            (types, acc) = (cdr(types), put(", ", put_type(c, car(types), acc)));
-            continue;
-        }
-    }
-}
-
 pub fn put_variants(c: &'static Ctx, variants: Sexps, acc: Chars) -> Chars {
     if null_p(variants) {
         acc
@@ -1374,7 +1531,7 @@ pub fn put_variants(c: &'static Ctx, variants: Sexps, acc: Chars) -> Chars {
         let acc = put("    ", acc);
         let acc = put(camel(sym_name(car(v))), acc);
         let acc = put("(", acc);
-        let acc = put_field_types(c, cdr(v), acc);
+        let acc = put_types(c, cdr(v), acc);
         put_variants(c, cdr(variants), put("),\n", acc))
     }
 }
@@ -1490,7 +1647,7 @@ pub fn header() -> Str {
 /// A KFX-0 program's text, as Rust.
 pub fn compile(src: Str) -> Str {
     let forms = read_all(string_chars(src));
-    let c = collect(forms, ctx(nil(), nil(), nil()));
+    let c = collect(forms, ctx(nil(), nil(), nil(), nil()));
     rev_to_string(put_tops(c, forms, put(header(), nil())))
 }
 

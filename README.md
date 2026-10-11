@@ -45,10 +45,10 @@ script says so.
 Edit `kfx/kfx.kfx`, then regenerate with the compiler you have:
 
 ```
-cargo build --release -p kfx
-./target/release/kfx kfx/kfx.kfx > boot/src/kfx.rs
+scripts/regen.sh
 ```
 
-and repeat until `scripts/fixpoint.sh` passes. A feature goes in two
+which builds the compiler, runs it on its source, and repeats until the
+output stops changing; a failure leaves the seed as it was. A feature goes in two
 steps: first teach the compiler to translate it, regenerate, and only then
 use it in `kfx.kfx`.

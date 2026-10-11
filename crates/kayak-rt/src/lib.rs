@@ -32,6 +32,32 @@ pub fn error(message: Str) -> ! {
     panic!("{message}")
 }
 
+// Procedures: a `lambda` that is a value is a closure, made a
+// `&'static dyn Fn` by the helper of its arity, so that its parameters'
+// and result's types are found from where it is used.
+
+pub fn lambda0<R>(f: impl Fn() -> R + 'static) -> &'static dyn Fn() -> R {
+    alloc(f)
+}
+
+pub fn lambda1<A, R>(f: impl Fn(A) -> R + 'static) -> &'static dyn Fn(A) -> R {
+    alloc(f)
+}
+
+pub fn lambda2<A, B, R>(f: impl Fn(A, B) -> R + 'static) -> &'static dyn Fn(A, B) -> R {
+    alloc(f)
+}
+
+pub fn lambda3<A, B, C, R>(f: impl Fn(A, B, C) -> R + 'static) -> &'static dyn Fn(A, B, C) -> R {
+    alloc(f)
+}
+
+pub fn lambda4<A, B, C, D, R>(
+    f: impl Fn(A, B, C, D) -> R + 'static,
+) -> &'static dyn Fn(A, B, C, D) -> R {
+    alloc(f)
+}
+
 // Lists.
 
 pub fn nil<T>() -> List<T> {
