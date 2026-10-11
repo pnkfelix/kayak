@@ -1002,3 +1002,10 @@ abort is wanted) compile and agree. And a control form for a parameter
 not known whole is found by itself, as FX-26 finds it (K1: a probe's
 branches of two types). `tests/kfx/lifted`,
 `kfx-refused/branches-unknown-parameter`.
+
+## Arguments found by themselves, lists at fresh regions (2026-10-11)
+
+C36 (K1): seven of the fourteen differences the probes left agree now
+(`l6`, `l53`, `y14`, `h8`, `x14`, `y04`, and the K1 half of `l23`).
+`kfx-refused/literal-in-unknown-argument`, `fresh-list-region`. The rest
+are recorded in C36 and TODO.md.

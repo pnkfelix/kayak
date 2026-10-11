@@ -1466,6 +1466,7 @@
                   (tagcase (instantiate s sc)
                     (inst (t s regions)
                       (place-needed v h wher sc from
+                      (regions-freshened v h wher regions
                       (poly-settled v h wher args (binder-metas from (st-next s) regions) (result-only? s t (binder-metas from (st-next s) regions))
                       (void-call v (and (string=? h "error") (string=? wher "prim"))
                                  (and (not (null? expected)) (tagcase (walk s (car expected)) (ty-meta (k) #t) (else other #f)))
@@ -1476,7 +1477,24 @@
                                                (and (string=? wher "local") (self-applicable? v s t))
                                                (and (string-member? h (cv-group v)) (or (string=? wher "global") (string=? wher "item"))))
                                            (list "spin")
-                                           nil))))))))))))))))))
+                                           nil)))))))))))))))))))
+
+  (regions-freshened (subr kfx (cv string string (listof i64 acyclic) res) res)
+    (lambda (v h wher regions r)
+      "A poly's call: a region binder its arguments and what its place
+       expects did not say made fresh, as FX-26 makes it (its
+       `default_regions`): a list made by `cons` and found by itself is at a
+       region of its own, not one a later use may choose."
+      (tagcase r
+        (res (t es s)
+          (res t es
+               (letrec ((go (subr kfx (st (listof i64 acyclic)) st)
+                              (lambda (s ks)
+                                (if (null? ks)
+                                    s
+                                    (go (tagcase (walk s (ty-meta (car ks))) (ty-meta (k) (solve s k (ty-rconst "%fresh"))) (else other s))
+                                        (cdr ks))))))
+                 (go s regions)))))))
 
   (place-needed (subr kfx (cv string string scheme i64 res) res)
     (lambda (v h wher sc from r)
@@ -1536,6 +1554,7 @@
       (tagcase r
         (res (t es s)
           (let ((open (any? (lambda ((k i64)) (tagcase (walk s (ty-meta k)) (ty-meta (j) #t) (else other #f))) ks)))
+           (begin
             (cond ((and (or (string=? h "car") (string=? h "cdr")) (string=? wher "prim") (not (null? args))
                         (or (head-is? (car args) "error")
                             (tagcase (car args)
@@ -1555,7 +1574,7 @@
                   (open "`null?`'s, written at the type FX-26 leaves open: `void`."
                         (res t es (note-turbofish s (cv-file v) (cv-pos v) (map (lambda ((k i64)) (ty-meta k)) ks))))
                   ((or (string=? wher "prim") (null? ks) (not fish)) r)
-                  (else (res t es (note-turbofish s (cv-file v) (cv-pos v) (map (lambda ((k i64)) (ty-meta k)) ks))))))))))
+                  (else (res t es (note-turbofish s (cv-file v) (cv-pos v) (map (lambda ((k i64)) (ty-meta k)) ks)))))))))))
 
   (nat-args? (subr kfx (cv st sexps) bool)
     (lambda (v s args)
@@ -1648,7 +1667,9 @@
        since rustc finds a closure's parameter types only from what comes
        before it: see `check-written-params`. A procedure expected bounds
        the result from above, as FX-26 has it: fitted after the arguments,
-       which say what it is, one that cannot abort then lifted (C35)."
+       which say what it is, one that cannot abort then lifted (C35). A
+       list it makes, found by itself, at a region nothing said is at a
+       fresh one, as FX-26's is: not one a later use may choose (C36)."
       (tagcase callee
         (res (t es0 s)
           (tagcase (walk s t)
@@ -1659,9 +1680,9 @@
                   (tagcase (let ((s1 (if (or (null? expected) (proc-type? s (car expected))) s (fits v s r (car expected)))))
                              (call-args v s1 args ps (fixed-by s s1 (concat (map metas-of ps)))))
                     (res (u es1 s0)
-                     (let ((s (if (and (not (null? expected)) (proc-type? s0 (car expected)))
-                                  (fits v s0 r (car expected))
-                                  s0)))
+                     (let ((s (if (null? expected)
+                                  (freshened s0 r)
+                                  (if (proc-type? s0 (car expected)) (fits v s0 r (car expected)) s0))))
                       (tagcase (name-regions v s latent regions)
                         (res (u named s)
                           (res r (effs-union named (effs-union more (effs-union es0 es1)))
@@ -1712,13 +1733,12 @@
             ((eqv-bool? (deferred? (car args) (car ps)) later)
              (tagcase (cond ((not (null? (module-spec v (walk s (car ps)))))
                              (module-argument v s (car args) (walk s (car ps))))
-                            ((and (or (head-is? (car args) "list")
-                                      (tagcase (car args) (lst (ys f l p) (and (not (null? ys)) (tagcase (car ys) (sym (h f2 p2) (control-form? h)) (else other #f)))) (else other #f)))
+                            ((and (not (procedure? (car args)))
                                   (has-open? s (car ps)))
-                             "A `list`, or a control form (an `if`, a `let`...), for a parameter
-                              whose type is not known whole yet: found by itself, as FX-26
-                              finds it, its branches then of one type (a `list` at a fresh
-                              region)."
+                             "An argument for a parameter whose type is not known whole yet:
+                              found by itself, as FX-26 finds it (a literal an `int`, a
+                              control form's branches of one type, a `list` at a fresh
+                              region); a lambda, told its parameters, is checked."
                              (check-by-synth v s (car args) (car ps)))
                             (else (check v s (car args) (car ps))))
                (res (t es s) (with-effs (call-args-pass v s (cdr args) (cdr ps) later fixed) es))))

@@ -1,0 +1,6 @@
+"An argument for a parameter whose type is not known whole yet is found by
+ itself, as FX-26 finds it: the literal in (cons 5 ...) an int, though
+ car's value is wanted as an i64 (Fixpt's probes, l6 and l53)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f (subr pure (i64) i64) (lambda (v) (car (cons 5 (list v)))))
+(f 3)

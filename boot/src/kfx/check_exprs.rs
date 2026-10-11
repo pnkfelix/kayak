@@ -3257,7 +3257,7 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
                 let tagcase_ = instantiate(s, sc);
                 match *tagcase_ {
                     Inst::Inst(t, s, regions) => {
-                        place_needed(v, h, wher, sc, from, poly_settled(v, h, wher, args, binder_metas(from, st_next(s), regions), result_only_p(s, t, binder_metas(from, st_next(s), regions)), void_call(v, (string_eq_p(h, str_lit("error")) && string_eq_p(wher, str_lit("prim"))), (not(null_p(expected)) && {
+                        place_needed(v, h, wher, sc, from, regions_freshened(v, h, wher, regions, poly_settled(v, h, wher, args, binder_metas(from, st_next(s), regions), result_only_p(s, t, binder_metas(from, st_next(s), regions)), void_call(v, (string_eq_p(h, str_lit("error")) && string_eq_p(wher, str_lit("prim"))), (not(null_p(expected)) && {
                             let tagcase_ = walk(s, car(expected));
                             match *tagcase_ {
                                 Ty::TyMeta(k) => {
@@ -3276,10 +3276,45 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
                             kayak_rt::cons(str_lit("spin"), kayak_rt::nil())
                         } else {
                             nil::<Str>()
-                        })))))))
+                        }))))))))
                     }
                 }
             }
+        }
+    }
+}
+
+/// A poly's call: a region binder its arguments and what its place
+/// expects did not say made fresh, as FX-26 makes it (its
+/// `default_regions`): a list made by `cons` and found by itself is at a
+/// region of its own, not one a later use may choose.
+pub fn regions_freshened(v: &'static Cv, h: Str, wher: Str, regions: List<i64>, r: &'static Res) -> &'static Res {
+    let tagcase_ = r;
+    match *tagcase_ {
+        Res::Res(t, es, s) => {
+            res(t, es, {
+                let go__knot = knot::<&'static dyn Fn(&'static St, List<i64>) -> &'static St>();
+                let go = lambda2(move |s: &'static St, ks: List<i64>| {
+                    if null_p(ks) {
+                        s
+                    } else {
+                        (go__knot.get())({
+                            let tagcase_ = walk(s, ty_meta(car(ks)));
+                            match *tagcase_ {
+                                Ty::TyMeta(k) => {
+                                    solve(s, k, ty_rconst(str_lit("%fresh")))
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    s
+                                }
+                            }
+                        }, cdr(ks))
+                    }
+                });
+                go__knot.set(go);
+                go(s, regions)
+            })
         }
     }
 }
@@ -3611,7 +3646,9 @@ pub fn handler_of(v: &'static Cv, s: &'static St, e: &'static Sexp, h: &'static 
 /// since rustc finds a closure's parameter types only from what comes
 /// before it: see `check-written-params`. A procedure expected bounds
 /// the result from above, as FX-26 has it: fitted after the arguments,
-/// which say what it is, one that cannot abort then lifted (C35).
+/// which say what it is, one that cannot abort then lifted (C35). A
+/// list it makes, found by itself, at a region nothing said is at a
+/// fresh one, as FX-26's is: not one a later use may choose (C36).
 pub fn synth_call_of(v: &'static Cv, s: &'static St, callee: &'static Res, args: Sexps, regions: List<i64>, expected: Tys, more: Strings) -> &'static Res {
     let tagcase_ = callee;
     match *tagcase_ {
@@ -3632,10 +3669,14 @@ pub fn synth_call_of(v: &'static Cv, s: &'static St, callee: &'static Res, args:
                         };
                         match *tagcase_ {
                             Res::Res(u, es1, s0) => {
-                                let s = if (not(null_p(expected)) && proc_type_p(s0, car(expected))) {
-                                    fits(v, s0, r, car(expected))
+                                let s = if null_p(expected) {
+                                    freshened(s0, r)
                                 } else {
-                                    s0
+                                    if proc_type_p(s0, car(expected)) {
+                                        fits(v, s0, r, car(expected))
+                                    } else {
+                                        s0
+                                    }
                                 };
                                 let tagcase_ = name_regions(v, s, latent, regions);
                                 match *tagcase_ {
@@ -3752,33 +3793,11 @@ pub fn call_args_pass(mut v: &'static Cv, mut s: &'static St, mut args: Sexps, m
         } else if eqv_bool_p(deferred_p(car(args), car(ps)), later) {
             let tagcase_ = if not(null_p(module_spec(v, walk(s, car(ps))))) {
                 module_argument(v, s, car(args), walk(s, car(ps)))
-            } else if ((head_is_p(car(args), str_lit("list")) || {
-                let tagcase_ = car(args);
-                match *tagcase_ {
-                    Sexp::Lst(ys, f, l, p) => {
-                        (not(null_p(ys)) && {
-                            let tagcase_ = car(ys);
-                            match *tagcase_ {
-                                Sexp::Sym(h, f2, p2) => {
-                                    control_form_p(h)
-                                }
-                                _ => {
-                                    let other = tagcase_;
-                                    false
-                                }
-                            }
-                        })
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        false
-                    }
-                }
-            }) && has_open_p(s, car(ps))) {
-                // A `list`, or a control form (an `if`, a `let`...), for a parameter
-                // whose type is not known whole yet: found by itself, as FX-26
-                // finds it, its branches then of one type (a `list` at a fresh
-                // region).
+            } else if (not(procedure_p(car(args))) && has_open_p(s, car(ps))) {
+                // An argument for a parameter whose type is not known whole yet:
+                // found by itself, as FX-26 finds it (a literal an `int`, a
+                // control form's branches of one type, a `list` at a fresh
+                // region); a lambda, told its parameters, is checked.
                 check_by_synth(v, s, car(args), car(ps))
             } else {
                 check(v, s, car(args), car(ps))
