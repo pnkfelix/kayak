@@ -1,0 +1,4 @@
+"An if with no else: FX-26 has no unspecified value, and refuses it; KFX
+ says so, rather than failing."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f (subr pure (int) int) (lambda (n) (if (> n 0) 1)))

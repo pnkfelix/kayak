@@ -1,0 +1,3 @@
+"A cond clause of a test alone."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f (subr pure (int) int) (lambda (n) (cond ((> n 0)) (else 1))))

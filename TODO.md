@@ -114,10 +114,6 @@ Escapes are done (`DONE.md`, C18). Left:
 
 ## 17. Small things noticed
 
-- **Malformed forms panic** (`car: nil`) instead of a `kfx:` message:
-  `(if c x)`, `(cond)`, a clause of a test alone, `(let ((x)) n)`,
-  `(with)`, a letrec binding of no lambda. Fixpt refuses each too; only
-  the message is wrong.
 - **`tagcase_`**, the name a `tagcase` binds, could be a KFX name's
   mangling (`tagcase-`).
 - **`(define x e)` with no type** is refused; FX-26 allows it.

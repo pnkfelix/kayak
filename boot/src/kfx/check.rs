@@ -2213,6 +2213,51 @@ pub fn opened_binds(mut m: Str, mut bs: Binds) -> Binds {
     }
 }
 
+/// Whether a control form has the parts it needs, before they are taken.
+pub fn well_formed_p(h: Str, xs: Sexps) -> bool {
+    let lists_p = lambda3(move |x: &'static Sexp, n: i64, exact: bool| {
+        ({
+            let tagcase_ = x;
+            match *tagcase_ {
+                Sexp::Lst(ys, f, l, p) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        } && if exact {
+            i64_eq(size(items(x)), n)
+        } else {
+            not(i64_lt(size(items(x)), n))
+        })
+    });
+    if string_eq_p(h, str_lit("if")) {
+        i64_eq(size(xs), 3i64)
+    } else if string_eq_p(h, str_lit("cond")) {
+        (not(null_p(xs)) && not(any_p(lambda1(move |c: &'static Sexp| {
+            not(lists_p(c, 2i64, false))
+        }), xs)))
+    } else if (string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*"))) {
+        (i64_gt(size(xs), 1i64) && lists_p(car(xs), 0i64, false) && not(any_p(lambda1(move |b: &'static Sexp| {
+            not(lists_p(b, 2i64, true))
+        }), items(car(xs)))))
+    } else if string_eq_p(h, str_lit("letrec")) {
+        (i64_gt(size(xs), 1i64) && lists_p(car(xs), 0i64, false) && not(any_p(lambda1(move |b: &'static Sexp| {
+            not(lists_p(b, 3i64, true))
+        }), items(car(xs)))))
+    } else if (string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("tagcase"))) {
+        (i64_gt(size(xs), 1i64) && not(any_p(lambda1(move |c: &'static Sexp| {
+            not(lists_p(c, 2i64, false))
+        }), cdr(xs))))
+    } else if (string_eq_p(h, str_lit("with")) || string_eq_p(h, str_lit("letregion"))) {
+        i64_gt(size(xs), 1i64)
+    } else {
+        true
+    }
+}
+
 // Termination (CLAUDES_CHOICES.md C20). A recursive group whose every run
 // ends needs no `spin`: FX-26's size-change check (Lee, Jones and
 // Ben-Amram; Fixpt's terminate.rs), its measures and no others, so that KFX
@@ -2964,7 +3009,9 @@ pub fn walk_exp(mut c: &'static Wc, mut st: &'static Ws, mut e: &'static Sexp) -
                         }
                     }
                 };
-                if string_eq_p(h, str_lit("if")) {
+                if (not(well_formed_p(h, cdr(xs))) || ((string_eq_p(h, str_lit("lambda")) || string_eq_p(h, str_lit("the"))) && i64_lt(size(xs), 3i64))) {
+                    return st;
+                } else if string_eq_p(h, str_lit("if")) {
                     let st = walk_exp(c, st, second(xs));
                     return walk_exp(guarded(c, facts_of(c, second(xs), false)), walk_exp(guarded(c, facts_of(c, second(xs), true)), st, third(xs)), fourth(xs));
                 } else if string_eq_p(h, str_lit("cond")) {
@@ -3996,7 +4043,9 @@ pub fn bools(v: &'static Cv, s: &'static St, xs: Sexps) -> &'static Res {
 /// `if`, `cond`, `case`, `tagcase`, `let`, `let*` and `begin`: forms
 /// whose last parts give the value; `expected` is the type, if known.
 pub fn body_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Tys) -> &'static Res {
-    if string_eq_p(h, str_lit("if")) {
+    if not(well_formed_p(h, xs)) {
+        refuse(v, string_append(str_lit("a ("), string_append(h, str_lit(" ...) not of the form FX-26 has"))))
+    } else if string_eq_p(h, str_lit("if")) {
         let tagcase_ = check(v, s, car(xs), ty_bool());
         match *tagcase_ {
             Res::Res(t, es, s) => {

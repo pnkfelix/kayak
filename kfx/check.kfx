@@ -994,6 +994,25 @@
                 (cons (bind (after-prefix n (string-append m " ")) sc "item") (opened-binds m (cdr bs)))
                 (opened-binds m (cdr bs))))))))
 
+(define well-formed? (subr kfx (string sexps) bool)
+  (lambda (h xs)
+    "Whether a control form has the parts it needs, before they are taken."
+    (let ((lists? (lambda ((x sexp) (n i64) (exact bool))
+                    (and (tagcase x (lst (ys f l p) #t) (else other #f))
+                         (if exact (i64= (size (items x)) n) (not (i64< (size (items x)) n)))))))
+      (cond ((string=? h "if") (i64= (size xs) 3))
+            ((string=? h "cond") (and (not (null? xs)) (not (any? (lambda ((c sexp)) (not (lists? c 2 #f))) xs))))
+            ((or (string=? h "let") (string=? h "let*"))
+             (and (i64> (size xs) 1) (lists? (car xs) 0 #f)
+                  (not (any? (lambda ((b sexp)) (not (lists? b 2 #t))) (items (car xs))))))
+            ((string=? h "letrec")
+             (and (i64> (size xs) 1) (lists? (car xs) 0 #f)
+                  (not (any? (lambda ((b sexp)) (not (lists? b 3 #t))) (items (car xs))))))
+            ((or (string=? h "case") (string=? h "tagcase"))
+             (and (i64> (size xs) 1) (not (any? (lambda ((c sexp)) (not (lists? c 2 #f))) (cdr xs)))))
+            ((or (string=? h "with") (string=? h "letregion")) (i64> (size xs) 1))
+            (else #t)))))
+
 "Termination (CLAUDES_CHOICES.md C20). A recursive group whose every run
  ends needs no `spin`: FX-26's size-change check (Lee, Jones and
  Ben-Amram; Fixpt's terminate.rs), its measures and no others, so that KFX
@@ -1302,7 +1321,10 @@
         (sym (n) (if (i64< (wc-member c n) 0) st (escaping st)))
         (lst (xs src-file src-line src-pos)
           (let ((h (tagcase (car xs) (sym (n) n) (else other ""))))
-            (cond ((string=? h "if")
+            (cond ((or (not (well-formed? h (cdr xs)))
+                       (and (or (string=? h "lambda") (string=? h "the")) (i64< (size xs) 3)))
+                   st)
+                  ((string=? h "if")
                    (let ((st (walk-exp c st (second xs))))
                      (walk-exp (guarded c (facts-of c (second xs) #f))
                                (walk-exp (guarded c (facts-of c (second xs) #t)) st (third xs))
@@ -1808,7 +1830,9 @@
     (lambda (v s h xs expected)
       "`if`, `cond`, `case`, `tagcase`, `let`, `let*` and `begin`: forms
        whose last parts give the value; `expected` is the type, if known."
-      (cond ((string=? h "if")
+      (cond ((not (well-formed? h xs))
+             (refuse v (string-append "a (" (string-append h " ...) not of the form FX-26 has"))))
+            ((string=? h "if")
              (tagcase (check v s (car xs) (ty-bool))
                (res (t es s) (with-effs (arms v s (cdr xs) expected) es))))
             ((string=? h "begin") (body v s xs expected))
