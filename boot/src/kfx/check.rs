@@ -1632,6 +1632,34 @@ pub fn mentions_p(s: &'static St, t: &'static Ty, r: Str) -> bool {
     }
 }
 
+/// The operations whose result is a `nat` when their operands are, as
+/// FX-26 keeps a `nat` through them: a sum, a product, a larger, a smaller.
+pub fn nat_op_p(h: Str) -> bool {
+    (string_eq_p(h, str_lit("+")) || string_eq_p(h, str_lit("*")) || string_eq_p(h, str_lit("max")) || string_eq_p(h, str_lit("min")))
+}
+
+pub fn prim_p(b: &'static Bind) -> bool {
+    let tagcase_ = b;
+    match *tagcase_ {
+        Bind::Bind(n, sc, r#where) => {
+            string_eq_p(r#where, str_lit("prim"))
+        }
+    }
+}
+
+pub fn nat_p(s: &'static St, t: &'static Ty) -> bool {
+    let tagcase_ = walk(s, t);
+    match *tagcase_ {
+        Ty::TyNat() => {
+            true
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
 pub fn control_form_p(h: Str) -> bool {
     (string_eq_p(h, str_lit("if")) || string_eq_p(h, str_lit("cond")) || string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("tagcase")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion")))
 }
@@ -2385,6 +2413,17 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
         refuse(v, string_append(str_lit("("), string_append(h, str_lit(" ...) is FX-26's form, which KFX does not have, or a call of a local named by that keyword"))))
     } else if null_p(found) {
         refuse(v, string_append(str_lit("nothing is named "), h))
+    } else if (nat_op_p(h) && prim_p(car(found)) && i64_eq(size(args), 2i64) && nat_args_p(v, s, args)) {
+        let tagcase_ = call_args(v, s, args, cons(ty_nat(), cons(ty_nat(), nil())));
+        match *tagcase_ {
+            Res::Res(u, es, s) => {
+                res(ty_nat(), es, if null_p(expected) {
+                    s
+                } else {
+                    fits(v, s, ty_nat(), car(expected))
+                })
+            }
+        }
     } else {
         let tagcase_ = car(found);
         match *tagcase_ {
@@ -2406,6 +2445,28 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
             }
         }
     }
+}
+
+/// Whether each argument is a `nat`: a literal not negative, or what
+/// its type is found to be. The finding is a test, its state dropped.
+pub fn nat_args_p(v: &'static Cv, s: &'static St, args: Sexps) -> bool {
+    (null_p(args) || ({
+        let tagcase_ = car(args);
+        match *tagcase_ {
+            Sexp::Num(k, f, p) => {
+                not(i64_lt(k, 0i64))
+            }
+            _ => {
+                let other = tagcase_;
+                let tagcase_ = synth(v, s, other);
+                match *tagcase_ {
+                    Res::Res(t, es, s2) => {
+                        nat_p(s2, t)
+                    }
+                }
+            }
+        }
+    } && nat_args_p(v, s, cdr(args))))
 }
 
 /// A call of the procedure `callee` is: its result fitted to the type

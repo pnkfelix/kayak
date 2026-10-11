@@ -697,6 +697,18 @@
               (any? (lambda ((p ty)) (mentions? s p r)) ps)))
         (else other #f)))))
 
+(define nat-op? (subr kfx (string) bool)
+  (lambda (h)
+    "The operations whose result is a `nat` when their operands are, as
+     FX-26 keeps a `nat` through them: a sum, a product, a larger, a smaller."
+    (or (string=? h "+") (string=? h "*") (string=? h "max") (string=? h "min"))))
+
+(define prim? (subr kfx (bind) bool)
+  (lambda (b) (tagcase b (bind (n sc where) (string=? where "prim")))))
+
+(define nat? (subr kfx (st ty) bool)
+  (lambda (s t) (tagcase (walk s t) (ty-nat () #t) (else other #f))))
+
 (define control-form? (subr kfx (string) bool)
   (lambda (h)
     (or (string=? h "if") (string=? h "cond") (string=? h "case") (string=? h "tagcase")
@@ -1095,6 +1107,10 @@
                (refuse v (string-append "(" (string-append h " ...) is FX-26's form, which KFX does not have, or a call of a local named by that keyword"))))
               ((null? found)
                (refuse v (string-append "nothing is named " h)))
+              ((and (nat-op? h) (prim? (car found)) (i64= (size args) 2) (nat-args? v s args))
+               (tagcase (call-args v s args (list (ty-nat) (ty-nat)))
+                 (res (u es s)
+                   (res (ty-nat) es (if (null? expected) s (fits v s (ty-nat) (car expected)))))))
               (else
               (tagcase (car found)
                 (bind (n sc where)
@@ -1106,6 +1122,16 @@
                                        (if (or (string=? where "local") (string-member? h (cv-group v)))
                                            (list "spin")
                                            nil))))))))))))
+
+  (nat-args? (subr kfx (cv st sexps) bool)
+    (lambda (v s args)
+      "Whether each argument is a `nat`: a literal not negative, or what
+       its type is found to be. The finding is a test, its state dropped."
+      (or (null? args)
+          (and (tagcase (car args)
+                 (num (k f p) (not (i64< k 0)))
+                 (else other (tagcase (synth v s other) (res (t es s2) (nat? s2 t)))))
+               (nat-args? v s (cdr args))))))
 
   (synth-call-of (subr kfx (cv st res sexps (listof i64 acyclic) tys strings) res)
     (lambda (v s callee args regions expected more)
