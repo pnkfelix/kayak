@@ -1,0 +1,18 @@
+"The second file: it takes apart a datatype the first defines, and calls
+ the first's procedures. In Rust, a module that imports the other's names."
+
+(define total (subr kfx (shapes) i64)
+  (lambda (ss) (if (null? ss) 0 (i64+ (area (car ss)) (total (cdr ss))))))
+
+(define describe (subr kfx (shape) string)
+  (lambda (s)
+    (tagcase s
+      (circle (r) (string-append "circle " (i64->string r)))
+      (rect (w h) (string-append "rect " (string-append (i64->string w) (string-append "x" (i64->string h))))))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (let ((ss (the shapes (list (circle 2) (rect 3 4)))))
+      (string-append (describe (car ss))
+        (string-append ", " (string-append (describe (car (cdr ss)))
+          (string-append ": " (i64->string (total ss)))))))))

@@ -1,0 +1,4 @@
+"A name defined twice: FX-26 redefines it; KFX defines each name once, since its Rust modules import each other's names."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f (subr kfx (i64) i64) (lambda (n) n))
+(define f (subr kfx (i64) i64) (lambda (n) (i64+ n 1)))

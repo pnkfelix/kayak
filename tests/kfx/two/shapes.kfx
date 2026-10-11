@@ -1,0 +1,16 @@
+"The first of two files: a datatype, and procedures over it. The second
+ sees all of it, as the files one after another are one program."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-datatype shape
+  (circle i64)
+  (rect i64 i64))
+
+(define-type shapes (listof shape acyclic))
+
+(define area (subr kfx (shape) i64)
+  (lambda (s)
+    (tagcase s
+      (circle (r) (i64* 3 (i64* r r)))
+      (rect (w h) (i64* w h)))))

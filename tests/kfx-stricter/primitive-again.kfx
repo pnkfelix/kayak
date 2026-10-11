@@ -1,0 +1,3 @@
+"A primitive defined again: FX-26 lets a program shadow its standard environment; KFX does not, as a kayak-rt function of that name would be ambiguous."
+(define-effect kfx (maxeff (read @globals) spin))
+(define not (subr kfx (bool) bool) (lambda (b) b))

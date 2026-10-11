@@ -1811,11 +1811,38 @@
   (lambda (v here group)
     (tagcase v (cv (bs ds as es h g) (cv bs ds as es here group)))))
 
+(define runtime-name? (subr kfx (string) bool)
+  (lambda (name)
+    "kayak-rt's own names, which the generated modules import with the
+     program's: a global of one of them would be ambiguous in Rust."
+    (or (string=? name "alloc") (string=? name "leak-string") (string=? name "with-big-stack")
+        (string=? name "lambda0") (string=? name "lambda1") (string=? name "lambda2")
+        (string=? name "lambda3") (string=? name "lambda4"))))
+
 (define global (subr kfx (cv string scheme) bind)
   (lambda (v name sc)
-    (if (keyword? name)
-        (refuse v (string-append "a keyword names nothing: " name))
-        (bind name sc "global"))))
+    "A global, defined once: the generated modules each import every
+     other's names and kayak-rt's, so a name defined twice, or a
+     primitive's, would be ambiguous in Rust. KFX has no redefinition."
+    (cond ((keyword? name) (refuse v (string-append "a keyword names nothing: " name)))
+          ((runtime-name? name) (refuse v (string-append "kayak-rt has a " (string-append name " of its own"))))
+          (else
+           (let ((found (find-bind name (cv-binds v))))
+             (if (null? found)
+                 (bind name sc "global")
+                 (tagcase (car found)
+                   (bind (n sc0 where)
+                     (if (string=? where "prim")
+                         (refuse v (string-append name " is a primitive, which KFX does not define again"))
+                         (refuse v (string-append name " is defined already: KFX defines each name once")))))))))))
+
+(define defined-once (subr kfx (cv binds) cv)
+  (lambda (v bs)
+    "`v` with each of `bs`, each refused if its name is taken (`global`)."
+    (if (null? bs)
+        v
+        (tagcase (car bs)
+          (bind (n sc where) (defined-once (with-binds v (list (global v n sc))) (cdr bs)))))))
 
 (define new-state (subr kfx () st) (lambda () (st nil 0)))
 
@@ -1864,7 +1891,7 @@
                 ((string=? h "define-type") v)
                 ((string=? h "define-datatype")
                  (let ((d (car (variants-dt v (sym-name (second xs))))))
-                   (with-binds v (constructors d))))
+                   (defined-once v (constructors d))))
                 ((string=? h "define")
                  (if (not (i64= (size xs) 4))
                      (refuse v "a definition needs a type")
@@ -1884,6 +1911,20 @@
                         (res (t es s) v))))))
       (else other (tagcase (synth (at v "a top-level expression" nil) (new-state) form) (res (t es s) v))))))
 
+(define type-names-free (subr kfx (cv sexps) unit)
+  (lambda (v forms)
+    "No type is named as one of kayak-rt's: `Str`, `List`, `Cons`."
+    (begin
+      (map (lambda ((f sexp))
+             (if (or (head-is? f "define-type") (head-is? f "define-datatype"))
+                 (let ((name (tagcase (second (items f)) (sym (n) n) (else other ""))))
+                   (if (or (string=? name "str") (string=? name "list") (string=? name "cons"))
+                       (refuse v (string-append "kayak-rt has a type " (string-append (camel name) " of its own")))
+                       #u))
+                 #u))
+           forms)
+      #u)))
+
 (define check-tops (subr kfx (cv sexps) cv)
   (lambda (v forms) (if (null? forms) v (check-tops (check-top v (car forms)) (cdr forms)))))
 
@@ -1891,6 +1932,7 @@
   (lambda (forms)
     "Every form, in order; the first error stops the compiler."
     (let* ((start (cv nil nil (declare-types forms nil) nil "a type" nil))
+           (types (type-names-free start forms))
            (named (tagcase start (cv (bs ds as es here group) (cv bs (datatype-names forms nil) as es here group))))
            (typed (tagcase named (cv (bs ds as es here group) (cv bs (declare-datatypes named forms nil) as es here group))))
            (v (with-binds typed (prim-binds typed))))
@@ -1906,3 +1948,70 @@
            (checked (check-program forms))
            (c (collect forms (ctx nil nil nil nil))))
       (rev->string (put-tops c forms (put header nil))))))
+
+"Programs of several files. A program is files in order, as a manifest
+ (NAME.unit) lists them: to FX-26, the files one after another, so that a
+ definition sees those in the files before it. To Rust, a module each,
+ which imports every other's names (`use super::*`) and kayak-rt's; the
+ modules' `mod.rs` declares them and re-exports their names."
+
+"A file's name, without `.kfx`, and its text; a Rust file's name, and its
+ text."
+(define-datatype source (source string string))
+(define-datatype output (output string string))
+(define-type sources (listof source acyclic))
+(define-type outputs (listof output acyclic))
+
+(define onto (poly ((a type)) (subr kfx ((listof a acyclic) (listof a acyclic)) (listof a acyclic)))
+  (lambda (xs ys) (if (null? xs) ys (cons (car xs) (onto (cdr xs) ys)))))
+
+(define concat (poly ((a type)) (subr kfx ((listof (listof a acyclic) acyclic)) (listof a acyclic)))
+  (lambda (xss) (if (null? xss) nil (onto (car xss) (concat (cdr xss))))))
+
+(define source-forms (subr kfx (source) sexps)
+  (lambda (s) (tagcase s (source (name text) (read-all (string-chars text))))))
+
+(define module-header string
+  "// Generated by kfx from KFX-0 source: edit that, and regenerate (PLAN.md, section 1).\n\nuse kayak_rt::*;\nuse super::*;\n\n")
+
+(define put-mods (subr kfx (sources chars) chars)
+  (lambda (ss acc)
+    (if (null? ss)
+        acc
+        (tagcase (car ss)
+          (source (name text)
+            (let* ((m (mangle name))
+                   (acc (put "pub mod " acc))
+                   (acc (put m acc))
+                   (acc (put ";\npub use " acc))
+                   (acc (put m acc)))
+              (put-mods (cdr ss) (put "::*;\n" acc))))))))
+
+(define compile-units (subr kfx (sources) outputs)
+  (lambda (ss)
+    "A program of several files, as Rust: its modules, then their `mod.rs`.
+     The whole program is checked, and each file written as a module."
+    (let* ((forms (concat (map (lambda ((s source)) (source-forms s)) ss)))
+           (checked (check-program forms))
+           (c (collect forms (ctx nil nil nil nil)))
+           (modules (map (lambda ((s source))
+                           (tagcase s
+                             (source (name text)
+                               (output (string-append (mangle name) ".rs")
+                                       (rev->string (put-tops c (source-forms s) (put module-header nil)))))))
+                         ss)))
+      (onto modules
+            (list (output "mod.rs"
+                          (rev->string
+                            (put-mods ss (put "// Generated by kfx: the program's modules (PLAN.md, section 1).\n\n" nil)))))))))
+
+(define bundle (subr kfx (outputs) string)
+  (lambda (os)
+    "Outputs as one string, for stage 0, where Fixpt prints one: each a line
+     `@@kfx-file NAME`, then its text. No line of generated Rust starts with
+     `@@`, since its string literals hold no newline but escaped."
+    (if (null? os)
+        ""
+        (tagcase (car os)
+          (output (name text)
+            (string-append "@@kfx-file " (string-append name (string-append "\n" (string-append text (bundle (cdr os)))))))))))

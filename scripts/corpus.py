@@ -3,8 +3,11 @@ whose `main` gives its answer as a string.
 
 usage: python3 -I scripts/corpus.py [--bless]
 
-For each program, two files are kept beside it, and checked:
-  NAME.rs   the Rust kfx makes of it (golden: a change to the compiler
+A program is a file, NAME.kfx, or several, NAME.unit, a manifest of its
+files in order (kept in NAME/). For each, two things are kept beside it,
+and checked:
+  NAME.rs   the Rust kfx makes of it, or NAME/*.rs and NAME/mod.rs for a
+            program of several files (golden: a change to the compiler
             shows in every program it changes);
   NAME.out  its answer, as Fixpt gives it running the program as FX-26,
             the prelude first (stage 0's Fixpt, FIXPT_REV).
@@ -21,6 +24,7 @@ And two directories of programs kfx must refuse:
 """
 
 import os
+import shutil
 import subprocess
 import sys
 
@@ -51,11 +55,24 @@ def kfx():
     return os.path.join(ROOT, "target", "release", "kfx")
 
 
+def manifest(path):
+    """A manifest's files, in order."""
+    with open(path) as f:
+        lines = [l.strip() for l in f]
+    return [os.path.join(os.path.dirname(path), l) for l in lines if l and not l.startswith(";")]
+
+
+def files_of(path):
+    return manifest(path) if path.endswith(".unit") else [path]
+
+
 def answer(binary, path, tmp):
     with open(os.path.join(ROOT, "kfx", "prelude.fx")) as f:
         text = f.read()
-    with open(path) as f:
-        text += "\n" + f.read() + "\n(main)\n"
+    for p in files_of(path):
+        with open(p) as f:
+            text += "\n" + f.read()
+    text += "\n(main)\n"
     with open(tmp, "w") as f:
         f.write(text)
     r = run([binary, "--dialect", "fx26", "--step-limit", "none", "eval", "--raw", tmp])
@@ -95,7 +112,10 @@ def lib(names):
     for n in names:
         out.append("#[allow(warnings, clippy::all)]")
         out.append("#[rustfmt::skip]")
-        out.append('#[path = "../../../tests/kfx/%s.rs"]' % n)
+        if os.path.exists(os.path.join(CORPUS, n + ".unit")):
+            out.append('#[path = "../../../tests/kfx/%s/mod.rs"]' % n)
+        else:
+            out.append('#[path = "../../../tests/kfx/%s.rs"]' % n)
         out.append("pub mod %s;" % n.replace("-", "_"))
         out.append("")
     out.append("/// A program's `main`, which gives its answer.")
@@ -116,7 +136,8 @@ def main():
     compiler, interpreter = kfx(), fixpt()
     if interpreter is None:
         print("corpus: no Fixpt clone, so answers are not checked")
-    names = sorted(f[:-4] for f in os.listdir(CORPUS) if f.endswith(".kfx"))
+    names = sorted(os.path.splitext(f)[0] for f in os.listdir(CORPUS)
+                   if f.endswith(".kfx") or f.endswith(".unit"))
     wrong = []
 
     def keep(path, text):
@@ -130,13 +151,23 @@ def main():
             wrong.append(os.path.relpath(path, ROOT) + (" is missing" if old is None else " differs"))
 
     for n in names:
-        src = os.path.join(CORPUS, n + ".kfx")
-        r = run([compiler, src])
+        unit = os.path.join(CORPUS, n + ".unit")
+        src = unit if os.path.exists(unit) else os.path.join(CORPUS, n + ".kfx")
+        out = os.path.join(CORPUS, ".kfx-out")
+        if os.path.exists(out):
+            shutil.rmtree(out)
+        r = run([compiler, src, out] if src == unit else [compiler, src])
         if r.returncode != 0:
             said = [l for l in r.stderr.splitlines() if l.startswith("kfx:")]
             wrong.append("%s: kfx refuses it: %s" % (n, (said or r.stderr.strip().splitlines()[-1:])[0]))
             continue
-        keep(os.path.join(CORPUS, n + ".rs"), r.stdout)
+        if src == unit:
+            for f in sorted(os.listdir(out)):
+                with open(os.path.join(out, f)) as g:
+                    keep(os.path.join(CORPUS, n, f), g.read())
+            shutil.rmtree(out)
+        else:
+            keep(os.path.join(CORPUS, n + ".rs"), r.stdout)
         if interpreter is not None:
             got, err = answer(interpreter, src, os.path.join(CORPUS, ".stage0.fx"))
             if err is not None:

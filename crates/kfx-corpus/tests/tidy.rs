@@ -25,6 +25,9 @@ fn kfx_sources_are_ascii() {
     let mut sources = files("kfx", "kfx");
     sources.extend(files("kfx", "fx"));
     sources.extend(files("tests/kfx", "kfx"));
+    sources.extend(files("tests/kfx/two", "kfx"));
+    sources.extend(files("tests/kfx-refused", "kfx"));
+    sources.extend(files("tests/kfx-stricter", "kfx"));
     assert!(!sources.is_empty());
     let mut wrong = Vec::new();
     for path in sources {
