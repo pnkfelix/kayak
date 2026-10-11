@@ -613,6 +613,10 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
 - **And** (`nat`): `+` keeps a `nat` only of literals, names of a `nat`
   and such sums, as FX-26's does (each literal its own `(nat v)`); a call's
   or a `the`'s `nat` makes it an `int`.
+- **And:** a product found by itself with a bare `nil` field is refused
+  (FX-26 keeps the field `nil`'s poly type; KFX's fields have one type);
+  F17's self-application seen through products, lists, references and
+  datatypes' arguments, as Fixpt sees it.
 - **Not yet** (KFX accepts, Fixpt refuses): a pair whose tail is a pair,
   found by itself and given where a list is (FX-26's `cons` makes
   `(pairof t1 t2 r)`, its tail's type its own; KFX's makes a list's; a

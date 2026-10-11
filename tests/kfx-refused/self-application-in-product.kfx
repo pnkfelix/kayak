@@ -1,0 +1,8 @@
+"Self-application through a product given to a poly procedure: F17 says
+ spin, which slf's type does not."
+"product at type var"
+(define app (poly ((a type)) (subr (read @globals) ((productof (f (subr (read @globals) (a) i64)) (x a))) i64))
+  (lambda (p) (let ((f (extract p f))) (f (extract p x)))))
+(define-datatype wrap (wrap (subr (read @globals) (wrap) i64)))
+(define slf (subr (read @globals) (wrap) i64) (lambda (w) (tagcase w (wrap (f) (app (product (f f) (x w)))))))
+(slf (wrap slf))

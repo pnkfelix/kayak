@@ -1038,3 +1038,10 @@ lambda's; heap lists of a region's data at its lifetime. `tests/kfx/rlambda`
 
 C39: Rust aliases over lifetimes; `tests/kfx/region-alias` (Fixpt's
 `run/region-closures.fx` as written).
+
+## The probes' K1 differences, all but one kind (2026-10-11)
+
+Of the fourteen the sweeps left, twelve agree now (C36): `+` keeps a
+`nat` as FX-26's does; a product of a bare `nil` found by itself refused;
+F17 seen through products. Left: a pair whose tail is a pair, found by
+itself, given where a list is (`r7`, `r8`).

@@ -893,6 +893,41 @@ pub fn mentions_tvar_p(mut t: &'static Ty, mut vs: Strings) -> bool {
     }
 }
 
+/// The procedure types `t` is or holds: in a product's or a sum's fields,
+/// a list's, a reference's, a datatype's arguments (F17 sees them so).
+pub fn procs_within(mut s: &'static St, mut t: &'static Ty) -> Tys {
+    loop {
+        let tagcase_ = walk(s, t);
+        match *tagcase_ {
+            Ty::TyProc(es, ps, r) => {
+                return the::<Tys>(kayak_rt::cons(walk(s, t), kayak_rt::nil()));
+            }
+            Ty::TyShape(p, ls, ts) => {
+                return concat(map(lambda1(move |x: &'static Ty| {
+                    procs_within(s, x)
+                }), ts));
+            }
+            Ty::TyList(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyRef(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyData(d, args) => {
+                return concat(map(lambda1(move |x: &'static Ty| {
+                    procs_within(s, x)
+                }), args));
+            }
+            _ => {
+                let other = tagcase_;
+                return nil::<&'static Ty>();
+            }
+        }
+    }
+}
+
 /// A call of a `poly` procedure one of whose parameters is a procedure over
 /// a type variable: given a type that may hold a procedure, it may apply a
 /// procedure to itself, a loop with no recursive call, and so says `spin`,
@@ -916,16 +951,9 @@ pub fn poly_self_application(v: &'static Cv, sc: &'static Scheme, inst: &'static
                         match *tagcase_ {
                             Ty::TyProc(es0, ps, r0) => {
                                 any_p(lambda1(move |p: &'static Ty| {
-                                    let tagcase_ = p;
-                                    match *tagcase_ {
-                                        Ty::TyProc(e1, qs, r1) => {
-                                            mentions_tvar_p(p, types)
-                                        }
-                                        _ => {
-                                            let other = tagcase_;
-                                            false
-                                        }
-                                    }
+                                    any_p(lambda1(move |q: &'static Ty| {
+                                        mentions_tvar_p(q, types)
+                                    }), procs_within(s, p))
                                 }), ps)
                             }
                             _ => {
@@ -938,7 +966,9 @@ pub fn poly_self_application(v: &'static Cv, sc: &'static Scheme, inst: &'static
                         match *tagcase_ {
                             Ty::TyProc(es1, ps1, r1) => {
                                 any_p(lambda1(move |p: &'static Ty| {
-                                    (proc_type_p(s, p) && self_applicable_p(v, s, p))
+                                    any_p(lambda1(move |q: &'static Ty| {
+                                        self_applicable_p(v, s, q)
+                                    }), procs_within(s, p))
                                 }), ps1)
                             }
                             _ => {
@@ -2079,6 +2109,13 @@ pub fn product_form(v: &'static Cv, s: &'static St, fields: Sexps, expected: Tys
         match refuse(v, str_lit("a product's fields are each (label value)")) {}
     } else if repeated_p(ls) {
         match refuse(v, str_lit("a label appears twice in a product")) {}
+    } else if (null_p(want) && any_p(lambda1(move |f: Sexps| {
+        sym_is_p(second(f), str_lit("nil"))
+    }), fs)) {
+        // FX-26 gives a bare `nil` in a product found by itself `nil`'s own
+        // poly type, which no list's is (a branch of a list there is
+        // another type): KFX's fields are of one type each (K1).
+        match refuse(v, str_lit("a product found by itself with a bare nil field, whose type FX-26 keeps poly: say the product's type, (the (productof (l (listof T r)) ...) (product ...))")) {}
     } else {
         let tagcase_ = product_values(v, s, map(&second, fs), want);
         match *tagcase_ {

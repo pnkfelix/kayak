@@ -402,6 +402,19 @@
         (ty-proc (es ps r) (or (mentions-tvar? r vs) (any? (lambda ((x ty)) (mentions-tvar? x vs)) ps)))
         (else other #f)))))
 
+(define-rec
+  (procs-within (subr kfx (st ty) tys)
+    (lambda (s t)
+      "The procedure types `t` is or holds: in a product's or a sum's fields,
+       a list's, a reference's, a datatype's arguments (F17 sees them so)."
+      (tagcase (walk s t)
+        (ty-proc (es ps r) (the tys (list (walk s t))))
+        (ty-shape (p ls ts) (concat (map (lambda ((x ty)) (procs-within s x)) ts)))
+        (ty-list (e r) (procs-within s e))
+        (ty-ref (e r) (procs-within s e))
+        (ty-data (d args) (concat (map (lambda ((x ty)) (procs-within s x)) args)))
+        (else other nil)))))
+
 (define poly-self-application (subr kfx (cv scheme ty res) res)
   (lambda (v sc inst r)
     "A call of a `poly` procedure one of whose parameters is a procedure over
@@ -416,10 +429,10 @@
               (if (and (not (null? types))
                        (tagcase st
                          (ty-proc (es0 ps r0)
-                           (any? (lambda ((p ty)) (tagcase p (ty-proc (e1 qs r1) (mentions-tvar? p types)) (else other #f))) ps))
+                           (any? (lambda ((p ty)) (any? (lambda ((q ty)) (mentions-tvar? q types)) (procs-within s p))) ps))
                          (else other #f))
                        (tagcase (walk s inst)
-                         (ty-proc (es1 ps1 r1) (any? (lambda ((p ty)) (and (proc-type? s p) (self-applicable? v s p))) ps1))
+                         (ty-proc (es1 ps1 r1) (any? (lambda ((p ty)) (any? (lambda ((q ty)) (self-applicable? v s q)) (procs-within s p))) ps1))
                          (else other #f)))
                   (res t (effs-union (list "spin") es) s)
                   r))))))))
@@ -932,6 +945,11 @@
         (cond ((any? (lambda ((f sexps)) (or (not (i64= (size f) 2)) (string=? (label-of (car f)) ""))) fs)
                (refuse v "a product's fields are each (label value)"))
               ((repeated? ls) (refuse v "a label appears twice in a product"))
+              ((and (null? want) (any? (lambda ((f sexps)) (sym-is? (second f) "nil")) fs))
+               "FX-26 gives a bare `nil` in a product found by itself `nil`'s own
+                poly type, which no list's is (a branch of a list there is
+                another type): KFX's fields are of one type each (K1)."
+               (refuse v "a product found by itself with a bare nil field, whose type FX-26 keeps poly: say the product's type, (the (productof (l (listof T r)) ...) (product ...))"))
               (else
             (tagcase (product-values v s (map second fs) want)
               (res (t es s)

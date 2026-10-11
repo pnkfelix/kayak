@@ -1,0 +1,5 @@
+"A product found by itself with a bare nil field: FX-26 keeps the field
+ nil's poly type, so branches of it and of a list's are two types."
+(define f (subr pure (bool) i64) (lambda (c) (let ((p (if c (product (a nil)) (product (a (list (the i64 1))))))) 0)))
+"ok"
+(f #t)
