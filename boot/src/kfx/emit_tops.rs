@@ -970,11 +970,24 @@ pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
     } else if (string_eq_p(h, str_lit("define-type")) && head_is_p(third(xs), str_lit("moduleof"))) {
         put_trait(c, sym_name(second(xs)), third(xs), acc)
     } else if string_eq_p(h, str_lit("define-type")) {
+        // A type abbreviation; its regions, Rust lifetimes (C39), as a
+        // `letrena`'s are, so that a use of it at one is at its lifetime.
+        let regions = head_region_params(second(xs));
+        let inner = with_locals(c, map(lambda1(move |r: Str| {
+            string_append(str_lit("%letrena "), r)
+        }), regions));
         let acc = put(str_lit("pub type "), acc);
         let acc = put(camel(type_head_name(second(xs))), acc);
-        let acc = put_generics_of(head_type_params(second(xs)), false, acc);
+        let params = onto(map(lambda1(move |r: Str| {
+            string_append(str_lit("'"), mangle(r))
+        }), regions), map(&camel, head_type_params(second(xs))));
+        let acc = if null_p(params) {
+            acc
+        } else {
+            put(string_append(str_lit("<"), string_append(words_of_sep(params, str_lit(", ")), str_lit(">"))), acc)
+        };
         let acc = put(str_lit(" = "), acc);
-        let acc = put_type(c, third(xs), acc);
+        let acc = put_type(inner, third(xs), acc);
         put(str_lit(";\n\n"), acc)
     } else if string_eq_p(h, str_lit("define-datatype")) {
         put_datatype(c, cdr(xs), acc)

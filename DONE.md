@@ -1033,3 +1033,8 @@ again, `A: Copy + 'static`, as a nested Rust item must; the region's
 C38: closures made in a region, typed as FX-26 types them, written as a
 lambda's; heap lists of a region's data at its lifetime. `tests/kfx/rlambda`
 (Fixpt's `run/region-closures.fx`).
+
+## Type abbreviations over regions (2026-10-11)
+
+C39: Rust aliases over lifetimes; `tests/kfx/region-alias` (Fixpt's
+`run/region-closures.fx` as written).

@@ -148,7 +148,7 @@ Escapes are done (`DONE.md`, C18). Left:
 - **`letrena`'s rest** (C30, C34): regions within a place, `(r region
   p)`; families over a place;
   `rmake-array`, `rmake-icell` (KFX has no arrays of values, nor I-cells);
-  a type abbreviation over regions used in a `letrena` (C38); places in mutually recursive
+  datatypes over regions used in a `letrena` (their regions erased); places in mutually recursive
   procedures; `(proj ...)`.
 - **`null?` of an argument whose element nothing says**, other than a name
   or an `error` (`(null? (car (cons nil nil)))`), is refused; FX-26, whose

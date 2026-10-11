@@ -650,3 +650,14 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
   erased, `'static`; in a `letrena`, where a use of it means `'r`, a Rust
   error. Its regions want to be the alias's lifetime parameters.
 
+## C39. Type abbreviations over regions, lifetimes (2026-10-11)
+
+- **Chosen:** a `define-type` over regions is a Rust alias over lifetimes,
+  `pub type Closures<'r, 'l> = ListAt<'l, &'r dyn Fn(i64) -> i64>`, its
+  body written with its regions as a `letrena`'s are; a use gives each
+  region's lifetime, a `letrena`'s its own and the heap's `'static` (in a
+  `letrena`, its innermost one's: a heap list is one at any lifetime). A
+  procedure type's lifetime is that of a region its latent effect names,
+  `(subr (read r) ...)` `&'r dyn Fn`, else the innermost `letrena`'s.
+- **Not yet:** datatypes over regions, whose regions stay erased.
+

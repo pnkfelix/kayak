@@ -1,0 +1,19 @@
+"A type abbreviation over regions (C39): its regions Rust lifetimes,
+ pub type Closures<'r, 'l> = ListAt<'l, &'r dyn Fn(i64) -> i64>, a use of it in a
+ letrena at its lifetimes. Fixpt's run/region-closures.fx, at i64, as written."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type (closures (r region) (l region)) (listof (subr (read r) (i64) i64) l))
+(define adders (subr kfx (i64) i64)
+  (lambda (n)
+    (letrena r
+      (letregion l
+        (letrec ((make (subr (maxeff (alloc r) (alloc l) (read r) spin)
+                             (i64 (closures r l))
+                             (closures r l))
+                   (rlambda r (i acc)
+                     (if (i64= i 0) acc (make (i64- i 1) (cons (rlambda r ((x i64)) (i64+ x i)) acc)))))
+                 (apply-all (subr (maxeff (read r) (read l) spin) ((closures r l) i64) i64)
+                   (rlambda r (fs acc) (if (null? fs) acc (apply-all (cdr fs) ((car fs) acc))))))
+          (apply-all (make n nil) 0))))))
+(define main (subr kfx () string) (lambda () (i64->string (adders 10))))
+(main)

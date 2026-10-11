@@ -566,6 +566,30 @@ pub fn type_params_of(mut bs: Sexps) -> Strings {
     }
 }
 
+/// The names of the binders of kind `region`: an abbreviation's lifetimes.
+pub fn region_params_of(bs: Sexps) -> Strings {
+    concat(map(lambda1(move |b: &'static Sexp| {
+        if sym_is_p(second(items(b)), str_lit("region")) {
+            the::<Strings>(kayak_rt::cons(sym_name(car(items(b))), kayak_rt::nil()))
+        } else {
+            nil::<Str>()
+        }
+    }), bs))
+}
+
+pub fn head_region_params(head: &'static Sexp) -> Strings {
+    let tagcase_ = head;
+    match *tagcase_ {
+        Sexp::Lst(xs, src_file, src_line, src_pos) => {
+            region_params_of(cdr(xs))
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<Str>()
+        }
+    }
+}
+
 pub fn head_type_params(head: &'static Sexp) -> Strings {
     let tagcase_ = head;
     match *tagcase_ {
@@ -1139,7 +1163,7 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
                 } else if sym_is_p(car(xs), str_lit("ref")) {
                     return put(str_lit(">"), put_type(c, second(xs), put(str_lit("Ref<"), acc)));
                 } else if sym_is_p(car(xs), str_lit("subr")) {
-                    let acc = put(str_lit(" dyn Fn("), put(innermost_lifetime(ctx_locals(c)), put(str_lit("&"), acc)));
+                    let acc = put(str_lit(" dyn Fn("), put(effect_lifetime(c, second(xs)), put(str_lit("&"), acc)));
                     let acc = put_types(c, items(third(xs)), acc);
                     let acc = put(str_lit(") -> "), acc);
                     if fallible_effect_p(c, second(xs)) {
@@ -1206,10 +1230,19 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
                             };
                             let acc = put(camel(n), acc);
                             let args = type_arguments(cdr(xs), kinds);
-                            if null_p(args) {
-                                return acc;
+                            let lives = if datatype {
+                                nil::<Str>()
                             } else {
+                                region_arguments(c, cdr(xs), kinds)
+                            };
+                            if (null_p(args) && null_p(lives)) {
+                                return acc;
+                            } else if null_p(lives) {
                                 return put(str_lit(">"), put_types(c, args, put(str_lit("<"), acc)));
+                            } else if null_p(args) {
+                                return put(string_append(str_lit("<"), string_append(words_of_sep(lives, str_lit(", ")), str_lit(">"))), acc);
+                            } else {
+                                return put(str_lit(">"), put_types(c, args, put(string_append(str_lit("<"), string_append(words_of_sep(lives, str_lit(", ")), str_lit(", "))), acc)));
                             }
                         }
                     }
@@ -1416,6 +1449,40 @@ pub fn has_sum_p(f: &'static Sexp) -> bool {
     }
 }
 
+/// A procedure's lifetime: a `letrena` region's its latent effect names
+/// (calling it reads that region, so it may hold what is there), or
+/// the innermost one's (C38, C39).
+pub fn effect_lifetime(c: &'static Ctx, eff: &'static Sexp) -> Str {
+    let named = concat(map(lambda1(move |x: &'static Sexp| {
+        let l = region_lifetime(c, x);
+        if string_eq_p(l, str_lit("")) {
+            nil::<Str>()
+        } else {
+            the::<Strings>(kayak_rt::cons(l, kayak_rt::nil()))
+        }
+    }), atoms_in(eff)));
+    if null_p(named) {
+        innermost_lifetime(ctx_locals(c))
+    } else {
+        car(named)
+    }
+}
+
+pub fn atoms_in(e: &'static Sexp) -> Sexps {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            concat(map(lambda1(move |x: &'static Sexp| {
+                atoms_in(x)
+            }), xs))
+        }
+        _ => {
+            let other = tagcase_;
+            the::<Sexps>(kayak_rt::cons(e, kayak_rt::nil()))
+        }
+    }
+}
+
 /// The innermost `letrena` lifetime `t`'s Rust type mentions, or ``.
 pub fn element_lifetime(c: &'static Ctx, t: &'static Sexp) -> Str {
     let text = rev_to_string(put_type(c, t, nil::<char>()));
@@ -1427,6 +1494,30 @@ pub fn put_fields_tuple(c: &'static Ctx, ts: Sexps, acc: Chars) -> Chars {
     put(str_lit(")"), put_sep(lambda2(move |t: &'static Sexp, acc: List<char>| {
         put(str_lit(">,"), put_type(c, t, put(str_lit("std::cell::Cell<"), acc)))
     }), str_lit(" "), ts, put(str_lit("("), acc)))
+}
+
+/// An abbreviation's arguments for its regions, as lifetimes (C39): a
+/// `letrena`'s, its lifetime; the heap's, `'static`, or in a `letrena`
+/// the innermost one's, since a `'static` list may hold nothing that
+/// lives less, and a heap list is one at any lifetime.
+pub fn region_arguments(mut c: &'static Ctx, mut args: Sexps, mut kinds: Strings) -> Strings {
+    loop {
+        if (null_p(args) || null_p(kinds)) {
+            return nil::<Str>();
+        } else if string_eq_p(car(kinds), str_lit("region")) {
+            return cons({
+                let l = region_lifetime(c, car(args));
+                if string_eq_p(l, str_lit("")) {
+                    innermost_lifetime(ctx_locals(c))
+                } else {
+                    l
+                }
+            }, region_arguments(c, cdr(args), cdr(kinds)));
+        } else {
+            (args, kinds) = (cdr(args), cdr(kinds));
+            continue;
+        }
+    }
 }
 
 /// A family's arguments for its parameters of kind `type`: the others,
