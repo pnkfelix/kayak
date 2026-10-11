@@ -976,3 +976,14 @@ variants share bytes). `tests/kfx/flat-sums` (Fixpt's `flat-inlined.fx`,
 a stale variant's blobref, `else` catching a tag no label has); four
 refusals Fixpt shares. Of Fixpt's 45 bloblet programs, 7 accepted, all
 agreeing. Fixpt's programs kfx accepts: 75, all agreeing.
+
+## Places given to procedures (2026-10-11)
+
+C34: `(poly ((p place)) ...)`, `(place p)`, and calls giving a place, in
+Rust `<'p, Place_P: Holds<T> + ...>` and `&'p Place_P`, the bounds each
+procedure's needs (its own makings and its callees'), and a `letrena`'s
+arenas all its body makes or needs. `tests/kfx/places` (Fixpt's
+`place-is-a-region.fx`; a place given on; a reference and a bloblet made
+through one; a local lambda taking one). Of Fixpt's 38 region and place
+programs, 3 accepted and agreeing, 21 refused by both, 14 by KFX alone;
+none a K1 violation or a Rust error.

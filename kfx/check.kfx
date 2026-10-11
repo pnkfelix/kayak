@@ -232,6 +232,7 @@
             ((char=? (string-ref-i64 s 0) #\@) s)
             ((string=? s "acyclic") s)
             ((string-member? (string-append "'" s) tvars) (string-append "'" s))
+            ((and (char=? (string-ref-i64 s 0) #\') (string-member? s tvars)) s)
             (else (refuse v (string-append "a region KFX-0 does not have: " s)))))))
 
 (define parse-region (subr kfx (cv strings sexp) ty)
@@ -684,6 +685,12 @@
                      (refuse v (string-append "KFX-0's flat arrays are of i64: " (show-sexp t)))))
                 ((sym-is? (car xs) "ref")
                  (no-knot v (lambda ((x string)) x) (ty-ref (parse-type v tvars (second xs)) (parse-mutable-region v tvars (third xs)))))
+                ((sym-is? (car xs) "place")
+                 "`(place p)` (C34): a `letrena`'s place, or a poly's place binder."
+                 (let ((r (if (i64= (size xs) 2) (tagcase (second xs) (sym (n f p) n) (else other "")) "")))
+                   (if (string-member? (string-append "%place '" r) tvars)
+                       (ty-data "%place" (list (ty-var (string-append "'" r))))
+                       (refuse v (string-append "a place's type names a letrena's place or a poly's place binder: " (show-sexp t))))))
                 ((sym-is? (car xs) "bloblet")
                  "`(bloblet (fields T ...) R)` (C31): fields that may be written, so
                   none a procedure or a type variable, which could tie a knot
@@ -858,7 +865,8 @@
                                                  (show-sexp (lst b "" 0 0)))))
                        ((sym-is? (second b) "type") (name-of v (car b)))
                        ((sym-is? (second b) "region") (string-append "'" (name-of v (car b))))
-                       (else (refuse v (string-append "KFX's poly is over types and regions: " (show-sexp (lst b "" 0 0))))))))
+                       ((sym-is? (second b) "place") (string-append "'" (name-of v (car b))))
+                       (else (refuse v (string-append "KFX's poly is over types, regions and places: " (show-sexp (lst b "" 0 0))))))))
              (items (second (items t))))))
           (begin
             (if own (type-binders-apart v tvars (onto (map (lambda ((d dt)) (tagcase d (dt (n ps vs) n))) (cv-dts v))
@@ -867,10 +875,23 @@
             tvars))
         nil)))
 
+(define place-marks (subr kfx (sexp) strings)
+  (lambda (t)
+    "A poly's place binders, `%place 'p` each: where `(place p)` may be
+     written (C34). A place is a region too, `'p`."
+    (if (head-is? t "poly")
+        (concat (map (lambda ((b sexp))
+                       (let ((xs (items b)))
+                         (if (and (i64= (size xs) 2) (sym-is? (second xs) "place"))
+                             (the strings (list (string-append "%place '" (sym-name (car xs)))))
+                             nil)))
+                     (items (second (items t)))))
+        nil)))
+
 (define parse-scheme-of (subr kfx (cv sexp bool) scheme)
   (lambda (v t own)
     (let ((tvars (poly-binders v t own)))
-      (scheme tvars (parse-type v tvars (if (head-is? t "poly") (third (items t)) t))))))
+      (scheme tvars (parse-type v (onto (place-marks t) tvars) (if (head-is? t "poly") (third (items t)) t))))))
 
 (define parse-scheme (subr kfx (cv sexp) scheme)
   (lambda (v t) (parse-scheme-of v t #t)))
@@ -1225,6 +1246,8 @@
         v
         (tagcase v (cv (bs ds als es here group f l fs tv at) (cv bs ds als es here group file line fs tv pos))))))
 
+(define cv-facts (subr kfx (cv) facts)
+  (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) fs))))
 (define cv-file (subr kfx (cv) string) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) file))))
 (define cv-pos (subr kfx (cv) i64) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) at))))
 

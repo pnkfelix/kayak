@@ -287,15 +287,6 @@ pub fn with_facts(v: &'static Cv, more: Facts) -> &'static Cv {
     }
 }
 
-pub fn cv_facts(v: &'static Cv) -> Facts {
-    let tagcase_ = v;
-    match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-            fs
-        }
-    }
-}
-
 /// A global whose latent effect reads itself, or a member of its group,
 /// may reach itself through the store: its type says `spin`, as FX-26's
 /// must (`no_reaching_itself`).
@@ -361,6 +352,45 @@ pub fn constant_made(v: &'static Cv, s: &'static St, e: &'static Sexp, es: Strin
     }
 }
 
+/// The places a procedure is given, `%place 'p` each, from its
+/// parameters' types: where its body may write `(place p)` (C34).
+pub fn place_marks_of(t: &'static Ty) -> Strings {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyProc(es, ps, r) => {
+            concat(map(lambda1(move |p: &'static Ty| {
+                let tagcase_ = p;
+                match *tagcase_ {
+                    Ty::TyData(d, args) => {
+                        if string_eq_p(d, str_lit("%place")) {
+                            let tagcase_ = car(args);
+                            match *tagcase_ {
+                                Ty::TyVar(n) => {
+                                    the::<Strings>(kayak_rt::cons(string_append(str_lit("%place "), n), kayak_rt::nil()))
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    nil::<Str>()
+                                }
+                            }
+                        } else {
+                            nil::<Str>()
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<Str>()
+                    }
+                }
+            }), ps))
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<Str>()
+        }
+    }
+}
+
 /// A procedure's lambda against its type; `v` already has its name.
 pub fn check_procedure(v: &'static Cv, defined: &'static Sexp, sc: &'static Scheme) -> &'static Cv {
     let (lam, v) = (items(if head_is_p(defined, str_lit("plambda")) {
@@ -371,7 +401,7 @@ pub fn check_procedure(v: &'static Cv, defined: &'static Sexp, sc: &'static Sche
     let tagcase_ = sc;
     match *tagcase_ {
         Scheme::Scheme(tvars, t) => {
-            let tagcase_ = check_lambda(with_tvars(v, tvars), new_state(), items(second(lam)), cdr(cdr(lam)), t);
+            let tagcase_ = check_lambda(with_tvars(v, onto(place_marks_of(t), tvars)), new_state(), items(second(lam)), cdr(cdr(lam)), t);
             match *tagcase_ {
                 Res::Res(u, es, s) => {
                     with_facts(v, settle_facts(s))
@@ -511,6 +541,85 @@ pub fn check_define_star(v: &'static Cv, xs: Sexps) -> &'static Cv {
     }
 }
 
+pub fn first_n(fs: Facts, n: i64) -> Facts {
+    if (null_p(fs) || i64_lt(n, 1i64)) {
+        nil::<&'static Fact>()
+    } else {
+        cons(car(fs), first_n(cdr(fs), i64_minus(n, 1i64)))
+    }
+}
+
+pub fn chars_before(mut cs: Chars, mut c: char, mut acc: Chars) -> Str {
+    loop {
+        if (null_p(cs) || char_eq_p(car(cs), c)) {
+            return rev_to_string(acc);
+        } else {
+            (cs, acc) = (cdr(cs), cons(car(cs), acc));
+            continue;
+        }
+    }
+}
+
+pub fn before_char(s: Str, c: char) -> Str {
+    chars_before(string_chars(s), c, nil::<char>())
+}
+
+/// A fact of a making in, or a need of, one of `places`, as `'p kind T`;
+/// or ``. The facts are `rheld-kind@'p T` and `rneed-kind@'p T`.
+pub fn place_need(what: Str, places: Strings) -> Str {
+    let held = if has_prefix_p(what, str_lit("rheld-")) {
+        after_prefix(what, str_lit("rheld-"))
+    } else if has_prefix_p(what, str_lit("rneed-")) {
+        after_prefix(what, str_lit("rneed-"))
+    } else {
+        str_lit("")
+    };
+    let kind = before_char(held, '@');
+    let rest = after_prefix(held, string_append(kind, str_lit("@")));
+    let place = before_char(rest, ' ');
+    if (not(string_eq_p(held, str_lit(""))) && string_member_p(place, places)) {
+        string_append(place, string_append(str_lit(" "), string_append(kind, string_append(str_lit(" "), after_prefix(rest, string_append(place, str_lit(" ")))))))
+    } else {
+        str_lit("")
+    }
+}
+
+/// A procedure given places (C34): what it makes in each, by itself or by
+/// the procedures it gives the place to, kept as `place-needs name 'p
+/// kind T` at its definition, for its calls and for the Rust it is: a
+/// place's type, a type parameter bound to hold each.
+pub fn with_place_needs(v: &'static Cv, name: Str, sc: &'static Scheme, before: i64, file: Str, pos: i64) -> &'static Cv {
+    let places = concat(map(lambda1(move |m: Str| {
+        the::<Strings>(kayak_rt::cons(after_prefix(m, str_lit("%place ")), kayak_rt::nil()))
+    }), place_marks_of({
+        let tagcase_ = sc;
+        match *tagcase_ {
+            Scheme::Scheme(tv, t) => {
+                t
+            }
+        }
+    })));
+    let fs = cv_facts(v);
+    let new = first_n(fs, i64_minus(size(fs), before));
+    if null_p(places) {
+        v
+    } else {
+        with_facts(v, concat(map(lambda1(move |f: &'static Fact| {
+            let tagcase_ = f;
+            match *tagcase_ {
+                Fact::Fact(ff, fp, what) => {
+                    let need = place_need(what, places);
+                    if string_eq_p(need, str_lit("")) {
+                        nil::<&'static Fact>()
+                    } else {
+                        the::<Facts>(kayak_rt::cons(fact(file, pos, string_append(str_lit("place-needs "), string_append(name, string_append(str_lit(" "), need)))), kayak_rt::nil()))
+                    }
+                }
+            }
+        }), new)))
+    }
+}
+
 /// One top-level form, which may add to what the forms after it see.
 pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
     let tagcase_ = form;
@@ -567,7 +676,7 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                     let v = no_reaching_itself(v, kayak_rt::cons(name, kayak_rt::nil()), sc);
                     let named = with_binds(v, kayak_rt::cons(global(v, name, sc), kayak_rt::nil()));
                     if procedure_p(fourth(xs)) {
-                        check_procedure(named, fourth(xs), sc)
+                        with_place_needs(check_procedure(named, fourth(xs), sc), name, sc, size(cv_facts(named)), src_file, src_pos)
                     } else {
                         let tagcase_ = sc;
                         match *tagcase_ {

@@ -1468,24 +1468,6 @@ pub fn synth_name(v: &'static Cv, s: &'static St, name: Str) -> &'static Res {
                             Scheme::Scheme(tv, t) => {
                                 let tagcase_ = t;
                                 match *tagcase_ {
-                                    Ty::TyData(d, args) => {
-                                        string_eq_p(d, str_lit("%place"))
-                                    }
-                                    _ => {
-                                        let other = tagcase_;
-                                        false
-                                    }
-                                }
-                            }
-                        }
-                    } {
-                        match refuse(v, string_append(str_lit("a place as a value, which KFX gives only to rcons and rnew yet: "), name)) {}
-                    } else if {
-                        let tagcase_ = sc;
-                        match *tagcase_ {
-                            Scheme::Scheme(tv, t) => {
-                                let tagcase_ = t;
-                                match *tagcase_ {
                                     Ty::TyProc(es, ps, r) => {
                                         any_p(lambda1(move |p: &'static Ty| {
                                             not(null_p(module_spec(v, p)))
@@ -2549,7 +2531,7 @@ pub fn letrena_form(v: &'static Cv, s: &'static St, xs: Sexps, expected: Tys) ->
     }) {
         match refuse(v, str_lit("(letrena r body ...)")) {}
     } else if any_p(lambda1(move |t: Str| {
-        not(has_prefix_p(t, str_lit("'")))
+        not((has_prefix_p(t, str_lit("'")) || has_prefix_p(t, str_lit("%"))))
     }), cv_tvars(v)) {
         match refuse(v, str_lit("a letrena in a procedure poly over types, which KFX does not write yet")) {}
     } else {
@@ -2599,7 +2581,7 @@ pub fn letrena_form(v: &'static Cv, s: &'static St, xs: Sexps, expected: Tys) ->
         }), types) {
             match refuse(v, str_lit("a letrena whose body names another's place, which KFX does not write yet")) {}
         } else {
-            let tagcase_ = found_then_fitted(v, body(with_binds(with_tvars(v, kayak_rt::cons(name, kayak_rt::nil())), kayak_rt::cons(local(v, r, ty_data(str_lit("%place"), kayak_rt::cons(ty_var(name), kayak_rt::nil()))), kayak_rt::nil())), s, forms, nil::<&'static Ty>()), expected);
+            let tagcase_ = found_then_fitted(v, body(with_binds(with_tvars(v, kayak_rt::cons(name, kayak_rt::cons(string_append(str_lit("%place "), name), kayak_rt::nil()))), kayak_rt::cons(local(v, r, ty_data(str_lit("%place"), kayak_rt::cons(ty_var(name), kayak_rt::nil()))), kayak_rt::nil())), s, forms, nil::<&'static Ty>()), expected);
             match *tagcase_ {
                 Res::Res(t, es, s) => {
                     if mentions_p(s, t, name) {
@@ -2722,7 +2704,11 @@ pub fn region_alloc_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, ex
                 };
                 match *tagcase_ {
                     Res::Res(u, es, s) => {
-                        res(made, effs_union(kayak_rt::cons(string_append(str_lit("alloc:"), region_string(s, r)), kayak_rt::nil()), es), note_types(s, cv_file(v), cv_pos(v), str_lit("rheld"), kayak_rt::cons(m, kayak_rt::nil())))
+                        res(made, effs_union(kayak_rt::cons(string_append(str_lit("alloc:"), region_string(s, r)), kayak_rt::nil()), es), note_types(s, cv_file(v), cv_pos(v), string_append(if string_eq_p(h, str_lit("rcons")) {
+                            str_lit("rheld-cons@")
+                        } else {
+                            str_lit("rheld-ref@")
+                        }, region_string(s, r)), kayak_rt::cons(m, kayak_rt::nil())))
                     }
                 }
             }
@@ -2766,7 +2752,7 @@ pub fn blob_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Ty
                         s
                     };
                     let s = if placed {
-                        note_types(s, cv_file(v), cv_pos(v), str_lit("rheld"), kayak_rt::cons(want, kayak_rt::nil()))
+                        note_types(s, cv_file(v), cv_pos(v), string_append(str_lit("rheld-blob@"), region_string(s, car(args))), kayak_rt::cons(want, kayak_rt::nil()))
                     } else {
                         s
                     };
@@ -3302,7 +3288,7 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
                 let tagcase_ = instantiate(s, sc);
                 match *tagcase_ {
                     Inst::Inst(t, s, regions) => {
-                        poly_settled(v, h, wher, args, binder_metas(from, st_next(s), regions), result_only_p(s, t, binder_metas(from, st_next(s), regions)), void_call(v, (string_eq_p(h, str_lit("error")) && string_eq_p(wher, str_lit("prim"))), (not(null_p(expected)) && {
+                        place_needed(v, h, wher, sc, from, poly_settled(v, h, wher, args, binder_metas(from, st_next(s), regions), result_only_p(s, t, binder_metas(from, st_next(s), regions)), void_call(v, (string_eq_p(h, str_lit("error")) && string_eq_p(wher, str_lit("prim"))), (not(null_p(expected)) && {
                             let tagcase_ = walk(s, car(expected));
                             match *tagcase_ {
                                 Ty::TyMeta(k) => {
@@ -3321,10 +3307,74 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
                             kayak_rt::cons(str_lit("spin"), kayak_rt::nil())
                         } else {
                             nil::<Str>()
-                        }))))))
+                        })))))))
                     }
                 }
             }
+        }
+    }
+}
+
+/// A call of a procedure given places (C34): what it makes in each, its
+/// `place-needs`, noted at the call as needs of the place it is given,
+/// `rneed-kind@'r T`, `T` at the types it is called at.
+pub fn place_needed(v: &'static Cv, h: Str, wher: Str, sc: &'static Scheme, from: i64, r: &'static Res) -> &'static Res {
+    if not(string_eq_p(wher, str_lit("global"))) {
+        r
+    } else {
+        let tagcase_ = r;
+        match *tagcase_ {
+            Res::Res(t, es, s) => {
+                let tagcase_ = sc;
+                match *tagcase_ {
+                    Scheme::Scheme(tvars, ty) => {
+                        let needs = concat(map(lambda1(move |f: &'static Fact| {
+                            let tagcase_ = f;
+                            match *tagcase_ {
+                                Fact::Fact(ff, fp, what) => {
+                                    if has_prefix_p(what, string_append(str_lit("place-needs "), string_append(h, str_lit(" ")))) {
+                                        the::<Strings>(kayak_rt::cons(after_prefix(what, string_append(str_lit("place-needs "), string_append(h, str_lit(" ")))), kayak_rt::nil()))
+                                    } else {
+                                        nil::<Str>()
+                                    }
+                                }
+                            }
+                        }), cv_facts(v)));
+                        res(t, es, note_needs(v, s, tvars, from, needs))
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn note_needs(mut v: &'static Cv, mut s: &'static St, mut tvars: Strings, mut from: i64, mut needs: Strings) -> &'static St {
+    loop {
+        if null_p(needs) {
+            return s;
+        } else {
+            let ws = read_all(string_chars(car(needs)), str_lit(""), 1i64);
+            let place = sym_name(car(ws));
+            let kind = sym_name(second(ws));
+            let need = instantiated(tvars, from, parse_type(v, onto(map(lambda1(move |x: Str| {
+                string_append(str_lit("%place "), x)
+            }), tvars), tvars), third(ws)));
+            let at = instantiated(tvars, from, ty_var(place));
+            (s, needs) = (note_types(s, cv_file(v), cv_pos(v), string_append(str_lit("rneed-"), string_append(kind, string_append(str_lit("@"), region_string(s, at)))), kayak_rt::cons(need, kayak_rt::nil())), cdr(needs));
+            continue;
+        }
+    }
+}
+
+/// `t`, a callee's, its binders replaced by the inference variables its
+/// call made for them, from `from` on, in order.
+pub fn instantiated(mut tvars: Strings, mut from: i64, mut t: &'static Ty) -> &'static Ty {
+    loop {
+        if null_p(tvars) {
+            return t;
+        } else {
+            (tvars, from, t) = (cdr(tvars), i64_plus(from, 1i64), replace_var(car(tvars), ty_meta(from), t));
+            continue;
         }
     }
 }

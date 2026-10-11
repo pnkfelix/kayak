@@ -507,6 +507,8 @@ pub fn region_name(v: &'static Cv, tvars: Strings, r: &'static Sexp) -> Str {
         s
     } else if string_member_p(string_append(str_lit("'"), s), tvars) {
         string_append(str_lit("'"), s)
+    } else if (char_eq_p(string_ref_i64(s, 0i64), '\'') && string_member_p(s, tvars)) {
+        s
     } else {
         match refuse(v, string_append(str_lit("a region KFX-0 does not have: "), s)) {}
     }
@@ -1455,6 +1457,27 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     return no_knot(v, lambda1(move |x: Str| {
                         x
                     }), ty_ref(parse_type(v, tvars, second(xs)), parse_mutable_region(v, tvars, third(xs))));
+                } else if sym_is_p(car(xs), str_lit("place")) {
+                    // `(place p)` (C34): a `letrena`'s place, or a poly's place binder.
+                    let r = if i64_eq(size(xs), 2i64) {
+                        let tagcase_ = second(xs);
+                        match *tagcase_ {
+                            Sexp::Sym(n, f, p) => {
+                                n
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                str_lit("")
+                            }
+                        }
+                    } else {
+                        str_lit("")
+                    };
+                    if string_member_p(string_append(str_lit("%place '"), r), tvars) {
+                        return ty_data(str_lit("%place"), kayak_rt::cons(ty_var(string_append(str_lit("'"), r)), kayak_rt::nil()));
+                    } else {
+                        return match refuse(v, string_append(str_lit("a place's type names a letrena's place or a poly's place binder: "), show_sexp(t))) {};
+                    }
                 } else if sym_is_p(car(xs), str_lit("bloblet")) {
                     // `(bloblet (fields T ...) R)` (C31): fields that may be written, so
                     // none a procedure or a type variable, which could tie a knot
@@ -1808,8 +1831,10 @@ pub fn poly_binders(v: &'static Cv, t: &'static Sexp, own: bool) -> Strings {
                 name_of(v, car(b))
             } else if sym_is_p(second(b), str_lit("region")) {
                 string_append(str_lit("'"), name_of(v, car(b)))
+            } else if sym_is_p(second(b), str_lit("place")) {
+                string_append(str_lit("'"), name_of(v, car(b)))
             } else {
-                match refuse(v, string_append(str_lit("KFX's poly is over types and regions: "), show_sexp(lst(b, str_lit(""), 0i64, 0i64)))) {}
+                match refuse(v, string_append(str_lit("KFX's poly is over types, regions and places: "), show_sexp(lst(b, str_lit(""), 0i64, 0i64)))) {}
             }
         }), items(second(items(t))));
         if own {
@@ -1837,9 +1862,26 @@ pub fn poly_binders(v: &'static Cv, t: &'static Sexp, own: bool) -> Strings {
     }
 }
 
+/// A poly's place binders, `%place 'p` each: where `(place p)` may be
+/// written (C34). A place is a region too, `'p`.
+pub fn place_marks(t: &'static Sexp) -> Strings {
+    if head_is_p(t, str_lit("poly")) {
+        concat(map(lambda1(move |b: &'static Sexp| {
+            let xs = items(b);
+            if (i64_eq(size(xs), 2i64) && sym_is_p(second(xs), str_lit("place"))) {
+                the::<Strings>(kayak_rt::cons(string_append(str_lit("%place '"), sym_name(car(xs))), kayak_rt::nil()))
+            } else {
+                nil::<Str>()
+            }
+        }), items(second(items(t)))))
+    } else {
+        nil::<Str>()
+    }
+}
+
 pub fn parse_scheme_of(v: &'static Cv, t: &'static Sexp, own: bool) -> &'static Scheme {
     let tvars = poly_binders(v, t, own);
-    scheme(tvars, parse_type(v, tvars, if head_is_p(t, str_lit("poly")) {
+    scheme(tvars, parse_type(v, onto(place_marks(t), tvars), if head_is_p(t, str_lit("poly")) {
         third(items(t))
     } else {
         t
@@ -2718,6 +2760,15 @@ pub fn near(v: &'static Cv, file: Str, line: i64, pos: i64) -> &'static Cv {
             Cv::Cv(bs, ds, als, es, here, group, f, l, fs, tv, at) => {
                 cv(bs, ds, als, es, here, group, file, line, fs, tv, pos)
             }
+        }
+    }
+}
+
+pub fn cv_facts(v: &'static Cv) -> Facts {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+            fs
         }
     }
 }

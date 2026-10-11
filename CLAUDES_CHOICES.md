@@ -552,3 +552,27 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
 - **Not yet:** a sum with no key, whose tag indexes the owner's fields,
   which hold its labels as symbols: KFX has no symbols.
 
+## C34. Places given to procedures, bounds that say what they hold (2026-10-11)
+
+- **Chosen:** a procedure poly over a place, `(poly ((p place)) ...)`,
+  takes it as a value of type `(place p)` and makes in it; in Rust a
+  lifetime and a type, `fn build<'p, Place_P: Holds<Cons<'p, i64>>>(h:
+  &'p Place_P, ...)`, `Place_P` bound to hold each type the procedure
+  makes in the place, by itself or by the procedures it gives the place
+  to. The checker notes each making with its kind and place
+  (`rheld-cons@'p T`), sums a procedure's up when its definition is done
+  (`place-needs build 'p cons T`), and at each call notes the callee's,
+  at the types and place it is called at (`rneed-cons@'r T`). A
+  `letrena`'s region type holds an arena for each type made or needed in
+  its body. Places are values now: given to procedures, local lambdas,
+  kept in data. Implicit instantiation suffices, as in Fixpt; `(proj ...)`
+  KFX has not.
+- **Why the bounds:** in safe Rust an arena holds one type, so a place is
+  a struct of them (C30), and a procedure over any place can only ask,
+  by its bounds, for those it needs; Rust checks each call's place has
+  them, which the checker's needs make so.
+- **Not yet:** regions within a place, `(r region p)`; families over a
+  place; a nested `letrena` naming an outer one's place; `letreap`,
+  `rlambda`, `rmake-array`, `rmake-icell`; places in mutually recursive
+  procedures (a group's needs are not summed together).
+

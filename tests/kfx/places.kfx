@@ -1,0 +1,37 @@
+"Places given to procedures (C34): a procedure poly over a place, (p
+ place), takes it as a value, (place p), and makes in it; in Rust a
+ lifetime, 'p, and a type bound to hold what it makes there, by itself
+ or by those it gives the place to. A letrena's arena holds all of it."
+(define-effect kfx (maxeff (read @globals) spin))
+
+"Fixpt's place-is-a-region.fx, at i64."
+(define total (poly ((p place)) (subr (maxeff (alloc p) (read p)) ((place p) i64) i64))
+  (lambda (h n)
+    (car (the (listof i64 p) (rcons h n nil)))))
+
+"A place given on: sum2 gives build its place, and needs what build makes."
+(define build (poly ((p place)) (subr (alloc p) ((place p) i64 (listof i64 p)) (listof i64 p)))
+  (lambda (h n xs) (rcons h n xs)))
+(define sum2 (poly ((p place)) (subr (maxeff kfx (alloc p) (read p)) ((place p)) i64))
+  (lambda (h)
+    (let ((xs (build h 1 (build h 2 nil))))
+      (i64+ (car xs) (car (cdr xs))))))
+(define counter (poly ((p place)) (subr (alloc p) ((place p) i64) (ref i64 p)))
+  (lambda (h n) (rnew h n)))
+(define mk (poly ((p place)) (subr (alloc p) ((place p) i64) (bloblet (fields i64) p)))
+  (lambda (h n) (rmake-bloblet h 8 n)))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (letrena r
+      (let* ((c (counter r 10))
+             (push (the (subr (alloc r) ((place r) i64 (listof i64 r)) (listof i64 r))
+                        (lambda ((h (place r)) (x i64) (xs (listof i64 r))) (rcons h x xs))))
+             (xs (push r 1 (push r 2 nil)))
+             (b (mk r 40)))
+        (begin
+          (set c (i64+ (get c) (sum2 r)))
+          (string-append (i64->string (total r 7))
+            (string-append " " (string-append (i64->string (get c))
+              (string-append " " (i64->string (i64+ (bloblet-ref b 0) (i64+ (car xs) (car (cdr xs))))))))))))))
+(main)

@@ -143,9 +143,11 @@ Escapes are done (`DONE.md`, C18). Left:
 - **Bloblets' rest** (C31, C32):
   frozen bloblets; width; flat sums without a key (they need symbols);
   families over `flat`.
-- **`letrena`'s rest** (C30): places passed to procedures (`Holds<T>`
-  bounds), regions within a place, `letrena` in a poly over types, the
-  other allocators, `letreap`; then bloblets and blobrefs.
+- **`letrena`'s rest** (C30, C34): regions within a place, `(r region
+  p)`; families over a place; a nested `letrena` naming an outer place;
+  `letrena` in a poly over types; `letreap` (as an arena, sound);
+  `rlambda`, `rmake-array`, `rmake-icell`; places in mutually recursive
+  procedures; `(proj ...)`.
 - **`null?` of an argument whose element nothing says**, other than a name
   or an `error` (`(null? (car (cons nil nil)))`), is refused; FX-26, whose
   `null?`'s binder is its argument's whole type, accepts it (C29).

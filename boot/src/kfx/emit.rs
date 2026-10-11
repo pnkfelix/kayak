@@ -818,6 +818,16 @@ pub fn desc_type(mut c: &'static Ctx, mut s: Str, mut ls: Strings) -> Sexps {
     }
 }
 
+pub fn words_of_sep(xs: Strings, sep: Str) -> Str {
+    if null_p(xs) {
+        str_lit("")
+    } else if null_p(cdr(xs)) {
+        car(xs)
+    } else {
+        string_append(car(xs), string_append(sep, words_of_sep(cdr(xs), sep)))
+    }
+}
+
 // `letrena`'s regions (CLAUDES_CHOICES.md C30): each a lifetime of the
 // `fn` its body is written as, `'r` for the region `r`, marked in the
 // locals `%letrena r`. Every other region is the heap's, `'static`.
@@ -857,6 +867,48 @@ pub fn fact_at_place(c: &'static Ctx, file: Str, pos: i64, prefix: Str) -> Str {
     }
 }
 
+/// Everything the checker found at `file`, `pos` that begins `prefix`.
+pub fn all_facts_at(c: &'static Ctx, file: Str, pos: i64, prefix: Str) -> Strings {
+    let tagcase_ = c;
+    match *tagcase_ {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            concat(map(lambda1(move |f: &'static Fact| {
+                let tagcase_ = f;
+                match *tagcase_ {
+                    Fact::Fact(ff, fp, fw) => {
+                        if (i64_eq(fp, pos) && string_eq_p(ff, file) && has_prefix_p(fw, prefix)) {
+                            the::<Strings>(kayak_rt::cons(fw, kayak_rt::nil()))
+                        } else {
+                            nil::<Str>()
+                        }
+                    }
+                }
+            }), fs))
+        }
+    }
+}
+
+/// Everything the checker found anywhere that begins `prefix`, the rest.
+pub fn all_facts_prefixed(c: &'static Ctx, prefix: Str) -> Strings {
+    let tagcase_ = c;
+    match *tagcase_ {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            concat(map(lambda1(move |f: &'static Fact| {
+                let tagcase_ = f;
+                match *tagcase_ {
+                    Fact::Fact(ff, fp, fw) => {
+                        if has_prefix_p(fw, prefix) {
+                            the::<Strings>(kayak_rt::cons(after_prefix(fw, prefix), kayak_rt::nil()))
+                        } else {
+                            nil::<Str>()
+                        }
+                    }
+                }
+            }), fs))
+        }
+    }
+}
+
 pub fn digits_number(s: Str) -> i64 {
     i64_minus(0i64, digits_value(string_chars(s), 0i64, str_lit(""), 0i64))
 }
@@ -874,6 +926,15 @@ pub fn uses_blobrefs_p(c: &'static Ctx) -> bool {
                 }
             }), fs)
         }
+    }
+}
+
+/// Of the `letrena`s' lifetimes, outermost first, those outside `l`.
+pub fn lifetimes_before(lives: Strings, l: Str) -> Strings {
+    if (null_p(lives) || string_eq_p(car(lives), l)) {
+        nil::<Str>()
+    } else {
+        cons(car(lives), lifetimes_before(cdr(lives), l))
     }
 }
 
@@ -989,6 +1050,13 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
                     } else {
                         return put_type(c, fourth(xs), acc);
                     }
+                } else if (sym_is_p(car(xs), str_lit("place")) && string_member_p(string_append(str_lit("%placeparam "), sym_name(second(xs))), ctx_locals(c))) {
+                    return put(string_append(str_lit("&'"), string_append(mangle(sym_name(second(xs))), string_append(str_lit(" Place_"), camel(sym_name(second(xs)))))), acc);
+                } else if sym_is_p(car(xs), str_lit("place")) {
+                    let r = sym_name(second(xs));
+                    let lives = letrena_lifetimes(ctx_locals(c));
+                    let life = string_append(str_lit("'"), mangle(r));
+                    return put(string_append(str_lit("&"), string_append(life, string_append(str_lit(" Region_"), string_append(camel(r), string_append(str_lit("<"), string_append(words_of_sep(cons(life, lifetimes_before(lives, life)), str_lit(", ")), str_lit(">"))))))), acc);
                 } else if (sym_is_p(car(xs), str_lit("bloblet")) && not(null_p(typed_flat(c, t)))) {
                     return put(str_lit(">"), put_flat(c, car(typed_flat(c, t)), put(str_lit(", "), put_fields_tuple(c, cdr(items(second(xs))), put(str_lit("TBloblet<"), put(str_lit(" "), put(owner_lifetime(c, third(xs)), put(str_lit("&"), acc))))))));
                 } else if sym_is_p(car(xs), str_lit("bloblet")) {
@@ -1823,16 +1891,6 @@ pub fn put_strings(xs: Strings, acc: Chars) -> Chars {
     }), str_lit(", "), xs, acc)
 }
 
-pub fn words_of_sep(xs: Strings, sep: Str) -> Str {
-    if null_p(xs) {
-        str_lit("")
-    } else if null_p(cdr(xs)) {
-        car(xs)
-    } else {
-        string_append(car(xs), string_append(sep, words_of_sep(cdr(xs), sep)))
-    }
-}
-
 /// `xs`, each once, in the order of its first.
 pub fn distinct_strings(xs: Strings) -> Strings {
     if null_p(xs) {
@@ -1889,6 +1947,39 @@ pub fn put_held_impls(mut held: Strings, mut i: i64, mut region: Str, mut lives:
             continue;
         }
     }
+}
+
+/// Every list in `es`, at any depth: the places facts are at.
+pub fn datums_in(es: Sexps) -> Sexps {
+    concat(map(lambda1(move |e: &'static Sexp| {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                the::<Sexps>(cons(e, datums_in(xs)))
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<&'static Sexp>()
+            }
+        }
+    }), es))
+}
+
+pub fn split_chars(mut cs: Chars, mut c: char, mut acc: Chars) -> Strings {
+    loop {
+        if null_p(cs) {
+            return kayak_rt::cons(rev_to_string(acc), kayak_rt::nil());
+        } else if char_eq_p(car(cs), c) {
+            return cons(rev_to_string(acc), split_chars(cdr(cs), c, nil::<char>()));
+        } else {
+            (cs, acc) = (cdr(cs), cons(car(cs), acc));
+            continue;
+        }
+    }
+}
+
+pub fn split_at_char(s: Str, c: char) -> Strings {
+    split_chars(string_chars(s), c, nil::<char>())
 }
 
 pub fn second_string(xs: Strings) -> Str {
@@ -2646,9 +2737,9 @@ pub fn put_letrena(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Ch
     } else {
         str_lit("%infallible")
     }, cons(r, names))));
-    let held = distinct_strings(map(lambda1(move |m: &'static Sexp| {
-        held_type(inner, r, m)
-    }), allocations(r, cdr(xs))));
+    let held = distinct_strings(concat(map(lambda1(move |x: &'static Sexp| {
+        held_at(inner, string_append(str_lit("'"), r), x)
+    }), datums_in(cdr(xs)))));
     let n1 = i64_plus(n, 1i64);
     let acc = put_nl(n1, put(str_lit("{"), acc));
     let acc = put(string_append(str_lit("#[derive(Default)] struct "), string_append(region, string_append(str_lit("<"), string_append(lives, str_lit("> {"))))), acc);
@@ -2699,6 +2790,40 @@ pub fn put_letrena_params(mut c: &'static Ctx, mut names: Strings, mut types: Se
             (names, types, acc) = (cdr(names), cdr(types), put_type(c, car(types), put(str_lit(": "), put(mangle(car(names)), put(str_lit(", "), acc)))));
             continue;
         }
+    }
+}
+
+/// What is made, or needed, at the datum `x` in the place `place` (C34):
+/// each a Rust type an arena holds.
+pub fn held_at(c: &'static Ctx, place: Str, x: &'static Sexp) -> Strings {
+    concat(map(lambda1(move |w: Str| {
+        let rest = if has_prefix_p(w, str_lit("rheld-")) {
+            after_prefix(w, str_lit("rheld-"))
+        } else {
+            after_prefix(w, str_lit("rneed-"))
+        };
+        let kind = car(split_at_char(rest, '@'));
+        let after = after_prefix(rest, string_append(kind, str_lit("@")));
+        let ws = read_all(string_chars(after), str_lit(""), 1i64);
+        if string_eq_p(sym_name(car(ws)), place) {
+            the::<Strings>(kayak_rt::cons(held_rust(c, kind, string_append(str_lit("'"), mangle(after_prefix(place, str_lit("'")))), second(ws)), kayak_rt::nil()))
+        } else {
+            nil::<Str>()
+        }
+    }), onto(all_facts_at(c, datum_file(x), datum_pos(x), str_lit("rheld-")), all_facts_at(c, datum_file(x), datum_pos(x), str_lit("rneed-")))))
+}
+
+/// An arena's type, for a making of `kind` in a place of lifetime `life`:
+/// a pair, `Cons<'r, T>`; a reference's cell; a bloblet.
+pub fn held_rust(c: &'static Ctx, kind: Str, life: Str, t: &'static Sexp) -> Str {
+    if string_eq_p(kind, str_lit("cons")) {
+        string_append(str_lit("Cons<"), string_append(life, string_append(str_lit(", "), string_append(rev_to_string(put_type(c, t, nil::<char>())), str_lit(">")))))
+    } else if string_eq_p(kind, str_lit("ref")) {
+        string_append(str_lit("std::cell::Cell<"), string_append(rev_to_string(put_type(c, t, nil::<char>())), str_lit(">")))
+    } else if not(null_p(typed_flat(c, t))) {
+        string_append(str_lit("TBloblet<"), string_append(rev_to_string(put_fields_tuple(c, cdr(items(second(items(t)))), nil::<char>())), string_append(str_lit(", "), string_append(rev_to_string(put_flat(c, car(typed_flat(c, t)), nil::<char>())), str_lit(">")))))
+    } else {
+        string_append(str_lit("Bloblet<"), string_append(rev_to_string(put_fields_tuple(c, cdr(items(second(items(t)))), nil::<char>())), str_lit(">")))
     }
 }
 

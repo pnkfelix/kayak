@@ -1,0 +1,4 @@
+"A place's type names a place: a region is none."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f (poly ((r region)) (subr pure ((place r)) i64)) (lambda (h) 1))
+1

@@ -420,6 +420,13 @@
                (if (null? found) (desc-type c s (cdr ls)) found)))
             (else (desc-type c s (cdr ls)))))))
 
+(define-rec
+  (words-of-sep (subr kfx (strings string) string)
+    (lambda (xs sep)
+      (cond ((null? xs) "")
+            ((null? (cdr xs)) (car xs))
+            (else (string-append (car xs) (string-append sep (words-of-sep (cdr xs) sep))))))))
+
 "`letrena`'s regions (CLAUDES_CHOICES.md C30): each a lifetime of the
  `fn` its body is written as, `'r` for the region `r`, marked in the
  locals `%letrena r`. Every other region is the heap's, `'static`."
@@ -438,6 +445,27 @@
      or ``."
     (tagcase c (ctx (ds ts ks ls xs fs ms es mods) (first-fact fs file pos prefix)))))
 
+(define all-facts-at (subr kfx (ctx string i64 string) strings)
+  (lambda (c file pos prefix)
+    "Everything the checker found at `file`, `pos` that begins `prefix`."
+    (tagcase c
+      (ctx (ds ts ks ls xs fs ms es mods)
+        (concat (map (lambda ((f fact))
+                       (tagcase f
+                         (fact (ff fp fw)
+                           (if (and (i64= fp pos) (string=? ff file) (has-prefix? fw prefix)) (the strings (list fw)) nil))))
+                     fs))))))
+
+(define all-facts-prefixed (subr kfx (ctx string) strings)
+  (lambda (c prefix)
+    "Everything the checker found anywhere that begins `prefix`, the rest."
+    (tagcase c
+      (ctx (ds ts ks ls xs fs ms es mods)
+        (concat (map (lambda ((f fact))
+                       (tagcase f
+                         (fact (ff fp fw) (if (has-prefix? fw prefix) (the strings (list (after-prefix fw prefix))) nil))))
+                     fs))))))
+
 (define digits-number (subr kfx (string) i64)
   (lambda (s) (i64- 0 (digits-value (string-chars s) 0 "" 0))))
 
@@ -446,6 +474,12 @@
     (tagcase c
       (ctx (ds ts ks ls xs fs ms es mods)
         (any? (lambda ((f fact)) (tagcase f (fact (ff fp fw) (has-prefix? fw "blob-at ")))) fs)))))
+
+(define-rec
+  (lifetimes-before (subr kfx (strings string) strings)
+    (lambda (lives l)
+      "Of the `letrena`s' lifetimes, outermost first, those outside `l`."
+      (if (or (null? lives) (string=? (car lives) l)) nil (cons (car lives) (lifetimes-before (cdr lives) l))))))
 
 (define owner-lifetime (subr kfx (ctx sexp) string)
   (lambda (c r)
@@ -514,6 +548,15 @@
                    (if (fallible-effect? c (second xs))
                        (put ", Unwind>" (put-type c (fourth xs) (put "Result<" acc)))
                        (put-type c (fourth xs) acc))))
+                ((and (sym-is? (car xs) "place") (string-member? (string-append "%placeparam " (sym-name (second xs))) (ctx-locals c)))
+                 (put (string-append "&'" (string-append (mangle (sym-name (second xs))) (string-append " Place_" (camel (sym-name (second xs)))))) acc))
+                ((sym-is? (car xs) "place")
+                 (let* ((r (sym-name (second xs)))
+                        (lives (letrena-lifetimes (ctx-locals c)))
+                        (life (string-append "'" (mangle r))))
+                   (put (string-append "&" (string-append life (string-append " Region_" (string-append (camel r)
+                          (string-append "<" (string-append (words-of-sep (cons life (lifetimes-before lives life)) ", ") ">"))))))
+                        acc)))
                 ((and (sym-is? (car xs) "bloblet") (not (null? (typed-flat c t))))
                  (put ">" (put-flat c (car (typed-flat c t))
                                     (put ", " (put-fields-tuple c (cdr (items (second xs)))
@@ -962,13 +1005,6 @@
     (put-sep (lambda ((x string) acc) (put (mangle x) acc)) ", " xs acc)))
 
 (define-rec
-  (words-of-sep (subr kfx (strings string) string)
-    (lambda (xs sep)
-      (cond ((null? xs) "")
-            ((null? (cdr xs)) (car xs))
-            (else (string-append (car xs) (string-append sep (words-of-sep (cdr xs) sep))))))))
-
-(define-rec
   (distinct-strings (subr kfx (strings) strings)
     (lambda (xs)
       "`xs`, each once, in the order of its first."
@@ -1009,6 +1045,26 @@
                      (string-append "> { fn arena(&self) -> &Arena<" (string-append (car held)
                        (string-append "> { &self.a" (string-append (i64->string i) " } }"))))))))))))
                  (put-nl n acc)))))))
+
+(define-rec
+  (datums-in (subr kfx (sexps) sexps)
+    (lambda (es)
+      "Every list in `es`, at any depth: the places facts are at."
+      (concat (map (lambda ((e sexp))
+                     (tagcase e
+                       (lst (xs f l p) (the sexps (cons e (datums-in xs))))
+                       (else other nil)))
+                   es)))))
+
+(define-rec
+  (split-chars (subr kfx (chars char chars) strings)
+    (lambda (cs c acc)
+      (cond ((null? cs) (list (rev->string acc)))
+            ((char=? (car cs) c) (cons (rev->string acc) (split-chars (cdr cs) c nil)))
+            (else (split-chars (cdr cs) c (cons (car cs) acc)))))))
+
+(define split-at-char (subr kfx (string char) strings)
+  (lambda (s c) (split-chars (string-chars s) c nil)))
 
 (define second-string (subr kfx (strings) string)
   (lambda (xs) (if (or (null? xs) (null? (cdr xs))) "0" (car (cdr xs)))))
@@ -1504,7 +1560,7 @@
              (types (read-all (string-chars (fact-with c e "letrena-locals ")) "" 1))
              (fallible (fact-at? c e "fallible"))
              (inner (with-locals c (cons (string-append "%letrena " r) (cons (if fallible "%fallible" "%infallible") (cons r names)))))
-             (held (distinct-strings (map (lambda ((m sexp)) (held-type inner r m)) (allocations r (cdr xs)))))
+             (held (distinct-strings (concat (map (lambda ((x sexp)) (held-at inner (string-append "'" r) x)) (datums-in (cdr xs))))))
              (n1 (i64+ n 1))
              (acc (put-nl n1 (put "{" acc)))
              (acc (put (string-append "#[derive(Default)] struct " (string-append region (string-append "<" (string-append lives "> {")))) acc))
@@ -1538,6 +1594,31 @@
           acc
           (put-letrena-params c (cdr names) (cdr types)
                               (put-type c (car types) (put ": " (put (mangle (car names)) (put ", " acc))))))))
+
+  (held-at (subr kfx (ctx string sexp) strings)
+    (lambda (c place x)
+      "What is made, or needed, at the datum `x` in the place `place` (C34):
+       each a Rust type an arena holds."
+      (concat (map (lambda ((w string))
+                     (let* ((rest (if (has-prefix? w "rheld-") (after-prefix w "rheld-") (after-prefix w "rneed-")))
+                            (kind (car (split-at-char rest #\@)))
+                            (after (after-prefix rest (string-append kind "@")))
+                            (ws (read-all (string-chars after) "" 1)))
+                       (if (string=? (sym-name (car ws)) place)
+                           (the strings (list (held-rust c kind (string-append "'" (mangle (after-prefix place "'"))) (second ws))))
+                           nil)))
+                   (onto (all-facts-at c (datum-file x) (datum-pos x) "rheld-") (all-facts-at c (datum-file x) (datum-pos x) "rneed-"))))))
+
+  (held-rust (subr kfx (ctx string string sexp) string)
+    (lambda (c kind life t)
+      "An arena's type, for a making of `kind` in a place of lifetime `life`:
+       a pair, `Cons<'r, T>`; a reference's cell; a bloblet."
+      (cond ((string=? kind "cons") (string-append "Cons<" (string-append life (string-append ", " (string-append (rev->string (put-type c t nil)) ">")))))
+            ((string=? kind "ref") (string-append "std::cell::Cell<" (string-append (rev->string (put-type c t nil)) ">")))
+            ((not (null? (typed-flat c t)))
+             (string-append "TBloblet<" (string-append (rev->string (put-fields-tuple c (cdr (items (second (items t)))) nil))
+               (string-append ", " (string-append (rev->string (put-flat c (car (typed-flat c t)) nil)) ">")))))
+            (else (string-append "Bloblet<" (string-append (rev->string (put-fields-tuple c (cdr (items (second (items t)))) nil)) ">"))))))
 
   (held-type (subr kfx (ctx string sexp) string)
     (lambda (c r call)

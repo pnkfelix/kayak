@@ -662,8 +662,6 @@
                        (cond ((or (string=? wher "module")
                                   (not (null? (module-spec v (tagcase sc (scheme (tv t) t))))))
                               (refuse v (string-append "a module as a value: KFX's modules are Rust's, opened by with: " name)))
-                             ((tagcase sc (scheme (tv t) (tagcase t (ty-data (d args) (string=? d "%place")) (else other #f))))
-                              (refuse v (string-append "a place as a value, which KFX gives only to rcons and rnew yet: " name)))
                              ((tagcase sc (scheme (tv t) (tagcase t (ty-proc (es ps r) (any? (lambda ((p ty)) (not (null? (module-spec v p)))) ps)) (else other #f))))
                               (refuse v (string-append "a procedure of a module parameter, a Rust generic fn, named as a value: " name)))
                              (else
@@ -1147,7 +1145,7 @@
        the place's own region, and no letrena is in a poly over types."
       (cond ((or (i64< (size xs) 2) (tagcase (car xs) (sym (n f p) #f) (else other #t)))
              (refuse v "(letrena r body ...)"))
-            ((any? (lambda ((t string)) (not (has-prefix? t "'"))) (cv-tvars v))
+            ((any? (lambda ((t string)) (not (or (has-prefix? t "'") (has-prefix? t "%")))) (cv-tvars v))
              (refuse v "a letrena in a procedure poly over types, which KFX does not write yet"))
             (else
              (let* ((r (sym-name (car xs)))
@@ -1170,7 +1168,7 @@
                      ((any? (lambda ((t ty)) (place-region s t)) types)
                       (refuse v "a letrena whose body names another's place, which KFX does not write yet"))
                      (else
-                      (tagcase (found-then-fitted v (body (with-binds (with-tvars v (list name))
+                      (tagcase (found-then-fitted v (body (with-binds (with-tvars v (list name (string-append "%place " name)))
                                                                        (list (local v r (ty-data "%place" (list (ty-var name))))))
                                                           s forms nil)
                                                   expected)
@@ -1221,7 +1219,9 @@
                                   (call-args v s (cdr args) (list m) nil))
                        (res (u es s)
                          (res made (effs-union (list (string-append "alloc:" (region-string s r))) es)
-                              (note-types s (cv-file v) (cv-pos v) "rheld" (list m)))))))))))))
+                              (note-types s (cv-file v) (cv-pos v)
+                                          (string-append (if (string=? h "rcons") "rheld-cons@" "rheld-ref@") (region-string s r))
+                                          (list m)))))))))))))
 
   (blob-form (subr kfx (cv st string sexps tys) res)
     (lambda (v s h xs expected)
@@ -1240,7 +1240,7 @@
                  (if (or (not (string=? d "%bloblet")) (null? rest) (not (i64= (size (cdr rest)) (size (cdr args)))))
                      (refuse v (string-append "a bloblet made where a " (string-append (show-ty s want) " is expected, or not of its fields")))
                      (let* ((s (if placed (fits v s (place-of v s (car xs)) (car args)) s))
-                            (s (if placed (note-types s (cv-file v) (cv-pos v) "rheld" (list want)) s)))
+                            (s (if placed (note-types s (cv-file v) (cv-pos v) (string-append "rheld-blob@" (region-string s (car args))) (list want)) s)))
                        (tagcase (call-args v s rest (cons (ty-int) (cdr args)) nil)
                          (res (u es s)
                            (res want (effs-union (list (string-append "alloc:" (region-string s (car args)))) es)
@@ -1479,6 +1479,7 @@
                   (let ((from (st-next s)))
                   (tagcase (instantiate s sc)
                     (inst (t s regions)
+                      (place-needed v h wher sc from
                       (poly-settled v h wher args (binder-metas from (st-next s) regions) (result-only? s t (binder-metas from (st-next s) regions))
                       (void-call v (and (string=? h "error") (string=? wher "prim"))
                                  (and (not (null? expected)) (tagcase (walk s (car expected)) (ty-meta (k) #t) (else other #f)))
@@ -1489,7 +1490,45 @@
                                                (and (string=? wher "local") (self-applicable? v s t))
                                                (and (string-member? h (cv-group v)) (or (string=? wher "global") (string=? wher "item"))))
                                            (list "spin")
-                                           nil)))))))))))))))))
+                                           nil))))))))))))))))))
+
+  (place-needed (subr kfx (cv string string scheme i64 res) res)
+    (lambda (v h wher sc from r)
+      "A call of a procedure given places (C34): what it makes in each, its
+       `place-needs`, noted at the call as needs of the place it is given,
+       `rneed-kind@'r T`, `T` at the types it is called at."
+      (if (not (string=? wher "global"))
+          r
+          (tagcase r
+            (res (t es s)
+              (tagcase sc
+                (scheme (tvars ty)
+                  (let ((needs (concat (map (lambda ((f fact))
+                                              (tagcase f
+                                                (fact (ff fp what)
+                                                  (if (has-prefix? what (string-append "place-needs " (string-append h " ")))
+                                                      (the strings (list (after-prefix what (string-append "place-needs " (string-append h " ")))))
+                                                      nil))))
+                                            (cv-facts v)))))
+                    (res t es (note-needs v s tvars from needs))))))))))
+
+  (note-needs (subr kfx (cv st strings i64 strings) st)
+    (lambda (v s tvars from needs)
+      (if (null? needs)
+          s
+          (let* ((ws (read-all (string-chars (car needs)) "" 1))
+                 (place (sym-name (car ws)))
+                 (kind (sym-name (second ws)))
+                 (need (instantiated tvars from (parse-type v (onto (map (lambda ((x string)) (string-append "%place " x)) tvars) tvars) (third ws))))
+                 (at (instantiated tvars from (ty-var place))))
+            (note-needs v (note-types s (cv-file v) (cv-pos v) (string-append "rneed-" (string-append kind (string-append "@" (region-string s at)))) (list need))
+                        tvars from (cdr needs))))))
+
+  (instantiated (subr kfx (strings i64 ty) ty)
+    (lambda (tvars from t)
+      "`t`, a callee's, its binders replaced by the inference variables its
+       call made for them, from `from` on, in order."
+      (if (null? tvars) t (instantiated (cdr tvars) (i64+ from 1) (replace-var (car tvars) (ty-meta from) t)))))
 
   (result-only? (subr kfx (st ty (listof i64 acyclic)) bool)
     (lambda (s t ks)

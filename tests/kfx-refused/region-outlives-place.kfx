@@ -1,0 +1,6 @@
+"A region bound outside an arena could outlive it, so rcons may not put
+ its data there (Fixpt's regions/region-outlives-place.fx)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f (subr kfx () i64)
+  (lambda () (letregion outer (letrena p (car (the (listof i64 outer) (rcons p 1 nil)))))))
+(f)

@@ -258,8 +258,6 @@
     "`v`, with a definition's facts."
     (tagcase v (cv (bs ds als es here group file line fs tv at) (cv bs ds als es here group file line (onto more fs) tv at)))))
 
-(define cv-facts (subr kfx (cv) facts)
-  (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) fs))))
 
 (define no-reaching-itself (subr kfx (cv strings scheme) cv)
   (lambda (v group sc)
@@ -298,6 +296,22 @@
            (tagcase e (lst (xs file line pos) (note-fact s file pos "once")) (else other s)))
           (else s))))
 
+(define place-marks-of (subr kfx (ty) strings)
+  (lambda (t)
+    "The places a procedure is given, `%place 'p` each, from its
+     parameters' types: where its body may write `(place p)` (C34)."
+    (tagcase t
+      (ty-proc (es ps r)
+        (concat (map (lambda ((p ty))
+                       (tagcase p
+                         (ty-data (d args)
+                           (if (string=? d "%place")
+                               (tagcase (car args) (ty-var (n) (the strings (list (string-append "%place " n)))) (else other nil))
+                               nil))
+                         (else other nil)))
+                     ps)))
+      (else other nil))))
+
 (define check-procedure (subr kfx (cv sexp scheme) cv)
   (lambda (v defined sc)
     "A procedure's lambda against its type; `v` already has its name."
@@ -305,7 +319,7 @@
           (v (with-binds v (list (bind "%toplambda" (scheme nil (ty-unit)) "yes")))))
       (tagcase sc
         (scheme (tvars t)
-          (tagcase (check-lambda (with-tvars v tvars) (new-state) (items (second lam)) (cdr (cdr lam)) t)
+          (tagcase (check-lambda (with-tvars v (onto (place-marks-of t) tvars)) (new-state) (items (second lam)) (cdr (cdr lam)) t)
             (res (u es s) (with-facts v (settle-facts s)))))))))
 
 (define variants-dt (subr kfx (cv string) (listof dt acyclic))
@@ -379,6 +393,53 @@
                                   (string-append " is not within " (show-effs declared))))))))
                 (else other (refuse v "a define* is of a procedure")))))))))
 
+(define-rec
+  (first-n (subr kfx (facts i64) facts)
+    (lambda (fs n) (if (or (null? fs) (i64< n 1)) nil (cons (car fs) (first-n (cdr fs) (i64- n 1)))))))
+
+(define-rec
+  (chars-before (subr kfx (chars char chars) string)
+    (lambda (cs c acc)
+      (if (or (null? cs) (char=? (car cs) c)) (rev->string acc) (chars-before (cdr cs) c (cons (car cs) acc))))))
+
+(define before-char (subr kfx (string char) string)
+  (lambda (s c) (chars-before (string-chars s) c nil)))
+
+(define place-need (subr kfx (string strings) string)
+  (lambda (what places)
+    "A fact of a making in, or a need of, one of `places`, as `'p kind T`;
+     or ``. The facts are `rheld-kind@'p T` and `rneed-kind@'p T`."
+    (let* ((held (cond ((has-prefix? what "rheld-") (after-prefix what "rheld-"))
+                       ((has-prefix? what "rneed-") (after-prefix what "rneed-"))
+                       (else "")))
+           (kind (before-char held #\@))
+           (rest (after-prefix held (string-append kind "@")))
+           (place (before-char rest #\space)))
+      (if (and (not (string=? held "")) (string-member? place places))
+          (string-append place (string-append " " (string-append kind (string-append " " (after-prefix rest (string-append place " "))))))
+          ""))))
+
+(define with-place-needs (subr kfx (cv string scheme i64 string i64) cv)
+  (lambda (v name sc before file pos)
+    "A procedure given places (C34): what it makes in each, by itself or by
+     the procedures it gives the place to, kept as `place-needs name 'p
+     kind T` at its definition, for its calls and for the Rust it is: a
+     place's type, a type parameter bound to hold each."
+    (let* ((places (concat (map (lambda ((m string)) (the strings (list (after-prefix m "%place ")))) (place-marks-of (tagcase sc (scheme (tv t) t))))))
+           (fs (cv-facts v))
+           (new (first-n fs (i64- (size fs) before))))
+      (if (null? places)
+          v
+          (with-facts v
+            (concat (map (lambda ((f fact))
+                           (tagcase f
+                             (fact (ff fp what)
+                               (let ((need (place-need what places)))
+                                 (if (string=? need "")
+                                     nil
+                                     (the facts (list (fact file pos (string-append "place-needs " (string-append name (string-append " " need)))))))))))
+                         new)))))))
+
 (define check-top (subr kfx (cv sexp) cv)
   (lambda (v form)
     "One top-level form, which may add to what the forms after it see."
@@ -412,7 +473,7 @@
                             (v (no-reaching-itself v (list name) sc))
                             (named (with-binds v (list (global v name sc)))))
                        (if (procedure? (fourth xs))
-                           (check-procedure named (fourth xs) sc)
+                           (with-place-needs (check-procedure named (fourth xs) sc) name sc (size (cv-facts named)) src-file src-pos)
                            (tagcase sc
                              (scheme (tvars t)
                                (if (null? tvars)

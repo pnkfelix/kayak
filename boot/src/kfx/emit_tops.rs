@@ -328,6 +328,43 @@ pub fn unpoly(e: &'static Sexp) -> &'static Sexp {
     }
 }
 
+/// A procedure given places' generics (C34): each place a lifetime, `'p`,
+/// and a type, `Place_P`, bound to hold what the procedure makes there,
+/// by itself or by those it gives the place to; the types `Copy`.
+pub fn put_place_generics(c: &'static Ctx, name: Str, binders: Sexps, places: Strings, acc: Chars) -> Chars {
+    let needs = all_facts_prefixed(c, string_append(str_lit("place-needs "), string_append(name, str_lit(" "))));
+    let types = concat(map(lambda1(move |b: &'static Sexp| {
+        if sym_is_p(second(items(b)), str_lit("type")) {
+            the::<Strings>(kayak_rt::cons(camel(sym_name(car(items(b)))), kayak_rt::nil()))
+        } else {
+            nil::<Str>()
+        }
+    }), binders));
+    let bounds = lambda1(move |p: Str| {
+        distinct_strings(concat(map(lambda1(move |n: Str| {
+            let ws = read_all(string_chars(n), str_lit(""), 1i64);
+            if string_eq_p(sym_name(car(ws)), string_append(str_lit("'"), p)) {
+                the::<Strings>(kayak_rt::cons(string_append(str_lit("Holds<"), string_append(held_rust(c, sym_name(second(ws)), string_append(str_lit("'"), mangle(p)), third(ws)), str_lit(">"))), kayak_rt::nil()))
+            } else {
+                nil::<Str>()
+            }
+        }), needs)))
+    });
+    let params = onto(map(lambda1(move |p: Str| {
+        string_append(str_lit("'"), mangle(p))
+    }), places), onto(map(lambda1(move |t: Str| {
+        string_append(t, str_lit(": Copy + 'static"))
+    }), types), map(lambda1(move |p: Str| {
+        let bs = bounds(p);
+        string_append(str_lit("Place_"), string_append(camel(p), if null_p(bs) {
+            str_lit("")
+        } else {
+            string_append(str_lit(": "), words_of_sep(bs, str_lit(" + ")))
+        }))
+    }), places)));
+    put(string_append(str_lit("<"), string_append(words_of_sep(params, str_lit(", ")), str_lit(">"))), acc)
+}
+
 /// A definition, a `fn`: a procedure's of its parameters; a constant's of
 /// none, run at each use, or, if it allocates, made at its first use and
 /// kept (C21).
@@ -337,6 +374,16 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, typ: &'static Sexp, defi
     } else {
         nil::<&'static Sexp>()
     };
+    let places = concat(map(lambda1(move |b: &'static Sexp| {
+        if sym_is_p(second(items(b)), str_lit("place")) {
+            the::<Strings>(kayak_rt::cons(sym_name(car(items(b))), kayak_rt::nil()))
+        } else {
+            nil::<Str>()
+        }
+    }), binders));
+    let c = with_locals(c, concat(map(lambda1(move |p: Str| {
+        the::<Strings>(kayak_rt::cons(string_append(str_lit("%letrena "), p), kayak_rt::cons(string_append(str_lit("%placeparam "), p), kayak_rt::nil())))
+    }), places)));
     let typ = unpoly(typ);
     let defined = unpoly(defined);
     let lambda_p = head_is_p(defined, str_lit("lambda"));
@@ -381,7 +428,11 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, typ: &'static Sexp, defi
     };
     let acc = put(str_lit("pub fn "), acc);
     let acc = put(mangle(sym_name(name)), acc);
-    let acc = put_generics(binders, true, acc);
+    let acc = if null_p(places) {
+        put_generics(binders, true, acc)
+    } else {
+        put_place_generics(c, sym_name(name), binders, places, acc)
+    };
     let acc = if null_p(mparams) {
         acc
     } else if not(null_p(binders)) {

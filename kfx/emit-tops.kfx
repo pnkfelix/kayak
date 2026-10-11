@@ -166,12 +166,37 @@
     "A poly type's body, or a plambda's: what is under the binders."
     (if (or (head-is? e "poly") (head-is? e "plambda")) (third (items e)) e)))
 
+(define put-place-generics (subr kfx (ctx string sexps strings chars) chars)
+  (lambda (c name binders places acc)
+    "A procedure given places' generics (C34): each place a lifetime, `'p`,
+     and a type, `Place_P`, bound to hold what the procedure makes there,
+     by itself or by those it gives the place to; the types `Copy`."
+    (let* ((needs (all-facts-prefixed c (string-append "place-needs " (string-append name " "))))
+           (types (concat (map (lambda ((b sexp)) (if (sym-is? (second (items b)) "type") (the strings (list (camel (sym-name (car (items b)))))) nil)) binders)))
+           (bounds (lambda ((p string))
+                     (distinct-strings
+                       (concat (map (lambda ((n string))
+                                      (let ((ws (read-all (string-chars n) "" 1)))
+                                        (if (string=? (sym-name (car ws)) (string-append "'" p))
+                                            (the strings (list (string-append "Holds<" (string-append (held-rust c (sym-name (second ws)) (string-append "'" (mangle p)) (third ws)) ">"))))
+                                            nil)))
+                                    needs)))))
+           (params (onto (map (lambda ((p string)) (string-append "'" (mangle p))) places)
+                         (onto (map (lambda ((t string)) (string-append t ": Copy + 'static")) types)
+                               (map (lambda ((p string))
+                                      (let ((bs (bounds p)))
+                                        (string-append "Place_" (string-append (camel p) (if (null? bs) "" (string-append ": " (words-of-sep bs " + ")))))))
+                                    places)))))
+      (put (string-append "<" (string-append (words-of-sep params ", ") ">")) acc))))
+
 (define put-define (subr kfx (ctx sexp sexp sexp chars) chars)
   (lambda (c name typ defined acc)
     "A definition, a `fn`: a procedure's of its parameters; a constant's of
      none, run at each use, or, if it allocates, made at its first use and
      kept (C21)."
     (let* ((binders (if (head-is? typ "poly") (items (second (items typ))) nil))
+           (places (concat (map (lambda ((b sexp)) (if (sym-is? (second (items b)) "place") (the strings (list (sym-name (car (items b))))) nil)) binders)))
+           (c (with-locals c (concat (map (lambda ((p string)) (the strings (list (string-append "%letrena " p) (string-append "%placeparam " p)))) places))))
            (typ (unpoly typ))
            (defined (unpoly defined))
            (lambda? (head-is? defined "lambda"))
@@ -192,7 +217,7 @@
                       c))
            (acc (put "pub fn " acc))
            (acc (put (mangle (sym-name name)) acc))
-           (acc (put-generics binders #t acc))
+           (acc (if (null? places) (put-generics binders #t acc) (put-place-generics c (sym-name name) binders places acc)))
            (acc (cond ((null? mparams) acc)
                       ((not (null? binders)) (error "kfx: a poly procedure with a module parameter, which KFX does not write yet"))
                       (else (put ">" (put-sep (lambda ((mp string) (acc chars))

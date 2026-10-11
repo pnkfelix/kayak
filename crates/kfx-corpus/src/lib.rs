@@ -128,6 +128,11 @@ pub mod open_types;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/places.rs"]
+pub mod places;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/procs.rs"]
 pub mod procs;
 
@@ -201,6 +206,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("mutable", mutable::main),
     ("names", names::main),
     ("open-types", open_types::main),
+    ("places", places::main),
     ("procs", procs::main),
     ("recursion", recursion::main),
     ("shapes", shapes::main),
