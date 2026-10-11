@@ -1,0 +1,6 @@
+"A type abbreviation given another's parameters, swapped: substituted at
+ once, `(rev string i64)` is `(pair i64 string)`, whose `fst` is an i64."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type (pair (a type) (b type)) (productof (fst a) (snd b)))
+(define-type (rev (a type) (b type)) (pair b a))
+(define g (subr pure ((rev string i64)) string) (lambda (p) (extract p fst)))

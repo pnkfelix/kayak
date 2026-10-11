@@ -1,0 +1,3 @@
+"A real literal of 1e21 or more: FX-26 reads it as an int."
+(define-effect kfx (maxeff (read @globals) spin))
+(define x f64 1000000000000000000000.0)

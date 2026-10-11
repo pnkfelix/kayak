@@ -324,16 +324,19 @@ pub fn char_whitespace_p(c: char) -> bool {
     c.is_whitespace()
 }
 
+/// Any numeric character, as Fixpt's (`²`, `½`, `٣` too).
 pub fn char_numeric_p(c: char) -> bool {
-    c.is_ascii_digit()
+    c.is_numeric()
 }
 
 pub fn char_alphabetic_p(c: char) -> bool {
     c.is_alphabetic()
 }
 
+/// Unicode's upper case, its first character where it is more than one
+/// (`ß` is `S`), as Fixpt's.
 pub fn char_upcase(c: char) -> char {
-    c.to_ascii_uppercase()
+    c.to_uppercase().next().unwrap_or(c)
 }
 
 pub fn char_to_string(c: char) -> Str {

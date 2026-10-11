@@ -85,9 +85,9 @@ pub fn put_arg_params(mut c: &'static Ctx, mut ts: Sexps, mut i: i64, mut acc: C
             return acc;
         } else {
             (ts, i, acc) = (cdr(ts), i64_plus(i, 1i64), put_type(c, car(ts), put(str_lit(": "), put(i64_to_string(i), put(if i64_eq(i, 0i64) {
-                str_lit("a")
+                str_lit("a_")
             } else {
-                str_lit(", a")
+                str_lit(", a_")
             }, acc)))));
             continue;
         }
@@ -1001,7 +1001,7 @@ pub fn put_toplevel_lines(mut c: &'static Ctx, mut forms: Sexps, mut acc: Chars)
                 let acc = put_exp(with_locals(c, cons(str_lit("%fallible"), nil())), car(forms), 1i64, value(), acc);
                 return put_toplevel_lines(c, cdr(forms), put(str_lit("; Ok(()) })().unwrap_or_else(|u| unreachable_unwind(u));\n"), acc));
             } else {
-                let acc = put(str_lit("    show_line(&mut out, (|| -> Result<_, Unwind> { Ok("), acc);
+                let acc = put(str_lit("    show_line(&mut out_, (|| -> Result<_, Unwind> { Ok("), acc);
                 let acc = put_exp(with_locals(c, cons(str_lit("%fallible"), nil())), car(forms), 1i64, value(), acc);
                 return put_toplevel_lines(c, cdr(forms), put(str_lit(") })().unwrap_or_else(|u| unreachable_unwind(u)));\n"), acc));
             }
@@ -1014,8 +1014,8 @@ pub fn put_toplevel_lines(mut c: &'static Ctx, mut forms: Sexps, mut acc: Chars)
 
 pub fn put_toplevel(c: &'static Ctx, forms: Sexps, acc: Chars) -> Chars {
     let acc = put_show_impls(forms, acc);
-    let acc = put(str_lit("/// The program's top-level expressions' values, as Fixpt writes them.\npub fn kfx_toplevel() -> Str {\n    let mut out = String::new();\n"), acc);
+    let acc = put(str_lit("/// The program's top-level expressions' values, as Fixpt writes them.\npub fn kfx_toplevel() -> Str {\n    let mut out_ = String::new();\n"), acc);
     let acc = put_toplevel_lines(c, forms, acc);
-    put(str_lit("    shown(out)\n}\n"), acc)
+    put(str_lit("    shown(out_)\n}\n"), acc)
 }
 

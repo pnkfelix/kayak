@@ -298,6 +298,14 @@ pub fn only_of_p(cs: Chars, allowed: Str) -> bool {
     }), cs))
 }
 
+pub fn before_point(cs: Chars) -> Chars {
+    if (null_p(cs) || char_eq_p(car(cs), '.')) {
+        nil()
+    } else {
+        cons(car(cs), before_point(cdr(cs)))
+    }
+}
+
 pub fn token_atom(s: Str, file: Str, line: i64, pos: i64) -> &'static Sexp {
     let cs = string_chars(s);
     if not(numeric_p(cs)) {
@@ -318,7 +326,15 @@ pub fn token_atom(s: Str, file: Str, line: i64, pos: i64) -> &'static Sexp {
         } else {
             cs
         }, str_lit("0123456789."))) {
-            real(s)
+            if i64_gt(size(digits_after_zeros(before_point(if char_eq_p(car(cs), '-') {
+                cdr(cs)
+            } else {
+                cs
+            }))), 21i64) {
+                read_error(file, line, string_append(str_lit("a real of 1e21 or more, which FX-26 reads as an int: "), s))
+            } else {
+                real(s)
+            }
         } else {
             read_error(file, line, string_append(str_lit("no number KFX reads: "), s))
         }

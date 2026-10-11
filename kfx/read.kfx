@@ -144,6 +144,10 @@
     "Whether every character of `cs` is one of `allowed`'s."
     (not (any? (lambda ((c char)) (not (has-char? (string-chars allowed) c))) cs))))
 
+(define-rec
+  (before-point (subr kfx (chars) chars)
+    (lambda (cs) (if (or (null? cs) (char=? (car cs) #\.)) nil (cons (car cs) (before-point (cdr cs)))))))
+
 (define token-atom (subr kfx (string string i64 i64) sexp)
   (lambda (s file line pos)
     (let ((cs (string-chars s)))
@@ -156,7 +160,9 @@
              (read-error file line (string-append "a number with an exponent, which KFX reads not: write it out, " s)))
             ((has-char? cs #\.)
              (if (and (real-token? cs) (only-of? (if (char=? (car cs) #\-) (cdr cs) cs) "0123456789."))
-                 (real s)
+                 (if (i64> (size (digits-after-zeros (before-point (if (char=? (car cs) #\-) (cdr cs) cs)))) 21)
+                     (read-error file line (string-append "a real of 1e21 or more, which FX-26 reads as an int: " s))
+                     (real s))
                  (read-error file line (string-append "no number KFX reads: " s))))
             ((not (only-of? (if (char=? (car cs) #\-) (cdr cs) cs) "0123456789"))
              (read-error file line (string-append "no number KFX reads: " s)))

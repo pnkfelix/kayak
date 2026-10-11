@@ -831,3 +831,19 @@ as a call's argument (`the`, `list`, branches: a Rust error); `void` in a
 type (`!` is unstable in Rust); a value holding a `void` at the top level
 (a Rust error; both fail when run); shift counts past 2^59, where Fixpt's
 answers vary (a Fixpt bug, it seems: it wants a fixnum).
+
+## A sixth, broad probe's findings (2026-10-11)
+
+405 realistic programs mixing everything. The worst findings of the day,
+now closed: a KFX name could be a kayak-rt function's Rust name and hide
+it (`(define i64_plus ...)` changed what `(i64+ 1 2)` gave), and the
+emitter's temporaries could meet a program's names (`tagcase_`,
+`prompt_tag__`, `u`, `v`, `out`, `a0`): wrong answers, not errors. KFX's
+names now have no `_` (C27), and the temporaries without one have one.
+Also: a type abbreviation's parameters were substituted one by one, so
+`(rev string i64)` of `(pair b a)` was `(pair string string)` (now all
+at once; `kfx-refused/alias-capture`); a real of 1e21 or more, which
+FX-26 reads as an `int`, is refused; a double at 1e21 or more is shown
+with its point, as Fixpt shows it; `char-upcase` and `char-numeric?` are
+Unicode's, as Fixpt's. The probe's other differences are the documented
+gaps of `TODO.md` §17, and runs both fail.

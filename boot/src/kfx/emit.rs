@@ -1289,9 +1289,9 @@ pub fn put_arg_names(mut i: i64, mut n: i64, mut acc: Chars) -> Chars {
     loop {
         if i64_lt(i, n) {
             (i, acc) = (i64_plus(i, 1i64), put(i64_to_string(i), put(if i64_eq(i, 0i64) {
-                str_lit("a")
+                str_lit("a_")
             } else {
-                str_lit(", a")
+                str_lit(", a_")
             }, acc)));
             continue;
         } else {
@@ -2054,16 +2054,16 @@ pub fn put_prompt(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Cha
     let acc = put_block(inner, cons(second(xs), nil()), i64_plus(n, 1i64), ok_value(), acc);
     let acc = put(str_lit(")() {"), acc);
     let acc = put_nl(i64_plus(n, 2i64), acc);
-    let acc = put(str_lit("Ok(v) => v,"), acc);
+    let acc = put(str_lit("Ok(v_) => v_,"), acc);
     let acc = put_nl(i64_plus(n, 2i64), acc);
-    let acc = put(str_lit("Err(u) if u.is(prompt_tag__) => ("), acc);
+    let acc = put(str_lit("Err(u_) if u_.is(prompt_tag__) => ("), acc);
     let acc = put_exp(c, third(xs), i64_plus(n, 2i64), value(), acc);
-    let acc = put(str_lit(")(prompt_tag__.payload(u)),"), acc);
+    let acc = put(str_lit(")(prompt_tag__.payload(u_)),"), acc);
     let acc = put_nl(i64_plus(n, 2i64), acc);
     let acc = put(if (fact_at_p(c, e, str_lit("contains")) || not(fallible_here_p(c))) {
-        str_lit("Err(u) => unreachable_unwind(u),")
+        str_lit("Err(u_) => unreachable_unwind(u_),")
     } else {
-        str_lit("Err(u) => return Err(u),")
+        str_lit("Err(u_) => return Err(u_),")
     }, acc);
     let acc = put_nl(i64_plus(n, 1i64), acc);
     let acc = put(str_lit("}"), acc);

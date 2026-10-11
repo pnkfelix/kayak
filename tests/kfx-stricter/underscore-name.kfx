@@ -1,0 +1,5 @@
+"A name with a `_`: FX-26 has it; KFX writes `-`, so that no KFX name is
+ ever a Rust name kfx or kayak-rt writes (`i64_plus`, `tagcase_`)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define i64_plus (subr pure (i64 i64) i64) (lambda (a b) (i64- a b)))
+(i64+ 1 2)

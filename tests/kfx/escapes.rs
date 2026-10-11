@@ -41,11 +41,11 @@ pub fn search(xs: Ints, n: i64) -> i64 {
             find(t, xs, n)?;
             Ok(0i64)
         })() {
-            Ok(v) => v,
-            Err(u) if u.is(prompt_tag__) => (lambda1(move |v: i64| {
+            Ok(v_) => v_,
+            Err(u_) if u_.is(prompt_tag__) => (lambda1(move |v: i64| {
                 i64_star(v, 100i64)
-            }))(prompt_tag__.payload(u)),
-            Err(u) => unreachable_unwind(u),
+            }))(prompt_tag__.payload(u_)),
+            Err(u_) => unreachable_unwind(u_),
         }
     }
 }
@@ -86,14 +86,14 @@ pub fn skips(xs: Ints) -> i64 {
     {
         let prompt_tag__ = t;
         match (move || -> Result<_, Unwind> {
-            each_to(t, lambda1(move |a0| Ok((&skip)(a0))), xs)?;
+            each_to(t, lambda1(move |a_0| Ok((&skip)(a_0))), xs)?;
             Ok(size_of(xs))
         })() {
-            Ok(v) => v,
-            Err(u) if u.is(prompt_tag__) => (lambda1(move |v: i64| {
+            Ok(v_) => v_,
+            Err(u_) if u_.is(prompt_tag__) => (lambda1(move |v: i64| {
                 v
-            }))(prompt_tag__.payload(u)),
-            Err(u) => unreachable_unwind(u),
+            }))(prompt_tag__.payload(u_)),
+            Err(u_) => unreachable_unwind(u_),
         }
     }
 }
@@ -112,11 +112,11 @@ pub fn first_over(xs: Ints, m: i64) -> i64 {
             }), xs)?;
             Ok(-1i64)
         })() {
-            Ok(v) => v,
-            Err(u) if u.is(prompt_tag__) => (lambda1(move |v: i64| {
+            Ok(v_) => v_,
+            Err(u_) if u_.is(prompt_tag__) => (lambda1(move |v: i64| {
                 v
-            }))(prompt_tag__.payload(u)),
-            Err(u) => unreachable_unwind(u),
+            }))(prompt_tag__.payload(u_)),
+            Err(u_) => unreachable_unwind(u_),
         }
     }
 }
@@ -133,19 +133,19 @@ pub fn nested(xs: Ints, n: i64) -> i64 {
                 match (move || -> Result<_, Unwind> {
                     Ok(find(t1, xs, n)?)
                 })() {
-                    Ok(v) => v,
-                    Err(u) if u.is(prompt_tag__) => (lambda1(move |v: i64| {
+                    Ok(v_) => v_,
+                    Err(u_) if u_.is(prompt_tag__) => (lambda1(move |v: i64| {
                         i64_minus(0i64, v)
-                    }))(prompt_tag__.payload(u)),
-                    Err(u) => return Err(u),
+                    }))(prompt_tag__.payload(u_)),
+                    Err(u_) => return Err(u_),
                 }
             }))
         })() {
-            Ok(v) => v,
-            Err(u) if u.is(prompt_tag__) => (lambda1(move |v: i64| {
+            Ok(v_) => v_,
+            Err(u_) if u_.is(prompt_tag__) => (lambda1(move |v: i64| {
                 i64_star(v, 1000i64)
-            }))(prompt_tag__.payload(u)),
-            Err(u) => unreachable_unwind(u),
+            }))(prompt_tag__.payload(u_)),
+            Err(u_) => unreachable_unwind(u_),
         }
     }
 }
@@ -165,11 +165,11 @@ pub fn on_the_spot(n: i64) -> i64 {
                 }
             }))(n)?))
         })() {
-            Ok(v) => v,
-            Err(u) if u.is(prompt_tag__) => (lambda1(move |v: i64| {
+            Ok(v_) => v_,
+            Err(u_) if u_.is(prompt_tag__) => (lambda1(move |v: i64| {
                 i64_star(v, 2i64)
-            }))(prompt_tag__.payload(u)),
-            Err(u) => unreachable_unwind(u),
+            }))(prompt_tag__.payload(u_)),
+            Err(u_) => unreachable_unwind(u_),
         }
     }
 }

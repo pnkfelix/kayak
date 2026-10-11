@@ -661,7 +661,7 @@
 (define-rec
   (put-arg-names (subr kfx (i64 i64 chars) chars)
     (lambda (i n acc)
-      (if (i64< i n) (put-arg-names (i64+ i 1) n (put (i64->string i) (put (if (i64= i 0) "a" ", a") acc))) acc))))
+      (if (i64< i n) (put-arg-names (i64+ i 1) n (put (i64->string i) (put (if (i64= i 0) "a_" ", a_") acc))) acc))))
 
 (define lifted-arity (subr kfx (ctx sexp i64) i64)
   (lambda (c e i)
@@ -1157,15 +1157,15 @@
              (acc (put-block inner (list (second xs)) (i64+ n 1) (ok-value) acc))
              (acc (put ")() {" acc))
              (acc (put-nl (i64+ n 2) acc))
-             (acc (put "Ok(v) => v," acc))
+             (acc (put "Ok(v_) => v_," acc))
              (acc (put-nl (i64+ n 2) acc))
-             (acc (put "Err(u) if u.is(prompt_tag__) => (" acc))
+             (acc (put "Err(u_) if u_.is(prompt_tag__) => (" acc))
              (acc (put-exp c (third xs) (i64+ n 2) (value) acc))
-             (acc (put ")(prompt_tag__.payload(u))," acc))
+             (acc (put ")(prompt_tag__.payload(u_))," acc))
              (acc (put-nl (i64+ n 2) acc))
              (acc (put (if (or (fact-at? c e "contains") (not (fallible-here? c)))
-                           "Err(u) => unreachable_unwind(u),"
-                           "Err(u) => return Err(u),")
+                           "Err(u_) => unreachable_unwind(u_),"
+                           "Err(u_) => return Err(u_),")
                        acc))
              (acc (put-nl (i64+ n 1) acc))
              (acc (put "}" acc)))

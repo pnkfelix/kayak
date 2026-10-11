@@ -656,8 +656,7 @@ pub fn replace_var(name: Str, m: &'static Ty, t: &'static Ty) -> &'static Ty {
     }
 }
 
-/// `t`, each of `params` replaced by its argument.
-pub fn substitute(mut params: Strings, mut args: Tys, mut t: &'static Ty) -> &'static Ty {
+pub fn substitute_each(mut params: Strings, mut args: Tys, mut t: &'static Ty) -> &'static Ty {
     loop {
         if (null_p(params) || null_p(args)) {
             return t;
@@ -666,6 +665,18 @@ pub fn substitute(mut params: Strings, mut args: Tys, mut t: &'static Ty) -> &'s
             continue;
         }
     }
+}
+
+/// `t`, each of `params` replaced by its argument, all at once: first each
+/// by a name no argument has, so that an argument naming a parameter is
+/// not replaced again.
+pub fn substitute(params: Strings, args: Tys, t: &'static Ty) -> &'static Ty {
+    let marks = map(lambda1(move |p: Str| {
+        ty_var(string_append(str_lit("%subst "), p))
+    }), params);
+    substitute_each(map(lambda1(move |p: Str| {
+        string_append(str_lit("%subst "), p)
+    }), params), args, substitute_each(params, marks, t))
 }
 
 // Types
@@ -2121,11 +2132,42 @@ pub fn cv_pos(v: &'static Cv) -> i64 {
     }
 }
 
+pub fn has_char_in_p(s: Str, c: char) -> bool {
+    any_p(lambda1(move |x: char| {
+        char_eq_p(x, c)
+    }), string_chars(s))
+}
+
+/// `v` with the names `more` binds; none with a `_`: KFX writes `-`, and
+/// every Rust name kfx and kayak-rt write that a KFX name could meet has
+/// a `_` (`i64_plus`, `tagcase_`), so none is ever hidden.
 pub fn with_binds(v: &'static Cv, more: Binds) -> &'static Cv {
-    let tagcase_ = v;
-    match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
-            cv(bind_onto(more, bs), ds, r#as, es, here, group, file, line, fs, tv, at)
+    if any_p(lambda1(move |b: &'static Bind| {
+        let tagcase_ = b;
+        match *tagcase_ {
+            Bind::Bind(n, sc, w) => {
+                (not(has_prefix_p(n, str_lit("%"))) && not(has_char_in_p(n, ' ')) && has_char_in_p(n, '_'))
+            }
+        }
+    }), more) {
+        refuse(v, string_append(str_lit("a name with a `_`, which KFX's names have not (it writes `-`): "), car(concat(map(lambda1(move |b: &'static Bind| {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Bind::Bind(n, sc, w) => {
+                    if has_char_in_p(n, '_') {
+                        the::<Strings>(cons(n, nil()))
+                    } else {
+                        nil()
+                    }
+                }
+            }
+        }), more)))))
+    } else {
+        let tagcase_ = v;
+        match *tagcase_ {
+            Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
+                cv(bind_onto(more, bs), ds, r#as, es, here, group, file, line, fs, tv, at)
+            }
         }
     }
 }

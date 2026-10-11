@@ -369,3 +369,18 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
   not seen, throughout.
 - **Why:** the commonest K1 gap the probes found; this closes most of it
   with no change to the Rust.
+
+## C27. KFX's names have no `_` (2026-10-11)
+
+- **Chosen:** a name with a `_` is refused, wherever it is bound. KFX
+  writes `-` (mangled `_`), and every Rust name kfx and kayak-rt write that
+  a KFX name could meet has a `_`: kayak-rt's functions (`i64_plus`,
+  `string_append`), the emitter's temporaries (`tagcase_`,
+  `prompt_tag__`, `out_`, `a_0`), and the mangled forms of other KFX
+  names (`ok?` is `ok_p`).
+- **Not chosen:** a list of the names to refuse (KFX's had one, of a
+  few), which a sixth probe showed incomplete: `(define i64_plus ...)`
+  hid kayak-rt's `i64+`, and `(i64+ 1 2)` was not 3; a mangling one to one
+  (it would rename kayak-rt's every function).
+- **Left:** two KFX names of no `_` may still mangle alike (`a?` and
+  `a-p`, both `a_p`); `TODO.md` §17.

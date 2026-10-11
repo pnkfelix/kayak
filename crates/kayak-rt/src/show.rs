@@ -35,7 +35,8 @@ impl Show for u64 {
 
 impl Show for f64 {
     fn show(&self, out: &mut String) {
-        out.push_str(&crate::write_f64(*self));
+        // As Fixpt shows a double: with a point, at 1e21 and above too.
+        out.push_str(crate::f64_to_string(*self).as_str());
     }
 }
 

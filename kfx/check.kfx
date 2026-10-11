@@ -309,12 +309,20 @@
                    (map (lambda ((p ty)) (replace-var name m p)) ps) (replace-var name m r)))
         (else other t)))))
 
-(define substitute (subr kfx (strings tys ty) ty)
+(define substitute-each (subr kfx (strings tys ty) ty)
   (lambda (params args t)
-    "`t`, each of `params` replaced by its argument."
     (if (or (null? params) (null? args))
         t
-        (substitute (cdr params) (cdr args) (replace-var (car params) (car args) t)))))
+        (substitute-each (cdr params) (cdr args) (replace-var (car params) (car args) t)))))
+
+(define substitute (subr kfx (strings tys ty) ty)
+  (lambda (params args t)
+    "`t`, each of `params` replaced by its argument, all at once: first each
+     by a name no argument has, so that an argument naming a parameter is
+     not replaced again."
+    (let ((marks (map (lambda ((p string)) (ty-var (string-append "%subst " p))) params)))
+      (substitute-each (map (lambda ((p string)) (string-append "%subst " p)) params) args
+                       (substitute-each params marks t)))))
 
 "Types"
 
@@ -943,9 +951,20 @@
 (define cv-file (subr kfx (cv) string) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv at) file))))
 (define cv-pos (subr kfx (cv) i64) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv at) at))))
 
+(define has-char-in? (subr kfx (string char) bool)
+  (lambda (s c) (any? (lambda ((x char)) (char=? x c)) (string-chars s))))
+
 (define with-binds (subr kfx (cv binds) cv)
   (lambda (v more)
-    (tagcase v (cv (bs ds as es here group file line fs tv at) (cv (bind-onto more bs) ds as es here group file line fs tv at)))))
+    "`v` with the names `more` binds; none with a `_`: KFX writes `-`, and
+     every Rust name kfx and kayak-rt write that a KFX name could meet has
+     a `_` (`i64_plus`, `tagcase_`), so none is ever hidden."
+    (if (any? (lambda ((b bind))
+                (tagcase b (bind (n sc w) (and (not (has-prefix? n "%")) (not (has-char-in? n #\space)) (has-char-in? n #\_)))))
+              more)
+        (refuse v (string-append "a name with a `_`, which KFX's names have not (it writes `-`): "
+                                 (car (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (if (has-char-in? n #\_) (the strings (list n)) nil)))) more)))))
+        (tagcase v (cv (bs ds as es here group file line fs tv at) (cv (bind-onto more bs) ds as es here group file line fs tv at))))))
 
 (define local (subr kfx (cv string ty) bind)
   (lambda (v name t)
