@@ -618,6 +618,111 @@ pub fn freshened(mut s: &'static St, mut t: &'static Ty) -> &'static St {
     }
 }
 
+pub fn mentions_tvar_p(mut t: &'static Ty, mut vs: Strings) -> bool {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Ty::TyVar(n) => {
+                return string_member_p(n, vs);
+            }
+            Ty::TyList(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyRef(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyTag(a, h, d, r) => {
+                return (mentions_tvar_p(a, vs) || mentions_tvar_p(h, vs));
+            }
+            Ty::TyData(d, args) => {
+                return any_p(lambda1(move |x: &'static Ty| {
+                    mentions_tvar_p(x, vs)
+                }), args);
+            }
+            Ty::TyShape(p, ls, ts) => {
+                return any_p(lambda1(move |x: &'static Ty| {
+                    mentions_tvar_p(x, vs)
+                }), ts);
+            }
+            Ty::TyProc(es, ps, r) => {
+                return (mentions_tvar_p(r, vs) || any_p(lambda1(move |x: &'static Ty| {
+                    mentions_tvar_p(x, vs)
+                }), ps));
+            }
+            _ => {
+                let other = tagcase_;
+                return false;
+            }
+        }
+    }
+}
+
+/// A call of a `poly` procedure one of whose parameters is a procedure over
+/// a type variable: given a type that may hold a procedure, it may apply a
+/// procedure to itself, a loop with no recursive call, and so says `spin`,
+/// as FX-26 says it (its F17), more cautiously.
+pub fn poly_self_application(v: &'static Cv, sc: &'static Scheme, inst: &'static Ty, r: &'static Res) -> &'static Res {
+    let tagcase_ = r;
+    match *tagcase_ {
+        Res::Res(t, es, s) => {
+            let tagcase_ = sc;
+            match *tagcase_ {
+                Scheme::Scheme(tvars, st) => {
+                    let types = concat(map(lambda1(move |n: Str| {
+                        if char_eq_p(string_ref_i64(n, 0i64), '\'') {
+                            nil()
+                        } else {
+                            the::<Strings>(kayak_rt::cons(n, kayak_rt::nil()))
+                        }
+                    }), tvars));
+                    if (not(null_p(types)) && {
+                        let tagcase_ = st;
+                        match *tagcase_ {
+                            Ty::TyProc(es0, ps, r0) => {
+                                any_p(lambda1(move |p: &'static Ty| {
+                                    let tagcase_ = p;
+                                    match *tagcase_ {
+                                        Ty::TyProc(e1, qs, r1) => {
+                                            mentions_tvar_p(p, types)
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            false
+                                        }
+                                    }
+                                }), ps)
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    } && {
+                        let tagcase_ = walk(s, inst);
+                        match *tagcase_ {
+                            Ty::TyProc(es1, ps1, r1) => {
+                                any_p(lambda1(move |p: &'static Ty| {
+                                    (proc_type_p(s, p) && self_applicable_p(v, s, p))
+                                }), ps1)
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    }) {
+                        res(t, effs_union(kayak_rt::cons(str_lit("spin"), kayak_rt::nil()), es), s)
+                    } else {
+                        r
+                    }
+                }
+            }
+        }
+    }
+}
+
 pub fn control_form_p(h: Str) -> bool {
     (string_eq_p(h, str_lit("if")) || string_eq_p(h, str_lit("cond")) || string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("tagcase")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("with")))
 }
@@ -2079,7 +2184,7 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
                 let tagcase_ = instantiate(s, sc);
                 match *tagcase_ {
                     Inst::Inst(t, s, regions) => {
-                        knot_free_call(v, synth_call_of(v, s, res(t, nil(), s), args, regions, expected, effs_union(if string_eq_p(r#where, str_lit("global")) {
+                        poly_self_application(v, sc, t, knot_free_call(v, synth_call_of(v, s, res(t, nil(), s), args, regions, expected, effs_union(if string_eq_p(r#where, str_lit("global")) {
                             kayak_rt::cons(string_append(str_lit("g:"), h), kayak_rt::nil())
                         } else {
                             nil()
@@ -2087,7 +2192,7 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
                             kayak_rt::cons(str_lit("spin"), kayak_rt::nil())
                         } else {
                             nil()
-                        })))
+                        }))))
                     }
                 }
             }

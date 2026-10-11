@@ -138,13 +138,7 @@ Escapes are done (`DONE.md`, C18). Left:
   - `void` in a type written (`(subr pure () void)` as a value, a field):
     Rust's `!` is unstable there; a value holding a `void` at the top
     level is a Rust error (both fail when run);
-  - **for Fixpt** (fifth probe): `u64-shl` and the rest given a count past
-    a fixnum give erratic answers (Fixpt's `fixed_op` takes it with `int`);
-  - **for Fixpt** (found by the fourth probe): a procedure parameter of
-    type `(subr pure (a) b)` in a `poly` is called with no `spin`, and `a`
-    instantiated at a datatype holding such a procedure loops with no
-    recursive call; FX-26 accepts it, and so KFX does (it says what FX-26
-    says of `spin`, no more);
+
   - type-level names (types, datatypes and tags, module and abstract
     types, type variables, labels, module names) may still camel-case or
     mangle alike (`point` and `point-`), or carry a `_`: a Rust error, not

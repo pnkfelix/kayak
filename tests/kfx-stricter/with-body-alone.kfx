@@ -1,5 +1,6 @@
 "A with's body found by itself: the literal an int, though an i64 is
- expected of it."
+ expected of it.
+ FX-26, since its commit 7851654, accepts it; KFX refuses it."
 (define-effect kfx (maxeff (read @globals) spin))
 (define m (module (define x i64 3)))
 (define f i64 (with m 4))

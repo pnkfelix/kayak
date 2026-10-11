@@ -279,6 +279,41 @@
         (ty-proc (es ps r) (freshened s r))
         (else other s)))))
 
+(define-rec
+  (mentions-tvar? (subr kfx (ty strings) bool)
+    (lambda (t vs)
+      (tagcase t
+        (ty-var (n) (string-member? n vs))
+        (ty-list (e r) (mentions-tvar? e vs))
+        (ty-ref (e r) (mentions-tvar? e vs))
+        (ty-tag (a h d r) (or (mentions-tvar? a vs) (mentions-tvar? h vs)))
+        (ty-data (d args) (any? (lambda ((x ty)) (mentions-tvar? x vs)) args))
+        (ty-shape (p ls ts) (any? (lambda ((x ty)) (mentions-tvar? x vs)) ts))
+        (ty-proc (es ps r) (or (mentions-tvar? r vs) (any? (lambda ((x ty)) (mentions-tvar? x vs)) ps)))
+        (else other #f)))))
+
+(define poly-self-application (subr kfx (cv scheme ty res) res)
+  (lambda (v sc inst r)
+    "A call of a `poly` procedure one of whose parameters is a procedure over
+     a type variable: given a type that may hold a procedure, it may apply a
+     procedure to itself, a loop with no recursive call, and so says `spin`,
+     as FX-26 says it (its F17), more cautiously."
+    (tagcase r
+      (res (t es s)
+        (tagcase sc
+          (scheme (tvars st)
+            (let ((types (concat (map (lambda ((n string)) (if (char=? (string-ref-i64 n 0) #\') nil (the strings (list n)))) tvars))))
+              (if (and (not (null? types))
+                       (tagcase st
+                         (ty-proc (es0 ps r0)
+                           (any? (lambda ((p ty)) (tagcase p (ty-proc (e1 qs r1) (mentions-tvar? p types)) (else other #f))) ps))
+                         (else other #f))
+                       (tagcase (walk s inst)
+                         (ty-proc (es1 ps1 r1) (any? (lambda ((p ty)) (and (proc-type? s p) (self-applicable? v s p))) ps1))
+                         (else other #f)))
+                  (res t (effs-union (list "spin") es) s)
+                  r))))))))
+
 (define control-form? (subr kfx (string) bool)
   (lambda (h)
     (or (string=? h "if") (string=? h "cond") (string=? h "case") (string=? h "tagcase")
@@ -977,14 +1012,14 @@
                 (bind (n sc where)
                   (tagcase (instantiate s sc)
                     (inst (t s regions)
-                      (knot-free-call v (synth-call-of v s (res t nil s) args regions expected
+                      (poly-self-application v sc t (knot-free-call v (synth-call-of v s (res t nil s) args regions expected
                                      (effs-union
                                        (if (string=? where "global") (list (string-append "g:" h)) nil)
                                        (if (or (string=? where "rec")
                                                (and (string=? where "local") (self-applicable? v s t))
                                                (and (string-member? h (cv-group v)) (or (string=? where "global") (string=? where "item"))))
                                            (list "spin")
-                                           nil)))))))))))))
+                                           nil))))))))))))))
 
   (nat-args? (subr kfx (cv st sexps) bool)
     (lambda (v s args)

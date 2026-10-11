@@ -1,0 +1,6 @@
+"Self-application through a poly type variable: app, given wrap, may call
+ a procedure on itself; FX-26 says spin (its F17), so slf must too."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-datatype wrap (wrap (subr (read @globals) (wrap) i64)))
+(define app (poly ((a type)) (subr (read @globals) ((subr (read @globals) (a) i64) a) i64)) (lambda (f x) (f x)))
+(define slf (subr (read @globals) (wrap) i64) (lambda (w) (tagcase w (wrap (f) (app f w)))))

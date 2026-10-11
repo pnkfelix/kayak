@@ -863,3 +863,16 @@ and `-`; no `--`; none whose Rust name kayak-rt or the emitter writes
 that camel-case alike (`point` and `point-`, `a-b` and `a--b` types, a
 type `mod-m` and a module parameter `m`), labels and module and type
 names with `_`: Rust errors, no wrong answers.
+
+## Fixpt moved to 7851654 (2026-10-11)
+
+The Fixpt team took the two questions the probes raised: F17,
+self-application through a `poly` type binder now says `spin`; and a
+fixed-width shift's count past a fixnum is taken modulo the width. KFX
+mirrors F17, more cautiously: a call of a `poly` procedure one of whose
+parameters is a procedure over a type variable, given a type that may
+hold a procedure, says `spin` (`kfx-refused/self-application-poly`). At
+the new pin Fixpt accepts two programs it refused, a literal checked
+against the type expected under `with` and in a module that includes
+another; KFX still refuses them (`kfx-stricter/with-body-alone`,
+`include-literal`). 73 of Fixpt's programs accepted, all agreeing.
