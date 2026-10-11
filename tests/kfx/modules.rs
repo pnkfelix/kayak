@@ -132,6 +132,48 @@ pub fn bump_twice_x(c: Ref<i64>) -> () {
     cells::bump_x(c)
 }
 
+// A module including others, one hidden: their values its own, the hidden
+// one's not given on.
+pub mod basics {
+    use super::*;
+
+    pub fn one() -> i64 {
+        1i64
+    }
+
+    pub fn twice(n: i64) -> i64 {
+        i64_star(2i64, n)
+    }
+}
+
+pub mod extras {
+    use super::*;
+
+    pub fn ten() -> i64 {
+        10i64
+    }
+}
+
+pub mod both {
+    use super::*;
+
+    pub use super::basics::{one, twice};
+
+    use super::extras::{ten};
+
+    pub fn secret() -> i64 {
+        i64_plus(3i64, 4i64)
+    }
+
+    pub fn eleven() -> i64 {
+        i64_plus(one(), ten())
+    }
+
+    pub fn shown() -> i64 {
+        twice(i64_plus(eleven(), secret()))
+    }
+}
+
 pub type Shape = &'static geometry::Shape;
 
 pub fn rect() -> &'static dyn Fn(i64, i64) -> &'static geometry::Shape {
@@ -174,6 +216,6 @@ pub fn main() -> Str {
         let c = the::<Ref<i64>>(new(40i64));
         bump_twice_x(c);
         i64_to_string(get(c))
-    }, nil()))))))))))))
+    }, cons(i64_to_string(i64_plus(both::one(), (&both::shown)())), nil())))))))))))))
 }
 

@@ -1,0 +1,4 @@
+"A module's hidden value is not in its type: with does not give it."
+(define-effect kfx (maxeff (read @globals) spin))
+(define m (module (hide (define secret i64 7)) (define shown i64 1)))
+(define f i64 (with m secret))

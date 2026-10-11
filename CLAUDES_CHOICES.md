@@ -233,7 +233,8 @@ Answers `PLAN.md` Q3 (`docs/research/escapes.md` §5).
   privacy holds the abstraction too. The checker names a module's types
   `m..t`, as FX-26 writes them, so a module's and the program's never meet.
 - **Not chosen, for now:** modules as values (`let`-bound, passed, sealed
-  with `the`), `load-module`, `include`, `extend`, `hide`, functors
+  with `the`), `load-module`, `extend`, functors (`include` and `hide`
+  came later, the same day)
   (Sheldon's dependent procedures); effects in modules; a module's types
   with parameters; a module's datatype with a tag another datatype has
   (FX-26's sums are structural, its tags found by type; the emitter finds

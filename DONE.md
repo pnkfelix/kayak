@@ -757,3 +757,17 @@ And a `goto` on `acyclic`, which only a region nothing named gives (no tag
 is at `acyclic`), is pure, as FX-26's fresh region, masked, is: so a
 procedure that may abort to a region of its own can be given one that
 cannot (`tests/kfx/escapes.kfx`'s `skips`).
+
+## `include` and `hide` in modules (2026-10-11)
+
+As FX-26 has them: an included module's values and types are the
+module's own, in scope in all its items, given on unless hidden; a hidden
+item is the module's, not in its type (a hidden generative type or
+datatype is refused). In a module that includes another, FX-26 finds
+each definition's value by itself, then fits it (a literal there is an
+`int`): KFX too, so a lambda there needs its parameters' types written
+(`kfx-refused/include-literal`). In Rust, `pub use super::n::{x, y, T};`
+(plain `use` when hidden), named, so that an item of the module included
+hides a global of the same name, as in FX-26. `tests/kfx/modules.kfx`'s
+`both`; `kfx-refused/module-hidden`. 70 of Fixpt's programs accepted, all
+agreeing.

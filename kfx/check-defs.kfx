@@ -471,8 +471,7 @@
                   ((and (head-is? f "define-effect") (i64= (size (items f)) 3)
                         (escapes? (parse-effect v nil (third (items f)))))
                    (refuse v "a module's effect that may abort, which KFX's modules do not have yet"))
-                  ((or (head-is? f "include")
-                       (head-is? f "hide") (module-def? f))
+                  ((or (head-is? f "hide") (module-def? f))
                    (refuse v (string-append "an item KFX's modules do not have yet: " (show-sexp (car (items f))))))
                   (else (module-types v (cdr forms)))))))))
 
@@ -574,7 +573,8 @@
        generative types are made already, and its elaborated types are named
        `m x`."
       (cond ((null? forms) (elab v found))
-            ((or (head-is? (car forms) "define-generative") (head-is? (car forms) "define-datatype"))
+            ((or (head-is? (car forms) "define-generative") (head-is? (car forms) "define-datatype")
+                 (head-is? (car forms) "include"))
              (check-items v m (cdr forms) found))
             ((untyped? (car forms))
              (tagcase (car forms)
@@ -589,18 +589,108 @@
                (else other (check-items v m (cdr forms) found))))
             (else (check-items (check-top v (car forms)) m (cdr forms) found))))))
 
+"A module's `(include n)` and `(hide item ...)` (FX-26's): an included
+ module's values and types are the module's own, in scope in all its
+ items, and in its type unless hidden; a hidden item is the module's, not
+ in its type. The module included is one defined at the top level."
+
+(define unhidden (subr kfx (sexps) sexps)
+  (lambda (forms)
+    "The items, those of a `hide` among them."
+    (concat (map (lambda ((f sexp)) (if (head-is? f "hide") (cdr (items f)) (the sexps (list f)))) forms))))
+
+(define found-alone (subr kfx (sexps) sexps)
+  (lambda (forms)
+    "A module's items, where it includes another: each definition's value
+     found by itself, then fitted to its type, as FX-26 checks such a
+     module's (a literal is an `int` there, a lambda's parameters written),
+     marked `%found`."
+    (if (not (any? (lambda ((f sexp)) (head-is? f "include")) forms))
+        forms
+        (map (lambda ((g sexp))
+               (if (and (head-is? g "define") (i64= (size (items g)) 4))
+                   (tagcase g
+                     (lst (xs file line pos)
+                       (lst (list (car xs) (second xs) (third xs) (lst (list (sym "%found") (fourth xs)) "" 0 0)) file line pos))
+                     (else other g))
+                   g))
+             forms))))
+
+(define item-names (subr kfx (sexp) strings)
+  (lambda (f)
+    "The names an item defines: values and types."
+    (cond ((or (head-is? f "define") (head-is? f "define*") (head-is? f "define-type") (head-is? f "define-generative"))
+           (tagcase (second (items f)) (sym (n) (the strings (list n))) (else other nil)))
+          ((head-is? f "define-rec") (map (lambda ((b sexp)) (sym-name (car (items b)))) (cdr (items f))))
+          (else nil))))
+
+(define hidden-names (subr kfx (sexps) strings)
+  (lambda (forms)
+    "The names hidden items define, and the values of modules a `hide`
+     includes."
+    (concat (map (lambda ((f sexp))
+                   (if (head-is? f "hide")
+                       (concat (map (lambda ((g sexp))
+                                      (if (or (head-is? g "define-generative") (head-is? g "define-datatype"))
+                                          (error "kfx: a hidden generative type or datatype, which KFX's modules do not have yet")
+                                          (item-names g)))
+                                    (cdr (items f))))
+                       nil))
+                 forms))))
+
+(define included (subr kfx (cv sexps) strings)
+  (lambda (v forms)
+    "The modules `forms` include, each defined at the top level."
+    (concat (map (lambda ((f sexp))
+                   (if (head-is? f "include")
+                       (let ((n (name-of v (second (items f)))))
+                         (if (or (null? (find-bind n (cv-binds v)))
+                                 (not (tagcase (car (find-bind n (cv-binds v))) (bind (x sc w) (string=? w "module")))))
+                             (refuse v (string-append "KFX includes a module defined at the top level, by its name: " n))
+                             (the strings (list n))))
+                       nil))
+                 forms))))
+
+(define unhidden-includes (subr kfx (cv sexps) strings)
+  (lambda (v written)
+    "The modules included not in a `hide`: their types are the module's."
+    (included v (concat (map (lambda ((f sexp)) (if (head-is? f "hide") nil (the sexps (list f)))) written)))))
+
+(define renamed-aliases (subr kfx (string string aliases) aliases)
+  (lambda (n m as)
+    "Module `n`'s types, opened, as module `m`'s: `m t`."
+    (map (lambda ((a alias)) (tagcase a (alias (t ps body) (alias (string-append m (string-append " " t)) ps body)))) as)))
+
+(define without-aliases (subr kfx (strings string aliases) aliases)
+  (lambda (hidden m as)
+    "A module's exported types, those hidden dropped."
+    (concat (map (lambda ((a alias))
+                   (tagcase a (alias (t ps body)
+                                (if (string-member? (after-prefix t (string-append m " ")) hidden) nil (the aliases (list a))))))
+                 as))))
+
 (define check-module (subr kfx (cv sexp) elab)
   (lambda (v form)
     (let* ((xs (items form))
            (m (name-of v (second xs)))
            (v (at v m nil))
            (made (tagcase (global v m (scheme nil (ty-unit))) (bind (n sc where) (bind n sc "module"))))
-           (forms (cdr (items (third xs))))
+           (written (cdr (items (third xs))))
+           (forms (found-alone (unhidden written)))
+           (hidden (onto (hidden-names written)
+                         (map (lambda ((b bind)) (tagcase b (bind (n sc w) n)))
+                              (concat (map (lambda ((n string)) (opened-binds n (cv-binds v)))
+                                           (included v (concat (map (lambda ((f sexp)) (if (head-is? f "hide") (cdr (items f)) nil)) written))))))))
+           (includes (included v forms))
            (names (module-types v forms))
            (typed (tagcase v
                     (cv (bs ds as es here group file line fs tv at)
-                      (cv (cons (bind "%module" (scheme nil (ty-unit)) m) bs) (onto (module-dts m forms) ds)
-                          (onto (module-aliases m names forms #t) as) es here group file line fs tv at))))
+                      (cv (bind-onto (concat (map (lambda ((n string)) (opened-binds n bs)) includes))
+                                     (cons (bind "%module" (scheme nil (ty-unit)) m) bs))
+                          (onto (module-dts m forms) ds)
+                          (onto (module-aliases m names forms #t)
+                                (onto (concat (map (lambda ((n string)) (opened-aliases n as)) includes)) as))
+                          es here group file line fs tv at))))
            (datatypes (module-datatypes typed m forms))
            (typed (tagcase typed
                     (cv (bs ds as es here group file line fs tv at)
@@ -611,9 +701,12 @@
         (elab (done found)
           (tagcase done
             (cv (bs ds as es here group file line fs tv at)
-              (elab (cv (cons made (bind-onto (module-exports m (map (lambda ((b bind)) (tagcase b (bind (n sc w) n))) conversions) bs)
+              (elab (cv (cons made (bind-onto (module-exports m (onto hidden (map (lambda ((b bind)) (tagcase b (bind (n sc w) n))) conversions)) bs)
                                               (cv-binds v)))
-                        ds (onto (module-aliases m names forms #f) (cv-aliases v))
+                        ds (onto (without-aliases hidden m (module-aliases m names forms #f))
+                                 (onto (concat (map (lambda ((n string)) (renamed-aliases n m (opened-aliases n (cv-aliases v))))
+                                                    (unhidden-includes v written)))
+                                       (cv-aliases v)))
                         (onto (module-effects m forms es) (cv-effdefs v)) here group file line fs tv at)
                     found))))))))
 

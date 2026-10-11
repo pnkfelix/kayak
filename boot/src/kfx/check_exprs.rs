@@ -1151,6 +1151,8 @@ pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
         check(v, s, second(xs), parse_type(v, cv_tvars(v), car(xs)))
     } else if string_eq_p(h, str_lit("prompt")) {
         prompt_form(v, s, xs, nil())
+    } else if string_eq_p(h, str_lit("%found")) {
+        synth(v, s, car(xs))
     } else if string_eq_p(h, str_lit("product")) {
         product_form(v, s, xs, nil())
     } else if string_eq_p(h, str_lit("sum")) {
@@ -1242,6 +1244,8 @@ pub fn check_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
         body_form(v, s, h, xs, cons(expected, nil()))
     } else if string_eq_p(h, str_lit("prompt")) {
         prompt_form(v, s, xs, cons(expected, nil()))
+    } else if string_eq_p(h, str_lit("%found")) {
+        check_by_synth(v, s, car(xs), expected)
     } else if string_eq_p(h, str_lit("product")) {
         product_form(v, s, xs, cons(expected, nil()))
     } else if string_eq_p(h, str_lit("sum")) {

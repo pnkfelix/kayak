@@ -57,6 +57,19 @@
 (define bump-twice! (subr (maxeff touches kfx) ((ref i64 @heap)) unit)
   (lambda (c) (with cells (begin (bump! c) (bump! c)))))
 
+"A module including others, one hidden: their values its own, the hidden
+ one's not given on."
+(define basics (module (define one i64 1) (define twice (subr pure (i64) i64) (lambda (n) (i64* 2 n)))))
+
+(define extras (module (define ten i64 10)))
+
+(define both
+  (module
+    (include basics)
+    (hide (include extras) (define secret i64 (i64+ 3 4)))
+    (define eleven i64 (i64+ one ten))
+    (define shown (subr pure () i64) (lambda () (twice (i64+ eleven secret))))))
+
 (define-type shape (select geometry shape))
 
 (define rect (with geometry rect))
@@ -87,4 +100,5 @@
              (with stack (shown (the (select stack items) (list 7 8))))
              (i64->string (with geometry (area (rect 3 4))))
              (if (big? ((with geometry circle) 20)) "big" "small")
-             (let ((c (the (ref i64 @heap) (new 40)))) (begin (bump-twice! c) (i64->string (get c)))))))))
+             (let ((c (the (ref i64 @heap) (new 40)))) (begin (bump-twice! c) (i64->string (get c))))
+             (i64->string (with both (i64+ one ((with both shown))))))))))

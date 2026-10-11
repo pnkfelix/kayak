@@ -341,7 +341,13 @@ pub fn module_items(c: &'static Ctx, m: Str) -> Sexps {
         if null_p(found) {
             nil()
         } else {
-            cdr(items(car(found)))
+            concat(map(lambda1(move |f: &'static Sexp| {
+                if head_is_p(f, str_lit("include")) {
+                    module_items(c, sym_name(second(items(f))))
+                } else {
+                    the::<Sexps>(cons(f, nil()))
+                }
+            }), cdr(items(car(found)))))
         }
     } else {
         let spec = module_body(c, string_append(str_lit("%moduleof "), x));
@@ -2927,6 +2933,21 @@ pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
     };
     if string_eq_p(h, str_lit("define-effect")) {
         acc
+    } else if (string_eq_p(h, str_lit("include")) || string_eq_p(h, str_lit("%use"))) {
+        let n = sym_name(second(xs));
+        let its = module_items(c, n);
+        let names = onto(map(&mangle, item_values(its)), map(&camel, item_types(its)));
+        if null_p(names) {
+            acc
+        } else {
+            put(str_lit("};\n\n"), put_sep(lambda2(move |x: Str, acc: Chars| {
+                put(x, acc)
+            }), str_lit(", "), names, put(str_lit("::{"), put(mangle(n), put(if string_eq_p(h, str_lit("include")) {
+                str_lit("pub use super::")
+            } else {
+                str_lit("use super::")
+            }, acc)))))
+        }
     } else if (string_eq_p(h, str_lit("define-type")) && head_is_p(third(xs), str_lit("moduleof"))) {
         put_trait(c, sym_name(second(xs)), third(xs), acc)
     } else if string_eq_p(h, str_lit("define-type")) {
@@ -2957,12 +2978,31 @@ pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
 
 /// A module, a Rust `mod` (C19): its items as a program's, the program's
 /// names in scope, its own hiding them.
-pub fn put_module(c: &'static Ctx, m: Str, forms: Sexps, acc: Chars) -> Chars {
+pub fn put_module(c: &'static Ctx, m: Str, written: Sexps, acc: Chars) -> Chars {
+    let forms = concat(map(lambda1(move |f: &'static Sexp| {
+        if head_is_p(f, str_lit("hide")) {
+            map(lambda1(move |g: &'static Sexp| {
+                if head_is_p(g, str_lit("include")) {
+                    lst(cons(sym(str_lit("%use")), cons(second(items(g)), nil())), str_lit(""), 0i64, 0i64)
+                } else {
+                    g
+                }
+            }), cdr(items(f)))
+        } else {
+            the::<Sexps>(cons(f, nil()))
+        }
+    }), written));
     let outer = {
         let tagcase_ = c;
         match *tagcase_ {
             Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-                ctx(ds, ts, without(ks, item_values(forms)), ls, xs, fs, ms, es, mods)
+                ctx(ds, ts, onto(concat(map(lambda1(move |f: &'static Sexp| {
+                    if (head_is_p(f, str_lit("include")) || head_is_p(f, str_lit("%use"))) {
+                        item_constants(module_items(c, sym_name(second(items(f)))))
+                    } else {
+                        nil()
+                    }
+                }), forms)), without(ks, item_values(forms))), ls, xs, fs, ms, es, mods)
             }
         }
     };

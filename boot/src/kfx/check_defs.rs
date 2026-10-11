@@ -724,7 +724,7 @@ pub fn module_types(mut v: &'static Cv, mut forms: Sexps) -> Strings {
                 }
             } else if (head_is_p(f, str_lit("define-effect")) && i64_eq(size(items(f)), 3i64) && escapes_p(parse_effect(v, nil(), third(items(f))))) {
                 return refuse(v, str_lit("a module's effect that may abort, which KFX's modules do not have yet"));
-            } else if (head_is_p(f, str_lit("include")) || head_is_p(f, str_lit("hide")) || module_def_p(f)) {
+            } else if (head_is_p(f, str_lit("hide")) || module_def_p(f)) {
                 return refuse(v, string_append(str_lit("an item KFX's modules do not have yet: "), show_sexp(car(items(f)))));
             } else {
                 forms = cdr(forms);
@@ -881,7 +881,7 @@ pub fn check_items(mut v: &'static Cv, mut m: Str, mut forms: Sexps, mut found: 
     loop {
         if null_p(forms) {
             return elab(v, found);
-        } else if (head_is_p(car(forms), str_lit("define-generative")) || head_is_p(car(forms), str_lit("define-datatype"))) {
+        } else if (head_is_p(car(forms), str_lit("define-generative")) || head_is_p(car(forms), str_lit("define-datatype")) || head_is_p(car(forms), str_lit("include"))) {
             forms = cdr(forms);
             continue;
         } else if untyped_p(car(forms)) {
@@ -916,6 +916,152 @@ pub fn check_items(mut v: &'static Cv, mut m: Str, mut forms: Sexps, mut found: 
     }
 }
 
+// A module's `(include n)` and `(hide item ...)` (FX-26's): an included
+// module's values and types are the module's own, in scope in all its
+// items, and in its type unless hidden; a hidden item is the module's, not
+// in its type. The module included is one defined at the top level.
+/// The items, those of a `hide` among them.
+pub fn unhidden(forms: Sexps) -> Sexps {
+    concat(map(lambda1(move |f: &'static Sexp| {
+        if head_is_p(f, str_lit("hide")) {
+            cdr(items(f))
+        } else {
+            the::<Sexps>(cons(f, nil()))
+        }
+    }), forms))
+}
+
+/// A module's items, where it includes another: each definition's value
+/// found by itself, then fitted to its type, as FX-26 checks such a
+/// module's (a literal is an `int` there, a lambda's parameters written),
+/// marked `%found`.
+pub fn found_alone(forms: Sexps) -> Sexps {
+    if not(any_p(lambda1(move |f: &'static Sexp| {
+        head_is_p(f, str_lit("include"))
+    }), forms)) {
+        forms
+    } else {
+        map(lambda1(move |g: &'static Sexp| {
+            if (head_is_p(g, str_lit("define")) && i64_eq(size(items(g)), 4i64)) {
+                let tagcase_ = g;
+                match *tagcase_ {
+                    Sexp::Lst(xs, file, line, pos) => {
+                        lst(cons(car(xs), cons(second(xs), cons(third(xs), cons(lst(cons(sym(str_lit("%found")), cons(fourth(xs), nil())), str_lit(""), 0i64, 0i64), nil())))), file, line, pos)
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        g
+                    }
+                }
+            } else {
+                g
+            }
+        }), forms)
+    }
+}
+
+/// The names an item defines: values and types.
+pub fn item_names(f: &'static Sexp) -> Strings {
+    if (head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*")) || head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative"))) {
+        let tagcase_ = second(items(f));
+        match *tagcase_ {
+            Sexp::Sym(n) => {
+                the::<Strings>(cons(n, nil()))
+            }
+            _ => {
+                let other = tagcase_;
+                nil()
+            }
+        }
+    } else if head_is_p(f, str_lit("define-rec")) {
+        map(lambda1(move |b: &'static Sexp| {
+            sym_name(car(items(b)))
+        }), cdr(items(f)))
+    } else {
+        nil()
+    }
+}
+
+/// The names hidden items define, and the values of modules a `hide`
+/// includes.
+pub fn hidden_names(forms: Sexps) -> Strings {
+    concat(map(lambda1(move |f: &'static Sexp| {
+        if head_is_p(f, str_lit("hide")) {
+            concat(map(lambda1(move |g: &'static Sexp| {
+                if (head_is_p(g, str_lit("define-generative")) || head_is_p(g, str_lit("define-datatype"))) {
+                    error(str_lit("kfx: a hidden generative type or datatype, which KFX's modules do not have yet"))
+                } else {
+                    item_names(g)
+                }
+            }), cdr(items(f))))
+        } else {
+            nil()
+        }
+    }), forms))
+}
+
+/// The modules `forms` include, each defined at the top level.
+pub fn included(v: &'static Cv, forms: Sexps) -> Strings {
+    concat(map(lambda1(move |f: &'static Sexp| {
+        if head_is_p(f, str_lit("include")) {
+            let n = name_of(v, second(items(f)));
+            if (null_p(find_bind(n, cv_binds(v))) || not({
+                let tagcase_ = car(find_bind(n, cv_binds(v)));
+                match *tagcase_ {
+                    Bind::Bind(x, sc, w) => {
+                        string_eq_p(w, str_lit("module"))
+                    }
+                }
+            })) {
+                refuse(v, string_append(str_lit("KFX includes a module defined at the top level, by its name: "), n))
+            } else {
+                the::<Strings>(cons(n, nil()))
+            }
+        } else {
+            nil()
+        }
+    }), forms))
+}
+
+/// The modules included not in a `hide`: their types are the module's.
+pub fn unhidden_includes(v: &'static Cv, written: Sexps) -> Strings {
+    included(v, concat(map(lambda1(move |f: &'static Sexp| {
+        if head_is_p(f, str_lit("hide")) {
+            nil()
+        } else {
+            the::<Sexps>(cons(f, nil()))
+        }
+    }), written)))
+}
+
+/// Module `n`'s types, opened, as module `m`'s: `m t`.
+pub fn renamed_aliases(n: Str, m: Str, r#as: Aliases) -> Aliases {
+    map(lambda1(move |a: &'static Alias| {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Alias::Alias(t, ps, body) => {
+                alias(string_append(m, string_append(str_lit(" "), t)), ps, body)
+            }
+        }
+    }), r#as)
+}
+
+/// A module's exported types, those hidden dropped.
+pub fn without_aliases(hidden: Strings, m: Str, r#as: Aliases) -> Aliases {
+    concat(map(lambda1(move |a: &'static Alias| {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Alias::Alias(t, ps, body) => {
+                if string_member_p(after_prefix(t, string_append(m, str_lit(" "))), hidden) {
+                    nil()
+                } else {
+                    the::<Aliases>(cons(a, nil()))
+                }
+            }
+        }
+    }), r#as))
+}
+
 pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
     let xs = items(form);
     let m = name_of(v, second(xs));
@@ -928,13 +1074,35 @@ pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
             }
         }
     };
-    let forms = cdr(items(third(xs)));
+    let written = cdr(items(third(xs)));
+    let forms = found_alone(unhidden(written));
+    let hidden = onto(hidden_names(written), map(lambda1(move |b: &'static Bind| {
+        let tagcase_ = b;
+        match *tagcase_ {
+            Bind::Bind(n, sc, w) => {
+                n
+            }
+        }
+    }), concat(map(lambda1(move |n: Str| {
+        opened_binds(n, cv_binds(v))
+    }), included(v, concat(map(lambda1(move |f: &'static Sexp| {
+        if head_is_p(f, str_lit("hide")) {
+            cdr(items(f))
+        } else {
+            nil()
+        }
+    }), written)))))));
+    let includes = included(v, forms);
     let names = module_types(v, forms);
     let typed = {
         let tagcase_ = v;
         match *tagcase_ {
             Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
-                cv(cons(bind(str_lit("%module"), scheme(nil(), ty_unit()), m), bs), onto(module_dts(m, forms), ds), onto(module_aliases(m, names, forms, true), r#as), es, here, group, file, line, fs, tv, at)
+                cv(bind_onto(concat(map(lambda1(move |n: Str| {
+                    opened_binds(n, bs)
+                }), includes)), cons(bind(str_lit("%module"), scheme(nil(), ty_unit()), m), bs)), onto(module_dts(m, forms), ds), onto(module_aliases(m, names, forms, true), onto(concat(map(lambda1(move |n: Str| {
+                    opened_aliases(n, r#as)
+                }), includes)), r#as)), es, here, group, file, line, fs, tv, at)
             }
         }
     };
@@ -955,14 +1123,16 @@ pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
             let tagcase_ = done;
             match *tagcase_ {
                 Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
-                    elab(cv(cons(made, bind_onto(module_exports(m, map(lambda1(move |b: &'static Bind| {
+                    elab(cv(cons(made, bind_onto(module_exports(m, onto(hidden, map(lambda1(move |b: &'static Bind| {
                         let tagcase_ = b;
                         match *tagcase_ {
                             Bind::Bind(n, sc, w) => {
                                 n
                             }
                         }
-                    }), conversions), bs), cv_binds(v))), ds, onto(module_aliases(m, names, forms, false), cv_aliases(v)), onto(module_effects(m, forms, es), cv_effdefs(v)), here, group, file, line, fs, tv, at), found)
+                    }), conversions)), bs), cv_binds(v))), ds, onto(without_aliases(hidden, m, module_aliases(m, names, forms, false)), onto(concat(map(lambda1(move |n: Str| {
+                        renamed_aliases(n, m, opened_aliases(n, cv_aliases(v)))
+                    }), unhidden_includes(v, written))), cv_aliases(v))), onto(module_effects(m, forms, es), cv_effdefs(v)), here, group, file, line, fs, tv, at), found)
                 }
             }
         }

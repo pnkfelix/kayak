@@ -156,7 +156,14 @@
      written (a value not a procedure a constant)."
     (let ((x (param-module-type m (ctx-locals c))))
       (if (string=? x "")
-          (let ((found (module-body c m))) (if (null? found) nil (cdr (items (car found)))))
+          (let ((found (module-body c m)))
+            (if (null? found)
+                nil
+                (concat (map (lambda ((f sexp))
+                               (if (head-is? f "include")
+                                   (module-items c (sym-name (second (items f))))
+                                   (the sexps (list f))))
+                             (cdr (items (car found)))))))
           (let ((spec (module-body c (string-append "%moduleof " x))))
             (if (null? spec)
                 nil
@@ -1664,6 +1671,14 @@
       (let* ((xs (tagcase form (lst (ys f l p) ys) (else other nil)))
              (h (if (null? xs) "" (tagcase (car xs) (sym (n) n) (else other "")))))
         (cond ((string=? h "define-effect") acc)
+              ((or (string=? h "include") (string=? h "%use"))
+               (let* ((n (sym-name (second xs)))
+                      (its (module-items c n))
+                      (names (onto (map mangle (item-values its)) (map camel (item-types its)))))
+                 (if (null? names)
+                     acc
+                     (put "};\n\n" (put-sep (lambda ((x string) (acc chars)) (put x acc)) ", " names
+                                             (put "::{" (put (mangle n) (put (if (string=? h "include") "pub use super::" "use super::") acc))))))))
               ((and (string=? h "define-type") (head-is? (third xs) "moduleof"))
                (put-trait c (sym-name (second xs)) (third xs) acc))
               ((string=? h "define-type")
@@ -1684,11 +1699,25 @@
               (else acc)))))
 
   (put-module (subr kfx (ctx string sexps chars) chars)
-    (lambda (c m forms acc)
+    (lambda (c m written acc)
       "A module, a Rust `mod` (C19): its items as a program's, the program's
        names in scope, its own hiding them."
-      (let* ((outer (tagcase c (ctx (ds ts ks ls xs fs ms es mods)
-                                 (ctx ds ts (without ks (item-values forms)) ls xs fs ms es mods))))
+      (let* ((forms (concat (map (lambda ((f sexp))
+                                   (if (head-is? f "hide")
+                                       (map (lambda ((g sexp))
+                                              (if (head-is? g "include") (lst (list (sym "%use") (second (items g))) "" 0 0) g))
+                                            (cdr (items f)))
+                                       (the sexps (list f))))
+                                 written)))
+             (outer (tagcase c (ctx (ds ts ks ls xs fs ms es mods)
+                                 (ctx ds ts
+                                      (onto (concat (map (lambda ((f sexp))
+                                                           (if (or (head-is? f "include") (head-is? f "%use"))
+                                                               (item-constants (module-items c (sym-name (second (items f)))))
+                                                               nil))
+                                                         forms))
+                                            (without ks (item-values forms)))
+                                      ls xs fs ms es mods))))
              (inner (with-locals (collect forms outer) (list (string-append "%in " m))))
              (body (put-tops inner forms nil))
              (body (if (string-member? "%toplevel" (ctx-locals c)) (put-show-generatives forms body) body))
