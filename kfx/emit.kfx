@@ -34,7 +34,7 @@
       "Whether a written effect may abort, its abbreviations seen through: a
        procedure of it returns a `Result` (docs/research/escapes.md)."
       (tagcase e
-        (sym (n) (any? (lambda ((x typed)) (tagcase x (typed (m body) (and (string=? m n) (fallible-effect? c body)))))
+        (sym (n at-file at-pos) (any? (lambda ((x typed)) (tagcase x (typed (m body) (and (string=? m n) (fallible-effect? c body)))))
                        (ctx-effects c)))
         (lst (xs src-file src-line src-pos)
           (cond ((sym-is? (car xs) "goto") #t)
@@ -53,28 +53,23 @@
 
 (define fact-at? (subr kfx (ctx sexp string) bool)
   (lambda (c e what)
-    "Whether the checker found `what` about the list `e`."
-    (tagcase e
-      (lst (xs src-file src-line src-pos) (ctx-fact? c src-file src-pos what))
-      (else other #f))))
+    "Whether the checker found `what` about the datum `e`."
+    (ctx-fact? c (datum-file e) (datum-pos e) what)))
 
 (define fact-with (subr kfx (ctx sexp string) string)
   (lambda (c e prefix)
-    "What the checker found about the list `e` that begins `prefix`, the
+    "What the checker found about the datum `e` that begins `prefix`, the
      rest of it; or ``."
-    (tagcase e
-      (lst (xs src-file src-line src-pos)
-        (tagcase c
-          (ctx (ds ts ks ls xs2 fs ms es mods)
-            (let ((found (concat (map (lambda ((f fact))
-                                        (tagcase f
-                                          (fact (ff fp fw)
-                                            (if (and (i64= fp src-pos) (string=? ff src-file) (has-prefix? fw prefix))
-                                                (the strings (list (after-prefix fw prefix)))
-                                                nil))))
-                                      fs))))
-              (if (null? found) "" (car found))))))
-      (else other ""))))
+    (tagcase c
+      (ctx (ds ts ks ls xs fs ms es mods)
+        (let ((found (concat (map (lambda ((f fact))
+                                    (tagcase f
+                                      (fact (ff fp fw)
+                                        (if (and (i64= fp (datum-pos e)) (string=? ff (datum-file e)) (has-prefix? fw prefix))
+                                            (the strings (list (after-prefix fw prefix)))
+                                            nil))))
+                                  fs))))
+          (if (null? found) "" (car found)))))))
 
 "Products and sums, FX-26's structural data (check.kfx, `ty-shape`): one
  generic Rust type for each list of labels, a tuple struct for a product,
@@ -170,11 +165,11 @@
                 (concat (map (lambda ((it sexp))
                                (let ((ys (items it)))
                                  (cond ((sym-is? (car ys) "val")
-                                        (the sexps (list (lst (list (sym "define") (second ys) (third ys)
-                                                                    (if (head-is? (third ys) "subr") (lst (list (sym "lambda")) "" 0 0) (sym "#u")))
+                                        (the sexps (list (lst (list (sym "define" "" 0) (second ys) (third ys)
+                                                                    (if (head-is? (third ys) "subr") (lst (list (sym "lambda" "" 0)) "" 0 0) (sym "#u" "" 0)))
                                                               "" 0 0))))
                                        ((sym-is? (car ys) "abs")
-                                        (map (lambda ((t sexp)) (lst (list (sym "define-type") t (sym "i64")) "" 0 0))
+                                        (map (lambda ((t sexp)) (lst (list (sym "define-type" "" 0) t (sym "i64" "" 0)) "" 0 0))
                                              (tagcase (second ys) (lst (ns f l p) ns) (else other (list (second ys))))))
                                        (else nil))))
                              (cdr (items (car spec)))))))))))
@@ -421,7 +416,7 @@
       "A type. A name that is no base type or datatype is a type abbreviation
        or a type variable, either way a Rust type of the same name."
       (tagcase t
-        (sym (s)
+        (sym (s at-file at-pos)
           (cond ((string=? s "i64") (put "i64" acc))
                 ((string=? s "int") (put "Int" acc))
                 ((string=? s "nat") (put "Int" acc))
@@ -464,7 +459,7 @@
                    (if (null? fs) acc (put ">" (put-types c (map second fs) (put "<" acc))))))
                 ((sym-is? (car xs) "poly")
                  (error "kfx: a poly type is only a definition's, at its top"))
-                ((tagcase (car xs) (sym (n) (not (null? (find-family-of c n)))) (else other #f))
+                ((tagcase (car xs) (sym (n at-file at-pos) (not (null? (find-family-of c n)))) (else other #f))
                  (tagcase (car (find-family-of c (sym-name (car xs))))
                    (family (n datatype kinds)
                      (let* ((acc (if datatype (put "&'static " acc) acc))
@@ -567,10 +562,10 @@
           (else (put-comment (cdr cs) prefix n #f (cons (car cs) acc))))))
 
 (define comment? (subr kfx (sexp) bool)
-  (lambda (e) (tagcase e (str (s) #t) (else other #f))))
+  (lambda (e) (tagcase e (str (s at-file at-pos) #t) (else other #f))))
 
 (define comment-text (subr kfx (sexp) string)
-  (lambda (e) (tagcase e (str (s) s) (else other ""))))
+  (lambda (e) (tagcase e (str (s at-file at-pos) s) (else other ""))))
 
 (define put-names (subr kfx (sexps chars) chars)
   (lambda (xs acc)
@@ -617,7 +612,7 @@
       (if (or (null? params) (null? types))
           params
           (cons (tagcase (car params)
-                  (sym (n) (lst (list (car params) (car types)) "" 0 0))
+                  (sym (n at-file at-pos) (lst (list (car params) (car types)) "" 0 0))
                   (else other other))
                 (map2-params (cdr params) (cdr types)))))))
 
@@ -638,7 +633,7 @@
   (lambda (c x)
     "Whether `x` names a module defined at the top level, not hidden."
     (tagcase x
-      (sym (n) (and (string=? (local-kind n (ctx-locals c)) "") (not (null? (module-body c n)))))
+      (sym (n at-file at-pos) (and (string=? (local-kind n (ctx-locals c)) "") (not (null? (module-body c n)))))
       (else other #f))))
 
 (define case-kind (subr kfx (ctx sexp) string)
@@ -739,7 +734,7 @@
       (if (null? arms)
           #f
           (let* ((arm (items (car arms)))
-                 (bound (if (or (sym-is? (car arm) "else") (tagcase (second arm) (sym (x) #t) (else other #f)))
+                 (bound (if (or (sym-is? (car arm) "else") (tagcase (second arm) (sym (x at-file at-pos) #t) (else other #f)))
                             (the strings (list (sym-name (second arm))))
                             (map sym-name (items (second arm))))))
             (or (tail-calls? (hide t bound) (last (cdr (cdr arm))))
@@ -789,12 +784,12 @@
                  (if (ctx-fact? c f p "fixed u64")
                      (put "u64" (put text acc))
                      (put "\")" (put text (put "int_text(\"" acc)))))
-               (chr (ch) (put "'" (put-escaped (list ch) #\' (put "'" acc))))
-               (real (x)
+               (chr (ch at-file at-pos) (put "'" (put-escaped (list ch) #\' (put "'" acc))))
+               (real (x at-file at-pos)
                  "As Rust writes a double: a digit after the point (`1.` is `1.0`)."
                  (put "f64" (if (char=? (last (string-chars x)) #\.) (put "0" (put x acc)) (put x acc))))
-               (str (s) (put "\")" (put-escaped (string-chars s) #\" (put "str_lit(\"" acc))))
-               (sym (s) (put-var c s acc))
+               (str (s at-file at-pos) (put "\")" (put-escaped (string-chars s) #\" (put "str_lit(\"" acc))))
+               (sym (s at-file at-pos) (put-var c s acc))
                (lst (xs src-file src-line src-pos)
                  (cond ((fact-at? c e "void-call") (put " {}" (put-call c e xs n t (put "match " acc))))
                        ((fact-at? c e "void-error") (put ")" (put-call c e xs n t (put "the::<Void>(" acc))))
@@ -805,7 +800,7 @@
       "A list form; a call giving a `Void` the caller wraps, `match ... {}`,
        which is of any type, as FX-26's `void` is below every type."
       (tagcase (car xs)
-        (sym (h) (put-form c e h (cdr xs) n t acc))
+        (sym (h at-file at-pos) (put-form c e h (cdr xs) n t acc))
         (else head
           (let* ((acc (put "(" acc))
                  (acc (put-exp c head n (value) acc))
@@ -955,7 +950,7 @@
           (let* ((arm (items (car arms)))
                  (tag (sym-name (car arm)))
                  (else? (string=? tag "else"))
-                 (whole? (tagcase (second arm) (sym (x) #t) (else other #f)))
+                 (whole? (tagcase (second arm) (sym (x at-file at-pos) #t) (else other #f)))
                  (bound (if (or else? whole?)
                             (the strings (list (sym-name (second arm))))
                             (map sym-name (items (second arm)))))

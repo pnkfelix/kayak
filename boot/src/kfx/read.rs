@@ -13,21 +13,21 @@ use super::*;
 // facts about a place are keyed by its file and offset (`fact`), which no
 // two nodes of a file share.
 pub enum Sexp {
-    Sym(Str),
-    Str(Str),
+    Sym(Str, Str, i64),
+    Str(Str, Str, i64),
     Num(i64, Str, i64),
     Big(Str, Str, i64),
-    Chr(char),
+    Chr(char, Str, i64),
     Lst(List<&'static Sexp>, Str, i64, i64),
-    Real(Str),
+    Real(Str, Str, i64),
 }
 
-pub fn sym(f0: Str) -> &'static Sexp {
-    alloc(Sexp::Sym(f0))
+pub fn sym(f0: Str, f1: Str, f2: i64) -> &'static Sexp {
+    alloc(Sexp::Sym(f0, f1, f2))
 }
 
-pub fn str(f0: Str) -> &'static Sexp {
-    alloc(Sexp::Str(f0))
+pub fn str(f0: Str, f1: Str, f2: i64) -> &'static Sexp {
+    alloc(Sexp::Str(f0, f1, f2))
 }
 
 pub fn num(f0: i64, f1: Str, f2: i64) -> &'static Sexp {
@@ -38,16 +38,16 @@ pub fn big(f0: Str, f1: Str, f2: i64) -> &'static Sexp {
     alloc(Sexp::Big(f0, f1, f2))
 }
 
-pub fn chr(f0: char) -> &'static Sexp {
-    alloc(Sexp::Chr(f0))
+pub fn chr(f0: char, f1: Str, f2: i64) -> &'static Sexp {
+    alloc(Sexp::Chr(f0, f1, f2))
 }
 
 pub fn lst(f0: List<&'static Sexp>, f1: Str, f2: i64, f3: i64) -> &'static Sexp {
     alloc(Sexp::Lst(f0, f1, f2, f3))
 }
 
-pub fn real(f0: Str) -> &'static Sexp {
-    alloc(Sexp::Real(f0))
+pub fn real(f0: Str, f1: Str, f2: i64) -> &'static Sexp {
+    alloc(Sexp::Real(f0, f1, f2))
 }
 
 pub type Sexps = List<&'static Sexp>;
@@ -167,13 +167,14 @@ pub fn unescape(c: char) -> char {
     }
 }
 
-/// A string's characters, after its opening quote on line `start`.
-pub fn string_body(mut cs: Chars, mut acc: Chars, mut file: Str, mut start: i64, mut line: i64, mut pos: i64) -> &'static Got {
+/// A string's characters, after its opening quote on line `start`, at
+/// offset `at`.
+pub fn string_body(mut cs: Chars, mut acc: Chars, mut file: Str, mut start: i64, mut at: i64, mut line: i64, mut pos: i64) -> &'static Got {
     loop {
         if null_p(cs) {
             return match read_error(file, start, str_lit("a string is not closed")) {};
         } else if char_eq_p(car(cs), '"') {
-            return got(str(rev_to_string(acc)), here(cdr(cs), line, i64_plus(pos, 1i64)));
+            return got(str(rev_to_string(acc), file, at), here(cdr(cs), line, i64_plus(pos, 1i64)));
         } else if char_eq_p(car(cs), '\\') {
             (cs, acc, pos) = (cdr(cdr(cs)), cons(unescape(car(cdr(cs))), acc), i64_plus(pos, 2i64));
             continue;
@@ -309,7 +310,7 @@ pub fn before_point(cs: Chars) -> Chars {
 pub fn token_atom(s: Str, file: Str, line: i64, pos: i64) -> &'static Sexp {
     let cs = string_chars(s);
     if not(numeric_p(cs)) {
-        sym(s)
+        sym(s, file, pos)
     } else if not(only_of_p(if char_eq_p(car(cs), '-') {
         cdr(cs)
     } else {
@@ -317,7 +318,7 @@ pub fn token_atom(s: Str, file: Str, line: i64, pos: i64) -> &'static Sexp {
     }, str_lit("0123456789.eE+-"))) {
         // Not a number, though a digit begins it (`1x`, `0x10`): a name, as
         // FX-26 reads it.
-        sym(s)
+        sym(s, file, pos)
     } else if (has_char_p(cs, 'e') || has_char_p(cs, 'E')) {
         match read_error(file, line, string_append(str_lit("a number with an exponent, which KFX reads not: write it out, "), s)) {}
     } else if has_char_p(cs, '.') {
@@ -333,7 +334,7 @@ pub fn token_atom(s: Str, file: Str, line: i64, pos: i64) -> &'static Sexp {
             }))), 21i64) {
                 match read_error(file, line, string_append(str_lit("a real of 1e21 or more, which FX-26 reads as an int: "), s)) {}
             } else {
-                real(s)
+                real(s, file, pos)
             }
         } else {
             match read_error(file, line, string_append(str_lit("no number KFX reads: "), s)) {}
@@ -383,13 +384,13 @@ pub fn read_datum(h: &'static Here, file: Str) -> &'static Got {
             } else if char_eq_p(c, ')') {
                 match read_error(file, line, str_lit("a ) with no (")) {}
             } else if char_eq_p(c, '"') {
-                string_body(cdr(cs), nil(), file, line, line, i64_plus(pos, 1i64))
+                string_body(cdr(cs), nil(), file, line, pos, line, i64_plus(pos, 1i64))
             } else if (char_eq_p(c, '#') && not(null_p(cdr(cs))) && char_eq_p(car(cdr(cs)), '\\')) {
                 let name = cdr(cdr(cs));
                 let tagcase_ = token_chars(cdr(name), kayak_rt::cons(car(name), kayak_rt::nil()), 1i64);
                 match *tagcase_ {
                     Tok::Tok(s, after, n) => {
-                        got(chr(char_named(s, file, line)), here(after, line, i64_plus(pos, i64_plus(n, 2i64))))
+                        got(chr(char_named(s, file, line), file, pos), here(after, line, i64_plus(pos, i64_plus(n, 2i64))))
                     }
                 }
             } else {
@@ -455,10 +456,66 @@ pub fn read_all(cs: Chars, file: Str, line: i64) -> Sexps {
 }
 
 // Taking `sexp`s apart
+/// The file a datum was read from; ``, for one the compiler made.
+pub fn datum_file(e: &'static Sexp) -> Str {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Sym(n, file, pos) => {
+            file
+        }
+        Sexp::Str(t, file, pos) => {
+            file
+        }
+        Sexp::Num(i, file, pos) => {
+            file
+        }
+        Sexp::Big(t, file, pos) => {
+            file
+        }
+        Sexp::Chr(c, file, pos) => {
+            file
+        }
+        Sexp::Lst(xs, file, line, pos) => {
+            file
+        }
+        Sexp::Real(t, file, pos) => {
+            file
+        }
+    }
+}
+
+/// Where in its file a datum begins.
+pub fn datum_pos(e: &'static Sexp) -> i64 {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Sym(n, file, pos) => {
+            pos
+        }
+        Sexp::Str(t, file, pos) => {
+            pos
+        }
+        Sexp::Num(i, file, pos) => {
+            pos
+        }
+        Sexp::Big(t, file, pos) => {
+            pos
+        }
+        Sexp::Chr(c, file, pos) => {
+            pos
+        }
+        Sexp::Lst(xs, file, line, pos) => {
+            pos
+        }
+        Sexp::Real(t, file, pos) => {
+            pos
+        }
+    }
+}
+
 pub fn sym_name(e: &'static Sexp) -> Str {
     let tagcase_ = e;
     match *tagcase_ {
-        Sexp::Sym(s) => {
+        Sexp::Sym(s, at_file, at_pos) => {
             s
         }
         _ => {
@@ -471,7 +528,7 @@ pub fn sym_name(e: &'static Sexp) -> Str {
 pub fn sym_is_p(e: &'static Sexp, s: Str) -> bool {
     let tagcase_ = e;
     match *tagcase_ {
-        Sexp::Sym(n) => {
+        Sexp::Sym(n, at_file, at_pos) => {
             string_eq_p(n, s)
         }
         _ => {

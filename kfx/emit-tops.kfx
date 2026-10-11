@@ -15,7 +15,7 @@
       "A type written in a module type, its descriptions' names replaced by
        what they describe."
       (tagcase e
-        (sym (n)
+        (sym (n at-file at-pos)
           (let ((found (concat (map (lambda ((d sexps)) (if (string=? (sym-name (second d)) n) (the sexps (list (third d))) nil)) descs))))
             (if (null? found) e (car found))))
         (lst (xs f l p) (lst (map (lambda ((x sexp)) (subst-descs x descs)) xs) f l p))
@@ -27,7 +27,7 @@
 
 (define abs-of (subr kfx (sexp) strings)
   (lambda (spec)
-    (concat (map (lambda ((a sexps)) (tagcase (second a) (sym (n) (the strings (list n))) (lst (ns f l p) (map sym-name ns)) (else other nil)))
+    (concat (map (lambda ((a sexps)) (tagcase (second a) (sym (n at-file at-pos) (the strings (list n))) (lst (ns f l p) (map sym-name ns)) (else other nil)))
                  (spec-of spec "abs")))))
 
 (define in-trait (subr kfx (ctx sexp) ctx)
@@ -114,7 +114,7 @@
         nil
         (let ((rest (module-params c (cdr names) (cdr types))))
           (tagcase (car types)
-            (sym (t) (if (null? (module-body c (string-append "%moduleof " t)))
+            (sym (t at-file at-pos) (if (null? (module-body c (string-append "%moduleof " t)))
                          rest
                          (cons (string-append (sym-name (tagcase (car names) (lst (xs f l p) (car xs)) (else other other)))
                                               (string-append " " t))
@@ -126,7 +126,7 @@
     (lambda (c names types want-names)
       "`names` or `types`, without the module parameters."
       (cond ((or (null? names) (null? types)) nil)
-            ((tagcase (car types) (sym (t) (not (null? (module-body c (string-append "%moduleof " t))))) (else other #f))
+            ((tagcase (car types) (sym (t at-file at-pos) (not (null? (module-body c (string-append "%moduleof " t))))) (else other #f))
              (unmoduled c (cdr names) (cdr types) want-names))
             (else (cons (if want-names (car names) (car types)) (unmoduled c (cdr names) (cdr types) want-names)))))))
 
@@ -499,7 +499,7 @@
   (put-top (subr kfx (ctx sexp chars) chars)
     (lambda (c form acc)
       (let* ((xs (tagcase form (lst (ys f l p) ys) (else other nil)))
-             (h (if (null? xs) "" (tagcase (car xs) (sym (n) n) (else other "")))))
+             (h (if (null? xs) "" (tagcase (car xs) (sym (n at-file at-pos) n) (else other "")))))
         (cond ((string=? h "define-effect") acc)
               ((or (string=? h "include") (string=? h "%use"))
                (let* ((n (sym-name (second xs)))
@@ -535,7 +535,7 @@
       (let* ((forms (concat (map (lambda ((f sexp))
                                    (if (head-is? f "hide")
                                        (map (lambda ((g sexp))
-                                              (if (head-is? g "include") (lst (list (sym "%use") (second (items g))) "" 0 0) g))
+                                              (if (head-is? g "include") (lst (list (sym "%use" "" 0) (second (items g))) "" 0 0) g))
                                             (cdr (items f)))
                                        (the sexps (list f))))
                                  written)))

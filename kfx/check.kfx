@@ -98,12 +98,12 @@
   (show-sexp (subr kfx (sexp) string)
     (lambda (e)
       (tagcase e
-        (sym (s) s)
-        (str (s) (string-append "\"" (string-append s "\"")))
+        (sym (s at-file at-pos) s)
+        (str (s at-file at-pos) (string-append "\"" (string-append s "\"")))
         (num (k num-file num-pos) (i64->string k))
         (big (text f p) text)
-        (chr (c) (string-append "#\\" (char->string c)))
-        (real (t) t)
+        (chr (c at-file at-pos) (string-append "#\\" (char->string c)))
+        (real (t at-file at-pos) t)
         (lst (xs src-file src-line src-pos) (string-append "(" (string-append (show-sexps xs) ")"))))))
   (show-sexps (subr kfx (sexps) string)
     (lambda (xs)
@@ -128,7 +128,7 @@
   (lambda (v e)
     "A name, where one is expected: refused, saying where, if `e` is none."
     (tagcase e
-      (sym (s) s)
+      (sym (s at-file at-pos) s)
       (else other (refuse v (string-append "a name is expected here, not " (show-sexp other)))))))
 
 "Effects"
@@ -168,7 +168,7 @@
 (define label-of (subr kfx (sexp) string)
   (lambda (e)
     "A product's label or a sum's tag, as written: a name or a number."
-    (tagcase e (sym (n) n) (num (k f p) (i64->string k)) (else other ""))))
+    (tagcase e (sym (n at-file at-pos) n) (num (k f p) (i64->string k)) (else other ""))))
 
 (define escapes? (subr kfx (strings) bool)
   (lambda (es)
@@ -226,7 +226,7 @@
 (define region-name (subr kfx (cv strings sexp) string)
   (lambda (v tvars r)
     "A region's name: a constant, `@a`, or a poly's region binder, `'r`."
-    (let ((s (tagcase r (sym (n) n) (else other (refuse v (string-append "a region KFX does not have: " (show-sexp other)))))))
+    (let ((s (tagcase r (sym (n at-file at-pos) n) (else other (refuse v (string-append "a region KFX does not have: " (show-sexp other)))))))
       (cond ((string=? s "@globals")
              (refuse v "globals are a region only in effects: (read @globals), (read (globals g))"))
             ((char=? (string-ref-i64 s 0) #\@) s)
@@ -250,7 +250,7 @@
   (parse-effect (subr kfx (cv strings sexp) strings)
     (lambda (v tvars e)
       (tagcase e
-        (sym (s)
+        (sym (s at-file at-pos)
           (cond ((string=? s "pure") nil)
                 ((string=? s "spin") (list "spin"))
                 (else (find-effdef v s (cv-effdefs v)))))
@@ -509,7 +509,7 @@
     (lambda (v tvars t)
       "`tvars`: the type variables in scope."
       (tagcase t
-        (sym (s)
+        (sym (s at-file at-pos)
           (cond ((string=? s "i64") (ty-i64))
                 ((string=? s "int") (ty-int))
                 ((string=? s "nat") (ty-nat))
@@ -559,9 +559,9 @@
                    (if (or (any? (lambda ((f sexps)) (not (i64= (size f) 2))) fields)
                            (any? (lambda ((f sexps)) (string=? (label-of (car f)) "")) fields)
                            (and (sym-is? (car xs) "sumof")
-                                (any? (lambda ((f sexps)) (tagcase (car f) (sym (n) #f) (else other #t))) fields)))
+                                (any? (lambda ((f sexps)) (tagcase (car f) (sym (n at-file at-pos) #f) (else other #t))) fields)))
                        (refuse v (string-append "a type KFX does not have: " (show-sexp t)))
-                       (if (or (any? (lambda ((f sexps)) (tagcase (car f) (sym (n) (not (kfx-name? n))) (else other #f))) fields)
+                       (if (or (any? (lambda ((f sexps)) (tagcase (car f) (sym (n at-file at-pos) (not (kfx-name? n))) (else other #f))) fields)
                                (repeated? (map (lambda ((f sexps)) (label-of (car f))) fields))
                                (repeated? (map (lambda ((f sexps)) (camel (label-of (car f)))) fields)))
                            (refuse v (string-append "a label appears twice in " (show-sexp t)))
@@ -572,12 +572,12 @@
                  (let ((name (string-append (name-of v (second xs)) (string-append " " (name-of v (third xs))))))
                    (if (null? (find-alias name (cv-aliases v)))
                        (refuse v (string-append "no module defined at the top level gives a type " (show-sexp t)))
-                       (parse-type v tvars (sym name)))))
+                       (parse-type v tvars (sym name "" 0)))))
                 ((sym-is? (car xs) "subr")
                  (ty-proc (parse-effect v tvars (second xs))
                           (parse-types v tvars (items (third xs)))
                           (parse-type v tvars (fourth xs))))
-                ((tagcase (car xs) (sym (n) (or (dt-named? n (cv-dts v)) (not (null? (find-alias n (cv-aliases v)))))) (else other #f))
+                ((tagcase (car xs) (sym (n at-file at-pos) (or (dt-named? n (cv-dts v)) (not (null? (find-alias n (cv-aliases v)))))) (else other #f))
                  (no-knot v (lambda ((x string)) x) (parse-application v tvars (name-of v (car xs)) (cdr xs))))
                 (else (refuse v (string-append "a type KFX does not have: " (show-sexp t))))))
         (else other (refuse v (string-append "a type KFX does not have: " (show-sexp t)))))))
@@ -1226,7 +1226,7 @@
     (lambda (e)
       "Every name in `e`, bound in it or not."
       (tagcase e
-        (sym (n) (list n))
+        (sym (n at-file at-pos) (list n))
         (lst (xs src-file src-line src-pos) (names-in-all xs))
         (else other nil))))
   (names-in-all (subr kfx (sexps) strings)
@@ -1236,7 +1236,7 @@
   (lambda (v s body tag r)
     "Whether `body` may reach a tag of region `r` but `tag`: whether a
      name in it, but `tag`'s if it is one, has a type that mentions `r`."
-    (let ((tag-name (tagcase tag (sym (n) n) (else other ""))))
+    (let ((tag-name (tagcase tag (sym (n at-file at-pos) n) (else other ""))))
       (any? (lambda ((n string))
               (and (not (string=? n tag-name))
                    (let ((found (find-bind n (cv-binds v))))

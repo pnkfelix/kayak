@@ -18,7 +18,7 @@ use super::*;
 pub fn subst_descs(e: &'static Sexp, descs: List<Sexps>) -> &'static Sexp {
     let tagcase_ = e;
     match *tagcase_ {
-        Sexp::Sym(n) => {
+        Sexp::Sym(n, at_file, at_pos) => {
             let found = concat(map(lambda1(move |d: Sexps| {
                 if string_eq_p(sym_name(second(d)), n) {
                     the::<Sexps>(kayak_rt::cons(third(d), kayak_rt::nil()))
@@ -58,7 +58,7 @@ pub fn abs_of(spec: &'static Sexp) -> Strings {
     concat(map(lambda1(move |a: Sexps| {
         let tagcase_ = second(a);
         match *tagcase_ {
-            Sexp::Sym(n) => {
+            Sexp::Sym(n, at_file, at_pos) => {
                 the::<Strings>(kayak_rt::cons(n, kayak_rt::nil()))
             }
             Sexp::Lst(ns, f, l, p) => {
@@ -197,7 +197,7 @@ pub fn module_params(c: &'static Ctx, names: Sexps, types: Sexps) -> Strings {
         let rest = module_params(c, cdr(names), cdr(types));
         let tagcase_ = car(types);
         match *tagcase_ {
-            Sexp::Sym(t) => {
+            Sexp::Sym(t, at_file, at_pos) => {
                 if null_p(module_body(c, string_append(str_lit("%moduleof "), t))) {
                     rest
                 } else {
@@ -231,7 +231,7 @@ pub fn unmoduled(mut c: &'static Ctx, mut names: Sexps, mut types: Sexps, mut wa
         } else if {
             let tagcase_ = car(types);
             match *tagcase_ {
-                Sexp::Sym(t) => {
+                Sexp::Sym(t, at_file, at_pos) => {
                     not(null_p(module_body(c, string_append(str_lit("%moduleof "), t))))
                 }
                 _ => {
@@ -860,7 +860,7 @@ pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
     } else {
         let tagcase_ = car(xs);
         match *tagcase_ {
-            Sexp::Sym(n) => {
+            Sexp::Sym(n, at_file, at_pos) => {
                 n
             }
             _ => {
@@ -921,7 +921,7 @@ pub fn put_module(c: &'static Ctx, m: Str, written: Sexps, acc: Chars) -> Chars 
         if head_is_p(f, str_lit("hide")) {
             map(lambda1(move |g: &'static Sexp| {
                 if head_is_p(g, str_lit("include")) {
-                    lst(kayak_rt::cons(sym(str_lit("%use")), kayak_rt::cons(second(items(g)), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
+                    lst(kayak_rt::cons(sym(str_lit("%use"), str_lit(""), 0i64), kayak_rt::cons(second(items(g)), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
                 } else {
                     g
                 }

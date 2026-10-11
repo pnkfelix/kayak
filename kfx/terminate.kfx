@@ -72,7 +72,7 @@
   (lambda (c e)
     "The primitive `e` names, if it names one: no local hides it."
     (tagcase e
-      (sym (n)
+      (sym (n at-file at-pos)
         (tagcase c
           (wc (v ms cur sc gs nats inv)
             (if (or (not (null? (bound-of n sc))) (string-member? n ms)) ""
@@ -108,7 +108,7 @@
     (lambda (c e)
       "What is known of `e`'s value."
       (tagcase e
-        (sym (n) (let ((b (wc-bound c n))) (if (null? b) nil (car b))))
+        (sym (n at-file at-pos) (let ((b (wc-bound c n))) (if (null? b) nil (car b))))
         (lst (xs src-file src-line src-pos)
           (let ((op (std-op c (car xs))))
             (cond ((sym-is? (car xs) "the") (tracked-of c (third xs)))
@@ -150,7 +150,7 @@
         (wc (v ms cur sc gs nats inv)
           (tagcase e
             (num (k text pos) (not (null? (literal-of e))))
-            (sym (n)
+            (sym (n at-file at-pos)
               (let ((b (bound-of n sc)))
                 (if (null? b)
                     (not (string-member? n ms))
@@ -278,7 +278,7 @@
 
 (define param-names (subr kfx (sexps) strings)
   (lambda (params)
-    (map (lambda ((p sexp)) (tagcase p (sym (n) n) (lst (xs f l o) (sym-name (car xs))) (else other ""))) params)))
+    (map (lambda ((p sexp)) (tagcase p (sym (n at-file at-pos) n) (lst (xs f l o) (sym-name (car xs))) (else other ""))) params)))
 
 (define variant-part (subr kfx (cv trackeds string i64) trackeds)
   (lambda (v whole tag i)
@@ -310,9 +310,9 @@
   (walk-exp (subr kfx (wc ws sexp) ws)
     (lambda (c st e)
       (tagcase e
-        (sym (n) (if (i64< (wc-member c n) 0) st (escaping st)))
+        (sym (n at-file at-pos) (if (i64< (wc-member c n) 0) st (escaping st)))
         (lst (xs src-file src-line src-pos)
-          (let ((h (tagcase (car xs) (sym (n) n) (else other ""))))
+          (let ((h (tagcase (car xs) (sym (n at-file at-pos) n) (else other ""))))
             (cond ((or (not (well-formed? h (cdr xs)))
                        (and (or (string=? h "lambda") (string=? h "the")) (i64< (size xs) 3)))
                    st)
@@ -377,7 +377,7 @@
                                                                   whole))))))
                             st (cdr (cdr arm)))
                   (walk-all (in-scope c (tagcase (second arm)
-                                          (sym (x)
+                                          (sym (x at-file at-pos)
                                             "A sum's member, bound whole: a part, its type not known here."
                                             (the knowns
                                               (list (known x (concat (map (lambda ((t tracked))

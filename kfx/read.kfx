@@ -8,13 +8,13 @@
  facts about a place are keyed by its file and offset (`fact`), which no
  two nodes of a file share."
 (define-datatype sexp
-  (sym string)
-  (str string)
+  (sym string string i64)
+  (str string string i64)
   (num i64 string i64)
   (big string string i64)
-  (chr char)
+  (chr char string i64)
   (lst (listof sexp acyclic) string i64 i64)
-  (real string))
+  (real string string i64))
 
 (define-type sexps (listof sexp acyclic))
 
@@ -68,16 +68,17 @@
 (define unescape (subr kfx (char) char)
   (lambda (c) (case c ((#\n) #\newline) ((#\t) #\tab) (else c))))
 
-(define string-body (subr kfx (chars chars string i64 i64 i64) got)
-  (lambda (cs acc file start line pos)
-    "A string's characters, after its opening quote on line `start`."
+(define string-body (subr kfx (chars chars string i64 i64 i64 i64) got)
+  (lambda (cs acc file start at line pos)
+    "A string's characters, after its opening quote on line `start`, at
+     offset `at`."
     (cond ((null? cs) (read-error file start "a string is not closed"))
-          ((char=? (car cs) #\") (got (str (rev->string acc)) (here (cdr cs) line (i64+ pos 1))))
+          ((char=? (car cs) #\") (got (str (rev->string acc) file at) (here (cdr cs) line (i64+ pos 1))))
           ((char=? (car cs) #\\)
-           (string-body (cdr (cdr cs)) (cons (unescape (car (cdr cs))) acc) file start line (i64+ pos 2)))
+           (string-body (cdr (cdr cs)) (cons (unescape (car (cdr cs))) acc) file start at line (i64+ pos 2)))
           ((char=? (car cs) #\newline)
-           (string-body (cdr cs) (cons (car cs) acc) file start (i64+ line 1) (i64+ pos 1)))
-          (else (string-body (cdr cs) (cons (car cs) acc) file start line (i64+ pos 1))))))
+           (string-body (cdr cs) (cons (car cs) acc) file start at (i64+ line 1) (i64+ pos 1)))
+          (else (string-body (cdr cs) (cons (car cs) acc) file start at line (i64+ pos 1))))))
 
 (define digits-value (subr kfx (chars i64 string i64) i64)
   (lambda (cs n file line)
@@ -151,18 +152,18 @@
 (define token-atom (subr kfx (string string i64 i64) sexp)
   (lambda (s file line pos)
     (let ((cs (string-chars s)))
-      (cond ((not (numeric? cs)) (sym s))
+      (cond ((not (numeric? cs)) (sym s file pos))
             ((not (only-of? (if (char=? (car cs) #\-) (cdr cs) cs) "0123456789.eE+-"))
              "Not a number, though a digit begins it (`1x`, `0x10`): a name, as
               FX-26 reads it."
-             (sym s))
+             (sym s file pos))
             ((or (has-char? cs #\e) (has-char? cs #\E))
              (read-error file line (string-append "a number with an exponent, which KFX reads not: write it out, " s)))
             ((has-char? cs #\.)
              (if (and (real-token? cs) (only-of? (if (char=? (car cs) #\-) (cdr cs) cs) "0123456789."))
                  (if (i64> (size (digits-after-zeros (before-point (if (char=? (car cs) #\-) (cdr cs) cs)))) 21)
                      (read-error file line (string-append "a real of 1e21 or more, which FX-26 reads as an int: " s))
-                     (real s))
+                     (real s file pos))
                  (read-error file line (string-append "no number KFX reads: " s))))
             ((not (only-of? (if (char=? (car cs) #\-) (cdr cs) cs) "0123456789"))
              (read-error file line (string-append "no number KFX reads: " s)))
@@ -189,11 +190,11 @@
                    (tagcase (read-items (here (cdr cs) line (i64+ pos 1)) file)
                      (gots (xs after) (got (lst xs file line pos) after))))
                   ((char=? c #\)) (read-error file line "a ) with no ("))
-                  ((char=? c #\") (string-body (cdr cs) nil file line line (i64+ pos 1)))
+                  ((char=? c #\") (string-body (cdr cs) nil file line pos line (i64+ pos 1)))
                   ((and (char=? c #\#) (not (null? (cdr cs))) (char=? (car (cdr cs)) #\\))
                    (let ((name (cdr (cdr cs))))
                      (tagcase (token-chars (cdr name) (list (car name)) 1)
-                       (tok (s after n) (got (chr (char-named s file line)) (here after line (i64+ pos (i64+ n 2))))))))
+                       (tok (s after n) (got (chr (char-named s file line) file pos) (here after line (i64+ pos (i64+ n 2))))))))
                   (else
                    (tagcase (token-chars cs nil 0)
                      (tok (s after n) (got (token-atom s file line pos) (here after line (i64+ pos n))))))))))))
@@ -227,11 +228,25 @@
 
 "Taking `sexp`s apart"
 
+(define datum-file (subr kfx (sexp) string)
+  (lambda (e)
+    "The file a datum was read from; ``, for one the compiler made."
+    (tagcase e
+      (sym (n file pos) file) (str (t file pos) file) (num (i file pos) file) (big (t file pos) file)
+      (chr (c file pos) file) (lst (xs file line pos) file) (real (t file pos) file))))
+
+(define datum-pos (subr kfx (sexp) i64)
+  (lambda (e)
+    "Where in its file a datum begins."
+    (tagcase e
+      (sym (n file pos) pos) (str (t file pos) pos) (num (i file pos) pos) (big (t file pos) pos)
+      (chr (c file pos) pos) (lst (xs file line pos) pos) (real (t file pos) pos))))
+
 (define sym-name (subr kfx (sexp) string)
-  (lambda (e) (tagcase e (sym (s) s) (else other (error "kfx: a name is expected")))))
+  (lambda (e) (tagcase e (sym (s at-file at-pos) s) (else other (error "kfx: a name is expected")))))
 
 (define sym-is? (subr kfx (sexp string) bool)
-  (lambda (e s) (tagcase e (sym (n) (string=? n s)) (else other #f))))
+  (lambda (e s) (tagcase e (sym (n at-file at-pos) (string=? n s)) (else other #f))))
 
 (define items (subr kfx (sexp) sexps)
   (lambda (e) (tagcase e (lst (xs src-file src-line src-pos) xs) (else other (error "kfx: a list is expected")))))

@@ -251,10 +251,10 @@ pub fn res(f0: &'static Ty, f1: Strings, f2: &'static St) -> &'static Res {
 pub fn show_sexp(e: &'static Sexp) -> Str {
     let tagcase_ = e;
     match *tagcase_ {
-        Sexp::Sym(s) => {
+        Sexp::Sym(s, at_file, at_pos) => {
             s
         }
-        Sexp::Str(s) => {
+        Sexp::Str(s, at_file, at_pos) => {
             string_append(str_lit("\""), string_append(s, str_lit("\"")))
         }
         Sexp::Num(k, num_file, num_pos) => {
@@ -263,10 +263,10 @@ pub fn show_sexp(e: &'static Sexp) -> Str {
         Sexp::Big(text, f, p) => {
             text
         }
-        Sexp::Chr(c) => {
+        Sexp::Chr(c, at_file, at_pos) => {
             string_append(str_lit("#\\"), char_to_string(c))
         }
-        Sexp::Real(t) => {
+        Sexp::Real(t, at_file, at_pos) => {
             t
         }
         Sexp::Lst(xs, src_file, src_line, src_pos) => {
@@ -313,7 +313,7 @@ pub fn refuse(v: &'static Cv, message: Str) -> Void {
 pub fn name_of(v: &'static Cv, e: &'static Sexp) -> Str {
     let tagcase_ = e;
     match *tagcase_ {
-        Sexp::Sym(s) => {
+        Sexp::Sym(s, at_file, at_pos) => {
             s
         }
         _ => {
@@ -379,7 +379,7 @@ pub fn strings_eq_p(a: Strings, b: Strings) -> bool {
 pub fn label_of(e: &'static Sexp) -> Str {
     let tagcase_ = e;
     match *tagcase_ {
-        Sexp::Sym(n) => {
+        Sexp::Sym(n, at_file, at_pos) => {
             n
         }
         Sexp::Num(k, f, p) => {
@@ -490,7 +490,7 @@ pub fn region_name(v: &'static Cv, tvars: Strings, r: &'static Sexp) -> Str {
     let s = {
         let tagcase_ = r;
         match *tagcase_ {
-            Sexp::Sym(n) => {
+            Sexp::Sym(n, at_file, at_pos) => {
                 n
             }
             _ => {
@@ -533,7 +533,7 @@ pub fn parse_mutable_region(v: &'static Cv, tvars: Strings, r: &'static Sexp) ->
 pub fn parse_effect(v: &'static Cv, tvars: Strings, e: &'static Sexp) -> Strings {
     let tagcase_ = e;
     match *tagcase_ {
-        Sexp::Sym(s) => {
+        Sexp::Sym(s, at_file, at_pos) => {
             if string_eq_p(s, str_lit("pure")) {
                 nil()
             } else if string_eq_p(s, str_lit("spin")) {
@@ -1048,7 +1048,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
     loop {
         let tagcase_ = t;
         match *tagcase_ {
-            Sexp::Sym(s) => {
+            Sexp::Sym(s, at_file, at_pos) => {
                 if string_eq_p(s, str_lit("i64")) {
                     return ty_i64();
                 } else if string_eq_p(s, str_lit("int")) {
@@ -1133,7 +1133,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     }), fields) || (sym_is_p(car(xs), str_lit("sumof")) && any_p(lambda1(move |f: Sexps| {
                         let tagcase_ = car(f);
                         match *tagcase_ {
-                            Sexp::Sym(n) => {
+                            Sexp::Sym(n, at_file, at_pos) => {
                                 false
                             }
                             _ => {
@@ -1147,7 +1147,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                         if (any_p(lambda1(move |f: Sexps| {
                             let tagcase_ = car(f);
                             match *tagcase_ {
-                                Sexp::Sym(n) => {
+                                Sexp::Sym(n, at_file, at_pos) => {
                                     not(kfx_name_p(n))
                                 }
                                 _ => {
@@ -1174,7 +1174,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     if null_p(find_alias(name, cv_aliases(v))) {
                         return match refuse(v, string_append(str_lit("no module defined at the top level gives a type "), show_sexp(t))) {};
                     } else {
-                        t = sym(name);
+                        t = sym(name, str_lit(""), 0i64);
                         continue;
                     }
                 } else if sym_is_p(car(xs), str_lit("subr")) {
@@ -1182,7 +1182,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                 } else if {
                     let tagcase_ = car(xs);
                     match *tagcase_ {
-                        Sexp::Sym(n) => {
+                        Sexp::Sym(n, at_file, at_pos) => {
                             (dt_named_p(n, cv_dts(v)) || not(null_p(find_alias(n, cv_aliases(v)))))
                         }
                         _ => {
@@ -2638,7 +2638,7 @@ pub fn masked_goto(mut es: Strings, mut r: Str) -> Strings {
 pub fn names_in(e: &'static Sexp) -> Strings {
     let tagcase_ = e;
     match *tagcase_ {
-        Sexp::Sym(n) => {
+        Sexp::Sym(n, at_file, at_pos) => {
             kayak_rt::cons(n, kayak_rt::nil())
         }
         Sexp::Lst(xs, src_file, src_line, src_pos) => {
@@ -2665,7 +2665,7 @@ pub fn reaches_p(v: &'static Cv, s: &'static St, body: &'static Sexp, tag: &'sta
     let tag_name = {
         let tagcase_ = tag;
         match *tagcase_ {
-            Sexp::Sym(n) => {
+            Sexp::Sym(n, at_file, at_pos) => {
                 n
             }
             _ => {

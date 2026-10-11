@@ -200,7 +200,7 @@ pub fn wc_member(c: &'static Wc, n: Str) -> i64 {
 pub fn std_op(c: &'static Wc, e: &'static Sexp) -> Str {
     let tagcase_ = e;
     match *tagcase_ {
-        Sexp::Sym(n) => {
+        Sexp::Sym(n, at_file, at_pos) => {
             let tagcase_ = c;
             match *tagcase_ {
                 Wc::Wc(v, ms, cur, sc, gs, nats, inv) => {
@@ -283,7 +283,7 @@ pub fn tracked_of(mut c: &'static Wc, mut e: &'static Sexp) -> Trackeds {
     loop {
         let tagcase_ = e;
         match *tagcase_ {
-            Sexp::Sym(n) => {
+            Sexp::Sym(n, at_file, at_pos) => {
                 let b = wc_bound(c, n);
                 if null_p(b) {
                     return nil();
@@ -379,7 +379,7 @@ pub fn fixed_p(mut c: &'static Wc, mut e: &'static Sexp) -> bool {
                     Sexp::Num(k, text, pos) => {
                         return not(null_p(literal_of(e)));
                     }
-                    Sexp::Sym(n) => {
+                    Sexp::Sym(n, at_file, at_pos) => {
                         let b = bound_of(n, sc);
                         if null_p(b) {
                             return not(string_member_p(n, ms));
@@ -659,7 +659,7 @@ pub fn param_names(params: Sexps) -> Strings {
     map(lambda1(move |p: &'static Sexp| {
         let tagcase_ = p;
         match *tagcase_ {
-            Sexp::Sym(n) => {
+            Sexp::Sym(n, at_file, at_pos) => {
                 n
             }
             Sexp::Lst(xs, f, l, o) => {
@@ -742,7 +742,7 @@ pub fn walk_exp(mut c: &'static Wc, mut st: &'static Ws, mut e: &'static Sexp) -
     loop {
         let tagcase_ = e;
         match *tagcase_ {
-            Sexp::Sym(n) => {
+            Sexp::Sym(n, at_file, at_pos) => {
                 if i64_lt(wc_member(c, n), 0i64) {
                     return st;
                 } else {
@@ -753,7 +753,7 @@ pub fn walk_exp(mut c: &'static Wc, mut st: &'static Ws, mut e: &'static Sexp) -
                 let h = {
                     let tagcase_ = car(xs);
                     match *tagcase_ {
-                        Sexp::Sym(n) => {
+                        Sexp::Sym(n, at_file, at_pos) => {
                             n
                         }
                         _ => {
@@ -867,7 +867,7 @@ pub fn walk_arms(mut c: &'static Wc, mut st: &'static Ws, mut whole: Trackeds, m
                 walk_all(in_scope(c, {
                     let tagcase_ = second(arm);
                     match *tagcase_ {
-                        Sexp::Sym(x) => {
+                        Sexp::Sym(x, at_file, at_pos) => {
                             // A sum's member, bound whole: a part, its type not known here.
                             the::<Knowns>(kayak_rt::cons(known(x, concat(map(lambda1(move |t: &'static Tracked| {
                                 let tagcase_ = t;

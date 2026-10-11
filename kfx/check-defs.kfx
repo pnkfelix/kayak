@@ -101,7 +101,7 @@
   (lambda (v xs)
     "A define-datatype's name, parameters and variants, whose fields'
      types may name the parameters; no two tags camel-cased alike in Rust."
-   (if (repeated? (map (lambda ((vt sexp)) (camel (tagcase (car (items vt)) (sym (n) n) (else other "")))) (cdr xs)))
+   (if (repeated? (map (lambda ((vt sexp)) (camel (tagcase (car (items vt)) (sym (n at-file at-pos) n) (else other "")))) (cdr xs)))
        (refuse v "two tags of one datatype named alike in Rust (camel-cased)")
     (let ((params (family-params v (car xs))))
       (dt (head-name v (car xs))
@@ -371,10 +371,10 @@
   (lambda (v form)
     "One top-level form, which may add to what the forms after it see."
     (tagcase form
-      (str (x) v)
+      (str (x at-file at-pos) v)
       (lst (xs src-file src-line src-pos)
         (let ((v (near v src-file src-line src-pos))
-              (h (if (null? xs) "" (tagcase (car xs) (sym (n) n) (else other "")))))
+              (h (if (null? xs) "" (tagcase (car xs) (sym (n at-file at-pos) n) (else other "")))))
           (cond ((string=? h "define-effect") (with-effdef v xs))
                 ((string=? h "define-type")
                  "Its body read where it stands, used or not: so that one that
@@ -426,8 +426,8 @@
      (map (lambda ((f sexp))
             (cond ((or (head-is? f "define-type") (head-is? f "define-datatype") (head-is? f "define-generative"))
                    (tagcase (second (items f))
-                     (sym (n) (the strings (list n)))
-                     (lst (ys fl ln ps) (tagcase (car ys) (sym (n) (the strings (list n))) (else other nil)))
+                     (sym (n at-file at-pos) (the strings (list n)))
+                     (lst (ys fl ln ps) (tagcase (car ys) (sym (n at-file at-pos) (the strings (list n))) (else other nil)))
                      (else other nil)))
                   ((module-def? f) (the strings (list (sym-name (second (items f))))))
                   (else nil)))
@@ -453,7 +453,7 @@
     (begin
       (map (lambda ((f sexp))
              (if (or (head-is? f "define-type") (head-is? f "define-datatype") (head-is? f "define-generative"))
-                 (let ((name (tagcase (second (items f)) (sym (n) n) (lst (ys fl ln ps) (tagcase (car ys) (sym (n) n) (else other ""))) (else other ""))))
+                 (let ((name (tagcase (second (items f)) (sym (n at-file at-pos) n) (lst (ys fl ln ps) (tagcase (car ys) (sym (n at-file at-pos) n) (else other ""))) (else other ""))))
                    (if (string-member? (camel name) (list "Str" "List" "Cons" "Int" "Tag" "Unwind" "Ref" "FlatArray" "Knot" "Show"
                                                           "OnceCell" "Fn" "Result" "Ok" "Err" "String" "Copy" "Clone" "Void"
                                                           "Self" "Module"))
@@ -520,7 +520,7 @@
                         (any? (lambda ((vt sexp)) (tag-taken? (sym-name (car (items vt))) (cv-dts v))) (cdr (cdr (items f)))))
                    (refuse v "a module's datatype whose tag another datatype has: KFX's tags name one datatype each"))
                   ((or (head-is? f "define-type") (head-is? f "define-generative") (head-is? f "define-datatype"))
-                   (let ((name (tagcase (second (items f)) (sym (n) n)
+                   (let ((name (tagcase (second (items f)) (sym (n at-file at-pos) n)
                                  (else other (refuse v "a module's type with parameters, which KFX's modules do not have yet")))))
                      (if (dt-named? name (cv-dts v))
                          (refuse v (string-append "a module's type named as the program's: KFX names them apart, " name))
@@ -537,7 +537,7 @@
     (lambda (m names t)
       "A type written in module `m`, its types named as the program names them."
       (tagcase t
-        (sym (n) (if (string-member? n names) (sym (string-append m (string-append ".." n))) t))
+        (sym (n at-file at-pos) (if (string-member? n names) (sym (string-append m (string-append ".." n)) at-file at-pos) t))
         (lst (xs file line pos) (lst (map (lambda ((x sexp)) (qualify-type m names x)) xs) file line pos))
         (else other t)))))
 
@@ -552,7 +552,7 @@
                           (t (sym-name (second xs)))
                           (q (string-append m (string-append ".." t)))
                           (name (if inside t (string-append m (string-append " " t))))
-                          (named (alias name nil (sym q))))
+                          (named (alias name nil (sym q "" 0))))
                      (if (head-is? f "define-type")
                          (the aliases (list named (alias q nil (qualify-type m names (third xs)))))
                          (the aliases (list named)))))))
@@ -670,7 +670,7 @@
                (if (and (head-is? g "define") (i64= (size (items g)) 4))
                    (tagcase g
                      (lst (xs file line pos)
-                       (lst (list (car xs) (second xs) (third xs) (lst (list (sym "%found") (fourth xs)) "" 0 0)) file line pos))
+                       (lst (list (car xs) (second xs) (third xs) (lst (list (sym "%found" "" 0) (fourth xs)) "" 0 0)) file line pos))
                      (else other g))
                    g))
              forms)))))
@@ -679,7 +679,7 @@
   (lambda (f)
     "The names an item defines: values and types."
     (cond ((or (head-is? f "define") (head-is? f "define*") (head-is? f "define-type") (head-is? f "define-generative"))
-           (tagcase (second (items f)) (sym (n) (the strings (list n))) (else other nil)))
+           (tagcase (second (items f)) (sym (n at-file at-pos) (the strings (list n))) (else other nil)))
           ((head-is? f "define-rec") (map (lambda ((b sexp)) (sym-name (car (items b)))) (cdr (items f))))
           (else nil))))
 

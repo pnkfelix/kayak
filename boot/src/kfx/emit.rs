@@ -79,7 +79,7 @@ pub fn ctx_effects(c: &'static Ctx) -> Typeds {
 pub fn fallible_effect_p(c: &'static Ctx, e: &'static Sexp) -> bool {
     let tagcase_ = e;
     match *tagcase_ {
-        Sexp::Sym(n) => {
+        Sexp::Sym(n, at_file, at_pos) => {
             any_p(lambda1(move |x: &'static Typed| {
                 let tagcase_ = x;
                 match *tagcase_ {
@@ -124,52 +124,34 @@ pub fn ctx_fact_p(c: &'static Ctx, file: Str, pos: i64, what: Str) -> bool {
     }
 }
 
-/// Whether the checker found `what` about the list `e`.
+/// Whether the checker found `what` about the datum `e`.
 pub fn fact_at_p(c: &'static Ctx, e: &'static Sexp, what: Str) -> bool {
-    let tagcase_ = e;
-    match *tagcase_ {
-        Sexp::Lst(xs, src_file, src_line, src_pos) => {
-            ctx_fact_p(c, src_file, src_pos, what)
-        }
-        _ => {
-            let other = tagcase_;
-            false
-        }
-    }
+    ctx_fact_p(c, datum_file(e), datum_pos(e), what)
 }
 
-/// What the checker found about the list `e` that begins `prefix`, the
+/// What the checker found about the datum `e` that begins `prefix`, the
 /// rest of it; or ``.
 pub fn fact_with(c: &'static Ctx, e: &'static Sexp, prefix: Str) -> Str {
-    let tagcase_ = e;
+    let tagcase_ = c;
     match *tagcase_ {
-        Sexp::Lst(xs, src_file, src_line, src_pos) => {
-            let tagcase_ = c;
-            match *tagcase_ {
-                Ctx::Ctx(ds, ts, ks, ls, xs2, fs, ms, es, mods) => {
-                    let found = concat(map(lambda1(move |f: &'static Fact| {
-                        let tagcase_ = f;
-                        match *tagcase_ {
-                            Fact::Fact(ff, fp, fw) => {
-                                if (i64_eq(fp, src_pos) && string_eq_p(ff, src_file) && has_prefix_p(fw, prefix)) {
-                                    the::<Strings>(kayak_rt::cons(after_prefix(fw, prefix), kayak_rt::nil()))
-                                } else {
-                                    nil()
-                                }
-                            }
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            let found = concat(map(lambda1(move |f: &'static Fact| {
+                let tagcase_ = f;
+                match *tagcase_ {
+                    Fact::Fact(ff, fp, fw) => {
+                        if (i64_eq(fp, datum_pos(e)) && string_eq_p(ff, datum_file(e)) && has_prefix_p(fw, prefix)) {
+                            the::<Strings>(kayak_rt::cons(after_prefix(fw, prefix), kayak_rt::nil()))
+                        } else {
+                            nil()
                         }
-                    }), fs));
-                    if null_p(found) {
-                        str_lit("")
-                    } else {
-                        car(found)
                     }
                 }
+            }), fs));
+            if null_p(found) {
+                str_lit("")
+            } else {
+                car(found)
             }
-        }
-        _ => {
-            let other = tagcase_;
-            str_lit("")
         }
     }
 }
@@ -357,14 +339,14 @@ pub fn module_items(c: &'static Ctx, m: Str) -> Sexps {
             concat(map(lambda1(move |it: &'static Sexp| {
                 let ys = items(it);
                 if sym_is_p(car(ys), str_lit("val")) {
-                    the::<Sexps>(kayak_rt::cons(lst(kayak_rt::cons(sym(str_lit("define")), kayak_rt::cons(second(ys), kayak_rt::cons(third(ys), kayak_rt::cons(if head_is_p(third(ys), str_lit("subr")) {
-                        lst(kayak_rt::cons(sym(str_lit("lambda")), kayak_rt::nil()), str_lit(""), 0i64, 0i64)
+                    the::<Sexps>(kayak_rt::cons(lst(kayak_rt::cons(sym(str_lit("define"), str_lit(""), 0i64), kayak_rt::cons(second(ys), kayak_rt::cons(third(ys), kayak_rt::cons(if head_is_p(third(ys), str_lit("subr")) {
+                        lst(kayak_rt::cons(sym(str_lit("lambda"), str_lit(""), 0i64), kayak_rt::nil()), str_lit(""), 0i64, 0i64)
                     } else {
-                        sym(str_lit("#u"))
+                        sym(str_lit("#u"), str_lit(""), 0i64)
                     }, kayak_rt::nil())))), str_lit(""), 0i64, 0i64), kayak_rt::nil()))
                 } else if sym_is_p(car(ys), str_lit("abs")) {
                     map(lambda1(move |t: &'static Sexp| {
-                        lst(kayak_rt::cons(sym(str_lit("define-type")), kayak_rt::cons(t, kayak_rt::cons(sym(str_lit("i64")), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
+                        lst(kayak_rt::cons(sym(str_lit("define-type"), str_lit(""), 0i64), kayak_rt::cons(t, kayak_rt::cons(sym(str_lit("i64"), str_lit(""), 0i64), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
                     }), {
                         let tagcase_ = second(ys);
                         match *tagcase_ {
@@ -821,7 +803,7 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
     loop {
         let tagcase_ = t;
         match *tagcase_ {
-            Sexp::Sym(s) => {
+            Sexp::Sym(s, at_file, at_pos) => {
                 if string_eq_p(s, str_lit("i64")) {
                     return put(str_lit("i64"), acc);
                 } else if string_eq_p(s, str_lit("int")) {
@@ -895,7 +877,7 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
                 } else if {
                     let tagcase_ = car(xs);
                     match *tagcase_ {
-                        Sexp::Sym(n) => {
+                        Sexp::Sym(n, at_file, at_pos) => {
                             not(null_p(find_family_of(c, n)))
                         }
                         _ => {
@@ -1093,7 +1075,7 @@ pub fn put_comment(mut cs: Chars, mut prefix: Str, mut n: i64, mut fresh: bool, 
 pub fn comment_p(e: &'static Sexp) -> bool {
     let tagcase_ = e;
     match *tagcase_ {
-        Sexp::Str(s) => {
+        Sexp::Str(s, at_file, at_pos) => {
             true
         }
         _ => {
@@ -1106,7 +1088,7 @@ pub fn comment_p(e: &'static Sexp) -> bool {
 pub fn comment_text(e: &'static Sexp) -> Str {
     let tagcase_ = e;
     match *tagcase_ {
-        Sexp::Str(s) => {
+        Sexp::Str(s, at_file, at_pos) => {
             s
         }
         _ => {
@@ -1219,7 +1201,7 @@ pub fn map2_params(params: Sexps, types: Sexps) -> Sexps {
         cons({
             let tagcase_ = car(params);
             match *tagcase_ {
-                Sexp::Sym(n) => {
+                Sexp::Sym(n, at_file, at_pos) => {
                     lst(kayak_rt::cons(car(params), kayak_rt::cons(car(types), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
                 }
                 _ => {
@@ -1251,7 +1233,7 @@ pub fn typed_lambda(lam: &'static Sexp, typ: &'static Sexp) -> &'static Sexp {
 pub fn module_name_p(c: &'static Ctx, x: &'static Sexp) -> bool {
     let tagcase_ = x;
     match *tagcase_ {
-        Sexp::Sym(n) => {
+        Sexp::Sym(n, at_file, at_pos) => {
             (string_eq_p(local_kind(n, ctx_locals(c)), str_lit("")) && not(null_p(module_body(c, n))))
         }
         _ => {
@@ -1419,7 +1401,7 @@ pub fn tag_arms_tail_calls_p(t: &'static Tail, arms: Sexps) -> bool {
         let bound = if (sym_is_p(car(arm), str_lit("else")) || {
             let tagcase_ = second(arm);
             match *tagcase_ {
-                Sexp::Sym(x) => {
+                Sexp::Sym(x, at_file, at_pos) => {
                     true
                 }
                 _ => {
@@ -1508,10 +1490,10 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
                     put(str_lit("\")"), put(text, put(str_lit("int_text(\""), acc)))
                 }
             }
-            Sexp::Chr(ch) => {
+            Sexp::Chr(ch, at_file, at_pos) => {
                 put(str_lit("'"), put_escaped(kayak_rt::cons(ch, kayak_rt::nil()), '\'', put(str_lit("'"), acc)))
             }
-            Sexp::Real(x) => {
+            Sexp::Real(x, at_file, at_pos) => {
                 // As Rust writes a double: a digit after the point (`1.` is `1.0`).
                 put(str_lit("f64"), if char_eq_p(last(string_chars(x)), '.') {
                     put(str_lit("0"), put(x, acc))
@@ -1519,10 +1501,10 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
                     put(x, acc)
                 })
             }
-            Sexp::Str(s) => {
+            Sexp::Str(s, at_file, at_pos) => {
                 put(str_lit("\")"), put_escaped(string_chars(s), '"', put(str_lit("str_lit(\""), acc)))
             }
-            Sexp::Sym(s) => {
+            Sexp::Sym(s, at_file, at_pos) => {
                 put_var(c, s, acc)
             }
             Sexp::Lst(xs, src_file, src_line, src_pos) => {
@@ -1543,7 +1525,7 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
 pub fn put_call(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
     let tagcase_ = car(xs);
     match *tagcase_ {
-        Sexp::Sym(h) => {
+        Sexp::Sym(h, at_file, at_pos) => {
             put_form(c, e, h, cdr(xs), n, t, acc)
         }
         _ => {
@@ -1756,7 +1738,7 @@ pub fn put_tagcase_arms(c: &'static Ctx, sum: Str, arms: Sexps, n: i64, t: &'sta
         let whole_p = {
             let tagcase_ = second(arm);
             match *tagcase_ {
-                Sexp::Sym(x) => {
+                Sexp::Sym(x, at_file, at_pos) => {
                     true
                 }
                 _ => {

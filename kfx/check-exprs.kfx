@@ -28,26 +28,26 @@
       "A type as written: for the emitter, which reads no effects, so a
        procedure's is written `pure`."
       (tagcase (walk s t)
-        (ty-i64 () (sym "i64"))
-        (ty-int () (sym "int"))
-        (ty-nat () (sym "nat"))
-        (ty-f64 () (sym "f64"))
-        (ty-bool () (sym "bool"))
-        (ty-char () (sym "char"))
-        (ty-unit () (sym "unit"))
-        (ty-string () (sym "string"))
-        (ty-void () (sym "void"))
-        (ty-list (e r) (lst (list (sym "listof") (ty-sexp v s e) (ty-sexp v s r)) "" 0 0))
+        (ty-i64 () (sym "i64" "" 0))
+        (ty-int () (sym "int" "" 0))
+        (ty-nat () (sym "nat" "" 0))
+        (ty-f64 () (sym "f64" "" 0))
+        (ty-bool () (sym "bool" "" 0))
+        (ty-char () (sym "char" "" 0))
+        (ty-unit () (sym "unit" "" 0))
+        (ty-string () (sym "string" "" 0))
+        (ty-void () (sym "void" "" 0))
+        (ty-list (e r) (lst (list (sym "listof" "" 0) (ty-sexp v s e) (ty-sexp v s r)) "" 0 0))
         (ty-data (d args)
-          (if (null? args) (sym d) (lst (cons (sym d) (map (lambda ((x ty)) (ty-sexp v s x)) args)) "" 0 0)))
-        (ty-flat (e r) (lst (list (sym "flatarrayof") (ty-sexp v s e) (ty-sexp v s r)) "" 0 0))
+          (if (null? args) (sym d "" 0) (lst (cons (sym d "" 0) (map (lambda ((x ty)) (ty-sexp v s x)) args)) "" 0 0)))
+        (ty-flat (e r) (lst (list (sym "flatarrayof" "" 0) (ty-sexp v s e) (ty-sexp v s r)) "" 0 0))
         (ty-shape (p ls ts)
-          (lst (cons (sym (if p "productof" "sumof")) (fields-sexp v s ls ts)) "" 0 0))
-        (ty-tag (a h d r) (lst (list (sym "prompt-tag") (ty-sexp v s a) (ty-sexp v s h) (sym "pure") (ty-sexp v s r)) "" 0 0))
-        (ty-ref (e r) (lst (list (sym "ref") (ty-sexp v s e) (ty-sexp v s r)) "" 0 0))
-        (ty-rconst (n) (sym n))
+          (lst (cons (sym (if p "productof" "sumof") "" 0) (fields-sexp v s ls ts)) "" 0 0))
+        (ty-tag (a h d r) (lst (list (sym "prompt-tag" "" 0) (ty-sexp v s a) (ty-sexp v s h) (sym "pure" "" 0) (ty-sexp v s r)) "" 0 0))
+        (ty-ref (e r) (lst (list (sym "ref" "" 0) (ty-sexp v s e) (ty-sexp v s r)) "" 0 0))
+        (ty-rconst (n) (sym n "" 0))
         (ty-proc (es ps r)
-          (lst (list (sym "subr") (if (escapes? es) (lst (list (sym "goto") (sym "@escape")) "" 0 0) (sym "pure"))
+          (lst (list (sym "subr" "" 0) (if (escapes? es) (lst (list (sym "goto" "" 0) (sym "@escape" "" 0)) "" 0 0) (sym "pure" "" 0))
                      (lst (map (lambda ((p ty)) (ty-sexp v s p)) ps) "" 0 0) (ty-sexp v s r)) "" 0 0))
         (ty-var (n) (refuse v (string-append "a definition with no type, of a type over " (string-append n ": write its type"))))
         (ty-meta (k) (refuse v "a definition with no type, whose type is not known whole: write it")))))
@@ -55,7 +55,7 @@
     (lambda (v s ls ts)
       (if (or (null? ls) (null? ts))
           nil
-          (cons (lst (list (sym (car ls)) (ty-sexp v s (car ts))) "" 0 0) (fields-sexp v s (cdr ls) (cdr ts)))))))
+          (cons (lst (list (sym (car ls) "" 0) (ty-sexp v s (car ts))) "" 0 0) (fields-sexp v s (cdr ls) (cdr ts)))))))
 
 (define-rec
   (member-type (subr kfx (string strings tys) ty)
@@ -71,7 +71,7 @@
         (if (or (sym-is? (car xs) "else") (null? (cdr xs)))
             arm
             (tagcase (second xs)
-              (sym (x) (lst (cons (car xs) (cons (lst (list (second xs)) "" 0 0) (cdr (cdr xs)))) file line pos))
+              (sym (x at-file at-pos) (lst (cons (car xs) (cons (lst (list (second xs)) "" 0 0) (cdr (cdr xs)))) file line pos))
               (else other arm))))
       (else other arm))))
 
@@ -109,7 +109,7 @@
   (lambda (spec)
     (concat (map (lambda ((a sexps))
                    (tagcase (second a)
-                     (sym (n) (the strings (list n)))
+                     (sym (n at-file at-pos) (the strings (list n)))
                      (lst (ns f l p) (map sym-name ns))
                      (else other nil)))
                  (spec-items spec "abs")))))
@@ -127,7 +127,7 @@
               (onto (map (lambda ((t string)) (dt (string-append (if (string=? m "") "%abstract" m) (string-append ".." t)) nil nil)) abs) ds)
               (onto (map (lambda ((t string))
                            (alias t nil (sym (cond ((not (string=? actual "")) (string-append actual (string-append " " t)))
-                                                   (else (string-append (if (string=? m "") "%abstract" m) (string-append ".." t)))))))
+                                                   (else (string-append (if (string=? m "") "%abstract" m) (string-append ".." t)))) "" 0)))
                          abs)
                     (onto (map (lambda ((d sexps)) (alias (sym-name (second d)) nil (third d))) (spec-items spec "desc"))
                           als))
@@ -142,10 +142,10 @@
              (let ((ys (items x)))
                (cond ((and (sym-is? (car ys) "abs") (i64= (size ys) 3) (sym-is? (third ys) "type")
                            (not (any? (lambda ((n string)) (or (string=? (camel n) "Self") (string=? (camel n) "Module")))
-                                      (tagcase (second ys) (sym (n) (list n)) (lst (ns f l p) (map sym-name ns)) (else other nil)))))
+                                      (tagcase (second ys) (sym (n at-file at-pos) (list n)) (lst (ns f l p) (map sym-name ns)) (else other nil)))))
                       #u)
                      ((and (or (sym-is? (car ys) "desc") (sym-is? (car ys) "val")) (i64= (size ys) 3)
-                           (tagcase (second ys) (sym (n) #t) (else other #f)))
+                           (tagcase (second ys) (sym (n at-file at-pos) #t) (else other #f)))
                       #u)
                      (else (refuse v (string-append "a module type's item KFX does not have: " (show-sexp x)))))))
            (cdr (items spec)))
@@ -209,7 +209,7 @@
                (let ((mine (string-append m (string-append " " (sym-name (second d))))))
                  (if (null? (find-alias mine (cv-aliases v)))
                      (refuse v (string-append m (string-append " gives no type " (sym-name (second d)))))
-                     (let ((a (parse-type v nil (sym mine))) (b (parse-type w nil (third d))))
+                     (let ((a (parse-type v nil (sym mine "" 0))) (b (parse-type w nil (third d))))
                        (begin (fits v (fits v s a b) b a) #u)))))
              (spec-items spec "desc"))
         (note-fact
@@ -248,7 +248,7 @@
           s
           (lifted-args v
             (tagcase (car args)
-              (sym (n)
+              (sym (n at-file at-pos)
                 (let ((found (find-bind n (cv-binds v))))
                   (if (null? found)
                       s
@@ -409,11 +409,11 @@
     "Whether `xs` are literals a case on a `kind` compares with."
     (not (any? (lambda ((x sexp))
                  (not (tagcase x
-                        (chr (c) (string=? kind "char"))
+                        (chr (c at-file at-pos) (string=? kind "char"))
                         (num (k text pos) (string=? kind "int"))
                         (big (text f p) (string=? kind "int"))
-                        (str (t) (string=? kind "string"))
-                        (sym (n) (and (string=? kind "bool") (or (string=? n "#t") (string=? n "#f"))))
+                        (str (t at-file at-pos) (string=? kind "string"))
+                        (sym (n at-file at-pos) (and (string=? kind "bool") (or (string=? n "#t") (string=? n "#f"))))
                         (else other #f))))
                xs))))
 
@@ -430,15 +430,15 @@
   (lambda (d)
     "A case datum, as a key that two data equal share."
     (tagcase d
-      (chr (c) (string-append "c" (char->string c)))
+      (chr (c at-file at-pos) (string-append "c" (char->string c)))
       (num (k f p) (string-append "n" (i64->string k)))
       (big (text f p) (string-append "b" (list->string (big-digits (string-chars text)))))
-      (str (x) (string-append "s" x))
-      (sym (n) (string-append "y" n))
+      (str (x at-file at-pos) (string-append "s" x))
+      (sym (n at-file at-pos) (string-append "y" n))
       (else other "?"))))
 
 (define all-chars? (subr kfx (sexps) bool)
-  (lambda (xs) (not (any? (lambda ((x sexp)) (tagcase x (chr (c) #f) (else other #t))) xs))))
+  (lambda (xs) (not (any? (lambda ((x sexp)) (tagcase x (chr (c at-file at-pos) #f) (else other #t))) xs))))
 
 (define bind-fields (subr kfx (cv sexps tys) binds)
   (lambda (v names types)
@@ -495,14 +495,14 @@
       (tagcase e
         (num (k num-file num-pos) (res (ty-int) nil (note-fact s num-file num-pos "int")))
         (big (text f p) (res (ty-int) nil s))
-        (chr (c) (res (ty-char) nil s))
-        (real (x) (res (ty-f64) nil s))
-        (str (x) (res (ty-string) nil s))
-        (sym (name) (synth-name v s name))
+        (chr (c at-file at-pos) (res (ty-char) nil s))
+        (real (x at-file at-pos) (res (ty-f64) nil s))
+        (str (x at-file at-pos) (res (ty-string) nil s))
+        (sym (name at-file at-pos) (synth-name v s name))
         (lst (xs src-file src-line src-pos)
           (let ((v (near v src-file src-line src-pos)))
             (tagcase (car xs)
-              (sym (h) (synth-form v s e h (cdr xs)))
+              (sym (h at-file at-pos) (synth-form v s e h (cdr xs)))
               (else head (void-call v #f #f (synth-call-of v s (synth v s head) (cdr xs) nil nil (list "spin"))))))))))
 
   (synth-name (subr kfx (cv st string) res)
@@ -567,9 +567,9 @@
           (lst (xs src-file src-line src-pos)
             (let ((v (near v src-file src-line src-pos)))
               (tagcase (car xs)
-                (sym (h) (check-form v s e h (cdr xs) x))
+                (sym (h at-file at-pos) (check-form v s e h (cdr xs) x))
                 (else other (check-by-synth v s e x)))))
-          (sym (name)
+          (sym (name at-file at-pos)
             (if (string=? name "nil")
                 (tagcase x
                   (ty-list (el r) (res x nil s))
@@ -595,7 +595,7 @@
     (lambda (v s e)
       "An expression whose value is dropped: a string is a comment."
       (tagcase e
-        (str (x) (res (ty-unit) nil s))
+        (str (x at-file at-pos) (res (ty-unit) nil s))
         (else other (synth v s e)))))
 
   (synth-form (subr kfx (cv st sexp string sexps) res)
@@ -609,10 +609,10 @@
              "A definition's value in a module that includes another: found by
               itself, through a `the` too, as FX-26 finds it."
              (let ((x (car xs)))
-               (cond ((tagcase x (sym (n) (string=? n "nil")) (else other #f))
+               (cond ((tagcase x (sym (n at-file at-pos) (string=? n "nil")) (else other #f))
                       (refuse v "a nil, in a module that includes another, where FX-26 finds a poly list"))
                      ((head-is? x "the")
-                      (tagcase (synth v s (lst (list (sym "%found") (third (items x))) "" 0 0))
+                      (tagcase (synth v s (lst (list (sym "%found" "" 0) (third (items x))) "" 0 0))
                         (res (t es s) (let ((want (parse-type v (cv-tvars v) (second (items x)))))
                                         (res want es (fits v s t want))))))
                      (else (tagcase (synth v s x) (res (t es s) (res t es (freshened s t))))))))
@@ -1161,7 +1161,7 @@
     (lambda (v s arg t)
       "A module given for a module parameter: one defined at the top level, by
        its name, read as a global is."
-      (let ((name (tagcase arg (sym (n) n) (else other ""))))
+      (let ((name (tagcase arg (sym (n at-file at-pos) n) (else other ""))))
         (if (or (string=? name "")
                 (null? (find-bind name (cv-binds v)))
                 (not (tagcase (car (find-bind name (cv-binds v))) (bind (n sc wher) (string=? wher "module")))))

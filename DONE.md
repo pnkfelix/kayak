@@ -893,3 +893,13 @@ The user's: a Rust keyword (and `self`, `super`, `crate`, `union`, `raw`,
 wherever bound (C27's addendum). The compiler's own `as`, `where` and
 `type` are `als`, `wher`, `typ`; `tests/kfx/names` names no keyword, and
 `kfx-stricter/rust-keyword` and `self-name` show the refusal.
+
+## Every datum has a place (2026-10-11)
+
+The user's: each `sexp`, not only a list or an integer literal, carries
+the file it was read from and its offset there (`sym`, `str`, `chr` and
+`real` gain them; one the compiler makes has ``, 0). `datum-file` and
+`datum-pos` read them, and the emitter's `fact-at?` and `fact-with` find
+the checker's facts about any datum, a name too: for what the checker
+learns about a name's use (a poly value's type arguments, a global
+procedure shown at the top level), which waited on it.

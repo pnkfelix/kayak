@@ -51,7 +51,7 @@ pub fn datatype_of(v: &'static Cv, xs: Sexps) -> &'static Dt {
         camel({
             let tagcase_ = car(items(vt));
             match *tagcase_ {
-                Sexp::Sym(n) => {
+                Sexp::Sym(n, at_file, at_pos) => {
                     n
                 }
                 _ => {
@@ -515,7 +515,7 @@ pub fn check_define_star(v: &'static Cv, xs: Sexps) -> &'static Cv {
 pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
     let tagcase_ = form;
     match *tagcase_ {
-        Sexp::Str(x) => {
+        Sexp::Str(x, at_file, at_pos) => {
             v
         }
         Sexp::Lst(xs, src_file, src_line, src_pos) => {
@@ -524,7 +524,7 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
             } else {
                 let tagcase_ = car(xs);
                 match *tagcase_ {
-                    Sexp::Sym(n) => {
+                    Sexp::Sym(n, at_file, at_pos) => {
                         n
                     }
                     _ => {
@@ -625,13 +625,13 @@ pub fn type_level_names(forms: Sexps) -> Strings {
         if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-datatype")) || head_is_p(f, str_lit("define-generative"))) {
             let tagcase_ = second(items(f));
             match *tagcase_ {
-                Sexp::Sym(n) => {
+                Sexp::Sym(n, at_file, at_pos) => {
                     the::<Strings>(kayak_rt::cons(n, kayak_rt::nil()))
                 }
                 Sexp::Lst(ys, fl, ln, ps) => {
                     let tagcase_ = car(ys);
                     match *tagcase_ {
-                        Sexp::Sym(n) => {
+                        Sexp::Sym(n, at_file, at_pos) => {
                             the::<Strings>(kayak_rt::cons(n, kayak_rt::nil()))
                         }
                         _ => {
@@ -679,13 +679,13 @@ pub fn type_names_free(v: &'static Cv, forms: Sexps) -> () {
             let name = {
                 let tagcase_ = second(items(f));
                 match *tagcase_ {
-                    Sexp::Sym(n) => {
+                    Sexp::Sym(n, at_file, at_pos) => {
                         n
                     }
                     Sexp::Lst(ys, fl, ln, ps) => {
                         let tagcase_ = car(ys);
                         match *tagcase_ {
-                            Sexp::Sym(n) => {
+                            Sexp::Sym(n, at_file, at_pos) => {
                                 n
                             }
                             _ => {
@@ -807,7 +807,7 @@ pub fn module_types(mut v: &'static Cv, mut forms: Sexps) -> Strings {
                 let name = {
                     let tagcase_ = second(items(f));
                     match *tagcase_ {
-                        Sexp::Sym(n) => {
+                        Sexp::Sym(n, at_file, at_pos) => {
                             n
                         }
                         _ => {
@@ -837,9 +837,9 @@ pub fn module_types(mut v: &'static Cv, mut forms: Sexps) -> Strings {
 pub fn qualify_type(m: Str, names: Strings, t: &'static Sexp) -> &'static Sexp {
     let tagcase_ = t;
     match *tagcase_ {
-        Sexp::Sym(n) => {
+        Sexp::Sym(n, at_file, at_pos) => {
             if string_member_p(n, names) {
-                sym(string_append(m, string_append(str_lit(".."), n)))
+                sym(string_append(m, string_append(str_lit(".."), n)), at_file, at_pos)
             } else {
                 t
             }
@@ -870,7 +870,7 @@ pub fn module_aliases(m: Str, names: Strings, forms: Sexps, inside: bool) -> Ali
             } else {
                 string_append(m, string_append(str_lit(" "), t))
             };
-            let named = alias(name, nil(), sym(q));
+            let named = alias(name, nil(), sym(q, str_lit(""), 0i64));
             if head_is_p(f, str_lit("define-type")) {
                 the::<Aliases>(kayak_rt::cons(named, kayak_rt::cons(alias(q, nil(), qualify_type(m, names, third(xs))), kayak_rt::nil())))
             } else {
@@ -1050,7 +1050,7 @@ pub fn found_alone(forms: Sexps) -> Sexps {
                     let tagcase_ = g;
                     match *tagcase_ {
                         Sexp::Lst(xs, file, line, pos) => {
-                            lst(kayak_rt::cons(car(xs), kayak_rt::cons(second(xs), kayak_rt::cons(third(xs), kayak_rt::cons(lst(kayak_rt::cons(sym(str_lit("%found")), kayak_rt::cons(fourth(xs), kayak_rt::nil())), str_lit(""), 0i64, 0i64), kayak_rt::nil())))), file, line, pos)
+                            lst(kayak_rt::cons(car(xs), kayak_rt::cons(second(xs), kayak_rt::cons(third(xs), kayak_rt::cons(lst(kayak_rt::cons(sym(str_lit("%found"), str_lit(""), 0i64), kayak_rt::cons(fourth(xs), kayak_rt::nil())), str_lit(""), 0i64, 0i64), kayak_rt::nil())))), file, line, pos)
                         }
                         _ => {
                             let other = tagcase_;
@@ -1070,7 +1070,7 @@ pub fn item_names(f: &'static Sexp) -> Strings {
     if (head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*")) || head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative"))) {
         let tagcase_ = second(items(f));
         match *tagcase_ {
-            Sexp::Sym(n) => {
+            Sexp::Sym(n, at_file, at_pos) => {
                 the::<Strings>(kayak_rt::cons(n, kayak_rt::nil()))
             }
             _ => {
