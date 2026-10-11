@@ -2451,12 +2451,26 @@ pub fn literal_of(e: &'static Sexp) -> I64s {
     }
 }
 
+/// Whether `o + k` is past an i64, where FX-26's `checked_add` gives up.
+pub fn overflows_p(o: i64, k: i64) -> bool {
+    if i64_gt(k, 0i64) {
+        i64_gt(o, i64_minus(9223372036854775807i64, k))
+    } else {
+        i64_lt(o, i64_minus(-9223372036854775808i64, k))
+    }
+}
+
+/// Each integer known, `k` more; one that would overflow known no longer.
 pub fn shifted(ts: Trackeds, k: i64) -> Trackeds {
     concat(map(lambda1(move |t: &'static Tracked| {
         let tagcase_ = t;
         match *tagcase_ {
             Tracked::IntOf(p, o) => {
-                the::<Trackeds>(cons(int_of(p, i64_plus(o, k)), nil()))
+                if overflows_p(o, k) {
+                    nil()
+                } else {
+                    the::<Trackeds>(cons(int_of(p, i64_plus(o, k)), nil()))
+                }
             }
             _ => {
                 let other = tagcase_;
@@ -2530,11 +2544,13 @@ pub fn tracked_of(mut c: &'static Wc, mut e: &'static Sexp) -> Trackeds {
                 } else if ((string_eq_p(op, str_lit("+")) || string_eq_p(op, str_lit("-"))) && i64_eq(size(xs), 3i64)) {
                     let (a, b) = (second(xs), third(xs));
                     if not(null_p(literal_of(b))) {
-                        return shifted(tracked_of(c, a), if string_eq_p(op, str_lit("+")) {
-                            car(literal_of(b))
+                        if string_eq_p(op, str_lit("+")) {
+                            return shifted(tracked_of(c, a), car(literal_of(b)));
+                        } else if i64_eq(car(literal_of(b)), -9223372036854775808i64) {
+                            return nil();
                         } else {
-                            i64_minus(0i64, car(literal_of(b)))
-                        });
+                            return shifted(tracked_of(c, a), i64_minus(0i64, car(literal_of(b))));
+                        }
                     } else if (string_eq_p(op, str_lit("+")) && not(null_p(literal_of(a)))) {
                         return shifted(tracked_of(c, b), car(literal_of(a)));
                     } else {
@@ -5027,15 +5043,17 @@ pub fn variants_dt(v: &'static Cv, d: Str) -> List<&'static Dt> {
     }
 }
 
-/// A define-rec's members, one by one, each one's facts kept.
-pub fn check_members(mut v: &'static Cv, mut bindings: Sexps, mut names: Strings) -> &'static Cv {
+/// A define-rec's members, one by one, each one's facts kept: `group`,
+/// those whose calls are recursion (none if the group ends); `names`, all
+/// of them, whose reading is reaching itself, ending or not.
+pub fn check_members(mut v: &'static Cv, mut bindings: Sexps, mut group: Strings, mut names: Strings) -> &'static Cv {
     loop {
         if null_p(bindings) {
             return v;
         } else {
             let ys = items(car(bindings));
             if procedure_p(third(ys)) {
-                (v, bindings) = (check_procedure(no_reaching_itself(at(v, name_of(v, car(ys)), names), names, parse_scheme(v, second(ys))), third(ys), parse_scheme(v, second(ys))), cdr(bindings));
+                (v, bindings) = (check_procedure(no_reaching_itself(at(v, name_of(v, car(ys)), group), names, parse_scheme(v, second(ys))), third(ys), parse_scheme(v, second(ys))), cdr(bindings));
                 continue;
             } else {
                 return refuse(v, str_lit("a define-rec binds only lambdas"));
@@ -5067,7 +5085,7 @@ pub fn check_rec(v: &'static Cv, bindings: Sexps) -> &'static Cv {
         nil()
     } else {
         names
-    })
+    }, names)
 }
 
 pub fn global_reads(mut es: Strings) -> Strings {

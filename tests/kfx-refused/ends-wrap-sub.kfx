@@ -1,0 +1,4 @@
+"An offset past an i64 is no offset: 0 - i64::MIN counts up, not down, and FX-26 knows nothing of it."
+(define-effect kfx (maxeff (read @globals) spin))
+(define g (subr pure (int) int)
+  (lambda (n) (letrec ((f (subr pure (int) int) (lambda (n) (if (> n 0) (f (- n -9223372036854775808)) 0)))) (f n))))

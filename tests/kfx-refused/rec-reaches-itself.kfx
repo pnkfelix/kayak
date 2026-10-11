@@ -1,0 +1,4 @@
+"A define-rec that ends still reads itself: its type must say spin."
+(define-effect kfx (maxeff (read @globals) spin))
+(define limit i64 10)
+(define-rec (f (subr (read (globals f)) (int) int) (lambda (n) (if (> n 0) (f (- n 1)) 0))))

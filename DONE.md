@@ -635,3 +635,17 @@ character's and a boolean's data its patterns, an int's or a string's
 compared in a guard (`case_ if _eq(case_, int_lit(0)) => ...`). Not on
 `i64`, whose comparison with FX-26's literals is not clear.
 `tests/kfx/cases.kfx`.
+
+## Two K1 holes an adversarial probe found (2026-10-11)
+
+A probe of about 200 small programs, each run through `kfx` and Fixpt,
+found two holes in what had just been built:
+- termination's integer offsets wrapped (`0 - i64::MIN`, `MAX + MAX`),
+  making a count up look like one down; now, as FX-26's `checked_add`, an
+  offset that would overflow is no longer known (`kfx-refused/ends-wrap-*`);
+- a `define-rec` group proved to end skipped the rule that a global
+  reading itself says `spin`, since one list stood for both; now two
+  (`kfx-refused/rec-reaches-itself*`).
+It also found Rust that does not compile, for programs both accept:
+an abort with no prompt around it in its function, and a lambda applied
+on the spot that aborts (`TODO.md` §16).

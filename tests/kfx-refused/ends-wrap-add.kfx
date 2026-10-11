@@ -1,0 +1,4 @@
+"Two offsets whose sum is past an i64: FX-26 knows nothing of it, and nor does KFX."
+(define-effect kfx (maxeff (read @globals) spin))
+(define g (subr pure (int) int)
+  (lambda (n) (letrec ((f (subr pure (int) int) (lambda (n) (if (> n 0) (f (+ (+ n 9223372036854775807) 9223372036854775807)) 0)))) (f n))))

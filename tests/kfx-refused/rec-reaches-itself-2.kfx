@@ -1,0 +1,4 @@
+"A member that reads itself, beside one that ends: spin, still."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-rec (f (subr (read (globals f)) (int) int) (lambda (n) (if (> n 0) (f (- n 1)) 0)))
+              (g (subr pure () int) (lambda () 1)))

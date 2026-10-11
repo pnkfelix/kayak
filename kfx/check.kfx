@@ -1076,10 +1076,20 @@
 (define literal-of (subr kfx (sexp) i64s)
   (lambda (e) (tagcase e (num (k text pos) (the i64s (list k))) (else other nil))))
 
+(define overflows? (subr kfx (i64 i64) bool)
+  (lambda (o k)
+    "Whether `o + k` is past an i64, where FX-26's `checked_add` gives up."
+    (if (i64> k 0)
+        (i64> o (i64- 9223372036854775807 k))
+        (i64< o (i64- -9223372036854775808 k)))))
+
 (define shifted (subr kfx (trackeds i64) trackeds)
   (lambda (ts k)
+    "Each integer known, `k` more; one that would overflow known no longer."
     (concat (map (lambda ((t tracked))
-                   (tagcase t (int-of (p o) (the trackeds (list (int-of p (i64+ o k))))) (else other nil)))
+                   (tagcase t
+                     (int-of (p o) (if (overflows? o k) nil (the trackeds (list (int-of p (i64+ o k))))))
+                     (else other nil)))
                  ts))))
 
 (define-rec
@@ -1110,7 +1120,9 @@
                   ((and (or (string=? op "+") (string=? op "-")) (i64= (size xs) 3))
                    (let ((a (second xs)) (b (third xs)))
                      (cond ((not (null? (literal-of b)))
-                            (shifted (tracked-of c a) (if (string=? op "+") (car (literal-of b)) (i64- 0 (car (literal-of b))))))
+                            (cond ((string=? op "+") (shifted (tracked-of c a) (car (literal-of b))))
+                                  ((i64= (car (literal-of b)) -9223372036854775808) nil)
+                                  (else (shifted (tracked-of c a) (i64- 0 (car (literal-of b)))))))
                            ((and (string=? op "+") (not (null? (literal-of a))))
                             (shifted (tracked-of c b) (car (literal-of a))))
                            (else nil))))
@@ -2451,17 +2463,19 @@
           (refuse v (string-append "no datatype is named " d))
           (find-family d (cv-dts v))))))
 
-(define check-members (subr kfx (cv sexps strings) cv)
-  (lambda (v bindings names)
-    "A define-rec's members, one by one, each one's facts kept."
+(define check-members (subr kfx (cv sexps strings strings) cv)
+  (lambda (v bindings group names)
+    "A define-rec's members, one by one, each one's facts kept: `group`,
+     those whose calls are recursion (none if the group ends); `names`, all
+     of them, whose reading is reaching itself, ending or not."
     (if (null? bindings)
         v
         (let ((ys (items (car bindings))))
           (if (procedure? (third ys))
-              (check-members (check-procedure (no-reaching-itself (at v (name-of v (car ys)) names) names (parse-scheme v (second ys)))
+              (check-members (check-procedure (no-reaching-itself (at v (name-of v (car ys)) group) names (parse-scheme v (second ys)))
                                               (third ys)
                                               (parse-scheme v (second ys)))
-                             (cdr bindings) names)
+                             (cdr bindings) group names)
               (refuse v "a define-rec binds only lambdas"))))))
 
 (define check-rec (subr kfx (cv sexps) cv)
@@ -2474,7 +2488,7 @@
                                        (let ((ys (items b)))
                                          (global v (name-of v (car ys)) (parse-scheme v (second ys)))))
                                      bindings))))
-      (check-members named bindings (if ends nil names)))))
+      (check-members named bindings (if ends nil names) names))))
 
 (define global-reads (subr kfx (strings) strings)
   (lambda (es)
