@@ -1277,6 +1277,32 @@ pub fn lambda_params_typed(c: &'static Ctx, e: &'static Sexp, params: Sexps) -> 
     }
 }
 
+pub fn put_arg_names(mut i: i64, mut n: i64, mut acc: Chars) -> Chars {
+    loop {
+        if i64_lt(i, n) {
+            (i, acc) = (i64_plus(i, 1i64), put(i64_to_string(i), put(if i64_eq(i, 0i64) {
+                str_lit("a")
+            } else {
+                str_lit(", a")
+            }, acc)));
+            continue;
+        } else {
+            return acc;
+        }
+    }
+}
+
+/// The arity of the argument `i` of the call `e` the checker found must be
+/// lifted to return a `Result`; or -1.
+pub fn lifted_arity(c: &'static Ctx, e: &'static Sexp, i: i64) -> i64 {
+    let found = fact_with(c, e, string_append(str_lit("lift-arg "), string_append(i64_to_string(i), str_lit(" "))));
+    if string_eq_p(found, str_lit("")) {
+        -1i64
+    } else {
+        i64_minus(0i64, digits_value(string_chars(found), 0i64, str_lit(""), 0i64))
+    }
+}
+
 /// An abort: `return Err(...)` in Rust, so no value to return or wrap.
 pub fn abort_p(c: &'static Ctx, e: &'static Sexp) -> bool {
     (head_is_p(e, str_lit("abort-current-continuation")) && string_eq_p(local_kind(str_lit("abort-current-continuation"), ctx_locals(c)), str_lit("")))
@@ -1964,7 +1990,35 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
         }), xs)), str_lit(", "), n, acc);
         put_question(c, e, put(str_lit(")"), acc))
     } else {
-        put_question(c, e, put(str_lit(")"), put_joined(c, xs, str_lit(", "), n, put(str_lit("("), put(callee(c, h), acc)))))
+        put_question(c, e, put(str_lit(")"), put_args(c, e, xs, 0i64, n, put(str_lit("("), put(callee(c, h), acc)))))
+    }
+}
+
+/// A call's arguments; one the checker found must be lifted, a procedure
+/// that cannot abort given where one that may is expected, wrapped in a
+/// closure returning `Ok`.
+pub fn put_args(c: &'static Ctx, e: &'static Sexp, xs: Sexps, i: i64, n: i64, acc: Chars) -> Chars {
+    if null_p(xs) {
+        acc
+    } else {
+        let lift = lifted_arity(c, e, i);
+        let acc = if i64_lt(lift, 0i64) {
+            put_exp(c, car(xs), n, value(), acc)
+        } else {
+            let acc = put(i64_to_string(lift), put(str_lit("lambda"), acc));
+            let acc = put(str_lit("(move |"), acc);
+            let acc = put_arg_names(0i64, lift, acc);
+            let acc = put(str_lit("| Ok(("), acc);
+            let acc = put_exp(c, car(xs), n, value(), acc);
+            let acc = put(str_lit(")("), acc);
+            let acc = put_arg_names(0i64, lift, acc);
+            put(str_lit(")))"), acc)
+        };
+        put_args(c, e, cdr(xs), i64_plus(i, 1i64), n, if null_p(cdr(xs)) {
+            acc
+        } else {
+            put(str_lit(", "), acc)
+        })
     }
 }
 
@@ -2092,21 +2146,6 @@ pub fn put_arg_params(mut c: &'static Ctx, mut ts: Sexps, mut i: i64, mut acc: C
                 str_lit(", a")
             }, acc)))));
             continue;
-        }
-    }
-}
-
-pub fn put_arg_names(mut i: i64, mut n: i64, mut acc: Chars) -> Chars {
-    loop {
-        if i64_lt(i, n) {
-            (i, acc) = (i64_plus(i, 1i64), put(i64_to_string(i), put(if i64_eq(i, 0i64) {
-                str_lit("a")
-            } else {
-                str_lit(", a")
-            }, acc)));
-            continue;
-        } else {
-            return acc;
         }
     }
 }

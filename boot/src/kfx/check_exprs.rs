@@ -513,6 +513,68 @@ pub fn has_var_p(s: &'static St, t: &'static Ty) -> bool {
     }
 }
 
+/// A procedure named as an argument that cannot abort, given for a
+/// parameter that may: its Rust type returns no `Result`, so the emitter
+/// wraps it in a closure that returns `Ok` (`lift-arg I N`, N its arity).
+pub fn lifted_args(mut v: &'static Cv, mut s: &'static St, mut args: Sexps, mut ps: Tys, mut i: i64) -> &'static St {
+    loop {
+        if (null_p(args) || null_p(ps)) {
+            return s;
+        } else {
+            (s, args, ps, i) = ({
+                let tagcase_ = car(args);
+                match *tagcase_ {
+                    Sexp::Sym(n) => {
+                        let found = find_bind(n, cv_binds(v));
+                        if null_p(found) {
+                            s
+                        } else {
+                            let tagcase_ = car(found);
+                            match *tagcase_ {
+                                Bind::Bind(x, sc, w) => {
+                                    let tagcase_ = sc;
+                                    match *tagcase_ {
+                                        Scheme::Scheme(tv, t) => {
+                                            let tagcase_ = walk(s, t);
+                                            match *tagcase_ {
+                                                Ty::TyProc(es, xs, r) => {
+                                                    let tagcase_ = walk(s, car(ps));
+                                                    match *tagcase_ {
+                                                        Ty::TyProc(ees, eps, er) => {
+                                                            if (escapes_p(ees) && not(escapes_p(es))) {
+                                                                note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("lift-arg "), string_append(i64_to_string(i), string_append(str_lit(" "), i64_to_string(size(xs))))))
+                                                            } else {
+                                                                s
+                                                            }
+                                                        }
+                                                        _ => {
+                                                            let other = tagcase_;
+                                                            s
+                                                        }
+                                                    }
+                                                }
+                                                _ => {
+                                                    let other = tagcase_;
+                                                    s
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        s
+                    }
+                }
+            }, cdr(args), cdr(ps), i64_plus(i, 1i64));
+            continue;
+        }
+    }
+}
+
 pub fn control_form_p(h: Str) -> bool {
     (string_eq_p(h, str_lit("if")) || string_eq_p(h, str_lit("cond")) || string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("tagcase")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("with")))
 }
@@ -2110,7 +2172,8 @@ pub fn synth_call_of(v: &'static Cv, s: &'static St, callee: &'static Res, args:
                             call_args(v, s1, args, ps, fixed_by(s, s1, concat(map(&metas_of, ps))))
                         };
                         match *tagcase_ {
-                            Res::Res(u, es1, s) => {
+                            Res::Res(u, es1, s0) => {
+                                let s = lifted_args(v, s0, args, ps, 0i64);
                                 let tagcase_ = name_regions(v, s, latent, regions);
                                 match *tagcase_ {
                                     Res::Res(u, named, s) => {

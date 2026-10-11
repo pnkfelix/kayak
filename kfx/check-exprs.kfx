@@ -235,6 +235,37 @@
         (ty-proc (es ps r) (or (has-var? s r) (any? (lambda ((x ty)) (has-var? s x)) ps)))
         (else other #f)))))
 
+(define-rec
+  (lifted-args (subr kfx (cv st sexps tys i64) st)
+    (lambda (v s args ps i)
+      "A procedure named as an argument that cannot abort, given for a
+       parameter that may: its Rust type returns no `Result`, so the emitter
+       wraps it in a closure that returns `Ok` (`lift-arg I N`, N its arity)."
+      (if (or (null? args) (null? ps))
+          s
+          (lifted-args v
+            (tagcase (car args)
+              (sym (n)
+                (let ((found (find-bind n (cv-binds v))))
+                  (if (null? found)
+                      s
+                      (tagcase (car found)
+                        (bind (x sc w)
+                          (tagcase sc
+                            (scheme (tv t)
+                              (tagcase (walk s t)
+                                (ty-proc (es xs r)
+                                  (tagcase (walk s (car ps))
+                                    (ty-proc (ees eps er)
+                                      (if (and (escapes? ees) (not (escapes? es)))
+                                          (note-fact s (cv-file v) (cv-pos v)
+                                                     (string-append "lift-arg " (string-append (i64->string i) (string-append " " (i64->string (size xs))))))
+                                          s))
+                                    (else other s)))
+                                (else other s)))))))))
+              (else other s))
+            (cdr args) (cdr ps) (i64+ i 1))))))
+
 (define control-form? (subr kfx (string) bool)
   (lambda (h)
     (or (string=? h "if") (string=? h "cond") (string=? h "case") (string=? h "tagcase")
@@ -1012,8 +1043,8 @@
                                            (show-sexps args)))
                   (tagcase (let ((s1 (if (null? expected) s (fits v s r (car expected)))))
                              (call-args v s1 args ps (fixed-by s s1 (concat (map metas-of ps)))))
-                    (res (u es1 s)
-                     (begin
+                    (res (u es1 s0)
+                     (let ((s (lifted-args v s0 args ps 0)))
                       (tagcase (name-regions v s latent regions)
                         (res (u named s)
                           (res r (effs-union named (effs-union more (effs-union es0 es1)))

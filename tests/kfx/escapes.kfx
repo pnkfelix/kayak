@@ -35,6 +35,19 @@
         #u
         (begin (f (car xs)) (each f (cdr xs))))))
 
+"A procedure that cannot abort, given where one that may is expected: in
+ Rust, a closure around it that returns `Ok`."
+(define skip (subr pure (i64) unit) (lambda (x) #u))
+
+(define size-of (subr kfx (ints) i64)
+  (lambda (xs) (if (null? xs) 0 (i64+ 1 (size-of (cdr xs))))))
+
+(define skips (subr kfx (ints) i64)
+  (lambda (xs)
+    (letregion e
+      (let ((t (the (prompt-tag i64 i64 kfx e) (make-continuation-prompt-tag))))
+        (prompt t (begin (each skip xs) (size-of xs)) (lambda ((v i64)) v))))))
+
 (define first-over (subr kfx (ints i64) i64)
   (lambda (xs m)
     (letregion e
@@ -75,4 +88,5 @@
            (i64->string (nested (list 4 7) 7))
            (i64->string (nested (list 4 7) 8))
            (i64->string (on-the-spot 2))
-           (i64->string (on-the-spot 5))))))
+           (i64->string (on-the-spot 5))
+           (i64->string (skips (list 1 2 3)))))))

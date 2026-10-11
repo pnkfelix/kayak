@@ -748,3 +748,12 @@ module parameters `ModM`, Rust's and kayak-rt's type names refused).
 Left (`TODO.md` §17): a nested call given the type expected (`(car
 (cons 5 ...))`), a `list` under `with` at `acyclic` where FX-26's is a
 fresh region, and names that differ only in case or in `-` and `_`.
+
+## A procedure that cannot abort, given where one that may is (2026-10-11)
+
+Its Rust type returns no `Result`; the checker notes the call's argument
+(`lift-arg`), and the emitter wraps it, `lambda1(move |a0| Ok((&skip)(a0)))`.
+And a `goto` on `acyclic`, which only a region nothing named gives (no tag
+is at `acyclic`), is pure, as FX-26's fresh region, masked, is: so a
+procedure that may abort to a region of its own can be given one that
+cannot (`tests/kfx/escapes.kfx`'s `skips`).

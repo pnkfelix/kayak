@@ -130,9 +130,6 @@ Escapes are done (`DONE.md`, C18). Left:
   - names that differ only in case, or in `-` and `_`, may collide in Rust
     (two types `has` and `Has`; labels `a-b` and `a_b`): a Rust error, not
     a wrong answer;
-  - a global procedure that cannot abort, named where one that may is
-    expected, is a Rust type error (`&id` where a `Result` is returned):
-    the emitter should wrap it in a closure returning `Ok`.
 - **`tagcase_`**, the name a `tagcase` binds, could be a KFX name's
   mangling (`tagcase-`).
 - **`(define x e)` with no type** is refused; FX-26 allows it.

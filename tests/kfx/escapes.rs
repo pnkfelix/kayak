@@ -63,6 +63,37 @@ pub fn each(mut f: &'static dyn Fn(i64) -> Result<(), Unwind>, mut xs: Ints) -> 
     }
 }
 
+// A procedure that cannot abort, given where one that may is expected: in
+// Rust, a closure around it that returns `Ok`.
+pub fn skip(x: i64) -> () {
+    ()
+}
+
+pub fn size_of(xs: Ints) -> i64 {
+    if null_p(xs) {
+        0i64
+    } else {
+        i64_plus(1i64, size_of(cdr(xs)))
+    }
+}
+
+pub fn skips(xs: Ints) -> i64 {
+    let t = the::<Tag<i64, i64>>(make_continuation_prompt_tag());
+    {
+        let prompt_tag__ = t;
+        match (move || -> Result<_, Unwind> {
+            each(lambda1(move |a0| Ok((&skip)(a0))), xs)?;
+            Ok(size_of(xs))
+        })() {
+            Ok(v) => v,
+            Err(u) if u.is(prompt_tag__) => (lambda1(move |v: i64| {
+                v
+            }))(prompt_tag__.payload(u)),
+            Err(u) => unreachable_unwind(u),
+        }
+    }
+}
+
 pub fn first_over(xs: Ints, m: i64) -> i64 {
     let t = the::<Tag<i64, i64>>(make_continuation_prompt_tag());
     {
@@ -140,6 +171,6 @@ pub fn on_the_spot(n: i64) -> i64 {
 }
 
 pub fn main() -> Str {
-    words(cons(i64_to_string(search(cons(1i64, cons(2i64, cons(3i64, nil()))), 2i64)), cons(i64_to_string(search(cons(1i64, cons(2i64, cons(3i64, nil()))), 5i64)), cons(i64_to_string(first_over(cons(1i64, cons(5i64, cons(9i64, cons(2i64, nil())))), 4i64)), cons(i64_to_string(first_over(cons(1i64, cons(2i64, nil())), 4i64)), cons(i64_to_string(nested(cons(4i64, cons(7i64, nil())), 7i64)), cons(i64_to_string(nested(cons(4i64, cons(7i64, nil())), 8i64)), cons(i64_to_string(on_the_spot(2i64)), cons(i64_to_string(on_the_spot(5i64)), nil())))))))))
+    words(cons(i64_to_string(search(cons(1i64, cons(2i64, cons(3i64, nil()))), 2i64)), cons(i64_to_string(search(cons(1i64, cons(2i64, cons(3i64, nil()))), 5i64)), cons(i64_to_string(first_over(cons(1i64, cons(5i64, cons(9i64, cons(2i64, nil())))), 4i64)), cons(i64_to_string(first_over(cons(1i64, cons(2i64, nil())), 4i64)), cons(i64_to_string(nested(cons(4i64, cons(7i64, nil())), 7i64)), cons(i64_to_string(nested(cons(4i64, cons(7i64, nil())), 8i64)), cons(i64_to_string(on_the_spot(2i64)), cons(i64_to_string(on_the_spot(5i64)), cons(i64_to_string(skips(cons(1i64, cons(2i64, cons(3i64, nil()))))), nil()))))))))))
 }
 

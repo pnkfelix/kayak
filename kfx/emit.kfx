@@ -650,6 +650,18 @@
           params
           (map2-params params (items (car (read-all (string-chars found) "" 1))))))))
 
+(define-rec
+  (put-arg-names (subr kfx (i64 i64 chars) chars)
+    (lambda (i n acc)
+      (if (i64< i n) (put-arg-names (i64+ i 1) n (put (i64->string i) (put (if (i64= i 0) "a" ", a") acc))) acc))))
+
+(define lifted-arity (subr kfx (ctx sexp i64) i64)
+  (lambda (c e i)
+    "The arity of the argument `i` of the call `e` the checker found must be
+     lifted to return a `Result`; or -1."
+    (let ((found (fact-with c e (string-append "lift-arg " (string-append (i64->string i) " ")))))
+      (if (string=? found "") -1 (i64- 0 (digits-value (string-chars found) 0 "" 0))))))
+
 (define abort? (subr kfx (ctx sexp) bool)
   (lambda (c e)
     "An abort: `return Err(...)` in Rust, so no value to return or wrap."
@@ -1095,7 +1107,27 @@
                     (acc (put ">(" acc))
                     (acc (put-joined c (concat (map (lambda ((x sexp)) (if (module-name? c x) nil (the sexps (list x)))) xs)) ", " n acc)))
                (put-question c e (put ")" acc))))
-            (else (put-question c e (put ")" (put-joined c xs ", " n (put "(" (put (callee c h) acc)))))))))
+            (else (put-question c e (put ")" (put-args c e xs 0 n (put "(" (put (callee c h) acc)))))))))
+
+  (put-args (subr kfx (ctx sexp sexps i64 i64 chars) chars)
+    (lambda (c e xs i n acc)
+      "A call's arguments; one the checker found must be lifted, a procedure
+       that cannot abort given where one that may is expected, wrapped in a
+       closure returning `Ok`."
+      (if (null? xs)
+          acc
+          (let* ((lift (lifted-arity c e i))
+                 (acc (if (i64< lift 0)
+                          (put-exp c (car xs) n (value) acc)
+                          (let* ((acc (put (i64->string lift) (put "lambda" acc)))
+                                 (acc (put "(move |" acc))
+                                 (acc (put-arg-names 0 lift acc))
+                                 (acc (put "| Ok((" acc))
+                                 (acc (put-exp c (car xs) n (value) acc))
+                                 (acc (put ")(" acc))
+                                 (acc (put-arg-names 0 lift acc)))
+                            (put ")))" acc)))))
+            (put-args c e (cdr xs) (i64+ i 1) n (if (null? (cdr xs)) acc (put ", " acc)))))))
 
   (put-prompt (subr kfx (ctx sexp sexps i64 chars) chars)
     (lambda (c e xs n acc)
@@ -1173,11 +1205,6 @@
           acc
           (put-arg-params c (cdr ts) (i64+ i 1)
                           (put-type c (car ts) (put ": " (put (i64->string i) (put (if (i64= i 0) "a" ", a") acc)))))))))
-
-(define-rec
-  (put-arg-names (subr kfx (i64 i64 chars) chars)
-    (lambda (i n acc)
-      (if (i64< i n) (put-arg-names (i64+ i 1) n (put (i64->string i) (put (if (i64= i 0) "a" ", a") acc))) acc))))
 
 (define put-val-sig (subr kfx (ctx sexps (listof sexps acyclic) chars) chars)
   (lambda (c val descs acc)

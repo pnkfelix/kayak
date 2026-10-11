@@ -395,9 +395,11 @@ pub fn escapes_p(es: Strings) -> bool {
 }
 
 /// An effect on `acyclic`: making and reading frozen data are pure, in
-/// FX-26; writing it is refused where its type is read.
+/// FX-26; writing it is refused where its type is read. A `goto` there is
+/// to a region nothing named, which FX-26 makes fresh and masks (no tag is
+/// at `acyclic`, whose data is frozen).
 pub fn frozen_atom_p(x: Str) -> bool {
-    (string_eq_p(x, str_lit("read:acyclic")) || string_eq_p(x, str_lit("alloc:acyclic")) || string_eq_p(x, str_lit("write:acyclic")))
+    (string_eq_p(x, str_lit("read:acyclic")) || string_eq_p(x, str_lit("alloc:acyclic")) || string_eq_p(x, str_lit("write:acyclic")) || string_eq_p(x, str_lit("goto:acyclic")))
 }
 
 pub fn effs_union(mut a: Strings, mut b: Strings) -> Strings {
