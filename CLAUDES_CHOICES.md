@@ -746,3 +746,23 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
 - **Measured:** Fixpt's `lists` (heap pairs) 21.9 ms to 15.6; the compiler
   on itself 4.19 s to 3.97, its peak memory 7.4 GB to 7.8 (each type's
   last chunk partly empty, chunks doubling).
+
+## C44. What the compiler allocates, measured, and the waste removed (2026-10-11)
+
+- **Measured:** kayak-rt's `heap-stats` feature (`cargo build -p kfx
+  --features heap-stats`) counts every heap allocation by Rust type, and
+  with `KAYAK_HEAP_SAMPLE=TYPE` the compiler's frames behind every
+  millionth of that type. On itself, the compiler made 425 M allocations,
+  6.9 GB, 82% of it `Cons<char>`: strings taken apart to be compared. Its
+  datatypes (`Ty`, `St`, `Sexp`, ...) were about 1%.
+- **Chosen:** `has-prefix?`, `string-has?`, `has-char-in?` compare in
+  place (`string-ref-i64`), making nothing; facts searched with the prefix
+  made once (`facts-after`); a call looks for `place-needs` only of a
+  procedure given a place (`given-place?`); `mangled-clash` mangles a
+  name in scope only if its mangled length (`mangled-length`, making
+  nothing) is the other's. And a constant whose expression makes a list
+  is made once and kept, as C21's allocating ones are, though an acyclic
+  list's making has no effect: FX-26's lists are immutable, so once is
+  each use (`rust-keywords`).
+- **Then:** 13 M allocations, 228 MB; the compiler on itself 3.97 s to
+  0.34 s, its peak memory 7.8 GB to 0.31.

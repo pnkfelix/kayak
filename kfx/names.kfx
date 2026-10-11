@@ -2,14 +2,16 @@
 
 "Names"
 
+(define rust-keywords (listof string acyclic)
+  (list "as" "async" "await" "box" "break" "const" "continue" "do"
+        "dyn" "else" "enum" "extern" "false" "final" "fn" "for" "gen"
+        "if" "impl" "in" "let" "loop" "macro" "match" "mod" "move"
+        "mut" "override" "priv" "pub" "ref" "return" "static"
+        "struct" "trait" "true" "try" "type" "typeof" "unsafe"
+        "unsized" "use" "virtual" "where" "while" "yield" "abstract" "become"))
+
 (define rust-keyword? (subr kfx (string) bool)
-  (lambda (s)
-    (string-member? s (list "as" "async" "await" "box" "break" "const" "continue" "do"
-                            "dyn" "else" "enum" "extern" "false" "final" "fn" "for" "gen"
-                            "if" "impl" "in" "let" "loop" "macro" "match" "mod" "move"
-                            "mut" "override" "priv" "pub" "ref" "return" "static"
-                            "struct" "trait" "true" "try" "type" "typeof" "unsafe"
-                            "unsized" "use" "virtual" "where" "while" "yield" "abstract" "become"))))
+  (lambda (s) (string-member? s rust-keywords)))
 
 (define mangle-char (subr kfx (char) string)
   (lambda (c)
@@ -35,6 +37,31 @@
            (string-append s "_"))
           ((rust-keyword? s) (string-append "r#" s))
           (else (rev->string (mangle-chars (string-chars s) nil))))))
+
+(define mangled-char-length (subr kfx (char) i64)
+  (lambda (c)
+    "`mangle-char`'s length, making nothing."
+    (case c
+      ((#\?) 2) ((#\!) 2) ((#\+) 5) ((#\*) 5) ((#\/) 6) ((#\<) 3) ((#\>) 3) ((#\=) 3) ((#\%) 4)
+      (else 1))))
+
+(define-rec
+  (mangled-length-from (subr kfx (string i64 i64 i64) i64)
+    (lambda (s i n acc)
+      (cond ((i64= i n) acc)
+            ((and (char=? (string-ref-i64 s i) #\-) (i64< (i64+ i 1) n) (char=? (string-ref-i64 s (i64+ i 1)) #\>))
+             (mangled-length-from s (i64+ i 2) n (i64+ acc 4)))
+            ((and (char=? (string-ref-i64 s i) #\-) (i64= (i64+ i 1) n)) (i64+ acc 6))
+            (else (mangled-length-from s (i64+ i 1) n (i64+ acc (mangled-char-length (string-ref-i64 s i)))))))))
+
+(define mangled-length (subr kfx (string) i64)
+  (lambda (s)
+    "The length of `(mangle s)`, making nothing: to look for a name that
+     mangles as another without mangling each."
+    (cond ((string=? s "-") 6)
+          ((or (string=? s "self") (string=? s "super") (string=? s "crate") (string=? s "Self")) (i64+ (string-length-i64 s) 1))
+          ((rust-keyword? s) (i64+ (string-length-i64 s) 2))
+          (else (mangled-length-from s 0 (string-length-i64 s) 0)))))
 
 (define mangle-bare (subr kfx (string) string)
   (lambda (s)

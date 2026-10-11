@@ -336,8 +336,14 @@ pub fn substring_of(x: Str, n: i64) -> Str {
     list_to_string(take_chars(string_to_list(x), n))
 }
 
+pub fn same_from_p(x: Str, p: Str, i: i64, n: i64) -> bool {
+    (i64_eq(i, n) || (char_eq_p(string_ref_i64(x, i), string_ref_i64(p, i)) && same_from_p(x, p, i64_plus(i, 1i64), n)))
+}
+
+/// Whether `x` begins `p`: compared in place, making nothing (the compiler
+/// asks it of every fact it searches).
 pub fn has_prefix_p(x: Str, p: Str) -> bool {
-    (not(i64_lt(string_length_i64(x), string_length_i64(p))) && string_eq_p(substring_of(x, string_length_i64(p)), p))
+    (not(i64_lt(string_length_i64(x), string_length_i64(p))) && same_from_p(x, p, 0i64, string_length_i64(p)))
 }
 
 pub fn drop_chars(mut cs: List<char>, mut n: i64) -> List<char> {
@@ -355,10 +361,12 @@ pub fn after_prefix(x: Str, p: Str) -> Str {
     list_to_string(drop_chars(string_to_list(x), string_length_i64(p)))
 }
 
+pub fn char_from_p(s: Str, c: char, i: i64, n: i64) -> bool {
+    (i64_lt(i, n) && (char_eq_p(string_ref_i64(s, i), c) || char_from_p(s, c, i64_plus(i, 1i64), n)))
+}
+
 pub fn has_char_in_p(s: Str, c: char) -> bool {
-    any_p(lambda1(move |x: char| {
-        char_eq_p(x, c)
-    }), string_chars(s))
+    char_from_p(s, c, 0i64, string_length_i64(s))
 }
 
 pub fn repeated_p(xs: Strings) -> bool {
@@ -859,8 +867,17 @@ pub fn char_lower_p(c: char) -> bool {
     has_char_in_p(str_lit("abcdefghijklmnopqrstuvwxyz"), c)
 }
 
+pub fn same_at_p(s: Str, part: Str, at: i64, i: i64, n: i64) -> bool {
+    (i64_eq(i, n) || (char_eq_p(string_ref_i64(s, i64_plus(at, i)), string_ref_i64(part, i)) && same_at_p(s, part, at, i64_plus(i, 1i64), n)))
+}
+
+pub fn has_from_p(s: Str, part: Str, at: i64) -> bool {
+    (not(i64_lt(i64_minus(string_length_i64(s), at), string_length_i64(part))) && (same_at_p(s, part, at, 0i64, string_length_i64(part)) || has_from_p(s, part, i64_plus(at, 1i64))))
+}
+
+/// Whether `part` is in `s`: compared in place, making nothing.
 pub fn string_has_p(s: Str, part: Str) -> bool {
-    (not(i64_lt(string_length_i64(s), string_length_i64(part))) && (has_prefix_p(s, part) || string_has_p(after_prefix(s, substring_of(s, 1i64)), part)))
+    has_from_p(s, part, 0i64)
 }
 
 /// Whether `n` is a Rust keyword no raw identifier may be, `self`, `super`,
@@ -2919,7 +2936,7 @@ pub fn mangled_clash(n: Str, bs: Binds) -> Strings {
             let tagcase_ = b;
             match *tagcase_ {
                 Bind::Bind(x, sc, w) => {
-                    if (not(string_eq_p(x, n)) && not(has_prefix_p(x, str_lit("%"))) && not(has_char_in_p(x, ' ')) && string_eq_p(mangle(x), m)) {
+                    if (not(string_eq_p(x, n)) && not(has_prefix_p(x, str_lit("%"))) && not(has_char_in_p(x, ' ')) && i64_eq(mangled_length(x), string_length_i64(m)) && string_eq_p(mangle(x), m)) {
                         the::<Strings>(kayak_rt::heap_cons(string_append(n, string_append(str_lit(" and "), x)), kayak_rt::nil()))
                     } else {
                         nil::<Str>()

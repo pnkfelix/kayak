@@ -139,6 +139,27 @@
           nil
           (cons (lst (list (sym (car ls) "" 0) (settled-sexp s (car ts) #f)) "" 0 0) (settled-fields s (cdr ls) (cdr ts)))))))
 
+(define-rec
+  (facts-after (subr kfx (facts string) strings)
+    (lambda (fs prefix)
+      "Of the facts `fs`, each that begins `prefix`, the rest: one pass,
+       making a pair only for each found."
+      (cond ((null? fs) nil)
+            ((tagcase (car fs) (fact (ff fp what) (has-prefix? what prefix)))
+             (cons (tagcase (car fs) (fact (ff fp what) (after-prefix what prefix))) (facts-after (cdr fs) prefix)))
+            (else (facts-after (cdr fs) prefix))))))
+
+(define given-place? (subr kfx (scheme) bool)
+  (lambda (sc)
+    "Whether a procedure is given a place, `(place p)` (C34): only then has
+     it `place-needs` or `region-within` facts to look for."
+    (tagcase sc
+      (scheme (tvars t)
+        (tagcase t
+          (ty-proc (es ps r)
+            (any? (lambda ((p ty)) (tagcase p (ty-data (d args) (string=? d "%place")) (else other #f))) ps))
+          (else other #f))))))
+
 (define settle-facts (subr kfx (st) facts)
   (lambda (s)
     "A definition's facts, those of types settled: `%metas what ?k ...`
@@ -1436,20 +1457,16 @@
        regions that keep their bounds: `r`'s the place's, or bound inside
        it, or within it, so that it will not outlive it, as FX-26 has it."
       (begin
-        (map (lambda ((f fact))
-               (tagcase f
-                 (fact (ff fp what)
-                   (if (has-prefix? what (string-append "region-within " (string-append n " ")))
-                       (let* ((ws (read-all (string-chars (after-prefix what (string-append "region-within " (string-append n " ")))) "" 1))
+        (map (lambda ((rest string))
+                       (let* ((ws (read-all (string-chars rest) "" 1))
                               (r (tagcase (walk s (region-of-binder (sym-name (car ws)))) (ty-var (x) x) (else other "")))
                               (p (tagcase (walk s (region-of-binder (sym-name (second ws)))) (ty-var (x) x) (else other ""))))
                          (if (or (string=? r "") (string=? p "") (string=? r p)
                                  (string-member? (string-append "%within " (string-append r (string-append " " p))) (cv-tvars v))
                                  (bound-before? r (string-append "%place " p) (cv-tvars v)))
                              #u
-                             (refuse v (string-append "a region given within a place it could outlive: " (string-append r (string-append " is bound outside " p))))))
-                       #u))))
-             (cv-facts v))
+                             (refuse v (string-append "a region given within a place it could outlive: " (string-append r (string-append " is bound outside " p)))))))
+             (facts-after (cv-facts v) (string-append "region-within " (string-append n " "))))
         #u)))
 
   (proj-needs (subr kfx (cv st string strings sexps) st)
@@ -1465,13 +1482,7 @@
                                   (need (projected v tvars args (parse-type v (onto (map (lambda ((x string)) (string-append "%place " x)) tvars) tvars) (third ws)))))
                              (go (note-types s (cv-file v) (cv-pos v) (string-append "rneed-" (string-append (sym-name (second ws)) (string-append "@" (region-string s place)))) (list need))
                                  (cdr needs)))))))
-        (go s (concat (map (lambda ((f fact))
-                             (tagcase f
-                               (fact (ff fp what)
-                                 (if (has-prefix? what (string-append "place-needs " (string-append n " ")))
-                                     (the strings (list (after-prefix what (string-append "place-needs " (string-append n " ")))))
-                                     nil))))
-                           (cv-facts v)))))))
+        (go s (facts-after (cv-facts v) (string-append "place-needs " (string-append n " ")))))))
 
   (projected (subr kfx (cv strings sexps ty) ty)
     (lambda (v tvars args t)
@@ -1679,19 +1690,13 @@
       "A call of a procedure given places (C34): what it makes in each, its
        `place-needs`, noted at the call as needs of the place it is given,
        `rneed-kind@'r T`, `T` at the types it is called at."
-      (if (not (string=? wher "global"))
+      (if (or (not (string=? wher "global")) (not (given-place? sc)))
           r
           (tagcase r
             (res (t es s)
               (tagcase sc
                 (scheme (tvars ty)
-                  (let ((needs (concat (map (lambda ((f fact))
-                                              (tagcase f
-                                                (fact (ff fp what)
-                                                  (if (has-prefix? what (string-append "place-needs " (string-append h " ")))
-                                                      (the strings (list (after-prefix what (string-append "place-needs " (string-append h " ")))))
-                                                      nil))))
-                                            (cv-facts v)))))
+                  (let ((needs (facts-after (cv-facts v) (string-append "place-needs " (string-append h " ")))))
                     (begin
                       (bounds-kept v s h (lambda ((x string)) (instantiated tvars from (ty-var x))))
                       (res t es (note-needs v s tvars from needs)))))))))))

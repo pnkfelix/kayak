@@ -74,6 +74,7 @@ fn int(w: Wide) -> Int {
         }
     }
     let negative = w.negative && !magnitude.is_empty();
+    crate::stats::note::<Big>(std::mem::size_of::<Big>() + 8 * magnitude.len());
     Int::Big(Box::leak(Box::new(Big {
         negative,
         magnitude,

@@ -18,6 +18,7 @@ mod heap;
 mod int;
 mod once;
 mod show;
+mod stats;
 
 pub use arena::*;
 pub use blob::*;
@@ -28,6 +29,7 @@ pub use heap::*;
 pub use int::*;
 pub use once::*;
 pub use show::*;
+pub use stats::heap_stats_report;
 use std::cell::Cell;
 pub use std::cell::OnceCell;
 
@@ -79,12 +81,14 @@ pub type List<T> = ListAt<'static, T>;
 /// anything wants, `'static` or a region's `'r`.
 #[inline]
 pub fn alloc<'a, T: 'a>(v: T) -> &'a T {
+    stats::note::<T>(std::mem::size_of::<T>());
     Box::leak(Box::new(v))
 }
 
 #[inline]
 pub fn leak_string(s: String) -> Str {
     let ascii = s.is_ascii();
+    stats::note::<Str>(s.len());
     Str {
         text: Box::leak(s.into_boxed_str()),
         ascii,

@@ -139,10 +139,17 @@
 (define substring-of (subr kfx (string i64) string)
   (lambda (x n) (list->string (take-chars (string->list x) n))))
 
+(define-rec
+  (same-from? (subr kfx (string string i64 i64) bool)
+    (lambda (x p i n)
+      (or (i64= i n) (and (char=? (string-ref-i64 x i) (string-ref-i64 p i)) (same-from? x p (i64+ i 1) n))))))
+
 (define has-prefix? (subr kfx (string string) bool)
   (lambda (x p)
+    "Whether `x` begins `p`: compared in place, making nothing (the compiler
+     asks it of every fact it searches)."
     (and (not (i64< (string-length-i64 x) (string-length-i64 p)))
-         (string=? (substring-of x (string-length-i64 p)) p))))
+         (same-from? x p 0 (string-length-i64 p)))))
 
 (define-rec
   (drop-chars (subr kfx ((listof char acyclic) i64) (listof char acyclic))
@@ -151,8 +158,12 @@
 (define after-prefix (subr kfx (string string) string)
   (lambda (x p) (list->string (drop-chars (string->list x) (string-length-i64 p)))))
 
+(define-rec
+  (char-from? (subr kfx (string char i64 i64) bool)
+    (lambda (s c i n) (and (i64< i n) (or (char=? (string-ref-i64 s i) c) (char-from? s c (i64+ i 1) n))))))
+
 (define has-char-in? (subr kfx (string char) bool)
-  (lambda (s c) (any? (lambda ((x char)) (char=? x c)) (string-chars s))))
+  (lambda (s c) (char-from? s c 0 (string-length-i64 s))))
 
 (define-rec
   (repeated? (subr kfx (strings) bool)
@@ -390,10 +401,21 @@
   (lambda (c) (has-char-in? "abcdefghijklmnopqrstuvwxyz" c)))
 
 (define-rec
-  (string-has? (subr kfx (string string) bool)
-    (lambda (s part)
-      (and (not (i64< (string-length-i64 s) (string-length-i64 part)))
-           (or (has-prefix? s part) (string-has? (after-prefix s (substring-of s 1)) part))))))
+  (same-at? (subr kfx (string string i64 i64 i64) bool)
+    (lambda (s part at i n)
+      (or (i64= i n)
+          (and (char=? (string-ref-i64 s (i64+ at i)) (string-ref-i64 part i)) (same-at? s part at (i64+ i 1) n))))))
+
+(define-rec
+  (has-from? (subr kfx (string string i64) bool)
+    (lambda (s part at)
+      (and (not (i64< (i64- (string-length-i64 s) at) (string-length-i64 part)))
+           (or (same-at? s part at 0 (string-length-i64 part)) (has-from? s part (i64+ at 1)))))))
+
+(define string-has? (subr kfx (string string) bool)
+  (lambda (s part)
+    "Whether `part` is in `s`: compared in place, making nothing."
+    (has-from? s part 0)))
 
 (define rust-keyword-clash? (subr kfx (string) bool)
   (lambda (n)
@@ -1324,6 +1346,7 @@
                          (tagcase b
                            (bind (x sc w)
                              (if (and (not (string=? x n)) (not (has-prefix? x "%")) (not (has-char-in? x #\space))
+                                      (i64= (mangled-length x) (string-length-i64 m))
                                       (string=? (mangle x) m))
                                  (the strings (list (string-append n (string-append " and " x))))
                                  nil))))

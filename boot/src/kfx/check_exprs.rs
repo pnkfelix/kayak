@@ -342,6 +342,66 @@ pub fn settled_fields(s: &'static St, ls: Strings, ts: Tys) -> Sexps {
     }
 }
 
+/// Of the facts `fs`, each that begins `prefix`, the rest: one pass,
+/// making a pair only for each found.
+pub fn facts_after(mut fs: Facts, mut prefix: Str) -> Strings {
+    loop {
+        if null_p(fs) {
+            return nil::<Str>();
+        } else if {
+            let tagcase_ = car(fs);
+            match *tagcase_ {
+                Fact::Fact(ff, fp, what) => {
+                    has_prefix_p(what, prefix)
+                }
+            }
+        } {
+            return kayak_rt::heap_cons({
+                let tagcase_ = car(fs);
+                match *tagcase_ {
+                    Fact::Fact(ff, fp, what) => {
+                        after_prefix(what, prefix)
+                    }
+                }
+            }, facts_after(cdr(fs), prefix));
+        } else {
+            fs = cdr(fs);
+            continue;
+        }
+    }
+}
+
+/// Whether a procedure is given a place, `(place p)` (C34): only then has
+/// it `place-needs` or `region-within` facts to look for.
+pub fn given_place_p(sc: &'static Scheme) -> bool {
+    let tagcase_ = sc;
+    match *tagcase_ {
+        Scheme::Scheme(tvars, t) => {
+            let tagcase_ = t;
+            match *tagcase_ {
+                Ty::TyProc(es, ps, r) => {
+                    any_p(lambda1(move |p: &'static Ty| {
+                        let tagcase_ = p;
+                        match *tagcase_ {
+                            Ty::TyData(d, args) => {
+                                string_eq_p(d, str_lit("%place"))
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    }), ps)
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+    }
+}
+
 /// A definition's facts, those of types settled: `%metas what ?k ...`
 /// is `what T ...`.
 pub fn settle_facts(s: &'static St) -> Facts {
@@ -3233,47 +3293,38 @@ pub fn proj_form(v: &'static Cv, s: &'static St, xs: Sexps) -> &'static Res {
 /// regions that keep their bounds: `r`'s the place's, or bound inside
 /// it, or within it, so that it will not outlive it, as FX-26 has it.
 pub fn bounds_kept(v: &'static Cv, s: &'static St, n: Str, region_of_binder: &'static dyn Fn(Str) -> &'static Ty) -> () {
-    map(lambda1(move |f: &'static Fact| {
-        let tagcase_ = f;
-        match *tagcase_ {
-            Fact::Fact(ff, fp, what) => {
-                if has_prefix_p(what, string_append(str_lit("region-within "), string_append(n, str_lit(" ")))) {
-                    let ws = read_all(string_chars(after_prefix(what, string_append(str_lit("region-within "), string_append(n, str_lit(" "))))), str_lit(""), 1i64);
-                    let r = {
-                        let tagcase_ = walk(s, region_of_binder(sym_name(car(ws))));
-                        match *tagcase_ {
-                            Ty::TyVar(x) => {
-                                x
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                str_lit("")
-                            }
-                        }
-                    };
-                    let p = {
-                        let tagcase_ = walk(s, region_of_binder(sym_name(second(ws))));
-                        match *tagcase_ {
-                            Ty::TyVar(x) => {
-                                x
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                str_lit("")
-                            }
-                        }
-                    };
-                    if (string_eq_p(r, str_lit("")) || string_eq_p(p, str_lit("")) || string_eq_p(r, p) || string_member_p(string_append(str_lit("%within "), string_append(r, string_append(str_lit(" "), p))), cv_tvars(v)) || bound_before_p(r, string_append(str_lit("%place "), p), cv_tvars(v))) {
-                        ()
-                    } else {
-                        match refuse(v, string_append(str_lit("a region given within a place it could outlive: "), string_append(r, string_append(str_lit(" is bound outside "), p)))) {}
-                    }
-                } else {
-                    ()
+    map(lambda1(move |rest: Str| {
+        let ws = read_all(string_chars(rest), str_lit(""), 1i64);
+        let r = {
+            let tagcase_ = walk(s, region_of_binder(sym_name(car(ws))));
+            match *tagcase_ {
+                Ty::TyVar(x) => {
+                    x
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("")
                 }
             }
+        };
+        let p = {
+            let tagcase_ = walk(s, region_of_binder(sym_name(second(ws))));
+            match *tagcase_ {
+                Ty::TyVar(x) => {
+                    x
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("")
+                }
+            }
+        };
+        if (string_eq_p(r, str_lit("")) || string_eq_p(p, str_lit("")) || string_eq_p(r, p) || string_member_p(string_append(str_lit("%within "), string_append(r, string_append(str_lit(" "), p))), cv_tvars(v)) || bound_before_p(r, string_append(str_lit("%place "), p), cv_tvars(v))) {
+            ()
+        } else {
+            match refuse(v, string_append(str_lit("a region given within a place it could outlive: "), string_append(r, string_append(str_lit(" is bound outside "), p)))) {}
         }
-    }), cv_facts(v));
+    }), facts_after(cv_facts(v), string_append(str_lit("region-within "), string_append(n, str_lit(" ")))));
     ()
 }
 
@@ -3297,18 +3348,7 @@ pub fn proj_needs(v: &'static Cv, s: &'static St, n: Str, tvars: Strings, args: 
         }
     });
     go__knot.set(go);
-    go(s, concat(map(lambda1(move |f: &'static Fact| {
-        let tagcase_ = f;
-        match *tagcase_ {
-            Fact::Fact(ff, fp, what) => {
-                if has_prefix_p(what, string_append(str_lit("place-needs "), string_append(n, str_lit(" ")))) {
-                    the::<Strings>(kayak_rt::heap_cons(after_prefix(what, string_append(str_lit("place-needs "), string_append(n, str_lit(" ")))), kayak_rt::nil()))
-                } else {
-                    nil::<Str>()
-                }
-            }
-        }
-    }), cv_facts(v))))
+    go(s, facts_after(cv_facts(v), string_append(str_lit("place-needs "), string_append(n, str_lit(" ")))))
 }
 
 pub fn projected(mut v: &'static Cv, mut tvars: Strings, mut args: Sexps, mut t: &'static Ty) -> &'static Ty {
@@ -3672,7 +3712,7 @@ pub fn regions_freshened(v: &'static Cv, h: Str, wher: Str, regions: List<i64>, 
 /// `place-needs`, noted at the call as needs of the place it is given,
 /// `rneed-kind@'r T`, `T` at the types it is called at.
 pub fn place_needed(v: &'static Cv, h: Str, wher: Str, sc: &'static Scheme, from: i64, r: &'static Res) -> &'static Res {
-    if not(string_eq_p(wher, str_lit("global"))) {
+    if (not(string_eq_p(wher, str_lit("global"))) || not(given_place_p(sc))) {
         r
     } else {
         let tagcase_ = r;
@@ -3681,18 +3721,7 @@ pub fn place_needed(v: &'static Cv, h: Str, wher: Str, sc: &'static Scheme, from
                 let tagcase_ = sc;
                 match *tagcase_ {
                     Scheme::Scheme(tvars, ty) => {
-                        let needs = concat(map(lambda1(move |f: &'static Fact| {
-                            let tagcase_ = f;
-                            match *tagcase_ {
-                                Fact::Fact(ff, fp, what) => {
-                                    if has_prefix_p(what, string_append(str_lit("place-needs "), string_append(h, str_lit(" ")))) {
-                                        the::<Strings>(kayak_rt::heap_cons(after_prefix(what, string_append(str_lit("place-needs "), string_append(h, str_lit(" ")))), kayak_rt::nil()))
-                                    } else {
-                                        nil::<Str>()
-                                    }
-                                }
-                            }
-                        }), cv_facts(v)));
+                        let needs = facts_after(cv_facts(v), string_append(str_lit("place-needs "), string_append(h, str_lit(" "))));
                         bounds_kept(v, s, h, lambda1(move |x: Str| {
                             instantiated(tvars, from, ty_var(x))
                         }));

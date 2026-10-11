@@ -6,8 +6,15 @@ use super::*;
 // names.kfx: KFX's names as Rust's.
 
 // Names
+pub fn rust_keywords() -> List<Str> {
+    thread_local!(static ONCE: OnceCell<List<Str>> = const { OnceCell::new() });
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("as"), kayak_rt::heap_cons(str_lit("async"), kayak_rt::heap_cons(str_lit("await"), kayak_rt::heap_cons(str_lit("box"), kayak_rt::heap_cons(str_lit("break"), kayak_rt::heap_cons(str_lit("const"), kayak_rt::heap_cons(str_lit("continue"), kayak_rt::heap_cons(str_lit("do"), kayak_rt::heap_cons(str_lit("dyn"), kayak_rt::heap_cons(str_lit("else"), kayak_rt::heap_cons(str_lit("enum"), kayak_rt::heap_cons(str_lit("extern"), kayak_rt::heap_cons(str_lit("false"), kayak_rt::heap_cons(str_lit("final"), kayak_rt::heap_cons(str_lit("fn"), kayak_rt::heap_cons(str_lit("for"), kayak_rt::heap_cons(str_lit("gen"), kayak_rt::heap_cons(str_lit("if"), kayak_rt::heap_cons(str_lit("impl"), kayak_rt::heap_cons(str_lit("in"), kayak_rt::heap_cons(str_lit("let"), kayak_rt::heap_cons(str_lit("loop"), kayak_rt::heap_cons(str_lit("macro"), kayak_rt::heap_cons(str_lit("match"), kayak_rt::heap_cons(str_lit("mod"), kayak_rt::heap_cons(str_lit("move"), kayak_rt::heap_cons(str_lit("mut"), kayak_rt::heap_cons(str_lit("override"), kayak_rt::heap_cons(str_lit("priv"), kayak_rt::heap_cons(str_lit("pub"), kayak_rt::heap_cons(str_lit("ref"), kayak_rt::heap_cons(str_lit("return"), kayak_rt::heap_cons(str_lit("static"), kayak_rt::heap_cons(str_lit("struct"), kayak_rt::heap_cons(str_lit("trait"), kayak_rt::heap_cons(str_lit("true"), kayak_rt::heap_cons(str_lit("try"), kayak_rt::heap_cons(str_lit("type"), kayak_rt::heap_cons(str_lit("typeof"), kayak_rt::heap_cons(str_lit("unsafe"), kayak_rt::heap_cons(str_lit("unsized"), kayak_rt::heap_cons(str_lit("use"), kayak_rt::heap_cons(str_lit("virtual"), kayak_rt::heap_cons(str_lit("where"), kayak_rt::heap_cons(str_lit("while"), kayak_rt::heap_cons(str_lit("yield"), kayak_rt::heap_cons(str_lit("abstract"), kayak_rt::heap_cons(str_lit("become"), kayak_rt::nil()))))))))))))))))))))))))))))))))))))))))))))))))
+    })
+}
+
 pub fn rust_keyword_p(s: Str) -> bool {
-    string_member_p(s, kayak_rt::heap_cons(str_lit("as"), kayak_rt::heap_cons(str_lit("async"), kayak_rt::heap_cons(str_lit("await"), kayak_rt::heap_cons(str_lit("box"), kayak_rt::heap_cons(str_lit("break"), kayak_rt::heap_cons(str_lit("const"), kayak_rt::heap_cons(str_lit("continue"), kayak_rt::heap_cons(str_lit("do"), kayak_rt::heap_cons(str_lit("dyn"), kayak_rt::heap_cons(str_lit("else"), kayak_rt::heap_cons(str_lit("enum"), kayak_rt::heap_cons(str_lit("extern"), kayak_rt::heap_cons(str_lit("false"), kayak_rt::heap_cons(str_lit("final"), kayak_rt::heap_cons(str_lit("fn"), kayak_rt::heap_cons(str_lit("for"), kayak_rt::heap_cons(str_lit("gen"), kayak_rt::heap_cons(str_lit("if"), kayak_rt::heap_cons(str_lit("impl"), kayak_rt::heap_cons(str_lit("in"), kayak_rt::heap_cons(str_lit("let"), kayak_rt::heap_cons(str_lit("loop"), kayak_rt::heap_cons(str_lit("macro"), kayak_rt::heap_cons(str_lit("match"), kayak_rt::heap_cons(str_lit("mod"), kayak_rt::heap_cons(str_lit("move"), kayak_rt::heap_cons(str_lit("mut"), kayak_rt::heap_cons(str_lit("override"), kayak_rt::heap_cons(str_lit("priv"), kayak_rt::heap_cons(str_lit("pub"), kayak_rt::heap_cons(str_lit("ref"), kayak_rt::heap_cons(str_lit("return"), kayak_rt::heap_cons(str_lit("static"), kayak_rt::heap_cons(str_lit("struct"), kayak_rt::heap_cons(str_lit("trait"), kayak_rt::heap_cons(str_lit("true"), kayak_rt::heap_cons(str_lit("try"), kayak_rt::heap_cons(str_lit("type"), kayak_rt::heap_cons(str_lit("typeof"), kayak_rt::heap_cons(str_lit("unsafe"), kayak_rt::heap_cons(str_lit("unsized"), kayak_rt::heap_cons(str_lit("use"), kayak_rt::heap_cons(str_lit("virtual"), kayak_rt::heap_cons(str_lit("where"), kayak_rt::heap_cons(str_lit("while"), kayak_rt::heap_cons(str_lit("yield"), kayak_rt::heap_cons(str_lit("abstract"), kayak_rt::heap_cons(str_lit("become"), kayak_rt::nil())))))))))))))))))))))))))))))))))))))))))))))))))
+    string_member_p(s, rust_keywords())
 }
 
 pub fn mangle_char(c: char) -> Str {
@@ -75,6 +82,72 @@ pub fn mangle(s: Str) -> Str {
         string_append(str_lit("r#"), s)
     } else {
         rev_to_string(mangle_chars(string_chars(s), nil::<char>()))
+    }
+}
+
+/// `mangle-char`'s length, making nothing.
+pub fn mangled_char_length(c: char) -> i64 {
+    match c {
+        '?' => {
+            2i64
+        }
+        '!' => {
+            2i64
+        }
+        '+' => {
+            5i64
+        }
+        '*' => {
+            5i64
+        }
+        '/' => {
+            6i64
+        }
+        '<' => {
+            3i64
+        }
+        '>' => {
+            3i64
+        }
+        '=' => {
+            3i64
+        }
+        '%' => {
+            4i64
+        }
+        _ => {
+            1i64
+        }
+    }
+}
+
+pub fn mangled_length_from(mut s: Str, mut i: i64, mut n: i64, mut acc: i64) -> i64 {
+    loop {
+        if i64_eq(i, n) {
+            return acc;
+        } else if (char_eq_p(string_ref_i64(s, i), '-') && i64_lt(i64_plus(i, 1i64), n) && char_eq_p(string_ref_i64(s, i64_plus(i, 1i64)), '>')) {
+            (i, acc) = (i64_plus(i, 2i64), i64_plus(acc, 4i64));
+            continue;
+        } else if (char_eq_p(string_ref_i64(s, i), '-') && i64_eq(i64_plus(i, 1i64), n)) {
+            return i64_plus(acc, 6i64);
+        } else {
+            (i, acc) = (i64_plus(i, 1i64), i64_plus(acc, mangled_char_length(string_ref_i64(s, i))));
+            continue;
+        }
+    }
+}
+
+/// The length of `(mangle s)`, making nothing: to look for a name that
+/// mangles as another without mangling each.
+pub fn mangled_length(s: Str) -> i64 {
+    if string_eq_p(s, str_lit("-")) {
+        6i64
+    } else if (string_eq_p(s, str_lit("self")) || string_eq_p(s, str_lit("super")) || string_eq_p(s, str_lit("crate")) || string_eq_p(s, str_lit("Self"))) {
+        i64_plus(string_length_i64(s), 1i64)
+    } else if rust_keyword_p(s) {
+        i64_plus(string_length_i64(s), 2i64)
+    } else {
+        mangled_length_from(s, 0i64, string_length_i64(s), 0i64)
     }
 }
 

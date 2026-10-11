@@ -7,5 +7,8 @@ license.workspace = true
 [lints]
 workspace = true
 
+[features]
+heap-stats = ["kayak-rt/heap-stats"]
+
 [dependencies]
 kayak-rt = { path = "../crates/kayak-rt" }

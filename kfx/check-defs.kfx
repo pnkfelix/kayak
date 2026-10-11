@@ -281,6 +281,18 @@
      that its calls of itself need no `spin` (`terminates?`)."
     (tagcase sc (scheme (tvars t) (terminates? v (list name) (list t) (list defined))))))
 
+(define-rec
+  (makes-pairs? (subr kfx (sexp) bool)
+    (lambda (e)
+      "Whether `e` makes a list, `list` or `cons`: an acyclic one's making
+       has no effect, but a constant of one is made once all the same, not
+       at each use (`rust-keywords`), FX-26's list being immutable."
+      (tagcase e
+        (lst (xs file line pos)
+          (and (not (null? xs))
+               (or (sym-is? (car xs) "list") (sym-is? (car xs) "cons") (any? makes-pairs? (cdr xs)))))
+        (else other #f)))))
+
 (define constant-made (subr kfx (cv st sexp strings) st)
   (lambda (v s e es)
     "A constant's value, of effect `es`: it may read globals, and allocate,
@@ -292,7 +304,7 @@
                  es)
            (refuse v (string-append "a constant whose value has the effect " (string-append (show-effs es)
                      ": KFX makes a constant at its first use, so its value may only read globals and allocate"))))
-          ((any? (lambda ((x string)) (has-prefix? x "alloc:")) es)
+          ((or (any? (lambda ((x string)) (has-prefix? x "alloc:")) es) (makes-pairs? e))
            (tagcase e (lst (xs file line pos) (note-fact s file pos "once")) (else other s)))
           (else s))))
 

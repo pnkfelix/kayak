@@ -325,6 +325,22 @@ pub fn ends_alone_p(v: &'static Cv, name: Str, sc: &'static Scheme, defined: &'s
     }
 }
 
+/// Whether `e` makes a list, `list` or `cons`: an acyclic one's making
+/// has no effect, but a constant of one is made once all the same, not
+/// at each use (`rust-keywords`), FX-26's list being immutable.
+pub fn makes_pairs_p(e: &'static Sexp) -> bool {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Lst(xs, file, line, pos) => {
+            (not(null_p(xs)) && (sym_is_p(car(xs), str_lit("list")) || sym_is_p(car(xs), str_lit("cons")) || any_p(&makes_pairs_p, cdr(xs))))
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
 /// A constant's value, of effect `es`: it may read globals, and allocate,
 /// and is then made once, at its first use, and kept (C21), which the
 /// emitter is told; nothing else, since when it is made is not when
@@ -334,9 +350,9 @@ pub fn constant_made(v: &'static Cv, s: &'static St, e: &'static Sexp, es: Strin
         not((string_eq_p(x, str_lit("spin")) || string_eq_p(x, str_lit("@globals")) || global_atom_p(x) || has_prefix_p(x, str_lit("alloc:"))))
     }), es) {
         match refuse(v, string_append(str_lit("a constant whose value has the effect "), string_append(show_effs(es), str_lit(": KFX makes a constant at its first use, so its value may only read globals and allocate")))) {}
-    } else if any_p(lambda1(move |x: Str| {
+    } else if (any_p(lambda1(move |x: Str| {
         has_prefix_p(x, str_lit("alloc:"))
-    }), es) {
+    }), es) || makes_pairs_p(e)) {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Lst(xs, file, line, pos) => {

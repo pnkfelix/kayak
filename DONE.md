@@ -1098,3 +1098,10 @@ port's helpers are top-level now.
 C43: outside regions, the heap's data is bumped into one safe `Arena<T>`
 per type (`kayak-rt/src/heap.rs`), found by `TypeId`. `lists` 21.9 ms to
 15.6; the compiler on itself 4.19 s to 3.97 (memory 7.4 GB to 7.8).
+
+## The compiler's allocation, measured and cut (2026-10-11)
+
+C44: `heap-stats` showed 82% of the compiler's 6.9 GB was character lists
+made to compare strings. Comparing in place, and searching facts only
+where they can be, took it to 228 MB: the compiler on itself 3.97 s to
+0.34 s, peak memory 7.8 GB to 0.31.

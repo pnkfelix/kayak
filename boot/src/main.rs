@@ -83,4 +83,5 @@ fn main() {
             std::process::exit(2);
         }
     }
+    kayak_rt::heap_stats_report();
 }

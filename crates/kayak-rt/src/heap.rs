@@ -64,6 +64,7 @@ fn arena_of<T: 'static>() -> &'static Arena<T> {
 /// `v`, in the heap, by bumping.
 #[inline]
 pub fn heap_alloc<T: 'static>(v: T) -> &'static T {
+    crate::stats::note::<T>(std::mem::size_of::<T>());
     arena_of::<T>().alloc(v)
 }
 
