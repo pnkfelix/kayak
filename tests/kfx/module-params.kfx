@@ -1,0 +1,43 @@
+"Modules given for module parameters (CLAUDES_CHOICES.md C24): a module
+ type is a trait, its abstract types associated types; a procedure of a
+ module parameter is generic in it, and a module defined at the top level
+ given for it is a marker type implementing the trait."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define counter
+  (module
+    (define-generative t i64)
+    (define zero t (up-t 0))
+    (define inc (subr pure (t) t) (lambda (c) (up-t (i64+ (down-t c) 1))))
+    (define value (subr pure (t) i64) (lambda (c) (down-t c)))))
+
+(define tens
+  (module
+    (define-type t i64)
+    (define zero t 0)
+    (define inc (subr pure (t) t) (lambda (c) (i64+ c 10)))
+    (define value (subr pure (t) i64) (lambda (c) c))))
+
+"Its values in another order than the modules give them, and one fewer:
+ a module may give more."
+(define-type steps (moduleof (abs t type) (val inc (subr pure (t) t)) (val zero t) (val value (subr pure (t) i64))))
+
+(define-type starts (moduleof (abs t type) (val zero t) (val value (subr pure (t) i64))))
+
+(define three (subr pure (steps) i64)
+  (lambda (m) (with m (value (inc (inc (inc zero)))))))
+
+(define start (subr pure (starts) i64)
+  (lambda (m) (with m (value zero))))
+
+"A module parameter beside others."
+(define steps-from (subr pure (steps i64) i64)
+  (lambda (m n) (i64+ n (with m (value (inc zero))))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (string-append (i64->string (three counter))
+      (string-append " " (string-append (i64->string (three tens))
+        (string-append " " (string-append (i64->string (start counter))
+          (string-append " " (i64->string (steps-from tens 5))))))))))

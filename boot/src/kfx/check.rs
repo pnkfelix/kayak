@@ -1016,6 +1016,8 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                                     return refuse(v, string_append(str_lit("a type with parameters, given none: "), s));
                                 } else if string_member_p(string_append(str_lit("%expanding "), s), tvars) {
                                     return refuse(v, string_append(str_lit("a type abbreviation that mentions itself, "), string_append(s, str_lit(": Rust's type aliases cannot; a datatype can"))));
+                                } else if head_is_p(body, str_lit("moduleof")) {
+                                    return ty_data(string_append(str_lit("%module "), s), nil());
                                 } else {
                                     (tvars, t) = (cons(string_append(str_lit("%expanding "), s), tvars), body);
                                     continue;
@@ -1042,6 +1044,8 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     }), ty_ref(parse_type(v, tvars, second(xs)), parse_mutable_region(v, tvars, third(xs))));
                 } else if sym_is_p(car(xs), str_lit("prompt-tag")) {
                     return ty_tag(parse_type(v, tvars, second(xs)), parse_type(v, tvars, third(xs)), parse_effect(v, tvars, fourth(xs)), parse_mutable_region(v, tvars, car(cdr(cdr(cdr(cdr(xs)))))));
+                } else if sym_is_p(car(xs), str_lit("moduleof")) {
+                    return refuse(v, str_lit("a moduleof is a module's type when a define-type names it: KFX's is a Rust trait (C24)"));
                 } else if (sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("sumof"))) {
                     let fields = map(&items, cdr(xs));
                     if (any_p(lambda1(move |f: Sexps| {
@@ -3975,6 +3979,220 @@ pub fn sum_variants(v: &'static Cv, ls: Strings, ts: Tys, arms: Sexps) -> Varian
     }
 }
 
+// Modules as parameters (CLAUDES_CHOICES.md C24): a `define-type` of a
+// `(moduleof (abs t type) (desc u T) (val x T) ...)` names a module type, a
+// Rust trait; a top-level procedure's parameter of it, a type parameter.
+// `(abs (a b) type)` gives several. Within, a parameter `m`'s abstract types
+// are `m..t`, as FX-26 names them.
+/// A moduleof's items of `kind`: `abs`, `desc` or `val`.
+pub fn spec_items(spec: &'static Sexp, kind: Str) -> List<Sexps> {
+    concat(map(lambda1(move |x: &'static Sexp| {
+        if head_is_p(x, kind) {
+            the::<List<Sexps>>(cons(items(x), nil()))
+        } else {
+            nil()
+        }
+    }), cdr(items(spec))))
+}
+
+pub fn spec_abs(spec: &'static Sexp) -> Strings {
+    concat(map(lambda1(move |a: Sexps| {
+        let tagcase_ = second(a);
+        match *tagcase_ {
+            Sexp::Sym(n) => {
+                the::<Strings>(cons(n, nil()))
+            }
+            Sexp::Lst(ns, f, l, p) => {
+                map(&sym_name, ns)
+            }
+            _ => {
+                let other = tagcase_;
+                nil()
+            }
+        }
+    }), spec_items(spec, str_lit("abs"))))
+}
+
+/// `v`, where a moduleof's type names are in scope: an abstract type
+/// `m..t` if `m` names a parameter, the module `actual`'s type `t` if one
+/// is given, or else a type of no representation, for reading the
+/// moduleof alone; a description, what it describes.
+pub fn module_scope(v: &'static Cv, spec: &'static Sexp, m: Str, actual: Str) -> &'static Cv {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
+            let abs = spec_abs(spec);
+            cv(bs, onto(map(lambda1(move |t: Str| {
+                dt(string_append(if string_eq_p(m, str_lit("")) {
+                    str_lit("%abstract")
+                } else {
+                    m
+                }, string_append(str_lit(".."), t)), nil(), nil())
+            }), abs), ds), onto(map(lambda1(move |t: Str| {
+                alias(t, nil(), sym(if not(string_eq_p(actual, str_lit(""))) {
+                    string_append(actual, string_append(str_lit(" "), t))
+                } else {
+                    string_append(if string_eq_p(m, str_lit("")) {
+                        str_lit("%abstract")
+                    } else {
+                        m
+                    }, string_append(str_lit(".."), t))
+                }))
+            }), abs), onto(map(lambda1(move |d: Sexps| {
+                alias(sym_name(second(d)), nil(), third(d))
+            }), spec_items(spec, str_lit("desc"))), r#as)), es, here, group, file, line, fs, tv, at)
+        }
+    }
+}
+
+pub fn repeated_p(xs: Strings) -> bool {
+    (not(null_p(xs)) && (string_member_p(car(xs), cdr(xs)) || repeated_p(cdr(xs))))
+}
+
+/// A moduleof's items each `(abs name type)`, `(abs (name ...) type)`,
+/// `(desc name T)` or `(val name T)`; no name twice.
+pub fn spec_well_formed(v: &'static Cv, spec: &'static Sexp) -> () {
+    map(lambda1(move |x: &'static Sexp| {
+        let ys = items(x);
+        if (sym_is_p(car(ys), str_lit("abs")) && i64_eq(size(ys), 3i64) && sym_is_p(third(ys), str_lit("type"))) {
+            ()
+        } else if ((sym_is_p(car(ys), str_lit("desc")) || sym_is_p(car(ys), str_lit("val"))) && i64_eq(size(ys), 3i64) && {
+            let tagcase_ = second(ys);
+            match *tagcase_ {
+                Sexp::Sym(n) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }) {
+            ()
+        } else {
+            refuse(v, string_append(str_lit("a module type's item KFX does not have: "), show_sexp(x)))
+        }
+    }), cdr(items(spec)));
+    if (repeated_p(onto(spec_abs(spec), map(lambda1(move |d: Sexps| {
+        sym_name(second(d))
+    }), spec_items(spec, str_lit("desc"))))) || repeated_p(map(lambda1(move |d: Sexps| {
+        sym_name(second(d))
+    }), spec_items(spec, str_lit("val"))))) {
+        refuse(v, str_lit("a name appears twice in a module type"))
+    } else {
+        ()
+    }
+}
+
+/// A moduleof's values, their types read in `v`, as items.
+pub fn module_type_values(v: &'static Cv, spec: &'static Sexp) -> Binds {
+    map(lambda1(move |x: Sexps| {
+        let t = parse_type(v, cv_tvars(v), third(x));
+        if escapes_p({
+            let tagcase_ = t;
+            match *tagcase_ {
+                Ty::TyProc(es, ps, r) => {
+                    es
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil()
+                }
+            }
+        }) {
+            refuse(v, str_lit("a module type's value that may abort, which KFX's traits do not have yet"))
+        } else {
+            bind(sym_name(second(x)), scheme(nil(), t), str_lit("item"))
+        }
+    }), spec_items(spec, str_lit("val")))
+}
+
+/// The moduleof a module type names, as a list of one; or none.
+pub fn module_spec(v: &'static Cv, t: &'static Ty) -> Sexps {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            if has_prefix_p(d, str_lit("%module ")) {
+                let found = find_alias(after_prefix(d, str_lit("%module ")), cv_aliases(v));
+                if null_p(found) {
+                    nil()
+                } else {
+                    let tagcase_ = car(found);
+                    match *tagcase_ {
+                        Alias::Alias(n, ps, body) => {
+                            the::<Sexps>(cons(body, nil()))
+                        }
+                    }
+                }
+            } else {
+                nil()
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            nil()
+        }
+    }
+}
+
+pub fn fold_values(v: &'static Cv, s: &'static St, m: Str, bs: Binds) -> &'static St {
+    if null_p(bs) {
+        s
+    } else {
+        let tagcase_ = car(bs);
+        match *tagcase_ {
+            Bind::Bind(n, sc, w) => {
+                let found = find_bind(string_append(m, string_append(str_lit(" "), n)), cv_binds(v));
+                if null_p(found) {
+                    refuse(v, string_append(m, string_append(str_lit(" gives no value "), n)))
+                } else {
+                    let tagcase_ = car(found);
+                    match *tagcase_ {
+                        Bind::Bind(n2, sc2, w2) => {
+                            let tagcase_ = instantiate(s, sc2);
+                            match *tagcase_ {
+                                Inst::Inst(t, s, regions) => {
+                                    let tagcase_ = sc;
+                                    match *tagcase_ {
+                                        Scheme::Scheme(tv, want) => {
+                                            fold_values(v, fits(v, s, t, want), m, cdr(bs))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// That the module `m`, defined at the top level, is a `x`: a type for each
+/// abstract one, the same type for each description, and each value, of a
+/// type that fits. The emitter is told, to write the trait's impl.
+pub fn conforms(v: &'static Cv, s: &'static St, m: Str, x: Str, spec: &'static Sexp) -> &'static St {
+    let w = module_scope(v, spec, str_lit(""), m);
+    map(lambda1(move |t: Str| {
+        if null_p(find_alias(string_append(m, string_append(str_lit(" "), t)), cv_aliases(v))) {
+            refuse(v, string_append(m, string_append(str_lit(" gives no type "), t)))
+        } else {
+            ()
+        }
+    }), spec_abs(spec));
+    map(lambda1(move |d: Sexps| {
+        let mine = string_append(m, string_append(str_lit(" "), sym_name(second(d))));
+        if null_p(find_alias(mine, cv_aliases(v))) {
+            refuse(v, string_append(m, string_append(str_lit(" gives no type "), sym_name(second(d)))))
+        } else {
+            let (a, b) = (parse_type(v, nil(), sym(mine)), parse_type(w, nil(), third(d)));
+            fits(v, fits(v, s, a, b), b, a);
+            ()
+        }
+    }), spec_items(spec, str_lit("desc")));
+    note_fact(fold_values(v, s, m, module_type_values(w, spec)), str_lit(""), 0i64, string_append(str_lit("module-impl "), string_append(m, string_append(str_lit(" "), x))))
+}
+
 pub fn control_form_p(h: Str) -> bool {
     (string_eq_p(h, str_lit("if")) || string_eq_p(h, str_lit("cond")) || string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("tagcase")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("with")))
 }
@@ -4116,10 +4334,6 @@ pub fn datum_key(d: &'static Sexp) -> Str {
             str_lit("?")
         }
     }
-}
-
-pub fn repeated_p(xs: Strings) -> bool {
-    (not(null_p(xs)) && (string_member_p(car(xs), cdr(xs)) || repeated_p(cdr(xs))))
 }
 
 pub fn all_chars_p(xs: Sexps) -> bool {
@@ -4613,7 +4827,43 @@ pub fn body_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Ty
         // global.
         let m = name_of(v, car(xs));
         let found = find_bind(m, cv_binds(v));
-        if (null_p(found) || not({
+        if (not(null_p(found)) && {
+            let tagcase_ = car(found);
+            match *tagcase_ {
+                Bind::Bind(n, sc, r#where) => {
+                    string_eq_p(r#where, str_lit("local"))
+                }
+            }
+        } && not(null_p(module_spec(v, {
+            let tagcase_ = car(found);
+            match *tagcase_ {
+                Bind::Bind(n, sc, r#where) => {
+                    let tagcase_ = sc;
+                    match *tagcase_ {
+                        Scheme::Scheme(tv, t) => {
+                            t
+                        }
+                    }
+                }
+            }
+        })))) {
+            // A module parameter's values, of its abstract types `m..t`.
+            let spec = car(module_spec(v, {
+                let tagcase_ = car(found);
+                match *tagcase_ {
+                    Bind::Bind(n, sc, r#where) => {
+                        let tagcase_ = sc;
+                        match *tagcase_ {
+                            Scheme::Scheme(tv, t) => {
+                                t
+                            }
+                        }
+                    }
+                }
+            }));
+            let w = module_scope(v, spec, m, str_lit(""));
+            body(with_binds(w, module_type_values(w, spec)), s, cdr(xs), expected)
+        } else if (null_p(found) || not({
             let tagcase_ = car(found);
             match *tagcase_ {
                 Bind::Bind(n, sc, r#where) => {
@@ -4621,7 +4871,7 @@ pub fn body_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Ty
                 }
             }
         })) {
-            refuse(v, string_append(str_lit("KFX's with opens a module defined at the top level, by its name: "), m))
+            refuse(v, string_append(str_lit("KFX's with opens a module defined at the top level, or a module parameter, by its name: "), m))
         } else {
             with_effs(body(opened(v, m), s, cdr(xs), expected), cons(string_append(str_lit("g:"), m), nil()))
         }
@@ -5411,13 +5661,55 @@ pub fn call_args(v: &'static Cv, s: &'static St, args: Sexps, ps: Tys) -> &'stat
     }
 }
 
+/// A module given for a module parameter: one defined at the top level, by
+/// its name, read as a global is.
+pub fn module_argument(v: &'static Cv, s: &'static St, arg: &'static Sexp, t: &'static Ty) -> &'static Res {
+    let name = {
+        let tagcase_ = arg;
+        match *tagcase_ {
+            Sexp::Sym(n) => {
+                n
+            }
+            _ => {
+                let other = tagcase_;
+                str_lit("")
+            }
+        }
+    };
+    if (string_eq_p(name, str_lit("")) || null_p(find_bind(name, cv_binds(v))) || not({
+        let tagcase_ = car(find_bind(name, cv_binds(v)));
+        match *tagcase_ {
+            Bind::Bind(n, sc, r#where) => {
+                string_eq_p(r#where, str_lit("module"))
+            }
+        }
+    })) {
+        refuse(v, str_lit("KFX's module argument is a module defined at the top level, by its name"))
+    } else {
+        res(t, cons(string_append(str_lit("g:"), name), nil()), conforms(v, s, name, {
+            let tagcase_ = t;
+            match *tagcase_ {
+                Ty::TyData(d, args) => {
+                    after_prefix(d, str_lit("%module "))
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("")
+                }
+            }
+        }, car(module_spec(v, t))))
+    }
+}
+
 /// The arguments `deferred?` says are `later`'s.
 pub fn call_args_pass(mut v: &'static Cv, mut s: &'static St, mut args: Sexps, mut ps: Tys, mut later: bool) -> &'static Res {
     loop {
         if null_p(args) {
             return res(ty_unit(), nil(), s);
         } else if eqv_bool_p(deferred_p(car(args), car(ps)), later) {
-            let tagcase_ = if (head_is_p(car(args), str_lit("list")) && raw_meta_p(car(ps))) {
+            let tagcase_ = if not(null_p(module_spec(v, walk(s, car(ps))))) {
+                module_argument(v, s, car(args), walk(s, car(ps)))
+            } else if (head_is_p(car(args), str_lit("list")) && raw_meta_p(car(ps))) {
                 check_by_synth(v, s, car(args), car(ps))
             } else {
                 check(v, s, car(args), car(ps))
@@ -5934,10 +6226,16 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
             } else if string_eq_p(h, str_lit("define-type")) {
                 // Its body read where it stands, used or not: so that one that
                 // mentions itself, or names no type, is refused.
-                let name = head_name(v, second(xs));
-                let params = family_params(v, second(xs));
-                let body = parse_type(v, cons(string_append(str_lit("%expanding "), name), params), third(xs));
-                v
+                if head_is_p(third(xs), str_lit("moduleof")) {
+                    spec_well_formed(v, third(xs));
+                    module_type_values(module_scope(v, third(xs), str_lit(""), str_lit("")), third(xs));
+                    v
+                } else {
+                    let name = head_name(v, second(xs));
+                    let params = family_params(v, second(xs));
+                    let body = parse_type(v, cons(string_append(str_lit("%expanding "), name), params), third(xs));
+                    v
+                }
             } else if string_eq_p(h, str_lit("define-datatype")) {
                 let d = car(variants_dt(v, head_name(v, second(xs))));
                 defined_once(v, constructors(d))

@@ -687,3 +687,15 @@ both accept: an abort inside `and` (`return` took the rest of the
 expression; now parenthesized), and a call that may abort where no
 `Result` is returned (now `unwrap_or_else(unreachable_unwind)`). Left:
 `TODO.md` §17. The probe's 339 programs then agree but for those.
+
+## Module parameters (2026-10-11)
+
+C24: a module type is a trait, a module parameter a type parameter, a
+module given for one its marker type, which implements the trait.
+`tests/kfx/module-params.kfx` (two modules, one abstract, one
+transparent, through two module types, one with fewer values and in
+another order); `kfx-refused/module-arg-missing`, `module-param-abstract`;
+`kfx-stricter/module-arg-inline`. A module type's items are checked as
+FX-26 checks them (`abs` of kind `type`, no name twice: found by
+`run-fixpt-programs`). Also C23: places, not now. 67 of Fixpt's programs
+accepted, all agreeing.

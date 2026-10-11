@@ -305,3 +305,37 @@ Answers `PLAN.md` Q3 (`docs/research/escapes.md` §5).
 - **Why:** labels in order are the type's identity in FX-26; a name made
   of them is that identity in Rust, with no declaration the programmer
   writes.
+
+## C23. Places: not now (2026-10-11)
+
+Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
+- **Chosen:** no places yet: `letrena`, `letreap` and the `r`-allocators
+  stay refused, every reference `'static`.
+- **Not chosen:** one lifetime for the run (§3), or `letrena` alone, each
+  touching every type the emitter writes.
+- **Why:** nothing in kayak needs memory reclaimed (the compiler runs for
+  milliseconds on itself), and the change reaches every type: worth doing
+  when a long-running or large KFX program needs it, and then as §3 says,
+  one lifetime first. The user may decide otherwise; the note stands.
+
+## C24. Module parameters: traits and type parameters (2026-10-11)
+
+- **Chosen:** a `define-type` of a `(moduleof (abs t type) (desc u T)
+  (val x T) ...)` is a Rust trait: its abstract types associated types, its
+  values functions of no receiver (`fn x(a0: P) -> R`, a value not a
+  procedure `fn x() -> T`), a description replaced by what it describes. A
+  top-level procedure's parameter of such a type is a type parameter
+  (`fn three<M: Steps>()`), `(with m ...)` writing `M::inc(M::zero())`; a
+  module defined at the top level given for it is a marker, `m::Module`,
+  given as the type argument (`three::<counter::Module>()`), which
+  implements the trait by calling the module's items. The checker checks
+  the module against the type: each abstract type given, each description
+  the same, each value of a type that fits, the abstract types the
+  module's.
+- **Not chosen, for now:** modules as values otherwise: made where they
+  are given, made in procedures, `let`-bound, sealed with `the`, passed on
+  from a parameter; dependent parameters (`(o ordered)`, `(select o t)`
+  in the types after); a module type's value that may abort.
+- **Why:** a module FX-26 passes is, where its giver is known, a static
+  choice of code: Rust's monomorphised generics are exactly that, with no
+  value at run time, and the trait says what the checker checked.

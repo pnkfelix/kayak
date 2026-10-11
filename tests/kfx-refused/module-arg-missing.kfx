@@ -1,0 +1,6 @@
+"A module given for a module type whose value it does not give."
+(define-effect kfx (maxeff (read @globals) spin))
+(define m (module (define-generative t i64) (define zero t (up-t 0))))
+(define-type has (moduleof (abs t type) (val zero t) (val one t)))
+(define f (subr pure (has) i64) (lambda (x) 0))
+(f m)

@@ -282,8 +282,9 @@ pub fn strings_onto(mut xs: Strings, mut ys: Strings) -> Strings {
     }
 }
 
-/// Module `m`'s items.
-pub fn module_items(c: &'static Ctx, m: Str) -> Sexps {
+/// What `mods` keeps under `name`, as a list of one: a module, or, under
+/// `%moduleof x`, a module type.
+pub fn module_body(c: &'static Ctx, name: Str) -> Sexps {
     let tagcase_ = c;
     match *tagcase_ {
         Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
@@ -291,8 +292,8 @@ pub fn module_items(c: &'static Ctx, m: Str) -> Sexps {
                 let tagcase_ = x;
                 match *tagcase_ {
                     Typed::Typed(n, body) => {
-                        if string_eq_p(n, m) {
-                            cdr(items(body))
+                        if string_eq_p(n, name) {
+                            the::<Sexps>(cons(body, nil()))
                         } else {
                             nil()
                         }
@@ -300,6 +301,78 @@ pub fn module_items(c: &'static Ctx, m: Str) -> Sexps {
                 }
             }), mods))
         }
+    }
+}
+
+/// The module type of the module parameter `m` in scope, or ``.
+pub fn param_module_type(mut m: Str, mut ls: Strings) -> Str {
+    loop {
+        if null_p(ls) {
+            return str_lit("");
+        } else if string_eq_p(car(ls), m) {
+            return str_lit("");
+        } else if has_prefix_p(car(ls), string_append(str_lit("%modparam "), string_append(m, str_lit(" ")))) {
+            return after_prefix(car(ls), string_append(str_lit("%modparam "), string_append(m, str_lit(" "))));
+        } else {
+            ls = cdr(ls);
+            continue;
+        }
+    }
+}
+
+/// Module `m`'s items; a module parameter's, as its type's values would be
+/// written (a value not a procedure a constant).
+pub fn module_items(c: &'static Ctx, m: Str) -> Sexps {
+    let x = param_module_type(m, ctx_locals(c));
+    if string_eq_p(x, str_lit("")) {
+        let found = module_body(c, m);
+        if null_p(found) {
+            nil()
+        } else {
+            cdr(items(car(found)))
+        }
+    } else {
+        let spec = module_body(c, string_append(str_lit("%moduleof "), x));
+        if null_p(spec) {
+            nil()
+        } else {
+            concat(map(lambda1(move |it: &'static Sexp| {
+                let ys = items(it);
+                if sym_is_p(car(ys), str_lit("val")) {
+                    the::<Sexps>(cons(lst(cons(sym(str_lit("define")), cons(second(ys), cons(third(ys), cons(if head_is_p(third(ys), str_lit("subr")) {
+                        lst(cons(sym(str_lit("lambda")), nil()), str_lit(""), 0i64, 0i64)
+                    } else {
+                        sym(str_lit("#u"))
+                    }, nil())))), str_lit(""), 0i64, 0i64), nil()))
+                } else if sym_is_p(car(ys), str_lit("abs")) {
+                    map(lambda1(move |t: &'static Sexp| {
+                        lst(cons(sym(str_lit("define-type")), cons(t, cons(sym(str_lit("i64")), nil()))), str_lit(""), 0i64, 0i64)
+                    }), {
+                        let tagcase_ = second(ys);
+                        match *tagcase_ {
+                            Sexp::Lst(ns, f, l, p) => {
+                                ns
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                cons(second(ys), nil())
+                            }
+                        }
+                    })
+                } else {
+                    nil()
+                }
+            }), cdr(items(car(spec)))))
+        }
+    }
+}
+
+/// A module's Rust path: a module parameter's is its type parameter.
+pub fn module_path(c: &'static Ctx, m: Str) -> Str {
+    if string_eq_p(param_module_type(m, ctx_locals(c)), str_lit("")) {
+        mangle(m)
+    } else {
+        camel(m)
     }
 }
 
@@ -590,6 +663,8 @@ pub fn note(form: &'static Sexp, c: &'static Ctx) -> &'static Ctx {
             if head_is_p(form, str_lit("define-datatype")) {
                 let d = type_head_name(second(items(form)));
                 ctx(cons(d, ds), note_tags(cdr(cdr(items(form))), d, ts), ks, ls, xs, fs, note_family(second(items(form)), true, ms), es, mods)
+            } else if (head_is_p(form, str_lit("define-type")) && head_is_p(third(items(form)), str_lit("moduleof"))) {
+                ctx(ds, ts, ks, ls, xs, fs, ms, es, cons(typed(string_append(str_lit("%moduleof "), sym_name(second(items(form)))), third(items(form))), mods))
             } else if (head_is_p(form, str_lit("define-type")) || head_is_p(form, str_lit("define-generative"))) {
                 ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms), es, mods)
             } else if head_is_p(form, str_lit("define-effect")) {
@@ -668,7 +743,11 @@ pub fn type_path(c: &'static Ctx, m: Str, t: Str) -> Str {
         str_lit("&'static ")
     } else {
         str_lit("")
-    }, string_append(mangle(m), string_append(str_lit("::"), camel(t))))
+    }, string_append(if string_eq_p(m, str_lit("Self")) {
+        m
+    } else {
+        module_path(c, m)
+    }, string_append(str_lit("::"), camel(t))))
 }
 
 /// A datatype's enum, a module's named by its path.
@@ -836,7 +915,7 @@ pub fn local_kind(mut s: Str, mut ls: Strings) -> Str {
 /// A module's value, named in a `with`: `m::x`, called if a constant.
 pub fn item_path(c: &'static Ctx, s: Str) -> Str {
     let m = opener(string_append(str_lit("%item "), s), ctx_locals(c));
-    string_append(mangle(m), string_append(str_lit("::"), string_append(mangle(s), if string_member_p(s, item_constants(module_items(c, m))) {
+    string_append(module_path(c, m), string_append(str_lit("::"), string_append(mangle(s), if string_member_p(s, item_constants(module_items(c, m))) {
         str_lit("()")
     } else {
         str_lit("")
@@ -1100,6 +1179,20 @@ pub fn typed_lambda(lam: &'static Sexp, r#type: &'static Sexp) -> &'static Sexp 
         _ => {
             let other = tagcase_;
             lam
+        }
+    }
+}
+
+/// Whether `x` names a module defined at the top level, not hidden.
+pub fn module_name_p(c: &'static Ctx, x: &'static Sexp) -> bool {
+    let tagcase_ = x;
+    match *tagcase_ {
+        Sexp::Sym(n) => {
+            (string_eq_p(local_kind(n, ctx_locals(c)), str_lit("")) && not(null_p(module_body(c, n))))
+        }
+        _ => {
+            let other = tagcase_;
+            false
         }
     }
 }
@@ -1780,6 +1873,29 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
         put_prompt(c, e, xs, n, acc)
     } else if null_p(xs) {
         put_question(c, e, put(str_lit("()"), put(callee(c, h), acc)))
+    } else if any_p(lambda1(move |x: &'static Sexp| {
+        module_name_p(c, x)
+    }), xs) {
+        // A module given: the type parameter's argument, its marker.
+        let acc = put(str_lit("::<"), put(callee(c, h), acc));
+        let acc = put_sep(lambda2(move |x: &'static Sexp, acc: Chars| {
+            put(str_lit("::Module"), put(mangle(sym_name(x)), acc))
+        }), str_lit(", "), concat(map(lambda1(move |x: &'static Sexp| {
+            if module_name_p(c, x) {
+                the::<Sexps>(cons(x, nil()))
+            } else {
+                nil()
+            }
+        }), xs)), acc);
+        let acc = put(str_lit(">("), acc);
+        let acc = put_joined(c, concat(map(lambda1(move |x: &'static Sexp| {
+            if module_name_p(c, x) {
+                nil()
+            } else {
+                the::<Sexps>(cons(x, nil()))
+            }
+        }), xs)), str_lit(", "), n, acc);
+        put_question(c, e, put(str_lit(")"), acc))
     } else {
         put_question(c, e, put(str_lit(")"), put_joined(c, xs, str_lit(", "), n, put(str_lit("("), put(callee(c, h), acc)))))
     }
@@ -1827,6 +1943,265 @@ pub fn put_question(c: &'static Ctx, e: &'static Sexp, acc: Chars) -> Chars {
 }
 
 // Top-level forms
+
+// Modules as parameters (C24): a module type, a trait; its abstract types,
+// associated types; its values, functions of no receiver. A module defined at
+// the top level that is given for one is a marker type, `m::Module`, which
+// implements the trait by calling the module's items.
+/// A type written in a module type, its descriptions' names replaced by
+/// what they describe.
+pub fn subst_descs(e: &'static Sexp, descs: List<Sexps>) -> &'static Sexp {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Sym(n) => {
+            let found = concat(map(lambda1(move |d: Sexps| {
+                if string_eq_p(sym_name(second(d)), n) {
+                    the::<Sexps>(cons(third(d), nil()))
+                } else {
+                    nil()
+                }
+            }), descs));
+            if null_p(found) {
+                e
+            } else {
+                car(found)
+            }
+        }
+        Sexp::Lst(xs, f, l, p) => {
+            lst(map(lambda1(move |x: &'static Sexp| {
+                subst_descs(x, descs)
+            }), xs), f, l, p)
+        }
+        _ => {
+            let other = tagcase_;
+            e
+        }
+    }
+}
+
+pub fn spec_of(spec: &'static Sexp, kind: Str) -> List<Sexps> {
+    concat(map(lambda1(move |x: &'static Sexp| {
+        if head_is_p(x, kind) {
+            the::<List<Sexps>>(cons(items(x), nil()))
+        } else {
+            nil()
+        }
+    }), cdr(items(spec))))
+}
+
+pub fn abs_of(spec: &'static Sexp) -> Strings {
+    concat(map(lambda1(move |a: Sexps| {
+        let tagcase_ = second(a);
+        match *tagcase_ {
+            Sexp::Sym(n) => {
+                the::<Strings>(cons(n, nil()))
+            }
+            Sexp::Lst(ns, f, l, p) => {
+                map(&sym_name, ns)
+            }
+            _ => {
+                let other = tagcase_;
+                nil()
+            }
+        }
+    }), spec_of(spec, str_lit("abs"))))
+}
+
+/// `c` where a module type's abstract types are `Self`'s.
+pub fn in_trait(c: &'static Ctx, spec: &'static Sexp) -> &'static Ctx {
+    with_locals(c, cons(str_lit("%with Self"), map(lambda1(move |t: Str| {
+        string_append(str_lit("%type "), t)
+    }), abs_of(spec))))
+}
+
+pub fn put_arg_params(mut c: &'static Ctx, mut ts: Sexps, mut i: i64, mut acc: Chars) -> Chars {
+    loop {
+        if null_p(ts) {
+            return acc;
+        } else {
+            (ts, i, acc) = (cdr(ts), i64_plus(i, 1i64), put_type(c, car(ts), put(str_lit(": "), put(i64_to_string(i), put(if i64_eq(i, 0i64) {
+                str_lit("a")
+            } else {
+                str_lit(", a")
+            }, acc)))));
+            continue;
+        }
+    }
+}
+
+pub fn put_arg_names(mut i: i64, mut n: i64, mut acc: Chars) -> Chars {
+    loop {
+        if i64_lt(i, n) {
+            (i, acc) = (i64_plus(i, 1i64), put(i64_to_string(i), put(if i64_eq(i, 0i64) {
+                str_lit("a")
+            } else {
+                str_lit(", a")
+            }, acc)));
+            continue;
+        } else {
+            return acc;
+        }
+    }
+}
+
+/// `fn x(a0: P0, ...) -> R`, a module type's value `(val x T)`.
+pub fn put_val_sig(c: &'static Ctx, val: Sexps, descs: List<Sexps>, acc: Chars) -> Chars {
+    let t = subst_descs(third(val), descs);
+    let acc = put(mangle(sym_name(second(val))), put(str_lit("fn "), acc));
+    if head_is_p(t, str_lit("subr")) {
+        put_type(c, fourth(items(t)), put(str_lit(") -> "), put_arg_params(c, items(third(items(t))), 0i64, put(str_lit("("), acc))))
+    } else {
+        put_type(c, t, put(str_lit("() -> "), acc))
+    }
+}
+
+pub fn put_trait(c: &'static Ctx, name: Str, spec: &'static Sexp, acc: Chars) -> Chars {
+    let inner = in_trait(c, spec);
+    let descs = spec_of(spec, str_lit("desc"));
+    let acc = put(str_lit(" {\n"), put(camel(name), put(str_lit("pub trait "), acc)));
+    let acc = put_sep(lambda2(move |t: Str, acc: Chars| {
+        put(str_lit(": Copy + 'static;\n"), put(camel(t), put(str_lit("    type "), acc)))
+    }), str_lit(""), abs_of(spec), acc);
+    let acc = put_sep(lambda2(move |v: Sexps, acc: Chars| {
+        put(str_lit(";\n"), put_val_sig(inner, v, descs, put(str_lit("    "), acc)))
+    }), str_lit(""), spec_of(spec, str_lit("val")), acc);
+    put(str_lit("}\n\n"), acc)
+}
+
+/// Each module given for a module type, `m x`, once.
+pub fn module_impls(c: &'static Ctx) -> Strings {
+    let tagcase_ = c;
+    match *tagcase_ {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            reverse_strings(concat(map(lambda1(move |f: &'static Fact| {
+                let tagcase_ = f;
+                match *tagcase_ {
+                    Fact::Fact(ff, fp, fw) => {
+                        if has_prefix_p(fw, str_lit("module-impl ")) {
+                            the::<Strings>(cons(after_prefix(fw, str_lit("module-impl ")), nil()))
+                        } else {
+                            nil()
+                        }
+                    }
+                }
+            }), fs)), nil())
+        }
+    }
+}
+
+pub fn deduped(mut xs: Strings, mut seen: Strings) -> Strings {
+    loop {
+        if null_p(xs) {
+            return reverse_strings(seen, nil());
+        } else if string_member_p(car(xs), seen) {
+            xs = cdr(xs);
+            continue;
+        } else {
+            (xs, seen) = (cdr(xs), cons(car(xs), seen));
+            continue;
+        }
+    }
+}
+
+pub fn put_impl(c: &'static Ctx, m: Str, x: Str, acc: Chars) -> Chars {
+    let spec = car(module_body(c, string_append(str_lit("%moduleof "), x)));
+    let inner = in_trait(c, spec);
+    let descs = spec_of(spec, str_lit("desc"));
+    let consts = item_constants(module_items(c, m));
+    let acc = put(str_lit(" {\n"), put(str_lit("::Module"), put(mangle(m), put(str_lit(" for "), put(camel(x), put(str_lit("impl "), acc))))));
+    let acc = put_sep(lambda2(move |t: Str, acc: Chars| {
+        put(str_lit(";\n"), put(type_path(c, m, t), put(str_lit(" = "), put(camel(t), put(str_lit("    type "), acc)))))
+    }), str_lit(""), abs_of(spec), acc);
+    let acc = put_sep(lambda2(move |v: Sexps, acc: Chars| {
+        let t = subst_descs(third(v), descs);
+        let name = sym_name(second(v));
+        let acc = put(str_lit(" {\n        "), put_val_sig(inner, v, descs, put(str_lit("    "), acc)));
+        let acc = put(mangle(name), put(str_lit("::"), put(mangle(m), acc)));
+        let acc = if string_member_p(name, consts) {
+            put(str_lit("()"), acc)
+        } else {
+            acc
+        };
+        let acc = if head_is_p(t, str_lit("subr")) {
+            put(str_lit(")"), put_arg_names(0i64, size(items(third(items(t)))), put(str_lit("("), acc)))
+        } else {
+            acc
+        };
+        put(str_lit("\n    }\n"), acc)
+    }), str_lit(""), spec_of(spec, str_lit("val")), acc);
+    put(str_lit("}\n\n"), acc)
+}
+
+pub fn put_module_impls(c: &'static Ctx, acc: Chars) -> Chars {
+    put_sep(lambda2(move |k: Str, acc: Chars| {
+        let ws = split_words(k);
+        put_impl(c, car(ws), car(cdr(ws)), acc)
+    }), str_lit(""), deduped(module_impls(c), nil()), acc)
+}
+
+/// The parameters of a module type, each `m x`.
+pub fn module_params(c: &'static Ctx, names: Sexps, types: Sexps) -> Strings {
+    if (null_p(names) || null_p(types)) {
+        nil()
+    } else {
+        let rest = module_params(c, cdr(names), cdr(types));
+        let tagcase_ = car(types);
+        match *tagcase_ {
+            Sexp::Sym(t) => {
+                if null_p(module_body(c, string_append(str_lit("%moduleof "), t))) {
+                    rest
+                } else {
+                    cons(string_append(sym_name({
+                        let tagcase_ = car(names);
+                        match *tagcase_ {
+                            Sexp::Lst(xs, f, l, p) => {
+                                car(xs)
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                other
+                            }
+                        }
+                    }), string_append(str_lit(" "), t)), rest)
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                rest
+            }
+        }
+    }
+}
+
+/// `names` or `types`, without the module parameters.
+pub fn unmoduled(mut c: &'static Ctx, mut names: Sexps, mut types: Sexps, mut want_names: bool) -> Sexps {
+    loop {
+        if (null_p(names) || null_p(types)) {
+            return nil();
+        } else if {
+            let tagcase_ = car(types);
+            match *tagcase_ {
+                Sexp::Sym(t) => {
+                    not(null_p(module_body(c, string_append(str_lit("%moduleof "), t))))
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        } {
+            (names, types) = (cdr(names), cdr(types));
+            continue;
+        } else {
+            return cons(if want_names {
+                car(names)
+            } else {
+                car(types)
+            }, unmoduled(c, cdr(names), cdr(types), want_names));
+        }
+    }
+}
+
 /// Parameters, from a lambda's names and its `subr` type's; `mut` if
 /// `mutable`, for a procedure that loops.
 pub fn put_params(c: &'static Ctx, names: Sexps, types: Sexps, mutable: bool, acc: Chars) -> Chars {
@@ -1932,27 +2307,44 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, r#type: &'static Sexp, d
         body
     };
     let fallible = (lambda_p && fallible_effect_p(c, second(items(r#type))));
+    let mparams = if lambda_p {
+        module_params(c, items(second(items(defined))), items(third(items(r#type))))
+    } else {
+        nil()
+    };
     let t = if lambda_p {
-        returns(sym_name(name), map(&param_name, items(second(items(defined)))), true, fallible)
+        returns(sym_name(name), map(&param_name, items(second(items(defined)))), null_p(mparams), fallible)
     } else {
         value()
     };
     let loops_p = (lambda_p && tail_calls_p(t, last(body)));
     let inner = if lambda_p {
-        with_locals(c, cons(if fallible {
+        with_locals(c, onto(cons(if fallible {
             str_lit("%fallible")
         } else {
             str_lit("%infallible")
-        }, map(&param_name, items(second(items(defined))))))
+        }, map(&param_name, items(second(items(defined))))), map(lambda1(move |mp: Str| {
+            string_append(str_lit("%modparam "), mp)
+        }), mparams)))
     } else {
         c
     };
     let acc = put(str_lit("pub fn "), acc);
     let acc = put(mangle(sym_name(name)), acc);
     let acc = put_generics(binders, true, acc);
+    let acc = if null_p(mparams) {
+        acc
+    } else if not(null_p(binders)) {
+        error(str_lit("kfx: a poly procedure with a module parameter, which KFX does not write yet"))
+    } else {
+        put(str_lit(">"), put_sep(lambda2(move |mp: Str, acc: Chars| {
+            let ws = split_words(mp);
+            put(camel(car(cdr(ws))), put(str_lit(": "), put(camel(car(ws)), acc)))
+        }), str_lit(", "), mparams, put(str_lit("<"), acc)))
+    };
     let acc = if lambda_p {
         let acc = put(str_lit("("), acc);
-        let acc = put_params(c, items(second(items(defined))), items(third(items(r#type))), loops_p, acc);
+        let acc = put_params(c, unmoduled(c, items(second(items(defined))), items(third(items(r#type))), true), unmoduled(c, items(second(items(defined))), items(third(items(r#type))), false), loops_p, acc);
         let acc = put(str_lit(") -> "), acc);
         if fallible {
             put(str_lit(", Unwind>"), put_type(c, fourth(items(r#type)), put(str_lit("Result<"), acc)))
@@ -2429,6 +2821,8 @@ pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
     };
     if string_eq_p(h, str_lit("define-effect")) {
         acc
+    } else if (string_eq_p(h, str_lit("define-type")) && head_is_p(third(xs), str_lit("moduleof"))) {
+        put_trait(c, sym_name(second(xs)), third(xs), acc)
     } else if string_eq_p(h, str_lit("define-type")) {
         let acc = put(str_lit("pub type "), acc);
         let acc = put(camel(type_head_name(second(xs))), acc);
@@ -2476,6 +2870,13 @@ pub fn put_module(c: &'static Ctx, m: Str, forms: Sexps, acc: Chars) -> Chars {
     let acc = put(str_lit("pub mod "), acc);
     let acc = put(mangle(m), acc);
     let acc = put(str_lit(" {\n    use super::*;\n\n"), acc);
+    let acc = if any_p(lambda1(move |k: Str| {
+        string_eq_p(car(split_words(k)), m)
+    }), module_impls(c)) {
+        put(str_lit("    /// This module, given for a module type (C24).\n    pub struct Module;\n\n"), acc)
+    } else {
+        acc
+    };
     put(str_lit("\n}\n\n"), indented(rev_onto(trimmed(body), nil()), true, acc))
 }
 

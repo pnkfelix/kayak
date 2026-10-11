@@ -167,8 +167,8 @@ The first step is done (`DONE.md`, C19): top-level modules, `with`,
 - `the` sealing a module defined at the top level to fewer values or
   abstract types: a second `mod` re-exporting;
 - `load-module` of a file, the file a Rust module;
-- modules as values, and Sheldon's dependent procedures: a trait, or a
-  struct of `fn`s; designing first.
+- modules as values beyond C24's parameters: made where given, sealed
+  with `the`, passed on; dependent parameters.
 
 Files are units in order, with no interfaces: every name is visible
 everywhere after its definition, and every Rust item is `pub`. FX-26's

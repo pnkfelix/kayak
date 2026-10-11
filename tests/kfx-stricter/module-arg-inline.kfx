@@ -1,0 +1,5 @@
+"A module made where it is given: FX-26's are values; KFX gives modules defined at the top level, by name (C24)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type has (moduleof (val x i64)))
+(define f (subr pure (has) i64) (lambda (n) (with n x)))
+(f (module (define x i64 4)))

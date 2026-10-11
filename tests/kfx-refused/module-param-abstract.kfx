@@ -1,0 +1,5 @@
+"A module parameter's abstract type is not its module's representation."
+(define-effect kfx (maxeff (read @globals) spin))
+(define m (module (define-generative t i64) (define zero t (up-t 0))))
+(define-type has (moduleof (abs t type) (val zero t)))
+(define f (subr pure (has) i64) (lambda (x) (with x (i64+ zero 1))))

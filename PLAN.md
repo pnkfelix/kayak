@@ -284,7 +284,8 @@ Then FX-26 at large, written in KFX. Two directions, not chosen yet:
   differs between FX-26 and Rust. Since C15, `int` is a bignum in both.
 - **Q3. Escapes**: `Result` by effect, or unwinding panics? Decided:
   `Result` by effect, the recommendation (C18).
-- **Q4. Places**: needed now? (`docs/research/places.md` §4.)
+- **Q4. Places**: needed now? (`docs/research/places.md` §4.) Not yet,
+  I decided (C23): nothing needs memory reclaimed; yours to overrule.
 
 ## 7. Requests for Fixpt
 
