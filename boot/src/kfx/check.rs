@@ -355,6 +355,12 @@ pub fn after_prefix(x: Str, p: Str) -> Str {
     list_to_string(drop_chars(string_to_list(x), string_length_i64(p)))
 }
 
+pub fn has_char_in_p(s: Str, c: char) -> bool {
+    any_p(lambda1(move |x: char| {
+        char_eq_p(x, c)
+    }), string_chars(s))
+}
+
 pub fn repeated_p(xs: Strings) -> bool {
     (not(null_p(xs)) && (string_member_p(car(xs), cdr(xs)) || repeated_p(cdr(xs))))
 }
@@ -1114,7 +1120,9 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     }), fields))) {
                         return refuse(v, string_append(str_lit("a type KFX does not have: "), show_sexp(t)));
                     } else {
-                        if (repeated_p(map(lambda1(move |f: Sexps| {
+                        if (any_p(lambda1(move |f: Sexps| {
+                            has_char_in_p(label_of(car(f)), '_')
+                        }), fields) || repeated_p(map(lambda1(move |f: Sexps| {
                             label_of(car(f))
                         }), fields)) || repeated_p(map(lambda1(move |f: Sexps| {
                             camel(label_of(car(f)))
@@ -2137,12 +2145,6 @@ pub fn cv_pos(v: &'static Cv) -> i64 {
             at
         }
     }
-}
-
-pub fn has_char_in_p(s: Str, c: char) -> bool {
-    any_p(lambda1(move |x: char| {
-        char_eq_p(x, c)
-    }), string_chars(s))
 }
 
 pub fn char_lower_p(c: char) -> bool {

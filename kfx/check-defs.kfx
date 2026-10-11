@@ -413,6 +413,36 @@
       (else other (tagcase (synth (at v "a top-level expression" nil) (new-state) form)
                     (res (t es s) (with-facts v (st-facts s))))))))
 
+(define module-def? (subr kfx (sexp) bool)
+  (lambda (form)
+    (and (head-is? form "define") (i64= (size (items form)) 3) (head-is? (third (items form)) "module"))))
+
+(define type-level-names (subr kfx (sexps) strings)
+  (lambda (forms)
+    "The names of the types and modules `forms` define, one Rust scope's."
+    (concat
+     (map (lambda ((f sexp))
+            (cond ((or (head-is? f "define-type") (head-is? f "define-datatype") (head-is? f "define-generative"))
+                   (tagcase (second (items f))
+                     (sym (n) (the strings (list n)))
+                     (lst (ys fl ln ps) (tagcase (car ys) (sym (n) (the strings (list n))) (else other nil)))
+                     (else other nil)))
+                  ((module-def? f) (the strings (list (sym-name (second (items f))))))
+                  (else nil)))
+          forms))))
+
+(define type-scopes (subr kfx (sexps) (listof strings acyclic))
+  (lambda (forms)
+    "Each Rust scope's type and module names: the program's, then each module's."
+    (cons (type-level-names forms)
+          (concat (map (lambda ((f sexp))
+                         (if (module-def? f)
+                             (the (listof strings acyclic)
+                               (list (type-level-names (concat (map (lambda ((g sexp)) (if (head-is? g "hide") (cdr (items g)) (the sexps (list g))))
+                                                                    (cdr (items (third (items f)))))))))
+                             nil))
+                       forms)))))
+
 (define type-names-free (subr kfx (cv sexps) unit)
   (lambda (v forms)
     "No type is named as one the generated Rust names: kayak-rt's (`Str`,
@@ -429,6 +459,15 @@
                        #u))
                  #u))
            forms)
+      (map (lambda ((names strings))
+             (begin
+               (map (lambda ((n string))
+                      (if (kfx-name? n) #u (refuse v (string-append "a type's or module's name KFX's names are not (C27): " n))))
+                    names)
+               (if (repeated? (map camel names))
+                   (refuse v "two types or modules named alike in Rust (camel-cased, as `point` and `point-`)")
+                   #u)))
+           (type-scopes forms))
       #u)))
 
 "Elaboration. A definition with no type, `(define x e)`, has the type the
@@ -460,10 +499,6 @@
  that a module's and the program's never meet, and a generative type's
  conversions stay inside. Outside, `m`'s values and types are named `m x`,
  found by `with` and `select`."
-
-(define module-def? (subr kfx (sexp) bool)
-  (lambda (form)
-    (and (head-is? form "define") (i64= (size (items form)) 3) (head-is? (third (items form)) "module"))))
 
 (define tag-taken? (subr kfx (string dts) bool)
   (lambda (tag ds)

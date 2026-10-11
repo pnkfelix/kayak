@@ -598,6 +598,61 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
     }
 }
 
+pub fn module_def_p(form: &'static Sexp) -> bool {
+    (head_is_p(form, str_lit("define")) && i64_eq(size(items(form)), 3i64) && head_is_p(third(items(form)), str_lit("module")))
+}
+
+/// The names of the types and modules `forms` define, one Rust scope's.
+pub fn type_level_names(forms: Sexps) -> Strings {
+    concat(map(lambda1(move |f: &'static Sexp| {
+        if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-datatype")) || head_is_p(f, str_lit("define-generative"))) {
+            let tagcase_ = second(items(f));
+            match *tagcase_ {
+                Sexp::Sym(n) => {
+                    the::<Strings>(kayak_rt::cons(n, kayak_rt::nil()))
+                }
+                Sexp::Lst(ys, fl, ln, ps) => {
+                    let tagcase_ = car(ys);
+                    match *tagcase_ {
+                        Sexp::Sym(n) => {
+                            the::<Strings>(kayak_rt::cons(n, kayak_rt::nil()))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            nil()
+                        }
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil()
+                }
+            }
+        } else if module_def_p(f) {
+            the::<Strings>(kayak_rt::cons(sym_name(second(items(f))), kayak_rt::nil()))
+        } else {
+            nil()
+        }
+    }), forms))
+}
+
+/// Each Rust scope's type and module names: the program's, then each module's.
+pub fn type_scopes(forms: Sexps) -> List<Strings> {
+    cons(type_level_names(forms), concat(map(lambda1(move |f: &'static Sexp| {
+        if module_def_p(f) {
+            the::<List<Strings>>(kayak_rt::cons(type_level_names(concat(map(lambda1(move |g: &'static Sexp| {
+                if head_is_p(g, str_lit("hide")) {
+                    cdr(items(g))
+                } else {
+                    the::<Sexps>(kayak_rt::cons(g, kayak_rt::nil()))
+                }
+            }), cdr(items(third(items(f))))))), kayak_rt::nil()))
+        } else {
+            nil()
+        }
+    }), forms)))
+}
+
 /// No type is named as one the generated Rust names: kayak-rt's (`Str`,
 /// `List`, ...) and the few of Rust's it writes (`Fn`, `Result`, `Copy`,
 /// ...); others of Rust's prelude a program's own type hides.
@@ -637,6 +692,20 @@ pub fn type_names_free(v: &'static Cv, forms: Sexps) -> () {
             ()
         }
     }), forms);
+    map(lambda1(move |names: Strings| {
+        map(lambda1(move |n: Str| {
+            if kfx_name_p(n) {
+                ()
+            } else {
+                refuse(v, string_append(str_lit("a type's or module's name KFX's names are not (C27): "), n))
+            }
+        }), names);
+        if repeated_p(map(&camel, names)) {
+            refuse(v, str_lit("two types or modules named alike in Rust (camel-cased, as `point` and `point-`)"))
+        } else {
+            ()
+        }
+    }), type_scopes(forms));
     ()
 }
 
@@ -687,10 +756,6 @@ pub fn check_untyped(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
 // that a module's and the program's never meet, and a generative type's
 // conversions stay inside. Outside, `m`'s values and types are named `m x`,
 // found by `with` and `select`.
-pub fn module_def_p(form: &'static Sexp) -> bool {
-    (head_is_p(form, str_lit("define")) && i64_eq(size(items(form)), 3i64) && head_is_p(third(items(form)), str_lit("module")))
-}
-
 pub fn tag_taken_p(tag: Str, ds: Dts) -> bool {
     any_p(lambda1(move |d: &'static Dt| {
         let tagcase_ = d;

@@ -151,6 +151,9 @@
 (define after-prefix (subr kfx (string string) string)
   (lambda (x p) (list->string (drop-chars (string->list x) (string-length-i64 p)))))
 
+(define has-char-in? (subr kfx (string char) bool)
+  (lambda (s c) (any? (lambda ((x char)) (char=? x c)) (string-chars s))))
+
 (define-rec
   (repeated? (subr kfx (strings) bool)
     (lambda (xs) (and (not (null? xs)) (or (string-member? (car xs) (cdr xs)) (repeated? (cdr xs)))))))
@@ -525,7 +528,8 @@
                            (and (sym-is? (car xs) "sumof")
                                 (any? (lambda ((f sexps)) (tagcase (car f) (sym (n) #f) (else other #t))) fields)))
                        (refuse v (string-append "a type KFX does not have: " (show-sexp t)))
-                       (if (or (repeated? (map (lambda ((f sexps)) (label-of (car f))) fields))
+                       (if (or (any? (lambda ((f sexps)) (has-char-in? (label-of (car f)) #\_)) fields)
+                               (repeated? (map (lambda ((f sexps)) (label-of (car f))) fields))
                                (repeated? (map (lambda ((f sexps)) (camel (label-of (car f)))) fields)))
                            (refuse v (string-append "a label appears twice in " (show-sexp t)))
                        (ty-shape (sym-is? (car xs) "productof")
@@ -959,9 +963,6 @@
 
 (define cv-file (subr kfx (cv) string) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv at) file))))
 (define cv-pos (subr kfx (cv) i64) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv at) at))))
-
-(define has-char-in? (subr kfx (string char) bool)
-  (lambda (s c) (any? (lambda ((x char)) (char=? x c)) (string-chars s))))
 
 (define char-lower? (subr kfx (char) bool)
   (lambda (c) (has-char-in? "abcdefghijklmnopqrstuvwxyz" c)))
