@@ -1,0 +1,3 @@
+"A generative type is not what it is made of: meters are no i64."
+(define-generative meters i64)
+(define x i64 (up-meters 5))

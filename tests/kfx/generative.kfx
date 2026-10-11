@@ -1,0 +1,26 @@
+"define-generative: a new type, distinct from what it is made of, with
+ conversions both ways. In Rust, a newtype."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-generative meters i64)
+(define-generative feet i64)
+
+(define-generative (stack (t type)) (listof t acyclic))
+
+(define add (subr kfx (meters meters) meters)
+  (lambda (a b) (up-meters (i64+ (down-meters a) (down-meters b)))))
+
+(define to-feet (subr kfx (meters) feet)
+  (lambda (m) (up-feet (i64-quotient (i64* (down-meters m) 3281) 1000))))
+
+(define push (poly ((t type)) (subr kfx (t (stack t)) (stack t)))
+  (lambda (x s) (up-stack (cons x (down-stack s)))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (let* ((m (add (up-meters 100) (up-meters 23)))
+           (s (push (the i64 3) (push (the i64 2) (up-stack (the (listof i64 acyclic) nil))))))
+      (string-append (i64->string (down-meters m))
+        (string-append " " (string-append (i64->string (down-feet (to-feet m)))
+          (string-append " " (i64->string (car (down-stack s))))))))))

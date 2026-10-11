@@ -666,6 +666,21 @@ pub fn find_alias(mut name: Str, mut r#as: Aliases) -> List<&'static Alias> {
     }
 }
 
+/// The type abbreviations being expanded, which `tvars` carries, marked,
+/// so that one that mentions itself is found.
+pub fn expanding(mut tvars: Strings) -> Strings {
+    loop {
+        if null_p(tvars) {
+            return nil();
+        } else if (i64_gt(string_length_i64(car(tvars)), 0i64) && char_eq_p(string_ref_i64(car(tvars), 0i64), '%')) {
+            return cons(car(tvars), expanding(cdr(tvars)));
+        } else {
+            tvars = cdr(tvars);
+            continue;
+        }
+    }
+}
+
 /// `tvars`: the type variables in scope.
 pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) -> &'static Ty {
     loop {
@@ -709,11 +724,13 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                         let tagcase_ = car(found);
                         match *tagcase_ {
                             Alias::Alias(n, ps, body) => {
-                                if null_p(ps) {
-                                    t = body;
-                                    continue;
-                                } else {
+                                if not(null_p(ps)) {
                                     return refuse(v, string_append(str_lit("a type with parameters, given none: "), s));
+                                } else if string_member_p(string_append(str_lit("%expanding "), s), tvars) {
+                                    return refuse(v, string_append(str_lit("a type abbreviation that mentions itself, "), string_append(s, str_lit(": Rust's type aliases cannot; a datatype can"))));
+                                } else {
+                                    (tvars, t) = (cons(string_append(str_lit("%expanding "), s), tvars), body);
+                                    continue;
                                 }
                             }
                         }
@@ -795,7 +812,11 @@ pub fn parse_application(v: &'static Cv, tvars: Strings, name: Str, args: Sexps)
         let tagcase_ = car(find_alias(name, cv_aliases(v)));
         match *tagcase_ {
             Alias::Alias(n, ps, body) => {
-                substitute(ps, parse_arguments(v, tvars, ps, args), parse_type(v, ps, body))
+                if string_member_p(string_append(str_lit("%expanding "), name), tvars) {
+                    refuse(v, string_append(str_lit("a type abbreviation that mentions itself, "), string_append(name, str_lit(": Rust's type aliases cannot; a datatype can"))))
+                } else {
+                    substitute(ps, parse_arguments(v, tvars, ps, args), parse_type(v, cons(string_append(str_lit("%expanding "), name), onto(ps, expanding(tvars))), body))
+                }
             }
         }
     }
@@ -809,7 +830,9 @@ pub fn family_params(v: &'static Cv, head: &'static Sexp) -> Strings {
         Sexp::Lst(xs, src_file, src_line, src_pos) => {
             map(lambda1(move |b: &'static Sexp| {
                 let b = items(b);
-                if sym_is_p(second(b), str_lit("type")) {
+                if not(i64_eq(size(b), 2i64)) {
+                    refuse(v, string_append(str_lit("a variance mark, which KFX does not have (its families are invariant): "), show_sexp(lst(b, str_lit(""), 0i64, 0i64))))
+                } else if sym_is_p(second(b), str_lit("type")) {
                     name_of(v, car(b))
                 } else if sym_is_p(second(b), str_lit("region")) {
                     string_append(str_lit("'"), name_of(v, car(b)))
@@ -1657,6 +1680,31 @@ pub fn nat_p(s: &'static St, t: &'static Ty) -> bool {
             let other = tagcase_;
             false
         }
+    }
+}
+
+/// `nil` given for a parameter that is, as instantiated, an inference
+/// variable: decided before any argument is checked, so both passes agree.
+pub fn deferred_p(arg: &'static Sexp, param: &'static Ty) -> bool {
+    ({
+        let tagcase_ = param;
+        match *tagcase_ {
+            Ty::TyMeta(k) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } && sym_is_p(arg, str_lit("nil")))
+}
+
+pub fn eqv_bool_p(a: bool, b: bool) -> bool {
+    if a {
+        b
+    } else {
+        not(b)
     }
 }
 
@@ -2511,15 +2559,33 @@ pub fn synth_call_of(v: &'static Cv, s: &'static St, callee: &'static Res, args:
     }
 }
 
+/// The arguments, in order, but for `nil` given for a parameter that is
+/// an inference variable, which is heard after the rest, as FX-26 hears
+/// it. A literal is not: FX-26 makes it an `int` where it stands.
 pub fn call_args(v: &'static Cv, s: &'static St, args: Sexps, ps: Tys) -> &'static Res {
-    if null_p(args) {
-        res(ty_unit(), nil(), s)
-    } else {
-        let tagcase_ = check(v, s, car(args), car(ps));
-        match *tagcase_ {
-            Res::Res(t, es, s) => {
-                with_effs(call_args(v, s, cdr(args), cdr(ps)), es)
+    let tagcase_ = call_args_pass(v, s, args, ps, false);
+    match *tagcase_ {
+        Res::Res(u, es, s) => {
+            with_effs(call_args_pass(v, s, args, ps, true), es)
+        }
+    }
+}
+
+/// The arguments `deferred?` says are `later`'s.
+pub fn call_args_pass(mut v: &'static Cv, mut s: &'static St, mut args: Sexps, mut ps: Tys, mut later: bool) -> &'static Res {
+    loop {
+        if null_p(args) {
+            return res(ty_unit(), nil(), s);
+        } else if eqv_bool_p(deferred_p(car(args), car(ps)), later) {
+            let tagcase_ = check(v, s, car(args), car(ps));
+            match *tagcase_ {
+                Res::Res(t, es, s) => {
+                    return with_effs(call_args_pass(v, s, cdr(args), cdr(ps), later), es);
+                }
             }
+        } else {
+            (args, ps) = (cdr(args), cdr(ps));
+            continue;
         }
     }
 }
@@ -2641,7 +2707,7 @@ pub fn datatype_names(mut v: &'static Cv, mut forms: Sexps, mut ds: Dts) -> Dts 
     loop {
         if null_p(forms) {
             return ds;
-        } else if head_is_p(car(forms), str_lit("define-datatype")) {
+        } else if (head_is_p(car(forms), str_lit("define-datatype")) || head_is_p(car(forms), str_lit("define-generative"))) {
             (forms, ds) = (cdr(forms), cons(dt(type_name(v, car(forms)), type_params(v, car(forms)), nil()), ds));
             continue;
         } else {
@@ -2669,6 +2735,9 @@ pub fn declare_datatypes(mut v: &'static Cv, mut forms: Sexps, mut ds: Dts) -> D
             return ds;
         } else if head_is_p(car(forms), str_lit("define-datatype")) {
             (forms, ds) = (cdr(forms), cons(datatype_of(v, cdr(items(car(forms)))), ds));
+            continue;
+        } else if head_is_p(car(forms), str_lit("define-generative")) {
+            (forms, ds) = (cdr(forms), cons(dt(type_name(v, car(forms)), type_params(v, car(forms)), nil()), ds));
             continue;
         } else if head_is_p(car(forms), str_lit("define-effect")) {
             (v, forms) = (with_effdef(v, items(car(forms))), cdr(forms));
@@ -2720,6 +2789,19 @@ pub fn global(v: &'static Cv, name: Str, sc: &'static Scheme) -> &'static Bind {
             }
         }
     }
+}
+
+/// A `define-generative`'s conversions, `up-t` from what it is made of and
+/// `down-t` back: a new type, distinct from its representation, as
+/// FX-26's top-level generative type is (not abstract: anyone may convert).
+pub fn conversions(v: &'static Cv, xs: Sexps) -> Binds {
+    let name = head_name(v, second(xs));
+    let params = family_params(v, second(xs));
+    let made = ty_data(name, map(lambda1(move |p: Str| {
+        ty_var(p)
+    }), params));
+    let repr = parse_type(with_tvars(v, params), params, third(xs));
+    cons(bind(string_append(str_lit("up-"), name), scheme(params, ty_proc(nil(), cons(repr, nil()), made)), str_lit("global")), cons(bind(string_append(str_lit("down-"), name), scheme(params, ty_proc(nil(), cons(made, nil()), repr)), str_lit("global")), nil()))
 }
 
 /// `v` with each of `bs`, each refused if its name is taken (`global`).
@@ -2917,10 +2999,17 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
             if string_eq_p(h, str_lit("define-effect")) {
                 with_effdef(v, xs)
             } else if string_eq_p(h, str_lit("define-type")) {
+                // Its body read where it stands, used or not: so that one that
+                // mentions itself, or names no type, is refused.
+                let name = head_name(v, second(xs));
+                let params = family_params(v, second(xs));
+                let body = parse_type(v, cons(string_append(str_lit("%expanding "), name), params), third(xs));
                 v
             } else if string_eq_p(h, str_lit("define-datatype")) {
                 let d = car(variants_dt(v, head_name(v, second(xs))));
                 defined_once(v, constructors(d))
+            } else if string_eq_p(h, str_lit("define-generative")) {
+                defined_once(v, conversions(v, xs))
             } else if string_eq_p(h, str_lit("define")) {
                 if not(i64_eq(size(xs), 4i64)) {
                     refuse(v, str_lit("a definition needs a type"))
@@ -2983,7 +3072,7 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
 /// No type is named as one of kayak-rt's: `Str`, `List`, `Cons`.
 pub fn type_names_free(v: &'static Cv, forms: Sexps) -> () {
     map(lambda1(move |f: &'static Sexp| {
-        if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-datatype"))) {
+        if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-datatype")) || head_is_p(f, str_lit("define-generative"))) {
             let name = {
                 let tagcase_ = second(items(f));
                 match *tagcase_ {

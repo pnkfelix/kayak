@@ -33,6 +33,11 @@ pub mod families;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/generative.rs"]
+pub mod generative;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/letrec.rs"]
 pub mod letrec;
 
@@ -107,6 +112,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("data", data::main),
     ("define-star", define_star::main),
     ("families", families::main),
+    ("generative", generative::main),
     ("letrec", letrec::main),
     ("letregion-nat", letregion_nat::main),
     ("lets", lets::main),

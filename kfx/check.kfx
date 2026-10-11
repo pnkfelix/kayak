@@ -284,6 +284,15 @@
           (else (tagcase (car as)
                   (alias (n ps t) (if (string=? n name) (list (car as)) (find-alias name (cdr as)))))))))
 
+(define expanding (subr kfx (strings) strings)
+  (lambda (tvars)
+    "The type abbreviations being expanded, which `tvars` carries, marked,
+     so that one that mentions itself is found."
+    (cond ((null? tvars) nil)
+          ((and (i64> (string-length-i64 (car tvars)) 0) (char=? (string-ref-i64 (car tvars) 0) #\%))
+           (cons (car tvars) (expanding (cdr tvars))))
+          (else (expanding (cdr tvars))))))
+
 (define-rec
   (parse-type (subr kfx (cv strings sexp) ty)
     (lambda (v tvars t)
@@ -311,9 +320,12 @@
                        (refuse v (string-append "no type is named " s))
                        (tagcase (car found)
                          (alias (n ps body)
-                           (if (null? ps)
-                               (parse-type v tvars body)
-                               (refuse v (string-append "a type with parameters, given none: " s))))))))))
+                           (cond ((not (null? ps))
+                                  (refuse v (string-append "a type with parameters, given none: " s)))
+                                 ((string-member? (string-append "%expanding " s) tvars)
+                                  (refuse v (string-append "a type abbreviation that mentions itself, " (string-append s
+                                            ": Rust's type aliases cannot; a datatype can"))))
+                                 (else (parse-type v (cons (string-append "%expanding " s) tvars) body))))))))))
         (lst (xs src-file src-line src-pos)
           (cond ((sym-is? (car xs) "listof")
                  (ty-list (parse-type v tvars (second xs)) (parse-region v tvars (third xs))))
@@ -355,7 +367,11 @@
             (tagcase (car found) (dt (n ps vs) (ty-data name (parse-arguments v tvars ps args))))
             (tagcase (car (find-alias name (cv-aliases v)))
               (alias (n ps body)
-                (substitute ps (parse-arguments v tvars ps args) (parse-type v ps body)))))))))
+                (if (string-member? (string-append "%expanding " name) tvars)
+                    (refuse v (string-append "a type abbreviation that mentions itself, " (string-append name
+                              ": Rust's type aliases cannot; a datatype can")))
+                    (substitute ps (parse-arguments v tvars ps args)
+                                (parse-type v (cons (string-append "%expanding " name) (onto ps (expanding tvars))) body))))))))))
 
 (define family-params (subr kfx (cv sexp) strings)
   (lambda (v head)
@@ -365,7 +381,10 @@
       (lst (xs src-file src-line src-pos)
         (map (lambda ((b sexp))
                (let ((b (items b)))
-                 (cond ((sym-is? (second b) "type") (name-of v (car b)))
+                 (cond ((not (i64= (size b) 2))
+                        (refuse v (string-append "a variance mark, which KFX does not have (its families are invariant): "
+                                                 (show-sexp (lst b "" 0 0)))))
+                       ((sym-is? (second b) "type") (name-of v (car b)))
                        ((sym-is? (second b) "region") (string-append "'" (name-of v (car b))))
                        (else (refuse v (string-append "a family over a kind KFX does not have: "
                                                       (show-sexp (lst b "" 0 0))))))))
@@ -708,6 +727,15 @@
 
 (define nat? (subr kfx (st ty) bool)
   (lambda (s t) (tagcase (walk s t) (ty-nat () #t) (else other #f))))
+
+(define deferred? (subr kfx (sexp ty) bool)
+  (lambda (arg param)
+    "`nil` given for a parameter that is, as instantiated, an inference
+     variable: decided before any argument is checked, so both passes agree."
+    (and (tagcase param (ty-meta (k) #t) (else other #f)) (sym-is? arg "nil"))))
+
+(define eqv-bool? (subr kfx (bool bool) bool)
+  (lambda (a b) (if a b (not b))))
 
 (define control-form? (subr kfx (string) bool)
   (lambda (h)
@@ -1157,10 +1185,20 @@
 
   (call-args (subr kfx (cv st sexps tys) res)
     (lambda (v s args ps)
-      (if (null? args)
-          (res (ty-unit) nil s)
-          (tagcase (check v s (car args) (car ps))
-            (res (t es s) (with-effs (call-args v s (cdr args) (cdr ps)) es)))))))
+      "The arguments, in order, but for `nil` given for a parameter that is
+       an inference variable, which is heard after the rest, as FX-26 hears
+       it. A literal is not: FX-26 makes it an `int` where it stands."
+      (tagcase (call-args-pass v s args ps #f)
+        (res (u es s) (with-effs (call-args-pass v s args ps #t) es)))))
+
+  (call-args-pass (subr kfx (cv st sexps tys bool) res)
+    (lambda (v s args ps later)
+      "The arguments `deferred?` says are `later`'s."
+      (cond ((null? args) (res (ty-unit) nil s))
+            ((eqv-bool? (deferred? (car args) (car ps)) later)
+             (tagcase (check v s (car args) (car ps))
+               (res (t es s) (with-effs (call-args-pass v s (cdr args) (cdr ps) later) es))))
+            (else (call-args-pass v s (cdr args) (cdr ps) later))))))
 
 "Definitions"
 
@@ -1284,7 +1322,7 @@
   (lambda (v forms ds)
     "The datatypes' names, before their variants' types can be read."
     (cond ((null? forms) ds)
-          ((head-is? (car forms) "define-datatype")
+          ((or (head-is? (car forms) "define-datatype") (head-is? (car forms) "define-generative"))
            (datatype-names v (cdr forms)
                            (cons (dt (type-name v (car forms)) (type-params v (car forms)) nil) ds)))
           (else (datatype-names v (cdr forms) ds)))))
@@ -1303,6 +1341,9 @@
     (cond ((null? forms) ds)
           ((head-is? (car forms) "define-datatype")
            (declare-datatypes v (cdr forms) (cons (datatype-of v (cdr (items (car forms)))) ds)))
+          ((head-is? (car forms) "define-generative")
+           (declare-datatypes v (cdr forms)
+                              (cons (dt (type-name v (car forms)) (type-params v (car forms)) nil) ds)))
           ((head-is? (car forms) "define-effect")
            (declare-datatypes (with-effdef v (items (car forms))) (cdr forms) ds))
           (else (declare-datatypes v (cdr forms) ds)))))
@@ -1335,6 +1376,18 @@
                      (if (string=? where "prim")
                          (refuse v (string-append name " is a primitive, which KFX does not define again"))
                          (refuse v (string-append name " is defined already: KFX defines each name once")))))))))))
+
+(define conversions (subr kfx (cv sexps) binds)
+  (lambda (v xs)
+    "A `define-generative`'s conversions, `up-t` from what it is made of and
+     `down-t` back: a new type, distinct from its representation, as
+     FX-26's top-level generative type is (not abstract: anyone may convert)."
+    (let* ((name (head-name v (second xs)))
+           (params (family-params v (second xs)))
+           (made (ty-data name (map (lambda ((p string)) (ty-var p)) params)))
+           (repr (parse-type (with-tvars v params) params (third xs))))
+      (list (bind (string-append "up-" name) (scheme params (ty-proc nil (list repr) made)) "global")
+            (bind (string-append "down-" name) (scheme params (ty-proc nil (list made) repr)) "global")))))
 
 (define defined-once (subr kfx (cv binds) cv)
   (lambda (v bs)
@@ -1436,10 +1489,17 @@
         (let ((v (near v src-file src-line))
               (h (if (null? xs) "" (tagcase (car xs) (sym (n) n) (else other "")))))
           (cond ((string=? h "define-effect") (with-effdef v xs))
-                ((string=? h "define-type") v)
+                ((string=? h "define-type")
+                 "Its body read where it stands, used or not: so that one that
+                  mentions itself, or names no type, is refused."
+                 (let* ((name (head-name v (second xs)))
+                        (params (family-params v (second xs)))
+                        (body (parse-type v (cons (string-append "%expanding " name) params) (third xs))))
+                   v))
                 ((string=? h "define-datatype")
                  (let ((d (car (variants-dt v (head-name v (second xs))))))
                    (defined-once v (constructors d))))
+                ((string=? h "define-generative") (defined-once v (conversions v xs)))
                 ((string=? h "define")
                  (if (not (i64= (size xs) 4))
                      (refuse v "a definition needs a type")
@@ -1473,7 +1533,7 @@
     "No type is named as one of kayak-rt's: `Str`, `List`, `Cons`."
     (begin
       (map (lambda ((f sexp))
-             (if (or (head-is? f "define-type") (head-is? f "define-datatype"))
+             (if (or (head-is? f "define-type") (head-is? f "define-datatype") (head-is? f "define-generative"))
                  (let ((name (tagcase (second (items f)) (sym (n) n) (else other ""))))
                    (if (or (string=? name "str") (string=? name "list") (string=? name "cons"))
                        (refuse v (string-append "kayak-rt has a type " (string-append (camel name) " of its own")))

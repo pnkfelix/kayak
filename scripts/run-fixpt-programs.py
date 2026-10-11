@@ -124,6 +124,8 @@ def head_of(form):
         return (head, len(xs) - 1)
     if head == "define-datatype":
         return (head, len(xs) - 2)
+    if head == "define-generative":
+        return (head, 2)
     if head in ("define", "define*"):
         return (head, 1)
     return ("expression", 1)

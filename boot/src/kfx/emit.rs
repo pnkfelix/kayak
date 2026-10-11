@@ -301,7 +301,7 @@ pub fn note(form: &'static Sexp, c: &'static Ctx) -> &'static Ctx {
             if head_is_p(form, str_lit("define-datatype")) {
                 let d = type_head_name(second(items(form)));
                 ctx(cons(d, ds), note_tags(cdr(cdr(items(form))), d, ts), ks, ls, xs, fs, note_family(second(items(form)), true, ms))
-            } else if head_is_p(form, str_lit("define-type")) {
+            } else if (head_is_p(form, str_lit("define-type")) || head_is_p(form, str_lit("define-generative"))) {
                 ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms))
             } else if (head_is_p(form, str_lit("define")) && (i64_eq(size(items(form)), 3i64) || i64_eq(size(items(form)), 4i64)) && not(procedure_p(last(items(form))))) {
                 ctx(ds, ts, cons(sym_name(second(items(form))), ks), ls, xs, fs, ms)
@@ -1352,6 +1352,36 @@ pub fn put_datatype(c: &'static Ctx, xs: Sexps, acc: Chars) -> Chars {
     put_constructors(c, d, params, cdr(xs), acc)
 }
 
+/// A generative type: a new type, a newtype in Rust, and its conversions.
+pub fn put_generative(c: &'static Ctx, xs: Sexps, acc: Chars) -> Chars {
+    let t = type_head_name(car(xs));
+    let params = head_type_params(car(xs));
+    let acc = put(str_lit("#[derive(Clone, Copy)]\npub struct "), acc);
+    let acc = put(camel(t), acc);
+    let acc = put_generics_of(params, true, acc);
+    let acc = put(str_lit("(pub "), acc);
+    let acc = put_type(c, second(xs), acc);
+    let acc = put(str_lit(");\n\npub fn up_"), acc);
+    let acc = put(mangle(t), acc);
+    let acc = put_generics_of(params, true, acc);
+    let acc = put(str_lit("(x: "), acc);
+    let acc = put_type(c, second(xs), acc);
+    let acc = put(str_lit(") -> "), acc);
+    let acc = put(camel(t), acc);
+    let acc = put_generics_of(params, false, acc);
+    let acc = put(str_lit(" {\n    "), acc);
+    let acc = put(camel(t), acc);
+    let acc = put(str_lit("(x)\n}\n\npub fn down_"), acc);
+    let acc = put(mangle(t), acc);
+    let acc = put_generics_of(params, true, acc);
+    let acc = put(str_lit("(x: "), acc);
+    let acc = put(camel(t), acc);
+    let acc = put_generics_of(params, false, acc);
+    let acc = put(str_lit(") -> "), acc);
+    let acc = put_type(c, second(xs), acc);
+    put(str_lit(" {\n    x.0\n}\n\n"), acc)
+}
+
 pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
     let xs = items(form);
     let h = sym_name(car(xs));
@@ -1366,6 +1396,8 @@ pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
         put(str_lit(";\n\n"), acc)
     } else if string_eq_p(h, str_lit("define-datatype")) {
         put_datatype(c, cdr(xs), acc)
+    } else if string_eq_p(h, str_lit("define-generative")) {
+        put_generative(c, cdr(xs), acc)
     } else if (string_eq_p(h, str_lit("define")) || string_eq_p(h, str_lit("define*"))) {
         if i64_eq(size(xs), 4i64) {
             put_define(c, second(xs), third(xs), fourth(xs), acc)
@@ -1380,7 +1412,7 @@ pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
 }
 
 pub fn definition_p(e: &'static Sexp) -> bool {
-    (head_is_p(e, str_lit("define")) || head_is_p(e, str_lit("define*")) || head_is_p(e, str_lit("define-rec")) || head_is_p(e, str_lit("define-datatype")) || head_is_p(e, str_lit("define-type")))
+    (head_is_p(e, str_lit("define")) || head_is_p(e, str_lit("define*")) || head_is_p(e, str_lit("define-rec")) || head_is_p(e, str_lit("define-datatype")) || head_is_p(e, str_lit("define-type")) || head_is_p(e, str_lit("define-generative")))
 }
 
 /// A string at the top level is a comment. A procedure's documentation is
@@ -1440,6 +1472,21 @@ pub fn put_show_impls(mut forms: Sexps, mut acc: Chars) -> Chars {
             let acc = put(str_lit(" {\n    fn show(&self, out: &mut String) {\n        match self {\n"), acc);
             let acc = put_show_arms(d, cdr(xs), acc);
             return put_show_impls(cdr(forms), put(str_lit("        }\n    }\n}\n\n"), acc));
+        } else if head_is_p(car(forms), str_lit("define-generative")) {
+            let h = second(items(car(forms)));
+            let params = head_type_params(h);
+            let acc = put(str_lit("impl"), acc);
+            let acc = if null_p(params) {
+                acc
+            } else {
+                put(str_lit(">"), put_sep(lambda2(move |n: Str, acc: Chars| {
+                    put(str_lit(": Copy + 'static + Show"), put(camel(n), acc))
+                }), str_lit(", "), params, put(str_lit("<"), acc)))
+            };
+            let acc = put(str_lit(" Show for "), acc);
+            let acc = put(camel(type_head_name(h)), acc);
+            let acc = put_generics_of(params, false, acc);
+            return put_show_impls(cdr(forms), put(str_lit(" {\n    fn show(&self, out: &mut String) {\n        self.0.show(out)\n    }\n}\n\n"), acc));
         } else {
             forms = cdr(forms);
             continue;

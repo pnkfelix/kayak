@@ -494,3 +494,24 @@ not a lambda) calls its `fn` first, `fib()(…)`, which Fixpt's
 
 `tests/kfx/letregion-nat.kfx` (a pure procedure with a private counter),
 `kfx-refused/letregion-escape`. 30 of Fixpt's programs, all agreeing.
+
+## `define-generative`; `nil` heard last; type definitions checked where they stand (2026-10-11)
+
+- `(define-generative t T)`, and with type parameters: a new type,
+  distinct from its representation, with `up-t` and `down-t`; in Rust a
+  `Copy` newtype and two functions, and a `Show` that writes the
+  representation, as Fixpt does. Variance marks (`(a type +)`) are
+  refused: KFX's families are invariant, and FX-26 checks marks KFX would
+  not (`kfx-refused/variance`, found by `run-fixpt-programs`:
+  `generative/bad-variance.fx`).
+- A call's `nil` whose parameter is an inference variable is heard after
+  the other arguments, as FX-26 hears it. Literals were deferred too, at
+  first, which made `kfx` accept `tests/kfx/generative.kfx` where Fixpt
+  refuses it: the corpus caught it, and only `nil` is deferred.
+- A type abbreviation is read where it is defined, used or not, and one
+  that mentions itself is refused: a Rust type alias cannot
+  (`generative/unguarded-cycle.fx`, which Fixpt refuses too, `kfx` had
+  accepted, never reading the unused abbreviation).
+- `run-fixpt-programs.py` counts a `define-generative`'s two lines.
+
+32 of Fixpt's programs accepted, all agreeing.

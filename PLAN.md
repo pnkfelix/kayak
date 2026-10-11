@@ -111,7 +111,8 @@ is no `Drop`, no `Rc` and no `.clone()`.
 | `(define* f T lambda)`                                | as `define`; the globals read are found, for the checker    |
 | `(define-datatype t (tag T…) …)`                      | `enum T { Tag(T…), … }` and `fn tag(…) -> &'static T`       |
 | `(define-datatype (t (a type) (r region)) …)`         | `enum T<A: Copy + 'static>`, generic constructors; `r` erased |
-| `(define-type (t (a type)) T)`; `(t i64)`             | `type T<A> = …;` `T<i64>`                                   |
+| `(define-type (t (a type)) T)`; `(t i64)`             | `type T<A> = …;` `T<i64>`; never one that mentions itself   |
+| `(define-generative t T)`; `up-t`, `down-t`           | `#[derive(Clone, Copy)] struct T(pub T')`; `up_t`, `down_t` |
 | `(define-effect …)`                                   | nothing                                                     |
 | `(f a …)`, `f` a global or a primitive                | `f(a, …)`; the primitives are `kayak_rt`'s                  |
 | `(e a …)`, `e` an expression                          | `(e)(a, …)`                                                 |
