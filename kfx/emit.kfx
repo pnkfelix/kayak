@@ -88,6 +88,7 @@
      (map (lambda ((f sexp))
             (cond ((or (head-is? f "define") (head-is? f "define*")) (the strings (list (sym-name (second (items f))))))
                   ((head-is? f "define-rec") (map (lambda ((b sexp)) (sym-name (car (items b)))) (cdr (items f))))
+                  ((head-is? f "define-datatype") (map (lambda ((vt sexp)) (sym-name (car (items vt)))) (cdr (cdr (items f)))))
                   (else nil)))
           forms))))
 
@@ -105,7 +106,7 @@
   (lambda (forms)
     (concat
      (map (lambda ((f sexp))
-            (if (or (head-is? f "define-type") (head-is? f "define-generative"))
+            (if (or (head-is? f "define-type") (head-is? f "define-generative") (head-is? f "define-datatype"))
                 (the strings (list (sym-name (second (items f)))))
                 nil))
           forms))))
@@ -213,6 +214,18 @@
                             (let ((acc (put (camel n) acc))) (if bounded (put ": Copy + 'static" acc) acc)))
                           ", " names (put "<" acc))))))
 
+(define note-module-datatypes (subr kfx (string sexps ctx) ctx)
+  (lambda (m forms c)
+    "A module's datatypes, as the program names them, `m..d`, with their tags."
+    (cond ((null? forms) c)
+          ((head-is? (car forms) "define-datatype")
+           (let ((d (string-append m (string-append ".." (type-head-name (second (items (car forms))))))))
+             (note-module-datatypes m (cdr forms)
+               (tagcase c
+                 (ctx (ds ts ks ls xs fs ms es mods)
+                   (ctx (cons d ds) (note-tags (cdr (cdr (items (car forms)))) d ts) ks ls xs fs ms es mods))))))
+          (else (note-module-datatypes m (cdr forms) c)))))
+
 (define note (subr kfx (sexp ctx) ctx)
   (lambda (form c)
     (tagcase c
@@ -226,7 +239,9 @@
               ((head-is? form "define-effect")
                (ctx ds ts ks ls xs fs ms (cons (typed (sym-name (second (items form))) (third (items form))) es) mods))
               ((module-def? form)
-               (ctx ds ts ks ls xs fs ms es (cons (typed (sym-name (second (items form))) (third (items form))) mods)))
+               (let ((m (sym-name (second (items form)))))
+                 (note-module-datatypes m (cdr (items (third (items form))))
+                                        (ctx ds ts ks ls xs fs ms es (cons (typed m (third (items form))) mods)))))
               ((and (head-is? form "define")
                     (or (i64= (size (items form)) 3) (i64= (size (items form)) 4))
                     (not (procedure? (last (items form)))))
@@ -265,6 +280,17 @@
     "A module's type as the program names it, `m..t`: `m` and `t`; else none."
     (dotted-from nil (string-chars s))))
 
+(define type-path (subr kfx (ctx string string) string)
+  (lambda (c m t)
+    "Module `m`'s type `t`, from outside it: a datatype's a reference."
+    (string-append (if (string-member? (string-append m (string-append ".." t)) (ctx-datatypes c)) "&'static " "")
+                   (string-append (mangle m) (string-append "::" (camel t))))))
+
+(define datatype-path (subr kfx (string) string)
+  (lambda (d)
+    "A datatype's enum, a module's named by its path."
+    (if (null? (dotted d)) (camel d) (string-append (mangle (car (dotted d))) (string-append "::" (camel (car (cdr (dotted d)))))))))
+
 (define-rec
   (put-type (subr kfx (ctx sexp chars) chars)
     (lambda (c t acc)
@@ -281,10 +307,10 @@
                 ((string=? s "unit") (put "()" acc))
                 ((string=? s "void") (put "!" acc))
                 ((string=? s "string") (put "Str" acc))
+                ((not (null? (dotted s))) (put (type-path c (car (dotted s)) (car (cdr (dotted s)))) acc))
                 ((string-member? s (ctx-datatypes c)) (put (camel s) (put "&'static " acc)))
                 ((not (string=? (opener (string-append "%type " s) (ctx-locals c)) ""))
-                 (put (camel s) (put "::" (put (mangle (opener (string-append "%type " s) (ctx-locals c))) acc))))
-                ((not (null? (dotted s))) (put (camel (car (cdr (dotted s)))) (put "::" (put (mangle (car (dotted s))) acc))))
+                 (put (type-path c (opener (string-append "%type " s) (ctx-locals c)) s) acc))
                 (else (put (camel s) acc))))
         (lst (xs src-file src-line src-pos)
           (cond ((sym-is? (car xs) "listof")
@@ -303,7 +329,7 @@
                 ((sym-is? (car xs) "prompt-tag")
                  (put ">" (put-type c (third xs) (put ", " (put-type c (second xs) (put "Tag<" acc))))))
                 ((sym-is? (car xs) "select")
-                 (put (camel (sym-name (third xs))) (put "::" (put (mangle (sym-name (second xs))) acc))))
+                 (put (type-path c (sym-name (second xs)) (sym-name (third xs))) acc))
                 ((sym-is? (car xs) "poly")
                  (error "kfx: a poly type is only a definition's, at its top"))
                 ((tagcase (car xs) (sym (n) (not (null? (find-family-of c n)))) (else other #f))
@@ -717,7 +743,7 @@
                                  (acc (put "let " acc))
                                  (acc (put (mangle (sym-name (second arm))) acc)))
                             (put-nl (i64+ n 1) (put " = tagcase_;" acc)))
-                          (let* ((acc (put (camel (tag-datatype tag (ctx-tags c))) acc))
+                          (let* ((acc (put (datatype-path (tag-datatype tag (ctx-tags c))) acc))
                                  (acc (put "::" acc))
                                  (acc (put (camel tag) acc))
                                  (acc (put "(" acc))
@@ -1123,9 +1149,9 @@
 
 (define put-show-generatives (subr kfx (sexps chars) chars)
   (lambda (forms acc)
-    "In toplevel mode, a module's generative types' `Show`, inside it, where
-     their representations are seen."
-    (put-show-impls (concat (map (lambda ((f sexp)) (if (head-is? f "define-generative") (the sexps (list f)) nil)) forms)) acc)))
+    "In toplevel mode, a module's datatypes' and generative types' `Show`,
+     inside it, where their representations are seen."
+    (put-show-impls (concat (map (lambda ((f sexp)) (if (or (head-is? f "define-generative") (head-is? f "define-datatype")) (the sexps (list f)) nil)) forms)) acc)))
 
 (define-rec
   (put-top (subr kfx (ctx sexp chars) chars)

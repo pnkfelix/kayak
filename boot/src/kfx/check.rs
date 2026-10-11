@@ -3800,6 +3800,24 @@ pub fn module_def_p(form: &'static Sexp) -> bool {
     (head_is_p(form, str_lit("define")) && i64_eq(size(items(form)), 3i64) && head_is_p(third(items(form)), str_lit("module")))
 }
 
+pub fn tag_taken_p(tag: Str, ds: Dts) -> bool {
+    any_p(lambda1(move |d: &'static Dt| {
+        let tagcase_ = d;
+        match *tagcase_ {
+            Dt::Dt(n, ps, vs) => {
+                any_p(lambda1(move |x: &'static Variant| {
+                    let tagcase_ = x;
+                    match *tagcase_ {
+                        Variant::Variant(t, fs) => {
+                            string_eq_p(t, tag)
+                        }
+                    }
+                }), vs)
+            }
+        }
+    }), ds)
+}
+
 /// A module's types' names, each refused if the program has a type of
 /// that name; and the items KFX's modules do not have, refused.
 pub fn module_types(mut v: &'static Cv, mut forms: Sexps) -> Strings {
@@ -3808,7 +3826,11 @@ pub fn module_types(mut v: &'static Cv, mut forms: Sexps) -> Strings {
             return nil();
         } else {
             let f = car(forms);
-            if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative"))) {
+            if (head_is_p(f, str_lit("define-datatype")) && any_p(lambda1(move |vt: &'static Sexp| {
+                tag_taken_p(sym_name(car(items(vt))), cv_dts(v))
+            }), cdr(cdr(items(f))))) {
+                return refuse(v, str_lit("a module's datatype whose tag another datatype has: KFX's tags name one datatype each"));
+            } else if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype"))) {
                 let name = {
                     let tagcase_ = second(items(f));
                     match *tagcase_ {
@@ -3821,12 +3843,12 @@ pub fn module_types(mut v: &'static Cv, mut forms: Sexps) -> Strings {
                         }
                     }
                 };
-                if (dt_named_p(name, cv_dts(v)) || not(null_p(find_alias(name, cv_aliases(v))))) {
+                if dt_named_p(name, cv_dts(v)) {
                     return refuse(v, string_append(str_lit("a module's type named as the program's: KFX names them apart, "), name));
                 } else {
                     return cons(name, module_types(v, cdr(forms)));
                 }
-            } else if (head_is_p(f, str_lit("define-datatype")) || head_is_p(f, str_lit("define-effect")) || head_is_p(f, str_lit("include")) || head_is_p(f, str_lit("hide")) || module_def_p(f)) {
+            } else if (head_is_p(f, str_lit("define-effect")) || head_is_p(f, str_lit("include")) || head_is_p(f, str_lit("hide")) || module_def_p(f)) {
                 return refuse(v, string_append(str_lit("an item KFX's modules do not have yet: "), show_sexp(car(items(f)))));
             } else {
                 forms = cdr(forms);
@@ -3862,7 +3884,7 @@ pub fn qualify_type(m: Str, names: Strings, t: &'static Sexp) -> &'static Sexp {
 /// A module's types: each `m..t`; and `t` inside it, `m t` outside.
 pub fn module_aliases(m: Str, names: Strings, forms: Sexps, inside: bool) -> Aliases {
     concat(map(lambda1(move |f: &'static Sexp| {
-        if not((head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative")))) {
+        if not((head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype")))) {
             nil()
         } else {
             let xs = items(f);
@@ -3885,7 +3907,7 @@ pub fn module_aliases(m: Str, names: Strings, forms: Sexps, inside: bool) -> Ali
 
 pub fn module_dts(m: Str, forms: Sexps) -> Dts {
     concat(map(lambda1(move |f: &'static Sexp| {
-        if head_is_p(f, str_lit("define-generative")) {
+        if (head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype"))) {
             the::<Dts>(cons(dt(string_append(m, string_append(str_lit(".."), sym_name(second(items(f))))), nil(), nil()), nil()))
         } else {
             nil()
@@ -3903,6 +3925,22 @@ pub fn module_conversions(v: &'static Cv, m: Str, forms: Sexps) -> Binds {
             let made = ty_data(string_append(m, string_append(str_lit(".."), t)), nil());
             let repr = parse_type(v, nil(), third(xs));
             the::<Binds>(cons(bind(string_append(str_lit("up-"), t), scheme(nil(), ty_proc(nil(), cons(repr, nil()), made)), str_lit("item")), cons(bind(string_append(str_lit("down-"), t), scheme(nil(), ty_proc(nil(), cons(made, nil()), repr)), str_lit("item")), nil())))
+        } else {
+            nil()
+        }
+    }), forms))
+}
+
+/// A module's datatypes, their variants read where its types are named.
+pub fn module_datatypes(v: &'static Cv, m: Str, forms: Sexps) -> Dts {
+    concat(map(lambda1(move |f: &'static Sexp| {
+        if head_is_p(f, str_lit("define-datatype")) {
+            let tagcase_ = datatype_of(v, cdr(items(f)));
+            match *tagcase_ {
+                Dt::Dt(n, ps, vs) => {
+                    the::<Dts>(cons(dt(string_append(m, string_append(str_lit(".."), n)), ps, vs), nil()))
+                }
+            }
         } else {
             nil()
         }
@@ -3943,7 +3981,7 @@ pub fn check_items(mut v: &'static Cv, mut m: Str, mut forms: Sexps, mut found: 
     loop {
         if null_p(forms) {
             return elab(v, found);
-        } else if head_is_p(car(forms), str_lit("define-generative")) {
+        } else if (head_is_p(car(forms), str_lit("define-generative")) || head_is_p(car(forms), str_lit("define-datatype"))) {
             forms = cdr(forms);
             continue;
         } else if untyped_p(car(forms)) {
@@ -4000,8 +4038,17 @@ pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
             }
         }
     };
+    let datatypes = module_datatypes(typed, m, forms);
+    let typed = {
+        let tagcase_ = typed;
+        match *tagcase_ {
+            Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
+                cv(bs, onto(datatypes, ds), r#as, es, here, group, file, line, fs, tv, at)
+            }
+        }
+    };
     let conversions = module_conversions(typed, m, forms);
-    let inner = defined_once(typed, conversions);
+    let inner = defined_once(typed, onto(conversions, concat(map(&constructors, datatypes))));
     let tagcase_ = check_items(inner, m, forms, nil());
     match *tagcase_ {
         Elab::Elab(done, found) => {

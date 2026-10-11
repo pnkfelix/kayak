@@ -146,8 +146,9 @@ Escapes are done (`DONE.md`, C18). Left:
 
 The first step is done (`DONE.md`, C19): top-level modules, `with`,
 `select`. Next, by what Fixpt's `modules/` programs use:
-- datatypes in modules (FX-26's are transparent sums; Rust's enums are
-  nominal, so a module's datatype would be the module's own);
+- a module's datatype whose tag another has: the checker could leave the
+  datatype as a fact at each `tagcase`, for the emitter;
+- effects in modules (`define-effect`, `(select m e)`);
 - a module's types with parameters;
 - items naming later items, as FX-26's `letrec*` allows;
 - `the` sealing a module defined at the top level to fewer values or

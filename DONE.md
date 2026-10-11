@@ -570,8 +570,10 @@ in their own scope, names its types `m..t` (as FX-26 writes them), and
 gives the program its values as `m x`, which `with` opens; naming an
 item inside its module reads no global, as FX-26's `letrec*` has it, and
 `with m` reads the global `m`. Modules as values, `load-module`,
-`include`, `extend`, `hide`, datatypes in modules and items naming later
-ones are refused (`tests/kfx-stricter/module-*`).
+`include`, `extend`, `hide`, and items naming later ones are refused
+(`tests/kfx-stricter/module-*`). A module's datatype is an enum in its
+`mod`, taken apart outside by `tagcase` (`m::Shape::Circle(r)`); its tags
+may be no other datatype's.
 
 `tests/kfx/modules.kfx`; `tests/kfx-refused/module-{abstract,opaque,global}`.
-45 of Fixpt's programs accepted (32 before), all agreeing.
+46 of Fixpt's programs accepted (32 before), all agreeing.

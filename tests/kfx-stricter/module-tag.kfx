@@ -1,0 +1,7 @@
+"A module's datatype whose tag the program's has too: FX-26's tags are
+ the sum's, found by its type; KFX's emitter finds a datatype by its tag,
+ so each tag names one (C19)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-datatype point (pt i64 i64))
+(define m (module (define-datatype place (pt i64))))
+(with m (pt 1))

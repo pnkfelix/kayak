@@ -88,6 +88,54 @@ pub mod stack {
     }
 }
 
+// A datatype in a module: its tags taken apart outside it too.
+pub mod geometry {
+    use super::*;
+
+    pub enum Shape {
+        Circle(i64),
+        Rect(i64, i64),
+    }
+
+    pub fn circle(f0: i64) -> &'static Shape {
+        alloc(Shape::Circle(f0))
+    }
+
+    pub fn rect(f0: i64, f1: i64) -> &'static Shape {
+        alloc(Shape::Rect(f0, f1))
+    }
+
+    pub fn area(s: &'static Shape) -> i64 {
+        let tagcase_ = s;
+        match *tagcase_ {
+            Shape::Circle(r) => {
+                i64_star(3i64, i64_star(r, r))
+            }
+            Shape::Rect(w, h) => {
+                i64_star(w, h)
+            }
+        }
+    }
+}
+
+pub type Shape = &'static geometry::Shape;
+
+pub fn rect() -> &'static dyn Fn(i64, i64) -> &'static geometry::Shape {
+    &geometry::rect
+}
+
+pub fn big_p(s: Shape) -> bool {
+    let tagcase_ = s;
+    match *tagcase_ {
+        geometry::Shape::Circle(r) => {
+            i64_gt(r, 10i64)
+        }
+        geometry::Shape::Rect(w, h) => {
+            i64_gt(i64_star(w, h), 100i64)
+        }
+    }
+}
+
 pub fn twice(c: counter::T) -> counter::T {
     counter::inc(counter::inc(c))
 }
@@ -104,6 +152,10 @@ pub fn count_to(value: i64, n: i64) -> i64 {
 
 pub fn main() -> Str {
     let push = the::<i64>(10i64);
-    words(cons(i64_to_string(counter::value(twice(counter::zero()))), cons(i64_to_string(count_to(5i64, 1i64)), cons(i64_to_string(count_to(5i64, 0i64)), cons(stack::shown(stack::push(3i64, stack::two())), cons(i64_to_string(stack::depth((stack::pusher())(4i64, stack::two()))), cons(i64_to_string(push), cons(i64_to_string(i64_plus(counter::value(counter::inc(counter::zero())), stack::depth(stack::empty()))), cons(stack::shown(the::<stack::Items>(cons(7i64, cons(8i64, nil())))), nil())))))))))
+    words(cons(i64_to_string(counter::value(twice(counter::zero()))), cons(i64_to_string(count_to(5i64, 1i64)), cons(i64_to_string(count_to(5i64, 0i64)), cons(stack::shown(stack::push(3i64, stack::two())), cons(i64_to_string(stack::depth((stack::pusher())(4i64, stack::two()))), cons(i64_to_string(push), cons(i64_to_string(i64_plus(counter::value(counter::inc(counter::zero())), stack::depth(stack::empty()))), cons(stack::shown(the::<stack::Items>(cons(7i64, cons(8i64, nil())))), cons(i64_to_string(geometry::area(geometry::rect(3i64, 4i64))), cons(if big_p((&geometry::circle)(20i64)) {
+        str_lit("big")
+    } else {
+        str_lit("small")
+    }, nil())))))))))))
 }
 

@@ -39,6 +39,20 @@
                 ((null? (cdr xs)) (i64->string (car xs)))
                 (else (string-append (i64->string (car xs)) (string-append "," (shown (cdr xs)))))))))))
 
+"A datatype in a module: its tags taken apart outside it too."
+(define geometry
+  (module
+    (define-datatype shape (circle i64) (rect i64 i64))
+    (define area (subr pure (shape) i64)
+      (lambda (s) (tagcase s (circle (r) (i64* 3 (i64* r r))) (rect (w h) (i64* w h)))))))
+
+(define-type shape (select geometry shape))
+
+(define rect (with geometry rect))
+
+(define big? (subr kfx (shape) bool)
+  (lambda (s) (tagcase s (circle (r) (i64> r 10)) (rect (w h) (i64> (i64* w h) 100)))))
+
 (define twice (subr kfx ((select counter t)) (select counter t))
   (lambda (c) (with counter (inc (inc c)))))
 
@@ -59,6 +73,8 @@
              (with stack (i64->string (depth ((pusher) 4 two))))
              (i64->string push)
              (with stack (with counter (i64->string (i64+ (value (inc zero)) (depth empty)))))
-             (with stack (shown (the (select stack items) (list 7 8)))))))))
+             (with stack (shown (the (select stack items) (list 7 8))))
+             (i64->string (with geometry (area (rect 3 4))))
+             (if (big? ((with geometry circle) 20)) "big" "small"))))))
 
 (main)

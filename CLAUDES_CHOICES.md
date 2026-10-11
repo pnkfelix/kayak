@@ -226,15 +226,18 @@ Answers `PLAN.md` Q3 (`docs/research/escapes.md` §5).
   `pub mod m { use super::*; ... }`; `(with m body ...)` writes the names
   `m` gives as paths, `m::x`; `(select m t)` is `m::T`. Items are a
   program's definitions (`define`, typed or not, `define*`, `define-rec`,
-  `define-type`, `define-generative`), each seeing those before it. A
+  `define-type`, `define-generative`, `define-datatype`), each seeing
+  those before it. A
   generative type in a module is abstract, as FX-26's is: a newtype with
   a private field, its conversions private to the `mod`, so that Rust's
   privacy holds the abstraction too. The checker names a module's types
   `m..t`, as FX-26 writes them, so a module's and the program's never meet.
 - **Not chosen, for now:** modules as values (`let`-bound, passed, sealed
   with `the`), `load-module`, `include`, `extend`, `hide`, functors
-  (Sheldon's dependent procedures); datatypes and effects in modules; a
-  module's types with parameters; items naming later items (FX-26's are a
+  (Sheldon's dependent procedures); effects in modules; a module's types
+  with parameters; a module's datatype with a tag another datatype has
+  (FX-26's sums are structural, its tags found by type; the emitter finds
+  a datatype by its tag); items naming later items (FX-26's are a
   `letrec*`). All refused, `tests/kfx-stricter/module-*`.
 - **Why paths, not `use m::*`:** inside `with`, FX-26 gives the module's
   names before any local, Rust gives a local before any import. Paths say

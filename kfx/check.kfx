@@ -1920,6 +1920,12 @@
   (lambda (form)
     (and (head-is? form "define") (i64= (size (items form)) 3) (head-is? (third (items form)) "module"))))
 
+(define tag-taken? (subr kfx (string dts) bool)
+  (lambda (tag ds)
+    (any? (lambda ((d dt))
+            (tagcase d (dt (n ps vs) (any? (lambda ((x variant)) (tagcase x (variant (t fs) (string=? t tag)))) vs))))
+          ds)))
+
 (define-rec
   (module-types (subr kfx (cv sexps) strings)
     (lambda (v forms)
@@ -1928,13 +1934,16 @@
       (if (null? forms)
           nil
           (let ((f (car forms)))
-            (cond ((or (head-is? f "define-type") (head-is? f "define-generative"))
+            (cond ((and (head-is? f "define-datatype")
+                        (any? (lambda ((vt sexp)) (tag-taken? (sym-name (car (items vt))) (cv-dts v))) (cdr (cdr (items f)))))
+                   (refuse v "a module's datatype whose tag another datatype has: KFX's tags name one datatype each"))
+                  ((or (head-is? f "define-type") (head-is? f "define-generative") (head-is? f "define-datatype"))
                    (let ((name (tagcase (second (items f)) (sym (n) n)
                                  (else other (refuse v "a module's type with parameters, which KFX's modules do not have yet")))))
-                     (if (or (dt-named? name (cv-dts v)) (not (null? (find-alias name (cv-aliases v)))))
+                     (if (dt-named? name (cv-dts v))
                          (refuse v (string-append "a module's type named as the program's: KFX names them apart, " name))
                          (cons name (module-types v (cdr forms))))))
-                  ((or (head-is? f "define-datatype") (head-is? f "define-effect") (head-is? f "include")
+                  ((or (head-is? f "define-effect") (head-is? f "include")
                        (head-is? f "hide") (module-def? f))
                    (refuse v (string-append "an item KFX's modules do not have yet: " (show-sexp (car (items f))))))
                   (else (module-types v (cdr forms)))))))))
@@ -1953,7 +1962,7 @@
     "A module's types: each `m..t`; and `t` inside it, `m t` outside."
     (concat
      (map (lambda ((f sexp))
-            (cond ((not (or (head-is? f "define-type") (head-is? f "define-generative"))) nil)
+            (cond ((not (or (head-is? f "define-type") (head-is? f "define-generative") (head-is? f "define-datatype"))) nil)
                   (else
                    (let* ((xs (items f))
                           (t (sym-name (second xs)))
@@ -1969,7 +1978,7 @@
   (lambda (m forms)
     (concat
      (map (lambda ((f sexp))
-            (if (head-is? f "define-generative")
+            (if (or (head-is? f "define-generative") (head-is? f "define-datatype"))
                 (the dts (list (dt (string-append m (string-append ".." (sym-name (second (items f))))) nil nil)))
                 nil))
           forms))))
@@ -1987,6 +1996,17 @@
                        (repr (parse-type v nil (third xs))))
                   (the binds (list (bind (string-append "up-" t) (scheme nil (ty-proc nil (list repr) made)) "item")
                                    (bind (string-append "down-" t) (scheme nil (ty-proc nil (list made) repr)) "item"))))
+                nil))
+          forms))))
+
+(define module-datatypes (subr kfx (cv string sexps) dts)
+  (lambda (v m forms)
+    "A module's datatypes, their variants read where its types are named."
+    (concat
+     (map (lambda ((f sexp))
+            (if (head-is? f "define-datatype")
+                (tagcase (datatype-of v (cdr (items f)))
+                  (dt (n ps vs) (the dts (list (dt (string-append m (string-append ".." n)) ps vs)))))
                 nil))
           forms))))
 
@@ -2013,7 +2033,8 @@
        generative types are made already, and its elaborated types are named
        `m x`."
       (cond ((null? forms) (elab v found))
-            ((head-is? (car forms) "define-generative") (check-items v m (cdr forms) found))
+            ((or (head-is? (car forms) "define-generative") (head-is? (car forms) "define-datatype"))
+             (check-items v m (cdr forms) found))
             ((untyped? (car forms))
              (tagcase (car forms)
                (lst (xs src-file src-line src-pos)
@@ -2039,8 +2060,12 @@
                     (cv (bs ds as es here group file line fs tv at)
                       (cv (cons (bind "%module" (scheme nil (ty-unit)) m) bs) (onto (module-dts m forms) ds)
                           (onto (module-aliases m names forms #t) as) es here group file line fs tv at))))
+           (datatypes (module-datatypes typed m forms))
+           (typed (tagcase typed
+                    (cv (bs ds as es here group file line fs tv at)
+                      (cv bs (onto datatypes ds) as es here group file line fs tv at))))
            (conversions (module-conversions typed m forms))
-           (inner (defined-once typed conversions)))
+           (inner (defined-once typed (onto conversions (concat (map constructors datatypes))))))
       (tagcase (check-items inner m forms nil)
         (elab (done found)
           (tagcase done

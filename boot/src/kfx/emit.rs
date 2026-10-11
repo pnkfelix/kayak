@@ -215,6 +215,10 @@ pub fn item_values(forms: Sexps) -> Strings {
             map(lambda1(move |b: &'static Sexp| {
                 sym_name(car(items(b)))
             }), cdr(items(f)))
+        } else if head_is_p(f, str_lit("define-datatype")) {
+            map(lambda1(move |vt: &'static Sexp| {
+                sym_name(car(items(vt)))
+            }), cdr(cdr(items(f))))
         } else {
             nil()
         }
@@ -234,7 +238,7 @@ pub fn item_constants(forms: Sexps) -> Strings {
 
 pub fn item_types(forms: Sexps) -> Strings {
     concat(map(lambda1(move |f: &'static Sexp| {
-        if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative"))) {
+        if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype"))) {
             the::<Strings>(cons(sym_name(second(items(f))), nil()))
         } else {
             nil()
@@ -459,6 +463,29 @@ pub fn put_generics_of(names: Strings, bounded: bool, acc: Chars) -> Chars {
     }
 }
 
+/// A module's datatypes, as the program names them, `m..d`, with their tags.
+pub fn note_module_datatypes(mut m: Str, mut forms: Sexps, mut c: &'static Ctx) -> &'static Ctx {
+    loop {
+        if null_p(forms) {
+            return c;
+        } else if head_is_p(car(forms), str_lit("define-datatype")) {
+            let d = string_append(m, string_append(str_lit(".."), type_head_name(second(items(car(forms))))));
+            (forms, c) = (cdr(forms), {
+                let tagcase_ = c;
+                match *tagcase_ {
+                    Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                        ctx(cons(d, ds), note_tags(cdr(cdr(items(car(forms)))), d, ts), ks, ls, xs, fs, ms, es, mods)
+                    }
+                }
+            });
+            continue;
+        } else {
+            forms = cdr(forms);
+            continue;
+        }
+    }
+}
+
 pub fn note(form: &'static Sexp, c: &'static Ctx) -> &'static Ctx {
     let tagcase_ = c;
     match *tagcase_ {
@@ -471,7 +498,8 @@ pub fn note(form: &'static Sexp, c: &'static Ctx) -> &'static Ctx {
             } else if head_is_p(form, str_lit("define-effect")) {
                 ctx(ds, ts, ks, ls, xs, fs, ms, cons(typed(sym_name(second(items(form))), third(items(form))), es), mods)
             } else if module_def_p(form) {
-                ctx(ds, ts, ks, ls, xs, fs, ms, es, cons(typed(sym_name(second(items(form))), third(items(form))), mods))
+                let m = sym_name(second(items(form)));
+                note_module_datatypes(m, cdr(items(third(items(form)))), ctx(ds, ts, ks, ls, xs, fs, ms, es, cons(typed(m, third(items(form))), mods)))
             } else if (head_is_p(form, str_lit("define")) && (i64_eq(size(items(form)), 3i64) || i64_eq(size(items(form)), 4i64)) && not(procedure_p(last(items(form))))) {
                 ctx(ds, ts, cons(sym_name(second(items(form))), ks), ls, xs, fs, ms, es, mods)
             } else {
@@ -537,6 +565,24 @@ pub fn dotted(s: Str) -> Strings {
     dotted_from(nil(), string_chars(s))
 }
 
+/// Module `m`'s type `t`, from outside it: a datatype's a reference.
+pub fn type_path(c: &'static Ctx, m: Str, t: Str) -> Str {
+    string_append(if string_member_p(string_append(m, string_append(str_lit(".."), t)), ctx_datatypes(c)) {
+        str_lit("&'static ")
+    } else {
+        str_lit("")
+    }, string_append(mangle(m), string_append(str_lit("::"), camel(t))))
+}
+
+/// A datatype's enum, a module's named by its path.
+pub fn datatype_path(d: Str) -> Str {
+    if null_p(dotted(d)) {
+        camel(d)
+    } else {
+        string_append(mangle(car(dotted(d))), string_append(str_lit("::"), camel(car(cdr(dotted(d))))))
+    }
+}
+
 /// A type. A name that is no base type or datatype is a type abbreviation
 /// or a type variable, either way a Rust type of the same name.
 pub fn put_type(c: &'static Ctx, t: &'static Sexp, acc: Chars) -> Chars {
@@ -561,12 +607,12 @@ pub fn put_type(c: &'static Ctx, t: &'static Sexp, acc: Chars) -> Chars {
                 put(str_lit("!"), acc)
             } else if string_eq_p(s, str_lit("string")) {
                 put(str_lit("Str"), acc)
+            } else if not(null_p(dotted(s))) {
+                put(type_path(c, car(dotted(s)), car(cdr(dotted(s)))), acc)
             } else if string_member_p(s, ctx_datatypes(c)) {
                 put(camel(s), put(str_lit("&'static "), acc))
             } else if not(string_eq_p(opener(string_append(str_lit("%type "), s), ctx_locals(c)), str_lit(""))) {
-                put(camel(s), put(str_lit("::"), put(mangle(opener(string_append(str_lit("%type "), s), ctx_locals(c))), acc)))
-            } else if not(null_p(dotted(s))) {
-                put(camel(car(cdr(dotted(s)))), put(str_lit("::"), put(mangle(car(dotted(s))), acc)))
+                put(type_path(c, opener(string_append(str_lit("%type "), s), ctx_locals(c)), s), acc)
             } else {
                 put(camel(s), acc)
             }
@@ -590,7 +636,7 @@ pub fn put_type(c: &'static Ctx, t: &'static Sexp, acc: Chars) -> Chars {
             } else if sym_is_p(car(xs), str_lit("prompt-tag")) {
                 put(str_lit(">"), put_type(c, third(xs), put(str_lit(", "), put_type(c, second(xs), put(str_lit("Tag<"), acc)))))
             } else if sym_is_p(car(xs), str_lit("select")) {
-                put(camel(sym_name(third(xs))), put(str_lit("::"), put(mangle(sym_name(second(xs))), acc)))
+                put(type_path(c, sym_name(second(xs)), sym_name(third(xs))), acc)
             } else if sym_is_p(car(xs), str_lit("poly")) {
                 error(str_lit("kfx: a poly type is only a definition's, at its top"))
             } else if {
@@ -1302,7 +1348,7 @@ pub fn put_tagcase_arms(c: &'static Ctx, arms: Sexps, n: i64, t: &'static Tail, 
             let acc = put(mangle(sym_name(second(arm))), acc);
             put_nl(i64_plus(n, 1i64), put(str_lit(" = tagcase_;"), acc))
         } else {
-            let acc = put(camel(tag_datatype(tag, ctx_tags(c))), acc);
+            let acc = put(datatype_path(tag_datatype(tag, ctx_tags(c))), acc);
             let acc = put(str_lit("::"), acc);
             let acc = put(camel(tag), acc);
             let acc = put(str_lit("("), acc);
@@ -1886,11 +1932,11 @@ pub fn put_show_impls(mut forms: Sexps, mut acc: Chars) -> Chars {
     }
 }
 
-/// In toplevel mode, a module's generative types' `Show`, inside it, where
-/// their representations are seen.
+/// In toplevel mode, a module's datatypes' and generative types' `Show`,
+/// inside it, where their representations are seen.
 pub fn put_show_generatives(forms: Sexps, acc: Chars) -> Chars {
     put_show_impls(concat(map(lambda1(move |f: &'static Sexp| {
-        if head_is_p(f, str_lit("define-generative")) {
+        if (head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype"))) {
             the::<Sexps>(cons(f, nil()))
         } else {
             nil()
