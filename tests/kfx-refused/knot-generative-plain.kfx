@@ -1,0 +1,4 @@
+"A knot through a generative type of no parameters."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-generative g (subr (read @b) () i64))
+(define r (ref g @b) (new (up-g (lambda () 1))))

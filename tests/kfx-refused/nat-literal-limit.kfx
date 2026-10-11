@@ -1,0 +1,3 @@
+"A nat literal at 2^60: FX-26 reads it an int."
+(define-effect kfx (maxeff (read @globals) spin))
+(define x nat 1152921504606846976)

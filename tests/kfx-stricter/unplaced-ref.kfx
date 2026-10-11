@@ -1,0 +1,4 @@
+"A cell whose region nothing names: FX-26 makes it a fresh region, KFX
+ would have it at none, its effects lost; so KFX wants its region written."
+(define-effect kfx (maxeff (read @globals) spin))
+(define x (new (the i64 1)))

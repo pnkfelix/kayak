@@ -1766,12 +1766,16 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
         // prompt can be running for its tag (the checker masked its region),
         // and it fails, as FX-26's does when it runs.
         let acc = put(if fallible_here_p(c) {
-            str_lit("return Err(unwind(")
+            str_lit("(return Err(unwind(")
         } else {
             str_lit("unreachable_unwind(unwind(")
         }, acc);
         let acc = put_joined(c, xs, str_lit(", "), n, acc);
-        put(str_lit("))"), acc)
+        put(if fallible_here_p(c) {
+            str_lit(")))")
+        } else {
+            str_lit("))")
+        }, acc)
     } else if (string_eq_p(h, str_lit("prompt")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
         put_prompt(c, e, xs, n, acc)
     } else if null_p(xs) {
@@ -1813,10 +1817,12 @@ pub fn put_prompt(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Cha
 
 /// A call the checker found may abort takes a `?`.
 pub fn put_question(c: &'static Ctx, e: &'static Sexp, acc: Chars) -> Chars {
-    if fact_at_p(c, e, str_lit("fallible-call")) {
+    if not(fact_at_p(c, e, str_lit("fallible-call"))) {
+        acc
+    } else if fallible_here_p(c) {
         put(str_lit("?"), acc)
     } else {
-        acc
+        put(str_lit(".unwrap_or_else(unreachable_unwind)"), acc)
     }
 }
 

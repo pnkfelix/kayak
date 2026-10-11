@@ -349,6 +349,13 @@
            (cons (car tvars) (expanding (cdr tvars))))
           (else (expanding (cdr tvars))))))
 
+(define find-bind (subr kfx (string binds) binds)
+  (lambda (name bs)
+    "The innermost binding of `name`, as a list of one, or none."
+    (cond ((null? bs) nil)
+          (else (tagcase (car bs)
+                  (bind (n sc where) (if (string=? n name) (list (car bs)) (find-bind name (cdr bs)))))))))
+
 "A knot through the store (FX-26's `no_knot`): a procedure kept in
  storage at a region, whose latent effect reads that region and does not
  say `spin`, could be fetched from there by a procedure fetched from
@@ -396,7 +403,18 @@
                     (tagcase (car found)
                       (dt (n ps vs)
                         (if (null? vs)
-                            (first-knot v res args kept #t (cons d seen))
+                            (let ((down (find-bind (string-append "down-" d) (cv-binds v))))
+                              (first-knot v res
+                                          (onto (if (null? down) nil
+                                                    (tagcase (car down)
+                                                      (bind (n sc w)
+                                                        (tagcase sc
+                                                          (scheme (tvars t)
+                                                            (tagcase t
+                                                              (ty-proc (es xs r) (the tys (list (substitute ps args r))))
+                                                              (else other nil)))))))
+                                                args)
+                                          kept #t (cons d seen)))
                             (first-knot v res
                                         (concat (map (lambda ((x variant))
                                                        (tagcase x (variant (tag fs) (map (lambda ((f ty)) (substitute ps args f)) fs))))
@@ -850,13 +868,6 @@
 
 "The names in scope"
 
-(define find-bind (subr kfx (string binds) binds)
-  (lambda (name bs)
-    "The innermost binding of `name`, as a list of one, or none."
-    (cond ((null? bs) nil)
-          (else (tagcase (car bs)
-                  (bind (n sc where) (if (string=? n name) (list (car bs)) (find-bind name (cdr bs)))))))))
-
 (define keyword? (subr kfx (string) bool)
   (lambda (name)
     "FX-26's keywords, which name nothing (fixpt's top.rs, KEYWORDS)."
@@ -1146,7 +1157,11 @@
       (else other ""))))
 
 (define literal-of (subr kfx (sexp) i64s)
-  (lambda (e) (tagcase e (num (k text pos) (the i64s (list k))) (else other nil))))
+  (lambda (e)
+    "A literal's value, if FX-26's size-change check knows it: in [-2^60, 2^60)."
+    (tagcase e
+      (num (k text pos) (if (or (i64< k -1152921504606846976) (i64> k 1152921504606846975)) nil (the i64s (list k))))
+      (else other nil))))
 
 (define overflows? (subr kfx (i64 i64) bool)
   (lambda (o k)
@@ -1210,7 +1225,7 @@
       (tagcase c
         (wc (v ms cur sc gs nats inv)
           (tagcase e
-            (num (k text pos) #t)
+            (num (k text pos) (not (null? (literal-of e))))
             (sym (n)
               (let ((b (bound-of n sc)))
                 (if (null? b)
@@ -1658,12 +1673,25 @@
                   (and (not (tagcase w2 (ws (calls passed escaped) escaped)))
                        (ends? (tagcase w2 (ws (calls passed escaped) calls)))))))))))
 
+(define unplaced? (subr kfx (ty) bool)
+  (lambda (t)
+    "A cell or array whose region nothing named, and so was taken as
+     `acyclic`: FX-26's is a fresh region, KFX's would be no region, its
+     effects lost."
+    (tagcase t
+      (ty-ref (e r) (tagcase r (ty-rconst (n) (string=? n "acyclic")) (else other #f)))
+      (ty-flat (e r) (tagcase r (ty-rconst (n) (string=? n "acyclic")) (else other #f)))
+      (else other #f))))
+
 (define knot-free-call (subr kfx (cv res) res)
   (lambda (v r)
     "A call's value, whose type, an instance, ties no knot through the store."
     (tagcase r
       (res (t es s)
-        (begin (no-knot v (lambda ((x string)) (resolve-atom s x)) (zonk s t)) r)))))
+        (begin (no-knot v (lambda ((x string)) (resolve-atom s x)) (zonk s t))
+               (if (unplaced? (zonk s t))
+                   (refuse v "mutable data at no region a type names: write its region, (the (ref T @r) ...)")
+                   r))))))
 
 (define-rec
   (ty-sexp (subr kfx (cv st ty) sexp)
@@ -1742,6 +1770,22 @@
         (string=? h "let") (string=? h "let*") (string=? h "begin") (string=? h "letrec")
         (string=? h "letregion") (string=? h "with"))))
 
+(define-rec
+  (raw-meta? (subr kfx (ty) bool)
+    (lambda (t)
+      "Whether `t` has an inference variable in it, solved or not: a
+       parameter's type that is an instance's."
+      (tagcase t
+        (ty-meta (k) #t)
+        (ty-list (e r) (or (raw-meta? e) (raw-meta? r)))
+        (ty-flat (e r) (or (raw-meta? e) (raw-meta? r)))
+        (ty-ref (e r) (or (raw-meta? e) (raw-meta? r)))
+        (ty-tag (a h d r) (or (raw-meta? a) (raw-meta? h) (raw-meta? r)))
+        (ty-data (d args) (any? raw-meta? args))
+        (ty-shape (p ls ts) (any? raw-meta? ts))
+        (ty-proc (es ps r) (or (raw-meta? r) (any? raw-meta? ps)))
+        (else other #f)))))
+
 (define opened-aliases (subr kfx (string aliases) aliases)
   (lambda (m as)
     "Module `m`'s types, named as `m` names them."
@@ -1772,6 +1816,30 @@
                         (sym (n) (and (string=? kind "bool") (or (string=? n "#t") (string=? n "#f"))))
                         (else other #f))))
                xs))))
+
+(define-rec
+  (big-digits (subr kfx (chars) chars)
+    (lambda (cs)
+      "A big literal's sign and digits, its leading zeros dropped."
+      (cond ((null? cs) nil)
+            ((char=? (car cs) #\-) (cons #\- (big-digits (cdr cs))))
+            ((and (char=? (car cs) #\0) (not (null? (cdr cs)))) (big-digits (cdr cs)))
+            (else cs)))))
+
+(define datum-key (subr kfx (sexp) string)
+  (lambda (d)
+    "A case datum, as a key that two data equal share."
+    (tagcase d
+      (chr (c) (string-append "c" (char->string c)))
+      (num (k f p) (string-append "n" (i64->string k)))
+      (big (text f p) (string-append "b" (list->string (big-digits (string-chars text)))))
+      (str (x) (string-append "s" x))
+      (sym (n) (string-append "y" n))
+      (else other "?"))))
+
+(define-rec
+  (repeated? (subr kfx (strings) bool)
+    (lambda (xs) (and (not (null? xs)) (or (string-member? (car xs) (cdr xs)) (repeated? (cdr xs)))))))
 
 (define all-chars? (subr kfx (sexps) bool)
   (lambda (xs) (not (any? (lambda ((x sexp)) (tagcase x (chr (c) #f) (else other #t))) xs))))
@@ -1868,8 +1936,8 @@
               (ty-i64 () (res x nil s))
               (ty-int () (res x nil (note-fact s num-file num-pos "int")))
               (ty-nat ()
-                (if (i64< k 0)
-                    (refuse v (string-append (i64->string k) " is no nat"))
+                (if (or (i64< k 0) (i64> k 1152921504606846975))
+                    (refuse v (string-append (i64->string k) " is no nat: FX-26's nat literals are below 2^60"))
                     (res x nil (note-fact s num-file num-pos "int"))))
               (ty-meta (m) (res (ty-int) nil (note-fact (solve s m (ty-int)) num-file num-pos "int")))
               (else other (refuse v (string-append "a literal is here, where a "
@@ -1878,7 +1946,7 @@
             "A literal past an i64: an `int`, or a `nat` if not negative."
             (tagcase x
               (ty-int () (res x nil s))
-              (ty-nat () (if (char=? (string-ref-i64 text 0) #\-) (refuse v (string-append text " is no nat")) (res x nil s)))
+              (ty-nat () (refuse v (string-append text " is no nat: FX-26's nat literals are below 2^60")))
               (ty-meta (m) (res (ty-int) nil (solve s m (ty-int))))
               (else other (refuse v (string-append "a literal past an i64 is here, where a " (string-append (show-ty s x) " is expected"))))))
           (lst (xs src-file src-line src-pos)
@@ -2126,8 +2194,11 @@
                    (body v s (cdr arm) expected)
                    (refuse v "a case's else is its last arm")))
               ((null? (cdr cases)) (refuse v "a case needs an else: FX has no unspecified value"))
+              ((null? (items (car arm))) (refuse v "a case clause has at least one datum"))
               ((not (case-data? kind (items (car arm))))
                (refuse v (string-append "a case on a " (string-append kind "'s data are literals of its type"))))
+              ((repeated? (map datum-key (concat (map (lambda ((c sexp)) (if (sym-is? (car (items c)) "else") nil (items (car (items c))))) cases))))
+               (refuse v "a datum appears twice in this case"))
               (else
                (tagcase (body v (case-data v s kind (items (car arm))) (cdr arm) expected)
                  (res (t es s)
@@ -2316,8 +2387,8 @@
        its type is found to be. The finding is a test, its state dropped."
       (or (null? args)
           (and (tagcase (car args)
-                 (num (k f p) (not (i64< k 0)))
-                 (big (text f p) (not (char=? (string-ref-i64 text 0) #\-)))
+                 (num (k f p) (and (not (i64< k 0)) (not (i64> k 1152921504606846975))))
+                 (big (text f p) #f)
                  (else other (tagcase (synth v s other) (res (t es s2) (nat? s2 t)))))
                (nat-args? v s (cdr args))))))
 
@@ -2395,7 +2466,8 @@
     (lambda (v s callee args regions expected more)
       "A call of the procedure `callee` is: its result fitted to the type
        `expected`, if one is, then its arguments checked against its
-       parameters, in order; its effect, the callee's latent effect, the
+       parameters, in order (a `list` given for a parameter whose type is an
+       instance's found by itself, as FX-26 finds it); its effect, the callee's latent effect, the
        arguments' and `more`. In order, not lambdas last as FX-26 does,
        since rustc finds a closure's parameter types only from what comes
        before it: see `check-written-params`."
@@ -2408,10 +2480,11 @@
                                            (show-sexps args)))
                   (tagcase (call-args v (if (null? expected) s (fits v s r (car expected))) args ps)
                     (res (u es1 s)
+                     (begin
                       (tagcase (name-regions v s latent regions)
                         (res (u named s)
                           (res r (effs-union named (effs-union more (effs-union es0 es1)))
-                               (if (escapes? named) (note-fact s (cv-file v) (cv-pos v) "fallible-call") s))))))))
+                               (if (escapes? named) (note-fact s (cv-file v) (cv-pos v) "fallible-call") s)))))))))
             (else other (refuse v (string-append "a call of a " (string-append (show-ty s t) ", no procedure")))))))))
 
   (call-args (subr kfx (cv st sexps tys) res)
@@ -2427,7 +2500,7 @@
       "The arguments `deferred?` says are `later`'s."
       (cond ((null? args) (res (ty-unit) nil s))
             ((eqv-bool? (deferred? (car args) (car ps)) later)
-             (tagcase (check v s (car args) (car ps))
+             (tagcase (if (and (head-is? (car args) "list") (raw-meta? (car ps))) (check-by-synth v s (car args) (car ps)) (check v s (car args) (car ps)))
                (res (t es s) (with-effs (call-args-pass v s (cdr args) (cdr ps) later) es))))
             (else (call-args-pass v s (cdr args) (cdr ps) later))))))
 

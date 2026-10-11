@@ -1,0 +1,3 @@
+"A bound past 2^60, which FX-26's size-change check does not know."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-rec (f (subr (read @globals) (int) int) (lambda (n) (if (< n 1152921504606846976) (f (+ n 1)) n))))

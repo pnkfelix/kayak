@@ -786,6 +786,27 @@ pub fn expanding(mut tvars: Strings) -> Strings {
     }
 }
 
+/// The innermost binding of `name`, as a list of one, or none.
+pub fn find_bind(mut name: Str, mut bs: Binds) -> Binds {
+    loop {
+        if null_p(bs) {
+            return nil();
+        } else {
+            let tagcase_ = car(bs);
+            match *tagcase_ {
+                Bind::Bind(n, sc, r#where) => {
+                    if string_eq_p(n, name) {
+                        return cons(car(bs), nil());
+                    } else {
+                        bs = cdr(bs);
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
 // A knot through the store (FX-26's `no_knot`): a procedure kept in
 // storage at a region, whose latent effect reads that region and does not
 // say `spin`, could be fetched from there by a procedure fetched from
@@ -871,7 +892,31 @@ pub fn knot_in(mut v: &'static Cv, mut res: &'static dyn Fn(Str) -> Str, mut t: 
                         match *tagcase_ {
                             Dt::Dt(n, ps, vs) => {
                                 if null_p(vs) {
-                                    return first_knot(v, res, args, kept, true, cons(d, seen));
+                                    let down = find_bind(string_append(str_lit("down-"), d), cv_binds(v));
+                                    return first_knot(v, res, onto(if null_p(down) {
+                                        nil()
+                                    } else {
+                                        let tagcase_ = car(down);
+                                        match *tagcase_ {
+                                            Bind::Bind(n, sc, w) => {
+                                                let tagcase_ = sc;
+                                                match *tagcase_ {
+                                                    Scheme::Scheme(tvars, t) => {
+                                                        let tagcase_ = t;
+                                                        match *tagcase_ {
+                                                            Ty::TyProc(es, xs, r) => {
+                                                                the::<Tys>(cons(substitute(ps, args, r), nil()))
+                                                            }
+                                                            _ => {
+                                                                let other = tagcase_;
+                                                                nil()
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }, args), kept, true, cons(d, seen));
                                 } else {
                                     return first_knot(v, res, concat(map(lambda1(move |x: &'static Variant| {
                                         let tagcase_ = x;
@@ -1964,27 +2009,6 @@ pub fn instantiate_vars(s: &'static St, tvars: Strings, t: &'static Ty, regions:
 }
 
 // The names in scope
-/// The innermost binding of `name`, as a list of one, or none.
-pub fn find_bind(mut name: Str, mut bs: Binds) -> Binds {
-    loop {
-        if null_p(bs) {
-            return nil();
-        } else {
-            let tagcase_ = car(bs);
-            match *tagcase_ {
-                Bind::Bind(n, sc, r#where) => {
-                    if string_eq_p(n, name) {
-                        return cons(car(bs), nil());
-                    } else {
-                        bs = cdr(bs);
-                        continue;
-                    }
-                }
-            }
-        }
-    }
-}
-
 /// FX-26's keywords, which name nothing (fixpt's top.rs, KEYWORDS).
 pub fn keyword_p(name: Str) -> bool {
     (string_eq_p(name, str_lit("lambda")) || string_eq_p(name, str_lit("plambda")) || string_eq_p(name, str_lit("proj")) || string_eq_p(name, str_lit("if")) || string_eq_p(name, str_lit("letrec")) || string_eq_p(name, str_lit("let")) || string_eq_p(name, str_lit("begin")) || string_eq_p(name, str_lit("define")) || string_eq_p(name, str_lit("define*")) || string_eq_p(name, str_lit("define-type")) || string_eq_p(name, str_lit("define-generative")) || string_eq_p(name, str_lit("subr")) || string_eq_p(name, str_lit("poly")) || string_eq_p(name, str_lit("ref")) || string_eq_p(name, str_lit("pairof")) || string_eq_p(name, str_lit("dletrec")) || string_eq_p(name, str_lit("void")) || string_eq_p(name, str_lit("pure")) || string_eq_p(name, str_lit("maxeff")) || string_eq_p(name, str_lit("read")) || string_eq_p(name, str_lit("write")) || string_eq_p(name, str_lit("alloc")) || string_eq_p(name, str_lit("goto")) || string_eq_p(name, str_lit("comefrom")) || string_eq_p(name, str_lit("region")) || string_eq_p(name, str_lit("effect")) || string_eq_p(name, str_lit("type")) || string_eq_p(name, str_lit("prompt")) || string_eq_p(name, str_lit("prompt-tag")) || string_eq_p(name, str_lit("composable")) || string_eq_p(name, str_lit("mark-key")) || string_eq_p(name, str_lit("listof")) || string_eq_p(name, str_lit("cond")) || string_eq_p(name, str_lit("case")) || string_eq_p(name, str_lit("else")) || string_eq_p(name, str_lit("and")) || string_eq_p(name, str_lit("or")) || string_eq_p(name, str_lit("let*")) || string_eq_p(name, str_lit("define-effect")) || string_eq_p(name, str_lit("module-parameters")) || string_eq_p(name, str_lit("the")) || string_eq_p(name, str_lit("bloblet")) || string_eq_p(name, str_lit("fields")) || string_eq_p(name, str_lit("frozen")) || string_eq_p(name, str_lit("arrayof")) || string_eq_p(name, str_lit("icell")) || string_eq_p(name, str_lit("await")) || string_eq_p(name, str_lit("define-rec")) || string_eq_p(name, str_lit("letrena")) || string_eq_p(name, str_lit("letreap")) || string_eq_p(name, str_lit("rlambda")) || string_eq_p(name, str_lit("quote")) || string_eq_p(name, str_lit("productof")) || string_eq_p(name, str_lit("sumof")) || string_eq_p(name, str_lit("product")) || string_eq_p(name, str_lit("extract")) || string_eq_p(name, str_lit("sum")) || string_eq_p(name, str_lit("tagcase")) || string_eq_p(name, str_lit("module")) || string_eq_p(name, str_lit("moduleof")) || string_eq_p(name, str_lit("with")) || string_eq_p(name, str_lit("select")) || string_eq_p(name, str_lit("load-module")) || string_eq_p(name, str_lit("define-datatype")) || string_eq_p(name, str_lit("make-bloblet")) || string_eq_p(name, str_lit("bloblet-ref")) || string_eq_p(name, str_lit("bloblet-set!")) || string_eq_p(name, str_lit("bloblet-freeze")) || string_eq_p(name, str_lit("bloblet-byte")) || string_eq_p(name, str_lit("bloblet-set-byte!")) || string_eq_p(name, str_lit("bloblet-bytes")) || string_eq_p(name, str_lit("rmake-bloblet")) || string_eq_p(name, str_lit("dlambda")) || string_eq_p(name, str_lit("=>")) || string_eq_p(name, str_lit("blobref-at")) || string_eq_p(name, str_lit("blobref+")) || string_eq_p(name, str_lit("blobref-owner")) || string_eq_p(name, str_lit("blobref-offset")) || string_eq_p(name, str_lit("blobref-get")) || string_eq_p(name, str_lit("blobref-set!")) || string_eq_p(name, str_lit("blobref-index")) || string_eq_p(name, str_lit("blobref-variant!")))
@@ -2622,11 +2646,16 @@ pub fn std_op(c: &'static Wc, e: &'static Sexp) -> Str {
     }
 }
 
+/// A literal's value, if FX-26's size-change check knows it: in [-2^60, 2^60).
 pub fn literal_of(e: &'static Sexp) -> I64s {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Num(k, text, pos) => {
-            the::<I64s>(cons(k, nil()))
+            if (i64_lt(k, -1152921504606846976i64) || i64_gt(k, 1152921504606846975i64)) {
+                nil()
+            } else {
+                the::<I64s>(cons(k, nil()))
+            }
         }
         _ => {
             let other = tagcase_;
@@ -2763,7 +2792,7 @@ pub fn fixed_p(mut c: &'static Wc, mut e: &'static Sexp) -> bool {
                 let tagcase_ = e;
                 match *tagcase_ {
                     Sexp::Num(k, text, pos) => {
-                        return true;
+                        return not(null_p(literal_of(e)));
                     }
                     Sexp::Sym(n) => {
                         let b = bound_of(n, sc);
@@ -3719,6 +3748,43 @@ pub fn terminates_p(v: &'static Cv, names: Strings, types: Tys, defined: Sexps) 
     }
 }
 
+/// A cell or array whose region nothing named, and so was taken as
+/// `acyclic`: FX-26's is a fresh region, KFX's would be no region, its
+/// effects lost.
+pub fn unplaced_p(t: &'static Ty) -> bool {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyRef(e, r) => {
+            let tagcase_ = r;
+            match *tagcase_ {
+                Ty::TyRconst(n) => {
+                    string_eq_p(n, str_lit("acyclic"))
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Ty::TyFlat(e, r) => {
+            let tagcase_ = r;
+            match *tagcase_ {
+                Ty::TyRconst(n) => {
+                    string_eq_p(n, str_lit("acyclic"))
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
 /// A call's value, whose type, an instance, ties no knot through the store.
 pub fn knot_free_call(v: &'static Cv, r: &'static Res) -> &'static Res {
     let tagcase_ = r;
@@ -3727,7 +3793,11 @@ pub fn knot_free_call(v: &'static Cv, r: &'static Res) -> &'static Res {
             no_knot(v, lambda1(move |x: Str| {
                 resolve_atom(s, x)
             }), zonk(s, t));
-            r
+            if unplaced_p(zonk(s, t)) {
+                refuse(v, str_lit("mutable data at no region a type names: write its region, (the (ref T @r) ...)"))
+            } else {
+                r
+            }
         }
     }
 }
@@ -3909,6 +3979,42 @@ pub fn control_form_p(h: Str) -> bool {
     (string_eq_p(h, str_lit("if")) || string_eq_p(h, str_lit("cond")) || string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("tagcase")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("with")))
 }
 
+/// Whether `t` has an inference variable in it, solved or not: a
+/// parameter's type that is an instance's.
+pub fn raw_meta_p(t: &'static Ty) -> bool {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyMeta(k) => {
+            true
+        }
+        Ty::TyList(e, r) => {
+            (raw_meta_p(e) || raw_meta_p(r))
+        }
+        Ty::TyFlat(e, r) => {
+            (raw_meta_p(e) || raw_meta_p(r))
+        }
+        Ty::TyRef(e, r) => {
+            (raw_meta_p(e) || raw_meta_p(r))
+        }
+        Ty::TyTag(a, h, d, r) => {
+            (raw_meta_p(a) || raw_meta_p(h) || raw_meta_p(r))
+        }
+        Ty::TyData(d, args) => {
+            any_p(&raw_meta_p, args)
+        }
+        Ty::TyShape(p, ls, ts) => {
+            any_p(&raw_meta_p, ts)
+        }
+        Ty::TyProc(es, ps, r) => {
+            (raw_meta_p(r) || any_p(&raw_meta_p, ps))
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
 /// Module `m`'s types, named as `m` names them.
 pub fn opened_aliases(mut m: Str, mut r#as: Aliases) -> Aliases {
     loop {
@@ -3968,6 +4074,52 @@ pub fn case_data_p(kind: Str, xs: Sexps) -> bool {
             }
         })
     }), xs))
+}
+
+/// A big literal's sign and digits, its leading zeros dropped.
+pub fn big_digits(mut cs: Chars) -> Chars {
+    loop {
+        if null_p(cs) {
+            return nil();
+        } else if char_eq_p(car(cs), '-') {
+            return cons('-', big_digits(cdr(cs)));
+        } else if (char_eq_p(car(cs), '0') && not(null_p(cdr(cs)))) {
+            cs = cdr(cs);
+            continue;
+        } else {
+            return cs;
+        }
+    }
+}
+
+/// A case datum, as a key that two data equal share.
+pub fn datum_key(d: &'static Sexp) -> Str {
+    let tagcase_ = d;
+    match *tagcase_ {
+        Sexp::Chr(c) => {
+            string_append(str_lit("c"), char_to_string(c))
+        }
+        Sexp::Num(k, f, p) => {
+            string_append(str_lit("n"), i64_to_string(k))
+        }
+        Sexp::Big(text, f, p) => {
+            string_append(str_lit("b"), list_to_string(big_digits(string_chars(text))))
+        }
+        Sexp::Str(x) => {
+            string_append(str_lit("s"), x)
+        }
+        Sexp::Sym(n) => {
+            string_append(str_lit("y"), n)
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("?")
+        }
+    }
+}
+
+pub fn repeated_p(xs: Strings) -> bool {
+    (not(null_p(xs)) && (string_member_p(car(xs), cdr(xs)) || repeated_p(cdr(xs))))
 }
 
 pub fn all_chars_p(xs: Sexps) -> bool {
@@ -4180,8 +4332,8 @@ pub fn check(v: &'static Cv, s: &'static St, e: &'static Sexp, expected: &'stati
                     res(x, nil(), note_fact(s, num_file, num_pos, str_lit("int")))
                 }
                 Ty::TyNat() => {
-                    if i64_lt(k, 0i64) {
-                        refuse(v, string_append(i64_to_string(k), str_lit(" is no nat")))
+                    if (i64_lt(k, 0i64) || i64_gt(k, 1152921504606846975i64)) {
+                        refuse(v, string_append(i64_to_string(k), str_lit(" is no nat: FX-26's nat literals are below 2^60")))
                     } else {
                         res(x, nil(), note_fact(s, num_file, num_pos, str_lit("int")))
                     }
@@ -4203,11 +4355,7 @@ pub fn check(v: &'static Cv, s: &'static St, e: &'static Sexp, expected: &'stati
                     res(x, nil(), s)
                 }
                 Ty::TyNat() => {
-                    if char_eq_p(string_ref_i64(text, 0i64), '-') {
-                        refuse(v, string_append(text, str_lit(" is no nat")))
-                    } else {
-                        res(x, nil(), s)
-                    }
+                    refuse(v, string_append(text, str_lit(" is no nat: FX-26's nat literals are below 2^60")))
                 }
                 Ty::TyMeta(m) => {
                     res(ty_int(), nil(), solve(s, m, ty_int()))
@@ -4721,8 +4869,18 @@ pub fn case_arms(v: &'static Cv, s: &'static St, kind: Str, cases: Sexps, expect
         }
     } else if null_p(cdr(cases)) {
         refuse(v, str_lit("a case needs an else: FX has no unspecified value"))
+    } else if null_p(items(car(arm))) {
+        refuse(v, str_lit("a case clause has at least one datum"))
     } else if not(case_data_p(kind, items(car(arm)))) {
         refuse(v, string_append(str_lit("a case on a "), string_append(kind, str_lit("'s data are literals of its type"))))
+    } else if repeated_p(map(&datum_key, concat(map(lambda1(move |c: &'static Sexp| {
+        if sym_is_p(car(items(c)), str_lit("else")) {
+            nil()
+        } else {
+            items(car(items(c)))
+        }
+    }), cases)))) {
+        refuse(v, str_lit("a datum appears twice in this case"))
     } else {
         let tagcase_ = body(v, case_data(v, s, kind, items(car(arm))), cdr(arm), expected);
         match *tagcase_ {
@@ -5046,10 +5204,10 @@ pub fn nat_args_p(v: &'static Cv, s: &'static St, args: Sexps) -> bool {
         let tagcase_ = car(args);
         match *tagcase_ {
             Sexp::Num(k, f, p) => {
-                not(i64_lt(k, 0i64))
+                (not(i64_lt(k, 0i64)) && not(i64_gt(k, 1152921504606846975i64)))
             }
             Sexp::Big(text, f, p) => {
-                not(char_eq_p(string_ref_i64(text, 0i64), '-'))
+                false
             }
             _ => {
                 let other = tagcase_;
@@ -5196,7 +5354,8 @@ pub fn handler_of(v: &'static Cv, s: &'static St, e: &'static Sexp, h: &'static 
 
 /// A call of the procedure `callee` is: its result fitted to the type
 /// `expected`, if one is, then its arguments checked against its
-/// parameters, in order; its effect, the callee's latent effect, the
+/// parameters, in order (a `list` given for a parameter whose type is an
+/// instance's found by itself, as FX-26 finds it); its effect, the callee's latent effect, the
 /// arguments' and `more`. In order, not lambdas last as FX-26 does,
 /// since rustc finds a closure's parameter types only from what comes
 /// before it: see `check-written-params`.
@@ -5258,7 +5417,11 @@ pub fn call_args_pass(mut v: &'static Cv, mut s: &'static St, mut args: Sexps, m
         if null_p(args) {
             return res(ty_unit(), nil(), s);
         } else if eqv_bool_p(deferred_p(car(args), car(ps)), later) {
-            let tagcase_ = check(v, s, car(args), car(ps));
+            let tagcase_ = if (head_is_p(car(args), str_lit("list")) && raw_meta_p(car(ps))) {
+                check_by_synth(v, s, car(args), car(ps))
+            } else {
+                check(v, s, car(args), car(ps))
+            };
             match *tagcase_ {
                 Res::Res(t, es, s) => {
                     return with_effs(call_args_pass(v, s, cdr(args), cdr(ps), later), es);

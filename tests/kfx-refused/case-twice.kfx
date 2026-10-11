@@ -1,0 +1,3 @@
+"A datum given twice in a case."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f (subr pure (int) int) (lambda (n) (case n ((1) 1) ((1) 2) (else 3))))

@@ -1,0 +1,3 @@
+"A case clause of no data."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f (subr pure (int) int) (lambda (n) (case n (() 10) (else 2))))

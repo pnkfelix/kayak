@@ -114,6 +114,19 @@ Escapes are done (`DONE.md`, C18). Left:
 
 ## 17. Small things noticed
 
+- **K1 gaps a probe found, left** (2026-10-11):
+  - a constant whose value fails and is never named does not fail in Rust
+    (FX-26 makes it where it is defined; KFX at its first use, C21): a
+    program FX-26 stops, KFX's Rust runs on;
+  - an `i64` expected of a call reaches its arguments' calls in KFX, not
+    in FX-26: `(define b i64 (car (cons 1 nil)))` and `(get (new 5))` are
+    KFX's, not FX-26's (the values are the same). FX-26 checks a call
+    argument against its parameter when an earlier argument fixed its
+    type (`tests/kfx/families.kfx`), and finds it alone when only the
+    result expected did; KFX's rule is a `list` alone;
+  - a global procedure that cannot abort, named where one that may is
+    expected, is a Rust type error (`&id` where a `Result` is returned):
+    the emitter should wrap it in a closure returning `Ok`.
 - **`tagcase_`**, the name a `tagcase` binds, could be a KFX name's
   mangling (`tagcase-`).
 - **`(define x e)` with no type** is refused; FX-26 allows it.

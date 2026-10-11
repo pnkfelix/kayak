@@ -24,7 +24,7 @@ pub fn find(mut t: Tag<i64, i64>, mut xs: Ints, mut n: i64) -> Result<i64, Unwin
         if null_p(xs) {
             return Ok(-1i64);
         } else if i64_eq(car(xs), n) {
-            return Err(unwind(t, n));
+            (return Err(unwind(t, n)));
         } else {
             xs = cdr(xs);
             continue;
@@ -70,7 +70,7 @@ pub fn first_over(xs: Ints, m: i64) -> i64 {
         match (move || -> Result<_, Unwind> {
             each(lambda1(move |x: i64| {
                 if i64_gt(x, m) {
-                    return Err(unwind(t, x))
+                    (return Err(unwind(t, x)))
                 } else {
                     Ok(())
                 }
@@ -124,7 +124,7 @@ pub fn on_the_spot(n: i64) -> i64 {
         match (move || -> Result<_, Unwind> {
             Ok(i64_plus(1i64, (lambda1(move |x: i64| {
                 if i64_gt(x, 3i64) {
-                    return Err(unwind(t, x))
+                    (return Err(unwind(t, x)))
                 } else {
                     Ok(x)
                 }

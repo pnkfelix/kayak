@@ -672,3 +672,18 @@ each list of labels, declared where the program's file begins.
 Found on the way: a name or number at the top level made the emitter
 fail; and `run-fixpt-programs.py` counted none of their values. 60 of
 Fixpt's programs accepted, all agreeing.
+
+## A second probe's findings (2026-10-11)
+
+A probe of 339 programs on what had been added found: `case` data given
+twice, or a clause of none (refused now, as FX-26 does); `nat` literals
+past 2^60 - 1, FX-26's limit; termination knowing literals past 2^60,
+which FX-26's check does not; a knot through a generative type of no
+parameters (its representation now looked into); a cell made at a region
+nothing named, which KFX had at `acyclic` and so lost its effects (now
+refused: write its region); an `i64` expected of a call reaching a `list`
+given for an instance's parameter. Rust that did not compile, for programs
+both accept: an abort inside `and` (`return` took the rest of the
+expression; now parenthesized), and a call that may abort where no
+`Result` is returned (now `unwrap_or_else(unreachable_unwind)`). Left:
+`TODO.md` §17. The probe's 339 programs then agree but for those.

@@ -995,9 +995,9 @@
              "An abort: an early return, where a `Result` is returned; else no
               prompt can be running for its tag (the checker masked its region),
               and it fails, as FX-26's does when it runs."
-             (let* ((acc (put (if (fallible-here? c) "return Err(unwind(" "unreachable_unwind(unwind(") acc))
+             (let* ((acc (put (if (fallible-here? c) "(return Err(unwind(" "unreachable_unwind(unwind(") acc))
                     (acc (put-joined c xs ", " n acc)))
-               (put "))" acc)))
+               (put (if (fallible-here? c) ")))" "))") acc)))
             ((and (string=? h "prompt") (string=? (local-kind h (ctx-locals c)) "")) (put-prompt c e xs n acc))
             ((null? xs) (put-question c e (put "()" (put (callee c h) acc))))
             (else (put-question c e (put ")" (put-joined c xs ", " n (put "(" (put (callee c h) acc)))))))))
@@ -1034,7 +1034,9 @@
   (put-question (subr kfx (ctx sexp chars) chars)
     (lambda (c e acc)
       "A call the checker found may abort takes a `?`."
-      (if (fact-at? c e "fallible-call") (put "?" acc) acc))))
+      (cond ((not (fact-at? c e "fallible-call")) acc)
+            ((fallible-here? c) (put "?" acc))
+            (else (put ".unwrap_or_else(unreachable_unwind)" acc))))))
 
 "Top-level forms"
 
