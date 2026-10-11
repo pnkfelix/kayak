@@ -344,14 +344,14 @@ pub fn put_place_generics(c: &'static Ctx, name: Str, binders: Sexps, places: St
         distinct_strings(concat(map(lambda1(move |n: Str| {
             let ws = read_all(string_chars(n), str_lit(""), 1i64);
             if string_eq_p(sym_name(car(ws)), string_append(str_lit("'"), p)) {
-                the::<Strings>(kayak_rt::cons(string_append(str_lit("Holds<"), string_append(held_rust(c, sym_name(second(ws)), string_append(str_lit("'"), mangle(p)), third(ws)), str_lit(">"))), kayak_rt::nil()))
+                the::<Strings>(kayak_rt::cons(string_append(str_lit("Holds<"), string_append(held_rust(c, sym_name(second(ws)), lifetime(p), third(ws)), str_lit(">"))), kayak_rt::nil()))
             } else {
                 nil::<Str>()
             }
         }), needs)))
     });
     let params = onto(map(lambda1(move |p: Str| {
-        string_append(str_lit("'"), mangle(p))
+        lifetime(p)
     }), places), onto(map(lambda1(move |t: Str| {
         string_append(t, str_lit(": Copy + 'static"))
     }), types), map(lambda1(move |p: Str| {
@@ -989,7 +989,7 @@ pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
         let acc = put(str_lit("pub type "), acc);
         let acc = put(camel(type_head_name(second(xs))), acc);
         let params = onto(map(lambda1(move |r: Str| {
-            string_append(str_lit("'"), mangle(r))
+            lifetime(r)
         }), regions), onto(map(&camel, head_type_params(second(xs))), map(lambda1(move |p: Str| {
             string_append(str_lit("Place_"), camel(p))
         }), concat(map(lambda1(move |p: Str| {

@@ -1,5 +1,5 @@
-"Names: the mangling, and names made of operators. (A Rust keyword is no
- KFX name: tests/kfx-stricter/rust-keyword.kfx.)"
+"Names: the mangling, and names made of operators. (Rust's keywords:
+ tests/kfx/rust-keywords.kfx.)"
 
 (define-effect kfx (maxeff (read @globals) spin))
 

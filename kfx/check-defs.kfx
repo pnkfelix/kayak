@@ -570,6 +570,26 @@
                        forms)))))
 
 (define-rec
+  (type-namer (subr kfx (sexps string) sexps)
+    (lambda (forms name)
+      "The form among `forms`, or in their modules, that defines the type or
+       module `name`: a list of it, or none."
+      (cond ((null? forms) nil)
+            ((string-member? name (type-level-names (list (car forms)))) (list (car forms)))
+            ((module-def? (car forms))
+             (let ((inner (type-namer (concat (map (lambda ((g sexp)) (if (head-is? g "hide") (cdr (items g)) (the sexps (list g))))
+                                                   (cdr (items (third (items (car forms)))))))
+                                      name)))
+               (if (null? inner) (type-namer (cdr forms) name) inner)))
+            (else (type-namer (cdr forms) name))))))
+
+(define type-namer-near (subr kfx (cv sexps string) cv)
+  (lambda (v forms name)
+    "`v` at the form that defines the type or module `name`, if one does."
+    (let ((fs (type-namer forms name)))
+      (if (null? fs) v (tagcase (car fs) (lst (xs file line pos) (near v file line pos)) (else other v))))))
+
+(define-rec
   (label-lists (subr kfx (sexps) (listof strings acyclic))
     (lambda (es)
       "The labels of every product and sum written in `es`, types and
@@ -622,10 +642,8 @@
                  #u))
            forms)
       (map (lambda ((name string))
-             (if (string-member? (camel name) (list "Str" "List" "Cons" "Int" "Tag" "Unwind" "Ref" "FlatArray" "Knot" "Show"
-                                                    "OnceCell" "Fn" "Result" "Ok" "Err" "String" "Copy" "Clone" "Void" "Bloblet" "BlobRef" "Arena" "Holds" "ListAt" "RefAt"
-                                                    "Self" "Module" "TBloblet" "FlatArr" "Flat" "Owner" "RefAt"))
-                 (refuse v (string-append "Rust or kayak-rt has a type " (string-append (camel name) " of its own")))
+             (if (string-member? (camel name) (rust-type-names))
+                 (refuse (type-namer-near v forms name) (string-append "Rust or kayak-rt has a type " (string-append (camel name) " of its own")))
                  #u))
            (concat (type-scopes forms)))
       (map (lambda ((names strings))

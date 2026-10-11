@@ -397,11 +397,19 @@
 
 (define rust-keyword-clash? (subr kfx (string) bool)
   (lambda (n)
-    "Whether `n` is a Rust keyword, strict, reserved or weak, or is one as a
-     type's name (`self`, `Self`): KFX names none so (the user's, C27)."
-    (or (rust-keyword? n)
-        (string-member? n (list "self" "super" "crate" "union" "raw" "safe" "macro-rules"))
+    "Whether `n` is a Rust keyword no raw identifier may be, `self`, `super`,
+     `crate`, or one as a type's name (`Self`): KFX names none so. The
+     others are Rust's `r#loop` (C41)."
+    (or (string-member? n (list "self" "super" "crate"))
         (string=? (camel n) "Self"))))
+
+(define rust-type-names (subr kfx () strings)
+  (lambda ()
+    "The types Rust or kayak-rt has that the emitter writes: no KFX type and
+     no type variable is named so, camel-cased, which would hide it."
+    (list "Str" "List" "Cons" "Int" "Tag" "Unwind" "Ref" "FlatArray" "Knot" "Show" "OnceCell" "Fn"
+          "Result" "Ok" "Err" "String" "Copy" "Clone" "Self" "Module" "Void" "Bloblet" "BlobRef" "Arena"
+          "Holds" "ListAt" "RefAt" "TBloblet" "FlatArr" "Flat" "Owner" "Cell" "Default" "Procedure")))
 
 (define kfx-name? (subr kfx (string) bool)
   (lambda (n)
@@ -842,8 +850,7 @@
      its name camel-cased: each a KFX name (C27), none named as a type the
      Rust names, as another of them, or as a type `types` has, which it
      would hide in Rust and not in FX-26. A region's, with `'`, is none."
-    (let ((reserved (the strings (list "Str" "List" "Cons" "Int" "Tag" "Unwind" "Ref" "FlatArray" "Knot" "Show" "OnceCell" "Fn"
-                          "Result" "Ok" "Err" "String" "Copy" "Clone" "Self" "Module" "Void" "Bloblet" "BlobRef" "Arena" "Holds" "ListAt" "RefAt")))
+    (let ((reserved (rust-type-names))
           (theirs (map (lambda ((t string)) (camel (bare-type-name (string-chars t) nil))) types))
           (tvars (concat (map (lambda ((n string)) (if (has-prefix? n "'") nil (the strings (list n)))) tvars))))
       (begin

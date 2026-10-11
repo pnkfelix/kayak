@@ -1077,3 +1077,10 @@ answers compared. As Rust, the ports run as fast as Fixpt's fastest
 machine or faster (fib 1.2 ms to its 2.6, tak 0.5 to 1.0, lists 5.4 to
 6.0); `closures` 21 to its 14 (a closure each round, leaked).
 `helpers` and `loop` rustc computes whole at compile time.
+
+## Rust's keywords as KFX's names (2026-10-11)
+
+C41: `loop`, `move`, `fn`, ... are names again, Rust's `r#loop`; only
+`self`, `super`, `crate` refused. `tests/kfx/rust-keywords.kfx` names
+values, parameters, locals, types, labels, modules, effects, places and
+regions so. Fixpt's programs kfx accepts: 79 to 90.

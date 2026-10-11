@@ -1,0 +1,52 @@
+"Rust's keywords as names (C41): FX-26 has them, and so KFX, as Rust's raw
+ identifiers, `r#loop`. Only `self`, `super` and `crate`, which no raw
+ identifier may be, are refused (tests/kfx-stricter/self-name.kfx)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-effect fn (maxeff (read @globals) spin))
+
+(define mod i64 1)
+
+(define-type match (productof (fn i64) (in i64)))
+(define-datatype enum (struct i64) (unsafe))
+(define-type as (sumof (dyn i64) (where i64)))
+
+(define loop (subr kfx (i64 i64) i64)
+  (lambda (move acc)
+    (if (i64= move 0) acc (loop (i64- move 1) (i64+ acc move)))))
+
+(define where (subr pure (as) i64)
+  (lambda (s) (tagcase s (dyn ref ref) (where mut (i64* 10 mut)))))
+
+(define const (subr pure (enum) i64)
+  (lambda (e) (tagcase e (struct (static) static) (unsafe () 0))))
+
+(define impl
+  (module
+    (define trait i64 7)
+    (define return (subr pure (i64) i64) (lambda (break) (i64+ break trait)))))
+
+(define build (poly ((yield place)) (subr (alloc yield) ((place yield) i64) (listof i64 yield)))
+  (lambda (async n) (rcons async n nil)))
+
+"A region named `static`, Rust's `'r#static`, and a type variable `in`."
+(define keep (poly ((in type)) (subr pure (in) in)) (lambda (x) x))
+(define total (poly ((static place)) (subr (maxeff (alloc static) (read static)) ((place static) i64) i64))
+  (lambda (h n) (car (the (listof i64 static) (rcons h n nil)))))
+(define first (subr fn () i64)
+  (lambda () (letrena static (i64+ (keep 1) (total static 4)))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (let* ((use (the match (product (fn 2) (in 3))))
+           (for (i64+ (extract use fn) (extract use in))))
+      (letrec ((while (subr kfx (i64 i64) i64)
+                 (lambda (else continue) (if (i64= else 0) continue (while (i64- else 1) (i64+ continue 2))))))
+        (letrena box
+          (let ((pub (build box (where (sum where 4)))))
+            (i64->string
+              (i64+ (loop 3 mod)
+                (i64+ (i64* 10 for)
+                  (i64+ (i64* 100 (while 2 0))
+                    (i64+ (i64* 1000 (const (struct 5)))
+                      (i64+ (with impl (return 0)) (i64+ (i64* 10000 (car pub)) (i64* 1000000 (first)))))))))))))))
+(main)

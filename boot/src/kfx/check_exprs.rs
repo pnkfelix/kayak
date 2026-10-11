@@ -650,7 +650,7 @@ pub fn spec_well_formed(v: &'static Cv, spec: &'static Sexp) -> () {
         if any_p(&rust_keyword_clash_p, onto(spec_abs(spec), map(lambda1(move |d: Sexps| {
             sym_name(second(d))
         }), onto(spec_items(spec, str_lit("desc")), spec_items(spec, str_lit("val")))))) {
-            match refuse(v, str_lit("a module type's name that is a Rust keyword, which KFX's names are not (C27)")) {}
+            match refuse(v, str_lit("a module type's name that is `self`, `super` or `crate`, which no Rust name may be (C41)")) {}
         } else {
             ()
         }

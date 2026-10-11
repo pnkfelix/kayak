@@ -1,5 +1,5 @@
 "A knot through what a generative type is given: a cell of a procedure
  that reads the cell's region."
 (define-effect kfx (maxeff (read @globals) spin))
-(define-generative (cell (t type) (r region)) (ref t r))
-(define c (cell (subr (read @r) () i64) @r) (up-cell (new (lambda () 1))))
+(define-generative (holder (t type) (r region)) (ref t r))
+(define c (holder (subr (read @r) () i64) @r) (up-holder (new (lambda () 1))))

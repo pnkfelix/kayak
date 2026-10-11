@@ -877,7 +877,7 @@ pub fn letrena_lifetimes_inner(mut ls: Strings) -> Strings {
         if null_p(ls) {
             return nil::<Str>();
         } else if has_prefix_p(car(ls), str_lit("%letrena ")) {
-            return cons(string_append(str_lit("'"), mangle(after_prefix(car(ls), str_lit("%letrena ")))), letrena_lifetimes_inner(cdr(ls)));
+            return cons(lifetime(after_prefix(car(ls), str_lit("%letrena "))), letrena_lifetimes_inner(cdr(ls)));
         } else {
             ls = cdr(ls);
             continue;
@@ -1002,7 +1002,7 @@ pub fn innermost_letrena_lifetime(mut ls: Strings) -> Str {
         if null_p(ls) {
             return str_lit("");
         } else if has_prefix_p(car(ls), str_lit("%letrena ")) {
-            return string_append(str_lit("'"), mangle(after_prefix(car(ls), str_lit("%letrena "))));
+            return lifetime(after_prefix(car(ls), str_lit("%letrena ")));
         } else {
             ls = cdr(ls);
             continue;
@@ -1062,9 +1062,9 @@ pub fn region_lifetime(c: &'static Ctx, r: &'static Sexp) -> Str {
     if string_eq_p(n, str_lit("")) {
         str_lit("")
     } else if string_member_p(string_append(str_lit("%letrena "), n), ctx_locals(c)) {
-        string_append(str_lit("'"), mangle(n))
+        lifetime(n)
     } else if not(string_eq_p(within_of(ctx_locals(c), n), str_lit(""))) {
-        string_append(str_lit("'"), mangle(within_of(ctx_locals(c), n)))
+        lifetime(within_of(ctx_locals(c), n))
     } else if string_member_p(string_append(str_lit("%letregion "), n), ctx_locals(c)) {
         letrena_outside(ctx_locals(c), string_append(str_lit("%letregion "), n))
     } else {
@@ -1209,7 +1209,7 @@ pub fn innermost_lifetime(mut ls: Strings) -> Str {
         if null_p(ls) {
             return str_lit("'static");
         } else if has_prefix_p(car(ls), str_lit("%letrena ")) {
-            return string_append(str_lit("'"), mangle(after_prefix(car(ls), str_lit("%letrena "))));
+            return lifetime(after_prefix(car(ls), str_lit("%letrena ")));
         } else {
             ls = cdr(ls);
             continue;
@@ -1223,7 +1223,7 @@ pub fn letrena_lifetimes(mut ls: Strings) -> Strings {
         if null_p(ls) {
             return nil::<Str>();
         } else if has_prefix_p(car(ls), str_lit("%letrena ")) {
-            return onto(letrena_lifetimes(cdr(ls)), kayak_rt::cons(string_append(str_lit("'"), mangle(after_prefix(car(ls), str_lit("%letrena ")))), kayak_rt::nil()));
+            return onto(letrena_lifetimes(cdr(ls)), kayak_rt::cons(lifetime(after_prefix(car(ls), str_lit("%letrena "))), kayak_rt::nil()));
         } else {
             ls = cdr(ls);
             continue;
@@ -1299,11 +1299,11 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
                     }
                 } else if (sym_is_p(car(xs), str_lit("place")) && string_member_p(string_append(str_lit("%placeparam "), unquoted(sym_name(second(xs)))), ctx_locals(c))) {
                     let p = unquoted(sym_name(second(xs)));
-                    return put(string_append(str_lit("&'"), string_append(mangle(p), string_append(str_lit(" Place_"), camel(p)))), acc);
+                    return put(string_append(str_lit("&"), string_append(lifetime(p), string_append(str_lit(" Place_"), camel(p)))), acc);
                 } else if sym_is_p(car(xs), str_lit("place")) {
                     let r = unquoted(sym_name(second(xs)));
                     let lives = letrena_lifetimes(ctx_locals(c));
-                    let life = string_append(str_lit("'"), mangle(r));
+                    let life = lifetime(r);
                     return put(string_append(str_lit("&"), string_append(life, string_append(str_lit(" Region_"), string_append(camel(r), string_append(str_lit("<"), string_append(words_of_sep(onto(cons(life, lifetimes_before(lives, life)), type_params_in(ctx_locals(c))), str_lit(", ")), str_lit(">"))))))), acc);
                 } else if (sym_is_p(car(xs), str_lit("bloblet")) && not(null_p(typed_flat(c, t)))) {
                     return put(str_lit(">"), put_flat(c, car(typed_flat(c, t)), put(str_lit(", "), put_fields_tuple(c, cdr(items(second(xs))), put(str_lit("TBloblet<"), put(str_lit(" "), put(owner_lifetime(c, third(xs)), put(str_lit("&"), acc))))))));
@@ -1782,7 +1782,7 @@ pub fn fallible_here_p(c: &'static Ctx) -> bool {
 pub fn callee(c: &'static Ctx, h: Str) -> Str {
     let kind = local_kind(h, ctx_locals(c));
     if string_eq_p(kind, str_lit("knot")) {
-        string_append(str_lit("("), string_append(mangle(h), str_lit("__knot.get())")))
+        string_append(str_lit("("), string_append(mangle_bare(h), str_lit("__knot.get())")))
     } else if string_eq_p(kind, str_lit("item")) {
         item_path(c, h)
     } else if (string_eq_p(kind, str_lit("")) && string_member_p(h, ctx_constants(c))) {
@@ -1829,7 +1829,7 @@ pub fn put_var(c: &'static Ctx, s: Str, acc: Chars) -> Chars {
     } else if string_eq_p(s, str_lit("#u")) {
         put(str_lit("()"), acc)
     } else if string_eq_p(local_kind(s, ctx_locals(c)), str_lit("knot")) {
-        put(str_lit(".get()"), put(str_lit("__knot"), put(mangle(s), acc)))
+        put(str_lit(".get()"), put(str_lit("__knot"), put(mangle_bare(s), acc)))
     } else if string_eq_p(local_kind(s, ctx_locals(c)), str_lit("local")) {
         put(mangle(s), acc)
     } else if string_eq_p(local_kind(s, ctx_locals(c)), str_lit("item")) {
@@ -2949,7 +2949,7 @@ pub fn put_letrec(c: &'static Ctx, bindings: Sexps, names: Strings, n: i64, acc:
     let acc = put_sep(lambda2(move |b: &'static Sexp, acc: Chars| {
         let ys = items(b);
         let acc = put(str_lit("let "), acc);
-        let acc = put(mangle(sym_name(car(ys))), acc);
+        let acc = put(mangle_bare(sym_name(car(ys))), acc);
         let acc = put(str_lit("__knot = knot::<"), acc);
         let acc = put_type(c, second(ys), acc);
         put_nl(n, put(str_lit(">();"), acc))
@@ -2968,7 +2968,7 @@ pub fn put_letrec(c: &'static Ctx, bindings: Sexps, names: Strings, n: i64, acc:
         put_nl(n, put(str_lit(";"), acc))
     }), str_lit(""), bindings, acc);
     put_sep(lambda2(move |x: Str, acc: Chars| {
-        put_nl(n, put(str_lit(");"), put(mangle(x), put(str_lit("__knot.set("), put(mangle(x), acc)))))
+        put_nl(n, put(str_lit(");"), put(mangle(x), put(str_lit("__knot.set("), put(mangle_bare(x), acc)))))
     }), str_lit(""), names, acc)
 }
 
@@ -3248,7 +3248,7 @@ pub fn put_args(c: &'static Ctx, e: &'static Sexp, xs: Sexps, i: i64, n: i64, ac
 /// when the block ends, by a return or an abort.
 pub fn put_letrena(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Chars) -> Chars {
     let r = sym_name(car(xs));
-    let life = string_append(str_lit("'"), mangle(r));
+    let life = lifetime(r);
     let region = string_append(str_lit("Region_"), camel(r));
     let outer = letrena_lifetimes(ctx_locals(c));
     let tvars = type_params_in(ctx_locals(c));
@@ -3280,7 +3280,7 @@ pub fn put_letrena(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Ch
     }), counting(0i64, size(held)))), str_lit("phantom_: std::marker::PhantomData } } }"))))))))))), acc);
     let acc = put_held_impls(held, 0i64, region, lives, lives_bounded, n1, acc);
     let acc = put_nl(n1, acc);
-    let acc = put(string_append(str_lit("fn letrena__"), string_append(mangle(r), string_append(str_lit("<"), string_append(words_of_sep(onto(onto(outer, kayak_rt::cons(life, kayak_rt::nil())), map(lambda1(move |t: Str| {
+    let acc = put(string_append(str_lit("fn letrena__"), string_append(mangle_bare(r), string_append(str_lit("<"), string_append(words_of_sep(onto(onto(outer, kayak_rt::cons(life, kayak_rt::nil())), map(lambda1(move |t: Str| {
         string_append(t, str_lit(": Copy + 'static"))
     }), tvars)), str_lit(", ")), str_lit(">("))))), acc);
     let acc = put(string_append(mangle(r), string_append(str_lit(": &"), string_append(life, string_append(str_lit(" "), string_append(region, string_append(str_lit("<"), string_append(lives, str_lit(">")))))))), acc);
@@ -3298,9 +3298,9 @@ pub fn put_letrena(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Ch
         value()
     }, acc);
     let acc = put_nl(n1, acc);
-    let acc = put(string_append(str_lit("let "), string_append(mangle(r), string_append(str_lit("__arena = "), string_append(region, str_lit("::default();"))))), acc);
+    let acc = put(string_append(str_lit("let "), string_append(mangle_bare(r), string_append(str_lit("__arena = "), string_append(region, str_lit("::default();"))))), acc);
     let acc = put_nl(n1, acc);
-    let acc = put(string_append(str_lit("letrena__"), string_append(mangle(r), string_append(str_lit("(&"), string_append(mangle(r), str_lit("__arena"))))), acc);
+    let acc = put(string_append(str_lit("letrena__"), string_append(mangle_bare(r), string_append(str_lit("(&"), string_append(mangle_bare(r), str_lit("__arena"))))), acc);
     let acc = put_sep(lambda2(move |x: Str, acc: List<char>| {
         put_var(c, x, put(str_lit(", "), acc))
     }), str_lit(""), names, acc);
@@ -3339,7 +3339,7 @@ pub fn held_at(c: &'static Ctx, place: Str, x: &'static Sexp) -> Strings {
         let after = after_prefix(rest, string_append(kind, str_lit("@")));
         let ws = read_all(string_chars(after), str_lit(""), 1i64);
         if string_eq_p(sym_name(car(ws)), place) {
-            the::<Strings>(kayak_rt::cons(held_rust(c, kind, string_append(str_lit("'"), mangle(after_prefix(place, str_lit("'")))), second(ws)), kayak_rt::nil()))
+            the::<Strings>(kayak_rt::cons(held_rust(c, kind, lifetime(after_prefix(place, str_lit("'"))), second(ws)), kayak_rt::nil()))
         } else {
             nil::<Str>()
         }
@@ -3365,7 +3365,7 @@ pub fn held_rust(c: &'static Ctx, kind: Str, life: Str, t: &'static Sexp) -> Str
 pub fn held_type(c: &'static Ctx, r: Str, call: &'static Sexp) -> Str {
     let t = car(read_all(string_chars(fact_with(c, call, str_lit("rheld "))), str_lit(""), 1i64));
     if head_is_p(call, str_lit("rcons")) {
-        string_append(str_lit("Cons<'"), string_append(mangle(r), string_append(str_lit(", "), string_append(rev_to_string(put_type(c, t, nil::<char>())), str_lit(">")))))
+        string_append(str_lit("Cons<"), string_append(lifetime(r), string_append(str_lit(", "), string_append(rev_to_string(put_type(c, t, nil::<char>())), str_lit(">")))))
     } else if (head_is_p(call, str_lit("rmake-bloblet")) && not(null_p(typed_flat(c, t)))) {
         string_append(str_lit("TBloblet<"), string_append(rev_to_string(put_fields_tuple(c, cdr(items(second(items(t)))), nil::<char>())), string_append(str_lit(", "), string_append(rev_to_string(put_flat(c, car(typed_flat(c, t)), nil::<char>())), str_lit(">")))))
     } else if head_is_p(call, str_lit("rmake-bloblet")) {

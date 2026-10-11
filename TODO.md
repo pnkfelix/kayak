@@ -222,9 +222,7 @@ or a trait.
 - **`int` is twice `i64`** (fib 4.2 ms to 1.2): `Int`'s small case could be
   cheaper (a smaller representation, its overflow a branch rustc
   predicts).
-- **Rust's keywords as names**: three of Fixpt's programs refused for one
-  alone (`loop`, `use`, `move`); a datum for the user's ruling (C27), not
-  against it.
+- ~~**Rust's keywords as names**~~: done, C41 (`r#loop`).
 - **Benchmarks whose inputs rustc sees are computed at compile time**
   (`helpers`, `loop`: 0.0 ms): a bench mode whose literals the emitter
   gives `std::hint::black_box`.

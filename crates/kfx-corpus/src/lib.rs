@@ -183,6 +183,11 @@ pub mod rlambda;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/rust-keywords.rs"]
+pub mod rust_keywords;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/shapes.rs"]
 pub mod shapes;
 
@@ -257,6 +262,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("recursion", recursion::main),
     ("region-alias", region_alias::main),
     ("rlambda", rlambda::main),
+    ("rust-keywords", rust_keywords::main),
     ("shapes", shapes::main),
     ("strings", strings::main),
     ("tails", tails::main),

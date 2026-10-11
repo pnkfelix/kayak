@@ -863,10 +863,17 @@ pub fn string_has_p(s: Str, part: Str) -> bool {
     (not(i64_lt(string_length_i64(s), string_length_i64(part))) && (has_prefix_p(s, part) || string_has_p(after_prefix(s, substring_of(s, 1i64)), part)))
 }
 
-/// Whether `n` is a Rust keyword, strict, reserved or weak, or is one as a
-/// type's name (`self`, `Self`): KFX names none so (the user's, C27).
+/// Whether `n` is a Rust keyword no raw identifier may be, `self`, `super`,
+/// `crate`, or one as a type's name (`Self`): KFX names none so. The
+/// others are Rust's `r#loop` (C41).
 pub fn rust_keyword_clash_p(n: Str) -> bool {
-    (rust_keyword_p(n) || string_member_p(n, kayak_rt::cons(str_lit("self"), kayak_rt::cons(str_lit("super"), kayak_rt::cons(str_lit("crate"), kayak_rt::cons(str_lit("union"), kayak_rt::cons(str_lit("raw"), kayak_rt::cons(str_lit("safe"), kayak_rt::cons(str_lit("macro-rules"), kayak_rt::nil())))))))) || string_eq_p(camel(n), str_lit("Self")))
+    (string_member_p(n, kayak_rt::cons(str_lit("self"), kayak_rt::cons(str_lit("super"), kayak_rt::cons(str_lit("crate"), kayak_rt::nil())))) || string_eq_p(camel(n), str_lit("Self")))
+}
+
+/// The types Rust or kayak-rt has that the emitter writes: no KFX type and
+/// no type variable is named so, camel-cased, which would hide it.
+pub fn rust_type_names() -> Strings {
+    kayak_rt::cons(str_lit("Str"), kayak_rt::cons(str_lit("List"), kayak_rt::cons(str_lit("Cons"), kayak_rt::cons(str_lit("Int"), kayak_rt::cons(str_lit("Tag"), kayak_rt::cons(str_lit("Unwind"), kayak_rt::cons(str_lit("Ref"), kayak_rt::cons(str_lit("FlatArray"), kayak_rt::cons(str_lit("Knot"), kayak_rt::cons(str_lit("Show"), kayak_rt::cons(str_lit("OnceCell"), kayak_rt::cons(str_lit("Fn"), kayak_rt::cons(str_lit("Result"), kayak_rt::cons(str_lit("Ok"), kayak_rt::cons(str_lit("Err"), kayak_rt::cons(str_lit("String"), kayak_rt::cons(str_lit("Copy"), kayak_rt::cons(str_lit("Clone"), kayak_rt::cons(str_lit("Self"), kayak_rt::cons(str_lit("Module"), kayak_rt::cons(str_lit("Void"), kayak_rt::cons(str_lit("Bloblet"), kayak_rt::cons(str_lit("BlobRef"), kayak_rt::cons(str_lit("Arena"), kayak_rt::cons(str_lit("Holds"), kayak_rt::cons(str_lit("ListAt"), kayak_rt::cons(str_lit("RefAt"), kayak_rt::cons(str_lit("TBloblet"), kayak_rt::cons(str_lit("FlatArr"), kayak_rt::cons(str_lit("Flat"), kayak_rt::cons(str_lit("Owner"), kayak_rt::cons(str_lit("Cell"), kayak_rt::cons(str_lit("Default"), kayak_rt::cons(str_lit("Procedure"), kayak_rt::nil()))))))))))))))))))))))))))))))))))
 }
 
 /// Whether `n` may be a KFX name (C27): a lower-case letter or an operator's
@@ -1807,7 +1814,7 @@ pub fn bare_type_name(mut cs: Chars, mut acc: Chars) -> Str {
 /// Rust names, as another of them, or as a type `types` has, which it
 /// would hide in Rust and not in FX-26. A region's, with `'`, is none.
 pub fn type_binders_apart(v: &'static Cv, tvars: Strings, types: Strings) -> () {
-    let (reserved, theirs, tvars) = (the::<Strings>(kayak_rt::cons(str_lit("Str"), kayak_rt::cons(str_lit("List"), kayak_rt::cons(str_lit("Cons"), kayak_rt::cons(str_lit("Int"), kayak_rt::cons(str_lit("Tag"), kayak_rt::cons(str_lit("Unwind"), kayak_rt::cons(str_lit("Ref"), kayak_rt::cons(str_lit("FlatArray"), kayak_rt::cons(str_lit("Knot"), kayak_rt::cons(str_lit("Show"), kayak_rt::cons(str_lit("OnceCell"), kayak_rt::cons(str_lit("Fn"), kayak_rt::cons(str_lit("Result"), kayak_rt::cons(str_lit("Ok"), kayak_rt::cons(str_lit("Err"), kayak_rt::cons(str_lit("String"), kayak_rt::cons(str_lit("Copy"), kayak_rt::cons(str_lit("Clone"), kayak_rt::cons(str_lit("Self"), kayak_rt::cons(str_lit("Module"), kayak_rt::cons(str_lit("Void"), kayak_rt::cons(str_lit("Bloblet"), kayak_rt::cons(str_lit("BlobRef"), kayak_rt::cons(str_lit("Arena"), kayak_rt::cons(str_lit("Holds"), kayak_rt::cons(str_lit("ListAt"), kayak_rt::cons(str_lit("RefAt"), kayak_rt::nil())))))))))))))))))))))))))))), map(lambda1(move |t: Str| {
+    let (reserved, theirs, tvars) = (rust_type_names(), map(lambda1(move |t: Str| {
         camel(bare_type_name(string_chars(t), nil::<char>()))
     }), types), concat(map(lambda1(move |n: Str| {
         if has_prefix_p(n, str_lit("'")) {

@@ -1,2 +1,2 @@
 "A variance mark that is wrong: FX-26 checks it; KFX has none."
-(define-generative (cell (t type +)) (ref t @c))
+(define-generative (box-of (t type +)) (ref t @c))

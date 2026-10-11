@@ -869,6 +869,54 @@ pub fn type_scopes(forms: Sexps) -> List<Strings> {
     }), forms)))
 }
 
+/// The form among `forms`, or in their modules, that defines the type or
+/// module `name`: a list of it, or none.
+pub fn type_namer(mut forms: Sexps, mut name: Str) -> Sexps {
+    loop {
+        if null_p(forms) {
+            return nil::<&'static Sexp>();
+        } else if string_member_p(name, type_level_names(kayak_rt::cons(car(forms), kayak_rt::nil()))) {
+            return kayak_rt::cons(car(forms), kayak_rt::nil());
+        } else if module_def_p(car(forms)) {
+            let inner = type_namer(concat(map(lambda1(move |g: &'static Sexp| {
+                if head_is_p(g, str_lit("hide")) {
+                    cdr(items(g))
+                } else {
+                    the::<Sexps>(kayak_rt::cons(g, kayak_rt::nil()))
+                }
+            }), cdr(items(third(items(car(forms))))))), name);
+            if null_p(inner) {
+                forms = cdr(forms);
+                continue;
+            } else {
+                return inner;
+            }
+        } else {
+            forms = cdr(forms);
+            continue;
+        }
+    }
+}
+
+/// `v` at the form that defines the type or module `name`, if one does.
+pub fn type_namer_near(v: &'static Cv, forms: Sexps, name: Str) -> &'static Cv {
+    let fs = type_namer(forms, name);
+    if null_p(fs) {
+        v
+    } else {
+        let tagcase_ = car(fs);
+        match *tagcase_ {
+            Sexp::Lst(xs, file, line, pos) => {
+                near(v, file, line, pos)
+            }
+            _ => {
+                let other = tagcase_;
+                v
+            }
+        }
+    }
+}
+
 /// The labels of every product and sum written in `es`, types and
 /// `product` forms alike, each a shape the Rust names by its labels.
 pub fn label_lists(es: Sexps) -> List<Strings> {
@@ -988,8 +1036,8 @@ pub fn type_names_free(v: &'static Cv, forms: Sexps) -> () {
         }
     }), forms);
     map(lambda1(move |name: Str| {
-        if string_member_p(camel(name), kayak_rt::cons(str_lit("Str"), kayak_rt::cons(str_lit("List"), kayak_rt::cons(str_lit("Cons"), kayak_rt::cons(str_lit("Int"), kayak_rt::cons(str_lit("Tag"), kayak_rt::cons(str_lit("Unwind"), kayak_rt::cons(str_lit("Ref"), kayak_rt::cons(str_lit("FlatArray"), kayak_rt::cons(str_lit("Knot"), kayak_rt::cons(str_lit("Show"), kayak_rt::cons(str_lit("OnceCell"), kayak_rt::cons(str_lit("Fn"), kayak_rt::cons(str_lit("Result"), kayak_rt::cons(str_lit("Ok"), kayak_rt::cons(str_lit("Err"), kayak_rt::cons(str_lit("String"), kayak_rt::cons(str_lit("Copy"), kayak_rt::cons(str_lit("Clone"), kayak_rt::cons(str_lit("Void"), kayak_rt::cons(str_lit("Bloblet"), kayak_rt::cons(str_lit("BlobRef"), kayak_rt::cons(str_lit("Arena"), kayak_rt::cons(str_lit("Holds"), kayak_rt::cons(str_lit("ListAt"), kayak_rt::cons(str_lit("RefAt"), kayak_rt::cons(str_lit("Self"), kayak_rt::cons(str_lit("Module"), kayak_rt::cons(str_lit("TBloblet"), kayak_rt::cons(str_lit("FlatArr"), kayak_rt::cons(str_lit("Flat"), kayak_rt::cons(str_lit("Owner"), kayak_rt::cons(str_lit("RefAt"), kayak_rt::nil()))))))))))))))))))))))))))))))))) {
-            match refuse(v, string_append(str_lit("Rust or kayak-rt has a type "), string_append(camel(name), str_lit(" of its own")))) {}
+        if string_member_p(camel(name), rust_type_names()) {
+            match refuse(type_namer_near(v, forms, name), string_append(str_lit("Rust or kayak-rt has a type "), string_append(camel(name), str_lit(" of its own")))) {}
         } else {
             ()
         }

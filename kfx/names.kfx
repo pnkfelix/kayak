@@ -36,6 +36,18 @@
           ((rust-keyword? s) (string-append "r#" s))
           (else (rev->string (mangle-chars (string-chars s) nil))))))
 
+(define mangle-bare (subr kfx (string) string)
+  (lambda (s)
+    "A KFX name as part of a Rust name the emitter makes (`loop__knot`):
+     `mangle`'s, no `r#`."
+    (if (rust-keyword? s) s (mangle s))))
+
+(define lifetime (subr kfx (string) string)
+  (lambda (s)
+    "A region's or place's name as a Rust lifetime: `'r`, `'r#loop`; but
+     `'static_`, since `'static` is Rust's own and no raw lifetime."
+    (string-append "'" (if (string=? s "static") "static_" (mangle s)))))
+
 (define camel-chars (subr kfx (chars bool chars) chars)
   (lambda (cs up acc)
     "An operator's character as Rust's names write it (`ok?` is `Ok_p`),

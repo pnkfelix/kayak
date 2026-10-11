@@ -447,7 +447,7 @@
     (lambda (ls)
       "The lifetimes of the `letrena`s around, innermost first."
       (cond ((null? ls) nil)
-            ((has-prefix? (car ls) "%letrena ") (cons (string-append "'" (mangle (after-prefix (car ls) "%letrena "))) (letrena-lifetimes-inner (cdr ls))))
+            ((has-prefix? (car ls) "%letrena ") (cons (lifetime (after-prefix (car ls) "%letrena ")) (letrena-lifetimes-inner (cdr ls))))
             (else (letrena-lifetimes-inner (cdr ls)))))))
 
 (define-rec
@@ -517,7 +517,7 @@
   (innermost-letrena-lifetime (subr kfx (strings) string)
     (lambda (ls)
       (cond ((null? ls) "")
-            ((has-prefix? (car ls) "%letrena ") (string-append "'" (mangle (after-prefix (car ls) "%letrena "))))
+            ((has-prefix? (car ls) "%letrena ") (lifetime (after-prefix (car ls) "%letrena ")))
             (else (innermost-letrena-lifetime (cdr ls)))))))
 
 (define-rec
@@ -544,9 +544,9 @@
      inside a `letrena`, that one's, which its data may be in; or ``."
     (let ((n (tagcase r (sym (x f p) (if (has-prefix? x "'") (after-prefix x "'") x)) (else other ""))))
       (cond ((string=? n "") "")
-            ((string-member? (string-append "%letrena " n) (ctx-locals c)) (string-append "'" (mangle n)))
+            ((string-member? (string-append "%letrena " n) (ctx-locals c)) (lifetime n))
             ((not (string=? (within-of (ctx-locals c) n) ""))
-             (string-append "'" (mangle (within-of (ctx-locals c) n))))
+             (lifetime (within-of (ctx-locals c) n)))
             ((string-member? (string-append "%letregion " n) (ctx-locals c))
              (letrena-outside (ctx-locals c) (string-append "%letregion " n)))
             (else "")))))
@@ -617,7 +617,7 @@
       "A procedure's lifetime: the innermost `letrena`'s, whose arena a
        closure may hold; or `'static`."
       (cond ((null? ls) "'static")
-            ((has-prefix? (car ls) "%letrena ") (string-append "'" (mangle (after-prefix (car ls) "%letrena "))))
+            ((has-prefix? (car ls) "%letrena ") (lifetime (after-prefix (car ls) "%letrena ")))
             (else (innermost-lifetime (cdr ls)))))))
 
 (define-rec
@@ -626,7 +626,7 @@
       "The lifetimes of the `letrena`s around, outermost first."
       (cond ((null? ls) nil)
             ((has-prefix? (car ls) "%letrena ")
-             (onto (letrena-lifetimes (cdr ls)) (list (string-append "'" (mangle (after-prefix (car ls) "%letrena "))))))
+             (onto (letrena-lifetimes (cdr ls)) (list (lifetime (after-prefix (car ls) "%letrena ")))))
             (else (letrena-lifetimes (cdr ls)))))))
 
 (define-rec
@@ -678,11 +678,11 @@
                        (put-type c (fourth xs) acc))))
                 ((and (sym-is? (car xs) "place") (string-member? (string-append "%placeparam " (unquoted (sym-name (second xs)))) (ctx-locals c)))
                  (let ((p (unquoted (sym-name (second xs)))))
-                   (put (string-append "&'" (string-append (mangle p) (string-append " Place_" (camel p)))) acc)))
+                   (put (string-append "&" (string-append (lifetime p) (string-append " Place_" (camel p)))) acc)))
                 ((sym-is? (car xs) "place")
                  (let* ((r (unquoted (sym-name (second xs))))
                         (lives (letrena-lifetimes (ctx-locals c)))
-                        (life (string-append "'" (mangle r))))
+                        (life (lifetime r)))
                    (put (string-append "&" (string-append life (string-append " Region_" (string-append (camel r)
                           (string-append "<" (string-append (words-of-sep (onto (cons life (lifetimes-before lives life)) (type-params-in (ctx-locals c))) ", ") ">"))))))
                         acc)))
@@ -935,7 +935,7 @@
     "A call's operator: a knot's procedure, a constant's value (a
      procedure a definition made, not a lambda), or a name."
     (let ((kind (local-kind h (ctx-locals c))))
-      (cond ((string=? kind "knot") (string-append "(" (string-append (mangle h) "__knot.get())")))
+      (cond ((string=? kind "knot") (string-append "(" (string-append (mangle-bare h) "__knot.get())")))
             ((string=? kind "item") (item-path c h))
             ((and (string=? kind "") (string-member? h (ctx-constants c))) (string-append (mangle h) "()"))
             (else (mangle h))))))
@@ -968,7 +968,7 @@
     (cond ((string=? s "#t") (put "true" acc))
           ((string=? s "#f") (put "false" acc))
           ((string=? s "#u") (put "()" acc))
-          ((string=? (local-kind s (ctx-locals c)) "knot") (put ".get()" (put "__knot" (put (mangle s) acc))))
+          ((string=? (local-kind s (ctx-locals c)) "knot") (put ".get()" (put "__knot" (put (mangle-bare s) acc))))
           ((string=? (local-kind s (ctx-locals c)) "local") (put (mangle s) acc))
           ((string=? (local-kind s (ctx-locals c)) "item")
            (let ((m (opener (string-append "%item " s) (ctx-locals c))))
@@ -1614,7 +1614,7 @@
              (acc (put-sep (lambda ((b sexp) (acc chars))
                              (let* ((ys (items b))
                                     (acc (put "let " acc))
-                                    (acc (put (mangle (sym-name (car ys))) acc))
+                                    (acc (put (mangle-bare (sym-name (car ys))) acc))
                                     (acc (put "__knot = knot::<" acc))
                                     (acc (put-type c (second ys) acc)))
                                (put-nl n (put ">();" acc))))
@@ -1631,7 +1631,7 @@
                                (put-nl n (put ";" acc))))
                            "" bindings acc)))
         (put-sep (lambda ((x string) (acc chars))
-                   (put-nl n (put ");" (put (mangle x) (put "__knot.set(" (put (mangle x) acc))))))
+                   (put-nl n (put ");" (put (mangle x) (put "__knot.set(" (put (mangle-bare x) acc))))))
                  "" names acc))))
 
   (letrec-loops? (subr kfx (ctx string sexp) bool)
@@ -1811,7 +1811,7 @@
        makes the arena; and calls the `fn` with them. The arena is dropped
        when the block ends, by a return or an abort."
       (let* ((r (sym-name (car xs)))
-             (life (string-append "'" (mangle r)))
+             (life (lifetime r))
              (region (string-append "Region_" (camel r)))
              (outer (letrena-lifetimes (ctx-locals c)))
              (tvars (type-params-in (ctx-locals c)))
@@ -1834,7 +1834,7 @@
                              "phantom_: std::marker::PhantomData } } }")))))))))) acc))
              (acc (put-held-impls held 0 region lives lives-bounded n1 acc))
              (acc (put-nl n1 acc))
-             (acc (put (string-append "fn letrena__" (string-append (mangle r) (string-append "<" (string-append (words-of-sep (onto (onto outer (list life)) (map (lambda ((t string)) (string-append t ": Copy + 'static")) tvars)) ", ") ">(")))) acc))
+             (acc (put (string-append "fn letrena__" (string-append (mangle-bare r) (string-append "<" (string-append (words-of-sep (onto (onto outer (list life)) (map (lambda ((t string)) (string-append t ": Copy + 'static")) tvars)) ", ") ">(")))) acc))
              (acc (put (string-append (mangle r) (string-append ": &" (string-append life (string-append " " (string-append region (string-append "<" (string-append lives ">"))))))) acc))
              (acc (put-letrena-params inner names types acc))
              (acc (put ") -> " acc))
@@ -1844,9 +1844,9 @@
              (acc (put " " acc))
              (acc (put-block inner (cdr xs) n1 (if fallible (ok-value) (value)) acc))
              (acc (put-nl n1 acc))
-             (acc (put (string-append "let " (string-append (mangle r) (string-append "__arena = " (string-append region "::default();")))) acc))
+             (acc (put (string-append "let " (string-append (mangle-bare r) (string-append "__arena = " (string-append region "::default();")))) acc))
              (acc (put-nl n1 acc))
-             (acc (put (string-append "letrena__" (string-append (mangle r) (string-append "(&" (string-append (mangle r) "__arena")))) acc))
+             (acc (put (string-append "letrena__" (string-append (mangle-bare r) (string-append "(&" (string-append (mangle-bare r) "__arena")))) acc))
              (acc (put-sep (lambda ((x string) acc) (put-var c x (put ", " acc))) "" names acc))
              (acc (put ")" acc))
              (acc (cond ((not fallible) acc)
@@ -1871,7 +1871,7 @@
                             (after (after-prefix rest (string-append kind "@")))
                             (ws (read-all (string-chars after) "" 1)))
                        (if (string=? (sym-name (car ws)) place)
-                           (the strings (list (held-rust c kind (string-append "'" (mangle (after-prefix place "'"))) (second ws))))
+                           (the strings (list (held-rust c kind (lifetime (after-prefix place "'")) (second ws))))
                            nil)))
                    (onto (all-facts-at c (datum-file x) (datum-pos x) "rheld-") (all-facts-at c (datum-file x) (datum-pos x) "rneed-"))))))
 
@@ -1892,7 +1892,7 @@
        `Cons<'r, T>`, or a reference's cell, `Cell<T>`."
       (let ((t (car (read-all (string-chars (fact-with c call "rheld ")) "" 1))))
         (cond ((head-is? call "rcons")
-               (string-append "Cons<'" (string-append (mangle r) (string-append ", " (string-append (rev->string (put-type c t nil)) ">")))))
+               (string-append "Cons<" (string-append (lifetime r) (string-append ", " (string-append (rev->string (put-type c t nil)) ">")))))
               ((and (head-is? call "rmake-bloblet") (not (null? (typed-flat c t))))
                (string-append "TBloblet<" (string-append (rev->string (put-fields-tuple c (cdr (items (second (items t)))) nil))
                  (string-append ", " (string-append (rev->string (put-flat c (car (typed-flat c t)) nil)) ">")))))

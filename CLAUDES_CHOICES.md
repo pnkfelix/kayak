@@ -391,7 +391,7 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
   or an operator's character, then those, digits and `-`; no `--`; none
   whose mangling kayak-rt or the emitter writes. The emitter's own calls
   behind a program's back are qualified, `kayak_rt::cons`.
-- **Then** (the user's, 2026-10-11): no KFX name is a Rust keyword, strict,
+- **Then** (the user's, 2026-10-11; revised by C41): no KFX name is a Rust keyword, strict,
   reserved or weak (`type`, `match`, `fn`, `abstract`, `union`, `raw`,
   `safe`, `macro-rules`), or `self`, `super`, `crate`, or a type variable
   whose camel case is `Self`: everywhere a name is bound, values, types,
@@ -693,3 +693,22 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
 - **Not yet:** a family's region binder within a place, its bound kept
   (an alias's place parameter may be any region there, laxer than FX-26).
 
+
+## C41. Rust's keywords as names, raw identifiers (2026-10-11)
+
+- **Chosen** (the user's, revising C27's ruling): a KFX name may be a Rust
+  keyword, strict, reserved or weak; the Rust is its raw identifier,
+  `r#loop`, a lifetime too (`'r#fn`). A name the emitter makes from one
+  (`loop__knot`, `letrena__box`) has it bare (`mangle-bare`). Refused
+  still: `self`, `super`, `crate`, and a type variable camel-cased `Self`,
+  which no raw identifier may be. A region or place named `static` is
+  `'static_`, `'static` being Rust's own and no raw lifetime (KFX's names
+  have no `_`, so none clashes). FX-26's own keywords (`type`, `let`) stay
+  refused as FX-26 has them. Scheme's `|...|` is the reader's escape for a
+  symbol's characters; `|if|` is `if`, Scheme reserving no word, so the
+  nearer kin of `r#` is none: FX-26 needs no escape, Rust does.
+- **And:** one list of the type names the emitter writes
+  (`rust-type-names`), for types and type variables alike, with `Cell`,
+  `Default` and `Procedure`, which neither list had; the refusal says
+  where the type is defined.
+- Fixpt's programs kfx accepts: 79 to 90, all agreeing.

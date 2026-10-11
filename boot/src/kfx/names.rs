@@ -78,6 +78,26 @@ pub fn mangle(s: Str) -> Str {
     }
 }
 
+/// A KFX name as part of a Rust name the emitter makes (`loop__knot`):
+/// `mangle`'s, no `r#`.
+pub fn mangle_bare(s: Str) -> Str {
+    if rust_keyword_p(s) {
+        s
+    } else {
+        mangle(s)
+    }
+}
+
+/// A region's or place's name as a Rust lifetime: `'r`, `'r#loop`; but
+/// `'static_`, since `'static` is Rust's own and no raw lifetime.
+pub fn lifetime(s: Str) -> Str {
+    string_append(str_lit("'"), if string_eq_p(s, str_lit("static")) {
+        str_lit("static_")
+    } else {
+        mangle(s)
+    })
+}
+
 /// An operator's character as Rust's names write it (`ok?` is `Ok_p`),
 /// since none is a Rust name's; `-` begins a word.
 pub fn camel_chars(mut cs: Chars, mut up: bool, mut acc: Chars) -> Chars {

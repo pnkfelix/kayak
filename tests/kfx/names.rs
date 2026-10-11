@@ -2,8 +2,8 @@
 
 use kayak_rt::*;
 
-// Names: the mangling, and names made of operators. (A Rust keyword is no
-// KFX name: tests/kfx-stricter/rust-keyword.kfx.)
+// Names: the mangling, and names made of operators. (Rust's keywords:
+// tests/kfx/rust-keywords.kfx.)
 
 pub fn empty_string_p(s: Str) -> bool {
     i64_eq(string_length_i64(s), 0i64)

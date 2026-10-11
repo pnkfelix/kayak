@@ -292,7 +292,7 @@
               (repeated? (map (lambda ((d sexps)) (sym-name (second d))) (spec-items spec "val"))))
           (refuse v "a name appears twice in a module type")
           (if (any? rust-keyword-clash? (onto (spec-abs spec) (map (lambda ((d sexps)) (sym-name (second d))) (onto (spec-items spec "desc") (spec-items spec "val")))))
-              (refuse v "a module type's name that is a Rust keyword, which KFX's names are not (C27)")
+              (refuse v "a module type's name that is `self`, `super` or `crate`, which no Rust name may be (C41)")
           #u)))))
 
 (define module-type-values (subr kfx (cv sexp) binds)
