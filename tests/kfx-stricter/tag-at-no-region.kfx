@@ -1,0 +1,5 @@
+"A prompt tag made by a poly constructor whose region nothing names: KFX
+ refuses it, FX-26's being a fresh one."
+(define-effect kfx (maxeff (read @globals) spin))
+(define mk (poly ((r region)) (subr (alloc r) () (prompt-tag i64 i64 kfx r))) (lambda () (make-continuation-prompt-tag)))
+(define f (subr kfx () i64) (lambda () (let ((t (mk))) 1)))

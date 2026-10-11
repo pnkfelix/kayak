@@ -9,6 +9,7 @@
     (tagcase t
       (ty-ref (e r) (tagcase r (ty-rconst (n) (string=? n "acyclic")) (else other #f)))
       (ty-flat (e r) (tagcase r (ty-rconst (n) (string=? n "acyclic")) (else other #f)))
+      (ty-tag (a h d r) (tagcase r (ty-rconst (n) (or (string=? n "acyclic") (string=? n "%fresh"))) (else other #f)))
       (else other #f))))
 
 (define knot-free-call (subr kfx (cv res) res)
@@ -265,6 +266,18 @@
                                 (else other s)))))))))
               (else other s))
             (cdr args) (cdr ps) (i64+ i 1))))))
+
+(define-rec
+  (freshened (subr kfx (st ty) st)
+    (lambda (s t)
+      "`s`, a list's region in `t` that nothing solved made fresh, as FX-26
+       makes it where it finds a value by itself."
+      (tagcase (walk s t)
+        (ty-list (e r)
+          (let ((s (freshened s e)))
+            (tagcase (walk s r) (ty-meta (k) (solve s k (ty-rconst "%fresh"))) (else other s))))
+        (ty-proc (es ps r) (freshened s r))
+        (else other s)))))
 
 (define control-form? (subr kfx (string) bool)
   (lambda (h)
@@ -538,7 +551,17 @@
       (cond ((string=? h "the")
              (check v s (second xs) (parse-type v (cv-tvars v) (car xs))))
             ((string=? h "prompt") (prompt-form v s xs nil))
-            ((string=? h "%found") (synth v s (car xs)))
+            ((string=? h "%found")
+             "A definition's value in a module that includes another: found by
+              itself, through a `the` too, as FX-26 finds it."
+             (let ((x (car xs)))
+               (cond ((tagcase x (sym (n) (string=? n "nil")) (else other #f))
+                      (refuse v "a nil, in a module that includes another, where FX-26 finds a poly list"))
+                     ((head-is? x "the")
+                      (tagcase (synth v s (lst (list (sym "%found") (third (items x))) "" 0 0))
+                        (res (t es s) (let ((want (parse-type v (cv-tvars v) (second (items x)))))
+                                        (res want es (fits v s t want))))))
+                     (else (tagcase (synth v s x) (res (t es s) (res t es (freshened s t))))))))
             ((string=? h "product") (product-form v s xs nil))
             ((string=? h "sum") (refuse v "a sum whose type is not known here: write it, (the (sumof ...) (sum ...))"))
             ((string=? h "extract")
@@ -575,7 +598,7 @@
     (lambda (v s e h xs expected)
       (cond ((control-form? h) (body-form v s h xs (list expected)))
             ((string=? h "prompt") (prompt-form v s xs (list expected)))
-            ((string=? h "%found") (check-by-synth v s (car xs) expected))
+            ((string=? h "%found") (check-by-synth v s e expected))
             ((string=? h "product") (product-form v s xs (list expected)))
             ((string=? h "sum") (sum-form v s xs expected))
             ((and (string=? h "lambda") (proc-type? s expected))

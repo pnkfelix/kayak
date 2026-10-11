@@ -958,22 +958,28 @@ pub fn found_alone(forms: Sexps) -> Sexps {
     }), forms)) {
         forms
     } else {
-        map(lambda1(move |g: &'static Sexp| {
-            if (head_is_p(g, str_lit("define")) && i64_eq(size(items(g)), 4i64)) {
-                let tagcase_ = g;
-                match *tagcase_ {
-                    Sexp::Lst(xs, file, line, pos) => {
-                        lst(cons(car(xs), cons(second(xs), cons(third(xs), cons(lst(cons(sym(str_lit("%found")), cons(fourth(xs), nil())), str_lit(""), 0i64, 0i64), nil())))), file, line, pos)
+        if any_p(lambda1(move |f: &'static Sexp| {
+            head_is_p(f, str_lit("define-rec"))
+        }), forms) {
+            error(str_lit("kfx: a define-rec in a module that includes another, which KFX's modules do not have yet"))
+        } else {
+            map(lambda1(move |g: &'static Sexp| {
+                if (head_is_p(g, str_lit("define")) && i64_eq(size(items(g)), 4i64)) {
+                    let tagcase_ = g;
+                    match *tagcase_ {
+                        Sexp::Lst(xs, file, line, pos) => {
+                            lst(cons(car(xs), cons(second(xs), cons(third(xs), cons(lst(cons(sym(str_lit("%found")), cons(fourth(xs), nil())), str_lit(""), 0i64, 0i64), nil())))), file, line, pos)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            g
+                        }
                     }
-                    _ => {
-                        let other = tagcase_;
-                        g
-                    }
+                } else {
+                    g
                 }
-            } else {
-                g
-            }
-        }), forms)
+            }), forms)
+        }
     }
 }
 
@@ -1111,6 +1117,30 @@ pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
     }), written)))))));
     let includes = included(v, forms);
     let names = module_types(v, forms);
+    let given = onto(concat(map(&item_names, forms)), onto(map(lambda1(move |b: &'static Bind| {
+        let tagcase_ = b;
+        match *tagcase_ {
+            Bind::Bind(n, sc, w) => {
+                n
+            }
+        }
+    }), concat(map(lambda1(move |n: Str| {
+        opened_binds(n, cv_binds(v))
+    }), includes))), map(lambda1(move |a: &'static Alias| {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Alias::Alias(n, ps, b) => {
+                n
+            }
+        }
+    }), concat(map(lambda1(move |n: Str| {
+        opened_aliases(n, cv_aliases(v))
+    }), includes)))));
+    let v = if repeated_p(given) {
+        refuse(v, str_lit("a name defined twice in this module, its own or included"))
+    } else {
+        v
+    };
     let typed = {
         let tagcase_ = v;
         match *tagcase_ {

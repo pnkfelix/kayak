@@ -291,18 +291,43 @@ pub fn fits_i64_p(cs: Chars) -> bool {
     }
 }
 
+/// Whether every character of `cs` is one of `allowed`'s.
+pub fn only_of_p(cs: Chars, allowed: Str) -> bool {
+    not(any_p(lambda1(move |c: char| {
+        not(has_char_p(string_chars(allowed), c))
+    }), cs))
+}
+
 pub fn token_atom(s: Str, file: Str, line: i64, pos: i64) -> &'static Sexp {
     let cs = string_chars(s);
     if not(numeric_p(cs)) {
         sym(s)
+    } else if not(only_of_p(if char_eq_p(car(cs), '-') {
+        cdr(cs)
+    } else {
+        cs
+    }, str_lit("0123456789.eE+-"))) {
+        // Not a number, though a digit begins it (`1x`, `0x10`): a name, as
+        // FX-26 reads it.
+        sym(s)
     } else if (has_char_p(cs, 'e') || has_char_p(cs, 'E')) {
         read_error(file, line, string_append(str_lit("a number with an exponent, which KFX reads not: write it out, "), s))
     } else if has_char_p(cs, '.') {
-        if real_token_p(cs) {
+        if (real_token_p(cs) && only_of_p(if char_eq_p(car(cs), '-') {
+            cdr(cs)
+        } else {
+            cs
+        }, str_lit("0123456789."))) {
             real(s)
         } else {
             read_error(file, line, string_append(str_lit("no number KFX reads: "), s))
         }
+    } else if not(only_of_p(if char_eq_p(car(cs), '-') {
+        cdr(cs)
+    } else {
+        cs
+    }, str_lit("0123456789"))) {
+        read_error(file, line, string_append(str_lit("no number KFX reads: "), s))
     } else if not(fits_i64_p(cs)) {
         big(s, file, pos)
     } else if char_eq_p(car(cs), '-') {

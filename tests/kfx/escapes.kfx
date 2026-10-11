@@ -42,11 +42,15 @@
 (define size-of (subr kfx (ints) i64)
   (lambda (xs) (if (null? xs) 0 (i64+ 1 (size-of (cdr xs))))))
 
+(define each-to (poly ((r region))
+                  (subr (maxeff kfx (goto r)) ((prompt-tag i64 i64 kfx r) (subr (maxeff kfx (goto r)) (i64) unit) ints) unit))
+  (lambda (t f xs) (each f xs)))
+
 (define skips (subr kfx (ints) i64)
   (lambda (xs)
     (letregion e
       (let ((t (the (prompt-tag i64 i64 kfx e) (make-continuation-prompt-tag))))
-        (prompt t (begin (each skip xs) (size-of xs)) (lambda ((v i64)) v))))))
+        (prompt t (begin (each-to t skip xs) (size-of xs)) (lambda ((v i64)) v))))))
 
 (define first-over (subr kfx (ints i64) i64)
   (lambda (xs m)

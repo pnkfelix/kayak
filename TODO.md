@@ -132,6 +132,14 @@ Escapes are done (`DONE.md`, C18). Left:
     where FX-26's may not be;
   - a `nil` whose element type nothing fixes, `(let ((x nil)) 0)`: Rust
     cannot infer it (a Rust error, FX-26 accepts);
+  - a procedure that cannot abort reaching a type that may by other ways
+    than as a call's argument (`the`, `list`, branches, a product): a Rust
+    error, the closure not lifted to return `Ok`;
+  - `void` in a type written (`(subr pure () void)` as a value, a field):
+    Rust's `!` is unstable there; a value holding a `void` at the top
+    level is a Rust error (both fail when run);
+  - **for Fixpt** (fifth probe): `u64-shl` and the rest given a count past
+    a fixnum give erratic answers (Fixpt's `fixed_op` takes it with `int`);
   - **for Fixpt** (found by the fourth probe): a procedure parameter of
     type `(subr pure (a) b)` in a `poly` is called with no `spin`, and `a`
     instantiated at a datatype holding such a procedure loops with no

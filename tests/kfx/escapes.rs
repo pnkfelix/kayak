@@ -77,12 +77,16 @@ pub fn size_of(xs: Ints) -> i64 {
     }
 }
 
+pub fn each_to(t: Tag<i64, i64>, f: &'static dyn Fn(i64) -> Result<(), Unwind>, xs: Ints) -> Result<(), Unwind> {
+    Ok(each(f, xs)?)
+}
+
 pub fn skips(xs: Ints) -> i64 {
     let t = the::<Tag<i64, i64>>(make_continuation_prompt_tag());
     {
         let prompt_tag__ = t;
         match (move || -> Result<_, Unwind> {
-            each(lambda1(move |a0| Ok((&skip)(a0))), xs)?;
+            each_to(t, lambda1(move |a0| Ok((&skip)(a0))), xs)?;
             Ok(size_of(xs))
         })() {
             Ok(v) => v,

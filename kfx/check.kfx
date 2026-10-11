@@ -176,10 +176,8 @@
 (define frozen-atom? (subr kfx (string) bool)
   (lambda (x)
     "An effect on `acyclic`: making and reading frozen data are pure, in
-     FX-26; writing it is refused where its type is read. A `goto` there is
-     to a region nothing named, which FX-26 makes fresh and masks (no tag is
-     at `acyclic`, whose data is frozen)."
-    (or (string=? x "read:acyclic") (string=? x "alloc:acyclic") (string=? x "write:acyclic") (string=? x "goto:acyclic")
+     FX-26; writing it is refused where its type is read."
+    (or (string=? x "read:acyclic") (string=? x "alloc:acyclic") (string=? x "write:acyclic")
         (string=? x "read:%fresh") (string=? x "alloc:%fresh"))))
 
 (define effs-union (subr kfx (strings strings) strings)

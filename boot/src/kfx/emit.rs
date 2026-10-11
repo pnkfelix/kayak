@@ -2077,7 +2077,7 @@ pub fn put_question(c: &'static Ctx, e: &'static Sexp, acc: Chars) -> Chars {
     } else if fallible_here_p(c) {
         put(str_lit("?"), acc)
     } else {
-        put(str_lit(".unwrap_or_else(unreachable_unwind)"), acc)
+        put(str_lit(".unwrap_or_else(|u| unreachable_unwind(u))"), acc)
     }
 }
 

@@ -35,6 +35,18 @@ pub fn unplaced_p(t: &'static Ty) -> bool {
                 }
             }
         }
+        Ty::TyTag(a, h, d, r) => {
+            let tagcase_ = r;
+            match *tagcase_ {
+                Ty::TyRconst(n) => {
+                    (string_eq_p(n, str_lit("acyclic")) || string_eq_p(n, str_lit("%fresh")))
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
         _ => {
             let other = tagcase_;
             false
@@ -571,6 +583,37 @@ pub fn lifted_args(mut v: &'static Cv, mut s: &'static St, mut args: Sexps, mut 
                 }
             }, cdr(args), cdr(ps), i64_plus(i, 1i64));
             continue;
+        }
+    }
+}
+
+/// `s`, a list's region in `t` that nothing solved made fresh, as FX-26
+/// makes it where it finds a value by itself.
+pub fn freshened(mut s: &'static St, mut t: &'static Ty) -> &'static St {
+    loop {
+        let tagcase_ = walk(s, t);
+        match *tagcase_ {
+            Ty::TyList(e, r) => {
+                let s = freshened(s, e);
+                let tagcase_ = walk(s, r);
+                match *tagcase_ {
+                    Ty::TyMeta(k) => {
+                        return solve(s, k, ty_rconst(str_lit("%fresh")));
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return s;
+                    }
+                }
+            }
+            Ty::TyProc(es, ps, r) => {
+                t = r;
+                continue;
+            }
+            _ => {
+                let other = tagcase_;
+                return s;
+            }
         }
     }
 }
@@ -1172,7 +1215,38 @@ pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
     } else if string_eq_p(h, str_lit("prompt")) {
         prompt_form(v, s, xs, nil())
     } else if string_eq_p(h, str_lit("%found")) {
-        synth(v, s, car(xs))
+        // A definition's value in a module that includes another: found by
+        // itself, through a `the` too, as FX-26 finds it.
+        let x = car(xs);
+        if {
+            let tagcase_ = x;
+            match *tagcase_ {
+                Sexp::Sym(n) => {
+                    string_eq_p(n, str_lit("nil"))
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        } {
+            refuse(v, str_lit("a nil, in a module that includes another, where FX-26 finds a poly list"))
+        } else if head_is_p(x, str_lit("the")) {
+            let tagcase_ = synth(v, s, lst(cons(sym(str_lit("%found")), cons(third(items(x)), nil())), str_lit(""), 0i64, 0i64));
+            match *tagcase_ {
+                Res::Res(t, es, s) => {
+                    let want = parse_type(v, cv_tvars(v), second(items(x)));
+                    res(want, es, fits(v, s, t, want))
+                }
+            }
+        } else {
+            let tagcase_ = synth(v, s, x);
+            match *tagcase_ {
+                Res::Res(t, es, s) => {
+                    res(t, es, freshened(s, t))
+                }
+            }
+        }
     } else if string_eq_p(h, str_lit("product")) {
         product_form(v, s, xs, nil())
     } else if string_eq_p(h, str_lit("sum")) {
@@ -1265,7 +1339,7 @@ pub fn check_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
     } else if string_eq_p(h, str_lit("prompt")) {
         prompt_form(v, s, xs, cons(expected, nil()))
     } else if string_eq_p(h, str_lit("%found")) {
-        check_by_synth(v, s, car(xs), expected)
+        check_by_synth(v, s, e, expected)
     } else if string_eq_p(h, str_lit("product")) {
         product_form(v, s, xs, cons(expected, nil()))
     } else if string_eq_p(h, str_lit("sum")) {

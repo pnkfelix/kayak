@@ -139,14 +139,27 @@
             ((i64> n 19) #f)
             (else (digits-at-most? ds (string-chars (if negative "9223372036854775808" "9223372036854775807"))))))))
 
+(define only-of? (subr kfx (chars string) bool)
+  (lambda (cs allowed)
+    "Whether every character of `cs` is one of `allowed`'s."
+    (not (any? (lambda ((c char)) (not (has-char? (string-chars allowed) c))) cs))))
+
 (define token-atom (subr kfx (string string i64 i64) sexp)
   (lambda (s file line pos)
     (let ((cs (string-chars s)))
       (cond ((not (numeric? cs)) (sym s))
+            ((not (only-of? (if (char=? (car cs) #\-) (cdr cs) cs) "0123456789.eE+-"))
+             "Not a number, though a digit begins it (`1x`, `0x10`): a name, as
+              FX-26 reads it."
+             (sym s))
             ((or (has-char? cs #\e) (has-char? cs #\E))
              (read-error file line (string-append "a number with an exponent, which KFX reads not: write it out, " s)))
             ((has-char? cs #\.)
-             (if (real-token? cs) (real s) (read-error file line (string-append "no number KFX reads: " s))))
+             (if (and (real-token? cs) (only-of? (if (char=? (car cs) #\-) (cdr cs) cs) "0123456789."))
+                 (real s)
+                 (read-error file line (string-append "no number KFX reads: " s))))
+            ((not (only-of? (if (char=? (car cs) #\-) (cdr cs) cs) "0123456789"))
+             (read-error file line (string-append "no number KFX reads: " s)))
             ((not (fits-i64? cs)) (big s file pos))
             ((char=? (car cs) #\-) (num (digits-value (cdr cs) 0 file line) file pos))
             (else (num (i64- 0 (digits-value cs 0 file line)) file pos))))))

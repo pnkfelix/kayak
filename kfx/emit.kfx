@@ -1176,4 +1176,4 @@
       "A call the checker found may abort takes a `?`."
       (cond ((not (fact-at? c e "fallible-call")) acc)
             ((fallible-here? c) (put "?" acc))
-            (else (put ".unwrap_or_else(unreachable_unwind)" acc))))))
+            (else (put ".unwrap_or_else(|u| unreachable_unwind(u))" acc))))))

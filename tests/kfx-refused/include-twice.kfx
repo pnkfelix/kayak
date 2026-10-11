@@ -1,0 +1,4 @@
+"A name included twice into one module."
+(define-effect kfx (maxeff (read @globals) spin))
+(define a (module (define one i64 1)))
+(define b (module (include a) (include a)))

@@ -811,3 +811,23 @@ effects on it are pure, KFX's lists never written. The rule for when a
 its parameter's type has an inference variable not yet solved. The
 fourth probe's K1 cases went from 36 to 17, the rest `void`s and
 failures when run in both.
+
+## A fifth probe's findings (2026-10-11)
+
+395 programs on fixed widths, `include`/`hide`, escapes and `void`. K1
+holes, now closed: a token a digit begins that is no number (`1x`,
+`0x10`, `1_000`) was read as one, each character a digit (now a name, as
+FX-26 reads it; `kfx-refused/token-not-number`); a `goto` on `acyclic`
+taken as pure, wrong where a poly constructor makes a tag there (put back;
+a tag at a region nothing names is refused, `kfx-stricter/tag-at-no-region`);
+names given twice through `include` (`kfx-refused/include-twice`); in a
+module that includes, a value through `the`, a `nil`, a `define-rec`
+(FX-26 finds each by itself there; KFX looks through `the`, and refuses
+the others). Rust that did not compile: `unwrap_or_else` given the
+function item where a closure is needed. Left (`TODO.md` §17): a `cons`
+in a module that includes, at `acyclic` where FX-26's is fresh; a
+procedure that cannot abort reaching a type that may by other ways than
+as a call's argument (`the`, `list`, branches: a Rust error); `void` in a
+type (`!` is unstable in Rust); a value holding a `void` at the top level
+(a Rust error; both fail when run); shift counts past 2^59, where Fixpt's
+answers vary (a Fixpt bug, it seems: it wants a fixnum).

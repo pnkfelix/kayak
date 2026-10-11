@@ -1,0 +1,4 @@
+"A token a digit begins that is no number is a name, as FX-26 reads it:
+ `1x` names nothing."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f i64 (i64+ 1x 0))

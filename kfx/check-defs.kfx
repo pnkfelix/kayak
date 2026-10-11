@@ -627,6 +627,8 @@
      marked `%found`."
     (if (not (any? (lambda ((f sexp)) (head-is? f "include")) forms))
         forms
+    (if (any? (lambda ((f sexp)) (head-is? f "define-rec")) forms)
+        (error "kfx: a define-rec in a module that includes another, which KFX's modules do not have yet")
         (map (lambda ((g sexp))
                (if (and (head-is? g "define") (i64= (size (items g)) 4))
                    (tagcase g
@@ -634,7 +636,7 @@
                        (lst (list (car xs) (second xs) (third xs) (lst (list (sym "%found") (fourth xs)) "" 0 0)) file line pos))
                      (else other g))
                    g))
-             forms))))
+             forms)))))
 
 (define item-names (subr kfx (sexp) strings)
   (lambda (f)
@@ -703,6 +705,12 @@
                                            (included v (concat (map (lambda ((f sexp)) (if (head-is? f "hide") (cdr (items f)) nil)) written))))))))
            (includes (included v forms))
            (names (module-types v forms))
+           (given (onto (concat (map item-names forms))
+                        (onto (map (lambda ((b bind)) (tagcase b (bind (n sc w) n)))
+                                   (concat (map (lambda ((n string)) (opened-binds n (cv-binds v))) includes)))
+                              (map (lambda ((a alias)) (tagcase a (alias (n ps b) n)))
+                                   (concat (map (lambda ((n string)) (opened-aliases n (cv-aliases v))) includes))))))
+           (v (if (repeated? given) (refuse v "a name defined twice in this module, its own or included") v))
            (typed (tagcase v
                     (cv (bs ds as es here group file line fs tv at)
                       (cv (bind-onto (concat (map (lambda ((n string)) (opened-binds n bs)) includes))
