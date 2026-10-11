@@ -337,6 +337,7 @@
                      (walk-all c (walk-all c st (map (lambda ((b sexp)) (third (items b))) (items (second xs)))) (cdr (cdr xs)))))
                   ((or (string=? h "letregion") (string=? h "letrena") (string=? h "letreap")) (walk-all c st (cdr (cdr xs))))
                   ((string=? h "lambda") (walk-all (hiding c (param-names (items (second xs)))) st (cdr (cdr xs))))
+                  ((string=? h "rlambda") (walk-all (hiding c (param-names (items (third xs)))) st (cdr (cdr (cdr xs)))))
                   ((string=? h "the") (walk-exp c st (third xs)))
                   ((string=? h "with")
                    (tagcase c

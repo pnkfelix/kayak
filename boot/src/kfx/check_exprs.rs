@@ -1711,6 +1711,8 @@ pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
         }
     } else if string_eq_p(h, str_lit("lambda")) {
         synth_lambda(v, s, items(car(xs)), cdr(xs))
+    } else if (string_eq_p(h, str_lit("rlambda")) && null_p(find_bind(h, cv_binds(v)))) {
+        rlambda_form(v, s, e, xs, nil::<&'static Ty>())
     } else if string_eq_p(h, str_lit("list")) {
         if null_p(xs) {
             match refuse(v, str_lit("a (list) of a type nothing here says, as FX-26 finds it: say it, (the (listof T r) (list))")) {}
@@ -1790,6 +1792,8 @@ pub fn check_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
         product_form(v, s, xs, kayak_rt::cons(expected, kayak_rt::nil()))
     } else if string_eq_p(h, str_lit("sum")) {
         sum_form(v, s, xs, expected)
+    } else if (string_eq_p(h, str_lit("rlambda")) && null_p(find_bind(h, cv_binds(v)))) {
+        rlambda_form(v, s, e, xs, kayak_rt::cons(expected, kayak_rt::nil()))
     } else if (string_eq_p(h, str_lit("lambda")) && proc_type_p(s, expected)) {
         check_lambda(v, s, items(car(xs)), cdr(xs), walk(s, expected))
     } else if (string_eq_p(h, str_lit("list")) && {
@@ -3072,12 +3076,65 @@ pub fn blob_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Ty
     }
 }
 
+/// `(rlambda r params body ...)` (C38): a closure made in the place `r`,
+/// whose latent effect therefore reads `r`, as FX-26 has it; its making
+/// allocates there. In Rust a closure as a `lambda`'s is, kept as long
+/// as anything wants it: where its memory is is all that differs.
+pub fn rlambda_form(v: &'static Cv, s: &'static St, e: &'static Sexp, xs: Sexps, expected: Tys) -> &'static Res {
+    if i64_lt(size(xs), 3i64) {
+        match refuse(v, str_lit("(rlambda r params body ...)")) {}
+    } else {
+        let r = place_of(v, s, car(xs));
+        let read = string_append(str_lit("read:"), region_string(s, r));
+        let lam = lst(cons(sym(str_lit("lambda"), str_lit(""), 0i64), cdr(xs)), datum_file(e), 0i64, datum_pos(e));
+        let tagcase_ = if (not(null_p(expected)) && proc_type_p(s, car(expected))) {
+            let tagcase_ = walk(s, car(expected));
+            match *tagcase_ {
+                Ty::TyProc(ees, eps, er) => {
+                    if not(string_member_p(read, map(lambda1(move |x: Str| {
+                        resolve_atom(s, x)
+                    }), ees))) {
+                        match refuse(v, string_append(str_lit("an rlambda's latent effect reads its place, which the type expected does not: "), show_ty(s, car(expected)))) {}
+                    } else {
+                        check(v, s, lam, car(expected))
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    check(v, s, lam, car(expected))
+                }
+            }
+        } else {
+            let tagcase_ = synth(v, s, lam);
+            match *tagcase_ {
+                Res::Res(t, es, s) => {
+                    let tagcase_ = walk(s, t);
+                    match *tagcase_ {
+                        Ty::TyProc(les, ps, rt) => {
+                            res(ty_proc(effs_union(kayak_rt::cons(read, kayak_rt::nil()), les), ps, rt), es, s)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            res(t, es, s)
+                        }
+                    }
+                }
+            }
+        };
+        match *tagcase_ {
+            Res::Res(t, es, s) => {
+                res(t, effs_union(kayak_rt::cons(string_append(str_lit("alloc:"), region_string(s, r)), kayak_rt::nil()), es), s)
+            }
+        }
+    }
+}
+
 pub fn letrec_lambdas(v: &'static Cv, s: &'static St, bindings: Sexps) -> &'static Res {
     if null_p(bindings) {
         res(ty_unit(), nil::<Str>(), s)
     } else {
         let ys = items(car(bindings));
-        if not(head_is_p(third(ys), str_lit("lambda"))) {
+        if not((head_is_p(third(ys), str_lit("lambda")) || head_is_p(third(ys), str_lit("rlambda")))) {
             match refuse(v, str_lit("a letrec binds only lambdas")) {}
         } else {
             let tagcase_ = check(v, s, third(ys), parse_type(v, cv_tvars(v), second(ys)));

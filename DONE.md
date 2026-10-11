@@ -1027,3 +1027,9 @@ body makes, the inner's included. `tests/kfx/letrena-nested`.
 Its fn and its region's type declare the procedure's type parameters
 again, `A: Copy + 'static`, as a nested Rust item must; the region's
 `Default` written out, a type parameter having none. `tests/kfx/letrena-poly`.
+
+## `rlambda` (2026-10-11)
+
+C38: closures made in a region, typed as FX-26 types them, written as a
+lambda's; heap lists of a region's data at its lifetime. `tests/kfx/rlambda`
+(Fixpt's `run/region-closures.fx`).

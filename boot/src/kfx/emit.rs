@@ -818,6 +818,65 @@ pub fn desc_type(mut c: &'static Ctx, mut s: Str, mut ls: Strings) -> Sexps {
     }
 }
 
+/// The lifetimes of the `letrena`s around, innermost first.
+pub fn letrena_lifetimes_inner(mut ls: Strings) -> Strings {
+    loop {
+        if null_p(ls) {
+            return nil::<Str>();
+        } else if has_prefix_p(car(ls), str_lit("%letrena ")) {
+            return cons(string_append(str_lit("'"), mangle(after_prefix(car(ls), str_lit("%letrena ")))), letrena_lifetimes_inner(cdr(ls)));
+        } else {
+            ls = cdr(ls);
+            continue;
+        }
+    }
+}
+
+pub fn chars_prefix_p(p: Chars, cs: Chars) -> bool {
+    (null_p(p) || (not(null_p(cs)) && char_eq_p(car(p), car(cs)) && chars_prefix_p(cdr(p), cdr(cs))))
+}
+
+pub fn chars_after(mut cs: Chars, mut n: i64) -> Chars {
+    loop {
+        if (null_p(cs) || i64_lt(n, 1i64)) {
+            return cs;
+        } else {
+            (cs, n) = (cdr(cs), i64_minus(n, 1i64));
+            continue;
+        }
+    }
+}
+
+/// Whether `text` has the lifetime `l`, a name's end after it.
+pub fn mentions_lifetime_p(mut text: Chars, mut l: Chars) -> bool {
+    loop {
+        if null_p(text) {
+            return false;
+        } else if (chars_prefix_p(l, text) && {
+            let after = chars_after(text, size(l));
+            (null_p(after) || not((char_alphabetic_p(car(after)) || char_numeric_p(car(after)) || char_eq_p(car(after), '_'))))
+        }) {
+            return true;
+        } else {
+            text = cdr(text);
+            continue;
+        }
+    }
+}
+
+pub fn first_lifetime_in(mut text: Str, mut lives: Strings) -> Str {
+    loop {
+        if null_p(lives) {
+            return str_lit("");
+        } else if mentions_lifetime_p(string_chars(text), string_chars(car(lives))) {
+            return car(lives);
+        } else {
+            lives = cdr(lives);
+            continue;
+        }
+    }
+}
+
 pub fn run_together_strings(xs: Strings) -> Str {
     if null_p(xs) {
         str_lit("")
@@ -1065,12 +1124,18 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
             Sexp::Lst(xs, src_file, src_line, src_pos) => {
                 if (sym_is_p(car(xs), str_lit("listof")) && not(string_eq_p(region_lifetime(c, third(xs)), str_lit("")))) {
                     return put(str_lit(">"), put_type(c, second(xs), put(str_lit(", "), put(region_lifetime(c, third(xs)), put(str_lit("ListAt<"), acc)))));
+                } else if (sym_is_p(car(xs), str_lit("listof")) && not(string_eq_p(element_lifetime(c, second(xs)), str_lit("")))) {
+                    // A list at the heap of what lives only as long as a `letrena`'s
+                    // region: at that region's lifetime, as Rust's pairs must be.
+                    return put(str_lit(">"), put_type(c, second(xs), put(str_lit(", "), put(element_lifetime(c, second(xs)), put(str_lit("ListAt<"), acc)))));
                 } else if sym_is_p(car(xs), str_lit("listof")) {
                     return put(str_lit(">"), put_type(c, second(xs), put(str_lit("List<"), acc)));
                 } else if sym_is_p(car(xs), str_lit("flatarrayof")) {
                     return put(str_lit(">"), put_type(c, second(xs), put(str_lit("FlatArray<"), acc)));
                 } else if (sym_is_p(car(xs), str_lit("ref")) && not(string_eq_p(region_lifetime(c, third(xs)), str_lit("")))) {
                     return put(str_lit(">"), put_type(c, second(xs), put(str_lit(", "), put(region_lifetime(c, third(xs)), put(str_lit("RefAt<"), acc)))));
+                } else if (sym_is_p(car(xs), str_lit("ref")) && not(string_eq_p(element_lifetime(c, second(xs)), str_lit("")))) {
+                    return put(str_lit(">"), put_type(c, second(xs), put(str_lit(", "), put(element_lifetime(c, second(xs)), put(str_lit("RefAt<"), acc)))));
                 } else if sym_is_p(car(xs), str_lit("ref")) {
                     return put(str_lit(">"), put_type(c, second(xs), put(str_lit("Ref<"), acc)));
                 } else if sym_is_p(car(xs), str_lit("subr")) {
@@ -1349,6 +1414,12 @@ pub fn has_sum_p(f: &'static Sexp) -> bool {
             false
         }
     }
+}
+
+/// The innermost `letrena` lifetime `t`'s Rust type mentions, or ``.
+pub fn element_lifetime(c: &'static Ctx, t: &'static Sexp) -> Str {
+    let text = rev_to_string(put_type(c, t, nil::<char>()));
+    first_lifetime_in(text, letrena_lifetimes_inner(ctx_locals(c)))
 }
 
 /// A bloblet's fields, a tuple of cells: `(Cell<T>, ...,)`.
@@ -2004,6 +2075,25 @@ pub fn split_at_char(s: Str, c: char) -> Strings {
     split_chars(string_chars(s), c, nil::<char>())
 }
 
+/// An `rlambda` as the lambda it is in Rust, at its own place, where the
+/// checker's facts about it are (C38); anything else as it is.
+pub fn as_lambda(e: &'static Sexp) -> &'static Sexp {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            if sym_is_p(car(xs), str_lit("rlambda")) {
+                lst(cons(sym(str_lit("lambda"), str_lit(""), 0i64), cdr(cdr(xs))), f, l, p)
+            } else {
+                e
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            e
+        }
+    }
+}
+
 pub fn second_string(xs: Strings) -> Str {
     if (null_p(xs) || null_p(cdr(xs))) {
         str_lit("0")
@@ -2508,7 +2598,7 @@ pub fn put_letrec(c: &'static Ctx, bindings: Sexps, names: Strings, n: i64, acc:
         let acc = put(str_lit("let "), acc);
         let acc = put(mangle(sym_name(car(ys))), acc);
         let acc = put(str_lit(" = "), acc);
-        let acc = put_exp(inside, typed_lambda(third(ys), second(ys)), n, value(), acc);
+        let acc = put_exp(inside, typed_lambda(as_lambda(third(ys)), second(ys)), n, value(), acc);
         put_nl(n, put(str_lit(";"), acc))
     }), str_lit(""), bindings, acc);
     put_sep(lambda2(move |x: Str, acc: Chars| {
@@ -2564,6 +2654,8 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
         put(str_lit("}"), put_nl(n, acc))
     } else if string_eq_p(h, str_lit("lambda")) {
         put_lambda(c, e, items(car(xs)), cdr(xs), n, acc)
+    } else if (string_eq_p(h, str_lit("rlambda")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+        put_lambda(c, e, items(second(xs)), cdr(cdr(xs)), n, acc)
     } else if string_eq_p(h, str_lit("product")) {
         let fs = map(&items, xs);
         let acc = put(shape_name(true, map(lambda1(move |f: Sexps| {

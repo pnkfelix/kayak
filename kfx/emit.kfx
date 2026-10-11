@@ -421,6 +421,40 @@
             (else (desc-type c s (cdr ls)))))))
 
 (define-rec
+  (letrena-lifetimes-inner (subr kfx (strings) strings)
+    (lambda (ls)
+      "The lifetimes of the `letrena`s around, innermost first."
+      (cond ((null? ls) nil)
+            ((has-prefix? (car ls) "%letrena ") (cons (string-append "'" (mangle (after-prefix (car ls) "%letrena "))) (letrena-lifetimes-inner (cdr ls))))
+            (else (letrena-lifetimes-inner (cdr ls)))))))
+
+(define-rec
+  (chars-prefix? (subr kfx (chars chars) bool)
+    (lambda (p cs) (or (null? p) (and (not (null? cs)) (char=? (car p) (car cs)) (chars-prefix? (cdr p) (cdr cs)))))))
+
+(define-rec
+  (chars-after (subr kfx (chars i64) chars)
+    (lambda (cs n) (if (or (null? cs) (i64< n 1)) cs (chars-after (cdr cs) (i64- n 1))))))
+
+(define-rec
+  (mentions-lifetime? (subr kfx (chars chars) bool)
+    (lambda (text l)
+      "Whether `text` has the lifetime `l`, a name's end after it."
+      (cond ((null? text) #f)
+            ((and (chars-prefix? l text)
+                  (let ((after (chars-after text (size l))))
+                    (or (null? after) (not (or (char-alphabetic? (car after)) (char-numeric? (car after)) (char=? (car after) #\_))))))
+             #t)
+            (else (mentions-lifetime? (cdr text) l))))))
+
+(define-rec
+  (first-lifetime-in (subr kfx (string strings) string)
+    (lambda (text lives)
+      (cond ((null? lives) "")
+            ((mentions-lifetime? (string-chars text) (string-chars (car lives))) (car lives))
+            (else (first-lifetime-in text (cdr lives)))))))
+
+(define-rec
   (run-together-strings (subr kfx (strings) string)
     (lambda (xs) (if (null? xs) "" (string-append (car xs) (run-together-strings (cdr xs)))))))
 
@@ -550,12 +584,18 @@
         (lst (xs src-file src-line src-pos)
           (cond ((and (sym-is? (car xs) "listof") (not (string=? (region-lifetime c (third xs)) "")))
                  (put ">" (put-type c (second xs) (put ", " (put (region-lifetime c (third xs)) (put "ListAt<" acc))))))
+                ((and (sym-is? (car xs) "listof") (not (string=? (element-lifetime c (second xs)) "")))
+                 "A list at the heap of what lives only as long as a `letrena`'s
+                  region: at that region's lifetime, as Rust's pairs must be."
+                 (put ">" (put-type c (second xs) (put ", " (put (element-lifetime c (second xs)) (put "ListAt<" acc))))))
                 ((sym-is? (car xs) "listof")
                  (put ">" (put-type c (second xs) (put "List<" acc))))
                 ((sym-is? (car xs) "flatarrayof")
                  (put ">" (put-type c (second xs) (put "FlatArray<" acc))))
                 ((and (sym-is? (car xs) "ref") (not (string=? (region-lifetime c (third xs)) "")))
                  (put ">" (put-type c (second xs) (put ", " (put (region-lifetime c (third xs)) (put "RefAt<" acc))))))
+                ((and (sym-is? (car xs) "ref") (not (string=? (element-lifetime c (second xs)) "")))
+                 (put ">" (put-type c (second xs) (put ", " (put (element-lifetime c (second xs)) (put "RefAt<" acc))))))
                 ((sym-is? (car xs) "ref")
                  (put ">" (put-type c (second xs) (put "Ref<" acc))))
                 ((sym-is? (car xs) "subr")
@@ -703,6 +743,12 @@
       (tagcase f
         (lst (xs fl ln p) (or (sym-is? (car xs) "sumof") (any? (lambda ((x sexp)) (has-sum? x)) (cdr xs))))
         (else other #f))))
+
+  (element-lifetime (subr kfx (ctx sexp) string)
+    (lambda (c t)
+      "The innermost `letrena` lifetime `t`'s Rust type mentions, or ``."
+      (let ((text (rev->string (put-type c t nil))))
+        (first-lifetime-in text (letrena-lifetimes-inner (ctx-locals c))))))
 
   (put-fields-tuple (subr kfx (ctx sexps chars) chars)
     (lambda (c ts acc)
@@ -1077,6 +1123,14 @@
 (define split-at-char (subr kfx (string char) strings)
   (lambda (s c) (split-chars (string-chars s) c nil)))
 
+(define as-lambda (subr kfx (sexp) sexp)
+  (lambda (e)
+    "An `rlambda` as the lambda it is in Rust, at its own place, where the
+     checker's facts about it are (C38); anything else as it is."
+    (tagcase e
+      (lst (xs f l p) (if (sym-is? (car xs) "rlambda") (lst (cons (sym "lambda" "" 0) (cdr (cdr xs))) f l p) e))
+      (else other e))))
+
 (define second-string (subr kfx (strings) string)
   (lambda (xs) (if (or (null? xs) (null? (cdr xs))) "0" (car (cdr xs)))))
 
@@ -1414,7 +1468,7 @@
                                     (acc (put "let " acc))
                                     (acc (put (mangle (sym-name (car ys))) acc))
                                     (acc (put " = " acc))
-                                    (acc (put-exp inside (typed-lambda (third ys) (second ys)) n (value) acc)))
+                                    (acc (put-exp inside (typed-lambda (as-lambda (third ys)) (second ys)) n (value) acc)))
                                (put-nl n (put ";" acc))))
                            "" bindings acc)))
         (put-sep (lambda ((x string) (acc chars))
@@ -1458,6 +1512,7 @@
                     (acc (put-case-arms c (case-kind c e) (cdr xs) (i64+ n 1) t acc)))
                (put "}" (put-nl n acc))))
             ((string=? h "lambda") (put-lambda c e (items (car xs)) (cdr xs) n acc))
+            ((and (string=? h "rlambda") (string=? (local-kind h (ctx-locals c)) "")) (put-lambda c e (items (second xs)) (cdr (cdr xs)) n acc))
             ((string=? h "product")
              (let* ((fs (map items xs))
                     (acc (put (shape-name #t (map (lambda ((f sexps)) (label-of (car f))) fs)) acc)))

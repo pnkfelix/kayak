@@ -635,3 +635,18 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
 - **Not yet:** a list of a global's procedures shown at the top level (its
   `fn` items no `dyn Fn` Rust can infer there).
 
+## C38. `rlambda`, and lists at the heap of a region's data (2026-10-11)
+
+- **Chosen:** `(rlambda r params body ...)` is typed as FX-26 types it, its
+  latent effect reading `r`, its making allocating there, and written as
+  a `lambda`'s closure, which the heap keeps as long as anything wants it:
+  where its memory is is all that differs. A `letrec` may bind one.
+- **And:** a list or a reference at the heap (a `letregion`'s, erased)
+  whose element's Rust type mentions a `letrena`'s lifetime is at that
+  lifetime, `ListAt<'r, &'r dyn Fn ...>`: a `'static` pair may hold
+  nothing that lives less.
+- **Not yet:** a type abbreviation over regions, `(define-type (closures
+  (r region) (l region)) ...)`, written once in Rust with its regions
+  erased, `'static`; in a `letrena`, where a use of it means `'r`, a Rust
+  error. Its regions want to be the alias's lifetime parameters.
+

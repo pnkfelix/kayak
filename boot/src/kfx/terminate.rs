@@ -795,6 +795,8 @@ pub fn walk_exp(mut c: &'static Wc, mut st: &'static Ws, mut e: &'static Sexp) -
                     return walk_all(c, st, cdr(cdr(xs)));
                 } else if string_eq_p(h, str_lit("lambda")) {
                     return walk_all(hiding(c, param_names(items(second(xs)))), st, cdr(cdr(xs)));
+                } else if string_eq_p(h, str_lit("rlambda")) {
+                    return walk_all(hiding(c, param_names(items(third(xs)))), st, cdr(cdr(cdr(xs))));
                 } else if string_eq_p(h, str_lit("the")) {
                     e = third(xs);
                     continue;

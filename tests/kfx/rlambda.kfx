@@ -1,0 +1,20 @@
+"rlambda (C38): a closure made in a region, its latent effect reading it,
+ as FX-26 has it; in Rust a closure as a lambda's, kept as long as
+ anything wants it. A list at the heap of closures that live only as long
+ as the letrena's region is at that region's lifetime, as Rust's pairs
+ must be. Fixpt's run/region-closures.fx, at i64, its types written out."
+(define-effect kfx (maxeff (read @globals) spin))
+(define adders (subr kfx (i64) i64)
+  (lambda (n)
+    (letrena r
+      (letregion l
+        (letrec ((make (subr (maxeff (alloc r) (alloc l) (read r) spin)
+                             (i64 (listof (subr (read r) (i64) i64) l))
+                             (listof (subr (read r) (i64) i64) l))
+                   (rlambda r (i acc)
+                     (if (i64= i 0) acc (make (i64- i 1) (cons (rlambda r ((x i64)) (i64+ x i)) acc)))))
+                 (apply-all (subr (maxeff (read r) (read l) spin) ((listof (subr (read r) (i64) i64) l) i64) i64)
+                   (rlambda r (fs acc) (if (null? fs) acc (apply-all (cdr fs) ((car fs) acc))))))
+          (apply-all (make n nil) 0))))))
+(define main (subr kfx () string) (lambda () (i64->string (adders 10))))
+(main)
