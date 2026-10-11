@@ -797,6 +797,63 @@ pub fn desc_type(mut c: &'static Ctx, mut s: Str, mut ls: Strings) -> Sexps {
     }
 }
 
+// `letrena`'s regions (CLAUDES_CHOICES.md C30): each a lifetime of the
+// `fn` its body is written as, `'r` for the region `r`, marked in the
+// locals `%letrena r`. Every other region is the heap's, `'static`.
+/// The lifetime of the region `r` names, if a `letrena`'s; or ``.
+pub fn region_lifetime(c: &'static Ctx, r: &'static Sexp) -> Str {
+    let n = {
+        let tagcase_ = r;
+        match *tagcase_ {
+            Sexp::Sym(x, f, p) => {
+                if has_prefix_p(x, str_lit("'")) {
+                    after_prefix(x, str_lit("'"))
+                } else {
+                    x
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                str_lit("")
+            }
+        }
+    };
+    if (not(string_eq_p(n, str_lit(""))) && string_member_p(string_append(str_lit("%letrena "), n), ctx_locals(c))) {
+        string_append(str_lit("'"), mangle(n))
+    } else {
+        str_lit("")
+    }
+}
+
+/// A procedure's lifetime: the innermost `letrena`'s, whose arena a
+/// closure may hold; or `'static`.
+pub fn innermost_lifetime(mut ls: Strings) -> Str {
+    loop {
+        if null_p(ls) {
+            return str_lit("'static");
+        } else if has_prefix_p(car(ls), str_lit("%letrena ")) {
+            return string_append(str_lit("'"), mangle(after_prefix(car(ls), str_lit("%letrena "))));
+        } else {
+            ls = cdr(ls);
+            continue;
+        }
+    }
+}
+
+/// The lifetimes of the `letrena`s around, outermost first.
+pub fn letrena_lifetimes(mut ls: Strings) -> Strings {
+    loop {
+        if null_p(ls) {
+            return nil::<Str>();
+        } else if has_prefix_p(car(ls), str_lit("%letrena ")) {
+            return onto(letrena_lifetimes(cdr(ls)), kayak_rt::cons(string_append(str_lit("'"), mangle(after_prefix(car(ls), str_lit("%letrena ")))), kayak_rt::nil()));
+        } else {
+            ls = cdr(ls);
+            continue;
+        }
+    }
+}
+
 /// A type. A name that is no base type or datatype is a type abbreviation
 /// or a type variable, either way a Rust type of the same name.
 pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Chars {
@@ -838,14 +895,18 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
                 }
             }
             Sexp::Lst(xs, src_file, src_line, src_pos) => {
-                if sym_is_p(car(xs), str_lit("listof")) {
+                if (sym_is_p(car(xs), str_lit("listof")) && not(string_eq_p(region_lifetime(c, third(xs)), str_lit("")))) {
+                    return put(str_lit(">"), put_type(c, second(xs), put(str_lit(", "), put(region_lifetime(c, third(xs)), put(str_lit("ListAt<"), acc)))));
+                } else if sym_is_p(car(xs), str_lit("listof")) {
                     return put(str_lit(">"), put_type(c, second(xs), put(str_lit("List<"), acc)));
                 } else if sym_is_p(car(xs), str_lit("flatarrayof")) {
                     return put(str_lit(">"), put_type(c, second(xs), put(str_lit("FlatArray<"), acc)));
+                } else if (sym_is_p(car(xs), str_lit("ref")) && not(string_eq_p(region_lifetime(c, third(xs)), str_lit("")))) {
+                    return put(str_lit(">"), put_type(c, second(xs), put(str_lit(", "), put(region_lifetime(c, third(xs)), put(str_lit("RefAt<"), acc)))));
                 } else if sym_is_p(car(xs), str_lit("ref")) {
                     return put(str_lit(">"), put_type(c, second(xs), put(str_lit("Ref<"), acc)));
                 } else if sym_is_p(car(xs), str_lit("subr")) {
-                    let acc = put(str_lit("&'static dyn Fn("), acc);
+                    let acc = put(str_lit(" dyn Fn("), put(innermost_lifetime(ctx_locals(c)), put(str_lit("&"), acc)));
                     let acc = put_types(c, items(third(xs)), acc);
                     let acc = put(str_lit(") -> "), acc);
                     if fallible_effect_p(c, second(xs)) {
@@ -1481,6 +1542,74 @@ pub fn put_strings(xs: Strings, acc: Chars) -> Chars {
     }), str_lit(", "), xs, acc)
 }
 
+pub fn words_of_sep(xs: Strings, sep: Str) -> Str {
+    if null_p(xs) {
+        str_lit("")
+    } else if null_p(cdr(xs)) {
+        car(xs)
+    } else {
+        string_append(car(xs), string_append(sep, words_of_sep(cdr(xs), sep)))
+    }
+}
+
+/// `xs`, each once, in the order of its first.
+pub fn distinct_strings(xs: Strings) -> Strings {
+    if null_p(xs) {
+        nil::<Str>()
+    } else {
+        cons(car(xs), distinct_strings(concat(map(lambda1(move |x: Str| {
+            if string_eq_p(x, car(xs)) {
+                nil::<Str>()
+            } else {
+                the::<Strings>(kayak_rt::cons(x, kayak_rt::nil()))
+            }
+        }), cdr(xs)))))
+    }
+}
+
+/// The `rcons`es and `rnew`s in `es` that make in the place `r`.
+pub fn allocations(r: Str, es: Sexps) -> Sexps {
+    concat(map(lambda1(move |e: &'static Sexp| {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                if ((head_is_p(e, str_lit("rcons")) || head_is_p(e, str_lit("rnew"))) && not(null_p(cdr(xs))) && sym_is_p(second(xs), r)) {
+                    the::<Sexps>(cons(e, allocations(r, cdr(xs))))
+                } else {
+                    allocations(r, xs)
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<&'static Sexp>()
+            }
+        }
+    }), es))
+}
+
+pub fn put_held_fields(mut held: Strings, mut i: i64, mut acc: Chars) -> Chars {
+    loop {
+        if null_p(held) {
+            return acc;
+        } else {
+            (held, i, acc) = (cdr(held), i64_plus(i, 1i64), put(string_append(str_lit(" a"), string_append(i64_to_string(i), string_append(str_lit(": Arena<"), string_append(car(held), str_lit(">,"))))), acc));
+            continue;
+        }
+    }
+}
+
+/// `Holds` for each type the region holds: its arena.
+pub fn put_held_impls(mut held: Strings, mut i: i64, mut region: Str, mut lives: Str, mut n: i64, mut acc: Chars) -> Chars {
+    loop {
+        if null_p(held) {
+            return acc;
+        } else {
+            (held, i, acc) = (cdr(held), i64_plus(i, 1i64), put(string_append(str_lit("impl<"), string_append(lives, string_append(str_lit("> Holds<"), string_append(car(held), string_append(str_lit("> for "), string_append(region, string_append(str_lit("<"), string_append(lives, string_append(str_lit("> { fn arena(&self) -> &Arena<"), string_append(car(held), string_append(str_lit("> { &self.a"), string_append(i64_to_string(i), str_lit(" } }"))))))))))))), put_nl(n, acc)));
+            continue;
+        }
+    }
+}
+
 // Every writer of an expression takes `n`, the indentation of the line it
 // starts on, and `t`, where the expression stands.
 pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc: Chars) -> Chars {
@@ -1993,6 +2122,8 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
         let acc = put(str_lit(">("), acc);
         let acc = put_args(c, e, cdr(xs), 0i64, n, acc);
         put(str_lit(")"), acc)
+    } else if (string_eq_p(h, str_lit("letrena")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+        put_letrena(c, e, xs, n, acc)
     } else if (string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion"))) {
         put_block(c, kayak_rt::cons(e, kayak_rt::nil()), n, t, acc)
     } else if abort_p(c, e) {
@@ -2067,6 +2198,92 @@ pub fn put_args(c: &'static Ctx, e: &'static Sexp, xs: Sexps, i: i64, n: i64, ac
         } else {
             put(str_lit(", "), acc)
         })
+    }
+}
+
+/// `(letrena r body ...)` (C30): a block that declares the region's type,
+/// an arena for each type made in it, and a `fn` of the region's
+/// lifetime, the body, given the arena and the locals the body names;
+/// makes the arena; and calls the `fn` with them. The arena is dropped
+/// when the block ends, by a return or an abort.
+pub fn put_letrena(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Chars) -> Chars {
+    let r = sym_name(car(xs));
+    let life = string_append(str_lit("'"), mangle(r));
+    let region = string_append(str_lit("Region_"), camel(r));
+    let outer = letrena_lifetimes(ctx_locals(c));
+    let lives = words_of_sep(cons(life, outer), str_lit(", "));
+    let names = split_words(fact_with(c, e, str_lit("letrena-names ")));
+    let types = read_all(string_chars(fact_with(c, e, str_lit("letrena-locals "))), str_lit(""), 1i64);
+    let fallible = fact_at_p(c, e, str_lit("fallible"));
+    let inner = with_locals(c, cons(string_append(str_lit("%letrena "), r), cons(if fallible {
+        str_lit("%fallible")
+    } else {
+        str_lit("%infallible")
+    }, cons(r, names))));
+    let held = distinct_strings(map(lambda1(move |m: &'static Sexp| {
+        held_type(inner, r, m)
+    }), allocations(r, cdr(xs))));
+    let n1 = i64_plus(n, 1i64);
+    let acc = put_nl(n1, put(str_lit("{"), acc));
+    let acc = put(string_append(str_lit("#[derive(Default)] struct "), string_append(region, string_append(str_lit("<"), string_append(lives, str_lit("> {"))))), acc);
+    let acc = put_held_fields(held, 0i64, acc);
+    let acc = put(string_append(str_lit(" phantom_: std::marker::PhantomData<("), string_append(words_of_sep(map(lambda1(move |l: Str| {
+        string_append(str_lit("&"), string_append(l, str_lit(" ()")))
+    }), cons(life, outer)), str_lit(", ")), str_lit(",)> }"))), acc);
+    let acc = put_held_impls(held, 0i64, region, lives, n1, acc);
+    let acc = put_nl(n1, acc);
+    let acc = put(string_append(str_lit("fn letrena__"), string_append(mangle(r), string_append(str_lit("<"), string_append(words_of_sep(onto(outer, kayak_rt::cons(life, kayak_rt::nil())), str_lit(", ")), str_lit(">("))))), acc);
+    let acc = put(string_append(mangle(r), string_append(str_lit(": &"), string_append(life, string_append(str_lit(" "), string_append(region, string_append(str_lit("<"), string_append(lives, str_lit(">")))))))), acc);
+    let acc = put_letrena_params(inner, names, types, acc);
+    let acc = put(str_lit(") -> "), acc);
+    let acc = if fallible {
+        put(str_lit(", Unwind>"), put_type(inner, car(read_all(string_chars(fact_with(c, e, str_lit("letrena-type "))), str_lit(""), 1i64)), put(str_lit("Result<"), acc)))
+    } else {
+        put_type(inner, car(read_all(string_chars(fact_with(c, e, str_lit("letrena-type "))), str_lit(""), 1i64)), acc)
+    };
+    let acc = put(str_lit(" "), acc);
+    let acc = put_block(inner, cdr(xs), n1, if fallible {
+        ok_value()
+    } else {
+        value()
+    }, acc);
+    let acc = put_nl(n1, acc);
+    let acc = put(string_append(str_lit("let "), string_append(mangle(r), string_append(str_lit("__arena = "), string_append(region, str_lit("::default();"))))), acc);
+    let acc = put_nl(n1, acc);
+    let acc = put(string_append(str_lit("letrena__"), string_append(mangle(r), string_append(str_lit("(&"), string_append(mangle(r), str_lit("__arena"))))), acc);
+    let acc = put_sep(lambda2(move |x: Str, acc: List<char>| {
+        put_var(c, x, put(str_lit(", "), acc))
+    }), str_lit(""), names, acc);
+    let acc = put(str_lit(")"), acc);
+    let acc = if not(fallible) {
+        acc
+    } else if fallible_here_p(c) {
+        put(str_lit("?"), acc)
+    } else {
+        put(str_lit(".unwrap_or_else(|u| unreachable_unwind(u))"), acc)
+    };
+    put(str_lit("}"), put_nl(n, acc))
+}
+
+pub fn put_letrena_params(mut c: &'static Ctx, mut names: Strings, mut types: Sexps, mut acc: Chars) -> Chars {
+    loop {
+        if (null_p(names) || null_p(types)) {
+            return acc;
+        } else {
+            (names, types, acc) = (cdr(names), cdr(types), put_type(c, car(types), put(str_lit(": "), put(mangle(car(names)), put(str_lit(", "), acc)))));
+            continue;
+        }
+    }
+}
+
+/// What an allocation in region `r` makes, as Rust's type: a pair,
+/// `Cons<'r, T>`, or a reference's cell, `Cell<T>`.
+pub fn held_type(c: &'static Ctx, r: Str, call: &'static Sexp) -> Str {
+    let t = car(read_all(string_chars(fact_with(c, call, str_lit("rheld "))), str_lit(""), 1i64));
+    if head_is_p(call, str_lit("rcons")) {
+        string_append(str_lit("Cons<'"), string_append(mangle(r), string_append(str_lit(", "), string_append(rev_to_string(put_type(c, t, nil::<char>())), str_lit(">")))))
+    } else {
+        string_append(str_lit("std::cell::Cell<"), string_append(rev_to_string(put_type(c, t, nil::<char>())), str_lit(">")))
     }
 }
 

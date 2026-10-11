@@ -1,0 +1,5 @@
+"A letrena's place given back: its type, (place r), mentions the region."
+(define-effect kfx (maxeff (read @globals) spin))
+(define leak (subr kfx () i64)
+  (lambda () (begin (letrena r r) 1)))
+(leak)

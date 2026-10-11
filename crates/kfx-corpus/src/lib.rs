@@ -73,6 +73,11 @@ pub mod letregion_nat;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/letrena.rs"]
+pub mod letrena;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/lets.rs"]
 pub mod lets;
 
@@ -100,6 +105,11 @@ pub mod mutable;
 #[rustfmt::skip]
 #[path = "../../../tests/kfx/names.rs"]
 pub mod names;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
+#[path = "../../../tests/kfx/open-types.rs"]
+pub mod open_types;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
@@ -165,12 +175,14 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("generative", generative::main),
     ("letrec", letrec::main),
     ("letregion-nat", letregion_nat::main),
+    ("letrena", letrena::main),
     ("lets", lets::main),
     ("lists", lists::main),
     ("module-params", module_params::main),
     ("modules", modules::main),
     ("mutable", mutable::main),
     ("names", names::main),
+    ("open-types", open_types::main),
     ("procs", procs::main),
     ("recursion", recursion::main),
     ("shapes", shapes::main),

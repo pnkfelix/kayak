@@ -924,3 +924,12 @@ binder is its result's alone written with a turbofish, an inference
 variable left open `Void`. The lifting closures' `a_0` is `a__0`. Of the
 fourteen probe programs rustc could not infer, all fourteen compile and
 agree with Fixpt, or are refused with it (`tests/kfx/open-types`).
+
+## `letrena` as an arena (2026-10-11)
+
+C30: `letrena`, `rcons` and `rnew`, as a `fn` of the region's lifetime
+given a struct of safe typed arenas (`kayak_rt::Arena`, `Holds`), freed
+when the block ends. `tests/kfx/letrena` (Fixpt's `run/arena.fx` and
+`run/regions.fx` at i64, nesting, an abort through one); refusals for the
+region or place escaping and, KFX's alone, for a place as a value and a
+letrena in a procedure poly over types. Fixpt's programs kfx accepts: 67.

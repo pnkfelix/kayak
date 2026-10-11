@@ -791,7 +791,7 @@ pub fn walk_exp(mut c: &'static Wc, mut st: &'static Ws, mut e: &'static Sexp) -
                     return walk_all(c, walk_all(c, st, map(lambda1(move |b: &'static Sexp| {
                         third(items(b))
                     }), items(second(xs)))), cdr(cdr(xs)));
-                } else if string_eq_p(h, str_lit("letregion")) {
+                } else if (string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("letrena"))) {
                     return walk_all(c, st, cdr(cdr(xs)));
                 } else if string_eq_p(h, str_lit("lambda")) {
                     return walk_all(hiding(c, param_names(items(second(xs)))), st, cdr(cdr(xs)));

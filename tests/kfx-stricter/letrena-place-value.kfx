@@ -1,0 +1,6 @@
+"A letrena's place as a value other than an allocator's: FX-26 has it (a
+ procedure may take a place); KFX gives it only to rcons and rnew yet."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f (subr kfx () i64)
+  (lambda () (letrena r (let ((p r)) (the i64 1)))))
+(f)

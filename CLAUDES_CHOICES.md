@@ -445,3 +445,38 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
   called their own argument: C27's temporaries with a `_` were not all
   apart from KFX's names. They are `a__0`, which no KFX name, having no
   `--`, mangles to.
+
+## C30. `letrena` is a Rust arena, in safe code (the user's, 2026-10-11)
+
+- **Chosen** (the user's idea, and their choice of our own arena): FX-26's
+  `(letrena r body ...)` is a block that declares the region's type,
+  `Region_R<'r>`, one `kayak_rt::Arena` for each type made in the region
+  (`Cons<'r, T>` for an `rcons`, `Cell<T>` for an `rnew`), with `Holds<T>`
+  for each; a `fn letrena__r<'r>(r: &'r Region_R<'r>, x: X, ...)`, the
+  body, given the arena and the locals it names; and makes the arena and
+  calls it. The arena is dropped when the block ends, by a return or by
+  an abort (`?`), so the region is freed as FX-26's is. Rust's borrow
+  checker then refuses what FX-26's refuses: nothing borrowed from the
+  arena outlives the block.
+- **The arena, in safe Rust**: chunks of `OnceCell<T>`, each twice the
+  last, linked through `OnceCell`s; nothing is taken out of one, so
+  `alloc(&self, v) -> &T` needs no `unsafe`. One type an arena, as
+  rustc's `TypedArena`s are, and a region a struct of them, as rustc's
+  `arena_types!` makes. KFX's values are `Copy`: no destructor runs.
+- **A `fn`, not a block alone**: a block cannot name a lifetime, and a
+  closure's or a `dyn Fn`'s parameter of an elided lifetime is a fresh
+  one at each call; the `fn`'s `'r` is the region's, named in the types
+  of the body's closures (`ListAt<'r, T>`, `RefAt<'r, T>`, `&'r dyn Fn`).
+- **Lists and references have a lifetime**: `ListAt<'r, T>`, `RefAt<'r,
+  T>`; the heap's are `List<T>` and `Ref<T>`, at `'static`, as before.
+  `alloc`, the `lambdaN`s and `knot` leak to any lifetime.
+- **Not yet** (refused): a place as a value but an allocator's (FX-26
+  passes places to procedures); a region within a place; a `letrena` in a
+  procedure poly over types; a body that names an outer `letrena`'s
+  place; `rmake-array`, `rmake-icell`, `rmake-bloblet`, `rlambda`,
+  `letreap`. Bloblets and blobrefs (`&'r` to a `#[repr(C)]` flat of
+  `Cell`s) are the next step.
+- **Not chosen:** `bumpalo` or `typed-arena` (kayak-rt has no dependency,
+  and both are `unsafe` inside); an arena of our own with `unsafe` in one
+  module.
+

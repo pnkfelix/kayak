@@ -410,6 +410,36 @@
                (if (null? found) (desc-type c s (cdr ls)) found)))
             (else (desc-type c s (cdr ls)))))))
 
+"`letrena`'s regions (CLAUDES_CHOICES.md C30): each a lifetime of the
+ `fn` its body is written as, `'r` for the region `r`, marked in the
+ locals `%letrena r`. Every other region is the heap's, `'static`."
+
+(define region-lifetime (subr kfx (ctx sexp) string)
+  (lambda (c r)
+    "The lifetime of the region `r` names, if a `letrena`'s; or ``."
+    (let ((n (tagcase r (sym (x f p) (if (has-prefix? x "'") (after-prefix x "'") x)) (else other ""))))
+      (if (and (not (string=? n "")) (string-member? (string-append "%letrena " n) (ctx-locals c)))
+          (string-append "'" (mangle n))
+          ""))))
+
+(define-rec
+  (innermost-lifetime (subr kfx (strings) string)
+    (lambda (ls)
+      "A procedure's lifetime: the innermost `letrena`'s, whose arena a
+       closure may hold; or `'static`."
+      (cond ((null? ls) "'static")
+            ((has-prefix? (car ls) "%letrena ") (string-append "'" (mangle (after-prefix (car ls) "%letrena "))))
+            (else (innermost-lifetime (cdr ls)))))))
+
+(define-rec
+  (letrena-lifetimes (subr kfx (strings) strings)
+    (lambda (ls)
+      "The lifetimes of the `letrena`s around, outermost first."
+      (cond ((null? ls) nil)
+            ((has-prefix? (car ls) "%letrena ")
+             (onto (letrena-lifetimes (cdr ls)) (list (string-append "'" (mangle (after-prefix (car ls) "%letrena "))))))
+            (else (letrena-lifetimes (cdr ls)))))))
+
 (define-rec
   (put-type (subr kfx (ctx sexp chars) chars)
     (lambda (c t acc)
@@ -434,14 +464,18 @@
                  (put (type-path c (opener (string-append "%type " s) (ctx-locals c)) s) acc))
                 (else (put (camel s) acc))))
         (lst (xs src-file src-line src-pos)
-          (cond ((sym-is? (car xs) "listof")
+          (cond ((and (sym-is? (car xs) "listof") (not (string=? (region-lifetime c (third xs)) "")))
+                 (put ">" (put-type c (second xs) (put ", " (put (region-lifetime c (third xs)) (put "ListAt<" acc))))))
+                ((sym-is? (car xs) "listof")
                  (put ">" (put-type c (second xs) (put "List<" acc))))
                 ((sym-is? (car xs) "flatarrayof")
                  (put ">" (put-type c (second xs) (put "FlatArray<" acc))))
+                ((and (sym-is? (car xs) "ref") (not (string=? (region-lifetime c (third xs)) "")))
+                 (put ">" (put-type c (second xs) (put ", " (put (region-lifetime c (third xs)) (put "RefAt<" acc))))))
                 ((sym-is? (car xs) "ref")
                  (put ">" (put-type c (second xs) (put "Ref<" acc))))
                 ((sym-is? (car xs) "subr")
-                 (let* ((acc (put "&'static dyn Fn(" acc))
+                 (let* ((acc (put " dyn Fn(" (put (innermost-lifetime (ctx-locals c)) (put "&" acc))))
                         (acc (put-types c (items (third xs)) acc))
                         (acc (put ") -> " acc)))
                    (if (fallible-effect? c (second xs))
@@ -781,6 +815,55 @@
   (lambda (xs acc)
     "Names, mangled, separated by commas."
     (put-sep (lambda ((x string) acc) (put (mangle x) acc)) ", " xs acc)))
+
+(define-rec
+  (words-of-sep (subr kfx (strings string) string)
+    (lambda (xs sep)
+      (cond ((null? xs) "")
+            ((null? (cdr xs)) (car xs))
+            (else (string-append (car xs) (string-append sep (words-of-sep (cdr xs) sep))))))))
+
+(define-rec
+  (distinct-strings (subr kfx (strings) strings)
+    (lambda (xs)
+      "`xs`, each once, in the order of its first."
+      (if (null? xs)
+          nil
+          (cons (car xs) (distinct-strings (concat (map (lambda ((x string)) (if (string=? x (car xs)) nil (the strings (list x)))) (cdr xs)))))))))
+
+(define-rec
+  (allocations (subr kfx (string sexps) sexps)
+    (lambda (r es)
+      "The `rcons`es and `rnew`s in `es` that make in the place `r`."
+      (concat (map (lambda ((e sexp))
+                     (tagcase e
+                       (lst (xs f l p)
+                         (if (and (or (head-is? e "rcons") (head-is? e "rnew")) (not (null? (cdr xs))) (sym-is? (second xs) r))
+                             (the sexps (cons e (allocations r (cdr xs))))
+                             (allocations r xs)))
+                       (else other nil)))
+                   es)))))
+
+(define-rec
+  (put-held-fields (subr kfx (strings i64 chars) chars)
+    (lambda (held i acc)
+      (if (null? held)
+          acc
+          (put-held-fields (cdr held) (i64+ i 1)
+                           (put (string-append " a" (string-append (i64->string i) (string-append ": Arena<" (string-append (car held) ">,")))) acc))))))
+
+(define-rec
+  (put-held-impls (subr kfx (strings i64 string string i64 chars) chars)
+    (lambda (held i region lives n acc)
+      "`Holds` for each type the region holds: its arena."
+      (if (null? held)
+          acc
+          (put-held-impls (cdr held) (i64+ i 1) region lives n
+            (put (string-append "impl<" (string-append lives (string-append "> Holds<" (string-append (car held)
+                   (string-append "> for " (string-append region (string-append "<" (string-append lives
+                     (string-append "> { fn arena(&self) -> &Arena<" (string-append (car held)
+                       (string-append "> { &self.a" (string-append (i64->string i) " } }"))))))))))))
+                 (put-nl n acc)))))))
 
 "Every writer of an expression takes `n`, the indentation of the line it
  starts on, and `t`, where the expression stands."
@@ -1133,6 +1216,7 @@
                     (acc (put ">(" acc))
                     (acc (put-args c e (cdr xs) 0 n acc)))
                (put ")" acc)))
+            ((and (string=? h "letrena") (string=? (local-kind h (ctx-locals c)) "")) (put-letrena c e xs n acc))
             ((or (string=? h "letrec") (string=? h "letregion")) (put-block c (list e) n t acc))
             ((abort? c e)
              "An abort: an early return, where a `Result` is returned; else no
@@ -1172,6 +1256,66 @@
                                  (acc (put-arg-names 0 lift acc)))
                             (put ")))" acc)))))
             (put-args c e (cdr xs) (i64+ i 1) n (if (null? (cdr xs)) acc (put ", " acc)))))))
+
+  (put-letrena (subr kfx (ctx sexp sexps i64 chars) chars)
+    (lambda (c e xs n acc)
+      "`(letrena r body ...)` (C30): a block that declares the region's type,
+       an arena for each type made in it, and a `fn` of the region's
+       lifetime, the body, given the arena and the locals the body names;
+       makes the arena; and calls the `fn` with them. The arena is dropped
+       when the block ends, by a return or an abort."
+      (let* ((r (sym-name (car xs)))
+             (life (string-append "'" (mangle r)))
+             (region (string-append "Region_" (camel r)))
+             (outer (letrena-lifetimes (ctx-locals c)))
+             (lives (words-of-sep (cons life outer) ", "))
+             (names (split-words (fact-with c e "letrena-names ")))
+             (types (read-all (string-chars (fact-with c e "letrena-locals ")) "" 1))
+             (fallible (fact-at? c e "fallible"))
+             (inner (with-locals c (cons (string-append "%letrena " r) (cons (if fallible "%fallible" "%infallible") (cons r names)))))
+             (held (distinct-strings (map (lambda ((m sexp)) (held-type inner r m)) (allocations r (cdr xs)))))
+             (n1 (i64+ n 1))
+             (acc (put-nl n1 (put "{" acc)))
+             (acc (put (string-append "#[derive(Default)] struct " (string-append region (string-append "<" (string-append lives "> {")))) acc))
+             (acc (put-held-fields held 0 acc))
+             (acc (put (string-append " phantom_: std::marker::PhantomData<(" (string-append (words-of-sep (map (lambda ((l string)) (string-append "&" (string-append l " ()"))) (cons life outer)) ", ") ",)> }")) acc))
+             (acc (put-held-impls held 0 region lives n1 acc))
+             (acc (put-nl n1 acc))
+             (acc (put (string-append "fn letrena__" (string-append (mangle r) (string-append "<" (string-append (words-of-sep (onto outer (list life)) ", ") ">(")))) acc))
+             (acc (put (string-append (mangle r) (string-append ": &" (string-append life (string-append " " (string-append region (string-append "<" (string-append lives ">"))))))) acc))
+             (acc (put-letrena-params inner names types acc))
+             (acc (put ") -> " acc))
+             (acc (if fallible
+                      (put ", Unwind>" (put-type inner (car (read-all (string-chars (fact-with c e "letrena-type ")) "" 1)) (put "Result<" acc)))
+                      (put-type inner (car (read-all (string-chars (fact-with c e "letrena-type ")) "" 1)) acc)))
+             (acc (put " " acc))
+             (acc (put-block inner (cdr xs) n1 (if fallible (ok-value) (value)) acc))
+             (acc (put-nl n1 acc))
+             (acc (put (string-append "let " (string-append (mangle r) (string-append "__arena = " (string-append region "::default();")))) acc))
+             (acc (put-nl n1 acc))
+             (acc (put (string-append "letrena__" (string-append (mangle r) (string-append "(&" (string-append (mangle r) "__arena")))) acc))
+             (acc (put-sep (lambda ((x string) acc) (put-var c x (put ", " acc))) "" names acc))
+             (acc (put ")" acc))
+             (acc (cond ((not fallible) acc)
+                        ((fallible-here? c) (put "?" acc))
+                        (else (put ".unwrap_or_else(|u| unreachable_unwind(u))" acc)))))
+        (put "}" (put-nl n acc)))))
+
+  (put-letrena-params (subr kfx (ctx strings sexps chars) chars)
+    (lambda (c names types acc)
+      (if (or (null? names) (null? types))
+          acc
+          (put-letrena-params c (cdr names) (cdr types)
+                              (put-type c (car types) (put ": " (put (mangle (car names)) (put ", " acc))))))))
+
+  (held-type (subr kfx (ctx string sexp) string)
+    (lambda (c r call)
+      "What an allocation in region `r` makes, as Rust's type: a pair,
+       `Cons<'r, T>`, or a reference's cell, `Cell<T>`."
+      (let ((t (car (read-all (string-chars (fact-with c call "rheld ")) "" 1))))
+        (if (head-is? call "rcons")
+            (string-append "Cons<'" (string-append (mangle r) (string-append ", " (string-append (rev->string (put-type c t nil)) ">"))))
+            (string-append "std::cell::Cell<" (string-append (rev->string (put-type c t nil)) ">"))))))
 
   (put-prompt (subr kfx (ctx sexp sexps i64 chars) chars)
     (lambda (c e xs n acc)

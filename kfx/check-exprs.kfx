@@ -57,6 +57,14 @@
           nil
           (cons (lst (list (sym (car ls) "" 0) (ty-sexp v s (car ts))) "" 0 0) (fields-sexp v s (cdr ls) (cdr ts)))))))
 
+(define-rec
+  (distinct (subr kfx (strings) strings)
+    (lambda (xs)
+      "`xs`, each once, in the order of its last."
+      (cond ((null? xs) nil)
+            ((string-member? (car xs) (cdr xs)) (distinct (cdr xs)))
+            (else (cons (car xs) (distinct (cdr xs))))))))
+
 "Turbofish: the types a poly procedure is called at, and a `nil`'s or an
  empty list's element, which rustc may find nothing else to infer from.
  Noted as inference variables, `turbofish-metas ?k ...`, at the call's or
@@ -92,15 +100,18 @@
 
 (define settle-facts (subr kfx (st) facts)
   (lambda (s)
-    "A definition's facts, its turbofish settled."
+    "A definition's facts, those of types settled: `%metas what ?k ...`
+     is `what T ...`."
     (map (lambda ((f fact))
            (tagcase f
              (fact (file pos what)
-               (if (has-prefix? what "turbofish-metas ")
-                   (fact file pos
-                         (string-append "turbofish "
-                           (words-of (map (lambda ((m sexp)) (show-sexp (settled-sexp s (ty-meta (meta-number (sym-name m))) #f)))
-                                          (read-all (string-chars (after-prefix what "turbofish-metas ")) "" 1)))))
+               (if (has-prefix? what "%metas ")
+                   (let ((ws (read-all (string-chars (after-prefix what "%metas ")) "" 1)))
+                     (fact file pos
+                           (string-append (sym-name (car ws))
+                             (string-append " "
+                               (words-of (map (lambda ((m sexp)) (show-sexp (settled-sexp s (ty-meta (meta-number (sym-name m))) #f)))
+                                              (cdr ws)))))))
                    f))))
          (st-facts s))))
 
@@ -122,14 +133,18 @@
                     (ty-meta (k) (tagcase (fresh-for (solve s k other) (cdr ts)) (fresh-metas (ks s) (fresh-metas (cons k ks) s))))
                     (else other2 (fresh-metas nil s)))))))))))
 
+(define note-types (subr kfx (st string i64 string tys) st)
+  (lambda (s file pos what ts)
+    "That the datum at `file`, `pos` has `what`, types `ts`, settled with
+     the definition: `what T ...`."
+    (tagcase (fresh-for s ts)
+      (fresh-metas (ks s)
+        (note-fact s file pos (string-append "%metas " (string-append what (string-append " " (words-of (map meta-name ks))))))))))
+
 (define note-turbofish (subr kfx (st string i64 tys) st)
   (lambda (s file pos ts)
     "That the datum at `file`, `pos` is written at types `ts`."
-    (if (null? ts)
-        s
-        (tagcase (fresh-for s ts)
-          (fresh-metas (ks s)
-            (note-fact s file pos (string-append "turbofish-metas " (words-of (map meta-name ks)))))))))
+    (if (null? ts) s (note-types s file pos "turbofish" ts))))
 
 (define binder-metas (subr kfx (i64 i64 (listof i64 acyclic)) (listof i64 acyclic))
   (lambda (from to regions)
@@ -608,6 +623,8 @@
                        (cond ((or (string=? wher "module")
                                   (not (null? (module-spec v (tagcase sc (scheme (tv t) t))))))
                               (refuse v (string-append "a module as a value: KFX's modules are Rust's, opened by with: " name)))
+                             ((tagcase sc (scheme (tv t) (tagcase t (ty-data (d args) (string=? d "%place")) (else other #f))))
+                              (refuse v (string-append "a place as a value, which KFX gives only to rcons and rnew yet: " name)))
                              ((tagcase sc (scheme (tv t) (tagcase t (ty-proc (es ps r) (any? (lambda ((p ty)) (not (null? (module-spec v p)))) ps)) (else other #f))))
                               (refuse v (string-append "a procedure of a module parameter, a Rust generic fn, named as a value: " name)))
                              (else
@@ -736,6 +753,7 @@
                      (let ((t (tagcase (walk s t) (ty-nat () (ty-int)) (else other t))))
                        (with-effs (check v s e (ty-list t (ty-rconst "%fresh"))) es0)))))))
             ((control-form? h) (body-form v s h xs nil))
+            ((string=? h "letrena") (letrena-form v s xs nil))
             ((string=? h "and") (bools v s xs))
             ((string=? h "or") (bools v s xs))
             (else (synth-call v s h xs nil)))))
@@ -743,6 +761,7 @@
   (check-form (subr kfx (cv st sexp string sexps ty) res)
     (lambda (v s e h xs expected)
       (cond ((control-form? h) (body-form v s h xs (list expected)))
+            ((string=? h "letrena") (letrena-form v s xs (list expected)))
             ((string=? h "prompt") (prompt-form v s xs (list expected)))
             ((string=? h "%found") (check-by-synth v s e expected))
             ((string=? h "product") (product-form v s xs (list expected)))
@@ -1022,6 +1041,93 @@
                     (refuse v (string-append "a letregion whose value's type mentions its region " r))
                     (res t (masked es name) s))))))))
 
+  (letrena-form (subr kfx (cv st sexps tys) res)
+    (lambda (v s xs expected)
+      "`(letrena r body ...)`: a region whose data the body makes in an arena
+       (`rcons`, `rnew`), freed when the body ends; typed as a `letregion`
+       is, and `r` the region's place, `(place r)`, as FX-26 has it. In Rust
+       a `fn` of the region's lifetime, of the arena and the locals the body
+       names: what it is found to be, and they, are noted for the emitter.
+       For now the place is given only to `rcons` and `rnew`, which make in
+       the place's own region, and no letrena is in a poly over types."
+      (cond ((or (i64< (size xs) 2) (tagcase (car xs) (sym (n f p) #f) (else other #t)))
+             (refuse v "(letrena r body ...)"))
+            ((any? (lambda ((t string)) (not (has-prefix? t "'"))) (cv-tvars v))
+             (refuse v "a letrena in a procedure poly over types, which KFX does not write yet"))
+            (else
+             (let* ((r (sym-name (car xs)))
+                    (name (string-append "'" r))
+                    (forms (cdr xs))
+                    (used (concat (map (lambda ((n string))
+                                         (let ((found (find-bind n (cv-binds v))))
+                                           (if (null? found)
+                                               nil
+                                               (tagcase (car found)
+                                                 (bind (b sc wher)
+                                                   (if (or (string=? wher "local") (string=? wher "rec") (string=? wher "ends"))
+                                                       (the binds (list (car found)))
+                                                       nil))))))
+                                       (distinct (concat (map (lambda ((n string)) (if (string=? n (sym-name (car xs))) nil (the strings (list n))))
+                                                              (names-in-all forms)))))))
+                    (types (map (lambda ((b bind)) (tagcase b (bind (n sc w) (tagcase sc (scheme (tv t) t))))) used)))
+               (cond ((string-member? name (cv-tvars v))
+                      (refuse v (string-append "a letrena of a region named already: " r)))
+                     ((any? (lambda ((t ty)) (place-region s t)) types)
+                      (refuse v "a letrena whose body names another's place, which KFX does not write yet"))
+                     (else
+                      (tagcase (found-then-fitted v (body (with-binds (with-tvars v (list name))
+                                                                       (list (local v r (ty-data "%place" (list (ty-var name))))))
+                                                          s forms nil)
+                                                  expected)
+                        (res (t es s)
+                          (if (mentions? s t name)
+                              (refuse v (string-append "a letrena whose value's type mentions its region " r))
+                              (let* ((s (note-types s (cv-file v) (cv-pos v) "letrena-type" (list t)))
+                                     (s (note-types s (cv-file v) (cv-pos v) "letrena-locals" types))
+                                     (s (note-fact s (cv-file v) (cv-pos v)
+                                                   (string-append "letrena-names " (words-of (map (lambda ((b bind)) (tagcase b (bind (n sc w) n))) used)))))
+                                     (s (if (escapes? es) (note-fact s (cv-file v) (cv-pos v) "fallible") s)))
+                                (res t (masked es name) s))))))))))))
+
+  (place-region (subr kfx (st ty) bool)
+    (lambda (s t)
+      "Whether `t` is a place's type."
+      (tagcase (walk s t) (ty-data (d args) (string=? d "%place")) (else other #f))))
+
+  (place-of (subr kfx (cv st sexp) ty)
+    (lambda (v s e)
+      "The region of the place `e` names, given to an allocator."
+      (let ((found (tagcase e (sym (n f p) (find-bind n (cv-binds v))) (else other nil))))
+        (if (null? found)
+            (refuse v "an allocator's place is a letrena's name")
+            (tagcase (car found)
+              (bind (n sc w)
+                (tagcase sc
+                  (scheme (tv t)
+                    (tagcase (walk s t)
+                      (ty-data (d args) (if (string=? d "%place") (car args) (refuse v (string-append n " is no place"))))
+                      (else other (refuse v (string-append n " is no place"))))))))))))
+
+  (region-alloc-call (subr kfx (cv st string sexps tys) res)
+    (lambda (v s h args expected)
+      "`(rcons r x xs)`, `(rnew r v)`: made in the arena of the place `r`, at
+       its region (FX-26 allows one within it, which KFX does not write yet).
+       What is made is noted, for the arena's type."
+      (cond ((not (i64= (size args) (if (string=? h "rcons") 3 2)))
+             (refuse v (string-append h (if (string=? h "rcons") " takes a place and two values" " takes a place and a value"))))
+            (else
+             (let ((r (place-of v s (car args))))
+               (tagcase (fresh s)
+                 (res (m es0 s)
+                   (let* ((made (if (string=? h "rcons") (ty-list m r) (ty-ref m r)))
+                          (s (if (null? expected) s (fits v s made (car expected)))))
+                     (tagcase (if (string=? h "rcons")
+                                  (call-args v s (cdr args) (list m (ty-list m r)) nil)
+                                  (call-args v s (cdr args) (list m) nil))
+                       (res (u es s)
+                         (res made (effs-union (list (string-append "alloc:" (region-string s r))) es)
+                              (note-types s (cv-file v) (cv-pos v) "rheld" (list m)))))))))))))
+
   (letrec-lambdas (subr kfx (cv st sexps) res)
     (lambda (v s bindings)
       (if (null? bindings)
@@ -1110,6 +1216,7 @@
                (refuse v (string-append "(" (string-append h " ...) is FX-26's form, which KFX does not have, or a call of a local named by that keyword"))))
               ((and (null? found) (string=? h "abort-current-continuation")) (abort-call v s args))
               ((and (null? found) (string=? h "make-continuation-prompt-tag")) (make-tag-call v s args expected))
+              ((and (null? found) (or (string=? h "rcons") (string=? h "rnew"))) (region-alloc-call v s h args expected))
               ((and (null? found)
                     (or (string=? h "call-with-composable-continuation") (string=? h "call-with-current-continuation")
                         (string=? h "call/cc")))

@@ -1,0 +1,6 @@
+"A letrena in a procedure poly over types: its fn would need the type
+ parameters again, which KFX does not write yet."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f (poly ((a type)) (subr kfx (a) a))
+  (lambda (x) (letrena r (let ((xs (rcons r x nil))) (car xs)))))
+(f (the i64 1))

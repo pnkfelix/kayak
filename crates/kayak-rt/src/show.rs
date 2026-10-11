@@ -93,7 +93,7 @@ impl Show for Str {
 }
 
 /// A list, `(1 2 3)`; `nil`, `()`.
-impl<T: Show> Show for Option<&'static Cons<T>> {
+impl<T: Show> Show for Option<&Cons<'_, T>> {
     fn show(&self, out: &mut String) {
         out.push('(');
         let mut xs = *self;

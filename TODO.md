@@ -134,6 +134,15 @@ Escapes are done (`DONE.md`, C18). Left:
     than as a call's argument or `the`'s (`list`, branches, a product): a
     Rust error, the closure not lifted to return `Ok`;
 
+- **A `cons`'s or `rcons`'s value is a pair to FX-26**, `(pairof T (listof
+  T r) r)`, which it will not give where a procedure value wants a list
+  (`(f (cons 1 (cons 2 nil)))`, `f` a local lambda): KFX, whose `cons` is
+  a list's, accepts it (K1). Nor does FX-26 type a literal in a pair
+  constructor at what the list's type says (`(the i64 (car (cons 1
+  nil)))`, `(rcons r k (rcons r 1 nil))`); KFX does.
+- **`letrena`'s rest** (C30): places passed to procedures (`Holds<T>`
+  bounds), regions within a place, `letrena` in a poly over types, the
+  other allocators, `letreap`; then bloblets and blobrefs.
 - **`null?` of an argument whose element nothing says**, other than a name
   or an `error` (`(null? (car (cons nil nil)))`), is refused; FX-26, whose
   `null?`'s binder is its argument's whole type, accepts it (C29).

@@ -1,0 +1,5 @@
+"A letrena's value whose type mentions its region: it would outlive it."
+(define-effect kfx (maxeff (read @globals) spin))
+(define leak (subr kfx () i64)
+  (lambda () (car (letrena r (rcons r (the i64 1) nil)))))
+(leak)

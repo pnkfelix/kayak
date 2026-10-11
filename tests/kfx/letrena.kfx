@@ -1,0 +1,57 @@
+"letrena (C30): a region whose data is made in an arena and freed, all at
+ once, when its body ends: in Rust a fn of the region's lifetime, given an
+ arena of each type made in it, and the locals its body names."
+(define-effect kfx (maxeff (read @globals) spin))
+
+"Fixpt's run/arena.fx, at i64: lists built in the region by helpers the
+ body makes, entered and ended a thousand times."
+(define sum-to (subr kfx (i64) i64)
+  (lambda (n)
+    (letrena r
+      (letrec ((build (subr (maxeff (alloc r) spin) (i64 (listof i64 r)) (listof i64 r))
+                 (lambda (i acc) (if (i64= i 0) acc (build (i64- i 1) (rcons r i acc)))))
+               (add-up (subr (maxeff (read r) spin) ((listof i64 r) i64) i64)
+                 (lambda (xs acc) (if (null? xs) acc (add-up (cdr xs) (i64+ acc (car xs)))))))
+        (add-up (build n nil) 0)))))
+
+(define total (subr kfx (i64 i64) i64)
+  (lambda (i acc) (if (i64= i 0) acc (total (i64- i 1) (i64+ acc (sum-to 10))))))
+
+"A heap reference at the region's type (Fixpt's run/regions.fx)."
+(define add-to (subr kfx (i64) i64)
+  (lambda (n)
+    (letrena r
+      (let ((b (the (ref i64 r) (new 0))))
+        (begin (set b (i64+ (get b) n)) (get b))))))
+
+"References and pairs in one region, and a letrena inside it."
+(define tally (subr kfx (i64) i64)
+  (lambda (n)
+    (letrena r
+      (let* ((acc (the (ref i64 r) (rnew r 0)))
+             (cells (rcons r acc (rcons r (rnew r n) nil))))
+        (begin
+          (set acc (i64+ (get acc) (get (car (cdr cells)))))
+          (letrena s
+            (let ((ys (rcons s (get acc) (rcons s n nil))))
+              (i64+ (car ys) (car (cdr ys))))))))))
+
+"An abort out of a letrena's body, which ends its region on the way."
+(define find (subr kfx (i64) i64)
+  (lambda (n)
+    (letregion e
+      (let ((t (the (prompt-tag i64 i64 kfx e) (make-continuation-prompt-tag))))
+        (prompt t
+          (letrena r
+            (let ((xs (rcons r n (rcons r (i64+ n 1) nil))))
+              (if (i64> (car xs) 2) (abort-current-continuation t (car (cdr xs))) (car xs))))
+          (lambda ((v i64)) (i64* v 100)))))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (string-append (i64->string (total 1000 0))
+      (string-append " " (string-append (i64->string (add-to 41))
+        (string-append " " (string-append (i64->string (tally 5))
+          (string-append " " (string-append (i64->string (find 1))
+            (string-append " " (i64->string (find 5))))))))))))
+(main)

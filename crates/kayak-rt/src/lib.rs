@@ -9,6 +9,7 @@
 //! ASCII, so that indexing one that is costs nothing, and indexing one that
 //! is not counts characters (`CLAUDES_CHOICES.md`, C14).
 
+mod arena;
 mod escape;
 mod fixed;
 mod float;
@@ -16,6 +17,7 @@ mod int;
 mod once;
 mod show;
 
+pub use arena::*;
 pub use escape::*;
 pub use fixed::*;
 pub use float::*;
@@ -50,22 +52,28 @@ impl std::fmt::Debug for Str {
     }
 }
 
-/// `(ref T R)`: a cell, which any alias may read and write, as FX-26's may.
-pub type Ref<T> = &'static Cell<T>;
+/// `(ref T R)`: a cell, which any alias may read and write, as FX-26's may;
+/// in a `letrena`'s region, `RefAt<'r, T>`, borrowed from its arena, and
+/// in the heap, which is never freed, `Ref<T>`.
+pub type RefAt<'r, T> = &'r Cell<T>;
+pub type Ref<T> = RefAt<'static, T>;
 
 /// `(flatarrayof T R)`: a flat array, raw elements in a row, each a cell.
 pub type FlatArray<T> = &'static [Cell<T>];
 
-pub struct Cons<T: 'static> {
+pub struct Cons<'r, T> {
     pub car: T,
-    pub cdr: List<T>,
+    pub cdr: ListAt<'r, T>,
 }
 
-/// `(listof T R)`: `nil`, or a pair whose tail is the list again.
-pub type List<T> = Option<&'static Cons<T>>;
+/// `(listof T R)`: `nil`, or a pair whose tail is the list again; in a
+/// `letrena`'s region, `ListAt<'r, T>`, and in the heap, `List<T>`.
+pub type ListAt<'r, T> = Option<&'r Cons<'r, T>>;
+pub type List<T> = ListAt<'static, T>;
 
-/// Allocation: the heap is never freed.
-pub fn alloc<T>(v: T) -> &'static T {
+/// Allocation: the heap is never freed, so what it holds lives as long as
+/// anything wants, `'static` or a region's `'r`.
+pub fn alloc<'a, T: 'a>(v: T) -> &'a T {
     Box::leak(Box::new(v))
 }
 
@@ -97,25 +105,23 @@ pub(crate) fn fail(message: &str) -> ! {
 // `&'static dyn Fn` by the helper of its arity, so that its parameters'
 // and result's types are found from where it is used.
 
-pub fn lambda0<R>(f: impl Fn() -> R + 'static) -> &'static dyn Fn() -> R {
+pub fn lambda0<'a, R>(f: impl Fn() -> R + 'a) -> &'a dyn Fn() -> R {
     alloc(f)
 }
 
-pub fn lambda1<A, R>(f: impl Fn(A) -> R + 'static) -> &'static dyn Fn(A) -> R {
+pub fn lambda1<'a, A, R>(f: impl Fn(A) -> R + 'a) -> &'a dyn Fn(A) -> R {
     alloc(f)
 }
 
-pub fn lambda2<A, B, R>(f: impl Fn(A, B) -> R + 'static) -> &'static dyn Fn(A, B) -> R {
+pub fn lambda2<'a, A, B, R>(f: impl Fn(A, B) -> R + 'a) -> &'a dyn Fn(A, B) -> R {
     alloc(f)
 }
 
-pub fn lambda3<A, B, C, R>(f: impl Fn(A, B, C) -> R + 'static) -> &'static dyn Fn(A, B, C) -> R {
+pub fn lambda3<'a, A, B, C, R>(f: impl Fn(A, B, C) -> R + 'a) -> &'a dyn Fn(A, B, C) -> R {
     alloc(f)
 }
 
-pub fn lambda4<A, B, C, D, R>(
-    f: impl Fn(A, B, C, D) -> R + 'static,
-) -> &'static dyn Fn(A, B, C, D) -> R {
+pub fn lambda4<'a, A, B, C, D, R>(f: impl Fn(A, B, C, D) -> R + 'a) -> &'a dyn Fn(A, B, C, D) -> R {
     alloc(f)
 }
 
@@ -137,35 +143,35 @@ impl<T: Copy> Knot<T> {
     }
 }
 
-pub fn knot<T: Copy + 'static>() -> &'static Knot<T> {
+pub fn knot<'a, T: Copy + 'a>() -> &'a Knot<T> {
     alloc(Knot(Cell::new(None)))
 }
 
 // Lists.
 
-pub fn nil<T>() -> List<T> {
+pub fn nil<'r, T>() -> ListAt<'r, T> {
     None
 }
 
-pub fn cons<T>(car: T, cdr: List<T>) -> List<T> {
+pub fn cons<'r, T>(car: T, cdr: ListAt<'r, T>) -> ListAt<'r, T> {
     Some(alloc(Cons { car, cdr }))
 }
 
-pub fn car<T: Copy>(xs: List<T>) -> T {
+pub fn car<T: Copy>(xs: ListAt<'_, T>) -> T {
     match xs {
         Some(p) => p.car,
         None => fail("car: nil"),
     }
 }
 
-pub fn cdr<T>(xs: List<T>) -> List<T> {
+pub fn cdr<'r, T>(xs: ListAt<'r, T>) -> ListAt<'r, T> {
     match xs {
         Some(p) => p.cdr,
         None => fail("cdr: nil"),
     }
 }
 
-pub fn null_p<T>(xs: List<T>) -> bool {
+pub fn null_p<T>(xs: ListAt<'_, T>) -> bool {
     xs.is_none()
 }
 
@@ -277,15 +283,15 @@ pub fn i64_to_string(n: i64) -> Str {
 // Mutable data: references and flat arrays. Regions are erased (every
 // one's place is the heap, so every reference `'static`); effects too.
 
-pub fn new<T: Copy>(v: T) -> Ref<T> {
+pub fn new<'r, T: Copy>(v: T) -> RefAt<'r, T> {
     alloc(Cell::new(v))
 }
 
-pub fn get<T: Copy>(r: Ref<T>) -> T {
+pub fn get<T: Copy>(r: RefAt<'_, T>) -> T {
     r.get()
 }
 
-pub fn set<T: Copy>(r: Ref<T>, v: T) {
+pub fn set<T: Copy>(r: RefAt<'_, T>, v: T) {
     r.set(v)
 }
 
@@ -372,11 +378,11 @@ pub fn string_ref(s: Str, i: Int) -> char {
     string_ref_i64(s, int_to_i64(i))
 }
 
-pub fn length<T>(xs: List<T>) -> Int {
+pub fn length<T>(xs: ListAt<'_, T>) -> Int {
     list_length(xs)
 }
 
-pub fn list_length<T>(mut xs: List<T>) -> Int {
+pub fn list_length<T>(mut xs: ListAt<'_, T>) -> Int {
     let mut n = 0i64;
     while let Some(p) = xs {
         n += 1;
@@ -385,7 +391,7 @@ pub fn list_length<T>(mut xs: List<T>) -> Int {
     i64_to_int(n)
 }
 
-pub fn reverse<T: Copy>(mut xs: List<T>) -> List<T> {
+pub fn reverse<'b, T: Copy + 'b>(mut xs: ListAt<'_, T>) -> ListAt<'b, T> {
     let mut out = nil();
     while let Some(p) = xs {
         out = cons(p.car, out);
@@ -394,7 +400,7 @@ pub fn reverse<T: Copy>(mut xs: List<T>) -> List<T> {
     out
 }
 
-pub fn append<T: Copy>(xs: List<T>, ys: List<T>) -> List<T> {
+pub fn append<'b, T: Copy + 'b>(xs: ListAt<'_, T>, ys: ListAt<'b, T>) -> ListAt<'b, T> {
     let mut items = Vec::new();
     let mut p = xs;
     while let Some(c) = p {

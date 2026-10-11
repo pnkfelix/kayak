@@ -160,6 +160,20 @@ pub fn fields_sexp(v: &'static Cv, s: &'static St, ls: Strings, ts: Tys) -> Sexp
     }
 }
 
+/// `xs`, each once, in the order of its last.
+pub fn distinct(mut xs: Strings) -> Strings {
+    loop {
+        if null_p(xs) {
+            return nil::<Str>();
+        } else if string_member_p(car(xs), cdr(xs)) {
+            xs = cdr(xs);
+            continue;
+        } else {
+            return cons(car(xs), distinct(cdr(xs)));
+        }
+    }
+}
+
 // Turbofish: the types a poly procedure is called at, and a `nil`'s or an
 // empty list's element, which rustc may find nothing else to infer from.
 // Noted as inference variables, `turbofish-metas ?k ...`, at the call's or
@@ -236,16 +250,18 @@ pub fn settled_fields(s: &'static St, ls: Strings, ts: Tys) -> Sexps {
     }
 }
 
-/// A definition's facts, its turbofish settled.
+/// A definition's facts, those of types settled: `%metas what ?k ...`
+/// is `what T ...`.
 pub fn settle_facts(s: &'static St) -> Facts {
     map(lambda1(move |f: &'static Fact| {
         let tagcase_ = f;
         match *tagcase_ {
             Fact::Fact(file, pos, what) => {
-                if has_prefix_p(what, str_lit("turbofish-metas ")) {
-                    fact(file, pos, string_append(str_lit("turbofish "), words_of(map(lambda1(move |m: &'static Sexp| {
+                if has_prefix_p(what, str_lit("%metas ")) {
+                    let ws = read_all(string_chars(after_prefix(what, str_lit("%metas "))), str_lit(""), 1i64);
+                    fact(file, pos, string_append(sym_name(car(ws)), string_append(str_lit(" "), words_of(map(lambda1(move |m: &'static Sexp| {
                         show_sexp(settled_sexp(s, ty_meta(meta_number(sym_name(m))), false))
-                    }), read_all(string_chars(after_prefix(what, str_lit("turbofish-metas "))), str_lit(""), 1i64)))))
+                    }), cdr(ws))))))
                 } else {
                     f
                 }
@@ -305,17 +321,23 @@ pub fn fresh_for(s: &'static St, ts: Tys) -> &'static FreshMetas {
     }
 }
 
+/// That the datum at `file`, `pos` has `what`, types `ts`, settled with
+/// the definition: `what T ...`.
+pub fn note_types(s: &'static St, file: Str, pos: i64, what: Str, ts: Tys) -> &'static St {
+    let tagcase_ = fresh_for(s, ts);
+    match *tagcase_ {
+        FreshMetas::FreshMetas(ks, s) => {
+            note_fact(s, file, pos, string_append(str_lit("%metas "), string_append(what, string_append(str_lit(" "), words_of(map(&meta_name, ks))))))
+        }
+    }
+}
+
 /// That the datum at `file`, `pos` is written at types `ts`.
 pub fn note_turbofish(s: &'static St, file: Str, pos: i64, ts: Tys) -> &'static St {
     if null_p(ts) {
         s
     } else {
-        let tagcase_ = fresh_for(s, ts);
-        match *tagcase_ {
-            FreshMetas::FreshMetas(ks, s) => {
-                note_fact(s, file, pos, string_append(str_lit("turbofish-metas "), words_of(map(&meta_name, ks))))
-            }
-        }
+        note_types(s, file, pos, str_lit("turbofish"), ts)
     }
 }
 
@@ -1358,6 +1380,24 @@ pub fn synth_name(v: &'static Cv, s: &'static St, name: Str) -> &'static Res {
                             Scheme::Scheme(tv, t) => {
                                 let tagcase_ = t;
                                 match *tagcase_ {
+                                    Ty::TyData(d, args) => {
+                                        string_eq_p(d, str_lit("%place"))
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        false
+                                    }
+                                }
+                            }
+                        }
+                    } {
+                        match refuse(v, string_append(str_lit("a place as a value, which KFX gives only to rcons and rnew yet: "), name)) {}
+                    } else if {
+                        let tagcase_ = sc;
+                        match *tagcase_ {
+                            Scheme::Scheme(tv, t) => {
+                                let tagcase_ = t;
+                                match *tagcase_ {
                                     Ty::TyProc(es, ps, r) => {
                                         any_p(lambda1(move |p: &'static Ty| {
                                             not(null_p(module_spec(v, p)))
@@ -1660,6 +1700,8 @@ pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
         }
     } else if control_form_p(h) {
         body_form(v, s, h, xs, nil::<&'static Ty>())
+    } else if string_eq_p(h, str_lit("letrena")) {
+        letrena_form(v, s, xs, nil::<&'static Ty>())
     } else if string_eq_p(h, str_lit("and")) {
         bools(v, s, xs)
     } else if string_eq_p(h, str_lit("or")) {
@@ -1672,6 +1714,8 @@ pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
 pub fn check_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: Sexps, expected: &'static Ty) -> &'static Res {
     if control_form_p(h) {
         body_form(v, s, h, xs, kayak_rt::cons(expected, kayak_rt::nil()))
+    } else if string_eq_p(h, str_lit("letrena")) {
+        letrena_form(v, s, xs, kayak_rt::cons(expected, kayak_rt::nil()))
     } else if string_eq_p(h, str_lit("prompt")) {
         prompt_form(v, s, xs, kayak_rt::cons(expected, kayak_rt::nil()))
     } else if string_eq_p(h, str_lit("%found")) {
@@ -2244,6 +2288,209 @@ pub fn letregion_form(v: &'static Cv, s: &'static St, r: Str, forms: Sexps, expe
     }
 }
 
+/// `(letrena r body ...)`: a region whose data the body makes in an arena
+/// (`rcons`, `rnew`), freed when the body ends; typed as a `letregion`
+/// is, and `r` the region's place, `(place r)`, as FX-26 has it. In Rust
+/// a `fn` of the region's lifetime, of the arena and the locals the body
+/// names: what it is found to be, and they, are noted for the emitter.
+/// For now the place is given only to `rcons` and `rnew`, which make in
+/// the place's own region, and no letrena is in a poly over types.
+pub fn letrena_form(v: &'static Cv, s: &'static St, xs: Sexps, expected: Tys) -> &'static Res {
+    if (i64_lt(size(xs), 2i64) || {
+        let tagcase_ = car(xs);
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                false
+            }
+            _ => {
+                let other = tagcase_;
+                true
+            }
+        }
+    }) {
+        match refuse(v, str_lit("(letrena r body ...)")) {}
+    } else if any_p(lambda1(move |t: Str| {
+        not(has_prefix_p(t, str_lit("'")))
+    }), cv_tvars(v)) {
+        match refuse(v, str_lit("a letrena in a procedure poly over types, which KFX does not write yet")) {}
+    } else {
+        let r = sym_name(car(xs));
+        let name = string_append(str_lit("'"), r);
+        let forms = cdr(xs);
+        let used = concat(map(lambda1(move |n: Str| {
+            let found = find_bind(n, cv_binds(v));
+            if null_p(found) {
+                nil::<&'static Bind>()
+            } else {
+                let tagcase_ = car(found);
+                match *tagcase_ {
+                    Bind::Bind(b, sc, wher) => {
+                        if (string_eq_p(wher, str_lit("local")) || string_eq_p(wher, str_lit("rec")) || string_eq_p(wher, str_lit("ends"))) {
+                            the::<Binds>(kayak_rt::cons(car(found), kayak_rt::nil()))
+                        } else {
+                            nil::<&'static Bind>()
+                        }
+                    }
+                }
+            }
+        }), distinct(concat(map(lambda1(move |n: Str| {
+            if string_eq_p(n, sym_name(car(xs))) {
+                nil::<Str>()
+            } else {
+                the::<Strings>(kayak_rt::cons(n, kayak_rt::nil()))
+            }
+        }), names_in_all(forms))))));
+        let types = map(lambda1(move |b: &'static Bind| {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Bind::Bind(n, sc, w) => {
+                    let tagcase_ = sc;
+                    match *tagcase_ {
+                        Scheme::Scheme(tv, t) => {
+                            t
+                        }
+                    }
+                }
+            }
+        }), used);
+        if string_member_p(name, cv_tvars(v)) {
+            match refuse(v, string_append(str_lit("a letrena of a region named already: "), r)) {}
+        } else if any_p(lambda1(move |t: &'static Ty| {
+            place_region(s, t)
+        }), types) {
+            match refuse(v, str_lit("a letrena whose body names another's place, which KFX does not write yet")) {}
+        } else {
+            let tagcase_ = found_then_fitted(v, body(with_binds(with_tvars(v, kayak_rt::cons(name, kayak_rt::nil())), kayak_rt::cons(local(v, r, ty_data(str_lit("%place"), kayak_rt::cons(ty_var(name), kayak_rt::nil()))), kayak_rt::nil())), s, forms, nil::<&'static Ty>()), expected);
+            match *tagcase_ {
+                Res::Res(t, es, s) => {
+                    if mentions_p(s, t, name) {
+                        match refuse(v, string_append(str_lit("a letrena whose value's type mentions its region "), r)) {}
+                    } else {
+                        let s = note_types(s, cv_file(v), cv_pos(v), str_lit("letrena-type"), kayak_rt::cons(t, kayak_rt::nil()));
+                        let s = note_types(s, cv_file(v), cv_pos(v), str_lit("letrena-locals"), types);
+                        let s = note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("letrena-names "), words_of(map(lambda1(move |b: &'static Bind| {
+                            let tagcase_ = b;
+                            match *tagcase_ {
+                                Bind::Bind(n, sc, w) => {
+                                    n
+                                }
+                            }
+                        }), used))));
+                        let s = if escapes_p(es) {
+                            note_fact(s, cv_file(v), cv_pos(v), str_lit("fallible"))
+                        } else {
+                            s
+                        };
+                        res(t, masked(es, name), s)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Whether `t` is a place's type.
+pub fn place_region(s: &'static St, t: &'static Ty) -> bool {
+    let tagcase_ = walk(s, t);
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            string_eq_p(d, str_lit("%place"))
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+/// The region of the place `e` names, given to an allocator.
+pub fn place_of(v: &'static Cv, s: &'static St, e: &'static Sexp) -> &'static Ty {
+    let found = {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                find_bind(n, cv_binds(v))
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<&'static Bind>()
+            }
+        }
+    };
+    if null_p(found) {
+        match refuse(v, str_lit("an allocator's place is a letrena's name")) {}
+    } else {
+        let tagcase_ = car(found);
+        match *tagcase_ {
+            Bind::Bind(n, sc, w) => {
+                let tagcase_ = sc;
+                match *tagcase_ {
+                    Scheme::Scheme(tv, t) => {
+                        let tagcase_ = walk(s, t);
+                        match *tagcase_ {
+                            Ty::TyData(d, args) => {
+                                if string_eq_p(d, str_lit("%place")) {
+                                    car(args)
+                                } else {
+                                    match refuse(v, string_append(n, str_lit(" is no place"))) {}
+                                }
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                match refuse(v, string_append(n, str_lit(" is no place"))) {}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// `(rcons r x xs)`, `(rnew r v)`: made in the arena of the place `r`, at
+/// its region (FX-26 allows one within it, which KFX does not write yet).
+/// What is made is noted, for the arena's type.
+pub fn region_alloc_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected: Tys) -> &'static Res {
+    if not(i64_eq(size(args), if string_eq_p(h, str_lit("rcons")) {
+        3i64
+    } else {
+        2i64
+    })) {
+        match refuse(v, string_append(h, if string_eq_p(h, str_lit("rcons")) {
+            str_lit(" takes a place and two values")
+        } else {
+            str_lit(" takes a place and a value")
+        })) {}
+    } else {
+        let r = place_of(v, s, car(args));
+        let tagcase_ = fresh(s);
+        match *tagcase_ {
+            Res::Res(m, es0, s) => {
+                let made = if string_eq_p(h, str_lit("rcons")) {
+                    ty_list(m, r)
+                } else {
+                    ty_ref(m, r)
+                };
+                let s = if null_p(expected) {
+                    s
+                } else {
+                    fits(v, s, made, car(expected))
+                };
+                let tagcase_ = if string_eq_p(h, str_lit("rcons")) {
+                    call_args(v, s, cdr(args), kayak_rt::cons(m, kayak_rt::cons(ty_list(m, r), kayak_rt::nil())), nil::<i64>())
+                } else {
+                    call_args(v, s, cdr(args), kayak_rt::cons(m, kayak_rt::nil()), nil::<i64>())
+                };
+                match *tagcase_ {
+                    Res::Res(u, es, s) => {
+                        res(made, effs_union(kayak_rt::cons(string_append(str_lit("alloc:"), region_string(s, r)), kayak_rt::nil()), es), note_types(s, cv_file(v), cv_pos(v), str_lit("rheld"), kayak_rt::cons(m, kayak_rt::nil())))
+                    }
+                }
+            }
+        }
+    }
+}
+
 pub fn letrec_lambdas(v: &'static Cv, s: &'static St, bindings: Sexps) -> &'static Res {
     if null_p(bindings) {
         res(ty_unit(), nil::<Str>(), s)
@@ -2400,6 +2647,8 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
         abort_call(v, s, args)
     } else if (null_p(found) && string_eq_p(h, str_lit("make-continuation-prompt-tag"))) {
         make_tag_call(v, s, args, expected)
+    } else if (null_p(found) && (string_eq_p(h, str_lit("rcons")) || string_eq_p(h, str_lit("rnew")))) {
+        region_alloc_call(v, s, h, args, expected)
     } else if (null_p(found) && (string_eq_p(h, str_lit("call-with-composable-continuation")) || string_eq_p(h, str_lit("call-with-current-continuation")) || string_eq_p(h, str_lit("call/cc")))) {
         match refuse(v, string_append(h, str_lit(" keeps a continuation, a comefrom, which KFX does not have: Rust has no frames to resume (docs/research/escapes.md)"))) {}
     } else if null_p(found) {
