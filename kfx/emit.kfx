@@ -16,7 +16,8 @@
 (define-datatype family (family string bool strings))
 (define-type families (listof family acyclic))
 
-(define-datatype ctx (ctx strings tagofs strings strings typeds facts families typeds))
+"Modules, by name: each `(module item ...)` (check.kfx, C19)."
+(define-datatype ctx (ctx strings tagofs strings strings typeds facts families typeds typeds))
 
 (define filter-typed (subr kfx (string typeds) typeds)
   (lambda (name xs)
@@ -25,7 +26,7 @@
           (else (filter-typed name (cdr xs))))))
 
 (define ctx-effects (subr kfx (ctx) typeds)
-  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms es) es))))
+  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms es mods) es))))
 
 (define-rec
   (fallible-effect? (subr kfx (ctx sexp) bool)
@@ -45,7 +46,7 @@
   (lambda (c file pos what)
     "Whether the checker found `what` about the place `file`, `pos`."
     (tagcase c
-      (ctx (ds ts ks ls xs fs ms es)
+      (ctx (ds ts ks ls xs fs ms es mods)
         (any? (lambda ((f fact))
                 (tagcase f (fact (ff fp fw) (and (i64= fp pos) (string=? fw what) (string=? ff file)))))
               fs)))))
@@ -58,33 +59,98 @@
       (else other #f))))
 
 (define ctx-datatypes (subr kfx (ctx) strings)
-  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms es) ds))))
+  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms es mods) ds))))
 
 (define ctx-tags (subr kfx (ctx) tagofs)
-  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms es) ts))))
+  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms es mods) ts))))
 
 (define ctx-constants (subr kfx (ctx) strings)
-  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms es) ks))))
+  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms es mods) ks))))
 
 (define ctx-locals (subr kfx (ctx) strings)
-  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms es) ls))))
+  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms es mods) ls))))
+
+(define strings-onto (subr kfx (strings strings) strings)
+  (lambda (xs ys) (if (null? xs) ys (strings-onto (cdr xs) (cons (car xs) ys)))))
+
+(define module-items (subr kfx (ctx string) sexps)
+  (lambda (c m)
+    "Module `m`'s items."
+    (tagcase c
+      (ctx (ds ts ks ls xs fs ms es mods)
+        (concat (map (lambda ((x typed)) (tagcase x (typed (n body) (if (string=? n m) (cdr (items body)) nil))))
+                     mods))))))
+
+(define item-values (subr kfx (sexps) strings)
+  (lambda (forms)
+    "The names a module's items give values to: its type's values."
+    (concat
+     (map (lambda ((f sexp))
+            (cond ((or (head-is? f "define") (head-is? f "define*")) (the strings (list (sym-name (second (items f))))))
+                  ((head-is? f "define-rec") (map (lambda ((b sexp)) (sym-name (car (items b)))) (cdr (items f))))
+                  (else nil)))
+          forms))))
+
+(define item-constants (subr kfx (sexps) strings)
+  (lambda (forms)
+    "The names a module's items give values not procedures to."
+    (concat
+     (map (lambda ((f sexp))
+            (if (and (head-is? f "define") (not (procedure? (last (items f)))))
+                (the strings (list (sym-name (second (items f)))))
+                nil))
+          forms))))
+
+(define item-types (subr kfx (sexps) strings)
+  (lambda (forms)
+    (concat
+     (map (lambda ((f sexp))
+            (if (or (head-is? f "define-type") (head-is? f "define-generative"))
+                (the strings (list (sym-name (second (items f)))))
+                nil))
+          forms))))
+
+(define-rec
+  (opener (subr kfx (string strings) string)
+    (lambda (entry ls)
+      "The module whose `with` gave `entry`, a value's or a type's: the
+       innermost, and only if no local inside it hides it."
+      (cond ((null? ls) "")
+            ((string=? (car ls) entry)
+             (let ((rest (after-with (cdr ls)))) rest))
+            (else (opener entry (cdr ls))))))
+  (after-with (subr kfx (strings) string)
+    (lambda (ls)
+      (cond ((null? ls) "")
+            ((has-prefix? (car ls) "%with ") (after-prefix (car ls) "%with "))
+            (else (after-with (cdr ls)))))))
+
+(define-rec
+  (after-in (subr kfx (strings) string)
+    (lambda (ls)
+      (cond ((null? ls) "")
+            ((has-prefix? (car ls) "%in ") (after-prefix (car ls) "%in "))
+            (else (after-in (cdr ls)))))))
+
+(define module-here (subr kfx (ctx) string)
+  (lambda (c)
+    "The module whose items are being written, or ``."
+    (after-in (ctx-locals c))))
 
 (define ctx-typed (subr kfx (ctx string) sexps)
   (lambda (c name)
     "The type the checker found for a definition written with none, as a
      list of one."
     (tagcase c
-      (ctx (ds ts ks ls xs fs ms es)
+      (ctx (ds ts ks ls xs fs ms es mods)
         (map (lambda ((x typed)) (tagcase x (typed (n t) t)))
-             (filter-typed name xs))))))
-
-(define strings-onto (subr kfx (strings strings) strings)
-  (lambda (xs ys) (if (null? xs) ys (strings-onto (cdr xs) (cons (car xs) ys)))))
+             (filter-typed (if (string=? (after-in ls) "") name (string-append (after-in ls) (string-append " " name)))
+                           xs))))))
 
 (define with-locals (subr kfx (ctx strings) ctx)
   (lambda (c names)
     "`c`, where `names` are bound too."
-    (tagcase c (ctx (ds ts ks ls xs fs ms es) (ctx ds ts ks (strings-onto names ls) xs fs ms es)))))
+    (tagcase c (ctx (ds ts ks ls xs fs ms es mods) (ctx ds ts ks (strings-onto names ls) xs fs ms es mods)))))
 
 (define tag-datatype (subr kfx (string tagofs) string)
   (lambda (tag ts)
@@ -134,7 +200,7 @@
 (define find-family-of (subr kfx (ctx string) families)
   (lambda (c name)
     (tagcase c
-      (ctx (ds ts ks ls xs fs ms es)
+      (ctx (ds ts ks ls xs fs ms es mods)
         (let ((found (filter-family name ms))) found)))))
 
 (define put-generics-of (subr kfx (strings bool chars) chars)
@@ -150,19 +216,21 @@
 (define note (subr kfx (sexp ctx) ctx)
   (lambda (form c)
     (tagcase c
-      (ctx (ds ts ks ls xs fs ms es)
+      (ctx (ds ts ks ls xs fs ms es mods)
         (cond ((head-is? form "define-datatype")
                (let ((d (type-head-name (second (items form)))))
                  (ctx (cons d ds) (note-tags (cdr (cdr (items form))) d ts) ks ls xs fs
-                      (note-family (second (items form)) #t ms) es)))
+                      (note-family (second (items form)) #t ms) es mods)))
               ((or (head-is? form "define-type") (head-is? form "define-generative"))
-               (ctx ds ts ks ls xs fs (note-family (second (items form)) #f ms) es))
+               (ctx ds ts ks ls xs fs (note-family (second (items form)) #f ms) es mods))
               ((head-is? form "define-effect")
-               (ctx ds ts ks ls xs fs ms (cons (typed (sym-name (second (items form))) (third (items form))) es)))
+               (ctx ds ts ks ls xs fs ms (cons (typed (sym-name (second (items form))) (third (items form))) es) mods))
+              ((module-def? form)
+               (ctx ds ts ks ls xs fs ms es (cons (typed (sym-name (second (items form))) (third (items form))) mods)))
               ((and (head-is? form "define")
                     (or (i64= (size (items form)) 3) (i64= (size (items form)) 4))
                     (not (procedure? (last (items form)))))
-               (ctx ds ts (cons (sym-name (second (items form))) ks) ls xs fs ms es))
+               (ctx ds ts (cons (sym-name (second (items form))) ks) ls xs fs ms es mods))
               (else c))))))
 
 (define collect (subr kfx (sexps ctx) ctx)
@@ -185,6 +253,19 @@
     (if (null? cs) acc (put-escaped (cdr cs) q (put (escape-char (car cs) q) acc)))))
 
 (define-rec
+  (dotted-from (subr kfx (chars chars) strings)
+    (lambda (seen cs)
+      (cond ((or (null? cs) (null? (cdr cs))) nil)
+            ((and (char=? (car cs) #\.) (char=? (car (cdr cs)) #\.))
+             (the strings (list (rev->string seen) (list->string (cdr (cdr cs))))))
+            (else (dotted-from (cons (car cs) seen) (cdr cs)))))))
+
+(define dotted (subr kfx (string) strings)
+  (lambda (s)
+    "A module's type as the program names it, `m..t`: `m` and `t`; else none."
+    (dotted-from nil (string-chars s))))
+
+(define-rec
   (put-type (subr kfx (ctx sexp chars) chars)
     (lambda (c t acc)
       "A type. A name that is no base type or datatype is a type abbreviation
@@ -201,6 +282,9 @@
                 ((string=? s "void") (put "!" acc))
                 ((string=? s "string") (put "Str" acc))
                 ((string-member? s (ctx-datatypes c)) (put (camel s) (put "&'static " acc)))
+                ((not (string=? (opener (string-append "%type " s) (ctx-locals c)) ""))
+                 (put (camel s) (put "::" (put (mangle (opener (string-append "%type " s) (ctx-locals c))) acc))))
+                ((not (null? (dotted s))) (put (camel (car (cdr (dotted s)))) (put "::" (put (mangle (car (dotted s))) acc))))
                 (else (put (camel s) acc))))
         (lst (xs src-file src-line src-pos)
           (cond ((sym-is? (car xs) "listof")
@@ -218,6 +302,8 @@
                        (put-type c (fourth xs) acc))))
                 ((sym-is? (car xs) "prompt-tag")
                  (put ">" (put-type c (third xs) (put ", " (put-type c (second xs) (put "Tag<" acc))))))
+                ((sym-is? (car xs) "select")
+                 (put (camel (sym-name (third xs))) (put "::" (put (mangle (sym-name (second xs))) acc))))
                 ((sym-is? (car xs) "poly")
                  (error "kfx: a poly type is only a definition's, at its top"))
                 ((tagcase (car xs) (sym (n) (not (null? (find-family-of c n)))) (else other #f))
@@ -251,7 +337,17 @@
     (cond ((null? ls) "")
           ((string=? (car ls) s) "local")
           ((string=? (car ls) (string-append "%knot " s)) "knot")
+          ((string=? (car ls) (string-append "%item " s)) "item")
           (else (local-kind s (cdr ls))))))
+
+(define item-path (subr kfx (ctx string) string)
+  (lambda (c s)
+    "A module's value, named in a `with`: `m::x`, called if a constant."
+    (let ((m (opener (string-append "%item " s) (ctx-locals c))))
+      (string-append (mangle m)
+                     (string-append "::"
+                                    (string-append (mangle s)
+                                                   (if (string-member? s (item-constants (module-items c m))) "()" "")))))))
 
 (define fallible-here? (subr kfx (ctx) bool)
   (lambda (c)
@@ -264,6 +360,7 @@
      procedure a definition made, not a lambda), or a name."
     (let ((kind (local-kind h (ctx-locals c))))
       (cond ((string=? kind "knot") (string-append "(" (string-append (mangle h) "__knot.get())")))
+            ((string=? kind "item") (item-path c h))
             ((and (string=? kind "") (string-member? h (ctx-constants c))) (string-append (mangle h) "()"))
             (else (mangle h))))))
 
@@ -274,6 +371,9 @@
           ((string=? s "#u") (put "()" acc))
           ((string=? (local-kind s (ctx-locals c)) "knot") (put ".get()" (put "__knot" (put (mangle s) acc))))
           ((string=? (local-kind s (ctx-locals c)) "local") (put (mangle s) acc))
+          ((string=? (local-kind s (ctx-locals c)) "item")
+           (let ((m (opener (string-append "%item " s) (ctx-locals c))))
+             (put (item-path c s) (if (string-member? s (item-constants (module-items c m))) acc (put "&" acc)))))
           ((or (string=? s "nil") (string-member? s (ctx-constants c)))
            (put "()" (put (mangle s) acc)))
           (else (put (mangle s) (put "&" acc))))))
@@ -361,7 +461,26 @@
     "The forms whose last parts stand where they do."
     (or (head-is? e "if") (head-is? e "cond") (head-is? e "case") (head-is? e "tagcase")
         (head-is? e "let") (head-is? e "let*") (head-is? e "begin") (head-is? e "letrec")
-        (head-is? e "letregion"))))
+        (head-is? e "letregion") (head-is? e "with"))))
+
+(define with-opened (subr kfx (ctx sexp) ctx)
+  (lambda (c e)
+    "`c` in `(with m ...)`: `m`'s values and types, hiding what is outside."
+    (let* ((m (sym-name (second (items e))))
+           (forms (module-items c m)))
+      (with-locals c (cons (string-append "%with " m)
+                           (onto (map (lambda ((x string)) (string-append "%type " x)) (item-types forms))
+                                 (map (lambda ((x string)) (string-append "%item " x)) (item-values forms))))))))
+
+(define opened-tail (subr kfx (ctx sexp tail) tail)
+  (lambda (c e t)
+    "`t` in `(with m ...)`: a procedure `m` gives, named as the one written,
+     is not it, and a parameter `m` hides is not to be assigned."
+    (let ((names (item-values (module-items c (sym-name (second (items e)))))))
+      (tagcase t
+        (returns (f ps live ok)
+          (if (string-member? f names) (returns f ps #f ok) (hide t names)))
+        (else other t)))))
 
 (define-rec
   (tail-calls? (subr kfx (tail sexp) bool)
@@ -498,6 +617,7 @@
                                 (put-let* c (items (car xs)) n acc)))))
               ((head-is? e "begin") (put-stmts c (cdr (items e)) n t acc))
               ((head-is? e "letregion") (put-stmts c (cdr (cdr (items e))) n t acc))
+              ((head-is? e "with") (put-stmts (with-opened c e) (cdr (cdr (items e))) n (opened-tail c e t) acc))
               ((head-is? e "letrec")
                (let* ((xs (cdr (items e)))
                       (bindings (items (car xs)))
@@ -691,7 +811,10 @@
              (if (null? xs) (put "true" acc) (put ")" (put-joined c xs " && " n (put "(" acc)))))
             ((string=? h "or")
              (if (null? xs) (put "false" acc) (put ")" (put-joined c xs " || " n (put "(" acc)))))
-            ((or (string=? h "begin") (string=? h "let") (string=? h "let*") (string=? h "tagcase"))
+            ((and (string=? h "with") (null? (cdr (cdr xs))))
+             "A `with` of one expression, no block: only its names are its."
+             (put-exp (with-opened c e) (second xs) n (opened-tail c e t) acc))
+            ((or (string=? h "begin") (string=? h "let") (string=? h "let*") (string=? h "tagcase") (string=? h "with"))
              (put-block c (list e) n t acc))
             ((string=? h "case")
              (let* ((acc (put "match " acc))
@@ -898,12 +1021,13 @@
     "A generative type: a new type, a newtype in Rust, and its conversions."
     (let* ((t (type-head-name (car xs)))
            (params (head-type-params (car xs)))
+           (inside (not (string=? (module-here c) "")))
            (acc (put "#[derive(Clone, Copy)]\npub struct " acc))
            (acc (put (camel t) acc))
            (acc (put-generics-of params #t acc))
-           (acc (put "(pub " acc))
+           (acc (put (if inside "(" "(pub ") acc))
            (acc (put-type c (second xs) acc))
-           (acc (put ");\n\npub fn up_" acc))
+           (acc (put (if inside ");\n\nfn up_" ");\n\npub fn up_") acc))
            (acc (put (mangle t) acc))
            (acc (put-generics-of params #t acc))
            (acc (put "(x: " acc))
@@ -913,7 +1037,7 @@
            (acc (put-generics-of params #f acc))
            (acc (put " {\n    " acc))
            (acc (put (camel t) acc))
-           (acc (put "(x)\n}\n\npub fn down_" acc))
+           (acc (put (if inside "(x)\n}\n\nfn down_" "(x)\n}\n\npub fn down_") acc))
            (acc (put (mangle t) acc))
            (acc (put-generics-of params #t acc))
            (acc (put "(x: " acc))
@@ -923,42 +1047,30 @@
            (acc (put-type c (second xs) acc)))
       (put " {\n    x.0\n}\n\n" acc))))
 
-(define put-top (subr kfx (ctx sexp chars) chars)
-  (lambda (c form acc)
-    (let* ((xs (items form))
-           (h (sym-name (car xs))))
-      (cond ((string=? h "define-effect") acc)
-            ((string=? h "define-type")
-             (let* ((acc (put "pub type " acc))
-                    (acc (put (camel (type-head-name (second xs))) acc))
-                    (acc (put-generics-of (head-type-params (second xs)) #f acc))
-                    (acc (put " = " acc))
-                    (acc (put-type c (third xs) acc)))
-               (put ";\n\n" acc)))
-            ((string=? h "define-datatype") (put-datatype c (cdr xs) acc))
-            ((string=? h "define-generative") (put-generative c (cdr xs) acc))
-            ((or (string=? h "define") (string=? h "define*"))
-             (if (i64= (size xs) 4)
-                 (put-define c (second xs) (third xs) (fourth xs) acc)
-                 (put-define c (second xs) (car (ctx-typed c (sym-name (second xs)))) (third xs) acc)))
-            ((string=? h "define-rec") (put-rec c (cdr xs) acc))
-            (else acc)))))
+(define-rec
+  (indented (subr kfx (chars bool chars) chars)
+    (lambda (cs start acc)
+      "Lines, each not empty four spaces in: `acc`, a module's items."
+      (cond ((null? cs) acc)
+            ((char=? (car cs) #\newline) (indented (cdr cs) #t (cons (car cs) acc)))
+            (start (indented (cdr cs) #f (cons (car cs) (put "    " acc))))
+            (else (indented (cdr cs) #f (cons (car cs) acc)))))))
+
+(define-rec
+  (trimmed (subr kfx (chars) chars)
+    (lambda (cs)
+      "Written text, its last newlines dropped."
+      (if (and (not (null? cs)) (char=? (car cs) #\newline)) (trimmed (cdr cs)) cs))))
+
+(define without (subr kfx (strings strings) strings)
+  (lambda (xs ys)
+    (if (null? xs) nil
+        (if (string-member? (car xs) ys) (without (cdr xs) ys) (cons (car xs) (without (cdr xs) ys))))))
 
 (define definition? (subr kfx (sexp) bool)
   (lambda (e)
-    (or (head-is? e "define") (head-is? e "define*") (head-is? e "define-rec")
+    (or (head-is? e "define") (head-is? e "define*") (head-is? e "define-rec") (module-def? e)
         (head-is? e "define-datatype") (head-is? e "define-type") (head-is? e "define-generative"))))
-
-(define put-tops (subr kfx (ctx sexps chars) chars)
-  (lambda (c forms acc)
-    "A string at the top level is a comment. A procedure's documentation is
-     a string first in its body, as a Lisp docstring is: see `put-define`."
-    (cond ((null? forms) acc)
-          ((comment? (car forms))
-           (let* ((doc (and (not (null? (cdr forms))) (definition? (second forms))))
-                  (acc (put-comment (string-chars (comment-text (car forms))) "//" 0 #t acc)))
-             (put-tops c (cdr forms) (put (if doc "\n" "\n\n") acc))))
-          (else (put-tops c (cdr forms) (put-top c (car forms) acc))))))
 
 "A program's top-level expressions, for running Fixpt's programs as Rust
  (`kfx --toplevel`, scripts/run-fixpt-programs.py): a `Show` for each
@@ -1008,6 +1120,60 @@
                   (acc (put-generics-of params #f acc)))
              (put-show-impls (cdr forms) (put " {\n    fn show(&self, out: &mut String) {\n        self.0.show(out)\n    }\n}\n\n" acc))))
           (else (put-show-impls (cdr forms) acc)))))
+
+(define put-show-generatives (subr kfx (sexps chars) chars)
+  (lambda (forms acc)
+    "In toplevel mode, a module's generative types' `Show`, inside it, where
+     their representations are seen."
+    (put-show-impls (concat (map (lambda ((f sexp)) (if (head-is? f "define-generative") (the sexps (list f)) nil)) forms)) acc)))
+
+(define-rec
+  (put-top (subr kfx (ctx sexp chars) chars)
+    (lambda (c form acc)
+      (let* ((xs (items form))
+             (h (sym-name (car xs))))
+        (cond ((string=? h "define-effect") acc)
+              ((string=? h "define-type")
+               (let* ((acc (put "pub type " acc))
+                      (acc (put (camel (type-head-name (second xs))) acc))
+                      (acc (put-generics-of (head-type-params (second xs)) #f acc))
+                      (acc (put " = " acc))
+                      (acc (put-type c (third xs) acc)))
+                 (put ";\n\n" acc)))
+              ((string=? h "define-datatype") (put-datatype c (cdr xs) acc))
+              ((string=? h "define-generative") (put-generative c (cdr xs) acc))
+              ((module-def? form) (put-module c (sym-name (second xs)) (cdr (items (third xs))) acc))
+              ((or (string=? h "define") (string=? h "define*"))
+               (if (i64= (size xs) 4)
+                   (put-define c (second xs) (third xs) (fourth xs) acc)
+                   (put-define c (second xs) (car (ctx-typed c (sym-name (second xs)))) (third xs) acc)))
+              ((string=? h "define-rec") (put-rec c (cdr xs) acc))
+              (else acc)))))
+
+  (put-module (subr kfx (ctx string sexps chars) chars)
+    (lambda (c m forms acc)
+      "A module, a Rust `mod` (C19): its items as a program's, the program's
+       names in scope, its own hiding them."
+      (let* ((outer (tagcase c (ctx (ds ts ks ls xs fs ms es mods)
+                                 (ctx ds ts (without ks (item-values forms)) ls xs fs ms es mods))))
+             (inner (with-locals (collect forms outer) (list (string-append "%in " m))))
+             (body (put-tops inner forms nil))
+             (body (if (string-member? "%toplevel" (ctx-locals c)) (put-show-generatives forms body) body))
+             (acc (put "pub mod " acc))
+             (acc (put (mangle m) acc))
+             (acc (put " {\n    use super::*;\n\n" acc)))
+        (put "\n}\n\n" (indented (rev-onto (trimmed body) nil) #t acc)))))
+
+  (put-tops (subr kfx (ctx sexps chars) chars)
+    (lambda (c forms acc)
+      "A string at the top level is a comment. A procedure's documentation is
+       a string first in its body, as a Lisp docstring is: see `put-define`."
+      (cond ((null? forms) acc)
+            ((comment? (car forms))
+             (let* ((doc (and (not (null? (cdr forms))) (definition? (second forms))))
+                    (acc (put-comment (string-chars (comment-text (car forms))) "//" 0 #t acc)))
+               (put-tops c (cdr forms) (put (if doc "\n" "\n\n") acc))))
+            (else (put-tops c (cdr forms) (put-top c (car forms) acc)))))))
 
 (define toplevel-form? (subr kfx (sexp) bool)
   (lambda (f) (not (or (definition? f) (head-is? f "define-effect")))))

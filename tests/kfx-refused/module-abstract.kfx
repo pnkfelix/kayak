@@ -1,0 +1,9 @@
+"A module's generative type is abstract outside it: its conversions are
+ its own."
+(define-effect kfx (maxeff (read @globals) spin))
+(define counter
+  (module
+    (define-generative t i64)
+    (define zero t (up-t 0))
+    (define value (subr pure (t) i64) (lambda (c) (down-t c)))))
+(define f (subr kfx () i64) (lambda () (with counter (down-t zero))))

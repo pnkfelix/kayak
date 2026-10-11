@@ -144,12 +144,17 @@ Escapes are done (`DONE.md`, C18). Left:
 
 ## 19. Modules
 
-A first step that maps (2026-10-11): modules made at the top level and
-opened with `with`, as Rust `mod`s; a module's `define-generative` a
-newtype whose conversions are private to the `mod`, so that Rust's
-privacy enforces the abstraction too. Refused: modules as values passed,
-`let`-bound or sealed with `the`, and functors. `docs/survey.md`: 56 of
-Fixpt's programs first stop at `module`, many of them meant to be refused.
+The first step is done (`DONE.md`, C19): top-level modules, `with`,
+`select`. Next, by what Fixpt's `modules/` programs use:
+- datatypes in modules (FX-26's are transparent sums; Rust's enums are
+  nominal, so a module's datatype would be the module's own);
+- a module's types with parameters;
+- items naming later items, as FX-26's `letrec*` allows;
+- `the` sealing a module defined at the top level to fewer values or
+  abstract types: a second `mod` re-exporting;
+- `load-module` of a file, the file a Rust module;
+- modules as values, and Sheldon's dependent procedures: a trait, or a
+  struct of `fn`s; designing first.
 
 Files are units in order, with no interfaces: every name is visible
 everywhere after its definition, and every Rust item is `pub`. FX-26's

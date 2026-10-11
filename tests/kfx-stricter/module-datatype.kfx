@@ -1,0 +1,3 @@
+"A datatype in a module, which KFX's modules do not have yet."
+(define-effect kfx (maxeff (read @globals) spin))
+(define m (module (define-datatype shape (circle i64) (square i64))))

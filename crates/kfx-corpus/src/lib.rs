@@ -68,6 +68,11 @@ pub mod lists;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/modules.rs"]
+pub mod modules;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/mutable.rs"]
 pub mod mutable;
 
@@ -129,6 +134,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("letregion-nat", letregion_nat::main),
     ("lets", lets::main),
     ("lists", lists::main),
+    ("modules", modules::main),
     ("mutable", mutable::main),
     ("names", names::main),
     ("procs", procs::main),

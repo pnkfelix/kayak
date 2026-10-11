@@ -1,0 +1,4 @@
+"A module's item that reads a global is not pure."
+(define-effect kfx (maxeff (read @globals) spin))
+(define g (subr pure () i64) (lambda () 1))
+(define m (module (define h (subr pure () i64) (lambda () (g)))))

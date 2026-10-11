@@ -1,0 +1,64 @@
+"Modules (CLAUDES_CHOICES.md C19): a module defined at the top level is a
+ Rust `mod`; `with` names its values, `select` its types. A generative
+ type in one is abstract: its conversions are the module's own."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-type strings (listof string acyclic))
+
+(define words (subr kfx (strings) string)
+  (lambda (xs)
+    (cond ((null? xs) "")
+          ((null? (cdr xs)) (car xs))
+          (else (string-append (car xs) (string-append " " (words (cdr xs))))))))
+
+(define counter
+  (module
+    (define-generative t i64)
+    (define zero t (up-t 0))
+    (define inc (subr pure (t) t) (lambda (c) (up-t (i64+ (down-t c) 1))))
+    (define value (subr pure (t) i64) (lambda (c) (down-t c)))))
+
+"A module's items: a type abbreviation, a constant found, procedures
+ calling each other and themselves, one named as a value, and a global
+ the program defined before."
+(define stack
+  (module
+    (define-type items (listof i64 acyclic))
+    (define empty items nil)
+    (define push (subr pure (i64 items) items) (lambda (x xs) (cons x xs)))
+    (define-rec
+      (depth (subr spin (items) i64)
+        (lambda (xs) (if (null? xs) 0 (i64+ 1 (depth (cdr xs)))))))
+    (define two (push 2 (push 1 empty)))
+    (define pusher (subr pure () (subr pure (i64 items) items)) (lambda () push))
+    (define-rec
+      (shown (subr kfx (items) string)
+        (lambda (xs)
+          (cond ((null? xs) "")
+                ((null? (cdr xs)) (i64->string (car xs)))
+                (else (string-append (i64->string (car xs)) (string-append "," (shown (cdr xs)))))))))))
+
+(define twice (subr kfx ((select counter t)) (select counter t))
+  (lambda (c) (with counter (inc (inc c)))))
+
+"A `with` names its module's values before any local: `value` here is
+ counter's, the parameter hidden, and the call no loop."
+(define count-to (subr kfx (i64 i64) i64)
+  (lambda (value n)
+    (if (i64= n 0) value (with counter (count-to (value (twice zero)) (i64- n 1))))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (let ((push (the i64 10)))
+      (words
+       (list (i64->string (with counter (value (twice zero))))
+             (i64->string (count-to 5 1))
+             (i64->string (count-to 5 0))
+             (with stack (shown (push 3 two)))
+             (with stack (i64->string (depth ((pusher) 4 two))))
+             (i64->string push)
+             (with stack (with counter (i64->string (i64+ (value (inc zero)) (depth empty)))))
+             (with stack (shown (the (select stack items) (list 7 8)))))))))
+
+(main)

@@ -135,6 +135,18 @@
 (define substring-of (subr kfx (string i64) string)
   (lambda (x n) (list->string (take-chars (string->list x) n))))
 
+(define has-prefix? (subr kfx (string string) bool)
+  (lambda (x p)
+    (and (not (i64< (string-length-i64 x) (string-length-i64 p)))
+         (string=? (substring-of x (string-length-i64 p)) p))))
+
+(define-rec
+  (drop-chars (subr kfx ((listof char acyclic) i64) (listof char acyclic))
+    (lambda (cs n) (if (or (null? cs) (i64= n 0)) cs (drop-chars (cdr cs) (i64- n 1))))))
+
+(define after-prefix (subr kfx (string string) string)
+  (lambda (x p) (list->string (drop-chars (string->list x) (string-length-i64 p)))))
+
 (define escapes? (subr kfx (strings) bool)
   (lambda (es)
     "Whether effect `es` may abort: a `goto` on some region. Such a
@@ -366,6 +378,11 @@
                 ((sym-is? (car xs) "prompt-tag")
                  (ty-tag (parse-type v tvars (second xs)) (parse-type v tvars (third xs))
                          (parse-effect v tvars (fourth xs)) (parse-mutable-region v tvars (car (cdr (cdr (cdr (cdr xs))))))))
+                ((sym-is? (car xs) "select")
+                 (let ((name (string-append (name-of v (second xs)) (string-append " " (name-of v (third xs))))))
+                   (if (null? (find-alias name (cv-aliases v)))
+                       (refuse v (string-append "no module defined at the top level gives a type " (show-sexp t)))
+                       (parse-type v tvars (sym name)))))
                 ((sym-is? (car xs) "subr")
                  (ty-proc (parse-effect v tvars (second xs))
                           (parse-types v tvars (items (third xs)))
@@ -889,7 +906,36 @@
   (lambda (h)
     (or (string=? h "if") (string=? h "cond") (string=? h "case") (string=? h "tagcase")
         (string=? h "let") (string=? h "let*") (string=? h "begin") (string=? h "letrec")
-        (string=? h "letregion"))))
+        (string=? h "letregion") (string=? h "with"))))
+
+(define opened-binds (subr kfx (string binds) binds)
+  (lambda (m bs)
+    "Module `m`'s values, as items, named as `m` names them."
+    (if (null? bs)
+        nil
+        (tagcase (car bs)
+          (bind (n sc where)
+            (if (and (string=? where "export") (has-prefix? n (string-append m " ")))
+                (cons (bind (after-prefix n (string-append m " ")) sc "item") (opened-binds m (cdr bs)))
+                (opened-binds m (cdr bs))))))))
+
+(define opened-aliases (subr kfx (string aliases) aliases)
+  (lambda (m as)
+    "Module `m`'s types, named as `m` names them."
+    (if (null? as)
+        nil
+        (tagcase (car as)
+          (alias (n ps body)
+            (if (has-prefix? n (string-append m " "))
+                (cons (alias (after-prefix n (string-append m " ")) ps body) (opened-aliases m (cdr as)))
+                (opened-aliases m (cdr as))))))))
+
+(define opened (subr kfx (cv string) cv)
+  (lambda (v m)
+    "`v`, in a `(with m ...)`."
+    (tagcase v
+      (cv (bs ds as es here group file line fs tv at)
+        (cv (bind-onto (opened-binds m bs) bs) ds (onto (opened-aliases m as) as) es here group file line fs tv at)))))
 
 (define all-chars? (subr kfx (sexps) bool)
   (lambda (xs) (not (any? (lambda ((x sexp)) (tagcase x (chr (c) #f) (else other #t))) xs))))
@@ -968,8 +1014,10 @@
                    (refuse v (string-append "nothing is named " name))
                    (tagcase (car found)
                      (bind (n sc where)
-                       (tagcase (instantiate s sc)
-                         (inst (t s regions) (res t (naming-effs s name where t) s)))))))))))
+                       (if (string=? where "module")
+                           (refuse v (string-append "a module as a value: KFX's modules are Rust's, opened by with: " name))
+                           (tagcase (instantiate s sc)
+                             (inst (t s regions) (res t (naming-effs s name where t) s))))))))))))
 
   (check (subr kfx (cv st sexp ty) res)
     (lambda (v s e expected)
@@ -1088,6 +1136,16 @@
              (let-values v s (items (car xs)) (cdr xs) expected nil #t))
             ((string=? h "letrec") (letrec-form v s (items (car xs)) (cdr xs) expected))
             ((string=? h "letregion") (letregion-form v s (name-of v (car xs)) (cdr xs) expected))
+            ((string=? h "with")
+             "`(with m body ...)`: `m`'s values and types in scope in the body,
+              shadowing what is outside, locals too, as FX-26 has it; `m` a
+              module defined at the top level, reading which is reading a
+              global."
+             (let* ((m (name-of v (car xs)))
+                    (found (find-bind m (cv-binds v))))
+               (if (or (null? found) (not (tagcase (car found) (bind (n sc where) (string=? where "module")))))
+                   (refuse v (string-append "KFX's with opens a module defined at the top level, by its name: " m))
+                   (with-effs (body (opened v m) s (cdr xs) expected) (list (string-append "g:" m))))))
             ((string=? h "cond") (cond-clauses v s xs expected))
             ((string=? h "case")
              (tagcase (check v s (car xs) (ty-char))
@@ -1610,7 +1668,7 @@
           (else
            (let ((found (find-bind name (cv-binds v))))
              (if (null? found)
-                 (bind name sc "global")
+                 (bind name sc (if (null? (find-bind "%module" (cv-binds v))) "global" "item"))
                  (tagcase (car found)
                    (bind (n sc0 where)
                      (if (string=? where "prim")
@@ -1851,13 +1909,157 @@
                 (elab (with-facts (with-binds v (list (global v name (scheme nil (zonk s t))))) (st-facts s))
                       (list (typed name written))))))))))
 
+"Modules (CLAUDES_CHOICES.md C19): `(define m (module item ...))` at the
+ top level, a Rust `mod`. Its items are a program's definitions, each
+ seeing those before it; its types are named `m..t` for the program, so
+ that a module's and the program's never meet, and a generative type's
+ conversions stay inside. Outside, `m`'s values and types are named `m x`,
+ found by `with` and `select`."
+
+(define module-def? (subr kfx (sexp) bool)
+  (lambda (form)
+    (and (head-is? form "define") (i64= (size (items form)) 3) (head-is? (third (items form)) "module"))))
+
+(define-rec
+  (module-types (subr kfx (cv sexps) strings)
+    (lambda (v forms)
+      "A module's types' names, each refused if the program has a type of
+       that name; and the items KFX's modules do not have, refused."
+      (if (null? forms)
+          nil
+          (let ((f (car forms)))
+            (cond ((or (head-is? f "define-type") (head-is? f "define-generative"))
+                   (let ((name (tagcase (second (items f)) (sym (n) n)
+                                 (else other (refuse v "a module's type with parameters, which KFX's modules do not have yet")))))
+                     (if (or (dt-named? name (cv-dts v)) (not (null? (find-alias name (cv-aliases v)))))
+                         (refuse v (string-append "a module's type named as the program's: KFX names them apart, " name))
+                         (cons name (module-types v (cdr forms))))))
+                  ((or (head-is? f "define-datatype") (head-is? f "define-effect") (head-is? f "include")
+                       (head-is? f "hide") (module-def? f))
+                   (refuse v (string-append "an item KFX's modules do not have yet: " (show-sexp (car (items f))))))
+                  (else (module-types v (cdr forms)))))))))
+
+(define-rec
+  (qualify-type (subr kfx (string strings sexp) sexp)
+    (lambda (m names t)
+      "A type written in module `m`, its types named as the program names them."
+      (tagcase t
+        (sym (n) (if (string-member? n names) (sym (string-append m (string-append ".." n))) t))
+        (lst (xs file line pos) (lst (map (lambda ((x sexp)) (qualify-type m names x)) xs) file line pos))
+        (else other t)))))
+
+(define module-aliases (subr kfx (string strings sexps bool) aliases)
+  (lambda (m names forms inside)
+    "A module's types: each `m..t`; and `t` inside it, `m t` outside."
+    (concat
+     (map (lambda ((f sexp))
+            (cond ((not (or (head-is? f "define-type") (head-is? f "define-generative"))) nil)
+                  (else
+                   (let* ((xs (items f))
+                          (t (sym-name (second xs)))
+                          (q (string-append m (string-append ".." t)))
+                          (name (if inside t (string-append m (string-append " " t))))
+                          (named (alias name nil (sym q))))
+                     (if (head-is? f "define-type")
+                         (the aliases (list named (alias q nil (qualify-type m names (third xs)))))
+                         (the aliases (list named)))))))
+          forms))))
+
+(define module-dts (subr kfx (string sexps) dts)
+  (lambda (m forms)
+    (concat
+     (map (lambda ((f sexp))
+            (if (head-is? f "define-generative")
+                (the dts (list (dt (string-append m (string-append ".." (sym-name (second (items f))))) nil nil)))
+                nil))
+          forms))))
+
+(define module-conversions (subr kfx (cv string sexps) binds)
+  (lambda (v m forms)
+    "A module's generative types' conversions, `up-t` and `down-t`: its
+     items', not in its type, so that outside `m..t` is abstract."
+    (concat
+     (map (lambda ((f sexp))
+            (if (head-is? f "define-generative")
+                (let* ((xs (items f))
+                       (t (sym-name (second xs)))
+                       (made (ty-data (string-append m (string-append ".." t)) nil))
+                       (repr (parse-type v nil (third xs))))
+                  (the binds (list (bind (string-append "up-" t) (scheme nil (ty-proc nil (list repr) made)) "item")
+                                   (bind (string-append "down-" t) (scheme nil (ty-proc nil (list made) repr)) "item"))))
+                nil))
+          forms))))
+
+(define-rec
+  (module-exports (subr kfx (string strings binds) binds)
+    (lambda (m conversions bs)
+      "The items' values, before the module's mark, as `m x`."
+      (if (null? bs)
+          nil
+          (tagcase (car bs)
+            (bind (n sc where)
+              (cond ((string=? n "%module") nil)
+                    ((string-member? n conversions) (module-exports m conversions (cdr bs)))
+                    (else (cons (bind (string-append m (string-append " " n)) sc "export")
+                                (module-exports m conversions (cdr bs)))))))))))
+
 (define untyped? (subr kfx (sexp) bool)
   (lambda (form) (and (head-is? form "define") (i64= (size (items form)) 3))))
+
+(define-rec
+  (check-items (subr kfx (cv string sexps typeds) elab)
+    (lambda (v m forms found)
+      "A module's items, in order: as the program's forms, but that its
+       generative types are made already, and its elaborated types are named
+       `m x`."
+      (cond ((null? forms) (elab v found))
+            ((head-is? (car forms) "define-generative") (check-items v m (cdr forms) found))
+            ((untyped? (car forms))
+             (tagcase (car forms)
+               (lst (xs src-file src-line src-pos)
+                 (tagcase (check-untyped (near v src-file src-line src-pos) (car forms))
+                   (elab (v2 more)
+                     (check-items (at v2 "" nil) m (cdr forms)
+                                  (onto (map (lambda ((x typed))
+                                               (tagcase x (typed (n t) (typed (string-append m (string-append " " n)) t))))
+                                             more)
+                                        found)))))
+               (else other (check-items v m (cdr forms) found))))
+            (else (check-items (check-top v (car forms)) m (cdr forms) found))))))
+
+(define check-module (subr kfx (cv sexp) elab)
+  (lambda (v form)
+    (let* ((xs (items form))
+           (m (name-of v (second xs)))
+           (v (at v m nil))
+           (made (tagcase (global v m (scheme nil (ty-unit))) (bind (n sc where) (bind n sc "module"))))
+           (forms (cdr (items (third xs))))
+           (names (module-types v forms))
+           (typed (tagcase v
+                    (cv (bs ds as es here group file line fs tv at)
+                      (cv (cons (bind "%module" (scheme nil (ty-unit)) m) bs) (onto (module-dts m forms) ds)
+                          (onto (module-aliases m names forms #t) as) es here group file line fs tv at))))
+           (conversions (module-conversions typed m forms))
+           (inner (defined-once typed conversions)))
+      (tagcase (check-items inner m forms nil)
+        (elab (done found)
+          (tagcase done
+            (cv (bs ds as es here group file line fs tv at)
+              (elab (cv (cons made (bind-onto (module-exports m (map (lambda ((b bind)) (tagcase b (bind (n sc w) n))) conversions) bs)
+                                              (cv-binds v)))
+                        ds (onto (module-aliases m names forms #f) (cv-aliases v)) (cv-effdefs v) here group file line fs tv at)
+                    found))))))))
 
 (define check-tops (subr kfx (cv sexps typeds) elab)
   (lambda (v forms found)
     "The forms in order; `found`, the types elaborated so far."
     (cond ((null? forms) (elab v found))
+          ((module-def? (car forms))
+           (tagcase (car forms)
+             (lst (xs src-file src-line src-pos)
+               (tagcase (check-module (near v src-file src-line src-pos) (car forms))
+                 (elab (v2 more) (check-tops (at v2 "" nil) (cdr forms) (onto more found)))))
+             (else other (check-tops v (cdr forms) found))))
           ((untyped? (car forms))
            (tagcase (car forms)
              (lst (xs src-file src-line src-pos)

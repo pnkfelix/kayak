@@ -209,7 +209,8 @@ procedure (`&f`), the program's or `kayak-rt`'s: the emitter keeps the
 names bound where it is, from parameters, `let`, `let*` and `tagcase`.
 
 What KFX does not have, ranked by how often Fixpt's programs first need
-it (`docs/survey.md`): FX-26's modules (`TODO.md` §19); kept
+it (`docs/survey.md`): FX-26's modules as values, and their other items
+(`TODO.md` §19); kept
 continuations and marks (§16, `docs/research/escapes.md`); bloblets and flat
 data beyond `i64` arrays (§15); places, `letrena` (§14,
 `docs/research/places.md`); unions and `datum`; `f32`; higher kinds and
@@ -259,8 +260,9 @@ corpus and guardrails, tail calls as loops, procedures as values, `poly`,
 a checker, messages with places, several files, mutable data and
 regions, strings of characters, untyped definitions, `define*`, `int`,
 type families, `letrec`, `letregion`, `nat`, `define-generative`, `f64`,
-escapes (the first place effects decide code generation: C18). Next, by
-the survey: modules, places.
+escapes (the first place effects decide code generation: C18), modules
+defined at the top level (C19). Next, by the survey: more of modules,
+places.
 
 Then FX-26 at large, written in KFX. Two directions, not chosen yet:
 - **keep targeting Rust**, with a runtime that grows (a collector, as

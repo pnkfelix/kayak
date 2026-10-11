@@ -36,12 +36,13 @@ pub fn family(f0: Str, f1: bool, f2: Strings) -> &'static Family {
 
 pub type Families = List<&'static Family>;
 
+// Modules, by name: each `(module item ...)` (check.kfx, C19).
 pub enum Ctx {
-    Ctx(Strings, Tagofs, Strings, Strings, Typeds, Facts, Families, Typeds),
+    Ctx(Strings, Tagofs, Strings, Strings, Typeds, Facts, Families, Typeds, Typeds),
 }
 
-pub fn ctx(f0: Strings, f1: Tagofs, f2: Strings, f3: Strings, f4: Typeds, f5: Facts, f6: Families, f7: Typeds) -> &'static Ctx {
-    alloc(Ctx::Ctx(f0, f1, f2, f3, f4, f5, f6, f7))
+pub fn ctx(f0: Strings, f1: Tagofs, f2: Strings, f3: Strings, f4: Typeds, f5: Facts, f6: Families, f7: Typeds, f8: Typeds) -> &'static Ctx {
+    alloc(Ctx::Ctx(f0, f1, f2, f3, f4, f5, f6, f7, f8))
 }
 
 pub fn filter_typed(mut name: Str, mut xs: Typeds) -> Typeds {
@@ -67,7 +68,7 @@ pub fn filter_typed(mut name: Str, mut xs: Typeds) -> Typeds {
 pub fn ctx_effects(c: &'static Ctx) -> Typeds {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
             es
         }
     }
@@ -110,7 +111,7 @@ pub fn fallible_effect_p(c: &'static Ctx, e: &'static Sexp) -> bool {
 pub fn ctx_fact_p(c: &'static Ctx, file: Str, pos: i64, what: Str) -> bool {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
             any_p(lambda1(move |f: &'static Fact| {
                 let tagcase_ = f;
                 match *tagcase_ {
@@ -140,7 +141,7 @@ pub fn fact_at_p(c: &'static Ctx, e: &'static Sexp, what: Str) -> bool {
 pub fn ctx_datatypes(c: &'static Ctx) -> Strings {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
             ds
         }
     }
@@ -149,7 +150,7 @@ pub fn ctx_datatypes(c: &'static Ctx) -> Strings {
 pub fn ctx_tags(c: &'static Ctx) -> Tagofs {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
             ts
         }
     }
@@ -158,7 +159,7 @@ pub fn ctx_tags(c: &'static Ctx) -> Tagofs {
 pub fn ctx_constants(c: &'static Ctx) -> Strings {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
             ks
         }
     }
@@ -167,26 +168,8 @@ pub fn ctx_constants(c: &'static Ctx) -> Strings {
 pub fn ctx_locals(c: &'static Ctx) -> Strings {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
             ls
-        }
-    }
-}
-
-/// The type the checker found for a definition written with none, as a
-/// list of one.
-pub fn ctx_typed(c: &'static Ctx, name: Str) -> Sexps {
-    let tagcase_ = c;
-    match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es) => {
-            map(lambda1(move |x: &'static Typed| {
-                let tagcase_ = x;
-                match *tagcase_ {
-                    Typed::Typed(n, t) => {
-                        t
-                    }
-                }
-            }), filter_typed(name, xs))
         }
     }
 }
@@ -202,12 +185,138 @@ pub fn strings_onto(mut xs: Strings, mut ys: Strings) -> Strings {
     }
 }
 
+/// Module `m`'s items.
+pub fn module_items(c: &'static Ctx, m: Str) -> Sexps {
+    let tagcase_ = c;
+    match *tagcase_ {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            concat(map(lambda1(move |x: &'static Typed| {
+                let tagcase_ = x;
+                match *tagcase_ {
+                    Typed::Typed(n, body) => {
+                        if string_eq_p(n, m) {
+                            cdr(items(body))
+                        } else {
+                            nil()
+                        }
+                    }
+                }
+            }), mods))
+        }
+    }
+}
+
+/// The names a module's items give values to: its type's values.
+pub fn item_values(forms: Sexps) -> Strings {
+    concat(map(lambda1(move |f: &'static Sexp| {
+        if (head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) {
+            the::<Strings>(cons(sym_name(second(items(f))), nil()))
+        } else if head_is_p(f, str_lit("define-rec")) {
+            map(lambda1(move |b: &'static Sexp| {
+                sym_name(car(items(b)))
+            }), cdr(items(f)))
+        } else {
+            nil()
+        }
+    }), forms))
+}
+
+/// The names a module's items give values not procedures to.
+pub fn item_constants(forms: Sexps) -> Strings {
+    concat(map(lambda1(move |f: &'static Sexp| {
+        if (head_is_p(f, str_lit("define")) && not(procedure_p(last(items(f))))) {
+            the::<Strings>(cons(sym_name(second(items(f))), nil()))
+        } else {
+            nil()
+        }
+    }), forms))
+}
+
+pub fn item_types(forms: Sexps) -> Strings {
+    concat(map(lambda1(move |f: &'static Sexp| {
+        if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative"))) {
+            the::<Strings>(cons(sym_name(second(items(f))), nil()))
+        } else {
+            nil()
+        }
+    }), forms))
+}
+
+/// The module whose `with` gave `entry`, a value's or a type's: the
+/// innermost, and only if no local inside it hides it.
+pub fn opener(mut entry: Str, mut ls: Strings) -> Str {
+    loop {
+        if null_p(ls) {
+            return str_lit("");
+        } else if string_eq_p(car(ls), entry) {
+            let rest = after_with(cdr(ls));
+            return rest;
+        } else {
+            ls = cdr(ls);
+            continue;
+        }
+    }
+}
+
+pub fn after_with(mut ls: Strings) -> Str {
+    loop {
+        if null_p(ls) {
+            return str_lit("");
+        } else if has_prefix_p(car(ls), str_lit("%with ")) {
+            return after_prefix(car(ls), str_lit("%with "));
+        } else {
+            ls = cdr(ls);
+            continue;
+        }
+    }
+}
+
+pub fn after_in(mut ls: Strings) -> Str {
+    loop {
+        if null_p(ls) {
+            return str_lit("");
+        } else if has_prefix_p(car(ls), str_lit("%in ")) {
+            return after_prefix(car(ls), str_lit("%in "));
+        } else {
+            ls = cdr(ls);
+            continue;
+        }
+    }
+}
+
+/// The module whose items are being written, or ``.
+pub fn module_here(c: &'static Ctx) -> Str {
+    after_in(ctx_locals(c))
+}
+
+/// The type the checker found for a definition written with none, as a
+/// list of one.
+pub fn ctx_typed(c: &'static Ctx, name: Str) -> Sexps {
+    let tagcase_ = c;
+    match *tagcase_ {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            map(lambda1(move |x: &'static Typed| {
+                let tagcase_ = x;
+                match *tagcase_ {
+                    Typed::Typed(n, t) => {
+                        t
+                    }
+                }
+            }), filter_typed(if string_eq_p(after_in(ls), str_lit("")) {
+                name
+            } else {
+                string_append(after_in(ls), string_append(str_lit(" "), name))
+            }, xs))
+        }
+    }
+}
+
 /// `c`, where `names` are bound too.
 pub fn with_locals(c: &'static Ctx, names: Strings) -> &'static Ctx {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es) => {
-            ctx(ds, ts, ks, strings_onto(names, ls), xs, fs, ms, es)
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            ctx(ds, ts, ks, strings_onto(names, ls), xs, fs, ms, es, mods)
         }
     }
 }
@@ -326,7 +435,7 @@ pub fn filter_family(mut name: Str, mut ms: Families) -> Families {
 pub fn find_family_of(c: &'static Ctx, name: Str) -> Families {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
             let found = filter_family(name, ms);
             found
         }
@@ -353,16 +462,18 @@ pub fn put_generics_of(names: Strings, bounded: bool, acc: Chars) -> Chars {
 pub fn note(form: &'static Sexp, c: &'static Ctx) -> &'static Ctx {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
             if head_is_p(form, str_lit("define-datatype")) {
                 let d = type_head_name(second(items(form)));
-                ctx(cons(d, ds), note_tags(cdr(cdr(items(form))), d, ts), ks, ls, xs, fs, note_family(second(items(form)), true, ms), es)
+                ctx(cons(d, ds), note_tags(cdr(cdr(items(form))), d, ts), ks, ls, xs, fs, note_family(second(items(form)), true, ms), es, mods)
             } else if (head_is_p(form, str_lit("define-type")) || head_is_p(form, str_lit("define-generative"))) {
-                ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms), es)
+                ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms), es, mods)
             } else if head_is_p(form, str_lit("define-effect")) {
-                ctx(ds, ts, ks, ls, xs, fs, ms, cons(typed(sym_name(second(items(form))), third(items(form))), es))
+                ctx(ds, ts, ks, ls, xs, fs, ms, cons(typed(sym_name(second(items(form))), third(items(form))), es), mods)
+            } else if module_def_p(form) {
+                ctx(ds, ts, ks, ls, xs, fs, ms, es, cons(typed(sym_name(second(items(form))), third(items(form))), mods))
             } else if (head_is_p(form, str_lit("define")) && (i64_eq(size(items(form)), 3i64) || i64_eq(size(items(form)), 4i64)) && not(procedure_p(last(items(form))))) {
-                ctx(ds, ts, cons(sym_name(second(items(form))), ks), ls, xs, fs, ms, es)
+                ctx(ds, ts, cons(sym_name(second(items(form))), ks), ls, xs, fs, ms, es, mods)
             } else {
                 c
             }
@@ -408,6 +519,24 @@ pub fn put_escaped(mut cs: Chars, mut q: char, mut acc: Chars) -> Chars {
     }
 }
 
+pub fn dotted_from(mut seen: Chars, mut cs: Chars) -> Strings {
+    loop {
+        if (null_p(cs) || null_p(cdr(cs))) {
+            return nil();
+        } else if (char_eq_p(car(cs), '.') && char_eq_p(car(cdr(cs)), '.')) {
+            return the::<Strings>(cons(rev_to_string(seen), cons(list_to_string(cdr(cdr(cs))), nil())));
+        } else {
+            (seen, cs) = (cons(car(cs), seen), cdr(cs));
+            continue;
+        }
+    }
+}
+
+/// A module's type as the program names it, `m..t`: `m` and `t`; else none.
+pub fn dotted(s: Str) -> Strings {
+    dotted_from(nil(), string_chars(s))
+}
+
 /// A type. A name that is no base type or datatype is a type abbreviation
 /// or a type variable, either way a Rust type of the same name.
 pub fn put_type(c: &'static Ctx, t: &'static Sexp, acc: Chars) -> Chars {
@@ -434,6 +563,10 @@ pub fn put_type(c: &'static Ctx, t: &'static Sexp, acc: Chars) -> Chars {
                 put(str_lit("Str"), acc)
             } else if string_member_p(s, ctx_datatypes(c)) {
                 put(camel(s), put(str_lit("&'static "), acc))
+            } else if not(string_eq_p(opener(string_append(str_lit("%type "), s), ctx_locals(c)), str_lit(""))) {
+                put(camel(s), put(str_lit("::"), put(mangle(opener(string_append(str_lit("%type "), s), ctx_locals(c))), acc)))
+            } else if not(null_p(dotted(s))) {
+                put(camel(car(cdr(dotted(s)))), put(str_lit("::"), put(mangle(car(dotted(s))), acc)))
             } else {
                 put(camel(s), acc)
             }
@@ -456,6 +589,8 @@ pub fn put_type(c: &'static Ctx, t: &'static Sexp, acc: Chars) -> Chars {
                 }
             } else if sym_is_p(car(xs), str_lit("prompt-tag")) {
                 put(str_lit(">"), put_type(c, third(xs), put(str_lit(", "), put_type(c, second(xs), put(str_lit("Tag<"), acc)))))
+            } else if sym_is_p(car(xs), str_lit("select")) {
+                put(camel(sym_name(third(xs))), put(str_lit("::"), put(mangle(sym_name(second(xs))), acc)))
             } else if sym_is_p(car(xs), str_lit("poly")) {
                 error(str_lit("kfx: a poly type is only a definition's, at its top"))
             } else if {
@@ -531,11 +666,23 @@ pub fn local_kind(mut s: Str, mut ls: Strings) -> Str {
             return str_lit("local");
         } else if string_eq_p(car(ls), string_append(str_lit("%knot "), s)) {
             return str_lit("knot");
+        } else if string_eq_p(car(ls), string_append(str_lit("%item "), s)) {
+            return str_lit("item");
         } else {
             ls = cdr(ls);
             continue;
         }
     }
+}
+
+/// A module's value, named in a `with`: `m::x`, called if a constant.
+pub fn item_path(c: &'static Ctx, s: Str) -> Str {
+    let m = opener(string_append(str_lit("%item "), s), ctx_locals(c));
+    string_append(mangle(m), string_append(str_lit("::"), string_append(mangle(s), if string_member_p(s, item_constants(module_items(c, m))) {
+        str_lit("()")
+    } else {
+        str_lit("")
+    })))
 }
 
 /// Whether the function or closure being written returns a `Result`.
@@ -549,6 +696,8 @@ pub fn callee(c: &'static Ctx, h: Str) -> Str {
     let kind = local_kind(h, ctx_locals(c));
     if string_eq_p(kind, str_lit("knot")) {
         string_append(str_lit("("), string_append(mangle(h), str_lit("__knot.get())")))
+    } else if string_eq_p(kind, str_lit("item")) {
+        item_path(c, h)
     } else if (string_eq_p(kind, str_lit("")) && string_member_p(h, ctx_constants(c))) {
         string_append(mangle(h), str_lit("()"))
     } else {
@@ -567,6 +716,13 @@ pub fn put_var(c: &'static Ctx, s: Str, acc: Chars) -> Chars {
         put(str_lit(".get()"), put(str_lit("__knot"), put(mangle(s), acc)))
     } else if string_eq_p(local_kind(s, ctx_locals(c)), str_lit("local")) {
         put(mangle(s), acc)
+    } else if string_eq_p(local_kind(s, ctx_locals(c)), str_lit("item")) {
+        let m = opener(string_append(str_lit("%item "), s), ctx_locals(c));
+        put(item_path(c, s), if string_member_p(s, item_constants(module_items(c, m))) {
+            acc
+        } else {
+            put(str_lit("&"), acc)
+        })
     } else if (string_eq_p(s, str_lit("nil")) || string_member_p(s, ctx_constants(c))) {
         put(str_lit("()"), put(mangle(s), acc))
     } else {
@@ -759,7 +915,38 @@ pub fn self_call_p(t: &'static Tail, e: &'static Sexp) -> bool {
 
 /// The forms whose last parts stand where they do.
 pub fn control_p(e: &'static Sexp) -> bool {
-    (head_is_p(e, str_lit("if")) || head_is_p(e, str_lit("cond")) || head_is_p(e, str_lit("case")) || head_is_p(e, str_lit("tagcase")) || head_is_p(e, str_lit("let")) || head_is_p(e, str_lit("let*")) || head_is_p(e, str_lit("begin")) || head_is_p(e, str_lit("letrec")) || head_is_p(e, str_lit("letregion")))
+    (head_is_p(e, str_lit("if")) || head_is_p(e, str_lit("cond")) || head_is_p(e, str_lit("case")) || head_is_p(e, str_lit("tagcase")) || head_is_p(e, str_lit("let")) || head_is_p(e, str_lit("let*")) || head_is_p(e, str_lit("begin")) || head_is_p(e, str_lit("letrec")) || head_is_p(e, str_lit("letregion")) || head_is_p(e, str_lit("with")))
+}
+
+/// `c` in `(with m ...)`: `m`'s values and types, hiding what is outside.
+pub fn with_opened(c: &'static Ctx, e: &'static Sexp) -> &'static Ctx {
+    let m = sym_name(second(items(e)));
+    let forms = module_items(c, m);
+    with_locals(c, cons(string_append(str_lit("%with "), m), onto(map(lambda1(move |x: Str| {
+        string_append(str_lit("%type "), x)
+    }), item_types(forms)), map(lambda1(move |x: Str| {
+        string_append(str_lit("%item "), x)
+    }), item_values(forms)))))
+}
+
+/// `t` in `(with m ...)`: a procedure `m` gives, named as the one written,
+/// is not it, and a parameter `m` hides is not to be assigned.
+pub fn opened_tail(c: &'static Ctx, e: &'static Sexp, t: &'static Tail) -> &'static Tail {
+    let names = item_values(module_items(c, sym_name(second(items(e)))));
+    let tagcase_ = t;
+    match *tagcase_ {
+        Tail::Returns(f, ps, live, ok) => {
+            if string_member_p(f, names) {
+                returns(f, ps, false, ok)
+            } else {
+                hide(t, names)
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            t
+        }
+    }
 }
 
 /// Whether `e`, standing at `t`, makes a self tail call: whether its
@@ -987,6 +1174,9 @@ pub fn put_stmts(mut c: &'static Ctx, mut es: Sexps, mut n: i64, mut t: &'static
             continue;
         } else if head_is_p(e, str_lit("letregion")) {
             es = cdr(cdr(items(e)));
+            continue;
+        } else if head_is_p(e, str_lit("with")) {
+            (c, es, t) = (with_opened(c, e), cdr(cdr(items(e))), opened_tail(c, e, t));
             continue;
         } else if head_is_p(e, str_lit("letrec")) {
             let xs = cdr(items(e));
@@ -1238,7 +1428,10 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
         } else {
             put(str_lit(")"), put_joined(c, xs, str_lit(" || "), n, put(str_lit("("), acc)))
         }
-    } else if (string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("tagcase"))) {
+    } else if (string_eq_p(h, str_lit("with")) && null_p(cdr(cdr(xs)))) {
+        // A `with` of one expression, no block: only its names are its.
+        put_exp(with_opened(c, e), second(xs), n, opened_tail(c, e, t), acc)
+    } else if (string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("tagcase")) || string_eq_p(h, str_lit("with"))) {
         put_block(c, cons(e, nil()), n, t, acc)
     } else if string_eq_p(h, str_lit("case")) {
         let acc = put(str_lit("match "), acc);
@@ -1547,12 +1740,21 @@ pub fn put_datatype(c: &'static Ctx, xs: Sexps, acc: Chars) -> Chars {
 pub fn put_generative(c: &'static Ctx, xs: Sexps, acc: Chars) -> Chars {
     let t = type_head_name(car(xs));
     let params = head_type_params(car(xs));
+    let inside = not(string_eq_p(module_here(c), str_lit("")));
     let acc = put(str_lit("#[derive(Clone, Copy)]\npub struct "), acc);
     let acc = put(camel(t), acc);
     let acc = put_generics_of(params, true, acc);
-    let acc = put(str_lit("(pub "), acc);
+    let acc = put(if inside {
+        str_lit("(")
+    } else {
+        str_lit("(pub ")
+    }, acc);
     let acc = put_type(c, second(xs), acc);
-    let acc = put(str_lit(");\n\npub fn up_"), acc);
+    let acc = put(if inside {
+        str_lit(");\n\nfn up_")
+    } else {
+        str_lit(");\n\npub fn up_")
+    }, acc);
     let acc = put(mangle(t), acc);
     let acc = put_generics_of(params, true, acc);
     let acc = put(str_lit("(x: "), acc);
@@ -1562,7 +1764,11 @@ pub fn put_generative(c: &'static Ctx, xs: Sexps, acc: Chars) -> Chars {
     let acc = put_generics_of(params, false, acc);
     let acc = put(str_lit(" {\n    "), acc);
     let acc = put(camel(t), acc);
-    let acc = put(str_lit("(x)\n}\n\npub fn down_"), acc);
+    let acc = put(if inside {
+        str_lit("(x)\n}\n\nfn down_")
+    } else {
+        str_lit("(x)\n}\n\npub fn down_")
+    }, acc);
     let acc = put(mangle(t), acc);
     let acc = put_generics_of(params, true, acc);
     let acc = put(str_lit("(x: "), acc);
@@ -1573,58 +1779,53 @@ pub fn put_generative(c: &'static Ctx, xs: Sexps, acc: Chars) -> Chars {
     put(str_lit(" {\n    x.0\n}\n\n"), acc)
 }
 
-pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
-    let xs = items(form);
-    let h = sym_name(car(xs));
-    if string_eq_p(h, str_lit("define-effect")) {
-        acc
-    } else if string_eq_p(h, str_lit("define-type")) {
-        let acc = put(str_lit("pub type "), acc);
-        let acc = put(camel(type_head_name(second(xs))), acc);
-        let acc = put_generics_of(head_type_params(second(xs)), false, acc);
-        let acc = put(str_lit(" = "), acc);
-        let acc = put_type(c, third(xs), acc);
-        put(str_lit(";\n\n"), acc)
-    } else if string_eq_p(h, str_lit("define-datatype")) {
-        put_datatype(c, cdr(xs), acc)
-    } else if string_eq_p(h, str_lit("define-generative")) {
-        put_generative(c, cdr(xs), acc)
-    } else if (string_eq_p(h, str_lit("define")) || string_eq_p(h, str_lit("define*"))) {
-        if i64_eq(size(xs), 4i64) {
-            put_define(c, second(xs), third(xs), fourth(xs), acc)
+/// Lines, each not empty four spaces in: `acc`, a module's items.
+pub fn indented(mut cs: Chars, mut start: bool, mut acc: Chars) -> Chars {
+    loop {
+        if null_p(cs) {
+            return acc;
+        } else if char_eq_p(car(cs), '\n') {
+            (cs, start, acc) = (cdr(cs), true, cons(car(cs), acc));
+            continue;
+        } else if start {
+            (cs, start, acc) = (cdr(cs), false, cons(car(cs), put(str_lit("    "), acc)));
+            continue;
         } else {
-            put_define(c, second(xs), car(ctx_typed(c, sym_name(second(xs)))), third(xs), acc)
+            (cs, start, acc) = (cdr(cs), false, cons(car(cs), acc));
+            continue;
         }
-    } else if string_eq_p(h, str_lit("define-rec")) {
-        put_rec(c, cdr(xs), acc)
-    } else {
-        acc
+    }
+}
+
+/// Written text, its last newlines dropped.
+pub fn trimmed(mut cs: Chars) -> Chars {
+    loop {
+        if (not(null_p(cs)) && char_eq_p(car(cs), '\n')) {
+            cs = cdr(cs);
+            continue;
+        } else {
+            return cs;
+        }
+    }
+}
+
+pub fn without(mut xs: Strings, mut ys: Strings) -> Strings {
+    loop {
+        if null_p(xs) {
+            return nil();
+        } else {
+            if string_member_p(car(xs), ys) {
+                xs = cdr(xs);
+                continue;
+            } else {
+                return cons(car(xs), without(cdr(xs), ys));
+            }
+        }
     }
 }
 
 pub fn definition_p(e: &'static Sexp) -> bool {
-    (head_is_p(e, str_lit("define")) || head_is_p(e, str_lit("define*")) || head_is_p(e, str_lit("define-rec")) || head_is_p(e, str_lit("define-datatype")) || head_is_p(e, str_lit("define-type")) || head_is_p(e, str_lit("define-generative")))
-}
-
-/// A string at the top level is a comment. A procedure's documentation is
-/// a string first in its body, as a Lisp docstring is: see `put-define`.
-pub fn put_tops(mut c: &'static Ctx, mut forms: Sexps, mut acc: Chars) -> Chars {
-    loop {
-        if null_p(forms) {
-            return acc;
-        } else if comment_p(car(forms)) {
-            let doc = (not(null_p(cdr(forms))) && definition_p(second(forms)));
-            let acc = put_comment(string_chars(comment_text(car(forms))), str_lit("//"), 0i64, true, acc);
-            return put_tops(c, cdr(forms), put(if doc {
-                str_lit("\n")
-            } else {
-                str_lit("\n\n")
-            }, acc));
-        } else {
-            (forms, acc) = (cdr(forms), put_top(c, car(forms), acc));
-            continue;
-        }
-    }
+    (head_is_p(e, str_lit("define")) || head_is_p(e, str_lit("define*")) || head_is_p(e, str_lit("define-rec")) || module_def_p(e) || head_is_p(e, str_lit("define-datatype")) || head_is_p(e, str_lit("define-type")) || head_is_p(e, str_lit("define-generative")))
 }
 
 // A program's top-level expressions, for running Fixpt's programs as Rust
@@ -1680,6 +1881,94 @@ pub fn put_show_impls(mut forms: Sexps, mut acc: Chars) -> Chars {
             return put_show_impls(cdr(forms), put(str_lit(" {\n    fn show(&self, out: &mut String) {\n        self.0.show(out)\n    }\n}\n\n"), acc));
         } else {
             forms = cdr(forms);
+            continue;
+        }
+    }
+}
+
+/// In toplevel mode, a module's generative types' `Show`, inside it, where
+/// their representations are seen.
+pub fn put_show_generatives(forms: Sexps, acc: Chars) -> Chars {
+    put_show_impls(concat(map(lambda1(move |f: &'static Sexp| {
+        if head_is_p(f, str_lit("define-generative")) {
+            the::<Sexps>(cons(f, nil()))
+        } else {
+            nil()
+        }
+    }), forms)), acc)
+}
+
+pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
+    let xs = items(form);
+    let h = sym_name(car(xs));
+    if string_eq_p(h, str_lit("define-effect")) {
+        acc
+    } else if string_eq_p(h, str_lit("define-type")) {
+        let acc = put(str_lit("pub type "), acc);
+        let acc = put(camel(type_head_name(second(xs))), acc);
+        let acc = put_generics_of(head_type_params(second(xs)), false, acc);
+        let acc = put(str_lit(" = "), acc);
+        let acc = put_type(c, third(xs), acc);
+        put(str_lit(";\n\n"), acc)
+    } else if string_eq_p(h, str_lit("define-datatype")) {
+        put_datatype(c, cdr(xs), acc)
+    } else if string_eq_p(h, str_lit("define-generative")) {
+        put_generative(c, cdr(xs), acc)
+    } else if module_def_p(form) {
+        put_module(c, sym_name(second(xs)), cdr(items(third(xs))), acc)
+    } else if (string_eq_p(h, str_lit("define")) || string_eq_p(h, str_lit("define*"))) {
+        if i64_eq(size(xs), 4i64) {
+            put_define(c, second(xs), third(xs), fourth(xs), acc)
+        } else {
+            put_define(c, second(xs), car(ctx_typed(c, sym_name(second(xs)))), third(xs), acc)
+        }
+    } else if string_eq_p(h, str_lit("define-rec")) {
+        put_rec(c, cdr(xs), acc)
+    } else {
+        acc
+    }
+}
+
+/// A module, a Rust `mod` (C19): its items as a program's, the program's
+/// names in scope, its own hiding them.
+pub fn put_module(c: &'static Ctx, m: Str, forms: Sexps, acc: Chars) -> Chars {
+    let outer = {
+        let tagcase_ = c;
+        match *tagcase_ {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                ctx(ds, ts, without(ks, item_values(forms)), ls, xs, fs, ms, es, mods)
+            }
+        }
+    };
+    let inner = with_locals(collect(forms, outer), cons(string_append(str_lit("%in "), m), nil()));
+    let body = put_tops(inner, forms, nil());
+    let body = if string_member_p(str_lit("%toplevel"), ctx_locals(c)) {
+        put_show_generatives(forms, body)
+    } else {
+        body
+    };
+    let acc = put(str_lit("pub mod "), acc);
+    let acc = put(mangle(m), acc);
+    let acc = put(str_lit(" {\n    use super::*;\n\n"), acc);
+    put(str_lit("\n}\n\n"), indented(rev_onto(trimmed(body), nil()), true, acc))
+}
+
+/// A string at the top level is a comment. A procedure's documentation is
+/// a string first in its body, as a Lisp docstring is: see `put-define`.
+pub fn put_tops(mut c: &'static Ctx, mut forms: Sexps, mut acc: Chars) -> Chars {
+    loop {
+        if null_p(forms) {
+            return acc;
+        } else if comment_p(car(forms)) {
+            let doc = (not(null_p(cdr(forms))) && definition_p(second(forms)));
+            let acc = put_comment(string_chars(comment_text(car(forms))), str_lit("//"), 0i64, true, acc);
+            return put_tops(c, cdr(forms), put(if doc {
+                str_lit("\n")
+            } else {
+                str_lit("\n\n")
+            }, acc));
+        } else {
+            (forms, acc) = (cdr(forms), put_top(c, car(forms), acc));
             continue;
         }
     }

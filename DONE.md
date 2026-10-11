@@ -557,3 +557,21 @@ Found on the way, both K1 holes, now closed:
 - A latent effect that names a region not yet solved (`(goto ?4)`, a
   `poly`'s region at a call) was compared as text; now the region is
   solved from the actual's, as regions in types are.
+
+## Modules, the first step (2026-10-11)
+
+FX-26's modules where they map (C19): `(define m (module item ...))` at
+the top level, a Rust `pub mod m`, its items a program's definitions;
+`(with m body ...)`, the names `m` gives written as paths (`m::x`), since
+FX-26's `with` hides locals and Rust's `use` would not; `(select m t)`,
+`m::T`. A generative type in a module is abstract: a newtype with a
+private field and private conversions. The checker reads a module's items
+in their own scope, names its types `m..t` (as FX-26 writes them), and
+gives the program its values as `m x`, which `with` opens; naming an
+item inside its module reads no global, as FX-26's `letrec*` has it, and
+`with m` reads the global `m`. Modules as values, `load-module`,
+`include`, `extend`, `hide`, datatypes in modules and items naming later
+ones are refused (`tests/kfx-stricter/module-*`).
+
+`tests/kfx/modules.kfx`; `tests/kfx-refused/module-{abstract,opaque,global}`.
+45 of Fixpt's programs accepted (32 before), all agreeing.

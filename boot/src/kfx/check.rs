@@ -326,6 +326,25 @@ pub fn substring_of(x: Str, n: i64) -> Str {
     list_to_string(take_chars(string_to_list(x), n))
 }
 
+pub fn has_prefix_p(x: Str, p: Str) -> bool {
+    (not(i64_lt(string_length_i64(x), string_length_i64(p))) && string_eq_p(substring_of(x, string_length_i64(p)), p))
+}
+
+pub fn drop_chars(mut cs: List<char>, mut n: i64) -> List<char> {
+    loop {
+        if (null_p(cs) || i64_eq(n, 0i64)) {
+            return cs;
+        } else {
+            (cs, n) = (cdr(cs), i64_minus(n, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn after_prefix(x: Str, p: Str) -> Str {
+    list_to_string(drop_chars(string_to_list(x), string_length_i64(p)))
+}
+
 /// Whether effect `es` may abort: a `goto` on some region. Such a
 /// procedure, in Rust, returns a `Result` (emit.kfx).
 pub fn escapes_p(es: Strings) -> bool {
@@ -796,6 +815,14 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     return ty_ref(parse_type(v, tvars, second(xs)), parse_mutable_region(v, tvars, third(xs)));
                 } else if sym_is_p(car(xs), str_lit("prompt-tag")) {
                     return ty_tag(parse_type(v, tvars, second(xs)), parse_type(v, tvars, third(xs)), parse_effect(v, tvars, fourth(xs)), parse_mutable_region(v, tvars, car(cdr(cdr(cdr(cdr(xs)))))));
+                } else if sym_is_p(car(xs), str_lit("select")) {
+                    let name = string_append(name_of(v, second(xs)), string_append(str_lit(" "), name_of(v, third(xs))));
+                    if null_p(find_alias(name, cv_aliases(v))) {
+                        return refuse(v, string_append(str_lit("no module defined at the top level gives a type "), show_sexp(t)));
+                    } else {
+                        t = sym(name);
+                        continue;
+                    }
                 } else if sym_is_p(car(xs), str_lit("subr")) {
                     return ty_proc(parse_effect(v, tvars, second(xs)), parse_types(v, tvars, items(third(xs))), parse_type(v, tvars, fourth(xs)));
                 } else if {
@@ -1994,7 +2021,59 @@ pub fn reaches_p(v: &'static Cv, s: &'static St, body: &'static Sexp, tag: &'sta
 }
 
 pub fn control_form_p(h: Str) -> bool {
-    (string_eq_p(h, str_lit("if")) || string_eq_p(h, str_lit("cond")) || string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("tagcase")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion")))
+    (string_eq_p(h, str_lit("if")) || string_eq_p(h, str_lit("cond")) || string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("tagcase")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("with")))
+}
+
+/// Module `m`'s values, as items, named as `m` names them.
+pub fn opened_binds(mut m: Str, mut bs: Binds) -> Binds {
+    loop {
+        if null_p(bs) {
+            return nil();
+        } else {
+            let tagcase_ = car(bs);
+            match *tagcase_ {
+                Bind::Bind(n, sc, r#where) => {
+                    if (string_eq_p(r#where, str_lit("export")) && has_prefix_p(n, string_append(m, str_lit(" ")))) {
+                        return cons(bind(after_prefix(n, string_append(m, str_lit(" "))), sc, str_lit("item")), opened_binds(m, cdr(bs)));
+                    } else {
+                        bs = cdr(bs);
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Module `m`'s types, named as `m` names them.
+pub fn opened_aliases(mut m: Str, mut r#as: Aliases) -> Aliases {
+    loop {
+        if null_p(r#as) {
+            return nil();
+        } else {
+            let tagcase_ = car(r#as);
+            match *tagcase_ {
+                Alias::Alias(n, ps, body) => {
+                    if has_prefix_p(n, string_append(m, str_lit(" "))) {
+                        return cons(alias(after_prefix(n, string_append(m, str_lit(" "))), ps, body), opened_aliases(m, cdr(r#as)));
+                    } else {
+                        r#as = cdr(r#as);
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// `v`, in a `(with m ...)`.
+pub fn opened(v: &'static Cv, m: Str) -> &'static Cv {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
+            cv(bind_onto(opened_binds(m, bs), bs), ds, onto(opened_aliases(m, r#as), r#as), es, here, group, file, line, fs, tv, at)
+        }
+    }
 }
 
 pub fn all_chars_p(xs: Sexps) -> bool {
@@ -2171,10 +2250,14 @@ pub fn synth_name(v: &'static Cv, s: &'static St, name: Str) -> &'static Res {
             let tagcase_ = car(found);
             match *tagcase_ {
                 Bind::Bind(n, sc, r#where) => {
-                    let tagcase_ = instantiate(s, sc);
-                    match *tagcase_ {
-                        Inst::Inst(t, s, regions) => {
-                            res(t, naming_effs(s, name, r#where, t), s)
+                    if string_eq_p(r#where, str_lit("module")) {
+                        refuse(v, string_append(str_lit("a module as a value: KFX's modules are Rust's, opened by with: "), name))
+                    } else {
+                        let tagcase_ = instantiate(s, sc);
+                        match *tagcase_ {
+                            Inst::Inst(t, s, regions) => {
+                                res(t, naming_effs(s, name, r#where, t), s)
+                            }
                         }
                     }
                 }
@@ -2421,6 +2504,25 @@ pub fn body_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Ty
         letrec_form(v, s, items(car(xs)), cdr(xs), expected)
     } else if string_eq_p(h, str_lit("letregion")) {
         letregion_form(v, s, name_of(v, car(xs)), cdr(xs), expected)
+    } else if string_eq_p(h, str_lit("with")) {
+        // `(with m body ...)`: `m`'s values and types in scope in the body,
+        // shadowing what is outside, locals too, as FX-26 has it; `m` a
+        // module defined at the top level, reading which is reading a
+        // global.
+        let m = name_of(v, car(xs));
+        let found = find_bind(m, cv_binds(v));
+        if (null_p(found) || not({
+            let tagcase_ = car(found);
+            match *tagcase_ {
+                Bind::Bind(n, sc, r#where) => {
+                    string_eq_p(r#where, str_lit("module"))
+                }
+            }
+        })) {
+            refuse(v, string_append(str_lit("KFX's with opens a module defined at the top level, by its name: "), m))
+        } else {
+            with_effs(body(opened(v, m), s, cdr(xs), expected), cons(string_append(str_lit("g:"), m), nil()))
+        }
     } else if string_eq_p(h, str_lit("cond")) {
         cond_clauses(v, s, xs, expected)
     } else if string_eq_p(h, str_lit("case")) {
@@ -3212,7 +3314,11 @@ pub fn global(v: &'static Cv, name: Str, sc: &'static Scheme) -> &'static Bind {
     } else {
         let found = find_bind(name, cv_binds(v));
         if null_p(found) {
-            bind(name, sc, str_lit("global"))
+            bind(name, sc, if null_p(find_bind(str_lit("%module"), cv_binds(v))) {
+                str_lit("global")
+            } else {
+                str_lit("item")
+            })
         } else {
             let tagcase_ = car(found);
             match *tagcase_ {
@@ -3684,8 +3790,236 @@ pub fn check_untyped(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
     }
 }
 
+// Modules (CLAUDES_CHOICES.md C19): `(define m (module item ...))` at the
+// top level, a Rust `mod`. Its items are a program's definitions, each
+// seeing those before it; its types are named `m..t` for the program, so
+// that a module's and the program's never meet, and a generative type's
+// conversions stay inside. Outside, `m`'s values and types are named `m x`,
+// found by `with` and `select`.
+pub fn module_def_p(form: &'static Sexp) -> bool {
+    (head_is_p(form, str_lit("define")) && i64_eq(size(items(form)), 3i64) && head_is_p(third(items(form)), str_lit("module")))
+}
+
+/// A module's types' names, each refused if the program has a type of
+/// that name; and the items KFX's modules do not have, refused.
+pub fn module_types(mut v: &'static Cv, mut forms: Sexps) -> Strings {
+    loop {
+        if null_p(forms) {
+            return nil();
+        } else {
+            let f = car(forms);
+            if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative"))) {
+                let name = {
+                    let tagcase_ = second(items(f));
+                    match *tagcase_ {
+                        Sexp::Sym(n) => {
+                            n
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            refuse(v, str_lit("a module's type with parameters, which KFX's modules do not have yet"))
+                        }
+                    }
+                };
+                if (dt_named_p(name, cv_dts(v)) || not(null_p(find_alias(name, cv_aliases(v))))) {
+                    return refuse(v, string_append(str_lit("a module's type named as the program's: KFX names them apart, "), name));
+                } else {
+                    return cons(name, module_types(v, cdr(forms)));
+                }
+            } else if (head_is_p(f, str_lit("define-datatype")) || head_is_p(f, str_lit("define-effect")) || head_is_p(f, str_lit("include")) || head_is_p(f, str_lit("hide")) || module_def_p(f)) {
+                return refuse(v, string_append(str_lit("an item KFX's modules do not have yet: "), show_sexp(car(items(f)))));
+            } else {
+                forms = cdr(forms);
+                continue;
+            }
+        }
+    }
+}
+
+/// A type written in module `m`, its types named as the program names them.
+pub fn qualify_type(m: Str, names: Strings, t: &'static Sexp) -> &'static Sexp {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Sexp::Sym(n) => {
+            if string_member_p(n, names) {
+                sym(string_append(m, string_append(str_lit(".."), n)))
+            } else {
+                t
+            }
+        }
+        Sexp::Lst(xs, file, line, pos) => {
+            lst(map(lambda1(move |x: &'static Sexp| {
+                qualify_type(m, names, x)
+            }), xs), file, line, pos)
+        }
+        _ => {
+            let other = tagcase_;
+            t
+        }
+    }
+}
+
+/// A module's types: each `m..t`; and `t` inside it, `m t` outside.
+pub fn module_aliases(m: Str, names: Strings, forms: Sexps, inside: bool) -> Aliases {
+    concat(map(lambda1(move |f: &'static Sexp| {
+        if not((head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative")))) {
+            nil()
+        } else {
+            let xs = items(f);
+            let t = sym_name(second(xs));
+            let q = string_append(m, string_append(str_lit(".."), t));
+            let name = if inside {
+                t
+            } else {
+                string_append(m, string_append(str_lit(" "), t))
+            };
+            let named = alias(name, nil(), sym(q));
+            if head_is_p(f, str_lit("define-type")) {
+                the::<Aliases>(cons(named, cons(alias(q, nil(), qualify_type(m, names, third(xs))), nil())))
+            } else {
+                the::<Aliases>(cons(named, nil()))
+            }
+        }
+    }), forms))
+}
+
+pub fn module_dts(m: Str, forms: Sexps) -> Dts {
+    concat(map(lambda1(move |f: &'static Sexp| {
+        if head_is_p(f, str_lit("define-generative")) {
+            the::<Dts>(cons(dt(string_append(m, string_append(str_lit(".."), sym_name(second(items(f))))), nil(), nil()), nil()))
+        } else {
+            nil()
+        }
+    }), forms))
+}
+
+/// A module's generative types' conversions, `up-t` and `down-t`: its
+/// items', not in its type, so that outside `m..t` is abstract.
+pub fn module_conversions(v: &'static Cv, m: Str, forms: Sexps) -> Binds {
+    concat(map(lambda1(move |f: &'static Sexp| {
+        if head_is_p(f, str_lit("define-generative")) {
+            let xs = items(f);
+            let t = sym_name(second(xs));
+            let made = ty_data(string_append(m, string_append(str_lit(".."), t)), nil());
+            let repr = parse_type(v, nil(), third(xs));
+            the::<Binds>(cons(bind(string_append(str_lit("up-"), t), scheme(nil(), ty_proc(nil(), cons(repr, nil()), made)), str_lit("item")), cons(bind(string_append(str_lit("down-"), t), scheme(nil(), ty_proc(nil(), cons(made, nil()), repr)), str_lit("item")), nil())))
+        } else {
+            nil()
+        }
+    }), forms))
+}
+
+/// The items' values, before the module's mark, as `m x`.
+pub fn module_exports(mut m: Str, mut conversions: Strings, mut bs: Binds) -> Binds {
+    loop {
+        if null_p(bs) {
+            return nil();
+        } else {
+            let tagcase_ = car(bs);
+            match *tagcase_ {
+                Bind::Bind(n, sc, r#where) => {
+                    if string_eq_p(n, str_lit("%module")) {
+                        return nil();
+                    } else if string_member_p(n, conversions) {
+                        bs = cdr(bs);
+                        continue;
+                    } else {
+                        return cons(bind(string_append(m, string_append(str_lit(" "), n)), sc, str_lit("export")), module_exports(m, conversions, cdr(bs)));
+                    }
+                }
+            }
+        }
+    }
+}
+
 pub fn untyped_p(form: &'static Sexp) -> bool {
     (head_is_p(form, str_lit("define")) && i64_eq(size(items(form)), 3i64))
+}
+
+/// A module's items, in order: as the program's forms, but that its
+/// generative types are made already, and its elaborated types are named
+/// `m x`.
+pub fn check_items(mut v: &'static Cv, mut m: Str, mut forms: Sexps, mut found: Typeds) -> &'static Elab {
+    loop {
+        if null_p(forms) {
+            return elab(v, found);
+        } else if head_is_p(car(forms), str_lit("define-generative")) {
+            forms = cdr(forms);
+            continue;
+        } else if untyped_p(car(forms)) {
+            let tagcase_ = car(forms);
+            match *tagcase_ {
+                Sexp::Lst(xs, src_file, src_line, src_pos) => {
+                    let tagcase_ = check_untyped(near(v, src_file, src_line, src_pos), car(forms));
+                    match *tagcase_ {
+                        Elab::Elab(v2, more) => {
+                            (v, forms, found) = (at(v2, str_lit(""), nil()), cdr(forms), onto(map(lambda1(move |x: &'static Typed| {
+                                let tagcase_ = x;
+                                match *tagcase_ {
+                                    Typed::Typed(n, t) => {
+                                        typed(string_append(m, string_append(str_lit(" "), n)), t)
+                                    }
+                                }
+                            }), more), found));
+                            continue;
+                        }
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    forms = cdr(forms);
+                    continue;
+                }
+            }
+        } else {
+            (v, forms) = (check_top(v, car(forms)), cdr(forms));
+            continue;
+        }
+    }
+}
+
+pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
+    let xs = items(form);
+    let m = name_of(v, second(xs));
+    let v = at(v, m, nil());
+    let made = {
+        let tagcase_ = global(v, m, scheme(nil(), ty_unit()));
+        match *tagcase_ {
+            Bind::Bind(n, sc, r#where) => {
+                bind(n, sc, str_lit("module"))
+            }
+        }
+    };
+    let forms = cdr(items(third(xs)));
+    let names = module_types(v, forms);
+    let typed = {
+        let tagcase_ = v;
+        match *tagcase_ {
+            Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
+                cv(cons(bind(str_lit("%module"), scheme(nil(), ty_unit()), m), bs), onto(module_dts(m, forms), ds), onto(module_aliases(m, names, forms, true), r#as), es, here, group, file, line, fs, tv, at)
+            }
+        }
+    };
+    let conversions = module_conversions(typed, m, forms);
+    let inner = defined_once(typed, conversions);
+    let tagcase_ = check_items(inner, m, forms, nil());
+    match *tagcase_ {
+        Elab::Elab(done, found) => {
+            let tagcase_ = done;
+            match *tagcase_ {
+                Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
+                    elab(cv(cons(made, bind_onto(module_exports(m, map(lambda1(move |b: &'static Bind| {
+                        let tagcase_ = b;
+                        match *tagcase_ {
+                            Bind::Bind(n, sc, w) => {
+                                n
+                            }
+                        }
+                    }), conversions), bs), cv_binds(v))), ds, onto(module_aliases(m, names, forms, false), cv_aliases(v)), cv_effdefs(v), here, group, file, line, fs, tv, at), found)
+                }
+            }
+        }
+    }
 }
 
 /// The forms in order; `found`, the types elaborated so far.
@@ -3693,6 +4027,24 @@ pub fn check_tops(mut v: &'static Cv, mut forms: Sexps, mut found: Typeds) -> &'
     loop {
         if null_p(forms) {
             return elab(v, found);
+        } else if module_def_p(car(forms)) {
+            let tagcase_ = car(forms);
+            match *tagcase_ {
+                Sexp::Lst(xs, src_file, src_line, src_pos) => {
+                    let tagcase_ = check_module(near(v, src_file, src_line, src_pos), car(forms));
+                    match *tagcase_ {
+                        Elab::Elab(v2, more) => {
+                            (v, forms, found) = (at(v2, str_lit(""), nil()), cdr(forms), onto(more, found));
+                            continue;
+                        }
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    forms = cdr(forms);
+                    continue;
+                }
+            }
         } else if untyped_p(car(forms)) {
             let tagcase_ = car(forms);
             match *tagcase_ {
