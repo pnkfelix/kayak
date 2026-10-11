@@ -5,7 +5,7 @@ Rust, and a transpiler from KFX to Rust, written in KFX, that bootstraps.
 
 - `kfx/`: the transpiler, in KFX: the files `kfx/kfx.unit` lists, in
   order (`base`, `read`, `names`; the checker, `check`, `terminate`,
-  `check-exprs`, `check-defs`; `emit`, `compile`).
+  `check-exprs`, `check-defs`; `emit`, `emit-tops`; `compile`).
 - `boot/`: the Rust it makes of itself (`boot/src/kfx/`, a module per
   file, generated and committed: the seed), and a hand-written `main`.
 - `crates/kayak-rt`: what the generated Rust calls.

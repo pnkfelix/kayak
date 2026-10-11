@@ -16,6 +16,8 @@ pub mod check_defs;
 pub use check_defs::*;
 pub mod emit;
 pub use emit::*;
+pub mod emit_tops;
+pub use emit_tops::*;
 pub mod compile;
 pub use compile::*;
 #[allow(non_camel_case_types)]
