@@ -1,0 +1,32 @@
+"A case on a character, an int, a string or a boolean: a `match`, whose
+ guards compare an int or a string, as Rust has no patterns for them."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define int-class (subr pure (int) int)
+  (lambda (n) (case n ((0) 1) ((1 2 3) 2) (else 4))))
+
+(define char-class (subr pure (char) int)
+  (lambda (c) (case c ((#\a #\e #\i) 1) ((#\space) 2) (else 3))))
+
+(define string-class (subr pure (string) int)
+  (lambda (s) (case s (("x") 1) (("yy" "z") 2) (else 3))))
+
+(define bool-class (subr pure (bool) int)
+  (lambda (b) (case b ((#t) 1) (else 2))))
+
+"A case in a loop's tail: each arm returns, or loops."
+(define count-vowels (subr kfx (string i64 int) int)
+  (lambda (s i acc)
+    (if (i64= i (string-length-i64 s))
+        acc
+        (count-vowels s (i64+ i 1) (+ acc (case (string-ref-i64 s i) ((#\a #\e #\i #\o #\u) 1) (else 0)))))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (let ((d (lambda ((acc int) (k int)) (+ (* acc 10) k))))
+      (int->string
+       (d (d (d (d (d (d (d (d (int-class 0) (int-class 3)) (int-class -7)) (char-class #\space))
+                      (string-class "z")) (bool-class #f)) (string-class "w"))
+             (count-vowels "kayak bootstraps" 0 0))
+          (char-class #\e))))))

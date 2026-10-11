@@ -1595,6 +1595,18 @@
       (cv (bs ds as es here group file line fs tv at)
         (cv (bind-onto (opened-binds m bs) bs) ds (onto (opened-aliases m as) as) es here group file line fs tv at)))))
 
+(define case-data? (subr kfx (string sexps) bool)
+  (lambda (kind xs)
+    "Whether `xs` are literals a case on a `kind` compares with."
+    (not (any? (lambda ((x sexp))
+                 (not (tagcase x
+                        (chr (c) (string=? kind "char"))
+                        (num (k text pos) (string=? kind "int"))
+                        (str (t) (string=? kind "string"))
+                        (sym (n) (and (string=? kind "bool") (or (string=? n "#t") (string=? n "#f"))))
+                        (else other #f))))
+               xs))))
+
 (define all-chars? (subr kfx (sexps) bool)
   (lambda (xs) (not (any? (lambda ((x sexp)) (tagcase x (chr (c) #f) (else other #t))) xs))))
 
@@ -1806,8 +1818,17 @@
                    (with-effs (body (opened v m) s (cdr xs) expected) (list (string-append "g:" m))))))
             ((string=? h "cond") (cond-clauses v s xs expected))
             ((string=? h "case")
-             (tagcase (check v s (car xs) (ty-char))
-               (res (t es s) (with-effs (case-arms v s (cdr xs) expected) es))))
+             "On a character, an integer, a string or a boolean, the data
+              literals of its type; the kind told the emitter."
+             (tagcase (synth v s (car xs))
+               (res (t es s)
+                 (let ((kind (tagcase (walk s t)
+                               (ty-char () "char") (ty-int () "int") (ty-nat () "int")
+                               (ty-string () "string") (ty-bool () "bool")
+                               (else other (refuse v (string-append "KFX's case is on characters, ints, strings and booleans, and this is a "
+                                                                    (show-ty s t)))))))
+                   (with-effs (case-arms v (note-fact s (cv-file v) (cv-pos v) (string-append "case " kind)) kind (cdr xs) expected)
+                              es)))))
             (else
              (tagcase (synth v s (car xs))
                (res (t es s)
@@ -1847,21 +1868,29 @@
                           (res (t2 es2 s)
                             (res (joined s t t2 expected) (effs-union es0 (effs-union es es2)) s))))))))))))
 
-  (case-arms (subr kfx (cv st sexps tys) res)
-    (lambda (v s cases expected)
+  (case-arms (subr kfx (cv st string sexps tys) res)
+    (lambda (v s kind cases expected)
       (let ((arm (items (car cases))))
         (cond ((sym-is? (car arm) "else")
                (if (null? (cdr cases))
                    (body v s (cdr arm) expected)
                    (refuse v "a case's else is its last arm")))
               ((null? (cdr cases)) (refuse v "a case needs an else: FX has no unspecified value"))
-              ((not (all-chars? (items (car arm))))
-               (refuse v "KFX's case is on characters: FX-26's compares integers as ints"))
+              ((not (case-data? kind (items (car arm))))
+               (refuse v (string-append "a case on a " (string-append kind "'s data are literals of its type"))))
               (else
-               (tagcase (body v s (cdr arm) expected)
+               (tagcase (body v (case-data v s kind (items (car arm))) (cdr arm) expected)
                  (res (t es s)
-                   (tagcase (case-arms v s (cdr cases) (next-expected s t expected))
+                   (tagcase (case-arms v s kind (cdr cases) (next-expected s t expected))
                      (res (t2 es2 s) (res (joined s t t2 expected) (effs-union es es2) s))))))))))
+
+  (case-data (subr kfx (cv st string sexps) st)
+    (lambda (v s kind xs)
+      "A case's data, an int's checked as ints, so that the emitter writes
+       them as ints."
+      (if (or (null? xs) (not (string=? kind "int")))
+          s
+          (tagcase (check v s (car xs) (ty-int)) (res (t es s) (case-data v s kind (cdr xs)))))))
 
   (tag-arms (subr kfx (cv st ty sexps variants tys) res)
     (lambda (v s whole tagged vs expected)

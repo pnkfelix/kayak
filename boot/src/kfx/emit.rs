@@ -976,6 +976,19 @@ pub fn typed_lambda(lam: &'static Sexp, r#type: &'static Sexp) -> &'static Sexp 
     }
 }
 
+/// What a case is on, as the checker found.
+pub fn case_kind(c: &'static Ctx, e: &'static Sexp) -> Str {
+    if fact_at_p(c, e, str_lit("case int")) {
+        str_lit("int")
+    } else if fact_at_p(c, e, str_lit("case string")) {
+        str_lit("string")
+    } else if fact_at_p(c, e, str_lit("case bool")) {
+        str_lit("bool")
+    } else {
+        str_lit("char")
+    }
+}
+
 /// An abort: `return Err(...)` in Rust, so no value to return or wrap.
 pub fn abort_p(c: &'static Ctx, e: &'static Sexp) -> bool {
     (head_is_p(e, str_lit("abort-current-continuation")) && string_eq_p(local_kind(str_lit("abort-current-continuation"), ctx_locals(c)), str_lit("")))
@@ -1346,7 +1359,10 @@ pub fn put_let(c: &'static Ctx, bindings: Sexps, n: i64, acc: Chars) -> Chars {
     }
 }
 
-pub fn put_case_arms(c: &'static Ctx, arms: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
+/// A `match` arm a case arm: a character's and a boolean's data its
+/// patterns; an int's or a string's, compared in its guard, as Rust has
+/// no patterns for them.
+pub fn put_case_arms(c: &'static Ctx, kind: Str, arms: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
     if null_p(arms) {
         acc
     } else {
@@ -1354,12 +1370,20 @@ pub fn put_case_arms(c: &'static Ctx, arms: Sexps, n: i64, t: &'static Tail, acc
         let acc = put_nl(n, acc);
         let acc = if sym_is_p(car(arm), str_lit("else")) {
             put(str_lit("_"), acc)
+        } else if (string_eq_p(kind, str_lit("int")) || string_eq_p(kind, str_lit("string"))) {
+            put_sep(lambda2(move |d: &'static Sexp, acc: Chars| {
+                put(str_lit(")"), put_exp(c, d, n, value(), put(if string_eq_p(kind, str_lit("int")) {
+                    str_lit("_eq(case_, ")
+                } else {
+                    str_lit("string_eq_p(case_, ")
+                }, acc)))
+            }), str_lit(" || "), items(car(arm)), put(str_lit("case_ if "), acc))
         } else {
             put_joined(c, items(car(arm)), str_lit(" | "), n, acc)
         };
         let acc = put(str_lit(" => "), acc);
         let acc = put_block(c, cdr(arm), n, t, acc);
-        put_case_arms(c, cdr(arms), n, t, acc)
+        put_case_arms(c, kind, cdr(arms), n, t, acc)
     }
 }
 
@@ -1518,7 +1542,7 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
         let acc = put(str_lit("match "), acc);
         let acc = put_exp(c, car(xs), n, value(), acc);
         let acc = put(str_lit(" {"), acc);
-        let acc = put_case_arms(c, cdr(xs), i64_plus(n, 1i64), t, acc);
+        let acc = put_case_arms(c, case_kind(c, e), cdr(xs), i64_plus(n, 1i64), t, acc);
         put(str_lit("}"), put_nl(n, acc))
     } else if string_eq_p(h, str_lit("lambda")) {
         put_lambda(c, e, items(car(xs)), cdr(xs), n, acc)

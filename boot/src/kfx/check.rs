@@ -3542,6 +3542,33 @@ pub fn opened(v: &'static Cv, m: Str) -> &'static Cv {
     }
 }
 
+/// Whether `xs` are literals a case on a `kind` compares with.
+pub fn case_data_p(kind: Str, xs: Sexps) -> bool {
+    not(any_p(lambda1(move |x: &'static Sexp| {
+        not({
+            let tagcase_ = x;
+            match *tagcase_ {
+                Sexp::Chr(c) => {
+                    string_eq_p(kind, str_lit("char"))
+                }
+                Sexp::Num(k, text, pos) => {
+                    string_eq_p(kind, str_lit("int"))
+                }
+                Sexp::Str(t) => {
+                    string_eq_p(kind, str_lit("string"))
+                }
+                Sexp::Sym(n) => {
+                    (string_eq_p(kind, str_lit("bool")) && (string_eq_p(n, str_lit("#t")) || string_eq_p(n, str_lit("#f"))))
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        })
+    }), xs))
+}
+
 pub fn all_chars_p(xs: Sexps) -> bool {
     not(any_p(lambda1(move |x: &'static Sexp| {
         let tagcase_ = x;
@@ -3992,10 +4019,36 @@ pub fn body_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Ty
     } else if string_eq_p(h, str_lit("cond")) {
         cond_clauses(v, s, xs, expected)
     } else if string_eq_p(h, str_lit("case")) {
-        let tagcase_ = check(v, s, car(xs), ty_char());
+        // On a character, an integer, a string or a boolean, the data
+        // literals of its type; the kind told the emitter.
+        let tagcase_ = synth(v, s, car(xs));
         match *tagcase_ {
             Res::Res(t, es, s) => {
-                with_effs(case_arms(v, s, cdr(xs), expected), es)
+                let kind = {
+                    let tagcase_ = walk(s, t);
+                    match *tagcase_ {
+                        Ty::TyChar() => {
+                            str_lit("char")
+                        }
+                        Ty::TyInt() => {
+                            str_lit("int")
+                        }
+                        Ty::TyNat() => {
+                            str_lit("int")
+                        }
+                        Ty::TyString() => {
+                            str_lit("string")
+                        }
+                        Ty::TyBool() => {
+                            str_lit("bool")
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            refuse(v, string_append(str_lit("KFX's case is on characters, ints, strings and booleans, and this is a "), show_ty(s, t)))
+                        }
+                    }
+                };
+                with_effs(case_arms(v, note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("case "), kind)), kind, cdr(xs), expected), es)
             }
         }
     } else {
@@ -4069,7 +4122,7 @@ pub fn cond_clauses(v: &'static Cv, s: &'static St, clauses: Sexps, expected: Ty
     }
 }
 
-pub fn case_arms(v: &'static Cv, s: &'static St, cases: Sexps, expected: Tys) -> &'static Res {
+pub fn case_arms(v: &'static Cv, s: &'static St, kind: Str, cases: Sexps, expected: Tys) -> &'static Res {
     let arm = items(car(cases));
     if sym_is_p(car(arm), str_lit("else")) {
         if null_p(cdr(cases)) {
@@ -4079,18 +4132,33 @@ pub fn case_arms(v: &'static Cv, s: &'static St, cases: Sexps, expected: Tys) ->
         }
     } else if null_p(cdr(cases)) {
         refuse(v, str_lit("a case needs an else: FX has no unspecified value"))
-    } else if not(all_chars_p(items(car(arm)))) {
-        refuse(v, str_lit("KFX's case is on characters: FX-26's compares integers as ints"))
+    } else if not(case_data_p(kind, items(car(arm)))) {
+        refuse(v, string_append(str_lit("a case on a "), string_append(kind, str_lit("'s data are literals of its type"))))
     } else {
-        let tagcase_ = body(v, s, cdr(arm), expected);
+        let tagcase_ = body(v, case_data(v, s, kind, items(car(arm))), cdr(arm), expected);
         match *tagcase_ {
             Res::Res(t, es, s) => {
-                let tagcase_ = case_arms(v, s, cdr(cases), next_expected(s, t, expected));
+                let tagcase_ = case_arms(v, s, kind, cdr(cases), next_expected(s, t, expected));
                 match *tagcase_ {
                     Res::Res(t2, es2, s) => {
                         res(joined(s, t, t2, expected), effs_union(es, es2), s)
                     }
                 }
+            }
+        }
+    }
+}
+
+/// A case's data, an int's checked as ints, so that the emitter writes
+/// them as ints.
+pub fn case_data(v: &'static Cv, s: &'static St, kind: Str, xs: Sexps) -> &'static St {
+    if (null_p(xs) || not(string_eq_p(kind, str_lit("int")))) {
+        s
+    } else {
+        let tagcase_ = check(v, s, car(xs), ty_int());
+        match *tagcase_ {
+            Res::Res(t, es, s) => {
+                case_data(v, s, kind, cdr(xs))
             }
         }
     }

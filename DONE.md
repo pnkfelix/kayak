@@ -626,3 +626,12 @@ Also: the corpus's programs no longer end with `(main)`, which made Fixpt
 run `main` twice, a difference once `main` has state.
 
 55 of Fixpt's programs accepted, all agreeing.
+
+## `case` on ints, strings and booleans (2026-10-11)
+
+FX-26's `case` compares a character, an integer, a string or a boolean
+with literals of its type; KFX's had characters only. A `match` still: a
+character's and a boolean's data its patterns, an int's or a string's
+compared in a guard (`case_ if _eq(case_, int_lit(0)) => ...`). Not on
+`i64`, whose comparison with FX-26's literals is not clear.
+`tests/kfx/cases.kfx`.

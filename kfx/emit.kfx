@@ -492,6 +492,14 @@
              file line pos))
       (else other lam))))
 
+(define case-kind (subr kfx (ctx sexp) string)
+  (lambda (c e)
+    "What a case is on, as the checker found."
+    (cond ((fact-at? c e "case int") "int")
+          ((fact-at? c e "case string") "string")
+          ((fact-at? c e "case bool") "bool")
+          (else "char"))))
+
 (define abort? (subr kfx (ctx sexp) bool)
   (lambda (c e)
     "An abort: `return Err(...)` in Rust, so no value to return or wrap."
@@ -736,18 +744,24 @@
                     (acc (put-binding-values c bindings n acc)))
                (put-nl n (put ");" acc)))))))
 
-  (put-case-arms (subr kfx (ctx sexps i64 tail chars) chars)
-    (lambda (c arms n t acc)
+  (put-case-arms (subr kfx (ctx string sexps i64 tail chars) chars)
+    (lambda (c kind arms n t acc)
+      "A `match` arm a case arm: a character's and a boolean's data its
+       patterns; an int's or a string's, compared in its guard, as Rust has
+       no patterns for them."
       (if (null? arms)
           acc
           (let* ((arm (items (car arms)))
                  (acc (put-nl n acc))
-                 (acc (if (sym-is? (car arm) "else")
-                          (put "_" acc)
-                          (put-joined c (items (car arm)) " | " n acc)))
+                 (acc (cond ((sym-is? (car arm) "else") (put "_" acc))
+                            ((or (string=? kind "int") (string=? kind "string"))
+                             (put-sep (lambda ((d sexp) (acc chars))
+                                        (put ")" (put-exp c d n (value) (put (if (string=? kind "int") "_eq(case_, " "string_eq_p(case_, ") acc))))
+                                      " || " (items (car arm)) (put "case_ if " acc)))
+                            (else (put-joined c (items (car arm)) " | " n acc))))
                  (acc (put " => " acc))
                  (acc (put-block c (cdr arm) n t acc)))
-            (put-case-arms c (cdr arms) n t acc)))))
+            (put-case-arms c kind (cdr arms) n t acc)))))
 
   (put-tagcase-arms (subr kfx (ctx sexps i64 tail chars) chars)
     (lambda (c arms n t acc)
@@ -869,7 +883,7 @@
              (let* ((acc (put "match " acc))
                     (acc (put-exp c (car xs) n (value) acc))
                     (acc (put " {" acc))
-                    (acc (put-case-arms c (cdr xs) (i64+ n 1) t acc)))
+                    (acc (put-case-arms c (case-kind c e) (cdr xs) (i64+ n 1) t acc)))
                (put "}" (put-nl n acc))))
             ((string=? h "lambda") (put-lambda c e (items (car xs)) (cdr xs) n acc))
             ((string=? h "list") (put-list c xs n acc))
