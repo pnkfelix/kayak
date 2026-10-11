@@ -6,12 +6,15 @@ use super::*;
 // read.kfx: the reader, from characters to `sexp`s, and taking them apart.
 
 // Reading
+
+// A list remembers where it began: its file's name, and the line of its
+// `(`, from 1. Messages say where (check.kfx's `refuse`).
 pub enum Sexp {
     Sym(Str),
     Str(Str),
     Num(i64),
     Chr(char),
-    Lst(List<&'static Sexp>),
+    Lst(List<&'static Sexp>, Str, i64),
 }
 
 pub fn sym(f0: Str) -> &'static Sexp {
@@ -30,27 +33,29 @@ pub fn chr(f0: char) -> &'static Sexp {
     alloc(Sexp::Chr(f0))
 }
 
-pub fn lst(f0: List<&'static Sexp>) -> &'static Sexp {
-    alloc(Sexp::Lst(f0))
+pub fn lst(f0: List<&'static Sexp>, f1: Str, f2: i64) -> &'static Sexp {
+    alloc(Sexp::Lst(f0, f1, f2))
 }
 
 pub type Sexps = List<&'static Sexp>;
 
-// A datum, and the text after it.
+// A datum, the text after it, and that text's line; the same for the items
+// of a list; a token, and the text after it, which a token's end leaves on
+// its line; the text after whitespace and comments, and its line.
 pub enum Got {
-    Got(&'static Sexp, Chars),
+    Got(&'static Sexp, Chars, i64),
 }
 
-pub fn got(f0: &'static Sexp, f1: Chars) -> &'static Got {
-    alloc(Got::Got(f0, f1))
+pub fn got(f0: &'static Sexp, f1: Chars, f2: i64) -> &'static Got {
+    alloc(Got::Got(f0, f1, f2))
 }
 
 pub enum Gots {
-    Gots(Sexps, Chars),
+    Gots(Sexps, Chars, i64),
 }
 
-pub fn gots(f0: Sexps, f1: Chars) -> &'static Gots {
-    alloc(Gots::Gots(f0, f1))
+pub fn gots(f0: Sexps, f1: Chars, f2: i64) -> &'static Gots {
+    alloc(Gots::Gots(f0, f1, f2))
 }
 
 pub enum Tok {
@@ -61,12 +66,25 @@ pub fn tok(f0: Str, f1: Chars) -> &'static Tok {
     alloc(Tok::Tok(f0, f1))
 }
 
+pub enum Skipped {
+    Skipped(Chars, i64),
+}
+
+pub fn skipped(f0: Chars, f1: i64) -> &'static Skipped {
+    alloc(Skipped::Skipped(f0, f1))
+}
+
+pub fn read_error(file: Str, line: i64, message: Str) -> ! {
+    error(string_append("kfx: ", string_append(file, string_append(":", string_append(i64_to_string(line), string_append(": ", message))))))
+}
+
+/// A comment's text, to the newline that ends it, which is left.
 pub fn skip_line(mut cs: Chars) -> Chars {
     loop {
         if null_p(cs) {
             return cs;
         } else if char_eq_p(car(cs), '\n') {
-            return cdr(cs);
+            return cs;
         } else {
             cs = cdr(cs);
             continue;
@@ -74,11 +92,14 @@ pub fn skip_line(mut cs: Chars) -> Chars {
     }
 }
 
-/// Skips whitespace and comments.
-pub fn skip(mut cs: Chars) -> Chars {
+/// Skips whitespace and comments, counting lines.
+pub fn skip(mut cs: Chars, mut line: i64) -> &'static Skipped {
     loop {
         if null_p(cs) {
-            return cs;
+            return skipped(cs, line);
+        } else if char_eq_p(car(cs), '\n') {
+            (cs, line) = (cdr(cs), i64_plus(line, 1i64));
+            continue;
         } else if char_whitespace_p(car(cs)) {
             cs = cdr(cs);
             continue;
@@ -86,7 +107,7 @@ pub fn skip(mut cs: Chars) -> Chars {
             cs = skip_line(cdr(cs));
             continue;
         } else {
-            return cs;
+            return skipped(cs, line);
         }
     }
 }
@@ -121,15 +142,18 @@ pub fn unescape(c: char) -> char {
     }
 }
 
-/// A string's characters, after its opening quote.
-pub fn string_body(mut cs: Chars, mut acc: Chars) -> &'static Tok {
+/// A string's characters, after its opening quote on line `start`.
+pub fn string_body(mut cs: Chars, mut acc: Chars, mut file: Str, mut start: i64, mut line: i64) -> &'static Got {
     loop {
         if null_p(cs) {
-            return error("kfx: a string is not closed");
+            return read_error(file, start, "a string is not closed");
         } else if char_eq_p(car(cs), '"') {
-            return tok(rev_to_string(acc), cdr(cs));
+            return got(str(rev_to_string(acc)), cdr(cs), line);
         } else if char_eq_p(car(cs), '\\') {
             (cs, acc) = (cdr(cdr(cs)), cons(unescape(car(cdr(cs))), acc));
+            continue;
+        } else if char_eq_p(car(cs), '\n') {
+            (cs, acc, line) = (cdr(cs), cons(car(cs), acc), i64_plus(line, 1i64));
             continue;
         } else {
             (cs, acc) = (cdr(cs), cons(car(cs), acc));
@@ -141,14 +165,14 @@ pub fn string_body(mut cs: Chars, mut acc: Chars) -> &'static Tok {
 /// Digits onto `n`, negated: so that -9223372036854775808, whose
 /// magnitude is no i64, reads. A literal past an i64 is refused, as FX-26
 /// refuses it where an i64 is expected.
-pub fn digits_value(mut cs: Chars, mut n: i64) -> i64 {
+pub fn digits_value(mut cs: Chars, mut n: i64, mut file: Str, mut line: i64) -> i64 {
     loop {
         if null_p(cs) {
             return n;
         } else {
             let d = i64_minus(char_to_i64(car(cs)), 48i64);
             if (i64_lt(n, -922337203685477580i64) || (i64_eq(n, -922337203685477580i64) && i64_gt(d, 8i64))) {
-                return error("kfx: a literal past an i64");
+                return read_error(file, line, "a literal past an i64");
             } else {
                 (cs, n) = (cdr(cs), i64_minus(i64_star(n, 10i64), d));
                 continue;
@@ -161,23 +185,23 @@ pub fn numeric_p(cs: Chars) -> bool {
     (not(null_p(cs)) && (char_numeric_p(car(cs)) || (char_eq_p(car(cs), '-') && not(null_p(cdr(cs))) && char_numeric_p(car(cdr(cs))))))
 }
 
-pub fn token_atom(s: Str) -> &'static Sexp {
+pub fn token_atom(s: Str, file: Str, line: i64) -> &'static Sexp {
     let cs = string_chars(s);
     if not(numeric_p(cs)) {
         sym(s)
     } else if char_eq_p(car(cs), '-') {
-        num(digits_value(cdr(cs), 0i64))
+        num(digits_value(cdr(cs), 0i64, file, line))
     } else {
-        let negated = digits_value(cs, 0i64);
+        let negated = digits_value(cs, 0i64, file, line);
         if i64_eq(negated, -9223372036854775808i64) {
-            error("kfx: a literal past an i64")
+            read_error(file, line, "a literal past an i64")
         } else {
             num(i64_minus(0i64, negated))
         }
     }
 }
 
-pub fn char_named(s: Str) -> char {
+pub fn char_named(s: Str, file: Str, line: i64) -> char {
     if i64_eq(string_length_i64(s), 1i64) {
         string_ref_i64(s, 0i64)
     } else if string_eq_p(s, "space") {
@@ -187,60 +211,60 @@ pub fn char_named(s: Str) -> char {
     } else if string_eq_p(s, "tab") {
         '\t'
     } else {
-        error(string_append("kfx: no character is named ", s))
+        read_error(file, line, string_append("no character is named ", s))
     }
 }
 
-pub fn read_datum(cs: Chars) -> &'static Got {
+/// A datum at the start of `cs`, on `line` of `file`.
+pub fn read_datum(cs: Chars, file: Str, line: i64) -> &'static Got {
     let c = car(cs);
     if char_eq_p(c, '(') {
-        let tagcase_ = read_items(cdr(cs));
+        let tagcase_ = read_items(cdr(cs), file, line);
         match *tagcase_ {
-            Gots::Gots(xs, after) => {
-                got(lst(xs), after)
+            Gots::Gots(xs, after, end) => {
+                got(lst(xs, file, line), after, end)
             }
         }
     } else if char_eq_p(c, ')') {
-        error("kfx: a ) with no (")
+        read_error(file, line, "a ) with no (")
     } else if char_eq_p(c, '"') {
-        let tagcase_ = string_body(cdr(cs), nil());
-        match *tagcase_ {
-            Tok::Tok(s, after) => {
-                got(str(s), after)
-            }
-        }
+        string_body(cdr(cs), nil(), file, line, line)
     } else if (char_eq_p(c, '#') && not(null_p(cdr(cs))) && char_eq_p(car(cdr(cs)), '\\')) {
         let name = cdr(cdr(cs));
         let tagcase_ = token_chars(cdr(name), cons(car(name), nil()));
         match *tagcase_ {
             Tok::Tok(s, after) => {
-                got(chr(char_named(s)), after)
+                got(chr(char_named(s, file, line)), after, line)
             }
         }
     } else {
         let tagcase_ = token_chars(cs, nil());
         match *tagcase_ {
             Tok::Tok(s, after) => {
-                got(token_atom(s), after)
+                got(token_atom(s, file, line), after, line)
             }
         }
     }
 }
 
-pub fn read_items(cs: Chars) -> &'static Gots {
-    let cs = skip(cs);
-    if null_p(cs) {
-        error("kfx: a ( with no )")
-    } else if char_eq_p(car(cs), ')') {
-        gots(nil(), cdr(cs))
-    } else {
-        let tagcase_ = read_datum(cs);
-        match *tagcase_ {
-            Got::Got(x, after) => {
-                let tagcase_ = read_items(after);
+pub fn read_items(cs: Chars, file: Str, line: i64) -> &'static Gots {
+    let tagcase_ = skip(cs, line);
+    match *tagcase_ {
+        Skipped::Skipped(cs, line) => {
+            if null_p(cs) {
+                read_error(file, line, "a ( with no )")
+            } else if char_eq_p(car(cs), ')') {
+                gots(nil(), cdr(cs), line)
+            } else {
+                let tagcase_ = read_datum(cs, file, line);
                 match *tagcase_ {
-                    Gots::Gots(xs, rest) => {
-                        gots(cons(x, xs), rest)
+                    Got::Got(x, after, line) => {
+                        let tagcase_ = read_items(after, file, line);
+                        match *tagcase_ {
+                            Gots::Gots(xs, rest, end) => {
+                                gots(cons(x, xs), rest, end)
+                            }
+                        }
                     }
                 }
             }
@@ -248,15 +272,20 @@ pub fn read_items(cs: Chars) -> &'static Gots {
     }
 }
 
-pub fn read_all(cs: Chars) -> Sexps {
-    let cs = skip(cs);
-    if null_p(cs) {
-        nil()
-    } else {
-        let tagcase_ = read_datum(cs);
-        match *tagcase_ {
-            Got::Got(x, after) => {
-                cons(x, read_all(after))
+/// Every datum in `cs`, the text of `file` from `line`.
+pub fn read_all(cs: Chars, file: Str, line: i64) -> Sexps {
+    let tagcase_ = skip(cs, line);
+    match *tagcase_ {
+        Skipped::Skipped(cs, line) => {
+            if null_p(cs) {
+                nil()
+            } else {
+                let tagcase_ = read_datum(cs, file, line);
+                match *tagcase_ {
+                    Got::Got(x, after, line) => {
+                        cons(x, read_all(after, file, line))
+                    }
+                }
             }
         }
     }
@@ -292,7 +321,7 @@ pub fn sym_is_p(e: &'static Sexp, s: Str) -> bool {
 pub fn items(e: &'static Sexp) -> Sexps {
     let tagcase_ = e;
     match *tagcase_ {
-        Sexp::Lst(xs) => {
+        Sexp::Lst(xs, src_file, src_line) => {
             xs
         }
         _ => {
@@ -305,7 +334,7 @@ pub fn items(e: &'static Sexp) -> Sexps {
 pub fn head_is_p(e: &'static Sexp, s: Str) -> bool {
     let tagcase_ = e;
     match *tagcase_ {
-        Sexp::Lst(xs) => {
+        Sexp::Lst(xs, src_file, src_line) => {
             (not(null_p(xs)) && sym_is_p(car(xs), s))
         }
         _ => {
@@ -332,7 +361,7 @@ pub fn param_name(param: &'static Sexp) -> Str {
     sym_name({
         let tagcase_ = param;
         match *tagcase_ {
-            Sexp::Lst(xs) => {
+            Sexp::Lst(xs, src_file, src_line) => {
                 car(xs)
             }
             _ => {

@@ -198,7 +198,7 @@ pub fn put_type(c: &'static Ctx, t: &'static Sexp, acc: Chars) -> Chars {
                 put(camel(s), acc)
             }
         }
-        Sexp::Lst(xs) => {
+        Sexp::Lst(xs, src_file, src_line) => {
             if sym_is_p(car(xs), "listof") {
                 put(">", put_type(c, second(xs), put("List<", acc)))
             } else if sym_is_p(car(xs), "subr") {
@@ -506,7 +506,7 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
             Sexp::Sym(s) => {
                 put_var(c, s, acc)
             }
-            Sexp::Lst(xs) => {
+            Sexp::Lst(xs, src_file, src_line) => {
                 let tagcase_ = car(xs);
                 match *tagcase_ {
                     Sexp::Sym(h) => {
@@ -754,7 +754,7 @@ pub fn put_lambda_params(c: &'static Ctx, params: Sexps, acc: Chars) -> Chars {
         let acc = {
             let tagcase_ = car(params);
             match *tagcase_ {
-                Sexp::Lst(xt) => {
+                Sexp::Lst(xt, src_file, src_line) => {
                     put_type(c, second(xt), put(": ", put(mangle(sym_name(car(xt))), acc)))
                 }
                 _ => {
@@ -837,7 +837,7 @@ pub fn put_params(c: &'static Ctx, names: Sexps, types: Sexps, mutable: bool, ac
         let name = {
             let tagcase_ = car(names);
             match *tagcase_ {
-                Sexp::Lst(xs) => {
+                Sexp::Lst(xs, src_file, src_line) => {
                     car(xs)
                 }
                 _ => {

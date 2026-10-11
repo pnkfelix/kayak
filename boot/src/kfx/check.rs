@@ -144,13 +144,14 @@ pub type Effdefs = List<&'static Effdef>;
 
 // What a checker of a definition knows: the names in scope, the datatypes,
 // the type abbreviations, the effect abbreviations, the definition being
-// checked (for messages), and its recursive group (whose calls are `spin`).
+// checked, its recursive group (whose calls are `spin`), and where the
+// innermost list being checked began (a file, a line; for messages).
 pub enum Cv {
-    Cv(Binds, Dts, Aliases, Effdefs, Str, Strings),
+    Cv(Binds, Dts, Aliases, Effdefs, Str, Strings, Str, i64),
 }
 
-pub fn cv(f0: Binds, f1: Dts, f2: Aliases, f3: Effdefs, f4: Str, f5: Strings) -> &'static Cv {
-    alloc(Cv::Cv(f0, f1, f2, f3, f4, f5))
+pub fn cv(f0: Binds, f1: Dts, f2: Aliases, f3: Effdefs, f4: Str, f5: Strings, f6: Str, f7: i64) -> &'static Cv {
+    alloc(Cv::Cv(f0, f1, f2, f3, f4, f5, f6, f7))
 }
 
 // Inference variables solved so far, and the next one's number.
@@ -197,7 +198,7 @@ pub fn show_sexp(e: &'static Sexp) -> Str {
         Sexp::Chr(c) => {
             string_append("#\\", char_to_string(c))
         }
-        Sexp::Lst(xs) => {
+        Sexp::Lst(xs, src_file, src_line) => {
             string_append("(", string_append(show_sexps(xs), ")"))
         }
     }
@@ -216,14 +217,25 @@ pub fn show_sexps(xs: Sexps) -> Str {
 pub fn cv_where(v: &'static Cv) -> Str {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group) => {
+        Cv::Cv(bs, ds, r#as, es, here, group, file, line) => {
             here
         }
     }
 }
 
+/// An error, said where: the innermost list being checked, and the
+/// definition.
 pub fn refuse(v: &'static Cv, message: Str) -> ! {
-    error(string_append("kfx: in ", string_append(cv_where(v), string_append(": ", message))))
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, r#as, es, here, group, file, line) => {
+            error(string_append("kfx: ", string_append(if i64_eq(line, 0i64) {
+                ""
+            } else {
+                string_append(file, string_append(":", string_append(i64_to_string(line), ": ")))
+            }, string_append("in ", string_append(here, string_append(": ", message))))))
+        }
+    }
 }
 
 // Effects
@@ -292,7 +304,7 @@ pub fn find_effdef(mut v: &'static Cv, mut name: Str, mut es: Effdefs) -> String
 pub fn cv_effdefs(v: &'static Cv) -> Effdefs {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group) => {
+        Cv::Cv(bs, ds, r#as, es, here, group, file, line) => {
             es
         }
     }
@@ -310,7 +322,7 @@ pub fn parse_effect(v: &'static Cv, e: &'static Sexp) -> Strings {
                 find_effdef(v, s, cv_effdefs(v))
             }
         }
-        Sexp::Lst(xs) => {
+        Sexp::Lst(xs, src_file, src_line) => {
             if sym_is_p(car(xs), "maxeff") {
                 parse_effects(v, cdr(xs))
             } else if (sym_is_p(car(xs), "read") && sym_is_p(second(xs), "@globals")) {
@@ -342,7 +354,7 @@ pub fn parse_effects(v: &'static Cv, es: Sexps) -> Strings {
 pub fn cv_dts(v: &'static Cv) -> Dts {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group) => {
+        Cv::Cv(bs, ds, r#as, es, here, group, file, line) => {
             ds
         }
     }
@@ -351,7 +363,7 @@ pub fn cv_dts(v: &'static Cv) -> Dts {
 pub fn cv_aliases(v: &'static Cv) -> Aliases {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group) => {
+        Cv::Cv(bs, ds, r#as, es, here, group, file, line) => {
             r#as
         }
     }
@@ -360,7 +372,7 @@ pub fn cv_aliases(v: &'static Cv) -> Aliases {
 pub fn cv_binds(v: &'static Cv) -> Binds {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group) => {
+        Cv::Cv(bs, ds, r#as, es, here, group, file, line) => {
             bs
         }
     }
@@ -369,7 +381,7 @@ pub fn cv_binds(v: &'static Cv) -> Binds {
 pub fn cv_group(v: &'static Cv) -> Strings {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group) => {
+        Cv::Cv(bs, ds, r#as, es, here, group, file, line) => {
             group
         }
     }
@@ -441,7 +453,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     }
                 }
             }
-            Sexp::Lst(xs) => {
+            Sexp::Lst(xs, src_file, src_line) => {
                 if sym_is_p(car(xs), "listof") {
                     if sym_is_p(third(xs), "acyclic") {
                         return ty_list(parse_type(v, tvars, second(xs)));
@@ -476,7 +488,7 @@ pub fn poly_binders(v: &'static Cv, t: &'static Sexp) -> Strings {
             if sym_is_p(second(b), "type") {
                 sym_name(car(b))
             } else {
-                refuse(v, string_append("KFX's poly is over types: ", show_sexp(lst(b))))
+                refuse(v, string_append("KFX's poly is over types: ", show_sexp(lst(b, "", 0i64))))
             }
         }), items(second(items(t))))
     } else {
@@ -964,11 +976,25 @@ pub fn bind_onto(mut xs: Binds, mut ys: Binds) -> Binds {
     }
 }
 
+/// `v`, checking a list that began at `line` of `file`.
+pub fn near(v: &'static Cv, file: Str, line: i64) -> &'static Cv {
+    if i64_eq(line, 0i64) {
+        v
+    } else {
+        let tagcase_ = v;
+        match *tagcase_ {
+            Cv::Cv(bs, ds, r#as, es, here, group, f, l) => {
+                cv(bs, ds, r#as, es, here, group, file, line)
+            }
+        }
+    }
+}
+
 pub fn with_binds(v: &'static Cv, more: Binds) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group) => {
-            cv(bind_onto(more, bs), ds, r#as, es, here, group)
+        Cv::Cv(bs, ds, r#as, es, here, group, file, line) => {
+            cv(bind_onto(more, bs), ds, r#as, es, here, group, file, line)
         }
     }
 }
@@ -1171,7 +1197,8 @@ pub fn synth(v: &'static Cv, s: &'static St, e: &'static Sexp) -> &'static Res {
         Sexp::Sym(name) => {
             synth_name(v, s, name)
         }
-        Sexp::Lst(xs) => {
+        Sexp::Lst(xs, src_file, src_line) => {
+            let v = near(v, src_file, src_line);
             let tagcase_ = car(xs);
             match *tagcase_ {
                 Sexp::Sym(h) => {
@@ -1230,7 +1257,8 @@ pub fn check(v: &'static Cv, s: &'static St, e: &'static Sexp, expected: &'stati
                 }
             }
         }
-        Sexp::Lst(xs) => {
+        Sexp::Lst(xs, src_file, src_line) => {
+            let v = near(v, src_file, src_line);
             let tagcase_ = car(xs);
             match *tagcase_ {
                 Sexp::Sym(h) => {
@@ -1591,7 +1619,7 @@ pub fn synth_lambda(v: &'static Cv, s: &'static St, params: Sexps, forms: Sexps)
     let types = map(lambda1(move |p: &'static Sexp| {
         let tagcase_ = p;
         match *tagcase_ {
-            Sexp::Lst(pt) => {
+            Sexp::Lst(pt, src_file, src_line) => {
                 parse_type(v, nil(), second(pt))
             }
             _ => {
@@ -1647,7 +1675,7 @@ pub fn check_written_params(mut v: &'static Cv, mut s: &'static St, mut params: 
             (s, params, types) = ({
                 let tagcase_ = car(params);
                 match *tagcase_ {
-                    Sexp::Lst(pt) => {
+                    Sexp::Lst(pt, src_file, src_line) => {
                         fits(v, s, car(types), parse_type(v, nil(), second(pt)))
                     }
                     _ => {
@@ -1753,7 +1781,7 @@ pub fn prim_binds(v: &'static Cv) -> Binds {
     map(lambda1(move |p: &'static Sexp| {
         let xs = items(p);
         bind(sym_name(car(xs)), parse_scheme(v, second(xs)), "prim")
-    }), read_all(string_chars(primitives())))
+    }), read_all(string_chars(primitives()), "kayak-rt's primitives", 1i64))
 }
 
 /// A define-datatype's name and variants.
@@ -1817,8 +1845,8 @@ pub fn datatype_names(mut forms: Sexps, mut ds: Dts) -> Dts {
 pub fn with_effdef(v: &'static Cv, xs: Sexps) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, here, group) => {
-            cv(bs, ds, r#as, cons(effdef(sym_name(second(xs)), parse_effect(v, third(xs))), es), here, group)
+        Cv::Cv(bs, ds, r#as, es, here, group, file, line) => {
+            cv(bs, ds, r#as, cons(effdef(sym_name(second(xs)), parse_effect(v, third(xs))), es), here, group, file, line)
         }
     }
 }
@@ -1845,8 +1873,8 @@ pub fn declare_datatypes(mut v: &'static Cv, mut forms: Sexps, mut ds: Dts) -> D
 pub fn at(v: &'static Cv, here: Str, group: Strings) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
-        Cv::Cv(bs, ds, r#as, es, h, g) => {
-            cv(bs, ds, r#as, es, here, group)
+        Cv::Cv(bs, ds, r#as, es, h, g, file, line) => {
+            cv(bs, ds, r#as, es, here, group, file, line)
         }
     }
 }
@@ -1961,8 +1989,8 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
         Sexp::Str(x) => {
             v
         }
-        Sexp::Lst(xs) => {
-            let h = if null_p(xs) {
+        Sexp::Lst(xs, src_file, src_line) => {
+            let (v, h) = (near(v, src_file, src_line), if null_p(xs) {
                 ""
             } else {
                 let tagcase_ = car(xs);
@@ -1975,7 +2003,7 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                         ""
                     }
                 }
-            };
+            });
             if string_eq_p(h, "define-effect") {
                 with_effdef(v, xs)
             } else if string_eq_p(h, "define-type") {
@@ -2075,21 +2103,21 @@ pub fn check_tops(mut v: &'static Cv, mut forms: Sexps) -> &'static Cv {
 
 /// Every form, in order; the first error stops the compiler.
 pub fn check_program(forms: Sexps) -> () {
-    let start = cv(nil(), nil(), declare_types(forms, nil()), nil(), "a type", nil());
+    let start = cv(nil(), nil(), declare_types(forms, nil()), nil(), "a type", nil(), "the program", 0i64);
     let types = type_names_free(start, forms);
     let named = {
         let tagcase_ = start;
         match *tagcase_ {
-            Cv::Cv(bs, ds, r#as, es, here, group) => {
-                cv(bs, datatype_names(forms, nil()), r#as, es, here, group)
+            Cv::Cv(bs, ds, r#as, es, here, group, file, line) => {
+                cv(bs, datatype_names(forms, nil()), r#as, es, here, group, file, line)
             }
         }
     };
     let typed = {
         let tagcase_ = named;
         match *tagcase_ {
-            Cv::Cv(bs, ds, r#as, es, here, group) => {
-                cv(bs, declare_datatypes(named, forms, nil()), r#as, es, here, group)
+            Cv::Cv(bs, ds, r#as, es, here, group, file, line) => {
+                cv(bs, declare_datatypes(named, forms, nil()), r#as, es, here, group, file, line)
             }
         }
     };

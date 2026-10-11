@@ -316,3 +316,24 @@ TODO number of its own.
   `boot/src/kfx.rs` became `boot/src/kfx/`, one module), then was split.
   The corpus gains `tests/kfx/two`, a program of two files whose second
   takes apart the first's datatype.
+
+## 7. Errors that point at KFX source (2026-10-11)
+
+`kfx`'s messages now say where: `kfx: tests/kfx-refused/branches.kfx:3: in
+f: a string is here, where a i64 is expected`.
+- A list remembers where it began, `(lst sexps file line)`: the file's
+  name (a shared reference, nothing allocated) and the line of its `(`.
+- The reader counts lines as it reads: `skip` counts the newlines it
+  passes, `string-body` those in a string, and each result carries the
+  line it leaves off at. Its own errors (an unclosed string or list, a
+  literal past `i64`, an unknown character name) say the line.
+- The checker's `cv` carries the position of the innermost list being
+  checked, set as `synth`, `check` and `check-top` enter one; `refuse`
+  says it, then the definition.
+- `compile-named` names the file; `kfx FILE.kfx` gives it the path, a
+  manifest's files their own names.
+- `scripts/corpus.py` requires every refusal, of the 20, to say its file
+  and line.
+
+What is left is in `TODO.md` §7: positions of atoms, columns, and
+positions in generated Rust.

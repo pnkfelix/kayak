@@ -95,7 +95,7 @@
                 ((string=? s "string") (put "Str" acc))
                 ((string-member? s (ctx-datatypes c)) (put (camel s) (put "&'static " acc)))
                 (else (put (camel s) acc))))
-        (lst (xs)
+        (lst (xs src-file src-line)
           (cond ((sym-is? (car xs) "listof")
                  (put ">" (put-type c (second xs) (put "List<" acc))))
                 ((sym-is? (car xs) "subr")
@@ -261,7 +261,7 @@
                (chr (ch) (put "'" (put-escaped (list ch) #\' (put "'" acc))))
                (str (s) (put "\"" (put-escaped (string-chars s) #\" (put "\"" acc))))
                (sym (s) (put-var c s acc))
-               (lst (xs)
+               (lst (xs src-file src-line)
                  (tagcase (car xs)
                    (sym (h) (put-form c e h (cdr xs) n t acc))
                    (else head
@@ -446,7 +446,7 @@
       (if (null? params)
           acc
           (let ((acc (tagcase (car params)
-                       (lst (xt) (put-type c (second xt) (put ": " (put (mangle (sym-name (car xt))) acc))))
+                       (lst (xt src-file src-line) (put-type c (second xt) (put ": " (put (mangle (sym-name (car xt))) acc))))
                        (else name (put (mangle (sym-name name)) acc)))))
             (put-lambda-params c (cdr params) (if (null? (cdr params)) acc (put ", " acc)))))))
 
@@ -497,7 +497,7 @@
      `mutable`, for a procedure that loops."
     (if (null? names)
         acc
-        (let* ((name (tagcase (car names) (lst (xs) (car xs)) (else other other)))
+        (let* ((name (tagcase (car names) (lst (xs src-file src-line) (car xs)) (else other other)))
                (acc (if mutable (put "mut " acc) acc))
                (acc (put (mangle (sym-name name)) acc))
                (acc (put ": " acc))

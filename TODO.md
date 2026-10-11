@@ -18,11 +18,20 @@ regenerate `boot/`, and only then use it in the compiler (`README.md`).
 
 ---
 
-## 7. Errors that point at KFX source
+## 7. Errors that point at KFX source: what is left
 
-A Rust error in generated code names a line of `kfx.rs`, and a run-time
-`error` names nothing. Start with a `// kfx: line` comment per item: the
-reader would keep each datum's line, which `sexp` does not carry yet.
+Done is `DONE.md` §7. Left:
+- **Atoms have no position**: a message gives the line of the innermost
+  list around what is wrong, which may be a line or two before it.
+  Positions on atoms would need `sym` and the rest to carry them too.
+- **No column**, only a line.
+- **Generated Rust carries no `// file:line`.** The generated functions
+  keep their KFX names (the mangling is reversible), and `kfx` checks
+  before rustc sees anything, so a rustc error in generated code should
+  be the compiler's bug. If that changes, a comment per `fn` is cheap.
+- **Run-time errors** (`error`, `car` of `nil`) name nothing but their
+  message: a Rust backtrace names the generated functions, so the KFX
+  procedure, but not the line.
 
 ## 13. The checker: what it does not do yet
 

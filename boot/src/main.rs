@@ -48,7 +48,8 @@ fn main() {
     match &args[1..] {
         [file] => {
             let src = read(Path::new(file));
-            print!("{}", with_big_stack(move || kfx::compile(src)));
+            let name = leak_string(file.clone());
+            print!("{}", with_big_stack(move || kfx::compile_named(name, src)));
         }
         [manifest, dir] => {
             let program = sources(Path::new(manifest));

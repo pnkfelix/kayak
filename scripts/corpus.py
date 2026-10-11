@@ -87,8 +87,12 @@ def refused(compiler, interpreter, kind, wrong):
     tmp = os.path.join(directory, ".stage0.fx")
     for n in names:
         src = os.path.join(directory, n + ".kfx")
-        if run([compiler, src]).returncode == 0:
+        r = run([compiler, src])
+        if r.returncode == 0:
             wrong.append("%s/%s: kfx accepts it" % (kind, n))
+        elif not any(l.startswith("kfx: " + src + ":") for l in r.stderr.splitlines()):
+            # Every refusal says where: the file, and the line (TODO.md section 7).
+            wrong.append("%s/%s: kfx's message says not where: %s" % (kind, n, r.stderr.strip()[-200:]))
         if interpreter is not None:
             with open(os.path.join(ROOT, "kfx", "prelude.fx")) as f:
                 text = f.read()

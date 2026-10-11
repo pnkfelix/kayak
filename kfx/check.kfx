@@ -54,8 +54,9 @@
 
 "What a checker of a definition knows: the names in scope, the datatypes,
  the type abbreviations, the effect abbreviations, the definition being
- checked (for messages), and its recursive group (whose calls are `spin`)."
-(define-datatype cv (cv binds dts aliases effdefs string strings))
+ checked, its recursive group (whose calls are `spin`), and where the
+ innermost list being checked began (a file, a line; for messages)."
+(define-datatype cv (cv binds dts aliases effdefs string strings string i64))
 
 "Inference variables solved so far, and the next one's number."
 (define-datatype sb (sb i64 ty))
@@ -75,7 +76,7 @@
         (str (s) (string-append "\"" (string-append s "\"")))
         (num (k) (i64->string k))
         (chr (c) (string-append "#\\" (char->string c)))
-        (lst (xs) (string-append "(" (string-append (show-sexps xs) ")"))))))
+        (lst (xs src-file src-line) (string-append "(" (string-append (show-sexps xs) ")"))))))
   (show-sexps (subr kfx (sexps) string)
     (lambda (xs)
       (cond ((null? xs) "")
@@ -83,11 +84,17 @@
             (else (string-append (show-sexp (car xs)) (string-append " " (show-sexps (cdr xs)))))))))
 
 (define cv-where (subr kfx (cv) string)
-  (lambda (v) (tagcase v (cv (bs ds as es here group) here))))
+  (lambda (v) (tagcase v (cv (bs ds as es here group file line) here))))
 
 (define refuse (subr kfx (cv string) void)
   (lambda (v message)
-    (error (string-append "kfx: in " (string-append (cv-where v) (string-append ": " message))))))
+    "An error, said where: the innermost list being checked, and the
+     definition."
+    (tagcase v
+      (cv (bs ds as es here group file line)
+        (error (string-append "kfx: "
+                 (string-append (if (i64= line 0) "" (string-append file (string-append ":" (string-append (i64->string line) ": "))))
+                   (string-append "in " (string-append here (string-append ": " message))))))))))
 
 "Effects"
 
@@ -127,7 +134,7 @@
           (effdef (n atoms) (if (string=? n name) atoms (find-effdef v name (cdr es))))))))
 
 (define cv-effdefs (subr kfx (cv) effdefs)
-  (lambda (v) (tagcase v (cv (bs ds as es here group) es))))
+  (lambda (v) (tagcase v (cv (bs ds as es here group file line) es))))
 
 (define-rec
   (parse-effect (subr kfx (cv sexp) strings)
@@ -137,7 +144,7 @@
           (cond ((string=? s "pure") nil)
                 ((string=? s "spin") (list "spin"))
                 (else (find-effdef v s (cv-effdefs v)))))
-        (lst (xs)
+        (lst (xs src-file src-line)
           (cond ((sym-is? (car xs) "maxeff") (parse-effects v (cdr xs)))
                 ((and (sym-is? (car xs) "read") (sym-is? (second xs) "@globals")) (list "@globals"))
                 ((and (sym-is? (car xs) "read") (head-is? (second xs) "globals"))
@@ -150,10 +157,10 @@
 
 "Types"
 
-(define cv-dts (subr kfx (cv) dts) (lambda (v) (tagcase v (cv (bs ds as es here group) ds))))
-(define cv-aliases (subr kfx (cv) aliases) (lambda (v) (tagcase v (cv (bs ds as es here group) as))))
-(define cv-binds (subr kfx (cv) binds) (lambda (v) (tagcase v (cv (bs ds as es here group) bs))))
-(define cv-group (subr kfx (cv) strings) (lambda (v) (tagcase v (cv (bs ds as es here group) group))))
+(define cv-dts (subr kfx (cv) dts) (lambda (v) (tagcase v (cv (bs ds as es here group file line) ds))))
+(define cv-aliases (subr kfx (cv) aliases) (lambda (v) (tagcase v (cv (bs ds as es here group file line) as))))
+(define cv-binds (subr kfx (cv) binds) (lambda (v) (tagcase v (cv (bs ds as es here group file line) bs))))
+(define cv-group (subr kfx (cv) strings) (lambda (v) (tagcase v (cv (bs ds as es here group file line) group))))
 
 (define dt-named? (subr kfx (string dts) bool)
   (lambda (name ds)
@@ -187,7 +194,7 @@
                    (if (null? found)
                        (refuse v (string-append "no type is named " s))
                        (parse-type v tvars (car found)))))))
-        (lst (xs)
+        (lst (xs src-file src-line)
           (cond ((sym-is? (car xs) "listof")
                  (if (sym-is? (third xs) "acyclic")
                      (ty-list (parse-type v tvars (second xs)))
@@ -209,7 +216,7 @@
                (let ((b (items b)))
                  (if (sym-is? (second b) "type")
                      (sym-name (car b))
-                     (refuse v (string-append "KFX's poly is over types: " (show-sexp (lst b)))))))
+                     (refuse v (string-append "KFX's poly is over types: " (show-sexp (lst b "" 0)))))))
              (items (second (items t))))
         nil)))
 
@@ -398,9 +405,16 @@
 (define bind-onto (subr kfx (binds binds) binds)
   (lambda (xs ys) (if (null? xs) ys (bind-onto (cdr xs) (cons (car xs) ys)))))
 
+(define near (subr kfx (cv string i64) cv)
+  (lambda (v file line)
+    "`v`, checking a list that began at `line` of `file`."
+    (if (i64= line 0)
+        v
+        (tagcase v (cv (bs ds as es here group f l) (cv bs ds as es here group file line))))))
+
 (define with-binds (subr kfx (cv binds) cv)
   (lambda (v more)
-    (tagcase v (cv (bs ds as es here group) (cv (bind-onto more bs) ds as es here group)))))
+    (tagcase v (cv (bs ds as es here group file line) (cv (bind-onto more bs) ds as es here group file line)))))
 
 (define local (subr kfx (cv string ty) bind)
   (lambda (v name t)
@@ -498,10 +512,11 @@
         (chr (c) (res (ty-char) nil s))
         (str (x) (res (ty-string) nil s))
         (sym (name) (synth-name v s name))
-        (lst (xs)
-          (tagcase (car xs)
-            (sym (h) (synth-form v s e h (cdr xs)))
-            (else head (synth-call-of v s (synth v s head) (cdr xs) (list "spin"))))))))
+        (lst (xs src-file src-line)
+          (let ((v (near v src-file src-line)))
+            (tagcase (car xs)
+              (sym (h) (synth-form v s e h (cdr xs)))
+              (else head (synth-call-of v s (synth v s head) (cdr xs) (list "spin")))))))))
 
   (synth-name (subr kfx (cv st string) res)
     (lambda (v s name)
@@ -526,10 +541,11 @@
               (ty-meta (m) (literal-int v))
               (else other (refuse v (string-append "a literal is here, where a "
                                                    (string-append (show-ty s x) " is expected"))))))
-          (lst (xs)
-            (tagcase (car xs)
-              (sym (h) (check-form v s e h (cdr xs) x))
-              (else other (check-by-synth v s e x))))
+          (lst (xs src-file src-line)
+            (let ((v (near v src-file src-line)))
+              (tagcase (car xs)
+                (sym (h) (check-form v s e h (cdr xs) x))
+                (else other (check-by-synth v s e x)))))
           (sym (name)
             (if (string=? name "nil")
                 (tagcase x
@@ -711,7 +727,7 @@
       "A lambda with nothing expected: its parameters' types written."
       (let ((types (map (lambda ((p sexp))
                           (tagcase p
-                            (lst (pt) (parse-type v nil (second pt)))
+                            (lst (pt src-file src-line) (parse-type v nil (second pt)))
                             (else other (refuse v (string-append "a lambda with nothing expected needs its parameters' types: " (show-sexp other))))))
                         params)))
         (tagcase (body (with-binds v (bind-params v params types)) s forms nil)
@@ -742,7 +758,7 @@
           s
           (check-written-params v
                                 (tagcase (car params)
-                                  (lst (pt) (fits v s (car types) (parse-type v nil (second pt))))
+                                  (lst (pt src-file src-line) (fits v s (car types) (parse-type v nil (second pt))))
                                   (else other
                                     (if (has-meta? s (car types))
                                         (refuse v (string-append "the type of the lambda's parameter "
@@ -831,7 +847,7 @@
     (map (lambda ((p sexp))
            (let ((xs (items p)))
              (bind (sym-name (car xs)) (parse-scheme v (second xs)) "prim")))
-         (read-all (string-chars primitives)))))
+         (read-all (string-chars primitives) "kayak-rt's primitives" 1))))
 
 (define datatype-of (subr kfx (cv sexps) dt)
   (lambda (v xs)
@@ -875,8 +891,8 @@
   (lambda (v xs)
     "`v`, with a define-effect's abbreviation."
     (tagcase v
-      (cv (bs ds as es here group)
-        (cv bs ds as (cons (effdef (sym-name (second xs)) (parse-effect v (third xs))) es) here group)))))
+      (cv (bs ds as es here group file line)
+        (cv bs ds as (cons (effdef (sym-name (second xs)) (parse-effect v (third xs))) es) here group file line)))))
 
 (define declare-datatypes (subr kfx (cv sexps dts) dts)
   (lambda (v forms ds)
@@ -891,7 +907,7 @@
 
 (define at (subr kfx (cv string strings) cv)
   (lambda (v here group)
-    (tagcase v (cv (bs ds as es h g) (cv bs ds as es here group)))))
+    (tagcase v (cv (bs ds as es h g file line) (cv bs ds as es here group file line)))))
 
 (define runtime-name? (subr kfx (string) bool)
   (lambda (name)
@@ -967,8 +983,9 @@
     "One top-level form, which may add to what the forms after it see."
     (tagcase form
       (str (x) v)
-      (lst (xs)
-        (let ((h (if (null? xs) "" (tagcase (car xs) (sym (n) n) (else other "")))))
+      (lst (xs src-file src-line)
+        (let ((v (near v src-file src-line))
+              (h (if (null? xs) "" (tagcase (car xs) (sym (n) n) (else other "")))))
           (cond ((string=? h "define-effect") (with-effdef v xs))
                 ((string=? h "define-type") v)
                 ((string=? h "define-datatype")
@@ -1013,9 +1030,9 @@
 (define check-program (subr kfx (sexps) unit)
   (lambda (forms)
     "Every form, in order; the first error stops the compiler."
-    (let* ((start (cv nil nil (declare-types forms nil) nil "a type" nil))
+    (let* ((start (cv nil nil (declare-types forms nil) nil "a type" nil "the program" 0))
            (types (type-names-free start forms))
-           (named (tagcase start (cv (bs ds as es here group) (cv bs (datatype-names forms nil) as es here group))))
-           (typed (tagcase named (cv (bs ds as es here group) (cv bs (declare-datatypes named forms nil) as es here group))))
+           (named (tagcase start (cv (bs ds as es here group file line) (cv bs (datatype-names forms nil) as es here group file line))))
+           (typed (tagcase named (cv (bs ds as es here group file line) (cv bs (declare-datatypes named forms nil) as es here group file line))))
            (v (with-binds typed (prim-binds typed))))
       (begin (check-tops v forms) #u))))

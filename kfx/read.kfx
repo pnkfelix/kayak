@@ -2,33 +2,45 @@
 
 "Reading"
 
+"A list remembers where it began: its file's name, and the line of its
+ `(`, from 1. Messages say where (check.kfx's `refuse`)."
 (define-datatype sexp
   (sym string)
   (str string)
   (num i64)
   (chr char)
-  (lst (listof sexp acyclic)))
+  (lst (listof sexp acyclic) string i64))
 
 (define-type sexps (listof sexp acyclic))
 
-"A datum, and the text after it."
-(define-datatype got (got sexp chars))
-(define-datatype gots (gots sexps chars))
+"A datum, the text after it, and that text's line; the same for the items
+ of a list; a token, and the text after it, which a token's end leaves on
+ its line; the text after whitespace and comments, and its line."
+(define-datatype got (got sexp chars i64))
+(define-datatype gots (gots sexps chars i64))
 (define-datatype tok (tok string chars))
+(define-datatype skipped (skipped chars i64))
+
+(define read-error (subr kfx (string i64 string) void)
+  (lambda (file line message)
+    (error (string-append "kfx: " (string-append file (string-append ":"
+             (string-append (i64->string line) (string-append ": " message))))))))
 
 (define skip-line (subr kfx (chars) chars)
   (lambda (cs)
+    "A comment's text, to the newline that ends it, which is left."
     (cond ((null? cs) cs)
-          ((char=? (car cs) #\newline) (cdr cs))
+          ((char=? (car cs) #\newline) cs)
           (else (skip-line (cdr cs))))))
 
-(define skip (subr kfx (chars) chars)
-  (lambda (cs)
-    "Skips whitespace and comments."
-    (cond ((null? cs) cs)
-          ((char-whitespace? (car cs)) (skip (cdr cs)))
-          ((char=? (car cs) #\;) (skip (skip-line (cdr cs))))
-          (else cs))))
+(define skip (subr kfx (chars i64) skipped)
+  (lambda (cs line)
+    "Skips whitespace and comments, counting lines."
+    (cond ((null? cs) (skipped cs line))
+          ((char=? (car cs) #\newline) (skip (cdr cs) (i64+ line 1)))
+          ((char-whitespace? (car cs)) (skip (cdr cs) line))
+          ((char=? (car cs) #\;) (skip (skip-line (cdr cs)) line))
+          (else (skipped cs line)))))
 
 (define delimiter? (subr kfx (char) bool)
   (lambda (c)
@@ -44,17 +56,19 @@
 (define unescape (subr kfx (char) char)
   (lambda (c) (case c ((#\n) #\newline) ((#\t) #\tab) (else c))))
 
-(define string-body (subr kfx (chars chars) tok)
-  (lambda (cs acc)
-    "A string's characters, after its opening quote."
-    (cond ((null? cs) (error "kfx: a string is not closed"))
-          ((char=? (car cs) #\") (tok (rev->string acc) (cdr cs)))
+(define string-body (subr kfx (chars chars string i64 i64) got)
+  (lambda (cs acc file start line)
+    "A string's characters, after its opening quote on line `start`."
+    (cond ((null? cs) (read-error file start "a string is not closed"))
+          ((char=? (car cs) #\") (got (str (rev->string acc)) (cdr cs) line))
           ((char=? (car cs) #\\)
-           (string-body (cdr (cdr cs)) (cons (unescape (car (cdr cs))) acc)))
-          (else (string-body (cdr cs) (cons (car cs) acc))))))
+           (string-body (cdr (cdr cs)) (cons (unescape (car (cdr cs))) acc) file start line))
+          ((char=? (car cs) #\newline)
+           (string-body (cdr cs) (cons (car cs) acc) file start (i64+ line 1)))
+          (else (string-body (cdr cs) (cons (car cs) acc) file start line)))))
 
-(define digits-value (subr kfx (chars i64) i64)
-  (lambda (cs n)
+(define digits-value (subr kfx (chars i64 string i64) i64)
+  (lambda (cs n file line)
     "Digits onto `n`, negated: so that -9223372036854775808, whose
      magnitude is no i64, reads. A literal past an i64 is refused, as FX-26
      refuses it where an i64 is expected."
@@ -63,8 +77,8 @@
         (let ((d (i64- (char->i64 (car cs)) 48)))
           (if (or (i64< n -922337203685477580)
                   (and (i64= n -922337203685477580) (i64> d 8)))
-              (error "kfx: a literal past an i64")
-              (digits-value (cdr cs) (i64- (i64* n 10) d)))))))
+              (read-error file line "a literal past an i64")
+              (digits-value (cdr cs) (i64- (i64* n 10) d) file line))))))
 
 (define numeric? (subr kfx (chars) bool)
   (lambda (cs)
@@ -72,56 +86,63 @@
          (or (char-numeric? (car cs))
              (and (char=? (car cs) #\-) (not (null? (cdr cs))) (char-numeric? (car (cdr cs))))))))
 
-(define token-atom (subr kfx (string) sexp)
-  (lambda (s)
+(define token-atom (subr kfx (string string i64) sexp)
+  (lambda (s file line)
     (let ((cs (string-chars s)))
       (cond ((not (numeric? cs)) (sym s))
-            ((char=? (car cs) #\-) (num (digits-value (cdr cs) 0)))
+            ((char=? (car cs) #\-) (num (digits-value (cdr cs) 0 file line)))
             (else
-             (let ((negated (digits-value cs 0)))
+             (let ((negated (digits-value cs 0 file line)))
                (if (i64= negated -9223372036854775808)
-                   (error "kfx: a literal past an i64")
+                   (read-error file line "a literal past an i64")
                    (num (i64- 0 negated)))))))))
 
-(define char-named (subr kfx (string) char)
-  (lambda (s)
+(define char-named (subr kfx (string string i64) char)
+  (lambda (s file line)
     (cond ((i64= (string-length-i64 s) 1) (string-ref-i64 s 0))
           ((string=? s "space") #\space)
           ((string=? s "newline") #\newline)
           ((string=? s "tab") #\tab)
-          (else (error (string-append "kfx: no character is named " s))))))
+          (else (read-error file line (string-append "no character is named " s))))))
 
 (define-rec
-  (read-datum (subr kfx (chars) got)
-    (lambda (cs)
+  (read-datum (subr kfx (chars string i64) got)
+    (lambda (cs file line)
+      "A datum at the start of `cs`, on `line` of `file`."
       (let ((c (car cs)))
         (cond ((char=? c #\()
-               (tagcase (read-items (cdr cs)) (gots (xs after) (got (lst xs) after))))
-              ((char=? c #\)) (error "kfx: a ) with no ("))
-              ((char=? c #\")
-               (tagcase (string-body (cdr cs) nil) (tok (s after) (got (str s) after))))
+               (tagcase (read-items (cdr cs) file line)
+                 (gots (xs after end) (got (lst xs file line) after end))))
+              ((char=? c #\)) (read-error file line "a ) with no ("))
+              ((char=? c #\") (string-body (cdr cs) nil file line line))
               ((and (char=? c #\#) (not (null? (cdr cs))) (char=? (car (cdr cs)) #\\))
                (let ((name (cdr (cdr cs))))
                  (tagcase (token-chars (cdr name) (list (car name)))
-                   (tok (s after) (got (chr (char-named s)) after)))))
+                   (tok (s after) (got (chr (char-named s file line)) after line)))))
               (else
-               (tagcase (token-chars cs nil) (tok (s after) (got (token-atom s) after))))))))
-  (read-items (subr kfx (chars) gots)
-    (lambda (cs)
-      (let ((cs (skip cs)))
-        (cond ((null? cs) (error "kfx: a ( with no )"))
-              ((char=? (car cs) #\)) (gots nil (cdr cs)))
-              (else
-               (tagcase (read-datum cs)
-                 (got (x after)
-                   (tagcase (read-items after) (gots (xs rest) (gots (cons x xs) rest)))))))))))
+               (tagcase (token-chars cs nil)
+                 (tok (s after) (got (token-atom s file line) after line))))))))
+  (read-items (subr kfx (chars string i64) gots)
+    (lambda (cs file line)
+      (tagcase (skip cs line)
+        (skipped (cs line)
+          (cond ((null? cs) (read-error file line "a ( with no )"))
+                ((char=? (car cs) #\)) (gots nil (cdr cs) line))
+                (else
+                 (tagcase (read-datum cs file line)
+                   (got (x after line)
+                     (tagcase (read-items after file line)
+                       (gots (xs rest end) (gots (cons x xs) rest end))))))))))))
 
-(define read-all (subr kfx (chars) sexps)
-  (lambda (cs)
-    (let ((cs (skip cs)))
-      (if (null? cs)
-          nil
-          (tagcase (read-datum cs) (got (x after) (cons x (read-all after))))))))
+(define read-all (subr kfx (chars string i64) sexps)
+  (lambda (cs file line)
+    "Every datum in `cs`, the text of `file` from `line`."
+    (tagcase (skip cs line)
+      (skipped (cs line)
+        (if (null? cs)
+            nil
+            (tagcase (read-datum cs file line)
+              (got (x after line) (cons x (read-all after file line)))))))))
 
 "Taking `sexp`s apart"
 
@@ -132,12 +153,12 @@
   (lambda (e s) (tagcase e (sym (n) (string=? n s)) (else other #f))))
 
 (define items (subr kfx (sexp) sexps)
-  (lambda (e) (tagcase e (lst (xs) xs) (else other (error "kfx: a list is expected")))))
+  (lambda (e) (tagcase e (lst (xs src-file src-line) xs) (else other (error "kfx: a list is expected")))))
 
 (define head-is? (subr kfx (sexp string) bool)
   (lambda (e s)
     (tagcase e
-      (lst (xs) (and (not (null? xs)) (sym-is? (car xs) s)))
+      (lst (xs src-file src-line) (and (not (null? xs)) (sym-is? (car xs) s)))
       (else other #f))))
 
 (define second (subr kfx (sexps) sexp) (lambda (xs) (car (cdr xs))))
@@ -147,7 +168,7 @@
 (define param-name (subr kfx (sexp) string)
   (lambda (param)
     "A lambda's parameter's name: it is `x` or `(x T)`."
-    (sym-name (tagcase param (lst (xs) (car xs)) (else other other)))))
+    (sym-name (tagcase param (lst (xs src-file src-line) (car xs)) (else other other)))))
 
 (define procedure? (subr kfx (sexp) bool)
   (lambda (e) (or (head-is? e "lambda") (head-is? e "plambda"))))
