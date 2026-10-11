@@ -930,6 +930,19 @@
      innermost's mark says."
     (innermost-fallible (ctx-locals c))))
 
+(define-rec
+  (heap-static? (subr kfx (strings) bool)
+    (lambda (ls)
+      "Whether every lifetime the emitter writes here is `'static`: no
+       `letrena`, place or region binder around (each a `%letrena`). Then
+       the heap's data is made in its arenas, by bumping (C43)."
+      (cond ((null? ls) #t)
+            ((has-prefix? (car ls) "%letrena ") #f)
+            (else (heap-static? (cdr ls)))))))
+
+(define heap-alloc (subr kfx (ctx) string)
+  (lambda (c) (if (heap-static? (ctx-locals c)) "kayak_rt::heap_alloc(" "alloc(")))
+
 (define callee (subr kfx (ctx string) string)
   (lambda (c h)
     "A call's operator: a knot's procedure, a constant's value (a
@@ -938,6 +951,8 @@
       (cond ((string=? kind "knot") (string-append "(" (string-append (mangle-bare h) "__knot.get())")))
             ((string=? kind "item") (item-path c h))
             ((and (string=? kind "") (string-member? h (ctx-constants c))) (string-append (mangle h) "()"))
+            ((and (string=? kind "") (or (string=? h "cons") (string=? h "new")) (heap-static? (ctx-locals c)))
+             (string-append "kayak_rt::heap_" h))
             (else (mangle h))))))
 
 (define put-turbofish (subr kfx (ctx sexp chars) chars)
@@ -1668,7 +1683,7 @@
     (lambda (c xs n acc)
       (if (null? xs)
           (put "kayak_rt::nil()" acc)
-          (let* ((acc (put "kayak_rt::cons(" acc))
+          (let* ((acc (put (if (heap-static? (ctx-locals c)) "kayak_rt::heap_cons(" "kayak_rt::cons(") acc))
                  (acc (put-exp c (car xs) n (value) acc))
                  (acc (put ", " acc))
                  (acc (put-list c (cdr xs) n acc)))
@@ -1718,7 +1733,7 @@
               expected, as the checker found it, says."
              (let* ((ty (car (read-all (string-chars (fact-with c e "sum-type ")) "" 1)))
                     (fs (map items (cdr (items ty))))
-                    (acc (put "alloc(" acc))
+                    (acc (put (heap-alloc c) acc))
                     (acc (put (shape-name #f (map (lambda ((f sexps)) (label-of (car f))) fs)) acc))
                     (acc (put ">::" (put-types c (map second fs) (put "::<" acc))))
                     (acc (put (variant-name (label-of (car xs))) acc))

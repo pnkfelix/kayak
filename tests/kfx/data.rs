@@ -11,11 +11,11 @@ pub enum Tree {
 }
 
 pub fn leaf() -> &'static Tree {
-    alloc(Tree::Leaf())
+    kayak_rt::heap_alloc(Tree::Leaf())
 }
 
 pub fn node(f0: &'static Tree, f1: i64, f2: &'static Tree) -> &'static Tree {
-    alloc(Tree::Node(f0, f1, f2))
+    kayak_rt::heap_alloc(Tree::Node(f0, f1, f2))
 }
 
 pub enum Shape {
@@ -25,15 +25,15 @@ pub enum Shape {
 }
 
 pub fn circle(f0: i64) -> &'static Shape {
-    alloc(Shape::Circle(f0))
+    kayak_rt::heap_alloc(Shape::Circle(f0))
 }
 
 pub fn rect(f0: i64, f1: i64) -> &'static Shape {
-    alloc(Shape::Rect(f0, f1))
+    kayak_rt::heap_alloc(Shape::Rect(f0, f1))
 }
 
 pub fn dot() -> &'static Shape {
-    alloc(Shape::Dot())
+    kayak_rt::heap_alloc(Shape::Dot())
 }
 
 pub fn insert(k: i64, t: &'static Tree) -> &'static Tree {

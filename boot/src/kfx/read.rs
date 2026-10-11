@@ -23,31 +23,31 @@ pub enum Sexp {
 }
 
 pub fn sym(f0: Str, f1: Str, f2: i64) -> &'static Sexp {
-    alloc(Sexp::Sym(f0, f1, f2))
+    kayak_rt::heap_alloc(Sexp::Sym(f0, f1, f2))
 }
 
 pub fn str(f0: Str, f1: Str, f2: i64) -> &'static Sexp {
-    alloc(Sexp::Str(f0, f1, f2))
+    kayak_rt::heap_alloc(Sexp::Str(f0, f1, f2))
 }
 
 pub fn num(f0: i64, f1: Str, f2: i64) -> &'static Sexp {
-    alloc(Sexp::Num(f0, f1, f2))
+    kayak_rt::heap_alloc(Sexp::Num(f0, f1, f2))
 }
 
 pub fn big(f0: Str, f1: Str, f2: i64) -> &'static Sexp {
-    alloc(Sexp::Big(f0, f1, f2))
+    kayak_rt::heap_alloc(Sexp::Big(f0, f1, f2))
 }
 
 pub fn chr(f0: char, f1: Str, f2: i64) -> &'static Sexp {
-    alloc(Sexp::Chr(f0, f1, f2))
+    kayak_rt::heap_alloc(Sexp::Chr(f0, f1, f2))
 }
 
 pub fn lst(f0: List<&'static Sexp>, f1: Str, f2: i64, f3: i64) -> &'static Sexp {
-    alloc(Sexp::Lst(f0, f1, f2, f3))
+    kayak_rt::heap_alloc(Sexp::Lst(f0, f1, f2, f3))
 }
 
 pub fn real(f0: Str, f1: Str, f2: i64) -> &'static Sexp {
-    alloc(Sexp::Real(f0, f1, f2))
+    kayak_rt::heap_alloc(Sexp::Real(f0, f1, f2))
 }
 
 pub type Sexps = List<&'static Sexp>;
@@ -58,7 +58,7 @@ pub enum Here {
 }
 
 pub fn here(f0: Chars, f1: i64, f2: i64) -> &'static Here {
-    alloc(Here::Here(f0, f1, f2))
+    kayak_rt::heap_alloc(Here::Here(f0, f1, f2))
 }
 
 // A datum, and where reading is after it; the same for the items of a
@@ -69,7 +69,7 @@ pub enum Got {
 }
 
 pub fn got(f0: &'static Sexp, f1: &'static Here) -> &'static Got {
-    alloc(Got::Got(f0, f1))
+    kayak_rt::heap_alloc(Got::Got(f0, f1))
 }
 
 pub enum Gots {
@@ -77,7 +77,7 @@ pub enum Gots {
 }
 
 pub fn gots(f0: Sexps, f1: &'static Here) -> &'static Gots {
-    alloc(Gots::Gots(f0, f1))
+    kayak_rt::heap_alloc(Gots::Gots(f0, f1))
 }
 
 pub enum Tok {
@@ -85,7 +85,7 @@ pub enum Tok {
 }
 
 pub fn tok(f0: Str, f1: Chars, f2: i64) -> &'static Tok {
-    alloc(Tok::Tok(f0, f1, f2))
+    kayak_rt::heap_alloc(Tok::Tok(f0, f1, f2))
 }
 
 pub fn read_error(file: Str, line: i64, message: Str) -> Void {
@@ -147,7 +147,7 @@ pub fn token_chars(mut cs: Chars, mut acc: Chars, mut n: i64) -> &'static Tok {
         if (null_p(cs) || delimiter_p(car(cs))) {
             return tok(rev_to_string(acc), cs, n);
         } else {
-            (cs, acc, n) = (cdr(cs), cons(car(cs), acc), i64_plus(n, 1i64));
+            (cs, acc, n) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc), i64_plus(n, 1i64));
             continue;
         }
     }
@@ -176,13 +176,13 @@ pub fn string_body(mut cs: Chars, mut acc: Chars, mut file: Str, mut start: i64,
         } else if char_eq_p(car(cs), '"') {
             return got(str(rev_to_string(acc), file, at), here(cdr(cs), line, i64_plus(pos, 1i64)));
         } else if char_eq_p(car(cs), '\\') {
-            (cs, acc, pos) = (cdr(cdr(cs)), cons(unescape(car(cdr(cs))), acc), i64_plus(pos, 2i64));
+            (cs, acc, pos) = (cdr(cdr(cs)), kayak_rt::heap_cons(unescape(car(cdr(cs))), acc), i64_plus(pos, 2i64));
             continue;
         } else if char_eq_p(car(cs), '\n') {
-            (cs, acc, line, pos) = (cdr(cs), cons(car(cs), acc), i64_plus(line, 1i64), i64_plus(pos, 1i64));
+            (cs, acc, line, pos) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc), i64_plus(line, 1i64), i64_plus(pos, 1i64));
             continue;
         } else {
-            (cs, acc, pos) = (cdr(cs), cons(car(cs), acc), i64_plus(pos, 1i64));
+            (cs, acc, pos) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc), i64_plus(pos, 1i64));
             continue;
         }
     }
@@ -303,7 +303,7 @@ pub fn before_point(cs: Chars) -> Chars {
     if (null_p(cs) || char_eq_p(car(cs), '.')) {
         nil::<char>()
     } else {
-        cons(car(cs), before_point(cdr(cs)))
+        kayak_rt::heap_cons(car(cs), before_point(cdr(cs)))
     }
 }
 
@@ -387,7 +387,7 @@ pub fn read_datum(h: &'static Here, file: Str) -> &'static Got {
                 string_body(cdr(cs), nil::<char>(), file, line, pos, line, i64_plus(pos, 1i64))
             } else if (char_eq_p(c, '#') && not(null_p(cdr(cs))) && char_eq_p(car(cdr(cs)), '\\')) {
                 let name = cdr(cdr(cs));
-                let tagcase_ = token_chars(cdr(name), kayak_rt::cons(car(name), kayak_rt::nil()), 1i64);
+                let tagcase_ = token_chars(cdr(name), kayak_rt::heap_cons(car(name), kayak_rt::nil()), 1i64);
                 match *tagcase_ {
                     Tok::Tok(s, after, n) => {
                         got(chr(char_named(s, file, line), file, pos), here(after, line, i64_plus(pos, i64_plus(n, 2i64))))
@@ -421,7 +421,7 @@ pub fn read_items(h: &'static Here, file: Str) -> &'static Gots {
                         let tagcase_ = read_items(after, file);
                         match *tagcase_ {
                             Gots::Gots(xs, rest) => {
-                                gots(cons(x, xs), rest)
+                                gots(kayak_rt::heap_cons(x, xs), rest)
                             }
                         }
                     }
@@ -442,7 +442,7 @@ pub fn read_from(h: &'static Here, file: Str) -> Sexps {
                 let tagcase_ = read_datum(h, file);
                 match *tagcase_ {
                     Got::Got(x, after) => {
-                        cons(x, read_from(after, file))
+                        kayak_rt::heap_cons(x, read_from(after, file))
                     }
                 }
             }

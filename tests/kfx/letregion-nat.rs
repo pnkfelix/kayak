@@ -21,7 +21,7 @@ pub fn words(xs: Strings) -> Str {
 
 /// Pure: its counter is in a region the body makes, and masks.
 pub fn count_up(n: i64) -> i64 {
-    let c = the::<Ref<i64>>(new(0i64));
+    let c = the::<Ref<i64>>(kayak_rt::heap_new(0i64));
     set(c, i64_plus(get(c), n));
     set(c, i64_star(get(c), 2i64));
     get(c)
@@ -30,20 +30,20 @@ pub fn count_up(n: i64) -> i64 {
 /// `(the a ...)` inside a poly procedure: its type variable is in scope.
 pub fn firsts<A: Copy + 'static>(xs: List<A>, d: A) -> List<A> {
     if null_p(xs) {
-        the::<List<A>>(kayak_rt::cons(d, kayak_rt::nil()))
+        the::<List<A>>(kayak_rt::heap_cons(d, kayak_rt::nil()))
     } else {
-        the::<List<A>>(kayak_rt::cons(car(xs), kayak_rt::nil()))
+        the::<List<A>>(kayak_rt::heap_cons(car(xs), kayak_rt::nil()))
     }
 }
 
 pub fn main() -> Str {
     let n = string_length(str_lit("héllo"));
-    let xs = the::<List<Int>>(kayak_rt::cons(int_lit(3), kayak_rt::cons(int_lit(1), kayak_rt::cons(int_lit(2), kayak_rt::nil()))));
-    let ys = reverse(append(xs, the::<List<Int>>(kayak_rt::cons(int_lit(9), kayak_rt::nil()))));
-    words(kayak_rt::cons(i64_to_string(count_up(20i64)), kayak_rt::cons(int_to_string(n), kayak_rt::cons(int_to_string(length(xs)), kayak_rt::cons(int_to_string(_plus(n, int_lit(1))), kayak_rt::cons(if zero_p(_minus(n, int_lit(5))) {
+    let xs = the::<List<Int>>(kayak_rt::heap_cons(int_lit(3), kayak_rt::heap_cons(int_lit(1), kayak_rt::heap_cons(int_lit(2), kayak_rt::nil()))));
+    let ys = reverse(append(xs, the::<List<Int>>(kayak_rt::heap_cons(int_lit(9), kayak_rt::nil()))));
+    words(kayak_rt::heap_cons(i64_to_string(count_up(20i64)), kayak_rt::heap_cons(int_to_string(n), kayak_rt::heap_cons(int_to_string(length(xs)), kayak_rt::heap_cons(int_to_string(_plus(n, int_lit(1))), kayak_rt::heap_cons(if zero_p(_minus(n, int_lit(5))) {
         str_lit("zero")
     } else {
         str_lit("not zero")
-    }, kayak_rt::cons(int_to_string(max(n, int_lit(2))), kayak_rt::cons(int_to_string(min(n, int_lit(2))), kayak_rt::cons(int_to_string(car(ys)), kayak_rt::cons(int_to_string(car(firsts(xs, int_lit(0)))), kayak_rt::nil()))))))))))
+    }, kayak_rt::heap_cons(int_to_string(max(n, int_lit(2))), kayak_rt::heap_cons(int_to_string(min(n, int_lit(2))), kayak_rt::heap_cons(int_to_string(car(ys)), kayak_rt::heap_cons(int_to_string(car(firsts(xs, int_lit(0)))), kayak_rt::nil()))))))))))
 }
 

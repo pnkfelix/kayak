@@ -33,14 +33,14 @@ pub fn sum_to(mut i: f64, mut n: f64, mut acc: f64) -> f64 {
 }
 
 pub fn main() -> Str {
-    words(kayak_rt::cons(show(1.5f64), kayak_rt::cons(show(1.0f64), kayak_rt::cons(show(-0.25f64), kayak_rt::cons(show(f64_plus(0.1f64, 0.2f64)), kayak_rt::cons(show(100.0f64), kayak_rt::cons(show(f64_star(1000000000000.0f64, 1000000000000.0f64)), kayak_rt::cons(show(123456789012345678901.0f64), kayak_rt::cons(show(0.0000001f64), kayak_rt::cons(show(f64_slash(1.0f64, 0.0f64)), kayak_rt::cons(show(f64_slash(-1.0f64, 0.0f64)), kayak_rt::cons(show(f64_slash(0.0f64, 0.0f64)), kayak_rt::cons(show(f64_round(2.5f64)), kayak_rt::cons(show(f64_round(3.5f64)), kayak_rt::cons(show(f64_round(-2.5f64)), kayak_rt::cons(show(f64_floor(-2.5f64)), kayak_rt::cons(show(f64_ceiling(-2.5f64)), kayak_rt::cons(show(f64_truncate(-2.5f64)), kayak_rt::cons(show(f64_sqrt(2.0f64)), kayak_rt::cons(show(f64_abs(-3.0f64)), kayak_rt::cons(show(f64_neg(3.0f64)), kayak_rt::cons(show(f64_min(1.0f64, 2.0f64)), kayak_rt::cons(show(f64_max(1.0f64, 2.0f64)), kayak_rt::cons(int_to_string(f64_to_int(12345.0f64)), kayak_rt::cons(int_to_string(f64_to_int(-10000000000000000000.0f64)), kayak_rt::cons(show(int_to_f64(_star(int_lit(100000000000), int_lit(100000000000)))), kayak_rt::cons(if f64_lt(0.1f64, 0.2f64) {
+    words(kayak_rt::heap_cons(show(1.5f64), kayak_rt::heap_cons(show(1.0f64), kayak_rt::heap_cons(show(-0.25f64), kayak_rt::heap_cons(show(f64_plus(0.1f64, 0.2f64)), kayak_rt::heap_cons(show(100.0f64), kayak_rt::heap_cons(show(f64_star(1000000000000.0f64, 1000000000000.0f64)), kayak_rt::heap_cons(show(123456789012345678901.0f64), kayak_rt::heap_cons(show(0.0000001f64), kayak_rt::heap_cons(show(f64_slash(1.0f64, 0.0f64)), kayak_rt::heap_cons(show(f64_slash(-1.0f64, 0.0f64)), kayak_rt::heap_cons(show(f64_slash(0.0f64, 0.0f64)), kayak_rt::heap_cons(show(f64_round(2.5f64)), kayak_rt::heap_cons(show(f64_round(3.5f64)), kayak_rt::heap_cons(show(f64_round(-2.5f64)), kayak_rt::heap_cons(show(f64_floor(-2.5f64)), kayak_rt::heap_cons(show(f64_ceiling(-2.5f64)), kayak_rt::heap_cons(show(f64_truncate(-2.5f64)), kayak_rt::heap_cons(show(f64_sqrt(2.0f64)), kayak_rt::heap_cons(show(f64_abs(-3.0f64)), kayak_rt::heap_cons(show(f64_neg(3.0f64)), kayak_rt::heap_cons(show(f64_min(1.0f64, 2.0f64)), kayak_rt::heap_cons(show(f64_max(1.0f64, 2.0f64)), kayak_rt::heap_cons(int_to_string(f64_to_int(12345.0f64)), kayak_rt::heap_cons(int_to_string(f64_to_int(-10000000000000000000.0f64)), kayak_rt::heap_cons(show(int_to_f64(_star(int_lit(100000000000), int_lit(100000000000)))), kayak_rt::heap_cons(if f64_lt(0.1f64, 0.2f64) {
         str_lit("<")
     } else {
         str_lit("not <")
-    }, kayak_rt::cons(if f64_nan_p(f64_slash(0.0f64, 0.0f64)) {
+    }, kayak_rt::heap_cons(if f64_nan_p(f64_slash(0.0f64, 0.0f64)) {
         str_lit("nan")
     } else {
         str_lit("not nan")
-    }, kayak_rt::cons(show(sum_to(1.0f64, 1000.0f64, 0.0f64)), kayak_rt::nil())))))))))))))))))))))))))))))
+    }, kayak_rt::heap_cons(show(sum_to(1.0f64, 1000.0f64, 0.0f64)), kayak_rt::nil())))))))))))))))))))))))))))))
 }
 

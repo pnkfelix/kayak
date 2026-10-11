@@ -115,7 +115,7 @@ pub fn main() -> Str {
     let u3 = ((k()).variant(2, 7, 8)).set_i32(99i32);
     let a = the::<Arr>(blobref_at(the::<O>(make_bloblet(int_lit(240), ())), int_lit(0)));
     let u4 = fill(a, 0i64);
-    string_append(ints(kayak_rt::cons({
+    string_append(ints(kayak_rt::heap_cons({
         let tagcase_ = r();
         match tagcase_.tag(1) {
             1 => {
@@ -128,7 +128,7 @@ pub fn main() -> Str {
             }
             _ => no_flat_tag(),
         }
-    }, kayak_rt::cons(blobref_offset(v), kayak_rt::cons({
+    }, kayak_rt::heap_cons(blobref_offset(v), kayak_rt::heap_cons({
         let tagcase_ = k();
         match tagcase_.tag(2) {
             0 => {
@@ -141,7 +141,7 @@ pub fn main() -> Str {
             }
             _ => no_flat_tag(),
         }
-    }, kayak_rt::cons(bloblet_byte(b(), int_lit(16)), kayak_rt::cons(bloblet_byte(b(), int_lit(17)), kayak_rt::cons({
+    }, kayak_rt::heap_cons(bloblet_byte(b(), int_lit(16)), kayak_rt::heap_cons(bloblet_byte(b(), int_lit(17)), kayak_rt::heap_cons({
         let tagcase_ = z();
         match tagcase_.tag(1) {
             1 => {
@@ -153,6 +153,6 @@ pub fn main() -> Str {
                 int_lit(20)
             }
         }
-    }, kayak_rt::cons(f64_to_int(total(a, 0i64, 0.0f64)), kayak_rt::nil())))))))), f64_to_string((v).get_f64()))
+    }, kayak_rt::heap_cons(f64_to_int(total(a, 0i64, 0.0f64)), kayak_rt::nil())))))))), f64_to_string((v).get_f64()))
 }
 

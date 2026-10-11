@@ -47,7 +47,7 @@ pub fn to_feet(m: Meters) -> Feet {
 }
 
 pub fn push<T: Copy + 'static>(x: T, s: Stack<T>) -> Stack<T> {
-    up_stack(cons(x, down_stack(s)))
+    up_stack(kayak_rt::heap_cons(x, down_stack(s)))
 }
 
 pub fn main() -> Str {

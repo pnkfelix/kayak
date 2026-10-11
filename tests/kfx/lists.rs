@@ -13,7 +13,7 @@ pub fn rev_onto(mut xs: Ints, mut acc: Ints) -> Ints {
         if null_p(xs) {
             return acc;
         } else {
-            (xs, acc) = (cdr(xs), cons(car(xs), acc));
+            (xs, acc) = (cdr(xs), kayak_rt::heap_cons(car(xs), acc));
             continue;
         }
     }
@@ -21,7 +21,7 @@ pub fn rev_onto(mut xs: Ints, mut acc: Ints) -> Ints {
 
 pub fn count_from(i: i64, n: i64) -> Ints {
     if i64_lt(i, n) {
-        cons(i, count_from(i64_plus(i, 1i64), n))
+        kayak_rt::heap_cons(i, count_from(i64_plus(i, 1i64), n))
     } else {
         nil::<i64>()
     }
@@ -46,6 +46,6 @@ pub fn show(xs: Ints) -> Str {
 }
 
 pub fn main() -> Str {
-    string_append(show(rev_onto(kayak_rt::cons(1i64, kayak_rt::cons(2i64, kayak_rt::cons(3i64, kayak_rt::nil()))), nil::<i64>())), string_append(str_lit(" | "), string_append(i64_to_string(total(count_from(0i64, 100000i64))), string_append(str_lit(" | "), list_to_string(the::<Chars>(kayak_rt::cons('o', kayak_rt::cons('k', kayak_rt::nil()))))))))
+    string_append(show(rev_onto(kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::nil()))), nil::<i64>())), string_append(str_lit(" | "), string_append(i64_to_string(total(count_from(0i64, 100000i64))), string_append(str_lit(" | "), list_to_string(the::<Chars>(kayak_rt::heap_cons('o', kayak_rt::heap_cons('k', kayak_rt::nil()))))))))
 }
 

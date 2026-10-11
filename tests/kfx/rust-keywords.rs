@@ -28,11 +28,11 @@ pub enum Enum {
 }
 
 pub fn r#struct(f0: i64) -> &'static Enum {
-    alloc(Enum::Struct(f0))
+    kayak_rt::heap_alloc(Enum::Struct(f0))
 }
 
 pub fn r#unsafe() -> &'static Enum {
-    alloc(Enum::Unsafe())
+    kayak_rt::heap_alloc(Enum::Unsafe())
 }
 
 pub type As = &'static Sum_3dyn_5where<i64, i64>;

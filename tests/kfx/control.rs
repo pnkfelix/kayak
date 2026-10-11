@@ -66,19 +66,19 @@ pub fn both(a: bool, b: bool) -> Str {
 }
 
 pub fn main() -> Str {
-    words(kayak_rt::cons(sign(-5i64), kayak_rt::cons(sign(0i64), kayak_rt::cons(sign(7i64), kayak_rt::cons(kind('e'), kayak_rt::cons(kind('\n'), kayak_rt::cons(kind('z'), kayak_rt::cons(small(0i64), kayak_rt::cons(small(2i64), kayak_rt::cons(small(-1i64), kayak_rt::cons(small(9i64), kayak_rt::cons(both(true, false), kayak_rt::cons(both(true, true), kayak_rt::cons(both(false, false), kayak_rt::cons(if true {
+    words(kayak_rt::heap_cons(sign(-5i64), kayak_rt::heap_cons(sign(0i64), kayak_rt::heap_cons(sign(7i64), kayak_rt::heap_cons(kind('e'), kayak_rt::heap_cons(kind('\n'), kayak_rt::heap_cons(kind('z'), kayak_rt::heap_cons(small(0i64), kayak_rt::heap_cons(small(2i64), kayak_rt::heap_cons(small(-1i64), kayak_rt::heap_cons(small(9i64), kayak_rt::heap_cons(both(true, false), kayak_rt::heap_cons(both(true, true), kayak_rt::heap_cons(both(false, false), kayak_rt::heap_cons(if true {
         str_lit("(and)")
     } else {
         str_lit("not-(and)")
-    }, kayak_rt::cons(if false {
+    }, kayak_rt::heap_cons(if false {
         str_lit("(or)")
     } else {
         str_lit("not-(or)")
-    }, kayak_rt::cons(if (true && true && false) {
+    }, kayak_rt::heap_cons(if (true && true && false) {
         str_lit("and3")
     } else {
         str_lit("not-and3")
-    }, kayak_rt::cons(if (false || false || true) {
+    }, kayak_rt::heap_cons(if (false || false || true) {
         str_lit("or3")
     } else {
         str_lit("not-or3")

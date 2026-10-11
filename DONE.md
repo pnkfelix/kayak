@@ -1092,3 +1092,9 @@ top-level helper may be given a `letrena`'s list (`tests/kfx/region-poly`).
 A type variable at such a region's type refused (its parameter is
 `'static`); `define*` keeps a place's needs as `define` does. The `lists`
 port's helpers are top-level now.
+
+## The heap in typed arenas (2026-10-11)
+
+C43: outside regions, the heap's data is bumped into one safe `Arena<T>`
+per type (`kayak-rt/src/heap.rs`), found by `TypeId`. `lists` 21.9 ms to
+15.6; the compiler on itself 4.19 s to 3.97 (memory 7.4 GB to 7.8).

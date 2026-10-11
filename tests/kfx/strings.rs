@@ -21,23 +21,23 @@ pub fn bracket(c: char) -> Str {
 }
 
 pub fn main() -> Str {
-    words(kayak_rt::cons(str_lit("tab\there \"quoted\" back\\slash\n"), kayak_rt::cons(bracket('"'), kayak_rt::cons(bracket('\\'), kayak_rt::cons(bracket('\''), kayak_rt::cons(bracket(' '), kayak_rt::cons(bracket('('), kayak_rt::cons(bracket(';'), kayak_rt::cons(bracket('\t'), kayak_rt::cons(bracket(char_upcase('q')), kayak_rt::cons(if string_eq_p(str_lit("abc"), str_lit("abc")) {
+    words(kayak_rt::heap_cons(str_lit("tab\there \"quoted\" back\\slash\n"), kayak_rt::heap_cons(bracket('"'), kayak_rt::heap_cons(bracket('\\'), kayak_rt::heap_cons(bracket('\''), kayak_rt::heap_cons(bracket(' '), kayak_rt::heap_cons(bracket('('), kayak_rt::heap_cons(bracket(';'), kayak_rt::heap_cons(bracket('\t'), kayak_rt::heap_cons(bracket(char_upcase('q')), kayak_rt::heap_cons(if string_eq_p(str_lit("abc"), str_lit("abc")) {
         str_lit("same")
     } else {
         str_lit("differ")
-    }, kayak_rt::cons(if char_eq_p(string_ref_i64(str_lit("xyz"), 1i64), 'y') {
+    }, kayak_rt::heap_cons(if char_eq_p(string_ref_i64(str_lit("xyz"), 1i64), 'y') {
         str_lit("y")
     } else {
         str_lit("not-y")
-    }, kayak_rt::cons(i64_to_string(string_length_i64(str_lit("hello"))), kayak_rt::cons(i64_to_string(char_to_i64('A')), kayak_rt::cons(if char_whitespace_p('\t') {
+    }, kayak_rt::heap_cons(i64_to_string(string_length_i64(str_lit("hello"))), kayak_rt::heap_cons(i64_to_string(char_to_i64('A')), kayak_rt::heap_cons(if char_whitespace_p('\t') {
         str_lit("ws")
     } else {
         str_lit("not-ws")
-    }, kayak_rt::cons(if char_numeric_p('7') {
+    }, kayak_rt::heap_cons(if char_numeric_p('7') {
         str_lit("digit")
     } else {
         str_lit("not-digit")
-    }, kayak_rt::cons(if char_alphabetic_p('7') {
+    }, kayak_rt::heap_cons(if char_alphabetic_p('7') {
         str_lit("alpha")
     } else {
         str_lit("not-alpha")

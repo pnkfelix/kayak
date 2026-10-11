@@ -7,7 +7,7 @@ use super::*;
 
 // Names
 pub fn rust_keyword_p(s: Str) -> bool {
-    string_member_p(s, kayak_rt::cons(str_lit("as"), kayak_rt::cons(str_lit("async"), kayak_rt::cons(str_lit("await"), kayak_rt::cons(str_lit("box"), kayak_rt::cons(str_lit("break"), kayak_rt::cons(str_lit("const"), kayak_rt::cons(str_lit("continue"), kayak_rt::cons(str_lit("do"), kayak_rt::cons(str_lit("dyn"), kayak_rt::cons(str_lit("else"), kayak_rt::cons(str_lit("enum"), kayak_rt::cons(str_lit("extern"), kayak_rt::cons(str_lit("false"), kayak_rt::cons(str_lit("final"), kayak_rt::cons(str_lit("fn"), kayak_rt::cons(str_lit("for"), kayak_rt::cons(str_lit("gen"), kayak_rt::cons(str_lit("if"), kayak_rt::cons(str_lit("impl"), kayak_rt::cons(str_lit("in"), kayak_rt::cons(str_lit("let"), kayak_rt::cons(str_lit("loop"), kayak_rt::cons(str_lit("macro"), kayak_rt::cons(str_lit("match"), kayak_rt::cons(str_lit("mod"), kayak_rt::cons(str_lit("move"), kayak_rt::cons(str_lit("mut"), kayak_rt::cons(str_lit("override"), kayak_rt::cons(str_lit("priv"), kayak_rt::cons(str_lit("pub"), kayak_rt::cons(str_lit("ref"), kayak_rt::cons(str_lit("return"), kayak_rt::cons(str_lit("static"), kayak_rt::cons(str_lit("struct"), kayak_rt::cons(str_lit("trait"), kayak_rt::cons(str_lit("true"), kayak_rt::cons(str_lit("try"), kayak_rt::cons(str_lit("type"), kayak_rt::cons(str_lit("typeof"), kayak_rt::cons(str_lit("unsafe"), kayak_rt::cons(str_lit("unsized"), kayak_rt::cons(str_lit("use"), kayak_rt::cons(str_lit("virtual"), kayak_rt::cons(str_lit("where"), kayak_rt::cons(str_lit("while"), kayak_rt::cons(str_lit("yield"), kayak_rt::cons(str_lit("abstract"), kayak_rt::cons(str_lit("become"), kayak_rt::nil())))))))))))))))))))))))))))))))))))))))))))))))))
+    string_member_p(s, kayak_rt::heap_cons(str_lit("as"), kayak_rt::heap_cons(str_lit("async"), kayak_rt::heap_cons(str_lit("await"), kayak_rt::heap_cons(str_lit("box"), kayak_rt::heap_cons(str_lit("break"), kayak_rt::heap_cons(str_lit("const"), kayak_rt::heap_cons(str_lit("continue"), kayak_rt::heap_cons(str_lit("do"), kayak_rt::heap_cons(str_lit("dyn"), kayak_rt::heap_cons(str_lit("else"), kayak_rt::heap_cons(str_lit("enum"), kayak_rt::heap_cons(str_lit("extern"), kayak_rt::heap_cons(str_lit("false"), kayak_rt::heap_cons(str_lit("final"), kayak_rt::heap_cons(str_lit("fn"), kayak_rt::heap_cons(str_lit("for"), kayak_rt::heap_cons(str_lit("gen"), kayak_rt::heap_cons(str_lit("if"), kayak_rt::heap_cons(str_lit("impl"), kayak_rt::heap_cons(str_lit("in"), kayak_rt::heap_cons(str_lit("let"), kayak_rt::heap_cons(str_lit("loop"), kayak_rt::heap_cons(str_lit("macro"), kayak_rt::heap_cons(str_lit("match"), kayak_rt::heap_cons(str_lit("mod"), kayak_rt::heap_cons(str_lit("move"), kayak_rt::heap_cons(str_lit("mut"), kayak_rt::heap_cons(str_lit("override"), kayak_rt::heap_cons(str_lit("priv"), kayak_rt::heap_cons(str_lit("pub"), kayak_rt::heap_cons(str_lit("ref"), kayak_rt::heap_cons(str_lit("return"), kayak_rt::heap_cons(str_lit("static"), kayak_rt::heap_cons(str_lit("struct"), kayak_rt::heap_cons(str_lit("trait"), kayak_rt::heap_cons(str_lit("true"), kayak_rt::heap_cons(str_lit("try"), kayak_rt::heap_cons(str_lit("type"), kayak_rt::heap_cons(str_lit("typeof"), kayak_rt::heap_cons(str_lit("unsafe"), kayak_rt::heap_cons(str_lit("unsized"), kayak_rt::heap_cons(str_lit("use"), kayak_rt::heap_cons(str_lit("virtual"), kayak_rt::heap_cons(str_lit("where"), kayak_rt::heap_cons(str_lit("while"), kayak_rt::heap_cons(str_lit("yield"), kayak_rt::heap_cons(str_lit("abstract"), kayak_rt::heap_cons(str_lit("become"), kayak_rt::nil())))))))))))))))))))))))))))))))))))))))))))))))))
 }
 
 pub fn mangle_char(c: char) -> Str {
@@ -111,10 +111,10 @@ pub fn camel_chars(mut cs: Chars, mut up: bool, mut acc: Chars) -> Chars {
             (cs, up, acc) = (cdr(cs), false, put(mangle_char(car(cs)), acc));
             continue;
         } else if up {
-            (cs, up, acc) = (cdr(cs), false, cons(char_upcase(car(cs)), acc));
+            (cs, up, acc) = (cdr(cs), false, kayak_rt::heap_cons(char_upcase(car(cs)), acc));
             continue;
         } else {
-            (cs, up, acc) = (cdr(cs), false, cons(car(cs), acc));
+            (cs, up, acc) = (cdr(cs), false, kayak_rt::heap_cons(car(cs), acc));
             continue;
         }
     }

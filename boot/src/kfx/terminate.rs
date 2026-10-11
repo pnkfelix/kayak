@@ -26,11 +26,11 @@ pub enum Tracked {
 }
 
 pub fn part(f0: i64, f1: bool, f2: Tys) -> &'static Tracked {
-    alloc(Tracked::Part(f0, f1, f2))
+    kayak_rt::heap_alloc(Tracked::Part(f0, f1, f2))
 }
 
 pub fn int_of(f0: i64, f1: i64) -> &'static Tracked {
-    alloc(Tracked::IntOf(f0, f1))
+    kayak_rt::heap_alloc(Tracked::IntOf(f0, f1))
 }
 
 pub type Trackeds = List<&'static Tracked>;
@@ -40,7 +40,7 @@ pub enum Known {
 }
 
 pub fn known(f0: Str, f1: Trackeds) -> &'static Known {
-    alloc(Known::Known(f0, f1))
+    kayak_rt::heap_alloc(Known::Known(f0, f1))
 }
 
 pub type Knowns = List<&'static Known>;
@@ -51,7 +51,7 @@ pub enum Guard {
 }
 
 pub fn guard(f0: i64, f1: bool) -> &'static Guard {
-    alloc(Guard::Guard(f0, f1))
+    kayak_rt::heap_alloc(Guard::Guard(f0, f1))
 }
 
 pub type Guards = List<&'static Guard>;
@@ -63,7 +63,7 @@ pub enum Edge {
 }
 
 pub fn edge(f0: i64, f1: i64, f2: bool) -> &'static Edge {
-    alloc(Edge::Edge(f0, f1, f2))
+    kayak_rt::heap_alloc(Edge::Edge(f0, f1, f2))
 }
 
 pub type Edges = List<&'static Edge>;
@@ -73,7 +73,7 @@ pub enum Scall {
 }
 
 pub fn scall(f0: i64, f1: i64, f2: Edges) -> &'static Scall {
-    alloc(Scall::Scall(f0, f1, f2))
+    kayak_rt::heap_alloc(Scall::Scall(f0, f1, f2))
 }
 
 pub type Scalls = List<&'static Scall>;
@@ -86,7 +86,7 @@ pub enum Passing {
 }
 
 pub fn passing(f0: i64, f1: i64, f2: I64s) -> &'static Passing {
-    alloc(Passing::Passing(f0, f1, f2))
+    kayak_rt::heap_alloc(Passing::Passing(f0, f1, f2))
 }
 
 pub type Passings = List<&'static Passing>;
@@ -96,7 +96,7 @@ pub enum Slot {
 }
 
 pub fn slot(f0: i64, f1: i64) -> &'static Slot {
-    alloc(Slot::Slot(f0, f1))
+    kayak_rt::heap_alloc(Slot::Slot(f0, f1))
 }
 
 pub type Slots = List<&'static Slot>;
@@ -109,7 +109,7 @@ pub enum Wc {
 }
 
 pub fn wc(f0: &'static Cv, f1: Strings, f2: i64, f3: Knowns, f4: Guards, f5: I64s, f6: Slots) -> &'static Wc {
-    alloc(Wc::Wc(f0, f1, f2, f3, f4, f5, f6))
+    kayak_rt::heap_alloc(Wc::Wc(f0, f1, f2, f3, f4, f5, f6))
 }
 
 // What it found: the calls, what each passes on, and whether a member
@@ -119,7 +119,7 @@ pub enum Ws {
 }
 
 pub fn ws(f0: Scalls, f1: Passings, f2: bool) -> &'static Ws {
-    alloc(Ws::Ws(f0, f1, f2))
+    kayak_rt::heap_alloc(Ws::Ws(f0, f1, f2))
 }
 
 pub fn index_of(mut x: Str, mut xs: Strings, mut i: i64) -> i64 {
@@ -140,7 +140,7 @@ pub fn nth_ty(mut ts: Tys, mut i: i64) -> Tys {
         if null_p(ts) {
             return nil::<&'static Ty>();
         } else if i64_eq(i, 0i64) {
-            return the::<Tys>(kayak_rt::cons(car(ts), kayak_rt::nil()));
+            return the::<Tys>(kayak_rt::heap_cons(car(ts), kayak_rt::nil()));
         } else {
             (ts, i) = (cdr(ts), i64_minus(i, 1i64));
             continue;
@@ -163,7 +163,7 @@ pub fn bound_of(mut n: Str, mut ks: Knowns) -> List<Trackeds> {
             let tagcase_ = car(ks);
             match *tagcase_ {
                 Known::Known(m, t) => {
-                    return the::<List<Trackeds>>(kayak_rt::cons(t, kayak_rt::nil()));
+                    return the::<List<Trackeds>>(kayak_rt::heap_cons(t, kayak_rt::nil()));
                 }
             }
         } else {
@@ -239,7 +239,7 @@ pub fn literal_of(e: &'static Sexp) -> I64s {
             if (i64_lt(k, -1152921504606846976i64) || i64_gt(k, 1152921504606846975i64)) {
                 nil::<i64>()
             } else {
-                the::<I64s>(kayak_rt::cons(k, kayak_rt::nil()))
+                the::<I64s>(kayak_rt::heap_cons(k, kayak_rt::nil()))
             }
         }
         _ => {
@@ -267,7 +267,7 @@ pub fn shifted(ts: Trackeds, k: i64) -> Trackeds {
                 if overflows_p(o, k) {
                     nil::<&'static Tracked>()
                 } else {
-                    the::<Trackeds>(kayak_rt::cons(int_of(p, i64_plus(o, k)), kayak_rt::nil()))
+                    the::<Trackeds>(kayak_rt::heap_cons(int_of(p, i64_plus(o, k)), kayak_rt::nil()))
                 }
             }
             _ => {
@@ -311,7 +311,7 @@ pub fn tracked_of(mut c: &'static Wc, mut e: &'static Sexp) -> Trackeds {
                                             match *tagcase_ {
                                                 Ty::TyRconst(rn) => {
                                                     if string_eq_p(rn, str_lit("acyclic")) {
-                                                        the::<Trackeds>(kayak_rt::cons(part(p, true, the::<Tys>(kayak_rt::cons(if string_eq_p(op, str_lit("car")) {
+                                                        the::<Trackeds>(kayak_rt::heap_cons(part(p, true, the::<Tys>(kayak_rt::heap_cons(if string_eq_p(op, str_lit("car")) {
                                                             el
                                                         } else {
                                                             car(ty)
@@ -431,11 +431,11 @@ pub fn fixed_p(mut c: &'static Wc, mut e: &'static Sexp) -> bool {
 /// The bounds `op`, holding or not, puts on its left operand: below `#t`.
 pub fn bounds_put(op: Str, holds: bool) -> List<bool> {
     if (((string_eq_p(op, str_lit("<")) || string_eq_p(op, str_lit("<="))) && holds) || ((string_eq_p(op, str_lit(">")) || string_eq_p(op, str_lit(">="))) && not(holds))) {
-        the::<List<bool>>(kayak_rt::cons(false, kayak_rt::nil()))
+        the::<List<bool>>(kayak_rt::heap_cons(false, kayak_rt::nil()))
     } else if (((string_eq_p(op, str_lit("<")) || string_eq_p(op, str_lit("<="))) && not(holds)) || ((string_eq_p(op, str_lit(">")) || string_eq_p(op, str_lit(">="))) && holds)) {
-        the::<List<bool>>(kayak_rt::cons(true, kayak_rt::nil()))
+        the::<List<bool>>(kayak_rt::heap_cons(true, kayak_rt::nil()))
     } else if (string_eq_p(op, str_lit("=")) && holds) {
-        the::<List<bool>>(kayak_rt::cons(true, kayak_rt::cons(false, kayak_rt::nil())))
+        the::<List<bool>>(kayak_rt::heap_cons(true, kayak_rt::heap_cons(false, kayak_rt::nil())))
     } else {
         nil::<bool>()
     }
@@ -541,17 +541,17 @@ pub fn has_bound_p(c: &'static Wc, p: i64, lower: bool) -> bool {
 /// A graph, kept in order of its edges' slots, with an edge more.
 pub fn with_edge(es: Edges, from: i64, to: i64, strict: bool) -> Edges {
     if null_p(es) {
-        the::<Edges>(kayak_rt::cons(edge(from, to, strict), kayak_rt::nil()))
+        the::<Edges>(kayak_rt::heap_cons(edge(from, to, strict), kayak_rt::nil()))
     } else {
         let tagcase_ = car(es);
         match *tagcase_ {
             Edge::Edge(f, t, s) => {
                 if (i64_eq(f, from) && i64_eq(t, to)) {
-                    cons(edge(f, t, (s || strict)), cdr(es))
+                    kayak_rt::heap_cons(edge(f, t, (s || strict)), cdr(es))
                 } else if (i64_lt(from, f) || (i64_eq(from, f) && i64_lt(to, t))) {
-                    cons(edge(from, to, strict), es)
+                    kayak_rt::heap_cons(edge(from, to, strict), es)
                 } else {
-                    cons(car(es), with_edge(cdr(es), from, to, strict))
+                    kayak_rt::heap_cons(car(es), with_edge(cdr(es), from, to, strict))
                 }
             }
         }
@@ -614,7 +614,7 @@ pub fn passed_on(c: &'static Wc, a: &'static Sexp) -> i64 {
                 if strict {
                     nil::<i64>()
                 } else {
-                    the::<I64s>(kayak_rt::cons(p, kayak_rt::nil()))
+                    the::<I64s>(kayak_rt::heap_cons(p, kayak_rt::nil()))
                 }
             }
             _ => {
@@ -637,7 +637,7 @@ pub fn call_found(c: &'static Wc, st: &'static Ws, to: i64, args: Sexps) -> &'st
             let tagcase_ = st;
             match *tagcase_ {
                 Ws::Ws(calls, passed, escaped) => {
-                    ws(cons(scall(cur, to, args_edges(c, args, 0i64, nil::<&'static Edge>())), calls), cons(passing(cur, to, map(lambda1(move |a: &'static Sexp| {
+                    ws(kayak_rt::heap_cons(scall(cur, to, args_edges(c, args, 0i64, nil::<&'static Edge>())), calls), kayak_rt::heap_cons(passing(cur, to, map(lambda1(move |a: &'static Sexp| {
                         passed_on(c, a)
                     }), args)), passed), escaped)
                 }
@@ -680,7 +680,7 @@ pub fn variant_part(v: &'static Cv, whole: Trackeds, tag: Str, i: i64) -> Tracke
         let tagcase_ = t;
         match *tagcase_ {
             Tracked::Part(p, strict, ty) => {
-                the::<Trackeds>(kayak_rt::cons(part(p, true, if null_p(ty) {
+                the::<Trackeds>(kayak_rt::heap_cons(part(p, true, if null_p(ty) {
                     nil::<&'static Ty>()
                 } else {
                     let tagcase_ = car(ty);
@@ -853,11 +853,11 @@ pub fn walk_arms(mut c: &'static Wc, mut st: &'static Ws, mut whole: Trackeds, m
         } else {
             let arm = items(car(arms));
             (st, arms) = (if sym_is_p(car(arm), str_lit("else")) {
-                walk_all(in_scope(c, the::<Knowns>(kayak_rt::cons(known(sym_name(second(arm)), concat(map(lambda1(move |t: &'static Tracked| {
+                walk_all(in_scope(c, the::<Knowns>(kayak_rt::heap_cons(known(sym_name(second(arm)), concat(map(lambda1(move |t: &'static Tracked| {
                     let tagcase_ = t;
                     match *tagcase_ {
                         Tracked::Part(p, s, ty) => {
-                            the::<Trackeds>(kayak_rt::cons(t, kayak_rt::nil()))
+                            the::<Trackeds>(kayak_rt::heap_cons(t, kayak_rt::nil()))
                         }
                         _ => {
                             let other = tagcase_;
@@ -871,11 +871,11 @@ pub fn walk_arms(mut c: &'static Wc, mut st: &'static Ws, mut whole: Trackeds, m
                     match *tagcase_ {
                         Sexp::Sym(x, at_file, at_pos) => {
                             // A sum's member, bound whole: a part, its type not known here.
-                            the::<Knowns>(kayak_rt::cons(known(x, concat(map(lambda1(move |t: &'static Tracked| {
+                            the::<Knowns>(kayak_rt::heap_cons(known(x, concat(map(lambda1(move |t: &'static Tracked| {
                                 let tagcase_ = t;
                                 match *tagcase_ {
                                     Tracked::Part(p, s, ty) => {
-                                        the::<Trackeds>(kayak_rt::cons(part(p, true, nil::<&'static Ty>()), kayak_rt::nil()))
+                                        the::<Trackeds>(kayak_rt::heap_cons(part(p, true, nil::<&'static Ty>()), kayak_rt::nil()))
                                     }
                                     _ => {
                                         let other = tagcase_;
@@ -903,7 +903,7 @@ pub fn fields_known(c: &'static Wc, whole: Trackeds, tag: Str, names: Sexps, i: 
         let tagcase_ = c;
         match *tagcase_ {
             Wc::Wc(v, ms, cur, sc, gs, nats, inv) => {
-                cons(known(sym_name(car(names)), variant_part(v, whole, tag, i)), fields_known(c, whole, tag, cdr(names), i64_plus(i, 1i64)))
+                kayak_rt::heap_cons(known(sym_name(car(names)), variant_part(v, whole, tag, i)), fields_known(c, whole, tag, cdr(names), i64_plus(i, 1i64)))
             }
         }
     }
@@ -915,7 +915,7 @@ pub fn walk_let_star(mut c: &'static Wc, mut st: &'static Ws, mut bindings: Sexp
             return walk_all(c, st, body);
         } else {
             let b = items(car(bindings));
-            (c, st, bindings) = (in_scope(c, the::<Knowns>(kayak_rt::cons(known(sym_name(car(b)), tracked_of(c, second(b))), kayak_rt::nil()))), walk_exp(c, st, second(b)), cdr(bindings));
+            (c, st, bindings) = (in_scope(c, the::<Knowns>(kayak_rt::heap_cons(known(sym_name(car(b)), tracked_of(c, second(b))), kayak_rt::nil()))), walk_exp(c, st, second(b)), cdr(bindings));
             continue;
         }
     }
@@ -927,7 +927,7 @@ pub enum RecMember {
 }
 
 pub fn rec_member(f0: Str, f1: Strings, f2: Tys, f3: Sexps) -> &'static RecMember {
-    alloc(RecMember::RecMember(f0, f1, f2, f3))
+    kayak_rt::heap_alloc(RecMember::RecMember(f0, f1, f2, f3))
 }
 
 pub type RecMembers = List<&'static RecMember>;
@@ -936,12 +936,12 @@ pub type RecMembers = List<&'static RecMember>;
 pub fn lambda_of(e: &'static Sexp) -> Sexps {
     if head_is_p(e, str_lit("plambda")) {
         if head_is_p(third(items(e)), str_lit("lambda")) {
-            the::<Sexps>(kayak_rt::cons(third(items(e)), kayak_rt::nil()))
+            the::<Sexps>(kayak_rt::heap_cons(third(items(e)), kayak_rt::nil()))
         } else {
             nil::<&'static Sexp>()
         }
     } else if head_is_p(e, str_lit("lambda")) {
-        the::<Sexps>(kayak_rt::cons(e, kayak_rt::nil()))
+        the::<Sexps>(kayak_rt::heap_cons(e, kayak_rt::nil()))
     } else {
         nil::<&'static Sexp>()
     }
@@ -951,14 +951,14 @@ pub fn param_knowns(names: Strings, ts: Tys, j: i64) -> Knowns {
     if (null_p(names) || null_p(ts)) {
         nil::<&'static Known>()
     } else {
-        cons(known(car(names), cons(part(j, false, the::<Tys>(kayak_rt::cons(car(ts), kayak_rt::nil()))), {
+        kayak_rt::heap_cons(known(car(names), kayak_rt::heap_cons(part(j, false, the::<Tys>(kayak_rt::heap_cons(car(ts), kayak_rt::nil()))), {
             let tagcase_ = car(ts);
             match *tagcase_ {
                 Ty::TyInt() => {
-                    the::<Trackeds>(kayak_rt::cons(int_of(j, 0i64), kayak_rt::nil()))
+                    the::<Trackeds>(kayak_rt::heap_cons(int_of(j, 0i64), kayak_rt::nil()))
                 }
                 Ty::TyNat() => {
-                    the::<Trackeds>(kayak_rt::cons(int_of(j, 0i64), kayak_rt::nil()))
+                    the::<Trackeds>(kayak_rt::heap_cons(int_of(j, 0i64), kayak_rt::nil()))
                 }
                 _ => {
                     let other = tagcase_;
@@ -985,7 +985,7 @@ pub fn nat_params(mut ts: Tys, mut j: i64) -> I64s {
                 }
             }
         } {
-            return cons(j, nat_params(cdr(ts), i64_plus(j, 1i64)));
+            return kayak_rt::heap_cons(j, nat_params(cdr(ts), i64_plus(j, 1i64)));
         } else {
             (ts, j) = (cdr(ts), i64_plus(j, 1i64));
             continue;
@@ -1061,7 +1061,7 @@ pub fn kept_slots(inv: Slots, passed: Passings) -> Slots {
                 }), passed) {
                     nil::<&'static Slot>()
                 } else {
-                    the::<Slots>(kayak_rt::cons(x, kayak_rt::nil()))
+                    the::<Slots>(kayak_rt::heap_cons(x, kayak_rt::nil()))
                 }
             }
         }
@@ -1082,7 +1082,7 @@ pub fn invariant(mut inv: Slots, mut passed: Passings) -> Slots {
 
 pub fn counting(from: i64, n: i64) -> I64s {
     if i64_lt(from, n) {
-        cons(from, counting(i64_plus(from, 1i64), n))
+        kayak_rt::heap_cons(from, counting(i64_plus(from, 1i64), n))
     } else {
         nil::<i64>()
     }
@@ -1203,7 +1203,7 @@ pub fn paths(calls: Scalls, all: Scalls, todo: Scalls) -> Scalls {
                     match *tagcase_ {
                         Scall::Scall(g2, h, b) => {
                             if i64_eq(g2, g) {
-                                the::<Scalls>(kayak_rt::cons(x, kayak_rt::nil()))
+                                the::<Scalls>(kayak_rt::heap_cons(x, kayak_rt::nil()))
                             } else {
                                 nil::<&'static Scall>()
                             }
@@ -1230,7 +1230,7 @@ pub fn close_over(mut calls: Scalls, mut all: Scalls, mut todo: Scalls, mut f: i
                         nexts = cdr(nexts);
                         continue;
                     } else {
-                        (all, todo, nexts) = (cons(c, all), cons(c, todo), cdr(nexts));
+                        (all, todo, nexts) = (kayak_rt::heap_cons(c, all), kayak_rt::heap_cons(c, todo), cdr(nexts));
                         continue;
                     }
                 }
@@ -1264,7 +1264,7 @@ pub fn rec_members_of(names: Strings, types: Tys, lambdas: Sexps) -> RecMembers 
     if null_p(names) {
         nil::<&'static RecMember>()
     } else {
-        cons(rec_member(car(names), param_names(items(second(items(car(lambdas))))), {
+        kayak_rt::heap_cons(rec_member(car(names), param_names(items(second(items(car(lambdas))))), {
             let tagcase_ = car(types);
             match *tagcase_ {
                 Ty::TyProc(es, ps, r) => {

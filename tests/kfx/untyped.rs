@@ -23,7 +23,7 @@ pub fn shout(s: Str) -> Str {
 }
 
 pub fn pair_up(x: i64) -> List<i64> {
-    the::<List<i64>>(kayak_rt::cons(x, kayak_rt::cons(add(x, base()), kayak_rt::nil())))
+    the::<List<i64>>(kayak_rt::heap_cons(x, kayak_rt::heap_cons(add(x, base()), kayak_rt::nil())))
 }
 
 pub fn main() -> Str {

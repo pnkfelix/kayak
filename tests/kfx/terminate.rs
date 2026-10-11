@@ -14,11 +14,11 @@ pub enum Tree {
 }
 
 pub fn leaf(f0: Int) -> &'static Tree {
-    alloc(Tree::Leaf(f0))
+    kayak_rt::heap_alloc(Tree::Leaf(f0))
 }
 
 pub fn node(f0: &'static Tree, f1: &'static Tree) -> &'static Tree {
-    alloc(Tree::Node(f0, f1))
+    kayak_rt::heap_alloc(Tree::Node(f0, f1))
 }
 
 // Over a list at `acyclic`: its `cdr` is smaller.
@@ -114,7 +114,7 @@ pub fn map_pure<A: Copy + 'static, B: Copy + 'static>(f: &'static dyn Fn(A) -> B
         if null_p(ys) {
             nil::<B>()
         } else {
-            cons(f(car(ys)), (go__knot.get())(cdr(ys)))
+            kayak_rt::heap_cons(f(car(ys)), (go__knot.get())(cdr(ys)))
         }
     });
     go__knot.set(go);
@@ -139,12 +139,12 @@ pub fn od_p(n: Int) -> bool {
 }
 
 pub fn main() -> Str {
-    string_append(int_to_string(len(kayak_rt::cons(1i64, kayak_rt::cons(2i64, kayak_rt::cons(3i64, kayak_rt::nil()))))), string_append(str_lit(" "), string_append(int_to_string(count(int_lit(5))), string_append(str_lit(" "), string_append(int_to_string(sum_to(int_lit(10))), string_append(str_lit(" "), string_append(int_to_string(total(node(leaf(int_lit(1)), node(leaf(int_lit(2)), leaf(int_lit(3)))))), string_append(str_lit(" "), string_append(int_to_string(ack(int_lit(2), int_lit(3))), string_append(str_lit(" "), string_append(if ev_p(int_lit(10)) {
+    string_append(int_to_string(len(kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::nil()))))), string_append(str_lit(" "), string_append(int_to_string(count(int_lit(5))), string_append(str_lit(" "), string_append(int_to_string(sum_to(int_lit(10))), string_append(str_lit(" "), string_append(int_to_string(total(node(leaf(int_lit(1)), node(leaf(int_lit(2)), leaf(int_lit(3)))))), string_append(str_lit(" "), string_append(int_to_string(ack(int_lit(2), int_lit(3))), string_append(str_lit(" "), string_append(if ev_p(int_lit(10)) {
         str_lit("even")
     } else {
         str_lit("odd")
     }, string_append(str_lit(" "), int_to_string(len(map_pure(lambda1(move |x: i64| {
         i64_star(x, 2i64)
-    }), kayak_rt::cons(1i64, kayak_rt::cons(2i64, kayak_rt::cons(3i64, kayak_rt::cons(4i64, kayak_rt::nil())))))))))))))))))))
+    }), kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::heap_cons(4i64, kayak_rt::nil())))))))))))))))))))
 }
 

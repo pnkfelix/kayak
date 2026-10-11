@@ -69,11 +69,11 @@ pub enum Step {
 }
 
 pub fn more(f0: i64) -> &'static Step {
-    alloc(Step::More(f0))
+    kayak_rt::heap_alloc(Step::More(f0))
 }
 
 pub fn done() -> &'static Step {
-    alloc(Step::Done())
+    kayak_rt::heap_alloc(Step::Done())
 }
 
 /// A tail call in a tagcase arm.
@@ -121,6 +121,6 @@ pub fn rebound(n: i64, acc: i64) -> i64 {
 }
 
 pub fn main() -> Str {
-    words(kayak_rt::cons(i64_to_string(count_up(0i64, 3000000i64, 0i64)), kayak_rt::cons(swaps(1i64, 2i64, 1000001i64), kayak_rt::cons(i64_to_string(collatz(27i64, 0i64)), kayak_rt::cons(i64_to_string(drain(more(1000000i64), 0i64)), kayak_rt::cons(i64_to_string(shadowed(100i64, 0i64)), kayak_rt::cons(i64_to_string(rebound(3i64, 0i64)), kayak_rt::nil())))))))
+    words(kayak_rt::heap_cons(i64_to_string(count_up(0i64, 3000000i64, 0i64)), kayak_rt::heap_cons(swaps(1i64, 2i64, 1000001i64), kayak_rt::heap_cons(i64_to_string(collatz(27i64, 0i64)), kayak_rt::heap_cons(i64_to_string(drain(more(1000000i64), 0i64)), kayak_rt::heap_cons(i64_to_string(shadowed(100i64, 0i64)), kayak_rt::heap_cons(i64_to_string(rebound(3i64, 0i64)), kayak_rt::nil())))))))
 }
 

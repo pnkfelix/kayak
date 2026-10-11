@@ -34,7 +34,7 @@ pub fn go(a_0: &'static dyn Fn(i64) -> i64) -> i64 {
 
 pub fn main() -> Str {
     let x = nil::<Void>();
-    let pairs = cons(nil::<Void>(), nil::<List<Void>>());
+    let pairs = kayak_rt::heap_cons(nil::<Void>(), nil::<List<Void>>());
     let first = car(pairs);
     let ys = the::<List<i64>>(mk::<i64>());
     string_append(if null_p::<Void>(x) {

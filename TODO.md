@@ -207,10 +207,11 @@ or a trait.
   parameter being `'static`; dropping the bound needs to know which
   procedures need it (a datatype's constructor, `alloc`, and so whatever
   calls them at the type), a fixed point over the call graph.
-- **Heap allocation is a `malloc` each, never freed** (`cons`, `new`, a
-  closure): all but 1.5 ms of `lists`' 20. Bump allocation for the heap; a
-  decision first, the user's: an `unsafe` module, or a safe registry of
-  typed arenas (only `'static` types, `TypeId`'s).
+- ~~**Heap allocation is a `malloc` each**~~: the user's ruling, safe
+  typed arenas only; done, C43, where every type is `'static`. Left: a
+  closure is still a `Box` each (its type is no `'static` one to find an
+  arena by), and so is the heap's data inside a `letrena` or a procedure
+  over a region or place.
 - **A closure that does not escape is leaked all the same**: `lambdaN` for
   every lambda, one each round in `closures`. One the checker finds stays
   within its scope could be a local, borrowed as `&dyn Fn`.

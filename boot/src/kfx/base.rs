@@ -25,7 +25,7 @@ pub fn map<A: Copy + 'static, B: Copy + 'static>(f: &'static dyn Fn(A) -> B, xs:
     if null_p(xs) {
         nil::<B>()
     } else {
-        cons(f(car(xs)), map(f, cdr(xs)))
+        kayak_rt::heap_cons(f(car(xs)), map(f, cdr(xs)))
     }
 }
 
@@ -63,7 +63,7 @@ pub fn onto<A: Copy + 'static>(xs: List<A>, ys: List<A>) -> List<A> {
     if null_p(xs) {
         ys
     } else {
-        cons(car(xs), onto(cdr(xs), ys))
+        kayak_rt::heap_cons(car(xs), onto(cdr(xs), ys))
     }
 }
 
@@ -81,7 +81,7 @@ pub fn rev_onto(mut xs: Chars, mut acc: Chars) -> Chars {
         if null_p(xs) {
             return acc;
         } else {
-            (xs, acc) = (cdr(xs), cons(car(xs), acc));
+            (xs, acc) = (cdr(xs), kayak_rt::heap_cons(car(xs), acc));
             continue;
         }
     }
@@ -100,7 +100,7 @@ pub fn string_chars(s: Str) -> Chars {
 pub fn put_from(mut s: Str, mut i: i64, mut n: i64, mut acc: Chars) -> Chars {
     loop {
         if i64_lt(i, n) {
-            (i, acc) = (i64_plus(i, 1i64), cons(string_ref_i64(s, i), acc));
+            (i, acc) = (i64_plus(i, 1i64), kayak_rt::heap_cons(string_ref_i64(s, i), acc));
             continue;
         } else {
             return acc;

@@ -58,7 +58,7 @@ pub mod stack {
     }
 
     pub fn push(x: i64, xs: Items) -> Items {
-        cons(x, xs)
+        kayak_rt::heap_cons(x, xs)
     }
 
     pub fn depth(xs: Items) -> i64 {
@@ -98,11 +98,11 @@ pub mod geometry {
     }
 
     pub fn circle(f0: i64) -> &'static Shape {
-        alloc(Shape::Circle(f0))
+        kayak_rt::heap_alloc(Shape::Circle(f0))
     }
 
     pub fn rect(f0: i64, f1: i64) -> &'static Shape {
-        alloc(Shape::Rect(f0, f1))
+        kayak_rt::heap_alloc(Shape::Rect(f0, f1))
     }
 
     pub fn area(s: &'static Shape) -> i64 {
@@ -208,14 +208,14 @@ pub fn count_to(value: i64, n: i64) -> i64 {
 
 pub fn main() -> Str {
     let push = the::<i64>(10i64);
-    words(kayak_rt::cons(i64_to_string(counter::value(twice(counter::zero()))), kayak_rt::cons(i64_to_string(count_to(5i64, 1i64)), kayak_rt::cons(i64_to_string(count_to(5i64, 0i64)), kayak_rt::cons(stack::shown(stack::push(3i64, stack::two())), kayak_rt::cons(i64_to_string(stack::depth((stack::pusher())(4i64, stack::two()))), kayak_rt::cons(i64_to_string(push), kayak_rt::cons(i64_to_string(i64_plus(counter::value(counter::inc(counter::zero())), stack::depth(stack::empty()))), kayak_rt::cons(stack::shown(the::<stack::Items>(kayak_rt::cons(7i64, kayak_rt::cons(8i64, kayak_rt::nil())))), kayak_rt::cons(i64_to_string(geometry::area(geometry::rect(3i64, 4i64))), kayak_rt::cons(if big_p((&geometry::circle)(20i64)) {
+    words(kayak_rt::heap_cons(i64_to_string(counter::value(twice(counter::zero()))), kayak_rt::heap_cons(i64_to_string(count_to(5i64, 1i64)), kayak_rt::heap_cons(i64_to_string(count_to(5i64, 0i64)), kayak_rt::heap_cons(stack::shown(stack::push(3i64, stack::two())), kayak_rt::heap_cons(i64_to_string(stack::depth((stack::pusher())(4i64, stack::two()))), kayak_rt::heap_cons(i64_to_string(push), kayak_rt::heap_cons(i64_to_string(i64_plus(counter::value(counter::inc(counter::zero())), stack::depth(stack::empty()))), kayak_rt::heap_cons(stack::shown(the::<stack::Items>(kayak_rt::heap_cons(7i64, kayak_rt::heap_cons(8i64, kayak_rt::nil())))), kayak_rt::heap_cons(i64_to_string(geometry::area(geometry::rect(3i64, 4i64))), kayak_rt::heap_cons(if big_p((&geometry::circle)(20i64)) {
         str_lit("big")
     } else {
         str_lit("small")
-    }, kayak_rt::cons({
-        let c = the::<Ref<i64>>(new(40i64));
+    }, kayak_rt::heap_cons({
+        let c = the::<Ref<i64>>(kayak_rt::heap_new(40i64));
         bump_twice_x(c);
         i64_to_string(get(c))
-    }, kayak_rt::cons(i64_to_string(i64_plus(both::one(), (&both::shown)())), kayak_rt::nil())))))))))))))
+    }, kayak_rt::heap_cons(i64_to_string(i64_plus(both::one(), (&both::shown)())), kayak_rt::nil())))))))))))))
 }
 

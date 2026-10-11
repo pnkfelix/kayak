@@ -730,3 +730,19 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
   kept (`place-needs`), and its regions within places, which `define*`
   had dropped, its Rust then lacking the `Holds` bound.
 - The `lists` port's helpers are the program's own now, 5.4 ms as before.
+
+## C43. The heap by bumping, in safe typed arenas (2026-10-11)
+
+- **Chosen** (the user's ruling: safe typed arenas only; fragmentation is
+  acceptable for the bootstrap): the heap's pairs, references, sums and
+  datatypes are made in an `Arena<T>` of their type, one per type for the
+  run, found in a thread's table by `TypeId` (the last found kept at hand),
+  leaked so `&'static`. `kayak_rt::heap_alloc`, `heap_cons`, `heap_new`.
+- **Where:** a `TypeId` is only a `'static` type's, and the heap may hold
+  a region's data (C38), so only where every lifetime the emitter writes is
+  `'static`: no `letrena`, place or region binder around. Type parameters
+  are `'static` already. Elsewhere, and for closures, a `Box` each as
+  before.
+- **Measured:** Fixpt's `lists` (heap pairs) 21.9 ms to 15.6; the compiler
+  on itself 4.19 s to 3.97, its peak memory 7.4 GB to 7.8 (each type's
+  last chunk partly empty, chunks doubling).

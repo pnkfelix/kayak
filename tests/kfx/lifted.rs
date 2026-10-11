@@ -25,7 +25,7 @@ pub fn apply_to<'r>(t: Tag<i64, i64>, f: &'r dyn Fn(i64) -> Result<i64, Unwind>,
 
 pub fn in_a_list(c: bool) -> i64 {
     let t = the::<Tag<i64, i64>>(make_continuation_prompt_tag());
-    let fs = the::<List<&'static dyn Fn(i64) -> Result<i64, Unwind>>>(kayak_rt::cons(lambda1(move |a__0| Ok((&inc)(a__0))), kayak_rt::cons(lambda1(move |x: i64| {
+    let fs = the::<List<&'static dyn Fn(i64) -> Result<i64, Unwind>>>(kayak_rt::heap_cons(lambda1(move |a__0| Ok((&inc)(a__0))), kayak_rt::heap_cons(lambda1(move |x: i64| {
         if c {
             (return Err(unwind(t, x)))
         } else {

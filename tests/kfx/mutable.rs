@@ -96,7 +96,7 @@ pub enum Counter {
 }
 
 pub fn counter(f0: Str, f1: Ref<i64>) -> &'static Counter {
-    alloc(Counter::Counter(f0, f1))
+    kayak_rt::heap_alloc(Counter::Counter(f0, f1))
 }
 
 pub fn bump_x(k: &'static Counter) -> i64 {
@@ -112,7 +112,7 @@ pub fn bump_x(k: &'static Counter) -> i64 {
 pub fn main() -> Str {
     let a = the::<FlatArray<i64>>(make_flatarray_i64(8i64, 0i64));
     let b = the::<FlatArray<i64>>(make_flatarray_i64(8i64, -1i64));
-    let cell = the::<Ref<i64>>(new(40i64));
+    let cell = the::<Ref<i64>>(kayak_rt::heap_new(40i64));
     let alias = cell;
     let k = counter(str_lit("k"), cell);
     let step = lambda0(move || {
@@ -124,6 +124,6 @@ pub fn main() -> Str {
     sort_x(a, 0i64);
     // A write through one name of a cell is seen through another.
     set(alias, i64_plus(get(alias), 1i64));
-    words(kayak_rt::cons(show(a, 0i64), kayak_rt::cons(show(b, 0i64), kayak_rt::cons(i64_to_string(total(a, 0i64, 0i64)), kayak_rt::cons(i64_to_string(total(b, 0i64, 0i64)), kayak_rt::cons(i64_to_string(get(cell)), kayak_rt::cons(i64_to_string(bump_x(k)), kayak_rt::cons(i64_to_string(step()), kayak_rt::cons(i64_to_string(step()), kayak_rt::cons(i64_to_string(get(alias)), kayak_rt::nil()))))))))))
+    words(kayak_rt::heap_cons(show(a, 0i64), kayak_rt::heap_cons(show(b, 0i64), kayak_rt::heap_cons(i64_to_string(total(a, 0i64, 0i64)), kayak_rt::heap_cons(i64_to_string(total(b, 0i64, 0i64)), kayak_rt::heap_cons(i64_to_string(get(cell)), kayak_rt::heap_cons(i64_to_string(bump_x(k)), kayak_rt::heap_cons(i64_to_string(step()), kayak_rt::heap_cons(i64_to_string(step()), kayak_rt::heap_cons(i64_to_string(get(alias)), kayak_rt::nil()))))))))))
 }
 

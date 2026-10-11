@@ -12,11 +12,11 @@ pub enum Shape {
 }
 
 pub fn circle(f0: i64) -> &'static Shape {
-    alloc(Shape::Circle(f0))
+    kayak_rt::heap_alloc(Shape::Circle(f0))
 }
 
 pub fn rect(f0: i64, f1: i64) -> &'static Shape {
-    alloc(Shape::Rect(f0, f1))
+    kayak_rt::heap_alloc(Shape::Rect(f0, f1))
 }
 
 pub type Shapes = List<&'static Shape>;

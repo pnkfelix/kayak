@@ -320,7 +320,7 @@
                (acc (put ") -> &'static " acc))
                (acc (put (camel d) acc))
                (acc (put-generics-of params #f acc))
-               (acc (put " {\n    alloc(" acc))
+               (acc (put " {\n    kayak_rt::heap_alloc(" acc))
                (acc (put (camel d) acc))
                (acc (put "::" acc))
                (acc (put (variant-name tag) acc))
