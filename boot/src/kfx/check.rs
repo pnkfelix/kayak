@@ -1037,6 +1037,203 @@ pub fn no_knot(v: &'static Cv, res: &'static dyn Fn(Str) -> Str, t: &'static Ty)
     }
 }
 
+// Flats (C31): what a blobref points to, raw bytes in a bloblet's suffix,
+// laid out as C lays them out: a scalar at its size, a product's fields in
+// order each at its alignment and the whole padded to the widest, an
+// array's elements one after another. KFX's scalars are FX-26's but `f32`,
+// which KFX has not yet.
+pub fn flat_p(t: &'static Ty) -> bool {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyI64() => {
+            true
+        }
+        Ty::TyF64() => {
+            true
+        }
+        Ty::TyData(d, args) => {
+            ((null_p(args) && (string_eq_p(d, str_lit("i32")) || string_eq_p(d, str_lit("u32")) || string_eq_p(d, str_lit("u64")))) || (string_eq_p(d, str_lit("%flat-array")) && flat_p(car(args))))
+        }
+        Ty::TyShape(p, ls, ts) => {
+            (p && not(null_p(ts)) && not(any_p(lambda1(move |x: &'static Ty| {
+                not(flat_p(x))
+            }), ts)))
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+/// Whether a type could hold a procedure: is one, a type variable, or
+/// has one inside.
+pub fn field_may_knot_p(mut t: &'static Ty) -> bool {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Ty::TyProc(es, ps, r) => {
+                return true;
+            }
+            Ty::TyVar(n) => {
+                return true;
+            }
+            Ty::TyMeta(k) => {
+                return true;
+            }
+            Ty::TyList(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyRef(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyFlat(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyTag(a, h, d, r) => {
+                return true;
+            }
+            Ty::TyShape(p, ls, ts) => {
+                return any_p(lambda1(move |x: &'static Ty| {
+                    field_may_knot_p(x)
+                }), ts);
+            }
+            Ty::TyData(d, args) => {
+                return any_p(lambda1(move |x: &'static Ty| {
+                    field_may_knot_p(x)
+                }), args);
+            }
+            _ => {
+                let other = tagcase_;
+                return false;
+            }
+        }
+    }
+}
+
+pub enum Layout {
+    Layout(i64, i64),
+}
+
+pub fn layout(f0: i64, f1: i64) -> &'static Layout {
+    alloc(Layout::Layout(f0, f1))
+}
+
+pub fn round_up(n: i64, a: i64) -> i64 {
+    i64_star(i64_quotient(i64_plus(n, i64_minus(a, 1i64)), a), a)
+}
+
+/// A flat's size and alignment, in bytes.
+pub fn flat_layout(t: &'static Ty) -> &'static Layout {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            if string_eq_p(d, str_lit("%flat-array")) {
+                let tagcase_ = flat_layout(car(args));
+                match *tagcase_ {
+                    Layout::Layout(size, align) => {
+                        layout(i64_star(size, {
+                            let tagcase_ = car(cdr(args));
+                            match *tagcase_ {
+                                Ty::TyRconst(n) => {
+                                    i64_minus(0i64, digits_value(string_chars(n), 0i64, str_lit(""), 0i64))
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    0i64
+                                }
+                            }
+                        }), align)
+                    }
+                }
+            } else if string_eq_p(d, str_lit("u64")) {
+                layout(8i64, 8i64)
+            } else {
+                layout(4i64, 4i64)
+            }
+        }
+        Ty::TyShape(p, ls, ts) => {
+            let tagcase_ = fields_layout(ts, 0i64, 1i64);
+            match *tagcase_ {
+                Layout::Layout(end, align) => {
+                    layout(round_up(end, align), align)
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            layout(8i64, 8i64)
+        }
+    }
+}
+
+/// The end of fields `ts` laid out from `at`, and their widest alignment.
+pub fn fields_layout(mut ts: Tys, mut at: i64, mut align: i64) -> &'static Layout {
+    loop {
+        if null_p(ts) {
+            return layout(at, align);
+        } else {
+            let tagcase_ = flat_layout(car(ts));
+            match *tagcase_ {
+                Layout::Layout(size, a) => {
+                    (ts, at, align) = (cdr(ts), i64_plus(round_up(at, a), size), if i64_gt(a, align) {
+                        a
+                    } else {
+                        align
+                    });
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+/// The offset of a flat product's field `l`.
+pub fn field_offset(ls: Strings, ts: Tys, l: Str) -> i64 {
+    let go__knot = knot::<&'static dyn Fn(Strings, Tys, i64) -> i64>();
+    let go = lambda3(move |ls: Strings, ts: Tys, at: i64| {
+        let tagcase_ = flat_layout(car(ts));
+        match *tagcase_ {
+            Layout::Layout(size, a) => {
+                if string_eq_p(car(ls), l) {
+                    round_up(at, a)
+                } else {
+                    (go__knot.get())(cdr(ls), cdr(ts), i64_plus(round_up(at, a), size))
+                }
+            }
+        }
+    });
+    go__knot.set(go);
+    go(ls, ts, 0i64)
+}
+
+/// A flat scalar's name, as its blobref's read and write are named; or ``.
+pub fn scalar_name(t: &'static Ty) -> Str {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyI64() => {
+            str_lit("i64")
+        }
+        Ty::TyF64() => {
+            str_lit("f64")
+        }
+        Ty::TyData(d, args) => {
+            if null_p(args) {
+                d
+            } else {
+                str_lit("")
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("")
+        }
+    }
+}
+
 /// FX-26's fixed-width integers beside `i64`, whose arithmetic wraps: a type
 /// named so, as a datatype is, of no variants; in Rust, Rust's.
 pub fn fixed_width_p(s: Str) -> bool {
@@ -1120,10 +1317,79 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     return no_knot(v, lambda1(move |x: Str| {
                         x
                     }), ty_ref(parse_type(v, tvars, second(xs)), parse_mutable_region(v, tvars, third(xs))));
+                } else if sym_is_p(car(xs), str_lit("bloblet")) {
+                    // `(bloblet (fields T ...) R)` (C31): fields that may be written, so
+                    // none a procedure or a type variable, which could tie a knot
+                    // through the store that no type here shows.
+                    if (not(i64_eq(size(xs), 3i64)) || not(head_is_p(second(xs), str_lit("fields")))) {
+                        return match refuse(v, string_append(str_lit("a bloblet type KFX does not have yet (its fields frozen, or not of the form (bloblet (fields T ...) R)): "), show_sexp(t))) {};
+                    } else {
+                        let fields = parse_types(v, tvars, cdr(items(second(xs))));
+                        if any_p(lambda1(move |f: &'static Ty| {
+                            field_may_knot_p(f)
+                        }), fields) {
+                            return match refuse(v, string_append(str_lit("a bloblet field that may hold a procedure, which KFX does not have: "), show_sexp(t))) {};
+                        } else {
+                            return ty_data(str_lit("%bloblet"), cons(parse_mutable_region(v, tvars, third(xs)), fields));
+                        }
+                    }
+                } else if sym_is_p(car(xs), str_lit("blobref")) {
+                    if not(i64_eq(size(xs), 3i64)) {
+                        return match refuse(v, str_lit("(blobref B F)")) {};
+                    } else {
+                        let (b, f) = (parse_type(v, tvars, second(xs)), parse_type(v, tvars, third(xs)));
+                        if not({
+                            let tagcase_ = b;
+                            match *tagcase_ {
+                                Ty::TyData(d, args) => {
+                                    string_eq_p(d, str_lit("%bloblet"))
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
+                        }) {
+                            return match refuse(v, string_append(str_lit("a blobref's owner is a bloblet: "), show_sexp(t))) {};
+                        } else if not(flat_p(f)) {
+                            return match refuse(v, string_append(str_lit("a blobref's flat is a scalar, or a product or array of them (KFX has no f32 yet): "), show_sexp(t))) {};
+                        } else {
+                            return ty_data(str_lit("%blobref"), kayak_rt::cons(b, kayak_rt::cons(f, kayak_rt::nil())));
+                        }
+                    }
+                } else if sym_is_p(car(xs), str_lit("arrayof")) {
+                    let tagcase_ = third(xs);
+                    match *tagcase_ {
+                        Sexp::Num(k, f, p) => {
+                            let e = parse_type(v, tvars, second(xs));
+                            if (not(i64_lt(k, 0i64)) && flat_p(e)) {
+                                return ty_data(str_lit("%flat-array"), kayak_rt::cons(e, kayak_rt::cons(ty_rconst(i64_to_string(k)), kayak_rt::nil())));
+                            } else {
+                                return match refuse(v, string_append(str_lit("a flat array is of a flat, its length a literal (KFX has no arrays of values yet): "), show_sexp(t))) {};
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            return match refuse(v, string_append(str_lit("a flat array's length is a literal (KFX has no arrays of values yet): "), show_sexp(t))) {};
+                        }
+                    }
                 } else if sym_is_p(car(xs), str_lit("prompt-tag")) {
                     return ty_tag(parse_type(v, tvars, second(xs)), parse_type(v, tvars, third(xs)), parse_effect(v, tvars, fourth(xs)), parse_mutable_region(v, tvars, car(cdr(cdr(cdr(cdr(xs)))))));
                 } else if sym_is_p(car(xs), str_lit("moduleof")) {
                     return match refuse(v, str_lit("a moduleof is a module's type when a define-type names it: KFX's is a Rust trait (C24)")) {};
+                } else if ((sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("sumof"))) && any_p(lambda1(move |x: &'static Sexp| {
+                    let tagcase_ = x;
+                    match *tagcase_ {
+                        Sexp::Lst(ys, f, l, p) => {
+                            false
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            true
+                        }
+                    }
+                }), cdr(xs))) {
+                    return match refuse(v, string_append(str_lit("a type KFX does not have (a keyed flat sum, not yet): "), show_sexp(t))) {};
                 } else if (sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("sumof"))) {
                     let fields = map(&items, cdr(xs));
                     if (any_p(lambda1(move |f: Sexps| {
@@ -1299,7 +1565,7 @@ pub fn bare_type_name(mut cs: Chars, mut acc: Chars) -> Str {
 /// Rust names, as another of them, or as a type `types` has, which it
 /// would hide in Rust and not in FX-26. A region's, with `'`, is none.
 pub fn type_binders_apart(v: &'static Cv, tvars: Strings, types: Strings) -> () {
-    let (reserved, theirs, tvars) = (the::<Strings>(kayak_rt::cons(str_lit("Str"), kayak_rt::cons(str_lit("List"), kayak_rt::cons(str_lit("Cons"), kayak_rt::cons(str_lit("Int"), kayak_rt::cons(str_lit("Tag"), kayak_rt::cons(str_lit("Unwind"), kayak_rt::cons(str_lit("Ref"), kayak_rt::cons(str_lit("FlatArray"), kayak_rt::cons(str_lit("Knot"), kayak_rt::cons(str_lit("Show"), kayak_rt::cons(str_lit("OnceCell"), kayak_rt::cons(str_lit("Fn"), kayak_rt::cons(str_lit("Result"), kayak_rt::cons(str_lit("Ok"), kayak_rt::cons(str_lit("Err"), kayak_rt::cons(str_lit("String"), kayak_rt::cons(str_lit("Copy"), kayak_rt::cons(str_lit("Clone"), kayak_rt::cons(str_lit("Self"), kayak_rt::cons(str_lit("Module"), kayak_rt::cons(str_lit("Void"), kayak_rt::nil())))))))))))))))))))))), map(lambda1(move |t: Str| {
+    let (reserved, theirs, tvars) = (the::<Strings>(kayak_rt::cons(str_lit("Str"), kayak_rt::cons(str_lit("List"), kayak_rt::cons(str_lit("Cons"), kayak_rt::cons(str_lit("Int"), kayak_rt::cons(str_lit("Tag"), kayak_rt::cons(str_lit("Unwind"), kayak_rt::cons(str_lit("Ref"), kayak_rt::cons(str_lit("FlatArray"), kayak_rt::cons(str_lit("Knot"), kayak_rt::cons(str_lit("Show"), kayak_rt::cons(str_lit("OnceCell"), kayak_rt::cons(str_lit("Fn"), kayak_rt::cons(str_lit("Result"), kayak_rt::cons(str_lit("Ok"), kayak_rt::cons(str_lit("Err"), kayak_rt::cons(str_lit("String"), kayak_rt::cons(str_lit("Copy"), kayak_rt::cons(str_lit("Clone"), kayak_rt::cons(str_lit("Self"), kayak_rt::cons(str_lit("Module"), kayak_rt::cons(str_lit("Void"), kayak_rt::cons(str_lit("Bloblet"), kayak_rt::cons(str_lit("BlobRef"), kayak_rt::cons(str_lit("Arena"), kayak_rt::cons(str_lit("Holds"), kayak_rt::cons(str_lit("ListAt"), kayak_rt::cons(str_lit("RefAt"), kayak_rt::nil())))))))))))))))))))))))))))), map(lambda1(move |t: Str| {
         camel(bare_type_name(string_chars(t), nil::<char>()))
     }), types), concat(map(lambda1(move |n: Str| {
         if has_prefix_p(n, str_lit("'")) {
@@ -1417,6 +1683,14 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
         Ty::TyData(d, args) => {
             if null_p(args) {
                 d
+            } else if string_eq_p(d, str_lit("%bloblet")) {
+                string_append(str_lit("(bloblet (fields "), string_append(show_tys(s, cdr(args)), string_append(str_lit(") "), string_append(show_ty(s, car(args)), str_lit(")")))))
+            } else if string_eq_p(d, str_lit("%blobref")) {
+                string_append(str_lit("(blobref "), string_append(show_tys(s, args), str_lit(")")))
+            } else if string_eq_p(d, str_lit("%flat-array")) {
+                string_append(str_lit("(arrayof "), string_append(show_tys(s, args), str_lit(")")))
+            } else if string_eq_p(d, str_lit("%place")) {
+                string_append(str_lit("(place "), string_append(show_tys(s, args), str_lit(")")))
             } else {
                 string_append(str_lit("("), string_append(d, string_append(str_lit(" "), string_append(show_tys(s, args), str_lit(")")))))
             }

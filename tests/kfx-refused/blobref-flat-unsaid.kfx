@@ -1,0 +1,7 @@
+"A new blobref whose flat nothing says: the type it is checked against
+ says it, as FX-26 has it."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type o (bloblet (fields) @b))
+(define b o (make-bloblet 8))
+(define f (subr kfx () unit) (lambda () (begin (blobref-at b 0) #u)))
+(f)

@@ -498,6 +498,92 @@
           (refuse v (string-append "a procedure kept in " (string-append (car found) (string-append " reads " (string-append (car found)
                     ", so it could reach itself: it must say spin")))))))))
 
+"Flats (C31): what a blobref points to, raw bytes in a bloblet's suffix,
+ laid out as C lays them out: a scalar at its size, a product's fields in
+ order each at its alignment and the whole padded to the widest, an
+ array's elements one after another. KFX's scalars are FX-26's but `f32`,
+ which KFX has not yet."
+
+(define-rec
+  (flat? (subr kfx (ty) bool)
+    (lambda (t)
+      (tagcase t
+        (ty-i64 () #t)
+        (ty-f64 () #t)
+        (ty-data (d args)
+          (or (and (null? args) (or (string=? d "i32") (string=? d "u32") (string=? d "u64")))
+              (and (string=? d "%flat-array") (flat? (car args)))))
+        (ty-shape (p ls ts) (and p (not (null? ts)) (not (any? (lambda ((x ty)) (not (flat? x))) ts))))
+        (else other #f)))))
+
+(define-rec
+  (field-may-knot? (subr kfx (ty) bool)
+    (lambda (t)
+      "Whether a type could hold a procedure: is one, a type variable, or
+       has one inside."
+      (tagcase t
+        (ty-proc (es ps r) #t)
+        (ty-var (n) #t)
+        (ty-meta (k) #t)
+        (ty-list (e r) (field-may-knot? e))
+        (ty-ref (e r) (field-may-knot? e))
+        (ty-flat (e r) (field-may-knot? e))
+        (ty-tag (a h d r) #t)
+        (ty-shape (p ls ts) (any? (lambda ((x ty)) (field-may-knot? x)) ts))
+        (ty-data (d args) (any? (lambda ((x ty)) (field-may-knot? x)) args))
+        (else other #f)))))
+
+(define-datatype layout (layout i64 i64))
+
+(define round-up (subr kfx (i64 i64) i64)
+  (lambda (n a) (i64* (i64-quotient (i64+ n (i64- a 1)) a) a)))
+
+(define-rec
+  (flat-layout (subr kfx (ty) layout)
+    (lambda (t)
+      "A flat's size and alignment, in bytes."
+      (tagcase t
+        (ty-data (d args)
+          (cond ((string=? d "%flat-array")
+                 (tagcase (flat-layout (car args))
+                   (layout (size align)
+                     (layout (i64* size (tagcase (car (cdr args)) (ty-rconst (n) (i64- 0 (digits-value (string-chars n) 0 "" 0))) (else other 0))) align))))
+                ((string=? d "u64") (layout 8 8))
+                (else (layout 4 4))))
+        (ty-shape (p ls ts)
+          (tagcase (fields-layout ts 0 1)
+            (layout (end align) (layout (round-up end align) align))))
+        (else other (layout 8 8)))))
+  (fields-layout (subr kfx (tys i64 i64) layout)
+    (lambda (ts at align)
+      "The end of fields `ts` laid out from `at`, and their widest alignment."
+      (if (null? ts)
+          (layout at align)
+          (tagcase (flat-layout (car ts))
+            (layout (size a)
+              (fields-layout (cdr ts) (i64+ (round-up at a) size) (if (i64> a align) a align))))))))
+
+(define field-offset (subr kfx (strings tys string) i64)
+  (lambda (ls ts l)
+    "The offset of a flat product's field `l`."
+    (letrec ((go (subr kfx (strings tys i64) i64)
+               (lambda (ls ts at)
+                 (tagcase (flat-layout (car ts))
+                   (layout (size a)
+                     (if (string=? (car ls) l)
+                         (round-up at a)
+                         (go (cdr ls) (cdr ts) (i64+ (round-up at a) size))))))))
+      (go ls ts 0))))
+
+(define scalar-name (subr kfx (ty) string)
+  (lambda (t)
+    "A flat scalar's name, as its blobref's read and write are named; or ``."
+    (tagcase t
+      (ty-i64 () "i64")
+      (ty-f64 () "f64")
+      (ty-data (d args) (if (null? args) d ""))
+      (else other ""))))
+
 (define fixed-width? (subr kfx (string) bool)
   (lambda (s)
     "FX-26's fixed-width integers beside `i64`, whose arithmetic wraps: a type
@@ -549,11 +635,42 @@
                      (refuse v (string-append "KFX-0's flat arrays are of i64: " (show-sexp t)))))
                 ((sym-is? (car xs) "ref")
                  (no-knot v (lambda ((x string)) x) (ty-ref (parse-type v tvars (second xs)) (parse-mutable-region v tvars (third xs)))))
+                ((sym-is? (car xs) "bloblet")
+                 "`(bloblet (fields T ...) R)` (C31): fields that may be written, so
+                  none a procedure or a type variable, which could tie a knot
+                  through the store that no type here shows."
+                 (cond ((or (not (i64= (size xs) 3)) (not (head-is? (second xs) "fields")))
+                        (refuse v (string-append "a bloblet type KFX does not have yet (its fields frozen, or not of the form (bloblet (fields T ...) R)): " (show-sexp t))))
+                       (else
+                        (let ((fields (parse-types v tvars (cdr (items (second xs))))))
+                          (if (any? (lambda ((f ty)) (field-may-knot? f)) fields)
+                              (refuse v (string-append "a bloblet field that may hold a procedure, which KFX does not have: " (show-sexp t)))
+                              (ty-data "%bloblet" (cons (parse-mutable-region v tvars (third xs)) fields)))))))
+                ((sym-is? (car xs) "blobref")
+                 (if (not (i64= (size xs) 3))
+                     (refuse v "(blobref B F)")
+                     (let ((b (parse-type v tvars (second xs)))
+                           (f (parse-type v tvars (third xs))))
+                       (cond ((not (tagcase b (ty-data (d args) (string=? d "%bloblet")) (else other #f)))
+                              (refuse v (string-append "a blobref's owner is a bloblet: " (show-sexp t))))
+                             ((not (flat? f)) (refuse v (string-append "a blobref's flat is a scalar, or a product or array of them (KFX has no f32 yet): " (show-sexp t))))
+                             (else (ty-data "%blobref" (list b f)))))))
+                ((sym-is? (car xs) "arrayof")
+                 (tagcase (third xs)
+                   (num (k f p)
+                     (let ((e (parse-type v tvars (second xs))))
+                       (if (and (not (i64< k 0)) (flat? e))
+                           (ty-data "%flat-array" (list e (ty-rconst (i64->string k))))
+                           (refuse v (string-append "a flat array is of a flat, its length a literal (KFX has no arrays of values yet): " (show-sexp t))))))
+                   (else other (refuse v (string-append "a flat array's length is a literal (KFX has no arrays of values yet): " (show-sexp t))))))
                 ((sym-is? (car xs) "prompt-tag")
                  (ty-tag (parse-type v tvars (second xs)) (parse-type v tvars (third xs))
                          (parse-effect v tvars (fourth xs)) (parse-mutable-region v tvars (car (cdr (cdr (cdr (cdr xs))))))))
                 ((sym-is? (car xs) "moduleof")
                  (refuse v "a moduleof is a module's type when a define-type names it: KFX's is a Rust trait (C24)"))
+                ((and (or (sym-is? (car xs) "productof") (sym-is? (car xs) "sumof"))
+                      (any? (lambda ((x sexp)) (tagcase x (lst (ys f l p) #f) (else other #t))) (cdr xs)))
+                 (refuse v (string-append "a type KFX does not have (a keyed flat sum, not yet): " (show-sexp t))))
                 ((or (sym-is? (car xs) "productof") (sym-is? (car xs) "sumof"))
                  (let ((fields (map items (cdr xs))))
                    (if (or (any? (lambda ((f sexps)) (not (i64= (size f) 2))) fields)
@@ -644,7 +761,7 @@
      Rust names, as another of them, or as a type `types` has, which it
      would hide in Rust and not in FX-26. A region's, with `'`, is none."
     (let ((reserved (the strings (list "Str" "List" "Cons" "Int" "Tag" "Unwind" "Ref" "FlatArray" "Knot" "Show" "OnceCell" "Fn"
-                          "Result" "Ok" "Err" "String" "Copy" "Clone" "Self" "Module" "Void")))
+                          "Result" "Ok" "Err" "String" "Copy" "Clone" "Self" "Module" "Void" "Bloblet" "BlobRef" "Arena" "Holds" "ListAt" "RefAt")))
           (theirs (map (lambda ((t string)) (camel (bare-type-name (string-chars t) nil))) types))
           (tvars (concat (map (lambda ((n string)) (if (has-prefix? n "'") nil (the strings (list n)))) tvars))))
       (begin
@@ -705,7 +822,14 @@
         (ty-string () "string")
         (ty-void () "void")
         (ty-list (e r) (string-append "(listof " (string-append (show-ty s e) (string-append " " (string-append (show-ty s r) ")")))))
-        (ty-data (d args) (if (null? args) d (string-append "(" (string-append d (string-append " " (string-append (show-tys s args) ")"))))))
+        (ty-data (d args)
+          (cond ((null? args) d)
+                ((string=? d "%bloblet")
+                 (string-append "(bloblet (fields " (string-append (show-tys s (cdr args)) (string-append ") " (string-append (show-ty s (car args)) ")")))))
+                ((string=? d "%blobref") (string-append "(blobref " (string-append (show-tys s args) ")")))
+                ((string=? d "%flat-array") (string-append "(arrayof " (string-append (show-tys s args) ")")))
+                ((string=? d "%place") (string-append "(place " (string-append (show-tys s args) ")")))
+                (else (string-append "(" (string-append d (string-append " " (string-append (show-tys s args) ")")))))))
         (ty-shape (p ls ts) (string-append (if p "(productof" "(sumof") (string-append (show-fields s ls ts) ")")))
         (ty-flat (e r) (string-append "(flatarrayof " (string-append (show-ty s e) (string-append " " (string-append (show-ty s r) ")")))))
         (ty-ref (e r) (string-append "(ref " (string-append (show-ty s e) (string-append " " (string-append (show-ty s r) ")")))))

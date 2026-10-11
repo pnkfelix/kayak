@@ -10,6 +10,7 @@
 //! is not counts characters (`CLAUDES_CHOICES.md`, C14).
 
 mod arena;
+mod blob;
 mod escape;
 mod fixed;
 mod float;
@@ -18,6 +19,7 @@ mod once;
 mod show;
 
 pub use arena::*;
+pub use blob::*;
 pub use escape::*;
 pub use fixed::*;
 pub use float::*;

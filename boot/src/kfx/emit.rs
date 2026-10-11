@@ -825,6 +825,29 @@ pub fn region_lifetime(c: &'static Ctx, r: &'static Sexp) -> Str {
     }
 }
 
+/// A reference's lifetime for data at region `r`: its `letrena`'s, or the heap's.
+pub fn owner_lifetime(c: &'static Ctx, r: &'static Sexp) -> Str {
+    let l = region_lifetime(c, r);
+    if string_eq_p(l, str_lit("")) {
+        str_lit("'static")
+    } else {
+        l
+    }
+}
+
+pub fn number_text(e: &'static Sexp) -> Str {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Num(k, f, p) => {
+            i64_to_string(k)
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("0")
+        }
+    }
+}
+
 /// A procedure's lifetime: the innermost `letrena`'s, whose arena a
 /// closure may hold; or `'static`.
 pub fn innermost_lifetime(mut ls: Strings) -> Str {
@@ -914,6 +937,10 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
                     } else {
                         return put_type(c, fourth(xs), acc);
                     }
+                } else if sym_is_p(car(xs), str_lit("bloblet")) {
+                    return put(str_lit(">"), put_fields_tuple(c, cdr(items(second(xs))), put(str_lit("Bloblet<"), put(str_lit(" "), put(owner_lifetime(c, third(xs)), put(str_lit("&"), acc))))));
+                } else if sym_is_p(car(xs), str_lit("blobref")) {
+                    return put(str_lit(">"), put_type(c, second(xs), put(str_lit("BlobRef<"), acc)));
                 } else if sym_is_p(car(xs), str_lit("prompt-tag")) {
                     return put(str_lit(">"), put_type(c, third(xs), put(str_lit(", "), put_type(c, second(xs), put(str_lit("Tag<"), acc)))));
                 } else if sym_is_p(car(xs), str_lit("select")) {
@@ -974,6 +1001,13 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
             }
         }
     }
+}
+
+/// A bloblet's fields, a tuple of cells: `(Cell<T>, ...,)`.
+pub fn put_fields_tuple(c: &'static Ctx, ts: Sexps, acc: Chars) -> Chars {
+    put(str_lit(")"), put_sep(lambda2(move |t: &'static Sexp, acc: List<char>| {
+        put(str_lit(">,"), put_type(c, t, put(str_lit("std::cell::Cell<"), acc)))
+    }), str_lit(" "), ts, put(str_lit("("), acc)))
 }
 
 /// A family's arguments for its parameters of kind `type`: the others,
@@ -1573,7 +1607,7 @@ pub fn allocations(r: Str, es: Sexps) -> Sexps {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
-                if ((head_is_p(e, str_lit("rcons")) || head_is_p(e, str_lit("rnew"))) && not(null_p(cdr(xs))) && sym_is_p(second(xs), r)) {
+                if ((head_is_p(e, str_lit("rcons")) || head_is_p(e, str_lit("rnew")) || head_is_p(e, str_lit("rmake-bloblet"))) && not(null_p(cdr(xs))) && sym_is_p(second(xs), r)) {
                     the::<Sexps>(cons(e, allocations(r, cdr(xs))))
                 } else {
                     allocations(r, xs)
@@ -2096,7 +2130,11 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
         }), fs)), acc);
         put(str_lit(")"), put_joined(c, map(&second, fs), str_lit(", "), n, put(str_lit("("), acc)))
     } else if string_eq_p(h, str_lit("extract")) {
-        put(fact_with(c, e, str_lit("extract-index ")), put(str_lit("."), put_exp(c, car(xs), n, value(), acc)))
+        if string_eq_p(fact_with(c, e, str_lit("blob-offset ")), str_lit("")) {
+            put(fact_with(c, e, str_lit("extract-index ")), put(str_lit("."), put_exp(c, car(xs), n, value(), acc)))
+        } else {
+            put(str_lit(")"), put(fact_with(c, e, str_lit("blob-offset ")), put(str_lit(").field("), put_exp(c, car(xs), n, value(), put(str_lit("("), acc)))))
+        }
     } else if string_eq_p(h, str_lit("sum")) {
         // A sum's enum written with its type's arguments, which only the type
         // expected, as the checker found it, says.
@@ -2124,6 +2162,53 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
         put(str_lit(")"), acc)
     } else if (string_eq_p(h, str_lit("letrena")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
         put_letrena(c, e, xs, n, acc)
+    } else if ((string_eq_p(h, str_lit("make-bloblet")) || string_eq_p(h, str_lit("rmake-bloblet"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+        // `make_bloblet(bytes, (Cell::new(e), ...,))`; in a region, `rmake_bloblet(r, ...)`.
+        let placed = string_eq_p(h, str_lit("rmake-bloblet"));
+        let acc = put(if placed {
+            str_lit("rmake_bloblet(")
+        } else {
+            str_lit("make_bloblet(")
+        }, acc);
+        let acc = if placed {
+            put(str_lit(", "), put_exp(c, car(xs), n, value(), acc))
+        } else {
+            acc
+        };
+        let rest = if placed {
+            cdr(xs)
+        } else {
+            xs
+        };
+        let acc = put(str_lit(", ("), put_exp(c, car(rest), n, value(), acc));
+        let acc = put_sep(lambda2(move |x: &'static Sexp, acc: List<char>| {
+            put(str_lit("),"), put_exp(c, x, n, value(), put(str_lit("std::cell::Cell::new("), acc)))
+        }), str_lit(" "), cdr(rest), acc);
+        put(str_lit("))"), acc)
+    } else if ((string_eq_p(h, str_lit("bloblet-ref")) || string_eq_p(h, str_lit("bloblet-set!"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+        // A field, a cell: `(b).fields.i.get()`, `.set(e)`.
+        let acc = put(number_text(second(xs)), put(str_lit(").fields."), put_exp(c, car(xs), n, value(), put(str_lit("("), acc))));
+        if string_eq_p(h, str_lit("bloblet-ref")) {
+            put(str_lit(".get()"), acc)
+        } else {
+            put(str_lit(")"), put_exp(c, third(xs), n, value(), put(str_lit(".set("), acc)))
+        }
+    } else if ((string_eq_p(h, str_lit("blobref-get")) || string_eq_p(h, str_lit("blobref-set!"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+        // A scalar's bytes, read or written as the checker found its flat.
+        let acc = put(fact_with(c, e, str_lit("blob-scalar ")), put(if string_eq_p(h, str_lit("blobref-get")) {
+            str_lit(").get_")
+        } else {
+            str_lit(").set_")
+        }, put_exp(c, car(xs), n, value(), put(str_lit("("), acc))));
+        if string_eq_p(h, str_lit("blobref-get")) {
+            put(str_lit("()"), acc)
+        } else {
+            put(str_lit(")"), put_exp(c, second(xs), n, value(), put(str_lit("("), acc)))
+        }
+    } else if (string_eq_p(h, str_lit("blobref-index")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+        let acc = put(str_lit(").index("), put_exp(c, car(xs), n, value(), put(str_lit("("), acc)));
+        let acc = put_exp(c, second(xs), n, value(), acc);
+        put(str_lit(")"), put(string_append(str_lit(", "), words_of_sep(split_words(fact_with(c, e, str_lit("blob-element "))), str_lit(", "))), acc))
     } else if (string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion"))) {
         put_block(c, kayak_rt::cons(e, kayak_rt::nil()), n, t, acc)
     } else if abort_p(c, e) {
@@ -2282,6 +2367,8 @@ pub fn held_type(c: &'static Ctx, r: Str, call: &'static Sexp) -> Str {
     let t = car(read_all(string_chars(fact_with(c, call, str_lit("rheld "))), str_lit(""), 1i64));
     if head_is_p(call, str_lit("rcons")) {
         string_append(str_lit("Cons<'"), string_append(mangle(r), string_append(str_lit(", "), string_append(rev_to_string(put_type(c, t, nil::<char>())), str_lit(">")))))
+    } else if head_is_p(call, str_lit("rmake-bloblet")) {
+        string_append(str_lit("Bloblet<"), string_append(rev_to_string(put_fields_tuple(c, cdr(items(second(items(t)))), nil::<char>())), str_lit(">")))
     } else {
         string_append(str_lit("std::cell::Cell<"), string_append(rev_to_string(put_type(c, t, nil::<char>())), str_lit(">")))
     }

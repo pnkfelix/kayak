@@ -422,6 +422,14 @@
           (string-append "'" (mangle n))
           ""))))
 
+(define owner-lifetime (subr kfx (ctx sexp) string)
+  (lambda (c r)
+    "A reference's lifetime for data at region `r`: its `letrena`'s, or the heap's."
+    (let ((l (region-lifetime c r))) (if (string=? l "") "'static" l))))
+
+(define number-text (subr kfx (sexp) string)
+  (lambda (e) (tagcase e (num (k f p) (i64->string k)) (else other "0"))))
+
 (define-rec
   (innermost-lifetime (subr kfx (strings) string)
     (lambda (ls)
@@ -481,6 +489,11 @@
                    (if (fallible-effect? c (second xs))
                        (put ", Unwind>" (put-type c (fourth xs) (put "Result<" acc)))
                        (put-type c (fourth xs) acc))))
+                ((sym-is? (car xs) "bloblet")
+                 (put ">" (put-fields-tuple c (cdr (items (second xs)))
+                                            (put "Bloblet<" (put " " (put (owner-lifetime c (third xs)) (put "&" acc)))))))
+                ((sym-is? (car xs) "blobref")
+                 (put ">" (put-type c (second xs) (put "BlobRef<" acc))))
                 ((sym-is? (car xs) "prompt-tag")
                  (put ">" (put-type c (third xs) (put ", " (put-type c (second xs) (put "Tag<" acc))))))
                 ((sym-is? (car xs) "select")
@@ -502,6 +515,11 @@
                        (if (null? args) acc (put ">" (put-types c args (put "<" acc))))))))
                 (else (error "kfx: a type KFX-0 does not have"))))
         (else other (error "kfx: a type KFX-0 does not have")))))
+
+  (put-fields-tuple (subr kfx (ctx sexps chars) chars)
+    (lambda (c ts acc)
+      "A bloblet's fields, a tuple of cells: `(Cell<T>, ...,)`."
+      (put ")" (put-sep (lambda ((t sexp) acc) (put ">," (put-type c t (put "std::cell::Cell<" acc)))) " " ts (put "(" acc)))))
 
   (type-arguments (subr kfx (sexps strings) sexps)
     (lambda (args kinds)
@@ -838,7 +856,7 @@
       (concat (map (lambda ((e sexp))
                      (tagcase e
                        (lst (xs f l p)
-                         (if (and (or (head-is? e "rcons") (head-is? e "rnew")) (not (null? (cdr xs))) (sym-is? (second xs) r))
+                         (if (and (or (head-is? e "rcons") (head-is? e "rnew") (head-is? e "rmake-bloblet")) (not (null? (cdr xs))) (sym-is? (second xs) r))
                              (the sexps (cons e (allocations r (cdr xs))))
                              (allocations r xs)))
                        (else other nil)))
@@ -1194,7 +1212,9 @@
                     (acc (put (shape-name #t (map (lambda ((f sexps)) (label-of (car f))) fs)) acc)))
                (put ")" (put-joined c (map second fs) ", " n (put "(" acc)))))
             ((string=? h "extract")
-             (put (fact-with c e "extract-index ") (put "." (put-exp c (car xs) n (value) acc))))
+             (if (string=? (fact-with c e "blob-offset ") "")
+                 (put (fact-with c e "extract-index ") (put "." (put-exp c (car xs) n (value) acc)))
+                 (put ")" (put (fact-with c e "blob-offset ") (put ").field(" (put-exp c (car xs) n (value) (put "(" acc)))))))
             ((string=? h "sum")
              "A sum's enum written with its type's arguments, which only the type
               expected, as the checker found it, says."
@@ -1217,6 +1237,31 @@
                     (acc (put-args c e (cdr xs) 0 n acc)))
                (put ")" acc)))
             ((and (string=? h "letrena") (string=? (local-kind h (ctx-locals c)) "")) (put-letrena c e xs n acc))
+            ((and (or (string=? h "make-bloblet") (string=? h "rmake-bloblet")) (string=? (local-kind h (ctx-locals c)) ""))
+             "`make_bloblet(bytes, (Cell::new(e), ...,))`; in a region, `rmake_bloblet(r, ...)`."
+             (let* ((placed (string=? h "rmake-bloblet"))
+                    (acc (put (if placed "rmake_bloblet(" "make_bloblet(") acc))
+                    (acc (if placed (put ", " (put-exp c (car xs) n (value) acc)) acc))
+                    (rest (if placed (cdr xs) xs))
+                    (acc (put ", (" (put-exp c (car rest) n (value) acc)))
+                    (acc (put-sep (lambda ((x sexp) acc) (put ")," (put-exp c x n (value) (put "std::cell::Cell::new(" acc)))) " " (cdr rest) acc)))
+               (put "))" acc)))
+            ((and (or (string=? h "bloblet-ref") (string=? h "bloblet-set!")) (string=? (local-kind h (ctx-locals c)) ""))
+             "A field, a cell: `(b).fields.i.get()`, `.set(e)`."
+             (let ((acc (put (number-text (second xs)) (put ").fields." (put-exp c (car xs) n (value) (put "(" acc))))))
+               (if (string=? h "bloblet-ref")
+                   (put ".get()" acc)
+                   (put ")" (put-exp c (third xs) n (value) (put ".set(" acc))))))
+            ((and (or (string=? h "blobref-get") (string=? h "blobref-set!")) (string=? (local-kind h (ctx-locals c)) ""))
+             "A scalar's bytes, read or written as the checker found its flat."
+             (let ((acc (put (fact-with c e "blob-scalar ") (put (if (string=? h "blobref-get") ").get_" ").set_") (put-exp c (car xs) n (value) (put "(" acc))))))
+               (if (string=? h "blobref-get")
+                   (put "()" acc)
+                   (put ")" (put-exp c (second xs) n (value) (put "(" acc))))))
+            ((and (string=? h "blobref-index") (string=? (local-kind h (ctx-locals c)) ""))
+             (let* ((acc (put ").index(" (put-exp c (car xs) n (value) (put "(" acc))))
+                    (acc (put-exp c (second xs) n (value) acc)))
+               (put ")" (put (string-append ", " (words-of-sep (split-words (fact-with c e "blob-element ")) ", ")) acc))))
             ((or (string=? h "letrec") (string=? h "letregion")) (put-block c (list e) n t acc))
             ((abort? c e)
              "An abort: an early return, where a `Result` is returned; else no
@@ -1313,9 +1358,11 @@
       "What an allocation in region `r` makes, as Rust's type: a pair,
        `Cons<'r, T>`, or a reference's cell, `Cell<T>`."
       (let ((t (car (read-all (string-chars (fact-with c call "rheld ")) "" 1))))
-        (if (head-is? call "rcons")
-            (string-append "Cons<'" (string-append (mangle r) (string-append ", " (string-append (rev->string (put-type c t nil)) ">"))))
-            (string-append "std::cell::Cell<" (string-append (rev->string (put-type c t nil)) ">"))))))
+        (cond ((head-is? call "rcons")
+               (string-append "Cons<'" (string-append (mangle r) (string-append ", " (string-append (rev->string (put-type c t nil)) ">")))))
+              ((head-is? call "rmake-bloblet")
+               (string-append "Bloblet<" (string-append (rev->string (put-fields-tuple c (cdr (items (second (items t)))) nil)) ">")))
+              (else (string-append "std::cell::Cell<" (string-append (rev->string (put-type c t nil)) ">")))))))
 
   (put-prompt (subr kfx (ctx sexp sexps i64 chars) chars)
     (lambda (c e xs n acc)

@@ -886,6 +886,10 @@ pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
                 str_lit("use super::")
             }, acc)))))
         }
+    } else if (string_eq_p(h, str_lit("define-type")) && head_is_p(third(xs), str_lit("arrayof"))) {
+        // A flat array: a layout in a bloblet's suffix (C31), no value's
+        // type, and so no Rust type's.
+        acc
     } else if (string_eq_p(h, str_lit("define-type")) && head_is_p(third(xs), str_lit("moduleof"))) {
         put_trait(c, sym_name(second(xs)), third(xs), acc)
     } else if string_eq_p(h, str_lit("define-type")) {

@@ -13,6 +13,11 @@ pub mod bignum;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/bloblets.rs"]
+pub mod bloblets;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/cases.rs"]
 pub mod cases;
 
@@ -163,6 +168,7 @@ pub type Main = fn() -> kayak_rt::Str;
 pub const PROGRAMS: &[(&str, Main)] = &[
     ("arith", arith::main),
     ("bignum", bignum::main),
+    ("bloblets", bloblets::main),
     ("cases", cases::main),
     ("constants", constants::main),
     ("control", control::main),

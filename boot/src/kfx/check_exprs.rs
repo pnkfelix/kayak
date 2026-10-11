@@ -109,6 +109,18 @@ pub fn ty_sexp(v: &'static Cv, s: &'static St, t: &'static Ty) -> &'static Sexp 
         Ty::TyData(d, args) => {
             if null_p(args) {
                 sym(d, str_lit(""), 0i64)
+            } else if string_eq_p(d, str_lit("%bloblet")) {
+                lst(kayak_rt::cons(sym(str_lit("bloblet"), str_lit(""), 0i64), kayak_rt::cons(lst(cons(sym(str_lit("fields"), str_lit(""), 0i64), map(lambda1(move |x: &'static Ty| {
+                    ty_sexp(v, s, x)
+                }), cdr(args))), str_lit(""), 0i64, 0i64), kayak_rt::cons(ty_sexp(v, s, car(args)), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
+            } else if string_eq_p(d, str_lit("%blobref")) {
+                lst(cons(sym(str_lit("blobref"), str_lit(""), 0i64), map(lambda1(move |x: &'static Ty| {
+                    ty_sexp(v, s, x)
+                }), args)), str_lit(""), 0i64, 0i64)
+            } else if string_eq_p(d, str_lit("%flat-array")) {
+                lst(cons(sym(str_lit("arrayof"), str_lit(""), 0i64), map(lambda1(move |x: &'static Ty| {
+                    ty_sexp(v, s, x)
+                }), args)), str_lit(""), 0i64, 0i64)
             } else {
                 lst(cons(sym(d, str_lit(""), 0i64), map(lambda1(move |x: &'static Ty| {
                     ty_sexp(v, s, x)
@@ -174,6 +186,21 @@ pub fn distinct(mut xs: Strings) -> Strings {
     }
 }
 
+pub fn blob_form_p(h: Str) -> bool {
+    string_member_p(h, kayak_rt::cons(str_lit("make-bloblet"), kayak_rt::cons(str_lit("rmake-bloblet"), kayak_rt::cons(str_lit("bloblet-ref"), kayak_rt::cons(str_lit("bloblet-set!"), kayak_rt::cons(str_lit("bloblet-byte"), kayak_rt::cons(str_lit("bloblet-set-byte!"), kayak_rt::cons(str_lit("bloblet-bytes"), kayak_rt::cons(str_lit("blobref-at"), kayak_rt::cons(str_lit("blobref+"), kayak_rt::cons(str_lit("blobref-owner"), kayak_rt::cons(str_lit("blobref-offset"), kayak_rt::cons(str_lit("blobref-get"), kayak_rt::cons(str_lit("blobref-set!"), kayak_rt::cons(str_lit("blobref-index"), kayak_rt::nil())))))))))))))))
+}
+
+pub fn list_ref_i64(mut ts: Tys, mut i: i64) -> &'static Ty {
+    loop {
+        if i64_eq(i, 0i64) {
+            return car(ts);
+        } else {
+            (ts, i) = (cdr(ts), i64_minus(i, 1i64));
+            continue;
+        }
+    }
+}
+
 // Turbofish: the types a poly procedure is called at, and a `nil`'s or an
 // empty list's element, which rustc may find nothing else to infer from.
 // Noted as inference variables, `turbofish-metas ?k ...`, at the call's or
@@ -213,6 +240,18 @@ pub fn settled_sexp(s: &'static St, t: &'static Ty, region: bool) -> &'static Se
         Ty::TyData(d, args) => {
             if null_p(args) {
                 sym(d, str_lit(""), 0i64)
+            } else if string_eq_p(d, str_lit("%bloblet")) {
+                lst(kayak_rt::cons(sym(str_lit("bloblet"), str_lit(""), 0i64), kayak_rt::cons(lst(cons(sym(str_lit("fields"), str_lit(""), 0i64), map(lambda1(move |x: &'static Ty| {
+                    settled_sexp(s, x, false)
+                }), cdr(args))), str_lit(""), 0i64, 0i64), kayak_rt::cons(settled_sexp(s, car(args), true), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
+            } else if string_eq_p(d, str_lit("%blobref")) {
+                lst(cons(sym(str_lit("blobref"), str_lit(""), 0i64), map(lambda1(move |x: &'static Ty| {
+                    settled_sexp(s, x, false)
+                }), args)), str_lit(""), 0i64, 0i64)
+            } else if string_eq_p(d, str_lit("%flat-array")) {
+                lst(cons(sym(str_lit("arrayof"), str_lit(""), 0i64), map(lambda1(move |x: &'static Ty| {
+                    settled_sexp(s, x, false)
+                }), args)), str_lit(""), 0i64, 0i64)
             } else {
                 lst(cons(sym(d, str_lit(""), 0i64), map(lambda1(move |x: &'static Ty| {
                     settled_sexp(s, x, false)
@@ -1632,6 +1671,27 @@ pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
                 Res::Res(t, es, s) => {
                     let tagcase_ = walk(s, t);
                     match *tagcase_ {
+                        Ty::TyData(d, args) => {
+                            let flat = if string_eq_p(d, str_lit("%blobref")) {
+                                walk(s, car(cdr(args)))
+                            } else {
+                                ty_unit()
+                            };
+                            let tagcase_ = flat;
+                            match *tagcase_ {
+                                Ty::TyShape(p, ls, ts) => {
+                                    if string_member_p(label_of(second(xs)), ls) {
+                                        res(ty_data(str_lit("%blobref"), kayak_rt::cons(car(args), kayak_rt::cons(member_type(label_of(second(xs)), ls, ts), kayak_rt::nil()))), es, note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("blob-offset "), i64_to_string(field_offset(ls, ts, label_of(second(xs)))))))
+                                    } else {
+                                        match refuse(v, string_append(str_lit("no field "), string_append(label_of(second(xs)), string_append(str_lit(" in a "), show_ty(s, t))))) {}
+                                    }
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    match refuse(v, string_append(str_lit("an extract from a "), string_append(show_ty(s, t), str_lit(", no product")))) {}
+                                }
+                            }
+                        }
                         Ty::TyShape(p, ls, ts) => {
                             if (p && string_member_p(label_of(second(xs)), ls)) {
                                 res(member_type(label_of(second(xs)), ls, ts), es, note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("extract-index "), i64_to_string(index_of(label_of(second(xs)), ls, 0i64)))))
@@ -1702,6 +1762,8 @@ pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
         body_form(v, s, h, xs, nil::<&'static Ty>())
     } else if string_eq_p(h, str_lit("letrena")) {
         letrena_form(v, s, xs, nil::<&'static Ty>())
+    } else if (blob_form_p(h) && null_p(find_bind(h, cv_binds(v)))) {
+        blob_form(v, s, h, xs, nil::<&'static Ty>())
     } else if string_eq_p(h, str_lit("and")) {
         bools(v, s, xs)
     } else if string_eq_p(h, str_lit("or")) {
@@ -1716,6 +1778,8 @@ pub fn check_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
         body_form(v, s, h, xs, kayak_rt::cons(expected, kayak_rt::nil()))
     } else if string_eq_p(h, str_lit("letrena")) {
         letrena_form(v, s, xs, kayak_rt::cons(expected, kayak_rt::nil()))
+    } else if (blob_form_p(h) && null_p(find_bind(h, cv_binds(v)))) {
+        blob_form(v, s, h, xs, kayak_rt::cons(expected, kayak_rt::nil()))
     } else if string_eq_p(h, str_lit("prompt")) {
         prompt_form(v, s, xs, kayak_rt::cons(expected, kayak_rt::nil()))
     } else if string_eq_p(h, str_lit("%found")) {
@@ -2484,6 +2548,318 @@ pub fn region_alloc_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, ex
                 match *tagcase_ {
                     Res::Res(u, es, s) => {
                         res(made, effs_union(kayak_rt::cons(string_append(str_lit("alloc:"), region_string(s, r)), kayak_rt::nil()), es), note_types(s, cv_file(v), cv_pos(v), str_lit("rheld"), kayak_rt::cons(m, kayak_rt::nil())))
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Bloblets and blobrefs (C31), syntax as FX-26's are, since a field's
+/// type is its literal index's and an owner's region is in its type. The
+/// emitter is told each blobref read's and write's scalar, an `extract`'s
+/// offset and a `blobref-index`'s element size and length.
+pub fn blob_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Tys) -> &'static Res {
+    let args_are = lambda1(move |n: i64| {
+        if i64_eq(size(xs), n) {
+            true
+        } else {
+            match refuse(v, string_append(str_lit("("), string_append(h, str_lit(" ...) takes the parts FX-26's does")))) {}
+        }
+    });
+    if (string_eq_p(h, str_lit("make-bloblet")) || string_eq_p(h, str_lit("rmake-bloblet"))) {
+        let placed = string_eq_p(h, str_lit("rmake-bloblet"));
+        let want = if null_p(expected) {
+            ty_unit()
+        } else {
+            walk(s, car(expected))
+        };
+        let rest = if placed {
+            cdr(xs)
+        } else {
+            xs
+        };
+        let tagcase_ = want;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                if (not(string_eq_p(d, str_lit("%bloblet"))) || null_p(rest) || not(i64_eq(size(cdr(rest)), size(cdr(args))))) {
+                    match refuse(v, string_append(str_lit("a bloblet made where a "), string_append(show_ty(s, want), str_lit(" is expected, or not of its fields")))) {}
+                } else {
+                    let s = if placed {
+                        fits(v, s, place_of(v, s, car(xs)), car(args))
+                    } else {
+                        s
+                    };
+                    let s = if placed {
+                        note_types(s, cv_file(v), cv_pos(v), str_lit("rheld"), kayak_rt::cons(want, kayak_rt::nil()))
+                    } else {
+                        s
+                    };
+                    let tagcase_ = call_args(v, s, rest, cons(ty_int(), cdr(args)), nil::<i64>());
+                    match *tagcase_ {
+                        Res::Res(u, es, s) => {
+                            res(want, effs_union(kayak_rt::cons(string_append(str_lit("alloc:"), region_string(s, car(args))), kayak_rt::nil()), es), s)
+                        }
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                match refuse(v, str_lit("a bloblet whose type nothing says: (the (bloblet (fields T ...) R) (make-bloblet bytes e ...))")) {}
+            }
+        }
+    } else if (string_eq_p(h, str_lit("bloblet-ref")) || string_eq_p(h, str_lit("bloblet-set!"))) {
+        args_are(if string_eq_p(h, str_lit("bloblet-ref")) {
+            2i64
+        } else {
+            3i64
+        });
+        let tagcase_ = synth(v, s, car(xs));
+        match *tagcase_ {
+            Res::Res(b, es0, s) => {
+                let tagcase_ = walk(s, b);
+                match *tagcase_ {
+                    Ty::TyData(d, args) => {
+                        let i = {
+                            let tagcase_ = second(xs);
+                            match *tagcase_ {
+                                Sexp::Num(k, f, p) => {
+                                    k
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    the::<i64>(-1i64)
+                                }
+                            }
+                        };
+                        if not(string_eq_p(d, str_lit("%bloblet"))) {
+                            match refuse(v, string_append(h, str_lit(" of no bloblet"))) {}
+                        } else if (i64_lt(i, 0i64) || not(i64_lt(i, size(cdr(args))))) {
+                            match refuse(v, string_append(h, str_lit(": no such field, its index a literal"))) {}
+                        } else if string_eq_p(h, str_lit("bloblet-ref")) {
+                            res(list_ref_i64(cdr(args), i), effs_union(kayak_rt::cons(string_append(str_lit("read:"), region_string(s, car(args))), kayak_rt::nil()), es0), s)
+                        } else {
+                            let tagcase_ = check(v, s, third(xs), list_ref_i64(cdr(args), i));
+                            match *tagcase_ {
+                                Res::Res(u, es, s) => {
+                                    res(ty_unit(), effs_union(kayak_rt::cons(string_append(str_lit("write:"), region_string(s, car(args))), kayak_rt::nil()), effs_union(es0, es)), s)
+                                }
+                            }
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        match refuse(v, string_append(h, str_lit(" of no bloblet"))) {}
+                    }
+                }
+            }
+        }
+    } else if (string_eq_p(h, str_lit("bloblet-byte")) || string_eq_p(h, str_lit("bloblet-set-byte!")) || string_eq_p(h, str_lit("bloblet-bytes"))) {
+        args_are(if string_eq_p(h, str_lit("bloblet-bytes")) {
+            1i64
+        } else if string_eq_p(h, str_lit("bloblet-byte")) {
+            2i64
+        } else {
+            3i64
+        });
+        let tagcase_ = synth(v, s, car(xs));
+        match *tagcase_ {
+            Res::Res(b, es0, s) => {
+                let tagcase_ = walk(s, b);
+                match *tagcase_ {
+                    Ty::TyData(d, args) => {
+                        if not(string_eq_p(d, str_lit("%bloblet"))) {
+                            match refuse(v, string_append(h, str_lit(" of no bloblet"))) {}
+                        } else {
+                            let tagcase_ = call_args(v, s, cdr(xs), map(lambda1(move |x: &'static Sexp| {
+                                ty_int()
+                            }), cdr(xs)), nil::<i64>());
+                            match *tagcase_ {
+                                Res::Res(u, es, s) => {
+                                    res(if string_eq_p(h, str_lit("bloblet-set-byte!")) {
+                                        ty_unit()
+                                    } else {
+                                        ty_int()
+                                    }, effs_union(if string_eq_p(h, str_lit("bloblet-bytes")) {
+                                        nil::<Str>()
+                                    } else if string_eq_p(h, str_lit("bloblet-byte")) {
+                                        kayak_rt::cons(string_append(str_lit("read:"), region_string(s, car(args))), kayak_rt::nil())
+                                    } else {
+                                        kayak_rt::cons(string_append(str_lit("write:"), region_string(s, car(args))), kayak_rt::nil())
+                                    }, effs_union(es0, es)), s)
+                                }
+                            }
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        match refuse(v, string_append(h, str_lit(" of no bloblet"))) {}
+                    }
+                }
+            }
+        }
+    } else if string_eq_p(h, str_lit("blobref-at")) {
+        args_are(2i64);
+        let tagcase_ = if null_p(expected) {
+            ty_unit()
+        } else {
+            walk(s, car(expected))
+        };
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                if not(string_eq_p(d, str_lit("%blobref"))) {
+                    match refuse(v, str_lit("a blobref made where none is expected")) {}
+                } else {
+                    let tagcase_ = check(v, s, car(xs), car(args));
+                    match *tagcase_ {
+                        Res::Res(b, es0, s) => {
+                            let tagcase_ = check(v, s, second(xs), ty_int());
+                            match *tagcase_ {
+                                Res::Res(u, es, s) => {
+                                    res(car(expected), effs_union(es0, es), s)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                match refuse(v, str_lit("which flat a new blobref points to is said by the type it is checked against: (the (blobref B F) (blobref-at b off))")) {}
+            }
+        }
+    } else if string_eq_p(h, str_lit("blobref+")) {
+        args_are(2i64);
+        let tagcase_ = if null_p(expected) {
+            ty_unit()
+        } else {
+            walk(s, car(expected))
+        };
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                if not(string_eq_p(d, str_lit("%blobref"))) {
+                    match refuse(v, str_lit("a blobref made where none is expected")) {}
+                } else {
+                    let tagcase_ = synth(v, s, car(xs));
+                    match *tagcase_ {
+                        Res::Res(r, es0, s) => {
+                            let tagcase_ = walk(s, r);
+                            match *tagcase_ {
+                                Ty::TyData(d2, args2) => {
+                                    if not(string_eq_p(d2, str_lit("%blobref"))) {
+                                        match refuse(v, str_lit("blobref+ of no blobref")) {}
+                                    } else {
+                                        let tagcase_ = check(v, s, second(xs), ty_int());
+                                        match *tagcase_ {
+                                            Res::Res(u, es, s) => {
+                                                res(car(expected), effs_union(es0, es), fits(v, s, car(args2), car(args)))
+                                            }
+                                        }
+                                    }
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    match refuse(v, str_lit("blobref+ of no blobref")) {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                match refuse(v, str_lit("which flat a new blobref points to is said by the type it is checked against: (the (blobref B F) (blobref+ r d))")) {}
+            }
+        }
+    } else {
+        // blobref-owner, -offset, -get, -set!, -index: of a blobref.
+        args_are(if (string_eq_p(h, str_lit("blobref-owner")) || string_eq_p(h, str_lit("blobref-offset")) || string_eq_p(h, str_lit("blobref-get"))) {
+            1i64
+        } else {
+            2i64
+        });
+        let tagcase_ = synth(v, s, car(xs));
+        match *tagcase_ {
+            Res::Res(r, es0, s) => {
+                let tagcase_ = walk(s, r);
+                match *tagcase_ {
+                    Ty::TyData(d, args) => {
+                        if not(string_eq_p(d, str_lit("%blobref"))) {
+                            match refuse(v, string_append(h, str_lit(" of no blobref"))) {}
+                        } else {
+                            let owner = walk(s, car(args));
+                            let flat = walk(s, car(cdr(args)));
+                            let region = {
+                                let tagcase_ = owner;
+                                match *tagcase_ {
+                                    Ty::TyData(d2, a2) => {
+                                        car(a2)
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        ty_unit()
+                                    }
+                                }
+                            };
+                            if string_eq_p(h, str_lit("blobref-owner")) {
+                                res(owner, es0, s)
+                            } else if string_eq_p(h, str_lit("blobref-offset")) {
+                                res(ty_int(), es0, s)
+                            } else if string_eq_p(h, str_lit("blobref-index")) {
+                                let tagcase_ = flat;
+                                match *tagcase_ {
+                                    Ty::TyData(d3, a3) => {
+                                        if not(string_eq_p(d3, str_lit("%flat-array"))) {
+                                            match refuse(v, str_lit("blobref-index of a blobref to no flat array")) {}
+                                        } else {
+                                            let tagcase_ = check(v, s, second(xs), ty_int());
+                                            match *tagcase_ {
+                                                Res::Res(u, es, s) => {
+                                                    res(ty_data(str_lit("%blobref"), kayak_rt::cons(owner, kayak_rt::cons(car(a3), kayak_rt::nil()))), effs_union(es0, es), note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("blob-element "), string_append({
+                                                        let tagcase_ = flat_layout(car(a3));
+                                                        match *tagcase_ {
+                                                            Layout::Layout(size, al) => {
+                                                                i64_to_string(size)
+                                                            }
+                                                        }
+                                                    }, string_append(str_lit(" "), {
+                                                        let tagcase_ = car(cdr(a3));
+                                                        match *tagcase_ {
+                                                            Ty::TyRconst(n) => {
+                                                                n
+                                                            }
+                                                            _ => {
+                                                                let other = tagcase_;
+                                                                str_lit("0")
+                                                            }
+                                                        }
+                                                    })))))
+                                                }
+                                            }
+                                        }
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        match refuse(v, str_lit("blobref-index of a blobref to no flat array")) {}
+                                    }
+                                }
+                            } else if string_eq_p(scalar_name(flat), str_lit("")) {
+                                match refuse(v, string_append(str_lit("only a scalar's bytes are read or written: "), show_ty(s, flat))) {}
+                            } else if string_eq_p(h, str_lit("blobref-get")) {
+                                res(flat, effs_union(kayak_rt::cons(string_append(str_lit("read:"), region_string(s, region)), kayak_rt::nil()), es0), note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("blob-scalar "), scalar_name(flat))))
+                            } else {
+                                let tagcase_ = check(v, s, second(xs), flat);
+                                match *tagcase_ {
+                                    Res::Res(u, es, s) => {
+                                        res(ty_unit(), effs_union(kayak_rt::cons(string_append(str_lit("write:"), region_string(s, region)), kayak_rt::nil()), effs_union(es0, es)), note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("blob-scalar "), scalar_name(flat))))
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        match refuse(v, string_append(h, str_lit(" of no blobref"))) {}
                     }
                 }
             }

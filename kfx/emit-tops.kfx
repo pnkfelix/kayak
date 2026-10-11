@@ -509,6 +509,10 @@
                      acc
                      (put "};\n\n" (put-sep (lambda ((x string) (acc chars)) (put x acc)) ", " names
                                              (put "::{" (put (mangle n) (put (if (string=? h "include") "pub use super::" "use super::") acc))))))))
+              ((and (string=? h "define-type") (head-is? (third xs) "arrayof"))
+               "A flat array: a layout in a bloblet's suffix (C31), no value's
+                type, and so no Rust type's."
+               acc)
               ((and (string=? h "define-type") (head-is? (third xs) "moduleof"))
                (put-trait c (sym-name (second xs)) (third xs) acc))
               ((string=? h "define-type")

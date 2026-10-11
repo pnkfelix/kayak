@@ -480,3 +480,31 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
   and both are `unsafe` inside); an arena of our own with `unsafe` in one
   module.
 
+## C31. Bloblets and blobrefs, faithful first (the user's, 2026-10-11)
+
+- **Chosen** (the user approved the plan: faithful first, typed as a fast
+  path after): a bloblet is `Bloblet<Fs>`, its fields a tuple of cells
+  and its suffix words, `Box<[Cell<u64>]>`; `(bloblet (fields T ...) R)`
+  is `&'r Bloblet<(Cell<T>, ...,)>`, `'r` its region's (a `letrena`'s, or
+  `'static`). A blobref is `BlobRef<B>`, `B` its owner's Rust type (so a
+  named owner type, `o`, is written `BlobRef<O>`), and a byte offset;
+  `blobref-get` and `-set!` read the scalar the checker found
+  (`get_f64`...), within its word when aligned to its size (C's layout
+  makes every field of a flat product so), else byte by byte. `extract` of
+  a blobref is `.field(n)`, `n` the offset the checker laid out;
+  `blobref-index` is `.index(i, size, len)`. All of FX-26's model holds:
+  one suffix read as several flats, any offset, `blobref+`; in safe Rust.
+- **Measured** (`scratchpad/blob/bench.rs`, a million 24-byte products):
+  the words 1.5 times the time of a typed `#[repr(C)]` struct of cells,
+  both about a nanosecond an element.
+- **Not yet** (refused): `f32` (KFX has none), frozen bloblets, a bloblet
+  of more fields where one of fewer is expected (FX-26's lists at least
+  its fields; KFX's exactly), flat sums and `blobref-variant!`, families
+  over the kind `flat`, a field that may hold a procedure (a knot through
+  the store no type here shows). Then the typed fast path, for an owner
+  type the program reads as one flat at offset 0.
+- **And** (found on the way): FX-26's effects and types are one
+  namespace, an effect hiding a type of its name; KFX refuses a type
+  named as an effect (K1). `run-fixpt-programs.py` counts a program that
+  fails when run in both as agreeing.
+

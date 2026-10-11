@@ -1,0 +1,7 @@
+"A bloblet of more fields where one of fewer is expected: FX-26's lists
+ at least its fields; KFX's exactly."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type wide (bloblet (fields i64 bool) @b))
+(define-type narrow (bloblet (fields i64) @b))
+(define first (subr (read @b) (narrow) i64) (lambda (x) (bloblet-ref x 0)))
+(first (the wide (make-bloblet 0 1 #t)))

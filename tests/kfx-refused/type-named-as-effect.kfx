@@ -1,0 +1,7 @@
+"A type named as an effect: FX-26 has one namespace for both, the effect
+ hiding the type."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-effect pts (maxeff (read @pts) (write @pts)))
+(define-type pts i64)
+(define x pts 3)
+x

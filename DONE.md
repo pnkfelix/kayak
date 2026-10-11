@@ -933,3 +933,18 @@ when the block ends. `tests/kfx/letrena` (Fixpt's `run/arena.fx` and
 `run/regions.fx` at i64, nesting, an abort through one); refusals for the
 region or place escaping and, KFX's alone, for a place as a value and a
 letrena in a procedure poly over types. Fixpt's programs kfx accepts: 67.
+
+## Bloblets and blobrefs (2026-10-11)
+
+C31: bloblets and blobrefs in safe Rust, FX-26's model whole (a suffix
+read as several flats, any offset, `blobref+`): `Bloblet<Fs>`, a suffix
+of `Cell<u64>` words; `BlobRef<B>`, an owner and a byte offset; flat
+products and arrays laid out as C does, the checker telling the emitter
+each offset, element and scalar. `rmake-bloblet` in a `letrena`'s arena.
+`tests/kfx/bloblets` (Fixpt's `point.fx` and `flat-product.fx`, an odd
+offset across words and overlapping a field, a flat array in an arena).
+Of Fixpt's 45 bloblet programs: 4 accepted and agreeing, 29 refused by
+both, 12 by KFX alone (`f32`, width, flat sums, arrays of values, ...);
+none a K1 violation or a Rust error. Fixpt's programs kfx accepts: 71, all
+agreeing (a run-time failure in both counted so). And a K1 violation found
+on the way: a type named as an effect, now refused.

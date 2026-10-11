@@ -1,0 +1,59 @@
+"Bloblets and blobrefs (C31): fields, each a cell, and a suffix of raw
+ bytes, words in Rust; a blobref its owner and a byte offset, read and
+ written as the flat the checker found."
+(define-effect kfx (maxeff (read @globals) spin))
+
+"Fixpt's bloblet/point.fx, at i64: fields read and written."
+(define p (bloblet (fields i64 i64) @pts) (make-bloblet 0 3 4))
+(define shift (subr (maxeff (read @pts) (write @pts)) ((bloblet (fields i64 i64) @pts) i64) unit)
+  (lambda (q dx) (bloblet-set! q 0 (i64+ (bloblet-ref q 0) dx))))
+
+"Fixpt's bloblet/flat-product.fx: one suffix read as three flats, laid
+ out as C lays them out."
+(define-type pt (productof (x f64) (n i32) (y f64)))
+(define-type pts (arrayof pt 3))
+(define-type o (bloblet (fields) @b))
+(define b o (make-bloblet 72))
+(define arr (blobref o pts) (blobref-at b 0))
+(define p1 (blobref o pt) (blobref-index arr 1))
+(define-type q (productof (a i32) (b i32) (c f64) (d i32)))
+(define q0 (blobref o q) (blobref-at b 0))
+
+"An odd offset, and bytes: an i32 across two words, read back, and its
+ bytes one by one. It overlaps p1's y (bytes 40 to 47), which it changes:
+ written after 2.5, y is 2.500488281249204, as in FX-26."
+(define odd (blobref o i32) (blobref-at b 41))
+
+"A bloblet in a letrena's arena: a sum over a flat array of f64s."
+(define total (subr kfx (i64) f64)
+  (lambda (n)
+    (letrena r
+      (let* ((b (the (bloblet (fields i64) r) (rmake-bloblet r 800 n)))
+             (xs (the (blobref (bloblet (fields i64) r) (arrayof f64 100)) (blobref-at b 0))))
+        (letrec ((fill (subr (maxeff (read r) (write r) spin) (i64) unit)
+                   (lambda (i) (if (i64= i (bloblet-ref b 0)) #u
+                                   (begin (blobref-set! (blobref-index xs (i64->int i)) (int->f64 (i64->int i))) (fill (i64+ i 1))))))
+                 (add (subr (maxeff (read r) spin) (i64 f64) f64)
+                   (lambda (i acc) (if (i64= i (bloblet-ref b 0)) acc
+                                       (add (i64+ i 1) (f64+ acc (blobref-get (blobref-index xs (i64->int i)))))))))
+          (begin (fill 0) (add 0 0.)))))))
+
+(define ints (subr kfx ((listof int acyclic)) string)
+  (lambda (ns) (if (null? ns) "" (string-append (int->string (car ns)) (string-append " " (ints (cdr ns)))))))
+
+(define main (subr (maxeff kfx (read @pts) (write @pts) (read @b) (write @b)) () string)
+  (lambda ()
+    (begin
+      (shift p 10)
+      (blobref-set! (extract p1 y) 2.5)
+      (blobref-set! (extract p1 n) 7)
+      (blobref-set! odd -7)
+      (string-append
+      (ints (list (i64->int (i64+ (bloblet-ref p 0) (bloblet-ref p 1)))
+                  (blobref-offset (extract p1 x)) (blobref-offset (extract p1 n)) (blobref-offset (extract p1 y))
+                  (i32->int (blobref-get (extract (blobref-index arr 1) n)))
+                  (blobref-offset (extract q0 b)) (blobref-offset (extract q0 c))
+                  (blobref-offset (extract (blobref-index (the (blobref o (arrayof q 2)) (blobref-at b 0)) 0) d))
+                  (i32->int (blobref-get odd)) (bloblet-byte b 41) (bloblet-byte b 44) (bloblet-bytes b)
+                  ))
+            (string-append (f64->string (blobref-get (extract p1 y))) (string-append " " (f64->string (total 100))))))))

@@ -208,6 +208,20 @@ def main():
         with open(path) as g:
             text = g.read()
         expected, why = fixpt_values(fixpt, path, text)
+        if expected is None and why.startswith("REFUSED: ! evaluation failed"):
+            # A run-time error, Fixpt's: the Rust must fail too.
+            try:
+                r = run([runner, name], timeout=LIMIT)
+            except subprocess.TimeoutExpired:
+                differ.append((rel, "Rust runs past %ds" % LIMIT))
+                continue
+            if r.returncode != 0:
+                agree += 1
+                if listing:
+                    print("agree   %s (both fail when run)" % rel)
+            else:
+                differ.append((rel, "Fixpt fails when run, and Rust does not: " + why))
+            continue
         if expected is None and why.startswith("REFUSED"):
             # kfx accepted what Fixpt refuses: K1's other half, broken.
             differ.append((rel, "kfx accepts it, and Fixpt " + why))

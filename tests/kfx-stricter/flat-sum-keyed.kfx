@@ -1,0 +1,6 @@
+"A keyed flat sum: FX-26 has it; KFX not yet."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type shape (sumof u8 (0 f64) (1 i64)))
+(define-type o (bloblet (fields) @b))
+(define r (blobref o shape) (blobref-at (the o (make-bloblet 16)) 0))
+1
