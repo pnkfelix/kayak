@@ -958,3 +958,12 @@ are `#[inline]`. On a million 24-byte products, KFX's generated code reads
 and writes as fast as a hand-written `#[repr(C)]` struct of cells (10.5
 and 5.0 ms against 10.4 and 4.9). The emitter's fact lookups are searches,
 no longer lists made: the compiler compiles itself in 0.46 s.
+
+## `f32` (2026-10-11)
+
+FX-26's `f32`: the type, its operations (`f32+` ... `f32-finite?`,
+`int->f32` rounded once from the integer, `f32->int` exact, `f32->string`
+as Fixpt writes one, `f32->f64`, `f64->f32`, `f32->bits`, `bits->f32`, and
+`f64->bits`, `bits->f64`), and as a flat scalar, 4 bytes, in a suffix
+(`get_f32`) and a typed one (`Cell<f32>`). `tests/kfx/f32`. Fixpt's
+programs kfx accepts: 73, all agreeing.

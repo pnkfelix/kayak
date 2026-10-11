@@ -48,6 +48,11 @@ pub mod escapes;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/f32.rs"]
+pub mod f32;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/families.rs"]
 pub mod families;
 
@@ -175,6 +180,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("data", data::main),
     ("define-star", define_star::main),
     ("escapes", escapes::main),
+    ("f32", f32::main),
     ("families", families::main),
     ("fixed", fixed::main),
     ("floats", floats::main),

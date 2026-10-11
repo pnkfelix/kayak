@@ -1052,7 +1052,7 @@ pub fn flat_p(t: &'static Ty) -> bool {
             true
         }
         Ty::TyData(d, args) => {
-            ((null_p(args) && (string_eq_p(d, str_lit("i32")) || string_eq_p(d, str_lit("u32")) || string_eq_p(d, str_lit("u64")))) || (string_eq_p(d, str_lit("%flat-array")) && flat_p(car(args))))
+            ((null_p(args) && (string_eq_p(d, str_lit("i32")) || string_eq_p(d, str_lit("u32")) || string_eq_p(d, str_lit("u64")) || string_eq_p(d, str_lit("f32")))) || (string_eq_p(d, str_lit("%flat-array")) && flat_p(car(args))))
         }
         Ty::TyShape(p, ls, ts) => {
             (p && not(null_p(ts)) && not(any_p(lambda1(move |x: &'static Ty| {
@@ -1255,6 +1255,8 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                 } else if string_eq_p(s, str_lit("f64")) {
                     return ty_f64();
                 } else if fixed_width_p(s) {
+                    return ty_data(s, nil::<&'static Ty>());
+                } else if string_eq_p(s, str_lit("f32")) {
                     return ty_data(s, nil::<&'static Ty>());
                 } else if string_eq_p(s, str_lit("bool")) {
                     return ty_bool();

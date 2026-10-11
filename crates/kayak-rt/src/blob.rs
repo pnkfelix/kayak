@@ -207,6 +207,14 @@ impl<B: Owner> BlobRef<B> {
     scalar!(get_i32, set_i32, i32, 4, |w| w as u32 as i32, |v| v as u32
         as u64);
     scalar!(get_u32, set_u32, u32, 4, |w| w as u32, |v| v as u64);
+    scalar!(
+        get_f32,
+        set_f32,
+        f32,
+        4,
+        |w| f32::from_bits(w as u32),
+        |v| v.to_bits() as u64
+    );
 }
 
 /// `(blobref-owner r)`.
@@ -246,7 +254,7 @@ macro_rules! flat_scalar {
     };
 }
 
-flat_scalar!(i64, u64, f64, i32, u32);
+flat_scalar!(i64, u64, f64, i32, u32, f32);
 
 /// `(arrayof F n)` in a typed suffix: `n` `F`s, on the heap with the
 /// bloblet (a large one does not fit a stack).

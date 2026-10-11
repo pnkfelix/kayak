@@ -484,7 +484,7 @@
                 ((string=? s "int") (put "Int" acc))
                 ((string=? s "nat") (put "Int" acc))
                 ((string=? s "f64") (put "f64" acc))
-                ((fixed-width? s) (put s acc))
+                ((or (fixed-width? s) (string=? s "f32")) (put s acc))
                 ((string=? s "bool") (put "bool" acc))
                 ((string=? s "char") (put "char" acc))
                 ((string=? s "unit") (put "()" acc))

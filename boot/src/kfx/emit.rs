@@ -944,7 +944,7 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
                     return put(str_lit("Int"), acc);
                 } else if string_eq_p(s, str_lit("f64")) {
                     return put(str_lit("f64"), acc);
-                } else if fixed_width_p(s) {
+                } else if (fixed_width_p(s) || string_eq_p(s, str_lit("f32"))) {
                     return put(s, acc);
                 } else if string_eq_p(s, str_lit("bool")) {
                     return put(str_lit("bool"), acc);
