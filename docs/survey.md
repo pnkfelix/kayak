@@ -1,5 +1,26 @@
 # What KFX lacks, by Fixpt's test programs
 
+**Rerun 2026-10-11, at the end of the day** (Fixpt `95c5605`): `kfx`
+accepts 71 of the 286 (69 of the 70 Fixpt's harness runs agree with
+Fixpt, value for value; `scripts/run-fixpt-programs.py`). The first
+refusals now:
+
+| programs | first refusal                                    | what it would take                                     |
+| -------: | ------------------------------------------------ | ------------------------------------------------------ |
+|       21 | no type named: `datum` (8), `symbol`, `i32`, `u64`, `f32` | dynamic data and its quoted syntax; fixed widths  |
+|       19 | nothing named: `extend`, `set-car!`, `apply`, …  | `extend`; pairs that may be written; the rest small    |
+|       13 | bloblets                                         | flat data beyond `i64` arrays (`TODO.md` §15)          |
+|       10 | `letrena`                                        | places (`TODO.md` §14, C23: not yet)                   |
+|       10 | `poly` over effects, sizes, places               | effect polymorphism, and the rest                      |
+|        8 | `load-module`                                    | files as modules                                       |
+|        7 | `nat` facts from tests                           | FX-26's size facts (refinement by tests)               |
+|        5 | unions                                           | `(union ...)` and `typecase`                           |
+|        5 | `proj`                                           | explicit instantiation                                 |
+| the rest | modules as values, `pairof`, higher kinds, …     |                                                        |
+
+The table below is the first survey's, the same day, when `kfx`
+accepted 1.
+
 Measured 2026-10-11, at Fixpt `95c5605`, by `scripts/survey-fixpt.py`:
 each of the FX-26 programs in Fixpt's `crates/fixpt-fx26/tests/programs`
 that Fixpt checks is given to `kfx`, and its first refusal kept.
