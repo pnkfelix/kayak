@@ -79,7 +79,7 @@ pub fn constructors(d: &'static Dt) -> Binds {
                 let tagcase_ = vt;
                 match *tagcase_ {
                     Variant::Variant(tag, fields) => {
-                        bind(tag, scheme(ps, ty_proc(nil(), fields, ty_data(name, map(lambda1(move |p: Str| {
+                        bind(tag, scheme(ps, ty_proc(nil::<Str>(), fields, ty_data(name, map(lambda1(move |p: Str| {
                             ty_var(p)
                         }), ps)))), str_lit("global"))
                     }
@@ -115,7 +115,7 @@ pub fn type_params(v: &'static Cv, form: &'static Sexp) -> Strings {
         }
         _ => {
             let other = tagcase_;
-            nil()
+            nil::<Str>()
         }
     }
 }
@@ -141,7 +141,7 @@ pub fn datatype_names(mut v: &'static Cv, mut forms: Sexps, mut ds: Dts) -> Dts 
         if null_p(forms) {
             return ds;
         } else if (head_is_p(car(forms), str_lit("define-datatype")) || head_is_p(car(forms), str_lit("define-generative"))) {
-            (forms, ds) = (cdr(forms), cons(dt(type_name(v, car(forms)), type_params(v, car(forms)), nil()), ds));
+            (forms, ds) = (cdr(forms), cons(dt(type_name(v, car(forms)), type_params(v, car(forms)), nil::<&'static Variant>()), ds));
             continue;
         } else {
             forms = cdr(forms);
@@ -155,7 +155,7 @@ pub fn with_effdef(v: &'static Cv, xs: Sexps) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
         Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-            cv(bs, ds, als, cons(effdef(name_of(v, second(xs)), parse_effect(v, nil(), third(xs))), es), here, group, file, line, fs, tv, at)
+            cv(bs, ds, als, cons(effdef(name_of(v, second(xs)), parse_effect(v, nil::<Str>(), third(xs))), es), here, group, file, line, fs, tv, at)
         }
     }
 }
@@ -183,7 +183,7 @@ pub fn declare_datatypes(mut v: &'static Cv, mut forms: Sexps, mut ds: Dts) -> D
             (forms, ds) = (cdr(forms), cons(datatype_of(v, cdr(items(car(forms)))), ds));
             continue;
         } else if head_is_p(car(forms), str_lit("define-generative")) {
-            (forms, ds) = (cdr(forms), cons(dt(type_name(v, car(forms)), type_params(v, car(forms)), nil()), ds));
+            (forms, ds) = (cdr(forms), cons(dt(type_name(v, car(forms)), type_params(v, car(forms)), nil::<&'static Variant>()), ds));
             continue;
         } else if (head_is_p(car(forms), str_lit("define-effect")) && not(selects_p(car(forms)))) {
             // An effect abbreviation, for the datatypes' fields' types; one that
@@ -253,7 +253,7 @@ pub fn conversions(v: &'static Cv, xs: Sexps) -> Binds {
         ty_var(p)
     }), params));
     let repr = parse_type(with_tvars(v, params), params, third(xs));
-    kayak_rt::cons(bind(string_append(str_lit("up-"), name), scheme(params, ty_proc(nil(), kayak_rt::cons(repr, kayak_rt::nil()), made)), str_lit("global")), kayak_rt::cons(bind(string_append(str_lit("down-"), name), scheme(params, ty_proc(nil(), kayak_rt::cons(made, kayak_rt::nil()), repr)), str_lit("global")), kayak_rt::nil()))
+    kayak_rt::cons(bind(string_append(str_lit("up-"), name), scheme(params, ty_proc(nil::<Str>(), kayak_rt::cons(repr, kayak_rt::nil()), made)), str_lit("global")), kayak_rt::cons(bind(string_append(str_lit("down-"), name), scheme(params, ty_proc(nil::<Str>(), kayak_rt::cons(made, kayak_rt::nil()), repr)), str_lit("global")), kayak_rt::nil()))
 }
 
 /// `v` with each of `bs`, each refused if its name is taken (`global`).
@@ -274,7 +274,7 @@ pub fn defined_once(mut v: &'static Cv, mut bs: Binds) -> &'static Cv {
 }
 
 pub fn new_state() -> &'static St {
-    st(nil(), 0i64, nil())
+    st(nil::<&'static Sb>(), 0i64, nil::<&'static Fact>())
 }
 
 /// `v`, with a definition's facts.
@@ -367,14 +367,14 @@ pub fn check_procedure(v: &'static Cv, defined: &'static Sexp, sc: &'static Sche
         third(items(defined))
     } else {
         defined
-    }), with_binds(v, kayak_rt::cons(bind(str_lit("%toplambda"), scheme(nil(), ty_unit()), str_lit("yes")), kayak_rt::nil())));
+    }), with_binds(v, kayak_rt::cons(bind(str_lit("%toplambda"), scheme(nil::<Str>(), ty_unit()), str_lit("yes")), kayak_rt::nil())));
     let tagcase_ = sc;
     match *tagcase_ {
         Scheme::Scheme(tvars, t) => {
             let tagcase_ = check_lambda(with_tvars(v, tvars), new_state(), items(second(lam)), cdr(cdr(lam)), t);
             match *tagcase_ {
                 Res::Res(u, es, s) => {
-                    with_facts(v, st_facts(s))
+                    with_facts(v, settle_facts(s))
                 }
             }
         }
@@ -429,7 +429,7 @@ pub fn check_rec(v: &'static Cv, bindings: Sexps) -> &'static Cv {
         global(v, name_of(v, car(ys)), parse_scheme(v, second(ys)))
     }), bindings));
     check_members(named, bindings, if ends {
-        nil()
+        nil::<Str>()
     } else {
         names
     }, names)
@@ -438,7 +438,7 @@ pub fn check_rec(v: &'static Cv, bindings: Sexps) -> &'static Cv {
 pub fn global_reads(mut es: Strings) -> Strings {
     loop {
         if null_p(es) {
-            return nil();
+            return nil::<Str>();
         } else {
             if (string_eq_p(car(es), str_lit("@globals")) || global_atom_p(car(es))) {
                 return cons(car(es), global_reads(cdr(es)));
@@ -458,7 +458,7 @@ pub fn check_define_star(v: &'static Cv, xs: Sexps) -> &'static Cv {
     let name = name_of(v, second(xs));
     let defined = fourth(xs);
     let v = at(v, name, if ends_alone_p(v, name, parse_scheme(v, third(xs)), defined) {
-        nil()
+        nil::<Str>()
     } else {
         kayak_rt::cons(name, kayak_rt::nil())
     });
@@ -491,7 +491,7 @@ pub fn check_define_star(v: &'static Cv, xs: Sexps) -> &'static Cv {
                             let tagcase_ = found;
                             match *tagcase_ {
                                 Res::Res(u, es, s) => {
-                                    st_facts(s)
+                                    settle_facts(s)
                                 }
                             }
                         };
@@ -560,7 +560,7 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                     let name = name_of(v, second(xs));
                     let sc = parse_scheme(v, third(xs));
                     let v = at(v, name, if ends_alone_p(v, name, sc, fourth(xs)) {
-                        nil()
+                        nil::<Str>()
                     } else {
                         kayak_rt::cons(name, kayak_rt::nil())
                     });
@@ -576,7 +576,7 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                                     let tagcase_ = check(v, new_state(), fourth(xs), t);
                                     match *tagcase_ {
                                         Res::Res(u, es, s) => {
-                                            with_facts(named, st_facts(constant_made(v, s, fourth(xs), es)))
+                                            with_facts(named, settle_facts(constant_made(v, s, fourth(xs), es)))
                                         }
                                     }
                                 } else {
@@ -591,10 +591,10 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
             } else if string_eq_p(h, str_lit("define*")) {
                 check_define_star(v, xs)
             } else {
-                let tagcase_ = synth(at(v, str_lit("a top-level expression"), nil()), new_state(), form);
+                let tagcase_ = synth(at(v, str_lit("a top-level expression"), nil::<Str>()), new_state(), form);
                 match *tagcase_ {
                     Res::Res(t, es, s) => {
-                        with_facts(v, st_facts(if void_p(s, t) {
+                        with_facts(v, settle_facts(if void_p(s, t) {
                             note_fact(s, src_file, src_pos, str_lit("void"))
                         } else {
                             s
@@ -605,10 +605,10 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
         }
         _ => {
             let other = tagcase_;
-            let tagcase_ = synth(at(v, str_lit("a top-level expression"), nil()), new_state(), form);
+            let tagcase_ = synth(at(v, str_lit("a top-level expression"), nil::<Str>()), new_state(), form);
             match *tagcase_ {
                 Res::Res(t, es, s) => {
-                    with_facts(v, st_facts(s))
+                    with_facts(v, settle_facts(s))
                 }
             }
         }
@@ -636,19 +636,19 @@ pub fn type_level_names(forms: Sexps) -> Strings {
                         }
                         _ => {
                             let other = tagcase_;
-                            nil()
+                            nil::<Str>()
                         }
                     }
                 }
                 _ => {
                     let other = tagcase_;
-                    nil()
+                    nil::<Str>()
                 }
             }
         } else if module_def_p(f) {
             the::<Strings>(kayak_rt::cons(sym_name(second(items(f))), kayak_rt::nil()))
         } else {
-            nil()
+            nil::<Str>()
         }
     }), forms))
 }
@@ -665,7 +665,7 @@ pub fn type_scopes(forms: Sexps) -> List<Strings> {
                 }
             }), cdr(items(third(items(f))))))), kayak_rt::nil()))
         } else {
-            nil()
+            nil::<List<Str>>()
         }
     }), forms)))
 }
@@ -780,7 +780,7 @@ pub fn elab(f0: &'static Cv, f1: Typeds) -> &'static Elab {
 pub fn check_untyped(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
     let xs = items(form);
     let name = name_of(v, second(xs));
-    let v = at(v, name, nil());
+    let v = at(v, name, nil::<Str>());
     let e = third(xs);
     let tagcase_ = synth(v, new_state(), e);
     match *tagcase_ {
@@ -790,7 +790,7 @@ pub fn check_untyped(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
             } else {
                 constant_made(v, s, e, es)
             });
-            elab(with_facts(with_binds(v, kayak_rt::cons(global(v, name, scheme(nil(), zonk(s, t))), kayak_rt::nil())), st_facts(s)), kayak_rt::cons(typed(name, written), kayak_rt::nil()))
+            elab(with_facts(with_binds(v, kayak_rt::cons(global(v, name, scheme(nil::<Str>(), zonk(s, t))), kayak_rt::nil())), settle_facts(s)), kayak_rt::cons(typed(name, written), kayak_rt::nil()))
         }
     }
 }
@@ -824,7 +824,7 @@ pub fn tag_taken_p(tag: Str, ds: Dts) -> bool {
 pub fn module_types(mut v: &'static Cv, mut forms: Sexps) -> Strings {
     loop {
         if null_p(forms) {
-            return nil();
+            return nil::<Str>();
         } else {
             let f = car(forms);
             if (head_is_p(f, str_lit("define-datatype")) && any_p(lambda1(move |vt: &'static Sexp| {
@@ -849,7 +849,7 @@ pub fn module_types(mut v: &'static Cv, mut forms: Sexps) -> Strings {
                 } else {
                     return cons(name, module_types(v, cdr(forms)));
                 }
-            } else if (head_is_p(f, str_lit("define-effect")) && i64_eq(size(items(f)), 3i64) && escapes_p(parse_effect(v, nil(), third(items(f))))) {
+            } else if (head_is_p(f, str_lit("define-effect")) && i64_eq(size(items(f)), 3i64) && escapes_p(parse_effect(v, nil::<Str>(), third(items(f))))) {
                 return match refuse(v, str_lit("a module's effect that may abort, which KFX's modules do not have yet")) {};
             } else if (head_is_p(f, str_lit("hide")) || module_def_p(f)) {
                 return match refuse(v, string_append(str_lit("an item KFX's modules do not have yet: "), show_sexp(car(items(f))))) {};
@@ -888,7 +888,7 @@ pub fn qualify_type(m: Str, names: Strings, t: &'static Sexp) -> &'static Sexp {
 pub fn module_aliases(m: Str, names: Strings, forms: Sexps, inside: bool) -> Aliases {
     concat(map(lambda1(move |f: &'static Sexp| {
         if not((head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype")))) {
-            nil()
+            nil::<&'static Alias>()
         } else {
             let xs = items(f);
             let t = sym_name(second(xs));
@@ -898,9 +898,9 @@ pub fn module_aliases(m: Str, names: Strings, forms: Sexps, inside: bool) -> Ali
             } else {
                 string_append(m, string_append(str_lit(" "), t))
             };
-            let named = alias(name, nil(), sym(q, str_lit(""), 0i64));
+            let named = alias(name, nil::<Str>(), sym(q, str_lit(""), 0i64));
             if head_is_p(f, str_lit("define-type")) {
-                the::<Aliases>(kayak_rt::cons(named, kayak_rt::cons(alias(q, nil(), qualify_type(m, names, third(xs))), kayak_rt::nil())))
+                the::<Aliases>(kayak_rt::cons(named, kayak_rt::cons(alias(q, nil::<Str>(), qualify_type(m, names, third(xs))), kayak_rt::nil())))
             } else {
                 the::<Aliases>(kayak_rt::cons(named, kayak_rt::nil()))
             }
@@ -911,9 +911,9 @@ pub fn module_aliases(m: Str, names: Strings, forms: Sexps, inside: bool) -> Ali
 pub fn module_dts(m: Str, forms: Sexps) -> Dts {
     concat(map(lambda1(move |f: &'static Sexp| {
         if (head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype"))) {
-            the::<Dts>(kayak_rt::cons(dt(string_append(m, string_append(str_lit(".."), sym_name(second(items(f))))), nil(), nil()), kayak_rt::nil()))
+            the::<Dts>(kayak_rt::cons(dt(string_append(m, string_append(str_lit(".."), sym_name(second(items(f))))), nil::<Str>(), nil::<&'static Variant>()), kayak_rt::nil()))
         } else {
-            nil()
+            nil::<&'static Dt>()
         }
     }), forms))
 }
@@ -925,11 +925,11 @@ pub fn module_conversions(v: &'static Cv, m: Str, forms: Sexps) -> Binds {
         if head_is_p(f, str_lit("define-generative")) {
             let xs = items(f);
             let t = sym_name(second(xs));
-            let made = ty_data(string_append(m, string_append(str_lit(".."), t)), nil());
-            let repr = parse_type(v, nil(), third(xs));
-            the::<Binds>(kayak_rt::cons(bind(string_append(str_lit("up-"), t), scheme(nil(), ty_proc(nil(), kayak_rt::cons(repr, kayak_rt::nil()), made)), str_lit("item")), kayak_rt::cons(bind(string_append(str_lit("down-"), t), scheme(nil(), ty_proc(nil(), kayak_rt::cons(made, kayak_rt::nil()), repr)), str_lit("item")), kayak_rt::nil())))
+            let made = ty_data(string_append(m, string_append(str_lit(".."), t)), nil::<&'static Ty>());
+            let repr = parse_type(v, nil::<Str>(), third(xs));
+            the::<Binds>(kayak_rt::cons(bind(string_append(str_lit("up-"), t), scheme(nil::<Str>(), ty_proc(nil::<Str>(), kayak_rt::cons(repr, kayak_rt::nil()), made)), str_lit("item")), kayak_rt::cons(bind(string_append(str_lit("down-"), t), scheme(nil::<Str>(), ty_proc(nil::<Str>(), kayak_rt::cons(made, kayak_rt::nil()), repr)), str_lit("item")), kayak_rt::nil())))
         } else {
-            nil()
+            nil::<&'static Bind>()
         }
     }), forms))
 }
@@ -945,7 +945,7 @@ pub fn module_datatypes(v: &'static Cv, m: Str, forms: Sexps) -> Dts {
                 }
             }
         } else {
-            nil()
+            nil::<&'static Dt>()
         }
     }), forms))
 }
@@ -963,13 +963,13 @@ pub fn module_effects(m: Str, forms: Sexps, es: Effdefs) -> Effdefs {
                         if string_eq_p(n, name) {
                             the::<Effdefs>(kayak_rt::cons(effdef(string_append(m, string_append(str_lit(" "), n)), atoms), kayak_rt::nil()))
                         } else {
-                            nil()
+                            nil::<&'static Effdef>()
                         }
                     }
                 }
             }), es))
         } else {
-            nil()
+            nil::<&'static Effdef>()
         }
     }), forms))
 }
@@ -978,13 +978,13 @@ pub fn module_effects(m: Str, forms: Sexps, es: Effdefs) -> Effdefs {
 pub fn module_exports(mut m: Str, mut conversions: Strings, mut bs: Binds) -> Binds {
     loop {
         if null_p(bs) {
-            return nil();
+            return nil::<&'static Bind>();
         } else {
             let tagcase_ = car(bs);
             match *tagcase_ {
                 Bind::Bind(n, sc, wher) => {
                     if string_eq_p(n, str_lit("%module")) {
-                        return nil();
+                        return nil::<&'static Bind>();
                     } else if string_member_p(n, conversions) {
                         bs = cdr(bs);
                         continue;
@@ -1018,7 +1018,7 @@ pub fn check_items(mut v: &'static Cv, mut m: Str, mut forms: Sexps, mut found: 
                     let tagcase_ = check_untyped(near(v, src_file, src_line, src_pos), car(forms));
                     match *tagcase_ {
                         Elab::Elab(v2, more) => {
-                            (v, forms, found) = (at(v2, str_lit(""), nil()), cdr(forms), onto(map(lambda1(move |x: &'static Typed| {
+                            (v, forms, found) = (at(v2, str_lit(""), nil::<Str>()), cdr(forms), onto(map(lambda1(move |x: &'static Typed| {
                                 let tagcase_ = x;
                                 match *tagcase_ {
                                     Typed::Typed(n, t) => {
@@ -1103,7 +1103,7 @@ pub fn item_names(f: &'static Sexp) -> Strings {
             }
             _ => {
                 let other = tagcase_;
-                nil()
+                nil::<Str>()
             }
         }
     } else if head_is_p(f, str_lit("define-rec")) {
@@ -1111,7 +1111,7 @@ pub fn item_names(f: &'static Sexp) -> Strings {
             sym_name(car(items(b)))
         }), cdr(items(f)))
     } else {
-        nil()
+        nil::<Str>()
     }
 }
 
@@ -1128,7 +1128,7 @@ pub fn hidden_names(forms: Sexps) -> Strings {
                 }
             }), cdr(items(f))))
         } else {
-            nil()
+            nil::<Str>()
         }
     }), forms))
 }
@@ -1151,7 +1151,7 @@ pub fn included(v: &'static Cv, forms: Sexps) -> Strings {
                 the::<Strings>(kayak_rt::cons(n, kayak_rt::nil()))
             }
         } else {
-            nil()
+            nil::<Str>()
         }
     }), forms))
 }
@@ -1160,7 +1160,7 @@ pub fn included(v: &'static Cv, forms: Sexps) -> Strings {
 pub fn unhidden_includes(v: &'static Cv, written: Sexps) -> Strings {
     included(v, concat(map(lambda1(move |f: &'static Sexp| {
         if head_is_p(f, str_lit("hide")) {
-            nil()
+            nil::<&'static Sexp>()
         } else {
             the::<Sexps>(kayak_rt::cons(f, kayak_rt::nil()))
         }
@@ -1186,7 +1186,7 @@ pub fn without_aliases(hidden: Strings, m: Str, als: Aliases) -> Aliases {
         match *tagcase_ {
             Alias::Alias(t, ps, body) => {
                 if string_member_p(after_prefix(t, string_append(m, str_lit(" "))), hidden) {
-                    nil()
+                    nil::<&'static Alias>()
                 } else {
                     the::<Aliases>(kayak_rt::cons(a, kayak_rt::nil()))
                 }
@@ -1198,9 +1198,9 @@ pub fn without_aliases(hidden: Strings, m: Str, als: Aliases) -> Aliases {
 pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
     let xs = items(form);
     let m = name_of(v, second(xs));
-    let v = at(v, m, nil());
+    let v = at(v, m, nil::<Str>());
     let made = {
-        let tagcase_ = global(v, m, scheme(nil(), ty_unit()));
+        let tagcase_ = global(v, m, scheme(nil::<Str>(), ty_unit()));
         match *tagcase_ {
             Bind::Bind(n, sc, wher) => {
                 bind(n, sc, str_lit("module"))
@@ -1222,7 +1222,7 @@ pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
         if head_is_p(f, str_lit("hide")) {
             cdr(items(f))
         } else {
-            nil()
+            nil::<&'static Sexp>()
         }
     }), written)))))));
     let includes = included(v, forms);
@@ -1257,7 +1257,7 @@ pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
             Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
                 cv(bind_onto(concat(map(lambda1(move |n: Str| {
                     opened_binds(n, bs)
-                }), includes)), cons(bind(str_lit("%module"), scheme(nil(), ty_unit()), m), bs)), onto(module_dts(m, forms), ds), onto(module_aliases(m, names, forms, true), onto(concat(map(lambda1(move |n: Str| {
+                }), includes)), cons(bind(str_lit("%module"), scheme(nil::<Str>(), ty_unit()), m), bs)), onto(module_dts(m, forms), ds), onto(module_aliases(m, names, forms, true), onto(concat(map(lambda1(move |n: Str| {
                     opened_aliases(n, als)
                 }), includes)), als)), es, here, group, file, line, fs, tv, at)
             }
@@ -1274,7 +1274,7 @@ pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
     };
     let conversions = module_conversions(typed, m, forms);
     let inner = defined_once(typed, onto(conversions, concat(map(&constructors, datatypes))));
-    let tagcase_ = check_items(inner, m, forms, nil());
+    let tagcase_ = check_items(inner, m, forms, nil::<&'static Typed>());
     match *tagcase_ {
         Elab::Elab(done, found) => {
             let tagcase_ = done;
@@ -1308,7 +1308,7 @@ pub fn check_tops(mut v: &'static Cv, mut forms: Sexps, mut found: Typeds) -> &'
                     let tagcase_ = check_module(near(v, src_file, src_line, src_pos), car(forms));
                     match *tagcase_ {
                         Elab::Elab(v2, more) => {
-                            (v, forms, found) = (at(v2, str_lit(""), nil()), cdr(forms), onto(more, found));
+                            (v, forms, found) = (at(v2, str_lit(""), nil::<Str>()), cdr(forms), onto(more, found));
                             continue;
                         }
                     }
@@ -1326,7 +1326,7 @@ pub fn check_tops(mut v: &'static Cv, mut forms: Sexps, mut found: Typeds) -> &'
                     let tagcase_ = check_untyped(near(v, src_file, src_line, src_pos), car(forms));
                     match *tagcase_ {
                         Elab::Elab(v2, more) => {
-                            (v, forms, found) = (at(v2, str_lit(""), nil()), cdr(forms), onto(more, found));
+                            (v, forms, found) = (at(v2, str_lit(""), nil::<Str>()), cdr(forms), onto(more, found));
                             continue;
                         }
                     }
@@ -1375,14 +1375,14 @@ pub fn verdict_facts(x: &'static Verdict) -> Facts {
 /// Every form, in order; the first error stops the compiler. What it gives
 /// is the types of the definitions written with none.
 pub fn check_program(forms: Sexps) -> &'static Verdict {
-    let empty = cv(nil(), nil(), nil(), nil(), str_lit("a type"), nil(), str_lit("the program"), 0i64, nil(), nil(), 0i64);
-    let start = cv(nil(), nil(), declare_types(empty, forms, nil()), nil(), str_lit("a type"), nil(), str_lit("the program"), 0i64, nil(), nil(), 0i64);
+    let empty = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), nil::<&'static Alias>(), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64);
+    let start = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), declare_types(empty, forms, nil::<&'static Alias>()), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64);
     let types = type_names_free(start, forms);
     let named = {
         let tagcase_ = start;
         match *tagcase_ {
             Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-                cv(bs, datatype_names(start, forms, nil()), als, es, here, group, file, line, fs, tv, at)
+                cv(bs, datatype_names(start, forms, nil::<&'static Dt>()), als, es, here, group, file, line, fs, tv, at)
             }
         }
     };
@@ -1390,12 +1390,12 @@ pub fn check_program(forms: Sexps) -> &'static Verdict {
         let tagcase_ = named;
         match *tagcase_ {
             Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-                cv(bs, declare_datatypes(named, forms, nil()), als, es, here, group, file, line, fs, tv, at)
+                cv(bs, declare_datatypes(named, forms, nil::<&'static Dt>()), als, es, here, group, file, line, fs, tv, at)
             }
         }
     };
     let v = with_binds(typed, prim_binds(typed));
-    let tagcase_ = check_tops(v, forms, nil());
+    let tagcase_ = check_tops(v, forms, nil::<&'static Typed>());
     match *tagcase_ {
         Elab::Elab(done, found) => {
             verdict(found, cv_facts(done))

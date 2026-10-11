@@ -294,7 +294,7 @@
       (tagcase sc
         (scheme (tvars t)
           (tagcase (check-lambda (with-tvars v tvars) (new-state) (items (second lam)) (cdr (cdr lam)) t)
-            (res (u es s) (with-facts v (st-facts s)))))))))
+            (res (u es s) (with-facts v (settle-facts s)))))))))
 
 (define variants-dt (subr kfx (cv string) (listof dt acyclic))
   (lambda (v d)
@@ -358,7 +358,7 @@
                          (named (with-binds v (list (global v name (scheme tvars wide)))))
                          (found (lambda-effects (with-tvars named tvars) (new-state) (items (second lam)) (cdr (cdr lam)) wide))
                          (es (tagcase found (res (u es s) es)))
-                         (fs (tagcase found (res (u es s) (st-facts s)))))
+                         (fs (tagcase found (res (u es s) (settle-facts s)))))
                     (if (effs-within? es (effs-union (list "@globals") declared))
                         (with-facts (with-binds (no-reaching-itself v (list name) (scheme tvars (ty-proc (effs-union (global-reads es) declared) ps r)))
                                                 (list (global v name (scheme tvars (ty-proc (effs-union (global-reads es) declared) ps r)))))
@@ -405,15 +405,15 @@
                              (scheme (tvars t)
                                (if (null? tvars)
                                    (tagcase (check v (new-state) (fourth xs) t)
-                                     (res (u es s) (with-facts named (st-facts (constant-made v s (fourth xs) es)))))
+                                     (res (u es s) (with-facts named (settle-facts (constant-made v s (fourth xs) es)))))
                                    (refuse v "a poly constant: only a procedure may be poly"))))))))
                 ((string=? h "define-rec") (check-rec v (cdr xs)))
                 ((string=? h "define*") (check-define* v xs))
                 (else (tagcase (synth (at v "a top-level expression" nil) (new-state) form)
                         (res (t es s)
-                          (with-facts v (st-facts (if (void? s t) (note-fact s src-file src-pos "void") s)))))))))
+                          (with-facts v (settle-facts (if (void? s t) (note-fact s src-file src-pos "void") s)))))))))
       (else other (tagcase (synth (at v "a top-level expression" nil) (new-state) form)
-                    (res (t es s) (with-facts v (st-facts s))))))))
+                    (res (t es s) (with-facts v (settle-facts s))))))))
 
 (define module-def? (subr kfx (sexp) bool)
   (lambda (form)
@@ -502,7 +502,7 @@
         (res (t es s)
           (let ((written (ty-sexp v s t))
                 (s (if (procedure? e) s (constant-made v s e es))))
-            (elab (with-facts (with-binds v (list (global v name (scheme nil (zonk s t))))) (st-facts s))
+            (elab (with-facts (with-binds v (list (global v name (scheme nil (zonk s t))))) (settle-facts s))
                   (list (typed name written)))))))))
 
 "Modules (CLAUDES_CHOICES.md C19): `(define m (module item ...))` at the

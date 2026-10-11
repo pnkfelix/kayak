@@ -913,3 +913,14 @@ binder camel-case alike, and none is named as a type the program defines
 type variables are exempt. The two TODO entries on type-level names
 colliding were partly stale (types, tags and labels already had these
 checks) and are closed.
+
+## Open types told to Rust (2026-10-11)
+
+C29: a poly call's type binders solved at the call or refused, as FX-26
+refuses them (three K1 violations of the fourth and seventh probes, now
+`kfx-refused/poly-result-open`, `poly-nil-argument`, `cdr-of-error`,
+`empty-list-open`); `nil`, an empty `(list)`, and a poly procedure whose
+binder is its result's alone written with a turbofish, an inference
+variable left open `Void`. The lifting closures' `a_0` is `a__0`. Of the
+fourteen probe programs rustc could not infer, all fourteen compile and
+agree with Fixpt, or are refused with it (`tests/kfx/open-types`).

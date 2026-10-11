@@ -41,7 +41,7 @@
       (if (null? ts)
           acc
           (put-arg-params c (cdr ts) (i64+ i 1)
-                          (put-type c (car ts) (put ": " (put (i64->string i) (put (if (i64= i 0) "a_" ", a_") acc)))))))))
+                          (put-type c (car ts) (put ": " (put (i64->string i) (put (if (i64= i 0) "a__" ", a__") acc)))))))))
 
 (define put-val-sig (subr kfx (ctx sexps (listof sexps acyclic) chars) chars)
   (lambda (c val descs acc)

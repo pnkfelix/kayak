@@ -526,6 +526,29 @@
             ((and (string=? kind "") (string-member? h (ctx-constants c))) (string-append (mangle h) "()"))
             (else (mangle h))))))
 
+(define put-turbofish (subr kfx (ctx sexp chars) chars)
+  (lambda (c e acc)
+    "`::<T, ...>`, the types the checker found the datum `e` written at (a
+     poly procedure's call, a `nil`), where rustc may have nothing else to
+     infer them from; nothing if it found none."
+    (let ((found (fact-with c e "turbofish ")))
+      (if (string=? found "")
+          acc
+          (put ">" (put-types c (read-all (string-chars found) "" 1) (put "::<" acc)))))))
+
+(define plain-callee? (subr kfx (ctx string) bool)
+  (lambda (c h)
+    "Whether a call's operator is written as a function's path, which a
+     turbofish may follow."
+    (let ((kind (local-kind h (ctx-locals c))))
+      (or (string=? kind "item") (and (string=? kind "") (not (string-member? h (ctx-constants c))))))))
+
+(define put-callee (subr kfx (ctx sexp string chars) chars)
+  (lambda (c e h acc)
+    "A call's operator, and its turbofish if it is a function's path."
+    (let ((acc (put (callee c h) acc)))
+      (if (plain-callee? c h) (put-turbofish c e acc) acc))))
+
 (define put-var (subr kfx (ctx string chars) chars)
   (lambda (c s acc)
     (cond ((string=? s "#t") (put "true" acc))
@@ -657,7 +680,7 @@
 (define-rec
   (put-arg-names (subr kfx (i64 i64 chars) chars)
     (lambda (i n acc)
-      (if (i64< i n) (put-arg-names (i64+ i 1) n (put (i64->string i) (put (if (i64= i 0) "a_" ", a_") acc))) acc))))
+      (if (i64< i n) (put-arg-names (i64+ i 1) n (put (i64->string i) (put (if (i64= i 0) "a__" ", a__") acc))) acc))))
 
 (define lifted-arity (subr kfx (ctx sexp i64) i64)
   (lambda (c e i)
@@ -789,7 +812,10 @@
                  "As Rust writes a double: a digit after the point (`1.` is `1.0`)."
                  (put "f64" (if (char=? (last (string-chars x)) #\.) (put "0" (put x acc)) (put x acc))))
                (str (s at-file at-pos) (put "\")" (put-escaped (string-chars s) #\" (put "str_lit(\"" acc))))
-               (sym (s at-file at-pos) (put-var c s acc))
+               (sym (s at-file at-pos)
+                 (if (and (string=? s "nil") (string=? (local-kind s (ctx-locals c)) ""))
+                     (put "()" (put-turbofish c e (put "nil" acc)))
+                     (put-var c s acc)))
                (lst (xs src-file src-line src-pos)
                  (cond ((fact-at? c e "void-call") (put " {}" (put-call c e xs n t (put "match " acc))))
                        ((fact-at? c e "void-error") (put ")" (put-call c e xs n t (put "the::<Void>(" acc))))
@@ -1097,6 +1123,7 @@
                     (acc (put (camel (label-of (car xs))) acc))
                     (acc (put "(" acc)))
                (put "))" (put-exp c (second xs) n (value) acc))))
+            ((and (string=? h "list") (null? xs)) (put "()" (put-turbofish c e (put "kayak_rt::nil" acc))))
             ((string=? h "list") (put-list c xs n acc))
             ((string=? h "the")
              "`the::<T>(e)`: the type said to rustc too, which may need it where
@@ -1115,7 +1142,7 @@
                     (acc (put-joined c xs ", " n acc)))
                (put (if (fallible-here? c) ")))" "))") acc)))
             ((and (string=? h "prompt") (string=? (local-kind h (ctx-locals c)) "")) (put-prompt c e xs n acc))
-            ((null? xs) (put-question c e (put "()" (put (callee c h) acc))))
+            ((null? xs) (put-question c e (put "()" (put-callee c e h acc))))
             ((any? (lambda ((x sexp)) (module-name? c x)) xs)
              "A module given: the type parameter's argument, its marker."
              (let* ((acc (put "::<" (put (callee c h) acc)))
@@ -1124,7 +1151,7 @@
                     (acc (put ">(" acc))
                     (acc (put-joined c (concat (map (lambda ((x sexp)) (if (module-name? c x) nil (the sexps (list x)))) xs)) ", " n acc)))
                (put-question c e (put ")" acc))))
-            (else (put-question c e (put ")" (put-args c e xs 0 n (put "(" (put (callee c h) acc)))))))))
+            (else (put-question c e (put ")" (put-args c e xs 0 n (put "(" (put-callee c e h acc)))))))))
 
   (put-args (subr kfx (ctx sexp sexps i64 i64 chars) chars)
     (lambda (c e xs i n acc)

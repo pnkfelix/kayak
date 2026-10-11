@@ -74,7 +74,7 @@ pub fn mangle(s: Str) -> Str {
     } else if rust_keyword_p(s) {
         string_append(str_lit("r#"), s)
     } else {
-        rev_to_string(mangle_chars(string_chars(s), nil()))
+        rev_to_string(mangle_chars(string_chars(s), nil::<char>()))
     }
 }
 
@@ -97,6 +97,6 @@ pub fn camel_chars(mut cs: Chars, mut up: bool, mut acc: Chars) -> Chars {
 
 /// A KFX name as a Rust type's: `got-list` is `GotList`.
 pub fn camel(s: Str) -> Str {
-    rev_to_string(camel_chars(string_chars(s), true, nil()))
+    rev_to_string(camel_chars(string_chars(s), true, nil::<char>()))
 }
 

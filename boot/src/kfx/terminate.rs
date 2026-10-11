@@ -138,7 +138,7 @@ pub fn index_of(mut x: Str, mut xs: Strings, mut i: i64) -> i64 {
 pub fn nth_ty(mut ts: Tys, mut i: i64) -> Tys {
     loop {
         if null_p(ts) {
-            return nil();
+            return nil::<&'static Ty>();
         } else if i64_eq(i, 0i64) {
             return the::<Tys>(kayak_rt::cons(car(ts), kayak_rt::nil()));
         } else {
@@ -151,7 +151,7 @@ pub fn nth_ty(mut ts: Tys, mut i: i64) -> Tys {
 pub fn bound_of(mut n: Str, mut ks: Knowns) -> List<Trackeds> {
     loop {
         if null_p(ks) {
-            return nil();
+            return nil::<List<&'static Tracked>>();
         } else if {
             let tagcase_ = car(ks);
             match *tagcase_ {
@@ -237,14 +237,14 @@ pub fn literal_of(e: &'static Sexp) -> I64s {
     match *tagcase_ {
         Sexp::Num(k, text, pos) => {
             if (i64_lt(k, -1152921504606846976i64) || i64_gt(k, 1152921504606846975i64)) {
-                nil()
+                nil::<i64>()
             } else {
                 the::<I64s>(kayak_rt::cons(k, kayak_rt::nil()))
             }
         }
         _ => {
             let other = tagcase_;
-            nil()
+            nil::<i64>()
         }
     }
 }
@@ -265,14 +265,14 @@ pub fn shifted(ts: Trackeds, k: i64) -> Trackeds {
         match *tagcase_ {
             Tracked::IntOf(p, o) => {
                 if overflows_p(o, k) {
-                    nil()
+                    nil::<&'static Tracked>()
                 } else {
                     the::<Trackeds>(kayak_rt::cons(int_of(p, i64_plus(o, k)), kayak_rt::nil()))
                 }
             }
             _ => {
                 let other = tagcase_;
-                nil()
+                nil::<&'static Tracked>()
             }
         }
     }), ts))
@@ -286,7 +286,7 @@ pub fn tracked_of(mut c: &'static Wc, mut e: &'static Sexp) -> Trackeds {
             Sexp::Sym(n, at_file, at_pos) => {
                 let b = wc_bound(c, n);
                 if null_p(b) {
-                    return nil();
+                    return nil::<&'static Tracked>();
                 } else {
                     return car(b);
                 }
@@ -302,7 +302,7 @@ pub fn tracked_of(mut c: &'static Wc, mut e: &'static Sexp) -> Trackeds {
                         match *tagcase_ {
                             Tracked::Part(p, strict, ty) => {
                                 if null_p(ty) {
-                                    nil()
+                                    nil::<&'static Tracked>()
                                 } else {
                                     let tagcase_ = car(ty);
                                     match *tagcase_ {
@@ -317,25 +317,25 @@ pub fn tracked_of(mut c: &'static Wc, mut e: &'static Sexp) -> Trackeds {
                                                             car(ty)
                                                         }, kayak_rt::nil()))), kayak_rt::nil()))
                                                     } else {
-                                                        nil()
+                                                        nil::<&'static Tracked>()
                                                     }
                                                 }
                                                 _ => {
                                                     let other = tagcase_;
-                                                    nil()
+                                                    nil::<&'static Tracked>()
                                                 }
                                             }
                                         }
                                         _ => {
                                             let other = tagcase_;
-                                            nil()
+                                            nil::<&'static Tracked>()
                                         }
                                     }
                                 }
                             }
                             _ => {
                                 let other = tagcase_;
-                                nil()
+                                nil::<&'static Tracked>()
                             }
                         }
                     }), tracked_of(c, second(xs))));
@@ -345,22 +345,22 @@ pub fn tracked_of(mut c: &'static Wc, mut e: &'static Sexp) -> Trackeds {
                         if string_eq_p(op, str_lit("+")) {
                             return shifted(tracked_of(c, a), car(literal_of(b)));
                         } else if i64_eq(car(literal_of(b)), -9223372036854775808i64) {
-                            return nil();
+                            return nil::<&'static Tracked>();
                         } else {
                             return shifted(tracked_of(c, a), i64_minus(0i64, car(literal_of(b))));
                         }
                     } else if (string_eq_p(op, str_lit("+")) && not(null_p(literal_of(a)))) {
                         return shifted(tracked_of(c, b), car(literal_of(a)));
                     } else {
-                        return nil();
+                        return nil::<&'static Tracked>();
                     }
                 } else {
-                    return nil();
+                    return nil::<&'static Tracked>();
                 }
             }
             _ => {
                 let other = tagcase_;
-                return nil();
+                return nil::<&'static Tracked>();
             }
         }
     }
@@ -437,7 +437,7 @@ pub fn bounds_put(op: Str, holds: bool) -> List<bool> {
     } else if (string_eq_p(op, str_lit("=")) && holds) {
         the::<List<bool>>(kayak_rt::cons(true, kayak_rt::cons(false, kayak_rt::nil())))
     } else {
-        nil()
+        nil::<bool>()
     }
 }
 
@@ -453,12 +453,12 @@ pub fn guards_on(c: &'static Wc, x: &'static Sexp, other: &'static Sexp, bounds:
                 }
                 _ => {
                     let other = tagcase_;
-                    nil()
+                    nil::<&'static Guard>()
                 }
             }
         }), tracked_of(c, x)))
     } else {
-        nil()
+        nil::<&'static Guard>()
     }
 }
 
@@ -485,12 +485,12 @@ pub fn facts_of(mut c: &'static Wc, mut test: &'static Sexp, mut holds: bool) ->
                         facts_of(c, a, false)
                     }), cdr(xs)));
                 } else {
-                    return nil();
+                    return nil::<&'static Guard>();
                 }
             }
             _ => {
                 let other = tagcase_;
-                return nil();
+                return nil::<&'static Guard>();
             }
         }
     }
@@ -507,7 +507,7 @@ pub fn in_scope(c: &'static Wc, more: Knowns) -> &'static Wc {
 
 pub fn hiding(c: &'static Wc, names: Strings) -> &'static Wc {
     in_scope(c, map(lambda1(move |n: Str| {
-        known(n, nil())
+        known(n, nil::<&'static Tracked>())
     }), names))
 }
 
@@ -612,14 +612,14 @@ pub fn passed_on(c: &'static Wc, a: &'static Sexp) -> i64 {
         match *tagcase_ {
             Tracked::Part(p, strict, ty) => {
                 if strict {
-                    nil()
+                    nil::<i64>()
                 } else {
                     the::<I64s>(kayak_rt::cons(p, kayak_rt::nil()))
                 }
             }
             _ => {
                 let other = tagcase_;
-                nil()
+                nil::<i64>()
             }
         }
     }), tracked_of(c, a)));
@@ -637,7 +637,7 @@ pub fn call_found(c: &'static Wc, st: &'static Ws, to: i64, args: Sexps) -> &'st
             let tagcase_ = st;
             match *tagcase_ {
                 Ws::Ws(calls, passed, escaped) => {
-                    ws(cons(scall(cur, to, args_edges(c, args, 0i64, nil())), calls), cons(passing(cur, to, map(lambda1(move |a: &'static Sexp| {
+                    ws(cons(scall(cur, to, args_edges(c, args, 0i64, nil::<&'static Edge>())), calls), cons(passing(cur, to, map(lambda1(move |a: &'static Sexp| {
                         passed_on(c, a)
                     }), args)), passed), escaped)
                 }
@@ -681,14 +681,14 @@ pub fn variant_part(v: &'static Cv, whole: Trackeds, tag: Str, i: i64) -> Tracke
         match *tagcase_ {
             Tracked::Part(p, strict, ty) => {
                 the::<Trackeds>(kayak_rt::cons(part(p, true, if null_p(ty) {
-                    nil()
+                    nil::<&'static Ty>()
                 } else {
                     let tagcase_ = car(ty);
                     match *tagcase_ {
                         Ty::TyData(d, args) => {
                             let found = find_family(d, cv_dts(v));
                             if null_p(found) {
-                                nil()
+                                nil::<&'static Ty>()
                             } else {
                                 let tagcase_ = car(found);
                                 match *tagcase_ {
@@ -700,7 +700,7 @@ pub fn variant_part(v: &'static Cv, whole: Trackeds, tag: Str, i: i64) -> Tracke
                                                     if string_eq_p(vt, tag) {
                                                         ft
                                                     } else {
-                                                        nil()
+                                                        nil::<&'static Ty>()
                                                     }
                                                 }
                                             }
@@ -714,14 +714,14 @@ pub fn variant_part(v: &'static Cv, whole: Trackeds, tag: Str, i: i64) -> Tracke
                         }
                         _ => {
                             let other = tagcase_;
-                            nil()
+                            nil::<&'static Ty>()
                         }
                     }
                 }), kayak_rt::nil()))
             }
             _ => {
                 let other = tagcase_;
-                nil()
+                nil::<&'static Tracked>()
             }
         }
     }), whole))
@@ -859,7 +859,7 @@ pub fn walk_arms(mut c: &'static Wc, mut st: &'static Ws, mut whole: Trackeds, m
                         }
                         _ => {
                             let other = tagcase_;
-                            nil()
+                            nil::<&'static Tracked>()
                         }
                     }
                 }), whole))), kayak_rt::nil()))), st, cdr(cdr(arm)))
@@ -873,11 +873,11 @@ pub fn walk_arms(mut c: &'static Wc, mut st: &'static Ws, mut whole: Trackeds, m
                                 let tagcase_ = t;
                                 match *tagcase_ {
                                     Tracked::Part(p, s, ty) => {
-                                        the::<Trackeds>(kayak_rt::cons(part(p, true, nil()), kayak_rt::nil()))
+                                        the::<Trackeds>(kayak_rt::cons(part(p, true, nil::<&'static Ty>()), kayak_rt::nil()))
                                     }
                                     _ => {
                                         let other = tagcase_;
-                                        nil()
+                                        nil::<&'static Tracked>()
                                     }
                                 }
                             }), whole))), kayak_rt::nil()))
@@ -896,7 +896,7 @@ pub fn walk_arms(mut c: &'static Wc, mut st: &'static Ws, mut whole: Trackeds, m
 
 pub fn fields_known(c: &'static Wc, whole: Trackeds, tag: Str, names: Sexps, i: i64) -> Knowns {
     if null_p(names) {
-        nil()
+        nil::<&'static Known>()
     } else {
         let tagcase_ = c;
         match *tagcase_ {
@@ -936,18 +936,18 @@ pub fn lambda_of(e: &'static Sexp) -> Sexps {
         if head_is_p(third(items(e)), str_lit("lambda")) {
             the::<Sexps>(kayak_rt::cons(third(items(e)), kayak_rt::nil()))
         } else {
-            nil()
+            nil::<&'static Sexp>()
         }
     } else if head_is_p(e, str_lit("lambda")) {
         the::<Sexps>(kayak_rt::cons(e, kayak_rt::nil()))
     } else {
-        nil()
+        nil::<&'static Sexp>()
     }
 }
 
 pub fn param_knowns(names: Strings, ts: Tys, j: i64) -> Knowns {
     if (null_p(names) || null_p(ts)) {
-        nil()
+        nil::<&'static Known>()
     } else {
         cons(known(car(names), cons(part(j, false, the::<Tys>(kayak_rt::cons(car(ts), kayak_rt::nil()))), {
             let tagcase_ = car(ts);
@@ -960,7 +960,7 @@ pub fn param_knowns(names: Strings, ts: Tys, j: i64) -> Knowns {
                 }
                 _ => {
                     let other = tagcase_;
-                    nil()
+                    nil::<&'static Tracked>()
                 }
             }
         })), param_knowns(cdr(names), cdr(ts), i64_plus(j, 1i64)))
@@ -970,7 +970,7 @@ pub fn param_knowns(names: Strings, ts: Tys, j: i64) -> Knowns {
 pub fn nat_params(mut ts: Tys, mut j: i64) -> I64s {
     loop {
         if null_p(ts) {
-            return nil();
+            return nil::<i64>();
         } else if {
             let tagcase_ = car(ts);
             match *tagcase_ {
@@ -1008,7 +1008,7 @@ pub fn walk_rec_members(mut v: &'static Cv, mut names: Strings, mut ms: RecMembe
             let tagcase_ = car(ms);
             match *tagcase_ {
                 RecMember::RecMember(n, ps, ts, body) => {
-                    (ms, i, st) = (cdr(ms), i64_plus(i, 1i64), walk_all(wc(v, names, i, param_knowns(ps, ts, 0i64), nil(), nat_params(ts, 0i64), inv), st, body));
+                    (ms, i, st) = (cdr(ms), i64_plus(i, 1i64), walk_all(wc(v, names, i, param_knowns(ps, ts, 0i64), nil::<&'static Guard>(), nat_params(ts, 0i64), inv), st, body));
                     continue;
                 }
             }
@@ -1057,7 +1057,7 @@ pub fn kept_slots(inv: Slots, passed: Passings) -> Slots {
                         }
                     }
                 }), passed) {
-                    nil()
+                    nil::<&'static Slot>()
                 } else {
                     the::<Slots>(kayak_rt::cons(x, kayak_rt::nil()))
                 }
@@ -1082,13 +1082,13 @@ pub fn counting(from: i64, n: i64) -> I64s {
     if i64_lt(from, n) {
         cons(from, counting(i64_plus(from, 1i64), n))
     } else {
-        nil()
+        nil::<i64>()
     }
 }
 
 pub fn all_slots(ms: RecMembers, i: i64) -> Slots {
     if null_p(ms) {
-        nil()
+        nil::<&'static Slot>()
     } else {
         let tagcase_ = car(ms);
         match *tagcase_ {
@@ -1142,7 +1142,7 @@ pub fn fold_edges(mut a: Edges, mut b: Edges, mut out: Edges) -> Edges {
 }
 
 pub fn compose(a: Edges, b: Edges) -> Edges {
-    fold_edges(a, b, nil())
+    fold_edges(a, b, nil::<&'static Edge>())
 }
 
 pub fn edges_eq_p(a: Edges, b: Edges) -> bool {
@@ -1191,7 +1191,7 @@ pub fn paths(calls: Scalls, all: Scalls, todo: Scalls) -> Scalls {
     if null_p(todo) {
         all
     } else if i64_gt(size(all), most_graphs()) {
-        nil()
+        nil::<&'static Scall>()
     } else {
         let tagcase_ = car(todo);
         match *tagcase_ {
@@ -1203,7 +1203,7 @@ pub fn paths(calls: Scalls, all: Scalls, todo: Scalls) -> Scalls {
                             if i64_eq(g2, g) {
                                 the::<Scalls>(kayak_rt::cons(x, kayak_rt::nil()))
                             } else {
-                                nil()
+                                nil::<&'static Scall>()
                             }
                         }
                     }
@@ -1260,7 +1260,7 @@ pub fn ends_p(calls: Scalls) -> bool {
 
 pub fn rec_members_of(names: Strings, types: Tys, lambdas: Sexps) -> RecMembers {
     if null_p(names) {
-        nil()
+        nil::<&'static RecMember>()
     } else {
         cons(rec_member(car(names), param_names(items(second(items(car(lambdas))))), {
             let tagcase_ = car(types);
@@ -1270,7 +1270,7 @@ pub fn rec_members_of(names: Strings, types: Tys, lambdas: Sexps) -> RecMembers 
                 }
                 _ => {
                     let other = tagcase_;
-                    nil()
+                    nil::<&'static Ty>()
                 }
             }
         }, cdr(cdr(items(car(lambdas))))), rec_members_of(cdr(names), cdr(types), cdr(lambdas)))
@@ -1290,7 +1290,7 @@ pub fn terminates_p(v: &'static Cv, names: Strings, types: Tys, defined: Sexps) 
         let ms = rec_members_of(names, types, map(lambda1(move |l: Sexps| {
             car(l)
         }), lambdas));
-        let w1 = walk_rec_members(v, names, ms, 0i64, nil(), ws(nil(), nil(), false));
+        let w1 = walk_rec_members(v, names, ms, 0i64, nil::<&'static Slot>(), ws(nil::<&'static Scall>(), nil::<&'static Passing>(), false));
         if {
             let tagcase_ = w1;
             match *tagcase_ {
@@ -1312,7 +1312,7 @@ pub fn terminates_p(v: &'static Cv, names: Strings, types: Tys, defined: Sexps) 
             let w2 = if null_p(inv) {
                 w1
             } else {
-                walk_rec_members(v, names, ms, 0i64, inv, ws(nil(), nil(), false))
+                walk_rec_members(v, names, ms, 0i64, inv, ws(nil::<&'static Scall>(), nil::<&'static Passing>(), false))
             };
             (not({
                 let tagcase_ = w2;

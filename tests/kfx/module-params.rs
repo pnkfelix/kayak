@@ -62,15 +62,15 @@ pub mod tens {
 // a module may give more.
 pub trait Steps {
     type T: Copy + 'static;
-    fn inc(a_0: Self::T) -> Self::T;
+    fn inc(a__0: Self::T) -> Self::T;
     fn zero() -> Self::T;
-    fn value(a_0: Self::T) -> i64;
+    fn value(a__0: Self::T) -> i64;
 }
 
 pub trait Starts {
     type T: Copy + 'static;
     fn zero() -> Self::T;
-    fn value(a_0: Self::T) -> i64;
+    fn value(a__0: Self::T) -> i64;
 }
 
 pub fn three<ModM: Steps>() -> i64 {
@@ -92,27 +92,27 @@ pub fn main() -> Str {
 
 impl Steps for counter::Module {
     type T = counter::T;
-    fn inc(a_0: Self::T) -> Self::T {
-        counter::inc(a_0)
+    fn inc(a__0: Self::T) -> Self::T {
+        counter::inc(a__0)
     }
     fn zero() -> Self::T {
         counter::zero()
     }
-    fn value(a_0: Self::T) -> i64 {
-        counter::value(a_0)
+    fn value(a__0: Self::T) -> i64 {
+        counter::value(a__0)
     }
 }
 
 impl Steps for tens::Module {
     type T = tens::T;
-    fn inc(a_0: Self::T) -> Self::T {
-        tens::inc(a_0)
+    fn inc(a__0: Self::T) -> Self::T {
+        tens::inc(a__0)
     }
     fn zero() -> Self::T {
         tens::zero()
     }
-    fn value(a_0: Self::T) -> i64 {
-        tens::value(a_0)
+    fn value(a__0: Self::T) -> i64 {
+        tens::value(a__0)
     }
 }
 
@@ -121,8 +121,8 @@ impl Starts for counter::Module {
     fn zero() -> Self::T {
         counter::zero()
     }
-    fn value(a_0: Self::T) -> i64 {
-        counter::value(a_0)
+    fn value(a__0: Self::T) -> i64 {
+        counter::value(a__0)
     }
 }
 

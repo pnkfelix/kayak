@@ -1,0 +1,6 @@
+"A poly procedure's type binder that nothing at its call says: FX-26
+ finds a call's type binders at the call, not after it."
+(define-effect kfx (maxeff (read @globals) spin))
+(define mk (poly ((a type)) (subr pure () (listof a acyclic))) (lambda () nil))
+(define f (subr kfx () i64) (lambda () (begin (mk) 0)))
+(f)

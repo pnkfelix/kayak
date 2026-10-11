@@ -326,7 +326,7 @@ pub fn name_of(v: &'static Cv, e: &'static Sexp) -> Str {
 // Effects
 pub fn take_chars(cs: List<char>, n: i64) -> List<char> {
     if (null_p(cs) || i64_eq(n, 0i64)) {
-        nil()
+        nil::<char>()
     } else {
         cons(car(cs), take_chars(cdr(cs), i64_minus(n, 1i64)))
     }
@@ -412,7 +412,7 @@ pub fn effs_union(mut a: Strings, mut b: Strings) -> Strings {
             if any_p(lambda1(move |x: Str| {
                 frozen_atom_p(x)
             }), b) {
-                (a, b) = (b, nil());
+                (a, b) = (b, nil::<Str>());
                 continue;
             } else {
                 return b;
@@ -535,7 +535,7 @@ pub fn parse_effect(v: &'static Cv, tvars: Strings, e: &'static Sexp) -> Strings
     match *tagcase_ {
         Sexp::Sym(s, at_file, at_pos) => {
             if string_eq_p(s, str_lit("pure")) {
-                nil()
+                nil::<Str>()
             } else if string_eq_p(s, str_lit("spin")) {
                 kayak_rt::cons(str_lit("spin"), kayak_rt::nil())
             } else {
@@ -571,7 +571,7 @@ pub fn parse_effect(v: &'static Cv, tvars: Strings, e: &'static Sexp) -> Strings
 
 pub fn parse_effects(v: &'static Cv, tvars: Strings, es: Sexps) -> Strings {
     if null_p(es) {
-        nil()
+        nil::<Str>()
     } else {
         effs_union(parse_effect(v, tvars, car(es)), parse_effects(v, tvars, cdr(es)))
     }
@@ -756,7 +756,7 @@ pub fn dt_named_p(name: Str, ds: Dts) -> bool {
 pub fn find_family(mut name: Str, mut ds: Dts) -> List<&'static Dt> {
     loop {
         if null_p(ds) {
-            return nil();
+            return nil::<&'static Dt>();
         } else if {
             let tagcase_ = car(ds);
             match *tagcase_ {
@@ -778,7 +778,7 @@ pub fn find_family(mut name: Str, mut ds: Dts) -> List<&'static Dt> {
 pub fn find_alias(mut name: Str, mut als: Aliases) -> List<&'static Alias> {
     loop {
         if null_p(als) {
-            return nil();
+            return nil::<&'static Alias>();
         } else {
             let tagcase_ = car(als);
             match *tagcase_ {
@@ -800,7 +800,7 @@ pub fn find_alias(mut name: Str, mut als: Aliases) -> List<&'static Alias> {
 pub fn expanding(mut tvars: Strings) -> Strings {
     loop {
         if null_p(tvars) {
-            return nil();
+            return nil::<Str>();
         } else if (i64_gt(string_length_i64(car(tvars)), 0i64) && char_eq_p(string_ref_i64(car(tvars), 0i64), '%')) {
             return cons(car(tvars), expanding(cdr(tvars)));
         } else {
@@ -814,7 +814,7 @@ pub fn expanding(mut tvars: Strings) -> Strings {
 pub fn find_bind(mut name: Str, mut bs: Binds) -> Binds {
     loop {
         if null_p(bs) {
-            return nil();
+            return nil::<&'static Bind>();
         } else {
             let tagcase_ = car(bs);
             match *tagcase_ {
@@ -836,7 +836,7 @@ pub fn find_bind(mut name: Str, mut bs: Binds) -> Binds {
 pub fn conversion_bind(mut name: Str, mut bs: Binds) -> Binds {
     loop {
         if null_p(bs) {
-            return nil();
+            return nil::<&'static Bind>();
         } else if {
             let tagcase_ = car(bs);
             match *tagcase_ {
@@ -906,13 +906,13 @@ pub fn region_name_of(r: &'static Ty) -> Str {
 
 pub fn reads_kept(atoms: Strings, kept: Strings, every: bool) -> Strings {
     if string_member_p(str_lit("spin"), atoms) {
-        nil()
+        nil::<Str>()
     } else {
         concat(map(lambda1(move |x: Str| {
             if (has_prefix_p(x, str_lit("read:")) && (string_member_p(after_prefix(x, str_lit("read:")), kept) || (every && not(string_eq_p(after_prefix(x, str_lit("read:")), str_lit("acyclic")))))) {
                 the::<Strings>(kayak_rt::cons(after_prefix(x, str_lit("read:")), kayak_rt::nil()))
             } else {
-                nil()
+                nil::<Str>()
             }
         }), atoms))
     }
@@ -939,24 +939,24 @@ pub fn knot_in(mut v: &'static Cv, mut res: &'static dyn Fn(Str) -> Str, mut t: 
             Ty::TyProc(es, ps, r) => {
                 let found = reads_kept(map(res, es), kept, every);
                 if null_p(found) {
-                    return first_knot(v, res, cons(r, ps), nil(), false, seen);
+                    return first_knot(v, res, cons(r, ps), nil::<Str>(), false, seen);
                 } else {
                     return found;
                 }
             }
             Ty::TyTag(a, h, d, r) => {
-                return first_knot(v, res, kayak_rt::cons(a, kayak_rt::cons(h, kayak_rt::nil())), nil(), false, seen);
+                return first_knot(v, res, kayak_rt::cons(a, kayak_rt::cons(h, kayak_rt::nil())), nil::<Str>(), false, seen);
             }
             Ty::TyShape(p, ls, ts) => {
                 return first_knot(v, res, ts, kept, every, seen);
             }
             Ty::TyData(d, args) => {
                 if string_member_p(d, seen) {
-                    return nil();
+                    return nil::<Str>();
                 } else {
                     let found = find_family(d, cv_dts(v));
                     if null_p(found) {
-                        return nil();
+                        return nil::<Str>();
                     } else {
                         let tagcase_ = car(found);
                         match *tagcase_ {
@@ -964,7 +964,7 @@ pub fn knot_in(mut v: &'static Cv, mut res: &'static dyn Fn(Str) -> Str, mut t: 
                                 if null_p(vs) {
                                     let down = conversion_bind(string_append(str_lit("down-"), d), cv_binds(v));
                                     return first_knot(v, res, onto(if null_p(down) {
-                                        nil()
+                                        nil::<&'static Ty>()
                                     } else {
                                         let tagcase_ = car(down);
                                         match *tagcase_ {
@@ -979,7 +979,7 @@ pub fn knot_in(mut v: &'static Cv, mut res: &'static dyn Fn(Str) -> Str, mut t: 
                                                             }
                                                             _ => {
                                                                 let other = tagcase_;
-                                                                nil()
+                                                                nil::<&'static Ty>()
                                                             }
                                                         }
                                                     }
@@ -1006,7 +1006,7 @@ pub fn knot_in(mut v: &'static Cv, mut res: &'static dyn Fn(Str) -> Str, mut t: 
             }
             _ => {
                 let other = tagcase_;
-                return nil();
+                return nil::<Str>();
             }
         }
     }
@@ -1015,7 +1015,7 @@ pub fn knot_in(mut v: &'static Cv, mut res: &'static dyn Fn(Str) -> Str, mut t: 
 pub fn first_knot(mut v: &'static Cv, mut res: &'static dyn Fn(Str) -> Str, mut ts: Tys, mut kept: Strings, mut every: bool, mut seen: Strings) -> Strings {
     loop {
         if null_p(ts) {
-            return nil();
+            return nil::<Str>();
         } else {
             let found = knot_in(v, res, car(ts), kept, every, seen);
             if null_p(found) {
@@ -1029,7 +1029,7 @@ pub fn first_knot(mut v: &'static Cv, mut res: &'static dyn Fn(Str) -> Str, mut 
 }
 
 pub fn no_knot(v: &'static Cv, res: &'static dyn Fn(Str) -> Str, t: &'static Ty) -> &'static Ty {
-    let found = knot_in(v, res, t, nil(), false, nil());
+    let found = knot_in(v, res, t, nil::<Str>(), false, nil::<Str>());
     if null_p(found) {
         t
     } else {
@@ -1058,7 +1058,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                 } else if string_eq_p(s, str_lit("f64")) {
                     return ty_f64();
                 } else if fixed_width_p(s) {
-                    return ty_data(s, nil());
+                    return ty_data(s, nil::<&'static Ty>());
                 } else if string_eq_p(s, str_lit("bool")) {
                     return ty_bool();
                 } else if string_eq_p(s, str_lit("char")) {
@@ -1076,7 +1076,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     match *tagcase_ {
                         Dt::Dt(n, ps, vs) => {
                             if null_p(ps) {
-                                return ty_data(s, nil());
+                                return ty_data(s, nil::<&'static Ty>());
                             } else {
                                 return match refuse(v, string_append(str_lit("a type with parameters, given none: "), s)) {};
                             }
@@ -1095,7 +1095,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                                 } else if string_member_p(string_append(str_lit("%expanding "), s), tvars) {
                                     return match refuse(v, string_append(str_lit("a type abbreviation that mentions itself, "), string_append(s, str_lit(": Rust's type aliases cannot; a datatype can")))) {};
                                 } else if head_is_p(body, str_lit("moduleof")) {
-                                    return ty_data(string_append(str_lit("%module "), s), nil());
+                                    return ty_data(string_append(str_lit("%module "), s), nil::<&'static Ty>());
                                 } else {
                                     (tvars, t) = (cons(string_append(str_lit("%expanding "), s), tvars), body);
                                     continue;
@@ -1216,7 +1216,7 @@ pub fn parse_types(v: &'static Cv, tvars: Strings, ts: Sexps) -> Tys {
 /// region for a name beginning `'`, a type otherwise.
 pub fn parse_arguments(v: &'static Cv, tvars: Strings, params: Strings, args: Sexps) -> Tys {
     if (null_p(params) && null_p(args)) {
-        nil()
+        nil::<&'static Ty>()
     } else if (null_p(params) || null_p(args)) {
         match refuse(v, str_lit("a type given the wrong number of arguments")) {}
     } else {
@@ -1274,7 +1274,7 @@ pub fn family_params(v: &'static Cv, head: &'static Sexp) -> Strings {
         }
         _ => {
             let other = tagcase_;
-            nil()
+            nil::<Str>()
         }
     }
 }
@@ -1285,7 +1285,7 @@ pub fn bare_type_name(mut cs: Chars, mut acc: Chars) -> Str {
         if null_p(cs) {
             return rev_to_string(acc);
         } else if (char_eq_p(car(cs), ' ') || char_eq_p(car(cs), '.')) {
-            (cs, acc) = (cdr(cs), nil());
+            (cs, acc) = (cdr(cs), nil::<char>());
             continue;
         } else {
             (cs, acc) = (cdr(cs), cons(car(cs), acc));
@@ -1300,10 +1300,10 @@ pub fn bare_type_name(mut cs: Chars, mut acc: Chars) -> Str {
 /// would hide in Rust and not in FX-26. A region's, with `'`, is none.
 pub fn type_binders_apart(v: &'static Cv, tvars: Strings, types: Strings) -> () {
     let (reserved, theirs, tvars) = (the::<Strings>(kayak_rt::cons(str_lit("Str"), kayak_rt::cons(str_lit("List"), kayak_rt::cons(str_lit("Cons"), kayak_rt::cons(str_lit("Int"), kayak_rt::cons(str_lit("Tag"), kayak_rt::cons(str_lit("Unwind"), kayak_rt::cons(str_lit("Ref"), kayak_rt::cons(str_lit("FlatArray"), kayak_rt::cons(str_lit("Knot"), kayak_rt::cons(str_lit("Show"), kayak_rt::cons(str_lit("OnceCell"), kayak_rt::cons(str_lit("Fn"), kayak_rt::cons(str_lit("Result"), kayak_rt::cons(str_lit("Ok"), kayak_rt::cons(str_lit("Err"), kayak_rt::cons(str_lit("String"), kayak_rt::cons(str_lit("Copy"), kayak_rt::cons(str_lit("Clone"), kayak_rt::cons(str_lit("Self"), kayak_rt::cons(str_lit("Module"), kayak_rt::cons(str_lit("Void"), kayak_rt::nil())))))))))))))))))))))), map(lambda1(move |t: Str| {
-        camel(bare_type_name(string_chars(t), nil()))
+        camel(bare_type_name(string_chars(t), nil::<char>()))
     }), types), concat(map(lambda1(move |n: Str| {
         if has_prefix_p(n, str_lit("'")) {
-            nil()
+            nil::<Str>()
         } else {
             the::<Strings>(kayak_rt::cons(n, kayak_rt::nil()))
         }
@@ -1364,7 +1364,7 @@ pub fn poly_binders(v: &'static Cv, t: &'static Sexp, own: bool) -> Strings {
         };
         tvars
     } else {
-        nil()
+        nil::<Str>()
     }
 }
 
@@ -1500,7 +1500,7 @@ pub fn walk(mut s: &'static St, mut t: &'static Ty) -> &'static Ty {
 pub fn lookup_meta(mut k: i64, mut subst: Sbs) -> Tys {
     loop {
         if null_p(subst) {
-            return nil();
+            return nil::<&'static Ty>();
         } else {
             let tagcase_ = car(subst);
             match *tagcase_ {
@@ -1563,7 +1563,7 @@ pub fn fresh(s: &'static St) -> &'static Res {
     let tagcase_ = s;
     match *tagcase_ {
         St::St(subst, next, fs) => {
-            res(ty_meta(next), nil(), st(subst, i64_plus(next, 1i64), fs))
+            res(ty_meta(next), nil::<Str>(), st(subst, i64_plus(next, 1i64), fs))
         }
     }
 }
@@ -1582,6 +1582,15 @@ pub fn st_facts(s: &'static St) -> Facts {
     match *tagcase_ {
         St::St(subst, next, fs) => {
             fs
+        }
+    }
+}
+
+pub fn st_next(s: &'static St) -> i64 {
+    let tagcase_ = s;
+    match *tagcase_ {
+        St::St(subst, next, fs) => {
+            next
         }
     }
 }
@@ -1771,7 +1780,7 @@ pub fn meta_number(r: Str) -> i64 {
 pub fn after_colon(mut cs: List<char>) -> List<char> {
     loop {
         if null_p(cs) {
-            return nil();
+            return nil::<char>();
         } else if char_eq_p(car(cs), ':') {
             return cdr(cs);
         } else {
@@ -1858,7 +1867,7 @@ pub fn region_ty(r: Str) -> &'static Ty {
 pub fn open_atom(mut s: &'static St, mut x: Str, mut es: Strings) -> Strings {
     loop {
         if null_p(es) {
-            return nil();
+            return nil::<Str>();
         } else if {
             let y = resolve_atom(s, car(es));
             (region_atom_p(y) && string_eq_p(atom_kind(y), atom_kind(x)) && char_eq_p(string_ref_i64(atom_region(y), 0i64), '?'))
@@ -1886,7 +1895,7 @@ pub fn fit_effs(mut s: &'static St, mut a: Strings, mut e: Strings) -> List<&'st
                 a = cdr(a);
                 continue;
             } else if null_p(open_atom(s, x, e)) {
-                return nil();
+                return nil::<&'static St>();
             } else {
                 let tagcase_ = region_ty(atom_region(car(open_atom(s, x, e))));
                 match *tagcase_ {
@@ -1896,7 +1905,7 @@ pub fn fit_effs(mut s: &'static St, mut a: Strings, mut e: Strings) -> List<&'st
                     }
                     _ => {
                         let other = tagcase_;
-                        return nil();
+                        return nil::<&'static St>();
                     }
                 }
             }
@@ -2165,7 +2174,7 @@ pub fn instantiate(s: &'static St, sc: &'static Scheme) -> &'static Inst {
     let tagcase_ = sc;
     match *tagcase_ {
         Scheme::Scheme(tvars, t) => {
-            instantiate_vars(s, tvars, t, nil())
+            instantiate_vars(s, tvars, t, nil::<i64>())
         }
     }
 }
@@ -2264,7 +2273,7 @@ pub fn might_clash_p(n: Str) -> bool {
 /// KFX names one Rust name, one hiding the other (C27).
 pub fn mangled_clash(n: Str, bs: Binds) -> Strings {
     if (has_prefix_p(n, str_lit("%")) || has_char_in_p(n, ' ') || not(might_clash_p(n))) {
-        nil()
+        nil::<Str>()
     } else {
         let m = mangle(n);
         concat(map(lambda1(move |b: &'static Bind| {
@@ -2274,7 +2283,7 @@ pub fn mangled_clash(n: Str, bs: Binds) -> Strings {
                     if (not(string_eq_p(x, n)) && not(has_prefix_p(x, str_lit("%"))) && not(has_char_in_p(x, ' ')) && string_eq_p(mangle(x), m)) {
                         the::<Strings>(kayak_rt::cons(string_append(n, string_append(str_lit(" and "), x)), kayak_rt::nil()))
                     } else {
-                        nil()
+                        nil::<Str>()
                     }
                 }
             }
@@ -2299,7 +2308,7 @@ pub fn with_binds(v: &'static Cv, more: Binds) -> &'static Cv {
             match *tagcase_ {
                 Bind::Bind(n, sc, w) => {
                     if kfx_name_p(n) {
-                        nil()
+                        nil::<Str>()
                     } else {
                         the::<Strings>(kayak_rt::cons(n, kayak_rt::nil()))
                     }
@@ -2331,7 +2340,7 @@ pub fn with_binds(v: &'static Cv, more: Binds) -> &'static Cv {
 /// A local may be named by a keyword, as FX-26 has it; it may not then be
 /// called, since FX-26 reads such a call as its form (`synth-call`).
 pub fn local(v: &'static Cv, name: Str, t: &'static Ty) -> &'static Bind {
-    bind(name, scheme(nil(), t), str_lit("local"))
+    bind(name, scheme(nil::<Str>(), t), str_lit("local"))
 }
 
 // Expressions
@@ -2366,7 +2375,7 @@ pub fn naming_effs(s: &'static St, name: Str, wher: Str, t: &'static Ty, group: 
     if string_eq_p(wher, str_lit("rec")) {
         kayak_rt::cons(str_lit("spin"), kayak_rt::nil())
     } else if not(string_eq_p(wher, str_lit("global"))) {
-        nil()
+        nil::<Str>()
     } else if (proc_type_p(s, t) && string_member_p(name, group)) {
         kayak_rt::cons(str_lit("spin"), kayak_rt::cons(string_append(str_lit("g:"), name), kayak_rt::nil()))
     } else {
@@ -2477,7 +2486,7 @@ pub fn self_applicable_p(v: &'static Cv, s: &'static St, t: &'static Ty) -> bool
     match *tagcase_ {
         Ty::TyProc(es, ps, r) => {
             any_p(lambda1(move |x: &'static Ty| {
-                holds_procedure_p(v, s, x, nil())
+                holds_procedure_p(v, s, x, nil::<Str>())
             }), cons(r, ps))
         }
         _ => {
@@ -2506,7 +2515,7 @@ pub fn void_p(s: &'static St, t: &'static Ty) -> bool {
 /// another is an `i64`.
 pub fn next_expected(s: &'static St, t: &'static Ty, expected: Tys) -> Tys {
     if null_p(expected) {
-        nil()
+        nil::<&'static Ty>()
     } else {
         expected
     }
@@ -2553,11 +2562,11 @@ pub fn region_of(v: &'static Cv, s: &'static St, r: &'static Ty) -> &'static Res
     let tagcase_ = walk(s, r);
     match *tagcase_ {
         Ty::TyMeta(k) => {
-            res(ty_rconst(str_lit("acyclic")), nil(), solve(s, k, ty_rconst(str_lit("acyclic"))))
+            res(ty_rconst(str_lit("acyclic")), nil::<Str>(), solve(s, k, ty_rconst(str_lit("acyclic"))))
         }
         _ => {
             let other = tagcase_;
-            res(other, nil(), s)
+            res(other, nil::<Str>(), s)
         }
     }
 }
@@ -2581,7 +2590,7 @@ pub fn name_regions(v: &'static Cv, s: &'static St, es: Strings, regions: List<i
 pub fn masked(mut es: Strings, mut r: Str) -> Strings {
     loop {
         if null_p(es) {
-            return nil();
+            return nil::<Str>();
         } else if (string_eq_p(car(es), string_append(str_lit("read:"), r)) || string_eq_p(car(es), string_append(str_lit("write:"), r)) || string_eq_p(car(es), string_append(str_lit("alloc:"), r)) || string_eq_p(car(es), string_append(str_lit("goto:"), r))) {
             es = cdr(es);
             continue;
@@ -2689,7 +2698,7 @@ pub fn eqv_bool_p(a: bool, b: bool) -> bool {
 pub fn masked_goto(mut es: Strings, mut r: Str) -> Strings {
     loop {
         if null_p(es) {
-            return nil();
+            return nil::<Str>();
         } else if string_eq_p(car(es), string_append(str_lit("goto:"), r)) {
             es = cdr(es);
             continue;
@@ -2711,14 +2720,14 @@ pub fn names_in(e: &'static Sexp) -> Strings {
         }
         _ => {
             let other = tagcase_;
-            nil()
+            nil::<Str>()
         }
     }
 }
 
 pub fn names_in_all(es: Sexps) -> Strings {
     if null_p(es) {
-        nil()
+        nil::<Str>()
     } else {
         onto(names_in(car(es)), names_in_all(cdr(es)))
     }
@@ -2763,7 +2772,7 @@ pub fn reaches_p(v: &'static Cv, s: &'static St, body: &'static Sexp, tag: &'sta
 pub fn opened_binds(mut m: Str, mut bs: Binds) -> Binds {
     loop {
         if null_p(bs) {
-            return nil();
+            return nil::<&'static Bind>();
         } else {
             let tagcase_ = car(bs);
             match *tagcase_ {

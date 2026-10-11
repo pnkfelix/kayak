@@ -1,0 +1,4 @@
+"`(list)` where nothing says its element: FX-26's `list` is poly."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f (subr kfx () i64) (lambda () (let ((x (list))) 0)))
+(f)

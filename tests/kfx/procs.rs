@@ -14,7 +14,7 @@ pub type Ints = List<i64>;
 
 pub fn map<A: Copy + 'static, B: Copy + 'static>(f: &'static dyn Fn(A) -> B, xs: List<A>) -> List<B> {
     if null_p(xs) {
-        nil()
+        nil::<B>()
     } else {
         cons(f(car(xs)), map(f, cdr(xs)))
     }

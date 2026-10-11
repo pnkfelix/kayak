@@ -52,7 +52,7 @@ pub fn push<T: Copy + 'static>(x: T, s: Stack<T>) -> Stack<T> {
 
 pub fn main() -> Str {
     let m = add(up_meters(100i64), up_meters(23i64));
-    let s = push(the::<i64>(3i64), push(the::<i64>(2i64), up_stack(the::<List<i64>>(nil()))));
+    let s = push(the::<i64>(3i64), push(the::<i64>(2i64), up_stack(the::<List<i64>>(nil::<i64>()))));
     string_append(i64_to_string(down_meters(m)), string_append(str_lit(" "), string_append(i64_to_string(down_feet(to_feet(m))), string_append(str_lit(" "), i64_to_string(car(down_stack(s)))))))
 }
 

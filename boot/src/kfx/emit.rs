@@ -48,7 +48,7 @@ pub fn ctx(f0: Strings, f1: Tagofs, f2: Strings, f3: Strings, f4: Typeds, f5: Fa
 pub fn filter_typed(mut name: Str, mut xs: Typeds) -> Typeds {
     loop {
         if null_p(xs) {
-            return nil();
+            return nil::<&'static Typed>();
         } else if {
             let tagcase_ = car(xs);
             match *tagcase_ {
@@ -142,7 +142,7 @@ pub fn fact_with(c: &'static Ctx, e: &'static Sexp, prefix: Str) -> Str {
                         if (i64_eq(fp, datum_pos(e)) && string_eq_p(ff, datum_file(e)) && has_prefix_p(fw, prefix)) {
                             the::<Strings>(kayak_rt::cons(after_prefix(fw, prefix), kayak_rt::nil()))
                         } else {
-                            nil()
+                            nil::<Str>()
                         }
                     }
                 }
@@ -190,7 +190,7 @@ pub fn split_words_from(mut cs: Chars, mut word: Chars, mut acc: Strings) -> Str
                 return cons(rev_to_string(word), acc);
             }
         } else if char_eq_p(car(cs), ' ') {
-            (cs, word, acc) = (cdr(cs), nil(), if null_p(word) {
+            (cs, word, acc) = (cdr(cs), nil::<char>(), if null_p(word) {
                 acc
             } else {
                 cons(rev_to_string(word), acc)
@@ -204,7 +204,7 @@ pub fn split_words_from(mut cs: Chars, mut word: Chars, mut acc: Strings) -> Str
 }
 
 pub fn split_words(s: Str) -> Strings {
-    reverse_strings(split_words_from(string_chars(s), nil(), nil()), nil())
+    reverse_strings(split_words_from(string_chars(s), nil::<char>(), nil::<Str>()), nil::<Str>())
 }
 
 /// A mangled name without its raw identifier's `r#`.
@@ -289,7 +289,7 @@ pub fn module_body(c: &'static Ctx, name: Str) -> Sexps {
                         if string_eq_p(n, name) {
                             the::<Sexps>(kayak_rt::cons(body, kayak_rt::nil()))
                         } else {
-                            nil()
+                            nil::<&'static Sexp>()
                         }
                     }
                 }
@@ -321,7 +321,7 @@ pub fn module_items(c: &'static Ctx, m: Str) -> Sexps {
     if string_eq_p(x, str_lit("")) {
         let found = module_body(c, m);
         if null_p(found) {
-            nil()
+            nil::<&'static Sexp>()
         } else {
             concat(map(lambda1(move |f: &'static Sexp| {
                 if head_is_p(f, str_lit("include")) {
@@ -334,7 +334,7 @@ pub fn module_items(c: &'static Ctx, m: Str) -> Sexps {
     } else {
         let spec = module_body(c, string_append(str_lit("%moduleof "), x));
         if null_p(spec) {
-            nil()
+            nil::<&'static Sexp>()
         } else {
             concat(map(lambda1(move |it: &'static Sexp| {
                 let ys = items(it);
@@ -360,7 +360,7 @@ pub fn module_items(c: &'static Ctx, m: Str) -> Sexps {
                         }
                     })
                 } else {
-                    nil()
+                    nil::<&'static Sexp>()
                 }
             }), cdr(items(car(spec)))))
         }
@@ -390,7 +390,7 @@ pub fn item_values(forms: Sexps) -> Strings {
                 sym_name(car(items(vt)))
             }), cdr(cdr(items(f))))
         } else {
-            nil()
+            nil::<Str>()
         }
     }), forms))
 }
@@ -401,7 +401,7 @@ pub fn item_constants(forms: Sexps) -> Strings {
         if (head_is_p(f, str_lit("define")) && not(procedure_p(last(items(f))))) {
             the::<Strings>(kayak_rt::cons(sym_name(second(items(f))), kayak_rt::nil()))
         } else {
-            nil()
+            nil::<Str>()
         }
     }), forms))
 }
@@ -411,7 +411,7 @@ pub fn item_types(forms: Sexps) -> Strings {
         if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype"))) {
             the::<Strings>(kayak_rt::cons(sym_name(second(items(f))), kayak_rt::nil()))
         } else {
-            nil()
+            nil::<Str>()
         }
     }), forms))
 }
@@ -550,7 +550,7 @@ pub fn binder_kinds(bs: Sexps) -> Strings {
 pub fn type_params_of(mut bs: Sexps) -> Strings {
     loop {
         if null_p(bs) {
-            return nil();
+            return nil::<Str>();
         } else if sym_is_p(second(items(car(bs))), str_lit("type")) {
             return cons(sym_name(car(items(car(bs)))), type_params_of(cdr(bs)));
         } else {
@@ -568,7 +568,7 @@ pub fn head_type_params(head: &'static Sexp) -> Strings {
         }
         _ => {
             let other = tagcase_;
-            nil()
+            nil::<Str>()
         }
     }
 }
@@ -589,7 +589,7 @@ pub fn note_family(head: &'static Sexp, datatype: bool, ms: Families) -> Familie
 pub fn filter_family(mut name: Str, mut ms: Families) -> Families {
     loop {
         if null_p(ms) {
-            return nil();
+            return nil::<&'static Family>();
         } else if {
             let tagcase_ = car(ms);
             match *tagcase_ {
@@ -722,7 +722,7 @@ pub fn put_escaped(mut cs: Chars, mut q: char, mut acc: Chars) -> Chars {
 pub fn dotted_from(mut seen: Chars, mut cs: Chars) -> Strings {
     loop {
         if (null_p(cs) || null_p(cdr(cs))) {
-            return nil();
+            return nil::<Str>();
         } else if (char_eq_p(car(cs), '.') && char_eq_p(car(cdr(cs)), '.')) {
             return the::<Strings>(kayak_rt::cons(rev_to_string(seen), kayak_rt::cons(list_to_string(cdr(cdr(cs))), kayak_rt::nil())));
         } else {
@@ -734,7 +734,7 @@ pub fn dotted_from(mut seen: Chars, mut cs: Chars) -> Strings {
 
 /// A module's type as the program names it, `m..t`: `m` and `t`; else none.
 pub fn dotted(s: Str) -> Strings {
-    dotted_from(nil(), string_chars(s))
+    dotted_from(nil::<char>(), string_chars(s))
 }
 
 /// Module `m`'s type `t`, from outside it: a datatype's a reference.
@@ -764,23 +764,23 @@ pub fn datatype_path(d: Str) -> Str {
 pub fn desc_type(mut c: &'static Ctx, mut s: Str, mut ls: Strings) -> Sexps {
     loop {
         if null_p(ls) {
-            return nil();
+            return nil::<&'static Sexp>();
         } else if has_prefix_p(car(ls), str_lit("%with ")) {
             let m = after_prefix(car(ls), str_lit("%with "));
             let x = param_module_type(m, cdr(ls));
             let spec = if string_eq_p(x, str_lit("")) {
-                nil()
+                nil::<&'static Sexp>()
             } else {
                 module_body(c, string_append(str_lit("%moduleof "), x))
             };
             let found = if null_p(spec) {
-                nil()
+                nil::<&'static Sexp>()
             } else {
                 concat(map(lambda1(move |d: &'static Sexp| {
                     if (head_is_p(d, str_lit("desc")) && string_eq_p(sym_name(second(items(d))), s)) {
                         the::<Sexps>(kayak_rt::cons(third(items(d)), kayak_rt::nil()))
                     } else {
-                        nil()
+                        nil::<&'static Sexp>()
                     }
                 }), cdr(items(car(spec)))))
             };
@@ -920,7 +920,7 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
 pub fn type_arguments(mut args: Sexps, mut kinds: Strings) -> Sexps {
     loop {
         if (null_p(args) || null_p(kinds)) {
-            return nil();
+            return nil::<&'static Sexp>();
         } else if string_eq_p(car(kinds), str_lit("type")) {
             return cons(car(args), type_arguments(cdr(args), cdr(kinds)));
         } else {
@@ -1000,6 +1000,35 @@ pub fn callee(c: &'static Ctx, h: Str) -> Str {
         string_append(mangle(h), str_lit("()"))
     } else {
         mangle(h)
+    }
+}
+
+/// `::<T, ...>`, the types the checker found the datum `e` written at (a
+/// poly procedure's call, a `nil`), where rustc may have nothing else to
+/// infer them from; nothing if it found none.
+pub fn put_turbofish(c: &'static Ctx, e: &'static Sexp, acc: Chars) -> Chars {
+    let found = fact_with(c, e, str_lit("turbofish "));
+    if string_eq_p(found, str_lit("")) {
+        acc
+    } else {
+        put(str_lit(">"), put_types(c, read_all(string_chars(found), str_lit(""), 1i64), put(str_lit("::<"), acc)))
+    }
+}
+
+/// Whether a call's operator is written as a function's path, which a
+/// turbofish may follow.
+pub fn plain_callee_p(c: &'static Ctx, h: Str) -> bool {
+    let kind = local_kind(h, ctx_locals(c));
+    (string_eq_p(kind, str_lit("item")) || (string_eq_p(kind, str_lit("")) && not(string_member_p(h, ctx_constants(c)))))
+}
+
+/// A call's operator, and its turbofish if it is a function's path.
+pub fn put_callee(c: &'static Ctx, e: &'static Sexp, h: Str, acc: Chars) -> Chars {
+    let acc = put(callee(c, h), acc);
+    if plain_callee_p(c, h) {
+        put_turbofish(c, e, acc)
+    } else {
+        acc
     }
 }
 
@@ -1272,9 +1301,9 @@ pub fn put_arg_names(mut i: i64, mut n: i64, mut acc: Chars) -> Chars {
     loop {
         if i64_lt(i, n) {
             (i, acc) = (i64_plus(i, 1i64), put(i64_to_string(i), put(if i64_eq(i, 0i64) {
-                str_lit("a_")
+                str_lit("a__")
             } else {
-                str_lit(", a_")
+                str_lit(", a__")
             }, acc)));
             continue;
         } else {
@@ -1430,7 +1459,7 @@ pub fn assign(f0: Strings, f1: Sexps) -> &'static Assign {
 /// argument that is the parameter itself changes nothing.
 pub fn changes(ps: Strings, args: Sexps) -> &'static Assign {
     if null_p(ps) {
-        assign(nil(), nil())
+        assign(nil::<Str>(), nil::<&'static Sexp>())
     } else {
         let tagcase_ = changes(cdr(ps), cdr(args));
         match *tagcase_ {
@@ -1505,7 +1534,11 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
                 put(str_lit("\")"), put_escaped(string_chars(s), '"', put(str_lit("str_lit(\""), acc)))
             }
             Sexp::Sym(s, at_file, at_pos) => {
-                put_var(c, s, acc)
+                if (string_eq_p(s, str_lit("nil")) && string_eq_p(local_kind(s, ctx_locals(c)), str_lit(""))) {
+                    put(str_lit("()"), put_turbofish(c, e, put(str_lit("nil"), acc)))
+                } else {
+                    put_var(c, s, acc)
+                }
             }
             Sexp::Lst(xs, src_file, src_line, src_pos) => {
                 if fact_at_p(c, e, str_lit("void-call")) {
@@ -1948,6 +1981,8 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
         let acc = put(camel(label_of(car(xs))), acc);
         let acc = put(str_lit("("), acc);
         put(str_lit("))"), put_exp(c, second(xs), n, value(), acc))
+    } else if (string_eq_p(h, str_lit("list")) && null_p(xs)) {
+        put(str_lit("()"), put_turbofish(c, e, put(str_lit("kayak_rt::nil"), acc)))
     } else if string_eq_p(h, str_lit("list")) {
         put_list(c, xs, n, acc)
     } else if string_eq_p(h, str_lit("the")) {
@@ -1978,7 +2013,7 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
     } else if (string_eq_p(h, str_lit("prompt")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
         put_prompt(c, e, xs, n, acc)
     } else if null_p(xs) {
-        put_question(c, e, put(str_lit("()"), put(callee(c, h), acc)))
+        put_question(c, e, put(str_lit("()"), put_callee(c, e, h, acc)))
     } else if any_p(lambda1(move |x: &'static Sexp| {
         module_name_p(c, x)
     }), xs) {
@@ -1990,20 +2025,20 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
             if module_name_p(c, x) {
                 the::<Sexps>(kayak_rt::cons(x, kayak_rt::nil()))
             } else {
-                nil()
+                nil::<&'static Sexp>()
             }
         }), xs)), acc);
         let acc = put(str_lit(">("), acc);
         let acc = put_joined(c, concat(map(lambda1(move |x: &'static Sexp| {
             if module_name_p(c, x) {
-                nil()
+                nil::<&'static Sexp>()
             } else {
                 the::<Sexps>(kayak_rt::cons(x, kayak_rt::nil()))
             }
         }), xs)), str_lit(", "), n, acc);
         put_question(c, e, put(str_lit(")"), acc))
     } else {
-        put_question(c, e, put(str_lit(")"), put_args(c, e, xs, 0i64, n, put(str_lit("("), put(callee(c, h), acc)))))
+        put_question(c, e, put(str_lit(")"), put_args(c, e, xs, 0i64, n, put(str_lit("("), put_callee(c, e, h, acc)))))
     }
 }
 

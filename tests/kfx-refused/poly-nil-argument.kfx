@@ -1,0 +1,5 @@
+"A nil given where a poly procedure's binder is to be found: nil says no
+ element, and FX-26 asks it last."
+(define-effect kfx (maxeff (read @globals) spin))
+(define h (poly ((a type)) (subr pure ((listof a acyclic)) i64)) (lambda (fs) 0))
+(h nil)

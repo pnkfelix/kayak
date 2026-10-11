@@ -102,7 +102,7 @@ pub fn map_pure<A: Copy + 'static, B: Copy + 'static>(f: &'static dyn Fn(A) -> B
     let go__knot = knot::<&'static dyn Fn(List<A>) -> List<B>>();
     let go = lambda1(move |ys: List<A>| {
         if null_p(ys) {
-            nil()
+            nil::<B>()
         } else {
             cons(f(car(ys)), (go__knot.get())(cdr(ys)))
         }

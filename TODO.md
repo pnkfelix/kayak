@@ -130,14 +130,13 @@ Escapes are done (`DONE.md`, C18). Left:
   - a list made where nothing says its region is at `%fresh`, one region
     for them all (FX-26 makes one for each): two such lists are joined
     where FX-26's may not be;
-  - a `nil` whose element type nothing fixes, `(let ((x nil)) 0)`: Rust
-    cannot infer it (a Rust error, FX-26 accepts);
   - a procedure that cannot abort reaching a type that may by other ways
     than as a call's argument or `the`'s (`list`, branches, a product): a
     Rust error, the closure not lifted to return `Ok`;
 
-- **`tagcase_`**, the name a `tagcase` binds, could be a KFX name's
-  mangling (`tagcase-`).
+- **`null?` of an argument whose element nothing says**, other than a name
+  or an `error` (`(null? (car (cons nil nil)))`), is refused; FX-26, whose
+  `null?`'s binder is its argument's whole type, accepts it (C29).
 - **`(define x e)` with no type** is refused; FX-26 allows it.
 - **A looping procedure's parameters are all `mut`**, even those no self
   tail call changes (`count-up`'s `n`). Only the changed ones need be.

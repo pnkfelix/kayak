@@ -301,7 +301,7 @@ pub fn only_of_p(cs: Chars, allowed: Str) -> bool {
 
 pub fn before_point(cs: Chars) -> Chars {
     if (null_p(cs) || char_eq_p(car(cs), '.')) {
-        nil()
+        nil::<char>()
     } else {
         cons(car(cs), before_point(cdr(cs)))
     }
@@ -384,7 +384,7 @@ pub fn read_datum(h: &'static Here, file: Str) -> &'static Got {
             } else if char_eq_p(c, ')') {
                 match read_error(file, line, str_lit("a ) with no (")) {}
             } else if char_eq_p(c, '"') {
-                string_body(cdr(cs), nil(), file, line, pos, line, i64_plus(pos, 1i64))
+                string_body(cdr(cs), nil::<char>(), file, line, pos, line, i64_plus(pos, 1i64))
             } else if (char_eq_p(c, '#') && not(null_p(cdr(cs))) && char_eq_p(car(cdr(cs)), '\\')) {
                 let name = cdr(cdr(cs));
                 let tagcase_ = token_chars(cdr(name), kayak_rt::cons(car(name), kayak_rt::nil()), 1i64);
@@ -394,7 +394,7 @@ pub fn read_datum(h: &'static Here, file: Str) -> &'static Got {
                     }
                 }
             } else {
-                let tagcase_ = token_chars(cs, nil(), 0i64);
+                let tagcase_ = token_chars(cs, nil::<char>(), 0i64);
                 match *tagcase_ {
                     Tok::Tok(s, after, n) => {
                         got(token_atom(s, file, line, pos), here(after, line, i64_plus(pos, n)))
@@ -413,7 +413,7 @@ pub fn read_items(h: &'static Here, file: Str) -> &'static Gots {
             if null_p(cs) {
                 match read_error(file, line, str_lit("a ( with no )")) {}
             } else if char_eq_p(car(cs), ')') {
-                gots(nil(), here(cdr(cs), line, i64_plus(pos, 1i64)))
+                gots(nil::<&'static Sexp>(), here(cdr(cs), line, i64_plus(pos, 1i64)))
             } else {
                 let tagcase_ = read_datum(h, file);
                 match *tagcase_ {
@@ -437,7 +437,7 @@ pub fn read_from(h: &'static Here, file: Str) -> Sexps {
     match *tagcase_ {
         Here::Here(cs, line, pos) => {
             if null_p(cs) {
-                nil()
+                nil::<&'static Sexp>()
             } else {
                 let tagcase_ = read_datum(h, file);
                 match *tagcase_ {

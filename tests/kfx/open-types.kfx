@@ -1,0 +1,26 @@
+"Types FX-26 leaves open, which Rust must be told: a nil nothing types
+ (its element `void`, `nil::<Void>()`), and a poly procedure whose type
+ binder is its result's alone (`mk::<i64>()`). And a lifted procedure
+ whose parameter is named as the closure's (`a-0`, `a_0`; the closure's
+ is `a__0`)."
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define mk (poly ((a type)) (subr pure () (listof a acyclic))) (lambda () nil))
+
+(define apply-to (poly ((r region)) (subr (maxeff kfx (goto r)) ((prompt-tag i64 i64 kfx r) (subr (maxeff kfx (goto r)) (i64) i64) i64) i64))
+  (lambda (t f x) (f x)))
+
+(define go (subr kfx ((subr pure (i64) i64)) i64)
+  (lambda (a-0)
+    (letregion e
+      (let ((t (the (prompt-tag i64 i64 kfx e) (make-continuation-prompt-tag))))
+        (prompt t (apply-to t a-0 5) (lambda ((v i64)) v))))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (let* ((x nil) (pairs (cons nil nil)) (first (car pairs)) (ys (the (listof i64 acyclic) (mk))))
+      (string-append (if (null? x) "empty " "full ")
+        (string-append (if (null? first) "empty " "full ")
+          (string-append (if (null? ys) "empty " "full ")
+            (i64->string (go (lambda ((y i64)) (i64+ y 1))))))))))
+(main)

@@ -1,0 +1,4 @@
+"`cdr` of an `error`: its element is nothing the call says."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f (subr kfx () i64) (lambda () (begin (cdr (error "x")) 0)))
+(f)

@@ -57,6 +57,89 @@
           nil
           (cons (lst (list (sym (car ls) "" 0) (ty-sexp v s (car ts))) "" 0 0) (fields-sexp v s (cdr ls) (cdr ts)))))))
 
+"Turbofish: the types a poly procedure is called at, and a `nil`'s or an
+ empty list's element, which rustc may find nothing else to infer from.
+ Noted as inference variables, `turbofish-metas ?k ...`, at the call's or
+ the datum's place; settled when the definition is, each a type as written,
+ an unsolved one `void`: a type nothing in FX-26 says, of no value, which
+ rustc needs one of and the program never meets."
+
+(define-rec
+  (settled-sexp (subr kfx (st ty bool) sexp)
+    (lambda (s t region)
+      "A type, or with `region` a region, as written, after the definition:
+       an inference variable unsolved is `void`, or the heap."
+      (tagcase (walk s t)
+        (ty-meta (k) (sym (if region "@heap" "void") "" 0))
+        (ty-var (n) (sym n "" 0))
+        (ty-rconst (n) (sym n "" 0))
+        (ty-list (e r) (lst (list (sym "listof" "" 0) (settled-sexp s e #f) (settled-sexp s r #t)) "" 0 0))
+        (ty-flat (e r) (lst (list (sym "flatarrayof" "" 0) (settled-sexp s e #f) (settled-sexp s r #t)) "" 0 0))
+        (ty-ref (e r) (lst (list (sym "ref" "" 0) (settled-sexp s e #f) (settled-sexp s r #t)) "" 0 0))
+        (ty-tag (a h d r) (lst (list (sym "prompt-tag" "" 0) (settled-sexp s a #f) (settled-sexp s h #f) (sym "pure" "" 0) (settled-sexp s r #t)) "" 0 0))
+        (ty-data (d args)
+          (if (null? args) (sym d "" 0) (lst (cons (sym d "" 0) (map (lambda ((x ty)) (settled-sexp s x #f)) args)) "" 0 0)))
+        (ty-shape (p ls ts) (lst (cons (sym (if p "productof" "sumof") "" 0) (settled-fields s ls ts)) "" 0 0))
+        (ty-proc (es ps r)
+          (lst (list (sym "subr" "" 0) (if (escapes? es) (lst (list (sym "goto" "" 0) (sym "@escape" "" 0)) "" 0 0) (sym "pure" "" 0))
+                     (lst (map (lambda ((p ty)) (settled-sexp s p #f)) ps) "" 0 0) (settled-sexp s r #f)) "" 0 0))
+        (else other (sym (show-ty s other) "" 0)))))
+  (settled-fields (subr kfx (st strings tys) sexps)
+    (lambda (s ls ts)
+      (if (or (null? ls) (null? ts))
+          nil
+          (cons (lst (list (sym (car ls) "" 0) (settled-sexp s (car ts) #f)) "" 0 0) (settled-fields s (cdr ls) (cdr ts)))))))
+
+(define settle-facts (subr kfx (st) facts)
+  (lambda (s)
+    "A definition's facts, its turbofish settled."
+    (map (lambda ((f fact))
+           (tagcase f
+             (fact (file pos what)
+               (if (has-prefix? what "turbofish-metas ")
+                   (fact file pos
+                         (string-append "turbofish "
+                           (words-of (map (lambda ((m sexp)) (show-sexp (settled-sexp s (ty-meta (meta-number (sym-name m))) #f)))
+                                          (read-all (string-chars (after-prefix what "turbofish-metas ")) "" 1)))))
+                   f))))
+         (st-facts s))))
+
+(define-datatype fresh-metas (fresh-metas (listof i64 acyclic) st))
+
+(define-rec
+  (fresh-for (subr kfx (st tys) fresh-metas)
+    (lambda (s ts)
+      "An inference variable for each of `ts`, solved to it: what a
+       turbofish notes, settled with the definition."
+      (if (null? ts)
+          (fresh-metas nil s)
+          (tagcase (walk s (car ts))
+            (ty-meta (k) (tagcase (fresh-for s (cdr ts)) (fresh-metas (ks s) (fresh-metas (cons k ks) s))))
+            (else other
+              (tagcase (fresh s)
+                (res (m es s)
+                  (tagcase m
+                    (ty-meta (k) (tagcase (fresh-for (solve s k other) (cdr ts)) (fresh-metas (ks s) (fresh-metas (cons k ks) s))))
+                    (else other2 (fresh-metas nil s)))))))))))
+
+(define note-turbofish (subr kfx (st string i64 tys) st)
+  (lambda (s file pos ts)
+    "That the datum at `file`, `pos` is written at types `ts`."
+    (if (null? ts)
+        s
+        (tagcase (fresh-for s ts)
+          (fresh-metas (ks s)
+            (note-fact s file pos (string-append "turbofish-metas " (words-of (map meta-name ks)))))))))
+
+(define binder-metas (subr kfx (i64 i64 (listof i64 acyclic)) (listof i64 acyclic))
+  (lambda (from to regions)
+    "The inference variables a poly's instantiation made, `from` to `to`,
+     its type binders': not its regions'."
+    (if (not (i64< from to))
+        nil
+        (let ((rest (binder-metas (i64+ from 1) to regions)))
+          (if (any? (lambda ((r i64)) (i64= r from)) regions) rest (cons from rest))))))
+
 (define-rec
   (member-type (subr kfx (string strings tys) ty)
     (lambda (l ls ts)
@@ -498,7 +581,14 @@
         (chr (c at-file at-pos) (res (ty-char) nil s))
         (real (x at-file at-pos) (res (ty-f64) nil s))
         (str (x at-file at-pos) (res (ty-string) nil s))
-        (sym (name at-file at-pos) (synth-name v s name))
+        (sym (name at-file at-pos)
+          (tagcase (synth-name v s name)
+            (res (t es s)
+              (if (string=? name "nil")
+                  (tagcase (walk s t)
+                    (ty-list (el r) (res t es (note-turbofish s at-file at-pos (list el))))
+                    (else other (res t es s)))
+                  (res t es s)))))
         (lst (xs src-file src-line src-pos)
           (let ((v (near v src-file src-line src-pos)))
             (tagcase (car xs)
@@ -572,7 +662,7 @@
           (sym (name at-file at-pos)
             (if (string=? name "nil")
                 (tagcase x
-                  (ty-list (el r) (res x nil s))
+                  (ty-list (el r) (res x nil (note-turbofish s at-file at-pos (list el))))
                   (else other (check-by-synth v s e x)))
                 (check-by-synth v s e x)))
           (else other (check-by-synth v s e x))))))
@@ -634,7 +724,7 @@
             ((string=? h "lambda") (synth-lambda v s (items (car xs)) (cdr xs)))
             ((string=? h "list")
              (if (null? xs)
-                 (tagcase (fresh s) (res (m es s) (res (ty-list m (ty-rconst "%fresh")) nil s)))
+                 (refuse v "a (list) of a type nothing here says, as FX-26 finds it: say it, (the (listof T r) (list))")
                  (tagcase (if (head-is? (car xs) "error")
                               (tagcase (fresh s) (res (m es s) (check v s (car xs) m)))
                               (synth v s (car xs)))
@@ -662,7 +752,11 @@
             ((and (string=? h "list") (tagcase expected (ty-list (el r) #t) (else other #f)))
              (tagcase expected
                (ty-list (el r)
-                 (tagcase (elements v s xs el)
+                 (tagcase (if (null? xs)
+                              (tagcase (walk s el)
+                                (ty-meta (k) (refuse v "a (list) of a type nothing here says, as FX-26 finds it: say it, (the (listof T r) (list))"))
+                                (else other (res expected nil (note-turbofish s (cv-file v) (cv-pos v) (list el)))))
+                              (elements v s xs el))
                    (res (u es s)
                      (tagcase (region-of v s r)
                        (res (rr rn s) (res expected (effs-union (list (string-append "alloc:" (region-string s rr))) es) s))))))
@@ -1029,8 +1123,10 @@
               (else
               (tagcase (car found)
                 (bind (n sc wher)
+                  (let ((from (st-next s)))
                   (tagcase (instantiate s sc)
                     (inst (t s regions)
+                      (poly-settled v h wher args (binder-metas from (st-next s) regions) (result-only? s t (binder-metas from (st-next s) regions))
                       (void-call v (and (string=? h "error") (string=? wher "prim"))
                                  (and (not (null? expected)) (tagcase (walk s (car expected)) (ty-meta (k) #t) (else other #f)))
                       (poly-self-application v sc t (knot-free-call v (synth-call-of v s (res t nil s) args regions expected
@@ -1040,7 +1136,36 @@
                                                (and (string=? wher "local") (self-applicable? v s t))
                                                (and (string-member? h (cv-group v)) (or (string=? wher "global") (string=? wher "item"))))
                                            (list "spin")
-                                           nil)))))))))))))))
+                                           nil)))))))))))))))))
+
+  (result-only? (subr kfx (st ty (listof i64 acyclic)) bool)
+    (lambda (s t ks)
+      "Whether a type binder of a procedure, `ks` as instantiated in `t`, is
+       in none of its parameters' types: its result's alone, which rustc
+       infers from no argument."
+      (tagcase (walk s t)
+        (ty-proc (es ps r) (any? (lambda ((k i64)) (not (any? (lambda ((p ty)) (occurs? s k p)) ps))) ks))
+        (else other #f))))
+
+  (poly-settled (subr kfx (cv string string sexps (listof i64 acyclic) bool res) res)
+    (lambda (v h wher args ks fish r)
+      "A poly's call: its type binders, `ks`, each solved by the call, as
+       FX-26 has them (its arguments and what the call's place expects; not
+       what follows), but `null?`'s of a name or an `error`, whose binder in
+       FX-26 is its argument's type whole; and the types a procedure of the
+       program's is called at noted, for the turbofish, where a binder is
+       its result's alone."
+      (tagcase r
+        (res (t es s)
+          (let ((open (any? (lambda ((k i64)) (tagcase (walk s (ty-meta k)) (ty-meta (j) #t) (else other #f))) ks)))
+            (cond ((and open
+                        (not (and (string=? h "null?") (string=? wher "prim") (not (null? args))
+                                  (or (tagcase (car args) (sym (n f p) #t) (else other #f)) (head-is? (car args) "error")))))
+                   (refuse v (string-append "a type " (string-append h " is called at that nothing here says, as FX-26 finds it: say it, (the T ...)"))))
+                  (open "`null?`'s, written at the type FX-26 leaves open: `void`."
+                        (res t es (note-turbofish s (cv-file v) (cv-pos v) (map (lambda ((k i64)) (ty-meta k)) ks))))
+                  ((or (string=? wher "prim") (null? ks) (not fish)) r)
+                  (else (res t es (note-turbofish s (cv-file v) (cv-pos v) (map (lambda ((k i64)) (ty-meta k)) ks))))))))))
 
   (nat-args? (subr kfx (cv st sexps) bool)
     (lambda (v s args)

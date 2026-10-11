@@ -54,7 +54,7 @@ pub mod stack {
     pub type Items = List<i64>;
 
     pub fn empty() -> Items {
-        nil()
+        nil::<i64>()
     }
 
     pub fn push(x: i64, xs: Items) -> Items {

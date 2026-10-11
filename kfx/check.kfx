@@ -772,6 +772,9 @@
 (define st-facts (subr kfx (st) facts)
   (lambda (s) (tagcase s (st (subst next fs) fs))))
 
+(define st-next (subr kfx (st) i64)
+  (lambda (s) (tagcase s (st (subst next fs) next))))
+
 (define solve (subr kfx (st i64 ty) st)
   (lambda (s k t)
     (tagcase s (st (subst next fs) (st (cons (sb k t) subst) next fs)))))

@@ -23,7 +23,7 @@ pub type Strings = List<Str>;
 // Lists, of anything
 pub fn map<A: Copy + 'static, B: Copy + 'static>(f: &'static dyn Fn(A) -> B, xs: List<A>) -> List<B> {
     if null_p(xs) {
-        nil()
+        nil::<B>()
     } else {
         cons(f(car(xs)), map(f, cdr(xs)))
     }
@@ -69,7 +69,7 @@ pub fn onto<A: Copy + 'static>(xs: List<A>, ys: List<A>) -> List<A> {
 
 pub fn concat<A: Copy + 'static>(xss: List<List<A>>) -> List<A> {
     if null_p(xss) {
-        nil()
+        nil::<A>()
     } else {
         onto(car(xss), concat(cdr(xss)))
     }
@@ -88,7 +88,7 @@ pub fn rev_onto(mut xs: Chars, mut acc: Chars) -> Chars {
 }
 
 pub fn rev_to_string(acc: Chars) -> Str {
-    list_to_string(rev_onto(acc, nil()))
+    list_to_string(rev_onto(acc, nil::<char>()))
 }
 
 /// A string's characters, in one pass: indexing a string that is not

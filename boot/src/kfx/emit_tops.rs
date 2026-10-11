@@ -23,7 +23,7 @@ pub fn subst_descs(e: &'static Sexp, descs: List<Sexps>) -> &'static Sexp {
                 if string_eq_p(sym_name(second(d)), n) {
                     the::<Sexps>(kayak_rt::cons(third(d), kayak_rt::nil()))
                 } else {
-                    nil()
+                    nil::<&'static Sexp>()
                 }
             }), descs));
             if null_p(found) {
@@ -49,7 +49,7 @@ pub fn spec_of(spec: &'static Sexp, kind: Str) -> List<Sexps> {
         if head_is_p(x, kind) {
             the::<List<Sexps>>(kayak_rt::cons(items(x), kayak_rt::nil()))
         } else {
-            nil()
+            nil::<List<&'static Sexp>>()
         }
     }), cdr(items(spec))))
 }
@@ -66,7 +66,7 @@ pub fn abs_of(spec: &'static Sexp) -> Strings {
             }
             _ => {
                 let other = tagcase_;
-                nil()
+                nil::<Str>()
             }
         }
     }), spec_of(spec, str_lit("abs"))))
@@ -85,9 +85,9 @@ pub fn put_arg_params(mut c: &'static Ctx, mut ts: Sexps, mut i: i64, mut acc: C
             return acc;
         } else {
             (ts, i, acc) = (cdr(ts), i64_plus(i, 1i64), put_type(c, car(ts), put(str_lit(": "), put(i64_to_string(i), put(if i64_eq(i, 0i64) {
-                str_lit("a_")
+                str_lit("a__")
             } else {
-                str_lit(", a_")
+                str_lit(", a__")
             }, acc)))));
             continue;
         }
@@ -130,11 +130,11 @@ pub fn module_impls(c: &'static Ctx) -> Strings {
                         if has_prefix_p(fw, str_lit("module-impl ")) {
                             the::<Strings>(kayak_rt::cons(after_prefix(fw, str_lit("module-impl ")), kayak_rt::nil()))
                         } else {
-                            nil()
+                            nil::<Str>()
                         }
                     }
                 }
-            }), fs)), nil())
+            }), fs)), nil::<Str>())
         }
     }
 }
@@ -142,7 +142,7 @@ pub fn module_impls(c: &'static Ctx) -> Strings {
 pub fn deduped(mut xs: Strings, mut seen: Strings) -> Strings {
     loop {
         if null_p(xs) {
-            return reverse_strings(seen, nil());
+            return reverse_strings(seen, nil::<Str>());
         } else if string_member_p(car(xs), seen) {
             xs = cdr(xs);
             continue;
@@ -186,13 +186,13 @@ pub fn put_module_impls(c: &'static Ctx, acc: Chars) -> Chars {
     put_sep(lambda2(move |k: Str, acc: Chars| {
         let ws = split_words(k);
         put_impl(c, car(ws), car(cdr(ws)), acc)
-    }), str_lit(""), deduped(module_impls(c), nil()), acc)
+    }), str_lit(""), deduped(module_impls(c), nil::<Str>()), acc)
 }
 
 /// The parameters of a module type, each `m x`.
 pub fn module_params(c: &'static Ctx, names: Sexps, types: Sexps) -> Strings {
     if (null_p(names) || null_p(types)) {
-        nil()
+        nil::<Str>()
     } else {
         let rest = module_params(c, cdr(names), cdr(types));
         let tagcase_ = car(types);
@@ -227,7 +227,7 @@ pub fn module_params(c: &'static Ctx, names: Sexps, types: Sexps) -> Strings {
 pub fn unmoduled(mut c: &'static Ctx, mut names: Sexps, mut types: Sexps, mut want_names: bool) -> Sexps {
     loop {
         if (null_p(names) || null_p(types)) {
-            return nil();
+            return nil::<&'static Sexp>();
         } else if {
             let tagcase_ = car(types);
             match *tagcase_ {
@@ -335,7 +335,7 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, typ: &'static Sexp, defi
     let binders = if head_is_p(typ, str_lit("poly")) {
         items(second(items(typ)))
     } else {
-        nil()
+        nil::<&'static Sexp>()
     };
     let typ = unpoly(typ);
     let defined = unpoly(defined);
@@ -360,7 +360,7 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, typ: &'static Sexp, defi
     let mparams = if lambda_p {
         module_params(c, items(second(items(defined))), items(third(items(typ))))
     } else {
-        nil()
+        nil::<Str>()
     };
     let t = if lambda_p {
         returns(sym_name(name), map(&param_name, items(second(items(defined)))), null_p(mparams), fallible)
@@ -589,7 +589,7 @@ pub fn trimmed(mut cs: Chars) -> Chars {
 pub fn without(mut xs: Strings, mut ys: Strings) -> Strings {
     loop {
         if null_p(xs) {
-            return nil();
+            return nil::<Str>();
         } else {
             if string_member_p(car(xs), ys) {
                 xs = cdr(xs);
@@ -633,12 +633,12 @@ pub fn shape_key(e: &'static Sexp) -> Strings {
                     string_append(str_lit(" "), label_of(car(items(x))))
                 }), cdr(xs)))), kayak_rt::nil()))
             } else {
-                nil()
+                nil::<Str>()
             }
         }
         _ => {
             let other = tagcase_;
-            nil()
+            nil::<Str>()
         }
     }
 }
@@ -690,11 +690,11 @@ pub fn program_shapes(c: &'static Ctx, forms: Sexps) -> Strings {
                         if has_prefix_p(fw, str_lit("sum-type ")) {
                             read_all(string_chars(after_prefix(fw, str_lit("sum-type "))), str_lit(""), 1i64)
                         } else {
-                            nil()
+                            nil::<&'static Sexp>()
                         }
                     }
                 }
-            }), fs))), shapes_in_all(forms, nil())), nil())
+            }), fs))), shapes_in_all(forms, nil::<Str>())), nil::<Str>())
         }
     }
 }
@@ -837,7 +837,7 @@ pub fn put_show_generatives(forms: Sexps, acc: Chars) -> Chars {
         if (head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype"))) {
             the::<Sexps>(kayak_rt::cons(f, kayak_rt::nil()))
         } else {
-            nil()
+            nil::<&'static Sexp>()
         }
     }), forms)), acc)
 }
@@ -851,7 +851,7 @@ pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
             }
             _ => {
                 let other = tagcase_;
-                nil()
+                nil::<&'static Sexp>()
             }
         }
     };
@@ -938,14 +938,14 @@ pub fn put_module(c: &'static Ctx, m: Str, written: Sexps, acc: Chars) -> Chars 
                     if (head_is_p(f, str_lit("include")) || head_is_p(f, str_lit("%use"))) {
                         item_constants(module_items(c, sym_name(second(items(f)))))
                     } else {
-                        nil()
+                        nil::<Str>()
                     }
                 }), forms)), without(ks, item_values(forms))), ls, xs, fs, ms, es, mods)
             }
         }
     };
     let inner = with_locals(collect(forms, outer), kayak_rt::cons(string_append(str_lit("%in "), m), kayak_rt::nil()));
-    let body = put_tops(inner, forms, nil());
+    let body = put_tops(inner, forms, nil::<char>());
     let body = if string_member_p(str_lit("%toplevel"), ctx_locals(c)) {
         put_show_generatives(forms, body)
     } else {
@@ -961,7 +961,7 @@ pub fn put_module(c: &'static Ctx, m: Str, written: Sexps, acc: Chars) -> Chars 
     } else {
         acc
     };
-    put(str_lit("\n}\n\n"), indented(rev_onto(trimmed(body), nil()), true, acc))
+    put(str_lit("\n}\n\n"), indented(rev_onto(trimmed(body), nil::<char>()), true, acc))
 }
 
 /// A string at the top level is a comment. A procedure's documentation is

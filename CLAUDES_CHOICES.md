@@ -418,3 +418,28 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
   argument, a list's element) it is `the::<Void>(error(...))`, so that Rust
   infers `Void`, not `!`.
 - **Not chosen:** Rust's `!`, unstable but as a function's result.
+
+## C29. Types FX-26 leaves open, told to Rust (2026-10-11)
+
+- **Chosen:** a poly call's type binders must be solved at the call, by
+  its arguments and the type its place expects, as FX-26's are (`fixpt`'s
+  `infer.rs`: "`a` cannot be inferred", "argument 1 ... not yet known
+  here"); `(mk)`, `(h nil)`, `(cdr (error "x"))` and `(list)` with nothing
+  to type it are refused, as FX-26 refuses them (K1: KFX had accepted
+  them). `null?`'s binder is FX-26's argument's whole type, so it is let
+  open for a name or an `error` (stricter than FX-26 otherwise).
+- **And:** what is left open is told to rustc, by the facts that every
+  datum's place makes possible: each `nil` and empty `(list)` is written
+  `nil::<T>()`, a program's poly procedure whose binder is its result's
+  alone `mk::<T>(...)`, and a `null?` left open `null_p::<Void>(...)`. The
+  checker notes inference variables, settled when the definition is; one
+  still unsolved is `void`, the empty enum (C28), a type of no value that
+  the program, which never meets one, cannot tell from any other.
+- **Not chosen:** a turbofish on every poly call (the Rust's `map::<i64,
+  Str>(...)` everywhere, for nothing rustc lacks); defaulting to `()`,
+  which is a value a program could be thought to hold.
+- **And** (found on the way): the closures that lift a procedure to return
+  `Result` named their parameters `a_0`, which `a-0` mangles to, and so
+  called their own argument: C27's temporaries with a `_` were not all
+  apart from KFX's names. They are `a__0`, which no KFX name, having no
+  `--`, mangles to.

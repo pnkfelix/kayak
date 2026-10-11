@@ -86,7 +86,7 @@ pub fn skips(xs: Ints) -> i64 {
     {
         let prompt_tag__ = t;
         match (move || -> Result<_, Unwind> {
-            each_to(t, lambda1(move |a_0| Ok((&skip)(a_0))), xs)?;
+            each_to(t, lambda1(move |a__0| Ok((&skip)(a__0))), xs)?;
             Ok(size_of(xs))
         })() {
             Ok(v_) => v_,
