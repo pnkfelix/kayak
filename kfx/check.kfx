@@ -754,7 +754,7 @@
                        (refuse v (string-append "a type KFX does not have: " (show-sexp t)))
                        (if (or (any? (lambda ((f sexps)) (tagcase (car f) (sym (n at-file at-pos) (not (kfx-name? n))) (else other #f))) fields)
                                (repeated? (map (lambda ((f sexps)) (label-of (car f))) fields))
-                               (repeated? (map (lambda ((f sexps)) (camel (label-of (car f)))) fields)))
+                               (repeated? (map (lambda ((f sexps)) (variant-name (label-of (car f)))) fields)))
                            (refuse v (string-append "a label appears twice in " (show-sexp t)))
                        (ty-shape (sym-is? (car xs) "productof")
                                  (map (lambda ((f sexps)) (label-of (car f))) fields)
@@ -1308,6 +1308,14 @@
                                  nil))))
                        bs))))))
 
+(define-rec
+  (remove-bind (subr kfx (bind binds) binds)
+    (lambda (b bs)
+      "`bs` but the first of them named as `b`: the others bound with it."
+      (cond ((null? bs) nil)
+            ((tagcase (car bs) (bind (n sc w) (tagcase b (bind (m sc2 w2) (string=? n m))))) (cdr bs))
+            (else (cons (car bs) (remove-bind b (cdr bs))))))))
+
 (define with-binds (subr kfx (cv binds) cv)
   (lambda (v more)
     "`v` with the names `more` binds; none with a `_`: KFX writes `-`, and
@@ -1319,7 +1327,8 @@
               more)
         (refuse v (string-append "a name KFX's names are not (lower case, digits, `-` and `?!<>=+*/%`, no `--`, none Rust writes): "
                                  (car (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (if (kfx-name? n) nil (the strings (list n)))))) more)))))
-        (let ((clash (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (mangled-clash n (cv-binds v))))) more))))
+        (let ((clash (onto (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (mangled-clash n (cv-binds v))))) more))
+                           (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (mangled-clash n (remove-bind b more))))) more)))))
           (if (not (null? clash))
               (refuse v (string-append "two names that are one in Rust: " (car clash)))
               (tagcase v (cv (bs ds als es here group file line fs tv at) (cv (bind-onto more bs) ds als es here group file line fs tv at))))))))

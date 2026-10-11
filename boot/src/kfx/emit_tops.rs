@@ -543,7 +543,7 @@ pub fn put_constructors(c: &'static Ctx, d: Str, params: Strings, variants: Sexp
         let acc = put(str_lit(" {\n    alloc("), acc);
         let acc = put(camel(d), acc);
         let acc = put(str_lit("::"), acc);
-        let acc = put(camel(tag), acc);
+        let acc = put(variant_name(tag), acc);
         let acc = put(str_lit("("), acc);
         let acc = put_fields(c, cdr(v), 0i64, false, acc);
         put_constructors(c, d, params, cdr(variants), put(str_lit("))\n}\n\n"), acc))
@@ -778,7 +778,7 @@ pub fn put_variants_of(mut tags: Strings, mut i: i64, mut acc: Chars) -> Chars {
         if null_p(tags) {
             return acc;
         } else {
-            (tags, i, acc) = (cdr(tags), i64_plus(i, 1i64), put(str_lit("),\n"), put(i64_to_string(i), put(str_lit("(A"), put(camel(car(tags)), put(str_lit("    "), acc))))));
+            (tags, i, acc) = (cdr(tags), i64_plus(i, 1i64), put(str_lit("),\n"), put(i64_to_string(i), put(str_lit("(A"), put(variant_name(car(tags)), put(str_lit("    "), acc))))));
             continue;
         }
     }
@@ -812,7 +812,7 @@ pub fn put_shape_decls(keys: Strings, shows: bool, flats: bool, acc: Chars) -> C
                 put(str_lit(">\");\n"), put(i64_to_string(n), put(str_lit("        out.push_str(\"#<product of "), acc)))
             } else {
                 put(str_lit("        }\n"), put_sep(lambda2(move |l: Str, acc: Chars| {
-                    put(str_lit(">\"),\n"), put(l, put(str_lit("(..) => out.push_str(\"#<sum "), put(camel(l), put(str_lit("::"), put(name, put(str_lit("            "), acc)))))))
+                    put(str_lit(">\"),\n"), put(l, put(str_lit("(..) => out.push_str(\"#<sum "), put(variant_name(l), put(str_lit("::"), put(name, put(str_lit("            "), acc)))))))
                 }), str_lit(""), labels, put(str_lit("        match self {\n"), acc)))
             })
         };
@@ -845,7 +845,7 @@ pub fn put_show_arms(d: Str, variants: Sexps, acc: Chars) -> Chars {
         let acc = put(str_lit("            "), acc);
         let acc = put(camel(d), acc);
         let acc = put(str_lit("::"), acc);
-        let acc = put(camel(tag), acc);
+        let acc = put(variant_name(tag), acc);
         let acc = put(str_lit("(..) => out.push_str(str_lit(\"#<sum "), acc);
         let acc = put(tag, acc);
         put_show_arms(d, cdr(variants), put(str_lit(">\").as_str()),\n"), acc))
@@ -1071,14 +1071,22 @@ pub fn put_toplevel_lines(mut c: &'static Ctx, mut forms: Sexps, mut acc: Chars)
         if null_p(forms) {
             return acc;
         } else if toplevel_form_p(car(forms)) {
-            if fact_at_p(c, car(forms), str_lit("void")) {
-                let acc = put(str_lit("    let _: () = (|| -> Result<(), Unwind> { let _: Void = "), acc);
+            if fact_at_p(c, car(forms), str_lit("procedure")) {
+                // A procedure, as Fixpt writes one, whatever made it: a global's
+                // own `fn` is no `dyn Fn`, whose `Show` this would otherwise be.
+                let acc = put(str_lit("    kayak_rt::show_line(&mut out_, (|| -> Result<_, Unwind> { let _ = "), acc);
                 let acc = put_exp(with_locals(c, kayak_rt::cons(str_lit("%fallible"), kayak_rt::nil())), car(forms), 1i64, value(), acc);
-                return put_toplevel_lines(c, cdr(forms), put(str_lit("; Ok(()) })().unwrap_or_else(|u| unreachable_unwind(u));\n"), acc));
+                return put_toplevel_lines(c, cdr(forms), put(str_lit("; Ok(kayak_rt::Procedure) })().unwrap_or_else(|u| unreachable_unwind(u)));\n"), acc));
             } else {
-                let acc = put(str_lit("    kayak_rt::show_line(&mut out_, (|| -> Result<_, Unwind> { Ok("), acc);
-                let acc = put_exp(with_locals(c, kayak_rt::cons(str_lit("%fallible"), kayak_rt::nil())), car(forms), 1i64, value(), acc);
-                return put_toplevel_lines(c, cdr(forms), put(str_lit(") })().unwrap_or_else(|u| unreachable_unwind(u)));\n"), acc));
+                if fact_at_p(c, car(forms), str_lit("void")) {
+                    let acc = put(str_lit("    let _: () = (|| -> Result<(), Unwind> { let _: Void = "), acc);
+                    let acc = put_exp(with_locals(c, kayak_rt::cons(str_lit("%fallible"), kayak_rt::nil())), car(forms), 1i64, value(), acc);
+                    return put_toplevel_lines(c, cdr(forms), put(str_lit("; Ok(()) })().unwrap_or_else(|u| unreachable_unwind(u));\n"), acc));
+                } else {
+                    let acc = put(str_lit("    kayak_rt::show_line(&mut out_, (|| -> Result<_, Unwind> { Ok("), acc);
+                    let acc = put_exp(with_locals(c, kayak_rt::cons(str_lit("%fallible"), kayak_rt::nil())), car(forms), 1i64, value(), acc);
+                    return put_toplevel_lines(c, cdr(forms), put(str_lit(") })().unwrap_or_else(|u| unreachable_unwind(u)));\n"), acc));
+                }
             }
         } else {
             forms = cdr(forms);

@@ -1650,7 +1650,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                         }), fields) || repeated_p(map(lambda1(move |f: Sexps| {
                             label_of(car(f))
                         }), fields)) || repeated_p(map(lambda1(move |f: Sexps| {
-                            camel(label_of(car(f)))
+                            variant_name(label_of(car(f)))
                         }), fields))) {
                             return match refuse(v, string_append(str_lit("a label appears twice in "), show_sexp(t))) {};
                         } else {
@@ -2901,6 +2901,29 @@ pub fn mangled_clash(n: Str, bs: Binds) -> Strings {
     }
 }
 
+/// `bs` but the first of them named as `b`: the others bound with it.
+pub fn remove_bind(b: &'static Bind, bs: Binds) -> Binds {
+    if null_p(bs) {
+        nil::<&'static Bind>()
+    } else if {
+        let tagcase_ = car(bs);
+        match *tagcase_ {
+            Bind::Bind(n, sc, w) => {
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Bind::Bind(m, sc2, w2) => {
+                        string_eq_p(n, m)
+                    }
+                }
+            }
+        }
+    } {
+        cdr(bs)
+    } else {
+        cons(car(bs), remove_bind(b, cdr(bs)))
+    }
+}
+
 /// `v` with the names `more` binds; none with a `_`: KFX writes `-`, and
 /// every Rust name kfx and kayak-rt write that a KFX name could meet has
 /// a `_` (`i64_plus`, `tagcase_`), so none is ever hidden.
@@ -2926,14 +2949,21 @@ pub fn with_binds(v: &'static Cv, more: Binds) -> &'static Cv {
             }
         }), more))))) {}
     } else {
-        let clash = concat(map(lambda1(move |b: &'static Bind| {
+        let clash = onto(concat(map(lambda1(move |b: &'static Bind| {
             let tagcase_ = b;
             match *tagcase_ {
                 Bind::Bind(n, sc, w) => {
                     mangled_clash(n, cv_binds(v))
                 }
             }
-        }), more));
+        }), more)), concat(map(lambda1(move |b: &'static Bind| {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Bind::Bind(n, sc, w) => {
+                    mangled_clash(n, remove_bind(b, more))
+                }
+            }
+        }), more)));
         if not(null_p(clash)) {
             match refuse(v, string_append(str_lit("two names that are one in Rust: "), car(clash))) {}
         } else {

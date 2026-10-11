@@ -1009,3 +1009,9 @@ C36 (K1): seven of the fourteen differences the probes left agree now
 (`l6`, `l53`, `y14`, `h8`, `x14`, `y04`, and the K1 half of `l23`).
 `kfx-refused/literal-in-unknown-argument`, `fresh-list-region`. The rest
 are recorded in C36 and TODO.md.
+
+## The probes' Rust errors, nearly all (2026-10-11)
+
+C35 to C37: of the sweep's 28 Rust errors, all but one compile and agree
+or are refused (a list of a global's procedures shown at the top level
+remains). No probe program gives a wrong value.

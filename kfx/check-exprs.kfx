@@ -1383,13 +1383,31 @@
         (tagcase (body (with-binds v (bind-params v params types)) s forms nil)
           (res (r es s) (res (ty-proc es types r) nil (if (escapes? es) (note-fact s (cv-file v) (cv-pos v) "fallible") s))))))))
 
+  (module-params-apart (subr kfx (cv sexps tys st) st)
+    (lambda (v params types s)
+      "No two module parameters named alike in Rust, their type parameters
+       camel-cased (`m` and `m-` are both `Mod_M`)."
+      (if (repeated? (concat (map (lambda ((n string)) (the strings (list (camel n))))
+                                  (module-param-names v s params types))))
+          (refuse v "two module parameters named alike in Rust (camel-cased, as `m` and `m-`)")
+          s)))
+
+  (module-param-names (subr kfx (cv st sexps tys) strings)
+    (lambda (v s params types)
+      (if (or (null? params) (null? types))
+          nil
+          (let ((rest (module-param-names v s (cdr params) (cdr types))))
+            (if (null? (module-spec v (walk s (car types))))
+                rest
+                (cons (param-name (car params)) rest))))))
+
   (check-lambda (subr kfx (cv st sexps sexps ty) res)
     (lambda (v s params forms expected)
       (tagcase expected
         (ty-proc (ees eps er)
           (if (not (i64= (size params) (size eps)))
               (refuse v "a lambda of the wrong number of parameters")
-              (let ((s (check-written-params v s params eps)))
+              (let ((s (module-params-apart v params eps (check-written-params v s params eps))))
                 (if (or (not (null? (module-spec v (walk s er))))
                         (and (any? (lambda ((p ty)) (not (null? (module-spec v (walk s p))))) eps)
                              (not (top-lambda? v))))

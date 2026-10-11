@@ -295,7 +295,7 @@
                (acc (put " {\n    alloc(" acc))
                (acc (put (camel d) acc))
                (acc (put "::" acc))
-               (acc (put (camel tag) acc))
+               (acc (put (variant-name tag) acc))
                (acc (put "(" acc))
                (acc (put-fields c (cdr v) 0 #f acc)))
           (put-constructors c d params (cdr variants) (put "))\n}\n\n" acc))))))
@@ -432,7 +432,7 @@
       (if (null? tags)
           acc
           (put-variants-of (cdr tags) (i64+ i 1)
-                           (put "),\n" (put (i64->string i) (put "(A" (put (camel (car tags)) (put "    " acc))))))))))
+                           (put "),\n" (put (i64->string i) (put "(A" (put (variant-name (car tags)) (put "    " acc))))))))))
 
 (define put-shape-decls (subr kfx (strings bool bool chars) chars)
   (lambda (keys shows flats acc)
@@ -459,7 +459,7 @@
                                    (put ">\");\n" (put (i64->string n) (put "        out.push_str(\"#<product of " acc)))
                                    (put "        }\n"
                                         (put-sep (lambda ((l string) (acc chars))
-                                                   (put ">\"),\n" (put l (put "(..) => out.push_str(\"#<sum " (put (camel l) (put "::" (put name (put "            " acc))))))))
+                                                   (put ">\"),\n" (put l (put "(..) => out.push_str(\"#<sum " (put (variant-name l) (put "::" (put name (put "            " acc))))))))
                                                  "" labels (put "        match self {\n" acc)))))))))
           (put-shape-decls (cdr keys) shows flats
                            (if (and flats product)
@@ -488,7 +488,7 @@
                (acc (put "            " acc))
                (acc (put (camel d) acc))
                (acc (put "::" acc))
-               (acc (put (camel tag) acc))
+               (acc (put (variant-name tag) acc))
                (acc (put "(..) => out.push_str(str_lit(\"#<sum " acc))
                (acc (put tag acc)))
           (put-show-arms d (cdr variants) (put ">\").as_str()),\n" acc))))))
@@ -620,13 +620,21 @@
      gives one, run, its type said."
     (cond ((null? forms) acc)
           ((toplevel-form? (car forms))
+           (cond
+             ((fact-at? c (car forms) "procedure")
+              "A procedure, as Fixpt writes one, whatever made it: a global's
+               own `fn` is no `dyn Fn`, whose `Show` this would otherwise be."
+              (let* ((acc (put "    kayak_rt::show_line(&mut out_, (|| -> Result<_, Unwind> { let _ = " acc))
+                     (acc (put-exp (with-locals c (list "%fallible")) (car forms) 1 (value) acc)))
+                (put-toplevel-lines c (cdr forms) (put "; Ok(kayak_rt::Procedure) })().unwrap_or_else(|u| unreachable_unwind(u)));\n" acc))))
+             (else
            (if (fact-at? c (car forms) "void")
                (let* ((acc (put "    let _: () = (|| -> Result<(), Unwind> { let _: Void = " acc))
                       (acc (put-exp (with-locals c (list "%fallible")) (car forms) 1 (value) acc)))
                  (put-toplevel-lines c (cdr forms) (put "; Ok(()) })().unwrap_or_else(|u| unreachable_unwind(u));\n" acc)))
                (let* ((acc (put "    kayak_rt::show_line(&mut out_, (|| -> Result<_, Unwind> { Ok(" acc))
                       (acc (put-exp (with-locals c (list "%fallible")) (car forms) 1 (value) acc)))
-                 (put-toplevel-lines c (cdr forms) (put ") })().unwrap_or_else(|u| unreachable_unwind(u)));\n" acc)))))
+                 (put-toplevel-lines c (cdr forms) (put ") })().unwrap_or_else(|u| unreachable_unwind(u)));\n" acc)))))))
           (else (put-toplevel-lines c (cdr forms) acc)))))
 
 (define put-toplevel (subr kfx (ctx sexps chars) chars)

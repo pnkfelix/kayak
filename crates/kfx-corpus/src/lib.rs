@@ -78,6 +78,11 @@ pub mod generative;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/letreap.rs"]
+pub mod letreap;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/letrec.rs"]
 pub mod letrec;
 
@@ -95,6 +100,11 @@ pub mod letrena;
 #[rustfmt::skip]
 #[path = "../../../tests/kfx/lets.rs"]
 pub mod lets;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
+#[path = "../../../tests/kfx/lifted.rs"]
+pub mod lifted;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
@@ -196,10 +206,12 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("flat-sums", flat_sums::main),
     ("floats", floats::main),
     ("generative", generative::main),
+    ("letreap", letreap::main),
     ("letrec", letrec::main),
     ("letregion-nat", letregion_nat::main),
     ("letrena", letrena::main),
     ("lets", lets::main),
+    ("lifted", lifted::main),
     ("lists", lists::main),
     ("module-params", module_params::main),
     ("modules", modules::main),

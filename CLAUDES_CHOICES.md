@@ -619,3 +619,19 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
   where FX-26's literal is an `int`; a product of a poly `nil` and one of
   a list in branches; a procedure's self-application through a product.
 
+## C37. Names Rust can write, all of them (2026-10-11)
+
+- **Chosen:** `camel` mangles an operator's character as `mangle` does
+  (`ok?` is `Ok_p`), `-` still beginning a word: a type, a tag, a sum's
+  label named with one was no Rust name (`pub type Ok?`). And refused,
+  where Rust's names would meet: two names bound together that mangle
+  alike (`ok?` and `ok-p` in one `let`); two shapes whose labels mangle
+  alike (`a?`, `a-p`); two module parameters that camel-case alike (`m`,
+  `m-`); a module named as a crate the program sees (`kayak-rt`, `std`,
+  `core`, `alloc`); a module whose own datatype an included one has.
+- **And:** a procedure a top-level expression gives is shown as Fixpt
+  shows one, whatever made it (a global's own `fn` has no `Show`); a flat
+  array as Fixpt writes it, `#<flat-array 2 fields 16 bytes>`.
+- **Not yet:** a list of a global's procedures shown at the top level (its
+  `fn` items no `dyn Fn` Rust can infer there).
+

@@ -3126,6 +3126,31 @@ pub fn synth_lambda(v: &'static Cv, s: &'static St, params: Sexps, forms: Sexps)
     }
 }
 
+/// No two module parameters named alike in Rust, their type parameters
+/// camel-cased (`m` and `m-` are both `Mod_M`).
+pub fn module_params_apart(v: &'static Cv, params: Sexps, types: Tys, s: &'static St) -> &'static St {
+    if repeated_p(concat(map(lambda1(move |n: Str| {
+        the::<Strings>(kayak_rt::cons(camel(n), kayak_rt::nil()))
+    }), module_param_names(v, s, params, types)))) {
+        match refuse(v, str_lit("two module parameters named alike in Rust (camel-cased, as `m` and `m-`)")) {}
+    } else {
+        s
+    }
+}
+
+pub fn module_param_names(v: &'static Cv, s: &'static St, params: Sexps, types: Tys) -> Strings {
+    if (null_p(params) || null_p(types)) {
+        nil::<Str>()
+    } else {
+        let rest = module_param_names(v, s, cdr(params), cdr(types));
+        if null_p(module_spec(v, walk(s, car(types)))) {
+            rest
+        } else {
+            cons(param_name(car(params)), rest)
+        }
+    }
+}
+
 pub fn check_lambda(v: &'static Cv, s: &'static St, params: Sexps, forms: Sexps, expected: &'static Ty) -> &'static Res {
     let tagcase_ = expected;
     match *tagcase_ {
@@ -3133,7 +3158,7 @@ pub fn check_lambda(v: &'static Cv, s: &'static St, params: Sexps, forms: Sexps,
             if not(i64_eq(size(params), size(eps))) {
                 match refuse(v, str_lit("a lambda of the wrong number of parameters")) {}
             } else {
-                let s = check_written_params(v, s, params, eps);
+                let s = module_params_apart(v, params, eps, check_written_params(v, s, params, eps));
                 if (not(null_p(module_spec(v, walk(s, er)))) || (any_p(lambda1(move |p: &'static Ty| {
                     not(null_p(module_spec(v, walk(s, p))))
                 }), eps) && not(top_lambda_p(v)))) {

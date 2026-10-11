@@ -2320,7 +2320,7 @@ pub fn put_tagcase_arms(c: &'static Ctx, sum: Str, arms: Sexps, n: i64, t: &'sta
                 sum
             }, acc);
             let acc = put(str_lit("::"), acc);
-            let acc = put(camel(tag), acc);
+            let acc = put(variant_name(tag), acc);
             let acc = put(str_lit("("), acc);
             if string_eq_p(sum, str_lit("")) {
                 put_nl(i64_plus(n, 1i64), put(str_lit(") => {"), put_names(items(second(arm)), acc)))
@@ -2555,7 +2555,7 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
             label_of(car(f))
         }), fs)), acc);
         let acc = put(str_lit(">::"), put_types(c, map(&second, fs), put(str_lit("::<"), acc)));
-        let acc = put(camel(label_of(car(xs))), acc);
+        let acc = put(variant_name(label_of(car(xs))), acc);
         let acc = put(str_lit("("), acc);
         put(str_lit("))"), put_exp(c, second(xs), n, value(), acc))
     } else if (string_eq_p(h, str_lit("list")) && null_p(xs)) {

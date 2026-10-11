@@ -164,3 +164,24 @@ impl Show for crate::Void {
         match *self {}
     }
 }
+
+/// A procedure shown at the top level, whatever made it: Fixpt writes how
+/// its machine made one, which a comparison takes as any procedure.
+pub struct Procedure;
+
+impl Show for Procedure {
+    fn show(&self, out: &mut String) {
+        out.push_str("#<procedure>");
+    }
+}
+
+/// A flat array, as Fixpt writes its own: its elements, and their bytes.
+impl<T: Copy> Show for [Cell<T>] {
+    fn show(&self, out: &mut String) {
+        let n = self.len();
+        out.push_str(&format!(
+            "#<flat-array {n} fields {} bytes>",
+            n * std::mem::size_of::<T>()
+        ));
+    }
+}

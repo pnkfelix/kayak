@@ -78,12 +78,17 @@ pub fn mangle(s: Str) -> Str {
     }
 }
 
+/// An operator's character as Rust's names write it (`ok?` is `Ok_p`),
+/// since none is a Rust name's; `-` begins a word.
 pub fn camel_chars(mut cs: Chars, mut up: bool, mut acc: Chars) -> Chars {
     loop {
         if null_p(cs) {
             return acc;
         } else if char_eq_p(car(cs), '-') {
             (cs, up) = (cdr(cs), true);
+            continue;
+        } else if not(string_eq_p(mangle_char(car(cs)), char_to_string(car(cs)))) {
+            (cs, up, acc) = (cdr(cs), false, put(mangle_char(car(cs)), acc));
             continue;
         } else if up {
             (cs, up, acc) = (cdr(cs), false, cons(char_upcase(car(cs)), acc));
@@ -98,5 +103,10 @@ pub fn camel_chars(mut cs: Chars, mut up: bool, mut acc: Chars) -> Chars {
 /// A KFX name as a Rust type's: `got-list` is `GotList`.
 pub fn camel(s: Str) -> Str {
     rev_to_string(camel_chars(string_chars(s), true, nil::<char>()))
+}
+
+/// A tag's or a sum's label as a Rust variant's name: camel-cased.
+pub fn variant_name(s: Str) -> Str {
+    camel(s)
 }
 

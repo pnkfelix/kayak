@@ -113,7 +113,7 @@
   (lambda (v xs)
     "A define-datatype's name, parameters and variants, whose fields'
      types may name the parameters; no two tags camel-cased alike in Rust."
-   (if (repeated? (map (lambda ((vt sexp)) (camel (tagcase (car (items vt)) (sym (n at-file at-pos) n) (else other "")))) (cdr xs)))
+   (if (repeated? (map (lambda ((vt sexp)) (variant-name (tagcase (car (items vt)) (sym (n at-file at-pos) n) (else other "")))) (cdr xs)))
        (refuse v "two tags of one datatype named alike in Rust (camel-cased)")
     (let ((params (family-params v (car xs))))
       (dt (head-name v (car xs))
@@ -484,9 +484,12 @@
                 ((string=? h "define*") (check-define* v xs))
                 (else (tagcase (synth (at v "a top-level expression" nil) (new-state) form)
                         (res (t es s)
-                          (with-facts v (settle-facts (if (void? s t) (note-fact s src-file src-pos "void") s)))))))))
+                          (with-facts v (settle-facts (cond ((void? s t) (note-fact s src-file src-pos "void"))
+                                                            ((proc-type? s t) (note-fact s src-file src-pos "procedure"))
+                                                            (else s))))))))))
       (else other (tagcase (synth (at v "a top-level expression" nil) (new-state) form)
-                    (res (t es s) (with-facts v (settle-facts s))))))))
+                    (res (t es s)
+                      (with-facts v (settle-facts (if (proc-type? s t) (note-fact s (datum-file form) (datum-pos form) "procedure") s)))))))))
 
 (define module-def? (subr kfx (sexp) bool)
   (lambda (form)
@@ -518,12 +521,46 @@
                              nil))
                        forms)))))
 
+(define-rec
+  (label-lists (subr kfx (sexps) (listof strings acyclic))
+    (lambda (es)
+      "The labels of every product and sum written in `es`, types and
+       `product` forms alike, each a shape the Rust names by its labels."
+      (concat (map (lambda ((e sexp))
+                     (tagcase e
+                       (lst (xs f l p)
+                         (let ((here (if (and (not (null? xs))
+                                              (or (sym-is? (car xs) "productof") (sym-is? (car xs) "sumof") (sym-is? (car xs) "product"))
+                                              (not (null? (cdr xs)))
+                                              (not (any? (lambda ((x sexp)) (tagcase x (lst (ys f2 l2 p2) (null? ys)) (else other #t))) (cdr xs))))
+                                         (the (listof strings acyclic)
+                                           (list (map (lambda ((x sexp)) (tagcase (car (items x)) (sym (n f3 p3) n) (else other ""))) (cdr xs))))
+                                         nil)))
+                           (onto here (label-lists xs))))
+                       (else other nil)))
+                   es)))))
+
+(define shapes-apart (subr kfx (cv sexps) unit)
+  (lambda (v forms)
+    "No two shapes of different labels named alike in Rust, their labels
+     mangled (`a?` and `a-p` are both `a_p`)."
+    (let ((lists (label-lists forms)))
+      (if (any? (lambda ((ls strings))
+                  (any? (lambda ((ms strings))
+                          (and (not (string=? (words-of ls) (words-of ms)))
+                               (string=? (words-of (map mangle ls)) (words-of (map mangle ms)))))
+                        lists))
+                lists)
+          (refuse v "two products or sums whose labels are one in Rust, mangled (`a?` and `a-p` are both `a_p`)")
+          #u))))
+
 (define type-names-free (subr kfx (cv sexps) unit)
   (lambda (v forms)
     "No type is named as one the generated Rust names: kayak-rt's (`Str`,
      `List`, ...) and the few of Rust's it writes (`Fn`, `Result`, `Copy`,
      ...); others of Rust's prelude a program's own type hides."
     (begin
+      (shapes-apart v forms)
       (map (lambda ((f sexp))
              (if (and (or (head-is? f "define-type") (head-is? f "define-datatype") (head-is? f "define-generative"))
                       (string-member? (tagcase (second (items f)) (sym (n at-file at-pos) n) (lst (ys fl ln ps) (tagcase (car ys) (sym (n at-file at-pos) n) (else other ""))) (else other ""))
@@ -773,6 +810,8 @@
     (cond ((or (head-is? f "define") (head-is? f "define*") (head-is? f "define-type") (head-is? f "define-generative"))
            (tagcase (second (items f)) (sym (n at-file at-pos) (the strings (list n))) (else other nil)))
           ((head-is? f "define-rec") (map (lambda ((b sexp)) (sym-name (car (items b)))) (cdr (items f))))
+          ((head-is? f "define-datatype")
+           (tagcase (second (items f)) (sym (n at-file at-pos) (the strings (list n))) (else other nil)))
           (else nil))))
 
 (define hidden-names (subr kfx (sexps) strings)
@@ -825,6 +864,9 @@
     (let* ((xs (items form))
            (m (name-of v (second xs)))
            (v (at v m nil))
+           (v (if (string-member? (mangle m) (list "kayak_rt" "std" "core" "alloc"))
+                  (refuse v (string-append "a module named as a Rust crate the program sees: " m))
+                  v))
            (made (tagcase (global v m (scheme nil (ty-unit))) (bind (n sc wher) (bind n sc "module"))))
            (written (cdr (items (third xs))))
            (forms (found-alone (unhidden written)))
@@ -837,8 +879,16 @@
            (given (onto (concat (map item-names forms))
                         (onto (map (lambda ((b bind)) (tagcase b (bind (n sc w) n)))
                                    (concat (map (lambda ((n string)) (opened-binds n (cv-binds v))) includes)))
-                              (map (lambda ((a alias)) (tagcase a (alias (n ps b) n)))
-                                   (concat (map (lambda ((n string)) (opened-aliases n (cv-aliases v))) includes))))))
+                              (onto (map (lambda ((a alias)) (tagcase a (alias (n ps b) n)))
+                                         (concat (map (lambda ((n string)) (opened-aliases n (cv-aliases v))) includes)))
+                                    (concat (map (lambda ((n string))
+                                                   (concat (map (lambda ((d dt))
+                                                                  (tagcase d (dt (dn ps vs)
+                                                                    (if (has-prefix? dn (string-append n ".."))
+                                                                        (the strings (list (after-prefix dn (string-append n ".."))))
+                                                                        nil))))
+                                                                (cv-dts v))))
+                                                 includes))))))
            (v (if (repeated? given) (refuse v "a name defined twice in this module, its own or included") v))
            (typed (tagcase v
                     (cv (bs ds als es here group file line fs tv at)

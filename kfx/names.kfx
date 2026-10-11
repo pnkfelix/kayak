@@ -38,8 +38,12 @@
 
 (define camel-chars (subr kfx (chars bool chars) chars)
   (lambda (cs up acc)
+    "An operator's character as Rust's names write it (`ok?` is `Ok_p`),
+     since none is a Rust name's; `-` begins a word."
     (cond ((null? cs) acc)
           ((char=? (car cs) #\-) (camel-chars (cdr cs) #t acc))
+          ((not (string=? (mangle-char (car cs)) (char->string (car cs))))
+           (camel-chars (cdr cs) #f (put (mangle-char (car cs)) acc)))
           (up (camel-chars (cdr cs) #f (cons (char-upcase (car cs)) acc)))
           (else (camel-chars (cdr cs) #f (cons (car cs) acc))))))
 
@@ -47,3 +51,8 @@
   (lambda (s)
     "A KFX name as a Rust type's: `got-list` is `GotList`."
     (rev->string (camel-chars (string-chars s) #t nil))))
+
+(define variant-name (subr kfx (string) string)
+  (lambda (s)
+    "A tag's or a sum's label as a Rust variant's name: camel-cased."
+    (camel s)))

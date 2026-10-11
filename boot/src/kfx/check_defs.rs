@@ -48,7 +48,7 @@ pub fn head_name(v: &'static Cv, head: &'static Sexp) -> Str {
 /// types may name the parameters; no two tags camel-cased alike in Rust.
 pub fn datatype_of(v: &'static Cv, xs: Sexps) -> &'static Dt {
     if repeated_p(map(lambda1(move |vt: &'static Sexp| {
-        camel({
+        variant_name({
             let tagcase_ = car(items(vt));
             match *tagcase_ {
                 Sexp::Sym(n, at_file, at_pos) => {
@@ -705,6 +705,8 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                     Res::Res(t, es, s) => {
                         with_facts(v, settle_facts(if void_p(s, t) {
                             note_fact(s, src_file, src_pos, str_lit("void"))
+                        } else if proc_type_p(s, t) {
+                            note_fact(s, src_file, src_pos, str_lit("procedure"))
                         } else {
                             s
                         }))
@@ -717,7 +719,11 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
             let tagcase_ = synth(at(v, str_lit("a top-level expression"), nil::<Str>()), new_state(), form);
             match *tagcase_ {
                 Res::Res(t, es, s) => {
-                    with_facts(v, settle_facts(s))
+                    with_facts(v, settle_facts(if proc_type_p(s, t) {
+                        note_fact(s, datum_file(form), datum_pos(form), str_lit("procedure"))
+                    } else {
+                        s
+                    }))
                 }
             }
         }
@@ -779,10 +785,70 @@ pub fn type_scopes(forms: Sexps) -> List<Strings> {
     }), forms)))
 }
 
+/// The labels of every product and sum written in `es`, types and
+/// `product` forms alike, each a shape the Rust names by its labels.
+pub fn label_lists(es: Sexps) -> List<Strings> {
+    concat(map(lambda1(move |e: &'static Sexp| {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                let here = if (not(null_p(xs)) && (sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("sumof")) || sym_is_p(car(xs), str_lit("product"))) && not(null_p(cdr(xs))) && not(any_p(lambda1(move |x: &'static Sexp| {
+                    let tagcase_ = x;
+                    match *tagcase_ {
+                        Sexp::Lst(ys, f2, l2, p2) => {
+                            null_p(ys)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            true
+                        }
+                    }
+                }), cdr(xs)))) {
+                    the::<List<Strings>>(kayak_rt::cons(map(lambda1(move |x: &'static Sexp| {
+                        let tagcase_ = car(items(x));
+                        match *tagcase_ {
+                            Sexp::Sym(n, f3, p3) => {
+                                n
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                str_lit("")
+                            }
+                        }
+                    }), cdr(xs)), kayak_rt::nil()))
+                } else {
+                    nil::<List<Str>>()
+                };
+                onto(here, label_lists(xs))
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<List<Str>>()
+            }
+        }
+    }), es))
+}
+
+/// No two shapes of different labels named alike in Rust, their labels
+/// mangled (`a?` and `a-p` are both `a_p`).
+pub fn shapes_apart(v: &'static Cv, forms: Sexps) -> () {
+    let lists = label_lists(forms);
+    if any_p(lambda1(move |ls: Strings| {
+        any_p(lambda1(move |ms: Strings| {
+            (not(string_eq_p(words_of(ls), words_of(ms))) && string_eq_p(words_of(map(&mangle, ls)), words_of(map(&mangle, ms))))
+        }), lists)
+    }), lists) {
+        match refuse(v, str_lit("two products or sums whose labels are one in Rust, mangled (`a?` and `a-p` are both `a_p`)")) {}
+    } else {
+        ()
+    }
+}
+
 /// No type is named as one the generated Rust names: kayak-rt's (`Str`,
 /// `List`, ...) and the few of Rust's it writes (`Fn`, `Result`, `Copy`,
 /// ...); others of Rust's prelude a program's own type hides.
 pub fn type_names_free(v: &'static Cv, forms: Sexps) -> () {
+    shapes_apart(v, forms);
     map(lambda1(move |f: &'static Sexp| {
         if ((head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-datatype")) || head_is_p(f, str_lit("define-generative"))) && string_member_p({
             let tagcase_ = second(items(f));
@@ -1245,6 +1311,17 @@ pub fn item_names(f: &'static Sexp) -> Strings {
         map(lambda1(move |b: &'static Sexp| {
             sym_name(car(items(b)))
         }), cdr(items(f)))
+    } else if head_is_p(f, str_lit("define-datatype")) {
+        let tagcase_ = second(items(f));
+        match *tagcase_ {
+            Sexp::Sym(n, at_file, at_pos) => {
+                the::<Strings>(kayak_rt::cons(n, kayak_rt::nil()))
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<Str>()
+            }
+        }
     } else {
         nil::<Str>()
     }
@@ -1334,6 +1411,11 @@ pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
     let xs = items(form);
     let m = name_of(v, second(xs));
     let v = at(v, m, nil::<Str>());
+    let v = if string_member_p(mangle(m), kayak_rt::cons(str_lit("kayak_rt"), kayak_rt::cons(str_lit("std"), kayak_rt::cons(str_lit("core"), kayak_rt::cons(str_lit("alloc"), kayak_rt::nil()))))) {
+        match refuse(v, string_append(str_lit("a module named as a Rust crate the program sees: "), m)) {}
+    } else {
+        v
+    };
     let made = {
         let tagcase_ = global(v, m, scheme(nil::<Str>(), ty_unit()));
         match *tagcase_ {
@@ -1371,7 +1453,7 @@ pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
         }
     }), concat(map(lambda1(move |n: Str| {
         opened_binds(n, cv_binds(v))
-    }), includes))), map(lambda1(move |a: &'static Alias| {
+    }), includes))), onto(map(lambda1(move |a: &'static Alias| {
         let tagcase_ = a;
         match *tagcase_ {
             Alias::Alias(n, ps, b) => {
@@ -1380,6 +1462,19 @@ pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
         }
     }), concat(map(lambda1(move |n: Str| {
         opened_aliases(n, cv_aliases(v))
+    }), includes))), concat(map(lambda1(move |n: Str| {
+        concat(map(lambda1(move |d: &'static Dt| {
+            let tagcase_ = d;
+            match *tagcase_ {
+                Dt::Dt(dn, ps, vs) => {
+                    if has_prefix_p(dn, string_append(n, str_lit(".."))) {
+                        the::<Strings>(kayak_rt::cons(after_prefix(dn, string_append(n, str_lit(".."))), kayak_rt::nil()))
+                    } else {
+                        nil::<Str>()
+                    }
+                }
+            }
+        }), cv_dts(v)))
     }), includes)))));
     let v = if repeated_p(given) {
         match refuse(v, str_lit("a name defined twice in this module, its own or included")) {}
