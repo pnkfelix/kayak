@@ -853,6 +853,24 @@ pub fn conversion_bind(mut name: Str, mut bs: Binds) -> Binds {
     }
 }
 
+pub fn char_lower_p(c: char) -> bool {
+    has_char_in_p(str_lit("abcdefghijklmnopqrstuvwxyz"), c)
+}
+
+pub fn string_has_p(s: Str, part: Str) -> bool {
+    (not(i64_lt(string_length_i64(s), string_length_i64(part))) && (has_prefix_p(s, part) || string_has_p(after_prefix(s, substring_of(s, 1i64)), part)))
+}
+
+/// Whether `n` may be a KFX name (C27): a lower-case letter or an operator's
+/// character first, then those, digits and `-`; no `--` (the emitter's
+/// `__`); and none whose Rust name kayak-rt or the emitter writes.
+pub fn kfx_name_p(n: Str) -> bool {
+    let cs = string_chars(n);
+    (not(null_p(cs)) && (char_lower_p(car(cs)) || has_char_in_p(str_lit("?!<>=+*/%-"), car(cs))) && not(any_p(lambda1(move |c: char| {
+        not((char_lower_p(c) || char_numeric_p(c) || has_char_in_p(str_lit("?!<>=+*/%-"), c)))
+    }), cs)) && not(string_has_p(n, str_lit("--"))) && not(string_member_p(mangle(n), kayak_rt::cons(str_lit("str_lit"), kayak_rt::cons(str_lit("int_lit"), kayak_rt::cons(str_lit("int_text"), kayak_rt::cons(str_lit("unreachable_unwind"), kayak_rt::cons(str_lit("kfx_toplevel"), kayak_rt::cons(str_lit("once"), kayak_rt::cons(str_lit("alloc"), kayak_rt::cons(str_lit("the"), kayak_rt::cons(str_lit("unwind"), kayak_rt::cons(str_lit("knot"), kayak_rt::cons(str_lit("lambda0"), kayak_rt::cons(str_lit("lambda1"), kayak_rt::cons(str_lit("lambda2"), kayak_rt::cons(str_lit("lambda3"), kayak_rt::cons(str_lit("lambda4"), kayak_rt::cons(str_lit("leak_string"), kayak_rt::cons(str_lit("with_big_stack"), kayak_rt::cons(str_lit("fail"), kayak_rt::cons(str_lit("make_continuation_prompt_tag"), kayak_rt::cons(str_lit("nil"), kayak_rt::cons(str_lit("cons"), kayak_rt::nil()))))))))))))))))))))))))
+}
+
 // A knot through the store (FX-26's `no_knot`): a procedure kept in
 // storage at a region, whose latent effect reads that region and does not
 // say `spin`, could be fetched from there by a procedure fetched from
@@ -1121,7 +1139,16 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                         return refuse(v, string_append(str_lit("a type KFX does not have: "), show_sexp(t)));
                     } else {
                         if (any_p(lambda1(move |f: Sexps| {
-                            has_char_in_p(label_of(car(f)), '_')
+                            let tagcase_ = car(f);
+                            match *tagcase_ {
+                                Sexp::Sym(n) => {
+                                    not(kfx_name_p(n))
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
                         }), fields) || repeated_p(map(lambda1(move |f: Sexps| {
                             label_of(car(f))
                         }), fields)) || repeated_p(map(lambda1(move |f: Sexps| {
@@ -2145,24 +2172,6 @@ pub fn cv_pos(v: &'static Cv) -> i64 {
             at
         }
     }
-}
-
-pub fn char_lower_p(c: char) -> bool {
-    has_char_in_p(str_lit("abcdefghijklmnopqrstuvwxyz"), c)
-}
-
-pub fn string_has_p(s: Str, part: Str) -> bool {
-    (not(i64_lt(string_length_i64(s), string_length_i64(part))) && (has_prefix_p(s, part) || string_has_p(after_prefix(s, substring_of(s, 1i64)), part)))
-}
-
-/// Whether `n` may be a KFX name (C27): a lower-case letter or an operator's
-/// character first, then those, digits and `-`; no `--` (the emitter's
-/// `__`); and none whose Rust name kayak-rt or the emitter writes.
-pub fn kfx_name_p(n: Str) -> bool {
-    let cs = string_chars(n);
-    (not(null_p(cs)) && (char_lower_p(car(cs)) || has_char_in_p(str_lit("?!<>=+*/%-"), car(cs))) && not(any_p(lambda1(move |c: char| {
-        not((char_lower_p(c) || char_numeric_p(c) || has_char_in_p(str_lit("?!<>=+*/%-"), c)))
-    }), cs)) && not(string_has_p(n, str_lit("--"))) && not(string_member_p(mangle(n), kayak_rt::cons(str_lit("str_lit"), kayak_rt::cons(str_lit("int_lit"), kayak_rt::cons(str_lit("int_text"), kayak_rt::cons(str_lit("unreachable_unwind"), kayak_rt::cons(str_lit("kfx_toplevel"), kayak_rt::cons(str_lit("once"), kayak_rt::cons(str_lit("alloc"), kayak_rt::cons(str_lit("the"), kayak_rt::cons(str_lit("unwind"), kayak_rt::cons(str_lit("knot"), kayak_rt::cons(str_lit("lambda0"), kayak_rt::cons(str_lit("lambda1"), kayak_rt::cons(str_lit("lambda2"), kayak_rt::cons(str_lit("lambda3"), kayak_rt::cons(str_lit("lambda4"), kayak_rt::cons(str_lit("leak_string"), kayak_rt::cons(str_lit("with_big_stack"), kayak_rt::cons(str_lit("fail"), kayak_rt::cons(str_lit("make_continuation_prompt_tag"), kayak_rt::cons(str_lit("nil"), kayak_rt::cons(str_lit("cons"), kayak_rt::nil()))))))))))))))))))))))))
 }
 
 pub fn operator_char_p(c: char) -> bool {

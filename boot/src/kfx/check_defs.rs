@@ -45,13 +45,30 @@ pub fn head_name(v: &'static Cv, head: &'static Sexp) -> Str {
 }
 
 /// A define-datatype's name, parameters and variants, whose fields'
-/// types may name the parameters.
+/// types may name the parameters; no two tags camel-cased alike in Rust.
 pub fn datatype_of(v: &'static Cv, xs: Sexps) -> &'static Dt {
-    let params = family_params(v, car(xs));
-    dt(head_name(v, car(xs)), params, map(lambda1(move |vt: &'static Sexp| {
-        let ys = items(vt);
-        variant(name_of(v, car(ys)), parse_types(v, params, cdr(ys)))
-    }), cdr(xs)))
+    if repeated_p(map(lambda1(move |vt: &'static Sexp| {
+        camel({
+            let tagcase_ = car(items(vt));
+            match *tagcase_ {
+                Sexp::Sym(n) => {
+                    n
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("")
+                }
+            }
+        })
+    }), cdr(xs))) {
+        refuse(v, str_lit("two tags of one datatype named alike in Rust (camel-cased)"))
+    } else {
+        let params = family_params(v, car(xs));
+        dt(head_name(v, car(xs)), params, map(lambda1(move |vt: &'static Sexp| {
+            let ys = items(vt);
+            variant(name_of(v, car(ys)), parse_types(v, params, cdr(ys)))
+        }), cdr(xs)))
+    }
 }
 
 pub fn constructors(d: &'static Dt) -> Binds {

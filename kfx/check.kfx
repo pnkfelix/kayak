@@ -385,6 +385,30 @@
              (the binds (list (car bs))))
             (else (conversion-bind name (cdr bs)))))))
 
+(define char-lower? (subr kfx (char) bool)
+  (lambda (c) (has-char-in? "abcdefghijklmnopqrstuvwxyz" c)))
+
+(define-rec
+  (string-has? (subr kfx (string string) bool)
+    (lambda (s part)
+      (and (not (i64< (string-length-i64 s) (string-length-i64 part)))
+           (or (has-prefix? s part) (string-has? (after-prefix s (substring-of s 1)) part))))))
+
+(define kfx-name? (subr kfx (string) bool)
+  (lambda (n)
+    "Whether `n` may be a KFX name (C27): a lower-case letter or an operator's
+     character first, then those, digits and `-`; no `--` (the emitter's
+     `__`); and none whose Rust name kayak-rt or the emitter writes."
+    (let ((cs (string-chars n)))
+      (and (not (null? cs))
+           (or (char-lower? (car cs)) (has-char-in? "?!<>=+*/%-" (car cs)))
+           (not (any? (lambda ((c char)) (not (or (char-lower? c) (char-numeric? c) (has-char-in? "?!<>=+*/%-" c)))) cs))
+           (not (string-has? n "--"))
+           (not (string-member? (mangle n) (list "str_lit" "int_lit" "int_text" "unreachable_unwind"
+                                                 "kfx_toplevel" "once" "alloc" "the" "unwind" "knot" "lambda0" "lambda1"
+                                                 "lambda2" "lambda3" "lambda4" "leak_string" "with_big_stack" "fail"
+                                                 "make_continuation_prompt_tag" "nil" "cons")))))))
+
 "A knot through the store (FX-26's `no_knot`): a procedure kept in
  storage at a region, whose latent effect reads that region and does not
  say `spin`, could be fetched from there by a procedure fetched from
@@ -528,7 +552,7 @@
                            (and (sym-is? (car xs) "sumof")
                                 (any? (lambda ((f sexps)) (tagcase (car f) (sym (n) #f) (else other #t))) fields)))
                        (refuse v (string-append "a type KFX does not have: " (show-sexp t)))
-                       (if (or (any? (lambda ((f sexps)) (has-char-in? (label-of (car f)) #\_)) fields)
+                       (if (or (any? (lambda ((f sexps)) (tagcase (car f) (sym (n) (not (kfx-name? n))) (else other #f))) fields)
                                (repeated? (map (lambda ((f sexps)) (label-of (car f))) fields))
                                (repeated? (map (lambda ((f sexps)) (camel (label-of (car f)))) fields)))
                            (refuse v (string-append "a label appears twice in " (show-sexp t)))
@@ -963,30 +987,6 @@
 
 (define cv-file (subr kfx (cv) string) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv at) file))))
 (define cv-pos (subr kfx (cv) i64) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv at) at))))
-
-(define char-lower? (subr kfx (char) bool)
-  (lambda (c) (has-char-in? "abcdefghijklmnopqrstuvwxyz" c)))
-
-(define-rec
-  (string-has? (subr kfx (string string) bool)
-    (lambda (s part)
-      (and (not (i64< (string-length-i64 s) (string-length-i64 part)))
-           (or (has-prefix? s part) (string-has? (after-prefix s (substring-of s 1)) part))))))
-
-(define kfx-name? (subr kfx (string) bool)
-  (lambda (n)
-    "Whether `n` may be a KFX name (C27): a lower-case letter or an operator's
-     character first, then those, digits and `-`; no `--` (the emitter's
-     `__`); and none whose Rust name kayak-rt or the emitter writes."
-    (let ((cs (string-chars n)))
-      (and (not (null? cs))
-           (or (char-lower? (car cs)) (has-char-in? "?!<>=+*/%-" (car cs)))
-           (not (any? (lambda ((c char)) (not (or (char-lower? c) (char-numeric? c) (has-char-in? "?!<>=+*/%-" c)))) cs))
-           (not (string-has? n "--"))
-           (not (string-member? (mangle n) (list "str_lit" "int_lit" "int_text" "unreachable_unwind"
-                                                 "kfx_toplevel" "once" "alloc" "the" "unwind" "knot" "lambda0" "lambda1"
-                                                 "lambda2" "lambda3" "lambda4" "leak_string" "with_big_stack" "fail"
-                                                 "make_continuation_prompt_tag" "nil" "cons")))))))
 
 (define operator-char? (subr kfx (char) bool)
   (lambda (c) (has-char-in? "?!<>=+*/%" c)))

@@ -100,14 +100,16 @@
 (define datatype-of (subr kfx (cv sexps) dt)
   (lambda (v xs)
     "A define-datatype's name, parameters and variants, whose fields'
-     types may name the parameters."
+     types may name the parameters; no two tags camel-cased alike in Rust."
+   (if (repeated? (map (lambda ((vt sexp)) (camel (tagcase (car (items vt)) (sym (n) n) (else other "")))) (cdr xs)))
+       (refuse v "two tags of one datatype named alike in Rust (camel-cased)")
     (let ((params (family-params v (car xs))))
       (dt (head-name v (car xs))
           params
           (map (lambda ((vt sexp))
                  (let ((ys (items vt)))
                    (variant (name-of v (car ys)) (parse-types v params (cdr ys)))))
-               (cdr xs))))))
+               (cdr xs)))))))
 
 (define constructors (subr kfx (dt) binds)
   (lambda (d)
