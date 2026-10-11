@@ -10,7 +10,7 @@
  and the names bound where an expression is. A name named as a value is
  a local, a constant (a call of its `fn`), or else a global procedure (a
  reference to its `fn`, the program's or kayak-rt's)."
-(define-datatype ctx (ctx strings tagofs strings strings typeds))
+(define-datatype ctx (ctx strings tagofs strings strings typeds facts))
 
 (define filter-typed (subr kfx (string typeds) typeds)
   (lambda (name xs)
@@ -18,24 +18,33 @@
           ((tagcase (car xs) (typed (n t) (string=? n name))) (list (car xs)))
           (else (filter-typed name (cdr xs))))))
 
+(define ctx-fact? (subr kfx (ctx string i64 string) bool)
+  (lambda (c file pos what)
+    "Whether the checker found `what` about the place `file`, `pos`."
+    (tagcase c
+      (ctx (ds ts ks ls xs fs)
+        (any? (lambda ((f fact))
+                (tagcase f (fact (ff fp fw) (and (i64= fp pos) (string=? fw what) (string=? ff file)))))
+              fs)))))
+
 (define ctx-datatypes (subr kfx (ctx) strings)
-  (lambda (c) (tagcase c (ctx (ds ts ks ls xs) ds))))
+  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs) ds))))
 
 (define ctx-tags (subr kfx (ctx) tagofs)
-  (lambda (c) (tagcase c (ctx (ds ts ks ls xs) ts))))
+  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs) ts))))
 
 (define ctx-constants (subr kfx (ctx) strings)
-  (lambda (c) (tagcase c (ctx (ds ts ks ls xs) ks))))
+  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs) ks))))
 
 (define ctx-locals (subr kfx (ctx) strings)
-  (lambda (c) (tagcase c (ctx (ds ts ks ls xs) ls))))
+  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs) ls))))
 
 (define ctx-typed (subr kfx (ctx string) sexps)
   (lambda (c name)
     "The type the checker found for a definition written with none, as a
      list of one."
     (tagcase c
-      (ctx (ds ts ks ls xs)
+      (ctx (ds ts ks ls xs fs)
         (map (lambda ((x typed)) (tagcase x (typed (n t) t)))
              (filter-typed name xs))))))
 
@@ -45,7 +54,7 @@
 (define with-locals (subr kfx (ctx strings) ctx)
   (lambda (c names)
     "`c`, where `names` are bound too."
-    (tagcase c (ctx (ds ts ks ls xs) (ctx ds ts ks (strings-onto names ls) xs)))))
+    (tagcase c (ctx (ds ts ks ls xs fs) (ctx ds ts ks (strings-onto names ls) xs fs)))))
 
 (define tag-datatype (subr kfx (string tagofs) string)
   (lambda (tag ts)
@@ -64,14 +73,14 @@
 (define note (subr kfx (sexp ctx) ctx)
   (lambda (form c)
     (tagcase c
-      (ctx (ds ts ks ls xs)
+      (ctx (ds ts ks ls xs fs)
         (cond ((head-is? form "define-datatype")
                (let ((d (sym-name (second (items form)))))
-                 (ctx (cons d ds) (note-tags (cdr (cdr (items form))) d ts) ks ls xs)))
+                 (ctx (cons d ds) (note-tags (cdr (cdr (items form))) d ts) ks ls xs fs)))
               ((and (head-is? form "define")
                     (or (i64= (size (items form)) 3) (i64= (size (items form)) 4))
                     (not (procedure? (last (items form)))))
-               (ctx ds ts (cons (sym-name (second (items form))) ks) ls xs))
+               (ctx ds ts (cons (sym-name (second (items form))) ks) ls xs fs))
               (else c))))))
 
 (define collect (subr kfx (sexps ctx) ctx)
@@ -101,8 +110,7 @@
       (tagcase t
         (sym (s)
           (cond ((string=? s "i64") (put "i64" acc))
-                ((string=? s "int")
-                 (error "kfx: KFX has no int, whose + makes a bignum; write i64, whose i64+ wraps"))
+                ((string=? s "int") (put "Int" acc))
                 ((string=? s "bool") (put "bool" acc))
                 ((string=? s "char") (put "char" acc))
                 ((string=? s "unit") (put "()" acc))
@@ -276,7 +284,10 @@
              (put ";" (put-exp c e n (value) (put "return " acc))))
             (else
              (tagcase e
-               (num (k num-file num-pos) (put "i64" (put (i64->string k) acc)))
+               (num (k num-file num-pos)
+                 (if (ctx-fact? c num-file num-pos "int")
+                     (put ")" (put (i64->string k) (put "int_lit(" acc)))
+                     (put "i64" (put (i64->string k) acc))))
                (chr (ch) (put "'" (put-escaped (list ch) #\' (put "'" acc))))
                (str (s) (put "\")" (put-escaped (string-chars s) #\" (put "str_lit(\"" acc))))
                (sym (s) (put-var c s acc))

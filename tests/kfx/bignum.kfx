@@ -1,0 +1,46 @@
+"int: FX-26's integer, with no bound, in Rust a bignum of kayak-rt's. A
+ literal is an int where nothing else is expected, as in FX-26."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-type strings (listof string acyclic))
+
+(define words (subr kfx (strings) string)
+  (lambda (xs)
+    (cond ((null? xs) "")
+          ((null? (cdr xs)) (car xs))
+          (else (string-append (car xs) (string-append " " (words (cdr xs))))))))
+
+(define factorial (subr kfx (int int) int)
+  (lambda (n acc) (if (= n 0) acc (factorial (- n 1) (* acc n)))))
+
+(define fib (subr kfx (int int int) int)
+  (lambda (n a b) (if (= n 0) a (fib (- n 1) b (+ a b)))))
+
+(define power (subr kfx (int int) int)
+  (lambda (b e) (if (= e 0) 1 (* b (power b (- e 1))))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (let* ((big (factorial 30 1))
+           (n 5)
+           (huge (power 10 40))
+           (odd (+ (power 2 70) 12345)))
+      (words
+       (list (int->string big)
+             (int->string (fib 150 0 1))
+             (int->string (power 2 100))
+             (int->string (power -3 41))
+             (int->string (quotient huge odd))
+             (int->string (remainder huge odd))
+             (int->string (remainder (- 0 huge) 7))
+             (int->string (modulo (- 0 huge) 7))
+             (int->string (quotient -7 2)) (int->string (remainder -7 2))
+             (int->string (modulo -7 2)) (int->string (modulo 7 -2))
+             (i64->string (int->i64 (+ (power 2 64) n)))
+             (i64->string (int->i64 (power 2 63)))
+             (int->string (i64->int 9223372036854775807))
+             (if (< (power 2 63) (power 2 64)) "<" "not <")
+             (if (= (- (power 2 64) (power 2 64)) 0) "=0" "not =0")
+             (if (> (- 0 (power 2 64)) (- 0 (power 2 65))) ">" "not >")
+             (int->string (* n n)))))))

@@ -23,11 +23,11 @@ pub type Tagofs = List<&'static Tagof>;
 // a local, a constant (a call of its `fn`), or else a global procedure (a
 // reference to its `fn`, the program's or kayak-rt's).
 pub enum Ctx {
-    Ctx(Strings, Tagofs, Strings, Strings, Typeds),
+    Ctx(Strings, Tagofs, Strings, Strings, Typeds, Facts),
 }
 
-pub fn ctx(f0: Strings, f1: Tagofs, f2: Strings, f3: Strings, f4: Typeds) -> &'static Ctx {
-    alloc(Ctx::Ctx(f0, f1, f2, f3, f4))
+pub fn ctx(f0: Strings, f1: Tagofs, f2: Strings, f3: Strings, f4: Typeds, f5: Facts) -> &'static Ctx {
+    alloc(Ctx::Ctx(f0, f1, f2, f3, f4, f5))
 }
 
 pub fn filter_typed(mut name: Str, mut xs: Typeds) -> Typeds {
@@ -50,10 +50,27 @@ pub fn filter_typed(mut name: Str, mut xs: Typeds) -> Typeds {
     }
 }
 
+/// Whether the checker found `what` about the place `file`, `pos`.
+pub fn ctx_fact_p(c: &'static Ctx, file: Str, pos: i64, what: Str) -> bool {
+    let tagcase_ = c;
+    match *tagcase_ {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs) => {
+            any_p(lambda1(move |f: &'static Fact| {
+                let tagcase_ = f;
+                match *tagcase_ {
+                    Fact::Fact(ff, fp, fw) => {
+                        (i64_eq(fp, pos) && string_eq_p(fw, what) && string_eq_p(ff, file))
+                    }
+                }
+            }), fs)
+        }
+    }
+}
+
 pub fn ctx_datatypes(c: &'static Ctx) -> Strings {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs) => {
             ds
         }
     }
@@ -62,7 +79,7 @@ pub fn ctx_datatypes(c: &'static Ctx) -> Strings {
 pub fn ctx_tags(c: &'static Ctx) -> Tagofs {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs) => {
             ts
         }
     }
@@ -71,7 +88,7 @@ pub fn ctx_tags(c: &'static Ctx) -> Tagofs {
 pub fn ctx_constants(c: &'static Ctx) -> Strings {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs) => {
             ks
         }
     }
@@ -80,7 +97,7 @@ pub fn ctx_constants(c: &'static Ctx) -> Strings {
 pub fn ctx_locals(c: &'static Ctx) -> Strings {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs) => {
             ls
         }
     }
@@ -91,7 +108,7 @@ pub fn ctx_locals(c: &'static Ctx) -> Strings {
 pub fn ctx_typed(c: &'static Ctx, name: Str) -> Sexps {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs) => {
             map(lambda1(move |x: &'static Typed| {
                 let tagcase_ = x;
                 match *tagcase_ {
@@ -119,8 +136,8 @@ pub fn strings_onto(mut xs: Strings, mut ys: Strings) -> Strings {
 pub fn with_locals(c: &'static Ctx, names: Strings) -> &'static Ctx {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs) => {
-            ctx(ds, ts, ks, strings_onto(names, ls), xs)
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs) => {
+            ctx(ds, ts, ks, strings_onto(names, ls), xs, fs)
         }
     }
 }
@@ -159,12 +176,12 @@ pub fn note_tags(mut variants: Sexps, mut d: Str, mut ts: Tagofs) -> Tagofs {
 pub fn note(form: &'static Sexp, c: &'static Ctx) -> &'static Ctx {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs) => {
             if head_is_p(form, str_lit("define-datatype")) {
                 let d = sym_name(second(items(form)));
-                ctx(cons(d, ds), note_tags(cdr(cdr(items(form))), d, ts), ks, ls, xs)
+                ctx(cons(d, ds), note_tags(cdr(cdr(items(form))), d, ts), ks, ls, xs, fs)
             } else if (head_is_p(form, str_lit("define")) && (i64_eq(size(items(form)), 3i64) || i64_eq(size(items(form)), 4i64)) && not(procedure_p(last(items(form))))) {
-                ctx(ds, ts, cons(sym_name(second(items(form))), ks), ls, xs)
+                ctx(ds, ts, cons(sym_name(second(items(form))), ks), ls, xs, fs)
             } else {
                 c
             }
@@ -219,7 +236,7 @@ pub fn put_type(c: &'static Ctx, t: &'static Sexp, acc: Chars) -> Chars {
             if string_eq_p(s, str_lit("i64")) {
                 put(str_lit("i64"), acc)
             } else if string_eq_p(s, str_lit("int")) {
-                error(str_lit("kfx: KFX has no int, whose + makes a bignum; write i64, whose i64+ wraps"))
+                put(str_lit("Int"), acc)
             } else if string_eq_p(s, str_lit("bool")) {
                 put(str_lit("bool"), acc)
             } else if string_eq_p(s, str_lit("char")) {
@@ -537,7 +554,11 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Num(k, num_file, num_pos) => {
-                put(str_lit("i64"), put(i64_to_string(k), acc))
+                if ctx_fact_p(c, num_file, num_pos, str_lit("int")) {
+                    put(str_lit(")"), put(i64_to_string(k), put(str_lit("int_lit("), acc)))
+                } else {
+                    put(str_lit("i64"), put(i64_to_string(k), acc))
+                }
             }
             Sexp::Chr(ch) => {
                 put(str_lit("'"), put_escaped(cons(ch, nil()), '\'', put(str_lit("'"), acc)))

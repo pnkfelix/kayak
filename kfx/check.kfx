@@ -15,6 +15,7 @@
 
 (define-datatype ty
   (ty-i64)
+  (ty-int)
   (ty-bool)
   (ty-char)
   (ty-unit)
@@ -65,12 +66,20 @@
  the type abbreviations, the effect abbreviations, the definition being
  checked, its recursive group (whose calls are `spin`), and where the
  innermost list being checked began (a file, a line; for messages)."
-(define-datatype cv (cv binds dts aliases effdefs string strings string i64))
+(define-datatype cv (cv binds dts aliases effdefs string strings string i64 facts))
 
-"Inference variables solved so far, and the next one's number."
+"Facts: what the checker found about a place, a file and an offset, for
+ the emitter, which knows no types. `int`: the number literal there is an
+ `int`, not an `i64`. A definition's facts are in its state while it is
+ checked, then in `cv`'s, for the definitions after it, and the program's
+ go to the emitter (`verdict`)."
+(define-datatype fact (fact string i64 string))
+(define-type facts (listof fact acyclic))
+
+"Inference variables solved so far, the next one's number, and facts."
 (define-datatype sb (sb i64 ty))
 (define-type sbs (listof sb acyclic))
-(define-datatype st (st sbs i64))
+(define-datatype st (st sbs i64 facts))
 
 "What checking an expression gives: its type, its effect, and the state."
 (define-datatype res (res ty strings st))
@@ -93,14 +102,14 @@
             (else (string-append (show-sexp (car xs)) (string-append " " (show-sexps (cdr xs)))))))))
 
 (define cv-where (subr kfx (cv) string)
-  (lambda (v) (tagcase v (cv (bs ds as es here group file line) here))))
+  (lambda (v) (tagcase v (cv (bs ds as es here group file line fs) here))))
 
 (define refuse (subr kfx (cv string) void)
   (lambda (v message)
     "An error, said where: the innermost list being checked, and the
      definition."
     (tagcase v
-      (cv (bs ds as es here group file line)
+      (cv (bs ds as es here group file line fs)
         (error (string-append "kfx: "
                  (string-append (if (i64= line 0) "" (string-append file (string-append ":" (string-append (i64->string line) ": "))))
                    (string-append "in " (string-append here (string-append ": " message))))))))))
@@ -150,7 +159,7 @@
           (effdef (n atoms) (if (string=? n name) atoms (find-effdef v name (cdr es))))))))
 
 (define cv-effdefs (subr kfx (cv) effdefs)
-  (lambda (v) (tagcase v (cv (bs ds as es here group file line) es))))
+  (lambda (v) (tagcase v (cv (bs ds as es here group file line fs) es))))
 
 (define region-name (subr kfx (cv strings sexp) string)
   (lambda (v tvars r)
@@ -188,10 +197,10 @@
 
 "Types"
 
-(define cv-dts (subr kfx (cv) dts) (lambda (v) (tagcase v (cv (bs ds as es here group file line) ds))))
-(define cv-aliases (subr kfx (cv) aliases) (lambda (v) (tagcase v (cv (bs ds as es here group file line) as))))
-(define cv-binds (subr kfx (cv) binds) (lambda (v) (tagcase v (cv (bs ds as es here group file line) bs))))
-(define cv-group (subr kfx (cv) strings) (lambda (v) (tagcase v (cv (bs ds as es here group file line) group))))
+(define cv-dts (subr kfx (cv) dts) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs) ds))))
+(define cv-aliases (subr kfx (cv) aliases) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs) as))))
+(define cv-binds (subr kfx (cv) binds) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs) bs))))
+(define cv-group (subr kfx (cv) strings) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs) group))))
 
 (define dt-named? (subr kfx (string dts) bool)
   (lambda (name ds)
@@ -211,13 +220,12 @@
       (tagcase t
         (sym (s)
           (cond ((string=? s "i64") (ty-i64))
+                ((string=? s "int") (ty-int))
                 ((string=? s "bool") (ty-bool))
                 ((string=? s "char") (ty-char))
                 ((string=? s "unit") (ty-unit))
                 ((string=? s "string") (ty-string))
                 ((string=? s "void") (ty-void))
-                ((string=? s "int")
-                 (refuse v "KFX has no int, whose + makes a bignum; write i64, whose i64+ wraps"))
                 ((string-member? s tvars) (ty-var s))
                 ((dt-named? s (cv-dts v)) (ty-data s))
                 (else
@@ -271,6 +279,7 @@
     (lambda (s t)
       (tagcase (walk s t)
         (ty-i64 () "i64")
+        (ty-int () "int")
         (ty-bool () "bool")
         (ty-char () "char")
         (ty-unit () "unit")
@@ -297,7 +306,7 @@
       (tagcase t
         (ty-meta (k)
           (tagcase s
-            (st (subst next)
+            (st (subst next fs)
               (let ((found (lookup-meta k subst)))
                 (if (null? found) t (walk s (car found)))))))
         (else other t))))
@@ -322,11 +331,18 @@
 (define fresh (subr kfx (st) res)
   (lambda (s)
     "A new inference variable."
-    (tagcase s (st (subst next) (res (ty-meta next) nil (st subst (i64+ next 1)))))))
+    (tagcase s (st (subst next fs) (res (ty-meta next) nil (st subst (i64+ next 1) fs))))))
+
+(define note-fact (subr kfx (st string i64 string) st)
+  (lambda (s file pos what)
+    (tagcase s (st (subst next fs) (st subst next (cons (fact file pos what) fs))))))
+
+(define st-facts (subr kfx (st) facts)
+  (lambda (s) (tagcase s (st (subst next fs) fs))))
 
 (define solve (subr kfx (st i64 ty) st)
   (lambda (s k t)
-    (tagcase s (st (subst next) (st (cons (sb k t) subst) next)))))
+    (tagcase s (st (subst next fs) (st (cons (sb k t) subst) next fs)))))
 
 (define-rec
   (occurs? (subr kfx (st i64 ty) bool)
@@ -343,6 +359,7 @@
   (lambda (a e)
     (tagcase a
       (ty-i64 () (tagcase e (ty-i64 () #t) (else other #f)))
+      (ty-int () (tagcase e (ty-int () #t) (else other #f)))
       (ty-bool () (tagcase e (ty-bool () #t) (else other #f)))
       (ty-char () (tagcase e (ty-char () #t) (else other #f)))
       (ty-unit () (tagcase e (ty-unit () #t) (else other #f)))
@@ -483,11 +500,11 @@
     "`v`, checking a list that began at `line` of `file`."
     (if (i64= line 0)
         v
-        (tagcase v (cv (bs ds as es here group f l) (cv bs ds as es here group file line))))))
+        (tagcase v (cv (bs ds as es here group f l fs) (cv bs ds as es here group file line fs))))))
 
 (define with-binds (subr kfx (cv binds) cv)
   (lambda (v more)
-    (tagcase v (cv (bs ds as es here group file line) (cv (bind-onto more bs) ds as es here group file line)))))
+    (tagcase v (cv (bs ds as es here group file line fs) (cv (bind-onto more bs) ds as es here group file line fs)))))
 
 (define local (subr kfx (cv string ty) bind)
   (lambda (v name t)
@@ -510,10 +527,6 @@
     (cond ((not (string=? where "global")) nil)
           ((proc-type? s t) (list "spin" (string-append "g:" name)))
           (else (list (string-append "g:" name))))))
-
-(define literal-int (subr kfx (cv) void)
-  (lambda (v)
-    (refuse v "a literal with nothing expected is an int, which KFX does not have: write (the i64 n)")))
 
 (define void? (subr kfx (st ty) bool)
   (lambda (s t) (tagcase (walk s t) (ty-void () #t) (else other #f))))
@@ -599,7 +612,7 @@
   (synth (subr kfx (cv st sexp) res)
     (lambda (v s e)
       (tagcase e
-        (num (k num-file num-pos) (literal-int v))
+        (num (k num-file num-pos) (res (ty-int) nil (note-fact s num-file num-pos "int")))
         (chr (c) (res (ty-char) nil s))
         (str (x) (res (ty-string) nil s))
         (sym (name) (synth-name v s name))
@@ -627,9 +640,13 @@
       (let ((x (walk s expected)))
         (tagcase e
           (num (k num-file num-pos)
+            "A literal is an `i64` where one is expected, and otherwise an
+             `int`, as in FX-26: an inference variable it meets is solved
+             to `int`."
             (tagcase x
               (ty-i64 () (res x nil s))
-              (ty-meta (m) (literal-int v))
+              (ty-int () (res x nil (note-fact s num-file num-pos "int")))
+              (ty-meta (m) (res (ty-int) nil (note-fact (solve s m (ty-int)) num-file num-pos "int")))
               (else other (refuse v (string-append "a literal is here, where a "
                                                    (string-append (show-ty s x) " is expected"))))))
           (lst (xs src-file src-line src-pos)
@@ -689,20 +706,20 @@
              (check-lambda v s (items (car xs)) (cdr xs) (walk s expected)))
             ((and (string=? h "list") (tagcase expected (ty-list (el) #t) (else other #f)))
              (tagcase expected
-               (ty-list (el) (res expected (elements v s xs el) s))
+               (ty-list (el) (tagcase (elements v s xs el) (res (u es s) (res expected es s))))
                (else other (check-by-synth v s e expected))))
             ((or (string=? h "the") (string=? h "and") (string=? h "or") (string=? h "lambda") (string=? h "list"))
              (check-by-synth v s e expected))
             (else (synth-call v s h xs (list expected))))))
 
-  (elements (subr kfx (cv st sexps ty) strings)
+  (elements (subr kfx (cv st sexps ty) res)
     (lambda (v s xs el)
-      "The effect of a list's elements, each checked as `el`; the state is
-       dropped, since `el` is known."
+      "A list's elements, each checked as `el`: their effect, and the state,
+       which carries their facts."
       (if (null? xs)
-          nil
+          (res el nil s)
           (tagcase (check v s (car xs) el)
-            (res (t es s) (effs-union es (elements v s (cdr xs) el)))))))
+            (res (t es s) (with-effs (elements v s (cdr xs) el) es))))))
 
   (bools (subr kfx (cv st sexps) res)
     (lambda (v s xs)
@@ -841,7 +858,7 @@
                                   (string-append " is not within " (show-effs ees)))))))))))
         (else other (refuse v "a lambda where no procedure is expected")))))
 
-  (lambda-effects (subr kfx (cv st sexps sexps ty) strings)
+  (lambda-effects (subr kfx (cv st sexps sexps ty) res)
     (lambda (v s params forms t)
       "A lambda's body's effect, the body checked against the type `t`'s
        parameters and result, but not its effect: what `define*` finds."
@@ -849,9 +866,8 @@
         (ty-proc (ees eps er)
           (if (not (i64= (size params) (size eps)))
               (refuse v "a lambda of the wrong number of parameters")
-              (tagcase (body (with-binds v (bind-params v params eps))
-                             (check-written-params v s params eps) forms (list er))
-                (res (r es s) es))))
+              (body (with-binds v (bind-params v params eps))
+                    (check-written-params v s params eps) forms (list er))))
         (else other (refuse v "a lambda where no procedure is expected")))))
 
   (check-written-params (subr kfx (cv st sexps tys) st)
@@ -933,6 +949,11 @@
    (i64= (subr pure (i64 i64) bool)) (i64< (subr pure (i64 i64) bool)) (i64> (subr pure (i64 i64) bool))
    (i64<= (subr pure (i64 i64) bool)) (i64>= (subr pure (i64 i64) bool))
    (not (subr pure (bool) bool))
+   (+ (subr pure (int int) int)) (- (subr pure (int int) int)) (* (subr pure (int int) int))
+   (quotient (subr pure (int int) int)) (remainder (subr pure (int int) int)) (modulo (subr pure (int int) int))
+   (= (subr pure (int int) bool)) (< (subr pure (int int) bool)) (> (subr pure (int int) bool))
+   (<= (subr pure (int int) bool)) (>= (subr pure (int int) bool))
+   (int->string (subr pure (int) string)) (int->i64 (subr pure (int) i64)) (i64->int (subr pure (i64) int))
    (char=? (subr pure (char char) bool)) (char-whitespace? (subr pure (char) bool))
    (char-numeric? (subr pure (char) bool)) (char-alphabetic? (subr pure (char) bool))
    (char-upcase (subr pure (char) char)) (char->string (subr pure (char) string))
@@ -1031,8 +1052,8 @@
   (lambda (v xs)
     "`v`, with a define-effect's abbreviation."
     (tagcase v
-      (cv (bs ds as es here group file line)
-        (cv bs ds as (cons (effdef (name-of v (second xs)) (parse-effect v nil (third xs))) es) here group file line)))))
+      (cv (bs ds as es here group file line fs)
+        (cv bs ds as (cons (effdef (name-of v (second xs)) (parse-effect v nil (third xs))) es) here group file line fs)))))
 
 (define declare-datatypes (subr kfx (cv sexps dts) dts)
   (lambda (v forms ds)
@@ -1047,7 +1068,7 @@
 
 (define at (subr kfx (cv string strings) cv)
   (lambda (v here group)
-    (tagcase v (cv (bs ds as es h g file line) (cv bs ds as es here group file line)))))
+    (tagcase v (cv (bs ds as es h g file line fs) (cv bs ds as es here group file line fs)))))
 
 (define runtime-name? (subr kfx (string) bool)
   (lambda (name)
@@ -1082,7 +1103,15 @@
         (tagcase (car bs)
           (bind (n sc where) (defined-once (with-binds v (list (global v n sc))) (cdr bs)))))))
 
-(define new-state (subr kfx () st) (lambda () (st nil 0)))
+(define new-state (subr kfx () st) (lambda () (st nil 0 nil)))
+
+(define with-facts (subr kfx (cv facts) cv)
+  (lambda (v more)
+    "`v`, with a definition's facts."
+    (tagcase v (cv (bs ds as es here group file line fs) (cv bs ds as es here group file line (onto more fs))))))
+
+(define cv-facts (subr kfx (cv) facts)
+  (lambda (v) (tagcase v (cv (bs ds as es here group file line fs) fs))))
 
 (define check-procedure (subr kfx (cv sexp scheme) cv)
   (lambda (v defined sc)
@@ -1091,7 +1120,7 @@
       (tagcase sc
         (scheme (tvars t)
           (tagcase (check-lambda v (new-state) (items (second lam)) (cdr (cdr lam)) t)
-            (res (u es s) v)))))))
+            (res (u es s) (with-facts v (st-facts s)))))))))
 
 (define variants-dt (subr kfx (cv string) (listof dt acyclic))
   (lambda (v d)
@@ -1099,6 +1128,18 @@
       (if (null? found)
           (refuse v (string-append "no datatype is named " d))
           (list (dt d (car found)))))))
+
+(define check-members (subr kfx (cv sexps strings) cv)
+  (lambda (v bindings names)
+    "A define-rec's members, one by one, each one's facts kept."
+    (if (null? bindings)
+        v
+        (let ((ys (items (car bindings))))
+          (if (procedure? (third ys))
+              (check-members (check-procedure (at v (name-of v (car ys)) names) (third ys)
+                                              (parse-scheme v (second ys)))
+                             (cdr bindings) names)
+              (refuse v "a define-rec binds only lambdas"))))))
 
 (define check-rec (subr kfx (cv sexps) cv)
   (lambda (v bindings)
@@ -1108,15 +1149,7 @@
                                        (let ((ys (items b)))
                                          (global v (name-of v (car ys)) (parse-scheme v (second ys)))))
                                      bindings))))
-      (begin
-        (map (lambda ((b sexp))
-               (let ((ys (items b)))
-                 (if (procedure? (third ys))
-                     (check-procedure (at named (name-of v (car ys)) names) (third ys)
-                                      (parse-scheme v (second ys)))
-                     (refuse v "a define-rec binds only lambdas"))))
-             bindings)
-        named))))
+      (check-members named bindings names))))
 
 (define global-reads (subr kfx (strings) strings)
   (lambda (es)
@@ -1144,9 +1177,11 @@
                 (ty-proc (declared ps r)
                   (let* ((wide (ty-proc (effs-union (list "@globals") declared) ps r))
                          (named (with-binds v (list (global v name (scheme tvars wide)))))
-                         (es (lambda-effects named (new-state) (items (second lam)) (cdr (cdr lam)) wide)))
+                         (found (lambda-effects named (new-state) (items (second lam)) (cdr (cdr lam)) wide))
+                         (es (tagcase found (res (u es s) es)))
+                         (fs (tagcase found (res (u es s) (st-facts s)))))
                     (if (effs-within? es (effs-union (list "@globals") declared))
-                        (with-binds v (list (global v name (scheme tvars (ty-proc (effs-union (global-reads es) declared) ps r)))))
+                        (with-facts (with-binds v (list (global v name (scheme tvars (ty-proc (effs-union (global-reads es) declared) ps r))))) fs)
                         (refuse v (string-append "a define* whose effect " (string-append (show-effs es)
                                   (string-append " is not within " (show-effs declared))))))))
                 (else other (refuse v "a define* is of a procedure")))))))))
@@ -1183,13 +1218,14 @@
                                                  es)
                                            (refuse v (string-append "a constant whose value has the effect " (string-append (show-effs es)
                                                      ": KFX's constant is a fn, run at each use, so its value may only read globals")))
-                                           named)))
+                                           (with-facts named (st-facts s)))))
                                    (refuse v "a poly constant: only a procedure may be poly"))))))))
                 ((string=? h "define-rec") (check-rec v (cdr xs)))
                 ((string=? h "define*") (check-define* v xs))
                 (else (tagcase (synth (at v "a top-level expression" nil) (new-state) form)
-                        (res (t es s) v))))))
-      (else other (tagcase (synth (at v "a top-level expression" nil) (new-state) form) (res (t es s) v))))))
+                        (res (t es s) (with-facts v (st-facts s))))))))
+      (else other (tagcase (synth (at v "a top-level expression" nil) (new-state) form)
+                    (res (t es s) (with-facts v (st-facts s))))))))
 
 (define type-names-free (subr kfx (cv sexps) unit)
   (lambda (v forms)
@@ -1231,6 +1267,7 @@
        procedure's is written `pure`."
       (tagcase (walk s t)
         (ty-i64 () (sym "i64"))
+        (ty-int () (sym "int"))
         (ty-bool () (sym "bool"))
         (ty-char () (sym "char"))
         (ty-unit () (sym "unit"))
@@ -1263,7 +1300,7 @@
                            es))
                 (refuse v (string-append "a constant whose value has the effect " (string-append (show-effs es)
                           ": KFX's constant is a fn, run at each use, so its value may only read globals")))
-                (elab (with-binds v (list (global v name (scheme nil (zonk s t)))))
+                (elab (with-facts (with-binds v (list (global v name (scheme nil (zonk s t))))) (st-facts s))
                       (list (typed name written))))))))))
 
 (define untyped? (subr kfx (sexp) bool)
@@ -1281,14 +1318,24 @@
              (else other (check-tops v (cdr forms) found))))
           (else (check-tops (check-top v (car forms)) (cdr forms) found)))))
 
-(define check-program (subr kfx (sexps) typeds)
+"What checking a program gives the emitter: the types of the definitions
+ written with none, and the facts."
+(define-datatype verdict (verdict typeds facts))
+
+(define verdict-typeds (subr kfx (verdict) typeds)
+  (lambda (x) (tagcase x (verdict (ts fs) ts))))
+
+(define verdict-facts (subr kfx (verdict) facts)
+  (lambda (x) (tagcase x (verdict (ts fs) fs))))
+
+(define check-program (subr kfx (sexps) verdict)
   (lambda (forms)
     "Every form, in order; the first error stops the compiler. What it gives
      is the types of the definitions written with none."
-    (let* ((empty (cv nil nil nil nil "a type" nil "the program" 0))
-           (start (cv nil nil (declare-types empty forms nil) nil "a type" nil "the program" 0))
+    (let* ((empty (cv nil nil nil nil "a type" nil "the program" 0 nil))
+           (start (cv nil nil (declare-types empty forms nil) nil "a type" nil "the program" 0 nil))
            (types (type-names-free start forms))
-           (named (tagcase start (cv (bs ds as es here group file line) (cv bs (datatype-names start forms nil) as es here group file line))))
-           (typed (tagcase named (cv (bs ds as es here group file line) (cv bs (declare-datatypes named forms nil) as es here group file line))))
+           (named (tagcase start (cv (bs ds as es here group file line fs) (cv bs (datatype-names start forms nil) as es here group file line fs))))
+           (typed (tagcase named (cv (bs ds as es here group file line fs) (cv bs (declare-datatypes named forms nil) as es here group file line fs))))
            (v (with-binds typed (prim-binds typed))))
-      (tagcase (check-tops v forms nil) (elab (done found) found)))))
+      (tagcase (check-tops v forms nil) (elab (done found) (verdict found (cv-facts done)))))))

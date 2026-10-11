@@ -409,3 +409,18 @@ effect with the globals found (`check-define*`, after FX-26's "checked
 twice"). In Rust, a `fn`, as `define`. `tests/kfx/define-star.kfx`: pure
 procedures reading globals, one calling the other; and
 `kfx-refused/define-star-write`, a write no effect covers.
+
+## `int`, and the checker's facts (2026-10-11)
+
+C15. `int` is `kayak-rt`'s bignum (`crates/kayak-rt/src/int.rs`, with unit
+tests), with `+`, `-`, `*`, `quotient`, `remainder`, `modulo`, `=`, `<`,
+`>`, `<=`, `>=`, `int->string`, `int->i64` and `i64->int`. A literal with
+nothing expected is an `int`, as in FX-26 (so `tests/kfx-stricter/int` and
+`let-literal` are gone: KFX accepts them). The reader gives places
+(file, offset) to lists and numbers; the checker's facts about places go
+to the emitter (`ctx-fact?`), the first being which literals are `int`s.
+`tests/kfx/bignum.kfx`: factorial 30, Fibonacci 150, powers, division of
+every sign, wrapping to `i64`, comparisons across the `i64` boundary,
+with Rust's answers Fixpt's. The first run lost the facts of a list's
+elements: `elements` dropped its state, harmless until the state carried
+facts; it threads it now.

@@ -9,6 +9,9 @@
 //! ASCII, so that indexing one that is costs nothing, and indexing one that
 //! is not counts characters (`CLAUDES_CHOICES.md`, C14).
 
+mod int;
+
+pub use int::*;
 use std::cell::Cell;
 
 /// `string`: text, and whether it is ASCII, found when the string is made.

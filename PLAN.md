@@ -97,7 +97,8 @@ is no `Drop`, no `Rc` and no `.clone()`.
 | KFX-0 (FX-26)                                         | Rust                                                        |
 | ----------------------------------------------------- | ----------------------------------------------------------- |
 | `i64`; `i64+`, `i64-`, `i64*`, `i64<`, `i64=`, …       | `i64`; `wrapping_add`, `wrapping_sub`, …, `<`, `==`, …      |
-| `int`                                                 | **refused**: its `+` makes a bignum, which Rust's does not  |
+| `int`; `+`, `-`, `*`, `quotient`, `=`, `<`, …          | `Int`, `kayak-rt`'s bignum; `_plus`, …: exactly FX-26's     |
+| a literal                                             | `5i64` where an `i64` is expected, else `int_lit(5)` (a fact) |
 | `bool`, `char`, `unit`                                | `bool`, `char`, `()`                                        |
 | `string`, a literal `"…"`                             | `Str`, a `&'static str` that knows if it is ASCII; `str_lit("…")` |
 | `(listof T acyclic)`                                  | `List<T>` = `Option<&'static Cons<T>>`                      |
@@ -145,11 +146,13 @@ their own, and a body's last `let`, `let*`, `begin` or `tagcase`
 written into the enclosing block. `rustfmt` is not run, so the fixed
 point stays the compiler's alone.
 
-**No `int`** (the user's, 2026-10-11). `+`, `-` and `<` on `int` mean
-bignum arithmetic, which is not what Rust's mean; KFX is the kernel whose
-meaning is known because its mapping is, so it writes `i64+` and the rest,
-whose meaning in FX-26 is Rust's exactly. Literals are plain: since Fixpt
-`fb86975` a literal checks as an `i64` where one is expected.
+**`int` is a bignum, in Rust too** (C15). The user's ruling (2026-10-11)
+was that `+` on `int` may not mean a bignum in FX-26 and an `i64` in
+Rust: so `int` was refused, and KFX wrote `i64+`. Now `int` is
+`kayak-rt`'s `Int`, a bignum, and `+` on it means in Rust what it means
+in FX-26, so the ruling holds with `int` back. A literal is an `i64`
+where one is expected (since Fixpt `fb86975`), and an `int` elsewhere,
+as in FX-26: the checker says which, by a fact about its place.
 
 **The prelude** (`kfx/prelude.fx`) is FX-26, not KFX: where FX-26's
 standard environment has a primitive only at `int` (`string-length`,

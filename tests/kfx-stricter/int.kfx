@@ -1,3 +1,0 @@
-"int, whose + makes a bignum, as Rust's does not."
-(define-effect kfx (maxeff (read @globals) spin))
-(define f (subr kfx (int) int) (lambda (n) (+ n 1)))

@@ -8,6 +8,11 @@ pub mod arith;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/bignum.rs"]
+pub mod bignum;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/control.rs"]
 pub mod control;
 
@@ -82,6 +87,7 @@ pub type Main = fn() -> kayak_rt::Str;
 /// Each program's name, and its `main`.
 pub const PROGRAMS: &[(&str, Main)] = &[
     ("arith", arith::main),
+    ("bignum", bignum::main),
     ("control", control::main),
     ("data", data::main),
     ("define-star", define_star::main),

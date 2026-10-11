@@ -152,3 +152,25 @@ Supersedes C4.
   case, ASCII, as fast as before; the reader takes its source with
   `string->list`, in one pass, so a source that is not ASCII is read in
   linear time too.
+
+## C15. `int` as a bignum of kayak-rt's own (2026-10-11)
+
+- **Chosen:** `int` is `Int`, a small-or-big integer in `kayak-rt`: an
+  `i64` while it fits, a sign and base-2^32 limbs past that, every result
+  that fits made small again. Its operations are FX-26's exactly
+  (truncating `quotient`, `remainder` of the dividend's sign, `modulo` of
+  the divisor's, `int->i64` keeping the low 64 bits). Division is a bit
+  at a time for a divisor of more than a limb: slow, and simple to trust.
+- **Not chosen:** a crate (`num-bigint`): the siblings write their own,
+  and `kayak-rt` has no dependency; `int` as an `i64` that panics on
+  overflow, which the user ruled out (it is not FX-26's meaning).
+- **Why:** the user's ruling was against a construct whose meaning differs
+  between FX-26 and Rust; a bignum's does not. 53 of Fixpt's programs
+  first stopped at `int`.
+
+**With it, facts.** Which literals are `int`s only the checker knows, and
+the emitter knows no types. So the reader gives each list and number a
+place (its file and offset), and the checker records facts about places,
+in its inference state, then in `cv`; the emitter looks them up, as
+Fixpt's compilers read its checker's facts. The same channel will carry
+what escapes need (TODO §16).

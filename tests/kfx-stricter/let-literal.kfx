@@ -1,3 +1,0 @@
-"A literal with nothing expected: an int to FX-26, which KFX does not have."
-(define-effect kfx (maxeff (read @globals) spin))
-(define f (subr kfx () i64) (lambda () (let ((n 1)) (i64+ (the i64 0) 0))))
