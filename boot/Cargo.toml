@@ -1,0 +1,8 @@
+[package]
+name = "kfx"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+kayak-rt = { path = "../crates/kayak-rt" }
