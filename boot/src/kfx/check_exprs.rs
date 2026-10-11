@@ -450,6 +450,74 @@ pub fn control_form_p(h: Str) -> bool {
     (string_eq_p(h, str_lit("if")) || string_eq_p(h, str_lit("cond")) || string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("tagcase")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("with")))
 }
 
+/// The inference variables in `t` as it stands, solved or not.
+pub fn metas_of(t: &'static Ty) -> I64s {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyMeta(k) => {
+            the::<I64s>(cons(k, nil()))
+        }
+        Ty::TyList(e, r) => {
+            onto(metas_of(e), metas_of(r))
+        }
+        Ty::TyFlat(e, r) => {
+            onto(metas_of(e), metas_of(r))
+        }
+        Ty::TyRef(e, r) => {
+            onto(metas_of(e), metas_of(r))
+        }
+        Ty::TyTag(a, h, d, r) => {
+            onto(metas_of(a), onto(metas_of(h), metas_of(r)))
+        }
+        Ty::TyData(d, args) => {
+            concat(map(&metas_of, args))
+        }
+        Ty::TyShape(p, ls, ts) => {
+            concat(map(&metas_of, ts))
+        }
+        Ty::TyProc(es, ps, r) => {
+            onto(metas_of(r), concat(map(&metas_of, ps)))
+        }
+        _ => {
+            let other = tagcase_;
+            nil()
+        }
+    }
+}
+
+/// Of `ks`, those that fitting the result expected solved.
+pub fn fixed_by(before: &'static St, after: &'static St, ks: I64s) -> I64s {
+    concat(map(lambda1(move |k: i64| {
+        if ({
+            let tagcase_ = walk(before, ty_meta(k));
+            match *tagcase_ {
+                Ty::TyMeta(j) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        } && {
+            let tagcase_ = walk(after, ty_meta(k));
+            match *tagcase_ {
+                Ty::TyMeta(j) => {
+                    false
+                }
+                _ => {
+                    let other = tagcase_;
+                    true
+                }
+            }
+        }) {
+            the::<I64s>(cons(k, nil()))
+        } else {
+            nil()
+        }
+    }), ks))
+}
+
 /// Whether `t` has an inference variable in it, solved or not: a
 /// parameter's type that is an instance's.
 pub fn raw_meta_p(t: &'static Ty) -> bool {
@@ -1505,7 +1573,7 @@ pub fn letrec_form(v: &'static Cv, s: &'static St, bindings: Sexps, forms: Sexps
         bind(name_of(v, car(ys)), scheme(nil(), parse_type(v, cv_tvars(v), second(ys))), if ends {
             str_lit("ends")
         } else {
-            str_lit("local")
+            str_lit("rec")
         })
     }), bindings));
     let tagcase_ = letrec_lambdas(w, s, bindings);
@@ -1678,7 +1746,7 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
     } else if null_p(found) {
         refuse(v, string_append(str_lit("nothing is named "), h))
     } else if (nat_op_p(h) && prim_p(car(found)) && i64_eq(size(args), 2i64) && nat_args_p(v, s, args)) {
-        let tagcase_ = call_args(v, s, args, cons(ty_nat(), cons(ty_nat(), nil())));
+        let tagcase_ = call_args(v, s, args, cons(ty_nat(), cons(ty_nat(), nil())), nil());
         match *tagcase_ {
             Res::Res(u, es, s) => {
                 res(ty_nat(), es, if null_p(expected) {
@@ -1699,7 +1767,7 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
                             cons(string_append(str_lit("g:"), h), nil())
                         } else {
                             nil()
-                        }, if (string_eq_p(r#where, str_lit("local")) || (string_member_p(h, cv_group(v)) && (string_eq_p(r#where, str_lit("global")) || string_eq_p(r#where, str_lit("item"))))) {
+                        }, if (string_eq_p(r#where, str_lit("rec")) || (string_eq_p(r#where, str_lit("local")) && self_applicable_p(v, s, t)) || (string_member_p(h, cv_group(v)) && (string_eq_p(r#where, str_lit("global")) || string_eq_p(r#where, str_lit("item"))))) {
                             cons(str_lit("spin"), nil())
                         } else {
                             nil()
@@ -1883,11 +1951,14 @@ pub fn synth_call_of(v: &'static Cv, s: &'static St, callee: &'static Res, args:
                     if not(i64_eq(size(ps), size(args))) {
                         refuse(v, string_append(str_lit("a call of the wrong number of arguments: "), show_sexps(args)))
                     } else {
-                        let tagcase_ = call_args(v, if null_p(expected) {
-                            s
-                        } else {
-                            fits(v, s, r, car(expected))
-                        }, args, ps);
+                        let tagcase_ = {
+                            let s1 = if null_p(expected) {
+                                s
+                            } else {
+                                fits(v, s, r, car(expected))
+                            };
+                            call_args(v, s1, args, ps, fixed_by(s, s1, concat(map(&metas_of, ps))))
+                        };
                         match *tagcase_ {
                             Res::Res(u, es1, s) => {
                                 let tagcase_ = name_regions(v, s, latent, regions);
@@ -1916,11 +1987,11 @@ pub fn synth_call_of(v: &'static Cv, s: &'static St, callee: &'static Res, args:
 /// The arguments, in order, but for `nil` given for a parameter that is
 /// an inference variable, which is heard after the rest, as FX-26 hears
 /// it. A literal is not: FX-26 makes it an `int` where it stands.
-pub fn call_args(v: &'static Cv, s: &'static St, args: Sexps, ps: Tys) -> &'static Res {
-    let tagcase_ = call_args_pass(v, s, args, ps, false);
+pub fn call_args(v: &'static Cv, s: &'static St, args: Sexps, ps: Tys, fixed: I64s) -> &'static Res {
+    let tagcase_ = call_args_pass(v, s, args, ps, false, fixed);
     match *tagcase_ {
         Res::Res(u, es, s) => {
-            with_effs(call_args_pass(v, s, args, ps, true), es)
+            with_effs(call_args_pass(v, s, args, ps, true, fixed), es)
         }
     }
 }
@@ -1966,21 +2037,27 @@ pub fn module_argument(v: &'static Cv, s: &'static St, arg: &'static Sexp, t: &'
 }
 
 /// The arguments `deferred?` says are `later`'s.
-pub fn call_args_pass(mut v: &'static Cv, mut s: &'static St, mut args: Sexps, mut ps: Tys, mut later: bool) -> &'static Res {
+pub fn call_args_pass(mut v: &'static Cv, mut s: &'static St, mut args: Sexps, mut ps: Tys, mut later: bool, mut fixed: I64s) -> &'static Res {
     loop {
         if null_p(args) {
             return res(ty_unit(), nil(), s);
         } else if eqv_bool_p(deferred_p(car(args), car(ps)), later) {
             let tagcase_ = if not(null_p(module_spec(v, walk(s, car(ps))))) {
                 module_argument(v, s, car(args), walk(s, car(ps)))
-            } else if (head_is_p(car(args), str_lit("list")) && raw_meta_p(car(ps))) {
+            } else if (head_is_p(car(args), str_lit("list")) && any_p(lambda1(move |k: i64| {
+                any_p(lambda1(move |j: i64| {
+                    i64_eq(j, k)
+                }), fixed)
+            }), metas_of(car(ps)))) {
+                // A `list` for a parameter whose type only the result expected fixed:
+                // found by itself, as FX-26 finds it.
                 check_by_synth(v, s, car(args), car(ps))
             } else {
                 check(v, s, car(args), car(ps))
             };
             match *tagcase_ {
                 Res::Res(t, es, s) => {
-                    return with_effs(call_args_pass(v, s, cdr(args), cdr(ps), later), es);
+                    return with_effs(call_args_pass(v, s, cdr(args), cdr(ps), later, fixed), es);
                 }
             }
         } else {

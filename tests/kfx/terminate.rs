@@ -95,6 +95,22 @@ pub fn ack(m: Int, n: Int) -> Int {
     a(m, n)
 }
 
+// A procedure given, called: pure, as its type says, since no procedure is
+// in what it takes or gives (FX-26 says `spin` only for a type recursive
+// through a parameter).
+pub fn map_pure<A: Copy + 'static, B: Copy + 'static>(f: &'static dyn Fn(A) -> B, xs: List<A>) -> List<B> {
+    let go__knot = knot::<&'static dyn Fn(List<A>) -> List<B>>();
+    let go = lambda1(move |ys: List<A>| {
+        if null_p(ys) {
+            nil()
+        } else {
+            cons(f(car(ys)), (go__knot.get())(cdr(ys)))
+        }
+    });
+    go__knot.set(go);
+    go(xs)
+}
+
 // A group of two, reading globals and no more: no `spin`.
 pub fn ev_p(n: Int) -> bool {
     if _lt_eq(n, int_lit(0)) {
@@ -113,10 +129,12 @@ pub fn od_p(n: Int) -> bool {
 }
 
 pub fn main() -> Str {
-    string_append(int_to_string(len(cons(1i64, cons(2i64, cons(3i64, nil()))))), string_append(str_lit(" "), string_append(int_to_string(count(int_lit(5))), string_append(str_lit(" "), string_append(int_to_string(sum_to(int_lit(10))), string_append(str_lit(" "), string_append(int_to_string(total(node(leaf(int_lit(1)), node(leaf(int_lit(2)), leaf(int_lit(3)))))), string_append(str_lit(" "), string_append(int_to_string(ack(int_lit(2), int_lit(3))), string_append(str_lit(" "), if ev_p(int_lit(10)) {
+    string_append(int_to_string(len(cons(1i64, cons(2i64, cons(3i64, nil()))))), string_append(str_lit(" "), string_append(int_to_string(count(int_lit(5))), string_append(str_lit(" "), string_append(int_to_string(sum_to(int_lit(10))), string_append(str_lit(" "), string_append(int_to_string(total(node(leaf(int_lit(1)), node(leaf(int_lit(2)), leaf(int_lit(3)))))), string_append(str_lit(" "), string_append(int_to_string(ack(int_lit(2), int_lit(3))), string_append(str_lit(" "), string_append(if ev_p(int_lit(10)) {
         str_lit("even")
     } else {
         str_lit("odd")
-    }))))))))))
+    }, string_append(str_lit(" "), int_to_string(len(map_pure(lambda1(move |x: i64| {
+        i64_star(x, 2i64)
+    }), cons(1i64, cons(2i64, cons(3i64, cons(4i64, nil())))))))))))))))))))
 }
 

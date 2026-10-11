@@ -708,3 +708,19 @@ emitter would need its fallibility through the module). A top-level
 effect that selects a module's is read where it stands, after the
 module. `tests/kfx/modules.kfx` (`cells`, `touches`). 68 of Fixpt's
 programs accepted, all agreeing.
+
+## A call of a procedure given is not `spin` (2026-10-11)
+
+KFX said `spin` for every call of a procedure a local names, so no
+higher-order procedure could be `pure`. FX-26 says it only for a type
+recursive through a parameter, where self-application can loop with no
+recursive call. KFX now says it where the parameters or the result may
+hold any procedure (through lists, cells, shapes, datatypes, a generative
+type's representation), more cautious than FX-26, and for a `letrec`
+member that may not end (bound `rec`, whose naming is `spin` too).
+`tests/kfx/terminate.kfx`'s `map-pure`; `kfx-refused/self-application`.
+
+And a `list` given for a parameter is found by itself only where the
+result expected fixed the parameter's type, not an earlier argument, as
+FX-26 does (`(map-pure f (list 1 2))` checks the list's literals as `i64`
+where `f` takes one).

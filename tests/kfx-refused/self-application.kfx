@@ -1,0 +1,5 @@
+"Self-application through a datatype: a loop with no recursive call; its type must say spin."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-datatype wrap (wrap (subr pure (wrap) i64)))
+(define apply-self (subr pure (wrap) i64)
+  (lambda (w) (tagcase w (wrap (f) (f w)))))

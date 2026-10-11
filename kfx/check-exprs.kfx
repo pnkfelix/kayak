@@ -221,6 +221,31 @@
         (string=? h "letregion") (string=? h "with"))))
 
 (define-rec
+  (metas-of (subr kfx (ty) i64s)
+    (lambda (t)
+      "The inference variables in `t` as it stands, solved or not."
+      (tagcase t
+        (ty-meta (k) (the i64s (list k)))
+        (ty-list (e r) (onto (metas-of e) (metas-of r)))
+        (ty-flat (e r) (onto (metas-of e) (metas-of r)))
+        (ty-ref (e r) (onto (metas-of e) (metas-of r)))
+        (ty-tag (a h d r) (onto (metas-of a) (onto (metas-of h) (metas-of r))))
+        (ty-data (d args) (concat (map metas-of args)))
+        (ty-shape (p ls ts) (concat (map metas-of ts)))
+        (ty-proc (es ps r) (onto (metas-of r) (concat (map metas-of ps))))
+        (else other nil)))))
+
+(define fixed-by (subr kfx (st st i64s) i64s)
+  (lambda (before after ks)
+    "Of `ks`, those that fitting the result expected solved."
+    (concat (map (lambda ((k i64))
+                   (if (and (tagcase (walk before (ty-meta k)) (ty-meta (j) #t) (else other #f))
+                            (tagcase (walk after (ty-meta k)) (ty-meta (j) #f) (else other #t)))
+                       (the i64s (list k))
+                       nil))
+                 ks))))
+
+(define-rec
   (raw-meta? (subr kfx (ty) bool)
     (lambda (t)
       "Whether `t` has an inference variable in it, solved or not: a
@@ -722,7 +747,7 @@
              (w (with-binds v (map (lambda ((b sexp))
                                      (let ((ys (items b)))
                                        (bind (name-of v (car ys)) (scheme nil (parse-type v (cv-tvars v) (second ys)))
-                                             (if ends "ends" "local"))))
+                                             (if ends "ends" "rec"))))
                                    bindings))))
         (tagcase (letrec-lambdas w s bindings)
           (res (u es s) (body w s forms expected))))))
@@ -826,7 +851,7 @@
               ((null? found)
                (refuse v (string-append "nothing is named " h)))
               ((and (nat-op? h) (prim? (car found)) (i64= (size args) 2) (nat-args? v s args))
-               (tagcase (call-args v s args (list (ty-nat) (ty-nat)))
+               (tagcase (call-args v s args (list (ty-nat) (ty-nat)) nil)
                  (res (u es s)
                    (res (ty-nat) es (if (null? expected) s (fits v s (ty-nat) (car expected)))))))
               (else
@@ -837,7 +862,8 @@
                       (knot-free-call v (synth-call-of v s (res t nil s) args regions expected
                                      (effs-union
                                        (if (string=? where "global") (list (string-append "g:" h)) nil)
-                                       (if (or (string=? where "local")
+                                       (if (or (string=? where "rec")
+                                               (and (string=? where "local") (self-applicable? v s t))
                                                (and (string-member? h (cv-group v)) (or (string=? where "global") (string=? where "item"))))
                                            (list "spin")
                                            nil)))))))))))))
@@ -939,7 +965,8 @@
               (if (not (i64= (size ps) (size args)))
                   (refuse v (string-append "a call of the wrong number of arguments: "
                                            (show-sexps args)))
-                  (tagcase (call-args v (if (null? expected) s (fits v s r (car expected))) args ps)
+                  (tagcase (let ((s1 (if (null? expected) s (fits v s r (car expected)))))
+                             (call-args v s1 args ps (fixed-by s s1 (concat (map metas-of ps)))))
                     (res (u es1 s)
                      (begin
                       (tagcase (name-regions v s latent regions)
@@ -948,13 +975,13 @@
                                (if (escapes? named) (note-fact s (cv-file v) (cv-pos v) "fallible-call") s)))))))))
             (else other (refuse v (string-append "a call of a " (string-append (show-ty s t) ", no procedure")))))))))
 
-  (call-args (subr kfx (cv st sexps tys) res)
-    (lambda (v s args ps)
+  (call-args (subr kfx (cv st sexps tys i64s) res)
+    (lambda (v s args ps fixed)
       "The arguments, in order, but for `nil` given for a parameter that is
        an inference variable, which is heard after the rest, as FX-26 hears
        it. A literal is not: FX-26 makes it an `int` where it stands."
-      (tagcase (call-args-pass v s args ps #f)
-        (res (u es s) (with-effs (call-args-pass v s args ps #t) es)))))
+      (tagcase (call-args-pass v s args ps #f fixed)
+        (res (u es s) (with-effs (call-args-pass v s args ps #t fixed) es)))))
 
   (module-argument (subr kfx (cv st sexp ty) res)
     (lambda (v s arg t)
@@ -969,14 +996,18 @@
                  (conforms v s name (tagcase t (ty-data (d args) (after-prefix d "%module ")) (else other ""))
                            (car (module-spec v t))))))))
 
-  (call-args-pass (subr kfx (cv st sexps tys bool) res)
-    (lambda (v s args ps later)
+  (call-args-pass (subr kfx (cv st sexps tys bool i64s) res)
+    (lambda (v s args ps later fixed)
       "The arguments `deferred?` says are `later`'s."
       (cond ((null? args) (res (ty-unit) nil s))
             ((eqv-bool? (deferred? (car args) (car ps)) later)
              (tagcase (cond ((not (null? (module-spec v (walk s (car ps)))))
                              (module-argument v s (car args) (walk s (car ps))))
-                            ((and (head-is? (car args) "list") (raw-meta? (car ps))) (check-by-synth v s (car args) (car ps)))
+                            ((and (head-is? (car args) "list")
+                                  (any? (lambda ((k i64)) (any? (lambda ((j i64)) (i64= j k)) fixed)) (metas-of (car ps))))
+                             "A `list` for a parameter whose type only the result expected fixed:
+                              found by itself, as FX-26 finds it."
+                             (check-by-synth v s (car args) (car ps)))
                             (else (check v s (car args) (car ps))))
-               (res (t es s) (with-effs (call-args-pass v s (cdr args) (cdr ps) later) es))))
-            (else (call-args-pass v s (cdr args) (cdr ps) later))))))
+               (res (t es s) (with-effs (call-args-pass v s (cdr args) (cdr ps) later fixed) es))))
+            (else (call-args-pass v s (cdr args) (cdr ps) later fixed))))))

@@ -933,10 +933,60 @@
 (define naming-effs (subr kfx (st string string ty) strings)
   (lambda (s name where t)
     "What naming a name does: a global is read, and a global procedure
-     named as a value may be called from anywhere, so may loop."
-    (cond ((not (string=? where "global")) nil)
+     named as a value may be called from anywhere, so may loop; a member of
+     a `letrec` that may not end, too."
+    (cond ((string=? where "rec") (list "spin"))
+          ((not (string=? where "global")) nil)
           ((proc-type? s t) (list "spin" (string-append "g:" name)))
           (else (list (string-append "g:" name))))))
+
+(define-rec
+  (holds-procedure? (subr kfx (cv st ty strings) bool)
+    (lambda (v s t seen)
+      "Whether a value of `t` may hold a procedure: in a list, a cell, a
+       shape, a datatype's fields, a generative type's representation (one
+       not known, cautiously, yes); or `t` is not known yet."
+      (tagcase (walk s t)
+        (ty-proc (es ps r) #t)
+        (ty-meta (k) #t)
+        (ty-list (e r) (holds-procedure? v s e seen))
+        (ty-ref (e r) (holds-procedure? v s e seen))
+        (ty-flat (e r) #f)
+        (ty-tag (a h d r) (or (holds-procedure? v s a seen) (holds-procedure? v s h seen)))
+        (ty-shape (p ls ts) (any? (lambda ((x ty)) (holds-procedure? v s x seen)) ts))
+        (ty-data (d args)
+          (or (any? (lambda ((x ty)) (holds-procedure? v s x seen)) args)
+              (and (not (string-member? d seen))
+                   (let ((found (find-family d (cv-dts v))))
+                     (if (null? found)
+                         #f
+                         (tagcase (car found)
+                           (dt (n ps vs)
+                             (if (null? vs)
+                                 (let ((down (find-bind (string-append "down-" d) (cv-binds v))))
+                                   (if (null? down)
+                                       (not (has-prefix? d "%module "))
+                                       (tagcase (car down)
+                                         (bind (n2 sc w)
+                                           (tagcase sc
+                                             (scheme (tv tt)
+                                               (tagcase tt
+                                                 (ty-proc (es xs r) (holds-procedure? v s (substitute ps args r) (cons d seen)))
+                                                 (else other #t))))))))
+                                 (any? (lambda ((x variant))
+                                         (tagcase x (variant (tag fs) (any? (lambda ((f ty)) (holds-procedure? v s (substitute ps args f) (cons d seen))) fs))))
+                                       vs)))))))))
+        (else other #f)))))
+
+(define self-applicable? (subr kfx (cv st ty) bool)
+  (lambda (v s t)
+    "Whether a call of a procedure of type `t`, not known, may loop with no
+     recursive call: FX-26 says `spin` for one whose type is recursive
+     through a parameter; KFX, more cautious, for one whose parameters or
+     result may hold any procedure."
+    (tagcase (walk s t)
+      (ty-proc (es ps r) (any? (lambda ((x ty)) (holds-procedure? v s x nil)) (cons r ps)))
+      (else other #t))))
 
 (define void? (subr kfx (st ty) bool)
   (lambda (s t) (tagcase (walk s t) (ty-void () #t) (else other #f))))

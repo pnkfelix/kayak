@@ -2103,14 +2103,130 @@ pub fn proc_type_p(s: &'static St, t: &'static Ty) -> bool {
 }
 
 /// What naming a name does: a global is read, and a global procedure
-/// named as a value may be called from anywhere, so may loop.
+/// named as a value may be called from anywhere, so may loop; a member of
+/// a `letrec` that may not end, too.
 pub fn naming_effs(s: &'static St, name: Str, r#where: Str, t: &'static Ty) -> Strings {
-    if not(string_eq_p(r#where, str_lit("global"))) {
+    if string_eq_p(r#where, str_lit("rec")) {
+        cons(str_lit("spin"), nil())
+    } else if not(string_eq_p(r#where, str_lit("global"))) {
         nil()
     } else if proc_type_p(s, t) {
         cons(str_lit("spin"), cons(string_append(str_lit("g:"), name), nil()))
     } else {
         cons(string_append(str_lit("g:"), name), nil())
+    }
+}
+
+/// Whether a value of `t` may hold a procedure: in a list, a cell, a
+/// shape, a datatype's fields, a generative type's representation (one
+/// not known, cautiously, yes); or `t` is not known yet.
+pub fn holds_procedure_p(mut v: &'static Cv, mut s: &'static St, mut t: &'static Ty, mut seen: Strings) -> bool {
+    loop {
+        let tagcase_ = walk(s, t);
+        match *tagcase_ {
+            Ty::TyProc(es, ps, r) => {
+                return true;
+            }
+            Ty::TyMeta(k) => {
+                return true;
+            }
+            Ty::TyList(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyRef(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyFlat(e, r) => {
+                return false;
+            }
+            Ty::TyTag(a, h, d, r) => {
+                return (holds_procedure_p(v, s, a, seen) || holds_procedure_p(v, s, h, seen));
+            }
+            Ty::TyShape(p, ls, ts) => {
+                return any_p(lambda1(move |x: &'static Ty| {
+                    holds_procedure_p(v, s, x, seen)
+                }), ts);
+            }
+            Ty::TyData(d, args) => {
+                return (any_p(lambda1(move |x: &'static Ty| {
+                    holds_procedure_p(v, s, x, seen)
+                }), args) || (not(string_member_p(d, seen)) && {
+                    let found = find_family(d, cv_dts(v));
+                    if null_p(found) {
+                        false
+                    } else {
+                        let tagcase_ = car(found);
+                        match *tagcase_ {
+                            Dt::Dt(n, ps, vs) => {
+                                if null_p(vs) {
+                                    let down = find_bind(string_append(str_lit("down-"), d), cv_binds(v));
+                                    if null_p(down) {
+                                        not(has_prefix_p(d, str_lit("%module ")))
+                                    } else {
+                                        let tagcase_ = car(down);
+                                        match *tagcase_ {
+                                            Bind::Bind(n2, sc, w) => {
+                                                let tagcase_ = sc;
+                                                match *tagcase_ {
+                                                    Scheme::Scheme(tv, tt) => {
+                                                        let tagcase_ = tt;
+                                                        match *tagcase_ {
+                                                            Ty::TyProc(es, xs, r) => {
+                                                                holds_procedure_p(v, s, substitute(ps, args, r), cons(d, seen))
+                                                            }
+                                                            _ => {
+                                                                let other = tagcase_;
+                                                                true
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    any_p(lambda1(move |x: &'static Variant| {
+                                        let tagcase_ = x;
+                                        match *tagcase_ {
+                                            Variant::Variant(tag, fs) => {
+                                                any_p(lambda1(move |f: &'static Ty| {
+                                                    holds_procedure_p(v, s, substitute(ps, args, f), cons(d, seen))
+                                                }), fs)
+                                            }
+                                        }
+                                    }), vs)
+                                }
+                            }
+                        }
+                    }
+                }));
+            }
+            _ => {
+                let other = tagcase_;
+                return false;
+            }
+        }
+    }
+}
+
+/// Whether a call of a procedure of type `t`, not known, may loop with no
+/// recursive call: FX-26 says `spin` for one whose type is recursive
+/// through a parameter; KFX, more cautious, for one whose parameters or
+/// result may hold any procedure.
+pub fn self_applicable_p(v: &'static Cv, s: &'static St, t: &'static Ty) -> bool {
+    let tagcase_ = walk(s, t);
+    match *tagcase_ {
+        Ty::TyProc(es, ps, r) => {
+            any_p(lambda1(move |x: &'static Ty| {
+                holds_procedure_p(v, s, x, nil())
+            }), cons(r, ps))
+        }
+        _ => {
+            let other = tagcase_;
+            true
+        }
     }
 }
 

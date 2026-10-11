@@ -43,6 +43,15 @@
                        (else (a (- m 1) (a m (- n 1))))))))
       (a m n))))
 
+"A procedure given, called: pure, as its type says, since no procedure is
+ in what it takes or gives (FX-26 says `spin` only for a type recursive
+ through a parameter)."
+(define map-pure (poly ((a type) (b type)) (subr pure ((subr pure (a) b) (listof a acyclic)) (listof b acyclic)))
+  (lambda (f xs)
+    (letrec ((go (subr pure ((listof a acyclic)) (listof b acyclic))
+               (lambda (ys) (if (null? ys) nil (cons (f (car ys)) (go (cdr ys)))))))
+      (go xs))))
+
 "A group of two, reading globals and no more: no `spin`."
 (define-rec
   (ev? (subr (read @globals) (int) bool) (lambda (n) (if (<= n 0) #t (od? (- n 1)))))
@@ -60,4 +69,5 @@
           (string-append (int->string (total (node (leaf 1) (node (leaf 2) (leaf 3)))))
            (string-append " "
             (string-append (int->string (ack 2 3))
-             (string-append " " (if (ev? 10) "even" "odd")))))))))))))
+             (string-append " " (string-append (if (ev? 10) "even" "odd")
+               (string-append " " (int->string (len (map-pure (lambda ((x i64)) (i64* x 2)) (list 1 2 3 4))))))))))))))))))
