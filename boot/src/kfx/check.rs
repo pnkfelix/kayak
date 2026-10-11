@@ -259,6 +259,20 @@ pub fn refuse(v: &'static Cv, message: Str) -> ! {
     }
 }
 
+/// A name, where one is expected: refused, saying where, if `e` is none.
+pub fn name_of(v: &'static Cv, e: &'static Sexp) -> Str {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Sym(s) => {
+            s
+        }
+        _ => {
+            let other = tagcase_;
+            refuse(v, string_append("a name is expected here, not ", show_sexp(other)))
+        }
+    }
+}
+
 // Effects
 pub fn effs_union(mut a: Strings, mut b: Strings) -> Strings {
     loop {
@@ -382,10 +396,10 @@ pub fn parse_effect(v: &'static Cv, tvars: Strings, e: &'static Sexp) -> Strings
                 cons("@globals", nil())
             } else if (sym_is_p(car(xs), "read") && head_is_p(second(xs), "globals")) {
                 map(lambda1(move |g: &'static Sexp| {
-                    string_append("g:", sym_name(g))
+                    string_append("g:", name_of(v, g))
                 }), cdr(items(second(xs))))
             } else if (sym_is_p(car(xs), "read") || sym_is_p(car(xs), "write") || sym_is_p(car(xs), "alloc")) {
-                cons(string_append(sym_name(car(xs)), string_append(":", region_name(v, tvars, second(xs)))), nil())
+                cons(string_append(name_of(v, car(xs)), string_append(":", region_name(v, tvars, second(xs)))), nil())
             } else {
                 refuse(v, string_append("an effect KFX does not have: ", show_sexp(e)))
             }
@@ -552,9 +566,9 @@ pub fn poly_binders(v: &'static Cv, t: &'static Sexp) -> Strings {
             if not(i64_eq(size(b), 2i64)) {
                 refuse(v, string_append("a binder KFX-0 does not have (distinct regions are to come): ", show_sexp(lst(b, "", 0i64))))
             } else if sym_is_p(second(b), "type") {
-                sym_name(car(b))
+                name_of(v, car(b))
             } else if sym_is_p(second(b), "region") {
-                string_append("'", sym_name(car(b)))
+                string_append("'", name_of(v, car(b)))
             } else {
                 refuse(v, string_append("KFX's poly is over types and regions: ", show_sexp(lst(b, "", 0i64))))
             }
@@ -1320,7 +1334,7 @@ pub fn bind_fields(v: &'static Cv, names: Sexps, types: Tys) -> Binds {
     if null_p(names) {
         nil()
     } else {
-        cons(local(v, sym_name(car(names)), car(types)), bind_fields(v, cdr(names), cdr(types)))
+        cons(local(v, name_of(v, car(names)), car(types)), bind_fields(v, cdr(names), cdr(types)))
     }
 }
 
@@ -1782,10 +1796,10 @@ pub fn tag_arms(v: &'static Cv, s: &'static St, d: Str, tagged: Sexps, vs: Varia
         }
     } else {
         let arm = items(car(tagged));
-        let tag = sym_name(car(arm));
+        let tag = name_of(v, car(arm));
         if string_eq_p(tag, "else") {
             if null_p(cdr(tagged)) {
-                body(with_binds(v, cons(local(v, sym_name(second(arm)), ty_data(d)), nil())), s, cdr(cdr(arm)), expected)
+                body(with_binds(v, cons(local(v, name_of(v, second(arm)), ty_data(d)), nil())), s, cdr(cdr(arm)), expected)
             } else {
                 refuse(v, "a tagcase's else is its last arm")
             }
@@ -1826,7 +1840,7 @@ pub fn let_values(v: &'static Cv, s: &'static St, bindings: Sexps, forms: Sexps,
         let tagcase_ = synth(sees, s, second(b));
         match *tagcase_ {
             Res::Res(t, es, s) => {
-                with_effs(let_values(v, s, cdr(bindings), forms, expected, cons(local(v, sym_name(car(b)), t), bound), sequential), es)
+                with_effs(let_values(v, s, cdr(bindings), forms, expected, cons(local(v, name_of(v, car(b)), t), bound), sequential), es)
             }
         }
     }
@@ -1916,7 +1930,7 @@ pub fn check_written_params(mut v: &'static Cv, mut s: &'static St, mut params: 
 pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected: Tys) -> &'static Res {
     let found = find_bind(h, cv_binds(v));
     if keyword_p(h) {
-        refuse(v, string_append("a call of ", string_append(h, ", which FX-26 reads as its form, not a call")))
+        refuse(v, string_append("(", string_append(h, " ...) is FX-26's form, which KFX does not have, or a call of a local named by that keyword")))
     } else if null_p(found) {
         refuse(v, string_append("nothing is named ", h))
     } else {
@@ -2009,7 +2023,7 @@ pub fn prelude() -> Str {
 pub fn table_binds(v: &'static Cv, table: Str, file: Str, r#where: Str) -> Binds {
     map(lambda1(move |p: &'static Sexp| {
         let xs = items(p);
-        bind(sym_name(car(xs)), parse_scheme(v, second(xs)), r#where)
+        bind(name_of(v, car(xs)), parse_scheme(v, second(xs)), r#where)
     }), read_all(string_chars(table), file, 1i64))
 }
 
@@ -2019,9 +2033,9 @@ pub fn prim_binds(v: &'static Cv) -> Binds {
 
 /// A define-datatype's name and variants.
 pub fn datatype_of(v: &'static Cv, xs: Sexps) -> &'static Dt {
-    dt(sym_name(car(xs)), map(lambda1(move |vt: &'static Sexp| {
+    dt(name_of(v, car(xs)), map(lambda1(move |vt: &'static Sexp| {
         let ys = items(vt);
-        variant(sym_name(car(ys)), parse_types(v, nil(), cdr(ys)))
+        variant(name_of(v, car(ys)), parse_types(v, nil(), cdr(ys)))
     }), cdr(xs)))
 }
 
@@ -2044,13 +2058,38 @@ pub fn constructors(d: &'static Dt) -> Binds {
 // Types and datatypes are declared ahead: every one is in scope in every
 // definition, as FX-26 has it. Effect abbreviations and values are seen
 // only after their definitions.
-pub fn declare_types(mut forms: Sexps, mut r#as: Aliases) -> Aliases {
+/// A define-type's or define-datatype's name: KFX's types have no
+/// parameters (FX-26's type families).
+pub fn type_name(v: &'static Cv, form: &'static Sexp) -> Str {
+    let tagcase_ = form;
+    match *tagcase_ {
+        Sexp::Lst(xs, src_file, src_line) => {
+            let v = near(v, src_file, src_line);
+            let tagcase_ = second(xs);
+            match *tagcase_ {
+                Sexp::Sym(s) => {
+                    s
+                }
+                _ => {
+                    let other = tagcase_;
+                    refuse(v, string_append("a type with parameters, which KFX does not have: ", show_sexp(other)))
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            refuse(v, "a definition is expected")
+        }
+    }
+}
+
+pub fn declare_types(mut v: &'static Cv, mut forms: Sexps, mut r#as: Aliases) -> Aliases {
     loop {
         if null_p(forms) {
             return r#as;
         } else if head_is_p(car(forms), "define-type") {
             let xs = items(car(forms));
-            (forms, r#as) = (cdr(forms), cons(alias(sym_name(second(xs)), third(xs)), r#as));
+            (forms, r#as) = (cdr(forms), cons(alias(type_name(v, car(forms)), third(xs)), r#as));
             continue;
         } else {
             forms = cdr(forms);
@@ -2060,12 +2099,12 @@ pub fn declare_types(mut forms: Sexps, mut r#as: Aliases) -> Aliases {
 }
 
 /// The datatypes' names, before their variants' types can be read.
-pub fn datatype_names(mut forms: Sexps, mut ds: Dts) -> Dts {
+pub fn datatype_names(mut v: &'static Cv, mut forms: Sexps, mut ds: Dts) -> Dts {
     loop {
         if null_p(forms) {
             return ds;
         } else if head_is_p(car(forms), "define-datatype") {
-            (forms, ds) = (cdr(forms), cons(dt(sym_name(second(items(car(forms)))), nil()), ds));
+            (forms, ds) = (cdr(forms), cons(dt(type_name(v, car(forms)), nil()), ds));
             continue;
         } else {
             forms = cdr(forms);
@@ -2079,7 +2118,7 @@ pub fn with_effdef(v: &'static Cv, xs: Sexps) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
         Cv::Cv(bs, ds, r#as, es, here, group, file, line) => {
-            cv(bs, ds, r#as, cons(effdef(sym_name(second(xs)), parse_effect(v, nil(), third(xs))), es), here, group, file, line)
+            cv(bs, ds, r#as, cons(effdef(name_of(v, second(xs)), parse_effect(v, nil(), third(xs))), es), here, group, file, line)
         }
     }
 }
@@ -2198,16 +2237,16 @@ pub fn variants_dt(v: &'static Cv, d: Str) -> List<&'static Dt> {
 /// A define-rec: every member in scope in each, and each a lambda.
 pub fn check_rec(v: &'static Cv, bindings: Sexps) -> &'static Cv {
     let names = map(lambda1(move |b: &'static Sexp| {
-        sym_name(car(items(b)))
+        name_of(v, car(items(b)))
     }), bindings);
     let named = with_binds(v, map(lambda1(move |b: &'static Sexp| {
         let ys = items(b);
-        global(v, sym_name(car(ys)), parse_scheme(v, second(ys)))
+        global(v, name_of(v, car(ys)), parse_scheme(v, second(ys)))
     }), bindings));
     map(lambda1(move |b: &'static Sexp| {
         let ys = items(b);
         if procedure_p(third(ys)) {
-            check_procedure(at(named, sym_name(car(ys)), names), third(ys), parse_scheme(v, second(ys)))
+            check_procedure(at(named, name_of(v, car(ys)), names), third(ys), parse_scheme(v, second(ys)))
         } else {
             refuse(v, "a define-rec binds only lambdas")
         }
@@ -2242,13 +2281,13 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
             } else if string_eq_p(h, "define-type") {
                 v
             } else if string_eq_p(h, "define-datatype") {
-                let d = car(variants_dt(v, sym_name(second(xs))));
+                let d = car(variants_dt(v, name_of(v, second(xs))));
                 defined_once(v, constructors(d))
             } else if string_eq_p(h, "define") {
                 if not(i64_eq(size(xs), 4i64)) {
                     refuse(v, "a definition needs a type")
                 } else {
-                    let name = sym_name(second(xs));
+                    let name = name_of(v, second(xs));
                     let v = at(v, name, cons(name, nil()));
                     let sc = parse_scheme(v, third(xs));
                     let named = with_binds(v, cons(global(v, name, sc), nil()));
@@ -2342,13 +2381,14 @@ pub fn check_tops(mut v: &'static Cv, mut forms: Sexps) -> &'static Cv {
 
 /// Every form, in order; the first error stops the compiler.
 pub fn check_program(forms: Sexps) -> () {
-    let start = cv(nil(), nil(), declare_types(forms, nil()), nil(), "a type", nil(), "the program", 0i64);
+    let empty = cv(nil(), nil(), nil(), nil(), "a type", nil(), "the program", 0i64);
+    let start = cv(nil(), nil(), declare_types(empty, forms, nil()), nil(), "a type", nil(), "the program", 0i64);
     let types = type_names_free(start, forms);
     let named = {
         let tagcase_ = start;
         match *tagcase_ {
             Cv::Cv(bs, ds, r#as, es, here, group, file, line) => {
-                cv(bs, datatype_names(forms, nil()), r#as, es, here, group, file, line)
+                cv(bs, datatype_names(start, forms, nil()), r#as, es, here, group, file, line)
             }
         }
     };

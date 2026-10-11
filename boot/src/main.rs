@@ -17,6 +17,13 @@ fn read(path: &Path) -> Str {
         eprintln!("kfx: cannot read {}: {e}", path.display());
         std::process::exit(1);
     });
+    // KFX's strings are ASCII, a byte a character (CLAUDES_CHOICES.md, C4),
+    // and so is its source: said here, where the line can be, rather than
+    // where the reader meets the byte.
+    if let Some(n) = text.lines().position(|l| !l.is_ascii()) {
+        eprintln!("kfx: {}:{}: not ASCII: KFX's sources are", path.display(), n + 1);
+        std::process::exit(1);
+    }
     leak_string(text)
 }
 

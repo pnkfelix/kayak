@@ -367,3 +367,14 @@ KFX's first mutable data, and its first regions.
 
 Also: the pin moved to Fixpt `95c5605`; `onto` and `concat` moved to
 `base.kfx`, the checker needing them.
+
+## A survey of Fixpt's programs; refusals that do not crash (2026-10-11)
+
+`scripts/survey-fixpt.py` gives `kfx` each FX-26 test program Fixpt
+checks, and counts first refusals: `docs/survey.md`. KFX accepts 1 of 286,
+being a kernel; the ranking says what FX-26 at large asks for first. It
+found `kfx` crashing on 70, at a source's first non-ASCII byte: the driver
+now refuses such a source, naming its line. Also: a name expected where
+there is none, and a type with parameters, are refused with a place;
+FX-26's forms that KFX lacks (`define*`, `proj`, `module`, …) are named as
+such, not as calls of keywords.

@@ -105,6 +105,13 @@
                  (string-append (if (i64= line 0) "" (string-append file (string-append ":" (string-append (i64->string line) ": "))))
                    (string-append "in " (string-append here (string-append ": " message))))))))))
 
+(define name-of (subr kfx (cv sexp) string)
+  (lambda (v e)
+    "A name, where one is expected: refused, saying where, if `e` is none."
+    (tagcase e
+      (sym (s) s)
+      (else other (refuse v (string-append "a name is expected here, not " (show-sexp other)))))))
+
 "Effects"
 
 (define effs-union (subr kfx (strings strings) strings)
@@ -170,9 +177,9 @@
           (cond ((sym-is? (car xs) "maxeff") (parse-effects v tvars (cdr xs)))
                 ((and (sym-is? (car xs) "read") (sym-is? (second xs) "@globals")) (list "@globals"))
                 ((and (sym-is? (car xs) "read") (head-is? (second xs) "globals"))
-                 (map (lambda ((g sexp)) (string-append "g:" (sym-name g))) (cdr (items (second xs)))))
+                 (map (lambda ((g sexp)) (string-append "g:" (name-of v g))) (cdr (items (second xs)))))
                 ((or (sym-is? (car xs) "read") (sym-is? (car xs) "write") (sym-is? (car xs) "alloc"))
-                 (list (string-append (sym-name (car xs)) (string-append ":" (region-name v tvars (second xs))))))
+                 (list (string-append (name-of v (car xs)) (string-append ":" (region-name v tvars (second xs))))))
                 (else (refuse v (string-append "an effect KFX does not have: " (show-sexp e))))))
         (else other (refuse v (string-append "an effect KFX does not have: " (show-sexp e)))))))
   (parse-effects (subr kfx (cv strings sexps) strings)
@@ -248,8 +255,8 @@
                  (cond ((not (i64= (size b) 2))
                         (refuse v (string-append "a binder KFX-0 does not have (distinct regions are to come): "
                                                  (show-sexp (lst b "" 0)))))
-                       ((sym-is? (second b) "type") (sym-name (car b)))
-                       ((sym-is? (second b) "region") (string-append "'" (sym-name (car b))))
+                       ((sym-is? (second b) "type") (name-of v (car b)))
+                       ((sym-is? (second b) "region") (string-append "'" (name-of v (car b))))
                        (else (refuse v (string-append "KFX's poly is over types and regions: " (show-sexp (lst b "" 0))))))))
              (items (second (items t))))
         nil)))
@@ -557,7 +564,7 @@
   (lambda (v names types)
     (if (null? names)
         nil
-        (cons (local v (sym-name (car names)) (car types)) (bind-fields v (cdr names) (cdr types))))))
+        (cons (local v (name-of v (car names)) (car types)) (bind-fields v (cdr names) (cdr types))))))
 
 (define bind-params (subr kfx (cv sexps tys) binds)
   (lambda (v params types)
@@ -779,10 +786,10 @@
               (if (null? expected) (refuse v "a tagcase with no arms") (res (car expected) nil s))
               (refuse v (string-append "a tagcase of a " (string-append d " with no else, and no arm for each tag"))))
           (let* ((arm (items (car tagged)))
-                 (tag (sym-name (car arm))))
+                 (tag (name-of v (car arm))))
             (if (string=? tag "else")
                 (if (null? (cdr tagged))
-                    (body (with-binds v (list (local v (sym-name (second arm)) (ty-data d))))
+                    (body (with-binds v (list (local v (name-of v (second arm)) (ty-data d))))
                           s (cdr (cdr arm)) expected)
                     (refuse v "a tagcase's else is its last arm"))
                 (let* ((fields (variant-fields v d tag vs))
@@ -805,7 +812,7 @@
             (tagcase (synth sees s (second b))
               (res (t es s)
                 (with-effs (let-values v s (cdr bindings) forms expected
-                                       (cons (local v (sym-name (car b)) t) bound) sequential)
+                                       (cons (local v (name-of v (car b)) t) bound) sequential)
                            es)))))))
 
   (synth-lambda (subr kfx (cv st sexps sexps) res)
@@ -859,7 +866,7 @@
        local's value is a call of a procedure not known, so `spin` too."
       (let ((found (find-bind h (cv-binds v))))
         (cond ((keyword? h)
-               (refuse v (string-append "a call of " (string-append h ", which FX-26 reads as its form, not a call"))))
+               (refuse v (string-append "(" (string-append h " ...) is FX-26's form, which KFX does not have, or a call of a local named by that keyword"))))
               ((null? found)
                (refuse v (string-append "nothing is named " h)))
               (else
@@ -947,7 +954,7 @@
   (lambda (v table file where)
     (map (lambda ((p sexp))
            (let ((xs (items p)))
-             (bind (sym-name (car xs)) (parse-scheme v (second xs)) where)))
+             (bind (name-of v (car xs)) (parse-scheme v (second xs)) where)))
          (read-all (string-chars table) file 1))))
 
 (define prim-binds (subr kfx (cv) binds)
@@ -958,10 +965,10 @@
 (define datatype-of (subr kfx (cv sexps) dt)
   (lambda (v xs)
     "A define-datatype's name and variants."
-    (dt (sym-name (car xs))
+    (dt (name-of v (car xs))
         (map (lambda ((vt sexp))
                (let ((ys (items vt)))
-                 (variant (sym-name (car ys)) (parse-types v nil (cdr ys)))))
+                 (variant (name-of v (car ys)) (parse-types v nil (cdr ys)))))
              (cdr xs)))))
 
 (define constructors (subr kfx (dt) binds)
@@ -977,28 +984,41 @@
  definition, as FX-26 has it. Effect abbreviations and values are seen
  only after their definitions."
 
-(define declare-types (subr kfx (sexps aliases) aliases)
-  (lambda (forms as)
+(define type-name (subr kfx (cv sexp) string)
+  (lambda (v form)
+    "A define-type's or define-datatype's name: KFX's types have no
+     parameters (FX-26's type families)."
+    (tagcase form
+      (lst (xs src-file src-line)
+        (let ((v (near v src-file src-line)))
+          (tagcase (second xs)
+            (sym (s) s)
+            (else other (refuse v (string-append "a type with parameters, which KFX does not have: "
+                                                 (show-sexp other)))))))
+      (else other (refuse v "a definition is expected")))))
+
+(define declare-types (subr kfx (cv sexps aliases) aliases)
+  (lambda (v forms as)
     (cond ((null? forms) as)
           ((head-is? (car forms) "define-type")
            (let ((xs (items (car forms))))
-             (declare-types (cdr forms) (cons (alias (sym-name (second xs)) (third xs)) as))))
-          (else (declare-types (cdr forms) as)))))
+             (declare-types v (cdr forms) (cons (alias (type-name v (car forms)) (third xs)) as))))
+          (else (declare-types v (cdr forms) as)))))
 
-(define datatype-names (subr kfx (sexps dts) dts)
-  (lambda (forms ds)
+(define datatype-names (subr kfx (cv sexps dts) dts)
+  (lambda (v forms ds)
     "The datatypes' names, before their variants' types can be read."
     (cond ((null? forms) ds)
           ((head-is? (car forms) "define-datatype")
-           (datatype-names (cdr forms) (cons (dt (sym-name (second (items (car forms)))) nil) ds)))
-          (else (datatype-names (cdr forms) ds)))))
+           (datatype-names v (cdr forms) (cons (dt (type-name v (car forms)) nil) ds)))
+          (else (datatype-names v (cdr forms) ds)))))
 
 (define with-effdef (subr kfx (cv sexps) cv)
   (lambda (v xs)
     "`v`, with a define-effect's abbreviation."
     (tagcase v
       (cv (bs ds as es here group file line)
-        (cv bs ds as (cons (effdef (sym-name (second xs)) (parse-effect v nil (third xs))) es) here group file line)))))
+        (cv bs ds as (cons (effdef (name-of v (second xs)) (parse-effect v nil (third xs))) es) here group file line)))))
 
 (define declare-datatypes (subr kfx (cv sexps dts) dts)
   (lambda (v forms ds)
@@ -1069,16 +1089,16 @@
 (define check-rec (subr kfx (cv sexps) cv)
   (lambda (v bindings)
     "A define-rec: every member in scope in each, and each a lambda."
-    (let* ((names (map (lambda ((b sexp)) (sym-name (car (items b)))) bindings))
+    (let* ((names (map (lambda ((b sexp)) (name-of v (car (items b)))) bindings))
            (named (with-binds v (map (lambda ((b sexp))
                                        (let ((ys (items b)))
-                                         (global v (sym-name (car ys)) (parse-scheme v (second ys)))))
+                                         (global v (name-of v (car ys)) (parse-scheme v (second ys)))))
                                      bindings))))
       (begin
         (map (lambda ((b sexp))
                (let ((ys (items b)))
                  (if (procedure? (third ys))
-                     (check-procedure (at named (sym-name (car ys)) names) (third ys)
+                     (check-procedure (at named (name-of v (car ys)) names) (third ys)
                                       (parse-scheme v (second ys)))
                      (refuse v "a define-rec binds only lambdas"))))
              bindings)
@@ -1095,12 +1115,12 @@
           (cond ((string=? h "define-effect") (with-effdef v xs))
                 ((string=? h "define-type") v)
                 ((string=? h "define-datatype")
-                 (let ((d (car (variants-dt v (sym-name (second xs))))))
+                 (let ((d (car (variants-dt v (name-of v (second xs))))))
                    (defined-once v (constructors d))))
                 ((string=? h "define")
                  (if (not (i64= (size xs) 4))
                      (refuse v "a definition needs a type")
-                     (let* ((name (sym-name (second xs)))
+                     (let* ((name (name-of v (second xs)))
                             (v (at v name (list name)))
                             (sc (parse-scheme v (third xs)))
                             (named (with-binds v (list (global v name sc)))))
@@ -1143,9 +1163,10 @@
 (define check-program (subr kfx (sexps) unit)
   (lambda (forms)
     "Every form, in order; the first error stops the compiler."
-    (let* ((start (cv nil nil (declare-types forms nil) nil "a type" nil "the program" 0))
+    (let* ((empty (cv nil nil nil nil "a type" nil "the program" 0))
+           (start (cv nil nil (declare-types empty forms nil) nil "a type" nil "the program" 0))
            (types (type-names-free start forms))
-           (named (tagcase start (cv (bs ds as es here group file line) (cv bs (datatype-names forms nil) as es here group file line))))
+           (named (tagcase start (cv (bs ds as es here group file line) (cv bs (datatype-names start forms nil) as es here group file line))))
            (typed (tagcase named (cv (bs ds as es here group file line) (cv bs (declare-datatypes named forms nil) as es here group file line))))
            (v (with-binds typed (prim-binds typed))))
       (begin (check-tops v forms) #u))))
