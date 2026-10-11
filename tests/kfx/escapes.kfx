@@ -56,6 +56,15 @@
                     (i64+ 1 (prompt t2 (find t1 xs n) (lambda ((v i64)) (i64- 0 v))))))
                 (lambda ((v i64)) (i64* v 1000)))))))
 
+"A lambda applied where it is made, which aborts: a closure returning a
+ `Result`, its call a `?`."
+(define on-the-spot (subr kfx (i64) i64)
+  (lambda (n)
+    (letregion e
+      (let ((t (the (prompt-tag i64 i64 kfx e) (make-continuation-prompt-tag))))
+        (prompt t (i64+ 1 ((lambda ((x i64)) (if (i64> x 3) (abort-current-continuation t x) x)) n))
+                (lambda ((v i64)) (i64* v 2)))))))
+
 (define main (subr kfx () string)
   (lambda ()
     (words
@@ -64,4 +73,6 @@
            (i64->string (first-over (list 1 5 9 2) 4))
            (i64->string (first-over (list 1 2) 4))
            (i64->string (nested (list 4 7) 7))
-           (i64->string (nested (list 4 7) 8))))))
+           (i64->string (nested (list 4 7) 8))
+           (i64->string (on-the-spot 2))
+           (i64->string (on-the-spot 5))))))

@@ -646,6 +646,9 @@ found two holes in what had just been built:
 - a `define-rec` group proved to end skipped the rule that a global
   reading itself says `spin`, since one list stood for both; now two
   (`kfx-refused/rec-reaches-itself*`).
-It also found Rust that does not compile, for programs both accept:
-an abort with no prompt around it in its function, and a lambda applied
-on the spot that aborts (`TODO.md` §16).
+It also found Rust that did not compile, for programs both accept, now
+fixed: an abort where no `Result` is returned (its region masked, no
+prompt for it can be running) is `unreachable_unwind`, failing as FX-26
+does when it runs; a lambda applied where it is made, that may abort, is a
+closure returning a `Result`, its call a `?` (`tests/kfx/escapes.kfx`);
+and whether a `Result` is returned is the innermost function's to say.

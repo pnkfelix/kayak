@@ -103,12 +103,6 @@ Flat arrays of `i64` and references are done (`DONE.md` §15). Left:
 
 Escapes are done (`DONE.md`, C18). Left:
 
-- Rust that does not compile, for programs both checkers accept (found by
-  a probe): an abort in a function whose effect, masked by `letregion`,
-  says no `goto` (it is `return Err` in a function returning a value;
-  Fixpt fails at run time, "no prompt for this tag"); and a lambda applied
-  on the spot that aborts, written a plain closure. The emitter should
-  read fallibility from the checker's facts here too, or refuse;
 - marks (`with-mark`, `first-mark`), locations in the dynamic context;
 - `proj` of `abort-current-continuation`, as Fixpt's `control/` tests
   write it;
@@ -120,6 +114,10 @@ Escapes are done (`DONE.md`, C18). Left:
 
 ## 17. Small things noticed
 
+- **Malformed forms panic** (`car: nil`) instead of a `kfx:` message:
+  `(if c x)`, `(cond)`, a clause of a test alone, `(let ((x)) n)`,
+  `(with)`, a letrec binding of no lambda. Fixpt refuses each too; only
+  the message is wrong.
 - **`tagcase_`**, the name a `tagcase` binds, could be a KFX name's
   mangling (`tagcase-`).
 - **`(define x e)` with no type** is refused; FX-26 allows it.

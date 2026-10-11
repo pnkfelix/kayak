@@ -731,9 +731,25 @@ pub fn item_path(c: &'static Ctx, s: Str) -> Str {
     })))
 }
 
-/// Whether the function or closure being written returns a `Result`.
+pub fn innermost_fallible(mut ls: Strings) -> bool {
+    loop {
+        if null_p(ls) {
+            return false;
+        } else if string_eq_p(car(ls), str_lit("%fallible")) {
+            return true;
+        } else if string_eq_p(car(ls), str_lit("%infallible")) {
+            return false;
+        } else {
+            ls = cdr(ls);
+            continue;
+        }
+    }
+}
+
+/// Whether the function or closure being written returns a `Result`: the
+/// innermost's mark says.
 pub fn fallible_here_p(c: &'static Ctx) -> bool {
-    string_eq_p(local_kind(str_lit("%fallible"), ctx_locals(c)), str_lit("local"))
+    innermost_fallible(ctx_locals(c))
 }
 
 /// A call's operator: a knot's procedure, a constant's value (a
@@ -1189,11 +1205,11 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
                         let acc = put(str_lit("("), acc);
                         let acc = put_exp(c, head, n, value(), acc);
                         let acc = put(str_lit(")("), acc);
-                        put(str_lit(")"), if null_p(cdr(xs)) {
+                        put_question(c, e, put(str_lit(")"), if null_p(cdr(xs)) {
                             acc
                         } else {
                             put_joined(c, cdr(xs), str_lit(", "), n, acc)
-                        })
+                        }))
                     }
                 }
             }
@@ -1559,7 +1575,14 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
     } else if (string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion"))) {
         put_block(c, cons(e, nil()), n, t, acc)
     } else if abort_p(c, e) {
-        let acc = put(str_lit("return Err(unwind("), acc);
+        // An abort: an early return, where a `Result` is returned; else no
+        // prompt can be running for its tag (the checker masked its region),
+        // and it fails, as FX-26's does when it runs.
+        let acc = put(if fallible_here_p(c) {
+            str_lit("return Err(unwind(")
+        } else {
+            str_lit("unreachable_unwind(unwind(")
+        }, acc);
         let acc = put_joined(c, xs, str_lit(", "), n, acc);
         put(str_lit("))"), acc)
     } else if (string_eq_p(h, str_lit("prompt")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {

@@ -115,7 +115,31 @@ pub fn nested(xs: Ints, n: i64) -> i64 {
     }
 }
 
+// A lambda applied where it is made, which aborts: a closure returning a
+// `Result`, its call a `?`.
+pub fn on_the_spot(n: i64) -> i64 {
+    let t = the::<Tag<i64, i64>>(make_continuation_prompt_tag());
+    {
+        let prompt_tag__ = t;
+        match (move || -> Result<_, Unwind> {
+            Ok(i64_plus(1i64, (lambda1(move |x: i64| {
+                if i64_gt(x, 3i64) {
+                    return Err(unwind(t, x))
+                } else {
+                    Ok(x)
+                }
+            }))(n)?))
+        })() {
+            Ok(v) => v,
+            Err(u) if u.is(prompt_tag__) => (lambda1(move |v: i64| {
+                i64_star(v, 2i64)
+            }))(prompt_tag__.payload(u)),
+            Err(u) => unreachable_unwind(u),
+        }
+    }
+}
+
 pub fn main() -> Str {
-    words(cons(i64_to_string(search(cons(1i64, cons(2i64, cons(3i64, nil()))), 2i64)), cons(i64_to_string(search(cons(1i64, cons(2i64, cons(3i64, nil()))), 5i64)), cons(i64_to_string(first_over(cons(1i64, cons(5i64, cons(9i64, cons(2i64, nil())))), 4i64)), cons(i64_to_string(first_over(cons(1i64, cons(2i64, nil())), 4i64)), cons(i64_to_string(nested(cons(4i64, cons(7i64, nil())), 7i64)), cons(i64_to_string(nested(cons(4i64, cons(7i64, nil())), 8i64)), nil())))))))
+    words(cons(i64_to_string(search(cons(1i64, cons(2i64, cons(3i64, nil()))), 2i64)), cons(i64_to_string(search(cons(1i64, cons(2i64, cons(3i64, nil()))), 5i64)), cons(i64_to_string(first_over(cons(1i64, cons(5i64, cons(9i64, cons(2i64, nil())))), 4i64)), cons(i64_to_string(first_over(cons(1i64, cons(2i64, nil())), 4i64)), cons(i64_to_string(nested(cons(4i64, cons(7i64, nil())), 7i64)), cons(i64_to_string(nested(cons(4i64, cons(7i64, nil())), 8i64)), cons(i64_to_string(on_the_spot(2i64)), cons(i64_to_string(on_the_spot(5i64)), nil())))))))))
 }
 

@@ -1991,7 +1991,7 @@
                             (else other (refuse v (string-append "a lambda with nothing expected needs its parameters' types: " (show-sexp other))))))
                         params)))
         (tagcase (body (with-binds v (bind-params v params types)) s forms nil)
-          (res (r es s) (res (ty-proc es types r) nil s))))))
+          (res (r es s) (res (ty-proc es types r) nil (if (escapes? es) (note-fact s (cv-file v) (cv-pos v) "fallible") s)))))))
 
   (check-lambda (subr kfx (cv st sexps sexps ty) res)
     (lambda (v s params forms expected)

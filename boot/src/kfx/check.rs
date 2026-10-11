@@ -4328,7 +4328,11 @@ pub fn synth_lambda(v: &'static Cv, s: &'static St, params: Sexps, forms: Sexps)
     let tagcase_ = body(with_binds(v, bind_params(v, params, types)), s, forms, nil());
     match *tagcase_ {
         Res::Res(r, es, s) => {
-            res(ty_proc(es, types, r), nil(), s)
+            res(ty_proc(es, types, r), nil(), if escapes_p(es) {
+                note_fact(s, cv_file(v), cv_pos(v), str_lit("fallible"))
+            } else {
+                s
+            })
         }
     }
 }
