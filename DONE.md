@@ -1051,3 +1051,8 @@ itself, given where a list is (`r7`, `r8`).
 C40. `tests/kfx/caller-place`, `kfx-refused/caller-region-outside`; three
 more of Fixpt's region programs agree. Fixpt's programs kfx accepts: 79,
 all agreeing.
+
+## Places in mutually recursive procedures (2026-10-11)
+
+Each member of a `define-rec` given places is given all the group makes
+in a place of its name. `tests/kfx/places-mutual`.

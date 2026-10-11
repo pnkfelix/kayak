@@ -439,108 +439,6 @@ pub fn check_members(mut v: &'static Cv, mut bindings: Sexps, mut group: Strings
     }
 }
 
-/// A define-rec: every member in scope in each, and each a lambda.
-pub fn check_rec(v: &'static Cv, bindings: Sexps) -> &'static Cv {
-    let names = map(lambda1(move |b: &'static Sexp| {
-        name_of(v, car(items(b)))
-    }), bindings);
-    let ends = terminates_p(v, names, map(lambda1(move |b: &'static Sexp| {
-        let tagcase_ = parse_scheme(v, second(items(b)));
-        match *tagcase_ {
-            Scheme::Scheme(tvars, t) => {
-                t
-            }
-        }
-    }), bindings), map(lambda1(move |b: &'static Sexp| {
-        third(items(b))
-    }), bindings));
-    let named = with_binds(v, map(lambda1(move |b: &'static Sexp| {
-        let ys = items(b);
-        global(v, name_of(v, car(ys)), parse_scheme(v, second(ys)))
-    }), bindings));
-    check_members(named, bindings, if ends {
-        nil::<Str>()
-    } else {
-        names
-    }, names)
-}
-
-pub fn global_reads(mut es: Strings) -> Strings {
-    loop {
-        if null_p(es) {
-            return nil::<Str>();
-        } else {
-            if (string_eq_p(car(es), str_lit("@globals")) || global_atom_p(car(es))) {
-                return cons(car(es), global_reads(cdr(es)));
-            } else {
-                es = cdr(es);
-                continue;
-            }
-        }
-    }
-}
-
-/// `(define* name type lambda)`: as FX-26 has it, the globals its body
-/// reads are found, not written. The body is checked as though the type
-/// read every global; the global is then of the type written, its effect
-/// with the globals found.
-pub fn check_define_star(v: &'static Cv, xs: Sexps) -> &'static Cv {
-    let name = name_of(v, second(xs));
-    let defined = fourth(xs);
-    let v = at(v, name, if ends_alone_p(v, name, parse_scheme(v, third(xs)), defined) {
-        nil::<Str>()
-    } else {
-        kayak_rt::cons(name, kayak_rt::nil())
-    });
-    let lam = items(if head_is_p(defined, str_lit("plambda")) {
-        third(items(defined))
-    } else {
-        defined
-    });
-    if not(procedure_p(defined)) {
-        match refuse(v, str_lit("a define* is of a lambda")) {}
-    } else {
-        let tagcase_ = parse_scheme(v, third(xs));
-        match *tagcase_ {
-            Scheme::Scheme(tvars, t) => {
-                let tagcase_ = t;
-                match *tagcase_ {
-                    Ty::TyProc(declared, ps, r) => {
-                        let wide = ty_proc(effs_union(kayak_rt::cons(str_lit("@globals"), kayak_rt::nil()), declared), ps, r);
-                        let named = with_binds(v, kayak_rt::cons(global(v, name, scheme(tvars, wide)), kayak_rt::nil()));
-                        let found = lambda_effects(with_tvars(named, tvars), new_state(), items(second(lam)), cdr(cdr(lam)), wide);
-                        let es = {
-                            let tagcase_ = found;
-                            match *tagcase_ {
-                                Res::Res(u, es, s) => {
-                                    es
-                                }
-                            }
-                        };
-                        let fs = {
-                            let tagcase_ = found;
-                            match *tagcase_ {
-                                Res::Res(u, es, s) => {
-                                    settle_facts(s)
-                                }
-                            }
-                        };
-                        if effs_within_p(es, effs_union(kayak_rt::cons(str_lit("@globals"), kayak_rt::nil()), declared)) {
-                            with_facts(with_binds(no_reaching_itself(v, kayak_rt::cons(name, kayak_rt::nil()), scheme(tvars, ty_proc(effs_union(global_reads(es), declared), ps, r))), kayak_rt::cons(global(v, name, scheme(tvars, ty_proc(effs_union(global_reads(es), declared), ps, r))), kayak_rt::nil())), fs)
-                        } else {
-                            match refuse(v, string_append(str_lit("a define* whose effect "), string_append(show_effs(es), string_append(str_lit(" is not within "), show_effs(declared))))) {}
-                        }
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        match refuse(v, str_lit("a define* is of a procedure")) {}
-                    }
-                }
-            }
-        }
-    }
-}
-
 pub fn first_n(fs: Facts, n: i64) -> Facts {
     if (null_p(fs) || i64_lt(n, 1i64)) {
         nil::<&'static Fact>()
@@ -617,6 +515,178 @@ pub fn with_place_needs(v: &'static Cv, name: Str, sc: &'static Scheme, before: 
                 }
             }
         }), new)))
+    }
+}
+
+/// `s`'s words, split at spaces.
+pub fn split_words_check(s: Str) -> Strings {
+    map(lambda1(move |x: &'static Sexp| {
+        sym_name(x)
+    }), read_all(string_chars(s), str_lit(""), 1i64))
+}
+
+/// A define-rec's procedures given places (C34): its members call each
+/// other before any one's needs are summed, so each is given all the
+/// group makes in a place of its name, by any member: more bounds than
+/// some need, which Rust takes, since every caller then holds them.
+pub fn with_group_needs(v: &'static Cv, bindings: Sexps, before: i64) -> &'static Cv {
+    let fs = cv_facts(v);
+    let new = first_n(fs, i64_minus(size(fs), before));
+    let members = map(lambda1(move |b: &'static Sexp| {
+        let ys = items(b);
+        fact(datum_file(b), datum_pos(b), string_append(sym_name(car(ys)), string_append(str_lit(" "), words_of(map(lambda1(move |m: Str| {
+            after_prefix(m, str_lit("%place "))
+        }), place_marks_of({
+            let tagcase_ = parse_scheme(v, second(ys));
+            match *tagcase_ {
+                Scheme::Scheme(tv, t) => {
+                    t
+                }
+            }
+        }))))))
+    }), bindings);
+    let all_places = concat(map(lambda1(move |m: &'static Fact| {
+        let tagcase_ = m;
+        match *tagcase_ {
+            Fact::Fact(f, p, w) => {
+                cdr(split_words_check(w))
+            }
+        }
+    }), members));
+    let needs = concat(map(lambda1(move |f: &'static Fact| {
+        let tagcase_ = f;
+        match *tagcase_ {
+            Fact::Fact(ff, fp, what) => {
+                let n = place_need(what, all_places);
+                if string_eq_p(n, str_lit("")) {
+                    nil::<Str>()
+                } else {
+                    the::<Strings>(kayak_rt::cons(n, kayak_rt::nil()))
+                }
+            }
+        }
+    }), new));
+    if null_p(all_places) {
+        v
+    } else {
+        with_facts(v, concat(map(lambda1(move |m: &'static Fact| {
+            let tagcase_ = m;
+            match *tagcase_ {
+                Fact::Fact(f, p, w) => {
+                    let ws = split_words_check(w);
+                    let mine = cdr(ws);
+                    concat(map(lambda1(move |n: Str| {
+                        if string_member_p(before_char(n, ' '), mine) {
+                            the::<Facts>(kayak_rt::cons(fact(f, p, string_append(str_lit("place-needs "), string_append(car(ws), string_append(str_lit(" "), n)))), kayak_rt::nil()))
+                        } else {
+                            nil::<&'static Fact>()
+                        }
+                    }), needs))
+                }
+            }
+        }), members)))
+    }
+}
+
+/// A define-rec: every member in scope in each, and each a lambda.
+pub fn check_rec(v: &'static Cv, bindings: Sexps) -> &'static Cv {
+    let names = map(lambda1(move |b: &'static Sexp| {
+        name_of(v, car(items(b)))
+    }), bindings);
+    let ends = terminates_p(v, names, map(lambda1(move |b: &'static Sexp| {
+        let tagcase_ = parse_scheme(v, second(items(b)));
+        match *tagcase_ {
+            Scheme::Scheme(tvars, t) => {
+                t
+            }
+        }
+    }), bindings), map(lambda1(move |b: &'static Sexp| {
+        third(items(b))
+    }), bindings));
+    let named = with_binds(v, map(lambda1(move |b: &'static Sexp| {
+        let ys = items(b);
+        global(v, name_of(v, car(ys)), parse_scheme(v, second(ys)))
+    }), bindings));
+    with_group_needs(check_members(named, bindings, if ends {
+        nil::<Str>()
+    } else {
+        names
+    }, names), bindings, size(cv_facts(named)))
+}
+
+pub fn global_reads(mut es: Strings) -> Strings {
+    loop {
+        if null_p(es) {
+            return nil::<Str>();
+        } else {
+            if (string_eq_p(car(es), str_lit("@globals")) || global_atom_p(car(es))) {
+                return cons(car(es), global_reads(cdr(es)));
+            } else {
+                es = cdr(es);
+                continue;
+            }
+        }
+    }
+}
+
+/// `(define* name type lambda)`: as FX-26 has it, the globals its body
+/// reads are found, not written. The body is checked as though the type
+/// read every global; the global is then of the type written, its effect
+/// with the globals found.
+pub fn check_define_star(v: &'static Cv, xs: Sexps) -> &'static Cv {
+    let name = name_of(v, second(xs));
+    let defined = fourth(xs);
+    let v = at(v, name, if ends_alone_p(v, name, parse_scheme(v, third(xs)), defined) {
+        nil::<Str>()
+    } else {
+        kayak_rt::cons(name, kayak_rt::nil())
+    });
+    let lam = items(if head_is_p(defined, str_lit("plambda")) {
+        third(items(defined))
+    } else {
+        defined
+    });
+    if not(procedure_p(defined)) {
+        match refuse(v, str_lit("a define* is of a lambda")) {}
+    } else {
+        let tagcase_ = parse_scheme(v, third(xs));
+        match *tagcase_ {
+            Scheme::Scheme(tvars, t) => {
+                let tagcase_ = t;
+                match *tagcase_ {
+                    Ty::TyProc(declared, ps, r) => {
+                        let wide = ty_proc(effs_union(kayak_rt::cons(str_lit("@globals"), kayak_rt::nil()), declared), ps, r);
+                        let named = with_binds(v, kayak_rt::cons(global(v, name, scheme(tvars, wide)), kayak_rt::nil()));
+                        let found = lambda_effects(with_tvars(named, tvars), new_state(), items(second(lam)), cdr(cdr(lam)), wide);
+                        let es = {
+                            let tagcase_ = found;
+                            match *tagcase_ {
+                                Res::Res(u, es, s) => {
+                                    es
+                                }
+                            }
+                        };
+                        let fs = {
+                            let tagcase_ = found;
+                            match *tagcase_ {
+                                Res::Res(u, es, s) => {
+                                    settle_facts(s)
+                                }
+                            }
+                        };
+                        if effs_within_p(es, effs_union(kayak_rt::cons(str_lit("@globals"), kayak_rt::nil()), declared)) {
+                            with_facts(with_binds(no_reaching_itself(v, kayak_rt::cons(name, kayak_rt::nil()), scheme(tvars, ty_proc(effs_union(global_reads(es), declared), ps, r))), kayak_rt::cons(global(v, name, scheme(tvars, ty_proc(effs_union(global_reads(es), declared), ps, r))), kayak_rt::nil())), fs)
+                        } else {
+                            match refuse(v, string_append(str_lit("a define* whose effect "), string_append(show_effs(es), string_append(str_lit(" is not within "), show_effs(declared))))) {}
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        match refuse(v, str_lit("a define* is of a procedure")) {}
+                    }
+                }
+            }
+        }
     }
 }
 

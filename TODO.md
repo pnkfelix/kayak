@@ -145,8 +145,7 @@ Escapes are done (`DONE.md`, C18). Left:
 - **`letrena`'s rest** (C30, C34, C40): an alias body's `(place r)` of a
   plain region parameter (accepted; FX-26 refuses it);
   `rmake-array`, `rmake-icell` (KFX has no arrays of values, nor I-cells);
-  datatypes over regions used in a `letrena` (their regions erased); places in mutually recursive
-  procedures.
+  datatypes over regions used in a `letrena` (their regions erased); 
 - **`null?` of an argument whose element nothing says**, other than a name
   or an `error` (`(null? (car (cons nil nil)))`), is refused; FX-26, whose
   `null?`'s binder is its argument's whole type, accepts it (C29).

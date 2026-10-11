@@ -1,0 +1,13 @@
+"Places in mutually recursive procedures (C34): each of a define-rec given
+ all the group makes in a place of its name, so each holds what the other
+ needs: evens makes pairs, odds references, and each calls the other."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-rec
+  (evens (poly ((p place)) (subr (maxeff kfx (alloc p)) ((place p) i64 (listof i64 p)) (listof i64 p)))
+    (lambda (h n acc) (if (i64< n 1) acc (odds h (i64- n 1) (rcons h n acc)))))
+  (odds (poly ((p place)) (subr (maxeff kfx (alloc p)) ((place p) i64 (listof i64 p)) (listof i64 p)))
+    (lambda (h n acc) (let ((c (the (ref i64 p) (rnew h n)))) (if (i64< n 1) acc (evens h (i64- n 1) acc))))))
+(define total (subr kfx (i64) i64)
+  (lambda (n) (letrena r (let ((xs (evens r n nil))) (if (null? xs) (the i64 0) (car xs))))))
+(define main (subr kfx () string) (lambda () (i64->string (total 6))))
+(main)
