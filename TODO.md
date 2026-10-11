@@ -137,8 +137,6 @@ Escapes are done (`DONE.md`, C18). Left:
     no longer checks;
   - a `nil` whose element type nothing fixes, `(let ((x nil)) 0)`: Rust
     cannot infer it (a Rust error, FX-26 accepts);
-  - a `void` at the top level, `(error "x")`: `!` has no `Show` (both
-    fail when run);
   - **for Fixpt** (found by the fourth probe): a procedure parameter of
     type `(subr pure (a) b)` in a `poly` is called with no `spin`, and `a`
     instantiated at a datatype holding such a procedure loops with no

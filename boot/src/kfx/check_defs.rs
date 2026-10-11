@@ -577,7 +577,11 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                 let tagcase_ = synth(at(v, str_lit("a top-level expression"), nil()), new_state(), form);
                 match *tagcase_ {
                     Res::Res(t, es, s) => {
-                        with_facts(v, st_facts(s))
+                        with_facts(v, st_facts(if void_p(s, t) {
+                            note_fact(s, src_file, src_pos, str_lit("void"))
+                        } else {
+                            s
+                        }))
                     }
                 }
             }

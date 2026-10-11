@@ -989,14 +989,22 @@ pub fn toplevel_form_p(f: &'static Sexp) -> bool {
     not((definition_p(f) || head_is_p(f, str_lit("define-effect"))))
 }
 
+/// Each top-level expression's value written; a `void` one, which never
+/// gives one, run, its type said.
 pub fn put_toplevel_lines(mut c: &'static Ctx, mut forms: Sexps, mut acc: Chars) -> Chars {
     loop {
         if null_p(forms) {
             return acc;
         } else if toplevel_form_p(car(forms)) {
-            let acc = put(str_lit("    show_line(&mut out, (|| -> Result<_, Unwind> { Ok("), acc);
-            let acc = put_exp(with_locals(c, cons(str_lit("%fallible"), nil())), car(forms), 1i64, value(), acc);
-            return put_toplevel_lines(c, cdr(forms), put(str_lit(") })().unwrap_or_else(|u| unreachable_unwind(u)));\n"), acc));
+            if fact_at_p(c, car(forms), str_lit("void")) {
+                let acc = put(str_lit("    let _: () = (|| -> Result<(), Unwind> { let _: () = "), acc);
+                let acc = put_exp(with_locals(c, cons(str_lit("%fallible"), nil())), car(forms), 1i64, value(), acc);
+                return put_toplevel_lines(c, cdr(forms), put(str_lit("; Ok(()) })().unwrap_or_else(|u| unreachable_unwind(u));\n"), acc));
+            } else {
+                let acc = put(str_lit("    show_line(&mut out, (|| -> Result<_, Unwind> { Ok("), acc);
+                let acc = put_exp(with_locals(c, cons(str_lit("%fallible"), nil())), car(forms), 1i64, value(), acc);
+                return put_toplevel_lines(c, cdr(forms), put(str_lit(") })().unwrap_or_else(|u| unreachable_unwind(u)));\n"), acc));
+            }
         } else {
             forms = cdr(forms);
             continue;

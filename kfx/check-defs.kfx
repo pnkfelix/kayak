@@ -408,7 +408,8 @@
                 ((string=? h "define-rec") (check-rec v (cdr xs)))
                 ((string=? h "define*") (check-define* v xs))
                 (else (tagcase (synth (at v "a top-level expression" nil) (new-state) form)
-                        (res (t es s) (with-facts v (st-facts s))))))))
+                        (res (t es s)
+                          (with-facts v (st-facts (if (void? s t) (note-fact s src-file src-pos "void") s)))))))))
       (else other (tagcase (synth (at v "a top-level expression" nil) (new-state) form)
                     (res (t es s) (with-facts v (st-facts s))))))))
 
