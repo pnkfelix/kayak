@@ -1405,7 +1405,11 @@ pub fn synth(v: &'static Cv, s: &'static St, e: &'static Sexp) -> &'static Res {
                 }
                 _ => {
                     let head = tagcase_;
-                    void_call(v, false, false, synth_call_of(v, s, synth(v, s, head), cdr(xs), nil::<i64>(), nil::<&'static Ty>(), kayak_rt::cons(str_lit("spin"), kayak_rt::nil())))
+                    void_call(v, false, false, synth_call_of(v, s, synth(v, s, head), cdr(xs), nil::<i64>(), nil::<&'static Ty>(), if head_is_p(head, str_lit("proj")) {
+                        nil::<Str>()
+                    } else {
+                        kayak_rt::cons(str_lit("spin"), kayak_rt::nil())
+                    }))
                 }
             }
         }
@@ -1743,6 +1747,8 @@ pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
         synth_lambda(v, s, items(car(xs)), cdr(xs))
     } else if (string_eq_p(h, str_lit("rlambda")) && null_p(find_bind(h, cv_binds(v)))) {
         rlambda_form(v, s, e, xs, nil::<&'static Ty>())
+    } else if string_eq_p(h, str_lit("proj")) {
+        proj_form(v, s, xs)
     } else if string_eq_p(h, str_lit("list")) {
         if null_p(xs) {
             match refuse(v, str_lit("a (list) of a type nothing here says, as FX-26 finds it: say it, (the (listof T r) (list))")) {}
@@ -2674,6 +2680,73 @@ pub fn place_of(v: &'static Cv, s: &'static St, e: &'static Sexp) -> &'static Ty
     }
 }
 
+/// The region an allocation in `place` makes at (C40): the one the type
+/// expected says, if it is the place's or a region bound within it, a
+/// region binder `(r region p)` or one bound inside the place's
+/// `letrena`, which will not outlive it, as FX-26 has it; else the
+/// place's own. A region bound outside the place is refused by the fit.
+pub fn region_within(v: &'static Cv, s: &'static St, place: &'static Ty, expected: Tys) -> &'static Ty {
+    let (said, p) = (if null_p(expected) {
+        ty_unit()
+    } else {
+        let tagcase_ = walk(s, car(expected));
+        match *tagcase_ {
+            Ty::TyList(e, r) => {
+                walk(s, r)
+            }
+            Ty::TyRef(e, r) => {
+                walk(s, r)
+            }
+            _ => {
+                let other = tagcase_;
+                ty_unit()
+            }
+        }
+    }, {
+        let tagcase_ = walk(s, place);
+        match *tagcase_ {
+            Ty::TyVar(n) => {
+                n
+            }
+            _ => {
+                let other = tagcase_;
+                str_lit("")
+            }
+        }
+    });
+    let tagcase_ = said;
+    match *tagcase_ {
+        Ty::TyVar(n) => {
+            if (string_member_p(string_append(str_lit("%within "), string_append(n, string_append(str_lit(" "), p))), cv_tvars(v)) || bound_before_p(n, string_append(str_lit("%place "), p), cv_tvars(v))) {
+                said
+            } else {
+                place
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            place
+        }
+    }
+}
+
+/// Whether `x` comes before `y` in `ls`, the variables in scope newest
+/// first: bound inside it.
+pub fn bound_before_p(mut x: Str, mut y: Str, mut ls: Strings) -> bool {
+    loop {
+        if null_p(ls) {
+            return false;
+        } else if string_eq_p(car(ls), y) {
+            return false;
+        } else if string_eq_p(car(ls), x) {
+            return string_member_p(y, cdr(ls));
+        } else {
+            ls = cdr(ls);
+            continue;
+        }
+    }
+}
+
 /// `(rcons r x xs)`, `(rnew r v)`: made in the arena of the place `r`, at
 /// its region (FX-26 allows one within it, which KFX does not write yet).
 /// What is made is noted, for the arena's type.
@@ -2693,10 +2766,11 @@ pub fn region_alloc_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, ex
         let tagcase_ = fresh(s);
         match *tagcase_ {
             Res::Res(m, es0, s) => {
+                let at = region_within(v, s, r, expected);
                 let made = if string_eq_p(h, str_lit("rcons")) {
-                    ty_list(m, r)
+                    ty_list(m, at)
                 } else {
-                    ty_ref(m, r)
+                    ty_ref(m, at)
                 };
                 let s = if null_p(expected) {
                     s
@@ -2704,13 +2778,13 @@ pub fn region_alloc_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, ex
                     fits(v, s, made, car(expected))
                 };
                 let tagcase_ = if string_eq_p(h, str_lit("rcons")) {
-                    call_args(v, s, cdr(args), kayak_rt::cons(m, kayak_rt::cons(ty_list(m, r), kayak_rt::nil())), nil::<i64>())
+                    call_args(v, s, cdr(args), kayak_rt::cons(m, kayak_rt::cons(ty_list(m, at), kayak_rt::nil())), nil::<i64>())
                 } else {
                     call_args(v, s, cdr(args), kayak_rt::cons(m, kayak_rt::nil()), nil::<i64>())
                 };
                 match *tagcase_ {
                     Res::Res(u, es, s) => {
-                        res(made, effs_union(kayak_rt::cons(string_append(str_lit("alloc:"), region_string(s, r)), kayak_rt::nil()), es), note_types(s, cv_file(v), cv_pos(v), string_append(if string_eq_p(h, str_lit("rcons")) {
+                        res(made, effs_union(kayak_rt::cons(string_append(str_lit("alloc:"), region_string(s, r)), kayak_rt::cons(string_append(str_lit("alloc:"), region_string(s, at)), kayak_rt::nil())), es), note_types(s, cv_file(v), cv_pos(v), string_append(if string_eq_p(h, str_lit("rcons")) {
                             str_lit("rheld-cons@")
                         } else {
                             str_lit("rheld-ref@")
@@ -3113,6 +3187,142 @@ pub fn blob_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Ty
     }
 }
 
+/// `(proj f a ...)`: the poly procedure `f` at the arguments given for
+/// its binders in order, types and regions (places too), as FX-26
+/// projects one; in Rust `f`, whose generics the call finds.
+pub fn proj_form(v: &'static Cv, s: &'static St, xs: Sexps) -> &'static Res {
+    let found = if null_p(xs) {
+        nil::<&'static Bind>()
+    } else {
+        let tagcase_ = car(xs);
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                find_bind(n, cv_binds(v))
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<&'static Bind>()
+            }
+        }
+    };
+    if null_p(found) {
+        match refuse(v, str_lit("(proj f arg ...) of a poly procedure named")) {}
+    } else {
+        let tagcase_ = car(found);
+        match *tagcase_ {
+            Bind::Bind(n, sc, wher) => {
+                let tagcase_ = sc;
+                match *tagcase_ {
+                    Scheme::Scheme(tvars, t) => {
+                        if not(i64_eq(size(tvars), size(cdr(xs)))) {
+                            match refuse(v, string_append(str_lit("a proj of "), string_append(n, str_lit(" given the wrong number of arguments")))) {}
+                        } else {
+                            bounds_kept(v, s, n, lambda1(move |x: Str| {
+                                projected(v, tvars, cdr(xs), ty_var(x))
+                            }));
+                            res(projected(v, tvars, cdr(xs), t), naming_effs(s, n, wher, t, cv_group(v)), proj_needs(v, s, n, tvars, cdr(xs)))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// A procedure's regions within its places (C40), `(r region p)`, given
+/// regions that keep their bounds: `r`'s the place's, or bound inside
+/// it, or within it, so that it will not outlive it, as FX-26 has it.
+pub fn bounds_kept(v: &'static Cv, s: &'static St, n: Str, region_of_binder: &'static dyn Fn(Str) -> &'static Ty) -> () {
+    map(lambda1(move |f: &'static Fact| {
+        let tagcase_ = f;
+        match *tagcase_ {
+            Fact::Fact(ff, fp, what) => {
+                if has_prefix_p(what, string_append(str_lit("region-within "), string_append(n, str_lit(" ")))) {
+                    let ws = read_all(string_chars(after_prefix(what, string_append(str_lit("region-within "), string_append(n, str_lit(" "))))), str_lit(""), 1i64);
+                    let r = {
+                        let tagcase_ = walk(s, region_of_binder(sym_name(car(ws))));
+                        match *tagcase_ {
+                            Ty::TyVar(x) => {
+                                x
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                str_lit("")
+                            }
+                        }
+                    };
+                    let p = {
+                        let tagcase_ = walk(s, region_of_binder(sym_name(second(ws))));
+                        match *tagcase_ {
+                            Ty::TyVar(x) => {
+                                x
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                str_lit("")
+                            }
+                        }
+                    };
+                    if (string_eq_p(r, str_lit("")) || string_eq_p(p, str_lit("")) || string_eq_p(r, p) || string_member_p(string_append(str_lit("%within "), string_append(r, string_append(str_lit(" "), p))), cv_tvars(v)) || bound_before_p(r, string_append(str_lit("%place "), p), cv_tvars(v))) {
+                        ()
+                    } else {
+                        match refuse(v, string_append(str_lit("a region given within a place it could outlive: "), string_append(r, string_append(str_lit(" is bound outside "), p)))) {}
+                    }
+                } else {
+                    ()
+                }
+            }
+        }
+    }), cv_facts(v));
+    ()
+}
+
+/// A proj's needs: what the procedure makes in each place, at the
+/// places and types given (C34), noted as a call's are.
+pub fn proj_needs(v: &'static Cv, s: &'static St, n: Str, tvars: Strings, args: Sexps) -> &'static St {
+    let go__knot = knot::<&'static dyn Fn(&'static St, Strings) -> &'static St>();
+    let go = lambda2(move |s: &'static St, needs: Strings| {
+        if null_p(needs) {
+            s
+        } else {
+            let ws = read_all(string_chars(car(needs)), str_lit(""), 1i64);
+            let place = projected(v, tvars, args, ty_var(sym_name(car(ws))));
+            let need = projected(v, tvars, args, parse_type(v, onto(map(lambda1(move |x: Str| {
+                string_append(str_lit("%place "), x)
+            }), tvars), tvars), third(ws)));
+            (go__knot.get())(note_types(s, cv_file(v), cv_pos(v), string_append(str_lit("rneed-"), string_append(sym_name(second(ws)), string_append(str_lit("@"), region_string(s, place)))), kayak_rt::cons(need, kayak_rt::nil())), cdr(needs))
+        }
+    });
+    go__knot.set(go);
+    go(s, concat(map(lambda1(move |f: &'static Fact| {
+        let tagcase_ = f;
+        match *tagcase_ {
+            Fact::Fact(ff, fp, what) => {
+                if has_prefix_p(what, string_append(str_lit("place-needs "), string_append(n, str_lit(" ")))) {
+                    the::<Strings>(kayak_rt::cons(after_prefix(what, string_append(str_lit("place-needs "), string_append(n, str_lit(" ")))), kayak_rt::nil()))
+                } else {
+                    nil::<Str>()
+                }
+            }
+        }
+    }), cv_facts(v))))
+}
+
+pub fn projected(mut v: &'static Cv, mut tvars: Strings, mut args: Sexps, mut t: &'static Ty) -> &'static Ty {
+    loop {
+        if null_p(tvars) {
+            return t;
+        } else {
+            (tvars, args, t) = (cdr(tvars), cdr(args), replace_var(car(tvars), if char_eq_p(string_ref_i64(car(tvars), 0i64), '\'') {
+                parse_region(v, cv_tvars(v), car(args))
+            } else {
+                parse_type(v, cv_tvars(v), car(args))
+            }, t));
+            continue;
+        }
+    }
+}
+
 /// `(rlambda r params body ...)` (C38): a closure made in the place `r`,
 /// whose latent effect therefore reads `r`, as FX-26 has it; its making
 /// allocates there. In Rust a closure as a `lambda`'s is, kept as long
@@ -3459,6 +3669,9 @@ pub fn place_needed(v: &'static Cv, h: Str, wher: Str, sc: &'static Scheme, from
                                 }
                             }
                         }), cv_facts(v)));
+                        bounds_kept(v, s, h, lambda1(move |x: Str| {
+                            instantiated(tvars, from, ty_var(x))
+                        }));
                         res(t, es, note_needs(v, s, tvars, from, needs))
                     }
                 }

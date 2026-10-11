@@ -1738,7 +1738,15 @@ pub fn parse_application(v: &'static Cv, tvars: Strings, name: Str, args: Sexps)
                 if string_member_p(string_append(str_lit("%expanding "), name), tvars) {
                     match refuse(v, string_append(str_lit("a type abbreviation that mentions itself, "), string_append(name, str_lit(": Rust's type aliases cannot; a datatype can")))) {}
                 } else {
-                    substitute(ps, parse_arguments(v, tvars, ps, args), parse_type(v, cons(string_append(str_lit("%expanding "), name), onto(ps, expanding(tvars))), body))
+                    substitute(ps, parse_arguments(v, tvars, ps, args), parse_type(v, cons(string_append(str_lit("%expanding "), name), onto(map(lambda1(move |p: Str| {
+                        string_append(str_lit("%place "), p)
+                    }), concat(map(lambda1(move |p: Str| {
+                        if has_prefix_p(p, str_lit("'")) {
+                            the::<Strings>(kayak_rt::cons(p, kayak_rt::nil()))
+                        } else {
+                            nil::<Str>()
+                        }
+                    }), ps))), onto(ps, expanding(tvars)))), body))
                 }
             }
         }
@@ -1753,11 +1761,16 @@ pub fn family_params(v: &'static Cv, head: &'static Sexp) -> Strings {
         Sexp::Lst(xs, src_file, src_line, src_pos) => {
             map(lambda1(move |b: &'static Sexp| {
                 let b = items(b);
-                if not(i64_eq(size(b), 2i64)) {
+                if (i64_eq(size(b), 3i64) && sym_is_p(second(b), str_lit("region")) && not(sym_is_p(third(b), str_lit("distinct")))) {
+                    // A region within a place, `(r region p)` (C40).
+                    string_append(str_lit("'"), name_of(v, car(b)))
+                } else if not(i64_eq(size(b), 2i64)) {
                     match refuse(v, string_append(str_lit("a variance mark, which KFX does not have (its families are invariant): "), show_sexp(lst(b, str_lit(""), 0i64, 0i64)))) {}
                 } else if sym_is_p(second(b), str_lit("type")) {
                     name_of(v, car(b))
                 } else if sym_is_p(second(b), str_lit("region")) {
+                    string_append(str_lit("'"), name_of(v, car(b)))
+                } else if sym_is_p(second(b), str_lit("place")) {
                     string_append(str_lit("'"), name_of(v, car(b)))
                 } else {
                     match refuse(v, string_append(str_lit("a family over a kind KFX does not have: "), show_sexp(lst(b, str_lit(""), 0i64, 0i64)))) {}
@@ -1825,7 +1838,11 @@ pub fn poly_binders(v: &'static Cv, t: &'static Sexp, own: bool) -> Strings {
     if head_is_p(t, str_lit("poly")) {
         let tvars = map(lambda1(move |b: &'static Sexp| {
             let b = items(b);
-            if not(i64_eq(size(b), 2i64)) {
+            if (i64_eq(size(b), 3i64) && sym_is_p(second(b), str_lit("region")) && not(sym_is_p(third(b), str_lit("distinct")))) {
+                // A region within a place, `(r region p)` (C40): its data may be
+                // made in the place, which it will not outlive.
+                string_append(str_lit("'"), name_of(v, car(b)))
+            } else if not(i64_eq(size(b), 2i64)) {
                 match refuse(v, string_append(str_lit("a binder KFX-0 does not have (distinct regions are to come): "), show_sexp(lst(b, str_lit(""), 0i64, 0i64)))) {}
             } else if sym_is_p(second(b), str_lit("type")) {
                 name_of(v, car(b))
@@ -1870,6 +1887,8 @@ pub fn place_marks(t: &'static Sexp) -> Strings {
             let xs = items(b);
             if (i64_eq(size(xs), 2i64) && sym_is_p(second(xs), str_lit("place"))) {
                 the::<Strings>(kayak_rt::cons(string_append(str_lit("%place '"), sym_name(car(xs))), kayak_rt::nil()))
+            } else if (i64_eq(size(xs), 3i64) && sym_is_p(second(xs), str_lit("region")) && not(sym_is_p(third(xs), str_lit("distinct")))) {
+                the::<Strings>(kayak_rt::cons(string_append(str_lit("%within '"), string_append(sym_name(car(xs)), string_append(str_lit(" '"), sym_name(third(xs))))), kayak_rt::nil()))
             } else {
                 nil::<Str>()
             }

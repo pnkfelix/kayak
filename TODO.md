@@ -142,11 +142,11 @@ Escapes are done (`DONE.md`, C18). Left:
 - **Bloblets' rest** (C31, C32):
   frozen bloblets; width; flat sums without a key (they need symbols);
   families over `flat`.
-- **`letrena`'s rest** (C30, C34): regions within a place, `(r region
-  p)`; families over a place;
+- **`letrena`'s rest** (C30, C34, C40): an alias body's `(place r)` of a
+  plain region parameter (accepted; FX-26 refuses it);
   `rmake-array`, `rmake-icell` (KFX has no arrays of values, nor I-cells);
   datatypes over regions used in a `letrena` (their regions erased); places in mutually recursive
-  procedures; `(proj ...)`.
+  procedures.
 - **`null?` of an argument whose element nothing says**, other than a name
   or an `error` (`(null? (car (cons nil nil)))`), is refused; FX-26, whose
   `null?`'s binder is its argument's whole type, accepts it (C29).

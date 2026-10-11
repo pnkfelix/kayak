@@ -800,7 +800,11 @@
                     (refuse v (string-append "a type abbreviation that mentions itself, " (string-append name
                               ": Rust's type aliases cannot; a datatype can")))
                     (substitute ps (parse-arguments v tvars ps args)
-                                (parse-type v (cons (string-append "%expanding " name) (onto ps (expanding tvars))) body))))))))))
+                                (parse-type v (cons (string-append "%expanding " name)
+                                                    (onto (map (lambda ((p string)) (string-append "%place " p))
+                                                               (concat (map (lambda ((p string)) (if (has-prefix? p "'") (the strings (list p)) nil)) ps)))
+                                                          (onto ps (expanding tvars))))
+                                            body))))))))))
 
 (define family-params (subr kfx (cv sexp) strings)
   (lambda (v head)
@@ -810,11 +814,15 @@
       (lst (xs src-file src-line src-pos)
         (map (lambda ((b sexp))
                (let ((b (items b)))
-                 (cond ((not (i64= (size b) 2))
+                 (cond ((and (i64= (size b) 3) (sym-is? (second b) "region") (not (sym-is? (third b) "distinct")))
+                        "A region within a place, `(r region p)` (C40)."
+                        (string-append "'" (name-of v (car b))))
+                       ((not (i64= (size b) 2))
                         (refuse v (string-append "a variance mark, which KFX does not have (its families are invariant): "
                                                  (show-sexp (lst b "" 0 0)))))
                        ((sym-is? (second b) "type") (name-of v (car b)))
                        ((sym-is? (second b) "region") (string-append "'" (name-of v (car b))))
+                       ((sym-is? (second b) "place") (string-append "'" (name-of v (car b))))
                        (else (refuse v (string-append "a family over a kind KFX does not have: "
                                                       (show-sexp (lst b "" 0 0))))))))
              (cdr xs)))
@@ -860,7 +868,11 @@
         (let ((tvars
         (map (lambda ((b sexp))
                (let ((b (items b)))
-                 (cond ((not (i64= (size b) 2))
+                 (cond ((and (i64= (size b) 3) (sym-is? (second b) "region") (not (sym-is? (third b) "distinct")))
+                        "A region within a place, `(r region p)` (C40): its data may be
+                         made in the place, which it will not outlive."
+                        (string-append "'" (name-of v (car b))))
+                       ((not (i64= (size b) 2))
                         (refuse v (string-append "a binder KFX-0 does not have (distinct regions are to come): "
                                                  (show-sexp (lst b "" 0 0)))))
                        ((sym-is? (second b) "type") (name-of v (car b)))
@@ -882,9 +894,11 @@
     (if (head-is? t "poly")
         (concat (map (lambda ((b sexp))
                        (let ((xs (items b)))
-                         (if (and (i64= (size xs) 2) (sym-is? (second xs) "place"))
-                             (the strings (list (string-append "%place '" (sym-name (car xs)))))
-                             nil)))
+                         (cond ((and (i64= (size xs) 2) (sym-is? (second xs) "place"))
+                                (the strings (list (string-append "%place '" (sym-name (car xs))))))
+                               ((and (i64= (size xs) 3) (sym-is? (second xs) "region") (not (sym-is? (third xs) "distinct")))
+                                (the strings (list (string-append "%within '" (string-append (sym-name (car xs)) (string-append " '" (sym-name (third xs))))))))
+                               (else nil))))
                      (items (second (items t)))))
         nil)))
 

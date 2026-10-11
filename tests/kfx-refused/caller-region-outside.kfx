@@ -1,0 +1,11 @@
+"A region given within a place it could outlive: d is bound outside the
+ arena a, and build's (r region p) refuses it (Fixpt's
+ regions/caller-region-outside.fx)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type (builder (p place) (r region))
+  (subr (maxeff (alloc r) (alloc p)) ((place p) i64) (listof i64 r)))
+(define build (poly ((p place) (r region p)) (builder p r))
+  (plambda ((p place) (r region p))
+    (lambda ((h (place p)) (n i64)) (rcons h n nil))))
+(define f (subr kfx () i64) (lambda () (letregion d (letrena a (car ((proj build a d) a 1))))))
+(f)

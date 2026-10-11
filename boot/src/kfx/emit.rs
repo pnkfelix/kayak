@@ -590,6 +590,31 @@ pub fn head_region_params(head: &'static Sexp) -> Strings {
     }
 }
 
+/// The names of the binders of kind `place`: an abbreviation's lifetimes,
+/// and its type parameters for the places' types (C40).
+pub fn place_params_of(bs: Sexps) -> Strings {
+    concat(map(lambda1(move |b: &'static Sexp| {
+        if sym_is_p(second(items(b)), str_lit("place")) {
+            the::<Strings>(kayak_rt::cons(sym_name(car(items(b))), kayak_rt::nil()))
+        } else {
+            nil::<Str>()
+        }
+    }), bs))
+}
+
+pub fn head_place_params(head: &'static Sexp) -> Strings {
+    let tagcase_ = head;
+    match *tagcase_ {
+        Sexp::Lst(xs, src_file, src_line, src_pos) => {
+            place_params_of(cdr(xs))
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<Str>()
+        }
+    }
+}
+
 pub fn head_type_params(head: &'static Sexp) -> Strings {
     let tagcase_ = head;
     match *tagcase_ {
@@ -713,7 +738,7 @@ pub fn note(form: &'static Sexp, c: &'static Ctx) -> &'static Ctx {
             } else if head_is_p(form, str_lit("define-type")) {
                 // A family abbreviation: its regions Rust lifetimes (C39), as a
                 // generative type's are not.
-                ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms), es, cons(typed(string_append(str_lit("%abbreviation "), type_head_name(second(items(form)))), third(items(form))), mods))
+                ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms), es, cons(typed(string_append(str_lit("%abbreviation "), type_head_name(second(items(form)))), lst(kayak_rt::cons(second(items(form)), kayak_rt::cons(third(items(form)), kayak_rt::nil())), str_lit(""), 0i64, 0i64)), mods))
             } else if head_is_p(form, str_lit("define-generative")) {
                 ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms), es, mods)
             } else if head_is_p(form, str_lit("define-effect")) {
@@ -929,6 +954,36 @@ pub fn type_params_in(mut ls: Strings) -> Strings {
     }
 }
 
+/// The places `(place p)` names in `e`: those an abbreviation needs a
+/// type parameter for (an unused one Rust refuses).
+pub fn places_used(e: &'static Sexp) -> Strings {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            if (sym_is_p(car(xs), str_lit("place")) && not(null_p(cdr(xs)))) {
+                let tagcase_ = second(xs);
+                match *tagcase_ {
+                    Sexp::Sym(n, f2, p2) => {
+                        the::<Strings>(kayak_rt::cons(n, kayak_rt::nil()))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<Str>()
+                    }
+                }
+            } else {
+                concat(map(lambda1(move |x: &'static Sexp| {
+                    places_used(x)
+                }), xs))
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<Str>()
+        }
+    }
+}
+
 pub fn words_of_sep(xs: Strings, sep: Str) -> Str {
     if null_p(xs) {
         str_lit("")
@@ -942,7 +997,51 @@ pub fn words_of_sep(xs: Strings, sep: Str) -> Str {
 // `letrena`'s regions (CLAUDES_CHOICES.md C30): each a lifetime of the
 // `fn` its body is written as, `'r` for the region `r`, marked in the
 // locals `%letrena r`. Every other region is the heap's, `'static`.
-/// The lifetime of the region `r` names, if a `letrena`'s; or ``.
+pub fn innermost_letrena_lifetime(mut ls: Strings) -> Str {
+    loop {
+        if null_p(ls) {
+            return str_lit("");
+        } else if has_prefix_p(car(ls), str_lit("%letrena ")) {
+            return string_append(str_lit("'"), mangle(after_prefix(car(ls), str_lit("%letrena "))));
+        } else {
+            ls = cdr(ls);
+            continue;
+        }
+    }
+}
+
+/// The lifetime of the innermost `letrena` around the binding `marker`
+/// is, or ``.
+pub fn letrena_outside(mut ls: Strings, mut marker: Str) -> Str {
+    loop {
+        if null_p(ls) {
+            return str_lit("");
+        } else if string_eq_p(car(ls), marker) {
+            return innermost_letrena_lifetime(cdr(ls));
+        } else {
+            ls = cdr(ls);
+            continue;
+        }
+    }
+}
+
+/// The place a region binder `(r region p)` is within, or ``.
+pub fn within_of(mut ls: Strings, mut n: Str) -> Str {
+    loop {
+        if null_p(ls) {
+            return str_lit("");
+        } else if has_prefix_p(car(ls), string_append(str_lit("%within "), string_append(n, str_lit(" ")))) {
+            return after_prefix(car(ls), string_append(str_lit("%within "), string_append(n, str_lit(" "))));
+        } else {
+            ls = cdr(ls);
+            continue;
+        }
+    }
+}
+
+/// The lifetime of the region `r` names: a `letrena`'s, its own; a region
+/// within a place, the place's, where its data is (C40); a `letregion`
+/// inside a `letrena`, that one's, which its data may be in; or ``.
 pub fn region_lifetime(c: &'static Ctx, r: &'static Sexp) -> Str {
     let n = {
         let tagcase_ = r;
@@ -960,8 +1059,14 @@ pub fn region_lifetime(c: &'static Ctx, r: &'static Sexp) -> Str {
             }
         }
     };
-    if (not(string_eq_p(n, str_lit(""))) && string_member_p(string_append(str_lit("%letrena "), n), ctx_locals(c))) {
+    if string_eq_p(n, str_lit("")) {
+        str_lit("")
+    } else if string_member_p(string_append(str_lit("%letrena "), n), ctx_locals(c)) {
         string_append(str_lit("'"), mangle(n))
+    } else if not(string_eq_p(within_of(ctx_locals(c), n), str_lit(""))) {
+        string_append(str_lit("'"), mangle(within_of(ctx_locals(c), n)))
+    } else if string_member_p(string_append(str_lit("%letregion "), n), ctx_locals(c)) {
+        letrena_outside(ctx_locals(c), string_append(str_lit("%letregion "), n))
     } else {
         str_lit("")
     }
@@ -1047,6 +1152,23 @@ pub fn lifetimes_before(lives: Strings, l: Str) -> Strings {
     } else {
         cons(car(lives), lifetimes_before(cdr(lives), l))
     }
+}
+
+pub fn chars_after_space(mut cs: Chars) -> Chars {
+    loop {
+        if null_p(cs) {
+            return nil::<char>();
+        } else if char_eq_p(car(cs), ' ') {
+            return cdr(cs);
+        } else {
+            cs = cdr(cs);
+            continue;
+        }
+    }
+}
+
+pub fn after_first_space(s: Str) -> Str {
+    rev_to_string(rev_onto(chars_after_space(string_chars(s)), nil::<char>()))
 }
 
 pub fn unquoted(n: Str) -> Str {
@@ -1239,14 +1361,18 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
                             } else {
                                 region_arguments(c, cdr(xs), kinds)
                             };
-                            if (null_p(args) && null_p(lives)) {
-                                return acc;
-                            } else if null_p(lives) {
-                                return put(str_lit(">"), put_types(c, args, put(str_lit("<"), acc)));
-                            } else if null_p(args) {
-                                return put(string_append(str_lit("<"), string_append(words_of_sep(lives, str_lit(", ")), str_lit(">"))), acc);
+                            let places = if null_p(module_body(c, string_append(str_lit("%abbreviation "), n))) {
+                                nil::<Str>()
                             } else {
-                                return put(str_lit(">"), put_types(c, args, put(string_append(str_lit("<"), string_append(words_of_sep(lives, str_lit(", ")), str_lit(", "))), acc)));
+                                used_place_arguments(c, n, cdr(xs), kinds)
+                            };
+                            let parts = onto(lives, onto(map(lambda1(move |t: &'static Sexp| {
+                                rev_to_string(put_type(c, t, nil::<char>()))
+                            }), args), places));
+                            if null_p(parts) {
+                                return acc;
+                            } else {
+                                return put(string_append(str_lit("<"), string_append(words_of_sep(parts, str_lit(", ")), str_lit(">"))), acc);
                             }
                         }
                     }
@@ -1508,7 +1634,7 @@ pub fn region_arguments(mut c: &'static Ctx, mut args: Sexps, mut kinds: Strings
     loop {
         if (null_p(args) || null_p(kinds)) {
             return nil::<Str>();
-        } else if string_eq_p(car(kinds), str_lit("region")) {
+        } else if (string_eq_p(car(kinds), str_lit("region")) || string_eq_p(car(kinds), str_lit("place"))) {
             return cons({
                 let l = region_lifetime(c, car(args));
                 if string_eq_p(l, str_lit("")) {
@@ -1522,6 +1648,57 @@ pub fn region_arguments(mut c: &'static Ctx, mut args: Sexps, mut kinds: Strings
             continue;
         }
     }
+}
+
+/// An abbreviation's arguments for its places, as the places' Rust types
+/// (C40): a place parameter's `Place_P`, a `letrena`'s region type.
+pub fn place_arguments(mut c: &'static Ctx, mut args: Sexps, mut kinds: Strings) -> Strings {
+    loop {
+        if (null_p(args) || null_p(kinds)) {
+            return nil::<Str>();
+        } else if string_eq_p(car(kinds), str_lit("place")) {
+            return cons({
+                let full = rev_to_string(put_type(c, lst(kayak_rt::cons(sym(str_lit("place"), str_lit(""), 0i64), kayak_rt::cons(car(args), kayak_rt::nil())), str_lit(""), 0i64, 0i64), nil::<char>()));
+                after_first_space(full)
+            }, place_arguments(c, cdr(args), cdr(kinds)));
+        } else {
+            (args, kinds) = (cdr(args), cdr(kinds));
+            continue;
+        }
+    }
+}
+
+/// Of an abbreviation's place arguments, those for places its body names.
+pub fn used_place_arguments(c: &'static Ctx, n: Str, args: Sexps, kinds: Strings) -> Strings {
+    let found = module_body(c, string_append(str_lit("%abbreviation "), n));
+    let parts = items(car(found));
+    let names = {
+        let tagcase_ = car(parts);
+        match *tagcase_ {
+            Sexp::Lst(hs, f, l, p) => {
+                map(lambda1(move |b: &'static Sexp| {
+                    sym_name(car(items(b)))
+                }), cdr(hs))
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<Str>()
+            }
+        }
+    };
+    let used = places_used(second(parts));
+    let go__knot = knot::<&'static dyn Fn(Strings, Sexps, Strings) -> Strings>();
+    let go = lambda3(move |ns: Strings, xs: Sexps, ks: Strings| {
+        if (null_p(ns) || null_p(xs) || null_p(ks)) {
+            nil::<Str>()
+        } else if (string_eq_p(car(ks), str_lit("place")) && string_member_p(car(ns), used)) {
+            cons(after_first_space(rev_to_string(put_type(c, lst(kayak_rt::cons(sym(str_lit("place"), str_lit(""), 0i64), kayak_rt::cons(car(xs), kayak_rt::nil())), str_lit(""), 0i64, 0i64), nil::<char>()))), (go__knot.get())(cdr(ns), cdr(xs), cdr(ks)))
+        } else {
+            (go__knot.get())(cdr(ns), cdr(xs), cdr(ks))
+        }
+    });
+    go__knot.set(go);
+    go(names, args, kinds)
 }
 
 /// A family's arguments for its parameters of kind `type`: the others,
@@ -2170,6 +2347,89 @@ pub fn split_at_char(s: Str, c: char) -> Strings {
     split_chars(string_chars(s), c, nil::<char>())
 }
 
+/// `e`, each of `names` replaced by its argument.
+pub fn substituted(names: Strings, args: Sexps, e: &'static Sexp) -> &'static Sexp {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Sym(n, f, p) => {
+            let find__knot = knot::<&'static dyn Fn(Strings, Sexps) -> &'static Sexp>();
+            let find = lambda2(move |ns: Strings, vs: Sexps| {
+                if (null_p(ns) || null_p(vs)) {
+                    e
+                } else if string_eq_p(car(ns), n) {
+                    car(vs)
+                } else {
+                    (find__knot.get())(cdr(ns), cdr(vs))
+                }
+            });
+            find__knot.set(find);
+            find(names, args)
+        }
+        Sexp::Lst(xs, f, l, p) => {
+            lst(map(lambda1(move |x: &'static Sexp| {
+                substituted(names, args, x)
+            }), xs), f, l, p)
+        }
+        _ => {
+            let other = tagcase_;
+            e
+        }
+    }
+}
+
+/// A family abbreviation's application, `(builder p r)`, as what it stands
+/// for, its parameters replaced by the arguments: where the emitter must
+/// see a procedure's type whole (a `letrec`'s, a definition's).
+pub fn family_expanded(mut c: &'static Ctx, mut t: &'static Sexp) -> &'static Sexp {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                let found = if null_p(xs) {
+                    nil::<&'static Sexp>()
+                } else {
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f2, p2) => {
+                            module_body(c, string_append(str_lit("%abbreviation "), n))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            nil::<&'static Sexp>()
+                        }
+                    }
+                };
+                if null_p(found) {
+                    return t;
+                } else {
+                    let parts = items(car(found));
+                    let head = car(parts);
+                    let names = {
+                        let tagcase_ = head;
+                        match *tagcase_ {
+                            Sexp::Lst(hs, f3, l3, p3) => {
+                                map(lambda1(move |b: &'static Sexp| {
+                                    sym_name(car(items(b)))
+                                }), cdr(hs))
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                nil::<Str>()
+                            }
+                        }
+                    };
+                    t = substituted(names, cdr(xs), second(parts));
+                    continue;
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                return t;
+            }
+        }
+    }
+}
+
 /// An `rlambda` as the lambda it is in Rust, at its own place, where the
 /// checker's facts about it are (C38); anything else as it is.
 pub fn as_lambda(e: &'static Sexp) -> &'static Sexp {
@@ -2380,7 +2640,7 @@ pub fn put_stmts(mut c: &'static Ctx, mut es: Sexps, mut n: i64, mut t: &'static
             es = cdr(items(e));
             continue;
         } else if head_is_p(e, str_lit("letregion")) {
-            es = cdr(cdr(items(e)));
+            (c, es) = (with_locals(c, kayak_rt::cons(string_append(str_lit("%letregion "), sym_name(second(items(e)))), kayak_rt::nil())), cdr(cdr(items(e))));
             continue;
         } else if head_is_p(e, str_lit("with")) {
             (c, es, t) = (with_opened(c, e), cdr(cdr(items(e))), opened_tail(c, e, t));
@@ -2693,7 +2953,7 @@ pub fn put_letrec(c: &'static Ctx, bindings: Sexps, names: Strings, n: i64, acc:
         let acc = put(str_lit("let "), acc);
         let acc = put(mangle(sym_name(car(ys))), acc);
         let acc = put(str_lit(" = "), acc);
-        let acc = put_exp(inside, typed_lambda(as_lambda(third(ys)), second(ys)), n, value(), acc);
+        let acc = put_exp(inside, typed_lambda(as_lambda(third(ys)), family_expanded(c, second(ys))), n, value(), acc);
         put_nl(n, put(str_lit(";"), acc))
     }), str_lit(""), bindings, acc);
     put_sep(lambda2(move |x: Str, acc: Chars| {
@@ -2751,6 +3011,8 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
         put_lambda(c, e, items(car(xs)), cdr(xs), n, acc)
     } else if (string_eq_p(h, str_lit("rlambda")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
         put_lambda(c, e, items(second(xs)), cdr(cdr(xs)), n, acc)
+    } else if string_eq_p(h, str_lit("proj")) {
+        put_exp(c, car(xs), n, value(), acc)
     } else if string_eq_p(h, str_lit("product")) {
         let fs = map(&items, xs);
         let acc = put(shape_name(true, map(lambda1(move |f: Sexps| {

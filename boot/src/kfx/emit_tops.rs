@@ -383,14 +383,21 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, typ: &'static Sexp, defi
     }), binders));
     let c = with_locals(c, onto(concat(map(lambda1(move |p: Str| {
         the::<Strings>(kayak_rt::cons(string_append(str_lit("%letrena "), p), kayak_rt::cons(string_append(str_lit("%placeparam "), p), kayak_rt::nil())))
-    }), places)), concat(map(lambda1(move |b: &'static Sexp| {
+    }), places)), onto(concat(map(lambda1(move |b: &'static Sexp| {
+        let bs = items(b);
+        if (i64_eq(size(bs), 3i64) && sym_is_p(second(bs), str_lit("region")) && not(sym_is_p(third(bs), str_lit("distinct")))) {
+            the::<Strings>(kayak_rt::cons(string_append(str_lit("%within "), string_append(sym_name(car(bs)), string_append(str_lit(" "), sym_name(third(bs))))), kayak_rt::nil()))
+        } else {
+            nil::<Str>()
+        }
+    }), binders)), concat(map(lambda1(move |b: &'static Sexp| {
         if sym_is_p(second(items(b)), str_lit("type")) {
             the::<Strings>(kayak_rt::cons(string_append(str_lit("%tvar "), sym_name(car(items(b)))), kayak_rt::nil()))
         } else {
             nil::<Str>()
         }
-    }), binders))));
-    let typ = unpoly(typ);
+    }), binders)))));
+    let typ = family_expanded(c, unpoly(typ));
     let defined = unpoly(defined);
     let lambda_p = head_is_p(defined, str_lit("lambda"));
     let body = if lambda_p {
@@ -972,15 +979,26 @@ pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
     } else if string_eq_p(h, str_lit("define-type")) {
         // A type abbreviation; its regions, Rust lifetimes (C39), as a
         // `letrena`'s are, so that a use of it at one is at its lifetime.
-        let regions = head_region_params(second(xs));
-        let inner = with_locals(c, map(lambda1(move |r: Str| {
+        let places = head_place_params(second(xs));
+        let regions = onto(head_region_params(second(xs)), places);
+        let inner = with_locals(c, onto(map(lambda1(move |r: Str| {
             string_append(str_lit("%letrena "), r)
-        }), regions));
+        }), regions), map(lambda1(move |p: Str| {
+            string_append(str_lit("%placeparam "), p)
+        }), places)));
         let acc = put(str_lit("pub type "), acc);
         let acc = put(camel(type_head_name(second(xs))), acc);
         let params = onto(map(lambda1(move |r: Str| {
             string_append(str_lit("'"), mangle(r))
-        }), regions), map(&camel, head_type_params(second(xs))));
+        }), regions), onto(map(&camel, head_type_params(second(xs))), map(lambda1(move |p: Str| {
+            string_append(str_lit("Place_"), camel(p))
+        }), concat(map(lambda1(move |p: Str| {
+            if string_member_p(p, places_used(third(xs))) {
+                the::<Strings>(kayak_rt::cons(p, kayak_rt::nil()))
+            } else {
+                nil::<Str>()
+            }
+        }), places)))));
         let acc = if null_p(params) {
             acc
         } else {

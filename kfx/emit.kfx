@@ -294,6 +294,15 @@
 (define head-region-params (subr kfx (sexp) strings)
   (lambda (head) (tagcase head (lst (xs src-file src-line src-pos) (region-params-of (cdr xs))) (else other nil))))
 
+(define place-params-of (subr kfx (sexps) strings)
+  (lambda (bs)
+    "The names of the binders of kind `place`: an abbreviation's lifetimes,
+     and its type parameters for the places' types (C40)."
+    (concat (map (lambda ((b sexp)) (if (sym-is? (second (items b)) "place") (the strings (list (sym-name (car (items b))))) nil)) bs))))
+
+(define head-place-params (subr kfx (sexp) strings)
+  (lambda (head) (tagcase head (lst (xs src-file src-line src-pos) (place-params-of (cdr xs))) (else other nil))))
+
 (define head-type-params (subr kfx (sexp) strings)
   (lambda (head) (tagcase head (lst (xs src-file src-line src-pos) (type-params-of (cdr xs))) (else other nil))))
 
@@ -356,7 +365,7 @@
                "A family abbreviation: its regions Rust lifetimes (C39), as a
                 generative type's are not."
                (ctx ds ts ks ls xs fs (note-family (second (items form)) #f ms) es
-                    (cons (typed (string-append "%abbreviation " (type-head-name (second (items form)))) (third (items form))) mods)))
+                    (cons (typed (string-append "%abbreviation " (type-head-name (second (items form)))) (lst (list (second (items form)) (third (items form))) "" 0 0)) mods)))
               ((head-is? form "define-generative")
                (ctx ds ts ks ls xs fs (note-family (second (items form)) #f ms) es mods))
               ((head-is? form "define-effect")
@@ -482,6 +491,18 @@
             (else (type-params-in (cdr ls)))))))
 
 (define-rec
+  (places-used (subr kfx (sexp) strings)
+    (lambda (e)
+      "The places `(place p)` names in `e`: those an abbreviation needs a
+       type parameter for (an unused one Rust refuses)."
+      (tagcase e
+        (lst (xs f l p)
+          (if (and (sym-is? (car xs) "place") (not (null? (cdr xs))))
+              (tagcase (second xs) (sym (n f2 p2) (the strings (list n))) (else other nil))
+              (concat (map (lambda ((x sexp)) (places-used x)) xs))))
+        (else other nil)))))
+
+(define-rec
   (words-of-sep (subr kfx (strings string) string)
     (lambda (xs sep)
       (cond ((null? xs) "")
@@ -492,13 +513,43 @@
  `fn` its body is written as, `'r` for the region `r`, marked in the
  locals `%letrena r`. Every other region is the heap's, `'static`."
 
+(define-rec
+  (innermost-letrena-lifetime (subr kfx (strings) string)
+    (lambda (ls)
+      (cond ((null? ls) "")
+            ((has-prefix? (car ls) "%letrena ") (string-append "'" (mangle (after-prefix (car ls) "%letrena "))))
+            (else (innermost-letrena-lifetime (cdr ls)))))))
+
+(define-rec
+  (letrena-outside (subr kfx (strings string) string)
+    (lambda (ls marker)
+      "The lifetime of the innermost `letrena` around the binding `marker`
+       is, or ``."
+      (cond ((null? ls) "")
+            ((string=? (car ls) marker) (innermost-letrena-lifetime (cdr ls)))
+            (else (letrena-outside (cdr ls) marker))))))
+
+(define-rec
+  (within-of (subr kfx (strings string) string)
+    (lambda (ls n)
+      "The place a region binder `(r region p)` is within, or ``."
+      (cond ((null? ls) "")
+            ((has-prefix? (car ls) (string-append "%within " (string-append n " "))) (after-prefix (car ls) (string-append "%within " (string-append n " "))))
+            (else (within-of (cdr ls) n))))))
+
 (define region-lifetime (subr kfx (ctx sexp) string)
   (lambda (c r)
-    "The lifetime of the region `r` names, if a `letrena`'s; or ``."
+    "The lifetime of the region `r` names: a `letrena`'s, its own; a region
+     within a place, the place's, where its data is (C40); a `letregion`
+     inside a `letrena`, that one's, which its data may be in; or ``."
     (let ((n (tagcase r (sym (x f p) (if (has-prefix? x "'") (after-prefix x "'") x)) (else other ""))))
-      (if (and (not (string=? n "")) (string-member? (string-append "%letrena " n) (ctx-locals c)))
-          (string-append "'" (mangle n))
-          ""))))
+      (cond ((string=? n "") "")
+            ((string-member? (string-append "%letrena " n) (ctx-locals c)) (string-append "'" (mangle n)))
+            ((not (string=? (within-of (ctx-locals c) n) ""))
+             (string-append "'" (mangle (within-of (ctx-locals c) n))))
+            ((string-member? (string-append "%letregion " n) (ctx-locals c))
+             (letrena-outside (ctx-locals c) (string-append "%letregion " n)))
+            (else "")))))
 
 (define fact-at-place (subr kfx (ctx string i64 string) string)
   (lambda (c file pos prefix)
@@ -541,6 +592,13 @@
     (lambda (lives l)
       "Of the `letrena`s' lifetimes, outermost first, those outside `l`."
       (if (or (null? lives) (string=? (car lives) l)) nil (cons (car lives) (lifetimes-before (cdr lives) l))))))
+
+(define-rec
+  (chars-after-space (subr kfx (chars) chars)
+    (lambda (cs) (cond ((null? cs) nil) ((char=? (car cs) #\space) (cdr cs)) (else (chars-after-space (cdr cs)))))))
+
+(define after-first-space (subr kfx (string) string)
+  (lambda (s) (rev->string (rev-onto (chars-after-space (string-chars s)) nil))))
 
 (define unquoted (subr kfx (string) string)
   (lambda (n) (if (has-prefix? n "'") (after-prefix n "'") n)))
@@ -658,11 +716,10 @@
                      (let* ((acc (if datatype (put "&'static " acc) acc))
                             (acc (put (camel n) acc))
                             (args (type-arguments (cdr xs) kinds))
-                            (lives (if (null? (module-body c (string-append "%abbreviation " n))) nil (region-arguments c (cdr xs) kinds))))
-                       (cond ((and (null? args) (null? lives)) acc)
-                             ((null? lives) (put ">" (put-types c args (put "<" acc))))
-                             ((null? args) (put (string-append "<" (string-append (words-of-sep lives ", ") ">")) acc))
-                             (else (put ">" (put-types c args (put (string-append "<" (string-append (words-of-sep lives ", ") ", ")) acc)))))))))
+                            (lives (if (null? (module-body c (string-append "%abbreviation " n))) nil (region-arguments c (cdr xs) kinds)))
+                            (places (if (null? (module-body c (string-append "%abbreviation " n))) nil (used-place-arguments c n (cdr xs) kinds)))
+                            (parts (onto lives (onto (map (lambda ((t sexp)) (rev->string (put-type c t nil))) args) places))))
+                       (if (null? parts) acc (put (string-append "<" (string-append (words-of-sep parts ", ") ">")) acc))))))
                 (else (error "kfx: a type KFX-0 does not have"))))
         (else other (error "kfx: a type KFX-0 does not have")))))
 
@@ -794,10 +851,37 @@
        the innermost one's, since a `'static` list may hold nothing that
        lives less, and a heap list is one at any lifetime."
       (cond ((or (null? args) (null? kinds)) nil)
-            ((string=? (car kinds) "region")
+            ((or (string=? (car kinds) "region") (string=? (car kinds) "place"))
              (cons (let ((l (region-lifetime c (car args)))) (if (string=? l "") (innermost-lifetime (ctx-locals c)) l))
                    (region-arguments c (cdr args) (cdr kinds))))
             (else (region-arguments c (cdr args) (cdr kinds))))))
+
+  (place-arguments (subr kfx (ctx sexps strings) strings)
+    (lambda (c args kinds)
+      "An abbreviation's arguments for its places, as the places' Rust types
+       (C40): a place parameter's `Place_P`, a `letrena`'s region type."
+      (cond ((or (null? args) (null? kinds)) nil)
+            ((string=? (car kinds) "place")
+             (cons (let ((full (rev->string (put-type c (lst (list (sym "place" "" 0) (car args)) "" 0 0) nil))))
+                     (after-first-space full))
+                   (place-arguments c (cdr args) (cdr kinds))))
+            (else (place-arguments c (cdr args) (cdr kinds))))))
+
+  (used-place-arguments (subr kfx (ctx string sexps strings) strings)
+    (lambda (c n args kinds)
+      "Of an abbreviation's place arguments, those for places its body names."
+      (let* ((found (module-body c (string-append "%abbreviation " n)))
+             (parts (items (car found)))
+             (names (tagcase (car parts) (lst (hs f l p) (map (lambda ((b sexp)) (sym-name (car (items b)))) (cdr hs))) (else other nil)))
+             (used (places-used (second parts))))
+        (letrec ((go (subr kfx (strings sexps strings) strings)
+                       (lambda (ns xs ks)
+                         (cond ((or (null? ns) (null? xs) (null? ks)) nil)
+                               ((and (string=? (car ks) "place") (string-member? (car ns) used))
+                                (cons (after-first-space (rev->string (put-type c (lst (list (sym "place" "" 0) (car xs)) "" 0 0) nil)))
+                                      (go (cdr ns) (cdr xs) (cdr ks))))
+                               (else (go (cdr ns) (cdr xs) (cdr ks)))))))
+          (go names args kinds)))))
 
   (type-arguments (subr kfx (sexps strings) sexps)
     (lambda (args kinds)
@@ -1167,6 +1251,34 @@
 (define split-at-char (subr kfx (string char) strings)
   (lambda (s c) (split-chars (string-chars s) c nil)))
 
+(define-rec
+  (substituted (subr kfx (strings sexps sexp) sexp)
+    (lambda (names args e)
+      "`e`, each of `names` replaced by its argument."
+      (tagcase e
+        (sym (n f p)
+          (letrec ((find (subr kfx (strings sexps) sexp)
+                           (lambda (ns vs) (cond ((or (null? ns) (null? vs)) e) ((string=? (car ns) n) (car vs)) (else (find (cdr ns) (cdr vs)))))))
+            (find names args)))
+        (lst (xs f l p) (lst (map (lambda ((x sexp)) (substituted names args x)) xs) f l p))
+        (else other e)))))
+
+(define family-expanded (subr kfx (ctx sexp) sexp)
+  (lambda (c t)
+    "A family abbreviation's application, `(builder p r)`, as what it stands
+     for, its parameters replaced by the arguments: where the emitter must
+     see a procedure's type whole (a `letrec`'s, a definition's)."
+    (tagcase t
+      (lst (xs f l p)
+        (let ((found (if (null? xs) nil (tagcase (car xs) (sym (n f2 p2) (module-body c (string-append "%abbreviation " n))) (else other nil)))))
+          (if (null? found)
+              t
+              (let* ((parts (items (car found)))
+                     (head (car parts))
+                     (names (tagcase head (lst (hs f3 l3 p3) (map (lambda ((b sexp)) (sym-name (car (items b)))) (cdr hs))) (else other nil))))
+                (family-expanded c (substituted names (cdr xs) (second parts)))))))
+      (else other t))))
+
 (define as-lambda (subr kfx (sexp) sexp)
   (lambda (e)
     "An `rlambda` as the lambda it is in Rust, at its own place, where the
@@ -1295,7 +1407,7 @@
                                 (put-let c (items (car xs)) n acc)
                                 (put-let* c (items (car xs)) n acc)))))
               ((head-is? e "begin") (put-stmts c (cdr (items e)) n t acc))
-              ((head-is? e "letregion") (put-stmts c (cdr (cdr (items e))) n t acc))
+              ((head-is? e "letregion") (put-stmts (with-locals c (list (string-append "%letregion " (sym-name (second (items e)))))) (cdr (cdr (items e))) n t acc))
               ((head-is? e "with") (put-stmts (with-opened c e) (cdr (cdr (items e))) n (opened-tail c e t) acc))
               ((head-is? e "letrec")
                (let* ((xs (cdr (items e)))
@@ -1512,7 +1624,7 @@
                                     (acc (put "let " acc))
                                     (acc (put (mangle (sym-name (car ys))) acc))
                                     (acc (put " = " acc))
-                                    (acc (put-exp inside (typed-lambda (as-lambda (third ys)) (second ys)) n (value) acc)))
+                                    (acc (put-exp inside (typed-lambda (as-lambda (third ys)) (family-expanded c (second ys))) n (value) acc)))
                                (put-nl n (put ";" acc))))
                            "" bindings acc)))
         (put-sep (lambda ((x string) (acc chars))
@@ -1557,6 +1669,7 @@
                (put "}" (put-nl n acc))))
             ((string=? h "lambda") (put-lambda c e (items (car xs)) (cdr xs) n acc))
             ((and (string=? h "rlambda") (string=? (local-kind h (ctx-locals c)) "")) (put-lambda c e (items (second xs)) (cdr (cdr xs)) n acc))
+            ((string=? h "proj") (put-exp c (car xs) n (value) acc))
             ((string=? h "product")
              (let* ((fs (map items xs))
                     (acc (put (shape-name #t (map (lambda ((f sexps)) (label-of (car f))) fs)) acc)))

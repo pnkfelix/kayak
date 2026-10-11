@@ -1045,3 +1045,9 @@ Of the fourteen the sweeps left, twelve agree now (C36): `+` keeps a
 `nat` as FX-26's does; a product of a bare `nil` found by itself refused;
 F17 seen through products. Left: a pair whose tail is a pair, found by
 itself, given where a list is (`r7`, `r8`).
+
+## Regions within places, families over places, `proj` (2026-10-11)
+
+C40. `tests/kfx/caller-place`, `kfx-refused/caller-region-outside`; three
+more of Fixpt's region programs agree. Fixpt's programs kfx accepts: 79,
+all agreeing.

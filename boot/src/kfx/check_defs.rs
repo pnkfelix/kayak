@@ -654,7 +654,15 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                 } else {
                     let name = head_name(v, second(xs));
                     let params = family_params(v, second(xs));
-                    let body = parse_type(v, cons(string_append(str_lit("%expanding "), name), params), third(xs));
+                    let body = parse_type(v, cons(string_append(str_lit("%expanding "), name), onto(map(lambda1(move |p: Str| {
+                        string_append(str_lit("%place "), p)
+                    }), concat(map(lambda1(move |p: Str| {
+                        if has_prefix_p(p, str_lit("'")) {
+                            the::<Strings>(kayak_rt::cons(p, kayak_rt::nil()))
+                        } else {
+                            nil::<Str>()
+                        }
+                    }), params))), params)), third(xs));
                     v
                 }
             } else if string_eq_p(h, str_lit("define-datatype")) {
@@ -676,7 +684,13 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                     let v = no_reaching_itself(v, kayak_rt::cons(name, kayak_rt::nil()), sc);
                     let named = with_binds(v, kayak_rt::cons(global(v, name, sc), kayak_rt::nil()));
                     if procedure_p(fourth(xs)) {
-                        with_place_needs(check_procedure(named, fourth(xs), sc), name, sc, size(cv_facts(named)), src_file, src_pos)
+                        with_facts(with_place_needs(check_procedure(with_tvars(named, place_marks(third(xs))), fourth(xs), sc), name, sc, size(cv_facts(named)), src_file, src_pos), concat(map(lambda1(move |m: Str| {
+                            if has_prefix_p(m, str_lit("%within ")) {
+                                the::<Facts>(kayak_rt::cons(fact(src_file, src_pos, string_append(str_lit("region-within "), string_append(name, string_append(str_lit(" "), after_prefix(m, str_lit("%within ")))))), kayak_rt::nil()))
+                            } else {
+                                nil::<&'static Fact>()
+                            }
+                        }), place_marks(third(xs)))))
                     } else {
                         let tagcase_ = sc;
                         match *tagcase_ {

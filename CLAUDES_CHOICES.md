@@ -667,3 +667,23 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
   `(subr (read r) ...)` `&'r dyn Fn`, else the innermost `letrena`'s.
 - **Not yet:** datatypes over regions, whose regions stay erased.
 
+## C40. Regions within places, families over places, `proj` (2026-10-11)
+
+- **Chosen:** a region binder within a place, `(r region p)`, and a
+  `letregion` inside a `letrena`, may hold data made in the place
+  (`rcons`, `rnew` at the region the type expected says, if bound within
+  the place, as FX-26 has it); in Rust such a region is at the place's
+  lifetime, where its data is. A call or a `proj` giving such a binder a
+  region bound outside the place is refused (`region-within` facts kept
+  for each procedure). A family over a place, `(define-type (builder (p
+  place) (r region)) ...)`, is an alias over lifetimes and, for a place
+  its body names, its type (`Place_P`); an abbreviation's application is
+  expanded where the emitter must see a procedure's type whole (a
+  `letrec`'s, a definition's). `(proj f a ...)` instantiates `f` at the
+  arguments in its binders' order, its needs and bounds noted as a call's,
+  and is `f` in Rust; a call of a `proj` is no call of an unknown value
+  (no `spin`). Fixpt's `caller-place.fx` (its `use` renamed: a Rust
+  keyword), `two-regions-one-place.fx`, `place-is-a-region.fx` agree.
+- **Not yet:** a family's region binder within a place, its bound kept
+  (an alias's place parameter may be any region there, laxer than FX-26).
+

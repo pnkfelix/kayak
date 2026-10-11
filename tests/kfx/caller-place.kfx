@@ -1,0 +1,19 @@
+"Regions within a place (C40): a procedure over a place and a region
+ within it, (r region p), whose data it makes in the place, and a family
+ over a place, builder: in Rust the region at the place's lifetime, and the
+ family an alias over lifetimes. Fixpt's run/caller-place.fx, at i64,
+ through proj."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type (builder (p place) (r region))
+  (subr (maxeff (alloc r) (alloc p)) ((place p) i64) (listof i64 r)))
+(define build (poly ((p place) (r region p)) (builder p r))
+  (plambda ((p place) (r region p))
+    (lambda ((h (place p)) (n i64)) (rcons h n (rcons h (i64+ n 1) nil)))))
+(define total (subr kfx (i64) i64)
+  (lambda (n)
+    (letrena a
+      (letregion d
+        (let ((xs ((proj build a d) a n)))
+          (i64+ (car xs) (car (cdr xs))))))))
+(define main (subr kfx () string) (lambda () (i64->string (total 20))))
+(main)
