@@ -83,19 +83,25 @@ pub fn total(n: i64) -> f64 {
             let xs = the::<&'r FlatArr<std::cell::Cell<f64>, 100>>((&(b).suffix));
             let fill__knot = knot::<&'r dyn Fn(i64) -> ()>();
             let add__knot = knot::<&'r dyn Fn(i64, f64) -> f64>();
-            let fill = lambda1(move |i: i64| {
-                if i64_eq(i, (b).fields.0.get()) {
-                    ()
-                } else {
-                    ((xs).at(i64_to_int(i))).set(int_to_f64(i64_to_int(i)));
-                    (fill__knot.get())(i64_plus(i, 1i64))
+            let fill = lambda1(move |mut i: i64| {
+                loop {
+                    if i64_eq(i, (b).fields.0.get()) {
+                        return ();
+                    } else {
+                        ((xs).at(i64_to_int(i))).set(int_to_f64(i64_to_int(i)));
+                        i = i64_plus(i, 1i64);
+                        continue;
+                    }
                 }
             });
-            let add = lambda2(move |i: i64, acc: f64| {
-                if i64_eq(i, (b).fields.0.get()) {
-                    acc
-                } else {
-                    (add__knot.get())(i64_plus(i, 1i64), f64_plus(acc, ((xs).at(i64_to_int(i))).get()))
+            let add = lambda2(move |mut i: i64, mut acc: f64| {
+                loop {
+                    if i64_eq(i, (b).fields.0.get()) {
+                        return acc;
+                    } else {
+                        (i, acc) = (i64_plus(i, 1i64), f64_plus(acc, ((xs).at(i64_to_int(i))).get()));
+                        continue;
+                    }
                 }
             });
             fill__knot.set(fill);

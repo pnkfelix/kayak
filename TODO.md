@@ -154,8 +154,9 @@ Escapes are done (`DONE.md`, C18). Left:
   tail call changes (`count-up`'s `n`). Only the changed ones need be.
 - **Non-tail recursion is still as deep as its data**: a walk that builds
   a list on the way back (`string-chars-from`) needs `with_big_stack`.
-- **Tail calls between procedures** of a `define-rec` are calls, and grow
-  the stack: only a procedure's calls of itself loop.
+- **Tail calls between procedures** of a `define-rec` or a `letrec` are
+  calls, and grow the stack: only a procedure's calls of itself loop (a
+  top-level one's, and a `letrec`'s closure's).
 - **`proj`** (C40) is checked, its arguments given in its binders' order;
   in Rust, inference finds the generics (a turbofish where it cannot,
   C29). Not yet of a primitive (`abort-current-continuation`, above).

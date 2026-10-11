@@ -1624,12 +1624,45 @@
                                     (acc (put "let " acc))
                                     (acc (put (mangle (sym-name (car ys))) acc))
                                     (acc (put " = " acc))
-                                    (acc (put-exp inside (typed-lambda (as-lambda (third ys)) (family-expanded c (second ys))) n (value) acc)))
+                                    (lam (typed-lambda (as-lambda (third ys)) (family-expanded c (second ys))))
+                                   (acc (if (letrec-loops? inside (sym-name (car ys)) lam)
+                                            (put-looping-lambda inside (sym-name (car ys)) lam n acc)
+                                            (put-exp inside lam n (value) acc))))
                                (put-nl n (put ";" acc))))
                            "" bindings acc)))
         (put-sep (lambda ((x string) (acc chars))
                    (put-nl n (put ");" (put (mangle x) (put "__knot.set(" (put (mangle x) acc))))))
                  "" names acc))))
+
+  (letrec-loops? (subr kfx (ctx string sexp) bool)
+    (lambda (c f lam)
+      "Whether a `letrec`'s procedure calls itself last: a loop, as a
+       top-level procedure's is, so that it grows no stack."
+      (let* ((xs (items lam))
+             (names (map param-name (items (second xs)))))
+        (tail-calls? (returns f names #t (fact-at? c lam "fallible")) (last (cdr (cdr xs)))))))
+
+  (put-looping-lambda (subr kfx (ctx string sexp i64 chars) chars)
+    (lambda (c f lam n acc)
+      "A `letrec`'s procedure that calls itself last: a closure whose body
+       is a `loop`, its parameters `mut`, a call of itself an assignment to
+       them and a `continue`, as a top-level procedure's."
+      (let* ((xs (items lam))
+             (params (lambda-params-typed c lam (items (second xs))))
+             (names (map param-name params))
+             (fallible (fact-at? c lam "fallible"))
+             (t (returns f names #t fallible))
+             (inner (with-locals c (cons (if fallible "%fallible" "%infallible") names)))
+             (acc (put (string-append "lambda" (string-append (i64->string (size params)) "(move |")) acc))
+             (acc (put-sep (lambda ((p sexp) acc)
+                             (tagcase p
+                               (lst (pt f2 l2 p2) (put-type c (second pt) (put ": " (put (mangle (sym-name (car pt))) (put "mut " acc)))))
+                               (else other (put (mangle (sym-name other)) (put "mut " acc)))))
+                           ", " params acc))
+             (acc (put "| {" acc))
+             (acc (put-nl (i64+ n 2) (put "loop {" (put-nl (i64+ n 1) acc))))
+             (acc (put-stmts inner (cdr (cdr xs)) (i64+ n 2) t acc)))
+        (put "})" (put-nl n (put "}" (put-nl (i64+ n 1) acc)))))))
 
   (put-list (subr kfx (ctx sexps i64 chars) chars)
     (lambda (c xs n acc)

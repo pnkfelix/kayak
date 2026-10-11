@@ -3281,16 +3281,19 @@ pub fn bounds_kept(v: &'static Cv, s: &'static St, n: Str, region_of_binder: &'s
 /// places and types given (C34), noted as a call's are.
 pub fn proj_needs(v: &'static Cv, s: &'static St, n: Str, tvars: Strings, args: Sexps) -> &'static St {
     let go__knot = knot::<&'static dyn Fn(&'static St, Strings) -> &'static St>();
-    let go = lambda2(move |s: &'static St, needs: Strings| {
-        if null_p(needs) {
-            s
-        } else {
-            let ws = read_all(string_chars(car(needs)), str_lit(""), 1i64);
-            let place = projected(v, tvars, args, ty_var(sym_name(car(ws))));
-            let need = projected(v, tvars, args, parse_type(v, onto(map(lambda1(move |x: Str| {
-                string_append(str_lit("%place "), x)
-            }), tvars), tvars), third(ws)));
-            (go__knot.get())(note_types(s, cv_file(v), cv_pos(v), string_append(str_lit("rneed-"), string_append(sym_name(second(ws)), string_append(str_lit("@"), region_string(s, place)))), kayak_rt::cons(need, kayak_rt::nil())), cdr(needs))
+    let go = lambda2(move |mut s: &'static St, mut needs: Strings| {
+        loop {
+            if null_p(needs) {
+                return s;
+            } else {
+                let ws = read_all(string_chars(car(needs)), str_lit(""), 1i64);
+                let place = projected(v, tvars, args, ty_var(sym_name(car(ws))));
+                let need = projected(v, tvars, args, parse_type(v, onto(map(lambda1(move |x: Str| {
+                    string_append(str_lit("%place "), x)
+                }), tvars), tvars), third(ws)));
+                (s, needs) = (note_types(s, cv_file(v), cv_pos(v), string_append(str_lit("rneed-"), string_append(sym_name(second(ws)), string_append(str_lit("@"), region_string(s, place)))), kayak_rt::cons(need, kayak_rt::nil())), cdr(needs));
+                continue;
+            }
         }
     });
     go__knot.set(go);
@@ -3619,22 +3622,25 @@ pub fn regions_freshened(v: &'static Cv, h: Str, wher: Str, regions: List<i64>, 
         Res::Res(t, es, s) => {
             res(t, es, {
                 let go__knot = knot::<&'static dyn Fn(&'static St, List<i64>) -> &'static St>();
-                let go = lambda2(move |s: &'static St, ks: List<i64>| {
-                    if null_p(ks) {
-                        s
-                    } else {
-                        (go__knot.get())({
-                            let tagcase_ = walk(s, ty_meta(car(ks)));
-                            match *tagcase_ {
-                                Ty::TyMeta(k) => {
-                                    solve(s, k, ty_rconst(str_lit("%fresh")))
+                let go = lambda2(move |mut s: &'static St, mut ks: List<i64>| {
+                    loop {
+                        if null_p(ks) {
+                            return s;
+                        } else {
+                            (s, ks) = ({
+                                let tagcase_ = walk(s, ty_meta(car(ks)));
+                                match *tagcase_ {
+                                    Ty::TyMeta(k) => {
+                                        solve(s, k, ty_rconst(str_lit("%fresh")))
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        s
+                                    }
                                 }
-                                _ => {
-                                    let other = tagcase_;
-                                    s
-                                }
-                            }
-                        }, cdr(ks))
+                            }, cdr(ks));
+                            continue;
+                        }
                     }
                 });
                 go__knot.set(go);

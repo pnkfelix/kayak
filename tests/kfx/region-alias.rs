@@ -15,20 +15,26 @@ pub fn adders(n: i64) -> i64 {
         fn letrena__r<'r>(r: &'r Region_R<'r>, n: i64) -> i64 {
             let make__knot = knot::<&'r dyn Fn(i64, Closures<'r, 'r>) -> Closures<'r, 'r>>();
             let apply_all__knot = knot::<&'r dyn Fn(Closures<'r, 'r>, i64) -> i64>();
-            let make = lambda2(move |i: i64, acc: Closures<'r, 'r>| {
-                if i64_eq(i, 0i64) {
-                    acc
-                } else {
-                    (make__knot.get())(i64_minus(i, 1i64), cons(lambda1(move |x: i64| {
-                        i64_plus(x, i)
-                    }), acc))
+            let make = lambda2(move |mut i: i64, mut acc: Closures<'r, 'r>| {
+                loop {
+                    if i64_eq(i, 0i64) {
+                        return acc;
+                    } else {
+                        (i, acc) = (i64_minus(i, 1i64), cons(lambda1(move |x: i64| {
+                            i64_plus(x, i)
+                        }), acc));
+                        continue;
+                    }
                 }
             });
-            let apply_all = lambda2(move |fs: Closures<'r, 'r>, acc: i64| {
-                if null_p(fs) {
-                    acc
-                } else {
-                    (apply_all__knot.get())(cdr(fs), (car(fs))(acc))
+            let apply_all = lambda2(move |mut fs: Closures<'r, 'r>, mut acc: i64| {
+                loop {
+                    if null_p(fs) {
+                        return acc;
+                    } else {
+                        (fs, acc) = (cdr(fs), (car(fs))(acc));
+                        continue;
+                    }
                 }
             });
             make__knot.set(make);

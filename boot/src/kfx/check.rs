@@ -1332,14 +1332,17 @@ pub fn variant_offset(args: Tys) -> i64 {
 /// The offset of a flat product's field `l`.
 pub fn field_offset(ls: Strings, ts: Tys, l: Str) -> i64 {
     let go__knot = knot::<&'static dyn Fn(Strings, Tys, i64) -> i64>();
-    let go = lambda3(move |ls: Strings, ts: Tys, at: i64| {
-        let tagcase_ = flat_layout(car(ts));
-        match *tagcase_ {
-            Layout::Layout(size, a) => {
-                if string_eq_p(car(ls), l) {
-                    round_up(at, a)
-                } else {
-                    (go__knot.get())(cdr(ls), cdr(ts), i64_plus(round_up(at, a), size))
+    let go = lambda3(move |mut ls: Strings, mut ts: Tys, mut at: i64| {
+        loop {
+            let tagcase_ = flat_layout(car(ts));
+            match *tagcase_ {
+                Layout::Layout(size, a) => {
+                    if string_eq_p(car(ls), l) {
+                        return round_up(at, a);
+                    } else {
+                        (ls, ts, at) = (cdr(ls), cdr(ts), i64_plus(round_up(at, a), size));
+                        continue;
+                    }
                 }
             }
         }

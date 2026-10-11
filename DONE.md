@@ -1056,3 +1056,9 @@ all agreeing.
 
 Each member of a `define-rec` given places is given all the group makes
 in a place of its name. `tests/kfx/places-mutual`.
+
+## A letrec's procedure that calls itself last loops (2026-10-11)
+
+As a top-level procedure's does: its closure's body a `loop`, its
+parameters `mut`, a call of itself an assignment and a `continue`. Fixpt's
+`bench/loop.fx` (ten million calls) no longer overflows the stack.

@@ -1688,13 +1688,16 @@ pub fn used_place_arguments(c: &'static Ctx, n: Str, args: Sexps, kinds: Strings
     };
     let used = places_used(second(parts));
     let go__knot = knot::<&'static dyn Fn(Strings, Sexps, Strings) -> Strings>();
-    let go = lambda3(move |ns: Strings, xs: Sexps, ks: Strings| {
-        if (null_p(ns) || null_p(xs) || null_p(ks)) {
-            nil::<Str>()
-        } else if (string_eq_p(car(ks), str_lit("place")) && string_member_p(car(ns), used)) {
-            cons(after_first_space(rev_to_string(put_type(c, lst(kayak_rt::cons(sym(str_lit("place"), str_lit(""), 0i64), kayak_rt::cons(car(xs), kayak_rt::nil())), str_lit(""), 0i64, 0i64), nil::<char>()))), (go__knot.get())(cdr(ns), cdr(xs), cdr(ks)))
-        } else {
-            (go__knot.get())(cdr(ns), cdr(xs), cdr(ks))
+    let go = lambda3(move |mut ns: Strings, mut xs: Sexps, mut ks: Strings| {
+        loop {
+            if (null_p(ns) || null_p(xs) || null_p(ks)) {
+                return nil::<Str>();
+            } else if (string_eq_p(car(ks), str_lit("place")) && string_member_p(car(ns), used)) {
+                return cons(after_first_space(rev_to_string(put_type(c, lst(kayak_rt::cons(sym(str_lit("place"), str_lit(""), 0i64), kayak_rt::cons(car(xs), kayak_rt::nil())), str_lit(""), 0i64, 0i64), nil::<char>()))), (go__knot.get())(cdr(ns), cdr(xs), cdr(ks)));
+            } else {
+                (ns, xs, ks) = (cdr(ns), cdr(xs), cdr(ks));
+                continue;
+            }
         }
     });
     go__knot.set(go);
@@ -2353,13 +2356,16 @@ pub fn substituted(names: Strings, args: Sexps, e: &'static Sexp) -> &'static Se
     match *tagcase_ {
         Sexp::Sym(n, f, p) => {
             let find__knot = knot::<&'static dyn Fn(Strings, Sexps) -> &'static Sexp>();
-            let find = lambda2(move |ns: Strings, vs: Sexps| {
-                if (null_p(ns) || null_p(vs)) {
-                    e
-                } else if string_eq_p(car(ns), n) {
-                    car(vs)
-                } else {
-                    (find__knot.get())(cdr(ns), cdr(vs))
+            let find = lambda2(move |mut ns: Strings, mut vs: Sexps| {
+                loop {
+                    if (null_p(ns) || null_p(vs)) {
+                        return e;
+                    } else if string_eq_p(car(ns), n) {
+                        return car(vs);
+                    } else {
+                        (ns, vs) = (cdr(ns), cdr(vs));
+                        continue;
+                    }
                 }
             });
             find__knot.set(find);
@@ -2953,12 +2959,58 @@ pub fn put_letrec(c: &'static Ctx, bindings: Sexps, names: Strings, n: i64, acc:
         let acc = put(str_lit("let "), acc);
         let acc = put(mangle(sym_name(car(ys))), acc);
         let acc = put(str_lit(" = "), acc);
-        let acc = put_exp(inside, typed_lambda(as_lambda(third(ys)), family_expanded(c, second(ys))), n, value(), acc);
+        let lam = typed_lambda(as_lambda(third(ys)), family_expanded(c, second(ys)));
+        let acc = if letrec_loops_p(inside, sym_name(car(ys)), lam) {
+            put_looping_lambda(inside, sym_name(car(ys)), lam, n, acc)
+        } else {
+            put_exp(inside, lam, n, value(), acc)
+        };
         put_nl(n, put(str_lit(";"), acc))
     }), str_lit(""), bindings, acc);
     put_sep(lambda2(move |x: Str, acc: Chars| {
         put_nl(n, put(str_lit(");"), put(mangle(x), put(str_lit("__knot.set("), put(mangle(x), acc)))))
     }), str_lit(""), names, acc)
+}
+
+/// Whether a `letrec`'s procedure calls itself last: a loop, as a
+/// top-level procedure's is, so that it grows no stack.
+pub fn letrec_loops_p(c: &'static Ctx, f: Str, lam: &'static Sexp) -> bool {
+    let xs = items(lam);
+    let names = map(&param_name, items(second(xs)));
+    tail_calls_p(returns(f, names, true, fact_at_p(c, lam, str_lit("fallible"))), last(cdr(cdr(xs))))
+}
+
+/// A `letrec`'s procedure that calls itself last: a closure whose body
+/// is a `loop`, its parameters `mut`, a call of itself an assignment to
+/// them and a `continue`, as a top-level procedure's.
+pub fn put_looping_lambda(c: &'static Ctx, f: Str, lam: &'static Sexp, n: i64, acc: Chars) -> Chars {
+    let xs = items(lam);
+    let params = lambda_params_typed(c, lam, items(second(xs)));
+    let names = map(&param_name, params);
+    let fallible = fact_at_p(c, lam, str_lit("fallible"));
+    let t = returns(f, names, true, fallible);
+    let inner = with_locals(c, cons(if fallible {
+        str_lit("%fallible")
+    } else {
+        str_lit("%infallible")
+    }, names));
+    let acc = put(string_append(str_lit("lambda"), string_append(i64_to_string(size(params)), str_lit("(move |"))), acc);
+    let acc = put_sep(lambda2(move |p: &'static Sexp, acc: List<char>| {
+        let tagcase_ = p;
+        match *tagcase_ {
+            Sexp::Lst(pt, f2, l2, p2) => {
+                put_type(c, second(pt), put(str_lit(": "), put(mangle(sym_name(car(pt))), put(str_lit("mut "), acc))))
+            }
+            _ => {
+                let other = tagcase_;
+                put(mangle(sym_name(other)), put(str_lit("mut "), acc))
+            }
+        }
+    }), str_lit(", "), params, acc);
+    let acc = put(str_lit("| {"), acc);
+    let acc = put_nl(i64_plus(n, 2i64), put(str_lit("loop {"), put_nl(i64_plus(n, 1i64), acc)));
+    let acc = put_stmts(inner, cdr(cdr(xs)), i64_plus(n, 2i64), t, acc);
+    put(str_lit("})"), put_nl(n, put(str_lit("}"), put_nl(i64_plus(n, 1i64), acc))))
 }
 
 pub fn put_list(c: &'static Ctx, xs: Sexps, n: i64, acc: Chars) -> Chars {

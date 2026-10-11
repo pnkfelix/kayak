@@ -8,11 +8,14 @@ use kayak_rt::*;
 
 pub fn count_to(n: i64, step: i64) -> Str {
     let go__knot = knot::<&'static dyn Fn(i64, Str) -> Str>();
-    let go = lambda2(move |i: i64, acc: Str| {
-        if i64_gt(i, n) {
-            acc
-        } else {
-            (go__knot.get())(i64_plus(i, step), string_append(acc, i64_to_string(i)))
+    let go = lambda2(move |mut i: i64, mut acc: Str| {
+        loop {
+            if i64_gt(i, n) {
+                return acc;
+            } else {
+                (i, acc) = (i64_plus(i, step), string_append(acc, i64_to_string(i)));
+                continue;
+            }
         }
     });
     go__knot.set(go);

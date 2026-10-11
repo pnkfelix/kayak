@@ -14,18 +14,24 @@ pub fn total(n: i64) -> i64 {
         fn letrena__r<'r>(r: &'r Region_R<'r>, n: i64) -> i64 {
             let build__knot = knot::<&'r dyn Fn(i64, ListAt<'r, i64>) -> ListAt<'r, i64>>();
             let add_up__knot = knot::<&'r dyn Fn(ListAt<'r, i64>, i64) -> i64>();
-            let build = lambda2(move |i: i64, acc: ListAt<'r, i64>| {
-                if i64_eq(i, 0i64) {
-                    acc
-                } else {
-                    (build__knot.get())(i64_minus(i, 1i64), rcons(r, i, acc))
+            let build = lambda2(move |mut i: i64, mut acc: ListAt<'r, i64>| {
+                loop {
+                    if i64_eq(i, 0i64) {
+                        return acc;
+                    } else {
+                        (i, acc) = (i64_minus(i, 1i64), rcons(r, i, acc));
+                        continue;
+                    }
                 }
             });
-            let add_up = lambda2(move |xs: ListAt<'r, i64>, acc: i64| {
-                if null_p(xs) {
-                    acc
-                } else {
-                    (add_up__knot.get())(cdr(xs), i64_plus(acc, car(xs)))
+            let add_up = lambda2(move |mut xs: ListAt<'r, i64>, mut acc: i64| {
+                loop {
+                    if null_p(xs) {
+                        return acc;
+                    } else {
+                        (xs, acc) = (cdr(xs), i64_plus(acc, car(xs)));
+                        continue;
+                    }
                 }
             });
             build__knot.set(build);

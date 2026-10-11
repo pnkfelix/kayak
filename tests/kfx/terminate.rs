@@ -24,11 +24,14 @@ pub fn node(f0: &'static Tree, f1: &'static Tree) -> &'static Tree {
 // Over a list at `acyclic`: its `cdr` is smaller.
 pub fn len(xs: Ints) -> Int {
     let go__knot = knot::<&'static dyn Fn(Ints, Int) -> Int>();
-    let go = lambda2(move |xs: Ints, n: Int| {
-        if null_p(xs) {
-            n
-        } else {
-            (go__knot.get())(cdr(xs), _plus(n, int_lit(1)))
+    let go = lambda2(move |mut xs: Ints, mut n: Int| {
+        loop {
+            if null_p(xs) {
+                return n;
+            } else {
+                (xs, n) = (cdr(xs), _plus(n, int_lit(1)));
+                continue;
+            }
         }
     });
     go__knot.set(go);
@@ -51,11 +54,14 @@ pub fn count(n: Int) -> Int {
 
 pub fn sum_to(top: Int) -> Int {
     let up__knot = knot::<&'static dyn Fn(Int, Int, Int) -> Int>();
-    let up = lambda3(move |i: Int, n: Int, acc: Int| {
-        if _lt(i, n) {
-            (up__knot.get())(_plus(i, int_lit(1)), n, _plus(acc, i))
-        } else {
-            acc
+    let up = lambda3(move |mut i: Int, mut n: Int, mut acc: Int| {
+        loop {
+            if _lt(i, n) {
+                (i, acc) = (_plus(i, int_lit(1)), _plus(acc, i));
+                continue;
+            } else {
+                return acc;
+            }
         }
     });
     up__knot.set(up);
@@ -82,13 +88,17 @@ pub fn total(t: &'static Tree) -> Int {
 
 pub fn ack(m: Int, n: Int) -> Int {
     let a__knot = knot::<&'static dyn Fn(Int, Int) -> Int>();
-    let a = lambda2(move |m: Int, n: Int| {
-        if _lt_eq(m, int_lit(0)) {
-            _plus(n, int_lit(1))
-        } else if _lt_eq(n, int_lit(0)) {
-            (a__knot.get())(_minus(m, int_lit(1)), int_lit(1))
-        } else {
-            (a__knot.get())(_minus(m, int_lit(1)), (a__knot.get())(m, _minus(n, int_lit(1))))
+    let a = lambda2(move |mut m: Int, mut n: Int| {
+        loop {
+            if _lt_eq(m, int_lit(0)) {
+                return _plus(n, int_lit(1));
+            } else if _lt_eq(n, int_lit(0)) {
+                (m, n) = (_minus(m, int_lit(1)), int_lit(1));
+                continue;
+            } else {
+                (m, n) = (_minus(m, int_lit(1)), (a__knot.get())(m, _minus(n, int_lit(1))));
+                continue;
+            }
         }
     });
     a__knot.set(a);
