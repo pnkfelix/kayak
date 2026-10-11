@@ -2569,7 +2569,7 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
         let acc = put(str_lit(">("), acc);
         let acc = put_args(c, e, cdr(xs), 0i64, n, acc);
         put(str_lit(")"), acc)
-    } else if (string_eq_p(h, str_lit("letrena")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+    } else if ((string_eq_p(h, str_lit("letrena")) || string_eq_p(h, str_lit("letreap"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
         put_letrena(c, e, xs, n, acc)
     } else if ((string_eq_p(h, str_lit("make-bloblet")) || string_eq_p(h, str_lit("rmake-bloblet"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
         // `make_bloblet(bytes, (Cell::new(e), ...,))`; in a region, `rmake_bloblet(r, ...)`.

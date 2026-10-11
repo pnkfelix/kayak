@@ -1465,7 +1465,7 @@
                     (acc (put ">(" acc))
                     (acc (put-args c e (cdr xs) 0 n acc)))
                (put ")" acc)))
-            ((and (string=? h "letrena") (string=? (local-kind h (ctx-locals c)) "")) (put-letrena c e xs n acc))
+            ((and (or (string=? h "letrena") (string=? h "letreap")) (string=? (local-kind h (ctx-locals c)) "")) (put-letrena c e xs n acc))
             ((and (or (string=? h "make-bloblet") (string=? h "rmake-bloblet")) (string=? (local-kind h (ctx-locals c)) ""))
              "`make_bloblet(bytes, (Cell::new(e), ...,))`; in a region, `rmake_bloblet(r, ...)`."
              (let* ((placed (string=? h "rmake-bloblet"))

@@ -987,3 +987,9 @@ arenas all its body makes or needs. `tests/kfx/places` (Fixpt's
 through one; a local lambda taking one). Of Fixpt's 38 region and place
 programs, 3 accepted and agreeing, 21 refused by both, 14 by KFX alone;
 none a K1 violation or a Rust error.
+
+## `letreap` (2026-10-11)
+
+As a `letrena` (C30): FX-26 types the two alike; a reap is collected as
+it runs and an arena is not, a difference only in when memory comes back.
+`tests/kfx/letreap` (Fixpt's `run/regions.fx`).

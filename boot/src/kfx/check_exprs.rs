@@ -1791,7 +1791,7 @@ pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
         }
     } else if control_form_p(h) {
         body_form(v, s, h, xs, nil::<&'static Ty>())
-    } else if string_eq_p(h, str_lit("letrena")) {
+    } else if (string_eq_p(h, str_lit("letrena")) || string_eq_p(h, str_lit("letreap"))) {
         letrena_form(v, s, xs, nil::<&'static Ty>())
     } else if (blob_form_p(h) && null_p(find_bind(h, cv_binds(v)))) {
         blob_form(v, s, h, xs, nil::<&'static Ty>())
@@ -1807,7 +1807,7 @@ pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
 pub fn check_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: Sexps, expected: &'static Ty) -> &'static Res {
     if control_form_p(h) {
         body_form(v, s, h, xs, kayak_rt::cons(expected, kayak_rt::nil()))
-    } else if string_eq_p(h, str_lit("letrena")) {
+    } else if (string_eq_p(h, str_lit("letrena")) || string_eq_p(h, str_lit("letreap"))) {
         letrena_form(v, s, xs, kayak_rt::cons(expected, kayak_rt::nil()))
     } else if (blob_form_p(h) && null_p(find_bind(h, cv_binds(v)))) {
         blob_form(v, s, h, xs, kayak_rt::cons(expected, kayak_rt::nil()))
@@ -2509,7 +2509,9 @@ pub fn letregion_form(v: &'static Cv, s: &'static St, r: Str, forms: Sexps, expe
     }
 }
 
-/// `(letrena r body ...)`: a region whose data the body makes in an arena
+/// `(letrena r body ...)`, and `letreap`, which FX-26 types alike and
+/// collects as it runs, which an arena need not: a region whose data the
+/// body makes in an arena
 /// (`rcons`, `rnew`), freed when the body ends; typed as a `letregion`
 /// is, and `r` the region's place, `(place r)`, as FX-26 has it. In Rust
 /// a `fn` of the region's lifetime, of the arena and the locals the body

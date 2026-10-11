@@ -145,7 +145,7 @@ Escapes are done (`DONE.md`, C18). Left:
   families over `flat`.
 - **`letrena`'s rest** (C30, C34): regions within a place, `(r region
   p)`; families over a place; a nested `letrena` naming an outer place;
-  `letrena` in a poly over types; `letreap` (as an arena, sound);
+  `letrena` in a poly over types;
   `rlambda`, `rmake-array`, `rmake-icell`; places in mutually recursive
   procedures; `(proj ...)`.
 - **`null?` of an argument whose element nothing says**, other than a name

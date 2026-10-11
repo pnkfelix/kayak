@@ -802,7 +802,7 @@
                      (let ((t (tagcase (walk s t) (ty-nat () (ty-int)) (else other t))))
                        (with-effs (check v s e (ty-list t (ty-rconst "%fresh"))) es0)))))))
             ((control-form? h) (body-form v s h xs nil))
-            ((string=? h "letrena") (letrena-form v s xs nil))
+            ((or (string=? h "letrena") (string=? h "letreap")) (letrena-form v s xs nil))
             ((and (blob-form? h) (null? (find-bind h (cv-binds v)))) (blob-form v s h xs nil))
             ((string=? h "and") (bools v s xs))
             ((string=? h "or") (bools v s xs))
@@ -811,7 +811,7 @@
   (check-form (subr kfx (cv st sexp string sexps ty) res)
     (lambda (v s e h xs expected)
       (cond ((control-form? h) (body-form v s h xs (list expected)))
-            ((string=? h "letrena") (letrena-form v s xs (list expected)))
+            ((or (string=? h "letrena") (string=? h "letreap")) (letrena-form v s xs (list expected)))
             ((and (blob-form? h) (null? (find-bind h (cv-binds v)))) (blob-form v s h xs (list expected)))
             ((string=? h "prompt") (prompt-form v s xs (list expected)))
             ((string=? h "%found") (check-by-synth v s e expected))
@@ -1136,7 +1136,9 @@
 
   (letrena-form (subr kfx (cv st sexps tys) res)
     (lambda (v s xs expected)
-      "`(letrena r body ...)`: a region whose data the body makes in an arena
+      "`(letrena r body ...)`, and `letreap`, which FX-26 types alike and
+       collects as it runs, which an arena need not: a region whose data the
+       body makes in an arena
        (`rcons`, `rnew`), freed when the body ends; typed as a `letregion`
        is, and `r` the region's place, `(place r)`, as FX-26 has it. In Rust
        a `fn` of the region's lifetime, of the arena and the locals the body

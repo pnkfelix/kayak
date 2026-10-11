@@ -1,0 +1,14 @@
+"letreap: typed as a letrena is, in FX-26 a regional heap collected as it
+ runs; in Rust an arena too, freed when the body ends (sound: the only
+ difference is when memory comes back). Fixpt's run/regions.fx, at i64."
+(define-effect kfx (maxeff (read @globals) spin))
+(define total (subr kfx (i64) i64)
+  (lambda (n)
+    (letreap r
+      (letrec ((build (subr (maxeff (alloc r) spin) (i64 (listof i64 r)) (listof i64 r))
+                 (lambda (i acc) (if (i64= i 0) acc (build (i64- i 1) (rcons r i acc)))))
+               (add-up (subr (maxeff (read r) spin) ((listof i64 r) i64) i64)
+                 (lambda (xs acc) (if (null? xs) acc (add-up (cdr xs) (i64+ acc (car xs)))))))
+        (add-up (build n nil) 0)))))
+(define main (subr kfx () string) (lambda () (i64->string (total 100))))
+(main)
