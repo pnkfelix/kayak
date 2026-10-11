@@ -1621,13 +1621,21 @@
 
   (nat-args? (subr kfx (cv st sexps) bool)
     (lambda (v s args)
-      "Whether each argument is a `nat`: a literal not negative, or what
-       its type is found to be. The finding is a test, its state dropped."
+      "Whether each argument is a `nat` FX-26 keeps one through a sum: a
+       literal not negative, a name of a `nat`, or such a sum itself; not a
+       call's value or a `the`'s, a plain `nat`, which FX-26's `+` makes an
+       `int` (each literal is its own `(nat v)` to it). The finding is a
+       test, its state dropped."
       (or (null? args)
           (and (tagcase (car args)
                  (num (k f p) (and (not (i64< k 0)) (not (i64> k 1152921504606846975))))
                  (big (text f p) #f)
-                 (else other (tagcase (synth v s other) (res (t es s2) (nat? s2 t)))))
+                 (sym (n f p) (tagcase (synth v s (car args)) (res (t es s2) (nat? s2 t))))
+                 (lst (xs f l p)
+                   (and (head-is? (car args) "+") (not (null? (find-bind "+" (cv-binds v))))
+                        (tagcase (car (find-bind "+" (cv-binds v))) (bind (n sc w) (string=? w "prim")))
+                        (nat-args? v s (cdr xs))))
+                 (else other #f))
                (nat-args? v s (cdr args))))))
 
   (abort-call (subr kfx (cv st sexps) res)

@@ -1,0 +1,7 @@
+"FX-26 keeps a nat through + of literals, nat names and such sums; a
+ call's nat is a plain one, which + makes an int (each literal is its own
+ (nat v) to it): here where a nat is expected."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-datatype nat-list (nnil) (ncons nat nat-list))
+(define nsum (subr kfx (nat-list) nat) (lambda (l) (tagcase l (nnil () 0) (ncons (h t) (+ h (nsum t))))))
+(int->string (nsum (ncons 3 (ncons 4 (nnil)))))

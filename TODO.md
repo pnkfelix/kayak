@@ -132,8 +132,7 @@ Escapes are done (`DONE.md`, C18). Left:
     where FX-26's may not be;
 
 - **K1 differences left** (C36): a pair whose tail is a pair, found by
-  itself, given where a list is; a literal in such a pair's tail; `nat`
-  where FX-26's literal is an `int` (`(+ h (nsum t))` of nats); a product
+  itself, given where a list is; a literal in such a pair's tail; a product
   of a poly `nil` and one of a list, in branches; self-application through
   a product (`slf`).
 - **A `cons`'s or `rcons`'s value is a pair to FX-26**, `(pairof T (listof

@@ -3561,8 +3561,11 @@ pub fn poly_settled(v: &'static Cv, h: Str, wher: Str, args: Sexps, ks: List<i64
     }
 }
 
-/// Whether each argument is a `nat`: a literal not negative, or what
-/// its type is found to be. The finding is a test, its state dropped.
+/// Whether each argument is a `nat` FX-26 keeps one through a sum: a
+/// literal not negative, a name of a `nat`, or such a sum itself; not a
+/// call's value or a `the`'s, a plain `nat`, which FX-26's `+` makes an
+/// `int` (each literal is its own `(nat v)` to it). The finding is a
+/// test, its state dropped.
 pub fn nat_args_p(v: &'static Cv, s: &'static St, args: Sexps) -> bool {
     (null_p(args) || ({
         let tagcase_ = car(args);
@@ -3573,14 +3576,27 @@ pub fn nat_args_p(v: &'static Cv, s: &'static St, args: Sexps) -> bool {
             Sexp::Big(text, f, p) => {
                 false
             }
-            _ => {
-                let other = tagcase_;
-                let tagcase_ = synth(v, s, other);
+            Sexp::Sym(n, f, p) => {
+                let tagcase_ = synth(v, s, car(args));
                 match *tagcase_ {
                     Res::Res(t, es, s2) => {
                         nat_p(s2, t)
                     }
                 }
+            }
+            Sexp::Lst(xs, f, l, p) => {
+                (head_is_p(car(args), str_lit("+")) && not(null_p(find_bind(str_lit("+"), cv_binds(v)))) && {
+                    let tagcase_ = car(find_bind(str_lit("+"), cv_binds(v)));
+                    match *tagcase_ {
+                        Bind::Bind(n, sc, w) => {
+                            string_eq_p(w, str_lit("prim"))
+                        }
+                    }
+                } && nat_args_p(v, s, cdr(xs)))
+            }
+            _ => {
+                let other = tagcase_;
+                false
             }
         }
     } && nat_args_p(v, s, cdr(args))))

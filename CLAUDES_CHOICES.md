@@ -610,13 +610,15 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
   not one a later use may choose: `(h (cons "x" nil))` for a `(listof a
   acyclic)` is refused, as Fixpt refuses it. Seven of the fourteen K1
   differences the probes left agree now.
+- **And** (`nat`): `+` keeps a `nat` only of literals, names of a `nat`
+  and such sums, as FX-26's does (each literal its own `(nat v)`); a call's
+  or a `the`'s `nat` makes it an `int`.
 - **Not yet** (KFX accepts, Fixpt refuses): a pair whose tail is a pair,
   found by itself and given where a list is (FX-26's `cons` makes
   `(pairof t1 t2 r)`, its tail's type its own; KFX's makes a list's; a
   try at marking such pairs needed calls checked against a type to leave
   their regions open, which the compiler's own bootstrap did not take); a
-  literal in such a pair's tail (`(rcons r k (rcons r 1 nil))`); `nat`
-  where FX-26's literal is an `int`; a product of a poly `nil` and one of
+  literal in such a pair's tail (`(rcons r k (rcons r 1 nil))`); a product of a poly `nil` and one of
   a list in branches; a procedure's self-application through a product.
 
 ## C37. Names Rust can write, all of them (2026-10-11)
