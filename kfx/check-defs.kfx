@@ -536,16 +536,13 @@
                    (else other #u))
                  #u))
            forms)
-      (map (lambda ((f sexp))
-             (if (or (head-is? f "define-type") (head-is? f "define-datatype") (head-is? f "define-generative"))
-                 (let ((name (tagcase (second (items f)) (sym (n at-file at-pos) n) (lst (ys fl ln ps) (tagcase (car ys) (sym (n at-file at-pos) n) (else other ""))) (else other ""))))
-                   (if (string-member? (camel name) (list "Str" "List" "Cons" "Int" "Tag" "Unwind" "Ref" "FlatArray" "Knot" "Show"
-                                                          "OnceCell" "Fn" "Result" "Ok" "Err" "String" "Copy" "Clone" "Void" "Bloblet" "BlobRef" "Arena" "Holds" "ListAt" "RefAt"
-                                                          "Self" "Module"))
-                       (refuse v (string-append "Rust or kayak-rt has a type " (string-append (camel name) " of its own")))
-                       #u))
+      (map (lambda ((name string))
+             (if (string-member? (camel name) (list "Str" "List" "Cons" "Int" "Tag" "Unwind" "Ref" "FlatArray" "Knot" "Show"
+                                                    "OnceCell" "Fn" "Result" "Ok" "Err" "String" "Copy" "Clone" "Void" "Bloblet" "BlobRef" "Arena" "Holds" "ListAt" "RefAt"
+                                                    "Self" "Module" "TBloblet" "FlatArr" "Flat" "Owner" "RefAt"))
+                 (refuse v (string-append "Rust or kayak-rt has a type " (string-append (camel name) " of its own")))
                  #u))
-           forms)
+           (concat (type-scopes forms)))
       (map (lambda ((names strings))
              (begin
                (map (lambda ((n string))

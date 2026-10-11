@@ -1646,7 +1646,9 @@
        instance's found by itself, as FX-26 finds it); its effect, the callee's latent effect, the
        arguments' and `more`. In order, not lambdas last as FX-26 does,
        since rustc finds a closure's parameter types only from what comes
-       before it: see `check-written-params`."
+       before it: see `check-written-params`. A procedure expected bounds
+       the result from above, as FX-26 has it: fitted after the arguments,
+       which say what it is, one that cannot abort then lifted (C35)."
       (tagcase callee
         (res (t es0 s)
           (tagcase (walk s t)
@@ -1654,15 +1656,33 @@
               (if (not (i64= (size ps) (size args)))
                   (refuse v (string-append "a call of the wrong number of arguments: "
                                            (show-sexps args)))
-                  (tagcase (let ((s1 (if (null? expected) s (fits v s r (car expected)))))
+                  (tagcase (let ((s1 (if (or (null? expected) (proc-type? s (car expected))) s (fits v s r (car expected)))))
                              (call-args v s1 args ps (fixed-by s s1 (concat (map metas-of ps)))))
                     (res (u es1 s0)
-                     (let ((s s0))
+                     (let ((s (if (and (not (null? expected)) (proc-type? s0 (car expected)))
+                                  (fits v s0 r (car expected))
+                                  s0)))
                       (tagcase (name-regions v s latent regions)
                         (res (u named s)
                           (res r (effs-union named (effs-union more (effs-union es0 es1)))
-                               (if (escapes? named) (note-fact s (cv-file v) (cv-pos v) "fallible-call") s)))))))))
+                               (lift-noted v (if (escapes? named) (note-fact s (cv-file v) (cv-pos v) "fallible-call") s) r expected)))))))))
             (else other (refuse v (string-append "a call of a " (string-append (show-ty s t) ", no procedure")))))))))
+
+  (lift-noted (subr kfx (cv st ty tys) st)
+    (lambda (v s r expected)
+      "A call whose value is a procedure that cannot abort, where one that
+       may is expected: lifted, as `check-by-synth` lifts one (C35)."
+      (if (null? expected)
+          s
+          (tagcase (walk s r)
+            (ty-proc (pes ps r2)
+              (tagcase (walk s (car expected))
+                (ty-proc (ees eps er)
+                  (if (and (escapes? ees) (not (escapes? pes)))
+                      (note-fact s (cv-file v) (cv-pos v) (string-append "lift " (i64->string (size ps))))
+                      s))
+                (else other s)))
+            (else other s)))))
 
   (call-args (subr kfx (cv st sexps tys i64s) res)
     (lambda (v s args ps fixed)

@@ -590,4 +590,12 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
   included, is found by itself, as FX-26 finds it (as a `list` was), so
   that its branches must be of one type; KFX had checked each against the
   parameter's type and accepted branches FX-26 refuses.
+- **And:** a call whose value is a procedure, where one is expected, has
+  its result fitted after its arguments, the expected type bounding it
+  from above as FX-26's does: `(car fs)` of pure procedures where one that
+  may abort is wanted is a pure one, lifted, not a list of them taken as
+  one of procedures that may abort, which Rust cannot convert.
+- **And** (names): a module parameter's Rust type parameter is `Mod_M`,
+  apart from a type `mod-m`'s `ModM`; a module's types may not be named as
+  kayak-rt's either (`str` in a module hid `Str`).
 

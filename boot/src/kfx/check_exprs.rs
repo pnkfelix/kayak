@@ -3609,7 +3609,9 @@ pub fn handler_of(v: &'static Cv, s: &'static St, e: &'static Sexp, h: &'static 
 /// instance's found by itself, as FX-26 finds it); its effect, the callee's latent effect, the
 /// arguments' and `more`. In order, not lambdas last as FX-26 does,
 /// since rustc finds a closure's parameter types only from what comes
-/// before it: see `check-written-params`.
+/// before it: see `check-written-params`. A procedure expected bounds
+/// the result from above, as FX-26 has it: fitted after the arguments,
+/// which say what it is, one that cannot abort then lifted (C35).
 pub fn synth_call_of(v: &'static Cv, s: &'static St, callee: &'static Res, args: Sexps, regions: List<i64>, expected: Tys, more: Strings) -> &'static Res {
     let tagcase_ = callee;
     match *tagcase_ {
@@ -3621,7 +3623,7 @@ pub fn synth_call_of(v: &'static Cv, s: &'static St, callee: &'static Res, args:
                         match refuse(v, string_append(str_lit("a call of the wrong number of arguments: "), show_sexps(args))) {}
                     } else {
                         let tagcase_ = {
-                            let s1 = if null_p(expected) {
+                            let s1 = if (null_p(expected) || proc_type_p(s, car(expected))) {
                                 s
                             } else {
                                 fits(v, s, r, car(expected))
@@ -3630,15 +3632,19 @@ pub fn synth_call_of(v: &'static Cv, s: &'static St, callee: &'static Res, args:
                         };
                         match *tagcase_ {
                             Res::Res(u, es1, s0) => {
-                                let s = s0;
+                                let s = if (not(null_p(expected)) && proc_type_p(s0, car(expected))) {
+                                    fits(v, s0, r, car(expected))
+                                } else {
+                                    s0
+                                };
                                 let tagcase_ = name_regions(v, s, latent, regions);
                                 match *tagcase_ {
                                     Res::Res(u, named, s) => {
-                                        res(r, effs_union(named, effs_union(more, effs_union(es0, es1))), if escapes_p(named) {
+                                        res(r, effs_union(named, effs_union(more, effs_union(es0, es1))), lift_noted(v, if escapes_p(named) {
                                             note_fact(s, cv_file(v), cv_pos(v), str_lit("fallible-call"))
                                         } else {
                                             s
-                                        })
+                                        }, r, expected))
                                     }
                                 }
                             }
@@ -3649,6 +3655,38 @@ pub fn synth_call_of(v: &'static Cv, s: &'static St, callee: &'static Res, args:
                     let other = tagcase_;
                     match refuse(v, string_append(str_lit("a call of a "), string_append(show_ty(s, t), str_lit(", no procedure")))) {}
                 }
+            }
+        }
+    }
+}
+
+/// A call whose value is a procedure that cannot abort, where one that
+/// may is expected: lifted, as `check-by-synth` lifts one (C35).
+pub fn lift_noted(v: &'static Cv, s: &'static St, r: &'static Ty, expected: Tys) -> &'static St {
+    if null_p(expected) {
+        s
+    } else {
+        let tagcase_ = walk(s, r);
+        match *tagcase_ {
+            Ty::TyProc(pes, ps, r2) => {
+                let tagcase_ = walk(s, car(expected));
+                match *tagcase_ {
+                    Ty::TyProc(ees, eps, er) => {
+                        if (escapes_p(ees) && not(escapes_p(pes))) {
+                            note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("lift "), i64_to_string(size(ps))))
+                        } else {
+                            s
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        s
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                s
             }
         }
     }

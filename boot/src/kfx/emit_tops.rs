@@ -440,7 +440,7 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, typ: &'static Sexp, defi
     } else {
         put(str_lit(">"), put_sep(lambda2(move |mp: Str, acc: Chars| {
             let ws = split_words(mp);
-            put(camel(car(cdr(ws))), put(str_lit(": "), put(camel(car(ws)), put(str_lit("Mod"), acc))))
+            put(camel(car(cdr(ws))), put(str_lit(": "), put(camel(car(ws)), put(str_lit("Mod_"), acc))))
         }), str_lit(", "), mparams, put(str_lit("<"), acc)))
     };
     let acc = if lambda_p {

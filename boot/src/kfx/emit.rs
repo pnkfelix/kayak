@@ -378,7 +378,7 @@ pub fn module_path(c: &'static Ctx, m: Str) -> Str {
     if string_eq_p(param_module_type(m, ctx_locals(c)), str_lit("")) {
         mangle(m)
     } else {
-        string_append(str_lit("Mod"), camel(m))
+        string_append(str_lit("Mod_"), camel(m))
     }
 }
 

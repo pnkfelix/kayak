@@ -837,41 +837,13 @@ pub fn type_names_free(v: &'static Cv, forms: Sexps) -> () {
             ()
         }
     }), forms);
-    map(lambda1(move |f: &'static Sexp| {
-        if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-datatype")) || head_is_p(f, str_lit("define-generative"))) {
-            let name = {
-                let tagcase_ = second(items(f));
-                match *tagcase_ {
-                    Sexp::Sym(n, at_file, at_pos) => {
-                        n
-                    }
-                    Sexp::Lst(ys, fl, ln, ps) => {
-                        let tagcase_ = car(ys);
-                        match *tagcase_ {
-                            Sexp::Sym(n, at_file, at_pos) => {
-                                n
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                str_lit("")
-                            }
-                        }
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        str_lit("")
-                    }
-                }
-            };
-            if string_member_p(camel(name), kayak_rt::cons(str_lit("Str"), kayak_rt::cons(str_lit("List"), kayak_rt::cons(str_lit("Cons"), kayak_rt::cons(str_lit("Int"), kayak_rt::cons(str_lit("Tag"), kayak_rt::cons(str_lit("Unwind"), kayak_rt::cons(str_lit("Ref"), kayak_rt::cons(str_lit("FlatArray"), kayak_rt::cons(str_lit("Knot"), kayak_rt::cons(str_lit("Show"), kayak_rt::cons(str_lit("OnceCell"), kayak_rt::cons(str_lit("Fn"), kayak_rt::cons(str_lit("Result"), kayak_rt::cons(str_lit("Ok"), kayak_rt::cons(str_lit("Err"), kayak_rt::cons(str_lit("String"), kayak_rt::cons(str_lit("Copy"), kayak_rt::cons(str_lit("Clone"), kayak_rt::cons(str_lit("Void"), kayak_rt::cons(str_lit("Bloblet"), kayak_rt::cons(str_lit("BlobRef"), kayak_rt::cons(str_lit("Arena"), kayak_rt::cons(str_lit("Holds"), kayak_rt::cons(str_lit("ListAt"), kayak_rt::cons(str_lit("RefAt"), kayak_rt::cons(str_lit("Self"), kayak_rt::cons(str_lit("Module"), kayak_rt::nil())))))))))))))))))))))))))))) {
-                match refuse(v, string_append(str_lit("Rust or kayak-rt has a type "), string_append(camel(name), str_lit(" of its own")))) {}
-            } else {
-                ()
-            }
+    map(lambda1(move |name: Str| {
+        if string_member_p(camel(name), kayak_rt::cons(str_lit("Str"), kayak_rt::cons(str_lit("List"), kayak_rt::cons(str_lit("Cons"), kayak_rt::cons(str_lit("Int"), kayak_rt::cons(str_lit("Tag"), kayak_rt::cons(str_lit("Unwind"), kayak_rt::cons(str_lit("Ref"), kayak_rt::cons(str_lit("FlatArray"), kayak_rt::cons(str_lit("Knot"), kayak_rt::cons(str_lit("Show"), kayak_rt::cons(str_lit("OnceCell"), kayak_rt::cons(str_lit("Fn"), kayak_rt::cons(str_lit("Result"), kayak_rt::cons(str_lit("Ok"), kayak_rt::cons(str_lit("Err"), kayak_rt::cons(str_lit("String"), kayak_rt::cons(str_lit("Copy"), kayak_rt::cons(str_lit("Clone"), kayak_rt::cons(str_lit("Void"), kayak_rt::cons(str_lit("Bloblet"), kayak_rt::cons(str_lit("BlobRef"), kayak_rt::cons(str_lit("Arena"), kayak_rt::cons(str_lit("Holds"), kayak_rt::cons(str_lit("ListAt"), kayak_rt::cons(str_lit("RefAt"), kayak_rt::cons(str_lit("Self"), kayak_rt::cons(str_lit("Module"), kayak_rt::cons(str_lit("TBloblet"), kayak_rt::cons(str_lit("FlatArr"), kayak_rt::cons(str_lit("Flat"), kayak_rt::cons(str_lit("Owner"), kayak_rt::cons(str_lit("RefAt"), kayak_rt::nil()))))))))))))))))))))))))))))))))) {
+            match refuse(v, string_append(str_lit("Rust or kayak-rt has a type "), string_append(camel(name), str_lit(" of its own")))) {}
         } else {
             ()
         }
-    }), forms);
+    }), concat(type_scopes(forms)));
     map(lambda1(move |names: Strings| {
         map(lambda1(move |n: Str| {
             if kfx_name_p(n) {

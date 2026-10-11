@@ -221,7 +221,7 @@
            (acc (cond ((null? mparams) acc)
                       ((not (null? binders)) (error "kfx: a poly procedure with a module parameter, which KFX does not write yet"))
                       (else (put ">" (put-sep (lambda ((mp string) (acc chars))
-                                                (let ((ws (split-words mp))) (put (camel (car (cdr ws))) (put ": " (put (camel (car ws)) (put "Mod" acc))))))
+                                                (let ((ws (split-words mp))) (put (camel (car (cdr ws))) (put ": " (put (camel (car ws)) (put "Mod_" acc))))))
                                               ", " mparams (put "<" acc))))))
            (acc (if lambda?
                     (let* ((acc (put "(" acc))

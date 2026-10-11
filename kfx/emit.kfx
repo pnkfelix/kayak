@@ -182,7 +182,7 @@
 (define module-path (subr kfx (ctx string) string)
   (lambda (c m)
     "A module's Rust path: a module parameter's is its type parameter."
-    (if (string=? (param-module-type m (ctx-locals c)) "") (mangle m) (string-append "Mod" (camel m)))))
+    (if (string=? (param-module-type m (ctx-locals c)) "") (mangle m) (string-append "Mod_" (camel m)))))
 
 (define item-values (subr kfx (sexps) strings)
   (lambda (forms)
