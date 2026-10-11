@@ -1,10 +1,13 @@
 # `kayak`: KFX, a sublanguage of FX-26 that maps onto Rust, and bootstraps
 
-**Status: draft 2, 2026-10-11. The loop is closed (§4): `scripts/fixpoint.sh`
-passes; what is left is `TODO.md`.** Draft 1 planned broadly. The user's
-direction since: *close the local loop as fast as possible*, meaning the
-shortest path to KFX source that transpiles to the very Rust that builds
-it. Everything not on that path is in §5, for after.
+**Status: draft 3, 2026-10-11.** The loop closed early (§4), and KFX has
+grown since, through the bootstrap, each step a fixed point: the
+compiler, six files of KFX, checks and translates its own 2700 lines.
+What KFX is and how it maps is §2; how it is checked, §3; what is left,
+`TODO.md`, ranked by `docs/survey.md`; the decisions made along the way,
+`CLAUDES_CHOICES.md`. Draft 1 planned broadly; the user's direction since
+was *close the local loop as fast as possible* (draft 2), then to go on
+autonomously.
 
 kayak prototypes a bootstrappable system:
 
@@ -83,10 +86,12 @@ Verified by probe (2026-10-11), against the clone's Fixpt:
 
 ---
 
-## 2. KFX-0: the language the loop needs
+## 2. KFX: the language, and its mapping
 
-KFX-0 is exactly what the transpiler is written in, and so what it must
-translate. Anything more waits until the loop is closed.
+KFX is what the transpiler is written in and what it translates: the
+part of FX-26 each of whose constructs maps exactly to something in Rust.
+It began as KFX-0, what the loop needed (§4), and grows a construct at a
+time, through the bootstrap.
 
 **The memory model.** Every KFX value is a `Copy` Rust value. Scalars are
 themselves. Everything else is a `&'static` reference to memory that is
@@ -106,7 +111,7 @@ is no `Drop`, no `Rc` and no `.clone()`.
 | `(define f (subr kfx (T…) T) (lambda (x…) body))`     | `fn f(x: T, …) -> T { body }`                               |
 | `(define-rec (f type lambda) …)`                      | the same, one `fn` each                                     |
 | a self call in tail position                          | the `fn`'s body in a `loop`: assignments, then `continue`   |
-| `(define x T e)`, not a lambda                        | `fn x() -> T { e }`; each use `x()` (KFX-0: `e` pure)       |
+| `(define x T e)`, not a lambda                        | `fn x() -> T { e }`; each use `x()` (`e` only reads globals, C11) |
 | `(define x e)`, with no type                          | as with the type the checker finds (elaboration)            |
 | `(define* f T lambda)`                                | as `define`; the globals read are found, for the checker    |
 | `(define-datatype t (tag T…) …)`                      | `enum T { Tag(T…), … }` and `fn tag(…) -> &'static T`       |
@@ -135,7 +140,7 @@ is no `Drop`, no `Rc` and no `.clone()`.
 | `nil`                                                 | `nil()`                                                     |
 | `(list a …)`                                          | nested `cons`                                               |
 | `(error "…")`                                         | `error("…")`, which returns `!`                             |
-| literals                                              | Rust literals: `1i64`, `'a'`, `"a\n"`, `true`, `()`         |
+| literals                                              | Rust literals: `1i64`, `'a'`, `str_lit("a\n")`, `true`, `()` |
 | a string at the top level                             | a `//` comment                                              |
 | a string first in a procedure's body, before more     | its docstring: `///` on the `fn`                            |
 | any other string in a body, not last                  | a `//` comment                                              |
@@ -201,9 +206,12 @@ A name as a value is a local, a constant (`x()`), or else a global
 procedure (`&f`), the program's or `kayak-rt`'s: the emitter keeps the
 names bound where it is, from parameters, `let`, `let*` and `tagcase`.
 
-KFX-0 has no regions but `acyclic`, and no `poly` over anything but
-types and effects (`TODO.md` §14, §18), no `proj` (instantiation is
-inferred).
+What KFX does not have, ranked by how often Fixpt's programs first need
+it (`docs/survey.md`): FX-26's modules (`TODO.md` §19); escapes and
+delimited control (§16, `docs/research/escapes.md`); bloblets and flat
+data beyond `i64` arrays (§15); places, `letrena` (§14,
+`docs/research/places.md`); unions and `datum`; floats; higher kinds and
+`poly` over effects or sizes; `proj` (instantiation is inferred).
 
 ---
 
@@ -211,12 +219,14 @@ inferred).
 
 - **K1. KFX ⊂ FX-26.** Every KFX program is an FX-26 program with the
   same answer. KFX may refuse FX-26 programs, never reinterpret them,
-  and takes no licence: with `int` gone, every construct means in Rust
-  what it means in FX-26. Checked three ways: stage 0 (Fixpt runs the
-  compiler), the corpus (each program's answer, by Fixpt and by its
-  Rust), and `kfx`'s own checker, which refuses what Fixpt refuses
-  (`tests/kfx-refused`) and, on purpose, a little more
-  (`tests/kfx-stricter`).
+  and takes no licence: every construct means in Rust what it means in
+  FX-26 (`int` included, a bignum in both, C15). Checked four ways:
+  stage 0 (Fixpt runs the compiler); the corpus (each program's answer,
+  by Fixpt and by its Rust); `kfx`'s own checker, which refuses what Fixpt
+  refuses (`tests/kfx-refused`) and, on purpose, a little more
+  (`tests/kfx-stricter`); and Fixpt's own test programs that `kfx`
+  accepts, run as Rust and by Fixpt (`scripts/run-fixpt-programs.py`),
+  any that `kfx` accepts and Fixpt refuses being a failure.
 - **K2. The bootstrap is a fixed point:** `scripts/fixpoint.sh`.
 - **K3. Output is deterministic:** no hash-map order, no addresses, no
   clocks. Without this, K2 cannot hold.
@@ -242,11 +252,13 @@ All done: `DONE.md` §2, and what followed, §3 to §6.
 
 ## 5. After the loop
 
-The tasks are `TODO.md` §7 on. Their direction, in rough order: errors
-that point at KFX source, a corpus of KFX programs, guardrails; self tail
-calls as loops, first-class procedures, `poly` as generics; a KFX checker
-in KFX; places as lifetimes, flat data; escapes as `Result`, the first
-place effects decide code generation.
+The tasks are `TODO.md`'s. Done since the loop closed (`DONE.md`): a
+corpus and guardrails, tail calls as loops, procedures as values, `poly`,
+a checker, messages with places, several files, mutable data and
+regions, strings of characters, untyped definitions, `define*`, `int`,
+type families, `letrec`, `letregion`, `nat`, `define-generative`. Next,
+by the survey: modules, escapes (the first place effects decide code
+generation), places.
 
 Then FX-26 at large, written in KFX. Two directions, not chosen yet:
 - **keep targeting Rust**, with a runtime that grows (a collector, as
@@ -264,8 +276,11 @@ Then FX-26 at large, written in KFX. Two directions, not chosen yet:
 - **Q1. The name.** PLDI '89's kernel is also KFX, and `fixpt/docs/fx26.md`
   calls it that. I write KFX, and KFX26 where the two could be confused.
   Files are `.kfx`.
-- **Q2. `int`.** Answered (the user, 2026-10-11): KFX writes `i64`, and
-  has no `int` (§2).
+- **Q2. `int`.** Answered (the user, 2026-10-11): no `int` whose meaning
+  differs between FX-26 and Rust. Since C15, `int` is a bignum in both.
+- **Q3. Escapes**: `Result` by effect, or unwinding panics?
+  (`docs/research/escapes.md` §5.)
+- **Q4. Places**: needed now? (`docs/research/places.md` §4.)
 
 ## 7. Requests for Fixpt
 
