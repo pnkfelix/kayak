@@ -1084,3 +1084,11 @@ C41: `loop`, `move`, `fn`, ... are names again, Rust's `r#loop`; only
 `self`, `super`, `crate` refused. `tests/kfx/rust-keywords.kfx` names
 values, parameters, locals, types, labels, modules, effects, places and
 regions so. Fixpt's programs kfx accepts: 79 to 90.
+
+## Procedures over regions take lifetimes (2026-10-11)
+
+C42: `(poly ((r region)) ...)` is `fn f<'r>(xs: ListAt<'r, i64>)`, so a
+top-level helper may be given a `letrena`'s list (`tests/kfx/region-poly`).
+A type variable at such a region's type refused (its parameter is
+`'static`); `define*` keeps a place's needs as `define` does. The `lists`
+port's helpers are top-level now.

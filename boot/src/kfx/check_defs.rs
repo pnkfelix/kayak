@@ -632,8 +632,9 @@ pub fn global_reads(mut es: Strings) -> Strings {
 /// `(define* name type lambda)`: as FX-26 has it, the globals its body
 /// reads are found, not written. The body is checked as though the type
 /// read every global; the global is then of the type written, its effect
-/// with the globals found.
-pub fn check_define_star(v: &'static Cv, xs: Sexps) -> &'static Cv {
+/// with the globals found. A place it is given is as a `define`'s: what
+/// it makes there kept (C34).
+pub fn check_define_star(v: &'static Cv, xs: Sexps, src_file: Str, src_pos: i64) -> &'static Cv {
     let name = name_of(v, second(xs));
     let defined = fourth(xs);
     let v = at(v, name, if ends_alone_p(v, name, parse_scheme(v, third(xs)), defined) {
@@ -657,7 +658,7 @@ pub fn check_define_star(v: &'static Cv, xs: Sexps) -> &'static Cv {
                     Ty::TyProc(declared, ps, r) => {
                         let wide = ty_proc(effs_union(kayak_rt::cons(str_lit("@globals"), kayak_rt::nil()), declared), ps, r);
                         let named = with_binds(v, kayak_rt::cons(global(v, name, scheme(tvars, wide)), kayak_rt::nil()));
-                        let found = lambda_effects(with_tvars(named, tvars), new_state(), items(second(lam)), cdr(cdr(lam)), wide);
+                        let found = lambda_effects(with_tvars(with_tvars(named, tvars), place_marks(third(xs))), new_state(), items(second(lam)), cdr(cdr(lam)), wide);
                         let es = {
                             let tagcase_ = found;
                             match *tagcase_ {
@@ -675,7 +676,15 @@ pub fn check_define_star(v: &'static Cv, xs: Sexps) -> &'static Cv {
                             }
                         };
                         if effs_within_p(es, effs_union(kayak_rt::cons(str_lit("@globals"), kayak_rt::nil()), declared)) {
-                            with_facts(with_binds(no_reaching_itself(v, kayak_rt::cons(name, kayak_rt::nil()), scheme(tvars, ty_proc(effs_union(global_reads(es), declared), ps, r))), kayak_rt::cons(global(v, name, scheme(tvars, ty_proc(effs_union(global_reads(es), declared), ps, r))), kayak_rt::nil())), fs)
+                            let sc = scheme(tvars, ty_proc(effs_union(global_reads(es), declared), ps, r));
+                            let w = with_binds(no_reaching_itself(v, kayak_rt::cons(name, kayak_rt::nil()), sc), kayak_rt::cons(global(v, name, sc), kayak_rt::nil()));
+                            with_facts(with_place_needs(with_facts(w, fs), name, sc, size(cv_facts(w)), src_file, src_pos), concat(map(lambda1(move |m: Str| {
+                                if has_prefix_p(m, str_lit("%within ")) {
+                                    the::<Facts>(kayak_rt::cons(fact(src_file, src_pos, string_append(str_lit("region-within "), string_append(name, string_append(str_lit(" "), after_prefix(m, str_lit("%within ")))))), kayak_rt::nil()))
+                                } else {
+                                    nil::<&'static Fact>()
+                                }
+                            }), place_marks(third(xs)))))
                         } else {
                             match refuse(v, string_append(str_lit("a define* whose effect "), string_append(show_effs(es), string_append(str_lit(" is not within "), show_effs(declared))))) {}
                         }
@@ -782,7 +791,7 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
             } else if string_eq_p(h, str_lit("define-rec")) {
                 check_rec(v, cdr(xs))
             } else if string_eq_p(h, str_lit("define*")) {
-                check_define_star(v, xs)
+                check_define_star(v, xs, src_file, src_pos)
             } else {
                 let tagcase_ = synth(at(v, str_lit("a top-level expression"), nil::<Str>()), new_state(), form);
                 match *tagcase_ {

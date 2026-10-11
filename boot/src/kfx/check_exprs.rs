@@ -3585,7 +3585,7 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
                 let tagcase_ = instantiate(s, sc);
                 match *tagcase_ {
                     Inst::Inst(t, s, regions) => {
-                        place_needed(v, h, wher, sc, from, regions_freshened(v, h, wher, regions, poly_settled(v, h, wher, args, binder_metas(from, st_next(s), regions), result_only_p(s, t, binder_metas(from, st_next(s), regions)), void_call(v, (string_eq_p(h, str_lit("error")) && string_eq_p(wher, str_lit("prim"))), (not(null_p(expected)) && {
+                        place_needed(v, h, wher, sc, from, regions_freshened(v, h, wher, regions, static_instance(v, h, wher, binder_metas(from, st_next(s), regions), poly_settled(v, h, wher, args, binder_metas(from, st_next(s), regions), result_only_p(s, t, binder_metas(from, st_next(s), regions)), void_call(v, (string_eq_p(h, str_lit("error")) && string_eq_p(wher, str_lit("prim"))), (not(null_p(expected)) && {
                             let tagcase_ = walk(s, car(expected));
                             match *tagcase_ {
                                 Ty::TyMeta(k) => {
@@ -3604,9 +3604,27 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
                             kayak_rt::cons(str_lit("spin"), kayak_rt::nil())
                         } else {
                             nil::<Str>()
-                        }))))))))
+                        })))))))))
                     }
                 }
+            }
+        }
+    }
+}
+
+/// A procedure's call at types, each a Rust type parameter `A: Copy +
+/// 'static`: none may be at a region with a lifetime, a `letrena`'s, a
+/// place's, a region binder's (C42), which `'static` is not.
+pub fn static_instance(v: &'static Cv, h: Str, wher: Str, metas: List<i64>, r: &'static Res) -> &'static Res {
+    let tagcase_ = r;
+    match *tagcase_ {
+        Res::Res(t, es, s) => {
+            if ((string_eq_p(wher, str_lit("global")) || string_eq_p(wher, str_lit("item")) || string_eq_p(wher, str_lit("rec"))) && any_p(lambda1(move |k: i64| {
+                string_has_p(show_ty(s, ty_meta(k)), str_lit("'"))
+            }), metas)) {
+                match refuse(v, string_append(str_lit("a call of "), string_append(h, str_lit(" at a type over a region with a lifetime, where its Rust type parameter is 'static (C42)")))) {}
+            } else {
+                r
             }
         }
     }

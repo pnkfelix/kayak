@@ -19,7 +19,7 @@ pub fn dbl(y: i64) -> i64 {
     i64_star(y, 2i64)
 }
 
-pub fn apply_to(t: Tag<i64, i64>, f: &'static dyn Fn(i64) -> Result<i64, Unwind>, x: i64) -> Result<i64, Unwind> {
+pub fn apply_to<'r>(t: Tag<i64, i64>, f: &'r dyn Fn(i64) -> Result<i64, Unwind>, x: i64) -> Result<i64, Unwind> {
     Ok(f(x)?)
 }
 

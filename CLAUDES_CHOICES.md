@@ -712,3 +712,21 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
   `Default` and `Procedure`, which neither list had; the refusal says
   where the type is defined.
 - Fixpt's programs kfx accepts: 79 to 90, all agreeing.
+
+## C42. Procedures poly over regions, lifetimes (2026-10-11)
+
+- **Chosen:** a procedure's region binder not within a place, `(r
+  region)`, is a lifetime of its Rust `fn`, `'r`, marked as a `letrena`'s
+  is (`%letrena r`), so its lists, references and procedures are at `'r`
+  (`ListAt<'r, T>`, `RefAt<'r, T>`, `&'r dyn Fn`) and a `letrena`'s data
+  may be given it; rustc infers the lifetime at each call. Such a
+  procedure makes nothing in `r` (KFX's allocators take a place, C34).
+- **Refused:** a call of a program's procedure at a type over a region with
+  a lifetime (a `letrena`'s, a place's, a region binder's) for one of its
+  type variables, whose Rust parameter is `A: Copy + 'static`
+  (`kfx-stricter/type-variable-at-letrena`): before C42 the same call
+  from a `letrena`'s body made Rust rustc refused.
+- **And:** a `define*`'s places are a `define`'s: what it makes in each
+  kept (`place-needs`), and its regions within places, which `define*`
+  had dropped, its Rust then lacking the `Holds` bound.
+- The `lists` port's helpers are the program's own now, 5.4 ms as before.

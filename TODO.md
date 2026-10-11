@@ -202,11 +202,11 @@ or a trait.
 `scripts/bench.py` times Fixpt's benchmarks and their ports
 (`bench/ports/`) as kfx's Rust and on Fixpt's machines. What they showed:
 
-- **Procedures over regions take no lifetimes**: a top-level procedure poly
-  over a region is at `'static`, so no arena's list can be given it (the
-  `closures` port keeps its helpers local for that). As C39 did for type
-  abbreviations: region binders as lifetime parameters, turbofish where
-  rustc cannot infer them.
+- ~~**Procedures over regions take no lifetimes**~~: done, C42. Left:
+  a type variable at a type over such a region is refused, its Rust type
+  parameter being `'static`; dropping the bound needs to know which
+  procedures need it (a datatype's constructor, `alloc`, and so whatever
+  calls them at the type), a fixed point over the call graph.
 - **Heap allocation is a `malloc` each, never freed** (`cons`, `new`, a
   closure): all but 1.5 ms of `lists`' 20. Bump allocation for the heap; a
   decision first, the user's: an `unsafe` module, or a safe registry of

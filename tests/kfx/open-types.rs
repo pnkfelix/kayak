@@ -12,7 +12,7 @@ pub fn mk<A: Copy + 'static>() -> List<A> {
     nil::<A>()
 }
 
-pub fn apply_to(t: Tag<i64, i64>, f: &'static dyn Fn(i64) -> Result<i64, Unwind>, x: i64) -> Result<i64, Unwind> {
+pub fn apply_to<'r>(t: Tag<i64, i64>, f: &'r dyn Fn(i64) -> Result<i64, Unwind>, x: i64) -> Result<i64, Unwind> {
     Ok(f(x)?)
 }
 

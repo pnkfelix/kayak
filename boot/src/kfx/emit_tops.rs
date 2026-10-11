@@ -331,7 +331,7 @@ pub fn unpoly(e: &'static Sexp) -> &'static Sexp {
 /// A procedure given places' generics (C34): each place a lifetime, `'p`,
 /// and a type, `Place_P`, bound to hold what the procedure makes there,
 /// by itself or by those it gives the place to; the types `Copy`.
-pub fn put_place_generics(c: &'static Ctx, name: Str, binders: Sexps, places: Strings, acc: Chars) -> Chars {
+pub fn put_place_generics(c: &'static Ctx, name: Str, binders: Sexps, lives: Strings, places: Strings, acc: Chars) -> Chars {
     let needs = all_facts_prefixed(c, string_append(str_lit("place-needs "), string_append(name, str_lit(" "))));
     let types = concat(map(lambda1(move |b: &'static Sexp| {
         if sym_is_p(second(items(b)), str_lit("type")) {
@@ -352,7 +352,7 @@ pub fn put_place_generics(c: &'static Ctx, name: Str, binders: Sexps, places: St
     });
     let params = onto(map(lambda1(move |p: Str| {
         lifetime(p)
-    }), places), onto(map(lambda1(move |t: Str| {
+    }), onto(lives, places)), onto(map(lambda1(move |t: Str| {
         string_append(t, str_lit(": Copy + 'static"))
     }), types), map(lambda1(move |p: Str| {
         let bs = bounds(p);
@@ -363,6 +363,31 @@ pub fn put_place_generics(c: &'static Ctx, name: Str, binders: Sexps, places: St
         }))
     }), places)));
     put(string_append(str_lit("<"), string_append(words_of_sep(params, str_lit(", ")), str_lit(">"))), acc)
+}
+
+/// A poly's region binders not within a place, `(r region)` or `(r region
+/// distinct)`: each a lifetime of the procedure, `'r` (C42).
+pub fn free_regions(binders: Sexps) -> Strings {
+    concat(map(lambda1(move |b: &'static Sexp| {
+        let bs = items(b);
+        if (sym_is_p(second(bs), str_lit("region")) && (i64_eq(size(bs), 2i64) || sym_is_p(third(bs), str_lit("distinct")))) {
+            the::<Strings>(kayak_rt::cons(sym_name(car(bs)), kayak_rt::nil()))
+        } else {
+            nil::<Str>()
+        }
+    }), binders))
+}
+
+/// A procedure's generics: its regions' lifetimes, then its types'.
+pub fn put_lifetime_generics(lives: Strings, binders: Sexps, acc: Chars) -> Chars {
+    let types = concat(map(lambda1(move |b: &'static Sexp| {
+        if sym_is_p(second(items(b)), str_lit("type")) {
+            the::<Strings>(kayak_rt::cons(string_append(camel(sym_name(car(items(b)))), str_lit(": Copy + 'static")), kayak_rt::nil()))
+        } else {
+            nil::<Str>()
+        }
+    }), binders));
+    put(string_append(str_lit("<"), string_append(words_of_sep(onto(map(&lifetime, lives), types), str_lit(", ")), str_lit(">"))), acc)
 }
 
 /// A definition, a `fn`: a procedure's of its parameters; a constant's of
@@ -381,9 +406,12 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, typ: &'static Sexp, defi
             nil::<Str>()
         }
     }), binders));
-    let c = with_locals(c, onto(concat(map(lambda1(move |p: Str| {
+    let lives = free_regions(binders);
+    let c = with_locals(c, onto(onto(map(lambda1(move |r: Str| {
+        string_append(str_lit("%letrena "), r)
+    }), lives), concat(map(lambda1(move |p: Str| {
         the::<Strings>(kayak_rt::cons(string_append(str_lit("%letrena "), p), kayak_rt::cons(string_append(str_lit("%placeparam "), p), kayak_rt::nil())))
-    }), places)), onto(concat(map(lambda1(move |b: &'static Sexp| {
+    }), places))), onto(concat(map(lambda1(move |b: &'static Sexp| {
         let bs = items(b);
         if (i64_eq(size(bs), 3i64) && sym_is_p(second(bs), str_lit("region")) && not(sym_is_p(third(bs), str_lit("distinct")))) {
             the::<Strings>(kayak_rt::cons(string_append(str_lit("%within "), string_append(sym_name(car(bs)), string_append(str_lit(" "), sym_name(third(bs))))), kayak_rt::nil()))
@@ -441,10 +469,12 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, typ: &'static Sexp, defi
     };
     let acc = put(str_lit("pub fn "), acc);
     let acc = put(mangle(sym_name(name)), acc);
-    let acc = if null_p(places) {
-        put_generics(binders, true, acc)
+    let acc = if not(null_p(places)) {
+        put_place_generics(c, sym_name(name), binders, lives, places, acc)
+    } else if not(null_p(lives)) {
+        put_lifetime_generics(lives, binders, acc)
     } else {
-        put_place_generics(c, sym_name(name), binders, places, acc)
+        put_generics(binders, true, acc)
     };
     let acc = if null_p(mparams) {
         acc

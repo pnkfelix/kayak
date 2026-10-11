@@ -20,7 +20,7 @@ pub fn words(xs: Strings) -> Str {
 }
 
 /// a[i] := (i * 7) mod 10, for each i from `i`: a loop.
-pub fn fill_x(mut a: FlatArray<i64>, mut i: i64) -> () {
+pub fn fill_x<'r>(mut a: FlatArray<i64>, mut i: i64) -> () {
     loop {
         if i64_lt(i, flatarray_length_i64(a)) {
             flatarray_set_i64_x(a, i, i64_remainder(i64_star(i, 7i64), 10i64));
@@ -32,7 +32,7 @@ pub fn fill_x(mut a: FlatArray<i64>, mut i: i64) -> () {
     }
 }
 
-pub fn total(mut a: FlatArray<i64>, mut i: i64, mut acc: i64) -> i64 {
+pub fn total<'r>(mut a: FlatArray<i64>, mut i: i64, mut acc: i64) -> i64 {
     loop {
         if i64_lt(i, flatarray_length_i64(a)) {
             (i, acc) = (i64_plus(i, 1i64), i64_plus(acc, flatarray_ref_i64(a, i)));
@@ -43,7 +43,7 @@ pub fn total(mut a: FlatArray<i64>, mut i: i64, mut acc: i64) -> i64 {
     }
 }
 
-pub fn show(a: FlatArray<i64>, i: i64) -> Str {
+pub fn show<'r>(a: FlatArray<i64>, i: i64) -> Str {
     if i64_lt(i, flatarray_length_i64(a)) {
         string_append(i64_to_string(flatarray_ref_i64(a, i)), show(a, i64_plus(i, 1i64)))
     } else {
@@ -52,7 +52,7 @@ pub fn show(a: FlatArray<i64>, i: i64) -> Str {
 }
 
 /// Moves a[j] down to where it belongs among a[0..j]: insertion.
-pub fn sink_x(mut a: FlatArray<i64>, mut j: i64) -> () {
+pub fn sink_x<'r>(mut a: FlatArray<i64>, mut j: i64) -> () {
     loop {
         if (i64_gt(j, 0i64) && i64_gt(flatarray_ref_i64(a, i64_minus(j, 1i64)), flatarray_ref_i64(a, j))) {
             let x = flatarray_ref_i64(a, j);
@@ -66,7 +66,7 @@ pub fn sink_x(mut a: FlatArray<i64>, mut j: i64) -> () {
     }
 }
 
-pub fn sort_x(mut a: FlatArray<i64>, mut i: i64) -> () {
+pub fn sort_x<'r>(mut a: FlatArray<i64>, mut i: i64) -> () {
     loop {
         if i64_lt(i, flatarray_length_i64(a)) {
             sink_x(a, i);
@@ -79,7 +79,7 @@ pub fn sort_x(mut a: FlatArray<i64>, mut i: i64) -> () {
 }
 
 /// From one region to another: two region binders.
-pub fn copy_x(mut from: FlatArray<i64>, mut to: FlatArray<i64>, mut i: i64) -> () {
+pub fn copy_x<'r1, 'r2>(mut from: FlatArray<i64>, mut to: FlatArray<i64>, mut i: i64) -> () {
     loop {
         if i64_lt(i, flatarray_length_i64(from)) {
             flatarray_set_i64_x(to, i, flatarray_ref_i64(from, i));

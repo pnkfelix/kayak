@@ -1632,6 +1632,7 @@
                     (inst (t s regions)
                       (place-needed v h wher sc from
                       (regions-freshened v h wher regions
+                      (static-instance v h wher (binder-metas from (st-next s) regions)
                       (poly-settled v h wher args (binder-metas from (st-next s) regions) (result-only? s t (binder-metas from (st-next s) regions))
                       (void-call v (and (string=? h "error") (string=? wher "prim"))
                                  (and (not (null? expected)) (tagcase (walk s (car expected)) (ty-meta (k) #t) (else other #f)))
@@ -1642,7 +1643,19 @@
                                                (and (string=? wher "local") (self-applicable? v s t))
                                                (and (string-member? h (cv-group v)) (or (string=? wher "global") (string=? wher "item"))))
                                            (list "spin")
-                                           nil)))))))))))))))))))
+                                           nil))))))))))))))))))))
+
+  (static-instance (subr kfx (cv string string (listof i64 acyclic) res) res)
+    (lambda (v h wher metas r)
+      "A procedure's call at types, each a Rust type parameter `A: Copy +
+       'static`: none may be at a region with a lifetime, a `letrena`'s, a
+       place's, a region binder's (C42), which `'static` is not."
+      (tagcase r
+        (res (t es s)
+          (if (and (or (string=? wher "global") (string=? wher "item") (string=? wher "rec"))
+                   (any? (lambda ((k i64)) (string-has? (show-ty s (ty-meta k)) "'")) metas))
+              (refuse v (string-append "a call of " (string-append h " at a type over a region with a lifetime, where its Rust type parameter is 'static (C42)")))
+              r)))))
 
   (regions-freshened (subr kfx (cv string string (listof i64 acyclic) res) res)
     (lambda (v h wher regions r)

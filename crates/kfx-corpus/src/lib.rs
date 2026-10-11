@@ -178,6 +178,11 @@ pub mod region_alias;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/region-poly.rs"]
+pub mod region_poly;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/rlambda.rs"]
 pub mod rlambda;
 
@@ -261,6 +266,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("procs", procs::main),
     ("recursion", recursion::main),
     ("region-alias", region_alias::main),
+    ("region-poly", region_poly::main),
     ("rlambda", rlambda::main),
     ("rust-keywords", rust_keywords::main),
     ("shapes", shapes::main),

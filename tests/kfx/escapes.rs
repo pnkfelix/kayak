@@ -19,7 +19,7 @@ pub fn words(xs: List<Str>) -> Str {
 }
 
 // A loop that may leave: its tail calls a loop still, its value `Ok`.
-pub fn find(mut t: Tag<i64, i64>, mut xs: Ints, mut n: i64) -> Result<i64, Unwind> {
+pub fn find<'r>(mut t: Tag<i64, i64>, mut xs: Ints, mut n: i64) -> Result<i64, Unwind> {
     loop {
         if null_p(xs) {
             return Ok(-1i64);
@@ -51,7 +51,7 @@ pub fn search(xs: Ints, n: i64) -> i64 {
 }
 
 // A procedure that may leave, as a value, and an abort through a closure.
-pub fn each(mut f: &'static dyn Fn(i64) -> Result<(), Unwind>, mut xs: Ints) -> Result<(), Unwind> {
+pub fn each<'r>(mut f: &'r dyn Fn(i64) -> Result<(), Unwind>, mut xs: Ints) -> Result<(), Unwind> {
     loop {
         if null_p(xs) {
             return Ok(());
@@ -77,7 +77,7 @@ pub fn size_of(xs: Ints) -> i64 {
     }
 }
 
-pub fn each_to(t: Tag<i64, i64>, f: &'static dyn Fn(i64) -> Result<(), Unwind>, xs: Ints) -> Result<(), Unwind> {
+pub fn each_to<'r>(t: Tag<i64, i64>, f: &'r dyn Fn(i64) -> Result<(), Unwind>, xs: Ints) -> Result<(), Unwind> {
     Ok(each(f, xs)?)
 }
 

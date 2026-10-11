@@ -1,0 +1,56 @@
+"Procedures poly over regions (C42): each region binder not within a
+ place is a lifetime of the Rust `fn`, `'r`, its data at that lifetime, so
+ a `letrena`'s lists and references may be given to a helper defined at
+ the top level."
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define add-up (poly ((r region)) (subr (maxeff kfx (read r)) ((listof i64 r) i64) i64))
+  (lambda (xs acc) (if (null? xs) acc (add-up (cdr xs) (i64+ acc (car xs))))))
+
+(define rest-of (poly ((r region)) (subr (read r) ((listof i64 r)) (listof i64 r)))
+  (lambda (xs) (cdr xs)))
+
+"A reference at the region, read and set."
+(define bump (poly ((r region)) (subr (maxeff (read r) (write r)) ((ref i64 r) i64) unit))
+  (lambda (b n) (set b (i64+ (get b) n))))
+
+"A type variable beside the region, and a procedure given that reads it."
+(define fold (poly ((a type) (r region)) (subr (maxeff kfx (read r)) ((subr (read r) (a i64) i64) (listof a r) i64) i64))
+  (lambda (f xs acc) (if (null? xs) acc (fold f (cdr xs) (f (car xs) acc)))))
+
+"Two regions, and a letrena inside: its body given both lifetimes."
+(define both (poly ((r region) (s region)) (subr (maxeff kfx (read r) (read s)) ((listof i64 r) (listof i64 s)) i64))
+  (lambda (xs ys)
+    (letrena t
+      (let ((zs (the (listof i64 t) (rcons t (add-up xs 0) (rcons t (add-up ys 0) nil)))))
+        (add-up zs 0)))))
+
+"A place's procedure that gives a region-poly one its data."
+(define made (poly ((p place)) (subr (maxeff kfx (alloc p) (read p)) ((place p) i64) i64))
+  (lambda (h n) (add-up (the (listof i64 p) (rcons h n (rcons h n nil))) 0)))
+
+"A define*'s place, its needs kept as a define's, and a define*'s region."
+(define* iota (poly ((p place)) (subr (maxeff (alloc p) spin) ((place p) i64 (listof i64 p)) (listof i64 p)))
+  (lambda (h n acc) (if (i64= n 0) acc (iota h (i64- n 1) (rcons h n acc)))))
+(define* total (poly ((r region)) (subr (maxeff (read r) spin) ((listof i64 r) i64) i64))
+  (lambda (xs acc) (if (null? xs) acc (total (cdr xs) (i64+ acc (car xs))))))
+(define counted (subr kfx (i64) i64)
+  (lambda (n) (letrena r (total (iota r n nil) 0))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (letrena r
+      (let* ((xs (the (listof i64 r) (rcons r 1 (rcons r 2 (rcons r 3 nil)))))
+             (c (the (ref i64 r) (rnew r 10)))
+             (ps (the (listof (productof (k i64)) r) (rcons r (product (k 4)) (rcons r (product (k 5)) nil)))))
+        (begin
+          (bump c 5)
+          (letrena s
+            (let ((ys (the (listof i64 s) (rcons s 100 nil))))
+              (i64->string
+                (i64+ (add-up xs 0)
+                  (i64+ (i64* 10 (car (rest-of xs)))
+                    (i64+ (i64* 100 (get c))
+                      (i64+ (i64* 10000 (fold (lambda ((p (productof (k i64))) (acc i64)) (i64+ acc (extract p k))) ps 0))
+                        (i64+ (i64* 100000 (both xs ys)) (i64+ (i64* 100000000 (made r 7)) (i64* 10000000000 (counted 4))))))))))))))))
+(main)

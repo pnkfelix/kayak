@@ -1,14 +1,13 @@
 "lists, as Fixpt's bench/lists.fx, at i64, each round's list in an arena,
  a letrena's: made by bumping, freed whole when the round ends, as
- lists-region.fx has it, not one allocation a pair."
+ lists-region.fx has it, not one allocation a pair. Its helpers are the
+ program's own, a place's and a region's (C34, C42)."
+(define* iota (poly ((p place)) (subr (maxeff (alloc p) spin) ((place p) i64 (listof i64 p)) (listof i64 p)))
+  (lambda (h n acc) (if (i64= n 0) acc (iota h (i64- n 1) (rcons h n acc)))))
+(define* add-up (poly ((r region)) (subr (maxeff (read r) spin) ((listof i64 r) i64) i64))
+  (lambda (xs acc) (if (null? xs) acc (add-up (cdr xs) (i64+ acc (car xs))))))
 (define* one-round (subr spin (i64) i64)
-  (lambda (n)
-    (letrena r
-      (letrec ((iota (subr (maxeff (alloc r) spin) (i64 (listof i64 r)) (listof i64 r))
-                 (lambda (n acc) (if (i64= n 0) acc (iota (i64- n 1) (rcons r n acc)))))
-               (add-up (subr (maxeff (read r) spin) ((listof i64 r) i64) i64)
-                 (lambda (xs acc) (if (null? xs) acc (add-up (cdr xs) (i64+ acc (car xs)))))))
-        (add-up (iota n nil) 0)))))
+  (lambda (n) (letrena r (add-up (iota r n nil) 0))))
 (define* rounds (subr spin (i64 i64) i64)
   (lambda (k acc) (if (i64= k 0) acc (rounds (i64- k 1) (i64+ acc (one-round 1000))))))
 (rounds 3000 0)

@@ -1,0 +1,11 @@
+"A type variable given a letrena's list: its Rust type parameter is
+ 'static, the list's lifetime not (C42)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define keep (poly ((a type)) (subr pure (a) a)) (lambda (x) x))
+(define head (poly ((r region)) (subr (read r) ((listof i64 r)) i64)) (lambda (xs) (car xs)))
+(define main (subr kfx () string)
+  (lambda ()
+    (letrena r
+      (let ((xs (the (listof i64 r) (rcons r 1 nil))))
+        (i64->string (head (keep xs)))))))
+(main)
