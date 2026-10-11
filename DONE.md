@@ -139,3 +139,42 @@ None was blocking. Each, once landed, was pinned and checked:
    keeps its own `size`, since `length` gives an `int`.
 
 The pin is now `35b071f`.
+
+## 8. A corpus of KFX programs (2026-10-11)
+
+`tests/kfx/NAME.kfx`, each a program whose `main` gives its answer as a
+string, and beside each, kept by `scripts/corpus.py`:
+- `NAME.rs`, the Rust `kfx` makes of it, golden: a change to the compiler
+  shows in every program it changes;
+- `NAME.out`, its answer as Fixpt gives it, running the prelude and the
+  program as FX-26.
+
+`crates/kfx-corpus` builds every `NAME.rs`, and its test requires each
+one's answer to be `NAME.out`: K1, program by program. `--bless` rewrites
+the files instead of checking them. Eight programs, one for each part of
+the mapping: `i64` arithmetic at its edges, control, `let` and `let*`,
+datatypes, lists, strings and characters (escapes included), `define-rec`
+and a 200000-deep recursion, and the mangling. All eight gave Fixpt's
+answers at once. A planted wrong answer is caught by both the test and the
+script.
+
+What writing them taught is in `TODO.md` §17: FX-26's `case` takes no
+`i64` key, a literal with nothing expected is an `int`, FX-26's keywords
+(`sum`) cannot name procedures, and shifts take an `int` count.
+
+## 9. Guardrails (2026-10-11)
+
+- `scripts/check.sh`: `cargo fmt --check`, clippy with `-D warnings`, the
+  tests, `scripts/corpus.py`, and `scripts/fixpoint.sh`. Run before every
+  commit.
+- `unsafe_code = "deny"` across the workspace. Generated code is compiled
+  in `boot` and `kfx-corpus`, so K4 is rustc's to enforce.
+- `kfx-corpus`'s `tidy` test: KFX sources are ASCII (C4).
+- Generated modules are `#[rustfmt::skip]`, since their layout is the
+  compiler's, and allow every warning and clippy lint: generated code
+  says what its source says (`true && true`, for `(and #t #t)`). Which
+  warnings it should be free of is still open (`TODO.md` §17).
+
+**Abandoned: a test that generated Rust has no `unsafe` in it, by text.**
+The compiler's list of Rust's keywords has the string `"unsafe"`; the lint
+is the check.

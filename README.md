@@ -15,6 +15,17 @@ Rust, and a transpiler from KFX to Rust, written in KFX, that bootstraps.
 - [`CLAUDES_CHOICES.md`](CLAUDES_CHOICES.md): decisions made without
   asking.
 
+## Checking everything
+
+```
+scripts/check.sh
+```
+
+runs formatting, clippy, the tests, the corpus (`scripts/corpus.py`:
+`tests/kfx`, each program's golden Rust and its answer from Fixpt) and the
+fixed point below. After a change to the compiler,
+`scripts/corpus.py --bless` rewrites the corpus's golden files, to review.
+
 ## Checking the bootstrap
 
 ```

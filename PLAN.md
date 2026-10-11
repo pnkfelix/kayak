@@ -110,7 +110,7 @@ is no `Drop`, no `Rc` and no `.clone()`.
 | `(f a …)`, `f` a global or a primitive                | `f(a, …)`; the primitives are `kayak_rt`'s                  |
 | `if`, `cond`, `and`, `or`                             | `if`/`else`, `&&`, `\|\|`                                   |
 | `let`, `let*`, `begin`                                | blocks of `let`s and statements                             |
-| `(case k ((d …) e) … (else e))` on chars and `i64`s   | `match k { d \| … => e, …, _ => e }`                        |
+| `(case k ((d …) e) … (else e))` on chars             | `match k { d \| … => e, …, _ => e }`                        |
 | `(tagcase e (tag (x …) body) … [(else y body)])`      | `match *e { T::Tag(x, …) => body, … }`                      |
 | `nil`                                                 | `nil()`                                                     |
 | `(list a …)`                                          | nested `cons`                                               |

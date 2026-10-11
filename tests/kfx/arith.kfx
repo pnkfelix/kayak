@@ -1,0 +1,31 @@
+"Fixed-width arithmetic: i64 wraps, in FX-26 as in Rust, and its
+ quotient and remainder truncate."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-type strings (listof string acyclic))
+
+(define words (subr kfx (strings) string)
+  (lambda (xs)
+    (cond ((null? xs) "")
+          ((null? (cdr xs)) (car xs))
+          (else (string-append (car xs) (string-append " " (words (cdr xs))))))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (words
+     (list (i64->string (i64+ 9223372036854775807 1))
+           (i64->string (i64- -9223372036854775808 1))
+           (i64->string (i64* 4611686018427387904 4))
+           (i64->string (i64-quotient -9223372036854775808 -1))
+           (i64->string (i64-quotient -7 2))
+           (i64->string (i64-quotient 7 -2))
+           (i64->string (i64-remainder -7 2))
+           (i64->string (i64-remainder -9223372036854775808 -1))
+           (i64->string (i64-and 12 10))
+           (i64->string (i64-or 12 10))
+           (i64->string (i64-xor 12 10))
+           (i64->string (i64-not 0))
+           (if (i64<= 3 3) "<=" "not <=")
+           (if (i64>= 2 3) ">=" "not >=")
+           (if (i64> 4 3) ">" "not >")))))

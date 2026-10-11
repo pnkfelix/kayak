@@ -3,7 +3,8 @@
 //! `kfx.rs` is generated from `kfx/kfx.kfx` (`PLAN.md` §1); this file is the
 //! only hand-written part of the compiler.
 
-#[allow(warnings)]
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 mod kfx;
 
 fn main() {

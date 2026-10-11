@@ -1,0 +1,28 @@
+"let binds in parallel, let* in sequence; begin and bodies sequence."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define show2 (subr kfx (i64 i64) string)
+  (lambda (a b) (string-append (i64->string a) (string-append "," (i64->string b)))))
+
+(define swapped (subr kfx (i64 i64) string)
+  (lambda (a b)
+    (let ((a b) (b a)) (show2 a b))))
+
+(define stepped (subr kfx (i64) string)
+  (lambda (a)
+    (let* ((a (i64+ a 1)) (b (i64* a 10)) (a (i64+ a b))) (show2 a b))))
+
+(define shadowed (subr kfx (i64) i64)
+  (lambda (x)
+    (let ((x (i64+ x 1)))
+      (let ((y (let ((x (i64* x 2))) x)))
+        (i64+ x y)))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (begin
+      "A comment, then the value."
+      (string-append (swapped 1 2)
+                     (string-append " " (string-append (stepped 1)
+                     (string-append " " (i64->string (shadowed 3)))))))))

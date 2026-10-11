@@ -1,0 +1,42 @@
+"Datatypes: a recursive tree, a variant with no fields, and tagcase with
+ and without else."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-datatype tree
+  (leaf)
+  (node tree i64 tree))
+
+(define-datatype shape
+  (circle i64)
+  (rect i64 i64)
+  (dot))
+
+(define insert (subr kfx (i64 tree) tree)
+  (lambda (k t)
+    (tagcase t
+      (leaf () (node (leaf) k (leaf)))
+      (node (l v r)
+        (cond ((i64< k v) (node (insert k l) v r))
+              ((i64< v k) (node l v (insert k r)))
+              (else t))))))
+
+(define in-order (subr kfx (tree string) string)
+  (lambda (t rest)
+    (tagcase t
+      (leaf () rest)
+      (node (l v r)
+        (in-order l (string-append (i64->string v) (string-append " " (in-order r rest))))))))
+
+(define area (subr kfx (shape) i64)
+  (lambda (s)
+    (tagcase s
+      (circle (r) (i64* 3 (i64* r r)))
+      (rect (w h) (i64* w h))
+      (else other 0))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (let ((t (insert 5 (insert 2 (insert 8 (insert 2 (insert 9 (insert 1 (leaf)))))))))
+      (in-order t (string-append "| "
+        (i64->string (i64+ (area (circle 2)) (i64+ (area (rect 3 4)) (area (dot))))))))))

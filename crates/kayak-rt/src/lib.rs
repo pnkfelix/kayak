@@ -60,13 +60,11 @@ pub fn null_p<T>(xs: List<T>) -> bool {
     xs.is_none()
 }
 
-
 // Booleans.
 
 pub fn not(b: bool) -> bool {
     !b
 }
-
 
 // `i64`: FX-26's fixed-width arithmetic wraps, as Rust's `wrapping_*`
 // does: `MIN / -1` is `MIN`, and a shift counts modulo 64. Division by zero
@@ -85,11 +83,19 @@ pub fn i64_star(a: i64, b: i64) -> i64 {
 }
 
 pub fn i64_quotient(a: i64, b: i64) -> i64 {
-    if b == 0 { error("i64-quotient: division by zero") } else { a.wrapping_div(b) }
+    if b == 0 {
+        error("i64-quotient: division by zero")
+    } else {
+        a.wrapping_div(b)
+    }
 }
 
 pub fn i64_remainder(a: i64, b: i64) -> i64 {
-    if b == 0 { error("i64-remainder: division by zero") } else { a.wrapping_rem(b) }
+    if b == 0 {
+        error("i64-remainder: division by zero")
+    } else {
+        a.wrapping_rem(b)
+    }
 }
 
 pub fn i64_and(a: i64, b: i64) -> i64 {
@@ -172,16 +178,11 @@ pub fn char_upcase(c: char) -> char {
     c.to_ascii_uppercase()
 }
 
-
-
 pub fn char_to_string(c: char) -> Str {
     leak_string(c.to_string())
 }
 
 // Strings.
-
-
-
 
 pub fn string_eq_p(a: Str, b: Str) -> bool {
     a == b

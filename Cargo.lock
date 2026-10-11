@@ -12,3 +12,10 @@ version = "0.1.0"
 dependencies = [
  "kayak-rt",
 ]
+
+[[package]]
+name = "kfx-corpus"
+version = "0.1.0"
+dependencies = [
+ "kayak-rt",
+]

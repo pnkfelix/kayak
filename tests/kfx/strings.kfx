@@ -1,0 +1,28 @@
+"Strings and characters: escapes, and the string primitives."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-type strings (listof string acyclic))
+
+(define words (subr kfx (strings) string)
+  (lambda (xs)
+    (cond ((null? xs) "")
+          ((null? (cdr xs)) (car xs))
+          (else (string-append (car xs) (string-append " " (words (cdr xs))))))))
+
+(define bracket (subr kfx (char) string)
+  (lambda (c) (string-append "[" (string-append (char->string c) "]"))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (words
+     (list "tab\there \"quoted\" back\\slash\n"
+           (bracket #\") (bracket #\\) (bracket #\') (bracket #\space)
+           (bracket #\() (bracket #\;) (bracket #\tab) (bracket (char-upcase #\q))
+           (if (string=? "abc" "abc") "same" "differ")
+           (if (char=? (string-ref-i64 "xyz" 1) #\y) "y" "not-y")
+           (i64->string (string-length-i64 "hello"))
+           (i64->string (char->i64 #\A))
+           (if (char-whitespace? #\tab) "ws" "not-ws")
+           (if (char-numeric? #\7) "digit" "not-digit")
+           (if (char-alphabetic? #\7) "alpha" "not-alpha")))))

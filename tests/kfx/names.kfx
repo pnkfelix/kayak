@@ -1,0 +1,21 @@
+"Names: the mangling, Rust's keywords, and names made of operators."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define empty-string? (subr kfx (string) bool)
+  (lambda (s) (i64= (string-length-i64 s) 0)))
+
+(define i64->yes (subr kfx (i64) string)
+  (lambda (n) (if (i64= n 0) "no" "yes")))
+
+(define <+> (subr kfx (string string) string)
+  (lambda (a b) (string-append a (string-append "+" b))))
+
+(define bump! (subr kfx (i64) i64)
+  (lambda (n) (i64+ n 1)))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (let* ((type (the i64 1)) (match (bump! type)) (fn (i64* match 10)) (loop "x"))
+      (<+> (i64->string fn)
+           (<+> (i64->yes type) (<+> loop (if (empty-string? "") "empty" "full")))))))

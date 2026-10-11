@@ -1,0 +1,29 @@
+"Lists: cons, car, cdr, null?, list and nil; and a list as a string."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-type ints (listof i64 acyclic))
+(define-type chars (listof char acyclic))
+
+(define rev-onto (subr kfx (ints ints) ints)
+  (lambda (xs acc) (if (null? xs) acc (rev-onto (cdr xs) (cons (car xs) acc)))))
+
+(define count-from (subr kfx (i64 i64) ints)
+  (lambda (i n) (if (i64< i n) (cons i (count-from (i64+ i 1) n)) nil)))
+
+(define total (subr kfx (ints) i64)
+  (lambda (xs) (if (null? xs) 0 (i64+ (car xs) (total (cdr xs))))))
+
+(define show (subr kfx (ints) string)
+  (lambda (xs)
+    (cond ((null? xs) "")
+          ((null? (cdr xs)) (i64->string (car xs)))
+          (else (string-append (i64->string (car xs)) (string-append " " (show (cdr xs))))))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (string-append (show (rev-onto (list 1 2 3) nil))
+    (string-append " | "
+    (string-append (i64->string (total (count-from 0 100000)))
+    (string-append " | "
+    (list->string (the chars (list #\o #\k)))))))))

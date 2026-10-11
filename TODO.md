@@ -24,26 +24,6 @@ A Rust error in generated code names a line of `kfx.rs`, and a run-time
 `error` names nothing. Start with a `// kfx: line` comment per item: the
 reader would keep each datum's line, which `sexp` does not carry yet.
 
-## 8. A corpus of KFX programs
-
-K1 is checked only on the compiler itself. Wanted: small KFX programs,
-each run by Fixpt (with the prelude) and by its Rust, answers compared,
-and golden Rust for a few, read and approved. This needs a Rust driver
-that runs a compiled program and prints its value: so far `boot/` is the
-only program built.
-
-## 9. Guardrails: `scripts/check.sh` and tidy tests
-
-The siblings' `scripts/check.sh` runs `rustfmt`, `clippy` and the tests,
-and their tidy crates make the repository's rules tests. kayak's rules:
-- K3, no hash-map order, addresses or clocks in the compiler;
-- K4, no `unsafe` in generated code;
-- KFX source is ASCII (§17).
-
-`boot/src/main.rs` allows every warning on the generated module. Which
-warnings the generated code should be free of is part of this: unused
-bindings, from a `tagcase` arm that ignores fields, are the common ones.
-
 ## 10. Self tail calls as loops
 
 Rust has no tail calls, so a walk of a list is as deep as the list.
@@ -137,10 +117,24 @@ flat sums already store their tag "as Rust stores a discriminant"
 - **`tagcase_`**, the name a `tagcase` binds, could be a KFX name's
   mangling (`tagcase-`).
 - **`(define x e)` with no type** is refused; FX-26 allows it.
+- **Warnings in generated code** are all allowed. Unused bindings (a
+  `tagcase` arm ignoring fields) are the common ones; whether the emitter
+  should avoid them is open.
 - **`(the T e)`** is written as `e`. Rust could check `T` too:
   `{ let v: T = e; v }`.
 - **Allocation** is `Box::leak`, one allocation per object; an arena
   later, and §14.
+- **`case` on an `i64`** is refused by FX-26, whose `case` compares integer
+  keys as `int`s; KFX's `case` is on characters, and an `i64` dispatch is a
+  `cond`. A request for Fixpt, if it matters: `case` on fixed-width keys.
+- **A literal with nothing expected is an `int`** in FX-26, so `(let ((n
+  1)) …)` binds an `int`, which KFX does not have: `(the i64 1)`. The
+  compiler does not see this (it writes `1i64` regardless); Fixpt does.
+- **FX-26's keywords** (`sum`, `product`, `extract`, …) cannot name a
+  procedure; the compiler does not know them, and Fixpt refuses them.
+- **Shifts**: `i64-shl` and `i64-shr` take their count as an `int`; KFX
+  has none, so they are not in the corpus. A prelude `i64-shl-i64`, when
+  wanted.
 
 ## 18. Research: regions as exclusive borrows (GhostCell tokens)
 

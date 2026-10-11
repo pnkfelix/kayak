@@ -1,0 +1,19 @@
+"define-rec for procedures that call each other, a constant, and a deep
+ recursion that is not a tail call."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-rec
+  (even? (subr kfx (i64) bool) (lambda (n) (if (i64= n 0) #t (odd? (i64- n 1)))))
+  (odd? (subr kfx (i64) bool) (lambda (n) (if (i64= n 0) #f (even? (i64- n 1))))))
+
+(define limit i64 200000)
+
+(define depth (subr kfx (i64) i64)
+  (lambda (n) (if (i64= n 0) 0 (i64+ 1 (depth (i64- n 1))))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (string-append (if (even? 1000) "even" "odd")
+    (string-append " " (string-append (if (odd? 7) "odd" "even")
+    (string-append " " (i64->string (depth limit))))))))

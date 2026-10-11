@@ -1,0 +1,46 @@
+"if, cond, and, or, and case on characters."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-type strings (listof string acyclic))
+
+(define words (subr kfx (strings) string)
+  (lambda (xs)
+    (cond ((null? xs) "")
+          ((null? (cdr xs)) (car xs))
+          (else (string-append (car xs) (string-append " " (words (cdr xs))))))))
+
+(define sign (subr kfx (i64) string)
+  (lambda (n)
+    (cond ((i64< n 0) "negative")
+          ((i64= n 0) "zero")
+          (else "positive"))))
+
+(define kind (subr kfx (char) string)
+  (lambda (c)
+    (case c
+      ((#\a #\e #\i #\o #\u) "vowel")
+      ((#\space #\newline) "space")
+      (else "other"))))
+
+(define small (subr kfx (i64) string)
+  (lambda (n)
+    "FX-26's case compares integers as ints, so on an i64 it is a cond."
+    (cond ((i64= n 0) "none")
+          ((or (i64= n 1) (i64= n 2)) "few")
+          ((i64= n -1) "minus-one")
+          (else "many"))))
+
+(define both (subr kfx (bool bool) string)
+  (lambda (a b)
+    (string-append (if (and a b) "and," "nand,") (if (or a b) "or" "nor"))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (words
+     (list (sign -5) (sign 0) (sign 7)
+           (kind #\e) (kind #\newline) (kind #\z)
+           (small 0) (small 2) (small -1) (small 9)
+           (both #t #f) (both #t #t) (both #f #f)
+           (if (and) "(and)" "not-(and)") (if (or) "(or)" "not-(or)")
+           (if (and #t #t #f) "and3" "not-and3") (if (or #f #f #t) "or3" "not-or3")))))
