@@ -1,0 +1,4 @@
+"A type variable named as kayak-rt's type `Str`."
+(define-effect kfx (maxeff (read @globals) spin))
+(define id (poly ((str type)) (subr pure (str) str)) (lambda (x) x))
+(id 1)
