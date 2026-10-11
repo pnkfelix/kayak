@@ -577,3 +577,12 @@ may be no other datatype's.
 
 `tests/kfx/modules.kfx`; `tests/kfx-refused/module-{abstract,opaque,global}`.
 46 of Fixpt's programs accepted (32 before), all agreeing.
+
+## A global that reads itself says `spin` (2026-10-11)
+
+A K1 hole, found reading Fixpt's termination checker: a global whose
+latent effect reads itself (`(read (globals f))`), or a member of its
+`define-rec` group, may reach itself through the store, and FX-26 refuses
+it unless its type says `spin` (`no_reaching_itself`), recursive or not.
+`kfx` accepted it. Now refused, for `define`, `define-rec` and `define*`
+(`kfx-refused/reaches-itself`).

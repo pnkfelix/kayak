@@ -3387,6 +3387,33 @@ pub fn cv_facts(v: &'static Cv) -> Facts {
     }
 }
 
+/// A global whose latent effect reads itself, or a member of its group,
+/// may reach itself through the store: its type says `spin`, as FX-26's
+/// must (`no_reaching_itself`).
+pub fn no_reaching_itself(v: &'static Cv, group: Strings, sc: &'static Scheme) -> &'static Cv {
+    let tagcase_ = sc;
+    match *tagcase_ {
+        Scheme::Scheme(tvars, t) => {
+            let tagcase_ = t;
+            match *tagcase_ {
+                Ty::TyProc(es, ps, r) => {
+                    if (not(string_member_p(str_lit("spin"), es)) && any_p(lambda1(move |n: Str| {
+                        string_member_p(string_append(str_lit("g:"), n), es)
+                    }), group)) {
+                        refuse(v, string_append(str_lit("calling it reads "), string_append(words_of(group), str_lit(": it may reach itself through a global, so its type must say spin"))))
+                    } else {
+                        v
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    v
+                }
+            }
+        }
+    }
+}
+
 /// A procedure's lambda against its type; `v` already has its name.
 pub fn check_procedure(v: &'static Cv, defined: &'static Sexp, sc: &'static Scheme) -> &'static Cv {
     let lam = items(if head_is_p(defined, str_lit("plambda")) {
@@ -3424,7 +3451,7 @@ pub fn check_members(mut v: &'static Cv, mut bindings: Sexps, mut names: Strings
         } else {
             let ys = items(car(bindings));
             if procedure_p(third(ys)) {
-                (v, bindings) = (check_procedure(at(v, name_of(v, car(ys)), names), third(ys), parse_scheme(v, second(ys))), cdr(bindings));
+                (v, bindings) = (check_procedure(no_reaching_itself(at(v, name_of(v, car(ys)), names), names, parse_scheme(v, second(ys))), third(ys), parse_scheme(v, second(ys))), cdr(bindings));
                 continue;
             } else {
                 return refuse(v, str_lit("a define-rec binds only lambdas"));
@@ -3502,7 +3529,7 @@ pub fn check_define_star(v: &'static Cv, xs: Sexps) -> &'static Cv {
                             }
                         };
                         if effs_within_p(es, effs_union(cons(str_lit("@globals"), nil()), declared)) {
-                            with_facts(with_binds(v, cons(global(v, name, scheme(tvars, ty_proc(effs_union(global_reads(es), declared), ps, r))), nil())), fs)
+                            with_facts(with_binds(no_reaching_itself(v, cons(name, nil()), scheme(tvars, ty_proc(effs_union(global_reads(es), declared), ps, r))), cons(global(v, name, scheme(tvars, ty_proc(effs_union(global_reads(es), declared), ps, r))), nil())), fs)
                         } else {
                             refuse(v, string_append(str_lit("a define* whose effect "), string_append(show_effs(es), string_append(str_lit(" is not within "), show_effs(declared)))))
                         }
@@ -3560,6 +3587,7 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                     let name = name_of(v, second(xs));
                     let v = at(v, name, cons(name, nil()));
                     let sc = parse_scheme(v, third(xs));
+                    let v = no_reaching_itself(v, cons(name, nil()), sc);
                     let named = with_binds(v, cons(global(v, name, sc), nil()));
                     if procedure_p(fourth(xs)) {
                         check_procedure(named, fourth(xs), sc)

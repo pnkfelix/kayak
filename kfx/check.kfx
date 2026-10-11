@@ -1705,6 +1705,22 @@
 (define cv-facts (subr kfx (cv) facts)
   (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv at) fs))))
 
+(define no-reaching-itself (subr kfx (cv strings scheme) cv)
+  (lambda (v group sc)
+    "A global whose latent effect reads itself, or a member of its group,
+     may reach itself through the store: its type says `spin`, as FX-26's
+     must (`no_reaching_itself`)."
+    (tagcase sc
+      (scheme (tvars t)
+        (tagcase t
+          (ty-proc (es ps r)
+            (if (and (not (string-member? "spin" es))
+                     (any? (lambda ((n string)) (string-member? (string-append "g:" n) es)) group))
+                (refuse v (string-append "calling it reads " (string-append (words-of group)
+                          ": it may reach itself through a global, so its type must say spin")))
+                v))
+          (else other v))))))
+
 (define check-procedure (subr kfx (cv sexp scheme) cv)
   (lambda (v defined sc)
     "A procedure's lambda against its type; `v` already has its name."
@@ -1728,7 +1744,8 @@
         v
         (let ((ys (items (car bindings))))
           (if (procedure? (third ys))
-              (check-members (check-procedure (at v (name-of v (car ys)) names) (third ys)
+              (check-members (check-procedure (no-reaching-itself (at v (name-of v (car ys)) names) names (parse-scheme v (second ys)))
+                                              (third ys)
                                               (parse-scheme v (second ys)))
                              (cdr bindings) names)
               (refuse v "a define-rec binds only lambdas"))))))
@@ -1773,7 +1790,9 @@
                          (es (tagcase found (res (u es s) es)))
                          (fs (tagcase found (res (u es s) (st-facts s)))))
                     (if (effs-within? es (effs-union (list "@globals") declared))
-                        (with-facts (with-binds v (list (global v name (scheme tvars (ty-proc (effs-union (global-reads es) declared) ps r))))) fs)
+                        (with-facts (with-binds (no-reaching-itself v (list name) (scheme tvars (ty-proc (effs-union (global-reads es) declared) ps r)))
+                                                (list (global v name (scheme tvars (ty-proc (effs-union (global-reads es) declared) ps r)))))
+                                    fs)
                         (refuse v (string-append "a define* whose effect " (string-append (show-effs es)
                                   (string-append " is not within " (show-effs declared))))))))
                 (else other (refuse v "a define* is of a procedure")))))))))
@@ -1804,6 +1823,7 @@
                      (let* ((name (name-of v (second xs)))
                             (v (at v name (list name)))
                             (sc (parse-scheme v (third xs)))
+                            (v (no-reaching-itself v (list name) sc))
                             (named (with-binds v (list (global v name sc)))))
                        (if (procedure? (fourth xs))
                            (check-procedure named (fourth xs) sc)
