@@ -296,7 +296,7 @@ pub fn cv_where(v: &'static Cv) -> Str {
 
 /// An error, said where: the innermost list being checked, and the
 /// definition.
-pub fn refuse(v: &'static Cv, message: Str) -> ! {
+pub fn refuse(v: &'static Cv, message: Str) -> Void {
     let tagcase_ = v;
     match *tagcase_ {
         Cv::Cv(bs, ds, r#as, es, here, group, file, line, fs, tv, at) => {
@@ -318,7 +318,7 @@ pub fn name_of(v: &'static Cv, e: &'static Sexp) -> Str {
         }
         _ => {
             let other = tagcase_;
-            refuse(v, string_append(str_lit("a name is expected here, not "), show_sexp(other)))
+            match refuse(v, string_append(str_lit("a name is expected here, not "), show_sexp(other))) {}
         }
     }
 }
@@ -459,7 +459,7 @@ pub fn show_effs(es: Strings) -> Str {
 pub fn find_effdef(mut v: &'static Cv, mut name: Str, mut es: Effdefs) -> Strings {
     loop {
         if null_p(es) {
-            return refuse(v, string_append(str_lit("an effect KFX does not have: "), name));
+            return match refuse(v, string_append(str_lit("an effect KFX does not have: "), name)) {};
         } else {
             let tagcase_ = car(es);
             match *tagcase_ {
@@ -495,12 +495,12 @@ pub fn region_name(v: &'static Cv, tvars: Strings, r: &'static Sexp) -> Str {
             }
             _ => {
                 let other = tagcase_;
-                refuse(v, string_append(str_lit("a region KFX does not have: "), show_sexp(other)))
+                match refuse(v, string_append(str_lit("a region KFX does not have: "), show_sexp(other))) {}
             }
         }
     };
     if string_eq_p(s, str_lit("@globals")) {
-        refuse(v, str_lit("globals are a region only in effects: (read @globals), (read (globals g))"))
+        match refuse(v, str_lit("globals are a region only in effects: (read @globals), (read (globals g))")) {}
     } else if char_eq_p(string_ref_i64(s, 0i64), '@') {
         s
     } else if string_eq_p(s, str_lit("acyclic")) {
@@ -508,7 +508,7 @@ pub fn region_name(v: &'static Cv, tvars: Strings, r: &'static Sexp) -> Str {
     } else if string_member_p(string_append(str_lit("'"), s), tvars) {
         string_append(str_lit("'"), s)
     } else {
-        refuse(v, string_append(str_lit("a region KFX-0 does not have: "), s))
+        match refuse(v, string_append(str_lit("a region KFX-0 does not have: "), s)) {}
     }
 }
 
@@ -524,7 +524,7 @@ pub fn parse_region(v: &'static Cv, tvars: Strings, r: &'static Sexp) -> &'stati
 /// The region of data that may be written: not `acyclic`, which is frozen.
 pub fn parse_mutable_region(v: &'static Cv, tvars: Strings, r: &'static Sexp) -> &'static Ty {
     if sym_is_p(r, str_lit("acyclic")) {
-        refuse(v, str_lit("mutable data at acyclic, which is frozen and never written"))
+        match refuse(v, str_lit("mutable data at acyclic, which is frozen and never written")) {}
     } else {
         parse_region(v, tvars, r)
     }
@@ -555,16 +555,16 @@ pub fn parse_effect(v: &'static Cv, tvars: Strings, e: &'static Sexp) -> Strings
                     string_append(str_lit("g:"), name_of(v, g))
                 }), cdr(items(second(xs))))
             } else if sym_is_p(car(xs), str_lit("comefrom")) {
-                refuse(v, str_lit("a continuation kept (comefrom): KFX has escapes, not continuations, which Rust has not"))
+                match refuse(v, str_lit("a continuation kept (comefrom): KFX has escapes, not continuations, which Rust has not")) {}
             } else if (sym_is_p(car(xs), str_lit("read")) || sym_is_p(car(xs), str_lit("write")) || sym_is_p(car(xs), str_lit("alloc")) || sym_is_p(car(xs), str_lit("goto"))) {
                 kayak_rt::cons(string_append(name_of(v, car(xs)), string_append(str_lit(":"), region_name(v, tvars, second(xs)))), kayak_rt::nil())
             } else {
-                refuse(v, string_append(str_lit("an effect KFX does not have: "), show_sexp(e)))
+                match refuse(v, string_append(str_lit("an effect KFX does not have: "), show_sexp(e))) {}
             }
         }
         _ => {
             let other = tagcase_;
-            refuse(v, string_append(str_lit("an effect KFX does not have: "), show_sexp(e)))
+            match refuse(v, string_append(str_lit("an effect KFX does not have: "), show_sexp(e))) {}
         }
     }
 }
@@ -1027,7 +1027,7 @@ pub fn no_knot(v: &'static Cv, res: &'static dyn Fn(Str) -> Str, t: &'static Ty)
     if null_p(found) {
         t
     } else {
-        refuse(v, string_append(str_lit("a procedure kept in "), string_append(car(found), string_append(str_lit(" reads "), string_append(car(found), str_lit(", so it could reach itself: it must say spin"))))))
+        match refuse(v, string_append(str_lit("a procedure kept in "), string_append(car(found), string_append(str_lit(" reads "), string_append(car(found), str_lit(", so it could reach itself: it must say spin")))))) {}
     }
 }
 
@@ -1072,22 +1072,22 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                             if null_p(ps) {
                                 return ty_data(s, nil());
                             } else {
-                                return refuse(v, string_append(str_lit("a type with parameters, given none: "), s));
+                                return match refuse(v, string_append(str_lit("a type with parameters, given none: "), s)) {};
                             }
                         }
                     }
                 } else {
                     let found = find_alias(s, cv_aliases(v));
                     if null_p(found) {
-                        return refuse(v, string_append(str_lit("no type is named "), s));
+                        return match refuse(v, string_append(str_lit("no type is named "), s)) {};
                     } else {
                         let tagcase_ = car(found);
                         match *tagcase_ {
                             Alias::Alias(n, ps, body) => {
                                 if not(null_p(ps)) {
-                                    return refuse(v, string_append(str_lit("a type with parameters, given none: "), s));
+                                    return match refuse(v, string_append(str_lit("a type with parameters, given none: "), s)) {};
                                 } else if string_member_p(string_append(str_lit("%expanding "), s), tvars) {
-                                    return refuse(v, string_append(str_lit("a type abbreviation that mentions itself, "), string_append(s, str_lit(": Rust's type aliases cannot; a datatype can"))));
+                                    return match refuse(v, string_append(str_lit("a type abbreviation that mentions itself, "), string_append(s, str_lit(": Rust's type aliases cannot; a datatype can")))) {};
                                 } else if head_is_p(body, str_lit("moduleof")) {
                                     return ty_data(string_append(str_lit("%module "), s), nil());
                                 } else {
@@ -1108,7 +1108,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     if sym_is_p(second(xs), str_lit("i64")) {
                         return ty_flat(ty_i64(), parse_mutable_region(v, tvars, third(xs)));
                     } else {
-                        return refuse(v, string_append(str_lit("KFX-0's flat arrays are of i64: "), show_sexp(t)));
+                        return match refuse(v, string_append(str_lit("KFX-0's flat arrays are of i64: "), show_sexp(t))) {};
                     }
                 } else if sym_is_p(car(xs), str_lit("ref")) {
                     return no_knot(v, lambda1(move |x: Str| {
@@ -1117,7 +1117,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                 } else if sym_is_p(car(xs), str_lit("prompt-tag")) {
                     return ty_tag(parse_type(v, tvars, second(xs)), parse_type(v, tvars, third(xs)), parse_effect(v, tvars, fourth(xs)), parse_mutable_region(v, tvars, car(cdr(cdr(cdr(cdr(xs)))))));
                 } else if sym_is_p(car(xs), str_lit("moduleof")) {
-                    return refuse(v, str_lit("a moduleof is a module's type when a define-type names it: KFX's is a Rust trait (C24)"));
+                    return match refuse(v, str_lit("a moduleof is a module's type when a define-type names it: KFX's is a Rust trait (C24)")) {};
                 } else if (sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("sumof"))) {
                     let fields = map(&items, cdr(xs));
                     if (any_p(lambda1(move |f: Sexps| {
@@ -1136,7 +1136,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                             }
                         }
                     }), fields))) {
-                        return refuse(v, string_append(str_lit("a type KFX does not have: "), show_sexp(t)));
+                        return match refuse(v, string_append(str_lit("a type KFX does not have: "), show_sexp(t))) {};
                     } else {
                         if (any_p(lambda1(move |f: Sexps| {
                             let tagcase_ = car(f);
@@ -1154,7 +1154,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                         }), fields)) || repeated_p(map(lambda1(move |f: Sexps| {
                             camel(label_of(car(f)))
                         }), fields))) {
-                            return refuse(v, string_append(str_lit("a label appears twice in "), show_sexp(t)));
+                            return match refuse(v, string_append(str_lit("a label appears twice in "), show_sexp(t))) {};
                         } else {
                             return ty_shape(sym_is_p(car(xs), str_lit("productof")), map(lambda1(move |f: Sexps| {
                                 label_of(car(f))
@@ -1166,7 +1166,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                 } else if sym_is_p(car(xs), str_lit("select")) {
                     let name = string_append(name_of(v, second(xs)), string_append(str_lit(" "), name_of(v, third(xs))));
                     if null_p(find_alias(name, cv_aliases(v))) {
-                        return refuse(v, string_append(str_lit("no module defined at the top level gives a type "), show_sexp(t)));
+                        return match refuse(v, string_append(str_lit("no module defined at the top level gives a type "), show_sexp(t))) {};
                     } else {
                         t = sym(name);
                         continue;
@@ -1189,12 +1189,12 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                         x
                     }), parse_application(v, tvars, name_of(v, car(xs)), cdr(xs)));
                 } else {
-                    return refuse(v, string_append(str_lit("a type KFX does not have: "), show_sexp(t)));
+                    return match refuse(v, string_append(str_lit("a type KFX does not have: "), show_sexp(t))) {};
                 }
             }
             _ => {
                 let other = tagcase_;
-                return refuse(v, string_append(str_lit("a type KFX does not have: "), show_sexp(t)));
+                return match refuse(v, string_append(str_lit("a type KFX does not have: "), show_sexp(t))) {};
             }
         }
     }
@@ -1212,7 +1212,7 @@ pub fn parse_arguments(v: &'static Cv, tvars: Strings, params: Strings, args: Se
     if (null_p(params) && null_p(args)) {
         nil()
     } else if (null_p(params) || null_p(args)) {
-        refuse(v, str_lit("a type given the wrong number of arguments"))
+        match refuse(v, str_lit("a type given the wrong number of arguments")) {}
     } else {
         cons(if char_eq_p(string_ref_i64(car(params), 0i64), '\'') {
             parse_region(v, tvars, car(args))
@@ -1238,7 +1238,7 @@ pub fn parse_application(v: &'static Cv, tvars: Strings, name: Str, args: Sexps)
         match *tagcase_ {
             Alias::Alias(n, ps, body) => {
                 if string_member_p(string_append(str_lit("%expanding "), name), tvars) {
-                    refuse(v, string_append(str_lit("a type abbreviation that mentions itself, "), string_append(name, str_lit(": Rust's type aliases cannot; a datatype can"))))
+                    match refuse(v, string_append(str_lit("a type abbreviation that mentions itself, "), string_append(name, str_lit(": Rust's type aliases cannot; a datatype can")))) {}
                 } else {
                     substitute(ps, parse_arguments(v, tvars, ps, args), parse_type(v, cons(string_append(str_lit("%expanding "), name), onto(ps, expanding(tvars))), body))
                 }
@@ -1256,13 +1256,13 @@ pub fn family_params(v: &'static Cv, head: &'static Sexp) -> Strings {
             map(lambda1(move |b: &'static Sexp| {
                 let b = items(b);
                 if not(i64_eq(size(b), 2i64)) {
-                    refuse(v, string_append(str_lit("a variance mark, which KFX does not have (its families are invariant): "), show_sexp(lst(b, str_lit(""), 0i64, 0i64))))
+                    match refuse(v, string_append(str_lit("a variance mark, which KFX does not have (its families are invariant): "), show_sexp(lst(b, str_lit(""), 0i64, 0i64)))) {}
                 } else if sym_is_p(second(b), str_lit("type")) {
                     name_of(v, car(b))
                 } else if sym_is_p(second(b), str_lit("region")) {
                     string_append(str_lit("'"), name_of(v, car(b)))
                 } else {
-                    refuse(v, string_append(str_lit("a family over a kind KFX does not have: "), show_sexp(lst(b, str_lit(""), 0i64, 0i64))))
+                    match refuse(v, string_append(str_lit("a family over a kind KFX does not have: "), show_sexp(lst(b, str_lit(""), 0i64, 0i64)))) {}
                 }
             }), cdr(xs))
         }
@@ -1280,20 +1280,20 @@ pub fn poly_binders(v: &'static Cv, t: &'static Sexp) -> Strings {
         map(lambda1(move |b: &'static Sexp| {
             let b = items(b);
             if not(i64_eq(size(b), 2i64)) {
-                refuse(v, string_append(str_lit("a binder KFX-0 does not have (distinct regions are to come): "), show_sexp(lst(b, str_lit(""), 0i64, 0i64))))
+                match refuse(v, string_append(str_lit("a binder KFX-0 does not have (distinct regions are to come): "), show_sexp(lst(b, str_lit(""), 0i64, 0i64)))) {}
             } else if sym_is_p(second(b), str_lit("type")) {
                 // A type variable, a Rust type parameter of its name, camel-cased:
                 // not one of the types the generated Rust names.
                 let n = name_of(v, car(b));
-                if (string_member_p(camel(n), kayak_rt::cons(str_lit("Str"), kayak_rt::cons(str_lit("List"), kayak_rt::cons(str_lit("Cons"), kayak_rt::cons(str_lit("Int"), kayak_rt::cons(str_lit("Tag"), kayak_rt::cons(str_lit("Unwind"), kayak_rt::cons(str_lit("Ref"), kayak_rt::cons(str_lit("FlatArray"), kayak_rt::cons(str_lit("Knot"), kayak_rt::cons(str_lit("Show"), kayak_rt::cons(str_lit("OnceCell"), kayak_rt::cons(str_lit("Fn"), kayak_rt::cons(str_lit("Result"), kayak_rt::cons(str_lit("Ok"), kayak_rt::cons(str_lit("Err"), kayak_rt::cons(str_lit("String"), kayak_rt::cons(str_lit("Copy"), kayak_rt::cons(str_lit("Clone"), kayak_rt::cons(str_lit("Self"), kayak_rt::cons(str_lit("Module"), kayak_rt::nil()))))))))))))))))))))) || false) {
-                    refuse(v, string_append(str_lit("a type variable named as a type the Rust names: "), n))
+                if (string_member_p(camel(n), kayak_rt::cons(str_lit("Str"), kayak_rt::cons(str_lit("List"), kayak_rt::cons(str_lit("Cons"), kayak_rt::cons(str_lit("Int"), kayak_rt::cons(str_lit("Tag"), kayak_rt::cons(str_lit("Unwind"), kayak_rt::cons(str_lit("Ref"), kayak_rt::cons(str_lit("FlatArray"), kayak_rt::cons(str_lit("Knot"), kayak_rt::cons(str_lit("Show"), kayak_rt::cons(str_lit("OnceCell"), kayak_rt::cons(str_lit("Fn"), kayak_rt::cons(str_lit("Result"), kayak_rt::cons(str_lit("Ok"), kayak_rt::cons(str_lit("Err"), kayak_rt::cons(str_lit("String"), kayak_rt::cons(str_lit("Copy"), kayak_rt::cons(str_lit("Clone"), kayak_rt::cons(str_lit("Self"), kayak_rt::cons(str_lit("Module"), kayak_rt::cons(str_lit("Void"), kayak_rt::nil())))))))))))))))))))))) || false) {
+                    match refuse(v, string_append(str_lit("a type variable named as a type the Rust names: "), n)) {}
                 } else {
                     n
                 }
             } else if sym_is_p(second(b), str_lit("region")) {
                 string_append(str_lit("'"), name_of(v, car(b)))
             } else {
-                refuse(v, string_append(str_lit("KFX's poly is over types and regions: "), show_sexp(lst(b, str_lit(""), 0i64, 0i64))))
+                match refuse(v, string_append(str_lit("KFX's poly is over types and regions: "), show_sexp(lst(b, str_lit(""), 0i64, 0i64)))) {}
             }
         }), items(second(items(t))))
     } else {
@@ -2077,7 +2077,7 @@ pub fn fits_all(mut v: &'static Cv, mut s: &'static St, mut actuals: Tys, mut ex
 }
 
 pub fn mismatch(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static Ty) -> &'static St {
-    refuse(v, string_append(str_lit("a "), string_append(show_ty(s, a), string_append(str_lit(" is here, where a "), string_append(show_ty(s, e), str_lit(" is expected"))))))
+    match refuse(v, string_append(str_lit("a "), string_append(show_ty(s, a), string_append(str_lit(" is here, where a "), string_append(show_ty(s, e), str_lit(" is expected")))))) {}
 }
 
 // A scheme's instance: each variable an inference variable; those for
@@ -2223,7 +2223,7 @@ pub fn with_binds(v: &'static Cv, more: Binds) -> &'static Cv {
             }
         }
     }), more) {
-        refuse(v, string_append(str_lit("a name KFX's names are not (lower case, digits, `-` and `?!<>=+*/%`, no `--`, none Rust writes): "), car(concat(map(lambda1(move |b: &'static Bind| {
+        match refuse(v, string_append(str_lit("a name KFX's names are not (lower case, digits, `-` and `?!<>=+*/%`, no `--`, none Rust writes): "), car(concat(map(lambda1(move |b: &'static Bind| {
             let tagcase_ = b;
             match *tagcase_ {
                 Bind::Bind(n, sc, w) => {
@@ -2234,7 +2234,7 @@ pub fn with_binds(v: &'static Cv, more: Binds) -> &'static Cv {
                     }
                 }
             }
-        }), more)))))
+        }), more))))) {}
     } else {
         let clash = concat(map(lambda1(move |b: &'static Bind| {
             let tagcase_ = b;
@@ -2245,7 +2245,7 @@ pub fn with_binds(v: &'static Cv, more: Binds) -> &'static Cv {
             }
         }), more));
         if not(null_p(clash)) {
-            refuse(v, string_append(str_lit("two names that are one in Rust: "), car(clash)))
+            match refuse(v, string_append(str_lit("two names that are one in Rust: "), car(clash))) {}
         } else {
             let tagcase_ = v;
             match *tagcase_ {

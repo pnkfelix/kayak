@@ -135,9 +135,6 @@ Escapes are done (`DONE.md`, C18). Left:
   - a procedure that cannot abort reaching a type that may by other ways
     than as a call's argument or `the`'s (`list`, branches, a product): a
     Rust error, the closure not lifted to return `Ok`;
-  - `void` in a type written (`(subr pure () void)` as a value, a field):
-    Rust's `!` is unstable there; a value holding a `void` at the top
-    level is a Rust error (both fail when run);
 
   - type-level names (types, datatypes and tags, module and abstract
     types, type variables, labels, module names) may still camel-case or

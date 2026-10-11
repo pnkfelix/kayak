@@ -839,7 +839,7 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
                 } else if string_eq_p(s, str_lit("unit")) {
                     return put(str_lit("()"), acc);
                 } else if string_eq_p(s, str_lit("void")) {
-                    return put(str_lit("!"), acc);
+                    return put(str_lit("Void"), acc);
                 } else if string_eq_p(s, str_lit("string")) {
                     return put(str_lit("Str"), acc);
                 } else if not(null_p(dotted(s))) {
@@ -1526,24 +1526,36 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
                 put_var(c, s, acc)
             }
             Sexp::Lst(xs, src_file, src_line, src_pos) => {
-                let tagcase_ = car(xs);
-                match *tagcase_ {
-                    Sexp::Sym(h) => {
-                        put_form(c, e, h, cdr(xs), n, t, acc)
-                    }
-                    _ => {
-                        let head = tagcase_;
-                        let acc = put(str_lit("("), acc);
-                        let acc = put_exp(c, head, n, value(), acc);
-                        let acc = put(str_lit(")("), acc);
-                        put_question(c, e, put(str_lit(")"), if null_p(cdr(xs)) {
-                            acc
-                        } else {
-                            put_joined(c, cdr(xs), str_lit(", "), n, acc)
-                        }))
-                    }
+                if fact_at_p(c, e, str_lit("void-call")) {
+                    put(str_lit(" {}"), put_call(c, e, xs, n, t, put(str_lit("match "), acc)))
+                } else if fact_at_p(c, e, str_lit("void-error")) {
+                    put(str_lit(")"), put_call(c, e, xs, n, t, put(str_lit("the::<Void>("), acc)))
+                } else {
+                    put_call(c, e, xs, n, t, acc)
                 }
             }
+        }
+    }
+}
+
+/// A list form; a call giving a `Void` the caller wraps, `match ... {}`,
+/// which is of any type, as FX-26's `void` is below every type.
+pub fn put_call(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
+    let tagcase_ = car(xs);
+    match *tagcase_ {
+        Sexp::Sym(h) => {
+            put_form(c, e, h, cdr(xs), n, t, acc)
+        }
+        _ => {
+            let head = tagcase_;
+            let acc = put(str_lit("("), acc);
+            let acc = put_exp(c, head, n, value(), acc);
+            let acc = put(str_lit(")("), acc);
+            put_question(c, e, put(str_lit(")"), if null_p(cdr(xs)) {
+                acc
+            } else {
+                put_joined(c, cdr(xs), str_lit(", "), n, acc)
+            }))
         }
     }
 }

@@ -876,3 +876,12 @@ the new pin Fixpt accepts two programs it refused, a literal checked
 against the type expected under `with` and in a module that includes
 another; KFX still refuses them (`kfx-stricter/with-body-alone`,
 `include-literal`). 73 of Fixpt's programs accepted, all agreeing.
+
+## `void` as `Void` (2026-10-11)
+
+C28: `kayak_rt::Void`, an empty enum, for FX-26's `void`; a call giving
+one, `match f(...) {}`; an `error` for an inference variable,
+`the::<Void>(error(...))`. The fifth probe's `void` programs that did not
+compile do now, but for a poly call whose type nothing fixes (`(mk)`,
+which wants `mk::<T>()`) and a global procedure shown at the top level,
+both for after every datum has a place.

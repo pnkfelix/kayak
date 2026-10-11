@@ -78,6 +78,12 @@ pub fn leak_string(s: String) -> Str {
 }
 
 /// FX-26's `error`: a run-time error, which ends the run.
+/// FX-26's `void`, the type of no value, as Rust's stable empty type: an
+/// enum of no variants. Where a `void` is made (`error`, which returns
+/// `!`), `!` coerces to it; nothing else makes one.
+#[derive(Clone, Copy)]
+pub enum Void {}
+
 pub fn error(message: Str) -> ! {
     panic!("{}", message.text)
 }

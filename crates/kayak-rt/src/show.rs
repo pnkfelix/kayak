@@ -151,3 +151,10 @@ pub fn show_line<T: Show>(out: &mut String, v: T) {
 pub fn shown(out: String) -> Str {
     leak_string(out)
 }
+
+/// No `Void` is ever shown, there being none.
+impl Show for crate::Void {
+    fn show(&self, _: &mut String) {
+        match *self {}
+    }
+}

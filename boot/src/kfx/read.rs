@@ -88,7 +88,7 @@ pub fn tok(f0: Str, f1: Chars, f2: i64) -> &'static Tok {
     alloc(Tok::Tok(f0, f1, f2))
 }
 
-pub fn read_error(file: Str, line: i64, message: Str) -> ! {
+pub fn read_error(file: Str, line: i64, message: Str) -> Void {
     error(string_append(str_lit("kfx: "), string_append(file, string_append(str_lit(":"), string_append(i64_to_string(line), string_append(str_lit(": "), message))))))
 }
 
@@ -171,7 +171,7 @@ pub fn unescape(c: char) -> char {
 pub fn string_body(mut cs: Chars, mut acc: Chars, mut file: Str, mut start: i64, mut line: i64, mut pos: i64) -> &'static Got {
     loop {
         if null_p(cs) {
-            return read_error(file, start, str_lit("a string is not closed"));
+            return match read_error(file, start, str_lit("a string is not closed")) {};
         } else if char_eq_p(car(cs), '"') {
             return got(str(rev_to_string(acc)), here(cdr(cs), line, i64_plus(pos, 1i64)));
         } else if char_eq_p(car(cs), '\\') {
@@ -197,7 +197,7 @@ pub fn digits_value(mut cs: Chars, mut n: i64, mut file: Str, mut line: i64) -> 
         } else {
             let d = i64_minus(char_to_i64(car(cs)), 48i64);
             if (i64_lt(n, -922337203685477580i64) || (i64_eq(n, -922337203685477580i64) && i64_gt(d, 8i64))) {
-                return read_error(file, line, str_lit("a literal past an i64"));
+                return match read_error(file, line, str_lit("a literal past an i64")) {};
             } else {
                 (cs, n) = (cdr(cs), i64_minus(i64_star(n, 10i64), d));
                 continue;
@@ -319,7 +319,7 @@ pub fn token_atom(s: Str, file: Str, line: i64, pos: i64) -> &'static Sexp {
         // FX-26 reads it.
         sym(s)
     } else if (has_char_p(cs, 'e') || has_char_p(cs, 'E')) {
-        read_error(file, line, string_append(str_lit("a number with an exponent, which KFX reads not: write it out, "), s))
+        match read_error(file, line, string_append(str_lit("a number with an exponent, which KFX reads not: write it out, "), s)) {}
     } else if has_char_p(cs, '.') {
         if (real_token_p(cs) && only_of_p(if char_eq_p(car(cs), '-') {
             cdr(cs)
@@ -331,19 +331,19 @@ pub fn token_atom(s: Str, file: Str, line: i64, pos: i64) -> &'static Sexp {
             } else {
                 cs
             }))), 21i64) {
-                read_error(file, line, string_append(str_lit("a real of 1e21 or more, which FX-26 reads as an int: "), s))
+                match read_error(file, line, string_append(str_lit("a real of 1e21 or more, which FX-26 reads as an int: "), s)) {}
             } else {
                 real(s)
             }
         } else {
-            read_error(file, line, string_append(str_lit("no number KFX reads: "), s))
+            match read_error(file, line, string_append(str_lit("no number KFX reads: "), s)) {}
         }
     } else if not(only_of_p(if char_eq_p(car(cs), '-') {
         cdr(cs)
     } else {
         cs
     }, str_lit("0123456789"))) {
-        read_error(file, line, string_append(str_lit("no number KFX reads: "), s))
+        match read_error(file, line, string_append(str_lit("no number KFX reads: "), s)) {}
     } else if not(fits_i64_p(cs)) {
         big(s, file, pos)
     } else if char_eq_p(car(cs), '-') {
@@ -363,7 +363,7 @@ pub fn char_named(s: Str, file: Str, line: i64) -> char {
     } else if string_eq_p(s, str_lit("tab")) {
         '\t'
     } else {
-        read_error(file, line, string_append(str_lit("no character is named "), s))
+        match read_error(file, line, string_append(str_lit("no character is named "), s)) {}
     }
 }
 
@@ -381,7 +381,7 @@ pub fn read_datum(h: &'static Here, file: Str) -> &'static Got {
                     }
                 }
             } else if char_eq_p(c, ')') {
-                read_error(file, line, str_lit("a ) with no ("))
+                match read_error(file, line, str_lit("a ) with no (")) {}
             } else if char_eq_p(c, '"') {
                 string_body(cdr(cs), nil(), file, line, line, i64_plus(pos, 1i64))
             } else if (char_eq_p(c, '#') && not(null_p(cdr(cs))) && char_eq_p(car(cdr(cs)), '\\')) {
@@ -410,7 +410,7 @@ pub fn read_items(h: &'static Here, file: Str) -> &'static Gots {
     match *tagcase_ {
         Here::Here(cs, line, pos) => {
             if null_p(cs) {
-                read_error(file, line, str_lit("a ( with no )"))
+                match read_error(file, line, str_lit("a ( with no )")) {}
             } else if char_eq_p(car(cs), ')') {
                 gots(nil(), here(cdr(cs), line, i64_plus(pos, 1i64)))
             } else {

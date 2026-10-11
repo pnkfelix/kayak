@@ -636,7 +636,7 @@
                         (let ((n (name-of v (car b))))
                           (if (or (string-member? (camel n) (list "Str" "List" "Cons" "Int" "Tag" "Unwind" "Ref" "FlatArray"
                                                                   "Knot" "Show" "OnceCell" "Fn" "Result" "Ok" "Err" "String"
-                                                                  "Copy" "Clone" "Self" "Module"))
+                                                                  "Copy" "Clone" "Self" "Module" "Void"))
                                   #f)
                               (refuse v (string-append "a type variable named as a type the Rust names: " n))
                               n)))

@@ -455,7 +455,7 @@
              (if (or (head-is? f "define-type") (head-is? f "define-datatype") (head-is? f "define-generative"))
                  (let ((name (tagcase (second (items f)) (sym (n) n) (lst (ys fl ln ps) (tagcase (car ys) (sym (n) n) (else other ""))) (else other ""))))
                    (if (string-member? (camel name) (list "Str" "List" "Cons" "Int" "Tag" "Unwind" "Ref" "FlatArray" "Knot" "Show"
-                                                          "OnceCell" "Fn" "Result" "Ok" "Err" "String" "Copy" "Clone"
+                                                          "OnceCell" "Fn" "Result" "Ok" "Err" "String" "Copy" "Clone" "Void"
                                                           "Self" "Module"))
                        (refuse v (string-append "Rust or kayak-rt has a type " (string-append (camel name) " of its own")))
                        #u))

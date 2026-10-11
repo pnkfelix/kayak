@@ -391,3 +391,15 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
   or an operator's character, then those, digits and `-`; no `--`; none
   whose mangling kayak-rt or the emitter writes. The emitter's own calls
   behind a program's back are qualified, `kayak_rt::cons`.
+
+## C28. `void` is an empty enum, `kayak_rt::Void` (the user's, 2026-10-11)
+
+- **Chosen:** FX-26's `void` is `pub enum Void {}`: Rust's stable empty
+  type, usable where a type is (a parameter, a field, a list's element),
+  `Copy`, and `Show` (an empty `match`). A call that gives one is written
+  `match f(...) {}`, of any type, since FX-26's `void` is below every type
+  and Rust's `Void` below none; `error` keeps returning `!`, which coerces
+  to anything, and where it stands for an inference variable (a call's
+  argument, a list's element) it is `the::<Void>(error(...))`, so that Rust
+  infers `Void`, not `!`.
+- **Not chosen:** Rust's `!`, unstable but as a function's result.

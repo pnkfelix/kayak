@@ -580,7 +580,7 @@
     (cond ((null? forms) acc)
           ((toplevel-form? (car forms))
            (if (fact-at? c (car forms) "void")
-               (let* ((acc (put "    let _: () = (|| -> Result<(), Unwind> { let _: () = " acc))
+               (let* ((acc (put "    let _: () = (|| -> Result<(), Unwind> { let _: Void = " acc))
                       (acc (put-exp (with-locals c (list "%fallible")) (car forms) 1 (value) acc)))
                  (put-toplevel-lines c (cdr forms) (put "; Ok(()) })().unwrap_or_else(|u| unreachable_unwind(u));\n" acc)))
                (let* ((acc (put "    kayak_rt::show_line(&mut out_, (|| -> Result<_, Unwind> { Ok(" acc))

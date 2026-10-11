@@ -61,7 +61,7 @@ pub fn datatype_of(v: &'static Cv, xs: Sexps) -> &'static Dt {
             }
         })
     }), cdr(xs))) {
-        refuse(v, str_lit("two tags of one datatype named alike in Rust (camel-cased)"))
+        match refuse(v, str_lit("two tags of one datatype named alike in Rust (camel-cased)")) {}
     } else {
         let params = family_params(v, car(xs));
         dt(head_name(v, car(xs)), params, map(lambda1(move |vt: &'static Sexp| {
@@ -102,7 +102,7 @@ pub fn type_name(v: &'static Cv, form: &'static Sexp) -> Str {
         }
         _ => {
             let other = tagcase_;
-            refuse(v, str_lit("a definition is expected"))
+            match refuse(v, str_lit("a definition is expected")) {}
         }
     }
 }
@@ -217,9 +217,9 @@ pub fn runtime_name_p(name: Str) -> bool {
 /// primitive's, would be ambiguous in Rust. KFX has no redefinition.
 pub fn global(v: &'static Cv, name: Str, sc: &'static Scheme) -> &'static Bind {
     if keyword_p(name) {
-        refuse(v, string_append(str_lit("a keyword names nothing: "), name))
+        match refuse(v, string_append(str_lit("a keyword names nothing: "), name)) {}
     } else if runtime_name_p(name) {
-        refuse(v, string_append(str_lit("kayak-rt has a "), string_append(name, str_lit(" of its own"))))
+        match refuse(v, string_append(str_lit("kayak-rt has a "), string_append(name, str_lit(" of its own")))) {}
     } else {
         let found = find_bind(name, cv_binds(v));
         if null_p(found) {
@@ -233,9 +233,9 @@ pub fn global(v: &'static Cv, name: Str, sc: &'static Scheme) -> &'static Bind {
             match *tagcase_ {
                 Bind::Bind(n, sc0, r#where) => {
                     if string_eq_p(r#where, str_lit("prim")) {
-                        refuse(v, string_append(name, str_lit(" is a primitive, which KFX does not define again")))
+                        match refuse(v, string_append(name, str_lit(" is a primitive, which KFX does not define again"))) {}
                     } else {
-                        refuse(v, string_append(name, str_lit(" is defined already: KFX defines each name once")))
+                        match refuse(v, string_append(name, str_lit(" is defined already: KFX defines each name once"))) {}
                     }
                 }
             }
@@ -309,7 +309,7 @@ pub fn no_reaching_itself(v: &'static Cv, group: Strings, sc: &'static Scheme) -
                     if (not(string_member_p(str_lit("spin"), es)) && any_p(lambda1(move |n: Str| {
                         string_member_p(string_append(str_lit("g:"), n), es)
                     }), group)) {
-                        refuse(v, string_append(str_lit("calling it reads "), string_append(words_of(group), str_lit(": it may reach itself through a global, so its type must say spin"))))
+                        match refuse(v, string_append(str_lit("calling it reads "), string_append(words_of(group), str_lit(": it may reach itself through a global, so its type must say spin")))) {}
                     } else {
                         v
                     }
@@ -342,7 +342,7 @@ pub fn constant_made(v: &'static Cv, s: &'static St, e: &'static Sexp, es: Strin
     if any_p(lambda1(move |x: Str| {
         not((string_eq_p(x, str_lit("spin")) || string_eq_p(x, str_lit("@globals")) || global_atom_p(x) || has_prefix_p(x, str_lit("alloc:"))))
     }), es) {
-        refuse(v, string_append(str_lit("a constant whose value has the effect "), string_append(show_effs(es), str_lit(": KFX makes a constant at its first use, so its value may only read globals and allocate"))))
+        match refuse(v, string_append(str_lit("a constant whose value has the effect "), string_append(show_effs(es), str_lit(": KFX makes a constant at its first use, so its value may only read globals and allocate")))) {}
     } else if any_p(lambda1(move |x: Str| {
         has_prefix_p(x, str_lit("alloc:"))
     }), es) {
@@ -384,7 +384,7 @@ pub fn check_procedure(v: &'static Cv, defined: &'static Sexp, sc: &'static Sche
 pub fn variants_dt(v: &'static Cv, d: Str) -> List<&'static Dt> {
     let found = find_dt(d, cv_dts(v));
     if null_p(found) {
-        refuse(v, string_append(str_lit("no datatype is named "), d))
+        match refuse(v, string_append(str_lit("no datatype is named "), d)) {}
     } else {
         find_family(d, cv_dts(v))
     }
@@ -403,7 +403,7 @@ pub fn check_members(mut v: &'static Cv, mut bindings: Sexps, mut group: Strings
                 (v, bindings) = (check_procedure(no_reaching_itself(at(v, name_of(v, car(ys)), group), names, parse_scheme(v, second(ys))), third(ys), parse_scheme(v, second(ys))), cdr(bindings));
                 continue;
             } else {
-                return refuse(v, str_lit("a define-rec binds only lambdas"));
+                return match refuse(v, str_lit("a define-rec binds only lambdas")) {};
             }
         }
     }
@@ -468,7 +468,7 @@ pub fn check_define_star(v: &'static Cv, xs: Sexps) -> &'static Cv {
         defined
     });
     if not(procedure_p(defined)) {
-        refuse(v, str_lit("a define* is of a lambda"))
+        match refuse(v, str_lit("a define* is of a lambda")) {}
     } else {
         let tagcase_ = parse_scheme(v, third(xs));
         match *tagcase_ {
@@ -498,12 +498,12 @@ pub fn check_define_star(v: &'static Cv, xs: Sexps) -> &'static Cv {
                         if effs_within_p(es, effs_union(kayak_rt::cons(str_lit("@globals"), kayak_rt::nil()), declared)) {
                             with_facts(with_binds(no_reaching_itself(v, kayak_rt::cons(name, kayak_rt::nil()), scheme(tvars, ty_proc(effs_union(global_reads(es), declared), ps, r))), kayak_rt::cons(global(v, name, scheme(tvars, ty_proc(effs_union(global_reads(es), declared), ps, r))), kayak_rt::nil())), fs)
                         } else {
-                            refuse(v, string_append(str_lit("a define* whose effect "), string_append(show_effs(es), string_append(str_lit(" is not within "), show_effs(declared)))))
+                            match refuse(v, string_append(str_lit("a define* whose effect "), string_append(show_effs(es), string_append(str_lit(" is not within "), show_effs(declared))))) {}
                         }
                     }
                     _ => {
                         let other = tagcase_;
-                        refuse(v, str_lit("a define* is of a procedure"))
+                        match refuse(v, str_lit("a define* is of a procedure")) {}
                     }
                 }
             }
@@ -555,7 +555,7 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                 defined_once(v, conversions(v, xs))
             } else if string_eq_p(h, str_lit("define")) {
                 if not(i64_eq(size(xs), 4i64)) {
-                    refuse(v, str_lit("a definition needs a type"))
+                    match refuse(v, str_lit("a definition needs a type")) {}
                 } else {
                     let name = name_of(v, second(xs));
                     let sc = parse_scheme(v, third(xs));
@@ -580,7 +580,7 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                                         }
                                     }
                                 } else {
-                                    refuse(v, str_lit("a poly constant: only a procedure may be poly"))
+                                    match refuse(v, str_lit("a poly constant: only a procedure may be poly")) {}
                                 }
                             }
                         }
@@ -700,8 +700,8 @@ pub fn type_names_free(v: &'static Cv, forms: Sexps) -> () {
                     }
                 }
             };
-            if string_member_p(camel(name), kayak_rt::cons(str_lit("Str"), kayak_rt::cons(str_lit("List"), kayak_rt::cons(str_lit("Cons"), kayak_rt::cons(str_lit("Int"), kayak_rt::cons(str_lit("Tag"), kayak_rt::cons(str_lit("Unwind"), kayak_rt::cons(str_lit("Ref"), kayak_rt::cons(str_lit("FlatArray"), kayak_rt::cons(str_lit("Knot"), kayak_rt::cons(str_lit("Show"), kayak_rt::cons(str_lit("OnceCell"), kayak_rt::cons(str_lit("Fn"), kayak_rt::cons(str_lit("Result"), kayak_rt::cons(str_lit("Ok"), kayak_rt::cons(str_lit("Err"), kayak_rt::cons(str_lit("String"), kayak_rt::cons(str_lit("Copy"), kayak_rt::cons(str_lit("Clone"), kayak_rt::cons(str_lit("Self"), kayak_rt::cons(str_lit("Module"), kayak_rt::nil()))))))))))))))))))))) {
-                refuse(v, string_append(str_lit("Rust or kayak-rt has a type "), string_append(camel(name), str_lit(" of its own"))))
+            if string_member_p(camel(name), kayak_rt::cons(str_lit("Str"), kayak_rt::cons(str_lit("List"), kayak_rt::cons(str_lit("Cons"), kayak_rt::cons(str_lit("Int"), kayak_rt::cons(str_lit("Tag"), kayak_rt::cons(str_lit("Unwind"), kayak_rt::cons(str_lit("Ref"), kayak_rt::cons(str_lit("FlatArray"), kayak_rt::cons(str_lit("Knot"), kayak_rt::cons(str_lit("Show"), kayak_rt::cons(str_lit("OnceCell"), kayak_rt::cons(str_lit("Fn"), kayak_rt::cons(str_lit("Result"), kayak_rt::cons(str_lit("Ok"), kayak_rt::cons(str_lit("Err"), kayak_rt::cons(str_lit("String"), kayak_rt::cons(str_lit("Copy"), kayak_rt::cons(str_lit("Clone"), kayak_rt::cons(str_lit("Void"), kayak_rt::cons(str_lit("Self"), kayak_rt::cons(str_lit("Module"), kayak_rt::nil())))))))))))))))))))))) {
+                match refuse(v, string_append(str_lit("Rust or kayak-rt has a type "), string_append(camel(name), str_lit(" of its own")))) {}
             } else {
                 ()
             }
@@ -714,11 +714,11 @@ pub fn type_names_free(v: &'static Cv, forms: Sexps) -> () {
             if kfx_name_p(n) {
                 ()
             } else {
-                refuse(v, string_append(str_lit("a type's or module's name KFX's names are not (C27): "), n))
+                match refuse(v, string_append(str_lit("a type's or module's name KFX's names are not (C27): "), n)) {}
             }
         }), names);
         if repeated_p(map(&camel, names)) {
-            refuse(v, str_lit("two types or modules named alike in Rust (camel-cased, as `point` and `point-`)"))
+            match refuse(v, str_lit("two types or modules named alike in Rust (camel-cased, as `point` and `point-`)")) {}
         } else {
             ()
         }
@@ -802,7 +802,7 @@ pub fn module_types(mut v: &'static Cv, mut forms: Sexps) -> Strings {
             if (head_is_p(f, str_lit("define-datatype")) && any_p(lambda1(move |vt: &'static Sexp| {
                 tag_taken_p(sym_name(car(items(vt))), cv_dts(v))
             }), cdr(cdr(items(f))))) {
-                return refuse(v, str_lit("a module's datatype whose tag another datatype has: KFX's tags name one datatype each"));
+                return match refuse(v, str_lit("a module's datatype whose tag another datatype has: KFX's tags name one datatype each")) {};
             } else if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype"))) {
                 let name = {
                     let tagcase_ = second(items(f));
@@ -812,19 +812,19 @@ pub fn module_types(mut v: &'static Cv, mut forms: Sexps) -> Strings {
                         }
                         _ => {
                             let other = tagcase_;
-                            refuse(v, str_lit("a module's type with parameters, which KFX's modules do not have yet"))
+                            match refuse(v, str_lit("a module's type with parameters, which KFX's modules do not have yet")) {}
                         }
                     }
                 };
                 if dt_named_p(name, cv_dts(v)) {
-                    return refuse(v, string_append(str_lit("a module's type named as the program's: KFX names them apart, "), name));
+                    return match refuse(v, string_append(str_lit("a module's type named as the program's: KFX names them apart, "), name)) {};
                 } else {
                     return cons(name, module_types(v, cdr(forms)));
                 }
             } else if (head_is_p(f, str_lit("define-effect")) && i64_eq(size(items(f)), 3i64) && escapes_p(parse_effect(v, nil(), third(items(f))))) {
-                return refuse(v, str_lit("a module's effect that may abort, which KFX's modules do not have yet"));
+                return match refuse(v, str_lit("a module's effect that may abort, which KFX's modules do not have yet")) {};
             } else if (head_is_p(f, str_lit("hide")) || module_def_p(f)) {
-                return refuse(v, string_append(str_lit("an item KFX's modules do not have yet: "), show_sexp(car(items(f)))));
+                return match refuse(v, string_append(str_lit("an item KFX's modules do not have yet: "), show_sexp(car(items(f))))) {};
             } else {
                 forms = cdr(forms);
                 continue;
@@ -1118,7 +1118,7 @@ pub fn included(v: &'static Cv, forms: Sexps) -> Strings {
                     }
                 }
             })) {
-                refuse(v, string_append(str_lit("KFX includes a module defined at the top level, by its name: "), n))
+                match refuse(v, string_append(str_lit("KFX includes a module defined at the top level, by its name: "), n)) {}
             } else {
                 the::<Strings>(kayak_rt::cons(n, kayak_rt::nil()))
             }
@@ -1219,7 +1219,7 @@ pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
         opened_aliases(n, cv_aliases(v))
     }), includes)))));
     let v = if repeated_p(given) {
-        refuse(v, str_lit("a name defined twice in this module, its own or included"))
+        match refuse(v, str_lit("a name defined twice in this module, its own or included")) {}
     } else {
         v
     };

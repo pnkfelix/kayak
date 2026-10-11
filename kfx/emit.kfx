@@ -430,7 +430,7 @@
                 ((string=? s "bool") (put "bool" acc))
                 ((string=? s "char") (put "char" acc))
                 ((string=? s "unit") (put "()" acc))
-                ((string=? s "void") (put "!" acc))
+                ((string=? s "void") (put "Void" acc))
                 ((string=? s "string") (put "Str" acc))
                 ((not (null? (dotted s))) (put (type-path c (car (dotted s)) (car (cdr (dotted s)))) acc))
                 ((string-member? s (ctx-datatypes c)) (put (camel s) (put "&'static " acc)))
@@ -796,13 +796,21 @@
                (str (s) (put "\")" (put-escaped (string-chars s) #\" (put "str_lit(\"" acc))))
                (sym (s) (put-var c s acc))
                (lst (xs src-file src-line src-pos)
-                 (tagcase (car xs)
-                   (sym (h) (put-form c e h (cdr xs) n t acc))
-                   (else head
-                     (let* ((acc (put "(" acc))
-                            (acc (put-exp c head n (value) acc))
-                            (acc (put ")(" acc)))
-                       (put-question c e (put ")" (if (null? (cdr xs)) acc (put-joined c (cdr xs) ", " n acc)))))))))))))
+                 (cond ((fact-at? c e "void-call") (put " {}" (put-call c e xs n t (put "match " acc))))
+                       ((fact-at? c e "void-error") (put ")" (put-call c e xs n t (put "the::<Void>(" acc))))
+                       (else (put-call c e xs n t acc)))))))))
+
+  (put-call (subr kfx (ctx sexp sexps i64 tail chars) chars)
+    (lambda (c e xs n t acc)
+      "A list form; a call giving a `Void` the caller wraps, `match ... {}`,
+       which is of any type, as FX-26's `void` is below every type."
+      (tagcase (car xs)
+        (sym (h) (put-form c e h (cdr xs) n t acc))
+        (else head
+          (let* ((acc (put "(" acc))
+                 (acc (put-exp c head n (value) acc))
+                 (acc (put ")(" acc)))
+            (put-question c e (put ")" (if (null? (cdr xs)) acc (put-joined c (cdr xs) ", " n acc)))))))))
 
   (put-continue (subr kfx (ctx sexps i64 tail chars) chars)
     (lambda (c args n t acc)

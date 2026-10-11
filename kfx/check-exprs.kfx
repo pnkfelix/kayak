@@ -314,6 +314,21 @@
                   (res t (effs-union (list "spin") es) s)
                   r))))))))
 
+(define void-call (subr kfx (cv bool bool res) res)
+  (lambda (v error unknown r)
+    "A call that gives a `void`: in Rust a `Void`, which, unlike FX-26's
+     `void`, is below no other type; the emitter writes `match f(...) {}`,
+     which is of any. Not `error`, whose Rust type, `!`, is so already."
+    (tagcase r
+      (res (t es s)
+        (cond ((and (not error) (void? s t)) (res t es (note-fact s (cv-file v) (cv-pos v) "void-call")))
+              ((and error unknown)
+               "An `error` given for an inference variable (a call's argument, a
+                list's element): `the::<Void>(error(...))`, so that Rust finds
+                `Void` there, not `!`, which nothing shows."
+               (res t es (note-fact s (cv-file v) (cv-pos v) "void-error")))
+              (else r))))))
+
 (define control-form? (subr kfx (string) bool)
   (lambda (h)
     (or (string=? h "if") (string=? h "cond") (string=? h "case") (string=? h "tagcase")
@@ -486,7 +501,7 @@
           (let ((v (near v src-file src-line src-pos)))
             (tagcase (car xs)
               (sym (h) (synth-form v s e h (cdr xs)))
-              (else head (synth-call-of v s (synth v s head) (cdr xs) nil nil (list "spin")))))))))
+              (else head (void-call v #f #f (synth-call-of v s (synth v s head) (cdr xs) nil nil (list "spin"))))))))))
 
   (synth-name (subr kfx (cv st string) res)
     (lambda (v s name)
@@ -618,7 +633,9 @@
             ((string=? h "list")
              (if (null? xs)
                  (tagcase (fresh s) (res (m es s) (res (ty-list m (ty-rconst "%fresh")) nil s)))
-                 (tagcase (synth v s (car xs))
+                 (tagcase (if (head-is? (car xs) "error")
+                              (tagcase (fresh s) (res (m es s) (check v s (car xs) m)))
+                              (synth v s (car xs)))
                    (res (t es0 s)
                      "Its first element's type, a `nat`'s an `int`: FX-26's is that
                       element's own `(nat v)`, which no other `nat` is."
@@ -1012,6 +1029,8 @@
                 (bind (n sc where)
                   (tagcase (instantiate s sc)
                     (inst (t s regions)
+                      (void-call v (and (string=? h "error") (string=? where "prim"))
+                                 (and (not (null? expected)) (tagcase (walk s (car expected)) (ty-meta (k) #t) (else other #f)))
                       (poly-self-application v sc t (knot-free-call v (synth-call-of v s (res t nil s) args regions expected
                                      (effs-union
                                        (if (string=? where "global") (list (string-append "g:" h)) nil)
@@ -1019,7 +1038,7 @@
                                                (and (string=? where "local") (self-applicable? v s t))
                                                (and (string-member? h (cv-group v)) (or (string=? where "global") (string=? where "item"))))
                                            (list "spin")
-                                           nil))))))))))))))
+                                           nil)))))))))))))))
 
   (nat-args? (subr kfx (cv st sexps) bool)
     (lambda (v s args)
