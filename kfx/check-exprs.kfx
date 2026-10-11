@@ -557,7 +557,7 @@
             ((string=? h "lambda") (synth-lambda v s (items (car xs)) (cdr xs)))
             ((string=? h "list")
              (if (null? xs)
-                 (tagcase (fresh s) (res (m es s) (res (ty-list m (ty-rconst "acyclic")) nil s)))
+                 (tagcase (fresh s) (res (m es s) (res (ty-list m (ty-rconst "%fresh")) nil s)))
                  (tagcase (synth v s (car xs))
                    (res (t es0 s)
                      "Its first element's type, a `nat`'s an `int`: FX-26's is that
@@ -565,7 +565,7 @@
                      (if (and (tagcase (walk s t) (ty-nat () #t) (else other #f)) (not (null? (cdr xs))))
                          (refuse v "a list of nats: FX-26 types each its own (nat v), so no two share a list")
                      (let ((t (tagcase (walk s t) (ty-nat () (ty-int)) (else other t))))
-                       (with-effs (check v s e (ty-list t (ty-rconst "acyclic"))) es0)))))))
+                       (with-effs (check v s e (ty-list t (ty-rconst "%fresh"))) es0)))))))
             ((control-form? h) (body-form v s h xs nil))
             ((string=? h "and") (bools v s xs))
             ((string=? h "or") (bools v s xs))
@@ -1096,10 +1096,9 @@
             ((eqv-bool? (deferred? (car args) (car ps)) later)
              (tagcase (cond ((not (null? (module-spec v (walk s (car ps)))))
                              (module-argument v s (car args) (walk s (car ps))))
-                            ((and (head-is? (car args) "list")
-                                  (any? (lambda ((k i64)) (any? (lambda ((j i64)) (i64= j k)) fixed)) (metas-of (car ps))))
-                             "A `list` for a parameter whose type only the result expected fixed:
-                              found by itself, as FX-26 finds it."
+                            ((and (head-is? (car args) "list") (has-meta? s (car ps)))
+                             "A `list` for a parameter whose type is not known whole yet:
+                              found by itself, at a fresh region, as FX-26 finds it."
                              (check-by-synth v s (car args) (car ps)))
                             (else (check v s (car args) (car ps))))
                (res (t es s) (with-effs (call-args-pass v s (cdr args) (cdr ps) later fixed) es))))

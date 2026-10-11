@@ -399,7 +399,7 @@ pub fn escapes_p(es: Strings) -> bool {
 /// to a region nothing named, which FX-26 makes fresh and masks (no tag is
 /// at `acyclic`, whose data is frozen).
 pub fn frozen_atom_p(x: Str) -> bool {
-    (string_eq_p(x, str_lit("read:acyclic")) || string_eq_p(x, str_lit("alloc:acyclic")) || string_eq_p(x, str_lit("write:acyclic")) || string_eq_p(x, str_lit("goto:acyclic")))
+    (string_eq_p(x, str_lit("read:acyclic")) || string_eq_p(x, str_lit("alloc:acyclic")) || string_eq_p(x, str_lit("write:acyclic")) || string_eq_p(x, str_lit("goto:acyclic")) || string_eq_p(x, str_lit("read:%fresh")) || string_eq_p(x, str_lit("alloc:%fresh")))
 }
 
 pub fn effs_union(mut a: Strings, mut b: Strings) -> Strings {
@@ -890,7 +890,7 @@ pub fn knot_in(mut v: &'static Cv, mut res: &'static dyn Fn(Str) -> Str, mut t: 
                 continue;
             }
             Ty::TyList(a, r) => {
-                (t, kept) = (a, if string_eq_p(region_name_of(r), str_lit("acyclic")) {
+                (t, kept) = (a, if (string_eq_p(region_name_of(r), str_lit("acyclic")) || string_eq_p(region_name_of(r), str_lit("%fresh"))) {
                     kept
                 } else {
                     cons(region_name_of(r), kept)

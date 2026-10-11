@@ -179,7 +179,8 @@
      FX-26; writing it is refused where its type is read. A `goto` there is
      to a region nothing named, which FX-26 makes fresh and masks (no tag is
      at `acyclic`, whose data is frozen)."
-    (or (string=? x "read:acyclic") (string=? x "alloc:acyclic") (string=? x "write:acyclic") (string=? x "goto:acyclic"))))
+    (or (string=? x "read:acyclic") (string=? x "alloc:acyclic") (string=? x "write:acyclic") (string=? x "goto:acyclic")
+        (string=? x "read:%fresh") (string=? x "alloc:%fresh"))))
 
 (define effs-union (subr kfx (strings strings) strings)
   (lambda (a b)
@@ -407,7 +408,7 @@
       (tagcase t
         (ty-ref (a r) (knot-in v res a (cons (region-name-of r) kept) every seen))
         (ty-list (a r)
-          (knot-in v res a (if (string=? (region-name-of r) "acyclic") kept (cons (region-name-of r) kept)) every seen))
+          (knot-in v res a (if (or (string=? (region-name-of r) "acyclic") (string=? (region-name-of r) "%fresh")) kept (cons (region-name-of r) kept)) every seen))
         (ty-proc (es ps r)
           (let ((found (reads-kept (map res es) kept every)))
             (if (null? found) (first-knot v res (cons r ps) nil #f seen) found)))

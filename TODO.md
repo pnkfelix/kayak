@@ -127,14 +127,9 @@ Escapes are done (`DONE.md`, C18). Left:
   - a `list` made under `with` or `letregion` is at `acyclic` to KFX and
     at a fresh region to FX-26, which then refuses it where `acyclic` is
     expected; KFX would need FX-26's masking of fresh regions;
-  - a list made where nothing says its region (`(let ((xs (list 1))) ...)`,
-    a list for a `poly` parameter only the result fixed) is at `acyclic`
-    to KFX and at a fresh region to FX-26, which refuses it where
-    `acyclic` is expected; the fourth probe's commonest finding. Giving it
-    a fresh region of its own (tried, 2026-10-11) needs FX-26's rule for
-    when an argument is checked against the type a parameter has from
-    the result expected, applied throughout, or the compiler's own source
-    no longer checks;
+  - a list made where nothing says its region is at `%fresh`, one region
+    for them all (FX-26 makes one for each): two such lists are joined
+    where FX-26's may not be;
   - a `nil` whose element type nothing fixes, `(let ((x nil)) 0)`: Rust
     cannot infer it (a Rust error, FX-26 accepts);
   - **for Fixpt** (found by the fourth probe): a procedure parameter of

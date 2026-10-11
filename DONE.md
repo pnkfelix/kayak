@@ -799,3 +799,15 @@ when run); and self-application through a type variable, which FX-26
 accepts and loops on too (a question for Fixpt, `TODO.md` §17).
 
 73 of Fixpt's programs accepted, all agreeing.
+
+## Lists made where nothing says their region (2026-10-11)
+
+A `list` with no type to go by, and one given for a parameter whose type
+is not known whole yet, is at a region of its own, `%fresh`, as FX-26's
+is at a fresh region: it fits no `acyclic` expected later (a `let`-bound
+list given to a procedure of an `acyclic` list is refused, as in FX-26);
+effects on it are pure, KFX's lists never written. The rule for when a
+`list` argument is found by itself, from the fourth probe's cases: when
+its parameter's type has an inference variable not yet solved. The
+fourth probe's K1 cases went from 36 to 17, the rest `void`s and
+failures when run in both.

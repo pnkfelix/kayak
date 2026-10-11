@@ -1208,7 +1208,7 @@ pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
             let tagcase_ = fresh(s);
             match *tagcase_ {
                 Res::Res(m, es, s) => {
-                    res(ty_list(m, ty_rconst(str_lit("acyclic"))), nil(), s)
+                    res(ty_list(m, ty_rconst(str_lit("%fresh"))), nil(), s)
                 }
             }
         } else {
@@ -1243,7 +1243,7 @@ pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
                                 }
                             }
                         };
-                        with_effs(check(v, s, e, ty_list(t, ty_rconst(str_lit("acyclic")))), es0)
+                        with_effs(check(v, s, e, ty_list(t, ty_rconst(str_lit("%fresh")))), es0)
                     }
                 }
             }
@@ -2281,13 +2281,9 @@ pub fn call_args_pass(mut v: &'static Cv, mut s: &'static St, mut args: Sexps, m
         } else if eqv_bool_p(deferred_p(car(args), car(ps)), later) {
             let tagcase_ = if not(null_p(module_spec(v, walk(s, car(ps))))) {
                 module_argument(v, s, car(args), walk(s, car(ps)))
-            } else if (head_is_p(car(args), str_lit("list")) && any_p(lambda1(move |k: i64| {
-                any_p(lambda1(move |j: i64| {
-                    i64_eq(j, k)
-                }), fixed)
-            }), metas_of(car(ps)))) {
-                // A `list` for a parameter whose type only the result expected fixed:
-                // found by itself, as FX-26 finds it.
+            } else if (head_is_p(car(args), str_lit("list")) && has_meta_p(s, car(ps))) {
+                // A `list` for a parameter whose type is not known whole yet:
+                // found by itself, at a fresh region, as FX-26 finds it.
                 check_by_synth(v, s, car(args), car(ps))
             } else {
                 check(v, s, car(args), car(ps))
