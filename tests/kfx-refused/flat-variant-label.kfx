@@ -1,0 +1,6 @@
+"A variant is named by one of the flat sum's labels."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type o (bloblet (fields) @b))
+(define r (blobref o (sumof u8 (1 f64) (7 i32))) (blobref-at (the o (make-bloblet 16)) 0))
+(define f (subr (maxeff kfx (read @b) (write @b)) () unit) (lambda () (blobref-set! (blobref-variant! r 3) 1.0)))
+(f)

@@ -608,12 +608,13 @@
             nil
             (let* ((flat-of (lambda ((f fact)) (tagcase f (fact (file pos what) (second (read-all (string-chars (after-prefix what "blob-at ")) "" 1))))))
                    (first (expand-aliases c (flat-of (car ats))))
-                   (text (rev->string (put-flat c first nil)))
+                   (text (if (has-sum? first) "" (rev->string (put-flat c first nil))))
                    (size (tagcase (car ats) (fact (file pos what) (fact-at-place c file pos "blob-size "))))
                    (same (not (any? (lambda ((f fact))
                                       (tagcase f
                                         (fact (file pos what)
                                           (or (not (ctx-fact? c file pos "blob-zero"))
+                                              (has-sum? (expand-aliases c (flat-of f)))
                                               (not (string=? (rev->string (put-flat c (expand-aliases c (flat-of f)) nil)) text))))))
                                     ats)))
                    (bytewise (any? (lambda ((f fact))
@@ -631,7 +632,16 @@
                                              (or (string=? bytes "")
                                                  (i64< (digits-number bytes) (digits-number size))))))))
                                 fs)))
-              (if (and same (not bytewise) (not short)) (the sexps (list first)) nil))))))
+              (if (and same (not bytewise) (not short) (not (has-sum? first))) (the sexps (list first)) nil))))))
+
+  (has-sum? (subr kfx (sexp) bool)
+    (lambda (f)
+      "Whether a flat has a flat sum in it: a typed suffix holds none, since
+       a sum's variants share their bytes, which a stale blobref to one sees
+       (C33)."
+      (tagcase f
+        (lst (xs fl ln p) (or (sym-is? (car xs) "sumof") (any? (lambda ((x sexp)) (has-sum? x)) (cdr xs))))
+        (else other #f))))
 
   (put-fields-tuple (subr kfx (ctx sexps chars) chars)
     (lambda (c ts acc)
@@ -1000,6 +1010,9 @@
                        (string-append "> { &self.a" (string-append (i64->string i) " } }"))))))))))))
                  (put-nl n acc)))))))
 
+(define second-string (subr kfx (strings) string)
+  (lambda (xs) (if (or (null? xs) (null? (cdr xs))) "0" (car (cdr xs)))))
+
 (define blob-typed (subr kfx (ctx sexp string) sexps)
   (lambda (c e prefix)
     "The flat of the typed suffix (C32) of the owner the checker noted at
@@ -1236,6 +1249,8 @@
     (lambda (c e xs n t acc)
       "A `tagcase` as statements: its value bound once, then a `match`; of a
        sum, its enum's name from the tags the checker found."
+      (if (not (string=? (fact-with c e "blob-tagcase ") ""))
+          (put-flat-tagcase c e xs n t acc)
       (let* ((tags (fact-with c e "tagcase-sum "))
              (sum (if (string=? tags "") "" (shape-name #f (split-words tags))))
              (acc (put "let tagcase_ = " acc))
@@ -1243,7 +1258,39 @@
              (acc (put-nl n (put ";" acc)))
              (acc (put "match *tagcase_ {" acc))
              (acc (put-tagcase-arms c sum (cdr xs) (i64+ n 1) t acc)))
+        (put "}" (put-nl n acc))))))
+
+  (put-flat-tagcase (subr kfx (ctx sexp sexps i64 tail chars) chars)
+    (lambda (c e xs n t acc)
+      "A `tagcase` on a blobref to a flat sum (C33): its tag read once, of
+       the key's width; each arm's name a blobref to the variant, past the
+       tag; a tag no arm has, `else`'s, or an error, as in FX-26."
+      (let* ((found (split-words (fact-with c e "blob-tagcase ")))
+             (acc (put "let tagcase_ = " acc))
+             (acc (put-exp c (car xs) n (value) acc))
+             (acc (put-nl n (put ";" acc)))
+             (acc (put (string-append "match tagcase_.tag(" (string-append (car found) ") {")) acc))
+             (acc (put-flat-arms c (second-string found) (cdr xs) (i64+ n 1) t acc))
+             (acc (if (any? (lambda ((a sexp)) (sym-is? (car (items a)) "else")) (cdr xs))
+                      acc
+                      (put "_ => no_flat_tag()," (put-nl (i64+ n 1) acc)))))
         (put "}" (put-nl n acc)))))
+
+  (put-flat-arms (subr kfx (ctx string sexps i64 tail chars) chars)
+    (lambda (c off arms n t acc)
+      (if (null? arms)
+          acc
+          (let* ((arm (items (car arms)))
+                 (else? (sym-is? (car arm) "else"))
+                 (x (sym-name (second arm)))
+                 (acc (put-nl n acc))
+                 (acc (put (if else? "_ => {" (string-append (number-text (car arm)) " => {")) acc))
+                 (acc (put-nl (i64+ n 1) acc))
+                 (acc (put (string-append "let " (string-append (mangle x) (if else? " = tagcase_;" (string-append " = tagcase_.field(" (string-append off ");"))))) acc))
+                 (acc (put-nl (i64+ n 1) acc))
+                 (acc (put-stmts (with-locals c (list x)) (cdr (cdr arm)) (i64+ n 1) (hide t (list x)) acc))
+                 (acc (put "}" (put-nl n acc))))
+            (put-flat-arms c off (cdr arms) n t acc)))))
 
   (put-lambda (subr kfx (ctx sexp sexps sexps i64 chars) chars)
     (lambda (c e params body n acc)
@@ -1381,6 +1428,9 @@
                (if (string=? h "bloblet-ref")
                    (put ".get()" acc)
                    (put ")" (put-exp c (third xs) n (value) (put ".set(" acc))))))
+            ((and (string=? h "blobref-variant!") (string=? (local-kind h (ctx-locals c)) ""))
+             "Its tag written, the label as it is, and a blobref to the variant (C33)."
+             (put ")" (put (words-of-sep (split-words (fact-with c e "blob-variant ")) ", ") (put ").variant(" (put-exp c (car xs) n (value) (put "(" acc))))))
             ((and (or (string=? h "blobref-get") (string=? h "blobref-set!")) (string=? (local-kind h (ctx-locals c)) ""))
              "A scalar's bytes, read or written as the checker found its flat."
              (let ((acc (if (null? (blob-typed c e "blob-owner "))

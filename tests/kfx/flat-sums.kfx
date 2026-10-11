@@ -1,0 +1,56 @@
+"Keyed flat sums (C33): a tag of the key's width holding the label as it
+ is, then the variant at the widest one's alignment. blobref-variant!
+ writes the tag and gives a blobref to the variant; tagcase reads the tag
+ once and gives each arm one; a blobref to another variant, still held,
+ sees the bytes the new one wrote, as in FX-26."
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-type o (bloblet (fields) @b))
+(define b o (make-bloblet 32))
+(define r (blobref o (sumof u8 (1 f64) (7 (productof (a i32) (c i32))))) (blobref-at b 0))
+(define k (blobref o (sumof u16 (0 f64) (7 i32))) (blobref-at b 16))
+(define z (blobref o (sumof u8 (1 f64) (7 i32))) (blobref-at (the o (make-bloblet 16)) 0))
+
+"Fixpt's flat-inlined.fx, at i64: an array of keyed shapes."
+(define-type shape (sumof u8 (0 f64) (1 (productof (w f64) (h f64)))))
+(define-type arr (blobref o (arrayof shape 10)))
+(define fill (subr (maxeff kfx (read @b) (write @b)) (arr i64) unit)
+  (lambda (a i)
+    (if (i64= i 10)
+        #u
+        (begin
+          (if (i64= (i64-remainder i 2) 0)
+              (blobref-set! (blobref-variant! (blobref-index a (i64->int i)) 0) (int->f64 (i64->int i)))
+              (let ((sq (blobref-variant! (blobref-index a (i64->int i)) 1)))
+                (begin (blobref-set! (extract sq w) 2.0) (blobref-set! (extract sq h) 3.0))))
+          (fill a (i64+ i 1))))))
+(define area (subr (maxeff kfx (read @b)) ((blobref o shape)) f64)
+  (lambda (s)
+    (tagcase s
+      (0 c (blobref-get c))
+      (1 p (f64* (blobref-get (extract p w)) (blobref-get (extract p h)))))))
+(define total (subr (maxeff kfx (read @b)) (arr i64 f64) f64)
+  (lambda (a i acc)
+    (if (i64= i 10) acc (total a (i64+ i 1) (f64+ acc (area (blobref-index a (i64->int i))))))))
+
+(define ints (subr kfx ((listof int acyclic)) string)
+  (lambda (ns) (if (null? ns) "" (string-append (int->string (car ns)) (string-append " " (ints (cdr ns)))))))
+
+(define main (subr (maxeff kfx (alloc @b) (read @b) (write @b)) () string)
+  (lambda ()
+    (let* ((v (the (blobref o f64) (blobref-variant! r 1)))
+           (u (blobref-set! v 2.5))
+           (w (the (blobref o (productof (a i32) (c i32))) (blobref-variant! r 7)))
+           (u2 (blobref-set! (extract w a) 3))
+           (u3 (blobref-set! (blobref-variant! k 7) 99))
+           (a (the arr (blobref-at (the o (make-bloblet 240)) 0)))
+           (u4 (fill a 0)))
+      (string-append
+       (ints (list (tagcase r (1 x 1) (7 y (i32->int (blobref-get (extract y a)))))
+                   (blobref-offset v)
+                   (tagcase k (0 x 0) (7 y (i32->int (blobref-get y))))
+                   (bloblet-byte b 16) (bloblet-byte b 17)
+                   (tagcase z (1 x 10) (else y 20))
+                   (f64->int (total a 0 0.0))))
+       (f64->string (blobref-get v))))))
+(main)

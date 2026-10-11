@@ -1184,7 +1184,11 @@ pub fn typed_flat(c: &'static Ctx, b: &'static Sexp) -> Sexps {
             }
         });
         let first = expand_aliases(c, flat_of(car(ats)));
-        let text = rev_to_string(put_flat(c, first, nil::<char>()));
+        let text = if has_sum_p(first) {
+            str_lit("")
+        } else {
+            rev_to_string(put_flat(c, first, nil::<char>()))
+        };
         let size = {
             let tagcase_ = car(ats);
             match *tagcase_ {
@@ -1197,7 +1201,7 @@ pub fn typed_flat(c: &'static Ctx, b: &'static Sexp) -> Sexps {
             let tagcase_ = f;
             match *tagcase_ {
                 Fact::Fact(file, pos, what) => {
-                    (not(ctx_fact_p(c, file, pos, str_lit("blob-zero"))) || not(string_eq_p(rev_to_string(put_flat(c, expand_aliases(c, flat_of(f)), nil::<char>())), text)))
+                    (not(ctx_fact_p(c, file, pos, str_lit("blob-zero"))) || has_sum_p(expand_aliases(c, flat_of(f))) || not(string_eq_p(rev_to_string(put_flat(c, expand_aliases(c, flat_of(f)), nil::<char>())), text)))
                 }
             }
         }), ats));
@@ -1220,10 +1224,28 @@ pub fn typed_flat(c: &'static Ctx, b: &'static Sexp) -> Sexps {
                 }
             }
         }), fs);
-        if (same && not(bytewise) && not(short)) {
+        if (same && not(bytewise) && not(short) && not(has_sum_p(first))) {
             the::<Sexps>(kayak_rt::cons(first, kayak_rt::nil()))
         } else {
             nil::<&'static Sexp>()
+        }
+    }
+}
+
+/// Whether a flat has a flat sum in it: a typed suffix holds none, since
+/// a sum's variants share their bytes, which a stale blobref to one sees
+/// (C33).
+pub fn has_sum_p(f: &'static Sexp) -> bool {
+    let tagcase_ = f;
+    match *tagcase_ {
+        Sexp::Lst(xs, fl, ln, p) => {
+            (sym_is_p(car(xs), str_lit("sumof")) || any_p(lambda1(move |x: &'static Sexp| {
+                has_sum_p(x)
+            }), cdr(xs)))
+        }
+        _ => {
+            let other = tagcase_;
+            false
         }
     }
 }
@@ -1869,6 +1891,14 @@ pub fn put_held_impls(mut held: Strings, mut i: i64, mut region: Str, mut lives:
     }
 }
 
+pub fn second_string(xs: Strings) -> Str {
+    if (null_p(xs) || null_p(cdr(xs))) {
+        str_lit("0")
+    } else {
+        car(cdr(xs))
+    }
+}
+
 /// The flat of the typed suffix (C32) of the owner the checker noted at
 /// `e` under `prefix`, as a list of one; or none.
 pub fn blob_typed(c: &'static Ctx, e: &'static Sexp, prefix: Str) -> Sexps {
@@ -2229,18 +2259,68 @@ pub fn put_fields_of(mut names: Sexps, mut i: i64, mut n: i64, mut acc: Chars) -
 /// A `tagcase` as statements: its value bound once, then a `match`; of a
 /// sum, its enum's name from the tags the checker found.
 pub fn put_tagcase(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
-    let tags = fact_with(c, e, str_lit("tagcase-sum "));
-    let sum = if string_eq_p(tags, str_lit("")) {
-        str_lit("")
+    if not(string_eq_p(fact_with(c, e, str_lit("blob-tagcase ")), str_lit(""))) {
+        put_flat_tagcase(c, e, xs, n, t, acc)
     } else {
-        shape_name(false, split_words(tags))
-    };
+        let tags = fact_with(c, e, str_lit("tagcase-sum "));
+        let sum = if string_eq_p(tags, str_lit("")) {
+            str_lit("")
+        } else {
+            shape_name(false, split_words(tags))
+        };
+        let acc = put(str_lit("let tagcase_ = "), acc);
+        let acc = put_exp(c, car(xs), n, value(), acc);
+        let acc = put_nl(n, put(str_lit(";"), acc));
+        let acc = put(str_lit("match *tagcase_ {"), acc);
+        let acc = put_tagcase_arms(c, sum, cdr(xs), i64_plus(n, 1i64), t, acc);
+        put(str_lit("}"), put_nl(n, acc))
+    }
+}
+
+/// A `tagcase` on a blobref to a flat sum (C33): its tag read once, of
+/// the key's width; each arm's name a blobref to the variant, past the
+/// tag; a tag no arm has, `else`'s, or an error, as in FX-26.
+pub fn put_flat_tagcase(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
+    let found = split_words(fact_with(c, e, str_lit("blob-tagcase ")));
     let acc = put(str_lit("let tagcase_ = "), acc);
     let acc = put_exp(c, car(xs), n, value(), acc);
     let acc = put_nl(n, put(str_lit(";"), acc));
-    let acc = put(str_lit("match *tagcase_ {"), acc);
-    let acc = put_tagcase_arms(c, sum, cdr(xs), i64_plus(n, 1i64), t, acc);
+    let acc = put(string_append(str_lit("match tagcase_.tag("), string_append(car(found), str_lit(") {"))), acc);
+    let acc = put_flat_arms(c, second_string(found), cdr(xs), i64_plus(n, 1i64), t, acc);
+    let acc = if any_p(lambda1(move |a: &'static Sexp| {
+        sym_is_p(car(items(a)), str_lit("else"))
+    }), cdr(xs)) {
+        acc
+    } else {
+        put(str_lit("_ => no_flat_tag(),"), put_nl(i64_plus(n, 1i64), acc))
+    };
     put(str_lit("}"), put_nl(n, acc))
+}
+
+pub fn put_flat_arms(c: &'static Ctx, off: Str, arms: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
+    if null_p(arms) {
+        acc
+    } else {
+        let arm = items(car(arms));
+        let else_p = sym_is_p(car(arm), str_lit("else"));
+        let x = sym_name(second(arm));
+        let acc = put_nl(n, acc);
+        let acc = put(if else_p {
+            str_lit("_ => {")
+        } else {
+            string_append(number_text(car(arm)), str_lit(" => {"))
+        }, acc);
+        let acc = put_nl(i64_plus(n, 1i64), acc);
+        let acc = put(string_append(str_lit("let "), string_append(mangle(x), if else_p {
+            str_lit(" = tagcase_;")
+        } else {
+            string_append(str_lit(" = tagcase_.field("), string_append(off, str_lit(");")))
+        })), acc);
+        let acc = put_nl(i64_plus(n, 1i64), acc);
+        let acc = put_stmts(with_locals(c, kayak_rt::cons(x, kayak_rt::nil())), cdr(cdr(arm)), i64_plus(n, 1i64), hide(t, kayak_rt::cons(x, kayak_rt::nil())), acc);
+        let acc = put(str_lit("}"), put_nl(n, acc));
+        put_flat_arms(c, off, cdr(arms), n, t, acc)
+    }
 }
 
 /// A lambda as a value: a closure, `move`, since what it captures is
@@ -2438,6 +2518,9 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
         } else {
             put(str_lit(")"), put_exp(c, third(xs), n, value(), put(str_lit(".set("), acc)))
         }
+    } else if (string_eq_p(h, str_lit("blobref-variant!")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+        // Its tag written, the label as it is, and a blobref to the variant (C33).
+        put(str_lit(")"), put(words_of_sep(split_words(fact_with(c, e, str_lit("blob-variant "))), str_lit(", ")), put(str_lit(").variant("), put_exp(c, car(xs), n, value(), put(str_lit("("), acc)))))
     } else if ((string_eq_p(h, str_lit("blobref-get")) || string_eq_p(h, str_lit("blobref-set!"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
         // A scalar's bytes, read or written as the checker found its flat.
         let acc = if null_p(blob_typed(c, e, str_lit("blob-owner "))) {

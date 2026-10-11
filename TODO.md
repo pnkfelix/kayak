@@ -141,8 +141,8 @@ Escapes are done (`DONE.md`, C18). Left:
   constructor at what the list's type says (`(the i64 (car (cons 1
   nil)))`, `(rcons r k (rcons r 1 nil))`); KFX does.
 - **Bloblets' rest** (C31, C32):
-  frozen bloblets; width; flat sums, `blobref-variant!`, `tagcase` of a
-  blobref; families over `flat`.
+  frozen bloblets; width; flat sums without a key (they need symbols);
+  families over `flat`.
 - **`letrena`'s rest** (C30): places passed to procedures (`Holds<T>`
   bounds), regions within a place, `letrena` in a poly over types, the
   other allocators, `letreap`; then bloblets and blobrefs.

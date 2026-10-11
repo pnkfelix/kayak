@@ -536,3 +536,19 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
   two ways would be two Rust types); deciding per bloblet value (a type is
   Rust's per type).
 
+## C33. Keyed flat sums, faithful only (2026-10-11)
+
+- **Chosen:** FX-26's keyed flat sums, `(sumof u8 (0 F) (7 G))` (`u16`,
+  `u32`): a tag of the key's width holding the label as it is, then the
+  variant at the widest variant's alignment, the whole padded to it.
+  `blobref-variant!` writes the tag and gives a blobref to the variant;
+  `tagcase` on a blobref reads the tag once, each arm (a literal label, one
+  name) a blobref to its variant, `else` the blobref; a tag no arm has
+  and no `else` is an error when run, as in Fixpt. In C31's words only:
+  an owner type whose flat has a sum is never typed (C32), since a sum's
+  variants share their bytes and a stale blobref to one sees what another
+  wrote (FX-26: `2.5` read back as `2.5000000000000013` once an `i32` was
+  written over its low bytes); a Rust enum or separate fields would not.
+- **Not yet:** a sum with no key, whose tag indexes the owner's fields,
+  which hold its labels as symbols: KFX has no symbols.
+

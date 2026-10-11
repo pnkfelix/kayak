@@ -63,6 +63,11 @@ pub mod fixed;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/flat-sums.rs"]
+pub mod flat_sums;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/floats.rs"]
 pub mod floats;
 
@@ -183,6 +188,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("f32", f32::main),
     ("families", families::main),
     ("fixed", fixed::main),
+    ("flat-sums", flat_sums::main),
     ("floats", floats::main),
     ("generative", generative::main),
     ("letrec", letrec::main),

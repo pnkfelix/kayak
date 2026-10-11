@@ -505,6 +505,31 @@
  which KFX has not yet."
 
 (define-rec
+  (run-together (subr kfx (strings) string)
+    (lambda (xs) (if (null? xs) "" (string-append (car xs) (run-together (cdr xs)))))))
+
+(define key-range (subr kfx (string) i64)
+  (lambda (key) (cond ((string=? key "u8") 256) ((string=? key "u16") 65536) (else 4294967296))))
+
+(define key-width (subr kfx (ty) i64)
+  (lambda (k) (tagcase k (ty-rconst (n) (cond ((string=? n "u8") 1) ((string=? n "u16") 2) (else 4))) (else other 4))))
+
+(define-datatype fvar (fvar string ty))
+(define-type fvars (listof fvar acyclic))
+
+(define-rec
+  (fvars-of (subr kfx (tys) fvars)
+    (lambda (ts)
+      (if (or (null? ts) (null? (cdr ts)))
+          nil
+          (cons (fvar (tagcase (car ts) (ty-rconst (n) n) (else other "")) (car (cdr ts))) (fvars-of (cdr (cdr ts))))))))
+
+(define flat-sum-variants (subr kfx (tys) fvars)
+  (lambda (args)
+    "A keyed flat sum's variants, its type's arguments after the key."
+    (fvars-of (cdr args))))
+
+(define-rec
   (flat? (subr kfx (ty) bool)
     (lambda (t)
       (tagcase t
@@ -512,7 +537,8 @@
         (ty-f64 () #t)
         (ty-data (d args)
           (or (and (null? args) (or (string=? d "i32") (string=? d "u32") (string=? d "u64") (string=? d "f32")))
-              (and (string=? d "%flat-array") (flat? (car args)))))
+              (and (string=? d "%flat-array") (flat? (car args)))
+              (string=? d "%flat-sum")))
         (ty-shape (p ls ts) (and p (not (null? ts)) (not (any? (lambda ((x ty)) (not (flat? x))) ts))))
         (else other #f)))))
 
@@ -549,11 +575,26 @@
                    (layout (size align)
                      (layout (i64* size (tagcase (car (cdr args)) (ty-rconst (n) (i64- 0 (digits-value (string-chars n) 0 "" 0))) (else other 0))) align))))
                 ((string=? d "u64") (layout 8 8))
+                ((string=? d "%flat-sum")
+                 (let* ((k (key-width (car args)))
+                        (vs (flat-sum-variants args))
+                        (widest (any-layout (map (lambda ((f fvar)) (tagcase f (fvar (l x) x))) vs) 0 1)))
+                   (tagcase widest
+                     (layout (size align)
+                       (let ((at (round-up k align)) (whole (if (i64> align k) align k)))
+                         (layout (round-up (i64+ at size) whole) whole))))))
                 (else (layout 4 4))))
         (ty-shape (p ls ts)
           (tagcase (fields-layout ts 0 1)
             (layout (end align) (layout (round-up end align) align))))
         (else other (layout 8 8)))))
+  (any-layout (subr kfx (tys i64 i64) layout)
+    (lambda (ts size align)
+      "The widest of flats `ts` and their widest alignment: a sum's variant's room."
+      (if (null? ts)
+          (layout size align)
+          (tagcase (flat-layout (car ts))
+            (layout (s a) (any-layout (cdr ts) (if (i64> s size) s size) (if (i64> a align) a align)))))))
   (fields-layout (subr kfx (tys i64 i64) layout)
     (lambda (ts at align)
       "The end of fields `ts` laid out from `at`, and their widest alignment."
@@ -562,6 +603,13 @@
           (tagcase (flat-layout (car ts))
             (layout (size a)
               (fields-layout (cdr ts) (i64+ (round-up at a) size) (if (i64> a align) a align))))))))
+
+(define variant-offset (subr kfx (tys) i64)
+  (lambda (args)
+    "Where a keyed flat sum's variant begins: after its tag, at the widest
+     variant's alignment."
+    (tagcase (any-layout (map (lambda ((f fvar)) (tagcase f (fvar (l x) x))) (flat-sum-variants args)) 0 1)
+      (layout (size align) (round-up (key-width (car args)) align)))))
 
 (define field-offset (subr kfx (strings tys string) i64)
   (lambda (ls ts l)
@@ -669,9 +717,27 @@
                          (parse-effect v tvars (fourth xs)) (parse-mutable-region v tvars (car (cdr (cdr (cdr (cdr xs))))))))
                 ((sym-is? (car xs) "moduleof")
                  (refuse v "a moduleof is a module's type when a define-type names it: KFX's is a Rust trait (C24)"))
+                ((and (sym-is? (car xs) "sumof") (not (null? (cdr xs))) (tagcase (second xs) (sym (n f p) #t) (else other #f)))
+                 "A keyed flat sum, `(sumof u8 (0 F) (7 G))` (C33): a tag of the key's
+                  width, the label stored as it is, then the variant."
+                 (let ((key (sym-name (second xs))))
+                   (if (not (string-member? key (list "u8" "u16" "u32")))
+                       (refuse v "a flat sum's key is `u8`, `u16` or `u32`")
+                       (ty-data "%flat-sum"
+                                (cons (ty-rconst key)
+                                      (concat (map (lambda ((g sexp))
+                                                     (let ((parts (tagcase g (lst (ys f2 l2 p2) ys) (else other nil))))
+                                                       (if (or (not (i64= (size parts) 2))
+                                                               (tagcase (car parts) (num (k f3 p3) (or (i64< k 0) (not (i64< k (key-range key))))) (else other #t)))
+                                                           (refuse v (string-append "a keyed flat sum's variant is (label flat), its label a number the key holds: " (show-sexp t)))
+                                                           (let ((f (parse-type v tvars (second parts))))
+                                                             (if (flat? f)
+                                                                 (the tys (list (ty-rconst (i64->string (tagcase (car parts) (num (k f3 p3) k) (else other 0)))) f))
+                                                                 (refuse v (string-append "a flat sum's variant is a flat: " (show-sexp t))))))))
+                                                   (cdr (cdr xs)))))))))
                 ((and (or (sym-is? (car xs) "productof") (sym-is? (car xs) "sumof"))
                       (any? (lambda ((x sexp)) (tagcase x (lst (ys f l p) #f) (else other #t))) (cdr xs)))
-                 (refuse v (string-append "a type KFX does not have (a keyed flat sum, not yet): " (show-sexp t))))
+                 (refuse v (string-append "a type KFX does not have: " (show-sexp t))))
                 ((or (sym-is? (car xs) "productof") (sym-is? (car xs) "sumof"))
                  (let ((fields (map items (cdr xs))))
                    (if (or (any? (lambda ((f sexps)) (not (i64= (size f) 2))) fields)
@@ -829,6 +895,11 @@
                  (string-append "(bloblet (fields " (string-append (show-tys s (cdr args)) (string-append ") " (string-append (show-ty s (car args)) ")")))))
                 ((string=? d "%blobref") (string-append "(blobref " (string-append (show-tys s args) ")")))
                 ((string=? d "%flat-array") (string-append "(arrayof " (string-append (show-tys s args) ")")))
+                ((string=? d "%flat-sum")
+                 (string-append "(sumof " (string-append (show-ty s (car args))
+                   (string-append (run-together (map (lambda ((f fvar)) (tagcase f (fvar (l x) (string-append " (" (string-append l (string-append " " (string-append (show-ty s x) ")")))))))
+                                                       (flat-sum-variants args)))
+                                  ")"))))
                 ((string=? d "%place") (string-append "(place " (string-append (show-tys s args) ")")))
                 (else (string-append "(" (string-append d (string-append " " (string-append (show-tys s args) ")")))))))
         (ty-shape (p ls ts) (string-append (if p "(productof" "(sumof") (string-append (show-fields s ls ts) ")")))

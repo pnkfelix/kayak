@@ -518,9 +518,12 @@
                      acc
                      (put "};\n\n" (put-sep (lambda ((x string) (acc chars)) (put x acc)) ", " names
                                              (put "::{" (put (mangle n) (put (if (string=? h "include") "pub use super::" "use super::") acc))))))))
-              ((and (string=? h "define-type") (head-is? (third xs) "arrayof"))
-               "A flat array: a layout in a bloblet's suffix (C31), no value's
-                type, and so no Rust type's."
+              ((and (string=? h "define-type")
+                    (or (head-is? (third xs) "arrayof")
+                        (and (head-is? (third xs) "sumof") (not (null? (cdr (items (third xs)))))
+                             (tagcase (second (items (third xs))) (sym (n f p) #t) (else other #f)))))
+               "A flat array or a keyed flat sum: a layout in a bloblet's suffix
+                (C31, C33), no value's type, and so no Rust type's."
                acc)
               ((and (string=? h "define-type") (head-is? (third xs) "moduleof"))
                (put-trait c (sym-name (second xs)) (third xs) acc))

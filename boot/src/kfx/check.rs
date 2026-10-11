@@ -1042,6 +1042,77 @@ pub fn no_knot(v: &'static Cv, res: &'static dyn Fn(Str) -> Str, t: &'static Ty)
 // order each at its alignment and the whole padded to the widest, an
 // array's elements one after another. KFX's scalars are FX-26's but `f32`,
 // which KFX has not yet.
+pub fn run_together(xs: Strings) -> Str {
+    if null_p(xs) {
+        str_lit("")
+    } else {
+        string_append(car(xs), run_together(cdr(xs)))
+    }
+}
+
+pub fn key_range(key: Str) -> i64 {
+    if string_eq_p(key, str_lit("u8")) {
+        256i64
+    } else if string_eq_p(key, str_lit("u16")) {
+        65536i64
+    } else {
+        4294967296i64
+    }
+}
+
+pub fn key_width(k: &'static Ty) -> i64 {
+    let tagcase_ = k;
+    match *tagcase_ {
+        Ty::TyRconst(n) => {
+            if string_eq_p(n, str_lit("u8")) {
+                1i64
+            } else if string_eq_p(n, str_lit("u16")) {
+                2i64
+            } else {
+                4i64
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            4i64
+        }
+    }
+}
+
+pub enum Fvar {
+    Fvar(Str, &'static Ty),
+}
+
+pub fn fvar(f0: Str, f1: &'static Ty) -> &'static Fvar {
+    alloc(Fvar::Fvar(f0, f1))
+}
+
+pub type Fvars = List<&'static Fvar>;
+
+pub fn fvars_of(ts: Tys) -> Fvars {
+    if (null_p(ts) || null_p(cdr(ts))) {
+        nil::<&'static Fvar>()
+    } else {
+        cons(fvar({
+            let tagcase_ = car(ts);
+            match *tagcase_ {
+                Ty::TyRconst(n) => {
+                    n
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("")
+                }
+            }
+        }, car(cdr(ts))), fvars_of(cdr(cdr(ts))))
+    }
+}
+
+/// A keyed flat sum's variants, its type's arguments after the key.
+pub fn flat_sum_variants(args: Tys) -> Fvars {
+    fvars_of(cdr(args))
+}
+
 pub fn flat_p(t: &'static Ty) -> bool {
     let tagcase_ = t;
     match *tagcase_ {
@@ -1052,7 +1123,7 @@ pub fn flat_p(t: &'static Ty) -> bool {
             true
         }
         Ty::TyData(d, args) => {
-            ((null_p(args) && (string_eq_p(d, str_lit("i32")) || string_eq_p(d, str_lit("u32")) || string_eq_p(d, str_lit("u64")) || string_eq_p(d, str_lit("f32")))) || (string_eq_p(d, str_lit("%flat-array")) && flat_p(car(args))))
+            ((null_p(args) && (string_eq_p(d, str_lit("i32")) || string_eq_p(d, str_lit("u32")) || string_eq_p(d, str_lit("u64")) || string_eq_p(d, str_lit("f32")))) || (string_eq_p(d, str_lit("%flat-array")) && flat_p(car(args))) || string_eq_p(d, str_lit("%flat-sum")))
         }
         Ty::TyShape(p, ls, ts) => {
             (p && not(null_p(ts)) && not(any_p(lambda1(move |x: &'static Ty| {
@@ -1151,6 +1222,28 @@ pub fn flat_layout(t: &'static Ty) -> &'static Layout {
                 }
             } else if string_eq_p(d, str_lit("u64")) {
                 layout(8i64, 8i64)
+            } else if string_eq_p(d, str_lit("%flat-sum")) {
+                let k = key_width(car(args));
+                let vs = flat_sum_variants(args);
+                let widest = any_layout(map(lambda1(move |f: &'static Fvar| {
+                    let tagcase_ = f;
+                    match *tagcase_ {
+                        Fvar::Fvar(l, x) => {
+                            x
+                        }
+                    }
+                }), vs), 0i64, 1i64);
+                let tagcase_ = widest;
+                match *tagcase_ {
+                    Layout::Layout(size, align) => {
+                        let (at, whole) = (round_up(k, align), if i64_gt(align, k) {
+                            align
+                        } else {
+                            k
+                        });
+                        layout(round_up(i64_plus(at, size), whole), whole)
+                    }
+                }
             } else {
                 layout(4i64, 4i64)
             }
@@ -1166,6 +1259,31 @@ pub fn flat_layout(t: &'static Ty) -> &'static Layout {
         _ => {
             let other = tagcase_;
             layout(8i64, 8i64)
+        }
+    }
+}
+
+/// The widest of flats `ts` and their widest alignment: a sum's variant's room.
+pub fn any_layout(mut ts: Tys, mut size: i64, mut align: i64) -> &'static Layout {
+    loop {
+        if null_p(ts) {
+            return layout(size, align);
+        } else {
+            let tagcase_ = flat_layout(car(ts));
+            match *tagcase_ {
+                Layout::Layout(s, a) => {
+                    (ts, size, align) = (cdr(ts), if i64_gt(s, size) {
+                        s
+                    } else {
+                        size
+                    }, if i64_gt(a, align) {
+                        a
+                    } else {
+                        align
+                    });
+                    continue;
+                }
+            }
         }
     }
 }
@@ -1187,6 +1305,24 @@ pub fn fields_layout(mut ts: Tys, mut at: i64, mut align: i64) -> &'static Layou
                     continue;
                 }
             }
+        }
+    }
+}
+
+/// Where a keyed flat sum's variant begins: after its tag, at the widest
+/// variant's alignment.
+pub fn variant_offset(args: Tys) -> i64 {
+    let tagcase_ = any_layout(map(lambda1(move |f: &'static Fvar| {
+        let tagcase_ = f;
+        match *tagcase_ {
+            Fvar::Fvar(l, x) => {
+                x
+            }
+        }
+    }), flat_sum_variants(args)), 0i64, 1i64);
+    match *tagcase_ {
+        Layout::Layout(size, align) => {
+            round_up(key_width(car(args)), align)
         }
     }
 }
@@ -1379,6 +1515,71 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     return ty_tag(parse_type(v, tvars, second(xs)), parse_type(v, tvars, third(xs)), parse_effect(v, tvars, fourth(xs)), parse_mutable_region(v, tvars, car(cdr(cdr(cdr(cdr(xs)))))));
                 } else if sym_is_p(car(xs), str_lit("moduleof")) {
                     return match refuse(v, str_lit("a moduleof is a module's type when a define-type names it: KFX's is a Rust trait (C24)")) {};
+                } else if (sym_is_p(car(xs), str_lit("sumof")) && not(null_p(cdr(xs))) && {
+                    let tagcase_ = second(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            true
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }) {
+                    // A keyed flat sum, `(sumof u8 (0 F) (7 G))` (C33): a tag of the key's
+                    // width, the label stored as it is, then the variant.
+                    let key = sym_name(second(xs));
+                    if not(string_member_p(key, kayak_rt::cons(str_lit("u8"), kayak_rt::cons(str_lit("u16"), kayak_rt::cons(str_lit("u32"), kayak_rt::nil()))))) {
+                        return match refuse(v, str_lit("a flat sum's key is `u8`, `u16` or `u32`")) {};
+                    } else {
+                        return ty_data(str_lit("%flat-sum"), cons(ty_rconst(key), concat(map(lambda1(move |g: &'static Sexp| {
+                            let parts = {
+                                let tagcase_ = g;
+                                match *tagcase_ {
+                                    Sexp::Lst(ys, f2, l2, p2) => {
+                                        ys
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        nil::<&'static Sexp>()
+                                    }
+                                }
+                            };
+                            if (not(i64_eq(size(parts), 2i64)) || {
+                                let tagcase_ = car(parts);
+                                match *tagcase_ {
+                                    Sexp::Num(k, f3, p3) => {
+                                        (i64_lt(k, 0i64) || not(i64_lt(k, key_range(key))))
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        true
+                                    }
+                                }
+                            }) {
+                                match refuse(v, string_append(str_lit("a keyed flat sum's variant is (label flat), its label a number the key holds: "), show_sexp(t))) {}
+                            } else {
+                                let f = parse_type(v, tvars, second(parts));
+                                if flat_p(f) {
+                                    the::<Tys>(kayak_rt::cons(ty_rconst(i64_to_string({
+                                        let tagcase_ = car(parts);
+                                        match *tagcase_ {
+                                            Sexp::Num(k, f3, p3) => {
+                                                k
+                                            }
+                                            _ => {
+                                                let other = tagcase_;
+                                                0i64
+                                            }
+                                        }
+                                    })), kayak_rt::cons(f, kayak_rt::nil())))
+                                } else {
+                                    match refuse(v, string_append(str_lit("a flat sum's variant is a flat: "), show_sexp(t))) {}
+                                }
+                            }
+                        }), cdr(cdr(xs))))));
+                    }
                 } else if ((sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("sumof"))) && any_p(lambda1(move |x: &'static Sexp| {
                     let tagcase_ = x;
                     match *tagcase_ {
@@ -1391,7 +1592,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                         }
                     }
                 }), cdr(xs))) {
-                    return match refuse(v, string_append(str_lit("a type KFX does not have (a keyed flat sum, not yet): "), show_sexp(t))) {};
+                    return match refuse(v, string_append(str_lit("a type KFX does not have: "), show_sexp(t))) {};
                 } else if (sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("sumof"))) {
                     let fields = map(&items, cdr(xs));
                     if (any_p(lambda1(move |f: Sexps| {
@@ -1691,6 +1892,15 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
                 string_append(str_lit("(blobref "), string_append(show_tys(s, args), str_lit(")")))
             } else if string_eq_p(d, str_lit("%flat-array")) {
                 string_append(str_lit("(arrayof "), string_append(show_tys(s, args), str_lit(")")))
+            } else if string_eq_p(d, str_lit("%flat-sum")) {
+                string_append(str_lit("(sumof "), string_append(show_ty(s, car(args)), string_append(run_together(map(lambda1(move |f: &'static Fvar| {
+                    let tagcase_ = f;
+                    match *tagcase_ {
+                        Fvar::Fvar(l, x) => {
+                            string_append(str_lit(" ("), string_append(l, string_append(str_lit(" "), string_append(show_ty(s, x), str_lit(")")))))
+                        }
+                    }
+                }), flat_sum_variants(args))), str_lit(")"))))
             } else if string_eq_p(d, str_lit("%place")) {
                 string_append(str_lit("(place "), string_append(show_tys(s, args), str_lit(")")))
             } else {

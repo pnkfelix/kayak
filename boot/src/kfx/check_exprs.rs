@@ -121,6 +121,26 @@ pub fn ty_sexp(v: &'static Cv, s: &'static St, t: &'static Ty) -> &'static Sexp 
                 lst(cons(sym(str_lit("arrayof"), str_lit(""), 0i64), map(lambda1(move |x: &'static Ty| {
                     ty_sexp(v, s, x)
                 }), args)), str_lit(""), 0i64, 0i64)
+            } else if string_eq_p(d, str_lit("%flat-sum")) {
+                lst(cons(sym(str_lit("sumof"), str_lit(""), 0i64), cons({
+                    let tagcase_ = car(args);
+                    match *tagcase_ {
+                        Ty::TyRconst(n) => {
+                            sym(n, str_lit(""), 0i64)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            sym(str_lit("u8"), str_lit(""), 0i64)
+                        }
+                    }
+                }, map(lambda1(move |f: &'static Fvar| {
+                    let tagcase_ = f;
+                    match *tagcase_ {
+                        Fvar::Fvar(l, x) => {
+                            lst(kayak_rt::cons(sym(l, str_lit(""), 0i64), kayak_rt::cons(ty_sexp(v, s, x), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
+                        }
+                    }
+                }), flat_sum_variants(args)))), str_lit(""), 0i64, 0i64)
             } else {
                 lst(cons(sym(d, str_lit(""), 0i64), map(lambda1(move |x: &'static Ty| {
                     ty_sexp(v, s, x)
@@ -187,7 +207,7 @@ pub fn distinct(mut xs: Strings) -> Strings {
 }
 
 pub fn blob_form_p(h: Str) -> bool {
-    string_member_p(h, kayak_rt::cons(str_lit("make-bloblet"), kayak_rt::cons(str_lit("rmake-bloblet"), kayak_rt::cons(str_lit("bloblet-ref"), kayak_rt::cons(str_lit("bloblet-set!"), kayak_rt::cons(str_lit("bloblet-byte"), kayak_rt::cons(str_lit("bloblet-set-byte!"), kayak_rt::cons(str_lit("bloblet-bytes"), kayak_rt::cons(str_lit("blobref-at"), kayak_rt::cons(str_lit("blobref+"), kayak_rt::cons(str_lit("blobref-owner"), kayak_rt::cons(str_lit("blobref-offset"), kayak_rt::cons(str_lit("blobref-get"), kayak_rt::cons(str_lit("blobref-set!"), kayak_rt::cons(str_lit("blobref-index"), kayak_rt::nil())))))))))))))))
+    string_member_p(h, kayak_rt::cons(str_lit("make-bloblet"), kayak_rt::cons(str_lit("rmake-bloblet"), kayak_rt::cons(str_lit("bloblet-ref"), kayak_rt::cons(str_lit("bloblet-set!"), kayak_rt::cons(str_lit("bloblet-byte"), kayak_rt::cons(str_lit("bloblet-set-byte!"), kayak_rt::cons(str_lit("bloblet-bytes"), kayak_rt::cons(str_lit("blobref-at"), kayak_rt::cons(str_lit("blobref+"), kayak_rt::cons(str_lit("blobref-owner"), kayak_rt::cons(str_lit("blobref-offset"), kayak_rt::cons(str_lit("blobref-get"), kayak_rt::cons(str_lit("blobref-set!"), kayak_rt::cons(str_lit("blobref-index"), kayak_rt::cons(str_lit("blobref-variant!"), kayak_rt::nil()))))))))))))))))
 }
 
 pub fn list_ref_i64(mut ts: Tys, mut i: i64) -> &'static Ty {
@@ -261,6 +281,26 @@ pub fn settled_sexp(s: &'static St, t: &'static Ty, region: bool) -> &'static Se
                 lst(cons(sym(str_lit("arrayof"), str_lit(""), 0i64), map(lambda1(move |x: &'static Ty| {
                     settled_sexp(s, x, false)
                 }), args)), str_lit(""), 0i64, 0i64)
+            } else if string_eq_p(d, str_lit("%flat-sum")) {
+                lst(cons(sym(str_lit("sumof"), str_lit(""), 0i64), cons({
+                    let tagcase_ = car(args);
+                    match *tagcase_ {
+                        Ty::TyRconst(n) => {
+                            sym(n, str_lit(""), 0i64)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            sym(str_lit("u8"), str_lit(""), 0i64)
+                        }
+                    }
+                }, map(lambda1(move |f: &'static Fvar| {
+                    let tagcase_ = f;
+                    match *tagcase_ {
+                        Fvar::Fvar(l, x) => {
+                            lst(kayak_rt::cons(sym(l, str_lit(""), 0i64), kayak_rt::cons(settled_sexp(s, x, false), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
+                        }
+                    }
+                }), flat_sum_variants(args)))), str_lit(""), 0i64, 0i64)
             } else {
                 lst(cons(sym(d, str_lit(""), 0i64), map(lambda1(move |x: &'static Ty| {
                     settled_sexp(s, x, false)
@@ -1998,10 +2038,39 @@ pub fn body_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Ty
                 let tagcase_ = walk(s, t);
                 match *tagcase_ {
                     Ty::TyData(d, args) => {
-                        if null_p(variants_of(v, d)) {
-                            match refuse(v, string_append(str_lit("tagcase of a "), string_append(show_ty(s, t), str_lit(", no sum")))) {}
+                        if string_eq_p(d, str_lit("%blobref")) {
+                            let (flat, owner) = (walk(s, car(cdr(args))), walk(s, car(args)));
+                            let tagcase_ = flat;
+                            match *tagcase_ {
+                                Ty::TyData(d2, a2) => {
+                                    if not(string_eq_p(d2, str_lit("%flat-sum"))) {
+                                        match refuse(v, string_append(str_lit("tagcase of a "), string_append(show_ty(s, t), str_lit(", no sum")))) {}
+                                    } else {
+                                        with_effs(flat_tag_arms(v, note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("blob-tagcase "), string_append(i64_to_string(key_width(car(a2))), string_append(str_lit(" "), i64_to_string(variant_offset(a2)))))), t, owner, flat_sum_variants(a2), cdr(xs), expected), effs_union(kayak_rt::cons(string_append(str_lit("read:"), region_string(s, {
+                                            let tagcase_ = owner;
+                                            match *tagcase_ {
+                                                Ty::TyData(d3, a3) => {
+                                                    car(a3)
+                                                }
+                                                _ => {
+                                                    let other = tagcase_;
+                                                    ty_unit()
+                                                }
+                                            }
+                                        })), kayak_rt::nil()), es))
+                                    }
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    match refuse(v, string_append(str_lit("tagcase of a "), string_append(show_ty(s, t), str_lit(", no sum")))) {}
+                                }
+                            }
                         } else {
-                            with_effs(tag_arms(v, s, walk(s, t), cdr(xs), instantiate_variants(family_of(v, d), args, variants_of(v, d)), expected), es)
+                            if null_p(variants_of(v, d)) {
+                                match refuse(v, string_append(str_lit("tagcase of a "), string_append(show_ty(s, t), str_lit(", no sum")))) {}
+                            } else {
+                                with_effs(tag_arms(v, s, walk(s, t), cdr(xs), instantiate_variants(family_of(v, d), args, variants_of(v, d)), expected), es)
+                            }
                         }
                     }
                     Ty::TyShape(p, ls, ts) => {
@@ -2243,6 +2312,103 @@ pub fn case_data(v: &'static Cv, s: &'static St, kind: Str, xs: Sexps) -> &'stat
         match *tagcase_ {
             Res::Res(t, es, s) => {
                 case_data(v, s, kind, cdr(xs))
+            }
+        }
+    }
+}
+
+/// A tagcase's arms on a flat sum (C33): each a label, a number, and one
+/// name, a blobref to its variant; `else` the blobref as it is. `vs` are
+/// the variants no arm has taken yet.
+pub fn flat_tag_arms(v: &'static Cv, s: &'static St, whole: &'static Ty, owner: &'static Ty, vs: Fvars, arms: Sexps, expected: Tys) -> &'static Res {
+    if null_p(arms) {
+        if null_p(vs) {
+            res(if null_p(expected) {
+                ty_void()
+            } else {
+                car(expected)
+            }, nil::<Str>(), s)
+        } else {
+            match refuse(v, string_append(str_lit("this tagcase has no arm for "), {
+                let tagcase_ = car(vs);
+                match *tagcase_ {
+                    Fvar::Fvar(l, x) => {
+                        l
+                    }
+                }
+            })) {}
+        }
+    } else {
+        let arm = items(car(arms));
+        if (i64_lt(size(arm), 3i64) || {
+            let tagcase_ = second(arm);
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    false
+                }
+                _ => {
+                    let other = tagcase_;
+                    true
+                }
+            }
+        }) {
+            match refuse(v, str_lit("an arm on a flat sum binds one name, a blobref to its variant: no bytes are copied out")) {}
+        } else if sym_is_p(car(arm), str_lit("else")) {
+            if null_p(cdr(arms)) {
+                body(with_binds(v, kayak_rt::cons(local(v, name_of(v, second(arm)), whole), kayak_rt::nil())), s, cdr(cdr(arm)), expected)
+            } else {
+                match refuse(v, str_lit("a tagcase's else is its last arm")) {}
+            }
+        } else {
+            let lab = {
+                let tagcase_ = car(arm);
+                match *tagcase_ {
+                    Sexp::Num(k, f, p) => {
+                        i64_to_string(k)
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        str_lit("")
+                    }
+                }
+            };
+            let found = concat(map(lambda1(move |f: &'static Fvar| {
+                let tagcase_ = f;
+                match *tagcase_ {
+                    Fvar::Fvar(l, x) => {
+                        if string_eq_p(l, lab) {
+                            the::<Tys>(kayak_rt::cons(x, kayak_rt::nil()))
+                        } else {
+                            nil::<&'static Ty>()
+                        }
+                    }
+                }
+            }), vs));
+            if null_p(found) {
+                match refuse(v, string_append(str_lit("a flat sum's arm is named by one of its labels not taken yet, a number: "), show_sexp(car(arm)))) {}
+            } else {
+                let tagcase_ = body(with_binds(v, kayak_rt::cons(local(v, name_of(v, second(arm)), ty_data(str_lit("%blobref"), kayak_rt::cons(owner, kayak_rt::cons(car(found), kayak_rt::nil())))), kayak_rt::nil())), s, cdr(cdr(arm)), expected);
+                match *tagcase_ {
+                    Res::Res(t, es, s) => {
+                        let tagcase_ = flat_tag_arms(v, s, whole, owner, concat(map(lambda1(move |f: &'static Fvar| {
+                            let tagcase_ = f;
+                            match *tagcase_ {
+                                Fvar::Fvar(l, x) => {
+                                    if string_eq_p(l, lab) {
+                                        nil::<&'static Fvar>()
+                                    } else {
+                                        the::<Fvars>(kayak_rt::cons(f, kayak_rt::nil()))
+                                    }
+                                }
+                            }
+                        }), vs)), cdr(arms), next_expected(s, t, expected));
+                        match *tagcase_ {
+                            Res::Res(t2, es2, s) => {
+                                res(joined(s, t, t2, expected), effs_union(es, es2), join_state(v, s, t, t2, expected))
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -2884,6 +3050,51 @@ pub fn blob_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Ty
                                     _ => {
                                         let other = tagcase_;
                                         match refuse(v, str_lit("blobref-index of a blobref to no flat array")) {}
+                                    }
+                                }
+                            } else if string_eq_p(h, str_lit("blobref-variant!")) {
+                                let tagcase_ = flat;
+                                match *tagcase_ {
+                                    Ty::TyData(d3, a3) => {
+                                        let lab = {
+                                            let tagcase_ = second(xs);
+                                            match *tagcase_ {
+                                                Sexp::Num(k, f, p) => {
+                                                    i64_to_string(k)
+                                                }
+                                                _ => {
+                                                    let other = tagcase_;
+                                                    str_lit("")
+                                                }
+                                            }
+                                        };
+                                        let found = concat(map(lambda1(move |f: &'static Fvar| {
+                                            let tagcase_ = f;
+                                            match *tagcase_ {
+                                                Fvar::Fvar(l, x) => {
+                                                    if string_eq_p(l, lab) {
+                                                        the::<Tys>(kayak_rt::cons(x, kayak_rt::nil()))
+                                                    } else {
+                                                        nil::<&'static Ty>()
+                                                    }
+                                                }
+                                            }
+                                        }), if string_eq_p(d3, str_lit("%flat-sum")) {
+                                            flat_sum_variants(a3)
+                                        } else {
+                                            nil::<&'static Fvar>()
+                                        }));
+                                        if not(string_eq_p(d3, str_lit("%flat-sum"))) {
+                                            match refuse(v, str_lit("blobref-variant! of a blobref to no flat sum")) {}
+                                        } else if null_p(found) {
+                                            match refuse(v, str_lit("a variant is named by a literal, one of the flat sum's labels")) {}
+                                        } else {
+                                            res(ty_data(str_lit("%blobref"), kayak_rt::cons(owner, kayak_rt::cons(car(found), kayak_rt::nil()))), effs_union(kayak_rt::cons(string_append(str_lit("read:"), region_string(s, region)), kayak_rt::cons(string_append(str_lit("write:"), region_string(s, region)), kayak_rt::nil())), es0), note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("blob-variant "), string_append(i64_to_string(key_width(car(a3))), string_append(str_lit(" "), string_append(lab, string_append(str_lit(" "), i64_to_string(variant_offset(a3)))))))))
+                                        }
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        match refuse(v, str_lit("blobref-variant! of a blobref to no flat sum")) {}
                                     }
                                 }
                             } else if string_eq_p(scalar_name(flat), str_lit("")) {

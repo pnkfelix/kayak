@@ -1,0 +1,6 @@
+"An arm on a flat sum binds one name, a blobref to its variant: no bytes
+ are copied out."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type o (bloblet (fields) @b))
+(define r (blobref o (sumof u8 (1 (productof (x i32) (y i32))))) (blobref-at (the o (make-bloblet 16)) 0))
+(tagcase r (1 (x y) 0))

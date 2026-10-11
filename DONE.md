@@ -967,3 +967,12 @@ as Fixpt writes one, `f32->f64`, `f64->f32`, `f32->bits`, `bits->f32`, and
 `f64->bits`, `bits->f64`), and as a flat scalar, 4 bytes, in a suffix
 (`get_f32`) and a typed one (`Cell<f32>`). `tests/kfx/f32`. Fixpt's
 programs kfx accepts: 73, all agreeing.
+
+## Keyed flat sums (2026-10-11)
+
+C33: `(sumof u8|u16|u32 (label F) ...)` as a flat, `blobref-variant!`, and
+`tagcase` on a blobref to one, in C31's words (never typed: a sum's
+variants share bytes). `tests/kfx/flat-sums` (Fixpt's `flat-inlined.fx`,
+a stale variant's blobref, `else` catching a tag no label has); four
+refusals Fixpt shares. Of Fixpt's 45 bloblet programs, 7 accepted, all
+agreeing. Fixpt's programs kfx accepts: 75, all agreeing.

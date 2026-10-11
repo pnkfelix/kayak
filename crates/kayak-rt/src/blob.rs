@@ -197,6 +197,20 @@ impl<B: Owner> BlobRef<B> {
         }
     }
 
+    /// A flat sum's tag, `k` bytes, the label as it is (C33).
+    #[inline]
+    pub fn tag(self, k: usize) -> u64 {
+        self.owner.read(self.at, k)
+    }
+
+    /// `(blobref-variant! r label)`: the tag written, and a blobref to the
+    /// variant, `off` bytes in.
+    #[inline]
+    pub fn variant(self, k: usize, label: u64, off: usize) -> Self {
+        self.owner.write(self.at, k, label);
+        self.field(off)
+    }
+
     pub fn offset(self) -> Int {
         i64_to_int(self.at as i64)
     }
@@ -215,6 +229,11 @@ impl<B: Owner> BlobRef<B> {
         |w| f32::from_bits(w as u32),
         |v| v.to_bits() as u64
     );
+}
+
+/// A `tagcase` on a flat sum whose tag no arm has, and no `else`.
+pub fn no_flat_tag() -> ! {
+    fail("tagcase: no arm for this flat sum's tag")
 }
 
 /// `(blobref-owner r)`.

@@ -1,0 +1,5 @@
+"A tagcase on a flat sum covers its variants, or has an else."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type o (bloblet (fields) @b))
+(define r (blobref o (sumof u8 (1 f64) (7 i32))) (blobref-at (the o (make-bloblet 16)) 0))
+(tagcase r (1 x 0))
