@@ -17,6 +17,45 @@ pub type Chars = List<char>;
 
 pub type Strings = List<Str>;
 
+// Lists, of anything
+pub fn map<A: Copy + 'static, B: Copy + 'static>(f: &'static dyn Fn(A) -> B, xs: List<A>) -> List<B> {
+    if null_p(xs) {
+        nil()
+    } else {
+        cons(f(car(xs)), map(f, cdr(xs)))
+    }
+}
+
+pub fn any_p<A: Copy + 'static>(p: &'static dyn Fn(A) -> bool, xs: List<A>) -> bool {
+    (not(null_p(xs)) && (p(car(xs)) || any_p(p, cdr(xs))))
+}
+
+pub fn size_from<A: Copy + 'static>(mut xs: List<A>, mut n: i64) -> i64 {
+    loop {
+        if null_p(xs) {
+            return n;
+        } else {
+            (xs, n) = (cdr(xs), i64_plus(n, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn size<A: Copy + 'static>(xs: List<A>) -> i64 {
+    size_from(xs, 0i64)
+}
+
+pub fn last<A: Copy + 'static>(mut xs: List<A>) -> A {
+    loop {
+        if null_p(cdr(xs)) {
+            return car(xs);
+        } else {
+            xs = cdr(xs);
+            continue;
+        }
+    }
+}
+
 // Characters and strings
 pub fn rev_onto(mut xs: Chars, mut acc: Chars) -> Chars {
     loop {
@@ -59,6 +98,20 @@ pub fn put_from(mut s: Str, mut i: i64, mut n: i64, mut acc: Chars) -> Chars {
 /// Adds `s` to the output `acc`.
 pub fn put(s: Str, acc: Chars) -> Chars {
     put_from(s, 0i64, string_length_i64(s), acc)
+}
+
+/// Each of `xs` added to `acc` by `each`, separated by `sep`.
+pub fn put_sep<A: Copy + 'static>(mut each: &'static dyn Fn(A, Chars) -> Chars, mut sep: Str, mut xs: List<A>, mut acc: Chars) -> Chars {
+    loop {
+        if null_p(xs) {
+            return acc;
+        } else if null_p(cdr(xs)) {
+            return each(car(xs), acc);
+        } else {
+            (xs, acc) = (cdr(xs), put(sep, each(car(xs), acc)));
+            continue;
+        }
+    }
 }
 
 pub fn string_member_p(s: Str, xs: Strings) -> bool {
@@ -363,14 +416,6 @@ pub fn head_is_p(e: &'static Sexp, s: Str) -> bool {
             let other = tagcase_;
             false
         }
-    }
-}
-
-pub fn size(xs: Sexps) -> i64 {
-    if null_p(xs) {
-        0i64
-    } else {
-        i64_plus(1i64, size(cdr(xs)))
     }
 }
 
@@ -695,17 +740,10 @@ pub fn put_type(c: &'static Ctx, t: &'static Sexp, acc: Chars) -> Chars {
 }
 
 /// Types, separated by commas.
-pub fn put_types(mut c: &'static Ctx, mut types: Sexps, mut acc: Chars) -> Chars {
-    loop {
-        if null_p(types) {
-            return acc;
-        } else if null_p(cdr(types)) {
-            return put_type(c, car(types), acc);
-        } else {
-            (types, acc) = (cdr(types), put(", ", put_type(c, car(types), acc)));
-            continue;
-        }
-    }
+pub fn put_types(c: &'static Ctx, types: Sexps, acc: Chars) -> Chars {
+    put_sep(lambda2(move |t, acc| {
+        put_type(c, t, acc)
+    }), ", ", types, acc)
 }
 
 pub fn put_var(c: &'static Ctx, s: Str, acc: Chars) -> Chars {
@@ -795,17 +833,10 @@ pub fn comment_text(e: &'static Sexp) -> Str {
 }
 
 /// Names, separated by commas.
-pub fn put_names(mut xs: Sexps, mut acc: Chars) -> Chars {
-    loop {
-        if null_p(xs) {
-            return acc;
-        } else if null_p(cdr(xs)) {
-            return put(mangle(sym_name(car(xs))), acc);
-        } else {
-            (xs, acc) = (cdr(xs), put(", ", put(mangle(sym_name(car(xs))), acc)));
-            continue;
-        }
-    }
+pub fn put_names(xs: Sexps, acc: Chars) -> Chars {
+    put_sep(lambda2(move |x, acc| {
+        put(mangle(sym_name(x)), acc)
+    }), ", ", xs, acc)
 }
 
 // Self tail calls. Rust has no tail calls, so a procedure that calls itself
@@ -828,63 +859,24 @@ pub fn returns(f0: Str, f1: Strings, f2: bool) -> &'static Tail {
 // looping procedure does, with the procedure's name and parameters; the
 // flag is false where a binding hides a parameter, since an assignment
 // would then reach the binding, not the parameter.
-pub fn strings_size(xs: Strings) -> i64 {
-    if null_p(xs) {
-        0i64
-    } else {
-        i64_plus(1i64, strings_size(cdr(xs)))
-    }
+pub fn binding_name(binding: &'static Sexp) -> Str {
+    sym_name(car(items(binding)))
 }
 
-pub fn any_member_p(xs: Strings, ys: Strings) -> bool {
-    (not(null_p(xs)) && (string_member_p(car(xs), ys) || any_member_p(cdr(xs), ys)))
-}
-
-pub fn last_sexp(mut xs: Sexps) -> &'static Sexp {
-    loop {
-        if null_p(cdr(xs)) {
-            return car(xs);
-        } else {
-            xs = cdr(xs);
-            continue;
-        }
-    }
-}
-
-pub fn sym_names(xs: Sexps) -> Strings {
-    if null_p(xs) {
-        nil()
-    } else {
-        cons(sym_name(car(xs)), sym_names(cdr(xs)))
-    }
-}
-
-pub fn binding_names(bindings: Sexps) -> Strings {
-    if null_p(bindings) {
-        nil()
-    } else {
-        cons(sym_name(car(items(car(bindings)))), binding_names(cdr(bindings)))
-    }
-}
-
-/// A lambda's parameters' names: each is `x` or `(x T)`.
-pub fn param_names(params: Sexps) -> Strings {
-    if null_p(params) {
-        nil()
-    } else {
-        cons(sym_name({
-            let tagcase_ = car(params);
-            match *tagcase_ {
-                Sexp::Lst(xs) => {
-                    car(xs)
-                }
-                _ => {
-                    let other = tagcase_;
-                    other
-                }
+/// A lambda's parameter's name: it is `x` or `(x T)`.
+pub fn param_name(param: &'static Sexp) -> Str {
+    sym_name({
+        let tagcase_ = param;
+        match *tagcase_ {
+            Sexp::Lst(xs) => {
+                car(xs)
             }
-        }), param_names(cdr(params)))
-    }
+            _ => {
+                let other = tagcase_;
+                other
+            }
+        }
+    })
 }
 
 /// `t`, under bindings of `names`.
@@ -892,7 +884,9 @@ pub fn hide(t: &'static Tail, names: Strings) -> &'static Tail {
     let tagcase_ = t;
     match *tagcase_ {
         Tail::Returns(f, ps, live) => {
-            if (live && any_member_p(names, ps)) {
+            if (live && any_p(lambda1(move |x| {
+                string_member_p(x, ps)
+            }), names)) {
                 returns(f, ps, false)
             } else {
                 t
@@ -922,7 +916,7 @@ pub fn self_call_p(t: &'static Tail, e: &'static Sexp) -> bool {
     let tagcase_ = t;
     match *tagcase_ {
         Tail::Returns(f, ps, live) => {
-            (live && head_is_p(e, f) && i64_eq(size(cdr(items(e))), strings_size(ps)))
+            (live && head_is_p(e, f) && i64_eq(size(cdr(items(e))), size(ps)))
         }
         _ => {
             let other = tagcase_;
@@ -953,10 +947,10 @@ pub fn tail_calls_p(mut t: &'static Tail, mut e: &'static Sexp) -> bool {
             return tag_arms_tail_calls_p(t, cdr(cdr(items(e))));
         } else if (head_is_p(e, "let") || head_is_p(e, "let*")) {
             let xs = cdr(items(e));
-            (t, e) = (hide(t, binding_names(items(car(xs)))), last_sexp(cdr(xs)));
+            (t, e) = (hide(t, map(&binding_name, items(car(xs)))), last(cdr(xs)));
             continue;
         } else if head_is_p(e, "begin") {
-            e = last_sexp(cdr(items(e)));
+            e = last(cdr(items(e)));
             continue;
         } else {
             return false;
@@ -969,7 +963,7 @@ pub fn arms_tail_calls_p(mut t: &'static Tail, mut arms: Sexps) -> bool {
     loop {
         if null_p(arms) {
             return false;
-        } else if tail_calls_p(t, last_sexp(cdr(items(car(arms))))) {
+        } else if tail_calls_p(t, last(cdr(items(car(arms))))) {
             return true;
         } else {
             arms = cdr(arms);
@@ -986,9 +980,9 @@ pub fn tag_arms_tail_calls_p(t: &'static Tail, arms: Sexps) -> bool {
         let bound = if sym_is_p(car(arm), "else") {
             cons(sym_name(second(arm)), nil())
         } else {
-            sym_names(items(second(arm)))
+            map(&sym_name, items(second(arm)))
         };
-        (tail_calls_p(hide(t, bound), last_sexp(cdr(cdr(arm)))) || tag_arms_tail_calls_p(t, cdr(arms)))
+        (tail_calls_p(hide(t, bound), last(cdr(cdr(arm)))) || tag_arms_tail_calls_p(t, cdr(arms)))
     }
 }
 
@@ -1020,17 +1014,10 @@ pub fn changes(ps: Strings, args: Sexps) -> &'static Assign {
 }
 
 /// Names, mangled, separated by commas.
-pub fn put_strings(mut xs: Strings, mut acc: Chars) -> Chars {
-    loop {
-        if null_p(xs) {
-            return acc;
-        } else if null_p(cdr(xs)) {
-            return put(mangle(car(xs)), acc);
-        } else {
-            (xs, acc) = (cdr(xs), put(", ", put(mangle(car(xs)), acc)));
-            continue;
-        }
-    }
+pub fn put_strings(xs: Strings, acc: Chars) -> Chars {
+    put_sep(lambda2(move |x, acc| {
+        put(mangle(x), acc)
+    }), ", ", xs, acc)
 }
 
 // Every writer of an expression takes `n`, the indentation of the line it
@@ -1113,12 +1100,9 @@ pub fn put_continue(c: &'static Ctx, args: Sexps, n: i64, t: &'static Tail, acc:
 
 /// Expressions separated by `sep`.
 pub fn put_joined(c: &'static Ctx, xs: Sexps, sep: Str, n: i64, acc: Chars) -> Chars {
-    let acc = put_exp(c, car(xs), n, value(), acc);
-    if null_p(cdr(xs)) {
-        acc
-    } else {
-        put_joined(c, cdr(xs), sep, n, put(sep, acc))
-    }
+    put_sep(lambda2(move |x, acc| {
+        put_exp(c, x, n, value(), acc)
+    }), sep, xs, acc)
 }
 
 /// A body as the inside of a block: each expression on a line of its own,
@@ -1136,7 +1120,7 @@ pub fn put_stmts(mut c: &'static Ctx, mut es: Sexps, mut n: i64, mut t: &'static
             return put_stmts(c, cdr(es), n, t, put_nl(n, acc));
         } else if (head_is_p(e, "let") || head_is_p(e, "let*")) {
             let xs = cdr(items(e));
-            let names = binding_names(items(car(xs)));
+            let names = map(&binding_name, items(car(xs)));
             (c, es, t, acc) = (with_locals(c, names), cdr(xs), hide(t, names), if head_is_p(e, "let") {
                 put_let(c, items(car(xs)), n, acc)
             } else {
@@ -1188,7 +1172,7 @@ pub fn put_let_star(mut c: &'static Ctx, mut bindings: Sexps, mut n: i64, mut ac
         if null_p(bindings) {
             return acc;
         } else {
-            (c, bindings, acc) = (with_locals(c, binding_names(cons(car(bindings), nil()))), cdr(bindings), put_let1(c, car(bindings), n, acc));
+            (c, bindings, acc) = (with_locals(c, map(&binding_name, cons(car(bindings), nil()))), cdr(bindings), put_let1(c, car(bindings), n, acc));
             continue;
         }
     }
@@ -1254,7 +1238,7 @@ pub fn put_tagcase_arms(c: &'static Ctx, arms: Sexps, n: i64, t: &'static Tail, 
         let bound = if else_p {
             cons(sym_name(second(arm)), nil())
         } else {
-            sym_names(items(second(arm)))
+            map(&sym_name, items(second(arm)))
         };
         let acc = put_nl(n, acc);
         let acc = if else_p {
@@ -1295,7 +1279,7 @@ pub fn put_lambda(c: &'static Ctx, params: Sexps, body: Sexps, n: i64, acc: Char
     let acc = put("(move |", acc);
     let acc = put_lambda_params(c, params, acc);
     let acc = put("| ", acc);
-    put(")", put_block(with_locals(c, param_names(params)), body, n, value(), acc))
+    put(")", put_block(with_locals(c, map(&param_name, params)), body, n, value(), acc))
 }
 
 /// `x`, or `(x T)` as `x: T`.
@@ -1480,13 +1464,13 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, r#type: &'static Sexp, d
         body
     };
     let t = if lambda_p {
-        returns(sym_name(name), param_names(items(second(items(defined)))), true)
+        returns(sym_name(name), map(&param_name, items(second(items(defined)))), true)
     } else {
         value()
     };
-    let loops_p = (lambda_p && tail_calls_p(t, last_sexp(body)));
+    let loops_p = (lambda_p && tail_calls_p(t, last(body)));
     let inner = if lambda_p {
-        with_locals(c, param_names(items(second(items(defined)))))
+        with_locals(c, map(&param_name, items(second(items(defined)))))
     } else {
         c
     };

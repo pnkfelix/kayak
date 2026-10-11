@@ -239,3 +239,10 @@ operator. Its first run found the primitive case.
 `scripts/regen.sh` regenerates through the bootstrap safely: only a
 successful run's output replaces the seed, and on failure the seed is
 restored.
+
+Then the second step of the bootstrap: the compiler's own source uses
+them. A generic `map`, `any?`, `size` and `last` replace six typed copies
+of the same walks (`sym-names`, `param-names`, `strings-size`, …), and one
+higher-order `put-sep` writes every comma-separated list (names, types,
+expressions). FX-26 infers the lambdas' parameter types from `put-sep`'s
+signature, as rustc does from the generated `lambda2`.

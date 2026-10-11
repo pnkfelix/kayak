@@ -14,6 +14,24 @@
 (define-type chars (listof char acyclic))
 (define-type strings (listof string acyclic))
 
+"Lists, of anything"
+
+(define map (poly ((a type) (b type))
+              (subr kfx ((subr kfx (a) b) (listof a acyclic)) (listof b acyclic)))
+  (lambda (f xs) (if (null? xs) nil (cons (f (car xs)) (map f (cdr xs))))))
+
+(define any? (poly ((a type)) (subr kfx ((subr kfx (a) bool) (listof a acyclic)) bool))
+  (lambda (p xs) (and (not (null? xs)) (or (p (car xs)) (any? p (cdr xs))))))
+
+(define size-from (poly ((a type)) (subr kfx ((listof a acyclic) i64) i64))
+  (lambda (xs n) (if (null? xs) n (size-from (cdr xs) (i64+ n 1)))))
+
+(define size (poly ((a type)) (subr kfx ((listof a acyclic)) i64))
+  (lambda (xs) (size-from xs 0)))
+
+(define last (poly ((a type)) (subr kfx ((listof a acyclic)) a))
+  (lambda (xs) (if (null? (cdr xs)) (car xs) (last (cdr xs)))))
+
 "Characters and strings"
 
 (define rev-onto (subr kfx (chars chars) chars)
@@ -38,6 +56,14 @@
   (lambda (s acc)
     "Adds `s` to the output `acc`."
     (put-from s 0 (string-length-i64 s) acc)))
+
+(define put-sep (poly ((a type))
+                  (subr kfx ((subr kfx (a chars) chars) string (listof a acyclic) chars) chars))
+  (lambda (each sep xs acc)
+    "Each of `xs` added to `acc` by `each`, separated by `sep`."
+    (cond ((null? xs) acc)
+          ((null? (cdr xs)) (each (car xs) acc))
+          (else (put-sep each sep (cdr xs) (put sep (each (car xs) acc)))))))
 
 (define string-member? (subr kfx (string strings) bool)
   (lambda (s xs)
@@ -171,9 +197,6 @@
     (tagcase e
       (lst (xs) (and (not (null? xs)) (sym-is? (car xs) s)))
       (else other #f))))
-
-(define size (subr kfx (sexps) i64)
-  (lambda (xs) (if (null? xs) 0 (i64+ 1 (size (cdr xs))))))
 
 (define second (subr kfx (sexps) sexp) (lambda (xs) (car (cdr xs))))
 (define third (subr kfx (sexps) sexp) (lambda (xs) (car (cdr (cdr xs)))))
@@ -337,9 +360,7 @@
   (put-types (subr kfx (ctx sexps chars) chars)
     (lambda (c types acc)
       "Types, separated by commas."
-      (cond ((null? types) acc)
-            ((null? (cdr types)) (put-type c (car types) acc))
-            (else (put-types c (cdr types) (put ", " (put-type c (car types) acc))))))))
+      (put-sep (lambda (t acc) (put-type c t acc)) ", " types acc))))
 
 (define put-var (subr kfx (ctx string chars) chars)
   (lambda (c s acc)
@@ -381,9 +402,7 @@
 (define put-names (subr kfx (sexps chars) chars)
   (lambda (xs acc)
     "Names, separated by commas."
-    (cond ((null? xs) acc)
-          ((null? (cdr xs)) (put (mangle (sym-name (car xs))) acc))
-          (else (put-names (cdr xs) (put ", " (put (mangle (sym-name (car xs))) acc)))))))
+    (put-sep (lambda (x acc) (put (mangle (sym-name x)) acc)) ", " xs acc)))
 
 "Self tail calls. Rust has no tail calls, so a procedure that calls itself
  last is a `loop`: the call assigns its parameters and `continue`s, and
@@ -398,38 +417,19 @@
  flag is false where a binding hides a parameter, since an assignment
  would then reach the binding, not the parameter."
 
-(define strings-size (subr kfx (strings) i64)
-  (lambda (xs) (if (null? xs) 0 (i64+ 1 (strings-size (cdr xs))))))
+(define binding-name (subr kfx (sexp) string)
+  (lambda (binding) (sym-name (car (items binding)))))
 
-(define any-member? (subr kfx (strings strings) bool)
-  (lambda (xs ys)
-    (and (not (null? xs)) (or (string-member? (car xs) ys) (any-member? (cdr xs) ys)))))
-
-(define last-sexp (subr kfx (sexps) sexp)
-  (lambda (xs) (if (null? (cdr xs)) (car xs) (last-sexp (cdr xs)))))
-
-(define sym-names (subr kfx (sexps) strings)
-  (lambda (xs) (if (null? xs) nil (cons (sym-name (car xs)) (sym-names (cdr xs))))))
-
-(define binding-names (subr kfx (sexps) strings)
-  (lambda (bindings)
-    (if (null? bindings)
-        nil
-        (cons (sym-name (car (items (car bindings)))) (binding-names (cdr bindings))))))
-
-(define param-names (subr kfx (sexps) strings)
-  (lambda (params)
-    "A lambda's parameters' names: each is `x` or `(x T)`."
-    (if (null? params)
-        nil
-        (cons (sym-name (tagcase (car params) (lst (xs) (car xs)) (else other other)))
-              (param-names (cdr params))))))
+(define param-name (subr kfx (sexp) string)
+  (lambda (param)
+    "A lambda's parameter's name: it is `x` or `(x T)`."
+    (sym-name (tagcase param (lst (xs) (car xs)) (else other other)))))
 
 (define hide (subr kfx (tail strings) tail)
   (lambda (t names)
     "`t`, under bindings of `names`."
     (tagcase t
-      (returns (f ps live) (if (and live (any-member? names ps)) (returns f ps #f) t))
+      (returns (f ps live) (if (and live (any? (lambda (x) (string-member? x ps)) names)) (returns f ps #f) t))
       (else other t))))
 
 (define returns? (subr kfx (tail) bool)
@@ -439,7 +439,7 @@
   (lambda (t e)
     (tagcase t
       (returns (f ps live)
-        (and live (head-is? e f) (i64= (size (cdr (items e))) (strings-size ps))))
+        (and live (head-is? e f) (i64= (size (cdr (items e))) (size ps))))
       (else other #f))))
 
 (define control? (subr kfx (sexp) bool)
@@ -462,14 +462,14 @@
             ((head-is? e "tagcase") (tag-arms-tail-calls? t (cdr (cdr (items e)))))
             ((or (head-is? e "let") (head-is? e "let*"))
              (let ((xs (cdr (items e))))
-               (tail-calls? (hide t (binding-names (items (car xs)))) (last-sexp (cdr xs)))))
-            ((head-is? e "begin") (tail-calls? t (last-sexp (cdr (items e)))))
+               (tail-calls? (hide t (map binding-name (items (car xs)))) (last (cdr xs)))))
+            ((head-is? e "begin") (tail-calls? t (last (cdr (items e)))))
             (else #f))))
   (arms-tail-calls? (subr kfx (tail sexps) bool)
     (lambda (t arms)
       "A `cond`'s clauses, or a `case`'s arms: each a test or data, then a body."
       (cond ((null? arms) #f)
-            ((tail-calls? t (last-sexp (cdr (items (car arms))))) #t)
+            ((tail-calls? t (last (cdr (items (car arms))))) #t)
             (else (arms-tail-calls? t (cdr arms))))))
   (tag-arms-tail-calls? (subr kfx (tail sexps) bool)
     (lambda (t arms)
@@ -478,8 +478,8 @@
           (let* ((arm (items (car arms)))
                  (bound (if (sym-is? (car arm) "else")
                             (the strings (list (sym-name (second arm))))
-                            (sym-names (items (second arm))))))
-            (or (tail-calls? (hide t bound) (last-sexp (cdr (cdr arm))))
+                            (map sym-name (items (second arm))))))
+            (or (tail-calls? (hide t bound) (last (cdr (cdr arm))))
                 (tag-arms-tail-calls? t (cdr arms))))))))
 
 (define-datatype assign (assign strings sexps))
@@ -499,9 +499,7 @@
 (define put-strings (subr kfx (strings chars) chars)
   (lambda (xs acc)
     "Names, mangled, separated by commas."
-    (cond ((null? xs) acc)
-          ((null? (cdr xs)) (put (mangle (car xs)) acc))
-          (else (put-strings (cdr xs) (put ", " (put (mangle (car xs)) acc)))))))
+    (put-sep (lambda (x acc) (put (mangle x) acc)) ", " xs acc)))
 
 "Every writer of an expression takes `n`, the indentation of the line it
  starts on, and `t`, where the expression stands."
@@ -551,8 +549,7 @@
   (put-joined (subr kfx (ctx sexps string i64 chars) chars)
     (lambda (c xs sep n acc)
       "Expressions separated by `sep`."
-      (let ((acc (put-exp c (car xs) n (value) acc)))
-        (if (null? (cdr xs)) acc (put-joined c (cdr xs) sep n (put sep acc))))))
+      (put-sep (lambda (x acc) (put-exp c x n (value) acc)) sep xs acc)))
 
   (put-stmts (subr kfx (ctx sexps i64 tail chars) chars)
     (lambda (c es n t acc)
@@ -567,7 +564,7 @@
                  (put-stmts c (cdr es) n t (put-nl n acc))))
               ((or (head-is? e "let") (head-is? e "let*"))
                (let* ((xs (cdr (items e)))
-                      (names (binding-names (items (car xs)))))
+                      (names (map binding-name (items (car xs)))))
                  (put-stmts (with-locals c names) (cdr xs) n (hide t names)
                             (if (head-is? e "let")
                                 (put-let c (items (car xs)) n acc)
@@ -607,7 +604,7 @@
       "Each binding sees those before it."
       (if (null? bindings)
           acc
-          (put-let* (with-locals c (binding-names (list (car bindings)))) (cdr bindings) n
+          (put-let* (with-locals c (map binding-name (list (car bindings)))) (cdr bindings) n
                     (put-let1 c (car bindings) n acc)))))
 
   (put-binding-values (subr kfx (ctx sexps i64 chars) chars)
@@ -658,7 +655,7 @@
                  (else? (string=? tag "else"))
                  (bound (if else?
                             (the strings (list (sym-name (second arm))))
-                            (sym-names (items (second arm)))))
+                            (map sym-name (items (second arm)))))
                  (acc (put-nl n acc))
                  (acc (if else?
                           (let* ((acc (put "_ => {" acc))
@@ -695,7 +692,7 @@
              (acc (put "(move |" acc))
              (acc (put-lambda-params c params acc))
              (acc (put "| " acc)))
-        (put ")" (put-block (with-locals c (param-names params)) body n (value) acc)))))
+        (put ")" (put-block (with-locals c (map param-name params)) body n (value) acc)))))
 
   (put-lambda-params (subr kfx (ctx sexps chars) chars)
     (lambda (c params acc)
@@ -793,10 +790,10 @@
            (acc (if doc? (put "\n" (put-comment (string-chars (comment-text (car body))) "///" 0 #t acc)) acc))
            (body (if doc? (cdr body) body))
            (t (if lambda?
-                  (returns (sym-name name) (param-names (items (second (items defined)))) #t)
+                  (returns (sym-name name) (map param-name (items (second (items defined)))) #t)
                   (value)))
-           (loops? (and lambda? (tail-calls? t (last-sexp body))))
-           (inner (if lambda? (with-locals c (param-names (items (second (items defined))))) c))
+           (loops? (and lambda? (tail-calls? t (last body))))
+           (inner (if lambda? (with-locals c (map param-name (items (second (items defined))))) c))
            (acc (put "pub fn " acc))
            (acc (put (mangle (sym-name name)) acc))
            (acc (put-generics binders #t acc))
