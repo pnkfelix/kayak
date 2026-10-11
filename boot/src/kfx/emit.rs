@@ -710,7 +710,11 @@ pub fn note(form: &'static Sexp, c: &'static Ctx) -> &'static Ctx {
                 // A type abbreviation's body, kept for the typed suffixes (C32), which
                 // compare types as written out.
                 ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms), es, cons(typed(string_append(str_lit("%alias "), sym_name(second(items(form)))), third(items(form))), mods))
-            } else if (head_is_p(form, str_lit("define-type")) || head_is_p(form, str_lit("define-generative"))) {
+            } else if head_is_p(form, str_lit("define-type")) {
+                // A family abbreviation: its regions Rust lifetimes (C39), as a
+                // generative type's are not.
+                ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms), es, cons(typed(string_append(str_lit("%abbreviation "), type_head_name(second(items(form)))), third(items(form))), mods))
+            } else if head_is_p(form, str_lit("define-generative")) {
                 ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms), es, mods)
             } else if head_is_p(form, str_lit("define-effect")) {
                 ctx(ds, ts, ks, ls, xs, fs, ms, cons(typed(sym_name(second(items(form))), third(items(form))), es), mods)
@@ -1230,7 +1234,7 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
                             };
                             let acc = put(camel(n), acc);
                             let args = type_arguments(cdr(xs), kinds);
-                            let lives = if datatype {
+                            let lives = if null_p(module_body(c, string_append(str_lit("%abbreviation "), n))) {
                                 nil::<Str>()
                             } else {
                                 region_arguments(c, cdr(xs), kinds)

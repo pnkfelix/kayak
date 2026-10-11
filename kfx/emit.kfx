@@ -352,7 +352,12 @@
                 compare types as written out."
                (ctx ds ts ks ls xs fs (note-family (second (items form)) #f ms) es
                     (cons (typed (string-append "%alias " (sym-name (second (items form)))) (third (items form))) mods)))
-              ((or (head-is? form "define-type") (head-is? form "define-generative"))
+              ((head-is? form "define-type")
+               "A family abbreviation: its regions Rust lifetimes (C39), as a
+                generative type's are not."
+               (ctx ds ts ks ls xs fs (note-family (second (items form)) #f ms) es
+                    (cons (typed (string-append "%abbreviation " (type-head-name (second (items form)))) (third (items form))) mods)))
+              ((head-is? form "define-generative")
                (ctx ds ts ks ls xs fs (note-family (second (items form)) #f ms) es mods))
               ((head-is? form "define-effect")
                (ctx ds ts ks ls xs fs ms (cons (typed (sym-name (second (items form))) (third (items form))) es) mods))
@@ -653,7 +658,7 @@
                      (let* ((acc (if datatype (put "&'static " acc) acc))
                             (acc (put (camel n) acc))
                             (args (type-arguments (cdr xs) kinds))
-                            (lives (if datatype nil (region-arguments c (cdr xs) kinds))))
+                            (lives (if (null? (module-body c (string-append "%abbreviation " n))) nil (region-arguments c (cdr xs) kinds))))
                        (cond ((and (null? args) (null? lives)) acc)
                              ((null? lives) (put ">" (put-types c args (put "<" acc))))
                              ((null? args) (put (string-append "<" (string-append (words-of-sep lives ", ") ">")) acc))
