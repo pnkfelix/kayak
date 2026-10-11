@@ -1,0 +1,11 @@
+"A continuation kept, `comefrom`: FX-26 has it, Rust has no frames to
+ resume (docs/research/escapes.md, CLAUDES_CHOICES.md C18)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f (subr kfx () i64)
+  (lambda ()
+    (letregion a
+      (let ((t (the (prompt-tag i64 i64 kfx a) (make-continuation-prompt-tag))))
+        (prompt t
+                (begin (call-with-composable-continuation (lambda ((k (composable int i64 kfx a))) 1) t) 1)
+                (lambda ((v i64)) v))))))
+(f)

@@ -28,6 +28,7 @@
   (ty-flat ty ty)
   (ty-ref ty ty)
   (ty-rconst string)
+  (ty-tag ty ty strings ty)
   (ty-proc strings (listof ty acyclic) ty)
   (ty-var string)
   (ty-meta i64))
@@ -70,7 +71,7 @@
  innermost list being checked began (a file, a line; for messages), the
  facts found so far, and the type and region variables in scope (a
  `poly`'s binders, a `letregion`'s region)."
-(define-datatype cv (cv binds dts aliases effdefs string strings string i64 facts strings))
+(define-datatype cv (cv binds dts aliases effdefs string strings string i64 facts strings i64))
 
 "Facts: what the checker found about a place, a file and an offset, for
  the emitter, which knows no types. `int`: the number literal there is an
@@ -107,14 +108,14 @@
             (else (string-append (show-sexp (car xs)) (string-append " " (show-sexps (cdr xs)))))))))
 
 (define cv-where (subr kfx (cv) string)
-  (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv) here))))
+  (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv at) here))))
 
 (define refuse (subr kfx (cv string) void)
   (lambda (v message)
     "An error, said where: the innermost list being checked, and the
      definition."
     (tagcase v
-      (cv (bs ds as es here group file line fs tv)
+      (cv (bs ds as es here group file line fs tv at)
         (error (string-append "kfx: "
                  (string-append (if (i64= line 0) "" (string-append file (string-append ":" (string-append (i64->string line) ": "))))
                    (string-append "in " (string-append here (string-append ": " message))))))))))
@@ -127,6 +128,18 @@
       (else other (refuse v (string-append "a name is expected here, not " (show-sexp other)))))))
 
 "Effects"
+
+(define take-chars (subr kfx ((listof char acyclic) i64) (listof char acyclic))
+  (lambda (cs n) (if (or (null? cs) (i64= n 0)) nil (cons (car cs) (take-chars (cdr cs) (i64- n 1))))))
+
+(define substring-of (subr kfx (string i64) string)
+  (lambda (x n) (list->string (take-chars (string->list x) n))))
+
+(define escapes? (subr kfx (strings) bool)
+  (lambda (es)
+    "Whether effect `es` may abort: a `goto` on some region. Such a
+     procedure, in Rust, returns a `Result` (emit.kfx)."
+    (any? (lambda ((x string)) (and (i64> (string-length-i64 x) 5) (string=? (substring-of x 5) "goto:"))) es)))
 
 (define frozen-atom? (subr kfx (string) bool)
   (lambda (x)
@@ -141,7 +154,9 @@
           (else (effs-union (cdr a) (cons (car a) b))))))
 
 (define global-atom? (subr kfx (string) bool)
-  (lambda (x) (char=? (string-ref-i64 x 0) #\g)))
+  (lambda (x)
+    "A read of one global, `g:name`; not a `goto:`."
+    (and (i64> (string-length-i64 x) 1) (char=? (string-ref-i64 x 0) #\g) (char=? (string-ref-i64 x 1) #\:))))
 
 (define effs-within? (subr kfx (strings strings) bool)
   (lambda (a b)
@@ -170,7 +185,7 @@
           (effdef (n atoms) (if (string=? n name) atoms (find-effdef v name (cdr es))))))))
 
 (define cv-effdefs (subr kfx (cv) effdefs)
-  (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv) es))))
+  (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv at) es))))
 
 (define region-name (subr kfx (cv strings sexp) string)
   (lambda (v tvars r)
@@ -208,7 +223,10 @@
                 ((and (sym-is? (car xs) "read") (sym-is? (second xs) "@globals")) (list "@globals"))
                 ((and (sym-is? (car xs) "read") (head-is? (second xs) "globals"))
                  (map (lambda ((g sexp)) (string-append "g:" (name-of v g))) (cdr (items (second xs)))))
-                ((or (sym-is? (car xs) "read") (sym-is? (car xs) "write") (sym-is? (car xs) "alloc"))
+                ((sym-is? (car xs) "comefrom")
+                 (refuse v "a continuation kept (comefrom): KFX has escapes, not continuations, which Rust has not"))
+                ((or (sym-is? (car xs) "read") (sym-is? (car xs) "write") (sym-is? (car xs) "alloc")
+                     (sym-is? (car xs) "goto"))
                  (list (string-append (name-of v (car xs)) (string-append ":" (region-name v tvars (second xs))))))
                 (else (refuse v (string-append "an effect KFX does not have: " (show-sexp e))))))
         (else other (refuse v (string-append "an effect KFX does not have: " (show-sexp e)))))))
@@ -223,8 +241,18 @@
            (cond ((string=? x (string-append "read:" from)) (string-append "read:" to))
                  ((string=? x (string-append "write:" from)) (string-append "write:" to))
                  ((string=? x (string-append "alloc:" from)) (string-append "alloc:" to))
+                 ((string=? x (string-append "goto:" from)) (string-append "goto:" to))
                  (else x)))
          es)))
+
+(define rename-region (subr kfx (strings string ty) strings)
+  (lambda (es name m)
+    "Effects on region `name`, made effects on the region `m` stands for."
+    (tagcase m
+      (ty-meta (k) (rename-atoms es name (string-append "?" (i64->string k))))
+      (ty-rconst (n) (rename-atoms es name n))
+      (ty-var (n) (rename-atoms es name n))
+      (else other es))))
 
 (define meta-name (subr kfx (i64) string)
   (lambda (k) (string-append "?" (i64->string k))))
@@ -236,14 +264,11 @@
         (ty-var (n) (if (string=? n name) m t))
         (ty-list (e r) (ty-list (replace-var name m e) (replace-var name m r)))
         (ty-flat (e r) (ty-flat (replace-var name m e) (replace-var name m r)))
+        (ty-tag (a h d r) (ty-tag (replace-var name m a) (replace-var name m h) (rename-region d name m) (replace-var name m r)))
         (ty-data (d args) (ty-data d (map (lambda ((x ty)) (replace-var name m x)) args)))
         (ty-ref (e r) (ty-ref (replace-var name m e) (replace-var name m r)))
         (ty-proc (es ps r)
-          (ty-proc (tagcase m
-                     (ty-meta (k) (rename-atoms es name (meta-name k)))
-                     (ty-rconst (n) (rename-atoms es name n))
-                     (ty-var (n) (rename-atoms es name n))
-                     (else other es))
+          (ty-proc (rename-region es name m)
                    (map (lambda ((p ty)) (replace-var name m p)) ps) (replace-var name m r)))
         (else other t)))))
 
@@ -256,16 +281,16 @@
 
 "Types"
 
-(define cv-dts (subr kfx (cv) dts) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv) ds))))
-(define cv-aliases (subr kfx (cv) aliases) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv) as))))
-(define cv-binds (subr kfx (cv) binds) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv) bs))))
-(define cv-group (subr kfx (cv) strings) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv) group))))
-(define cv-tvars (subr kfx (cv) strings) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv) tv))))
+(define cv-dts (subr kfx (cv) dts) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv at) ds))))
+(define cv-aliases (subr kfx (cv) aliases) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv at) as))))
+(define cv-binds (subr kfx (cv) binds) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv at) bs))))
+(define cv-group (subr kfx (cv) strings) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv at) group))))
+(define cv-tvars (subr kfx (cv) strings) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv at) tv))))
 
 (define with-tvars (subr kfx (cv strings) cv)
   (lambda (v names)
     "`v`, with the type and region variables `names` in scope."
-    (tagcase v (cv (bs ds as es here group file line fs tv) (cv bs ds as es here group file line fs (onto names tv))))))
+    (tagcase v (cv (bs ds as es here group file line fs tv at) (cv bs ds as es here group file line fs (onto names tv) at)))))
 
 (define dt-named? (subr kfx (string dts) bool)
   (lambda (name ds)
@@ -338,6 +363,9 @@
                      (refuse v (string-append "KFX-0's flat arrays are of i64: " (show-sexp t)))))
                 ((sym-is? (car xs) "ref")
                  (ty-ref (parse-type v tvars (second xs)) (parse-mutable-region v tvars (third xs))))
+                ((sym-is? (car xs) "prompt-tag")
+                 (ty-tag (parse-type v tvars (second xs)) (parse-type v tvars (third xs))
+                         (parse-effect v tvars (fourth xs)) (parse-mutable-region v tvars (car (cdr (cdr (cdr (cdr xs))))))))
                 ((sym-is? (car xs) "subr")
                  (ty-proc (parse-effect v tvars (second xs))
                           (parse-types v tvars (items (third xs)))
@@ -433,6 +461,9 @@
         (ty-flat (e r) (string-append "(flatarrayof " (string-append (show-ty s e) (string-append " " (string-append (show-ty s r) ")")))))
         (ty-ref (e r) (string-append "(ref " (string-append (show-ty s e) (string-append " " (string-append (show-ty s r) ")")))))
         (ty-rconst (n) n)
+        (ty-tag (a h d r)
+          (string-append "(prompt-tag " (string-append (show-ty s a) (string-append " " (string-append (show-ty s h)
+            (string-append " " (string-append (show-effs d) (string-append " " (string-append (show-ty s r) ")")))))))))
         (ty-proc (es ps r)
           (string-append "(subr " (string-append (show-effs es) (string-append " ("
             (string-append (show-tys s ps) (string-append ") " (string-append (show-ty s r) ")")))))))
@@ -467,6 +498,7 @@
         (ty-meta (k) #t)
         (ty-list (e r) (or (has-meta? s e) (has-meta? s r)))
         (ty-flat (e r) (or (has-meta? s e) (has-meta? s r)))
+        (ty-tag (a h d r) (or (has-meta? s a) (has-meta? s h) (has-meta? s r)))
         (ty-data (d args) (any? (lambda ((x ty)) (has-meta? s x)) args))
         (ty-ref (e r) (or (has-meta? s e) (has-meta? s r)))
         (ty-proc (es ps r) (or (has-meta? s r) (any? (lambda ((p ty)) (has-meta? s p)) ps)))
@@ -495,6 +527,7 @@
         (ty-meta (j) (i64= j k))
         (ty-list (e r) (or (occurs? s k e) (occurs? s k r)))
         (ty-flat (e r) (or (occurs? s k e) (occurs? s k r)))
+        (ty-tag (a h d r) (or (occurs? s k a) (occurs? s k h) (occurs? s k r)))
         (ty-data (d args) (any? (lambda ((x ty)) (occurs? s k x)) args))
         (ty-ref (e r) (or (occurs? s k e) (occurs? s k r)))
         (ty-proc (es ps r) (or (occurs? s k r) (any? (lambda ((p ty)) (occurs? s k p)) ps)))
@@ -512,6 +545,79 @@
       (ty-unit () (tagcase e (ty-unit () #t) (else other #f)))
       (ty-string () (tagcase e (ty-string () #t) (else other #f)))
       (else other #f))))
+
+(define region-string (subr kfx (st ty) string)
+  (lambda (s r)
+    (tagcase (walk s r) (ty-rconst (n) n) (ty-var (n) n) (ty-meta (k) (meta-name k)) (else other "?"))))
+
+(define meta-number (subr kfx (string) i64)
+  (lambda (r)
+    "The number of an inference variable's name, `?k`."
+    (i64- 0 (digits-value (cdr (string-chars r)) 0 "" 0))))
+
+(define-rec
+  (after-colon (subr kfx ((listof char acyclic)) (listof char acyclic))
+    (lambda (cs)
+      (cond ((null? cs) nil)
+            ((char=? (car cs) #\:) (cdr cs))
+            (else (after-colon (cdr cs)))))))
+
+(define region-atom? (subr kfx (string) bool)
+  (lambda (x)
+    (and (i64> (string-length-i64 x) 5)
+         (or (string=? (substring-of x 5) "read:") (string=? (substring-of x 5) "goto:")
+             (string=? (substring-of x 6) "write:") (string=? (substring-of x 6) "alloc:")))))
+
+(define atom-kind (subr kfx (string) string)
+  (lambda (x) (substring-of x (i64- (string-length-i64 x) (size (after-colon (string->list x)))))))
+
+(define atom-region (subr kfx (string) string)
+  (lambda (x) (list->string (after-colon (string->list x)))))
+
+(define resolve-atom (subr kfx (st string) string)
+  (lambda (s x)
+    "An effect atom, its region an inference variable solved replaced by
+     the region found."
+    (let ((r (atom-region x)))
+      (if (and (region-atom? x) (char=? (string-ref-i64 r 0) #\?))
+          (string-append (atom-kind x)
+                         (region-string s (ty-meta (meta-number r))))
+          x))))
+
+(define region-ty (subr kfx (string) ty)
+  (lambda (r)
+    (cond ((char=? (string-ref-i64 r 0) #\?) (ty-meta (meta-number r)))
+          ((char=? (string-ref-i64 r 0) #\') (ty-var r))
+          (else (ty-rconst r)))))
+
+(define-rec
+  (open-atom (subr kfx (st string strings) strings)
+    (lambda (s x es)
+      "Of the effect `es`, an atom of the kind of `x` whose region is an
+       inference variable not solved: that variable can stand for `x`'s
+       region."
+      (cond ((null? es) nil)
+            ((let ((y (resolve-atom s (car es))))
+               (and (region-atom? y) (string=? (atom-kind y) (atom-kind x))
+                    (char=? (string-ref-i64 (atom-region y) 0) #\?)))
+             (list (resolve-atom s (car es))))
+            (else (open-atom s x (cdr es)))))))
+
+(define-rec
+  (fit-effs (subr kfx (st strings strings) (listof st acyclic))
+    (lambda (s a e)
+      "Whether effect `a` is within `e`, an inference variable for a region
+       in `e` solved for one in `a` if need be: the state, or none."
+      (if (null? a)
+          (list s)
+          (let* ((x (resolve-atom s (car a)))
+                 (es (map (lambda ((y string)) (resolve-atom s y)) e)))
+            (cond ((effs-within? (list x) es) (fit-effs s (cdr a) e))
+                  ((null? (open-atom s x e)) nil)
+                  (else
+                   (tagcase (region-ty (atom-region (car (open-atom s x e))))
+                     (ty-meta (k) (fit-effs (solve s k (region-ty (atom-region x))) (cdr a) e))
+                     (else other nil)))))))))
 
 (define-rec
   (fits (subr kfx (cv st ty ty) st)
@@ -539,6 +645,13 @@
         (ty-flat (x xr) (tagcase e (ty-flat (y yr) (fits v (fits v s x y) xr yr)) (else other (mismatch v s a e))))
         (ty-ref (x xr) (tagcase e (ty-ref (y yr) (fits v (fits v s x y) xr yr)) (else other (mismatch v s a e))))
         (ty-rconst (x) (tagcase e (ty-rconst (y) (if (string=? x y) s (mismatch v s a e))) (else other (mismatch v s a e))))
+        (ty-tag (xa xh xd xr)
+          (tagcase e
+            (ty-tag (ya yh yd yr)
+              (if (and (effs-within? xd yd) (effs-within? yd xd))
+                  (fits v (fits v (fits v s xa ya) xh yh) xr yr)
+                  (mismatch v s a e)))
+            (else other (mismatch v s a e))))
         (ty-data (x xs)
           (tagcase e
             (ty-data (y ys) (if (and (string=? x y) (i64= (size xs) (size ys))) (fits-all v s xs ys) (mismatch v s a e)))
@@ -548,8 +661,8 @@
           (tagcase e
             (ty-proc (ees eps er)
               (cond ((not (i64= (size aps) (size eps))) (mismatch v s a e))
-                    ((not (effs-within? aes ees)) (mismatch v s a e))
-                    (else (fits v (fits-all v s eps aps) ar er))))
+                    ((null? (fit-effs s aes ees)) (mismatch v s a e))
+                    (else (fits v (fits-all v (car (fit-effs s aes ees)) eps aps) ar er))))
             (else other (mismatch v s a e))))
         (else other (if (same-base? a e) s (mismatch v s a e))))))
   (fits-all (subr kfx (cv st tys tys) st)
@@ -622,16 +735,19 @@
 (define bind-onto (subr kfx (binds binds) binds)
   (lambda (xs ys) (if (null? xs) ys (bind-onto (cdr xs) (cons (car xs) ys)))))
 
-(define near (subr kfx (cv string i64) cv)
-  (lambda (v file line)
-    "`v`, checking a list that began at `line` of `file`."
+(define near (subr kfx (cv string i64 i64) cv)
+  (lambda (v file line pos)
+    "`v`, checking a list that began at `line` of `file`, at offset `pos`."
     (if (i64= line 0)
         v
-        (tagcase v (cv (bs ds as es here group f l fs tv) (cv bs ds as es here group file line fs tv))))))
+        (tagcase v (cv (bs ds as es here group f l fs tv at) (cv bs ds as es here group file line fs tv pos))))))
+
+(define cv-file (subr kfx (cv) string) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv at) file))))
+(define cv-pos (subr kfx (cv) i64) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv at) at))))
 
 (define with-binds (subr kfx (cv binds) cv)
   (lambda (v more)
-    (tagcase v (cv (bs ds as es here group file line fs tv) (cv (bind-onto more bs) ds as es here group file line fs tv)))))
+    (tagcase v (cv (bs ds as es here group file line fs tv at) (cv (bind-onto more bs) ds as es here group file line fs tv at)))))
 
 (define local (subr kfx (cv string ty) bind)
   (lambda (v name t)
@@ -674,10 +790,6 @@
           ((void? s t) rest)
           (else t))))
 
-(define region-string (subr kfx (st ty) string)
-  (lambda (s r)
-    (tagcase (walk s r) (ty-rconst (n) n) (ty-var (n) n) (ty-meta (k) (meta-name k)) (else other "?"))))
-
 (define region-of (subr kfx (cv st ty) res)
   (lambda (v s r)
     "A region, solved: one no argument nor expected type said is `acyclic`,
@@ -701,7 +813,7 @@
     "Effects, those on region `r` removed."
     (cond ((null? es) nil)
           ((or (string=? (car es) (string-append "read:" r)) (string=? (car es) (string-append "write:" r))
-               (string=? (car es) (string-append "alloc:" r)))
+               (string=? (car es) (string-append "alloc:" r)) (string=? (car es) (string-append "goto:" r)))
            (masked (cdr es) r))
           (else (cons (car es) (masked (cdr es) r))))))
 
@@ -713,6 +825,8 @@
         (ty-var (n) (string=? n r))
         (ty-list (e x) (or (mentions? s e r) (mentions? s x r)))
         (ty-flat (e x) (or (mentions? s e r) (mentions? s x r)))
+        (ty-tag (a h d x) (or (mentions? s a r) (mentions? s h r) (mentions? s x r)
+                              (not (string=? (words-of (masked d r)) (words-of d)))))
         (ty-ref (e x) (or (mentions? s e r) (mentions? s x r)))
         (ty-data (d args) (any? (lambda ((a ty)) (mentions? s a r)) args))
         (ty-proc (es ps x)
@@ -741,6 +855,35 @@
 
 (define eqv-bool? (subr kfx (bool bool) bool)
   (lambda (a b) (if a b (not b))))
+
+(define masked-goto (subr kfx (strings string) strings)
+  (lambda (es r)
+    (cond ((null? es) nil)
+          ((string=? (car es) (string-append "goto:" r)) (masked-goto (cdr es) r))
+          (else (cons (car es) (masked-goto (cdr es) r))))))
+
+(define-rec
+  (names-in (subr kfx (sexp) strings)
+    (lambda (e)
+      "Every name in `e`, bound in it or not."
+      (tagcase e
+        (sym (n) (list n))
+        (lst (xs src-file src-line src-pos) (names-in-all xs))
+        (else other nil))))
+  (names-in-all (subr kfx (sexps) strings)
+    (lambda (es) (if (null? es) nil (onto (names-in (car es)) (names-in-all (cdr es)))))))
+
+(define reaches? (subr kfx (cv st sexp sexp string) bool)
+  (lambda (v s body tag r)
+    "Whether `body` may reach a tag of region `r` but `tag`: whether a
+     name in it, but `tag`'s if it is one, has a type that mentions `r`."
+    (let ((tag-name (tagcase tag (sym (n) n) (else other ""))))
+      (any? (lambda ((n string))
+              (and (not (string=? n tag-name))
+                   (let ((found (find-bind n (cv-binds v))))
+                     (and (not (null? found))
+                          (tagcase (car found) (bind (b sc where) (tagcase sc (scheme (tvars t) (mentions? s t r)))))))))
+            (names-in body)))))
 
 (define control-form? (subr kfx (string) bool)
   (lambda (h)
@@ -810,7 +953,7 @@
         (str (x) (res (ty-string) nil s))
         (sym (name) (synth-name v s name))
         (lst (xs src-file src-line src-pos)
-          (let ((v (near v src-file src-line)))
+          (let ((v (near v src-file src-line src-pos)))
             (tagcase (car xs)
               (sym (h) (synth-form v s e h (cdr xs)))
               (else head (synth-call-of v s (synth v s head) (cdr xs) nil nil (list "spin")))))))))
@@ -847,7 +990,7 @@
               (else other (refuse v (string-append "a literal is here, where a "
                                                    (string-append (show-ty s x) " is expected"))))))
           (lst (xs src-file src-line src-pos)
-            (let ((v (near v src-file src-line)))
+            (let ((v (near v src-file src-line src-pos)))
               (tagcase (car xs)
                 (sym (h) (check-form v s e h (cdr xs) x))
                 (else other (check-by-synth v s e x)))))
@@ -884,6 +1027,7 @@
     (lambda (v s e h xs)
       (cond ((string=? h "the")
              (check v s (second xs) (parse-type v (cv-tvars v) (car xs))))
+            ((string=? h "prompt") (prompt-form v s xs nil))
             ((string=? h "lambda") (synth-lambda v s (items (car xs)) (cdr xs)))
             ((string=? h "list")
              (if (null? xs)
@@ -899,6 +1043,7 @@
   (check-form (subr kfx (cv st sexp string sexps ty) res)
     (lambda (v s e h xs expected)
       (cond ((control-form? h) (body-form v s h xs (list expected)))
+            ((string=? h "prompt") (prompt-form v s xs (list expected)))
             ((and (string=? h "lambda") (proc-type? s expected))
              (check-lambda v s (items (car xs)) (cdr xs) (walk s expected)))
             ((and (string=? h "list") (tagcase expected (ty-list (el r) #t) (else other #f)))
@@ -1095,8 +1240,9 @@
               (let ((s (check-written-params v s params eps)))
                 (tagcase (body (with-binds v (bind-params v params eps)) s forms (list er))
                   (res (r es s)
-                    (if (effs-within? es ees)
-                        (res expected nil s)
+                    (if (not (null? (fit-effs s es ees)))
+                        (let ((s (car (fit-effs s es ees))))
+                          (res expected nil (if (escapes? ees) (note-fact s (cv-file v) (cv-pos v) "fallible") s)))
                         (refuse v (string-append "a lambda whose effect " (string-append (show-effs es)
                                   (string-append " is not within " (show-effs ees)))))))))))
         (else other (refuse v "a lambda where no procedure is expected")))))
@@ -1139,6 +1285,12 @@
       (let ((found (find-bind h (cv-binds v))))
         (cond ((keyword? h)
                (refuse v (string-append "(" (string-append h " ...) is FX-26's form, which KFX does not have, or a call of a local named by that keyword"))))
+              ((and (null? found) (string=? h "abort-current-continuation")) (abort-call v s args))
+              ((and (null? found) (string=? h "make-continuation-prompt-tag")) (make-tag-call v s args expected))
+              ((and (null? found)
+                    (or (string=? h "call-with-composable-continuation") (string=? h "call-with-current-continuation")
+                        (string=? h "call/cc")))
+               (refuse v (string-append h " keeps a continuation, a comefrom, which KFX does not have: Rust has no frames to resume (docs/research/escapes.md)")))
               ((null? found)
                (refuse v (string-append "nothing is named " h)))
               ((and (nat-op? h) (prim? (car found)) (i64= (size args) 2) (nat-args? v s args))
@@ -1167,6 +1319,76 @@
                  (else other (tagcase (synth v s other) (res (t es s2) (nat? s2 t)))))
                (nat-args? v s (cdr args))))))
 
+  (abort-call (subr kfx (cv st sexps) res)
+    (lambda (v s args)
+      "`(abort-current-continuation tag v)`: to the innermost prompt of
+       `tag`, with `v`; a `goto` on the tag's region, and of type `void`."
+      (if (not (i64= (size args) 2))
+          (refuse v "abort-current-continuation takes a tag and a value")
+          (tagcase (synth v s (car args))
+            (res (t es0 s)
+              (tagcase (walk s t)
+                (ty-tag (a h d r)
+                  (tagcase (check v s (second args) h)
+                    (res (u es1 s)
+                      (res (ty-void) (effs-union (list (string-append "goto:" (region-string s r))) (effs-union es0 es1)) s))))
+                (else other (refuse v (string-append "an abort to a " (string-append (show-ty s t) ", no prompt-tag"))))))))))
+
+  (make-tag-call (subr kfx (cv st sexps tys) res)
+    (lambda (v s args expected)
+      "`(make-continuation-prompt-tag)`: its type, said where it is made."
+      (cond ((not (null? args)) (refuse v "make-continuation-prompt-tag takes nothing"))
+            ((null? expected)
+             (refuse v "a prompt tag whose type nothing says: write (the (prompt-tag A H D R) (make-continuation-prompt-tag))"))
+            (else
+             (tagcase (walk s (car expected))
+               (ty-tag (a h d r) (res (car expected) (list (string-append "alloc:" (region-string s r))) s))
+               (else other (refuse v "a prompt tag where none is expected")))))))
+
+  (prompt-form (subr kfx (cv st sexps tys) res)
+    (lambda (v s xs expected)
+      "`(prompt tag body handler)`, as FX-26 has it: the body of the tag's
+       answer type, its effect, but for control on the tag's region, within
+       the tag's bound; an abort to the tag runs the handler. The prompt
+       removes the `goto` on the region when the body can reach no other tag
+       there: when nothing it names but the tag has a type that mentions the
+       region (every name, bound in it or not: stricter than FX-26's free
+       variables, never laxer)."
+      (tagcase (synth v s (car xs))
+        (res (tt es0 s)
+          (tagcase (walk s tt)
+            (ty-tag (a h d r)
+              (let ((rn (region-string s r)))
+                (tagcase (check v s (second xs) a)
+                  (res (u es1 s)
+                    (if (not (effs-within? (masked-goto es1 rn) d))
+                        (refuse v (string-append "the tag allows its delimited computations " (string-append (show-effs d)
+                                  (string-append ", and this body also has " (show-effs (masked-goto es1 rn))))))
+                        (tagcase (handler-of v s (third xs) h a)
+                          (res (u2 es2 s)
+                            (let* ((delimits (not (reaches? v s (second xs) (car xs) rn)))
+                                   (s (if delimits (note-fact s (cv-file v) (cv-pos v) "delimits") s))
+                                   (s (if (and delimits (not (escapes? (masked-goto es1 rn))))
+                                          (note-fact s (cv-file v) (cv-pos v) "contains")
+                                          s))
+                                   (s (if (null? expected) s (fits v s a (car expected)))))
+                              (res a (effs-union es0 (effs-union es2 (if delimits (masked-goto es1 rn) es1))) s)))))))))
+            (else other (refuse v (string-append "a prompt of a " (string-append (show-ty s tt) ", no prompt-tag")))))))))
+
+  (handler-of (subr kfx (cv st sexp ty ty) res)
+    (lambda (v s e h a)
+      "A prompt's handler, a lambda from the payload to the answer: its
+       body's effect is the prompt's, since the prompt calls it. A handler
+       that may abort, KFX has not yet."
+      (if (not (head-is? e "lambda"))
+          (refuse v "a prompt's handler is a lambda, in KFX")
+          (let ((lam (items e)))
+            (tagcase (lambda-effects v s (items (second lam)) (cdr (cdr lam)) (ty-proc nil (list h) a))
+              (res (u es s)
+                (if (escapes? es)
+                    (refuse v "a prompt's handler that may abort, which KFX has not yet")
+                    (res a es s))))))))
+
   (synth-call-of (subr kfx (cv st res sexps (listof i64 acyclic) tys strings) res)
     (lambda (v s callee args regions expected more)
       "A call of the procedure `callee` is: its result fitted to the type
@@ -1186,7 +1408,8 @@
                     (res (u es1 s)
                       (tagcase (name-regions v s latent regions)
                         (res (u named s)
-                          (res r (effs-union named (effs-union more (effs-union es0 es1))) s)))))))
+                          (res r (effs-union named (effs-union more (effs-union es0 es1)))
+                               (if (escapes? named) (note-fact s (cv-file v) (cv-pos v) "fallible-call") s))))))))
             (else other (refuse v (string-append "a call of a " (string-append (show-ty s t) ", no procedure")))))))))
 
   (call-args (subr kfx (cv st sexps tys) res)
@@ -1315,13 +1538,13 @@
     "A define-type's or define-datatype's name, from its head: a name, or
      `(name (p kind) ...)` for a family."
     (tagcase form
-      (lst (xs src-file src-line src-pos) (head-name (near v src-file src-line) (second xs)))
+      (lst (xs src-file src-line src-pos) (head-name (near v src-file src-line src-pos) (second xs)))
       (else other (refuse v "a definition is expected")))))
 
 (define type-params (subr kfx (cv sexp) strings)
   (lambda (v form)
     (tagcase form
-      (lst (xs src-file src-line src-pos) (family-params (near v src-file src-line) (second xs)))
+      (lst (xs src-file src-line src-pos) (family-params (near v src-file src-line src-pos) (second xs)))
       (else other nil))))
 
 (define declare-types (subr kfx (cv sexps aliases) aliases)
@@ -1346,8 +1569,8 @@
   (lambda (v xs)
     "`v`, with a define-effect's abbreviation."
     (tagcase v
-      (cv (bs ds as es here group file line fs tv)
-        (cv bs ds as (cons (effdef (name-of v (second xs)) (parse-effect v nil (third xs))) es) here group file line fs tv)))))
+      (cv (bs ds as es here group file line fs tv at)
+        (cv bs ds as (cons (effdef (name-of v (second xs)) (parse-effect v nil (third xs))) es) here group file line fs tv at)))))
 
 (define declare-datatypes (subr kfx (cv sexps dts) dts)
   (lambda (v forms ds)
@@ -1365,13 +1588,15 @@
 
 (define at (subr kfx (cv string strings) cv)
   (lambda (v here group)
-    (tagcase v (cv (bs ds as es h g file line fs tv) (cv bs ds as es here group file line fs tv)))))
+    (tagcase v (cv (bs ds as es h g file line fs tv at) (cv bs ds as es here group file line fs tv at)))))
 
 (define runtime-name? (subr kfx (string) bool)
   (lambda (name)
     "kayak-rt's own names, which the generated modules import with the
      program's: a global of one of them would be ambiguous in Rust."
     (or (string=? name "alloc") (string=? name "leak-string") (string=? name "with-big-stack")
+        (string=? name "abort-current-continuation") (string=? name "make-continuation-prompt-tag")
+        (string=? name "the") (string=? name "unwind") (string=? name "knot")
         (string=? name "lambda0") (string=? name "lambda1") (string=? name "lambda2")
         (string=? name "lambda3") (string=? name "lambda4"))))
 
@@ -1417,10 +1642,10 @@
 (define with-facts (subr kfx (cv facts) cv)
   (lambda (v more)
     "`v`, with a definition's facts."
-    (tagcase v (cv (bs ds as es here group file line fs tv) (cv bs ds as es here group file line (onto more fs) tv)))))
+    (tagcase v (cv (bs ds as es here group file line fs tv at) (cv bs ds as es here group file line (onto more fs) tv at)))))
 
 (define cv-facts (subr kfx (cv) facts)
-  (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv) fs))))
+  (lambda (v) (tagcase v (cv (bs ds as es here group file line fs tv at) fs))))
 
 (define check-procedure (subr kfx (cv sexp scheme) cv)
   (lambda (v defined sc)
@@ -1501,7 +1726,7 @@
     (tagcase form
       (str (x) v)
       (lst (xs src-file src-line src-pos)
-        (let ((v (near v src-file src-line))
+        (let ((v (near v src-file src-line src-pos))
               (h (if (null? xs) "" (tagcase (car xs) (sym (n) n) (else other "")))))
           (cond ((string=? h "define-effect") (with-effdef v xs))
                 ((string=? h "define-type")
@@ -1572,6 +1797,7 @@
       (tagcase (walk s t)
         (ty-list (e r) (ty-list (zonk s e) (zonk s r)))
         (ty-flat (e r) (ty-flat (zonk s e) (zonk s r)))
+        (ty-tag (a h d r) (ty-tag (zonk s a) (zonk s h) d (zonk s r)))
         (ty-data (d args) (ty-data d (map (lambda ((x ty)) (zonk s x)) args)))
         (ty-ref (e r) (ty-ref (zonk s e) (zonk s r)))
         (ty-proc (es ps r) (ty-proc es (map (lambda ((p ty)) (zonk s p)) ps) (zonk s r)))
@@ -1596,10 +1822,12 @@
         (ty-data (d args)
           (if (null? args) (sym d) (lst (cons (sym d) (map (lambda ((x ty)) (ty-sexp v s x)) args)) "" 0 0)))
         (ty-flat (e r) (lst (list (sym "flatarrayof") (ty-sexp v s e) (ty-sexp v s r)) "" 0 0))
+        (ty-tag (a h d r) (lst (list (sym "prompt-tag") (ty-sexp v s a) (ty-sexp v s h) (sym "pure") (ty-sexp v s r)) "" 0 0))
         (ty-ref (e r) (lst (list (sym "ref") (ty-sexp v s e) (ty-sexp v s r)) "" 0 0))
         (ty-rconst (n) (sym n))
         (ty-proc (es ps r)
-          (lst (list (sym "subr") (sym "pure") (lst (map (lambda ((p ty)) (ty-sexp v s p)) ps) "" 0 0) (ty-sexp v s r)) "" 0 0))
+          (lst (list (sym "subr") (if (escapes? es) (lst (list (sym "goto") (sym "@escape")) "" 0 0) (sym "pure"))
+                     (lst (map (lambda ((p ty)) (ty-sexp v s p)) ps) "" 0 0) (ty-sexp v s r)) "" 0 0))
         (ty-var (n) (refuse v (string-append "a definition with no type, of a type over " (string-append n ": write its type"))))
         (ty-meta (k) (refuse v "a definition with no type, whose type is not known whole: write it"))))))
 
@@ -1633,7 +1861,7 @@
           ((untyped? (car forms))
            (tagcase (car forms)
              (lst (xs src-file src-line src-pos)
-               (tagcase (check-untyped (near v src-file src-line) (car forms))
+               (tagcase (check-untyped (near v src-file src-line src-pos) (car forms))
                  (elab (v2 more) (check-tops (at v2 "" nil) (cdr forms) (onto more found)))))
              (else other (check-tops v (cdr forms) found))))
           (else (check-tops (check-top v (car forms)) (cdr forms) found)))))
@@ -1652,10 +1880,10 @@
   (lambda (forms)
     "Every form, in order; the first error stops the compiler. What it gives
      is the types of the definitions written with none."
-    (let* ((empty (cv nil nil nil nil "a type" nil "the program" 0 nil nil))
-           (start (cv nil nil (declare-types empty forms nil) nil "a type" nil "the program" 0 nil nil))
+    (let* ((empty (cv nil nil nil nil "a type" nil "the program" 0 nil nil 0))
+           (start (cv nil nil (declare-types empty forms nil) nil "a type" nil "the program" 0 nil nil 0))
            (types (type-names-free start forms))
-           (named (tagcase start (cv (bs ds as es here group file line fs tv) (cv bs (datatype-names start forms nil) as es here group file line fs tv))))
-           (typed (tagcase named (cv (bs ds as es here group file line fs tv) (cv bs (declare-datatypes named forms nil) as es here group file line fs tv))))
+           (named (tagcase start (cv (bs ds as es here group file line fs tv at) (cv bs (datatype-names start forms nil) as es here group file line fs tv at))))
+           (typed (tagcase named (cv (bs ds as es here group file line fs tv at) (cv bs (declare-datatypes named forms nil) as es here group file line fs tv at))))
            (v (with-binds typed (prim-binds typed))))
       (tagcase (check-tops v forms nil) (elab (done found) (verdict found (cv-facts done)))))))

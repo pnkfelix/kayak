@@ -529,3 +529,31 @@ values), read from Fixpt's source rather than guessed: an integral value
 below 1e21 with one decimal, any other as Rust writes it, `+inf.0`,
 `+nan.0`. `tests/kfx/floats.kfx`, every edge Fixpt's printer has, with
 Rust's answers Fixpt's.
+
+## Escapes (2026-10-11)
+
+FX-26's typed control, as far as Rust has it (C18,
+`docs/research/escapes.md`): `(prompt-tag A H D R)`, which is `Tag<A, H>`;
+`make-continuation-prompt-tag`; `prompt`; `abort-current-continuation`,
+whose effect is `(goto R)`. A procedure whose effect may `goto` returns
+`Result<T, Unwind>`, its tail positions `Ok(..)` (a self tail call still a
+loop); a call the checker found may abort takes `?`; an abort is
+`return Err(unwind(tag, v))`; a prompt is a closure returning a `Result`,
+its tag's abort handled, any other passed on, or, where the checker found
+the prompt contains every abort its body may make, unreachable. A
+procedure that may abort is a value too, a `&dyn Fn(..) -> Result<..>`,
+and a lambda of such a type a closure returning a `Result`. In toplevel
+mode each expression is in such a closure. Kept continuations
+(`comefrom`) are refused, with a message (`kfx-stricter/comefrom`).
+
+`tests/kfx/escapes.kfx`: a loop that may leave, a procedure value that
+may, and an abort through a prompt of another tag to an outer one.
+
+Found on the way, both K1 holes, now closed:
+- `global-atom?` looked at an atom's first letter only, so every `goto:`
+  was taken as a read of a global, within any effect that reads them:
+  `kfx` accepted a prompt whose body aborts to a tag the prompt's own does
+  not allow (`kfx-refused/prompt-effect`).
+- A latent effect that names a region not yet solved (`(goto ?4)`, a
+  `poly`'s region at a call) was compared as text; now the region is
+  solved from the actual's, as regions in types are.

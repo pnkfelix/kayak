@@ -101,12 +101,13 @@ Flat arrays of `i64` and references are done (`DONE.md` §15). Left:
 
 ## 16. Escapes, then FX-26 at large
 
-The design, and what to decide: `docs/research/escapes.md`
-(`Result` by effect, recommended; the checker's facts carry the effects).
+Escapes are done (`DONE.md`, C18). Left:
 
-- Prompts with only `(goto r)` as `Result` and `?`: the effect says which
-  calls may abort, and so which `fn`s return a `Result`. The first place
-  effects decide code generation.
+- marks (`with-mark`, `first-mark`), locations in the dynamic context;
+- `proj` of `abort-current-continuation`, as Fixpt's `control/` tests
+  write it;
+- a `poly` over effects, so that a procedure taking a procedure that may
+  abort need not say on which region.
 - Then the broader FX-26: a runtime with a collector, bignums, unions,
   delimited control, modules. Whether that keeps targeting Rust or
   something else is open (`PLAN.md` §5).

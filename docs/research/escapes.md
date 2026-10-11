@@ -1,7 +1,8 @@
 # Escapes: FX-26's prompts and aborts, as Rust
 
-Status: a design note (2026-10-11), before building; `TODO.md` §16. The
-decision it asks for is in §5.
+Status: decided and built (2026-10-11): 3.1, `Result` by effect
+(`CLAUDES_CHOICES.md` C18). Of §5: procedures that may abort are values
+too; the payload is erased.
 
 ## 1. What FX-26 has
 

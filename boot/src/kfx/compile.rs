@@ -13,7 +13,7 @@ pub fn header() -> Str {
 pub fn compile_named(file: Str, src: Str) -> Str {
     let forms = read_all(string_chars(src), file, 1i64);
     let checked = check_program(forms);
-    let c = collect(forms, ctx(nil(), nil(), nil(), nil(), verdict_typeds(checked), verdict_facts(checked), nil()));
+    let c = collect(forms, ctx(nil(), nil(), nil(), nil(), verdict_typeds(checked), verdict_facts(checked), nil(), nil()));
     rev_to_string(put_tops(c, forms, put(header(), nil())))
 }
 
@@ -22,7 +22,7 @@ pub fn compile_named(file: Str, src: Str) -> Str {
 pub fn compile_toplevel(file: Str, src: Str) -> Str {
     let forms = read_all(string_chars(src), file, 1i64);
     let checked = check_program(forms);
-    let c = collect(forms, ctx(nil(), nil(), nil(), nil(), verdict_typeds(checked), verdict_facts(checked), nil()));
+    let c = collect(forms, ctx(nil(), nil(), nil(), nil(), verdict_typeds(checked), verdict_facts(checked), nil(), nil()));
     rev_to_string(put_toplevel(c, forms, put_tops(c, forms, put(header(), nil()))))
 }
 
@@ -97,7 +97,7 @@ pub fn compile_units(ss: Sources) -> Outputs {
         source_forms(s)
     }), ss));
     let checked = check_program(forms);
-    let c = collect(forms, ctx(nil(), nil(), nil(), nil(), verdict_typeds(checked), verdict_facts(checked), nil()));
+    let c = collect(forms, ctx(nil(), nil(), nil(), nil(), verdict_typeds(checked), verdict_facts(checked), nil(), nil()));
     let modules = map(lambda1(move |s: &'static Source| {
         let tagcase_ = s;
         match *tagcase_ {

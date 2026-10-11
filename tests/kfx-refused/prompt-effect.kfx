@@ -1,0 +1,12 @@
+"A prompt whose body has an effect its tag does not allow: here a goto to
+ another region, which the tag's delimited effect leaves out."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f (subr kfx () i64)
+  (lambda ()
+    (letregion a
+      (let ((t1 (the (prompt-tag i64 i64 kfx a) (make-continuation-prompt-tag))))
+        (prompt t1
+                (letregion b
+                  (let ((t2 (the (prompt-tag i64 i64 kfx b) (make-continuation-prompt-tag))))
+                    (prompt t2 (begin (abort-current-continuation t1 1) 2) (lambda ((v i64)) v))))
+                (lambda ((v i64)) v))))))

@@ -198,3 +198,24 @@ Revises C13.
   no plain form for; most of Fixpt's family programs use them.
 - **Why:** generic containers are what a compiler written in KFX needs;
   they map to Rust's generic types exactly.
+
+## C18. Escapes: `Result` by effect (2026-10-11)
+
+Answers `PLAN.md` Q3 (`docs/research/escapes.md` §5).
+- **Chosen:** tags, prompts and aborts, as early returns. A procedure
+  whose latent effect may `goto` returns `Result<T, Unwind>`, a call the
+  checker found may abort takes a `?`, an abort is `return Err(..)`, and
+  a prompt is a closure returning a `Result`, matched. Procedures that may
+  abort are values too (`&dyn Fn(..) -> Result<..>`). `Unwind`'s payload
+  is erased (`&'static dyn Any`), so every escape shares one `Result`;
+  the tag's type parameters give it back its type.
+- **Not chosen:** unwinding panics (quicker, but effects would decide
+  nothing, and `catch_unwind` needs what closures over cells are not);
+  kept continuations, `comefrom` (`call-with-composable-continuation`,
+  `cwcc`), which Rust has no frames to resume; refused, with a message.
+  Marks, for now.
+- **Why:** effects deciding code is the plan's mapping, and this is what
+  Rust programs write by hand: exact, nothing paid where nothing escapes.
+  Whether a type's effect may abort is read from its text, through
+  `define-effect`s; a call's or a lambda's, and whether a prompt contains
+  every abort its body may make, are facts the checker leaves by place.

@@ -209,8 +209,8 @@ procedure (`&f`), the program's or `kayak-rt`'s: the emitter keeps the
 names bound where it is, from parameters, `let`, `let*` and `tagcase`.
 
 What KFX does not have, ranked by how often Fixpt's programs first need
-it (`docs/survey.md`): FX-26's modules (`TODO.md` §19); escapes and
-delimited control (§16, `docs/research/escapes.md`); bloblets and flat
+it (`docs/survey.md`): FX-26's modules (`TODO.md` §19); kept
+continuations and marks (§16, `docs/research/escapes.md`); bloblets and flat
 data beyond `i64` arrays (§15); places, `letrena` (§14,
 `docs/research/places.md`); unions and `datum`; `f32`; higher kinds and
 `poly` over effects or sizes; `proj` (instantiation is inferred).
@@ -258,9 +258,9 @@ The tasks are `TODO.md`'s. Done since the loop closed (`DONE.md`): a
 corpus and guardrails, tail calls as loops, procedures as values, `poly`,
 a checker, messages with places, several files, mutable data and
 regions, strings of characters, untyped definitions, `define*`, `int`,
-type families, `letrec`, `letregion`, `nat`, `define-generative`. Next,
-by the survey: modules, escapes (the first place effects decide code
-generation), places.
+type families, `letrec`, `letregion`, `nat`, `define-generative`, `f64`,
+escapes (the first place effects decide code generation: C18). Next, by
+the survey: modules, places.
 
 Then FX-26 at large, written in KFX. Two directions, not chosen yet:
 - **keep targeting Rust**, with a runtime that grows (a collector, as
@@ -280,8 +280,8 @@ Then FX-26 at large, written in KFX. Two directions, not chosen yet:
   Files are `.kfx`.
 - **Q2. `int`.** Answered (the user, 2026-10-11): no `int` whose meaning
   differs between FX-26 and Rust. Since C15, `int` is a bignum in both.
-- **Q3. Escapes**: `Result` by effect, or unwinding panics?
-  (`docs/research/escapes.md` §5.)
+- **Q3. Escapes**: `Result` by effect, or unwinding panics? Decided:
+  `Result` by effect, the recommendation (C18).
 - **Q4. Places**: needed now? (`docs/research/places.md` §4.)
 
 ## 7. Requests for Fixpt

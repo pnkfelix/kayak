@@ -16,7 +16,7 @@
 (define-datatype family (family string bool strings))
 (define-type families (listof family acyclic))
 
-(define-datatype ctx (ctx strings tagofs strings strings typeds facts families))
+(define-datatype ctx (ctx strings tagofs strings strings typeds facts families typeds))
 
 (define filter-typed (subr kfx (string typeds) typeds)
   (lambda (name xs)
@@ -24,33 +24,57 @@
           ((tagcase (car xs) (typed (n t) (string=? n name))) (list (car xs)))
           (else (filter-typed name (cdr xs))))))
 
+(define ctx-effects (subr kfx (ctx) typeds)
+  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms es) es))))
+
+(define-rec
+  (fallible-effect? (subr kfx (ctx sexp) bool)
+    (lambda (c e)
+      "Whether a written effect may abort, its abbreviations seen through: a
+       procedure of it returns a `Result` (docs/research/escapes.md)."
+      (tagcase e
+        (sym (n) (any? (lambda ((x typed)) (tagcase x (typed (m body) (and (string=? m n) (fallible-effect? c body)))))
+                       (ctx-effects c)))
+        (lst (xs src-file src-line src-pos)
+          (cond ((sym-is? (car xs) "goto") #t)
+                ((sym-is? (car xs) "maxeff") (any? (lambda ((x sexp)) (fallible-effect? c x)) (cdr xs)))
+                (else #f)))
+        (else other #f)))))
+
 (define ctx-fact? (subr kfx (ctx string i64 string) bool)
   (lambda (c file pos what)
     "Whether the checker found `what` about the place `file`, `pos`."
     (tagcase c
-      (ctx (ds ts ks ls xs fs ms)
+      (ctx (ds ts ks ls xs fs ms es)
         (any? (lambda ((f fact))
                 (tagcase f (fact (ff fp fw) (and (i64= fp pos) (string=? fw what) (string=? ff file)))))
               fs)))))
 
+(define fact-at? (subr kfx (ctx sexp string) bool)
+  (lambda (c e what)
+    "Whether the checker found `what` about the list `e`."
+    (tagcase e
+      (lst (xs src-file src-line src-pos) (ctx-fact? c src-file src-pos what))
+      (else other #f))))
+
 (define ctx-datatypes (subr kfx (ctx) strings)
-  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms) ds))))
+  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms es) ds))))
 
 (define ctx-tags (subr kfx (ctx) tagofs)
-  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms) ts))))
+  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms es) ts))))
 
 (define ctx-constants (subr kfx (ctx) strings)
-  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms) ks))))
+  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms es) ks))))
 
 (define ctx-locals (subr kfx (ctx) strings)
-  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms) ls))))
+  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms es) ls))))
 
 (define ctx-typed (subr kfx (ctx string) sexps)
   (lambda (c name)
     "The type the checker found for a definition written with none, as a
      list of one."
     (tagcase c
-      (ctx (ds ts ks ls xs fs ms)
+      (ctx (ds ts ks ls xs fs ms es)
         (map (lambda ((x typed)) (tagcase x (typed (n t) t)))
              (filter-typed name xs))))))
 
@@ -60,7 +84,7 @@
 (define with-locals (subr kfx (ctx strings) ctx)
   (lambda (c names)
     "`c`, where `names` are bound too."
-    (tagcase c (ctx (ds ts ks ls xs fs ms) (ctx ds ts ks (strings-onto names ls) xs fs ms)))))
+    (tagcase c (ctx (ds ts ks ls xs fs ms es) (ctx ds ts ks (strings-onto names ls) xs fs ms es)))))
 
 (define tag-datatype (subr kfx (string tagofs) string)
   (lambda (tag ts)
@@ -110,7 +134,7 @@
 (define find-family-of (subr kfx (ctx string) families)
   (lambda (c name)
     (tagcase c
-      (ctx (ds ts ks ls xs fs ms)
+      (ctx (ds ts ks ls xs fs ms es)
         (let ((found (filter-family name ms))) found)))))
 
 (define put-generics-of (subr kfx (strings bool chars) chars)
@@ -126,17 +150,19 @@
 (define note (subr kfx (sexp ctx) ctx)
   (lambda (form c)
     (tagcase c
-      (ctx (ds ts ks ls xs fs ms)
+      (ctx (ds ts ks ls xs fs ms es)
         (cond ((head-is? form "define-datatype")
                (let ((d (type-head-name (second (items form)))))
                  (ctx (cons d ds) (note-tags (cdr (cdr (items form))) d ts) ks ls xs fs
-                      (note-family (second (items form)) #t ms))))
+                      (note-family (second (items form)) #t ms) es)))
               ((or (head-is? form "define-type") (head-is? form "define-generative"))
-               (ctx ds ts ks ls xs fs (note-family (second (items form)) #f ms)))
+               (ctx ds ts ks ls xs fs (note-family (second (items form)) #f ms) es))
+              ((head-is? form "define-effect")
+               (ctx ds ts ks ls xs fs ms (cons (typed (sym-name (second (items form))) (third (items form))) es)))
               ((and (head-is? form "define")
                     (or (i64= (size (items form)) 3) (i64= (size (items form)) 4))
                     (not (procedure? (last (items form)))))
-               (ctx ds ts (cons (sym-name (second (items form))) ks) ls xs fs ms))
+               (ctx ds ts (cons (sym-name (second (items form))) ks) ls xs fs ms es))
               (else c))))))
 
 (define collect (subr kfx (sexps ctx) ctx)
@@ -187,7 +213,11 @@
                  (let* ((acc (put "&'static dyn Fn(" acc))
                         (acc (put-types c (items (third xs)) acc))
                         (acc (put ") -> " acc)))
-                   (put-type c (fourth xs) acc)))
+                   (if (fallible-effect? c (second xs))
+                       (put ", Unwind>" (put-type c (fourth xs) (put "Result<" acc)))
+                       (put-type c (fourth xs) acc))))
+                ((sym-is? (car xs) "prompt-tag")
+                 (put ">" (put-type c (third xs) (put ", " (put-type c (second xs) (put "Tag<" acc))))))
                 ((sym-is? (car xs) "poly")
                  (error "kfx: a poly type is only a definition's, at its top"))
                 ((tagcase (car xs) (sym (n) (not (null? (find-family-of c n)))) (else other #f))
@@ -222,6 +252,11 @@
           ((string=? (car ls) s) "local")
           ((string=? (car ls) (string-append "%knot " s)) "knot")
           (else (local-kind s (cdr ls))))))
+
+(define fallible-here? (subr kfx (ctx) bool)
+  (lambda (c)
+    "Whether the function or closure being written returns a `Result`."
+    (string=? (local-kind "%fallible" (ctx-locals c)) "local")))
 
 (define callee (subr kfx (ctx string) string)
   (lambda (c h)
@@ -281,7 +316,8 @@
 
 (define-datatype tail
   (value)
-  (returns string strings bool))
+  (returns string strings bool bool)
+  (ok-value))
 
 "`value`: an expression whose value is used. `returns`: the last thing a
  looping procedure does, with the procedure's name and parameters; the
@@ -295,16 +331,28 @@
   (lambda (t names)
     "`t`, under bindings of `names`."
     (tagcase t
-      (returns (f ps live) (if (and live (any? (lambda ((x string)) (string-member? x ps)) names)) (returns f ps #f) t))
+      (returns (f ps live ok) (if (and live (any? (lambda ((x string)) (string-member? x ps)) names)) (returns f ps #f ok) t))
       (else other t))))
 
+(define ok-value? (subr kfx (tail) bool)
+  (lambda (t) (tagcase t (ok-value () #t) (else other #f))))
+
+(define returns-ok? (subr kfx (tail) bool)
+  (lambda (t) (tagcase t (returns (f ps live ok) ok) (else other #f))))
+
 (define returns? (subr kfx (tail) bool)
-  (lambda (t) (tagcase t (returns (f ps live) #t) (else other #f))))
+  (lambda (t) (tagcase t (returns (f ps live ok) #t) (else other #f))))
+
+(define abort? (subr kfx (ctx sexp) bool)
+  (lambda (c e)
+    "An abort: `return Err(...)` in Rust, so no value to return or wrap."
+    (and (head-is? e "abort-current-continuation")
+         (string=? (local-kind "abort-current-continuation" (ctx-locals c)) ""))))
 
 (define self-call? (subr kfx (tail sexp) bool)
   (lambda (t e)
     (tagcase t
-      (returns (f ps live)
+      (returns (f ps live ok)
         (and live (head-is? e f) (i64= (size (cdr (items e))) (size ps))))
       (else other #f))))
 
@@ -375,8 +423,13 @@
   (put-exp (subr kfx (ctx sexp i64 tail chars) chars)
     (lambda (c e n t acc)
       (cond ((self-call? t e) (put-continue c (cdr (items e)) n t acc))
+            ((and (returns? t) (abort? c e)) (put ";" (put-exp c e n (value) acc)))
             ((and (returns? t) (not (control? e)))
-             (put ";" (put-exp c e n (value) (put "return " acc))))
+             (if (returns-ok? t)
+                 (put ");" (put-exp c e n (value) (put "return Ok(" acc)))
+                 (put ";" (put-exp c e n (value) (put "return " acc)))))
+            ((and (ok-value? t) (not (control? e)) (not (abort? c e)))
+             (put ")" (put-exp c e n (value) (put "Ok(" acc))))
             (else
              (tagcase e
                (num (k num-file num-pos)
@@ -402,7 +455,7 @@
     (lambda (c args n t acc)
       "A self tail call: the parameters it changes assigned, all at once."
       (tagcase t
-        (returns (f ps live)
+        (returns (f ps live ok)
           (tagcase (changes ps args)
             (assign (names values)
               (let ((acc (cond ((null? names) acc)
@@ -564,8 +617,8 @@
              (acc (put-tagcase-arms c (cdr xs) (i64+ n 1) t acc)))
         (put "}" (put-nl n acc)))))
 
-  (put-lambda (subr kfx (ctx sexps sexps i64 chars) chars)
-    (lambda (c params body n acc)
+  (put-lambda (subr kfx (ctx sexp sexps sexps i64 chars) chars)
+    (lambda (c e params body n acc)
       "A lambda as a value: a closure, `move`, since what it captures is
        `Copy`, made a `&'static dyn Fn` by `lambdaN`, `N` its arity."
       (let* ((acc (put "lambda" acc))
@@ -573,7 +626,9 @@
              (acc (put "(move |" acc))
              (acc (put-lambda-params c params acc))
              (acc (put "| " acc)))
-        (put ")" (put-block (with-locals c (map param-name params)) body n (value) acc)))))
+        (if (fact-at? c e "fallible")
+            (put ")" (put-block (with-locals c (cons "%fallible" (map param-name params))) body n (ok-value) acc))
+            (put ")" (put-block (with-locals c (cons "%infallible" (map param-name params))) body n (value) acc))))))
 
   (put-lambda-params (subr kfx (ctx sexps chars) chars)
     (lambda (c params acc)
@@ -644,7 +699,7 @@
                     (acc (put " {" acc))
                     (acc (put-case-arms c (cdr xs) (i64+ n 1) t acc)))
                (put "}" (put-nl n acc))))
-            ((string=? h "lambda") (put-lambda c (items (car xs)) (cdr xs) n acc))
+            ((string=? h "lambda") (put-lambda c e (items (car xs)) (cdr xs) n acc))
             ((string=? h "list") (put-list c xs n acc))
             ((string=? h "the")
              "`the::<T>(e)`: the type said to rustc too, which may need it where
@@ -655,8 +710,47 @@
                     (acc (put-exp c (second xs) n (value) acc)))
                (put ")" acc)))
             ((or (string=? h "letrec") (string=? h "letregion")) (put-block c (list e) n t acc))
-            ((null? xs) (put "()" (put (callee c h) acc)))
-            (else (put ")" (put-joined c xs ", " n (put "(" (put (callee c h) acc)))))))))
+            ((abort? c e)
+             (let* ((acc (put "return Err(unwind(" acc))
+                    (acc (put-joined c xs ", " n acc)))
+               (put "))" acc)))
+            ((and (string=? h "prompt") (string=? (local-kind h (ctx-locals c)) "")) (put-prompt c e xs n acc))
+            ((null? xs) (put-question c e (put "()" (put (callee c h) acc))))
+            (else (put-question c e (put ")" (put-joined c xs ", " n (put "(" (put (callee c h) acc)))))))))
+
+  (put-prompt (subr kfx (ctx sexp sexps i64 chars) chars)
+    (lambda (c e xs n acc)
+      "`(prompt tag body handler)`: the body run in a closure that returns a
+       `Result`, and its abort to the tag handled; any other abort passed on,
+       if the function written may abort, else none can come (the checker
+       found the prompt contains every abort its body may make)."
+      (let* ((inner (with-locals c (list "%fallible")))
+             (acc (put-nl (i64+ n 1) (put "{" acc)))
+             (acc (put "let prompt_tag__ = " acc))
+             (acc (put-exp c (car xs) (i64+ n 1) (value) acc))
+             (acc (put-nl (i64+ n 1) (put ";" acc)))
+             (acc (put "match (move || -> Result<_, Unwind> " acc))
+             (acc (put-block inner (list (second xs)) (i64+ n 1) (ok-value) acc))
+             (acc (put ")() {" acc))
+             (acc (put-nl (i64+ n 2) acc))
+             (acc (put "Ok(v) => v," acc))
+             (acc (put-nl (i64+ n 2) acc))
+             (acc (put "Err(u) if u.is(prompt_tag__) => (" acc))
+             (acc (put-exp c (third xs) (i64+ n 2) (value) acc))
+             (acc (put ")(prompt_tag__.payload(u))," acc))
+             (acc (put-nl (i64+ n 2) acc))
+             (acc (put (if (or (fact-at? c e "contains") (not (fallible-here? c)))
+                           "Err(u) => unreachable_unwind(u),"
+                           "Err(u) => return Err(u),")
+                       acc))
+             (acc (put-nl (i64+ n 1) acc))
+             (acc (put "}" acc)))
+        (put "}" (put-nl n acc)))))
+
+  (put-question (subr kfx (ctx sexp chars) chars)
+    (lambda (c e acc)
+      "A call the checker found may abort takes a `?`."
+      (if (fact-at? c e "fallible-call") (put "?" acc) acc))))
 
 "Top-level forms"
 
@@ -706,11 +800,15 @@
            (doc? (and (comment? (car body)) (not (null? (cdr body)))))
            (acc (if doc? (put "\n" (put-comment (string-chars (comment-text (car body))) "///" 0 #t acc)) acc))
            (body (if doc? (cdr body) body))
+           (fallible (and lambda? (fallible-effect? c (second (items type)))))
            (t (if lambda?
-                  (returns (sym-name name) (map param-name (items (second (items defined)))) #t)
+                  (returns (sym-name name) (map param-name (items (second (items defined)))) #t fallible)
                   (value)))
            (loops? (and lambda? (tail-calls? t (last body))))
-           (inner (if lambda? (with-locals c (map param-name (items (second (items defined))))) c))
+           (inner (if lambda?
+                      (with-locals c (cons (if fallible "%fallible" "%infallible")
+                                           (map param-name (items (second (items defined))))))
+                      c))
            (acc (put "pub fn " acc))
            (acc (put (mangle (sym-name name)) acc))
            (acc (put-generics binders #t acc))
@@ -719,14 +817,16 @@
                            (acc (put-params c (items (second (items defined))) (items (third (items type)))
                                             loops? acc))
                            (acc (put ") -> " acc)))
-                      (put-type c (fourth (items type)) acc))
+                      (if fallible
+                          (put ", Unwind>" (put-type c (fourth (items type)) (put "Result<" acc)))
+                          (put-type c (fourth (items type)) acc)))
                     (put-type c type (put "() -> " acc))))
            (acc (put " {" acc)))
       (if loops?
           (let* ((acc (put-nl 2 (put "loop {" (put-nl 1 acc))))
                  (acc (put-stmts inner body 2 t acc)))
             (put "\n    }\n}\n\n" acc))
-          (put "\n}\n\n" (put-stmts inner body 1 (value) (put-nl 1 acc)))))))
+          (put "\n}\n\n" (put-stmts inner body 1 (if fallible (ok-value) (value)) (put-nl 1 acc)))))))
 
 (define put-rec (subr kfx (ctx sexps chars) chars)
   (lambda (c bindings acc)
@@ -916,9 +1016,9 @@
   (lambda (c forms acc)
     (cond ((null? forms) acc)
           ((toplevel-form? (car forms))
-           (let* ((acc (put "    show_line(&mut out, " acc))
-                  (acc (put-exp c (car forms) 1 (value) acc)))
-             (put-toplevel-lines c (cdr forms) (put ");\n" acc))))
+           (let* ((acc (put "    show_line(&mut out, (|| -> Result<_, Unwind> { Ok(" acc))
+                  (acc (put-exp (with-locals c (list "%fallible")) (car forms) 1 (value) acc)))
+             (put-toplevel-lines c (cdr forms) (put ") })().unwrap_or_else(|u| unreachable_unwind(u)));\n" acc))))
           (else (put-toplevel-lines c (cdr forms) acc)))))
 
 (define put-toplevel (subr kfx (ctx sexps chars) chars)

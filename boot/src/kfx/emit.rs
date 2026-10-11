@@ -37,11 +37,11 @@ pub fn family(f0: Str, f1: bool, f2: Strings) -> &'static Family {
 pub type Families = List<&'static Family>;
 
 pub enum Ctx {
-    Ctx(Strings, Tagofs, Strings, Strings, Typeds, Facts, Families),
+    Ctx(Strings, Tagofs, Strings, Strings, Typeds, Facts, Families, Typeds),
 }
 
-pub fn ctx(f0: Strings, f1: Tagofs, f2: Strings, f3: Strings, f4: Typeds, f5: Facts, f6: Families) -> &'static Ctx {
-    alloc(Ctx::Ctx(f0, f1, f2, f3, f4, f5, f6))
+pub fn ctx(f0: Strings, f1: Tagofs, f2: Strings, f3: Strings, f4: Typeds, f5: Facts, f6: Families, f7: Typeds) -> &'static Ctx {
+    alloc(Ctx::Ctx(f0, f1, f2, f3, f4, f5, f6, f7))
 }
 
 pub fn filter_typed(mut name: Str, mut xs: Typeds) -> Typeds {
@@ -64,11 +64,53 @@ pub fn filter_typed(mut name: Str, mut xs: Typeds) -> Typeds {
     }
 }
 
+pub fn ctx_effects(c: &'static Ctx) -> Typeds {
+    let tagcase_ = c;
+    match *tagcase_ {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es) => {
+            es
+        }
+    }
+}
+
+/// Whether a written effect may abort, its abbreviations seen through: a
+/// procedure of it returns a `Result` (docs/research/escapes.md).
+pub fn fallible_effect_p(c: &'static Ctx, e: &'static Sexp) -> bool {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Sym(n) => {
+            any_p(lambda1(move |x: &'static Typed| {
+                let tagcase_ = x;
+                match *tagcase_ {
+                    Typed::Typed(m, body) => {
+                        (string_eq_p(m, n) && fallible_effect_p(c, body))
+                    }
+                }
+            }), ctx_effects(c))
+        }
+        Sexp::Lst(xs, src_file, src_line, src_pos) => {
+            if sym_is_p(car(xs), str_lit("goto")) {
+                true
+            } else if sym_is_p(car(xs), str_lit("maxeff")) {
+                any_p(lambda1(move |x: &'static Sexp| {
+                    fallible_effect_p(c, x)
+                }), cdr(xs))
+            } else {
+                false
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
 /// Whether the checker found `what` about the place `file`, `pos`.
 pub fn ctx_fact_p(c: &'static Ctx, file: Str, pos: i64, what: Str) -> bool {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es) => {
             any_p(lambda1(move |f: &'static Fact| {
                 let tagcase_ = f;
                 match *tagcase_ {
@@ -81,10 +123,24 @@ pub fn ctx_fact_p(c: &'static Ctx, file: Str, pos: i64, what: Str) -> bool {
     }
 }
 
+/// Whether the checker found `what` about the list `e`.
+pub fn fact_at_p(c: &'static Ctx, e: &'static Sexp, what: Str) -> bool {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Lst(xs, src_file, src_line, src_pos) => {
+            ctx_fact_p(c, src_file, src_pos, what)
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
 pub fn ctx_datatypes(c: &'static Ctx) -> Strings {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es) => {
             ds
         }
     }
@@ -93,7 +149,7 @@ pub fn ctx_datatypes(c: &'static Ctx) -> Strings {
 pub fn ctx_tags(c: &'static Ctx) -> Tagofs {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es) => {
             ts
         }
     }
@@ -102,7 +158,7 @@ pub fn ctx_tags(c: &'static Ctx) -> Tagofs {
 pub fn ctx_constants(c: &'static Ctx) -> Strings {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es) => {
             ks
         }
     }
@@ -111,7 +167,7 @@ pub fn ctx_constants(c: &'static Ctx) -> Strings {
 pub fn ctx_locals(c: &'static Ctx) -> Strings {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es) => {
             ls
         }
     }
@@ -122,7 +178,7 @@ pub fn ctx_locals(c: &'static Ctx) -> Strings {
 pub fn ctx_typed(c: &'static Ctx, name: Str) -> Sexps {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es) => {
             map(lambda1(move |x: &'static Typed| {
                 let tagcase_ = x;
                 match *tagcase_ {
@@ -150,8 +206,8 @@ pub fn strings_onto(mut xs: Strings, mut ys: Strings) -> Strings {
 pub fn with_locals(c: &'static Ctx, names: Strings) -> &'static Ctx {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms) => {
-            ctx(ds, ts, ks, strings_onto(names, ls), xs, fs, ms)
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es) => {
+            ctx(ds, ts, ks, strings_onto(names, ls), xs, fs, ms, es)
         }
     }
 }
@@ -270,7 +326,7 @@ pub fn filter_family(mut name: Str, mut ms: Families) -> Families {
 pub fn find_family_of(c: &'static Ctx, name: Str) -> Families {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es) => {
             let found = filter_family(name, ms);
             found
         }
@@ -297,14 +353,16 @@ pub fn put_generics_of(names: Strings, bounded: bool, acc: Chars) -> Chars {
 pub fn note(form: &'static Sexp, c: &'static Ctx) -> &'static Ctx {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es) => {
             if head_is_p(form, str_lit("define-datatype")) {
                 let d = type_head_name(second(items(form)));
-                ctx(cons(d, ds), note_tags(cdr(cdr(items(form))), d, ts), ks, ls, xs, fs, note_family(second(items(form)), true, ms))
+                ctx(cons(d, ds), note_tags(cdr(cdr(items(form))), d, ts), ks, ls, xs, fs, note_family(second(items(form)), true, ms), es)
             } else if (head_is_p(form, str_lit("define-type")) || head_is_p(form, str_lit("define-generative"))) {
-                ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms))
+                ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms), es)
+            } else if head_is_p(form, str_lit("define-effect")) {
+                ctx(ds, ts, ks, ls, xs, fs, ms, cons(typed(sym_name(second(items(form))), third(items(form))), es))
             } else if (head_is_p(form, str_lit("define")) && (i64_eq(size(items(form)), 3i64) || i64_eq(size(items(form)), 4i64)) && not(procedure_p(last(items(form))))) {
-                ctx(ds, ts, cons(sym_name(second(items(form))), ks), ls, xs, fs, ms)
+                ctx(ds, ts, cons(sym_name(second(items(form))), ks), ls, xs, fs, ms, es)
             } else {
                 c
             }
@@ -391,7 +449,13 @@ pub fn put_type(c: &'static Ctx, t: &'static Sexp, acc: Chars) -> Chars {
                 let acc = put(str_lit("&'static dyn Fn("), acc);
                 let acc = put_types(c, items(third(xs)), acc);
                 let acc = put(str_lit(") -> "), acc);
-                put_type(c, fourth(xs), acc)
+                if fallible_effect_p(c, second(xs)) {
+                    put(str_lit(", Unwind>"), put_type(c, fourth(xs), put(str_lit("Result<"), acc)))
+                } else {
+                    put_type(c, fourth(xs), acc)
+                }
+            } else if sym_is_p(car(xs), str_lit("prompt-tag")) {
+                put(str_lit(">"), put_type(c, third(xs), put(str_lit(", "), put_type(c, second(xs), put(str_lit("Tag<"), acc)))))
             } else if sym_is_p(car(xs), str_lit("poly")) {
                 error(str_lit("kfx: a poly type is only a definition's, at its top"))
             } else if {
@@ -472,6 +536,11 @@ pub fn local_kind(mut s: Str, mut ls: Strings) -> Str {
             continue;
         }
     }
+}
+
+/// Whether the function or closure being written returns a `Result`.
+pub fn fallible_here_p(c: &'static Ctx) -> bool {
+    string_eq_p(local_kind(str_lit("%fallible"), ctx_locals(c)), str_lit("local"))
 }
 
 /// A call's operator: a knot's procedure, a constant's value (a
@@ -587,15 +656,20 @@ pub fn put_names(xs: Sexps, acc: Chars) -> Chars {
 // everything else it could end with is `return`ed.
 pub enum Tail {
     Value(),
-    Returns(Str, Strings, bool),
+    Returns(Str, Strings, bool, bool),
+    OkValue(),
 }
 
 pub fn value() -> &'static Tail {
     alloc(Tail::Value())
 }
 
-pub fn returns(f0: Str, f1: Strings, f2: bool) -> &'static Tail {
-    alloc(Tail::Returns(f0, f1, f2))
+pub fn returns(f0: Str, f1: Strings, f2: bool, f3: bool) -> &'static Tail {
+    alloc(Tail::Returns(f0, f1, f2, f3))
+}
+
+pub fn ok_value() -> &'static Tail {
+    alloc(Tail::OkValue())
 }
 
 // `value`: an expression whose value is used. `returns`: the last thing a
@@ -610,11 +684,11 @@ pub fn binding_name(binding: &'static Sexp) -> Str {
 pub fn hide(t: &'static Tail, names: Strings) -> &'static Tail {
     let tagcase_ = t;
     match *tagcase_ {
-        Tail::Returns(f, ps, live) => {
+        Tail::Returns(f, ps, live, ok) => {
             if (live && any_p(lambda1(move |x: Str| {
                 string_member_p(x, ps)
             }), names)) {
-                returns(f, ps, false)
+                returns(f, ps, false, ok)
             } else {
                 t
             }
@@ -626,10 +700,10 @@ pub fn hide(t: &'static Tail, names: Strings) -> &'static Tail {
     }
 }
 
-pub fn returns_p(t: &'static Tail) -> bool {
+pub fn ok_value_p(t: &'static Tail) -> bool {
     let tagcase_ = t;
     match *tagcase_ {
-        Tail::Returns(f, ps, live) => {
+        Tail::OkValue() => {
             true
         }
         _ => {
@@ -639,10 +713,41 @@ pub fn returns_p(t: &'static Tail) -> bool {
     }
 }
 
+pub fn returns_ok_p(t: &'static Tail) -> bool {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Tail::Returns(f, ps, live, ok) => {
+            ok
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+pub fn returns_p(t: &'static Tail) -> bool {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Tail::Returns(f, ps, live, ok) => {
+            true
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+/// An abort: `return Err(...)` in Rust, so no value to return or wrap.
+pub fn abort_p(c: &'static Ctx, e: &'static Sexp) -> bool {
+    (head_is_p(e, str_lit("abort-current-continuation")) && string_eq_p(local_kind(str_lit("abort-current-continuation"), ctx_locals(c)), str_lit("")))
+}
+
 pub fn self_call_p(t: &'static Tail, e: &'static Sexp) -> bool {
     let tagcase_ = t;
     match *tagcase_ {
-        Tail::Returns(f, ps, live) => {
+        Tail::Returns(f, ps, live, ok) => {
             (live && head_is_p(e, f) && i64_eq(size(cdr(items(e))), size(ps)))
         }
         _ => {
@@ -755,8 +860,16 @@ pub fn put_strings(xs: Strings, acc: Chars) -> Chars {
 pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc: Chars) -> Chars {
     if self_call_p(t, e) {
         put_continue(c, cdr(items(e)), n, t, acc)
+    } else if (returns_p(t) && abort_p(c, e)) {
+        put(str_lit(";"), put_exp(c, e, n, value(), acc))
     } else if (returns_p(t) && not(control_p(e))) {
-        put(str_lit(";"), put_exp(c, e, n, value(), put(str_lit("return "), acc)))
+        if returns_ok_p(t) {
+            put(str_lit(");"), put_exp(c, e, n, value(), put(str_lit("return Ok("), acc)))
+        } else {
+            put(str_lit(";"), put_exp(c, e, n, value(), put(str_lit("return "), acc)))
+        }
+    } else if (ok_value_p(t) && not(control_p(e)) && not(abort_p(c, e))) {
+        put(str_lit(")"), put_exp(c, e, n, value(), put(str_lit("Ok("), acc)))
     } else {
         let tagcase_ = e;
         match *tagcase_ {
@@ -811,7 +924,7 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
 pub fn put_continue(c: &'static Ctx, args: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
     let tagcase_ = t;
     match *tagcase_ {
-        Tail::Returns(f, ps, live) => {
+        Tail::Returns(f, ps, live, ok) => {
             let tagcase_ = changes(ps, args);
             match *tagcase_ {
                 Assign::Assign(names, values) => {
@@ -1024,13 +1137,17 @@ pub fn put_tagcase(c: &'static Ctx, xs: Sexps, n: i64, t: &'static Tail, acc: Ch
 
 /// A lambda as a value: a closure, `move`, since what it captures is
 /// `Copy`, made a `&'static dyn Fn` by `lambdaN`, `N` its arity.
-pub fn put_lambda(c: &'static Ctx, params: Sexps, body: Sexps, n: i64, acc: Chars) -> Chars {
+pub fn put_lambda(c: &'static Ctx, e: &'static Sexp, params: Sexps, body: Sexps, n: i64, acc: Chars) -> Chars {
     let acc = put(str_lit("lambda"), acc);
     let acc = put(i64_to_string(size(params)), acc);
     let acc = put(str_lit("(move |"), acc);
     let acc = put_lambda_params(c, params, acc);
     let acc = put(str_lit("| "), acc);
-    put(str_lit(")"), put_block(with_locals(c, map(&param_name, params)), body, n, value(), acc))
+    if fact_at_p(c, e, str_lit("fallible")) {
+        put(str_lit(")"), put_block(with_locals(c, cons(str_lit("%fallible"), map(&param_name, params))), body, n, ok_value(), acc))
+    } else {
+        put(str_lit(")"), put_block(with_locals(c, cons(str_lit("%infallible"), map(&param_name, params))), body, n, value(), acc))
+    }
 }
 
 /// `x`, or `(x T)` as `x: T`.
@@ -1130,7 +1247,7 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
         let acc = put_case_arms(c, cdr(xs), i64_plus(n, 1i64), t, acc);
         put(str_lit("}"), put_nl(n, acc))
     } else if string_eq_p(h, str_lit("lambda")) {
-        put_lambda(c, items(car(xs)), cdr(xs), n, acc)
+        put_lambda(c, e, items(car(xs)), cdr(xs), n, acc)
     } else if string_eq_p(h, str_lit("list")) {
         put_list(c, xs, n, acc)
     } else if string_eq_p(h, str_lit("the")) {
@@ -1143,10 +1260,55 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
         put(str_lit(")"), acc)
     } else if (string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion"))) {
         put_block(c, cons(e, nil()), n, t, acc)
+    } else if abort_p(c, e) {
+        let acc = put(str_lit("return Err(unwind("), acc);
+        let acc = put_joined(c, xs, str_lit(", "), n, acc);
+        put(str_lit("))"), acc)
+    } else if (string_eq_p(h, str_lit("prompt")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+        put_prompt(c, e, xs, n, acc)
     } else if null_p(xs) {
-        put(str_lit("()"), put(callee(c, h), acc))
+        put_question(c, e, put(str_lit("()"), put(callee(c, h), acc)))
     } else {
-        put(str_lit(")"), put_joined(c, xs, str_lit(", "), n, put(str_lit("("), put(callee(c, h), acc))))
+        put_question(c, e, put(str_lit(")"), put_joined(c, xs, str_lit(", "), n, put(str_lit("("), put(callee(c, h), acc)))))
+    }
+}
+
+/// `(prompt tag body handler)`: the body run in a closure that returns a
+/// `Result`, and its abort to the tag handled; any other abort passed on,
+/// if the function written may abort, else none can come (the checker
+/// found the prompt contains every abort its body may make).
+pub fn put_prompt(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Chars) -> Chars {
+    let inner = with_locals(c, cons(str_lit("%fallible"), nil()));
+    let acc = put_nl(i64_plus(n, 1i64), put(str_lit("{"), acc));
+    let acc = put(str_lit("let prompt_tag__ = "), acc);
+    let acc = put_exp(c, car(xs), i64_plus(n, 1i64), value(), acc);
+    let acc = put_nl(i64_plus(n, 1i64), put(str_lit(";"), acc));
+    let acc = put(str_lit("match (move || -> Result<_, Unwind> "), acc);
+    let acc = put_block(inner, cons(second(xs), nil()), i64_plus(n, 1i64), ok_value(), acc);
+    let acc = put(str_lit(")() {"), acc);
+    let acc = put_nl(i64_plus(n, 2i64), acc);
+    let acc = put(str_lit("Ok(v) => v,"), acc);
+    let acc = put_nl(i64_plus(n, 2i64), acc);
+    let acc = put(str_lit("Err(u) if u.is(prompt_tag__) => ("), acc);
+    let acc = put_exp(c, third(xs), i64_plus(n, 2i64), value(), acc);
+    let acc = put(str_lit(")(prompt_tag__.payload(u)),"), acc);
+    let acc = put_nl(i64_plus(n, 2i64), acc);
+    let acc = put(if (fact_at_p(c, e, str_lit("contains")) || not(fallible_here_p(c))) {
+        str_lit("Err(u) => unreachable_unwind(u),")
+    } else {
+        str_lit("Err(u) => return Err(u),")
+    }, acc);
+    let acc = put_nl(i64_plus(n, 1i64), acc);
+    let acc = put(str_lit("}"), acc);
+    put(str_lit("}"), put_nl(n, acc))
+}
+
+/// A call the checker found may abort takes a `?`.
+pub fn put_question(c: &'static Ctx, e: &'static Sexp, acc: Chars) -> Chars {
+    if fact_at_p(c, e, str_lit("fallible-call")) {
+        put(str_lit("?"), acc)
+    } else {
+        acc
     }
 }
 
@@ -1252,14 +1414,19 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, r#type: &'static Sexp, d
     } else {
         body
     };
+    let fallible = (lambda_p && fallible_effect_p(c, second(items(r#type))));
     let t = if lambda_p {
-        returns(sym_name(name), map(&param_name, items(second(items(defined)))), true)
+        returns(sym_name(name), map(&param_name, items(second(items(defined)))), true, fallible)
     } else {
         value()
     };
     let loops_p = (lambda_p && tail_calls_p(t, last(body)));
     let inner = if lambda_p {
-        with_locals(c, map(&param_name, items(second(items(defined)))))
+        with_locals(c, cons(if fallible {
+            str_lit("%fallible")
+        } else {
+            str_lit("%infallible")
+        }, map(&param_name, items(second(items(defined))))))
     } else {
         c
     };
@@ -1270,7 +1437,11 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, r#type: &'static Sexp, d
         let acc = put(str_lit("("), acc);
         let acc = put_params(c, items(second(items(defined))), items(third(items(r#type))), loops_p, acc);
         let acc = put(str_lit(") -> "), acc);
-        put_type(c, fourth(items(r#type)), acc)
+        if fallible {
+            put(str_lit(", Unwind>"), put_type(c, fourth(items(r#type)), put(str_lit("Result<"), acc)))
+        } else {
+            put_type(c, fourth(items(r#type)), acc)
+        }
     } else {
         put_type(c, r#type, put(str_lit("() -> "), acc))
     };
@@ -1280,7 +1451,11 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, r#type: &'static Sexp, d
         let acc = put_stmts(inner, body, 2i64, t, acc);
         put(str_lit("\n    }\n}\n\n"), acc)
     } else {
-        put(str_lit("\n}\n\n"), put_stmts(inner, body, 1i64, value(), put_nl(1i64, acc)))
+        put(str_lit("\n}\n\n"), put_stmts(inner, body, 1i64, if fallible {
+            ok_value()
+        } else {
+            value()
+        }, put_nl(1i64, acc)))
     }
 }
 
@@ -1519,9 +1694,9 @@ pub fn put_toplevel_lines(mut c: &'static Ctx, mut forms: Sexps, mut acc: Chars)
         if null_p(forms) {
             return acc;
         } else if toplevel_form_p(car(forms)) {
-            let acc = put(str_lit("    show_line(&mut out, "), acc);
-            let acc = put_exp(c, car(forms), 1i64, value(), acc);
-            return put_toplevel_lines(c, cdr(forms), put(str_lit(");\n"), acc));
+            let acc = put(str_lit("    show_line(&mut out, (|| -> Result<_, Unwind> { Ok("), acc);
+            let acc = put_exp(with_locals(c, cons(str_lit("%fallible"), nil())), car(forms), 1i64, value(), acc);
+            return put_toplevel_lines(c, cdr(forms), put(str_lit(") })().unwrap_or_else(|u| unreachable_unwind(u)));\n"), acc));
         } else {
             forms = cdr(forms);
             continue;

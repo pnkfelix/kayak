@@ -1,0 +1,69 @@
+"Escapes: an abort to a prompt is an early return, `Err` and `?`, decided by
+ effects (CLAUDES_CHOICES.md C18): a procedure whose effect may `goto`
+ returns a `Result`; one that cannot, a value."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-type ints (listof i64 acyclic))
+
+(define words (subr kfx ((listof string acyclic)) string)
+  (lambda (xs)
+    (cond ((null? xs) "")
+          ((null? (cdr xs)) (car xs))
+          (else (string-append (car xs) (string-append " " (words (cdr xs))))))))
+
+"A loop that may leave: its tail calls a loop still, its value `Ok`."
+(define find (poly ((r region))
+               (subr (maxeff kfx (goto r)) ((prompt-tag i64 i64 kfx r) ints i64) i64))
+  (lambda (t xs n)
+    (cond ((null? xs) -1)
+          ((i64= (car xs) n) (abort-current-continuation t n))
+          (else (find t (cdr xs) n)))))
+
+"The prompt delimits its region: nothing escapes `search`."
+(define search (subr kfx (ints i64) i64)
+  (lambda (xs n)
+    (letregion e
+      (let ((t (the (prompt-tag i64 i64 kfx e) (make-continuation-prompt-tag))))
+        (prompt t (begin (find t xs n) 0) (lambda ((v i64)) (i64* v 100)))))))
+
+"A procedure that may leave, as a value, and an abort through a closure."
+(define each (poly ((r region))
+               (subr (maxeff kfx (goto r)) ((subr (maxeff kfx (goto r)) (i64) unit) ints) unit))
+  (lambda (f xs)
+    (if (null? xs)
+        #u
+        (begin (f (car xs)) (each f (cdr xs))))))
+
+(define first-over (subr kfx (ints i64) i64)
+  (lambda (xs m)
+    (letregion e
+      (let ((t (the (prompt-tag i64 i64 kfx e) (make-continuation-prompt-tag))))
+        (prompt t
+                (begin (each (lambda ((x i64)) (if (i64> x m) (abort-current-continuation t x) #u)) xs)
+                       -1)
+                (lambda ((v i64)) v))))))
+
+"An abort through an inner prompt of another tag, to the outer one."
+(define nested (subr kfx (ints i64) i64)
+  (lambda (xs n)
+    (letregion outer
+      (let ((t1 (the (prompt-tag i64 i64 kfx outer) (make-continuation-prompt-tag))))
+        (prompt t1
+                (letregion inner
+                  (let ((t2 (the (prompt-tag i64 i64 (maxeff kfx (goto outer)) inner)
+                                 (make-continuation-prompt-tag))))
+                    (i64+ 1 (prompt t2 (find t1 xs n) (lambda ((v i64)) (i64- 0 v))))))
+                (lambda ((v i64)) (i64* v 1000)))))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (words
+     (list (i64->string (search (list 1 2 3) 2))
+           (i64->string (search (list 1 2 3) 5))
+           (i64->string (first-over (list 1 5 9 2) 4))
+           (i64->string (first-over (list 1 2) 4))
+           (i64->string (nested (list 4 7) 7))
+           (i64->string (nested (list 4 7) 8))))))
+
+(main)

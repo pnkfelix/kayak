@@ -28,6 +28,11 @@ pub mod define_star;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/escapes.rs"]
+pub mod escapes;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/families.rs"]
 pub mod families;
 
@@ -116,6 +121,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("control", control::main),
     ("data", data::main),
     ("define-star", define_star::main),
+    ("escapes", escapes::main),
     ("families", families::main),
     ("floats", floats::main),
     ("generative", generative::main),
