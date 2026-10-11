@@ -213,13 +213,13 @@ pub fn show_sexp(e: &'static Sexp) -> Str {
         Sexp::Str(s) => {
             string_append(str_lit("\""), string_append(s, str_lit("\"")))
         }
-        Sexp::Num(k) => {
+        Sexp::Num(k, num_file, num_pos) => {
             i64_to_string(k)
         }
         Sexp::Chr(c) => {
             string_append(str_lit("#\\"), char_to_string(c))
         }
-        Sexp::Lst(xs, src_file, src_line) => {
+        Sexp::Lst(xs, src_file, src_line, src_pos) => {
             string_append(str_lit("("), string_append(show_sexps(xs), str_lit(")")))
         }
     }
@@ -389,7 +389,7 @@ pub fn parse_effect(v: &'static Cv, tvars: Strings, e: &'static Sexp) -> Strings
                 find_effdef(v, s, cv_effdefs(v))
             }
         }
-        Sexp::Lst(xs, src_file, src_line) => {
+        Sexp::Lst(xs, src_file, src_line, src_pos) => {
             if sym_is_p(car(xs), str_lit("maxeff")) {
                 parse_effects(v, tvars, cdr(xs))
             } else if (sym_is_p(car(xs), str_lit("read")) && sym_is_p(second(xs), str_lit("@globals"))) {
@@ -522,7 +522,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     }
                 }
             }
-            Sexp::Lst(xs, src_file, src_line) => {
+            Sexp::Lst(xs, src_file, src_line, src_pos) => {
                 if sym_is_p(car(xs), str_lit("listof")) {
                     if sym_is_p(third(xs), str_lit("acyclic")) {
                         return ty_list(parse_type(v, tvars, second(xs)));
@@ -564,13 +564,13 @@ pub fn poly_binders(v: &'static Cv, t: &'static Sexp) -> Strings {
         map(lambda1(move |b: &'static Sexp| {
             let b = items(b);
             if not(i64_eq(size(b), 2i64)) {
-                refuse(v, string_append(str_lit("a binder KFX-0 does not have (distinct regions are to come): "), show_sexp(lst(b, str_lit(""), 0i64))))
+                refuse(v, string_append(str_lit("a binder KFX-0 does not have (distinct regions are to come): "), show_sexp(lst(b, str_lit(""), 0i64, 0i64))))
             } else if sym_is_p(second(b), str_lit("type")) {
                 name_of(v, car(b))
             } else if sym_is_p(second(b), str_lit("region")) {
                 string_append(str_lit("'"), name_of(v, car(b)))
             } else {
-                refuse(v, string_append(str_lit("KFX's poly is over types and regions: "), show_sexp(lst(b, str_lit(""), 0i64))))
+                refuse(v, string_append(str_lit("KFX's poly is over types and regions: "), show_sexp(lst(b, str_lit(""), 0i64, 0i64))))
             }
         }), items(second(items(t))))
     } else {
@@ -1415,7 +1415,7 @@ pub fn without_tag(tag: Str, vs: Variants) -> Variants {
 pub fn synth(v: &'static Cv, s: &'static St, e: &'static Sexp) -> &'static Res {
     let tagcase_ = e;
     match *tagcase_ {
-        Sexp::Num(k) => {
+        Sexp::Num(k, num_file, num_pos) => {
             literal_int(v)
         }
         Sexp::Chr(c) => {
@@ -1427,7 +1427,7 @@ pub fn synth(v: &'static Cv, s: &'static St, e: &'static Sexp) -> &'static Res {
         Sexp::Sym(name) => {
             synth_name(v, s, name)
         }
-        Sexp::Lst(xs, src_file, src_line) => {
+        Sexp::Lst(xs, src_file, src_line, src_pos) => {
             let v = near(v, src_file, src_line);
             let tagcase_ = car(xs);
             match *tagcase_ {
@@ -1472,7 +1472,7 @@ pub fn check(v: &'static Cv, s: &'static St, e: &'static Sexp, expected: &'stati
     let x = walk(s, expected);
     let tagcase_ = e;
     match *tagcase_ {
-        Sexp::Num(k) => {
+        Sexp::Num(k, num_file, num_pos) => {
             let tagcase_ = x;
             match *tagcase_ {
                 Ty::TyI64() => {
@@ -1487,7 +1487,7 @@ pub fn check(v: &'static Cv, s: &'static St, e: &'static Sexp, expected: &'stati
                 }
             }
         }
-        Sexp::Lst(xs, src_file, src_line) => {
+        Sexp::Lst(xs, src_file, src_line, src_pos) => {
             let v = near(v, src_file, src_line);
             let tagcase_ = car(xs);
             match *tagcase_ {
@@ -1851,7 +1851,7 @@ pub fn synth_lambda(v: &'static Cv, s: &'static St, params: Sexps, forms: Sexps)
     let types = map(lambda1(move |p: &'static Sexp| {
         let tagcase_ = p;
         match *tagcase_ {
-            Sexp::Lst(pt, src_file, src_line) => {
+            Sexp::Lst(pt, src_file, src_line, src_pos) => {
                 parse_type(v, nil(), second(pt))
             }
             _ => {
@@ -1931,7 +1931,7 @@ pub fn check_written_params(mut v: &'static Cv, mut s: &'static St, mut params: 
             (s, params, types) = ({
                 let tagcase_ = car(params);
                 match *tagcase_ {
-                    Sexp::Lst(pt, src_file, src_line) => {
+                    Sexp::Lst(pt, src_file, src_line, src_pos) => {
                         fits(v, s, car(types), parse_type(v, nil(), second(pt)))
                     }
                     _ => {
@@ -2087,7 +2087,7 @@ pub fn constructors(d: &'static Dt) -> Binds {
 pub fn type_name(v: &'static Cv, form: &'static Sexp) -> Str {
     let tagcase_ = form;
     match *tagcase_ {
-        Sexp::Lst(xs, src_file, src_line) => {
+        Sexp::Lst(xs, src_file, src_line, src_pos) => {
             let v = near(v, src_file, src_line);
             let tagcase_ = second(xs);
             match *tagcase_ {
@@ -2341,7 +2341,7 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
         Sexp::Str(x) => {
             v
         }
-        Sexp::Lst(xs, src_file, src_line) => {
+        Sexp::Lst(xs, src_file, src_line, src_pos) => {
             let (v, h) = (near(v, src_file, src_line), if null_p(xs) {
                 str_lit("")
             } else {
@@ -2520,16 +2520,16 @@ pub fn ty_sexp(v: &'static Cv, s: &'static St, t: &'static Ty) -> &'static Sexp 
             sym(str_lit("void"))
         }
         Ty::TyList(e) => {
-            lst(cons(sym(str_lit("listof")), cons(ty_sexp(v, s, e), cons(sym(str_lit("acyclic")), nil()))), str_lit(""), 0i64)
+            lst(cons(sym(str_lit("listof")), cons(ty_sexp(v, s, e), cons(sym(str_lit("acyclic")), nil()))), str_lit(""), 0i64, 0i64)
         }
         Ty::TyData(d) => {
             sym(d)
         }
         Ty::TyFlat(e, r) => {
-            lst(cons(sym(str_lit("flatarrayof")), cons(ty_sexp(v, s, e), cons(ty_sexp(v, s, r), nil()))), str_lit(""), 0i64)
+            lst(cons(sym(str_lit("flatarrayof")), cons(ty_sexp(v, s, e), cons(ty_sexp(v, s, r), nil()))), str_lit(""), 0i64, 0i64)
         }
         Ty::TyRef(e, r) => {
-            lst(cons(sym(str_lit("ref")), cons(ty_sexp(v, s, e), cons(ty_sexp(v, s, r), nil()))), str_lit(""), 0i64)
+            lst(cons(sym(str_lit("ref")), cons(ty_sexp(v, s, e), cons(ty_sexp(v, s, r), nil()))), str_lit(""), 0i64, 0i64)
         }
         Ty::TyRconst(n) => {
             sym(n)
@@ -2537,7 +2537,7 @@ pub fn ty_sexp(v: &'static Cv, s: &'static St, t: &'static Ty) -> &'static Sexp 
         Ty::TyProc(es, ps, r) => {
             lst(cons(sym(str_lit("subr")), cons(sym(str_lit("pure")), cons(lst(map(lambda1(move |p: &'static Ty| {
                 ty_sexp(v, s, p)
-            }), ps), str_lit(""), 0i64), cons(ty_sexp(v, s, r), nil())))), str_lit(""), 0i64)
+            }), ps), str_lit(""), 0i64, 0i64), cons(ty_sexp(v, s, r), nil())))), str_lit(""), 0i64, 0i64)
         }
         Ty::TyVar(n) => {
             refuse(v, string_append(str_lit("a definition with no type, of a type over "), string_append(n, str_lit(": write its type"))))
@@ -2582,7 +2582,7 @@ pub fn check_tops(mut v: &'static Cv, mut forms: Sexps, mut found: Typeds) -> &'
         } else if untyped_p(car(forms)) {
             let tagcase_ = car(forms);
             match *tagcase_ {
-                Sexp::Lst(xs, src_file, src_line) => {
+                Sexp::Lst(xs, src_file, src_line, src_pos) => {
                     let tagcase_ = check_untyped(near(v, src_file, src_line), car(forms));
                     match *tagcase_ {
                         Elab::Elab(v2, more) => {

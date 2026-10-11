@@ -83,9 +83,9 @@
       (tagcase e
         (sym (s) s)
         (str (s) (string-append "\"" (string-append s "\"")))
-        (num (k) (i64->string k))
+        (num (k num-file num-pos) (i64->string k))
         (chr (c) (string-append "#\\" (char->string c)))
-        (lst (xs src-file src-line) (string-append "(" (string-append (show-sexps xs) ")"))))))
+        (lst (xs src-file src-line src-pos) (string-append "(" (string-append (show-sexps xs) ")"))))))
   (show-sexps (subr kfx (sexps) string)
     (lambda (xs)
       (cond ((null? xs) "")
@@ -173,7 +173,7 @@
           (cond ((string=? s "pure") nil)
                 ((string=? s "spin") (list "spin"))
                 (else (find-effdef v s (cv-effdefs v)))))
-        (lst (xs src-file src-line)
+        (lst (xs src-file src-line src-pos)
           (cond ((sym-is? (car xs) "maxeff") (parse-effects v tvars (cdr xs)))
                 ((and (sym-is? (car xs) "read") (sym-is? (second xs) "@globals")) (list "@globals"))
                 ((and (sym-is? (car xs) "read") (head-is? (second xs) "globals"))
@@ -225,7 +225,7 @@
                    (if (null? found)
                        (refuse v (string-append "no type is named " s))
                        (parse-type v tvars (car found)))))))
-        (lst (xs src-file src-line)
+        (lst (xs src-file src-line src-pos)
           (cond ((sym-is? (car xs) "listof")
                  (if (sym-is? (third xs) "acyclic")
                      (ty-list (parse-type v tvars (second xs)))
@@ -254,10 +254,10 @@
                (let ((b (items b)))
                  (cond ((not (i64= (size b) 2))
                         (refuse v (string-append "a binder KFX-0 does not have (distinct regions are to come): "
-                                                 (show-sexp (lst b "" 0)))))
+                                                 (show-sexp (lst b "" 0 0)))))
                        ((sym-is? (second b) "type") (name-of v (car b)))
                        ((sym-is? (second b) "region") (string-append "'" (name-of v (car b))))
-                       (else (refuse v (string-append "KFX's poly is over types and regions: " (show-sexp (lst b "" 0))))))))
+                       (else (refuse v (string-append "KFX's poly is over types and regions: " (show-sexp (lst b "" 0 0))))))))
              (items (second (items t))))
         nil)))
 
@@ -599,11 +599,11 @@
   (synth (subr kfx (cv st sexp) res)
     (lambda (v s e)
       (tagcase e
-        (num (k) (literal-int v))
+        (num (k num-file num-pos) (literal-int v))
         (chr (c) (res (ty-char) nil s))
         (str (x) (res (ty-string) nil s))
         (sym (name) (synth-name v s name))
-        (lst (xs src-file src-line)
+        (lst (xs src-file src-line src-pos)
           (let ((v (near v src-file src-line)))
             (tagcase (car xs)
               (sym (h) (synth-form v s e h (cdr xs)))
@@ -626,13 +626,13 @@
     (lambda (v s e expected)
       (let ((x (walk s expected)))
         (tagcase e
-          (num (k)
+          (num (k num-file num-pos)
             (tagcase x
               (ty-i64 () (res x nil s))
               (ty-meta (m) (literal-int v))
               (else other (refuse v (string-append "a literal is here, where a "
                                                    (string-append (show-ty s x) " is expected"))))))
-          (lst (xs src-file src-line)
+          (lst (xs src-file src-line src-pos)
             (let ((v (near v src-file src-line)))
               (tagcase (car xs)
                 (sym (h) (check-form v s e h (cdr xs) x))
@@ -820,7 +820,7 @@
       "A lambda with nothing expected: its parameters' types written."
       (let ((types (map (lambda ((p sexp))
                           (tagcase p
-                            (lst (pt src-file src-line) (parse-type v nil (second pt)))
+                            (lst (pt src-file src-line src-pos) (parse-type v nil (second pt)))
                             (else other (refuse v (string-append "a lambda with nothing expected needs its parameters' types: " (show-sexp other))))))
                         params)))
         (tagcase (body (with-binds v (bind-params v params types)) s forms nil)
@@ -864,7 +864,7 @@
           s
           (check-written-params v
                                 (tagcase (car params)
-                                  (lst (pt src-file src-line) (fits v s (car types) (parse-type v nil (second pt))))
+                                  (lst (pt src-file src-line src-pos) (fits v s (car types) (parse-type v nil (second pt))))
                                   (else other
                                     (if (has-meta? s (car types))
                                         (refuse v (string-append "the type of the lambda's parameter "
@@ -1003,7 +1003,7 @@
     "A define-type's or define-datatype's name: KFX's types have no
      parameters (FX-26's type families)."
     (tagcase form
-      (lst (xs src-file src-line)
+      (lst (xs src-file src-line src-pos)
         (let ((v (near v src-file src-line)))
           (tagcase (second xs)
             (sym (s) s)
@@ -1156,7 +1156,7 @@
     "One top-level form, which may add to what the forms after it see."
     (tagcase form
       (str (x) v)
-      (lst (xs src-file src-line)
+      (lst (xs src-file src-line src-pos)
         (let ((v (near v src-file src-line))
               (h (if (null? xs) "" (tagcase (car xs) (sym (n) n) (else other "")))))
           (cond ((string=? h "define-effect") (with-effdef v xs))
@@ -1236,13 +1236,13 @@
         (ty-unit () (sym "unit"))
         (ty-string () (sym "string"))
         (ty-void () (sym "void"))
-        (ty-list (e) (lst (list (sym "listof") (ty-sexp v s e) (sym "acyclic")) "" 0))
+        (ty-list (e) (lst (list (sym "listof") (ty-sexp v s e) (sym "acyclic")) "" 0 0))
         (ty-data (d) (sym d))
-        (ty-flat (e r) (lst (list (sym "flatarrayof") (ty-sexp v s e) (ty-sexp v s r)) "" 0))
-        (ty-ref (e r) (lst (list (sym "ref") (ty-sexp v s e) (ty-sexp v s r)) "" 0))
+        (ty-flat (e r) (lst (list (sym "flatarrayof") (ty-sexp v s e) (ty-sexp v s r)) "" 0 0))
+        (ty-ref (e r) (lst (list (sym "ref") (ty-sexp v s e) (ty-sexp v s r)) "" 0 0))
         (ty-rconst (n) (sym n))
         (ty-proc (es ps r)
-          (lst (list (sym "subr") (sym "pure") (lst (map (lambda ((p ty)) (ty-sexp v s p)) ps) "" 0) (ty-sexp v s r)) "" 0))
+          (lst (list (sym "subr") (sym "pure") (lst (map (lambda ((p ty)) (ty-sexp v s p)) ps) "" 0 0) (ty-sexp v s r)) "" 0 0))
         (ty-var (n) (refuse v (string-append "a definition with no type, of a type over " (string-append n ": write its type"))))
         (ty-meta (k) (refuse v "a definition with no type, whose type is not known whole: write it"))))))
 
@@ -1275,7 +1275,7 @@
     (cond ((null? forms) (elab v found))
           ((untyped? (car forms))
            (tagcase (car forms)
-             (lst (xs src-file src-line)
+             (lst (xs src-file src-line src-pos)
                (tagcase (check-untyped (near v src-file src-line) (car forms))
                  (elab (v2 more) (check-tops (at v2 "" nil) (cdr forms) (onto more found)))))
              (else other (check-tops v (cdr forms) found))))
