@@ -174,3 +174,27 @@ place (its file and offset), and the checker records facts about places,
 in its inference state, then in `cv`; the emitter looks them up, as
 Fixpt's compilers read its checker's facts. The same channel will carry
 what escapes need (TODO §16).
+
+## C16. A region no one names is `acyclic` (2026-10-11)
+
+Revises C13.
+- **Chosen:** a call's region binder that neither its arguments nor the
+  type expected solve is `acyclic`, and effects on `acyclic` are pure.
+- **Not chosen:** refusing it (C13), which would refuse `(cons 1 nil)`
+  once lists may be at any region; or FX-26's fresh region and masking.
+- **Why:** FX-26 makes such a region fresh, and masks its effects where it
+  is not seen; a fresh region that nothing else names is, from outside,
+  pure, as `acyclic` is. Mutable data is never at `acyclic` (its type is
+  refused there), and KFX writes no list, so nothing written is made
+  frozen by it. `tests/kfx-stricter/region-unsaid` is gone: KFX accepts it.
+
+## C17. Type families: types and regions, no higher kinds (2026-10-11)
+
+- **Chosen:** `define-datatype` and `define-type` with parameters of kind
+  `type` and `region`: Rust generic enums and aliases, regions erased. A
+  family is applied `(t arg ...)`; a type abbreviation is expanded by
+  substitution, a datatype is kept by name with its arguments.
+- **Not chosen:** higher kinds (`(f (=> (type) type))`), which Rust has
+  no plain form for; most of Fixpt's family programs use them.
+- **Why:** generic containers are what a compiler written in KFX needs;
+  they map to Rust's generic types exactly.

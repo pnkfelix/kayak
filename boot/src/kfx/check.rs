@@ -25,8 +25,8 @@ pub enum Ty {
     TyUnit(),
     TyString(),
     TyVoid(),
-    TyList(&'static Ty),
-    TyData(Str),
+    TyList(&'static Ty, &'static Ty),
+    TyData(Str, List<&'static Ty>),
     TyFlat(&'static Ty, &'static Ty),
     TyRef(&'static Ty, &'static Ty),
     TyRconst(Str),
@@ -63,12 +63,12 @@ pub fn ty_void() -> &'static Ty {
     alloc(Ty::TyVoid())
 }
 
-pub fn ty_list(f0: &'static Ty) -> &'static Ty {
-    alloc(Ty::TyList(f0))
+pub fn ty_list(f0: &'static Ty, f1: &'static Ty) -> &'static Ty {
+    alloc(Ty::TyList(f0, f1))
 }
 
-pub fn ty_data(f0: Str) -> &'static Ty {
-    alloc(Ty::TyData(f0))
+pub fn ty_data(f0: Str, f1: List<&'static Ty>) -> &'static Ty {
+    alloc(Ty::TyData(f0, f1))
 }
 
 pub fn ty_flat(f0: &'static Ty, f1: &'static Ty) -> &'static Ty {
@@ -139,21 +139,21 @@ pub fn variant(f0: Str, f1: Tys) -> &'static Variant {
 pub type Variants = List<&'static Variant>;
 
 pub enum Dt {
-    Dt(Str, Variants),
+    Dt(Str, Strings, Variants),
 }
 
-pub fn dt(f0: Str, f1: Variants) -> &'static Dt {
-    alloc(Dt::Dt(f0, f1))
+pub fn dt(f0: Str, f1: Strings, f2: Variants) -> &'static Dt {
+    alloc(Dt::Dt(f0, f1, f2))
 }
 
 pub type Dts = List<&'static Dt>;
 
 pub enum Alias {
-    Alias(Str, &'static Sexp),
+    Alias(Str, Strings, &'static Sexp),
 }
 
-pub fn alias(f0: Str, f1: &'static Sexp) -> &'static Alias {
-    alloc(Alias::Alias(f0, f1))
+pub fn alias(f0: Str, f1: Strings, f2: &'static Sexp) -> &'static Alias {
+    alloc(Alias::Alias(f0, f1, f2))
 }
 
 pub type Aliases = List<&'static Alias>;
@@ -294,11 +294,24 @@ pub fn name_of(v: &'static Cv, e: &'static Sexp) -> Str {
 }
 
 // Effects
+/// An effect on `acyclic`: making and reading frozen data are pure, in
+/// FX-26; writing it is refused where its type is read.
+pub fn frozen_atom_p(x: Str) -> bool {
+    (string_eq_p(x, str_lit("read:acyclic")) || string_eq_p(x, str_lit("alloc:acyclic")) || string_eq_p(x, str_lit("write:acyclic")))
+}
+
 pub fn effs_union(mut a: Strings, mut b: Strings) -> Strings {
     loop {
         if null_p(a) {
-            return b;
-        } else if string_member_p(car(a), b) {
+            if any_p(lambda1(move |x: Str| {
+                frozen_atom_p(x)
+            }), b) {
+                (a, b) = (b, nil());
+                continue;
+            } else {
+                return b;
+            }
+        } else if (frozen_atom_p(car(a)) || string_member_p(car(a), b)) {
             a = cdr(a);
             continue;
         } else {
@@ -379,7 +392,11 @@ pub fn region_name(v: &'static Cv, tvars: Strings, r: &'static Sexp) -> Str {
             }
         }
     };
-    if char_eq_p(string_ref_i64(s, 0i64), '@') {
+    if string_eq_p(s, str_lit("@globals")) {
+        refuse(v, str_lit("globals are a region only in effects: (read @globals), (read (globals g))"))
+    } else if char_eq_p(string_ref_i64(s, 0i64), '@') {
+        s
+    } else if string_eq_p(s, str_lit("acyclic")) {
         s
     } else if string_member_p(string_append(str_lit("'"), s), tvars) {
         string_append(str_lit("'"), s)
@@ -390,10 +407,19 @@ pub fn region_name(v: &'static Cv, tvars: Strings, r: &'static Sexp) -> Str {
 
 pub fn parse_region(v: &'static Cv, tvars: Strings, r: &'static Sexp) -> &'static Ty {
     let name = region_name(v, tvars, r);
-    if char_eq_p(string_ref_i64(name, 0i64), '@') {
-        ty_rconst(name)
-    } else {
+    if char_eq_p(string_ref_i64(name, 0i64), '\'') {
         ty_var(name)
+    } else {
+        ty_rconst(name)
+    }
+}
+
+/// The region of data that may be written: not `acyclic`, which is frozen.
+pub fn parse_mutable_region(v: &'static Cv, tvars: Strings, r: &'static Sexp) -> &'static Ty {
+    if sym_is_p(r, str_lit("acyclic")) {
+        refuse(v, str_lit("mutable data at acyclic, which is frozen and never written"))
+    } else {
+        parse_region(v, tvars, r)
     }
 }
 
@@ -439,6 +465,90 @@ pub fn parse_effects(v: &'static Cv, tvars: Strings, es: Sexps) -> Strings {
     }
 }
 
+/// Effect atoms on region `from` made atoms on region `to`.
+pub fn rename_atoms(es: Strings, from: Str, to: Str) -> Strings {
+    map(lambda1(move |x: Str| {
+        if string_eq_p(x, string_append(str_lit("read:"), from)) {
+            string_append(str_lit("read:"), to)
+        } else if string_eq_p(x, string_append(str_lit("write:"), from)) {
+            string_append(str_lit("write:"), to)
+        } else if string_eq_p(x, string_append(str_lit("alloc:"), from)) {
+            string_append(str_lit("alloc:"), to)
+        } else {
+            x
+        }
+    }), es)
+}
+
+pub fn meta_name(k: i64) -> Str {
+    string_append(str_lit("?"), i64_to_string(k))
+}
+
+pub fn replace_var(name: Str, m: &'static Ty, t: &'static Ty) -> &'static Ty {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyVar(n) => {
+            if string_eq_p(n, name) {
+                m
+            } else {
+                t
+            }
+        }
+        Ty::TyList(e, r) => {
+            ty_list(replace_var(name, m, e), replace_var(name, m, r))
+        }
+        Ty::TyFlat(e, r) => {
+            ty_flat(replace_var(name, m, e), replace_var(name, m, r))
+        }
+        Ty::TyData(d, args) => {
+            ty_data(d, map(lambda1(move |x: &'static Ty| {
+                replace_var(name, m, x)
+            }), args))
+        }
+        Ty::TyRef(e, r) => {
+            ty_ref(replace_var(name, m, e), replace_var(name, m, r))
+        }
+        Ty::TyProc(es, ps, r) => {
+            ty_proc({
+                let tagcase_ = m;
+                match *tagcase_ {
+                    Ty::TyMeta(k) => {
+                        rename_atoms(es, name, meta_name(k))
+                    }
+                    Ty::TyRconst(n) => {
+                        rename_atoms(es, name, n)
+                    }
+                    Ty::TyVar(n) => {
+                        rename_atoms(es, name, n)
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        es
+                    }
+                }
+            }, map(lambda1(move |p: &'static Ty| {
+                replace_var(name, m, p)
+            }), ps), replace_var(name, m, r))
+        }
+        _ => {
+            let other = tagcase_;
+            t
+        }
+    }
+}
+
+/// `t`, each of `params` replaced by its argument.
+pub fn substitute(mut params: Strings, mut args: Tys, mut t: &'static Ty) -> &'static Ty {
+    loop {
+        if (null_p(params) || null_p(args)) {
+            return t;
+        } else {
+            (params, args, t) = (cdr(params), cdr(args), replace_var(car(params), car(args), t));
+            continue;
+        }
+    }
+}
+
 // Types
 pub fn cv_dts(v: &'static Cv) -> Dts {
     let tagcase_ = v;
@@ -480,24 +590,46 @@ pub fn dt_named_p(name: Str, ds: Dts) -> bool {
     any_p(lambda1(move |d: &'static Dt| {
         let tagcase_ = d;
         match *tagcase_ {
-            Dt::Dt(n, vs) => {
+            Dt::Dt(n, ps, vs) => {
                 string_eq_p(n, name)
             }
         }
     }), ds)
 }
 
-/// The abbreviated type, as a list of one, or none.
-pub fn find_alias(mut name: Str, mut r#as: Aliases) -> Sexps {
+/// A datatype, its parameters and variants, as a list of one, or none.
+pub fn find_family(mut name: Str, mut ds: Dts) -> List<&'static Dt> {
+    loop {
+        if null_p(ds) {
+            return nil();
+        } else if {
+            let tagcase_ = car(ds);
+            match *tagcase_ {
+                Dt::Dt(n, ps, vs) => {
+                    string_eq_p(n, name)
+                }
+            }
+        } {
+            return cons(car(ds), nil());
+        } else {
+            ds = cdr(ds);
+            continue;
+        }
+    }
+}
+
+/// A type abbreviation, its parameters and what it stands for, as a list
+/// of one, or none.
+pub fn find_alias(mut name: Str, mut r#as: Aliases) -> List<&'static Alias> {
     loop {
         if null_p(r#as) {
             return nil();
         } else {
             let tagcase_ = car(r#as);
             match *tagcase_ {
-                Alias::Alias(n, t) => {
+                Alias::Alias(n, ps, t) => {
                     if string_eq_p(n, name) {
-                        return cons(t, nil());
+                        return cons(car(r#as), nil());
                     } else {
                         r#as = cdr(r#as);
                         continue;
@@ -531,34 +663,61 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                 } else if string_member_p(s, tvars) {
                     return ty_var(s);
                 } else if dt_named_p(s, cv_dts(v)) {
-                    return ty_data(s);
+                    let tagcase_ = car(find_family(s, cv_dts(v)));
+                    match *tagcase_ {
+                        Dt::Dt(n, ps, vs) => {
+                            if null_p(ps) {
+                                return ty_data(s, nil());
+                            } else {
+                                return refuse(v, string_append(str_lit("a type with parameters, given none: "), s));
+                            }
+                        }
+                    }
                 } else {
                     let found = find_alias(s, cv_aliases(v));
                     if null_p(found) {
                         return refuse(v, string_append(str_lit("no type is named "), s));
                     } else {
-                        t = car(found);
-                        continue;
+                        let tagcase_ = car(found);
+                        match *tagcase_ {
+                            Alias::Alias(n, ps, body) => {
+                                if null_p(ps) {
+                                    t = body;
+                                    continue;
+                                } else {
+                                    return refuse(v, string_append(str_lit("a type with parameters, given none: "), s));
+                                }
+                            }
+                        }
                     }
                 }
             }
             Sexp::Lst(xs, src_file, src_line, src_pos) => {
                 if sym_is_p(car(xs), str_lit("listof")) {
-                    if sym_is_p(third(xs), str_lit("acyclic")) {
-                        return ty_list(parse_type(v, tvars, second(xs)));
-                    } else {
-                        return refuse(v, string_append(str_lit("KFX-0's lists are at acyclic: "), show_sexp(t)));
-                    }
+                    return ty_list(parse_type(v, tvars, second(xs)), parse_region(v, tvars, third(xs)));
                 } else if sym_is_p(car(xs), str_lit("flatarrayof")) {
                     if sym_is_p(second(xs), str_lit("i64")) {
-                        return ty_flat(ty_i64(), parse_region(v, tvars, third(xs)));
+                        return ty_flat(ty_i64(), parse_mutable_region(v, tvars, third(xs)));
                     } else {
                         return refuse(v, string_append(str_lit("KFX-0's flat arrays are of i64: "), show_sexp(t)));
                     }
                 } else if sym_is_p(car(xs), str_lit("ref")) {
-                    return ty_ref(parse_type(v, tvars, second(xs)), parse_region(v, tvars, third(xs)));
+                    return ty_ref(parse_type(v, tvars, second(xs)), parse_mutable_region(v, tvars, third(xs)));
                 } else if sym_is_p(car(xs), str_lit("subr")) {
                     return ty_proc(parse_effect(v, tvars, second(xs)), parse_types(v, tvars, items(third(xs))), parse_type(v, tvars, fourth(xs)));
+                } else if {
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n) => {
+                            (dt_named_p(n, cv_dts(v)) || not(null_p(find_alias(n, cv_aliases(v)))))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                } {
+                    return parse_application(v, tvars, name_of(v, car(xs)), cdr(xs));
                 } else {
                     return refuse(v, string_append(str_lit("a type KFX does not have: "), show_sexp(t)));
                 }
@@ -575,6 +734,67 @@ pub fn parse_types(v: &'static Cv, tvars: Strings, ts: Sexps) -> Tys {
     map(lambda1(move |t: &'static Sexp| {
         parse_type(v, tvars, t)
     }), ts)
+}
+
+/// A family's arguments, each read as its parameter's kind says: a
+/// region for a name beginning `'`, a type otherwise.
+pub fn parse_arguments(v: &'static Cv, tvars: Strings, params: Strings, args: Sexps) -> Tys {
+    if (null_p(params) && null_p(args)) {
+        nil()
+    } else if (null_p(params) || null_p(args)) {
+        refuse(v, str_lit("a type given the wrong number of arguments"))
+    } else {
+        cons(if char_eq_p(string_ref_i64(car(params), 0i64), '\'') {
+            parse_region(v, tvars, car(args))
+        } else {
+            parse_type(v, tvars, car(args))
+        }, parse_arguments(v, tvars, cdr(params), cdr(args)))
+    }
+}
+
+/// `(name arg ...)`: a datatype with parameters, applied; or a type
+/// abbreviation with them, what it stands for with its arguments.
+pub fn parse_application(v: &'static Cv, tvars: Strings, name: Str, args: Sexps) -> &'static Ty {
+    let found = find_family(name, cv_dts(v));
+    if not(null_p(found)) {
+        let tagcase_ = car(found);
+        match *tagcase_ {
+            Dt::Dt(n, ps, vs) => {
+                ty_data(name, parse_arguments(v, tvars, ps, args))
+            }
+        }
+    } else {
+        let tagcase_ = car(find_alias(name, cv_aliases(v)));
+        match *tagcase_ {
+            Alias::Alias(n, ps, body) => {
+                substitute(ps, parse_arguments(v, tvars, ps, args), parse_type(v, ps, body))
+            }
+        }
+    }
+}
+
+/// A family's parameters, from its head `(name (p kind) ...)`: a type's
+/// named as written, a region's with `'` first; none for a bare name.
+pub fn family_params(v: &'static Cv, head: &'static Sexp) -> Strings {
+    let tagcase_ = head;
+    match *tagcase_ {
+        Sexp::Lst(xs, src_file, src_line, src_pos) => {
+            map(lambda1(move |b: &'static Sexp| {
+                let b = items(b);
+                if sym_is_p(second(b), str_lit("type")) {
+                    name_of(v, car(b))
+                } else if sym_is_p(second(b), str_lit("region")) {
+                    string_append(str_lit("'"), name_of(v, car(b)))
+                } else {
+                    refuse(v, string_append(str_lit("a family over a kind KFX does not have: "), show_sexp(lst(b, str_lit(""), 0i64, 0i64))))
+                }
+            }), cdr(xs))
+        }
+        _ => {
+            let other = tagcase_;
+            nil()
+        }
+    }
 }
 
 /// A definition's type's variables: a poly at its top, over types, and
@@ -631,11 +851,15 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
         Ty::TyVoid() => {
             str_lit("void")
         }
-        Ty::TyList(e) => {
-            string_append(str_lit("(listof "), string_append(show_ty(s, e), str_lit(" acyclic)")))
+        Ty::TyList(e, r) => {
+            string_append(str_lit("(listof "), string_append(show_ty(s, e), string_append(str_lit(" "), string_append(show_ty(s, r), str_lit(")")))))
         }
-        Ty::TyData(d) => {
-            d
+        Ty::TyData(d, args) => {
+            if null_p(args) {
+                d
+            } else {
+                string_append(str_lit("("), string_append(d, string_append(str_lit(" "), string_append(show_tys(s, args), str_lit(")")))))
+            }
         }
         Ty::TyFlat(e, r) => {
             string_append(str_lit("(flatarrayof "), string_append(show_ty(s, e), string_append(str_lit(" "), string_append(show_ty(s, r), str_lit(")")))))
@@ -716,32 +940,34 @@ pub fn lookup_meta(mut k: i64, mut subst: Sbs) -> Tys {
 }
 
 /// Whether `t` has an inference variable not solved yet.
-pub fn has_meta_p(mut s: &'static St, mut t: &'static Ty) -> bool {
-    loop {
-        let tagcase_ = walk(s, t);
-        match *tagcase_ {
-            Ty::TyMeta(k) => {
-                return true;
-            }
-            Ty::TyList(e) => {
-                t = e;
-                continue;
-            }
-            Ty::TyFlat(e, r) => {
-                return (has_meta_p(s, e) || has_meta_p(s, r));
-            }
-            Ty::TyRef(e, r) => {
-                return (has_meta_p(s, e) || has_meta_p(s, r));
-            }
-            Ty::TyProc(es, ps, r) => {
-                return (has_meta_p(s, r) || any_p(lambda1(move |p: &'static Ty| {
-                    has_meta_p(s, p)
-                }), ps));
-            }
-            _ => {
-                let other = tagcase_;
-                return false;
-            }
+pub fn has_meta_p(s: &'static St, t: &'static Ty) -> bool {
+    let tagcase_ = walk(s, t);
+    match *tagcase_ {
+        Ty::TyMeta(k) => {
+            true
+        }
+        Ty::TyList(e, r) => {
+            (has_meta_p(s, e) || has_meta_p(s, r))
+        }
+        Ty::TyFlat(e, r) => {
+            (has_meta_p(s, e) || has_meta_p(s, r))
+        }
+        Ty::TyData(d, args) => {
+            any_p(lambda1(move |x: &'static Ty| {
+                has_meta_p(s, x)
+            }), args)
+        }
+        Ty::TyRef(e, r) => {
+            (has_meta_p(s, e) || has_meta_p(s, r))
+        }
+        Ty::TyProc(es, ps, r) => {
+            (has_meta_p(s, r) || any_p(lambda1(move |p: &'static Ty| {
+                has_meta_p(s, p)
+            }), ps))
+        }
+        _ => {
+            let other = tagcase_;
+            false
         }
     }
 }
@@ -783,32 +1009,34 @@ pub fn solve(s: &'static St, k: i64, t: &'static Ty) -> &'static St {
     }
 }
 
-pub fn occurs_p(mut s: &'static St, mut k: i64, mut t: &'static Ty) -> bool {
-    loop {
-        let tagcase_ = walk(s, t);
-        match *tagcase_ {
-            Ty::TyMeta(j) => {
-                return i64_eq(j, k);
-            }
-            Ty::TyList(e) => {
-                t = e;
-                continue;
-            }
-            Ty::TyFlat(e, r) => {
-                return (occurs_p(s, k, e) || occurs_p(s, k, r));
-            }
-            Ty::TyRef(e, r) => {
-                return (occurs_p(s, k, e) || occurs_p(s, k, r));
-            }
-            Ty::TyProc(es, ps, r) => {
-                return (occurs_p(s, k, r) || any_p(lambda1(move |p: &'static Ty| {
-                    occurs_p(s, k, p)
-                }), ps));
-            }
-            _ => {
-                let other = tagcase_;
-                return false;
-            }
+pub fn occurs_p(s: &'static St, k: i64, t: &'static Ty) -> bool {
+    let tagcase_ = walk(s, t);
+    match *tagcase_ {
+        Ty::TyMeta(j) => {
+            i64_eq(j, k)
+        }
+        Ty::TyList(e, r) => {
+            (occurs_p(s, k, e) || occurs_p(s, k, r))
+        }
+        Ty::TyFlat(e, r) => {
+            (occurs_p(s, k, e) || occurs_p(s, k, r))
+        }
+        Ty::TyData(d, args) => {
+            any_p(lambda1(move |x: &'static Ty| {
+                occurs_p(s, k, x)
+            }), args)
+        }
+        Ty::TyRef(e, r) => {
+            (occurs_p(s, k, e) || occurs_p(s, k, r))
+        }
+        Ty::TyProc(es, ps, r) => {
+            (occurs_p(s, k, r) || any_p(lambda1(move |p: &'static Ty| {
+                occurs_p(s, k, p)
+            }), ps))
+        }
+        _ => {
+            let other = tagcase_;
+            false
         }
     }
 }
@@ -949,11 +1177,11 @@ pub fn fits(v: &'static Cv, s: &'static St, actual: &'static Ty, expected: &'sta
 pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static Ty) -> &'static St {
     let tagcase_ = a;
     match *tagcase_ {
-        Ty::TyList(x) => {
+        Ty::TyList(x, xr) => {
             let tagcase_ = e;
             match *tagcase_ {
-                Ty::TyList(y) => {
-                    fits(v, s, x, y)
+                Ty::TyList(y, yr) => {
+                    fits(v, fits(v, s, x, y), xr, yr)
                 }
                 _ => {
                     let other = tagcase_;
@@ -1001,12 +1229,12 @@ pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static T
                 }
             }
         }
-        Ty::TyData(x) => {
+        Ty::TyData(x, xs) => {
             let tagcase_ = e;
             match *tagcase_ {
-                Ty::TyData(y) => {
-                    if string_eq_p(x, y) {
-                        s
+                Ty::TyData(y, ys) => {
+                    if (string_eq_p(x, y) && i64_eq(size(xs), size(ys))) {
+                        fits_all(v, s, xs, ys)
                     } else {
                         mismatch(v, s, a, e)
                     }
@@ -1088,25 +1316,6 @@ pub fn inst(f0: &'static Ty, f1: &'static St, f2: List<i64>) -> &'static Inst {
     alloc(Inst::Inst(f0, f1, f2))
 }
 
-/// Effect atoms on region `from` made atoms on region `to`.
-pub fn rename_atoms(es: Strings, from: Str, to: Str) -> Strings {
-    map(lambda1(move |x: Str| {
-        if string_eq_p(x, string_append(str_lit("read:"), from)) {
-            string_append(str_lit("read:"), to)
-        } else if string_eq_p(x, string_append(str_lit("write:"), from)) {
-            string_append(str_lit("write:"), to)
-        } else if string_eq_p(x, string_append(str_lit("alloc:"), from)) {
-            string_append(str_lit("alloc:"), to)
-        } else {
-            x
-        }
-    }), es)
-}
-
-pub fn meta_name(k: i64) -> Str {
-    string_append(str_lit("?"), i64_to_string(k))
-}
-
 pub fn instantiate(s: &'static St, sc: &'static Scheme) -> &'static Inst {
     let tagcase_ = sc;
     match *tagcase_ {
@@ -1138,48 +1347,6 @@ pub fn instantiate_vars(s: &'static St, tvars: Strings, t: &'static Ty, regions:
                     }
                 }
             }
-        }
-    }
-}
-
-pub fn replace_var(name: Str, m: &'static Ty, t: &'static Ty) -> &'static Ty {
-    let tagcase_ = t;
-    match *tagcase_ {
-        Ty::TyVar(n) => {
-            if string_eq_p(n, name) {
-                m
-            } else {
-                t
-            }
-        }
-        Ty::TyList(e) => {
-            ty_list(replace_var(name, m, e))
-        }
-        Ty::TyFlat(e, r) => {
-            ty_flat(replace_var(name, m, e), replace_var(name, m, r))
-        }
-        Ty::TyRef(e, r) => {
-            ty_ref(replace_var(name, m, e), replace_var(name, m, r))
-        }
-        Ty::TyProc(es, ps, r) => {
-            ty_proc({
-                let tagcase_ = m;
-                match *tagcase_ {
-                    Ty::TyMeta(k) => {
-                        rename_atoms(es, name, meta_name(k))
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        es
-                    }
-                }
-            }, map(lambda1(move |p: &'static Ty| {
-                replace_var(name, m, p)
-            }), ps), replace_var(name, m, r))
-        }
-        _ => {
-            let other = tagcase_;
-            t
         }
     }
 }
@@ -1323,38 +1490,50 @@ pub fn joined(s: &'static St, t: &'static Ty, rest: &'static Ty, expected: Tys) 
     }
 }
 
+pub fn region_string(s: &'static St, r: &'static Ty) -> Str {
+    let tagcase_ = walk(s, r);
+    match *tagcase_ {
+        Ty::TyRconst(n) => {
+            n
+        }
+        Ty::TyVar(n) => {
+            n
+        }
+        Ty::TyMeta(k) => {
+            meta_name(k)
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("?")
+        }
+    }
+}
+
+/// A region, solved: one no argument nor expected type said is `acyclic`,
+/// as FX-26's fresh region for it, masked where it is not seen, is pure.
+pub fn region_of(v: &'static Cv, s: &'static St, r: &'static Ty) -> &'static Res {
+    let tagcase_ = walk(s, r);
+    match *tagcase_ {
+        Ty::TyMeta(k) => {
+            res(ty_rconst(str_lit("acyclic")), nil(), solve(s, k, ty_rconst(str_lit("acyclic"))))
+        }
+        _ => {
+            let other = tagcase_;
+            res(other, nil(), s)
+        }
+    }
+}
+
 /// A call's latent effect, its regions' inference variables replaced by
-/// the regions the arguments and the type expected found. A region still
-/// not found is refused, where FX-26 would make one up.
-pub fn name_regions(mut v: &'static Cv, mut s: &'static St, mut es: Strings, mut regions: List<i64>) -> Strings {
-    loop {
-        if null_p(regions) {
-            return es;
-        } else {
-            let k = car(regions);
-            let found = {
-                let tagcase_ = walk(s, ty_meta(k));
-                match *tagcase_ {
-                    Ty::TyRconst(n) => {
-                        n
-                    }
-                    Ty::TyVar(n) => {
-                        n
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        str_lit("")
-                    }
-                }
-            };
-            if not(string_eq_p(found, str_lit(""))) {
-                (es, regions) = (rename_atoms(es, meta_name(k), found), cdr(regions));
-                continue;
-            } else if string_eq_p(words_of(rename_atoms(es, meta_name(k), str_lit(""))), words_of(es)) {
-                regions = cdr(regions);
-                continue;
-            } else {
-                return refuse(v, str_lit("a region the call's arguments do not say, nor the type expected: write it, (the T e)"));
+/// the regions the arguments and the type expected found, or `acyclic`.
+pub fn name_regions(v: &'static Cv, s: &'static St, es: Strings, regions: List<i64>) -> &'static Res {
+    if null_p(regions) {
+        res(ty_unit(), es, s)
+    } else {
+        let tagcase_ = region_of(v, s, ty_meta(car(regions)));
+        match *tagcase_ {
+            Res::Res(r, rn, s) => {
+                name_regions(v, s, rename_atoms(es, meta_name(car(regions)), region_string(s, r)), cdr(regions))
             }
         }
     }
@@ -1402,7 +1581,7 @@ pub fn find_dt(mut d: Str, mut ds: Dts) -> List<Variants> {
         } else {
             let tagcase_ = car(ds);
             match *tagcase_ {
-                Dt::Dt(n, vs) => {
+                Dt::Dt(n, ps, vs) => {
                     if string_eq_p(n, d) {
                         return cons(vs, nil());
                     } else {
@@ -1413,6 +1592,36 @@ pub fn find_dt(mut d: Str, mut ds: Dts) -> List<Variants> {
             }
         }
     }
+}
+
+/// A datatype's parameters.
+pub fn family_of(v: &'static Cv, d: Str) -> Strings {
+    let found = find_family(d, cv_dts(v));
+    if null_p(found) {
+        nil()
+    } else {
+        let tagcase_ = car(found);
+        match *tagcase_ {
+            Dt::Dt(n, ps, vs) => {
+                ps
+            }
+        }
+    }
+}
+
+/// Variants whose fields' types are of the datatype's parameters, at
+/// `args`.
+pub fn instantiate_variants(params: Strings, args: Tys, vs: Variants) -> Variants {
+    map(lambda1(move |x: &'static Variant| {
+        let tagcase_ = x;
+        match *tagcase_ {
+            Variant::Variant(tag, fields) => {
+                variant(tag, map(lambda1(move |f: &'static Ty| {
+                    substitute(params, args, f)
+                }), fields))
+            }
+        }
+    }), vs)
 }
 
 pub fn variants_of(v: &'static Cv, d: Str) -> Variants {
@@ -1559,7 +1768,7 @@ pub fn check(v: &'static Cv, s: &'static St, e: &'static Sexp, expected: &'stati
             if string_eq_p(name, str_lit("nil")) {
                 let tagcase_ = x;
                 match *tagcase_ {
-                    Ty::TyList(el) => {
+                    Ty::TyList(el, r) => {
                         res(x, nil(), s)
                     }
                     _ => {
@@ -1630,14 +1839,14 @@ pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
             let tagcase_ = fresh(s);
             match *tagcase_ {
                 Res::Res(m, es, s) => {
-                    res(ty_list(m), nil(), s)
+                    res(ty_list(m, ty_rconst(str_lit("acyclic"))), nil(), s)
                 }
             }
         } else {
             let tagcase_ = synth(v, s, car(xs));
             match *tagcase_ {
                 Res::Res(t, es0, s) => {
-                    with_effs(check(v, s, e, ty_list(t)), es0)
+                    with_effs(check(v, s, e, ty_list(t, ty_rconst(str_lit("acyclic")))), es0)
                 }
             }
         }
@@ -1660,7 +1869,7 @@ pub fn check_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
     } else if (string_eq_p(h, str_lit("list")) && {
         let tagcase_ = expected;
         match *tagcase_ {
-            Ty::TyList(el) => {
+            Ty::TyList(el, r) => {
                 true
             }
             _ => {
@@ -1671,11 +1880,16 @@ pub fn check_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
     }) {
         let tagcase_ = expected;
         match *tagcase_ {
-            Ty::TyList(el) => {
+            Ty::TyList(el, r) => {
                 let tagcase_ = elements(v, s, xs, el);
                 match *tagcase_ {
                     Res::Res(u, es, s) => {
-                        res(expected, es, s)
+                        let tagcase_ = region_of(v, s, r);
+                        match *tagcase_ {
+                            Res::Res(rr, rn, s) => {
+                                res(expected, effs_union(cons(string_append(str_lit("alloc:"), region_string(s, rr)), nil()), es), s)
+                            }
+                        }
                     }
                 }
             }
@@ -1750,8 +1964,8 @@ pub fn body_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Ty
             Res::Res(t, es, s) => {
                 let tagcase_ = walk(s, t);
                 match *tagcase_ {
-                    Ty::TyData(d) => {
-                        with_effs(tag_arms(v, s, d, cdr(xs), variants_of(v, d), expected), es)
+                    Ty::TyData(d, args) => {
+                        with_effs(tag_arms(v, s, walk(s, t), cdr(xs), instantiate_variants(family_of(v, d), args, variants_of(v, d)), expected), es)
                     }
                     _ => {
                         let other = tagcase_;
@@ -1843,7 +2057,7 @@ pub fn case_arms(v: &'static Cv, s: &'static St, cases: Sexps, expected: Tys) ->
 }
 
 /// A tagcase's arms; `vs` are the variants no arm has taken yet.
-pub fn tag_arms(v: &'static Cv, s: &'static St, d: Str, tagged: Sexps, vs: Variants, expected: Tys) -> &'static Res {
+pub fn tag_arms(v: &'static Cv, s: &'static St, whole: &'static Ty, tagged: Sexps, vs: Variants, expected: Tys) -> &'static Res {
     if null_p(tagged) {
         if null_p(vs) {
             if null_p(expected) {
@@ -1852,19 +2066,19 @@ pub fn tag_arms(v: &'static Cv, s: &'static St, d: Str, tagged: Sexps, vs: Varia
                 res(car(expected), nil(), s)
             }
         } else {
-            refuse(v, string_append(str_lit("a tagcase of a "), string_append(d, str_lit(" with no else, and no arm for each tag"))))
+            refuse(v, string_append(str_lit("a tagcase of a "), string_append(show_ty(s, whole), str_lit(" with no else, and no arm for each tag"))))
         }
     } else {
         let arm = items(car(tagged));
         let tag = name_of(v, car(arm));
         if string_eq_p(tag, str_lit("else")) {
             if null_p(cdr(tagged)) {
-                body(with_binds(v, cons(local(v, name_of(v, second(arm)), ty_data(d)), nil())), s, cdr(cdr(arm)), expected)
+                body(with_binds(v, cons(local(v, name_of(v, second(arm)), whole), nil())), s, cdr(cdr(arm)), expected)
             } else {
                 refuse(v, str_lit("a tagcase's else is its last arm"))
             }
         } else {
-            let fields = variant_fields(v, d, tag, vs);
+            let fields = variant_fields(v, show_ty(s, whole), tag, vs);
             let names = items(second(arm));
             if not(i64_eq(size(names), size(fields))) {
                 refuse(v, string_append(str_lit("the arm for "), string_append(tag, str_lit(" names the wrong number of fields"))))
@@ -1872,7 +2086,7 @@ pub fn tag_arms(v: &'static Cv, s: &'static St, d: Str, tagged: Sexps, vs: Varia
                 let tagcase_ = body(with_binds(v, bind_fields(v, names, fields)), s, cdr(cdr(arm)), expected);
                 match *tagcase_ {
                     Res::Res(t, es, s) => {
-                        let tagcase_ = tag_arms(v, s, d, cdr(tagged), without_tag(tag, vs), next_expected(s, t, expected));
+                        let tagcase_ = tag_arms(v, s, whole, cdr(tagged), without_tag(tag, vs), next_expected(s, t, expected));
                         match *tagcase_ {
                             Res::Res(t2, es2, s) => {
                                 res(joined(s, t, t2, expected), effs_union(es, es2), s)
@@ -2058,7 +2272,12 @@ pub fn synth_call_of(v: &'static Cv, s: &'static St, callee: &'static Res, args:
                         }, args, ps);
                         match *tagcase_ {
                             Res::Res(u, es1, s) => {
-                                res(r, effs_union(name_regions(v, s, latent, regions), effs_union(more, effs_union(es0, es1))), s)
+                                let tagcase_ = name_regions(v, s, latent, regions);
+                                match *tagcase_ {
+                                    Res::Res(u, named, s) => {
+                                        res(r, effs_union(named, effs_union(more, effs_union(es0, es1))), s)
+                                    }
+                                }
                             }
                         }
                     }
@@ -2087,7 +2306,7 @@ pub fn call_args(v: &'static Cv, s: &'static St, args: Sexps, ps: Tys) -> &'stat
 
 // Definitions
 pub fn primitives() -> Str {
-    str_lit("(i64+ (subr pure (i64 i64) i64)) (i64- (subr pure (i64 i64) i64)) (i64* (subr pure (i64 i64) i64))\n   (i64-quotient (subr pure (i64 i64) i64)) (i64-remainder (subr pure (i64 i64) i64))\n   (i64-and (subr pure (i64 i64) i64)) (i64-or (subr pure (i64 i64) i64)) (i64-xor (subr pure (i64 i64) i64))\n   (i64-not (subr pure (i64) i64))\n   (i64= (subr pure (i64 i64) bool)) (i64< (subr pure (i64 i64) bool)) (i64> (subr pure (i64 i64) bool))\n   (i64<= (subr pure (i64 i64) bool)) (i64>= (subr pure (i64 i64) bool))\n   (not (subr pure (bool) bool))\n   (+ (subr pure (int int) int)) (- (subr pure (int int) int)) (* (subr pure (int int) int))\n   (quotient (subr pure (int int) int)) (remainder (subr pure (int int) int)) (modulo (subr pure (int int) int))\n   (= (subr pure (int int) bool)) (< (subr pure (int int) bool)) (> (subr pure (int int) bool))\n   (<= (subr pure (int int) bool)) (>= (subr pure (int int) bool))\n   (int->string (subr pure (int) string)) (int->i64 (subr pure (int) i64)) (i64->int (subr pure (i64) int))\n   (char=? (subr pure (char char) bool)) (char-whitespace? (subr pure (char) bool))\n   (char-numeric? (subr pure (char) bool)) (char-alphabetic? (subr pure (char) bool))\n   (char-upcase (subr pure (char) char)) (char->string (subr pure (char) string))\n   (string-append (subr pure (string string) string)) (string=? (subr pure (string string) bool))\n   (list->string (subr pure ((listof char acyclic)) string))\n   (string->list (subr pure (string) (listof char acyclic)))\n   (error (subr pure (string) void))\n   (new (poly ((r region) (t type)) (subr (alloc r) (t) (ref t r))))\n   (get (poly ((r region) (t type)) (subr (read r) ((ref t r)) t)))\n   (set (poly ((r region) (t type)) (subr (write r) ((ref t r) t) unit)))\n   (nil (poly ((t type)) (listof t acyclic)))\n   (cons (poly ((t type)) (subr pure (t (listof t acyclic)) (listof t acyclic))))\n   (car (poly ((t type)) (subr pure ((listof t acyclic)) t)))\n   (cdr (poly ((t type)) (subr pure ((listof t acyclic)) (listof t acyclic))))\n   (null? (poly ((t type)) (subr pure ((listof t acyclic)) bool)))")
+    str_lit("(i64+ (subr pure (i64 i64) i64)) (i64- (subr pure (i64 i64) i64)) (i64* (subr pure (i64 i64) i64))\n   (i64-quotient (subr pure (i64 i64) i64)) (i64-remainder (subr pure (i64 i64) i64))\n   (i64-and (subr pure (i64 i64) i64)) (i64-or (subr pure (i64 i64) i64)) (i64-xor (subr pure (i64 i64) i64))\n   (i64-not (subr pure (i64) i64))\n   (i64= (subr pure (i64 i64) bool)) (i64< (subr pure (i64 i64) bool)) (i64> (subr pure (i64 i64) bool))\n   (i64<= (subr pure (i64 i64) bool)) (i64>= (subr pure (i64 i64) bool))\n   (not (subr pure (bool) bool))\n   (+ (subr pure (int int) int)) (- (subr pure (int int) int)) (* (subr pure (int int) int))\n   (quotient (subr pure (int int) int)) (remainder (subr pure (int int) int)) (modulo (subr pure (int int) int))\n   (= (subr pure (int int) bool)) (< (subr pure (int int) bool)) (> (subr pure (int int) bool))\n   (<= (subr pure (int int) bool)) (>= (subr pure (int int) bool))\n   (int->string (subr pure (int) string)) (int->i64 (subr pure (int) i64)) (i64->int (subr pure (i64) int))\n   (char=? (subr pure (char char) bool)) (char-whitespace? (subr pure (char) bool))\n   (char-numeric? (subr pure (char) bool)) (char-alphabetic? (subr pure (char) bool))\n   (char-upcase (subr pure (char) char)) (char->string (subr pure (char) string))\n   (string-append (subr pure (string string) string)) (string=? (subr pure (string string) bool))\n   (list->string (poly ((r region)) (subr (read r) ((listof char r)) string)))\n   (string->list (poly ((r region)) (subr (alloc r) (string) (listof char r))))\n   (error (subr pure (string) void))\n   (new (poly ((r region) (t type)) (subr (alloc r) (t) (ref t r))))\n   (get (poly ((r region) (t type)) (subr (read r) ((ref t r)) t)))\n   (set (poly ((r region) (t type)) (subr (write r) ((ref t r) t) unit)))\n   (nil (poly ((r region) (t type)) (listof t r)))\n   (cons (poly ((r region) (t type)) (subr (alloc r) (t (listof t r)) (listof t r))))\n   (car (poly ((r region) (t type)) (subr (read r) ((listof t r)) t)))\n   (cdr (poly ((r region) (t type)) (subr (read r) ((listof t r)) (listof t r))))\n   (null? (poly ((r region) (t type)) (subr pure ((listof t r)) bool)))")
 }
 
 // kayak-rt's primitives at KFX's types: the prelude's (kfx/prelude.fx), and
@@ -2110,23 +2329,40 @@ pub fn prim_binds(v: &'static Cv) -> Binds {
     onto(table_binds(v, primitives(), str_lit("kayak-rt's primitives"), str_lit("prim")), table_binds(v, prelude(), str_lit("kfx/prelude.fx"), str_lit("global")))
 }
 
-/// A define-datatype's name and variants.
+pub fn head_name(v: &'static Cv, head: &'static Sexp) -> Str {
+    let tagcase_ = head;
+    match *tagcase_ {
+        Sexp::Lst(xs, src_file, src_line, src_pos) => {
+            name_of(v, car(xs))
+        }
+        _ => {
+            let other = tagcase_;
+            name_of(v, other)
+        }
+    }
+}
+
+/// A define-datatype's name, parameters and variants, whose fields'
+/// types may name the parameters.
 pub fn datatype_of(v: &'static Cv, xs: Sexps) -> &'static Dt {
-    dt(name_of(v, car(xs)), map(lambda1(move |vt: &'static Sexp| {
+    let params = family_params(v, car(xs));
+    dt(head_name(v, car(xs)), params, map(lambda1(move |vt: &'static Sexp| {
         let ys = items(vt);
-        variant(name_of(v, car(ys)), parse_types(v, nil(), cdr(ys)))
+        variant(name_of(v, car(ys)), parse_types(v, params, cdr(ys)))
     }), cdr(xs)))
 }
 
 pub fn constructors(d: &'static Dt) -> Binds {
     let tagcase_ = d;
     match *tagcase_ {
-        Dt::Dt(name, vs) => {
+        Dt::Dt(name, ps, vs) => {
             map(lambda1(move |vt: &'static Variant| {
                 let tagcase_ = vt;
                 match *tagcase_ {
                     Variant::Variant(tag, fields) => {
-                        bind(tag, scheme(nil(), ty_proc(nil(), fields, ty_data(name))), str_lit("global"))
+                        bind(tag, scheme(ps, ty_proc(nil(), fields, ty_data(name, map(lambda1(move |p: Str| {
+                            ty_var(p)
+                        }), ps)))), str_lit("global"))
                     }
                 }
             }), vs)
@@ -2137,27 +2373,30 @@ pub fn constructors(d: &'static Dt) -> Binds {
 // Types and datatypes are declared ahead: every one is in scope in every
 // definition, as FX-26 has it. Effect abbreviations and values are seen
 // only after their definitions.
-/// A define-type's or define-datatype's name: KFX's types have no
-/// parameters (FX-26's type families).
+/// A define-type's or define-datatype's name, from its head: a name, or
+/// `(name (p kind) ...)` for a family.
 pub fn type_name(v: &'static Cv, form: &'static Sexp) -> Str {
     let tagcase_ = form;
     match *tagcase_ {
         Sexp::Lst(xs, src_file, src_line, src_pos) => {
-            let v = near(v, src_file, src_line);
-            let tagcase_ = second(xs);
-            match *tagcase_ {
-                Sexp::Sym(s) => {
-                    s
-                }
-                _ => {
-                    let other = tagcase_;
-                    refuse(v, string_append(str_lit("a type with parameters, which KFX does not have: "), show_sexp(other)))
-                }
-            }
+            head_name(near(v, src_file, src_line), second(xs))
         }
         _ => {
             let other = tagcase_;
             refuse(v, str_lit("a definition is expected"))
+        }
+    }
+}
+
+pub fn type_params(v: &'static Cv, form: &'static Sexp) -> Strings {
+    let tagcase_ = form;
+    match *tagcase_ {
+        Sexp::Lst(xs, src_file, src_line, src_pos) => {
+            family_params(near(v, src_file, src_line), second(xs))
+        }
+        _ => {
+            let other = tagcase_;
+            nil()
         }
     }
 }
@@ -2168,7 +2407,7 @@ pub fn declare_types(mut v: &'static Cv, mut forms: Sexps, mut r#as: Aliases) ->
             return r#as;
         } else if head_is_p(car(forms), str_lit("define-type")) {
             let xs = items(car(forms));
-            (forms, r#as) = (cdr(forms), cons(alias(type_name(v, car(forms)), third(xs)), r#as));
+            (forms, r#as) = (cdr(forms), cons(alias(type_name(v, car(forms)), type_params(v, car(forms)), third(xs)), r#as));
             continue;
         } else {
             forms = cdr(forms);
@@ -2183,7 +2422,7 @@ pub fn datatype_names(mut v: &'static Cv, mut forms: Sexps, mut ds: Dts) -> Dts 
         if null_p(forms) {
             return ds;
         } else if head_is_p(car(forms), str_lit("define-datatype")) {
-            (forms, ds) = (cdr(forms), cons(dt(type_name(v, car(forms)), nil()), ds));
+            (forms, ds) = (cdr(forms), cons(dt(type_name(v, car(forms)), type_params(v, car(forms)), nil()), ds));
             continue;
         } else {
             forms = cdr(forms);
@@ -2328,7 +2567,7 @@ pub fn variants_dt(v: &'static Cv, d: Str) -> List<&'static Dt> {
     if null_p(found) {
         refuse(v, string_append(str_lit("no datatype is named "), d))
     } else {
-        cons(dt(d, car(found)), nil())
+        find_family(d, cv_dts(v))
     }
 }
 
@@ -2460,7 +2699,7 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
             } else if string_eq_p(h, str_lit("define-type")) {
                 v
             } else if string_eq_p(h, str_lit("define-datatype")) {
-                let d = car(variants_dt(v, name_of(v, second(xs))));
+                let d = car(variants_dt(v, head_name(v, second(xs))));
                 defined_once(v, constructors(d))
             } else if string_eq_p(h, str_lit("define")) {
                 if not(i64_eq(size(xs), 4i64)) {
@@ -2574,11 +2813,16 @@ pub fn elab(f0: &'static Cv, f1: Typeds) -> &'static Elab {
 pub fn zonk(s: &'static St, t: &'static Ty) -> &'static Ty {
     let tagcase_ = walk(s, t);
     match *tagcase_ {
-        Ty::TyList(e) => {
-            ty_list(zonk(s, e))
+        Ty::TyList(e, r) => {
+            ty_list(zonk(s, e), zonk(s, r))
         }
         Ty::TyFlat(e, r) => {
             ty_flat(zonk(s, e), zonk(s, r))
+        }
+        Ty::TyData(d, args) => {
+            ty_data(d, map(lambda1(move |x: &'static Ty| {
+                zonk(s, x)
+            }), args))
         }
         Ty::TyRef(e, r) => {
             ty_ref(zonk(s, e), zonk(s, r))
@@ -2621,11 +2865,17 @@ pub fn ty_sexp(v: &'static Cv, s: &'static St, t: &'static Ty) -> &'static Sexp 
         Ty::TyVoid() => {
             sym(str_lit("void"))
         }
-        Ty::TyList(e) => {
-            lst(cons(sym(str_lit("listof")), cons(ty_sexp(v, s, e), cons(sym(str_lit("acyclic")), nil()))), str_lit(""), 0i64, 0i64)
+        Ty::TyList(e, r) => {
+            lst(cons(sym(str_lit("listof")), cons(ty_sexp(v, s, e), cons(ty_sexp(v, s, r), nil()))), str_lit(""), 0i64, 0i64)
         }
-        Ty::TyData(d) => {
-            sym(d)
+        Ty::TyData(d, args) => {
+            if null_p(args) {
+                sym(d)
+            } else {
+                lst(cons(sym(d), map(lambda1(move |x: &'static Ty| {
+                    ty_sexp(v, s, x)
+                }), args)), str_lit(""), 0i64, 0i64)
+            }
         }
         Ty::TyFlat(e, r) => {
             lst(cons(sym(str_lit("flatarrayof")), cons(ty_sexp(v, s, e), cons(ty_sexp(v, s, r), nil()))), str_lit(""), 0i64, 0i64)

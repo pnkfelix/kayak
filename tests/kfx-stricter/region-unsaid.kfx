@@ -1,3 +1,0 @@
-"Mutable data at a region no one names: FX-26 makes one up, and masks it; KFX wants it said."
-(define-effect kfx (maxeff (read @globals) spin))
-(define f (subr kfx () i64) (lambda () (flatarray-length-i64 (make-flatarray-i64 3 0))))

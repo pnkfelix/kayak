@@ -1,0 +1,2 @@
+"Globals are a region only in effects, (read @globals): no data is at @globals."
+(define xs (listof i64 @globals) nil)

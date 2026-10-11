@@ -1,0 +1,45 @@
+"Type families: datatypes and type abbreviations with parameters, types
+ and regions. In Rust, generic enums and aliases; the regions erased."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-datatype (rose (t type) (r region))
+  (leaf t)
+  (node (listof (rose t r) r)))
+
+(define-datatype (option (a type))
+  (none)
+  (some a))
+
+(define-datatype (both (a type) (b type))
+  (both a b))
+
+(define-type (stack (t type)) (listof t acyclic))
+
+(define-type ints (stack i64))
+
+(define-rec
+  (total (subr kfx ((rose i64 acyclic)) i64)
+    (lambda (x) (tagcase x (leaf (n) n) (node (kids) (total-all kids)))))
+  (total-all (subr kfx ((listof (rose i64 acyclic) acyclic)) i64)
+    (lambda (ks) (if (null? ks) 0 (i64+ (total (car ks)) (total-all (cdr ks)))))))
+
+(define first (poly ((a type)) (subr kfx ((stack a)) (option a)))
+  (lambda (xs) (if (null? xs) (none) (some (car xs)))))
+
+(define or-else (poly ((a type)) (subr kfx ((option a) a) a))
+  (lambda (o d) (tagcase o (none () d) (some (x) x))))
+
+(define swap (poly ((a type) (b type)) (subr kfx ((both a b)) (both b a)))
+  (lambda (p) (tagcase p (both (x y) (both y x)))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (let* ((kids (the (listof (rose i64 acyclic) acyclic) (list (leaf 1) (leaf 2))))
+           (tree (the (rose i64 acyclic) (node (cons (node kids) (cons (leaf 4) nil)))))
+           (xs (the ints (list 7 8 9)))
+           (p (the (both string i64) (both "x" 5))))
+      (string-append (i64->string (total tree))
+        (string-append " " (string-append (i64->string (or-else (first xs) 0))
+          (string-append " " (string-append (i64->string (or-else (first (the ints nil)) -1))
+            (string-append " " (tagcase (swap p) (both (n s) (string-append (i64->string n) s))))))))))))

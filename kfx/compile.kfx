@@ -9,7 +9,7 @@
     "The same, its messages naming `file`."
     (let* ((forms (read-all (string-chars src) file 1))
            (checked (check-program forms))
-           (c (collect forms (ctx nil nil nil nil (verdict-typeds checked) (verdict-facts checked)))))
+           (c (collect forms (ctx nil nil nil nil (verdict-typeds checked) (verdict-facts checked) nil))))
       (rev->string (put-tops c forms (put header nil))))))
 
 (define compile-toplevel (subr kfx (string string) string)
@@ -18,7 +18,7 @@
      `kfx_toplevel`, which writes their values (emit.kfx)."
     (let* ((forms (read-all (string-chars src) file 1))
            (checked (check-program forms))
-           (c (collect forms (ctx nil nil nil nil (verdict-typeds checked) (verdict-facts checked)))))
+           (c (collect forms (ctx nil nil nil nil (verdict-typeds checked) (verdict-facts checked) nil))))
       (rev->string (put-toplevel c forms (put-tops c forms (put header nil)))))))
 
 (define compile (subr kfx (string) string)
@@ -64,7 +64,7 @@
      The whole program is checked, and each file written as a module."
     (let* ((forms (concat (map (lambda ((s source)) (source-forms s)) ss)))
            (checked (check-program forms))
-           (c (collect forms (ctx nil nil nil nil (verdict-typeds checked) (verdict-facts checked))))
+           (c (collect forms (ctx nil nil nil nil (verdict-typeds checked) (verdict-facts checked) nil)))
            (modules (map (lambda ((s source))
                            (tagcase s
                              (source (name text)

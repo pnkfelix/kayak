@@ -22,12 +22,26 @@ pub type Tagofs = List<&'static Tagof>;
 // and the names bound where an expression is. A name named as a value is
 // a local, a constant (a call of its `fn`), or else a global procedure (a
 // reference to its `fn`, the program's or kayak-rt's).
-pub enum Ctx {
-    Ctx(Strings, Tagofs, Strings, Strings, Typeds, Facts),
+
+// A family: a datatype or type abbreviation with parameters, its name,
+// whether it is a datatype, and its parameters' kinds, so that a region's
+// argument, erased in Rust, is dropped where it is applied.
+pub enum Family {
+    Family(Str, bool, Strings),
 }
 
-pub fn ctx(f0: Strings, f1: Tagofs, f2: Strings, f3: Strings, f4: Typeds, f5: Facts) -> &'static Ctx {
-    alloc(Ctx::Ctx(f0, f1, f2, f3, f4, f5))
+pub fn family(f0: Str, f1: bool, f2: Strings) -> &'static Family {
+    alloc(Family::Family(f0, f1, f2))
+}
+
+pub type Families = List<&'static Family>;
+
+pub enum Ctx {
+    Ctx(Strings, Tagofs, Strings, Strings, Typeds, Facts, Families),
+}
+
+pub fn ctx(f0: Strings, f1: Tagofs, f2: Strings, f3: Strings, f4: Typeds, f5: Facts, f6: Families) -> &'static Ctx {
+    alloc(Ctx::Ctx(f0, f1, f2, f3, f4, f5, f6))
 }
 
 pub fn filter_typed(mut name: Str, mut xs: Typeds) -> Typeds {
@@ -54,7 +68,7 @@ pub fn filter_typed(mut name: Str, mut xs: Typeds) -> Typeds {
 pub fn ctx_fact_p(c: &'static Ctx, file: Str, pos: i64, what: Str) -> bool {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms) => {
             any_p(lambda1(move |f: &'static Fact| {
                 let tagcase_ = f;
                 match *tagcase_ {
@@ -70,7 +84,7 @@ pub fn ctx_fact_p(c: &'static Ctx, file: Str, pos: i64, what: Str) -> bool {
 pub fn ctx_datatypes(c: &'static Ctx) -> Strings {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms) => {
             ds
         }
     }
@@ -79,7 +93,7 @@ pub fn ctx_datatypes(c: &'static Ctx) -> Strings {
 pub fn ctx_tags(c: &'static Ctx) -> Tagofs {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms) => {
             ts
         }
     }
@@ -88,7 +102,7 @@ pub fn ctx_tags(c: &'static Ctx) -> Tagofs {
 pub fn ctx_constants(c: &'static Ctx) -> Strings {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms) => {
             ks
         }
     }
@@ -97,7 +111,7 @@ pub fn ctx_constants(c: &'static Ctx) -> Strings {
 pub fn ctx_locals(c: &'static Ctx) -> Strings {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms) => {
             ls
         }
     }
@@ -108,7 +122,7 @@ pub fn ctx_locals(c: &'static Ctx) -> Strings {
 pub fn ctx_typed(c: &'static Ctx, name: Str) -> Sexps {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms) => {
             map(lambda1(move |x: &'static Typed| {
                 let tagcase_ = x;
                 match *tagcase_ {
@@ -136,8 +150,8 @@ pub fn strings_onto(mut xs: Strings, mut ys: Strings) -> Strings {
 pub fn with_locals(c: &'static Ctx, names: Strings) -> &'static Ctx {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs) => {
-            ctx(ds, ts, ks, strings_onto(names, ls), xs, fs)
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms) => {
+            ctx(ds, ts, ks, strings_onto(names, ls), xs, fs, ms)
         }
     }
 }
@@ -173,15 +187,124 @@ pub fn note_tags(mut variants: Sexps, mut d: Str, mut ts: Tagofs) -> Tagofs {
     }
 }
 
+/// A type definition's name, from its head: a name, or `(name binder ...)`.
+pub fn type_head_name(head: &'static Sexp) -> Str {
+    let tagcase_ = head;
+    match *tagcase_ {
+        Sexp::Lst(xs, src_file, src_line, src_pos) => {
+            sym_name(car(xs))
+        }
+        _ => {
+            let other = tagcase_;
+            sym_name(other)
+        }
+    }
+}
+
+pub fn binder_kinds(bs: Sexps) -> Strings {
+    map(lambda1(move |b: &'static Sexp| {
+        sym_name(second(items(b)))
+    }), bs)
+}
+
+/// The names of the binders of kind `type`: Rust's type parameters.
+pub fn type_params_of(mut bs: Sexps) -> Strings {
+    loop {
+        if null_p(bs) {
+            return nil();
+        } else if sym_is_p(second(items(car(bs))), str_lit("type")) {
+            return cons(sym_name(car(items(car(bs)))), type_params_of(cdr(bs)));
+        } else {
+            bs = cdr(bs);
+            continue;
+        }
+    }
+}
+
+pub fn head_type_params(head: &'static Sexp) -> Strings {
+    let tagcase_ = head;
+    match *tagcase_ {
+        Sexp::Lst(xs, src_file, src_line, src_pos) => {
+            type_params_of(cdr(xs))
+        }
+        _ => {
+            let other = tagcase_;
+            nil()
+        }
+    }
+}
+
+pub fn note_family(head: &'static Sexp, datatype: bool, ms: Families) -> Families {
+    let tagcase_ = head;
+    match *tagcase_ {
+        Sexp::Lst(xs, src_file, src_line, src_pos) => {
+            cons(family(sym_name(car(xs)), datatype, binder_kinds(cdr(xs))), ms)
+        }
+        _ => {
+            let other = tagcase_;
+            ms
+        }
+    }
+}
+
+pub fn filter_family(mut name: Str, mut ms: Families) -> Families {
+    loop {
+        if null_p(ms) {
+            return nil();
+        } else if {
+            let tagcase_ = car(ms);
+            match *tagcase_ {
+                Family::Family(n, d, ks) => {
+                    string_eq_p(n, name)
+                }
+            }
+        } {
+            return cons(car(ms), nil());
+        } else {
+            ms = cdr(ms);
+            continue;
+        }
+    }
+}
+
+pub fn find_family_of(c: &'static Ctx, name: Str) -> Families {
+    let tagcase_ = c;
+    match *tagcase_ {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms) => {
+            let found = filter_family(name, ms);
+            found
+        }
+    }
+}
+
+/// `<T, U>`, or with `bounded`, `<T: Copy + 'static, U: Copy + 'static>`
+/// as every KFX value is; nothing for no names.
+pub fn put_generics_of(names: Strings, bounded: bool, acc: Chars) -> Chars {
+    if null_p(names) {
+        acc
+    } else {
+        put(str_lit(">"), put_sep(lambda2(move |n: Str, acc: Chars| {
+            let acc = put(camel(n), acc);
+            if bounded {
+                put(str_lit(": Copy + 'static"), acc)
+            } else {
+                acc
+            }
+        }), str_lit(", "), names, put(str_lit("<"), acc)))
+    }
+}
+
 pub fn note(form: &'static Sexp, c: &'static Ctx) -> &'static Ctx {
     let tagcase_ = c;
     match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs) => {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms) => {
             if head_is_p(form, str_lit("define-datatype")) {
-                let d = sym_name(second(items(form)));
-                ctx(cons(d, ds), note_tags(cdr(cdr(items(form))), d, ts), ks, ls, xs, fs)
+                let d = type_head_name(second(items(form)));
+                ctx(cons(d, ds), note_tags(cdr(cdr(items(form))), d, ts), ks, ls, xs, fs, note_family(second(items(form)), true, ms))
+            } else if head_is_p(form, str_lit("define-type")) {
+                ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms))
             } else if (head_is_p(form, str_lit("define")) && (i64_eq(size(items(form)), 3i64) || i64_eq(size(items(form)), 4i64)) && not(procedure_p(last(items(form))))) {
-                ctx(ds, ts, cons(sym_name(second(items(form))), ks), ls, xs, fs)
+                ctx(ds, ts, cons(sym_name(second(items(form))), ks), ls, xs, fs, ms)
             } else {
                 c
             }
@@ -267,6 +390,35 @@ pub fn put_type(c: &'static Ctx, t: &'static Sexp, acc: Chars) -> Chars {
                 put_type(c, fourth(xs), acc)
             } else if sym_is_p(car(xs), str_lit("poly")) {
                 error(str_lit("kfx: a poly type is only a definition's, at its top"))
+            } else if {
+                let tagcase_ = car(xs);
+                match *tagcase_ {
+                    Sexp::Sym(n) => {
+                        not(null_p(find_family_of(c, n)))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            } {
+                let tagcase_ = car(find_family_of(c, sym_name(car(xs))));
+                match *tagcase_ {
+                    Family::Family(n, datatype, kinds) => {
+                        let acc = if datatype {
+                            put(str_lit("&'static "), acc)
+                        } else {
+                            acc
+                        };
+                        let acc = put(camel(n), acc);
+                        let args = type_arguments(cdr(xs), kinds);
+                        if null_p(args) {
+                            acc
+                        } else {
+                            put(str_lit(">"), put_types(c, args, put(str_lit("<"), acc)))
+                        }
+                    }
+                }
             } else {
                 error(str_lit("kfx: a type KFX-0 does not have"))
             }
@@ -274,6 +426,21 @@ pub fn put_type(c: &'static Ctx, t: &'static Sexp, acc: Chars) -> Chars {
         _ => {
             let other = tagcase_;
             error(str_lit("kfx: a type KFX-0 does not have"))
+        }
+    }
+}
+
+/// A family's arguments for its parameters of kind `type`: the others,
+/// regions, are erased.
+pub fn type_arguments(mut args: Sexps, mut kinds: Strings) -> Sexps {
+    loop {
+        if (null_p(args) || null_p(kinds)) {
+            return nil();
+        } else if string_eq_p(car(kinds), str_lit("type")) {
+            return cons(car(args), type_arguments(cdr(args), cdr(kinds)));
+        } else {
+            (args, kinds) = (cdr(args), cdr(kinds));
+            continue;
         }
     }
 }
@@ -1070,7 +1237,7 @@ pub fn put_fields(c: &'static Ctx, types: Sexps, i: i64, typed: bool, acc: Chars
     }
 }
 
-pub fn put_constructors(c: &'static Ctx, d: Str, variants: Sexps, acc: Chars) -> Chars {
+pub fn put_constructors(c: &'static Ctx, d: Str, params: Strings, variants: Sexps, acc: Chars) -> Chars {
     if null_p(variants) {
         acc
     } else {
@@ -1078,28 +1245,34 @@ pub fn put_constructors(c: &'static Ctx, d: Str, variants: Sexps, acc: Chars) ->
         let tag = sym_name(car(v));
         let acc = put(str_lit("pub fn "), acc);
         let acc = put(mangle(tag), acc);
+        let acc = put_generics_of(params, true, acc);
         let acc = put(str_lit("("), acc);
         let acc = put_fields(c, cdr(v), 0i64, true, acc);
         let acc = put(str_lit(") -> &'static "), acc);
         let acc = put(camel(d), acc);
+        let acc = put_generics_of(params, false, acc);
         let acc = put(str_lit(" {\n    alloc("), acc);
         let acc = put(camel(d), acc);
         let acc = put(str_lit("::"), acc);
         let acc = put(camel(tag), acc);
         let acc = put(str_lit("("), acc);
         let acc = put_fields(c, cdr(v), 0i64, false, acc);
-        put_constructors(c, d, cdr(variants), put(str_lit("))\n}\n\n"), acc))
+        put_constructors(c, d, params, cdr(variants), put(str_lit("))\n}\n\n"), acc))
     }
 }
 
+/// An enum, generic in its type parameters (its regions are erased), and a
+/// constructor for each variant.
 pub fn put_datatype(c: &'static Ctx, xs: Sexps, acc: Chars) -> Chars {
-    let d = sym_name(car(xs));
+    let d = type_head_name(car(xs));
+    let params = head_type_params(car(xs));
     let acc = put(str_lit("pub enum "), acc);
     let acc = put(camel(d), acc);
+    let acc = put_generics_of(params, true, acc);
     let acc = put(str_lit(" {\n"), acc);
     let acc = put_variants(c, cdr(xs), acc);
     let acc = put(str_lit("}\n\n"), acc);
-    put_constructors(c, d, cdr(xs), acc)
+    put_constructors(c, d, params, cdr(xs), acc)
 }
 
 pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
@@ -1109,7 +1282,8 @@ pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
         acc
     } else if string_eq_p(h, str_lit("define-type")) {
         let acc = put(str_lit("pub type "), acc);
-        let acc = put(camel(sym_name(second(xs))), acc);
+        let acc = put(camel(type_head_name(second(xs))), acc);
+        let acc = put_generics_of(head_type_params(second(xs)), false, acc);
         let acc = put(str_lit(" = "), acc);
         let acc = put_type(c, third(xs), acc);
         put(str_lit(";\n\n"), acc)
@@ -1179,9 +1353,13 @@ pub fn put_show_impls(mut forms: Sexps, mut acc: Chars) -> Chars {
             return acc;
         } else if head_is_p(car(forms), str_lit("define-datatype")) {
             let xs = cdr(items(car(forms)));
-            let d = sym_name(car(xs));
-            let acc = put(str_lit("impl Show for "), acc);
+            let d = type_head_name(car(xs));
+            let params = head_type_params(car(xs));
+            let acc = put(str_lit("impl"), acc);
+            let acc = put_generics_of(params, true, acc);
+            let acc = put(str_lit(" Show for "), acc);
             let acc = put(camel(d), acc);
+            let acc = put_generics_of(params, false, acc);
             let acc = put(str_lit(" {\n    fn show(&self, out: &mut String) {\n        match self {\n"), acc);
             let acc = put_show_arms(d, cdr(xs), acc);
             return put_show_impls(cdr(forms), put(str_lit("        }\n    }\n}\n\n"), acc));

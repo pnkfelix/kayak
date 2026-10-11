@@ -101,7 +101,7 @@ is no `Drop`, no `Rc` and no `.clone()`.
 | a literal                                             | `5i64` where an `i64` is expected, else `int_lit(5)` (a fact) |
 | `bool`, `char`, `unit`                                | `bool`, `char`, `()`                                        |
 | `string`, a literal `"…"`                             | `Str`, a `&'static str` that knows if it is ASCII; `str_lit("…")` |
-| `(listof T acyclic)`                                  | `List<T>` = `Option<&'static Cons<T>>`                      |
+| `(listof T R)`, at any region                         | `List<T>` = `Option<&'static Cons<T>>`: KFX writes no list  |
 | a `define-datatype` name `t`                          | `&'static T`, `enum T` holding its variants                 |
 | `(define f (subr kfx (T…) T) (lambda (x…) body))`     | `fn f(x: T, …) -> T { body }`                               |
 | `(define-rec (f type lambda) …)`                      | the same, one `fn` each                                     |
@@ -110,6 +110,8 @@ is no `Drop`, no `Rc` and no `.clone()`.
 | `(define x e)`, with no type                          | as with the type the checker finds (elaboration)            |
 | `(define* f T lambda)`                                | as `define`; the globals read are found, for the checker    |
 | `(define-datatype t (tag T…) …)`                      | `enum T { Tag(T…), … }` and `fn tag(…) -> &'static T`       |
+| `(define-datatype (t (a type) (r region)) …)`         | `enum T<A: Copy + 'static>`, generic constructors; `r` erased |
+| `(define-type (t (a type)) T)`; `(t i64)`             | `type T<A> = …;` `T<i64>`                                   |
 | `(define-effect …)`                                   | nothing                                                     |
 | `(f a …)`, `f` a global or a primitive                | `f(a, …)`; the primitives are `kayak_rt`'s                  |
 | `(e a …)`, `e` an expression                          | `(e)(a, …)`                                                 |

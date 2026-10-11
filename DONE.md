@@ -438,3 +438,24 @@ it binds, `define-effect` and `define-type` none). A procedure is any
 `#<...closure...>`. Fixpt's `diverge/` programs, meant to loop, are
 skipped. 17 programs, all agreeing: K1 on programs not written for
 kayak. `scripts/check.sh` runs it when there is a Fixpt clone.
+
+## Type families, and lists at any region (2026-10-11)
+
+C17. Datatypes and type abbreviations with type and region parameters:
+in the checker, `ty-data` has arguments, a `tagcase` instantiates its
+variants' fields, an abbreviation applied is expanded; in Rust, generic
+enums, constructors, aliases and `Show`s, regions erased. `replace-var`
+moved ahead of the type parser, whose abbreviations need it.
+
+With them, lists at any region, which a rose tree over a region needs:
+`cons` and `list` allocate at the list's region and `car` and `cdr` read
+it, as in FX-26; effects on `acyclic` are pure, and dropped wherever
+effects meet; mutable data is refused at `acyclic`. In Rust a list is a
+`List` at any region, since KFX writes no list. A region no one names is
+`acyclic` (C16, revising C13).
+
+`run-fixpt-programs.py` found a K1 hole: `kfx` accepted `@globals` as a
+region in a type, which Fixpt refuses; now refused
+(`kfx-refused/globals-region`). The harness had called that program
+skipped; a program `kfx` accepts and Fixpt refuses is now a failure.
+24 of Fixpt's programs accepted, all agreeing. `tests/kfx/families.kfx`.

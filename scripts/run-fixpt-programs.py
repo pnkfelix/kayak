@@ -137,7 +137,7 @@ def fixpt_values(binary, path, text):
     except subprocess.TimeoutExpired:
         return None, "Fixpt runs past %ds" % LIMIT
     if r.returncode != 0:
-        return None, "Fixpt fails: " + r.stderr.strip()[:200]
+        return None, "REFUSED: " + r.stderr.strip()[:200]
     lines = [l for l in r.stdout.splitlines() if not l.startswith(";")]
     values = []
     for head, count in forms(text):
@@ -205,6 +205,10 @@ def main():
         with open(path) as g:
             text = g.read()
         expected, why = fixpt_values(fixpt, path, text)
+        if expected is None and why.startswith("REFUSED"):
+            # kfx accepted what Fixpt refuses: K1's other half, broken.
+            differ.append((rel, "kfx accepts it, and Fixpt " + why))
+            continue
         if expected is None:
             skipped.append((rel, why))
             continue

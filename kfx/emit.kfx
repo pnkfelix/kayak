@@ -10,7 +10,13 @@
  and the names bound where an expression is. A name named as a value is
  a local, a constant (a call of its `fn`), or else a global procedure (a
  reference to its `fn`, the program's or kayak-rt's)."
-(define-datatype ctx (ctx strings tagofs strings strings typeds facts))
+"A family: a datatype or type abbreviation with parameters, its name,
+ whether it is a datatype, and its parameters' kinds, so that a region's
+ argument, erased in Rust, is dropped where it is applied."
+(define-datatype family (family string bool strings))
+(define-type families (listof family acyclic))
+
+(define-datatype ctx (ctx strings tagofs strings strings typeds facts families))
 
 (define filter-typed (subr kfx (string typeds) typeds)
   (lambda (name xs)
@@ -22,29 +28,29 @@
   (lambda (c file pos what)
     "Whether the checker found `what` about the place `file`, `pos`."
     (tagcase c
-      (ctx (ds ts ks ls xs fs)
+      (ctx (ds ts ks ls xs fs ms)
         (any? (lambda ((f fact))
                 (tagcase f (fact (ff fp fw) (and (i64= fp pos) (string=? fw what) (string=? ff file)))))
               fs)))))
 
 (define ctx-datatypes (subr kfx (ctx) strings)
-  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs) ds))))
+  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms) ds))))
 
 (define ctx-tags (subr kfx (ctx) tagofs)
-  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs) ts))))
+  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms) ts))))
 
 (define ctx-constants (subr kfx (ctx) strings)
-  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs) ks))))
+  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms) ks))))
 
 (define ctx-locals (subr kfx (ctx) strings)
-  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs) ls))))
+  (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms) ls))))
 
 (define ctx-typed (subr kfx (ctx string) sexps)
   (lambda (c name)
     "The type the checker found for a definition written with none, as a
      list of one."
     (tagcase c
-      (ctx (ds ts ks ls xs fs)
+      (ctx (ds ts ks ls xs fs ms)
         (map (lambda ((x typed)) (tagcase x (typed (n t) t)))
              (filter-typed name xs))))))
 
@@ -54,7 +60,7 @@
 (define with-locals (subr kfx (ctx strings) ctx)
   (lambda (c names)
     "`c`, where `names` are bound too."
-    (tagcase c (ctx (ds ts ks ls xs fs) (ctx ds ts ks (strings-onto names ls) xs fs)))))
+    (tagcase c (ctx (ds ts ks ls xs fs ms) (ctx ds ts ks (strings-onto names ls) xs fs ms)))))
 
 (define tag-datatype (subr kfx (string tagofs) string)
   (lambda (tag ts)
@@ -70,17 +76,67 @@
         (note-tags (cdr variants) d
                    (cons (tagof (sym-name (car (items (car variants)))) d) ts)))))
 
+(define type-head-name (subr kfx (sexp) string)
+  (lambda (head)
+    "A type definition's name, from its head: a name, or `(name binder ...)`."
+    (tagcase head (lst (xs src-file src-line src-pos) (sym-name (car xs))) (else other (sym-name other)))))
+
+(define binder-kinds (subr kfx (sexps) strings)
+  (lambda (bs) (map (lambda ((b sexp)) (sym-name (second (items b)))) bs)))
+
+(define type-params-of (subr kfx (sexps) strings)
+  (lambda (bs)
+    "The names of the binders of kind `type`: Rust's type parameters."
+    (cond ((null? bs) nil)
+          ((sym-is? (second (items (car bs))) "type")
+           (cons (sym-name (car (items (car bs)))) (type-params-of (cdr bs))))
+          (else (type-params-of (cdr bs))))))
+
+(define head-type-params (subr kfx (sexp) strings)
+  (lambda (head) (tagcase head (lst (xs src-file src-line src-pos) (type-params-of (cdr xs))) (else other nil))))
+
+(define note-family (subr kfx (sexp bool families) families)
+  (lambda (head datatype ms)
+    (tagcase head
+      (lst (xs src-file src-line src-pos) (cons (family (sym-name (car xs)) datatype (binder-kinds (cdr xs))) ms))
+      (else other ms))))
+
+(define filter-family (subr kfx (string families) families)
+  (lambda (name ms)
+    (cond ((null? ms) nil)
+          ((tagcase (car ms) (family (n d ks) (string=? n name))) (list (car ms)))
+          (else (filter-family name (cdr ms))))))
+
+(define find-family-of (subr kfx (ctx string) families)
+  (lambda (c name)
+    (tagcase c
+      (ctx (ds ts ks ls xs fs ms)
+        (let ((found (filter-family name ms))) found)))))
+
+(define put-generics-of (subr kfx (strings bool chars) chars)
+  (lambda (names bounded acc)
+    "`<T, U>`, or with `bounded`, `<T: Copy + 'static, U: Copy + 'static>`
+     as every KFX value is; nothing for no names."
+    (if (null? names)
+        acc
+        (put ">" (put-sep (lambda ((n string) (acc chars))
+                            (let ((acc (put (camel n) acc))) (if bounded (put ": Copy + 'static" acc) acc)))
+                          ", " names (put "<" acc))))))
+
 (define note (subr kfx (sexp ctx) ctx)
   (lambda (form c)
     (tagcase c
-      (ctx (ds ts ks ls xs fs)
+      (ctx (ds ts ks ls xs fs ms)
         (cond ((head-is? form "define-datatype")
-               (let ((d (sym-name (second (items form)))))
-                 (ctx (cons d ds) (note-tags (cdr (cdr (items form))) d ts) ks ls xs fs)))
+               (let ((d (type-head-name (second (items form)))))
+                 (ctx (cons d ds) (note-tags (cdr (cdr (items form))) d ts) ks ls xs fs
+                      (note-family (second (items form)) #t ms))))
+              ((head-is? form "define-type")
+               (ctx ds ts ks ls xs fs (note-family (second (items form)) #f ms)))
               ((and (head-is? form "define")
                     (or (i64= (size (items form)) 3) (i64= (size (items form)) 4))
                     (not (procedure? (last (items form)))))
-               (ctx ds ts (cons (sym-name (second (items form))) ks) ls xs fs))
+               (ctx ds ts (cons (sym-name (second (items form))) ks) ls xs fs ms))
               (else c))))))
 
 (define collect (subr kfx (sexps ctx) ctx)
@@ -132,8 +188,23 @@
                    (put-type c (fourth xs) acc)))
                 ((sym-is? (car xs) "poly")
                  (error "kfx: a poly type is only a definition's, at its top"))
+                ((tagcase (car xs) (sym (n) (not (null? (find-family-of c n)))) (else other #f))
+                 (tagcase (car (find-family-of c (sym-name (car xs))))
+                   (family (n datatype kinds)
+                     (let* ((acc (if datatype (put "&'static " acc) acc))
+                            (acc (put (camel n) acc))
+                            (args (type-arguments (cdr xs) kinds)))
+                       (if (null? args) acc (put ">" (put-types c args (put "<" acc))))))))
                 (else (error "kfx: a type KFX-0 does not have"))))
         (else other (error "kfx: a type KFX-0 does not have")))))
+
+  (type-arguments (subr kfx (sexps strings) sexps)
+    (lambda (args kinds)
+      "A family's arguments for its parameters of kind `type`: the others,
+       regions, are erased."
+      (cond ((or (null? args) (null? kinds)) nil)
+            ((string=? (car kinds) "type") (cons (car args) (type-arguments (cdr args) (cdr kinds))))
+            (else (type-arguments (cdr args) (cdr kinds))))))
 
   (put-types (subr kfx (ctx sexps chars) chars)
     (lambda (c types acc)
@@ -618,35 +689,41 @@
                (acc (if typed (put-type c (car types) (put ": " acc)) acc)))
           (put-fields c (cdr types) (i64+ i 1) typed acc)))))
 
-(define put-constructors (subr kfx (ctx string sexps chars) chars)
-  (lambda (c d variants acc)
+(define put-constructors (subr kfx (ctx string strings sexps chars) chars)
+  (lambda (c d params variants acc)
     (if (null? variants)
         acc
         (let* ((v (items (car variants)))
                (tag (sym-name (car v)))
                (acc (put "pub fn " acc))
                (acc (put (mangle tag) acc))
+               (acc (put-generics-of params #t acc))
                (acc (put "(" acc))
                (acc (put-fields c (cdr v) 0 #t acc))
                (acc (put ") -> &'static " acc))
                (acc (put (camel d) acc))
+               (acc (put-generics-of params #f acc))
                (acc (put " {\n    alloc(" acc))
                (acc (put (camel d) acc))
                (acc (put "::" acc))
                (acc (put (camel tag) acc))
                (acc (put "(" acc))
                (acc (put-fields c (cdr v) 0 #f acc)))
-          (put-constructors c d (cdr variants) (put "))\n}\n\n" acc))))))
+          (put-constructors c d params (cdr variants) (put "))\n}\n\n" acc))))))
 
 (define put-datatype (subr kfx (ctx sexps chars) chars)
   (lambda (c xs acc)
-    (let* ((d (sym-name (car xs)))
+    "An enum, generic in its type parameters (its regions are erased), and a
+     constructor for each variant."
+    (let* ((d (type-head-name (car xs)))
+           (params (head-type-params (car xs)))
            (acc (put "pub enum " acc))
            (acc (put (camel d) acc))
+           (acc (put-generics-of params #t acc))
            (acc (put " {\n" acc))
            (acc (put-variants c (cdr xs) acc))
            (acc (put "}\n\n" acc)))
-      (put-constructors c d (cdr xs) acc))))
+      (put-constructors c d params (cdr xs) acc))))
 
 (define put-top (subr kfx (ctx sexp chars) chars)
   (lambda (c form acc)
@@ -655,7 +732,8 @@
       (cond ((string=? h "define-effect") acc)
             ((string=? h "define-type")
              (let* ((acc (put "pub type " acc))
-                    (acc (put (camel (sym-name (second xs))) acc))
+                    (acc (put (camel (type-head-name (second xs))) acc))
+                    (acc (put-generics-of (head-type-params (second xs)) #f acc))
                     (acc (put " = " acc))
                     (acc (put-type c (third xs) acc)))
                (put ";\n\n" acc)))
@@ -707,9 +785,13 @@
     (cond ((null? forms) acc)
           ((head-is? (car forms) "define-datatype")
            (let* ((xs (cdr (items (car forms))))
-                  (d (sym-name (car xs)))
-                  (acc (put "impl Show for " acc))
+                  (d (type-head-name (car xs)))
+                  (params (head-type-params (car xs)))
+                  (acc (put "impl" acc))
+                  (acc (put-generics-of params #t acc))
+                  (acc (put " Show for " acc))
                   (acc (put (camel d) acc))
+                  (acc (put-generics-of params #f acc))
                   (acc (put " {\n    fn show(&self, out: &mut String) {\n        match self {\n" acc))
                   (acc (put-show-arms d (cdr xs) acc)))
              (put-show-impls (cdr forms) (put "        }\n    }\n}\n\n" acc))))

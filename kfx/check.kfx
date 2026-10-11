@@ -21,8 +21,8 @@
   (ty-unit)
   (ty-string)
   (ty-void)
-  (ty-list ty)
-  (ty-data string)
+  (ty-list ty ty)
+  (ty-data string (listof ty acyclic))
   (ty-flat ty ty)
   (ty-ref ty ty)
   (ty-rconst string)
@@ -53,10 +53,10 @@
 
 (define-datatype variant (variant string tys))
 (define-type variants (listof variant acyclic))
-(define-datatype dt (dt string variants))
+(define-datatype dt (dt string strings variants))
 (define-type dts (listof dt acyclic))
 
-(define-datatype alias (alias string sexp))
+(define-datatype alias (alias string strings sexp))
 (define-type aliases (listof alias acyclic))
 
 (define-datatype effdef (effdef string strings))
@@ -123,10 +123,16 @@
 
 "Effects"
 
+(define frozen-atom? (subr kfx (string) bool)
+  (lambda (x)
+    "An effect on `acyclic`: making and reading frozen data are pure, in
+     FX-26; writing it is refused where its type is read."
+    (or (string=? x "read:acyclic") (string=? x "alloc:acyclic") (string=? x "write:acyclic"))))
+
 (define effs-union (subr kfx (strings strings) strings)
   (lambda (a b)
-    (cond ((null? a) b)
-          ((string-member? (car a) b) (effs-union (cdr a) b))
+    (cond ((null? a) (if (any? (lambda ((x string)) (frozen-atom? x)) b) (effs-union b nil) b))
+          ((or (frozen-atom? (car a)) (string-member? (car a) b)) (effs-union (cdr a) b))
           (else (effs-union (cdr a) (cons (car a) b))))))
 
 (define global-atom? (subr kfx (string) bool)
@@ -165,14 +171,24 @@
   (lambda (v tvars r)
     "A region's name: a constant, `@a`, or a poly's region binder, `'r`."
     (let ((s (tagcase r (sym (n) n) (else other (refuse v (string-append "a region KFX does not have: " (show-sexp other)))))))
-      (cond ((char=? (string-ref-i64 s 0) #\@) s)
+      (cond ((string=? s "@globals")
+             (refuse v "globals are a region only in effects: (read @globals), (read (globals g))"))
+            ((char=? (string-ref-i64 s 0) #\@) s)
+            ((string=? s "acyclic") s)
             ((string-member? (string-append "'" s) tvars) (string-append "'" s))
             (else (refuse v (string-append "a region KFX-0 does not have: " s)))))))
 
 (define parse-region (subr kfx (cv strings sexp) ty)
   (lambda (v tvars r)
     (let ((name (region-name v tvars r)))
-      (if (char=? (string-ref-i64 name 0) #\@) (ty-rconst name) (ty-var name)))))
+      (if (char=? (string-ref-i64 name 0) #\') (ty-var name) (ty-rconst name)))))
+
+(define parse-mutable-region (subr kfx (cv strings sexp) ty)
+  (lambda (v tvars r)
+    "The region of data that may be written: not `acyclic`, which is frozen."
+    (if (sym-is? r "acyclic")
+        (refuse v "mutable data at acyclic, which is frozen and never written")
+        (parse-region v tvars r))))
 
 (define-rec
   (parse-effect (subr kfx (cv strings sexp) strings)
@@ -195,6 +211,44 @@
     (lambda (v tvars es)
       (if (null? es) nil (effs-union (parse-effect v tvars (car es)) (parse-effects v tvars (cdr es)))))))
 
+(define rename-atoms (subr kfx (strings string string) strings)
+  (lambda (es from to)
+    "Effect atoms on region `from` made atoms on region `to`."
+    (map (lambda ((x string))
+           (cond ((string=? x (string-append "read:" from)) (string-append "read:" to))
+                 ((string=? x (string-append "write:" from)) (string-append "write:" to))
+                 ((string=? x (string-append "alloc:" from)) (string-append "alloc:" to))
+                 (else x)))
+         es)))
+
+(define meta-name (subr kfx (i64) string)
+  (lambda (k) (string-append "?" (i64->string k))))
+
+(define-rec
+  (replace-var (subr kfx (string ty ty) ty)
+    (lambda (name m t)
+      (tagcase t
+        (ty-var (n) (if (string=? n name) m t))
+        (ty-list (e r) (ty-list (replace-var name m e) (replace-var name m r)))
+        (ty-flat (e r) (ty-flat (replace-var name m e) (replace-var name m r)))
+        (ty-data (d args) (ty-data d (map (lambda ((x ty)) (replace-var name m x)) args)))
+        (ty-ref (e r) (ty-ref (replace-var name m e) (replace-var name m r)))
+        (ty-proc (es ps r)
+          (ty-proc (tagcase m
+                     (ty-meta (k) (rename-atoms es name (meta-name k)))
+                     (ty-rconst (n) (rename-atoms es name n))
+                     (ty-var (n) (rename-atoms es name n))
+                     (else other es))
+                   (map (lambda ((p ty)) (replace-var name m p)) ps) (replace-var name m r)))
+        (else other t)))))
+
+(define substitute (subr kfx (strings tys ty) ty)
+  (lambda (params args t)
+    "`t`, each of `params` replaced by its argument."
+    (if (or (null? params) (null? args))
+        t
+        (substitute (cdr params) (cdr args) (replace-var (car params) (car args) t)))))
+
 "Types"
 
 (define cv-dts (subr kfx (cv) dts) (lambda (v) (tagcase v (cv (bs ds as es here group file line fs) ds))))
@@ -204,14 +258,22 @@
 
 (define dt-named? (subr kfx (string dts) bool)
   (lambda (name ds)
-    (any? (lambda ((d dt)) (tagcase d (dt (n vs) (string=? n name)))) ds)))
+    (any? (lambda ((d dt)) (tagcase d (dt (n ps vs) (string=? n name)))) ds)))
 
-(define find-alias (subr kfx (string aliases) sexps)
+(define find-family (subr kfx (string dts) (listof dt acyclic))
+  (lambda (name ds)
+    "A datatype, its parameters and variants, as a list of one, or none."
+    (cond ((null? ds) nil)
+          ((tagcase (car ds) (dt (n ps vs) (string=? n name))) (list (car ds)))
+          (else (find-family name (cdr ds))))))
+
+(define find-alias (subr kfx (string aliases) (listof alias acyclic))
   (lambda (name as)
-    "The abbreviated type, as a list of one, or none."
+    "A type abbreviation, its parameters and what it stands for, as a list
+     of one, or none."
     (cond ((null? as) nil)
           (else (tagcase (car as)
-                  (alias (n t) (if (string=? n name) (list t) (find-alias name (cdr as)))))))))
+                  (alias (n ps t) (if (string=? n name) (list (car as)) (find-alias name (cdr as)))))))))
 
 (define-rec
   (parse-type (subr kfx (cv strings sexp) ty)
@@ -227,31 +289,78 @@
                 ((string=? s "string") (ty-string))
                 ((string=? s "void") (ty-void))
                 ((string-member? s tvars) (ty-var s))
-                ((dt-named? s (cv-dts v)) (ty-data s))
+                ((dt-named? s (cv-dts v))
+                 (tagcase (car (find-family s (cv-dts v)))
+                   (dt (n ps vs)
+                     (if (null? ps)
+                         (ty-data s nil)
+                         (refuse v (string-append "a type with parameters, given none: " s))))))
                 (else
                  (let ((found (find-alias s (cv-aliases v))))
                    (if (null? found)
                        (refuse v (string-append "no type is named " s))
-                       (parse-type v tvars (car found)))))))
+                       (tagcase (car found)
+                         (alias (n ps body)
+                           (if (null? ps)
+                               (parse-type v tvars body)
+                               (refuse v (string-append "a type with parameters, given none: " s))))))))))
         (lst (xs src-file src-line src-pos)
           (cond ((sym-is? (car xs) "listof")
-                 (if (sym-is? (third xs) "acyclic")
-                     (ty-list (parse-type v tvars (second xs)))
-                     (refuse v (string-append "KFX-0's lists are at acyclic: " (show-sexp t)))))
+                 (ty-list (parse-type v tvars (second xs)) (parse-region v tvars (third xs))))
                 ((sym-is? (car xs) "flatarrayof")
                  (if (sym-is? (second xs) "i64")
-                     (ty-flat (ty-i64) (parse-region v tvars (third xs)))
+                     (ty-flat (ty-i64) (parse-mutable-region v tvars (third xs)))
                      (refuse v (string-append "KFX-0's flat arrays are of i64: " (show-sexp t)))))
                 ((sym-is? (car xs) "ref")
-                 (ty-ref (parse-type v tvars (second xs)) (parse-region v tvars (third xs))))
+                 (ty-ref (parse-type v tvars (second xs)) (parse-mutable-region v tvars (third xs))))
                 ((sym-is? (car xs) "subr")
                  (ty-proc (parse-effect v tvars (second xs))
                           (parse-types v tvars (items (third xs)))
                           (parse-type v tvars (fourth xs))))
+                ((tagcase (car xs) (sym (n) (or (dt-named? n (cv-dts v)) (not (null? (find-alias n (cv-aliases v)))))) (else other #f))
+                 (parse-application v tvars (name-of v (car xs)) (cdr xs)))
                 (else (refuse v (string-append "a type KFX does not have: " (show-sexp t))))))
         (else other (refuse v (string-append "a type KFX does not have: " (show-sexp t)))))))
   (parse-types (subr kfx (cv strings sexps) tys)
-    (lambda (v tvars ts) (map (lambda ((t sexp)) (parse-type v tvars t)) ts))))
+    (lambda (v tvars ts) (map (lambda ((t sexp)) (parse-type v tvars t)) ts)))
+
+  (parse-arguments (subr kfx (cv strings strings sexps) tys)
+    (lambda (v tvars params args)
+      "A family's arguments, each read as its parameter's kind says: a
+       region for a name beginning `'`, a type otherwise."
+      (cond ((and (null? params) (null? args)) nil)
+            ((or (null? params) (null? args)) (refuse v "a type given the wrong number of arguments"))
+            (else
+             (cons (if (char=? (string-ref-i64 (car params) 0) #\')
+                       (parse-region v tvars (car args))
+                       (parse-type v tvars (car args)))
+                   (parse-arguments v tvars (cdr params) (cdr args)))))))
+
+  (parse-application (subr kfx (cv strings string sexps) ty)
+    (lambda (v tvars name args)
+      "`(name arg ...)`: a datatype with parameters, applied; or a type
+       abbreviation with them, what it stands for with its arguments."
+      (let ((found (find-family name (cv-dts v))))
+        (if (not (null? found))
+            (tagcase (car found) (dt (n ps vs) (ty-data name (parse-arguments v tvars ps args))))
+            (tagcase (car (find-alias name (cv-aliases v)))
+              (alias (n ps body)
+                (substitute ps (parse-arguments v tvars ps args) (parse-type v ps body)))))))))
+
+(define family-params (subr kfx (cv sexp) strings)
+  (lambda (v head)
+    "A family's parameters, from its head `(name (p kind) ...)`: a type's
+     named as written, a region's with `'` first; none for a bare name."
+    (tagcase head
+      (lst (xs src-file src-line src-pos)
+        (map (lambda ((b sexp))
+               (let ((b (items b)))
+                 (cond ((sym-is? (second b) "type") (name-of v (car b)))
+                       ((sym-is? (second b) "region") (string-append "'" (name-of v (car b))))
+                       (else (refuse v (string-append "a family over a kind KFX does not have: "
+                                                      (show-sexp (lst b "" 0 0))))))))
+             (cdr xs)))
+      (else other nil))))
 
 (define poly-binders (subr kfx (cv sexp) strings)
   (lambda (v t)
@@ -285,8 +394,8 @@
         (ty-unit () "unit")
         (ty-string () "string")
         (ty-void () "void")
-        (ty-list (e) (string-append "(listof " (string-append (show-ty s e) " acyclic)")))
-        (ty-data (d) d)
+        (ty-list (e r) (string-append "(listof " (string-append (show-ty s e) (string-append " " (string-append (show-ty s r) ")")))))
+        (ty-data (d args) (if (null? args) d (string-append "(" (string-append d (string-append " " (string-append (show-tys s args) ")"))))))
         (ty-flat (e r) (string-append "(flatarrayof " (string-append (show-ty s e) (string-append " " (string-append (show-ty s r) ")")))))
         (ty-ref (e r) (string-append "(ref " (string-append (show-ty s e) (string-append " " (string-append (show-ty s r) ")")))))
         (ty-rconst (n) n)
@@ -322,8 +431,9 @@
       "Whether `t` has an inference variable not solved yet."
       (tagcase (walk s t)
         (ty-meta (k) #t)
-        (ty-list (e) (has-meta? s e))
+        (ty-list (e r) (or (has-meta? s e) (has-meta? s r)))
         (ty-flat (e r) (or (has-meta? s e) (has-meta? s r)))
+        (ty-data (d args) (any? (lambda ((x ty)) (has-meta? s x)) args))
         (ty-ref (e r) (or (has-meta? s e) (has-meta? s r)))
         (ty-proc (es ps r) (or (has-meta? s r) (any? (lambda ((p ty)) (has-meta? s p)) ps)))
         (else other #f)))))
@@ -349,8 +459,9 @@
     (lambda (s k t)
       (tagcase (walk s t)
         (ty-meta (j) (i64= j k))
-        (ty-list (e) (occurs? s k e))
+        (ty-list (e r) (or (occurs? s k e) (occurs? s k r)))
         (ty-flat (e r) (or (occurs? s k e) (occurs? s k r)))
+        (ty-data (d args) (any? (lambda ((x ty)) (occurs? s k x)) args))
         (ty-ref (e r) (or (occurs? s k e) (occurs? s k r)))
         (ty-proc (es ps r) (or (occurs? s k r) (any? (lambda ((p ty)) (occurs? s k p)) ps)))
         (else other #f)))))
@@ -388,11 +499,14 @@
   (fits-shapes (subr kfx (cv st ty ty) st)
     (lambda (v s a e)
       (tagcase a
-        (ty-list (x) (tagcase e (ty-list (y) (fits v s x y)) (else other (mismatch v s a e))))
+        (ty-list (x xr) (tagcase e (ty-list (y yr) (fits v (fits v s x y) xr yr)) (else other (mismatch v s a e))))
         (ty-flat (x xr) (tagcase e (ty-flat (y yr) (fits v (fits v s x y) xr yr)) (else other (mismatch v s a e))))
         (ty-ref (x xr) (tagcase e (ty-ref (y yr) (fits v (fits v s x y) xr yr)) (else other (mismatch v s a e))))
         (ty-rconst (x) (tagcase e (ty-rconst (y) (if (string=? x y) s (mismatch v s a e))) (else other (mismatch v s a e))))
-        (ty-data (x) (tagcase e (ty-data (y) (if (string=? x y) s (mismatch v s a e))) (else other (mismatch v s a e))))
+        (ty-data (x xs)
+          (tagcase e
+            (ty-data (y ys) (if (and (string=? x y) (i64= (size xs) (size ys))) (fits-all v s xs ys) (mismatch v s a e)))
+            (else other (mismatch v s a e))))
         (ty-var (x) (tagcase e (ty-var (y) (if (string=? x y) s (mismatch v s a e))) (else other (mismatch v s a e))))
         (ty-proc (aes aps ar)
           (tagcase e
@@ -417,19 +531,6 @@
  regions are kept, so that a call's effect can name the regions found."
 (define-datatype inst (inst ty st (listof i64 acyclic)))
 
-(define rename-atoms (subr kfx (strings string string) strings)
-  (lambda (es from to)
-    "Effect atoms on region `from` made atoms on region `to`."
-    (map (lambda ((x string))
-           (cond ((string=? x (string-append "read:" from)) (string-append "read:" to))
-                 ((string=? x (string-append "write:" from)) (string-append "write:" to))
-                 ((string=? x (string-append "alloc:" from)) (string-append "alloc:" to))
-                 (else x)))
-         es)))
-
-(define meta-name (subr kfx (i64) string)
-  (lambda (k) (string-append "?" (i64->string k))))
-
 (define-rec
   (instantiate (subr kfx (st scheme) inst)
     (lambda (s sc)
@@ -445,18 +546,8 @@
                 (ty-meta (k)
                   (instantiate-vars s (cdr tvars) (replace-var (car tvars) m t)
                                     (if (char=? (string-ref-i64 (car tvars) 0) #\') (cons k regions) regions)))
-                (else other (inst t s regions))))))))
-  (replace-var (subr kfx (string ty ty) ty)
-    (lambda (name m t)
-      (tagcase t
-        (ty-var (n) (if (string=? n name) m t))
-        (ty-list (e) (ty-list (replace-var name m e)))
-        (ty-flat (e r) (ty-flat (replace-var name m e) (replace-var name m r)))
-        (ty-ref (e r) (ty-ref (replace-var name m e) (replace-var name m r)))
-        (ty-proc (es ps r)
-          (ty-proc (tagcase m (ty-meta (k) (rename-atoms es name (meta-name k))) (else other es))
-                   (map (lambda ((p ty)) (replace-var name m p)) ps) (replace-var name m r)))
-        (else other t)))))
+                (else other (inst t s regions)))))))))
+
 
 "The names in scope"
 
@@ -547,23 +638,27 @@
           ((void? s t) rest)
           (else t))))
 
-(define name-regions (subr kfx (cv st strings (listof i64 acyclic)) strings)
+(define region-string (subr kfx (st ty) string)
+  (lambda (s r)
+    (tagcase (walk s r) (ty-rconst (n) n) (ty-var (n) n) (ty-meta (k) (meta-name k)) (else other "?"))))
+
+(define region-of (subr kfx (cv st ty) res)
+  (lambda (v s r)
+    "A region, solved: one no argument nor expected type said is `acyclic`,
+     as FX-26's fresh region for it, masked where it is not seen, is pure."
+    (tagcase (walk s r)
+      (ty-meta (k) (res (ty-rconst "acyclic") nil (solve s k (ty-rconst "acyclic"))))
+      (else other (res other nil s)))))
+
+(define name-regions (subr kfx (cv st strings (listof i64 acyclic)) res)
   (lambda (v s es regions)
     "A call's latent effect, its regions' inference variables replaced by
-     the regions the arguments and the type expected found. A region still
-     not found is refused, where FX-26 would make one up."
+     the regions the arguments and the type expected found, or `acyclic`."
     (if (null? regions)
-        es
-        (let* ((k (car regions))
-               (found (tagcase (walk s (ty-meta k))
-                        (ty-rconst (n) n)
-                        (ty-var (n) n)
-                        (else other ""))))
-          (cond ((not (string=? found ""))
-                 (name-regions v s (rename-atoms es (meta-name k) found) (cdr regions)))
-                ((string=? (words-of (rename-atoms es (meta-name k) "")) (words-of es))
-                 (name-regions v s es (cdr regions)))
-                (else (refuse v "a region the call's arguments do not say, nor the type expected: write it, (the T e)")))))))
+        (res (ty-unit) es s)
+        (tagcase (region-of v s (ty-meta (car regions)))
+          (res (r rn s)
+            (name-regions v s (rename-atoms es (meta-name (car regions)) (region-string s r)) (cdr regions)))))))
 
 (define control-form? (subr kfx (string) bool)
   (lambda (h)
@@ -588,7 +683,21 @@
 (define find-dt (subr kfx (string dts) (listof variants acyclic))
   (lambda (d ds)
     (cond ((null? ds) nil)
-          (else (tagcase (car ds) (dt (n vs) (if (string=? n d) (list vs) (find-dt d (cdr ds)))))))))
+          (else (tagcase (car ds) (dt (n ps vs) (if (string=? n d) (list vs) (find-dt d (cdr ds)))))))))
+
+(define family-of (subr kfx (cv string) strings)
+  (lambda (v d)
+    "A datatype's parameters."
+    (let ((found (find-family d (cv-dts v))))
+      (if (null? found) nil (tagcase (car found) (dt (n ps vs) ps))))))
+
+(define instantiate-variants (subr kfx (strings tys variants) variants)
+  (lambda (params args vs)
+    "Variants whose fields' types are of the datatype's parameters, at
+     `args`."
+    (map (lambda ((x variant))
+           (tagcase x (variant (tag fields) (variant tag (map (lambda ((f ty)) (substitute params args f)) fields)))))
+         vs)))
 
 (define variants-of (subr kfx (cv string) variants)
   (lambda (v d)
@@ -657,7 +766,7 @@
           (sym (name)
             (if (string=? name "nil")
                 (tagcase x
-                  (ty-list (el) (res x nil s))
+                  (ty-list (el r) (res x nil s))
                   (else other (check-by-synth v s e x)))
                 (check-by-synth v s e x)))
           (else other (check-by-synth v s e x))))))
@@ -690,10 +799,10 @@
             ((string=? h "lambda") (synth-lambda v s (items (car xs)) (cdr xs)))
             ((string=? h "list")
              (if (null? xs)
-                 (tagcase (fresh s) (res (m es s) (res (ty-list m) nil s)))
+                 (tagcase (fresh s) (res (m es s) (res (ty-list m (ty-rconst "acyclic")) nil s)))
                  (tagcase (synth v s (car xs))
                    (res (t es0 s)
-                     (with-effs (check v s e (ty-list t)) es0)))))
+                     (with-effs (check v s e (ty-list t (ty-rconst "acyclic"))) es0)))))
             ((control-form? h) (body-form v s h xs nil))
             ((string=? h "and") (bools v s xs))
             ((string=? h "or") (bools v s xs))
@@ -704,9 +813,13 @@
       (cond ((control-form? h) (body-form v s h xs (list expected)))
             ((and (string=? h "lambda") (proc-type? s expected))
              (check-lambda v s (items (car xs)) (cdr xs) (walk s expected)))
-            ((and (string=? h "list") (tagcase expected (ty-list (el) #t) (else other #f)))
+            ((and (string=? h "list") (tagcase expected (ty-list (el r) #t) (else other #f)))
              (tagcase expected
-               (ty-list (el) (tagcase (elements v s xs el) (res (u es s) (res expected es s))))
+               (ty-list (el r)
+                 (tagcase (elements v s xs el)
+                   (res (u es s)
+                     (tagcase (region-of v s r)
+                       (res (rr rn s) (res expected (effs-union (list (string-append "alloc:" (region-string s rr))) es) s))))))
                (else other (check-by-synth v s e expected))))
             ((or (string=? h "the") (string=? h "and") (string=? h "or") (string=? h "lambda") (string=? h "list"))
              (check-by-synth v s e expected))
@@ -748,7 +861,11 @@
              (tagcase (synth v s (car xs))
                (res (t es s)
                  (tagcase (walk s t)
-                   (ty-data (d) (with-effs (tag-arms v s d (cdr xs) (variants-of v d) expected) es))
+                   (ty-data (d args)
+                     (with-effs (tag-arms v s (walk s t) (cdr xs)
+                                          (instantiate-variants (family-of v d) args (variants-of v d))
+                                          expected)
+                                es))
                    (else other (refuse v (string-append "tagcase of a " (string-append (show-ty s t) ", no datatype")))))))))))
 
   (arms (subr kfx (cv st sexps tys) res)
@@ -795,27 +912,27 @@
                    (tagcase (case-arms v s (cdr cases) (next-expected s t expected))
                      (res (t2 es2 s) (res (joined s t t2 expected) (effs-union es es2) s))))))))))
 
-  (tag-arms (subr kfx (cv st string sexps variants tys) res)
-    (lambda (v s d tagged vs expected)
+  (tag-arms (subr kfx (cv st ty sexps variants tys) res)
+    (lambda (v s whole tagged vs expected)
       "A tagcase's arms; `vs` are the variants no arm has taken yet."
       (if (null? tagged)
           (if (null? vs)
               (if (null? expected) (refuse v "a tagcase with no arms") (res (car expected) nil s))
-              (refuse v (string-append "a tagcase of a " (string-append d " with no else, and no arm for each tag"))))
+              (refuse v (string-append "a tagcase of a " (string-append (show-ty s whole) " with no else, and no arm for each tag"))))
           (let* ((arm (items (car tagged)))
                  (tag (name-of v (car arm))))
             (if (string=? tag "else")
                 (if (null? (cdr tagged))
-                    (body (with-binds v (list (local v (name-of v (second arm)) (ty-data d))))
+                    (body (with-binds v (list (local v (name-of v (second arm)) whole)))
                           s (cdr (cdr arm)) expected)
                     (refuse v "a tagcase's else is its last arm"))
-                (let* ((fields (variant-fields v d tag vs))
+                (let* ((fields (variant-fields v (show-ty s whole) tag vs))
                        (names (items (second arm))))
                   (if (not (i64= (size names) (size fields)))
                       (refuse v (string-append "the arm for " (string-append tag " names the wrong number of fields")))
                       (tagcase (body (with-binds v (bind-fields v names fields)) s (cdr (cdr arm)) expected)
                         (res (t es s)
-                          (tagcase (tag-arms v s d (cdr tagged) (without-tag tag vs) (next-expected s t expected))
+                          (tagcase (tag-arms v s whole (cdr tagged) (without-tag tag vs) (next-expected s t expected))
                             (res (t2 es2 s) (res (joined s t t2 expected) (effs-union es es2) s))))))))))))
 
   (let-values (subr kfx (cv st sexps sexps tys binds bool) res)
@@ -927,9 +1044,9 @@
                                            (show-sexps args)))
                   (tagcase (call-args v (if (null? expected) s (fits v s r (car expected))) args ps)
                     (res (u es1 s)
-                      (res r (effs-union (name-regions v s latent regions)
-                                         (effs-union more (effs-union es0 es1)))
-                           s)))))
+                      (tagcase (name-regions v s latent regions)
+                        (res (u named s)
+                          (res r (effs-union named (effs-union more (effs-union es0 es1))) s)))))))
             (else other (refuse v (string-append "a call of a " (string-append (show-ty s t) ", no procedure")))))))))
 
   (call-args (subr kfx (cv st sexps tys) res)
@@ -958,17 +1075,17 @@
    (char-numeric? (subr pure (char) bool)) (char-alphabetic? (subr pure (char) bool))
    (char-upcase (subr pure (char) char)) (char->string (subr pure (char) string))
    (string-append (subr pure (string string) string)) (string=? (subr pure (string string) bool))
-   (list->string (subr pure ((listof char acyclic)) string))
-   (string->list (subr pure (string) (listof char acyclic)))
+   (list->string (poly ((r region)) (subr (read r) ((listof char r)) string)))
+   (string->list (poly ((r region)) (subr (alloc r) (string) (listof char r))))
    (error (subr pure (string) void))
    (new (poly ((r region) (t type)) (subr (alloc r) (t) (ref t r))))
    (get (poly ((r region) (t type)) (subr (read r) ((ref t r)) t)))
    (set (poly ((r region) (t type)) (subr (write r) ((ref t r) t) unit)))
-   (nil (poly ((t type)) (listof t acyclic)))
-   (cons (poly ((t type)) (subr pure (t (listof t acyclic)) (listof t acyclic))))
-   (car (poly ((t type)) (subr pure ((listof t acyclic)) t)))
-   (cdr (poly ((t type)) (subr pure ((listof t acyclic)) (listof t acyclic))))
-   (null? (poly ((t type)) (subr pure ((listof t acyclic)) bool)))")
+   (nil (poly ((r region) (t type)) (listof t r)))
+   (cons (poly ((r region) (t type)) (subr (alloc r) (t (listof t r)) (listof t r))))
+   (car (poly ((r region) (t type)) (subr (read r) ((listof t r)) t)))
+   (cdr (poly ((r region) (t type)) (subr (read r) ((listof t r)) (listof t r))))
+   (null? (poly ((r region) (t type)) (subr pure ((listof t r)) bool)))")
 
 "kayak-rt's primitives at KFX's types: the prelude's (kfx/prelude.fx), and
  FX-26's standard environment's at `acyclic`, where making and reading
@@ -997,22 +1114,31 @@
     (onto (table-binds v primitives "kayak-rt's primitives" "prim")
           (table-binds v prelude "kfx/prelude.fx" "global"))))
 
+(define head-name (subr kfx (cv sexp) string)
+  (lambda (v head)
+    (tagcase head (lst (xs src-file src-line src-pos) (name-of v (car xs))) (else other (name-of v other)))))
+
 (define datatype-of (subr kfx (cv sexps) dt)
   (lambda (v xs)
-    "A define-datatype's name and variants."
-    (dt (name-of v (car xs))
-        (map (lambda ((vt sexp))
-               (let ((ys (items vt)))
-                 (variant (name-of v (car ys)) (parse-types v nil (cdr ys)))))
-             (cdr xs)))))
+    "A define-datatype's name, parameters and variants, whose fields'
+     types may name the parameters."
+    (let ((params (family-params v (car xs))))
+      (dt (head-name v (car xs))
+          params
+          (map (lambda ((vt sexp))
+                 (let ((ys (items vt)))
+                   (variant (name-of v (car ys)) (parse-types v params (cdr ys)))))
+               (cdr xs))))))
 
 (define constructors (subr kfx (dt) binds)
   (lambda (d)
     (tagcase d
-      (dt (name vs)
+      (dt (name ps vs)
         (map (lambda ((vt variant))
                (tagcase vt
-                 (variant (tag fields) (bind tag (scheme nil (ty-proc nil fields (ty-data name))) "global"))))
+                 (variant (tag fields)
+                   (bind tag (scheme ps (ty-proc nil fields (ty-data name (map (lambda ((p string)) (ty-var p)) ps))))
+                         "global"))))
              vs)))))
 
 "Types and datatypes are declared ahead: every one is in scope in every
@@ -1021,23 +1147,25 @@
 
 (define type-name (subr kfx (cv sexp) string)
   (lambda (v form)
-    "A define-type's or define-datatype's name: KFX's types have no
-     parameters (FX-26's type families)."
+    "A define-type's or define-datatype's name, from its head: a name, or
+     `(name (p kind) ...)` for a family."
     (tagcase form
-      (lst (xs src-file src-line src-pos)
-        (let ((v (near v src-file src-line)))
-          (tagcase (second xs)
-            (sym (s) s)
-            (else other (refuse v (string-append "a type with parameters, which KFX does not have: "
-                                                 (show-sexp other)))))))
+      (lst (xs src-file src-line src-pos) (head-name (near v src-file src-line) (second xs)))
       (else other (refuse v "a definition is expected")))))
+
+(define type-params (subr kfx (cv sexp) strings)
+  (lambda (v form)
+    (tagcase form
+      (lst (xs src-file src-line src-pos) (family-params (near v src-file src-line) (second xs)))
+      (else other nil))))
 
 (define declare-types (subr kfx (cv sexps aliases) aliases)
   (lambda (v forms as)
     (cond ((null? forms) as)
           ((head-is? (car forms) "define-type")
            (let ((xs (items (car forms))))
-             (declare-types v (cdr forms) (cons (alias (type-name v (car forms)) (third xs)) as))))
+             (declare-types v (cdr forms)
+                            (cons (alias (type-name v (car forms)) (type-params v (car forms)) (third xs)) as))))
           (else (declare-types v (cdr forms) as)))))
 
 (define datatype-names (subr kfx (cv sexps dts) dts)
@@ -1045,7 +1173,8 @@
     "The datatypes' names, before their variants' types can be read."
     (cond ((null? forms) ds)
           ((head-is? (car forms) "define-datatype")
-           (datatype-names v (cdr forms) (cons (dt (type-name v (car forms)) nil) ds)))
+           (datatype-names v (cdr forms)
+                           (cons (dt (type-name v (car forms)) (type-params v (car forms)) nil) ds)))
           (else (datatype-names v (cdr forms) ds)))))
 
 (define with-effdef (subr kfx (cv sexps) cv)
@@ -1127,7 +1256,7 @@
     (let ((found (find-dt d (cv-dts v))))
       (if (null? found)
           (refuse v (string-append "no datatype is named " d))
-          (list (dt d (car found)))))))
+          (find-family d (cv-dts v))))))
 
 (define check-members (subr kfx (cv sexps strings) cv)
   (lambda (v bindings names)
@@ -1197,7 +1326,7 @@
           (cond ((string=? h "define-effect") (with-effdef v xs))
                 ((string=? h "define-type") v)
                 ((string=? h "define-datatype")
-                 (let ((d (car (variants-dt v (name-of v (second xs))))))
+                 (let ((d (car (variants-dt v (head-name v (second xs))))))
                    (defined-once v (constructors d))))
                 ((string=? h "define")
                  (if (not (i64= (size xs) 4))
@@ -1254,8 +1383,9 @@
     (lambda (s t)
       "`t`, every inference variable in it replaced by its solution."
       (tagcase (walk s t)
-        (ty-list (e) (ty-list (zonk s e)))
+        (ty-list (e r) (ty-list (zonk s e) (zonk s r)))
         (ty-flat (e r) (ty-flat (zonk s e) (zonk s r)))
+        (ty-data (d args) (ty-data d (map (lambda ((x ty)) (zonk s x)) args)))
         (ty-ref (e r) (ty-ref (zonk s e) (zonk s r)))
         (ty-proc (es ps r) (ty-proc es (map (lambda ((p ty)) (zonk s p)) ps) (zonk s r)))
         (else other other)))))
@@ -1273,8 +1403,9 @@
         (ty-unit () (sym "unit"))
         (ty-string () (sym "string"))
         (ty-void () (sym "void"))
-        (ty-list (e) (lst (list (sym "listof") (ty-sexp v s e) (sym "acyclic")) "" 0 0))
-        (ty-data (d) (sym d))
+        (ty-list (e r) (lst (list (sym "listof") (ty-sexp v s e) (ty-sexp v s r)) "" 0 0))
+        (ty-data (d args)
+          (if (null? args) (sym d) (lst (cons (sym d) (map (lambda ((x ty)) (ty-sexp v s x)) args)) "" 0 0)))
         (ty-flat (e r) (lst (list (sym "flatarrayof") (ty-sexp v s e) (ty-sexp v s r)) "" 0 0))
         (ty-ref (e r) (lst (list (sym "ref") (ty-sexp v s e) (ty-sexp v s r)) "" 0 0))
         (ty-rconst (n) (sym n))
