@@ -424,3 +424,17 @@ every sign, wrapping to `i64`, comparisons across the `i64` boundary,
 with Rust's answers Fixpt's. The first run lost the facts of a list's
 elements: `elements` dropped its state, harmless until the state carried
 facts; it threads it now.
+
+## Fixpt's programs, run both ways (2026-10-11)
+
+`kfx --toplevel FILE` adds a `Show` for each datatype and `kfx_toplevel`,
+which writes the values of the program's top-level expressions as `fixpt
+eval` does (`kayak-rt`'s `Show`, `#<sum TAG>`, `#<box V>`, FX-26's string
+and character syntax). `scripts/run-fixpt-programs.py` compiles each of
+Fixpt's test programs that `kfx` accepts, builds them into one runner,
+and compares each one's values with Fixpt's, by aligning `fixpt eval`'s
+lines with the program's forms (a definition prints a line for each name
+it binds, `define-effect` and `define-type` none). A procedure is any
+`#<...closure...>`. Fixpt's `diverge/` programs, meant to loop, are
+skipped. 17 programs, all agreeing: K1 on programs not written for
+kayak. `scripts/check.sh` runs it when there is a Fixpt clone.

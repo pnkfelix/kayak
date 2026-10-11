@@ -682,3 +682,54 @@
                   (acc (put-comment (string-chars (comment-text (car forms))) "//" 0 #t acc)))
              (put-tops c (cdr forms) (put (if doc "\n" "\n\n") acc))))
           (else (put-tops c (cdr forms) (put-top c (car forms) acc))))))
+
+"A program's top-level expressions, for running Fixpt's programs as Rust
+ (`kfx --toplevel`, scripts/run-fixpt-programs.py): a `Show` for each
+ datatype, writing a value as Fixpt does, `#<sum TAG>`; and
+ `kfx_toplevel`, which writes each top-level expression's value on a line,
+ top-level strings too, as `fixpt eval` does."
+
+(define put-show-arms (subr kfx (string sexps chars) chars)
+  (lambda (d variants acc)
+    (if (null? variants)
+        acc
+        (let* ((tag (sym-name (car (items (car variants)))))
+               (acc (put "            " acc))
+               (acc (put (camel d) acc))
+               (acc (put "::" acc))
+               (acc (put (camel tag) acc))
+               (acc (put "(..) => out.push_str(str_lit(\"#<sum " acc))
+               (acc (put tag acc)))
+          (put-show-arms d (cdr variants) (put ">\").as_str()),\n" acc))))))
+
+(define put-show-impls (subr kfx (sexps chars) chars)
+  (lambda (forms acc)
+    (cond ((null? forms) acc)
+          ((head-is? (car forms) "define-datatype")
+           (let* ((xs (cdr (items (car forms))))
+                  (d (sym-name (car xs)))
+                  (acc (put "impl Show for " acc))
+                  (acc (put (camel d) acc))
+                  (acc (put " {\n    fn show(&self, out: &mut String) {\n        match self {\n" acc))
+                  (acc (put-show-arms d (cdr xs) acc)))
+             (put-show-impls (cdr forms) (put "        }\n    }\n}\n\n" acc))))
+          (else (put-show-impls (cdr forms) acc)))))
+
+(define toplevel-form? (subr kfx (sexp) bool)
+  (lambda (f) (not (or (definition? f) (head-is? f "define-effect")))))
+
+(define put-toplevel-lines (subr kfx (ctx sexps chars) chars)
+  (lambda (c forms acc)
+    (cond ((null? forms) acc)
+          ((toplevel-form? (car forms))
+           (let* ((acc (put "    show_line(&mut out, " acc))
+                  (acc (put-exp c (car forms) 1 (value) acc)))
+             (put-toplevel-lines c (cdr forms) (put ");\n" acc))))
+          (else (put-toplevel-lines c (cdr forms) acc)))))
+
+(define put-toplevel (subr kfx (ctx sexps chars) chars)
+  (lambda (c forms acc)
+    (let* ((acc (put-show-impls forms acc))
+           (acc (put "/// The program's top-level expressions' values, as Fixpt writes them.\npub fn kfx_toplevel() -> Str {\n    let mut out = String::new();\n" acc))
+           (acc (put-toplevel-lines c forms acc)))
+      (put "    shown(out)\n}\n" acc))))

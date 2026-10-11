@@ -1153,3 +1153,68 @@ pub fn put_tops(mut c: &'static Ctx, mut forms: Sexps, mut acc: Chars) -> Chars 
     }
 }
 
+// A program's top-level expressions, for running Fixpt's programs as Rust
+// (`kfx --toplevel`, scripts/run-fixpt-programs.py): a `Show` for each
+// datatype, writing a value as Fixpt does, `#<sum TAG>`; and
+// `kfx_toplevel`, which writes each top-level expression's value on a line,
+// top-level strings too, as `fixpt eval` does.
+pub fn put_show_arms(d: Str, variants: Sexps, acc: Chars) -> Chars {
+    if null_p(variants) {
+        acc
+    } else {
+        let tag = sym_name(car(items(car(variants))));
+        let acc = put(str_lit("            "), acc);
+        let acc = put(camel(d), acc);
+        let acc = put(str_lit("::"), acc);
+        let acc = put(camel(tag), acc);
+        let acc = put(str_lit("(..) => out.push_str(str_lit(\"#<sum "), acc);
+        let acc = put(tag, acc);
+        put_show_arms(d, cdr(variants), put(str_lit(">\").as_str()),\n"), acc))
+    }
+}
+
+pub fn put_show_impls(mut forms: Sexps, mut acc: Chars) -> Chars {
+    loop {
+        if null_p(forms) {
+            return acc;
+        } else if head_is_p(car(forms), str_lit("define-datatype")) {
+            let xs = cdr(items(car(forms)));
+            let d = sym_name(car(xs));
+            let acc = put(str_lit("impl Show for "), acc);
+            let acc = put(camel(d), acc);
+            let acc = put(str_lit(" {\n    fn show(&self, out: &mut String) {\n        match self {\n"), acc);
+            let acc = put_show_arms(d, cdr(xs), acc);
+            return put_show_impls(cdr(forms), put(str_lit("        }\n    }\n}\n\n"), acc));
+        } else {
+            forms = cdr(forms);
+            continue;
+        }
+    }
+}
+
+pub fn toplevel_form_p(f: &'static Sexp) -> bool {
+    not((definition_p(f) || head_is_p(f, str_lit("define-effect"))))
+}
+
+pub fn put_toplevel_lines(mut c: &'static Ctx, mut forms: Sexps, mut acc: Chars) -> Chars {
+    loop {
+        if null_p(forms) {
+            return acc;
+        } else if toplevel_form_p(car(forms)) {
+            let acc = put(str_lit("    show_line(&mut out, "), acc);
+            let acc = put_exp(c, car(forms), 1i64, value(), acc);
+            return put_toplevel_lines(c, cdr(forms), put(str_lit(");\n"), acc));
+        } else {
+            forms = cdr(forms);
+            continue;
+        }
+    }
+}
+
+pub fn put_toplevel(c: &'static Ctx, forms: Sexps, acc: Chars) -> Chars {
+    let acc = put_show_impls(forms, acc);
+    let acc = put(str_lit("/// The program's top-level expressions' values, as Fixpt writes them.\npub fn kfx_toplevel() -> Str {\n    let mut out = String::new();\n"), acc);
+    let acc = put_toplevel_lines(c, forms, acc);
+    put(str_lit("    shown(out)\n}\n"), acc)
+}
+

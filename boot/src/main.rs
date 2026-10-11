@@ -1,6 +1,8 @@
 //! `kfx FILE.kfx`: a program of one file, as Rust, on standard output.
 //! `kfx PROGRAM.unit DIR`: a program of the files the manifest lists, in
 //! order, as `DIR/mod.rs` and a module each.
+//! `kfx --toplevel FILE.kfx`: as the first, with `kfx_toplevel`, which writes
+//! the program's top-level expressions' values as Fixpt does.
 //!
 //! The compiler is generated from `kfx/` (`PLAN.md` §1); this file is the
 //! only hand-written part of it.
@@ -51,6 +53,14 @@ fn main() {
             let name = leak_string(file.clone());
             print!("{}", with_big_stack(move || kfx::compile_named(name, src)));
         }
+        [flag, file] if flag == "--toplevel" => {
+            let src = read(Path::new(file));
+            let name = leak_string(file.clone());
+            print!(
+                "{}",
+                with_big_stack(move || kfx::compile_toplevel(name, src))
+            );
+        }
         [manifest, dir] => {
             let program = sources(Path::new(manifest));
             let mut outputs = with_big_stack(move || kfx::compile_units(program));
@@ -69,7 +79,7 @@ fn main() {
             }
         }
         _ => {
-            eprintln!("usage: kfx FILE.kfx | kfx PROGRAM.unit DIR");
+            eprintln!("usage: kfx FILE.kfx | kfx PROGRAM.unit DIR | kfx --toplevel FILE.kfx");
             std::process::exit(2);
         }
     }

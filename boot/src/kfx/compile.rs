@@ -17,6 +17,15 @@ pub fn compile_named(file: Str, src: Str) -> Str {
     rev_to_string(put_tops(c, forms, put(header(), nil())))
 }
 
+/// A program of one file, as Rust, with its top-level expressions as
+/// `kfx_toplevel`, which writes their values (emit.kfx).
+pub fn compile_toplevel(file: Str, src: Str) -> Str {
+    let forms = read_all(string_chars(src), file, 1i64);
+    let checked = check_program(forms);
+    let c = collect(forms, ctx(nil(), nil(), nil(), nil(), verdict_typeds(checked), verdict_facts(checked)));
+    rev_to_string(put_toplevel(c, forms, put_tops(c, forms, put(header(), nil()))))
+}
+
 /// A KFX-0 program of one file, as one file of Rust.
 pub fn compile(src: Str) -> Str {
     compile_named(str_lit("the program"), src)

@@ -10,8 +10,10 @@
 //! is not counts characters (`CLAUDES_CHOICES.md`, C14).
 
 mod int;
+mod show;
 
 pub use int::*;
+pub use show::*;
 use std::cell::Cell;
 
 /// `string`: text, and whether it is ASCII, found when the string is made.

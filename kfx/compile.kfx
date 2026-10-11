@@ -12,6 +12,15 @@
            (c (collect forms (ctx nil nil nil nil (verdict-typeds checked) (verdict-facts checked)))))
       (rev->string (put-tops c forms (put header nil))))))
 
+(define compile-toplevel (subr kfx (string string) string)
+  (lambda (file src)
+    "A program of one file, as Rust, with its top-level expressions as
+     `kfx_toplevel`, which writes their values (emit.kfx)."
+    (let* ((forms (read-all (string-chars src) file 1))
+           (checked (check-program forms))
+           (c (collect forms (ctx nil nil nil nil (verdict-typeds checked) (verdict-facts checked)))))
+      (rev->string (put-toplevel c forms (put-tops c forms (put header nil)))))))
+
 (define compile (subr kfx (string) string)
   (lambda (src)
     "A KFX-0 program of one file, as one file of Rust."

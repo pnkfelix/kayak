@@ -23,8 +23,11 @@ scripts/check.sh
 ```
 
 runs formatting, clippy, the tests, the corpus (`scripts/corpus.py`:
-`tests/kfx`, each program's golden Rust and its answer from Fixpt) and the
-fixed point below. After a change to the compiler,
+`tests/kfx`, each program's golden Rust and its answer from Fixpt), the
+fixed point below, and Fixpt's own test programs that `kfx` accepts, run
+as Rust and by Fixpt, values compared (`scripts/run-fixpt-programs.py`).
+`scripts/survey-fixpt.py` says why `kfx` refuses the rest
+(`docs/survey.md`). After a change to the compiler,
 `scripts/corpus.py --bless` rewrites the corpus's golden files, to review.
 
 ## Checking the bootstrap
