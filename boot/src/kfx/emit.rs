@@ -1094,7 +1094,7 @@ pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
         put(str_lit(";\n\n"), acc)
     } else if string_eq_p(h, str_lit("define-datatype")) {
         put_datatype(c, cdr(xs), acc)
-    } else if string_eq_p(h, str_lit("define")) {
+    } else if (string_eq_p(h, str_lit("define")) || string_eq_p(h, str_lit("define*"))) {
         if i64_eq(size(xs), 4i64) {
             put_define(c, second(xs), third(xs), fourth(xs), acc)
         } else {
@@ -1108,7 +1108,7 @@ pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
 }
 
 pub fn definition_p(e: &'static Sexp) -> bool {
-    (head_is_p(e, str_lit("define")) || head_is_p(e, str_lit("define-rec")) || head_is_p(e, str_lit("define-datatype")) || head_is_p(e, str_lit("define-type")))
+    (head_is_p(e, str_lit("define")) || head_is_p(e, str_lit("define*")) || head_is_p(e, str_lit("define-rec")) || head_is_p(e, str_lit("define-datatype")) || head_is_p(e, str_lit("define-type")))
 }
 
 /// A string at the top level is a comment. A procedure's documentation is

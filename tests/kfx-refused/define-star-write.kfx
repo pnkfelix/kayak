@@ -1,0 +1,2 @@
+"A define* whose body writes: only the globals it reads are found, and the write is in no effect written."
+(define* poke (subr pure ((ref i64 @c)) unit) (lambda (c) (set c 1)))

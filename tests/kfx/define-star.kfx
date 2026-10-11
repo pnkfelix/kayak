@@ -1,0 +1,20 @@
+"define*: the globals a procedure's body reads are found, not written.
+ Each of these is declared pure; its type gets what it reads."
+
+(define limit i64 10)
+(define floor i64 -10)
+
+(define* clamp (subr pure (i64) i64)
+  (lambda (x)
+    (cond ((i64> x limit) limit)
+          ((i64< x floor) floor)
+          (else x))))
+
+(define* clamp-both (subr pure (i64 i64) i64)
+  (lambda (a b) (i64+ (clamp a) (clamp b))))
+
+(define main (subr (read @globals) () string)
+  (lambda ()
+    (string-append (i64->string (clamp 99))
+      (string-append " " (string-append (i64->string (clamp -99))
+        (string-append " " (i64->string (clamp-both 3 50))))))))

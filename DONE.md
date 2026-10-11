@@ -400,3 +400,12 @@ type is never `poly`, must be known whole (no inference variable left),
 and the name is not in scope in `e`, a lambda's body included, as in
 FX-26. A constant's value may only read globals, as a typed constant's
 (C11). `tests/kfx/untyped.kfx`, and `kfx-refused/untyped-recursive`.
+
+## `define*` (2026-10-11)
+
+`(define* name type lambda)` is KFX: the body is checked as though its
+type read every global, and the global is then of the type written, its
+effect with the globals found (`check-define*`, after FX-26's "checked
+twice"). In Rust, a `fn`, as `define`. `tests/kfx/define-star.kfx`: pure
+procedures reading globals, one calling the other; and
+`kfx-refused/define-star-write`, a write no effect covers.

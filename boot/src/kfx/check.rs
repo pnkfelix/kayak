@@ -1895,6 +1895,30 @@ pub fn check_lambda(v: &'static Cv, s: &'static St, params: Sexps, forms: Sexps,
     }
 }
 
+/// A lambda's body's effect, the body checked against the type `t`'s
+/// parameters and result, but not its effect: what `define*` finds.
+pub fn lambda_effects(v: &'static Cv, s: &'static St, params: Sexps, forms: Sexps, t: &'static Ty) -> Strings {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyProc(ees, eps, er) => {
+            if not(i64_eq(size(params), size(eps))) {
+                refuse(v, str_lit("a lambda of the wrong number of parameters"))
+            } else {
+                let tagcase_ = body(with_binds(v, bind_params(v, params, eps)), check_written_params(v, s, params, eps), forms, cons(er, nil()));
+                match *tagcase_ {
+                    Res::Res(r, es, s) => {
+                        es
+                    }
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            refuse(v, str_lit("a lambda where no procedure is expected"))
+        }
+    }
+}
+
 /// A parameter written `(x T)` must be of the type expected. One written
 /// `x` must have its type known already, from the arguments before the
 /// lambda: rustc, which checks a call's arguments in order, finds a
@@ -2254,6 +2278,62 @@ pub fn check_rec(v: &'static Cv, bindings: Sexps) -> &'static Cv {
     named
 }
 
+pub fn global_reads(mut es: Strings) -> Strings {
+    loop {
+        if null_p(es) {
+            return nil();
+        } else {
+            if (string_eq_p(car(es), str_lit("@globals")) || global_atom_p(car(es))) {
+                return cons(car(es), global_reads(cdr(es)));
+            } else {
+                es = cdr(es);
+                continue;
+            }
+        }
+    }
+}
+
+/// `(define* name type lambda)`: as FX-26 has it, the globals its body
+/// reads are found, not written. The body is checked as though the type
+/// read every global; the global is then of the type written, its effect
+/// with the globals found.
+pub fn check_define_star(v: &'static Cv, xs: Sexps) -> &'static Cv {
+    let name = name_of(v, second(xs));
+    let v = at(v, name, cons(name, nil()));
+    let defined = fourth(xs);
+    let lam = items(if head_is_p(defined, str_lit("plambda")) {
+        third(items(defined))
+    } else {
+        defined
+    });
+    if not(procedure_p(defined)) {
+        refuse(v, str_lit("a define* is of a lambda"))
+    } else {
+        let tagcase_ = parse_scheme(v, third(xs));
+        match *tagcase_ {
+            Scheme::Scheme(tvars, t) => {
+                let tagcase_ = t;
+                match *tagcase_ {
+                    Ty::TyProc(declared, ps, r) => {
+                        let wide = ty_proc(effs_union(cons(str_lit("@globals"), nil()), declared), ps, r);
+                        let named = with_binds(v, cons(global(v, name, scheme(tvars, wide)), nil()));
+                        let es = lambda_effects(named, new_state(), items(second(lam)), cdr(cdr(lam)), wide);
+                        if effs_within_p(es, effs_union(cons(str_lit("@globals"), nil()), declared)) {
+                            with_binds(v, cons(global(v, name, scheme(tvars, ty_proc(effs_union(global_reads(es), declared), ps, r))), nil()))
+                        } else {
+                            refuse(v, string_append(str_lit("a define* whose effect "), string_append(show_effs(es), string_append(str_lit(" is not within "), show_effs(declared)))))
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        refuse(v, str_lit("a define* is of a procedure"))
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// One top-level form, which may add to what the forms after it see.
 pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
     let tagcase_ = form;
@@ -2319,6 +2399,8 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                 }
             } else if string_eq_p(h, str_lit("define-rec")) {
                 check_rec(v, cdr(xs))
+            } else if string_eq_p(h, str_lit("define*")) {
+                check_define_star(v, xs)
             } else {
                 let tagcase_ = synth(at(v, str_lit("a top-level expression"), nil()), new_state(), form);
                 match *tagcase_ {

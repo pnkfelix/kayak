@@ -841,6 +841,19 @@
                                   (string-append " is not within " (show-effs ees)))))))))))
         (else other (refuse v "a lambda where no procedure is expected")))))
 
+  (lambda-effects (subr kfx (cv st sexps sexps ty) strings)
+    (lambda (v s params forms t)
+      "A lambda's body's effect, the body checked against the type `t`'s
+       parameters and result, but not its effect: what `define*` finds."
+      (tagcase t
+        (ty-proc (ees eps er)
+          (if (not (i64= (size params) (size eps)))
+              (refuse v "a lambda of the wrong number of parameters")
+              (tagcase (body (with-binds v (bind-params v params eps))
+                             (check-written-params v s params eps) forms (list er))
+                (res (r es s) es))))
+        (else other (refuse v "a lambda where no procedure is expected")))))
+
   (check-written-params (subr kfx (cv st sexps tys) st)
     (lambda (v s params types)
       "A parameter written `(x T)` must be of the type expected. One written
@@ -1105,6 +1118,39 @@
              bindings)
         named))))
 
+(define global-reads (subr kfx (strings) strings)
+  (lambda (es)
+    (if (null? es)
+        nil
+        (if (or (string=? (car es) "@globals") (global-atom? (car es)))
+            (cons (car es) (global-reads (cdr es)))
+            (global-reads (cdr es))))))
+
+(define check-define* (subr kfx (cv sexps) cv)
+  (lambda (v xs)
+    "`(define* name type lambda)`: as FX-26 has it, the globals its body
+     reads are found, not written. The body is checked as though the type
+     read every global; the global is then of the type written, its effect
+     with the globals found."
+    (let* ((name (name-of v (second xs)))
+           (v (at v name (list name)))
+           (defined (fourth xs))
+           (lam (items (if (head-is? defined "plambda") (third (items defined)) defined))))
+      (if (not (procedure? defined))
+          (refuse v "a define* is of a lambda")
+          (tagcase (parse-scheme v (third xs))
+            (scheme (tvars t)
+              (tagcase t
+                (ty-proc (declared ps r)
+                  (let* ((wide (ty-proc (effs-union (list "@globals") declared) ps r))
+                         (named (with-binds v (list (global v name (scheme tvars wide)))))
+                         (es (lambda-effects named (new-state) (items (second lam)) (cdr (cdr lam)) wide)))
+                    (if (effs-within? es (effs-union (list "@globals") declared))
+                        (with-binds v (list (global v name (scheme tvars (ty-proc (effs-union (global-reads es) declared) ps r)))))
+                        (refuse v (string-append "a define* whose effect " (string-append (show-effs es)
+                                  (string-append " is not within " (show-effs declared))))))))
+                (else other (refuse v "a define* is of a procedure")))))))))
+
 (define check-top (subr kfx (cv sexp) cv)
   (lambda (v form)
     "One top-level form, which may add to what the forms after it see."
@@ -1140,6 +1186,7 @@
                                            named)))
                                    (refuse v "a poly constant: only a procedure may be poly"))))))))
                 ((string=? h "define-rec") (check-rec v (cdr xs)))
+                ((string=? h "define*") (check-define* v xs))
                 (else (tagcase (synth (at v "a top-level expression" nil) (new-state) form)
                         (res (t es s) v))))))
       (else other (tagcase (synth (at v "a top-level expression" nil) (new-state) form) (res (t es s) v))))))

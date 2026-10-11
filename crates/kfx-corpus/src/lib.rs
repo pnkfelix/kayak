@@ -18,6 +18,11 @@ pub mod data;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/define-star.rs"]
+pub mod define_star;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/lets.rs"]
 pub mod lets;
 
@@ -79,6 +84,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("arith", arith::main),
     ("control", control::main),
     ("data", data::main),
+    ("define-star", define_star::main),
     ("lets", lets::main),
     ("lists", lists::main),
     ("mutable", mutable::main),

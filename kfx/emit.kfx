@@ -649,7 +649,7 @@
                     (acc (put-type c (third xs) acc)))
                (put ";\n\n" acc)))
             ((string=? h "define-datatype") (put-datatype c (cdr xs) acc))
-            ((string=? h "define")
+            ((or (string=? h "define") (string=? h "define*"))
              (if (i64= (size xs) 4)
                  (put-define c (second xs) (third xs) (fourth xs) acc)
                  (put-define c (second xs) (car (ctx-typed c (sym-name (second xs)))) (third xs) acc)))
@@ -658,7 +658,7 @@
 
 (define definition? (subr kfx (sexp) bool)
   (lambda (e)
-    (or (head-is? e "define") (head-is? e "define-rec")
+    (or (head-is? e "define") (head-is? e "define*") (head-is? e "define-rec")
         (head-is? e "define-datatype") (head-is? e "define-type"))))
 
 (define put-tops (subr kfx (ctx sexps chars) chars)
