@@ -766,3 +766,26 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
   each use (`rust-keywords`).
 - **Then:** 13 M allocations, 228 MB; the compiler on itself 3.97 s to
   0.34 s, its peak memory 7.8 GB to 0.31.
+
+## C45. Suspension: a capture and an abort, as a Rust future (2026-10-12)
+
+`docs/research/async-rust.md`; `PLAN.md` §6.5, A1.
+- **Chosen:** a task suspends as Fixpt's examples do, capturing up to its
+  loop's prompt and aborting there at once; in Rust the continuation is
+  the prompt's body, a future suspended at the capture
+  (`kayak-rt/src/suspend.rs`). A procedure whose effect may `comefrom`
+  is an `async fn`. The scheduler is the program's, KFX (K7): kayak-rt
+  has no executor, only the capture, the prompt and the top level.
+- **Resumed once.** KFX's form is `abort-with-continuation`, whose `k`
+  fails at a second resume; `kfx/prelude.fx` defines it so in FX-26, for
+  Fixpt (checked: one resume answers, two fail alike). Not chosen: taking
+  `call-with-composable-continuation` and failing at a second resume in
+  Rust alone (FX-26 runs the rest twice: K1 broken); refusing every
+  capture (no tasks); continuations as data, an interpreter's (that is
+  phase C's engine, for FX-26 at large).
+- **Not chosen:** an executor in Rust whose policy is Rust (Coopt's
+  scheduler): K7 asks for the policy in KFX, and Fixpt's examples show it
+  needs none; Coopt's library as kayak's (Coopt's primitives, which Fixpt
+  has not).
+- **So Q6:** no async operations in the prelude beyond the one form; the
+  library of tasks is KFX, and Fixpt runs it as FX-26.

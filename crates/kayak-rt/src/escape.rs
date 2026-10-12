@@ -46,6 +46,13 @@ pub fn unwind<A, H: 'static>(tag: Tag<A, H>, payload: H) -> Unwind {
     }
 }
 
+impl<A, H> Tag<A, H> {
+    /// The tag's identity, which a capture carries to its prompt.
+    pub(crate) fn id(self) -> u64 {
+        self.id
+    }
+}
+
 impl Unwind {
     /// Whether this abort is to `tag`.
     pub fn is<A, H>(&self, tag: Tag<A, H>) -> bool {

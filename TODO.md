@@ -234,27 +234,23 @@ or a trait.
 ## 21. FX-26 as well, on an asynchronous runtime (`PLAN.md` §6; the user, 2026-10-12)
 
 The next goal. Phase A, in order (`PLAN.md` §6.5):
-- **The research note**, `docs/research/async-rust.md`, with Rust written
-  by hand for two or three of Coopt's async programs over a prototype
-  executor.
-- **The executor**: its policy in KFX (K7), over the least Rust that
-  meets `Future` and `Waker`; one thread, deterministic, a virtual clock.
+- ~~**The research note**~~: done, `docs/research/async-rust.md`, C45,
+  with the prototype `kayak-rt/src/suspend.rs`.
+- **No executor**: the scheduler is KFX (C45). Instead, in order:
+  `abort-with-continuation` in the prelude and kayak-rt; the checker's
+  rule for it, `(comefrom r)`, prompts that may capture, none inside a
+  `letrena`; the emitter's `async fn` by effect; Fixpt's `ping-pong.fx`
+  and `promise.fx` as KFX in the corpus; a library of tasks in KFX.
 - **Record and replay** (the user, 2026-10-12), as Coopt's: runners
   (sim, replay; live later) behind one interface, a log of arrivals by
   step and clock moves, outputs checked against it on replay, one event
   stream, and a determinism check in `scripts/check.sh`. The compiler's
   own I/O moved behind the runner.
-- **The operations in `kfx/prelude.fx`**, in FX-26 over continuations,
-  so that Fixpt runs what kfx compiles (Q6).
-- **The checker**: the suspension effect, `(comefrom c)` on a loop's
-  region; refused inside a task's own `letrena`.
-- **The emitter**: `async fn` by effect, as escapes are `Result` by
-  effect (C18); suspending closures; recursion through `Box::pin`.
 - **Corpus programs**, compared with Fixpt.
 - **Incremental compiling** (Q5, answered): the compiler's passes as
   queries, memoized with their dependencies, as `coopt-query`'s; the
   machinery in `kayak-rt`, given to KFX as primitives. After the
-  executor, since a query run is a task (Coopt's arrangement).
+  library of tasks, since a query run is a task (Coopt's arrangement).
 
 Phase B, the compiler for two languages:
 - **The front end shared**: the checker grown to FX-26's, KFX's

@@ -475,20 +475,19 @@ compiler, collector); Fixpt stays the reference for answers (K1, K6).
 ### 6.5 Steps, in phases
 
 **A. The asynchronous foundation, for KFX first.**
-1. The research note, `docs/research/async-rust.md`: Coopt's scheduler
+1. ~~The research note~~, `docs/research/async-rust.md` (done: C45): Coopt's scheduler
    and its library in FX-26, Fixpt's note; §6.2 checked by writing, by
    hand, the Rust for two or three of Coopt's async programs
    (`cancel.fx`, a ping-pong) over a prototype executor; and how an
    engine slice will be a task beside them.
-2. The executor: its policy (the run queue, the clock, the order) in
-   KFX (K7), over the least Rust that meets `Future` and `Waker`, in
-   `kayak-rt`; deterministic, a virtual clock, no dependencies; built for
-   both kinds of task.
+2. The executor: none in Rust, it turned out (C45). The scheduler is a
+   library of tasks in KFX, over `abort-with-continuation`; kayak-rt has
+   the capture, the prompt and the top level.
 3. Runners and the event stream: sim and replay first, with
    `--record LOG` and a replay that reports where it parts from the log;
    the determinism check (a seed twice, streams compared) in
    `scripts/check.sh`. Live later.
-4. The operations in `kfx/prelude.fx` for Fixpt.
+4. `abort-with-continuation` in `kfx/prelude.fx`, for Fixpt (C45).
 5. The checker: the suspension effect, and its rules (§6.3).
 6. The emitter: `async fn` by effect.
 7. Corpus programs, their answers compared with Fixpt's.
@@ -540,10 +539,10 @@ end could start earlier, alone, if A stalls.
   written in KFX, so its queries are KFX procedures, and the machinery
   under them (the memo table, the dependency graph, revisions) is
   `kayak-rt`'s, given to KFX as primitives, as the executor is.
-- **Q6. The reference for async programs.** Fixpt has no scheduler, so
-  K1 needs the operations written in FX-26 in `kfx/prelude.fx` (from
-  Coopt's library); or Coopt is made the reference for them. My default:
-  the prelude, so Fixpt stays the one reference.
+- **Q6. The reference for async programs.** Settled (C45): Fixpt, with
+  no async operations in the prelude but the one form,
+  `abort-with-continuation`: the library of tasks is KFX, and so FX-26
+  that Fixpt runs.
 - **Q7. `unsafe`.** Answered (the user, 2026-10-12): confined to a few
   of the runtime's crates, as Coopt and Fixpt confine it (a native code
   generator needs memory made executable; the OS's interfaces, `libc`).
