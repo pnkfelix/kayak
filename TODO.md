@@ -258,7 +258,9 @@ The next goal. Phase A, in order (`PLAN.md` §6.5):
 - **Corpus programs**, compared with Fixpt.
 - **Incremental compiling** (Q5, answered; `docs/research/queries.md`):
   `Emit(form)` and `Check(form)` kept between compiles (C54, C55). Next:
-  checks keyed by the names they read, not the whole chain; queries as a library
+  checks keyed by the names they read, not the whole chain; the
+  compiler's identity in the memo file, so that the driver, not its
+  caller, keeps one compiler's memos from another's; queries as a library
   for KFX programs (`lib/query.kfx`); query runs as tasks when the
   compiler has a reason to wait.
 
@@ -345,3 +347,14 @@ The hard part either way is effect polymorphism: a latent effect that is
 a variable, or a `maxeff` over regions, needs a procedure generic over
 sets of tokens. A research note first: which of FX's rules carry over,
 and what the generated code looks like for the compiler's own source.
+
+## 22. The front end, shared (`docs/research/front-end.md`)
+
+- ~~Stage 1, the cheap names~~ (C56): standard operations, symbols,
+  arrays of values. Left of it: `set-car!` and `set-cdr!` (KFX's pairs are
+  immutable in Rust), `apply` and variadic procedures (stage 5),
+  `string-hash` (Fixpt's hash, to match).
+- Stage 2: the restriction pass split off the checker.
+- Stage 3: unions of shapes and narrowing; `datum` and quoted data.
+- Stage 4: modules' remaining forms.
+- Stage 5: higher kinds, variadic procedures, sizes.

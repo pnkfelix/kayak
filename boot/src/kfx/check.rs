@@ -1498,6 +1498,8 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     return ty_data(s, nil::<&'static Ty>());
                 } else if string_eq_p(s, str_lit("f32")) {
                     return ty_data(s, nil::<&'static Ty>());
+                } else if string_eq_p(s, str_lit("symbol")) {
+                    return ty_data(s, nil::<&'static Ty>());
                 } else if string_eq_p(s, str_lit("bool")) {
                     return ty_bool();
                 } else if string_eq_p(s, str_lit("char")) {
@@ -1631,6 +1633,23 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                             return ty_data(str_lit("%blobref"), kayak_rt::heap_cons(b, kayak_rt::heap_cons(f, kayak_rt::nil())));
                         }
                     }
+                } else if (sym_is_p(car(xs), str_lit("arrayof")) && i64_eq(size(xs), 3i64) && {
+                    let tagcase_ = third(xs);
+                    match *tagcase_ {
+                        Sexp::Num(k, f, p) => {
+                            false
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            true
+                        }
+                    }
+                }) {
+                    // An array of values (C56), `(arrayof T R)`, at a region: kayak-rt's
+                    // `Array<T>`, a row of cells.
+                    return no_knot(v, lambda1(move |x: Str| {
+                        x
+                    }), ty_data(str_lit("%array"), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::heap_cons(parse_mutable_region(v, tvars, third(xs)), kayak_rt::nil()))));
                 } else if sym_is_p(car(xs), str_lit("arrayof")) {
                     let tagcase_ = third(xs);
                     match *tagcase_ {
@@ -2076,6 +2095,8 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
                 string_append(str_lit("(blobref "), string_append(show_tys(s, args), str_lit(")")))
             } else if string_eq_p(d, str_lit("%bytes")) {
                 string_append(str_lit("(bytevectorof "), string_append(show_ty(s, car(args)), str_lit(")")))
+            } else if string_eq_p(d, str_lit("%array")) {
+                string_append(str_lit("(arrayof "), string_append(show_tys(s, args), str_lit(")")))
             } else if string_eq_p(d, str_lit("%flat-array")) {
                 string_append(str_lit("(arrayof "), string_append(show_tys(s, args), str_lit(")")))
             } else if string_eq_p(d, str_lit("%flat-sum")) {

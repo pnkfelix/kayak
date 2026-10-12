@@ -717,6 +717,7 @@
                 ((string=? s "nat") (put "Int" acc))
                 ((string=? s "f64") (put "f64" acc))
                 ((or (fixed-width? s) (string=? s "f32")) (put s acc))
+                ((string=? s "symbol") (put "Symbol" acc))
                 ((string=? s "bool") (put "bool" acc))
                 ((string=? s "char") (put "char" acc))
                 ((string=? s "unit") (put "()" acc))
@@ -743,6 +744,8 @@
                 ((sym-is? (car xs) "flatarrayof")
                  (put ">" (put-type c (second xs) (put "FlatArray<" acc))))
                 ((sym-is? (car xs) "bytevectorof") (put "Bytes" acc))
+                ((and (sym-is? (car xs) "arrayof") (i64= (size xs) 3) (tagcase (third xs) (num (k f p) #f) (else other #t)))
+                 (put ">" (put-type c (second xs) (put "Array<" acc))))
                 ((and (sym-is? (car xs) "ref") (not (string=? (region-lifetime c (third xs)) "")))
                  (put ">" (put-type c (second xs) (put ", " (put (region-lifetime c (third xs)) (put "RefAt<" acc))))))
                 ((and (sym-is? (car xs) "ref") (not (string=? (element-lifetime c (second xs)) "")))
@@ -1852,6 +1855,8 @@
                (put "))" (put-exp c (second xs) n (value) acc))))
             ((and (string=? h "list") (null? xs)) (put "()" (put-turbofish c e (put "kayak_rt::nil" acc))))
             ((string=? h "list") (put-list c xs n acc))
+            ((string=? h "quote")
+             (put "\"))" (put-escaped (string-chars (sym-name (car xs))) #\" (put "symbol_lit(str_lit(\"" acc))))
             ((string=? h "the")
              "`the::<T>(e)`: the type said to rustc too, which may need it where
               FX-26's checker did (a tag's payload, a list nothing else types)."

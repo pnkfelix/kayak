@@ -119,6 +119,8 @@ pub fn ty_sexp(v: &'static Cv, s: &'static St, t: &'static Ty) -> &'static Sexp 
                 }), args)), str_lit(""), 0i64, 0i64)
             } else if string_eq_p(d, str_lit("%bytes")) {
                 lst(kayak_rt::heap_cons(sym(str_lit("bytevectorof"), str_lit(""), 0i64), kayak_rt::heap_cons(ty_sexp(v, s, car(args)), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
+            } else if string_eq_p(d, str_lit("%array")) {
+                lst(kayak_rt::heap_cons(sym(str_lit("arrayof"), str_lit(""), 0i64), kayak_rt::heap_cons(ty_sexp(v, s, car(args)), kayak_rt::heap_cons(ty_sexp(v, s, car(cdr(args))), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
             } else if string_eq_p(d, str_lit("%flat-array")) {
                 lst(kayak_rt::heap_cons(sym(str_lit("arrayof"), str_lit(""), 0i64), map(lambda1(move |x: &'static Ty| {
                     ty_sexp(v, s, x)
@@ -290,6 +292,8 @@ pub fn settled_sexp(s: &'static St, t: &'static Ty, region: bool) -> &'static Se
                 }), args)), str_lit(""), 0i64, 0i64)
             } else if string_eq_p(d, str_lit("%bytes")) {
                 lst(kayak_rt::heap_cons(sym(str_lit("bytevectorof"), str_lit(""), 0i64), kayak_rt::heap_cons(settled_sexp(s, car(args), true), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
+            } else if string_eq_p(d, str_lit("%array")) {
+                lst(kayak_rt::heap_cons(sym(str_lit("arrayof"), str_lit(""), 0i64), kayak_rt::heap_cons(settled_sexp(s, car(args), false), kayak_rt::heap_cons(settled_sexp(s, car(cdr(args)), true), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
             } else if string_eq_p(d, str_lit("%flat-array")) {
                 lst(kayak_rt::heap_cons(sym(str_lit("arrayof"), str_lit(""), 0i64), map(lambda1(move |x: &'static Ty| {
                     settled_sexp(s, x, false)
@@ -1772,7 +1776,26 @@ pub fn synth_any(v: &'static Cv, s: &'static St, e: &'static Sexp) -> &'static R
 }
 
 pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: Sexps) -> &'static Res {
-    if string_eq_p(h, str_lit("the")) {
+    if string_eq_p(h, str_lit("quote")) {
+        // A quoted symbol (C56); a quoted datum of another kind is FX-26's
+        // `datum`, which KFX has not yet.
+        if (i64_eq(size(xs), 1i64) && {
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }) {
+            res(ty_data(str_lit("symbol"), nil::<&'static Ty>()), nil::<Str>(), s)
+        } else {
+            match refuse(v, str_lit("a quoted datum that is no symbol: KFX has no datum yet")) {}
+        }
+    } else if string_eq_p(h, str_lit("the")) {
         let want = parse_type(v, cv_tvars(v), car(xs));
         let tagcase_ = check(v, s, second(xs), want);
         match *tagcase_ {
@@ -1998,7 +2021,7 @@ pub fn check_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
                 check_by_synth(v, s, e, expected)
             }
         }
-    } else if (string_eq_p(h, str_lit("the")) || string_eq_p(h, str_lit("and")) || string_eq_p(h, str_lit("or")) || string_eq_p(h, str_lit("lambda")) || string_eq_p(h, str_lit("list")) || string_eq_p(h, str_lit("extract"))) {
+    } else if (string_eq_p(h, str_lit("the")) || string_eq_p(h, str_lit("and")) || string_eq_p(h, str_lit("or")) || string_eq_p(h, str_lit("lambda")) || string_eq_p(h, str_lit("list")) || string_eq_p(h, str_lit("quote")) || string_eq_p(h, str_lit("extract"))) {
         check_by_synth(v, s, e, expected)
     } else {
         synth_call(v, s, h, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))

@@ -1084,3 +1084,35 @@ reads again (`place-needs`, `region-within`).
   a planted bug (the chain ignoring what forms bind) is caught by it.
   The compiler on itself: 0.73 s plain, 0.9 s cold with memos (writing
   them), 0.12 s warm.
+- **A memo is one compiler's** (found 2026-10-12, after C55): a key says
+  what a form's Rust was made from, not by which compiler, so a memo file
+  kept across a change to the compiler gives the old emitter's Rust for
+  every form that did not change. `scripts/regen.sh` names its memo file
+  by a fingerprint of the generated compiler (`boot/src/kfx/*.rs`), one
+  file per compiler; the other scripts make a fresh file each run. The
+  driver itself cannot tell (FX-26 gives a program no way to know its own
+  code): a memo file is the caller's to keep apart. In TODO.
+
+## C56. The front end, stage 1: standard operations, symbols, arrays of values (2026-10-12)
+
+`docs/research/front-end.md`, its plan's first stage. From Fixpt
+17ac0c5's standard environment, at its types, each with kayak-rt's Rust
+as Fixpt's runtime has it:
+- integers: `bitwise-and`, `-ior`, `-xor`, `-not`, `arithmetic-shift`,
+  bignums too (two's complement, a count past 2^24 too large);
+- characters and strings: `bool=?`, `char<?` and kin, `char-downcase`,
+  `string<?` and kin, `string-compare`, `string-search`, `string-ci=?`,
+  `string-downcase`, `substring`;
+- **symbols**: `symbol` a base type, kayak-rt's `Symbol` (its text; FX-26
+  interns, so `eq?` of two is equality of their names); `'name` and
+  `(quote name)` (a quoted datum of another kind waits for `datum`);
+  `string->symbol`, `symbol->string`, `symbol=?`, `symbol-compare`;
+- **arrays of values**, `(arrayof T R)` at a region (the flat array of a
+  bloblet keeps its literal length): kayak-rt's `Array<T>`, a row of
+  cells; `make-array`, `array-ref`, `array-set!`, `array-length`,
+  `array->list`, `list->array`; printed as Fixpt prints them.
+- **The reader reads `'d` as `(quote d)`** in a program's text only: the
+  checker reads its own facts with the same reader, where `'r` names a
+  region binder.
+- `tests/kfx/standard.kfx`; kfx now accepts 105 of Fixpt's programs (96),
+  all agreeing.

@@ -228,6 +228,11 @@ pub mod shapes;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/standard.rs"]
+pub mod standard;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/strings.rs"]
 pub mod strings;
 
@@ -331,6 +336,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("rust-keywords", rust_keywords::main),
     ("seeded", seeded_main),
     ("shapes", shapes::main),
+    ("standard", standard::main),
     ("strings", strings::main),
     ("tails", tails::main),
     ("tasks", tasks_main),

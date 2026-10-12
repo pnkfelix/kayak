@@ -27,7 +27,11 @@ while [ $generation -lt 4 ]; do
     mkdir "$tmp/next" # kfx makes no directories (C50)
     # The memos a compile keeps (C54): scripts/fixpoint.sh compiles without
     # them, and scripts/incremental.py checks them against compiles without.
-    ./target/release/kfx --cache target/kfx-memos kfx/kfx.unit "$tmp/next" || restore $generation
+    # A memo is one compiler's: their file is named by the compiler's own
+    # generated code, so that one compiler never takes another's.
+    compiler=$(cat boot/src/kfx/*.rs | shasum | cut -c1-16)
+    find target -maxdepth 1 -name 'kfx-memos-*' ! -name "kfx-memos-$compiler" -delete
+    ./target/release/kfx --cache "target/kfx-memos-$compiler" kfx/kfx.unit "$tmp/next" || restore $generation
     if diff -r -q "$tmp/next" boot/src/kfx > /dev/null; then
         echo "regen: the fixed point, after $((generation - 1)) new generation(s)"
         rm -rf "$tmp"

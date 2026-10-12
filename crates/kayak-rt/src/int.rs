@@ -466,3 +466,195 @@ mod tests {
         assert_eq!(int_to_i64(_star(power(2, 64), int_lit(-1))), 0);
     }
 }
+
+// Bitwise operations, as FX-26's: on two's complement, of any size.
+
+/// `w`, two's complement, in `len` 32-bit words, the low first.
+fn twos(w: &Wide, len: usize) -> Vec<u32> {
+    let mut m = w.magnitude.clone();
+    m.resize(len, 0);
+    if w.negative {
+        let mut carry = 1u64;
+        for x in m.iter_mut() {
+            let v = (!*x) as u64 + carry;
+            *x = v as u32;
+            carry = v >> 32;
+        }
+    }
+    m
+}
+
+/// The integer whose two's complement `m` is, its top bit its sign.
+fn from_twos(mut m: Vec<u32>) -> Int {
+    let negative = m.last().is_some_and(|x| x >> 31 == 1);
+    if negative {
+        let mut carry = 1u64;
+        for x in m.iter_mut() {
+            let v = (!*x) as u64 + carry;
+            *x = v as u32;
+            carry = v >> 32;
+        }
+    }
+    int(Wide {
+        negative,
+        magnitude: m,
+    })
+}
+
+fn bitwise(a: Int, b: Int, f: impl Fn(u32, u32) -> u32) -> Int {
+    if let (Int::Small(x), Int::Small(y)) = (a, b) {
+        return Int::Small(
+            f(x as u32, y as u32) as i64 & 0xffff_ffff
+                | ((f((x >> 32) as u32, (y >> 32) as u32) as i64) << 32),
+        );
+    }
+    let (x, y) = (wide(a), wide(b));
+    let len = x.magnitude.len().max(y.magnitude.len()) + 1;
+    let (tx, ty) = (twos(&x, len), twos(&y, len));
+    from_twos(tx.iter().zip(&ty).map(|(p, q)| f(*p, *q)).collect())
+}
+
+pub fn bitwise_and(a: Int, b: Int) -> Int {
+    bitwise(a, b, |p, q| p & q)
+}
+
+pub fn bitwise_ior(a: Int, b: Int) -> Int {
+    bitwise(a, b, |p, q| p | q)
+}
+
+pub fn bitwise_xor(a: Int, b: Int) -> Int {
+    bitwise(a, b, |p, q| p ^ q)
+}
+
+pub fn bitwise_not(a: Int) -> Int {
+    _minus(int_lit(-1), a)
+}
+
+fn shifted_left(m: &[u32], k: usize) -> Vec<u32> {
+    let (words, bits) = (k / 32, k % 32);
+    let mut out = vec![0u32; words];
+    let mut carry = 0u32;
+    for &x in m {
+        out.push(if bits == 0 { x } else { (x << bits) | carry });
+        carry = if bits == 0 { 0 } else { x >> (32 - bits) };
+    }
+    out.push(carry);
+    out
+}
+
+fn shifted_right(m: &[u32], k: usize) -> Vec<u32> {
+    let (words, bits) = (k / 32, k % 32);
+    if words >= m.len() {
+        return Vec::new();
+    }
+    let rest = &m[words..];
+    (0..rest.len())
+        .map(|i| {
+            let lo = rest[i] >> bits;
+            let hi = if bits == 0 {
+                0
+            } else {
+                rest.get(i + 1).map_or(0, |x| x << (32 - bits))
+            };
+            lo | hi
+        })
+        .collect()
+}
+
+/// Left by a positive count, right (the floor) by a negative one; a count
+/// past 2^24 is too large unless `a` is 0, and a count past an `i64`,
+/// right, leaves the sign alone.
+pub fn arithmetic_shift(a: Int, k: Int) -> Int {
+    let zero = sign(a) == 0;
+    let k = match k {
+        Int::Small(k) => k,
+        Int::Big(b) if b.negative => return if sign(a) < 0 { int_lit(-1) } else { int_lit(0) },
+        Int::Big(_) if zero => return int_lit(0),
+        Int::Big(_) => crate::fail("arithmetic-shift: the count is too large"),
+    };
+    if zero {
+        return int_lit(0);
+    }
+    if k > 1 << 24 {
+        crate::fail("arithmetic-shift: the count is too large")
+    }
+    let w = wide(a);
+    if k >= 0 {
+        return int(Wide {
+            negative: w.negative,
+            magnitude: shifted_left(&w.magnitude, k as usize),
+        });
+    }
+    let n = k.unsigned_abs().min(1 << 32) as usize;
+    if !w.negative {
+        return int(Wide {
+            negative: false,
+            magnitude: shifted_right(&w.magnitude, n),
+        });
+    }
+    // The floor of a negative: -((|a| - 1) >> n) - 1.
+    let less = wide(_minus(
+        int(Wide {
+            negative: false,
+            magnitude: w.magnitude,
+        }),
+        int_lit(1),
+    ));
+    _minus(
+        int_lit(-1),
+        int(Wide {
+            negative: false,
+            magnitude: shifted_right(&less.magnitude, n),
+        }),
+    )
+}
+
+#[cfg(test)]
+mod bitwise_tests {
+    use super::*;
+
+    fn n(s: &str) -> Int {
+        int_text(s)
+    }
+
+    fn text(i: Int) -> String {
+        int_to_string(i).as_str().to_string()
+    }
+
+    #[test]
+    fn as_scheme_does() {
+        assert_eq!(text(bitwise_and(int_lit(12), int_lit(10))), "8");
+        assert_eq!(text(bitwise_ior(int_lit(-12), int_lit(10))), "-2");
+        assert_eq!(text(bitwise_xor(int_lit(-1), int_lit(5))), "-6");
+        assert_eq!(text(bitwise_not(int_lit(0))), "-1");
+        assert_eq!(
+            text(bitwise_and(
+                n("-36893488147419103232"),
+                n("36893488147419103231")
+            )),
+            "0"
+        );
+        assert_eq!(
+            text(bitwise_ior(n("36893488147419103232"), int_lit(1))),
+            "36893488147419103233"
+        );
+        assert_eq!(
+            text(arithmetic_shift(int_lit(1), int_lit(70))),
+            "1180591620717411303424"
+        );
+        assert_eq!(text(arithmetic_shift(int_lit(-5), int_lit(-1))), "-3");
+        assert_eq!(
+            text(arithmetic_shift(n("-1180591620717411303424"), int_lit(-70))),
+            "-1"
+        );
+        assert_eq!(
+            text(arithmetic_shift(n("-1180591620717411303425"), int_lit(-70))),
+            "-2"
+        );
+        assert_eq!(text(arithmetic_shift(int_lit(7), int_lit(-3))), "0");
+        assert_eq!(
+            text(arithmetic_shift(i64_to_int(i64::MIN), int_lit(1))),
+            "-18446744073709551616"
+        );
+    }
+}

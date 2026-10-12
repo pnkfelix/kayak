@@ -10,6 +10,7 @@
 //! is not counts characters (`CLAUDES_CHOICES.md`, C14).
 
 mod arena;
+mod array;
 mod blob;
 mod escape;
 mod fixed;
@@ -20,9 +21,11 @@ mod once;
 mod show;
 mod stats;
 pub mod suspend;
+mod text;
 mod world;
 
 pub use arena::*;
+pub use array::*;
 pub use blob::*;
 pub use escape::*;
 pub use fixed::*;
@@ -34,6 +37,7 @@ pub use show::*;
 pub use stats::heap_stats_report;
 use std::cell::Cell;
 pub use std::cell::OnceCell;
+pub use text::*;
 pub use world::*;
 
 /// `string`: text, and whether it is ASCII, found when the string is made.

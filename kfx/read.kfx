@@ -213,6 +213,11 @@
                    (tagcase (read-items (here (cdr cs) line (i64+ pos 1)) file)
                      (gots (xs after) (got (lst xs file line pos) after))))
                   ((char=? c #\)) (read-error file line "a ) with no ("))
+                  ((and (i64= (char->i64 c) 39) (not (null? (cdr cs))) (not (string=? file "")))
+                   "`'d`, FX-26's `(quote d)` (C56), in a program's text; in the
+                    checker's own (a file named ``), `'r` is a region binder's name."
+                   (tagcase (read-datum (skip (here (cdr cs) line (i64+ pos 1))) file)
+                     (got (x after) (got (lst (list (sym "quote" file pos) x) file line pos) after))))
                   ((char=? c #\") (string-body (cdr cs) nil file line pos line (i64+ pos 1)))
                   ((and (char=? c #\#) (not (null? (cdr cs))) (char=? (car (cdr cs)) #\\))
                    (let ((name (cdr (cdr cs))))

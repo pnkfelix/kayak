@@ -424,6 +424,15 @@ pub fn read_datum(h: &'static Here, file: Str) -> &'static Got {
                 }
             } else if char_eq_p(c, ')') {
                 match read_error(file, line, str_lit("a ) with no (")) {}
+            } else if (i64_eq(char_to_i64(c), 39i64) && not(null_p(cdr(cs))) && not(string_eq_p(file, str_lit("")))) {
+                // `'d`, FX-26's `(quote d)` (C56), in a program's text; in the
+                // checker's own (a file named ``), `'r` is a region binder's name.
+                let tagcase_ = read_datum(skip(here(cdr(cs), line, i64_plus(pos, 1i64))), file);
+                match *tagcase_ {
+                    Got::Got(x, after) => {
+                        got(lst(kayak_rt::heap_cons(sym(str_lit("quote"), file, pos), kayak_rt::heap_cons(x, kayak_rt::nil())), file, line, pos), after)
+                    }
+                }
             } else if char_eq_p(c, '"') {
                 string_body(cdr(cs), nil::<char>(), file, line, pos, line, i64_plus(pos, 1i64))
             } else if (char_eq_p(c, '#') && not(null_p(cdr(cs))) && char_eq_p(car(cdr(cs)), '\\')) {

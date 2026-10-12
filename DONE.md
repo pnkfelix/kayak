@@ -1180,3 +1180,8 @@ itself: 0.82 s cold, 0.32 s warm.
 
 C55: the checker's change per form, chained by fingerprint. The compiler
 on itself warm: 0.12 s; after a body edit, 0.12 s.
+
+## The front end, stage 1 (2026-10-12)
+
+C56: standard operations, symbols and quote, arrays of values;
+`tests/kfx/standard.kfx`. kfx accepts 105 of Fixpt's programs.

@@ -1,0 +1,56 @@
+"FX-26's standard operations that KFX took next (C56): integers'
+ bitwise operations and `arithmetic-shift`, bignums too; characters' and
+ strings' orders and searches; `substring`; symbols, quoted and made from
+ strings; arrays of values."
+
+(define show-ints (subr (maxeff (read @globals) (read @l) spin) ((listof int @l)) string)
+  (lambda (xs)
+    (if (null? xs) "" (string-append (int->string (car xs)) (string-append " " (show-ints (cdr xs)))))))
+
+(define bits (subr (maxeff (read @globals) (alloc @l) (read @l) spin) () string)
+  (lambda ()
+    (show-ints
+      (the (listof int @l)
+        (list (bitwise-and 12 10) (bitwise-ior -12 10) (bitwise-xor -1 5) (bitwise-not 0)
+              (arithmetic-shift 1 70) (arithmetic-shift -5 -1) (arithmetic-shift -1180591620717411303425 -70)
+              (bitwise-and -36893488147419103232 36893488147419103231)
+              (string-compare "abc" "abd") (string-compare "b" "a") (string-search "hello, héllo" "llo" 4))))))
+
+(define flag (subr pure (bool) string) (lambda (b) (if b "t" "f")))
+
+(define orders (subr (read @globals) () string)
+  (lambda ()
+    (string-append (flag (char<? #\a #\b)) (string-append (flag (char>=? #\a #\b))
+      (string-append (flag (string<? "apple" "apples")) (string-append (flag (string>? "b" "abc"))
+        (string-append (flag (bool=? #t #f)) (string-append (flag (string-ci=? "HeLLo" "hello"))
+          (string-append " " (string-append (string-downcase "ÀBC") (string-append (char->string (char-downcase #\Q))
+            (string-append " " (substring "héllo, world" 1 5)))))))))))))
+
+(define greet (subr pure (symbol) string)
+  (lambda (s) (if (symbol=? s 'hello) "hi" (symbol->string s))))
+
+(define symbols (subr (read @globals) () string)
+  (lambda ()
+    (string-append (greet 'hello) (string-append " " (string-append (greet (string->symbol "other"))
+      (string-append " " (int->string (symbol-compare 'a 'b))))))))
+
+(define-rec
+  (sum-array (subr (maxeff (read @globals) (read @a) spin) ((arrayof int @a) int int) int)
+    (lambda (a i acc)
+      (if (>= i (array-length a)) acc (sum-array a (+ i 1) (+ acc (array-ref a i)))))))
+
+(define arrays (subr (maxeff (read @globals) (alloc @a) (read @a) (write @a) (alloc @l) (read @l) spin) () string)
+  (lambda ()
+    (let ((a (the (arrayof int @a) (make-array 4 3)))
+          (names (the (arrayof string @a) (list->array (the (listof string @l) (list "x" "y" "z"))))))
+      (begin
+        (array-set! a 0 10)
+        (array-set! names 1 "why")
+        (string-append (int->string (sum-array a 0 0))
+          (string-append " " (string-append (array-ref names 1)
+            (string-append " " (show-ints (the (listof int @l) (array->list a)))))))))))
+
+(define main (subr (maxeff (read @globals) (alloc @a) (read @a) (write @a) (alloc @l) (read @l) spin) () string)
+  (lambda ()
+    (string-append (bits) (string-append "| " (string-append (orders) (string-append " | " (string-append (symbols)
+      (string-append " | " (arrays)))))))))

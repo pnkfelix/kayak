@@ -1417,6 +1417,8 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
                     return put(str_lit("f64"), acc);
                 } else if (fixed_width_p(s) || string_eq_p(s, str_lit("f32"))) {
                     return put(s, acc);
+                } else if string_eq_p(s, str_lit("symbol")) {
+                    return put(str_lit("Symbol"), acc);
                 } else if string_eq_p(s, str_lit("bool")) {
                     return put(str_lit("bool"), acc);
                 } else if string_eq_p(s, str_lit("char")) {
@@ -1456,6 +1458,19 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
                     return put(str_lit(">"), put_type(c, second(xs), put(str_lit("FlatArray<"), acc)));
                 } else if sym_is_p(car(xs), str_lit("bytevectorof")) {
                     return put(str_lit("Bytes"), acc);
+                } else if (sym_is_p(car(xs), str_lit("arrayof")) && i64_eq(size(xs), 3i64) && {
+                    let tagcase_ = third(xs);
+                    match *tagcase_ {
+                        Sexp::Num(k, f, p) => {
+                            false
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            true
+                        }
+                    }
+                }) {
+                    return put(str_lit(">"), put_type(c, second(xs), put(str_lit("Array<"), acc)));
                 } else if (sym_is_p(car(xs), str_lit("ref")) && not(string_eq_p(region_lifetime(c, third(xs)), str_lit("")))) {
                     return put(str_lit(">"), put_type(c, second(xs), put(str_lit(", "), put(region_lifetime(c, third(xs)), put(str_lit("RefAt<"), acc)))));
                 } else if (sym_is_p(car(xs), str_lit("ref")) && not(string_eq_p(element_lifetime(c, second(xs)), str_lit("")))) {
@@ -3314,6 +3329,8 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
         put(str_lit("()"), put_turbofish(c, e, put(str_lit("kayak_rt::nil"), acc)))
     } else if string_eq_p(h, str_lit("list")) {
         put_list(c, xs, n, acc)
+    } else if string_eq_p(h, str_lit("quote")) {
+        put(str_lit("\"))"), put_escaped(string_chars(sym_name(car(xs))), '"', put(str_lit("symbol_lit(str_lit(\""), acc)))
     } else if string_eq_p(h, str_lit("the")) {
         // `the::<T>(e)`: the type said to rustc too, which may need it where
         // FX-26's checker did (a tag's payload, a list nothing else types).
