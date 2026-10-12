@@ -1448,6 +1448,10 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
                     return put(str_lit("bool"), acc);
                 } else if string_eq_p(s, str_lit("nil")) {
                     return put(str_lit("List<_>"), acc);
+                } else if string_eq_p(s, str_lit("datum")) {
+                    return put(str_lit("kayak_rt::value::Value"), acc);
+                } else if string_eq_p(s, str_lit("vector")) {
+                    return put(str_lit("kayak_rt::value::Vector"), acc);
                 } else if string_eq_p(s, str_lit("char")) {
                     return put(str_lit("char"), acc);
                 } else if string_eq_p(s, str_lit("unit")) {
@@ -1491,7 +1495,8 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
                     t = third(xs);
                     continue;
                 } else if (sym_is_p(car(xs), str_lit("pairof")) || sym_is_p(car(xs), str_lit("%pairof"))) {
-                    return error(str_lit("kfx: a pair whose tail is no list, which KFX has not yet (C75)"));
+                    // A pair whose tail is no list: a union's pair, `Value`s (C77).
+                    return put(str_lit("kayak_rt::value::Value"), acc);
                 } else if sym_is_p(car(xs), str_lit("bytevectorof")) {
                     return put(str_lit("Bytes"), acc);
                 } else if (sym_is_p(car(xs), str_lit("arrayof")) && i64_eq(size(xs), 3i64) && {
@@ -2718,6 +2723,68 @@ pub fn unboxing(c: &'static Ctx, e: &'static Sexp) -> Str {
     }
 }
 
+/// The type a union is unboxed at (C75): a list's element type, for
+/// `unbox_list`; Rust's to find, for `nil`'s.
+pub fn put_unboxed_type(c: &'static Ctx, how: Str, text: Str, acc: Chars) -> Chars {
+    let t = car(read_all(string_chars(text), str_lit(""), 1i64));
+    if not(string_eq_p(how, str_lit("unbox_list"))) {
+        put_type(c, t, acc)
+    } else if head_is_p(t, str_lit("listof")) {
+        put_type(c, second(items(t)), acc)
+    } else {
+        put(str_lit("_"), acc)
+    }
+}
+
+/// A quoted datum, built (C77): a list's pairs `cons`ed, each atom boxed.
+pub fn put_quoted(c: &'static Ctx, d: &'static Sexp, acc: Chars) -> Chars {
+    let tagcase_ = d;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            put_quoted_items(c, xs, acc)
+        }
+        Sexp::Sym(q, f, p) => {
+            if (string_eq_p(q, str_lit("#t")) || string_eq_p(q, str_lit("#f"))) {
+                put(str_lit(")"), put_var(c, q, put(str_lit("kayak_rt::value::ToValue::to_value("), acc)))
+            } else {
+                put(str_lit("\")))"), put_escaped(string_chars(q), '"', put(str_lit("kayak_rt::value::ToValue::to_value(symbol_lit(str_lit(\""), acc)))
+            }
+        }
+        Sexp::Num(k, f, p) => {
+            put(str_lit("))"), put(i64_to_string(k), put(str_lit("kayak_rt::value::ToValue::to_value(int_lit("), acc)))
+        }
+        Sexp::Big(text, f, p) => {
+            put(str_lit("\"))"), put(text, put(str_lit("kayak_rt::value::ToValue::to_value(int_text(\""), acc)))
+        }
+        Sexp::Str(x, f, p) => {
+            put(str_lit("\"))"), put_escaped(string_chars(x), '"', put(str_lit("kayak_rt::value::ToValue::to_value(str_lit(\""), acc)))
+        }
+        Sexp::Chr(ch, f, p) => {
+            put(str_lit("')"), put_escaped(kayak_rt::heap_cons(ch, kayak_rt::nil()), '\'', put(str_lit("kayak_rt::value::ToValue::to_value('"), acc)))
+        }
+        Sexp::Real(x, f, p) => {
+            let acc = put(x, put(str_lit("kayak_rt::value::ToValue::to_value("), acc));
+            put(str_lit("f64)"), if char_eq_p(last(string_chars(x)), '.') {
+                put(str_lit("0"), acc)
+            } else {
+                acc
+            })
+        }
+        _ => {
+            let other = tagcase_;
+            error(str_lit("kfx: a quoted datum KFX does not build"))
+        }
+    }
+}
+
+pub fn put_quoted_items(c: &'static Ctx, xs: Sexps, acc: Chars) -> Chars {
+    if null_p(xs) {
+        put(str_lit("kayak_rt::value::Value::Nil"), acc)
+    } else {
+        put(str_lit(")"), put_quoted_items(c, cdr(xs), put(str_lit(", "), put_quoted(c, car(xs), put(str_lit("kayak_rt::value::cons("), acc)))))
+    }
+}
+
 pub fn unboxed_type(c: &'static Ctx, e: &'static Sexp) -> Str {
     let (a, b) = (fact_with(c, e, str_lit("unbox ")), fact_with(c, e, str_lit("unbox-list ")));
     if not(string_eq_p(a, str_lit(""))) {
@@ -2806,7 +2873,7 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
     } else if (not(string_eq_p(unboxing(c, e), str_lit(""))) && not(string_member_p(string_append(str_lit("%unboxed "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
         // A union narrowed to a member (C75): unboxed, at the member's type.
         let acc = put(unboxing(c, e), put(str_lit("kayak_rt::value::"), acc));
-        let acc = put(str_lit(">("), put_type(c, car(read_all(string_chars(unboxed_type(c, e)), str_lit(""), 1i64)), put(str_lit("::<"), acc)));
+        let acc = put(str_lit(">("), put_unboxed_type(c, unboxing(c, e), unboxed_type(c, e), put(str_lit("::<"), acc)));
         let acc = put_exp(with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%unboxed "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), kayak_rt::nil())), e, n, value(), acc);
         put(str_lit(")"), acc)
     } else {
@@ -2871,8 +2938,10 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
                     put(str_lit(" {}"), put_call(c, e, xs, n, t, put(str_lit("match "), acc)))
                 } else if fact_at_p(c, e, str_lit("void-error")) {
                     put(str_lit(")"), put_call(c, e, xs, n, t, put(str_lit("the::<Void>("), acc)))
-                } else if fact_at_p(c, e, str_lit("union-test")) {
+                } else if (fact_at_p(c, e, str_lit("union-test")) || fact_at_p(c, e, str_lit("value-call"))) {
                     put_call(c, e, xs, n, t, put(str_lit("kayak_rt::value::"), acc))
+                } else if fact_at_p(c, e, str_lit("value-cons")) {
+                    put(str_lit(")"), put_joined(c, cdr(xs), str_lit(", "), n, put(str_lit("kayak_rt::value::cons("), acc)))
                 } else {
                     put_call(c, e, xs, n, t, acc)
                 }
@@ -3026,7 +3095,7 @@ pub fn put_block(c: &'static Ctx, es: Sexps, n: i64, t: &'static Tail, acc: Char
 /// what is left.
 pub fn put_typecase_arms(c: &'static Ctx, x: &'static Sexp, valued: bool, arms: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
     let arm = items(car(arms));
-    if sym_is_p(car(arm), str_lit("else")) {
+    if (sym_is_p(car(arm), str_lit("else")) && i64_eq(size(arm), 2i64)) {
         put_block(c, cdr(arm), n, t, acc)
     } else {
         let name = sym_name(second(arm));
@@ -3051,7 +3120,7 @@ pub fn put_typecase_arms(c: &'static Ctx, x: &'static Sexp, valued: bool, arms: 
         } else if string_eq_p(how, str_lit("")) {
             put_var(c, sym_name(x), acc)
         } else {
-            put(str_lit(")"), put_var(c, sym_name(x), put(str_lit(">("), put_type(c, car(read_all(string_chars(unboxed_type(c, car(arms))), str_lit(""), 1i64)), put(str_lit("::<"), put(how, put(str_lit("kayak_rt::value::"), acc)))))))
+            put(str_lit(")"), put_var(c, sym_name(x), put(str_lit(">("), put_unboxed_type(c, how, unboxed_type(c, car(arms)), put(str_lit("::<"), put(how, put(str_lit("kayak_rt::value::"), acc)))))))
         };
         let acc = if used {
             put_nl(i64_plus(n, 1i64), put(str_lit(";"), acc))
@@ -3521,7 +3590,29 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
     } else if string_eq_p(h, str_lit("list")) {
         put_list(c, xs, n, acc)
     } else if string_eq_p(h, str_lit("quote")) {
-        put(str_lit("\"))"), put_escaped(string_chars(sym_name(car(xs))), '"', put(str_lit("symbol_lit(str_lit(\""), acc)))
+        let tagcase_ = car(xs);
+        match *tagcase_ {
+            Sexp::Sym(q, f, p) => {
+                if (string_eq_p(q, str_lit("#t")) || string_eq_p(q, str_lit("#f"))) {
+                    put_var(c, q, acc)
+                } else {
+                    put(str_lit("\"))"), put_escaped(string_chars(q), '"', put(str_lit("symbol_lit(str_lit(\""), acc)))
+                }
+            }
+            Sexp::Num(k, f, p) => {
+                put(str_lit(")"), put(i64_to_string(k), put(str_lit("int_lit("), acc)))
+            }
+            Sexp::Big(text, f, p) => {
+                put(str_lit("\")"), put(text, put(str_lit("int_text(\""), acc)))
+            }
+            Sexp::Lst(ys, f, l, p) => {
+                put_quoted(c, car(xs), acc)
+            }
+            _ => {
+                let other = tagcase_;
+                put_exp(c, car(xs), n, value(), acc)
+            }
+        }
     } else if string_eq_p(h, str_lit("the")) {
         // `the::<T>(e)`: the type said to rustc too, which may need it where
         // FX-26's checker did (a tag's payload, a list nothing else types).

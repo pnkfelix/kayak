@@ -40,8 +40,8 @@ use std::cell::Cell;
 pub use std::cell::OnceCell;
 pub use text::*;
 pub use value::{
-    array_p, bool_p, bytevector_p, char_p, f32_p, f64_p, int_p, pair_p, procedure_p, product_p,
-    ref_p, string_p, sum_p, symbol_p,
+    array_p, bool_p, bytevector_p, char_p, datum_list_to_vector, f32_p, f64_p, int_p, pair_p,
+    procedure_p, product_p, ref_p, string_p, sum_p, symbol_p, vector_p,
 };
 pub use world::*;
 

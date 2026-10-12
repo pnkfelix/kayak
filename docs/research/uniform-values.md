@@ -78,3 +78,10 @@ facts from the checker at `check`, `check-by-synth`, narrowed locals,
 them. No views yet: a list of members given as a list of the union is
 still a type error for rustc, not refused by kfx. 114 of Fixpt's programs
 compile and agree (108 before).
+
+## Step 2, done (C77)
+
+`datum`; a pair whose tail is no list as a `Value` (a `PairLike`: a pair
+of `Value`s, or a typed list's own pair seen as one, a view); `car` and
+`cdr` of a union; `quote` of any datum; `typecase` as FX-26 writes it. 117
+of Fixpt's programs agree through kfx, 109 through the engine.

@@ -7,6 +7,7 @@ clock
 constants
 control
 data
+datum
 define-star
 effect-poly
 escapes

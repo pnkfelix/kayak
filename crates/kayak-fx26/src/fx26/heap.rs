@@ -96,6 +96,11 @@ pub fn ob_ctor() -> i64 {
     12i64
 }
 
+// `datum`'s vector (C77): its elements, words, as an array's.
+pub fn ob_vector() -> i64 {
+    13i64
+}
+
 // Kinds from here on hold raw words, not values: not scanned.
 pub fn ob_raw() -> i64 {
     32i64

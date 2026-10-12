@@ -1,0 +1,54 @@
+"`datum` (C77): FX-26's union of what a reader reads, its pairs `Value`s in
+ Rust; a quote of a list builds one; a typed list is given as one as it
+ is, its elements boxed as they are read; `car` and `cdr` take one apart,
+ checked, and a walk of one needs no `spin`."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+"A datum written as Fixpt writes one."
+(define shown (subr pure (datum) string)
+  (letrec ((shown (subr pure (datum) string)
+             (lambda (d)
+               (typecase d
+                 (int i (int->string i))
+                 (symbol s (symbol->string s))
+                 (string s (string-append "\"" (string-append s "\"")))
+                 (bool b (if b "#t" "#f"))
+                 (char c (string-append "#\\" (list->string (list c))))
+                 (nil n "()")
+                 (pair p (string-append "(" (string-append (shown (car p)) (string-append (rest (cdr p)) ")"))))
+                 (vector v "#(...)")
+                 (else e "?"))))
+           (rest (subr pure (datum) string)
+             (lambda (d)
+               (typecase d
+                 (nil n "")
+                 (pair p (string-append " " (string-append (shown (car p)) (rest (cdr p)))))
+                 (else e (string-append " . " (shown e)))))))
+    shown))
+
+"A walk through `car` and `cdr`: the sum of the ints in it."
+(define total (subr pure (datum) int)
+  (letrec ((total (subr pure (datum) int)
+             (lambda (d) (if (pair? d) (+ (total (car d)) (total (cdr d))) (if (int? d) d 0)))))
+    total))
+
+"A pair of a symbol and an int: its parts, taken apart, unboxed."
+(define-type entry (pairof symbol int acyclic))
+(define entry-value (subr pure (entry) int) (lambda (e) (cdr e)))
+(define entry-key (subr pure (entry) symbol) (lambda (e) (car e)))
+
+(define ints (listof int acyclic) (list 1 2 3))
+(define d datum (list 10 'x "s" #\c #t (cons 20 30)))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (let ((e (the entry (cons 'k 5))))
+      (string-append (shown '(1 (2 three) "four" #\5 #f))
+        (string-append " " (string-append (shown d)
+          (string-append " " (string-append (shown ints)
+            (string-append " " (string-append (int->string (+ (total d) (total ints)))
+              (string-append " " (string-append (symbol->string (entry-key e))
+                (string-append " " (string-append (int->string (entry-value e))
+                  (string-append " " (string-append (shown (datum-list->vector ints))
+                    (string-append " " (shown (car (cdr d))))))))))))))))))))

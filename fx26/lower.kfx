@@ -201,10 +201,23 @@
               ((i64>= (prim-arity n) 0) (i-lit (v-prim n (prim-arity n))))
               (else (begin (error (string-append "the engine: nothing is named " n)) (i-lit (v-unit))))))))
 
+  (lower-quoted (subr kfx (sexp scope strings) ir)
+    (lambda (d sc gs)
+      "A quoted datum (C77): a symbol; another atom as itself; a list built
+       by the standard `cons`, whatever the program calls by that name."
+      (tagcase d
+        (sym (n f p) (if (or (string=? n "#t") (string=? n "#f")) (lower d sc gs) (i-lit (v-symbol (string->symbol n)))))
+        (lst (ys f l p)
+          (if (null? ys)
+              (i-lit (v-nil))
+              (i-call (i-lit (v-prim "cons" 2))
+                      (list (lower-quoted (car ys) sc gs) (lower-quoted (lst (cdr ys) f l p) sc gs)))))
+        (else other (lower d sc gs)))))
+
   (lower-form (subr kfx (string sexps sexp scope strings) ir)
     (lambda (h xs e sc gs)
       (cond ((string=? h "the") (lower (second xs) sc gs))
-            ((string=? h "quote") (i-lit (v-symbol (string->symbol (sym-name (car xs))))))
+            ((string=? h "quote") (lower-quoted (car xs) sc gs))
             ((or (string=? h "plambda") (string=? h "proj")) (if (string=? h "proj") (lower (car xs) sc gs) (lower (second xs) sc gs)))
             ((string=? h "lambda")
              (let ((names (map binder-name (items (car xs)))))
@@ -300,11 +313,14 @@
       (if (null? arms)
           (i-lit (v-unit))
           (let ((arm (items (car arms))))
-            (if (sym-is? (car arm) "else")
-                (lower-body (cdr arm) sc gs)
+            (cond ((and (sym-is? (car arm) "else") (i64= (size arm) 2)) (lower-body (cdr arm) sc gs))
+                  ((sym-is? (car arm) "else")
+                   "`(else name body)` (C77): `name` the value as the arms leave it."
+                   (i-let (list (lower x sc gs)) (lower-body (cdr (cdr arm)) (cons (list (binder-name (second arm))) sc) gs)))
+                  (else
                 (i-if (i-call (i-lit (v-prim (shape-test (sym-name (car arm))) 1)) (list (lower x sc gs)))
                       (i-let (list (lower x sc gs)) (lower-body (cdr (cdr arm)) (cons (list (binder-name (second arm))) sc) gs))
-                      (lower-typecase x (cdr arms) sc gs)))))))
+                      (lower-typecase x (cdr arms) sc gs))))))))
 
   (lower-case (subr kfx (sexps scope strings) ir)
     (lambda (clauses sc gs)

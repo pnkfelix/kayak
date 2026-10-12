@@ -420,12 +420,38 @@ pub fn lower_name(n: Str, sc: Scope, gs: Strings) -> &'static Ir {
     }
 }
 
+/// A quoted datum (C77): a symbol; another atom as itself; a list built
+/// by the standard `cons`, whatever the program calls by that name.
+pub fn lower_quoted(d: &'static Sexp, sc: Scope, gs: Strings) -> &'static Ir {
+    let tagcase_ = d;
+    match *tagcase_ {
+        Sexp::Sym(n, f, p) => {
+            if (string_eq_p(n, str_lit("#t")) || string_eq_p(n, str_lit("#f"))) {
+                lower(d, sc, gs)
+            } else {
+                i_lit(v_symbol(string_to_symbol(n)))
+            }
+        }
+        Sexp::Lst(ys, f, l, p) => {
+            if null_p(ys) {
+                i_lit(v_nil())
+            } else {
+                i_call(i_lit(v_prim(str_lit("cons"), 2i64)), kayak_rt::heap_cons(lower_quoted(car(ys), sc, gs), kayak_rt::heap_cons(lower_quoted(lst(cdr(ys), f, l, p), sc, gs), kayak_rt::nil())))
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            lower(d, sc, gs)
+        }
+    }
+}
+
 pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope, mut gs: Strings) -> &'static Ir {
     loop {
         if string_eq_p(h, str_lit("the")) {
             return lower(second(xs), sc, gs);
         } else if string_eq_p(h, str_lit("quote")) {
-            return i_lit(v_symbol(string_to_symbol(sym_name(car(xs)))));
+            return lower_quoted(car(xs), sc, gs);
         } else if (string_eq_p(h, str_lit("plambda")) || string_eq_p(h, str_lit("proj"))) {
             if string_eq_p(h, str_lit("proj")) {
                 return lower(car(xs), sc, gs);
@@ -596,8 +622,11 @@ pub fn lower_typecase(x: &'static Sexp, arms: Sexps, sc: Scope, gs: Strings) -> 
         i_lit(v_unit())
     } else {
         let arm = items(car(arms));
-        if sym_is_p(car(arm), str_lit("else")) {
+        if (sym_is_p(car(arm), str_lit("else")) && i64_eq(size(arm), 2i64)) {
             lower_body(cdr(arm), sc, gs)
+        } else if sym_is_p(car(arm), str_lit("else")) {
+            // `(else name body)` (C77): `name` the value as the arms leave it.
+            i_let(kayak_rt::heap_cons(lower(x, sc, gs), kayak_rt::nil()), lower_body(cdr(cdr(arm)), kayak_rt::heap_cons(kayak_rt::heap_cons(binder_name(second(arm)), kayak_rt::nil()), sc), gs))
         } else {
             i_if(i_call(i_lit(v_prim(shape_test(sym_name(car(arm))), 1i64)), kayak_rt::heap_cons(lower(x, sc, gs), kayak_rt::nil())), i_let(kayak_rt::heap_cons(lower(x, sc, gs), kayak_rt::nil()), lower_body(cdr(cdr(arm)), kayak_rt::heap_cons(kayak_rt::heap_cons(binder_name(second(arm)), kayak_rt::nil()), sc), gs)), lower_typecase(x, cdr(arms), sc, gs))
         }

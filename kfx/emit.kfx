@@ -729,6 +729,8 @@
                 ((string=? s "symbol") (put "Symbol" acc))
                 ((or (string=? s "bool") (string=? s "false")) (put "bool" acc))
                 ((string=? s "nil") (put "List<_>" acc))
+                ((string=? s "datum") (put "kayak_rt::value::Value" acc))
+                ((string=? s "vector") (put "kayak_rt::value::Vector" acc))
                 ((string=? s "char") (put "char" acc))
                 ((string=? s "unit") (put "()" acc))
                 ((string=? s "void") (put "Void" acc))
@@ -760,7 +762,8 @@
                  "A pair whose tail is a list: that list, not `nil` (C68)."
                  (put-type c (third xs) acc))
                 ((or (sym-is? (car xs) "pairof") (sym-is? (car xs) "%pairof"))
-                 (error "kfx: a pair whose tail is no list, which KFX has not yet (C75)"))
+                 "A pair whose tail is no list: a union's pair, `Value`s (C77)."
+                 (put "kayak_rt::value::Value" acc))
                 ((sym-is? (car xs) "bytevectorof") (put "Bytes" acc))
                 ((and (sym-is? (car xs) "arrayof") (i64= (size xs) 3) (tagcase (third xs) (num (k f p) #f) (else other #t)))
                  (put ">" (put-type c (second xs) (put "Array<" acc))))
@@ -1430,6 +1433,39 @@
           ((not (string=? (fact-with c e "unbox-other ") "")) "unbox_other")
           (else ""))))
 
+(define put-unboxed-type (subr kfx (ctx string string chars) chars)
+  (lambda (c how text acc)
+    "The type a union is unboxed at (C75): a list's element type, for
+     `unbox_list`; Rust's to find, for `nil`'s."
+    (let ((t (car (read-all (string-chars text) "" 1))))
+      (cond ((not (string=? how "unbox_list")) (put-type c t acc))
+            ((head-is? t "listof") (put-type c (second (items t)) acc))
+            (else (put "_" acc))))))
+
+(define-rec
+  (put-quoted (subr kfx (ctx sexp chars) chars)
+    (lambda (c d acc)
+      "A quoted datum, built (C77): a list's pairs `cons`ed, each atom boxed."
+      (tagcase d
+        (lst (xs f l p) (put-quoted-items c xs acc))
+        (sym (q f p)
+          (if (or (string=? q "#t") (string=? q "#f"))
+              (put ")" (put-var c q (put "kayak_rt::value::ToValue::to_value(" acc)))
+              (put "\")))" (put-escaped (string-chars q) #\" (put "kayak_rt::value::ToValue::to_value(symbol_lit(str_lit(\"" acc)))))
+        (num (k f p) (put "))" (put (i64->string k) (put "kayak_rt::value::ToValue::to_value(int_lit(" acc))))
+        (big (text f p) (put "\"))" (put text (put "kayak_rt::value::ToValue::to_value(int_text(\"" acc))))
+        (str (x f p) (put "\"))" (put-escaped (string-chars x) #\" (put "kayak_rt::value::ToValue::to_value(str_lit(\"" acc))))
+        (chr (ch f p) (put "')" (put-escaped (list ch) #\' (put "kayak_rt::value::ToValue::to_value('" acc))))
+        (real (x f p)
+          (let ((acc (put x (put "kayak_rt::value::ToValue::to_value(" acc))))
+            (put "f64)" (if (char=? (last (string-chars x)) #\.) (put "0" acc) acc))))
+        (else other (error "kfx: a quoted datum KFX does not build")))))
+  (put-quoted-items (subr kfx (ctx sexps chars) chars)
+    (lambda (c xs acc)
+      (if (null? xs)
+          (put "kayak_rt::value::Value::Nil" acc)
+          (put ")" (put-quoted-items c (cdr xs) (put ", " (put-quoted c (car xs) (put "kayak_rt::value::cons(" acc)))))))))
+
 (define unboxed-type (subr kfx (ctx sexp) string)
   (lambda (c e)
     (let ((a (fact-with c e "unbox ")) (b (fact-with c e "unbox-list ")))
@@ -1498,7 +1534,7 @@
                   (not (string-member? (string-append "%unboxed " (string-append (datum-file e) (i64->string (datum-pos e)))) (ctx-locals c))))
              "A union narrowed to a member (C75): unboxed, at the member's type."
              (let* ((acc (put (unboxing c e) (put "kayak_rt::value::" acc)))
-                    (acc (put ">(" (put-type c (car (read-all (string-chars (unboxed-type c e)) "" 1)) (put "::<" acc))))
+                    (acc (put ">(" (put-unboxed-type c (unboxing c e) (unboxed-type c e) (put "::<" acc))))
                     (acc (put-exp (with-locals c (list (string-append "%unboxed " (string-append (datum-file e) (i64->string (datum-pos e)))))) e n (value) acc)))
                (put ")" acc)))
             (else
@@ -1536,7 +1572,8 @@
                (lst (xs src-file src-line src-pos)
                  (cond ((fact-at? c e "void-call") (put " {}" (put-call c e xs n t (put "match " acc))))
                        ((fact-at? c e "void-error") (put ")" (put-call c e xs n t (put "the::<Void>(" acc))))
-                       ((fact-at? c e "union-test") (put-call c e xs n t (put "kayak_rt::value::" acc)))
+                       ((or (fact-at? c e "union-test") (fact-at? c e "value-call")) (put-call c e xs n t (put "kayak_rt::value::" acc)))
+                       ((fact-at? c e "value-cons") (put ")" (put-joined c (cdr xs) ", " n (put "kayak_rt::value::cons(" acc))))
                        (else (put-call c e xs n t acc)))))))))
 
   (put-call (subr kfx (ctx sexp sexps i64 tail chars) chars)
@@ -1636,7 +1673,7 @@
        bound to `x`, unboxed if `x` is a union's; the last arm, or `else`,
        what is left."
       (let ((arm (items (car arms))))
-        (if (sym-is? (car arm) "else")
+        (if (and (sym-is? (car arm) "else") (i64= (size arm) 2))
             (put-block c (cdr arm) n t acc)
             (let* ((name (sym-name (second arm)))
                    (how (unboxing c (car arms)))
@@ -1651,7 +1688,7 @@
                               ((string=? how "") (put-var c (sym-name x) acc))
                               (else
                                (put ")" (put-var c (sym-name x)
-                                                 (put ">(" (put-type c (car (read-all (string-chars (unboxed-type c (car arms))) "" 1))
+                                                 (put ">(" (put-unboxed-type c how (unboxed-type c (car arms))
                                                                     (put "::<" (put how (put "kayak_rt::value::" acc))))))))))
                    (acc (if used (put-nl (i64+ n 1) (put ";" acc)) acc))
                    (acc (put-stmts (with-locals c (list name)) (cdr (cdr arm)) (i64+ n 1) (hide t (list name)) acc))
@@ -1972,7 +2009,15 @@
             ((and (string=? h "list") (null? xs)) (put "()" (put-turbofish c e (put "kayak_rt::nil" acc))))
             ((string=? h "list") (put-list c xs n acc))
             ((string=? h "quote")
-             (put "\"))" (put-escaped (string-chars (sym-name (car xs))) #\" (put "symbol_lit(str_lit(\"" acc))))
+             (tagcase (car xs)
+               (sym (q f p)
+                 (if (or (string=? q "#t") (string=? q "#f"))
+                     (put-var c q acc)
+                     (put "\"))" (put-escaped (string-chars q) #\" (put "symbol_lit(str_lit(\"" acc)))))
+               (num (k f p) (put ")" (put (i64->string k) (put "int_lit(" acc))))
+               (big (text f p) (put "\")" (put text (put "int_text(\"" acc))))
+               (lst (ys f l p) (put-quoted c (car xs) acc))
+               (else other (put-exp c (car xs) n (value) acc))))
             ((string=? h "the")
              "`the::<T>(e)`: the type said to rustc too, which may need it where
               FX-26's checker did (a tag's payload, a list nothing else types)."

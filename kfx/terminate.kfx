@@ -103,6 +103,21 @@
                      (else other nil)))
                  ts))))
 
+(define acyclic-pair (subr kfx (ty) tys)
+  (lambda (t)
+    "The pair at `acyclic` a value of type `t` is taken apart as (C77): a
+     pair, or a union's pair member, as `datum`'s: a `car` or `cdr` that
+     returns took it apart, and it was made before what holds it."
+    (let ((ps (tagcase t
+                (ty-data (d args) (if (string=? d "%pairof") (the tys (list t)) (member-of-shape (members-of t) "pair")))
+                (else other nil))))
+      (if (and (not (null? ps))
+               (tagcase (car ps)
+                 (ty-data (d parts) (tagcase (car (cdr (cdr parts))) (ty-rconst (rn) (string=? rn "acyclic")) (else other #f)))
+                 (else other #f)))
+          ps
+          nil))))
+
 (define-rec
   (tracked-of (subr kfx (wc sexp) trackeds)
     (lambda (c e)
@@ -125,7 +140,14 @@
                                                       (the trackeds (list (part p #t (the tys (list (if (string=? op "car") el (car ty)))))))
                                                       nil))
                                                 (else other nil)))
-                                            (else other nil))))
+                                            (else other
+                                              (let ((pr (acyclic-pair (car ty))))
+                                                (if (null? pr)
+                                                    nil
+                                                    (tagcase (car pr)
+                                                      (ty-data (d parts)
+                                                        (the trackeds (list (part p #t (the tys (list (if (string=? op "car") (car parts) (car (cdr parts)))))))))
+                                                      (else other2 nil))))))))
                                     (else other nil)))
                                 (tracked-of c (second xs)))))
                   ((and (or (string=? op "+") (string=? op "-")) (i64= (size xs) 3))
@@ -326,6 +348,15 @@
                    (walk-all c (walk-exp c st (second xs))
                              (concat (map (lambda ((arm sexp)) (cdr (items arm))) (cdr (cdr xs))))))
                   ((string=? h "tagcase") (walk-arms c (walk-exp c st (second xs)) (tracked-of c (second xs)) (cdr (cdr xs))))
+                  ((string=? h "typecase")
+                   "Each arm's name the value tested, as it is (C77)."
+                   (walk-all c (walk-exp c st (second xs))
+                             (map (lambda ((arm sexp))
+                                    (let ((a (items arm)))
+                                      (if (i64= (size a) 3)
+                                          (lst (list (sym "let" "" 0) (lst (list (lst (list (second a) (second xs)) "" 0 0)) "" 0 0) (third a)) "" 0 0)
+                                          (second a))))
+                                  (cdr (cdr xs)))))
                   ((string=? h "let")
                    (let ((st (walk-all c st (map (lambda ((b sexp)) (second (items b))) (items (second xs))))))
                      (walk-all (in-scope c (map (lambda ((b sexp)) (known (sym-name (car (items b))) (tracked-of c (second (items b)))))

@@ -66,7 +66,7 @@
           ((string-member? n (list "int?" "string?" "bool?" "char?" "symbol?" "array?" "procedure?" "f64?" "ref?" "sum?" "product?" "bytevector?"
                                    "char->integer" "integer->char"))
            1)
-          ((string-member? n (list "stay-cellular")) 1)
+          ((string-member? n (list "stay-cellular" "vector?" "datum-list->vector")) 1)
           ((string-member? n (list "eq?" "set-car!" "set-cdr!" "apply" "first-mark" "marks-of")) 2)
           ((string-member? n (list "with-mark")) 3)
           ((string-member? n (list "current-marks")) 1)

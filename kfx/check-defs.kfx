@@ -95,6 +95,8 @@
    (sum? (poly ((t type)) (subr pure (t) bool)))
    (product? (poly ((t type)) (subr pure (t) bool)))
    (bytevector? (poly ((t type)) (subr pure (t) bool)))
+   (vector? (poly ((t type)) (subr pure (t) bool)))
+   (datum-list->vector (subr pure (datum) datum))
    (make-continuation-mark-key (poly ((r region) (t type)) (subr (alloc r) () (mark-key t r))))
    (with-mark (poly ((r region) (t type) (a type) (e effect)) (subr (maxeff (write r) e) ((mark-key t r) t (subr e () a)) a)))
    (first-mark (poly ((r region) (t type)) (subr (read r) ((mark-key t r) t) t)))

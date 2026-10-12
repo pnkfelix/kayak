@@ -100,7 +100,7 @@ pub fn prim_arity(n: Str) -> i64 {
         2i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("int?"), kayak_rt::heap_cons(str_lit("string?"), kayak_rt::heap_cons(str_lit("bool?"), kayak_rt::heap_cons(str_lit("char?"), kayak_rt::heap_cons(str_lit("symbol?"), kayak_rt::heap_cons(str_lit("array?"), kayak_rt::heap_cons(str_lit("procedure?"), kayak_rt::heap_cons(str_lit("f64?"), kayak_rt::heap_cons(str_lit("ref?"), kayak_rt::heap_cons(str_lit("sum?"), kayak_rt::heap_cons(str_lit("product?"), kayak_rt::heap_cons(str_lit("bytevector?"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::nil()))))))))))))))) {
         1i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("stay-cellular"), kayak_rt::nil())) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("stay-cellular"), kayak_rt::heap_cons(str_lit("vector?"), kayak_rt::heap_cons(str_lit("datum-list->vector"), kayak_rt::nil())))) {
         1i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::heap_cons(str_lit("set-car!"), kayak_rt::heap_cons(str_lit("set-cdr!"), kayak_rt::heap_cons(str_lit("apply"), kayak_rt::heap_cons(str_lit("first-mark"), kayak_rt::heap_cons(str_lit("marks-of"), kayak_rt::nil()))))))) {
         2i64

@@ -32,6 +32,8 @@
 (define ob-env i64 10)
 (define ob-frame i64 11)
 (define ob-ctor i64 12)
+"`datum`'s vector (C77): its elements, words, as an array's."
+(define ob-vector i64 13)
 "Kinds from here on hold raw words, not values: not scanned."
 (define ob-raw i64 32)
 (define ob-string i64 32)

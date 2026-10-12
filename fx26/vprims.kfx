@@ -1,5 +1,5 @@
 "vprims.kfx: the primitives over words (C64), generated from the list in
- table.kfx by a script (kept in the commit's message): `op-need`, the
+ table.kfx by scripts/gen-vprims.py: `op-need`, the
  room each may allocate, made sure of before it runs; `apply-op`, each by
  its number. The helpers they use are in vwords.kfx."
 
@@ -42,6 +42,7 @@
         ((i64= op 131) (line-room!))
         ((i64= op 132) (file-room! a))
         ((i64= op 134) (dir-room! a))
+        ((i64= op 175) (i64+ (list-count a 0) 1))
         ((i64>= op fixed-base) 8)
         (else 64)))))
 
@@ -218,5 +219,7 @@
         ((i64= op 166) (begin (obj-set! a 1 b) w-unit))
         ((i64= op 167) a)
         ((i64= op 169) (one-word! ob-ref (fixnum 0)))
+        ((i64= op 174) (bool-word (is-obj? a ob-vector)))
+        ((i64= op 175) (list-array! ob-vector a))
         ((i64>= op fixed-base) (fixed-op-word (name-of-number (i64- op fixed-base)) a b))
         (else (begin (error "the engine: a primitive of no number") 0))))))

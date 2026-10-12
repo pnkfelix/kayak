@@ -4,7 +4,7 @@ use kayak_rt::*;
 use super::*;
 
 // vprims.kfx: the primitives over words (C64), generated from the list in
-// table.kfx by a script (kept in the commit's message): `op-need`, the
+// table.kfx by scripts/gen-vprims.py: `op-need`, the
 // room each may allocate, made sure of before it runs; `apply-op`, each by
 // its number. The helpers they use are in vwords.kfx.
 pub fn op_need(op: i64, args: i64) -> i64 {
@@ -85,6 +85,8 @@ pub fn op_need(op: i64, args: i64) -> i64 {
         file_room_x(a)
     } else if i64_eq(op, 134i64) {
         dir_room_x(a)
+    } else if i64_eq(op, 175i64) {
+        i64_plus(list_count(a, 0i64), 1i64)
     } else if i64_gt_eq(op, fixed_base()) {
         8i64
     } else {
@@ -458,6 +460,10 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         a
     } else if i64_eq(op, 169i64) {
         one_word_x(ob_ref(), fixnum(0i64))
+    } else if i64_eq(op, 174i64) {
+        bool_word(is_obj_p(a, ob_vector()))
+    } else if i64_eq(op, 175i64) {
+        list_array_x(ob_vector(), a)
     } else if i64_gt_eq(op, fixed_base()) {
         fixed_op_word(name_of_number(i64_minus(op, fixed_base())), a, b)
     } else {

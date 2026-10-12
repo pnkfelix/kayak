@@ -278,6 +278,53 @@ pub fn shifted(ts: Trackeds, k: i64) -> Trackeds {
     }), ts))
 }
 
+/// The pair at `acyclic` a value of type `t` is taken apart as (C77): a
+/// pair, or a union's pair member, as `datum`'s: a `car` or `cdr` that
+/// returns took it apart, and it was made before what holds it.
+pub fn acyclic_pair(t: &'static Ty) -> Tys {
+    let ps = {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                if string_eq_p(d, str_lit("%pairof")) {
+                    the::<Tys>(kayak_rt::heap_cons(t, kayak_rt::nil()))
+                } else {
+                    member_of_shape(members_of(t), str_lit("pair"))
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<&'static Ty>()
+            }
+        }
+    };
+    if (not(null_p(ps)) && {
+        let tagcase_ = car(ps);
+        match *tagcase_ {
+            Ty::TyData(d, parts) => {
+                let tagcase_ = car(cdr(cdr(parts)));
+                match *tagcase_ {
+                    Ty::TyRconst(rn) => {
+                        string_eq_p(rn, str_lit("acyclic"))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        ps
+    } else {
+        nil::<&'static Ty>()
+    }
+}
+
 /// What is known of `e`'s value.
 pub fn tracked_of(mut c: &'static Wc, mut e: &'static Sexp) -> Trackeds {
     loop {
@@ -328,7 +375,25 @@ pub fn tracked_of(mut c: &'static Wc, mut e: &'static Sexp) -> Trackeds {
                                         }
                                         _ => {
                                             let other = tagcase_;
-                                            nil::<&'static Tracked>()
+                                            let pr = acyclic_pair(car(ty));
+                                            if null_p(pr) {
+                                                nil::<&'static Tracked>()
+                                            } else {
+                                                let tagcase_ = car(pr);
+                                                match *tagcase_ {
+                                                    Ty::TyData(d, parts) => {
+                                                        the::<Trackeds>(kayak_rt::heap_cons(part(p, true, the::<Tys>(kayak_rt::heap_cons(if string_eq_p(op, str_lit("car")) {
+                                                            car(parts)
+                                                        } else {
+                                                            car(cdr(parts))
+                                                        }, kayak_rt::nil()))), kayak_rt::nil()))
+                                                    }
+                                                    _ => {
+                                                        let other2 = tagcase_;
+                                                        nil::<&'static Tracked>()
+                                                    }
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -775,6 +840,16 @@ pub fn walk_exp(mut c: &'static Wc, mut st: &'static Ws, mut e: &'static Sexp) -
                     }), cdr(cdr(xs)))));
                 } else if string_eq_p(h, str_lit("tagcase")) {
                     return walk_arms(c, walk_exp(c, st, second(xs)), tracked_of(c, second(xs)), cdr(cdr(xs)));
+                } else if string_eq_p(h, str_lit("typecase")) {
+                    // Each arm's name the value tested, as it is (C77).
+                    return walk_all(c, walk_exp(c, st, second(xs)), map(lambda1(move |arm: &'static Sexp| {
+                        let a = items(arm);
+                        if i64_eq(size(a), 3i64) {
+                            lst(kayak_rt::heap_cons(sym(str_lit("let"), str_lit(""), 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(second(a), kayak_rt::heap_cons(second(xs), kayak_rt::nil())), str_lit(""), 0i64, 0i64), kayak_rt::nil()), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(third(a), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
+                        } else {
+                            second(a)
+                        }
+                    }), cdr(cdr(xs))));
                 } else if string_eq_p(h, str_lit("let")) {
                     let st = walk_all(c, st, map(lambda1(move |b: &'static Sexp| {
                         second(items(b))

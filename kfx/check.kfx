@@ -759,6 +759,8 @@
               ((string=? d "%array") "bloblet")
               ((string=? d "%bytes") "bytevector")
               ((string=? d "%union") "union")
+              ((string=? d "datum") "union")
+              ((string=? d "vector") "vector")
               (else "")))
       (else other ""))))
 
@@ -771,6 +773,23 @@
           (tagcase (car ts)
             (ty-data (d args) (if (string=? d "%union") (onto (union-members args) (union-members (cdr ts))) (cons (car ts) (union-members (cdr ts)))))
             (else other (cons (car ts) (union-members (cdr ts)))))))))
+
+"`datum` (C77), FX-26's union of what a reader reads, `(union int f64
+ char bool string symbol nil (pairof datum datum acyclic) vector)`: a
+ name, its members found when they are wanted, since it mentions itself.
+ FX-26's has `bytevector` too, which KFX's has not yet."
+(define datum-members (subr kfx () tys)
+  (lambda ()
+    (list (ty-int) (ty-f64) (ty-char) (ty-bool) (ty-string) (ty-data "symbol" nil) (ty-data "nil" nil)
+          (ty-data "%pairof" (list (ty-data "datum" nil) (ty-data "datum" nil) (ty-rconst "acyclic")))
+          (ty-data "vector" nil))))
+
+(define members-of (subr kfx (ty) tys)
+  (lambda (t)
+    "A union's members; `datum`'s; or none."
+    (tagcase t
+      (ty-data (d args) (cond ((string=? d "%union") args) ((string=? d "datum") (datum-members)) (else nil)))
+      (else other nil))))
 
 (define-rec
   (member-of-shape (subr kfx (tys string) tys)
@@ -794,6 +813,7 @@
                 ((string=? s "symbol") (ty-data s nil))
                 ((string=? s "false") (ty-data s nil))
                 ((string=? s "nil") (ty-data s nil))
+                ((or (string=? s "datum") (string=? s "vector")) (ty-data s nil))
                 ((string=? s "bool") (ty-bool))
                 ((string=? s "char") (ty-char))
                 ((string=? s "unit") (ty-unit))
@@ -885,7 +905,7 @@
                 ((and (sym-is? (car xs) "pairof") (i64= (size xs) 4))
                  "FX-26's pair, never `nil` (C68): `(pairof A B R)`, its head and
                   tail of any types; a list's pair when its tail is the list."
-                 (ty-data "%pairof" (list (parse-type v tvars (second xs)) (parse-type v tvars (third xs)) (parse-mutable-region v tvars (fourth xs)))))
+                 (ty-data "%pairof" (list (parse-type v tvars (second xs)) (parse-type v tvars (third xs)) (parse-region v tvars (fourth xs)))))
                 ((sym-is? (car xs) "union")
                  (let* ((members (union-members (parse-types v tvars (cdr xs))))
                         (shapes (map shape-of members)))
@@ -1467,6 +1487,9 @@
           (let ((other (fit-effs s a b)))
             (if (null? other) nil (fit-effs (car other) b a)))))))
 
+(define datum? (subr kfx (ty) bool)
+  (lambda (t) (tagcase t (ty-data (d args) (string=? d "datum")) (else other #f))))
+
 (define-rec
   (fits (subr kfx (cv st ty ty) st)
     (lambda (v s actual expected)
@@ -1494,11 +1517,16 @@
               (else other (fits-shapes v s a e))))))))
   (fits-shapes (subr kfx (cv st ty ty) st)
     (lambda (v s a e)
-      (cond ((string=? (shape-of a) "union")
+      (cond ((and (datum? a) (datum? e)) s)
+            ((and (datum? e) (tagcase a (ty-list (x r) #t) (else other #f)))
+             "A list below `datum` (C77): its elements are, at `acyclic`; so a
+              list of datums is one, as FX-26 has it, and is given as it is."
+             (tagcase a (ty-list (x r) (fits v (fits v s x e) r (ty-rconst "acyclic"))) (else other (mismatch v s a e))))
+            ((string=? (shape-of a) "union")
              "A union below `e`: each member is (C62)."
-             (fits-each-member v s (tagcase a (ty-data (d args) args) (else other nil)) e))
+             (fits-each-member v s (members-of a) e))
             ((and (string=? (shape-of e) "union") (tagcase a (ty-list (x r) #t) (else other #f))
-                  (null? (member-of-shape (tagcase e (ty-data (d args) args) (else other nil)) "list")))
+                  (null? (member-of-shape (members-of e) "list")))
              "A list where a union of `nil` and a pair is expected: each of the
               two it is (C69)."
              (tagcase a
@@ -1506,7 +1534,7 @@
                (else other (mismatch v s a e))))
             ((and (string=? (shape-of e) "union") (not (string=? (shape-of a) "")))
              "A member below its union: the member of its shape (C62)."
-             (let ((m (member-of-shape (tagcase e (ty-data (d args) args) (else other nil)) (shape-of a))))
+             (let ((m (member-of-shape (members-of e) (shape-of a))))
                (if (null? m) (mismatch v s a e) (fits v s a (car m)))))
             ((and (tagcase a (ty-data (d args) (string=? d "false")) (else other #f)) (tagcase e (ty-bool () #t) (else other #f)))
              "`false` below `bool`."

@@ -659,7 +659,7 @@
   (lambda (s t)
     (let ((x (walk s t)))
       (cond ((string=? (shape-of x) "pair") (list x))
-            ((string=? (shape-of x) "union") (tagcase x (ty-data (d args) (member-of-shape args "pair")) (else other nil)))
+            ((string=? (shape-of x) "union") (member-of-shape (members-of x) "pair"))
             (else nil)))))
 
 "Narrowing (C62): a shape's test of a local of a union, `(int? x)`, says
@@ -671,13 +671,8 @@
           ((string=? p "char?") "char") ((string=? p "symbol?") "symbol") ((string=? p "array?") "bloblet")
           ((string=? p "procedure?") "procedure") ((string=? p "null?") "nil") ((string=? p "pair?") "pair")
           ((string=? p "f64?") "f64") ((string=? p "ref?") "box") ((string=? p "sum?") "sum")
-          ((string=? p "product?") "product") ((string=? p "bytevector?") "bytevector")
+          ((string=? p "product?") "product") ((string=? p "bytevector?") "bytevector") ((string=? p "vector?") "vector")
           (else ""))))
-
-(define arm-shape (subr kfx (string) string)
-  (lambda (a)
-    "A `typecase` arm's shape, as FX-26 names it."
-    (cond ((string=? a "array") "bloblet") (else a))))
 
 (define-rec
   (members-but (subr kfx (tys string) tys)
@@ -733,8 +728,79 @@
  union narrowed to a member unboxed: each a fact at the expression, for
  the emitter. `nil`, a list narrowed so, is a list still, of the element
  type Rust finds."
+(define general-pair? (subr kfx (st ty) bool)
+  (lambda (s t)
+    "A pair whose tail is no list: a union's pair, `Value`s in Rust (C77)."
+    (tagcase (walk s t)
+      (ty-data (d args)
+        (and (string=? d "%pairof")
+             (not (tagcase (walk s (car (cdr args))) (ty-list (e r) #t) (else other #f)))))
+      (else other #f))))
+
 (define valued? (subr kfx (st ty) bool)
-  (lambda (s t) (string=? (shape-of (walk s t)) "union")))
+  (lambda (s t)
+    "Whether a type's Rust is `Value`: a union's, `datum`'s, a pair's whose
+     tail is no list (C77)."
+    (let ((x (walk s t)))
+      (or (string=? (shape-of x) "union") (general-pair? s x)))))
+
+(define-rec
+  (quotable? (subr kfx (sexp) bool)
+    (lambda (d)
+      "Whether a quoted datum is one KFX builds (C77): no dotted list, no
+       vector, as KFX's reader reads neither."
+      (tagcase d
+        (sym (n f p) (not (string=? n ".")))
+        (lst (xs f l p) (not (any? (lambda ((x sexp)) (not (quotable? x))) xs)))
+        (else other #t)))))
+
+(define pair-member (subr kfx (st ty) tys)
+  (lambda (s t)
+    "The pair a value of type `t` is taken apart as, where it is a union's
+     (C77): a pair whose tail is no list; a union's pair member, or its list
+     member's pair."
+    (let ((x (walk s t)))
+      (cond ((general-pair? s x) (list x))
+            ((string=? (shape-of x) "union")
+             (let ((ms (members-of x)))
+               (cond ((not (null? (member-of-shape ms "pair"))) (member-of-shape ms "pair"))
+                     ((not (null? (member-of-shape ms "list")))
+                      (tagcase (car (member-of-shape ms "list"))
+                        (ty-list (e r) (list (ty-data "%pairof" (list e (car (member-of-shape ms "list")) r))))
+                        (else other nil)))
+                     (else nil))))
+            (else nil)))))
+
+(define-rec
+  (chain-type (subr kfx (cv st sexp) tys)
+    (lambda (v s e)
+      "The type of `e`, a name, or a `car` or `cdr` of one, found from the
+       names' types alone, nothing checked; or none."
+      (tagcase e
+        (sym (n f p)
+          (let ((b (find-bind n (cv-binds v))))
+            (if (null? b)
+                nil
+                (tagcase (car b)
+                  (bind (n2 sc w)
+                    (tagcase sc (scheme (tv t) (if (and (null? tv) (not (string=? w "prim"))) (list (walk s t)) nil))))))))
+        (lst (xs f l p)
+          (if (and (i64= (size xs) 2) (or (sym-is? (car xs) "car") (sym-is? (car xs) "cdr")))
+              (let ((inner (chain-type v s (second xs))))
+                (if (null? inner)
+                    nil
+                    (let ((x (car inner)))
+                      (tagcase x
+                        (ty-list (el r) (list (if (sym-is? (car xs) "car") el x)))
+                        (else other
+                          (let ((ps (tagcase x (ty-data (d args) (if (string=? d "%pairof") (the tys (list x)) (pair-member s x))) (else other nil))))
+                            (if (null? ps)
+                                nil
+                                (tagcase (car ps)
+                                  (ty-data (d parts) (list (walk s (if (sym-is? (car xs) "car") (car parts) (car (cdr parts))))))
+                                  (else other nil)))))))))
+              nil))
+        (else other nil)))))
 
 (define as-member (subr kfx (st ty) ty)
   (lambda (s t)
@@ -764,6 +830,7 @@
           ((string=? shape "bloblet") "Bloblet") ((string=? shape "sum") "Sum")
           ((string=? shape "product") "Product") ((string=? shape "f32") "F32")
           ((string=? shape "bytevector") "Bytevector") ((string=? shape "int") "Int")
+          ((string=? shape "vector") "Vector")
           (else ""))))
 
 (define coerced (subr kfx (cv st string i64 ty ty) st)
@@ -821,7 +888,7 @@
                 (bind (n2 sc w)
                   (if (or (string=? w "local") (string=? w "narrowed"))
                       (tagcase sc (scheme (tv t) (tagcase (walk s t)
-                                                   (ty-data (d args) (if (string=? d "%union") (lists-split args) (if (string=? (shape-of (walk s t)) "") nil (list (walk s t)))))
+                                                   (ty-data (d args) (if (string=? (shape-of (walk s t)) "union") (lists-split (members-of (walk s t))) (if (string=? (shape-of (walk s t)) "") nil (list (walk s t)))))
                                                    (ty-list (e r) (lists-split (list (walk s t))))
                                                    (else other (if (string=? (shape-of (walk s t)) "") nil (list (walk s t)))))))
                       nil))))))
@@ -964,7 +1031,7 @@
                        (else other #f))))
             (res (ty-data "false" nil) nil s)
         (if (and (string=? (shape-of x) "union") (not (string=? (literal-shape e) "")))
-            (let ((m (member-of-shape (tagcase x (ty-data (d args) args) (else other nil)) (literal-shape e))))
+            (let ((m (member-of-shape (members-of x) (literal-shape e))))
               (if (null? m)
                   (refuse v (string-append "a literal is here, where a " (string-append (show-ty s x) " is expected")))
                   (check v s e (car m))))
@@ -1065,9 +1132,21 @@
       (cond ((string=? h "quote")
              "A quoted symbol (C56); a quoted datum of another kind is FX-26's
               `datum`, which KFX has not yet."
-             (if (and (i64= (size xs) 1) (tagcase (car xs) (sym (n f p) #t) (else other #f)))
-                 (res (ty-data "symbol" nil) nil s)
-                 (refuse v "a quoted datum that is no symbol: KFX has no datum yet")))
+             (if (not (i64= (size xs) 1))
+                 (refuse v "a quote of one datum")
+                 (tagcase (car xs)
+                   (sym (n f p) (if (or (string=? n "#t") (string=? n "#f")) (res (ty-bool) nil s) (res (ty-data "symbol" nil) nil s)))
+                   (num (k f p) (res (ty-int) nil s))
+                   (big (t f p) (res (ty-int) nil s))
+                   (real (x f p) (res (ty-f64) nil s))
+                   (str (x f p) (res (ty-string) nil s))
+                   (chr (c f p) (res (ty-char) nil s))
+                   (lst (ys f l p)
+                     "A quoted list (C77): a `datum`, built where it is written."
+                     (cond ((null? ys) (refuse v "a quote of (), which FX-26 takes as a nil of any type: write nil"))
+                           ((not (quotable? (car xs))) (refuse v "a quoted datum KFX does not read: a dotted list or a vector"))
+                           (else (res (ty-data "datum" nil) nil s))))
+                   (else other (refuse v "a quoted datum KFX does not read")))))
             ((string=? h "the")
              (let ((want (parse-type v (cv-tvars v) (car xs))))
                (tagcase (check v s (second xs) want)
@@ -1160,6 +1239,15 @@
                (else other (refuse v "a vlambda where no variadic procedure is expected"))))
             ((and (string=? h "lambda") (proc-type? s expected))
              (check-lambda v s (items (car xs)) (cdr xs) (walk s expected)))
+            ((and (string=? h "list") (datum? (walk s expected)))
+             "A list where a datum is expected (C77): a list of datums, at
+              `acyclic`, given as it is."
+             (check v s e (ty-list (ty-data "datum" nil) (ty-rconst "acyclic"))))
+            ((and (string=? h "list") (string=? (shape-of (walk s expected)) "union")
+                  (not (null? (member-of-shape (members-of (walk s expected)) "list"))))
+             "A list where a union with a list member is expected (C77): that
+              member, its elements checked against its own."
+             (check v s e (car (member-of-shape (members-of (walk s expected)) "list"))))
             ((and (string=? h "list") (tagcase expected (ty-list (el r) #t) (else other #f)))
              (tagcase expected
                (ty-list (el r)
@@ -1374,27 +1462,42 @@
 
   (typecase-arms (subr kfx (cv st sexp sexps tys) res)
     (lambda (v s x arms expected)
-      "`(typecase x (shape name body ...) ... (else body ...))` (C62): each arm
-       binds its member; what it leaves narrows `x` for the arms after it."
+      "`(typecase x (shape name body) ... (else body))`, or `(else name
+       body)`, as FX-26 has it (C62, C77): each arm binds its member; what it
+       leaves narrows `x` for the arms after it, and the `else`'s name."
       (let ((arm (items (car arms))))
-        (if (sym-is? (car arm) "else")
-            (body v s (cdr arm) expected)
-            (let* ((ms (union-local v s x))
-                   (shape (arm-shape (sym-name (car arm))))
-                   (yes (narrowed-to ms shape))
-                   (no (narrowed-from ms shape)))
-              (if (null? yes)
-                  (refuse v (string-append "a typecase's arm of a shape its union has not: " (sym-name (car arm))))
-                  (tagcase (body (with-binds v (list (local v (name-of v (second arm)) (union-of yes))))
-                                 (let ((origin (bind-origin (sym-name x) (cv-binds v))))
-                                   (if (null? origin) s (coerced v s (datum-file (car arms)) (datum-pos (car arms)) (car origin) (union-of yes))))
-                                 (cdr (cdr arm)) expected)
-                    (res (t es s)
-                      (if (null? (cdr arms))
-                          (res t es s)
-                          (tagcase (typecase-arms (if (null? no) v (with-binds v (list (narrowed v (sym-name x) (union-of no))))) s x (cdr arms)
-                                                  (next-expected s t expected))
-                            (res (t2 es2 s) (res (joined s t t2 expected) (effs-union es es2) (join-state v s t t2 expected)))))))))))))
+        (cond ((sym-is? (car arm) "else")
+               (cond ((not (null? (cdr arms))) (refuse v "a typecase's else is its last arm"))
+                     ((i64= (size arm) 2) (body v s (cdr arm) expected))
+                     ((and (i64= (size arm) 3) (tagcase (second arm) (sym (n f p) #t) (else other #f)))
+                      (let ((ms (union-local v s x)))
+                        (body (with-binds v (list (local v (name-of v (second arm)) (union-of ms))))
+                              (let ((origin (bind-origin (sym-name x) (cv-binds v))))
+                                (if (null? origin) s (coerced v s (datum-file (car arms)) (datum-pos (car arms)) (car origin) (union-of ms))))
+                              (list (third arm)) expected)))
+                     (else (refuse v "a typecase's else is (else body) or (else name body)"))))
+              ((null? (cdr arms)) (refuse v "a typecase needs an else, its last arm, as FX-26's does"))
+              ((not (and (i64= (size arm) 3) (tagcase (car arm) (sym (n f p) #t) (else other #f))
+                         (tagcase (second arm) (sym (n f p) #t) (else other #f))))
+               (refuse v "a typecase's arm is (shape name body)"))
+              ((not (string-member? (sym-name (car arm)) (list "int" "char" "bool" "nil" "pair" "string" "symbol" "procedure" "bloblet"
+                                                               "f64" "f32" "box" "sum" "product" "vector" "bytevector")))
+               (refuse v (string-append "a shape a typecase tests is int, char, bool, nil, pair, string, symbol, procedure, bloblet, f64, f32, box, sum, product, vector or bytevector, not " (sym-name (car arm)))))
+              (else
+               (let* ((ms (union-local v s x))
+                      (shape (sym-name (car arm)))
+                      (yes (narrowed-to ms shape))
+                      (no (narrowed-from ms shape)))
+                 (if (null? yes)
+                     (refuse v (string-append "a typecase's arm of a shape its union has not: " shape))
+                     (tagcase (body (with-binds v (list (local v (name-of v (second arm)) (union-of yes))))
+                                    (let ((origin (bind-origin (sym-name x) (cv-binds v))))
+                                      (if (null? origin) s (coerced v s (datum-file (car arms)) (datum-pos (car arms)) (car origin) (union-of yes))))
+                                    (list (third arm)) expected)
+                       (res (t es s)
+                         (tagcase (typecase-arms (if (null? no) v (with-binds v (list (narrowed v (sym-name x) (union-of no))))) s x (cdr arms)
+                                                 (next-expected s t expected))
+                           (res (t2 es2 s) (res (joined s t t2 expected) (effs-union es es2) (join-state v s t t2 expected)))))))))))))
 
   (cond-clauses (subr kfx (cv st sexps tys) res)
     (lambda (v s clauses expected)
@@ -2036,6 +2139,24 @@
                 union, a pair or `nil`, which KFX's, of a list, would not take."
                (tagcase (synth v s (car args))
                  (res (t es s2) (res (ty-bool) es (if (valued? s2 t) (note-fact s2 (cv-file v) (cv-pos v) "union-test") s2)))))
+              ((and (or (string=? h "car") (string=? h "cdr")) (i64= (size args) 1) (not (null? found))
+                    (tagcase (car found) (bind (n sc w) (string=? w "prim")))
+                    (let ((ct (chain-type v s (car args)))) (and (not (null? ct)) (not (null? (pair-member s (car ct)))))))
+               "Of a union with a pair, or of a pair of a union's (C77): taken
+                apart as FX-26 takes it, checked at run time, a `Value` in Rust,
+                unboxed if its part is no union."
+               (tagcase (synth v s (car args))
+                 (res (t es s1)
+                   (let ((ps (pair-member s1 t)))
+                     (if (null? ps)
+                         (refuse v (string-append "a car or cdr of what has no pair: " (show-ty s1 t)))
+                         (tagcase (car ps)
+                           (ty-data (d parts)
+                             (let ((part (if (string=? h "car") (car parts) (car (cdr parts)))))
+                               (res part
+                                    (effs-union (list (string-append "read:" (region-string s1 (car (cdr (cdr parts)))))) es)
+                                    (coerced v (note-fact s1 (cv-file v) (cv-pos v) "value-call") (cv-file v) (cv-pos v) (ty-data "datum" nil) part))))
+                           (else other (refuse v "a pair that is none"))))))))
               ((and (or (string=? h "car") (string=? h "cdr")) (i64= (size args) 1) (not (null? (local-pair v s (car args)))))
                "Of a local known to be a pair (C68): its head or its tail, of any
                 type, not only a list's."
@@ -2057,7 +2178,10 @@
                        (tagcase (check v s1 (second args) (car (cdr parts)))
                          (res (t2 es2 s2)
                            (res (car (pair-expected s (car expected)))
-                                (effs-union (list (string-append "alloc:" (region-string s2 (car (cdr (cdr parts)))))) (effs-union es1 es2)) s2))))))
+                                (effs-union (list (string-append "alloc:" (region-string s2 (car (cdr (cdr parts)))))) (effs-union es1 es2))
+                                (if (general-pair? s2 (car (pair-expected s (car expected))))
+                                    (note-fact s2 (cv-file v) (cv-pos v) "value-cons")
+                                    s2)))))))
                  (else other (refuse v "a pair that is none"))))
               ((and (null? found) (string=? h "abort-with-continuation")) (suspend-call v s args expected))
               ((and (null? found) (string=? h "make-continuation-prompt-tag")) (make-tag-call v s args expected))

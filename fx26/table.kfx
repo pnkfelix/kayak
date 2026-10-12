@@ -137,7 +137,8 @@
         "f64-abs" "f64-neg" "f64-sqrt" "f64-floor" "f64-ceiling" "f64-truncate" "f64-round" "f64-min" "f64-max"
         "f64-nan?" "f64-infinite?" "f64-finite?" "string-ci=?"
         "eq?" "set-car!" "set-cdr!" "stay-cellular" "apply"
-        "make-continuation-mark-key" "with-mark" "first-mark" "current-marks" "marks-of"))
+        "make-continuation-mark-key" "with-mark" "first-mark" "current-marks" "marks-of"
+        "vector?" "datum-list->vector"))
 
 (define-rec
   (list-position (subr kfx (string strings i64) i64)

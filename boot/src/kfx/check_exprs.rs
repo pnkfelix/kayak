@@ -1477,16 +1477,7 @@ pub fn pair_expected(s: &'static St, t: &'static Ty) -> Tys {
     if string_eq_p(shape_of(x), str_lit("pair")) {
         kayak_rt::heap_cons(x, kayak_rt::nil())
     } else if string_eq_p(shape_of(x), str_lit("union")) {
-        let tagcase_ = x;
-        match *tagcase_ {
-            Ty::TyData(d, args) => {
-                member_of_shape(args, str_lit("pair"))
-            }
-            _ => {
-                let other = tagcase_;
-                nil::<&'static Ty>()
-            }
-        }
+        member_of_shape(members_of(x), str_lit("pair"))
     } else {
         nil::<&'static Ty>()
     }
@@ -1524,17 +1515,10 @@ pub fn tested_shape(p: Str) -> Str {
         str_lit("product")
     } else if string_eq_p(p, str_lit("bytevector?")) {
         str_lit("bytevector")
+    } else if string_eq_p(p, str_lit("vector?")) {
+        str_lit("vector")
     } else {
         str_lit("")
-    }
-}
-
-/// A `typecase` arm's shape, as FX-26 names it.
-pub fn arm_shape(a: Str) -> Str {
-    if string_eq_p(a, str_lit("array")) {
-        str_lit("bloblet")
-    } else {
-        a
     }
 }
 
@@ -1683,8 +1667,179 @@ pub fn narrowing(f0: &'static Cv, f1: &'static Cv) -> &'static Narrowing {
 // union narrowed to a member unboxed: each a fact at the expression, for
 // the emitter. `nil`, a list narrowed so, is a list still, of the element
 // type Rust finds.
+/// A pair whose tail is no list: a union's pair, `Value`s in Rust (C77).
+pub fn general_pair_p(s: &'static St, t: &'static Ty) -> bool {
+    let tagcase_ = walk(s, t);
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            (string_eq_p(d, str_lit("%pairof")) && not({
+                let tagcase_ = walk(s, car(cdr(args)));
+                match *tagcase_ {
+                    Ty::TyList(e, r) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }))
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+/// Whether a type's Rust is `Value`: a union's, `datum`'s, a pair's whose
+/// tail is no list (C77).
 pub fn valued_p(s: &'static St, t: &'static Ty) -> bool {
-    string_eq_p(shape_of(walk(s, t)), str_lit("union"))
+    let x = walk(s, t);
+    (string_eq_p(shape_of(x), str_lit("union")) || general_pair_p(s, x))
+}
+
+/// Whether a quoted datum is one KFX builds (C77): no dotted list, no
+/// vector, as KFX's reader reads neither.
+pub fn quotable_p(d: &'static Sexp) -> bool {
+    let tagcase_ = d;
+    match *tagcase_ {
+        Sexp::Sym(n, f, p) => {
+            not(string_eq_p(n, str_lit(".")))
+        }
+        Sexp::Lst(xs, f, l, p) => {
+            not(any_p(lambda1(move |x: &'static Sexp| {
+                not(quotable_p(x))
+            }), xs))
+        }
+        _ => {
+            let other = tagcase_;
+            true
+        }
+    }
+}
+
+/// The pair a value of type `t` is taken apart as, where it is a union's
+/// (C77): a pair whose tail is no list; a union's pair member, or its list
+/// member's pair.
+pub fn pair_member(s: &'static St, t: &'static Ty) -> Tys {
+    let x = walk(s, t);
+    if general_pair_p(s, x) {
+        kayak_rt::heap_cons(x, kayak_rt::nil())
+    } else if string_eq_p(shape_of(x), str_lit("union")) {
+        let ms = members_of(x);
+        if not(null_p(member_of_shape(ms, str_lit("pair")))) {
+            member_of_shape(ms, str_lit("pair"))
+        } else if not(null_p(member_of_shape(ms, str_lit("list")))) {
+            let tagcase_ = car(member_of_shape(ms, str_lit("list")));
+            match *tagcase_ {
+                Ty::TyList(e, r) => {
+                    kayak_rt::heap_cons(ty_data(str_lit("%pairof"), kayak_rt::heap_cons(e, kayak_rt::heap_cons(car(member_of_shape(ms, str_lit("list"))), kayak_rt::heap_cons(r, kayak_rt::nil())))), kayak_rt::nil())
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<&'static Ty>()
+                }
+            }
+        } else {
+            nil::<&'static Ty>()
+        }
+    } else {
+        nil::<&'static Ty>()
+    }
+}
+
+/// The type of `e`, a name, or a `car` or `cdr` of one, found from the
+/// names' types alone, nothing checked; or none.
+pub fn chain_type(v: &'static Cv, s: &'static St, e: &'static Sexp) -> Tys {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Sym(n, f, p) => {
+            let b = find_bind(n, cv_binds(v));
+            if null_p(b) {
+                nil::<&'static Ty>()
+            } else {
+                let tagcase_ = car(b);
+                match *tagcase_ {
+                    Bind::Bind(n2, sc, w) => {
+                        let tagcase_ = sc;
+                        match *tagcase_ {
+                            Scheme::Scheme(tv, t) => {
+                                if (null_p(tv) && not(string_eq_p(w, str_lit("prim")))) {
+                                    kayak_rt::heap_cons(walk(s, t), kayak_rt::nil())
+                                } else {
+                                    nil::<&'static Ty>()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Sexp::Lst(xs, f, l, p) => {
+            if (i64_eq(size(xs), 2i64) && (sym_is_p(car(xs), str_lit("car")) || sym_is_p(car(xs), str_lit("cdr")))) {
+                let inner = chain_type(v, s, second(xs));
+                if null_p(inner) {
+                    nil::<&'static Ty>()
+                } else {
+                    let x = car(inner);
+                    let tagcase_ = x;
+                    match *tagcase_ {
+                        Ty::TyList(el, r) => {
+                            kayak_rt::heap_cons(if sym_is_p(car(xs), str_lit("car")) {
+                                el
+                            } else {
+                                x
+                            }, kayak_rt::nil())
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            let ps = {
+                                let tagcase_ = x;
+                                match *tagcase_ {
+                                    Ty::TyData(d, args) => {
+                                        if string_eq_p(d, str_lit("%pairof")) {
+                                            the::<Tys>(kayak_rt::heap_cons(x, kayak_rt::nil()))
+                                        } else {
+                                            pair_member(s, x)
+                                        }
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        nil::<&'static Ty>()
+                                    }
+                                }
+                            };
+                            if null_p(ps) {
+                                nil::<&'static Ty>()
+                            } else {
+                                let tagcase_ = car(ps);
+                                match *tagcase_ {
+                                    Ty::TyData(d, parts) => {
+                                        kayak_rt::heap_cons(walk(s, if sym_is_p(car(xs), str_lit("car")) {
+                                            car(parts)
+                                        } else {
+                                            car(cdr(parts))
+                                        }), kayak_rt::nil())
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        nil::<&'static Ty>()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                nil::<&'static Ty>()
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<&'static Ty>()
+        }
+    }
 }
 
 /// A member's type as Rust has it: a pair whose tail is a list is that
@@ -1774,6 +1929,8 @@ pub fn rust_shape(shape: Str) -> Str {
         str_lit("Bytevector")
     } else if string_eq_p(shape, str_lit("int")) {
         str_lit("Int")
+    } else if string_eq_p(shape, str_lit("vector")) {
+        str_lit("Vector")
     } else {
         str_lit("")
     }
@@ -1870,8 +2027,8 @@ pub fn union_local(v: &'static Cv, s: &'static St, x: &'static Sexp) -> Tys {
                                     let tagcase_ = walk(s, t);
                                     match *tagcase_ {
                                         Ty::TyData(d, args) => {
-                                            if string_eq_p(d, str_lit("%union")) {
-                                                lists_split(args)
+                                            if string_eq_p(shape_of(walk(s, t)), str_lit("union")) {
+                                                lists_split(members_of(walk(s, t)))
                                             } else {
                                                 if string_eq_p(shape_of(walk(s, t)), str_lit("")) {
                                                     nil::<&'static Ty>()
@@ -2237,18 +2394,7 @@ pub fn check_plain(v: &'static Cv, s: &'static St, e: &'static Sexp, expected: &
         res(ty_data(str_lit("false"), nil::<&'static Ty>()), nil::<Str>(), s)
     } else {
         if (string_eq_p(shape_of(x), str_lit("union")) && not(string_eq_p(literal_shape(e), str_lit("")))) {
-            let m = member_of_shape({
-                let tagcase_ = x;
-                match *tagcase_ {
-                    Ty::TyData(d, args) => {
-                        args
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        nil::<&'static Ty>()
-                    }
-                }
-            }, literal_shape(e));
+            let m = member_of_shape(members_of(x), literal_shape(e));
             if null_p(m) {
                 match refuse(v, string_append(str_lit("a literal is here, where a "), string_append(show_ty(s, x), str_lit(" is expected")))) {}
             } else {
@@ -2447,21 +2593,48 @@ pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
     if string_eq_p(h, str_lit("quote")) {
         // A quoted symbol (C56); a quoted datum of another kind is FX-26's
         // `datum`, which KFX has not yet.
-        if (i64_eq(size(xs), 1i64) && {
+        if not(i64_eq(size(xs), 1i64)) {
+            match refuse(v, str_lit("a quote of one datum")) {}
+        } else {
             let tagcase_ = car(xs);
             match *tagcase_ {
                 Sexp::Sym(n, f, p) => {
-                    true
+                    if (string_eq_p(n, str_lit("#t")) || string_eq_p(n, str_lit("#f"))) {
+                        res(ty_bool(), nil::<Str>(), s)
+                    } else {
+                        res(ty_data(str_lit("symbol"), nil::<&'static Ty>()), nil::<Str>(), s)
+                    }
+                }
+                Sexp::Num(k, f, p) => {
+                    res(ty_int(), nil::<Str>(), s)
+                }
+                Sexp::Big(t, f, p) => {
+                    res(ty_int(), nil::<Str>(), s)
+                }
+                Sexp::Real(x, f, p) => {
+                    res(ty_f64(), nil::<Str>(), s)
+                }
+                Sexp::Str(x, f, p) => {
+                    res(ty_string(), nil::<Str>(), s)
+                }
+                Sexp::Chr(c, f, p) => {
+                    res(ty_char(), nil::<Str>(), s)
+                }
+                Sexp::Lst(ys, f, l, p) => {
+                    // A quoted list (C77): a `datum`, built where it is written.
+                    if null_p(ys) {
+                        match refuse(v, str_lit("a quote of (), which FX-26 takes as a nil of any type: write nil")) {}
+                    } else if not(quotable_p(car(xs))) {
+                        match refuse(v, str_lit("a quoted datum KFX does not read: a dotted list or a vector")) {}
+                    } else {
+                        res(ty_data(str_lit("datum"), nil::<&'static Ty>()), nil::<Str>(), s)
+                    }
                 }
                 _ => {
                     let other = tagcase_;
-                    false
+                    match refuse(v, str_lit("a quoted datum KFX does not read")) {}
                 }
             }
-        }) {
-            res(ty_data(str_lit("symbol"), nil::<&'static Ty>()), nil::<Str>(), s)
-        } else {
-            match refuse(v, str_lit("a quoted datum that is no symbol: KFX has no datum yet")) {}
         }
     } else if string_eq_p(h, str_lit("the")) {
         let want = parse_type(v, cv_tvars(v), car(xs));
@@ -2700,6 +2873,14 @@ pub fn check_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
         }
     } else if (string_eq_p(h, str_lit("lambda")) && proc_type_p(s, expected)) {
         check_lambda(v, s, items(car(xs)), cdr(xs), walk(s, expected))
+    } else if (string_eq_p(h, str_lit("list")) && datum_p(walk(s, expected))) {
+        // A list where a datum is expected (C77): a list of datums, at
+        // `acyclic`, given as it is.
+        check(v, s, e, ty_list(ty_data(str_lit("datum"), nil::<&'static Ty>()), ty_rconst(str_lit("acyclic"))))
+    } else if (string_eq_p(h, str_lit("list")) && string_eq_p(shape_of(walk(s, expected)), str_lit("union")) && not(null_p(member_of_shape(members_of(walk(s, expected)), str_lit("list"))))) {
+        // A list where a union with a list member is expected (C77): that
+        // member, its elements checked against its own.
+        check(v, s, e, car(member_of_shape(members_of(walk(s, expected)), str_lit("list"))))
     } else if (string_eq_p(h, str_lit("list")) && {
         let tagcase_ = expected;
         match *tagcase_ {
@@ -3187,19 +3368,75 @@ pub fn narrowed_arms(yes: &'static Cv, no: &'static Cv, s: &'static St, a: &'sta
     }
 }
 
-/// `(typecase x (shape name body ...) ... (else body ...))` (C62): each arm
-/// binds its member; what it leaves narrows `x` for the arms after it.
+/// `(typecase x (shape name body) ... (else body))`, or `(else name
+/// body)`, as FX-26 has it (C62, C77): each arm binds its member; what it
+/// leaves narrows `x` for the arms after it, and the `else`'s name.
 pub fn typecase_arms(v: &'static Cv, s: &'static St, x: &'static Sexp, arms: Sexps, expected: Tys) -> &'static Res {
     let arm = items(car(arms));
     if sym_is_p(car(arm), str_lit("else")) {
-        body(v, s, cdr(arm), expected)
+        if not(null_p(cdr(arms))) {
+            match refuse(v, str_lit("a typecase's else is its last arm")) {}
+        } else if i64_eq(size(arm), 2i64) {
+            body(v, s, cdr(arm), expected)
+        } else if (i64_eq(size(arm), 3i64) && {
+            let tagcase_ = second(arm);
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }) {
+            let ms = union_local(v, s, x);
+            body(with_binds(v, kayak_rt::heap_cons(local(v, name_of(v, second(arm)), union_of(ms)), kayak_rt::nil())), {
+                let origin = bind_origin(sym_name(x), cv_binds(v));
+                if null_p(origin) {
+                    s
+                } else {
+                    coerced(v, s, datum_file(car(arms)), datum_pos(car(arms)), car(origin), union_of(ms))
+                }
+            }, kayak_rt::heap_cons(third(arm), kayak_rt::nil()), expected)
+        } else {
+            match refuse(v, str_lit("a typecase's else is (else body) or (else name body)")) {}
+        }
+    } else if null_p(cdr(arms)) {
+        match refuse(v, str_lit("a typecase needs an else, its last arm, as FX-26's does")) {}
+    } else if not((i64_eq(size(arm), 3i64) && {
+        let tagcase_ = car(arm);
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } && {
+        let tagcase_ = second(arm);
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    })) {
+        match refuse(v, str_lit("a typecase's arm is (shape name body)")) {}
+    } else if not(string_member_p(sym_name(car(arm)), kayak_rt::heap_cons(str_lit("int"), kayak_rt::heap_cons(str_lit("char"), kayak_rt::heap_cons(str_lit("bool"), kayak_rt::heap_cons(str_lit("nil"), kayak_rt::heap_cons(str_lit("pair"), kayak_rt::heap_cons(str_lit("string"), kayak_rt::heap_cons(str_lit("symbol"), kayak_rt::heap_cons(str_lit("procedure"), kayak_rt::heap_cons(str_lit("bloblet"), kayak_rt::heap_cons(str_lit("f64"), kayak_rt::heap_cons(str_lit("f32"), kayak_rt::heap_cons(str_lit("box"), kayak_rt::heap_cons(str_lit("sum"), kayak_rt::heap_cons(str_lit("product"), kayak_rt::heap_cons(str_lit("vector"), kayak_rt::heap_cons(str_lit("bytevector"), kayak_rt::nil())))))))))))))))))) {
+        match refuse(v, string_append(str_lit("a shape a typecase tests is int, char, bool, nil, pair, string, symbol, procedure, bloblet, f64, f32, box, sum, product, vector or bytevector, not "), sym_name(car(arm)))) {}
     } else {
         let ms = union_local(v, s, x);
-        let shape = arm_shape(sym_name(car(arm)));
+        let shape = sym_name(car(arm));
         let yes = narrowed_to(ms, shape);
         let no = narrowed_from(ms, shape);
         if null_p(yes) {
-            match refuse(v, string_append(str_lit("a typecase's arm of a shape its union has not: "), sym_name(car(arm)))) {}
+            match refuse(v, string_append(str_lit("a typecase's arm of a shape its union has not: "), shape)) {}
         } else {
             let tagcase_ = body(with_binds(v, kayak_rt::heap_cons(local(v, name_of(v, second(arm)), union_of(yes)), kayak_rt::nil())), {
                 let origin = bind_origin(sym_name(x), cv_binds(v));
@@ -3208,21 +3445,17 @@ pub fn typecase_arms(v: &'static Cv, s: &'static St, x: &'static Sexp, arms: Sex
                 } else {
                     coerced(v, s, datum_file(car(arms)), datum_pos(car(arms)), car(origin), union_of(yes))
                 }
-            }, cdr(cdr(arm)), expected);
+            }, kayak_rt::heap_cons(third(arm), kayak_rt::nil()), expected);
             match *tagcase_ {
                 Res::Res(t, es, s) => {
-                    if null_p(cdr(arms)) {
-                        res(t, es, s)
+                    let tagcase_ = typecase_arms(if null_p(no) {
+                        v
                     } else {
-                        let tagcase_ = typecase_arms(if null_p(no) {
-                            v
-                        } else {
-                            with_binds(v, kayak_rt::heap_cons(narrowed(v, sym_name(x), union_of(no)), kayak_rt::nil()))
-                        }, s, x, cdr(arms), next_expected(s, t, expected));
-                        match *tagcase_ {
-                            Res::Res(t2, es2, s) => {
-                                res(joined(s, t, t2, expected), effs_union(es, es2), join_state(v, s, t, t2, expected))
-                            }
+                        with_binds(v, kayak_rt::heap_cons(narrowed(v, sym_name(x), union_of(no)), kayak_rt::nil()))
+                    }, s, x, cdr(arms), next_expected(s, t, expected));
+                    match *tagcase_ {
+                        Res::Res(t2, es2, s) => {
+                            res(joined(s, t, t2, expected), effs_union(es, es2), join_state(v, s, t, t2, expected))
                         }
                     }
                 }
@@ -4662,6 +4895,45 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
                 })
             }
         }
+    } else if ((string_eq_p(h, str_lit("car")) || string_eq_p(h, str_lit("cdr"))) && i64_eq(size(args), 1i64) && not(null_p(found)) && {
+        let tagcase_ = car(found);
+        match *tagcase_ {
+            Bind::Bind(n, sc, w) => {
+                string_eq_p(w, str_lit("prim"))
+            }
+        }
+    } && {
+        let ct = chain_type(v, s, car(args));
+        (not(null_p(ct)) && not(null_p(pair_member(s, car(ct)))))
+    }) {
+        // Of a union with a pair, or of a pair of a union's (C77): taken
+        // apart as FX-26 takes it, checked at run time, a `Value` in Rust,
+        // unboxed if its part is no union.
+        let tagcase_ = synth(v, s, car(args));
+        match *tagcase_ {
+            Res::Res(t, es, s1) => {
+                let ps = pair_member(s1, t);
+                if null_p(ps) {
+                    match refuse(v, string_append(str_lit("a car or cdr of what has no pair: "), show_ty(s1, t))) {}
+                } else {
+                    let tagcase_ = car(ps);
+                    match *tagcase_ {
+                        Ty::TyData(d, parts) => {
+                            let part = if string_eq_p(h, str_lit("car")) {
+                                car(parts)
+                            } else {
+                                car(cdr(parts))
+                            };
+                            res(part, effs_union(kayak_rt::heap_cons(string_append(str_lit("read:"), region_string(s1, car(cdr(cdr(parts))))), kayak_rt::nil()), es), coerced(v, note_fact(s1, cv_file(v), cv_pos(v), str_lit("value-call")), cv_file(v), cv_pos(v), ty_data(str_lit("datum"), nil::<&'static Ty>()), part))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            match refuse(v, str_lit("a pair that is none")) {}
+                        }
+                    }
+                }
+            }
+        }
     } else if ((string_eq_p(h, str_lit("car")) || string_eq_p(h, str_lit("cdr"))) && i64_eq(size(args), 1i64) && not(null_p(local_pair(v, s, car(args))))) {
         // Of a local known to be a pair (C68): its head or its tail, of any
         // type, not only a list's.
@@ -4702,7 +4974,11 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
                         let tagcase_ = check(v, s1, second(args), car(cdr(parts)));
                         match *tagcase_ {
                             Res::Res(t2, es2, s2) => {
-                                res(car(pair_expected(s, car(expected))), effs_union(kayak_rt::heap_cons(string_append(str_lit("alloc:"), region_string(s2, car(cdr(cdr(parts))))), kayak_rt::nil()), effs_union(es1, es2)), s2)
+                                res(car(pair_expected(s, car(expected))), effs_union(kayak_rt::heap_cons(string_append(str_lit("alloc:"), region_string(s2, car(cdr(cdr(parts))))), kayak_rt::nil()), effs_union(es1, es2)), if general_pair_p(s2, car(pair_expected(s, car(expected)))) {
+                                    note_fact(s2, cv_file(v), cv_pos(v), str_lit("value-cons"))
+                                } else {
+                                    s2
+                                })
                             }
                         }
                     }

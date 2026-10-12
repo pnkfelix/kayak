@@ -1492,3 +1492,41 @@ own for the call: none when the receiver is a `lambda` that names its
 continuation only as a call's operator, outside a `lambda` or a prompt.
 Queued (TODO §25): FX-26's rule for that call, ahead of the general one.
 It matters to the engine only, since kfx refuses the primitive for Rust.
+
+## C77. `datum`, pairs of a union's, `quote` of any datum; `typecase` as FX-26 writes it (2026-10-12)
+
+Step 2 of the uniform values (C75).
+- **`datum`** is a type of the checker's, shared with the engine: a name
+  whose members, `(union int f64 char bool string symbol nil (pairof datum
+  datum acyclic) vector)`, are found when wanted (`members-of`), since it
+  mentions itself. FX-26's has `bytevector` too; KFX's has not yet
+  (stricter). A list fits `datum` when its elements do, at `acyclic`, and
+  a list literal where a datum is expected is a list of datums.
+- **A pair whose tail is no list is a `Value`** in Rust, as a union is: a
+  pair of `Value`s, `cons`ed by kayak-rt's `value::cons` (`value-cons`).
+  `car` and `cdr` of a union with a pair, or of such a pair, are kayak-rt's,
+  checked (`value-call`), and unboxed where their part is no union. A pair
+  may be at `acyclic` (FX-26's).
+- **A typed list is given as a datum, or for a union, as it is**: its
+  pair, seen through `PairLike`, boxes each element as it is read, a view,
+  so no copy; narrowed back, it is found again by its type.
+- **`quote` of any datum** KFX reads (no dotted list, no vector; `'()` is
+  refused, write `nil`): an atom as itself, a list a `datum` built where it
+  is written; in the engine, by the standard `cons` whatever the program
+  binds the name to. `datum-list->vector` and `vector?`, in the engine too
+  (an object kind of its own, `ob-vector`).
+- **`typecase` as FX-26's parser has it**: `(shape name body)`, one body;
+  an `else`, last, required, `(else body)` or `(else name body)`; the
+  shapes FX-26's (`bloblet`, not `array`). KFX had accepted more (several
+  bodies, no `else`), which K1 forbids.
+- **Termination**: a `car` or `cdr` of a pair at `acyclic`, or of a
+  union's pair member at `acyclic`, is a part, as FX-26 has it; a
+  `typecase` arm's name is the value tested.
+- The engine's primitives' generator is `scripts/gen-vprims.py` now, not a
+  script kept in a commit message.
+
+Measured: 117 of Fixpt's programs through kfx, all agreeing; the engine
+109 of them. `tests/kfx/datum.kfx` in the corpus, the engine agreeing too.
+Left (TODO §24): quasiquote (KFX's reader has no `` ` `` or `,`), a typed
+list given as a list of a union (`(listof int)` as `(listof small)`),
+`datum-int?`, `bytevector` in `datum`, first-class `poly`.

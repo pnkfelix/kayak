@@ -1,16 +1,22 @@
 //! FX-26's unions of shapes in KFX's Rust (C75, `docs/research/uniform-values.md`):
-//! a uniform [`Value`] where a value's type is a union, and Rust's own types,
-//! unboxed, where it is known. A member is boxed where it is given for its
-//! union, and unboxed where a test narrows the union to it. Neither can be
-//! seen by a KFX program: it has no `eq?`, and nothing a coercion touches is
-//! written through another alias (C57 superseded).
+//! a uniform [`Value`] where a value's type is a union, `datum` or a pair
+//! whose tail is no list, and Rust's own types, unboxed, where it is
+//! known. A member is boxed where it is given for its union, and unboxed
+//! where a test narrows the union to it. Neither can be seen by a KFX
+//! program: it has no `eq?`, and nothing a coercion touches is written
+//! through another alias (C57 superseded).
+//!
+//! A pair is a [`PairLike`]: a pair of `Value`s, made by `cons` where a
+//! pair of a union is wanted, or a typed list's own pair, seen as one of
+//! `Value`s (a view: each element boxed as it is read), so that a list is
+//! given for a union, or as a datum, as it is (C77).
 
-use crate::{Int, Show, Str, Symbol, Void};
+use crate::{Cons, Int, List, ListAt, Show, Str, Symbol, Void};
 use std::any::Any;
 
-/// A value of a union's type: a scalar unboxed, or a reference to what is
-/// in the heap, behind `Any`, found again by its type when the union is
-/// narrowed to it.
+/// A value of a union's type: a scalar unboxed, a pair, or a reference to
+/// what is in the heap, behind `Any`, found again by its type when the
+/// union is narrowed to it.
 #[derive(Clone, Copy)]
 pub enum Value {
     I64(i64),
@@ -22,6 +28,7 @@ pub enum Value {
     Symbol(Symbol),
     Unit,
     Nil,
+    Pair(&'static dyn PairLike),
     Other(&'static dyn Any, Shape),
 }
 
@@ -39,11 +46,50 @@ pub enum Shape {
     Pair,
     Procedure,
     Bloblet,
+    Vector,
     Bytevector,
     Box,
     Sum,
     Product,
 }
+
+/// A pair, as a union holds one: its head and tail as `Value`s.
+pub trait PairLike {
+    fn car(&self) -> Value;
+    fn cdr(&self) -> Value;
+    fn as_any(&self) -> &dyn Any;
+}
+
+/// A pair of a union's, `cons`ed where one is wanted.
+struct ValuePair(Value, Value);
+
+impl PairLike for ValuePair {
+    fn car(&self) -> Value {
+        self.0
+    }
+    fn cdr(&self) -> Value {
+        self.1
+    }
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
+/// A typed list's pair, seen as a union's: its elements boxed as read.
+impl<T: ToValue + Copy + 'static> PairLike for Cons<'static, T> {
+    fn car(&self) -> Value {
+        self.car.to_value()
+    }
+    fn cdr(&self) -> Value {
+        list(self.cdr)
+    }
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+}
+
+/// `datum`'s vector.
+pub type Vector = &'static [Value];
 
 /// What a value's shape is, for every type a union may have as a member.
 pub trait Shaped {
@@ -58,6 +104,10 @@ pub trait ToValue {
 /// A union narrowed to a member: unboxed, the member's type known.
 pub trait FromValue: Sized {
     fn from_value(v: Value) -> Self;
+}
+
+fn not_held() -> ! {
+    crate::fail("a union narrowed to a member it does not hold")
 }
 
 macro_rules! scalar {
@@ -76,7 +126,7 @@ macro_rules! scalar {
             fn from_value(v: Value) -> Self {
                 match v {
                     Value::$v(x) => x,
-                    _ => crate::fail("a union narrowed to a member it does not hold"),
+                    _ => not_held(),
                 }
             }
         }
@@ -105,18 +155,82 @@ impl FromValue for () {
     fn from_value(_: Value) -> Self {}
 }
 
+impl ToValue for Void {
+    fn to_value(self) -> Value {
+        match self {}
+    }
+}
+
+impl<T: ToValue + Copy + 'static> ToValue for List<T> {
+    fn to_value(self) -> Value {
+        list(self)
+    }
+}
+
+impl ToValue for Vector {
+    fn to_value(self) -> Value {
+        other(self, Shape::Vector)
+    }
+}
+
+macro_rules! procedure_value {
+    ($($a:ident),*) => {
+        impl<$($a: 'static,)* R: 'static> ToValue for &'static dyn Fn($($a),*) -> R {
+            fn to_value(self) -> Value {
+                other(self, Shape::Procedure)
+            }
+        }
+        impl<$($a,)* R> Shaped for &dyn Fn($($a),*) -> R {
+            fn shape(&self) -> Shape {
+                Shape::Procedure
+            }
+        }
+    };
+}
+procedure_value!();
+procedure_value!(A);
+procedure_value!(A, B);
+procedure_value!(A, B, C);
+procedure_value!(A, B, C, D);
+
+impl<T: Copy + 'static> ToValue for &'static std::cell::Cell<T> {
+    fn to_value(self) -> Value {
+        other(self, Shape::Box)
+    }
+}
+
 /// A member of another shape (a datatype's value, a sum, a product, a
 /// reference, a procedure, an array) given for its union: behind `Any`,
 /// its shape kept beside it.
 pub fn other<T: Any + Copy>(x: T, shape: Shape) -> Value {
-    Value::Other(Box::leak(Box::new(x)), shape)
+    Value::Other(crate::alloc(x), shape)
 }
 
-/// A list given for its union: `nil`, or a pair.
-pub fn list<T: 'static>(xs: crate::List<T>) -> Value {
+/// A list given for its union: `nil`, or its pair, seen as a union's.
+pub fn list<T: ToValue + Copy + 'static>(xs: List<T>) -> Value {
     match xs {
         None => Value::Nil,
-        Some(_) => Value::Other(Box::leak(Box::new(xs)), Shape::Pair),
+        Some(p) => Value::Pair(p),
+    }
+}
+
+/// `cons` where a pair of a union is wanted, its parts boxed.
+pub fn cons<A: ToValue, B: ToValue>(a: A, b: B) -> Value {
+    Value::Pair(crate::alloc(ValuePair(a.to_value(), b.to_value())))
+}
+
+/// `car` and `cdr` of a union with a pair: checked, as FX-26's every machine
+/// checks.
+pub fn car(v: Value) -> Value {
+    match v {
+        Value::Pair(p) => p.car(),
+        _ => crate::fail("car of no pair"),
+    }
+}
+pub fn cdr(v: Value) -> Value {
+    match v {
+        Value::Pair(p) => p.cdr(),
+        _ => crate::fail("cdr of no pair"),
     }
 }
 
@@ -130,70 +244,35 @@ pub fn unbox_other<T: Any + Copy>(v: Value) -> T {
     match v {
         Value::Other(x, _) => match x.downcast_ref::<T>() {
             Some(t) => *t,
-            None => crate::fail("a union narrowed to a member it does not hold"),
+            None => not_held(),
         },
-        _ => crate::fail("a union narrowed to a member it does not hold"),
+        _ => not_held(),
     }
 }
 
-/// A union narrowed to a list member: `nil`, or the list it holds.
-pub fn unbox_list<L: Any + Copy + Default>(v: Value) -> L {
+/// A union narrowed to a list member: `nil`, or the list whose pair it
+/// holds.
+pub fn unbox_list<T: 'static>(v: Value) -> List<T> {
     match v {
-        Value::Nil => L::default(),
-        _ => unbox_other(v),
+        Value::Nil => None,
+        Value::Pair(p) => match p.as_any().downcast_ref::<Cons<'static, T>>() {
+            Some(c) => Some(c),
+            None => not_held(),
+        },
+        _ => not_held(),
     }
 }
 
-/// A union's `null?`; `pair?`, of a union or a list.
-pub fn null_p<T: Shaped>(x: T) -> bool {
-    x.shape() == Shape::Nil
-}
-pub fn pair_p<T: Shaped>(x: T) -> bool {
-    x.shape() == Shape::Pair
-}
-
-impl<T> Shaped for crate::ListAt<'_, T> {
-    fn shape(&self) -> Shape {
-        if self.is_none() {
-            Shape::Nil
-        } else {
-            Shape::Pair
-        }
+/// `datum-list->vector`: a datum's list, its elements in a vector.
+pub fn datum_list_to_vector(d: Value) -> Value {
+    let mut v = Vec::new();
+    let mut p = d;
+    while let Value::Pair(c) = p {
+        v.push(c.car());
+        p = c.cdr();
     }
-}
-
-impl<T> Shaped for &std::cell::Cell<T> {
-    fn shape(&self) -> Shape {
-        Shape::Box
-    }
-}
-
-impl Shaped for f32 {
-    fn shape(&self) -> Shape {
-        Shape::F32
-    }
-}
-
-macro_rules! shaped_procedure {
-    ($($a:ident),*) => {
-        impl<$($a,)* R> Shaped for &dyn Fn($($a),*) -> R {
-            fn shape(&self) -> Shape {
-                Shape::Procedure
-            }
-        }
-    };
-}
-shaped_procedure!();
-shaped_procedure!(A);
-shaped_procedure!(A, B);
-shaped_procedure!(A, B, C);
-shaped_procedure!(A, B, C, D);
-
-pub fn f32_p<T: Shaped>(x: T) -> bool {
-    x.shape() == Shape::F32
-}
-pub fn bytevector_p<T: Shaped>(x: T) -> bool {
-    x.shape() == Shape::Bytevector
+    let v: Vector = Box::leak(v.into_boxed_slice());
+    other(v, Shape::Vector)
 }
 
 impl Shaped for Value {
@@ -206,6 +285,7 @@ impl Shaped for Value {
             Value::Str(_) => Shape::String,
             Value::Symbol(_) | Value::Unit => Shape::Symbol,
             Value::Nil => Shape::Nil,
+            Value::Pair(_) => Shape::Pair,
             Value::Other(_, s) => *s,
         }
     }
@@ -229,41 +309,53 @@ impl Shaped for Void {
     }
 }
 
+impl<T> Shaped for ListAt<'_, T> {
+    fn shape(&self) -> Shape {
+        if self.is_none() {
+            Shape::Nil
+        } else {
+            Shape::Pair
+        }
+    }
+}
+
+impl<T> Shaped for &std::cell::Cell<T> {
+    fn shape(&self) -> Shape {
+        Shape::Box
+    }
+}
+
+impl Shaped for f32 {
+    fn shape(&self) -> Shape {
+        Shape::F32
+    }
+}
+
 /// The shape tests, FX-26's, of a value of any type: a union's by its tag,
 /// any other's by its type.
-pub fn int_p<T: Shaped>(x: T) -> bool {
-    x.shape() == Shape::Int
+macro_rules! shape_test {
+    ($name:ident, $shape:ident) => {
+        pub fn $name<T: Shaped>(x: T) -> bool {
+            x.shape() == Shape::$shape
+        }
+    };
 }
-pub fn f64_p<T: Shaped>(x: T) -> bool {
-    x.shape() == Shape::F64
-}
-pub fn char_p<T: Shaped>(x: T) -> bool {
-    x.shape() == Shape::Char
-}
-pub fn bool_p<T: Shaped>(x: T) -> bool {
-    x.shape() == Shape::Bool
-}
-pub fn string_p<T: Shaped>(x: T) -> bool {
-    x.shape() == Shape::String
-}
-pub fn symbol_p<T: Shaped>(x: T) -> bool {
-    x.shape() == Shape::Symbol
-}
-pub fn procedure_p<T: Shaped>(x: T) -> bool {
-    x.shape() == Shape::Procedure
-}
-pub fn array_p<T: Shaped>(x: T) -> bool {
-    x.shape() == Shape::Bloblet
-}
-pub fn ref_p<T: Shaped>(x: T) -> bool {
-    x.shape() == Shape::Box
-}
-pub fn sum_p<T: Shaped>(x: T) -> bool {
-    x.shape() == Shape::Sum
-}
-pub fn product_p<T: Shaped>(x: T) -> bool {
-    x.shape() == Shape::Product
-}
+shape_test!(int_p, Int);
+shape_test!(f64_p, F64);
+shape_test!(f32_p, F32);
+shape_test!(char_p, Char);
+shape_test!(bool_p, Bool);
+shape_test!(string_p, String);
+shape_test!(symbol_p, Symbol);
+shape_test!(procedure_p, Procedure);
+shape_test!(array_p, Bloblet);
+shape_test!(vector_p, Vector);
+shape_test!(bytevector_p, Bytevector);
+shape_test!(ref_p, Box);
+shape_test!(sum_p, Sum);
+shape_test!(product_p, Product);
+shape_test!(null_p, Nil);
+shape_test!(pair_p, Pair);
 
 /// Written as Fixpt writes the member it holds.
 impl Show for Value {
@@ -278,6 +370,39 @@ impl Show for Value {
             Value::Symbol(x) => x.show(out),
             Value::Unit => ().show(out),
             Value::Nil => out.push_str("()"),
+            Value::Pair(p) => {
+                out.push('(');
+                p.car().show(out);
+                let mut rest = p.cdr();
+                loop {
+                    match rest {
+                        Value::Nil => break,
+                        Value::Pair(q) => {
+                            out.push(' ');
+                            q.car().show(out);
+                            rest = q.cdr();
+                        }
+                        _ => {
+                            out.push_str(" . ");
+                            rest.show(out);
+                            break;
+                        }
+                    }
+                }
+                out.push(')');
+            }
+            Value::Other(x, Shape::Vector) => {
+                out.push_str("#(");
+                if let Some(v) = x.downcast_ref::<Vector>() {
+                    for (i, e) in v.iter().enumerate() {
+                        if i > 0 {
+                            out.push(' ');
+                        }
+                        e.show(out);
+                    }
+                }
+                out.push(')');
+            }
             Value::Other(_, Shape::Procedure) => out.push_str("#<procedure>"),
             Value::Other(..) => out.push_str("#<value>"),
         }
@@ -297,14 +422,23 @@ mod tests {
         let s = str_lit("x").to_value();
         assert!(string_p(s));
         assert!(int_p(7i64) && !int_p(str_lit("y")));
-        let xs: crate::List<i64> = crate::cons(1, None);
+        let xs: List<i64> = crate::cons(1, None);
         let l = list(xs);
         assert!(pair_p(l) && !null_p(l) && pair_p(xs));
-        assert_eq!(crate::car(unbox_list::<crate::List<i64>>(l)), 1);
+        assert_eq!(crate::car(unbox_list::<i64>(l)), 1);
+        assert_eq!(i64::from_value(car(l)), 1);
+        assert!(null_p(cdr(l)));
         assert!(null_p(list::<i64>(None)));
         let f: &'static dyn Fn(i64) -> i64 = &|x| x + 1;
-        let p = other(f, Shape::Procedure);
+        let p = f.to_value();
         assert!(procedure_p(p));
         assert_eq!(unbox_other::<&'static dyn Fn(i64) -> i64>(p)(4), 5);
+        let d = cons(1i64, cons(str_lit("a"), Value::Nil));
+        let mut out = String::new();
+        d.show(&mut out);
+        assert_eq!(out, "(1 \"a\")");
+        let mut out = String::new();
+        cons(1i64, 2i64).show(&mut out);
+        assert_eq!(out, "(1 . 2)");
     }
 }

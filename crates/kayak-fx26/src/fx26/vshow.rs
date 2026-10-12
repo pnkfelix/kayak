@@ -88,6 +88,8 @@ pub fn show_word(w: i64) -> Str {
             string_append(str_lit("#<bloblet "), string_append(i64_to_string(i64_plus(obj_size(w), 1i64)), str_lit(" fields 0 bytes>")))
         } else if i64_eq(kind, ob_flat()) {
             string_append(str_lit("#<flat-array "), string_append(i64_to_string(obj_size(w)), string_append(str_lit(" fields "), string_append(i64_to_string(i64_star(8i64, obj_size(w))), str_lit(" bytes>")))))
+        } else if i64_eq(kind, ob_vector()) {
+            string_append(str_lit("#("), string_append(vector_shown(w, 0i64), str_lit(")")))
         } else if i64_eq(kind, ob_bytes()) {
             string_append(str_lit("#u8("), string_append(bytes_shown(w, 0i64), str_lit(")")))
         } else if i64_eq(kind, ob_ctor()) {
@@ -97,6 +99,16 @@ pub fn show_word(w: i64) -> Str {
         }
     } else {
         str_lit("#<closure>")
+    }
+}
+
+pub fn vector_shown(w: i64, i: i64) -> Str {
+    if i64_gt_eq(i, obj_size(w)) {
+        str_lit("")
+    } else if i64_eq(i, 0i64) {
+        string_append(show_word(element(w, 0i64)), vector_shown(w, 1i64))
+    } else {
+        string_append(str_lit(" "), string_append(show_word(element(w, i)), vector_shown(w, i64_plus(i, 1i64))))
     }
 }
 

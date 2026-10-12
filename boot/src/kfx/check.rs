@@ -1608,6 +1608,10 @@ pub fn shape_of(t: &'static Ty) -> Str {
                 str_lit("bytevector")
             } else if string_eq_p(d, str_lit("%union")) {
                 str_lit("union")
+            } else if string_eq_p(d, str_lit("datum")) {
+                str_lit("union")
+            } else if string_eq_p(d, str_lit("vector")) {
+                str_lit("vector")
             } else {
                 str_lit("")
             }
@@ -1637,6 +1641,34 @@ pub fn union_members(ts: Tys) -> Tys {
                 let other = tagcase_;
                 kayak_rt::heap_cons(car(ts), union_members(cdr(ts)))
             }
+        }
+    }
+}
+
+// `datum` (C77), FX-26's union of what a reader reads, `(union int f64
+// char bool string symbol nil (pairof datum datum acyclic) vector)`: a
+// name, its members found when they are wanted, since it mentions itself.
+// FX-26's has `bytevector` too, which KFX's has not yet.
+pub fn datum_members() -> Tys {
+    kayak_rt::heap_cons(ty_int(), kayak_rt::heap_cons(ty_f64(), kayak_rt::heap_cons(ty_char(), kayak_rt::heap_cons(ty_bool(), kayak_rt::heap_cons(ty_string(), kayak_rt::heap_cons(ty_data(str_lit("symbol"), nil::<&'static Ty>()), kayak_rt::heap_cons(ty_data(str_lit("nil"), nil::<&'static Ty>()), kayak_rt::heap_cons(ty_data(str_lit("%pairof"), kayak_rt::heap_cons(ty_data(str_lit("datum"), nil::<&'static Ty>()), kayak_rt::heap_cons(ty_data(str_lit("datum"), nil::<&'static Ty>()), kayak_rt::heap_cons(ty_rconst(str_lit("acyclic")), kayak_rt::nil())))), kayak_rt::heap_cons(ty_data(str_lit("vector"), nil::<&'static Ty>()), kayak_rt::nil())))))))))
+}
+
+/// A union's members; `datum`'s; or none.
+pub fn members_of(t: &'static Ty) -> Tys {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            if string_eq_p(d, str_lit("%union")) {
+                args
+            } else if string_eq_p(d, str_lit("datum")) {
+                datum_members()
+            } else {
+                nil::<&'static Ty>()
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<&'static Ty>()
         }
     }
 }
@@ -1677,6 +1709,8 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                 } else if string_eq_p(s, str_lit("false")) {
                     return ty_data(s, nil::<&'static Ty>());
                 } else if string_eq_p(s, str_lit("nil")) {
+                    return ty_data(s, nil::<&'static Ty>());
+                } else if (string_eq_p(s, str_lit("datum")) || string_eq_p(s, str_lit("vector"))) {
                     return ty_data(s, nil::<&'static Ty>());
                 } else if string_eq_p(s, str_lit("bool")) {
                     return ty_bool();
@@ -1855,7 +1889,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                 } else if (sym_is_p(car(xs), str_lit("pairof")) && i64_eq(size(xs), 4i64)) {
                     // FX-26's pair, never `nil` (C68): `(pairof A B R)`, its head and
                     // tail of any types; a list's pair when its tail is the list.
-                    return ty_data(str_lit("%pairof"), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::heap_cons(parse_type(v, tvars, third(xs)), kayak_rt::heap_cons(parse_mutable_region(v, tvars, fourth(xs)), kayak_rt::nil()))));
+                    return ty_data(str_lit("%pairof"), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::heap_cons(parse_type(v, tvars, third(xs)), kayak_rt::heap_cons(parse_region(v, tvars, fourth(xs)), kayak_rt::nil()))));
                 } else if sym_is_p(car(xs), str_lit("union")) {
                     let members = union_members(parse_types(v, tvars, cdr(xs)));
                     let shapes = map(&shape_of, members);
@@ -3107,6 +3141,19 @@ pub fn same_effs(s: &'static St, a: Strings, b: Strings) -> List<&'static St> {
     }
 }
 
+pub fn datum_p(t: &'static Ty) -> bool {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            string_eq_p(d, str_lit("datum"))
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
 /// That a value of type `actual` may stand where `expected` is: the two
 /// the same, inference variables solved to make them so, but for
 /// `void`, which fits anything, and a procedure, whose latent effect
@@ -3174,20 +3221,35 @@ pub fn fits(v: &'static Cv, s: &'static St, actual: &'static Ty, expected: &'sta
 }
 
 pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static Ty) -> &'static St {
-    if string_eq_p(shape_of(a), str_lit("union")) {
-        // A union below `e`: each member is (C62).
-        fits_each_member(v, s, {
-            let tagcase_ = a;
-            match *tagcase_ {
-                Ty::TyData(d, args) => {
-                    args
-                }
-                _ => {
-                    let other = tagcase_;
-                    nil::<&'static Ty>()
-                }
+    if (datum_p(a) && datum_p(e)) {
+        s
+    } else if (datum_p(e) && {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyList(x, r) => {
+                true
             }
-        }, e)
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        // A list below `datum` (C77): its elements are, at `acyclic`; so a
+        // list of datums is one, as FX-26 has it, and is given as it is.
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyList(x, r) => {
+                fits(v, fits(v, s, x, e), r, ty_rconst(str_lit("acyclic")))
+            }
+            _ => {
+                let other = tagcase_;
+                mismatch(v, s, a, e)
+            }
+        }
+    } else if string_eq_p(shape_of(a), str_lit("union")) {
+        // A union below `e`: each member is (C62).
+        fits_each_member(v, s, members_of(a), e)
     } else if (string_eq_p(shape_of(e), str_lit("union")) && {
         let tagcase_ = a;
         match *tagcase_ {
@@ -3199,18 +3261,7 @@ pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static T
                 false
             }
         }
-    } && null_p(member_of_shape({
-        let tagcase_ = e;
-        match *tagcase_ {
-            Ty::TyData(d, args) => {
-                args
-            }
-            _ => {
-                let other = tagcase_;
-                nil::<&'static Ty>()
-            }
-        }
-    }, str_lit("list")))) {
+    } && null_p(member_of_shape(members_of(e), str_lit("list")))) {
         // A list where a union of `nil` and a pair is expected: each of the
         // two it is (C69).
         let tagcase_ = a;
@@ -3225,18 +3276,7 @@ pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static T
         }
     } else if (string_eq_p(shape_of(e), str_lit("union")) && not(string_eq_p(shape_of(a), str_lit("")))) {
         // A member below its union: the member of its shape (C62).
-        let m = member_of_shape({
-            let tagcase_ = e;
-            match *tagcase_ {
-                Ty::TyData(d, args) => {
-                    args
-                }
-                _ => {
-                    let other = tagcase_;
-                    nil::<&'static Ty>()
-                }
-            }
-        }, shape_of(a));
+        let m = member_of_shape(members_of(e), shape_of(a));
         if null_p(m) {
             mismatch(v, s, a, e)
         } else {

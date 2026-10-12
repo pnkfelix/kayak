@@ -393,12 +393,14 @@ coercions at the checker's subsumption points, views for lists. Reverses
 C57 when done.
 - **Done, step 1 (C75)**: unions, `typecase`, the shape tests, `false`,
   `pairof` of a list: `Value`, boxed and unboxed at the checker's facts.
-- **Step 2**: a pair of another tail as a `Value`; `car`/`cdr` of a union
-  (`unions/car-of-union.fx`, `unions/nil-or-pair.fx`); `datum`, `quote` of
-  any datum; a typed list given as a list of a union by a view (`Value`
-  over the typed list, each element boxed as it is read), and KFX's region
-  for a list literal given for a union's list member (`(list 1 2 3)` in a
-  `(listof wide acyclic)`, which FX-26 accepts and KFX refuses as `%fresh`).
+- **Done, step 2 (C77)**: `datum`; pairs of a union's as `Value`s; `car`
+  and `cdr` of a union; `quote` of any datum KFX reads; a typed list given
+  as a datum by a view; `typecase` as FX-26 writes it.
+- **Left of step 2**: quasiquote (the reader first); a typed list given as
+  a list of a union (`(listof int)` as `(listof small)`: a view of the
+  list itself, `List<Value>` over `List<Int>`, or a copy); `datum-int?`;
+  `bytevector` in `datum`; a local named `nil`, which FX-26 allows and the
+  checker's naming rule refuses (`datum/quote-shadowed.fx`); `no-pair`.
 - **Step 3**: first-class `poly`, a generic instantiated at `Value`.
 - Datatypes as union members (`unions/more-shapes.fx`): the checker knows
   no shape for them yet.

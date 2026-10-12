@@ -35,10 +35,10 @@ pub fn size_of(x: Wide) -> Int {
         char_to_integer(kayak_rt::value::unbox::<char>(x))
     } else if procedure_p(x) {
         (kayak_rt::value::unbox_other::<&'static dyn Fn(Int) -> Int>(x))(int_lit(1000))
-    } else if null_p(kayak_rt::value::unbox_list::<List<Int>>(x)) {
+    } else if null_p(kayak_rt::value::unbox_list::<Int>(x)) {
         int_lit(-1)
     } else {
-        _plus(car(kayak_rt::value::unbox_list::<List<Int>>(x)), size_of(kayak_rt::value::list(cdr(kayak_rt::value::unbox_list::<List<Int>>(x)))))
+        _plus(car(kayak_rt::value::unbox_list::<Int>(x)), size_of(kayak_rt::value::list(cdr(kayak_rt::value::unbox_list::<Int>(x)))))
     }
 }
 
