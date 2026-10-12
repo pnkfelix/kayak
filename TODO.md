@@ -231,6 +231,23 @@ or a trait.
 - Fixpt runs the `i64` ports slower than the `int` originals on every
   machine: Fixpt's, if the user would tell its team.
 
+## 21. An asynchronous runtime (`PLAN.md` §6; the user, 2026-10-12)
+
+The next goal. In order (`PLAN.md` §6.4):
+- **The research note**, `docs/research/async-rust.md`, with Rust written
+  by hand for two or three of Coopt's async programs over a prototype
+  executor.
+- **The executor** in `kayak-rt`: one thread, deterministic, a virtual
+  clock, its own `Waker`.
+- **The operations in `kfx/prelude.fx`**, in FX-26 over continuations,
+  so that Fixpt runs what kfx compiles (Q6).
+- **The checker**: the suspension effect, `(comefrom c)` on a loop's
+  region; refused inside a task's own `letrena`.
+- **The emitter**: `async fn` by effect, as escapes are `Result` by
+  effect (C18); suspending closures; recursion through `Box::pin`.
+- **Corpus programs**, compared with Fixpt.
+- Decide with the user: what incremental computation is for kayak (Q5).
+
 ## 18. Research: regions as exclusive borrows (GhostCell tokens)
 
 Places are lifetimes (§14), but regions are something else: permission

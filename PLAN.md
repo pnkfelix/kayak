@@ -1,6 +1,6 @@
 # `kayak`: KFX, a sublanguage of FX-26 that maps onto Rust, and bootstraps
 
-**Status: draft 3, 2026-10-11.** The loop closed early (§4), and KFX has
+**Status: draft 4, 2026-10-12: §6 is the next goal, the user's.** The loop closed early (§4), and KFX has
 grown since, through the bootstrap, each step a fixed point: the
 compiler, six files of KFX, checks and translates its own 2700 lines.
 What KFX is and how it maps is §2; how it is checked, §3; what is left,
@@ -289,7 +289,7 @@ by programs written to find where `kfx` and Fixpt part: four K1 holes
 found that way, and fixed (`DONE.md`). Next, by the survey: `datum` and
 unions, flat data, more of modules.
 
-Then FX-26 at large, written in KFX. Two directions, not chosen yet:
+Then FX-26 at large, written in KFX. Two directions were open:
 - **keep targeting Rust**, with a runtime that grows (a collector, as
   coopt's; continuations, through an explicit stack), each FX-26 feature
   leaving KFX's trivial mapping as it arrives, so that KFX stays the
@@ -298,9 +298,103 @@ Then FX-26 at large, written in KFX. Two directions, not chosen yet:
 - **target something else** for FX-26 at large (Fixpt's cellular words,
   or native code), and keep Rust for KFX alone.
 
+The first is the one taken, for now: §6 grows the runtime, in Rust.
+
 ---
 
-## 6. Questions for you
+## 6. Next: an asynchronous runtime, in Coopt's mindset (2026-10-12)
+
+**The user's direction (2026-10-12).** Coopt's async-first approach has
+proved interesting. kayak need not copy all of its choices, but its
+runtime should move to Coopt's mindset, above all its deep support for
+*multiplexed tasks* and *incremental computation*. The first goal: work
+out how to revise `kayak-rt` around asynchronous computation, in part
+through async Rust, most likely with an executor of our own; doing that
+properly will change the emitter too, so that it writes `async fn`,
+`Pin` and so on.
+
+### 6.1 What we take from Coopt, and where we differ
+
+Taken (Coopt's `PLAN.md` §1, §3.5):
+- **One scheduler of our own** (Coopt's I4): no tokio, no mio; and so
+  `kayak-rt` keeps having no dependencies.
+- **Determinism** (I1): a seeded scheduler, a virtual clock first, steps
+  as the clock. Here it is also what K1 needs: an async program's answer
+  must be Fixpt's, so the order tasks run in must be the reference's.
+- **The scheduler sees effects** (I3): a task's effect is known when it
+  is spawned.
+- **Structured concurrency**: nurseries, cancellation delivered at
+  suspension points (Fixpt's `docs/research/async.md` §5, which Coopt
+  implements).
+
+Where kayak differs, and why. Coopt interprets: its engine's stack is in
+its heap, and engine state is kept out of Rust futures (I4, I5), so that
+its continuations are composable and copyable and its collector can move
+everything. kayak compiles, so a Rust `async fn` *is* the
+continuation-passing transform of a frame, made by rustc: suspension
+compiled, not interpreted. The price is that a Rust future resumes once.
+So kayak gets **one-shot suspension**, and a continuation resumed twice
+(`call-with-composable-continuation` at large) stays refused. That is
+enough: in Fixpt's async design every suspension resumes once, with
+unit, through a one-shot waker (§6.1 there), which is Rust's `Waker`.
+
+Not taken, yet: a moving collector, the query compiler, record and
+replay, real I/O (a reactor needs `libc` or `unsafe`, which `kayak-rt`
+has neither of).
+
+### 6.2 The mapping, sketched
+
+- **Suspension is an effect.** In FX-26 a task suspends by capturing up
+  to its loop's prompt: `(comefrom c)` on the loop's region `c`, the note's
+  `(suspends c)` (§3.1 there). As escapes are `Result` by effect (C18), a
+  procedure whose effect may suspend becomes an `async fn`; the rest stay
+  plain `fn`s, at no cost. The colour of a function is its effect, known
+  statically: nothing is compiled twice.
+- **The operations** (`with-loop`, `spawn`, `join`, `suspend`, `wake!`,
+  `yield`, `sleep`, nurseries, cancel scopes, channels: Fixpt's note,
+  §6.1) are `kayak-rt` primitives on our executor; and for Fixpt, the
+  same operations in FX-26 over continuations in `kfx/prelude.fx` (ported
+  from Coopt's library), so K1 still compares answers with Fixpt.
+- **The executor**: one thread, a FIFO run queue, a virtual clock; futures
+  need not be `Send`, so the heap's thread-local arenas (C43) stay.
+- **Cancellation** is dropping a task's future, which happens only at a
+  suspension point.
+- **Escapes** inside an `async fn` compose as they are (`.await?`).
+
+### 6.3 Problems to solve first (a research note)
+
+1. **Recursion.** An `async fn` that calls itself needs a `Box::pin`
+   per call. Only suspending procedures pay, and tail calls are loops;
+   later, frames could go in arenas.
+2. **Procedures as values.** A suspending closure returns a
+   `Pin<Box<dyn Future>>`, or is an `AsyncFn`; which one, measured.
+3. **Regions across suspension.** Fixpt's note (finding 4) refuses a
+   suspension inside a task's own `letrena`; a `letrena` around the loop
+   is shared by its tasks. In Rust, a future borrowing `'r` across an
+   `.await`: self-reference, which is what `Pin` is for.
+4. **Preemption.** Cooperative, at suspension points, first. Coopt's
+   fuel would make every `spin` procedure suspend, the compiler's nearly
+   all: measured before it is chosen.
+5. **Memory.** A long-running task needs its data freed, and the heap is
+   never freed (C43); nurseries as regions are the likely route.
+6. **Incremental computation**: what it is for kayak is §7, Q5.
+
+### 6.4 Steps
+
+1. The research note, `docs/research/async-rust.md`: Coopt's scheduler and
+   its library in FX-26, Fixpt's note, and §6.2 checked by writing, by
+   hand, the Rust for two or three of Coopt's async programs
+   (`cancel.fx`, a ping-pong) over a prototype executor.
+2. The executor in `kayak-rt`: deterministic, a virtual clock, our own
+   `Waker`, no dependencies.
+3. The operations in `kfx/prelude.fx` for Fixpt.
+4. The checker: the suspension effect, and its rules (§6.3).
+5. The emitter: `async fn` by effect.
+6. Corpus programs, their answers compared with Fixpt's.
+
+---
+
+## 7. Questions for you
 
 - **Q1. The name.** PLDI '89's kernel is also KFX, and `fixpt/docs/fx26.md`
   calls it that. I write KFX, and KFX26 where the two could be confused.
@@ -311,7 +405,17 @@ Then FX-26 at large, written in KFX. Two directions, not chosen yet:
   `Result` by effect, the recommendation (C18).
 - **Q4. Places**: needed now? (`docs/research/places.md` §4.) Not yet,
   I decided (C23): nothing needs memory reclaimed; yours to overrule.
+- **Q5. Incremental computation** (§6): which is meant? (a) the compiler
+  itself incremental, as Coopt's query compiler (`coopt-query`:
+  revisions, memos, dependencies, early cutoff), so that a change
+  recompiles only what it reaches; (b) a facility for KFX programs,
+  computations memoized with their dependencies tracked, as primitives;
+  or (c) both, (a) built on (b). Open.
+- **Q6. The reference for async programs.** Fixpt has no scheduler, so
+  K1 needs the operations written in FX-26 in `kfx/prelude.fx` (from
+  Coopt's library); or Coopt is made the reference for them. My default:
+  the prelude, so Fixpt stays the one reference.
 
-## 7. Requests for Fixpt
+## 8. Requests for Fixpt
 
 Three, all done and pinned: `DONE.md` §6.
