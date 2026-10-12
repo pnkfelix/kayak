@@ -1266,3 +1266,46 @@ lowers and runs some 9,000 lines of KFX and then compiles its argument.
   and nothing is freed: its values are kayak-rt's heap's, never freed
   (C43). The engine needs a heap of its own and a collector (engine.md,
   step 5), before the second self-hosting can close.
+
+## C64. The engine's heap of its own, collected, in KFX (2026-10-12)
+
+`docs/research/collector.md`; the user: the collector first, in KFX first
+(a Rust one behind the same interface later, if measured to matter, or
+when incremental collection does; a GC for kayak-rt itself, for every
+KFX program, a separate question).
+- **Words in two flat arrays of `i64`** (`fx26/heap.kfx`): fixnums,
+  pointers, immediates and IR nodes by their low two bits; objects a
+  header and a payload; Cheney's copying collector, written in KFX; the
+  spaces grown, both, when what lives fills more than half.
+- **The machine over words** (`fx26/vm.kfx`): the CEK machine's frames,
+  environments and values all objects in that heap; frames never written
+  once made, so a continuation is a count of frames from its top, copied
+  at each resumption (any number of times). Collection only at the top of
+  a step, its registers then the roots; a step that needs more room than
+  the reserve (a primitive of its input's size, a continuation's frames)
+  asks first, and the step is begun again after.
+- **The IR as a table** (`fx26/table.kfx`), numbered from `lower.kfx`'s
+  tree, unchanged; primitives by number (`fx26/vprims.kfx`, generated
+  from the list), never by name.
+- **Nothing of kayak-rt's allocated in a step**: no datatype's value, list,
+  closure or string; KFX data only at loading (the IR, interned names)
+  and for I/O, in proportion to what is read and written.
+- **Measured**: the compiler run on the engine compiling `arith.kfx`,
+  450 MB resident (23 GB before), 11 s (5.5 s before: the words cost);
+  the same Rust. The corpus (49 of 53) and Fixpt's programs (97 of 105)
+  as before; none differs.
+
+## C65. The engine's REPL (2026-10-12, the user's request)
+
+`kayak-fx26` alone, or `kayak-fx26 repl`: Fixpt's REPL's ways. A form is
+read as it is typed (a continuation line's prompt `     | `, until the
+text holds whole forms), checked against what was defined before it,
+lowered and run on the machine over words, whose heap and globals it
+keeps; written `value : type ! effect`, a definition as its name and
+type. A refusal or a failure is written and the REPL goes on: the loop
+is the hand-written Rust's, which catches it (the checker refuses by
+failing, and KFX catches nothing). `fx26/repl.kfx`.
+- **Effects written as FX-26 writes them** everywhere now (`show-effs`):
+  `(maxeff (read (globals f)) spin)`, not kfx's atoms.
+- Not yet: Fixpt's `,` commands; line editing; a datatype's definition
+  writes nothing.

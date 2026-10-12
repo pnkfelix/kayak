@@ -98,14 +98,148 @@
         (set constant-count (i64+ n 1))
         n))))
 
-(define node-at (subr (maxeff (read @globals) (read @h)) (i64) node)
+(define node-at (subr (maxeff (read @globals) spin (read @h)) (i64) node)
   (lambda (i) (array-ref (get nodes) (i64->int i))))
 
-(define kid-at (subr (maxeff (read @globals) (read @h)) (i64) i64)
+(define kid-at (subr (maxeff (read @globals) spin (read @h)) (i64) i64)
   (lambda (i) (flatarray-ref-i64 (get kids) i)))
 
-(define armx-at (subr (maxeff (read @globals) (read @h)) (i64) armx)
+(define armx-at (subr (maxeff (read @globals) spin (read @h)) (i64) armx)
   (lambda (i) (array-ref (get armxs) (i64->int i))))
 
-(define constant-at (subr (maxeff (read @globals) (read @h)) (i64) i64)
+(define constant-at (subr (maxeff (read @globals) spin (read @h)) (i64) i64)
   (lambda (i) (flatarray-ref-i64 (get constants) i)))
+
+"The primitives, numbered: a primitive's word holds its number here, which
+ the machine's `apply-op` takes apart by number, never by name."
+(define prim-list strings
+  (list "i64+" "i64-" "i64*" "i64-quotient" "i64-remainder" "i64-and" "i64-or" "i64-xor" "i64-not"
+        "i64=" "i64<" "i64>" "i64<=" "i64>=" "i64-shl" "i64-shr"
+        "+" "-" "*" "quotient" "remainder" "modulo" "=" "<" ">" "<=" ">=" "max" "min" "zero?"
+        "bitwise-and" "bitwise-ior" "bitwise-xor" "bitwise-not" "arithmetic-shift"
+        "int->i64" "i64->int" "int->string" "i64->string" "not" "bool=?"
+        "string-append" "string=?" "string<?" "string>?" "string<=?" "string>=?" "string-compare" "string-search"
+        "string-downcase" "string-length" "string-length-i64" "string-ref" "string-ref-i64" "substring"
+        "char->i64" "char->integer" "i64->char" "integer->char" "char->string" "char=?" "char<?" "char>?" "char<=?" "char>=?"
+        "char-upcase" "char-downcase" "char-whitespace?" "char-numeric?" "char-alphabetic?"
+        "string->list" "list->string" "string->symbol" "symbol->string" "symbol=?" "symbol-compare"
+        "cons" "car" "cdr" "null?" "pair?" "length" "list-length" "reverse" "append"
+        "new" "get" "set" "rnew" "rcons"
+        "make-array" "array-ref" "array-set!" "array-length" "array->list" "list->array" "rmake-array"
+        "make-flatarray-i64" "flatarray-ref-i64" "flatarray-set-i64!" "flatarray-length-i64"
+        "make-bytevector" "bytevector-length" "bytevector-u8-ref" "bytevector-u8-set!" "bytevector-copy" "bytevector-copy!"
+        "bytevector=?" "string->utf8" "utf8->string"
+        "error" "%identity" "%case="
+        "int?" "string?" "bool?" "char?" "symbol?" "array?" "procedure?" "f64?" "ref?" "sum?" "product?" "bytevector?"
+        "write-out" "write-err" "exit" "clock" "sleep-until" "args" "read-line" "read-file" "write-file" "list-dir"
+        "make-continuation-prompt-tag" "abort-current-continuation" "call-with-composable-continuation" "abort-with-continuation"
+        "int->f64" "f64->int" "f64->string" "f64+" "f64-" "f64*" "f64/" "f64<" "f64<=" "f64>" "f64>=" "f64="
+        "f64-abs" "f64-neg" "f64-sqrt" "f64-floor" "f64-ceiling" "f64-truncate" "f64-round" "f64-min" "f64-max"
+        "f64-nan?" "f64-infinite?" "f64-finite?" "string-ci=?"))
+
+(define-rec
+  (list-position (subr kfx (string strings i64) i64)
+    (lambda (n xs i) (cond ((null? xs) -1) ((string=? (car xs) n) i) (else (list-position n (cdr xs) (i64+ i 1)))))))
+
+"The fixed widths but `i64`, a primitive of its own each: their names
+ interned, their number past the list's."
+(define fixed-base i64 1000)
+
+(define prim-number (subr loading (string) i64)
+  (lambda (n)
+    (let ((i (list-position n prim-list 0)))
+      (cond ((i64>= i 0) i)
+            ((not (string=? (fixed-type n) "")) (i64+ fixed-base (intern! n)))
+            (else (begin (error (string-append "the engine has no primitive " n)) 0))))))
+
+(define-effect numbering (maxeff loading (read @h) (write @h)))
+
+(define literal-word! (subr numbering (val) i64)
+  (lambda (v)
+    "A literal's word, its object made in the heap if it is one."
+    (tagcase v
+      (v-int (n) (int-word! n))
+      (v-real (x) (real-word! x))
+      (v-char (c) (char-word c))
+      (v-string (s) (string-word! s))
+      (v-symbol (s) (symbol-word (intern! (symbol->string s))))
+      (v-bool (b) (bool-word b))
+      (v-unit () w-unit)
+      (v-nil () w-nil)
+      (v-prim (n a) (immediate imm-prim (prim-number n)))
+      (v-ctor (t n) (let ((p (alloc! ob-ctor 2))) (begin (obj-set! p 0 (fixnum (intern! t))) (obj-set! p 1 (fixnum n)) p)))
+      (v-tag (n) (immediate imm-tag n))
+      (else other (begin (error "the engine: a literal it cannot make") 0)))))
+
+(define-rec
+  (kids-placed! (subr numbering ((listof i64 acyclic)) unit)
+    (lambda (ns) (if (null? ns) #u (begin (add-kid! (car ns)) (kids-placed! (cdr ns)))))))
+
+(define kids-of! (subr numbering ((listof i64 acyclic)) i64)
+  (lambda (ns) (let ((at (get kid-count))) (begin (kids-placed! ns) at))))
+
+(define-rec
+  (label-ids! (subr numbering (strings) i64)
+    (lambda (ls)
+      "A product's labels, interned, a range of `kids`: its start."
+      (kids-of! (label-numbers! ls))))
+  (label-numbers! (subr numbering (strings) (listof i64 acyclic))
+    (lambda (ls) (if (null? ls) nil (let ((n (intern! (car ls)))) (cons n (label-numbers! (cdr ls))))))))
+
+(define-rec
+  (armxs-placed! (subr numbering ((listof armx acyclic)) unit)
+    (lambda (xs) (if (null? xs) #u (begin (add-armx! (car xs)) (armxs-placed! (cdr xs)))))))
+
+(define place-armxs! (subr numbering ((listof armx acyclic)) i64)
+  (lambda (xs) (let ((at (get armx-count))) (begin (armxs-placed! xs) at))))
+
+(define-rec
+  (number! (subr numbering (ir) i64)
+    (lambda (e)
+      "`e`, numbered: its node's number, its children's before it."
+      (tagcase e
+        (i-lit (v) (add-node! (n-lit (add-constant! (literal-word! v)))))
+        (i-local (d s) (add-node! (n-local d s)))
+        (i-global (i n) (add-node! (n-global i)))
+        (i-lambda (n body) (let ((b (number! body))) (add-node! (n-lambda n b))))
+        (i-call (f args) (let ((at (number-all! (cons f args)))) (add-node! (n-call at (i64+ (size args) 1)))))
+        (i-if (x y z) (let* ((a (number! x)) (b (number! y)) (c (number! z))) (add-node! (n-if a b c))))
+        (i-seq (es) (let ((at (number-all! es))) (add-node! (n-seq at (size es)))))
+        (i-let (es body) (let* ((at (number-all! es)) (b (number! body))) (add-node! (n-let at (size es) b))))
+        (i-letrec (es body) (let* ((at (number-all! es)) (b (number! body))) (add-node! (n-letrec at (size es) b))))
+        (i-define (i x) (let ((a (number! x))) (add-node! (n-define i a))))
+        (i-sum (t x) (let ((a (number! x))) (add-node! (n-sum (intern! t) a))))
+        (i-product (ls es)
+          (let* ((labels (label-ids! ls))
+                 (at (number-all! es)))
+            (add-node! (n-product labels at (size es)))))
+        (i-extract (l x) (let ((a (number! x))) (add-node! (n-extract (intern! l) a))))
+        (i-tagcase (x arms default)
+          (let* ((a (number! x))
+                 (start (arms-numbered! arms))
+                 (d (number! default)))
+            (add-node! (n-tagcase a start (size arms) d))))
+        (i-prompt (t h body) (let* ((a (number! t)) (b (number! h)) (c (number! body))) (add-node! (n-prompt a b c)))))))
+
+  (number-all! (subr numbering ((listof ir acyclic)) i64)
+    (lambda (es)
+      "Each of `es` numbered, then their numbers a range of `kids`: its start."
+      (kids-of! (numbers! es))))
+
+  (numbers! (subr numbering ((listof ir acyclic)) (listof i64 acyclic))
+    (lambda (es) (if (null? es) nil (let ((n (number! (car es)))) (cons n (numbers! (cdr es)))))))
+
+  (arms-numbered! (subr numbering ((listof arm acyclic)) i64)
+    (lambda (arms)
+      (let ((made (arm-entries! arms)))
+        (place-armxs! made))))
+
+  (arm-entries! (subr numbering ((listof arm acyclic)) (listof armx acyclic))
+    (lambda (arms)
+      (if (null? arms)
+          nil
+          (tagcase (car arms)
+            (arm (t n body)
+              (let ((b (number! body)))
+                (cons (armx (intern! t) n b) (arm-entries! (cdr arms))))))))))
+

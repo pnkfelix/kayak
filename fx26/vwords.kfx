@@ -1,0 +1,337 @@
+"vwords.kfx: what the primitives over words use (vprims.kfx, C64): lists,
+ strings, arrays and bytes in the heap, made and taken apart in loops
+ that allocate nothing of KFX's; and I/O, which does, as much as is read
+ and written. A read's room is known only once it is read: the read is
+ done when its room is asked for, kept, and made words when the room is
+ there."
+
+(define-rec
+  (list-count (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
+    (lambda (xs n) (if (i64= xs w-nil) n (list-count (pair-cdr xs) (i64+ n 1))))))
+
+(define-rec
+  (reverse-words! (subr hp (i64 i64) i64)
+    (lambda (xs acc) (if (i64= xs w-nil) acc (reverse-words! (pair-cdr xs) (pair! (pair-car xs) acc))))))
+
+(define-rec
+  (append-words! (subr hp (i64 i64) i64)
+    (lambda (rev tail) "`rev`, a list reversed, before `tail`." (if (i64= rev w-nil) tail (append-words! (pair-cdr rev) (pair! (pair-car rev) tail))))))
+
+(define checked-car (subr (maxeff (read @globals) spin (read @h)) (i64) i64)
+  (lambda (p) (if (is-obj? p ob-pair) (pair-car p) (begin (error "car of nil") 0))))
+
+(define checked-cdr (subr (maxeff (read @globals) spin (read @h)) (i64) i64)
+  (lambda (p) (if (is-obj? p ob-pair) (pair-cdr p) (begin (error "cdr of nil") 0))))
+
+(define one-word! (subr hp (i64 i64) i64)
+  (lambda (kind w) (let ((p (alloc! kind 1))) (begin (obj-set! p 0 w) p))))
+
+(define-rec
+  (fill! (subr hp (i64 i64 i64 i64) unit)
+    (lambda (p i n w) (if (i64>= i n) #u (begin (obj-set! p i w) (fill! p (i64+ i 1) n w))))))
+
+(define fill-unbound! (subr hp (i64 i64 i64) unit)
+  (lambda (p from n) (fill! p from (i64+ from n) w-unbound)))
+
+(define filled! (subr hp (i64 i64 i64) i64)
+  (lambda (kind n w)
+    (if (i64< n 0) (begin (error "a negative length") 0) (let ((p (alloc! kind n))) (begin (fill! p 0 n w) p)))))
+
+(define filled-raw! (subr hp (i64 i64 i64) i64)
+  (lambda (kind n raw) (filled! kind n raw)))
+
+(define element (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
+  (lambda (p i) (if (or (i64< i 0) (i64>= i (obj-size p))) (begin (error "an index out of range") 0) (obj-ref p i))))
+
+(define element-set! (subr hp (i64 i64 i64) unit)
+  (lambda (p i w) (if (or (i64< i 0) (i64>= i (obj-size p))) (begin (error "an index out of range") #u) (obj-set! p i w))))
+
+(define-rec
+  (array-list! (subr hp (i64 i64 i64) i64)
+    (lambda (p i acc) (if (i64< i 0) acc (array-list! p (i64- i 1) (pair! (obj-ref p i) acc))))))
+
+(define-rec
+  (from-list! (subr hp (i64 i64 i64) unit)
+    (lambda (p i xs) (if (i64= xs w-nil) #u (begin (obj-set! p i (pair-car xs)) (from-list! p (i64+ i 1) (pair-cdr xs)))))))
+
+(define list-array! (subr hp (i64 i64) i64)
+  (lambda (kind xs) (let ((p (alloc! kind (list-count xs 0)))) (begin (from-list! p 0 xs) p))))
+
+"Strings: a character's code a word each."
+(define string-ref-w (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
+  (lambda (s i) (immediate imm-char (element s i))))
+
+(define-rec
+  (copied-into! (subr hp (i64 i64 i64 i64 i64) unit)
+    (lambda (to at from i n) (if (i64>= i n) #u (begin (obj-set! to (i64+ at i) (obj-ref from i)) (copied-into! to at from (i64+ i 1) n))))))
+
+(define string-append-w! (subr hp (i64 i64) i64)
+  (lambda (a b)
+    (let* ((n (string-length-w a)) (m (string-length-w b)) (p (alloc! ob-string (i64+ n m))))
+      (begin (copied-into! p 0 a 0 n) (copied-into! p n b 0 m) p))))
+
+(define-rec
+  (copied-range! (subr hp (i64 i64 i64 i64 i64) unit)
+    (lambda (to from start i n) (if (i64>= i n) #u (begin (obj-set! to i (obj-ref from (i64+ start i))) (copied-range! to from start (i64+ i 1) n))))))
+
+(define substring-w! (subr hp (i64 i64 i64) i64)
+  (lambda (s start end)
+    (if (or (i64< start 0) (i64< end start) (i64> end (string-length-w s)))
+        (begin (error "substring range out of bounds") 0)
+        (let ((p (alloc! ob-string (i64- end start))))
+          (begin (copied-range! p s start 0 (i64- end start)) p)))))
+
+(define-rec
+  (string-compare-w (subr (maxeff (read @globals) spin (read @h)) (i64 i64 i64) i64)
+    (lambda (a b i)
+      "-1, 0 or 1, character by character."
+      (let ((n (string-length-w a)) (m (string-length-w b)))
+        (cond ((and (i64>= i n) (i64>= i m)) 0)
+              ((i64>= i n) -1)
+              ((i64>= i m) 1)
+              ((i64< (obj-ref a i) (obj-ref b i)) -1)
+              ((i64> (obj-ref a i) (obj-ref b i)) 1)
+              (else (string-compare-w a b (i64+ i 1))))))))
+
+(define-rec
+  (matches-at? (subr (maxeff (read @globals) spin (read @h)) (i64 i64 i64 i64) bool)
+    (lambda (s sub at j)
+      (cond ((i64>= j (string-length-w sub)) #t)
+            ((i64>= (i64+ at j) (string-length-w s)) #f)
+            ((i64= (obj-ref s (i64+ at j)) (obj-ref sub j)) (matches-at? s sub at (i64+ j 1)))
+            (else #f)))))
+
+(define-rec
+  (string-search-w (subr (maxeff (read @globals) spin (read @h)) (i64 i64 i64) i64)
+    (lambda (s sub from)
+      "Where `sub` first is in `s`, at `from` or after; or -1."
+      (let ((at (if (i64>= from 0) from (the i64 0))))
+        (cond ((i64> (i64+ at (string-length-w sub)) (string-length-w s)) (the i64 -1))
+              ((matches-at? s sub at 0) at)
+              (else (string-search-w s sub (i64+ at 1))))))))
+
+(define char-string! (subr hp (i64) i64)
+  (lambda (c) (let ((p (alloc! ob-string 1))) (begin (obj-set! p 0 (immediate-value c)) p))))
+
+(define-rec
+  (string-list! (subr hp (i64 i64 i64) i64)
+    (lambda (s i acc) (if (i64< i 0) acc (string-list! s (i64- i 1) (pair! (immediate imm-char (obj-ref s i)) acc))))))
+
+(define-rec
+  (chars-from-list! (subr hp (i64 i64 i64) unit)
+    (lambda (p i xs) (if (i64= xs w-nil) #u (begin (obj-set! p i (immediate-value (pair-car xs))) (chars-from-list! p (i64+ i 1) (pair-cdr xs)))))))
+
+(define list-string! (subr hp (i64) i64)
+  (lambda (xs) (let ((p (alloc! ob-string (list-count xs 0)))) (begin (chars-from-list! p 0 xs) p))))
+
+"An integer's text, as `int->string` writes it: a fixnum's made in place;
+ a bignum's through KFX's (which allocates: bignums are rare)."
+(define-rec
+  (digits-count (subr kfx (i64 i64) i64)
+    (lambda (n k) (if (i64< n 10) (i64+ k 1) (digits-count (i64-quotient n 10) (i64+ k 1))))))
+
+(define-rec
+  (digits-set! (subr hp (i64 i64 i64) unit)
+    (lambda (p i n)
+      (begin (obj-set! p i (i64+ 48 (i64-remainder n 10)))
+             (if (i64< n 10) #u (digits-set! p (i64- i 1) (i64-quotient n 10)))))))
+
+(define int-text! (subr hp (i64) i64)
+  (lambda (w)
+    (if (not (fixnum? w))
+        (string-word! (int->string (word-int w)))
+        (let* ((v (fixnum-value w))
+               (neg (i64< v 0))
+               (mag (if neg (i64- 0 v) v))
+               (n (digits-count mag 0))
+               (p (alloc! ob-string (if neg (i64+ n 1) n))))
+          (begin
+            (if neg (obj-set! p 0 45) #u)
+            (digits-set! p (if neg n (i64- n 1)) mag)
+            p)))))
+
+(define text-room (subr (maxeff (read @globals) spin (read @h)) (i64) i64)
+  (lambda (w) (if (fixnum? w) (the i64 24) (i64+ 4 (i64* 10 (obj-size w))))))
+
+(define int-room (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
+  (lambda (a b) (i64+ 8 (i64+ (if (fixnum? a) (the i64 2) (obj-size a)) (if (fixnum? b) (the i64 2) (obj-size b))))))
+
+(define int-room-mul (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
+  (lambda (a b) (i64+ 8 (i64* 2 (int-room a b)))))
+
+(define shift-room (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
+  (lambda (a b)
+    "A shift's room: a count past 2^24 is too large but for 0, and the
+     result then a word, or none."
+    (let ((k (if (fixnum? b) (fixnum-value b) (the i64 0))))
+      (i64+ (int-room a a) (if (and (i64> k 0) (i64<= k 16777216)) (i64+ 2 (i64-quotient k 32)) (the i64 0))))))
+
+(define-rec
+  (same-chars? (subr (maxeff (read @globals) spin (read @h)) (i64 i64 i64) bool)
+    (lambda (a b i) (or (i64>= i (obj-size a)) (and (i64= (obj-ref a i) (obj-ref b i)) (same-chars? a b (i64+ i 1)))))))
+
+(define raw-equal? (subr (maxeff (read @globals) spin (read @h)) (i64 i64 i64) bool)
+  (lambda (a b i) (and (i64= (obj-size a) (obj-size b)) (same-chars? a b i))))
+
+(define same-atom-w? (subr hp (i64 i64) bool)
+  (lambda (a b)
+    "`case`'s comparison: two atoms of one kind, by that kind's equality."
+    (cond ((i64= a b) #t)
+          ((and (is-obj? a ob-string) (is-obj? b ob-string)) (raw-equal? a b 0))
+          ((and (is-obj? a ob-big) (is-obj? b ob-big)) (= (word-int a) (word-int b)))
+          (else #f))))
+
+"Bytes: a byte a word."
+(define bytes-copy! (subr hp (i64 i64 i64) i64)
+  (lambda (b start end)
+    (if (or (i64< start 0) (i64< end start) (i64> end (obj-size b)))
+        (begin (error "bytevector-copy: a span that does not fit") 0)
+        (let ((p (alloc! ob-bytes (i64- end start)))) (begin (copied-range! p b start 0 (i64- end start)) p)))))
+
+(define fourth-arg (subr (maxeff (read @globals) spin (read @h)) (i64) i64) (lambda (xs) (pair-car (pair-cdr (pair-cdr (pair-cdr xs))))))
+(define fifth-arg (subr (maxeff (read @globals) spin (read @h)) (i64) i64) (lambda (xs) (pair-car (pair-cdr (pair-cdr (pair-cdr (pair-cdr xs)))))))
+
+(define-rec
+  (bytes-moved! (subr hp (i64 i64 i64 i64 i64) unit)
+    (lambda (to at from i end)
+      (if (i64>= i end) #u (begin (obj-set! to at (obj-ref from i)) (bytes-moved! to (i64+ at 1) from (i64+ i 1) end))))))
+
+(define-rec
+  (bytes-moved-back! (subr hp (i64 i64 i64 i64 i64) unit)
+    (lambda (to at from start i)
+      (if (i64< i start) #u (begin (obj-set! to (i64+ at (i64- i start)) (obj-ref from i)) (bytes-moved-back! to at from start (i64- i 1)))))))
+
+(define bytes-copy-into! (subr hp (i64 i64 i64 i64 i64) unit)
+  (lambda (to at from start end)
+    (let ((s (fixnum-value start)) (e (fixnum-value end)) (t (fixnum-value at)))
+      (cond ((or (i64< s 0) (i64< e s) (i64> e (obj-size from)) (i64< t 0) (i64> (i64+ t (i64- e s)) (obj-size to)))
+             (error "bytevector-copy!: a span that does not fit"))
+            ((i64> t s) (bytes-moved-back! to t from s (i64- e 1)))
+            (else (bytes-moved! to t from s e))))))
+
+"I/O: KFX's, in proportion to what is read and written."
+(define-rec
+  (kfx-bytes-set! (subr hp (i64 (bytevectorof @h) i64 i64) unit)
+    (lambda (p bv i n) (if (i64>= i n) #u (begin (obj-set! p i (int->i64 (u8->int (bytevector-u8-ref bv (i64->int i))))) (kfx-bytes-set! p bv (i64+ i 1) n))))))
+
+(define kfx-bytes-word! (subr hp ((bytevectorof @h)) i64)
+  (lambda (bv)
+    (let* ((n (int->i64 (bytevector-length bv))) (p (alloc! ob-bytes n))) (begin (kfx-bytes-set! p bv 0 n) p))))
+
+(define-rec
+  (word-bytes-set! (subr hp ((bytevectorof @h) i64 i64 i64) unit)
+    (lambda (bv p i n) (if (i64>= i n) #u (begin (bytevector-u8-set! bv (i64->int i) (int->u8 (i64->int (obj-ref p i)))) (word-bytes-set! bv p (i64+ i 1) n))))))
+
+(define word-kfx-bytes (subr (maxeff hp (alloc @h)) (i64) (bytevectorof @h))
+  (lambda (p)
+    (let ((bv (the (bytevectorof @h) (make-bytevector (i64->int (obj-size p)) (int->u8 0)))))
+      (begin (word-bytes-set! bv p 0 (obj-size p)) bv))))
+
+(define utf8-word! (subr (maxeff hp (alloc @h)) (i64) i64)
+  (lambda (p)
+    (tagcase (utf8->string (word-kfx-bytes p))
+      (text s (let ((x (alloc! ob-sum 2))) (begin (obj-set! x 0 (fixnum (intern! "text"))) (obj-set! x 1 (string-word! s)) x)))
+      (bad k (let ((x (alloc! ob-sum 2))) (begin (obj-set! x 0 (fixnum (intern! "bad"))) (obj-set! x 1 (int-word! k)) x))))))
+
+(define sum-word! (subr (maxeff hp (alloc @h)) (string i64) i64)
+  (lambda (tag w) (let ((x (alloc! ob-sum 2))) (begin (obj-set! x 0 (fixnum (intern! tag))) (obj-set! x 1 w) x))))
+
+"The labels of `io-error`'s product, a range of `kids`, made at loading."
+(define io-error-labels (ref i64 @h) (new -1))
+
+(define io-error-word! (subr (maxeff hp (alloc @h)) (io-error) i64)
+  (lambda (e)
+    "FX-26's `io-error`: a product of its kind, a sum, and the system's
+     words; its labels interned as a product's are."
+    (let* ((kind (tagcase (extract e kind)
+                   (not-found u "not-found") (permission-denied u "permission-denied") (already-exists u "already-exists")
+                   (not-a-directory u "not-a-directory") (is-a-directory u "is-a-directory") (broken-pipe u "broken-pipe")
+                   (invalid-data u "invalid-data") (other u "other")))
+           (labels (get io-error-labels))
+           (k (sum-word! kind w-unit))
+           (d (string-word! (extract e detail)))
+           (p (alloc! ob-product 3)))
+      (begin (obj-set! p 0 (fixnum labels)) (obj-set! p 1 k) (obj-set! p 2 d) p))))
+
+
+(define written-word! (subr (maxeff hp (alloc @h)) ((sumof (done unit) (failed io-error))) i64)
+  (lambda (r) (tagcase r (done u (sum-word! "done" w-unit)) (failed e (sum-word! "failed" (io-error-word! e))))))
+
+(define-rec
+  (strings-word! (subr (maxeff hp (alloc @h)) (strings) i64)
+    (lambda (ss) (if (null? ss) w-nil (let ((rest (strings-word! (cdr ss)))) (pair! (string-word! (car ss)) rest))))))
+
+(define-rec
+  (strings-room (subr kfx (strings i64) i64)
+    (lambda (ss n) (if (null? ss) n (strings-room (cdr ss) (i64+ n (i64+ 4 (string-length-i64 (car ss)))))))))
+
+(define args-room (subr (maxeff (read @globals) spin (read @h)) () i64) (lambda () (strings-room (get program-args) 8)))
+
+(define pending-line (ref (sumof (line string) (eof unit) (failed io-error)) @h) (new (sum eof #u)))
+(define pending-file (ref (sumof (data (bytevectorof @h)) (failed io-error)) @h) (new (sum data (make-bytevector 0 (int->u8 0)))))
+(define pending-names (ref (sumof (names strings) (failed io-error)) @h) (new (sum names nil)))
+
+(define line-room! (subr (maxeff hp (alloc @h) (io stdin)) () i64)
+  (lambda ()
+    (begin
+      (set pending-line (read-line))
+      (tagcase (get pending-line) (line s (i64+ 16 (string-length-i64 s))) (eof u 8) (failed e (i64+ 32 (string-length-i64 (extract e detail))))))))
+
+(define read-line-word! (subr (maxeff hp (alloc @h)) () i64)
+  (lambda ()
+    (tagcase (get pending-line)
+      (line s (sum-word! "line" (string-word! s)))
+      (eof u (sum-word! "eof" w-unit))
+      (failed e (sum-word! "failed" (io-error-word! e))))))
+
+(define file-room! (subr (maxeff hp (alloc @h) (io fs-read)) (i64) i64)
+  (lambda (path)
+    (begin
+      (set pending-file (read-file (word-string path)))
+      (tagcase (get pending-file) (data b (i64+ 16 (int->i64 (bytevector-length b)))) (failed e (i64+ 32 (string-length-i64 (extract e detail))))))))
+
+(define read-file-word! (subr (maxeff hp (alloc @h)) (i64) i64)
+  (lambda (path)
+    (tagcase (get pending-file)
+      (data b (sum-word! "data" (kfx-bytes-word! b)))
+      (failed e (sum-word! "failed" (io-error-word! e))))))
+
+(define dir-room! (subr (maxeff hp (alloc @h) (io fs-read)) (i64) i64)
+  (lambda (path)
+    (begin
+      (set pending-names (list-dir (word-string path)))
+      (tagcase (get pending-names) (names ns (strings-room ns 16)) (failed e (i64+ 32 (string-length-i64 (extract e detail))))))))
+
+(define list-dir-word! (subr (maxeff hp (alloc @h)) (i64) i64)
+  (lambda (path)
+    (tagcase (get pending-names)
+      (names ns (sum-word! "names" (strings-word! ns)))
+      (failed e (sum-word! "failed" (io-error-word! e))))))
+
+"The fixed widths but `i64`: rare in what the engine runs, and done through
+ KFX's `int`."
+(define fixed-op-word (subr (maxeff hp (alloc @h)) (string i64 i64) i64)
+  (lambda (name a b)
+    (let* ((t (fixed-type name)) (op (fixed-op name)) (x (word-int a)))
+      (cond ((string=? op "from-int") (int-word! (wrapped t x)))
+            ((string=? op "->int") a)
+            ((string=? op "->string") (int-text! a))
+            ((string=? op "-not") (int-word! (wrapped t (bitwise-not x))))
+            (else
+             (let ((y (word-int b)))
+               (cond ((string=? op "+") (int-word! (wrapped t (+ x y))))
+                     ((string=? op "-") (int-word! (wrapped t (- x y))))
+                     ((string=? op "*") (int-word! (wrapped t (* x y))))
+                     ((string=? op "-quotient") (int-word! (wrapped t (quotient x y))))
+                     ((string=? op "-remainder") (int-word! (wrapped t (remainder x y))))
+                     ((string=? op "-and") (int-word! (wrapped t (bitwise-and x y))))
+                     ((string=? op "-or") (int-word! (wrapped t (bitwise-ior x y))))
+                     ((string=? op "-xor") (int-word! (wrapped t (bitwise-xor x y))))
+                     ((string=? op "-shl") (int-word! (wrapped t (arithmetic-shift x (modulo y (width-of t))))))
+                     ((string=? op "-shr") (int-word! (wrapped t (arithmetic-shift x (- 0 (modulo y (width-of t)))))))
+                     ((string=? op "=") (bool-word (= x y)))
+                     ((string=? op "<") (bool-word (< x y)))
+                     ((string=? op ">") (bool-word (> x y)))
+                     ((string=? op "<=") (bool-word (<= x y)))
+                     ((string=? op ">=") (bool-word (>= x y)))
+                     (else (begin (error (string-append "the engine has no primitive " name)) 0)))))))))

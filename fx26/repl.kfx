@@ -1,0 +1,154 @@
+"repl.kfx: the engine's REPL (C65), after Fixpt's: each form read as it
+ is typed, checked against what was defined before it, run on the machine
+ over words (vm.kfx), whose heap and globals it keeps, and written as
+ `fixpt repl` writes it, `value : type ! effect`. Its loop and its
+ prompts are the hand-written Rust's (crates/kayak-fx26/src/main.rs),
+ which also catches a refusal or a failure, so that the REPL goes on:
+ the checker refuses by failing, and KFX catches nothing."
+
+"What the REPL keeps between forms: the checker's environment, the globals'
+ names (an index each, as `lower.kfx` has them), and how many forms."
+(define repl-cv (ref cv @h) (new (cv nil nil nil nil "a type" nil "the REPL" 0 nil nil 0)))
+(define repl-globals (ref strings @h) (new nil))
+(define repl-count (ref i64 @h) (new 0))
+
+(define-rec
+  (complete-from (subr kfx ((listof char acyclic) i64 bool bool) bool)
+    (lambda (cs depth in-string escaped)
+      "Whether the text is one or more whole forms: its lists closed,
+       outside strings and comments."
+      (cond ((null? cs) (and (i64<= depth 0) (not in-string)))
+            (in-string
+             (cond (escaped (complete-from (cdr cs) depth #t #f))
+                   ((char=? (car cs) #\\) (complete-from (cdr cs) depth #t #t))
+                   ((char=? (car cs) #\") (complete-from (cdr cs) depth #f #f))
+                   (else (complete-from (cdr cs) depth #t #f))))
+            ((char=? (car cs) #\") (complete-from (cdr cs) depth #t #f))
+            ((i64= (char->i64 (car cs)) 59) (complete-from (drop-comment (cdr cs)) depth #f #f))
+            ((char=? (car cs) #\() (complete-from (cdr cs) (i64+ depth 1) #f #f))
+            ((char=? (car cs) #\)) (complete-from (cdr cs) (i64- depth 1) #f #f))
+            ((and (char=? (car cs) #\#) (not (null? (cdr cs))) (char=? (car (cdr cs)) #\\) (not (null? (cdr (cdr cs)))))
+             (complete-from (cdr (cdr (cdr cs))) depth #f #f))
+            (else (complete-from (cdr cs) depth #f #f)))))
+  (drop-comment (subr kfx ((listof char acyclic)) (listof char acyclic))
+    (lambda (cs) (if (or (null? cs) (char=? (car cs) #\newline)) cs (drop-comment (cdr cs))))))
+
+(define repl-complete? (subr kfx (string) bool)
+  (lambda (text)
+    (let ((cs (string-chars text)))
+      (and (any? (lambda ((c char)) (not (char-whitespace? c))) cs)
+           (complete-from cs 0 #f #f)))))
+
+(define repl-banner (subr kfx () string)
+  (lambda ()
+    "kayak-fx26 0.1 — FX-26, the engine written in KFX (an interpreter over a heap of its own, collected)
+(each form is checked by the compiler's checker, lowered, and run; ^D leaves.)"))
+
+"Globals: their array grown as definitions come."
+(define-rec
+  (globals-grown! (subr running ((flatarrayof i64 @h) (flatarrayof i64 @h) i64 i64) unit)
+    (lambda (from to i n) (if (i64>= i n) #u (begin (flatarray-set-i64! to i (flatarray-ref-i64 from i)) (globals-grown! from to (i64+ i 1) n))))))
+
+(define globals-room! (subr running (strings) unit)
+  (lambda (gs)
+    "The globals' array and their names', as long as `gs` at least."
+    (let ((n (size gs)) (old (get globals)))
+      (if (i64<= n (flatarray-length-i64 old))
+          #u
+          (let ((bigger (the (flatarrayof i64 @h) (make-flatarray-i64 (i64* (i64+ n 1) 2) w-unbound)))
+                (names (the (arrayof string @h) (make-array (i64->int (i64* (i64+ n 1) 2)) ""))))
+            (begin
+              (globals-grown! old bigger 0 (flatarray-length-i64 old))
+              (set globals bigger)
+              (names-array! names gs 0)
+              (set global-name-table names)))))))
+
+(define-rec
+  (new-names (subr kfx (strings strings) strings)
+    (lambda (names known)
+      "`names` not already among `known`, in order: a redefinition keeps its
+       global's index (C61)."
+      (cond ((null? names) nil)
+            ((string-member? (car names) known) (new-names (cdr names) known))
+            (else (cons (car names) (new-names (cdr names) (cons (car names) known))))))))
+
+(define repl-start! (subr running () unit)
+  (lambda ()
+    (let* ((empty (cv nil nil nil nil "a type" nil "the REPL" 0 nil nil 0)))
+      (begin
+        (load! nil)
+        (set repl-cv (with-binds empty (prim-binds empty)))))))
+
+(define checked-form (subr running (cv sexp) cv)
+  (lambda (v form)
+    "The checker's environment after `form`, its types and datatypes
+     declared first, as `check-program` declares a program's."
+    (tagcase v
+      (cv (bs ds als es here group file line fs tv pos)
+        (let* ((als2 (declare-types v (list form) als))
+               (v1 (cv bs ds als2 es here group file line fs tv pos))
+               (named (tagcase v1 (cv (bs1 ds1 a1 e1 h1 g1 f1 l1 fs1 t1 at1) (cv bs1 (datatype-names v1 (list form) ds1) a1 e1 h1 g1 f1 l1 fs1 t1 at1))))
+               (typed (tagcase named (cv (bs2 ds2 a2 e2 h2 g2 f2 l2 fs2 t2 at2) (cv bs2 (declare-datatypes named (list form) ds) a2 e2 h2 g2 f2 l2 fs2 t2 at2)))))
+          (cond ((untyped? form)
+                 (tagcase form
+                   (lst (xs src-file src-line src-pos)
+                     (tagcase (check-untyped (near typed src-file src-line src-pos) form) (elab (v2 more) (at v2 "" nil))))
+                   (else other typed)))
+                ((module-def? form)
+                 (tagcase form
+                   (lst (xs src-file src-line src-pos)
+                     (tagcase (check-module (near typed src-file src-line src-pos) form) (elab (v2 more) (at v2 "" nil))))
+                   (else other typed)))
+                (else (check-top typed form))))))))
+
+(define form-type (subr running (cv sexp) string)
+  (lambda (v form)
+    "What the REPL writes of a form: an expression's type and effect, a
+     definition's name and type."
+    (cond ((or (head-is? form "define") (head-is? form "define*"))
+           (let* ((n (binder-name (second (items form))))
+                  (found (find-bind n (cv-binds v))))
+             (if (null? found)
+                 n
+                 (tagcase (car found) (bind (n2 sc w) (tagcase sc (scheme (tvars t) (string-append n (string-append " : " (string-append (show-ty (new-state) t) " ! pure"))))))))))
+          ((or (head-is? form "define-type") (head-is? form "define-effect") (head-is? form "define-datatype") (head-is? form "define-generative") (head-is? form "define-rec"))
+           "")
+          (else
+           (tagcase (synth (at v "a top-level expression" nil) (new-state) form)
+             (res (t es s) (string-append " : " (string-append (show-ty s t) (string-append " ! " (show-effs es))))))))))
+
+(define-rec
+  (run-repl-tops (subr running ((listof i64 acyclic) string) string)
+    (lambda (ns typed)
+      (if (null? ns)
+          typed
+          (let ((n (car ns)))
+            (cond ((i64= n -1) (run-repl-tops (cdr ns) typed))
+                  ((i64< n 0) (begin (run 0 (i64- (i64- 0 n) 2) 0 w-nil 0 0 0) (run-repl-tops (cdr ns) typed)))
+                  (else (let ((w (run 0 n 0 w-nil 0 0 0))) (string-append (show-word w) typed)))))))))
+
+(define-rec
+  (repl-forms (subr running (sexps string) string)
+    (lambda (forms out)
+      (if (null? forms)
+          out
+          (let* ((form (car forms))
+                 (v (checked-form (get repl-cv) form))
+                 (gs (onto (get repl-globals) (new-names (global-names (list form)) (get repl-globals))))
+                 (shown (form-type v form)))
+            (begin
+              (set repl-cv v)
+              (set repl-globals gs)
+              (globals-room! gs)
+              (let* ((ns (number-tops! (lower-tops (list form) gs)))
+                     (line (run-repl-tops ns (if (string=? shown "") "" shown)))
+                     (written (if (or (head-is? form "define") (head-is? form "define*")) shown line)))
+                (repl-forms (cdr forms) (if (string=? written "") out (string-append out (string-append written "\n")))))))))))
+
+(define repl-eval! (subr running (string) string)
+  (lambda (text)
+    "A form, or several, as typed: what the REPL writes of them."
+    (let ((k (get repl-count)))
+      (begin
+        (set repl-count (i64+ k 1))
+        (repl-forms (read-all (string-chars text) (string-append "<fx26:" (string-append (i64->string (i64+ k 1)) ">")) 1) "")))))

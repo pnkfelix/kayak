@@ -229,9 +229,33 @@
           ((null? (cdr xs)) (car xs))
           (else (string-append (car xs) (string-append " " (words-of (cdr xs))))))))
 
+(define-rec
+  (atom-written (subr kfx (string) string)
+    (lambda (x)
+      "An effect atom as FX-26 writes it; a read of one global is gathered
+       by `show-effs`."
+      (let ((at (lambda ((p string)) (let ((r (after-prefix x p))) (if (has-prefix? r "'") (after-prefix r "'") r)))))
+        (cond ((string=? x "spin") "spin")
+              ((string=? x "@globals") "(read @globals)")
+              ((has-prefix? x "read:") (string-append "(read " (string-append (at "read:") ")")))
+              ((has-prefix? x "write:") (string-append "(write " (string-append (at "write:") ")")))
+              ((has-prefix? x "alloc:") (string-append "(alloc " (string-append (at "alloc:") ")")))
+              ((has-prefix? x "goto:") (string-append "(goto " (string-append (at "goto:") ")")))
+              ((has-prefix? x "comefrom:") (string-append "(comefrom " (string-append (at "comefrom:") ")")))
+              ((has-prefix? x "io:") (string-append "(io " (string-append (after-prefix x "io:") ")")))
+              ((has-prefix? x "~") (after-prefix x "~"))
+              (else x))))))
+
 (define show-effs (subr kfx (strings) string)
   (lambda (es)
-    (if (null? es) "pure" (string-append "(" (string-append (words-of es) ")")))))
+    "An effect as FX-26 writes it: `pure`, an atom, or `(maxeff ...)`, the
+     globals read gathered, `(read (globals f g))`."
+    (let* ((globals (concat (map (lambda ((x string)) (if (global-atom? x) (the strings (list (after-prefix x "g:"))) nil)) es)))
+           (others (concat (map (lambda ((x string)) (if (or (global-atom? x) (string=? x "~!")) nil (the strings (list (atom-written x))))) es)))
+           (parts (if (null? globals) others (onto others (list (string-append "(read (globals " (string-append (words-of globals) "))")))))))
+      (cond ((null? parts) "pure")
+            ((null? (cdr parts)) (car parts))
+            (else (string-append "(maxeff " (string-append (words-of parts) ")")))))))
 
 (define find-effdef (subr kfx (cv string effdefs) strings)
   (lambda (v name es)

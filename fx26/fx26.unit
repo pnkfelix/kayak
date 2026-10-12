@@ -10,6 +10,12 @@
 ir.kfx
 prims.kfx
 lower.kfx
-machine.kfx
-show.kfx
+heap.kfx
+words.kfx
+table.kfx
+vwords.kfx
+vprims.kfx
+vm.kfx
+vshow.kfx
 main.kfx
+repl.kfx

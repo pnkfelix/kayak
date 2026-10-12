@@ -1,0 +1,104 @@
+"words.kfx: the engine's values as words and heap objects (C64): making
+ them, taking them apart, and the conversions to and from KFX's `int`,
+ strings and `f64`, which allocate KFX data and so are for loading, I/O
+ and bignums alone, never a step's work."
+
+(define-effect hp (maxeff (read @globals) spin (read @h) (write @h)))
+
+(define-effect vm (maxeff (read @globals) spin (read @h) (write @h) (alloc @h)
+                          (io stdin) (io stdout) (io stderr) (io clock) (io fs-read) (io fs-write) (io args) (io exit)))
+
+
+"Integers: a fixnum if it fits, else a bignum, its sign and 32-bit limbs,
+ the low first."
+(define-rec
+  (limbs-count (subr kfx (int i64) i64)
+    (lambda (n k) (if (zero? n) k (limbs-count (quotient n 4294967296) (i64+ k 1))))))
+
+(define-rec
+  (limbs-set! (subr hp (i64 int i64) unit)
+    (lambda (p n i)
+      (if (zero? n) #u (begin (obj-set! p i (int->i64 (remainder n 4294967296))) (limbs-set! p (quotient n 4294967296) (i64+ i 1)))))))
+
+(define big-words (subr kfx (int) i64)
+  (lambda (n) "How many words a bignum of `n` needs." (i64+ 2 (limbs-count (if (< n 0) (- 0 n) n) 0))))
+
+(define int-word! (subr hp (int) i64)
+  (lambda (n)
+    "`n` as a word: a fixnum, or a bignum made (room for `big-words` made
+     sure of before)."
+    (let ((x (int->i64 n)))
+      (if (and (= (i64->int x) n) (fits-fixnum? x))
+          (fixnum x)
+          (let* ((mag (if (< n 0) (- 0 n) n))
+                 (k (limbs-count mag 0))
+                 (p (alloc! ob-big (i64+ k 1))))
+            (begin (obj-set! p 0 (if (< n 0) (the i64 1) (the i64 0))) (limbs-set! p mag 1) p))))))
+
+(define-rec
+  (limbs-value (subr hp (i64 i64 int) int)
+    (lambda (p i acc)
+      (if (i64< i 1) acc (limbs-value p (i64- i 1) (+ (* acc 4294967296) (i64->int (obj-ref p i))))))))
+
+(define word-int (subr hp (i64) int)
+  (lambda (w)
+    "A word's integer: a fixnum's, or a bignum's."
+    (if (fixnum? w)
+        (i64->int (fixnum-value w))
+        (let ((mag (limbs-value w (i64- (obj-size w) 1) 0)))
+          (if (i64= (obj-ref w 0) 1) (- 0 mag) mag)))))
+
+(define word-i64 (subr hp (i64) i64)
+  (lambda (w) "An `i64`'s value: a fixnum's, or the low 64 bits of a bignum's." (if (fixnum? w) (fixnum-value w) (int->i64 (word-int w)))))
+
+(define i64-room (subr kfx (i64) i64)
+  (lambda (n) "The room an `i64` result may need: a bignum's, if it is no fixnum." (if (fits-fixnum? n) (the i64 0) (the i64 4))))
+
+(define i64-word! (subr hp (i64) i64)
+  (lambda (n) (if (fits-fixnum? n) (fixnum n) (int-word! (i64->int n)))))
+
+"Characters, booleans, symbols."
+(define char-word (subr kfx (char) i64) (lambda (c) (immediate imm-char (char->i64 c))))
+(define word-char (subr kfx (i64) char) (lambda (w) (i64->char (immediate-value w))))
+(define bool-word (subr kfx (bool) i64) (lambda (b) (if b w-true w-false)))
+(define truthy? (subr kfx (i64) bool) (lambda (w) (not (i64= w w-false))))
+(define symbol-word (subr kfx (i64) i64) (lambda (n) (immediate imm-symbol n)))
+(define is-imm? (subr kfx (i64 i64) bool) (lambda (w kind) (and (immediate? w) (i64= (immediate-kind w) kind))))
+
+"Objects of a kind."
+(define is-obj? (subr (maxeff (read @globals) spin (read @h)) (i64 i64) bool)
+  (lambda (w kind) (and (pointer? w) (i64= (obj-kind w) kind))))
+
+"Pairs: their car and cdr, written in place."
+(define pair! (subr hp (i64 i64) i64)
+  (lambda (a d) (let ((p (alloc! ob-pair 2))) (begin (obj-set! p 0 a) (obj-set! p 1 d) p))))
+(define pair-car (subr (maxeff (read @globals) spin (read @h)) (i64) i64) (lambda (p) (obj-ref p 0)))
+(define pair-cdr (subr (maxeff (read @globals) spin (read @h)) (i64) i64) (lambda (p) (obj-ref p 1)))
+
+"Strings: a character a word."
+(define string-length-w (subr (maxeff (read @globals) spin (read @h)) (i64) i64) (lambda (s) (obj-size s)))
+
+(define-rec
+  (chars-set! (subr hp (i64 (listof char acyclic) i64) unit)
+    (lambda (p cs i) (if (null? cs) #u (begin (obj-set! p i (char->i64 (car cs))) (chars-set! p (cdr cs) (i64+ i 1)))))))
+
+(define string-word! (subr hp (string) i64)
+  (lambda (s)
+    "A KFX string made a heap string (room for its length and a header
+     made sure of): for loading and I/O."
+    (let* ((cs (the (listof char acyclic) (string->list s)))
+           (p (alloc! ob-string (size cs))))
+      (begin (chars-set! p cs 0) p))))
+
+(define-rec
+  (string-chars-from (subr (maxeff (read @globals) spin (read @h)) (i64 i64 (listof char acyclic)) (listof char acyclic))
+    (lambda (p i acc) (if (i64< i 0) acc (string-chars-from p (i64- i 1) (cons (i64->char (obj-ref p i)) acc))))))
+
+(define word-string (subr (maxeff (read @globals) spin (read @h)) (i64) string)
+  (lambda (p) "A heap string as a KFX string: for I/O." (list->string (string-chars-from p (i64- (obj-size p) 1) nil))))
+
+"Reals: an `f64`'s bits."
+(define real-word! (subr hp (f64) i64)
+  (lambda (x) (let ((p (alloc! ob-real 1))) (begin (obj-set! p 0 (int->i64 (u64->int (f64->bits x)))) p))))
+(define word-real (subr (maxeff (read @globals) spin (read @h)) (i64) f64)
+  (lambda (p) (bits->f64 (int->u64 (i64->int (obj-ref p 0))))))

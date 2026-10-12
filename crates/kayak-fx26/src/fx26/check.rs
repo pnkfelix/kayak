@@ -466,11 +466,68 @@ pub fn words_of(xs: Strings) -> Str {
     }
 }
 
-pub fn show_effs(es: Strings) -> Str {
-    if null_p(es) {
-        str_lit("pure")
+/// An effect atom as FX-26 writes it; a read of one global is gathered
+/// by `show-effs`.
+pub fn atom_written(x: Str) -> Str {
+    let at = lambda1(move |p: Str| {
+        let r = after_prefix(x, p);
+        if has_prefix_p(r, str_lit("'")) {
+            after_prefix(r, str_lit("'"))
+        } else {
+            r
+        }
+    });
+    if string_eq_p(x, str_lit("spin")) {
+        str_lit("spin")
+    } else if string_eq_p(x, str_lit("@globals")) {
+        str_lit("(read @globals)")
+    } else if has_prefix_p(x, str_lit("read:")) {
+        string_append(str_lit("(read "), string_append(at(str_lit("read:")), str_lit(")")))
+    } else if has_prefix_p(x, str_lit("write:")) {
+        string_append(str_lit("(write "), string_append(at(str_lit("write:")), str_lit(")")))
+    } else if has_prefix_p(x, str_lit("alloc:")) {
+        string_append(str_lit("(alloc "), string_append(at(str_lit("alloc:")), str_lit(")")))
+    } else if has_prefix_p(x, str_lit("goto:")) {
+        string_append(str_lit("(goto "), string_append(at(str_lit("goto:")), str_lit(")")))
+    } else if has_prefix_p(x, str_lit("comefrom:")) {
+        string_append(str_lit("(comefrom "), string_append(at(str_lit("comefrom:")), str_lit(")")))
+    } else if has_prefix_p(x, str_lit("io:")) {
+        string_append(str_lit("(io "), string_append(after_prefix(x, str_lit("io:")), str_lit(")")))
+    } else if has_prefix_p(x, str_lit("~")) {
+        after_prefix(x, str_lit("~"))
     } else {
-        string_append(str_lit("("), string_append(words_of(es), str_lit(")")))
+        x
+    }
+}
+
+/// An effect as FX-26 writes it: `pure`, an atom, or `(maxeff ...)`, the
+/// globals read gathered, `(read (globals f g))`.
+pub fn show_effs(es: Strings) -> Str {
+    let globals = concat(map(lambda1(move |x: Str| {
+        if global_atom_p(x) {
+            the::<Strings>(kayak_rt::heap_cons(after_prefix(x, str_lit("g:")), kayak_rt::nil()))
+        } else {
+            nil::<Str>()
+        }
+    }), es));
+    let others = concat(map(lambda1(move |x: Str| {
+        if (global_atom_p(x) || string_eq_p(x, str_lit("~!"))) {
+            nil::<Str>()
+        } else {
+            the::<Strings>(kayak_rt::heap_cons(atom_written(x), kayak_rt::nil()))
+        }
+    }), es));
+    let parts = if null_p(globals) {
+        others
+    } else {
+        onto(others, kayak_rt::heap_cons(string_append(str_lit("(read (globals "), string_append(words_of(globals), str_lit("))"))), kayak_rt::nil()))
+    };
+    if null_p(parts) {
+        str_lit("pure")
+    } else if null_p(cdr(parts)) {
+        car(parts)
+    } else {
+        string_append(str_lit("(maxeff "), string_append(words_of(parts), str_lit(")")))
     }
 }
 

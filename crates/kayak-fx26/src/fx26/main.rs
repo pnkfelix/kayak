@@ -84,35 +84,80 @@ pub fn after_dashes(mut xs: Strings) -> Strings {
     }
 }
 
-pub fn run_tops(mut m: &'static Machine, mut tops: List<&'static Top>, mut quiet: bool) -> () {
+// The program loaded: the heap made, its globals and their names, the
+// IR's tables, then each top-level form run in turn on the machine over
+// words (vm.kfx, C64).
+
+pub fn names_array_x(mut a: Array<Str>, mut ns: Strings, mut i: i64) -> () {
     loop {
-        if null_p(tops) {
+        if null_p(ns) {
             return ();
         } else {
-            {
-                let tagcase_ = car(tops);
-                match *tagcase_ {
-                    Top::TopDefine(x) => {
-                        run(m, c_eval(x, nil::<Array<&'static Val>>()), nil::<&'static Frame>());
-                        ()
-                    }
-                    Top::TopExpr(x) => {
-                        let v = run(m, c_eval(x, nil::<Array<&'static Val>>()), nil::<&'static Frame>());
-                        if quiet {
-                            ()
-                        } else {
-                            say(string_append(show(v), str_lit("\n")))
-                        }
-                    }
-                    Top::TopNone() => {
-                        ()
-                    }
-                }
-            };
-            tops = cdr(tops);
+            array_set_x(a, i64_to_int(i), car(ns));
+            (ns, i) = (cdr(ns), i64_plus(i, 1i64));
             continue;
         }
     }
+}
+
+/// Each top-level form's node: a definition's or an expression's
+/// (positive: an expression's, written), none for the rest (-1).
+pub fn number_tops_x(tops: List<&'static Top>) -> List<i64> {
+    if null_p(tops) {
+        nil::<i64>()
+    } else {
+        let n = {
+            let tagcase_ = car(tops);
+            match *tagcase_ {
+                Top::TopDefine(x) => {
+                    i64_minus(0i64, i64_plus(number_x(x), 2i64))
+                }
+                Top::TopExpr(x) => {
+                    number_x(x)
+                }
+                Top::TopNone() => {
+                    the::<i64>(-1i64)
+                }
+            }
+        };
+        kayak_rt::heap_cons(n, number_tops_x(cdr(tops)))
+    }
+}
+
+pub fn run_tops(mut ns: List<i64>, mut quiet: bool) -> () {
+    loop {
+        if null_p(ns) {
+            return ();
+        } else {
+            let n = car(ns);
+            if i64_eq(n, -1i64) {
+                ()
+            } else if i64_lt(n, 0i64) {
+                run(0i64, i64_minus(i64_minus(0i64, n), 2i64), 0i64, w_nil(), 0i64, 0i64, 0i64);
+                ()
+            } else {
+                let w = run(0i64, n, 0i64, w_nil(), 0i64, 0i64, 0i64);
+                if quiet {
+                    ()
+                } else {
+                    say(string_append(show_word(w), str_lit("\n")))
+                }
+            };
+            ns = cdr(ns);
+            continue;
+        }
+    }
+}
+
+pub fn load_x(gs: Strings) -> () {
+    heap_start_x(1048576i64);
+    set(globals(), make_flatarray_i64(size(gs), w_unbound()));
+    {
+        let names = the::<Array<Str>>(make_array(i64_to_int(i64_plus(size(gs), 1i64)), str_lit("")));
+        names_array_x(names, gs, 0i64);
+        set(global_name_table(), names)
+    };
+    set(io_error_labels(), label_ids_x(kayak_rt::heap_cons(str_lit("kind"), kayak_rt::heap_cons(str_lit("detail"), kayak_rt::nil()))))
 }
 
 pub fn main() -> Int {
@@ -125,49 +170,37 @@ pub fn main() -> Int {
         r#as
     });
     if null_p(paths) {
-        match fail_with(str_lit("usage: kayak-fx26 [--main] FILE ..."), int_lit(2)) {};
+        match fail_with(str_lit("usage: kayak-fx26 [--main | --run] FILE ... [-- ARG ...]"), int_lit(2)) {};
         int_lit(2)
     } else {
         let forms = read_files(paths);
         let checked = check_program(forms);
         let gs = onto(global_names(forms), module_entries(forms));
-        let m = machine(make_array(i64_to_int(size(gs)), unbound()), kayak_rt::heap_new(0i64));
-        run_tops(m, lower_tops(forms, gs), with_main);
+        load_x(gs);
+        let ns = number_tops_x(lower_tops(forms, gs));
+        run_tops(ns, with_main);
         if with_main {
             let i = position_of(str_lit("main"), gs, 0i64);
             if i64_lt(i, 0i64) {
-                match fail_with(str_lit("no main"), int_lit(1)) {}
+                match fail_with(str_lit("no main"), int_lit(1)) {};
+                int_lit(1)
             } else {
                 set(program_args(), after_dashes(r#as));
-                let tagcase_ = run(m, c_apply(array_ref({
-                    let tagcase_ = m;
-                    match *tagcase_ {
-                        Machine::Machine(g, t) => {
-                            g
-                        }
-                    }
-                }, i64_to_int(i)), nil::<&'static Val>()), nil::<&'static Frame>());
-                match *tagcase_ {
-                    Val::VString(s) => {
-                        say(s)
-                    }
-                    Val::VInt(n) => {
-                        if running {
-                            match exit(i64_to_int(i64_and(int_to_i64(n), 255i64))) {}
-                        } else {
-                            say(show(v_int(n)))
-                        }
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        say(show(other))
-                    }
+                let w = run(2i64, 0i64, 0i64, w_nil(), 0i64, flatarray_ref_i64(get(globals()), i), w_nil());
+                if is_obj_p(w, ob_string()) {
+                    say(word_string(w));
+                    int_lit(0)
+                } else if (running && fixnum_p(w)) {
+                    match exit(i64_to_int(i64_and(fixnum_value(w), 255i64))) {};
+                    int_lit(0)
+                } else {
+                    say(show_word(w));
+                    int_lit(0)
                 }
             }
         } else {
-            ()
-        };
-        int_lit(0)
+            int_lit(0)
+        }
     }
 }
 

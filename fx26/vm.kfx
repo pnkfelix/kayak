@@ -1,0 +1,331 @@
+"vm.kfx: the engine's machine over words (C64): the CEK machine of
+ machine.kfx, its control a node's number, its environment, continuation
+ and values words in the heap (heap.kfx). Registers: the mode (0 evaluate
+ a node, 1 return a value, 2 apply), the node, the environment, the
+ continuation, the value, and the procedure and arguments of an
+ application. At the top of each step, if the heap's room is short of the
+ reserve, the registers are written to the roots, the heap collected, and
+ the step begun again from the roots: nothing else holds a word across a
+ collection. A step that needs more room than the reserve (a primitive's
+ result of its input's size, a continuation's frames copied) asks first,
+ the same way."
+
+(define reserve i64 65536)
+
+(define roots (ref (flatarrayof i64 @h) @h) (new (make-flatarray-i64 6 0)))
+(define globals (ref (flatarrayof i64 @h) @h) (new (make-flatarray-i64 1 0)))
+(define global-name-table (ref (arrayof string @h) @h) (new (make-array 1 "")))
+(define tags-made (ref i64 @h) (new 0))
+
+"Frames: a `frame` object, its next frame first, then its kind, then its
+ fields. Never written once made, so that a continuation's frames may be
+ shared, and resumed again and again."
+(define fk-if i64 1)
+(define fk-seq i64 2)
+(define fk-list i64 3)
+(define fk-letrec i64 4)
+(define fk-define i64 5)
+(define fk-sum i64 6)
+(define fk-extract i64 7)
+(define fk-tagcase i64 8)
+(define fk-ptag i64 9)
+(define fk-phandler i64 10)
+(define fk-prompt i64 11)
+(define fk-abort i64 12)
+
+(define frame-kind (subr (maxeff (read @globals) spin (read @h)) (i64) i64) (lambda (k) (fixnum-value (obj-ref k 1))))
+(define frame-next (subr (maxeff (read @globals) spin (read @h)) (i64) i64) (lambda (k) (obj-ref k 0)))
+(define frame-field (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64) (lambda (k i) (obj-ref k (i64+ i 2))))
+
+(define frame! (subr hp (i64 i64 i64 i64 i64 i64 i64) i64)
+  (lambda (kind next n a b c d)
+    "A frame of `kind` with `n` fields, the first `n` of `a` to `d`."
+    (let ((p (alloc! ob-frame (i64+ n 2))))
+      (begin
+        (obj-set! p 0 next)
+        (obj-set! p 1 (fixnum kind))
+        (if (i64> n 0) (obj-set! p 2 a) #u)
+        (if (i64> n 1) (obj-set! p 3 b) #u)
+        (if (i64> n 2) (obj-set! p 4 c) #u)
+        (if (i64> n 3) (obj-set! p 5 d) #u)
+        p))))
+
+"Environments: an `env` object, its parent first, then its slots."
+(define-rec
+  (env-up (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
+    (lambda (e d) (if (i64= d 0) e (env-up (obj-ref e 0) (i64- d 1))))))
+
+(define-rec
+  (fill-from-reversed! (subr hp (i64 i64 i64) unit)
+    (lambda (p i xs)
+      "Slots `i` down to 1 of `p` (its first after the header's field 0)
+       from the list `xs`, the last first."
+      (if (i64< i 1) #u (begin (obj-set! p i (pair-car xs)) (fill-from-reversed! p (i64- i 1) (pair-cdr xs)))))))
+
+(define-rec
+  (args-env! (subr hp (i64 i64 i64 i64) unit)
+    (lambda (p i xs n) (if (i64> i n) #u (begin (obj-set! p i (pair-car xs)) (args-env! p (i64+ i 1) (pair-cdr xs) n))))))
+
+(define-rec
+  (slots-copied! (subr hp (i64 i64 i64 i64) unit)
+    (lambda (to from i n) "Slots `i` to `n` - 1 of `from` to the same of `to`." (if (i64>= i n) #u (begin (obj-set! to i (obj-ref from i)) (slots-copied! to from (i64+ i 1) n))))))
+
+"Continuations: the frames above a prompt of a tag, by their count."
+(define-rec
+  (frames-to (subr (maxeff (read @globals) spin (read @h)) (i64 i64 i64) i64)
+    (lambda (k tag n)
+      "How many frames from `k` before the prompt of `tag`; -1 if none."
+      (cond ((i64= k w-nil) -1)
+            ((and (i64= (frame-kind k) fk-prompt) (i64= (fixnum-value (frame-field k 0)) tag)) n)
+            (else (frames-to (frame-next k) tag (i64+ n 1)))))))
+
+(define-rec
+  (frame-after (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
+    (lambda (k n) (if (i64= n 0) k (frame-after (frame-next k) (i64- n 1))))))
+
+(define-rec
+  (frames-room (subr (maxeff (read @globals) spin (read @h)) (i64 i64 i64) i64)
+    (lambda (k n acc) (if (i64= n 0) acc (frames-room (frame-next k) (i64- n 1) (i64+ acc (i64+ (obj-size k) 1)))))))
+
+(define-rec
+  (frames-copied! (subr hp (i64 i64 i64) i64)
+    (lambda (k n onto)
+      "The `n` frames from `k`, copied, the last's next `onto`: the first."
+      (if (i64= n 0)
+          onto
+          (let* ((rest (frames-copied! (frame-next k) (i64- n 1) onto))
+                 (size (obj-size k))
+                 (p (alloc! ob-frame size)))
+            (begin
+              (obj-set! p 0 rest)
+              (slots-copied! p k 1 size)
+              p))))))
+
+(define tag-number (subr kfx (i64) i64) (lambda (w) (immediate-value w)))
+
+(define op-make-tag i64 (list-position "make-continuation-prompt-tag" prim-list 0))
+(define op-abort i64 (list-position "abort-current-continuation" prim-list 0))
+(define op-capture i64 (list-position "call-with-composable-continuation" prim-list 0))
+(define op-suspend i64 (list-position "abort-with-continuation" prim-list 0))
+
+(define-rec
+  (label-position (subr (maxeff (read @globals) spin (read @h)) (i64 i64 i64 i64) i64)
+    (lambda (start n l i)
+      (cond ((i64>= i n) -1)
+            ((i64= (kid-at (i64+ start i)) l) i)
+            (else (label-position start n l (i64+ i 1)))))))
+
+(define-rec
+  (arm-found (subr (maxeff (read @globals) spin (read @h)) (i64 i64 i64) i64)
+    (lambda (start n tag)
+      (cond ((i64< n 1) -1)
+            ((tagcase (armx-at start) (armx (t c b) (i64= t tag))) start)
+            (else (arm-found (i64+ start 1) (i64- n 1) tag))))))
+
+(define unbound-global (subr vm (i64) i64)
+  (lambda (i) (begin (error (string-append "the engine: used before it is defined, " (array-ref (get global-name-table) (i64->int i)))) 0)))
+
+(define consts (subr (maxeff (read @globals) spin (read @h)) () (flatarrayof i64 @h)) (lambda () (get constants)))
+
+(define-rec
+  (run (subr vm (i64 i64 i64 i64 i64 i64 i64) i64)
+    (lambda (mode node env k val f args)
+      (if (i64< (heap-room) reserve)
+          (gc-run mode node env k val f args 0)
+          (cond
+            ((i64= mode 0)
+             (tagcase (node-at node)
+               (n-lit (c) (run 1 0 env k (constant-at c) 0 0))
+               (n-local (d s) (run 1 0 env k (obj-ref (env-up env d) (i64+ s 1)) 0 0))
+               (n-global (i)
+                 (let ((w (flatarray-ref-i64 (get globals) i)))
+                   (if (i64= w w-unbound) (unbound-global i) (run 1 0 env k w 0 0))))
+               (n-lambda (n body)
+                 (let ((p (alloc! ob-proc 2))) (begin (obj-set! p 0 (code-word body)) (obj-set! p 1 env) (run 1 0 env k p 0 0))))
+               (n-call (at count) (run 0 (kid-at at) env (frame! fk-list k 4 (code-word node) (fixnum 1) env w-nil) 0 0 0))
+               (n-if (c t e) (run 0 c env (frame! fk-if k 2 (code-word node) env 0 0) 0 0 0))
+               (n-seq (at count)
+                 (cond ((i64= count 0) (run 1 0 env k w-unit 0 0))
+                       ((i64= count 1) (run 0 (kid-at at) env k 0 0 0))
+                       (else (run 0 (kid-at at) env (frame! fk-seq k 3 (code-word node) (fixnum 1) env 0) 0 0 0))))
+               (n-let (at count body)
+                 (if (i64= count 0)
+                     (let ((e (alloc! ob-env 1))) (begin (obj-set! e 0 env) (run 0 body e k 0 0 0)))
+                     (run 0 (kid-at at) env (frame! fk-list k 4 (code-word node) (fixnum 1) env w-nil) 0 0 0)))
+               (n-letrec (at count body)
+                 (let ((e (alloc! ob-env (i64+ count 1))))
+                   (begin
+                     (obj-set! e 0 env)
+                     (fill-unbound! e 1 count)
+                     (if (i64= count 0)
+                         (run 0 body e k 0 0 0)
+                         (run 0 (kid-at at) e (frame! fk-letrec k 3 (code-word node) (fixnum 0) e 0) 0 0 0)))))
+               (n-define (i x) (run 0 x env (frame! fk-define k 1 (fixnum i) 0 0 0) 0 0 0))
+               (n-sum (t x) (run 0 x env (frame! fk-sum k 1 (fixnum t) 0 0 0) 0 0 0))
+               (n-product (labels at count)
+                 (if (i64= count 0)
+                     (let ((p (alloc! ob-product 1))) (begin (obj-set! p 0 (fixnum labels)) (run 1 0 env k p 0 0)))
+                     (run 0 (kid-at at) env (frame! fk-list k 4 (code-word node) (fixnum 1) env w-nil) 0 0 0)))
+               (n-extract (l x) (run 0 x env (frame! fk-extract k 1 (fixnum l) 0 0 0) 0 0 0))
+               (n-tagcase (x start count default) (run 0 x env (frame! fk-tagcase k 2 (code-word node) env 0 0) 0 0 0))
+               (n-prompt (t h body) (run 0 t env (frame! fk-ptag k 2 (code-word node) env 0 0) 0 0 0))))
+            ((i64= mode 1)
+             (if (i64= k w-nil)
+                 val
+                 (let ((kind (frame-kind k)) (next (frame-next k)))
+                   (cond
+                     ((i64= kind fk-if)
+                      (tagcase (node-at (code-index (frame-field k 0)))
+                        (n-if (c t e) (run 0 (if (truthy? val) t e) (frame-field k 1) next 0 0 0))
+                        (else other (run 1 0 env next val 0 0))))
+                     ((i64= kind fk-seq)
+                      (tagcase (node-at (code-index (frame-field k 0)))
+                        (n-seq (at count)
+                          (let ((pos (fixnum-value (frame-field k 1))) (e (frame-field k 2)))
+                            (if (i64= (i64+ pos 1) count)
+                                (run 0 (kid-at (i64+ at pos)) e next 0 0 0)
+                                (run 0 (kid-at (i64+ at pos)) e (frame! fk-seq next 3 (frame-field k 0) (fixnum (i64+ pos 1)) e 0) 0 0 0))))
+                        (else other (run 1 0 env next val 0 0))))
+                     ((i64= kind fk-list) (list-step k next val))
+                     ((i64= kind fk-letrec)
+                      (let* ((e (frame-field k 2)) (pos (fixnum-value (frame-field k 1))))
+                        (begin
+                          (obj-set! e (i64+ pos 1) val)
+                          (tagcase (node-at (code-index (frame-field k 0)))
+                            (n-letrec (at count body)
+                              (if (i64= (i64+ pos 1) count)
+                                  (run 0 body e next 0 0 0)
+                                  (run 0 (kid-at (i64+ at (i64+ pos 1))) e (frame! fk-letrec next 3 (frame-field k 0) (fixnum (i64+ pos 1)) e 0) 0 0 0)))
+                            (else other (run 1 0 env next val 0 0))))))
+                     ((i64= kind fk-define)
+                      (begin (flatarray-set-i64! (get globals) (fixnum-value (frame-field k 0)) val) (run 1 0 env next w-unit 0 0)))
+                     ((i64= kind fk-sum)
+                      (let ((p (alloc! ob-sum 2))) (begin (obj-set! p 0 (frame-field k 0)) (obj-set! p 1 val) (run 1 0 env next p 0 0))))
+                     ((i64= kind fk-extract)
+                      (let ((i (label-position (fixnum-value (obj-ref val 0)) (i64- (obj-size val) 1) (fixnum-value (frame-field k 0)) 0)))
+                        (if (i64< i 0)
+                            (begin (error "the engine: extract of a field the product has not") 0)
+                            (run 1 0 env next (obj-ref val (i64+ i 1)) 0 0))))
+                     ((i64= kind fk-tagcase) (tagcase-step k next val))
+                     ((i64= kind fk-ptag)
+                      (tagcase (node-at (code-index (frame-field k 0)))
+                        (n-prompt (t h body) (run 0 h (frame-field k 1) (frame! fk-phandler next 3 val (frame-field k 0) (frame-field k 1) 0) 0 0 0))
+                        (else other (run 1 0 env next val 0 0))))
+                     ((i64= kind fk-phandler)
+                      (tagcase (node-at (code-index (frame-field k 1)))
+                        (n-prompt (t h body)
+                          (run 0 body (frame-field k 2) (frame! fk-prompt next 2 (fixnum (tag-number (frame-field k 0))) val 0 0) 0 0 0))
+                        (else other (run 1 0 env next val 0 0))))
+                     ((i64= kind fk-prompt) (run 1 0 env next val 0 0))
+                     ((i64= kind fk-abort) (abort-to (fixnum-value (frame-field k 0)) next val))
+                     (else (begin (error "the engine: a frame of no kind") 0))))))
+            (else (apply-step f args k))))))
+
+  (gc-run (subr vm (i64 i64 i64 i64 i64 i64 i64 i64) i64)
+    (lambda (mode node env k val f args need)
+      "The registers to the roots, the heap collected (made room for `need`
+       more), and the step begun again from the roots."
+      (let ((r (get roots)))
+        (begin
+          (flatarray-set-i64! r 0 env) (flatarray-set-i64! r 1 k) (flatarray-set-i64! r 2 val)
+          (flatarray-set-i64! r 3 f) (flatarray-set-i64! r 4 args)
+          (collect! r (get globals) (consts) (i64+ need reserve))
+          (run mode node (flatarray-ref-i64 r 0) (flatarray-ref-i64 r 1) (flatarray-ref-i64 r 2)
+               (flatarray-ref-i64 r 3) (flatarray-ref-i64 r 4))))))
+
+  (list-step (subr vm (i64 i64 i64) i64)
+    (lambda (k next val)
+      "A value of a call's, a `let`'s or a product's parts: the next part, or
+       all of them, in order, applied, bound or made a product."
+      (let* ((nd (code-index (frame-field k 0)))
+             (pos (fixnum-value (frame-field k 1)))
+             (env (frame-field k 2))
+             (got (pair! val (frame-field k 3))))
+        (tagcase (node-at nd)
+          (n-call (at count)
+            (if (i64< pos count)
+                (run 0 (kid-at (i64+ at pos)) env (frame! fk-list next 4 (frame-field k 0) (fixnum (i64+ pos 1)) env got) 0 0 0)
+                (let ((xs (reverse-words! got w-nil))) (run 2 0 env next 0 (pair-car xs) (pair-cdr xs)))))
+          (n-let (at count body)
+            (if (i64< pos count)
+                (run 0 (kid-at (i64+ at pos)) env (frame! fk-list next 4 (frame-field k 0) (fixnum (i64+ pos 1)) env got) 0 0 0)
+                (let ((e (alloc! ob-env (i64+ count 1)))) (begin (obj-set! e 0 env) (fill-from-reversed! e count got) (run 0 body e next 0 0 0)))))
+          (n-product (labels at count)
+            (if (i64< pos count)
+                (run 0 (kid-at (i64+ at pos)) env (frame! fk-list next 4 (frame-field k 0) (fixnum (i64+ pos 1)) env got) 0 0 0)
+                (let ((p (alloc! ob-product (i64+ count 1)))) (begin (obj-set! p 0 (fixnum labels)) (fill-from-reversed! p count got) (run 1 0 env next p 0 0)))))
+          (else other (begin (error "the engine: a list frame of no list") 0))))))
+
+  (tagcase-step (subr vm (i64 i64 i64) i64)
+    (lambda (k next val)
+      (tagcase (node-at (code-index (frame-field k 0)))
+        (n-tagcase (x start count default)
+          (let* ((env (frame-field k 1))
+                 (is-sum (is-obj? val ob-sum))
+                 (tag (if (or is-sum (is-obj? val ob-data)) (fixnum-value (obj-ref val 0)) (the i64 -1)))
+                 (found (arm-found start count tag)))
+            (if (i64< found 0)
+                (let ((e (alloc! ob-env 2))) (begin (obj-set! e 0 env) (obj-set! e 1 val) (run 0 default e next 0 0 0)))
+                (tagcase (armx-at found)
+                  (armx (t binds body)
+                    (let ((whole (if is-sum (obj-ref val 1) val)))
+                      (if (or (i64= binds -1) (and is-sum (not (is-obj? whole ob-product))))
+                          (let ((e (alloc! ob-env 2))) (begin (obj-set! e 0 env) (obj-set! e 1 whole) (run 0 body e next 0 0 0)))
+                          (let* ((n (i64- (obj-size whole) 1))
+                                 (e (alloc! ob-env (i64+ n 1))))
+                            (begin (slots-copied! e whole 1 (i64+ n 1)) (obj-set! e 0 env)
+                                   (run 0 body e next 0 0 0))))))))))
+        (else other (begin (error "the engine: a tagcase frame of no tagcase") 0)))))
+
+  (abort-to (subr vm (i64 i64 i64) i64)
+    (lambda (tag k v)
+      "To the prompt of `tag`, its handler given `v`."
+      (let ((n (frames-to k tag 0)))
+        (if (i64< n 0)
+            (begin (error "the engine: no prompt for the tag") 0)
+            (let ((p (frame-after k n)))
+              (run 2 0 0 (frame-next p) 0 (frame-field p 1) (pair! v w-nil)))))))
+
+  (apply-step (subr vm (i64 i64 i64) i64)
+    (lambda (f args k)
+      (cond
+        ((is-obj? f ob-proc)
+         (let* ((n (list-count args 0))
+                (e (alloc! ob-env (i64+ n 1))))
+           (begin (obj-set! e 0 (obj-ref f 1)) (args-env! e 1 args n)
+                  (run 0 (code-index (obj-ref f 0)) e k 0 0 0))))
+        ((is-obj? f ob-ctor)
+         (let* ((n (list-count args 0))
+                (p (alloc! ob-data (i64+ n 1))))
+           (begin (obj-set! p 0 (obj-ref f 0)) (args-env! p 1 args n) (run 1 0 0 k p 0 0))))
+        ((is-obj? f ob-cont)
+         (let* ((top (obj-ref f 0)) (n (fixnum-value (obj-ref f 1))) (room (frames-room top n 0)))
+           (cond ((i64< (heap-room) (i64+ room reserve)) (gc-run 2 0 0 k 0 f args room))
+                 ((and (truthy? (obj-ref f 3)) (truthy? (obj-ref f 2))) (begin (error "a continuation resumed twice") 0))
+                 (else (begin (obj-set! f 2 w-true) (run 1 0 0 (frames-copied! top n k) (pair-car args) 0 0))))))
+        ((is-imm? f imm-prim)
+         (let ((op (immediate-value f)))
+           (cond
+             ((i64= op op-make-tag)
+              (let ((t (get tags-made))) (begin (set tags-made (i64+ t 1)) (run 1 0 0 k (immediate imm-tag t) 0 0))))
+             ((i64= op op-abort) (abort-to (tag-number (pair-car args)) k (pair-car (pair-cdr args))))
+             ((i64= op op-capture)
+              (let* ((tag (tag-number (pair-car (pair-cdr args)))) (n (frames-to k tag 0)))
+                (if (i64< n 0)
+                    (begin (error "the engine: no prompt for the tag") 0)
+                    (let ((c (alloc! ob-cont 4)))
+                      (begin (obj-set! c 0 k) (obj-set! c 1 (fixnum n)) (obj-set! c 2 w-false) (obj-set! c 3 w-false)
+                             (run 2 0 0 k 0 (pair-car args) (pair! c w-nil)))))))
+             ((i64= op op-suspend)
+              (let* ((tag (tag-number (pair-car args))) (n (frames-to k tag 0)))
+                (if (i64< n 0)
+                    (begin (error "the engine: no prompt for the tag") 0)
+                    (let ((c (alloc! ob-cont 4)))
+                      (begin (obj-set! c 0 k) (obj-set! c 1 (fixnum n)) (obj-set! c 2 w-false) (obj-set! c 3 w-true)
+                             (run 2 0 0 (frame! fk-abort k 1 (fixnum tag) 0 0 0) 0 (pair-car (pair-cdr args)) (pair! c w-nil)))))))
+             (else
+              (let ((need (op-need op args)))
+                (if (i64< (heap-room) (i64+ need reserve))
+                    (gc-run 2 0 0 k 0 f args need)
+                    (run 1 0 0 k (apply-op op args) 0 0)))))))
+        (else (begin (error "the engine: a call of no procedure") 0))))))

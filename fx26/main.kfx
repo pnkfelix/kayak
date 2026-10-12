@@ -41,41 +41,73 @@
   (after-dashes (subr kfx (strings) strings)
     (lambda (xs) (cond ((null? xs) nil) ((string=? (car xs) "--") (cdr xs)) (else (after-dashes (cdr xs)))))))
 
-(define-rec
-  (run-tops (subr driving (machine (listof top acyclic) bool) unit)
-    (lambda (m tops quiet)
-      (if (null? tops)
-          #u
-          (begin
-            (tagcase (car tops)
-              (top-define (x) (begin (run m (c-eval x nil) nil) #u))
-              (top-expr (x) (let ((v (run m (c-eval x nil) nil))) (if quiet #u (say (string-append (show v) "\n")))))
-              (top-none () #u))
-            (run-tops m (cdr tops) quiet))))))
+"The program loaded: the heap made, its globals and their names, the
+ IR's tables, then each top-level form run in turn on the machine over
+ words (vm.kfx, C64)."
+(define-effect running (maxeff driving vm))
 
-(define main (subr driving () int)
+(define-rec
+  (names-array! (subr running ((arrayof string @h) strings i64) unit)
+    (lambda (a ns i) (if (null? ns) #u (begin (array-set! a (i64->int i) (car ns)) (names-array! a (cdr ns) (i64+ i 1)))))))
+
+(define-rec
+  (number-tops! (subr running ((listof top acyclic)) (listof i64 acyclic))
+    (lambda (tops)
+      "Each top-level form's node: a definition's or an expression's
+       (positive: an expression's, written), none for the rest (-1)."
+      (if (null? tops)
+          nil
+          (let ((n (tagcase (car tops)
+                     (top-define (x) (i64- 0 (i64+ (number! x) 2)))
+                     (top-expr (x) (number! x))
+                     (top-none () (the i64 -1)))))
+            (cons n (number-tops! (cdr tops))))))))
+
+(define-rec
+  (run-tops (subr running ((listof i64 acyclic) bool) unit)
+    (lambda (ns quiet)
+      (if (null? ns)
+          #u
+          (let ((n (car ns)))
+            (begin
+              (cond ((i64= n -1) #u)
+                    ((i64< n 0) (begin (run 0 (i64- (i64- 0 n) 2) 0 w-nil 0 0 0) #u))
+                    (else (let ((w (run 0 n 0 w-nil 0 0 0))) (if quiet #u (say (string-append (show-word w) "\n"))))))
+              (run-tops (cdr ns) quiet)))))))
+
+(define load! (subr running (strings) unit)
+  (lambda (gs)
+    (begin
+      (heap-start! 1048576)
+      (set globals (make-flatarray-i64 (size gs) w-unbound))
+      (let ((names (the (arrayof string @h) (make-array (i64->int (i64+ (size gs) 1)) ""))))
+        (begin (names-array! names gs 0) (set global-name-table names)))
+      (set io-error-labels (label-ids! (list "kind" "detail"))))))
+
+(define main (subr running () int)
   (lambda ()
     (let* ((as (the strings (args)))
            (running (and (not (null? as)) (string=? (car as) "--run")))
            (with-main (or running (and (not (null? as)) (string=? (car as) "--main"))))
            (paths (before-dashes (if with-main (cdr as) as))))
       (if (null? paths)
-          (begin (fail-with "usage: kayak-fx26 [--main] FILE ..." 2) 2)
+          (begin (fail-with "usage: kayak-fx26 [--main | --run] FILE ... [-- ARG ...]" 2) 2)
           (let* ((forms (read-files paths))
                  (checked (check-program forms))
-                 (gs (onto (global-names forms) (module-entries forms)))
-                 (m (machine (make-array (i64->int (size gs)) (unbound)) (new 0))))
+                 (gs (onto (global-names forms) (module-entries forms))))
             (begin
-              (run-tops m (lower-tops forms gs) with-main)
-              (if with-main
-                  (let ((i (position-of "main" gs 0)))
-                    (if (i64< i 0)
-                        (fail-with "no main" 1)
-                        (begin
-                          (set program-args (after-dashes as))
-                          (tagcase (run m (c-apply (array-ref (tagcase m (machine (g t) g)) (i64->int i)) nil) nil)
-                            (v-string (s) (say s))
-                            (v-int (n) (if running (exit (i64->int (i64-and (int->i64 n) 255))) (say (show (v-int n)))))
-                            (else other (say (show other)))))))
-                  #u)
-              0))))))
+              (load! gs)
+              (let ((ns (number-tops! (lower-tops forms gs))))
+                (begin
+                  (run-tops ns with-main)
+                  (if with-main
+                      (let ((i (position-of "main" gs 0)))
+                        (if (i64< i 0)
+                            (begin (fail-with "no main" 1) 1)
+                            (begin
+                              (set program-args (after-dashes as))
+                              (let ((w (run 2 0 0 w-nil 0 (flatarray-ref-i64 (get globals) i) w-nil)))
+                                (cond ((is-obj? w ob-string) (begin (say (word-string w)) 0))
+                                      ((and running (fixnum? w)) (begin (exit (i64->int (i64-and (fixnum-value w) 255))) 0))
+                                      (else (begin (say (show-word w)) 0)))))))
+                      0)))))))))
