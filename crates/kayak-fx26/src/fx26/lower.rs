@@ -622,7 +622,22 @@ pub fn lower_matches(ds: Sexps, sc: Scope, gs: Strings) -> &'static Ir {
     if null_p(ds) {
         i_lit(v_bool(false))
     } else {
-        i_if(i_call(i_lit(v_prim(str_lit("%case="), 2i64)), kayak_rt::heap_cons(i_local(0i64, 0i64), kayak_rt::heap_cons(lower(car(ds), sc, gs), kayak_rt::nil()))), i_lit(v_bool(true)), lower_matches(cdr(ds), sc, gs))
+        i_if(i_call(i_lit(v_prim(str_lit("%case="), 2i64)), kayak_rt::heap_cons(i_local(0i64, 0i64), kayak_rt::heap_cons({
+            let tagcase_ = car(ds);
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    if (string_eq_p(n, str_lit("#t")) || string_eq_p(n, str_lit("#f"))) {
+                        lower(car(ds), sc, gs)
+                    } else {
+                        i_lit(v_symbol(string_to_symbol(n)))
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    lower(car(ds), sc, gs)
+                }
+            }
+        }, kayak_rt::nil()))), i_lit(v_bool(true)), lower_matches(cdr(ds), sc, gs))
     }
 }
 

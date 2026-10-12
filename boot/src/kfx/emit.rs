@@ -2314,6 +2314,8 @@ pub fn case_kind(c: &'static Ctx, e: &'static Sexp) -> Str {
         str_lit("string")
     } else if fact_at_p(c, e, str_lit("case bool")) {
         str_lit("bool")
+    } else if fact_at_p(c, e, str_lit("case symbol")) {
+        str_lit("symbol")
     } else {
         str_lit("char")
     }
@@ -2962,6 +2964,11 @@ pub fn put_case_arms(c: &'static Ctx, kind: Str, arms: Sexps, n: i64, t: &'stati
         let acc = put_nl(n, acc);
         let acc = if sym_is_p(car(arm), str_lit("else")) {
             put(str_lit("_"), acc)
+        } else if string_eq_p(kind, str_lit("symbol")) {
+            // A symbol's data compared in the guard, by name (C73).
+            put_sep(lambda2(move |d: &'static Sexp, acc: Chars| {
+                put(str_lit("\")))"), put_escaped(string_chars(sym_name(d)), '"', put(str_lit("kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit(\""), acc)))
+            }), str_lit(" || "), items(car(arm)), put(str_lit("case_ if "), acc))
         } else if (string_eq_p(kind, str_lit("int")) || string_eq_p(kind, str_lit("string"))) {
             put_sep(lambda2(move |d: &'static Sexp, acc: Chars| {
                 put(str_lit(")"), put_exp(c, d, n, value(), put(if string_eq_p(kind, str_lit("int")) {

@@ -565,7 +565,7 @@
                         (num (k text pos) (string=? kind "int"))
                         (big (text f p) (string=? kind "int"))
                         (str (t at-file at-pos) (string=? kind "string"))
-                        (sym (n at-file at-pos) (and (string=? kind "bool") (or (string=? n "#t") (string=? n "#f"))))
+                        (sym (n at-file at-pos) (if (or (string=? n "#t") (string=? n "#f")) (string=? kind "bool") (string=? kind "symbol")))
                         (else other #f))))
                xs))))
 
@@ -1155,6 +1155,7 @@
                  (let ((kind (tagcase (walk s t)
                                (ty-char () "char") (ty-int () "int") (ty-nat () "int")
                                (ty-string () "string") (ty-bool () "bool")
+                               (ty-data (d args) (if (string=? d "symbol") "symbol" (refuse v (string-append "KFX's case is on characters, ints, strings, booleans and symbols, and this is a " (show-ty s t)))))
                                (else other (refuse v (string-append "KFX's case is on characters, ints, strings and booleans, and this is a "
                                                                     (show-ty s t)))))))
                    (with-effs (case-arms v (note-fact s (cv-file v) (cv-pos v) (string-append "case " kind)) kind (cdr xs) expected)

@@ -1254,7 +1254,11 @@ pub fn case_data_p(kind: Str, xs: Sexps) -> bool {
                     string_eq_p(kind, str_lit("string"))
                 }
                 Sexp::Sym(n, at_file, at_pos) => {
-                    (string_eq_p(kind, str_lit("bool")) && (string_eq_p(n, str_lit("#t")) || string_eq_p(n, str_lit("#f"))))
+                    if (string_eq_p(n, str_lit("#t")) || string_eq_p(n, str_lit("#f"))) {
+                        string_eq_p(kind, str_lit("bool"))
+                    } else {
+                        string_eq_p(kind, str_lit("symbol"))
+                    }
                 }
                 _ => {
                     let other = tagcase_;
@@ -2711,6 +2715,13 @@ pub fn body_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Ty
                         }
                         Ty::TyBool() => {
                             str_lit("bool")
+                        }
+                        Ty::TyData(d, args) => {
+                            if string_eq_p(d, str_lit("symbol")) {
+                                str_lit("symbol")
+                            } else {
+                                match refuse(v, string_append(str_lit("KFX's case is on characters, ints, strings, booleans and symbols, and this is a "), show_ty(s, t))) {}
+                            }
                         }
                         _ => {
                             let other = tagcase_;

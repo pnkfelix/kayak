@@ -1414,3 +1414,11 @@ Refused for Rust by the restriction pass (C18's: a prompt in Rust would
 save and restore the marks around each poll; for cancel scopes in KFX's
 tasks, later). `marks-of.fx` waits on FX-26's inference of a lambda's
 parameter from a later argument. Beyond KFX, 30 agree (28).
+
+## C73. `case` on symbols, KFX's too (2026-10-12)
+
+Symbols being KFX's (C56), a `case` on one is KFX's, not only the
+engine's: its data compared by name in the `match` arm's guard
+(`symbol_eq_p`), as a string's are; the engine's `%case=` compares them
+as words. kfx now accepts 108 of Fixpt's programs (106), all agreeing; the
+engine agrees on 100 of them.

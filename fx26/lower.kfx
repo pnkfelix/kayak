@@ -320,7 +320,11 @@
     (lambda (ds sc gs)
       (if (null? ds)
           (i-lit (v-bool #f))
-          (i-if (i-call (i-lit (v-prim "%case=" 2)) (list (i-local 0 0) (lower (car ds) sc gs)))
+          (i-if (i-call (i-lit (v-prim "%case=" 2))
+                        (list (i-local 0 0)
+                              (tagcase (car ds)
+                                (sym (n f p) (if (or (string=? n "#t") (string=? n "#f")) (lower (car ds) sc gs) (i-lit (v-symbol (string->symbol n)))))
+                                (else other (lower (car ds) sc gs)))))
                 (i-lit (v-bool #t))
                 (lower-matches (cdr ds) sc gs)))))
 

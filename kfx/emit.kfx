@@ -1197,6 +1197,7 @@
     (cond ((fact-at? c e "case int") "int")
           ((fact-at? c e "case string") "string")
           ((fact-at? c e "case bool") "bool")
+          ((fact-at? c e "case symbol") "symbol")
           (else "char"))))
 
 (define lambda-params-typed (subr kfx (ctx sexp sexps) sexps)
@@ -1612,6 +1613,11 @@
           (let* ((arm (items (car arms)))
                  (acc (put-nl n acc))
                  (acc (cond ((sym-is? (car arm) "else") (put "_" acc))
+                            ((string=? kind "symbol")
+                             "A symbol's data compared in the guard, by name (C73)."
+                             (put-sep (lambda ((d sexp) (acc chars))
+                                        (put "\")))" (put-escaped (string-chars (sym-name d)) #\" (put "kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit(\"" acc))))
+                                      " || " (items (car arm)) (put "case_ if " acc)))
                             ((or (string=? kind "int") (string=? kind "string"))
                              (put-sep (lambda ((d sexp) (acc chars))
                                         (put ")" (put-exp c d n (value) (put (if (string=? kind "int") "kayak_rt::_eq(case_, " "kayak_rt::string_eq_p(case_, ") acc))))
