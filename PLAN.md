@@ -277,9 +277,11 @@ marks (§16); `proj` (instantiation is inferred).
   hand is kept to what KFX cannot say: the glue to Rust's `Future` and
   `Waker`, the OS, and memory made executable, in a few crates, which
   alone may use `unsafe` (Q7). The KFX parts are transpiled and kept in
-  step as the compiler is (K0, K2). Where KFX, or FX-26 itself, lacks
-  what such code needs, the case is raised with the user before KFX is
-  extended (§8), since it may go to the Fixpt team for FX-26.
+  step as the compiler is (K0, K2). Where KFX lacks what such code needs
+  and FX-26 has it, KFX is extended without asking (the user,
+  2026-10-12), each extension a choice recorded. Where FX-26 itself lacks
+  it, the case is raised with the user (§8), since it may go to the Fixpt
+  team.
 - **K6. kayak's FX-26 agrees with Fixpt.** An FX-26 program kayak's
   runtime runs gives Fixpt's answer; kayak refuses what Fixpt refuses.
   Checked as K1 is, on Fixpt's own programs, all of them in time, not only
@@ -555,10 +557,10 @@ end could start earlier, alone, if A stalls.
 
 Three, all done and pinned: `DONE.md` §6.
 
-From K7 on, a case where KFX or FX-26 lacks what runtime code written in
-KFX needs is raised with the user here, with the code that wants it and
-the alternatives, before anything is extended; the user may take it to
-the Fixpt team.
+From K7 on, a case where FX-26 lacks what runtime code written in KFX
+needs is raised with the user here, with the code that wants it and the
+alternatives; the user may take it to the Fixpt team. What FX-26 has and
+KFX lacks, KFX takes without asking (the user, 2026-10-12).
 
 **Raised (2026-10-12): polymorphism over effects, for a library of
 tasks.** A scheduler is generic in what its tasks may do: Coopt's
@@ -578,9 +580,8 @@ does now, for one program). Alternatives:
   each program at its effects; or one fixed bound for all tasks;
 - **(c) the library's effect bound a module parameter** (C24's modules),
   if KFX's modules took effects.
-My recommendation is (a), always-`async` where `e` is a parameter that
-is not bounded away from `comefrom`: simplest, exact, and rustc's cost
-is a box per such call. Not built: waiting for the user.
+Answered (the user, 2026-10-12): FX-26 has effect parameters, so KFX
+takes them without asking. Taken: (a), C46.
 
 Likely next cases, to be confirmed by the code:
 - **Arrays of values**: KFX's flat arrays hold `i64` alone (C12); a run
