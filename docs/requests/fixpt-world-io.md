@@ -6,8 +6,8 @@ Status: drafted 2026-10-12 for the user to take to the Fixpt team
 ---
 
 We'd like FX-26 programs to be able to do I/O: read and write files,
-the terminal, and the clock. We'd like that to keep a program's meaning
-deterministic, so that a run can be simulated, recorded, and replayed.
+the terminal, and the clock. We'd like a program's meaning to stay a function
+of the answers it receives.
 We propose no side-effecting primitives. Instead, a program performs an
 operation by suspending to a prompt tag it is given, and the host
 answers. Programs can already be written this way in FX-26 today. What
@@ -49,18 +49,10 @@ Here a `request` is an `op` paired with the rest of the program, which
 is resumed once with the `answer`. The effect system then shows which
 procedures can touch the world: exactly those with control on `w`.
 
-**3. A host that answers, chosen in Fixpt's CLI when the program is
-run:**
-- `--live` answers from the OS.
-- `--sim FILE` answers from a script, with a virtual clock.
-- `--record LOG` wraps another runner and writes each step, its
-  operation, and its answer.
-- `--replay LOG` answers from a log. It fails at the first step whose
-  operation differs from the log's, and says which step.
-
-**4. A specified log format**, so that other implementations can
-replay Fixpt's logs and Fixpt can replay theirs. One s-expression per
-step, `(step op answer)`, after a header that gives the arguments.
+**3. A host that answers from the OS** when Fixpt runs such a
+program: the outermost handler for the world's tag. That is all we need
+from Fixpt. Simulation, recording, and replay can be FX-26 libraries:
+handlers between `main` and the host, which forward or invent answers.
 
 **Questions:**
 - Would you rather have a distinguished effect such as `(io)` than a
