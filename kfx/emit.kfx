@@ -484,7 +484,7 @@
                (ctx ds ts ks ls xs fs ms (cons (typed (sym-name (second (items form))) (third (items form))) es) mods))
               ((module-def? form)
                (let ((m (sym-name (second (items form)))))
-                 (note-module-datatypes m (module-written form)
+                 (note-module-datatypes m (unhidden (module-written form))
                                         (ctx ds ts ks ls xs fs ms es (cons (typed m (lst (cons (sym "module" "" 0) (module-written form)) "" 0 0)) mods)))))
               ((and (head-is? form "define")
                     (or (i64= (size (items form)) 3) (i64= (size (items form)) 4))

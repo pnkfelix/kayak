@@ -1012,6 +1012,15 @@ pub fn put_show_impls(mut forms: Sexps, mut acc: Chars) -> Chars {
     }
 }
 
+// What a module's items are written in, and its items (C91).
+pub enum Mparts {
+    Mparts(&'static Ctx, Sexps),
+}
+
+pub fn mparts(f0: &'static Ctx, f1: Sexps) -> &'static Mparts {
+    kayak_rt::heap_alloc(Mparts::Mparts(f0, f1))
+}
+
 /// In toplevel mode, a module's datatypes' and generative types' `Show`,
 /// inside it, where their representations are seen.
 pub fn put_show_generatives(forms: Sexps, acc: Chars) -> Chars {
@@ -1229,11 +1238,28 @@ pub fn types_once(c: &'static Ctx, forms: Sexps, given: Strings) -> Sexps {
 /// A module, a Rust `mod` (C19): its items as a program's, the program's
 /// names in scope, its own hiding them.
 pub fn put_module(c: &'static Ctx, m: Str, written: Sexps, acc: Chars) -> Chars {
+    let tagcase_ = module_parts(c, m, written);
+    match *tagcase_ {
+        Mparts::Mparts(inner, forms) => {
+            let body = put_tops(inner, forms, nil::<char>());
+            let body = if string_member_p(str_lit("%toplevel"), ctx_locals(c)) {
+                put_show_generatives(forms, body)
+            } else {
+                body
+            };
+            put_module_around(c, m, body, acc)
+        }
+    }
+}
+
+/// What a module's items are written in, and the items (C91: shared
+/// with the emitter that keeps memos, incr.kfx).
+pub fn module_parts(c: &'static Ctx, m: Str, written: Sexps) -> &'static Mparts {
     let forms = concat(map(lambda1(move |f: &'static Sexp| {
         if head_is_p(f, str_lit("hide")) {
             map(lambda1(move |g: &'static Sexp| {
                 if head_is_p(g, str_lit("include")) {
-                    lst(kayak_rt::heap_cons(sym(str_lit("%use"), str_lit(""), 0i64), kayak_rt::heap_cons(second(items(g)), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
+                    lst(kayak_rt::heap_cons(sym(str_lit("%use"), str_lit(""), 0i64), cdr(items(g))), str_lit(""), 0i64, 0i64)
                 } else {
                     g
                 }
@@ -1257,13 +1283,11 @@ pub fn put_module(c: &'static Ctx, m: Str, written: Sexps, acc: Chars) -> Chars 
             }
         }
     };
-    let inner = with_locals(collect(forms, outer), kayak_rt::heap_cons(string_append(str_lit("%in "), m), kayak_rt::nil()));
-    let body = put_tops(inner, forms, nil::<char>());
-    let body = if string_member_p(str_lit("%toplevel"), ctx_locals(c)) {
-        put_show_generatives(forms, body)
-    } else {
-        body
-    };
+    mparts(with_locals(collect(forms, outer), kayak_rt::heap_cons(string_append(str_lit("%in "), m), kayak_rt::nil())), forms)
+}
+
+/// A module's `pub mod`, around its items' Rust, `body`, newest first.
+pub fn put_module_around(c: &'static Ctx, m: Str, body: Chars, acc: Chars) -> Chars {
     let acc = put(str_lit("pub mod "), acc);
     let acc = put(mangle(m), acc);
     let acc = put(str_lit(" {\n    use super::*;\n\n"), acc);

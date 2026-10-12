@@ -86,6 +86,23 @@ def main():
                 with open(path, "w") as f:
                     f.write(edit(text))
                 compare(f"{name}: {what}")
+        # Inside a module (C91): an item's body, an item added, and back.
+        inner = os.path.join(tmp, "kfx", "terminate.kfx")
+        module_steps = [
+            ("a module item's body changed", lambda s: s.replace("(define most-graphs i64 500)", "(define most-graphs i64 501)")),
+            ("an item added in a module", lambda s: s.replace("    (hide\n", "    (hide\n      (define incr-inner i64 3)\n", 1)),
+            ("the module's item taken away", lambda s: s.replace("      (define incr-inner i64 3)\n", "", 1)),
+            ("the module item's body back", lambda s: s.replace("(define most-graphs i64 501)", "(define most-graphs i64 500)")),
+        ]
+        for what, edit in module_steps:
+            with open(inner) as f:
+                text = f.read()
+            changed = edit(text)
+            if changed == text:
+                sys.exit("incremental: a module edit found nothing to change: " + what)
+            with open(inner, "w") as f:
+                f.write(changed)
+            compare("terminate.kfx: " + what)
         # Across files: a later form's text the same, what it reads changed.
         first, last = os.path.join(tmp, "kfx", names[0]), os.path.join(tmp, "kfx", names[-1])
         steps = [

@@ -135,3 +135,13 @@ pub fn string_member_p(s: Str, xs: Strings) -> bool {
     }
 }
 
+/// `from`, `from` + 1, ..., to before `n` (C91: from terminate.kfx, which
+/// the emitter used too, now a module of its own).
+pub fn counting(from: i64, n: i64) -> List<i64> {
+    if i64_lt(from, n) {
+        kayak_rt::heap_cons(from, counting(i64_plus(from, 1i64), n))
+    } else {
+        nil::<i64>()
+    }
+}
+

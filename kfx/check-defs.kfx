@@ -366,7 +366,7 @@
   (lambda (v name sc defined)
     "Whether a definition of one procedure ends however it calls itself, so
      that its calls of itself need no `spin` (`terminates?`)."
-    (tagcase sc (scheme (tvars t) (terminates? v (list name) (list t) (list defined))))))
+    (tagcase sc (scheme (tvars t) (with termination (terminates? v (list name) (list t) (list defined)))))))
 
 (define-rec
   (makes-pairs? (subr kfx (sexp) bool)
@@ -537,8 +537,8 @@
   (lambda (v bindings)
     "A define-rec: every member in scope in each, and each a lambda."
     (let* ((names (map (lambda ((b sexp)) (name-of v (car (items b)))) bindings))
-           (ends (terminates? v names (map (lambda ((b sexp)) (tagcase (parse-scheme v (second (items b))) (scheme (tvars t) t))) bindings)
-                              (map (lambda ((b sexp)) (third (items b))) bindings)))
+           (ends (with termination (terminates? v names (map (lambda ((b sexp)) (tagcase (parse-scheme v (second (items b))) (scheme (tvars t) t))) bindings)
+                              (map (lambda ((b sexp)) (third (items b))) bindings))))
            (named (with-binds v (map (lambda ((b sexp))
                                        (let ((ys (items b)))
                                          (global v (name-of v (car ys)) (parse-scheme v (second ys)))))
@@ -1352,40 +1352,23 @@
         (onto (concat (map (lambda ((f sexp)) (if (or (null? (item-value f)) (module-def? f)) (the sexps (list f)) nil)) forms))
               (concat (map (lambda ((g mitems)) (as-group v g)) (components values its))))))))
 
-(define-rec
-  (check-items (subr kfx (cv string sexps typeds) elab)
-    (lambda (v m forms found)
-      "A module's items, in order: as the program's forms, but that its
-       generative types are made already, and its elaborated types are named
-       `m x`."
-      (cond ((null? forms) (elab v found))
-            ((or (head-is? (car forms) "define-generative") (head-is? (car forms) "define-datatype")
-                 (head-is? (car forms) "include") (head-is? (car forms) "%loaded"))
-             (check-items v m (cdr forms) found))
-            ((module-def? (car forms))
-             "A module in a module (C88): checked as one, its names the outer's
-              items, `n x` for its `x`, which the outer gives on as `m n x`."
-             (tagcase (car forms)
-               (lst (xs src-file src-line src-pos)
-                 (tagcase (check-module (near v src-file src-line src-pos) (car forms))
-                   (elab (v2 more) (check-items (at v2 "" nil) m (cdr forms) found))))
-               (else other (check-items v m (cdr forms) found))))
-            ((untyped? (car forms))
-             (tagcase (car forms)
-               (lst (xs src-file src-line src-pos)
-                 (tagcase (check-untyped (near v src-file src-line src-pos) (car forms))
-                   (elab (v2 more)
-                     (check-items (at v2 "" nil) m (cdr forms)
-                                  (onto (map (lambda ((x typed))
-                                               (tagcase x (typed (n t) (typed (string-append m (string-append " " n)) t))))
-                                             more)
-                                        found)))))
-               (else other (check-items v m (cdr forms) found))))
-            (else (check-items (check-top v (car forms)) m (cdr forms) found)))))
+"A module checked (C91): its scope made (`module-prep`), its items checked
+ in order, and what it gives the forms after it (`module-finish`); split so
+ that incr.kfx checks the items with memos, between the two."
+(define-datatype mprep (mprep cv cv cv string bind sexps bool sexps strings strings strings binds))
 
-  (check-module (subr kfx (cv sexp) elab)
-    (lambda (v form)
-      (let* ((xs (items form))
+(define prep-inner (subr kfx (mprep) cv)
+  (lambda (p) (tagcase p (mprep (outer v inner m made written loaded forms hidden hidden-types names conversions) inner))))
+
+(define prep-name (subr kfx (mprep) string)
+  (lambda (p) (tagcase p (mprep (outer v inner m made written loaded forms hidden hidden-types names conversions) m))))
+
+(define prep-forms (subr kfx (mprep) sexps)
+  (lambda (p) (tagcase p (mprep (outer v inner m made written loaded forms hidden hidden-types names conversions) forms))))
+
+(define module-prep (subr kfx (cv sexp) mprep)
+  (lambda (v form)
+    (let* ((xs (items form))
              (m (name-of v (second xs)))
              (v (at v m nil))
              (v (if (string-member? (mangle m) (list "kayak_rt" "std" "core" "alloc"))
@@ -1430,7 +1413,13 @@
                         (cv bs (onto datatypes ds) als es here group file line fs tv at))))
              (conversions (module-conversions typed m forms))
              (inner (defined-once typed (onto conversions (concat (map constructors datatypes))))))
-        (tagcase (check-items inner m (module-order inner forms) nil)
+      (mprep outer v inner m made written loaded forms hidden hidden-types names conversions))))
+
+(define module-finish (subr kfx (mprep elab) elab)
+  (lambda (p checked)
+    (tagcase p
+      (mprep (outer v inner m made written loaded forms hidden hidden-types names conversions)
+        (tagcase checked
           (elab (done found)
             (tagcase done
               (cv (bs ds als es here group file line fs tv at)
@@ -1449,6 +1438,45 @@
                                       (cv-effdefs outer)))
                           here group file line fs tv at)
                       found)))))))))
+
+(define-rec
+  (check-item (subr kfx (cv string sexp) elab)
+    (lambda (v m form)
+      "One of a module's items: as a program's form, but that its generative
+       types are made already, and its elaborated types are named `m x`."
+      (cond ((or (head-is? form "define-generative") (head-is? form "define-datatype")
+                 (head-is? form "include") (head-is? form "%loaded"))
+             (elab v nil))
+            ((module-def? form)
+             "A module in a module (C88): checked as one, its names the outer's
+              items, `n x` for its `x`, which the outer gives on as `m n x`."
+             (tagcase form
+               (lst (xs src-file src-line src-pos)
+                 (tagcase (check-module (near v src-file src-line src-pos) form)
+                   (elab (v2 more) (elab (at v2 "" nil) nil))))
+               (else other (elab v nil))))
+            ((untyped? form)
+             (tagcase form
+               (lst (xs src-file src-line src-pos)
+                 (tagcase (check-untyped (near v src-file src-line src-pos) form)
+                   (elab (v2 more)
+                     (elab (at v2 "" nil)
+                           (map (lambda ((x typed)) (tagcase x (typed (n t) (typed (string-append m (string-append " " n)) t)))) more)))))
+               (else other (elab v nil))))
+            (else (elab (check-top v form) nil)))))
+
+  (check-items (subr kfx (cv string sexps typeds) elab)
+    (lambda (v m forms found)
+      "A module's items, in order."
+      (if (null? forms)
+          (elab v found)
+          (tagcase (check-item v m (car forms))
+            (elab (v2 more) (check-items v2 m (cdr forms) (onto more found)))))))
+
+  (check-module (subr kfx (cv sexp) elab)
+    (lambda (v form)
+      (let ((p (module-prep v form)))
+        (module-finish p (check-items (prep-inner p) (prep-name p) (module-order (prep-inner p) (prep-forms p)) nil))))))
 
 (define check-tops (subr kfx (cv sexps typeds) elab)
   (lambda (v forms found)

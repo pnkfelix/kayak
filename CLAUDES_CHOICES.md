@@ -1813,3 +1813,39 @@ module shows is refused, as FX-26 refuses it
 
 Measured: 149 of Fixpt's programs through kfx (146), all agreeing; the
 engine 140.
+
+## C91. The compiler's first module: `termination`; memos inside modules (2026-10-12)
+
+The plan the user approved: modules in the compiler's own code, measured.
+- **Memos inside a module** (incr.kfx): its items each with a memo, for
+  checking and for emitting. The checker's are on a chain begun from the
+  module's name and its items that are no values; the chain after the
+  module goes on with its change, its interface, not its text. The
+  emitter writes each item in the module's own context inside its `pub
+  mod`. `check-module` is split for it (`module-prep`, `check-item`,
+  `module-finish`) and the emitter's `put-module` likewise
+  (`module-parts`, `put-module-around`); the engine, which shares the
+  checker, runs the same code.
+- **Two misses found by measuring**: the chain's start had hashed a `hide`
+  whole, and the emitter's context fingerprint each module's whole text,
+  so an edit inside a module re-made every item, then every form after
+  it. Now the module's types alone, and its items' signatures (names,
+  types, which are procedures), are hashed.
+- **`terminate.kfx` is the module `termination`**: its helpers hidden, only
+  `terminates?` given (`(with termination (terminates? ...))`); `i64s`
+  and `index-of`, which the checker borrows, before it; `counting`, which
+  the emitter borrowed, in base.kfx now. FX-26 takes no string as a
+  module's item, so its comments between definitions are `;` comments
+  (they no longer reach the Rust; a docstring inside a procedure still
+  does).
+- **Two emitter bugs the conversion found**: a datatype inside a `hide`
+  was not noted as the module's, so its Rust from the checker's types
+  lacked its `&'static`.
+- **A bootstrap note**: a compiler fix that the new source needs must
+  reach the seed first (a regen with the old source), then the new
+  source.
+
+Measured, the compiler on itself, best of three: cold 0.89 s (0.91 before
+the module), warm with memos 0.26 (0.25), warm after an edit inside the
+module 0.25 (0.26 for the same edit before). `incremental.py` edits inside
+the module now too (27 compiles, each as one from scratch).

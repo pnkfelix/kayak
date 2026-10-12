@@ -967,7 +967,7 @@ pub fn note(form: &'static Sexp, c: &'static Ctx) -> &'static Ctx {
                 ctx(ds, ts, ks, ls, xs, fs, ms, kayak_rt::heap_cons(typed(sym_name(second(items(form))), third(items(form))), es), mods)
             } else if module_def_p(form) {
                 let m = sym_name(second(items(form)));
-                note_module_datatypes(m, module_written(form), ctx(ds, ts, ks, ls, xs, fs, ms, es, kayak_rt::heap_cons(typed(m, lst(kayak_rt::heap_cons(sym(str_lit("module"), str_lit(""), 0i64), module_written(form)), str_lit(""), 0i64, 0i64)), mods)))
+                note_module_datatypes(m, unhidden(module_written(form)), ctx(ds, ts, ks, ls, xs, fs, ms, es, kayak_rt::heap_cons(typed(m, lst(kayak_rt::heap_cons(sym(str_lit("module"), str_lit(""), 0i64), module_written(form)), str_lit(""), 0i64, 0i64)), mods)))
             } else if (head_is_p(form, str_lit("define")) && (i64_eq(size(items(form)), 3i64) || i64_eq(size(items(form)), 4i64)) && not(lambda_form_p(last(items(form))))) {
                 ctx(ds, ts, kayak_rt::heap_cons(sym_name(second(items(form))), ks), ls, xs, fs, ms, es, mods)
             } else {

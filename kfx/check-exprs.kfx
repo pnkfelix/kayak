@@ -1736,9 +1736,9 @@
       "`(letrec ((f T lambda) ...) body ...)`: each procedure's type written,
        every one in scope in each lambda and in the body. A group whose every
        run ends is bound as `ends`, its calls no `spin`; else as locals."
-      (let* ((ends (terminates? v (map (lambda ((b sexp)) (name-of v (car (items b)))) bindings)
+      (let* ((ends (with termination (terminates? v (map (lambda ((b sexp)) (name-of v (car (items b)))) bindings)
                                 (map (lambda ((b sexp)) (parse-type v (cv-tvars v) (second (items b)))) bindings)
-                                (map (lambda ((b sexp)) (third (items b))) bindings)))
+                                (map (lambda ((b sexp)) (third (items b))) bindings))))
              (w (with-binds v (map (lambda ((b sexp))
                                      (let ((ys (items b)))
                                        (bind (name-of v (car ys)) (scheme nil (parse-type v (cv-tvars v) (second ys)))

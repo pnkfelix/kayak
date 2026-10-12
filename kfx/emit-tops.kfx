@@ -596,6 +596,9 @@
              (put-show-impls (cdr forms) (put " {\n    fn show(&self, out: &mut String) {\n        self.0.show(out)\n    }\n}\n\n" acc))))
           (else (put-show-impls (cdr forms) acc)))))
 
+"What a module's items are written in, and its items (C91)."
+(define-datatype mparts (mparts ctx sexps))
+
 (define put-show-generatives (subr kfx (sexps chars) chars)
   (lambda (forms acc)
     "In toplevel mode, a module's datatypes' and generative types' `Show`,
@@ -693,10 +696,20 @@
     (lambda (c m written acc)
       "A module, a Rust `mod` (C19): its items as a program's, the program's
        names in scope, its own hiding them."
+      (tagcase (module-parts c m written)
+        (mparts (inner forms)
+          (let* ((body (put-tops inner forms nil))
+                 (body (if (string-member? "%toplevel" (ctx-locals c)) (put-show-generatives forms body) body)))
+            (put-module-around c m body acc))))))
+
+  (module-parts (subr kfx (ctx string sexps) mparts)
+    (lambda (c m written)
+      "What a module's items are written in, and the items (C91: shared
+       with the emitter that keeps memos, incr.kfx)."
       (let* ((forms (concat (map (lambda ((f sexp))
                                    (if (head-is? f "hide")
                                        (map (lambda ((g sexp))
-                                              (if (head-is? g "include") (lst (list (sym "%use" "" 0) (second (items g))) "" 0 0) g))
+                                              (if (head-is? g "include") (lst (cons (sym "%use" "" 0) (cdr (items g))) "" 0 0) g))
                                             (cdr (items f)))
                                        (the sexps (list f))))
                                  written)))
@@ -709,11 +722,13 @@
                                                                nil))
                                                          forms))
                                             (without ks (item-values forms)))
-                                      ls xs fs ms es mods))))
-             (inner (with-locals (collect forms outer) (list (string-append "%in " m))))
-             (body (put-tops inner forms nil))
-             (body (if (string-member? "%toplevel" (ctx-locals c)) (put-show-generatives forms body) body))
-             (acc (put "pub mod " acc))
+                                      ls xs fs ms es mods)))))
+        (mparts (with-locals (collect forms outer) (list (string-append "%in " m))) forms))))
+
+  (put-module-around (subr kfx (ctx string chars chars) chars)
+    (lambda (c m body acc)
+      "A module's `pub mod`, around its items' Rust, `body`, newest first."
+      (let* ((acc (put "pub mod " acc))
              (acc (put (mangle m) acc))
              (acc (put " {\n    use super::*;\n\n" acc))
              (acc (if (any? (lambda ((k string)) (string=? (car (split-words k)) m)) (module-impls c))

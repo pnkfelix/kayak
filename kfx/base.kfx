@@ -75,3 +75,10 @@
 (define string-member? (subr kfx (string strings) bool)
   (lambda (s xs)
     (if (null? xs) #f (or (string=? s (car xs)) (string-member? s (cdr xs))))))
+
+(define-rec
+  (counting (subr kfx (i64 i64) (listof i64 acyclic))
+    (lambda (from n)
+      "`from`, `from` + 1, ..., to before `n` (C91: from terminate.kfx, which
+       the emitter used too, now a module of its own)."
+      (if (i64< from n) (cons from (counting (i64+ from 1) n)) nil))))

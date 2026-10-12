@@ -3990,7 +3990,7 @@ pub fn let_values(v: &'static Cv, s: &'static St, bindings: Sexps, forms: Sexps,
 /// every one in scope in each lambda and in the body. A group whose every
 /// run ends is bound as `ends`, its calls no `spin`; else as locals.
 pub fn letrec_form(v: &'static Cv, s: &'static St, bindings: Sexps, forms: Sexps, expected: Tys) -> &'static Res {
-    let ends = terminates_p(v, map(lambda1(move |b: &'static Sexp| {
+    let ends = termination::terminates_p(v, map(lambda1(move |b: &'static Sexp| {
         name_of(v, car(items(b)))
     }), bindings), map(lambda1(move |b: &'static Sexp| {
         parse_type(v, cv_tvars(v), second(items(b)))

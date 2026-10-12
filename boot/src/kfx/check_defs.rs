@@ -337,7 +337,7 @@ pub fn ends_alone_p(v: &'static Cv, name: Str, sc: &'static Scheme, defined: &'s
     let tagcase_ = sc;
     match *tagcase_ {
         Scheme::Scheme(tvars, t) => {
-            terminates_p(v, kayak_rt::heap_cons(name, kayak_rt::nil()), kayak_rt::heap_cons(t, kayak_rt::nil()), kayak_rt::heap_cons(defined, kayak_rt::nil()))
+            termination::terminates_p(v, kayak_rt::heap_cons(name, kayak_rt::nil()), kayak_rt::heap_cons(t, kayak_rt::nil()), kayak_rt::heap_cons(defined, kayak_rt::nil()))
         }
     }
 }
@@ -632,7 +632,7 @@ pub fn check_rec(v: &'static Cv, bindings: Sexps) -> &'static Cv {
     let names = map(lambda1(move |b: &'static Sexp| {
         name_of(v, car(items(b)))
     }), bindings);
-    let ends = terminates_p(v, names, map(lambda1(move |b: &'static Sexp| {
+    let ends = termination::terminates_p(v, names, map(lambda1(move |b: &'static Sexp| {
         let tagcase_ = parse_scheme(v, second(items(b)));
         match *tagcase_ {
             Scheme::Scheme(tvars, t) => {
@@ -2328,69 +2328,45 @@ pub fn module_order(v: &'static Cv, forms: Sexps) -> Sexps {
     }), components(values, its))))
 }
 
-/// A module's items, in order: as the program's forms, but that its
-/// generative types are made already, and its elaborated types are named
-/// `m x`.
-pub fn check_items(mut v: &'static Cv, mut m: Str, mut forms: Sexps, mut found: Typeds) -> &'static Elab {
-    loop {
-        if null_p(forms) {
-            return elab(v, found);
-        } else if (head_is_p(car(forms), str_lit("define-generative")) || head_is_p(car(forms), str_lit("define-datatype")) || head_is_p(car(forms), str_lit("include")) || head_is_p(car(forms), str_lit("%loaded"))) {
-            forms = cdr(forms);
-            continue;
-        } else if module_def_p(car(forms)) {
-            // A module in a module (C88): checked as one, its names the outer's
-            // items, `n x` for its `x`, which the outer gives on as `m n x`.
-            let tagcase_ = car(forms);
-            match *tagcase_ {
-                Sexp::Lst(xs, src_file, src_line, src_pos) => {
-                    let tagcase_ = check_module(near(v, src_file, src_line, src_pos), car(forms));
-                    match *tagcase_ {
-                        Elab::Elab(v2, more) => {
-                            (v, forms) = (at(v2, str_lit(""), nil::<Str>()), cdr(forms));
-                            continue;
-                        }
-                    }
-                }
-                _ => {
-                    let other = tagcase_;
-                    forms = cdr(forms);
-                    continue;
-                }
-            }
-        } else if untyped_p(car(forms)) {
-            let tagcase_ = car(forms);
-            match *tagcase_ {
-                Sexp::Lst(xs, src_file, src_line, src_pos) => {
-                    let tagcase_ = check_untyped(near(v, src_file, src_line, src_pos), car(forms));
-                    match *tagcase_ {
-                        Elab::Elab(v2, more) => {
-                            (v, forms, found) = (at(v2, str_lit(""), nil::<Str>()), cdr(forms), onto(map(lambda1(move |x: &'static Typed| {
-                                let tagcase_ = x;
-                                match *tagcase_ {
-                                    Typed::Typed(n, t) => {
-                                        typed(string_append(m, string_append(str_lit(" "), n)), t)
-                                    }
-                                }
-                            }), more), found));
-                            continue;
-                        }
-                    }
-                }
-                _ => {
-                    let other = tagcase_;
-                    forms = cdr(forms);
-                    continue;
-                }
-            }
-        } else {
-            (v, forms) = (check_top(v, car(forms)), cdr(forms));
-            continue;
+// A module checked (C91): its scope made (`module-prep`), its items checked
+// in order, and what it gives the forms after it (`module-finish`); split so
+// that incr.kfx checks the items with memos, between the two.
+pub enum Mprep {
+    Mprep(&'static Cv, &'static Cv, &'static Cv, Str, &'static Bind, Sexps, bool, Sexps, Strings, Strings, Strings, Binds),
+}
+
+pub fn mprep(f0: &'static Cv, f1: &'static Cv, f2: &'static Cv, f3: Str, f4: &'static Bind, f5: Sexps, f6: bool, f7: Sexps, f8: Strings, f9: Strings, f10: Strings, f11: Binds) -> &'static Mprep {
+    kayak_rt::heap_alloc(Mprep::Mprep(f0, f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11))
+}
+
+pub fn prep_inner(p: &'static Mprep) -> &'static Cv {
+    let tagcase_ = p;
+    match *tagcase_ {
+        Mprep::Mprep(outer, v, inner, m, made, written, loaded, forms, hidden, hidden_types, names, conversions) => {
+            inner
         }
     }
 }
 
-pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
+pub fn prep_name(p: &'static Mprep) -> Str {
+    let tagcase_ = p;
+    match *tagcase_ {
+        Mprep::Mprep(outer, v, inner, m, made, written, loaded, forms, hidden, hidden_types, names, conversions) => {
+            m
+        }
+    }
+}
+
+pub fn prep_forms(p: &'static Mprep) -> Sexps {
+    let tagcase_ = p;
+    match *tagcase_ {
+        Mprep::Mprep(outer, v, inner, m, made, written, loaded, forms, hidden, hidden_types, names, conversions) => {
+            forms
+        }
+    }
+}
+
+pub fn module_prep(v: &'static Cv, form: &'static Sexp) -> &'static Mprep {
     let xs = items(form);
     let m = name_of(v, second(xs));
     let v = at(v, m, nil::<Str>());
@@ -2498,39 +2474,121 @@ pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
     };
     let conversions = module_conversions(typed, m, forms);
     let inner = defined_once(typed, onto(conversions, concat(map(&constructors, datatypes))));
-    let tagcase_ = check_items(inner, m, module_order(inner, forms), nil::<&'static Typed>());
+    mprep(outer, v, inner, m, made, written, loaded, forms, hidden, hidden_types, names, conversions)
+}
+
+pub fn module_finish(p: &'static Mprep, checked: &'static Elab) -> &'static Elab {
+    let tagcase_ = p;
     match *tagcase_ {
-        Elab::Elab(done, found) => {
-            let tagcase_ = done;
+        Mprep::Mprep(outer, v, inner, m, made, written, loaded, forms, hidden, hidden_types, names, conversions) => {
+            let tagcase_ = checked;
             match *tagcase_ {
-                Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-                    elab(cv(kayak_rt::heap_cons(made, bind_onto(module_exports(m, onto(hidden, map(lambda1(move |b: &'static Bind| {
-                        let tagcase_ = b;
-                        match *tagcase_ {
-                            Bind::Bind(n, sc, w) => {
-                                n
-                            }
-                        }
-                    }), conversions)), bs), cv_binds(outer))), if loaded {
-                        onto(ds, cv_dts(outer))
-                    } else {
-                        ds
-                    }, onto(without_aliases(hidden_types, m, module_aliases(v, m, names, forms, false)), onto(concat(map(lambda1(move |n: Str| {
-                        renamed_aliases(n, m, excepted_aliases(v, written, n, als))
-                    }), unhidden_includes(v, written))), cv_aliases(outer))), onto(module_effects(m, forms, es), onto(concat(map(lambda1(move |n: Str| {
-                        map(lambda1(move |d: &'static Effdef| {
-                            let tagcase_ = d;
-                            match *tagcase_ {
-                                Effdef::Effdef(k, atoms) => {
-                                    effdef(string_append(m, string_append(str_lit(" "), k)), atoms)
+                Elab::Elab(done, found) => {
+                    let tagcase_ = done;
+                    match *tagcase_ {
+                        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+                            elab(cv(kayak_rt::heap_cons(made, bind_onto(module_exports(m, onto(hidden, map(lambda1(move |b: &'static Bind| {
+                                let tagcase_ = b;
+                                match *tagcase_ {
+                                    Bind::Bind(n, sc, w) => {
+                                        n
+                                    }
                                 }
-                            }
-                        }), opened_effdefs(n, es))
-                    }), unhidden_includes(v, written))), cv_effdefs(outer))), here, group, file, line, fs, tv, at), found)
+                            }), conversions)), bs), cv_binds(outer))), if loaded {
+                                onto(ds, cv_dts(outer))
+                            } else {
+                                ds
+                            }, onto(without_aliases(hidden_types, m, module_aliases(v, m, names, forms, false)), onto(concat(map(lambda1(move |n: Str| {
+                                renamed_aliases(n, m, excepted_aliases(v, written, n, als))
+                            }), unhidden_includes(v, written))), cv_aliases(outer))), onto(module_effects(m, forms, es), onto(concat(map(lambda1(move |n: Str| {
+                                map(lambda1(move |d: &'static Effdef| {
+                                    let tagcase_ = d;
+                                    match *tagcase_ {
+                                        Effdef::Effdef(k, atoms) => {
+                                            effdef(string_append(m, string_append(str_lit(" "), k)), atoms)
+                                        }
+                                    }
+                                }), opened_effdefs(n, es))
+                            }), unhidden_includes(v, written))), cv_effdefs(outer))), here, group, file, line, fs, tv, at), found)
+                        }
+                    }
                 }
             }
         }
     }
+}
+
+/// One of a module's items: as a program's form, but that its generative
+/// types are made already, and its elaborated types are named `m x`.
+pub fn check_item(v: &'static Cv, m: Str, form: &'static Sexp) -> &'static Elab {
+    if (head_is_p(form, str_lit("define-generative")) || head_is_p(form, str_lit("define-datatype")) || head_is_p(form, str_lit("include")) || head_is_p(form, str_lit("%loaded"))) {
+        elab(v, nil::<&'static Typed>())
+    } else if module_def_p(form) {
+        // A module in a module (C88): checked as one, its names the outer's
+        // items, `n x` for its `x`, which the outer gives on as `m n x`.
+        let tagcase_ = form;
+        match *tagcase_ {
+            Sexp::Lst(xs, src_file, src_line, src_pos) => {
+                let tagcase_ = check_module(near(v, src_file, src_line, src_pos), form);
+                match *tagcase_ {
+                    Elab::Elab(v2, more) => {
+                        elab(at(v2, str_lit(""), nil::<Str>()), nil::<&'static Typed>())
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                elab(v, nil::<&'static Typed>())
+            }
+        }
+    } else if untyped_p(form) {
+        let tagcase_ = form;
+        match *tagcase_ {
+            Sexp::Lst(xs, src_file, src_line, src_pos) => {
+                let tagcase_ = check_untyped(near(v, src_file, src_line, src_pos), form);
+                match *tagcase_ {
+                    Elab::Elab(v2, more) => {
+                        elab(at(v2, str_lit(""), nil::<Str>()), map(lambda1(move |x: &'static Typed| {
+                            let tagcase_ = x;
+                            match *tagcase_ {
+                                Typed::Typed(n, t) => {
+                                    typed(string_append(m, string_append(str_lit(" "), n)), t)
+                                }
+                            }
+                        }), more))
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                elab(v, nil::<&'static Typed>())
+            }
+        }
+    } else {
+        elab(check_top(v, form), nil::<&'static Typed>())
+    }
+}
+
+/// A module's items, in order.
+pub fn check_items(mut v: &'static Cv, mut m: Str, mut forms: Sexps, mut found: Typeds) -> &'static Elab {
+    loop {
+        if null_p(forms) {
+            return elab(v, found);
+        } else {
+            let tagcase_ = check_item(v, m, car(forms));
+            match *tagcase_ {
+                Elab::Elab(v2, more) => {
+                    (v, forms, found) = (v2, cdr(forms), onto(more, found));
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
+    let p = module_prep(v, form);
+    module_finish(p, check_items(prep_inner(p), prep_name(p), module_order(prep_inner(p), prep_forms(p)), nil::<&'static Typed>()))
 }
 
 /// The forms in order; `found`, the types elaborated so far.
