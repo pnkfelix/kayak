@@ -1796,3 +1796,20 @@ Stage 5 (`docs/research/modules.md`).
 
 Measured: 146 of Fixpt's programs through kfx (139), all agreeing; the
 engine 137.
+
+## C90. Modules made in place: defined before the module that uses them (2026-10-12)
+
+`(include (module ...))`, in a `hide` too, and `(extend (module ...) e1)`:
+FX-26 makes such a module before the items of the one that uses it, and
+it sees none of them, so KFX defines it at the top level just before,
+named `made--P` (`P` where it is written; no KFX name has `--`, C27), and
+uses it by that name. Done where a program's forms are read
+(`with-loads`, `source-forms`), so the checker, the emitter, the
+restriction pass and the engine see one program. Its abstract types are
+the including module's by alias (C86), as FX-26's are the including
+module's own; one hidden with its `include` and mentioned by a type the
+module shows is refused, as FX-26 refuses it
+(`include-abstract-hidden.fx`).
+
+Measured: 149 of Fixpt's programs through kfx (146), all agreeing; the
+engine 140.

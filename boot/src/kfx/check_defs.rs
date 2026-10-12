@@ -1679,6 +1679,21 @@ pub fn hidden_escapes(v: &'static Cv, forms: Sexps) -> () {
     let r#abstract = concat(map(lambda1(move |g: &'static Sexp| {
         if (head_is_p(g, str_lit("define-datatype")) || head_is_p(g, str_lit("define-generative"))) {
             item_names(g)
+        } else if head_is_p(g, str_lit("include")) {
+            // A hidden include's abstract types are hidden too (C90).
+            let n = sym_name(second(items(g)));
+            concat(map(lambda1(move |d: &'static Dt| {
+                let tagcase_ = d;
+                match *tagcase_ {
+                    Dt::Dt(dn, ps, vs) => {
+                        if has_prefix_p(dn, string_append(n, str_lit(".."))) {
+                            the::<Strings>(kayak_rt::heap_cons(after_prefix(dn, string_append(n, str_lit(".."))), kayak_rt::nil()))
+                        } else {
+                            nil::<Str>()
+                        }
+                    }
+                }
+            }), cv_dts(v)))
         } else {
             nil::<Str>()
         }
@@ -2810,13 +2825,84 @@ pub fn spliced(e: &'static Sexp, dir: Str, loaded: Fileds, chain: Strings) -> &'
     }
 }
 
+// A module made where it is included or extended (C90): FX-26 makes it
+// before the module's items, seeing none of them, so it is defined before
+// the module that uses it, at the top level, named `made--P` (`P` where it
+// is written), a name no KFX name is (C27's `--`), and used by that name.
+pub fn made_name(e: &'static Sexp) -> Str {
+    string_append(str_lit("made--"), i64_to_string(datum_pos(e)))
+}
+
+pub fn made_here_p(e: &'static Sexp) -> bool {
+    head_is_p(e, str_lit("module"))
+}
+
+/// The modules made in place among a module's items, each defined.
+pub fn made_in(its: Sexps) -> Sexps {
+    concat(map(lambda1(move |g: &'static Sexp| {
+        if (head_is_p(g, str_lit("include")) && made_here_p(second(items(g)))) {
+            the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("define"), str_lit(""), 0i64), kayak_rt::heap_cons(sym(made_name(second(items(g))), str_lit(""), 0i64), kayak_rt::heap_cons(second(items(g)), kayak_rt::nil()))), str_lit(""), 0i64, 0i64), kayak_rt::nil()))
+        } else if head_is_p(g, str_lit("hide")) {
+            made_in(cdr(items(g)))
+        } else {
+            nil::<&'static Sexp>()
+        }
+    }), its))
+}
+
+/// A module's items, each module made in place named.
+pub fn named_made(its: Sexps) -> Sexps {
+    map(lambda1(move |g: &'static Sexp| {
+        if (head_is_p(g, str_lit("include")) && made_here_p(second(items(g)))) {
+            lst(kayak_rt::heap_cons(car(items(g)), kayak_rt::heap_cons(sym(made_name(second(items(g))), str_lit(""), 0i64), cdr(cdr(items(g))))), str_lit(""), 0i64, 0i64)
+        } else if head_is_p(g, str_lit("hide")) {
+            lst(kayak_rt::heap_cons(car(items(g)), named_made(cdr(items(g)))), str_lit(""), 0i64, 0i64)
+        } else {
+            g
+        }
+    }), its)
+}
+
+/// A top-level form, after the modules it makes in place, each defined.
+pub fn hoisted(f: &'static Sexp) -> Sexps {
+    if not(module_def_p(f)) {
+        the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
+    } else {
+        let tagcase_ = f;
+        match *tagcase_ {
+            Sexp::Lst(xs, file, line, pos) => {
+                let x = third(xs);
+                if head_is_p(x, str_lit("module")) {
+                    onto(made_in(cdr(items(x))), the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(items(x)), named_made(cdr(items(x)))), file, line, pos), kayak_rt::nil()))), file, line, pos), kayak_rt::nil())))
+                } else if head_is_p(x, str_lit("extend")) {
+                    let ys = items(x);
+                    let e0 = second(ys);
+                    if made_here_p(e0) {
+                        the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("define"), str_lit(""), 0i64), kayak_rt::heap_cons(sym(made_name(e0), str_lit(""), 0i64), kayak_rt::heap_cons(e0, kayak_rt::nil()))), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(ys), kayak_rt::heap_cons(sym(made_name(e0), str_lit(""), 0i64), kayak_rt::heap_cons(third(ys), kayak_rt::nil()))), file, line, pos), kayak_rt::nil()))), file, line, pos), kayak_rt::nil())))
+                    } else {
+                        the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
+                    }
+                } else {
+                    the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
+            }
+        }
+    }
+}
+
+/// A program's forms: what it loads spliced in (C88), and what its modules
+/// make in place defined before them (C90).
 pub fn with_loads(forms: Sexps, file: Str, loaded: Fileds) -> Sexps {
-    if null_p(loaded) {
+    concat(map(&hoisted, if null_p(loaded) {
         forms
     } else {
         map(lambda1(move |f: &'static Sexp| {
             spliced(f, directory_of(file), loaded, nil::<Str>())
         }), forms)
-    }
+    }))
 }
 

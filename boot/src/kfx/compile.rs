@@ -65,11 +65,12 @@ pub fn compile(src: Str) -> Str {
 
 // A file's name, without `.kfx`, and its text; a Rust file's name, and its
 // text.
+/// A file's forms, the modules made in place defined before theirs (C90).
 pub fn source_forms(s: &'static Source) -> Sexps {
     let tagcase_ = s;
     match *tagcase_ {
         Source::Source(name, text) => {
-            read_all(string_chars(text), string_append(name, str_lit(".kfx")), 1i64)
+            with_loads(read_all(string_chars(text), string_append(name, str_lit(".kfx")), 1i64), string_append(name, str_lit(".kfx")), nil::<&'static Filed>())
         }
     }
 }

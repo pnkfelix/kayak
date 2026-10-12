@@ -1066,7 +1066,15 @@
   (lambda (v forms)
     "A hidden datatype or generative type in a type the module shows is
      refused, as FX-26 refuses it, for now (`modules/hide-escape.fx`)."
-    (let ((abstract (concat (map (lambda ((g sexp)) (if (or (head-is? g "define-datatype") (head-is? g "define-generative")) (item-names g) nil))
+    (let ((abstract (concat (map (lambda ((g sexp))
+                                   (cond ((or (head-is? g "define-datatype") (head-is? g "define-generative")) (item-names g))
+                                         ((head-is? g "include")
+                                          "A hidden include's abstract types are hidden too (C90)."
+                                          (let ((n (sym-name (second (items g)))))
+                                            (concat (map (lambda ((d dt)) (tagcase d (dt (dn ps vs)
+                                                                            (if (has-prefix? dn (string-append n "..")) (the strings (list (after-prefix dn (string-append n "..")))) nil))))
+                                                         (cv-dts v)))))
+                                         (else nil)))
                                  (hidden-items forms)))))
       (if (null? abstract)
           #u
@@ -1560,6 +1568,59 @@
               (lst (map (lambda ((x sexp)) (spliced x dir loaded chain)) xs) f l p)))
         (else other e)))))
 
+"A module made where it is included or extended (C90): FX-26 makes it
+ before the module's items, seeing none of them, so it is defined before
+ the module that uses it, at the top level, named `made--P` (`P` where it
+ is written), a name no KFX name is (C27's `--`), and used by that name."
+(define made-name (subr kfx (sexp) string)
+  (lambda (e) (string-append "made--" (i64->string (datum-pos e)))))
+
+(define made-here? (subr kfx (sexp) bool)
+  (lambda (e) (head-is? e "module")))
+
+(define-rec
+  (made-in (subr kfx (sexps) sexps)
+    (lambda (its)
+      "The modules made in place among a module's items, each defined."
+      (concat (map (lambda ((g sexp))
+                     (cond ((and (head-is? g "include") (made-here? (second (items g))))
+                            (the sexps (list (lst (list (sym "define" "" 0) (sym (made-name (second (items g))) "" 0) (second (items g))) "" 0 0))))
+                           ((head-is? g "hide") (made-in (cdr (items g))))
+                           (else nil)))
+                   its))))
+  (named-made (subr kfx (sexps) sexps)
+    (lambda (its)
+      "A module's items, each module made in place named."
+      (map (lambda ((g sexp))
+             (cond ((and (head-is? g "include") (made-here? (second (items g))))
+                    (lst (cons (car (items g)) (cons (sym (made-name (second (items g))) "" 0) (cdr (cdr (items g))))) "" 0 0))
+                   ((head-is? g "hide") (lst (cons (car (items g)) (named-made (cdr (items g)))) "" 0 0))
+                   (else g)))
+           its))))
+
+(define hoisted (subr kfx (sexp) sexps)
+  (lambda (f)
+    "A top-level form, after the modules it makes in place, each defined."
+    (if (not (module-def? f))
+        (the sexps (list f))
+        (tagcase f
+          (lst (xs file line pos)
+            (let ((x (third xs)))
+              (cond ((head-is? x "module")
+                     (onto (made-in (cdr (items x)))
+                           (the sexps (list (lst (list (car xs) (second xs) (lst (cons (car (items x)) (named-made (cdr (items x)))) file line pos)) file line pos)))))
+                    ((head-is? x "extend")
+                     (let* ((ys (items x))
+                            (e0 (second ys)))
+                       (if (made-here? e0)
+                           (the sexps (list (lst (list (sym "define" "" 0) (sym (made-name e0) "" 0) e0) "" 0 0)
+                                            (lst (list (car xs) (second xs) (lst (list (car ys) (sym (made-name e0) "" 0) (third ys)) file line pos)) file line pos)))
+                           (the sexps (list f)))))
+                    (else (the sexps (list f))))))
+          (else other (the sexps (list f)))))))
+
 (define with-loads (subr kfx (sexps string fileds) sexps)
   (lambda (forms file loaded)
-    (if (null? loaded) forms (map (lambda ((f sexp)) (spliced f (directory-of file) loaded nil)) forms))))
+    "A program's forms: what it loads spliced in (C88), and what its modules
+     make in place defined before them (C90)."
+    (concat (map hoisted (if (null? loaded) forms (map (lambda ((f sexp)) (spliced f (directory-of file) loaded nil)) forms))))))

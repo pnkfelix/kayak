@@ -194,7 +194,7 @@ pub fn types_named(forms: Sexps) -> () {
         map(lambda1(move |n: Str| {
             if string_member_p(camel(n), rust_type_names()) {
                 match type_refused(forms, n, string_append(str_lit("Rust or kayak-rt has a type "), string_append(camel(n), str_lit(" of its own")))) {}
-            } else if not(kfx_name_p(n)) {
+            } else if (not(kfx_name_p(n)) && not(has_prefix_p(n, str_lit("made--")))) {
                 match type_refused(forms, n, string_append(str_lit("a type's or module's name KFX's names are not (C27): "), n)) {}
             } else {
                 ()

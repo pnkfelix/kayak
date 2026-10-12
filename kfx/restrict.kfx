@@ -114,7 +114,7 @@
                (map (lambda ((n string))
                       (cond ((string-member? (camel n) (rust-type-names))
                              (type-refused forms n (string-append "Rust or kayak-rt has a type " (string-append (camel n) " of its own"))))
-                            ((not (kfx-name? n))
+                            ((and (not (kfx-name? n)) (not (has-prefix? n "made--")))
                              (type-refused forms n (string-append "a type's or module's name KFX's names are not (C27): " n)))
                             (else #u)))
                     names)
