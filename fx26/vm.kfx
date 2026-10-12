@@ -103,10 +103,12 @@
 
 (define tag-number (subr kfx (i64) i64) (lambda (w) (immediate-value w)))
 
-(define op-make-tag i64 (list-position "make-continuation-prompt-tag" prim-list 0))
-(define op-abort i64 (list-position "abort-current-continuation" prim-list 0))
-(define op-capture i64 (list-position "call-with-composable-continuation" prim-list 0))
-(define op-suspend i64 (list-position "abort-with-continuation" prim-list 0))
+"The control primitives' numbers, their places in `prim-list` (table.kfx),
+ written as literals: a constant is a procedure, called at each use."
+(define op-make-tag i64 135)
+(define op-abort i64 136)
+(define op-capture i64 137)
+(define op-suspend i64 138)
 
 (define-rec
   (label-position (subr (maxeff (read @globals) spin (read @h)) (i64 i64 i64 i64) i64)

@@ -157,7 +157,12 @@ pub fn load_x(gs: Strings) -> () {
         names_array_x(names, gs, 0i64);
         set(global_name_table(), names)
     };
-    set(io_error_labels(), label_ids_x(kayak_rt::heap_cons(str_lit("kind"), kayak_rt::heap_cons(str_lit("detail"), kayak_rt::nil()))))
+    set(io_error_labels(), label_ids_x(kayak_rt::heap_cons(str_lit("kind"), kayak_rt::heap_cons(str_lit("detail"), kayak_rt::nil()))));
+    if (i64_eq(op_make_tag(), list_position(str_lit("make-continuation-prompt-tag"), prim_list(), 0i64)) && i64_eq(op_abort(), list_position(str_lit("abort-current-continuation"), prim_list(), 0i64)) && i64_eq(op_capture(), list_position(str_lit("call-with-composable-continuation"), prim_list(), 0i64)) && i64_eq(op_suspend(), list_position(str_lit("abort-with-continuation"), prim_list(), 0i64))) {
+        ()
+    } else {
+        error(str_lit("the engine: the control primitives' numbers are not their places in prim-list"))
+    }
 }
 
 pub fn main() -> Int {

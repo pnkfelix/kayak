@@ -243,20 +243,22 @@ pub fn tag_number(w: i64) -> i64 {
     immediate_value(w)
 }
 
+// The control primitives' numbers, their places in `prim-list` (table.kfx),
+// written as literals: a constant is a procedure, called at each use.
 pub fn op_make_tag() -> i64 {
-    list_position(str_lit("make-continuation-prompt-tag"), prim_list(), 0i64)
+    135i64
 }
 
 pub fn op_abort() -> i64 {
-    list_position(str_lit("abort-current-continuation"), prim_list(), 0i64)
+    136i64
 }
 
 pub fn op_capture() -> i64 {
-    list_position(str_lit("call-with-composable-continuation"), prim_list(), 0i64)
+    137i64
 }
 
 pub fn op_suspend() -> i64 {
-    list_position(str_lit("abort-with-continuation"), prim_list(), 0i64)
+    138i64
 }
 
 pub fn label_position(mut start: i64, mut n: i64, mut l: i64, mut i: i64) -> i64 {

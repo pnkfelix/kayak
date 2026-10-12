@@ -82,7 +82,13 @@
       (set globals (make-flatarray-i64 (size gs) w-unbound))
       (let ((names (the (arrayof string @h) (make-array (i64->int (i64+ (size gs) 1)) ""))))
         (begin (names-array! names gs 0) (set global-name-table names)))
-      (set io-error-labels (label-ids! (list "kind" "detail"))))))
+      (set io-error-labels (label-ids! (list "kind" "detail")))
+      (if (and (i64= op-make-tag (list-position "make-continuation-prompt-tag" prim-list 0))
+               (i64= op-abort (list-position "abort-current-continuation" prim-list 0))
+               (i64= op-capture (list-position "call-with-composable-continuation" prim-list 0))
+               (i64= op-suspend (list-position "abort-with-continuation" prim-list 0)))
+          #u
+          (error "the engine: the control primitives' numbers are not their places in prim-list")))))
 
 (define main (subr running () int)
   (lambda ()
