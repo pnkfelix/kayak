@@ -270,6 +270,16 @@ marks (§16); `proj` (instantiation is inferred).
 - **K5. The generated Rust is readable.** It keeps KFX's names and
   structure, and is the seed of the bootstrap, so it is reviewed as
   source.
+- **K7. As much as can be is written in KFX** (the user, 2026-10-12).
+  Not only the compiler: the FX-26 interpreter, and as much of the
+  machinery Coopt wrote in Rust as KFX can say (the scheduler's policy,
+  the query engine, the collector, the runners' logic). Rust written by
+  hand is kept to what KFX cannot say: the glue to Rust's `Future` and
+  `Waker`, the OS, and memory made executable, in a few crates, which
+  alone may use `unsafe` (Q7). The KFX parts are transpiled and kept in
+  step as the compiler is (K0, K2). Where KFX, or FX-26 itself, lacks
+  what such code needs, the case is raised with the user before KFX is
+  extended (§8), since it may go to the Fixpt team for FX-26.
 - **K6. kayak's FX-26 agrees with Fixpt.** An FX-26 program kayak's
   runtime runs gives Fixpt's answer; kayak refuses what Fixpt refuses.
   Checked as K1 is, on Fixpt's own programs, all of them in time, not only
@@ -470,8 +480,10 @@ compiler, collector); Fixpt stays the reference for answers (K1, K6).
    hand, the Rust for two or three of Coopt's async programs
    (`cancel.fx`, a ping-pong) over a prototype executor; and how an
    engine slice will be a task beside them.
-2. The executor in `kayak-rt`: deterministic, a virtual clock, our own
-   `Waker`, no dependencies; built for both kinds of task.
+2. The executor: its policy (the run queue, the clock, the order) in
+   KFX (K7), over the least Rust that meets `Future` and `Waker`, in
+   `kayak-rt`; deterministic, a virtual clock, no dependencies; built for
+   both kinds of task.
 3. Runners and the event stream: sim and replay first, with
    `--record LOG` and a replay that reports where it parts from the log;
    the determinism check (a seed twice, streams compared) in
@@ -490,9 +502,10 @@ compiler, collector); Fixpt stays the reference for answers (K1, K6).
 
 **C. FX-26's runtime.**
 10. An IR for FX-26 at large, lowered from the checked program.
-11. The engine: a heap with a collector, its stack in the heap,
-    continuations composable; the first code generator an interpreter of
-    the IR (Q8). Its tasks on the same scheduler.
+11. The engine, in KFX (K7): a heap with a collector, its stack in the
+    heap, continuations composable; the first code generator an
+    interpreter of the IR, kept after as the reference (Q8). Its tasks on
+    the same scheduler.
 12. K6: Fixpt's programs run on it, compared with Fixpt; then the
     survey's refused programs, as FX-26 at large is accepted.
 13. The second self-hosting: the compiler run on kayak's runtime, and
@@ -531,16 +544,27 @@ end could start earlier, alone, if A stalls.
   K1 needs the operations written in FX-26 in `kfx/prelude.fx` (from
   Coopt's library); or Coopt is made the reference for them. My default:
   the prelude, so Fixpt stays the one reference.
-- **Q7. `unsafe` in FX-26's runtime.** K4 is about *generated* Rust. A
-  collector can be safe Rust, as Coopt's and Fixpt's heaps are (a value
-  an index, not a pointer); a native code generator cannot be (memory
-  made executable). Coopt confines `unsafe` to two crates. My default:
-  the same, when phase D comes; not before.
-- **Q8. FX-26's first code generator.** My default: an interpreter of
-  the IR, its stack in the heap, the simplest that has composable
-  continuations and is a task the scheduler can budget; compiled code
-  after, as Fixpt went.
+- **Q7. `unsafe`.** Answered (the user, 2026-10-12): confined to a few
+  of the runtime's crates, as Coopt and Fixpt confine it (a native code
+  generator needs memory made executable; the OS's interfaces, `libc`).
+  The transpiled output never uses it (K4).
+- **Q8. FX-26's first code generator.** Answered (the user, 2026-10-12):
+  an interpreter, as the start and kept after as a reference point, and
+  *written in KFX* (K7).
 
 ## 8. Requests for Fixpt
 
 Three, all done and pinned: `DONE.md` §6.
+
+From K7 on, a case where KFX or FX-26 lacks what runtime code written in
+KFX needs is raised with the user here, with the code that wants it and
+the alternatives, before anything is extended; the user may take it to
+the Fixpt team. Likely first cases, to be confirmed by the code:
+- **Arrays of values**: KFX's flat arrays hold `i64` alone (C12); a run
+  queue, a memo table or a heap of words wants more (FX-26 has vectors;
+  KFX does not map them yet: a KFX extension, not FX-26's).
+- **Bytes and hashing**: a runner's buffers, a query's key.
+- **The heap as data**: a collector in KFX works on a heap that is an
+  array of words, values as indices (Fixpt's and Coopt's arrangement,
+  which is safe); what it needs from bloblets and blobrefs.
+

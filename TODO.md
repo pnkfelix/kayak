@@ -237,8 +237,8 @@ The next goal. Phase A, in order (`PLAN.md` §6.5):
 - **The research note**, `docs/research/async-rust.md`, with Rust written
   by hand for two or three of Coopt's async programs over a prototype
   executor.
-- **The executor** in `kayak-rt`: one thread, deterministic, a virtual
-  clock, its own `Waker`.
+- **The executor**: its policy in KFX (K7), over the least Rust that
+  meets `Future` and `Waker`; one thread, deterministic, a virtual clock.
 - **Record and replay** (the user, 2026-10-12), as Coopt's: runners
   (sim, replay; live later) behind one interface, a log of arrivals by
   step and clock moves, outputs checked against it on replay, one event
@@ -262,14 +262,18 @@ Phase B, the compiler for two languages:
 
 Phase C, FX-26's runtime:
 - **An IR** for FX-26 at large.
-- **The engine**: a heap with a collector, its stack in the heap,
-  composable continuations; an interpreter of the IR first (Q8); its
-  tasks on the one scheduler.
+- **The engine, in KFX** (K7): a heap with a collector, its stack in the
+  heap, composable continuations; an interpreter of the IR, kept as the
+  reference (Q8); its tasks on the one scheduler.
 - **K6**: Fixpt's programs on it, compared with Fixpt.
 - **The second self-hosting**: the compiler on kayak's runtime, built
   into an image, its output compared with the Rust build's.
 
-Phase D: more code generators (compiled words, native code; Q7).
+Phase D: more code generators (compiled words, native code), `unsafe`
+in a few runtime crates alone (Q7).
+
+Throughout: where KFX or FX-26 lacks what runtime code in KFX needs,
+raise it with the user first (`PLAN.md` K7, §8).
 
 ## 18. Research: regions as exclusive borrows (GhostCell tokens)
 
