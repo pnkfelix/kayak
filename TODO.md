@@ -362,11 +362,13 @@ and what the generated code looks like for the compiler's own source.
 
 ## 23. FX-26's engine (`docs/research/engine.md`, C58)
 
-- ~~The core~~: IR, lowering, CEK machine, primitives, printing; 21 of
-  the corpus's 53 programs agree with Fixpt.
-- Next: `case`; regions (`letregion`, `letrena`, places: run as the
-  heap); the fixed widths but `i64`; bytes; `f64`; bloblets; modules.
-- Then Fixpt's own programs (`run-fixpt-programs.py`'s, the engine
-  beside the Rust); then FX-26 beyond KFX: continuations resumed twice,
-  unions (the checker grown, the restriction pass for Rust).
+- ~~The core~~, ~~the corpus's forms but bloblets~~, ~~Fixpt's
+  programs compared~~ (C58, C59): 49 of 53 corpus programs, 97 of the 105
+  Fixpt programs kfx accepts, agree; none differs.
+- Bloblets (byte layouts, blobrefs), the last of what kfx accepts.
+- FX-26 beyond KFX, the engine's reason: the checker given an FX-26 mode
+  (the engine's), in which KFX's restrictions are off and FX-26's typing
+  of the control primitives (`composable`, `call-with-composable-
+  continuation` as a poly primitive with `proj`) and then unions are its
+  own; the restrictions a pass for Rust after it. A design note first.
 - The collector; tasks on the scheduler; the second self-hosting.
