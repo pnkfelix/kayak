@@ -100,6 +100,10 @@ pub fn prim_arity(n: Str) -> i64 {
         2i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("int?"), kayak_rt::heap_cons(str_lit("string?"), kayak_rt::heap_cons(str_lit("bool?"), kayak_rt::heap_cons(str_lit("char?"), kayak_rt::heap_cons(str_lit("symbol?"), kayak_rt::heap_cons(str_lit("array?"), kayak_rt::heap_cons(str_lit("procedure?"), kayak_rt::heap_cons(str_lit("f64?"), kayak_rt::heap_cons(str_lit("ref?"), kayak_rt::heap_cons(str_lit("sum?"), kayak_rt::heap_cons(str_lit("product?"), kayak_rt::heap_cons(str_lit("bytevector?"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::nil()))))))))))))))) {
         1i64
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("stay-cellular"), kayak_rt::nil())) {
+        1i64
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::heap_cons(str_lit("set-car!"), kayak_rt::heap_cons(str_lit("set-cdr!"), kayak_rt::nil())))) {
+        2i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("%identity"), kayak_rt::heap_cons(str_lit("bytevector-length"), kayak_rt::heap_cons(str_lit("string->utf8"), kayak_rt::heap_cons(str_lit("utf8->string"), kayak_rt::heap_cons(str_lit("flatarray-length-i64"), kayak_rt::nil())))))) {
         1i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("append"), kayak_rt::heap_cons(str_lit("make-bytevector"), kayak_rt::heap_cons(str_lit("bytevector-u8-ref"), kayak_rt::heap_cons(str_lit("bytevector=?"), kayak_rt::heap_cons(str_lit("make-flatarray-i64"), kayak_rt::heap_cons(str_lit("flatarray-ref-i64"), kayak_rt::nil()))))))) {

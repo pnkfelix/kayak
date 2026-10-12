@@ -1458,6 +1458,13 @@
       (cond ((string=? (shape-of a) "union")
              "A union below `e`: each member is (C62)."
              (fits-each-member v s (tagcase a (ty-data (d args) args) (else other nil)) e))
+            ((and (string=? (shape-of e) "union") (tagcase a (ty-list (x r) #t) (else other #f))
+                  (null? (member-of-shape (tagcase e (ty-data (d args) args) (else other nil)) "list")))
+             "A list where a union of `nil` and a pair is expected: each of the
+              two it is (C69)."
+             (tagcase a
+               (ty-list (x r) (fits v (fits v s (ty-data "nil" nil) e) (ty-data "%pairof" (list x a r)) e))
+               (else other (mismatch v s a e))))
             ((and (string=? (shape-of e) "union") (not (string=? (shape-of a) "")))
              "A member below its union: the member of its shape (C62)."
              (let ((m (member-of-shape (tagcase e (ty-data (d args) args) (else other nil)) (shape-of a))))

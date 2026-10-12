@@ -28,7 +28,7 @@
         (sym (n f p)
           (cond ((or (string=? n "call-with-composable-continuation") (string=? n "call-with-current-continuation") (string=? n "call/cc"))
                  (restriction-refused file line (string-append n " keeps a continuation FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)")))
-                ((string-member? n (list "false" "no-pair" "int?" "string?" "bool?" "char?" "symbol?" "array?" "procedure?" "pair?" "f64?" "ref?" "sum?" "product?" "bytevector?"))
+                ((string-member? n (list "false" "no-pair" "eq?" "set-car!" "set-cdr!" "stay-cellular" "int?" "string?" "bool?" "char?" "symbol?" "array?" "procedure?" "pair?" "f64?" "ref?" "sum?" "product?" "bytevector?"))
                  (restriction-refused file line (string-append n ", of FX-26's unions of shapes, which KFX has not: as a Rust enum, a union's subtyping under a list or a procedure would need a copy or a wrapper FX-26 has not (C57)")))
                 (else #u)))
         (lst (xs f l p)

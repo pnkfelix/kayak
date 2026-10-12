@@ -3115,6 +3115,41 @@ pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static T
                 }
             }
         }, e)
+    } else if (string_eq_p(shape_of(e), str_lit("union")) && {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyList(x, r) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } && null_p(member_of_shape({
+        let tagcase_ = e;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                args
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<&'static Ty>()
+            }
+        }
+    }, str_lit("list")))) {
+        // A list where a union of `nil` and a pair is expected: each of the
+        // two it is (C69).
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyList(x, r) => {
+                fits(v, fits(v, s, ty_data(str_lit("nil"), nil::<&'static Ty>()), e), ty_data(str_lit("%pairof"), kayak_rt::heap_cons(x, kayak_rt::heap_cons(a, kayak_rt::heap_cons(r, kayak_rt::nil())))), e)
+            }
+            _ => {
+                let other = tagcase_;
+                mismatch(v, s, a, e)
+            }
+        }
     } else if (string_eq_p(shape_of(e), str_lit("union")) && not(string_eq_p(shape_of(a), str_lit("")))) {
         // A member below its union: the member of its shape (C62).
         let m = member_of_shape({

@@ -446,6 +446,16 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         bool_word(f64_finite_p(word_real(a)))
     } else if i64_eq(op, 163i64) {
         bool_word(string_eq_p(string_downcase(word_string(a)), string_downcase(word_string(b))))
+    } else if i64_eq(op, 164i64) {
+        bool_word(i64_eq(a, b))
+    } else if i64_eq(op, 165i64) {
+        obj_set_x(a, 0i64, b);
+        w_unit()
+    } else if i64_eq(op, 166i64) {
+        obj_set_x(a, 1i64, b);
+        w_unit()
+    } else if i64_eq(op, 167i64) {
+        a
     } else if i64_gt_eq(op, fixed_base()) {
         fixed_op_word(name_of_number(i64_minus(op, fixed_base())), a, b)
     } else {

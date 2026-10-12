@@ -1362,3 +1362,13 @@ The user (2026-10-12): work through FX-26 beyond KFX, autonomously.
   reason): KFX's lists stay `List<T>`.
 - Not yet: narrowing a path (`(car x)`, `(extract p a)`), Fixpt's TODO §54.
 - Beyond KFX, the engine agrees on 21 of Fixpt's programs (18).
+
+## C69. `eq?`, `set-car!`, `set-cdr!`, `stay-cellular` (2026-10-12)
+
+At FX-26's types, in the checker and the engine (`eq?` a word's identity:
+a pointer's for an object, a value's for an immediate or a fixnum, as
+FX-26's `eq`); a list where a union of `nil` and a pair is expected is
+each of the two. Refused for Rust by the restriction pass: KFX's lists
+are immutable in Rust, `eq?`'s identity has no Rust that means the same of
+KFX's `Copy` values, and `stay-cellular` is a direction to Fixpt's
+machines. Beyond KFX, 23 agree (21).
