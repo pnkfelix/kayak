@@ -1164,3 +1164,23 @@ together, the restriction pass refusing for Rust what Rust cannot have).
   the rest stop at forms not lowered yet (regions, `case`, modules,
   bloblets, the fixed widths but `i64`). A program that agreed and no
   longer does fails the check (`tests/engine-passing`).
+
+## C59. The engine grown: the corpus, and Fixpt's programs, compared (2026-10-12)
+
+- **Modules** are products of the values they give: a module form is a
+  `letrec` of its items, then that product; `(with m e)` puts the module
+  in a frame of its own, through which `e`'s names are found, so that it
+  shadows the locals outside it, as FX-26's does. What each top-level
+  module gives is known when lowering; a module given as a parameter
+  gives the names every `moduleof` type of the program names (a name
+  not its own would be shadowed wrongly: none of the programs has one).
+- **Regions run as the heap** (`letregion`, `letrena`, `letreap`, places
+  given to `rcons` and `rnew` dropped); `case`; fixed widths, each
+  operation on `int` and wrapped; `f64`; bytevectors; flat arrays of
+  `i64`; I/O, its answers FX-26's sums.
+- **Compared with Fixpt on its own programs too**:
+  `scripts/run-fixpt-programs.py` runs the engine on each program kfx
+  accepts; a wrong value fails the check, a program not run yet is
+  counted (`tests/engine-fixpt-passing` keeps those that agreed).
+- **Measured**: 49 of the corpus's 53, 97 of Fixpt's 105, agree; none
+  differs. Left, in both: bloblets.

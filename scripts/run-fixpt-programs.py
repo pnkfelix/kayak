@@ -1,6 +1,6 @@
 """Fixpt's FX-26 programs that kfx accepts, run both ways (PLAN.md, K1).
 
-usage: python3 -I scripts/run-fixpt-programs.py [--list]
+usage: python3 -I scripts/run-fixpt-programs.py [--list] [--bless]
 
 Each program in Fixpt's crates/fixpt-fx26/tests/programs that kfx accepts
 is compiled with `kfx --toplevel`, whose `kfx_toplevel` writes the values
@@ -154,11 +154,66 @@ def fixpt_values(binary, path, text):
 def same(fixpt, rust):
     if fixpt == rust:
         return True
-    return rust == "#<procedure>" and re.match(r"#<.*(closure|procedure).*>$", fixpt) is not None
+    return rust in ("#<procedure>", "#<closure>") and re.match(r"#<.*(closure|procedure).*>$", fixpt) is not None
+
+
+ENGINE_PASSING = os.path.join(ROOT, "tests", "engine-fixpt-passing")
+
+
+def engine_runs(accepted, fixpt, listing, bless):
+    """FX-26's engine (C58) on the same programs: K6. A wrong value fails;
+    a program it cannot run yet is counted; one in tests/engine-fixpt-passing
+    that no longer agrees fails."""
+    engine = os.path.join(ROOT, "target", "release", "kayak-fx26")
+    if run(["cargo", "build", "--release", "--quiet", "-p", "kayak-fx26"], cwd=ROOT).returncode != 0:
+        sys.exit("run-fixpt-programs: the engine does not build")
+    agree, differ, cannot = [], [], []
+    for name, rel, path in accepted:
+        with open(path) as g:
+            text = g.read()
+        expected, why = fixpt_values(fixpt, path, text)
+        try:
+            r = run([engine, path], timeout=LIMIT)
+        except subprocess.TimeoutExpired:
+            cannot.append((rel, "runs past %ds" % LIMIT))
+            continue
+        if expected is None and why.startswith("REFUSED: ! evaluation failed"):
+            if r.returncode != 0:
+                agree.append(rel)
+            else:
+                differ.append((rel, "Fixpt fails when run, and the engine does not"))
+            continue
+        if expected is None:
+            continue
+        if r.returncode != 0:
+            said = [l for l in r.stderr.splitlines() if "engine" in l or "kfx:" in l]
+            cannot.append((rel, (said or r.stderr.strip().splitlines()[-1:] or ["?"])[0][:160]))
+            continue
+        got = r.stdout.splitlines()
+        if len(got) == len(expected) and all(same(e, g) for e, g in zip(expected, got)):
+            agree.append(rel)
+        else:
+            differ.append((rel, "Fixpt %r, the engine %r" % (expected[:6], got[:6])))
+    if listing:
+        for rel, why in cannot:
+            print("engine cannot yet %s: %s" % (rel, why))
+    for rel, why in differ:
+        print("ENGINE DIFFERS  %s: %s" % (rel, why))
+    was = set(open(ENGINE_PASSING).read().split()) if os.path.exists(ENGINE_PASSING) else set()
+    lost = sorted(was - set(agree))
+    if bless:
+        with open(ENGINE_PASSING, "w") as g:
+            g.write("".join(r + "\n" for r in agree))
+        lost = []
+    for rel in lost:
+        print("ENGINE NO LONGER AGREES  %s" % rel)
+    print("run-fixpt-programs: the engine: %d agree, %d differ, %d not run yet" % (len(agree), len(differ), len(cannot)))
+    return bool(differ or lost)
 
 
 def main():
-    listing = sys.argv[1:] == ["--list"]
+    listing = "--list" in sys.argv[1:]
+    bless = "--bless" in sys.argv[1:]
     fixpt = run([os.path.join(ROOT, "scripts", "fixpt.sh")]).stdout.strip()
     programs_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(fixpt))),
                                 "crates", "fixpt-fx26", "tests", "programs")
@@ -250,7 +305,8 @@ def main():
         print("DIFFER  %s: %s" % (rel, why))
     print("run-fixpt-programs: %d of Fixpt's programs kfx accepts; %d agree, %d differ, %d skipped"
           % (len(accepted), agree, len(differ), len(skipped)))
-    sys.exit(1 if differ else 0)
+    engine_failed = engine_runs(accepted, fixpt, listing, bless)
+    sys.exit(1 if differ or engine_failed else 0)
 
 
 main()

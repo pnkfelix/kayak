@@ -2,7 +2,10 @@
  (docs/research/engine.md, C58). The engine's data lives at `@h`, its heap,
  never freed for now."
 
-(define-effect eng (maxeff (read @globals) spin (read @h) (write @h) (alloc @h)))
+"The engine's effect: its heap, and the world, which an FX-26 program's
+ I/O is (C49)."
+(define-effect eng (maxeff (read @globals) spin (read @h) (write @h) (alloc @h)
+                           (io stdin) (io stdout) (io stderr) (io clock) (io fs-read) (io fs-write) (io args) (io exit)))
 
 "A value, of any shape: uniform, so that a member of a union is its
  union's value already (C57). Integers of every width are `int`, wrapped

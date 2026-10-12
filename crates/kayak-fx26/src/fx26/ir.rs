@@ -7,6 +7,9 @@ use super::*;
 // (docs/research/engine.md, C58). The engine's data lives at `@h`, its heap,
 // never freed for now.
 
+// The engine's effect: its heap, and the world, which an FX-26 program's
+// I/O is (C49).
+
 // A value, of any shape: uniform, so that a member of a union is its
 // union's value already (C57). Integers of every width are `int`, wrapped
 // by their operations. A pair's head and tail are cells, as FX-26's pairs

@@ -102,6 +102,12 @@ pub fn prim_arity(n: Str) -> i64 {
         3i64
     } else if string_eq_p(n, str_lit("rnew")) {
         2i64
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("i64-shl"), kayak_rt::heap_cons(str_lit("i64-shr"), kayak_rt::heap_cons(str_lit("write-file"), kayak_rt::nil())))) {
+        2i64
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("write-out"), kayak_rt::heap_cons(str_lit("write-err"), kayak_rt::heap_cons(str_lit("exit"), kayak_rt::heap_cons(str_lit("read-file"), kayak_rt::heap_cons(str_lit("list-dir"), kayak_rt::heap_cons(str_lit("sleep-until"), kayak_rt::nil()))))))) {
+        1i64
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("read-line"), kayak_rt::heap_cons(str_lit("clock"), kayak_rt::heap_cons(str_lit("args"), kayak_rt::nil())))) {
+        0i64
     } else if not(string_eq_p(fixed_type(n), str_lit(""))) {
         fixed_arity(fixed_op(n))
     } else if has_prefix_p(n, str_lit("f64")) {
@@ -288,6 +294,61 @@ pub fn bytes_of(v: &'static Val) -> Bytes {
             error(str_lit("the engine: a bytevector is expected"));
             make_bytevector(int_lit(0), int_to_u8(int_lit(0)))
         }
+    }
+}
+
+// An I/O error as FX-26 has it: a product of its kind, a sum, and the
+// system's words.
+pub fn io_error_val(e: Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>) -> &'static Val {
+    let kind = {
+        let tagcase_ = e.0;
+        match *tagcase_ {
+            Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::NotFound(u) => {
+                str_lit("not-found")
+            }
+            Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::PermissionDenied(u) => {
+                str_lit("permission-denied")
+            }
+            Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::AlreadyExists(u) => {
+                str_lit("already-exists")
+            }
+            Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::NotADirectory(u) => {
+                str_lit("not-a-directory")
+            }
+            Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::IsADirectory(u) => {
+                str_lit("is-a-directory")
+            }
+            Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::BrokenPipe(u) => {
+                str_lit("broken-pipe")
+            }
+            Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::InvalidData(u) => {
+                str_lit("invalid-data")
+            }
+            Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other::Other(u) => {
+                str_lit("other")
+            }
+        }
+    };
+    v_product(kayak_rt::heap_cons(str_lit("kind"), kayak_rt::heap_cons(str_lit("detail"), kayak_rt::nil())), vals_array(kayak_rt::heap_cons(v_sum(kind, v_unit()), kayak_rt::heap_cons(v_string(e.1), kayak_rt::nil()))))
+}
+
+pub fn written(r: &'static Sum_4done_6failed<(), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>) -> &'static Val {
+    let tagcase_ = r;
+    match *tagcase_ {
+        Sum_4done_6failed::Done(u) => {
+            v_sum(str_lit("done"), v_unit())
+        }
+        Sum_4done_6failed::Failed(e) => {
+            v_sum(str_lit("failed"), io_error_val(e))
+        }
+    }
+}
+
+pub fn strings_vals(ss: Strings) -> Vals {
+    if null_p(ss) {
+        nil::<&'static Val>()
+    } else {
+        kayak_rt::heap_cons(v_string(car(ss)), strings_vals(cdr(ss)))
     }
 }
 
@@ -775,6 +836,59 @@ pub fn apply_prim(n: Str, xs: Vals) -> &'static Val {
         v_unit()
     } else if string_eq_p(n, str_lit("%identity")) {
         a
+    } else if string_eq_p(n, str_lit("i64-shl")) {
+        v_i64(i64_shl(i64_of(a), val_int(b)))
+    } else if string_eq_p(n, str_lit("i64-shr")) {
+        v_i64(i64_shr(i64_of(a), val_int(b)))
+    } else if string_eq_p(n, str_lit("write-out")) {
+        written(write_out(string_of(a)))
+    } else if string_eq_p(n, str_lit("write-err")) {
+        written(write_err(string_of(a)))
+    } else if string_eq_p(n, str_lit("exit")) {
+        match exit(val_int(a)) {};
+        v_unit()
+    } else if string_eq_p(n, str_lit("clock")) {
+        v_i64(clock())
+    } else if string_eq_p(n, str_lit("sleep-until")) {
+        sleep_until(i64_of(a));
+        v_unit()
+    } else if string_eq_p(n, str_lit("args")) {
+        list_val(strings_vals(the::<Strings>(args())))
+    } else if string_eq_p(n, str_lit("read-line")) {
+        let tagcase_ = read_line();
+        match *tagcase_ {
+            Sum_4line_3eof_6failed::Line(t) => {
+                v_sum(str_lit("line"), v_string(t))
+            }
+            Sum_4line_3eof_6failed::Eof(u) => {
+                v_sum(str_lit("eof"), v_unit())
+            }
+            Sum_4line_3eof_6failed::Failed(e) => {
+                v_sum(str_lit("failed"), io_error_val(e))
+            }
+        }
+    } else if string_eq_p(n, str_lit("read-file")) {
+        let tagcase_ = the::<&'static Sum_4data_6failed<Bytes, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>(read_file(string_of(a)));
+        match *tagcase_ {
+            Sum_4data_6failed::Data(d) => {
+                v_sum(str_lit("data"), v_bytes(d))
+            }
+            Sum_4data_6failed::Failed(e) => {
+                v_sum(str_lit("failed"), io_error_val(e))
+            }
+        }
+    } else if string_eq_p(n, str_lit("write-file")) {
+        written(write_file(string_of(a), bytes_of(b)))
+    } else if string_eq_p(n, str_lit("list-dir")) {
+        let tagcase_ = the::<&'static Sum_5names_6failed<Strings, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>(list_dir(string_of(a)));
+        match *tagcase_ {
+            Sum_5names_6failed::Names(ns) => {
+                v_sum(str_lit("names"), list_val(strings_vals(ns)))
+            }
+            Sum_5names_6failed::Failed(e) => {
+                v_sum(str_lit("failed"), io_error_val(e))
+            }
+        }
     } else if string_eq_p(n, str_lit("append")) {
         list_val(onto_vals(list_of(a), list_of(b)))
     } else if string_eq_p(n, str_lit("make-bytevector")) {

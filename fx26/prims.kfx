@@ -66,6 +66,9 @@
           ((string=? n "bytevector-copy!") 5)
           ((string-member? n (list "substring" "array-set!" "string-search" "rcons" "rmake-array")) 3)
           ((string=? n "rnew") 2)
+          ((string-member? n (list "i64-shl" "i64-shr" "write-file")) 2)
+          ((string-member? n (list "write-out" "write-err" "exit" "read-file" "list-dir" "sleep-until")) 1)
+          ((string-member? n (list "read-line" "clock" "args")) 0)
           ((not (string=? (fixed-type n) "")) (fixed-arity (fixed-op n)))
           ((has-prefix? n "f64") (if (string-member? n (list "f64-abs" "f64-neg" "f64-sqrt" "f64-floor" "f64-ceiling" "f64-truncate" "f64-round"
                                                          "f64->string" "f64->int" "f64-nan?" "f64-infinite?" "f64-finite?")) 1 2))
@@ -131,6 +134,23 @@
 
 (define bytes-of (subr eng (val) (bytevectorof @h))
   (lambda (v) (tagcase v (v-bytes (b) b) (else other (begin (error "the engine: a bytevector is expected") (make-bytevector 0 (int->u8 0)))))))
+
+"An I/O error as FX-26 has it: a product of its kind, a sum, and the
+ system's words."
+(define io-error-val (subr eng (io-error) val)
+  (lambda (e)
+    (let ((kind (tagcase (extract e kind)
+                  (not-found u "not-found") (permission-denied u "permission-denied") (already-exists u "already-exists")
+                  (not-a-directory u "not-a-directory") (is-a-directory u "is-a-directory") (broken-pipe u "broken-pipe")
+                  (invalid-data u "invalid-data") (other u "other"))))
+      (v-product (list "kind" "detail") (vals-array (list (v-sum kind (v-unit)) (v-string (extract e detail))))))))
+
+(define written (subr eng ((sumof (done unit) (failed io-error))) val)
+  (lambda (r) (tagcase r (done u (v-sum "done" (v-unit))) (failed e (v-sum "failed" (io-error-val e))))))
+
+(define-rec
+  (strings-vals (subr eng (strings) vals)
+    (lambda (ss) (if (null? ss) nil (cons (v-string (car ss)) (strings-vals (cdr ss)))))))
 
 (define-rec
   (onto-vals (subr eng (vals vals) vals)
@@ -298,6 +318,23 @@
             ((string=? n "list->array") (v-array (vals-array (list-of a))))
             ((string=? n "error") (begin (error (string-of a)) (v-unit)))
             ((string=? n "%identity") a)
+            ((string=? n "i64-shl") (v-i64 (i64-shl (i64-of a) (val-int b))))
+            ((string=? n "i64-shr") (v-i64 (i64-shr (i64-of a) (val-int b))))
+            ((string=? n "write-out") (written (write-out (string-of a))))
+            ((string=? n "write-err") (written (write-err (string-of a))))
+            ((string=? n "exit") (begin (exit (val-int a)) (v-unit)))
+            ((string=? n "clock") (v-i64 (clock)))
+            ((string=? n "sleep-until") (begin (sleep-until (i64-of a)) (v-unit)))
+            ((string=? n "args") (list-val (strings-vals (the strings (args)))))
+            ((string=? n "read-line")
+             (tagcase (read-line) (line t (v-sum "line" (v-string t))) (eof u (v-sum "eof" (v-unit))) (failed e (v-sum "failed" (io-error-val e)))))
+            ((string=? n "read-file")
+             (tagcase (the (sumof (data (bytevectorof @h)) (failed io-error)) (read-file (string-of a)))
+               (data d (v-sum "data" (v-bytes d))) (failed e (v-sum "failed" (io-error-val e)))))
+            ((string=? n "write-file") (written (write-file (string-of a) (bytes-of b))))
+            ((string=? n "list-dir")
+             (tagcase (the (sumof (names strings) (failed io-error)) (list-dir (string-of a)))
+               (names ns (v-sum "names" (list-val (strings-vals ns)))) (failed e (v-sum "failed" (io-error-val e)))))
             ((string=? n "append") (list-val (onto-vals (list-of a) (list-of b))))
             ((string=? n "make-bytevector") (v-bytes (make-bytevector (val-int a) (int->u8 (val-int b)))))
             ((string=? n "bytevector-length") (v-int (bytevector-length (bytes-of a))))
