@@ -867,3 +867,32 @@ smaller: no cancel scopes, no preemption, no channels yet.
 - **Tested** by `tests/kfx/clock.unit` (the library and a program): two
   sleepers waking in time order, an ivar handing a value across, a
   yield; Fixpt's answer.
+
+## C48. Runners, record and replay, in KFX (2026-10-12)
+
+`lib/runner.kfx`; `PLAN.md` §6.1 (the user: "make sure to duplicate"
+Coopt's record and replay). A program performs an operation (read a
+line, write, read the clock) by suspending to its runner's prompt with
+the operation and its rest (C45); the runner, a KFX procedure from step
+and operation to answer, answers and resumes it. Three runners: `sim`
+(scripted input, a clock that ticks an operation), `recording` (another
+runner, each step, operation and answer kept), `replaying` (a record's
+answers, each operation checked against the one recorded: parting from
+the log, or running past it, fails saying at which step and how).
+- **As Coopt's:** a run's inputs are the answers alone; outputs are
+  operations, checked on replay, not stored apart.
+- **Not as Coopt's, yet:** no events at scheduler steps (an operation is
+  answered at once: no task waits on the world while others run), no
+  live runner, no seeded delays or faults, no determinism check in
+  `scripts/check.sh` (the sim is deterministic by construction; the check
+  comes with seeds).
+- **Live I/O is FX-26's gap**, raised (`PLAN.md` §8): FX-26 has no I/O,
+  so a live runner's primitives have no FX-26 meaning, and K1 cannot hold
+  for a program that uses them.
+- **A procedure that takes or gives one that may suspend has no
+  lifetimes** either (C46's rule, widened): its closures' futures are
+  `'static`.
+- **Tested** by `tests/kfx/replay.unit`: a program run under the sim,
+  recorded, and replayed from the record; Fixpt's answer. A replay made
+  to part from its log fails on Fixpt with the message the Rust's
+  `error` gives.

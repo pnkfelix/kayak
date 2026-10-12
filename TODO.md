@@ -248,11 +248,13 @@ The next goal. Phase A, in order (`PLAN.md` §6.5):
   measured to matter. A datatype over an effect is refused.
 - **Boxing only what recursion needs**: every suspending call is boxed
   now; a call outside its callee's recursive group need not be.
-- **Record and replay** (the user, 2026-10-12), as Coopt's: runners
-  (sim, replay; live later) behind one interface, a log of arrivals by
-  step and clock moves, outputs checked against it on replay, one event
-  stream, and a determinism check in `scripts/check.sh`. The compiler's
-  own I/O moved behind the runner.
+- **Record and replay**: done in KFX for simulated runs (C48,
+  `lib/runner.kfx`). Left: operations answered as events at scheduler
+  steps (tasks waiting on the world while others run: the runner and
+  `lib/tasks.kfx` joined); seeded delays and faults in the sim, and the
+  determinism check in `scripts/check.sh`; one event stream; a live
+  runner, waiting on the user (`PLAN.md` §8, I/O); the compiler's own
+  I/O behind a runner.
 - **Corpus programs**, compared with Fixpt.
 - **Incremental compiling** (Q5, answered): the compiler's passes as
   queries, memoized with their dependencies, as `coopt-query`'s; the

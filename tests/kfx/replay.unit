@@ -1,0 +1,4 @@
+; Runners (lib/runner.kfx): a program run under the sim, recorded, then
+; replayed from its record.
+../../lib/runner.kfx
+replay/app.kfx

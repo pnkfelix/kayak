@@ -200,10 +200,29 @@
                          nil)))
                  binders))))
 
+(define-rec
+  (mentions-suspension? (subr kfx (ctx sexp) bool)
+    (lambda (c t)
+      "Whether a type is, or holds, a procedure that may suspend: one whose
+       future, `'static`, can hold no lifetime's data (C46)."
+      (tagcase (family-expanded c t)
+        (lst (xs f l p)
+          (cond ((null? xs) #f)
+                ((and (sym-is? (car xs) "subr") (suspending-effect? c (second xs))) #t)
+                ((sym-is? (car xs) "subr")
+                 (or (any? (lambda ((x sexp)) (mentions-suspension? c x)) (items (third xs)))
+                     (mentions-suspension? c (fourth xs))))
+                (else (any? (lambda ((x sexp)) (mentions-suspension? c x)) (cdr xs)))))
+        (sym (n f p)
+          (let ((found (module-body c (string-append "%abbreviation " n))))
+            (if (null? found) #f (mentions-suspension? c (second (items (car found)))))))
+        (else other #f)))))
+
 (define may-suspend? (subr kfx (ctx sexps sexp) bool)
   (lambda (c binders typ)
-    "Whether a definition is of a procedure that may suspend: its effect
-     says so, or names one of its effect binders. Its regions then have no
+    "Whether a definition is of a procedure that may suspend, or that takes
+     or gives one: its effect says so, or names one of its effect binders,
+     or its type holds such a procedure. Its regions then have no
      lifetimes (C46): its future is `'static`, as a capture's must be, and
      it touches no `letrena`'s data, since none may be suspended in (C45)."
     (let ((t (if (head-is? typ "poly") (third (items typ)) typ))
@@ -212,7 +231,7 @@
                                                (the strings (list (string-append "%evar " (sym-name (car (items b))))))
                                                nil))
                                          binders)))))
-      (and (head-is? t "subr") (suspending-effect? c (second (items t)))))))
+      (mentions-suspension? c t))))
 
 (define put-lifetime-generics (subr kfx (strings sexps chars) chars)
   (lambda (lives binders acc)

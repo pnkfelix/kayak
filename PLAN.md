@@ -485,7 +485,8 @@ compiler, collector); Fixpt stays the reference for answers (K1, K6).
 2. The executor: none in Rust, it turned out (C45). The scheduler is a
    library of tasks in KFX, over `abort-with-continuation`; kayak-rt has
    the capture, the prompt and the top level.
-3. Runners and the event stream: sim and replay first, with
+3. Runners (done in part, C48: sim, recording, replaying, in KFX; no
+   live runner, FX-26 having no I/O, §8) and the event stream: with
    `--record LOG` and a replay that reports where it parts from the log;
    the determinism check (a seed twice, streams compared) in
    `scripts/check.sh`. Live later.
@@ -582,6 +583,26 @@ does now, for one program). Alternatives:
   if KFX's modules took effects.
 Answered (the user, 2026-10-12): FX-26 has effect parameters, so KFX
 takes them without asking. Taken: (a), C46.
+
+**Raised (2026-10-12): I/O, for a live runner.** Record and replay
+(C48) run in KFX against simulated runners, which need no I/O; a live
+runner answers from the world (a terminal, files, the clock), and FX-26
+has no I/O at all. So a KFX program that uses live primitives has no
+FX-26 meaning, and K1 (same answers as Fixpt) cannot be checked for it.
+The compiler's own I/O (reading `kfx/*.kfx`, writing `boot/src/kfx/`) is
+the first such program: it lives in `boot/src/main.rs`, in Rust, outside
+KFX, for that reason. Alternatives:
+- **(a) FX-26 gets operations on the world** (Coopt has `read-file`,
+  `tcp-*`, a runner of its own): Fixpt would run live programs, and K1
+  would compare them under its sim, or a replay of the same log;
+- **(b) live primitives KFX alone has**, outside K1 by declaration: each
+  program's live part kept small, in a module of its own, the rest K1's;
+  Fixpt runs the rest under the sim runner;
+- **(c) no live runner in KFX**: the world stays in hand-written Rust
+  around the KFX program (as `boot/src/main.rs` is now), which hands it
+  a log or a script to run under replay or the sim.
+My recommendation: (b) now, (a) if the Fixpt team takes it. Until the
+user says, (c) holds: nothing live is in KFX.
 
 Likely next cases, to be confirmed by the code:
 - **Arrays of values**: KFX's flat arrays hold `i64` alone (C12); a run

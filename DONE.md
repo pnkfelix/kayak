@@ -1130,3 +1130,9 @@ calls; a procedure whose effect is a binder's is an `async fn`. C47:
 `lib/tasks.kfx`, a loop with a virtual clock, `spawn!`, `yield!`,
 `sleep!`, ivars, in KFX, generic in what its tasks do. One more of
 Fixpt's programs is accepted (91).
+
+## Runners: record and replay, in KFX (2026-10-12)
+
+C48: `lib/runner.kfx`, operations as suspensions to a runner's prompt;
+the sim, a recording runner and a replaying one, which fails where a run
+parts from its log. `tests/kfx/replay.unit`.

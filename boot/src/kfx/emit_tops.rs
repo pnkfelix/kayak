@@ -378,8 +378,47 @@ pub fn free_regions(binders: Sexps) -> Strings {
     }), binders))
 }
 
-/// Whether a definition is of a procedure that may suspend: its effect
-/// says so, or names one of its effect binders. Its regions then have no
+/// Whether a type is, or holds, a procedure that may suspend: one whose
+/// future, `'static`, can hold no lifetime's data (C46).
+pub fn mentions_suspension_p(mut c: &'static Ctx, mut t: &'static Sexp) -> bool {
+    loop {
+        let tagcase_ = family_expanded(c, t);
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                if null_p(xs) {
+                    return false;
+                } else if (sym_is_p(car(xs), str_lit("subr")) && suspending_effect_p(c, second(xs))) {
+                    return true;
+                } else if sym_is_p(car(xs), str_lit("subr")) {
+                    return (any_p(lambda1(move |x: &'static Sexp| {
+                        mentions_suspension_p(c, x)
+                    }), items(third(xs))) || mentions_suspension_p(c, fourth(xs)));
+                } else {
+                    return any_p(lambda1(move |x: &'static Sexp| {
+                        mentions_suspension_p(c, x)
+                    }), cdr(xs));
+                }
+            }
+            Sexp::Sym(n, f, p) => {
+                let found = module_body(c, string_append(str_lit("%abbreviation "), n));
+                if null_p(found) {
+                    return false;
+                } else {
+                    t = second(items(car(found)));
+                    continue;
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                return false;
+            }
+        }
+    }
+}
+
+/// Whether a definition is of a procedure that may suspend, or that takes
+/// or gives one: its effect says so, or names one of its effect binders,
+/// or its type holds such a procedure. Its regions then have no
 /// lifetimes (C46): its future is `'static`, as a capture's must be, and
 /// it touches no `letrena`'s data, since none may be suspended in (C45).
 pub fn may_suspend_p(c: &'static Ctx, binders: Sexps, typ: &'static Sexp) -> bool {
@@ -394,7 +433,7 @@ pub fn may_suspend_p(c: &'static Ctx, binders: Sexps, typ: &'static Sexp) -> boo
             nil::<Str>()
         }
     }), binders))));
-    (head_is_p(t, str_lit("subr")) && suspending_effect_p(c, second(items(t))))
+    mentions_suspension_p(c, t)
 }
 
 /// A procedure's generics: its regions' lifetimes, then its types'.

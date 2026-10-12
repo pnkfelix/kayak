@@ -1,0 +1,43 @@
+"A program that reads lines and writes them back numbered, stamped with
+ the runner's clock, run three ways: under the sim; recorded; and
+ replayed from that record, which must give the same writes. Its only
+ inputs are the runner's answers (lib/runner.kfx)."
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-type rt (runner-tag i64 pure @w))
+
+"Read until `eof`, writing each line numbered and stamped; the count."
+(define echo (subr (maxeff kfx (read @w) (write @w) (alloc @w) (goto @w) (comefrom @w)) (rt i64) i64)
+  (lambda (r n)
+    (tagcase ((proj read-line! i64 pure @w) r)
+      (line s (begin ((proj write! i64 pure @w) r (string-append (i64->string n)
+                                                     (string-append ": " (string-append s
+                                                       (string-append " @" (i64->string ((proj clock! i64 pure @w) r)))))))
+                     (echo r (i64+ n 1))))
+      (else other n))))
+
+(define reverse-log (subr (maxeff kfx (read @w) (alloc @w)) ((log @w) (log @w)) (log @w))
+  (lambda (xs acc) (if (null? xs) acc (reverse-log (cdr xs) (cons (car xs) acc)))))
+
+(define words (subr (maxeff kfx (read @w)) ((listof string @w)) string)
+  (lambda (xs)
+    (cond ((null? xs) "")
+          ((null? (cdr xs)) (car xs))
+          (else (string-append (words (cdr xs)) (string-append " | " (car xs)))))))
+
+(define main (subr (maxeff kfx (read @w) (write @w) (alloc @w) (goto @w) (comefrom @w)) () string)
+  (lambda ()
+    (let* ((input (the (ref (listof string @w) @w) (new (list "alpha" "beta"))))
+           (out (the (ref (listof string @w) @w) (new nil)))
+           (log (the (ref (log @w) @w) (new nil)))
+           (n ((proj run-under i64 pure @w)
+               ((proj recording pure @w) ((proj sim pure @w) input out) log)
+               (lambda ((r rt)) (echo r 1))))
+           (recorded (words (get out)))
+           (log (the (ref (log @w) @w) (new (reverse-log (get log) nil))))
+           (out2 (the (ref (listof string @w) @w) (new nil)))
+           (m ((proj run-under i64 pure @w)
+               ((proj replaying pure @w) log)
+               (lambda ((r rt)) (echo r 1)))))
+      (string-append (i64->string (i64- n 1)) (string-append " lines: " (string-append recorded
+        (string-append "; replayed, " (string-append (i64->string (i64- m 1)) " lines"))))))))

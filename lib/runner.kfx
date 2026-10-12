@@ -1,0 +1,157 @@
+"lib/runner.kfx: runners, in KFX (PLAN.md section 6.1; after Coopt's
+ docs/research/runners.md, and Ahman and Bauer's runners). A program
+ performs an operation on the outside world by suspending to its runner's
+ prompt with the operation and its rest; the runner answers, and resumes
+ it. What answers is the runner's choice:
+
+   sim     a script of input and a clock that moves a tick an operation;
+   record  another runner, each operation and its answer kept, in order;
+   replay  the answers a record kept, each operation checked against the
+           one recorded there: a run that parts from its log fails at the
+           first step it parts, saying where.
+
+ A run's only inputs are the answers; its outputs (what it writes) are
+ operations, checked on replay, not stored apart. The live runner, the
+ world's own answers, needs I/O FX-26 has not: raised with the user
+ (PLAN.md section 8).
+
+ Generic in what the program may do besides, `u`; `w` is the runner's
+ region, where its tag and its state are."
+
+"An operation, and its answer."
+(define-type op (sumof (read-line unit) (write string) (clock unit)))
+(define-type answer (sumof (line string) (eof unit) (done unit) (time i64)))
+
+"A program's rest, given the answer, resumable once."
+(define-type (rest (a type) (u effect) (w region))
+  (subr (maxeff u (read @globals) spin (read w) (write w) (alloc w) (goto w) (comefrom w)) (answer) a))
+
+"What a program gives its runner: an operation and its rest."
+(define-type (request (a type) (u effect) (w region)) (productof (op op) (k (rest a u w))))
+
+(define-type (runner-tag (a type) (u effect) (w region))
+  (prompt-tag a (request a u w) (maxeff u (read @globals) spin (read w) (write w) (alloc w) (goto w) (comefrom w)) w))
+
+"A program: what it does, and its answer."
+(define-type (program (a type) (u effect) (w region))
+  (subr (maxeff u (read @globals) spin (read w) (write w) (alloc w) (goto w) (comefrom w)) ((runner-tag a u w)) a))
+
+"An operation performed: the program suspended, the runner given it."
+(define perform! (poly ((a type) (u effect) (w region))
+                   (subr (maxeff u (read @globals) spin (read w) (write w) (alloc w) (goto w) (comefrom w)) ((runner-tag a u w) op) answer))
+  (plambda ((a type) (u effect) (w region))
+    (lambda (rt o)
+      (abort-with-continuation rt (lambda ((k (rest a u w))) (product (op o) (k k)))))))
+
+"The operations, as a program writes them."
+(define read-line! (poly ((a type) (u effect) (w region))
+                     (subr (maxeff u (read @globals) spin (read w) (write w) (alloc w) (goto w) (comefrom w)) ((runner-tag a u w)) answer))
+  (plambda ((a type) (u effect) (w region))
+    (lambda (rt) ((proj perform! a u w) rt (sum read-line #u)))))
+
+(define write! (poly ((a type) (u effect) (w region))
+                 (subr (maxeff u (read @globals) spin (read w) (write w) (alloc w) (goto w) (comefrom w)) ((runner-tag a u w) string) unit))
+  (plambda ((a type) (u effect) (w region))
+    (lambda (rt s) (begin ((proj perform! a u w) rt (sum write s)) #u))))
+
+(define clock! (poly ((a type) (u effect) (w region))
+                 (subr (maxeff u (read @globals) spin (read w) (write w) (alloc w) (goto w) (comefrom w)) ((runner-tag a u w)) i64))
+  (plambda ((a type) (u effect) (w region))
+    (lambda (rt)
+      (tagcase ((proj perform! a u w) rt (sum clock #u))
+        (time t t)
+        (else other -1)))))
+
+"An entry of a record: the step, the operation, its answer."
+(define-type entry (productof (step i64) (op op) (answer answer)))
+(define-type (log (w region)) (listof entry w))
+
+"How a runner answers: given the step and the operation, the answer."
+(define-type (answerer (u effect) (w region))
+  (subr (maxeff u (read @globals) spin (read w) (write w) (alloc w)) (i64 op) answer))
+
+"A program run under a runner, `answer` answering each operation in turn;
+ the step, the operations' count, kept at `steps`. Its prompt does not
+ delimit (what it is given names the runner's region), so it has control
+ on `w`, as Fixpt's examples' loops have."
+(define serve (poly ((a type) (u effect) (w region))
+                (subr (maxeff u (read @globals) spin (read w) (write w) (alloc w) (goto w) (comefrom w))
+                      ((runner-tag a u w) (answerer u w) (ref i64 w) (request a u w))
+                      a))
+  (plambda ((a type) (u effect) (w region))
+    (lambda (rt answer steps req)
+      (let ((n (get steps)))
+        (begin
+          (set steps (i64+ n 1))
+          (prompt rt ((extract req k) (answer n (extract req op)))
+                  (lambda ((next (request a u w))) ((proj serve a u w) rt answer steps next))))))))
+
+(define run-under (poly ((a type) (u effect) (w region))
+                    (subr (maxeff u (read @globals) spin (read w) (write w) (alloc w) (goto w) (comefrom w))
+                          ((answerer u w) (program a u w))
+                          a))
+  (plambda ((a type) (u effect) (w region))
+    (lambda (answer body)
+      (let ((rt (the (runner-tag a u w) (make-continuation-prompt-tag)))
+            (steps (the (ref i64 w) (new 0))))
+        (prompt rt (body rt)
+                (lambda ((req (request a u w))) ((proj serve a u w) rt answer steps req)))))))
+
+"The sim: input a script of lines, read in order, then `eof`; writes
+ kept at `out`, the latest first; the clock a tick an operation."
+(define sim (poly ((u effect) (w region))
+              (subr (alloc w) ((ref (listof string w) w) (ref (listof string w) w)) (answerer u w)))
+  (plambda ((u effect) (w region))
+    (lambda (input out)
+      (lambda ((n i64) (o op))
+        (tagcase o
+          (read-line x
+            (let ((lines (get input)))
+              (if (null? lines)
+                  (sum eof #u)
+                  (begin (set input (cdr lines)) (sum line (car lines))))))
+          (write s (begin (set out (cons s (get out))) (sum done #u)))
+          (clock x (sum time n)))))))
+
+"A runner recorded: `inner`'s answers, each kept at `log` with its step
+ and operation, the latest first."
+(define recording (poly ((u effect) (w region))
+                    (subr (alloc w) ((answerer u w) (ref (log w) w)) (answerer u w)))
+  (plambda ((u effect) (w region))
+    (lambda (inner log)
+      (lambda ((n i64) (o op))
+        (let ((x (inner n o)))
+          (begin (set log (cons (product (step n) (op o) (answer x)) (get log))) x))))))
+
+(define same-op? (subr pure (op op) bool)
+  (lambda (x y)
+    (tagcase x
+      (read-line u (tagcase y (read-line v #t) (else other #f)))
+      (write s (tagcase y (write t (string=? s t)) (else other #f)))
+      (clock u (tagcase y (clock v #t) (else other #f))))))
+
+(define show-op (subr pure (op) string)
+  (lambda (o)
+    (tagcase o
+      (read-line u "read-line")
+      (write s (string-append "write " s))
+      (clock u "clock"))))
+
+"A record replayed: its answers, in order, each operation checked against
+ the one recorded at its step. Parting from the log is an error that says
+ where; so is running past its end."
+(define replaying (poly ((u effect) (w region))
+                    (subr (alloc w) ((ref (log w) w)) (answerer u w)))
+  (plambda ((u effect) (w region))
+    (lambda (log)
+      (lambda ((n i64) (o op))
+        (let ((es (get log)))
+          (if (null? es)
+              (begin (error (string-append "replay: past the log's end, at step " (i64->string n))) (sum eof #u))
+              (let ((e (car es)))
+                (if (and (i64= (extract e step) n) (same-op? (extract e op) o))
+                    (begin (set log (cdr es)) (extract e answer))
+                    (begin (error (string-append "replay: the run parts from its log at step " (string-append (i64->string n)
+                                    (string-append ": the log has " (string-append (show-op (extract e op))
+                                      (string-append ", the run " (show-op o)))))))
+                           (sum eof #u))))))))))

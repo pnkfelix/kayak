@@ -198,6 +198,11 @@ pub mod region_poly;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/replay/mod.rs"]
+pub mod replay;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/rlambda.rs"]
 pub mod rlambda;
 
@@ -257,6 +262,10 @@ fn promises_main() -> kayak_rt::Str {
     kayak_rt::suspend::block(promises::main()).unwrap_or_else(|u| kayak_rt::unreachable_unwind(u))
 }
 
+fn replay_main() -> kayak_rt::Str {
+    kayak_rt::suspend::block(replay::main()).unwrap_or_else(|u| kayak_rt::unreachable_unwind(u))
+}
+
 fn tasks_main() -> kayak_rt::Str {
     kayak_rt::suspend::block(tasks::main()).unwrap_or_else(|u| kayak_rt::unreachable_unwind(u))
 }
@@ -302,6 +311,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("recursion", recursion::main),
     ("region-alias", region_alias::main),
     ("region-poly", region_poly::main),
+    ("replay", replay_main),
     ("rlambda", rlambda::main),
     ("rust-keywords", rust_keywords::main),
     ("shapes", shapes::main),
