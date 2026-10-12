@@ -789,3 +789,23 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
   has not).
 - **So Q6:** no async operations in the prelude beyond the one form; the
   library of tasks is KFX, and Fixpt runs it as FX-26.
+- **Built** (the same day): the checker takes `(comefrom R)` in effects,
+  masks it at a prompt as it masks `(goto R)`, and counts it as `goto`
+  is, for a `Result` (a suspension is an abort to its prompt). It types
+  `(abort-with-continuation tag (lambda ((k K)) body))` by a rule of its
+  own: `K` written, the tag's bound with control, reading and writing at
+  its region; the body may neither abort nor suspend. It notes
+  `suspends` (lambdas, top-level forms), `suspending-call`,
+  `suspending-body` (prompts), `lift-suspend N`; it refuses a suspension
+  inside a `letrena`, as Fixpt does. The emitter writes `async fn` for a
+  procedure whose written effect may suspend; a suspending procedure
+  value is a `&dyn Fn(..) -> kayak_rt::suspend::Body<R>`; every call
+  that may suspend is `kayak_rt::suspend::body(f(..)).await?`, boxed, so
+  that an `async fn` may call itself (not chosen yet: boxing only calls
+  within a recursive group, which the call graph would say); a prompt
+  whose body may suspend polls it as a future, awaited where the code is
+  `async` and else run to its end by `kayak_rt::suspend::block`, as a
+  suspending top-level form is. `kayak_rt::suspend` is not in the glob
+  import, so that its names (`body`, `block`) are free for programs.
+  Fixpt's `ping-pong.fx` and `promise.fx` are corpus programs
+  (`tests/kfx/tasks.kfx`, `promises.kfx`), their answers Fixpt's.

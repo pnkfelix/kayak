@@ -168,6 +168,11 @@ pub mod procs;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/promises.rs"]
+pub mod promises;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/recursion.rs"]
 pub mod recursion;
 
@@ -208,6 +213,11 @@ pub mod tails;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/tasks.rs"]
+pub mod tasks;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/terminate.rs"]
 pub mod terminate;
 
@@ -228,6 +238,14 @@ pub mod untyped;
 
 /// A program's `main`, which gives its answer.
 pub type Main = fn() -> kayak_rt::Str;
+
+fn promises_main() -> kayak_rt::Str {
+    kayak_rt::suspend::block(promises::main()).unwrap_or_else(|u| kayak_rt::unreachable_unwind(u))
+}
+
+fn tasks_main() -> kayak_rt::Str {
+    kayak_rt::suspend::block(tasks::main()).unwrap_or_else(|u| kayak_rt::unreachable_unwind(u))
+}
 
 /// Each program's name, and its `main`.
 pub const PROGRAMS: &[(&str, Main)] = &[
@@ -264,6 +282,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("places", places::main),
     ("places-mutual", places_mutual::main),
     ("procs", procs::main),
+    ("promises", promises_main),
     ("recursion", recursion::main),
     ("region-alias", region_alias::main),
     ("region-poly", region_poly::main),
@@ -272,6 +291,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("shapes", shapes::main),
     ("strings", strings::main),
     ("tails", tails::main),
+    ("tasks", tasks_main),
     ("terminate", terminate::main),
     ("two", two::main),
     ("unicode", unicode::main),

@@ -1112,3 +1112,13 @@ where they can be, took it to 228 MB: the compiler on itself 3.97 s to
 Rust and on Fixpt's machines (`--compiler-runs`, default 1: a Fixpt round
 is about 2 minutes). kfx's Rust 0.34 s; Fixpt's best 2.67 s
 (rs-regs-rsjit-cellcc), its slowest 38.5 s; before C44 kfx's took 3.97 s.
+
+## Suspension: tasks in KFX, as Rust futures (2026-10-12)
+
+C45, `docs/research/async-rust.md`; `PLAN.md` §6.5, A1 and the first of
+A's steps. A task suspends by `abort-with-continuation` (FX-26 in
+`kfx/prelude.fx`, its continuation resumed once in both), and a
+procedure that may suspend is an `async fn`. The scheduler is the
+program's own: Fixpt's ping-pong and promise examples, in KFX, give
+Fixpt's answers (`tests/kfx/tasks.kfx`, `promises.kfx`). kayak-rt's
+part, `suspend.rs`: the capture, the prompt that polls, the top level.

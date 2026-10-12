@@ -92,9 +92,44 @@ pub fn fallible_effect_p(c: &'static Ctx, e: &'static Sexp) -> bool {
         Sexp::Lst(xs, src_file, src_line, src_pos) => {
             if sym_is_p(car(xs), str_lit("goto")) {
                 true
+            } else if sym_is_p(car(xs), str_lit("comefrom")) {
+                true
             } else if sym_is_p(car(xs), str_lit("maxeff")) {
                 any_p(lambda1(move |x: &'static Sexp| {
                     fallible_effect_p(c, x)
+                }), cdr(xs))
+            } else {
+                false
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+/// Whether a written effect may suspend, a `comefrom` (C45): a procedure
+/// of it is an `async fn`, or as a value returns a boxed future.
+pub fn suspending_effect_p(c: &'static Ctx, e: &'static Sexp) -> bool {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Sym(n, at_file, at_pos) => {
+            any_p(lambda1(move |x: &'static Typed| {
+                let tagcase_ = x;
+                match *tagcase_ {
+                    Typed::Typed(m, body) => {
+                        (string_eq_p(m, n) && suspending_effect_p(c, body))
+                    }
+                }
+            }), ctx_effects(c))
+        }
+        Sexp::Lst(xs, src_file, src_line, src_pos) => {
+            if sym_is_p(car(xs), str_lit("comefrom")) {
+                true
+            } else if sym_is_p(car(xs), str_lit("maxeff")) {
+                any_p(lambda1(move |x: &'static Sexp| {
+                    suspending_effect_p(c, x)
                 }), cdr(xs))
             } else {
                 false
@@ -1292,7 +1327,9 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
                     let acc = put(str_lit(" dyn Fn("), put(effect_lifetime(c, second(xs)), put(str_lit("&"), acc)));
                     let acc = put_types(c, items(third(xs)), acc);
                     let acc = put(str_lit(") -> "), acc);
-                    if fallible_effect_p(c, second(xs)) {
+                    if suspending_effect_p(c, second(xs)) {
+                        return put(str_lit(">"), put_type(c, fourth(xs), put(str_lit("kayak_rt::suspend::Body<"), acc)));
+                    } else if fallible_effect_p(c, second(xs)) {
                         return put(str_lit(", Unwind>"), put_type(c, fourth(xs), put(str_lit("Result<"), acc)));
                     } else {
                         return put_type(c, fourth(xs), acc);
@@ -1769,6 +1806,27 @@ pub fn innermost_fallible(mut ls: Strings) -> bool {
             continue;
         }
     }
+}
+
+pub fn innermost_async(mut ls: Strings) -> bool {
+    loop {
+        if null_p(ls) {
+            return false;
+        } else if string_eq_p(car(ls), str_lit("%async")) {
+            return true;
+        } else if string_eq_p(car(ls), str_lit("%sync")) {
+            return false;
+        } else {
+            ls = cdr(ls);
+            continue;
+        }
+    }
+}
+
+/// Whether the function, closure or block being written is `async`, so
+/// that a future in it is `.await`ed (C45): the innermost's mark says.
+pub fn async_here_p(c: &'static Ctx) -> bool {
+    innermost_async(ctx_locals(c))
 }
 
 /// Whether the function or closure being written returns a `Result`: the
@@ -2515,6 +2573,32 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
         }
     } else if (ok_value_p(t) && not(control_p(e)) && not(abort_p(c, e))) {
         put(str_lit(")"), put_exp(c, e, n, value(), put(str_lit("Ok("), acc)))
+    } else if (not(string_eq_p(fact_with(c, e, str_lit("lift-suspend")), str_lit(""))) && not(string_member_p(string_append(str_lit("%lifted "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
+        // A procedure that cannot suspend where one that may is wanted: a
+        // closure that returns its value, `Ok` unless it is a `Result`
+        // already, as a future (C45).
+        let fallible = not(string_eq_p(fact_with(c, e, str_lit("lift-suspend-fallible ")), str_lit("")));
+        let lift = digits_number(if fallible {
+            fact_with(c, e, str_lit("lift-suspend-fallible "))
+        } else {
+            fact_with(c, e, str_lit("lift-suspend "))
+        });
+        let acc = put(i64_to_string(lift), put(str_lit("lambda"), acc));
+        let acc = put(str_lit("(move |"), acc);
+        let acc = put_arg_names(0i64, lift, acc);
+        let acc = put(if fallible {
+            str_lit("| kayak_rt::suspend::body(async move { (")
+        } else {
+            str_lit("| kayak_rt::suspend::body(async move { Ok((")
+        }, acc);
+        let acc = put_exp(with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%lifted "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), kayak_rt::nil())), e, n, value(), acc);
+        let acc = put(str_lit(")("), acc);
+        let acc = put_arg_names(0i64, lift, acc);
+        put(if fallible {
+            str_lit(") }))")
+        } else {
+            str_lit(")) }))")
+        }, acc)
     } else if (not(string_eq_p(fact_with(c, e, str_lit("lift ")), str_lit(""))) && not(string_member_p(string_append(str_lit("%lifted "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
         // A procedure that cannot abort where one that may is wanted: a
         // closure that returns its value `Ok`.
@@ -2585,12 +2669,18 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
 }
 
 /// A list form; a call giving a `Void` the caller wraps, `match ... {}`,
-/// which is of any type, as FX-26's `void` is below every type.
+/// which is of any type, as FX-26's `void` is below every type. A call
+/// that may suspend: its future boxed, so that an `async fn` may call
+/// itself, and awaited (C45).
 pub fn put_call(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
     let tagcase_ = car(xs);
     match *tagcase_ {
         Sexp::Sym(h, at_file, at_pos) => {
-            put_form(c, e, h, cdr(xs), n, t, acc)
+            if fact_at_p(c, e, str_lit("suspending-call")) {
+                put_form(c, e, h, cdr(xs), n, t, put(str_lit("kayak_rt::suspend::body("), acc))
+            } else {
+                put_form(c, e, h, cdr(xs), n, t, acc)
+            }
         }
         _ => {
             let head = tagcase_;
@@ -2933,10 +3023,13 @@ pub fn put_lambda(c: &'static Ctx, e: &'static Sexp, params: Sexps, body: Sexps,
     let acc = put(str_lit("(move |"), acc);
     let acc = put_lambda_params(c, lambda_params_typed(c, e, params), acc);
     let acc = put(str_lit("| "), acc);
-    if fact_at_p(c, e, str_lit("fallible")) {
-        put(str_lit(")"), put_block(with_locals(c, kayak_rt::heap_cons(str_lit("%fallible"), map(&param_name, params))), body, n, ok_value(), acc))
+    if fact_at_p(c, e, str_lit("suspends")) {
+        // One that may suspend returns its body as a future, boxed (C45).
+        put(str_lit("))"), put_block(with_locals(c, kayak_rt::heap_cons(str_lit("%async"), kayak_rt::heap_cons(str_lit("%fallible"), map(&param_name, params)))), body, n, ok_value(), put(str_lit("kayak_rt::suspend::body(async move "), acc)))
+    } else if fact_at_p(c, e, str_lit("fallible")) {
+        put(str_lit(")"), put_block(with_locals(c, kayak_rt::heap_cons(str_lit("%sync"), kayak_rt::heap_cons(str_lit("%fallible"), map(&param_name, params)))), body, n, ok_value(), acc))
     } else {
-        put(str_lit(")"), put_block(with_locals(c, kayak_rt::heap_cons(str_lit("%infallible"), map(&param_name, params))), body, n, value(), acc))
+        put(str_lit(")"), put_block(with_locals(c, kayak_rt::heap_cons(str_lit("%sync"), kayak_rt::heap_cons(str_lit("%infallible"), map(&param_name, params)))), body, n, value(), acc))
     }
 }
 
@@ -3014,12 +3107,17 @@ pub fn put_looping_lambda(c: &'static Ctx, f: Str, lam: &'static Sexp, n: i64, a
     let params = lambda_params_typed(c, lam, items(second(xs)));
     let names = map(&param_name, params);
     let fallible = fact_at_p(c, lam, str_lit("fallible"));
+    let suspends = fact_at_p(c, lam, str_lit("suspends"));
     let t = returns(f, names, true, fallible);
-    let inner = with_locals(c, kayak_rt::heap_cons(if fallible {
+    let inner = with_locals(c, kayak_rt::heap_cons(if suspends {
+        str_lit("%async")
+    } else {
+        str_lit("%sync")
+    }, kayak_rt::heap_cons(if fallible {
         str_lit("%fallible")
     } else {
         str_lit("%infallible")
-    }, names));
+    }, names)));
     let acc = put(string_append(str_lit("lambda"), string_append(i64_to_string(size(params)), str_lit("(move |"))), acc);
     let acc = put_sep(lambda2(move |p: &'static Sexp, acc: List<char>| {
         let tagcase_ = p;
@@ -3033,10 +3131,18 @@ pub fn put_looping_lambda(c: &'static Ctx, f: Str, lam: &'static Sexp, n: i64, a
             }
         }
     }), str_lit(", "), params, acc);
-    let acc = put(str_lit("| {"), acc);
+    let acc = put(if suspends {
+        str_lit("| kayak_rt::suspend::body(async move {")
+    } else {
+        str_lit("| {")
+    }, acc);
     let acc = put_nl(i64_plus(n, 2i64), put(str_lit("loop {"), put_nl(i64_plus(n, 1i64), acc)));
     let acc = put_stmts(inner, cdr(cdr(xs)), i64_plus(n, 2i64), t, acc);
-    put(str_lit("})"), put_nl(n, put(str_lit("}"), put_nl(i64_plus(n, 1i64), acc))))
+    put(if suspends {
+        str_lit("}))")
+    } else {
+        str_lit("})")
+    }, put_nl(n, put(str_lit("}"), put_nl(i64_plus(n, 1i64), acc))))
 }
 
 pub fn put_list(c: &'static Ctx, xs: Sexps, n: i64, acc: Chars) -> Chars {
@@ -3225,6 +3331,8 @@ pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t:
         }, acc)
     } else if (string_eq_p(h, str_lit("prompt")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
         put_prompt(c, e, xs, n, acc)
+    } else if (string_eq_p(h, str_lit("abort-with-continuation")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+        put_suspension(c, e, xs, n, acc)
     } else if null_p(xs) {
         put_question(c, e, put(str_lit("()"), put_callee(c, e, h, acc)))
     } else if any_p(lambda1(move |x: &'static Sexp| {
@@ -3289,11 +3397,11 @@ pub fn put_letrena(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Ch
     let names = split_words(fact_with(c, e, str_lit("letrena-names ")));
     let types = read_all(string_chars(fact_with(c, e, str_lit("letrena-locals "))), str_lit(""), 1i64);
     let fallible = fact_at_p(c, e, str_lit("fallible"));
-    let inner = with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%letrena "), r), kayak_rt::heap_cons(if fallible {
+    let inner = with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%letrena "), r), kayak_rt::heap_cons(str_lit("%sync"), kayak_rt::heap_cons(if fallible {
         str_lit("%fallible")
     } else {
         str_lit("%infallible")
-    }, kayak_rt::heap_cons(r, names))));
+    }, kayak_rt::heap_cons(r, names)))));
     let held = distinct_strings(concat(map(lambda1(move |x: &'static Sexp| {
         held_at(inner, string_append(str_lit("'"), r), x)
     }), datums_in(cdr(xs)))));
@@ -3410,20 +3518,62 @@ pub fn held_type(c: &'static Ctx, r: Str, call: &'static Sexp) -> Str {
 /// if the function written may abort, else none can come (the checker
 /// found the prompt contains every abort its body may make).
 pub fn put_prompt(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Chars) -> Chars {
-    let inner = with_locals(c, kayak_rt::heap_cons(str_lit("%fallible"), kayak_rt::nil()));
+    if fact_at_p(c, e, str_lit("suspending-body")) {
+        put_suspending_prompt(c, e, xs, n, acc)
+    } else {
+        let inner = with_locals(c, kayak_rt::heap_cons(str_lit("%sync"), kayak_rt::heap_cons(str_lit("%fallible"), kayak_rt::nil())));
+        let acc = put_nl(i64_plus(n, 1i64), put(str_lit("{"), acc));
+        let acc = put(str_lit("let prompt_tag__ = "), acc);
+        let acc = put_exp(c, car(xs), i64_plus(n, 1i64), value(), acc);
+        let acc = put_nl(i64_plus(n, 1i64), put(str_lit(";"), acc));
+        let acc = put(str_lit("match (move || -> Result<_, Unwind> "), acc);
+        let acc = put_block(inner, kayak_rt::heap_cons(second(xs), kayak_rt::nil()), i64_plus(n, 1i64), ok_value(), acc);
+        let acc = put(str_lit(")() {"), acc);
+        let acc = put_nl(i64_plus(n, 2i64), acc);
+        let acc = put(str_lit("Ok(v_) => v_,"), acc);
+        let acc = put_nl(i64_plus(n, 2i64), acc);
+        let acc = put(str_lit("Err(u_) if u_.is(prompt_tag__) => ("), acc);
+        let acc = put_exp(c, third(xs), i64_plus(n, 2i64), value(), acc);
+        let acc = put(str_lit(")(prompt_tag__.payload(u_)),"), acc);
+        let acc = put_nl(i64_plus(n, 2i64), acc);
+        let acc = put(if (fact_at_p(c, e, str_lit("contains")) || not(fallible_here_p(c))) {
+            str_lit("Err(u_) => unreachable_unwind(u_),")
+        } else {
+            str_lit("Err(u_) => return Err(u_),")
+        }, acc);
+        let acc = put_nl(i64_plus(n, 1i64), acc);
+        let acc = put(str_lit("}"), acc);
+        put(str_lit("}"), put_nl(n, acc))
+    }
+}
+
+/// A prompt whose body may suspend (C45): the body a future, boxed, which
+/// `kayak_rt::prompt` polls; a capture to its tag ends it, the payload
+/// made, as an abort to it does. Awaited where the code written is
+/// `async`; else (the prompt delimits every capture) run to its end.
+pub fn put_suspending_prompt(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Chars) -> Chars {
+    let inner = with_locals(c, kayak_rt::heap_cons(str_lit("%async"), kayak_rt::heap_cons(str_lit("%fallible"), kayak_rt::nil())));
     let acc = put_nl(i64_plus(n, 1i64), put(str_lit("{"), acc));
     let acc = put(str_lit("let prompt_tag__ = "), acc);
     let acc = put_exp(c, car(xs), i64_plus(n, 1i64), value(), acc);
     let acc = put_nl(i64_plus(n, 1i64), put(str_lit(";"), acc));
-    let acc = put(str_lit("match (move || -> Result<_, Unwind> "), acc);
+    let acc = put(if async_here_p(c) {
+        str_lit("match kayak_rt::suspend::prompt(prompt_tag__, kayak_rt::suspend::body(async move ")
+    } else {
+        str_lit("match kayak_rt::suspend::block(kayak_rt::suspend::prompt(prompt_tag__, kayak_rt::suspend::body(async move ")
+    }, acc);
     let acc = put_block(inner, kayak_rt::heap_cons(second(xs), kayak_rt::nil()), i64_plus(n, 1i64), ok_value(), acc);
-    let acc = put(str_lit(")() {"), acc);
+    let acc = put(if async_here_p(c) {
+        str_lit(")).await {")
+    } else {
+        str_lit("))) {")
+    }, acc);
     let acc = put_nl(i64_plus(n, 2i64), acc);
-    let acc = put(str_lit("Ok(v_) => v_,"), acc);
+    let acc = put(str_lit("Ok(kayak_rt::suspend::Prompted::Done(v_)) => v_,"), acc);
     let acc = put_nl(i64_plus(n, 2i64), acc);
-    let acc = put(str_lit("Err(u_) if u_.is(prompt_tag__) => ("), acc);
+    let acc = put(str_lit("Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => ("), acc);
     let acc = put_exp(c, third(xs), i64_plus(n, 2i64), value(), acc);
-    let acc = put(str_lit(")(prompt_tag__.payload(u_)),"), acc);
+    let acc = put(str_lit(")(h_),"), acc);
     let acc = put_nl(i64_plus(n, 2i64), acc);
     let acc = put(if (fact_at_p(c, e, str_lit("contains")) || not(fallible_here_p(c))) {
         str_lit("Err(u_) => unreachable_unwind(u_),")
@@ -3435,14 +3585,69 @@ pub fn put_prompt(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Cha
     put(str_lit("}"), put_nl(n, acc))
 }
 
-/// A call the checker found may abort takes a `?`.
+/// `(abort-with-continuation tag (lambda ((k K)) body))` (C45): the
+/// rest up to the tag's prompt given to the closure as `k`, a procedure
+/// that may suspend, and its value the abort's payload; awaited, the
+/// value `k` is resumed with.
+pub fn put_suspension(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Chars) -> Chars {
+    let lam = items(second(xs));
+    let param = items(car(items(second(lam))));
+    let k = sym_name(car(param));
+    let inner = with_locals(c, kayak_rt::heap_cons(str_lit("%sync"), kayak_rt::heap_cons(str_lit("%infallible"), kayak_rt::heap_cons(k, kayak_rt::nil()))));
+    let acc = put(str_lit("kayak_rt::suspend::abort_with_continuation("), acc);
+    let acc = put_exp(c, car(xs), n, value(), acc);
+    let acc = put(str_lit(", move |"), acc);
+    let acc = put(mangle(k), acc);
+    let acc = put(str_lit(": "), acc);
+    let acc = put_type(c, second(param), acc);
+    let acc = put(str_lit("| "), acc);
+    let acc = put_block(inner, cdr(cdr(lam)), n, value(), acc);
+    let acc = put(str_lit(").await"), acc);
+    if fallible_here_p(c) {
+        put(str_lit("?"), acc)
+    } else {
+        put(str_lit(".unwrap_or_else(|u| unreachable_unwind(u))"), acc)
+    }
+}
+
+/// A call the checker found may abort takes a `?`; one that may suspend
+/// is awaited first, its future boxed if it is a named procedure's.
 pub fn put_question(c: &'static Ctx, e: &'static Sexp, acc: Chars) -> Chars {
+    let acc = if not(fact_at_p(c, e, str_lit("suspending-call"))) {
+        acc
+    } else if head_sym_p(e) {
+        put(str_lit(").await"), acc)
+    } else {
+        put(str_lit(".await"), acc)
+    };
     if not(fact_at_p(c, e, str_lit("fallible-call"))) {
         acc
     } else if fallible_here_p(c) {
         put(str_lit("?"), acc)
     } else {
         put(str_lit(".unwrap_or_else(|u| unreachable_unwind(u))"), acc)
+    }
+}
+
+pub fn head_sym_p(e: &'static Sexp) -> bool {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Sexp::Sym(n, f2, p2) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
     }
 }
 

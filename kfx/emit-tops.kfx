@@ -231,17 +231,18 @@
            (acc (if doc? (put "\n" (put-comment (string-chars (comment-text (car body))) "///" 0 #t acc)) acc))
            (body (if doc? (cdr body) body))
            (fallible (and lambda? (fallible-effect? c (second (items typ)))))
+           (suspends (and lambda? (suspending-effect? c (second (items typ)))))
            (mparams (if lambda? (module-params c (items (second (items defined))) (items (third (items typ)))) nil))
            (t (if lambda?
                   (returns (sym-name name) (map param-name (items (second (items defined)))) (null? mparams) fallible)
                   (value)))
            (loops? (and lambda? (tail-calls? t (last body))))
            (inner (if lambda?
-                      (with-locals c (onto (cons (if fallible "%fallible" "%infallible")
-                                                 (map param-name (items (second (items defined)))))
+                      (with-locals c (onto (cons (if suspends "%async" "%sync") (cons (if fallible "%fallible" "%infallible")
+                                                 (map param-name (items (second (items defined))))))
                                            (map (lambda ((mp string)) (string-append "%modparam " mp)) mparams)))
                       c))
-           (acc (put "pub fn " acc))
+           (acc (put (if suspends "pub async fn " "pub fn ") acc))
            (acc (put (mangle (sym-name name)) acc))
            (acc (cond ((not (null? places)) (put-place-generics c (sym-name name) binders lives places acc))
                       ((not (null? lives)) (put-lifetime-generics lives binders acc))
@@ -655,10 +656,19 @@
 (define put-toplevel-lines (subr kfx (ctx sexps chars) chars)
   (lambda (c forms acc)
     "Each top-level expression's value written; a `void` one, which never
-     gives one, run, its type said."
+     gives one, run, its type said; one that may suspend, a future run to
+     its end (C45)."
     (cond ((null? forms) acc)
           ((toplevel-form? (car forms))
            (cond
+             ((fact-at? c (car forms) "suspends")
+              (if (fact-at? c (car forms) "void")
+                  (let* ((acc (put "    let _: () = kayak_rt::suspend::block(kayak_rt::suspend::body(async move { let _: Void = " acc))
+                         (acc (put-exp (with-locals c (list "%async" "%fallible")) (car forms) 1 (value) acc)))
+                    (put-toplevel-lines c (cdr forms) (put "; Ok(()) })).unwrap_or_else(|u| unreachable_unwind(u));\n" acc)))
+                  (let* ((acc (put "    kayak_rt::show_line(&mut out_, kayak_rt::suspend::block(kayak_rt::suspend::body(async move { Ok(" acc))
+                         (acc (put-exp (with-locals c (list "%async" "%fallible")) (car forms) 1 (value) acc)))
+                    (put-toplevel-lines c (cdr forms) (put ") })).unwrap_or_else(|u| unreachable_unwind(u)));\n" acc)))))
              ((fact-at? c (car forms) "procedure")
               "A procedure, as Fixpt writes one, whatever made it: a global's
                own `fn` is no `dyn Fn`, whose `Show` this would otherwise be."

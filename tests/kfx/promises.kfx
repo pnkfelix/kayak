@@ -1,0 +1,76 @@
+"A promise and `await` (C45): Fixpt's promise.fx
+ (docs/research/examples/async/), in KFX. The abort's payload is a thunk
+ that files the suspended task somewhere: `yield!` on the run queue,
+ `await!` among the promise's waiters. Every suspension resumes with unit;
+ the value awaited is read from the promise."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-effect Q (maxeff kfx (read @q) (write @q) (alloc @q) (read @p) (write @p) (alloc @p)))
+(define-effect suspends (maxeff Q (goto @p) (comefrom @p)))
+
+(define-type task (subr (maxeff Q (goto @p) (comefrom @p) (read @p) (write @p)) (unit) unit))
+(define-type tasks (listof task @q))
+(define-type promise (ref (sumof (pending tasks) (resolved i64)) @q))
+(define sched (prompt-tag unit (subr Q () unit) suspends @p) (make-continuation-prompt-tag))
+(define queue (ref tasks @q) (new nil))
+(define log (ref (listof i64 @q) @q) (new nil))
+
+(define reverse-tasks (subr Q (tasks tasks) tasks)
+  (lambda (xs acc) (if (null? xs) acc (reverse-tasks (cdr xs) (cons (car xs) acc)))))
+
+(define enqueue! (subr Q (task) unit)
+  (lambda (k) (set queue (reverse-tasks (cons k (reverse-tasks (get queue) nil)) nil))))
+
+(define suspend! (subr suspends ((subr Q (task) unit)) unit)
+  (lambda (file)
+    (abort-with-continuation sched (lambda ((k task)) (lambda () (file k))))))
+
+(define yield! (subr suspends () unit)
+  (lambda () (suspend! enqueue!)))
+
+(define await! (subr suspends (promise) i64)
+  (lambda (pr)
+    (tagcase (get pr)
+      (resolved v v)
+      (pending ws (begin (suspend! (lambda ((k task)) (set pr (sum pending (cons k ws)))))
+                         (await! pr))))))
+
+(define enqueue-all! (subr Q (tasks) unit)
+  (lambda (ks)
+    (if (null? ks) #u (begin (enqueue! (car ks)) (enqueue-all! (cdr ks))))))
+
+(define resolve! (subr Q (promise i64) unit)
+  (lambda (pr v)
+    (tagcase (get pr)
+      (resolved u #u)
+      (pending ws (begin (set pr (sum resolved v))
+                         (enqueue-all! (reverse-tasks ws nil)))))))
+
+(define run! (subr suspends () unit)
+  (lambda ()
+    (let ((q (get queue)))
+      (if (null? q)
+          #u
+          (begin (set queue (cdr q))
+                 (prompt sched ((car q) #u) (lambda ((file (subr Q () unit))) (file)))
+                 (run!))))))
+
+(define spawn! (subr suspends ((subr suspends () unit)) unit)
+  (lambda (thunk) (prompt sched (begin (yield!) (thunk)) (lambda ((file (subr Q () unit))) (file)))))
+
+(define fut promise (new (sum pending nil)))
+(define note! (subr Q (i64) unit) (lambda (x) (set log (cons x (get log)))))
+
+(define show (subr Q ((listof i64 @q)) string)
+  (lambda (xs)
+    (if (null? xs) "" (string-append (i64->string (car xs)) (string-append " " (show (cdr xs)))))))
+
+(define reverse-log (subr Q ((listof i64 @q) (listof i64 @q)) (listof i64 @q))
+  (lambda (xs acc) (if (null? xs) acc (reverse-log (cdr xs) (cons (car xs) acc)))))
+
+(define main (subr suspends () string)
+  (lambda ()
+    (begin
+      (spawn! (lambda () (begin (note! 1) (note! (await! fut)))))
+      (spawn! (lambda () (begin (note! 2) (yield!) (note! 3) (resolve! fut 42))))
+      (run!)
+      (show (reverse-log (get log) nil)))))

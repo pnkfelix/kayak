@@ -1,0 +1,15 @@
+"A suspension inside a letrena: the suspended task would outlive the
+ arena's data. Fixpt refuses it (a continuation captured in a letrena), and
+ KFX (C45)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-effect D (maxeff kfx (read @p) (write @p) (alloc @p)))
+(define-type task (subr (maxeff D (goto @p) (comefrom @p) (read @p) (write @p)) (unit) unit))
+(define sched (prompt-tag unit task (maxeff D (goto @p) (comefrom @p)) @p) (make-continuation-prompt-tag))
+(define f (subr (maxeff D (goto @p) (comefrom @p)) () i64)
+  (lambda ()
+    (letrena r
+      (let ((xs (the (listof i64 r) (rcons r 1 nil))))
+        (begin (abort-with-continuation sched (lambda ((k task)) k))
+               (car xs))))))
+(define main (subr (maxeff D (goto @p) (comefrom @p)) () string)
+  (lambda () (prompt sched (i64->string (f)) (lambda ((k task)) "suspended"))))

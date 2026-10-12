@@ -19,7 +19,7 @@ mod int;
 mod once;
 mod show;
 mod stats;
-mod suspend;
+pub mod suspend;
 
 pub use arena::*;
 pub use blob::*;
@@ -33,7 +33,6 @@ pub use show::*;
 pub use stats::heap_stats_report;
 use std::cell::Cell;
 pub use std::cell::OnceCell;
-pub use suspend::*;
 
 /// `string`: text, and whether it is ASCII, found when the string is made.
 #[derive(Clone, Copy, PartialEq, Eq)]

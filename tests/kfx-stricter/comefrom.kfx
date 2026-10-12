@@ -1,5 +1,7 @@
-"A continuation kept, `comefrom`: FX-26 has it, Rust has no frames to
- resume (docs/research/escapes.md, CLAUDES_CHOICES.md C18)."
+"A continuation kept by call-with-composable-continuation: FX-26 may resume
+ it again and again, a Rust future once; KFX's suspension is
+ abort-with-continuation, whose continuation resumes once in both
+ (CLAUDES_CHOICES.md C45)."
 (define-effect kfx (maxeff (read @globals) spin))
 (define f (subr kfx () i64)
   (lambda ()

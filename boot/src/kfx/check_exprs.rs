@@ -169,7 +169,9 @@ pub fn ty_sexp(v: &'static Cv, s: &'static St, t: &'static Ty) -> &'static Sexp 
             sym(n, str_lit(""), 0i64)
         }
         Ty::TyProc(es, ps, r) => {
-            lst(kayak_rt::heap_cons(sym(str_lit("subr"), str_lit(""), 0i64), kayak_rt::heap_cons(if escapes_p(es) {
+            lst(kayak_rt::heap_cons(sym(str_lit("subr"), str_lit(""), 0i64), kayak_rt::heap_cons(if suspends_p(es) {
+                lst(kayak_rt::heap_cons(sym(str_lit("maxeff"), str_lit(""), 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("goto"), str_lit(""), 0i64), kayak_rt::heap_cons(sym(str_lit("@escape"), str_lit(""), 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("comefrom"), str_lit(""), 0i64), kayak_rt::heap_cons(sym(str_lit("@escape"), str_lit(""), 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
+            } else if escapes_p(es) {
                 lst(kayak_rt::heap_cons(sym(str_lit("goto"), str_lit(""), 0i64), kayak_rt::heap_cons(sym(str_lit("@escape"), str_lit(""), 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
             } else {
                 sym(str_lit("pure"), str_lit(""), 0i64)
@@ -319,7 +321,9 @@ pub fn settled_sexp(s: &'static St, t: &'static Ty, region: bool) -> &'static Se
             }, str_lit(""), 0i64), settled_fields(s, ls, ts)), str_lit(""), 0i64, 0i64)
         }
         Ty::TyProc(es, ps, r) => {
-            lst(kayak_rt::heap_cons(sym(str_lit("subr"), str_lit(""), 0i64), kayak_rt::heap_cons(if escapes_p(es) {
+            lst(kayak_rt::heap_cons(sym(str_lit("subr"), str_lit(""), 0i64), kayak_rt::heap_cons(if suspends_p(es) {
+                lst(kayak_rt::heap_cons(sym(str_lit("maxeff"), str_lit(""), 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("goto"), str_lit(""), 0i64), kayak_rt::heap_cons(sym(str_lit("@escape"), str_lit(""), 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("comefrom"), str_lit(""), 0i64), kayak_rt::heap_cons(sym(str_lit("@escape"), str_lit(""), 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
+            } else if escapes_p(es) {
                 lst(kayak_rt::heap_cons(sym(str_lit("goto"), str_lit(""), 0i64), kayak_rt::heap_cons(sym(str_lit("@escape"), str_lit(""), 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
             } else {
                 sym(str_lit("pure"), str_lit(""), 0i64)
@@ -1655,7 +1659,13 @@ pub fn check_by_synth(v: &'static Cv, s: &'static St, e: &'static Sexp, expected
                         let tagcase_ = walk(s, expected);
                         match *tagcase_ {
                             Ty::TyProc(ees, eps, er) => {
-                                if (escapes_p(ees) && not(escapes_p(pes))) {
+                                if (suspends_p(ees) && not(suspends_p(pes))) {
+                                    note_fact(s, datum_file(e), datum_pos(e), string_append(if escapes_p(pes) {
+                                        str_lit("lift-suspend-fallible ")
+                                    } else {
+                                        str_lit("lift-suspend ")
+                                    }, i64_to_string(size(ps))))
+                                } else if (escapes_p(ees) && not(escapes_p(pes))) {
                                     note_fact(s, datum_file(e), datum_pos(e), string_append(str_lit("lift "), i64_to_string(size(ps))))
                                 } else {
                                     s
@@ -2674,7 +2684,11 @@ pub fn letrena_form(v: &'static Cv, s: &'static St, xs: Sexps, expected: Tys) ->
                         } else {
                             s
                         };
-                        res(t, masked(es, name), s)
+                        if suspends_p(es) {
+                            match refuse(v, str_lit("a suspension inside a letrena, whose data a suspended task would outlive (C45; Fixpt's async note, finding 4)")) {}
+                        } else {
+                            res(t, masked(es, name), s)
+                        }
                     }
                 }
             }
@@ -3459,11 +3473,7 @@ pub fn synth_lambda(v: &'static Cv, s: &'static St, params: Sexps, forms: Sexps)
         let tagcase_ = body(with_binds(v, bind_params(v, params, types)), s, forms, nil::<&'static Ty>());
         match *tagcase_ {
             Res::Res(r, es, s) => {
-                res(ty_proc(es, types, r), nil::<Str>(), if escapes_p(es) {
-                    note_fact(s, cv_file(v), cv_pos(v), str_lit("fallible"))
-                } else {
-                    s
-                })
+                res(ty_proc(es, types, r), nil::<Str>(), noted_lambda(v, s, es))
             }
         }
     }
@@ -3521,11 +3531,7 @@ pub fn check_lambda(v: &'static Cv, s: &'static St, params: Sexps, forms: Sexps,
                                         ty_sexp(v, s, zonk(s, p))
                                     }), eps), str_lit(""), 0i64, 0i64))))
                                 };
-                                res(expected, nil::<Str>(), if escapes_p(ees) {
-                                    note_fact(s, cv_file(v), cv_pos(v), str_lit("fallible"))
-                                } else {
-                                    s
-                                })
+                                res(expected, nil::<Str>(), noted_lambda(v, s, ees))
                             } else {
                                 match refuse(v, string_append(str_lit("a lambda whose effect "), string_append(show_effs(es), string_append(str_lit(" is not within "), show_effs(ees))))) {}
                             }
@@ -3598,12 +3604,14 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
         match refuse(v, string_append(str_lit("("), string_append(h, str_lit(" ...) is FX-26's form, which KFX does not have, or a call of a local named by that keyword")))) {}
     } else if (null_p(found) && string_eq_p(h, str_lit("abort-current-continuation"))) {
         abort_call(v, s, args)
+    } else if (null_p(found) && string_eq_p(h, str_lit("abort-with-continuation"))) {
+        suspend_call(v, s, args, expected)
     } else if (null_p(found) && string_eq_p(h, str_lit("make-continuation-prompt-tag"))) {
         make_tag_call(v, s, args, expected)
     } else if (null_p(found) && (string_eq_p(h, str_lit("rcons")) || string_eq_p(h, str_lit("rnew")))) {
         region_alloc_call(v, s, h, args, expected)
     } else if (null_p(found) && (string_eq_p(h, str_lit("call-with-composable-continuation")) || string_eq_p(h, str_lit("call-with-current-continuation")) || string_eq_p(h, str_lit("call/cc")))) {
-        match refuse(v, string_append(h, str_lit(" keeps a continuation, a comefrom, which KFX does not have: Rust has no frames to resume (docs/research/escapes.md)"))) {}
+        match refuse(v, string_append(h, str_lit(" keeps a continuation FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)"))) {}
     } else if null_p(found) {
         match refuse(v, string_append(str_lit("nothing is named "), h)) {}
     } else if (nat_op_p(h) && prim_p(car(found)) && i64_eq(size(args), 2i64) && nat_args_p(v, s, args)) {
@@ -3934,6 +3942,84 @@ pub fn abort_call(v: &'static Cv, s: &'static St, args: Sexps) -> &'static Res {
     }
 }
 
+/// `(abort-with-continuation tag (lambda ((k K)) body))` (kfx/prelude.fx,
+/// C45): the rest up to `tag`'s prompt, `k`, resumable once, of `K`, a
+/// `(subr (maxeff D (goto R) (comefrom R) (read R) (write R)) (V) A)`
+/// for the tag's `(prompt-tag A H D R)`; an abort there with `body`'s
+/// value, an `H`. Its value is a `V`, what `k` is resumed with; its
+/// effect, the body's, control and allocation at `R`, and the prelude's
+/// global read. The body runs as the prompt takes `k`: KFX has it
+/// neither abort nor suspend.
+pub fn suspend_call(v: &'static Cv, s: &'static St, args: Sexps, expected: Tys) -> &'static Res {
+    if not(i64_eq(size(args), 2i64)) {
+        match refuse(v, str_lit("abort-with-continuation takes a tag and a lambda")) {}
+    } else if not((head_is_p(second(args), str_lit("lambda")) && i64_eq(size(items(second(items(second(args))))), 1i64))) {
+        match refuse(v, str_lit("abort-with-continuation's second argument is a lambda of one parameter, in KFX")) {}
+    } else {
+        let tagcase_ = synth(v, s, car(args));
+        match *tagcase_ {
+            Res::Res(tt, es0, s) => {
+                let tagcase_ = walk(s, tt);
+                match *tagcase_ {
+                    Ty::TyTag(a, h, d, r) => {
+                        let rn = region_string(s, r);
+                        let lam = items(second(args));
+                        let param = car(items(second(lam)));
+                        let tagcase_ = param;
+                        match *tagcase_ {
+                            Sexp::Lst(pt, pf, pl, pp) => {
+                                let kt = parse_type(v, cv_tvars(v), second(pt));
+                                let tagcase_ = walk(s, kt);
+                                match *tagcase_ {
+                                    Ty::TyProc(kes, kps, ka) => {
+                                        if not(i64_eq(size(kps), 1i64)) {
+                                            match refuse(v, str_lit("a continuation takes one value")) {}
+                                        } else {
+                                            let want = effs_union(d, kayak_rt::heap_cons(string_append(str_lit("goto:"), rn), kayak_rt::heap_cons(string_append(str_lit("comefrom:"), rn), kayak_rt::heap_cons(string_append(str_lit("read:"), rn), kayak_rt::heap_cons(string_append(str_lit("write:"), rn), kayak_rt::nil())))));
+                                            let s = fits(v, s, ka, a);
+                                            if not((effs_within_p(kes, want) && effs_within_p(want, kes))) {
+                                                match refuse(v, string_append(str_lit("the continuation's effect is the tag's bound, and control, reading and writing at its region: "), string_append(show_effs(want), string_append(str_lit(", not "), show_effs(kes))))) {}
+                                            } else {
+                                                let tagcase_ = lambda_effects(v, s, items(second(lam)), cdr(cdr(lam)), ty_proc(nil::<Str>(), kayak_rt::heap_cons(kt, kayak_rt::nil()), h));
+                                                match *tagcase_ {
+                                                    Res::Res(u, es1, s) => {
+                                                        if escapes_p(es1) {
+                                                            match refuse(v, str_lit("abort-with-continuation's lambda may abort or suspend, which KFX has not")) {}
+                                                        } else {
+                                                            let s = if null_p(expected) {
+                                                                s
+                                                            } else {
+                                                                fits(v, s, car(kps), car(expected))
+                                                            };
+                                                            res(car(kps), effs_union(kayak_rt::heap_cons(string_append(str_lit("goto:"), rn), kayak_rt::heap_cons(string_append(str_lit("comefrom:"), rn), kayak_rt::heap_cons(string_append(str_lit("alloc:"), rn), kayak_rt::heap_cons(str_lit("g:abort-with-continuation"), kayak_rt::nil())))), effs_union(es0, es1)), s)
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        match refuse(v, str_lit("a continuation's type is a subr")) {}
+                                    }
+                                }
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                match refuse(v, str_lit("abort-with-continuation's parameter is written (k K), its type said")) {}
+                            }
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        match refuse(v, string_append(str_lit("a suspension to a "), string_append(show_ty(s, tt), str_lit(", no prompt-tag")))) {}
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// `(make-continuation-prompt-tag)`: its type, said where it is made.
 pub fn make_tag_call(v: &'static Cv, s: &'static St, args: Sexps, expected: Tys) -> &'static Res {
     if not(null_p(args)) {
@@ -3986,6 +4072,11 @@ pub fn prompt_form(v: &'static Cv, s: &'static St, xs: Sexps, expected: Tys) -> 
                                         };
                                         let s = if (delimits && not(escapes_p(masked_goto(es1, rn)))) {
                                             note_fact(s, cv_file(v), cv_pos(v), str_lit("contains"))
+                                        } else {
+                                            s
+                                        };
+                                        let s = if suspends_p(es1) {
+                                            note_fact(s, cv_file(v), cv_pos(v), str_lit("suspending-body"))
                                         } else {
                                             s
                                         };
@@ -4078,11 +4169,7 @@ pub fn synth_call_of(v: &'static Cv, s: &'static St, callee: &'static Res, args:
                                 let tagcase_ = name_regions(v, s, latent, regions);
                                 match *tagcase_ {
                                     Res::Res(u, named, s) => {
-                                        res(r, effs_union(named, effs_union(more, effs_union(es0, es1))), lift_noted(v, if escapes_p(named) {
-                                            note_fact(s, cv_file(v), cv_pos(v), str_lit("fallible-call"))
-                                        } else {
-                                            s
-                                        }, r, expected))
+                                        res(r, effs_union(named, effs_union(more, effs_union(es0, es1))), lift_noted(v, noted_call(v, s, named), r, expected))
                                     }
                                 }
                             }
@@ -4098,6 +4185,36 @@ pub fn synth_call_of(v: &'static Cv, s: &'static St, callee: &'static Res, args:
     }
 }
 
+/// A lambda of effect `es`: one that may abort returns a `Result`, and
+/// one that may suspend is a future besides (C45).
+pub fn noted_lambda(v: &'static Cv, s: &'static St, es: Strings) -> &'static St {
+    let s = if escapes_p(es) {
+        note_fact(s, cv_file(v), cv_pos(v), str_lit("fallible"))
+    } else {
+        s
+    };
+    if suspends_p(es) {
+        note_fact(s, cv_file(v), cv_pos(v), str_lit("suspends"))
+    } else {
+        s
+    }
+}
+
+/// A call of latent effect `es`: `?` after one that may abort, and
+/// `.await` before it after one that may suspend (C45).
+pub fn noted_call(v: &'static Cv, s: &'static St, es: Strings) -> &'static St {
+    let s = if escapes_p(es) {
+        note_fact(s, cv_file(v), cv_pos(v), str_lit("fallible-call"))
+    } else {
+        s
+    };
+    if suspends_p(es) {
+        note_fact(s, cv_file(v), cv_pos(v), str_lit("suspending-call"))
+    } else {
+        s
+    }
+}
+
 /// A call whose value is a procedure that cannot abort, where one that
 /// may is expected: lifted, as `check-by-synth` lifts one (C35).
 pub fn lift_noted(v: &'static Cv, s: &'static St, r: &'static Ty, expected: Tys) -> &'static St {
@@ -4110,7 +4227,13 @@ pub fn lift_noted(v: &'static Cv, s: &'static St, r: &'static Ty, expected: Tys)
                 let tagcase_ = walk(s, car(expected));
                 match *tagcase_ {
                     Ty::TyProc(ees, eps, er) => {
-                        if (escapes_p(ees) && not(escapes_p(pes))) {
+                        if (suspends_p(ees) && not(suspends_p(pes))) {
+                            note_fact(s, cv_file(v), cv_pos(v), string_append(if escapes_p(pes) {
+                                str_lit("lift-suspend-fallible ")
+                            } else {
+                                str_lit("lift-suspend ")
+                            }, i64_to_string(size(ps))))
+                        } else if (escapes_p(ees) && not(escapes_p(pes))) {
                             note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("lift "), i64_to_string(size(ps))))
                         } else {
                             s

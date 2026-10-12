@@ -43,7 +43,19 @@ pub struct Cont<V: 'static, R: 'static> {
 }
 
 /// What a capture site leaves for the prompt: given the body, the payload.
-type Make<R, H> = Box<dyn FnOnce(Body<R>) -> Result<H, Unwind>>;
+type Make<R, H> = Box<dyn FnOnce(Body<R>) -> H>;
+
+/// A continuation as KFX has it: a procedure that may suspend, of the
+/// value it is resumed with (`(subr (maxeff D (goto r) (comefrom r) ...)
+/// (V) A)`), resumable once.
+pub type Resume<V, R> = &'static dyn Fn(V) -> Body<R>;
+
+/// A future, boxed: what a procedure value that may suspend returns, and a
+/// call of a procedure that may suspend awaits (so that an `async fn` may
+/// call itself).
+pub fn body<R>(f: impl Future<Output = Result<R, Unwind>> + 'static) -> Body<R> {
+    Box::pin(f)
+}
 
 /// The capture's future: `Pending` once, having registered; then the value
 /// the continuation was resumed with.
@@ -71,7 +83,7 @@ impl<V: 'static> Future for Capture<V> {
 /// Its value, when `k` is resumed, is what `k` is given.
 pub fn abort_with_continuation<V, R, H>(
     tag: Tag<R, H>,
-    f: impl FnOnce(&'static Cont<V, R>) -> Result<H, Unwind> + 'static,
+    f: impl FnOnce(Resume<V, R>) -> H + 'static,
 ) -> impl Future<Output = Result<V, Unwind>>
 where
     V: 'static,
@@ -80,10 +92,11 @@ where
 {
     let given: &'static Cell<Option<V>> = crate::alloc(Cell::new(None));
     let make: Make<R, H> = Box::new(move |body| {
-        f(crate::alloc(Cont {
+        let k: &'static Cont<V, R> = crate::alloc(Cont {
             body: RefCell::new(Some(body)),
             given,
-        }))
+        });
+        f(crate::alloc(move |v| -> Body<R> { Box::pin(k.resume(v)) }))
     });
     CAPTURE.with(|c| {
         if c.borrow().is_some() {
@@ -166,20 +179,23 @@ impl<R: 'static, H: Copy + 'static> Future for PromptFuture<R, H> {
                 let Some(body) = self.body.take() else {
                     crate::fail("prompt: polled after it ended")
                 };
-                Poll::Ready(make(body).map(Prompted::Aborted))
+                Poll::Ready(Ok(Prompted::Aborted(make(body))))
             }
         }
     }
 }
 
-/// The top level of a program that may capture: run to its end. A capture
-/// with no prompt for its tag is an error, as in FX-26.
-pub fn run<R: 'static>(body: Body<R>) -> Result<R, Unwind> {
-    let mut body = body;
+/// A computation that may capture, where nothing around it can suspend
+/// (the top level; a prompt that delimits every capture its body makes, in
+/// a procedure that cannot suspend): run to its end. Nothing waits on the
+/// outside world yet, so one poll does: a capture still pending has no
+/// prompt for its tag, an error, as in FX-26.
+pub fn block<R>(f: impl Future<Output = R>) -> R {
+    let mut f = std::pin::pin!(f);
     let mut cx = Context::from_waker(Waker::noop());
-    match body.as_mut().poll(&mut cx) {
+    match f.as_mut().poll(&mut cx) {
         Poll::Ready(r) => r,
-        Poll::Pending => crate::fail("call-with-composable-continuation: no prompt for the tag"),
+        Poll::Pending => crate::fail("abort-with-continuation: no prompt for the tag"),
     }
 }
 
@@ -212,7 +228,7 @@ mod tests {
     }
 
     // (define-type task (composable unit unit D @p))
-    type Task = &'static Cont<(), ()>;
+    type Task = Resume<(), ()>;
 
     struct PingPong {
         sched: Tag<(), Task>,
@@ -222,7 +238,7 @@ mod tests {
 
     // (define* yield! ...) : the capture, its payload `k` itself.
     async fn yield_(g: &'static PingPong) -> Result<(), Unwind> {
-        abort_with_continuation(g.sched, Ok).await
+        abort_with_continuation(g.sched, |k| k).await
     }
 
     fn enqueue(g: &'static PingPong, k: Task) {
@@ -252,7 +268,7 @@ mod tests {
             };
             g.queue.set(q.cdr);
             let k = q.car;
-            let body: Body<()> = Box::pin(k.resume(()));
+            let body: Body<()> = k(());
             if let Prompted::Aborted(k) = prompt(g.sched, body).await? {
                 enqueue(g, k);
             }
@@ -284,7 +300,7 @@ mod tests {
             run_(g).await?;
             Ok(reverse(g.log.get()))
         });
-        let Ok(log) = run(main) else {
+        let Ok(log) = block(main) else {
             panic!("aborted")
         };
         assert_eq!(list_of(log), vec![103, 203, 102, 202, 101, 201]);
@@ -311,8 +327,8 @@ mod tests {
     }
 
     async fn suspend(g: &'static Promises, file: &'static dyn Fn(Task)) -> Result<(), Unwind> {
-        abort_with_continuation(g.sched, move |k: Task| -> Result<File, Unwind> {
-            Ok(crate::alloc(move || file(k)) as File)
+        abort_with_continuation(g.sched, move |k: Task| -> File {
+            crate::alloc(move || file(k))
         })
         .await
     }
@@ -368,7 +384,7 @@ mod tests {
                 return Ok(());
             };
             g.queue.set(q.cdr);
-            let body: Body<()> = Box::pin(q.car.resume(()));
+            let body: Body<()> = (q.car)(());
             if let Prompted::Aborted(file) = prompt(g.sched, body).await? {
                 file();
             }
@@ -408,7 +424,7 @@ mod tests {
             run2(g).await?;
             Ok(reverse(g.log.get()))
         });
-        let Ok(log) = run(main) else {
+        let Ok(log) = block(main) else {
             panic!("aborted")
         };
         assert_eq!(list_of(log), vec![1, 2, 3, 42]);
@@ -417,34 +433,34 @@ mod tests {
     #[test]
     #[should_panic(expected = "resumed twice")]
     fn twice() {
-        let tag: Tag<i64, &'static Cont<i64, i64>> = make_continuation_prompt_tag();
+        let tag: Tag<i64, Resume<i64, i64>> = make_continuation_prompt_tag();
         let main: Body<i64> = Box::pin(async move {
             let inner: Body<i64> = Box::pin(async move {
-                let v: i64 = abort_with_continuation(tag, Ok).await?;
+                let v: i64 = abort_with_continuation(tag, |k| k).await?;
                 Ok(v + 1)
             });
             match prompt(tag, inner).await? {
                 Prompted::Done(v) => Ok(v),
                 Prompted::Aborted(k) => {
-                    let a = k.resume(10).await?;
-                    let b = k.resume(20).await?;
+                    let a = k(10).await?;
+                    let b = k(20).await?;
                     Ok(a + b)
                 }
             }
         });
-        let _ = run(main);
+        let _ = block(main);
     }
 
     /// A capture to an outer tag from inside an inner prompt takes the
     /// inner prompt with it: resumed, an abort to the inner tag finds it.
     #[test]
     fn inner_prompt_kept() {
-        let outer: Tag<i64, &'static Cont<(), i64>> = make_continuation_prompt_tag();
+        let outer: Tag<i64, Resume<(), i64>> = make_continuation_prompt_tag();
         let inner: Tag<i64, i64> = make_continuation_prompt_tag();
         let main: Body<i64> = Box::pin(async move {
             let body: Body<i64> = Box::pin(async move {
                 let b: Body<i64> = Box::pin(async move {
-                    abort_with_continuation(outer, Ok).await?;
+                    abort_with_continuation(outer, |k| k).await?;
                     Err(crate::unwind(inner, 7))
                 });
                 match prompt(inner, b).await? {
@@ -454,10 +470,12 @@ mod tests {
             });
             match prompt(outer, body).await? {
                 Prompted::Done(v) => Ok(v),
-                Prompted::Aborted(k) => Ok(k.resume(()).await? + 1),
+                Prompted::Aborted(k) => Ok(k(()).await? + 1),
             }
         });
-        let Ok(v) = run(main) else { panic!("aborted") };
+        let Ok(v) = block(main) else {
+            panic!("aborted")
+        };
         assert_eq!(v, 701);
     }
 }

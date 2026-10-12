@@ -60,7 +60,9 @@
         (ty-ref (e r) (lst (list (sym "ref" "" 0) (ty-sexp v s e) (ty-sexp v s r)) "" 0 0))
         (ty-rconst (n) (sym n "" 0))
         (ty-proc (es ps r)
-          (lst (list (sym "subr" "" 0) (if (escapes? es) (lst (list (sym "goto" "" 0) (sym "@escape" "" 0)) "" 0 0) (sym "pure" "" 0))
+          (lst (list (sym "subr" "" 0) (cond ((suspends? es) (lst (list (sym "maxeff" "" 0) (lst (list (sym "goto" "" 0) (sym "@escape" "" 0)) "" 0 0) (lst (list (sym "comefrom" "" 0) (sym "@escape" "" 0)) "" 0 0)) "" 0 0))
+                                                ((escapes? es) (lst (list (sym "goto" "" 0) (sym "@escape" "" 0)) "" 0 0))
+                                                (else (sym "pure" "" 0)))
                      (lst (map (lambda ((p ty)) (ty-sexp v s p)) ps) "" 0 0) (ty-sexp v s r)) "" 0 0))
         (ty-var (n) (refuse v (string-append "a definition with no type, of a type over " (string-append n ": write its type"))))
         (ty-meta (k) (refuse v "a definition with no type, whose type is not known whole: write it")))))
@@ -130,7 +132,9 @@
                 (else (lst (cons (sym d "" 0) (map (lambda ((x ty)) (settled-sexp s x #f)) args)) "" 0 0))))
         (ty-shape (p ls ts) (lst (cons (sym (if p "productof" "sumof") "" 0) (settled-fields s ls ts)) "" 0 0))
         (ty-proc (es ps r)
-          (lst (list (sym "subr" "" 0) (if (escapes? es) (lst (list (sym "goto" "" 0) (sym "@escape" "" 0)) "" 0 0) (sym "pure" "" 0))
+          (lst (list (sym "subr" "" 0) (cond ((suspends? es) (lst (list (sym "maxeff" "" 0) (lst (list (sym "goto" "" 0) (sym "@escape" "" 0)) "" 0 0) (lst (list (sym "comefrom" "" 0) (sym "@escape" "" 0)) "" 0 0)) "" 0 0))
+                                                ((escapes? es) (lst (list (sym "goto" "" 0) (sym "@escape" "" 0)) "" 0 0))
+                                                (else (sym "pure" "" 0)))
                      (lst (map (lambda ((p ty)) (settled-sexp s p #f)) ps) "" 0 0) (settled-sexp s r #f)) "" 0 0))
         (else other (sym (show-ty s other) "" 0)))))
   (settled-fields (subr kfx (st strings tys) sexps)
@@ -741,9 +745,11 @@
                    (ty-proc (pes ps r)
                      (tagcase (walk s expected)
                        (ty-proc (ees eps er)
-                         (if (and (escapes? ees) (not (escapes? pes)))
-                             (note-fact s (datum-file e) (datum-pos e) (string-append "lift " (i64->string (size ps))))
-                             s))
+                         (cond ((and (suspends? ees) (not (suspends? pes)))
+                                (note-fact s (datum-file e) (datum-pos e) (string-append (if (escapes? pes) "lift-suspend-fallible " "lift-suspend ") (i64->string (size ps)))))
+                               ((and (escapes? ees) (not (escapes? pes)))
+                                (note-fact s (datum-file e) (datum-pos e) (string-append "lift " (i64->string (size ps)))))
+                               (else s)))
                        (else other s)))
                    (else other s))))))))
 
@@ -1207,7 +1213,9 @@
                                      (s (note-fact s (cv-file v) (cv-pos v)
                                                    (string-append "letrena-names " (words-of (map (lambda ((b bind)) (tagcase b (bind (n sc w) n))) used)))))
                                      (s (if (escapes? es) (note-fact s (cv-file v) (cv-pos v) "fallible") s)))
-                                (res t (masked es name) s))))))))))))
+                                (if (suspends? es)
+                                    (refuse v "a suspension inside a letrena, whose data a suspended task would outlive (C45; Fixpt's async note, finding 4)")
+                                    (res t (masked es name) s)))))))))))))
 
   (place-region (subr kfx (st ty) bool)
     (lambda (s t)
@@ -1539,7 +1547,7 @@
         (if (any? (lambda ((p ty)) (not (null? (module-spec v p)))) types)
             (refuse v "a module parameter is a top-level procedure's (C24)")
         (tagcase (body (with-binds v (bind-params v params types)) s forms nil)
-          (res (r es s) (res (ty-proc es types r) nil (if (escapes? es) (note-fact s (cv-file v) (cv-pos v) "fallible") s))))))))
+          (res (r es s) (res (ty-proc es types r) nil (noted-lambda v s es))))))))
 
   (module-params-apart (subr kfx (cv sexps tys st) st)
     (lambda (v params types s)
@@ -1579,7 +1587,7 @@
                                       s
                                       (note-fact s (cv-file v) (cv-pos v)
                                                  (string-append "param-types " (show-sexp (lst (map (lambda ((p ty)) (ty-sexp v s (zonk s p))) eps) "" 0 0)))))))
-                          (res expected nil (if (escapes? ees) (note-fact s (cv-file v) (cv-pos v) "fallible") s)))
+                          (res expected nil (noted-lambda v s ees)))
                         (refuse v (string-append "a lambda whose effect " (string-append (show-effs es)
                                   (string-append " is not within " (show-effs ees))))))))))))
         (else other (refuse v "a lambda where no procedure is expected")))))
@@ -1623,12 +1631,13 @@
         (cond ((keyword? h)
                (refuse v (string-append "(" (string-append h " ...) is FX-26's form, which KFX does not have, or a call of a local named by that keyword"))))
               ((and (null? found) (string=? h "abort-current-continuation")) (abort-call v s args))
+              ((and (null? found) (string=? h "abort-with-continuation")) (suspend-call v s args expected))
               ((and (null? found) (string=? h "make-continuation-prompt-tag")) (make-tag-call v s args expected))
               ((and (null? found) (or (string=? h "rcons") (string=? h "rnew"))) (region-alloc-call v s h args expected))
               ((and (null? found)
                     (or (string=? h "call-with-composable-continuation") (string=? h "call-with-current-continuation")
                         (string=? h "call/cc")))
-               (refuse v (string-append h " keeps a continuation, a comefrom, which KFX does not have: Rust has no frames to resume (docs/research/escapes.md)")))
+               (refuse v (string-append h " keeps a continuation FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)")))
               ((null? found)
                (refuse v (string-append "nothing is named " h)))
               ((and (nat-op? h) (prim? (car found)) (i64= (size args) 2) (nat-args? v s args))
@@ -1795,6 +1804,55 @@
                       (res (ty-void) (effs-union (list (string-append "goto:" (region-string s r))) (effs-union es0 es1)) s))))
                 (else other (refuse v (string-append "an abort to a " (string-append (show-ty s t) ", no prompt-tag"))))))))))
 
+  (suspend-call (subr kfx (cv st sexps tys) res)
+    (lambda (v s args expected)
+      "`(abort-with-continuation tag (lambda ((k K)) body))` (kfx/prelude.fx,
+       C45): the rest up to `tag`'s prompt, `k`, resumable once, of `K`, a
+       `(subr (maxeff D (goto R) (comefrom R) (read R) (write R)) (V) A)`
+       for the tag's `(prompt-tag A H D R)`; an abort there with `body`'s
+       value, an `H`. Its value is a `V`, what `k` is resumed with; its
+       effect, the body's, control and allocation at `R`, and the prelude's
+       global read. The body runs as the prompt takes `k`: KFX has it
+       neither abort nor suspend."
+      (cond ((not (i64= (size args) 2))
+             (refuse v "abort-with-continuation takes a tag and a lambda"))
+            ((not (and (head-is? (second args) "lambda") (i64= (size (items (second (items (second args))))) 1)))
+             (refuse v "abort-with-continuation's second argument is a lambda of one parameter, in KFX"))
+            (else
+             (tagcase (synth v s (car args))
+               (res (tt es0 s)
+                 (tagcase (walk s tt)
+                   (ty-tag (a h d r)
+                     (let* ((rn (region-string s r))
+                            (lam (items (second args)))
+                            (param (car (items (second lam)))))
+                       (tagcase param
+                             (lst (pt pf pl pp)
+                               (let ((kt (parse-type v (cv-tvars v) (second pt))))
+                                 (tagcase (walk s kt)
+                                   (ty-proc (kes kps ka)
+                                     (if (not (i64= (size kps) 1))
+                                         (refuse v "a continuation takes one value")
+                                         (let* ((want (effs-union d (list (string-append "goto:" rn) (string-append "comefrom:" rn)
+                                                                          (string-append "read:" rn) (string-append "write:" rn))))
+                                                (s (fits v s ka a)))
+                                           (if (not (and (effs-within? kes want) (effs-within? want kes)))
+                                               (refuse v (string-append "the continuation's effect is the tag's bound, and control, reading and writing at its region: "
+                                                                        (string-append (show-effs want) (string-append ", not " (show-effs kes)))))
+                                               (tagcase (lambda-effects v s (items (second lam)) (cdr (cdr lam)) (ty-proc nil (list kt) h))
+                                                 (res (u es1 s)
+                                                   (if (escapes? es1)
+                                                       (refuse v "abort-with-continuation's lambda may abort or suspend, which KFX has not")
+                                                       (let ((s (if (null? expected) s (fits v s (car kps) (car expected)))))
+                                                         (res (car kps)
+                                                              (effs-union (list (string-append "goto:" rn) (string-append "comefrom:" rn)
+                                                                                (string-append "alloc:" rn) "g:abort-with-continuation")
+                                                                          (effs-union es0 es1))
+                                                              s)))))))))
+                                   (else other (refuse v "a continuation's type is a subr")))))
+                             (else other (refuse v "abort-with-continuation's parameter is written (k K), its type said")))))
+                   (else other (refuse v (string-append "a suspension to a " (string-append (show-ty s tt) ", no prompt-tag")))))))))))
+
   (make-tag-call (subr kfx (cv st sexps tys) res)
     (lambda (v s args expected)
       "`(make-continuation-prompt-tag)`: its type, said where it is made."
@@ -1832,6 +1890,7 @@
                                    (s (if (and delimits (not (escapes? (masked-goto es1 rn))))
                                           (note-fact s (cv-file v) (cv-pos v) "contains")
                                           s))
+                                   (s (if (suspends? es1) (note-fact s (cv-file v) (cv-pos v) "suspending-body") s))
                                    (s (if (null? expected) s (fits v s a (car expected)))))
                               (res a (effs-union es0 (effs-union es2 (if delimits (masked-goto es1 rn) es1))) s)))))))))
             (else other (refuse v (string-append "a prompt of a " (string-append (show-ty s tt) ", no prompt-tag")))))))))
@@ -1879,8 +1938,22 @@
                       (tagcase (name-regions v s latent regions)
                         (res (u named s)
                           (res r (effs-union named (effs-union more (effs-union es0 es1)))
-                               (lift-noted v (if (escapes? named) (note-fact s (cv-file v) (cv-pos v) "fallible-call") s) r expected)))))))))
+                               (lift-noted v (noted-call v s named) r expected)))))))))
             (else other (refuse v (string-append "a call of a " (string-append (show-ty s t) ", no procedure")))))))))
+
+  (noted-lambda (subr kfx (cv st strings) st)
+    (lambda (v s es)
+      "A lambda of effect `es`: one that may abort returns a `Result`, and
+       one that may suspend is a future besides (C45)."
+      (let ((s (if (escapes? es) (note-fact s (cv-file v) (cv-pos v) "fallible") s)))
+        (if (suspends? es) (note-fact s (cv-file v) (cv-pos v) "suspends") s))))
+
+  (noted-call (subr kfx (cv st strings) st)
+    (lambda (v s es)
+      "A call of latent effect `es`: `?` after one that may abort, and
+       `.await` before it after one that may suspend (C45)."
+      (let ((s (if (escapes? es) (note-fact s (cv-file v) (cv-pos v) "fallible-call") s)))
+        (if (suspends? es) (note-fact s (cv-file v) (cv-pos v) "suspending-call") s))))
 
   (lift-noted (subr kfx (cv st ty tys) st)
     (lambda (v s r expected)
@@ -1892,9 +1965,11 @@
             (ty-proc (pes ps r2)
               (tagcase (walk s (car expected))
                 (ty-proc (ees eps er)
-                  (if (and (escapes? ees) (not (escapes? pes)))
-                      (note-fact s (cv-file v) (cv-pos v) (string-append "lift " (i64->string (size ps))))
-                      s))
+                  (cond ((and (suspends? ees) (not (suspends? pes)))
+                         (note-fact s (cv-file v) (cv-pos v) (string-append (if (escapes? pes) "lift-suspend-fallible " "lift-suspend ") (i64->string (size ps)))))
+                        ((and (escapes? ees) (not (escapes? pes)))
+                         (note-fact s (cv-file v) (cv-pos v) (string-append "lift " (i64->string (size ps)))))
+                        (else s)))
                 (else other s)))
             (else other s)))))
 

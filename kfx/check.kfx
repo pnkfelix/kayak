@@ -183,9 +183,16 @@
 
 (define escapes? (subr kfx (strings) bool)
   (lambda (es)
-    "Whether effect `es` may abort: a `goto` on some region. Such a
-     procedure, in Rust, returns a `Result` (emit.kfx)."
-    (any? (lambda ((x string)) (and (i64> (string-length-i64 x) 5) (string=? (substring-of x 5) "goto:"))) es)))
+    "Whether effect `es` may abort: a `goto` on some region, or suspend, a
+     `comefrom` (C45), which aborts to its prompt. Such a procedure, in
+     Rust, returns a `Result` (emit.kfx)."
+    (any? (lambda ((x string)) (or (has-prefix? x "goto:") (has-prefix? x "comefrom:"))) es)))
+
+(define suspends? (subr kfx (strings) bool)
+  (lambda (es)
+    "Whether effect `es` may suspend: a `comefrom` on some region. Such a
+     procedure, in Rust, is an `async fn` (C45)."
+    (any? (lambda ((x string)) (has-prefix? x "comefrom:")) es)))
 
 (define frozen-atom? (subr kfx (string) bool)
   (lambda (x)
@@ -274,10 +281,8 @@
                 ((and (sym-is? (car xs) "read") (sym-is? (second xs) "@globals")) (list "@globals"))
                 ((and (sym-is? (car xs) "read") (head-is? (second xs) "globals"))
                  (map (lambda ((g sexp)) (string-append "g:" (name-of v g))) (cdr (items (second xs)))))
-                ((sym-is? (car xs) "comefrom")
-                 (refuse v "a continuation kept (comefrom): KFX has escapes, not continuations, which Rust has not"))
                 ((or (sym-is? (car xs) "read") (sym-is? (car xs) "write") (sym-is? (car xs) "alloc")
-                     (sym-is? (car xs) "goto"))
+                     (sym-is? (car xs) "goto") (sym-is? (car xs) "comefrom"))
                  (list (string-append (name-of v (car xs)) (string-append ":" (region-name v tvars (second xs))))))
                 (else (refuse v (string-append "an effect KFX does not have: " (show-sexp e))))))
         (else other (refuse v (string-append "an effect KFX does not have: " (show-sexp e)))))))
@@ -293,6 +298,7 @@
                  ((string=? x (string-append "write:" from)) (string-append "write:" to))
                  ((string=? x (string-append "alloc:" from)) (string-append "alloc:" to))
                  ((string=? x (string-append "goto:" from)) (string-append "goto:" to))
+                 ((string=? x (string-append "comefrom:" from)) (string-append "comefrom:" to))
                  (else x)))
          es)))
 
@@ -1115,7 +1121,8 @@
   (lambda (x)
     (and (i64> (string-length-i64 x) 5)
          (or (string=? (substring-of x 5) "read:") (string=? (substring-of x 5) "goto:")
-             (string=? (substring-of x 6) "write:") (string=? (substring-of x 6) "alloc:")))))
+             (string=? (substring-of x 6) "write:") (string=? (substring-of x 6) "alloc:")
+             (has-prefix? x "comefrom:")))))
 
 (define atom-kind (subr kfx (string) string)
   (lambda (x) (substring-of x (i64- (string-length-i64 x) (size (after-colon (string->list x)))))))
@@ -1505,7 +1512,8 @@
     "Effects, those on region `r` removed."
     (cond ((null? es) nil)
           ((or (string=? (car es) (string-append "read:" r)) (string=? (car es) (string-append "write:" r))
-               (string=? (car es) (string-append "alloc:" r)) (string=? (car es) (string-append "goto:" r)))
+               (string=? (car es) (string-append "alloc:" r)) (string=? (car es) (string-append "goto:" r))
+               (string=? (car es) (string-append "comefrom:" r)))
            (masked (cdr es) r))
           (else (cons (car es) (masked (cdr es) r))))))
 
@@ -1554,6 +1562,7 @@
   (lambda (es r)
     (cond ((null? es) nil)
           ((string=? (car es) (string-append "goto:" r)) (masked-goto (cdr es) r))
+          ((string=? (car es) (string-append "comefrom:" r)) (masked-goto (cdr es) r))
           (else (cons (car es) (masked-goto (cdr es) r))))))
 
 (define-rec

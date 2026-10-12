@@ -445,6 +445,7 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, typ: &'static Sexp, defi
         body
     };
     let fallible = (lambda_p && fallible_effect_p(c, second(items(typ))));
+    let suspends = (lambda_p && suspending_effect_p(c, second(items(typ))));
     let mparams = if lambda_p {
         module_params(c, items(second(items(defined))), items(third(items(typ))))
     } else {
@@ -457,17 +458,25 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, typ: &'static Sexp, defi
     };
     let loops_p = (lambda_p && tail_calls_p(t, last(body)));
     let inner = if lambda_p {
-        with_locals(c, onto(kayak_rt::heap_cons(if fallible {
+        with_locals(c, onto(kayak_rt::heap_cons(if suspends {
+            str_lit("%async")
+        } else {
+            str_lit("%sync")
+        }, kayak_rt::heap_cons(if fallible {
             str_lit("%fallible")
         } else {
             str_lit("%infallible")
-        }, map(&param_name, items(second(items(defined))))), map(lambda1(move |mp: Str| {
+        }, map(&param_name, items(second(items(defined)))))), map(lambda1(move |mp: Str| {
             string_append(str_lit("%modparam "), mp)
         }), mparams)))
     } else {
         c
     };
-    let acc = put(str_lit("pub fn "), acc);
+    let acc = put(if suspends {
+        str_lit("pub async fn ")
+    } else {
+        str_lit("pub fn ")
+    }, acc);
     let acc = put(mangle(sym_name(name)), acc);
     let acc = if not(null_p(places)) {
         put_place_generics(c, sym_name(name), binders, lives, places, acc)
@@ -1132,13 +1141,24 @@ pub fn toplevel_form_p(f: &'static Sexp) -> bool {
 }
 
 /// Each top-level expression's value written; a `void` one, which never
-/// gives one, run, its type said.
+/// gives one, run, its type said; one that may suspend, a future run to
+/// its end (C45).
 pub fn put_toplevel_lines(mut c: &'static Ctx, mut forms: Sexps, mut acc: Chars) -> Chars {
     loop {
         if null_p(forms) {
             return acc;
         } else if toplevel_form_p(car(forms)) {
-            if fact_at_p(c, car(forms), str_lit("procedure")) {
+            if fact_at_p(c, car(forms), str_lit("suspends")) {
+                if fact_at_p(c, car(forms), str_lit("void")) {
+                    let acc = put(str_lit("    let _: () = kayak_rt::suspend::block(kayak_rt::suspend::body(async move { let _: Void = "), acc);
+                    let acc = put_exp(with_locals(c, kayak_rt::heap_cons(str_lit("%async"), kayak_rt::heap_cons(str_lit("%fallible"), kayak_rt::nil()))), car(forms), 1i64, value(), acc);
+                    return put_toplevel_lines(c, cdr(forms), put(str_lit("; Ok(()) })).unwrap_or_else(|u| unreachable_unwind(u));\n"), acc));
+                } else {
+                    let acc = put(str_lit("    kayak_rt::show_line(&mut out_, kayak_rt::suspend::block(kayak_rt::suspend::body(async move { Ok("), acc);
+                    let acc = put_exp(with_locals(c, kayak_rt::heap_cons(str_lit("%async"), kayak_rt::heap_cons(str_lit("%fallible"), kayak_rt::nil()))), car(forms), 1i64, value(), acc);
+                    return put_toplevel_lines(c, cdr(forms), put(str_lit(") })).unwrap_or_else(|u| unreachable_unwind(u)));\n"), acc));
+                }
+            } else if fact_at_p(c, car(forms), str_lit("procedure")) {
                 // A procedure, as Fixpt writes one, whatever made it: a global's
                 // own `fn` is no `dyn Fn`, whose `Show` this would otherwise be.
                 let acc = put(str_lit("    kayak_rt::show_line(&mut out_, (|| -> Result<_, Unwind> { let _ = "), acc);

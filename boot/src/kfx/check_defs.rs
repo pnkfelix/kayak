@@ -812,12 +812,19 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                 let tagcase_ = synth(at(v, str_lit("a top-level expression"), nil::<Str>()), new_state(), form);
                 match *tagcase_ {
                     Res::Res(t, es, s) => {
-                        with_facts(v, settle_facts(if void_p(s, t) {
-                            note_fact(s, src_file, src_pos, str_lit("void"))
-                        } else if proc_type_p(s, t) {
-                            note_fact(s, src_file, src_pos, str_lit("procedure"))
-                        } else {
-                            s
+                        with_facts(v, settle_facts({
+                            let s = if suspends_p(es) {
+                                note_fact(s, src_file, src_pos, str_lit("suspends"))
+                            } else {
+                                s
+                            };
+                            if void_p(s, t) {
+                                note_fact(s, src_file, src_pos, str_lit("void"))
+                            } else if proc_type_p(s, t) {
+                                note_fact(s, src_file, src_pos, str_lit("procedure"))
+                            } else {
+                                s
+                            }
                         }))
                     }
                 }

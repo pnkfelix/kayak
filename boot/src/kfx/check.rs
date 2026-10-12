@@ -400,11 +400,20 @@ pub fn label_of(e: &'static Sexp) -> Str {
     }
 }
 
-/// Whether effect `es` may abort: a `goto` on some region. Such a
-/// procedure, in Rust, returns a `Result` (emit.kfx).
+/// Whether effect `es` may abort: a `goto` on some region, or suspend, a
+/// `comefrom` (C45), which aborts to its prompt. Such a procedure, in
+/// Rust, returns a `Result` (emit.kfx).
 pub fn escapes_p(es: Strings) -> bool {
     any_p(lambda1(move |x: Str| {
-        (i64_gt(string_length_i64(x), 5i64) && string_eq_p(substring_of(x, 5i64), str_lit("goto:")))
+        (has_prefix_p(x, str_lit("goto:")) || has_prefix_p(x, str_lit("comefrom:")))
+    }), es)
+}
+
+/// Whether effect `es` may suspend: a `comefrom` on some region. Such a
+/// procedure, in Rust, is an `async fn` (C45).
+pub fn suspends_p(es: Strings) -> bool {
+    any_p(lambda1(move |x: Str| {
+        has_prefix_p(x, str_lit("comefrom:"))
     }), es)
 }
 
@@ -564,9 +573,7 @@ pub fn parse_effect(v: &'static Cv, tvars: Strings, e: &'static Sexp) -> Strings
                 map(lambda1(move |g: &'static Sexp| {
                     string_append(str_lit("g:"), name_of(v, g))
                 }), cdr(items(second(xs))))
-            } else if sym_is_p(car(xs), str_lit("comefrom")) {
-                match refuse(v, str_lit("a continuation kept (comefrom): KFX has escapes, not continuations, which Rust has not")) {}
-            } else if (sym_is_p(car(xs), str_lit("read")) || sym_is_p(car(xs), str_lit("write")) || sym_is_p(car(xs), str_lit("alloc")) || sym_is_p(car(xs), str_lit("goto"))) {
+            } else if (sym_is_p(car(xs), str_lit("read")) || sym_is_p(car(xs), str_lit("write")) || sym_is_p(car(xs), str_lit("alloc")) || sym_is_p(car(xs), str_lit("goto")) || sym_is_p(car(xs), str_lit("comefrom"))) {
                 kayak_rt::heap_cons(string_append(name_of(v, car(xs)), string_append(str_lit(":"), region_name(v, tvars, second(xs)))), kayak_rt::nil())
             } else {
                 match refuse(v, string_append(str_lit("an effect KFX does not have: "), show_sexp(e))) {}
@@ -598,6 +605,8 @@ pub fn rename_atoms(es: Strings, from: Str, to: Str) -> Strings {
             string_append(str_lit("alloc:"), to)
         } else if string_eq_p(x, string_append(str_lit("goto:"), from)) {
             string_append(str_lit("goto:"), to)
+        } else if string_eq_p(x, string_append(str_lit("comefrom:"), from)) {
+            string_append(str_lit("comefrom:"), to)
         } else {
             x
         }
@@ -2438,7 +2447,7 @@ pub fn after_colon(mut cs: List<char>) -> List<char> {
 }
 
 pub fn region_atom_p(x: Str) -> bool {
-    (i64_gt(string_length_i64(x), 5i64) && (string_eq_p(substring_of(x, 5i64), str_lit("read:")) || string_eq_p(substring_of(x, 5i64), str_lit("goto:")) || string_eq_p(substring_of(x, 6i64), str_lit("write:")) || string_eq_p(substring_of(x, 6i64), str_lit("alloc:"))))
+    (i64_gt(string_length_i64(x), 5i64) && (string_eq_p(substring_of(x, 5i64), str_lit("read:")) || string_eq_p(substring_of(x, 5i64), str_lit("goto:")) || string_eq_p(substring_of(x, 6i64), str_lit("write:")) || string_eq_p(substring_of(x, 6i64), str_lit("alloc:")) || has_prefix_p(x, str_lit("comefrom:"))))
 }
 
 pub fn atom_kind(x: Str) -> Str {
@@ -3277,7 +3286,7 @@ pub fn masked(mut es: Strings, mut r: Str) -> Strings {
     loop {
         if null_p(es) {
             return nil::<Str>();
-        } else if (string_eq_p(car(es), string_append(str_lit("read:"), r)) || string_eq_p(car(es), string_append(str_lit("write:"), r)) || string_eq_p(car(es), string_append(str_lit("alloc:"), r)) || string_eq_p(car(es), string_append(str_lit("goto:"), r))) {
+        } else if (string_eq_p(car(es), string_append(str_lit("read:"), r)) || string_eq_p(car(es), string_append(str_lit("write:"), r)) || string_eq_p(car(es), string_append(str_lit("alloc:"), r)) || string_eq_p(car(es), string_append(str_lit("goto:"), r)) || string_eq_p(car(es), string_append(str_lit("comefrom:"), r))) {
             es = cdr(es);
             continue;
         } else {
@@ -3386,6 +3395,9 @@ pub fn masked_goto(mut es: Strings, mut r: Str) -> Strings {
         if null_p(es) {
             return nil::<Str>();
         } else if string_eq_p(car(es), string_append(str_lit("goto:"), r)) {
+            es = cdr(es);
+            continue;
+        } else if string_eq_p(car(es), string_append(str_lit("comefrom:"), r)) {
             es = cdr(es);
             continue;
         } else {

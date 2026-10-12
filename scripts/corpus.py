@@ -125,12 +125,27 @@ def lib(names):
     out.append("/// A program's `main`, which gives its answer.")
     out.append("pub type Main = fn() -> kayak_rt::Str;")
     out.append("")
+    # A `main` that may suspend (C45) is an `async fn`: run to its end.
+    suspending = [n for n in names if is_async_main(n)]
+    for n in suspending:
+        m = n.replace("-", "_")
+        out.append("fn %s_main() -> kayak_rt::Str {" % m)
+        out.append("    kayak_rt::suspend::block(%s::main()).unwrap_or_else(|u| kayak_rt::unreachable_unwind(u))" % m)
+        out.append("}")
+        out.append("")
     out.append("/// Each program's name, and its `main`.")
     out.append("pub const PROGRAMS: &[(&str, Main)] = &[")
     for n in names:
-        out.append('    ("%s", %s::main),' % (n, n.replace("-", "_")))
+        m = n.replace("-", "_")
+        out.append('    ("%s", %s),' % (n, m + "_main" if n in suspending else m + "::main"))
     out.append("];")
     return "\n".join(out) + "\n"
+
+
+def is_async_main(n):
+    path = os.path.join(CORPUS, n, "mod.rs") if os.path.exists(os.path.join(CORPUS, n + ".unit")) else os.path.join(CORPUS, n + ".rs")
+    with open(path) as f:
+        return "pub async fn main()" in f.read()
 
 
 def main():

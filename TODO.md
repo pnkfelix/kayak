@@ -236,11 +236,18 @@ or a trait.
 The next goal. Phase A, in order (`PLAN.md` §6.5):
 - ~~**The research note**~~: done, `docs/research/async-rust.md`, C45,
   with the prototype `kayak-rt/src/suspend.rs`.
-- **No executor**: the scheduler is KFX (C45). Instead, in order:
-  `abort-with-continuation` in the prelude and kayak-rt; the checker's
-  rule for it, `(comefrom r)`, prompts that may capture, none inside a
-  `letrena`; the emitter's `async fn` by effect; Fixpt's `ping-pong.fx`
-  and `promise.fx` as KFX in the corpus; a library of tasks in KFX.
+- ~~**Suspension in the checker and emitter**~~: done (C45): `(comefrom r)`,
+  `abort-with-continuation`, `async fn` by effect, suspending prompts and
+  procedure values; ping-pong and promises in the corpus.
+- **A library of tasks in KFX**: the run queue, `spawn`, `yield`, `join`,
+  a virtual clock and `sleep`, channels; nurseries and cancel scopes
+  later (marks: `PLAN.md` §8). Fixpt's other async examples
+  (`cancel.fx`, `context.fx`) as corpus programs where KFX can say them.
+- **Boxing only what recursion needs**: every suspending call is boxed
+  now; a call outside its callee's recursive group need not be.
+- **Suspension in a procedure over regions or places** (C42's
+  lifetimes): its future is `'static` now, so refused by rustc; refuse
+  it in the checker, or give `Body` a lifetime.
 - **Record and replay** (the user, 2026-10-12), as Coopt's: runners
   (sim, replay; live later) behind one interface, a log of arrivals by
   step and clock moves, outputs checked against it on replay, one event

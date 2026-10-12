@@ -1,0 +1,59 @@
+"Tasks over one prompt tag (C45): Fixpt's ping-pong
+ (docs/research/examples/async/ping-pong.fx), in KFX. A task suspends by
+ `abort-with-continuation`, giving its rest, resumable once, to the
+ scheduler, which is this program's own: a queue of them."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-effect D (maxeff kfx (read @q) (write @q) (alloc @q) (read @p) (write @p) (alloc @p)))
+(define-effect suspends (maxeff D (goto @p) (comefrom @p)))
+
+(define-type task (subr (maxeff D (goto @p) (comefrom @p) (read @p) (write @p)) (unit) unit))
+(define-type tasks (listof task @q))
+(define sched (prompt-tag unit task suspends @p) (make-continuation-prompt-tag))
+(define queue (ref tasks @q) (new nil))
+(define log (ref (listof i64 @q) @q) (new nil))
+
+(define reverse-tasks (subr D (tasks tasks) tasks)
+  (lambda (xs acc) (if (null? xs) acc (reverse-tasks (cdr xs) (cons (car xs) acc)))))
+
+(define yield! (subr suspends () unit)
+  (lambda () (abort-with-continuation sched (lambda ((k task)) k))))
+
+(define enqueue! (subr D (task) unit)
+  (lambda (k) (set queue (reverse-tasks (cons k (reverse-tasks (get queue) nil)) nil))))
+
+"Start a task: it yields at once, so its first step runs from `run!`."
+(define spawn! (subr suspends ((subr suspends () unit)) unit)
+  (lambda (thunk) (prompt sched (begin (yield!) (thunk)) (lambda ((k task)) (enqueue! k)))))
+
+(define run! (subr suspends () unit)
+  (lambda ()
+    (let ((q (get queue)))
+      (if (null? q)
+          #u
+          (begin
+            (set queue (cdr q))
+            (prompt sched ((car q) #u) (lambda ((k task)) (enqueue! k)))
+            (run!))))))
+
+(define pinger (subr suspends (i64 i64) unit)
+  (lambda (who n)
+    (if (i64= n 0)
+        #u
+        (begin (set log (cons (i64+ who n) (get log)))
+               (yield!)
+               (pinger who (i64- n 1))))))
+
+(define show (subr D ((listof i64 @q)) string)
+  (lambda (xs)
+    (if (null? xs) "" (string-append (i64->string (car xs)) (string-append " " (show (cdr xs)))))))
+
+(define reverse-log (subr D ((listof i64 @q) (listof i64 @q)) (listof i64 @q))
+  (lambda (xs acc) (if (null? xs) acc (reverse-log (cdr xs) (cons (car xs) acc)))))
+
+(define main (subr suspends () string)
+  (lambda ()
+    (begin
+      (spawn! (lambda () (pinger 100 3)))
+      (spawn! (lambda () (pinger 200 3)))
+      (run!)
+      (show (reverse-log (get log) nil)))))

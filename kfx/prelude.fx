@@ -34,3 +34,25 @@
 
 (define flatarray-length-i64 (poly ((r region)) (subr pure ((flatarrayof i64 r)) i64))
   (lambda (a) (int->i64 (flatarray-length a))))
+
+"A suspension (CLAUDES_CHOICES.md C45, docs/research/async-rust.md): the
+ rest of the computation up to `tag`'s prompt, `k`, given to `f`, and an
+ abort there with `f k`. FX-26 would let `k` be resumed again and again;
+ KFX's, a Rust future, once: so here a second resume fails, as in Rust.
+ Its value is what `k` is resumed with."
+(define abort-with-continuation
+  (poly ((v type) (a type) (h type) (d effect) (r region) (e effect))
+    (subr (maxeff e (goto r) (comefrom r) (alloc r))
+          ((prompt-tag a h d r) (subr e ((subr (maxeff d (goto r) (comefrom r) (read r) (write r)) (v) a)) h))
+          v))
+  (plambda ((v type) (a type) (h type) (d effect) (r region) (e effect))
+    (lambda (tag f)
+      (call-with-composable-continuation
+        (lambda ((k (composable v a d r)))
+          (let ((used (the (ref bool r) (new #f))))
+            (the v (abort-current-continuation tag
+              (f (lambda ((x v))
+                   (if (get used)
+                       (begin (error "a continuation resumed twice") (k x))
+                       (begin (set used #t) (k x)))))))))
+        tag))))
