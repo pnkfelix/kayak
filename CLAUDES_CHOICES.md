@@ -1422,3 +1422,18 @@ engine's: its data compared by name in the `match` arm's guard
 (`symbol_eq_p`), as a string's are; the engine's `%case=` compares them
 as words. kfx now accepts 108 of Fixpt's programs (106), all agreeing; the
 engine agrees on 100 of them.
+
+## C74. Lambdas heard last, as FX-26 hears them; KFX's too (2026-10-12)
+
+A lambda given with a parameter of no type written, where the
+procedure's parameter, as instantiated, holds an inference variable, is
+checked after the call's other arguments, as FX-26 checks lambdas, so a
+later argument may say its parameters' types. KFX's own rule (rustc
+checks a call in order, and finds a closure's parameters' types only from
+what comes before it) is met another way: the emitter writes the closure's
+parameters' types the checker found (`param-types`, already its fact for
+a lambda whose types are all known). So KFX takes FX-26's rule; kfx's own
+Rust is unchanged, and `tests/kfx-stricter/lambda-order.kfx` is a corpus
+program now (`tests/kfx/lambda-order.kfx`), its answer Fixpt's.
+`run/marks-of.fx` gets past it, to KFX's `spin` for a call of a
+procedure it cannot see, a stricter rule of its own, left for now.

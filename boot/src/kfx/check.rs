@@ -4130,10 +4130,44 @@ pub fn nat_p(s: &'static St, t: &'static Ty) -> bool {
     }
 }
 
+/// Whether `t`, as written (no variable solved looked through), has an
+/// inference variable in it.
+pub fn holds_meta_p(t: &'static Ty) -> bool {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyMeta(k) => {
+            true
+        }
+        Ty::TyList(e, r) => {
+            (holds_meta_p(e) || holds_meta_p(r))
+        }
+        Ty::TyRef(e, r) => {
+            (holds_meta_p(e) || holds_meta_p(r))
+        }
+        Ty::TyData(d, args) => {
+            any_p(&holds_meta_p, args)
+        }
+        Ty::TyProc(es, ps, r) => {
+            (holds_meta_p(r) || any_p(&holds_meta_p, ps))
+        }
+        Ty::TyShape(p, ls, ts) => {
+            any_p(&holds_meta_p, ts)
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
 /// `nil` given for a parameter that is, as instantiated, an inference
-/// variable: decided before any argument is checked, so both passes agree.
+/// variable; and a lambda one of whose parameters has no type written,
+/// given for a procedure one of whose parameters' is such a variable (C74:
+/// FX-26 hears lambdas last, and the emitter writes the closure's
+/// parameters' types the checker found, so rustc need not find them):
+/// decided before any argument is checked, so both passes agree.
 pub fn deferred_p(arg: &'static Sexp, param: &'static Ty) -> bool {
-    ({
+    (({
         let tagcase_ = param;
         match *tagcase_ {
             Ty::TyMeta(k) => {
@@ -4144,7 +4178,29 @@ pub fn deferred_p(arg: &'static Sexp, param: &'static Ty) -> bool {
                 false
             }
         }
-    } && sym_is_p(arg, str_lit("nil")))
+    } && sym_is_p(arg, str_lit("nil"))) || (head_is_p(arg, str_lit("lambda")) && any_p(lambda1(move |p: &'static Sexp| {
+        let tagcase_ = p;
+        match *tagcase_ {
+            Sexp::Sym(n, f, x) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }), items(second(items(arg)))) && {
+        let tagcase_ = param;
+        match *tagcase_ {
+            Ty::TyProc(es, ps, r) => {
+                any_p(&holds_meta_p, ps)
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }))
 }
 
 pub fn eqv_bool_p(a: bool, b: bool) -> bool {

@@ -98,6 +98,11 @@ pub mod generative;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/lambda-order.rs"]
+pub mod lambda_order;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/letreap.rs"]
 pub mod letreap;
 
@@ -310,6 +315,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("flat-sums", flat_sums::main),
     ("floats", floats::main),
     ("generative", generative::main),
+    ("lambda-order", lambda_order::main),
     ("letreap", letreap::main),
     ("letrec", letrec::main),
     ("letregion-nat", letregion_nat::main),

@@ -1880,11 +1880,32 @@
 (define nat? (subr kfx (st ty) bool)
   (lambda (s t) (tagcase (walk s t) (ty-nat () #t) (else other #f))))
 
+(define-rec
+  (holds-meta? (subr kfx (ty) bool)
+    (lambda (t)
+      "Whether `t`, as written (no variable solved looked through), has an
+       inference variable in it."
+      (tagcase t
+        (ty-meta (k) #t)
+        (ty-list (e r) (or (holds-meta? e) (holds-meta? r)))
+        (ty-ref (e r) (or (holds-meta? e) (holds-meta? r)))
+        (ty-data (d args) (any? holds-meta? args))
+        (ty-proc (es ps r) (or (holds-meta? r) (any? holds-meta? ps)))
+        (ty-shape (p ls ts) (any? holds-meta? ts))
+        (else other #f)))))
+
 (define deferred? (subr kfx (sexp ty) bool)
   (lambda (arg param)
     "`nil` given for a parameter that is, as instantiated, an inference
-     variable: decided before any argument is checked, so both passes agree."
-    (and (tagcase param (ty-meta (k) #t) (else other #f)) (sym-is? arg "nil"))))
+     variable; and a lambda one of whose parameters has no type written,
+     given for a procedure one of whose parameters' is such a variable (C74:
+     FX-26 hears lambdas last, and the emitter writes the closure's
+     parameters' types the checker found, so rustc need not find them):
+     decided before any argument is checked, so both passes agree."
+    (or (and (tagcase param (ty-meta (k) #t) (else other #f)) (sym-is? arg "nil"))
+        (and (head-is? arg "lambda")
+             (any? (lambda ((p sexp)) (tagcase p (sym (n f x) #t) (else other #f))) (items (second (items arg))))
+             (tagcase param (ty-proc (es ps r) (any? holds-meta? ps)) (else other #f))))))
 
 (define eqv-bool? (subr kfx (bool bool) bool)
   (lambda (a b) (if a b (not b))))

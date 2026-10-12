@@ -1,0 +1,8 @@
+"A lambda whose parameter's type only a later argument gives (C74): FX-26
+ checks lambdas last, and so does kfx now; rustc, which checks a call in
+ order, is given the closure's parameter's type the checker found."
+(define-effect kfx (maxeff (read @globals) spin))
+(define map (poly ((a type) (b type)) (subr kfx ((subr kfx (a) b) (listof a acyclic)) (listof b acyclic))) (lambda (f xs) (if (null? xs) nil (cons (f (car xs)) (map f (cdr xs))))))
+(define g (subr kfx ((listof i64 acyclic)) (listof i64 acyclic)) (lambda (xs) (map (lambda (x) (i64+ x 1)) xs)))
+(define total (subr kfx ((listof i64 acyclic) i64) i64) (lambda (xs n) (if (null? xs) n (total (cdr xs) (i64+ n (car xs))))))
+(define main (subr kfx () string) (lambda () (i64->string (total (g (list 1 2 3)) 0))))
