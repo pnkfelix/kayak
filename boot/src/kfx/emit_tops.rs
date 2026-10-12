@@ -1017,6 +1017,32 @@ pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
         acc
     } else if (string_eq_p(h, str_lit("define-type")) && head_is_p(third(xs), str_lit("moduleof"))) {
         put_trait(c, sym_name(second(xs)), third(xs), acc)
+    } else if (string_eq_p(h, str_lit("define-type")) && {
+        let tagcase_ = second(xs);
+        match *tagcase_ {
+            Sexp::Lst(hs, hf, hl, hp) => {
+                any_p(lambda1(move |b: &'static Sexp| {
+                    let tagcase_ = b;
+                    match *tagcase_ {
+                        Sexp::Lst(bs, bf, bl, bp) => {
+                            (i64_eq(size(bs), 2i64) && sym_is_p(second(bs), str_lit("effect")))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }), cdr(hs))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        // An abbreviation over an effect (C46): no Rust alias, since what
+        // it stands for in Rust depends on the effect; each use expanded.
+        acc
     } else if string_eq_p(h, str_lit("define-type")) {
         // A type abbreviation; its regions, Rust lifetimes (C39), as a
         // `letrena`'s are, so that a use of it at one is at its lifetime.

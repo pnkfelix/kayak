@@ -829,7 +829,11 @@ in what its tasks may do (`PLAN.md` §8).
   not `async` (a caller whose instance cannot suspend) is run to its end,
   `kayak_rt::suspend::block`; a lambda given for such a parameter is a
   boxed future. Exact, at a box per call and per closure.
+- **Families over effects** (`(define-type (thunk (u effect) (l region))
+  ...)`): an effect argument is a row, spliced where the parameter is.
+  What Rust such an abbreviation stands for depends on the effect, so it
+  has no Rust alias: each use is expanded. A datatype over an effect is
+  not taken yet (one Rust type would have to serve every effect).
 - **Not chosen:** a Rust function for each colour an instance needs
   (monomorphised by kfx), quicker and larger, later if it is measured to
-  matter; effect parameters in families (`(loop u l)` of Coopt's
-  library): next, when the library of tasks needs them.
+  matter.

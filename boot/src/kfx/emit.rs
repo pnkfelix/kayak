@@ -1277,6 +1277,92 @@ pub fn letrena_lifetimes(mut ls: Strings) -> Strings {
     }
 }
 
+/// `e`, each of `names` replaced by its argument.
+pub fn substituted(names: Strings, args: Sexps, e: &'static Sexp) -> &'static Sexp {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Sym(n, f, p) => {
+            let find__knot = knot::<&'static dyn Fn(Strings, Sexps) -> &'static Sexp>();
+            let find = lambda2(move |mut ns: Strings, mut vs: Sexps| {
+                loop {
+                    if (null_p(ns) || null_p(vs)) {
+                        return e;
+                    } else if string_eq_p(car(ns), n) {
+                        return car(vs);
+                    } else {
+                        (ns, vs) = (cdr(ns), cdr(vs));
+                        continue;
+                    }
+                }
+            });
+            find__knot.set(find);
+            find(names, args)
+        }
+        Sexp::Lst(xs, f, l, p) => {
+            lst(map(lambda1(move |x: &'static Sexp| {
+                substituted(names, args, x)
+            }), xs), f, l, p)
+        }
+        _ => {
+            let other = tagcase_;
+            e
+        }
+    }
+}
+
+/// A family abbreviation's application, `(builder p r)`, as what it stands
+/// for, its parameters replaced by the arguments: where the emitter must
+/// see a procedure's type whole (a `letrec`'s, a definition's).
+pub fn family_expanded(mut c: &'static Ctx, mut t: &'static Sexp) -> &'static Sexp {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                let found = if null_p(xs) {
+                    nil::<&'static Sexp>()
+                } else {
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f2, p2) => {
+                            module_body(c, string_append(str_lit("%abbreviation "), n))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            nil::<&'static Sexp>()
+                        }
+                    }
+                };
+                if null_p(found) {
+                    return t;
+                } else {
+                    let parts = items(car(found));
+                    let head = car(parts);
+                    let names = {
+                        let tagcase_ = head;
+                        match *tagcase_ {
+                            Sexp::Lst(hs, f3, l3, p3) => {
+                                map(lambda1(move |b: &'static Sexp| {
+                                    sym_name(car(items(b)))
+                                }), cdr(hs))
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                nil::<Str>()
+                            }
+                        }
+                    };
+                    t = substituted(names, cdr(xs), second(parts));
+                    continue;
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                return t;
+            }
+        }
+    }
+}
+
 /// A type. A name that is no base type or datatype is a type abbreviation
 /// or a type variable, either way a Rust type of the same name.
 pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Chars {
@@ -1394,33 +1480,40 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
                         }
                     }
                 } {
+                    // A family applied; an abbreviation over an effect (C46) as what it
+                    // stands for, here, since what Rust it is depends on the effect.
                     let tagcase_ = car(find_family_of(c, sym_name(car(xs))));
                     match *tagcase_ {
                         Family::Family(n, datatype, kinds) => {
-                            let acc = if datatype {
-                                put(str_lit("&'static "), acc)
+                            if (not(datatype) && string_member_p(str_lit("effect"), kinds)) {
+                                t = family_expanded(c, t);
+                                continue;
                             } else {
-                                acc
-                            };
-                            let acc = put(camel(n), acc);
-                            let args = type_arguments(cdr(xs), kinds);
-                            let lives = if null_p(module_body(c, string_append(str_lit("%abbreviation "), n))) {
-                                nil::<Str>()
-                            } else {
-                                region_arguments(c, cdr(xs), kinds)
-                            };
-                            let places = if null_p(module_body(c, string_append(str_lit("%abbreviation "), n))) {
-                                nil::<Str>()
-                            } else {
-                                used_place_arguments(c, n, cdr(xs), kinds)
-                            };
-                            let parts = onto(lives, onto(map(lambda1(move |t: &'static Sexp| {
-                                rev_to_string(put_type(c, t, nil::<char>()))
-                            }), args), places));
-                            if null_p(parts) {
-                                return acc;
-                            } else {
-                                return put(string_append(str_lit("<"), string_append(words_of_sep(parts, str_lit(", ")), str_lit(">"))), acc);
+                                let acc = if datatype {
+                                    put(str_lit("&'static "), acc)
+                                } else {
+                                    acc
+                                };
+                                let acc = put(camel(n), acc);
+                                let args = type_arguments(cdr(xs), kinds);
+                                let lives = if null_p(module_body(c, string_append(str_lit("%abbreviation "), n))) {
+                                    nil::<Str>()
+                                } else {
+                                    region_arguments(c, cdr(xs), kinds)
+                                };
+                                let places = if null_p(module_body(c, string_append(str_lit("%abbreviation "), n))) {
+                                    nil::<Str>()
+                                } else {
+                                    used_place_arguments(c, n, cdr(xs), kinds)
+                                };
+                                let parts = onto(lives, onto(map(lambda1(move |t: &'static Sexp| {
+                                    rev_to_string(put_type(c, t, nil::<char>()))
+                                }), args), places));
+                                if null_p(parts) {
+                                    return acc;
+                                } else {
+                                    return put(string_append(str_lit("<"), string_append(words_of_sep(parts, str_lit(", ")), str_lit(">"))), acc);
+                                }
                             }
                         }
                     }
@@ -2443,92 +2536,6 @@ pub fn split_chars(mut cs: Chars, mut c: char, mut acc: Chars) -> Strings {
 
 pub fn split_at_char(s: Str, c: char) -> Strings {
     split_chars(string_chars(s), c, nil::<char>())
-}
-
-/// `e`, each of `names` replaced by its argument.
-pub fn substituted(names: Strings, args: Sexps, e: &'static Sexp) -> &'static Sexp {
-    let tagcase_ = e;
-    match *tagcase_ {
-        Sexp::Sym(n, f, p) => {
-            let find__knot = knot::<&'static dyn Fn(Strings, Sexps) -> &'static Sexp>();
-            let find = lambda2(move |mut ns: Strings, mut vs: Sexps| {
-                loop {
-                    if (null_p(ns) || null_p(vs)) {
-                        return e;
-                    } else if string_eq_p(car(ns), n) {
-                        return car(vs);
-                    } else {
-                        (ns, vs) = (cdr(ns), cdr(vs));
-                        continue;
-                    }
-                }
-            });
-            find__knot.set(find);
-            find(names, args)
-        }
-        Sexp::Lst(xs, f, l, p) => {
-            lst(map(lambda1(move |x: &'static Sexp| {
-                substituted(names, args, x)
-            }), xs), f, l, p)
-        }
-        _ => {
-            let other = tagcase_;
-            e
-        }
-    }
-}
-
-/// A family abbreviation's application, `(builder p r)`, as what it stands
-/// for, its parameters replaced by the arguments: where the emitter must
-/// see a procedure's type whole (a `letrec`'s, a definition's).
-pub fn family_expanded(mut c: &'static Ctx, mut t: &'static Sexp) -> &'static Sexp {
-    loop {
-        let tagcase_ = t;
-        match *tagcase_ {
-            Sexp::Lst(xs, f, l, p) => {
-                let found = if null_p(xs) {
-                    nil::<&'static Sexp>()
-                } else {
-                    let tagcase_ = car(xs);
-                    match *tagcase_ {
-                        Sexp::Sym(n, f2, p2) => {
-                            module_body(c, string_append(str_lit("%abbreviation "), n))
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            nil::<&'static Sexp>()
-                        }
-                    }
-                };
-                if null_p(found) {
-                    return t;
-                } else {
-                    let parts = items(car(found));
-                    let head = car(parts);
-                    let names = {
-                        let tagcase_ = head;
-                        match *tagcase_ {
-                            Sexp::Lst(hs, f3, l3, p3) => {
-                                map(lambda1(move |b: &'static Sexp| {
-                                    sym_name(car(items(b)))
-                                }), cdr(hs))
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                nil::<Str>()
-                            }
-                        }
-                    };
-                    t = substituted(names, cdr(xs), second(parts));
-                    continue;
-                }
-            }
-            _ => {
-                let other = tagcase_;
-                return t;
-            }
-        }
-    }
 }
 
 /// An `rlambda` as the lambda it is in Rust, at its own place, where the

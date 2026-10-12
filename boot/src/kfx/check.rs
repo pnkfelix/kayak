@@ -623,6 +623,25 @@ pub fn rename_atoms(es: Strings, from: Str, to: Str) -> Strings {
     }), es)
 }
 
+pub fn remove_atom(mut x: Str, mut es: Strings) -> Strings {
+    loop {
+        if null_p(es) {
+            return nil::<Str>();
+        } else if string_eq_p(car(es), x) {
+            es = cdr(es);
+            continue;
+        } else {
+            return kayak_rt::heap_cons(car(es), remove_atom(x, cdr(es)));
+        }
+    }
+}
+
+/// An effect as a type, where an effect binder is given one (C46): the
+/// row of its atoms, held as a procedure's latent effect.
+pub fn effect_row(atoms: Strings) -> &'static Ty {
+    ty_proc(atoms, nil::<&'static Ty>(), ty_unit())
+}
+
 /// Effects on region `name`, made effects on the region `m` stands for.
 pub fn rename_region(es: Strings, name: Str, m: &'static Ty) -> Strings {
     let tagcase_ = m;
@@ -635,6 +654,14 @@ pub fn rename_region(es: Strings, name: Str, m: &'static Ty) -> Strings {
         }
         Ty::TyVar(n) => {
             rename_atoms(es, name, n)
+        }
+        Ty::TyProc(r#as, ps, r) => {
+            // An effect binder given an effect, a row (C46): its atoms in its place.
+            if string_member_p(name, es) {
+                effs_union(r#as, remove_atom(name, es))
+            } else {
+                es
+            }
         }
         _ => {
             let other = tagcase_;
@@ -706,12 +733,16 @@ pub fn substitute_each(mut params: Strings, mut args: Tys, mut t: &'static Ty) -
 /// by a name no argument has, so that an argument naming a parameter is
 /// not replaced again.
 pub fn substitute(params: Strings, args: Tys, t: &'static Ty) -> &'static Ty {
-    let marks = map(lambda1(move |p: Str| {
-        ty_var(string_append(str_lit("%subst "), p))
+    let temps = map(lambda1(move |p: Str| {
+        string_append(if has_prefix_p(p, str_lit("~")) {
+            str_lit("~%subst ")
+        } else {
+            str_lit("%subst ")
+        }, p)
     }), params);
-    substitute_each(map(lambda1(move |p: Str| {
-        string_append(str_lit("%subst "), p)
-    }), params), args, substitute_each(params, marks, t))
+    substitute_each(temps, args, substitute_each(params, map(lambda1(move |p: Str| {
+        ty_var(p)
+    }), temps), t))
 }
 
 // Types
@@ -1760,6 +1791,9 @@ pub fn parse_arguments(v: &'static Cv, tvars: Strings, params: Strings, args: Se
     } else {
         kayak_rt::heap_cons(if char_eq_p(string_ref_i64(car(params), 0i64), '\'') {
             parse_region(v, tvars, car(args))
+        } else if char_eq_p(string_ref_i64(car(params), 0i64), '~') {
+            // An effect argument (C46): a row, its atoms.
+            effect_row(parse_effect(v, tvars, car(args)))
         } else {
             parse_type(v, tvars, car(args))
         }, parse_arguments(v, tvars, cdr(params), cdr(args)))
@@ -1818,6 +1852,8 @@ pub fn family_params(v: &'static Cv, head: &'static Sexp) -> Strings {
                     string_append(str_lit("'"), name_of(v, car(b)))
                 } else if sym_is_p(second(b), str_lit("place")) {
                     string_append(str_lit("'"), name_of(v, car(b)))
+                } else if sym_is_p(second(b), str_lit("effect")) {
+                    string_append(str_lit("~"), name_of(v, car(b)))
                 } else {
                     match refuse(v, string_append(str_lit("a family over a kind KFX does not have: "), show_sexp(lst(b, str_lit(""), 0i64, 0i64)))) {}
                 }
@@ -2553,10 +2589,6 @@ pub fn open_atom(mut s: &'static St, mut x: Str, mut es: Strings) -> Strings {
 // call, an inference variable, `~?k`, solved to a row: `(ty-proc atoms nil
 // unit)` holds its atoms, the last of which may be another variable, open
 // for more.
-pub fn effect_row(atoms: Strings) -> &'static Ty {
-    ty_proc(atoms, nil::<&'static Ty>(), ty_unit())
-}
-
 pub fn effect_meta_p(x: Str) -> bool {
     has_prefix_p(x, str_lit("~?"))
 }

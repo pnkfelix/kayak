@@ -31,9 +31,18 @@
                 (begin (each (lambda ((x i64)) (if (i64> x 2) (abort-current-continuation t x) #u)) xs) -1)
                 (lambda ((v i64)) v))))))
 
+"An abbreviation over an effect and a region: what it stands for in Rust
+ depends on the effect given, so each use is expanded (C46)."
+(define-type (thunk (u effect) (l region)) (subr (maxeff u (read l)) () i64))
+(define run-it (poly ((u effect) (l region)) (subr (maxeff u (read l)) ((thunk u l)) i64))
+  (lambda (f) (f)))
+(define plain (thunk pure @t) (lambda () 7))
+(define read-total (subr (maxeff kfx (read @t)) () i64)
+  (lambda () (i64+ (run-it (lambda () (get total))) (run-it plain))))
+
 (define main (subr (maxeff kfx (read @t) (write @t)) () string)
   (lambda ()
     (i64->string
       (i64+ (add-all (list 1 2 3 4))
             (i64+ (i64* 100 (first-big (list 1 2 3 4)))
-                  (i64* 1000 (twice (lambda ((x i64)) (i64* x 3)) 2)))))))
+                  (i64+ (i64* 1000 (twice (lambda ((x i64)) (i64* x 3)) 2)) (i64* 100000 (read-total))))))))

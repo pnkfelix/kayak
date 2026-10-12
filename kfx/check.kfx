@@ -307,6 +307,19 @@
                  (else x)))
          es)))
 
+(define-rec
+  (remove-atom (subr kfx (string strings) strings)
+    (lambda (x es)
+      (cond ((null? es) nil)
+            ((string=? (car es) x) (remove-atom x (cdr es)))
+            (else (cons (car es) (remove-atom x (cdr es))))))))
+
+(define effect-row (subr kfx (strings) ty)
+  (lambda (atoms)
+    "An effect as a type, where an effect binder is given one (C46): the
+     row of its atoms, held as a procedure's latent effect."
+    (ty-proc atoms nil (ty-unit))))
+
 (define rename-region (subr kfx (strings string ty) strings)
   (lambda (es name m)
     "Effects on region `name`, made effects on the region `m` stands for."
@@ -314,6 +327,9 @@
       (ty-meta (k) (rename-atoms es name (string-append "?" (i64->string k))))
       (ty-rconst (n) (rename-atoms es name n))
       (ty-var (n) (rename-atoms es name n))
+      (ty-proc (as ps r)
+        "An effect binder given an effect, a row (C46): its atoms in its place."
+        (if (string-member? name es) (effs-union as (remove-atom name es)) es))
       (else other es))))
 
 (define meta-name (subr kfx (i64) string)
@@ -346,9 +362,9 @@
     "`t`, each of `params` replaced by its argument, all at once: first each
      by a name no argument has, so that an argument naming a parameter is
      not replaced again."
-    (let ((marks (map (lambda ((p string)) (ty-var (string-append "%subst " p))) params)))
-      (substitute-each (map (lambda ((p string)) (string-append "%subst " p)) params) args
-                       (substitute-each params marks t)))))
+    (let ((temps (map (lambda ((p string)) (string-append (if (has-prefix? p "~") "~%subst " "%subst ") p)) params)))
+      (substitute-each temps args
+                       (substitute-each params (map (lambda ((p string)) (ty-var p)) temps) t)))))
 
 "Types"
 
@@ -823,9 +839,11 @@
       (cond ((and (null? params) (null? args)) nil)
             ((or (null? params) (null? args)) (refuse v "a type given the wrong number of arguments"))
             (else
-             (cons (if (char=? (string-ref-i64 (car params) 0) #\')
-                       (parse-region v tvars (car args))
-                       (parse-type v tvars (car args)))
+             (cons (cond ((char=? (string-ref-i64 (car params) 0) #\') (parse-region v tvars (car args)))
+                         ((char=? (string-ref-i64 (car params) 0) #\~)
+                          "An effect argument (C46): a row, its atoms."
+                          (effect-row (parse-effect v tvars (car args))))
+                         (else (parse-type v tvars (car args))))
                    (parse-arguments v tvars (cdr params) (cdr args)))))))
 
   (parse-application (subr kfx (cv strings string sexps) ty)
@@ -864,6 +882,7 @@
                        ((sym-is? (second b) "type") (name-of v (car b)))
                        ((sym-is? (second b) "region") (string-append "'" (name-of v (car b))))
                        ((sym-is? (second b) "place") (string-append "'" (name-of v (car b))))
+                       ((sym-is? (second b) "effect") (string-append "~" (name-of v (car b))))
                        (else (refuse v (string-append "a family over a kind KFX does not have: "
                                                       (show-sexp (lst b "" 0 0))))))))
              (cdr xs)))
@@ -1184,9 +1203,6 @@
  call, an inference variable, `~?k`, solved to a row: `(ty-proc atoms nil
  unit)` holds its atoms, the last of which may be another variable, open
  for more."
-
-(define effect-row (subr kfx (strings) ty)
-  (lambda (atoms) (ty-proc atoms nil (ty-unit))))
 
 (define effect-meta? (subr kfx (string) bool)
   (lambda (x) (has-prefix? x "~?")))

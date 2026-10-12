@@ -66,9 +66,25 @@ pub fn first_big(xs: List<i64>) -> i64 {
     }
 }
 
+// An abbreviation over an effect and a region: what it stands for in Rust
+// depends on the effect given, so each use is expanded (C46).
+pub async fn run_it<'l>(f: &'l dyn Fn() -> kayak_rt::suspend::Body<i64>) -> Result<i64, Unwind> {
+    Ok(kayak_rt::suspend::body(f()).await?)
+}
+
+pub fn plain() -> i64 {
+    7i64
+}
+
+pub fn read_total() -> i64 {
+    i64_plus(kayak_rt::suspend::block(kayak_rt::suspend::body(run_it(lambda0(move || kayak_rt::suspend::body(async move {
+        Ok(get(total()))
+    }))))).unwrap_or_else(|u| unreachable_unwind(u)), kayak_rt::suspend::block(kayak_rt::suspend::body(run_it(lambda0(move || kayak_rt::suspend::body(async move { Ok((&plain)()) }))))).unwrap_or_else(|u| unreachable_unwind(u)))
+}
+
 pub fn main() -> Str {
-    i64_to_string(i64_plus(add_all(kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::heap_cons(4i64, kayak_rt::nil()))))), i64_plus(i64_star(100i64, first_big(kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::heap_cons(4i64, kayak_rt::nil())))))), i64_star(1000i64, kayak_rt::suspend::block(kayak_rt::suspend::body(twice(lambda1(move |x: i64| kayak_rt::suspend::body(async move {
+    i64_to_string(i64_plus(add_all(kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::heap_cons(4i64, kayak_rt::nil()))))), i64_plus(i64_star(100i64, first_big(kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::heap_cons(4i64, kayak_rt::nil())))))), i64_plus(i64_star(1000i64, kayak_rt::suspend::block(kayak_rt::suspend::body(twice(lambda1(move |x: i64| kayak_rt::suspend::body(async move {
         Ok(i64_star(x, 3i64))
-    })), 2i64))).unwrap_or_else(|u| unreachable_unwind(u))))))
+    })), 2i64))).unwrap_or_else(|u| unreachable_unwind(u))), i64_star(100000i64, read_total())))))
 }
 
