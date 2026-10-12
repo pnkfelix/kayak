@@ -29,6 +29,19 @@ pub fn binder_name(p: &'static Sexp) -> Str {
     }
 }
 
+/// A shape's test, as `typecase` names the shape.
+pub fn shape_test(shape: Str) -> Str {
+    if string_eq_p(shape, str_lit("nil")) {
+        str_lit("null?")
+    } else if string_eq_p(shape, str_lit("bloblet")) {
+        str_lit("array?")
+    } else if string_eq_p(shape, str_lit("box")) {
+        str_lit("ref?")
+    } else {
+        string_append(shape, str_lit("?"))
+    }
+}
+
 pub fn position_of(mut n: Str, mut xs: Strings, mut i: i64) -> i64 {
     loop {
         if null_p(xs) {
@@ -522,6 +535,8 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
             return i_extract(label_of(second(xs)), lower(car(xs), sc, gs));
         } else if string_eq_p(h, str_lit("tagcase")) {
             return lower_tagcase(xs, sc, gs);
+        } else if string_eq_p(h, str_lit("typecase")) {
+            return lower_typecase(car(xs), cdr(xs), sc, gs);
         } else if string_eq_p(h, str_lit("prompt")) {
             return i_prompt(lower(car(xs), sc, gs), lower(third(xs), sc, gs), lower(second(xs), sc, gs));
         } else {
@@ -568,6 +583,20 @@ pub fn module_values(its: Sexps, sc: Scope, gs: Strings) -> Irs {
         } else {
             nil::<&'static Ir>()
         }, module_values(cdr(its), sc, gs))
+    }
+}
+
+/// `typecase` (C62): each arm its shape's test of `x`, binding it.
+pub fn lower_typecase(x: &'static Sexp, arms: Sexps, sc: Scope, gs: Strings) -> &'static Ir {
+    if null_p(arms) {
+        i_lit(v_unit())
+    } else {
+        let arm = items(car(arms));
+        if sym_is_p(car(arm), str_lit("else")) {
+            lower_body(cdr(arm), sc, gs)
+        } else {
+            i_if(i_call(i_lit(v_prim(shape_test(sym_name(car(arm))), 1i64)), kayak_rt::heap_cons(lower(x, sc, gs), kayak_rt::nil())), i_let(kayak_rt::heap_cons(lower(x, sc, gs), kayak_rt::nil()), lower_body(cdr(cdr(arm)), kayak_rt::heap_cons(kayak_rt::heap_cons(binder_name(second(arm)), kayak_rt::nil()), sc), gs)), lower_typecase(x, cdr(arms), sc, gs))
+        }
     }
 }
 

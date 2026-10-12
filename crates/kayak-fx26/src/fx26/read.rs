@@ -642,7 +642,7 @@ pub fn param_name(param: &'static Sexp) -> Str {
     })
 }
 
-pub fn procedure_p(e: &'static Sexp) -> bool {
+pub fn lambda_form_p(e: &'static Sexp) -> bool {
     (head_is_p(e, str_lit("lambda")) || head_is_p(e, str_lit("plambda")))
 }
 

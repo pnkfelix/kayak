@@ -453,7 +453,7 @@ pub fn item_values(forms: Sexps) -> Strings {
 /// The names a module's items give values not procedures to.
 pub fn item_constants(forms: Sexps) -> Strings {
     concat(map(lambda1(move |f: &'static Sexp| {
-        if (head_is_p(f, str_lit("define")) && not(procedure_p(last(items(f))))) {
+        if (head_is_p(f, str_lit("define")) && not(lambda_form_p(last(items(f))))) {
             the::<Strings>(kayak_rt::heap_cons(sym_name(second(items(f))), kayak_rt::nil()))
         } else {
             nil::<Str>()
@@ -795,7 +795,7 @@ pub fn note(form: &'static Sexp, c: &'static Ctx) -> &'static Ctx {
             } else if module_def_p(form) {
                 let m = sym_name(second(items(form)));
                 note_module_datatypes(m, cdr(items(third(items(form)))), ctx(ds, ts, ks, ls, xs, fs, ms, es, kayak_rt::heap_cons(typed(m, third(items(form))), mods)))
-            } else if (head_is_p(form, str_lit("define")) && (i64_eq(size(items(form)), 3i64) || i64_eq(size(items(form)), 4i64)) && not(procedure_p(last(items(form))))) {
+            } else if (head_is_p(form, str_lit("define")) && (i64_eq(size(items(form)), 3i64) || i64_eq(size(items(form)), 4i64)) && not(lambda_form_p(last(items(form))))) {
                 ctx(ds, ts, kayak_rt::heap_cons(sym_name(second(items(form))), ks), ls, xs, fs, ms, es, mods)
             } else {
                 c

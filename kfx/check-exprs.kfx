@@ -485,7 +485,7 @@
 
 (define control-form? (subr kfx (string) bool)
   (lambda (h)
-    (or (string=? h "if") (string=? h "cond") (string=? h "case") (string=? h "tagcase")
+    (or (string=? h "if") (string=? h "cond") (string=? h "case") (string=? h "tagcase") (string=? h "typecase")
         (string=? h "let") (string=? h "let*") (string=? h "begin") (string=? h "letrec")
         (string=? h "letregion") (string=? h "with"))))
 
@@ -641,6 +641,90 @@
           (else (tagcase (car vs)
                   (variant (t fields) (if (string=? t tag) (cdr vs) (cons (car vs) (without-tag tag (cdr vs))))))))))
 
+"Narrowing (C62): a shape's test of a local of a union, `(int? x)`, says
+ in its `if`'s first branch, and its `cond`'s clause, that `x` is the
+ member of that shape, and after it that `x` is one of the rest."
+(define tested-shape (subr kfx (string) string)
+  (lambda (p)
+    (cond ((string=? p "int?") "int") ((string=? p "string?") "string") ((string=? p "bool?") "bool")
+          ((string=? p "char?") "char") ((string=? p "symbol?") "symbol") ((string=? p "array?") "bloblet")
+          ((string=? p "procedure?") "procedure") ((string=? p "null?") "nil") ((string=? p "pair?") "pair")
+          ((string=? p "f64?") "f64") ((string=? p "ref?") "box") ((string=? p "sum?") "sum")
+          ((string=? p "product?") "product") ((string=? p "bytevector?") "bytevector")
+          (else ""))))
+
+(define arm-shape (subr kfx (string) string)
+  (lambda (a)
+    "A `typecase` arm's shape, as FX-26 names it."
+    (cond ((string=? a "array") "bloblet") (else a))))
+
+(define-rec
+  (members-but (subr kfx (tys string) tys)
+    (lambda (ts shape)
+      "Members not of `shape`: a list stays for `nil` and `pair` both."
+      (cond ((null? ts) nil)
+            ((or (string=? (shape-of (car ts)) shape)) (members-but (cdr ts) shape))
+            (else (cons (car ts) (members-but (cdr ts) shape)))))))
+
+(define union-of (subr kfx (tys) ty)
+  (lambda (ts) (if (null? (cdr ts)) (car ts) (ty-data "%union" ts))))
+
+(define narrowed-to (subr kfx (tys string) tys)
+  (lambda (ms shape)
+    "The member a test of `shape` proves; a list for `nil` or `pair`."
+    (if (or (string=? shape "nil") (string=? shape "pair")) (member-of-shape ms "list") (member-of-shape ms shape))))
+
+(define narrowed-from (subr kfx (tys string) tys)
+  (lambda (ms shape)
+    (if (or (string=? shape "nil") (string=? shape "pair")) ms (members-but ms shape))))
+
+(define literal-shape (subr kfx (sexp) string)
+  (lambda (e)
+    (tagcase e
+      (num (k f p) "int") (big (t f p) "int") (chr (c f p) "char") (str (x f p) "string") (real (x f p) "f64")
+      (else other ""))))
+
+(define-datatype narrowing (narrowing cv cv))
+
+(define union-local (subr kfx (cv st sexp) tys)
+  (lambda (v s x)
+    "The members of the local `x`'s union, if it is one; its type alone if
+     narrowed to one (a `typecase`'s later arms)."
+    (tagcase x
+      (sym (n f p)
+        (let ((found (find-bind n (cv-binds v))))
+          (if (null? found)
+              nil
+              (tagcase (car found)
+                (bind (n2 sc w)
+                  (if (string=? w "local")
+                      (tagcase sc (scheme (tv t) (tagcase (walk s t)
+                                                   (ty-data (d args) (if (string=? d "%union") args (if (string=? (shape-of (walk s t)) "") nil (list (walk s t)))))
+                                                   (else other (if (string=? (shape-of (walk s t)) "") nil (list (walk s t)))))))
+                      nil))))))
+      (else other nil))))
+
+(define narrowings (subr kfx (cv st sexp) (listof narrowing acyclic))
+  (lambda (v s test)
+    "What a test proves: `x` narrowed in the branch it holds in and in the
+     other, or nothing."
+    (tagcase test
+      (lst (xs f l p)
+        (if (and (i64= (size xs) 2) (tagcase (car xs) (sym (n f2 p2) #t) (else other #f)))
+            (let* ((pred (sym-name (car xs)))
+                   (shape (tested-shape pred))
+                   (ms (union-local v s (second xs))))
+              (if (or (string=? shape "") (null? ms)
+                      (tagcase (car (find-bind pred (cv-binds v))) (bind (n sc w) (not (string=? w "prim")))))
+                  nil
+                  (let ((yes (narrowed-to ms shape)) (no (narrowed-from ms shape)) (x (sym-name (second xs))))
+                    (if (or (null? yes) (null? no))
+                        nil
+                        (list (narrowing (with-binds v (list (local v x (union-of yes))))
+                                         (with-binds v (list (local v x (union-of no))))))))))
+            nil))
+      (else other nil))))
+
 "The control primitives KFX types by rules of its own (`abort-call`,
  `make-tag-call`), at FX-26's types, for a `proj` of one (C60), as FX-26's
  programs write it."
@@ -716,6 +800,17 @@
   (check (subr kfx (cv st sexp ty) res)
     (lambda (v s e expected)
       (let ((x (walk s expected)))
+        (if (and (tagcase e (sym (n f p) (string=? n "#f")) (else other #f))
+                 (or (string=? (show-ty s x) "false")
+                     (tagcase x (ty-data (d args) (and (string=? d "%union") (not (null? (member-of-shape args "bool")))
+                                                       (string=? (show-ty s (car (member-of-shape args "bool"))) "false")))
+                       (else other #f))))
+            (res (ty-data "false" nil) nil s)
+        (if (and (string=? (shape-of x) "union") (not (string=? (literal-shape e) "")))
+            (let ((m (member-of-shape (tagcase x (ty-data (d args) args) (else other nil)) (literal-shape e))))
+              (if (null? m)
+                  (refuse v (string-append "a literal is here, where a " (string-append (show-ty s x) " is expected")))
+                  (check v s e (car m))))
         (tagcase e
           (num (k num-file num-pos)
             "A literal is an `i64` where one is expected, and otherwise an
@@ -768,7 +863,7 @@
                   (ty-list (el r) (res x nil (note-turbofish s at-file at-pos (list el))))
                   (else other (check-by-synth v s e x)))
                 (check-by-synth v s e x)))
-          (else other (check-by-synth v s e x))))))
+          (else other (check-by-synth v s e x))))))))
 
   (check-by-synth (subr kfx (cv st sexp ty) res)
     (lambda (v s e expected)
@@ -934,8 +1029,17 @@
       (cond ((not (well-formed? h xs))
              (refuse v (string-append "a (" (string-append h " ...) not of the form FX-26 has"))))
             ((string=? h "if")
-             (tagcase (check v s (car xs) (ty-bool))
-               (res (t es s) (with-effs (arms v s (cdr xs) expected) es))))
+             (let ((ns (narrowings v s (car xs))))
+               (tagcase (check v s (car xs) (ty-bool))
+                 (res (t es s)
+                   (if (null? ns)
+                       (with-effs (arms v s (cdr xs) expected) es)
+                       (tagcase (car ns)
+                         (narrowing (yes no) (with-effs (narrowed-arms yes no s (second xs) (third xs) expected) es))))))))
+            ((string=? h "typecase")
+             (if (null? (union-local v s (car xs)))
+                 (refuse v "a typecase of a local of a union (C62)")
+                 (typecase-arms v s (car xs) (cdr xs) expected)))
             ((string=? h "begin") (body v s xs expected))
             ((string=? h "let")
              (let-values v s (items (car xs)) (cdr xs) expected nil #f))
@@ -1073,6 +1177,35 @@
               (tagcase (arms v s (cdr branches) (next-expected s t expected))
                 (res (t2 es2 s) (res (joined s t t2 expected) (effs-union es es2) (join-state v s t t2 expected)))))))))
 
+  (narrowed-arms (subr kfx (cv cv st sexp sexp tys) res)
+    (lambda (yes no s a b expected)
+      "An `if`'s branches, each where its test narrows (C62)."
+      (tagcase (body yes s (list a) expected)
+        (res (t es s)
+          (tagcase (body no s (list b) (next-expected s t expected))
+            (res (t2 es2 s) (res (joined s t t2 expected) (effs-union es es2) (join-state yes s t t2 expected))))))))
+
+  (typecase-arms (subr kfx (cv st sexp sexps tys) res)
+    (lambda (v s x arms expected)
+      "`(typecase x (shape name body ...) ... (else body ...))` (C62): each arm
+       binds its member; what it leaves narrows `x` for the arms after it."
+      (let ((arm (items (car arms))))
+        (if (sym-is? (car arm) "else")
+            (body v s (cdr arm) expected)
+            (let* ((ms (union-local v s x))
+                   (shape (arm-shape (sym-name (car arm))))
+                   (yes (narrowed-to ms shape))
+                   (no (narrowed-from ms shape)))
+              (if (null? yes)
+                  (refuse v (string-append "a typecase's arm of a shape its union has not: " (sym-name (car arm))))
+                  (tagcase (body (with-binds v (list (local v (name-of v (second arm)) (union-of yes)))) s (cdr (cdr arm)) expected)
+                    (res (t es s)
+                      (if (null? (cdr arms))
+                          (res t es s)
+                          (tagcase (typecase-arms (if (null? no) v (with-binds v (list (local v (sym-name x) (union-of no))))) s x (cdr arms)
+                                                  (next-expected s t expected))
+                            (res (t2 es2 s) (res (joined s t t2 expected) (effs-union es es2) (join-state v s t t2 expected)))))))))))))
+
   (cond-clauses (subr kfx (cv st sexps tys) res)
     (lambda (v s clauses expected)
       (let ((clause (items (car clauses))))
@@ -1084,9 +1217,9 @@
                 (refuse v "a cond needs an else: FX has no unspecified value")
                 (tagcase (check v s (car clause) (ty-bool))
                   (res (t0 es0 s)
-                    (tagcase (body v s (cdr clause) expected)
+                    (tagcase (body (let ((ns (narrowings v s (car clause)))) (if (null? ns) v (tagcase (car ns) (narrowing (yes no) yes)))) s (cdr clause) expected)
                       (res (t es s)
-                        (tagcase (cond-clauses v s (cdr clauses) (next-expected s t expected))
+                        (tagcase (cond-clauses (let ((ns (narrowings v s (car clause)))) (if (null? ns) v (tagcase (car ns) (narrowing (yes no) no)))) s (cdr clauses) (next-expected s t expected))
                           (res (t2 es2 s)
                             (res (joined s t t2 expected) (effs-union es0 (effs-union es es2)) (join-state v s t t2 expected)))))))))))))
 
@@ -2048,7 +2181,7 @@
             ((eqv-bool? (deferred? (car args) (car ps)) later)
              (tagcase (cond ((not (null? (module-spec v (walk s (car ps)))))
                              (module-argument v s (car args) (walk s (car ps))))
-                            ((and (not (procedure? (car args)))
+                            ((and (not (lambda-form? (car args)))
                                   (has-open? s (car ps)))
                              "An argument for a parameter whose type is not known whole yet:
                               found by itself, as FX-26 finds it (a literal an `int`, a

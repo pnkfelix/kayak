@@ -1480,6 +1480,119 @@ pub fn fixed_width_p(s: Str) -> bool {
     (string_eq_p(s, str_lit("i32")) || string_eq_p(s, str_lit("u32")) || string_eq_p(s, str_lit("u64")) || string_eq_p(s, str_lit("u8")) || string_eq_p(s, str_lit("i8")))
 }
 
+// Unions of shapes (C62; FX-26's, docs/fx26.md "Unions of shapes"): a
+// value of any of its members, whose shapes at run time differ, so that a
+// test tells them apart. A `(ty-data "%union" members)`, flattened, each
+// member once; `false`, the type of `#f` alone, below `bool`, a
+// `(ty-data "false" nil)`. Never Rust's (C57): the restriction pass's.
+/// A member's shape at run time, or `` if it has none known.
+pub fn shape_of(t: &'static Ty) -> Str {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyI64() => {
+            str_lit("int")
+        }
+        Ty::TyInt() => {
+            str_lit("int")
+        }
+        Ty::TyNat() => {
+            str_lit("int")
+        }
+        Ty::TyF64() => {
+            str_lit("f64")
+        }
+        Ty::TyChar() => {
+            str_lit("char")
+        }
+        Ty::TyBool() => {
+            str_lit("bool")
+        }
+        Ty::TyString() => {
+            str_lit("string")
+        }
+        Ty::TyUnit() => {
+            str_lit("symbol")
+        }
+        Ty::TyList(e, r) => {
+            str_lit("list")
+        }
+        Ty::TyProc(es, ps, r) => {
+            str_lit("procedure")
+        }
+        Ty::TyRef(e, r) => {
+            str_lit("box")
+        }
+        Ty::TyFlat(e, r) => {
+            str_lit("bloblet")
+        }
+        Ty::TyShape(p, ls, ts) => {
+            if p {
+                str_lit("product")
+            } else {
+                str_lit("sum")
+            }
+        }
+        Ty::TyData(d, args) => {
+            if (string_eq_p(d, str_lit("i32")) || string_eq_p(d, str_lit("u32")) || string_eq_p(d, str_lit("u64")) || string_eq_p(d, str_lit("u8")) || string_eq_p(d, str_lit("i8"))) {
+                str_lit("int")
+            } else if string_eq_p(d, str_lit("f32")) {
+                str_lit("f32")
+            } else if string_eq_p(d, str_lit("false")) {
+                str_lit("bool")
+            } else if string_eq_p(d, str_lit("symbol")) {
+                str_lit("symbol")
+            } else if string_eq_p(d, str_lit("%array")) {
+                str_lit("bloblet")
+            } else if string_eq_p(d, str_lit("%bytes")) {
+                str_lit("bytevector")
+            } else if string_eq_p(d, str_lit("%union")) {
+                str_lit("union")
+            } else {
+                str_lit("")
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("")
+        }
+    }
+}
+
+/// Members flattened: a union in a union is its members.
+pub fn union_members(ts: Tys) -> Tys {
+    if null_p(ts) {
+        nil::<&'static Ty>()
+    } else {
+        let tagcase_ = car(ts);
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                if string_eq_p(d, str_lit("%union")) {
+                    onto(union_members(args), union_members(cdr(ts)))
+                } else {
+                    kayak_rt::heap_cons(car(ts), union_members(cdr(ts)))
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                kayak_rt::heap_cons(car(ts), union_members(cdr(ts)))
+            }
+        }
+    }
+}
+
+pub fn member_of_shape(mut ts: Tys, mut shape: Str) -> Tys {
+    loop {
+        if null_p(ts) {
+            return nil::<&'static Ty>();
+        } else if string_eq_p(shape_of(car(ts)), shape) {
+            return kayak_rt::heap_cons(car(ts), kayak_rt::nil());
+        } else {
+            ts = cdr(ts);
+            continue;
+        }
+    }
+}
+
 /// `tvars`: the type variables in scope.
 pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) -> &'static Ty {
     loop {
@@ -1499,6 +1612,8 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                 } else if string_eq_p(s, str_lit("f32")) {
                     return ty_data(s, nil::<&'static Ty>());
                 } else if string_eq_p(s, str_lit("symbol")) {
+                    return ty_data(s, nil::<&'static Ty>());
+                } else if string_eq_p(s, str_lit("false")) {
                     return ty_data(s, nil::<&'static Ty>());
                 } else if string_eq_p(s, str_lit("bool")) {
                     return ty_bool();
@@ -1665,6 +1780,18 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                             let other = tagcase_;
                             return match refuse(v, string_append(str_lit("a flat array's length is a literal (KFX has no arrays of values yet): "), show_sexp(t))) {};
                         }
+                    }
+                } else if sym_is_p(car(xs), str_lit("union")) {
+                    let members = union_members(parse_types(v, tvars, cdr(xs)));
+                    let shapes = map(&shape_of, members);
+                    if i64_lt(size(members), 2i64) {
+                        return match refuse(v, string_append(str_lit("a union of fewer than two members: "), show_sexp(t))) {};
+                    } else if string_member_p(str_lit(""), shapes) {
+                        return match refuse(v, string_append(str_lit("a union's member with no shape known (a type variable, an abstract or generative type, a tag): "), show_sexp(t))) {};
+                    } else if repeated_p(shapes) {
+                        return match refuse(v, string_append(str_lit("a union of two members of one shape, which no test tells apart: "), show_sexp(t))) {};
+                    } else {
+                        return ty_data(str_lit("%union"), members);
                     }
                 } else if (sym_is_p(car(xs), str_lit("composable")) && i64_eq(size(xs), 5i64)) {
                     // FX-26's composable continuation (C60), `(composable T A D R)`: a
@@ -2102,6 +2229,8 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
                 string_append(str_lit("(bytevectorof "), string_append(show_ty(s, car(args)), str_lit(")")))
             } else if string_eq_p(d, str_lit("%array")) {
                 string_append(str_lit("(arrayof "), string_append(show_tys(s, args), str_lit(")")))
+            } else if string_eq_p(d, str_lit("%union")) {
+                string_append(str_lit("(union "), string_append(show_tys(s, args), str_lit(")")))
             } else if string_eq_p(d, str_lit("%composable")) {
                 string_append(str_lit("(composable "), string_append(show_ty(s, car(args)), string_append(str_lit(" "), string_append(show_ty(s, car(cdr(args))), string_append(str_lit(" "), string_append({
                     let tagcase_ = car(cdr(cdr(args)));
@@ -2903,6 +3032,81 @@ pub fn fits(v: &'static Cv, s: &'static St, actual: &'static Ty, expected: &'sta
 }
 
 pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static Ty) -> &'static St {
+    if string_eq_p(shape_of(a), str_lit("union")) {
+        // A union below `e`: each member is (C62).
+        fits_each_member(v, s, {
+            let tagcase_ = a;
+            match *tagcase_ {
+                Ty::TyData(d, args) => {
+                    args
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<&'static Ty>()
+                }
+            }
+        }, e)
+    } else if (string_eq_p(shape_of(e), str_lit("union")) && not(string_eq_p(shape_of(a), str_lit("")))) {
+        // A member below its union: the member of its shape (C62).
+        let m = member_of_shape({
+            let tagcase_ = e;
+            match *tagcase_ {
+                Ty::TyData(d, args) => {
+                    args
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<&'static Ty>()
+                }
+            }
+        }, shape_of(a));
+        if null_p(m) {
+            mismatch(v, s, a, e)
+        } else {
+            fits(v, s, a, car(m))
+        }
+    } else if ({
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                string_eq_p(d, str_lit("false"))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } && {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Ty::TyBool() => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        // `false` below `bool`.
+        s
+    } else {
+        fits_shapes_of(v, s, a, e)
+    }
+}
+
+pub fn fits_each_member(mut v: &'static Cv, mut s: &'static St, mut ms: Tys, mut e: &'static Ty) -> &'static St {
+    loop {
+        if null_p(ms) {
+            return s;
+        } else {
+            (s, ms) = (fits(v, s, car(ms), e), cdr(ms));
+            continue;
+        }
+    }
+}
+
+pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static Ty) -> &'static St {
     let tagcase_ = a;
     match *tagcase_ {
         Ty::TyList(x, xr) => {

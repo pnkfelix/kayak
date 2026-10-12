@@ -90,6 +90,8 @@ pub fn prim_arity(n: Str) -> i64 {
         1i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("char<=?"), kayak_rt::heap_cons(str_lit("char>=?"), kayak_rt::heap_cons(str_lit("string<=?"), kayak_rt::heap_cons(str_lit("string>=?"), kayak_rt::heap_cons(str_lit("string-ci=?"), kayak_rt::heap_cons(str_lit("symbol-compare"), kayak_rt::heap_cons(str_lit("%case="), kayak_rt::nil())))))))) {
         2i64
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("int?"), kayak_rt::heap_cons(str_lit("string?"), kayak_rt::heap_cons(str_lit("bool?"), kayak_rt::heap_cons(str_lit("char?"), kayak_rt::heap_cons(str_lit("symbol?"), kayak_rt::heap_cons(str_lit("array?"), kayak_rt::heap_cons(str_lit("procedure?"), kayak_rt::heap_cons(str_lit("f64?"), kayak_rt::heap_cons(str_lit("ref?"), kayak_rt::heap_cons(str_lit("sum?"), kayak_rt::heap_cons(str_lit("product?"), kayak_rt::heap_cons(str_lit("bytevector?"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::nil()))))))))))))))) {
+        1i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("%identity"), kayak_rt::heap_cons(str_lit("bytevector-length"), kayak_rt::heap_cons(str_lit("string->utf8"), kayak_rt::heap_cons(str_lit("utf8->string"), kayak_rt::heap_cons(str_lit("flatarray-length-i64"), kayak_rt::nil())))))) {
         1i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("append"), kayak_rt::heap_cons(str_lit("make-bytevector"), kayak_rt::heap_cons(str_lit("bytevector-u8-ref"), kayak_rt::heap_cons(str_lit("bytevector=?"), kayak_rt::heap_cons(str_lit("make-flatarray-i64"), kayak_rt::heap_cons(str_lit("flatarray-ref-i64"), kayak_rt::nil()))))))) {
@@ -836,6 +838,180 @@ pub fn apply_prim(n: Str, xs: Vals) -> &'static Val {
         v_unit()
     } else if string_eq_p(n, str_lit("%identity")) {
         a
+    } else if string_eq_p(n, str_lit("int?")) {
+        flag({
+            let tagcase_ = a;
+            match *tagcase_ {
+                Val::VInt(x) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        })
+    } else if string_eq_p(n, str_lit("string?")) {
+        flag({
+            let tagcase_ = a;
+            match *tagcase_ {
+                Val::VString(x) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        })
+    } else if string_eq_p(n, str_lit("bool?")) {
+        flag({
+            let tagcase_ = a;
+            match *tagcase_ {
+                Val::VBool(x) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        })
+    } else if string_eq_p(n, str_lit("char?")) {
+        flag({
+            let tagcase_ = a;
+            match *tagcase_ {
+                Val::VChar(x) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        })
+    } else if string_eq_p(n, str_lit("symbol?")) {
+        flag({
+            let tagcase_ = a;
+            match *tagcase_ {
+                Val::VSymbol(x) => {
+                    true
+                }
+                Val::VUnit() => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        })
+    } else if string_eq_p(n, str_lit("array?")) {
+        flag({
+            let tagcase_ = a;
+            match *tagcase_ {
+                Val::VArray(x) => {
+                    true
+                }
+                Val::VFlat(x) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        })
+    } else if string_eq_p(n, str_lit("procedure?")) {
+        flag({
+            let tagcase_ = a;
+            match *tagcase_ {
+                Val::VProc(n2, b, e) => {
+                    true
+                }
+                Val::VPrim(n2, k) => {
+                    true
+                }
+                Val::VCtor(n2, k) => {
+                    true
+                }
+                Val::VCont(fs, u, o) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        })
+    } else if string_eq_p(n, str_lit("f64?")) {
+        flag({
+            let tagcase_ = a;
+            match *tagcase_ {
+                Val::VReal(x) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        })
+    } else if string_eq_p(n, str_lit("ref?")) {
+        flag({
+            let tagcase_ = a;
+            match *tagcase_ {
+                Val::VRef(x) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        })
+    } else if string_eq_p(n, str_lit("sum?")) {
+        flag({
+            let tagcase_ = a;
+            match *tagcase_ {
+                Val::VSum(t, x) => {
+                    true
+                }
+                Val::VData(t, x) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        })
+    } else if string_eq_p(n, str_lit("product?")) {
+        flag({
+            let tagcase_ = a;
+            match *tagcase_ {
+                Val::VProduct(l, x) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        })
+    } else if string_eq_p(n, str_lit("bytevector?")) {
+        flag({
+            let tagcase_ = a;
+            match *tagcase_ {
+                Val::VBytes(x) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        })
     } else if string_eq_p(n, str_lit("i64-shl")) {
         v_i64(i64_shl(i64_of(a), val_int(b)))
     } else if string_eq_p(n, str_lit("i64-shr")) {

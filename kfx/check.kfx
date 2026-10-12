@@ -712,6 +712,47 @@
      named so, as a datatype is, of no variants; in Rust, Rust's."
     (or (string=? s "i32") (string=? s "u32") (string=? s "u64") (string=? s "u8") (string=? s "i8"))))
 
+"Unions of shapes (C62; FX-26's, docs/fx26.md \"Unions of shapes\"): a
+ value of any of its members, whose shapes at run time differ, so that a
+ test tells them apart. A `(ty-data \"%union\" members)`, flattened, each
+ member once; `false`, the type of `#f` alone, below `bool`, a
+ `(ty-data \"false\" nil)`. Never Rust's (C57): the restriction pass's."
+(define shape-of (subr kfx (ty) string)
+  (lambda (t)
+    "A member's shape at run time, or `` if it has none known."
+    (tagcase t
+      (ty-i64 () "int") (ty-int () "int") (ty-nat () "int") (ty-f64 () "f64") (ty-char () "char")
+      (ty-bool () "bool") (ty-string () "string") (ty-unit () "symbol") (ty-list (e r) "list")
+      (ty-proc (es ps r) "procedure") (ty-ref (e r) "box") (ty-flat (e r) "bloblet")
+      (ty-shape (p ls ts) (if p "product" "sum"))
+      (ty-data (d args)
+        (cond ((or (string=? d "i32") (string=? d "u32") (string=? d "u64") (string=? d "u8") (string=? d "i8")) "int")
+              ((string=? d "f32") "f32")
+              ((string=? d "false") "bool")
+              ((string=? d "symbol") "symbol")
+              ((string=? d "%array") "bloblet")
+              ((string=? d "%bytes") "bytevector")
+              ((string=? d "%union") "union")
+              (else "")))
+      (else other ""))))
+
+(define-rec
+  (union-members (subr kfx (tys) tys)
+    (lambda (ts)
+      "Members flattened: a union in a union is its members."
+      (if (null? ts)
+          nil
+          (tagcase (car ts)
+            (ty-data (d args) (if (string=? d "%union") (onto (union-members args) (union-members (cdr ts))) (cons (car ts) (union-members (cdr ts)))))
+            (else other (cons (car ts) (union-members (cdr ts)))))))))
+
+(define-rec
+  (member-of-shape (subr kfx (tys string) tys)
+    (lambda (ts shape)
+      (cond ((null? ts) nil)
+            ((string=? (shape-of (car ts)) shape) (list (car ts)))
+            (else (member-of-shape (cdr ts) shape))))))
+
 (define-rec
   (parse-type (subr kfx (cv strings sexp) ty)
     (lambda (v tvars t)
@@ -725,6 +766,7 @@
                 ((fixed-width? s) (ty-data s nil))
                 ((string=? s "f32") (ty-data s nil))
                 ((string=? s "symbol") (ty-data s nil))
+                ((string=? s "false") (ty-data s nil))
                 ((string=? s "bool") (ty-bool))
                 ((string=? s "char") (ty-char))
                 ((string=? s "unit") (ty-unit))
@@ -805,6 +847,14 @@
                            (ty-data "%flat-array" (list e (ty-rconst (i64->string k))))
                            (refuse v (string-append "a flat array is of a flat, its length a literal (KFX has no arrays of values yet): " (show-sexp t))))))
                    (else other (refuse v (string-append "a flat array's length is a literal (KFX has no arrays of values yet): " (show-sexp t))))))
+                ((sym-is? (car xs) "union")
+                 (let* ((members (union-members (parse-types v tvars (cdr xs))))
+                        (shapes (map shape-of members)))
+                   (cond ((i64< (size members) 2) (refuse v (string-append "a union of fewer than two members: " (show-sexp t))))
+                         ((string-member? "" shapes)
+                          (refuse v (string-append "a union's member with no shape known (a type variable, an abstract or generative type, a tag): " (show-sexp t))))
+                         ((repeated? shapes) (refuse v (string-append "a union of two members of one shape, which no test tells apart: " (show-sexp t))))
+                         (else (ty-data "%union" members)))))
                 ((and (sym-is? (car xs) "composable") (i64= (size xs) 5))
                  "FX-26's composable continuation (C60), `(composable T A D R)`: a
                   procedure of `T` to `A`, of effect `D` and control on `R`. Its own
@@ -1030,6 +1080,7 @@
                 ((string=? d "%blobref") (string-append "(blobref " (string-append (show-tys s args) ")")))
                 ((string=? d "%bytes") (string-append "(bytevectorof " (string-append (show-ty s (car args)) ")")))
                 ((string=? d "%array") (string-append "(arrayof " (string-append (show-tys s args) ")")))
+                ((string=? d "%union") (string-append "(union " (string-append (show-tys s args) ")")))
                 ((string=? d "%composable")
                  (string-append "(composable " (string-append (show-ty s (car args)) (string-append " " (string-append (show-ty s (car (cdr args)))
                    (string-append " " (string-append (tagcase (car (cdr (cdr args))) (ty-proc (es ps r) (show-effs es)) (else other "?"))
@@ -1371,6 +1422,21 @@
                       (else (solve s j a))))
               (else other (fits-shapes v s a e))))))))
   (fits-shapes (subr kfx (cv st ty ty) st)
+    (lambda (v s a e)
+      (cond ((string=? (shape-of a) "union")
+             "A union below `e`: each member is (C62)."
+             (fits-each-member v s (tagcase a (ty-data (d args) args) (else other nil)) e))
+            ((and (string=? (shape-of e) "union") (not (string=? (shape-of a) "")))
+             "A member below its union: the member of its shape (C62)."
+             (let ((m (member-of-shape (tagcase e (ty-data (d args) args) (else other nil)) (shape-of a))))
+               (if (null? m) (mismatch v s a e) (fits v s a (car m)))))
+            ((and (tagcase a (ty-data (d args) (string=? d "false")) (else other #f)) (tagcase e (ty-bool () #t) (else other #f)))
+             "`false` below `bool`."
+             s)
+            (else (fits-shapes-of v s a e)))))
+  (fits-each-member (subr kfx (cv st tys ty) st)
+    (lambda (v s ms e) (if (null? ms) s (fits-each-member v (fits v s (car ms) e) (cdr ms) e))))
+  (fits-shapes-of (subr kfx (cv st ty ty) st)
     (lambda (v s a e)
       (tagcase a
         (ty-list (x xr) (tagcase e (ty-list (y yr) (fits v (fits v s x y) xr yr)) (else other (mismatch v s a e))))

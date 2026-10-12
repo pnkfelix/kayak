@@ -11,6 +11,12 @@
 (define binder-name (subr kfx (sexp) string)
   (lambda (p) (tagcase p (sym (n f x) n) (lst (xs f l x) (sym-name (car xs))) (else other ""))))
 
+(define shape-test (subr kfx (string) string)
+  (lambda (shape)
+    "A shape's test, as `typecase` names the shape."
+    (cond ((string=? shape "nil") "null?") ((string=? shape "bloblet") "array?") ((string=? shape "box") "ref?")
+          (else (string-append shape "?")))))
+
 (define-rec
   (position-of (subr kfx (string strings i64) i64)
     (lambda (n xs i)
@@ -253,6 +259,7 @@
                         (map (lambda ((f sexp)) (lower (second (items f)) sc gs)) xs)))
             ((string=? h "extract") (i-extract (label-of (second xs)) (lower (car xs) sc gs)))
             ((string=? h "tagcase") (lower-tagcase xs sc gs))
+            ((string=? h "typecase") (lower-typecase (car xs) (cdr xs) sc gs))
             ((string=? h "prompt") (i-prompt (lower (car xs) sc gs) (lower (third xs) sc gs) (lower (second xs) sc gs)))
             (else (i-call (lower-name h sc gs) (lower-all xs sc gs))))))
 
@@ -282,6 +289,18 @@
                         ((head-is? f "hide") (module-values (cdr (items f)) sc gs))
                         (else nil))
                   (module-values (cdr its) sc gs))))))
+
+  (lower-typecase (subr kfx (sexp sexps scope strings) ir)
+    (lambda (x arms sc gs)
+      "`typecase` (C62): each arm its shape's test of `x`, binding it."
+      (if (null? arms)
+          (i-lit (v-unit))
+          (let ((arm (items (car arms))))
+            (if (sym-is? (car arm) "else")
+                (lower-body (cdr arm) sc gs)
+                (i-if (i-call (i-lit (v-prim (shape-test (sym-name (car arm))) 1)) (list (lower x sc gs)))
+                      (i-let (list (lower x sc gs)) (lower-body (cdr (cdr arm)) (cons (list (binder-name (second arm))) sc) gs))
+                      (lower-typecase x (cdr arms) sc gs)))))))
 
   (lower-case (subr kfx (sexps scope strings) ir)
     (lambda (clauses sc gs)

@@ -294,5 +294,5 @@
     "A lambda's parameter's name: it is `x` or `(x T)`."
     (sym-name (tagcase param (lst (xs src-file src-line src-pos) (car xs)) (else other other)))))
 
-(define procedure? (subr kfx (sexp) bool)
+(define lambda-form? (subr kfx (sexp) bool)
   (lambda (e) (or (head-is? e "lambda") (head-is? e "plambda"))))

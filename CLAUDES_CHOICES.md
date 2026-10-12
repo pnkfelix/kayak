@@ -1224,3 +1224,29 @@ refused in one place. `kfx/restrict.kfx`.
   names, two that are one in Rust), which the pass would have to follow
   scopes to check; labels one in Rust.
 - Beyond KFX, the engine agrees on 14 of Fixpt's programs (11).
+
+## C62. Unions of shapes: the checker's and the engine's, refused for Rust (2026-10-12)
+
+C57's decision, carried out. In the checker (FX-26's rules, `docs/fx26.md`
+"Unions of shapes"):
+- `(union T ...)`, flattened, each member once, of two members or more
+  whose shapes at run time differ (a type variable or a type of no shape
+  known is no member); `false`, the type of `#f` alone, below `bool`.
+- **Subtyping**: a member below its union, by the member of its shape; a
+  union below what each member is below. A literal where a union is
+  expected is its member of the literal's shape; `#f` where a `false` is.
+- **Narrowing**: a shape's test of a local of a union (`int?`, `null?`,
+  and the rest, at FX-26's type) narrows it in its `if`'s first branch
+  and its `cond`'s clause, to the member of that shape, and after it to
+  the rest; `typecase`, each arm binding its member, what it leaves
+  narrowing the arms after it.
+- **Not yet**: `pairof` (a pair never `nil`) and the `nil` type, so
+  narrowing of lists is coarse (a list stays a list); a datatype's shape;
+  tests' propositions written in types (`(bool (then ...))`); `datum`.
+- **The engine**: the shape tests, and `typecase` lowered to them.
+- **The restriction pass** refuses `union`, `typecase`, `false` and the
+  shape tests for Rust, with C57's reason.
+- Of Fixpt's union programs it accepts, four now run on the engine with
+  its answers (`false`, `shapes-narrow`, `typecase`, `union-subtyping`);
+  beyond KFX, 18 agree, none differ. The compiler's own `procedure?` (of
+  `sexp`s) is `lambda-form?` now: FX-26's is standard.

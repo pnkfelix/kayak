@@ -4,6 +4,16 @@
 
 use crate::{Int, Show, Str, fail, i64_to_int, int_to_i64, leak_string};
 
+/// FX-26's `char->integer` and `integer->char`, at `int`.
+#[inline]
+pub fn char_to_integer(c: char) -> Int {
+    i64_to_int(c as i64)
+}
+
+pub fn integer_to_char(n: Int) -> char {
+    crate::i64_to_char(int_to_i64(n))
+}
+
 #[inline]
 pub fn bool_eq_p(a: bool, b: bool) -> bool {
     a == b
