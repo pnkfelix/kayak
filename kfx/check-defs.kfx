@@ -540,7 +540,8 @@
   (lambda (v xs src-file src-pos)
     "`(define* name type lambda)`: as FX-26 has it, the globals its body
      reads are found, not written. The body is checked as though the type
-     read every global; the global is then of the type written, its effect
+     read every global, and a call of itself read itself (C71: FX-26's
+     effect, `(read (globals name))`, not every global's); the global is then of the type written, its effect
      with the globals found. A place it is given is as a `define`'s: what
      it makes there kept (C34)."
     (let* ((name (name-of v (second xs)))
@@ -554,7 +555,8 @@
               (tagcase t
                 (ty-proc (declared ps r)
                   (let* ((wide (ty-proc (effs-union (list "@globals") declared) ps r))
-                         (named (with-binds v (list (global v name (scheme tvars wide)))))
+                         (itself (ty-proc (effs-union (list (string-append "g:" name)) declared) ps r))
+                         (named (with-binds v (list (global v name (scheme tvars itself)))))
                          (found (lambda-effects (with-tvars (with-tvars named tvars) (place-marks (third xs))) (new-state) (items (second lam)) (cdr (cdr lam)) wide))
                          (es (tagcase found (res (u es s) es)))
                          (fs (tagcase found (res (u es s) (settle-facts s)))))

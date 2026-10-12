@@ -435,6 +435,10 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
         } else if string_eq_p(h, str_lit("lambda")) {
             let names = map(&binder_name, items(car(xs)));
             return i_lambda(size(names), lower_body(cdr(xs), kayak_rt::heap_cons(names, sc), gs));
+        } else if string_eq_p(h, str_lit("vlambda")) {
+            // A variadic procedure (C71): arity -1, its one parameter the list of
+            // its arguments.
+            return i_lambda(-1i64, lower_body(cdr(xs), kayak_rt::heap_cons(kayak_rt::heap_cons(binder_name(car(xs)), kayak_rt::nil()), sc), gs));
         } else if string_eq_p(h, str_lit("if")) {
             return i_if(lower(car(xs), sc, gs), lower(second(xs), sc, gs), lower(third(xs), sc, gs));
         } else if string_eq_p(h, str_lit("begin")) {

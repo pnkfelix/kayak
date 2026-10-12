@@ -86,7 +86,8 @@
       (if (and (i64= op-make-tag (list-position "make-continuation-prompt-tag" prim-list 0))
                (i64= op-abort (list-position "abort-current-continuation" prim-list 0))
                (i64= op-capture (list-position "call-with-composable-continuation" prim-list 0))
-               (i64= op-suspend (list-position "abort-with-continuation" prim-list 0)))
+               (i64= op-suspend (list-position "abort-with-continuation" prim-list 0))
+               (i64= op-apply (list-position "apply" prim-list 0)))
           #u
           (error "the engine: the control primitives' numbers are not their places in prim-list")))))
 

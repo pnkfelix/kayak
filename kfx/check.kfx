@@ -874,6 +874,10 @@
                            (ty-data "%flat-array" (list e (ty-rconst (i64->string k))))
                            (refuse v (string-append "a flat array is of a flat, its length a literal (KFX has no arrays of values yet): " (show-sexp t))))))
                    (else other (refuse v (string-append "a flat array's length is a literal (KFX has no arrays of values yet): " (show-sexp t))))))
+                ((and (sym-is? (car xs) "vsubr") (i64= (size xs) 4))
+                 "FX-26's variadic procedure (C71), `(vsubr E T R)`: any number of `T`s
+                  to an `R`, of effect `E`."
+                 (ty-data "%vsubr" (list (ty-proc (parse-effect v tvars (second xs)) nil (ty-unit)) (parse-type v tvars (third xs)) (parse-type v tvars (fourth xs)))))
                 ((and (sym-is? (car xs) "pairof") (i64= (size xs) 4))
                  "FX-26's pair, never `nil` (C68): `(pairof A B R)`, its head and
                   tail of any types; a list's pair when its tail is the list."
@@ -1125,6 +1129,9 @@
                 ((string=? d "%array") (string-append "(arrayof " (string-append (show-tys s args) ")")))
                 ((string=? d "%union") (string-append "(union " (string-append (show-tys s args) ")")))
                 ((string=? d "%pairof") (string-append "(pairof " (string-append (show-tys s args) ")")))
+                ((string=? d "%vsubr")
+                 (string-append "(vsubr " (string-append (tagcase (car args) (ty-proc (es ps r) (show-effs es)) (else other "?"))
+                   (string-append " " (string-append (show-tys s (cdr args)) ")")))))
                 ((string=? d "%composable")
                  (string-append "(composable " (string-append (show-ty s (car args)) (string-append " " (string-append (show-ty s (car (cdr args)))
                    (string-append " " (string-append (tagcase (car (cdr (cdr args))) (ty-proc (es ps r) (show-effs es)) (else other "?"))
@@ -1236,6 +1243,21 @@
       (ty-unit () (tagcase e (ty-unit () #t) (else other #f)))
       (ty-string () (tagcase e (ty-string () #t) (else other #f)))
       (else other #f))))
+
+(define-rec
+  (repeat-ty (subr kfx (ty i64) tys)
+    (lambda (t n) (if (i64< n 1) nil (cons t (repeat-ty t (i64- n 1)))))))
+
+(define vsubr-as-proc (subr kfx (ty i64) ty)
+  (lambda (t n)
+    "A variadic procedure called with `n` arguments, as the procedure of `n`
+     `T`s it is then (C71); any other type, itself."
+    (tagcase t
+      (ty-data (d args)
+        (if (string=? d "%vsubr")
+            (ty-proc (tagcase (car args) (ty-proc (es ps r) es) (else other nil)) (repeat-ty (car (cdr args)) n) (car (cdr (cdr args))))
+            t))
+      (else other t))))
 
 (define region-string (subr kfx (st ty) string)
   (lambda (s r)

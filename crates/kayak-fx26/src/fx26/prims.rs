@@ -102,7 +102,7 @@ pub fn prim_arity(n: Str) -> i64 {
         1i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("stay-cellular"), kayak_rt::nil())) {
         1i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::heap_cons(str_lit("set-car!"), kayak_rt::heap_cons(str_lit("set-cdr!"), kayak_rt::nil())))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::heap_cons(str_lit("set-car!"), kayak_rt::heap_cons(str_lit("set-cdr!"), kayak_rt::heap_cons(str_lit("apply"), kayak_rt::nil()))))) {
         2i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("%identity"), kayak_rt::heap_cons(str_lit("bytevector-length"), kayak_rt::heap_cons(str_lit("string->utf8"), kayak_rt::heap_cons(str_lit("utf8->string"), kayak_rt::heap_cons(str_lit("flatarray-length-i64"), kayak_rt::nil())))))) {
         1i64

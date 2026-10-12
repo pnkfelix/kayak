@@ -109,6 +109,7 @@
 (define op-abort i64 136)
 (define op-capture i64 137)
 (define op-suspend i64 138)
+(define op-apply i64 168)
 
 (define-rec
   (label-position (subr (maxeff (read @globals) spin (read @h)) (i64 i64 i64 i64) i64)
@@ -143,7 +144,7 @@
                  (let ((w (flatarray-ref-i64 (get globals) i)))
                    (if (i64= w w-unbound) (unbound-global i) (run 1 0 env k w 0 0))))
                (n-lambda (n body)
-                 (let ((p (alloc! ob-proc 2))) (begin (obj-set! p 0 (code-word body)) (obj-set! p 1 env) (run 1 0 env k p 0 0))))
+                 (let ((p (alloc! ob-proc 2))) (begin (obj-set! p 0 (code-word node)) (obj-set! p 1 env) (run 1 0 env k p 0 0))))
                (n-call (at count) (run 0 (kid-at at) env (frame! fk-list k 4 (code-word node) (fixnum 1) env w-nil) 0 0 0))
                (n-if (c t e) (run 0 c env (frame! fk-if k 2 (code-word node) env 0 0) 0 0 0))
                (n-seq (at count)
@@ -292,10 +293,15 @@
     (lambda (f args k)
       (cond
         ((is-obj? f ob-proc)
-         (let* ((n (list-count args 0))
-                (e (alloc! ob-env (i64+ n 1))))
-           (begin (obj-set! e 0 (obj-ref f 1)) (args-env! e 1 args n)
-                  (run 0 (code-index (obj-ref f 0)) e k 0 0 0))))
+         (tagcase (node-at (code-index (obj-ref f 0)))
+           (n-lambda (arity body)
+             (if (i64= arity -1)
+                 (let ((e (alloc! ob-env 2))) (begin (obj-set! e 0 (obj-ref f 1)) (obj-set! e 1 args) (run 0 body e k 0 0 0)))
+                 (let* ((n (list-count args 0))
+                        (e (alloc! ob-env (i64+ n 1))))
+                   (begin (obj-set! e 0 (obj-ref f 1)) (args-env! e 1 args n)
+                          (run 0 body e k 0 0 0)))))
+           (else other (begin (error "the engine: a procedure of no lambda") 0))))
         ((is-obj? f ob-ctor)
          (let* ((n (list-count args 0))
                 (p (alloc! ob-data (i64+ n 1))))
@@ -310,6 +316,13 @@
            (cond
              ((i64= op op-make-tag)
               (let ((t (get tags-made))) (begin (set tags-made (i64+ t 1)) (run 1 0 0 k (immediate imm-tag t) 0 0))))
+             ((i64= op op-apply)
+              "`(apply f xs)` (C71): `f` on `xs`'s elements, the list copied, as
+               FX-26 copies it (a fresh list, which a `vlambda` may keep)."
+              (let ((need (i64* 3 (i64+ (list-count (pair-car (pair-cdr args)) 0) 1))))
+                (if (i64< (heap-room) (i64+ need reserve))
+                    (gc-run 2 0 0 k 0 f args need)
+                    (run 2 0 0 k 0 (pair-car args) (reverse-words! (reverse-words! (pair-car (pair-cdr args)) w-nil) w-nil)))))
              ((i64= op op-abort) (abort-to (tag-number (pair-car args)) k (pair-car (pair-cdr args))))
              ((i64= op op-capture)
               (let* ((tag (tag-number (pair-car (pair-cdr args)))) (n (frames-to k tag 0)))

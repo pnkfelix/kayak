@@ -261,6 +261,10 @@ pub fn op_suspend() -> i64 {
     138i64
 }
 
+pub fn op_apply() -> i64 {
+    168i64
+}
+
 pub fn label_position(mut start: i64, mut n: i64, mut l: i64, mut i: i64) -> i64 {
     loop {
         if i64_gt_eq(i, n) {
@@ -330,7 +334,7 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                     }
                     Node::NLambda(n, body) => {
                         let p = alloc_x(ob_proc(), 2i64);
-                        obj_set_x(p, 0i64, code_word(body));
+                        obj_set_x(p, 0i64, code_word(node));
                         obj_set_x(p, 1i64, env);
                         (mode, node, val, f, args) = (1i64, 0i64, p, 0i64, 0i64);
                         continue;
@@ -660,11 +664,28 @@ pub fn abort_to(tag: i64, k: i64, v: i64) -> i64 {
 
 pub fn apply_step(f: i64, args: i64, k: i64) -> i64 {
     if is_obj_p(f, ob_proc()) {
-        let n = list_count(args, 0i64);
-        let e = alloc_x(ob_env(), i64_plus(n, 1i64));
-        obj_set_x(e, 0i64, obj_ref(f, 1i64));
-        args_env_x(e, 1i64, args, n);
-        run(0i64, code_index(obj_ref(f, 0i64)), e, k, 0i64, 0i64, 0i64)
+        let tagcase_ = node_at(code_index(obj_ref(f, 0i64)));
+        match *tagcase_ {
+            Node::NLambda(arity, body) => {
+                if i64_eq(arity, -1i64) {
+                    let e = alloc_x(ob_env(), 2i64);
+                    obj_set_x(e, 0i64, obj_ref(f, 1i64));
+                    obj_set_x(e, 1i64, args);
+                    run(0i64, body, e, k, 0i64, 0i64, 0i64)
+                } else {
+                    let n = list_count(args, 0i64);
+                    let e = alloc_x(ob_env(), i64_plus(n, 1i64));
+                    obj_set_x(e, 0i64, obj_ref(f, 1i64));
+                    args_env_x(e, 1i64, args, n);
+                    run(0i64, body, e, k, 0i64, 0i64, 0i64)
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                error(str_lit("the engine: a procedure of no lambda"));
+                0i64
+            }
+        }
     } else if is_obj_p(f, ob_ctor()) {
         let n = list_count(args, 0i64);
         let p = alloc_x(ob_data(), i64_plus(n, 1i64));
@@ -690,6 +711,15 @@ pub fn apply_step(f: i64, args: i64, k: i64) -> i64 {
             let t = get(tags_made());
             set(tags_made(), i64_plus(t, 1i64));
             run(1i64, 0i64, 0i64, k, immediate(imm_tag(), t), 0i64, 0i64)
+        } else if i64_eq(op, op_apply()) {
+            // `(apply f xs)` (C71): `f` on `xs`'s elements, the list copied, as
+            // FX-26 copies it (a fresh list, which a `vlambda` may keep).
+            let need = i64_star(3i64, i64_plus(list_count(pair_car(pair_cdr(args)), 0i64), 1i64));
+            if i64_lt(heap_room(), i64_plus(need, reserve())) {
+                gc_run(2i64, 0i64, 0i64, k, 0i64, f, args, need)
+            } else {
+                run(2i64, 0i64, 0i64, k, 0i64, pair_car(args), reverse_words_x(reverse_words_x(pair_car(pair_cdr(args)), w_nil()), w_nil()))
+            }
         } else if i64_eq(op, op_abort()) {
             abort_to(tag_number(pair_car(args)), k, pair_car(pair_cdr(args)))
         } else if i64_eq(op, op_capture()) {

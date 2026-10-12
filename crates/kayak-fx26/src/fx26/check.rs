@@ -1844,6 +1844,10 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                             return match refuse(v, string_append(str_lit("a flat array's length is a literal (KFX has no arrays of values yet): "), show_sexp(t))) {};
                         }
                     }
+                } else if (sym_is_p(car(xs), str_lit("vsubr")) && i64_eq(size(xs), 4i64)) {
+                    // FX-26's variadic procedure (C71), `(vsubr E T R)`: any number of `T`s
+                    // to an `R`, of effect `E`.
+                    return ty_data(str_lit("%vsubr"), kayak_rt::heap_cons(ty_proc(parse_effect(v, tvars, second(xs)), nil::<&'static Ty>(), ty_unit()), kayak_rt::heap_cons(parse_type(v, tvars, third(xs)), kayak_rt::heap_cons(parse_type(v, tvars, fourth(xs)), kayak_rt::nil()))));
                 } else if (sym_is_p(car(xs), str_lit("pairof")) && i64_eq(size(xs), 4i64)) {
                     // FX-26's pair, never `nil` (C68): `(pairof A B R)`, its head and
                     // tail of any types; a list's pair when its tail is the list.
@@ -2312,6 +2316,19 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
                 string_append(str_lit("(union "), string_append(show_tys(s, args), str_lit(")")))
             } else if string_eq_p(d, str_lit("%pairof")) {
                 string_append(str_lit("(pairof "), string_append(show_tys(s, args), str_lit(")")))
+            } else if string_eq_p(d, str_lit("%vsubr")) {
+                string_append(str_lit("(vsubr "), string_append({
+                    let tagcase_ = car(args);
+                    match *tagcase_ {
+                        Ty::TyProc(es, ps, r) => {
+                            show_effs(es)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("?")
+                        }
+                    }
+                }, string_append(str_lit(" "), string_append(show_tys(s, cdr(args)), str_lit(")")))))
             } else if string_eq_p(d, str_lit("%composable")) {
                 string_append(str_lit("(composable "), string_append(show_ty(s, car(args)), string_append(str_lit(" "), string_append(show_ty(s, car(cdr(args))), string_append(str_lit(" "), string_append({
                     let tagcase_ = car(cdr(cdr(args)));
@@ -2670,6 +2687,44 @@ pub fn same_base_p(a: &'static Ty, e: &'static Ty) -> bool {
         _ => {
             let other = tagcase_;
             false
+        }
+    }
+}
+
+pub fn repeat_ty(t: &'static Ty, n: i64) -> Tys {
+    if i64_lt(n, 1i64) {
+        nil::<&'static Ty>()
+    } else {
+        kayak_rt::heap_cons(t, repeat_ty(t, i64_minus(n, 1i64)))
+    }
+}
+
+/// A variadic procedure called with `n` arguments, as the procedure of `n`
+/// `T`s it is then (C71); any other type, itself.
+pub fn vsubr_as_proc(t: &'static Ty, n: i64) -> &'static Ty {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            if string_eq_p(d, str_lit("%vsubr")) {
+                ty_proc({
+                    let tagcase_ = car(args);
+                    match *tagcase_ {
+                        Ty::TyProc(es, ps, r) => {
+                            es
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            nil::<Str>()
+                        }
+                    }
+                }, repeat_ty(car(cdr(args)), n), car(cdr(cdr(args))))
+            } else {
+                t
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            t
         }
     }
 }

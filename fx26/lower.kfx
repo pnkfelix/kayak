@@ -209,6 +209,10 @@
             ((string=? h "lambda")
              (let ((names (map binder-name (items (car xs)))))
                (i-lambda (size names) (lower-body (cdr xs) (cons names sc) gs))))
+            ((string=? h "vlambda")
+             "A variadic procedure (C71): arity -1, its one parameter the list of
+              its arguments."
+             (i-lambda -1 (lower-body (cdr xs) (cons (list (binder-name (car xs))) sc) gs)))
             ((string=? h "if") (i-if (lower (car xs) sc gs) (lower (second xs) sc gs) (lower (third xs) sc gs)))
             ((string=? h "begin") (i-seq (lower-all xs sc gs)))
             ((string=? h "let")

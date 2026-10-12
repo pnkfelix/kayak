@@ -2370,6 +2370,8 @@ pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
         }
     } else if string_eq_p(h, str_lit("lambda")) {
         synth_lambda(v, s, items(car(xs)), cdr(xs))
+    } else if (string_eq_p(h, str_lit("vlambda")) && null_p(find_bind(h, cv_binds(v)))) {
+        vlambda_form(v, s, xs, nil::<&'static Ty>())
     } else if (string_eq_p(h, str_lit("rlambda")) && null_p(find_bind(h, cv_binds(v)))) {
         rlambda_form(v, s, e, xs, nil::<&'static Ty>())
     } else if string_eq_p(h, str_lit("proj")) {
@@ -2455,6 +2457,60 @@ pub fn check_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
         sum_form(v, s, xs, expected)
     } else if (string_eq_p(h, str_lit("rlambda")) && null_p(find_bind(h, cv_binds(v)))) {
         rlambda_form(v, s, e, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
+    } else if (string_eq_p(h, str_lit("vlambda")) && null_p(find_bind(h, cv_binds(v))) && {
+        let tagcase_ = walk(s, expected);
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                string_eq_p(d, str_lit("%vsubr"))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        // A vlambda where a `vsubr` is expected (C71): checked as the lambda of
+        // one list it is, against the procedure of that list.
+        let tagcase_ = walk(s, expected);
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                let t = car(cdr(args));
+                let binder = car(xs);
+                let name = {
+                    let tagcase_ = binder;
+                    match *tagcase_ {
+                        Sexp::Lst(ys, f, l, p) => {
+                            car(ys)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            binder
+                        }
+                    }
+                };
+                let tagcase_ = check_lambda(v, s, kayak_rt::heap_cons(name, kayak_rt::nil()), cdr(xs), ty_proc({
+                    let tagcase_ = car(args);
+                    match *tagcase_ {
+                        Ty::TyProc(es, ps, r) => {
+                            es
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            nil::<Str>()
+                        }
+                    }
+                }, kayak_rt::heap_cons(ty_list(t, ty_rconst(str_lit("acyclic"))), kayak_rt::nil()), car(cdr(cdr(args)))));
+                match *tagcase_ {
+                    Res::Res(u, es2, s2) => {
+                        res(walk(s, expected), es2, s2)
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                match refuse(v, str_lit("a vlambda where no variadic procedure is expected")) {}
+            }
+        }
     } else if (string_eq_p(h, str_lit("lambda")) && proc_type_p(s, expected)) {
         check_lambda(v, s, items(car(xs)), cdr(xs), walk(s, expected))
     } else if (string_eq_p(h, str_lit("list")) && {
@@ -2870,6 +2926,47 @@ pub fn arms(v: &'static Cv, s: &'static St, branches: Sexps, expected: Tys) -> &
                     }
                 }
             }
+        }
+    }
+}
+
+/// `(vlambda xs body ...)`, `(vlambda (xs T) body ...)` (C71): a variadic
+/// procedure, `xs` the list of its arguments, a `(listof T acyclic)`; `T`
+/// written, or the expected `vsubr`'s, `given`.
+pub fn vlambda_form(v: &'static Cv, s: &'static St, xs: Sexps, given: Tys) -> &'static Res {
+    let binder = car(xs);
+    let name = {
+        let tagcase_ = binder;
+        match *tagcase_ {
+            Sexp::Lst(ys, f, l, p) => {
+                sym_name(car(ys))
+            }
+            _ => {
+                let other = tagcase_;
+                sym_name(binder)
+            }
+        }
+    };
+    let t = {
+        let tagcase_ = binder;
+        match *tagcase_ {
+            Sexp::Lst(ys, f, l, p) => {
+                parse_type(v, cv_tvars(v), second(ys))
+            }
+            _ => {
+                let other = tagcase_;
+                if null_p(given) {
+                    match refuse(v, str_lit("a vlambda's elements' type: write it, (vlambda (xs T) ...)")) {}
+                } else {
+                    car(given)
+                }
+            }
+        }
+    };
+    let tagcase_ = body(with_binds(v, kayak_rt::heap_cons(local(v, name, ty_list(t, ty_rconst(str_lit("acyclic")))), kayak_rt::nil())), s, cdr(xs), nil::<&'static Ty>());
+    match *tagcase_ {
+        Res::Res(r, es, s2) => {
+            res(ty_data(str_lit("%vsubr"), kayak_rt::heap_cons(ty_proc(es, nil::<&'static Ty>(), ty_unit()), kayak_rt::heap_cons(t, kayak_rt::heap_cons(r, kayak_rt::nil())))), nil::<Str>(), s2)
         }
     }
 }
@@ -4267,6 +4364,52 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
         match refuse(v, string_append(str_lit("("), string_append(h, str_lit(" ...) is FX-26's form, which KFX does not have, or a call of a local named by that keyword")))) {}
     } else if (null_p(found) && string_eq_p(h, str_lit("abort-current-continuation"))) {
         abort_call(v, s, args)
+    } else if (null_p(found) && string_eq_p(h, str_lit("apply")) && i64_eq(size(args), 2i64)) {
+        // `(apply f xs)` (C71): a variadic procedure on a list's elements.
+        let tagcase_ = synth(v, s, car(args));
+        match *tagcase_ {
+            Res::Res(ft, es0, s0) => {
+                let tagcase_ = walk(s0, ft);
+                match *tagcase_ {
+                    Ty::TyData(d, parts) => {
+                        if not(string_eq_p(d, str_lit("%vsubr"))) {
+                            match refuse(v, str_lit("apply of no variadic procedure")) {}
+                        } else {
+                            let tagcase_ = synth(v, s0, second(args));
+                            match *tagcase_ {
+                                Res::Res(lt, es1, s1) => {
+                                    let tagcase_ = walk(s1, lt);
+                                    match *tagcase_ {
+                                        Ty::TyList(el, r) => {
+                                            res(car(cdr(cdr(parts))), effs_union({
+                                                let tagcase_ = car(parts);
+                                                match *tagcase_ {
+                                                    Ty::TyProc(e, ps, x) => {
+                                                        e
+                                                    }
+                                                    _ => {
+                                                        let other = tagcase_;
+                                                        nil::<Str>()
+                                                    }
+                                                }
+                                            }, effs_union(kayak_rt::heap_cons(string_append(str_lit("read:"), region_string(s1, r)), kayak_rt::nil()), effs_union(es0, es1))), fits(v, s1, el, car(cdr(parts))))
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            match refuse(v, str_lit("apply of a variadic procedure to no list")) {}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        match refuse(v, str_lit("apply of no variadic procedure")) {}
+                    }
+                }
+            }
+        }
     } else if ((string_eq_p(h, str_lit("null?")) || string_eq_p(h, str_lit("pair?"))) && i64_eq(size(args), 1i64) && not(null_p(found)) && {
         let tagcase_ = car(found);
         match *tagcase_ {
@@ -4890,7 +5033,7 @@ pub fn synth_call_of(v: &'static Cv, s: &'static St, callee: &'static Res, args:
     let tagcase_ = callee;
     match *tagcase_ {
         Res::Res(t, es0, s) => {
-            let tagcase_ = composable_as_proc(s, walk(s, t));
+            let tagcase_ = vsubr_as_proc(composable_as_proc(s, walk(s, t)), size(args));
             match *tagcase_ {
                 Ty::TyProc(latent, ps, r) => {
                     if not(i64_eq(size(ps), size(args))) {

@@ -38,6 +38,8 @@ pub fn restricted(e: &'static Sexp, file: Str, line: i64) -> () {
         Sexp::Lst(xs, f, l, p) => {
             if null_p(xs) {
                 ()
+            } else if (sym_is_p(car(xs), str_lit("vsubr")) || sym_is_p(car(xs), str_lit("vlambda")) || sym_is_p(car(xs), str_lit("apply"))) {
+                match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", FX-26's variadic procedures, which KFX has not yet: a Rust fn has its arity (C71)"))) {}
             } else if (sym_is_p(car(xs), str_lit("union")) || sym_is_p(car(xs), str_lit("typecase")) || sym_is_p(car(xs), str_lit("pairof"))) {
                 match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", of FX-26's unions of shapes, which KFX has not: as a Rust enum, a union's subtyping under a list or a procedure would need a copy or a wrapper FX-26 has not (C57)"))) {}
             } else if sym_is_p(car(xs), str_lit("composable")) {

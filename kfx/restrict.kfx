@@ -33,6 +33,8 @@
                 (else #u)))
         (lst (xs f l p)
           (cond ((null? xs) #u)
+                ((or (sym-is? (car xs) "vsubr") (sym-is? (car xs) "vlambda") (sym-is? (car xs) "apply"))
+                 (restriction-refused f l (string-append (sym-name (car xs)) ", FX-26's variadic procedures, which KFX has not yet: a Rust fn has its arity (C71)")))
                 ((or (sym-is? (car xs) "union") (sym-is? (car xs) "typecase") (sym-is? (car xs) "pairof"))
                  (restriction-refused f l (string-append (sym-name (car xs)) ", of FX-26's unions of shapes, which KFX has not: as a Rust enum, a union's subtyping under a list or a procedure would need a copy or a wrapper FX-26 has not (C57)")))
                 ((sym-is? (car xs) "composable")

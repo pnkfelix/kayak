@@ -358,6 +358,13 @@ and what the generated code looks like for the compiler's own source.
 - Stage 3: unions of shapes, `datum`: not for KFX (C57); the checker
   takes them with phase C's engine, the restriction pass refusing them.
 - Stage 4: modules' remaining forms.
+- **First-class polymorphism** (the user asked why KFX has none,
+  2026-10-12): the checker's polymorphism is ML's, on named definitions
+  only; a `poly` type of its own (a local's, an argument's, a recursive
+  type's) touches every function over types, with FX-26's bidirectional
+  rules. For the engine; refused for Rust (Rust has no type-polymorphic
+  closure; region-only polymorphism could be `for<'a>` closures, if KFX
+  ever wants it).
 - Stage 5: higher kinds, variadic procedures, sizes.
 
 ## 23. FX-26's engine (`docs/research/engine.md`, C58)

@@ -662,7 +662,8 @@ pub fn global_reads(mut es: Strings) -> Strings {
 
 /// `(define* name type lambda)`: as FX-26 has it, the globals its body
 /// reads are found, not written. The body is checked as though the type
-/// read every global; the global is then of the type written, its effect
+/// read every global, and a call of itself read itself (C71: FX-26's
+/// effect, `(read (globals name))`, not every global's); the global is then of the type written, its effect
 /// with the globals found. A place it is given is as a `define`'s: what
 /// it makes there kept (C34).
 pub fn check_define_star(v: &'static Cv, xs: Sexps, src_file: Str, src_pos: i64) -> &'static Cv {
@@ -688,7 +689,8 @@ pub fn check_define_star(v: &'static Cv, xs: Sexps, src_file: Str, src_pos: i64)
                 match *tagcase_ {
                     Ty::TyProc(declared, ps, r) => {
                         let wide = ty_proc(effs_union(kayak_rt::heap_cons(str_lit("@globals"), kayak_rt::nil()), declared), ps, r);
-                        let named = with_binds(v, kayak_rt::heap_cons(global(v, name, scheme(tvars, wide)), kayak_rt::nil()));
+                        let itself = ty_proc(effs_union(kayak_rt::heap_cons(string_append(str_lit("g:"), name), kayak_rt::nil()), declared), ps, r);
+                        let named = with_binds(v, kayak_rt::heap_cons(global(v, name, scheme(tvars, itself)), kayak_rt::nil()));
                         let found = lambda_effects(with_tvars(with_tvars(named, tvars), place_marks(third(xs))), new_state(), items(second(lam)), cdr(cdr(lam)), wide);
                         let es = {
                             let tagcase_ = found;

@@ -1383,3 +1383,20 @@ programs to write one `poly`, as KFX's Rust has it. A `poly` as a type of
 its own (a local's, a recursive type's), first-class polymorphism, is not
 done: the checker's types have no such type, and adding one touches all
 of them. Beyond KFX, 24 agree (23).
+
+## C71. Variadic procedures; `define*`'s call of itself (2026-10-12)
+
+- **`(vsubr E T R)`**, FX-87's, as FX-26 has it: a type of its own; a
+  `vlambda` checked as the lambda of one list it is (its list a
+  `(listof T acyclic)`), against the procedure of that list; a call with
+  `n` arguments as the procedure of `n` `T`s; `(apply f xs)`. The engine:
+  a procedure of arity -1 takes its arguments as its one slot's list;
+  `apply` copies the list it is given, as FX-26's does (R7RS's fresh
+  list). The restriction pass refuses them for Rust (a Rust `fn` has its
+  arity), for now. `list` as a value, a `vsubr`, not yet.
+- **`define*`'s call of itself reads itself**, `(read (globals name))`, as
+  FX-26 finds it, not every global (`@globals`), which a body that called
+  it then had to say. kfx's own Rust unchanged by it (regenerated, the
+  corpus the same); kfx now accepts 106 of Fixpt's programs (105), all
+  agreeing.
+- Beyond KFX, the engine agrees on 28 (24).
