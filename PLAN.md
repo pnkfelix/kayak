@@ -603,6 +603,8 @@ KFX, for that reason. Alternatives:
   a log or a script to run under replay or the sim.
 My recommendation: (b) now, (a) if the Fixpt team takes it. Until the
 user says, (c) holds: nothing live is in KFX.
+The request for (a), drafted for the Fixpt team:
+`docs/requests/fixpt-world-io.md`.
 
 Likely next cases, to be confirmed by the code:
 - **Arrays of values**: KFX's flat arrays hold `i64` alone (C12); a run
