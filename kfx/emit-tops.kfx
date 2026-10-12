@@ -641,6 +641,14 @@
                "An abbreviation over an effect (C46): no Rust alias, since what
                 it stands for in Rust depends on the effect; each use expanded."
                acc)
+              ((and (string=? h "define-type")
+                    (not (null? (module-body c (string-append "%expand " (type-head-name (second xs)))))))
+               "An abbreviation of a module's family: expanded where applied (C89)."
+               acc)
+              ((and (string=? h "define-type") (tagcase (second xs) (lst (ys f l p) #t) (else other #f))
+                    (any? (lambda ((k string)) (has-prefix? k "%in ")) (ctx-locals c)))
+               "A module's family: expanded where applied (C89), no Rust alias."
+               acc)
               ((string=? h "define-type")
                "A type abbreviation; its regions, Rust lifetimes (C39), as a
                 `letrena`'s are, so that a use of it at one is at its lifetime."

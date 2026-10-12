@@ -305,7 +305,8 @@
      names and kayak-rt's. A module's item may shadow a primitive or a
      global (C87), as FX-26's may, and as a Rust `mod`'s item shadows what
      it imports by a glob."
-    (cond ((keyword? name) (refuse v (string-append "a keyword names nothing: " name)))
+    (cond ((and (keyword? name) (null? (find-bind "%module" (cv-binds v))))
+           (refuse v (string-append "a keyword names nothing: " name)))
           (else
            (let ((found (find-bind name (cv-binds v))))
              (if (null? found)
@@ -601,10 +602,16 @@
                 ((string=? h "define-type")
                  "Its body read where it stands, used or not: so that one that
                   mentions itself, or names no type, is refused."
-                 (if (head-is? (third xs) "moduleof")
+                 (cond ((head-is? (third xs) "moduleof")
                      (begin (spec-well-formed v (third xs))
                             (module-type-values (module-scope v (third xs) "" "") (third xs))
-                            v)
+                            v))
+                       ((and (head-is? (third xs) "select")
+                             (let ((found (find-alias (string-append (name-of v (second (items (third xs)))) (string-append " " (name-of v (third (items (third xs)))))) (cv-aliases v))))
+                               (and (not (null? found)) (tagcase (car found) (alias (n ps b) (not (null? ps)))))))
+                        "An abbreviation of a module's family (C89): read where applied."
+                        v)
+                       (else
                      (let* ((name (head-name v (second xs)))
                             (params (family-params v (second xs)))
                             (body (parse-type v (cons (string-append "%expanding " name)
@@ -612,7 +619,7 @@
                                                                  (concat (map (lambda ((p string)) (if (has-prefix? p "'") (the strings (list p)) nil)) params)))
                                                             params))
                                               (third xs))))
-                       v)))
+                       v))))
                 ((string=? h "define-datatype")
                  (let ((d (variants-dt v (head-name v (second xs)))))
                    (defined-once v (constructors d))))
@@ -865,8 +872,7 @@
                         (any? (lambda ((vt sexp)) (tag-taken? (sym-name (car (items vt))) (cv-dts v))) (cdr (cdr (items f)))))
                    (refuse v "a module's datatype whose tag another datatype has: KFX's tags name one datatype each"))
                   ((or (head-is? f "define-type") (head-is? f "define-generative") (head-is? f "define-datatype"))
-                   (let ((name (tagcase (second (items f)) (sym (n at-file at-pos) n)
-                                 (else other (refuse v "a module's type with parameters, which KFX's modules do not have yet")))))
+                   (let ((name (head-name v (second (items f)))))
                      (if (dt-named? name (cv-dts v))
                          (refuse v (string-append "a module's type named as the program's: KFX names them apart, " name))
                          (cons name (module-types v (cdr forms))))))
@@ -890,29 +896,36 @@
               (lst (map (lambda ((x sexp)) (qualify-type m names x)) xs) file line pos)))
         (else other t)))))
 
-(define module-aliases (subr kfx (string strings sexps bool) aliases)
-  (lambda (m names forms inside)
-    "A module's types: each `m..t`; and `t` inside it, `m t` outside."
+(define module-aliases (subr kfx (cv string strings sexps bool) aliases)
+  (lambda (v m names forms inside)
+    "A module's types: each `m..t`; and `t` inside it, `m t` outside. A
+     family, `(t (p kind) ...)` (C89), the same, applied: `t` stands for
+     `(m..t p ...)`."
     (concat
      (map (lambda ((f sexp))
             (cond ((not (or (head-is? f "define-type") (head-is? f "define-generative") (head-is? f "define-datatype"))) nil)
                   (else
                    (let* ((xs (items f))
-                          (t (sym-name (second xs)))
+                          (t (head-name v (second xs)))
+                          (ps (family-params v (second xs)))
                           (q (string-append m (string-append ".." t)))
                           (name (if inside t (string-append m (string-append " " t))))
-                          (named (alias name nil (sym q "" 0))))
+                          (named (alias name ps (if (null? ps)
+                                                    (sym q "" 0)
+                                                    (lst (cons (sym q "" 0)
+                                                               (map (lambda ((p string)) (sym (if (has-prefix? p "'") (after-prefix p "'") p) "" 0)) ps))
+                                                         "" 0 0)))))
                      (if (head-is? f "define-type")
-                         (the aliases (list named (alias q nil (qualify-type m names (third xs)))))
+                         (the aliases (list named (alias q ps (qualify-type m names (third xs)))))
                          (the aliases (list named)))))))
           forms))))
 
-(define module-dts (subr kfx (string sexps) dts)
-  (lambda (m forms)
+(define module-dts (subr kfx (cv string sexps) dts)
+  (lambda (v m forms)
     (concat
      (map (lambda ((f sexp))
             (if (or (head-is? f "define-generative") (head-is? f "define-datatype"))
-                (the dts (list (dt (string-append m (string-append ".." (sym-name (second (items f))))) nil nil)))
+                (the dts (list (dt (string-append m (string-append ".." (head-name v (second (items f))))) (family-params v (second (items f))) nil)))
                 nil))
           forms))))
 
@@ -1398,8 +1411,8 @@
                       (cv (bs ds als es here group file line fs tv at)
                         (cv (bind-onto (concat (map (lambda ((n string)) (excepted-binds v written n bs)) includes))
                                        (cons (bind "%module" (scheme nil (ty-unit)) m) bs))
-                            (onto (module-dts m forms) ds)
-                            (onto (module-aliases m names forms #t)
+                            (onto (module-dts v m forms) ds)
+                            (onto (module-aliases v m names forms #t)
                                   (onto (concat (map (lambda ((n string)) (excepted-aliases v written n als)) includes)) als))
                             (onto (concat (map (lambda ((n string)) (opened-effdefs n es)) includes)) es)
                             here group file line fs tv at))))
@@ -1416,7 +1429,7 @@
                 (elab (cv (cons made (bind-onto (module-exports m (onto hidden (map (lambda ((b bind)) (tagcase b (bind (n sc w) n))) conversions)) bs)
                                                 (cv-binds outer)))
                           (if loaded (onto ds (cv-dts outer)) ds)
-                          (onto (without-aliases hidden-types m (module-aliases m names forms #f))
+                          (onto (without-aliases hidden-types m (module-aliases v m names forms #f))
                                    (onto (concat (map (lambda ((n string)) (renamed-aliases n m (excepted-aliases v written n als)))
                                                       (unhidden-includes v written)))
                                          (cv-aliases outer)))

@@ -237,6 +237,11 @@
     "A module's Rust path: a module parameter's is its type parameter."
     (if (string=? (param-module-type m (ctx-locals c)) "") (mangle m) (string-append "Mod_" (camel m)))))
 
+(define type-head-name (subr kfx (sexp) string)
+  (lambda (head)
+    "A type definition's name, from its head: a name, or `(name binder ...)`."
+    (tagcase head (lst (xs src-file src-line src-pos) (sym-name (car xs))) (else other (sym-name other)))))
+
 (define item-values (subr kfx (sexps) strings)
   (lambda (forms)
     "The names a module's items give values to: its type's values."
@@ -262,8 +267,9 @@
   (lambda (forms)
     (concat
      (map (lambda ((f sexp))
-            (if (or (head-is? f "define-type") (head-is? f "define-generative") (head-is? f "define-datatype"))
-                (the strings (list (sym-name (second (items f)))))
+            (if (and (or (head-is? f "define-type") (head-is? f "define-generative") (head-is? f "define-datatype"))
+                     (not (and (head-is? f "define-type") (tagcase (second (items f)) (lst (ys fl l p) #t) (else other #f)))))
+                (the strings (list (type-head-name (second (items f)))))
                 nil))
           forms))))
 
@@ -322,11 +328,6 @@
         ts
         (note-tags (cdr variants) d
                    (cons (tagof (sym-name (car (items (car variants)))) d) ts)))))
-
-(define type-head-name (subr kfx (sexp) string)
-  (lambda (head)
-    "A type definition's name, from its head: a name, or `(name binder ...)`."
-    (tagcase head (lst (xs src-file src-line src-pos) (sym-name (car xs))) (else other (sym-name other)))))
 
 (define binder-kinds (subr kfx (sexps) strings)
   (lambda (bs) (map (lambda ((b sexp)) (sym-name (second (items b)))) bs)))
@@ -387,6 +388,15 @@
                             (let ((acc (put (camel n) acc))) (if bounded (put ": Copy + 'static" acc) acc)))
                           ", " names (put "<" acc))))))
 
+(define-rec
+  (qualified-types (subr kfx (string strings sexp) sexp)
+    (lambda (m names t)
+      "A type written in module `m`, its own types named `m..u`."
+      (tagcase t
+        (sym (n f p) (if (string-member? n names) (sym (string-append m (string-append ".." n)) f p) t))
+        (lst (xs f l p) (if (head-is? t "select") t (lst (map (lambda ((x sexp)) (qualified-types m names x)) xs) f l p)))
+        (else other t)))))
+
 (define note-module-datatypes (subr kfx (string sexps ctx) ctx)
   (lambda (m forms c)
     "A module's datatypes, as the program names them, `m..d`, with their tags."
@@ -397,7 +407,37 @@
                (tagcase c
                  (ctx (ds ts ks ls xs fs ms es mods)
                    (ctx (cons d ds) (note-tags (cdr (cdr (items (car forms)))) d ts) ks ls xs fs ms es mods))))))
+          ((and (head-is? (car forms) "define-type") (not (head-is? (third (items (car forms))) "moduleof"))
+                (tagcase (second (items (car forms))) (lst (ys f l p) #t) (else other #f)))
+           "A module's type family (C89): no Rust alias (one over a `Value`
+            would leave its parameters unused), but what it stands for, where
+            it is applied, by its name inside the module, `t`, and outside it,
+            `m..t`, its own types named `m..u` there."
+           (let* ((head (second (items (car forms))))
+                  (t (type-head-name head))
+                  (q (string-append m (string-append ".." t)))
+                  (local-types (concat (map (lambda ((f sexp))
+                                              (if (or (head-is? f "define-type") (head-is? f "define-generative") (head-is? f "define-datatype"))
+                                                  (the strings (list (type-head-name (second (items f)))))
+                                                  nil))
+                                            forms)))
+                  (qhead (tagcase head (lst (ys f l p) (lst (cons (sym q f p) (cdr ys)) f l p)) (else other head))))
+             (note-module-datatypes m (cdr forms)
+               (tagcase c
+                 (ctx (ds ts ks ls xs fs ms es mods)
+                   (ctx ds ts ks ls xs fs (note-family qhead #f (note-family head #f ms)) es
+                        (cons (typed (string-append "%expand " t) (sym t "" 0))
+                              (cons (typed (string-append "%expand " q) (sym q "" 0))
+                                    (cons (typed (string-append "%abbreviation " t) (lst (list head (third (items (car forms)))) "" 0 0))
+                                          (cons (typed (string-append "%abbreviation " q)
+                                                       (lst (list qhead (qualified-types m local-types (third (items (car forms))))) "" 0 0))
+                                                mods))))))))))
           (else (note-module-datatypes m (cdr forms) c)))))
+
+(define selected-name (subr kfx (sexp) string)
+  (lambda (sel)
+    "`(select m t)`'s type as the program names it, `m..t`."
+    (string-append (sym-name (second (items sel))) (string-append ".." (sym-name (third (items sel)))))))
 
 (define note (subr kfx (sexp ctx) ctx)
   (lambda (form c)
@@ -409,6 +449,21 @@
                       (note-family (second (items form)) #t ms) es mods)))
               ((and (head-is? form "define-type") (head-is? (third (items form)) "moduleof"))
                (ctx ds ts ks ls xs fs ms es (cons (typed (string-append "%moduleof " (sym-name (second (items form)))) (third (items form))) mods)))
+              ((and (head-is? form "define-type") (head-is? (third (items form)) "select")
+                    (not (null? (module-body c (string-append "%abbreviation " (selected-name (third (items form))))))))
+               "An abbreviation of a module's family (C89): that family, expanded
+                where applied, under this name too; no Rust alias."
+               (let* ((t (sym-name (second (items form))))
+                      (fam (car (module-body c (string-append "%abbreviation " (selected-name (third (items form)))))))
+                      (qhead (car (items fam)))
+                      (params (cdr (items qhead)))
+                      (names (map (lambda ((b sexp)) (sym (sym-name (car (items b))) "" 0)) params))
+                      (head (lst (cons (sym t "" 0) params) "" 0 0)))
+                 (ctx ds ts ks ls xs fs (note-family head #f ms) es
+                      (cons (typed (string-append "%expand " t) (sym t "" 0))
+                            (cons (typed (string-append "%abbreviation " t)
+                                         (lst (list head (lst (cons (third (items form)) names) "" 0 0)) "" 0 0))
+                                  mods)))))
               ((and (head-is? form "define-type") (tagcase (second (items form)) (sym (n f p) #t) (else other #f)))
                "A type abbreviation's body, kept for the typed suffixes (C32), which
                 compare types as written out."
@@ -416,9 +471,13 @@
                     (cons (typed (string-append "%alias " (sym-name (second (items form)))) (third (items form))) mods)))
               ((head-is? form "define-type")
                "A family abbreviation: its regions Rust lifetimes (C39), as a
-                generative type's are not."
+                generative type's are not. One whose body applies a module's family
+                is expanded where applied, as that family is (C89)."
                (ctx ds ts ks ls xs fs (note-family (second (items form)) #f ms) es
-                    (cons (typed (string-append "%abbreviation " (type-head-name (second (items form)))) (lst (list (second (items form)) (third (items form))) "" 0 0)) mods)))
+                    (onto (if (head-is? (car (items (third (items form)))) "select")
+                              (the typeds (list (typed (string-append "%expand " (type-head-name (second (items form)))) (sym "" "" 0))))
+                              nil)
+                          (cons (typed (string-append "%abbreviation " (type-head-name (second (items form)))) (lst (list (second (items form)) (third (items form))) "" 0 0)) mods))))
               ((head-is? form "define-generative")
                (ctx ds ts ks ls xs fs (note-family (second (items form)) #f ms) es mods))
               ((head-is? form "define-effect")
@@ -846,12 +905,16 @@
                    (if (null? fs) acc (put ">" (put-types c (map second fs) (put "<" acc))))))
                 ((sym-is? (car xs) "poly")
                  (error "kfx: a poly type is only a definition's, at its top"))
+                ((head-is? (car xs) "select")
+                 "A module's family applied by `select` (C89): `m..t` applied."
+                 (let ((sel (items (car xs))))
+                   (put-type c (lst (cons (sym (string-append (sym-name (second sel)) (string-append ".." (sym-name (third sel)))) "" 0) (cdr xs)) src-file src-line src-pos) acc)))
                 ((tagcase (car xs) (sym (n at-file at-pos) (not (null? (find-family-of c n)))) (else other #f))
                  "A family applied; an abbreviation over an effect (C46) as what it
                   stands for, here, since what Rust it is depends on the effect."
                  (tagcase (car (find-family-of c (sym-name (car xs))))
                    (family (n datatype kinds)
-                     (if (and (not datatype) (string-member? "effect" kinds))
+                     (if (and (not datatype) (or (string-member? "effect" kinds) (not (null? (module-body c (string-append "%expand " n))))))
                          (put-type c (family-expanded c t) acc)
                      (let* ((acc (if datatype (put "&'static " acc) acc))
                             (acc (put (camel n) acc))

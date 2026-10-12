@@ -64,5 +64,7 @@ too).
   `include`; items shadowing primitives.
 - Stage 4 (C88): modules in modules; `load-module`, spliced by the
   drivers, checked in the standard environment, pure.
+- Stage 5 (C89): a module's families, expanded where applied in Rust.
 
-120 of Fixpt's programs through kfx before modules; 139 after stage 4.
+120 of Fixpt's programs through kfx before modules; 139 after stage 4;
+146 after stage 5.

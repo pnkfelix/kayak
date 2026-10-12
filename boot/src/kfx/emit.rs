@@ -497,6 +497,20 @@ pub fn module_path(c: &'static Ctx, m: Str) -> Str {
     }
 }
 
+/// A type definition's name, from its head: a name, or `(name binder ...)`.
+pub fn type_head_name(head: &'static Sexp) -> Str {
+    let tagcase_ = head;
+    match *tagcase_ {
+        Sexp::Lst(xs, src_file, src_line, src_pos) => {
+            sym_name(car(xs))
+        }
+        _ => {
+            let other = tagcase_;
+            sym_name(other)
+        }
+    }
+}
+
 /// The names a module's items give values to: its type's values.
 pub fn item_values(forms: Sexps) -> Strings {
     concat(map(lambda1(move |f: &'static Sexp| {
@@ -529,8 +543,19 @@ pub fn item_constants(forms: Sexps) -> Strings {
 
 pub fn item_types(forms: Sexps) -> Strings {
     concat(map(lambda1(move |f: &'static Sexp| {
-        if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype"))) {
-            the::<Strings>(kayak_rt::heap_cons(sym_name(second(items(f))), kayak_rt::nil()))
+        if ((head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype"))) && not((head_is_p(f, str_lit("define-type")) && {
+            let tagcase_ = second(items(f));
+            match *tagcase_ {
+                Sexp::Lst(ys, fl, l, p) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }))) {
+            the::<Strings>(kayak_rt::heap_cons(type_head_name(second(items(f))), kayak_rt::nil()))
         } else {
             nil::<Str>()
         }
@@ -643,20 +668,6 @@ pub fn note_tags(mut variants: Sexps, mut d: Str, mut ts: Tagofs) -> Tagofs {
         } else {
             (variants, ts) = (cdr(variants), kayak_rt::heap_cons(tagof(sym_name(car(items(car(variants)))), d), ts));
             continue;
-        }
-    }
-}
-
-/// A type definition's name, from its head: a name, or `(name binder ...)`.
-pub fn type_head_name(head: &'static Sexp) -> Str {
-    let tagcase_ = head;
-    match *tagcase_ {
-        Sexp::Lst(xs, src_file, src_line, src_pos) => {
-            sym_name(car(xs))
-        }
-        _ => {
-            let other = tagcase_;
-            sym_name(other)
         }
     }
 }
@@ -803,6 +814,33 @@ pub fn put_generics_of(names: Strings, bounded: bool, acc: Chars) -> Chars {
     }
 }
 
+/// A type written in module `m`, its own types named `m..u`.
+pub fn qualified_types(m: Str, names: Strings, t: &'static Sexp) -> &'static Sexp {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Sexp::Sym(n, f, p) => {
+            if string_member_p(n, names) {
+                sym(string_append(m, string_append(str_lit(".."), n)), f, p)
+            } else {
+                t
+            }
+        }
+        Sexp::Lst(xs, f, l, p) => {
+            if head_is_p(t, str_lit("select")) {
+                t
+            } else {
+                lst(map(lambda1(move |x: &'static Sexp| {
+                    qualified_types(m, names, x)
+                }), xs), f, l, p)
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            t
+        }
+    }
+}
+
 /// A module's datatypes, as the program names them, `m..d`, with their tags.
 pub fn note_module_datatypes(mut m: Str, mut forms: Sexps, mut c: &'static Ctx) -> &'static Ctx {
     loop {
@@ -819,11 +857,63 @@ pub fn note_module_datatypes(mut m: Str, mut forms: Sexps, mut c: &'static Ctx) 
                 }
             });
             continue;
+        } else if (head_is_p(car(forms), str_lit("define-type")) && not(head_is_p(third(items(car(forms))), str_lit("moduleof"))) && {
+            let tagcase_ = second(items(car(forms)));
+            match *tagcase_ {
+                Sexp::Lst(ys, f, l, p) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }) {
+            // A module's type family (C89): no Rust alias (one over a `Value`
+            // would leave its parameters unused), but what it stands for, where
+            // it is applied, by its name inside the module, `t`, and outside it,
+            // `m..t`, its own types named `m..u` there.
+            let head = second(items(car(forms)));
+            let t = type_head_name(head);
+            let q = string_append(m, string_append(str_lit(".."), t));
+            let local_types = concat(map(lambda1(move |f: &'static Sexp| {
+                if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype"))) {
+                    the::<Strings>(kayak_rt::heap_cons(type_head_name(second(items(f))), kayak_rt::nil()))
+                } else {
+                    nil::<Str>()
+                }
+            }), forms));
+            let qhead = {
+                let tagcase_ = head;
+                match *tagcase_ {
+                    Sexp::Lst(ys, f, l, p) => {
+                        lst(kayak_rt::heap_cons(sym(q, f, p), cdr(ys)), f, l, p)
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        head
+                    }
+                }
+            };
+            (forms, c) = (cdr(forms), {
+                let tagcase_ = c;
+                match *tagcase_ {
+                    Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                        ctx(ds, ts, ks, ls, xs, fs, note_family(qhead, false, note_family(head, false, ms)), es, kayak_rt::heap_cons(typed(string_append(str_lit("%expand "), t), sym(t, str_lit(""), 0i64)), kayak_rt::heap_cons(typed(string_append(str_lit("%expand "), q), sym(q, str_lit(""), 0i64)), kayak_rt::heap_cons(typed(string_append(str_lit("%abbreviation "), t), lst(kayak_rt::heap_cons(head, kayak_rt::heap_cons(third(items(car(forms))), kayak_rt::nil())), str_lit(""), 0i64, 0i64)), kayak_rt::heap_cons(typed(string_append(str_lit("%abbreviation "), q), lst(kayak_rt::heap_cons(qhead, kayak_rt::heap_cons(qualified_types(m, local_types, third(items(car(forms)))), kayak_rt::nil())), str_lit(""), 0i64, 0i64)), mods)))))
+                    }
+                }
+            });
+            continue;
         } else {
             forms = cdr(forms);
             continue;
         }
     }
+}
+
+/// `(select m t)`'s type as the program names it, `m..t`.
+pub fn selected_name(sel: &'static Sexp) -> Str {
+    string_append(sym_name(second(items(sel))), string_append(str_lit(".."), sym_name(third(items(sel)))))
 }
 
 pub fn note(form: &'static Sexp, c: &'static Ctx) -> &'static Ctx {
@@ -835,6 +925,18 @@ pub fn note(form: &'static Sexp, c: &'static Ctx) -> &'static Ctx {
                 ctx(kayak_rt::heap_cons(d, ds), note_tags(cdr(cdr(items(form))), d, ts), ks, ls, xs, fs, note_family(second(items(form)), true, ms), es, mods)
             } else if (head_is_p(form, str_lit("define-type")) && head_is_p(third(items(form)), str_lit("moduleof"))) {
                 ctx(ds, ts, ks, ls, xs, fs, ms, es, kayak_rt::heap_cons(typed(string_append(str_lit("%moduleof "), sym_name(second(items(form)))), third(items(form))), mods))
+            } else if (head_is_p(form, str_lit("define-type")) && head_is_p(third(items(form)), str_lit("select")) && not(null_p(module_body(c, string_append(str_lit("%abbreviation "), selected_name(third(items(form)))))))) {
+                // An abbreviation of a module's family (C89): that family, expanded
+                // where applied, under this name too; no Rust alias.
+                let t = sym_name(second(items(form)));
+                let fam = car(module_body(c, string_append(str_lit("%abbreviation "), selected_name(third(items(form))))));
+                let qhead = car(items(fam));
+                let params = cdr(items(qhead));
+                let names = map(lambda1(move |b: &'static Sexp| {
+                    sym(sym_name(car(items(b))), str_lit(""), 0i64)
+                }), params);
+                let head = lst(kayak_rt::heap_cons(sym(t, str_lit(""), 0i64), params), str_lit(""), 0i64, 0i64);
+                ctx(ds, ts, ks, ls, xs, fs, note_family(head, false, ms), es, kayak_rt::heap_cons(typed(string_append(str_lit("%expand "), t), sym(t, str_lit(""), 0i64)), kayak_rt::heap_cons(typed(string_append(str_lit("%abbreviation "), t), lst(kayak_rt::heap_cons(head, kayak_rt::heap_cons(lst(kayak_rt::heap_cons(third(items(form)), names), str_lit(""), 0i64, 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64)), mods)))
             } else if (head_is_p(form, str_lit("define-type")) && {
                 let tagcase_ = second(items(form));
                 match *tagcase_ {
@@ -852,8 +954,13 @@ pub fn note(form: &'static Sexp, c: &'static Ctx) -> &'static Ctx {
                 ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms), es, kayak_rt::heap_cons(typed(string_append(str_lit("%alias "), sym_name(second(items(form)))), third(items(form))), mods))
             } else if head_is_p(form, str_lit("define-type")) {
                 // A family abbreviation: its regions Rust lifetimes (C39), as a
-                // generative type's are not.
-                ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms), es, kayak_rt::heap_cons(typed(string_append(str_lit("%abbreviation "), type_head_name(second(items(form)))), lst(kayak_rt::heap_cons(second(items(form)), kayak_rt::heap_cons(third(items(form)), kayak_rt::nil())), str_lit(""), 0i64, 0i64)), mods))
+                // generative type's are not. One whose body applies a module's family
+                // is expanded where applied, as that family is (C89).
+                ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms), es, onto(if head_is_p(car(items(third(items(form)))), str_lit("select")) {
+                    the::<Typeds>(kayak_rt::heap_cons(typed(string_append(str_lit("%expand "), type_head_name(second(items(form)))), sym(str_lit(""), str_lit(""), 0i64)), kayak_rt::nil()))
+                } else {
+                    nil::<&'static Typed>()
+                }, kayak_rt::heap_cons(typed(string_append(str_lit("%abbreviation "), type_head_name(second(items(form)))), lst(kayak_rt::heap_cons(second(items(form)), kayak_rt::heap_cons(third(items(form)), kayak_rt::nil())), str_lit(""), 0i64, 0i64)), mods)))
             } else if head_is_p(form, str_lit("define-generative")) {
                 ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms), es, mods)
             } else if head_is_p(form, str_lit("define-effect")) {
@@ -1632,6 +1739,11 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
                     }
                 } else if sym_is_p(car(xs), str_lit("poly")) {
                     return error(str_lit("kfx: a poly type is only a definition's, at its top"));
+                } else if head_is_p(car(xs), str_lit("select")) {
+                    // A module's family applied by `select` (C89): `m..t` applied.
+                    let sel = items(car(xs));
+                    t = lst(kayak_rt::heap_cons(sym(string_append(sym_name(second(sel)), string_append(str_lit(".."), sym_name(third(sel)))), str_lit(""), 0i64), cdr(xs)), src_file, src_line, src_pos);
+                    continue;
                 } else if {
                     let tagcase_ = car(xs);
                     match *tagcase_ {
@@ -1649,7 +1761,7 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
                     let tagcase_ = car(find_family_of(c, sym_name(car(xs))));
                     match *tagcase_ {
                         Family::Family(n, datatype, kinds) => {
-                            if (not(datatype) && string_member_p(str_lit("effect"), kinds)) {
+                            if (not(datatype) && (string_member_p(str_lit("effect"), kinds) || not(null_p(module_body(c, string_append(str_lit("%expand "), n)))))) {
                                 t = family_expanded(c, t);
                                 continue;
                             } else {

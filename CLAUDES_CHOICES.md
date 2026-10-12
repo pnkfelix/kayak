@@ -1770,3 +1770,29 @@ Stage 4 (`docs/research/modules.md`).
 
 Measured: 139 of Fixpt's programs through kfx (136 before), all agreeing;
 the engine 130; every program Fixpt's checker refuses, kfx refuses.
+
+## C89. A module's types with parameters (2026-10-12)
+
+Stage 5 (`docs/research/modules.md`).
+- **The checker**: a module's `define-type` or `define-datatype` may have
+  parameters, a family: `t` inside the module, `m t` outside, stand for
+  `(m..t p ...)`, and `m..t` for its body (its own types qualified). A
+  family is applied by `((select m t) arg ...)` too, and abbreviated by
+  `(define-type b (select m t))`, which FX-26 reads as the family itself:
+  `(b arg ...)` is it applied.
+- **The emitter**: a module's type abbreviation with parameters is no Rust
+  alias. Expanded where applied, by its name inside the module and by
+  `m..t` outside, as an abbreviation over an effect is (C46): one whose
+  body is a `Value` (a pair of a union's, C77) would leave a Rust alias's
+  parameters unused, which rustc refuses. A family whose body applies a
+  module's, and an abbreviation of one, are expanded likewise; an
+  `include` imports no family. Datatype families stay Rust's generic
+  enums, as at the top level.
+- **A module's item may be named by a keyword**, as FX-26's local may: it
+  is not called by that name (`include-family`'s `sum`).
+- **Left**: a `proj` of an expression, `(proj (with m f) int)` (KFX's
+  `proj` names a procedure, C42); the bare region `heap` (KFX reads
+  `@heap`); `with` shadowing families applied (`with-shadows-applied`).
+
+Measured: 146 of Fixpt's programs through kfx (139), all agreeing; the
+engine 137.

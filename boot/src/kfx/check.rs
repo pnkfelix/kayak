@@ -2072,6 +2072,10 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                             }), fields));
                         }
                     }
+                } else if head_is_p(car(xs), str_lit("select")) {
+                    // A module's family applied (C89): `((select m t) arg ...)`.
+                    let s = items(car(xs));
+                    return parse_application(v, tvars, string_append(name_of(v, second(s)), string_append(str_lit(" "), name_of(v, third(s)))), cdr(xs));
                 } else if sym_is_p(car(xs), str_lit("select")) {
                     let name = string_append(name_of(v, second(xs)), string_append(str_lit(" "), name_of(v, third(xs))));
                     if null_p(find_alias(name, cv_aliases(v))) {
@@ -2137,32 +2141,50 @@ pub fn parse_arguments(v: &'static Cv, tvars: Strings, params: Strings, args: Se
 }
 
 /// `(name arg ...)`: a datatype with parameters, applied; or a type
-/// abbreviation with them, what it stands for with its arguments.
+/// abbreviation with them, what it stands for with its arguments; or an
+/// abbreviation of a module's family, `(define-type t (select m u))`,
+/// that family applied (C89).
 pub fn parse_application(v: &'static Cv, tvars: Strings, name: Str, args: Sexps) -> &'static Ty {
-    let found = find_family(name, cv_dts(v));
-    if not(kayak_rt::value::null_p(found)) {
-        let tagcase_ = kayak_rt::value::unbox_other::<&'static Dt>(found);
+    let (found, named) = (find_family(name, cv_dts(v)), find_alias(name, cv_aliases(v)));
+    if (kayak_rt::value::null_p(found) && not(null_p(named)) && {
+        let tagcase_ = car(named);
         match *tagcase_ {
-            Dt::Dt(n, ps, vs) => {
-                ty_data(name, parse_arguments(v, tvars, ps, args))
+            Alias::Alias(n, ps, body) => {
+                (null_p(ps) && head_is_p(body, str_lit("select")))
+            }
+        }
+    }) {
+        let tagcase_ = car(named);
+        match *tagcase_ {
+            Alias::Alias(n, ps, body) => {
+                parse_type(v, tvars, lst(kayak_rt::heap_cons(body, args), str_lit(""), 0i64, 0i64))
             }
         }
     } else {
-        let tagcase_ = car(find_alias(name, cv_aliases(v)));
-        match *tagcase_ {
-            Alias::Alias(n, ps, body) => {
-                if string_member_p(string_append(str_lit("%expanding "), name), tvars) {
-                    match refuse(v, string_append(str_lit("a type abbreviation that mentions itself, "), string_append(name, str_lit(": Rust's type aliases cannot; a datatype can")))) {}
-                } else {
-                    substitute(ps, parse_arguments(v, tvars, ps, args), parse_type(v, kayak_rt::heap_cons(string_append(str_lit("%expanding "), name), onto(map(lambda1(move |p: Str| {
-                        string_append(str_lit("%place "), p)
-                    }), concat(map(lambda1(move |p: Str| {
-                        if has_prefix_p(p, str_lit("'")) {
-                            the::<Strings>(kayak_rt::heap_cons(p, kayak_rt::nil()))
-                        } else {
-                            nil::<Str>()
-                        }
-                    }), ps))), onto(ps, expanding(tvars)))), body))
+        if not(kayak_rt::value::null_p(found)) {
+            let tagcase_ = kayak_rt::value::unbox_other::<&'static Dt>(found);
+            match *tagcase_ {
+                Dt::Dt(n, ps, vs) => {
+                    ty_data(name, parse_arguments(v, tvars, ps, args))
+                }
+            }
+        } else {
+            let tagcase_ = car(find_alias(name, cv_aliases(v)));
+            match *tagcase_ {
+                Alias::Alias(n, ps, body) => {
+                    if string_member_p(string_append(str_lit("%expanding "), name), tvars) {
+                        match refuse(v, string_append(str_lit("a type abbreviation that mentions itself, "), string_append(name, str_lit(": Rust's type aliases cannot; a datatype can")))) {}
+                    } else {
+                        substitute(ps, parse_arguments(v, tvars, ps, args), parse_type(v, kayak_rt::heap_cons(string_append(str_lit("%expanding "), name), onto(map(lambda1(move |p: Str| {
+                            string_append(str_lit("%place "), p)
+                        }), concat(map(lambda1(move |p: Str| {
+                            if has_prefix_p(p, str_lit("'")) {
+                                the::<Strings>(kayak_rt::heap_cons(p, kayak_rt::nil()))
+                            } else {
+                                nil::<Str>()
+                            }
+                        }), ps))), onto(ps, expanding(tvars)))), body))
+                    }
                 }
             }
         }

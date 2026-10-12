@@ -231,7 +231,7 @@ pub fn scheme_text(sc: &'static Scheme) -> Str {
 /// global (C87), as FX-26's may, and as a Rust `mod`'s item shadows what
 /// it imports by a glob.
 pub fn global(v: &'static Cv, name: Str, sc: &'static Scheme) -> &'static Bind {
-    if keyword_p(name) {
+    if (keyword_p(name) && null_p(find_bind(str_lit("%module"), cv_binds(v)))) {
         match refuse(v, string_append(str_lit("a keyword names nothing: "), name)) {}
     } else {
         let found = find_bind(name, cv_binds(v));
@@ -770,6 +770,19 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                 if head_is_p(third(xs), str_lit("moduleof")) {
                     spec_well_formed(v, third(xs));
                     module_type_values(module_scope(v, third(xs), str_lit(""), str_lit("")), third(xs));
+                    v
+                } else if (head_is_p(third(xs), str_lit("select")) && {
+                    let found = find_alias(string_append(name_of(v, second(items(third(xs)))), string_append(str_lit(" "), name_of(v, third(items(third(xs)))))), cv_aliases(v));
+                    (not(null_p(found)) && {
+                        let tagcase_ = car(found);
+                        match *tagcase_ {
+                            Alias::Alias(n, ps, b) => {
+                                not(null_p(ps))
+                            }
+                        }
+                    })
+                }) {
+                    // An abbreviation of a module's family (C89): read where applied.
                     v
                 } else {
                     let name = head_name(v, second(xs));
@@ -1316,18 +1329,7 @@ pub fn module_types(mut v: &'static Cv, mut forms: Sexps) -> Strings {
             }), cdr(cdr(items(f))))) {
                 return match refuse(v, str_lit("a module's datatype whose tag another datatype has: KFX's tags name one datatype each")) {};
             } else if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype"))) {
-                let name = {
-                    let tagcase_ = second(items(f));
-                    match *tagcase_ {
-                        Sexp::Sym(n, at_file, at_pos) => {
-                            n
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            match refuse(v, str_lit("a module's type with parameters, which KFX's modules do not have yet")) {}
-                        }
-                    }
-                };
+                let name = head_name(v, second(items(f)));
                 if dt_named_p(name, cv_dts(v)) {
                     return match refuse(v, string_append(str_lit("a module's type named as the program's: KFX names them apart, "), name)) {};
                 } else {
@@ -1373,23 +1375,36 @@ pub fn qualify_type(m: Str, names: Strings, t: &'static Sexp) -> &'static Sexp {
     }
 }
 
-/// A module's types: each `m..t`; and `t` inside it, `m t` outside.
-pub fn module_aliases(m: Str, names: Strings, forms: Sexps, inside: bool) -> Aliases {
+/// A module's types: each `m..t`; and `t` inside it, `m t` outside. A
+/// family, `(t (p kind) ...)` (C89), the same, applied: `t` stands for
+/// `(m..t p ...)`.
+pub fn module_aliases(v: &'static Cv, m: Str, names: Strings, forms: Sexps, inside: bool) -> Aliases {
     concat(map(lambda1(move |f: &'static Sexp| {
         if not((head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype")))) {
             nil::<&'static Alias>()
         } else {
             let xs = items(f);
-            let t = sym_name(second(xs));
+            let t = head_name(v, second(xs));
+            let ps = family_params(v, second(xs));
             let q = string_append(m, string_append(str_lit(".."), t));
             let name = if inside {
                 t
             } else {
                 string_append(m, string_append(str_lit(" "), t))
             };
-            let named = alias(name, nil::<Str>(), sym(q, str_lit(""), 0i64));
+            let named = alias(name, ps, if null_p(ps) {
+                sym(q, str_lit(""), 0i64)
+            } else {
+                lst(kayak_rt::heap_cons(sym(q, str_lit(""), 0i64), map(lambda1(move |p: Str| {
+                    sym(if has_prefix_p(p, str_lit("'")) {
+                        after_prefix(p, str_lit("'"))
+                    } else {
+                        p
+                    }, str_lit(""), 0i64)
+                }), ps)), str_lit(""), 0i64, 0i64)
+            });
             if head_is_p(f, str_lit("define-type")) {
-                the::<Aliases>(kayak_rt::heap_cons(named, kayak_rt::heap_cons(alias(q, nil::<Str>(), qualify_type(m, names, third(xs))), kayak_rt::nil())))
+                the::<Aliases>(kayak_rt::heap_cons(named, kayak_rt::heap_cons(alias(q, ps, qualify_type(m, names, third(xs))), kayak_rt::nil())))
             } else {
                 the::<Aliases>(kayak_rt::heap_cons(named, kayak_rt::nil()))
             }
@@ -1397,10 +1412,10 @@ pub fn module_aliases(m: Str, names: Strings, forms: Sexps, inside: bool) -> Ali
     }), forms))
 }
 
-pub fn module_dts(m: Str, forms: Sexps) -> Dts {
+pub fn module_dts(v: &'static Cv, m: Str, forms: Sexps) -> Dts {
     concat(map(lambda1(move |f: &'static Sexp| {
         if (head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype"))) {
-            the::<Dts>(kayak_rt::heap_cons(dt(string_append(m, string_append(str_lit(".."), sym_name(second(items(f))))), nil::<Str>(), nil::<&'static Variant>()), kayak_rt::nil()))
+            the::<Dts>(kayak_rt::heap_cons(dt(string_append(m, string_append(str_lit(".."), head_name(v, second(items(f))))), family_params(v, second(items(f))), nil::<&'static Variant>()), kayak_rt::nil()))
         } else {
             nil::<&'static Dt>()
         }
@@ -2449,7 +2464,7 @@ pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
             Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
                 cv(bind_onto(concat(map(lambda1(move |n: Str| {
                     excepted_binds(v, written, n, bs)
-                }), includes)), kayak_rt::heap_cons(bind(str_lit("%module"), scheme(nil::<Str>(), ty_unit()), m), bs)), onto(module_dts(m, forms), ds), onto(module_aliases(m, names, forms, true), onto(concat(map(lambda1(move |n: Str| {
+                }), includes)), kayak_rt::heap_cons(bind(str_lit("%module"), scheme(nil::<Str>(), ty_unit()), m), bs)), onto(module_dts(v, m, forms), ds), onto(module_aliases(v, m, names, forms, true), onto(concat(map(lambda1(move |n: Str| {
                     excepted_aliases(v, written, n, als)
                 }), includes)), als)), onto(concat(map(lambda1(move |n: Str| {
                     opened_effdefs(n, es)
@@ -2485,7 +2500,7 @@ pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
                         onto(ds, cv_dts(outer))
                     } else {
                         ds
-                    }, onto(without_aliases(hidden_types, m, module_aliases(m, names, forms, false)), onto(concat(map(lambda1(move |n: Str| {
+                    }, onto(without_aliases(hidden_types, m, module_aliases(v, m, names, forms, false)), onto(concat(map(lambda1(move |n: Str| {
                         renamed_aliases(n, m, excepted_aliases(v, written, n, als))
                     }), unhidden_includes(v, written))), cv_aliases(outer))), onto(module_effects(m, forms, es), onto(concat(map(lambda1(move |n: Str| {
                         map(lambda1(move |d: &'static Effdef| {

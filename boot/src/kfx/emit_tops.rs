@@ -1140,6 +1140,25 @@ pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
         // An abbreviation over an effect (C46): no Rust alias, since what
         // it stands for in Rust depends on the effect; each use expanded.
         acc
+    } else if (string_eq_p(h, str_lit("define-type")) && not(null_p(module_body(c, string_append(str_lit("%expand "), type_head_name(second(xs))))))) {
+        // An abbreviation of a module's family: expanded where applied (C89).
+        acc
+    } else if (string_eq_p(h, str_lit("define-type")) && {
+        let tagcase_ = second(xs);
+        match *tagcase_ {
+            Sexp::Lst(ys, f, l, p) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } && any_p(lambda1(move |k: Str| {
+        has_prefix_p(k, str_lit("%in "))
+    }), ctx_locals(c))) {
+        // A module's family: expanded where applied (C89), no Rust alias.
+        acc
     } else if string_eq_p(h, str_lit("define-type")) {
         // A type abbreviation; its regions, Rust lifetimes (C39), as a
         // `letrena`'s are, so that a use of it at one is at its lifetime.
