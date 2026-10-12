@@ -307,7 +307,8 @@ The first is the one taken, for now: §6 grows the runtime, in Rust.
 **The user's direction (2026-10-12).** Coopt's async-first approach has
 proved interesting. kayak need not copy all of its choices, but its
 runtime should move to Coopt's mindset, above all its deep support for
-*multiplexed tasks* and *incremental computation*. The first goal: work
+*multiplexed tasks* and *incremental computation*, and its record and
+replay. The first goal: work
 out how to revise `kayak-rt` around asynchronous computation, in part
 through async Rust, most likely with an executor of our own; doing that
 properly will change the emitter too, so that it writes `async fn`,
@@ -338,9 +339,26 @@ So kayak gets **one-shot suspension**, and a continuation resumed twice
 enough: in Fixpt's async design every suspension resumes once, with
 unit, through a one-shot waker (§6.1 there), which is Rust's `Waker`.
 
-Not taken, yet: a moving collector, the query compiler, record and
-replay, real I/O (a reactor needs `libc` or `unsafe`, which `kayak-rt`
-has neither of).
+- **Record and replay** (the user, 2026-10-12: "make sure to duplicate
+  that"), as Coopt has it (its `docs/research/runners.md`, `coopt-runner`,
+  `coopt-trace`): every source of nondeterminism (input, output, the
+  clock, randomness) is an *operation* answered by a *runner*, behind one
+  interface with three implementations: **sim** (a virtual clock,
+  scripted input, seeded delays, later faults), **replay** (answers from
+  a log), and **live**. The scheduler being deterministic, a run's only
+  inputs are the arrivals: the log keeps, for each scheduler step, what
+  arrived (which operation, its bytes) and each move of the clock.
+  Outputs are not stored but checked: a replay compares its events with
+  the log's as they come, and reports the first where they part. And,
+  as every DST practice does, a determinism check: a seed run twice, its
+  event streams compared.
+- **One event stream** (Coopt's `coopt-trace`): scheduler decisions,
+  operations and their answers, query runs; the replay log a filtered
+  view of it.
+
+Not taken, yet: a moving collector, live I/O through a reactor (kqueue
+or epoll need `libc` or `unsafe`, which `kayak-rt` has neither of; the
+sim and replay runners need neither).
 
 ### 6.2 The mapping, sketched
 
@@ -360,6 +378,16 @@ has neither of).
 - **Cancellation** is dropping a task's future, which happens only at a
   suspension point.
 - **Escapes** inside an `async fn` compose as they are (`.await?`).
+- **Runners.** A suspending operation that reaches outside (reading,
+  writing, the clock) is handed to the runner, and its answer arrives as
+  an event at a later step, as Coopt's do. Between suspension points
+  compiled code is deterministic by itself, so with cooperative
+  scheduling a step is a scheduler decision, not a fuel count. What could
+  still leak nondeterminism in: hashing (`kayak-rt` hashes with no
+  random seed already, C43), and anything that observes an address.
+- **The compiler's own I/O**, now in `boot/src/main.rs` outside KFX,
+  moves behind the runner, so that a compile is recorded and replayed
+  like any program's run.
 
 ### 6.3 Problems to solve first (a research note)
 
@@ -387,10 +415,15 @@ has neither of).
    (`cancel.fx`, a ping-pong) over a prototype executor.
 2. The executor in `kayak-rt`: deterministic, a virtual clock, our own
    `Waker`, no dependencies.
-3. The operations in `kfx/prelude.fx` for Fixpt.
-4. The checker: the suspension effect, and its rules (§6.3).
-5. The emitter: `async fn` by effect.
-6. Corpus programs, their answers compared with Fixpt's.
+3. Runners and the event stream: sim and replay first, with
+   `--record LOG` and a replay that reports where it parts from the log;
+   the determinism check (a seed twice, streams compared) in
+   `scripts/check.sh`. Live later.
+4. The operations in `kfx/prelude.fx` for Fixpt.
+5. The checker: the suspension effect, and its rules (§6.3).
+6. The emitter: `async fn` by effect.
+7. Corpus programs, their answers compared with Fixpt's.
+8. Queries for an incremental compiler (Q5), each query run a task.
 
 ---
 

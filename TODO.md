@@ -239,6 +239,11 @@ The next goal. In order (`PLAN.md` §6.4):
   executor.
 - **The executor** in `kayak-rt`: one thread, deterministic, a virtual
   clock, its own `Waker`.
+- **Record and replay** (the user, 2026-10-12), as Coopt's: runners
+  (sim, replay; live later) behind one interface, a log of arrivals by
+  step and clock moves, outputs checked against it on replay, one event
+  stream, and a determinism check in `scripts/check.sh`. The compiler's
+  own I/O moved behind the runner.
 - **The operations in `kfx/prelude.fx`**, in FX-26 over continuations,
   so that Fixpt runs what kfx compiles (Q6).
 - **The checker**: the suspension effect, `(comefrom c)` on a loop's
