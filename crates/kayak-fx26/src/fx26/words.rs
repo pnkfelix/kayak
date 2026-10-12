@@ -220,3 +220,34 @@ pub fn word_real(p: i64) -> f64 {
     bits_to_f64(int_to_u64(i64_to_int(obj_ref(p, 0i64))))
 }
 
+// Lists of words, counted, and made arrays: loading makes a quoted
+// vector so (C80), and the primitives (vwords.kfx).
+pub fn list_count(mut xs: i64, mut n: i64) -> i64 {
+    loop {
+        if i64_eq(xs, w_nil()) {
+            return n;
+        } else {
+            (xs, n) = (pair_cdr(xs), i64_plus(n, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn from_list_x(mut p: i64, mut i: i64, mut xs: i64) -> () {
+    loop {
+        if i64_eq(xs, w_nil()) {
+            return ();
+        } else {
+            obj_set_x(p, i, pair_car(xs));
+            (i, xs) = (i64_plus(i, 1i64), pair_cdr(xs));
+            continue;
+        }
+    }
+}
+
+pub fn list_array_x(kind: i64, xs: i64) -> i64 {
+    let p = alloc_x(kind, list_count(xs, 0i64));
+    from_list_x(p, 0i64, xs);
+    p
+}
+

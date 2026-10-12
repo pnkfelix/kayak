@@ -1,1 +1,1 @@
-(1 (2 three) "four" #\5 #f) (10 x "s" #\c #t (20 . 30)) (1 2 3) 66 k 5 #(...) x (a 3 4 five (b c) (quasiquote (d (unquote (e 6)))) end)
+(1 (2 three) "four" #\5 #f) (10 x "s" #\c #t (20 . 30)) (1 2 3) 66 k 5 #(...) x (a 3 4 five (b c) (quasiquote (d (unquote (e 6)))) end) (a b . c) (#(...) . 4)

@@ -397,7 +397,8 @@ C57 when done.
   and `cdr` of a union; `quote` of any datum KFX reads; a typed list given
   as a datum by a view; `typecase` as FX-26 writes it.
 - **Done (C79)**: quasiquote; quotes interned in the engine.
-- **Left of step 2**: the reader's `#(...)` and dotted lists; coercions under a
+- **Done (C80)**: the reader's `#(...)` and dotted lists, in quotes.
+- **Left of step 2**: coercions under a
   type deeper than a list's elements (C78: a list of lists; a procedure
   given where one of union parameters or result is wanted, a wrapper);
   until then rustc refuses them, not kfx; `datum-int?`;

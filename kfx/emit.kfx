@@ -1447,7 +1447,10 @@
     (lambda (c d acc)
       "A quoted datum, built (C77): a list's pairs `cons`ed, each atom boxed."
       (tagcase d
-        (lst (xs f l p) (put-quoted-items c xs acc))
+        (lst (xs f l p)
+          (if (head-is? d "#vector")
+              (put ")" (put-quoted-items c (cdr xs) (put "kayak_rt::value::datum_list_to_vector(" acc)))
+              (put-quoted-items c xs acc)))
         (sym (q f p)
           (if (or (string=? q "#t") (string=? q "#f"))
               (put ")" (put-var c q (put "kayak_rt::value::ToValue::to_value(" acc)))
@@ -1462,9 +1465,9 @@
         (else other (error "kfx: a quoted datum KFX does not build")))))
   (put-quoted-items (subr kfx (ctx sexps chars) chars)
     (lambda (c xs acc)
-      (if (null? xs)
-          (put "kayak_rt::value::Value::Nil" acc)
-          (put ")" (put-quoted-items c (cdr xs) (put ", " (put-quoted c (car xs) (put "kayak_rt::value::cons(" acc)))))))))
+      (cond ((null? xs) (put "kayak_rt::value::Value::Nil" acc))
+            ((and (sym-is? (car xs) ".") (not (null? (cdr xs))) (null? (cdr (cdr xs)))) (put-quoted c (car (cdr xs)) acc))
+            (else (put ")" (put-quoted-items c (cdr xs) (put ", " (put-quoted c (car xs) (put "kayak_rt::value::cons(" acc))))))))))
 
 (define unboxed-type (subr kfx (ctx sexp) string)
   (lambda (c e)
@@ -1871,6 +1874,8 @@
                  (put-quasi-tagged c (sym-name (car ys)) (second ys) (i64- depth 1) n acc))
                 ((and (i64= (size ys) 2) (head-is? d "quasiquote"))
                  (put-quasi-tagged c "quasiquote" (second ys) (i64+ depth 1) n acc))
+                ((head-is? d "#vector")
+                 (put ")" (put-quasi-items c (cdr ys) depth n (put "kayak_rt::value::datum_list_to_vector(" acc))))
                 (else (put-quasi-items c ys depth n acc))))
         (else other (put-quoted c d acc)))))
 
@@ -1886,6 +1891,7 @@
   (put-quasi-items (subr kfx (ctx sexps i64 i64 chars) chars)
     (lambda (c ds depth n acc)
       (cond ((null? ds) (put "kayak_rt::value::Value::Nil" acc))
+            ((and (sym-is? (car ds) ".") (not (null? (cdr ds))) (null? (cdr (cdr ds)))) (put-quasi c (car (cdr ds)) depth n acc))
             ((and (i64= depth 1) (head-is? (car ds) "unquote-splicing") (i64= (size (items (car ds))) 2))
              (put ")" (put-quasi-items c (cdr ds) depth n
                                        (put ", " (put-exp c (second (items (car ds))) n (value) (put "kayak_rt::value::spliced(" acc))))))

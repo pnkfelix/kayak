@@ -1566,3 +1566,16 @@ quasiquote's constant parts, are one object (`eq?`,
 refuses `eq?`.
 
 Still not read: vectors' `#(...)` and dotted lists, in a quote or out.
+
+## C80. The reader's vectors and dotted lists, in quotes (2026-10-12)
+
+KFX's reader reads `#(d ...)` as `(#vector d ...)`, a head no KFX name can
+be (C27), which only a quote or quasiquote takes: a `datum`'s vector, by
+`datum-list->vector` of the list. A `.` before a dotted list's last item
+is taken by a quote, a quasiquote and the engine's loading; anywhere else
+it is the name `.`, which the checker refuses as before. A `#(...)`
+outside a quote is a call of `#vector`, refused: FX-26's is a vector, which
+KFX's programs have had no use for.
+
+Measured: 119 of Fixpt's programs through kfx, all agreeing (`datum/quote`
+and `datum/quasiquote` now); the engine 111.

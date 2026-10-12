@@ -6,10 +6,6 @@
  there."
 
 (define-rec
-  (list-count (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
-    (lambda (xs n) (if (i64= xs w-nil) n (list-count (pair-cdr xs) (i64+ n 1))))))
-
-(define-rec
   (reverse-words! (subr hp (i64 i64) i64)
     (lambda (xs acc) (if (i64= xs w-nil) acc (reverse-words! (pair-cdr xs) (pair! (pair-car xs) acc))))))
 
@@ -49,13 +45,6 @@
 (define-rec
   (array-list! (subr hp (i64 i64 i64) i64)
     (lambda (p i acc) (if (i64< i 0) acc (array-list! p (i64- i 1) (pair! (obj-ref p i) acc))))))
-
-(define-rec
-  (from-list! (subr hp (i64 i64 i64) unit)
-    (lambda (p i xs) (if (i64= xs w-nil) #u (begin (obj-set! p i (pair-car xs)) (from-list! p (i64+ i 1) (pair-cdr xs)))))))
-
-(define list-array! (subr hp (i64 i64) i64)
-  (lambda (kind xs) (let ((p (alloc! kind (list-count xs 0)))) (begin (from-list! p 0 xs) p))))
 
 "Strings: a character's code a word each."
 (define string-ref-w (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)

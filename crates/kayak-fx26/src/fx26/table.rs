@@ -406,6 +406,10 @@ pub fn quoted_constant_x(d: &'static Sexp) -> i64 {
                 Sexp::Lst(ys, f, l, p) => {
                     if null_p(ys) {
                         w_nil()
+                    } else if head_is_p(d, str_lit("#vector")) {
+                        list_array_x(ob_vector(), constant_at(quoted_constant_x(lst(cdr(ys), f, l, p))))
+                    } else if (sym_is_p(car(ys), str_lit(".")) && not(null_p(cdr(ys))) && null_p(cdr(cdr(ys)))) {
+                        constant_at(quoted_constant_x(car(cdr(ys))))
                     } else {
                         let ca = quoted_constant_x(car(ys));
                         let cd = quoted_constant_x(lst(cdr(ys), f, l, p));

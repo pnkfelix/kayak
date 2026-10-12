@@ -484,29 +484,36 @@ pub fn lower_quoted(d: &'static Sexp, sc: Scope, gs: Strings) -> &'static Ir {
 
 /// A quasiquoted datum (C79): an unquote at depth 1 its expression; an
 /// unquote-splicing's list appended, by the standard `append`.
-pub fn lower_quasi(d: &'static Sexp, depth: i64, sc: Scope, gs: Strings) -> &'static Ir {
-    let tagcase_ = d;
-    match *tagcase_ {
-        Sexp::Lst(ys, f, l, p) => {
-            if null_p(ys) {
-                i_lit(v_nil())
-            } else if (i64_eq(size(ys), 2i64) && head_is_p(d, str_lit("unquote")) && i64_eq(depth, 1i64)) {
-                lower(second(ys), sc, gs)
-            } else if (i64_eq(size(ys), 2i64) && (head_is_p(d, str_lit("unquote")) || head_is_p(d, str_lit("unquote-splicing")))) {
-                quasi_tagged(sym_name(car(ys)), lower_quasi(second(ys), i64_minus(depth, 1i64), sc, gs))
-            } else if (i64_eq(size(ys), 2i64) && head_is_p(d, str_lit("quasiquote"))) {
-                quasi_tagged(str_lit("quasiquote"), lower_quasi(second(ys), i64_plus(depth, 1i64), sc, gs))
-            } else if (i64_eq(depth, 1i64) && head_is_p(car(ys), str_lit("unquote-splicing")) && i64_eq(size(items(car(ys))), 2i64)) {
-                i_call(i_lit(v_prim(str_lit("append"), 2i64)), kayak_rt::heap_cons(lower(second(items(car(ys))), sc, gs), kayak_rt::heap_cons(lower_quasi(lst(cdr(ys), f, l, p), depth, sc, gs), kayak_rt::nil())))
-            } else if not(unquoted_p(d, depth)) {
-                lower_quoted(d, sc, gs)
-            } else {
-                i_call(i_lit(v_prim(str_lit("cons"), 2i64)), kayak_rt::heap_cons(lower_quasi(car(ys), depth, sc, gs), kayak_rt::heap_cons(lower_quasi(lst(cdr(ys), f, l, p), depth, sc, gs), kayak_rt::nil())))
+pub fn lower_quasi(mut d: &'static Sexp, mut depth: i64, mut sc: Scope, mut gs: Strings) -> &'static Ir {
+    loop {
+        let tagcase_ = d;
+        match *tagcase_ {
+            Sexp::Lst(ys, f, l, p) => {
+                if null_p(ys) {
+                    return i_lit(v_nil());
+                } else if (i64_eq(size(ys), 2i64) && head_is_p(d, str_lit("unquote")) && i64_eq(depth, 1i64)) {
+                    return lower(second(ys), sc, gs);
+                } else if (i64_eq(size(ys), 2i64) && (head_is_p(d, str_lit("unquote")) || head_is_p(d, str_lit("unquote-splicing")))) {
+                    return quasi_tagged(sym_name(car(ys)), lower_quasi(second(ys), i64_minus(depth, 1i64), sc, gs));
+                } else if (i64_eq(size(ys), 2i64) && head_is_p(d, str_lit("quasiquote"))) {
+                    return quasi_tagged(str_lit("quasiquote"), lower_quasi(second(ys), i64_plus(depth, 1i64), sc, gs));
+                } else if head_is_p(d, str_lit("#vector")) {
+                    return i_call(i_lit(v_prim(str_lit("datum-list->vector"), 1i64)), kayak_rt::heap_cons(lower_quasi(lst(cdr(ys), f, l, p), depth, sc, gs), kayak_rt::nil()));
+                } else if (sym_is_p(car(ys), str_lit(".")) && not(null_p(cdr(ys))) && null_p(cdr(cdr(ys)))) {
+                    d = car(cdr(ys));
+                    continue;
+                } else if (i64_eq(depth, 1i64) && head_is_p(car(ys), str_lit("unquote-splicing")) && i64_eq(size(items(car(ys))), 2i64)) {
+                    return i_call(i_lit(v_prim(str_lit("append"), 2i64)), kayak_rt::heap_cons(lower(second(items(car(ys))), sc, gs), kayak_rt::heap_cons(lower_quasi(lst(cdr(ys), f, l, p), depth, sc, gs), kayak_rt::nil())));
+                } else if not(unquoted_p(d, depth)) {
+                    return lower_quoted(d, sc, gs);
+                } else {
+                    return i_call(i_lit(v_prim(str_lit("cons"), 2i64)), kayak_rt::heap_cons(lower_quasi(car(ys), depth, sc, gs), kayak_rt::heap_cons(lower_quasi(lst(cdr(ys), f, l, p), depth, sc, gs), kayak_rt::nil())));
+                }
             }
-        }
-        _ => {
-            let other = tagcase_;
-            lower_quoted(d, sc, gs)
+            _ => {
+                let other = tagcase_;
+                return lower_quoted(d, sc, gs);
+            }
         }
     }
 }

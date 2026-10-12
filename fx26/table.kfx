@@ -197,11 +197,15 @@
             found
             (let* ((w (tagcase d
                         (lst (ys f l p)
-                          (if (null? ys)
-                              w-nil
-                              (let* ((ca (quoted-constant! (car ys)))
-                                     (cd (quoted-constant! (lst (cdr ys) f l p))))
-                                (pair! (constant-at ca) (constant-at cd)))))
+                          (cond ((null? ys) w-nil)
+                                ((head-is? d "#vector")
+                                 (list-array! ob-vector (constant-at (quoted-constant! (lst (cdr ys) f l p)))))
+                                ((and (sym-is? (car ys) ".") (not (null? (cdr ys))) (null? (cdr (cdr ys))))
+                                 (constant-at (quoted-constant! (car (cdr ys)))))
+                                (else
+                                 (let* ((ca (quoted-constant! (car ys)))
+                                        (cd (quoted-constant! (lst (cdr ys) f l p))))
+                                   (pair! (constant-at ca) (constant-at cd))))))
                         (sym (n f p) (cond ((string=? n "#t") (bool-word #t)) ((string=? n "#f") (bool-word #f))
                                            (else (symbol-word (intern! n)))))
                         (else other (tagcase (lower d nil nil) (i-lit (v) (literal-word! v)) (else other2 w-unit)))))

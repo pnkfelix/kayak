@@ -2741,7 +2741,11 @@ pub fn put_quoted(c: &'static Ctx, d: &'static Sexp, acc: Chars) -> Chars {
     let tagcase_ = d;
     match *tagcase_ {
         Sexp::Lst(xs, f, l, p) => {
-            put_quoted_items(c, xs, acc)
+            if head_is_p(d, str_lit("#vector")) {
+                put(str_lit(")"), put_quoted_items(c, cdr(xs), put(str_lit("kayak_rt::value::datum_list_to_vector("), acc)))
+            } else {
+                put_quoted_items(c, xs, acc)
+            }
         }
         Sexp::Sym(q, f, p) => {
             if (string_eq_p(q, str_lit("#t")) || string_eq_p(q, str_lit("#f"))) {
@@ -2780,6 +2784,8 @@ pub fn put_quoted(c: &'static Ctx, d: &'static Sexp, acc: Chars) -> Chars {
 pub fn put_quoted_items(c: &'static Ctx, xs: Sexps, acc: Chars) -> Chars {
     if null_p(xs) {
         put(str_lit("kayak_rt::value::Value::Nil"), acc)
+    } else if (sym_is_p(car(xs), str_lit(".")) && not(null_p(cdr(xs))) && null_p(cdr(cdr(xs)))) {
+        put_quoted(c, car(cdr(xs)), acc)
     } else {
         put(str_lit(")"), put_quoted_items(c, cdr(xs), put(str_lit(", "), put_quoted(c, car(xs), put(str_lit("kayak_rt::value::cons("), acc)))))
     }
@@ -3386,6 +3392,8 @@ pub fn put_quasi(c: &'static Ctx, d: &'static Sexp, depth: i64, n: i64, acc: Cha
                 put_quasi_tagged(c, sym_name(car(ys)), second(ys), i64_minus(depth, 1i64), n, acc)
             } else if (i64_eq(size(ys), 2i64) && head_is_p(d, str_lit("quasiquote"))) {
                 put_quasi_tagged(c, str_lit("quasiquote"), second(ys), i64_plus(depth, 1i64), n, acc)
+            } else if head_is_p(d, str_lit("#vector")) {
+                put(str_lit(")"), put_quasi_items(c, cdr(ys), depth, n, put(str_lit("kayak_rt::value::datum_list_to_vector("), acc)))
             } else {
                 put_quasi_items(c, ys, depth, n, acc)
             }
@@ -3409,6 +3417,8 @@ pub fn put_quasi_tagged(c: &'static Ctx, tag: Str, d: &'static Sexp, depth: i64,
 pub fn put_quasi_items(c: &'static Ctx, ds: Sexps, depth: i64, n: i64, acc: Chars) -> Chars {
     if null_p(ds) {
         put(str_lit("kayak_rt::value::Value::Nil"), acc)
+    } else if (sym_is_p(car(ds), str_lit(".")) && not(null_p(cdr(ds))) && null_p(cdr(cdr(ds)))) {
+        put_quasi(c, car(cdr(ds)), depth, n, acc)
     } else if (i64_eq(depth, 1i64) && head_is_p(car(ds), str_lit("unquote-splicing")) && i64_eq(size(items(car(ds))), 2i64)) {
         put(str_lit(")"), put_quasi_items(c, cdr(ds), depth, n, put(str_lit(", "), put_exp(c, second(items(car(ds))), n, value(), put(str_lit("kayak_rt::value::spliced("), acc)))))
     } else {

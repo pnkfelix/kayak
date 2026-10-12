@@ -102,3 +102,17 @@
   (lambda (x) (let ((p (alloc! ob-real 1))) (begin (obj-set! p 0 (int->i64 (u64->int (f64->bits x)))) p))))
 (define word-real (subr (maxeff (read @globals) spin (read @h)) (i64) f64)
   (lambda (p) (bits->f64 (int->u64 (i64->int (obj-ref p 0))))))
+
+"Lists of words, counted, and made arrays: loading makes a quoted
+ vector so (C80), and the primitives (vwords.kfx)."
+(define-rec
+  (list-count (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
+    (lambda (xs n) (if (i64= xs w-nil) n (list-count (pair-cdr xs) (i64+ n 1))))))
+
+(define-rec
+  (from-list! (subr hp (i64 i64 i64) unit)
+    (lambda (p i xs) (if (i64= xs w-nil) #u (begin (obj-set! p i (pair-car xs)) (from-list! p (i64+ i 1) (pair-cdr xs)))))))
+
+(define list-array! (subr hp (i64 i64) i64)
+  (lambda (kind xs) (let ((p (alloc! kind (list-count xs 0)))) (begin (from-list! p 0 xs) p))))
+

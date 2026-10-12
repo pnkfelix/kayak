@@ -1699,23 +1699,36 @@ pub fn valued_p(s: &'static St, t: &'static Ty) -> bool {
     (string_eq_p(shape_of(x), str_lit("union")) || general_pair_p(s, x))
 }
 
-/// Whether a quoted datum is one KFX builds (C77): no dotted list, no
-/// vector, as KFX's reader reads neither.
+/// Whether a quoted datum is one KFX builds (C77, C80): a `.` only
+/// before a dotted list's last item, a vector's `#vector` only at its
+/// head.
 pub fn quotable_p(d: &'static Sexp) -> bool {
     let tagcase_ = d;
     match *tagcase_ {
         Sexp::Sym(n, f, p) => {
-            not(string_eq_p(n, str_lit(".")))
+            (not(string_eq_p(n, str_lit("."))) && not(string_eq_p(n, str_lit("#vector"))))
         }
         Sexp::Lst(xs, f, l, p) => {
-            not(any_p(lambda1(move |x: &'static Sexp| {
-                not(quotable_p(x))
-            }), xs))
+            quotable_items_p(if head_is_p(d, str_lit("#vector")) {
+                cdr(xs)
+            } else {
+                xs
+            })
         }
         _ => {
             let other = tagcase_;
             true
         }
+    }
+}
+
+pub fn quotable_items_p(xs: Sexps) -> bool {
+    if null_p(xs) {
+        true
+    } else if (sym_is_p(car(xs), str_lit(".")) && not(null_p(cdr(xs))) && null_p(cdr(cdr(xs)))) {
+        quotable_p(car(cdr(xs)))
+    } else {
+        (quotable_p(car(xs)) && quotable_items_p(cdr(xs)))
     }
 }
 
@@ -2733,7 +2746,7 @@ pub fn synth_form(mut v: &'static Cv, mut s: &'static St, mut e: &'static Sexp, 
                         if null_p(ys) {
                             return match refuse(v, str_lit("a quote of (), which FX-26 takes as a nil of any type: write nil")) {};
                         } else if not(quotable_p(car(xs))) {
-                            return match refuse(v, str_lit("a quoted datum KFX does not read: a dotted list or a vector")) {};
+                            return match refuse(v, str_lit("a quoted datum KFX does not build: a `.` not before a dotted list's last item")) {};
                         } else {
                             return res(ty_data(str_lit("datum"), nil::<&'static Ty>()), nil::<Str>(), s);
                         }
@@ -2757,7 +2770,7 @@ pub fn synth_form(mut v: &'static Cv, mut s: &'static St, mut e: &'static Sexp, 
                         if null_p(ys) {
                             return match refuse(v, str_lit("a quasiquote of (), which FX-26 takes as a nil of any type: write nil")) {};
                         } else if not(quotable_p(car(xs))) {
-                            return match refuse(v, str_lit("a quasiquoted datum KFX does not read: a dotted list or a vector")) {};
+                            return match refuse(v, str_lit("a quasiquoted datum KFX does not build: a `.` not before a dotted list's last item")) {};
                         } else if head_is_p(car(xs), str_lit("unquote")) {
                             return check(v, s, second(ys), ty_data(str_lit("datum"), nil::<&'static Ty>()));
                         } else {

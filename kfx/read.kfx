@@ -226,6 +226,11 @@
                           (head (cond ((i64= (char->i64 c) 96) "quasiquote") (splice "unquote-splicing") (else "unquote"))))
                      (tagcase (read-datum (skip (here rest line (i64+ pos (if splice 2 1)))) file)
                        (got (x after) (got (lst (list (sym head file pos) x) file line pos) after)))))
+                  ((and (char=? c #\#) (not (null? (cdr cs))) (char=? (car (cdr cs)) #\() (not (string=? file "")))
+                   "`#(d ...)`, a vector (C80): `(#vector d ...)`, a head no KFX name
+                    is, which only a quote takes."
+                   (tagcase (read-items (here (cdr (cdr cs)) line (i64+ pos 2)) file)
+                     (gots (xs after) (got (lst (cons (sym "#vector" file pos) xs) file line pos) after))))
                   ((char=? c #\") (string-body (cdr cs) nil file line pos line (i64+ pos 1)))
                   ((and (char=? c #\#) (not (null? (cdr cs))) (char=? (car (cdr cs)) #\\))
                    (let ((name (cdr (cdr cs))))

@@ -459,6 +459,15 @@ pub fn read_datum(h: &'static Here, file: Str) -> &'static Got {
                         got(lst(kayak_rt::heap_cons(sym(head, file, pos), kayak_rt::heap_cons(x, kayak_rt::nil())), file, line, pos), after)
                     }
                 }
+            } else if (char_eq_p(c, '#') && not(null_p(cdr(cs))) && char_eq_p(car(cdr(cs)), '(') && not(string_eq_p(file, str_lit("")))) {
+                // `#(d ...)`, a vector (C80): `(#vector d ...)`, a head no KFX name
+                // is, which only a quote takes.
+                let tagcase_ = read_items(here(cdr(cdr(cs)), line, i64_plus(pos, 2i64)), file);
+                match *tagcase_ {
+                    Gots::Gots(xs, after) => {
+                        got(lst(kayak_rt::heap_cons(sym(str_lit("#vector"), file, pos), xs), file, line, pos), after)
+                    }
+                }
             } else if char_eq_p(c, '"') {
                 string_body(cdr(cs), nil::<char>(), file, line, pos, line, i64_plus(pos, 1i64))
             } else if (char_eq_p(c, '#') && not(null_p(cdr(cs))) && char_eq_p(car(cdr(cs)), '\\')) {

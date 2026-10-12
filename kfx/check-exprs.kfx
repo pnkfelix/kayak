@@ -747,12 +747,19 @@
 (define-rec
   (quotable? (subr kfx (sexp) bool)
     (lambda (d)
-      "Whether a quoted datum is one KFX builds (C77): no dotted list, no
-       vector, as KFX's reader reads neither."
+      "Whether a quoted datum is one KFX builds (C77, C80): a `.` only
+       before a dotted list's last item, a vector's `#vector` only at its
+       head."
       (tagcase d
-        (sym (n f p) (not (string=? n ".")))
-        (lst (xs f l p) (not (any? (lambda ((x sexp)) (not (quotable? x))) xs)))
-        (else other #t)))))
+        (sym (n f p) (and (not (string=? n ".")) (not (string=? n "#vector"))))
+        (lst (xs f l p) (quotable-items? (if (head-is? d "#vector") (cdr xs) xs)))
+        (else other #t))))
+  (quotable-items? (subr kfx (sexps) bool)
+    (lambda (xs)
+      (cond ((null? xs) #t)
+            ((and (sym-is? (car xs) ".") (not (null? (cdr xs))) (null? (cdr (cdr xs))))
+             (quotable? (car (cdr xs))))
+            (else (and (quotable? (car xs)) (quotable-items? (cdr xs))))))))
 
 (define pair-member (subr kfx (st ty) tys)
   (lambda (s t)
@@ -1191,7 +1198,7 @@
                    (lst (ys f l p)
                      "A quoted list (C77): a `datum`, built where it is written."
                      (cond ((null? ys) (refuse v "a quote of (), which FX-26 takes as a nil of any type: write nil"))
-                           ((not (quotable? (car xs))) (refuse v "a quoted datum KFX does not read: a dotted list or a vector"))
+                           ((not (quotable? (car xs))) (refuse v "a quoted datum KFX does not build: a `.` not before a dotted list's last item"))
                            (else (res (ty-data "datum" nil) nil s))))
                    (else other (refuse v "a quoted datum KFX does not read")))))
             ((string=? h "quasiquote")
@@ -1203,7 +1210,7 @@
                  (tagcase (car xs)
                    (lst (ys f l p)
                      (cond ((null? ys) (refuse v "a quasiquote of (), which FX-26 takes as a nil of any type: write nil"))
-                           ((not (quotable? (car xs))) (refuse v "a quasiquoted datum KFX does not read: a dotted list or a vector"))
+                           ((not (quotable? (car xs))) (refuse v "a quasiquoted datum KFX does not build: a `.` not before a dotted list's last item"))
                            ((head-is? (car xs) "unquote") (check v s (second ys) (ty-data "datum" nil)))
                            (else (tagcase (quasi-items v s ys 1) (res (t es s) (res (ty-data "datum" nil) es s))))))
                    (else other (synth-form v s e "quote" xs)))))
