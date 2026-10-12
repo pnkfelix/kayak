@@ -355,6 +355,7 @@ and what the generated code looks like for the compiler's own source.
   immutable in Rust), `apply` and variadic procedures (stage 5),
   `string-hash` (Fixpt's hash, to match).
 - Stage 2: the restriction pass split off the checker.
-- Stage 3: unions of shapes and narrowing; `datum` and quoted data.
+- Stage 3: unions of shapes, `datum`: not for KFX (C57); the checker
+  takes them with phase C's engine, the restriction pass refusing them.
 - Stage 4: modules' remaining forms.
 - Stage 5: higher kinds, variadic procedures, sizes.

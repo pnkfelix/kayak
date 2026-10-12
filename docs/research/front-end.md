@@ -51,9 +51,11 @@ agreed (`scripts/run-fixpt-programs.py` counts them):
    their messages; the checker then says only what FX-26 says. Measured
    by the survey: the same programs refused, by the pass.
 3. **Unions of shapes and narrowing** (`unions/`, `datum/`, much of
-   `run/`): `(union T …)` as a Rust enum over its members' shapes, the
-   shape tests as `match`es, a variable narrowed where a test proves it.
-   Then `datum` (a union with pairs and symbols) and `quote` of any datum.
+   `run/`): not for KFX (C57, the user's): as a Rust enum, subtyping under
+   a constructor (a frozen list's covariance, a procedure's argument)
+   would need a copy or a wrapper FX-26 has not. The checker takes them
+   with phase C's engine, whose values are uniform; the restriction pass
+   refuses them for Rust.
 4. **Modules' remaining forms** (`modules/`, 53): the largest group;
    `load-module` and module files need the driver's I/O (C50), which is
    now KFX's.

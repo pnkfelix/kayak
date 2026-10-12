@@ -1116,3 +1116,21 @@ as Fixpt's runtime has it:
   region binder.
 - `tests/kfx/standard.kfx`; kfx now accepts 105 of Fixpt's programs (96),
   all agreeing.
+
+## C57. Unions stay out of KFX; FX-26's engine is their home (2026-10-12, the user's)
+
+KFX does not take FX-26's unions of shapes. A union as a Rust enum is
+sound only for subtyping at a value's outermost level (one injection,
+which keeps a pair's identity); FX-26's covariant frozen lists and
+procedures' contravariance would need a list copied or a procedure
+wrapped, a cost and an identity FX-26 does not have: a meaning that
+differs, which K1 forbids. A uniform representation in Rust would make
+the transpiled code an engine. So unions, and `datum`, which is one, are
+refused for Rust, and come with kayak's own FX-26 runtime (phase C),
+whose values are uniform and whose subtyping is free.
+- **The user (2026-10-12):** KFX need not become as advanced as FX-26,
+  so long as the self-hosted compiler stays clean in KFX and its scope
+  can grow to FX-26 cleanly. Neither needs unions in KFX.
+- **The checker is not KFX the language**: as kayak's FX-26 compiler, it
+  checks FX-26's unions when the FX-26 path needs them; KFX's
+  restriction pass refuses them for Rust.
