@@ -1175,3 +1175,8 @@ Fixpt.
 C54: `kfx/incr.kfx`, `kfx --cache FILE`; `scripts/incremental.py`, a
 compile with memos against one without, under edits. The compiler on
 itself: 0.82 s cold, 0.32 s warm.
+
+## The second query: each form's check kept between compiles (2026-10-12)
+
+C55: the checker's change per form, chained by fingerprint. The compiler
+on itself warm: 0.12 s; after a body edit, 0.12 s.

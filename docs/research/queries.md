@@ -49,6 +49,13 @@ and replayed as any other.
 Measured, the compiler on itself: 0.82 s cold, 0.32 s warm (0.61 s with
 no memos at all). What is left is checking, all of it each time.
 
+## The second step (C55)
+
+`Check(form)`, as a change to the checker's environment, keyed by a chain
+of fingerprints (§Next, 1, done coarsely: everything before the form, not
+the names it reads). Warm, 0.12 s; a body edited, 0.12 s; a definition
+added early, 0.28 s.
+
 ## Next
 
 1. **`Check(form)`**: the checker's environment threaded form by form is

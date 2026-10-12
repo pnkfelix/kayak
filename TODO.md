@@ -257,8 +257,8 @@ The next goal. Phase A, in order (`PLAN.md` §6.5):
   bytevector at a letrena's region; `rmake-bytevector` when Fixpt has it.
 - **Corpus programs**, compared with Fixpt.
 - **Incremental compiling** (Q5, answered; `docs/research/queries.md`):
-  `Emit(form)` kept between compiles, content-addressed (C54). Next:
-  `Check(form)`, keyed by the interfaces it reads; queries as a library
+  `Emit(form)` and `Check(form)` kept between compiles (C54, C55). Next:
+  checks keyed by the names they read, not the whole chain; queries as a library
   for KFX programs (`lib/query.kfx`); query runs as tasks when the
   compiler has a reason to wait.
 

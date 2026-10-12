@@ -1059,3 +1059,28 @@ run flows from, as in the practice Coopt's runners note surveys.
 - **Fixpt computes the same keys**: given the memo file the Rust wrote,
   stage 0 takes every memo, makes `boot/src/kfx/` and writes back the
   same file, byte for byte (`scripts/fixpoint.sh`).
+
+## C55. The second query: each form's check, kept between compiles, chained (2026-10-12)
+
+`kfx/incr.kfx`, `check-program-memo`. A form's check is a change to what
+the forms after it see (the checker's `cv`): names bound, effects named,
+facts noted, types found, and where the checker is (its definition, its
+group, its type variables, which can carry to the next form). The memo
+is that change, as text (types as an s-expression of their constructors,
+read back by the reader), addressed by the form's text and a **chain**:
+the fingerprint of the context the passes before the forms make, then of
+each form's change in turn, its facts left out but those the checker
+reads again (`place-needs`, `region-within`).
+- **Early cutoff by content**: a body edited, its interface the same,
+  leaves the chain, and every later form's key, the same.
+- **Coarse, on purpose, first**: a form's key holds everything before
+  it, not the names it reads. A new definition early re-checks every
+  form after it (0.28 s on the compiler, the emitter's memos still
+  taken); a body edited, only itself (0.12 s). Keys by the names read
+  would narrow it: the checker would have to say what it looked up.
+- **Modules are checked always**, and continue the chain by their text.
+- **Checked**: `scripts/incremental.py` gained edits across files, a form
+  whose type is found from a definition in another file that changes;
+  a planted bug (the chain ignoring what forms bind) is caught by it.
+  The compiler on itself: 0.73 s plain, 0.9 s cold with memos (writing
+  them), 0.12 s warm.
