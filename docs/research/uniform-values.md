@@ -67,3 +67,14 @@ answers; first-class `poly` after. The user's call: it reverses C57.
 
 Planned after the checker's current growth for the engine (C68–C72 and
 what follows), not before.
+
+## Step 1, done (C75)
+
+Unions with scalars, lists, procedures, references, arrays, sums and
+products as members; `typecase`; the shape tests; `false`; a `pairof`
+whose tail is a list. kayak-rt's `Value` (`crates/kayak-rt/src/value.rs`);
+facts from the checker at `check`, `check-by-synth`, narrowed locals,
+`typecase` arms, calls of a narrowed procedure; the emitter's coercions at
+them. No views yet: a list of members given as a list of the union is
+still a type error for rustc, not refused by kfx. 114 of Fixpt's programs
+compile and agree (108 before).

@@ -1,0 +1,62 @@
+"Unions of shapes (C75): a union's value is kayak-rt's uniform `Value`, a
+ member boxed where it is given for its union, and unboxed where a test
+ narrows the union to it; Rust's own types, unboxed, everywhere else."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-type small (union int string))
+(define-type wide (union int string symbol bool char (listof int acyclic) (subr pure (int) int)))
+(define-type maybe-int (union false int))
+
+"A union below a wider one: the same `Value`."
+(define widen (subr pure (small) wide) (lambda (x) x))
+
+"A test's narrowing, through `cond`, `not` and `and`."
+(define size-of (subr kfx (wide) int)
+  (lambda (x)
+    (cond ((int? x) x)
+          ((string? x) (string-length x))
+          ((symbol? x) 100)
+          ((bool? x) (if x 1 0))
+          ((char? x) (char->integer x))
+          ((procedure? x) (x 1000))
+          ((null? x) -1)
+          (else (+ (car x) (size-of (cdr x)))))))
+
+"`typecase`, each arm binding its member."
+(define kind (subr pure (wide) string)
+  (lambda (x)
+    (typecase x
+      (int n (if (< n 0) "negative" "int"))
+      (string s (string-append "string " s))
+      (procedure f (int->string (f 1)))
+      (nil e "nil")
+      (else "other"))))
+
+"`#f` where `false` is a member: \"an int or none\"."
+(define next (subr pure (maybe-int) int) (lambda (x) (if (bool? x) 0 (+ x 1))))
+(define none (subr pure () maybe-int) (lambda () #f))
+
+"A union at a type variable: a generic Rust fn, instantiated at `Value`."
+(define pick (poly ((t type)) (subr pure (bool t t) t)) (lambda (b x y) (if b x y)))
+
+"Each member given for its union: boxed, a scalar, a list, a procedure."
+(define all (subr kfx () (listof wide acyclic))
+  (lambda ()
+    (list 7 "seven" 'seven #t #\a (the (listof int acyclic) (list 1 2 3)) (the (listof int acyclic) nil)
+          (lambda ((n int)) (* n 2)) (widen (the small 41)))))
+
+(define-rec
+  (sizes (subr kfx ((listof wide acyclic)) int)
+    (lambda (xs) (if (null? xs) 0 (+ (* 10 (sizes (cdr xs))) (size-of (car xs)))))))
+
+(define-rec
+  (kinds (subr kfx ((listof wide acyclic)) string)
+    (lambda (xs) (if (null? xs) "" (string-append (kind (car xs)) (string-append ";" (kinds (cdr xs))))))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (string-append (int->string (sizes (all)))
+      (string-append " " (string-append (kinds (all))
+        (string-append " " (string-append (int->string (+ (next (none)) (next 41)))
+          (string-append " " (kind (pick #f (the wide -3) (the wide 'x)))))))))))

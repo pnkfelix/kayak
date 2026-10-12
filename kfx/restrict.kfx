@@ -4,7 +4,7 @@
  after the checker, the engine (fx26/) does not: one checker, and KFX
  the programs that pass both.
 
- First: FX-26's composable continuations (C60); unions of shapes (C62); which may be resumed again and
+ First: FX-26's composable continuations (C60), which may be resumed again and
  again, where a Rust future resumes once (C45). Their place, until the
  checker gives facts about them, is in the program's text: the primitive
  named, the type written, a control primitive given to `proj`."
@@ -28,8 +28,10 @@
         (sym (n f p)
           (cond ((or (string=? n "call-with-composable-continuation") (string=? n "call-with-current-continuation") (string=? n "call/cc"))
                  (restriction-refused file line (string-append n " keeps a continuation FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)")))
-                ((string-member? n (list "make-continuation-mark-key" "with-mark" "first-mark" "current-marks" "marks-of" "false" "no-pair" "eq?" "set-car!" "set-cdr!" "stay-cellular" "int?" "string?" "bool?" "char?" "symbol?" "array?" "procedure?" "pair?" "f64?" "ref?" "sum?" "product?" "bytevector?"))
-                 (restriction-refused file line (string-append n ", of FX-26's unions of shapes, which KFX has not: as a Rust enum, a union's subtyping under a list or a procedure would need a copy or a wrapper FX-26 has not (C57)")))
+                ((string-member? n (list "make-continuation-mark-key" "with-mark" "first-mark" "current-marks" "marks-of"))
+                 (restriction-refused file line (string-append n ", a continuation mark, which KFX has not yet (C18, C72)")))
+                ((string-member? n (list "no-pair" "eq?" "set-car!" "set-cdr!" "stay-cellular"))
+                 (restriction-refused file line (string-append n ", which KFX has not: it tells apart, or writes through, what a union's value in Rust (C75) would copy")))
                 (else #u)))
         (lst (xs f l p)
           (cond ((null? xs) #u)
@@ -37,8 +39,6 @@
                  (restriction-refused f l "a continuation mark's key, which KFX has not yet (C18): a prompt in Rust would save and restore the marks around each poll (C72)"))
                 ((or (sym-is? (car xs) "vsubr") (sym-is? (car xs) "vlambda") (sym-is? (car xs) "apply"))
                  (restriction-refused f l (string-append (sym-name (car xs)) ", FX-26's variadic procedures, which KFX has not yet: a Rust fn has its arity (C71)")))
-                ((or (sym-is? (car xs) "union") (sym-is? (car xs) "typecase") (sym-is? (car xs) "pairof"))
-                 (restriction-refused f l (string-append (sym-name (car xs)) ", of FX-26's unions of shapes, which KFX has not: as a Rust enum, a union's subtyping under a list or a procedure would need a copy or a wrapper FX-26 has not (C57)")))
                 ((sym-is? (car xs) "composable")
                  (restriction-refused f l "a composable continuation, which FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)"))
                 ((and (sym-is? (car xs) "poly") (i64= (size xs) 3) (head-is? (third xs) "poly"))

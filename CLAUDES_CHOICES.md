@@ -1437,3 +1437,58 @@ Rust is unchanged, and `tests/kfx-stricter/lambda-order.kfx` is a corpus
 program now (`tests/kfx/lambda-order.kfx`), its answer Fixpt's.
 `run/marks-of.fx` gets past it, to KFX's `spin` for a call of a
 procedure it cannot see, a stricter rule of its own, left for now.
+
+## C75. Unions of shapes in KFX, as a uniform `Value` (2026-10-12)
+
+The user's proposal (`docs/research/uniform-values.md`), its first step;
+C57 superseded for unions. A union's type is kayak-rt's `Value`
+(`crates/kayak-rt/src/value.rs`): a scalar member unboxed in it, a list
+as `nil` or its pair, any other member (a procedure, a reference, an
+array, a sum, a product) behind `Any`, its shape kept beside it. Every
+other type is Rust's own, as before, generic code instantiated at
+`Value` where a type variable is a union.
+
+- **The checker says where**, as facts, at the subsumption points it
+  already finds: `check` and `check-by-synth`, where a non-union meets a
+  union (`box scalar|list|other SHAPE`), and the reverse (`unbox`,
+  `unbox-list`, `unbox-other`, with the member's type); a narrowed local
+  named (a test's narrowing is now a bind of its own kind, `narrowed`,
+  whose origin, the local it narrows, says what Rust it is); a
+  `typecase` arm's binder; the call of a local narrowed to a procedure
+  (`head-unbox`); `null?` of a union (`union-test`). A check that boxes
+  has the union's type, not the member's.
+- **The emitter writes them**: `kayak_rt::value::ToValue::to_value(x)`,
+  `value::list(x)`, `value::other(x, Shape::S)`, `value::unbox::<T>(x)`
+  and its kin; `typecase` as a chain of shape tests, each binding its name
+  unboxed (no `let` when the arm does not name it); `int?` and the other
+  shape tests generic over kayak-rt's `Shaped`.
+- **`nil`, a list narrowed so, stays a list**, its element type Rust's to
+  find, not a `Value`: the compiler narrows lists everywhere, and none of
+  that may change.
+- **A pair whose tail is a list is that list** (`(pairof int ints @r)`
+  is `List<Int>`): `pairof` is written in KFX now. A pair of another tail,
+  and a member of no shape kayak-rt boxes yet, the emitter refuses (C75),
+  not the checker, which the engine shares.
+- **Still refused, for Rust**: `eq?`, `set-car!`, `set-cdr!`, `no-pair`,
+  `stay-cellular`: the argument that a copy or a box cannot be seen rests
+  on their absence.
+- **What a program sees**: nothing new. A box is a new object where FX-26
+  has the old one, which only `eq?` could tell.
+
+Measured: kfx accepts 114 of Fixpt's programs (108 before), all agreeing;
+`tests/kfx/unions.kfx` in the corpus, Fixpt's answer, the engine's too.
+Next (TODO §24): general pairs as `Value`s and `car`/`cdr` of a union,
+then `datum` with `quote` of lists, a list given as a list of a union by a
+view; first-class `poly` after.
+
+## C76. Answering the user: why KFX says `spin` where FX-26 does not (2026-10-12)
+
+The user asked whether `run/marks-of.fx`'s `spin` is KFX trusting declared
+types less than FX-26. It is not: both trust a type without `spin`. The
+`call-with-composable-continuation` call alone gets KFX's `spin`, from its
+general rule for a polymorphic callee whose instance could be applied to
+itself (`poly-self-application`), where FX-26 has a syntactic rule of its
+own for the call: none when the receiver is a `lambda` that names its
+continuation only as a call's operator, outside a `lambda` or a prompt.
+Queued (TODO §25): FX-26's rule for that call, ahead of the general one.
+It matters to the engine only, since kfx refuses the primitive for Rust.

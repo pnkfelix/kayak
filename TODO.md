@@ -390,7 +390,18 @@ The user's proposal (2026-10-12), agreed to follow the checker's current
 growth: unions, `datum` and first-class `poly` for KFX, as a `Value` where
 types are not known and Rust's generics, unboxed, where they are;
 coercions at the checker's subsumption points, views for lists. Reverses
-C57 when done. First step: unions of scalars and `datum`, with views.
+C57 when done.
+- **Done, step 1 (C75)**: unions, `typecase`, the shape tests, `false`,
+  `pairof` of a list: `Value`, boxed and unboxed at the checker's facts.
+- **Step 2**: a pair of another tail as a `Value`; `car`/`cdr` of a union
+  (`unions/car-of-union.fx`, `unions/nil-or-pair.fx`); `datum`, `quote` of
+  any datum; a typed list given as a list of a union by a view (`Value`
+  over the typed list, each element boxed as it is read), and KFX's region
+  for a list literal given for a union's list member (`(list 1 2 3)` in a
+  `(listof wide acyclic)`, which FX-26 accepts and KFX refuses as `%fresh`).
+- **Step 3**: first-class `poly`, a generic instantiated at `Value`.
+- Datatypes as union members (`unions/more-shapes.fx`): the checker knows
+  no shape for them yet.
 
 ## 25. FX-26 beyond KFX: what is left, by subsystem (2026-10-12, after C68–C74)
 
@@ -407,5 +418,6 @@ refuses 165. What is left are subsystems, each its own design note first:
 - **First-class `poly`** (9, and recursive types through it): TODO §22.
 - **`datum`** (9): with C75's uniform values for KFX, and `letfreeze`,
   `const`, quasiquote, vectors.
-- **Smaller**: KFX's `spin` for a call of an unseen procedure, where FX-26
-  finds none (`run/marks-of.fx`); bloblets in the engine.
+- **Smaller**: `call-with-composable-continuation`'s `spin` by FX-26's
+  rule for it, not KFX's general one for a self-applicable instance
+  (C76, `run/marks-of.fx`); bloblets in the engine.

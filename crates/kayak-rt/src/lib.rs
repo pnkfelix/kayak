@@ -22,6 +22,7 @@ mod show;
 mod stats;
 pub mod suspend;
 mod text;
+pub mod value;
 mod world;
 
 pub use arena::*;
@@ -38,6 +39,10 @@ pub use stats::heap_stats_report;
 use std::cell::Cell;
 pub use std::cell::OnceCell;
 pub use text::*;
+pub use value::{
+    array_p, bool_p, bytevector_p, char_p, f32_p, f64_p, int_p, pair_p, procedure_p, product_p,
+    ref_p, string_p, sum_p, symbol_p,
+};
 pub use world::*;
 
 /// `string`: text, and whether it is ASCII, found when the string is made.

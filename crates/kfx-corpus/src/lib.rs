@@ -268,6 +268,11 @@ pub mod unicode;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/unions.rs"]
+pub mod unions;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/untyped.rs"]
 pub mod untyped;
 
@@ -349,5 +354,6 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("terminate", terminate::main),
     ("two", two::main),
     ("unicode", unicode::main),
+    ("unions", unions::main),
     ("untyped", untyped::main),
 ];

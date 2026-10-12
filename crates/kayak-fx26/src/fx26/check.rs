@@ -3803,6 +3803,39 @@ pub fn local(v: &'static Cv, name: Str, t: &'static Ty) -> &'static Bind {
     bind(name, scheme(nil::<Str>(), t), str_lit("local"))
 }
 
+/// A local narrowed by a test (C62): the same Rust local, its type known
+/// better, unboxed where it is named if a union's (C75).
+pub fn narrowed(v: &'static Cv, name: Str, t: &'static Ty) -> &'static Bind {
+    bind(name, scheme(nil::<Str>(), t), str_lit("narrowed"))
+}
+
+/// The type of the binding of `name` a narrowing narrows, as a list of
+/// one, or none.
+pub fn bind_origin(mut name: Str, mut bs: Binds) -> Tys {
+    loop {
+        if null_p(bs) {
+            return nil::<&'static Ty>();
+        } else {
+            let tagcase_ = car(bs);
+            match *tagcase_ {
+                Bind::Bind(n, sc, wher) => {
+                    if (string_eq_p(n, name) && not(string_eq_p(wher, str_lit("narrowed")))) {
+                        let tagcase_ = sc;
+                        match *tagcase_ {
+                            Scheme::Scheme(tv, t) => {
+                                return kayak_rt::heap_cons(t, kayak_rt::nil());
+                            }
+                        }
+                    } else {
+                        bs = cdr(bs);
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
 // Expressions
 pub fn with_effs(r: &'static Res, es: Strings) -> &'static Res {
     let tagcase_ = r;

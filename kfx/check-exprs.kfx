@@ -728,6 +728,86 @@
 
 (define-datatype narrowing (narrowing cv cv))
 
+"Uniform values (C75; docs/research/uniform-values.md): a union's value
+ is a `Value` in Rust. A member given for its union is boxed there, and a
+ union narrowed to a member unboxed: each a fact at the expression, for
+ the emitter. `nil`, a list narrowed so, is a list still, of the element
+ type Rust finds."
+(define valued? (subr kfx (st ty) bool)
+  (lambda (s t) (string=? (shape-of (walk s t)) "union")))
+
+(define as-member (subr kfx (st ty) ty)
+  (lambda (s t)
+    "A member's type as Rust has it: a pair whose tail is a list is that
+     list (C68)."
+    (let ((x (walk s t)))
+      (tagcase x
+        (ty-data (d args)
+          (if (and (string=? d "%pairof") (tagcase (walk s (car (cdr args))) (ty-list (e r) #t) (else other #f)))
+              (walk s (car (cdr args)))
+              x))
+        (else other x)))))
+
+(define scalar-member? (subr kfx (st ty) bool)
+  (lambda (s t)
+    "Whether a member is one `Value` holds unboxed."
+    (tagcase (walk s t)
+      (ty-i64 () #t) (ty-int () #t) (ty-nat () #t) (ty-f64 () #t) (ty-char () #t) (ty-bool () #t)
+      (ty-string () #t) (ty-unit () #t)
+      (ty-data (d args) (or (string=? d "false") (string=? d "symbol")))
+      (else other #f))))
+
+(define rust-shape (subr kfx (string) string)
+  (lambda (shape)
+    "A shape as kayak-rt's `Shape` names it, for a member boxed whole."
+    (cond ((string=? shape "procedure") "Procedure") ((string=? shape "box") "Box")
+          ((string=? shape "bloblet") "Bloblet") ((string=? shape "sum") "Sum")
+          ((string=? shape "product") "Product") ((string=? shape "f32") "F32")
+          ((string=? shape "bytevector") "Bytevector") ((string=? shape "int") "Int")
+          (else ""))))
+
+(define coerced (subr kfx (cv st string i64 ty ty) st)
+  (lambda (v s file pos t expected)
+    "What is of type `t` where an `expected` is wanted, at `file`, `pos`:
+     boxed into a union, unboxed out of one, or as it is; a member KFX
+     cannot box yet is the emitter's to refuse, not the checker's, which
+     the engine shares."
+    (let ((from (valued? s t)) (to (valued? s expected)))
+      (cond ((or (string=? file "") (and from to) (and (not from) (not to))) s)
+            (to
+             (let ((m (as-member s t)))
+               (cond ((scalar-member? s m) (note-fact s file pos "box scalar"))
+                     ((or (string=? (shape-of m) "list") (string=? (shape-of m) "nil")) (note-fact s file pos "box list"))
+                     ((string=? (rust-shape (shape-of m)) "") (note-types s file pos "box none" (list m)))
+                     (else (note-fact s file pos (string-append "box other " (rust-shape (shape-of m))))))))
+            (else
+             (let ((m (as-member s expected)))
+               (cond ((scalar-member? s m) (note-types s file pos "unbox" (list m)))
+                     ((or (string=? (shape-of m) "list") (string=? (shape-of m) "nil")) (note-types s file pos "unbox-list" (list m)))
+                     ((string=? (rust-shape (shape-of m)) "") (note-types s file pos "unbox-none" (list m)))
+                     (else (note-types s file pos "unbox-other" (list m))))))))))
+
+(define head-unboxed (subr kfx (cv st string string ty) st)
+  (lambda (v s h wher t)
+    "A call of a local narrowed to a procedure from a union (C75): the
+     procedure unboxed, a fact at the call."
+    (if (not (string=? wher "narrowed"))
+        s
+        (let ((origin (bind-origin h (cv-binds v))))
+          (if (or (null? origin) (not (valued? s (car origin))) (valued? s t) (string=? (cv-file v) ""))
+              s
+              (note-types s (cv-file v) (cv-pos v) "head-unbox" (list t)))))))
+
+(define narrowing-unboxed (subr kfx (cv st string string i64 ty) st)
+  (lambda (v s name file pos t)
+    "A narrowed local named: unboxed if its own type is a union's, and what
+     it is narrowed to is not."
+    (let ((found (find-bind name (cv-binds v))))
+      (if (or (null? found) (not (tagcase (car found) (bind (n sc w) (string=? w "narrowed")))))
+          s
+          (let ((origin (bind-origin name (cv-binds v))))
+            (if (null? origin) s (coerced v s file pos (car origin) t)))))))
+
 (define union-local (subr kfx (cv st sexp) tys)
   (lambda (v s x)
     "The members of the local `x`'s union, if it is one; its type alone if
@@ -739,7 +819,7 @@
               nil
               (tagcase (car found)
                 (bind (n2 sc w)
-                  (if (string=? w "local")
+                  (if (or (string=? w "local") (string=? w "narrowed"))
                       (tagcase sc (scheme (tv t) (tagcase (walk s t)
                                                    (ty-data (d args) (if (string=? d "%union") (lists-split args) (if (string=? (shape-of (walk s t)) "") nil (list (walk s t)))))
                                                    (ty-list (e r) (lists-split (list (walk s t))))
@@ -763,8 +843,8 @@
                   (let ((yes (narrowed-to ms shape)) (no (narrowed-from ms shape)) (x (sym-name (second xs))))
                     (if (or (null? yes) (null? no))
                         nil
-                        (list (narrowing (with-binds v (list (local v x (union-of yes))))
-                                         (with-binds v (list (local v x (union-of no))))))))))
+                        (list (narrowing (with-binds v (list (narrowed v x (union-of yes))))
+                                         (with-binds v (list (narrowed v x (union-of no))))))))))
             nil))
       (else other nil))))
 
@@ -821,7 +901,7 @@
                   (tagcase (walk s t)
                     (ty-list (el r) (res t es (note-turbofish s at-file at-pos (list el))))
                     (else other (res t es s)))
-                  (res t es (async-global v s name at-file at-pos))))))
+                  (res t es (narrowing-unboxed v (async-global v s name at-file at-pos) name at-file at-pos t))))))
         (lst (xs src-file src-line src-pos)
           (let ((v (near v src-file src-line src-pos)))
             (tagcase (car xs)
@@ -866,6 +946,15 @@
                              (inst (t s regions effects) (res t (naming-effs s name wher t (cv-group v)) s)))))))))))))
 
   (check (subr kfx (cv st sexp ty) res)
+    (lambda (v s e expected)
+      "`e` where an `expected` is wanted; a member boxed for its union (C75)."
+      (tagcase (check-plain v s e expected)
+        (res (t es s)
+          (if (and (valued? s expected) (not (valued? s t)))
+              (res expected es (coerced v s (datum-file e) (datum-pos e) t expected))
+              (res t es (coerced v s (datum-file e) (datum-pos e) t expected)))))))
+
+  (check-plain (subr kfx (cv st sexp ty) res)
     (lambda (v s e expected)
       (let ((x (walk s expected)))
         (if (and (tagcase e (sym (n f p) (string=? n "#f")) (else other #f))
@@ -942,7 +1031,7 @@
       (tagcase (synth v s e)
         (res (t es s)
           (res expected es
-               (let ((s (fits v s t expected)))
+               (let ((s (coerced v (fits v s t expected) (datum-file e) (datum-pos e) t expected)))
                  (tagcase (walk s t)
                    (ty-proc (pes ps r)
                      (tagcase (walk s expected)
@@ -1121,7 +1210,9 @@
             ((string=? h "typecase")
              (if (null? (union-local v s (car xs)))
                  (refuse v "a typecase of a local of a union (C62)")
-                 (typecase-arms v s (car xs) (cdr xs) expected)))
+                 (typecase-arms v (let ((origin (bind-origin (sym-name (car xs)) (cv-binds v))))
+                                    (if (and (not (null? origin)) (valued? s (car origin))) (note-fact s (cv-file v) (cv-pos v) "typecase-valued") s))
+                                (car xs) (cdr xs) expected)))
             ((string=? h "begin") (body v s xs expected))
             ((string=? h "let")
              (let-values v s (items (car xs)) (cdr xs) expected nil #f))
@@ -1294,11 +1385,14 @@
                    (no (narrowed-from ms shape)))
               (if (null? yes)
                   (refuse v (string-append "a typecase's arm of a shape its union has not: " (sym-name (car arm))))
-                  (tagcase (body (with-binds v (list (local v (name-of v (second arm)) (union-of yes)))) s (cdr (cdr arm)) expected)
+                  (tagcase (body (with-binds v (list (local v (name-of v (second arm)) (union-of yes))))
+                                 (let ((origin (bind-origin (sym-name x) (cv-binds v))))
+                                   (if (null? origin) s (coerced v s (datum-file (car arms)) (datum-pos (car arms)) (car origin) (union-of yes))))
+                                 (cdr (cdr arm)) expected)
                     (res (t es s)
                       (if (null? (cdr arms))
                           (res t es s)
-                          (tagcase (typecase-arms (if (null? no) v (with-binds v (list (local v (sym-name x) (union-of no))))) s x (cdr arms)
+                          (tagcase (typecase-arms (if (null? no) v (with-binds v (list (narrowed v (sym-name x) (union-of no))))) s x (cdr arms)
                                                   (next-expected s t expected))
                             (res (t2 es2 s) (res (joined s t t2 expected) (effs-union es es2) (join-state v s t t2 expected)))))))))))))
 
@@ -1466,7 +1560,7 @@
                                                nil
                                                (tagcase (car found)
                                                  (bind (b sc wher)
-                                                   (if (or (string=? wher "local") (string=? wher "rec") (string=? wher "ends"))
+                                                   (if (or (string=? wher "local") (string=? wher "narrowed") (string=? wher "rec") (string=? wher "ends"))
                                                        (the binds (list (car found)))
                                                        nil))))))
                                        (distinct (concat (map (lambda ((n string)) (if (string=? n (sym-name (car xs))) nil (the strings (list n))))
@@ -1940,14 +2034,18 @@
                       (else other #f)))
                "FX-26's `null?` and `pair?` of any value (C68): of a local of a
                 union, a pair or `nil`, which KFX's, of a list, would not take."
-               (tagcase (synth v s (car args)) (res (t es s2) (res (ty-bool) es s2))))
+               (tagcase (synth v s (car args))
+                 (res (t es s2) (res (ty-bool) es (if (valued? s2 t) (note-fact s2 (cv-file v) (cv-pos v) "union-test") s2)))))
               ((and (or (string=? h "car") (string=? h "cdr")) (i64= (size args) 1) (not (null? (local-pair v s (car args)))))
                "Of a local known to be a pair (C68): its head or its tail, of any
                 type, not only a list's."
                (tagcase (car (local-pair v s (car args)))
                  (ty-data (d parts)
                    (res (if (string=? h "car") (car parts) (car (cdr parts)))
-                        (list (string-append "read:" (region-string s (car (cdr (cdr parts)))))) s))
+                        (list (string-append "read:" (region-string s (car (cdr (cdr parts))))))
+                        (tagcase (car args)
+                          (sym (n f p) (narrowing-unboxed v s n f p (car (local-pair v s (car args)))))
+                          (else other s))))
                  (else other (refuse v "a pair that is none"))))
               ((and (string=? h "cons") (i64= (size args) 2) (not (null? expected)) (not (null? (pair-expected s (car expected)))))
                "Where a pair is expected (C68): its head and tail checked against
@@ -1983,11 +2081,11 @@
                       (poly-settled v h wher args (binder-metas from (st-next s) (onto effects regions)) (result-only? s t (binder-metas from (st-next s) (onto effects regions)))
                       (void-call v (and (string=? h "error") (string=? wher "prim"))
                                  (and (not (null? expected)) (tagcase (walk s (car expected)) (ty-meta (k) #t) (else other #f)))
-                      (poly-self-application v sc t (knot-free-call v (synth-call-of v s (res t nil s) args regions expected
+                      (poly-self-application v sc t (knot-free-call v (synth-call-of v s (res t nil (head-unboxed v s h wher t)) args regions expected
                                      (effs-union
                                        (if (string=? wher "global") (list (string-append "g:" h)) nil)
                                        (if (or (string=? wher "rec")
-                                               (and (string=? wher "local") (self-applicable? v s t))
+                                               (and (or (string=? wher "local") (string=? wher "narrowed")) (self-applicable? v s t))
                                                (and (string-member? h (cv-group v)) (or (string=? wher "global") (string=? wher "item"))))
                                            (list "spin")
                                            nil))))))))))))))))))))

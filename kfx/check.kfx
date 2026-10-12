@@ -1721,6 +1721,23 @@
      called, since FX-26 reads such a call as its form (`synth-call`)."
     (bind name (scheme nil t) "local")))
 
+(define narrowed (subr kfx (cv string ty) bind)
+  (lambda (v name t)
+    "A local narrowed by a test (C62): the same Rust local, its type known
+     better, unboxed where it is named if a union's (C75)."
+    (bind name (scheme nil t) "narrowed")))
+
+(define bind-origin (subr kfx (string binds) tys)
+  (lambda (name bs)
+    "The type of the binding of `name` a narrowing narrows, as a list of
+     one, or none."
+    (cond ((null? bs) nil)
+          (else (tagcase (car bs)
+                  (bind (n sc wher)
+                    (if (and (string=? n name) (not (string=? wher "narrowed")))
+                        (tagcase sc (scheme (tv t) (list t)))
+                        (bind-origin name (cdr bs)))))))))
+
 "Expressions"
 
 (define with-effs (subr kfx (res strings) res)

@@ -706,6 +706,15 @@
       (else other t))))
 
 (define-rec
+  (list-type? (subr kfx (ctx sexp) bool)
+    (lambda (c t)
+      "Whether a type is a list's, an abbreviation's or written."
+      (cond ((head-is? t "listof") #t)
+            ((tagcase t (sym (n f p) (not (null? (module-body c (string-append "%alias " n))))) (else other #f))
+             (list-type? c (car (module-body c (string-append "%alias " (sym-name t))))))
+            (else #f)))))
+
+(define-rec
   (put-type (subr kfx (ctx sexp chars) chars)
     (lambda (c t acc)
       "A type. A name that is no base type or datatype is a type abbreviation
@@ -718,7 +727,8 @@
                 ((string=? s "f64") (put "f64" acc))
                 ((or (fixed-width? s) (string=? s "f32")) (put s acc))
                 ((string=? s "symbol") (put "Symbol" acc))
-                ((string=? s "bool") (put "bool" acc))
+                ((or (string=? s "bool") (string=? s "false")) (put "bool" acc))
+                ((string=? s "nil") (put "List<_>" acc))
                 ((string=? s "char") (put "char" acc))
                 ((string=? s "unit") (put "()" acc))
                 ((string=? s "void") (put "Void" acc))
@@ -743,6 +753,14 @@
                  (put ">" (put-type c (second xs) (put "List<" acc))))
                 ((sym-is? (car xs) "flatarrayof")
                  (put ">" (put-type c (second xs) (put "FlatArray<" acc))))
+                ((or (sym-is? (car xs) "union") (sym-is? (car xs) "%union"))
+                 "A union's value (C75): kayak-rt's uniform one."
+                 (put "kayak_rt::value::Value" acc))
+                ((and (or (sym-is? (car xs) "pairof") (sym-is? (car xs) "%pairof")) (list-type? c (third xs)))
+                 "A pair whose tail is a list: that list, not `nil` (C68)."
+                 (put-type c (third xs) acc))
+                ((or (sym-is? (car xs) "pairof") (sym-is? (car xs) "%pairof"))
+                 (error "kfx: a pair whose tail is no list, which KFX has not yet (C75)"))
                 ((sym-is? (car xs) "bytevectorof") (put "Bytes" acc))
                 ((and (sym-is? (car xs) "arrayof") (i64= (size xs) 3) (tagcase (third xs) (num (k f p) #f) (else other #t)))
                  (put ">" (put-type c (second xs) (put "Array<" acc))))
@@ -1388,6 +1406,35 @@
     (let ((found (fact-with c e prefix)))
       (if (string=? found "") nil (typed-flat c (car (read-all (string-chars found) "" 1)))))))
 
+(define-rec
+  (name-in? (subr kfx (string sexp) bool)
+    (lambda (n e)
+      "Whether `e` names `n` anywhere."
+      (tagcase e
+        (sym (m f p) (string=? m n))
+        (lst (xs f l p) (any? (lambda ((x sexp)) (name-in? n x)) xs))
+        (else other #f)))))
+
+(define shape-test (subr kfx (string bool) string)
+  (lambda (shape valued)
+    "A `typecase` arm's test: its shape's predicate, kayak-rt's."
+    (cond ((string=? shape "nil") (if valued "kayak_rt::value::null_p" "null_p"))
+          ((string=? shape "box") "ref_p")
+          (else (string-append (mangle shape) "_p")))))
+
+(define unboxing (subr kfx (ctx sexp) string)
+  (lambda (c e)
+    "How a union is unboxed at `e`, kayak-rt's function; or `` (C75)."
+    (cond ((not (string=? (fact-with c e "unbox ") "")) "unbox")
+          ((not (string=? (fact-with c e "unbox-list ") "")) "unbox_list")
+          ((not (string=? (fact-with c e "unbox-other ") "")) "unbox_other")
+          (else ""))))
+
+(define unboxed-type (subr kfx (ctx sexp) string)
+  (lambda (c e)
+    (let ((a (fact-with c e "unbox ")) (b (fact-with c e "unbox-list ")))
+      (cond ((not (string=? a "")) a) ((not (string=? b "")) b) (else (fact-with c e "unbox-other "))))))
+
 "Every writer of an expression takes `n`, the indentation of the line it
  starts on, and `t`, where the expression stands."
 (define-rec
@@ -1429,6 +1476,31 @@
                     (acc (put ")(" acc))
                     (acc (put-arg-names 0 lift acc)))
                (put ")))" acc)))
+            ((not (string=? (fact-with c e "box none ") ""))
+             (error (string-append "kfx: " (string-append (datum-file e) (string-append ": a union's member KFX cannot give for it yet (C75): " (fact-with c e "box none "))))))
+            ((not (string=? (fact-with c e "unbox-none ") ""))
+             (error (string-append "kfx: " (string-append (datum-file e) (string-append ": a union's member KFX cannot take out of it yet (C75): " (fact-with c e "unbox-none "))))))
+            ((and (not (string=? (fact-with c e "box ") ""))
+                  (not (string-member? (string-append "%boxed " (string-append (datum-file e) (i64->string (datum-pos e)))) (ctx-locals c))))
+             "A member given for its union (C75): boxed, a scalar as it is, a
+              list as `nil` or its pair, another shape behind `Any`."
+             (let* ((how (fact-with c e "box "))
+                    (acc (put (cond ((string=? how "scalar") "kayak_rt::value::ToValue::to_value(")
+                                    ((string=? how "list") "kayak_rt::value::list(")
+                                    (else "kayak_rt::value::other("))
+                              acc))
+                    (acc (put-exp (with-locals c (list (string-append "%boxed " (string-append (datum-file e) (i64->string (datum-pos e)))))) e n (value) acc)))
+               (put (if (has-prefix? how "other ")
+                        (string-append ", kayak_rt::value::Shape::" (string-append (after-prefix how "other ") ")"))
+                        ")")
+                    acc)))
+            ((and (not (string=? (unboxing c e) ""))
+                  (not (string-member? (string-append "%unboxed " (string-append (datum-file e) (i64->string (datum-pos e)))) (ctx-locals c))))
+             "A union narrowed to a member (C75): unboxed, at the member's type."
+             (let* ((acc (put (unboxing c e) (put "kayak_rt::value::" acc)))
+                    (acc (put ">(" (put-type c (car (read-all (string-chars (unboxed-type c e)) "" 1)) (put "::<" acc))))
+                    (acc (put-exp (with-locals c (list (string-append "%unboxed " (string-append (datum-file e) (i64->string (datum-pos e)))))) e n (value) acc)))
+               (put ")" acc)))
             (else
              (tagcase e
                (num (k num-file num-pos)
@@ -1464,6 +1536,7 @@
                (lst (xs src-file src-line src-pos)
                  (cond ((fact-at? c e "void-call") (put " {}" (put-call c e xs n t (put "match " acc))))
                        ((fact-at? c e "void-error") (put ")" (put-call c e xs n t (put "the::<Void>(" acc))))
+                       ((fact-at? c e "union-test") (put-call c e xs n t (put "kayak_rt::value::" acc)))
                        (else (put-call c e xs n t acc)))))))))
 
   (put-call (subr kfx (ctx sexp sexps i64 tail chars) chars)
@@ -1474,7 +1547,15 @@
        itself, and awaited (C45)."
       (tagcase (car xs)
         (sym (h at-file at-pos)
-          (cond ((not (fact-at? c e "suspending-call")) (put-form c e h (cdr xs) n t acc))
+          (cond ((not (string=? (fact-with c e "head-unbox ") ""))
+                 "A call of a union narrowed to its procedure (C75)."
+                 (let* ((acc (put "(kayak_rt::value::unbox_other::<" acc))
+                        (acc (put-type c (car (read-all (string-chars (fact-with c e "head-unbox ")) "" 1)) acc))
+                        (acc (put ">(" acc))
+                        (acc (put-var c h acc))
+                        (acc (put "))(" acc)))
+                   (put-question c e (put ")" (if (null? (cdr xs)) acc (put-joined c (cdr xs) ", " n acc))))))
+                ((not (fact-at? c e "suspending-call")) (put-form c e h (cdr xs) n t acc))
                 ((async-here? c) (put-form c e h (cdr xs) n t (put "kayak_rt::suspend::body(" acc)))
                 (else (put-form c e h (cdr xs) n t (put "kayak_rt::suspend::block(kayak_rt::suspend::body(" acc)))))
         (else head
@@ -1548,6 +1629,34 @@
       (let* ((acc (put-nl (i64+ n 1) (put "{" acc)))
              (acc (put-stmts c es (i64+ n 1) t acc)))
         (put "}" (put-nl n acc)))))
+
+  (put-typecase-arms (subr kfx (ctx sexp bool sexps i64 tail chars) chars)
+    (lambda (c x valued arms n t acc)
+      "A `typecase` of `x` (C62, C75): each arm its shape's test, its name
+       bound to `x`, unboxed if `x` is a union's; the last arm, or `else`,
+       what is left."
+      (let ((arm (items (car arms))))
+        (if (sym-is? (car arm) "else")
+            (put-block c (cdr arm) n t acc)
+            (let* ((name (sym-name (second arm)))
+                   (how (unboxing c (car arms)))
+                   (last (null? (cdr arms)))
+                   (acc (if last
+                            acc
+                            (put ") " (put-var c (sym-name x) (put "(" (put (shape-test (sym-name (car arm)) valued) (put "if " acc)))))))
+                   (acc (put-nl (i64+ n 1) (put "{" acc)))
+                   (used (any? (lambda ((b sexp)) (name-in? name b)) (cdr (cdr arm))))
+                   (acc (if used (put " = " (put (mangle name) (put "let " acc))) acc))
+                   (acc (cond ((not used) acc)
+                              ((string=? how "") (put-var c (sym-name x) acc))
+                              (else
+                               (put ")" (put-var c (sym-name x)
+                                                 (put ">(" (put-type c (car (read-all (string-chars (unboxed-type c (car arms))) "" 1))
+                                                                    (put "::<" (put how (put "kayak_rt::value::" acc))))))))))
+                   (acc (if used (put-nl (i64+ n 1) (put ";" acc)) acc))
+                   (acc (put-stmts (with-locals c (list name)) (cdr (cdr arm)) (i64+ n 1) (hide t (list name)) acc))
+                   (acc (put "}" (put-nl n acc))))
+              (if last acc (put-typecase-arms c x valued (cdr arms) n t (put " else " acc))))))))
 
   (put-cond (subr kfx (ctx sexps i64 tail chars) chars)
     (lambda (c clauses n t acc)
@@ -1820,6 +1929,7 @@
                     (acc (put " else " acc)))
                (put-block c (list (third xs)) n t acc)))
             ((string=? h "cond") (put-cond c xs n t acc))
+            ((string=? h "typecase") (put-typecase-arms c (car xs) (fact-at? c e "typecase-valued") (cdr xs) n t acc))
             ((string=? h "and")
              (if (null? xs) (put "true" acc) (put ")" (put-joined c xs " && " n (put "(" acc)))))
             ((string=? h "or")
