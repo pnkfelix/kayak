@@ -1614,3 +1614,22 @@ written. A new closure where FX-26 has the old procedure: only `eq?`
 could tell, which KFX refuses. One level, as C78's lists: a wrapper's
 argument that is itself a procedure or a list to convert is not done, and
 rustc, not kfx, refuses it.
+
+## C83. Dogfood after C75–C82: what KFX's own code could use (2026-10-12)
+
+The user's practice (2026-10-12): after a round, look for where the
+compiler's own code could use what KFX gained. Found:
+- **Quasiquote for syntax the compiler makes** (31 places build `(lst
+  (list (sym "..." "" 0) ...) "" 0 0)`, settled types and rewrites): not
+  taken. A quasiquote builds a `datum`, which has no source positions,
+  and the compiler's `sexp` keeps a place on every node, which facts and
+  messages are keyed by; converting to and from would cost more text than
+  it saves.
+- **Tables kept as text** (`primitives`, `prelude`, `control-schemes`,
+  `io-error-text`): not taken. They are FX-26 text that Fixpt reads too
+  (the prelude), and a fact's types are text by design (C54's memos).
+- **"A list of one, or none"** (46 `(null? found)`, a lookup's answer):
+  the one real use, `(union nil bind)`, says what it means and costs the
+  same (a box where a `cons` was). Blocked: KFX's unions hold no datatype,
+  where FX-26's do (shape `sum`, `unions/more-shapes.fx`). That FX-26 gap
+  first (C84); then the lookups, one at a time, measured.
