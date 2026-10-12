@@ -805,6 +805,13 @@
                            (ty-data "%flat-array" (list e (ty-rconst (i64->string k))))
                            (refuse v (string-append "a flat array is of a flat, its length a literal (KFX has no arrays of values yet): " (show-sexp t))))))
                    (else other (refuse v (string-append "a flat array's length is a literal (KFX has no arrays of values yet): " (show-sexp t))))))
+                ((and (sym-is? (car xs) "composable") (i64= (size xs) 5))
+                 "FX-26's composable continuation (C60), `(composable T A D R)`: a
+                  procedure of `T` to `A`, of effect `D` and control on `R`. Its own
+                  type, below that procedure's; never Rust's (the restriction pass)."
+                 (ty-data "%composable" (list (parse-type v tvars (second xs)) (parse-type v tvars (third xs))
+                                             (ty-proc (parse-effect v tvars (fourth xs)) nil (ty-unit))
+                                             (parse-mutable-region v tvars (car (cdr (cdr (cdr (cdr xs)))))))))
                 ((sym-is? (car xs) "prompt-tag")
                  (ty-tag (parse-type v tvars (second xs)) (parse-type v tvars (third xs))
                          (parse-effect v tvars (fourth xs)) (parse-mutable-region v tvars (car (cdr (cdr (cdr (cdr xs))))))))
@@ -1023,6 +1030,10 @@
                 ((string=? d "%blobref") (string-append "(blobref " (string-append (show-tys s args) ")")))
                 ((string=? d "%bytes") (string-append "(bytevectorof " (string-append (show-ty s (car args)) ")")))
                 ((string=? d "%array") (string-append "(arrayof " (string-append (show-tys s args) ")")))
+                ((string=? d "%composable")
+                 (string-append "(composable " (string-append (show-ty s (car args)) (string-append " " (string-append (show-ty s (car (cdr args)))
+                   (string-append " " (string-append (tagcase (car (cdr (cdr args))) (ty-proc (es ps r) (show-effs es)) (else other "?"))
+                     (string-append " " (string-append (show-ty s (car (cdr (cdr (cdr args))))) ")")))))))))
                 ((string=? d "%flat-array") (string-append "(arrayof " (string-append (show-tys s args) ")")))
                 ((string=? d "%flat-sum")
                  (string-append "(sumof " (string-append (show-ty s (car args))
@@ -1134,6 +1145,21 @@
 (define region-string (subr kfx (st ty) string)
   (lambda (s r)
     (tagcase (walk s r) (ty-rconst (n) n) (ty-var (n) n) (ty-meta (k) (meta-name k)) (else other "?"))))
+
+(define-rec
+  (composable-as-proc (subr kfx (st ty) ty)
+    (lambda (s t)
+      "A composable continuation as the procedure it is (C60): of its `D`, and
+       control on its region; any other type, itself."
+      (tagcase t
+        (ty-data (d args)
+          (if (string=? d "%composable")
+              (let ((r (region-string s (car (cdr (cdr (cdr args)))))))
+                (ty-proc (effs-union (list (string-append "goto:" r) (string-append "comefrom:" r))
+                                     (tagcase (car (cdr (cdr args))) (ty-proc (es ps x) es) (else other nil)))
+                         (list (car args)) (car (cdr args))))
+              t))
+        (else other t)))))
 
 (define meta-number (subr kfx (string) i64)
   (lambda (r)
@@ -1308,6 +1334,17 @@
                                (else other nil)))))
                         (else nil)))))))))
 
+(define same-effs (subr kfx (st strings strings) (listof st acyclic))
+  (lambda (s a b)
+    "Effects `a` and `b` the same, each within the other, an effect variable
+     on either side solved to make them so (C60): the side open grown first,
+     so that its variable is not taken for the least it may be."
+    (let ((grown (fit-effs s b a)))
+      (if (and (not (null? grown)) (not (null? (fit-effs (car grown) a b))))
+          (fit-effs (car grown) a b)
+          (let ((other (fit-effs s a b)))
+            (if (null? other) nil (fit-effs (car other) b a)))))))
+
 (define-rec
   (fits (subr kfx (cv st ty ty) st)
     (lambda (v s actual expected)
@@ -1350,13 +1387,30 @@
         (ty-tag (xa xh xd xr)
           (tagcase e
             (ty-tag (ya yh yd yr)
-              (if (and (effs-within? xd yd) (effs-within? yd xd))
-                  (fits v (fits v (fits v s xa ya) xh yh) xr yr)
-                  (mismatch v s a e)))
+              "A tag's bound the same both ways, its effect variables solved to
+               make it so (C60: a primitive's tag at FX-26's poly type)."
+              (let ((two (same-effs s xd yd)))
+                (if (null? two)
+                    (mismatch v s a e)
+                    (fits v (fits v (fits v (car two) xa ya) xh yh) xr yr))))
             (else other (mismatch v s a e))))
         (ty-data (x xs)
           (tagcase e
-            (ty-data (y ys) (if (and (string=? x y) (i64= (size xs) (size ys))) (fits-all v s xs ys) (mismatch v s a e)))
+            (ty-data (y ys)
+              (cond ((not (and (string=? x y) (i64= (size xs) (size ys)))) (mismatch v s a e))
+                    ((string=? x "%composable")
+                     "Its bound `D` the same both ways, as a tag's (C60)."
+                     (let* ((xd (tagcase (car (cdr (cdr xs))) (ty-proc (es ps r) es) (else other nil)))
+                            (yd (tagcase (car (cdr (cdr ys))) (ty-proc (es ps r) es) (else other nil)))
+                            (two (same-effs s xd yd)))
+                       (if (null? two)
+                           (mismatch v s a e)
+                           (fits v (fits v (fits v (car two) (car xs) (car ys)) (car (cdr xs)) (car (cdr ys)))
+                                 (car (cdr (cdr (cdr xs)))) (car (cdr (cdr (cdr ys))))))))
+                    (else (fits-all v s xs ys))))
+            (ty-proc (ees eps er)
+              "A composable continuation where a procedure is expected (C60)."
+              (if (string=? x "%composable") (fits v s (composable-as-proc s a) e) (mismatch v s a e)))
             (else other (mismatch v s a e))))
         (ty-var (x) (tagcase e (ty-var (y) (if (string=? x y) s (mismatch v s a e))) (else other (mismatch v s a e))))
         (ty-proc (aes aps ar)

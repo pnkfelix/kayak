@@ -1,0 +1,45 @@
+"restrict.kfx: KFX's restrictions, a pass after checking (C60;
+ docs/research/front-end.md). The checker says what FX-26 says; this pass
+ refuses, for Rust, what has no Rust that means the same. kfx runs it
+ after the checker, the engine (fx26/) does not: one checker, and KFX
+ the programs that pass both.
+
+ First: FX-26's composable continuations, which may be resumed again and
+ again, where a Rust future resumes once (C45). Their place, until the
+ checker gives facts about them, is in the program's text: the primitive
+ named, the type written, a control primitive given to `proj`."
+
+(define control-primitive? (subr kfx (string) bool)
+  (lambda (n)
+    (string-member? n (list "call-with-composable-continuation" "call-with-current-continuation" "call/cc"
+                            "abort-current-continuation" "make-continuation-prompt-tag"))))
+
+(define restriction-refused (subr kfx (string i64 string) void)
+  (lambda (file line message)
+    (error (string-append "kfx: " (string-append file (string-append ":" (string-append (i64->string line)
+             (string-append ": " message))))))))
+
+(define-rec
+  (restricted (subr kfx (sexp string i64) unit)
+    (lambda (e file line)
+      "`e`, whose nearest list began at `line` of `file`: refused if it is
+       what KFX does not have, else each of its parts."
+      (tagcase e
+        (sym (n f p)
+          (if (or (string=? n "call-with-composable-continuation") (string=? n "call-with-current-continuation") (string=? n "call/cc"))
+              (restriction-refused file line (string-append n " keeps a continuation FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)"))
+              #u))
+        (lst (xs f l p)
+          (cond ((null? xs) #u)
+                ((sym-is? (car xs) "composable")
+                 (restriction-refused f l "a composable continuation, which FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)"))
+                ((and (sym-is? (car xs) "proj") (not (null? (cdr xs)))
+                      (tagcase (second xs) (sym (n f2 p2) (control-primitive? n)) (else other #f)))
+                 (restriction-refused f l (string-append "a proj of " (string-append (sym-name (second xs)) ", a control primitive KFX types by its own rule"))))
+                (else (restricted-all xs f l))))
+        (else other #u))))
+  (restricted-all (subr kfx (sexps string i64) unit)
+    (lambda (es file line) (if (null? es) #u (begin (restricted (car es) file line) (restricted-all (cdr es) file line))))))
+
+(define restrict (subr kfx (sexps) unit)
+  (lambda (forms) "Each form, refused if it is not KFX." (restricted-all forms "the program" 0)))

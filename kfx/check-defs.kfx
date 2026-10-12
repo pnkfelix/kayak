@@ -81,6 +81,8 @@
    (list->string (poly ((r region)) (subr (read r) ((listof char r)) string)))
    (string->list (poly ((r region)) (subr (alloc r) (string) (listof char r))))
    (error (subr pure (string) void))
+   (call-with-composable-continuation (poly ((r region) (a type) (h type) (d effect) (t type) (e effect))
+                                        (subr (maxeff (comefrom r) e) ((subr e ((composable t a d r)) t) (prompt-tag a h d r)) t)))
    (bitwise-and (subr pure (int int) int)) (bitwise-ior (subr pure (int int) int)) (bitwise-xor (subr pure (int int) int))
    (bitwise-not (subr pure (int) int)) (arithmetic-shift (subr pure (int int) int))
    (bool=? (subr pure (bool bool) bool))

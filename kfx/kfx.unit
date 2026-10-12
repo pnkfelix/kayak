@@ -7,6 +7,7 @@ check.kfx
 terminate.kfx
 check-exprs.kfx
 check-defs.kfx
+restrict.kfx
 emit.kfx
 emit-tops.kfx
 incr.kfx

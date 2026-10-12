@@ -641,6 +641,18 @@
           (else (tagcase (car vs)
                   (variant (t fields) (if (string=? t tag) (cdr vs) (cons (car vs) (without-tag tag (cdr vs))))))))))
 
+"The control primitives KFX types by rules of its own (`abort-call`,
+ `make-tag-call`), at FX-26's types, for a `proj` of one (C60), as FX-26's
+ programs write it."
+(define control-schemes string
+  "(make-continuation-prompt-tag (poly ((r region) (a type) (h type) (d effect)) (subr (alloc r) () (prompt-tag a h d r))))
+   (abort-current-continuation (poly ((r region) (a type) (h type) (d effect)) (subr (goto r) ((prompt-tag a h d r) h) void)))")
+
+(define control-binds (subr kfx (cv) binds)
+  (lambda (v)
+    (map (lambda ((p sexp)) (let ((xs (items p))) (bind (name-of v (car xs)) (parse-scheme-of v (second xs) #f) "prim")))
+         (read-all (string-chars control-schemes) "kfx's control primitives" 1))))
+
 (define-rec
   (synth (subr kfx (cv st sexp) res)
     (lambda (v s e)
@@ -1477,8 +1489,12 @@
     (lambda (v s xs)
       "`(proj f a ...)`: the poly procedure `f` at the arguments given for
        its binders in order, types and regions (places too), as FX-26
-       projects one; in Rust `f`, whose generics the call finds."
-      (let ((found (if (null? xs) nil (tagcase (car xs) (sym (n f p) (find-bind n (cv-binds v))) (else other nil)))))
+       projects one; in Rust `f`, whose generics the call finds. A proj of
+       a proj (C60): FX-26's nested `poly`s have their binders in the order
+       KFX's one has them, so the arguments are run together."
+      (if (and (not (null? xs)) (head-is? (car xs) "proj"))
+          (proj-form v s (onto (cdr (items (car xs))) (cdr xs)))
+      (let ((found (if (null? xs) nil (tagcase (car xs) (sym (n f p) (let ((b (find-bind n (cv-binds v)))) (if (null? b) (find-bind n (control-binds v)) b))) (else other nil)))))
         (if (null? found)
             (refuse v "(proj f arg ...) of a poly procedure named")
             (tagcase (car found)
@@ -1490,7 +1506,7 @@
                         (begin
                           (bounds-kept v s n (lambda ((x string)) (projected v tvars (cdr xs) (ty-var x))))
                           (res (projected v tvars (cdr xs) t) (naming-effs s n wher t (cv-group v))
-                               (proj-needs v s n tvars (cdr xs)))))))))))))
+                               (proj-needs v s n tvars (cdr xs))))))))))))))
 
   (bounds-kept (subr kfx (cv st string (subr kfx (string) ty)) unit)
     (lambda (v s n region-of-binder)
@@ -1669,10 +1685,7 @@
               ((and (null? found) (string=? h "abort-with-continuation")) (suspend-call v s args expected))
               ((and (null? found) (string=? h "make-continuation-prompt-tag")) (make-tag-call v s args expected))
               ((and (null? found) (or (string=? h "rcons") (string=? h "rnew"))) (region-alloc-call v s h args expected))
-              ((and (null? found)
-                    (or (string=? h "call-with-composable-continuation") (string=? h "call-with-current-continuation")
-                        (string=? h "call/cc")))
-               (refuse v (string-append h " keeps a continuation FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)")))
+
               ((null? found)
                (refuse v (string-append "nothing is named " h)))
               ((and (nat-op? h) (prim? (car found)) (i64= (size args) 2) (nat-args? v s args))
@@ -1958,7 +1971,7 @@
        fresh one, as FX-26's is: not one a later use may choose (C36)."
       (tagcase callee
         (res (t es0 s)
-          (tagcase (walk s t)
+          (tagcase (composable-as-proc s (walk s t))
             (ty-proc (latent ps r)
               (if (not (i64= (size ps) (size args)))
                   (refuse v (string-append "a call of the wrong number of arguments: "

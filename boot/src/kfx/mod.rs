@@ -14,6 +14,8 @@ pub mod check_exprs;
 pub use check_exprs::*;
 pub mod check_defs;
 pub use check_defs::*;
+pub mod restrict;
+pub use restrict::*;
 pub mod emit;
 pub use emit::*;
 pub mod emit_tops;

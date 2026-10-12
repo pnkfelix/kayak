@@ -1184,3 +1184,26 @@ together, the restriction pass refusing for Rust what Rust cannot have).
   counted (`tests/engine-fixpt-passing` keeps those that agreed).
 - **Measured**: 49 of the corpus's 53, 97 of Fixpt's 105, agree; none
   differs. Left, in both: bloblets.
+
+## C60. The restriction pass, begun: composable continuations (2026-10-12)
+
+The user (2026-10-12): one checker, saying what FX-26 says, and KFX's
+restrictions a pass after it, which kfx runs and the engine does not; a
+program is KFX if it passes both. Less risky than a mode in the checker:
+the checker's rules are FX-26's alone, and what Rust cannot have is
+refused in one place. `kfx/restrict.kfx`.
+- **First moved**: `call-with-composable-continuation`, now in the
+  primitives' table at FX-26's type (its `(composable T A D R)` a type of
+  its own, below the procedure it is, its `D` the same both ways as a
+  tag's); the pass refuses it, its type, and a `proj` of a control
+  primitive, with kfx's message of before.
+- **What it asked of the checker**: a `proj` of a `proj` (FX-26's nested
+  `poly`s, their binders in KFX's one order); the control primitives KFX
+  types by rules of its own, at FX-26's types for a `proj`; effect bounds
+  compared the same both ways with their variables solved (`same-effs`,
+  the side that is open grown first, so that a variable is not taken for
+  the least it may be).
+- **Where the pass looks**: the program's text, for now (the primitive's
+  name, the type written); facts from the checker when a restriction
+  needs a type (unions).
+- `tests/kfx-stricter/comefrom.kfx` is refused as before, by the pass now.

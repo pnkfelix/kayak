@@ -1666,6 +1666,11 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                             return match refuse(v, string_append(str_lit("a flat array's length is a literal (KFX has no arrays of values yet): "), show_sexp(t))) {};
                         }
                     }
+                } else if (sym_is_p(car(xs), str_lit("composable")) && i64_eq(size(xs), 5i64)) {
+                    // FX-26's composable continuation (C60), `(composable T A D R)`: a
+                    // procedure of `T` to `A`, of effect `D` and control on `R`. Its own
+                    // type, below that procedure's; never Rust's (the restriction pass).
+                    return ty_data(str_lit("%composable"), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::heap_cons(parse_type(v, tvars, third(xs)), kayak_rt::heap_cons(ty_proc(parse_effect(v, tvars, fourth(xs)), nil::<&'static Ty>(), ty_unit()), kayak_rt::heap_cons(parse_mutable_region(v, tvars, car(cdr(cdr(cdr(cdr(xs)))))), kayak_rt::nil())))));
                 } else if sym_is_p(car(xs), str_lit("prompt-tag")) {
                     return ty_tag(parse_type(v, tvars, second(xs)), parse_type(v, tvars, third(xs)), parse_effect(v, tvars, fourth(xs)), parse_mutable_region(v, tvars, car(cdr(cdr(cdr(cdr(xs)))))));
                 } else if sym_is_p(car(xs), str_lit("moduleof")) {
@@ -2097,6 +2102,19 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
                 string_append(str_lit("(bytevectorof "), string_append(show_ty(s, car(args)), str_lit(")")))
             } else if string_eq_p(d, str_lit("%array")) {
                 string_append(str_lit("(arrayof "), string_append(show_tys(s, args), str_lit(")")))
+            } else if string_eq_p(d, str_lit("%composable")) {
+                string_append(str_lit("(composable "), string_append(show_ty(s, car(args)), string_append(str_lit(" "), string_append(show_ty(s, car(cdr(args))), string_append(str_lit(" "), string_append({
+                    let tagcase_ = car(cdr(cdr(args)));
+                    match *tagcase_ {
+                        Ty::TyProc(es, ps, r) => {
+                            show_effs(es)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("?")
+                        }
+                    }
+                }, string_append(str_lit(" "), string_append(show_ty(s, car(cdr(cdr(cdr(args))))), str_lit(")")))))))))
             } else if string_eq_p(d, str_lit("%flat-array")) {
                 string_append(str_lit("(arrayof "), string_append(show_tys(s, args), str_lit(")")))
             } else if string_eq_p(d, str_lit("%flat-sum")) {
@@ -2465,6 +2483,37 @@ pub fn region_string(s: &'static St, r: &'static Ty) -> Str {
     }
 }
 
+/// A composable continuation as the procedure it is (C60): of its `D`, and
+/// control on its region; any other type, itself.
+pub fn composable_as_proc(s: &'static St, t: &'static Ty) -> &'static Ty {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            if string_eq_p(d, str_lit("%composable")) {
+                let r = region_string(s, car(cdr(cdr(cdr(args)))));
+                ty_proc(effs_union(kayak_rt::heap_cons(string_append(str_lit("goto:"), r), kayak_rt::heap_cons(string_append(str_lit("comefrom:"), r), kayak_rt::nil())), {
+                    let tagcase_ = car(cdr(cdr(args)));
+                    match *tagcase_ {
+                        Ty::TyProc(es, ps, x) => {
+                            es
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            nil::<Str>()
+                        }
+                    }
+                }), kayak_rt::heap_cons(car(args), kayak_rt::nil()), car(cdr(args)))
+            } else {
+                t
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            t
+        }
+    }
+}
+
 /// The number of an inference variable's name, `?k`.
 pub fn meta_number(r: Str) -> i64 {
     i64_minus(0i64, digits_value(cdr(string_chars(r)), 0i64, str_lit(""), 0i64))
@@ -2770,6 +2819,23 @@ pub fn fit_effs(mut s: &'static St, mut a: Strings, mut e: Strings) -> List<&'st
     }
 }
 
+/// Effects `a` and `b` the same, each within the other, an effect variable
+/// on either side solved to make them so (C60): the side open grown first,
+/// so that its variable is not taken for the least it may be.
+pub fn same_effs(s: &'static St, a: Strings, b: Strings) -> List<&'static St> {
+    let grown = fit_effs(s, b, a);
+    if (not(null_p(grown)) && not(null_p(fit_effs(car(grown), a, b)))) {
+        fit_effs(car(grown), a, b)
+    } else {
+        let other = fit_effs(s, a, b);
+        if null_p(other) {
+            nil::<&'static St>()
+        } else {
+            fit_effs(car(other), b, a)
+        }
+    }
+}
+
 /// That a value of type `actual` may stand where `expected` is: the two
 /// the same, inference variables solved to make them so, but for
 /// `void`, which fits anything, and a procedure, whose latent effect
@@ -2915,10 +2981,13 @@ pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static T
             let tagcase_ = e;
             match *tagcase_ {
                 Ty::TyTag(ya, yh, yd, yr) => {
-                    if (effs_within_p(xd, yd) && effs_within_p(yd, xd)) {
-                        fits(v, fits(v, fits(v, s, xa, ya), xh, yh), xr, yr)
-                    } else {
+                    // A tag's bound the same both ways, its effect variables solved to
+                    // make it so (C60: a primitive's tag at FX-26's poly type).
+                    let two = same_effs(s, xd, yd);
+                    if null_p(two) {
                         mismatch(v, s, a, e)
+                    } else {
+                        fits(v, fits(v, fits(v, car(two), xa, ya), xh, yh), xr, yr)
                     }
                 }
                 _ => {
@@ -2931,8 +3000,48 @@ pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static T
             let tagcase_ = e;
             match *tagcase_ {
                 Ty::TyData(y, ys) => {
-                    if (string_eq_p(x, y) && i64_eq(size(xs), size(ys))) {
+                    if not((string_eq_p(x, y) && i64_eq(size(xs), size(ys)))) {
+                        mismatch(v, s, a, e)
+                    } else if string_eq_p(x, str_lit("%composable")) {
+                        // Its bound `D` the same both ways, as a tag's (C60).
+                        let xd = {
+                            let tagcase_ = car(cdr(cdr(xs)));
+                            match *tagcase_ {
+                                Ty::TyProc(es, ps, r) => {
+                                    es
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    nil::<Str>()
+                                }
+                            }
+                        };
+                        let yd = {
+                            let tagcase_ = car(cdr(cdr(ys)));
+                            match *tagcase_ {
+                                Ty::TyProc(es, ps, r) => {
+                                    es
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    nil::<Str>()
+                                }
+                            }
+                        };
+                        let two = same_effs(s, xd, yd);
+                        if null_p(two) {
+                            mismatch(v, s, a, e)
+                        } else {
+                            fits(v, fits(v, fits(v, car(two), car(xs), car(ys)), car(cdr(xs)), car(cdr(ys))), car(cdr(cdr(cdr(xs)))), car(cdr(cdr(cdr(ys)))))
+                        }
+                    } else {
                         fits_all(v, s, xs, ys)
+                    }
+                }
+                Ty::TyProc(ees, eps, er) => {
+                    // A composable continuation where a procedure is expected (C60).
+                    if string_eq_p(x, str_lit("%composable")) {
+                        fits(v, s, composable_as_proc(s, a), e)
                     } else {
                         mismatch(v, s, a, e)
                     }

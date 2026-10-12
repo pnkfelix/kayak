@@ -1434,6 +1434,20 @@ pub fn without_tag(tag: Str, vs: Variants) -> Variants {
     }
 }
 
+// The control primitives KFX types by rules of its own (`abort-call`,
+// `make-tag-call`), at FX-26's types, for a `proj` of one (C60), as FX-26's
+// programs write it.
+pub fn control_schemes() -> Str {
+    str_lit("(make-continuation-prompt-tag (poly ((r region) (a type) (h type) (d effect)) (subr (alloc r) () (prompt-tag a h d r))))\n   (abort-current-continuation (poly ((r region) (a type) (h type) (d effect)) (subr (goto r) ((prompt-tag a h d r) h) void)))")
+}
+
+pub fn control_binds(v: &'static Cv) -> Binds {
+    map(lambda1(move |p: &'static Sexp| {
+        let xs = items(p);
+        bind(name_of(v, car(xs)), parse_scheme_of(v, second(xs), false), str_lit("prim"))
+    }), read_all(string_chars(control_schemes()), str_lit("kfx's control primitives"), 1i64))
+}
+
 pub fn synth(v: &'static Cv, s: &'static St, e: &'static Sexp) -> &'static Res {
     let tagcase_ = e;
     match *tagcase_ {
@@ -3337,38 +3351,52 @@ pub fn blob_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Ty
 
 /// `(proj f a ...)`: the poly procedure `f` at the arguments given for
 /// its binders in order, types and regions (places too), as FX-26
-/// projects one; in Rust `f`, whose generics the call finds.
-pub fn proj_form(v: &'static Cv, s: &'static St, xs: Sexps) -> &'static Res {
-    let found = if null_p(xs) {
-        nil::<&'static Bind>()
-    } else {
-        let tagcase_ = car(xs);
-        match *tagcase_ {
-            Sexp::Sym(n, f, p) => {
-                find_bind(n, cv_binds(v))
-            }
-            _ => {
-                let other = tagcase_;
+/// projects one; in Rust `f`, whose generics the call finds. A proj of
+/// a proj (C60): FX-26's nested `poly`s have their binders in the order
+/// KFX's one has them, so the arguments are run together.
+pub fn proj_form(mut v: &'static Cv, mut s: &'static St, mut xs: Sexps) -> &'static Res {
+    loop {
+        if (not(null_p(xs)) && head_is_p(car(xs), str_lit("proj"))) {
+            xs = onto(cdr(items(car(xs))), cdr(xs));
+            continue;
+        } else {
+            let found = if null_p(xs) {
                 nil::<&'static Bind>()
-            }
-        }
-    };
-    if null_p(found) {
-        match refuse(v, str_lit("(proj f arg ...) of a poly procedure named")) {}
-    } else {
-        let tagcase_ = car(found);
-        match *tagcase_ {
-            Bind::Bind(n, sc, wher) => {
-                let tagcase_ = sc;
+            } else {
+                let tagcase_ = car(xs);
                 match *tagcase_ {
-                    Scheme::Scheme(tvars, t) => {
-                        if not(i64_eq(size(tvars), size(cdr(xs)))) {
-                            match refuse(v, string_append(str_lit("a proj of "), string_append(n, str_lit(" given the wrong number of arguments")))) {}
+                    Sexp::Sym(n, f, p) => {
+                        let b = find_bind(n, cv_binds(v));
+                        if null_p(b) {
+                            find_bind(n, control_binds(v))
                         } else {
-                            bounds_kept(v, s, n, lambda1(move |x: Str| {
-                                projected(v, tvars, cdr(xs), ty_var(x))
-                            }));
-                            res(projected(v, tvars, cdr(xs), t), naming_effs(s, n, wher, t, cv_group(v)), proj_needs(v, s, n, tvars, cdr(xs)))
+                            b
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<&'static Bind>()
+                    }
+                }
+            };
+            if null_p(found) {
+                return match refuse(v, str_lit("(proj f arg ...) of a poly procedure named")) {};
+            } else {
+                let tagcase_ = car(found);
+                match *tagcase_ {
+                    Bind::Bind(n, sc, wher) => {
+                        let tagcase_ = sc;
+                        match *tagcase_ {
+                            Scheme::Scheme(tvars, t) => {
+                                if not(i64_eq(size(tvars), size(cdr(xs)))) {
+                                    return match refuse(v, string_append(str_lit("a proj of "), string_append(n, str_lit(" given the wrong number of arguments")))) {};
+                                } else {
+                                    bounds_kept(v, s, n, lambda1(move |x: Str| {
+                                        projected(v, tvars, cdr(xs), ty_var(x))
+                                    }));
+                                    return res(projected(v, tvars, cdr(xs), t), naming_effs(s, n, wher, t, cv_group(v)), proj_needs(v, s, n, tvars, cdr(xs)));
+                                }
+                            }
                         }
                     }
                 }
@@ -3686,8 +3714,6 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
         make_tag_call(v, s, args, expected)
     } else if (null_p(found) && (string_eq_p(h, str_lit("rcons")) || string_eq_p(h, str_lit("rnew")))) {
         region_alloc_call(v, s, h, args, expected)
-    } else if (null_p(found) && (string_eq_p(h, str_lit("call-with-composable-continuation")) || string_eq_p(h, str_lit("call-with-current-continuation")) || string_eq_p(h, str_lit("call/cc")))) {
-        match refuse(v, string_append(h, str_lit(" keeps a continuation FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)"))) {}
     } else if null_p(found) {
         match refuse(v, string_append(str_lit("nothing is named "), h)) {}
     } else if (nat_op_p(h) && prim_p(car(found)) && i64_eq(size(args), 2i64) && nat_args_p(v, s, args)) {
@@ -4225,7 +4251,7 @@ pub fn synth_call_of(v: &'static Cv, s: &'static St, callee: &'static Res, args:
     let tagcase_ = callee;
     match *tagcase_ {
         Res::Res(t, es0, s) => {
-            let tagcase_ = walk(s, t);
+            let tagcase_ = composable_as_proc(s, walk(s, t));
             match *tagcase_ {
                 Ty::TyProc(latent, ps, r) => {
                     if not(i64_eq(size(ps), size(args))) {
