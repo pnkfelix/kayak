@@ -1,8 +1,5 @@
-//! `kfx FILE.kfx`: a program of one file, as Rust, on standard output.
-//! `kfx PROGRAM.unit DIR`: a program of the files the manifest lists, in
-//! order, as `DIR/mod.rs` and a module each.
-//! `kfx --toplevel FILE.kfx`: as the first, with `kfx_toplevel`, which writes
-//! the program's top-level expressions' values as Fixpt does.
+//! kfx, the compiler: `kfx/main.kfx`'s `main`, run on a big stack. Its
+//! uses, and its I/O, are KFX's (`CLAUDES_CHOICES.md` C50).
 //!
 //! The compiler is generated from `kfx/` (`PLAN.md` §1); this file is the
 //! only hand-written part of it.
@@ -11,77 +8,10 @@
 #[rustfmt::skip]
 mod kfx;
 
-use kayak_rt::{List, Str, cons, leak_string, nil, with_big_stack};
-use std::path::Path;
-
-fn read(path: &Path) -> Str {
-    let text = std::fs::read_to_string(path).unwrap_or_else(|e| {
-        eprintln!("kfx: cannot read {}: {e}", path.display());
-        std::process::exit(1);
-    });
-    leak_string(text)
-}
-
-/// A manifest's files, in order: a line each, relative to the manifest;
-/// blank lines and `;` comments are skipped.
-fn sources(manifest: &Path) -> List<&'static kfx::Source> {
-    let dir = manifest.parent().unwrap_or(Path::new("."));
-    let mut files: Vec<&'static kfx::Source> = Vec::new();
-    for line in read(manifest).as_str().lines() {
-        let line = line.trim();
-        if line.is_empty() || line.starts_with(';') {
-            continue;
-        }
-        let path = dir.join(line);
-        let name = path
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or_else(|| {
-                eprintln!("kfx: {line}: not a file name");
-                std::process::exit(2);
-            });
-        files.push(kfx::source(leak_string(name.to_owned()), read(&path)));
-    }
-    files.into_iter().rev().fold(nil(), |rest, s| cons(s, rest))
-}
+use kayak_rt::{int_to_i64, with_big_stack};
 
 fn main() {
-    let args: Vec<String> = std::env::args().collect();
-    match &args[1..] {
-        [file] => {
-            let src = read(Path::new(file));
-            let name = leak_string(file.clone());
-            print!("{}", with_big_stack(move || kfx::compile_named(name, src)));
-        }
-        [flag, file] if flag == "--toplevel" => {
-            let src = read(Path::new(file));
-            let name = leak_string(file.clone());
-            print!(
-                "{}",
-                with_big_stack(move || kfx::compile_toplevel(name, src))
-            );
-        }
-        [manifest, dir] => {
-            let program = sources(Path::new(manifest));
-            let mut outputs = with_big_stack(move || kfx::compile_units(program));
-            std::fs::create_dir_all(dir).unwrap_or_else(|e| {
-                eprintln!("kfx: cannot make {dir}: {e}");
-                std::process::exit(1);
-            });
-            while let Some(c) = outputs {
-                let kfx::Output::Output(name, text) = *c.car;
-                let path = Path::new(dir).join(name.as_str());
-                std::fs::write(&path, text.as_str()).unwrap_or_else(|e| {
-                    eprintln!("kfx: cannot write {}: {e}", path.display());
-                    std::process::exit(1);
-                });
-                outputs = c.cdr;
-            }
-        }
-        _ => {
-            eprintln!("usage: kfx FILE.kfx | kfx PROGRAM.unit DIR | kfx --toplevel FILE.kfx");
-            std::process::exit(2);
-        }
-    }
+    let status = with_big_stack(|| int_to_i64(kfx::main()));
     kayak_rt::heap_stats_report();
+    std::process::exit((status & 0xff) as i32);
 }

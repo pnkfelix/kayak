@@ -1144,3 +1144,9 @@ C49: Fixpt 17ac0c5 built kayak's request (`docs/requests/fixpt-world-io.md`):
 primitives, `io-error`. KFX takes them at FX-26's types; kayak-rt's
 `world.rs`. `tests/kfx-io/` run both ways by `scripts/io-programs.py`;
 `tests/kfx/bytes.kfx`. The reader's hex string escape.
+
+## The compiler's driver in KFX; stage 0 by `fixpt run` (2026-10-12)
+
+C50: `kfx/main.kfx` reads, compiles and writes; `boot/src/main.rs` calls
+it. Stage 0 is `fixpt run` of the same compiler with the same arguments,
+so K1 covers the driver and its I/O.

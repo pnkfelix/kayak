@@ -933,3 +933,28 @@ takes all of it as FX-26 has it, with the same types.
   which one of them used: kfx had read it as the letters. A control
   character in a string is written to Rust as a unicode escape.
   `i64->char`, in the prelude, over `integer->char`.
+
+## C50. The compiler's driver in KFX, and stage 0 by `fixpt run` (2026-10-12)
+
+`kfx/main.kfx`: reading the program (a file, or a manifest and its
+files), compiling it, and writing the Rust (standard output, or a
+directory's files), with FX-26's I/O (C49). `boot/src/main.rs` is now
+`main` called on a big stack, and the status returned.
+- **Stage 0 runs the same driver**: `scripts/stage0.py` is `fixpt run`
+  of the prelude and the compiler, given the arguments kfx is given;
+  Fixpt reads and writes the files itself. The source texts no longer go
+  in as string literals, nor the output out as `bundle`'s one string. K1
+  now covers the whole compiler, its I/O too: stage 0 makes
+  `boot/src/kfx/` exactly, in 3.5 s.
+- **The output directory must be there**: FX-26 makes no directories, so
+  neither does kfx; the scripts make it first (`regen.sh`,
+  `fixpoint.sh`, `corpus.py`, `bench.py`, `stage0.py`). A request for
+  Fixpt if it is a nuisance: `make-directory`, `(io fs-write)`.
+- **Messages and statuses are the binary's and Fixpt's alike**: a file
+  that cannot be read ends the run with 1 ("kfx: cannot read PATH:
+  DETAIL"), a wrong use with 2.
+- **Fixpt 17ac0c5 writes notes on its standard output** under `run` ("; not
+  in the native convention yet, ..."), among a program's own output;
+  stage 0 leaves those lines out. Worth telling the Fixpt team.
+- **The compiler on itself**: 0.61 s, as before the change (0.57 s, a
+  little less input).

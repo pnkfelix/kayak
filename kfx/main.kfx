@@ -1,0 +1,131 @@
+"main.kfx: the compiler's driver (C50), its I/O FX-26's (C49), so that
+ Fixpt runs the whole compiler as Rust does: `fixpt run` it, or the
+ binary kfx, with the same arguments.
+
+   kfx FILE.kfx              a program of one file, as Rust, on standard
+                             output;
+   kfx --toplevel FILE.kfx   the same, with `kfx_toplevel`, which writes
+                             the program's top-level expressions' values
+                             as Fixpt does;
+   kfx PROGRAM.unit DIR      a program of the files the manifest lists, in
+                             order, as `DIR/mod.rs` and a module each. DIR
+                             must be there: FX-26 makes no directories.
+
+ A file that cannot be read, or written, ends the run with status 1; a
+ wrong use, with 2."
+
+(define-effect driver (maxeff kfx (io args) (io fs-read) (io fs-write) (io stdout) (io stderr) (io exit) (alloc @io) (read @io)))
+
+(define fail-with (subr (maxeff (io stderr) (io exit)) (string int) void)
+  (lambda (message status)
+    (begin (write-err (string-append "kfx: " (string-append message "\n")))
+           (exit status))))
+
+(define read-text (subr (maxeff (read @globals) (io fs-read) (io stderr) (io exit) (alloc @io) (read @io)) (string) string)
+  (lambda (path)
+    (tagcase (the (sumof (data (bytevectorof @io)) (failed io-error)) (read-file path))
+      (data b
+        (tagcase (utf8->string b)
+          (text s s)
+          (bad k (fail-with (string-append "cannot read " (string-append path ": it is not UTF-8")) 1))))
+      (failed e (fail-with (string-append "cannot read " (string-append path (string-append ": " (extract e detail)))) 1)))))
+
+(define write-text (subr (maxeff (read @globals) (io fs-write) (io stderr) (io exit) (alloc @io) (read @io)) (string string) unit)
+  (lambda (path text)
+    (tagcase (write-file path (the (bytevectorof @io) (string->utf8 text)))
+      (done u #u)
+      (failed e (fail-with (string-append "cannot write " (string-append path (string-append ": " (extract e detail)))) 1)))))
+
+"Manifests"
+
+(define-rec
+  (lines-from (subr kfx (chars chars) strings)
+    (lambda (cs line)
+      "The lines of `cs`, in order, the current one so far `line`, its
+       characters newest first."
+      (cond ((null? cs) (if (null? line) nil (list (rev->string line))))
+            ((char=? (car cs) #\newline) (cons (rev->string line) (lines-from (cdr cs) nil)))
+            (else (lines-from (cdr cs) (cons (car cs) line)))))))
+
+(define-rec
+  (drop-space (subr kfx (chars) chars)
+    (lambda (cs) (if (and (not (null? cs)) (char-whitespace? (car cs))) (drop-space (cdr cs)) cs))))
+
+(define line-trimmed (subr kfx (string) string)
+  (lambda (s) (rev->string (drop-space (rev-onto (drop-space (string-chars s)) nil)))))
+
+(define-rec
+  (before-last (subr kfx (chars char chars chars) chars)
+    (lambda (cs c seen before)
+      "`cs`'s characters before its last `c`, newest first, onto nothing if
+       it has none: `seen` the characters since the last `c` so far, newest
+       first, `before` those before it."
+      (cond ((null? cs) before)
+            ((char=? (car cs) c) (before-last (cdr cs) c nil (cons c (onto seen before))))
+            (else (before-last (cdr cs) c (cons (car cs) seen) before))))))
+
+(define-rec
+  (after-last (subr kfx (chars char chars) chars)
+    (lambda (cs c acc)
+      "`cs`'s characters after its last `c`, or all of them, newest first."
+      (cond ((null? cs) acc)
+            ((char=? (car cs) c) (after-last (cdr cs) c nil))
+            (else (after-last (cdr cs) c (cons (car cs) acc)))))))
+
+(define directory-of (subr kfx (string) string)
+  (lambda (path)
+    "Where `path` is: before its last `/`, without it; `` for a name alone."
+    (let ((before (before-last (string-chars path) #\/ nil nil)))
+      (if (null? before) "" (rev->string (cdr before))))))
+
+(define stem (subr kfx (string) string)
+  (lambda (path)
+    "A file's name, without where it is or its extension."
+    (let* ((name (rev->string (after-last (string-chars path) #\/ nil)))
+           (before (before-last (string-chars name) #\. nil nil)))
+      (if (or (null? before) (null? (cdr before))) name (rev->string (cdr before))))))
+
+(define path-joined (subr kfx (string string) string)
+  (lambda (dir name)
+    (if (string=? dir "") name (string-append dir (string-append "/" name)))))
+
+(define-rec
+  (sources-of (subr (maxeff driver) (string strings) sources)
+    (lambda (dir lines)
+      "A manifest's files, in order: a line each, relative to the manifest;
+       blank lines and `;` comments skipped."
+      (if (null? lines)
+          nil
+          (let ((line (line-trimmed (car lines))))
+            (if (or (string=? line "") (has-prefix? line ";"))
+                (sources-of dir (cdr lines))
+                (let ((path (path-joined dir line)))
+                  (cons (source (stem path) (read-text path)) (sources-of dir (cdr lines))))))))))
+
+(define-rec
+  (write-outputs (subr (maxeff driver) (string outputs) unit)
+    (lambda (dir os)
+      (if (null? os)
+          #u
+          (tagcase (car os)
+            (output (name text)
+              (begin (write-text (path-joined dir name) text)
+                     (write-outputs dir (cdr os)))))))))
+
+"The compiler, run."
+
+(define put-out (subr (io stdout) (string) unit)
+  (lambda (s) (tagcase (write-out s) (done u #u) (failed e #u))))
+
+(define main (subr (maxeff driver) () int)
+  (lambda ()
+    (let ((as (the strings (args))))
+      (cond ((i64= (size as) 1)
+             (begin (put-out (compile-named (car as) (read-text (car as)))) 0))
+            ((and (i64= (size as) 2) (string=? (car as) "--toplevel"))
+             (begin (put-out (compile-toplevel (car (cdr as)) (read-text (car (cdr as))))) 0))
+            ((i64= (size as) 2)
+             (let ((program (sources-of (directory-of (car as)) (lines-from (string-chars (read-text (car as))) nil))))
+               (begin (write-outputs (car (cdr as)) (compile-units program)) 0)))
+            (else
+             (begin (fail-with "usage: kfx FILE.kfx | kfx PROGRAM.unit DIR | kfx --toplevel FILE.kfx" 2) 2))))))

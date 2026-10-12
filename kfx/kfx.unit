@@ -10,3 +10,4 @@ check-defs.kfx
 emit.kfx
 emit-tops.kfx
 compile.kfx
+main.kfx

@@ -136,6 +136,7 @@ def bench_compiler(fixpt, runs, fixpt_runs):
     best = float("inf")
     for _ in range(runs):
         shutil.rmtree(out, ignore_errors=True)
+        os.makedirs(out)  # kfx makes no directories (C50)
         t = time.perf_counter()
         r = run([KFX, os.path.join(ROOT, "kfx", "kfx.unit"), out])
         best = min(best, (time.perf_counter() - t) * 1000.0)

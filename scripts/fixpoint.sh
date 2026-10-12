@@ -8,6 +8,7 @@ tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
 cargo build --release --quiet -p kfx
+mkdir "$tmp/stage1" # kfx makes no directories (C50)
 ./target/release/kfx kfx/kfx.unit "$tmp/stage1"
 diff -r "$tmp/stage1" boot/src/kfx
 echo "fixpoint: boot/'s kfx makes boot/src/kfx/ again"

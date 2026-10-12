@@ -24,6 +24,7 @@ while [ $generation -lt 4 ]; do
     generation=$((generation + 1))
     cargo build --release --quiet -p kfx || restore $generation
     rm -rf "$tmp/next"
+    mkdir "$tmp/next" # kfx makes no directories (C50)
     ./target/release/kfx kfx/kfx.unit "$tmp/next" || restore $generation
     if diff -r -q "$tmp/next" boot/src/kfx > /dev/null; then
         echo "regen: the fixed point, after $((generation - 1)) new generation(s)"

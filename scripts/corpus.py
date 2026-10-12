@@ -182,6 +182,7 @@ def main():
         out = os.path.join(CORPUS, ".kfx-out")
         if os.path.exists(out):
             shutil.rmtree(out)
+        os.makedirs(out)  # kfx makes no directories (C50)
         r = run([compiler, src, out] if src == unit else [compiler, src])
         if r.returncode != 0:
             said = [l for l in r.stderr.splitlines() if l.startswith("kfx:")]

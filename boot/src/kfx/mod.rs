@@ -20,6 +20,8 @@ pub mod emit_tops;
 pub use emit_tops::*;
 pub mod compile;
 pub use compile::*;
+pub mod main;
+pub use main::*;
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_8sym_is_p<A0>(pub A0);

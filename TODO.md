@@ -253,8 +253,9 @@ The next goal. Phase A, in order (`PLAN.md` §6.5):
   steps (tasks waiting on the world while others run: the runner and
   `lib/tasks.kfx` joined); seeded delays and faults in the sim, and the
   determinism check in `scripts/check.sh`; one event stream; a live
-  runner, now that FX-26 has I/O (C49); the compiler's own I/O in KFX,
-  behind a runner (`boot/src/main.rs` to shrink to a call of `main`).
+  runner, now that FX-26 has I/O (C49); the compiler's I/O behind a
+  runner (it is in KFX now, C50, but performed directly), so that a
+  compile can be recorded and replayed.
 - ~~**I/O and bytes**~~: done (C49), as Fixpt 17ac0c5 has them. Left: a
   bytevector at a letrena's region; `rmake-bytevector` when Fixpt has it.
 - **Corpus programs**, compared with Fixpt.
