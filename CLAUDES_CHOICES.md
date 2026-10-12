@@ -1530,3 +1530,20 @@ Measured: 117 of Fixpt's programs through kfx, all agreeing; the engine
 Left (TODO §24): quasiquote (KFX's reader has no `` ` `` or `,`), a typed
 list given as a list of a union (`(listof int)` as `(listof small)`),
 `datum-int?`, `bytevector` in `datum`, first-class `poly`.
+
+## C78. Lists invariant where they may be written; copied, boxed, at `acyclic` (2026-10-12)
+
+The checker had taken every list as covariant in its elements, which
+FX-26 does only at `acyclic` (frozen): at a region that may be written, a
+list of ints given as a list of `(union int string)` would let a string be
+written into the ints, and FX-26 refuses it. KFX accepted it (K1), harmless
+until unions made subtyping of elements more than effects'. Now invariant
+there, as FX-26 (`tests/kfx-refused/list-invariant.kfx`).
+
+At `acyclic`, a list whose elements are no union's given as a list of a
+union's is copied, each element boxed (`box elements`,
+`value::boxed_list`): frozen, nothing can tell the copy from FX-26's one
+list. One level only: a list of lists of ints given as a list of lists of
+a union is still rustc's error, not kfx's refusal; and so is a procedure
+given where one of wider parameters, or of a union result, is wanted (a
+wrapper, TODO §24).

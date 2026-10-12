@@ -214,6 +214,21 @@ pub fn list<T: ToValue + Copy + 'static>(xs: List<T>) -> Value {
     }
 }
 
+/// A list at `acyclic` given as a list of a union: copied, its elements
+/// boxed (C78). Frozen, it is the same list as far as a program can tell.
+pub fn boxed_list<T: ToValue + Copy>(xs: List<T>) -> List<Value> {
+    let mut items = Vec::new();
+    let mut p = xs;
+    while let Some(c) = p {
+        items.push(c.car.to_value());
+        p = c.cdr;
+    }
+    items
+        .into_iter()
+        .rev()
+        .fold(None, |tail, x| crate::heap_cons(x, tail))
+}
+
 /// `cons` where a pair of a union is wanted, its parts boxed.
 pub fn cons<A: ToValue, B: ToValue>(a: A, b: B) -> Value {
     Value::Pair(crate::alloc(ValuePair(a.to_value(), b.to_value())))

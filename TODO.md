@@ -396,9 +396,10 @@ C57 when done.
 - **Done, step 2 (C77)**: `datum`; pairs of a union's as `Value`s; `car`
   and `cdr` of a union; `quote` of any datum KFX reads; a typed list given
   as a datum by a view; `typecase` as FX-26 writes it.
-- **Left of step 2**: quasiquote (the reader first); a typed list given as
-  a list of a union (`(listof int)` as `(listof small)`: a view of the
-  list itself, `List<Value>` over `List<Int>`, or a copy); `datum-int?`;
+- **Left of step 2**: quasiquote (the reader first); coercions under a
+  type deeper than a list's elements (C78: a list of lists; a procedure
+  given where one of union parameters or result is wanted, a wrapper);
+  until then rustc refuses them, not kfx; `datum-int?`;
   `bytevector` in `datum`; a local named `nil`, which FX-26 allows and the
   checker's naming rule refuses (`datum/quote-shadowed.fx`); `no-pair`.
 - **Step 3**: first-class `poly`, a generic instantiated at `Value`.

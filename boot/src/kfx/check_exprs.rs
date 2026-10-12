@@ -1936,13 +1936,58 @@ pub fn rust_shape(shape: Str) -> Str {
     }
 }
 
+/// Whether a list's elements are boxed where it is given: no union's,
+/// where a union's are expected.
+pub fn boxed_elements_p(s: &'static St, t: &'static Ty, expected: &'static Ty) -> bool {
+    let tagcase_ = walk(s, t);
+    match *tagcase_ {
+        Ty::TyList(x, xr) => {
+            let tagcase_ = walk(s, expected);
+            match *tagcase_ {
+                Ty::TyList(y, yr) => {
+                    (valued_p(s, y) && not(valued_p(s, x)) && not({
+                        let tagcase_ = walk(s, x);
+                        match *tagcase_ {
+                            Ty::TyVoid() => {
+                                true
+                            }
+                            Ty::TyMeta(k) => {
+                                true
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    }))
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
 /// What is of type `t` where an `expected` is wanted, at `file`, `pos`:
 /// boxed into a union, unboxed out of one, or as it is; a member KFX
 /// cannot box yet is the emitter's to refuse, not the checker's, which
 /// the engine shares.
 pub fn coerced(v: &'static Cv, s: &'static St, file: Str, pos: i64, t: &'static Ty, expected: &'static Ty) -> &'static St {
     let (from, to) = (valued_p(s, t), valued_p(s, expected));
-    if (string_eq_p(file, str_lit("")) || (from && to) || (not(from) && not(to))) {
+    if string_eq_p(file, str_lit("")) {
+        s
+    } else if (not(from) && not(to) && boxed_elements_p(s, as_member(s, t), as_member(s, expected))) {
+        // A list at `acyclic` given as a list of a union (C78): copied,
+        // each element boxed, which nothing can tell from FX-26's, the
+        // list being frozen.
+        note_fact(s, file, pos, str_lit("box elements"))
+    } else if ((from && to) || (not(from) && not(to))) {
         s
     } else if to {
         let m = as_member(s, t);

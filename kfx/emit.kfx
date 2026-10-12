@@ -1522,6 +1522,7 @@
               list as `nil` or its pair, another shape behind `Any`."
              (let* ((how (fact-with c e "box "))
                     (acc (put (cond ((string=? how "scalar") "kayak_rt::value::ToValue::to_value(")
+                                    ((string=? how "elements") "kayak_rt::value::boxed_list(")
                                     ((string=? how "list") "kayak_rt::value::list(")
                                     (else "kayak_rt::value::other("))
                               acc))

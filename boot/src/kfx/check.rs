@@ -3398,7 +3398,26 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
             let tagcase_ = e;
             match *tagcase_ {
                 Ty::TyList(y, yr) => {
-                    fits(v, fits(v, s, x, y), xr, yr)
+                    // A list at `acyclic` is frozen, so its elements' type may be
+                    // below the one expected (C78); at a region that may be
+                    // written, the same, as FX-26 has it.
+                    let s = fits(v, s, xr, yr);
+                    if {
+                        let tagcase_ = walk(s, yr);
+                        match *tagcase_ {
+                            Ty::TyRconst(n) => {
+                                string_eq_p(n, str_lit("acyclic"))
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    } {
+                        fits(v, s, x, y)
+                    } else {
+                        fits(v, fits(v, s, x, y), y, x)
+                    }
                 }
                 _ => {
                     let other = tagcase_;

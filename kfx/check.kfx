@@ -1556,7 +1556,17 @@
   (fits-shapes-of (subr kfx (cv st ty ty) st)
     (lambda (v s a e)
       (tagcase a
-        (ty-list (x xr) (tagcase e (ty-list (y yr) (fits v (fits v s x y) xr yr)) (else other (mismatch v s a e))))
+        (ty-list (x xr)
+          (tagcase e
+            (ty-list (y yr)
+              "A list at `acyclic` is frozen, so its elements' type may be
+               below the one expected (C78); at a region that may be
+               written, the same, as FX-26 has it."
+              (let ((s (fits v s xr yr)))
+                (if (tagcase (walk s yr) (ty-rconst (n) (string=? n "acyclic")) (else other #f))
+                    (fits v s x y)
+                    (fits v (fits v s x y) y x))))
+            (else other (mismatch v s a e))))
         (ty-flat (x xr) (tagcase e (ty-flat (y yr) (fits v (fits v s x y) xr yr)) (else other (mismatch v s a e))))
         (ty-shape (p ls ts)
           (tagcase e

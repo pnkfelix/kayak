@@ -2859,6 +2859,8 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
         let how = fact_with(c, e, str_lit("box "));
         let acc = put(if string_eq_p(how, str_lit("scalar")) {
             str_lit("kayak_rt::value::ToValue::to_value(")
+        } else if string_eq_p(how, str_lit("elements")) {
+            str_lit("kayak_rt::value::boxed_list(")
         } else if string_eq_p(how, str_lit("list")) {
             str_lit("kayak_rt::value::list(")
         } else {

@@ -1,0 +1,9 @@
+"A list at a region that may be written is invariant, as FX-26 has it
+ (C78): a list of ints is no list of a union of ints and strings there,
+ since a string could be written into it through the other's type."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type small (union int string))
+(define first-int (subr (read @r) ((listof small @r)) int)
+  (lambda (xs) (if (null? xs) 0 (if (int? (car xs)) (car xs) 1))))
+(define g (subr (maxeff (alloc @r) (read @r) (read @globals)) () int)
+  (lambda () (first-int (the (listof int @r) (list 5)))))

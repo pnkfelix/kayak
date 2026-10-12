@@ -109,7 +109,27 @@ pub fn kinds(xs: List<Wide>) -> Str {
     }
 }
 
+// A list at `acyclic` given as a list of a union: copied, boxed (C78).
+pub fn smalls(xs: List<Small>) -> Int {
+    if null_p(xs) {
+        int_lit(0)
+    } else {
+        _plus(if int_p(car(xs)) {
+            kayak_rt::value::unbox::<Int>(car(xs))
+        } else {
+            int_lit(100)
+        }, smalls(cdr(xs)))
+    }
+}
+
+pub fn some_ints() -> List<Int> {
+    thread_local!(static ONCE: OnceCell<List<Int>> = const { OnceCell::new() });
+    once(&ONCE, || {
+        kayak_rt::heap_cons(int_lit(1), kayak_rt::heap_cons(int_lit(2), kayak_rt::heap_cons(int_lit(3), kayak_rt::nil())))
+    })
+}
+
 pub fn main() -> Str {
-    string_append(int_to_string(sizes(all())), string_append(str_lit(" "), string_append(kinds(all()), string_append(str_lit(" "), string_append(int_to_string(_plus(next(none()), next(kayak_rt::value::ToValue::to_value(int_lit(41))))), string_append(str_lit(" "), kind(pick(false, the::<Wide>(kayak_rt::value::ToValue::to_value(int_lit(-3))), the::<Wide>(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("x"))))))))))))
+    string_append(int_to_string(sizes(all())), string_append(str_lit(" "), string_append(kinds(all()), string_append(str_lit(" "), string_append(int_to_string(_plus(next(none()), next(kayak_rt::value::ToValue::to_value(int_lit(41))))), string_append(str_lit(" "), string_append(kind(pick(false, the::<Wide>(kayak_rt::value::ToValue::to_value(int_lit(-3))), the::<Wide>(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("x")))))), string_append(str_lit(" "), int_to_string(smalls(kayak_rt::value::boxed_list(some_ints())))))))))))
 }
 

@@ -833,6 +833,17 @@
           ((string=? shape "vector") "Vector")
           (else ""))))
 
+(define boxed-elements? (subr kfx (st ty ty) bool)
+  (lambda (s t expected)
+    "Whether a list's elements are boxed where it is given: no union's,
+     where a union's are expected."
+    (tagcase (walk s t)
+      (ty-list (x xr)
+        (tagcase (walk s expected)
+          (ty-list (y yr) (and (valued? s y) (not (valued? s x)) (not (tagcase (walk s x) (ty-void () #t) (ty-meta (k) #t) (else other #f)))))
+          (else other #f)))
+      (else other #f))))
+
 (define coerced (subr kfx (cv st string i64 ty ty) st)
   (lambda (v s file pos t expected)
     "What is of type `t` where an `expected` is wanted, at `file`, `pos`:
@@ -840,7 +851,13 @@
      cannot box yet is the emitter's to refuse, not the checker's, which
      the engine shares."
     (let ((from (valued? s t)) (to (valued? s expected)))
-      (cond ((or (string=? file "") (and from to) (and (not from) (not to))) s)
+      (cond ((string=? file "") s)
+            ((and (not from) (not to) (boxed-elements? s (as-member s t) (as-member s expected)))
+             "A list at `acyclic` given as a list of a union (C78): copied,
+              each element boxed, which nothing can tell from FX-26's, the
+              list being frozen."
+             (note-fact s file pos "box elements"))
+            ((or (and from to) (and (not from) (not to))) s)
             (to
              (let ((m (as-member s t)))
                (cond ((scalar-member? s m) (note-fact s file pos "box scalar"))

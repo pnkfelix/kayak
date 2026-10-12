@@ -54,9 +54,16 @@
   (kinds (subr kfx ((listof wide acyclic)) string)
     (lambda (xs) (if (null? xs) "" (string-append (kind (car xs)) (string-append ";" (kinds (cdr xs))))))))
 
+"A list at `acyclic` given as a list of a union: copied, boxed (C78)."
+(define-rec
+  (smalls (subr kfx ((listof small acyclic)) int)
+    (lambda (xs) (if (null? xs) 0 (+ (if (int? (car xs)) (car xs) 100) (smalls (cdr xs)))))))
+(define some-ints (listof int acyclic) (list 1 2 3))
+
 (define main (subr kfx () string)
   (lambda ()
     (string-append (int->string (sizes (all)))
       (string-append " " (string-append (kinds (all))
         (string-append " " (string-append (int->string (+ (next (none)) (next 41)))
-          (string-append " " (kind (pick #f (the wide -3) (the wide 'x)))))))))))
+          (string-append " " (string-append (kind (pick #f (the wide -3) (the wide 'x)))
+            (string-append " " (int->string (smalls some-ints))))))))))))
