@@ -197,8 +197,12 @@
           nil
           (let ((f (car forms)))
             (if (module-def? f)
-                (let ((w (concat-words (cons "%exports" (cons (binder-name (second (items f))) (module-item-names (module-written f) gs #t))))))
-                  (cons w (module-words (cdr forms) (cons w gs))))
+                (let* ((inner (module-words (unhidden (module-written f)) gs))
+                       (gs2 (onto inner gs))
+                       (w (concat-words (cons "%exports" (cons (binder-name (second (items f))) (module-item-names (module-written f) gs2 #t))))))
+                  "A module's modules too (C88), whose names a `with` of one
+                   inside it opens."
+                  (onto inner (cons w (module-words (cdr forms) (cons w gs2)))))
                 (module-words (cdr forms) gs))))))
   (moduleof-names (subr kfx (sexps) strings)
     (lambda (forms)
@@ -326,7 +330,7 @@
             ((string=? h "rlambda") (lower-form "lambda" (cdr xs) e sc gs))
             ((string=? h "with")
              (let* ((m (car xs))
-                    (statics (tagcase m (sym (n f p) (if (null? (find-local n sc 0)) (exports-of n gs) nil)) (else other nil)))
+                    (statics (tagcase m (sym (n f p) (exports-of n gs)) (else other nil)))
                     (names (if (null? statics) (any-module gs) statics)))
                (i-let (list (lower m sc gs)) (lower-body (cdr xs) (cons (cons "%with" names) sc) gs))))
             ((string=? h "select") (error "the engine: a select as a value"))

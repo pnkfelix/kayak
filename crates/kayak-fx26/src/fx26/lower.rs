@@ -396,8 +396,12 @@ pub fn module_words(mut forms: Sexps, mut gs: Strings) -> Strings {
         } else {
             let f = car(forms);
             if module_def_p(f) {
-                let w = concat_words(kayak_rt::heap_cons(str_lit("%exports"), kayak_rt::heap_cons(binder_name(second(items(f))), module_item_names(module_written(f), gs, true))));
-                return kayak_rt::heap_cons(w, module_words(cdr(forms), kayak_rt::heap_cons(w, gs)));
+                let inner = module_words(unhidden(module_written(f)), gs);
+                let gs2 = onto(inner, gs);
+                let w = concat_words(kayak_rt::heap_cons(str_lit("%exports"), kayak_rt::heap_cons(binder_name(second(items(f))), module_item_names(module_written(f), gs2, true))));
+                // A module's modules too (C88), whose names a `with` of one
+                // inside it opens.
+                return onto(inner, kayak_rt::heap_cons(w, module_words(cdr(forms), kayak_rt::heap_cons(w, gs2))));
             } else {
                 forms = cdr(forms);
                 continue;
@@ -647,11 +651,7 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
                 let tagcase_ = m;
                 match *tagcase_ {
                     Sexp::Sym(n, f, p) => {
-                        if null_p(find_local(n, sc, 0i64)) {
-                            exports_of(n, gs)
-                        } else {
-                            nil::<Str>()
-                        }
+                        exports_of(n, gs)
                     }
                     _ => {
                         let other = tagcase_;

@@ -29,9 +29,25 @@
   (lambda (s) (tagcase (write-out s) (done u #u) (failed e #u))))
 
 (define-rec
+  (loads-read (subr driving (strings fileds) fileds)
+    (lambda (todo done)
+      "The files a program loads, and those they load, each read once (C88)."
+      (cond ((null? todo) done)
+            ((any? (lambda ((s filed)) (tagcase s (filed (n t) (string=? n (car todo))))) done) (loads-read (cdr todo) done))
+            (else
+             (let ((text (read-text (car todo))))
+               (loads-read (onto (load-paths-all (read-all (string-chars text) (car todo) 1) (directory-of (car todo))) (cdr todo))
+                           (cons (filed (car todo) text) done))))))))
+
+(define-rec
   (read-files (subr driving (strings) sexps)
     (lambda (paths)
-      (if (null? paths) nil (onto (read-all (string-chars (read-text (car paths))) (car paths) 1) (read-files (cdr paths)))))))
+      "The files, their loads spliced in as modules (C88)."
+      (if (null? paths)
+          nil
+          (let* ((forms (read-all (string-chars (read-text (car paths))) (car paths) 1))
+                 (loaded (loads-read (load-paths-all forms (directory-of (car paths))) nil)))
+            (onto (with-loads forms (car paths) loaded) (read-files (cdr paths))))))))
 
 (define-rec
   (before-dashes (subr kfx (strings) strings)

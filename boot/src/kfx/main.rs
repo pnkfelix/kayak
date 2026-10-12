@@ -138,67 +138,6 @@ pub fn line_trimmed(s: Str) -> Str {
     rev_to_string(drop_space(rev_onto(drop_space(string_chars(s)), nil::<char>())))
 }
 
-/// `cs`'s characters before its last `c`, newest first, onto nothing if
-/// it has none: `seen` the characters since the last `c` so far, newest
-/// first, `before` those before it.
-pub fn before_last(mut cs: Chars, mut c: char, mut seen: Chars, mut before: Chars) -> Chars {
-    loop {
-        if null_p(cs) {
-            return before;
-        } else if char_eq_p(car(cs), c) {
-            (cs, seen, before) = (cdr(cs), nil::<char>(), kayak_rt::heap_cons(c, onto(seen, before)));
-            continue;
-        } else {
-            (cs, seen) = (cdr(cs), kayak_rt::heap_cons(car(cs), seen));
-            continue;
-        }
-    }
-}
-
-/// `cs`'s characters after its last `c`, or all of them, newest first.
-pub fn after_last(mut cs: Chars, mut c: char, mut acc: Chars) -> Chars {
-    loop {
-        if null_p(cs) {
-            return acc;
-        } else if char_eq_p(car(cs), c) {
-            (cs, acc) = (cdr(cs), nil::<char>());
-            continue;
-        } else {
-            (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
-            continue;
-        }
-    }
-}
-
-/// Where `path` is: before its last `/`, without it; `` for a name alone.
-pub fn directory_of(path: Str) -> Str {
-    let before = before_last(string_chars(path), '/', nil::<char>(), nil::<char>());
-    if null_p(before) {
-        str_lit("")
-    } else {
-        rev_to_string(cdr(before))
-    }
-}
-
-/// A file's name, without where it is or its extension.
-pub fn stem(path: Str) -> Str {
-    let name = rev_to_string(after_last(string_chars(path), '/', nil::<char>()));
-    let before = before_last(string_chars(name), '.', nil::<char>(), nil::<char>());
-    if (null_p(before) || null_p(cdr(before))) {
-        name
-    } else {
-        rev_to_string(cdr(before))
-    }
-}
-
-pub fn path_joined(dir: Str, name: Str) -> Str {
-    if string_eq_p(dir, str_lit("")) {
-        name
-    } else {
-        string_append(dir, string_append(str_lit("/"), name))
-    }
-}
-
 /// A manifest's files, in order: a line each, relative to the manifest;
 /// blank lines and `;` comments skipped.
 pub async fn sources_of(mut rt: Drt, mut dir: Str, mut lines: Strings) -> Result<Sources, Unwind> {
@@ -243,12 +182,41 @@ pub async fn put_out(rt: Drt, s: Str) -> Result<(), Unwind> {
 }
 
 // A compile, its uses `as`: the status.
+/// The files a program loads, and those they load, each read once (C88).
+pub async fn loads_read(mut rt: Drt, mut todo: Strings, mut done: Fileds) -> Result<Fileds, Unwind> {
+    loop {
+        if null_p(todo) {
+            return Ok(done);
+        } else if any_p(lambda1(move |s: &'static Filed| {
+            let tagcase_ = s;
+            match *tagcase_ {
+                Filed::Filed(n, t) => {
+                    string_eq_p(n, car(todo))
+                }
+            }
+        }), done) {
+            todo = cdr(todo);
+            continue;
+        } else {
+            let text = kayak_rt::suspend::body(read_text(rt, car(todo))).await?;
+            (todo, done) = (onto(load_paths_all(read_all(string_chars(text), car(todo), 1i64), directory_of(car(todo))), cdr(todo)), kayak_rt::heap_cons(filed(car(todo), text), done));
+            continue;
+        }
+    }
+}
+
+pub async fn loaded_for(rt: Drt, file: Str, text: Str) -> Result<Fileds, Unwind> {
+    Ok(kayak_rt::suspend::body(loads_read(rt, load_paths_all(read_all(string_chars(text), file, 1i64), directory_of(file)), nil::<&'static Filed>())).await?)
+}
+
 pub async fn compile_with(rt: Drt, r#as: Strings) -> Result<Int, Unwind> {
     if i64_eq(size(r#as), 1i64) {
-        kayak_rt::suspend::body(put_out(rt, compile_named(car(r#as), kayak_rt::suspend::body(read_text(rt, car(r#as))).await?))).await?;
+        let text = kayak_rt::suspend::body(read_text(rt, car(r#as))).await?;
+        kayak_rt::suspend::body(put_out(rt, compile_named(car(r#as), text, kayak_rt::suspend::body(loaded_for(rt, car(r#as), text)).await?))).await?;
         Ok(int_lit(0))
     } else if (i64_eq(size(r#as), 2i64) && string_eq_p(car(r#as), str_lit("--toplevel"))) {
-        kayak_rt::suspend::body(put_out(rt, compile_toplevel(car(cdr(r#as)), kayak_rt::suspend::body(read_text(rt, car(cdr(r#as)))).await?))).await?;
+        let text = kayak_rt::suspend::body(read_text(rt, car(cdr(r#as)))).await?;
+        kayak_rt::suspend::body(put_out(rt, compile_toplevel(car(cdr(r#as)), text, kayak_rt::suspend::body(loaded_for(rt, car(cdr(r#as)), text)).await?))).await?;
         Ok(int_lit(0))
     } else if i64_eq(size(r#as), 2i64) {
         let text = kayak_rt::suspend::body(read_text(rt, car(r#as))).await?;

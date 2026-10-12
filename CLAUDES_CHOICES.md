@@ -1733,3 +1733,40 @@ Stage 3 (`docs/research/modules.md`).
 
 Measured: 136 of Fixpt's programs through kfx, all agreeing; the engine
 127.
+
+## C88. `load-module` and modules in modules (2026-10-12)
+
+Stage 4 (`docs/research/modules.md`).
+- **A module in a module** is a nested Rust `mod`: checked as a module,
+  its names the outer's items (`n x`, given on as `m n x`); a `(with n x)`
+  among the outer's items names `n`'s `x`, not an item of the outer
+  (`(define x (with m x))`, FX-26's re-export); a module item is made
+  where it is written, so what uses it must come after it (FX-26's
+  `reexport-too-soon`), and a `select` of its type may precede values; in
+  the engine, a nested module's names are known to a `with` of it.
+- **`(load-module "p")`**: the driver reads the file, and those it loads,
+  each from the directory of the file that loads it, and each load is
+  spliced in as the module `(module (%loaded "p") item ...)` before
+  checking; kfx's driver and the engine's alike (`with-loads`, shared in
+  check-defs.kfx). The checker reads a loaded module in the standard
+  environment alone (no global, type or effect of the program), and
+  refuses one whose making does more than read globals, with FX-26's
+  message ("a loaded file is one value for all its loads"). A missing file
+  and a load cycle are refused.
+- **Each load is its own Rust `mod`**: FX-26 makes a path once and shares
+  it, but its making is pure and its abstract types are named for the
+  variable it is bound to, so two `mod`s of one file are what a program
+  can see of FX-26's one value.
+- **A Fixpt bug, worked around in the test only**: `fixpt eval` does not
+  find a file that a loaded file loads from its own directory, though
+  `fixpt check` does (`modules/load-reexport.fx`, "cannot read
+  `bump.fx`"). `run-fixpt-programs.py` takes the program's stated value
+  (`;; => 4`) for Fixpt's there. Worth reporting to the Fixpt team.
+- **Not yet**: a file with `module-parameters`, `load-input`, a module
+  made in a procedure (`linked`, `load-parameters`, `answer`).
+- **Found on the way**: a K1 gap in KFX's typing of `cons` (its region
+  tied to its tail's, where FX-26's is free), reduced to three lines and
+  recorded in TODO §25; the compiler's one instance written around.
+
+Measured: 139 of Fixpt's programs through kfx (136 before), all agreeing;
+the engine 130; every program Fixpt's checker refuses, kfx refuses.

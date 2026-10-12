@@ -390,6 +390,12 @@
                  es)
            (refuse v (string-append "a constant whose value has the effect " (string-append (show-effs es)
                      ": KFX makes a constant at its first use, so its value may only read globals and allocate"))))
+          ((and (not (null? (find-bind "%loaded" (cv-binds v))))
+                (any? (lambda ((x string)) (not (or (string=? x "@globals") (global-atom? x)))) es))
+           "In a file loaded (C88): FX-26 makes it once, for all its loads, so
+            making it must be pure but for reading globals."
+           (refuse v (string-append "a loaded file is one value for all its loads, made once, so making it must be pure, and this one has "
+                                    (string-append (show-effs es) ": make its state in a `lambda` it gives, which each caller applies"))))
           ((or (any? (lambda ((x string)) (has-prefix? x "alloc:")) es) (makes-pairs? e))
            (tagcase e (lst (xs file line pos) (note-fact s file pos "once")) (else other s)))
           (else s))))
@@ -867,17 +873,21 @@
                   ((and (head-is? f "define-effect") (i64= (size (items f)) 3)
                         (escapes? (parse-effect v nil (third (items f)))))
                    (refuse v "a module's effect that may abort, which KFX's modules do not have yet"))
-                  ((or (head-is? f "hide") (module-def? f))
+                  ((head-is? f "hide")
                    (refuse v (string-append "an item KFX's modules do not have yet: " (show-sexp (car (items f))))))
                   (else (module-types v (cdr forms)))))))))
 
 (define-rec
   (qualify-type (subr kfx (string strings sexp) sexp)
     (lambda (m names t)
-      "A type written in module `m`, its types named as the program names them."
+      "A type written in module `m`, its types named as the program names them;
+       `(select n u)` is `n`'s type `u`, no name of this module's (C88)."
       (tagcase t
         (sym (n at-file at-pos) (if (string-member? n names) (sym (string-append m (string-append ".." n)) at-file at-pos) t))
-        (lst (xs file line pos) (lst (map (lambda ((x sexp)) (qualify-type m names x)) xs) file line pos))
+        (lst (xs file line pos)
+          (if (head-is? t "select")
+              t
+              (lst (map (lambda ((x sexp)) (qualify-type m names x)) xs) file line pos)))
         (else other t)))))
 
 (define module-aliases (subr kfx (string strings sexps bool) aliases)
@@ -961,29 +971,6 @@
 
 (define untyped? (subr kfx (sexp) bool)
   (lambda (form) (and (head-is? form "define") (i64= (size (items form)) 3))))
-
-(define-rec
-  (check-items (subr kfx (cv string sexps typeds) elab)
-    (lambda (v m forms found)
-      "A module's items, in order: as the program's forms, but that its
-       generative types are made already, and its elaborated types are named
-       `m x`."
-      (cond ((null? forms) (elab v found))
-            ((or (head-is? (car forms) "define-generative") (head-is? (car forms) "define-datatype")
-                 (head-is? (car forms) "include"))
-             (check-items v m (cdr forms) found))
-            ((untyped? (car forms))
-             (tagcase (car forms)
-               (lst (xs src-file src-line src-pos)
-                 (tagcase (check-untyped (near v src-file src-line src-pos) (car forms))
-                   (elab (v2 more)
-                     (check-items (at v2 "" nil) m (cdr forms)
-                                  (onto (map (lambda ((x typed))
-                                               (tagcase x (typed (n t) (typed (string-append m (string-append " " n)) t))))
-                                             more)
-                                        found)))))
-               (else other (check-items v m (cdr forms) found))))
-            (else (check-items (check-top v (car forms)) m (cdr forms) found))))))
 
 "A module's `(include n)` and `(hide item ...)` (FX-26's): an included
  module's values and types are the module's own, in scope in all its
@@ -1167,10 +1154,46 @@
     (let ((xs (items f)))
       (cond ((and (head-is? f "define") (i64= (size xs) 4))
              (the sexps (list (if (head-is? (fourth xs) "%found") (second (items (fourth xs))) (fourth xs)))))
+            ((module-def? f)
+             "A module item is made where it is written (C88): what uses it
+              must come after it, as FX-26's `reexport-too-soon` has it."
+             (module-written f))
             ((and (head-is? f "define") (i64= (size xs) 3)) (the sexps (list (third xs))))
             ((head-is? f "define*") (the sexps (list (fourth xs))))
             ((head-is? f "define-rec") (map (lambda ((b sexp)) (third (items b))) (cdr xs)))
             (else nil)))))
+
+(define-rec
+  (refs-in (subr kfx (sexp strings sexps) strings)
+    (lambda (e names forms)
+      "The items among `names` that `e` names; in a `(with m ...)` of a
+       module item, not the names `m` gives, which are `m`'s (C88, FX-26's
+       `(define x (with m x))`)."
+      (tagcase e
+        (sym (n f p) (if (string-member? n names) (the strings (list n)) nil))
+        (lst (xs f l p)
+          (if (and (head-is? e "with") (not (null? (cdr xs))) (tagcase (second xs) (sym (n f2 p2) #t) (else other #f)))
+              (let* ((m (sym-name (second xs)))
+                     (given (concat (map (lambda ((g sexp))
+                                           (if (and (module-def? g) (string=? (sym-name (second (items g))) m))
+                                               (concat (map item-names (module-written g)))
+                                               nil))
+                                         forms)))
+                     (inner (concat (map (lambda ((n string)) (if (string-member? n given) nil (the strings (list n)))) names))))
+                (onto (if (string-member? m names) (the strings (list m)) nil)
+                      (concat (map (lambda ((x sexp)) (refs-in x inner forms)) (cdr (cdr xs))))))
+              (concat (map (lambda ((x sexp)) (refs-in x names forms)) xs))))
+        (else other nil)))))
+
+(define standard-scope (subr kfx (cv) cv)
+  (lambda (v)
+    "What a file loaded sees (C88, FX-26's M7): the standard environment
+     alone, not the program's globals, types or effects, so that a file
+     means the same wherever it is read; the facts so far kept."
+    (tagcase v
+      (cv (bs ds als es here group file line fs tv at)
+        (let ((bare (cv nil nil nil nil here group file line fs tv at)))
+          (with-binds bare (cons (bind "%loaded" (scheme nil (ty-unit)) "mark") (prim-binds bare))))))))
 
 (define letrec-items (subr kfx (sexps) mitems)
   (lambda (forms)
@@ -1180,7 +1203,10 @@
            (names (concat (map item-names values))))
       (map (lambda ((f sexp))
              (mitem f (item-names f)
-                    (concat (map (lambda ((e sexp)) (item-names-in e names)) (item-value f)))
+                    (let ((own (if (module-def? f) (concat (map item-names (unhidden (module-written f)))) nil)))
+                      (concat (map (lambda ((e sexp))
+                                     (refs-in e (concat (map (lambda ((n string)) (if (string-member? n own) nil (the strings (list n)))) names)) forms))
+                                   (item-value f))))
                     (and (or (head-is? f "define-rec") (head-is? f "define*") (i64= (size (items f)) 4))
                          (not (any? (lambda ((e sexp)) (not (lambda-form? e))) (item-value f))))))
            values))))
@@ -1294,77 +1320,114 @@
 
 (define module-order (subr kfx (cv sexps) sexps)
   (lambda (v forms)
-    "A module's items in the order KFX checks them: its types as written,
-     then its values, each after what it reaches, those that reach one
-     another as one group."
-    (let ((its (letrec-items forms)))
+    "A module's items in the order KFX checks them: its types and modules
+     as written (a type may select a module's), then its values, each after
+     what it reaches, those that reach one another as one group. A module
+     item is made where it is written all the same (C88)."
+    (let* ((its (letrec-items forms))
+           (values (concat (map (lambda ((it mitem)) (tagcase it (mitem (f ns rs l) (if (module-def? f) nil (the mitems (list it)))))) its))))
       (begin
         (made-before v its)
-        (onto (concat (map (lambda ((f sexp)) (if (null? (item-value f)) (the sexps (list f)) nil)) forms))
-              (concat (map (lambda ((g mitems)) (as-group v g)) (components its its))))))))
+        (onto (concat (map (lambda ((f sexp)) (if (or (null? (item-value f)) (module-def? f)) (the sexps (list f)) nil)) forms))
+              (concat (map (lambda ((g mitems)) (as-group v g)) (components values its))))))))
 
-(define check-module (subr kfx (cv sexp) elab)
-  (lambda (v form)
-    (let* ((xs (items form))
-           (m (name-of v (second xs)))
-           (v (at v m nil))
-           (v (if (string-member? (mangle m) (list "kayak_rt" "std" "core" "alloc"))
-                  (refuse v (string-append "a module named as a Rust crate the program sees: " m))
-                  v))
-           (made (tagcase (global v m (scheme nil (ty-unit))) (bind (n sc wher) (bind n sc "module"))))
-           (written (module-written form))
-           (forms (unhidden written))
-           (escapes (hidden-escapes v written))
-           (hidden-types (hidden-type-names written))
-           (hidden (onto (hidden-value-names written)
-                         (map (lambda ((b bind)) (tagcase b (bind (n sc w) n)))
-                              (concat (map (lambda ((n string)) (excepted-binds v written n (cv-binds v)))
-                                           (included v (concat (map (lambda ((f sexp)) (if (head-is? f "hide") (cdr (items f)) nil)) written))))))))
-           (includes (included v forms))
-           (names (module-types v forms))
-           (given-values (onto (concat (map item-value-names forms))
-                               (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (if (has-prefix? n "%") nil (the strings (list n))))))
-                                            (concat (map (lambda ((n string)) (excepted-binds v written n (cv-binds v))) includes))))))
-           (given-types (concat (map item-type-names forms)))
-           (included-aliases (map (lambda ((a alias)) (tagcase a (alias (n ps body) (alias n ps (resolved-alias body (cv-aliases v))))))
-                                  (concat (map (lambda ((n string)) (excepted-aliases v written n (cv-aliases v))) includes))))
-           (v (if (or (repeated? given-values)
-                      (repeated? (onto given-types (map (lambda ((a alias)) (tagcase a (alias (n ps b) n))) (distinct-aliases included-aliases)))))
-                  (refuse v "a name defined twice in this module, its own or included")
-                  v))
-           (typed (tagcase v
-                    (cv (bs ds als es here group file line fs tv at)
-                      (cv (bind-onto (concat (map (lambda ((n string)) (excepted-binds v written n bs)) includes))
-                                     (cons (bind "%module" (scheme nil (ty-unit)) m) bs))
-                          (onto (module-dts m forms) ds)
-                          (onto (module-aliases m names forms #t)
-                                (onto (concat (map (lambda ((n string)) (excepted-aliases v written n als)) includes)) als))
-                          (onto (concat (map (lambda ((n string)) (opened-effdefs n es)) includes)) es)
-                          here group file line fs tv at))))
-           (datatypes (module-datatypes typed m forms))
-           (typed (tagcase typed
-                    (cv (bs ds als es here group file line fs tv at)
-                      (cv bs (onto datatypes ds) als es here group file line fs tv at))))
-           (conversions (module-conversions typed m forms))
-           (inner (defined-once typed (onto conversions (concat (map constructors datatypes))))))
-      (tagcase (check-items inner m (module-order inner forms) nil)
-        (elab (done found)
-          (tagcase done
-            (cv (bs ds als es here group file line fs tv at)
-              (elab (cv (cons made (bind-onto (module-exports m (onto hidden (map (lambda ((b bind)) (tagcase b (bind (n sc w) n))) conversions)) bs)
-                                              (cv-binds v)))
-                        ds (onto (without-aliases hidden-types m (module-aliases m names forms #f))
-                                 (onto (concat (map (lambda ((n string)) (renamed-aliases n m (excepted-aliases v written n (cv-aliases v))))
-                                                    (unhidden-includes v written)))
-                                       (cv-aliases v)))
-                        (onto (module-effects m forms es)
-                              (onto (concat (map (lambda ((n string))
-                                                   (map (lambda ((d effdef)) (tagcase d (effdef (k atoms) (effdef (string-append m (string-append " " k)) atoms))))
-                                                        (opened-effdefs n (cv-effdefs v))))
-                                                 (unhidden-includes v written)))
-                                    (cv-effdefs v)))
-                        here group file line fs tv at)
-                    found))))))))
+(define-rec
+  (check-items (subr kfx (cv string sexps typeds) elab)
+    (lambda (v m forms found)
+      "A module's items, in order: as the program's forms, but that its
+       generative types are made already, and its elaborated types are named
+       `m x`."
+      (cond ((null? forms) (elab v found))
+            ((or (head-is? (car forms) "define-generative") (head-is? (car forms) "define-datatype")
+                 (head-is? (car forms) "include") (head-is? (car forms) "%loaded"))
+             (check-items v m (cdr forms) found))
+            ((module-def? (car forms))
+             "A module in a module (C88): checked as one, its names the outer's
+              items, `n x` for its `x`, which the outer gives on as `m n x`."
+             (tagcase (car forms)
+               (lst (xs src-file src-line src-pos)
+                 (tagcase (check-module (near v src-file src-line src-pos) (car forms))
+                   (elab (v2 more) (check-items (at v2 "" nil) m (cdr forms) found))))
+               (else other (check-items v m (cdr forms) found))))
+            ((untyped? (car forms))
+             (tagcase (car forms)
+               (lst (xs src-file src-line src-pos)
+                 (tagcase (check-untyped (near v src-file src-line src-pos) (car forms))
+                   (elab (v2 more)
+                     (check-items (at v2 "" nil) m (cdr forms)
+                                  (onto (map (lambda ((x typed))
+                                               (tagcase x (typed (n t) (typed (string-append m (string-append " " n)) t))))
+                                             more)
+                                        found)))))
+               (else other (check-items v m (cdr forms) found))))
+            (else (check-items (check-top v (car forms)) m (cdr forms) found)))))
+
+  (check-module (subr kfx (cv sexp) elab)
+    (lambda (v form)
+      (let* ((xs (items form))
+             (m (name-of v (second xs)))
+             (v (at v m nil))
+             (v (if (string-member? (mangle m) (list "kayak_rt" "std" "core" "alloc"))
+                    (refuse v (string-append "a module named as a Rust crate the program sees: " m))
+                    v))
+             (made (tagcase (global v m (scheme nil (ty-unit))) (bind (n sc wher) (bind n sc "module"))))
+             (written (module-written form))
+             (loaded (and (not (null? written)) (head-is? (car written) "%loaded")))
+             (outer v)
+             (v (if loaded (standard-scope v) v))
+             (forms (unhidden written))
+             (escapes (hidden-escapes v written))
+             (hidden-types (hidden-type-names written))
+             (hidden (onto (hidden-value-names written)
+                           (map (lambda ((b bind)) (tagcase b (bind (n sc w) n)))
+                                (concat (map (lambda ((n string)) (excepted-binds v written n (cv-binds v)))
+                                             (included v (concat (map (lambda ((f sexp)) (if (head-is? f "hide") (cdr (items f)) nil)) written))))))))
+             (includes (included v forms))
+             (names (module-types v forms))
+             (given-values (onto (concat (map item-value-names forms))
+                                 (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (if (has-prefix? n "%") nil (the strings (list n))))))
+                                              (concat (map (lambda ((n string)) (excepted-binds v written n (cv-binds v))) includes))))))
+             (given-types (concat (map item-type-names forms)))
+             (included-aliases (map (lambda ((a alias)) (tagcase a (alias (n ps body) (alias n ps (resolved-alias body (cv-aliases v))))))
+                                    (concat (map (lambda ((n string)) (excepted-aliases v written n (cv-aliases v))) includes))))
+             (v (if (or (repeated? given-values)
+                        (repeated? (onto given-types (map (lambda ((a alias)) (tagcase a (alias (n ps b) n))) (distinct-aliases included-aliases)))))
+                    (refuse v "a name defined twice in this module, its own or included")
+                    v))
+             (typed (tagcase v
+                      (cv (bs ds als es here group file line fs tv at)
+                        (cv (bind-onto (concat (map (lambda ((n string)) (excepted-binds v written n bs)) includes))
+                                       (cons (bind "%module" (scheme nil (ty-unit)) m) bs))
+                            (onto (module-dts m forms) ds)
+                            (onto (module-aliases m names forms #t)
+                                  (onto (concat (map (lambda ((n string)) (excepted-aliases v written n als)) includes)) als))
+                            (onto (concat (map (lambda ((n string)) (opened-effdefs n es)) includes)) es)
+                            here group file line fs tv at))))
+             (datatypes (module-datatypes typed m forms))
+             (typed (tagcase typed
+                      (cv (bs ds als es here group file line fs tv at)
+                        (cv bs (onto datatypes ds) als es here group file line fs tv at))))
+             (conversions (module-conversions typed m forms))
+             (inner (defined-once typed (onto conversions (concat (map constructors datatypes))))))
+        (tagcase (check-items inner m (module-order inner forms) nil)
+          (elab (done found)
+            (tagcase done
+              (cv (bs ds als es here group file line fs tv at)
+                (elab (cv (cons made (bind-onto (module-exports m (onto hidden (map (lambda ((b bind)) (tagcase b (bind (n sc w) n))) conversions)) bs)
+                                                (cv-binds outer)))
+                          (if loaded (onto ds (cv-dts outer)) ds)
+                          (onto (without-aliases hidden-types m (module-aliases m names forms #f))
+                                   (onto (concat (map (lambda ((n string)) (renamed-aliases n m (excepted-aliases v written n als)))
+                                                      (unhidden-includes v written)))
+                                         (cv-aliases outer)))
+                          (onto (module-effects m forms es)
+                                (onto (concat (map (lambda ((n string))
+                                                     (map (lambda ((d effdef)) (tagcase d (effdef (k atoms) (effdef (string-append m (string-append " " k)) atoms))))
+                                                          (opened-effdefs n es)))
+                                                   (unhidden-includes v written)))
+                                      (cv-effdefs outer)))
+                          here group file line fs tv at)
+                      found)))))))))
 
 (define check-tops (subr kfx (cv sexps typeds) elab)
   (lambda (v forms found)
@@ -1405,3 +1468,85 @@
            (typed (tagcase named (cv (bs ds als es here group file line fs tv at) (cv bs (declare-datatypes named forms nil) als es here group file line fs tv at))))
            (v (with-binds typed (prim-binds typed))))
       (tagcase (check-tops v forms nil) (elab (done found) (verdict found (cv-facts done)))))))
+
+"A file read, for a load: its path and text (C88)."
+(define-datatype filed (filed string string))
+(define-type fileds (listof filed acyclic))
+
+(define-rec
+  (before-last (subr kfx (chars char chars chars) chars)
+    (lambda (cs c seen before)
+      "`cs`'s characters before its last `c`, newest first, onto nothing if
+       it has none: `seen` the characters since the last `c` so far, newest
+       first, `before` those before it."
+      (cond ((null? cs) before)
+            ((char=? (car cs) c) (before-last (cdr cs) c nil (cons c (onto seen before))))
+            (else (before-last (cdr cs) c (cons (car cs) seen) before))))))
+
+(define-rec
+  (after-last (subr kfx (chars char chars) chars)
+    (lambda (cs c acc)
+      "`cs`'s characters after its last `c`, or all of them, newest first."
+      (cond ((null? cs) acc)
+            ((char=? (car cs) c) (after-last (cdr cs) c nil))
+            (else (after-last (cdr cs) c (cons (car cs) acc)))))))
+
+(define directory-of (subr kfx (string) string)
+  (lambda (path)
+    "Where `path` is: before its last `/`, without it; `` for a name alone."
+    (let ((before (before-last (string-chars path) #\/ nil nil)))
+      (if (null? before) "" (rev->string (cdr before))))))
+
+(define stem (subr kfx (string) string)
+  (lambda (path)
+    "A file's name, without where it is or its extension."
+    (let* ((name (rev->string (after-last (string-chars path) #\/ nil)))
+           (before (before-last (string-chars name) #\. nil nil)))
+      (if (or (null? before) (null? (cdr before))) name (rev->string (cdr before))))))
+
+(define path-joined (subr kfx (string string) string)
+  (lambda (dir name)
+    (if (string=? dir "") name (string-append dir (string-append "/" name)))))
+
+"A `load-module` of a path (C88, FX-26's M7): a file's forms as a
+ module's items, the path from the loading file's directory. The driver
+ reads the files (`loads-read`); here each load is the module whose first
+ item is `%loaded` and its path, which the checker checks in the standard
+ environment alone, as FX-26 reads a file."
+(define-rec
+  (load-paths (subr kfx (sexp string) strings)
+    (lambda (e dir)
+      (tagcase e
+        (lst (xs f l p)
+          (if (and (head-is? e "load-module") (i64= (size xs) 2) (tagcase (second xs) (str (s f2 p2) #t) (else other #f)))
+              (tagcase (second xs) (str (s f2 p2) (the strings (list (path-joined dir s)))) (else other nil))
+              (concat (map (lambda ((x sexp)) (load-paths x dir)) xs))))
+        (else other nil)))))
+
+(define load-paths-all (subr kfx (sexps string) strings)
+  (lambda (forms dir) (concat (map (lambda ((f sexp)) (load-paths f dir)) forms))))
+
+(define-rec
+  (spliced (subr kfx (sexp string fileds strings) sexp)
+    (lambda (e dir loaded chain)
+      "`e`, each load in it the module its file is."
+      (tagcase e
+        (lst (xs f l p)
+          (if (and (head-is? e "load-module") (i64= (size xs) 2) (tagcase (second xs) (str (s f2 p2) #t) (else other #f)))
+              (let* ((path (tagcase (second xs) (str (s f2 p2) (path-joined dir s)) (else other "")))
+                     (found (concat (map (lambda ((x filed)) (tagcase x (filed (n text) (if (string=? n path) (the strings (list text)) nil)))) loaded))))
+                (cond ((string-member? path chain)
+                       (error (string-append "kfx: " (string-append f (string-append ": a load cycle: " (words-of (reverse (the strings (cons path chain)))))))))
+                      ((null? found) (error (string-append "kfx: cannot read " path)))
+                      (else
+                       (lst (cons (sym "module" f p)
+                                  (cons (lst (list (sym "%loaded" f p) (str path f p)) f l p)
+                                        (map (lambda ((g sexp)) (spliced g (directory-of path) loaded (cons path chain)))
+                                             (read-all (string-chars (car found)) path 1))))
+                            f l p))))
+              (lst (map (lambda ((x sexp)) (spliced x dir loaded chain)) xs) f l p)))
+        (else other e)))))
+
+(define with-loads (subr kfx (sexps string fileds) sexps)
+  (lambda (forms file loaded)
+    (if (null? loaded) forms (map (lambda ((f sexp)) (spliced f (directory-of file) loaded nil)) forms))))

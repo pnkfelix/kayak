@@ -62,6 +62,7 @@ too).
 - Stage 2 (C86): names; hidden datatypes.
 - Stage 3 (C87): `extend` of a named first module; effects through
   `include`; items shadowing primitives.
+- Stage 4 (C88): modules in modules; `load-module`, spliced by the
+  drivers, checked in the standard environment, pure.
 
-130 → 136 of Fixpt's programs through kfx across stages 2–3 (120 before
-modules).
+120 of Fixpt's programs through kfx before modules; 139 after stage 4.

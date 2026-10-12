@@ -55,11 +55,37 @@ pub fn say(s: Str) -> () {
     }
 }
 
+/// The files a program loads, and those they load, each read once (C88).
+pub fn loads_read(mut todo: Strings, mut done: Fileds) -> Fileds {
+    loop {
+        if null_p(todo) {
+            return done;
+        } else if any_p(lambda1(move |s: &'static Filed| {
+            let tagcase_ = s;
+            match *tagcase_ {
+                Filed::Filed(n, t) => {
+                    string_eq_p(n, car(todo))
+                }
+            }
+        }), done) {
+            todo = cdr(todo);
+            continue;
+        } else {
+            let text = read_text(car(todo));
+            (todo, done) = (onto(load_paths_all(read_all(string_chars(text), car(todo), 1i64), directory_of(car(todo))), cdr(todo)), kayak_rt::heap_cons(filed(car(todo), text), done));
+            continue;
+        }
+    }
+}
+
+/// The files, their loads spliced in as modules (C88).
 pub fn read_files(paths: Strings) -> Sexps {
     if null_p(paths) {
         nil::<&'static Sexp>()
     } else {
-        onto(read_all(string_chars(read_text(car(paths))), car(paths), 1i64), read_files(cdr(paths)))
+        let forms = read_all(string_chars(read_text(car(paths))), car(paths), 1i64);
+        let loaded = loads_read(load_paths_all(forms, directory_of(car(paths))), nil::<&'static Filed>());
+        onto(with_loads(forms, car(paths), loaded), read_files(cdr(paths)))
     }
 }
 

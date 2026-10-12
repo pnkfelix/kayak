@@ -425,7 +425,14 @@ refuses 165. What is left are subsystems, each its own design note first:
 - **First-class `poly`** (9, and recursive types through it): TODO §22.
 - **`datum`** (9): with C75's uniform values for KFX, and `letfreeze`,
   `const`, quasiquote, vectors.
-- **Smaller**: bloblets in the engine; a `cons` bound by a `let`, its
-  region FX-26's fresh one where KFX takes the list's (C81: found only in a
-  recursive group, through a lambda given to a `poly`; reduce it, then
-  take FX-26's rule).
+- **Smaller**: bloblets in the engine.
+- **A K1 gap, reduced (C81, C88)**: `(define f (subr pure (string strs)
+  strs) (lambda (p c) (reverse (cons p c))))`, `strs` a list at `acyclic`:
+  FX-26 refuses it, KFX accepts. FX-26's `cons` is `(subr (alloc r) (t1
+  t2) (pairof t1 t2 r))`, its `r` free, made fresh where the call is found
+  by itself (`default_regions`), a pair whose tail is a `(listof T
+  acyclic)` being that list wherever one is wanted; KFX's is `(subr (t
+  (listof t r)) (listof t r))`, the pair's region its tail's. Take
+  FX-26's typing of `cons` (the Rust unchanged: such a pair is the list),
+  checked against the compiler's every `cons`; the fixpoint check (Fixpt
+  checking the compiler's own text) catches any in the compiler meanwhile.

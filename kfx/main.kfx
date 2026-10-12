@@ -84,41 +84,6 @@
   (lambda (s) (rev->string (drop-space (rev-onto (drop-space (string-chars s)) nil)))))
 
 (define-rec
-  (before-last (subr kfx (chars char chars chars) chars)
-    (lambda (cs c seen before)
-      "`cs`'s characters before its last `c`, newest first, onto nothing if
-       it has none: `seen` the characters since the last `c` so far, newest
-       first, `before` those before it."
-      (cond ((null? cs) before)
-            ((char=? (car cs) c) (before-last (cdr cs) c nil (cons c (onto seen before))))
-            (else (before-last (cdr cs) c (cons (car cs) seen) before))))))
-
-(define-rec
-  (after-last (subr kfx (chars char chars) chars)
-    (lambda (cs c acc)
-      "`cs`'s characters after its last `c`, or all of them, newest first."
-      (cond ((null? cs) acc)
-            ((char=? (car cs) c) (after-last (cdr cs) c nil))
-            (else (after-last (cdr cs) c (cons (car cs) acc)))))))
-
-(define directory-of (subr kfx (string) string)
-  (lambda (path)
-    "Where `path` is: before its last `/`, without it; `` for a name alone."
-    (let ((before (before-last (string-chars path) #\/ nil nil)))
-      (if (null? before) "" (rev->string (cdr before))))))
-
-(define stem (subr kfx (string) string)
-  (lambda (path)
-    "A file's name, without where it is or its extension."
-    (let* ((name (rev->string (after-last (string-chars path) #\/ nil)))
-           (before (before-last (string-chars name) #\. nil nil)))
-      (if (or (null? before) (null? (cdr before))) name (rev->string (cdr before))))))
-
-(define path-joined (subr kfx (string string) string)
-  (lambda (dir name)
-    (if (string=? dir "") name (string-append dir (string-append "/" name)))))
-
-(define-rec
   (sources-of (subr driver (drt string strings) sources)
     (lambda (rt dir lines)
       "A manifest's files, in order: a line each, relative to the manifest;
@@ -148,12 +113,27 @@
   (lambda (rt s) (begin ((proj perform! int world @io) rt (sum write s)) #u)))
 
 "A compile, its uses `as`: the status."
+(define-rec
+  (loads-read (subr driver (drt strings fileds) fileds)
+    (lambda (rt todo done)
+      "The files a program loads, and those they load, each read once (C88)."
+      (cond ((null? todo) done)
+            ((any? (lambda ((s filed)) (tagcase s (filed (n t) (string=? n (car todo))))) done) (loads-read rt (cdr todo) done))
+            (else
+             (let ((text (read-text rt (car todo))))
+               (loads-read rt (onto (load-paths-all (read-all (string-chars text) (car todo) 1) (directory-of (car todo))) (cdr todo))
+                           (cons (filed (car todo) text) done))))))))
+
+(define loaded-for (subr driver (drt string string) fileds)
+  (lambda (rt file text)
+    (loads-read rt (load-paths-all (read-all (string-chars text) file 1) (directory-of file)) nil)))
+
 (define compile-with (subr driver (drt strings) int)
   (lambda (rt as)
     (cond ((i64= (size as) 1)
-           (begin (put-out rt (compile-named (car as) (read-text rt (car as)))) 0))
+           (let ((text (read-text rt (car as)))) (begin (put-out rt (compile-named (car as) text (loaded-for rt (car as) text))) 0)))
           ((and (i64= (size as) 2) (string=? (car as) "--toplevel"))
-           (begin (put-out rt (compile-toplevel (car (cdr as)) (read-text rt (car (cdr as))))) 0))
+           (let ((text (read-text rt (car (cdr as))))) (begin (put-out rt (compile-toplevel (car (cdr as)) text (loaded-for rt (car (cdr as)) text))) 0)))
           ((i64= (size as) 2)
            (let* ((text (read-text rt (car as)))
                   (program (sources-of rt (directory-of (car as)) (lines-from (string-chars text) nil))))

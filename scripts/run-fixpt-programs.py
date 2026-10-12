@@ -161,7 +161,14 @@ def fixpt_values_run(binary, path, text):
     except subprocess.TimeoutExpired:
         return None, "Fixpt runs past %ds" % LIMIT
     if r.returncode != 0:
-        return None, "REFUSED: " + r.stderr.strip()[:200]
+        said = r.stderr.strip()
+        stated = [l[len(";; => "):].strip() for l in text.splitlines() if l.startswith(";; => ")]
+        if "evaluation failed: check: cannot read" in said and len(stated) == 1:
+            # Fixpt's evaluator, unlike its checker, does not find a file a
+            # loaded file loads from its own directory (a Fixpt bug, C88):
+            # the value the program says it gives stands for Fixpt's.
+            return stated, None
+        return None, "REFUSED: " + said[:200]
     lines = [l for l in r.stdout.splitlines() if not l.startswith(";")]
     values = []
     for head, count in forms(text):
