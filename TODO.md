@@ -231,9 +231,9 @@ or a trait.
 - Fixpt runs the `i64` ports slower than the `int` originals on every
   machine: Fixpt's, if the user would tell its team.
 
-## 21. An asynchronous runtime (`PLAN.md` §6; the user, 2026-10-12)
+## 21. FX-26 as well, on an asynchronous runtime (`PLAN.md` §6; the user, 2026-10-12)
 
-The next goal. In order (`PLAN.md` §6.4):
+The next goal. Phase A, in order (`PLAN.md` §6.5):
 - **The research note**, `docs/research/async-rust.md`, with Rust written
   by hand for two or three of Coopt's async programs over a prototype
   executor.
@@ -255,6 +255,21 @@ The next goal. In order (`PLAN.md` §6.4):
   queries, memoized with their dependencies, as `coopt-query`'s; the
   machinery in `kayak-rt`, given to KFX as primitives. After the
   executor, since a query run is a task (Coopt's arrangement).
+
+Phase B, the compiler for two languages:
+- **The front end shared**: the checker grown to FX-26's, KFX's
+  restrictions a pass of their own.
+
+Phase C, FX-26's runtime:
+- **An IR** for FX-26 at large.
+- **The engine**: a heap with a collector, its stack in the heap,
+  composable continuations; an interpreter of the IR first (Q8); its
+  tasks on the one scheduler.
+- **K6**: Fixpt's programs on it, compared with Fixpt.
+- **The second self-hosting**: the compiler on kayak's runtime, built
+  into an image, its output compared with the Rust build's.
+
+Phase D: more code generators (compiled words, native code; Q7).
 
 ## 18. Research: regions as exclusive borrows (GhostCell tokens)
 

@@ -1,6 +1,6 @@
-# `kayak`: KFX, a sublanguage of FX-26 that maps onto Rust, and bootstraps
+# `kayak`: a self-hosted compiler for FX-26 and its sublanguage KFX, written in KFX
 
-**Status: draft 4, 2026-10-12: §6 is the next goal, the user's.** The loop closed early (§4), and KFX has
+**Status: draft 5, 2026-10-12: kayak's scope grows to FX-26 (the user's), and §6 is the way there.** The loop closed early (§4), and KFX has
 grown since, through the bootstrap, each step a fixed point: the
 compiler, six files of KFX, checks and translates its own 2700 lines.
 What KFX is and how it maps is §2; how it is checked, §3; what is left,
@@ -18,8 +18,15 @@ kayak prototypes a bootstrappable system:
 3. **The transpiler is written in KFX.** The Rust that builds it is
    generated from that source and committed. Running the built compiler
    on its own source gives the same Rust back, byte for byte.
-4. That compiler is then the basis for a better one, for the broader
-   FX-26, still self-hosted.
+4. **kayak compiles two languages** (the user, 2026-10-12): KFX, and
+   FX-26 at large, KFX kept carefully a sublanguage of it. Transpiling to
+   Rust is for KFX alone. For FX-26, kayak grows a runtime of its own and
+   code generators for it, as Fixpt has: a compiler for FX-26 written in
+   KFX, and so built through Rust, which can also build itself into that
+   runtime, as Fixpt's front end, written in FX-26, is built into Fixpt.
+5. **Async and incremental throughout**: the runtime asynchronous from
+   the ground up, in Coopt's mindset, and the compiler too, async and
+   incremental (§6).
 
 Companion files, as in the sibling repositories:
 - [`TODO.md`](TODO.md): every task not yet done, numbered;
@@ -241,6 +248,11 @@ marks (§16); `proj` (instantiation is inferred).
 
 ## 3. Invariants
 
+- **K0. The founding principle** (the user, 2026-10-12): kayak is a
+  self-hosted compiler; its implementation language is KFX; and KFX's
+  most important code generation is transpiling to Rust, the Rust kept in
+  step with the KFX continuously, at every commit (K2). Nothing in the
+  growth to FX-26, or to an async runtime, changes this.
 - **K1. KFX ⊂ FX-26.** Every KFX program is an FX-26 program with the
   same answer. KFX may refuse FX-26 programs, never reinterpret them,
   and takes no licence: every construct means in Rust what it means in
@@ -258,6 +270,10 @@ marks (§16); `proj` (instantiation is inferred).
 - **K5. The generated Rust is readable.** It keeps KFX's names and
   structure, and is the seed of the bootstrap, so it is reviewed as
   source.
+- **K6. kayak's FX-26 agrees with Fixpt.** An FX-26 program kayak's
+  runtime runs gives Fixpt's answer; kayak refuses what Fixpt refuses.
+  Checked as K1 is, on Fixpt's own programs, all of them in time, not only
+  those KFX accepts. (From §6.5's phase C.)
 
 ---
 
@@ -302,7 +318,7 @@ The first is the one taken, for now: §6 grows the runtime, in Rust.
 
 ---
 
-## 6. Next: an asynchronous runtime, in Coopt's mindset (2026-10-12)
+## 6. Next: FX-26 as well, on an asynchronous runtime (2026-10-12)
 
 **The user's direction (2026-10-12).** Coopt's async-first approach has
 proved interesting. kayak need not copy all of its choices, but its
@@ -313,6 +329,37 @@ out how to revise `kayak-rt` around asynchronous computation, in part
 through async Rust, most likely with an executor of our own; doing that
 properly will change the emitter too, so that it writes `async fn`,
 `Pin` and so on.
+
+**And the scope** (the user, 2026-10-12): kayak becomes a compiler for
+two languages, KFX and FX-26 (the opening list, item 4; K0; K6). So there are two
+runtimes, and two ways a task is run:
+
+| | KFX | FX-26 at large |
+|---|---|---|
+| compiled by | the compiler, written in KFX | the same compiler |
+| to | Rust, then rustc | kayak's own code: an IR, then code generators, as Fixpt's machines |
+| runs on | `kayak-rt`: Rust, compiled code | an engine: a heap with a collector, its stack in the heap (Coopt's I5) |
+| continuations | one-shot: a suspension is a Rust future's `.await` | composable, copyable, as FX-26 has them |
+| a task is | a Rust `Future` | an engine slice, run by a `Future` around it (Coopt's I4) |
+
+Both kinds of task share **one scheduler**, its runners, its record and
+replay and its event stream: Coopt's arrangement, where a Rust future is
+the shell around a budgeted engine slice. So the executor is designed
+for both from its first commit, though KFX's tasks come first.
+
+**The second self-hosting.** The compiler is KFX, so it is FX-26 too: run
+on kayak's FX-26 runtime, as Fixpt runs it today (stage 0), it compiles
+FX-26 inside that runtime, and can be built into an image of it, as
+`fixpt build` makes an executable from a heap. Two ways to build one
+source, compared: the compiler as Rust, and the compiler as kayak's FX-26,
+giving the same output; a fixed point as K2 is.
+
+**The front end, shared.** One reader, and one checker for FX-26's types
+and effects; KFX is then FX-26 *plus restrictions*, a pass that refuses
+what has no Rust mapping (what `tests/kfx-stricter` and much of the
+survey's refusals record), rather than a checker of its own. The
+checker today is KFX's; growing it to FX-26's and splitting off the
+restrictions is phase B.
 
 ### 6.1 What we take from Coopt, and where we differ
 
@@ -407,14 +454,24 @@ sim and replay runners need neither).
    never freed (C43); nurseries as regions are the likely route.
 6. **Incremental computation**: what it is for kayak is §7, Q5.
 
-### 6.4 Steps
+### 6.4 What kayak is, beside Coopt
 
-1. The research note, `docs/research/async-rust.md`: Coopt's scheduler and
-   its library in FX-26, Fixpt's note, and §6.2 checked by writing, by
+Coopt is an FX-26 runtime, async and incremental, whose compiler is
+written in Rust. kayak is to be one whose compiler is written in KFX:
+self-hosted, and buildable both through Rust and on its own runtime.
+Coopt is the reference for design (its scheduler, runners, query
+compiler, collector); Fixpt stays the reference for answers (K1, K6).
+
+### 6.5 Steps, in phases
+
+**A. The asynchronous foundation, for KFX first.**
+1. The research note, `docs/research/async-rust.md`: Coopt's scheduler
+   and its library in FX-26, Fixpt's note; §6.2 checked by writing, by
    hand, the Rust for two or three of Coopt's async programs
-   (`cancel.fx`, a ping-pong) over a prototype executor.
+   (`cancel.fx`, a ping-pong) over a prototype executor; and how an
+   engine slice will be a task beside them.
 2. The executor in `kayak-rt`: deterministic, a virtual clock, our own
-   `Waker`, no dependencies.
+   `Waker`, no dependencies; built for both kinds of task.
 3. Runners and the event stream: sim and replay first, with
    `--record LOG` and a replay that reports where it parts from the log;
    the determinism check (a seed twice, streams compared) in
@@ -423,7 +480,31 @@ sim and replay runners need neither).
 5. The checker: the suspension effect, and its rules (§6.3).
 6. The emitter: `async fn` by effect.
 7. Corpus programs, their answers compared with Fixpt's.
-8. Queries for an incremental compiler (Q5), each query run a task.
+
+**B. The compiler, made for two languages, and incremental.**
+8. The front end shared: the checker grown to FX-26's, and KFX's
+   restrictions a pass of their own (the survey says how far; Fixpt's
+   checker, and its front end written in FX-26, are where to learn it).
+9. Queries (Q5): the compiler's passes, per definition, memoized with
+   their dependencies, each run a task; the compiler itself async.
+
+**C. FX-26's runtime.**
+10. An IR for FX-26 at large, lowered from the checked program.
+11. The engine: a heap with a collector, its stack in the heap,
+    continuations composable; the first code generator an interpreter of
+    the IR (Q8). Its tasks on the same scheduler.
+12. K6: Fixpt's programs run on it, compared with Fixpt; then the
+    survey's refused programs, as FX-26 at large is accepted.
+13. The second self-hosting: the compiler run on kayak's runtime, and
+    built into an image of it; its output compared with the Rust build's.
+
+**D. More code generators**, as Fixpt's machines: compiled words, then
+native code; each one measured against the last, and against Fixpt's
+(`scripts/bench.py`).
+
+Phase A comes first because the compiler is to be async: the executor
+underlies the queries of B, and the engine's tasks of C. B's shared front
+end could start earlier, alone, if A stalls.
 
 ---
 
@@ -450,6 +531,15 @@ sim and replay runners need neither).
   K1 needs the operations written in FX-26 in `kfx/prelude.fx` (from
   Coopt's library); or Coopt is made the reference for them. My default:
   the prelude, so Fixpt stays the one reference.
+- **Q7. `unsafe` in FX-26's runtime.** K4 is about *generated* Rust. A
+  collector can be safe Rust, as Coopt's and Fixpt's heaps are (a value
+  an index, not a pointer); a native code generator cannot be (memory
+  made executable). Coopt confines `unsafe` to two crates. My default:
+  the same, when phase D comes; not before.
+- **Q8. FX-26's first code generator.** My default: an interpreter of
+  the IR, its stack in the heap, the simplest that has composable
+  continuations and is a task the scheduler can budget; compiled code
+  after, as Fixpt went.
 
 ## 8. Requests for Fixpt
 
