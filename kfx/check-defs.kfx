@@ -942,25 +942,6 @@
     "The items, those of a `hide` among them."
     (concat (map (lambda ((f sexp)) (if (head-is? f "hide") (cdr (items f)) (the sexps (list f)))) forms))))
 
-(define found-alone (subr kfx (sexps) sexps)
-  (lambda (forms)
-    "A module's items, where it includes another: each definition's value
-     found by itself, then fitted to its type, as FX-26 checks such a
-     module's (a literal is an `int` there, a lambda's parameters written),
-     marked `%found`."
-    (if (not (any? (lambda ((f sexp)) (head-is? f "include")) forms))
-        forms
-    (if (any? (lambda ((f sexp)) (head-is? f "define-rec")) forms)
-        (error "kfx: a define-rec in a module that includes another, which KFX's modules do not have yet")
-        (map (lambda ((g sexp))
-               (if (and (head-is? g "define") (i64= (size (items g)) 4))
-                   (tagcase g
-                     (lst (xs file line pos)
-                       (lst (list (car xs) (second xs) (third xs) (lst (list (sym "%found" "" 0) (fourth xs)) "" 0 0)) file line pos))
-                     (else other g))
-                   g))
-             forms)))))
-
 (define item-names (subr kfx (sexp) strings)
   (lambda (f)
     "The names an item defines: values and types."
@@ -971,19 +952,93 @@
            (tagcase (second (items f)) (sym (n at-file at-pos) (the strings (list n))) (else other nil)))
           (else nil))))
 
-(define hidden-names (subr kfx (sexps) strings)
+(define-rec
+  (item-names-in (subr kfx (sexp strings) strings)
+    (lambda (e names)
+      "The names among `names` that `e` mentions (a local of the same name
+       taken for the item: more references, never fewer)."
+      (tagcase e
+        (sym (n f p) (if (string-member? n names) (the strings (list n)) nil))
+        (lst (xs f l p) (concat (map (lambda ((x sexp)) (item-names-in x names)) xs)))
+        (else other nil)))))
+
+(define item-value-names (subr kfx (sexp) strings)
+  (lambda (f)
+    "The values an item defines."
+    (if (or (head-is? f "define-type") (head-is? f "define-generative") (head-is? f "define-datatype")) nil (item-names f))))
+
+(define item-type-names (subr kfx (sexp) strings)
+  (lambda (f)
+    "The types an item defines."
+    (if (or (head-is? f "define-type") (head-is? f "define-generative") (head-is? f "define-datatype")) (item-names f) nil)))
+
+(define-rec
+  (resolved-alias (subr kfx (sexp aliases) sexp)
+    (lambda (body als)
+      "A type as written, a name of an abbreviation with no parameters
+       followed to what it stands for."
+      (tagcase body
+        (sym (n f p)
+          (let ((found (find-alias n als)))
+            (if (null? found)
+                body
+                (tagcase (car found) (alias (m ps b) (if (null? ps) (resolved-alias b als) body))))))
+        (else other body)))))
+
+"A module's names: values and types named apart, as at the top level; a
+ type two modules included both give is one where it is the same type
+ both times (C86, FX-26's)."
+(define-rec
+  (distinct-aliases (subr kfx (aliases) aliases)
+    (lambda (als)
+      "Aliases, one of each name that stands for the same type each time
+       (written alike, naming none of the types the modules give, which
+       could be two types written alike); else kept twice, and refused."
+      (cond ((null? als) nil)
+            ((any? (lambda ((b alias)) (tagcase (car als) (alias (n ps body) (tagcase b (alias (m qs body2) (and (string=? n m) (string=? (show-sexp body) (show-sexp body2))
+                                                                                     (null? (item-names-in body (map (lambda ((a alias)) (tagcase a (alias (k ks kb) k))) als)))))))))
+                   (cdr als))
+             (distinct-aliases (cdr als)))
+            (else (cons (car als) (distinct-aliases (cdr als))))))))
+
+(define hidden-items (subr kfx (sexps) sexps)
+  (lambda (forms) (concat (map (lambda ((f sexp)) (if (head-is? f "hide") (cdr (items f)) nil)) forms))))
+
+(define hidden-value-names (subr kfx (sexps) strings)
   (lambda (forms)
-    "The names hidden items define, and the values of modules a `hide`
-     includes."
-    (concat (map (lambda ((f sexp))
-                   (if (head-is? f "hide")
-                       (concat (map (lambda ((g sexp))
-                                      (if (or (head-is? g "define-generative") (head-is? g "define-datatype"))
-                                          (error "kfx: a hidden generative type or datatype, which KFX's modules do not have yet")
-                                          (item-names g)))
-                                    (cdr (items f))))
-                       nil))
-                 forms))))
+    "The values hidden items define: a hidden datatype's constructors too.
+     A hidden type does not hide a value of its name, nor a value a type's
+     (C86, FX-26's)."
+    (concat (map (lambda ((g sexp))
+                   (if (head-is? g "define-datatype")
+                       (map (lambda ((x sexp)) (tagcase x (lst (ys f l p) (sym-name (car ys))) (sym (n f p) n) (else other "")))
+                            (cdr (cdr (items g))))
+                       (item-value-names g)))
+                 (hidden-items forms)))))
+
+(define hidden-type-names (subr kfx (sexps) strings)
+  (lambda (forms) (concat (map item-type-names (hidden-items forms)))))
+
+(define hidden-escapes (subr kfx (cv sexps) unit)
+  (lambda (v forms)
+    "A hidden datatype or generative type in a type the module shows is
+     refused, as FX-26 refuses it, for now (`modules/hide-escape.fx`)."
+    (let ((abstract (concat (map (lambda ((g sexp)) (if (or (head-is? g "define-datatype") (head-is? g "define-generative")) (item-names g) nil))
+                                 (hidden-items forms)))))
+      (if (null? abstract)
+          #u
+          (begin
+            (map (lambda ((f sexp))
+                   (let ((ts (cond ((and (head-is? f "define") (i64= (size (items f)) 4)) (the sexps (list (third (items f)))))
+                                   ((head-is? f "define*") (the sexps (list (third (items f)))))
+                                   ((head-is? f "define-rec") (map (lambda ((b sexp)) (second (items b))) (cdr (items f))))
+                                   ((head-is? f "define-type") (the sexps (list (third (items f)))))
+                                   (else nil))))
+                     (if (any? (lambda ((t sexp)) (not (null? (item-names-in t abstract)))) ts)
+                         (refuse v (string-append "a hidden type in a type the module shows: " (words-of abstract)))
+                         #u)))
+                 (concat (map (lambda ((f sexp)) (if (head-is? f "hide") nil (the sexps (list f)))) forms)))
+            #u)))))
 
 (define included (subr kfx (cv sexps) strings)
   (lambda (v forms)
@@ -1016,6 +1071,158 @@
                                 (if (string-member? (after-prefix t (string-append m " ")) hidden) nil (the aliases (list a))))))
                  als))))
 
+"A module's items as FX-26's `letrec*` (C85, docs/research/modules.md
+ stage 1): a typed lambda may name any item, earlier or later; any other
+ value is made when its item is, so what it names, and what the lambdas it
+ names name, must be made before it. KFX checks the items in an order
+ their references allow, each set of procedures that reach one another a
+ `define-rec` (so `spin` and termination are as a group's); Rust's items
+ are in no order, and the emitter writes them as they were."
+(define-datatype mitem (mitem sexp strings strings bool))
+(define-type mitems (listof mitem acyclic))
+
+(define item-value (subr kfx (sexp) sexps)
+  (lambda (f)
+    "A value item's value, under a `%found`, or none."
+    (let ((xs (items f)))
+      (cond ((and (head-is? f "define") (i64= (size xs) 4))
+             (the sexps (list (if (head-is? (fourth xs) "%found") (second (items (fourth xs))) (fourth xs)))))
+            ((and (head-is? f "define") (i64= (size xs) 3)) (the sexps (list (third xs))))
+            ((head-is? f "define*") (the sexps (list (fourth xs))))
+            ((head-is? f "define-rec") (map (lambda ((b sexp)) (third (items b))) (cdr xs)))
+            (else nil)))))
+
+(define letrec-items (subr kfx (sexps) mitems)
+  (lambda (forms)
+    "The value items: each its form, its names, the items it names, and
+     whether it is procedures (made, not run, when its item is)."
+    (let* ((values (concat (map (lambda ((f sexp)) (if (null? (item-value f)) nil (the sexps (list f)))) forms)))
+           (names (concat (map item-names values))))
+      (map (lambda ((f sexp))
+             (mitem f (item-names f)
+                    (concat (map (lambda ((e sexp)) (item-names-in e names)) (item-value f)))
+                    (and (or (head-is? f "define-rec") (head-is? f "define*") (i64= (size (items f)) 4))
+                         (not (any? (lambda ((e sexp)) (not (lambda-form? e))) (item-value f))))))
+           values))))
+
+(define-rec
+  (item-of (subr kfx (string mitems) mitems)
+    (lambda (n its)
+      (cond ((null? its) nil)
+            ((tagcase (car its) (mitem (f ns rs l) (string-member? n ns))) (the mitems (list (car its))))
+            (else (item-of n (cdr its))))))
+  (reach (subr kfx (strings mitems strings bool) strings)
+    (lambda (todo its seen through-lambdas)
+      "The items `todo` reach, through every item's references, or, with
+       `through-lambdas`, only through procedures' (what making a value
+       runs)."
+      (cond ((null? todo) seen)
+            ((string-member? (car todo) seen) (reach (cdr todo) its seen through-lambdas))
+            (else
+             (let ((it (item-of (car todo) its)))
+               (reach (onto (if (null? it)
+                                nil
+                                (tagcase (car it)
+                                  (mitem (f ns rs l) (if (or l (not through-lambdas)) rs nil))))
+                            (cdr todo))
+                      its (cons (car todo) seen) through-lambdas)))))))
+
+(define-rec
+  (index-in (subr kfx (string strings i64) i64)
+    (lambda (n ns i) (cond ((null? ns) -1) ((string=? (car ns) n) i) (else (index-in n (cdr ns) (i64+ i 1)))))))
+
+(define made-before (subr kfx (cv mitems) unit)
+  (lambda (v its)
+    "FX-26's rule: a value that is no procedure is made when its item is,
+     so every item it reaches through procedures must be made before it."
+    (let ((order (concat (map (lambda ((it mitem)) (tagcase it (mitem (f ns rs l) ns))) its))))
+      (begin
+        (map (lambda ((it mitem))
+               (tagcase it
+                 (mitem (f ns rs l)
+                   (if l
+                       #u
+                       (let ((late (concat (map (lambda ((n string))
+                                                  (if (i64>= (index-in n order 0) (index-in (car ns) order 0)) (the strings (list n)) nil))
+                                                (reach rs its nil #t)))))
+                         (if (null? late)
+                             #u
+                             (refuse v (string-append (car ns) (string-append " is made from " (string-append (car late)
+                                       ", which is not made before it: a module's value sees only the items made before it, as FX-26's letrec* has it"))))))))))
+             its)
+        #u))))
+
+(define-rec
+  (components (subr kfx (mitems mitems) (listof mitems acyclic))
+    (lambda (todo its)
+      "The items, as sets that reach one another, each set after those it
+       reaches: the order they are checked in."
+      (if (null? todo)
+          nil
+          (let* ((it (car todo))
+                 (n (tagcase it (mitem (f ns rs l) (car ns))))
+                 (mine (reach (list n) its nil #f))
+                 (same (concat (map (lambda ((x mitem))
+                                      (tagcase x (mitem (f ns rs l)
+                                                   (if (and (string-member? (car ns) mine) (string-member? n (reach (list (car ns)) its nil #f)))
+                                                       (the mitems (list x)) nil))))
+                                    its)))
+                 (rest (concat (map (lambda ((x mitem))
+                                      (tagcase x (mitem (f ns rs l)
+                                                   (if (any? (lambda ((y mitem)) (tagcase y (mitem (g ms qs k) (string=? (car ms) (car ns))))) same)
+                                                       nil (the mitems (list x))))))
+                                    todo)))
+                 (deps (concat (map (lambda ((x mitem))
+                                      (tagcase x (mitem (f ns rs l)
+                                                   (if (and (string-member? (car ns) mine)
+                                                            (not (any? (lambda ((y mitem)) (tagcase y (mitem (g ms qs k) (string=? (car ms) (car ns))))) same)))
+                                                       (the mitems (list x)) nil))))
+                                    rest)))
+                 (later (concat (map (lambda ((x mitem))
+                                       (if (any? (lambda ((y mitem)) (tagcase y (mitem (g ms qs k) (tagcase x (mitem (f ns rs l) (string=? (car ms) (car ns))))))) deps)
+                                           nil (the mitems (list x))))
+                                     rest))))
+            (onto (components deps its) (cons same (components later its))))))))
+
+(define as-group (subr kfx (cv mitems) sexps)
+  (lambda (v group)
+    "A set of items to check: one alone, as written, unless it reaches
+     itself; else one `define-rec` of their procedures."
+    (let ((one (car group)))
+      (if (and (null? (cdr group))
+               (tagcase one (mitem (f ns rs l) (or (not l) (head-is? f "define-rec") (head-is? f "define*") (not (any? (lambda ((r string)) (string-member? r ns)) rs))))))
+          (the sexps (list (tagcase one (mitem (f ns rs l) f))))
+          (if (any? (lambda ((it mitem)) (tagcase it (mitem (f ns rs l) (or (not l) (head-is? f "define*"))))) group)
+              (refuse v (string-append "items that reach one another, not each a typed lambda: "
+                                       (words-of (concat (map (lambda ((it mitem)) (tagcase it (mitem (f ns rs l) ns))) group)))))
+              (tagcase one
+                (mitem (f ns rs l)
+                  (tagcase f
+                    (lst (xs file line pos)
+                      (the sexps
+                        (list (lst (cons (sym "define-rec" file pos)
+                                         (concat (map (lambda ((it mitem))
+                                                        (tagcase it
+                                                          (mitem (g gs qs k)
+                                                            (if (head-is? g "define-rec")
+                                                                (cdr (items g))
+                                                                (let ((ys (items g)))
+                                                                  (the sexps (list (lst (list (second ys) (third ys) (car (item-value g))) file line pos))))))))
+                                                      group)))
+                                   file line pos))))
+                    (else other nil)))))))))
+
+(define module-order (subr kfx (cv sexps) sexps)
+  (lambda (v forms)
+    "A module's items in the order KFX checks them: its types as written,
+     then its values, each after what it reaches, those that reach one
+     another as one group."
+    (let ((its (letrec-items forms)))
+      (begin
+        (made-before v its)
+        (onto (concat (map (lambda ((f sexp)) (if (null? (item-value f)) (the sexps (list f)) nil)) forms))
+              (concat (map (lambda ((g mitems)) (as-group v g)) (components its its))))))))
+
 (define check-module (subr kfx (cv sexp) elab)
   (lambda (v form)
     (let* ((xs (items form))
@@ -1026,27 +1233,25 @@
                   v))
            (made (tagcase (global v m (scheme nil (ty-unit))) (bind (n sc wher) (bind n sc "module"))))
            (written (cdr (items (third xs))))
-           (forms (found-alone (unhidden written)))
-           (hidden (onto (hidden-names written)
+           (forms (unhidden written))
+           (escapes (hidden-escapes v written))
+           (hidden-types (hidden-type-names written))
+           (hidden (onto (hidden-value-names written)
                          (map (lambda ((b bind)) (tagcase b (bind (n sc w) n)))
                               (concat (map (lambda ((n string)) (opened-binds n (cv-binds v)))
                                            (included v (concat (map (lambda ((f sexp)) (if (head-is? f "hide") (cdr (items f)) nil)) written))))))))
            (includes (included v forms))
            (names (module-types v forms))
-           (given (onto (concat (map item-names forms))
-                        (onto (map (lambda ((b bind)) (tagcase b (bind (n sc w) n)))
-                                   (concat (map (lambda ((n string)) (opened-binds n (cv-binds v))) includes)))
-                              (onto (map (lambda ((a alias)) (tagcase a (alias (n ps b) n)))
-                                         (concat (map (lambda ((n string)) (opened-aliases n (cv-aliases v))) includes)))
-                                    (concat (map (lambda ((n string))
-                                                   (concat (map (lambda ((d dt))
-                                                                  (tagcase d (dt (dn ps vs)
-                                                                    (if (has-prefix? dn (string-append n ".."))
-                                                                        (the strings (list (after-prefix dn (string-append n ".."))))
-                                                                        nil))))
-                                                                (cv-dts v))))
-                                                 includes))))))
-           (v (if (repeated? given) (refuse v "a name defined twice in this module, its own or included") v))
+           (given-values (onto (concat (map item-value-names forms))
+                               (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (if (has-prefix? n "%") nil (the strings (list n))))))
+                                            (concat (map (lambda ((n string)) (opened-binds n (cv-binds v))) includes))))))
+           (given-types (concat (map item-type-names forms)))
+           (included-aliases (map (lambda ((a alias)) (tagcase a (alias (n ps body) (alias n ps (resolved-alias body (cv-aliases v))))))
+                                  (concat (map (lambda ((n string)) (opened-aliases n (cv-aliases v))) includes))))
+           (v (if (or (repeated? given-values)
+                      (repeated? (onto given-types (map (lambda ((a alias)) (tagcase a (alias (n ps b) n))) (distinct-aliases included-aliases)))))
+                  (refuse v "a name defined twice in this module, its own or included")
+                  v))
            (typed (tagcase v
                     (cv (bs ds als es here group file line fs tv at)
                       (cv (bind-onto (concat (map (lambda ((n string)) (opened-binds n bs)) includes))
@@ -1061,13 +1266,13 @@
                       (cv bs (onto datatypes ds) als es here group file line fs tv at))))
            (conversions (module-conversions typed m forms))
            (inner (defined-once typed (onto conversions (concat (map constructors datatypes))))))
-      (tagcase (check-items inner m forms nil)
+      (tagcase (check-items inner m (module-order inner forms) nil)
         (elab (done found)
           (tagcase done
             (cv (bs ds als es here group file line fs tv at)
               (elab (cv (cons made (bind-onto (module-exports m (onto hidden (map (lambda ((b bind)) (tagcase b (bind (n sc w) n))) conversions)) bs)
                                               (cv-binds v)))
-                        ds (onto (without-aliases hidden m (module-aliases m names forms #f))
+                        ds (onto (without-aliases hidden-types m (module-aliases m names forms #f))
                                  (onto (concat (map (lambda ((n string)) (renamed-aliases n m (opened-aliases n (cv-aliases v))))
                                                     (unhidden-includes v written)))
                                        (cv-aliases v)))

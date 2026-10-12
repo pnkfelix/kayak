@@ -1672,3 +1672,35 @@ wrap, each one more. With a place's facts found once, the older clauses
 costs nothing (0.71 s either way); fixpoint.sh's first figure is one cold
 run. The engine, which runs the same checker, is unchanged: both
 engines, running the same compiler source on `arith`, 2.2 s and 450 MB.
+
+## C85. A module's items as FX-26's `letrec*` (2026-10-12)
+
+`docs/research/modules.md`, stage 1. A typed lambda may name any item of
+its module, earlier or later; a value that is no procedure is made when
+its item is, so everything it reaches through procedures must be made
+before it, else refused as FX-26 refuses it. KFX checks the items in an
+order their references allow (types as written, then each set of items
+that reach one another after the sets it reaches), a set of procedures
+that reach one another, or one reaching itself, as a `define-rec`: so
+`spin` and termination are a group's, as FX-26's letrec gives them.
+Items that reach one another not all typed lambdas are refused. A lone
+`define*` stays as written. The emitter needs nothing: a Rust `mod`'s
+items are in no order, and constants are made at first use (C21).
+FX-26 no longer finds a value alone in a module that includes another,
+so KFX's `found-alone` is gone (`kfx-stricter/include-literal` with it),
+and `module-forward` is a corpus program now (`tests/kfx/module-letrec`).
+
+## C86. A module's names: values and types apart; one type from two includes; hidden datatypes (2026-10-12)
+
+Stage 2. A module's values and types are named apart, as at the top
+level (a type and a value may share a name; hiding one does not hide the
+other). A type two included modules both give is one name where it is the
+same type both times (resolved through abbreviations, written alike, and
+naming none of the modules' own types); the emitter imports it once. A
+hidden datatype or generative type is allowed, its constructors hidden
+with it, and refused, as FX-26 refuses it, where a type the module shows
+mentions it. The modules a module includes are made before its items, in
+the engine too (`modules/include.fx` had differed there).
+
+Measured: 130 of Fixpt's programs through kfx (122 before stage 1, 120
+before modules), all agreeing; the engine 121.

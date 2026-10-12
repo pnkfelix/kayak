@@ -1056,7 +1056,18 @@ pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
     } else if (string_eq_p(h, str_lit("include")) || string_eq_p(h, str_lit("%use"))) {
         let n = sym_name(second(xs));
         let its = module_items(c, n);
-        let names = onto(map(&mangle, item_values(its)), map(&camel, item_types(its)));
+        let skip = if null_p(cdr(cdr(xs))) {
+            nil::<Str>()
+        } else {
+            map(&sym_name, cdr(items(third(xs))))
+        };
+        let names = onto(map(&mangle, item_values(its)), map(&camel, concat(map(lambda1(move |t: Str| {
+            if string_member_p(t, skip) {
+                nil::<Str>()
+            } else {
+                the::<Strings>(kayak_rt::heap_cons(t, kayak_rt::nil()))
+            }
+        }), item_types(its)))));
         if null_p(names) {
             acc
         } else {
@@ -1161,6 +1172,23 @@ pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
     }
 }
 
+/// A module's `include`s, each marked with the types one before it gave
+/// already, which it does not import again (C86: the same type, given by
+/// two, is one name).
+pub fn types_once(c: &'static Ctx, forms: Sexps, given: Strings) -> Sexps {
+    if null_p(forms) {
+        nil::<&'static Sexp>()
+    } else if (head_is_p(car(forms), str_lit("include")) || head_is_p(car(forms), str_lit("%use"))) {
+        let xs = items(car(forms));
+        let ts = item_types(module_items(c, sym_name(second(xs))));
+        kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("skip"), str_lit(""), 0i64), map(lambda1(move |t: Str| {
+            sym(t, str_lit(""), 0i64)
+        }), given)), str_lit(""), 0i64, 0i64), kayak_rt::nil()))), str_lit(""), 0i64, 0i64), types_once(c, cdr(forms), onto(ts, given)))
+    } else {
+        kayak_rt::heap_cons(car(forms), types_once(c, cdr(forms), given))
+    }
+}
+
 /// A module, a Rust `mod` (C19): its items as a program's, the program's
 /// names in scope, its own hiding them.
 pub fn put_module(c: &'static Ctx, m: Str, written: Sexps, acc: Chars) -> Chars {
@@ -1177,6 +1205,7 @@ pub fn put_module(c: &'static Ctx, m: Str, written: Sexps, acc: Chars) -> Chars 
             the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
         }
     }), written));
+    let forms = types_once(c, forms, nil::<Str>());
     let outer = {
         let tagcase_ = c;
         match *tagcase_ {

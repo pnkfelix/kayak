@@ -1,8 +1,0 @@
-"An item naming a later one: FX-26's module items are a letrec*, KFX's
- a program's definitions, each seeing those before it."
-(define-effect kfx (maxeff (read @globals) spin))
-(define m
-  (module
-    (define g (subr pure (i64) i64) (lambda (x) (f x)))
-    (define f (subr pure (i64) i64) (lambda (x) (i64+ x 1)))))
-(with m (g 1))

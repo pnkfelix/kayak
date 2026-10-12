@@ -104,6 +104,24 @@
                         (else nil))
                   (module-item-names (cdr its) gs exported)))))))
 
+(define includes-first (subr kfx (sexps) sexps)
+  (lambda (its)
+    "A module's items, its `include`s first, hidden or not."
+    (let ((inc? (lambda ((f sexp)) (head-is? f "include"))))
+      (onto (concat (map (lambda ((f sexp))
+                           (cond ((inc? f) (the sexps (list f)))
+                                 ((head-is? f "hide")
+                                  (let ((hs (concat (map (lambda ((g sexp)) (if (inc? g) (the sexps (list g)) nil)) (cdr (items f))))))
+                                    (if (null? hs) nil (the sexps (list (lst (cons (car (items f)) hs) "" 0 0))))))
+                                 (else nil)))
+                         its))
+            (concat (map (lambda ((f sexp))
+                           (cond ((inc? f) nil)
+                                 ((head-is? f "hide")
+                                  (the sexps (list (lst (cons (car (items f)) (concat (map (lambda ((g sexp)) (if (inc? g) nil (the sexps (list g)))) (cdr (items f))))) "" 0 0))))
+                                 (else (the sexps (list f)))))
+                         its))))))
+
 (define without-doc (subr kfx (sexps) sexps)
   (lambda (body)
     "A body's forms, its docstring dropped."
@@ -323,10 +341,12 @@
             (else (i-call (lower-name h sc gs) (lower-all xs sc gs))))))
 
   (lower-module (subr kfx (sexps scope strings) ir)
-    (lambda (its sc gs)
+    (lambda (written sc gs)
       "A module: its items' values in a frame of their own, each seeing those
-       before it and itself (a `letrec`), then the product of those it gives."
-      (let* ((names (module-item-names its gs #f))
+       before it and itself (a `letrec`), then the product of those it gives.
+       The modules it includes are made first, as FX-26 makes them (C86)."
+      (let* ((its (includes-first written))
+             (names (module-item-names its gs #f))
              (given (module-item-names its gs #t))
              (inner (cons names sc)))
         (i-letrec (module-values its inner gs)

@@ -1,6 +1,0 @@
-"In a module that includes another, a definition's value is found by itself:
- a literal is an int, though an i64 is its type.
- FX-26, since its commit 7851654, accepts it; KFX, which finds such values by themselves, refuses it."
-(define-effect kfx (maxeff (read @globals) spin))
-(define a (module (define one i64 1)))
-(define m (module (include a) (define two i64 2)))

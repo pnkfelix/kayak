@@ -214,6 +214,47 @@ pub fn module_item_names(its: Sexps, gs: Strings, exported: bool) -> Strings {
     }
 }
 
+/// A module's items, its `include`s first, hidden or not.
+pub fn includes_first(its: Sexps) -> Sexps {
+    let inc_p = lambda1(move |f: &'static Sexp| {
+        head_is_p(f, str_lit("include"))
+    });
+    onto(concat(map(lambda1(move |f: &'static Sexp| {
+        if inc_p(f) {
+            the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
+        } else if head_is_p(f, str_lit("hide")) {
+            let hs = concat(map(lambda1(move |g: &'static Sexp| {
+                if inc_p(g) {
+                    the::<Sexps>(kayak_rt::heap_cons(g, kayak_rt::nil()))
+                } else {
+                    nil::<&'static Sexp>()
+                }
+            }), cdr(items(f))));
+            if null_p(hs) {
+                nil::<&'static Sexp>()
+            } else {
+                the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(items(f)), hs), str_lit(""), 0i64, 0i64), kayak_rt::nil()))
+            }
+        } else {
+            nil::<&'static Sexp>()
+        }
+    }), its)), concat(map(lambda1(move |f: &'static Sexp| {
+        if inc_p(f) {
+            nil::<&'static Sexp>()
+        } else if head_is_p(f, str_lit("hide")) {
+            the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(items(f)), concat(map(lambda1(move |g: &'static Sexp| {
+                if inc_p(g) {
+                    nil::<&'static Sexp>()
+                } else {
+                    the::<Sexps>(kayak_rt::heap_cons(g, kayak_rt::nil()))
+                }
+            }), cdr(items(f))))), str_lit(""), 0i64, 0i64), kayak_rt::nil()))
+        } else {
+            the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
+        }
+    }), its)))
+}
+
 /// A body's forms, its docstring dropped.
 pub fn without_doc(body: Sexps) -> Sexps {
     if (not(null_p(cdr(body))) && {
@@ -651,7 +692,9 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
 
 /// A module: its items' values in a frame of their own, each seeing those
 /// before it and itself (a `letrec`), then the product of those it gives.
-pub fn lower_module(its: Sexps, sc: Scope, gs: Strings) -> &'static Ir {
+/// The modules it includes are made first, as FX-26 makes them (C86).
+pub fn lower_module(written: Sexps, sc: Scope, gs: Strings) -> &'static Ir {
+    let its = includes_first(written);
     let names = module_item_names(its, gs, false);
     let given = module_item_names(its, gs, true);
     let inner = kayak_rt::heap_cons(names, sc);

@@ -611,7 +611,9 @@
               ((or (string=? h "include") (string=? h "%use"))
                (let* ((n (sym-name (second xs)))
                       (its (module-items c n))
-                      (names (onto (map mangle (item-values its)) (map camel (item-types its)))))
+                      (skip (if (null? (cdr (cdr xs))) nil (map sym-name (cdr (items (third xs))))))
+                      (names (onto (map mangle (item-values its))
+                                   (map camel (concat (map (lambda ((t string)) (if (string-member? t skip) nil (the strings (list t)))) (item-types its)))))))
                  (if (null? names)
                      acc
                      (put "};\n\n" (put-sep (lambda ((x string) (acc chars)) (put x acc)) ", " names
@@ -660,6 +662,19 @@
               ((string=? h "define-rec") (put-rec c (cdr xs) acc))
               (else acc)))))
 
+  (types-once (subr kfx (ctx sexps strings) sexps)
+    (lambda (c forms given)
+      "A module's `include`s, each marked with the types one before it gave
+       already, which it does not import again (C86: the same type, given by
+       two, is one name)."
+      (cond ((null? forms) nil)
+            ((or (head-is? (car forms) "include") (head-is? (car forms) "%use"))
+             (let* ((xs (items (car forms)))
+                    (ts (item-types (module-items c (sym-name (second xs))))))
+               (cons (lst (list (car xs) (second xs) (lst (cons (sym "skip" "" 0) (map (lambda ((t string)) (sym t "" 0)) given)) "" 0 0)) "" 0 0)
+                     (types-once c (cdr forms) (onto ts given)))))
+            (else (cons (car forms) (types-once c (cdr forms) given))))))
+
   (put-module (subr kfx (ctx string sexps chars) chars)
     (lambda (c m written acc)
       "A module, a Rust `mod` (C19): its items as a program's, the program's
@@ -671,6 +686,7 @@
                                             (cdr (items f)))
                                        (the sexps (list f))))
                                  written)))
+             (forms (types-once c forms nil))
              (outer (tagcase c (ctx (ds ts ks ls xs fs ms es mods)
                                  (ctx ds ts
                                       (onto (concat (map (lambda ((f sexp))
