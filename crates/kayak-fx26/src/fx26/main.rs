@@ -9,7 +9,11 @@ use super::*;
 // and run; each top-level expression's value
 // written on a line, as `fixpt eval` writes it;
 // kayak-fx26 --main FILE ...   the same, then `(main)`, whose value, a
-// string, is written as it is.
+// string, is written as it is;
+// kayak-fx26 --run FILE ... -- ARG ...
+// the files, then `(main)`, as `fixpt run`
+// runs them: its arguments the ARGs, its
+// result's low byte the status.
 //
 // The checker is the compiler's (kfx/check*.kfx): what it accepts, the
 // engine runs, for now.
@@ -59,6 +63,27 @@ pub fn read_files(paths: Strings) -> Sexps {
     }
 }
 
+pub fn before_dashes(xs: Strings) -> Strings {
+    if (null_p(xs) || string_eq_p(car(xs), str_lit("--"))) {
+        nil::<Str>()
+    } else {
+        kayak_rt::heap_cons(car(xs), before_dashes(cdr(xs)))
+    }
+}
+
+pub fn after_dashes(mut xs: Strings) -> Strings {
+    loop {
+        if null_p(xs) {
+            return nil::<Str>();
+        } else if string_eq_p(car(xs), str_lit("--")) {
+            return cdr(xs);
+        } else {
+            xs = cdr(xs);
+            continue;
+        }
+    }
+}
+
 pub fn run_tops(mut m: &'static Machine, mut tops: List<&'static Top>, mut quiet: bool) -> () {
     loop {
         if null_p(tops) {
@@ -92,12 +117,13 @@ pub fn run_tops(mut m: &'static Machine, mut tops: List<&'static Top>, mut quiet
 
 pub fn main() -> Int {
     let r#as = the::<Strings>(args());
-    let with_main = (not(null_p(r#as)) && string_eq_p(car(r#as), str_lit("--main")));
-    let paths = if with_main {
+    let running = (not(null_p(r#as)) && string_eq_p(car(r#as), str_lit("--run")));
+    let with_main = (running || (not(null_p(r#as)) && string_eq_p(car(r#as), str_lit("--main"))));
+    let paths = before_dashes(if with_main {
         cdr(r#as)
     } else {
         r#as
-    };
+    });
     if null_p(paths) {
         match fail_with(str_lit("usage: kayak-fx26 [--main] FILE ..."), int_lit(2)) {};
         int_lit(2)
@@ -112,6 +138,7 @@ pub fn main() -> Int {
             if i64_lt(i, 0i64) {
                 match fail_with(str_lit("no main"), int_lit(1)) {}
             } else {
+                set(program_args(), after_dashes(r#as));
                 let tagcase_ = run(m, c_apply(array_ref({
                     let tagcase_ = m;
                     match *tagcase_ {
@@ -123,6 +150,13 @@ pub fn main() -> Int {
                 match *tagcase_ {
                     Val::VString(s) => {
                         say(s)
+                    }
+                    Val::VInt(n) => {
+                        if running {
+                            match exit(i64_to_int(i64_and(int_to_i64(n), 255i64))) {}
+                        } else {
+                            say(show(v_int(n)))
+                        }
                     }
                     _ => {
                         let other = tagcase_;

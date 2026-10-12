@@ -1250,3 +1250,19 @@ C57's decision, carried out. In the checker (FX-26's rules, `docs/fx26.md`
   its answers (`false`, `shapes-narrow`, `typecase`, `union-subtyping`);
   beyond KFX, 18 agree, none differ. The compiler's own `procedure?` (of
   `sexp`s) is `lambda-form?` now: FX-26's is standard.
+
+## C63. The compiler run on the engine: the second self-hosting, begun (2026-10-12)
+
+`kayak-fx26 --run FILE ... -- ARG ...` runs a program as `fixpt run` does:
+its arguments the ARGs, `main`'s result its status. Given the compiler's
+own files (`kfx/kfx.unit`'s), the engine runs kfx itself, which checks,
+lowers and runs some 9,000 lines of KFX and then compiles its argument.
+- **The compiler on the engine compiles as the compiler does**: for
+  `tests/kfx/arith.kfx`, `escapes.kfx`, `tasks.kfx`, its Rust is the
+  corpus's, byte for byte, in 5 to 6 s (the compiler itself checked and
+  lowered each time).
+- **The self-compile does not finish**: killed after 196 s, of memory. The
+  engine allocates about 4 GB a second (23 GB resident for the 5 s run),
+  and nothing is freed: its values are kayak-rt's heap's, never freed
+  (C43). The engine needs a heap of its own and a collector (engine.md,
+  step 5), before the second self-hosting can close.

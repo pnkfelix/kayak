@@ -371,4 +371,7 @@ and what the generated code looks like for the compiler's own source.
   of the control primitives (`composable`, `call-with-composable-
   continuation` as a poly primitive with `proj`) and then unions are its
   own; the restrictions a pass for Rust after it. A design note first.
-- The collector; tasks on the scheduler; the second self-hosting.
+- The collector, now needed: the compiler runs on the engine (C63),
+  compiling small programs to the corpus's Rust exactly, but the
+  self-compile runs out of memory (4 GB/s, never freed). Then tasks on the
+  scheduler; the second self-hosting closed.

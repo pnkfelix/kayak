@@ -40,6 +40,9 @@
 (define width-of (subr kfx (string) int)
   (lambda (t) (cond ((or (string=? t "u64")) 64) ((or (string=? t "i32") (string=? t "u32")) 32) (else 8))))
 
+"The program's own arguments, as `--run`'s driver gives them (main.kfx)."
+(define program-args (ref strings @h) (new nil))
+
 (define prim-arity (subr kfx (string) i64)
   (lambda (n)
     "A primitive's arity, or -1 if `n` names none."
@@ -340,7 +343,7 @@
             ((string=? n "exit") (begin (exit (val-int a)) (v-unit)))
             ((string=? n "clock") (v-i64 (clock)))
             ((string=? n "sleep-until") (begin (sleep-until (i64-of a)) (v-unit)))
-            ((string=? n "args") (list-val (strings-vals (the strings (args)))))
+            ((string=? n "args") (list-val (strings-vals (get program-args))))
             ((string=? n "read-line")
              (tagcase (read-line) (line t (v-sum "line" (v-string t))) (eof u (v-sum "eof" (v-unit))) (failed e (v-sum "failed" (io-error-val e)))))
             ((string=? n "read-file")

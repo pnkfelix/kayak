@@ -4,7 +4,11 @@
                                 and run; each top-level expression's value
                                 written on a line, as `fixpt eval` writes it;
    kayak-fx26 --main FILE ...   the same, then `(main)`, whose value, a
-                                string, is written as it is.
+                                string, is written as it is;
+   kayak-fx26 --run FILE ... -- ARG ...
+                                the files, then `(main)`, as `fixpt run`
+                                runs them: its arguments the ARGs, its
+                                result's low byte the status.
 
  The checker is the compiler's (kfx/check*.kfx): what it accepts, the
  engine runs, for now."
@@ -30,6 +34,14 @@
       (if (null? paths) nil (onto (read-all (string-chars (read-text (car paths))) (car paths) 1) (read-files (cdr paths)))))))
 
 (define-rec
+  (before-dashes (subr kfx (strings) strings)
+    (lambda (xs) (if (or (null? xs) (string=? (car xs) "--")) nil (cons (car xs) (before-dashes (cdr xs)))))))
+
+(define-rec
+  (after-dashes (subr kfx (strings) strings)
+    (lambda (xs) (cond ((null? xs) nil) ((string=? (car xs) "--") (cdr xs)) (else (after-dashes (cdr xs)))))))
+
+(define-rec
   (run-tops (subr driving (machine (listof top acyclic) bool) unit)
     (lambda (m tops quiet)
       (if (null? tops)
@@ -44,8 +56,9 @@
 (define main (subr driving () int)
   (lambda ()
     (let* ((as (the strings (args)))
-           (with-main (and (not (null? as)) (string=? (car as) "--main")))
-           (paths (if with-main (cdr as) as)))
+           (running (and (not (null? as)) (string=? (car as) "--run")))
+           (with-main (or running (and (not (null? as)) (string=? (car as) "--main"))))
+           (paths (before-dashes (if with-main (cdr as) as))))
       (if (null? paths)
           (begin (fail-with "usage: kayak-fx26 [--main] FILE ..." 2) 2)
           (let* ((forms (read-files paths))
@@ -58,8 +71,11 @@
                   (let ((i (position-of "main" gs 0)))
                     (if (i64< i 0)
                         (fail-with "no main" 1)
-                        (tagcase (run m (c-apply (array-ref (tagcase m (machine (g t) g)) (i64->int i)) nil) nil)
-                          (v-string (s) (say s))
-                          (else other (say (show other))))))
+                        (begin
+                          (set program-args (after-dashes as))
+                          (tagcase (run m (c-apply (array-ref (tagcase m (machine (g t) g)) (i64->int i)) nil) nil)
+                            (v-string (s) (say s))
+                            (v-int (n) (if running (exit (i64->int (i64-and (int->i64 n) 255))) (say (show (v-int n)))))
+                            (else other (say (show other)))))))
                   #u)
               0))))))
