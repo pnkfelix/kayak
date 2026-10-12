@@ -180,6 +180,29 @@ pub fn any_module(mut gs: Strings) -> Strings {
     }
 }
 
+/// What an `include` takes of its module: all it gives, but those its
+/// exception names (C87, an `extend`'s second module's).
+pub fn include_exports(f: &'static Sexp, gs: Strings) -> Strings {
+    let all = exports_of(sym_name(second(items(f))), gs);
+    let ex = include_except(f);
+    let out = if null_p(ex) {
+        nil::<Str>()
+    } else {
+        if head_is_p(car(ex), str_lit("except-module")) {
+            exports_of(sym_name(second(items(car(ex)))), gs)
+        } else {
+            map(&sym_name, cdr(items(car(ex))))
+        }
+    };
+    concat(map(lambda1(move |n: Str| {
+        if string_member_p(n, out) {
+            nil::<Str>()
+        } else {
+            the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+        }
+    }), all))
+}
+
 /// The names a module's items define, in order; only those it gives if
 /// `exported` (a `hide`'s are not, an `include`'s are).
 pub fn module_item_names(its: Sexps, gs: Strings, exported: bool) -> Strings {
@@ -201,7 +224,7 @@ pub fn module_item_names(its: Sexps, gs: Strings, exported: bool) -> Strings {
             let n = binder_name(second(items(f)));
             kayak_rt::heap_cons(string_append(str_lit("up-"), n), kayak_rt::heap_cons(string_append(str_lit("down-"), n), kayak_rt::nil()))
         } else if head_is_p(f, str_lit("include")) {
-            exports_of(sym_name(second(items(f))), gs)
+            include_exports(f, gs)
         } else if head_is_p(f, str_lit("hide")) {
             if exported {
                 nil::<Str>()
@@ -372,8 +395,8 @@ pub fn module_words(mut forms: Sexps, mut gs: Strings) -> Strings {
             return nil::<Str>();
         } else {
             let f = car(forms);
-            if (head_is_p(f, str_lit("define")) && i64_eq(size(items(f)), 3i64) && head_is_p(third(items(f)), str_lit("module"))) {
-                let w = concat_words(kayak_rt::heap_cons(str_lit("%exports"), kayak_rt::heap_cons(binder_name(second(items(f))), module_item_names(cdr(items(third(items(f)))), gs, true))));
+            if module_def_p(f) {
+                let w = concat_words(kayak_rt::heap_cons(str_lit("%exports"), kayak_rt::heap_cons(binder_name(second(items(f))), module_item_names(module_written(f), gs, true))));
                 return kayak_rt::heap_cons(w, module_words(cdr(forms), kayak_rt::heap_cons(w, gs)));
             } else {
                 forms = cdr(forms);
@@ -646,6 +669,8 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
             return error(str_lit("the engine: a select as a value"));
         } else if string_eq_p(h, str_lit("module")) {
             return lower_module(xs, sc, gs);
+        } else if string_eq_p(h, str_lit("extend")) {
+            return lower_module(module_written(lst(kayak_rt::heap_cons(sym(str_lit("define"), str_lit(""), 0i64), kayak_rt::heap_cons(sym(str_lit("%extend"), str_lit(""), 0i64), kayak_rt::heap_cons(e, kayak_rt::nil()))), str_lit(""), 0i64, 0i64)), sc, gs);
         } else if string_eq_p(h, str_lit("and")) {
             if null_p(xs) {
                 return i_lit(v_bool(true));
@@ -724,7 +749,7 @@ pub fn module_values(its: Sexps, sc: Scope, gs: Strings) -> Irs {
             let m = sym_name(second(items(f)));
             map(lambda1(move |n: Str| {
                 i_extract(n, lower_name(m, sc, gs))
-            }), exports_of(m, gs))
+            }), include_exports(f, gs))
         } else if head_is_p(f, str_lit("hide")) {
             module_values(cdr(items(f)), sc, gs)
         } else {

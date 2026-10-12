@@ -500,7 +500,7 @@
      no type variable is named so, camel-cased, which would hide it."
     (list "Str" "List" "Cons" "Int" "Tag" "Unwind" "Ref" "FlatArray" "Knot" "Show" "OnceCell" "Fn"
           "Result" "Ok" "Err" "String" "Copy" "Clone" "Self" "Module" "Void" "Bloblet" "BlobRef" "Arena"
-          "Holds" "ListAt" "RefAt" "TBloblet" "FlatArr" "Flat" "Owner" "Cell" "Default" "Procedure")))
+          "Holds" "ListAt" "RefAt" "TBloblet" "FlatArr" "Flat" "Owner" "Default" "Procedure")))
 
 (define kfx-name? (subr kfx (string) bool)
   (lambda (n)

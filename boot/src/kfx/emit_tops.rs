@@ -1056,13 +1056,31 @@ pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
     } else if (string_eq_p(h, str_lit("include")) || string_eq_p(h, str_lit("%use"))) {
         let n = sym_name(second(xs));
         let its = module_items(c, n);
-        let skip = if null_p(cdr(cdr(xs))) {
-            nil::<Str>()
-        } else {
-            map(&sym_name, cdr(items(third(xs))))
-        };
-        let names = onto(map(&mangle, item_values(its)), map(&camel, concat(map(lambda1(move |t: Str| {
-            if string_member_p(t, skip) {
+        let skip = concat(map(lambda1(move |x: &'static Sexp| {
+            if head_is_p(x, str_lit("skip")) {
+                map(&sym_name, cdr(items(x)))
+            } else {
+                nil::<Str>()
+            }
+        }), cdr(cdr(xs))));
+        let ex = concat(map(lambda1(move |x: &'static Sexp| {
+            if head_is_p(x, str_lit("except")) {
+                map(&sym_name, cdr(items(x)))
+            } else if head_is_p(x, str_lit("except-module")) {
+                let b = module_items(c, sym_name(second(items(x))));
+                onto(item_values(b), item_types(b))
+            } else {
+                nil::<Str>()
+            }
+        }), cdr(cdr(xs))));
+        let names = onto(map(&mangle, concat(map(lambda1(move |t: Str| {
+            if string_member_p(t, ex) {
+                nil::<Str>()
+            } else {
+                the::<Strings>(kayak_rt::heap_cons(t, kayak_rt::nil()))
+            }
+        }), item_values(its)))), map(&camel, concat(map(lambda1(move |t: Str| {
+            if (string_member_p(t, skip) || string_member_p(t, ex)) {
                 nil::<Str>()
             } else {
                 the::<Strings>(kayak_rt::heap_cons(t, kayak_rt::nil()))
@@ -1158,7 +1176,7 @@ pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
     } else if string_eq_p(h, str_lit("define-generative")) {
         put_generative(c, cdr(xs), acc)
     } else if module_def_p(form) {
-        put_module(c, sym_name(second(xs)), cdr(items(third(xs))), acc)
+        put_module(c, sym_name(second(xs)), module_written(form), acc)
     } else if (string_eq_p(h, str_lit("define")) || string_eq_p(h, str_lit("define*"))) {
         if i64_eq(size(xs), 4i64) {
             put_define(c, second(xs), third(xs), fourth(xs), acc)
@@ -1183,7 +1201,7 @@ pub fn types_once(c: &'static Ctx, forms: Sexps, given: Strings) -> Sexps {
         let ts = item_types(module_items(c, sym_name(second(xs))));
         kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("skip"), str_lit(""), 0i64), map(lambda1(move |t: Str| {
             sym(t, str_lit(""), 0i64)
-        }), given)), str_lit(""), 0i64, 0i64), kayak_rt::nil()))), str_lit(""), 0i64, 0i64), types_once(c, cdr(forms), onto(ts, given)))
+        }), given)), str_lit(""), 0i64, 0i64), cdr(cdr(xs))))), str_lit(""), 0i64, 0i64), types_once(c, cdr(forms), onto(ts, given)))
     } else {
         kayak_rt::heap_cons(car(forms), types_once(c, cdr(forms), given))
     }

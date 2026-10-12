@@ -227,7 +227,9 @@ pub fn scheme_text(sc: &'static Scheme) -> Str {
 /// redefinition, so that the two still refuse the one program. KFX
 /// defines each name once, and none kayak-rt has: the restriction pass's
 /// (restrict.kfx), as the generated modules each import every other's
-/// names and kayak-rt's.
+/// names and kayak-rt's. A module's item may shadow a primitive or a
+/// global (C87), as FX-26's may, and as a Rust `mod`'s item shadows what
+/// it imports by a glob.
 pub fn global(v: &'static Cv, name: Str, sc: &'static Scheme) -> &'static Bind {
     if keyword_p(name) {
         match refuse(v, string_append(str_lit("a keyword names nothing: "), name)) {}
@@ -243,7 +245,7 @@ pub fn global(v: &'static Cv, name: Str, sc: &'static Scheme) -> &'static Bind {
             let tagcase_ = car(found);
             match *tagcase_ {
                 Bind::Bind(n, sc0, wher) => {
-                    if string_eq_p(scheme_text(sc0), scheme_text(sc)) {
+                    if (string_eq_p(scheme_text(sc0), scheme_text(sc)) || (not(null_p(find_bind(str_lit("%module"), cv_binds(v)))) && (string_eq_p(wher, str_lit("prim")) || string_eq_p(wher, str_lit("global"))))) {
                         bind(name, sc, if null_p(find_bind(str_lit("%module"), cv_binds(v))) {
                             str_lit("global")
                         } else {
@@ -863,8 +865,118 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
     }
 }
 
+/// The names an item defines: values and types.
+pub fn item_names(f: &'static Sexp) -> Strings {
+    if (head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*")) || head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative"))) {
+        let tagcase_ = second(items(f));
+        match *tagcase_ {
+            Sexp::Sym(n, at_file, at_pos) => {
+                the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<Str>()
+            }
+        }
+    } else if head_is_p(f, str_lit("define-rec")) {
+        map(lambda1(move |b: &'static Sexp| {
+            sym_name(car(items(b)))
+        }), cdr(items(f)))
+    } else if head_is_p(f, str_lit("define-datatype")) {
+        let tagcase_ = second(items(f));
+        match *tagcase_ {
+            Sexp::Sym(n, at_file, at_pos) => {
+                the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<Str>()
+            }
+        }
+    } else {
+        nil::<Str>()
+    }
+}
+
 pub fn module_def_p(form: &'static Sexp) -> bool {
-    (head_is_p(form, str_lit("define")) && i64_eq(size(items(form)), 3i64) && head_is_p(third(items(form)), str_lit("module")))
+    (head_is_p(form, str_lit("define")) && i64_eq(size(items(form)), 3i64) && (head_is_p(third(items(form)), str_lit("module")) || head_is_p(third(items(form)), str_lit("extend"))))
+}
+
+// `(extend e0 e1)` (C87, FX-91's): a module of both's values and types,
+// `e1`'s where both give a name; `e1` sees `e0`'s, its own shadowing them.
+// KFX's, of an `e0` defined at the top level: the module `(include e0
+// (except ...))` then `e1`'s items, or `(include e1)` if `e1` is a name: the
+// names `e1` gives are not taken from `e0`. So the Rust is a `mod` of `pub
+// use`s, and its own items, which Rust's scope lets shadow a glob's.
+/// A module definition's items, as written, or as its `extend` is.
+pub fn module_written(form: &'static Sexp) -> Sexps {
+    let x = third(items(form));
+    if head_is_p(x, str_lit("module")) {
+        cdr(items(x))
+    } else {
+        let tagcase_ = x;
+        match *tagcase_ {
+            Sexp::Lst(xs, file, line, pos) => {
+                let (e0, e1) = (second(xs), third(xs));
+                if not(i64_eq(size(xs), 3i64)) {
+                    error(str_lit("kfx: an extend of two modules"))
+                } else if not({
+                    let tagcase_ = e0;
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            true
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }) {
+                    error(str_lit("kfx: an extend of a module made where it is extended, which KFX does not have yet: its first module is one defined at the top level"))
+                } else if {
+                    let tagcase_ = e1;
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            true
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                } {
+                    kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("include"), file, pos), kayak_rt::heap_cons(e0, kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("except-module"), file, pos), kayak_rt::heap_cons(e1, kayak_rt::nil())), file, line, pos), kayak_rt::nil()))), file, line, pos), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("include"), file, pos), kayak_rt::heap_cons(e1, kayak_rt::nil())), file, line, pos), kayak_rt::nil()))
+                } else if head_is_p(e1, str_lit("module")) {
+                    let own = cdr(items(e1));
+                    kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("include"), file, pos), kayak_rt::heap_cons(e0, kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("except"), file, pos), map(lambda1(move |n: Str| {
+                        sym(n, file, pos)
+                    }), concat(map(&item_names, concat(map(lambda1(move |g: &'static Sexp| {
+                        if head_is_p(g, str_lit("hide")) {
+                            cdr(items(g))
+                        } else {
+                            the::<Sexps>(kayak_rt::heap_cons(g, kayak_rt::nil()))
+                        }
+                    }), own)))))), file, line, pos), kayak_rt::nil()))), file, line, pos), own)
+                } else {
+                    error(str_lit("kfx: an extend's second module is a name or a module"))
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<&'static Sexp>()
+            }
+        }
+    }
+}
+
+/// An `include`'s exception, `(except n ...)` or `(except-module m)`, as a
+/// list of one, or none.
+pub fn include_except(f: &'static Sexp) -> Sexps {
+    if i64_gt(size(items(f)), 2i64) {
+        the::<Sexps>(kayak_rt::heap_cons(third(items(f)), kayak_rt::nil()))
+    } else {
+        nil::<&'static Sexp>()
+    }
 }
 
 /// The names of the types and modules `forms` define, one Rust scope's.
@@ -911,7 +1023,7 @@ pub fn type_scopes(forms: Sexps) -> List<Strings> {
                 } else {
                     the::<Sexps>(kayak_rt::heap_cons(g, kayak_rt::nil()))
                 }
-            }), cdr(items(third(items(f))))))), kayak_rt::nil()))
+            }), module_written(f)))), kayak_rt::nil()))
         } else {
             nil::<List<Str>>()
         }
@@ -933,7 +1045,7 @@ pub fn type_namer(mut forms: Sexps, mut name: Str) -> Sexps {
                 } else {
                     the::<Sexps>(kayak_rt::heap_cons(g, kayak_rt::nil()))
                 }
-            }), cdr(items(third(items(car(forms))))))), name);
+            }), module_written(car(forms)))), name);
             if null_p(inner) {
                 forms = cdr(forms);
                 continue;
@@ -1424,39 +1536,6 @@ pub fn unhidden(forms: Sexps) -> Sexps {
     }), forms))
 }
 
-/// The names an item defines: values and types.
-pub fn item_names(f: &'static Sexp) -> Strings {
-    if (head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*")) || head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative"))) {
-        let tagcase_ = second(items(f));
-        match *tagcase_ {
-            Sexp::Sym(n, at_file, at_pos) => {
-                the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
-            }
-            _ => {
-                let other = tagcase_;
-                nil::<Str>()
-            }
-        }
-    } else if head_is_p(f, str_lit("define-rec")) {
-        map(lambda1(move |b: &'static Sexp| {
-            sym_name(car(items(b)))
-        }), cdr(items(f)))
-    } else if head_is_p(f, str_lit("define-datatype")) {
-        let tagcase_ = second(items(f));
-        match *tagcase_ {
-            Sexp::Sym(n, at_file, at_pos) => {
-                the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
-            }
-            _ => {
-                let other = tagcase_;
-                nil::<Str>()
-            }
-        }
-    } else {
-        nil::<Str>()
-    }
-}
-
 /// The names among `names` that `e` mentions (a local of the same name
 /// taken for the item: more references, never fewer).
 pub fn item_names_in(e: &'static Sexp, names: Strings) -> Strings {
@@ -1676,6 +1755,98 @@ pub fn included(v: &'static Cv, forms: Sexps) -> Strings {
             nil::<Str>()
         }
     }), forms))
+}
+
+/// The names an `include` of `n` among `written` does not take (C87): an
+/// `extend`'s second module's.
+pub fn except_names(v: &'static Cv, written: Sexps, n: Str) -> Strings {
+    let incs = concat(map(lambda1(move |f: &'static Sexp| {
+        if (head_is_p(f, str_lit("include")) && string_eq_p(sym_name(second(items(f))), n)) {
+            include_except(f)
+        } else {
+            nil::<&'static Sexp>()
+        }
+    }), onto(written, concat(map(lambda1(move |f: &'static Sexp| {
+        if head_is_p(f, str_lit("hide")) {
+            cdr(items(f))
+        } else {
+            nil::<&'static Sexp>()
+        }
+    }), written)))));
+    if null_p(incs) {
+        nil::<Str>()
+    } else {
+        let x = car(incs);
+        if head_is_p(x, str_lit("except-module")) {
+            let b = sym_name(second(items(x)));
+            onto(map(lambda1(move |d: &'static Bind| {
+                let tagcase_ = d;
+                match *tagcase_ {
+                    Bind::Bind(k, sc, w) => {
+                        k
+                    }
+                }
+            }), opened_binds(b, cv_binds(v))), map(lambda1(move |a: &'static Alias| {
+                let tagcase_ = a;
+                match *tagcase_ {
+                    Alias::Alias(k, ps, body) => {
+                        k
+                    }
+                }
+            }), opened_aliases(b, cv_aliases(v))))
+        } else {
+            map(&sym_name, cdr(items(x)))
+        }
+    }
+}
+
+pub fn excepted_binds(v: &'static Cv, written: Sexps, n: Str, bs: Binds) -> Binds {
+    let ex = except_names(v, written, n);
+    concat(map(lambda1(move |d: &'static Bind| {
+        let tagcase_ = d;
+        match *tagcase_ {
+            Bind::Bind(k, sc, w) => {
+                if string_member_p(k, ex) {
+                    nil::<&'static Bind>()
+                } else {
+                    the::<Binds>(kayak_rt::heap_cons(d, kayak_rt::nil()))
+                }
+            }
+        }
+    }), opened_binds(n, bs)))
+}
+
+pub fn excepted_aliases(v: &'static Cv, written: Sexps, n: Str, als: Aliases) -> Aliases {
+    let ex = except_names(v, written, n);
+    concat(map(lambda1(move |a: &'static Alias| {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Alias::Alias(k, ps, body) => {
+                if string_member_p(k, ex) {
+                    nil::<&'static Alias>()
+                } else {
+                    the::<Aliases>(kayak_rt::heap_cons(a, kayak_rt::nil()))
+                }
+            }
+        }
+    }), opened_aliases(n, als)))
+}
+
+/// Module `m`'s effects, named as `m` names them: an `include` gives them
+/// the module, as a `with` gives them its body (C87, FX-26's).
+pub fn opened_effdefs(m: Str, es: Effdefs) -> Effdefs {
+    concat(map(lambda1(move |d: &'static Effdef| {
+        let tagcase_ = d;
+        match *tagcase_ {
+            Effdef::Effdef(n, atoms) => {
+                if has_prefix_p(n, string_append(m, str_lit(" "))) {
+                    the::<Effdefs>(kayak_rt::heap_cons(effdef(after_prefix(n, string_append(m, str_lit(" "))), atoms), kayak_rt::nil()))
+                } else {
+                    nil::<&'static Effdef>()
+                }
+            }
+        }
+    }), es))
 }
 
 /// The modules included not in a `hide`: their types are the module's.
@@ -2071,7 +2242,7 @@ pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
             }
         }
     };
-    let written = cdr(items(third(xs)));
+    let written = module_written(form);
     let forms = unhidden(written);
     let escapes = hidden_escapes(v, written);
     let hidden_types = hidden_type_names(written);
@@ -2083,7 +2254,7 @@ pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
             }
         }
     }), concat(map(lambda1(move |n: Str| {
-        opened_binds(n, cv_binds(v))
+        excepted_binds(v, written, n, cv_binds(v))
     }), included(v, concat(map(lambda1(move |f: &'static Sexp| {
         if head_is_p(f, str_lit("hide")) {
             cdr(items(f))
@@ -2105,7 +2276,7 @@ pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
             }
         }
     }), concat(map(lambda1(move |n: Str| {
-        opened_binds(n, cv_binds(v))
+        excepted_binds(v, written, n, cv_binds(v))
     }), includes)))));
     let given_types = concat(map(&item_type_names, forms));
     let included_aliases = map(lambda1(move |a: &'static Alias| {
@@ -2116,7 +2287,7 @@ pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
             }
         }
     }), concat(map(lambda1(move |n: Str| {
-        opened_aliases(n, cv_aliases(v))
+        excepted_aliases(v, written, n, cv_aliases(v))
     }), includes)));
     let v = if (repeated_p(given_values) || repeated_p(onto(given_types, map(lambda1(move |a: &'static Alias| {
         let tagcase_ = a;
@@ -2135,10 +2306,12 @@ pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
         match *tagcase_ {
             Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
                 cv(bind_onto(concat(map(lambda1(move |n: Str| {
-                    opened_binds(n, bs)
+                    excepted_binds(v, written, n, bs)
                 }), includes)), kayak_rt::heap_cons(bind(str_lit("%module"), scheme(nil::<Str>(), ty_unit()), m), bs)), onto(module_dts(m, forms), ds), onto(module_aliases(m, names, forms, true), onto(concat(map(lambda1(move |n: Str| {
-                    opened_aliases(n, als)
-                }), includes)), als)), es, here, group, file, line, fs, tv, at)
+                    excepted_aliases(v, written, n, als)
+                }), includes)), als)), onto(concat(map(lambda1(move |n: Str| {
+                    opened_effdefs(n, es)
+                }), includes)), es), here, group, file, line, fs, tv, at)
             }
         }
     };
@@ -2167,8 +2340,17 @@ pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
                             }
                         }
                     }), conversions)), bs), cv_binds(v))), ds, onto(without_aliases(hidden_types, m, module_aliases(m, names, forms, false)), onto(concat(map(lambda1(move |n: Str| {
-                        renamed_aliases(n, m, opened_aliases(n, cv_aliases(v)))
-                    }), unhidden_includes(v, written))), cv_aliases(v))), onto(module_effects(m, forms, es), cv_effdefs(v)), here, group, file, line, fs, tv, at), found)
+                        renamed_aliases(n, m, excepted_aliases(v, written, n, cv_aliases(v)))
+                    }), unhidden_includes(v, written))), cv_aliases(v))), onto(module_effects(m, forms, es), onto(concat(map(lambda1(move |n: Str| {
+                        map(lambda1(move |d: &'static Effdef| {
+                            let tagcase_ = d;
+                            match *tagcase_ {
+                                Effdef::Effdef(k, atoms) => {
+                                    effdef(string_append(m, string_append(str_lit(" "), k)), atoms)
+                                }
+                            }
+                        }), opened_effdefs(n, cv_effdefs(v)))
+                    }), unhidden_includes(v, written))), cv_effdefs(v))), here, group, file, line, fs, tv, at), found)
                 }
             }
         }

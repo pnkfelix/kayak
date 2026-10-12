@@ -302,7 +302,9 @@
      redefinition, so that the two still refuse the one program. KFX
      defines each name once, and none kayak-rt has: the restriction pass's
      (restrict.kfx), as the generated modules each import every other's
-     names and kayak-rt's."
+     names and kayak-rt's. A module's item may shadow a primitive or a
+     global (C87), as FX-26's may, and as a Rust `mod`'s item shadows what
+     it imports by a glob."
     (cond ((keyword? name) (refuse v (string-append "a keyword names nothing: " name)))
           (else
            (let ((found (find-bind name (cv-binds v))))
@@ -310,7 +312,8 @@
                  (bind name sc (if (null? (find-bind "%module" (cv-binds v))) "global" "item"))
                  (tagcase (car found)
                    (bind (n sc0 wher)
-                     (if (string=? (scheme-text sc0) (scheme-text sc))
+                     (if (or (string=? (scheme-text sc0) (scheme-text sc))
+                             (and (not (null? (find-bind "%module" (cv-binds v)))) (or (string=? wher "prim") (string=? wher "global"))))
                          (bind name sc (if (null? (find-bind "%module" (cv-binds v))) "global" "item"))
                          (refuse v (string-append name " is defined again, at another type, which would break what uses it")))))))))))
 
@@ -641,9 +644,59 @@
                     (res (t es s)
                       (with-facts v (settle-facts (if (proc-type? s t) (note-fact s (datum-file form) (datum-pos form) "procedure") s)))))))))
 
+(define item-names (subr kfx (sexp) strings)
+  (lambda (f)
+    "The names an item defines: values and types."
+    (cond ((or (head-is? f "define") (head-is? f "define*") (head-is? f "define-type") (head-is? f "define-generative"))
+           (tagcase (second (items f)) (sym (n at-file at-pos) (the strings (list n))) (else other nil)))
+          ((head-is? f "define-rec") (map (lambda ((b sexp)) (sym-name (car (items b)))) (cdr (items f))))
+          ((head-is? f "define-datatype")
+           (tagcase (second (items f)) (sym (n at-file at-pos) (the strings (list n))) (else other nil)))
+          (else nil))))
+
 (define module-def? (subr kfx (sexp) bool)
   (lambda (form)
-    (and (head-is? form "define") (i64= (size (items form)) 3) (head-is? (third (items form)) "module"))))
+    (and (head-is? form "define") (i64= (size (items form)) 3)
+         (or (head-is? (third (items form)) "module") (head-is? (third (items form)) "extend")))))
+
+"`(extend e0 e1)` (C87, FX-91's): a module of both's values and types,
+ `e1`'s where both give a name; `e1` sees `e0`'s, its own shadowing them.
+ KFX's, of an `e0` defined at the top level: the module `(include e0
+ (except ...))` then `e1`'s items, or `(include e1)` if `e1` is a name: the
+ names `e1` gives are not taken from `e0`. So the Rust is a `mod` of `pub
+ use`s, and its own items, which Rust's scope lets shadow a glob's."
+(define module-written (subr kfx (sexp) sexps)
+  (lambda (form)
+    "A module definition's items, as written, or as its `extend` is."
+    (let ((x (third (items form))))
+      (if (head-is? x "module")
+          (cdr (items x))
+          (tagcase x
+            (lst (xs file line pos)
+              (let ((e0 (second xs)) (e1 (third xs)))
+                (cond ((not (i64= (size xs) 3)) (error "kfx: an extend of two modules"))
+                      ((not (tagcase e0 (sym (n f p) #t) (else other #f)))
+                       (error "kfx: an extend of a module made where it is extended, which KFX does not have yet: its first module is one defined at the top level"))
+                      ((tagcase e1 (sym (n f p) #t) (else other #f))
+                       (list (lst (list (sym "include" file pos) e0 (lst (list (sym "except-module" file pos) e1) file line pos)) file line pos)
+                             (lst (list (sym "include" file pos) e1) file line pos)))
+                      ((head-is? e1 "module")
+                       (let ((own (cdr (items e1))))
+                         (cons (lst (list (sym "include" file pos) e0
+                                          (lst (cons (sym "except" file pos)
+                                                     (map (lambda ((n string)) (sym n file pos))
+                                                          (concat (map item-names (concat (map (lambda ((g sexp)) (if (head-is? g "hide") (cdr (items g)) (the sexps (list g)))) own))))))
+                                               file line pos))
+                                    file line pos)
+                               own)))
+                      (else (error "kfx: an extend's second module is a name or a module")))))
+            (else other nil))))))
+
+(define include-except (subr kfx (sexp) sexps)
+  (lambda (f)
+    "An `include`'s exception, `(except n ...)` or `(except-module m)`, as a
+     list of one, or none."
+    (if (i64> (size (items f)) 2) (the sexps (list (third (items f)))) nil)))
 
 (define type-level-names (subr kfx (sexps) strings)
   (lambda (forms)
@@ -667,7 +720,7 @@
                          (if (module-def? f)
                              (the (listof strings acyclic)
                                (list (type-level-names (concat (map (lambda ((g sexp)) (if (head-is? g "hide") (cdr (items g)) (the sexps (list g))))
-                                                                    (cdr (items (third (items f)))))))))
+                                                                    (module-written f))))))
                              nil))
                        forms)))))
 
@@ -680,7 +733,7 @@
             ((string-member? name (type-level-names (list (car forms)))) (list (car forms)))
             ((module-def? (car forms))
              (let ((inner (type-namer (concat (map (lambda ((g sexp)) (if (head-is? g "hide") (cdr (items g)) (the sexps (list g))))
-                                                   (cdr (items (third (items (car forms)))))))
+                                                   (module-written (car forms))))
                                       name)))
                (if (null? inner) (type-namer (cdr forms) name) inner)))
             (else (type-namer (cdr forms) name))))))
@@ -942,16 +995,6 @@
     "The items, those of a `hide` among them."
     (concat (map (lambda ((f sexp)) (if (head-is? f "hide") (cdr (items f)) (the sexps (list f)))) forms))))
 
-(define item-names (subr kfx (sexp) strings)
-  (lambda (f)
-    "The names an item defines: values and types."
-    (cond ((or (head-is? f "define") (head-is? f "define*") (head-is? f "define-type") (head-is? f "define-generative"))
-           (tagcase (second (items f)) (sym (n at-file at-pos) (the strings (list n))) (else other nil)))
-          ((head-is? f "define-rec") (map (lambda ((b sexp)) (sym-name (car (items b)))) (cdr (items f))))
-          ((head-is? f "define-datatype")
-           (tagcase (second (items f)) (sym (n at-file at-pos) (the strings (list n))) (else other nil)))
-          (else nil))))
-
 (define-rec
   (item-names-in (subr kfx (sexp strings) strings)
     (lambda (e names)
@@ -1052,6 +1095,43 @@
                              (the strings (list n))))
                        nil))
                  forms))))
+
+(define except-names (subr kfx (cv sexps string) strings)
+  (lambda (v written n)
+    "The names an `include` of `n` among `written` does not take (C87): an
+     `extend`'s second module's."
+    (let ((incs (concat (map (lambda ((f sexp))
+                               (if (and (head-is? f "include") (string=? (sym-name (second (items f))) n)) (include-except f) nil))
+                             (onto written (concat (map (lambda ((f sexp)) (if (head-is? f "hide") (cdr (items f)) nil)) written)))))))
+      (if (null? incs)
+          nil
+          (let ((x (car incs)))
+            (if (head-is? x "except-module")
+                (let ((b (sym-name (second (items x)))))
+                  (onto (map (lambda ((d bind)) (tagcase d (bind (k sc w) k))) (opened-binds b (cv-binds v)))
+                        (map (lambda ((a alias)) (tagcase a (alias (k ps body) k))) (opened-aliases b (cv-aliases v)))))
+                (map sym-name (cdr (items x)))))))))
+
+(define excepted-binds (subr kfx (cv sexps string binds) binds)
+  (lambda (v written n bs)
+    (let ((ex (except-names v written n)))
+      (concat (map (lambda ((d bind)) (tagcase d (bind (k sc w) (if (string-member? k ex) nil (the binds (list d)))))) (opened-binds n bs))))))
+
+(define excepted-aliases (subr kfx (cv sexps string aliases) aliases)
+  (lambda (v written n als)
+    (let ((ex (except-names v written n)))
+      (concat (map (lambda ((a alias)) (tagcase a (alias (k ps body) (if (string-member? k ex) nil (the aliases (list a)))))) (opened-aliases n als))))))
+
+(define opened-effdefs (subr kfx (string effdefs) effdefs)
+  (lambda (m es)
+    "Module `m`'s effects, named as `m` names them: an `include` gives them
+     the module, as a `with` gives them its body (C87, FX-26's)."
+    (concat (map (lambda ((d effdef))
+                   (tagcase d (effdef (n atoms)
+                                (if (has-prefix? n (string-append m " "))
+                                    (the effdefs (list (effdef (after-prefix n (string-append m " ")) atoms)))
+                                    nil))))
+                 es))))
 
 (define unhidden-includes (subr kfx (cv sexps) strings)
   (lambda (v written)
@@ -1232,34 +1312,35 @@
                   (refuse v (string-append "a module named as a Rust crate the program sees: " m))
                   v))
            (made (tagcase (global v m (scheme nil (ty-unit))) (bind (n sc wher) (bind n sc "module"))))
-           (written (cdr (items (third xs))))
+           (written (module-written form))
            (forms (unhidden written))
            (escapes (hidden-escapes v written))
            (hidden-types (hidden-type-names written))
            (hidden (onto (hidden-value-names written)
                          (map (lambda ((b bind)) (tagcase b (bind (n sc w) n)))
-                              (concat (map (lambda ((n string)) (opened-binds n (cv-binds v)))
+                              (concat (map (lambda ((n string)) (excepted-binds v written n (cv-binds v)))
                                            (included v (concat (map (lambda ((f sexp)) (if (head-is? f "hide") (cdr (items f)) nil)) written))))))))
            (includes (included v forms))
            (names (module-types v forms))
            (given-values (onto (concat (map item-value-names forms))
                                (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (if (has-prefix? n "%") nil (the strings (list n))))))
-                                            (concat (map (lambda ((n string)) (opened-binds n (cv-binds v))) includes))))))
+                                            (concat (map (lambda ((n string)) (excepted-binds v written n (cv-binds v))) includes))))))
            (given-types (concat (map item-type-names forms)))
            (included-aliases (map (lambda ((a alias)) (tagcase a (alias (n ps body) (alias n ps (resolved-alias body (cv-aliases v))))))
-                                  (concat (map (lambda ((n string)) (opened-aliases n (cv-aliases v))) includes))))
+                                  (concat (map (lambda ((n string)) (excepted-aliases v written n (cv-aliases v))) includes))))
            (v (if (or (repeated? given-values)
                       (repeated? (onto given-types (map (lambda ((a alias)) (tagcase a (alias (n ps b) n))) (distinct-aliases included-aliases)))))
                   (refuse v "a name defined twice in this module, its own or included")
                   v))
            (typed (tagcase v
                     (cv (bs ds als es here group file line fs tv at)
-                      (cv (bind-onto (concat (map (lambda ((n string)) (opened-binds n bs)) includes))
+                      (cv (bind-onto (concat (map (lambda ((n string)) (excepted-binds v written n bs)) includes))
                                      (cons (bind "%module" (scheme nil (ty-unit)) m) bs))
                           (onto (module-dts m forms) ds)
                           (onto (module-aliases m names forms #t)
-                                (onto (concat (map (lambda ((n string)) (opened-aliases n als)) includes)) als))
-                          es here group file line fs tv at))))
+                                (onto (concat (map (lambda ((n string)) (excepted-aliases v written n als)) includes)) als))
+                          (onto (concat (map (lambda ((n string)) (opened-effdefs n es)) includes)) es)
+                          here group file line fs tv at))))
            (datatypes (module-datatypes typed m forms))
            (typed (tagcase typed
                     (cv (bs ds als es here group file line fs tv at)
@@ -1273,10 +1354,16 @@
               (elab (cv (cons made (bind-onto (module-exports m (onto hidden (map (lambda ((b bind)) (tagcase b (bind (n sc w) n))) conversions)) bs)
                                               (cv-binds v)))
                         ds (onto (without-aliases hidden-types m (module-aliases m names forms #f))
-                                 (onto (concat (map (lambda ((n string)) (renamed-aliases n m (opened-aliases n (cv-aliases v))))
+                                 (onto (concat (map (lambda ((n string)) (renamed-aliases n m (excepted-aliases v written n (cv-aliases v))))
                                                     (unhidden-includes v written)))
                                        (cv-aliases v)))
-                        (onto (module-effects m forms es) (cv-effdefs v)) here group file line fs tv at)
+                        (onto (module-effects m forms es)
+                              (onto (concat (map (lambda ((n string))
+                                                   (map (lambda ((d effdef)) (tagcase d (effdef (k atoms) (effdef (string-append m (string-append " " k)) atoms))))
+                                                        (opened-effdefs n (cv-effdefs v))))
+                                                 (unhidden-includes v written)))
+                                    (cv-effdefs v)))
+                        here group file line fs tv at)
                     found))))))))
 
 (define check-tops (subr kfx (cv sexps typeds) elab)

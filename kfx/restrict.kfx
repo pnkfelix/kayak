@@ -97,7 +97,7 @@
                   (else (names-once (cdr names) (cons n seen) prims))))))))
 
 (define module-own-items (subr kfx (sexp) sexps)
-  (lambda (f) (concat (map (lambda ((g sexp)) (if (head-is? g "hide") (cdr (items g)) (the sexps (list g)))) (cdr (items (third (items f))))))))
+  (lambda (f) (concat (map (lambda ((g sexp)) (if (head-is? g "hide") (cdr (items g)) (the sexps (list g)))) (module-written f)))))
 
 (define type-refused (subr kfx (sexps string string) void)
   (lambda (forms n message)
@@ -129,7 +129,7 @@
     (let ((prims (primitive-names)))
       (begin
         (names-once (defined-names forms) nil prims)
-        (map (lambda ((f sexp)) (if (module-def? f) (names-once (defined-names (module-own-items f)) nil prims) #u)) forms)
+        (map (lambda ((f sexp)) (if (module-def? f) (names-once (defined-names (module-own-items f)) nil nil) #u)) forms)
         (types-named forms)))))
 
 (define restrict (subr kfx (sexps) unit)

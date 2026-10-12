@@ -168,7 +168,7 @@ pub fn module_own_items(f: &'static Sexp) -> Sexps {
         } else {
             the::<Sexps>(kayak_rt::heap_cons(g, kayak_rt::nil()))
         }
-    }), cdr(items(third(items(f))))))
+    }), module_written(f)))
 }
 
 pub fn type_refused(forms: Sexps, n: Str, message: Str) -> Void {
@@ -214,7 +214,7 @@ pub fn names_restricted(forms: Sexps) -> () {
     names_once(defined_names(forms), nil::<Str>(), prims);
     map(lambda1(move |f: &'static Sexp| {
         if module_def_p(f) {
-            names_once(defined_names(module_own_items(f)), nil::<Str>(), prims)
+            names_once(defined_names(module_own_items(f)), nil::<Str>(), nil::<Str>())
         } else {
             ()
         }

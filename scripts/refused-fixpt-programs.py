@@ -21,14 +21,20 @@ def main():
     files = sorted(os.path.join(d, f) for d, _, fs in os.walk(progs) for f in fs if f.endswith(".fx"))
     kfx = os.path.join(ROOT, "target", "release", "kfx")
 
+    def refused_by_fixpt(p):
+        """Fixpt's checker refuses `p`: it fails, or says an error (a line
+        begun `! `), which `fixpt check` does with status 0."""
+        r = fixptcache.run(fixpt, ["--dialect", "fx26", "check", p], [p], timeout=60)
+        return r.returncode != 0 or any(l.startswith("! ") for l in r.stdout.splitlines() + r.stderr.splitlines())
+
     def accepted_wrongly(p):
-        if fixptcache.run(fixpt, ["--dialect", "fx26", "check", p], [p], timeout=60).returncode == 0:
+        if not refused_by_fixpt(p):
             return None
         k = subprocess.run([kfx, p], capture_output=True, text=True, timeout=60)
         return os.path.relpath(p, progs) if k.returncode == 0 else None
 
     wrong = [x for x in fixptcache.parallel(accepted_wrongly, files) if x]
-    refused = sum(1 for p in files if fixptcache.run(fixpt, ["--dialect", "fx26", "check", p], [p]).returncode != 0)
+    refused = sum(1 for p in files if refused_by_fixpt(p))
     if wrong:
         for w in wrong:
             print("refused-fixpt-programs: KFX ACCEPTS WHAT FX-26 REFUSES  " + w)

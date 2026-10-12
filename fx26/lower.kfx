@@ -86,6 +86,19 @@
             ((has-prefix? (car gs) "%any-module ") (cdr (spaced-words (car gs))))
             (else (any-module (cdr gs)))))))
 
+(define include-exports (subr kfx (sexp strings) strings)
+  (lambda (f gs)
+    "What an `include` takes of its module: all it gives, but those its
+     exception names (C87, an `extend`'s second module's)."
+    (let* ((all (exports-of (sym-name (second (items f))) gs))
+           (ex (include-except f))
+           (out (if (null? ex)
+                    nil
+                    (if (head-is? (car ex) "except-module")
+                        (exports-of (sym-name (second (items (car ex)))) gs)
+                        (map sym-name (cdr (items (car ex))))))))
+      (concat (map (lambda ((n string)) (if (string-member? n out) nil (the strings (list n)))) all)))))
+
 (define-rec
   (module-item-names (subr kfx (sexps strings bool) strings)
     (lambda (its gs exported)
@@ -99,7 +112,7 @@
                         ((head-is? f "define-datatype") (map (lambda ((g sexp)) (sym-name (car (items g)))) (cdr (cdr (items f)))))
                         ((head-is? f "define-generative")
                          (let ((n (binder-name (second (items f))))) (list (string-append "up-" n) (string-append "down-" n))))
-                        ((head-is? f "include") (exports-of (sym-name (second (items f))) gs))
+                        ((head-is? f "include") (include-exports f gs))
                         ((head-is? f "hide") (if exported nil (module-item-names (cdr (items f)) gs #f)))
                         (else nil))
                   (module-item-names (cdr its) gs exported)))))))
@@ -183,8 +196,8 @@
       (if (null? forms)
           nil
           (let ((f (car forms)))
-            (if (and (head-is? f "define") (i64= (size (items f)) 3) (head-is? (third (items f)) "module"))
-                (let ((w (concat-words (cons "%exports" (cons (binder-name (second (items f))) (module-item-names (cdr (items (third (items f)))) gs #t))))))
+            (if (module-def? f)
+                (let ((w (concat-words (cons "%exports" (cons (binder-name (second (items f))) (module-item-names (module-written f) gs #t))))))
                   (cons w (module-words (cdr forms) (cons w gs))))
                 (module-words (cdr forms) gs))))))
   (moduleof-names (subr kfx (sexps) strings)
@@ -318,6 +331,7 @@
                (i-let (list (lower m sc gs)) (lower-body (cdr xs) (cons (cons "%with" names) sc) gs))))
             ((string=? h "select") (error "the engine: a select as a value"))
             ((string=? h "module") (lower-module xs sc gs))
+            ((string=? h "extend") (lower-module (module-written (lst (list (sym "define" "" 0) (sym "%extend" "" 0) e) "" 0 0)) sc gs))
             ((string=? h "and")
              (cond ((null? xs) (i-lit (v-bool #t)))
                    ((null? (cdr xs)) (lower (car xs) sc gs))
@@ -364,7 +378,7 @@
                         ((head-is? f "define-generative") (list (i-lit (v-prim "%identity" 1)) (i-lit (v-prim "%identity" 1))))
                         ((head-is? f "include")
                          (let ((m (sym-name (second (items f)))))
-                           (map (lambda ((n string)) (i-extract n (lower-name m sc gs))) (exports-of m gs))))
+                           (map (lambda ((n string)) (i-extract n (lower-name m sc gs))) (include-exports f gs))))
                         ((head-is? f "hide") (module-values (cdr (items f)) sc gs))
                         (else nil))
                   (module-values (cdr its) sc gs))))))

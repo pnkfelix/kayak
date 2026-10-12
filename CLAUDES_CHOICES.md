@@ -1704,3 +1704,32 @@ the engine too (`modules/include.fx` had differed there).
 
 Measured: 130 of Fixpt's programs through kfx (122 before stage 1, 120
 before modules), all agreeing; the engine 121.
+
+## C87. `extend`, effects through `include`, items shadowing primitives; `Cell` unreserved; a K1 gap closed (2026-10-12)
+
+Stage 3 (`docs/research/modules.md`).
+- **`(extend e0 e1)`** with `e0` a module defined at the top level: the
+  module `(include e0 (except ...))` then `e1`'s items, or `(include e1)`
+  when `e1` is a name, the names `e1` gives not taken from `e0`
+  (`module-written`, read by the checker, the emitter, the restriction
+  pass and the engine alike). FX-26's meaning comes out of Rust's own
+  scoping: a `mod`'s items shadow what it imports, and `e0`'s procedures
+  keep `e0`'s values. An `e0` made where it is extended is refused, for
+  now (`modules/extend-abstract.fx`).
+- **An included module's effects** are the module's, as its types are
+  (`include-effects`, `extend-sees-types`).
+- **A module's item may shadow a primitive or a global**, as FX-26's may
+  and as a Rust `mod`'s item shadows a glob import; at the top level the
+  rule is C61's, still.
+- **`Cell` is no longer a reserved type name**: the emitter writes Rust's
+  `Cell` as `std::cell::Cell` everywhere, and kayak-rt does not export it
+  (`kfx-stricter/type-named-cell` gone).
+- **A K1 gap the last showed**: `car`/`cdr` of a pair of a union's (C77)
+  did not fit its part to the type expected, so a union's part went where
+  an `int` was wanted (`unions/paths-untested.fx`, `paths-in-closure.fx`,
+  `paths-region-variable.fx`, which FX-26 refuses, had been kept from kfx
+  only by their type's name, `cell`). Fitted now; `refused-fixpt-programs`
+  also reads Fixpt's `! ` lines.
+
+Measured: 136 of Fixpt's programs through kfx, all agreeing; the engine
+127.

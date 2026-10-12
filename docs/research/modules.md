@@ -55,3 +55,13 @@ types generic. That is later, and only if programs want it.
 Each stage records its choices (C85, …), and is checked against Fixpt's
 `modules/` and `module-files/` programs, both ways (`refused-fixpt-programs`
 too).
+
+## Done so far
+
+- Stage 1 (C85): items as `letrec*`.
+- Stage 2 (C86): names; hidden datatypes.
+- Stage 3 (C87): `extend` of a named first module; effects through
+  `include`; items shadowing primitives.
+
+130 → 136 of Fixpt's programs through kfx across stages 2–3 (120 before
+modules).

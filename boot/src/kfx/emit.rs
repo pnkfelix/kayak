@@ -414,6 +414,18 @@ pub fn param_module_type(mut m: Str, mut ls: Strings) -> Str {
     }
 }
 
+/// The names an `include` does not take (C87).
+pub fn include_except_names(c: &'static Ctx, f: &'static Sexp) -> Strings {
+    let ex = include_except(f);
+    if null_p(ex) {
+        nil::<Str>()
+    } else if head_is_p(car(ex), str_lit("except-module")) {
+        concat(map(&item_names, module_items(c, sym_name(second(items(car(ex)))))))
+    } else {
+        map(&sym_name, cdr(items(car(ex))))
+    }
+}
+
 /// Module `m`'s items; a module parameter's, as its type's values would be
 /// written (a value not a procedure a constant).
 pub fn module_items(c: &'static Ctx, m: Str) -> Sexps {
@@ -425,7 +437,16 @@ pub fn module_items(c: &'static Ctx, m: Str) -> Sexps {
         } else {
             concat(map(lambda1(move |f: &'static Sexp| {
                 if head_is_p(f, str_lit("include")) {
-                    module_items(c, sym_name(second(items(f))))
+                    let ex = include_except_names(c, f);
+                    concat(map(lambda1(move |g: &'static Sexp| {
+                        if any_p(lambda1(move |n: Str| {
+                            string_member_p(n, ex)
+                        }), item_names(g)) {
+                            nil::<&'static Sexp>()
+                        } else {
+                            the::<Sexps>(kayak_rt::heap_cons(g, kayak_rt::nil()))
+                        }
+                    }), module_items(c, sym_name(second(items(f))))))
                 } else {
                     the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
                 }
@@ -839,7 +860,7 @@ pub fn note(form: &'static Sexp, c: &'static Ctx) -> &'static Ctx {
                 ctx(ds, ts, ks, ls, xs, fs, ms, kayak_rt::heap_cons(typed(sym_name(second(items(form))), third(items(form))), es), mods)
             } else if module_def_p(form) {
                 let m = sym_name(second(items(form)));
-                note_module_datatypes(m, cdr(items(third(items(form)))), ctx(ds, ts, ks, ls, xs, fs, ms, es, kayak_rt::heap_cons(typed(m, third(items(form))), mods)))
+                note_module_datatypes(m, module_written(form), ctx(ds, ts, ks, ls, xs, fs, ms, es, kayak_rt::heap_cons(typed(m, lst(kayak_rt::heap_cons(sym(str_lit("module"), str_lit(""), 0i64), module_written(form)), str_lit(""), 0i64, 0i64)), mods)))
             } else if (head_is_p(form, str_lit("define")) && (i64_eq(size(items(form)), 3i64) || i64_eq(size(items(form)), 4i64)) && not(lambda_form_p(last(items(form))))) {
                 ctx(ds, ts, kayak_rt::heap_cons(sym_name(second(items(form))), ks), ls, xs, fs, ms, es, mods)
             } else {

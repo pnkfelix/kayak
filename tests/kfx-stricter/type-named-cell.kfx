@@ -1,4 +1,0 @@
-"A type named as kayak-rt's `Cell`, which the Rust it makes would hide."
-(define-effect kfx (maxeff (read @globals) spin))
-(define-datatype cell (c i64))
-(tagcase (c 1) (c (n) n))

@@ -2266,7 +2266,9 @@
                     (let ((ct (chain-type v s (car args)))) (and (not (null? ct)) (not (null? (pair-member s (car ct)))))))
                "Of a union with a pair, or of a pair of a union's (C77): taken
                 apart as FX-26 takes it, checked at run time, a `Value` in Rust,
-                unboxed if its part is no union."
+                unboxed if its part is no union; the part fitted to the type
+                expected (C87: it had not been, and a union went where an
+                `int` was wanted, which `unions/paths-untested.fx` refuses)."
                (tagcase (synth v s (car args))
                  (res (t es s1)
                    (let ((ps (pair-member s1 t)))
@@ -2274,10 +2276,11 @@
                          (refuse v (string-append "a car or cdr of what has no pair: " (show-ty s1 t)))
                          (tagcase (car ps)
                            (ty-data (d parts)
-                             (let ((part (if (string=? h "car") (car parts) (car (cdr parts)))))
+                             (let* ((part (if (string=? h "car") (car parts) (car (cdr parts))))
+                                    (s2 (if (null? expected) s1 (fits v s1 part (car expected)))))
                                (res part
-                                    (effs-union (list (string-append "read:" (region-string s1 (car (cdr (cdr parts)))))) es)
-                                    (coerced v (note-fact s1 (cv-file v) (cv-pos v) "value-call") (cv-file v) (cv-pos v) (ty-data "datum" nil) part))))
+                                    (effs-union (list (string-append "read:" (region-string s2 (car (cdr (cdr parts)))))) es)
+                                    (coerced v (note-fact s2 (cv-file v) (cv-pos v) "value-call") (cv-file v) (cv-pos v) (ty-data "datum" nil) part))))
                            (else other (refuse v "a pair that is none"))))))))
               ((and (or (string=? h "car") (string=? h "cdr")) (i64= (size args) 1) (not (null? (local-pair v s (car args)))))
                "Of a local known to be a pair (C68): its head or its tail, of any

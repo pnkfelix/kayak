@@ -5161,7 +5161,9 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
     }) {
         // Of a union with a pair, or of a pair of a union's (C77): taken
         // apart as FX-26 takes it, checked at run time, a `Value` in Rust,
-        // unboxed if its part is no union.
+        // unboxed if its part is no union; the part fitted to the type
+        // expected (C87: it had not been, and a union went where an
+        // `int` was wanted, which `unions/paths-untested.fx` refuses).
         let tagcase_ = synth(v, s, car(args));
         match *tagcase_ {
             Res::Res(t, es, s1) => {
@@ -5177,7 +5179,12 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
                             } else {
                                 car(cdr(parts))
                             };
-                            res(part, effs_union(kayak_rt::heap_cons(string_append(str_lit("read:"), region_string(s1, car(cdr(cdr(parts))))), kayak_rt::nil()), es), coerced(v, note_fact(s1, cv_file(v), cv_pos(v), str_lit("value-call")), cv_file(v), cv_pos(v), ty_data(str_lit("datum"), nil::<&'static Ty>()), part))
+                            let s2 = if null_p(expected) {
+                                s1
+                            } else {
+                                fits(v, s1, part, car(expected))
+                            };
+                            res(part, effs_union(kayak_rt::heap_cons(string_append(str_lit("read:"), region_string(s2, car(cdr(cdr(parts))))), kayak_rt::nil()), es), coerced(v, note_fact(s2, cv_file(v), cv_pos(v), str_lit("value-call")), cv_file(v), cv_pos(v), ty_data(str_lit("datum"), nil::<&'static Ty>()), part))
                         }
                         _ => {
                             let other = tagcase_;
