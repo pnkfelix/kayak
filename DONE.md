@@ -1185,3 +1185,8 @@ on itself warm: 0.12 s; after a body edit, 0.12 s.
 
 C56: standard operations, symbols and quote, arrays of values;
 `tests/kfx/standard.kfx`. kfx accepts 105 of Fixpt's programs.
+
+## FX-26's engine begun (2026-10-12)
+
+C58: `fx26/`, an interpreter in KFX (IR, lowering, CEK machine), built
+as `kayak-fx26`; 21 of the corpus's 53 programs agree with Fixpt on it.

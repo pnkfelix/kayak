@@ -1,0 +1,47 @@
+"show.kfx: a value written as `fixpt eval` writes it (C58)."
+
+(define-rec
+  (string-escaped (subr kfx ((listof char acyclic)) string)
+    (lambda (cs)
+      (cond ((null? cs) "")
+            ((char=? (car cs) #\") (string-append "\\\"" (string-escaped (cdr cs))))
+            ((char=? (car cs) #\\) (string-append "\\\\" (string-escaped (cdr cs))))
+            ((char=? (car cs) #\newline) (string-append "\\n" (string-escaped (cdr cs))))
+            (else (string-append (char->string (car cs)) (string-escaped (cdr cs))))))))
+
+(define char-written (subr kfx (char) string)
+  (lambda (c)
+    (cond ((char=? c #\space) "#\\space")
+          ((char=? c #\newline) "#\\newline")
+          ((char=? c #\tab) "#\\tab")
+          (else (string-append "#\\" (char->string c))))))
+
+(define-rec
+  (show (subr eng (val) string)
+    (lambda (v)
+      (tagcase v
+        (v-int (n) (int->string n))
+        (v-real (x) (f64->string x))
+        (v-char (c) (char-written c))
+        (v-string (s) (string-append "\"" (string-append (string-escaped (string-chars s)) "\"")))
+        (v-symbol (s) (symbol->string s))
+        (v-bool (b) (if b "#t" "#f"))
+        (v-unit () "#u")
+        (v-nil () "()")
+        (v-pair (a d) (string-append "(" (string-append (show (get a)) (string-append (show-tail (get d)) ")"))))
+        (v-ref (r) (string-append "#<box " (string-append (show (get r)) ">")))
+        (v-sum (t x) (string-append "#<sum " (string-append t ">")))
+        (v-product (ls arr) (string-append "#<product of " (string-append (int->string (array-length arr)) ">")))
+        (v-data (t arr) (string-append "#<sum " (string-append t ">")))
+        (v-array (arr) (string-append "#<bloblet " (string-append (int->string (+ (array-length arr) 1)) " fields 0 bytes>")))
+        (v-proc (n body en) "#<closure>")
+        (v-prim (n a) "#<closure>")
+        (v-ctor (t n) (string-append t ""))
+        (v-tag (n) "#<prompt-tag>")
+        (v-cont (fs used single) "#<continuation>"))))
+  (show-tail (subr eng (val) string)
+    (lambda (v)
+      (tagcase v
+        (v-nil () "")
+        (v-pair (a d) (string-append " " (string-append (show (get a)) (show-tail (get d)))))
+        (else other (string-append " . " (show other)))))))

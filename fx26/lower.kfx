@@ -1,0 +1,205 @@
+"lower.kfx: an FX-26 program, checked, lowered to the engine's IR (C58).
+ Names are resolved: a local to its frame's depth and slot, a global to
+ its index, a primitive to its value. Types are dropped (`the`, a
+ binder's type, `plambda`, `proj`), and FX-26's derived forms (`let*`,
+ `cond`, `and`, `or`, `when`) made of the core."
+
+"Where names are: the frames' names, the innermost first; the globals, in
+ the order they are defined, an index each."
+(define-type scope (listof strings acyclic))
+
+(define-rec
+  (position-of (subr kfx (string strings i64) i64)
+    (lambda (n xs i)
+      (cond ((null? xs) -1)
+            ((string=? (car xs) n) i)
+            (else (position-of n (cdr xs) (i64+ i 1)))))))
+
+(define-rec
+  (find-local (subr kfx (string scope i64) (listof i64 acyclic))
+    (lambda (n sc depth)
+      "A local's depth and slot, or nothing."
+      (if (null? sc)
+          nil
+          (let ((i (position-of n (car sc) 0)))
+            (if (i64>= i 0) (list depth i) (find-local n (cdr sc) (i64+ depth 1))))))))
+
+(define binder-name (subr kfx (sexp) string)
+  (lambda (p) (tagcase p (sym (n f x) n) (lst (xs f l x) (sym-name (car xs))) (else other ""))))
+
+(define without-doc (subr kfx (sexps) sexps)
+  (lambda (body)
+    "A body's forms, its docstring dropped."
+    (if (and (not (null? (cdr body))) (tagcase (car body) (str (s f p) #t) (else other #f))) (cdr body) body)))
+
+(define-rec
+  (digits-int (subr kfx ((listof char acyclic) int) int)
+    (lambda (cs n) (if (null? cs) n (digits-int (cdr cs) (+ (* n 10) (i64->int (i64- (char->i64 (car cs)) 48))))))))
+
+(define big-int (subr kfx (string) int)
+  (lambda (text)
+    "A literal past an `i64`."
+    (let ((cs (string-chars text)))
+      (if (char=? (car cs) #\-) (- 0 (digits-int (cdr cs) 0)) (digits-int cs 0)))))
+
+"The globals a program defines, in order: each definition's name, and a
+ datatype's constructors."
+(define-rec
+  (global-names (subr kfx (sexps) strings)
+    (lambda (forms)
+      (if (null? forms)
+          nil
+          (let ((f (car forms)))
+            (onto (cond ((or (head-is? f "define") (head-is? f "define*"))
+                         (list (binder-name (second (items f)))))
+                        ((head-is? f "define-rec")
+                         (map (lambda ((g sexp)) (sym-name (car (items g)))) (cdr (items f))))
+                        ((head-is? f "define-datatype")
+                         (map (lambda ((g sexp)) (sym-name (car (items g)))) (cdr (cdr (items f)))))
+                        (else nil))
+                  (global-names (cdr forms))))))))
+
+(define-rec
+  (lower (subr kfx (sexp scope strings) ir)
+    (lambda (e sc gs)
+      (tagcase e
+        (num (k f p) (i-lit (v-int (i64->int k))))
+        (big (text f p) (i-lit (v-int (big-int text))))
+        (chr (c f p) (i-lit (v-char c)))
+        (str (s f p) (i-lit (v-string s)))
+        (real (x f p) (error "the engine: no reals yet"))
+        (sym (n f p) (lower-name n sc gs))
+        (lst (xs f l p)
+          (if (null? xs)
+              (i-lit (v-nil))
+              (let ((h (tagcase (car xs) (sym (n f2 p2) n) (else other ""))))
+                (if (and (not (string=? h "")) (null? (find-local h sc 0)))
+                    (lower-form h (cdr xs) e sc gs)
+                    (i-call (lower (car xs) sc gs) (lower-all (cdr xs) sc gs))))))
+        (else other (error "the engine: a datum it cannot lower")))))
+
+  (lower-all (subr kfx (sexps scope strings) irs)
+    (lambda (es sc gs) (if (null? es) nil (cons (lower (car es) sc gs) (lower-all (cdr es) sc gs)))))
+
+  (lower-body (subr kfx (sexps scope strings) ir)
+    (lambda (body sc gs)
+      (let ((forms (without-doc body)))
+        (if (null? (cdr forms)) (lower (car forms) sc gs) (i-seq (lower-all forms sc gs))))))
+
+  (lower-name (subr kfx (string scope strings) ir)
+    (lambda (n sc gs)
+      (let ((local (find-local n sc 0)))
+        (cond ((not (null? local)) (i-local (car local) (car (cdr local))))
+              ((string=? n "#t") (i-lit (v-bool #t)))
+              ((string=? n "#f") (i-lit (v-bool #f)))
+              ((string=? n "#u") (i-lit (v-unit)))
+              ((i64>= (position-of n gs 0) 0) (i-global (position-of n gs 0) n))
+              ((string=? n "nil") (i-lit (v-nil)))
+              ((i64>= (prim-arity n) 0) (i-lit (v-prim n (prim-arity n))))
+              (else (begin (error (string-append "the engine: nothing is named " n)) (i-lit (v-unit))))))))
+
+  (lower-form (subr kfx (string sexps sexp scope strings) ir)
+    (lambda (h xs e sc gs)
+      (cond ((string=? h "the") (lower (second xs) sc gs))
+            ((string=? h "quote") (i-lit (v-symbol (string->symbol (sym-name (car xs))))))
+            ((or (string=? h "plambda") (string=? h "proj")) (if (string=? h "proj") (lower (car xs) sc gs) (lower (second xs) sc gs)))
+            ((string=? h "lambda")
+             (let ((names (map binder-name (items (car xs)))))
+               (i-lambda (size names) (lower-body (cdr xs) (cons names sc) gs))))
+            ((string=? h "if") (i-if (lower (car xs) sc gs) (lower (second xs) sc gs) (lower (third xs) sc gs)))
+            ((string=? h "begin") (i-seq (lower-all xs sc gs)))
+            ((string=? h "let")
+             (let ((bs (items (car xs))))
+               (i-let (map (lambda ((b sexp)) (lower (last (items b)) sc gs)) bs)
+                      (lower-body (cdr xs) (cons (map (lambda ((b sexp)) (binder-name (car (items b)))) bs) sc) gs))))
+            ((string=? h "let*")
+             (let ((bs (items (car xs))))
+               (if (null? bs)
+                   (lower-body (cdr xs) sc gs)
+                   (i-let (list (lower (last (items (car bs))) sc gs))
+                          (lower-form "let*" (cons (lst (cdr bs) "" 0 0) (cdr xs)) e (cons (list (binder-name (car (items (car bs))))) sc) gs)))))
+            ((string=? h "letrec")
+             (let* ((bs (items (car xs)))
+                    (inner (cons (map (lambda ((b sexp)) (binder-name (car (items b)))) bs) sc)))
+               (i-letrec (map (lambda ((b sexp)) (lower (last (items b)) inner gs)) bs) (lower-body (cdr xs) inner gs))))
+            ((string=? h "cond") (lower-cond xs sc gs))
+            ((string=? h "and")
+             (cond ((null? xs) (i-lit (v-bool #t)))
+                   ((null? (cdr xs)) (lower (car xs) sc gs))
+                   (else (i-if (lower (car xs) sc gs) (lower-form "and" (cdr xs) e sc gs) (i-lit (v-bool #f))))))
+            ((string=? h "or")
+             (cond ((null? xs) (i-lit (v-bool #f)))
+                   ((null? (cdr xs)) (lower (car xs) sc gs))
+                   (else (i-if (lower (car xs) sc gs) (i-lit (v-bool #t)) (lower-form "or" (cdr xs) e sc gs)))))
+            ((string=? h "list")
+             (if (null? xs)
+                 (i-lit (v-nil))
+                 (i-call (i-lit (v-prim "cons" 2)) (list (lower (car xs) sc gs) (lower-form "list" (cdr xs) e sc gs)))))
+            ((string=? h "sum") (i-sum (sym-name (car xs)) (lower (second xs) sc gs)))
+            ((string=? h "product")
+             (i-product (map (lambda ((f sexp)) (sym-name (car (items f)))) xs)
+                        (map (lambda ((f sexp)) (lower (second (items f)) sc gs)) xs)))
+            ((string=? h "extract") (i-extract (sym-name (second xs)) (lower (car xs) sc gs)))
+            ((string=? h "tagcase") (lower-tagcase xs sc gs))
+            ((string=? h "prompt") (i-prompt (lower (car xs) sc gs) (lower (third xs) sc gs) (lower (second xs) sc gs)))
+            (else (i-call (lower-name h sc gs) (lower-all xs sc gs))))))
+
+  (lower-cond (subr kfx (sexps scope strings) ir)
+    (lambda (clauses sc gs)
+      (if (null? clauses)
+          (i-lit (v-unit))
+          (let ((c (items (car clauses))))
+            (if (sym-is? (car c) "else")
+                (lower-body (cdr c) sc gs)
+                (i-if (lower (car c) sc gs) (lower-body (cdr c) sc gs) (lower-cond (cdr clauses) sc gs)))))))
+
+  (lower-tagcase (subr kfx (sexps scope strings) ir)
+    (lambda (xs sc gs)
+      "`(tagcase e (tag x body) (tag (x ...) body) ... (else x body))`."
+      (let* ((arms (cdr xs))
+             (default (concat (map (lambda ((a sexp)) (if (sym-is? (car (items a)) "else") (the sexps (list a)) nil)) arms)))
+             (named (concat (map (lambda ((a sexp)) (if (sym-is? (car (items a)) "else") nil (the sexps (list a)))) arms))))
+        (i-tagcase (lower (car xs) sc gs)
+                   (map (lambda ((a sexp))
+                          (let* ((parts (items a))
+                                 (binder (second parts))
+                                 (names (tagcase binder (lst (ys f l p) (map binder-name ys)) (else other (the strings (list (binder-name binder)))))))
+                            (arm (sym-name (car parts)) (size names) (lower-body (cdr (cdr parts)) (cons names sc) gs))))
+                        named)
+                   (if (null? default)
+                       (i-lit (v-unit))
+                       (let ((parts (items (car default))))
+                         (lower-body (cdr (cdr parts)) (cons (list (binder-name (second parts))) sc) gs))))))))
+
+"A top-level form: a definition, its global's value; an expression, its
+ own (a string too, which `fixpt eval` writes); the rest (types,
+ effects) nothing."
+(define-datatype top (top-define ir) (top-expr ir) (top-none))
+
+(define-rec
+  (lower-tops (subr kfx (sexps strings) (listof top acyclic))
+    (lambda (forms gs)
+      (if (null? forms)
+          nil
+          (let ((f (car forms)))
+            (onto (cond ((tagcase f (str (s fl p) #t) (else other #f)) (list (top-expr (i-lit (v-string (tagcase f (str (s fl p) s) (else other "")))))))
+                        ((head-is? f "define")
+                         (let ((xs (items f)))
+                           (list (top-define (i-define (position-of (binder-name (second xs)) gs 0) (lower (last xs) nil gs))))))
+                        ((head-is? f "define*")
+                         (let ((xs (items f)))
+                           (list (top-define (i-define (position-of (binder-name (second xs)) gs 0) (lower (last xs) nil gs))))))
+                        ((head-is? f "define-rec")
+                         (map (lambda ((g sexp))
+                                (let ((ys (items g)))
+                                  (top-define (i-define (position-of (sym-name (car ys)) gs 0) (lower (last ys) nil gs)))))
+                              (cdr (items f))))
+                        ((head-is? f "define-datatype")
+                         (map (lambda ((g sexp))
+                                (let ((ys (items g)))
+                                  (top-define (i-define (position-of (sym-name (car ys)) gs 0) (i-lit (v-ctor (sym-name (car ys)) (i64- (size ys) 1)))))))
+                              (cdr (cdr (items f)))))
+                        ((or (head-is? f "define-type") (head-is? f "define-effect") (head-is? f "define-generative"))
+                         (list (top-none)))
+                        (else (list (top-expr (lower f nil gs)))))
+                  (lower-tops (cdr forms) gs)))))))

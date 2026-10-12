@@ -1,0 +1,177 @@
+"prims.kfx: the engine's primitives (C58): FX-26's standard environment,
+ and kfx/prelude.fx's names at `i64`, each a KFX procedure of the values
+ it is given. Integers of every width are `int`; an operation of a fixed
+ width wraps its result as its type does. Those that touch the
+ continuation (prompts, aborts, captures) are the machine's
+ (machine.kfx), named here for their arity."
+
+(define prim-arity (subr kfx (string) i64)
+  (lambda (n)
+    "A primitive's arity, or -1 if `n` names none."
+    (cond ((string-member? n (list "i64+" "i64-" "i64*" "i64-quotient" "i64-remainder" "i64-and" "i64-or" "i64-xor"
+                                   "i64=" "i64<" "i64>" "i64<=" "i64>=" "+" "-" "*" "quotient" "remainder" "modulo"
+                                   "=" "<" ">" "<=" ">=" "max" "min" "bitwise-and" "bitwise-ior" "bitwise-xor" "arithmetic-shift"
+                                   "string-append" "string=?" "string<?" "string>?" "char=?" "char<?" "char>?" "bool=?"
+                                   "string-ref" "string-ref-i64" "cons" "set" "symbol=?" "array-ref" "make-array"
+                                   "abort-current-continuation" "call-with-composable-continuation" "abort-with-continuation"
+                                   "string-compare"))
+           2)
+          ((string-member? n (list "i64-not" "not" "zero?" "int->i64" "i64->int" "int->string" "i64->string" "bitwise-not"
+                                   "string-length" "string-length-i64" "char->i64" "i64->char" "char->integer" "integer->char"
+                                   "char->string" "string->list" "list->string" "car" "cdr" "null?" "pair?" "new" "get" "error"
+                                   "string->symbol" "symbol->string" "array-length" "array->list" "list->array" "char-upcase"
+                                   "char-downcase" "char-whitespace?" "char-numeric?" "char-alphabetic?" "string-downcase"
+                                   "list-length" "length" "reverse"))
+           1)
+          ((string-member? n (list "substring" "array-set!" "string-search")) 3)
+          ((string-member? n (list "make-continuation-prompt-tag")) 0)
+          (else -1))))
+
+"Values taken apart, a wrong shape an error: the checker has seen to it
+ that none is, but a primitive is not to trust that."
+(define val-int (subr eng (val) int)
+  (lambda (v) (tagcase v (v-int (n) n) (else other (begin (error "the engine: an integer is expected") 0)))))
+
+(define string-of (subr eng (val) string)
+  (lambda (v) (tagcase v (v-string (s) s) (else other (begin (error "the engine: a string is expected") "")))))
+
+(define char-of (subr eng (val) char)
+  (lambda (v) (tagcase v (v-char (c) c) (else other (begin (error "the engine: a character is expected") #\space)))))
+
+(define bool-of (subr eng (val) bool)
+  (lambda (v) (tagcase v (v-bool (b) b) (else other (begin (error "the engine: a boolean is expected") #f)))))
+
+(define symbol-of (subr eng (val) symbol)
+  (lambda (v) (tagcase v (v-symbol (s) s) (else other (begin (error "the engine: a symbol is expected") (string->symbol ""))))))
+
+(define w64 (subr kfx (int) int)
+  (lambda (n) "An `i64`'s value: the low 64 bits, two's complement." (i64->int (int->i64 n))))
+
+(define i64-of (subr eng (val) i64) (lambda (v) (int->i64 (val-int v))))
+
+(define v-i64 (subr kfx (i64) val) (lambda (n) (v-int (i64->int n))))
+
+(define-rec
+  (list-of (subr eng (val) vals)
+    (lambda (v)
+      "A list's elements, in order."
+      (tagcase v
+        (v-pair (a d) (cons (get a) (list-of (get d))))
+        (else other nil))))
+  (list-val (subr eng (vals) val)
+    (lambda (xs) (if (null? xs) (v-nil) (v-pair (new (car xs)) (new (list-val (cdr xs))))))))
+
+(define-rec
+  (chars-val (subr eng ((listof char acyclic)) val)
+    (lambda (cs) (if (null? cs) (v-nil) (v-pair (new (v-char (car cs))) (new (chars-val (cdr cs))))))))
+
+(define-rec
+  (chars-of (subr eng (val) (listof char acyclic))
+    (lambda (v) (tagcase v (v-pair (a d) (cons (char-of (get a)) (chars-of (get d)))) (else other nil)))))
+
+(define-rec
+  (vals-array (subr eng (vals) (arrayof val @h))
+    (lambda (xs)
+      (let ((a (the (arrayof val @h) (make-array (i64->int (size xs)) (v-unit)))))
+        (begin (fill-array a 0 xs) a))))
+  (fill-array (subr eng ((arrayof val @h) i64 vals) unit)
+    (lambda (a i xs) (if (null? xs) #u (begin (array-set! a (i64->int i) (car xs)) (fill-array a (i64+ i 1) (cdr xs)))))))
+
+(define-rec
+  (array-vals (subr eng ((arrayof val @h) i64) vals)
+    (lambda (a i) (if (>= (i64->int i) (array-length a)) nil (cons (array-ref a (i64->int i)) (array-vals a (i64+ i 1)))))))
+
+(define flag (subr kfx (bool) val) (lambda (b) (v-bool b)))
+
+(define-rec
+  (reverse-vals (subr eng (vals vals) vals)
+    (lambda (xs acc) (if (null? xs) acc (reverse-vals (cdr xs) (cons (car xs) acc))))))
+
+(define apply-prim (subr eng (string vals) val)
+  (lambda (n xs)
+    "Primitive `n` of the values `xs`."
+    (let ((a (if (null? xs) (v-unit) (car xs)))
+          (b (if (or (null? xs) (null? (cdr xs))) (v-unit) (car (cdr xs)))))
+      (cond ((string=? n "i64+") (v-i64 (i64+ (i64-of a) (i64-of b))))
+            ((string=? n "i64-") (v-i64 (i64- (i64-of a) (i64-of b))))
+            ((string=? n "i64*") (v-i64 (i64* (i64-of a) (i64-of b))))
+            ((string=? n "i64-quotient") (v-i64 (i64-quotient (i64-of a) (i64-of b))))
+            ((string=? n "i64-remainder") (v-i64 (i64-remainder (i64-of a) (i64-of b))))
+            ((string=? n "i64-and") (v-i64 (i64-and (i64-of a) (i64-of b))))
+            ((string=? n "i64-or") (v-i64 (i64-or (i64-of a) (i64-of b))))
+            ((string=? n "i64-xor") (v-i64 (i64-xor (i64-of a) (i64-of b))))
+            ((string=? n "i64-not") (v-i64 (i64-not (i64-of a))))
+            ((string=? n "i64=") (flag (i64= (i64-of a) (i64-of b))))
+            ((string=? n "i64<") (flag (i64< (i64-of a) (i64-of b))))
+            ((string=? n "i64>") (flag (i64> (i64-of a) (i64-of b))))
+            ((string=? n "i64<=") (flag (i64<= (i64-of a) (i64-of b))))
+            ((string=? n "i64>=") (flag (i64>= (i64-of a) (i64-of b))))
+            ((string=? n "+") (v-int (+ (val-int a) (val-int b))))
+            ((string=? n "-") (v-int (- (val-int a) (val-int b))))
+            ((string=? n "*") (v-int (* (val-int a) (val-int b))))
+            ((string=? n "quotient") (v-int (quotient (val-int a) (val-int b))))
+            ((string=? n "remainder") (v-int (remainder (val-int a) (val-int b))))
+            ((string=? n "modulo") (v-int (modulo (val-int a) (val-int b))))
+            ((string=? n "=") (flag (= (val-int a) (val-int b))))
+            ((string=? n "<") (flag (< (val-int a) (val-int b))))
+            ((string=? n ">") (flag (> (val-int a) (val-int b))))
+            ((string=? n "<=") (flag (<= (val-int a) (val-int b))))
+            ((string=? n ">=") (flag (>= (val-int a) (val-int b))))
+            ((string=? n "max") (v-int (max (val-int a) (val-int b))))
+            ((string=? n "min") (v-int (min (val-int a) (val-int b))))
+            ((string=? n "zero?") (flag (zero? (val-int a))))
+            ((string=? n "bitwise-and") (v-int (bitwise-and (val-int a) (val-int b))))
+            ((string=? n "bitwise-ior") (v-int (bitwise-ior (val-int a) (val-int b))))
+            ((string=? n "bitwise-xor") (v-int (bitwise-xor (val-int a) (val-int b))))
+            ((string=? n "bitwise-not") (v-int (bitwise-not (val-int a))))
+            ((string=? n "arithmetic-shift") (v-int (arithmetic-shift (val-int a) (val-int b))))
+            ((string=? n "int->i64") (v-int (w64 (val-int a))))
+            ((string=? n "i64->int") a)
+            ((string=? n "int->string") (v-string (int->string (val-int a))))
+            ((string=? n "i64->string") (v-string (int->string (val-int a))))
+            ((string=? n "not") (flag (not (bool-of a))))
+            ((string=? n "bool=?") (flag (bool=? (bool-of a) (bool-of b))))
+            ((string=? n "string-append") (v-string (string-append (string-of a) (string-of b))))
+            ((string=? n "string=?") (flag (string=? (string-of a) (string-of b))))
+            ((string=? n "string<?") (flag (string<? (string-of a) (string-of b))))
+            ((string=? n "string>?") (flag (string>? (string-of a) (string-of b))))
+            ((string=? n "string-compare") (v-int (string-compare (string-of a) (string-of b))))
+            ((string=? n "string-search") (v-int (string-search (string-of a) (string-of b) (val-int (car (cdr (cdr xs)))))))
+            ((string=? n "string-downcase") (v-string (string-downcase (string-of a))))
+            ((or (string=? n "string-length") (string=? n "string-length-i64")) (v-int (string-length (string-of a))))
+            ((or (string=? n "string-ref") (string=? n "string-ref-i64")) (v-char (string-ref (string-of a) (val-int b))))
+            ((string=? n "substring") (v-string (substring (string-of a) (val-int b) (val-int (car (cdr (cdr xs)))))))
+            ((or (string=? n "char->i64") (string=? n "char->integer")) (v-int (i64->int (char->i64 (char-of a)))))
+            ((or (string=? n "i64->char") (string=? n "integer->char")) (v-char (i64->char (int->i64 (val-int a)))))
+            ((string=? n "char->string") (v-string (char->string (char-of a))))
+            ((string=? n "char=?") (flag (char=? (char-of a) (char-of b))))
+            ((string=? n "char<?") (flag (char<? (char-of a) (char-of b))))
+            ((string=? n "char>?") (flag (char>? (char-of a) (char-of b))))
+            ((string=? n "char-upcase") (v-char (char-upcase (char-of a))))
+            ((string=? n "char-downcase") (v-char (char-downcase (char-of a))))
+            ((string=? n "char-whitespace?") (flag (char-whitespace? (char-of a))))
+            ((string=? n "char-numeric?") (flag (char-numeric? (char-of a))))
+            ((string=? n "char-alphabetic?") (flag (char-alphabetic? (char-of a))))
+            ((string=? n "string->list") (chars-val (the (listof char acyclic) (string->list (string-of a)))))
+            ((string=? n "list->string") (v-string (list->string (chars-of a))))
+            ((string=? n "string->symbol") (v-symbol (string->symbol (string-of a))))
+            ((string=? n "symbol->string") (v-string (symbol->string (symbol-of a))))
+            ((string=? n "symbol=?") (flag (symbol=? (symbol-of a) (symbol-of b))))
+            ((string=? n "cons") (v-pair (new a) (new b)))
+            ((string=? n "car") (tagcase a (v-pair (h t) (get h)) (else other (begin (error "car of nil") (v-unit)))))
+            ((string=? n "cdr") (tagcase a (v-pair (h t) (get t)) (else other (begin (error "cdr of nil") (v-unit)))))
+            ((string=? n "null?") (tagcase a (v-nil () (flag #t)) (else other (flag #f))))
+            ((string=? n "pair?") (tagcase a (v-pair (h t) (flag #t)) (else other (flag #f))))
+            ((or (string=? n "length") (string=? n "list-length")) (v-int (i64->int (size (list-of a)))))
+            ((string=? n "reverse") (list-val (reverse-vals (list-of a) nil)))
+            ((string=? n "new") (v-ref (new a)))
+            ((string=? n "get") (tagcase a (v-ref (r) (get r)) (else other (begin (error "the engine: a reference is expected") (v-unit)))))
+            ((string=? n "set") (tagcase a (v-ref (r) (begin (set r b) (v-unit))) (else other (begin (error "the engine: a reference is expected") (v-unit)))))
+            ((string=? n "make-array") (v-array (make-array (val-int a) b)))
+            ((string=? n "array-ref") (tagcase a (v-array (arr) (array-ref arr (val-int b))) (else other (v-unit))))
+            ((string=? n "array-set!") (tagcase a (v-array (arr) (begin (array-set! arr (val-int b) (car (cdr (cdr xs)))) (v-unit))) (else other (v-unit))))
+            ((string=? n "array-length") (tagcase a (v-array (arr) (v-int (array-length arr))) (else other (v-unit))))
+            ((string=? n "array->list") (tagcase a (v-array (arr) (list-val (array-vals arr 0))) (else other (v-unit))))
+            ((string=? n "list->array") (v-array (vals-array (list-of a))))
+            ((string=? n "error") (begin (error (string-of a)) (v-unit)))
+            (else (begin (error (string-append "the engine has no primitive " n)) (v-unit)))))))

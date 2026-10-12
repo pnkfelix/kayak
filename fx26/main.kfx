@@ -1,0 +1,65 @@
+"main.kfx: the engine's driver (C58).
+
+   kayak-fx26 FILE ...          the files, one program, checked, lowered
+                                and run; each top-level expression's value
+                                written on a line, as `fixpt eval` writes it;
+   kayak-fx26 --main FILE ...   the same, then `(main)`, whose value, a
+                                string, is written as it is.
+
+ The checker is the compiler's (kfx/check*.kfx): what it accepts, the
+ engine runs, for now."
+
+(define-effect driving (maxeff eng (io args) (io fs-read) (io stdout) (io stderr) (io exit) (alloc @io) (read @io)))
+
+(define fail-with (subr (maxeff (io stderr) (io exit)) (string int) void)
+  (lambda (message status)
+    (begin (write-err (string-append "kayak-fx26: " (string-append message "\n"))) (exit status))))
+
+(define read-text (subr (maxeff (read @globals) (io fs-read) (io stderr) (io exit) (alloc @io) (read @io)) (string) string)
+  (lambda (path)
+    (tagcase (the (sumof (data (bytevectorof @io)) (failed io-error)) (read-file path))
+      (data b (tagcase (utf8->string b) (text s s) (bad k (fail-with (string-append path ": not UTF-8") 1))))
+      (failed e (fail-with (string-append "cannot read " (string-append path (string-append ": " (extract e detail)))) 1)))))
+
+(define say (subr (io stdout) (string) unit)
+  (lambda (s) (tagcase (write-out s) (done u #u) (failed e #u))))
+
+(define-rec
+  (read-files (subr driving (strings) sexps)
+    (lambda (paths)
+      (if (null? paths) nil (onto (read-all (string-chars (read-text (car paths))) (car paths) 1) (read-files (cdr paths)))))))
+
+(define-rec
+  (run-tops (subr driving (machine (listof top acyclic) bool) unit)
+    (lambda (m tops quiet)
+      (if (null? tops)
+          #u
+          (begin
+            (tagcase (car tops)
+              (top-define (x) (begin (run m (c-eval x nil) nil) #u))
+              (top-expr (x) (let ((v (run m (c-eval x nil) nil))) (if quiet #u (say (string-append (show v) "\n")))))
+              (top-none () #u))
+            (run-tops m (cdr tops) quiet))))))
+
+(define main (subr driving () int)
+  (lambda ()
+    (let* ((as (the strings (args)))
+           (with-main (and (not (null? as)) (string=? (car as) "--main")))
+           (paths (if with-main (cdr as) as)))
+      (if (null? paths)
+          (begin (fail-with "usage: kayak-fx26 [--main] FILE ..." 2) 2)
+          (let* ((forms (read-files paths))
+                 (checked (check-program forms))
+                 (gs (global-names forms))
+                 (m (machine (make-array (i64->int (size gs)) (unbound)) (new 0))))
+            (begin
+              (run-tops m (lower-tops forms gs) with-main)
+              (if with-main
+                  (let ((i (position-of "main" gs 0)))
+                    (if (i64< i 0)
+                        (fail-with "no main" 1)
+                        (tagcase (run m (c-apply (array-ref (tagcase m (machine (g t) g)) (i64->int i)) nil) nil)
+                          (v-string (s) (say s))
+                          (else other (say (show other))))))
+                  #u)
+              0))))))

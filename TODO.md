@@ -359,3 +359,14 @@ and what the generated code looks like for the compiler's own source.
   takes them with phase C's engine, the restriction pass refusing them.
 - Stage 4: modules' remaining forms.
 - Stage 5: higher kinds, variadic procedures, sizes.
+
+## 23. FX-26's engine (`docs/research/engine.md`, C58)
+
+- ~~The core~~: IR, lowering, CEK machine, primitives, printing; 21 of
+  the corpus's 53 programs agree with Fixpt.
+- Next: `case`; regions (`letregion`, `letrena`, places: run as the
+  heap); the fixed widths but `i64`; bytes; `f64`; bloblets; modules.
+- Then Fixpt's own programs (`run-fixpt-programs.py`'s, the engine
+  beside the Rust); then FX-26 beyond KFX: continuations resumed twice,
+  unions (the checker grown, the restriction pass for Rust).
+- The collector; tasks on the scheduler; the second self-hosting.

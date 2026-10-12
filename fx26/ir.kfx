@@ -1,0 +1,88 @@
+"ir.kfx: the engine's values, its IR, and its continuation's frames
+ (docs/research/engine.md, C58). The engine's data lives at `@h`, its heap,
+ never freed for now."
+
+(define-effect eng (maxeff (read @globals) spin (read @h) (write @h) (alloc @h)))
+
+"A value, of any shape: uniform, so that a member of a union is its
+ union's value already (C57). Integers of every width are `int`, wrapped
+ by their operations. A pair's head and tail are cells, as FX-26's pairs
+ may be written. A procedure is its code and the environment it closes
+ over; a primitive, its name in the primitives' table; a continuation,
+ its frames, up to the prompt it was captured to, and whether it may be
+ resumed once only (KFX's `abort-with-continuation`) and was."
+(define-datatype val
+  (v-int int)
+  (v-real f64)
+  (v-char char)
+  (v-string string)
+  (v-symbol symbol)
+  (v-bool bool)
+  (v-unit)
+  (v-nil)
+  (v-pair (ref val @h) (ref val @h))
+  (v-ref (ref val @h))
+  (v-sum string val)
+  (v-product strings (arrayof val @h))
+  (v-data string (arrayof val @h))
+  (v-array (arrayof val @h))
+  (v-proc i64 ir (listof (arrayof val @h) acyclic))
+  (v-prim string i64)
+  (v-ctor string i64)
+  (v-tag i64)
+  (v-cont (listof frame acyclic) (ref bool @h) bool))
+
+(define-type vals (listof val acyclic))
+(define-type env (listof (arrayof val @h) acyclic))
+
+"The IR: names resolved. A local is a frame's depth and slot; a global,
+ an index into the globals; a primitive call names its primitive. `let`
+ makes a frame of its values; `letrec` makes the frame first, its values
+ seeing it. A `tagcase`'s arm binds its variant's fields, or a sum's one
+ value, in a frame of its own."
+(define-datatype ir
+  (i-lit val)
+  (i-local i64 i64)
+  (i-global i64 string)
+  (i-lambda i64 ir)
+  (i-call ir (listof ir acyclic))
+  (i-if ir ir ir)
+  (i-seq (listof ir acyclic))
+  (i-let (listof ir acyclic) ir)
+  (i-letrec (listof ir acyclic) ir)
+  (i-define i64 ir)
+  (i-sum string ir)
+  (i-product strings (listof ir acyclic))
+  (i-extract string ir)
+  (i-tagcase ir (listof arm acyclic) ir)
+  (i-prompt ir ir ir))
+
+"An arm of a `tagcase`: its tag, how many it binds (a datatype's fields,
+ or 1, a sum's value), and its body. The default arm binds the value."
+(define-datatype arm (arm string i64 ir))
+
+(define-type irs (listof ir acyclic))
+
+"What is done with values once all are found, left to right."
+(define-datatype todo
+  (t-call)
+  (t-let ir)
+  (t-product strings))
+
+"A frame of the continuation: what is left of an expression once its
+ part being evaluated has a value."
+(define-datatype frame
+  (k-if ir ir env)
+  (k-seq irs env)
+  (k-list vals irs env todo)
+  (k-letrec (arrayof val @h) i64 irs ir env)
+  (k-define i64)
+  (k-sum string)
+  (k-extract string)
+  (k-tagcase (listof arm acyclic) ir env)
+  (k-prompt-tag ir ir env)
+  (k-prompt-handler val ir env)
+  (k-prompt i64 val)
+  (k-abort i64))
+
+(define-type frames (listof frame acyclic))

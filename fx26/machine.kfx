@@ -1,0 +1,178 @@
+"machine.kfx: the engine's machine (C58), a CEK machine: a control (an IR
+ node to evaluate in an environment, or a value to return), and a
+ continuation, a list of frames, data. The loop is one procedure calling
+ itself in tail position. A prompt is a frame; a capture takes the
+ frames above the nearest prompt of its tag; a resumption puts them back
+ on top of the current ones, as often as it is resumed."
+
+"An application is a control too, so that the machine is one loop: a
+ procedure calling another in tail position would grow Rust's stack."
+(define-datatype ctl (c-eval ir env) (c-ret val) (c-apply val vals))
+
+"The machine's own state: the globals, and the prompt tags made."
+(define-datatype machine (machine (arrayof val @h) (ref i64 @h)))
+
+(define unbound (subr kfx () val) (lambda () (v-tag -1)))
+
+(define-rec
+  (frame-at (subr eng (env i64) (arrayof val @h))
+    (lambda (e d) (if (i64= d 0) (car e) (frame-at (cdr e) (i64- d 1))))))
+
+(define-rec
+  (frames-onto (subr eng (frames frames) frames)
+    (lambda (xs k) (if (null? xs) k (cons (car xs) (frames-onto (cdr xs) k))))))
+
+"The frames above the nearest prompt of tag `t`, and those from it on."
+(define-datatype split (split frames frames))
+
+(define-rec
+  (split-at (subr eng (i64 frames frames) split)
+    (lambda (t k above)
+      (cond ((null? k) (begin (error "the engine: no prompt for the tag") (split nil nil)))
+            ((tagcase (car k) (k-prompt (id h) (i64= id t)) (else other #f)) (split (reverse-frames above nil) k))
+            (else (split-at t (cdr k) (cons (car k) above))))))
+  (reverse-frames (subr eng (frames frames) frames)
+    (lambda (xs acc) (if (null? xs) acc (reverse-frames (cdr xs) (cons (car xs) acc))))))
+
+(define tag-of (subr eng (val) i64)
+  (lambda (v) (tagcase v (v-tag (n) n) (else other (begin (error "the engine: a prompt tag is expected") -1)))))
+
+(define product-field (subr eng (strings (arrayof val @h) string) val)
+  (lambda (ls arr l)
+    (let ((i (position-of l ls 0)))
+      (if (i64< i 0) (begin (error (string-append "the engine: no field " l)) (v-unit)) (array-ref arr (i64->int i))))))
+
+(define-rec
+  (find-arm (subr eng ((listof arm acyclic) string) (listof arm acyclic))
+    (lambda (arms t)
+      (cond ((null? arms) nil)
+            ((tagcase (car arms) (arm (n k body) (string=? n t))) (list (car arms)))
+            (else (find-arm (cdr arms) t))))))
+
+(define one (subr eng (val) (arrayof val @h))
+  (lambda (v) (let ((a (the (arrayof val @h) (make-array 1 v)))) a)))
+
+(define-rec
+  (run (subr eng (machine ctl frames) val)
+    (lambda (m c k)
+      (tagcase c
+        (c-eval (e en)
+          (tagcase e
+            (i-lit (v) (run m (c-ret v) k))
+            (i-local (d s) (run m (c-ret (array-ref (frame-at en d) (i64->int s))) k))
+            (i-global (i n)
+              (tagcase m
+                (machine (gs tags)
+                  (let ((v (array-ref gs (i64->int i))))
+                    (tagcase v
+                      (v-tag (t) (if (i64= t -1) (begin (error (string-append "the engine: used before it is defined, " n)) (v-unit)) (run m (c-ret v) k)))
+                      (else other (run m (c-ret v) k)))))))
+            (i-lambda (n body) (run m (c-ret (v-proc n body en)) k))
+            (i-call (f args) (run m (c-eval f en) (cons (k-list nil args en (t-call)) k)))
+            (i-if (x y z) (run m (c-eval x en) (cons (k-if y z en) k)))
+            (i-seq (es)
+              (cond ((null? es) (run m (c-ret (v-unit)) k))
+                    ((null? (cdr es)) (run m (c-eval (car es) en) k))
+                    (else (run m (c-eval (car es) en) (cons (k-seq (cdr es) en) k)))))
+            (i-let (es body)
+              (if (null? es)
+                  (run m (c-eval body (cons (the (arrayof val @h) (make-array 0 (v-unit))) en)) k)
+                  (run m (c-eval (car es) en) (cons (k-list nil (cdr es) en (t-let body)) k))))
+            (i-letrec (es body)
+              (let* ((arr (the (arrayof val @h) (make-array (i64->int (size es)) (unbound))))
+                     (inner (cons arr en)))
+                (if (null? es)
+                    (run m (c-eval body inner) k)
+                    (run m (c-eval (car es) inner) (cons (k-letrec arr 0 (cdr es) body inner) k)))))
+            (i-define (i x) (run m (c-eval x en) (cons (k-define i) k)))
+            (i-sum (t x) (run m (c-eval x en) (cons (k-sum t) k)))
+            (i-product (ls es)
+              (if (null? es)
+                  (run m (c-ret (v-product ls (the (arrayof val @h) (make-array 0 (v-unit))))) k)
+                  (run m (c-eval (car es) en) (cons (k-list nil (cdr es) en (t-product ls)) k))))
+            (i-extract (l x) (run m (c-eval x en) (cons (k-extract l) k)))
+            (i-tagcase (x arms default) (run m (c-eval x en) (cons (k-tagcase arms default en) k)))
+            (i-prompt (t h body) (run m (c-eval t en) (cons (k-prompt-tag h body en) k)))))
+        (c-ret (v)
+          (if (null? k)
+              v
+              (let ((rest (cdr k)))
+                (tagcase (car k)
+                  (k-if (y z en) (run m (c-eval (tagcase v (v-bool (b) (if b y z)) (else other y)) en) rest))
+                  (k-seq (es en)
+                    (if (null? (cdr es))
+                        (run m (c-eval (car es) en) rest)
+                        (run m (c-eval (car es) en) (cons (k-seq (cdr es) en) rest))))
+                  (k-list (done es en what)
+                    (let ((got (cons v done)))
+                      (if (null? es)
+                          (let ((xs (reverse-vals got nil)))
+                            (tagcase what
+                              (t-call () (run m (c-apply (car xs) (cdr xs)) rest))
+                              (t-let (body) (run m (c-eval body (cons (vals-array xs) en)) rest))
+                              (t-product (ls) (run m (c-ret (v-product ls (vals-array xs))) rest))))
+                          (run m (c-eval (car es) en) (cons (k-list got (cdr es) en what) rest)))))
+                  (k-letrec (arr i es body en)
+                    (begin
+                      (array-set! arr (i64->int i) v)
+                      (if (null? es)
+                          (run m (c-eval body en) rest)
+                          (run m (c-eval (car es) en) (cons (k-letrec arr (i64+ i 1) (cdr es) body en) rest)))))
+                  (k-define (i)
+                    (tagcase m (machine (gs tags) (begin (array-set! gs (i64->int i) v) (run m (c-ret (v-unit)) rest)))))
+                  (k-sum (t) (run m (c-ret (v-sum t v)) rest))
+                  (k-extract (l)
+                    (tagcase v
+                      (v-product (ls arr) (run m (c-ret (product-field ls arr l)) rest))
+                      (else other (begin (error "the engine: extract of no product") (v-unit)))))
+                  (k-tagcase (arms default en)
+                    (let* ((t (tagcase v (v-sum (t x) t) (v-data (t fs) t) (else other "")))
+                           (found (find-arm arms t)))
+                      (if (null? found)
+                          (run m (c-eval default (cons (one v) en)) rest)
+                          (tagcase (car found)
+                            (arm (n count body)
+                              (tagcase v
+                                (v-sum (t2 x) (run m (c-eval body (cons (one x) en)) rest))
+                                (v-data (t2 fs) (run m (c-eval body (cons fs en)) rest))
+                                (else other (run m (c-eval body en) rest))))))))
+                  (k-prompt-tag (h body en) (run m (c-eval h en) (cons (k-prompt-handler v body en) rest)))
+                  (k-prompt-handler (t body en) (run m (c-eval body en) (cons (k-prompt (tag-of t) v) rest)))
+                  (k-prompt (id h) (run m (c-ret v) rest))
+                  (k-abort (t)
+                    (tagcase (split-at t rest nil)
+                      (split (above from)
+                        (tagcase (car from)
+                          (k-prompt (id h) (run m (c-apply h (list v)) (cdr from)))
+                          (else other (v-unit))))))))))
+        (c-apply (f xs)
+        (tagcase f
+          (v-proc (n body en) (run m (c-eval body (cons (vals-array xs) en)) k))
+          (v-ctor (t n) (run m (c-ret (v-data t (vals-array xs))) k))
+          (v-cont (fs used single)
+            (if (and single (get used))
+                (begin (error "a continuation resumed twice") (v-unit))
+                (begin (set used #t) (run m (c-ret (car xs)) (frames-onto fs k)))))
+          (v-prim (n arity)
+            (cond ((string=? n "make-continuation-prompt-tag")
+                   (tagcase m
+                     (machine (gs tags)
+                       (let ((t (get tags))) (begin (set tags (i64+ t 1)) (run m (c-ret (v-tag t)) k))))))
+                  ((string=? n "abort-current-continuation")
+                   (tagcase (split-at (tag-of (car xs)) k nil)
+                     (split (above from)
+                       (tagcase (car from)
+                         (k-prompt (id h) (run m (c-apply h (cdr xs)) (cdr from)))
+                         (else other (v-unit))))))
+                  ((string=? n "call-with-composable-continuation")
+                   (tagcase (split-at (tag-of (car (cdr xs))) k nil)
+                     (split (above from) (run m (c-apply (car xs) (list (v-cont above (new #f) #f))) k))))
+                  ((string=? n "abort-with-continuation")
+                   "KFX's one-shot form (C45): `k` captured to the tag, then an abort
+                    there with `(f k)`; a second resumption fails, as in Rust."
+                   (let ((t (tag-of (car xs))))
+                     (tagcase (split-at t k nil)
+                       (split (above from)
+                         (run m (c-apply (car (cdr xs)) (list (v-cont above (new #f) #t))) (cons (k-abort t) k))))))
+                  (else (run m (c-ret (apply-prim n xs)) k))))
+          (else other (begin (error "the engine: a call of no procedure") (v-unit)))))))))

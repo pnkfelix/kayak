@@ -1134,3 +1134,33 @@ whose values are uniform and whose subtyping is free.
 - **The checker is not KFX the language**: as kayak's FX-26 compiler, it
   checks FX-26's unions when the FX-26 path needs them; KFX's
   restriction pass refuses them for Rust.
+
+## C58. FX-26's engine, in KFX: an interpreter, a CEK machine (2026-10-12)
+
+`fx26/`, `docs/research/engine.md`; phase C begun before B is done (the
+user, 2026-10-12: features come into the checker and the engine
+together, the restriction pass refusing for Rust what Rust cannot have).
+- **A CEK machine**: a control (an IR node in an environment, a value, or
+  an application), and a continuation that is a list of frames, data.
+  Prompts are frames; a capture takes the frames above the nearest prompt
+  of its tag; resuming puts them back, any number of times. One loop,
+  one procedure calling itself in tail position: an application is a
+  control too, since two procedures calling each other in tail position
+  would grow Rust's stack.
+- **Values are uniform** (one KFX datatype): integers of every width are
+  `int`, wrapped by their operations; pairs' parts are cells. So unions
+  (C57) will cost nothing here.
+- **The IR resolves names** (frames' depth and slot, globals' index,
+  primitives by name); FX-26's derived forms are lowered to the core;
+  types are dropped.
+- **The checker is the compiler's**: what kfx accepts, the engine runs,
+  for now; FX-26 at large as the checker grows.
+- **The heap is KFX's** (never freed); a collector of the engine's own is
+  a later step.
+- **Built as `kayak-fx26`** (`crates/kayak-fx26`, its Rust generated from
+  `fx26/fx26.unit` and kept golden); `scripts/engine-programs.py` (in
+  `scripts/check.sh`) runs each corpus program's `main` on it and
+  compares with Fixpt's answer, K6. First: 21 of 53 agree, none differ;
+  the rest stop at forms not lowered yet (regions, `case`, modules,
+  bloblets, the fixed widths but `i64`). A program that agreed and no
+  longer does fails the check (`tests/engine-passing`).
