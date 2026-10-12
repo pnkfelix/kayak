@@ -1340,3 +1340,25 @@ The user's motive for speed: a faster cycle. Measured first, step by step
   cold), `incremental.py` 23 s, `fixpoint.sh` 8 s; `scripts/check.sh`
   46 s, the same results. `scripts/regen.sh` after an edit to the
   compiler, 5 s (rustc 2 s of it).
+
+## C68. Pairs and `nil`: FX-26's lists, in the checker and the engine (2026-10-12)
+
+The user (2026-10-12): work through FX-26 beyond KFX, autonomously.
+- **`(pairof A B R)`**, a pair never `nil`, its head and tail of any
+  types; **`nil`**, the type of the empty list alone. A pair whose tail is
+  the list, and `nil`, are below the list.
+- **A list narrows**: a test of `nil` or of a pair takes a list as `nil` or
+  its pair, so `(if (null? xs) a b)` has `xs` a pair in `b`; and the two
+  again are the list. Checked not to change what kfx writes of KFX: the
+  compiler regenerates itself unchanged but for the checker's own files,
+  and the corpus's Rust is the same.
+- **Narrowing through `not`, `and`, `or`**, as FX-26's size facts go:
+  `(not t)` swaps `t`'s; `(and a b)` holds where `b` holds where `a` does;
+  `(or a b)` fails where `b` fails where `a` does.
+- **FX-26's rules where KFX's would refuse**: `car`, `cdr` of a local known
+  to be a pair, of any types; `cons` where a pair is expected; `null?`,
+  `pair?` of a local of a union, a pair or `nil`; `no-pair`.
+- **For Rust**, the restriction pass refuses `pairof` and `no-pair` (C57's
+  reason): KFX's lists stay `List<T>`.
+- Not yet: narrowing a path (`(car x)`, `(extract p a)`), Fixpt's TODO §54.
+- Beyond KFX, the engine agrees on 21 of Fixpt's programs (18).

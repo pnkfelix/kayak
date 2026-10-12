@@ -29,7 +29,7 @@ pub fn restricted(e: &'static Sexp, file: Str, line: i64) -> () {
         Sexp::Sym(n, f, p) => {
             if (string_eq_p(n, str_lit("call-with-composable-continuation")) || string_eq_p(n, str_lit("call-with-current-continuation")) || string_eq_p(n, str_lit("call/cc"))) {
                 match restriction_refused(file, line, string_append(n, str_lit(" keeps a continuation FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)"))) {}
-            } else if string_member_p(n, kayak_rt::heap_cons(str_lit("false"), kayak_rt::heap_cons(str_lit("int?"), kayak_rt::heap_cons(str_lit("string?"), kayak_rt::heap_cons(str_lit("bool?"), kayak_rt::heap_cons(str_lit("char?"), kayak_rt::heap_cons(str_lit("symbol?"), kayak_rt::heap_cons(str_lit("array?"), kayak_rt::heap_cons(str_lit("procedure?"), kayak_rt::heap_cons(str_lit("pair?"), kayak_rt::heap_cons(str_lit("f64?"), kayak_rt::heap_cons(str_lit("ref?"), kayak_rt::heap_cons(str_lit("sum?"), kayak_rt::heap_cons(str_lit("product?"), kayak_rt::heap_cons(str_lit("bytevector?"), kayak_rt::nil()))))))))))))))) {
+            } else if string_member_p(n, kayak_rt::heap_cons(str_lit("false"), kayak_rt::heap_cons(str_lit("no-pair"), kayak_rt::heap_cons(str_lit("int?"), kayak_rt::heap_cons(str_lit("string?"), kayak_rt::heap_cons(str_lit("bool?"), kayak_rt::heap_cons(str_lit("char?"), kayak_rt::heap_cons(str_lit("symbol?"), kayak_rt::heap_cons(str_lit("array?"), kayak_rt::heap_cons(str_lit("procedure?"), kayak_rt::heap_cons(str_lit("pair?"), kayak_rt::heap_cons(str_lit("f64?"), kayak_rt::heap_cons(str_lit("ref?"), kayak_rt::heap_cons(str_lit("sum?"), kayak_rt::heap_cons(str_lit("product?"), kayak_rt::heap_cons(str_lit("bytevector?"), kayak_rt::nil())))))))))))))))) {
                 match restriction_refused(file, line, string_append(n, str_lit(", of FX-26's unions of shapes, which KFX has not: as a Rust enum, a union's subtyping under a list or a procedure would need a copy or a wrapper FX-26 has not (C57)"))) {}
             } else {
                 ()
@@ -38,7 +38,7 @@ pub fn restricted(e: &'static Sexp, file: Str, line: i64) -> () {
         Sexp::Lst(xs, f, l, p) => {
             if null_p(xs) {
                 ()
-            } else if (sym_is_p(car(xs), str_lit("union")) || sym_is_p(car(xs), str_lit("typecase"))) {
+            } else if (sym_is_p(car(xs), str_lit("union")) || sym_is_p(car(xs), str_lit("typecase")) || sym_is_p(car(xs), str_lit("pairof"))) {
                 match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", of FX-26's unions of shapes, which KFX has not: as a Rust enum, a union's subtyping under a list or a procedure would need a copy or a wrapper FX-26 has not (C57)"))) {}
             } else if sym_is_p(car(xs), str_lit("composable")) {
                 match restriction_refused(f, l, str_lit("a composable continuation, which FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)")) {}

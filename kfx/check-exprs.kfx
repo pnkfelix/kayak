@@ -641,6 +641,27 @@
           (else (tagcase (car vs)
                   (variant (t fields) (if (string=? t tag) (cdr vs) (cons (car vs) (without-tag tag (cdr vs))))))))))
 
+"Pairs (C68): a local whose type is a pair; a pair expected, alone or a
+ union's member."
+(define local-pair (subr kfx (cv st sexp) tys)
+  (lambda (v s x)
+    (tagcase x
+      (sym (n f p)
+        (let ((found (find-bind n (cv-binds v))))
+          (if (null? found)
+              nil
+              (tagcase (car found)
+                (bind (n2 sc w)
+                  (tagcase sc (scheme (tv t) (if (string=? (shape-of (walk s t)) "pair") (list (walk s t)) nil))))))))
+      (else other nil))))
+
+(define pair-expected (subr kfx (st ty) tys)
+  (lambda (s t)
+    (let ((x (walk s t)))
+      (cond ((string=? (shape-of x) "pair") (list x))
+            ((string=? (shape-of x) "union") (tagcase x (ty-data (d args) (member-of-shape args "pair")) (else other nil)))
+            (else nil)))))
+
 "Narrowing (C62): a shape's test of a local of a union, `(int? x)`, says
  in its `if`'s first branch, and its `cond`'s clause, that `x` is the
  member of that shape, and after it that `x` is one of the rest."
@@ -667,16 +688,37 @@
             (else (cons (car ts) (members-but (cdr ts) shape)))))))
 
 (define union-of (subr kfx (tys) ty)
-  (lambda (ts) (if (null? (cdr ts)) (car ts) (ty-data "%union" ts))))
+  (lambda (ts)
+    "Members as one type: one alone is itself; `nil` and a list's pair are
+     the list again (C68)."
+    (cond ((null? (cdr ts)) (car ts))
+          ((and (i64= (size ts) 2) (not (null? (member-of-shape ts "nil"))) (not (null? (member-of-shape ts "pair")))
+                (tagcase (car (member-of-shape ts "pair"))
+                  (ty-data (d args) (tagcase (car (cdr args)) (ty-list (e r) #t) (else other #f)))
+                  (else other #f)))
+           (tagcase (car (member-of-shape ts "pair")) (ty-data (d args) (car (cdr args))) (else other (car ts))))
+          (else (ty-data "%union" ts)))))
+
+(define-rec
+  (lists-split (subr kfx (tys) tys)
+    (lambda (ts)
+      "Members, a list taken as `nil` or its pair (C68), so that a test of
+       `nil` or of a pair narrows it."
+      (cond ((null? ts) nil)
+            ((tagcase (car ts) (ty-list (e r) #t) (else other #f))
+             (tagcase (car ts)
+               (ty-list (e r) (cons (ty-data "nil" nil) (cons (ty-data "%pairof" (list e (car ts) r)) (lists-split (cdr ts)))))
+               (else other (lists-split (cdr ts)))))
+            (else (cons (car ts) (lists-split (cdr ts))))))))
 
 (define narrowed-to (subr kfx (tys string) tys)
   (lambda (ms shape)
     "The member a test of `shape` proves; a list for `nil` or `pair`."
-    (if (or (string=? shape "nil") (string=? shape "pair")) (member-of-shape ms "list") (member-of-shape ms shape))))
+    (if (and (or (string=? shape "nil") (string=? shape "pair")) (null? (member-of-shape ms shape))) (member-of-shape ms "list") (member-of-shape ms shape))))
 
 (define narrowed-from (subr kfx (tys string) tys)
   (lambda (ms shape)
-    (if (or (string=? shape "nil") (string=? shape "pair")) ms (members-but ms shape))))
+    (if (and (or (string=? shape "nil") (string=? shape "pair")) (null? (member-of-shape ms shape))) ms (members-but ms shape))))
 
 (define literal-shape (subr kfx (sexp) string)
   (lambda (e)
@@ -699,12 +741,13 @@
                 (bind (n2 sc w)
                   (if (string=? w "local")
                       (tagcase sc (scheme (tv t) (tagcase (walk s t)
-                                                   (ty-data (d args) (if (string=? d "%union") args (if (string=? (shape-of (walk s t)) "") nil (list (walk s t)))))
+                                                   (ty-data (d args) (if (string=? d "%union") (lists-split args) (if (string=? (shape-of (walk s t)) "") nil (list (walk s t)))))
+                                                   (ty-list (e r) (lists-split (list (walk s t))))
                                                    (else other (if (string=? (shape-of (walk s t)) "") nil (list (walk s t)))))))
                       nil))))))
       (else other nil))))
 
-(define narrowings (subr kfx (cv st sexp) (listof narrowing acyclic))
+(define narrowings-of-test (subr kfx (cv st sexp) (listof narrowing acyclic))
   (lambda (v s test)
     "What a test proves: `x` narrowed in the branch it holds in and in the
      other, or nothing."
@@ -724,6 +767,31 @@
                                          (with-binds v (list (local v x (union-of no))))))))))
             nil))
       (else other nil))))
+
+(define-rec
+  (narrowings (subr kfx (cv st sexp) (listof narrowing acyclic))
+    (lambda (v s test)
+      "What a test proves, through `not`, `and` and `or` too (C68): `(not t)`
+       swaps `t`'s; `(and a b)` holds where `b` holds in where `a` does;
+       `(or a b)` fails where `b` fails in where `a` does."
+      (cond ((and (head-is? test "not") (i64= (size (items test)) 2))
+             (let ((ns (narrowings v s (second (items test)))))
+               (if (null? ns) nil (tagcase (car ns) (narrowing (yes no) (list (narrowing no yes)))))))
+            ((and (head-is? test "and") (i64= (size (items test)) 3))
+             (let ((first (narrowings v s (second (items test)))))
+               (let* ((after (if (null? first) v (tagcase (car first) (narrowing (yes no) yes))))
+                      (then (narrowings after s (third (items test)))))
+                 (cond ((not (null? then)) (tagcase (car then) (narrowing (yes no) (list (narrowing yes v)))))
+                       ((not (null? first)) (list (narrowing after v)))
+                       (else nil)))))
+            ((and (head-is? test "or") (i64= (size (items test)) 3))
+             (let ((first (narrowings v s (second (items test)))))
+               (let* ((after (if (null? first) v (tagcase (car first) (narrowing (yes no) no))))
+                      (then (narrowings after s (third (items test)))))
+                 (cond ((not (null? then)) (tagcase (car then) (narrowing (yes no) (list (narrowing v no)))))
+                       ((not (null? first)) (list (narrowing v after)))
+                       (else nil)))))
+            (else (narrowings-of-test v s test))))))
 
 "The control primitives KFX types by rules of its own (`abort-call`,
  `make-tag-call`), at FX-26's types, for a `proj` of one (C60), as FX-26's
@@ -1815,6 +1883,38 @@
         (cond ((keyword? h)
                (refuse v (string-append "(" (string-append h " ...) is FX-26's form, which KFX does not have, or a call of a local named by that keyword"))))
               ((and (null? found) (string=? h "abort-current-continuation")) (abort-call v s args))
+              ((and (or (string=? h "null?") (string=? h "pair?")) (i64= (size args) 1) (not (null? found))
+                    (tagcase (car found) (bind (n sc w) (string=? w "prim")))
+                    (tagcase (car args)
+                      (sym (n f p)
+                        (let ((b (find-bind n (cv-binds v))))
+                          (and (not (null? b))
+                               (tagcase (car b) (bind (n2 sc w) (tagcase sc (scheme (tv t)
+                                 (string-member? (shape-of (walk s t)) (list "union" "pair" "nil")))))))))
+                      (else other #f)))
+               "FX-26's `null?` and `pair?` of any value (C68): of a local of a
+                union, a pair or `nil`, which KFX's, of a list, would not take."
+               (tagcase (synth v s (car args)) (res (t es s2) (res (ty-bool) es s2))))
+              ((and (or (string=? h "car") (string=? h "cdr")) (i64= (size args) 1) (not (null? (local-pair v s (car args)))))
+               "Of a local known to be a pair (C68): its head or its tail, of any
+                type, not only a list's."
+               (tagcase (car (local-pair v s (car args)))
+                 (ty-data (d parts)
+                   (res (if (string=? h "car") (car parts) (car (cdr parts)))
+                        (list (string-append "read:" (region-string s (car (cdr (cdr parts)))))) s))
+                 (else other (refuse v "a pair that is none"))))
+              ((and (string=? h "cons") (i64= (size args) 2) (not (null? expected)) (not (null? (pair-expected s (car expected)))))
+               "Where a pair is expected (C68): its head and tail checked against
+                its own, of any types."
+               (tagcase (car (pair-expected s (car expected)))
+                 (ty-data (d parts)
+                   (tagcase (check v s (car args) (car parts))
+                     (res (t1 es1 s1)
+                       (tagcase (check v s1 (second args) (car (cdr parts)))
+                         (res (t2 es2 s2)
+                           (res (car (pair-expected s (car expected)))
+                                (effs-union (list (string-append "alloc:" (region-string s2 (car (cdr (cdr parts)))))) (effs-union es1 es2)) s2))))))
+                 (else other (refuse v "a pair that is none"))))
               ((and (null? found) (string=? h "abort-with-continuation")) (suspend-call v s args expected))
               ((and (null? found) (string=? h "make-continuation-prompt-tag")) (make-tag-call v s args expected))
               ((and (null? found) (or (string=? h "rcons") (string=? h "rnew"))) (region-alloc-call v s h args expected))

@@ -410,7 +410,7 @@ pub fn lower_name(n: Str, sc: Scope, gs: Strings) -> &'static Ir {
         i_lit(v_unit())
     } else if i64_gt_eq(position_of(n, gs, 0i64), 0i64) {
         i_global(position_of(n, gs, 0i64), n)
-    } else if string_eq_p(n, str_lit("nil")) {
+    } else if (string_eq_p(n, str_lit("nil")) || string_eq_p(n, str_lit("no-pair"))) {
         i_lit(v_nil())
     } else if i64_gt_eq(prim_arity(n), 0i64) {
         i_lit(v_prim(n, prim_arity(n)))

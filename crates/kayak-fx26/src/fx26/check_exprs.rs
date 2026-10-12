@@ -1434,6 +1434,60 @@ pub fn without_tag(tag: Str, vs: Variants) -> Variants {
     }
 }
 
+// Pairs (C68): a local whose type is a pair; a pair expected, alone or a
+// union's member.
+pub fn local_pair(v: &'static Cv, s: &'static St, x: &'static Sexp) -> Tys {
+    let tagcase_ = x;
+    match *tagcase_ {
+        Sexp::Sym(n, f, p) => {
+            let found = find_bind(n, cv_binds(v));
+            if null_p(found) {
+                nil::<&'static Ty>()
+            } else {
+                let tagcase_ = car(found);
+                match *tagcase_ {
+                    Bind::Bind(n2, sc, w) => {
+                        let tagcase_ = sc;
+                        match *tagcase_ {
+                            Scheme::Scheme(tv, t) => {
+                                if string_eq_p(shape_of(walk(s, t)), str_lit("pair")) {
+                                    kayak_rt::heap_cons(walk(s, t), kayak_rt::nil())
+                                } else {
+                                    nil::<&'static Ty>()
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<&'static Ty>()
+        }
+    }
+}
+
+pub fn pair_expected(s: &'static St, t: &'static Ty) -> Tys {
+    let x = walk(s, t);
+    if string_eq_p(shape_of(x), str_lit("pair")) {
+        kayak_rt::heap_cons(x, kayak_rt::nil())
+    } else if string_eq_p(shape_of(x), str_lit("union")) {
+        let tagcase_ = x;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                member_of_shape(args, str_lit("pair"))
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<&'static Ty>()
+            }
+        }
+    } else {
+        nil::<&'static Ty>()
+    }
+}
+
 // Narrowing (C62): a shape's test of a local of a union, `(int? x)`, says
 // in its `if`'s first branch, and its `cond`'s clause, that `x` is the
 // member of that shape, and after it that `x` is one of the rest.
@@ -1494,17 +1548,85 @@ pub fn members_but(mut ts: Tys, mut shape: Str) -> Tys {
     }
 }
 
+/// Members as one type: one alone is itself; `nil` and a list's pair are
+/// the list again (C68).
 pub fn union_of(ts: Tys) -> &'static Ty {
     if null_p(cdr(ts)) {
         car(ts)
+    } else if (i64_eq(size(ts), 2i64) && not(null_p(member_of_shape(ts, str_lit("nil")))) && not(null_p(member_of_shape(ts, str_lit("pair")))) && {
+        let tagcase_ = car(member_of_shape(ts, str_lit("pair")));
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                let tagcase_ = car(cdr(args));
+                match *tagcase_ {
+                    Ty::TyList(e, r) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        let tagcase_ = car(member_of_shape(ts, str_lit("pair")));
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                car(cdr(args))
+            }
+            _ => {
+                let other = tagcase_;
+                car(ts)
+            }
+        }
     } else {
         ty_data(str_lit("%union"), ts)
     }
 }
 
+/// Members, a list taken as `nil` or its pair (C68), so that a test of
+/// `nil` or of a pair narrows it.
+pub fn lists_split(mut ts: Tys) -> Tys {
+    loop {
+        if null_p(ts) {
+            return nil::<&'static Ty>();
+        } else if {
+            let tagcase_ = car(ts);
+            match *tagcase_ {
+                Ty::TyList(e, r) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        } {
+            let tagcase_ = car(ts);
+            match *tagcase_ {
+                Ty::TyList(e, r) => {
+                    return kayak_rt::heap_cons(ty_data(str_lit("nil"), nil::<&'static Ty>()), kayak_rt::heap_cons(ty_data(str_lit("%pairof"), kayak_rt::heap_cons(e, kayak_rt::heap_cons(car(ts), kayak_rt::heap_cons(r, kayak_rt::nil())))), lists_split(cdr(ts))));
+                }
+                _ => {
+                    let other = tagcase_;
+                    ts = cdr(ts);
+                    continue;
+                }
+            }
+        } else {
+            return kayak_rt::heap_cons(car(ts), lists_split(cdr(ts)));
+        }
+    }
+}
+
 /// The member a test of `shape` proves; a list for `nil` or `pair`.
 pub fn narrowed_to(ms: Tys, shape: Str) -> Tys {
-    if (string_eq_p(shape, str_lit("nil")) || string_eq_p(shape, str_lit("pair"))) {
+    if ((string_eq_p(shape, str_lit("nil")) || string_eq_p(shape, str_lit("pair"))) && null_p(member_of_shape(ms, shape))) {
         member_of_shape(ms, str_lit("list"))
     } else {
         member_of_shape(ms, shape)
@@ -1512,7 +1634,7 @@ pub fn narrowed_to(ms: Tys, shape: Str) -> Tys {
 }
 
 pub fn narrowed_from(ms: Tys, shape: Str) -> Tys {
-    if (string_eq_p(shape, str_lit("nil")) || string_eq_p(shape, str_lit("pair"))) {
+    if ((string_eq_p(shape, str_lit("nil")) || string_eq_p(shape, str_lit("pair"))) && null_p(member_of_shape(ms, shape))) {
         ms
     } else {
         members_but(ms, shape)
@@ -1573,7 +1695,7 @@ pub fn union_local(v: &'static Cv, s: &'static St, x: &'static Sexp) -> Tys {
                                     match *tagcase_ {
                                         Ty::TyData(d, args) => {
                                             if string_eq_p(d, str_lit("%union")) {
-                                                args
+                                                lists_split(args)
                                             } else {
                                                 if string_eq_p(shape_of(walk(s, t)), str_lit("")) {
                                                     nil::<&'static Ty>()
@@ -1581,6 +1703,9 @@ pub fn union_local(v: &'static Cv, s: &'static St, x: &'static Sexp) -> Tys {
                                                     kayak_rt::heap_cons(walk(s, t), kayak_rt::nil())
                                                 }
                                             }
+                                        }
+                                        Ty::TyList(e, r) => {
+                                            lists_split(kayak_rt::heap_cons(walk(s, t), kayak_rt::nil()))
                                         }
                                         _ => {
                                             let other = tagcase_;
@@ -1609,7 +1734,7 @@ pub fn union_local(v: &'static Cv, s: &'static St, x: &'static Sexp) -> Tys {
 
 /// What a test proves: `x` narrowed in the branch it holds in and in the
 /// other, or nothing.
-pub fn narrowings(v: &'static Cv, s: &'static St, test: &'static Sexp) -> List<&'static Narrowing> {
+pub fn narrowings_of_test(v: &'static Cv, s: &'static St, test: &'static Sexp) -> List<&'static Narrowing> {
     let tagcase_ = test;
     match *tagcase_ {
         Sexp::Lst(xs, f, l, p) => {
@@ -1653,6 +1778,77 @@ pub fn narrowings(v: &'static Cv, s: &'static St, test: &'static Sexp) -> List<&
             let other = tagcase_;
             nil::<&'static Narrowing>()
         }
+    }
+}
+
+/// What a test proves, through `not`, `and` and `or` too (C68): `(not t)`
+/// swaps `t`'s; `(and a b)` holds where `b` holds in where `a` does;
+/// `(or a b)` fails where `b` fails in where `a` does.
+pub fn narrowings(v: &'static Cv, s: &'static St, test: &'static Sexp) -> List<&'static Narrowing> {
+    if (head_is_p(test, str_lit("not")) && i64_eq(size(items(test)), 2i64)) {
+        let ns = narrowings(v, s, second(items(test)));
+        if null_p(ns) {
+            nil::<&'static Narrowing>()
+        } else {
+            let tagcase_ = car(ns);
+            match *tagcase_ {
+                Narrowing::Narrowing(yes, no) => {
+                    kayak_rt::heap_cons(narrowing(no, yes), kayak_rt::nil())
+                }
+            }
+        }
+    } else if (head_is_p(test, str_lit("and")) && i64_eq(size(items(test)), 3i64)) {
+        let first = narrowings(v, s, second(items(test)));
+        let after = if null_p(first) {
+            v
+        } else {
+            let tagcase_ = car(first);
+            match *tagcase_ {
+                Narrowing::Narrowing(yes, no) => {
+                    yes
+                }
+            }
+        };
+        let then = narrowings(after, s, third(items(test)));
+        if not(null_p(then)) {
+            let tagcase_ = car(then);
+            match *tagcase_ {
+                Narrowing::Narrowing(yes, no) => {
+                    kayak_rt::heap_cons(narrowing(yes, v), kayak_rt::nil())
+                }
+            }
+        } else if not(null_p(first)) {
+            kayak_rt::heap_cons(narrowing(after, v), kayak_rt::nil())
+        } else {
+            nil::<&'static Narrowing>()
+        }
+    } else if (head_is_p(test, str_lit("or")) && i64_eq(size(items(test)), 3i64)) {
+        let first = narrowings(v, s, second(items(test)));
+        let after = if null_p(first) {
+            v
+        } else {
+            let tagcase_ = car(first);
+            match *tagcase_ {
+                Narrowing::Narrowing(yes, no) => {
+                    no
+                }
+            }
+        };
+        let then = narrowings(after, s, third(items(test)));
+        if not(null_p(then)) {
+            let tagcase_ = car(then);
+            match *tagcase_ {
+                Narrowing::Narrowing(yes, no) => {
+                    kayak_rt::heap_cons(narrowing(v, no), kayak_rt::nil())
+                }
+            }
+        } else if not(null_p(first)) {
+            kayak_rt::heap_cons(narrowing(v, after), kayak_rt::nil())
+        } else {
+            nil::<&'static Narrowing>()
+        }
+    } else {
+        narrowings_of_test(v, s, test)
     }
 }
 
@@ -4071,6 +4267,86 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
         match refuse(v, string_append(str_lit("("), string_append(h, str_lit(" ...) is FX-26's form, which KFX does not have, or a call of a local named by that keyword")))) {}
     } else if (null_p(found) && string_eq_p(h, str_lit("abort-current-continuation"))) {
         abort_call(v, s, args)
+    } else if ((string_eq_p(h, str_lit("null?")) || string_eq_p(h, str_lit("pair?"))) && i64_eq(size(args), 1i64) && not(null_p(found)) && {
+        let tagcase_ = car(found);
+        match *tagcase_ {
+            Bind::Bind(n, sc, w) => {
+                string_eq_p(w, str_lit("prim"))
+            }
+        }
+    } && {
+        let tagcase_ = car(args);
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                let b = find_bind(n, cv_binds(v));
+                (not(null_p(b)) && {
+                    let tagcase_ = car(b);
+                    match *tagcase_ {
+                        Bind::Bind(n2, sc, w) => {
+                            let tagcase_ = sc;
+                            match *tagcase_ {
+                                Scheme::Scheme(tv, t) => {
+                                    string_member_p(shape_of(walk(s, t)), kayak_rt::heap_cons(str_lit("union"), kayak_rt::heap_cons(str_lit("pair"), kayak_rt::heap_cons(str_lit("nil"), kayak_rt::nil()))))
+                                }
+                            }
+                        }
+                    }
+                })
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        // FX-26's `null?` and `pair?` of any value (C68): of a local of a
+        // union, a pair or `nil`, which KFX's, of a list, would not take.
+        let tagcase_ = synth(v, s, car(args));
+        match *tagcase_ {
+            Res::Res(t, es, s2) => {
+                res(ty_bool(), es, s2)
+            }
+        }
+    } else if ((string_eq_p(h, str_lit("car")) || string_eq_p(h, str_lit("cdr"))) && i64_eq(size(args), 1i64) && not(null_p(local_pair(v, s, car(args))))) {
+        // Of a local known to be a pair (C68): its head or its tail, of any
+        // type, not only a list's.
+        let tagcase_ = car(local_pair(v, s, car(args)));
+        match *tagcase_ {
+            Ty::TyData(d, parts) => {
+                res(if string_eq_p(h, str_lit("car")) {
+                    car(parts)
+                } else {
+                    car(cdr(parts))
+                }, kayak_rt::heap_cons(string_append(str_lit("read:"), region_string(s, car(cdr(cdr(parts))))), kayak_rt::nil()), s)
+            }
+            _ => {
+                let other = tagcase_;
+                match refuse(v, str_lit("a pair that is none")) {}
+            }
+        }
+    } else if (string_eq_p(h, str_lit("cons")) && i64_eq(size(args), 2i64) && not(null_p(expected)) && not(null_p(pair_expected(s, car(expected))))) {
+        // Where a pair is expected (C68): its head and tail checked against
+        // its own, of any types.
+        let tagcase_ = car(pair_expected(s, car(expected)));
+        match *tagcase_ {
+            Ty::TyData(d, parts) => {
+                let tagcase_ = check(v, s, car(args), car(parts));
+                match *tagcase_ {
+                    Res::Res(t1, es1, s1) => {
+                        let tagcase_ = check(v, s1, second(args), car(cdr(parts)));
+                        match *tagcase_ {
+                            Res::Res(t2, es2, s2) => {
+                                res(car(pair_expected(s, car(expected))), effs_union(kayak_rt::heap_cons(string_append(str_lit("alloc:"), region_string(s2, car(cdr(cdr(parts))))), kayak_rt::nil()), effs_union(es1, es2)), s2)
+                            }
+                        }
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                match refuse(v, str_lit("a pair that is none")) {}
+            }
+        }
     } else if (null_p(found) && string_eq_p(h, str_lit("abort-with-continuation"))) {
         suspend_call(v, s, args, expected)
     } else if (null_p(found) && string_eq_p(h, str_lit("make-continuation-prompt-tag"))) {

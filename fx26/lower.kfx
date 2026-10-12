@@ -197,7 +197,7 @@
               ((string=? n "#f") (i-lit (v-bool #f)))
               ((string=? n "#u") (i-lit (v-unit)))
               ((i64>= (position-of n gs 0) 0) (i-global (position-of n gs 0) n))
-              ((string=? n "nil") (i-lit (v-nil)))
+              ((or (string=? n "nil") (string=? n "no-pair")) (i-lit (v-nil)))
               ((i64>= (prim-arity n) 0) (i-lit (v-prim n (prim-arity n))))
               (else (begin (error (string-append "the engine: nothing is named " n)) (i-lit (v-unit))))))))
 

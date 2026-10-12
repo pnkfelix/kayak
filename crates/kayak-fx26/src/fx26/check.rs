@@ -1596,6 +1596,10 @@ pub fn shape_of(t: &'static Ty) -> Str {
                 str_lit("f32")
             } else if string_eq_p(d, str_lit("false")) {
                 str_lit("bool")
+            } else if string_eq_p(d, str_lit("nil")) {
+                str_lit("nil")
+            } else if string_eq_p(d, str_lit("%pairof")) {
+                str_lit("pair")
             } else if string_eq_p(d, str_lit("symbol")) {
                 str_lit("symbol")
             } else if string_eq_p(d, str_lit("%array")) {
@@ -1671,6 +1675,8 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                 } else if string_eq_p(s, str_lit("symbol")) {
                     return ty_data(s, nil::<&'static Ty>());
                 } else if string_eq_p(s, str_lit("false")) {
+                    return ty_data(s, nil::<&'static Ty>());
+                } else if string_eq_p(s, str_lit("nil")) {
                     return ty_data(s, nil::<&'static Ty>());
                 } else if string_eq_p(s, str_lit("bool")) {
                     return ty_bool();
@@ -1838,6 +1844,10 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                             return match refuse(v, string_append(str_lit("a flat array's length is a literal (KFX has no arrays of values yet): "), show_sexp(t))) {};
                         }
                     }
+                } else if (sym_is_p(car(xs), str_lit("pairof")) && i64_eq(size(xs), 4i64)) {
+                    // FX-26's pair, never `nil` (C68): `(pairof A B R)`, its head and
+                    // tail of any types; a list's pair when its tail is the list.
+                    return ty_data(str_lit("%pairof"), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::heap_cons(parse_type(v, tvars, third(xs)), kayak_rt::heap_cons(parse_mutable_region(v, tvars, fourth(xs)), kayak_rt::nil()))));
                 } else if sym_is_p(car(xs), str_lit("union")) {
                     let members = union_members(parse_types(v, tvars, cdr(xs)));
                     let shapes = map(&shape_of, members);
@@ -2288,6 +2298,8 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
                 string_append(str_lit("(arrayof "), string_append(show_tys(s, args), str_lit(")")))
             } else if string_eq_p(d, str_lit("%union")) {
                 string_append(str_lit("(union "), string_append(show_tys(s, args), str_lit(")")))
+            } else if string_eq_p(d, str_lit("%pairof")) {
+                string_append(str_lit("(pairof "), string_append(show_tys(s, args), str_lit(")")))
             } else if string_eq_p(d, str_lit("%composable")) {
                 string_append(str_lit("(composable "), string_append(show_ty(s, car(args)), string_append(str_lit(" "), string_append(show_ty(s, car(cdr(args))), string_append(str_lit(" "), string_append({
                     let tagcase_ = car(cdr(cdr(args)));
@@ -3147,6 +3159,74 @@ pub fn fits_shapes(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static T
     }) {
         // `false` below `bool`.
         s
+    } else if ({
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                string_eq_p(d, str_lit("nil"))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } && {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Ty::TyList(x, r) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        // `nil` below a list (C68).
+        s
+    } else if ({
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                string_eq_p(d, str_lit("%pairof"))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } && {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Ty::TyList(x, r) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        // A pair whose tail is the list, below the list (C68).
+        let tagcase_ = a;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                let tagcase_ = e;
+                match *tagcase_ {
+                    Ty::TyList(x, r) => {
+                        fits(v, fits(v, fits(v, s, car(args), x), car(cdr(args)), e), car(cdr(cdr(args))), r)
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        mismatch(v, s, a, e)
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                mismatch(v, s, a, e)
+            }
+        }
     } else {
         fits_shapes_of(v, s, a, e)
     }

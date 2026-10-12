@@ -95,6 +95,7 @@
    (sum? (poly ((t type)) (subr pure (t) bool)))
    (product? (poly ((t type)) (subr pure (t) bool)))
    (bytevector? (poly ((t type)) (subr pure (t) bool)))
+   (no-pair (poly ((r region) (t1 type) (t2 type)) (union nil (pairof t1 t2 r))))
    (call-with-composable-continuation (poly ((r region) (a type) (h type) (d effect) (t type) (e effect))
                                         (subr (maxeff (comefrom r) e) ((subr e ((composable t a d r)) t) (prompt-tag a h d r)) t)))
    (bitwise-and (subr pure (int int) int)) (bitwise-ior (subr pure (int int) int)) (bitwise-xor (subr pure (int int) int))
