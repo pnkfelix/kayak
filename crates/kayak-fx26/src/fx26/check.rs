@@ -2239,7 +2239,19 @@ pub fn place_marks(t: &'static Sexp) -> Strings {
     }
 }
 
-pub fn parse_scheme_of(v: &'static Cv, t: &'static Sexp, own: bool) -> &'static Scheme {
+/// A `poly` directly in a `poly`, as FX-26 writes a primitive's binders by
+/// kind (C70): one `poly`, the binders in order, which means the same.
+pub fn flat_poly(t: &'static Sexp) -> &'static Sexp {
+    if (head_is_p(t, str_lit("poly")) && i64_eq(size(items(t)), 3i64) && head_is_p(third(items(t)), str_lit("poly"))) {
+        let inner = flat_poly(third(items(t)));
+        lst(kayak_rt::heap_cons(car(items(t)), kayak_rt::heap_cons(lst(onto(items(second(items(t))), items(second(items(inner)))), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(third(items(inner)), kayak_rt::nil()))), datum_file(t), 0i64, datum_pos(t))
+    } else {
+        t
+    }
+}
+
+pub fn parse_scheme_of(v: &'static Cv, t0: &'static Sexp, own: bool) -> &'static Scheme {
+    let t = flat_poly(t0);
     let tvars = poly_binders(v, t, own);
     scheme(tvars, parse_type(v, onto(place_marks(t), tvars), if head_is_p(t, str_lit("poly")) {
         third(items(t))

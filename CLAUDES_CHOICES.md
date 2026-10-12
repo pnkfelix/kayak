@@ -1372,3 +1372,14 @@ each of the two. Refused for Rust by the restriction pass: KFX's lists
 are immutable in Rust, `eq?`'s identity has no Rust that means the same of
 KFX's `Copy` values, and `stay-cellular` is a direction to Fixpt's
 machines. Beyond KFX, 23 agree (21).
+
+## C70. A `poly` directly in a `poly`, as one (2026-10-12)
+
+FX-26 writes some types `(poly ((t type)) (poly ((e effect)) T))`, binders
+by kind, as its standard environment does; that means one `poly` with the
+binders in order (C60's `proj` of a `proj` already takes them so). The
+checker reads a definition's type so; the restriction pass asks KFX's
+programs to write one `poly`, as KFX's Rust has it. A `poly` as a type of
+its own (a local's, a recursive type's), first-class polymorphism, is not
+done: the checker's types have no such type, and adding one touches all
+of them. Beyond KFX, 24 agree (23).

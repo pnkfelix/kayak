@@ -42,6 +42,8 @@ pub fn restricted(e: &'static Sexp, file: Str, line: i64) -> () {
                 match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", of FX-26's unions of shapes, which KFX has not: as a Rust enum, a union's subtyping under a list or a procedure would need a copy or a wrapper FX-26 has not (C57)"))) {}
             } else if sym_is_p(car(xs), str_lit("composable")) {
                 match restriction_refused(f, l, str_lit("a composable continuation, which FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)")) {}
+            } else if (sym_is_p(car(xs), str_lit("poly")) && i64_eq(size(xs), 3i64) && head_is_p(third(xs), str_lit("poly"))) {
+                match restriction_refused(f, l, str_lit("a poly in a poly, which KFX's Rust writes as one: write it so (C70)")) {}
             } else if (sym_is_p(car(xs), str_lit("proj")) && not(null_p(cdr(xs))) && {
                 let tagcase_ = second(xs);
                 match *tagcase_ {

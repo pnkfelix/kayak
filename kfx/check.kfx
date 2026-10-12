@@ -1082,9 +1082,21 @@
                      (items (second (items t)))))
         nil)))
 
+(define-rec
+  (flat-poly (subr kfx (sexp) sexp)
+    (lambda (t)
+      "A `poly` directly in a `poly`, as FX-26 writes a primitive's binders by
+       kind (C70): one `poly`, the binders in order, which means the same."
+      (if (and (head-is? t "poly") (i64= (size (items t)) 3) (head-is? (third (items t)) "poly"))
+          (let ((inner (flat-poly (third (items t)))))
+            (lst (list (car (items t)) (lst (onto (items (second (items t))) (items (second (items inner)))) "" 0 0) (third (items inner)))
+                 (datum-file t) 0 (datum-pos t)))
+          t))))
+
 (define parse-scheme-of (subr kfx (cv sexp bool) scheme)
-  (lambda (v t own)
-    (let ((tvars (poly-binders v t own)))
+  (lambda (v t0 own)
+    (let* ((t (flat-poly t0))
+           (tvars (poly-binders v t own)))
       (scheme tvars (parse-type v (onto (place-marks t) tvars) (if (head-is? t "poly") (third (items t)) t))))))
 
 (define parse-scheme (subr kfx (cv sexp) scheme)
