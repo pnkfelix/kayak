@@ -211,6 +211,49 @@ def engine_runs(accepted, fixpt, listing, bless):
     return bool(differ or lost)
 
 
+def beyond_runs(refused, fixpt, listing):
+    """The engine on Fixpt's programs that kfx refuses: FX-26 beyond KFX,
+    what the engine is for (C58, C60). Counted, not yet failed: a program
+    the engine's checker refuses is the checker's to grow."""
+    engine = os.path.join(ROOT, "target", "release", "kayak-fx26")
+    agree, differ, checker, cannot = [], [], [], []
+    for _, rel, path in refused:
+        with open(path) as g:
+            text = g.read()
+        expected, why = fixpt_values(fixpt, path, text)
+        if expected is None and not why.startswith("REFUSED: ! evaluation failed"):
+            continue
+        try:
+            r = run([engine, path], timeout=LIMIT)
+        except subprocess.TimeoutExpired:
+            cannot.append((rel, "runs past %ds" % LIMIT))
+            continue
+        if expected is None:
+            (agree if r.returncode != 0 else differ).append(rel if r.returncode != 0 else (rel, "Fixpt fails when run, the engine not"))
+            continue
+        if r.returncode != 0:
+            said = [l for l in r.stderr.splitlines() if "engine" in l or "kfx:" in l]
+            line = (said or r.stderr.strip().splitlines()[-1:] or ["?"])[0]
+            (cannot if "the engine" in line else checker).append((rel, line[:160]))
+            continue
+        got = r.stdout.splitlines()
+        if len(got) == len(expected) and all(same(e, g) for e, g in zip(expected, got)):
+            agree.append(rel)
+        else:
+            differ.append((rel, "Fixpt %r, the engine %r" % (expected[:6], got[:6])))
+    if listing:
+        for rel in agree:
+            print("beyond agree %s" % rel)
+        for rel, why in checker:
+            print("beyond, the checker refuses %s: %s" % (rel, why))
+        for rel, why in cannot:
+            print("beyond, the engine cannot yet %s: %s" % (rel, why))
+    for rel, why in differ:
+        print("BEYOND, THE ENGINE DIFFERS  %s: %s" % (rel, why))
+    print("run-fixpt-programs: beyond KFX, the engine: %d agree, %d differ, %d its checker refuses, %d not run yet"
+          % (len(agree), len(differ), len(checker), len(cannot)))
+
+
 def main():
     listing = "--list" in sys.argv[1:]
     bless = "--bless" in sys.argv[1:]
@@ -223,7 +266,7 @@ def main():
 
     shutil.rmtree(RUNNER, ignore_errors=True)
     os.makedirs(os.path.join(RUNNER, "src"))
-    accepted = []
+    accepted, refused = [], []
     for d, _, fs in sorted(os.walk(programs_dir)):
         # Fixpt's diverge/ programs are meant to run for ever.
         if os.path.relpath(d, programs_dir).startswith("diverge"):
@@ -234,6 +277,7 @@ def main():
             path = os.path.join(d, f)
             r = run([kfx, "--toplevel", path], timeout=LIMIT)
             if r.returncode != 0:
+                refused.append(("", os.path.relpath(path, programs_dir), path))
                 continue
             name = "p%d" % len(accepted)
             with open(os.path.join(RUNNER, "src", name + ".rs"), "w") as g:
@@ -306,6 +350,7 @@ def main():
     print("run-fixpt-programs: %d of Fixpt's programs kfx accepts; %d agree, %d differ, %d skipped"
           % (len(accepted), agree, len(differ), len(skipped)))
     engine_failed = engine_runs(accepted, fixpt, listing, bless)
+    beyond_runs(refused, fixpt, listing)
     sys.exit(1 if differ or engine_failed else 0)
 
 
