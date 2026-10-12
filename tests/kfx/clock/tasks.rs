@@ -118,6 +118,35 @@ pub fn wake_first_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dy
     (&wake_due_x)(lp, at)
 }
 
+// Run the ready tasks, and those they make ready, until none is ready;
+// the sleepers left asleep, the clock where it is.
+pub async fn run_ready_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>) -> Result<(), Unwind> {
+    let q = get(lp.1);
+    if null_p(q) {
+        Ok(())
+    } else {
+        set(lp.1, cdr(q));
+        {
+            let prompt_tag__ = lp.0;
+            match kayak_rt::suspend::prompt(prompt_tag__, kayak_rt::suspend::body(async move {
+                Ok(kayak_rt::suspend::body((car(q))(())).await?)
+            })).await {
+                Ok(kayak_rt::suspend::Prompted::Done(v_)) => v_,
+                Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => (lambda1(move |file: &'static dyn Fn() -> kayak_rt::suspend::Body<()>| kayak_rt::suspend::body(async move {
+                    Ok(kayak_rt::suspend::body(file()).await?)
+                })))(h_).await?,
+                Err(u_) => return Err(u_),
+            }
+        };
+        Ok(kayak_rt::suspend::body((&run_ready_x)(lp)).await?)
+    }
+}
+
+// Whether a task sleeps.
+pub fn sleeping_p(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>) -> bool {
+    not(null_p(get(lp.2)))
+}
+
 // Run the ready tasks, and the sleepers as their times come, until none
 // is left.
 pub async fn run_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>) -> Result<(), Unwind> {

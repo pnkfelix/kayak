@@ -1,0 +1,7 @@
+; Tasks that wait on the world (lib/world.kfx, C51), run live, recorded,
+; and replayed from the record written to a file.
+../../lib/tasks.kfx
+../../lib/runner.kfx
+../../lib/live.kfx
+../../lib/world.kfx
+tasks-world/app.kfx

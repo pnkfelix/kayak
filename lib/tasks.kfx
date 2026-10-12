@@ -115,6 +115,24 @@
           (set (extract lp clock) at)
           ((proj wake-due! u l) lp at))))))
 
+"Run the ready tasks, and those they make ready, until none is ready;
+ the sleepers left asleep, the clock where it is."
+(define run-ready! (poly ((u effect) (l region)) (subr (maxeff u (read @globals) spin (read l) (write l) (alloc l) (goto l) (comefrom l)) ((loop u l)) unit))
+  (plambda ((u effect) (l region))
+    (lambda (lp)
+      (let ((q (get (extract lp ready))))
+        (if (null? q)
+            #u
+            (begin
+              (set (extract lp ready) (cdr q))
+              (prompt (extract lp tag) ((car q) #u) (lambda ((file (filer u l))) (file)))
+              ((proj run-ready! u l) lp)))))))
+
+"Whether a task sleeps."
+(define sleeping? (poly ((u effect) (l region)) (subr (read l) ((loop u l)) bool))
+  (plambda ((u effect) (l region))
+    (lambda (lp) (not (null? (get (extract lp sleeping)))))))
+
 "Run the ready tasks, and the sleepers as their times come, until none
  is left."
 (define run! (poly ((u effect) (l region)) (subr (maxeff u (read @globals) spin (read l) (write l) (alloc l) (goto l) (comefrom l)) ((loop u l)) unit))

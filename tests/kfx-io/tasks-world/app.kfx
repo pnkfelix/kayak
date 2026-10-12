@@ -1,0 +1,58 @@
+"Two tasks and the world (C51): one reads the standard input a line at a
+ time and writes each back; the other counts, yielding between. Run
+ live, recorded, the record written to run.log; then run.log read back
+ and the run replayed from it, which does no I/O of its own: the same
+ operations in the same order, or the replay fails. The status is the
+ count of lines the replay read."
+
+(define-effect doing (maxeff world (read @globals) spin (read @w) (write @w) (alloc @w) (goto @w) (comefrom @w)))
+(define-type wl (world-loop world @w))
+
+(define say! (subr doing (wl string) unit)
+  (lambda (lp s) (begin ((proj perform-in! world @w) lp (sum write s)) #u)))
+
+(define echo! (subr doing (wl i64) i64)
+  (lambda (lp n)
+    (tagcase ((proj perform-in! world @w) lp (sum read-line #u))
+      (line s (begin (say! lp (string-append "echo " (string-append s "\n"))) (echo! lp (i64+ n 1))))
+      (else other n))))
+
+(define count! (subr doing (wl i64) unit)
+  (lambda (lp k)
+    (if (i64> k 3)
+        #u
+        (begin (say! lp (string-append "count " (string-append (i64->string k) "\n")))
+               ((proj yield! world @w) (extract lp loop))
+               (count! lp (i64+ k 1))))))
+
+"The two tasks, run with `answer` answering; the lines read."
+(define run-both (subr doing ((answerer world @w)) i64)
+  (lambda (answer)
+    (let ((lp (the wl ((proj make-world-loop world @w))))
+          (lines (the (ref i64 @w) (new 0))))
+      (begin
+        ((proj spawn! world @w) (extract lp loop) (lambda () (set lines (echo! lp 0))))
+        ((proj spawn! world @w) (extract lp loop) (lambda () (count! lp 1)))
+        ((proj run-world! world @w) lp answer)
+        (get lines)))))
+
+(define reverse-log (subr (maxeff (read @globals) spin (read @w) (alloc @w)) ((log @w) (log @w)) (log @w))
+  (lambda (xs acc) (if (null? xs) acc (reverse-log (cdr xs) (cons (car xs) acc)))))
+
+(define main (subr (maxeff doing (io stdout) (io fs-read) (io fs-write)) () int)
+  (lambda ()
+    (let* ((log (the (ref (log @w) @w) (new nil)))
+           (n (run-both ((proj recording world @w) ((proj live @w)) log))))
+      (begin
+        (write-file "run.log" (the (bytevectorof @w) (string->utf8 ((proj log-text @w) (reverse-log (get log) nil)))))
+        (tagcase (the (sumof (data (bytevectorof @w)) (failed io-error)) (read-file "run.log"))
+          (data b
+            (tagcase (utf8->string b)
+              (text s
+                (let* ((replayed (the (ref (log @w) @w) (new ((proj log-of-text @w) s))))
+                       (m (run-both ((proj replaying world @w) replayed))))
+                  (begin
+                    (write-out (string-append "replayed " (string-append (i64->string m) (string-append " of " (string-append (i64->string n) " lines\n")))))
+                    (i64->int m))))
+              (bad k 101)))
+          (failed e 102))))))

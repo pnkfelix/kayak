@@ -1,0 +1,79 @@
+"lib/world.kfx: tasks that wait on the world (C51), lib/tasks.kfx's loop
+ and lib/runner.kfx's runners joined. A task performs an operation by
+ filing it, with an ivar for its answer, and waiting on the ivar: other
+ tasks run meanwhile. When no task is ready, the operations filed are
+ answered, in the order they were filed, each at the next step, by the
+ runner's answerer, and their tasks made ready; when none is filed
+ either, the clock moves to the first sleeper's time. So a run is a
+ function of the answers alone, as with one program (C48): recorded, it
+ replays, however its tasks interleave.
+
+ The operations are answered when the loop is idle: an answerer that
+ blocks (the live one) holds every task while it does, as no task runs
+ then anyway."
+
+"An operation filed, and where its answer goes."
+(define-type (filed (u effect) (l region)) (productof (op op) (reply (ivar answer u l))))
+
+"The world as tasks see it: the loop, the operations filed (the latest
+ first), and the steps taken."
+(define-type (world-loop (u effect) (l region))
+  (productof (loop (loop u l))
+             (filed (ref (listof (filed u l) l) l))
+             (steps (ref i64 l))))
+
+(define make-world-loop (poly ((u effect) (l region)) (subr (maxeff (read @globals) (alloc l)) () (world-loop u l)))
+  (plambda ((u effect) (l region))
+    (lambda ()
+      (product (loop ((proj make-loop u l)))
+               (filed (the (ref (listof (filed u l) l) l) (new nil)))
+               (steps (the (ref i64 l) (new 0)))))))
+
+"An operation performed by a task: filed, and its answer waited for."
+(define perform-in! (poly ((u effect) (l region))
+                      (subr (maxeff u (read @globals) spin (read l) (write l) (alloc l) (goto l) (comefrom l)) ((world-loop u l) op) answer))
+  (plambda ((u effect) (l region))
+    (lambda (wl o)
+      (let ((iv (the (ivar answer u l) ((proj make-ivar answer u l) (extract wl loop)))))
+        (begin
+          (set (extract wl filed) (cons (product (op o) (reply iv)) (get (extract wl filed))))
+          ((proj ivar-get! answer u l) (extract wl loop) iv))))))
+
+(define reverse-filed (poly ((u effect) (l region))
+                        (subr (maxeff (read @globals) (read l) (alloc l) spin) ((listof (filed u l) l) (listof (filed u l) l)) (listof (filed u l) l)))
+  (plambda ((u effect) (l region))
+    (lambda (xs acc) (if (null? xs) acc ((proj reverse-filed u l) (cdr xs) (cons (car xs) acc))))))
+
+"Each operation filed answered, in order, each at its step."
+(define answer-all! (poly ((u effect) (l region))
+                      (subr (maxeff u (read @globals) spin (read l) (write l) (alloc l))
+                            ((world-loop u l) (answerer u l) (listof (filed u l) l))
+                            unit))
+  (plambda ((u effect) (l region))
+    (lambda (wl answer fs)
+      (if (null? fs)
+          #u
+          (let* ((f (car fs))
+                 (n (get (extract wl steps))))
+            (begin
+              (set (extract wl steps) (i64+ n 1))
+              ((proj ivar-put! answer u l) (extract wl loop) (extract f reply) (answer n (extract f op)))
+              ((proj answer-all! u l) wl answer (cdr fs))))))))
+
+"Run the tasks until none is left, the world answering by `answer`."
+(define run-world! (poly ((u effect) (l region))
+                     (subr (maxeff u (read @globals) spin (read l) (write l) (alloc l) (goto l) (comefrom l))
+                           ((world-loop u l) (answerer u l))
+                           unit))
+  (plambda ((u effect) (l region))
+    (lambda (wl answer)
+      (begin
+        ((proj run-ready! u l) (extract wl loop))
+        (let ((fs (get (extract wl filed))))
+          (cond ((not (null? fs))
+                 (begin (set (extract wl filed) nil)
+                        ((proj answer-all! u l) wl answer ((proj reverse-filed u l) fs nil))
+                        ((proj run-world! u l) wl answer)))
+                (((proj sleeping? u l) (extract wl loop))
+                 (begin ((proj wake-first! u l) (extract wl loop)) ((proj run-world! u l) wl answer)))
+                (else #u)))))))

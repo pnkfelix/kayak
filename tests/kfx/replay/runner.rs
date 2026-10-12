@@ -23,10 +23,11 @@ use super::*;
 // Generic in what the program may do besides, `u`; `w` is the runner's
 // region, where its tag and its state are.
 
-// An operation, and its answer.
-pub type Op = &'static Sum_9read_line_5write_5clock<(), Str, ()>;
+// An operation, and its answer. A failure's answer is the system's words
+// (an `io-error`'s detail, for a live runner).
+pub type Op = &'static Sum_9read_line_5write_5clock_9read_file_10write_file<(), Str, (), Str, Product_4path_4text<Str, Str>>;
 
-pub type Answer = &'static Sum_4line_3eof_4done_4time<Str, (), (), i64>;
+pub type Answer = &'static Sum_4line_3eof_4done_4time_4text_6failed<Str, (), (), i64, Str, Str>;
 
 // A program's rest, given the answer, resumable once.
 // What a program gives its runner: an operation and its rest.
@@ -40,18 +41,18 @@ pub async fn perform_x<A: Copy + 'static>(rt: Tag<A, Product_2op_1k<Op, &'static
 
 // The operations, as a program writes them.
 pub async fn read_line_x<A: Copy + 'static>(rt: Tag<A, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>>) -> Result<Answer, Unwind> {
-    Ok(kayak_rt::suspend::body((&perform_x)(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock::<(), Str, ()>::ReadLine(())))).await?)
+    Ok(kayak_rt::suspend::body((&perform_x)(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::ReadLine(())))).await?)
 }
 
 pub async fn write_x<A: Copy + 'static>(rt: Tag<A, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>>, s: Str) -> Result<(), Unwind> {
-    kayak_rt::suspend::body((&perform_x)(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock::<(), Str, ()>::Write(s)))).await?;
+    kayak_rt::suspend::body((&perform_x)(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::Write(s)))).await?;
     Ok(())
 }
 
 pub async fn clock_x<A: Copy + 'static>(rt: Tag<A, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>>) -> Result<i64, Unwind> {
-    let tagcase_ = kayak_rt::suspend::body((&perform_x)(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock::<(), Str, ()>::Clock(())))).await?;
+    let tagcase_ = kayak_rt::suspend::body((&perform_x)(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::Clock(())))).await?;
     match *tagcase_ {
-        Sum_4line_3eof_4done_4time::Time(t) => {
+        Sum_4line_3eof_4done_4time_4text_6failed::Time(t) => {
             Ok(t)
         }
         _ => {
@@ -105,26 +106,33 @@ pub async fn run_under<A: Copy + 'static>(answer: &'static dyn Fn(i64, Op) -> ka
 }
 
 // The sim: input a script of lines, read in order, then `eof`; writes
-// kept at `out`, the latest first; the clock a tick an operation.
+// kept at `out`, the latest first; the clock a tick an operation. It has
+// no files: a read fails, a write is done and kept nowhere.
 pub fn sim(input: Ref<List<Str>>, out: Ref<List<Str>>) -> &'static dyn Fn(i64, Op) -> kayak_rt::suspend::Body<Answer> {
     lambda2(move |n: i64, o: Op| kayak_rt::suspend::body(async move {
         let tagcase_ = o;
         match *tagcase_ {
-            Sum_9read_line_5write_5clock::ReadLine(x) => {
+            Sum_9read_line_5write_5clock_9read_file_10write_file::ReadLine(x) => {
                 let lines = get(input);
                 if null_p(lines) {
-                    Ok(kayak_rt::heap_alloc(Sum_4line_3eof_4done_4time::<Str, (), (), i64>::Eof(())))
+                    Ok(kayak_rt::heap_alloc(Sum_4line_3eof_4done_4time_4text_6failed::<Str, (), (), i64, Str, Str>::Eof(())))
                 } else {
                     set(input, cdr(lines));
-                    Ok(kayak_rt::heap_alloc(Sum_4line_3eof_4done_4time::<Str, (), (), i64>::Line(car(lines))))
+                    Ok(kayak_rt::heap_alloc(Sum_4line_3eof_4done_4time_4text_6failed::<Str, (), (), i64, Str, Str>::Line(car(lines))))
                 }
             }
-            Sum_9read_line_5write_5clock::Write(s) => {
+            Sum_9read_line_5write_5clock_9read_file_10write_file::Write(s) => {
                 set(out, kayak_rt::heap_cons(s, get(out)));
-                Ok(kayak_rt::heap_alloc(Sum_4line_3eof_4done_4time::<Str, (), (), i64>::Done(())))
+                Ok(kayak_rt::heap_alloc(Sum_4line_3eof_4done_4time_4text_6failed::<Str, (), (), i64, Str, Str>::Done(())))
             }
-            Sum_9read_line_5write_5clock::Clock(x) => {
-                Ok(kayak_rt::heap_alloc(Sum_4line_3eof_4done_4time::<Str, (), (), i64>::Time(n)))
+            Sum_9read_line_5write_5clock_9read_file_10write_file::Clock(x) => {
+                Ok(kayak_rt::heap_alloc(Sum_4line_3eof_4done_4time_4text_6failed::<Str, (), (), i64, Str, Str>::Time(n)))
+            }
+            Sum_9read_line_5write_5clock_9read_file_10write_file::ReadFile(p) => {
+                Ok(kayak_rt::heap_alloc(Sum_4line_3eof_4done_4time_4text_6failed::<Str, (), (), i64, Str, Str>::Failed(str_lit("the sim has no files"))))
+            }
+            Sum_9read_line_5write_5clock_9read_file_10write_file::WriteFile(f) => {
+                Ok(kayak_rt::heap_alloc(Sum_4line_3eof_4done_4time_4text_6failed::<Str, (), (), i64, Str, Str>::Done(())))
             }
         }
     }))
@@ -143,10 +151,10 @@ pub fn recording(inner: &'static dyn Fn(i64, Op) -> kayak_rt::suspend::Body<Answ
 pub fn same_op_p(x: Op, y: Op) -> bool {
     let tagcase_ = x;
     match *tagcase_ {
-        Sum_9read_line_5write_5clock::ReadLine(u) => {
+        Sum_9read_line_5write_5clock_9read_file_10write_file::ReadLine(u) => {
             let tagcase_ = y;
             match *tagcase_ {
-                Sum_9read_line_5write_5clock::ReadLine(v) => {
+                Sum_9read_line_5write_5clock_9read_file_10write_file::ReadLine(v) => {
                     true
                 }
                 _ => {
@@ -155,10 +163,10 @@ pub fn same_op_p(x: Op, y: Op) -> bool {
                 }
             }
         }
-        Sum_9read_line_5write_5clock::Write(s) => {
+        Sum_9read_line_5write_5clock_9read_file_10write_file::Write(s) => {
             let tagcase_ = y;
             match *tagcase_ {
-                Sum_9read_line_5write_5clock::Write(t) => {
+                Sum_9read_line_5write_5clock_9read_file_10write_file::Write(t) => {
                     string_eq_p(s, t)
                 }
                 _ => {
@@ -167,11 +175,35 @@ pub fn same_op_p(x: Op, y: Op) -> bool {
                 }
             }
         }
-        Sum_9read_line_5write_5clock::Clock(u) => {
+        Sum_9read_line_5write_5clock_9read_file_10write_file::Clock(u) => {
             let tagcase_ = y;
             match *tagcase_ {
-                Sum_9read_line_5write_5clock::Clock(v) => {
+                Sum_9read_line_5write_5clock_9read_file_10write_file::Clock(v) => {
                     true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Sum_9read_line_5write_5clock_9read_file_10write_file::ReadFile(p) => {
+            let tagcase_ = y;
+            match *tagcase_ {
+                Sum_9read_line_5write_5clock_9read_file_10write_file::ReadFile(q) => {
+                    string_eq_p(p, q)
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Sum_9read_line_5write_5clock_9read_file_10write_file::WriteFile(f) => {
+            let tagcase_ = y;
+            match *tagcase_ {
+                Sum_9read_line_5write_5clock_9read_file_10write_file::WriteFile(g) => {
+                    (string_eq_p(f.0, g.0) && string_eq_p(f.1, g.1))
                 }
                 _ => {
                     let other = tagcase_;
@@ -185,14 +217,20 @@ pub fn same_op_p(x: Op, y: Op) -> bool {
 pub fn show_op(o: Op) -> Str {
     let tagcase_ = o;
     match *tagcase_ {
-        Sum_9read_line_5write_5clock::ReadLine(u) => {
+        Sum_9read_line_5write_5clock_9read_file_10write_file::ReadLine(u) => {
             str_lit("read-line")
         }
-        Sum_9read_line_5write_5clock::Write(s) => {
+        Sum_9read_line_5write_5clock_9read_file_10write_file::Write(s) => {
             string_append(str_lit("write "), s)
         }
-        Sum_9read_line_5write_5clock::Clock(u) => {
+        Sum_9read_line_5write_5clock_9read_file_10write_file::Clock(u) => {
             str_lit("clock")
+        }
+        Sum_9read_line_5write_5clock_9read_file_10write_file::ReadFile(p) => {
+            string_append(str_lit("read-file "), p)
+        }
+        Sum_9read_line_5write_5clock_9read_file_10write_file::WriteFile(f) => {
+            string_append(str_lit("write-file "), f.0)
         }
     }
 }
@@ -205,7 +243,7 @@ pub fn replaying(log: Ref<Log<'static>>) -> &'static dyn Fn(i64, Op) -> kayak_rt
         let es = get(log);
         if null_p(es) {
             error(string_append(str_lit("replay: past the log's end, at step "), i64_to_string(n)));
-            Ok(kayak_rt::heap_alloc(Sum_4line_3eof_4done_4time::<Str, (), (), i64>::Eof(())))
+            Ok(kayak_rt::heap_alloc(Sum_4line_3eof_4done_4time_4text_6failed::<Str, (), (), i64, Str, Str>::Eof(())))
         } else {
             let e = car(es);
             if (i64_eq(e.0, n) && same_op_p(e.1, o)) {
@@ -213,9 +251,234 @@ pub fn replaying(log: Ref<Log<'static>>) -> &'static dyn Fn(i64, Op) -> kayak_rt
                 Ok(e.2)
             } else {
                 error(string_append(str_lit("replay: the run parts from its log at step "), string_append(i64_to_string(n), string_append(str_lit(": the log has "), string_append(show_op(e.1), string_append(str_lit(", the run "), show_op(o)))))));
-                Ok(kayak_rt::heap_alloc(Sum_4line_3eof_4done_4time::<Str, (), (), i64>::Eof(())))
+                Ok(kayak_rt::heap_alloc(Sum_4line_3eof_4done_4time_4text_6failed::<Str, (), (), i64, Str, Str>::Eof(())))
             }
         }
     }))
+}
+
+// A log as text, and back: the event stream, a line an entry, its fields
+// apart by tabs: the step, the operation's kind and its fields, the
+// answer's kind and its fields. In a field, a tab, a newline and a
+// backslash are written escaped, a backslash before `t`, `n`, or itself.
+pub fn escaped(cs: List<char>) -> Str {
+    if null_p(cs) {
+        str_lit("")
+    } else if char_eq_p(car(cs), '\t') {
+        string_append(str_lit("\\t"), escaped(cdr(cs)))
+    } else if char_eq_p(car(cs), '\n') {
+        string_append(str_lit("\\n"), escaped(cdr(cs)))
+    } else if char_eq_p(car(cs), '\\') {
+        string_append(str_lit("\\\\"), escaped(cdr(cs)))
+    } else {
+        string_append(char_to_string(car(cs)), escaped(cdr(cs)))
+    }
+}
+
+pub fn field(s: Str) -> Str {
+    string_append(str_lit("\t"), escaped(the::<List<char>>(string_to_list(s))))
+}
+
+pub fn op_text(o: Op) -> Str {
+    let tagcase_ = o;
+    match *tagcase_ {
+        Sum_9read_line_5write_5clock_9read_file_10write_file::ReadLine(u) => {
+            str_lit("read-line")
+        }
+        Sum_9read_line_5write_5clock_9read_file_10write_file::Write(s) => {
+            string_append(str_lit("write"), field(s))
+        }
+        Sum_9read_line_5write_5clock_9read_file_10write_file::Clock(u) => {
+            str_lit("clock")
+        }
+        Sum_9read_line_5write_5clock_9read_file_10write_file::ReadFile(p) => {
+            string_append(str_lit("read-file"), field(p))
+        }
+        Sum_9read_line_5write_5clock_9read_file_10write_file::WriteFile(f) => {
+            string_append(str_lit("write-file"), string_append(field(f.0), field(f.1)))
+        }
+    }
+}
+
+pub fn answer_text(a: Answer) -> Str {
+    let tagcase_ = a;
+    match *tagcase_ {
+        Sum_4line_3eof_4done_4time_4text_6failed::Line(s) => {
+            string_append(str_lit("line"), field(s))
+        }
+        Sum_4line_3eof_4done_4time_4text_6failed::Eof(u) => {
+            str_lit("eof")
+        }
+        Sum_4line_3eof_4done_4time_4text_6failed::Done(u) => {
+            str_lit("done")
+        }
+        Sum_4line_3eof_4done_4time_4text_6failed::Time(t) => {
+            string_append(str_lit("time"), field(i64_to_string(t)))
+        }
+        Sum_4line_3eof_4done_4time_4text_6failed::Text(s) => {
+            string_append(str_lit("text"), field(s))
+        }
+        Sum_4line_3eof_4done_4time_4text_6failed::Failed(s) => {
+            string_append(str_lit("failed"), field(s))
+        }
+    }
+}
+
+// A log, its entries in order, as text.
+pub fn log_text<'w>(es: Log<'w>) -> Str {
+    if null_p(es) {
+        str_lit("")
+    } else {
+        let e = car(es);
+        string_append(i64_to_string(e.0), string_append(str_lit("\t"), string_append(op_text(e.1), string_append(str_lit("\t"), string_append(answer_text(e.2), string_append(str_lit("\n"), (&log_text)(cdr(es))))))))
+    }
+}
+
+// Text's fields, a line's at a time: each line a list of its fields,
+// unescaped.
+pub type Fields = List<Str>;
+
+pub type Lines = List<Fields>;
+
+/// `f` the field so far, its characters newest first; `fs` the line's
+/// fields so far, newest first; `ls` the lines so far, newest first.
+pub fn fields_of(mut cs: List<char>, mut f: List<char>, mut fs: Fields, mut ls: Lines) -> Lines {
+    loop {
+        if null_p(cs) {
+            if (null_p(f) && null_p(fs)) {
+                return ls;
+            } else {
+                return kayak_rt::heap_cons(reverse_fields(kayak_rt::heap_cons(list_to_string(reverse_chars(f, nil::<char>())), fs), nil::<Str>()), ls);
+            }
+        } else if char_eq_p(car(cs), '\n') {
+            (cs, f, fs, ls) = (cdr(cs), nil::<char>(), nil::<Str>(), kayak_rt::heap_cons(reverse_fields(kayak_rt::heap_cons(list_to_string(reverse_chars(f, nil::<char>())), fs), nil::<Str>()), ls));
+            continue;
+        } else if char_eq_p(car(cs), '\t') {
+            (cs, f, fs) = (cdr(cs), nil::<char>(), kayak_rt::heap_cons(list_to_string(reverse_chars(f, nil::<char>())), fs));
+            continue;
+        } else if (char_eq_p(car(cs), '\\') && not(null_p(cdr(cs)))) {
+            (cs, f) = (cdr(cdr(cs)), kayak_rt::heap_cons({
+                let c = car(cdr(cs));
+                if char_eq_p(c, 't') {
+                    '\t'
+                } else if char_eq_p(c, 'n') {
+                    '\n'
+                } else {
+                    c
+                }
+            }, f));
+            continue;
+        } else {
+            (cs, f) = (cdr(cs), kayak_rt::heap_cons(car(cs), f));
+            continue;
+        }
+    }
+}
+
+pub fn reverse_chars(mut xs: List<char>, mut acc: List<char>) -> List<char> {
+    loop {
+        if null_p(xs) {
+            return acc;
+        } else {
+            (xs, acc) = (cdr(xs), kayak_rt::heap_cons(car(xs), acc));
+            continue;
+        }
+    }
+}
+
+pub fn reverse_fields(mut xs: Fields, mut acc: Fields) -> Fields {
+    loop {
+        if null_p(xs) {
+            return acc;
+        } else {
+            (xs, acc) = (cdr(xs), kayak_rt::heap_cons(car(xs), acc));
+            continue;
+        }
+    }
+}
+
+pub fn digits(mut cs: List<char>, mut n: i64) -> i64 {
+    loop {
+        if null_p(cs) {
+            return n;
+        } else {
+            (cs, n) = (cdr(cs), i64_plus(i64_star(n, 10i64), i64_minus(char_to_i64(car(cs)), 48i64)));
+            continue;
+        }
+    }
+}
+
+pub fn number_of(s: Str) -> i64 {
+    let cs = the::<List<char>>(string_to_list(s));
+    if (not(null_p(cs)) && char_eq_p(car(cs), '-')) {
+        i64_minus(0i64, digits(cdr(cs), 0i64))
+    } else {
+        digits(cs, 0i64)
+    }
+}
+
+// An entry from a line's fields; a line that is none is an error that says so.
+pub fn entry_of(fs: Fields) -> Entry {
+    let n = number_of(car(fs));
+    let k = car(cdr(fs));
+    let rest = cdr(cdr(fs));
+    let o = the::<Op>(if string_eq_p(k, str_lit("read-line")) {
+        kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::ReadLine(()))
+    } else if string_eq_p(k, str_lit("write")) {
+        kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::Write(car(rest)))
+    } else if string_eq_p(k, str_lit("clock")) {
+        kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::Clock(()))
+    } else if string_eq_p(k, str_lit("read-file")) {
+        kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::ReadFile(car(rest)))
+    } else if string_eq_p(k, str_lit("write-file")) {
+        kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::WriteFile(Product_4path_4text(car(rest), car(cdr(rest)))))
+    } else {
+        error(string_append(str_lit("a log's line names no operation: "), k));
+        kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::Clock(()))
+    });
+    let after = if (string_eq_p(k, str_lit("read-line")) || string_eq_p(k, str_lit("clock"))) {
+        rest
+    } else {
+        if string_eq_p(k, str_lit("write-file")) {
+            cdr(cdr(rest))
+        } else {
+            cdr(rest)
+        }
+    };
+    let j = car(after);
+    let a = the::<Answer>(if string_eq_p(j, str_lit("line")) {
+        kayak_rt::heap_alloc(Sum_4line_3eof_4done_4time_4text_6failed::<Str, (), (), i64, Str, Str>::Line(car(cdr(after))))
+    } else if string_eq_p(j, str_lit("eof")) {
+        kayak_rt::heap_alloc(Sum_4line_3eof_4done_4time_4text_6failed::<Str, (), (), i64, Str, Str>::Eof(()))
+    } else if string_eq_p(j, str_lit("done")) {
+        kayak_rt::heap_alloc(Sum_4line_3eof_4done_4time_4text_6failed::<Str, (), (), i64, Str, Str>::Done(()))
+    } else if string_eq_p(j, str_lit("time")) {
+        kayak_rt::heap_alloc(Sum_4line_3eof_4done_4time_4text_6failed::<Str, (), (), i64, Str, Str>::Time(number_of(car(cdr(after)))))
+    } else if string_eq_p(j, str_lit("text")) {
+        kayak_rt::heap_alloc(Sum_4line_3eof_4done_4time_4text_6failed::<Str, (), (), i64, Str, Str>::Text(car(cdr(after))))
+    } else if string_eq_p(j, str_lit("failed")) {
+        kayak_rt::heap_alloc(Sum_4line_3eof_4done_4time_4text_6failed::<Str, (), (), i64, Str, Str>::Failed(car(cdr(after))))
+    } else {
+        error(string_append(str_lit("a log's line names no answer: "), j));
+        kayak_rt::heap_alloc(Sum_4line_3eof_4done_4time_4text_6failed::<Str, (), (), i64, Str, Str>::Eof(()))
+    });
+    Product_4step_2op_6answer(n, o, a)
+}
+
+// A log from its text: the entries in order.
+pub fn log_of_text<'w>(s: Str) -> Log<'w> {
+    let go__knot = knot::<&'w dyn Fn(Lines, Log<'w>) -> Log<'w>>();
+    let go = lambda2(move |mut ls: Lines, mut acc: Log<'w>| {
+        loop {
+            if null_p(ls) {
+                return acc;
+            } else {
+                (ls, acc) = (cdr(ls), cons(entry_of(car(ls)), acc));
+                continue;
+            }
+        }
+    });
+    go__knot.set(go);
+    go(fields_of(the::<List<char>>(string_to_list(s)), nil::<char>(), nil::<Str>(), nil::<List<Str>>()), nil::<Product_4step_2op_6answer<i64, &'static Sum_9read_line_5write_5clock_9read_file_10write_file<(), Str, (), Str, Product_4path_4text<Str, Str>>, &'static Sum_4line_3eof_4done_4time_4text_6failed<Str, (), (), i64, Str, Str>>>())
 }
 

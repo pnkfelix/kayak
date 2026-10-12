@@ -958,3 +958,30 @@ directory's files), with FX-26's I/O (C49). `boot/src/main.rs` is now
   stage 0 leaves those lines out. Worth telling the Fixpt team.
 - **The compiler on itself**: 0.61 s, as before the change (0.57 s, a
   little less input).
+
+## C51. Tasks that wait on the world; a live runner; the log as text (2026-10-12)
+
+`lib/world.kfx` joins `lib/tasks.kfx`'s loop and `lib/runner.kfx`'s
+runners: a task performs an operation by filing it with an ivar for its
+answer and waiting on the ivar, so other tasks run meanwhile. When no task
+is ready, the operations filed are answered in the order they were filed,
+each at the next step, by the runner's answerer; when none is filed, the
+clock moves to the first sleeper. `lib/live.kfx`: the answerer that is the
+world, by FX-26's I/O (C49).
+- **Answered when the loop is idle**, not as they arrive: the live
+  answerer blocks (FX-26's I/O does), and no task runs then anyway. A
+  reactor that answers whichever is ready first would make the order of
+  answers an input, which the log already records by step; it waits for
+  I/O that does not block.
+- **A run is a function of its answers**, however its tasks interleave:
+  recorded live, it replays with no I/O. `tests/kfx-io/tasks-world.unit`
+  runs two tasks live, writes the record to a file, reads it back, and
+  replays: Fixpt and Rust alike, in output, status and the file.
+- **The log as text** (`log-text`, `log-of-text`): a line an entry, its
+  fields apart by tabs, escaped. The event stream, written by the program
+  itself through the world; so the log's format is KFX's, not Rust's.
+- **Operations on files** joined the runner's: `read-file` and
+  `write-file`, of text; a failure's answer the system's words. The sim
+  has no files.
+- `run-ready!` and `sleeping?` in `lib/tasks.kfx`, for a loop driven from
+  outside.

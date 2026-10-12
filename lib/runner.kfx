@@ -18,9 +18,11 @@
  Generic in what the program may do besides, `u`; `w` is the runner's
  region, where its tag and its state are."
 
-"An operation, and its answer."
-(define-type op (sumof (read-line unit) (write string) (clock unit)))
-(define-type answer (sumof (line string) (eof unit) (done unit) (time i64)))
+"An operation, and its answer. A failure's answer is the system's words
+ (an `io-error`'s detail, for a live runner)."
+(define-type op (sumof (read-line unit) (write string) (clock unit) (read-file string)
+                       (write-file (productof (path string) (text string)))))
+(define-type answer (sumof (line string) (eof unit) (done unit) (time i64) (text string) (failed string)))
 
 "A program's rest, given the answer, resumable once."
 (define-type (rest (a type) (u effect) (w region))
@@ -98,7 +100,8 @@
                 (lambda ((req (request a u w))) ((proj serve a u w) rt answer steps req)))))))
 
 "The sim: input a script of lines, read in order, then `eof`; writes
- kept at `out`, the latest first; the clock a tick an operation."
+ kept at `out`, the latest first; the clock a tick an operation. It has
+ no files: a read fails, a write is done and kept nowhere."
 (define sim (poly ((u effect) (w region))
               (subr (alloc w) ((ref (listof string w) w) (ref (listof string w) w)) (answerer u w)))
   (plambda ((u effect) (w region))
@@ -111,7 +114,9 @@
                   (sum eof #u)
                   (begin (set input (cdr lines)) (sum line (car lines))))))
           (write s (begin (set out (cons s (get out))) (sum done #u)))
-          (clock x (sum time n)))))))
+          (clock x (sum time n))
+          (read-file p (sum failed "the sim has no files"))
+          (write-file f (sum done #u)))))))
 
 "A runner recorded: `inner`'s answers, each kept at `log` with its step
  and operation, the latest first."
@@ -128,14 +133,20 @@
     (tagcase x
       (read-line u (tagcase y (read-line v #t) (else other #f)))
       (write s (tagcase y (write t (string=? s t)) (else other #f)))
-      (clock u (tagcase y (clock v #t) (else other #f))))))
+      (clock u (tagcase y (clock v #t) (else other #f)))
+      (read-file p (tagcase y (read-file q (string=? p q)) (else other #f)))
+      (write-file f (tagcase y (write-file g (and (string=? (extract f path) (extract g path))
+                                                  (string=? (extract f text) (extract g text))))
+                      (else other #f))))))
 
 (define show-op (subr pure (op) string)
   (lambda (o)
     (tagcase o
       (read-line u "read-line")
       (write s (string-append "write " s))
-      (clock u "clock"))))
+      (clock u "clock")
+      (read-file p (string-append "read-file " p))
+      (write-file f (string-append "write-file " (extract f path))))))
 
 "A record replayed: its answers, in order, each operation checked against
  the one recorded at its step. Parting from the log is an error that says
@@ -155,3 +166,116 @@
                                     (string-append ": the log has " (string-append (show-op (extract e op))
                                       (string-append ", the run " (show-op o)))))))
                            (sum eof #u))))))))))
+
+"A log as text, and back: the event stream, a line an entry, its fields
+ apart by tabs: the step, the operation's kind and its fields, the
+ answer's kind and its fields. In a field, a tab, a newline and a
+ backslash are written escaped, a backslash before `t`, `n`, or itself."
+
+(define-rec
+  (escaped (subr (maxeff (read @globals) spin) ((listof char acyclic)) string)
+    (lambda (cs)
+      (cond ((null? cs) "")
+            ((char=? (car cs) #\tab) (string-append "\\t" (escaped (cdr cs))))
+            ((char=? (car cs) #\newline) (string-append "\\n" (escaped (cdr cs))))
+            ((char=? (car cs) #\\) (string-append "\\\\" (escaped (cdr cs))))
+            (else (string-append (char->string (car cs)) (escaped (cdr cs))))))))
+
+(define field (subr (maxeff (read @globals) spin) (string) string)
+  (lambda (s) (string-append "\t" (escaped (the (listof char acyclic) (string->list s))))))
+
+(define op-text (subr (maxeff (read @globals) spin) (op) string)
+  (lambda (o)
+    (tagcase o
+      (read-line u "read-line")
+      (write s (string-append "write" (field s)))
+      (clock u "clock")
+      (read-file p (string-append "read-file" (field p)))
+      (write-file f (string-append "write-file" (string-append (field (extract f path)) (field (extract f text))))))))
+
+(define answer-text (subr (maxeff (read @globals) spin) (answer) string)
+  (lambda (a)
+    (tagcase a
+      (line s (string-append "line" (field s)))
+      (eof u "eof")
+      (done u "done")
+      (time t (string-append "time" (field (i64->string t))))
+      (text s (string-append "text" (field s)))
+      (failed s (string-append "failed" (field s))))))
+
+"A log, its entries in order, as text."
+(define log-text (poly ((w region)) (subr (maxeff (read @globals) spin (read w)) ((log w)) string))
+  (plambda ((w region))
+    (lambda (es)
+      (if (null? es)
+          ""
+          (let ((e (car es)))
+            (string-append (i64->string (extract e step))
+              (string-append "\t" (string-append (op-text (extract e op))
+                (string-append "\t" (string-append (answer-text (extract e answer))
+                  (string-append "\n" ((proj log-text w) (cdr es)))))))))))))
+
+"Text's fields, a line's at a time: each line a list of its fields,
+ unescaped."
+(define-type fields (listof string acyclic))
+(define-type lines (listof fields acyclic))
+
+(define-rec
+  (fields-of (subr (maxeff (read @globals) spin) ((listof char acyclic) (listof char acyclic) fields lines) lines)
+    (lambda (cs f fs ls)
+      "`f` the field so far, its characters newest first; `fs` the line's
+       fields so far, newest first; `ls` the lines so far, newest first."
+      (cond ((null? cs) (if (and (null? f) (null? fs)) ls (cons (reverse-fields (cons (list->string (reverse-chars f nil)) fs) nil) ls)))
+            ((char=? (car cs) #\newline)
+             (fields-of (cdr cs) nil nil (cons (reverse-fields (cons (list->string (reverse-chars f nil)) fs) nil) ls)))
+            ((char=? (car cs) #\tab) (fields-of (cdr cs) nil (cons (list->string (reverse-chars f nil)) fs) ls))
+            ((and (char=? (car cs) #\\) (not (null? (cdr cs))))
+             (fields-of (cdr (cdr cs))
+                        (cons (let ((c (car (cdr cs)))) (cond ((char=? c #\t) #\tab) ((char=? c #\n) #\newline) (else c))) f)
+                        fs ls))
+            (else (fields-of (cdr cs) (cons (car cs) f) fs ls)))))
+  (reverse-chars (subr (maxeff (read @globals) spin) ((listof char acyclic) (listof char acyclic)) (listof char acyclic))
+    (lambda (xs acc) (if (null? xs) acc (reverse-chars (cdr xs) (cons (car xs) acc)))))
+  (reverse-fields (subr (maxeff (read @globals) spin) (fields fields) fields)
+    (lambda (xs acc) (if (null? xs) acc (reverse-fields (cdr xs) (cons (car xs) acc))))))
+
+(define digits (subr (maxeff (read @globals) spin) ((listof char acyclic) i64) i64)
+  (lambda (cs n)
+    (if (null? cs) n (digits (cdr cs) (i64+ (i64* n 10) (i64- (char->i64 (car cs)) 48))))))
+
+(define number-of (subr (maxeff (read @globals) spin) (string) i64)
+  (lambda (s)
+    (let ((cs (the (listof char acyclic) (string->list s))))
+      (if (and (not (null? cs)) (char=? (car cs) #\-)) (i64- 0 (digits (cdr cs) 0)) (digits cs 0)))))
+
+"An entry from a line's fields; a line that is none is an error that says so."
+(define entry-of (subr (maxeff (read @globals) spin) (fields) entry)
+  (lambda (fs)
+    (let* ((n (number-of (car fs)))
+           (k (car (cdr fs)))
+           (rest (cdr (cdr fs)))
+           (o (the op (cond ((string=? k "read-line") (sum read-line #u))
+                            ((string=? k "write") (sum write (car rest)))
+                            ((string=? k "clock") (sum clock #u))
+                            ((string=? k "read-file") (sum read-file (car rest)))
+                            ((string=? k "write-file") (sum write-file (product (path (car rest)) (text (car (cdr rest))))))
+                            (else (begin (error (string-append "a log's line names no operation: " k)) (sum clock #u))))))
+           (after (if (or (string=? k "read-line") (string=? k "clock")) rest
+                      (if (string=? k "write-file") (cdr (cdr rest)) (cdr rest))))
+           (j (car after))
+           (a (the answer (cond ((string=? j "line") (sum line (car (cdr after))))
+                                ((string=? j "eof") (sum eof #u))
+                                ((string=? j "done") (sum done #u))
+                                ((string=? j "time") (sum time (number-of (car (cdr after)))))
+                                ((string=? j "text") (sum text (car (cdr after))))
+                                ((string=? j "failed") (sum failed (car (cdr after))))
+                                (else (begin (error (string-append "a log's line names no answer: " j)) (sum eof #u)))))))
+      (product (step n) (op o) (answer a)))))
+
+"A log from its text: the entries in order."
+(define log-of-text (poly ((w region)) (subr (maxeff (read @globals) spin (alloc w)) (string) (log w)))
+  (plambda ((w region))
+    (lambda (s)
+      (letrec ((go (subr (maxeff (read @globals) spin (alloc w)) (lines (log w)) (log w))
+                 (lambda (ls acc) (if (null? ls) acc (go (cdr ls) (cons (entry-of (car ls)) acc))))))
+        (go (fields-of (the (listof char acyclic) (string->list s)) nil nil nil) nil)))))

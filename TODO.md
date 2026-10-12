@@ -248,14 +248,12 @@ The next goal. Phase A, in order (`PLAN.md` §6.5):
   measured to matter. A datatype over an effect is refused.
 - **Boxing only what recursion needs**: every suspending call is boxed
   now; a call outside its callee's recursive group need not be.
-- **Record and replay**: done in KFX for simulated runs (C48,
-  `lib/runner.kfx`). Left: operations answered as events at scheduler
-  steps (tasks waiting on the world while others run: the runner and
-  `lib/tasks.kfx` joined); seeded delays and faults in the sim, and the
-  determinism check in `scripts/check.sh`; one event stream; a live
-  runner, now that FX-26 has I/O (C49); the compiler's I/O behind a
-  runner (it is in KFX now, C50, but performed directly), so that a
-  compile can be recorded and replayed.
+- **Record and replay**: done in KFX (C48), live and joined to the loop
+  (C51, `lib/world.kfx`, `lib/live.kfx`), the log as text. Left: seeded
+  delays and faults in the sim, and the determinism check in
+  `scripts/check.sh`; the compiler's I/O behind a runner (it is in KFX
+  now, C50, but performed directly), so that a compile can be recorded
+  and replayed; I/O that does not block, answered as it arrives.
 - ~~**I/O and bytes**~~: done (C49), as Fixpt 17ac0c5 has them. Left: a
   bytevector at a letrena's region; `rmake-bytevector` when Fixpt has it.
 - **Corpus programs**, compared with Fixpt.

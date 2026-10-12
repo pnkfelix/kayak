@@ -5,18 +5,26 @@ pub use runner::*;
 pub mod app;
 pub use app::*;
 #[allow(non_camel_case_types)]
-pub enum Sum_9read_line_5write_5clock<A0, A1, A2> {
+#[derive(Clone, Copy)]
+pub struct Product_4path_4text<A0, A1>(pub A0, pub A1);
+
+#[allow(non_camel_case_types)]
+pub enum Sum_9read_line_5write_5clock_9read_file_10write_file<A0, A1, A2, A3, A4> {
     ReadLine(A0),
     Write(A1),
     Clock(A2),
+    ReadFile(A3),
+    WriteFile(A4),
 }
 
 #[allow(non_camel_case_types)]
-pub enum Sum_4line_3eof_4done_4time<A0, A1, A2, A3> {
+pub enum Sum_4line_3eof_4done_4time_4text_6failed<A0, A1, A2, A3, A4, A5> {
     Line(A0),
     Eof(A1),
     Done(A2),
     Time(A3),
+    Text(A4),
+    Failed(A5),
 }
 
 #[allow(non_camel_case_types)]

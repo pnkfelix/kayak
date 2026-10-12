@@ -1,0 +1,30 @@
+"lib/live.kfx: the live runner (C51): the world's own answers, by FX-26's
+ I/O (C49). Its effect is `world`, the I/O it does; a program run under
+ it, recorded (lib/runner.kfx's `recording`), replays under `replaying`
+ with no I/O at all."
+
+(define-effect world (maxeff (io stdin) (io stdout) (io clock) (io fs-read) (io fs-write)))
+
+(define live (poly ((w region)) (subr pure () (answerer world w)))
+  (plambda ((w region))
+    (lambda ()
+      (lambda ((n i64) (o op))
+        (tagcase o
+          (read-line x
+            (tagcase (read-line)
+              (line s (sum line s))
+              (eof u (sum eof #u))
+              (failed e (sum failed (extract e detail)))))
+          (write s
+            (tagcase (write-out s)
+              (done u (sum done #u))
+              (failed e (sum failed (extract e detail)))))
+          (clock x (sum time (clock)))
+          (read-file p
+            (tagcase (the (sumof (data (bytevectorof w)) (failed io-error)) (read-file p))
+              (data b (tagcase (utf8->string b) (text s (sum text s)) (bad k (sum failed "not UTF-8"))))
+              (failed e (sum failed (extract e detail)))))
+          (write-file f
+            (tagcase (write-file (extract f path) (the (bytevectorof w) (string->utf8 (extract f text))))
+              (done u (sum done #u))
+              (failed e (sum failed (extract e detail))))))))))

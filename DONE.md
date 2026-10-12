@@ -1150,3 +1150,10 @@ primitives, `io-error`. KFX takes them at FX-26's types; kayak-rt's
 C50: `kfx/main.kfx` reads, compiles and writes; `boot/src/main.rs` calls
 it. Stage 0 is `fixpt run` of the same compiler with the same arguments,
 so K1 covers the driver and its I/O.
+
+## Tasks that wait on the world; a live runner (2026-10-12)
+
+C51: `lib/world.kfx` (operations filed by tasks, answered when the loop is
+idle), `lib/live.kfx`, the log as text. `tests/kfx-io/tasks-world.unit`:
+two tasks live, recorded to a file, replayed from it; Fixpt and Rust
+agree.
