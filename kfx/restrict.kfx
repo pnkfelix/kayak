@@ -9,130 +9,135 @@
  checker gives facts about them, is in the program's text: the primitive
  named, the type written, a control primitive given to `proj`."
 
-(define control-primitive? (subr kfx (string) bool)
-  (lambda (n)
-    (string-member? n (list "call-with-composable-continuation" "call-with-current-continuation" "call/cc"
-                            "abort-current-continuation" "make-continuation-prompt-tag"))))
+"KFX's restrictions are a module (C92): its helpers hidden, the pass,
+ `restrict`, what it gives."
+(define restrictions
+  (module
+    (hide
+      (define control-primitive? (subr kfx (string) bool)
+        (lambda (n)
+          (string-member? n (list "call-with-composable-continuation" "call-with-current-continuation" "call/cc"
+                                  "abort-current-continuation" "make-continuation-prompt-tag"))))
 
-(define restriction-refused (subr kfx (string i64 string) void)
-  (lambda (file line message)
-    (error (string-append "kfx: " (string-append file (string-append ":" (string-append (i64->string line)
-             (string-append ": " message))))))))
+      (define restriction-refused (subr kfx (string i64 string) void)
+        (lambda (file line message)
+          (error (string-append "kfx: " (string-append file (string-append ":" (string-append (i64->string line)
+                   (string-append ": " message))))))))
 
-(define-rec
-  (restricted (subr kfx (sexp string i64) unit)
-    (lambda (e file line)
-      "`e`, whose nearest list began at `line` of `file`: refused if it is
-       what KFX does not have, else each of its parts."
-      (tagcase e
-        (sym (n f p)
-          (cond ((or (string=? n "call-with-composable-continuation") (string=? n "call-with-current-continuation") (string=? n "call/cc"))
-                 (restriction-refused file line (string-append n " keeps a continuation FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)")))
-                ((string-member? n (list "make-continuation-mark-key" "with-mark" "first-mark" "current-marks" "marks-of"))
-                 (restriction-refused file line (string-append n ", a continuation mark, which KFX has not yet (C18, C72)")))
-                ((string-member? n (list "no-pair" "eq?" "set-car!" "set-cdr!" "stay-cellular"))
-                 (restriction-refused file line (string-append n ", which KFX has not: it tells apart, or writes through, what a union's value in Rust (C75) would copy")))
-                (else #u)))
-        (lst (xs f l p)
-          (cond ((null? xs) #u)
-                ((sym-is? (car xs) "mark-key")
-                 (restriction-refused f l "a continuation mark's key, which KFX has not yet (C18): a prompt in Rust would save and restore the marks around each poll (C72)"))
-                ((or (sym-is? (car xs) "vsubr") (sym-is? (car xs) "vlambda") (sym-is? (car xs) "apply"))
-                 (restriction-refused f l (string-append (sym-name (car xs)) ", FX-26's variadic procedures, which KFX has not yet: a Rust fn has its arity (C71)")))
-                ((sym-is? (car xs) "composable")
-                 (restriction-refused f l "a composable continuation, which FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)"))
-                ((and (sym-is? (car xs) "poly") (i64= (size xs) 3) (head-is? (third xs) "poly"))
-                 (restriction-refused f l "a poly in a poly, which KFX's Rust writes as one: write it so (C70)"))
-                ((and (sym-is? (car xs) "proj") (not (null? (cdr xs)))
-                      (tagcase (second xs) (sym (n f2 p2) (control-primitive? n)) (else other #f)))
-                 (restriction-refused f l (string-append "a proj of " (string-append (sym-name (second xs)) ", a control primitive KFX types by its own rule"))))
-                (else (restricted-all xs f l))))
-        (else other #u))))
-  (restricted-all (subr kfx (sexps string i64) unit)
-    (lambda (es file line) (if (null? es) #u (begin (restricted (car es) file line) (restricted-all (cdr es) file line))))))
+      (define-rec
+        (restricted (subr kfx (sexp string i64) unit)
+          (lambda (e file line)
+            "`e`, whose nearest list began at `line` of `file`: refused if it is
+             what KFX does not have, else each of its parts."
+            (tagcase e
+              (sym (n f p)
+                (cond ((or (string=? n "call-with-composable-continuation") (string=? n "call-with-current-continuation") (string=? n "call/cc"))
+                       (restriction-refused file line (string-append n " keeps a continuation FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)")))
+                      ((string-member? n (list "make-continuation-mark-key" "with-mark" "first-mark" "current-marks" "marks-of"))
+                       (restriction-refused file line (string-append n ", a continuation mark, which KFX has not yet (C18, C72)")))
+                      ((string-member? n (list "no-pair" "eq?" "set-car!" "set-cdr!" "stay-cellular"))
+                       (restriction-refused file line (string-append n ", which KFX has not: it tells apart, or writes through, what a union's value in Rust (C75) would copy")))
+                      (else #u)))
+              (lst (xs f l p)
+                (cond ((null? xs) #u)
+                      ((sym-is? (car xs) "mark-key")
+                       (restriction-refused f l "a continuation mark's key, which KFX has not yet (C18): a prompt in Rust would save and restore the marks around each poll (C72)"))
+                      ((or (sym-is? (car xs) "vsubr") (sym-is? (car xs) "vlambda") (sym-is? (car xs) "apply"))
+                       (restriction-refused f l (string-append (sym-name (car xs)) ", FX-26's variadic procedures, which KFX has not yet: a Rust fn has its arity (C71)")))
+                      ((sym-is? (car xs) "composable")
+                       (restriction-refused f l "a composable continuation, which FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)"))
+                      ((and (sym-is? (car xs) "poly") (i64= (size xs) 3) (head-is? (third xs) "poly"))
+                       (restriction-refused f l "a poly in a poly, which KFX's Rust writes as one: write it so (C70)"))
+                      ((and (sym-is? (car xs) "proj") (not (null? (cdr xs)))
+                            (tagcase (second xs) (sym (n f2 p2) (control-primitive? n)) (else other #f)))
+                       (restriction-refused f l (string-append "a proj of " (string-append (sym-name (second xs)) ", a control primitive KFX types by its own rule"))))
+                      (else (restricted-all xs f l))))
+              (else other #u))))
+        (restricted-all (subr kfx (sexps string i64) unit)
+          (lambda (es file line) (if (null? es) #u (begin (restricted (car es) file line) (restricted-all (cdr es) file line))))))
 
-"Names (C61): KFX defines each name once, none a primitive's or
- kayak-rt's, since the generated modules each import every other's names
- and kayak-rt's; and its types' and modules' names are Rust's too, none
- Rust's or kayak-rt's own, each a KFX name (C27), none two alike
- camel-cased. FX-26 has neither rule."
+      ;; Names (C61): KFX defines each name once, none a primitive's or
+      ;; kayak-rt's, since the generated modules each import every other's names
+      ;; and kayak-rt's; and its types' and modules' names are Rust's too, none
+      ;; Rust's or kayak-rt's own, each a KFX name (C27), none two alike
+      ;; camel-cased. FX-26 has neither rule.
 
-(define primitive-names (subr kfx () strings)
-  (lambda ()
-    (map (lambda ((p sexp)) (sym-name (car (items p))))
-         (onto (read-all (string-chars primitives) "" 1) (read-all (string-chars prelude) "" 1)))))
+      (define primitive-names (subr kfx () strings)
+        (lambda ()
+          (map (lambda ((p sexp)) (sym-name (car (items p))))
+               (onto (read-all (string-chars primitives) "" 1) (read-all (string-chars prelude) "" 1)))))
 
-(define-rec
-  (defined-names (subr kfx (sexps) (listof sexp acyclic))
-    (lambda (forms)
-      "Each definition among `forms`, as the list that says where it is: a
-       `define`, or a `define-rec`'s item; a module's items' are its own
-       scope's."
-      (if (null? forms)
-          nil
-          (let ((f (car forms)))
-            (onto (cond ((or (head-is? f "define") (head-is? f "define*"))
-                         (tagcase (second (items f)) (sym (n fl p) (the sexps (list f))) (else other nil)))
-                        ((head-is? f "define-rec") (cdr (items f)))
-                        (else nil))
-                  (defined-names (cdr forms))))))))
+      (define-rec
+        (defined-names (subr kfx (sexps) (listof sexp acyclic))
+          (lambda (forms)
+            "Each definition among `forms`, as the list that says where it is: a
+             `define`, or a `define-rec`'s item; a module's items' are its own
+             scope's."
+            (if (null? forms)
+                nil
+                (let ((f (car forms)))
+                  (onto (cond ((or (head-is? f "define") (head-is? f "define*"))
+                               (tagcase (second (items f)) (sym (n fl p) (the sexps (list f))) (else other nil)))
+                              ((head-is? f "define-rec") (cdr (items f)))
+                              (else nil))
+                        (defined-names (cdr forms))))))))
 
-(define line-of (subr kfx (sexp) i64)
-  (lambda (e) (tagcase e (lst (xs f l p) l) (else other 0))))
+      (define line-of (subr kfx (sexp) i64)
+        (lambda (e) (tagcase e (lst (xs f l p) l) (else other 0))))
 
-(define-rec
-  (names-once (subr kfx (sexps strings strings) unit)
-    (lambda (names seen prims)
-      (if (null? names)
-          #u
-          (let* ((d (car names))
-                 (n (if (or (head-is? d "define") (head-is? d "define*")) (sym-name (second (items d))) (sym-name (car (items d)))))
-                 (here d))
-            (cond ((string-member? n prims)
-                   (restriction-refused (datum-file here) (line-of here) (string-append n " is a primitive, which KFX does not define again")))
-                  ((string-member? n seen)
-                   (restriction-refused (datum-file here) (line-of here) (string-append n " is defined already: KFX defines each name once")))
-                  ((runtime-name? n)
-                   (restriction-refused (datum-file here) (line-of here) (string-append "kayak-rt has a " (string-append n " of its own"))))
-                  (else (names-once (cdr names) (cons n seen) prims))))))))
+      (define-rec
+        (names-once (subr kfx (sexps strings strings) unit)
+          (lambda (names seen prims)
+            (if (null? names)
+                #u
+                (let* ((d (car names))
+                       (n (if (or (head-is? d "define") (head-is? d "define*")) (sym-name (second (items d))) (sym-name (car (items d)))))
+                       (here d))
+                  (cond ((string-member? n prims)
+                         (restriction-refused (datum-file here) (line-of here) (string-append n " is a primitive, which KFX does not define again")))
+                        ((string-member? n seen)
+                         (restriction-refused (datum-file here) (line-of here) (string-append n " is defined already: KFX defines each name once")))
+                        ((runtime-name? n)
+                         (restriction-refused (datum-file here) (line-of here) (string-append "kayak-rt has a " (string-append n " of its own"))))
+                        (else (names-once (cdr names) (cons n seen) prims))))))))
 
-(define module-own-items (subr kfx (sexp) sexps)
-  (lambda (f) (concat (map (lambda ((g sexp)) (if (head-is? g "hide") (cdr (items g)) (the sexps (list g)))) (module-written f)))))
+      (define module-own-items (subr kfx (sexp) sexps)
+        (lambda (f) (concat (map (lambda ((g sexp)) (if (head-is? g "hide") (cdr (items g)) (the sexps (list g)))) (module-written f)))))
 
-(define type-refused (subr kfx (sexps string string) void)
-  (lambda (forms n message)
-    (let ((fs (type-namer forms n)))
-      (if (null? fs)
-          (restriction-refused "the program" 0 message)
-          (tagcase (car fs) (lst (xs file line pos) (restriction-refused file line message)) (else other (restriction-refused "the program" 0 message)))))))
+      (define type-refused (subr kfx (sexps string string) void)
+        (lambda (forms n message)
+          (let ((fs (type-namer forms n)))
+            (if (null? fs)
+                (restriction-refused "the program" 0 message)
+                (tagcase (car fs) (lst (xs file line pos) (restriction-refused file line message)) (else other (restriction-refused "the program" 0 message)))))))
 
-(define types-named (subr kfx (sexps) unit)
-  (lambda (forms)
-    (begin
-      (map (lambda ((names strings))
-             (begin
-               (map (lambda ((n string))
-                      (cond ((string-member? (camel n) (rust-type-names))
-                             (type-refused forms n (string-append "Rust or kayak-rt has a type " (string-append (camel n) " of its own"))))
-                            ((and (not (kfx-name? n)) (not (has-prefix? n "made--")))
-                             (type-refused forms n (string-append "a type's or module's name KFX's names are not (C27): " n)))
-                            (else #u)))
-                    names)
-               (if (repeated? (map camel names))
-                   (restriction-refused "the program" 0 "two types or modules named alike in Rust (camel-cased, as `point` and `point-`)")
-                   #u)))
-           (type-scopes forms))
-      #u)))
+      (define types-named (subr kfx (sexps) unit)
+        (lambda (forms)
+          (begin
+            (map (lambda ((names strings))
+                   (begin
+                     (map (lambda ((n string))
+                            (cond ((string-member? (camel n) (rust-type-names))
+                                   (type-refused forms n (string-append "Rust or kayak-rt has a type " (string-append (camel n) " of its own"))))
+                                  ((and (not (kfx-name? n)) (not (has-prefix? n "made--")))
+                                   (type-refused forms n (string-append "a type's or module's name KFX's names are not (C27): " n)))
+                                  (else #u)))
+                          names)
+                     (if (repeated? (map camel names))
+                         (restriction-refused "the program" 0 "two types or modules named alike in Rust (camel-cased, as `point` and `point-`)")
+                         #u)))
+                 (type-scopes forms))
+            #u)))
 
-(define names-restricted (subr kfx (sexps) unit)
-  (lambda (forms)
-    (let ((prims (primitive-names)))
-      (begin
-        (names-once (defined-names forms) nil prims)
-        (map (lambda ((f sexp)) (if (module-def? f) (names-once (defined-names (module-own-items f)) nil nil) #u)) forms)
-        (types-named forms)))))
+      (define names-restricted (subr kfx (sexps) unit)
+        (lambda (forms)
+          (let ((prims (primitive-names)))
+            (begin
+              (names-once (defined-names forms) nil prims)
+              (map (lambda ((f sexp)) (if (module-def? f) (names-once (defined-names (module-own-items f)) nil nil) #u)) forms)
+              (types-named forms))))))
 
-(define restrict (subr kfx (sexps) unit)
-  (lambda (forms)
-    "Each form, refused if it is not KFX: names, then what each uses."
-    (begin (names-restricted forms) (restricted-all forms "the program" 0))))
+    (define restrict (subr kfx (sexps) unit)
+      (lambda (forms)
+        "Each form, refused if it is not KFX: names, then what each uses."
+        (begin (names-restricted forms) (restricted-all forms "the program" 0))))))
