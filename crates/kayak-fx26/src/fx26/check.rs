@@ -894,11 +894,12 @@ pub fn dt_named_p(name: Str, ds: Dts) -> bool {
     }), ds)
 }
 
-/// A datatype, its parameters and variants, as a list of one, or none.
-pub fn find_family(mut name: Str, mut ds: Dts) -> List<&'static Dt> {
+/// A datatype, its parameters and variants, or `nil` (C84: a union, where
+/// it had been a list of one or none).
+pub fn find_family(mut name: Str, mut ds: Dts) -> kayak_rt::value::Value {
     loop {
         if null_p(ds) {
-            return nil::<&'static Dt>();
+            return kayak_rt::value::Value::Nil;
         } else if {
             let tagcase_ = car(ds);
             match *tagcase_ {
@@ -907,7 +908,7 @@ pub fn find_family(mut name: Str, mut ds: Dts) -> List<&'static Dt> {
                 }
             }
         } {
-            return kayak_rt::heap_cons(car(ds), kayak_rt::nil());
+            return kayak_rt::value::other(car(ds), kayak_rt::value::Shape::Sum);
         } else {
             ds = cdr(ds);
             continue;
@@ -1113,10 +1114,10 @@ pub fn knot_in(mut v: &'static Cv, mut res: &'static dyn Fn(Str) -> Str, mut t: 
                     return nil::<Str>();
                 } else {
                     let found = find_family(d, cv_dts(v));
-                    if null_p(found) {
+                    if kayak_rt::value::null_p(found) {
                         return nil::<Str>();
                     } else {
-                        let tagcase_ = car(found);
+                        let tagcase_ = kayak_rt::value::unbox_other::<&'static Dt>(found);
                         match *tagcase_ {
                             Dt::Dt(n, ps, vs) => {
                                 if null_p(vs) {
@@ -1612,8 +1613,12 @@ pub fn shape_of(t: &'static Ty) -> Str {
                 str_lit("union")
             } else if string_eq_p(d, str_lit("vector")) {
                 str_lit("vector")
-            } else {
+            } else if (has_prefix_p(d, str_lit("%")) || has_char_in_p(d, '.') || has_char_in_p(d, ' ')) {
                 str_lit("")
+            } else {
+                // A datatype's value (C84): FX-26's shape `sum`. A generative
+                // type is named so too, which a union's parse refuses.
+                str_lit("sum")
             }
         }
         _ => {
@@ -1673,6 +1678,31 @@ pub fn members_of(t: &'static Ty) -> Tys {
     }
 }
 
+/// A generative type: among the datatypes, with no variants; its shape
+/// is its representation's, which FX-26 keeps unknown (C84).
+pub fn generative_p(v: &'static Cv, t: &'static Ty) -> bool {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            let found = find_family(d, cv_dts(v));
+            if kayak_rt::value::null_p(found) {
+                false
+            } else {
+                let tagcase_ = kayak_rt::value::unbox_other::<&'static Dt>(found);
+                match *tagcase_ {
+                    Dt::Dt(n, ps, vs) => {
+                        null_p(vs)
+                    }
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
 pub fn member_of_shape(mut ts: Tys, mut shape: Str) -> Tys {
     loop {
         if null_p(ts) {
@@ -1728,16 +1758,22 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     t = car(read_all(string_chars(io_error_text()), str_lit(""), 1i64));
                     continue;
                 } else if dt_named_p(s, cv_dts(v)) {
-                    let tagcase_ = car(find_family(s, cv_dts(v)));
-                    match *tagcase_ {
-                        Dt::Dt(n, ps, vs) => {
-                            if null_p(ps) {
-                                return ty_data(s, nil::<&'static Ty>());
-                            } else {
-                                return match refuse(v, string_append(str_lit("a type with parameters, given none: "), s)) {};
+                    let found = find_family(s, cv_dts(v));
+                    return if sum_p(found) {
+                        let d = kayak_rt::value::unbox_other::<&'static Dt>(found);
+                        let tagcase_ = d;
+                        match *tagcase_ {
+                            Dt::Dt(n, ps, vs) => {
+                                if null_p(ps) {
+                                    ty_data(s, nil::<&'static Ty>())
+                                } else {
+                                    match refuse(v, string_append(str_lit("a type with parameters, given none: "), s)) {}
+                                }
                             }
                         }
-                    }
+                    } else {
+                        match refuse(v, string_append(str_lit("no type is named "), s)) {}
+                    };
                 } else {
                     let found = find_alias(s, cv_aliases(v));
                     if null_p(found) {
@@ -1895,7 +1931,9 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     let shapes = map(&shape_of, members);
                     if i64_lt(size(members), 2i64) {
                         return match refuse(v, string_append(str_lit("a union of fewer than two members: "), show_sexp(t))) {};
-                    } else if string_member_p(str_lit(""), shapes) {
+                    } else if (string_member_p(str_lit(""), shapes) || any_p(lambda1(move |m: &'static Ty| {
+                        generative_p(v, m)
+                    }), members)) {
                         return match refuse(v, string_append(str_lit("a union's member with no shape known (a type variable, an abstract or generative type, a tag): "), show_sexp(t))) {};
                     } else if repeated_p(shapes) {
                         return match refuse(v, string_append(str_lit("a union of two members of one shape, which no test tells apart: "), show_sexp(t))) {};
@@ -2102,8 +2140,8 @@ pub fn parse_arguments(v: &'static Cv, tvars: Strings, params: Strings, args: Se
 /// abbreviation with them, what it stands for with its arguments.
 pub fn parse_application(v: &'static Cv, tvars: Strings, name: Str, args: Sexps) -> &'static Ty {
     let found = find_family(name, cv_dts(v));
-    if not(null_p(found)) {
-        let tagcase_ = car(found);
+    if not(kayak_rt::value::null_p(found)) {
+        let tagcase_ = kayak_rt::value::unbox_other::<&'static Dt>(found);
         match *tagcase_ {
             Dt::Dt(n, ps, vs) => {
                 ty_data(name, parse_arguments(v, tvars, ps, args))
@@ -3972,10 +4010,10 @@ pub fn holds_procedure_p(mut v: &'static Cv, mut s: &'static St, mut t: &'static
                     holds_procedure_p(v, s, x, seen)
                 }), args) || (not(string_member_p(d, seen)) && {
                     let found = find_family(d, cv_dts(v));
-                    if null_p(found) {
+                    if kayak_rt::value::null_p(found) {
                         false
                     } else {
-                        let tagcase_ = car(found);
+                        let tagcase_ = kayak_rt::value::unbox_other::<&'static Dt>(found);
                         match *tagcase_ {
                             Dt::Dt(n, ps, vs) => {
                                 if null_p(vs) {
@@ -4120,7 +4158,7 @@ pub fn cyclic_walk(mut v: &'static Cv, mut s: &'static St, mut t: &'static Ty, m
                     return (cyclic_walk(v, s, a, crossed, ts) || cyclic_walk(v, s, h, crossed, ts));
                 }
                 Ty::TyData(d, args) => {
-                    let named = (string_eq_p(d, str_lit("datum")) || not(null_p(find_family(d, cv_dts(v)))));
+                    let named = (string_eq_p(d, str_lit("datum")) || dt_named_p(d, cv_dts(v)));
                     if (named && on_trail_p(d, ts)) {
                         return (crossed || crossed_since_p(d, ts));
                     } else if named {
@@ -4129,17 +4167,22 @@ pub fn cyclic_walk(mut v: &'static Cv, mut s: &'static St, mut t: &'static Ty, m
                         let (ts2, kids) = (the::<Trails>(kayak_rt::heap_cons(trail(d, crossed), ts)), if string_eq_p(d, str_lit("datum")) {
                             datum_members()
                         } else {
-                            let tagcase_ = car(find_family(d, cv_dts(v)));
-                            match *tagcase_ {
-                                Dt::Dt(n, ps, vs) => {
-                                    concat(map(lambda1(move |x: &'static Variant| {
-                                        let tagcase_ = x;
-                                        match *tagcase_ {
-                                            Variant::Variant(tag, fs) => {
-                                                fs
+                            let found = find_family(d, cv_dts(v));
+                            if kayak_rt::value::null_p(found) {
+                                nil::<&'static Ty>()
+                            } else {
+                                let tagcase_ = kayak_rt::value::unbox_other::<&'static Dt>(found);
+                                match *tagcase_ {
+                                    Dt::Dt(n, ps, vs) => {
+                                        concat(map(lambda1(move |x: &'static Variant| {
+                                            let tagcase_ = x;
+                                            match *tagcase_ {
+                                                Variant::Variant(tag, fs) => {
+                                                    fs
+                                                }
                                             }
-                                        }
-                                    }), vs))
+                                        }), vs))
+                                    }
                                 }
                             }
                         });

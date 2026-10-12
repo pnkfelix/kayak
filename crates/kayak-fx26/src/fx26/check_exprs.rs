@@ -1365,10 +1365,10 @@ pub fn find_dt(mut d: Str, mut ds: Dts) -> List<Variants> {
 /// A datatype's parameters.
 pub fn family_of(v: &'static Cv, d: Str) -> Strings {
     let found = find_family(d, cv_dts(v));
-    if null_p(found) {
+    if kayak_rt::value::null_p(found) {
         nil::<Str>()
     } else {
-        let tagcase_ = car(found);
+        let tagcase_ = kayak_rt::value::unbox_other::<&'static Dt>(found);
         match *tagcase_ {
             Dt::Dt(n, ps, vs) => {
                 ps
@@ -1517,6 +1517,8 @@ pub fn tested_shape(p: Str) -> Str {
         str_lit("bytevector")
     } else if string_eq_p(p, str_lit("vector?")) {
         str_lit("vector")
+    } else if string_eq_p(p, str_lit("f32?")) {
+        str_lit("f32")
     } else {
         str_lit("")
     }
@@ -2080,7 +2082,9 @@ pub fn coerced(v: &'static Cv, s: &'static St, file: Str, pos: i64, t: &'static 
         let m = as_member(s, t);
         if scalar_member_p(s, m) {
             note_fact(s, file, pos, str_lit("box scalar"))
-        } else if (string_eq_p(shape_of(m), str_lit("list")) || string_eq_p(shape_of(m), str_lit("nil"))) {
+        } else if string_eq_p(shape_of(m), str_lit("nil")) {
+            note_fact(s, file, pos, str_lit("box nil"))
+        } else if string_eq_p(shape_of(m), str_lit("list")) {
             note_fact(s, file, pos, str_lit("box list"))
         } else if string_eq_p(rust_shape(shape_of(m)), str_lit("")) {
             note_types(s, file, pos, str_lit("box none"), kayak_rt::heap_cons(m, kayak_rt::nil()))
@@ -2682,7 +2686,11 @@ pub fn check_plain(v: &'static Cv, s: &'static St, e: &'static Sexp, expected: &
                     }
                 }
                 Sexp::Sym(name, at_file, at_pos) => {
-                    if string_eq_p(name, str_lit("nil")) {
+                    if (string_eq_p(name, str_lit("nil")) && string_eq_p(shape_of(x), str_lit("union")) && not(null_p(member_of_shape(members_of(x), str_lit("nil")))) && null_p(member_of_shape(members_of(x), str_lit("list")))) {
+                        // `nil` where a union with a `nil` member is wanted (C84): that
+                        // member, as FX-26 has it.
+                        res(ty_data(str_lit("nil"), nil::<&'static Ty>()), nil::<Str>(), s)
+                    } else if string_eq_p(name, str_lit("nil")) {
                         let tagcase_ = x;
                         match *tagcase_ {
                             Ty::TyList(el, r) => {
@@ -3019,9 +3027,9 @@ pub fn synth_form(mut v: &'static Cv, mut s: &'static St, mut e: &'static Sexp, 
         } else if (blob_form_p(h) && null_p(find_bind(h, cv_binds(v)))) {
             return blob_form(v, s, h, xs, nil::<&'static Ty>());
         } else if string_eq_p(h, str_lit("and")) {
-            return bools(v, s, xs);
+            return bools(v, s, xs, true);
         } else if string_eq_p(h, str_lit("or")) {
-            return bools(v, s, xs);
+            return bools(v, s, xs, false);
         } else {
             return synth_call(v, s, h, xs, nil::<&'static Ty>());
         }
@@ -3176,14 +3184,31 @@ pub fn elements(v: &'static Cv, s: &'static St, xs: Sexps, el: &'static Ty) -> &
     }
 }
 
-pub fn bools(v: &'static Cv, s: &'static St, xs: Sexps) -> &'static Res {
+/// An `and`'s operands, each checked where those before it hold, so
+/// narrowed by them; an `or`'s, where those before it fail (C84), as
+/// FX-26's `(if a b #f)` and `(if a #t b)` are.
+pub fn bools(v: &'static Cv, s: &'static St, xs: Sexps, holding: bool) -> &'static Res {
     if null_p(xs) {
         res(ty_bool(), nil::<Str>(), s)
     } else {
         let tagcase_ = check(v, s, car(xs), ty_bool());
         match *tagcase_ {
             Res::Res(t, es, s) => {
-                with_effs(bools(v, s, cdr(xs)), es)
+                let ns = narrowings(v, s, car(xs));
+                with_effs(bools(if null_p(ns) {
+                    v
+                } else {
+                    let tagcase_ = car(ns);
+                    match *tagcase_ {
+                        Narrowing::Narrowing(yes, no) => {
+                            if holding {
+                                yes
+                            } else {
+                                no
+                            }
+                        }
+                    }
+                }, s, cdr(xs), holding), es)
             }
         }
     }

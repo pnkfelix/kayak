@@ -613,7 +613,7 @@
   (lambda (v d)
     "A datatype's parameters."
     (let ((found (find-family d (cv-dts v))))
-      (if (null? found) nil (tagcase (car found) (dt (n ps vs) ps))))))
+      (if (null? found) nil (tagcase found (dt (n ps vs) ps))))))
 
 (define instantiate-variants (subr kfx (strings tys variants) variants)
   (lambda (params args vs)
@@ -671,7 +671,7 @@
           ((string=? p "char?") "char") ((string=? p "symbol?") "symbol") ((string=? p "array?") "bloblet")
           ((string=? p "procedure?") "procedure") ((string=? p "null?") "nil") ((string=? p "pair?") "pair")
           ((string=? p "f64?") "f64") ((string=? p "ref?") "box") ((string=? p "sum?") "sum")
-          ((string=? p "product?") "product") ((string=? p "bytevector?") "bytevector") ((string=? p "vector?") "vector")
+          ((string=? p "product?") "product") ((string=? p "bytevector?") "bytevector") ((string=? p "vector?") "vector") ((string=? p "f32?") "f32")
           (else ""))))
 
 (define-rec
@@ -910,7 +910,8 @@
             (to
              (let ((m (as-member s t)))
                (cond ((scalar-member? s m) (note-fact s file pos "box scalar"))
-                     ((or (string=? (shape-of m) "list") (string=? (shape-of m) "nil")) (note-fact s file pos "box list"))
+                     ((string=? (shape-of m) "nil") (note-fact s file pos "box nil"))
+                     ((string=? (shape-of m) "list") (note-fact s file pos "box list"))
                      ((string=? (rust-shape (shape-of m)) "") (note-types s file pos "box none" (list m)))
                      (else (note-fact s file pos (string-append "box other " (rust-shape (shape-of m))))))))
             (else
@@ -1178,11 +1179,17 @@
                 (sym (h at-file at-pos) (check-form v s e h (cdr xs) x))
                 (else other (check-by-synth v s e x)))))
           (sym (name at-file at-pos)
-            (if (string=? name "nil")
-                (tagcase x
-                  (ty-list (el r) (res x nil (note-turbofish s at-file at-pos (list el))))
-                  (else other (check-by-synth v s e x)))
-                (check-by-synth v s e x)))
+            (cond ((and (string=? name "nil") (string=? (shape-of x) "union")
+                        (not (null? (member-of-shape (members-of x) "nil")))
+                        (null? (member-of-shape (members-of x) "list")))
+                   "`nil` where a union with a `nil` member is wanted (C84): that
+                    member, as FX-26 has it."
+                   (res (ty-data "nil" nil) nil s))
+                  ((string=? name "nil")
+                   (tagcase x
+                     (ty-list (el r) (res x nil (note-turbofish s at-file at-pos (list el))))
+                     (else other (check-by-synth v s e x))))
+                  (else (check-by-synth v s e x))))
           (else other (check-by-synth v s e x))))))))
 
   (check-by-synth (subr kfx (cv st sexp ty) res)
@@ -1319,8 +1326,8 @@
             ((control-form? h) (body-form v s h xs nil))
             ((or (string=? h "letrena") (string=? h "letreap")) (letrena-form v s xs nil))
             ((and (blob-form? h) (null? (find-bind h (cv-binds v)))) (blob-form v s h xs nil))
-            ((string=? h "and") (bools v s xs))
-            ((string=? h "or") (bools v s xs))
+            ((string=? h "and") (bools v s xs #t))
+            ((string=? h "or") (bools v s xs #f))
             (else (synth-call v s h xs nil)))))
 
   (check-form (subr kfx (cv st sexp string sexps ty) res)
@@ -1383,12 +1390,18 @@
           (tagcase (check v s (car xs) el)
             (res (t es s) (with-effs (elements v s (cdr xs) el) es))))))
 
-  (bools (subr kfx (cv st sexps) res)
-    (lambda (v s xs)
+  (bools (subr kfx (cv st sexps bool) res)
+    (lambda (v s xs holding)
+      "An `and`'s operands, each checked where those before it hold, so
+       narrowed by them; an `or`'s, where those before it fail (C84), as
+       FX-26's `(if a b #f)` and `(if a #t b)` are."
       (if (null? xs)
           (res (ty-bool) nil s)
           (tagcase (check v s (car xs) (ty-bool))
-            (res (t es s) (with-effs (bools v s (cdr xs)) es))))))
+            (res (t es s)
+              (let ((ns (narrowings v s (car xs))))
+                (with-effs (bools (if (null? ns) v (tagcase (car ns) (narrowing (yes no) (if holding yes no)))) s (cdr xs) holding)
+                           es)))))))
 
   (body-form (subr kfx (cv st string sexps tys) res)
     (lambda (v s h xs expected)

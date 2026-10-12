@@ -10,9 +10,13 @@ trap 'rm -rf "$tmp"' EXIT
 
 cargo build --release --quiet -p kfx
 mkdir "$tmp/stage1" # kfx makes no directories (C50)
+start=$(python3 -c 'import time; print(time.time())')
 ./target/release/kfx --record "$tmp/log" kfx/kfx.unit "$tmp/stage1"
+took=$(python3 -c "import time; print('%.2f' % (time.time() - $start))")
 diff -r "$tmp/stage1" boot/src/kfx
-echo "fixpoint: boot/'s kfx makes boot/src/kfx/ again"
+# The time is said so that a slower compiler shows (C84: one was 3x slower
+# for several commits, unnoticed); 0.8 s, recording, on the machine of 2026-10-12.
+echo "fixpoint: boot/'s kfx makes boot/src/kfx/ again, in $took s"
 ./target/release/kfx --replay "$tmp/log" kfx/kfx.unit "$tmp/stage1"
 
 # Stage 0 runs the Fixpt of FIXPT_REV (scripts/fixpt.sh), and is skipped,

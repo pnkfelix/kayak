@@ -406,8 +406,9 @@ C57 when done.
   `bytevector` in `datum`; a local named `nil`, which FX-26 allows and the
   checker's naming rule refuses (`datum/quote-shadowed.fx`); `no-pair`.
 - **Step 3**: first-class `poly`, a generic instantiated at `Value`.
-- Datatypes as union members (`unions/more-shapes.fx`): the checker knows
-  no shape for them yet.
+- **Done (C84)**: datatypes as union members; the first union in the
+  compiler's own code (`find-family`). More lookups as unions, one at a
+  time (C83, C84).
 
 ## 25. FX-26 beyond KFX: what is left, by subsystem (2026-10-12, after C68–C74)
 

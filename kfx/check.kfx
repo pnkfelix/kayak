@@ -423,12 +423,14 @@
   (lambda (name ds)
     (any? (lambda ((d dt)) (tagcase d (dt (n ps vs) (string=? n name)))) ds)))
 
-(define find-family (subr kfx (string dts) (listof dt acyclic))
-  (lambda (name ds)
-    "A datatype, its parameters and variants, as a list of one, or none."
-    (cond ((null? ds) nil)
-          ((tagcase (car ds) (dt (n ps vs) (string=? n name))) (list (car ds)))
-          (else (find-family name (cdr ds))))))
+(define-rec
+  (find-family (subr kfx (string dts) (union nil dt))
+    (lambda (name ds)
+      "A datatype, its parameters and variants, or `nil` (C84: a union, where
+       it had been a list of one or none)."
+      (cond ((null? ds) nil)
+            ((tagcase (car ds) (dt (n ps vs) (string=? n name))) (car ds))
+            (else (find-family name (cdr ds)))))))
 
 (define find-alias (subr kfx (string aliases) (listof alias acyclic))
   (lambda (name als)
@@ -560,7 +562,7 @@
               (let ((found (find-family d (cv-dts v))))
                 (if (null? found)
                     nil
-                    (tagcase (car found)
+                    (tagcase found
                       (dt (n ps vs)
                         (if (null? vs)
                             (let ((down (conversion-bind (string-append "down-" d) (cv-binds v))))
@@ -761,7 +763,11 @@
               ((string=? d "%union") "union")
               ((string=? d "datum") "union")
               ((string=? d "vector") "vector")
-              (else "")))
+              ((or (has-prefix? d "%") (has-char-in? d #\.) (has-char-in? d #\space)) "")
+              (else
+               "A datatype's value (C84): FX-26's shape `sum`. A generative
+                type is named so too, which a union's parse refuses."
+               "sum")))
       (else other ""))))
 
 (define-rec
@@ -790,6 +796,16 @@
     (tagcase t
       (ty-data (d args) (cond ((string=? d "%union") args) ((string=? d "datum") (datum-members)) (else nil)))
       (else other nil))))
+
+(define generative? (subr kfx (cv ty) bool)
+  (lambda (v t)
+    "A generative type: among the datatypes, with no variants; its shape
+     is its representation's, which FX-26 keeps unknown (C84)."
+    (tagcase t
+      (ty-data (d args)
+        (let ((found (find-family d (cv-dts v))))
+          (if (null? found) #f (tagcase found (dt (n ps vs) (null? vs))))))
+      (else other #f))))
 
 (define-rec
   (member-of-shape (subr kfx (tys string) tys)
@@ -823,11 +839,14 @@
                 ((and (string=? s "io-error") (not (dt-named? s (cv-dts v))) (null? (find-alias s (cv-aliases v))))
                  (parse-type v tvars (car (read-all (string-chars io-error-text) "" 1))))
                 ((dt-named? s (cv-dts v))
-                 (tagcase (car (find-family s (cv-dts v)))
-                   (dt (n ps vs)
-                     (if (null? ps)
-                         (ty-data s nil)
-                         (refuse v (string-append "a type with parameters, given none: " s))))))
+                 (let ((found (find-family s (cv-dts v))))
+                   (typecase found
+                     (sum d (tagcase d
+                              (dt (n ps vs)
+                                (if (null? ps)
+                                    (ty-data s nil)
+                                    (refuse v (string-append "a type with parameters, given none: " s))))))
+                     (else (refuse v (string-append "no type is named " s))))))
                 (else
                  (let ((found (find-alias s (cv-aliases v))))
                    (if (null? found)
@@ -910,7 +929,7 @@
                  (let* ((members (union-members (parse-types v tvars (cdr xs))))
                         (shapes (map shape-of members)))
                    (cond ((i64< (size members) 2) (refuse v (string-append "a union of fewer than two members: " (show-sexp t))))
-                         ((string-member? "" shapes)
+                         ((or (string-member? "" shapes) (any? (lambda ((m ty)) (generative? v m)) members))
                           (refuse v (string-append "a union's member with no shape known (a type variable, an abstract or generative type, a tag): " (show-sexp t))))
                          ((repeated? shapes) (refuse v (string-append "a union of two members of one shape, which no test tells apart: " (show-sexp t))))
                          (else (ty-data "%union" members)))))
@@ -999,7 +1018,7 @@
        abbreviation with them, what it stands for with its arguments."
       (let ((found (find-family name (cv-dts v))))
         (if (not (null? found))
-            (tagcase (car found) (dt (n ps vs) (ty-data name (parse-arguments v tvars ps args))))
+            (tagcase found (dt (n ps vs) (ty-data name (parse-arguments v tvars ps args))))
             (tagcase (car (find-alias name (cv-aliases v)))
               (alias (n ps body)
                 (if (string-member? (string-append "%expanding " name) tvars)
@@ -1816,7 +1835,7 @@
                    (let ((found (find-family d (cv-dts v))))
                      (if (null? found)
                          #f
-                         (tagcase (car found)
+                         (tagcase found
                            (dt (n ps vs)
                              (if (null? vs)
                                  (let ((down (conversion-bind (string-append "down-" d) (cv-binds v))))
@@ -1867,7 +1886,7 @@
               (ty-shape (p ls fs) (any? (lambda ((f ty)) (cyclic-walk v s f crossed ts)) fs))
               (ty-tag (a h d r) (or (cyclic-walk v s a crossed ts) (cyclic-walk v s h crossed ts)))
               (ty-data (d args)
-                (let ((named (or (string=? d "datum") (not (null? (find-family d (cv-dts v)))))))
+                (let ((named (or (string=? d "datum") (dt-named? d (cv-dts v)))))
                   (cond ((and named (on-trail? d ts)) (or crossed (crossed-since? d ts)))
                         (named
                          "Its fields; what it was given, cautiously, as if taken as a
@@ -1875,8 +1894,11 @@
                          (let ((ts2 (the trails (cons (trail d crossed) ts)))
                                (kids (if (string=? d "datum")
                                          (datum-members)
-                                         (tagcase (car (find-family d (cv-dts v)))
-                                           (dt (n ps vs) (concat (map (lambda ((x variant)) (tagcase x (variant (tag fs) fs))) vs)))))))
+                                         (let ((found (find-family d (cv-dts v))))
+                                           (if (null? found)
+                                               nil
+                                               (tagcase found
+                                                 (dt (n ps vs) (concat (map (lambda ((x variant)) (tagcase x (variant (tag fs) fs))) vs)))))))))
                            (or (any? (lambda ((k ty)) (cyclic-walk v s k #f ts2)) kids)
                                (any? (lambda ((k ty)) (cyclic-walk v s k #t ts2)) args))))
                         ((string=? d "%composable")

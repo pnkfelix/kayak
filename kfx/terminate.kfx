@@ -317,7 +317,7 @@
                                 (ty-data (d args)
                                   (let ((found (find-family d (cv-dts v))))
                                     (if (null? found) nil
-                                        (tagcase (car found)
+                                        (tagcase found
                                           (dt (n ps vs)
                                             (let ((fs (concat (map (lambda ((x variant)) (tagcase x (variant (vt ft) (if (string=? vt tag) ft nil)))) vs))))
                                               (map (lambda ((f ty)) (substitute ps args f)) (nth-ty fs i))))))))

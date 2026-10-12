@@ -752,10 +752,10 @@ pub fn variant_part(v: &'static Cv, whole: Trackeds, tag: Str, i: i64) -> Tracke
                     match *tagcase_ {
                         Ty::TyData(d, args) => {
                             let found = find_family(d, cv_dts(v));
-                            if null_p(found) {
+                            if kayak_rt::value::null_p(found) {
                                 nil::<&'static Ty>()
                             } else {
-                                let tagcase_ = car(found);
+                                let tagcase_ = kayak_rt::value::unbox_other::<&'static Dt>(found);
                                 match *tagcase_ {
                                     Dt::Dt(n, ps, vs) => {
                                         let fs = concat(map(lambda1(move |x: &'static Variant| {

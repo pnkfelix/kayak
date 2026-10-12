@@ -200,6 +200,51 @@ pub fn first_fact(mut fs: Facts, mut file: Str, mut pos: i64, mut prefix: Str) -
     }
 }
 
+pub fn facts_at_place(mut fs: Facts, mut file: Str, mut pos: i64) -> Facts {
+    loop {
+        if null_p(fs) {
+            return nil::<&'static Fact>();
+        } else if {
+            let tagcase_ = car(fs);
+            match *tagcase_ {
+                Fact::Fact(ff, fp, fw) => {
+                    (i64_eq(fp, pos) && string_eq_p(ff, file))
+                }
+            }
+        } {
+            return kayak_rt::heap_cons(car(fs), facts_at_place(cdr(fs), file, pos));
+        } else {
+            fs = cdr(fs);
+            continue;
+        }
+    }
+}
+
+/// The facts at the datum `e`, found once (C84).
+pub fn facts_at(c: &'static Ctx, e: &'static Sexp) -> Facts {
+    let tagcase_ = c;
+    match *tagcase_ {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            facts_at_place(fs, datum_file(e), datum_pos(e))
+        }
+    }
+}
+
+pub fn fact_in(fs: Facts, e: &'static Sexp, prefix: Str) -> Str {
+    first_fact(fs, datum_file(e), datum_pos(e), prefix)
+}
+
+pub fn fact_in_p(fs: Facts, e: &'static Sexp, what: Str) -> bool {
+    any_p(lambda1(move |f: &'static Fact| {
+        let tagcase_ = f;
+        match *tagcase_ {
+            Fact::Fact(ff, fp, fw) => {
+                string_eq_p(fw, what)
+            }
+        }
+    }), fs)
+}
+
 /// What the checker found about the datum `e` that begins `prefix`, the
 /// rest of it; or ``.
 pub fn fact_with(c: &'static Ctx, e: &'static Sexp, prefix: Str) -> Str {
@@ -2710,6 +2755,29 @@ pub fn shape_test(shape: Str, valued: bool) -> Str {
     }
 }
 
+pub fn unboxing_in(fs: Facts, e: &'static Sexp) -> Str {
+    if not(string_eq_p(fact_in(fs, e, str_lit("unbox ")), str_lit(""))) {
+        str_lit("unbox")
+    } else if not(string_eq_p(fact_in(fs, e, str_lit("unbox-list ")), str_lit(""))) {
+        str_lit("unbox_list")
+    } else if not(string_eq_p(fact_in(fs, e, str_lit("unbox-other ")), str_lit(""))) {
+        str_lit("unbox_other")
+    } else {
+        str_lit("")
+    }
+}
+
+pub fn unboxed_type_in(fs: Facts, e: &'static Sexp) -> Str {
+    let (a, b) = (fact_in(fs, e, str_lit("unbox ")), fact_in(fs, e, str_lit("unbox-list ")));
+    if not(string_eq_p(a, str_lit(""))) {
+        a
+    } else if not(string_eq_p(b, str_lit(""))) {
+        b
+    } else {
+        fact_in(fs, e, str_lit("unbox-other "))
+    }
+}
+
 /// How a union is unboxed at `e`, kayak-rt's function; or `` (C75).
 pub fn unboxing(c: &'static Ctx, e: &'static Sexp) -> Str {
     if not(string_eq_p(fact_with(c, e, str_lit("unbox ")), str_lit(""))) {
@@ -2842,7 +2910,11 @@ pub fn unboxed_type(c: &'static Ctx, e: &'static Sexp) -> Str {
 
 // Every writer of an expression takes `n`, the indentation of the line it
 // starts on, and `t`, where the expression stands.
+/// The facts at `e` found once, here: the clauses below ask of them
+/// alone, not of all the program's (C84: seven searches of every fact
+/// for each expression had made kfx three times slower).
 pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc: Chars) -> Chars {
+    let fs = facts_at(c, e);
     if self_call_p(t, e) {
         put_continue(c, cdr(items(e)), n, t, acc)
     } else if (returns_p(t) && abort_p(c, e)) {
@@ -2855,15 +2927,15 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
         }
     } else if (ok_value_p(t) && not(control_p(e)) && not(abort_p(c, e))) {
         put(str_lit(")"), put_exp(c, e, n, value(), put(str_lit("Ok("), acc)))
-    } else if (not(string_eq_p(fact_with(c, e, str_lit("lift-suspend")), str_lit(""))) && not(string_member_p(string_append(str_lit("%lifted "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
+    } else if (not(string_eq_p(fact_in(fs, e, str_lit("lift-suspend")), str_lit(""))) && not(string_member_p(string_append(str_lit("%lifted "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
         // A procedure that cannot suspend where one that may is wanted: a
         // closure that returns its value, `Ok` unless it is a `Result`
         // already, as a future (C45).
-        let fallible = not(string_eq_p(fact_with(c, e, str_lit("lift-suspend-fallible ")), str_lit("")));
+        let fallible = not(string_eq_p(fact_in(fs, e, str_lit("lift-suspend-fallible ")), str_lit("")));
         let lift = digits_number(if fallible {
-            fact_with(c, e, str_lit("lift-suspend-fallible "))
+            fact_in(fs, e, str_lit("lift-suspend-fallible "))
         } else {
-            fact_with(c, e, str_lit("lift-suspend "))
+            fact_in(fs, e, str_lit("lift-suspend "))
         });
         let acc = put(i64_to_string(lift), put(str_lit("lambda"), acc));
         let acc = put(str_lit("(move |"), acc);
@@ -2881,10 +2953,10 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
         } else {
             str_lit(")) }))")
         }, acc)
-    } else if (not(string_eq_p(fact_with(c, e, str_lit("lift ")), str_lit(""))) && not(string_member_p(string_append(str_lit("%lifted "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
+    } else if (not(string_eq_p(fact_in(fs, e, str_lit("lift ")), str_lit(""))) && not(string_member_p(string_append(str_lit("%lifted "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
         // A procedure that cannot abort where one that may is wanted: a
         // closure that returns its value `Ok`.
-        let lift = digits_number(fact_with(c, e, str_lit("lift ")));
+        let lift = digits_number(fact_in(fs, e, str_lit("lift ")));
         let acc = put(i64_to_string(lift), put(str_lit("lambda"), acc));
         let acc = put(str_lit("(move |"), acc);
         let acc = put_arg_names(0i64, lift, acc);
@@ -2893,14 +2965,14 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
         let acc = put(str_lit(")("), acc);
         let acc = put_arg_names(0i64, lift, acc);
         put(str_lit(")))"), acc)
-    } else if not(string_eq_p(fact_with(c, e, str_lit("box none ")), str_lit(""))) {
-        error(string_append(str_lit("kfx: "), string_append(datum_file(e), string_append(str_lit(": a union's member KFX cannot give for it yet (C75): "), fact_with(c, e, str_lit("box none "))))))
-    } else if not(string_eq_p(fact_with(c, e, str_lit("unbox-none ")), str_lit(""))) {
-        error(string_append(str_lit("kfx: "), string_append(datum_file(e), string_append(str_lit(": a union's member KFX cannot take out of it yet (C75): "), fact_with(c, e, str_lit("unbox-none "))))))
-    } else if (not(string_eq_p(fact_with(c, e, str_lit("wrap ")), str_lit(""))) && not(string_member_p(string_append(str_lit("%wrapped "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
+    } else if not(string_eq_p(fact_in(fs, e, str_lit("box none ")), str_lit(""))) {
+        error(string_append(str_lit("kfx: "), string_append(datum_file(e), string_append(str_lit(": a union's member KFX cannot give for it yet (C75): "), fact_in(fs, e, str_lit("box none "))))))
+    } else if not(string_eq_p(fact_in(fs, e, str_lit("unbox-none ")), str_lit(""))) {
+        error(string_append(str_lit("kfx: "), string_append(datum_file(e), string_append(str_lit(": a union's member KFX cannot take out of it yet (C75): "), fact_in(fs, e, str_lit("unbox-none "))))))
+    } else if (not(string_eq_p(fact_in(fs, e, str_lit("wrap ")), str_lit(""))) && not(string_member_p(string_append(str_lit("%wrapped "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
         // A procedure given where one of a union's parameters or result is
         // wanted (C82): a closure boxing each argument and the result.
-        let hows = map(&sym_name, read_all(string_chars(fact_with(c, e, str_lit("wrap "))), str_lit(""), 1i64));
+        let hows = map(&sym_name, read_all(string_chars(fact_in(fs, e, str_lit("wrap "))), str_lit(""), 1i64));
         let arity = i64_minus(size(hows), 1i64);
         let acc = put(string_append(str_lit("lambda"), string_append(i64_to_string(arity), str_lit("(move |"))), acc);
         let acc = put_arg_names(0i64, arity, acc);
@@ -2912,10 +2984,14 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
         let acc = put_boxed_args(hows, 0i64, arity, acc);
         let acc = put(str_lit(")"), acc);
         put(str_lit(")"), put_box_close(last(hows), acc))
-    } else if (not(string_eq_p(fact_with(c, e, str_lit("box ")), str_lit(""))) && not(string_member_p(string_append(str_lit("%boxed "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
+    } else if string_eq_p(fact_in(fs, e, str_lit("box ")), str_lit("nil")) {
+        // `nil` given for a union's `nil` member (C84): the empty value,
+        // which no expression of type `nil` computes otherwise.
+        put(str_lit("kayak_rt::value::Value::Nil"), acc)
+    } else if (not(string_eq_p(fact_in(fs, e, str_lit("box ")), str_lit(""))) && not(string_member_p(string_append(str_lit("%boxed "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
         // A member given for its union (C75): boxed, a scalar as it is, a
         // list as `nil` or its pair, another shape behind `Any`.
-        let how = fact_with(c, e, str_lit("box "));
+        let how = fact_in(fs, e, str_lit("box "));
         let acc = put(if string_eq_p(how, str_lit("scalar")) {
             str_lit("kayak_rt::value::ToValue::to_value(")
         } else if string_eq_p(how, str_lit("elements")) {
@@ -2931,34 +3007,34 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
         } else {
             str_lit(")")
         }, acc)
-    } else if (not(string_eq_p(unboxing(c, e), str_lit(""))) && not(string_member_p(string_append(str_lit("%unboxed "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
+    } else if (not(string_eq_p(unboxing_in(fs, e), str_lit(""))) && not(string_member_p(string_append(str_lit("%unboxed "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
         // A union narrowed to a member (C75): unboxed, at the member's type.
-        let acc = put(unboxing(c, e), put(str_lit("kayak_rt::value::"), acc));
-        let acc = put(str_lit(">("), put_unboxed_type(c, unboxing(c, e), unboxed_type(c, e), put(str_lit("::<"), acc)));
+        let acc = put(unboxing_in(fs, e), put(str_lit("kayak_rt::value::"), acc));
+        let acc = put(str_lit(">("), put_unboxed_type(c, unboxing_in(fs, e), unboxed_type_in(fs, e), put(str_lit("::<"), acc)));
         let acc = put_exp(with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%unboxed "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), kayak_rt::nil())), e, n, value(), acc);
         put(str_lit(")"), acc)
     } else {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Num(k, num_file, num_pos) => {
-                if ctx_fact_p(c, num_file, num_pos, str_lit("int")) {
+                if fact_in_p(fs, e, str_lit("int")) {
                     put(str_lit(")"), put(i64_to_string(k), put(str_lit("int_lit("), acc)))
-                } else if ctx_fact_p(c, num_file, num_pos, str_lit("fixed i32")) {
+                } else if fact_in_p(fs, e, str_lit("fixed i32")) {
                     put(str_lit("i32"), put(i64_to_string(k), acc))
-                } else if ctx_fact_p(c, num_file, num_pos, str_lit("fixed u32")) {
+                } else if fact_in_p(fs, e, str_lit("fixed u32")) {
                     put(str_lit("u32"), put(i64_to_string(k), acc))
-                } else if ctx_fact_p(c, num_file, num_pos, str_lit("fixed u64")) {
+                } else if fact_in_p(fs, e, str_lit("fixed u64")) {
                     put(str_lit("u64"), put(i64_to_string(k), acc))
-                } else if ctx_fact_p(c, num_file, num_pos, str_lit("fixed u8")) {
+                } else if fact_in_p(fs, e, str_lit("fixed u8")) {
                     put(str_lit("u8"), put(i64_to_string(k), acc))
-                } else if ctx_fact_p(c, num_file, num_pos, str_lit("fixed i8")) {
+                } else if fact_in_p(fs, e, str_lit("fixed i8")) {
                     put(str_lit("i8"), put(i64_to_string(k), acc))
                 } else {
                     put(str_lit("i64"), put(i64_to_string(k), acc))
                 }
             }
             Sexp::Big(text, f, p) => {
-                if ctx_fact_p(c, f, p, str_lit("fixed u64")) {
+                if fact_in_p(fs, e, str_lit("fixed u64")) {
                     put(str_lit("u64"), put(text, acc))
                 } else {
                     put(str_lit("\")"), put(text, put(str_lit("int_text(\""), acc)))
@@ -2981,8 +3057,8 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
             Sexp::Sym(s, at_file, at_pos) => {
                 if (string_eq_p(s, str_lit("nil")) && string_eq_p(local_kind(s, ctx_locals(c)), str_lit(""))) {
                     put(str_lit("()"), put_turbofish(c, e, put(str_lit("nil"), acc)))
-                } else if not(string_eq_p(fact_with(c, e, str_lit("async-global ")), str_lit(""))) {
-                    let arity = digits_number(fact_with(c, e, str_lit("async-global ")));
+                } else if not(string_eq_p(fact_in(fs, e, str_lit("async-global ")), str_lit(""))) {
+                    let arity = digits_number(fact_in(fs, e, str_lit("async-global ")));
                     let acc = put(string_append(str_lit("lambda"), string_append(i64_to_string(arity), str_lit("(move |"))), acc);
                     let acc = put_arg_names(0i64, arity, acc);
                     let acc = put(str_lit("| kayak_rt::suspend::body("), acc);
@@ -2995,13 +3071,13 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
                 }
             }
             Sexp::Lst(xs, src_file, src_line, src_pos) => {
-                if fact_at_p(c, e, str_lit("void-call")) {
+                if fact_in_p(fs, e, str_lit("void-call")) {
                     put(str_lit(" {}"), put_call(c, e, xs, n, t, put(str_lit("match "), acc)))
-                } else if fact_at_p(c, e, str_lit("void-error")) {
+                } else if fact_in_p(fs, e, str_lit("void-error")) {
                     put(str_lit(")"), put_call(c, e, xs, n, t, put(str_lit("the::<Void>("), acc)))
-                } else if (fact_at_p(c, e, str_lit("union-test")) || fact_at_p(c, e, str_lit("value-call"))) {
+                } else if (fact_in_p(fs, e, str_lit("union-test")) || fact_in_p(fs, e, str_lit("value-call"))) {
                     put_call(c, e, xs, n, t, put(str_lit("kayak_rt::value::"), acc))
-                } else if fact_at_p(c, e, str_lit("value-cons")) {
+                } else if fact_in_p(fs, e, str_lit("value-cons")) {
                     put(str_lit(")"), put_joined(c, cdr(xs), str_lit(", "), n, put(str_lit("kayak_rt::value::cons("), acc)))
                 } else {
                     put_call(c, e, xs, n, t, acc)

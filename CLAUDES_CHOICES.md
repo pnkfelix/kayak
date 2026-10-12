@@ -1633,3 +1633,31 @@ compiler's own code could use what KFX gained. Found:
   same (a box where a `cons` was). Blocked: KFX's unions hold no datatype,
   where FX-26's do (shape `sum`, `unions/more-shapes.fx`). That FX-26 gap
   first (C84); then the lookups, one at a time, measured.
+
+## C84. Datatypes in unions; `nil` for a union's `nil`; narrowing through `and`/`or`; the first union in the compiler; a slowdown found (2026-10-12)
+
+- **A datatype is a union's member**, of shape `sum`, as FX-26 has it
+  (`unions/more-shapes.fx` agrees now; with `f32?`). A generative type is
+  named among the datatypes too, with no variants: still refused as a
+  member, its shape unknown to FX-26.
+- **`nil` where a union with a `nil` member and no list is wanted** is
+  that member, as FX-26 takes it (KFX had refused it). Boxed, it is
+  `Value::Nil`, written so, nothing computed.
+- **Narrowing through `and` and `or`'s own operands**: each checked where
+  those before it hold (`and`) or fail (`or`), as FX-26 reads `(if a b #f)`
+  and `(if a #t b)`. Narrowing had reached only the branches of the `if`
+  or `cond` they test.
+- **The dogfood trial (C83)**: `find-family` returns `(union nil dt)`,
+  where it returned a list of one or none; its ten callers take the `dt`
+  as narrowed, no `car`. The compiler's speed is unchanged (0.77 s). The
+  other lookups (`find-bind`'s 36 callers and more) may follow, one at a
+  time, now that the pattern is shown and costs nothing; not a sweep. A
+  bootstrap note: the new source may use what only the new compiler
+  checks only after a regen has made it the seed (here, narrowing through
+  `and` in `generative?`, written with `if` for now).
+- **A slowdown, found by the trial's measuring**: kfx compiling itself had
+  gone from 0.8 s to 2.5 s since C75. The emitter's new clauses (box,
+  unbox, wrap) each searched every fact of the program for each expression
+  written. `put-exp` now finds a place's facts once and asks of those.
+  `scripts/fixpoint.sh` now says the self-compile's time, so that the next
+  such slowdown shows.
