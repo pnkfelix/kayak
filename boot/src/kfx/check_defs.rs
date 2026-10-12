@@ -212,14 +212,25 @@ pub fn runtime_name_p(name: Str) -> bool {
     (string_eq_p(name, str_lit("alloc")) || string_eq_p(name, str_lit("leak-string")) || string_eq_p(name, str_lit("with-big-stack")) || string_eq_p(name, str_lit("abort-current-continuation")) || string_eq_p(name, str_lit("make-continuation-prompt-tag")) || string_eq_p(name, str_lit("the")) || string_eq_p(name, str_lit("unwind")) || string_eq_p(name, str_lit("knot")) || string_eq_p(name, str_lit("lambda0")) || string_eq_p(name, str_lit("lambda1")) || string_eq_p(name, str_lit("lambda2")) || string_eq_p(name, str_lit("lambda3")) || string_eq_p(name, str_lit("lambda4")))
 }
 
-/// A global, defined once: the generated modules each import every
-/// other's names and kayak-rt's, so a name defined twice, or a
-/// primitive's, would be ambiguous in Rust. KFX has no redefinition.
+pub fn scheme_text(sc: &'static Scheme) -> Str {
+    let tagcase_ = sc;
+    match *tagcase_ {
+        Scheme::Scheme(tvars, t) => {
+            string_append(words_of(tvars), string_append(str_lit(" | "), show_ty(st(nil::<&'static Sb>(), 0i64, nil::<&'static Fact>()), t)))
+        }
+    }
+}
+
+/// A global. FX-26 may define a name again, at the same type (C61), and
+/// what used it sees the new one; at another type its users would break,
+/// which FX-26 says at their use, and the checker here at the
+/// redefinition, so that the two still refuse the one program. KFX
+/// defines each name once, and none kayak-rt has: the restriction pass's
+/// (restrict.kfx), as the generated modules each import every other's
+/// names and kayak-rt's.
 pub fn global(v: &'static Cv, name: Str, sc: &'static Scheme) -> &'static Bind {
     if keyword_p(name) {
         match refuse(v, string_append(str_lit("a keyword names nothing: "), name)) {}
-    } else if runtime_name_p(name) {
-        match refuse(v, string_append(str_lit("kayak-rt has a "), string_append(name, str_lit(" of its own")))) {}
     } else {
         let found = find_bind(name, cv_binds(v));
         if null_p(found) {
@@ -232,10 +243,14 @@ pub fn global(v: &'static Cv, name: Str, sc: &'static Scheme) -> &'static Bind {
             let tagcase_ = car(found);
             match *tagcase_ {
                 Bind::Bind(n, sc0, wher) => {
-                    if string_eq_p(wher, str_lit("prim")) {
-                        match refuse(v, string_append(name, str_lit(" is a primitive, which KFX does not define again"))) {}
+                    if string_eq_p(scheme_text(sc0), scheme_text(sc)) {
+                        bind(name, sc, if null_p(find_bind(str_lit("%module"), cv_binds(v))) {
+                            str_lit("global")
+                        } else {
+                            str_lit("item")
+                        })
                     } else {
-                        match refuse(v, string_append(name, str_lit(" is defined already: KFX defines each name once"))) {}
+                        match refuse(v, string_append(name, str_lit(" is defined again, at another type, which would break what uses it"))) {}
                     }
                 }
             }
@@ -1008,9 +1023,10 @@ pub fn shapes_apart(v: &'static Cv, forms: Sexps) -> () {
     }
 }
 
-/// No type is named as one the generated Rust names: kayak-rt's (`Str`,
-/// `List`, ...) and the few of Rust's it writes (`Fn`, `Result`, `Copy`,
-/// ...); others of Rust's prelude a program's own type hides.
+/// Types' names as FX-26 has them; as Rust has them (none named as a type
+/// the generated Rust names, kayak-rt's `Str` and the few of Rust's it
+/// writes; KFX's names, C27; none two in Rust) is the restriction
+/// pass's (restrict.kfx, C61).
 pub fn type_names_free(v: &'static Cv, forms: Sexps) -> () {
     shapes_apart(v, forms);
     map(lambda1(move |f: &'static Sexp| {
@@ -1067,27 +1083,6 @@ pub fn type_names_free(v: &'static Cv, forms: Sexps) -> () {
             ()
         }
     }), forms);
-    map(lambda1(move |name: Str| {
-        if string_member_p(camel(name), rust_type_names()) {
-            match refuse(type_namer_near(v, forms, name), string_append(str_lit("Rust or kayak-rt has a type "), string_append(camel(name), str_lit(" of its own")))) {}
-        } else {
-            ()
-        }
-    }), concat(type_scopes(forms)));
-    map(lambda1(move |names: Strings| {
-        map(lambda1(move |n: Str| {
-            if kfx_name_p(n) {
-                ()
-            } else {
-                match refuse(v, string_append(str_lit("a type's or module's name KFX's names are not (C27): "), n)) {}
-            }
-        }), names);
-        if repeated_p(map(&camel, names)) {
-            match refuse(v, str_lit("two types or modules named alike in Rust (camel-cased, as `point` and `point-`)")) {}
-        } else {
-            ()
-        }
-    }), type_scopes(forms));
     map(lambda1(move |f: &'static Sexp| {
         if ((head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-datatype"))) && {
             let tagcase_ = second(items(f));

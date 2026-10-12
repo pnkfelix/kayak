@@ -74,8 +74,147 @@ pub fn restricted_all(mut es: Sexps, mut file: Str, mut line: i64) -> () {
     }
 }
 
-/// Each form, refused if it is not KFX.
+// Names (C61): KFX defines each name once, none a primitive's or
+// kayak-rt's, since the generated modules each import every other's names
+// and kayak-rt's; and its types' and modules' names are Rust's too, none
+// Rust's or kayak-rt's own, each a KFX name (C27), none two alike
+// camel-cased. FX-26 has neither rule.
+pub fn primitive_names() -> Strings {
+    map(lambda1(move |p: &'static Sexp| {
+        sym_name(car(items(p)))
+    }), onto(read_all(string_chars(primitives()), str_lit(""), 1i64), read_all(string_chars(prelude()), str_lit(""), 1i64)))
+}
+
+/// Each definition among `forms`, as the list that says where it is: a
+/// `define`, or a `define-rec`'s item; a module's items' are its own
+/// scope's.
+pub fn defined_names(forms: Sexps) -> List<&'static Sexp> {
+    if null_p(forms) {
+        nil::<&'static Sexp>()
+    } else {
+        let f = car(forms);
+        onto(if (head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) {
+            let tagcase_ = second(items(f));
+            match *tagcase_ {
+                Sexp::Sym(n, fl, p) => {
+                    the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<&'static Sexp>()
+                }
+            }
+        } else if head_is_p(f, str_lit("define-rec")) {
+            cdr(items(f))
+        } else {
+            nil::<&'static Sexp>()
+        }, defined_names(cdr(forms)))
+    }
+}
+
+pub fn line_of(e: &'static Sexp) -> i64 {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            l
+        }
+        _ => {
+            let other = tagcase_;
+            0i64
+        }
+    }
+}
+
+pub fn names_once(mut names: Sexps, mut seen: Strings, mut prims: Strings) -> () {
+    loop {
+        if null_p(names) {
+            return ();
+        } else {
+            let d = car(names);
+            let n = if (head_is_p(d, str_lit("define")) || head_is_p(d, str_lit("define*"))) {
+                sym_name(second(items(d)))
+            } else {
+                sym_name(car(items(d)))
+            };
+            let here = d;
+            if string_member_p(n, prims) {
+                return match restriction_refused(datum_file(here), line_of(here), string_append(n, str_lit(" is a primitive, which KFX does not define again"))) {};
+            } else if string_member_p(n, seen) {
+                return match restriction_refused(datum_file(here), line_of(here), string_append(n, str_lit(" is defined already: KFX defines each name once"))) {};
+            } else if runtime_name_p(n) {
+                return match restriction_refused(datum_file(here), line_of(here), string_append(str_lit("kayak-rt has a "), string_append(n, str_lit(" of its own")))) {};
+            } else {
+                (names, seen) = (cdr(names), kayak_rt::heap_cons(n, seen));
+                continue;
+            }
+        }
+    }
+}
+
+pub fn module_own_items(f: &'static Sexp) -> Sexps {
+    concat(map(lambda1(move |g: &'static Sexp| {
+        if head_is_p(g, str_lit("hide")) {
+            cdr(items(g))
+        } else {
+            the::<Sexps>(kayak_rt::heap_cons(g, kayak_rt::nil()))
+        }
+    }), cdr(items(third(items(f))))))
+}
+
+pub fn type_refused(forms: Sexps, n: Str, message: Str) -> Void {
+    let fs = type_namer(forms, n);
+    if null_p(fs) {
+        match restriction_refused(str_lit("the program"), 0i64, message) {}
+    } else {
+        let tagcase_ = car(fs);
+        match *tagcase_ {
+            Sexp::Lst(xs, file, line, pos) => {
+                match restriction_refused(file, line, message) {}
+            }
+            _ => {
+                let other = tagcase_;
+                match restriction_refused(str_lit("the program"), 0i64, message) {}
+            }
+        }
+    }
+}
+
+pub fn types_named(forms: Sexps) -> () {
+    map(lambda1(move |names: Strings| {
+        map(lambda1(move |n: Str| {
+            if string_member_p(camel(n), rust_type_names()) {
+                match type_refused(forms, n, string_append(str_lit("Rust or kayak-rt has a type "), string_append(camel(n), str_lit(" of its own")))) {}
+            } else if not(kfx_name_p(n)) {
+                match type_refused(forms, n, string_append(str_lit("a type's or module's name KFX's names are not (C27): "), n)) {}
+            } else {
+                ()
+            }
+        }), names);
+        if repeated_p(map(&camel, names)) {
+            match restriction_refused(str_lit("the program"), 0i64, str_lit("two types or modules named alike in Rust (camel-cased, as `point` and `point-`)")) {}
+        } else {
+            ()
+        }
+    }), type_scopes(forms));
+    ()
+}
+
+pub fn names_restricted(forms: Sexps) -> () {
+    let prims = primitive_names();
+    names_once(defined_names(forms), nil::<Str>(), prims);
+    map(lambda1(move |f: &'static Sexp| {
+        if module_def_p(f) {
+            names_once(defined_names(module_own_items(f)), nil::<Str>(), prims)
+        } else {
+            ()
+        }
+    }), forms);
+    types_named(forms)
+}
+
+/// Each form, refused if it is not KFX: names, then what each uses.
 pub fn restrict(forms: Sexps) -> () {
+    names_restricted(forms);
     restricted_all(forms, str_lit("the program"), 0i64)
 }
 

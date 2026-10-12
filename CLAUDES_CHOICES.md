@@ -1207,3 +1207,20 @@ refused in one place. `kfx/restrict.kfx`.
   name, the type written); facts from the checker when a restriction
   needs a type (unions).
 - `tests/kfx-stricter/comefrom.kfx` is refused as before, by the pass now.
+
+## C61. Names: KFX's rules to the restriction pass (2026-10-12)
+
+- **Redefinition**: FX-26 may define a global again, and what used it sees
+  the new one (Fixpt's `redefine/`). The checker now allows it at the
+  same type; at another type it refuses at the redefinition, where FX-26
+  refuses at the next use, so that the two refuse the one program. The
+  engine's global is overwritten, FX-26's meaning. KFX defines each name
+  once, none a primitive's or kayak-rt's: the pass's, with kfx's
+  messages of before, at the definition's line.
+- **Types' and modules' names as Rust has them** (none Rust's or
+  kayak-rt's, `Cell`; KFX's names, C27; none two alike camel-cased): the
+  pass's. A type named as an effect stays the checker's: FX-26's rule.
+- **Left in the checker for now**: the rules on every binder's name (KFX's
+  names, two that are one in Rust), which the pass would have to follow
+  scopes to check; labels one in Rust.
+- Beyond KFX, the engine agrees on 14 of Fixpt's programs (11).
