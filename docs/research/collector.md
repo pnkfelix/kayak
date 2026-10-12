@@ -86,3 +86,21 @@ the loop) or a string do. The check: kayak-rt's own allocation counts
 with the run. What does grow, boundedly: the old spaces left when the
 heap grows (geometric, about twice the final heap in all), and I/O's
 strings (as much as is read and written).
+
+## Rust or KFX for the collector (the user, 2026-10-12)
+
+The user: Coopt's collector is Rust (`coopt-heap`, some 3,500 lines, no
+`unsafe`, indices into words `coopt-mem` reserves, values branded so that
+an async task cannot hold one across `.await`); it may be better in pure
+async Rust. What either way: the engine's values, environments, frames and
+strings are words in a heap of its own, the machine and the primitives
+over them KFX (Q8). What differs is behind a small interface (allocate,
+read and write a word, collect given the roots), the collector's 150 lines
+or so: in Rust, faster (no `Cell` or `ref` between the loop and the words),
+and Coopt's incremental collection, a task on the scheduler, within reach;
+in KFX, K7's, and the engine runs on Fixpt unchanged (a Rust heap's
+primitives would need an FX-26 meaning in the prelude, which is the KFX
+collector again). Proposed: the interface fixed; the KFX collector first,
+as the reference; its share of the self-compile measured; a Rust one
+behind the same interface, checked against it, if it matters or when
+incremental collection does. The user's call.

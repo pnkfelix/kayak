@@ -1,0 +1,111 @@
+"table.kfx: the IR as a table (C64), for the engine's machine over words
+ (vm.kfx). `lower.kfx`'s tree is numbered into nodes whose children are
+ numbers, so that a frame in the heap holds a node as a word; a list of
+ children is a range of `kids`. Made once, at loading: what the machine
+ reads, never writes. Literals' values are words, those that are objects
+ (a string, a bignum, an `f64`, a constructor) made in the heap at
+ loading and kept in `constants`, which the collector takes as roots."
+
+(define-datatype node
+  (n-lit i64)
+  (n-local i64 i64)
+  (n-global i64)
+  (n-lambda i64 i64)
+  (n-call i64 i64)
+  (n-if i64 i64 i64)
+  (n-seq i64 i64)
+  (n-let i64 i64 i64)
+  (n-letrec i64 i64 i64)
+  (n-define i64 i64)
+  (n-sum i64 i64)
+  (n-product i64 i64 i64)
+  (n-extract i64 i64)
+  (n-tagcase i64 i64 i64 i64)
+  (n-prompt i64 i64 i64))
+
+"An arm of a `tagcase`: its tag's number, how many it binds (-1: the value
+ whole), and its body's node."
+(define-datatype armx (armx i64 i64 i64))
+
+(define nodes (ref (arrayof node @h) @h) (new (make-array 1024 (n-lit 0))))
+(define node-count (ref i64 @h) (new 0))
+(define kids (ref (flatarrayof i64 @h) @h) (new (make-flatarray-i64 1024 0)))
+(define kid-count (ref i64 @h) (new 0))
+(define armxs (ref (arrayof armx @h) @h) (new (make-array 64 (armx 0 0 0))))
+(define armx-count (ref i64 @h) (new 0))
+(define constants (ref (flatarrayof i64 @h) @h) (new (make-flatarray-i64 256 0)))
+(define constant-count (ref i64 @h) (new 0))
+
+(define-effect loading (maxeff (read @globals) spin (read @h) (write @h) (alloc @h)))
+
+(define-rec
+  (nodes-copied! (subr loading ((arrayof node @h) (arrayof node @h) i64 i64) unit)
+    (lambda (from to i n) (if (i64>= i n) #u (begin (array-set! to (i64->int i) (array-ref from (i64->int i))) (nodes-copied! from to (i64+ i 1) n))))))
+
+(define-rec
+  (armxs-copied! (subr loading ((arrayof armx @h) (arrayof armx @h) i64 i64) unit)
+    (lambda (from to i n) (if (i64>= i n) #u (begin (array-set! to (i64->int i) (array-ref from (i64->int i))) (armxs-copied! from to (i64+ i 1) n))))))
+
+(define-rec
+  (words-copied! (subr loading ((flatarrayof i64 @h) (flatarrayof i64 @h) i64 i64) unit)
+    (lambda (from to i n) (if (i64>= i n) #u (begin (flatarray-set-i64! to i (flatarray-ref-i64 from i)) (words-copied! from to (i64+ i 1) n))))))
+
+(define add-node! (subr loading (node) i64)
+  (lambda (x)
+    (let ((n (get node-count)))
+      (begin
+        (if (i64>= n (int->i64 (array-length (get nodes))))
+            (let ((bigger (the (arrayof node @h) (make-array (i64->int (i64* n 2)) (n-lit 0)))))
+              (begin (nodes-copied! (get nodes) bigger 0 n) (set nodes bigger)))
+            #u)
+        (array-set! (get nodes) (i64->int n) x)
+        (set node-count (i64+ n 1))
+        n))))
+
+(define add-kid! (subr loading (i64) i64)
+  (lambda (k)
+    (let ((n (get kid-count)))
+      (begin
+        (if (i64>= n (flatarray-length-i64 (get kids)))
+            (let ((bigger (the (flatarrayof i64 @h) (make-flatarray-i64 (i64* n 2) 0))))
+              (begin (words-copied! (get kids) bigger 0 n) (set kids bigger)))
+            #u)
+        (flatarray-set-i64! (get kids) n k)
+        (set kid-count (i64+ n 1))
+        n))))
+
+(define add-armx! (subr loading (armx) i64)
+  (lambda (a)
+    (let ((n (get armx-count)))
+      (begin
+        (if (i64>= n (int->i64 (array-length (get armxs))))
+            (let ((bigger (the (arrayof armx @h) (make-array (i64->int (i64* n 2)) (armx 0 0 0)))))
+              (begin (armxs-copied! (get armxs) bigger 0 n) (set armxs bigger)))
+            #u)
+        (array-set! (get armxs) (i64->int n) a)
+        (set armx-count (i64+ n 1))
+        n))))
+
+(define add-constant! (subr loading (i64) i64)
+  (lambda (w)
+    (let ((n (get constant-count)))
+      (begin
+        (if (i64>= n (flatarray-length-i64 (get constants)))
+            (let ((bigger (the (flatarrayof i64 @h) (make-flatarray-i64 (i64* n 2) 0))))
+              (begin (words-copied! (get constants) bigger 0 n) (set constants bigger)))
+            #u)
+        (flatarray-set-i64! (get constants) n w)
+        (set constant-count (i64+ n 1))
+        n))))
+
+(define node-at (subr (maxeff (read @globals) (read @h)) (i64) node)
+  (lambda (i) (array-ref (get nodes) (i64->int i))))
+
+(define kid-at (subr (maxeff (read @globals) (read @h)) (i64) i64)
+  (lambda (i) (flatarray-ref-i64 (get kids) i)))
+
+(define armx-at (subr (maxeff (read @globals) (read @h)) (i64) armx)
+  (lambda (i) (array-ref (get armxs) (i64->int i))))
+
+(define constant-at (subr (maxeff (read @globals) (read @h)) (i64) i64)
+  (lambda (i) (flatarray-ref-i64 (get constants) i)))

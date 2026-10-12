@@ -1,0 +1,243 @@
+"heap.kfx: the engine's heap and its collector (C64,
+ docs/research/collector.md): words in two flat arrays of `i64`, a
+ copying collector (Cheney's), written in KFX. Nothing here allocates
+ KFX data once the heap is made, but when it grows: kayak-rt's heap is
+ never freed, so the engine's must be all its own.
+
+ A word's low two bits are its tag: 00 a fixnum (the word shifted right
+ by 2), 01 a pointer (an object at the index the word shifted right by
+ 2), 10 an immediate (a kind in bits 2 to 4, its payload above), 11 an IR
+ node (its number in the IR's table). An object is a header word (its
+ kind in the low 8 bits, its payload's size above) and its payload."
+
+"Tags, immediates' kinds, objects' kinds."
+(define imm-char i64 0)
+(define imm-bool i64 1)
+(define imm-unit i64 2)
+(define imm-nil i64 3)
+(define imm-symbol i64 4)
+(define imm-prim i64 5)
+(define imm-tag i64 6)
+(define imm-special i64 7)
+
+(define ob-pair i64 1)
+(define ob-ref i64 2)
+(define ob-sum i64 3)
+(define ob-product i64 4)
+(define ob-data i64 5)
+(define ob-array i64 6)
+(define ob-flat i64 7)
+(define ob-proc i64 8)
+(define ob-cont i64 9)
+(define ob-env i64 10)
+(define ob-frame i64 11)
+(define ob-ctor i64 12)
+"Kinds from here on hold raw words, not values: not scanned."
+(define ob-raw i64 32)
+(define ob-string i64 32)
+(define ob-bytes i64 33)
+(define ob-real i64 34)
+(define ob-big i64 35)
+(define ob-forward i64 255)
+
+"Making and taking apart words."
+(define fixnum-max i64 2305843009213693951)
+(define fixnum-min i64 -2305843009213693952)
+(define fixnum? (subr kfx (i64) bool) (lambda (w) (i64= (i64-and w 3) 0)))
+(define fits-fixnum? (subr kfx (i64) bool) (lambda (n) (and (i64<= n fixnum-max) (i64>= n fixnum-min))))
+(define fixnum (subr kfx (i64) i64) (lambda (n) (i64-shl n 2)))
+(define fixnum-value (subr kfx (i64) i64) (lambda (w) (i64-shr w 2)))
+(define pointer? (subr kfx (i64) bool) (lambda (w) (i64= (i64-and w 3) 1)))
+(define pointer-index (subr kfx (i64) i64) (lambda (w) (i64-shr w 2)))
+(define pointer-to (subr kfx (i64) i64) (lambda (i) (i64+ (i64-shl i 2) 1)))
+(define immediate? (subr kfx (i64) bool) (lambda (w) (i64= (i64-and w 3) 2)))
+(define immediate (subr kfx (i64 i64) i64) (lambda (kind n) (i64+ (i64-shl n 5) (i64+ (i64-shl kind 2) 2))))
+(define immediate-kind (subr kfx (i64) i64) (lambda (w) (i64-and (i64-shr w 2) 7)))
+(define immediate-value (subr kfx (i64) i64) (lambda (w) (i64-shr w 5)))
+(define code? (subr kfx (i64) bool) (lambda (w) (i64= (i64-and w 3) 3)))
+(define code-word (subr kfx (i64) i64) (lambda (i) (i64+ (i64-shl i 2) 3)))
+(define code-index (subr kfx (i64) i64) (lambda (w) (i64-shr w 2)))
+
+(define w-unit i64 10)
+(define w-nil i64 14)
+(define w-true i64 38)
+(define w-false i64 6)
+(define w-unbound i64 30)
+
+"The heap: the space allocated in, the other, the next free index, and
+ the limit past which a step may not go. A constant each, made once."
+(define space (ref (flatarrayof i64 @h) @h) (new (make-flatarray-i64 1 0)))
+(define other-space (ref (flatarrayof i64 @h) @h) (new (make-flatarray-i64 1 0)))
+(define free-at (ref i64 @h) (new 1))
+(define collections (ref i64 @h) (new 0))
+
+(define heap-start! (subr (maxeff (read @globals) (read @h) (write @h) (alloc @h)) (i64) unit)
+  (lambda (words)
+    "Two spaces of `words` words each. Index 0 is never an object's, so
+     that a pointer's index is never 0."
+    (begin
+      (set space (make-flatarray-i64 words 0))
+      (set other-space (make-flatarray-i64 words 0))
+      (set free-at 1))))
+
+(define heap-room (subr (maxeff (read @globals) (read @h)) () i64)
+  (lambda () (i64- (flatarray-length-i64 (get space)) (get free-at))))
+
+(define header (subr kfx (i64 i64) i64) (lambda (kind n) (i64+ kind (i64-shl n 8))))
+(define header-kind (subr kfx (i64) i64) (lambda (h) (i64-and h 255)))
+(define header-size (subr kfx (i64) i64) (lambda (h) (i64-shr h 8)))
+
+(define alloc! (subr (maxeff (read @globals) (read @h) (write @h)) (i64 i64) i64)
+  (lambda (kind n)
+    "An object of `kind`, `n` words of payload, all 0 (fixnum 0): a pointer
+     to it. The room was made sure of before the step (`heap-ensure!`)."
+    (let ((at (get free-at)))
+      (if (i64> (i64+ at (i64+ n 1)) (flatarray-length-i64 (get space)))
+          (begin (error "the engine's heap: a step allocated past the room it was given") 0)
+          (begin
+            (flatarray-set-i64! (get space) at (header kind n))
+            (set free-at (i64+ at (i64+ n 1)))
+            (pointer-to at))))))
+
+(define obj-kind (subr (maxeff (read @globals) (read @h)) (i64) i64)
+  (lambda (p) (header-kind (flatarray-ref-i64 (get space) (pointer-index p)))))
+
+(define obj-size (subr (maxeff (read @globals) (read @h)) (i64) i64)
+  (lambda (p) (header-size (flatarray-ref-i64 (get space) (pointer-index p)))))
+
+(define obj-ref (subr (maxeff (read @globals) (read @h)) (i64 i64) i64)
+  (lambda (p i) (flatarray-ref-i64 (get space) (i64+ (pointer-index p) (i64+ i 1)))))
+
+(define obj-set! (subr (maxeff (read @globals) (read @h) (write @h)) (i64 i64 i64) unit)
+  (lambda (p i w) (flatarray-set-i64! (get space) (i64+ (pointer-index p) (i64+ i 1)) w)))
+
+"The collector: Cheney's. Each root copied, then each object copied
+ scanned, its words that are pointers copied in turn; a moved object's
+ header is its forwarding, the index it moved to."
+
+(define copy-word! (subr (maxeff (read @globals) (read @h) (write @h)) (i64) i64)
+  (lambda (w)
+    "`w`, its object copied to the other space if it is a pointer not yet
+     copied: the word that now names it."
+    (if (not (pointer? w))
+        w
+        (let* ((from (get space))
+               (to (get other-space))
+               (i (pointer-index w))
+               (h (flatarray-ref-i64 from i)))
+          (if (i64= (header-kind h) ob-forward)
+              (pointer-to (header-size h))
+              (let ((at (get free-at))
+                    (n (header-size h)))
+                (begin
+                  (copy-words! from to i at (i64+ n 1))
+                  (flatarray-set-i64! from i (header ob-forward at))
+                  (set free-at (i64+ at (i64+ n 1)))
+                  (pointer-to at))))))))
+
+(define-rec
+  (copy-words! (subr (maxeff (read @globals) (read @h) (write @h)) ((flatarrayof i64 @h) (flatarrayof i64 @h) i64 i64 i64) unit)
+    (lambda (from to i at n)
+      (if (i64= n 0)
+          #u
+          (begin (flatarray-set-i64! to at (flatarray-ref-i64 from i))
+                 (copy-words! from to (i64+ i 1) (i64+ at 1) (i64- n 1)))))))
+
+(define-rec
+  (scan! (subr (maxeff (read @globals) (read @h) (write @h)) (i64) unit)
+    (lambda (at)
+      "The objects copied, from `at` to the free index, each scanned."
+      (if (i64>= at (get free-at))
+          #u
+          (let* ((to (get other-space))
+                 (h (flatarray-ref-i64 to at))
+                 (n (header-size h)))
+            (begin
+              (if (i64< (header-kind h) ob-raw) (scan-words! to (i64+ at 1) n) #u)
+              (scan! (i64+ at (i64+ n 1)))))))))
+
+(define-rec
+  (scan-words! (subr (maxeff (read @globals) (read @h) (write @h)) ((flatarrayof i64 @h) i64 i64) unit)
+    (lambda (to at n)
+      (if (i64= n 0)
+          #u
+          (begin (flatarray-set-i64! to at (copy-word! (flatarray-ref-i64 to at)))
+                 (scan-words! to (i64+ at 1) (i64- n 1)))))))
+
+(define-rec
+  (copy-roots! (subr (maxeff (read @globals) (read @h) (write @h)) ((flatarrayof i64 @h) i64 i64) unit)
+    (lambda (roots i n)
+      (if (i64>= i n)
+          #u
+          (begin (flatarray-set-i64! roots i (copy-word! (flatarray-ref-i64 roots i)))
+                 (copy-roots! roots (i64+ i 1) n))))))
+
+(define grow! (subr (maxeff (read @globals) (read @h) (write @h) (alloc @h)) ((flatarrayof i64 @h) (flatarrayof i64 @h) i64) unit)
+  (lambda (roots globals words)
+    "Two new spaces of `words` words, what lives copied into them: the old
+     two left to kayak-rt, which never frees them (a geometric cost)."
+    (begin
+      (set other-space (make-flatarray-i64 words 0))
+      (set free-at 1)
+      (copy-roots! roots 0 (flatarray-length-i64 roots))
+      (copy-roots! globals 0 (flatarray-length-i64 globals))
+      (scan! 1)
+      (set space (get other-space))
+      (set other-space (make-flatarray-i64 words 0)))))
+
+(define collect! (subr (maxeff (read @globals) (read @h) (write @h) (alloc @h)) ((flatarrayof i64 @h) (flatarrayof i64 @h) i64) unit)
+  (lambda (roots globals need)
+    "Every object `roots` and `globals` reach copied to the other space,
+     which becomes the one allocated in; the spaces grown, both, if what
+     survives and `need` would fill more than half. The roots updated in
+     place."
+    (begin
+      (set free-at 1)
+      (copy-roots! roots 0 (flatarray-length-i64 roots))
+      (copy-roots! globals 0 (flatarray-length-i64 globals))
+      (scan! 1)
+      (let ((from (get space)))
+        (begin
+          (set space (get other-space))
+          (set other-space from)
+          (set collections (i64+ (get collections) 1))
+          (let ((live (i64+ (get free-at) need)))
+            (if (i64> (i64* live 2) (flatarray-length-i64 (get space)))
+                (grow! roots globals (i64* live 4))
+                #u)))))))
+
+"Interned names: symbols, tags, labels and label lists, each a number in a
+ table of strings, made once a name, never freed."
+(define names (ref (arrayof string @h) @h) (new (make-array 64 "")))
+(define name-count (ref i64 @h) (new 0))
+
+(define-rec
+  (name-at (subr (maxeff (read @globals) (read @h)) (string i64 i64) i64)
+    (lambda (s i n)
+      (cond ((i64>= i n) -1)
+            ((string=? (array-ref (get names) (i64->int i)) s) i)
+            (else (name-at s (i64+ i 1) n))))))
+
+(define-rec
+  (names-copied! (subr (maxeff (read @globals) (read @h) (write @h)) ((arrayof string @h) (arrayof string @h) i64 i64) unit)
+    (lambda (from to i n)
+      (if (i64>= i n) #u (begin (array-set! to (i64->int i) (array-ref from (i64->int i))) (names-copied! from to (i64+ i 1) n))))))
+
+(define intern! (subr (maxeff (read @globals) (read @h) (write @h) (alloc @h)) (string) i64)
+  (lambda (s)
+    "The number of name `s`, made if it has none."
+    (let ((found (name-at s 0 (get name-count))))
+      (if (i64>= found 0)
+          found
+          (let ((n (get name-count)))
+            (begin
+              (if (i64>= n (int->i64 (array-length (get names))))
+                  (let ((bigger (the (arrayof string @h) (make-array (i64->int (i64* n 2)) ""))))
+                    (begin (names-copied! (get names) bigger 0 n) (set names bigger)))
+                  #u)
+              (array-set! (get names) (i64->int n) s)
+              (set name-count (i64+ n 1))
+              n))))))
+
+(define name-of-number (subr (maxeff (read @globals) (read @h)) (i64) string)
+  (lambda (n) (array-ref (get names) (i64->int n))))
