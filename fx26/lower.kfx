@@ -8,6 +8,9 @@
  the order they are defined, an index each."
 (define-type scope (listof strings acyclic))
 
+(define binder-name (subr kfx (sexp) string)
+  (lambda (p) (tagcase p (sym (n f x) n) (lst (xs f l x) (sym-name (car xs))) (else other ""))))
+
 (define-rec
   (position-of (subr kfx (string strings i64) i64)
     (lambda (n xs i)
@@ -18,14 +21,62 @@
 (define-rec
   (find-local (subr kfx (string scope i64) (listof i64 acyclic))
     (lambda (n sc depth)
-      "A local's depth and slot, or nothing."
-      (if (null? sc)
-          nil
-          (let ((i (position-of n (car sc) 0)))
-            (if (i64>= i 0) (list depth i) (find-local n (cdr sc) (i64+ depth 1))))))))
+      "A local's depth and slot, or nothing; a slot of -1 is a name of the
+       module a `with` opened, whose frame holds the module (a product)."
+      (cond ((null? sc) nil)
+            ((and (not (null? (car sc))) (string=? (car (car sc)) "%with"))
+             (if (string-member? n (cdr (car sc))) (list depth -1) (find-local n (cdr sc) (i64+ depth 1))))
+            (else
+             (let ((i (position-of n (car sc) 0)))
+               (if (i64>= i 0) (list depth i) (find-local n (cdr sc) (i64+ depth 1)))))))))
 
-(define binder-name (subr kfx (sexp) string)
-  (lambda (p) (tagcase p (sym (n f x) n) (lst (xs f l x) (sym-name (car xs))) (else other ""))))
+(define-rec
+  (words-from (subr kfx ((listof char acyclic) (listof char acyclic) strings) strings)
+    (lambda (cs w acc)
+      (cond ((null? cs) (reverse-strs (if (null? w) acc (cons (rev->string w) acc)) nil))
+            ((char=? (car cs) #\space) (words-from (cdr cs) nil (if (null? w) acc (cons (rev->string w) acc))))
+            (else (words-from (cdr cs) (cons (car cs) w) acc)))))
+  (reverse-strs (subr kfx (strings strings) strings)
+    (lambda (xs acc) (if (null? xs) acc (reverse-strs (cdr xs) (cons (car xs) acc))))))
+
+(define spaced-words (subr kfx (string) strings) (lambda (s) (words-from (string-chars s) nil nil)))
+
+"Modules (C59): a module's value is a product of the values it gives.
+ What each gives is kept among the globals' names, as `%exports m x ...`
+ (a slot never used), and the names every `moduleof` type gives as
+ `%any-module x ...`, for a `with` of a module given as a parameter."
+(define-rec
+  (exports-of (subr kfx (string strings) strings)
+    (lambda (m gs)
+      (cond ((null? gs) nil)
+            ((has-prefix? (car gs) (string-append "%exports " (string-append m " ")))
+             (cdr (cdr (spaced-words (car gs)))))
+            (else (exports-of m (cdr gs)))))))
+
+(define-rec
+  (any-module (subr kfx (strings) strings)
+    (lambda (gs)
+      (cond ((null? gs) nil)
+            ((has-prefix? (car gs) "%any-module ") (cdr (spaced-words (car gs))))
+            (else (any-module (cdr gs)))))))
+
+(define-rec
+  (module-item-names (subr kfx (sexps strings bool) strings)
+    (lambda (its gs exported)
+      "The names a module's items define, in order; only those it gives if
+       `exported` (a `hide`'s are not, an `include`'s are)."
+      (if (null? its)
+          nil
+          (let ((f (car its)))
+            (onto (cond ((or (head-is? f "define") (head-is? f "define*")) (list (binder-name (second (items f)))))
+                        ((head-is? f "define-rec") (map (lambda ((g sexp)) (sym-name (car (items g)))) (cdr (items f))))
+                        ((head-is? f "define-datatype") (map (lambda ((g sexp)) (sym-name (car (items g)))) (cdr (cdr (items f)))))
+                        ((head-is? f "define-generative")
+                         (let ((n (binder-name (second (items f))))) (list (string-append "up-" n) (string-append "down-" n))))
+                        ((head-is? f "include") (exports-of (sym-name (second (items f))) gs))
+                        ((head-is? f "hide") (if exported nil (module-item-names (cdr (items f)) gs #f)))
+                        (else nil))
+                  (module-item-names (cdr its) gs exported)))))))
 
 (define without-doc (subr kfx (sexps) sexps)
   (lambda (body)
@@ -77,6 +128,34 @@
                   (global-names (cdr forms))))))))
 
 (define-rec
+  (concat-words (subr kfx (strings) string)
+    (lambda (ws) (if (null? ws) "" (if (null? (cdr ws)) (car ws) (string-append (car ws) (string-append " " (concat-words (cdr ws)))))))))
+
+(define-rec
+  (module-words (subr kfx (sexps strings) strings)
+    (lambda (forms gs)
+      "`%exports` for each module the program defines, in order, each seeing
+       those before."
+      (if (null? forms)
+          nil
+          (let ((f (car forms)))
+            (if (and (head-is? f "define") (i64= (size (items f)) 3) (head-is? (third (items f)) "module"))
+                (let ((w (concat-words (cons "%exports" (cons (binder-name (second (items f))) (module-item-names (cdr (items (third (items f)))) gs #t))))))
+                  (cons w (module-words (cdr forms) (cons w gs))))
+                (module-words (cdr forms) gs))))))
+  (moduleof-names (subr kfx (sexps) strings)
+    (lambda (forms)
+      (if (null? forms)
+          nil
+          (let ((f (car forms)))
+            (onto (if (and (head-is? f "define-type") (head-is? (third (items f)) "moduleof"))
+                      (concat (map (lambda ((it sexp)) (if (head-is? it "val") (the strings (list (sym-name (second (items it))))) nil))
+                                   (cdr (items (third (items f))))))
+                      nil)
+                  (moduleof-names (cdr forms))))))))
+
+
+(define-rec
   (lower (subr kfx (sexp scope strings) ir)
     (lambda (e sc gs)
       (tagcase e
@@ -106,7 +185,8 @@
   (lower-name (subr kfx (string scope strings) ir)
     (lambda (n sc gs)
       (let ((local (find-local n sc 0)))
-        (cond ((not (null? local)) (i-local (car local) (car (cdr local))))
+        (cond ((and (not (null? local)) (i64= (car (cdr local)) -1)) (i-extract n (i-local (car local) 0)))
+              ((not (null? local)) (i-local (car local) (car (cdr local))))
               ((string=? n "#t") (i-lit (v-bool #t)))
               ((string=? n "#f") (i-lit (v-bool #f)))
               ((string=? n "#u") (i-lit (v-unit)))
@@ -148,6 +228,13 @@
               given (`rcons`, `rnew`), where the engine drops it."
              (i-let (list (i-lit (v-unit))) (lower-body (cdr xs) (cons (list (binder-name (car xs))) sc) gs)))
             ((string=? h "rlambda") (lower-form "lambda" (cdr xs) e sc gs))
+            ((string=? h "with")
+             (let* ((m (car xs))
+                    (statics (tagcase m (sym (n f p) (if (null? (find-local n sc 0)) (exports-of n gs) nil)) (else other nil)))
+                    (names (if (null? statics) (any-module gs) statics)))
+               (i-let (list (lower m sc gs)) (lower-body (cdr xs) (cons (cons "%with" names) sc) gs))))
+            ((string=? h "select") (error "the engine: a select as a value"))
+            ((string=? h "module") (lower-module xs sc gs))
             ((string=? h "and")
              (cond ((null? xs) (i-lit (v-bool #t)))
                    ((null? (cdr xs)) (lower (car xs) sc gs))
@@ -168,6 +255,33 @@
             ((string=? h "tagcase") (lower-tagcase xs sc gs))
             ((string=? h "prompt") (i-prompt (lower (car xs) sc gs) (lower (third xs) sc gs) (lower (second xs) sc gs)))
             (else (i-call (lower-name h sc gs) (lower-all xs sc gs))))))
+
+  (lower-module (subr kfx (sexps scope strings) ir)
+    (lambda (its sc gs)
+      "A module: its items' values in a frame of their own, each seeing those
+       before it and itself (a `letrec`), then the product of those it gives."
+      (let* ((names (module-item-names its gs #f))
+             (given (module-item-names its gs #t))
+             (inner (cons names sc)))
+        (i-letrec (module-values its inner gs)
+                  (i-product given (map (lambda ((n string)) (i-local 0 (position-of n names 0))) given))))))
+
+  (module-values (subr kfx (sexps scope strings) irs)
+    (lambda (its sc gs)
+      (if (null? its)
+          nil
+          (let ((f (car its)))
+            (onto (cond ((or (head-is? f "define") (head-is? f "define*")) (list (lower (last (items f)) sc gs)))
+                        ((head-is? f "define-rec") (map (lambda ((g sexp)) (lower (last (items g)) sc gs)) (cdr (items f))))
+                        ((head-is? f "define-datatype")
+                         (map (lambda ((g sexp)) (i-lit (v-ctor (sym-name (car (items g))) (i64- (size (items g)) 1)))) (cdr (cdr (items f)))))
+                        ((head-is? f "define-generative") (list (i-lit (v-prim "%identity" 1)) (i-lit (v-prim "%identity" 1))))
+                        ((head-is? f "include")
+                         (let ((m (sym-name (second (items f)))))
+                           (map (lambda ((n string)) (i-extract n (lower-name m sc gs))) (exports-of m gs))))
+                        ((head-is? f "hide") (module-values (cdr (items f)) sc gs))
+                        (else nil))
+                  (module-values (cdr its) sc gs))))))
 
   (lower-case (subr kfx (sexps scope strings) ir)
     (lambda (clauses sc gs)
@@ -252,3 +366,8 @@
                          (list (top-none)))
                         (else (list (top-expr (lower f nil gs)))))
                   (lower-tops (cdr forms) gs)))))))
+
+(define module-entries (subr kfx (sexps) strings)
+  (lambda (forms)
+    "The globals' names' entries for modules: `%exports`, and `%any-module`."
+    (onto (module-words forms nil) (list (concat-words (cons "%any-module" (moduleof-names forms)))))))

@@ -104,7 +104,7 @@ pub fn main() -> Int {
     } else {
         let forms = read_files(paths);
         let checked = check_program(forms);
-        let gs = global_names(forms);
+        let gs = onto(global_names(forms), module_entries(forms));
         let m = machine(make_array(i64_to_int(size(gs)), unbound()), kayak_rt::heap_new(0i64));
         run_tops(m, lower_tops(forms, gs), with_main);
         if with_main {

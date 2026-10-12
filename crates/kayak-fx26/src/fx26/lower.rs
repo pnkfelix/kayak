@@ -13,36 +13,6 @@ use super::*;
 // the order they are defined, an index each.
 pub type Scope = List<Strings>;
 
-pub fn position_of(mut n: Str, mut xs: Strings, mut i: i64) -> i64 {
-    loop {
-        if null_p(xs) {
-            return -1i64;
-        } else if string_eq_p(car(xs), n) {
-            return i;
-        } else {
-            (xs, i) = (cdr(xs), i64_plus(i, 1i64));
-            continue;
-        }
-    }
-}
-
-/// A local's depth and slot, or nothing.
-pub fn find_local(mut n: Str, mut sc: Scope, mut depth: i64) -> List<i64> {
-    loop {
-        if null_p(sc) {
-            return nil::<i64>();
-        } else {
-            let i = position_of(n, car(sc), 0i64);
-            if i64_gt_eq(i, 0i64) {
-                return kayak_rt::heap_cons(depth, kayak_rt::heap_cons(i, kayak_rt::nil()));
-            } else {
-                (sc, depth) = (cdr(sc), i64_plus(depth, 1i64));
-                continue;
-            }
-        }
-    }
-}
-
 pub fn binder_name(p: &'static Sexp) -> Str {
     let tagcase_ = p;
     match *tagcase_ {
@@ -56,6 +26,145 @@ pub fn binder_name(p: &'static Sexp) -> Str {
             let other = tagcase_;
             str_lit("")
         }
+    }
+}
+
+pub fn position_of(mut n: Str, mut xs: Strings, mut i: i64) -> i64 {
+    loop {
+        if null_p(xs) {
+            return -1i64;
+        } else if string_eq_p(car(xs), n) {
+            return i;
+        } else {
+            (xs, i) = (cdr(xs), i64_plus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+/// A local's depth and slot, or nothing; a slot of -1 is a name of the
+/// module a `with` opened, whose frame holds the module (a product).
+pub fn find_local(mut n: Str, mut sc: Scope, mut depth: i64) -> List<i64> {
+    loop {
+        if null_p(sc) {
+            return nil::<i64>();
+        } else if (not(null_p(car(sc))) && string_eq_p(car(car(sc)), str_lit("%with"))) {
+            if string_member_p(n, cdr(car(sc))) {
+                return kayak_rt::heap_cons(depth, kayak_rt::heap_cons(-1i64, kayak_rt::nil()));
+            } else {
+                (sc, depth) = (cdr(sc), i64_plus(depth, 1i64));
+                continue;
+            }
+        } else {
+            let i = position_of(n, car(sc), 0i64);
+            if i64_gt_eq(i, 0i64) {
+                return kayak_rt::heap_cons(depth, kayak_rt::heap_cons(i, kayak_rt::nil()));
+            } else {
+                (sc, depth) = (cdr(sc), i64_plus(depth, 1i64));
+                continue;
+            }
+        }
+    }
+}
+
+pub fn words_from(mut cs: List<char>, mut w: List<char>, mut acc: Strings) -> Strings {
+    loop {
+        if null_p(cs) {
+            return reverse_strs(if null_p(w) {
+                acc
+            } else {
+                kayak_rt::heap_cons(rev_to_string(w), acc)
+            }, nil::<Str>());
+        } else if char_eq_p(car(cs), ' ') {
+            (cs, w, acc) = (cdr(cs), nil::<char>(), if null_p(w) {
+                acc
+            } else {
+                kayak_rt::heap_cons(rev_to_string(w), acc)
+            });
+            continue;
+        } else {
+            (cs, w) = (cdr(cs), kayak_rt::heap_cons(car(cs), w));
+            continue;
+        }
+    }
+}
+
+pub fn reverse_strs(mut xs: Strings, mut acc: Strings) -> Strings {
+    loop {
+        if null_p(xs) {
+            return acc;
+        } else {
+            (xs, acc) = (cdr(xs), kayak_rt::heap_cons(car(xs), acc));
+            continue;
+        }
+    }
+}
+
+pub fn spaced_words(s: Str) -> Strings {
+    words_from(string_chars(s), nil::<char>(), nil::<Str>())
+}
+
+// Modules (C59): a module's value is a product of the values it gives.
+// What each gives is kept among the globals' names, as `%exports m x ...`
+// (a slot never used), and the names every `moduleof` type gives as
+// `%any-module x ...`, for a `with` of a module given as a parameter.
+pub fn exports_of(mut m: Str, mut gs: Strings) -> Strings {
+    loop {
+        if null_p(gs) {
+            return nil::<Str>();
+        } else if has_prefix_p(car(gs), string_append(str_lit("%exports "), string_append(m, str_lit(" ")))) {
+            return cdr(cdr(spaced_words(car(gs))));
+        } else {
+            gs = cdr(gs);
+            continue;
+        }
+    }
+}
+
+pub fn any_module(mut gs: Strings) -> Strings {
+    loop {
+        if null_p(gs) {
+            return nil::<Str>();
+        } else if has_prefix_p(car(gs), str_lit("%any-module ")) {
+            return cdr(spaced_words(car(gs)));
+        } else {
+            gs = cdr(gs);
+            continue;
+        }
+    }
+}
+
+/// The names a module's items define, in order; only those it gives if
+/// `exported` (a `hide`'s are not, an `include`'s are).
+pub fn module_item_names(its: Sexps, gs: Strings, exported: bool) -> Strings {
+    if null_p(its) {
+        nil::<Str>()
+    } else {
+        let f = car(its);
+        onto(if (head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) {
+            kayak_rt::heap_cons(binder_name(second(items(f))), kayak_rt::nil())
+        } else if head_is_p(f, str_lit("define-rec")) {
+            map(lambda1(move |g: &'static Sexp| {
+                sym_name(car(items(g)))
+            }), cdr(items(f)))
+        } else if head_is_p(f, str_lit("define-datatype")) {
+            map(lambda1(move |g: &'static Sexp| {
+                sym_name(car(items(g)))
+            }), cdr(cdr(items(f))))
+        } else if head_is_p(f, str_lit("define-generative")) {
+            let n = binder_name(second(items(f)));
+            kayak_rt::heap_cons(string_append(str_lit("up-"), n), kayak_rt::heap_cons(string_append(str_lit("down-"), n), kayak_rt::nil()))
+        } else if head_is_p(f, str_lit("include")) {
+            exports_of(sym_name(second(items(f))), gs)
+        } else if head_is_p(f, str_lit("hide")) {
+            if exported {
+                nil::<Str>()
+            } else {
+                module_item_names(cdr(items(f)), gs, false)
+            }
+        } else {
+            nil::<Str>()
+        }, module_item_names(cdr(its), gs, exported))
     }
 }
 
@@ -156,6 +265,56 @@ pub fn global_names(forms: Sexps) -> Strings {
     }
 }
 
+pub fn concat_words(ws: Strings) -> Str {
+    if null_p(ws) {
+        str_lit("")
+    } else {
+        if null_p(cdr(ws)) {
+            car(ws)
+        } else {
+            string_append(car(ws), string_append(str_lit(" "), concat_words(cdr(ws))))
+        }
+    }
+}
+
+/// `%exports` for each module the program defines, in order, each seeing
+/// those before.
+pub fn module_words(mut forms: Sexps, mut gs: Strings) -> Strings {
+    loop {
+        if null_p(forms) {
+            return nil::<Str>();
+        } else {
+            let f = car(forms);
+            if (head_is_p(f, str_lit("define")) && i64_eq(size(items(f)), 3i64) && head_is_p(third(items(f)), str_lit("module"))) {
+                let w = concat_words(kayak_rt::heap_cons(str_lit("%exports"), kayak_rt::heap_cons(binder_name(second(items(f))), module_item_names(cdr(items(third(items(f)))), gs, true))));
+                return kayak_rt::heap_cons(w, module_words(cdr(forms), kayak_rt::heap_cons(w, gs)));
+            } else {
+                forms = cdr(forms);
+                continue;
+            }
+        }
+    }
+}
+
+pub fn moduleof_names(forms: Sexps) -> Strings {
+    if null_p(forms) {
+        nil::<Str>()
+    } else {
+        let f = car(forms);
+        onto(if (head_is_p(f, str_lit("define-type")) && head_is_p(third(items(f)), str_lit("moduleof"))) {
+            concat(map(lambda1(move |it: &'static Sexp| {
+                if head_is_p(it, str_lit("val")) {
+                    the::<Strings>(kayak_rt::heap_cons(sym_name(second(items(it))), kayak_rt::nil()))
+                } else {
+                    nil::<Str>()
+                }
+            }), cdr(items(third(items(f))))))
+        } else {
+            nil::<Str>()
+        }, moduleof_names(cdr(forms)))
+    }
+}
+
 pub fn lower(e: &'static Sexp, sc: Scope, gs: Strings) -> &'static Ir {
     let tagcase_ = e;
     match *tagcase_ {
@@ -226,7 +385,9 @@ pub fn lower_body(body: Sexps, sc: Scope, gs: Strings) -> &'static Ir {
 
 pub fn lower_name(n: Str, sc: Scope, gs: Strings) -> &'static Ir {
     let local = find_local(n, sc, 0i64);
-    if not(null_p(local)) {
+    if (not(null_p(local)) && i64_eq(car(cdr(local)), -1i64)) {
+        i_extract(n, i_local(car(local), 0i64))
+    } else if not(null_p(local)) {
         i_local(car(local), car(cdr(local)))
     } else if string_eq_p(n, str_lit("#t")) {
         i_lit(v_bool(true))
@@ -299,6 +460,34 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
         } else if string_eq_p(h, str_lit("rlambda")) {
             (h, xs) = (str_lit("lambda"), cdr(xs));
             continue;
+        } else if string_eq_p(h, str_lit("with")) {
+            let m = car(xs);
+            let statics = {
+                let tagcase_ = m;
+                match *tagcase_ {
+                    Sexp::Sym(n, f, p) => {
+                        if null_p(find_local(n, sc, 0i64)) {
+                            exports_of(n, gs)
+                        } else {
+                            nil::<Str>()
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<Str>()
+                    }
+                }
+            };
+            let names = if null_p(statics) {
+                any_module(gs)
+            } else {
+                statics
+            };
+            return i_let(kayak_rt::heap_cons(lower(m, sc, gs), kayak_rt::nil()), lower_body(cdr(xs), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("%with"), names), sc), gs));
+        } else if string_eq_p(h, str_lit("select")) {
+            return error(str_lit("the engine: a select as a value"));
+        } else if string_eq_p(h, str_lit("module")) {
+            return lower_module(xs, sc, gs);
         } else if string_eq_p(h, str_lit("and")) {
             if null_p(xs) {
                 return i_lit(v_bool(true));
@@ -338,6 +527,47 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
         } else {
             return i_call(lower_name(h, sc, gs), lower_all(xs, sc, gs));
         }
+    }
+}
+
+/// A module: its items' values in a frame of their own, each seeing those
+/// before it and itself (a `letrec`), then the product of those it gives.
+pub fn lower_module(its: Sexps, sc: Scope, gs: Strings) -> &'static Ir {
+    let names = module_item_names(its, gs, false);
+    let given = module_item_names(its, gs, true);
+    let inner = kayak_rt::heap_cons(names, sc);
+    i_letrec(module_values(its, inner, gs), i_product(given, map(lambda1(move |n: Str| {
+        i_local(0i64, position_of(n, names, 0i64))
+    }), given)))
+}
+
+pub fn module_values(its: Sexps, sc: Scope, gs: Strings) -> Irs {
+    if null_p(its) {
+        nil::<&'static Ir>()
+    } else {
+        let f = car(its);
+        onto(if (head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) {
+            kayak_rt::heap_cons(lower(last(items(f)), sc, gs), kayak_rt::nil())
+        } else if head_is_p(f, str_lit("define-rec")) {
+            map(lambda1(move |g: &'static Sexp| {
+                lower(last(items(g)), sc, gs)
+            }), cdr(items(f)))
+        } else if head_is_p(f, str_lit("define-datatype")) {
+            map(lambda1(move |g: &'static Sexp| {
+                i_lit(v_ctor(sym_name(car(items(g))), i64_minus(size(items(g)), 1i64)))
+            }), cdr(cdr(items(f))))
+        } else if head_is_p(f, str_lit("define-generative")) {
+            kayak_rt::heap_cons(i_lit(v_prim(str_lit("%identity"), 1i64)), kayak_rt::heap_cons(i_lit(v_prim(str_lit("%identity"), 1i64)), kayak_rt::nil()))
+        } else if head_is_p(f, str_lit("include")) {
+            let m = sym_name(second(items(f)));
+            map(lambda1(move |n: Str| {
+                i_extract(n, lower_name(m, sc, gs))
+            }), exports_of(m, gs))
+        } else if head_is_p(f, str_lit("hide")) {
+            module_values(cdr(items(f)), sc, gs)
+        } else {
+            nil::<&'static Ir>()
+        }, module_values(cdr(its), sc, gs))
     }
 }
 
@@ -509,5 +739,10 @@ pub fn lower_tops(forms: Sexps, gs: Strings) -> List<&'static Top> {
             kayak_rt::heap_cons(top_expr(lower(f, nil::<List<Str>>(), gs)), kayak_rt::nil())
         }, lower_tops(cdr(forms), gs))
     }
+}
+
+/// The globals' names' entries for modules: `%exports`, and `%any-module`.
+pub fn module_entries(forms: Sexps) -> Strings {
+    onto(module_words(forms, nil::<Str>()), kayak_rt::heap_cons(concat_words(kayak_rt::heap_cons(str_lit("%any-module"), moduleof_names(forms))), kayak_rt::nil()))
 }
 

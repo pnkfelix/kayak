@@ -50,7 +50,7 @@
           (begin (fail-with "usage: kayak-fx26 [--main] FILE ..." 2) 2)
           (let* ((forms (read-files paths))
                  (checked (check-program forms))
-                 (gs (global-names forms))
+                 (gs (onto (global-names forms) (module-entries forms)))
                  (m (machine (make-array (i64->int (size gs)) (unbound)) (new 0))))
             (begin
               (run-tops m (lower-tops forms gs) with-main)

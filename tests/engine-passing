@@ -23,6 +23,8 @@ letrena-poly
 lets
 lifted
 lists
+module-params
+modules
 mutable
 names
 open-types
@@ -34,6 +36,7 @@ region-alias
 region-poly
 replay
 rlambda
+rust-keywords
 seeded
 shapes
 standard
