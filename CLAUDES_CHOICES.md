@@ -1011,3 +1011,22 @@ and `live.kfx` are in `kfx/kfx.unit` before `main.kfx`.
   replayed, against 0.61 s plain.
 - **Not recorded**: the arguments (a replay is given them again, and
   parts from the log if they differ in what they make it read or write).
+
+## C53. Seeded simulation: delays as order, faults, determinism checked (2026-10-12)
+
+`lib/sim.kfx`: one seed, a `u64` at a region (xorshift64*, whose `u64`
+arithmetic wraps alike in FX-26 and Rust), that every random choice of a
+run flows from, as in the practice Coopt's runners note surveys.
+- **Delays are the order of answers**: `run-seeded!` answers one filed
+  operation at a time, the one the seed picks, then runs what it made
+  ready. In a world loop answered when idle (C51), when an answer
+  arrives is only which comes before which; a seeded pick covers every
+  order, where delays in ticks would cover the same ones less directly.
+- **Faults**: `faulty` wraps an answerer and fails operations on files at
+  a rate in a hundred, by the seed. Other kinds of fault (short reads,
+  lost writes) when a program needs them.
+- **The determinism check is a corpus program** (`tests/kfx/seeded.unit`):
+  one seed run twice must give one trace, and its answer, with another
+  seed's trace, is compared with Fixpt's, so the check runs on both
+  implementations in `scripts/check.sh`. For the compiler, the record
+  and replay of its self-compile (C52) is the check.

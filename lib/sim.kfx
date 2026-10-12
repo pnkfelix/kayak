@@ -1,0 +1,74 @@
+"lib/sim.kfx: seeded simulation (C53), after lib/world.kfx. One seed, a
+ `u64` at a region, that every random choice of a run flows from: which
+ of the operations filed the world answers next (so that answers arrive
+ in an order the seed picks, as delays would make them), and which
+ operations fail (faults). A run is a function of its seed and its
+ script: run twice with one seed, it does the same; with another, it may
+ interleave otherwise. xorshift64*, in `u64`, whose arithmetic wraps
+ alike in FX-26 and Rust."
+
+(define-type (seed (l region)) (ref u64 l))
+
+"The next number of the seed's sequence, the seed moved on."
+(define next-random! (poly ((l region)) (subr (maxeff (read l) (write l)) ((seed l)) u64))
+  (plambda ((l region))
+    (lambda (s)
+      (let* ((x0 (get s))
+             (x1 (u64-xor x0 (u64-shr x0 12)))
+             (x2 (u64-xor x1 (u64-shl x1 25)))
+             (x3 (u64-xor x2 (u64-shr x2 27))))
+        (begin (set s x3) (u64* x3 2685821657736338717))))))
+
+"A number from 0 below `n`, `n` above 0."
+(define below! (poly ((l region)) (subr (maxeff (read @globals) (read l) (write l)) ((seed l) i64) i64))
+  (plambda ((l region))
+    (lambda (s n)
+      (int->i64 (u64->int (u64-remainder (u64-shr ((proj next-random! l) s) 33) (int->u64 (i64->int n))))))))
+
+"An answerer that fails, `rate` times in a hundred, each operation on a
+ file, by the seed; the rest answered by `inner`."
+(define faulty (poly ((u effect) (l region)) (subr pure ((seed l) i64 (answerer u l)) (answerer u l)))
+  (plambda ((u effect) (l region))
+    (lambda (s rate inner)
+      (lambda ((n i64) (o op))
+        (let ((on-file (tagcase o (read-file p #t) (write-file f #t) (else other #f))))
+          (if (and on-file (i64< ((proj below! l) s 100) rate))
+              (sum failed "a fault, injected")
+              (inner n o)))))))
+
+"The `k`th of a list of operations filed, and the rest, in order."
+(define nth-filed (poly ((u effect) (l region)) (subr (maxeff (read @globals) spin (read l)) ((listof (filed u l) l) i64) (filed u l)))
+  (plambda ((u effect) (l region))
+    (lambda (fs k) (if (i64= k 0) (car fs) ((proj nth-filed u l) (cdr fs) (i64- k 1))))))
+
+(define without-nth (poly ((u effect) (l region))
+                      (subr (maxeff (read @globals) spin (read l) (alloc l)) ((listof (filed u l) l) i64) (listof (filed u l) l)))
+  (plambda ((u effect) (l region))
+    (lambda (fs k) (if (i64= k 0) (cdr fs) (cons (car fs) ((proj without-nth u l) (cdr fs) (i64- k 1)))))))
+
+(define filed-count (poly ((u effect) (l region)) (subr (maxeff (read @globals) spin (read l)) ((listof (filed u l) l) i64) i64))
+  (plambda ((u effect) (l region))
+    (lambda (fs n) (if (null? fs) n ((proj filed-count u l) (cdr fs) (i64+ n 1))))))
+
+"Run the tasks until none is left, as `run-world!` does, but answering one
+ operation filed at a time, the one the seed picks, then running what it
+ made ready."
+(define run-seeded! (poly ((u effect) (l region))
+                      (subr (maxeff u (read @globals) spin (read l) (write l) (alloc l) (goto l) (comefrom l))
+                            ((world-loop u l) (answerer u l) (seed l))
+                            unit))
+  (plambda ((u effect) (l region))
+    (lambda (wl answer s)
+      (begin
+        ((proj run-ready! u l) (extract wl loop))
+        (let ((fs (get (extract wl filed))))
+          (cond ((not (null? fs))
+                 (let* ((k ((proj below! l) s ((proj filed-count u l) fs 0)))
+                        (f ((proj nth-filed u l) fs k)))
+                   (begin
+                     (set (extract wl filed) ((proj without-nth u l) fs k))
+                     ((proj answer-all! u l) wl answer (cons f nil))
+                     ((proj run-seeded! u l) wl answer s))))
+                (((proj sleeping? u l) (extract wl loop))
+                 (begin ((proj wake-first! u l) (extract wl loop)) ((proj run-seeded! u l) wl answer s)))
+                (else #u)))))))

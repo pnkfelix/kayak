@@ -1,0 +1,7 @@
+; Seeded simulation (lib/sim.kfx, C53): one seed, the same run; another,
+; another interleaving; faults injected by the seed.
+../../lib/tasks.kfx
+../../lib/runner.kfx
+../../lib/world.kfx
+../../lib/sim.kfx
+seeded/app.kfx

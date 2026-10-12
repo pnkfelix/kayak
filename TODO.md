@@ -249,11 +249,10 @@ The next goal. Phase A, in order (`PLAN.md` §6.5):
 - **Boxing only what recursion needs**: every suspending call is boxed
   now; a call outside its callee's recursive group need not be.
 - **Record and replay**: done in KFX (C48), live and joined to the loop
-  (C51, `lib/world.kfx`, `lib/live.kfx`), the log as text. Left: seeded
-  delays and faults in the sim, and the determinism check in
-  `scripts/check.sh` (the compile's record and replay, C52, checks
-  determinism for the compiler already); I/O that does not block,
-  answered as it arrives; the arguments in the log's header.
+  (C51, `lib/world.kfx`, `lib/live.kfx`), the log as text. Seeded
+  delays and faults, and the determinism check: done (C53,
+  `lib/sim.kfx`). Left: I/O that does not block, answered as it
+  arrives; the arguments in the log's header; more kinds of fault.
 - ~~**I/O and bytes**~~: done (C49), as Fixpt 17ac0c5 has them. Left: a
   bytevector at a letrena's region; `rmake-bytevector` when Fixpt has it.
 - **Corpus programs**, compared with Fixpt.

@@ -1163,3 +1163,9 @@ agree.
 C52: `kfx --record LOG` and `kfx --replay LOG`; the compiler's reads and
 writes are runner operations. `scripts/fixpoint.sh` records the
 self-compile and replays it as Rust and on Fixpt.
+
+## Seeded simulation (2026-10-12)
+
+C53: `lib/sim.kfx`, a seed that picks the order of answers and injects
+faults; `tests/kfx/seeded.unit`, one seed twice the same, compared with
+Fixpt.

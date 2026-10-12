@@ -1,0 +1,49 @@
+"Three tasks under the seeded sim (lib/sim.kfx): each writes twice, and
+ reads a file, which the sim fails or a fault does. Run with seed 7
+ twice, which must give one trace, and with seed 8; the answer is the
+ traces, and whether the two runs of seed 7 agree: the determinism check
+ (C53), which Fixpt makes too."
+
+(define-effect doing (maxeff (read @globals) spin (read @w) (write @w) (alloc @w) (goto @w) (comefrom @w)))
+(define-type wl (world-loop pure @w))
+
+(define say! (subr doing (wl string) unit)
+  (lambda (lp s) (begin ((proj perform-in! pure @w) lp (sum write s)) #u)))
+
+(define worker (subr doing (wl string) unit)
+  (lambda (lp name)
+    (begin
+      (say! lp (string-append name "1"))
+      (tagcase ((proj perform-in! pure @w) lp (sum read-file name))
+        (failed m (say! lp (string-append name (if (string=? m "a fault, injected") "!" "?"))))
+        (else other (say! lp (string-append name "."))))
+      (say! lp (string-append name "2")))))
+
+(define words (subr (maxeff (read @globals) spin (read @w)) ((listof string @w)) string)
+  (lambda (xs)
+    (cond ((null? xs) "")
+          ((null? (cdr xs)) (car xs))
+          (else (string-append (words (cdr xs)) (string-append " " (car xs)))))))
+
+"A run with seed `n`: the writes, in order."
+(define run-with (subr doing (u64) string)
+  (lambda (n)
+    (let ((lp (the wl ((proj make-world-loop pure @w))))
+          (s (the (seed @w) (new n)))
+          (input (the (ref (listof string @w) @w) (new nil)))
+          (out (the (ref (listof string @w) @w) (new nil))))
+      (begin
+        ((proj spawn! pure @w) (extract lp loop) (lambda () (worker lp "a")))
+        ((proj spawn! pure @w) (extract lp loop) (lambda () (worker lp "b")))
+        ((proj spawn! pure @w) (extract lp loop) (lambda () (worker lp "c")))
+        ((proj run-seeded! pure @w) lp ((proj faulty pure @w) s 40 ((proj sim pure @w) input out)) s)
+        (words (get out))))))
+
+(define main (subr doing () string)
+  (lambda ()
+    (let* ((one (run-with 7))
+           (again (run-with 7))
+           (other (run-with 8)))
+      (string-append "seed 7: " (string-append one
+        (string-append (if (string=? one again) "; again the same" "; again OTHERWISE")
+          (string-append "; seed 8: " other)))))))

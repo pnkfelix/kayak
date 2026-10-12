@@ -218,6 +218,11 @@ pub mod rust_keywords;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/seeded/mod.rs"]
+pub mod seeded;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/shapes.rs"]
 pub mod shapes;
 
@@ -271,6 +276,10 @@ fn replay_main() -> kayak_rt::Str {
     kayak_rt::suspend::block(replay::main()).unwrap_or_else(|u| kayak_rt::unreachable_unwind(u))
 }
 
+fn seeded_main() -> kayak_rt::Str {
+    kayak_rt::suspend::block(seeded::main()).unwrap_or_else(|u| kayak_rt::unreachable_unwind(u))
+}
+
 fn tasks_main() -> kayak_rt::Str {
     kayak_rt::suspend::block(tasks::main()).unwrap_or_else(|u| kayak_rt::unreachable_unwind(u))
 }
@@ -320,6 +329,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("replay", replay_main),
     ("rlambda", rlambda::main),
     ("rust-keywords", rust_keywords::main),
+    ("seeded", seeded_main),
     ("shapes", shapes::main),
     ("strings", strings::main),
     ("tails", tails::main),
