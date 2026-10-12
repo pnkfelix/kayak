@@ -383,3 +383,11 @@ and what the generated code looks like for the compiler's own source.
   Next: the engine's speed (thread-local lookups, dispatch); its tasks on
   the scheduler; bloblets; FX-26 beyond KFX (pairof, datum, sizes,
   variadics, marks); a GC for kayak-rt itself, a research note.
+
+## 24. A uniform value beside unboxed generics (`docs/research/uniform-values.md`)
+
+The user's proposal (2026-10-12), agreed to follow the checker's current
+growth: unions, `datum` and first-class `poly` for KFX, as a `Value` where
+types are not known and Rust's generics, unboxed, where they are;
+coercions at the checker's subsumption points, views for lists. Reverses
+C57 when done. First step: unions of scalars and `datum`, with views.

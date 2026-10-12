@@ -62,3 +62,8 @@ FX-26's own way to hold them (kfx has its own `sexp` datatype, which
 `datum` could replace when KFX has it). A first step, small and measured:
 unions of scalars and `datum` with views, in the corpus beside Fixpt's
 answers; first-class `poly` after. The user's call: it reverses C57.
+
+## Decided (the user, 2026-10-12)
+
+Planned after the checker's current growth for the engine (C68–C72 and
+what follows), not before.
