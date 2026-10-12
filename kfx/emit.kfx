@@ -28,14 +28,21 @@
 (define ctx-effects (subr kfx (ctx) typeds)
   (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms es mods) es))))
 
+(define effect-binder? (subr kfx (ctx string) bool)
+  (lambda (c n)
+    "Whether `n` is the effect binder of the poly being written (C46): it
+     may stand for an effect that aborts or suspends."
+    (tagcase c (ctx (ds ts ks ls xs fs ms es mods) (string-member? (string-append "%evar " n) ls)))))
+
 (define-rec
   (fallible-effect? (subr kfx (ctx sexp) bool)
     (lambda (c e)
       "Whether a written effect may abort, its abbreviations seen through: a
        procedure of it returns a `Result` (docs/research/escapes.md)."
       (tagcase e
-        (sym (n at-file at-pos) (any? (lambda ((x typed)) (tagcase x (typed (m body) (and (string=? m n) (fallible-effect? c body)))))
-                       (ctx-effects c)))
+        (sym (n at-file at-pos) (or (effect-binder? c n)
+                                    (any? (lambda ((x typed)) (tagcase x (typed (m body) (and (string=? m n) (fallible-effect? c body)))))
+                                          (ctx-effects c))))
         (lst (xs src-file src-line src-pos)
           (cond ((sym-is? (car xs) "goto") #t)
                 ((sym-is? (car xs) "comefrom") #t)
@@ -47,8 +54,9 @@
       "Whether a written effect may suspend, a `comefrom` (C45): a procedure
        of it is an `async fn`, or as a value returns a boxed future."
       (tagcase e
-        (sym (n at-file at-pos) (any? (lambda ((x typed)) (tagcase x (typed (m body) (and (string=? m n) (suspending-effect? c body)))))
-                       (ctx-effects c)))
+        (sym (n at-file at-pos) (or (effect-binder? c n)
+                                    (any? (lambda ((x typed)) (tagcase x (typed (m body) (and (string=? m n) (suspending-effect? c body)))))
+                                          (ctx-effects c))))
         (lst (xs src-file src-line src-pos)
           (cond ((sym-is? (car xs) "comefrom") #t)
                 ((sym-is? (car xs) "maxeff") (any? (lambda ((x sexp)) (suspending-effect? c x)) (cdr xs)))
@@ -1416,11 +1424,12 @@
        itself, and awaited (C45)."
       (tagcase (car xs)
         (sym (h at-file at-pos)
-          (if (fact-at? c e "suspending-call")
-              (put-form c e h (cdr xs) n t (put "kayak_rt::suspend::body(" acc))
-              (put-form c e h (cdr xs) n t acc)))
+          (cond ((not (fact-at? c e "suspending-call")) (put-form c e h (cdr xs) n t acc))
+                ((async-here? c) (put-form c e h (cdr xs) n t (put "kayak_rt::suspend::body(" acc)))
+                (else (put-form c e h (cdr xs) n t (put "kayak_rt::suspend::block(kayak_rt::suspend::body(" acc)))))
         (else head
-          (let* ((acc (put "(" acc))
+          (let* ((acc (if (and (fact-at? c e "suspending-call") (not (async-here? c))) (put "kayak_rt::suspend::block(" acc) acc))
+                 (acc (put "(" acc))
                  (acc (put-exp c head n (value) acc))
                  (acc (put ")(" acc)))
             (put-question c e (put ")" (if (null? (cdr xs)) acc (put-joined c (cdr xs) ", " n acc)))))))))
@@ -2058,8 +2067,10 @@
       "A call the checker found may abort takes a `?`; one that may suspend
        is awaited first, its future boxed if it is a named procedure's."
       (let ((acc (cond ((not (fact-at? c e "suspending-call")) acc)
-                       ((head-sym? e) (put ").await" acc))
-                       (else (put ".await" acc)))))
+                       ((and (head-sym? e) (async-here? c)) (put ").await" acc))
+                       ((head-sym? e) (put "))" acc))
+                       ((async-here? c) (put ".await" acc))
+                       (else (put ")" acc)))))
       (cond ((not (fact-at? c e "fallible-call")) acc)
             ((fallible-here? c) (put "?" acc))
             (else (put ".unwrap_or_else(|u| unreachable_unwind(u))" acc))))))

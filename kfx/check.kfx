@@ -186,13 +186,14 @@
     "Whether effect `es` may abort: a `goto` on some region, or suspend, a
      `comefrom` (C45), which aborts to its prompt. Such a procedure, in
      Rust, returns a `Result` (emit.kfx)."
-    (any? (lambda ((x string)) (or (has-prefix? x "goto:") (has-prefix? x "comefrom:"))) es)))
+    (any? (lambda ((x string)) (or (has-prefix? x "goto:") (has-prefix? x "comefrom:") (has-prefix? x "~"))) es)))
 
 (define suspends? (subr kfx (strings) bool)
   (lambda (es)
-    "Whether effect `es` may suspend: a `comefrom` on some region. Such a
-     procedure, in Rust, is an `async fn` (C45)."
-    (any? (lambda ((x string)) (has-prefix? x "comefrom:")) es)))
+    "Whether effect `es` may suspend: a `comefrom` on some region, or an
+     effect variable, which may stand for one (C46). Such a procedure, in
+     Rust, is an `async fn` (C45)."
+    (any? (lambda ((x string)) (or (has-prefix? x "comefrom:") (has-prefix? x "~"))) es)))
 
 (define frozen-atom? (subr kfx (string) bool)
   (lambda (x)
@@ -272,6 +273,9 @@
         (sym (s at-file at-pos)
           (cond ((string=? s "pure") nil)
                 ((string=? s "spin") (list "spin"))
+                ((string-member? (string-append "~" s) tvars)
+                 "A poly's effect binder (C46): an atom of its own, `~e`."
+                 (list (string-append "~" s)))
                 (else (find-effdef v s (cv-effdefs v)))))
         (lst (xs src-file src-line src-pos)
           (cond ((sym-is? (car xs) "maxeff") (parse-effects v tvars (cdr xs)))
@@ -299,6 +303,7 @@
                  ((string=? x (string-append "alloc:" from)) (string-append "alloc:" to))
                  ((string=? x (string-append "goto:" from)) (string-append "goto:" to))
                  ((string=? x (string-append "comefrom:" from)) (string-append "comefrom:" to))
+                 ((and (has-prefix? from "~") (string=? x from)) (if (has-prefix? to "~") to (string-append "~" to)))
                  (else x)))
          es)))
 
@@ -877,10 +882,11 @@
     "Type variables, a poly's or a family's, each a Rust type parameter of
      its name camel-cased: each a KFX name (C27), none named as a type the
      Rust names, as another of them, or as a type `types` has, which it
-     would hide in Rust and not in FX-26. A region's, with `'`, is none."
+     would hide in Rust and not in FX-26. A region's, with `'`, is none, nor
+     an effect's, with `~`, which Rust does not see (C46)."
     (let ((reserved (rust-type-names))
           (theirs (map (lambda ((t string)) (camel (bare-type-name (string-chars t) nil))) types))
-          (tvars (concat (map (lambda ((n string)) (if (has-prefix? n "'") nil (the strings (list n)))) tvars))))
+          (tvars (concat (map (lambda ((n string)) (if (or (has-prefix? n "'") (has-prefix? n "~")) nil (the strings (list n)))) tvars))))
       (begin
         (map (lambda ((n string))
                (cond ((not (kfx-name? n)) (refuse v (string-append "a type variable's name KFX's names are not (C27): " n)))
@@ -913,7 +919,8 @@
                        ((sym-is? (second b) "type") (name-of v (car b)))
                        ((sym-is? (second b) "region") (string-append "'" (name-of v (car b))))
                        ((sym-is? (second b) "place") (string-append "'" (name-of v (car b))))
-                       (else (refuse v (string-append "KFX's poly is over types, regions and places: " (show-sexp (lst b "" 0 0))))))))
+                       ((sym-is? (second b) "effect") (string-append "~" (name-of v (car b))))
+                       (else (refuse v (string-append "KFX's poly is over types, effects, regions and places: " (show-sexp (lst b "" 0 0))))))))
              (items (second (items t))))))
           (begin
             (if own (type-binders-apart v tvars (onto (map (lambda ((d dt)) (tagcase d (dt (n ps vs) n))) (cv-dts v))
@@ -1173,21 +1180,84 @@
              (list (resolve-atom s (car es))))
             (else (open-atom s x (cdr es)))))))
 
+"Effect variables (C46): a poly's effect binder is an atom `~e`; at a
+ call, an inference variable, `~?k`, solved to a row: `(ty-proc atoms nil
+ unit)` holds its atoms, the last of which may be another variable, open
+ for more."
+
+(define effect-row (subr kfx (strings) ty)
+  (lambda (atoms) (ty-proc atoms nil (ty-unit))))
+
+(define effect-meta? (subr kfx (string) bool)
+  (lambda (x) (has-prefix? x "~?")))
+
+(define-rec
+  (expand-effs (subr kfx (st strings) strings)
+    (lambda (s es)
+      "`es`, each effect variable solved replaced by its atoms."
+      (if (null? es)
+          nil
+          (effs-union (if (effect-meta? (car es))
+                          (tagcase (walk s (ty-meta (meta-number (after-prefix (car es) "~"))))
+                            (ty-proc (as ps r) (expand-effs s as))
+                            (else other (list (car es))))
+                          (list (car es)))
+                      (expand-effs s (cdr es)))))))
+
+(define-rec
+  (open-row (subr kfx (strings) strings)
+    (lambda (es)
+      "The effect variables of `es`, expanded: those not solved."
+      (cond ((null? es) nil)
+            ((effect-meta? (car es)) (cons (car es) (open-row (cdr es))))
+            (else (open-row (cdr es)))))))
+
+(define-rec
+  (closed-row (subr kfx (strings) strings)
+    (lambda (es)
+      (cond ((null? es) nil)
+            ((effect-meta? (car es)) (closed-row (cdr es)))
+            (else (cons (car es) (closed-row (cdr es))))))))
+
+(define close-effs (subr kfx (st strings) strings)
+  (lambda (s es)
+    "A call's effect: its effect variables' atoms, and none for a variable
+     nothing said, as FX-26 instantiates an effect binder no argument
+     names (pure)."
+    (closed-row (expand-effs s es))))
+
 (define-rec
   (fit-effs (subr kfx (st strings strings) (listof st acyclic))
     (lambda (s a e)
       "Whether effect `a` is within `e`, an inference variable for a region
-       in `e` solved for one in `a` if need be: the state, or none."
+       in `e` solved for one in `a` if need be, and one for an effect in `e`
+       grown to hold an atom of `a` (C46): the state, or none."
       (if (null? a)
           (list s)
-          (let* ((x (resolve-atom s (car a)))
-                 (es (map (lambda ((y string)) (resolve-atom s y)) e)))
-            (cond ((effs-within? (list x) es) (fit-effs s (cdr a) e))
-                  ((null? (open-atom s x e)) nil)
-                  (else
-                   (tagcase (region-ty (atom-region (car (open-atom s x e))))
-                     (ty-meta (k) (fit-effs (solve s k (region-ty (atom-region x))) (cdr a) e))
-                     (else other nil)))))))))
+          (let* ((ax (expand-effs s a))
+                 (es (map (lambda ((y string)) (resolve-atom s y)) (expand-effs s e))))
+            (if (null? ax)
+                (list s)
+                (let ((x (resolve-atom s (car ax))))
+                  (cond ((effs-within? (list x) es) (fit-effs s (cdr ax) e))
+                        ((effect-meta? x)
+                         "An effect variable of `a` not solved, that `e` does not hold:
+                          nothing more, the least it may be."
+                         (fit-effs (solve s (meta-number (after-prefix x "~")) (effect-row nil)) (cdr ax) e))
+                        ((not (null? (open-atom s x e)))
+                         (tagcase (region-ty (atom-region (car (open-atom s x e))))
+                           (ty-meta (k) (fit-effs (solve s k (region-ty (atom-region x))) (cdr ax) e))
+                           (else other nil)))
+                        ((not (null? (open-row es)))
+                         (tagcase (fresh s)
+                           (res (m u s)
+                             (tagcase m
+                               (ty-meta (j)
+                                 (fit-effs (solve s (meta-number (after-prefix (car (open-row es)) "~"))
+                                                  (effect-row (list x (string-append "~" (meta-name j)))))
+                                           (cdr ax) e))
+                               (else other nil)))))
+                        (else nil)))))))))
 
 (define-rec
   (fits (subr kfx (cv st ty ty) st)
@@ -1268,24 +1338,27 @@
 
 "A scheme's instance: each variable an inference variable; those for
  regions are kept, so that a call's effect can name the regions found."
-(define-datatype inst (inst ty st (listof i64 acyclic)))
+(define-datatype inst (inst ty st (listof i64 acyclic) (listof i64 acyclic)))
 
 (define-rec
   (instantiate (subr kfx (st scheme) inst)
     (lambda (s sc)
       (tagcase sc
-        (scheme (tvars t) (instantiate-vars s tvars t nil)))))
-  (instantiate-vars (subr kfx (st strings ty (listof i64 acyclic)) inst)
-    (lambda (s tvars t regions)
+        (scheme (tvars t) (instantiate-vars s tvars t nil nil)))))
+  (instantiate-vars (subr kfx (st strings ty (listof i64 acyclic) (listof i64 acyclic)) inst)
+    (lambda (s tvars t regions effects)
+      "Each binder an inference variable; a region's and an effect's (C46)
+       kept apart from a type's."
       (if (null? tvars)
-          (inst t s regions)
+          (inst t s regions effects)
           (tagcase (fresh s)
             (res (m es s)
               (tagcase m
                 (ty-meta (k)
                   (instantiate-vars s (cdr tvars) (replace-var (car tvars) m t)
-                                    (if (char=? (string-ref-i64 (car tvars) 0) #\') (cons k regions) regions)))
-                (else other (inst t s regions)))))))))
+                                    (if (char=? (string-ref-i64 (car tvars) 0) #\') (cons k regions) regions)
+                                    (if (char=? (string-ref-i64 (car tvars) 0) #\~) (cons k effects) effects)))
+                (else other (inst t s regions effects)))))))))
 
 
 "The names in scope"

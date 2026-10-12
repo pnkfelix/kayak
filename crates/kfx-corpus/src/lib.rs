@@ -48,6 +48,11 @@ pub mod define_star;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/effect-poly.rs"]
+pub mod effect_poly;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/escapes.rs"]
 pub mod escapes;
 
@@ -258,6 +263,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("control", control::main),
     ("data", data::main),
     ("define-star", define_star::main),
+    ("effect-poly", effect_poly::main),
     ("escapes", escapes::main),
     ("f32", f32::main),
     ("families", families::main),

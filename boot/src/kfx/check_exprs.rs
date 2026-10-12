@@ -788,7 +788,7 @@ pub fn fold_values(v: &'static Cv, s: &'static St, m: Str, bs: Binds) -> &'stati
                         Bind::Bind(n2, sc2, w2) => {
                             let tagcase_ = instantiate(s, sc2);
                             match *tagcase_ {
-                                Inst::Inst(t, s, regions) => {
+                                Inst::Inst(t, s, regions, effects) => {
                                     let tagcase_ = sc;
                                     match *tagcase_ {
                                         Scheme::Scheme(tv, want) => {
@@ -1525,7 +1525,7 @@ pub fn synth_name(v: &'static Cv, s: &'static St, name: Str) -> &'static Res {
                     } else {
                         let tagcase_ = instantiate(s, sc);
                         match *tagcase_ {
-                            Inst::Inst(t, s, regions) => {
+                            Inst::Inst(t, s, regions, effects) => {
                                 res(t, naming_effs(s, name, wher, t, cv_group(v)), s)
                             }
                         }
@@ -3632,8 +3632,8 @@ pub fn synth_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected:
                 let from = st_next(s);
                 let tagcase_ = instantiate(s, sc);
                 match *tagcase_ {
-                    Inst::Inst(t, s, regions) => {
-                        place_needed(v, h, wher, sc, from, regions_freshened(v, h, wher, regions, static_instance(v, h, wher, binder_metas(from, st_next(s), regions), poly_settled(v, h, wher, args, binder_metas(from, st_next(s), regions), result_only_p(s, t, binder_metas(from, st_next(s), regions)), void_call(v, (string_eq_p(h, str_lit("error")) && string_eq_p(wher, str_lit("prim"))), (not(null_p(expected)) && {
+                    Inst::Inst(t, s, regions, effects) => {
+                        place_needed(v, h, wher, sc, from, regions_freshened(v, h, wher, regions, static_instance(v, h, wher, binder_metas(from, st_next(s), onto(effects, regions)), poly_settled(v, h, wher, args, binder_metas(from, st_next(s), onto(effects, regions)), result_only_p(s, t, binder_metas(from, st_next(s), onto(effects, regions))), void_call(v, (string_eq_p(h, str_lit("error")) && string_eq_p(wher, str_lit("prim"))), (not(null_p(expected)) && {
                             let tagcase_ = walk(s, car(expected));
                             match *tagcase_ {
                                 Ty::TyMeta(k) => {
@@ -4169,7 +4169,7 @@ pub fn synth_call_of(v: &'static Cv, s: &'static St, callee: &'static Res, args:
                                 let tagcase_ = name_regions(v, s, latent, regions);
                                 match *tagcase_ {
                                     Res::Res(u, named, s) => {
-                                        res(r, effs_union(named, effs_union(more, effs_union(es0, es1))), lift_noted(v, noted_call(v, s, named), r, expected))
+                                        res(r, effs_union(close_effs(s, named), effs_union(more, effs_union(es0, es1))), lift_noted(v, noted_call(v, s, named), r, expected))
                                     }
                                 }
                             }

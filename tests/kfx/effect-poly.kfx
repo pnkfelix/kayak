@@ -1,0 +1,39 @@
+"Procedures poly over effects (C46): a binder `(e effect)` stands for what
+ a procedure given may do. In Rust an effect is erased, but for what it
+ decides: one that may stand for a suspension or an abort makes the
+ procedure an `async fn` returning a `Result`, and a caller that cannot
+ suspend runs it to its end."
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define each (poly ((e effect)) (subr (maxeff e kfx) ((subr e (i64) unit) (listof i64 acyclic)) unit))
+  (lambda (f xs)
+    (if (null? xs) #u (begin (f (car xs)) (each f (cdr xs))))))
+
+(define twice (poly ((e effect) (a type)) (subr e ((subr e (a) a) a) a))
+  (lambda (f x) (f (f x))))
+
+(define total (ref i64 @t) (new 0))
+
+"A pure procedure given, and one that writes."
+(define add-all (subr (maxeff kfx (read @t) (write @t)) ((listof i64 acyclic)) i64)
+  (lambda (xs)
+    (begin
+      (each (lambda ((x i64)) #u) xs)
+      (each (lambda ((x i64)) (set total (i64+ (get total) x))) xs)
+      (get total))))
+
+"Through a prompt: an abort from the procedure given."
+(define first-big (subr kfx ((listof i64 acyclic)) i64)
+  (lambda (xs)
+    (letregion r
+      (let ((t (the (prompt-tag i64 i64 kfx r) (make-continuation-prompt-tag))))
+        (prompt t
+                (begin (each (lambda ((x i64)) (if (i64> x 2) (abort-current-continuation t x) #u)) xs) -1)
+                (lambda ((v i64)) v))))))
+
+(define main (subr (maxeff kfx (read @t) (write @t)) () string)
+  (lambda ()
+    (i64->string
+      (i64+ (add-all (list 1 2 3 4))
+            (i64+ (i64* 100 (first-big (list 1 2 3 4)))
+                  (i64* 1000 (twice (lambda ((x i64)) (i64* x 3)) 2)))))))

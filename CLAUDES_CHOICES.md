@@ -809,3 +809,27 @@ Answers `PLAN.md` Q4 (`docs/research/places.md` §4) for the time being.
   import, so that its names (`body`, `block`) are free for programs.
   Fixpt's `ping-pong.fx` and `promise.fx` are corpus programs
   (`tests/kfx/tasks.kfx`, `promises.kfx`), their answers Fixpt's.
+
+## C46. Polymorphism over effects (2026-10-12)
+
+FX-26 has effect binders; KFX takes them (the user: KFX may take what
+FX-26 has without asking). Wanted first for a library of tasks, generic
+in what its tasks may do (`PLAN.md` §8).
+- **Chosen:** `(poly ((e effect) ...) ...)`; in an effect, `e` is an atom
+  of its own, `~e`. At a call each effect binder is an inference
+  variable, `~?k`, solved as a row: fitting an argument's latent effect
+  adds what it does to the row (`fit-effs`), which ends in another
+  variable, open for more. The call's effect, the caller's, is the rows'
+  atoms (`close-effs`); a variable nothing said is pure, as FX-26 has it.
+- **Code:** what Rust does is decided by the *declared* type, which one
+  `fn` serves for every instance: an effect binder may stand for an
+  abort or a suspension, so a procedure whose effect mentions one is an
+  `async fn` returning a `Result`, and its procedure parameters of that
+  effect return boxed futures. A call that may suspend in code that is
+  not `async` (a caller whose instance cannot suspend) is run to its end,
+  `kayak_rt::suspend::block`; a lambda given for such a parameter is a
+  boxed future. Exact, at a box per call and per closure.
+- **Not chosen:** a Rust function for each colour an instance needs
+  (monomorphised by kfx), quicker and larger, later if it is measured to
+  matter; effect parameters in families (`(loop u l)` of Coopt's
+  library): next, when the library of tasks needs them.

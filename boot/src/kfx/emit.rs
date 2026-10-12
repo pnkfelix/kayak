@@ -74,20 +74,31 @@ pub fn ctx_effects(c: &'static Ctx) -> Typeds {
     }
 }
 
+/// Whether `n` is the effect binder of the poly being written (C46): it
+/// may stand for an effect that aborts or suspends.
+pub fn effect_binder_p(c: &'static Ctx, n: Str) -> bool {
+    let tagcase_ = c;
+    match *tagcase_ {
+        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            string_member_p(string_append(str_lit("%evar "), n), ls)
+        }
+    }
+}
+
 /// Whether a written effect may abort, its abbreviations seen through: a
 /// procedure of it returns a `Result` (docs/research/escapes.md).
 pub fn fallible_effect_p(c: &'static Ctx, e: &'static Sexp) -> bool {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Sym(n, at_file, at_pos) => {
-            any_p(lambda1(move |x: &'static Typed| {
+            (effect_binder_p(c, n) || any_p(lambda1(move |x: &'static Typed| {
                 let tagcase_ = x;
                 match *tagcase_ {
                     Typed::Typed(m, body) => {
                         (string_eq_p(m, n) && fallible_effect_p(c, body))
                     }
                 }
-            }), ctx_effects(c))
+            }), ctx_effects(c)))
         }
         Sexp::Lst(xs, src_file, src_line, src_pos) => {
             if sym_is_p(car(xs), str_lit("goto")) {
@@ -115,14 +126,14 @@ pub fn suspending_effect_p(c: &'static Ctx, e: &'static Sexp) -> bool {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Sym(n, at_file, at_pos) => {
-            any_p(lambda1(move |x: &'static Typed| {
+            (effect_binder_p(c, n) || any_p(lambda1(move |x: &'static Typed| {
                 let tagcase_ = x;
                 match *tagcase_ {
                     Typed::Typed(m, body) => {
                         (string_eq_p(m, n) && suspending_effect_p(c, body))
                     }
                 }
-            }), ctx_effects(c))
+            }), ctx_effects(c)))
         }
         Sexp::Lst(xs, src_file, src_line, src_pos) => {
             if sym_is_p(car(xs), str_lit("comefrom")) {
@@ -2676,14 +2687,21 @@ pub fn put_call(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, t: &'stati
     let tagcase_ = car(xs);
     match *tagcase_ {
         Sexp::Sym(h, at_file, at_pos) => {
-            if fact_at_p(c, e, str_lit("suspending-call")) {
+            if not(fact_at_p(c, e, str_lit("suspending-call"))) {
+                put_form(c, e, h, cdr(xs), n, t, acc)
+            } else if async_here_p(c) {
                 put_form(c, e, h, cdr(xs), n, t, put(str_lit("kayak_rt::suspend::body("), acc))
             } else {
-                put_form(c, e, h, cdr(xs), n, t, acc)
+                put_form(c, e, h, cdr(xs), n, t, put(str_lit("kayak_rt::suspend::block(kayak_rt::suspend::body("), acc))
             }
         }
         _ => {
             let head = tagcase_;
+            let acc = if (fact_at_p(c, e, str_lit("suspending-call")) && not(async_here_p(c))) {
+                put(str_lit("kayak_rt::suspend::block("), acc)
+            } else {
+                acc
+            };
             let acc = put(str_lit("("), acc);
             let acc = put_exp(c, head, n, value(), acc);
             let acc = put(str_lit(")("), acc);
@@ -3615,10 +3633,14 @@ pub fn put_suspension(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc:
 pub fn put_question(c: &'static Ctx, e: &'static Sexp, acc: Chars) -> Chars {
     let acc = if not(fact_at_p(c, e, str_lit("suspending-call"))) {
         acc
-    } else if head_sym_p(e) {
+    } else if (head_sym_p(e) && async_here_p(c)) {
         put(str_lit(").await"), acc)
-    } else {
+    } else if head_sym_p(e) {
+        put(str_lit("))"), acc)
+    } else if async_here_p(c) {
         put(str_lit(".await"), acc)
+    } else {
+        put(str_lit(")"), acc)
     };
     if not(fact_at_p(c, e, str_lit("fallible-call"))) {
         acc

@@ -405,15 +405,16 @@ pub fn label_of(e: &'static Sexp) -> Str {
 /// Rust, returns a `Result` (emit.kfx).
 pub fn escapes_p(es: Strings) -> bool {
     any_p(lambda1(move |x: Str| {
-        (has_prefix_p(x, str_lit("goto:")) || has_prefix_p(x, str_lit("comefrom:")))
+        (has_prefix_p(x, str_lit("goto:")) || has_prefix_p(x, str_lit("comefrom:")) || has_prefix_p(x, str_lit("~")))
     }), es)
 }
 
-/// Whether effect `es` may suspend: a `comefrom` on some region. Such a
-/// procedure, in Rust, is an `async fn` (C45).
+/// Whether effect `es` may suspend: a `comefrom` on some region, or an
+/// effect variable, which may stand for one (C46). Such a procedure, in
+/// Rust, is an `async fn` (C45).
 pub fn suspends_p(es: Strings) -> bool {
     any_p(lambda1(move |x: Str| {
-        has_prefix_p(x, str_lit("comefrom:"))
+        (has_prefix_p(x, str_lit("comefrom:")) || has_prefix_p(x, str_lit("~")))
     }), es)
 }
 
@@ -557,6 +558,9 @@ pub fn parse_effect(v: &'static Cv, tvars: Strings, e: &'static Sexp) -> Strings
                 nil::<Str>()
             } else if string_eq_p(s, str_lit("spin")) {
                 kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil())
+            } else if string_member_p(string_append(str_lit("~"), s), tvars) {
+                // A poly's effect binder (C46): an atom of its own, `~e`.
+                kayak_rt::heap_cons(string_append(str_lit("~"), s), kayak_rt::nil())
             } else {
                 find_effdef(v, s, cv_effdefs(v))
             }
@@ -607,6 +611,12 @@ pub fn rename_atoms(es: Strings, from: Str, to: Str) -> Strings {
             string_append(str_lit("goto:"), to)
         } else if string_eq_p(x, string_append(str_lit("comefrom:"), from)) {
             string_append(str_lit("comefrom:"), to)
+        } else if (has_prefix_p(from, str_lit("~")) && string_eq_p(x, from)) {
+            if has_prefix_p(to, str_lit("~")) {
+                to
+            } else {
+                string_append(str_lit("~"), to)
+            }
         } else {
             x
         }
@@ -1838,12 +1848,13 @@ pub fn bare_type_name(mut cs: Chars, mut acc: Chars) -> Str {
 /// Type variables, a poly's or a family's, each a Rust type parameter of
 /// its name camel-cased: each a KFX name (C27), none named as a type the
 /// Rust names, as another of them, or as a type `types` has, which it
-/// would hide in Rust and not in FX-26. A region's, with `'`, is none.
+/// would hide in Rust and not in FX-26. A region's, with `'`, is none, nor
+/// an effect's, with `~`, which Rust does not see (C46).
 pub fn type_binders_apart(v: &'static Cv, tvars: Strings, types: Strings) -> () {
     let (reserved, theirs, tvars) = (rust_type_names(), map(lambda1(move |t: Str| {
         camel(bare_type_name(string_chars(t), nil::<char>()))
     }), types), concat(map(lambda1(move |n: Str| {
-        if has_prefix_p(n, str_lit("'")) {
+        if (has_prefix_p(n, str_lit("'")) || has_prefix_p(n, str_lit("~"))) {
             nil::<Str>()
         } else {
             the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
@@ -1886,8 +1897,10 @@ pub fn poly_binders(v: &'static Cv, t: &'static Sexp, own: bool) -> Strings {
                 string_append(str_lit("'"), name_of(v, car(b)))
             } else if sym_is_p(second(b), str_lit("place")) {
                 string_append(str_lit("'"), name_of(v, car(b)))
+            } else if sym_is_p(second(b), str_lit("effect")) {
+                string_append(str_lit("~"), name_of(v, car(b)))
             } else {
-                match refuse(v, string_append(str_lit("KFX's poly is over types, regions and places: "), show_sexp(lst(b, str_lit(""), 0i64, 0i64)))) {}
+                match refuse(v, string_append(str_lit("KFX's poly is over types, effects, regions and places: "), show_sexp(lst(b, str_lit(""), 0i64, 0i64)))) {}
             }
         }), items(second(items(t))));
         if own {
@@ -2536,33 +2549,128 @@ pub fn open_atom(mut s: &'static St, mut x: Str, mut es: Strings) -> Strings {
     }
 }
 
+// Effect variables (C46): a poly's effect binder is an atom `~e`; at a
+// call, an inference variable, `~?k`, solved to a row: `(ty-proc atoms nil
+// unit)` holds its atoms, the last of which may be another variable, open
+// for more.
+pub fn effect_row(atoms: Strings) -> &'static Ty {
+    ty_proc(atoms, nil::<&'static Ty>(), ty_unit())
+}
+
+pub fn effect_meta_p(x: Str) -> bool {
+    has_prefix_p(x, str_lit("~?"))
+}
+
+/// `es`, each effect variable solved replaced by its atoms.
+pub fn expand_effs(s: &'static St, es: Strings) -> Strings {
+    if null_p(es) {
+        nil::<Str>()
+    } else {
+        effs_union(if effect_meta_p(car(es)) {
+            let tagcase_ = walk(s, ty_meta(meta_number(after_prefix(car(es), str_lit("~")))));
+            match *tagcase_ {
+                Ty::TyProc(r#as, ps, r) => {
+                    expand_effs(s, r#as)
+                }
+                _ => {
+                    let other = tagcase_;
+                    kayak_rt::heap_cons(car(es), kayak_rt::nil())
+                }
+            }
+        } else {
+            kayak_rt::heap_cons(car(es), kayak_rt::nil())
+        }, expand_effs(s, cdr(es)))
+    }
+}
+
+/// The effect variables of `es`, expanded: those not solved.
+pub fn open_row(mut es: Strings) -> Strings {
+    loop {
+        if null_p(es) {
+            return nil::<Str>();
+        } else if effect_meta_p(car(es)) {
+            return kayak_rt::heap_cons(car(es), open_row(cdr(es)));
+        } else {
+            es = cdr(es);
+            continue;
+        }
+    }
+}
+
+pub fn closed_row(mut es: Strings) -> Strings {
+    loop {
+        if null_p(es) {
+            return nil::<Str>();
+        } else if effect_meta_p(car(es)) {
+            es = cdr(es);
+            continue;
+        } else {
+            return kayak_rt::heap_cons(car(es), closed_row(cdr(es)));
+        }
+    }
+}
+
+/// A call's effect: its effect variables' atoms, and none for a variable
+/// nothing said, as FX-26 instantiates an effect binder no argument
+/// names (pure).
+pub fn close_effs(s: &'static St, es: Strings) -> Strings {
+    closed_row(expand_effs(s, es))
+}
+
 /// Whether effect `a` is within `e`, an inference variable for a region
-/// in `e` solved for one in `a` if need be: the state, or none.
+/// in `e` solved for one in `a` if need be, and one for an effect in `e`
+/// grown to hold an atom of `a` (C46): the state, or none.
 pub fn fit_effs(mut s: &'static St, mut a: Strings, mut e: Strings) -> List<&'static St> {
     loop {
         if null_p(a) {
             return kayak_rt::heap_cons(s, kayak_rt::nil());
         } else {
-            let x = resolve_atom(s, car(a));
+            let ax = expand_effs(s, a);
             let es = map(lambda1(move |y: Str| {
                 resolve_atom(s, y)
-            }), e);
-            if effs_within_p(kayak_rt::heap_cons(x, kayak_rt::nil()), es) {
-                a = cdr(a);
-                continue;
-            } else if null_p(open_atom(s, x, e)) {
-                return nil::<&'static St>();
+            }), expand_effs(s, e));
+            if null_p(ax) {
+                return kayak_rt::heap_cons(s, kayak_rt::nil());
             } else {
-                let tagcase_ = region_ty(atom_region(car(open_atom(s, x, e))));
-                match *tagcase_ {
-                    Ty::TyMeta(k) => {
-                        (s, a) = (solve(s, k, region_ty(atom_region(x))), cdr(a));
-                        continue;
+                let x = resolve_atom(s, car(ax));
+                if effs_within_p(kayak_rt::heap_cons(x, kayak_rt::nil()), es) {
+                    a = cdr(ax);
+                    continue;
+                } else if effect_meta_p(x) {
+                    // An effect variable of `a` not solved, that `e` does not hold:
+                    // nothing more, the least it may be.
+                    (s, a) = (solve(s, meta_number(after_prefix(x, str_lit("~"))), effect_row(nil::<Str>())), cdr(ax));
+                    continue;
+                } else if not(null_p(open_atom(s, x, e))) {
+                    let tagcase_ = region_ty(atom_region(car(open_atom(s, x, e))));
+                    match *tagcase_ {
+                        Ty::TyMeta(k) => {
+                            (s, a) = (solve(s, k, region_ty(atom_region(x))), cdr(ax));
+                            continue;
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            return nil::<&'static St>();
+                        }
                     }
-                    _ => {
-                        let other = tagcase_;
-                        return nil::<&'static St>();
+                } else if not(null_p(open_row(es))) {
+                    let tagcase_ = fresh(s);
+                    match *tagcase_ {
+                        Res::Res(m, u, s) => {
+                            let tagcase_ = m;
+                            match *tagcase_ {
+                                Ty::TyMeta(j) => {
+                                    return fit_effs(solve(s, meta_number(after_prefix(car(open_row(es)), str_lit("~"))), effect_row(kayak_rt::heap_cons(x, kayak_rt::heap_cons(string_append(str_lit("~"), meta_name(j)), kayak_rt::nil())))), cdr(ax), e);
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    return nil::<&'static St>();
+                                }
+                            }
+                        }
                     }
+                } else {
+                    return nil::<&'static St>();
                 }
             }
         }
@@ -2819,25 +2927,27 @@ pub fn mismatch(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static Ty) 
 // A scheme's instance: each variable an inference variable; those for
 // regions are kept, so that a call's effect can name the regions found.
 pub enum Inst {
-    Inst(&'static Ty, &'static St, List<i64>),
+    Inst(&'static Ty, &'static St, List<i64>, List<i64>),
 }
 
-pub fn inst(f0: &'static Ty, f1: &'static St, f2: List<i64>) -> &'static Inst {
-    kayak_rt::heap_alloc(Inst::Inst(f0, f1, f2))
+pub fn inst(f0: &'static Ty, f1: &'static St, f2: List<i64>, f3: List<i64>) -> &'static Inst {
+    kayak_rt::heap_alloc(Inst::Inst(f0, f1, f2, f3))
 }
 
 pub fn instantiate(s: &'static St, sc: &'static Scheme) -> &'static Inst {
     let tagcase_ = sc;
     match *tagcase_ {
         Scheme::Scheme(tvars, t) => {
-            instantiate_vars(s, tvars, t, nil::<i64>())
+            instantiate_vars(s, tvars, t, nil::<i64>(), nil::<i64>())
         }
     }
 }
 
-pub fn instantiate_vars(s: &'static St, tvars: Strings, t: &'static Ty, regions: List<i64>) -> &'static Inst {
+/// Each binder an inference variable; a region's and an effect's (C46)
+/// kept apart from a type's.
+pub fn instantiate_vars(s: &'static St, tvars: Strings, t: &'static Ty, regions: List<i64>, effects: List<i64>) -> &'static Inst {
     if null_p(tvars) {
-        inst(t, s, regions)
+        inst(t, s, regions, effects)
     } else {
         let tagcase_ = fresh(s);
         match *tagcase_ {
@@ -2849,11 +2959,15 @@ pub fn instantiate_vars(s: &'static St, tvars: Strings, t: &'static Ty, regions:
                             kayak_rt::heap_cons(k, regions)
                         } else {
                             regions
+                        }, if char_eq_p(string_ref_i64(car(tvars), 0i64), '~') {
+                            kayak_rt::heap_cons(k, effects)
+                        } else {
+                            effects
                         })
                     }
                     _ => {
                         let other = tagcase_;
-                        inst(t, s, regions)
+                        inst(t, s, regions, effects)
                     }
                 }
             }

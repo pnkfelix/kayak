@@ -421,6 +421,8 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, typ: &'static Sexp, defi
     }), binders)), concat(map(lambda1(move |b: &'static Sexp| {
         if sym_is_p(second(items(b)), str_lit("type")) {
             the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%tvar "), sym_name(car(items(b)))), kayak_rt::nil()))
+        } else if sym_is_p(second(items(b)), str_lit("effect")) {
+            the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%evar "), sym_name(car(items(b)))), kayak_rt::nil()))
         } else {
             nil::<Str>()
         }

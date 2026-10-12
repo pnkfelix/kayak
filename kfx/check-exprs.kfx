@@ -354,7 +354,7 @@
                     (tagcase (car found)
                       (bind (n2 sc2 w2)
                         (tagcase (instantiate s sc2)
-                          (inst (t s regions)
+                          (inst (t s regions effects)
                             (tagcase sc (scheme (tv want) (fold-values v (fits v s t want) m (cdr bs))))))))))))))))
 
 (define conforms (subr kfx (cv st string string sexp) st)
@@ -676,7 +676,7 @@
                               (refuse v (string-append "a procedure of a module parameter, a Rust generic fn, named as a value: " name)))
                              (else
                            (tagcase (instantiate s sc)
-                             (inst (t s regions) (res t (naming-effs s name wher t (cv-group v)) s)))))))))))))
+                             (inst (t s regions effects) (res t (naming-effs s name wher t (cv-group v)) s)))))))))))))
 
   (check (subr kfx (cv st sexp ty) res)
     (lambda (v s e expected)
@@ -1649,11 +1649,11 @@
                 (bind (n sc wher)
                   (let ((from (st-next s)))
                   (tagcase (instantiate s sc)
-                    (inst (t s regions)
+                    (inst (t s regions effects)
                       (place-needed v h wher sc from
                       (regions-freshened v h wher regions
-                      (static-instance v h wher (binder-metas from (st-next s) regions)
-                      (poly-settled v h wher args (binder-metas from (st-next s) regions) (result-only? s t (binder-metas from (st-next s) regions))
+                      (static-instance v h wher (binder-metas from (st-next s) (onto effects regions))
+                      (poly-settled v h wher args (binder-metas from (st-next s) (onto effects regions)) (result-only? s t (binder-metas from (st-next s) (onto effects regions)))
                       (void-call v (and (string=? h "error") (string=? wher "prim"))
                                  (and (not (null? expected)) (tagcase (walk s (car expected)) (ty-meta (k) #t) (else other #f)))
                       (poly-self-application v sc t (knot-free-call v (synth-call-of v s (res t nil s) args regions expected
@@ -1937,7 +1937,7 @@
                                   (if (proc-type? s0 (car expected)) (fits v s0 r (car expected)) s0))))
                       (tagcase (name-regions v s latent regions)
                         (res (u named s)
-                          (res r (effs-union named (effs-union more (effs-union es0 es1)))
+                          (res r (effs-union (close-effs s named) (effs-union more (effs-union es0 es1)))
                                (lift-noted v (noted-call v s named) r expected)))))))))
             (else other (refuse v (string-append "a call of a " (string-append (show-ty s t) ", no procedure")))))))))
 
