@@ -558,7 +558,31 @@ Three, all done and pinned: `DONE.md` §6.
 From K7 on, a case where KFX or FX-26 lacks what runtime code written in
 KFX needs is raised with the user here, with the code that wants it and
 the alternatives, before anything is extended; the user may take it to
-the Fixpt team. Likely first cases, to be confirmed by the code:
+the Fixpt team.
+
+**Raised (2026-10-12): polymorphism over effects, for a library of
+tasks.** A scheduler is generic in what its tasks may do: Coopt's
+`(loop u l)` and its operations are `(poly ((u effect) (l region)) ...)`,
+and so is the prelude's `abort-with-continuation` (FX-26 has it). KFX
+has `poly` over types, regions and places only, so a library of tasks
+in KFX would fix its tasks' effect: every program's tasks within one
+bound, their data at the library's regions (as `tests/kfx/tasks.kfx`
+does now, for one program). Alternatives:
+- **(a) effect parameters in KFX's `poly`** (an extension of KFX, not of
+  FX-26, which has them): erased in Rust, as regions are, except where
+  they decide code. Suspension is decided by effects (C45), so a
+  procedure poly over `e` that calls an `e` procedure would have to be
+  `async` whenever `e` may be: either always (boxing every call), or one
+  Rust function for each colour used, monomorphised by kfx;
+- **(b) no effect polymorphism**: the library a template, copied into
+  each program at its effects; or one fixed bound for all tasks;
+- **(c) the library's effect bound a module parameter** (C24's modules),
+  if KFX's modules took effects.
+My recommendation is (a), always-`async` where `e` is a parameter that
+is not bounded away from `comefrom`: simplest, exact, and rustc's cost
+is a box per such call. Not built: waiting for the user.
+
+Likely next cases, to be confirmed by the code:
 - **Arrays of values**: KFX's flat arrays hold `i64` alone (C12); a run
   queue, a memo table or a heap of words wants more (FX-26 has vectors;
   KFX does not map them yet: a KFX extension, not FX-26's).
