@@ -100,8 +100,8 @@
               (let* ((file (string-append name ".kfx"))
                      (forms (source-forms (car ss)))
                      (starts (map (lambda ((f sexp)) (datum-pos f)) forms))
-                     (texts (form-texts (string-chars text) 0 starts)))
-                (tagcase (put-tops-memo c (facts-of-file fs file) global old forms texts starts (put module-header nil) made)
+                     (texts (with incremental (form-texts (string-chars text) 0 starts))))
+                (tagcase (with incremental (put-tops-memo c (with incremental (facts-of-file fs file)) global old forms texts starts (put module-header nil) made))
                   (emitted (acc made2)
                     (memo-modules c fs global old (cdr ss)
                                   (cons (output (string-append (mangle name) ".rs") (rev->string acc)) outs)
@@ -113,16 +113,16 @@
   (lambda (s)
     "Each of a file's forms' text (incr.kfx)."
     (tagcase s
-      (source (name text) (form-texts (string-chars text) 0 (map (lambda ((f sexp)) (datum-pos f)) (source-forms s)))))))
+      (source (name text) (with incremental (form-texts (string-chars text) 0 (map (lambda ((f sexp)) (datum-pos f)) (source-forms s))))))))
 
 (define compile-units-memo (subr kfx (sources memos) compiled)
   (lambda (ss old)
     (let* ((forms (concat (map (lambda ((s source)) (source-forms s)) ss)))
            (texts (concat (map source-texts ss))))
-      (tagcase (let ((c (check-program-memo forms texts old))) (begin (with restrictions (restrict forms)) c))
+      (tagcase (let ((c (with incremental (check-program-memo forms texts old)))) (begin (with restrictions (restrict forms)) c))
         (checked-memo (done found checks)
           (let ((c (collect forms (ctx nil nil nil nil found (cv-facts done) nil nil nil))))
-            (tagcase (memo-modules c (cv-facts done) (ctx-fingerprint c) old ss nil checks)
+            (tagcase (memo-modules c (cv-facts done) (with incremental (ctx-fingerprint c)) old ss nil checks)
               (compiled (modules made)
                 (compiled (onto modules
                                 (list (output "mod.rs"

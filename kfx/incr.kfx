@@ -14,544 +14,561 @@
  Rust; at 2^-64 for a pair, it is not guarded against."
 
 (define-datatype memo (memo i64 string))
+
 (define-type memos (listof memo acyclic))
 
-(define fnv-offset i64 -3750763034362895579)
-
-(define-rec
-  (fnv-onto (subr kfx (chars i64) i64)
-    (lambda (cs h)
-      (if (null? cs) h (fnv-onto (cdr cs) (i64* (i64-xor h (char->i64 (car cs))) 1099511628211))))))
-
-(define fnv-string (subr kfx (string i64) i64)
-  (lambda (s h)
-    "`s` onto fingerprint `h`, after a separator, so that two strings are
-     not one string."
-    (fnv-onto (string-chars s) (i64* (i64-xor h 31) 1099511628211))))
-
-(define-rec
-  (fnv-strings (subr kfx (strings i64) i64)
-    (lambda (ss h) (if (null? ss) h (fnv-strings (cdr ss) (fnv-string (car ss) h))))))
-
-"The context's fingerprint: everything in it but the facts, which are
- taken form by form."
-(define typed-text (subr kfx (typed) string)
-  (lambda (x) (tagcase x (typed (n t) (string-append n (string-append " " (show-sexp t)))))))
-
-(define-rec
-  (item-signature (subr kfx (sexp) strings)
-    (lambda (f)
-      "What the emitter reads of a module's item from outside it: a value's
-       name, its type, and whether it is a procedure; a type's whole text; a
-       hidden item's, marked; not a body (C91)."
-      (let ((xs (items f)))
-        (cond ((or (head-is? f "define") (head-is? f "define*"))
-               (if (module-def? f)
-                   (cons (string-append "module " (show-sexp (second xs))) (concat (map item-signature (module-written f))))
-                   (the strings (list (string-append (show-sexp (second xs))
-                                        (string-append (if (i64= (size xs) 4) (show-sexp (third xs)) "?")
-                                                       (if (lambda-form? (last xs)) " lambda" "")))))))
-              ((head-is? f "define-rec")
-               (map (lambda ((b sexp)) (string-append (show-sexp (car (items b))) (show-sexp (second (items b))))) (cdr xs)))
-              ((head-is? f "hide") (map (lambda ((x string)) (string-append "hidden " x)) (concat (map item-signature (cdr xs)))))
-              ((tagcase f (lst (ys fl l p) #t) (else other #f)) (the strings (list (show-sexp f))))
-              (else nil))))))
-
-(define module-entry-text (subr kfx (typed) string)
-  (lambda (x)
-    "A module the emitter keeps, as its fingerprint sees it: its items'
-     signatures, not their bodies, so that an edit inside a body leaves
-     every other form's memo (C91)."
-    (tagcase x
-      (typed (n t)
-        (if (head-is? t "module")
-            (string-append n (string-append " " (words-of (concat (map item-signature (cdr (items t)))))))
-            (typed-text x))))))
-
-(define ctx-fingerprint (subr kfx (ctx) i64)
-  (lambda (c)
-    (tagcase c
-      (ctx (ds ts ks ls xs fs ms es mods)
-        (fnv-strings
-          (concat (list (cons "datatypes" ds)
-                        (cons "tags" (map (lambda ((t tagof)) (tagcase t (tagof (n d) (string-append n (string-append " " d))))) ts))
-                        (cons "constants" ks)
-                        (cons "locals" ls)
-                        (cons "typeds" (map typed-text xs))
-                        (cons "families" (map (lambda ((f family))
-                                                (tagcase f (family (n d kinds) (string-append n (string-append (if d " datatype " " ") (words-of kinds))))))
-                                              ms))
-                        (cons "effects" (map typed-text es))
-                        (cons "modules" (map module-entry-text mods))))
-          fnv-offset)))))
-
-"Each form's text, cut from its file's characters at the forms' offsets;
- the last to the end of its file, an offset past every other."
-(define end-of-file i64 9223372036854775807)
-
-(define-rec
-  (drop-to (subr kfx (chars i64 i64) chars)
-    (lambda (cs at to) (if (or (null? cs) (i64>= at to)) cs (drop-to (cdr cs) (i64+ at 1) to)))))
-
-(define-rec
-  (take-to (subr kfx (chars i64 i64 chars) chars)
-    (lambda (cs at to acc) (if (or (null? cs) (i64>= at to)) acc (take-to (cdr cs) (i64+ at 1) to (cons (car cs) acc))))))
-
-(define-rec
-  (form-texts (subr kfx (chars i64 (listof i64 acyclic)) strings)
-    (lambda (cs at starts)
-      "`starts`, the forms' offsets in order; `cs` the text from offset `at`."
-      (if (null? starts)
-          nil
-          (let* ((from (drop-to cs at (car starts)))
-                 (end (if (null? (cdr starts)) end-of-file (car (cdr starts)))))
-            (cons (rev->string (take-to from (car starts) end nil))
-                  (form-texts (drop-to from (car starts) end) end (cdr starts))))))))
-
-"A file's facts, and those of one form, as text, their offsets from the
- form's start."
-(define-rec
-  (facts-of-file (subr kfx (facts string) facts)
-    (lambda (fs file)
-      (cond ((null? fs) nil)
-            ((tagcase (car fs) (fact (f p w) (string=? f file))) (cons (car fs) (facts-of-file (cdr fs) file)))
-            (else (facts-of-file (cdr fs) file))))))
-
-(define-rec
-  (facts-text (subr kfx (facts i64 i64) strings)
-    (lambda (fs start end)
-      (if (null? fs)
-          nil
-          (tagcase (car fs)
-            (fact (f p w)
-              (if (and (i64>= p start) (i64< p end))
-                  (cons (string-append (i64->string (i64- p start)) (string-append " " w)) (facts-text (cdr fs) start end))
-                  (facts-text (cdr fs) start end))))))))
-
-(define-rec
-  (memo-find (subr kfx (memos i64) memos)
-    (lambda (ms k)
-      (cond ((null? ms) nil)
-            ((tagcase (car ms) (memo (h t) (i64= h k))) (list (car ms)))
-            (else (memo-find (cdr ms) k))))))
-
-"Forms emitted, or their memos taken, and the memos this run made or
- took, which are all the next run is given."
 (define-datatype emitted (emitted chars memos))
 
-(define-rec
-  (put-items-memo (subr kfx (ctx facts i64 memos sexps chars i64 i64 chars memos) emitted)
-    (lambda (c fs global old its text start end acc made)
-      "A module's items, as `put-tops-memo` writes forms: `text` the module's
-       own, from offset `start` to `end`. An item the compiler made (no place
-       in the module's text) is keyed by its printed form."
-      (cond ((null? its) (emitted acc made))
-            ((comment? (car its))
-             (let* ((doc (and (not (null? (cdr its))) (definition? (second its))))
-                    (acc (put-comment (string-chars (comment-text (car its))) "//" 0 #t acc)))
-               (put-items-memo c fs global old (cdr its) text start end (put (if doc "\n" "\n\n") acc) made)))
-            (else
-             (let* ((p (datum-pos (car its)))
-                    (placed (and (i64>= p start) (i64< p end)))
-                    (next (item-end (cdr its) start end))
-                    (own (if placed (rev->string (take-to (drop-to text start p) p next nil)) (show-sexp (car its))))
-                    (key (fnv-strings (if placed (facts-text fs p next) nil) (fnv-string own global)))
-                    (found (memo-find old key))
-                    (out (if (null? found) (rev->string (put-top c (car its) nil)) (tagcase (car found) (memo (h t) t)))))
-               (put-items-memo c fs global old (cdr its) text start end (put out acc) (cons (memo key out) made)))))))
-  (item-end (subr kfx (sexps i64 i64) i64)
-    (lambda (its start end)
-      "Where the next item placed in the module's text starts; else the end."
-      (cond ((null? its) end)
-            ((and (i64>= (datum-pos (car its)) start) (i64< (datum-pos (car its)) end)) (datum-pos (car its)))
-            (else (item-end (cdr its) start end))))))
-
-(define-rec
-  (put-tops-memo (subr kfx (ctx facts i64 memos sexps strings (listof i64 acyclic) chars memos) emitted)
-    (lambda (c fs global old forms texts starts acc made)
-      "As `put-tops` (emit-tops.kfx) does, each definition's Rust its memo's
-       if it has one. `fs` the file's facts; `global` the context's
-       fingerprint; `old` the memos given."
-      (cond ((null? forms) (emitted acc made))
-            ((comment? (car forms))
-             (let* ((doc (and (not (null? (cdr forms))) (definition? (second forms))))
-                    (acc (put-comment (string-chars (comment-text (car forms))) "//" 0 #t acc)))
-               (put-tops-memo c fs global old (cdr forms) (cdr texts) (cdr starts) (put (if doc "\n" "\n\n") acc) made)))
-            ((module-def? (car forms))
-             "A module (C91): its items each with a memo of its own, in the
-              module's own context, inside its `pub mod`."
-             (let* ((m (sym-name (second (items (car forms)))))
-                    (start (car starts))
-                    (end (if (null? (cdr starts)) end-of-file (car (cdr starts)))))
-               (tagcase (module-parts c m (module-written (car forms)))
-                 (mparts (inner its)
-                   (tagcase (put-items-memo inner fs (ctx-fingerprint inner) old its (string-chars (car texts)) start end nil made)
-                     (emitted (body made2)
-                       (let ((body (if (string-member? "%toplevel" (ctx-locals c)) (put-show-generatives its body) body)))
-                         (put-tops-memo c fs global old (cdr forms) (cdr texts) (cdr starts) (put-module-around c m body acc) made2))))))))
-            (else
-             (let* ((start (car starts))
-                    (end (if (null? (cdr starts)) end-of-file (car (cdr starts))))
-                    (key (fnv-strings (facts-text fs start end) (fnv-string (car texts) global)))
-                    (found (memo-find old key))
-                    (text (if (null? found)
-                              (rev->string (put-top c (car forms) nil))
-                              (tagcase (car found) (memo (h t) t)))))
-               (put-tops-memo c fs global old (cdr forms) (cdr texts) (cdr starts) (put text acc)
-                              (cons (memo key text) made))))))))
-
-"Memos as text, a line each: the fingerprint, a tab, the Rust escaped
- (a backslash before `n` for a newline, before itself for itself); and
- back. The driver keeps them in a file."
-(define-rec
-  (escape-onto (subr kfx (chars chars) chars)
-    (lambda (cs acc)
-      (cond ((null? cs) acc)
-            ((char=? (car cs) #\newline) (escape-onto (cdr cs) (cons #\n (cons #\\ acc))))
-            ((char=? (car cs) #\\) (escape-onto (cdr cs) (cons #\\ (cons #\\ acc))))
-            (else (escape-onto (cdr cs) (cons (car cs) acc)))))))
-
-(define-rec
-  (memos-onto (subr kfx (memos chars) chars)
-    (lambda (ms acc)
-      (if (null? ms)
-          acc
-          (tagcase (car ms)
-            (memo (h t) (memos-onto (cdr ms) (cons #\newline (escape-onto (string-chars t) (cons #\tab (put (i64->string h) acc)))))))))))
-
-(define memos-text (subr kfx (memos) string)
-  (lambda (ms) (rev->string (memos-onto ms nil))))
-
-(define-rec
-  (memo-lines (subr kfx (chars chars i64 bool memos) memos)
-    (lambda (cs cur key in-text ms)
-      "`cur` the field so far, newest first; `key` the fingerprint read, once
-       `in-text`."
-      (cond ((null? cs) ms)
-            ((and (not in-text) (char=? (car cs) #\tab))
-             (memo-lines (cdr cs) nil (number-of-chars (rev-onto cur nil) 0 #f) #t ms))
-            ((char=? (car cs) #\newline)
-             (memo-lines (cdr cs) nil 0 #f (if in-text (cons (memo key (rev->string cur)) ms) ms)))
-            ((and in-text (char=? (car cs) #\\) (not (null? (cdr cs))))
-             (memo-lines (cdr (cdr cs)) (cons (if (char=? (car (cdr cs)) #\n) #\newline (car (cdr cs))) cur) key in-text ms))
-            (else (memo-lines (cdr cs) (cons (car cs) cur) key in-text ms)))))
-  (number-of-chars (subr kfx (chars i64 bool) i64)
-    (lambda (cs n negative)
-      (cond ((null? cs) (if negative (i64- 0 n) n))
-            ((char=? (car cs) #\-) (number-of-chars (cdr cs) n #t))
-            (else (number-of-chars (cdr cs) (i64+ (i64* n 10) (i64- (char->i64 (car cs)) 48)) negative))))))
-
-(define memos-of-text (subr kfx (string) memos)
-  (lambda (s) (memo-lines (string-chars s) nil 0 #f nil)))
-
-"The second query (C55): each form's check, kept between compiles. A
- form's check is a change to what the forms after it see (the checker's
- `cv`): names bound, effects named, facts noted, types found, and where
- the checker is. Its memo is that change, as text, addressed by the
- fingerprint of the form's text and of all the checker sees before it,
- which is a chain: the context the passes before every form make
- (datatypes, abbreviations, the primitives), then each form's change in
- turn, but for its facts and positions, of which the checker reads only
- `place-needs` and `region-within`, which are in the chain. So a body
- edited, its interface the same, leaves every later form's key the same:
- early cutoff, by content."
-
-"A type, a scheme and the rest as text, and back: an s-expression of
- their constructors, which the reader reads."
-(define-rec
-  (quoted-onto (subr kfx (chars chars) chars)
-    (lambda (cs acc)
-      (cond ((null? cs) acc)
-            ((char=? (car cs) #\") (quoted-onto (cdr cs) (cons #\" (cons #\\ acc))))
-            ((char=? (car cs) #\\) (quoted-onto (cdr cs) (cons #\\ (cons #\\ acc))))
-            ((char=? (car cs) #\newline) (quoted-onto (cdr cs) (cons #\n (cons #\\ acc))))
-            ((char=? (car cs) #\tab) (quoted-onto (cdr cs) (cons #\t (cons #\\ acc))))
-            (else (quoted-onto (cdr cs) (cons (car cs) acc)))))))
-
-(define quoted (subr kfx (string) string)
-  (lambda (s) (rev->string (cons #\" (quoted-onto (string-chars s) (list #\"))))))
-
-(define quoted-all (subr kfx (strings) string)
-  (lambda (ss) (string-append "(" (string-append (words-of (map quoted ss)) ")"))))
-
-(define-rec
-  (ty-code (subr kfx (ty) string)
-    (lambda (t)
-      (tagcase t
-        (ty-i64 () "(i64)")
-        (ty-int () "(int)")
-        (ty-nat () "(nat)")
-        (ty-f64 () "(f64)")
-        (ty-bool () "(bool)")
-        (ty-char () "(char)")
-        (ty-unit () "(unit)")
-        (ty-string () "(string)")
-        (ty-void () "(void)")
-        (ty-list (e r) (string-append "(list " (string-append (ty-code e) (string-append " " (string-append (ty-code r) ")")))))
-        (ty-data (d args) (string-append "(data " (string-append (quoted d) (string-append " " (string-append (tys-code args) ")")))))
-        (ty-flat (e r) (string-append "(flat " (string-append (ty-code e) (string-append " " (string-append (ty-code r) ")")))))
-        (ty-ref (e r) (string-append "(ref " (string-append (ty-code e) (string-append " " (string-append (ty-code r) ")")))))
-        (ty-rconst (n) (string-append "(rconst " (string-append (quoted n) ")")))
-        (ty-tag (a h d r) (string-append "(tag " (string-append (ty-code a) (string-append " " (string-append (ty-code h)
-                            (string-append " " (string-append (quoted-all d) (string-append " " (string-append (ty-code r) ")")))))))))
-        (ty-proc (es ps r) (string-append "(proc " (string-append (quoted-all es) (string-append " " (string-append (tys-code ps)
-                             (string-append " " (string-append (ty-code r) ")")))))))
-        (ty-shape (p ls ts) (string-append (if p "(shape 1 " "(shape 0 ") (string-append (quoted-all ls) (string-append " " (string-append (tys-code ts) ")")))))
-        (ty-var (n) (string-append "(var " (string-append (quoted n) ")")))
-        (ty-meta (k) (string-append "(meta " (string-append (i64->string k) ")"))))))
-  (tys-code (subr kfx (tys) string)
-    (lambda (ts) (string-append "(" (string-append (words-of (map ty-code ts)) ")")))))
-
-(define code-text (subr kfx (sexp) string)
-  (lambda (e) (tagcase e (str (s f p) s) (sym (s f p) s) (else other ""))))
-
-(define code-number (subr kfx (sexp) i64)
-  (lambda (e) (tagcase e (num (k f p) k) (else other 0))))
-
-(define-rec
-  (code-ty (subr kfx (sexp) ty)
-    (lambda (e)
-      (let* ((xs (items e))
-             (h (sym-name (car xs))))
-        (cond ((string=? h "i64") (ty-i64))
-              ((string=? h "int") (ty-int))
-              ((string=? h "nat") (ty-nat))
-              ((string=? h "f64") (ty-f64))
-              ((string=? h "bool") (ty-bool))
-              ((string=? h "char") (ty-char))
-              ((string=? h "unit") (ty-unit))
-              ((string=? h "string") (ty-string))
-              ((string=? h "void") (ty-void))
-              ((string=? h "list") (ty-list (code-ty (second xs)) (code-ty (third xs))))
-              ((string=? h "data") (ty-data (code-text (second xs)) (code-tys (third xs))))
-              ((string=? h "flat") (ty-flat (code-ty (second xs)) (code-ty (third xs))))
-              ((string=? h "ref") (ty-ref (code-ty (second xs)) (code-ty (third xs))))
-              ((string=? h "rconst") (ty-rconst (code-text (second xs))))
-              ((string=? h "tag") (ty-tag (code-ty (second xs)) (code-ty (third xs)) (code-strings (fourth xs)) (code-ty (car (cdr (cdr (cdr (cdr xs))))))))
-              ((string=? h "proc") (ty-proc (code-strings (second xs)) (code-tys (third xs)) (code-ty (fourth xs))))
-              ((string=? h "shape") (ty-shape (i64= (code-number (second xs)) 1) (code-strings (third xs)) (code-tys (fourth xs))))
-              ((string=? h "var") (ty-var (code-text (second xs))))
-              (else (ty-meta (code-number (second xs))))))))
-  (code-tys (subr kfx (sexp) tys)
-    (lambda (e) (map code-ty (items e))))
-  (code-strings (subr kfx (sexp) strings)
-    (lambda (e) (map code-text (items e)))))
-
-(define bind-code (subr kfx (bind) string)
-  (lambda (b)
-    (tagcase b
-      (bind (n sc w)
-        (tagcase sc
-          (scheme (tvs t)
-            (string-append "(" (string-append (quoted n) (string-append " " (string-append (quoted-all tvs)
-              (string-append " " (string-append (ty-code t) (string-append " " (string-append (quoted w) ")"))))))))))))))
-
-(define code-bind (subr kfx (sexp) bind)
-  (lambda (e)
-    (let ((xs (items e)))
-      (bind (code-text (car xs)) (scheme (code-strings (second xs)) (code-ty (third xs))) (code-text (fourth xs))))))
-
-(define effdef-code (subr kfx (effdef) string)
-  (lambda (d) (tagcase d (effdef (n atoms) (string-append "(" (string-append (quoted n) (string-append " " (string-append (quoted-all atoms) ")"))))))))
-
-(define code-effdef (subr kfx (sexp) effdef)
-  (lambda (e) (let ((xs (items e))) (effdef (code-text (car xs)) (code-strings (second xs))))))
-
-"A fact as text: its offset from the form's start if it is in the form's
- file (a 1 first), else where it is (a 0 first)."
-(define fact-code (subr kfx (string i64 fact) string)
-  (lambda (file start f)
-    (tagcase f
-      (fact (ff p w)
-        (if (string=? ff file)
-            (string-append "(1 " (string-append (i64->string (i64- p start)) (string-append " " (string-append (quoted w) ")"))))
-            (string-append "(0 " (string-append (quoted ff) (string-append " " (string-append (i64->string p)
-              (string-append " " (string-append (quoted w) ")")))))))))))
-
-(define code-fact (subr kfx (string i64 sexp) fact)
-  (lambda (file start e)
-    (let ((xs (items e)))
-      (if (i64= (code-number (car xs)) 1)
-          (fact file (i64+ start (code-number (second xs))) (code-text (third xs)))
-          (fact (code-text (second xs)) (code-number (third xs)) (code-text (fourth xs)))))))
-
-(define typed-code (subr kfx (typed) string)
-  (lambda (x) (tagcase x (typed (n t) (string-append "(" (string-append (quoted n) (string-append " " (string-append (show-sexp t) ")"))))))))
-
-(define code-typed (subr kfx (sexp) typed)
-  (lambda (e) (let ((xs (items e))) (typed (code-text (car xs)) (second xs)))))
-
-(define-rec
-  (leading (poly ((a type)) (subr kfx ((listof a acyclic) i64) (listof a acyclic)))
-    (lambda (xs n) (if (or (i64= n 0) (null? xs)) nil (cons (car xs) (leading (cdr xs) (i64- n 1)))))))
-
-(define interface-fact? (subr kfx (fact) bool)
-  (lambda (f)
-    "A fact the checker reads again, after the form that noted it."
-    (tagcase f (fact (ff p w) (or (has-prefix? w "place-needs ") (has-prefix? w "region-within "))))))
-
-"A form's change to the checker, `before` to `after`: what the next memo
- keeps, as text, and the part of it the chain goes on with."
-(define-datatype change (change string string))
-
-(define where-text (subr kfx (string strings strings) string)
-  (lambda (here group tv) (concat-strings (list (quoted here) " " (quoted-all group) " " (quoted-all tv)))))
-
-(define forward-text (subr kfx (binds effdefs string strings strings facts) string)
-  (lambda (bs es here group tv fs)
-    "What of a form's change the chain goes on with."
-    (concat-strings
-      (list (words-of (map bind-code bs)) "|" (words-of (map effdef-code es)) "|" (where-text here group tv) "|"
-            (words-of (concat (map (lambda ((x fact)) (tagcase x (fact (ff p w) (if (interface-fact? x) (the strings (list w)) nil)))) fs)))))))
-
-(define change-of (subr kfx (cv cv typeds string i64) change)
-  (lambda (before after found file start)
-    (tagcase after
-      (cv (bs ds als es here group f line fs tv at)
-        (let* ((new-binds (leading bs (i64- (size bs) (size (cv-binds before)))))
-               (new-effs (leading es (i64- (size es) (size (cv-effdefs before)))))
-               (new-facts (leading fs (i64- (size fs) (size (cv-facts before))))))
-          (change
-            (concat-strings
-              (list "((" (words-of (map bind-code new-binds))
-                    ") (" (words-of (map effdef-code new-effs))
-                    ") (" (words-of (map (lambda ((x fact)) (fact-code file start x)) new-facts))
-                    ") (" (words-of (map typed-code found))
-                    ") " (where-text here group tv)
-                    " " (quoted f) " " (i64->string line) " " (i64->string at) ")"))
-            (forward-text new-binds new-effs here group tv new-facts)))))))
-
-"A memo's change made again: the checker after the form, and the types found."
-(define-datatype redone (redone cv typeds string))
-
-(define change-applied (subr kfx (cv string string i64) redone)
-  (lambda (v text file start)
-    (let* ((parts (items (car (read-all (string-chars text) "" 1))))
-           (new-binds (map code-bind (items (car parts))))
-           (new-effs (map code-effdef (items (second parts))))
-           (new-facts (map (lambda ((e sexp)) (code-fact file start e)) (items (third parts))))
-           (found (map code-typed (items (fourth parts))))
-           (rest (cdr (cdr (cdr (cdr parts)))))
-           (here (code-text (car rest)))
-           (group (code-strings (second rest)))
-           (tv (code-strings (third rest)))
-           (f (code-text (fourth rest)))
-           (line (code-number (car (cdr (cdr (cdr (cdr rest)))))))
-           (at (code-number (car (cdr (cdr (cdr (cdr (cdr rest)))))))))
-      (tagcase v
-        (cv (bs ds als es h g ff l fs t a)
-          (redone (cv (onto new-binds bs) ds als (onto new-effs es) here group f line (onto new-facts fs) tv at)
-                  found
-                  (forward-text new-binds new-effs here group tv new-facts)))))))
-
-"The context every form is checked in, before the first: its fingerprint."
-(define cv-fingerprint (subr kfx (cv) i64)
-  (lambda (v)
-    (tagcase v
-      (cv (bs ds als es here group file line fs tv at)
-        (fnv-strings
-          (concat (list (cons "binds" (map bind-code bs))
-                        (cons "datatypes" (map (lambda ((d dt))
-                                                 (tagcase d (dt (n ps vs)
-                                                   (string-append (quoted n) (string-append (quoted-all ps)
-                                                     (words-of (map (lambda ((x variant)) (tagcase x (variant (t ts) (string-append (quoted t) (tys-code ts))))) vs)))))))
-                                               ds))
-                        (cons "aliases" (map (lambda ((a alias)) (tagcase a (alias (n ps body) (string-append (quoted n) (string-append (quoted-all ps) (show-sexp body)))))) als))
-                        (cons "effects" (map effdef-code es))
-                        (list here) group tv))
-          fnv-offset)))))
-
-"Each form checked, or its memo's change made again, as `check-tops`
- (check-defs.kfx) does; `chain` the fingerprint of all before it. Modules
- are checked always, and continue the chain by their text."
 (define-datatype checked-memo (checked-memo cv typeds memos))
 
-(define-rec
-  (check-items-memo (subr kfx (cv string sexps memos i64 typeds memos) checked-memo)
-    (lambda (v m its old chain found made)
-      "A module's items, as `check-items` (check-defs.kfx), each its memo's
-       change if it has one, keyed by its printed form and the chain."
-      (if (null? its)
-          (checked-memo v found made)
-          (let* ((it (car its))
-                 (file (datum-file it))
-                 (start (datum-pos it))
-                 (key (fnv-string (show-sexp it) (fnv-string "item" chain)))
-                 (hit (memo-find old key)))
-            (if (not (null? hit))
-                (tagcase (car hit)
-                  (memo (h text)
-                    (tagcase (change-applied v text file start)
-                      (redone (v2 more forward)
-                        (check-items-memo v2 m (cdr its) old (fnv-string forward chain) (onto more found) (cons (car hit) made))))))
-                (tagcase (check-item v m it)
-                  (elab (v2 more)
-                    (tagcase (change-of v v2 more file start)
-                      (change (text forward)
-                        (check-items-memo v2 m (cdr its) old (fnv-string forward chain) (onto more found) (cons (memo key text) made))))))))))))
+"The memos are a module (C92): what a compile keeps for the next, its
+ fingerprints and codecs hidden."
+(define incremental
+  (module
+    (hide
+      (define fnv-offset i64 -3750763034362895579)
 
-(define-rec
-  (check-tops-memo (subr kfx (cv sexps strings memos i64 typeds memos) checked-memo)
-    (lambda (v forms texts old chain found made)
-      (if (null? forms)
-          (checked-memo v found made)
-          (let* ((form (car forms))
-                 (file (datum-file form))
-                 (start (datum-pos form))
-                 (key (fnv-string (car texts) (fnv-string "check" chain)))
-                 (hit (memo-find old key)))
-            (cond ((module-def? form)
-                   "A module (C91): its items each with a memo, on a chain begun
-                    from the module's name and its items that are no values (its
-                    scope); the chain after it goes on with its change, as a
-                    form's does, so an edit inside an item's body leaves the
-                    forms after the module as they were."
-                   (tagcase form
-                     (lst (xs src-file src-line src-pos)
-                       (let* ((p (module-prep (near v src-file src-line src-pos) form))
-                              (inner (prep-inner p))
-                              (scope (fnv-strings (cons (prep-name p)
-                                                        (concat (map (lambda ((f sexp)) (if (null? (item-value f)) (the strings (list (show-sexp f))) nil))
-                                                                     (unhidden (module-written form)))))
-                                                  (fnv-string "module" chain))))
-                         (tagcase (check-items-memo inner (prep-name p) (module-order inner (prep-forms p)) old scope nil made)
-                           (checked-memo (done items-found made2)
-                             (tagcase (module-finish p (elab done items-found))
-                               (elab (v2 more)
-                                 (tagcase (change-of v v2 more file start)
-                                   (change (text forward)
-                                     (check-tops-memo (at v2 "" nil) (cdr forms) (cdr texts) old (fnv-string forward chain) (onto more found) made2)))))))))
-                     (else other (check-tops-memo v (cdr forms) (cdr texts) old chain found made))))
-                  ((not (null? hit))
-                   (tagcase (car hit)
-                     (memo (h text)
-                       (tagcase (change-applied v text file start)
-                         (redone (v2 more forward)
-                           (check-tops-memo v2 (cdr forms) (cdr texts) old (fnv-string forward chain) (onto more found)
-                                            (cons (car hit) made)))))))
+      (define-rec
+        (fnv-onto (subr kfx (chars i64) i64)
+          (lambda (cs h)
+            (if (null? cs) h (fnv-onto (cdr cs) (i64* (i64-xor h (char->i64 (car cs))) 1099511628211))))))
+
+      (define fnv-string (subr kfx (string i64) i64)
+        (lambda (s h)
+          "`s` onto fingerprint `h`, after a separator, so that two strings are
+           not one string."
+          (fnv-onto (string-chars s) (i64* (i64-xor h 31) 1099511628211))))
+
+      (define-rec
+        (fnv-strings (subr kfx (strings i64) i64)
+          (lambda (ss h) (if (null? ss) h (fnv-strings (cdr ss) (fnv-string (car ss) h))))))
+
+      ;; The context's fingerprint: everything in it but the facts, which are
+      ;; taken form by form.
+
+      (define typed-text (subr kfx (typed) string)
+        (lambda (x) (tagcase x (typed (n t) (string-append n (string-append " " (show-sexp t)))))))
+
+      (define-rec
+        (item-signature (subr kfx (sexp) strings)
+          (lambda (f)
+            "What the emitter reads of a module's item from outside it: a value's
+             name, its type, and whether it is a procedure; a type's whole text; a
+             hidden item's, marked; not a body (C91)."
+            (let ((xs (items f)))
+              (cond ((or (head-is? f "define") (head-is? f "define*"))
+                     (if (module-def? f)
+                         (cons (string-append "module " (show-sexp (second xs))) (concat (map item-signature (module-written f))))
+                         (the strings (list (string-append (show-sexp (second xs))
+                                              (string-append (if (i64= (size xs) 4) (show-sexp (third xs)) "?")
+                                                             (if (lambda-form? (last xs)) " lambda" "")))))))
+                    ((head-is? f "define-rec")
+                     (map (lambda ((b sexp)) (string-append (show-sexp (car (items b))) (show-sexp (second (items b))))) (cdr xs)))
+                    ((head-is? f "hide") (map (lambda ((x string)) (string-append "hidden " x)) (concat (map item-signature (cdr xs)))))
+                    ((tagcase f (lst (ys fl l p) #t) (else other #f)) (the strings (list (show-sexp f))))
+                    (else nil))))))
+
+      (define module-entry-text (subr kfx (typed) string)
+        (lambda (x)
+          "A module the emitter keeps, as its fingerprint sees it: its items'
+           signatures, not their bodies, so that an edit inside a body leaves
+           every other form's memo (C91)."
+          (tagcase x
+            (typed (n t)
+              (if (head-is? t "module")
+                  (string-append n (string-append " " (words-of (concat (map item-signature (cdr (items t)))))))
+                  (typed-text x))))))
+
+      ;; Each form's text, cut from its file's characters at the forms' offsets;
+      ;; the last to the end of its file, an offset past every other.
+
+      (define end-of-file i64 9223372036854775807)
+
+      (define-rec
+        (drop-to (subr kfx (chars i64 i64) chars)
+          (lambda (cs at to) (if (or (null? cs) (i64>= at to)) cs (drop-to (cdr cs) (i64+ at 1) to)))))
+
+      (define-rec
+        (take-to (subr kfx (chars i64 i64 chars) chars)
+          (lambda (cs at to acc) (if (or (null? cs) (i64>= at to)) acc (take-to (cdr cs) (i64+ at 1) to (cons (car cs) acc))))))
+
+      ;; A file's facts, and those of one form, as text, their offsets from the
+      ;; form's start.
+
+      (define-rec
+        (facts-text (subr kfx (facts i64 i64) strings)
+          (lambda (fs start end)
+            (if (null? fs)
+                nil
+                (tagcase (car fs)
+                  (fact (f p w)
+                    (if (and (i64>= p start) (i64< p end))
+                        (cons (string-append (i64->string (i64- p start)) (string-append " " w)) (facts-text (cdr fs) start end))
+                        (facts-text (cdr fs) start end))))))))
+
+      (define-rec
+        (memo-find (subr kfx (memos i64) memos)
+          (lambda (ms k)
+            (cond ((null? ms) nil)
+                  ((tagcase (car ms) (memo (h t) (i64= h k))) (list (car ms)))
+                  (else (memo-find (cdr ms) k))))))
+
+      ;; Forms emitted, or their memos taken, and the memos this run made or
+      ;; took, which are all the next run is given.
+
+      (define-rec
+        (put-items-memo (subr kfx (ctx facts i64 memos sexps chars i64 i64 chars memos) emitted)
+          (lambda (c fs global old its text start end acc made)
+            "A module's items, as `put-tops-memo` writes forms: `text` the module's
+             own, from offset `start` to `end`. An item the compiler made (no place
+             in the module's text) is keyed by its printed form."
+            (cond ((null? its) (emitted acc made))
+                  ((comment? (car its))
+                   (let* ((doc (and (not (null? (cdr its))) (definition? (second its))))
+                          (acc (put-comment (string-chars (comment-text (car its))) "//" 0 #t acc)))
+                     (put-items-memo c fs global old (cdr its) text start end (put (if doc "\n" "\n\n") acc) made)))
                   (else
-                   (let* ((done (if (untyped? form)
-                                    (tagcase form
-                                      (lst (xs src-file src-line src-pos)
-                                        (tagcase (check-untyped (near v src-file src-line src-pos) form)
-                                          (elab (v2 more) (elab (at v2 "" nil) more))))
-                                      (else other (elab v nil)))
-                                    (elab (check-top v form) nil))))
-                     (tagcase done
-                       (elab (v2 more)
-                         (tagcase (change-of v v2 more file start)
-                           (change (text forward)
-                             (check-tops-memo v2 (cdr forms) (cdr texts) old (fnv-string forward chain) (onto more found)
-                                              (cons (memo key text) made))))))))))))))
+                   (let* ((p (datum-pos (car its)))
+                          (placed (and (i64>= p start) (i64< p end)))
+                          (next (item-end (cdr its) start end))
+                          (own (if placed (rev->string (take-to (drop-to text start p) p next nil)) (show-sexp (car its))))
+                          (key (fnv-strings (if placed (facts-text fs p next) nil) (fnv-string own global)))
+                          (found (memo-find old key))
+                          (out (if (null? found) (rev->string (put-top c (car its) nil)) (tagcase (car found) (memo (h t) t)))))
+                     (put-items-memo c fs global old (cdr its) text start end (put out acc) (cons (memo key out) made)))))))
+        (item-end (subr kfx (sexps i64 i64) i64)
+          (lambda (its start end)
+            "Where the next item placed in the module's text starts; else the end."
+            (cond ((null? its) end)
+                  ((and (i64>= (datum-pos (car its)) start) (i64< (datum-pos (car its)) end)) (datum-pos (car its)))
+                  (else (item-end (cdr its) start end))))))
 
-(define check-program-memo (subr kfx (sexps strings memos) checked-memo)
-  (lambda (forms texts old)
-    "As `check-program` (check-defs.kfx), with memos; the passes before the
-     forms' run always."
-    (let* ((empty (cv nil nil nil nil "a type" nil "the program" 0 nil nil 0))
-           (start (cv nil nil (declare-types empty forms nil) nil "a type" nil "the program" 0 nil nil 0))
-           (types (type-names-free start forms))
-           (named (tagcase start (cv (bs ds als es here group file line fs tv at) (cv bs (datatype-names start forms nil) als es here group file line fs tv at))))
-           (typed (tagcase named (cv (bs ds als es here group file line fs tv at) (cv bs (declare-datatypes named forms nil) als es here group file line fs tv at))))
-           (v (with-binds typed (prim-binds typed))))
-      (check-tops-memo v forms texts old (cv-fingerprint v) nil nil))))
+      ;; Memos as text, a line each: the fingerprint, a tab, the Rust escaped
+      ;; (a backslash before `n` for a newline, before itself for itself); and
+      ;; back. The driver keeps them in a file.
+
+      (define-rec
+        (escape-onto (subr kfx (chars chars) chars)
+          (lambda (cs acc)
+            (cond ((null? cs) acc)
+                  ((char=? (car cs) #\newline) (escape-onto (cdr cs) (cons #\n (cons #\\ acc))))
+                  ((char=? (car cs) #\\) (escape-onto (cdr cs) (cons #\\ (cons #\\ acc))))
+                  (else (escape-onto (cdr cs) (cons (car cs) acc)))))))
+
+      (define-rec
+        (memos-onto (subr kfx (memos chars) chars)
+          (lambda (ms acc)
+            (if (null? ms)
+                acc
+                (tagcase (car ms)
+                  (memo (h t) (memos-onto (cdr ms) (cons #\newline (escape-onto (string-chars t) (cons #\tab (put (i64->string h) acc)))))))))))
+
+      (define-rec
+        (memo-lines (subr kfx (chars chars i64 bool memos) memos)
+          (lambda (cs cur key in-text ms)
+            "`cur` the field so far, newest first; `key` the fingerprint read, once
+             `in-text`."
+            (cond ((null? cs) ms)
+                  ((and (not in-text) (char=? (car cs) #\tab))
+                   (memo-lines (cdr cs) nil (number-of-chars (rev-onto cur nil) 0 #f) #t ms))
+                  ((char=? (car cs) #\newline)
+                   (memo-lines (cdr cs) nil 0 #f (if in-text (cons (memo key (rev->string cur)) ms) ms)))
+                  ((and in-text (char=? (car cs) #\\) (not (null? (cdr cs))))
+                   (memo-lines (cdr (cdr cs)) (cons (if (char=? (car (cdr cs)) #\n) #\newline (car (cdr cs))) cur) key in-text ms))
+                  (else (memo-lines (cdr cs) (cons (car cs) cur) key in-text ms)))))
+        (number-of-chars (subr kfx (chars i64 bool) i64)
+          (lambda (cs n negative)
+            (cond ((null? cs) (if negative (i64- 0 n) n))
+                  ((char=? (car cs) #\-) (number-of-chars (cdr cs) n #t))
+                  (else (number-of-chars (cdr cs) (i64+ (i64* n 10) (i64- (char->i64 (car cs)) 48)) negative))))))
+
+      ;; The second query (C55): each form's check, kept between compiles. A
+      ;; form's check is a change to what the forms after it see (the checker's
+      ;; `cv`): names bound, effects named, facts noted, types found, and where
+      ;; the checker is. Its memo is that change, as text, addressed by the
+      ;; fingerprint of the form's text and of all the checker sees before it,
+      ;; which is a chain: the context the passes before every form make
+      ;; (datatypes, abbreviations, the primitives), then each form's change in
+      ;; turn, but for its facts and positions, of which the checker reads only
+      ;; `place-needs` and `region-within`, which are in the chain. So a body
+      ;; edited, its interface the same, leaves every later form's key the same:
+      ;; early cutoff, by content.
+
+      ;; A type, a scheme and the rest as text, and back: an s-expression of
+      ;; their constructors, which the reader reads.
+
+      (define-rec
+        (quoted-onto (subr kfx (chars chars) chars)
+          (lambda (cs acc)
+            (cond ((null? cs) acc)
+                  ((char=? (car cs) #\") (quoted-onto (cdr cs) (cons #\" (cons #\\ acc))))
+                  ((char=? (car cs) #\\) (quoted-onto (cdr cs) (cons #\\ (cons #\\ acc))))
+                  ((char=? (car cs) #\newline) (quoted-onto (cdr cs) (cons #\n (cons #\\ acc))))
+                  ((char=? (car cs) #\tab) (quoted-onto (cdr cs) (cons #\t (cons #\\ acc))))
+                  (else (quoted-onto (cdr cs) (cons (car cs) acc)))))))
+
+      (define quoted (subr kfx (string) string)
+        (lambda (s) (rev->string (cons #\" (quoted-onto (string-chars s) (list #\"))))))
+
+      (define quoted-all (subr kfx (strings) string)
+        (lambda (ss) (string-append "(" (string-append (words-of (map quoted ss)) ")"))))
+
+      (define-rec
+        (ty-code (subr kfx (ty) string)
+          (lambda (t)
+            (tagcase t
+              (ty-i64 () "(i64)")
+              (ty-int () "(int)")
+              (ty-nat () "(nat)")
+              (ty-f64 () "(f64)")
+              (ty-bool () "(bool)")
+              (ty-char () "(char)")
+              (ty-unit () "(unit)")
+              (ty-string () "(string)")
+              (ty-void () "(void)")
+              (ty-list (e r) (string-append "(list " (string-append (ty-code e) (string-append " " (string-append (ty-code r) ")")))))
+              (ty-data (d args) (string-append "(data " (string-append (quoted d) (string-append " " (string-append (tys-code args) ")")))))
+              (ty-flat (e r) (string-append "(flat " (string-append (ty-code e) (string-append " " (string-append (ty-code r) ")")))))
+              (ty-ref (e r) (string-append "(ref " (string-append (ty-code e) (string-append " " (string-append (ty-code r) ")")))))
+              (ty-rconst (n) (string-append "(rconst " (string-append (quoted n) ")")))
+              (ty-tag (a h d r) (string-append "(tag " (string-append (ty-code a) (string-append " " (string-append (ty-code h)
+                                  (string-append " " (string-append (quoted-all d) (string-append " " (string-append (ty-code r) ")")))))))))
+              (ty-proc (es ps r) (string-append "(proc " (string-append (quoted-all es) (string-append " " (string-append (tys-code ps)
+                                   (string-append " " (string-append (ty-code r) ")")))))))
+              (ty-shape (p ls ts) (string-append (if p "(shape 1 " "(shape 0 ") (string-append (quoted-all ls) (string-append " " (string-append (tys-code ts) ")")))))
+              (ty-var (n) (string-append "(var " (string-append (quoted n) ")")))
+              (ty-meta (k) (string-append "(meta " (string-append (i64->string k) ")"))))))
+        (tys-code (subr kfx (tys) string)
+          (lambda (ts) (string-append "(" (string-append (words-of (map ty-code ts)) ")")))))
+
+      (define code-text (subr kfx (sexp) string)
+        (lambda (e) (tagcase e (str (s f p) s) (sym (s f p) s) (else other ""))))
+
+      (define code-number (subr kfx (sexp) i64)
+        (lambda (e) (tagcase e (num (k f p) k) (else other 0))))
+
+      (define-rec
+        (code-ty (subr kfx (sexp) ty)
+          (lambda (e)
+            (let* ((xs (items e))
+                   (h (sym-name (car xs))))
+              (cond ((string=? h "i64") (ty-i64))
+                    ((string=? h "int") (ty-int))
+                    ((string=? h "nat") (ty-nat))
+                    ((string=? h "f64") (ty-f64))
+                    ((string=? h "bool") (ty-bool))
+                    ((string=? h "char") (ty-char))
+                    ((string=? h "unit") (ty-unit))
+                    ((string=? h "string") (ty-string))
+                    ((string=? h "void") (ty-void))
+                    ((string=? h "list") (ty-list (code-ty (second xs)) (code-ty (third xs))))
+                    ((string=? h "data") (ty-data (code-text (second xs)) (code-tys (third xs))))
+                    ((string=? h "flat") (ty-flat (code-ty (second xs)) (code-ty (third xs))))
+                    ((string=? h "ref") (ty-ref (code-ty (second xs)) (code-ty (third xs))))
+                    ((string=? h "rconst") (ty-rconst (code-text (second xs))))
+                    ((string=? h "tag") (ty-tag (code-ty (second xs)) (code-ty (third xs)) (code-strings (fourth xs)) (code-ty (car (cdr (cdr (cdr (cdr xs))))))))
+                    ((string=? h "proc") (ty-proc (code-strings (second xs)) (code-tys (third xs)) (code-ty (fourth xs))))
+                    ((string=? h "shape") (ty-shape (i64= (code-number (second xs)) 1) (code-strings (third xs)) (code-tys (fourth xs))))
+                    ((string=? h "var") (ty-var (code-text (second xs))))
+                    (else (ty-meta (code-number (second xs))))))))
+        (code-tys (subr kfx (sexp) tys)
+          (lambda (e) (map code-ty (items e))))
+        (code-strings (subr kfx (sexp) strings)
+          (lambda (e) (map code-text (items e)))))
+
+      (define bind-code (subr kfx (bind) string)
+        (lambda (b)
+          (tagcase b
+            (bind (n sc w)
+              (tagcase sc
+                (scheme (tvs t)
+                  (string-append "(" (string-append (quoted n) (string-append " " (string-append (quoted-all tvs)
+                    (string-append " " (string-append (ty-code t) (string-append " " (string-append (quoted w) ")"))))))))))))))
+
+      (define code-bind (subr kfx (sexp) bind)
+        (lambda (e)
+          (let ((xs (items e)))
+            (bind (code-text (car xs)) (scheme (code-strings (second xs)) (code-ty (third xs))) (code-text (fourth xs))))))
+
+      (define effdef-code (subr kfx (effdef) string)
+        (lambda (d) (tagcase d (effdef (n atoms) (string-append "(" (string-append (quoted n) (string-append " " (string-append (quoted-all atoms) ")"))))))))
+
+      (define code-effdef (subr kfx (sexp) effdef)
+        (lambda (e) (let ((xs (items e))) (effdef (code-text (car xs)) (code-strings (second xs))))))
+
+      ;; A fact as text: its offset from the form's start if it is in the form's
+      ;; file (a 1 first), else where it is (a 0 first).
+
+      (define fact-code (subr kfx (string i64 fact) string)
+        (lambda (file start f)
+          (tagcase f
+            (fact (ff p w)
+              (if (string=? ff file)
+                  (string-append "(1 " (string-append (i64->string (i64- p start)) (string-append " " (string-append (quoted w) ")"))))
+                  (string-append "(0 " (string-append (quoted ff) (string-append " " (string-append (i64->string p)
+                    (string-append " " (string-append (quoted w) ")")))))))))))
+
+      (define code-fact (subr kfx (string i64 sexp) fact)
+        (lambda (file start e)
+          (let ((xs (items e)))
+            (if (i64= (code-number (car xs)) 1)
+                (fact file (i64+ start (code-number (second xs))) (code-text (third xs)))
+                (fact (code-text (second xs)) (code-number (third xs)) (code-text (fourth xs)))))))
+
+      (define typed-code (subr kfx (typed) string)
+        (lambda (x) (tagcase x (typed (n t) (string-append "(" (string-append (quoted n) (string-append " " (string-append (show-sexp t) ")"))))))))
+
+      (define code-typed (subr kfx (sexp) typed)
+        (lambda (e) (let ((xs (items e))) (typed (code-text (car xs)) (second xs)))))
+
+      (define-rec
+        (leading (poly ((a type)) (subr kfx ((listof a acyclic) i64) (listof a acyclic)))
+          (lambda (xs n) (if (or (i64= n 0) (null? xs)) nil (cons (car xs) (leading (cdr xs) (i64- n 1)))))))
+
+      (define interface-fact? (subr kfx (fact) bool)
+        (lambda (f)
+          "A fact the checker reads again, after the form that noted it."
+          (tagcase f (fact (ff p w) (or (has-prefix? w "place-needs ") (has-prefix? w "region-within "))))))
+
+      ;; A form's change to the checker, `before` to `after`: what the next memo
+      ;; keeps, as text, and the part of it the chain goes on with.
+
+      (define-datatype change (change string string))
+
+      (define where-text (subr kfx (string strings strings) string)
+        (lambda (here group tv) (concat-strings (list (quoted here) " " (quoted-all group) " " (quoted-all tv)))))
+
+      (define forward-text (subr kfx (binds effdefs string strings strings facts) string)
+        (lambda (bs es here group tv fs)
+          "What of a form's change the chain goes on with."
+          (concat-strings
+            (list (words-of (map bind-code bs)) "|" (words-of (map effdef-code es)) "|" (where-text here group tv) "|"
+                  (words-of (concat (map (lambda ((x fact)) (tagcase x (fact (ff p w) (if (interface-fact? x) (the strings (list w)) nil)))) fs)))))))
+
+      (define change-of (subr kfx (cv cv typeds string i64) change)
+        (lambda (before after found file start)
+          (tagcase after
+            (cv (bs ds als es here group f line fs tv at)
+              (let* ((new-binds (leading bs (i64- (size bs) (size (cv-binds before)))))
+                     (new-effs (leading es (i64- (size es) (size (cv-effdefs before)))))
+                     (new-facts (leading fs (i64- (size fs) (size (cv-facts before))))))
+                (change
+                  (concat-strings
+                    (list "((" (words-of (map bind-code new-binds))
+                          ") (" (words-of (map effdef-code new-effs))
+                          ") (" (words-of (map (lambda ((x fact)) (fact-code file start x)) new-facts))
+                          ") (" (words-of (map typed-code found))
+                          ") " (where-text here group tv)
+                          " " (quoted f) " " (i64->string line) " " (i64->string at) ")"))
+                  (forward-text new-binds new-effs here group tv new-facts)))))))
+
+      ;; A memo's change made again: the checker after the form, and the types found.
+
+      (define-datatype redone (redone cv typeds string))
+
+      (define change-applied (subr kfx (cv string string i64) redone)
+        (lambda (v text file start)
+          (let* ((parts (items (car (read-all (string-chars text) "" 1))))
+                 (new-binds (map code-bind (items (car parts))))
+                 (new-effs (map code-effdef (items (second parts))))
+                 (new-facts (map (lambda ((e sexp)) (code-fact file start e)) (items (third parts))))
+                 (found (map code-typed (items (fourth parts))))
+                 (rest (cdr (cdr (cdr (cdr parts)))))
+                 (here (code-text (car rest)))
+                 (group (code-strings (second rest)))
+                 (tv (code-strings (third rest)))
+                 (f (code-text (fourth rest)))
+                 (line (code-number (car (cdr (cdr (cdr (cdr rest)))))))
+                 (at (code-number (car (cdr (cdr (cdr (cdr (cdr rest)))))))))
+            (tagcase v
+              (cv (bs ds als es h g ff l fs t a)
+                (redone (cv (onto new-binds bs) ds als (onto new-effs es) here group f line (onto new-facts fs) tv at)
+                        found
+                        (forward-text new-binds new-effs here group tv new-facts)))))))
+
+      ;; The context every form is checked in, before the first: its fingerprint.
+
+      (define cv-fingerprint (subr kfx (cv) i64)
+        (lambda (v)
+          (tagcase v
+            (cv (bs ds als es here group file line fs tv at)
+              (fnv-strings
+                (concat (list (cons "binds" (map bind-code bs))
+                              (cons "datatypes" (map (lambda ((d dt))
+                                                       (tagcase d (dt (n ps vs)
+                                                         (string-append (quoted n) (string-append (quoted-all ps)
+                                                           (words-of (map (lambda ((x variant)) (tagcase x (variant (t ts) (string-append (quoted t) (tys-code ts))))) vs)))))))
+                                                     ds))
+                              (cons "aliases" (map (lambda ((a alias)) (tagcase a (alias (n ps body) (string-append (quoted n) (string-append (quoted-all ps) (show-sexp body)))))) als))
+                              (cons "effects" (map effdef-code es))
+                              (list here) group tv))
+                fnv-offset)))))
+
+      ;; Each form checked, or its memo's change made again, as `check-tops`
+      ;; (check-defs.kfx) does; `chain` the fingerprint of all before it. Modules
+      ;; are checked always, and continue the chain by their text.
+
+      (define-rec
+        (check-items-memo (subr kfx (cv string sexps memos i64 typeds memos) checked-memo)
+          (lambda (v m its old chain found made)
+            "A module's items, as `check-items` (check-defs.kfx), each its memo's
+             change if it has one, keyed by its printed form and the chain."
+            (if (null? its)
+                (checked-memo v found made)
+                (let* ((it (car its))
+                       (file (datum-file it))
+                       (start (datum-pos it))
+                       (key (fnv-string (show-sexp it) (fnv-string "item" chain)))
+                       (hit (memo-find old key)))
+                  (if (not (null? hit))
+                      (tagcase (car hit)
+                        (memo (h text)
+                          (tagcase (change-applied v text file start)
+                            (redone (v2 more forward)
+                              (check-items-memo v2 m (cdr its) old (fnv-string forward chain) (onto more found) (cons (car hit) made))))))
+                      (tagcase (check-item v m it)
+                        (elab (v2 more)
+                          (tagcase (change-of v v2 more file start)
+                            (change (text forward)
+                              (check-items-memo v2 m (cdr its) old (fnv-string forward chain) (onto more found) (cons (memo key text) made))))))))))))
+
+      (define-rec
+        (check-tops-memo (subr kfx (cv sexps strings memos i64 typeds memos) checked-memo)
+          (lambda (v forms texts old chain found made)
+            (if (null? forms)
+                (checked-memo v found made)
+                (let* ((form (car forms))
+                       (file (datum-file form))
+                       (start (datum-pos form))
+                       (key (fnv-string (car texts) (fnv-string "check" chain)))
+                       (hit (memo-find old key)))
+                  (cond ((module-def? form)
+                         "A module (C91): its items each with a memo, on a chain begun
+                          from the module's name and its items that are no values (its
+                          scope); the chain after it goes on with its change, as a
+                          form's does, so an edit inside an item's body leaves the
+                          forms after the module as they were."
+                         (tagcase form
+                           (lst (xs src-file src-line src-pos)
+                             (let* ((p (module-prep (near v src-file src-line src-pos) form))
+                                    (inner (prep-inner p))
+                                    (scope (fnv-strings (cons (prep-name p)
+                                                              (concat (map (lambda ((f sexp)) (if (null? (item-value f)) (the strings (list (show-sexp f))) nil))
+                                                                           (unhidden (module-written form)))))
+                                                        (fnv-string "module" chain))))
+                               (tagcase (check-items-memo inner (prep-name p) (module-order inner (prep-forms p)) old scope nil made)
+                                 (checked-memo (done items-found made2)
+                                   (tagcase (module-finish p (elab done items-found))
+                                     (elab (v2 more)
+                                       (tagcase (change-of v v2 more file start)
+                                         (change (text forward)
+                                           (check-tops-memo (at v2 "" nil) (cdr forms) (cdr texts) old (fnv-string forward chain) (onto more found) made2)))))))))
+                           (else other (check-tops-memo v (cdr forms) (cdr texts) old chain found made))))
+                        ((not (null? hit))
+                         (tagcase (car hit)
+                           (memo (h text)
+                             (tagcase (change-applied v text file start)
+                               (redone (v2 more forward)
+                                 (check-tops-memo v2 (cdr forms) (cdr texts) old (fnv-string forward chain) (onto more found)
+                                                  (cons (car hit) made)))))))
+                        (else
+                         (let* ((done (if (untyped? form)
+                                          (tagcase form
+                                            (lst (xs src-file src-line src-pos)
+                                              (tagcase (check-untyped (near v src-file src-line src-pos) form)
+                                                (elab (v2 more) (elab (at v2 "" nil) more))))
+                                            (else other (elab v nil)))
+                                          (elab (check-top v form) nil))))
+                           (tagcase done
+                             (elab (v2 more)
+                               (tagcase (change-of v v2 more file start)
+                                 (change (text forward)
+                                   (check-tops-memo v2 (cdr forms) (cdr texts) old (fnv-string forward chain) (onto more found)
+                                                    (cons (memo key text) made)))))))))))))))
+
+    (define ctx-fingerprint (subr kfx (ctx) i64)
+      (lambda (c)
+        (tagcase c
+          (ctx (ds ts ks ls xs fs ms es mods)
+            (fnv-strings
+              (concat (list (cons "datatypes" ds)
+                            (cons "tags" (map (lambda ((t tagof)) (tagcase t (tagof (n d) (string-append n (string-append " " d))))) ts))
+                            (cons "constants" ks)
+                            (cons "locals" ls)
+                            (cons "typeds" (map typed-text xs))
+                            (cons "families" (map (lambda ((f family))
+                                                    (tagcase f (family (n d kinds) (string-append n (string-append (if d " datatype " " ") (words-of kinds))))))
+                                                  ms))
+                            (cons "effects" (map typed-text es))
+                            (cons "modules" (map module-entry-text mods))))
+              fnv-offset)))))
+
+    (define-rec
+      (form-texts (subr kfx (chars i64 (listof i64 acyclic)) strings)
+        (lambda (cs at starts)
+          "`starts`, the forms' offsets in order; `cs` the text from offset `at`."
+          (if (null? starts)
+              nil
+              (let* ((from (drop-to cs at (car starts)))
+                     (end (if (null? (cdr starts)) end-of-file (car (cdr starts)))))
+                (cons (rev->string (take-to from (car starts) end nil))
+                      (form-texts (drop-to from (car starts) end) end (cdr starts))))))))
+
+    (define-rec
+      (facts-of-file (subr kfx (facts string) facts)
+        (lambda (fs file)
+          (cond ((null? fs) nil)
+                ((tagcase (car fs) (fact (f p w) (string=? f file))) (cons (car fs) (facts-of-file (cdr fs) file)))
+                (else (facts-of-file (cdr fs) file))))))
+
+    (define-rec
+      (put-tops-memo (subr kfx (ctx facts i64 memos sexps strings (listof i64 acyclic) chars memos) emitted)
+        (lambda (c fs global old forms texts starts acc made)
+          "As `put-tops` (emit-tops.kfx) does, each definition's Rust its memo's
+           if it has one. `fs` the file's facts; `global` the context's
+           fingerprint; `old` the memos given."
+          (cond ((null? forms) (emitted acc made))
+                ((comment? (car forms))
+                 (let* ((doc (and (not (null? (cdr forms))) (definition? (second forms))))
+                        (acc (put-comment (string-chars (comment-text (car forms))) "//" 0 #t acc)))
+                   (put-tops-memo c fs global old (cdr forms) (cdr texts) (cdr starts) (put (if doc "\n" "\n\n") acc) made)))
+                ((module-def? (car forms))
+                 "A module (C91): its items each with a memo of its own, in the
+                  module's own context, inside its `pub mod`."
+                 (let* ((m (sym-name (second (items (car forms)))))
+                        (start (car starts))
+                        (end (if (null? (cdr starts)) end-of-file (car (cdr starts)))))
+                   (tagcase (module-parts c m (module-written (car forms)))
+                     (mparts (inner its)
+                       (tagcase (put-items-memo inner fs (ctx-fingerprint inner) old its (string-chars (car texts)) start end nil made)
+                         (emitted (body made2)
+                           (let ((body (if (string-member? "%toplevel" (ctx-locals c)) (put-show-generatives its body) body)))
+                             (put-tops-memo c fs global old (cdr forms) (cdr texts) (cdr starts) (put-module-around c m body acc) made2))))))))
+                (else
+                 (let* ((start (car starts))
+                        (end (if (null? (cdr starts)) end-of-file (car (cdr starts))))
+                        (key (fnv-strings (facts-text fs start end) (fnv-string (car texts) global)))
+                        (found (memo-find old key))
+                        (text (if (null? found)
+                                  (rev->string (put-top c (car forms) nil))
+                                  (tagcase (car found) (memo (h t) t)))))
+                   (put-tops-memo c fs global old (cdr forms) (cdr texts) (cdr starts) (put text acc)
+                                  (cons (memo key text) made))))))))
+
+    (define memos-text (subr kfx (memos) string)
+      (lambda (ms) (rev->string (memos-onto ms nil))))
+
+    (define memos-of-text (subr kfx (string) memos)
+      (lambda (s) (memo-lines (string-chars s) nil 0 #f nil)))
+
+    (define check-program-memo (subr kfx (sexps strings memos) checked-memo)
+      (lambda (forms texts old)
+        "As `check-program` (check-defs.kfx), with memos; the passes before the
+         forms' run always."
+        (let* ((empty (cv nil nil nil nil "a type" nil "the program" 0 nil nil 0))
+               (start (cv nil nil (declare-types empty forms nil) nil "a type" nil "the program" 0 nil nil 0))
+               (types (type-names-free start forms))
+               (named (tagcase start (cv (bs ds als es here group file line fs tv at) (cv bs (datatype-names start forms nil) als es here group file line fs tv at))))
+               (typed (tagcase named (cv (bs ds als es here group file line fs tv at) (cv bs (declare-datatypes named forms nil) als es here group file line fs tv at))))
+               (v (with-binds typed (prim-binds typed))))
+          (check-tops-memo v forms texts old (cv-fingerprint v) nil nil))))))

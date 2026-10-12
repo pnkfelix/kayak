@@ -27,244 +27,6 @@ pub fn memo(f0: i64, f1: Str) -> &'static Memo {
 
 pub type Memos = List<&'static Memo>;
 
-pub fn fnv_offset() -> i64 {
-    -3750763034362895579i64
-}
-
-pub fn fnv_onto(mut cs: Chars, mut h: i64) -> i64 {
-    loop {
-        if null_p(cs) {
-            return h;
-        } else {
-            (cs, h) = (cdr(cs), i64_star(i64_xor(h, char_to_i64(car(cs))), 1099511628211i64));
-            continue;
-        }
-    }
-}
-
-/// `s` onto fingerprint `h`, after a separator, so that two strings are
-/// not one string.
-pub fn fnv_string(s: Str, h: i64) -> i64 {
-    fnv_onto(string_chars(s), i64_star(i64_xor(h, 31i64), 1099511628211i64))
-}
-
-pub fn fnv_strings(mut ss: Strings, mut h: i64) -> i64 {
-    loop {
-        if null_p(ss) {
-            return h;
-        } else {
-            (ss, h) = (cdr(ss), fnv_string(car(ss), h));
-            continue;
-        }
-    }
-}
-
-// The context's fingerprint: everything in it but the facts, which are
-// taken form by form.
-pub fn typed_text(x: &'static Typed) -> Str {
-    let tagcase_ = x;
-    match *tagcase_ {
-        Typed::Typed(n, t) => {
-            string_append(n, string_append(str_lit(" "), show_sexp(t)))
-        }
-    }
-}
-
-/// What the emitter reads of a module's item from outside it: a value's
-/// name, its type, and whether it is a procedure; a type's whole text; a
-/// hidden item's, marked; not a body (C91).
-pub fn item_signature(f: &'static Sexp) -> Strings {
-    let xs = items(f);
-    if (head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) {
-        if module_def_p(f) {
-            kayak_rt::heap_cons(string_append(str_lit("module "), show_sexp(second(xs))), concat(map(&item_signature, module_written(f))))
-        } else {
-            the::<Strings>(kayak_rt::heap_cons(string_append(show_sexp(second(xs)), string_append(if i64_eq(size(xs), 4i64) {
-                show_sexp(third(xs))
-            } else {
-                str_lit("?")
-            }, if lambda_form_p(last(xs)) {
-                str_lit(" lambda")
-            } else {
-                str_lit("")
-            })), kayak_rt::nil()))
-        }
-    } else if head_is_p(f, str_lit("define-rec")) {
-        map(lambda1(move |b: &'static Sexp| {
-            string_append(show_sexp(car(items(b))), show_sexp(second(items(b))))
-        }), cdr(xs))
-    } else if head_is_p(f, str_lit("hide")) {
-        map(lambda1(move |x: Str| {
-            string_append(str_lit("hidden "), x)
-        }), concat(map(&item_signature, cdr(xs))))
-    } else if {
-        let tagcase_ = f;
-        match *tagcase_ {
-            Sexp::Lst(ys, fl, l, p) => {
-                true
-            }
-            _ => {
-                let other = tagcase_;
-                false
-            }
-        }
-    } {
-        the::<Strings>(kayak_rt::heap_cons(show_sexp(f), kayak_rt::nil()))
-    } else {
-        nil::<Str>()
-    }
-}
-
-/// A module the emitter keeps, as its fingerprint sees it: its items'
-/// signatures, not their bodies, so that an edit inside a body leaves
-/// every other form's memo (C91).
-pub fn module_entry_text(x: &'static Typed) -> Str {
-    let tagcase_ = x;
-    match *tagcase_ {
-        Typed::Typed(n, t) => {
-            if head_is_p(t, str_lit("module")) {
-                string_append(n, string_append(str_lit(" "), words_of(concat(map(&item_signature, cdr(items(t)))))))
-            } else {
-                typed_text(x)
-            }
-        }
-    }
-}
-
-pub fn ctx_fingerprint(c: &'static Ctx) -> i64 {
-    let tagcase_ = c;
-    match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-            fnv_strings(concat(kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("datatypes"), ds), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("tags"), map(lambda1(move |t: &'static Tagof| {
-                let tagcase_ = t;
-                match *tagcase_ {
-                    Tagof::Tagof(n, d) => {
-                        string_append(n, string_append(str_lit(" "), d))
-                    }
-                }
-            }), ts)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("constants"), ks), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("locals"), ls), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("typeds"), map(&typed_text, xs)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("families"), map(lambda1(move |f: &'static Family| {
-                let tagcase_ = f;
-                match *tagcase_ {
-                    Family::Family(n, d, kinds) => {
-                        string_append(n, string_append(if d {
-                            str_lit(" datatype ")
-                        } else {
-                            str_lit(" ")
-                        }, words_of(kinds)))
-                    }
-                }
-            }), ms)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("effects"), map(&typed_text, es)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("modules"), map(&module_entry_text, mods)), kayak_rt::nil()))))))))), fnv_offset())
-        }
-    }
-}
-
-// Each form's text, cut from its file's characters at the forms' offsets;
-// the last to the end of its file, an offset past every other.
-pub fn end_of_file() -> i64 {
-    9223372036854775807i64
-}
-
-pub fn drop_to(mut cs: Chars, mut at: i64, mut to: i64) -> Chars {
-    loop {
-        if (null_p(cs) || i64_gt_eq(at, to)) {
-            return cs;
-        } else {
-            (cs, at) = (cdr(cs), i64_plus(at, 1i64));
-            continue;
-        }
-    }
-}
-
-pub fn take_to(mut cs: Chars, mut at: i64, mut to: i64, mut acc: Chars) -> Chars {
-    loop {
-        if (null_p(cs) || i64_gt_eq(at, to)) {
-            return acc;
-        } else {
-            (cs, at, acc) = (cdr(cs), i64_plus(at, 1i64), kayak_rt::heap_cons(car(cs), acc));
-            continue;
-        }
-    }
-}
-
-/// `starts`, the forms' offsets in order; `cs` the text from offset `at`.
-pub fn form_texts(cs: Chars, at: i64, starts: List<i64>) -> Strings {
-    if null_p(starts) {
-        nil::<Str>()
-    } else {
-        let from = drop_to(cs, at, car(starts));
-        let end = if null_p(cdr(starts)) {
-            end_of_file()
-        } else {
-            car(cdr(starts))
-        };
-        kayak_rt::heap_cons(rev_to_string(take_to(from, car(starts), end, nil::<char>())), form_texts(drop_to(from, car(starts), end), end, cdr(starts)))
-    }
-}
-
-// A file's facts, and those of one form, as text, their offsets from the
-// form's start.
-pub fn facts_of_file(mut fs: Facts, mut file: Str) -> Facts {
-    loop {
-        if null_p(fs) {
-            return nil::<&'static Fact>();
-        } else if {
-            let tagcase_ = car(fs);
-            match *tagcase_ {
-                Fact::Fact(f, p, w) => {
-                    string_eq_p(f, file)
-                }
-            }
-        } {
-            return kayak_rt::heap_cons(car(fs), facts_of_file(cdr(fs), file));
-        } else {
-            fs = cdr(fs);
-            continue;
-        }
-    }
-}
-
-pub fn facts_text(mut fs: Facts, mut start: i64, mut end: i64) -> Strings {
-    loop {
-        if null_p(fs) {
-            return nil::<Str>();
-        } else {
-            let tagcase_ = car(fs);
-            match *tagcase_ {
-                Fact::Fact(f, p, w) => {
-                    if (i64_gt_eq(p, start) && i64_lt(p, end)) {
-                        return kayak_rt::heap_cons(string_append(i64_to_string(i64_minus(p, start)), string_append(str_lit(" "), w)), facts_text(cdr(fs), start, end));
-                    } else {
-                        fs = cdr(fs);
-                        continue;
-                    }
-                }
-            }
-        }
-    }
-}
-
-pub fn memo_find(mut ms: Memos, mut k: i64) -> Memos {
-    loop {
-        if null_p(ms) {
-            return nil::<&'static Memo>();
-        } else if {
-            let tagcase_ = car(ms);
-            match *tagcase_ {
-                Memo::Memo(h, t) => {
-                    i64_eq(h, k)
-                }
-            }
-        } {
-            return kayak_rt::heap_cons(car(ms), kayak_rt::nil());
-        } else {
-            ms = cdr(ms);
-            continue;
-        }
-    }
-}
-
-// Forms emitted, or their memos taken, and the memos this run made or
-// took, which are all the next run is given.
 pub enum Emitted {
     Emitted(Chars, Memos),
 }
@@ -273,621 +35,6 @@ pub fn emitted(f0: Chars, f1: Memos) -> &'static Emitted {
     kayak_rt::heap_alloc(Emitted::Emitted(f0, f1))
 }
 
-/// A module's items, as `put-tops-memo` writes forms: `text` the module's
-/// own, from offset `start` to `end`. An item the compiler made (no place
-/// in the module's text) is keyed by its printed form.
-pub fn put_items_memo(mut c: &'static Ctx, mut fs: Facts, mut global: i64, mut old: Memos, mut its: Sexps, mut text: Chars, mut start: i64, mut end: i64, mut acc: Chars, mut made: Memos) -> &'static Emitted {
-    loop {
-        if null_p(its) {
-            return emitted(acc, made);
-        } else if comment_p(car(its)) {
-            let doc = (not(null_p(cdr(its))) && definition_p(second(its)));
-            let acc = put_comment(string_chars(comment_text(car(its))), str_lit("//"), 0i64, true, acc);
-            return put_items_memo(c, fs, global, old, cdr(its), text, start, end, put(if doc {
-                str_lit("\n")
-            } else {
-                str_lit("\n\n")
-            }, acc), made);
-        } else {
-            let p = datum_pos(car(its));
-            let placed = (i64_gt_eq(p, start) && i64_lt(p, end));
-            let next = item_end(cdr(its), start, end);
-            let own = if placed {
-                rev_to_string(take_to(drop_to(text, start, p), p, next, nil::<char>()))
-            } else {
-                show_sexp(car(its))
-            };
-            let key = fnv_strings(if placed {
-                facts_text(fs, p, next)
-            } else {
-                nil::<Str>()
-            }, fnv_string(own, global));
-            let found = memo_find(old, key);
-            let out = if null_p(found) {
-                rev_to_string(put_top(c, car(its), nil::<char>()))
-            } else {
-                let tagcase_ = car(found);
-                match *tagcase_ {
-                    Memo::Memo(h, t) => {
-                        t
-                    }
-                }
-            };
-            (its, acc, made) = (cdr(its), put(out, acc), kayak_rt::heap_cons(memo(key, out), made));
-            continue;
-        }
-    }
-}
-
-/// Where the next item placed in the module's text starts; else the end.
-pub fn item_end(mut its: Sexps, mut start: i64, mut end: i64) -> i64 {
-    loop {
-        if null_p(its) {
-            return end;
-        } else if (i64_gt_eq(datum_pos(car(its)), start) && i64_lt(datum_pos(car(its)), end)) {
-            return datum_pos(car(its));
-        } else {
-            its = cdr(its);
-            continue;
-        }
-    }
-}
-
-/// As `put-tops` (emit-tops.kfx) does, each definition's Rust its memo's
-/// if it has one. `fs` the file's facts; `global` the context's
-/// fingerprint; `old` the memos given.
-pub fn put_tops_memo(mut c: &'static Ctx, mut fs: Facts, mut global: i64, mut old: Memos, mut forms: Sexps, mut texts: Strings, mut starts: List<i64>, mut acc: Chars, mut made: Memos) -> &'static Emitted {
-    loop {
-        if null_p(forms) {
-            return emitted(acc, made);
-        } else if comment_p(car(forms)) {
-            let doc = (not(null_p(cdr(forms))) && definition_p(second(forms)));
-            let acc = put_comment(string_chars(comment_text(car(forms))), str_lit("//"), 0i64, true, acc);
-            return put_tops_memo(c, fs, global, old, cdr(forms), cdr(texts), cdr(starts), put(if doc {
-                str_lit("\n")
-            } else {
-                str_lit("\n\n")
-            }, acc), made);
-        } else if module_def_p(car(forms)) {
-            // A module (C91): its items each with a memo of its own, in the
-            // module's own context, inside its `pub mod`.
-            let m = sym_name(second(items(car(forms))));
-            let start = car(starts);
-            let end = if null_p(cdr(starts)) {
-                end_of_file()
-            } else {
-                car(cdr(starts))
-            };
-            let tagcase_ = module_parts(c, m, module_written(car(forms)));
-            match *tagcase_ {
-                Mparts::Mparts(inner, its) => {
-                    let tagcase_ = put_items_memo(inner, fs, ctx_fingerprint(inner), old, its, string_chars(car(texts)), start, end, nil::<char>(), made);
-                    match *tagcase_ {
-                        Emitted::Emitted(body, made2) => {
-                            let body = if string_member_p(str_lit("%toplevel"), ctx_locals(c)) {
-                                put_show_generatives(its, body)
-                            } else {
-                                body
-                            };
-                            (forms, texts, starts, acc, made) = (cdr(forms), cdr(texts), cdr(starts), put_module_around(c, m, body, acc), made2);
-                            continue;
-                        }
-                    }
-                }
-            }
-        } else {
-            let start = car(starts);
-            let end = if null_p(cdr(starts)) {
-                end_of_file()
-            } else {
-                car(cdr(starts))
-            };
-            let key = fnv_strings(facts_text(fs, start, end), fnv_string(car(texts), global));
-            let found = memo_find(old, key);
-            let text = if null_p(found) {
-                rev_to_string(put_top(c, car(forms), nil::<char>()))
-            } else {
-                let tagcase_ = car(found);
-                match *tagcase_ {
-                    Memo::Memo(h, t) => {
-                        t
-                    }
-                }
-            };
-            (forms, texts, starts, acc, made) = (cdr(forms), cdr(texts), cdr(starts), put(text, acc), kayak_rt::heap_cons(memo(key, text), made));
-            continue;
-        }
-    }
-}
-
-// Memos as text, a line each: the fingerprint, a tab, the Rust escaped
-// (a backslash before `n` for a newline, before itself for itself); and
-// back. The driver keeps them in a file.
-pub fn escape_onto(mut cs: Chars, mut acc: Chars) -> Chars {
-    loop {
-        if null_p(cs) {
-            return acc;
-        } else if char_eq_p(car(cs), '\n') {
-            (cs, acc) = (cdr(cs), kayak_rt::heap_cons('n', kayak_rt::heap_cons('\\', acc)));
-            continue;
-        } else if char_eq_p(car(cs), '\\') {
-            (cs, acc) = (cdr(cs), kayak_rt::heap_cons('\\', kayak_rt::heap_cons('\\', acc)));
-            continue;
-        } else {
-            (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
-            continue;
-        }
-    }
-}
-
-pub fn memos_onto(mut ms: Memos, mut acc: Chars) -> Chars {
-    loop {
-        if null_p(ms) {
-            return acc;
-        } else {
-            let tagcase_ = car(ms);
-            match *tagcase_ {
-                Memo::Memo(h, t) => {
-                    (ms, acc) = (cdr(ms), kayak_rt::heap_cons('\n', escape_onto(string_chars(t), kayak_rt::heap_cons('\t', put(i64_to_string(h), acc)))));
-                    continue;
-                }
-            }
-        }
-    }
-}
-
-pub fn memos_text(ms: Memos) -> Str {
-    rev_to_string(memos_onto(ms, nil::<char>()))
-}
-
-/// `cur` the field so far, newest first; `key` the fingerprint read, once
-/// `in-text`.
-pub fn memo_lines(mut cs: Chars, mut cur: Chars, mut key: i64, mut in_text: bool, mut ms: Memos) -> Memos {
-    loop {
-        if null_p(cs) {
-            return ms;
-        } else if (not(in_text) && char_eq_p(car(cs), '\t')) {
-            (cs, cur, key, in_text) = (cdr(cs), nil::<char>(), number_of_chars(rev_onto(cur, nil::<char>()), 0i64, false), true);
-            continue;
-        } else if char_eq_p(car(cs), '\n') {
-            (cs, cur, key, in_text, ms) = (cdr(cs), nil::<char>(), 0i64, false, if in_text {
-                kayak_rt::heap_cons(memo(key, rev_to_string(cur)), ms)
-            } else {
-                ms
-            });
-            continue;
-        } else if (in_text && char_eq_p(car(cs), '\\') && not(null_p(cdr(cs)))) {
-            (cs, cur) = (cdr(cdr(cs)), kayak_rt::heap_cons(if char_eq_p(car(cdr(cs)), 'n') {
-                '\n'
-            } else {
-                car(cdr(cs))
-            }, cur));
-            continue;
-        } else {
-            (cs, cur) = (cdr(cs), kayak_rt::heap_cons(car(cs), cur));
-            continue;
-        }
-    }
-}
-
-pub fn number_of_chars(mut cs: Chars, mut n: i64, mut negative: bool) -> i64 {
-    loop {
-        if null_p(cs) {
-            if negative {
-                return i64_minus(0i64, n);
-            } else {
-                return n;
-            }
-        } else if char_eq_p(car(cs), '-') {
-            (cs, negative) = (cdr(cs), true);
-            continue;
-        } else {
-            (cs, n) = (cdr(cs), i64_plus(i64_star(n, 10i64), i64_minus(char_to_i64(car(cs)), 48i64)));
-            continue;
-        }
-    }
-}
-
-pub fn memos_of_text(s: Str) -> Memos {
-    memo_lines(string_chars(s), nil::<char>(), 0i64, false, nil::<&'static Memo>())
-}
-
-// The second query (C55): each form's check, kept between compiles. A
-// form's check is a change to what the forms after it see (the checker's
-// `cv`): names bound, effects named, facts noted, types found, and where
-// the checker is. Its memo is that change, as text, addressed by the
-// fingerprint of the form's text and of all the checker sees before it,
-// which is a chain: the context the passes before every form make
-// (datatypes, abbreviations, the primitives), then each form's change in
-// turn, but for its facts and positions, of which the checker reads only
-// `place-needs` and `region-within`, which are in the chain. So a body
-// edited, its interface the same, leaves every later form's key the same:
-// early cutoff, by content.
-
-// A type, a scheme and the rest as text, and back: an s-expression of
-// their constructors, which the reader reads.
-pub fn quoted_onto(mut cs: Chars, mut acc: Chars) -> Chars {
-    loop {
-        if null_p(cs) {
-            return acc;
-        } else if char_eq_p(car(cs), '"') {
-            (cs, acc) = (cdr(cs), kayak_rt::heap_cons('"', kayak_rt::heap_cons('\\', acc)));
-            continue;
-        } else if char_eq_p(car(cs), '\\') {
-            (cs, acc) = (cdr(cs), kayak_rt::heap_cons('\\', kayak_rt::heap_cons('\\', acc)));
-            continue;
-        } else if char_eq_p(car(cs), '\n') {
-            (cs, acc) = (cdr(cs), kayak_rt::heap_cons('n', kayak_rt::heap_cons('\\', acc)));
-            continue;
-        } else if char_eq_p(car(cs), '\t') {
-            (cs, acc) = (cdr(cs), kayak_rt::heap_cons('t', kayak_rt::heap_cons('\\', acc)));
-            continue;
-        } else {
-            (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
-            continue;
-        }
-    }
-}
-
-pub fn quoted(s: Str) -> Str {
-    rev_to_string(kayak_rt::heap_cons('"', quoted_onto(string_chars(s), kayak_rt::heap_cons('"', kayak_rt::nil()))))
-}
-
-pub fn quoted_all(ss: Strings) -> Str {
-    string_append(str_lit("("), string_append(words_of(map(&quoted, ss)), str_lit(")")))
-}
-
-pub fn ty_code(t: &'static Ty) -> Str {
-    let tagcase_ = t;
-    match *tagcase_ {
-        Ty::TyI64() => {
-            str_lit("(i64)")
-        }
-        Ty::TyInt() => {
-            str_lit("(int)")
-        }
-        Ty::TyNat() => {
-            str_lit("(nat)")
-        }
-        Ty::TyF64() => {
-            str_lit("(f64)")
-        }
-        Ty::TyBool() => {
-            str_lit("(bool)")
-        }
-        Ty::TyChar() => {
-            str_lit("(char)")
-        }
-        Ty::TyUnit() => {
-            str_lit("(unit)")
-        }
-        Ty::TyString() => {
-            str_lit("(string)")
-        }
-        Ty::TyVoid() => {
-            str_lit("(void)")
-        }
-        Ty::TyList(e, r) => {
-            string_append(str_lit("(list "), string_append(ty_code(e), string_append(str_lit(" "), string_append(ty_code(r), str_lit(")")))))
-        }
-        Ty::TyData(d, args) => {
-            string_append(str_lit("(data "), string_append(quoted(d), string_append(str_lit(" "), string_append(tys_code(args), str_lit(")")))))
-        }
-        Ty::TyFlat(e, r) => {
-            string_append(str_lit("(flat "), string_append(ty_code(e), string_append(str_lit(" "), string_append(ty_code(r), str_lit(")")))))
-        }
-        Ty::TyRef(e, r) => {
-            string_append(str_lit("(ref "), string_append(ty_code(e), string_append(str_lit(" "), string_append(ty_code(r), str_lit(")")))))
-        }
-        Ty::TyRconst(n) => {
-            string_append(str_lit("(rconst "), string_append(quoted(n), str_lit(")")))
-        }
-        Ty::TyTag(a, h, d, r) => {
-            string_append(str_lit("(tag "), string_append(ty_code(a), string_append(str_lit(" "), string_append(ty_code(h), string_append(str_lit(" "), string_append(quoted_all(d), string_append(str_lit(" "), string_append(ty_code(r), str_lit(")")))))))))
-        }
-        Ty::TyProc(es, ps, r) => {
-            string_append(str_lit("(proc "), string_append(quoted_all(es), string_append(str_lit(" "), string_append(tys_code(ps), string_append(str_lit(" "), string_append(ty_code(r), str_lit(")")))))))
-        }
-        Ty::TyShape(p, ls, ts) => {
-            string_append(if p {
-                str_lit("(shape 1 ")
-            } else {
-                str_lit("(shape 0 ")
-            }, string_append(quoted_all(ls), string_append(str_lit(" "), string_append(tys_code(ts), str_lit(")")))))
-        }
-        Ty::TyVar(n) => {
-            string_append(str_lit("(var "), string_append(quoted(n), str_lit(")")))
-        }
-        Ty::TyMeta(k) => {
-            string_append(str_lit("(meta "), string_append(i64_to_string(k), str_lit(")")))
-        }
-    }
-}
-
-pub fn tys_code(ts: Tys) -> Str {
-    string_append(str_lit("("), string_append(words_of(map(&ty_code, ts)), str_lit(")")))
-}
-
-pub fn code_text(e: &'static Sexp) -> Str {
-    let tagcase_ = e;
-    match *tagcase_ {
-        Sexp::Str(s, f, p) => {
-            s
-        }
-        Sexp::Sym(s, f, p) => {
-            s
-        }
-        _ => {
-            let other = tagcase_;
-            str_lit("")
-        }
-    }
-}
-
-pub fn code_number(e: &'static Sexp) -> i64 {
-    let tagcase_ = e;
-    match *tagcase_ {
-        Sexp::Num(k, f, p) => {
-            k
-        }
-        _ => {
-            let other = tagcase_;
-            0i64
-        }
-    }
-}
-
-pub fn code_ty(e: &'static Sexp) -> &'static Ty {
-    let xs = items(e);
-    let h = sym_name(car(xs));
-    if string_eq_p(h, str_lit("i64")) {
-        ty_i64()
-    } else if string_eq_p(h, str_lit("int")) {
-        ty_int()
-    } else if string_eq_p(h, str_lit("nat")) {
-        ty_nat()
-    } else if string_eq_p(h, str_lit("f64")) {
-        ty_f64()
-    } else if string_eq_p(h, str_lit("bool")) {
-        ty_bool()
-    } else if string_eq_p(h, str_lit("char")) {
-        ty_char()
-    } else if string_eq_p(h, str_lit("unit")) {
-        ty_unit()
-    } else if string_eq_p(h, str_lit("string")) {
-        ty_string()
-    } else if string_eq_p(h, str_lit("void")) {
-        ty_void()
-    } else if string_eq_p(h, str_lit("list")) {
-        ty_list(code_ty(second(xs)), code_ty(third(xs)))
-    } else if string_eq_p(h, str_lit("data")) {
-        ty_data(code_text(second(xs)), code_tys(third(xs)))
-    } else if string_eq_p(h, str_lit("flat")) {
-        ty_flat(code_ty(second(xs)), code_ty(third(xs)))
-    } else if string_eq_p(h, str_lit("ref")) {
-        ty_ref(code_ty(second(xs)), code_ty(third(xs)))
-    } else if string_eq_p(h, str_lit("rconst")) {
-        ty_rconst(code_text(second(xs)))
-    } else if string_eq_p(h, str_lit("tag")) {
-        ty_tag(code_ty(second(xs)), code_ty(third(xs)), code_strings(fourth(xs)), code_ty(car(cdr(cdr(cdr(cdr(xs)))))))
-    } else if string_eq_p(h, str_lit("proc")) {
-        ty_proc(code_strings(second(xs)), code_tys(third(xs)), code_ty(fourth(xs)))
-    } else if string_eq_p(h, str_lit("shape")) {
-        ty_shape(i64_eq(code_number(second(xs)), 1i64), code_strings(third(xs)), code_tys(fourth(xs)))
-    } else if string_eq_p(h, str_lit("var")) {
-        ty_var(code_text(second(xs)))
-    } else {
-        ty_meta(code_number(second(xs)))
-    }
-}
-
-pub fn code_tys(e: &'static Sexp) -> Tys {
-    map(&code_ty, items(e))
-}
-
-pub fn code_strings(e: &'static Sexp) -> Strings {
-    map(&code_text, items(e))
-}
-
-pub fn bind_code(b: &'static Bind) -> Str {
-    let tagcase_ = b;
-    match *tagcase_ {
-        Bind::Bind(n, sc, w) => {
-            let tagcase_ = sc;
-            match *tagcase_ {
-                Scheme::Scheme(tvs, t) => {
-                    string_append(str_lit("("), string_append(quoted(n), string_append(str_lit(" "), string_append(quoted_all(tvs), string_append(str_lit(" "), string_append(ty_code(t), string_append(str_lit(" "), string_append(quoted(w), str_lit(")")))))))))
-                }
-            }
-        }
-    }
-}
-
-pub fn code_bind(e: &'static Sexp) -> &'static Bind {
-    let xs = items(e);
-    bind(code_text(car(xs)), scheme(code_strings(second(xs)), code_ty(third(xs))), code_text(fourth(xs)))
-}
-
-pub fn effdef_code(d: &'static Effdef) -> Str {
-    let tagcase_ = d;
-    match *tagcase_ {
-        Effdef::Effdef(n, atoms) => {
-            string_append(str_lit("("), string_append(quoted(n), string_append(str_lit(" "), string_append(quoted_all(atoms), str_lit(")")))))
-        }
-    }
-}
-
-pub fn code_effdef(e: &'static Sexp) -> &'static Effdef {
-    let xs = items(e);
-    effdef(code_text(car(xs)), code_strings(second(xs)))
-}
-
-// A fact as text: its offset from the form's start if it is in the form's
-// file (a 1 first), else where it is (a 0 first).
-pub fn fact_code(file: Str, start: i64, f: &'static Fact) -> Str {
-    let tagcase_ = f;
-    match *tagcase_ {
-        Fact::Fact(ff, p, w) => {
-            if string_eq_p(ff, file) {
-                string_append(str_lit("(1 "), string_append(i64_to_string(i64_minus(p, start)), string_append(str_lit(" "), string_append(quoted(w), str_lit(")")))))
-            } else {
-                string_append(str_lit("(0 "), string_append(quoted(ff), string_append(str_lit(" "), string_append(i64_to_string(p), string_append(str_lit(" "), string_append(quoted(w), str_lit(")")))))))
-            }
-        }
-    }
-}
-
-pub fn code_fact(file: Str, start: i64, e: &'static Sexp) -> &'static Fact {
-    let xs = items(e);
-    if i64_eq(code_number(car(xs)), 1i64) {
-        fact(file, i64_plus(start, code_number(second(xs))), code_text(third(xs)))
-    } else {
-        fact(code_text(second(xs)), code_number(third(xs)), code_text(fourth(xs)))
-    }
-}
-
-pub fn typed_code(x: &'static Typed) -> Str {
-    let tagcase_ = x;
-    match *tagcase_ {
-        Typed::Typed(n, t) => {
-            string_append(str_lit("("), string_append(quoted(n), string_append(str_lit(" "), string_append(show_sexp(t), str_lit(")")))))
-        }
-    }
-}
-
-pub fn code_typed(e: &'static Sexp) -> &'static Typed {
-    let xs = items(e);
-    typed(code_text(car(xs)), second(xs))
-}
-
-pub fn leading<A: Copy + 'static>(xs: List<A>, n: i64) -> List<A> {
-    if (i64_eq(n, 0i64) || null_p(xs)) {
-        nil::<A>()
-    } else {
-        kayak_rt::heap_cons(car(xs), leading(cdr(xs), i64_minus(n, 1i64)))
-    }
-}
-
-/// A fact the checker reads again, after the form that noted it.
-pub fn interface_fact_p(f: &'static Fact) -> bool {
-    let tagcase_ = f;
-    match *tagcase_ {
-        Fact::Fact(ff, p, w) => {
-            (has_prefix_p(w, str_lit("place-needs ")) || has_prefix_p(w, str_lit("region-within ")))
-        }
-    }
-}
-
-// A form's change to the checker, `before` to `after`: what the next memo
-// keeps, as text, and the part of it the chain goes on with.
-pub enum Change {
-    Change(Str, Str),
-}
-
-pub fn change(f0: Str, f1: Str) -> &'static Change {
-    kayak_rt::heap_alloc(Change::Change(f0, f1))
-}
-
-pub fn where_text(here: Str, group: Strings, tv: Strings) -> Str {
-    concat_strings(kayak_rt::heap_cons(quoted(here), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(quoted_all(group), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(quoted_all(tv), kayak_rt::nil()))))))
-}
-
-/// What of a form's change the chain goes on with.
-pub fn forward_text(bs: Binds, es: Effdefs, here: Str, group: Strings, tv: Strings, fs: Facts) -> Str {
-    concat_strings(kayak_rt::heap_cons(words_of(map(&bind_code, bs)), kayak_rt::heap_cons(str_lit("|"), kayak_rt::heap_cons(words_of(map(&effdef_code, es)), kayak_rt::heap_cons(str_lit("|"), kayak_rt::heap_cons(where_text(here, group, tv), kayak_rt::heap_cons(str_lit("|"), kayak_rt::heap_cons(words_of(concat(map(lambda1(move |x: &'static Fact| {
-        let tagcase_ = x;
-        match *tagcase_ {
-            Fact::Fact(ff, p, w) => {
-                if interface_fact_p(x) {
-                    the::<Strings>(kayak_rt::heap_cons(w, kayak_rt::nil()))
-                } else {
-                    nil::<Str>()
-                }
-            }
-        }
-    }), fs))), kayak_rt::nil()))))))))
-}
-
-pub fn change_of(before: &'static Cv, after: &'static Cv, found: Typeds, file: Str, start: i64) -> &'static Change {
-    let tagcase_ = after;
-    match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, f, line, fs, tv, at) => {
-            let new_binds = leading(bs, i64_minus(size(bs), size(cv_binds(before))));
-            let new_effs = leading(es, i64_minus(size(es), size(cv_effdefs(before))));
-            let new_facts = leading(fs, i64_minus(size(fs), size(cv_facts(before))));
-            change(concat_strings(kayak_rt::heap_cons(str_lit("(("), kayak_rt::heap_cons(words_of(map(&bind_code, new_binds)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(&effdef_code, new_effs)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(lambda1(move |x: &'static Fact| {
-                fact_code(file, start, x)
-            }), new_facts)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(&typed_code, found)), kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(where_text(here, group, tv), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(quoted(f), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(line), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(at), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))))))))))))), forward_text(new_binds, new_effs, here, group, tv, new_facts))
-        }
-    }
-}
-
-// A memo's change made again: the checker after the form, and the types found.
-pub enum Redone {
-    Redone(&'static Cv, Typeds, Str),
-}
-
-pub fn redone(f0: &'static Cv, f1: Typeds, f2: Str) -> &'static Redone {
-    kayak_rt::heap_alloc(Redone::Redone(f0, f1, f2))
-}
-
-pub fn change_applied(v: &'static Cv, text: Str, file: Str, start: i64) -> &'static Redone {
-    let parts = items(car(read_all(string_chars(text), str_lit(""), 1i64)));
-    let new_binds = map(&code_bind, items(car(parts)));
-    let new_effs = map(&code_effdef, items(second(parts)));
-    let new_facts = map(lambda1(move |e: &'static Sexp| {
-        code_fact(file, start, e)
-    }), items(third(parts)));
-    let found = map(&code_typed, items(fourth(parts)));
-    let rest = cdr(cdr(cdr(cdr(parts))));
-    let here = code_text(car(rest));
-    let group = code_strings(second(rest));
-    let tv = code_strings(third(rest));
-    let f = code_text(fourth(rest));
-    let line = code_number(car(cdr(cdr(cdr(cdr(rest))))));
-    let at = code_number(car(cdr(cdr(cdr(cdr(cdr(rest)))))));
-    let tagcase_ = v;
-    match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, h, g, ff, l, fs, t, a) => {
-            redone(cv(onto(new_binds, bs), ds, als, onto(new_effs, es), here, group, f, line, onto(new_facts, fs), tv, at), found, forward_text(new_binds, new_effs, here, group, tv, new_facts))
-        }
-    }
-}
-
-// The context every form is checked in, before the first: its fingerprint.
-pub fn cv_fingerprint(v: &'static Cv) -> i64 {
-    let tagcase_ = v;
-    match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-            fnv_strings(concat(kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("binds"), map(&bind_code, bs)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("datatypes"), map(lambda1(move |d: &'static Dt| {
-                let tagcase_ = d;
-                match *tagcase_ {
-                    Dt::Dt(n, ps, vs) => {
-                        string_append(quoted(n), string_append(quoted_all(ps), words_of(map(lambda1(move |x: &'static Variant| {
-                            let tagcase_ = x;
-                            match *tagcase_ {
-                                Variant::Variant(t, ts) => {
-                                    string_append(quoted(t), tys_code(ts))
-                                }
-                            }
-                        }), vs))))
-                    }
-                }
-            }), ds)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("aliases"), map(lambda1(move |a: &'static Alias| {
-                let tagcase_ = a;
-                match *tagcase_ {
-                    Alias::Alias(n, ps, body) => {
-                        string_append(quoted(n), string_append(quoted_all(ps), show_sexp(body)))
-                    }
-                }
-            }), als)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("effects"), map(&effdef_code, es)), kayak_rt::heap_cons(kayak_rt::heap_cons(here, kayak_rt::nil()), kayak_rt::heap_cons(group, kayak_rt::heap_cons(tv, kayak_rt::nil())))))))), fnv_offset())
-        }
-    }
-}
-
-// Each form checked, or its memo's change made again, as `check-tops`
-// (check-defs.kfx) does; `chain` the fingerprint of all before it. Modules
-// are checked always, and continue the chain by their text.
 pub enum CheckedMemo {
     CheckedMemo(&'static Cv, Typeds, Memos),
 }
@@ -896,40 +43,728 @@ pub fn checked_memo(f0: &'static Cv, f1: Typeds, f2: Memos) -> &'static CheckedM
     kayak_rt::heap_alloc(CheckedMemo::CheckedMemo(f0, f1, f2))
 }
 
-/// A module's items, as `check-items` (check-defs.kfx), each its memo's
-/// change if it has one, keyed by its printed form and the chain.
-pub fn check_items_memo(mut v: &'static Cv, mut m: Str, mut its: Sexps, mut old: Memos, mut chain: i64, mut found: Typeds, mut made: Memos) -> &'static CheckedMemo {
-    loop {
-        if null_p(its) {
-            return checked_memo(v, found, made);
+// The memos are a module (C92): what a compile keeps for the next, its
+// fingerprints and codecs hidden.
+pub mod incremental {
+    use super::*;
+
+    pub fn fnv_offset() -> i64 {
+        -3750763034362895579i64
+    }
+
+    pub fn fnv_onto(mut cs: Chars, mut h: i64) -> i64 {
+        loop {
+            if null_p(cs) {
+                return h;
+            } else {
+                (cs, h) = (cdr(cs), i64_star(i64_xor(h, char_to_i64(car(cs))), 1099511628211i64));
+                continue;
+            }
+        }
+    }
+
+    /// `s` onto fingerprint `h`, after a separator, so that two strings are
+    /// not one string.
+    pub fn fnv_string(s: Str, h: i64) -> i64 {
+        fnv_onto(string_chars(s), i64_star(i64_xor(h, 31i64), 1099511628211i64))
+    }
+
+    pub fn fnv_strings(mut ss: Strings, mut h: i64) -> i64 {
+        loop {
+            if null_p(ss) {
+                return h;
+            } else {
+                (ss, h) = (cdr(ss), fnv_string(car(ss), h));
+                continue;
+            }
+        }
+    }
+
+    pub fn typed_text(x: &'static Typed) -> Str {
+        let tagcase_ = x;
+        match *tagcase_ {
+            Typed::Typed(n, t) => {
+                string_append(n, string_append(str_lit(" "), show_sexp(t)))
+            }
+        }
+    }
+
+    /// What the emitter reads of a module's item from outside it: a value's
+    /// name, its type, and whether it is a procedure; a type's whole text; a
+    /// hidden item's, marked; not a body (C91).
+    pub fn item_signature(f: &'static Sexp) -> Strings {
+        let xs = items(f);
+        if (head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) {
+            if module_def_p(f) {
+                kayak_rt::heap_cons(string_append(str_lit("module "), show_sexp(second(xs))), concat(map(&item_signature, module_written(f))))
+            } else {
+                the::<Strings>(kayak_rt::heap_cons(string_append(show_sexp(second(xs)), string_append(if i64_eq(size(xs), 4i64) {
+                    show_sexp(third(xs))
+                } else {
+                    str_lit("?")
+                }, if lambda_form_p(last(xs)) {
+                    str_lit(" lambda")
+                } else {
+                    str_lit("")
+                })), kayak_rt::nil()))
+            }
+        } else if head_is_p(f, str_lit("define-rec")) {
+            map(lambda1(move |b: &'static Sexp| {
+                string_append(show_sexp(car(items(b))), show_sexp(second(items(b))))
+            }), cdr(xs))
+        } else if head_is_p(f, str_lit("hide")) {
+            map(lambda1(move |x: Str| {
+                string_append(str_lit("hidden "), x)
+            }), concat(map(&item_signature, cdr(xs))))
+        } else if {
+            let tagcase_ = f;
+            match *tagcase_ {
+                Sexp::Lst(ys, fl, l, p) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        } {
+            the::<Strings>(kayak_rt::heap_cons(show_sexp(f), kayak_rt::nil()))
         } else {
-            let it = car(its);
-            let file = datum_file(it);
-            let start = datum_pos(it);
-            let key = fnv_string(show_sexp(it), fnv_string(str_lit("item"), chain));
-            let hit = memo_find(old, key);
-            if not(null_p(hit)) {
-                let tagcase_ = car(hit);
+            nil::<Str>()
+        }
+    }
+
+    /// A module the emitter keeps, as its fingerprint sees it: its items'
+    /// signatures, not their bodies, so that an edit inside a body leaves
+    /// every other form's memo (C91).
+    pub fn module_entry_text(x: &'static Typed) -> Str {
+        let tagcase_ = x;
+        match *tagcase_ {
+            Typed::Typed(n, t) => {
+                if head_is_p(t, str_lit("module")) {
+                    string_append(n, string_append(str_lit(" "), words_of(concat(map(&item_signature, cdr(items(t)))))))
+                } else {
+                    typed_text(x)
+                }
+            }
+        }
+    }
+
+    pub fn end_of_file() -> i64 {
+        9223372036854775807i64
+    }
+
+    pub fn drop_to(mut cs: Chars, mut at: i64, mut to: i64) -> Chars {
+        loop {
+            if (null_p(cs) || i64_gt_eq(at, to)) {
+                return cs;
+            } else {
+                (cs, at) = (cdr(cs), i64_plus(at, 1i64));
+                continue;
+            }
+        }
+    }
+
+    pub fn take_to(mut cs: Chars, mut at: i64, mut to: i64, mut acc: Chars) -> Chars {
+        loop {
+            if (null_p(cs) || i64_gt_eq(at, to)) {
+                return acc;
+            } else {
+                (cs, at, acc) = (cdr(cs), i64_plus(at, 1i64), kayak_rt::heap_cons(car(cs), acc));
+                continue;
+            }
+        }
+    }
+
+    pub fn facts_text(mut fs: Facts, mut start: i64, mut end: i64) -> Strings {
+        loop {
+            if null_p(fs) {
+                return nil::<Str>();
+            } else {
+                let tagcase_ = car(fs);
                 match *tagcase_ {
-                    Memo::Memo(h, text) => {
-                        let tagcase_ = change_applied(v, text, file, start);
-                        match *tagcase_ {
-                            Redone::Redone(v2, more, forward) => {
-                                (v, its, chain, found, made) = (v2, cdr(its), fnv_string(forward, chain), onto(more, found), kayak_rt::heap_cons(car(hit), made));
-                                continue;
-                            }
+                    Fact::Fact(f, p, w) => {
+                        if (i64_gt_eq(p, start) && i64_lt(p, end)) {
+                            return kayak_rt::heap_cons(string_append(i64_to_string(i64_minus(p, start)), string_append(str_lit(" "), w)), facts_text(cdr(fs), start, end));
+                        } else {
+                            fs = cdr(fs);
+                            continue;
                         }
                     }
                 }
-            } else {
-                let tagcase_ = check_item(v, m, it);
+            }
+        }
+    }
+
+    pub fn memo_find(mut ms: Memos, mut k: i64) -> Memos {
+        loop {
+            if null_p(ms) {
+                return nil::<&'static Memo>();
+            } else if {
+                let tagcase_ = car(ms);
                 match *tagcase_ {
-                    Elab::Elab(v2, more) => {
-                        let tagcase_ = change_of(v, v2, more, file, start);
-                        match *tagcase_ {
-                            Change::Change(text, forward) => {
-                                (v, its, chain, found, made) = (v2, cdr(its), fnv_string(forward, chain), onto(more, found), kayak_rt::heap_cons(memo(key, text), made));
-                                continue;
+                    Memo::Memo(h, t) => {
+                        i64_eq(h, k)
+                    }
+                }
+            } {
+                return kayak_rt::heap_cons(car(ms), kayak_rt::nil());
+            } else {
+                ms = cdr(ms);
+                continue;
+            }
+        }
+    }
+
+    /// A module's items, as `put-tops-memo` writes forms: `text` the module's
+    /// own, from offset `start` to `end`. An item the compiler made (no place
+    /// in the module's text) is keyed by its printed form.
+    pub fn put_items_memo(mut c: &'static Ctx, mut fs: Facts, mut global: i64, mut old: Memos, mut its: Sexps, mut text: Chars, mut start: i64, mut end: i64, mut acc: Chars, mut made: Memos) -> &'static Emitted {
+        loop {
+            if null_p(its) {
+                return emitted(acc, made);
+            } else if comment_p(car(its)) {
+                let doc = (not(null_p(cdr(its))) && definition_p(second(its)));
+                let acc = put_comment(string_chars(comment_text(car(its))), str_lit("//"), 0i64, true, acc);
+                return put_items_memo(c, fs, global, old, cdr(its), text, start, end, put(if doc {
+                    str_lit("\n")
+                } else {
+                    str_lit("\n\n")
+                }, acc), made);
+            } else {
+                let p = datum_pos(car(its));
+                let placed = (i64_gt_eq(p, start) && i64_lt(p, end));
+                let next = item_end(cdr(its), start, end);
+                let own = if placed {
+                    rev_to_string(take_to(drop_to(text, start, p), p, next, nil::<char>()))
+                } else {
+                    show_sexp(car(its))
+                };
+                let key = fnv_strings(if placed {
+                    facts_text(fs, p, next)
+                } else {
+                    nil::<Str>()
+                }, fnv_string(own, global));
+                let found = memo_find(old, key);
+                let out = if null_p(found) {
+                    rev_to_string(put_top(c, car(its), nil::<char>()))
+                } else {
+                    let tagcase_ = car(found);
+                    match *tagcase_ {
+                        Memo::Memo(h, t) => {
+                            t
+                        }
+                    }
+                };
+                (its, acc, made) = (cdr(its), put(out, acc), kayak_rt::heap_cons(memo(key, out), made));
+                continue;
+            }
+        }
+    }
+
+    /// Where the next item placed in the module's text starts; else the end.
+    pub fn item_end(mut its: Sexps, mut start: i64, mut end: i64) -> i64 {
+        loop {
+            if null_p(its) {
+                return end;
+            } else if (i64_gt_eq(datum_pos(car(its)), start) && i64_lt(datum_pos(car(its)), end)) {
+                return datum_pos(car(its));
+            } else {
+                its = cdr(its);
+                continue;
+            }
+        }
+    }
+
+    pub fn escape_onto(mut cs: Chars, mut acc: Chars) -> Chars {
+        loop {
+            if null_p(cs) {
+                return acc;
+            } else if char_eq_p(car(cs), '\n') {
+                (cs, acc) = (cdr(cs), kayak_rt::heap_cons('n', kayak_rt::heap_cons('\\', acc)));
+                continue;
+            } else if char_eq_p(car(cs), '\\') {
+                (cs, acc) = (cdr(cs), kayak_rt::heap_cons('\\', kayak_rt::heap_cons('\\', acc)));
+                continue;
+            } else {
+                (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
+                continue;
+            }
+        }
+    }
+
+    pub fn memos_onto(mut ms: Memos, mut acc: Chars) -> Chars {
+        loop {
+            if null_p(ms) {
+                return acc;
+            } else {
+                let tagcase_ = car(ms);
+                match *tagcase_ {
+                    Memo::Memo(h, t) => {
+                        (ms, acc) = (cdr(ms), kayak_rt::heap_cons('\n', escape_onto(string_chars(t), kayak_rt::heap_cons('\t', put(i64_to_string(h), acc)))));
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+
+    /// `cur` the field so far, newest first; `key` the fingerprint read, once
+    /// `in-text`.
+    pub fn memo_lines(mut cs: Chars, mut cur: Chars, mut key: i64, mut in_text: bool, mut ms: Memos) -> Memos {
+        loop {
+            if null_p(cs) {
+                return ms;
+            } else if (not(in_text) && char_eq_p(car(cs), '\t')) {
+                (cs, cur, key, in_text) = (cdr(cs), nil::<char>(), number_of_chars(rev_onto(cur, nil::<char>()), 0i64, false), true);
+                continue;
+            } else if char_eq_p(car(cs), '\n') {
+                (cs, cur, key, in_text, ms) = (cdr(cs), nil::<char>(), 0i64, false, if in_text {
+                    kayak_rt::heap_cons(memo(key, rev_to_string(cur)), ms)
+                } else {
+                    ms
+                });
+                continue;
+            } else if (in_text && char_eq_p(car(cs), '\\') && not(null_p(cdr(cs)))) {
+                (cs, cur) = (cdr(cdr(cs)), kayak_rt::heap_cons(if char_eq_p(car(cdr(cs)), 'n') {
+                    '\n'
+                } else {
+                    car(cdr(cs))
+                }, cur));
+                continue;
+            } else {
+                (cs, cur) = (cdr(cs), kayak_rt::heap_cons(car(cs), cur));
+                continue;
+            }
+        }
+    }
+
+    pub fn number_of_chars(mut cs: Chars, mut n: i64, mut negative: bool) -> i64 {
+        loop {
+            if null_p(cs) {
+                if negative {
+                    return i64_minus(0i64, n);
+                } else {
+                    return n;
+                }
+            } else if char_eq_p(car(cs), '-') {
+                (cs, negative) = (cdr(cs), true);
+                continue;
+            } else {
+                (cs, n) = (cdr(cs), i64_plus(i64_star(n, 10i64), i64_minus(char_to_i64(car(cs)), 48i64)));
+                continue;
+            }
+        }
+    }
+
+    pub fn quoted_onto(mut cs: Chars, mut acc: Chars) -> Chars {
+        loop {
+            if null_p(cs) {
+                return acc;
+            } else if char_eq_p(car(cs), '"') {
+                (cs, acc) = (cdr(cs), kayak_rt::heap_cons('"', kayak_rt::heap_cons('\\', acc)));
+                continue;
+            } else if char_eq_p(car(cs), '\\') {
+                (cs, acc) = (cdr(cs), kayak_rt::heap_cons('\\', kayak_rt::heap_cons('\\', acc)));
+                continue;
+            } else if char_eq_p(car(cs), '\n') {
+                (cs, acc) = (cdr(cs), kayak_rt::heap_cons('n', kayak_rt::heap_cons('\\', acc)));
+                continue;
+            } else if char_eq_p(car(cs), '\t') {
+                (cs, acc) = (cdr(cs), kayak_rt::heap_cons('t', kayak_rt::heap_cons('\\', acc)));
+                continue;
+            } else {
+                (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
+                continue;
+            }
+        }
+    }
+
+    pub fn quoted(s: Str) -> Str {
+        rev_to_string(kayak_rt::heap_cons('"', quoted_onto(string_chars(s), kayak_rt::heap_cons('"', kayak_rt::nil()))))
+    }
+
+    pub fn quoted_all(ss: Strings) -> Str {
+        string_append(str_lit("("), string_append(words_of(map(&quoted, ss)), str_lit(")")))
+    }
+
+    pub fn ty_code(t: &'static Ty) -> Str {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Ty::TyI64() => {
+                str_lit("(i64)")
+            }
+            Ty::TyInt() => {
+                str_lit("(int)")
+            }
+            Ty::TyNat() => {
+                str_lit("(nat)")
+            }
+            Ty::TyF64() => {
+                str_lit("(f64)")
+            }
+            Ty::TyBool() => {
+                str_lit("(bool)")
+            }
+            Ty::TyChar() => {
+                str_lit("(char)")
+            }
+            Ty::TyUnit() => {
+                str_lit("(unit)")
+            }
+            Ty::TyString() => {
+                str_lit("(string)")
+            }
+            Ty::TyVoid() => {
+                str_lit("(void)")
+            }
+            Ty::TyList(e, r) => {
+                string_append(str_lit("(list "), string_append(ty_code(e), string_append(str_lit(" "), string_append(ty_code(r), str_lit(")")))))
+            }
+            Ty::TyData(d, args) => {
+                string_append(str_lit("(data "), string_append(quoted(d), string_append(str_lit(" "), string_append(tys_code(args), str_lit(")")))))
+            }
+            Ty::TyFlat(e, r) => {
+                string_append(str_lit("(flat "), string_append(ty_code(e), string_append(str_lit(" "), string_append(ty_code(r), str_lit(")")))))
+            }
+            Ty::TyRef(e, r) => {
+                string_append(str_lit("(ref "), string_append(ty_code(e), string_append(str_lit(" "), string_append(ty_code(r), str_lit(")")))))
+            }
+            Ty::TyRconst(n) => {
+                string_append(str_lit("(rconst "), string_append(quoted(n), str_lit(")")))
+            }
+            Ty::TyTag(a, h, d, r) => {
+                string_append(str_lit("(tag "), string_append(ty_code(a), string_append(str_lit(" "), string_append(ty_code(h), string_append(str_lit(" "), string_append(quoted_all(d), string_append(str_lit(" "), string_append(ty_code(r), str_lit(")")))))))))
+            }
+            Ty::TyProc(es, ps, r) => {
+                string_append(str_lit("(proc "), string_append(quoted_all(es), string_append(str_lit(" "), string_append(tys_code(ps), string_append(str_lit(" "), string_append(ty_code(r), str_lit(")")))))))
+            }
+            Ty::TyShape(p, ls, ts) => {
+                string_append(if p {
+                    str_lit("(shape 1 ")
+                } else {
+                    str_lit("(shape 0 ")
+                }, string_append(quoted_all(ls), string_append(str_lit(" "), string_append(tys_code(ts), str_lit(")")))))
+            }
+            Ty::TyVar(n) => {
+                string_append(str_lit("(var "), string_append(quoted(n), str_lit(")")))
+            }
+            Ty::TyMeta(k) => {
+                string_append(str_lit("(meta "), string_append(i64_to_string(k), str_lit(")")))
+            }
+        }
+    }
+
+    pub fn tys_code(ts: Tys) -> Str {
+        string_append(str_lit("("), string_append(words_of(map(&ty_code, ts)), str_lit(")")))
+    }
+
+    pub fn code_text(e: &'static Sexp) -> Str {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Str(s, f, p) => {
+                s
+            }
+            Sexp::Sym(s, f, p) => {
+                s
+            }
+            _ => {
+                let other = tagcase_;
+                str_lit("")
+            }
+        }
+    }
+
+    pub fn code_number(e: &'static Sexp) -> i64 {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Num(k, f, p) => {
+                k
+            }
+            _ => {
+                let other = tagcase_;
+                0i64
+            }
+        }
+    }
+
+    pub fn code_ty(e: &'static Sexp) -> &'static Ty {
+        let xs = items(e);
+        let h = sym_name(car(xs));
+        if string_eq_p(h, str_lit("i64")) {
+            ty_i64()
+        } else if string_eq_p(h, str_lit("int")) {
+            ty_int()
+        } else if string_eq_p(h, str_lit("nat")) {
+            ty_nat()
+        } else if string_eq_p(h, str_lit("f64")) {
+            ty_f64()
+        } else if string_eq_p(h, str_lit("bool")) {
+            ty_bool()
+        } else if string_eq_p(h, str_lit("char")) {
+            ty_char()
+        } else if string_eq_p(h, str_lit("unit")) {
+            ty_unit()
+        } else if string_eq_p(h, str_lit("string")) {
+            ty_string()
+        } else if string_eq_p(h, str_lit("void")) {
+            ty_void()
+        } else if string_eq_p(h, str_lit("list")) {
+            ty_list(code_ty(second(xs)), code_ty(third(xs)))
+        } else if string_eq_p(h, str_lit("data")) {
+            ty_data(code_text(second(xs)), code_tys(third(xs)))
+        } else if string_eq_p(h, str_lit("flat")) {
+            ty_flat(code_ty(second(xs)), code_ty(third(xs)))
+        } else if string_eq_p(h, str_lit("ref")) {
+            ty_ref(code_ty(second(xs)), code_ty(third(xs)))
+        } else if string_eq_p(h, str_lit("rconst")) {
+            ty_rconst(code_text(second(xs)))
+        } else if string_eq_p(h, str_lit("tag")) {
+            ty_tag(code_ty(second(xs)), code_ty(third(xs)), code_strings(fourth(xs)), code_ty(car(cdr(cdr(cdr(cdr(xs)))))))
+        } else if string_eq_p(h, str_lit("proc")) {
+            ty_proc(code_strings(second(xs)), code_tys(third(xs)), code_ty(fourth(xs)))
+        } else if string_eq_p(h, str_lit("shape")) {
+            ty_shape(i64_eq(code_number(second(xs)), 1i64), code_strings(third(xs)), code_tys(fourth(xs)))
+        } else if string_eq_p(h, str_lit("var")) {
+            ty_var(code_text(second(xs)))
+        } else {
+            ty_meta(code_number(second(xs)))
+        }
+    }
+
+    pub fn code_tys(e: &'static Sexp) -> Tys {
+        map(&code_ty, items(e))
+    }
+
+    pub fn code_strings(e: &'static Sexp) -> Strings {
+        map(&code_text, items(e))
+    }
+
+    pub fn bind_code(b: &'static Bind) -> Str {
+        let tagcase_ = b;
+        match *tagcase_ {
+            Bind::Bind(n, sc, w) => {
+                let tagcase_ = sc;
+                match *tagcase_ {
+                    Scheme::Scheme(tvs, t) => {
+                        string_append(str_lit("("), string_append(quoted(n), string_append(str_lit(" "), string_append(quoted_all(tvs), string_append(str_lit(" "), string_append(ty_code(t), string_append(str_lit(" "), string_append(quoted(w), str_lit(")")))))))))
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn code_bind(e: &'static Sexp) -> &'static Bind {
+        let xs = items(e);
+        bind(code_text(car(xs)), scheme(code_strings(second(xs)), code_ty(third(xs))), code_text(fourth(xs)))
+    }
+
+    pub fn effdef_code(d: &'static Effdef) -> Str {
+        let tagcase_ = d;
+        match *tagcase_ {
+            Effdef::Effdef(n, atoms) => {
+                string_append(str_lit("("), string_append(quoted(n), string_append(str_lit(" "), string_append(quoted_all(atoms), str_lit(")")))))
+            }
+        }
+    }
+
+    pub fn code_effdef(e: &'static Sexp) -> &'static Effdef {
+        let xs = items(e);
+        effdef(code_text(car(xs)), code_strings(second(xs)))
+    }
+
+    pub fn fact_code(file: Str, start: i64, f: &'static Fact) -> Str {
+        let tagcase_ = f;
+        match *tagcase_ {
+            Fact::Fact(ff, p, w) => {
+                if string_eq_p(ff, file) {
+                    string_append(str_lit("(1 "), string_append(i64_to_string(i64_minus(p, start)), string_append(str_lit(" "), string_append(quoted(w), str_lit(")")))))
+                } else {
+                    string_append(str_lit("(0 "), string_append(quoted(ff), string_append(str_lit(" "), string_append(i64_to_string(p), string_append(str_lit(" "), string_append(quoted(w), str_lit(")")))))))
+                }
+            }
+        }
+    }
+
+    pub fn code_fact(file: Str, start: i64, e: &'static Sexp) -> &'static Fact {
+        let xs = items(e);
+        if i64_eq(code_number(car(xs)), 1i64) {
+            fact(file, i64_plus(start, code_number(second(xs))), code_text(third(xs)))
+        } else {
+            fact(code_text(second(xs)), code_number(third(xs)), code_text(fourth(xs)))
+        }
+    }
+
+    pub fn typed_code(x: &'static Typed) -> Str {
+        let tagcase_ = x;
+        match *tagcase_ {
+            Typed::Typed(n, t) => {
+                string_append(str_lit("("), string_append(quoted(n), string_append(str_lit(" "), string_append(show_sexp(t), str_lit(")")))))
+            }
+        }
+    }
+
+    pub fn code_typed(e: &'static Sexp) -> &'static Typed {
+        let xs = items(e);
+        typed(code_text(car(xs)), second(xs))
+    }
+
+    pub fn leading<A: Copy + 'static>(xs: List<A>, n: i64) -> List<A> {
+        if (i64_eq(n, 0i64) || null_p(xs)) {
+            nil::<A>()
+        } else {
+            kayak_rt::heap_cons(car(xs), leading(cdr(xs), i64_minus(n, 1i64)))
+        }
+    }
+
+    /// A fact the checker reads again, after the form that noted it.
+    pub fn interface_fact_p(f: &'static Fact) -> bool {
+        let tagcase_ = f;
+        match *tagcase_ {
+            Fact::Fact(ff, p, w) => {
+                (has_prefix_p(w, str_lit("place-needs ")) || has_prefix_p(w, str_lit("region-within ")))
+            }
+        }
+    }
+
+    pub enum Change {
+        Change(Str, Str),
+    }
+
+    pub fn change(f0: Str, f1: Str) -> &'static Change {
+        kayak_rt::heap_alloc(Change::Change(f0, f1))
+    }
+
+    pub fn where_text(here: Str, group: Strings, tv: Strings) -> Str {
+        concat_strings(kayak_rt::heap_cons(quoted(here), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(quoted_all(group), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(quoted_all(tv), kayak_rt::nil()))))))
+    }
+
+    /// What of a form's change the chain goes on with.
+    pub fn forward_text(bs: Binds, es: Effdefs, here: Str, group: Strings, tv: Strings, fs: Facts) -> Str {
+        concat_strings(kayak_rt::heap_cons(words_of(map(&bind_code, bs)), kayak_rt::heap_cons(str_lit("|"), kayak_rt::heap_cons(words_of(map(&effdef_code, es)), kayak_rt::heap_cons(str_lit("|"), kayak_rt::heap_cons(where_text(here, group, tv), kayak_rt::heap_cons(str_lit("|"), kayak_rt::heap_cons(words_of(concat(map(lambda1(move |x: &'static Fact| {
+            let tagcase_ = x;
+            match *tagcase_ {
+                Fact::Fact(ff, p, w) => {
+                    if interface_fact_p(x) {
+                        the::<Strings>(kayak_rt::heap_cons(w, kayak_rt::nil()))
+                    } else {
+                        nil::<Str>()
+                    }
+                }
+            }
+        }), fs))), kayak_rt::nil()))))))))
+    }
+
+    pub fn change_of(before: &'static Cv, after: &'static Cv, found: Typeds, file: Str, start: i64) -> &'static Change {
+        let tagcase_ = after;
+        match *tagcase_ {
+            Cv::Cv(bs, ds, als, es, here, group, f, line, fs, tv, at) => {
+                let new_binds = leading(bs, i64_minus(size(bs), size(cv_binds(before))));
+                let new_effs = leading(es, i64_minus(size(es), size(cv_effdefs(before))));
+                let new_facts = leading(fs, i64_minus(size(fs), size(cv_facts(before))));
+                change(concat_strings(kayak_rt::heap_cons(str_lit("(("), kayak_rt::heap_cons(words_of(map(&bind_code, new_binds)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(&effdef_code, new_effs)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(lambda1(move |x: &'static Fact| {
+                    fact_code(file, start, x)
+                }), new_facts)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(&typed_code, found)), kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(where_text(here, group, tv), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(quoted(f), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(line), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(at), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))))))))))))), forward_text(new_binds, new_effs, here, group, tv, new_facts))
+            }
+        }
+    }
+
+    pub enum Redone {
+        Redone(&'static Cv, Typeds, Str),
+    }
+
+    pub fn redone(f0: &'static Cv, f1: Typeds, f2: Str) -> &'static Redone {
+        kayak_rt::heap_alloc(Redone::Redone(f0, f1, f2))
+    }
+
+    pub fn change_applied(v: &'static Cv, text: Str, file: Str, start: i64) -> &'static Redone {
+        let parts = items(car(read_all(string_chars(text), str_lit(""), 1i64)));
+        let new_binds = map(&code_bind, items(car(parts)));
+        let new_effs = map(&code_effdef, items(second(parts)));
+        let new_facts = map(lambda1(move |e: &'static Sexp| {
+            code_fact(file, start, e)
+        }), items(third(parts)));
+        let found = map(&code_typed, items(fourth(parts)));
+        let rest = cdr(cdr(cdr(cdr(parts))));
+        let here = code_text(car(rest));
+        let group = code_strings(second(rest));
+        let tv = code_strings(third(rest));
+        let f = code_text(fourth(rest));
+        let line = code_number(car(cdr(cdr(cdr(cdr(rest))))));
+        let at = code_number(car(cdr(cdr(cdr(cdr(cdr(rest)))))));
+        let tagcase_ = v;
+        match *tagcase_ {
+            Cv::Cv(bs, ds, als, es, h, g, ff, l, fs, t, a) => {
+                redone(cv(onto(new_binds, bs), ds, als, onto(new_effs, es), here, group, f, line, onto(new_facts, fs), tv, at), found, forward_text(new_binds, new_effs, here, group, tv, new_facts))
+            }
+        }
+    }
+
+    pub fn cv_fingerprint(v: &'static Cv) -> i64 {
+        let tagcase_ = v;
+        match *tagcase_ {
+            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+                fnv_strings(concat(kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("binds"), map(&bind_code, bs)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("datatypes"), map(lambda1(move |d: &'static Dt| {
+                    let tagcase_ = d;
+                    match *tagcase_ {
+                        Dt::Dt(n, ps, vs) => {
+                            string_append(quoted(n), string_append(quoted_all(ps), words_of(map(lambda1(move |x: &'static Variant| {
+                                let tagcase_ = x;
+                                match *tagcase_ {
+                                    Variant::Variant(t, ts) => {
+                                        string_append(quoted(t), tys_code(ts))
+                                    }
+                                }
+                            }), vs))))
+                        }
+                    }
+                }), ds)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("aliases"), map(lambda1(move |a: &'static Alias| {
+                    let tagcase_ = a;
+                    match *tagcase_ {
+                        Alias::Alias(n, ps, body) => {
+                            string_append(quoted(n), string_append(quoted_all(ps), show_sexp(body)))
+                        }
+                    }
+                }), als)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("effects"), map(&effdef_code, es)), kayak_rt::heap_cons(kayak_rt::heap_cons(here, kayak_rt::nil()), kayak_rt::heap_cons(group, kayak_rt::heap_cons(tv, kayak_rt::nil())))))))), fnv_offset())
+            }
+        }
+    }
+
+    /// A module's items, as `check-items` (check-defs.kfx), each its memo's
+    /// change if it has one, keyed by its printed form and the chain.
+    pub fn check_items_memo(mut v: &'static Cv, mut m: Str, mut its: Sexps, mut old: Memos, mut chain: i64, mut found: Typeds, mut made: Memos) -> &'static CheckedMemo {
+        loop {
+            if null_p(its) {
+                return checked_memo(v, found, made);
+            } else {
+                let it = car(its);
+                let file = datum_file(it);
+                let start = datum_pos(it);
+                let key = fnv_string(show_sexp(it), fnv_string(str_lit("item"), chain));
+                let hit = memo_find(old, key);
+                if not(null_p(hit)) {
+                    let tagcase_ = car(hit);
+                    match *tagcase_ {
+                        Memo::Memo(h, text) => {
+                            let tagcase_ = change_applied(v, text, file, start);
+                            match *tagcase_ {
+                                Redone::Redone(v2, more, forward) => {
+                                    (v, its, chain, found, made) = (v2, cdr(its), fnv_string(forward, chain), onto(more, found), kayak_rt::heap_cons(car(hit), made));
+                                    continue;
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    let tagcase_ = check_item(v, m, it);
+                    match *tagcase_ {
+                        Elab::Elab(v2, more) => {
+                            let tagcase_ = change_of(v, v2, more, file, start);
+                            match *tagcase_ {
+                                Change::Change(text, forward) => {
+                                    (v, its, chain, found, made) = (v2, cdr(its), fnv_string(forward, chain), onto(more, found), kayak_rt::heap_cons(memo(key, text), made));
+                                    continue;
+                                }
                             }
                         }
                     }
@@ -937,101 +772,101 @@ pub fn check_items_memo(mut v: &'static Cv, mut m: Str, mut its: Sexps, mut old:
             }
         }
     }
-}
 
-pub fn check_tops_memo(mut v: &'static Cv, mut forms: Sexps, mut texts: Strings, mut old: Memos, mut chain: i64, mut found: Typeds, mut made: Memos) -> &'static CheckedMemo {
-    loop {
-        if null_p(forms) {
-            return checked_memo(v, found, made);
-        } else {
-            let form = car(forms);
-            let file = datum_file(form);
-            let start = datum_pos(form);
-            let key = fnv_string(car(texts), fnv_string(str_lit("check"), chain));
-            let hit = memo_find(old, key);
-            if module_def_p(form) {
-                // A module (C91): its items each with a memo, on a chain begun
-                // from the module's name and its items that are no values (its
-                // scope); the chain after it goes on with its change, as a
-                // form's does, so an edit inside an item's body leaves the
-                // forms after the module as they were.
-                let tagcase_ = form;
-                match *tagcase_ {
-                    Sexp::Lst(xs, src_file, src_line, src_pos) => {
-                        let p = module_prep(near(v, src_file, src_line, src_pos), form);
-                        let inner = prep_inner(p);
-                        let scope = fnv_strings(kayak_rt::heap_cons(prep_name(p), concat(map(lambda1(move |f: &'static Sexp| {
-                            if null_p(item_value(f)) {
-                                the::<Strings>(kayak_rt::heap_cons(show_sexp(f), kayak_rt::nil()))
-                            } else {
-                                nil::<Str>()
-                            }
-                        }), unhidden(module_written(form))))), fnv_string(str_lit("module"), chain));
-                        let tagcase_ = check_items_memo(inner, prep_name(p), module_order(inner, prep_forms(p)), old, scope, nil::<&'static Typed>(), made);
-                        match *tagcase_ {
-                            CheckedMemo::CheckedMemo(done, items_found, made2) => {
-                                let tagcase_ = module_finish(p, elab(done, items_found));
-                                match *tagcase_ {
-                                    Elab::Elab(v2, more) => {
-                                        let tagcase_ = change_of(v, v2, more, file, start);
-                                        match *tagcase_ {
-                                            Change::Change(text, forward) => {
-                                                (v, forms, texts, chain, found, made) = (at(v2, str_lit(""), nil::<Str>()), cdr(forms), cdr(texts), fnv_string(forward, chain), onto(more, found), made2);
-                                                continue;
+    pub fn check_tops_memo(mut v: &'static Cv, mut forms: Sexps, mut texts: Strings, mut old: Memos, mut chain: i64, mut found: Typeds, mut made: Memos) -> &'static CheckedMemo {
+        loop {
+            if null_p(forms) {
+                return checked_memo(v, found, made);
+            } else {
+                let form = car(forms);
+                let file = datum_file(form);
+                let start = datum_pos(form);
+                let key = fnv_string(car(texts), fnv_string(str_lit("check"), chain));
+                let hit = memo_find(old, key);
+                if module_def_p(form) {
+                    // A module (C91): its items each with a memo, on a chain begun
+                    // from the module's name and its items that are no values (its
+                    // scope); the chain after it goes on with its change, as a
+                    // form's does, so an edit inside an item's body leaves the
+                    // forms after the module as they were.
+                    let tagcase_ = form;
+                    match *tagcase_ {
+                        Sexp::Lst(xs, src_file, src_line, src_pos) => {
+                            let p = module_prep(near(v, src_file, src_line, src_pos), form);
+                            let inner = prep_inner(p);
+                            let scope = fnv_strings(kayak_rt::heap_cons(prep_name(p), concat(map(lambda1(move |f: &'static Sexp| {
+                                if null_p(item_value(f)) {
+                                    the::<Strings>(kayak_rt::heap_cons(show_sexp(f), kayak_rt::nil()))
+                                } else {
+                                    nil::<Str>()
+                                }
+                            }), unhidden(module_written(form))))), fnv_string(str_lit("module"), chain));
+                            let tagcase_ = check_items_memo(inner, prep_name(p), module_order(inner, prep_forms(p)), old, scope, nil::<&'static Typed>(), made);
+                            match *tagcase_ {
+                                CheckedMemo::CheckedMemo(done, items_found, made2) => {
+                                    let tagcase_ = module_finish(p, elab(done, items_found));
+                                    match *tagcase_ {
+                                        Elab::Elab(v2, more) => {
+                                            let tagcase_ = change_of(v, v2, more, file, start);
+                                            match *tagcase_ {
+                                                Change::Change(text, forward) => {
+                                                    (v, forms, texts, chain, found, made) = (at(v2, str_lit(""), nil::<Str>()), cdr(forms), cdr(texts), fnv_string(forward, chain), onto(more, found), made2);
+                                                    continue;
+                                                }
                                             }
                                         }
                                     }
                                 }
                             }
                         }
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        (forms, texts) = (cdr(forms), cdr(texts));
-                        continue;
-                    }
-                }
-            } else if not(null_p(hit)) {
-                let tagcase_ = car(hit);
-                match *tagcase_ {
-                    Memo::Memo(h, text) => {
-                        let tagcase_ = change_applied(v, text, file, start);
-                        match *tagcase_ {
-                            Redone::Redone(v2, more, forward) => {
-                                (v, forms, texts, chain, found, made) = (v2, cdr(forms), cdr(texts), fnv_string(forward, chain), onto(more, found), kayak_rt::heap_cons(car(hit), made));
-                                continue;
-                            }
+                        _ => {
+                            let other = tagcase_;
+                            (forms, texts) = (cdr(forms), cdr(texts));
+                            continue;
                         }
                     }
-                }
-            } else {
-                let done = if untyped_p(form) {
-                    let tagcase_ = form;
+                } else if not(null_p(hit)) {
+                    let tagcase_ = car(hit);
                     match *tagcase_ {
-                        Sexp::Lst(xs, src_file, src_line, src_pos) => {
-                            let tagcase_ = check_untyped(near(v, src_file, src_line, src_pos), form);
+                        Memo::Memo(h, text) => {
+                            let tagcase_ = change_applied(v, text, file, start);
                             match *tagcase_ {
-                                Elab::Elab(v2, more) => {
-                                    elab(at(v2, str_lit(""), nil::<Str>()), more)
+                                Redone::Redone(v2, more, forward) => {
+                                    (v, forms, texts, chain, found, made) = (v2, cdr(forms), cdr(texts), fnv_string(forward, chain), onto(more, found), kayak_rt::heap_cons(car(hit), made));
+                                    continue;
                                 }
                             }
                         }
-                        _ => {
-                            let other = tagcase_;
-                            elab(v, nil::<&'static Typed>())
-                        }
                     }
                 } else {
-                    elab(check_top(v, form), nil::<&'static Typed>())
-                };
-                let tagcase_ = done;
-                match *tagcase_ {
-                    Elab::Elab(v2, more) => {
-                        let tagcase_ = change_of(v, v2, more, file, start);
+                    let done = if untyped_p(form) {
+                        let tagcase_ = form;
                         match *tagcase_ {
-                            Change::Change(text, forward) => {
-                                (v, forms, texts, chain, found, made) = (v2, cdr(forms), cdr(texts), fnv_string(forward, chain), onto(more, found), kayak_rt::heap_cons(memo(key, text), made));
-                                continue;
+                            Sexp::Lst(xs, src_file, src_line, src_pos) => {
+                                let tagcase_ = check_untyped(near(v, src_file, src_line, src_pos), form);
+                                match *tagcase_ {
+                                    Elab::Elab(v2, more) => {
+                                        elab(at(v2, str_lit(""), nil::<Str>()), more)
+                                    }
+                                }
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                elab(v, nil::<&'static Typed>())
+                            }
+                        }
+                    } else {
+                        elab(check_top(v, form), nil::<&'static Typed>())
+                    };
+                    let tagcase_ = done;
+                    match *tagcase_ {
+                        Elab::Elab(v2, more) => {
+                            let tagcase_ = change_of(v, v2, more, file, start);
+                            match *tagcase_ {
+                                Change::Change(text, forward) => {
+                                    (v, forms, texts, chain, found, made) = (v2, cdr(forms), cdr(texts), fnv_string(forward, chain), onto(more, found), kayak_rt::heap_cons(memo(key, text), made));
+                                    continue;
+                                }
                             }
                         }
                     }
@@ -1039,31 +874,168 @@ pub fn check_tops_memo(mut v: &'static Cv, mut forms: Sexps, mut texts: Strings,
             }
         }
     }
-}
 
-/// As `check-program` (check-defs.kfx), with memos; the passes before the
-/// forms' run always.
-pub fn check_program_memo(forms: Sexps, texts: Strings, old: Memos) -> &'static CheckedMemo {
-    let empty = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), nil::<&'static Alias>(), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64);
-    let start = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), declare_types(empty, forms, nil::<&'static Alias>()), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64);
-    let types = type_names_free(start, forms);
-    let named = {
-        let tagcase_ = start;
+    pub fn ctx_fingerprint(c: &'static Ctx) -> i64 {
+        let tagcase_ = c;
         match *tagcase_ {
-            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-                cv(bs, datatype_names(start, forms, nil::<&'static Dt>()), als, es, here, group, file, line, fs, tv, at)
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                fnv_strings(concat(kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("datatypes"), ds), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("tags"), map(lambda1(move |t: &'static Tagof| {
+                    let tagcase_ = t;
+                    match *tagcase_ {
+                        Tagof::Tagof(n, d) => {
+                            string_append(n, string_append(str_lit(" "), d))
+                        }
+                    }
+                }), ts)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("constants"), ks), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("locals"), ls), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("typeds"), map(&typed_text, xs)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("families"), map(lambda1(move |f: &'static Family| {
+                    let tagcase_ = f;
+                    match *tagcase_ {
+                        Family::Family(n, d, kinds) => {
+                            string_append(n, string_append(if d {
+                                str_lit(" datatype ")
+                            } else {
+                                str_lit(" ")
+                            }, words_of(kinds)))
+                        }
+                    }
+                }), ms)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("effects"), map(&typed_text, es)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("modules"), map(&module_entry_text, mods)), kayak_rt::nil()))))))))), fnv_offset())
             }
         }
-    };
-    let typed = {
-        let tagcase_ = named;
-        match *tagcase_ {
-            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-                cv(bs, declare_datatypes(named, forms, nil::<&'static Dt>()), als, es, here, group, file, line, fs, tv, at)
+    }
+
+    /// `starts`, the forms' offsets in order; `cs` the text from offset `at`.
+    pub fn form_texts(cs: Chars, at: i64, starts: List<i64>) -> Strings {
+        if null_p(starts) {
+            nil::<Str>()
+        } else {
+            let from = drop_to(cs, at, car(starts));
+            let end = if null_p(cdr(starts)) {
+                end_of_file()
+            } else {
+                car(cdr(starts))
+            };
+            kayak_rt::heap_cons(rev_to_string(take_to(from, car(starts), end, nil::<char>())), form_texts(drop_to(from, car(starts), end), end, cdr(starts)))
+        }
+    }
+
+    pub fn facts_of_file(mut fs: Facts, mut file: Str) -> Facts {
+        loop {
+            if null_p(fs) {
+                return nil::<&'static Fact>();
+            } else if {
+                let tagcase_ = car(fs);
+                match *tagcase_ {
+                    Fact::Fact(f, p, w) => {
+                        string_eq_p(f, file)
+                    }
+                }
+            } {
+                return kayak_rt::heap_cons(car(fs), facts_of_file(cdr(fs), file));
+            } else {
+                fs = cdr(fs);
+                continue;
             }
         }
-    };
-    let v = with_binds(typed, prim_binds(typed));
-    check_tops_memo(v, forms, texts, old, cv_fingerprint(v), nil::<&'static Typed>(), nil::<&'static Memo>())
+    }
+
+    /// As `put-tops` (emit-tops.kfx) does, each definition's Rust its memo's
+    /// if it has one. `fs` the file's facts; `global` the context's
+    /// fingerprint; `old` the memos given.
+    pub fn put_tops_memo(mut c: &'static Ctx, mut fs: Facts, mut global: i64, mut old: Memos, mut forms: Sexps, mut texts: Strings, mut starts: List<i64>, mut acc: Chars, mut made: Memos) -> &'static Emitted {
+        loop {
+            if null_p(forms) {
+                return emitted(acc, made);
+            } else if comment_p(car(forms)) {
+                let doc = (not(null_p(cdr(forms))) && definition_p(second(forms)));
+                let acc = put_comment(string_chars(comment_text(car(forms))), str_lit("//"), 0i64, true, acc);
+                return put_tops_memo(c, fs, global, old, cdr(forms), cdr(texts), cdr(starts), put(if doc {
+                    str_lit("\n")
+                } else {
+                    str_lit("\n\n")
+                }, acc), made);
+            } else if module_def_p(car(forms)) {
+                // A module (C91): its items each with a memo of its own, in the
+                // module's own context, inside its `pub mod`.
+                let m = sym_name(second(items(car(forms))));
+                let start = car(starts);
+                let end = if null_p(cdr(starts)) {
+                    end_of_file()
+                } else {
+                    car(cdr(starts))
+                };
+                let tagcase_ = module_parts(c, m, module_written(car(forms)));
+                match *tagcase_ {
+                    Mparts::Mparts(inner, its) => {
+                        let tagcase_ = put_items_memo(inner, fs, ctx_fingerprint(inner), old, its, string_chars(car(texts)), start, end, nil::<char>(), made);
+                        match *tagcase_ {
+                            Emitted::Emitted(body, made2) => {
+                                let body = if string_member_p(str_lit("%toplevel"), ctx_locals(c)) {
+                                    put_show_generatives(its, body)
+                                } else {
+                                    body
+                                };
+                                (forms, texts, starts, acc, made) = (cdr(forms), cdr(texts), cdr(starts), put_module_around(c, m, body, acc), made2);
+                                continue;
+                            }
+                        }
+                    }
+                }
+            } else {
+                let start = car(starts);
+                let end = if null_p(cdr(starts)) {
+                    end_of_file()
+                } else {
+                    car(cdr(starts))
+                };
+                let key = fnv_strings(facts_text(fs, start, end), fnv_string(car(texts), global));
+                let found = memo_find(old, key);
+                let text = if null_p(found) {
+                    rev_to_string(put_top(c, car(forms), nil::<char>()))
+                } else {
+                    let tagcase_ = car(found);
+                    match *tagcase_ {
+                        Memo::Memo(h, t) => {
+                            t
+                        }
+                    }
+                };
+                (forms, texts, starts, acc, made) = (cdr(forms), cdr(texts), cdr(starts), put(text, acc), kayak_rt::heap_cons(memo(key, text), made));
+                continue;
+            }
+        }
+    }
+
+    pub fn memos_text(ms: Memos) -> Str {
+        rev_to_string(memos_onto(ms, nil::<char>()))
+    }
+
+    pub fn memos_of_text(s: Str) -> Memos {
+        memo_lines(string_chars(s), nil::<char>(), 0i64, false, nil::<&'static Memo>())
+    }
+
+    /// As `check-program` (check-defs.kfx), with memos; the passes before the
+    /// forms' run always.
+    pub fn check_program_memo(forms: Sexps, texts: Strings, old: Memos) -> &'static CheckedMemo {
+        let empty = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), nil::<&'static Alias>(), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64);
+        let start = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), declare_types(empty, forms, nil::<&'static Alias>()), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64);
+        let types = type_names_free(start, forms);
+        let named = {
+            let tagcase_ = start;
+            match *tagcase_ {
+                Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+                    cv(bs, datatype_names(start, forms, nil::<&'static Dt>()), als, es, here, group, file, line, fs, tv, at)
+                }
+            }
+        };
+        let typed = {
+            let tagcase_ = named;
+            match *tagcase_ {
+                Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+                    cv(bs, declare_datatypes(named, forms, nil::<&'static Dt>()), als, es, here, group, file, line, fs, tv, at)
+                }
+            }
+        };
+        let v = with_binds(typed, prim_binds(typed));
+        check_tops_memo(v, forms, texts, old, cv_fingerprint(v), nil::<&'static Typed>(), nil::<&'static Memo>())
+    }
 }
 

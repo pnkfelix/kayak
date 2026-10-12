@@ -232,7 +232,7 @@ pub async fn compile_with(rt: Drt, r#as: Strings) -> Result<Int, Unwind> {
             let tagcase_ = kayak_rt::suspend::body((&perform_x)(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::ReadFile(cache)))).await?;
             match *tagcase_ {
                 Sum_4line_3eof_4done_4time_4text_6failed::Text(t) => {
-                    memos_of_text(t)
+                    incremental::memos_of_text(t)
                 }
                 _ => {
                     let other = tagcase_;
@@ -244,7 +244,7 @@ pub async fn compile_with(rt: Drt, r#as: Strings) -> Result<Int, Unwind> {
         match *tagcase_ {
             Compiled::Compiled(outs, made) => {
                 kayak_rt::suspend::body(write_outputs(rt, car(cdr(cdr(cdr(r#as)))), outs)).await?;
-                kayak_rt::suspend::body(write_text(rt, cache, memos_text(made))).await?;
+                kayak_rt::suspend::body(write_text(rt, cache, incremental::memos_text(made))).await?;
                 Ok(int_lit(0))
             }
         }
