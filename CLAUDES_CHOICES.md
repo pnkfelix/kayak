@@ -896,3 +896,40 @@ the log, or running past it, fails saying at which step and how).
   recorded, and replayed from the record; Fixpt's answer. A replay made
   to part from its log fails on Fixpt with the message the Rust's
   `error` gives.
+
+## C49. FX-26's I/O and bytes, in KFX (2026-10-12)
+
+Fixpt 17ac0c5 built what kayak asked for (`docs/requests/fixpt-world-io.md`,
+`PLAN.md` §8): `u8` and `i8`; `(bytevectorof r)` and R7RS's operations on
+it; the `(io k)` effects, a fixed family; `write-out`, `write-err`,
+`exit`, `read-line`, `clock`, `sleep-until`, `args`, `read-file`,
+`list-dir`, `write-file`; `io-error`; `main`'s result as the status. KFX
+takes all of it as FX-26 has it, with the same types.
+- **Confirmed to Fixpt, as built** (their `TODO.md` §84 asked): the
+  allocating primitives taking a region; `io-error`'s kind a sum; bytes
+  not UTF-8 a failure of its own kind; bytevectors written in place, no
+  builder; R7RS's spans. Each suits KFX as it is.
+- **`(bytevectorof r)` is kayak-rt's `Bytes`**, a row of cells, as a flat
+  array is: aliased, written in place. A letrena's region is not yet
+  distinguished (as for flat arrays): the bytes are the heap's.
+- **The primitives' sums and products are kayak-rt's** (`world.rs`),
+  declared as a program's own shapes would be, by the same names; the
+  emitter leaves those shapes out of a program (`standard-shape?`), so the
+  program's `(sumof (done unit) (failed io-error))` and the runtime's are
+  one Rust type.
+- **An `io` atom is `io:` and its kind**, with no region: never masked,
+  apart from every other atom. A constant whose making does I/O is
+  refused, as any effect but reading globals and allocating is (C21).
+- **I/O primitives are plain Rust functions**, not `async`: a program
+  blocks on them. Tasks that wait on the world while others run come with
+  the live runner over `lib/tasks.kfx`.
+- **Tested both ways**: `tests/kfx-io/`, programs whose `main` returns the
+  status, run by `fixpt run` and as binaries of `crates/kfx-io`, compared
+  on their standard output and error, status, and the files they leave
+  (`scripts/io-programs.py`, in `scripts/check.sh`); `tests/kfx/bytes.kfx`
+  in the corpus; three refused programs. Fixpt's bytevector programs are
+  among those kfx now accepts (96, from 91).
+- **The reader takes R7RS's hex escape** in strings (a backslash, `x41;`),
+  which one of them used: kfx had read it as the letters. A control
+  character in a string is written to Rust as a unicode escape.
+  `i64->char`, in the prelude, over `integer->char`.

@@ -816,6 +816,20 @@ pub fn collect(mut forms: Sexps, mut c: &'static Ctx) -> &'static Ctx {
 }
 
 // Writing Rust
+/// `n`, not negative, in hex, before `acc`.
+pub fn hex_digits(mut n: i64, mut acc: Str) -> Str {
+    loop {
+        let d = i64_remainder(n, 16i64);
+        let s = string_append(char_to_string(string_ref_i64(str_lit("0123456789abcdef"), d)), acc);
+        if i64_lt(n, 16i64) {
+            return s;
+        } else {
+            (n, acc) = (i64_quotient(n, 16i64), s);
+            continue;
+        }
+    }
+}
+
 pub fn escape_char(c: char, q: char) -> Str {
     if char_eq_p(c, '\\') {
         str_lit("\\\\")
@@ -825,6 +839,9 @@ pub fn escape_char(c: char, q: char) -> Str {
         str_lit("\\n")
     } else if char_eq_p(c, '\t') {
         str_lit("\\t")
+    } else if (i64_lt(char_to_i64(c), 32i64) || i64_eq(char_to_i64(c), 127i64)) {
+        // A control character, as Rust's unicode escape, its code in hex.
+        string_append(str_lit("\\u{"), string_append(hex_digits(char_to_i64(c), str_lit("")), str_lit("}")))
     } else {
         char_to_string(c)
     }
@@ -1410,6 +1427,9 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
                     return put(str_lit("Void"), acc);
                 } else if string_eq_p(s, str_lit("string")) {
                     return put(str_lit("Str"), acc);
+                } else if (string_eq_p(s, str_lit("io-error")) && string_eq_p(opener(string_append(str_lit("%type "), s), ctx_locals(c)), str_lit("")) && null_p(desc_type(c, s, ctx_locals(c))) && not(string_member_p(s, ctx_datatypes(c)))) {
+                    t = car(read_all(string_chars(io_error_text()), str_lit(""), 1i64));
+                    continue;
                 } else if not(null_p(dotted(s))) {
                     return put(type_path(c, car(dotted(s)), car(cdr(dotted(s)))), acc);
                 } else if string_member_p(s, ctx_datatypes(c)) {
@@ -1434,6 +1454,8 @@ pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Ch
                     return put(str_lit(">"), put_type(c, second(xs), put(str_lit("List<"), acc)));
                 } else if sym_is_p(car(xs), str_lit("flatarrayof")) {
                     return put(str_lit(">"), put_type(c, second(xs), put(str_lit("FlatArray<"), acc)));
+                } else if sym_is_p(car(xs), str_lit("bytevectorof")) {
+                    return put(str_lit("Bytes"), acc);
                 } else if (sym_is_p(car(xs), str_lit("ref")) && not(string_eq_p(region_lifetime(c, third(xs)), str_lit("")))) {
                     return put(str_lit(">"), put_type(c, second(xs), put(str_lit(", "), put(region_lifetime(c, third(xs)), put(str_lit("RefAt<"), acc)))));
                 } else if (sym_is_p(car(xs), str_lit("ref")) && not(string_eq_p(element_lifetime(c, second(xs)), str_lit("")))) {
@@ -2661,6 +2683,10 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
                     put(str_lit("u32"), put(i64_to_string(k), acc))
                 } else if ctx_fact_p(c, num_file, num_pos, str_lit("fixed u64")) {
                     put(str_lit("u64"), put(i64_to_string(k), acc))
+                } else if ctx_fact_p(c, num_file, num_pos, str_lit("fixed u8")) {
+                    put(str_lit("u8"), put(i64_to_string(k), acc))
+                } else if ctx_fact_p(c, num_file, num_pos, str_lit("fixed i8")) {
+                    put(str_lit("i8"), put(i64_to_string(k), acc))
                 } else {
                     put(str_lit("i64"), put(i64_to_string(k), acc))
                 }

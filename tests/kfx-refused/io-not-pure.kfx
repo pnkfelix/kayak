@@ -1,0 +1,5 @@
+"A procedure that writes says so (C49): one declared `pure` that writes
+ to the standard output is refused."
+(define greet (subr pure (string) unit)
+  (lambda (name) (tagcase (write-out name) (done u #u) (failed e #u))))
+(define main (subr pure () string) (lambda () "x"))

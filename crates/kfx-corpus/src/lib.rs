@@ -18,6 +18,11 @@ pub mod bloblets;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/bytes.rs"]
+pub mod bytes;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/caller-place.rs"]
 pub mod caller_place;
 
@@ -275,6 +280,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("arith", arith::main),
     ("bignum", bignum::main),
     ("bloblets", bloblets::main),
+    ("bytes", bytes::main),
     ("caller-place", caller_place::main),
     ("cases", cases::main),
     ("clock", clock_main),

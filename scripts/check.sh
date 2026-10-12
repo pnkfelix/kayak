@@ -1,11 +1,12 @@
 #!/bin/sh
 # Every check, before a commit: formatting of the hand-written Rust, clippy,
-# the tests (the corpus's answers among them), the corpus's golden files
+# the programs that do I/O, run both ways (C49), the tests (the corpus's answers among them), the corpus's golden files
 # against the compiler and Fixpt, the bootstrap's fixed point, and Fixpt's
 # own programs that kfx accepts, run as Rust and by Fixpt.
 set -eu
 cd "$(dirname "$0")/.."
 cargo fmt --all --check
+python3 -I scripts/io-programs.py
 cargo clippy --release --workspace --all-targets --quiet -- -D warnings
 cargo test --release --workspace --quiet
 python3 -I scripts/corpus.py

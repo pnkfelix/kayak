@@ -66,7 +66,24 @@
         (token-chars (cdr cs) (cons (car cs) acc) (i64+ n 1)))))
 
 (define unescape (subr kfx (char) char)
-  (lambda (c) (case c ((#\n) #\newline) ((#\t) #\tab) (else c))))
+  (lambda (c) (case c ((#\n) #\newline) ((#\t) #\tab) ((#\r) (i64->char 13)) (else c))))
+
+(define hex-escape (subr kfx (chars i64 i64) tok)
+  (lambda (cs n k)
+    "R7RS's hex escape in a string (a backslash, `x41;`), after its `x`: the hex digits' value `n`,
+     `k` of them read, up to the `;`; the rest, as a token's text, the
+     character it names."
+    (cond ((null? cs) (tok "" cs k))
+          ((i64= (char->i64 (car cs)) 59) (tok (char->string (i64->char n)) (cdr cs) (i64+ k 1)))
+          (else
+           (let* ((c (car cs)) (d (char->i64 c)))
+             (hex-escape (cdr cs)
+                         (i64+ (i64* n 16)
+                               (cond ((and (i64>= d 48) (i64<= d 57)) (i64- d 48))
+                                     ((and (i64>= d 97) (i64<= d 102)) (i64- d 87))
+                                     ((and (i64>= d 65) (i64<= d 70)) (i64- d 55))
+                                     (else 0)))
+                         (i64+ k 1)))))))
 
 (define string-body (subr kfx (chars chars string i64 i64 i64 i64) got)
   (lambda (cs acc file start at line pos)
@@ -74,6 +91,12 @@
      offset `at`."
     (cond ((null? cs) (read-error file start "a string is not closed"))
           ((char=? (car cs) #\") (got (str (rev->string acc) file at) (here (cdr cs) line (i64+ pos 1))))
+          ((and (char=? (car cs) #\\) (not (null? (cdr cs))) (i64= (char->i64 (car (cdr cs))) 120))
+           (tagcase (hex-escape (cdr (cdr cs)) 0 0)
+             (tok (text rest k)
+               (if (string=? text "")
+                   (read-error file start "a string's hex escape is not closed by ;")
+                   (string-body rest (cons (string-ref-i64 text 0) acc) file start at line (i64+ pos (i64+ k 2)))))))
           ((char=? (car cs) #\\)
            (string-body (cdr (cdr cs)) (cons (unescape (car (cdr cs))) acc) file start at line (i64+ pos 2)))
           ((char=? (car cs) #\newline)

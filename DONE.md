@@ -1136,3 +1136,11 @@ Fixpt's programs is accepted (91).
 C48: `lib/runner.kfx`, operations as suspensions to a runner's prompt;
 the sim, a recording runner and a replaying one, which fails where a run
 parts from its log. `tests/kfx/replay.unit`.
+
+## I/O and bytes, as FX-26 now has them (2026-10-12)
+
+C49: Fixpt 17ac0c5 built kayak's request (`docs/requests/fixpt-world-io.md`):
+`u8`, `i8`, `(bytevectorof r)`, the `(io k)` effects and their
+primitives, `io-error`. KFX takes them at FX-26's types; kayak-rt's
+`world.rs`. `tests/kfx-io/` run both ways by `scripts/io-programs.py`;
+`tests/kfx/bytes.kfx`. The reader's hex string escape.

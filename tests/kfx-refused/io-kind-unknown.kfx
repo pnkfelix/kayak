@@ -1,0 +1,3 @@
+"The `io` effects are a fixed family (C49): no kind but those."
+(define net (subr (io network) () unit) (lambda () #u))
+(define main (subr pure () string) (lambda () "x"))

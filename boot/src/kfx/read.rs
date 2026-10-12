@@ -161,8 +161,37 @@ pub fn unescape(c: char) -> char {
         't' => {
             '\t'
         }
+        'r' => {
+            i64_to_char(13i64)
+        }
         _ => {
             c
+        }
+    }
+}
+
+/// R7RS's hex escape in a string (a backslash, `x41;`), after its `x`: the hex digits' value `n`,
+/// `k` of them read, up to the `;`; the rest, as a token's text, the
+/// character it names.
+pub fn hex_escape(mut cs: Chars, mut n: i64, mut k: i64) -> &'static Tok {
+    loop {
+        if null_p(cs) {
+            return tok(str_lit(""), cs, k);
+        } else if i64_eq(char_to_i64(car(cs)), 59i64) {
+            return tok(char_to_string(i64_to_char(n)), cdr(cs), i64_plus(k, 1i64));
+        } else {
+            let c = car(cs);
+            let d = char_to_i64(c);
+            (cs, n, k) = (cdr(cs), i64_plus(i64_star(n, 16i64), if (i64_gt_eq(d, 48i64) && i64_lt_eq(d, 57i64)) {
+                i64_minus(d, 48i64)
+            } else if (i64_gt_eq(d, 97i64) && i64_lt_eq(d, 102i64)) {
+                i64_minus(d, 87i64)
+            } else if (i64_gt_eq(d, 65i64) && i64_lt_eq(d, 70i64)) {
+                i64_minus(d, 55i64)
+            } else {
+                0i64
+            }), i64_plus(k, 1i64));
+            continue;
         }
     }
 }
@@ -175,6 +204,18 @@ pub fn string_body(mut cs: Chars, mut acc: Chars, mut file: Str, mut start: i64,
             return match read_error(file, start, str_lit("a string is not closed")) {};
         } else if char_eq_p(car(cs), '"') {
             return got(str(rev_to_string(acc), file, at), here(cdr(cs), line, i64_plus(pos, 1i64)));
+        } else if (char_eq_p(car(cs), '\\') && not(null_p(cdr(cs))) && i64_eq(char_to_i64(car(cdr(cs))), 120i64)) {
+            let tagcase_ = hex_escape(cdr(cdr(cs)), 0i64, 0i64);
+            match *tagcase_ {
+                Tok::Tok(text, rest, k) => {
+                    if string_eq_p(text, str_lit("")) {
+                        return match read_error(file, start, str_lit("a string's hex escape is not closed by ;")) {};
+                    } else {
+                        (cs, acc, pos) = (rest, kayak_rt::heap_cons(string_ref_i64(text, 0i64), acc), i64_plus(pos, i64_plus(k, 2i64)));
+                        continue;
+                    }
+                }
+            }
         } else if char_eq_p(car(cs), '\\') {
             (cs, acc, pos) = (cdr(cdr(cs)), kayak_rt::heap_cons(unescape(car(cdr(cs))), acc), i64_plus(pos, 2i64));
             continue;

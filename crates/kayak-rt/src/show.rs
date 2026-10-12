@@ -21,6 +21,18 @@ impl Show for i32 {
     }
 }
 
+impl Show for u8 {
+    fn show(&self, out: &mut String) {
+        out.push_str(&self.to_string());
+    }
+}
+
+impl Show for i8 {
+    fn show(&self, out: &mut String) {
+        out.push_str(&self.to_string());
+    }
+}
+
 impl Show for u32 {
     fn show(&self, out: &mut String) {
         out.push_str(&self.to_string());

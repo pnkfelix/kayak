@@ -1,0 +1,20 @@
+"The arguments, the clock, the standard error, and `exit` (C49): the
+ arguments written back, each on a line; the clock never runs backward;
+ a word to the standard error; then `exit` with 3, before `main` returns."
+
+(define show-args (subr (maxeff (io stdout) (read @l) (read @globals) spin) ((listof string @l)) unit)
+  (lambda (as)
+    (if (null? as)
+        #u
+        (begin (write-out (string-append "arg " (string-append (car as) "\n"))) (show-args (cdr as))))))
+
+(define main (subr (maxeff (io args) (io clock) (io stdout) (io stderr) (io exit) (alloc @l) (read @l) (read @globals) spin) () int)
+  (lambda ()
+    (let ((t0 (clock)))
+      (begin
+        (show-args (the (listof string @l) (args)))
+        (sleep-until (i64+ t0 1000000))
+        (write-out (if (i64>= (clock) (i64+ t0 1000000)) "the clock moved on\n" "the clock ran back\n"))
+        (write-err "to the standard error\n")
+        (exit 3)
+        7))))

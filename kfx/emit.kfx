@@ -409,12 +409,22 @@
 
 "Writing Rust"
 
+(define hex-digits (subr kfx (i64 string) string)
+  (lambda (n acc)
+    "`n`, not negative, in hex, before `acc`."
+    (let* ((d (i64-remainder n 16))
+           (s (string-append (char->string (string-ref-i64 "0123456789abcdef" d)) acc)))
+      (if (i64< n 16) s (hex-digits (i64-quotient n 16) s)))))
+
 (define escape-char (subr kfx (char char) string)
   (lambda (c q)
     (cond ((char=? c #\\) "\\\\")
           ((char=? c q) (string-append "\\" (char->string c)))
           ((char=? c #\newline) "\\n")
           ((char=? c #\tab) "\\t")
+          ((or (i64< (char->i64 c) 32) (i64= (char->i64 c) 127))
+           "A control character, as Rust's unicode escape, its code in hex."
+           (string-append "\\u{" (string-append (hex-digits (char->i64 c) "") "}")))
           (else (char->string c)))))
 
 (define put-escaped (subr kfx (chars char chars) chars)
@@ -712,6 +722,9 @@
                 ((string=? s "unit") (put "()" acc))
                 ((string=? s "void") (put "Void" acc))
                 ((string=? s "string") (put "Str" acc))
+                ((and (string=? s "io-error") (string=? (opener (string-append "%type " s) (ctx-locals c)) "")
+                      (null? (desc-type c s (ctx-locals c))) (not (string-member? s (ctx-datatypes c))))
+                 (put-type c (car (read-all (string-chars io-error-text) "" 1)) acc))
                 ((not (null? (dotted s))) (put (type-path c (car (dotted s)) (car (cdr (dotted s)))) acc))
                 ((string-member? s (ctx-datatypes c)) (put (camel s) (put "&'static " acc)))
                 ((not (null? (desc-type c s (ctx-locals c)))) (put-type c (car (desc-type c s (ctx-locals c))) acc))
@@ -729,6 +742,7 @@
                  (put ">" (put-type c (second xs) (put "List<" acc))))
                 ((sym-is? (car xs) "flatarrayof")
                  (put ">" (put-type c (second xs) (put "FlatArray<" acc))))
+                ((sym-is? (car xs) "bytevectorof") (put "Bytes" acc))
                 ((and (sym-is? (car xs) "ref") (not (string=? (region-lifetime c (third xs)) "")))
                  (put ">" (put-type c (second xs) (put ", " (put (region-lifetime c (third xs)) (put "RefAt<" acc))))))
                 ((and (sym-is? (car xs) "ref") (not (string=? (element-lifetime c (second xs)) "")))
@@ -1418,6 +1432,8 @@
                        ((ctx-fact? c num-file num-pos "fixed i32") (put "i32" (put (i64->string k) acc)))
                        ((ctx-fact? c num-file num-pos "fixed u32") (put "u32" (put (i64->string k) acc)))
                        ((ctx-fact? c num-file num-pos "fixed u64") (put "u64" (put (i64->string k) acc)))
+                       ((ctx-fact? c num-file num-pos "fixed u8") (put "u8" (put (i64->string k) acc)))
+                       ((ctx-fact? c num-file num-pos "fixed i8") (put "i8" (put (i64->string k) acc)))
                        (else (put "i64" (put (i64->string k) acc)))))
                (big (text f p)
                  (if (ctx-fact? c f p "fixed u64")

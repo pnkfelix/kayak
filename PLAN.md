@@ -605,6 +605,10 @@ My recommendation: (b) now, (a) if the Fixpt team takes it. Until the
 user says, (c) holds: nothing live is in KFX.
 The request for (a), drafted for the Fixpt team:
 `docs/requests/fixpt-world-io.md`.
+Answered (2026-10-12): the user took (a) to the Fixpt team, with a fixed
+family of `io` effects and bytes; Fixpt 17ac0c5 has them. KFX takes them
+(C49). Simulation, recording and replay stay KFX libraries
+(`lib/runner.kfx`).
 
 Likely next cases, to be confirmed by the code:
 - **Arrays of values**: KFX's flat arrays hold `i64` alone (C12); a run

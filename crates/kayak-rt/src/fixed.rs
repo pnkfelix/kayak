@@ -1,4 +1,4 @@
-//! FX-26's fixed-width integers beside `i64`: `i32`, `u32`, `u64`, whose
+//! FX-26's fixed-width integers beside `i64`: `i8`, `u8`, `i32`, `u32`, `u64`, whose
 //! arithmetic wraps, as Rust's `wrapping_` operations do. Each operation
 //! is named as KFX names it, mangled: `u32+` is `u32_plus`.
 
@@ -99,6 +99,50 @@ macro_rules! fixed {
     };
 }
 
+fixed!(
+    u8,
+    u8_plus,
+    u8_minus,
+    u8_star,
+    u8_quotient,
+    u8_remainder,
+    u8_and,
+    u8_or,
+    u8_xor,
+    u8_not,
+    u8_shl,
+    u8_shr,
+    u8_eq,
+    u8_lt,
+    u8_gt,
+    u8_lt_eq,
+    u8_gt_eq,
+    int_to_u8,
+    u8_to_int,
+    u8_to_string
+);
+fixed!(
+    i8,
+    i8_plus,
+    i8_minus,
+    i8_star,
+    i8_quotient,
+    i8_remainder,
+    i8_and,
+    i8_or,
+    i8_xor,
+    i8_not,
+    i8_shl,
+    i8_shr,
+    i8_eq,
+    i8_lt,
+    i8_gt,
+    i8_lt_eq,
+    i8_gt_eq,
+    int_to_i8,
+    i8_to_int,
+    i8_to_string
+);
 fixed!(
     i32,
     i32_plus,

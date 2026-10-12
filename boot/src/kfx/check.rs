@@ -550,6 +550,17 @@ pub fn parse_mutable_region(v: &'static Cv, tvars: Strings, r: &'static Sexp) ->
     }
 }
 
+// FX-26's standard type `io-error` (Fixpt 17ac0c5, C49): an I/O failure's
+// kind, for a `tagcase`, and the system's words.
+pub fn io_error_text() -> Str {
+    str_lit("(productof (kind (sumof (not-found unit) (permission-denied unit) (already-exists unit) (not-a-directory unit)\n                           (is-a-directory unit) (broken-pipe unit) (invalid-data unit) (other unit)))\n              (detail string))")
+}
+
+/// The `io` effects' kinds, a fixed family (C49).
+pub fn io_kind_p(k: Str) -> bool {
+    string_member_p(k, kayak_rt::heap_cons(str_lit("stdin"), kayak_rt::heap_cons(str_lit("stdout"), kayak_rt::heap_cons(str_lit("stderr"), kayak_rt::heap_cons(str_lit("fs-read"), kayak_rt::heap_cons(str_lit("fs-write"), kayak_rt::heap_cons(str_lit("clock"), kayak_rt::heap_cons(str_lit("args"), kayak_rt::heap_cons(str_lit("exit"), kayak_rt::nil())))))))))
+}
+
 pub fn parse_effect(v: &'static Cv, tvars: Strings, e: &'static Sexp) -> Strings {
     let tagcase_ = e;
     match *tagcase_ {
@@ -571,6 +582,20 @@ pub fn parse_effect(v: &'static Cv, tvars: Strings, e: &'static Sexp) -> Strings
             } else if (sym_is_p(car(xs), str_lit("select")) && i64_eq(size(xs), 3i64)) {
                 // A module's effect, as the module defined at the top level gives it.
                 find_effdef(v, string_append(name_of(v, second(xs)), string_append(str_lit(" "), name_of(v, third(xs)))), cv_effdefs(v))
+            } else if (sym_is_p(car(xs), str_lit("io")) && i64_eq(size(xs), 2i64) && io_kind_p({
+                let tagcase_ = second(xs);
+                match *tagcase_ {
+                    Sexp::Sym(n, f, p) => {
+                        n
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        str_lit("")
+                    }
+                }
+            })) {
+                // An I/O effect (C49), `io:` and its kind: no region, so never masked.
+                kayak_rt::heap_cons(string_append(str_lit("io:"), sym_name(second(xs))), kayak_rt::nil())
             } else if (sym_is_p(car(xs), str_lit("read")) && sym_is_p(second(xs), str_lit("@globals"))) {
                 kayak_rt::heap_cons(str_lit("@globals"), kayak_rt::nil())
             } else if (sym_is_p(car(xs), str_lit("read")) && head_is_p(second(xs), str_lit("globals"))) {
@@ -1449,10 +1474,10 @@ pub fn scalar_name(t: &'static Ty) -> Str {
     }
 }
 
-/// FX-26's fixed-width integers beside `i64`, whose arithmetic wraps: a type
+/// FX-26's fixed-width integers beside `i64` (`u8` and `i8` since Fixpt 17ac0c5), whose arithmetic wraps: a type
 /// named so, as a datatype is, of no variants; in Rust, Rust's.
 pub fn fixed_width_p(s: Str) -> bool {
-    (string_eq_p(s, str_lit("i32")) || string_eq_p(s, str_lit("u32")) || string_eq_p(s, str_lit("u64")))
+    (string_eq_p(s, str_lit("i32")) || string_eq_p(s, str_lit("u32")) || string_eq_p(s, str_lit("u64")) || string_eq_p(s, str_lit("u8")) || string_eq_p(s, str_lit("i8")))
 }
 
 /// `tvars`: the type variables in scope.
@@ -1485,6 +1510,9 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     return ty_void();
                 } else if string_member_p(s, tvars) {
                     return ty_var(s);
+                } else if (string_eq_p(s, str_lit("io-error")) && not(dt_named_p(s, cv_dts(v))) && null_p(find_alias(s, cv_aliases(v)))) {
+                    t = car(read_all(string_chars(io_error_text()), str_lit(""), 1i64));
+                    continue;
                 } else if dt_named_p(s, cv_dts(v)) {
                     let tagcase_ = car(find_family(s, cv_dts(v)));
                     match *tagcase_ {
@@ -1529,6 +1557,14 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                         return ty_flat(ty_i64(), parse_mutable_region(v, tvars, third(xs)));
                     } else {
                         return match refuse(v, string_append(str_lit("KFX-0's flat arrays are of i64: "), show_sexp(t))) {};
+                    }
+                } else if sym_is_p(car(xs), str_lit("bytevectorof")) {
+                    // FX-26's bytes (C49), as kayak-rt's `Bytes`: at a region, written
+                    // in place.
+                    if i64_eq(size(xs), 2i64) {
+                        return ty_data(str_lit("%bytes"), kayak_rt::heap_cons(parse_mutable_region(v, tvars, second(xs)), kayak_rt::nil()));
+                    } else {
+                        return match refuse(v, string_append(str_lit("(bytevectorof R): "), show_sexp(t))) {};
                     }
                 } else if sym_is_p(car(xs), str_lit("ref")) {
                     return no_knot(v, lambda1(move |x: Str| {
@@ -2038,6 +2074,8 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
                 string_append(str_lit("(bloblet (fields "), string_append(show_tys(s, cdr(args)), string_append(str_lit(") "), string_append(show_ty(s, car(args)), str_lit(")")))))
             } else if string_eq_p(d, str_lit("%blobref")) {
                 string_append(str_lit("(blobref "), string_append(show_tys(s, args), str_lit(")")))
+            } else if string_eq_p(d, str_lit("%bytes")) {
+                string_append(str_lit("(bytevectorof "), string_append(show_ty(s, car(args)), str_lit(")")))
             } else if string_eq_p(d, str_lit("%flat-array")) {
                 string_append(str_lit("(arrayof "), string_append(show_tys(s, args), str_lit(")")))
             } else if string_eq_p(d, str_lit("%flat-sum")) {

@@ -1,0 +1,5 @@
+"The `io` effects' kinds are apart (C49): writing the standard error is
+ not within writing the standard output."
+(define warn (subr (io stdout) (string) unit)
+  (lambda (s) (tagcase (write-err s) (done u #u) (failed e #u))))
+(define main (subr pure () string) (lambda () "x"))

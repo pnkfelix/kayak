@@ -16,6 +16,9 @@
 (define char->i64 (subr pure (char) i64)
   (lambda (c) (int->i64 (char->integer c))))
 
+(define i64->char (subr pure (i64) char)
+  (lambda (n) (integer->char (i64->int n))))
+
 (define i64->string (subr pure (i64) string)
   (lambda (n) (int->string (i64->int n))))
 

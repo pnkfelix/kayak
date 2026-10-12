@@ -267,6 +267,18 @@
         (refuse v "mutable data at acyclic, which is frozen and never written")
         (parse-region v tvars r))))
 
+"FX-26's standard type `io-error` (Fixpt 17ac0c5, C49): an I/O failure's
+ kind, for a `tagcase`, and the system's words."
+(define io-error-text string
+  "(productof (kind (sumof (not-found unit) (permission-denied unit) (already-exists unit) (not-a-directory unit)
+                           (is-a-directory unit) (broken-pipe unit) (invalid-data unit) (other unit)))
+              (detail string))")
+
+(define io-kind? (subr kfx (string) bool)
+  (lambda (k)
+    "The `io` effects' kinds, a fixed family (C49)."
+    (string-member? k (list "stdin" "stdout" "stderr" "fs-read" "fs-write" "clock" "args" "exit"))))
+
 (define-rec
   (parse-effect (subr kfx (cv strings sexp) strings)
     (lambda (v tvars e)
@@ -283,6 +295,9 @@
                 ((and (sym-is? (car xs) "select") (i64= (size xs) 3))
                  "A module's effect, as the module defined at the top level gives it."
                  (find-effdef v (string-append (name-of v (second xs)) (string-append " " (name-of v (third xs)))) (cv-effdefs v)))
+                ((and (sym-is? (car xs) "io") (i64= (size xs) 2) (io-kind? (tagcase (second xs) (sym (n f p) n) (else other ""))))
+                 "An I/O effect (C49), `io:` and its kind: no region, so never masked."
+                 (list (string-append "io:" (sym-name (second xs)))))
                 ((and (sym-is? (car xs) "read") (sym-is? (second xs) "@globals")) (list "@globals"))
                 ((and (sym-is? (car xs) "read") (head-is? (second xs) "globals"))
                  (map (lambda ((g sexp)) (string-append "g:" (name-of v g))) (cdr (items (second xs)))))
@@ -693,9 +708,9 @@
 
 (define fixed-width? (subr kfx (string) bool)
   (lambda (s)
-    "FX-26's fixed-width integers beside `i64`, whose arithmetic wraps: a type
+    "FX-26's fixed-width integers beside `i64` (`u8` and `i8` since Fixpt 17ac0c5), whose arithmetic wraps: a type
      named so, as a datatype is, of no variants; in Rust, Rust's."
-    (or (string=? s "i32") (string=? s "u32") (string=? s "u64"))))
+    (or (string=? s "i32") (string=? s "u32") (string=? s "u64") (string=? s "u8") (string=? s "i8"))))
 
 (define-rec
   (parse-type (subr kfx (cv strings sexp) ty)
@@ -715,6 +730,8 @@
                 ((string=? s "string") (ty-string))
                 ((string=? s "void") (ty-void))
                 ((string-member? s tvars) (ty-var s))
+                ((and (string=? s "io-error") (not (dt-named? s (cv-dts v))) (null? (find-alias s (cv-aliases v))))
+                 (parse-type v tvars (car (read-all (string-chars io-error-text) "" 1))))
                 ((dt-named? s (cv-dts v))
                  (tagcase (car (find-family s (cv-dts v)))
                    (dt (n ps vs)
@@ -741,6 +758,12 @@
                  (if (sym-is? (second xs) "i64")
                      (ty-flat (ty-i64) (parse-mutable-region v tvars (third xs)))
                      (refuse v (string-append "KFX-0's flat arrays are of i64: " (show-sexp t)))))
+                ((sym-is? (car xs) "bytevectorof")
+                 "FX-26's bytes (C49), as kayak-rt's `Bytes`: at a region, written
+                  in place."
+                 (if (i64= (size xs) 2)
+                     (ty-data "%bytes" (list (parse-mutable-region v tvars (second xs))))
+                     (refuse v (string-append "(bytevectorof R): " (show-sexp t)))))
                 ((sym-is? (car xs) "ref")
                  (no-knot v (lambda ((x string)) x) (ty-ref (parse-type v tvars (second xs)) (parse-mutable-region v tvars (third xs)))))
                 ((sym-is? (car xs) "place")
@@ -993,6 +1016,7 @@
                 ((string=? d "%bloblet")
                  (string-append "(bloblet (fields " (string-append (show-tys s (cdr args)) (string-append ") " (string-append (show-ty s (car args)) ")")))))
                 ((string=? d "%blobref") (string-append "(blobref " (string-append (show-tys s args) ")")))
+                ((string=? d "%bytes") (string-append "(bytevectorof " (string-append (show-ty s (car args)) ")")))
                 ((string=? d "%flat-array") (string-append "(arrayof " (string-append (show-tys s args) ")")))
                 ((string=? d "%flat-sum")
                  (string-append "(sumof " (string-append (show-ty s (car args))

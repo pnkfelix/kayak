@@ -117,6 +117,8 @@ pub fn ty_sexp(v: &'static Cv, s: &'static St, t: &'static Ty) -> &'static Sexp 
                 lst(kayak_rt::heap_cons(sym(str_lit("blobref"), str_lit(""), 0i64), map(lambda1(move |x: &'static Ty| {
                     ty_sexp(v, s, x)
                 }), args)), str_lit(""), 0i64, 0i64)
+            } else if string_eq_p(d, str_lit("%bytes")) {
+                lst(kayak_rt::heap_cons(sym(str_lit("bytevectorof"), str_lit(""), 0i64), kayak_rt::heap_cons(ty_sexp(v, s, car(args)), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
             } else if string_eq_p(d, str_lit("%flat-array")) {
                 lst(kayak_rt::heap_cons(sym(str_lit("arrayof"), str_lit(""), 0i64), map(lambda1(move |x: &'static Ty| {
                     ty_sexp(v, s, x)
@@ -286,6 +288,8 @@ pub fn settled_sexp(s: &'static St, t: &'static Ty, region: bool) -> &'static Se
                 lst(kayak_rt::heap_cons(sym(str_lit("blobref"), str_lit(""), 0i64), map(lambda1(move |x: &'static Ty| {
                     settled_sexp(s, x, false)
                 }), args)), str_lit(""), 0i64, 0i64)
+            } else if string_eq_p(d, str_lit("%bytes")) {
+                lst(kayak_rt::heap_cons(sym(str_lit("bytevectorof"), str_lit(""), 0i64), kayak_rt::heap_cons(settled_sexp(s, car(args), true), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
             } else if string_eq_p(d, str_lit("%flat-array")) {
                 lst(kayak_rt::heap_cons(sym(str_lit("arrayof"), str_lit(""), 0i64), map(lambda1(move |x: &'static Ty| {
                     settled_sexp(s, x, false)
@@ -1612,6 +1616,10 @@ pub fn check(v: &'static Cv, s: &'static St, e: &'static Sexp, expected: &'stati
                         res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("fixed u32")))
                     } else if (string_eq_p(d, str_lit("u64")) && not(i64_lt(k, 0i64))) {
                         res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("fixed u64")))
+                    } else if (string_eq_p(d, str_lit("u8")) && not(i64_lt(k, 0i64)) && not(i64_gt(k, 255i64))) {
+                        res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("fixed u8")))
+                    } else if (string_eq_p(d, str_lit("i8")) && not(i64_lt(k, -128i64)) && not(i64_gt(k, 127i64))) {
+                        res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("fixed i8")))
                     } else if fixed_width_p(d) {
                         match refuse(v, string_append(i64_to_string(k), string_append(str_lit(" is not a "), d))) {}
                     } else {

@@ -20,6 +20,7 @@ mod once;
 mod show;
 mod stats;
 pub mod suspend;
+mod world;
 
 pub use arena::*;
 pub use blob::*;
@@ -33,6 +34,7 @@ pub use show::*;
 pub use stats::heap_stats_report;
 use std::cell::Cell;
 pub use std::cell::OnceCell;
+pub use world::*;
 
 /// `string`: text, and whether it is ASCII, found when the string is made.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -315,6 +317,15 @@ pub fn string_ref_i64(s: Str, i: i64) -> char {
 #[inline]
 pub fn char_to_i64(c: char) -> i64 {
     c as i64
+}
+
+/// FX-26's `integer->char`, at `i64`: a code that is no character fails.
+#[inline]
+pub fn i64_to_char(n: i64) -> char {
+    match u32::try_from(n).ok().and_then(char::from_u32) {
+        Some(c) => c,
+        None => fail("integer->char: no character has that code"),
+    }
 }
 
 #[inline]

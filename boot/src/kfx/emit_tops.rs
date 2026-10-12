@@ -775,6 +775,12 @@ pub fn definition_p(e: &'static Sexp) -> bool {
 // The shapes a program has, each declared once: every `productof`,
 // `sumof` and `product` in it, and in the types the checker elaborated and
 // found for sums. A shape's key is `P` or `S`, then its labels.
+/// A shape kayak-rt declares, as the program's would be (`world.rs`): what
+/// FX-26's I/O and bytes primitives answer with (C49).
+pub fn standard_shape_p(key: Str) -> bool {
+    string_member_p(key, kayak_rt::heap_cons(str_lit("S text bad"), kayak_rt::heap_cons(str_lit("S done failed"), kayak_rt::heap_cons(str_lit("S line eof failed"), kayak_rt::heap_cons(str_lit("S data failed"), kayak_rt::heap_cons(str_lit("S names failed"), kayak_rt::heap_cons(str_lit("P kind detail"), kayak_rt::heap_cons(str_lit("S not-found permission-denied already-exists not-a-directory is-a-directory broken-pipe invalid-data other"), kayak_rt::nil()))))))))
+}
+
 /// The key of the shape `e` writes, if it writes one.
 pub fn shape_key(e: &'static Sexp) -> Strings {
     let tagcase_ = e;
@@ -815,7 +821,7 @@ pub fn shapes_in(e: &'static Sexp, acc: Strings) -> Strings {
     match *tagcase_ {
         Sexp::Lst(xs, f, l, p) => {
             let (acc, key) = (shapes_in_all(xs, acc), shape_key(e));
-            if (null_p(key) || string_member_p(car(key), acc)) {
+            if (null_p(key) || string_member_p(car(key), acc) || standard_shape_p(car(key))) {
                 acc
             } else {
                 kayak_rt::heap_cons(car(key), acc)
