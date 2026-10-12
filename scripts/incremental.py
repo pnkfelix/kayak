@@ -8,7 +8,8 @@ kept from the compiles before (`kfx --cache FILE`), and with none. The two
 must be the same, file for file. Each edit keeps the program one kfx
 accepts; together they move forms (an insertion before them), change a
 form's text and its facts, add definitions, a datatype (the context), and
-take them away again. With --all, every edit in every file; by default, a
+take them away again; and across files, a form whose text is the same but
+whose type is found from a definition that changes. With --all, every edit in every file; by default, a
 few files, for scripts/check.sh.
 """
 
@@ -79,6 +80,20 @@ def main():
                 with open(path, "w") as f:
                     f.write(edit(text))
                 compare(f"{name}: {what}")
+        # Across files: a later form's text the same, what it reads changed.
+        first, last = os.path.join(tmp, "kfx", names[0]), os.path.join(tmp, "kfx", names[-1])
+        steps = [
+            (first, "a definition, read later", lambda s: s + "\n(define incr-given (subr (maxeff (read @globals) spin) () i64) (lambda () 7))\n"),
+            (last, "a definition whose type is found from it", lambda s: s + "\n(define incr-use (lambda () (incr-given)))\n"),
+            (first, "the first's type changed", lambda s: s.replace("() i64) (lambda () 7))", "() i32) (lambda () 7))")),
+            (first, "its body changed, its type the same", lambda s: s.replace("(lambda () 7))", "(lambda () 8))")),
+        ]
+        for path, what, edit in steps:
+            with open(path) as f:
+                text = f.read()
+            with open(path, "w") as f:
+                f.write(edit(text))
+            compare(what)
         print(f"incremental: {count} compiles with memos, each as one from scratch")
 
 
