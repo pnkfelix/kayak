@@ -42,6 +42,21 @@
     (let ((cs (string-chars text)))
       (if (char=? (car cs) #\-) (- 0 (digits-int (cdr cs) 0)) (digits-int cs 0)))))
 
+"A real literal's value: its digits as an integer over a power of ten,
+ which is the value rounded once, as reading it is, while both are exact
+ in an `f64` (up to 2^53 and 10^22)."
+(define-rec
+  (real-parts (subr kfx ((listof char acyclic) int int bool) f64)
+    (lambda (cs n scale after)
+      (cond ((null? cs) (f64/ (int->f64 n) (int->f64 scale)))
+            ((char=? (car cs) #\.) (real-parts (cdr cs) n scale #t))
+            (else (real-parts (cdr cs) (+ (* n 10) (i64->int (i64- (char->i64 (car cs)) 48))) (if after (* scale 10) scale) after))))))
+
+(define real-value (subr kfx (string) f64)
+  (lambda (text)
+    (let ((cs (string-chars text)))
+      (if (char=? (car cs) #\-) (f64-neg (real-parts (cdr cs) 0 1 #f)) (real-parts cs 0 1 #f)))))
+
 "The globals a program defines, in order: each definition's name, and a
  datatype's constructors."
 (define-rec
@@ -56,6 +71,8 @@
                          (map (lambda ((g sexp)) (sym-name (car (items g)))) (cdr (items f))))
                         ((head-is? f "define-datatype")
                          (map (lambda ((g sexp)) (sym-name (car (items g)))) (cdr (cdr (items f)))))
+                        ((head-is? f "define-generative")
+                         (let ((n (binder-name (second (items f))))) (list (string-append "up-" n) (string-append "down-" n))))
                         (else nil))
                   (global-names (cdr forms))))))))
 
@@ -67,7 +84,7 @@
         (big (text f p) (i-lit (v-int (big-int text))))
         (chr (c f p) (i-lit (v-char c)))
         (str (s f p) (i-lit (v-string s)))
-        (real (x f p) (error "the engine: no reals yet"))
+        (real (x f p) (i-lit (v-real (real-value x))))
         (sym (n f p) (lower-name n sc gs))
         (lst (xs f l p)
           (if (null? xs)
@@ -123,6 +140,14 @@
                     (inner (cons (map (lambda ((b sexp)) (binder-name (car (items b)))) bs) sc)))
                (i-letrec (map (lambda ((b sexp)) (lower (last (items b)) inner gs)) bs) (lower-body (cdr xs) inner gs))))
             ((string=? h "cond") (lower-cond xs sc gs))
+            ((string=? h "case")
+             (let ((inner (cons (the strings (list "%case-key")) sc)))
+               (i-let (list (lower (car xs) sc gs)) (lower-case (cdr xs) inner gs))))
+            ((or (string=? h "letregion") (string=? h "letrena") (string=? h "letreap"))
+             "A region, run as the heap: its name bound, to unit, as a place may be
+              given (`rcons`, `rnew`), where the engine drops it."
+             (i-let (list (i-lit (v-unit))) (lower-body (cdr xs) (cons (list (binder-name (car xs))) sc) gs)))
+            ((string=? h "rlambda") (lower-form "lambda" (cdr xs) e sc gs))
             ((string=? h "and")
              (cond ((null? xs) (i-lit (v-bool #t)))
                    ((null? (cdr xs)) (lower (car xs) sc gs))
@@ -135,14 +160,32 @@
              (if (null? xs)
                  (i-lit (v-nil))
                  (i-call (i-lit (v-prim "cons" 2)) (list (lower (car xs) sc gs) (lower-form "list" (cdr xs) e sc gs)))))
-            ((string=? h "sum") (i-sum (sym-name (car xs)) (lower (second xs) sc gs)))
+            ((string=? h "sum") (i-sum (label-of (car xs)) (lower (second xs) sc gs)))
             ((string=? h "product")
-             (i-product (map (lambda ((f sexp)) (sym-name (car (items f)))) xs)
+             (i-product (map (lambda ((f sexp)) (label-of (car (items f)))) xs)
                         (map (lambda ((f sexp)) (lower (second (items f)) sc gs)) xs)))
-            ((string=? h "extract") (i-extract (sym-name (second xs)) (lower (car xs) sc gs)))
+            ((string=? h "extract") (i-extract (label-of (second xs)) (lower (car xs) sc gs)))
             ((string=? h "tagcase") (lower-tagcase xs sc gs))
             ((string=? h "prompt") (i-prompt (lower (car xs) sc gs) (lower (third xs) sc gs) (lower (second xs) sc gs)))
             (else (i-call (lower-name h sc gs) (lower-all xs sc gs))))))
+
+  (lower-case (subr kfx (sexps scope strings) ir)
+    (lambda (clauses sc gs)
+      "`case`'s clauses, the key the innermost frame's one value."
+      (if (null? clauses)
+          (i-lit (v-unit))
+          (let ((c (items (car clauses))))
+            (if (sym-is? (car c) "else")
+                (lower-body (cdr c) sc gs)
+                (i-if (lower-matches (items (car c)) sc gs) (lower-body (cdr c) sc gs) (lower-case (cdr clauses) sc gs)))))))
+
+  (lower-matches (subr kfx (sexps scope strings) ir)
+    (lambda (ds sc gs)
+      (if (null? ds)
+          (i-lit (v-bool #f))
+          (i-if (i-call (i-lit (v-prim "%case=" 2)) (list (i-local 0 0) (lower (car ds) sc gs)))
+                (i-lit (v-bool #t))
+                (lower-matches (cdr ds) sc gs)))))
 
   (lower-cond (subr kfx (sexps scope strings) ir)
     (lambda (clauses sc gs)
@@ -163,8 +206,9 @@
                    (map (lambda ((a sexp))
                           (let* ((parts (items a))
                                  (binder (second parts))
+                                 (whole (tagcase binder (lst (ys f l p) #f) (else other #t)))
                                  (names (tagcase binder (lst (ys f l p) (map binder-name ys)) (else other (the strings (list (binder-name binder)))))))
-                            (arm (sym-name (car parts)) (size names) (lower-body (cdr (cdr parts)) (cons names sc) gs))))
+                            (arm (label-of (car parts)) (if whole -1 (size names)) (lower-body (cdr (cdr parts)) (cons names sc) gs))))
                         named)
                    (if (null? default)
                        (i-lit (v-unit))
@@ -199,7 +243,12 @@
                                 (let ((ys (items g)))
                                   (top-define (i-define (position-of (sym-name (car ys)) gs 0) (i-lit (v-ctor (sym-name (car ys)) (i64- (size ys) 1)))))))
                               (cdr (cdr (items f)))))
-                        ((or (head-is? f "define-type") (head-is? f "define-effect") (head-is? f "define-generative"))
+                        ((head-is? f "define-generative")
+                         "A generative type's conversions, both ways: the value itself."
+                         (let ((n (binder-name (second (items f)))))
+                           (list (top-define (i-define (position-of (string-append "up-" n) gs 0) (i-lit (v-prim "%identity" 1))))
+                                 (top-define (i-define (position-of (string-append "down-" n) gs 0) (i-lit (v-prim "%identity" 1)))))))
+                        ((or (head-is? f "define-type") (head-is? f "define-effect"))
                          (list (top-none)))
                         (else (list (top-expr (lower f nil gs)))))
                   (lower-tops (cdr forms) gs)))))))

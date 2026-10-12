@@ -30,6 +30,16 @@ pub fn char_written(c: char) -> Str {
     }
 }
 
+pub fn bytes_text(b: Bytes, i: Int) -> Str {
+    if _gt_eq(i, bytevector_length(b)) {
+        str_lit("")
+    } else if _eq(i, int_lit(0)) {
+        string_append(int_to_string(u8_to_int(bytevector_u8_ref(b, i))), bytes_text(b, _plus(i, int_lit(1))))
+    } else {
+        string_append(str_lit(" "), string_append(int_to_string(u8_to_int(bytevector_u8_ref(b, i))), bytes_text(b, _plus(i, int_lit(1)))))
+    }
+}
+
 pub fn show(v: &'static Val) -> Str {
     let tagcase_ = v;
     match *tagcase_ {
@@ -75,6 +85,12 @@ pub fn show(v: &'static Val) -> Str {
         }
         Val::VData(t, arr) => {
             string_append(str_lit("#<sum "), string_append(t, str_lit(">")))
+        }
+        Val::VBytes(b) => {
+            string_append(str_lit("#u8("), string_append(bytes_text(b, int_lit(0)), str_lit(")")))
+        }
+        Val::VFlat(arr) => {
+            string_append(str_lit("#<flat-array "), string_append(int_to_string(array_length(arr)), string_append(str_lit(" fields "), string_append(int_to_string(_star(int_lit(8), array_length(arr))), str_lit(" bytes>")))))
         }
         Val::VArray(arr) => {
             string_append(str_lit("#<bloblet "), string_append(int_to_string(_plus(array_length(arr), int_lit(1))), str_lit(" fields 0 bytes>")))

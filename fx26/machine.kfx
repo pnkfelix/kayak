@@ -133,7 +133,12 @@
                           (tagcase (car found)
                             (arm (n count body)
                               (tagcase v
-                                (v-sum (t2 x) (run m (c-eval body (cons (one x) en)) rest))
+                                (v-sum (t2 x)
+                                  (if (i64= count -1)
+                                      (run m (c-eval body (cons (one x) en)) rest)
+                                      (tagcase x
+                                        (v-product (ls arr) (run m (c-eval body (cons arr en)) rest))
+                                        (else other (run m (c-eval body (cons (one x) en)) rest)))))
                                 (v-data (t2 fs) (run m (c-eval body (cons fs en)) rest))
                                 (else other (run m (c-eval body en) rest))))))))
                   (k-prompt-tag (h body en) (run m (c-eval h en) (cons (k-prompt-handler v body en) rest)))

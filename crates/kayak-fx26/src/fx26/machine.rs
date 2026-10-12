@@ -395,8 +395,23 @@ pub fn run(mut m: &'static Machine, mut c: &'static Ctl, mut k: Frames) -> &'sta
                                         let tagcase_ = v;
                                         match *tagcase_ {
                                             Val::VSum(t2, x) => {
-                                                (c, k) = (c_eval(body, kayak_rt::heap_cons(one(x), en)), rest);
-                                                continue;
+                                                if i64_eq(count, -1i64) {
+                                                    (c, k) = (c_eval(body, kayak_rt::heap_cons(one(x), en)), rest);
+                                                    continue;
+                                                } else {
+                                                    let tagcase_ = x;
+                                                    match *tagcase_ {
+                                                        Val::VProduct(ls, arr) => {
+                                                            (c, k) = (c_eval(body, kayak_rt::heap_cons(arr, en)), rest);
+                                                            continue;
+                                                        }
+                                                        _ => {
+                                                            let other = tagcase_;
+                                                            (c, k) = (c_eval(body, kayak_rt::heap_cons(one(x), en)), rest);
+                                                            continue;
+                                                        }
+                                                    }
+                                                }
                                             }
                                             Val::VData(t2, fs) => {
                                                 (c, k) = (c_eval(body, kayak_rt::heap_cons(fs, en)), rest);

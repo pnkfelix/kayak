@@ -17,6 +17,13 @@
           (else (string-append "#\\" (char->string c))))))
 
 (define-rec
+  (bytes-text (subr eng ((bytevectorof @h) int) string)
+    (lambda (b i)
+      (cond ((>= i (bytevector-length b)) "")
+            ((= i 0) (string-append (int->string (u8->int (bytevector-u8-ref b i))) (bytes-text b (+ i 1))))
+            (else (string-append " " (string-append (int->string (u8->int (bytevector-u8-ref b i))) (bytes-text b (+ i 1)))))))))
+
+(define-rec
   (show (subr eng (val) string)
     (lambda (v)
       (tagcase v
@@ -33,6 +40,9 @@
         (v-sum (t x) (string-append "#<sum " (string-append t ">")))
         (v-product (ls arr) (string-append "#<product of " (string-append (int->string (array-length arr)) ">")))
         (v-data (t arr) (string-append "#<sum " (string-append t ">")))
+        (v-bytes (b) (string-append "#u8(" (string-append (bytes-text b 0) ")")))
+        (v-flat (arr) (string-append "#<flat-array " (string-append (int->string (array-length arr))
+                        (string-append " fields " (string-append (int->string (* 8 (array-length arr))) " bytes>")))))
         (v-array (arr) (string-append "#<bloblet " (string-append (int->string (+ (array-length arr) 1)) " fields 0 bytes>")))
         (v-proc (n body en) "#<closure>")
         (v-prim (n a) "#<closure>")

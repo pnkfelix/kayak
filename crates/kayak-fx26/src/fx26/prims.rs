@@ -9,14 +9,109 @@ use super::*;
 // width wraps its result as its type does. Those that touch the
 // continuation (prompts, aborts, captures) are the machine's
 // (machine.kfx), named here for their arity.
+
+// The fixed widths but `i64` (`i64`'s are above): a name, its type and its
+// operation; each operation done on `int` and wrapped as the type wraps.
+pub fn fixed_types() -> Strings {
+    thread_local!(static ONCE: OnceCell<Strings> = const { OnceCell::new() });
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("i32"), kayak_rt::heap_cons(str_lit("u32"), kayak_rt::heap_cons(str_lit("u64"), kayak_rt::heap_cons(str_lit("u8"), kayak_rt::heap_cons(str_lit("i8"), kayak_rt::nil())))))
+    })
+}
+
+pub fn fixed_in(mut n: Str, mut ts: Strings) -> Str {
+    loop {
+        if null_p(ts) {
+            return str_lit("");
+        } else if (has_prefix_p(n, car(ts)) && not(string_eq_p(n, car(ts))) && {
+            let c = string_ref_i64(n, string_length_i64(car(ts)));
+            (char_eq_p(c, '+') || char_eq_p(c, '-') || char_eq_p(c, '*') || char_eq_p(c, '=') || char_eq_p(c, '<') || char_eq_p(c, '>'))
+        }) {
+            return car(ts);
+        } else if string_eq_p(n, string_append(str_lit("int->"), car(ts))) {
+            return car(ts);
+        } else {
+            ts = cdr(ts);
+            continue;
+        }
+    }
+}
+
+pub fn fixed_type(n: Str) -> Str {
+    fixed_in(n, fixed_types())
+}
+
+pub fn fixed_op(n: Str) -> Str {
+    let t = fixed_type(n);
+    if has_prefix_p(n, str_lit("int->")) {
+        str_lit("from-int")
+    } else {
+        after_prefix(n, t)
+    }
+}
+
+pub fn fixed_arity(op: Str) -> i64 {
+    if string_member_p(op, kayak_rt::heap_cons(str_lit("-not"), kayak_rt::heap_cons(str_lit("->int"), kayak_rt::heap_cons(str_lit("->string"), kayak_rt::heap_cons(str_lit("from-int"), kayak_rt::nil()))))) {
+        1i64
+    } else {
+        2i64
+    }
+}
+
+pub fn wrapped(t: Str, n: Int) -> Int {
+    if string_eq_p(t, str_lit("i32")) {
+        i32_to_int(int_to_i32(n))
+    } else if string_eq_p(t, str_lit("u32")) {
+        u32_to_int(int_to_u32(n))
+    } else if string_eq_p(t, str_lit("u64")) {
+        u64_to_int(int_to_u64(n))
+    } else if string_eq_p(t, str_lit("u8")) {
+        u8_to_int(int_to_u8(n))
+    } else {
+        i8_to_int(int_to_i8(n))
+    }
+}
+
+pub fn width_of(t: Str) -> Int {
+    if (string_eq_p(t, str_lit("u64"))) {
+        int_lit(64)
+    } else if (string_eq_p(t, str_lit("i32")) || string_eq_p(t, str_lit("u32"))) {
+        int_lit(32)
+    } else {
+        int_lit(8)
+    }
+}
+
 /// A primitive's arity, or -1 if `n` names none.
 pub fn prim_arity(n: Str) -> i64 {
     if string_member_p(n, kayak_rt::heap_cons(str_lit("i64+"), kayak_rt::heap_cons(str_lit("i64-"), kayak_rt::heap_cons(str_lit("i64*"), kayak_rt::heap_cons(str_lit("i64-quotient"), kayak_rt::heap_cons(str_lit("i64-remainder"), kayak_rt::heap_cons(str_lit("i64-and"), kayak_rt::heap_cons(str_lit("i64-or"), kayak_rt::heap_cons(str_lit("i64-xor"), kayak_rt::heap_cons(str_lit("i64="), kayak_rt::heap_cons(str_lit("i64<"), kayak_rt::heap_cons(str_lit("i64>"), kayak_rt::heap_cons(str_lit("i64<="), kayak_rt::heap_cons(str_lit("i64>="), kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::heap_cons(str_lit("quotient"), kayak_rt::heap_cons(str_lit("remainder"), kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">="), kayak_rt::heap_cons(str_lit("max"), kayak_rt::heap_cons(str_lit("min"), kayak_rt::heap_cons(str_lit("bitwise-and"), kayak_rt::heap_cons(str_lit("bitwise-ior"), kayak_rt::heap_cons(str_lit("bitwise-xor"), kayak_rt::heap_cons(str_lit("arithmetic-shift"), kayak_rt::heap_cons(str_lit("string-append"), kayak_rt::heap_cons(str_lit("string=?"), kayak_rt::heap_cons(str_lit("string<?"), kayak_rt::heap_cons(str_lit("string>?"), kayak_rt::heap_cons(str_lit("char=?"), kayak_rt::heap_cons(str_lit("char<?"), kayak_rt::heap_cons(str_lit("char>?"), kayak_rt::heap_cons(str_lit("bool=?"), kayak_rt::heap_cons(str_lit("string-ref"), kayak_rt::heap_cons(str_lit("string-ref-i64"), kayak_rt::heap_cons(str_lit("cons"), kayak_rt::heap_cons(str_lit("set"), kayak_rt::heap_cons(str_lit("symbol=?"), kayak_rt::heap_cons(str_lit("array-ref"), kayak_rt::heap_cons(str_lit("make-array"), kayak_rt::heap_cons(str_lit("abort-current-continuation"), kayak_rt::heap_cons(str_lit("call-with-composable-continuation"), kayak_rt::heap_cons(str_lit("abort-with-continuation"), kayak_rt::heap_cons(str_lit("string-compare"), kayak_rt::nil())))))))))))))))))))))))))))))))))))))))))))))))))) {
         2i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("i64-not"), kayak_rt::heap_cons(str_lit("not"), kayak_rt::heap_cons(str_lit("zero?"), kayak_rt::heap_cons(str_lit("int->i64"), kayak_rt::heap_cons(str_lit("i64->int"), kayak_rt::heap_cons(str_lit("int->string"), kayak_rt::heap_cons(str_lit("i64->string"), kayak_rt::heap_cons(str_lit("bitwise-not"), kayak_rt::heap_cons(str_lit("string-length"), kayak_rt::heap_cons(str_lit("string-length-i64"), kayak_rt::heap_cons(str_lit("char->i64"), kayak_rt::heap_cons(str_lit("i64->char"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("char->string"), kayak_rt::heap_cons(str_lit("string->list"), kayak_rt::heap_cons(str_lit("list->string"), kayak_rt::heap_cons(str_lit("car"), kayak_rt::heap_cons(str_lit("cdr"), kayak_rt::heap_cons(str_lit("null?"), kayak_rt::heap_cons(str_lit("pair?"), kayak_rt::heap_cons(str_lit("new"), kayak_rt::heap_cons(str_lit("get"), kayak_rt::heap_cons(str_lit("error"), kayak_rt::heap_cons(str_lit("string->symbol"), kayak_rt::heap_cons(str_lit("symbol->string"), kayak_rt::heap_cons(str_lit("array-length"), kayak_rt::heap_cons(str_lit("array->list"), kayak_rt::heap_cons(str_lit("list->array"), kayak_rt::heap_cons(str_lit("char-upcase"), kayak_rt::heap_cons(str_lit("char-downcase"), kayak_rt::heap_cons(str_lit("char-whitespace?"), kayak_rt::heap_cons(str_lit("char-numeric?"), kayak_rt::heap_cons(str_lit("char-alphabetic?"), kayak_rt::heap_cons(str_lit("string-downcase"), kayak_rt::heap_cons(str_lit("list-length"), kayak_rt::heap_cons(str_lit("length"), kayak_rt::heap_cons(str_lit("reverse"), kayak_rt::nil()))))))))))))))))))))))))))))))))))))))) {
         1i64
-    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("substring"), kayak_rt::heap_cons(str_lit("array-set!"), kayak_rt::heap_cons(str_lit("string-search"), kayak_rt::nil())))) {
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("char<=?"), kayak_rt::heap_cons(str_lit("char>=?"), kayak_rt::heap_cons(str_lit("string<=?"), kayak_rt::heap_cons(str_lit("string>=?"), kayak_rt::heap_cons(str_lit("string-ci=?"), kayak_rt::heap_cons(str_lit("symbol-compare"), kayak_rt::heap_cons(str_lit("%case="), kayak_rt::nil())))))))) {
+        2i64
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("%identity"), kayak_rt::heap_cons(str_lit("bytevector-length"), kayak_rt::heap_cons(str_lit("string->utf8"), kayak_rt::heap_cons(str_lit("utf8->string"), kayak_rt::heap_cons(str_lit("flatarray-length-i64"), kayak_rt::nil())))))) {
+        1i64
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("append"), kayak_rt::heap_cons(str_lit("make-bytevector"), kayak_rt::heap_cons(str_lit("bytevector-u8-ref"), kayak_rt::heap_cons(str_lit("bytevector=?"), kayak_rt::heap_cons(str_lit("make-flatarray-i64"), kayak_rt::heap_cons(str_lit("flatarray-ref-i64"), kayak_rt::nil()))))))) {
+        2i64
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("bytevector-u8-set!"), kayak_rt::heap_cons(str_lit("bytevector-copy"), kayak_rt::heap_cons(str_lit("flatarray-set-i64!"), kayak_rt::nil())))) {
         3i64
+    } else if string_eq_p(n, str_lit("bytevector-copy!")) {
+        5i64
+    } else if string_member_p(n, kayak_rt::heap_cons(str_lit("substring"), kayak_rt::heap_cons(str_lit("array-set!"), kayak_rt::heap_cons(str_lit("string-search"), kayak_rt::heap_cons(str_lit("rcons"), kayak_rt::heap_cons(str_lit("rmake-array"), kayak_rt::nil())))))) {
+        3i64
+    } else if string_eq_p(n, str_lit("rnew")) {
+        2i64
+    } else if not(string_eq_p(fixed_type(n), str_lit(""))) {
+        fixed_arity(fixed_op(n))
+    } else if has_prefix_p(n, str_lit("f64")) {
+        if string_member_p(n, kayak_rt::heap_cons(str_lit("f64-abs"), kayak_rt::heap_cons(str_lit("f64-neg"), kayak_rt::heap_cons(str_lit("f64-sqrt"), kayak_rt::heap_cons(str_lit("f64-floor"), kayak_rt::heap_cons(str_lit("f64-ceiling"), kayak_rt::heap_cons(str_lit("f64-truncate"), kayak_rt::heap_cons(str_lit("f64-round"), kayak_rt::heap_cons(str_lit("f64->string"), kayak_rt::heap_cons(str_lit("f64->int"), kayak_rt::heap_cons(str_lit("f64-nan?"), kayak_rt::heap_cons(str_lit("f64-infinite?"), kayak_rt::heap_cons(str_lit("f64-finite?"), kayak_rt::nil()))))))))))))) {
+            1i64
+        } else {
+            2i64
+        }
+    } else if string_eq_p(n, str_lit("int->f64")) {
+        1i64
     } else if string_member_p(n, kayak_rt::heap_cons(str_lit("make-continuation-prompt-tag"), kayak_rt::nil())) {
         0i64
     } else {
@@ -182,6 +277,28 @@ pub fn flag(b: bool) -> &'static Val {
     v_bool(b)
 }
 
+pub fn bytes_of(v: &'static Val) -> Bytes {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Val::VBytes(b) => {
+            b
+        }
+        _ => {
+            let other = tagcase_;
+            error(str_lit("the engine: a bytevector is expected"));
+            make_bytevector(int_lit(0), int_to_u8(int_lit(0)))
+        }
+    }
+}
+
+pub fn onto_vals(xs: Vals, ys: Vals) -> Vals {
+    if null_p(xs) {
+        ys
+    } else {
+        kayak_rt::heap_cons(car(xs), onto_vals(cdr(xs), ys))
+    }
+}
+
 pub fn reverse_vals(mut xs: Vals, mut acc: Vals) -> Vals {
     loop {
         if null_p(xs) {
@@ -189,6 +306,197 @@ pub fn reverse_vals(mut xs: Vals, mut acc: Vals) -> Vals {
         } else {
             (xs, acc) = (cdr(xs), kayak_rt::heap_cons(car(xs), acc));
             continue;
+        }
+    }
+}
+
+pub fn real_of(v: &'static Val) -> f64 {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Val::VReal(x) => {
+            x
+        }
+        _ => {
+            let other = tagcase_;
+            error(str_lit("the engine: an f64 is expected"));
+            0.0f64
+        }
+    }
+}
+
+/// `case`'s comparison: two atoms of one kind, by that kind's equality.
+pub fn same_atom_p(a: &'static Val, b: &'static Val) -> bool {
+    let tagcase_ = a;
+    match *tagcase_ {
+        Val::VInt(x) => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Val::VInt(y) => {
+                    _eq(x, y)
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Val::VChar(x) => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Val::VChar(y) => {
+                    char_eq_p(x, y)
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Val::VString(x) => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Val::VString(y) => {
+                    string_eq_p(x, y)
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Val::VBool(x) => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Val::VBool(y) => {
+                    bool_eq_p(x, y)
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        Val::VSymbol(x) => {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Val::VSymbol(y) => {
+                    symbol_eq_p(x, y)
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+pub fn fixed_prim(t: Str, op: Str, a: &'static Val, b: &'static Val) -> &'static Val {
+    let x = val_int(a);
+    if string_eq_p(op, str_lit("from-int")) {
+        v_int(wrapped(t, x))
+    } else if string_eq_p(op, str_lit("->int")) {
+        a
+    } else if string_eq_p(op, str_lit("->string")) {
+        v_string(int_to_string(x))
+    } else if string_eq_p(op, str_lit("-not")) {
+        v_int(wrapped(t, bitwise_not(x)))
+    } else {
+        let y = val_int(b);
+        if string_eq_p(op, str_lit("+")) {
+            v_int(wrapped(t, _plus(x, y)))
+        } else if string_eq_p(op, str_lit("-")) {
+            v_int(wrapped(t, _minus(x, y)))
+        } else if string_eq_p(op, str_lit("*")) {
+            v_int(wrapped(t, _star(x, y)))
+        } else if string_eq_p(op, str_lit("-quotient")) {
+            v_int(wrapped(t, quotient(x, y)))
+        } else if string_eq_p(op, str_lit("-remainder")) {
+            v_int(wrapped(t, remainder(x, y)))
+        } else if string_eq_p(op, str_lit("-and")) {
+            v_int(wrapped(t, bitwise_and(x, y)))
+        } else if string_eq_p(op, str_lit("-or")) {
+            v_int(wrapped(t, bitwise_ior(x, y)))
+        } else if string_eq_p(op, str_lit("-xor")) {
+            v_int(wrapped(t, bitwise_xor(x, y)))
+        } else if string_eq_p(op, str_lit("-shl")) {
+            v_int(wrapped(t, arithmetic_shift(x, modulo(y, width_of(t)))))
+        } else if string_eq_p(op, str_lit("-shr")) {
+            v_int(wrapped(t, arithmetic_shift(x, _minus(int_lit(0), modulo(y, width_of(t))))))
+        } else if string_eq_p(op, str_lit("=")) {
+            flag(_eq(x, y))
+        } else if string_eq_p(op, str_lit("<")) {
+            flag(_lt(x, y))
+        } else if string_eq_p(op, str_lit(">")) {
+            flag(_gt(x, y))
+        } else if string_eq_p(op, str_lit("<=")) {
+            flag(_lt_eq(x, y))
+        } else if string_eq_p(op, str_lit(">=")) {
+            flag(_gt_eq(x, y))
+        } else {
+            error(string_append(str_lit("the engine has no primitive "), string_append(t, op)));
+            v_unit()
+        }
+    }
+}
+
+pub fn f64_prim(n: Str, a: &'static Val, b: &'static Val) -> &'static Val {
+    let x = real_of(a);
+    if string_eq_p(n, str_lit("f64->string")) {
+        v_string(f64_to_string(x))
+    } else if string_eq_p(n, str_lit("f64->int")) {
+        v_int(f64_to_int(x))
+    } else if string_eq_p(n, str_lit("f64-abs")) {
+        v_real(f64_abs(x))
+    } else if string_eq_p(n, str_lit("f64-neg")) {
+        v_real(f64_neg(x))
+    } else if string_eq_p(n, str_lit("f64-sqrt")) {
+        v_real(f64_sqrt(x))
+    } else if string_eq_p(n, str_lit("f64-floor")) {
+        v_real(f64_floor(x))
+    } else if string_eq_p(n, str_lit("f64-ceiling")) {
+        v_real(f64_ceiling(x))
+    } else if string_eq_p(n, str_lit("f64-truncate")) {
+        v_real(f64_truncate(x))
+    } else if string_eq_p(n, str_lit("f64-round")) {
+        v_real(f64_round(x))
+    } else if string_eq_p(n, str_lit("f64-nan?")) {
+        flag(f64_nan_p(x))
+    } else if string_eq_p(n, str_lit("f64-infinite?")) {
+        flag(f64_infinite_p(x))
+    } else if string_eq_p(n, str_lit("f64-finite?")) {
+        flag(f64_finite_p(x))
+    } else {
+        let y = real_of(b);
+        if string_eq_p(n, str_lit("f64+")) {
+            v_real(f64_plus(x, y))
+        } else if string_eq_p(n, str_lit("f64-")) {
+            v_real(f64_minus(x, y))
+        } else if string_eq_p(n, str_lit("f64*")) {
+            v_real(f64_star(x, y))
+        } else if string_eq_p(n, str_lit("f64/")) {
+            v_real(f64_slash(x, y))
+        } else if string_eq_p(n, str_lit("f64-min")) {
+            v_real(f64_min(x, y))
+        } else if string_eq_p(n, str_lit("f64-max")) {
+            v_real(f64_max(x, y))
+        } else if string_eq_p(n, str_lit("f64<")) {
+            flag(f64_lt(x, y))
+        } else if string_eq_p(n, str_lit("f64<=")) {
+            flag(f64_lt_eq(x, y))
+        } else if string_eq_p(n, str_lit("f64>")) {
+            flag(f64_gt(x, y))
+        } else if string_eq_p(n, str_lit("f64>=")) {
+            flag(f64_gt_eq(x, y))
+        } else if string_eq_p(n, str_lit("f64=")) {
+            flag(f64_eq(x, y))
+        } else {
+            error(string_append(str_lit("the engine has no primitive "), n));
+            v_unit()
         }
     }
 }
@@ -465,6 +773,101 @@ pub fn apply_prim(n: Str, xs: Vals) -> &'static Val {
     } else if string_eq_p(n, str_lit("error")) {
         error(string_of(a));
         v_unit()
+    } else if string_eq_p(n, str_lit("%identity")) {
+        a
+    } else if string_eq_p(n, str_lit("append")) {
+        list_val(onto_vals(list_of(a), list_of(b)))
+    } else if string_eq_p(n, str_lit("make-bytevector")) {
+        v_bytes(make_bytevector(val_int(a), int_to_u8(val_int(b))))
+    } else if string_eq_p(n, str_lit("bytevector-length")) {
+        v_int(bytevector_length(bytes_of(a)))
+    } else if string_eq_p(n, str_lit("bytevector-u8-ref")) {
+        v_int(u8_to_int(bytevector_u8_ref(bytes_of(a), val_int(b))))
+    } else if string_eq_p(n, str_lit("bytevector-u8-set!")) {
+        bytevector_u8_set_x(bytes_of(a), val_int(b), int_to_u8(val_int(car(cdr(cdr(xs))))));
+        v_unit()
+    } else if string_eq_p(n, str_lit("bytevector-copy")) {
+        v_bytes(bytevector_copy(bytes_of(a), val_int(b), val_int(car(cdr(cdr(xs))))))
+    } else if string_eq_p(n, str_lit("bytevector-copy!")) {
+        let r = cdr(cdr(xs));
+        bytevector_copy_x(bytes_of(a), val_int(b), bytes_of(car(r)), val_int(car(cdr(r))), val_int(car(cdr(cdr(r)))));
+        v_unit()
+    } else if string_eq_p(n, str_lit("bytevector=?")) {
+        flag(bytevector_eq_p(bytes_of(a), bytes_of(b)))
+    } else if string_eq_p(n, str_lit("string->utf8")) {
+        v_bytes(string_to_utf8(string_of(a)))
+    } else if string_eq_p(n, str_lit("utf8->string")) {
+        let tagcase_ = utf8_to_string(bytes_of(a));
+        match *tagcase_ {
+            Sum_4text_3bad::Text(t) => {
+                v_sum(str_lit("text"), v_string(t))
+            }
+            Sum_4text_3bad::Bad(k) => {
+                v_sum(str_lit("bad"), v_int(k))
+            }
+        }
+    } else if string_eq_p(n, str_lit("make-flatarray-i64")) {
+        v_flat(make_array(val_int(a), b))
+    } else if string_eq_p(n, str_lit("flatarray-ref-i64")) {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Val::VFlat(arr) => {
+                array_ref(arr, val_int(b))
+            }
+            _ => {
+                let other = tagcase_;
+                v_unit()
+            }
+        }
+    } else if string_eq_p(n, str_lit("flatarray-set-i64!")) {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Val::VFlat(arr) => {
+                array_set_x(arr, val_int(b), car(cdr(cdr(xs))));
+                v_unit()
+            }
+            _ => {
+                let other = tagcase_;
+                v_unit()
+            }
+        }
+    } else if string_eq_p(n, str_lit("flatarray-length-i64")) {
+        let tagcase_ = a;
+        match *tagcase_ {
+            Val::VFlat(arr) => {
+                v_int(array_length(arr))
+            }
+            _ => {
+                let other = tagcase_;
+                v_unit()
+            }
+        }
+    } else if string_eq_p(n, str_lit("%case=")) {
+        flag(same_atom_p(a, b))
+    } else if string_eq_p(n, str_lit("rcons")) {
+        v_pair(kayak_rt::heap_new(b), kayak_rt::heap_new(car(cdr(cdr(xs)))))
+    } else if string_eq_p(n, str_lit("rnew")) {
+        v_ref(kayak_rt::heap_new(b))
+    } else if string_eq_p(n, str_lit("rmake-array")) {
+        v_array(make_array(val_int(b), car(cdr(cdr(xs)))))
+    } else if string_eq_p(n, str_lit("char<=?")) {
+        flag(char_lt_eq_p(char_of(a), char_of(b)))
+    } else if string_eq_p(n, str_lit("char>=?")) {
+        flag(char_gt_eq_p(char_of(a), char_of(b)))
+    } else if string_eq_p(n, str_lit("string<=?")) {
+        flag(string_lt_eq_p(string_of(a), string_of(b)))
+    } else if string_eq_p(n, str_lit("string>=?")) {
+        flag(string_gt_eq_p(string_of(a), string_of(b)))
+    } else if string_eq_p(n, str_lit("string-ci=?")) {
+        flag(string_ci_eq_p(string_of(a), string_of(b)))
+    } else if string_eq_p(n, str_lit("symbol-compare")) {
+        v_int(symbol_compare(symbol_of(a), symbol_of(b)))
+    } else if not(string_eq_p(fixed_type(n), str_lit(""))) {
+        fixed_prim(fixed_type(n), fixed_op(n), a, b)
+    } else if string_eq_p(n, str_lit("int->f64")) {
+        v_real(int_to_f64(val_int(a)))
+    } else if has_prefix_p(n, str_lit("f64")) {
+        f64_prim(n, a, b)
     } else {
         error(string_append(str_lit("the engine has no primitive "), n));
         v_unit()

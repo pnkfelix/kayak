@@ -100,6 +100,36 @@ pub fn big_int(text: Str) -> Int {
     }
 }
 
+// A real literal's value: its digits as an integer over a power of ten,
+// which is the value rounded once, as reading it is, while both are exact
+// in an `f64` (up to 2^53 and 10^22).
+pub fn real_parts(mut cs: List<char>, mut n: Int, mut scale: Int, mut after: bool) -> f64 {
+    loop {
+        if null_p(cs) {
+            return f64_slash(int_to_f64(n), int_to_f64(scale));
+        } else if char_eq_p(car(cs), '.') {
+            (cs, after) = (cdr(cs), true);
+            continue;
+        } else {
+            (cs, n, scale) = (cdr(cs), _plus(_star(n, int_lit(10)), i64_to_int(i64_minus(char_to_i64(car(cs)), 48i64))), if after {
+                _star(scale, int_lit(10))
+            } else {
+                scale
+            });
+            continue;
+        }
+    }
+}
+
+pub fn real_value(text: Str) -> f64 {
+    let cs = string_chars(text);
+    if char_eq_p(car(cs), '-') {
+        f64_neg(real_parts(cdr(cs), int_lit(0), int_lit(1), false))
+    } else {
+        real_parts(cs, int_lit(0), int_lit(1), false)
+    }
+}
+
 // The globals a program defines, in order: each definition's name, and a
 // datatype's constructors.
 pub fn global_names(forms: Sexps) -> Strings {
@@ -117,6 +147,9 @@ pub fn global_names(forms: Sexps) -> Strings {
             map(lambda1(move |g: &'static Sexp| {
                 sym_name(car(items(g)))
             }), cdr(cdr(items(f))))
+        } else if head_is_p(f, str_lit("define-generative")) {
+            let n = binder_name(second(items(f)));
+            kayak_rt::heap_cons(string_append(str_lit("up-"), n), kayak_rt::heap_cons(string_append(str_lit("down-"), n), kayak_rt::nil()))
         } else {
             nil::<Str>()
         }, global_names(cdr(forms)))
@@ -139,7 +172,7 @@ pub fn lower(e: &'static Sexp, sc: Scope, gs: Strings) -> &'static Ir {
             i_lit(v_string(s))
         }
         Sexp::Real(x, f, p) => {
-            error(str_lit("the engine: no reals yet"))
+            i_lit(v_real(real_value(x)))
         }
         Sexp::Sym(n, f, p) => {
             lower_name(n, sc, gs)
@@ -213,86 +246,120 @@ pub fn lower_name(n: Str, sc: Scope, gs: Strings) -> &'static Ir {
     }
 }
 
-pub fn lower_form(h: Str, xs: Sexps, e: &'static Sexp, sc: Scope, gs: Strings) -> &'static Ir {
-    if string_eq_p(h, str_lit("the")) {
-        lower(second(xs), sc, gs)
-    } else if string_eq_p(h, str_lit("quote")) {
-        i_lit(v_symbol(string_to_symbol(sym_name(car(xs)))))
-    } else if (string_eq_p(h, str_lit("plambda")) || string_eq_p(h, str_lit("proj"))) {
-        if string_eq_p(h, str_lit("proj")) {
-            lower(car(xs), sc, gs)
+pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope, mut gs: Strings) -> &'static Ir {
+    loop {
+        if string_eq_p(h, str_lit("the")) {
+            return lower(second(xs), sc, gs);
+        } else if string_eq_p(h, str_lit("quote")) {
+            return i_lit(v_symbol(string_to_symbol(sym_name(car(xs)))));
+        } else if (string_eq_p(h, str_lit("plambda")) || string_eq_p(h, str_lit("proj"))) {
+            if string_eq_p(h, str_lit("proj")) {
+                return lower(car(xs), sc, gs);
+            } else {
+                return lower(second(xs), sc, gs);
+            }
+        } else if string_eq_p(h, str_lit("lambda")) {
+            let names = map(&binder_name, items(car(xs)));
+            return i_lambda(size(names), lower_body(cdr(xs), kayak_rt::heap_cons(names, sc), gs));
+        } else if string_eq_p(h, str_lit("if")) {
+            return i_if(lower(car(xs), sc, gs), lower(second(xs), sc, gs), lower(third(xs), sc, gs));
+        } else if string_eq_p(h, str_lit("begin")) {
+            return i_seq(lower_all(xs, sc, gs));
+        } else if string_eq_p(h, str_lit("let")) {
+            let bs = items(car(xs));
+            return i_let(map(lambda1(move |b: &'static Sexp| {
+                lower(last(items(b)), sc, gs)
+            }), bs), lower_body(cdr(xs), kayak_rt::heap_cons(map(lambda1(move |b: &'static Sexp| {
+                binder_name(car(items(b)))
+            }), bs), sc), gs));
+        } else if string_eq_p(h, str_lit("let*")) {
+            let bs = items(car(xs));
+            if null_p(bs) {
+                return lower_body(cdr(xs), sc, gs);
+            } else {
+                return i_let(kayak_rt::heap_cons(lower(last(items(car(bs))), sc, gs), kayak_rt::nil()), lower_form(str_lit("let*"), kayak_rt::heap_cons(lst(cdr(bs), str_lit(""), 0i64, 0i64), cdr(xs)), e, kayak_rt::heap_cons(kayak_rt::heap_cons(binder_name(car(items(car(bs)))), kayak_rt::nil()), sc), gs));
+            }
+        } else if string_eq_p(h, str_lit("letrec")) {
+            let bs = items(car(xs));
+            let inner = kayak_rt::heap_cons(map(lambda1(move |b: &'static Sexp| {
+                binder_name(car(items(b)))
+            }), bs), sc);
+            return i_letrec(map(lambda1(move |b: &'static Sexp| {
+                lower(last(items(b)), inner, gs)
+            }), bs), lower_body(cdr(xs), inner, gs));
+        } else if string_eq_p(h, str_lit("cond")) {
+            return lower_cond(xs, sc, gs);
+        } else if string_eq_p(h, str_lit("case")) {
+            let inner = kayak_rt::heap_cons(the::<Strings>(kayak_rt::heap_cons(str_lit("%case-key"), kayak_rt::nil())), sc);
+            return i_let(kayak_rt::heap_cons(lower(car(xs), sc, gs), kayak_rt::nil()), lower_case(cdr(xs), inner, gs));
+        } else if (string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("letrena")) || string_eq_p(h, str_lit("letreap"))) {
+            // A region, run as the heap: its name bound, to unit, as a place may be
+            // given (`rcons`, `rnew`), where the engine drops it.
+            return i_let(kayak_rt::heap_cons(i_lit(v_unit()), kayak_rt::nil()), lower_body(cdr(xs), kayak_rt::heap_cons(kayak_rt::heap_cons(binder_name(car(xs)), kayak_rt::nil()), sc), gs));
+        } else if string_eq_p(h, str_lit("rlambda")) {
+            (h, xs) = (str_lit("lambda"), cdr(xs));
+            continue;
+        } else if string_eq_p(h, str_lit("and")) {
+            if null_p(xs) {
+                return i_lit(v_bool(true));
+            } else if null_p(cdr(xs)) {
+                return lower(car(xs), sc, gs);
+            } else {
+                return i_if(lower(car(xs), sc, gs), lower_form(str_lit("and"), cdr(xs), e, sc, gs), i_lit(v_bool(false)));
+            }
+        } else if string_eq_p(h, str_lit("or")) {
+            if null_p(xs) {
+                return i_lit(v_bool(false));
+            } else if null_p(cdr(xs)) {
+                return lower(car(xs), sc, gs);
+            } else {
+                return i_if(lower(car(xs), sc, gs), i_lit(v_bool(true)), lower_form(str_lit("or"), cdr(xs), e, sc, gs));
+            }
+        } else if string_eq_p(h, str_lit("list")) {
+            if null_p(xs) {
+                return i_lit(v_nil());
+            } else {
+                return i_call(i_lit(v_prim(str_lit("cons"), 2i64)), kayak_rt::heap_cons(lower(car(xs), sc, gs), kayak_rt::heap_cons(lower_form(str_lit("list"), cdr(xs), e, sc, gs), kayak_rt::nil())));
+            }
+        } else if string_eq_p(h, str_lit("sum")) {
+            return i_sum(label_of(car(xs)), lower(second(xs), sc, gs));
+        } else if string_eq_p(h, str_lit("product")) {
+            return i_product(map(lambda1(move |f: &'static Sexp| {
+                label_of(car(items(f)))
+            }), xs), map(lambda1(move |f: &'static Sexp| {
+                lower(second(items(f)), sc, gs)
+            }), xs));
+        } else if string_eq_p(h, str_lit("extract")) {
+            return i_extract(label_of(second(xs)), lower(car(xs), sc, gs));
+        } else if string_eq_p(h, str_lit("tagcase")) {
+            return lower_tagcase(xs, sc, gs);
+        } else if string_eq_p(h, str_lit("prompt")) {
+            return i_prompt(lower(car(xs), sc, gs), lower(third(xs), sc, gs), lower(second(xs), sc, gs));
         } else {
-            lower(second(xs), sc, gs)
+            return i_call(lower_name(h, sc, gs), lower_all(xs, sc, gs));
         }
-    } else if string_eq_p(h, str_lit("lambda")) {
-        let names = map(&binder_name, items(car(xs)));
-        i_lambda(size(names), lower_body(cdr(xs), kayak_rt::heap_cons(names, sc), gs))
-    } else if string_eq_p(h, str_lit("if")) {
-        i_if(lower(car(xs), sc, gs), lower(second(xs), sc, gs), lower(third(xs), sc, gs))
-    } else if string_eq_p(h, str_lit("begin")) {
-        i_seq(lower_all(xs, sc, gs))
-    } else if string_eq_p(h, str_lit("let")) {
-        let bs = items(car(xs));
-        i_let(map(lambda1(move |b: &'static Sexp| {
-            lower(last(items(b)), sc, gs)
-        }), bs), lower_body(cdr(xs), kayak_rt::heap_cons(map(lambda1(move |b: &'static Sexp| {
-            binder_name(car(items(b)))
-        }), bs), sc), gs))
-    } else if string_eq_p(h, str_lit("let*")) {
-        let bs = items(car(xs));
-        if null_p(bs) {
-            lower_body(cdr(xs), sc, gs)
-        } else {
-            i_let(kayak_rt::heap_cons(lower(last(items(car(bs))), sc, gs), kayak_rt::nil()), lower_form(str_lit("let*"), kayak_rt::heap_cons(lst(cdr(bs), str_lit(""), 0i64, 0i64), cdr(xs)), e, kayak_rt::heap_cons(kayak_rt::heap_cons(binder_name(car(items(car(bs)))), kayak_rt::nil()), sc), gs))
-        }
-    } else if string_eq_p(h, str_lit("letrec")) {
-        let bs = items(car(xs));
-        let inner = kayak_rt::heap_cons(map(lambda1(move |b: &'static Sexp| {
-            binder_name(car(items(b)))
-        }), bs), sc);
-        i_letrec(map(lambda1(move |b: &'static Sexp| {
-            lower(last(items(b)), inner, gs)
-        }), bs), lower_body(cdr(xs), inner, gs))
-    } else if string_eq_p(h, str_lit("cond")) {
-        lower_cond(xs, sc, gs)
-    } else if string_eq_p(h, str_lit("and")) {
-        if null_p(xs) {
-            i_lit(v_bool(true))
-        } else if null_p(cdr(xs)) {
-            lower(car(xs), sc, gs)
-        } else {
-            i_if(lower(car(xs), sc, gs), lower_form(str_lit("and"), cdr(xs), e, sc, gs), i_lit(v_bool(false)))
-        }
-    } else if string_eq_p(h, str_lit("or")) {
-        if null_p(xs) {
-            i_lit(v_bool(false))
-        } else if null_p(cdr(xs)) {
-            lower(car(xs), sc, gs)
-        } else {
-            i_if(lower(car(xs), sc, gs), i_lit(v_bool(true)), lower_form(str_lit("or"), cdr(xs), e, sc, gs))
-        }
-    } else if string_eq_p(h, str_lit("list")) {
-        if null_p(xs) {
-            i_lit(v_nil())
-        } else {
-            i_call(i_lit(v_prim(str_lit("cons"), 2i64)), kayak_rt::heap_cons(lower(car(xs), sc, gs), kayak_rt::heap_cons(lower_form(str_lit("list"), cdr(xs), e, sc, gs), kayak_rt::nil())))
-        }
-    } else if string_eq_p(h, str_lit("sum")) {
-        i_sum(sym_name(car(xs)), lower(second(xs), sc, gs))
-    } else if string_eq_p(h, str_lit("product")) {
-        i_product(map(lambda1(move |f: &'static Sexp| {
-            sym_name(car(items(f)))
-        }), xs), map(lambda1(move |f: &'static Sexp| {
-            lower(second(items(f)), sc, gs)
-        }), xs))
-    } else if string_eq_p(h, str_lit("extract")) {
-        i_extract(sym_name(second(xs)), lower(car(xs), sc, gs))
-    } else if string_eq_p(h, str_lit("tagcase")) {
-        lower_tagcase(xs, sc, gs)
-    } else if string_eq_p(h, str_lit("prompt")) {
-        i_prompt(lower(car(xs), sc, gs), lower(third(xs), sc, gs), lower(second(xs), sc, gs))
+    }
+}
+
+/// `case`'s clauses, the key the innermost frame's one value.
+pub fn lower_case(clauses: Sexps, sc: Scope, gs: Strings) -> &'static Ir {
+    if null_p(clauses) {
+        i_lit(v_unit())
     } else {
-        i_call(lower_name(h, sc, gs), lower_all(xs, sc, gs))
+        let c = items(car(clauses));
+        if sym_is_p(car(c), str_lit("else")) {
+            lower_body(cdr(c), sc, gs)
+        } else {
+            i_if(lower_matches(items(car(c)), sc, gs), lower_body(cdr(c), sc, gs), lower_case(cdr(clauses), sc, gs))
+        }
+    }
+}
+
+pub fn lower_matches(ds: Sexps, sc: Scope, gs: Strings) -> &'static Ir {
+    if null_p(ds) {
+        i_lit(v_bool(false))
+    } else {
+        i_if(i_call(i_lit(v_prim(str_lit("%case="), 2i64)), kayak_rt::heap_cons(i_local(0i64, 0i64), kayak_rt::heap_cons(lower(car(ds), sc, gs), kayak_rt::nil()))), i_lit(v_bool(true)), lower_matches(cdr(ds), sc, gs))
     }
 }
 
@@ -329,6 +396,18 @@ pub fn lower_tagcase(xs: Sexps, sc: Scope, gs: Strings) -> &'static Ir {
     i_tagcase(lower(car(xs), sc, gs), map(lambda1(move |a: &'static Sexp| {
         let parts = items(a);
         let binder = second(parts);
+        let whole = {
+            let tagcase_ = binder;
+            match *tagcase_ {
+                Sexp::Lst(ys, f, l, p) => {
+                    false
+                }
+                _ => {
+                    let other = tagcase_;
+                    true
+                }
+            }
+        };
         let names = {
             let tagcase_ = binder;
             match *tagcase_ {
@@ -341,7 +420,11 @@ pub fn lower_tagcase(xs: Sexps, sc: Scope, gs: Strings) -> &'static Ir {
                 }
             }
         };
-        arm(sym_name(car(parts)), size(names), lower_body(cdr(cdr(parts)), kayak_rt::heap_cons(names, sc), gs))
+        arm(label_of(car(parts)), if whole {
+            -1i64
+        } else {
+            size(names)
+        }, lower_body(cdr(cdr(parts)), kayak_rt::heap_cons(names, sc), gs))
     }), named), if null_p(default) {
         i_lit(v_unit())
     } else {
@@ -416,7 +499,11 @@ pub fn lower_tops(forms: Sexps, gs: Strings) -> List<&'static Top> {
                 let ys = items(g);
                 top_define(i_define(position_of(sym_name(car(ys)), gs, 0i64), i_lit(v_ctor(sym_name(car(ys)), i64_minus(size(ys), 1i64)))))
             }), cdr(cdr(items(f))))
-        } else if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-effect")) || head_is_p(f, str_lit("define-generative"))) {
+        } else if head_is_p(f, str_lit("define-generative")) {
+            // A generative type's conversions, both ways: the value itself.
+            let n = binder_name(second(items(f)));
+            kayak_rt::heap_cons(top_define(i_define(position_of(string_append(str_lit("up-"), n), gs, 0i64), i_lit(v_prim(str_lit("%identity"), 1i64)))), kayak_rt::heap_cons(top_define(i_define(position_of(string_append(str_lit("down-"), n), gs, 0i64), i_lit(v_prim(str_lit("%identity"), 1i64)))), kayak_rt::nil()))
+        } else if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-effect"))) {
             kayak_rt::heap_cons(top_none(), kayak_rt::nil())
         } else {
             kayak_rt::heap_cons(top_expr(lower(f, nil::<List<Str>>(), gs)), kayak_rt::nil())

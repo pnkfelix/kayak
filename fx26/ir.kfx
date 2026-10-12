@@ -26,6 +26,8 @@
   (v-product strings (arrayof val @h))
   (v-data string (arrayof val @h))
   (v-array (arrayof val @h))
+  (v-bytes (bytevectorof @h))
+  (v-flat (arrayof val @h))
   (v-proc i64 ir (listof (arrayof val @h) acyclic))
   (v-prim string i64)
   (v-ctor string i64)
@@ -58,7 +60,8 @@
   (i-prompt ir ir ir))
 
 "An arm of a `tagcase`: its tag, how many it binds (a datatype's fields,
- or 1, a sum's value), and its body. The default arm binds the value."
+ or a sum's product's, taken apart), or -1 if it binds the value whole;
+ and its body. The default arm binds the value."
 (define-datatype arm (arm string i64 ir))
 
 (define-type irs (listof ir acyclic))

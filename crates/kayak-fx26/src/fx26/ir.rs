@@ -29,6 +29,8 @@ pub enum Val {
     VProduct(Strings, Array<&'static Val>),
     VData(Str, Array<&'static Val>),
     VArray(Array<&'static Val>),
+    VBytes(Bytes),
+    VFlat(Array<&'static Val>),
     VProc(i64, &'static Ir, List<Array<&'static Val>>),
     VPrim(Str, i64),
     VCtor(Str, i64),
@@ -90,6 +92,14 @@ pub fn v_data(f0: Str, f1: Array<&'static Val>) -> &'static Val {
 
 pub fn v_array(f0: Array<&'static Val>) -> &'static Val {
     kayak_rt::heap_alloc(Val::VArray(f0))
+}
+
+pub fn v_bytes(f0: Bytes) -> &'static Val {
+    kayak_rt::heap_alloc(Val::VBytes(f0))
+}
+
+pub fn v_flat(f0: Array<&'static Val>) -> &'static Val {
+    kayak_rt::heap_alloc(Val::VFlat(f0))
 }
 
 pub fn v_proc(f0: i64, f1: &'static Ir, f2: List<Array<&'static Val>>) -> &'static Val {
@@ -200,7 +210,8 @@ pub fn i_prompt(f0: &'static Ir, f1: &'static Ir, f2: &'static Ir) -> &'static I
 }
 
 // An arm of a `tagcase`: its tag, how many it binds (a datatype's fields,
-// or 1, a sum's value), and its body. The default arm binds the value.
+// or a sum's product's, taken apart), or -1 if it binds the value whole;
+// and its body. The default arm binds the value.
 pub enum Arm {
     Arm(Str, i64, &'static Ir),
 }
