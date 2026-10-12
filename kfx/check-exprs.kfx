@@ -64,7 +64,9 @@
                                                 ((escapes? es) (lst (list (sym "goto" "" 0) (sym "@escape" "" 0)) "" 0 0))
                                                 (else (sym "pure" "" 0)))
                      (lst (map (lambda ((p ty)) (ty-sexp v s p)) ps) "" 0 0) (ty-sexp v s r)) "" 0 0))
-        (ty-var (n) (refuse v (string-append "a definition with no type, of a type over " (string-append n ": write its type"))))
+        (ty-var (n)
+          "A poly's binder, inside it: as written, a region's without its `'`."
+          (sym (if (has-prefix? n "'") (after-prefix n "'") n) "" 0))
         (ty-meta (k) (refuse v "a definition with no type, whose type is not known whole: write it")))))
   (fields-sexp (subr kfx (cv st strings tys) sexps)
     (lambda (v s ls ts)
@@ -651,13 +653,30 @@
                   (tagcase (walk s t)
                     (ty-list (el r) (res t es (note-turbofish s at-file at-pos (list el))))
                     (else other (res t es s)))
-                  (res t es s)))))
+                  (res t es (async-global v s name at-file at-pos))))))
         (lst (xs src-file src-line src-pos)
           (let ((v (near v src-file src-line src-pos)))
             (tagcase (car xs)
               (sym (h at-file at-pos) (synth-form v s e h (cdr xs)))
               (else head (void-call v #f #f (synth-call-of v s (synth v s head) (cdr xs) nil nil
                                                            (if (head-is? head "proj") nil (list "spin")))))))))))
+
+  (async-global (subr kfx (cv st string string i64) st)
+    (lambda (v s name file pos)
+      "A global procedure that may suspend, named as a value: an `async fn`,
+       given as a closure that boxes its future (C46), noted with its arity."
+      (let ((found (find-bind name (cv-binds v))))
+        (if (null? found)
+            s
+            (tagcase (car found)
+              (bind (n sc wher)
+                (if (string=? wher "global")
+                    (tagcase sc
+                      (scheme (tv t)
+                        (tagcase t
+                          (ty-proc (es ps r) (if (suspends? es) (note-fact s file pos (string-append "async-global " (i64->string (size ps)))) s))
+                          (else other s))))
+                    s)))))))
 
   (synth-name (subr kfx (cv st string) res)
     (lambda (v s name)
@@ -1498,7 +1517,9 @@
           t
           (projected v (cdr tvars) (cdr args)
                      (replace-var (car tvars)
-                                  (if (char=? (string-ref-i64 (car tvars) 0) #\') (parse-region v (cv-tvars v) (car args)) (parse-type v (cv-tvars v) (car args)))
+                                  (cond ((char=? (string-ref-i64 (car tvars) 0) #\') (parse-region v (cv-tvars v) (car args)))
+                                        ((char=? (string-ref-i64 (car tvars) 0) #\~) (effect-row (cons "~!" (parse-effect v (cv-tvars v) (car args)))))
+                                        (else (parse-type v (cv-tvars v) (car args))))
                                   t)))))
 
   (rlambda-form (subr kfx (cv st sexp sexps tys) res)
@@ -1898,16 +1919,15 @@
   (handler-of (subr kfx (cv st sexp ty ty) res)
     (lambda (v s e h a)
       "A prompt's handler, a lambda from the payload to the answer: its
-       body's effect is the prompt's, since the prompt calls it. A handler
-       that may abort, KFX has not yet."
+       body's effect is the prompt's, since the prompt calls it. One that
+       may abort or suspend is noted so, as any lambda is, and its call is
+       `?`ed and awaited (C46)."
       (if (not (head-is? e "lambda"))
           (refuse v "a prompt's handler is a lambda, in KFX")
           (let ((lam (items e)))
             (tagcase (lambda-effects v s (items (second lam)) (cdr (cdr lam)) (ty-proc nil (list h) a))
               (res (u es s)
-                (if (escapes? es)
-                    (refuse v "a prompt's handler that may abort, which KFX has not yet")
-                    (res a es s))))))))
+                (res a es (tagcase e (lst (xs f l p) (noted-lambda (near v f l p) s es)) (else other s)))))))))
 
   (synth-call-of (subr kfx (cv st res sexps (listof i64 acyclic) tys strings) res)
     (lambda (v s callee args regions expected more)

@@ -180,7 +180,12 @@ pub fn ty_sexp(v: &'static Cv, s: &'static St, t: &'static Ty) -> &'static Sexp 
             }), ps), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(ty_sexp(v, s, r), kayak_rt::nil())))), str_lit(""), 0i64, 0i64)
         }
         Ty::TyVar(n) => {
-            match refuse(v, string_append(str_lit("a definition with no type, of a type over "), string_append(n, str_lit(": write its type")))) {}
+            // A poly's binder, inside it: as written, a region's without its `'`.
+            sym(if has_prefix_p(n, str_lit("'")) {
+                after_prefix(n, str_lit("'"))
+            } else {
+                n
+            }, str_lit(""), 0i64)
         }
         Ty::TyMeta(k) => {
             match refuse(v, str_lit("a definition with no type, whose type is not known whole: write it")) {}
@@ -1455,7 +1460,7 @@ pub fn synth(v: &'static Cv, s: &'static St, e: &'static Sexp) -> &'static Res {
                             }
                         }
                     } else {
-                        res(t, es, s)
+                        res(t, es, async_global(v, s, name, at_file, at_pos))
                     }
                 }
             }
@@ -1474,6 +1479,44 @@ pub fn synth(v: &'static Cv, s: &'static St, e: &'static Sexp) -> &'static Res {
                     } else {
                         kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil())
                     }))
+                }
+            }
+        }
+    }
+}
+
+/// A global procedure that may suspend, named as a value: an `async fn`,
+/// given as a closure that boxes its future (C46), noted with its arity.
+pub fn async_global(v: &'static Cv, s: &'static St, name: Str, file: Str, pos: i64) -> &'static St {
+    let found = find_bind(name, cv_binds(v));
+    if null_p(found) {
+        s
+    } else {
+        let tagcase_ = car(found);
+        match *tagcase_ {
+            Bind::Bind(n, sc, wher) => {
+                if string_eq_p(wher, str_lit("global")) {
+                    let tagcase_ = sc;
+                    match *tagcase_ {
+                        Scheme::Scheme(tv, t) => {
+                            let tagcase_ = t;
+                            match *tagcase_ {
+                                Ty::TyProc(es, ps, r) => {
+                                    if suspends_p(es) {
+                                        note_fact(s, file, pos, string_append(str_lit("async-global "), i64_to_string(size(ps))))
+                                    } else {
+                                        s
+                                    }
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    s
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    s
                 }
             }
         }
@@ -3372,6 +3415,8 @@ pub fn projected(mut v: &'static Cv, mut tvars: Strings, mut args: Sexps, mut t:
         } else {
             (tvars, args, t) = (cdr(tvars), cdr(args), replace_var(car(tvars), if char_eq_p(string_ref_i64(car(tvars), 0i64), '\'') {
                 parse_region(v, cv_tvars(v), car(args))
+            } else if char_eq_p(string_ref_i64(car(tvars), 0i64), '~') {
+                effect_row(kayak_rt::heap_cons(str_lit("~!"), parse_effect(v, cv_tvars(v), car(args))))
             } else {
                 parse_type(v, cv_tvars(v), car(args))
             }, t));
@@ -4106,8 +4151,9 @@ pub fn prompt_form(v: &'static Cv, s: &'static St, xs: Sexps, expected: Tys) -> 
 }
 
 /// A prompt's handler, a lambda from the payload to the answer: its
-/// body's effect is the prompt's, since the prompt calls it. A handler
-/// that may abort, KFX has not yet.
+/// body's effect is the prompt's, since the prompt calls it. One that
+/// may abort or suspend is noted so, as any lambda is, and its call is
+/// `?`ed and awaited (C46).
 pub fn handler_of(v: &'static Cv, s: &'static St, e: &'static Sexp, h: &'static Ty, a: &'static Ty) -> &'static Res {
     if not(head_is_p(e, str_lit("lambda"))) {
         match refuse(v, str_lit("a prompt's handler is a lambda, in KFX")) {}
@@ -4116,11 +4162,18 @@ pub fn handler_of(v: &'static Cv, s: &'static St, e: &'static Sexp, h: &'static 
         let tagcase_ = lambda_effects(v, s, items(second(lam)), cdr(cdr(lam)), ty_proc(nil::<Str>(), kayak_rt::heap_cons(h, kayak_rt::nil()), a));
         match *tagcase_ {
             Res::Res(u, es, s) => {
-                if escapes_p(es) {
-                    match refuse(v, str_lit("a prompt's handler that may abort, which KFX has not yet")) {}
-                } else {
-                    res(a, es, s)
-                }
+                res(a, es, {
+                    let tagcase_ = e;
+                    match *tagcase_ {
+                        Sexp::Lst(xs, f, l, p) => {
+                            noted_lambda(near(v, f, l, p), s, es)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            s
+                        }
+                    }
+                })
             }
         }
     }

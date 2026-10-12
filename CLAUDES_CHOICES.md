@@ -837,3 +837,33 @@ in what its tasks may do (`PLAN.md` §8).
 - **Not chosen:** a Rust function for each colour an instance needs
   (monomorphised by kfx), quicker and larger, later if it is measured to
   matter.
+- **One Rust type for a family's every effect.** A procedure type whose
+  effect is a binder's is, in Rust, a boxed future's, whatever effect it
+  is later given: so an effect given to a family, or by `proj`, carries a
+  mark, `~!` (`%effect-given` in the emitter), which keeps that
+  representation and is within every effect. `(loop app @l)` in a program
+  is then the Rust type `(loop u l)` is in the library.
+- **A procedure that may suspend has no lifetimes** (C42's): its future
+  is `'static`, as a capture's must be (`Any`), and it can touch no
+  `letrena`'s data, none being suspended in (C45).
+- **A global `async fn` named as a value** is a closure boxing its future
+  (`async-global N`); a call through `proj` is boxed as a named one is.
+- **A prompt's handler may abort or suspend**: its call is awaited and
+  `?`ed.
+
+## C47. A library of tasks, in KFX (2026-10-12)
+
+`lib/tasks.kfx`, generic in the tasks' effect `u` and the loop's region
+`l` (C46): a loop (its prompt tag, ready queue, sleepers, clock),
+`spawn!`, `yield!`, `suspend!`, `sleep!` on a virtual clock that moves
+only when no task is ready, `run!`, and ivars (`ivar-get!` waits,
+`ivar-put!` wakes). After Fixpt's async examples and Coopt's library,
+smaller: no cancel scopes, no preemption, no channels yet.
+- **Calls written with `proj`.** Fixpt does not infer an effect binder
+  through a loop's type (it solves the binder to the whole latent effect,
+  control included, and the loop's type then fails), so the library and
+  its users instantiate explicitly: `((proj spawn! app @l) lp thunk)`.
+  KFX infers them, but a KFX program must be FX-26 too (K1).
+- **Tested** by `tests/kfx/clock.unit` (the library and a program): two
+  sleepers waking in time order, an ivar handing a value across, a
+  yield; Fixpt's answer.

@@ -143,9 +143,16 @@ def lib(names):
 
 
 def is_async_main(n):
-    path = os.path.join(CORPUS, n, "mod.rs") if os.path.exists(os.path.join(CORPUS, n + ".unit")) else os.path.join(CORPUS, n + ".rs")
-    with open(path) as f:
-        return "pub async fn main()" in f.read()
+    if os.path.exists(os.path.join(CORPUS, n + ".unit")):
+        d = os.path.join(CORPUS, n)
+        paths = [os.path.join(d, f) for f in sorted(os.listdir(d)) if f.endswith(".rs")]
+    else:
+        paths = [os.path.join(CORPUS, n + ".rs")]
+    for path in paths:
+        with open(path) as f:
+            if "pub async fn main()" in f.read():
+                return True
+    return False
 
 
 def main():

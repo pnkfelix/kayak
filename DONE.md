@@ -1122,3 +1122,11 @@ procedure that may suspend is an `async fn`. The scheduler is the
 program's own: Fixpt's ping-pong and promise examples, in KFX, give
 Fixpt's answers (`tests/kfx/tasks.kfx`, `promises.kfx`). kayak-rt's
 part, `suspend.rs`: the capture, the prompt that polls, the top level.
+
+## Effects as parameters, and a library of tasks (2026-10-12)
+
+C46: `poly` over effects, families over effects, effect rows inferred at
+calls; a procedure whose effect is a binder's is an `async fn`. C47:
+`lib/tasks.kfx`, a loop with a virtual clock, `spawn!`, `yield!`,
+`sleep!`, ivars, in KFX, generic in what its tasks do. One more of
+Fixpt's programs is accepted (91).

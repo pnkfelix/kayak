@@ -239,15 +239,15 @@ The next goal. Phase A, in order (`PLAN.md` §6.5):
 - ~~**Suspension in the checker and emitter**~~: done (C45): `(comefrom r)`,
   `abort-with-continuation`, `async fn` by effect, suspending prompts and
   procedure values; ping-pong and promises in the corpus.
-- **A library of tasks in KFX**: the run queue, `spawn`, `yield`, `join`,
-  a virtual clock and `sleep`, channels; nurseries and cancel scopes
-  later (marks: `PLAN.md` §8). Fixpt's other async examples
-  (`cancel.fx`, `context.fx`) as corpus programs where KFX can say them.
+- ~~**A library of tasks in KFX**~~: done, `lib/tasks.kfx` (C47). Next
+  in it: channels; nurseries and cancel scopes (continuation marks, which
+  KFX takes from FX-26 when they are needed); Fixpt's `cancel.fx` and
+  `context.fx` as corpus programs.
+- **Effect polymorphism's cost** (C46): a box per call of an effect-poly
+  procedure and per closure given one; monomorphise by colour if it is
+  measured to matter. A datatype over an effect is refused.
 - **Boxing only what recursion needs**: every suspending call is boxed
   now; a call outside its callee's recursive group need not be.
-- **Suspension in a procedure over regions or places** (C42's
-  lifetimes): its future is `'static` now, so refused by rustc; refuse
-  it in the checker, or give `Body` a lifetime.
 - **Record and replay** (the user, 2026-10-12), as Coopt's: runners
   (sim, replay; live later) behind one interface, a log of arrivals by
   step and clock moves, outputs checked against it on replay, one event

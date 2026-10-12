@@ -1,0 +1,35 @@
+"Tasks on a virtual clock (lib/tasks.kfx): sleepers wake in time order,
+ and an ivar hands a value from one task to another. The tasks' own
+ effect, `u`, is what they do to the log, at @a."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-effect app (maxeff (read @globals) (read @a) (write @a) (alloc @a)))
+
+(define log (ref (listof string @a) @a) (new nil))
+
+(define note! (subr app (string) unit)
+  (lambda (s) (set log (cons s (get log)))))
+
+(define words (subr (maxeff kfx (read @a)) ((listof string @a)) string)
+  (lambda (xs)
+    (cond ((null? xs) "")
+          ((null? (cdr xs)) (car xs))
+          (else (string-append (car xs) (string-append " " (words (cdr xs))))))))
+
+(define reverse-log (subr (maxeff kfx (read @a) (alloc @a)) ((listof string @a) (listof string @a)) (listof string @a))
+  (lambda (xs acc) (if (null? xs) acc (reverse-log (cdr xs) (cons (car xs) acc)))))
+
+(define stamp (subr (maxeff kfx (read @l)) ((loop app @l) string) string)
+  (lambda (lp s) (string-append s (string-append "@" (i64->string ((proj now app @l) lp))))))
+
+(define main (subr (maxeff kfx app (read @l) (write @l) (alloc @l) (goto @l) (comefrom @l)) () string)
+  (lambda ()
+    (let* ((lp (the (loop app @l) ((proj make-loop app @l))))
+           (iv (the (ivar i64 app @l) ((proj make-ivar i64 app @l) lp))))
+      (begin
+        ((proj spawn! app @l) lp (lambda () (begin ((proj sleep! app @l) lp 30) (note! (stamp lp "slow")) ((proj ivar-put! i64 app @l) lp iv 42))))
+        ((proj spawn! app @l) lp (lambda () (begin ((proj sleep! app @l) lp 10) (note! (stamp lp "quick")))))
+        ((proj spawn! app @l) lp (lambda () (begin (note! (stamp lp "waiting"))
+                                     (note! (stamp lp (i64->string ((proj ivar-get! i64 app @l) lp iv)))))))
+        ((proj spawn! app @l) lp (lambda () (begin ((proj yield! app @l) lp) (note! (stamp lp "yielded")))))
+        ((proj run! app @l) lp)
+        (words (reverse-log (get log) nil))))))

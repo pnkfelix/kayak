@@ -1150,7 +1150,11 @@ pub fn check_untyped(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
     let tagcase_ = synth(v, new_state(), e);
     match *tagcase_ {
         Res::Res(t, es, s) => {
-            let (written, s) = (ty_sexp(v, s, t), if procedure_p(e) {
+            let (written, s) = (if has_var_p(s, t) {
+                match refuse(v, str_lit("a definition with no type, of a type over a binder: write its type")) {}
+            } else {
+                ty_sexp(v, s, t)
+            }, if procedure_p(e) {
                 s
             } else {
                 constant_made(v, s, e, es)

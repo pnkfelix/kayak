@@ -1,0 +1,160 @@
+"lib/tasks.kfx: tasks, in KFX (CLAUDES_CHOICES.md C45, C46; PLAN.md
+ section 6). A loop runs tasks over one prompt tag, after Fixpt's async
+ examples (docs/research/examples/async/ in Fixpt) and Coopt's library.
+ A task suspends by giving its rest, resumable once, to the loop, with a
+ thunk that files it away: on the ready queue (`yield!`), among the
+ sleepers (`sleep!`), among an ivar's waiters (`ivar-get!`). Every
+ suspension resumes with unit. The clock is virtual: when no task is
+ ready, it moves to the first sleeper's time.
+
+ Generic in what tasks may do: `u`, an effect; `l` is the loop's region,
+ where its queues, its clock and its prompt tag are. A task's work is
+ `(maxeff u (read @globals) spin (read l) (write l) (alloc l))`; one that
+ may suspend has control on `l` besides."
+
+"A task's rest, resumable once."
+(define-type (task (u effect) (l region))
+  (subr (maxeff u (read @globals) spin (read l) (write l) (alloc l) (goto l) (comefrom l)) (unit) unit))
+(define-type (tasks (u effect) (l region)) (listof (task u l) l))
+
+"What a suspension gives the loop: a thunk that files the task away."
+(define-type (filer (u effect) (l region))
+  (subr (maxeff u (read @globals) spin (read l) (write l) (alloc l)) () unit))
+
+"A procedure a task runs: it may suspend."
+(define-type (job (u effect) (l region))
+  (subr (maxeff u (read @globals) spin (read l) (write l) (alloc l) (goto l) (comefrom l)) () unit))
+
+(define-type (sleeper (u effect) (l region)) (productof (at i64) (k (task u l))))
+(define-type (sleepers (u effect) (l region)) (listof (sleeper u l) l))
+
+"A loop: its prompt tag, the ready queue, the sleepers (by time, the
+ earlier first; at one time, in the order they slept), and the clock."
+(define-type (loop (u effect) (l region))
+  (productof (tag (prompt-tag unit (filer u l) (maxeff u (read @globals) spin (read l) (write l) (alloc l) (goto l) (comefrom l)) l))
+             (ready (ref (tasks u l) l))
+             (sleeping (ref (sleepers u l) l))
+             (clock (ref i64 l))))
+
+(define make-loop (poly ((u effect) (l region)) (subr (alloc l) () (loop u l)))
+  (plambda ((u effect) (l region))
+    (lambda ()
+      (product (tag (the (prompt-tag unit (filer u l) (maxeff u (read @globals) spin (read l) (write l) (alloc l) (goto l) (comefrom l)) l)
+                         (make-continuation-prompt-tag)))
+               (ready (the (ref (tasks u l) l) (new nil)))
+               (sleeping (the (ref (sleepers u l) l) (new nil)))
+               (clock (the (ref i64 l) (new 0)))))))
+
+"The loop's clock: virtual, moved only when no task is ready."
+(define now (poly ((u effect) (l region)) (subr (read l) ((loop u l)) i64))
+  (plambda ((u effect) (l region))
+    (lambda (lp) (get (extract lp clock)))))
+
+(define reverse-tasks (poly ((u effect) (l region)) (subr (maxeff (read @globals) (read l) (alloc l) spin) ((tasks u l) (tasks u l)) (tasks u l)))
+  (plambda ((u effect) (l region))
+    (lambda (xs acc) (if (null? xs) acc ((proj reverse-tasks u l) (cdr xs) (cons (car xs) acc))))))
+
+"A task at the back of the ready queue."
+(define enqueue! (poly ((u effect) (l region)) (subr (maxeff (read @globals) (read l) (write l) (alloc l) spin) ((loop u l) (task u l)) unit))
+  (plambda ((u effect) (l region))
+    (lambda (lp k)
+      (let ((ready (extract lp ready)))
+        (set ready ((proj reverse-tasks u l) (cons k ((proj reverse-tasks u l) (get ready) nil)) nil))))))
+
+"The one way to suspend: the task's rest given to `file`, run by the loop."
+(define suspend! (poly ((u effect) (l region))
+                   (subr (maxeff u (read @globals) spin (read l) (write l) (alloc l) (goto l) (comefrom l))
+                         ((loop u l) (subr (maxeff u (read @globals) spin (read l) (write l) (alloc l)) ((task u l)) unit))
+                         unit))
+  (plambda ((u effect) (l region))
+    (lambda (lp file)
+      (abort-with-continuation (extract lp tag) (lambda ((k (task u l))) (lambda () (file k)))))))
+
+"To the back of the ready queue."
+(define yield! (poly ((u effect) (l region)) (subr (maxeff u (read @globals) spin (read l) (write l) (alloc l) (goto l) (comefrom l)) ((loop u l)) unit))
+  (plambda ((u effect) (l region))
+    (lambda (lp) ((proj suspend! u l) lp (lambda ((k (task u l))) ((proj enqueue! u l) lp k))))))
+
+(define insert-sleeper (poly ((u effect) (l region)) (subr (maxeff (read @globals) (read l) (alloc l) spin) (i64 (task u l) (sleepers u l)) (sleepers u l)))
+  (plambda ((u effect) (l region))
+    (lambda (at k ss)
+      (cond ((null? ss) (cons (product (at at) (k k)) nil))
+            ((i64< at (extract (car ss) at)) (cons (product (at at) (k k)) ss))
+            (else (cons (car ss) ((proj insert-sleeper u l) at k (cdr ss))))))))
+
+"Asleep until the clock reads `d` more than now."
+(define sleep! (poly ((u effect) (l region)) (subr (maxeff u (read @globals) spin (read l) (write l) (alloc l) (goto l) (comefrom l)) ((loop u l) i64) unit))
+  (plambda ((u effect) (l region))
+    (lambda (lp d)
+      (let ((at (i64+ ((proj now u l) lp) d)))
+        ((proj suspend! u l) lp (lambda ((k (task u l)))
+                       (let ((ss (extract lp sleeping))) (set ss ((proj insert-sleeper u l) at k (get ss))))))))))
+
+"Start a task: it yields at once, so that its first step runs from `run!`."
+(define spawn! (poly ((u effect) (l region)) (subr (maxeff u (read @globals) spin (read l) (write l) (alloc l) (goto l) (comefrom l)) ((loop u l) (job u l)) unit))
+  (plambda ((u effect) (l region))
+    (lambda (lp thunk)
+      (prompt (extract lp tag) (begin ((proj yield! u l) lp) (thunk)) (lambda ((file (filer u l))) (file))))))
+
+(define wake-due! (poly ((u effect) (l region)) (subr (maxeff (read @globals) (read l) (write l) (alloc l) spin) ((loop u l) i64) unit))
+  (plambda ((u effect) (l region))
+    (lambda (lp at)
+      (let* ((sleeping (extract lp sleeping)) (ss (get sleeping)))
+        (if (and (not (null? ss)) (i64= (extract (car ss) at) at))
+            (begin (set sleeping (cdr ss)) ((proj enqueue! u l) lp (extract (car ss) k)) ((proj wake-due! u l) lp at))
+            #u)))))
+
+"The sleepers due at the first one's time, made ready, and the clock moved
+ there."
+(define wake-first! (poly ((u effect) (l region)) (subr (maxeff (read @globals) (read l) (write l) (alloc l) spin) ((loop u l)) unit))
+  (plambda ((u effect) (l region))
+    (lambda (lp)
+      (let* ((sleeping (extract lp sleeping))
+             (at (extract (car (get sleeping)) at)))
+        (begin
+          (set (extract lp clock) at)
+          ((proj wake-due! u l) lp at))))))
+
+"Run the ready tasks, and the sleepers as their times come, until none
+ is left."
+(define run! (poly ((u effect) (l region)) (subr (maxeff u (read @globals) spin (read l) (write l) (alloc l) (goto l) (comefrom l)) ((loop u l)) unit))
+  (plambda ((u effect) (l region))
+    (lambda (lp)
+      (let ((q (get (extract lp ready))))
+        (cond ((not (null? q))
+               (begin
+                 (set (extract lp ready) (cdr q))
+                 (prompt (extract lp tag) ((car q) #u) (lambda ((file (filer u l))) (file)))
+                 ((proj run! u l) lp)))
+              ((not (null? (get (extract lp sleeping))))
+               (begin ((proj wake-first! u l) lp) ((proj run! u l) lp)))
+              (else #u))))))
+
+"An ivar: a cell written once, whose readers wait until it is."
+(define-type (ivar (a type) (u effect) (l region)) (ref (sumof (empty (tasks u l)) (full a)) l))
+
+(define make-ivar (poly ((a type) (u effect) (l region)) (subr (alloc l) ((loop u l)) (ivar a u l)))
+  (plambda ((a type) (u effect) (l region))
+    (lambda (lp) (new (the (sumof (empty (tasks u l)) (full a)) (sum empty nil))))))
+
+"Its value, waited for."
+(define ivar-get! (poly ((a type) (u effect) (l region)) (subr (maxeff u (read @globals) spin (read l) (write l) (alloc l) (goto l) (comefrom l)) ((loop u l) (ivar a u l)) a))
+  (plambda ((a type) (u effect) (l region))
+    (lambda (lp iv)
+      (tagcase (get iv)
+        (full v v)
+        (empty ws (begin ((proj suspend! u l) lp (lambda ((k (task u l))) (set iv (sum empty (cons k ws)))))
+                         ((proj ivar-get! a u l) lp iv)))))))
+
+(define enqueue-all! (poly ((u effect) (l region)) (subr (maxeff (read @globals) (read l) (write l) (alloc l) spin) ((loop u l) (tasks u l)) unit))
+  (plambda ((u effect) (l region))
+    (lambda (lp ks) (if (null? ks) #u (begin ((proj enqueue! u l) lp (car ks)) ((proj enqueue-all! u l) lp (cdr ks)))))))
+
+"Written, its waiters made ready in the order they came. Written twice
+ is an error."
+(define ivar-put! (poly ((a type) (u effect) (l region)) (subr (maxeff (read @globals) (read l) (write l) (alloc l) spin) ((loop u l) (ivar a u l) a) unit))
+  (plambda ((a type) (u effect) (l region))
+    (lambda (lp iv v)
+      (tagcase (get iv)
+        (full w (error "ivar-put!: written twice"))
+        (empty ws (begin (set iv (sum full v)) ((proj enqueue-all! u l) lp ((proj reverse-tasks u l) ws nil))))))))

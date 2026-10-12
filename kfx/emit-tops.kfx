@@ -200,6 +200,20 @@
                          nil)))
                  binders))))
 
+(define may-suspend? (subr kfx (ctx sexps sexp) bool)
+  (lambda (c binders typ)
+    "Whether a definition is of a procedure that may suspend: its effect
+     says so, or names one of its effect binders. Its regions then have no
+     lifetimes (C46): its future is `'static`, as a capture's must be, and
+     it touches no `letrena`'s data, since none may be suspended in (C45)."
+    (let ((t (if (head-is? typ "poly") (third (items typ)) typ))
+          (c (with-locals c (concat (map (lambda ((b sexp))
+                                           (if (sym-is? (second (items b)) "effect")
+                                               (the strings (list (string-append "%evar " (sym-name (car (items b))))))
+                                               nil))
+                                         binders)))))
+      (and (head-is? t "subr") (suspending-effect? c (second (items t)))))))
+
 (define put-lifetime-generics (subr kfx (strings sexps chars) chars)
   (lambda (lives binders acc)
     "A procedure's generics: its regions' lifetimes, then its types'."
@@ -213,7 +227,7 @@
      kept (C21)."
     (let* ((binders (if (head-is? typ "poly") (items (second (items typ))) nil))
            (places (concat (map (lambda ((b sexp)) (if (sym-is? (second (items b)) "place") (the strings (list (sym-name (car (items b))))) nil)) binders)))
-           (lives (free-regions binders))
+           (lives (if (may-suspend? c binders typ) nil (free-regions binders)))
            (c (with-locals c (onto (onto (map (lambda ((r string)) (string-append "%letrena " r)) lives)
                                          (concat (map (lambda ((p string)) (the strings (list (string-append "%letrena " p) (string-append "%placeparam " p)))) places)))
                                    (onto (concat (map (lambda ((b sexp))

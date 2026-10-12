@@ -120,7 +120,7 @@ pub async fn run_x() -> Result<(), Unwind> {
             {
                 let prompt_tag__ = sched();
                 match kayak_rt::suspend::prompt(prompt_tag__, kayak_rt::suspend::body(async move {
-                    Ok((car(q))(()).await?)
+                    Ok(kayak_rt::suspend::body((car(q))(())).await?)
                 })).await {
                     Ok(kayak_rt::suspend::Prompted::Done(v_)) => v_,
                     Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => (lambda1(move |file: &'static dyn Fn() -> ()| {

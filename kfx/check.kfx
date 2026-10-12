@@ -219,6 +219,7 @@
      read of all of them."
     (or (null? a)
         (and (or (string-member? (car a) b)
+                 (string=? (car a) "~!")
                  (and (global-atom? (car a)) (string-member? "@globals" b)))
              (effs-within? (cdr a) b)))))
 
@@ -841,8 +842,10 @@
             (else
              (cons (cond ((char=? (string-ref-i64 (car params) 0) #\') (parse-region v tvars (car args)))
                          ((char=? (string-ref-i64 (car params) 0) #\~)
-                          "An effect argument (C46): a row, its atoms."
-                          (effect-row (parse-effect v tvars (car args))))
+                          "An effect argument (C46): a row, its atoms, and `~!`, which
+                           says the procedures there are of an effect binder's, and so
+                           are in Rust as the family's own are, whatever is given."
+                          (effect-row (cons "~!" (parse-effect v tvars (car args)))))
                          (else (parse-type v tvars (car args))))
                    (parse-arguments v tvars (cdr params) (cdr args)))))))
 

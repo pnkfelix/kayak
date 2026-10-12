@@ -453,7 +453,7 @@ pub fn global_atom_p(x: Str) -> bool {
 /// Whether effect `a` is within `b`: a read of one global is within a
 /// read of all of them.
 pub fn effs_within_p(a: Strings, b: Strings) -> bool {
-    (null_p(a) || ((string_member_p(car(a), b) || (global_atom_p(car(a)) && string_member_p(str_lit("@globals"), b))) && effs_within_p(cdr(a), b)))
+    (null_p(a) || ((string_member_p(car(a), b) || string_eq_p(car(a), str_lit("~!")) || (global_atom_p(car(a)) && string_member_p(str_lit("@globals"), b))) && effs_within_p(cdr(a), b)))
 }
 
 pub fn words_of(xs: Strings) -> Str {
@@ -1792,8 +1792,10 @@ pub fn parse_arguments(v: &'static Cv, tvars: Strings, params: Strings, args: Se
         kayak_rt::heap_cons(if char_eq_p(string_ref_i64(car(params), 0i64), '\'') {
             parse_region(v, tvars, car(args))
         } else if char_eq_p(string_ref_i64(car(params), 0i64), '~') {
-            // An effect argument (C46): a row, its atoms.
-            effect_row(parse_effect(v, tvars, car(args)))
+            // An effect argument (C46): a row, its atoms, and `~!`, which
+            // says the procedures there are of an effect binder's, and so
+            // are in Rust as the family's own are, whatever is given.
+            effect_row(kayak_rt::heap_cons(str_lit("~!"), parse_effect(v, tvars, car(args))))
         } else {
             parse_type(v, tvars, car(args))
         }, parse_arguments(v, tvars, cdr(params), cdr(args)))

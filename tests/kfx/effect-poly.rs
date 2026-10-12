@@ -68,18 +68,18 @@ pub fn first_big(xs: List<i64>) -> i64 {
 
 // An abbreviation over an effect and a region: what it stands for in Rust
 // depends on the effect given, so each use is expanded (C46).
-pub async fn run_it<'l>(f: &'l dyn Fn() -> kayak_rt::suspend::Body<i64>) -> Result<i64, Unwind> {
+pub async fn run_it(f: &'static dyn Fn() -> kayak_rt::suspend::Body<i64>) -> Result<i64, Unwind> {
     Ok(kayak_rt::suspend::body(f()).await?)
 }
 
-pub fn plain() -> i64 {
-    7i64
+pub async fn plain() -> Result<i64, Unwind> {
+    Ok(7i64)
 }
 
 pub fn read_total() -> i64 {
     i64_plus(kayak_rt::suspend::block(kayak_rt::suspend::body(run_it(lambda0(move || kayak_rt::suspend::body(async move {
         Ok(get(total()))
-    }))))).unwrap_or_else(|u| unreachable_unwind(u)), kayak_rt::suspend::block(kayak_rt::suspend::body(run_it(lambda0(move || kayak_rt::suspend::body(async move { Ok((&plain)()) }))))).unwrap_or_else(|u| unreachable_unwind(u)))
+    }))))).unwrap_or_else(|u| unreachable_unwind(u)), kayak_rt::suspend::block(kayak_rt::suspend::body(run_it(lambda0(move || kayak_rt::suspend::body(plain()))))).unwrap_or_else(|u| unreachable_unwind(u)))
 }
 
 pub fn main() -> Str {

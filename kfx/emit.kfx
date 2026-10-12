@@ -30,9 +30,11 @@
 
 (define effect-binder? (subr kfx (ctx string) bool)
   (lambda (c n)
-    "Whether `n` is the effect binder of the poly being written (C46): it
-     may stand for an effect that aborts or suspends."
-    (tagcase c (ctx (ds ts ks ls xs fs ms es mods) (string-member? (string-append "%evar " n) ls)))))
+    "Whether `n` is the effect binder of the poly being written, or the mark
+     an effect given a family carries (C46): it may stand for an effect
+     that aborts or suspends."
+    (or (string=? n "%effect-given")
+        (tagcase c (ctx (ds ts ks ls xs fs ms es mods) (string-member? (string-append "%evar " n) ls))))))
 
 (define-rec
   (fallible-effect? (subr kfx (ctx sexp) bool)
@@ -662,6 +664,19 @@
         (lst (xs f l p) (lst (map (lambda ((x sexp)) (substituted names args x)) xs) f l p))
         (else other e)))))
 
+(define-rec
+  (marked-effects (subr kfx (sexps sexps) sexps)
+    (lambda (binders args)
+      "A family's arguments, each effect's marked `%effect-given` (C46): the
+       procedures of it are in Rust as the family's own are, which may
+       suspend, whatever effect is given."
+      (if (or (null? binders) (null? args))
+          args
+          (cons (if (sym-is? (second (items (car binders))) "effect")
+                    (lst (list (sym "maxeff" "" 0) (car args) (sym "%effect-given" "" 0)) "" 0 0)
+                    (car args))
+                (marked-effects (cdr binders) (cdr args)))))))
+
 (define family-expanded (subr kfx (ctx sexp) sexp)
   (lambda (c t)
     "A family abbreviation's application, `(builder p r)`, as what it stands
@@ -674,8 +689,10 @@
               t
               (let* ((parts (items (car found)))
                      (head (car parts))
-                     (names (tagcase head (lst (hs f3 l3 p3) (map (lambda ((b sexp)) (sym-name (car (items b)))) (cdr hs))) (else other nil))))
-                (family-expanded c (substituted names (cdr xs) (second parts)))))))
+                     (binders (tagcase head (lst (hs f3 l3 p3) (cdr hs)) (else other nil)))
+                     (names (map (lambda ((b sexp)) (sym-name (car (items b)))) binders))
+                     (args (marked-effects binders (cdr xs))))
+                (family-expanded c (substituted names args (second parts)))))))
       (else other t))))
 
 (define-rec
@@ -1412,9 +1429,18 @@
                  (put "f64" (if (char=? (last (string-chars x)) #\.) (put "0" (put x acc)) (put x acc))))
                (str (s at-file at-pos) (put "\")" (put-escaped (string-chars s) #\" (put "str_lit(\"" acc))))
                (sym (s at-file at-pos)
-                 (if (and (string=? s "nil") (string=? (local-kind s (ctx-locals c)) ""))
-                     (put "()" (put-turbofish c e (put "nil" acc)))
-                     (put-var c s acc)))
+                 (cond ((and (string=? s "nil") (string=? (local-kind s (ctx-locals c)) ""))
+                        (put "()" (put-turbofish c e (put "nil" acc))))
+                       ((not (string=? (fact-with c e "async-global ") ""))
+                        (let* ((arity (digits-number (fact-with c e "async-global ")))
+                               (acc (put (string-append "lambda" (string-append (i64->string arity) "(move |")) acc))
+                               (acc (put-arg-names 0 arity acc))
+                               (acc (put "| kayak_rt::suspend::body(" acc))
+                               (acc (put (mangle s) acc))
+                               (acc (put "(" acc))
+                               (acc (put-arg-names 0 arity acc)))
+                          (put ")))" acc)))
+                       (else (put-var c s acc))))
                (lst (xs src-file src-line src-pos)
                  (cond ((fact-at? c e "void-call") (put " {}" (put-call c e xs n t (put "match " acc))))
                        ((fact-at? c e "void-error") (put ")" (put-call c e xs n t (put "the::<Void>(" acc))))
@@ -1432,7 +1458,9 @@
                 ((async-here? c) (put-form c e h (cdr xs) n t (put "kayak_rt::suspend::body(" acc)))
                 (else (put-form c e h (cdr xs) n t (put "kayak_rt::suspend::block(kayak_rt::suspend::body(" acc)))))
         (else head
-          (let* ((acc (if (and (fact-at? c e "suspending-call") (not (async-here? c))) (put "kayak_rt::suspend::block(" acc) acc))
+          (let* ((acc (cond ((not (fact-at? c e "suspending-call")) acc)
+                            ((async-here? c) (put "kayak_rt::suspend::body(" acc))
+                            (else (put "kayak_rt::suspend::block(kayak_rt::suspend::body(" acc))))
                  (acc (put "(" acc))
                  (acc (put-exp c head n (value) acc))
                  (acc (put ")(" acc)))
@@ -2002,9 +2030,9 @@
              (acc (put-nl (i64+ n 2) acc))
              (acc (put "Ok(v_) => v_," acc))
              (acc (put-nl (i64+ n 2) acc))
-             (acc (put "Err(u_) if u_.is(prompt_tag__) => (" acc))
-             (acc (put-exp c (third xs) (i64+ n 2) (value) acc))
-             (acc (put ")(prompt_tag__.payload(u_))," acc))
+             (acc (put "Err(u_) if u_.is(prompt_tag__) => " acc))
+             (acc (put-handler-call c (third xs) "prompt_tag__.payload(u_)" (i64+ n 2) acc))
+             (acc (put "," acc))
              (acc (put-nl (i64+ n 2) acc))
              (acc (put (if (or (fact-at? c e "contains") (not (fallible-here? c)))
                            "Err(u_) => unreachable_unwind(u_),"
@@ -2033,9 +2061,9 @@
              (acc (put-nl (i64+ n 2) acc))
              (acc (put "Ok(kayak_rt::suspend::Prompted::Done(v_)) => v_," acc))
              (acc (put-nl (i64+ n 2) acc))
-             (acc (put "Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => (" acc))
-             (acc (put-exp c (third xs) (i64+ n 2) (value) acc))
-             (acc (put ")(h_)," acc))
+             (acc (put "Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => " acc))
+             (acc (put-handler-call c (third xs) "h_" (i64+ n 2) acc))
+             (acc (put "," acc))
              (acc (put-nl (i64+ n 2) acc))
              (acc (put (if (or (fact-at? c e "contains") (not (fallible-here? c)))
                            "Err(u_) => unreachable_unwind(u_),"
@@ -2044,6 +2072,23 @@
              (acc (put-nl (i64+ n 1) acc))
              (acc (put "}" acc)))
         (put "}" (put-nl n acc)))))
+
+  (put-handler-call (subr kfx (ctx sexp string i64 chars) chars)
+    (lambda (c h payload n acc)
+      "A prompt's handler called on the payload: awaited if it may suspend,
+       and `?`ed if it may abort (C46), as a call of a procedure value."
+      (let* ((suspends (fact-at? c h "suspends"))
+             (fallible (fact-at? c h "fallible"))
+             (acc (if (and suspends (not (async-here? c))) (put "kayak_rt::suspend::block(" acc) acc))
+             (acc (put "(" acc))
+             (acc (put-exp c h n (value) acc))
+             (acc (put ")(" acc))
+             (acc (put payload acc))
+             (acc (put ")" acc))
+             (acc (cond ((not suspends) acc) ((async-here? c) (put ".await" acc)) (else (put ")" acc)))))
+        (cond ((not fallible) acc)
+              ((fallible-here? c) (put "?" acc))
+              (else (put ".unwrap_or_else(|u| unreachable_unwind(u))" acc))))))
 
   (put-suspension (subr kfx (ctx sexp sexps i64 chars) chars)
     (lambda (c e xs n acc)
@@ -2071,10 +2116,8 @@
       "A call the checker found may abort takes a `?`; one that may suspend
        is awaited first, its future boxed if it is a named procedure's."
       (let ((acc (cond ((not (fact-at? c e "suspending-call")) acc)
-                       ((and (head-sym? e) (async-here? c)) (put ").await" acc))
-                       ((head-sym? e) (put "))" acc))
-                       ((async-here? c) (put ".await" acc))
-                       (else (put ")" acc)))))
+                       ((async-here? c) (put ").await" acc))
+                       (else (put "))" acc)))))
       (cond ((not (fact-at? c e "fallible-call")) acc)
             ((fallible-here? c) (put "?" acc))
             (else (put ".unwrap_or_else(|u| unreachable_unwind(u))" acc))))))

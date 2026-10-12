@@ -378,6 +378,25 @@ pub fn free_regions(binders: Sexps) -> Strings {
     }), binders))
 }
 
+/// Whether a definition is of a procedure that may suspend: its effect
+/// says so, or names one of its effect binders. Its regions then have no
+/// lifetimes (C46): its future is `'static`, as a capture's must be, and
+/// it touches no `letrena`'s data, since none may be suspended in (C45).
+pub fn may_suspend_p(c: &'static Ctx, binders: Sexps, typ: &'static Sexp) -> bool {
+    let (t, c) = (if head_is_p(typ, str_lit("poly")) {
+        third(items(typ))
+    } else {
+        typ
+    }, with_locals(c, concat(map(lambda1(move |b: &'static Sexp| {
+        if sym_is_p(second(items(b)), str_lit("effect")) {
+            the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%evar "), sym_name(car(items(b)))), kayak_rt::nil()))
+        } else {
+            nil::<Str>()
+        }
+    }), binders))));
+    (head_is_p(t, str_lit("subr")) && suspending_effect_p(c, second(items(t))))
+}
+
 /// A procedure's generics: its regions' lifetimes, then its types'.
 pub fn put_lifetime_generics(lives: Strings, binders: Sexps, acc: Chars) -> Chars {
     let types = concat(map(lambda1(move |b: &'static Sexp| {
@@ -406,7 +425,11 @@ pub fn put_define(c: &'static Ctx, name: &'static Sexp, typ: &'static Sexp, defi
             nil::<Str>()
         }
     }), binders));
-    let lives = free_regions(binders);
+    let lives = if may_suspend_p(c, binders, typ) {
+        nil::<Str>()
+    } else {
+        free_regions(binders)
+    };
     let c = with_locals(c, onto(onto(map(lambda1(move |r: Str| {
         string_append(str_lit("%letrena "), r)
     }), lives), concat(map(lambda1(move |p: Str| {

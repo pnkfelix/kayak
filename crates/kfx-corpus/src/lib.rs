@@ -28,6 +28,11 @@ pub mod cases;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/clock/mod.rs"]
+pub mod clock;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/constants.rs"]
 pub mod constants;
 
@@ -244,6 +249,10 @@ pub mod untyped;
 /// A program's `main`, which gives its answer.
 pub type Main = fn() -> kayak_rt::Str;
 
+fn clock_main() -> kayak_rt::Str {
+    kayak_rt::suspend::block(clock::main()).unwrap_or_else(|u| kayak_rt::unreachable_unwind(u))
+}
+
 fn promises_main() -> kayak_rt::Str {
     kayak_rt::suspend::block(promises::main()).unwrap_or_else(|u| kayak_rt::unreachable_unwind(u))
 }
@@ -259,6 +268,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("bloblets", bloblets::main),
     ("caller-place", caller_place::main),
     ("cases", cases::main),
+    ("clock", clock_main),
     ("constants", constants::main),
     ("control", control::main),
     ("data", data::main),
