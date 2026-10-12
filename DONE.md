@@ -1169,3 +1169,9 @@ self-compile and replays it as Rust and on Fixpt.
 C53: `lib/sim.kfx`, a seed that picks the order of answers and injects
 faults; `tests/kfx/seeded.unit`, one seed twice the same, compared with
 Fixpt.
+
+## The first query: each form's Rust kept between compiles (2026-10-12)
+
+C54: `kfx/incr.kfx`, `kfx --cache FILE`; `scripts/incremental.py`, a
+compile with memos against one without, under edits. The compiler on
+itself: 0.82 s cold, 0.32 s warm.

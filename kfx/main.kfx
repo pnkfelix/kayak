@@ -11,6 +11,10 @@
                              order, as `DIR/mod.rs` and a module each. DIR
                              must be there: FX-26 makes no directories.
 
+ A program of several files may be given `--cache FILE` before it (C54):
+ FILE keeps each form's Rust for the next compile, which takes it again
+ where nothing it was made from has changed (incr.kfx).
+
  Each may follow `--record LOG` or `--replay LOG` (C52): the compiler's
  reads and writes are a runner's operations (lib/runner.kfx), answered
  live (lib/live.kfx), recorded to LOG as text, or answered from LOG,
@@ -154,8 +158,21 @@
            (let* ((text (read-text rt (car as)))
                   (program (sources-of rt (directory-of (car as)) (lines-from (string-chars text) nil))))
              (begin (write-outputs rt (car (cdr as)) (compile-units program)) 0)))
+          ((and (i64= (size as) 4) (string=? (car as) "--cache"))
+           (let* ((cache (car (cdr as)))
+                  (unit (car (cdr (cdr as))))
+                  (text (read-text rt unit))
+                  (program (sources-of rt (directory-of unit) (lines-from (string-chars text) nil)))
+                  (old (tagcase ((proj perform! int world @io) rt (sum read-file cache))
+                         (text t (memos-of-text t))
+                         (else other nil))))
+             (tagcase (compile-units-memo program old)
+               (compiled (outs made)
+                 (begin (write-outputs rt (car (cdr (cdr (cdr as)))) outs)
+                        (write-text rt cache (memos-text made))
+                        0)))))
           (else
-           (begin (fail-with "usage: kfx [--record LOG | --replay LOG] (FILE.kfx | PROGRAM.unit DIR | --toplevel FILE.kfx)" 2) 2)))))
+           (begin (fail-with "usage: kfx [--record LOG | --replay LOG] (FILE.kfx | [--cache FILE] PROGRAM.unit DIR | --toplevel FILE.kfx)" 2) 2)))))
 
 (define reverse-log (subr (maxeff kfx (read @io) (alloc @io)) ((log @io) (log @io)) (log @io))
   (lambda (xs acc) (if (null? xs) acc (reverse-log (cdr xs) (cons (car xs) acc)))))

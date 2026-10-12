@@ -26,6 +26,14 @@ case $status in
     echo "fixpoint: Fixpt $(cut -c1-7 FIXPT_REV), running the compiler, makes it too"
     python3 -I scripts/stage0.py --replay "$tmp/log" kfx/kfx.unit "$tmp/stage1"
     echo "fixpoint: the compile recorded replays, as Rust and on Fixpt"
+    # Memos (C54): Fixpt, given the Rust's, takes each and gives them back.
+    mkdir "$tmp/warm" "$tmp/warm0"
+    ./target/release/kfx --cache "$tmp/memos" kfx/kfx.unit "$tmp/warm"
+    cp "$tmp/memos" "$tmp/memos.rust"
+    python3 -I scripts/stage0.py --cache "$tmp/memos" kfx/kfx.unit "$tmp/warm0"
+    diff -r "$tmp/warm0" boot/src/kfx
+    cmp "$tmp/memos" "$tmp/memos.rust"
+    echo "fixpoint: Fixpt takes the Rust's memos, and keeps the same"
     ;;
 3) echo "fixpoint: stage 0 skipped: no Fixpt clone" ;;
 *) exit "$status" ;;

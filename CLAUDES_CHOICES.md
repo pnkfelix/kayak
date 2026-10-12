@@ -1030,3 +1030,32 @@ run flows from, as in the practice Coopt's runners note surveys.
   seed's trace, is compared with Fixpt's, so the check runs on both
   implementations in `scripts/check.sh`. For the compiler, the record
   and replay of its self-compile (C52) is the check.
+
+## C54. The first query: each form's Rust, kept between compiles (2026-10-12)
+
+`kfx/incr.kfx`, `kfx --cache FILE PROGRAM.unit DIR`;
+`docs/research/queries.md`.
+- **Kept between runs, content-addressed**: kfx is a batch compiler, so a
+  memo in memory alone (Coopt's, in its REPL) saves nothing. A memo's key
+  is the fingerprint of all it was made from: the form's text, its facts
+  at offsets from its start, and the context's fingerprint. No revisions
+  or dependency lists: what a memo depends on is in its key.
+- **FNV-1a in `i64`**, which wraps alike in FX-26 and Rust, rather than a
+  hash in kayak-rt: K7, and Fixpt's stage 0 computes the same keys.
+  Collisions (2^-64 a pair) are not guarded against.
+- **The memo file is the next run's only memos**: those made or taken this
+  run, so it never grows past the program. It is read and written as
+  runner operations (C52), so recorded.
+- **Checked by `scripts/incremental.py`**: a copy of the compiler's
+  sources edited (a form moved, a body and its facts changed, a
+  definition and a datatype added and taken away), compiled after each
+  edit with memos and without, the outputs the same; in
+  `scripts/check.sh` on three files, and with `--all` on every one (85
+  compiles, all the same).
+- **`scripts/regen.sh` uses memos** (`target/kfx-memos`);
+  `scripts/fixpoint.sh` compiles without, so a wrong memo cannot hide.
+- Measured on the compiler: 0.82 s cold, 0.32 s warm; checking is what
+  is left, the next query (`Check(form)`).
+- **Fixpt computes the same keys**: given the memo file the Rust wrote,
+  stage 0 takes every memo, makes `boot/src/kfx/` and writes back the
+  same file, byte for byte (`scripts/fixpoint.sh`).

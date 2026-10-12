@@ -16,6 +16,10 @@ use super::*;
 // order, as `DIR/mod.rs` and a module each. DIR
 // must be there: FX-26 makes no directories.
 //
+// A program of several files may be given `--cache FILE` before it (C54):
+// FILE keeps each form's Rust for the next compile, which takes it again
+// where nothing it was made from has changed (incr.kfx).
+//
 // Each may follow `--record LOG` or `--replay LOG` (C52): the compiler's
 // reads and writes are a runner's operations (lib/runner.kfx), answered
 // live (lib/live.kfx), recorded to LOG as text, or answered from LOG,
@@ -251,8 +255,33 @@ pub async fn compile_with(rt: Drt, r#as: Strings) -> Result<Int, Unwind> {
         let program = kayak_rt::suspend::body(sources_of(rt, directory_of(car(r#as)), lines_from(string_chars(text), nil::<char>()))).await?;
         kayak_rt::suspend::body(write_outputs(rt, car(cdr(r#as)), compile_units(program))).await?;
         Ok(int_lit(0))
+    } else if (i64_eq(size(r#as), 4i64) && string_eq_p(car(r#as), str_lit("--cache"))) {
+        let cache = car(cdr(r#as));
+        let unit = car(cdr(cdr(r#as)));
+        let text = kayak_rt::suspend::body(read_text(rt, unit)).await?;
+        let program = kayak_rt::suspend::body(sources_of(rt, directory_of(unit), lines_from(string_chars(text), nil::<char>()))).await?;
+        let old = {
+            let tagcase_ = kayak_rt::suspend::body((&perform_x)(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::ReadFile(cache)))).await?;
+            match *tagcase_ {
+                Sum_4line_3eof_4done_4time_4text_6failed::Text(t) => {
+                    memos_of_text(t)
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<&'static Memo>()
+                }
+            }
+        };
+        let tagcase_ = compile_units_memo(program, old);
+        match *tagcase_ {
+            Compiled::Compiled(outs, made) => {
+                kayak_rt::suspend::body(write_outputs(rt, car(cdr(cdr(cdr(r#as)))), outs)).await?;
+                kayak_rt::suspend::body(write_text(rt, cache, memos_text(made))).await?;
+                Ok(int_lit(0))
+            }
+        }
     } else {
-        match fail_with(str_lit("usage: kfx [--record LOG | --replay LOG] (FILE.kfx | PROGRAM.unit DIR | --toplevel FILE.kfx)"), int_lit(2)) {};
+        match fail_with(str_lit("usage: kfx [--record LOG | --replay LOG] (FILE.kfx | [--cache FILE] PROGRAM.unit DIR | --toplevel FILE.kfx)"), int_lit(2)) {};
         Ok(int_lit(2))
     }
 }

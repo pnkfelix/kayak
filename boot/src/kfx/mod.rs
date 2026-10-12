@@ -18,6 +18,8 @@ pub mod emit;
 pub use emit::*;
 pub mod emit_tops;
 pub use emit_tops::*;
+pub mod incr;
+pub use incr::*;
 pub mod compile;
 pub use compile::*;
 pub mod runner;

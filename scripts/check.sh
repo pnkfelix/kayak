@@ -11,6 +11,7 @@ cargo clippy --release --workspace --all-targets --quiet -- -D warnings
 cargo test --release --workspace --quiet
 python3 -I scripts/corpus.py
 scripts/fixpoint.sh
+python3 -I scripts/incremental.py
 # Fixpt's own programs that kfx accepts, run both ways (needs the clone).
 if scripts/fixpt.sh > /dev/null 2>&1; then
     python3 -I scripts/run-fixpt-programs.py

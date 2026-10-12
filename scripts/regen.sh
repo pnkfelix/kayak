@@ -25,7 +25,9 @@ while [ $generation -lt 4 ]; do
     cargo build --release --quiet -p kfx || restore $generation
     rm -rf "$tmp/next"
     mkdir "$tmp/next" # kfx makes no directories (C50)
-    ./target/release/kfx kfx/kfx.unit "$tmp/next" || restore $generation
+    # The memos a compile keeps (C54): scripts/fixpoint.sh compiles without
+    # them, and scripts/incremental.py checks them against compiles without.
+    ./target/release/kfx --cache target/kfx-memos kfx/kfx.unit "$tmp/next" || restore $generation
     if diff -r -q "$tmp/next" boot/src/kfx > /dev/null; then
         echo "regen: the fixed point, after $((generation - 1)) new generation(s)"
         rm -rf "$tmp"

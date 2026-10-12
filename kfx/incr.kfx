@@ -1,0 +1,176 @@
+"incr.kfx: what one compile keeps for the next (C54), the first of the
+ compiler's queries (PLAN.md section 6.5, step 9). A memo of each
+ top-level form's Rust, addressed by a fingerprint of all it was made
+ from: the form's text, the checker's facts inside the form (their
+ offsets from its start, so that an edit before it moves nothing), and
+ the context the emitter reads, the program's datatypes, families,
+ constants, types found and modules. A form whose fingerprint has a memo
+ is not emitted again. Content-addressed, so a memo needs no name, and
+ one run's memos are the next run's: kept between runs by the driver
+ (main.kfx, `--cache FILE`), as runner operations, so recorded too.
+
+ Fingerprints are 64-bit FNV-1a, in `i64`, whose arithmetic wraps alike
+ in FX-26 and Rust (C49's rule). A collision would reuse another form's
+ Rust; at 2^-64 for a pair, it is not guarded against."
+
+(define-datatype memo (memo i64 string))
+(define-type memos (listof memo acyclic))
+
+(define fnv-offset i64 -3750763034362895579)
+
+(define-rec
+  (fnv-onto (subr kfx (chars i64) i64)
+    (lambda (cs h)
+      (if (null? cs) h (fnv-onto (cdr cs) (i64* (i64-xor h (char->i64 (car cs))) 1099511628211))))))
+
+(define fnv-string (subr kfx (string i64) i64)
+  (lambda (s h)
+    "`s` onto fingerprint `h`, after a separator, so that two strings are
+     not one string."
+    (fnv-onto (string-chars s) (i64* (i64-xor h 31) 1099511628211))))
+
+(define-rec
+  (fnv-strings (subr kfx (strings i64) i64)
+    (lambda (ss h) (if (null? ss) h (fnv-strings (cdr ss) (fnv-string (car ss) h))))))
+
+"The context's fingerprint: everything in it but the facts, which are
+ taken form by form."
+(define typed-text (subr kfx (typed) string)
+  (lambda (x) (tagcase x (typed (n t) (string-append n (string-append " " (show-sexp t)))))))
+
+(define ctx-fingerprint (subr kfx (ctx) i64)
+  (lambda (c)
+    (tagcase c
+      (ctx (ds ts ks ls xs fs ms es mods)
+        (fnv-strings
+          (concat (list (cons "datatypes" ds)
+                        (cons "tags" (map (lambda ((t tagof)) (tagcase t (tagof (n d) (string-append n (string-append " " d))))) ts))
+                        (cons "constants" ks)
+                        (cons "locals" ls)
+                        (cons "typeds" (map typed-text xs))
+                        (cons "families" (map (lambda ((f family))
+                                                (tagcase f (family (n d kinds) (string-append n (string-append (if d " datatype " " ") (words-of kinds))))))
+                                              ms))
+                        (cons "effects" (map typed-text es))
+                        (cons "modules" (map typed-text mods))))
+          fnv-offset)))))
+
+"Each form's text, cut from its file's characters at the forms' offsets;
+ the last to the end of its file, an offset past every other."
+(define end-of-file i64 9223372036854775807)
+
+(define-rec
+  (drop-to (subr kfx (chars i64 i64) chars)
+    (lambda (cs at to) (if (or (null? cs) (i64>= at to)) cs (drop-to (cdr cs) (i64+ at 1) to)))))
+
+(define-rec
+  (take-to (subr kfx (chars i64 i64 chars) chars)
+    (lambda (cs at to acc) (if (or (null? cs) (i64>= at to)) acc (take-to (cdr cs) (i64+ at 1) to (cons (car cs) acc))))))
+
+(define-rec
+  (form-texts (subr kfx (chars i64 (listof i64 acyclic)) strings)
+    (lambda (cs at starts)
+      "`starts`, the forms' offsets in order; `cs` the text from offset `at`."
+      (if (null? starts)
+          nil
+          (let* ((from (drop-to cs at (car starts)))
+                 (end (if (null? (cdr starts)) end-of-file (car (cdr starts)))))
+            (cons (rev->string (take-to from (car starts) end nil))
+                  (form-texts (drop-to from (car starts) end) end (cdr starts))))))))
+
+"A file's facts, and those of one form, as text, their offsets from the
+ form's start."
+(define-rec
+  (facts-of-file (subr kfx (facts string) facts)
+    (lambda (fs file)
+      (cond ((null? fs) nil)
+            ((tagcase (car fs) (fact (f p w) (string=? f file))) (cons (car fs) (facts-of-file (cdr fs) file)))
+            (else (facts-of-file (cdr fs) file))))))
+
+(define-rec
+  (facts-text (subr kfx (facts i64 i64) strings)
+    (lambda (fs start end)
+      (if (null? fs)
+          nil
+          (tagcase (car fs)
+            (fact (f p w)
+              (if (and (i64>= p start) (i64< p end))
+                  (cons (string-append (i64->string (i64- p start)) (string-append " " w)) (facts-text (cdr fs) start end))
+                  (facts-text (cdr fs) start end))))))))
+
+(define-rec
+  (memo-find (subr kfx (memos i64) memos)
+    (lambda (ms k)
+      (cond ((null? ms) nil)
+            ((tagcase (car ms) (memo (h t) (i64= h k))) (list (car ms)))
+            (else (memo-find (cdr ms) k))))))
+
+"Forms emitted, or their memos taken, and the memos this run made or
+ took, which are all the next run is given."
+(define-datatype emitted (emitted chars memos))
+
+(define-rec
+  (put-tops-memo (subr kfx (ctx facts i64 memos sexps strings (listof i64 acyclic) chars memos) emitted)
+    (lambda (c fs global old forms texts starts acc made)
+      "As `put-tops` (emit-tops.kfx) does, each definition's Rust its memo's
+       if it has one. `fs` the file's facts; `global` the context's
+       fingerprint; `old` the memos given."
+      (cond ((null? forms) (emitted acc made))
+            ((comment? (car forms))
+             (let* ((doc (and (not (null? (cdr forms))) (definition? (second forms))))
+                    (acc (put-comment (string-chars (comment-text (car forms))) "//" 0 #t acc)))
+               (put-tops-memo c fs global old (cdr forms) (cdr texts) (cdr starts) (put (if doc "\n" "\n\n") acc) made)))
+            (else
+             (let* ((start (car starts))
+                    (end (if (null? (cdr starts)) end-of-file (car (cdr starts))))
+                    (key (fnv-strings (facts-text fs start end) (fnv-string (car texts) global)))
+                    (found (memo-find old key))
+                    (text (if (null? found)
+                              (rev->string (put-top c (car forms) nil))
+                              (tagcase (car found) (memo (h t) t)))))
+               (put-tops-memo c fs global old (cdr forms) (cdr texts) (cdr starts) (put text acc)
+                              (cons (memo key text) made))))))))
+
+"Memos as text, a line each: the fingerprint, a tab, the Rust escaped
+ (a backslash before `n` for a newline, before itself for itself); and
+ back. The driver keeps them in a file."
+(define-rec
+  (escape-onto (subr kfx (chars chars) chars)
+    (lambda (cs acc)
+      (cond ((null? cs) acc)
+            ((char=? (car cs) #\newline) (escape-onto (cdr cs) (cons #\n (cons #\\ acc))))
+            ((char=? (car cs) #\\) (escape-onto (cdr cs) (cons #\\ (cons #\\ acc))))
+            (else (escape-onto (cdr cs) (cons (car cs) acc)))))))
+
+(define-rec
+  (memos-onto (subr kfx (memos chars) chars)
+    (lambda (ms acc)
+      (if (null? ms)
+          acc
+          (tagcase (car ms)
+            (memo (h t) (memos-onto (cdr ms) (cons #\newline (escape-onto (string-chars t) (cons #\tab (put (i64->string h) acc)))))))))))
+
+(define memos-text (subr kfx (memos) string)
+  (lambda (ms) (rev->string (memos-onto ms nil))))
+
+(define-rec
+  (memo-lines (subr kfx (chars chars i64 bool memos) memos)
+    (lambda (cs cur key in-text ms)
+      "`cur` the field so far, newest first; `key` the fingerprint read, once
+       `in-text`."
+      (cond ((null? cs) ms)
+            ((and (not in-text) (char=? (car cs) #\tab))
+             (memo-lines (cdr cs) nil (number-of-chars (rev-onto cur nil) 0 #f) #t ms))
+            ((char=? (car cs) #\newline)
+             (memo-lines (cdr cs) nil 0 #f (if in-text (cons (memo key (rev->string cur)) ms) ms)))
+            ((and in-text (char=? (car cs) #\\) (not (null? (cdr cs))))
+             (memo-lines (cdr (cdr cs)) (cons (if (char=? (car (cdr cs)) #\n) #\newline (car (cdr cs))) cur) key in-text ms))
+            (else (memo-lines (cdr cs) (cons (car cs) cur) key in-text ms)))))
+  (number-of-chars (subr kfx (chars i64 bool) i64)
+    (lambda (cs n negative)
+      (cond ((null? cs) (if negative (i64- 0 n) n))
+            ((char=? (car cs) #\-) (number-of-chars (cdr cs) n #t))
+            (else (number-of-chars (cdr cs) (i64+ (i64* n 10) (i64- (char->i64 (car cs)) 48)) negative))))))
+
+(define memos-of-text (subr kfx (string) memos)
+  (lambda (s) (memo-lines (string-chars s) nil 0 #f nil)))

@@ -9,6 +9,7 @@ check-exprs.kfx
 check-defs.kfx
 emit.kfx
 emit-tops.kfx
+incr.kfx
 compile.kfx
 ../lib/runner.kfx
 ../lib/live.kfx

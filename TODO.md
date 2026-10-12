@@ -256,10 +256,11 @@ The next goal. Phase A, in order (`PLAN.md` §6.5):
 - ~~**I/O and bytes**~~: done (C49), as Fixpt 17ac0c5 has them. Left: a
   bytevector at a letrena's region; `rmake-bytevector` when Fixpt has it.
 - **Corpus programs**, compared with Fixpt.
-- **Incremental compiling** (Q5, answered): the compiler's passes as
-  queries, memoized with their dependencies, as `coopt-query`'s; the
-  machinery in `kayak-rt`, given to KFX as primitives. After the
-  library of tasks, since a query run is a task (Coopt's arrangement).
+- **Incremental compiling** (Q5, answered; `docs/research/queries.md`):
+  `Emit(form)` kept between compiles, content-addressed (C54). Next:
+  `Check(form)`, keyed by the interfaces it reads; queries as a library
+  for KFX programs (`lib/query.kfx`); query runs as tasks when the
+  compiler has a reason to wait.
 
 Phase B, the compiler for two languages:
 - **The front end shared**: the checker grown to FX-26's, KFX's
