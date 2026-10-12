@@ -1661,3 +1661,14 @@ compiler's own code could use what KFX gained. Found:
   written. `put-exp` now finds a place's facts once and asks of those.
   `scripts/fixpoint.sh` now says the self-compile's time, so that the next
   such slowdown shows.
+
+C84's slowdown, measured after (the user asked it be understood first):
+each commit's kfx built and timed compiling its own source, best of three
+— 67b58e1 (before C75) 0.92 s; C75 1.86; C77–C80 2.1–2.2; C81 2.2; C82
+2.4; C84 0.79. All of it was the emitter's clauses each searching every
+fact for each expression: C75's box and unbox, C77's value calls, C82's
+wrap, each one more. With a place's facts found once, the older clauses
+(lifts, literals' facts) are cheaper too, hence below 0.92. `--record`
+costs nothing (0.71 s either way); fixpoint.sh's first figure is one cold
+run. The engine, which runs the same checker, is unchanged: both
+engines, running the same compiler source on `arith`, 2.2 s and 450 MB.
