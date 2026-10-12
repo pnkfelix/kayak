@@ -1,4 +1,4 @@
-"""usage: python3 -I scripts/bench.py [--runs N]
+"""usage: python3 -I scripts/bench.py [--runs N] [--compiler-runs N]
 
 Times Fixpt's benchmarks (its crates/fixpt-fx26/tests/programs/bench) and
 KFX's ports of them (bench/ports, tailored to KFX's paths: i64 for int,
@@ -6,6 +6,12 @@ an arena for a round's list), each two ways: as kfx's Rust, built
 --release, and on Fixpt's machines (`fixpt bench`). A benchmark kfx
 refuses is a row of dashes. Times are the run alone, best of N, in ms;
 an answer that differs from Fixpt's is marked `✗`.
+
+Then the largest program there is: the compiler compiling itself, kfx/
+on kfx/kfx.unit, as kfx's Rust (target/release/kfx, the whole process)
+and on Fixpt's machines (the prelude and kfx/ as FX-26, stage 0's way,
+the run alone). Fixpt takes minutes a round, so its best is of
+--compiler-runs (default 1); 0 skips the row.
 """
 
 import os
@@ -13,6 +19,7 @@ import re
 import shutil
 import subprocess
 import sys
+import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PORTS = os.path.join(ROOT, "bench", "ports")
@@ -101,10 +108,61 @@ fn main() {
     return times
 
 
+def fx_string(text):
+    return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def compiler_program():
+    """The compiler compiling itself, as one FX-26 program (scripts/stage0.py)."""
+    kfx = os.path.join(ROOT, "kfx")
+    with open(os.path.join(kfx, "kfx.unit")) as f:
+        files = [line.strip() for line in f if line.strip() and not line.strip().startswith(";")]
+    texts = []
+    for name in files:
+        with open(os.path.join(kfx, name)) as f:
+            texts.append((os.path.splitext(os.path.basename(name))[0], f.read()))
+    with open(os.path.join(kfx, "prelude.fx")) as f:
+        text = f.read() + "\n"
+    text += "".join(t + "\n" for _, t in texts)
+    sources = " ".join("(source %s %s)" % (fx_string(n), fx_string(t)) for n, t in texts)
+    path = os.path.join(WORK, "compiler.fx")
+    with open(path, "w") as f:
+        f.write(text + "(bundle (compile-units (list " + sources + ")))\n")
+    return path
+
+
+def bench_compiler(fixpt, runs, fixpt_runs):
+    out = os.path.join(WORK, "compiler-out")
+    best = float("inf")
+    for _ in range(runs):
+        shutil.rmtree(out, ignore_errors=True)
+        t = time.perf_counter()
+        r = run([KFX, os.path.join(ROOT, "kfx", "kfx.unit"), out])
+        best = min(best, (time.perf_counter() - t) * 1000.0)
+        if r.returncode != 0:
+            sys.exit("bench: kfx does not compile itself: " + r.stderr.strip())
+    head, rows = fixpt_times(fixpt, [compiler_program()], fixpt_runs)
+    machines = [m for m in head[2:] if m not in ("M words", "GCs")]
+    row = rows.get("compiler", {})
+    print("\n| the compiler on itself | kfx Rust | " + " | ".join(machines) + " |")
+    print("|---|" + "---:|" * (1 + len(machines)))
+    print("| kfx/kfx.unit | %.1f | %s |" % (best, " | ".join(row.get(m, "—") for m in machines)))
+    print("\nkfx Rust: target/release/kfx, the whole process, best of %d; Fixpt: the run alone, best of %d;"
+          " in ms. That the two make the same Rust is scripts/fixpoint.sh's check." % (runs, fixpt_runs))
+
+
 def main():
     runs = 3
-    if len(sys.argv) == 3 and sys.argv[1] == "--runs":
-        runs = int(sys.argv[2])
+    compiler_runs = 1
+    args = sys.argv[1:]
+    while args:
+        if len(args) >= 2 and args[0] == "--runs":
+            runs = int(args[1])
+        elif len(args) >= 2 and args[0] == "--compiler-runs":
+            compiler_runs = int(args[1])
+        else:
+            sys.exit(__doc__)
+        args = args[2:]
     fixpt = fixpt_binary()
     clone = os.path.dirname(os.path.dirname(os.path.dirname(fixpt)))
     originals = os.path.join(clone, "crates", "fixpt-fx26", "tests", "programs", "bench")
@@ -144,6 +202,8 @@ def main():
         print("| %s | %s |" % (n, " | ".join(cells)))
     print("\nkfx Rust: built --release, the run alone, best of %d, in ms; — where kfx refuses a program"
           " or there is no port. Fixpt's machines as `fixpt bench` names them." % runs)
+    if compiler_runs > 0:
+        bench_compiler(fixpt, runs, compiler_runs)
 
 
 if __name__ == "__main__":

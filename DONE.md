@@ -1105,3 +1105,10 @@ C44: `heap-stats` showed 82% of the compiler's 6.9 GB was character lists
 made to compare strings. Comparing in place, and searching facts only
 where they can be, took it to 228 MB: the compiler on itself 3.97 s to
 0.34 s, peak memory 7.8 GB to 0.31.
+
+## The compiler on itself, benchmarked (2026-10-11)
+
+`scripts/bench.py` now also times the compiler compiling itself, as kfx's
+Rust and on Fixpt's machines (`--compiler-runs`, default 1: a Fixpt round
+is about 2 minutes). kfx's Rust 0.34 s; Fixpt's best 2.67 s
+(rs-regs-rsjit-cellcc), its slowest 38.5 s; before C44 kfx's took 3.97 s.
