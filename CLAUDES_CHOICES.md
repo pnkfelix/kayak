@@ -985,3 +985,29 @@ world, by FX-26's I/O (C49).
   has no files.
 - `run-ready!` and `sleeping?` in `lib/tasks.kfx`, for a loop driven from
   outside.
+
+## C52. The compiler's I/O behind a runner: a compile recorded, replayed (2026-10-12)
+
+`kfx/main.kfx`'s reads and writes are `lib/runner.kfx`'s operations, so
+`kfx --record LOG ...` keeps each read's answer and each write, in order,
+as text (C51's), and `kfx --replay LOG ...` answers from the log, failing
+at the first step where the compile reads or writes otherwise; one that
+ends before its log does fails too. A replay writes nothing. `runner.kfx`
+and `live.kfx` are in `kfx/kfx.unit` before `main.kfx`.
+- **A check of K1 and of determinism together** (`scripts/fixpoint.sh`):
+  the compile of the compiler is recorded, then replayed as Rust and on
+  Fixpt (`stage0.py --replay`, 4 s). The log holds every file the compile
+  read and wrote (1.3 MB), so the replay on Fixpt checks every output
+  byte against the Rust's, as `diff -r` does, from inside FX-26.
+- **`main` is an `async fn`**: it suspends to the runner (C45), so
+  `boot/src/main.rs` runs it by `block`.
+- **Its errors and its exit stay direct I/O**, outside the runner: a
+  failure to read is the runner's answer, recorded; what the compiler
+  says about it is derived, and checked as any write is not. The `world`
+  effect is every `io` kind, so the program and the live answerer have
+  one effect.
+- **Escaping the log is linear**: the first version appended a string a
+  character, 7 s for the self-compile's log; now 0.77 s recorded, 0.69 s
+  replayed, against 0.61 s plain.
+- **Not recorded**: the arguments (a replay is given them again, and
+  parts from the log if they differ in what they make it read or write).

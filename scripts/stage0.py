@@ -2,6 +2,7 @@
 
 usage: python3 -I scripts/stage0.py FILE.kfx > OUT.rs
        python3 -I scripts/stage0.py PROGRAM.unit DIR
+       and the same after --record LOG or --replay LOG (C52)
 
 The compiler's driver is KFX (kfx/main.kfx, C50), its I/O FX-26's (C49):
 so Fixpt runs the whole compiler, the prelude first, with `fixpt run`, given
@@ -44,10 +45,10 @@ def compiler():
 
 def main():
     args = sys.argv[1:]
-    if len(args) not in (1, 2):
-        sys.exit("usage: stage0.py FILE.kfx | stage0.py PROGRAM.unit DIR")
-    if len(args) == 2:
-        os.makedirs(args[1], exist_ok=True)
+    if not args:
+        sys.exit("usage: stage0.py [--record LOG | --replay LOG] (FILE.kfx | PROGRAM.unit DIR | --toplevel FILE.kfx)")
+    if len(args) >= 2 and args[-2].endswith(".unit"):
+        os.makedirs(args[-1], exist_ok=True)
     binary = fixpt()
     # One file, the compiler's forms one after another, as kfx/kfx.unit
     # gives them to FX-26.

@@ -261,18 +261,40 @@ pub fn replaying(log: Ref<Log<'static>>) -> &'static dyn Fn(i64, Op) -> kayak_rt
 // apart by tabs: the step, the operation's kind and its fields, the
 // answer's kind and its fields. In a field, a tab, a newline and a
 // backslash are written escaped, a backslash before `t`, `n`, or itself.
-pub fn escaped(cs: List<char>) -> Str {
-    if null_p(cs) {
-        str_lit("")
-    } else if char_eq_p(car(cs), '\t') {
-        string_append(str_lit("\\t"), escaped(cdr(cs)))
-    } else if char_eq_p(car(cs), '\n') {
-        string_append(str_lit("\\n"), escaped(cdr(cs)))
-    } else if char_eq_p(car(cs), '\\') {
-        string_append(str_lit("\\\\"), escaped(cdr(cs)))
-    } else {
-        string_append(char_to_string(car(cs)), escaped(cdr(cs)))
+/// `cs` escaped, onto `acc`, newest first.
+pub fn escaped_onto(mut cs: List<char>, mut acc: List<char>) -> List<char> {
+    loop {
+        if null_p(cs) {
+            return acc;
+        } else if char_eq_p(car(cs), '\t') {
+            (cs, acc) = (cdr(cs), kayak_rt::heap_cons('t', kayak_rt::heap_cons('\\', acc)));
+            continue;
+        } else if char_eq_p(car(cs), '\n') {
+            (cs, acc) = (cdr(cs), kayak_rt::heap_cons('n', kayak_rt::heap_cons('\\', acc)));
+            continue;
+        } else if char_eq_p(car(cs), '\\') {
+            (cs, acc) = (cdr(cs), kayak_rt::heap_cons('\\', kayak_rt::heap_cons('\\', acc)));
+            continue;
+        } else {
+            (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
+            continue;
+        }
     }
+}
+
+pub fn chars_reversed(mut xs: List<char>, mut acc: List<char>) -> List<char> {
+    loop {
+        if null_p(xs) {
+            return acc;
+        } else {
+            (xs, acc) = (cdr(xs), kayak_rt::heap_cons(car(xs), acc));
+            continue;
+        }
+    }
+}
+
+pub fn escaped(cs: List<char>) -> Str {
+    list_to_string(chars_reversed(escaped_onto(cs, nil::<char>()), nil::<char>()))
 }
 
 pub fn field(s: Str) -> Str {

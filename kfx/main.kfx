@@ -11,17 +11,42 @@
                              order, as `DIR/mod.rs` and a module each. DIR
                              must be there: FX-26 makes no directories.
 
+ Each may follow `--record LOG` or `--replay LOG` (C52): the compiler's
+ reads and writes are a runner's operations (lib/runner.kfx), answered
+ live (lib/live.kfx), recorded to LOG as text, or answered from LOG,
+ which a run that reads or writes otherwise fails. A replay writes
+ nothing: a compile replayed is the same compile, or it says where it
+ parts.
+
  A file that cannot be read, or written, ends the run with status 1; a
  wrong use, with 2."
 
-(define-effect driver (maxeff kfx (io args) (io fs-read) (io fs-write) (io stdout) (io stderr) (io exit) (alloc @io) (read @io)))
+(define-effect driver (maxeff kfx world (alloc @io) (read @io) (write @io) (goto @io) (comefrom @io)))
+
+"The runner the compiler's reads and writes go to."
+(define-type drt (runner-tag int world @io))
 
 (define fail-with (subr (maxeff (io stderr) (io exit)) (string int) void)
   (lambda (message status)
     (begin (write-err (string-append "kfx: " (string-append message "\n")))
            (exit status))))
 
-(define read-text (subr (maxeff (read @globals) (io fs-read) (io stderr) (io exit) (alloc @io) (read @io)) (string) string)
+(define read-text (subr driver (drt string) string)
+  (lambda (rt path)
+    (tagcase ((proj perform! int world @io) rt (sum read-file path))
+      (text s s)
+      (failed m (fail-with (string-append "cannot read " (string-append path (string-append ": " m))) 1))
+      (else other (fail-with (string-append "cannot read " path) 1)))))
+
+(define write-text (subr driver (drt string string) unit)
+  (lambda (rt path text)
+    (tagcase ((proj perform! int world @io) rt (sum write-file (product (path path) (text text))))
+      (done u #u)
+      (failed m (fail-with (string-append "cannot write " (string-append path (string-append ": " m))) 1))
+      (else other (fail-with (string-append "cannot write " path) 1)))))
+
+"The same, done directly, for the log itself."
+(define read-text-now (subr (maxeff (read @globals) (io fs-read) (io stderr) (io exit) (alloc @io) (read @io)) (string) string)
   (lambda (path)
     (tagcase (the (sumof (data (bytevectorof @io)) (failed io-error)) (read-file path))
       (data b
@@ -30,7 +55,7 @@
           (bad k (fail-with (string-append "cannot read " (string-append path ": it is not UTF-8")) 1))))
       (failed e (fail-with (string-append "cannot read " (string-append path (string-append ": " (extract e detail)))) 1)))))
 
-(define write-text (subr (maxeff (read @globals) (io fs-write) (io stderr) (io exit) (alloc @io) (read @io)) (string string) unit)
+(define write-text-now (subr (maxeff (read @globals) (io fs-write) (io stderr) (io exit) (alloc @io) (read @io)) (string string) unit)
   (lambda (path text)
     (tagcase (write-file path (the (bytevectorof @io) (string->utf8 text)))
       (done u #u)
@@ -90,42 +115,66 @@
     (if (string=? dir "") name (string-append dir (string-append "/" name)))))
 
 (define-rec
-  (sources-of (subr (maxeff driver) (string strings) sources)
-    (lambda (dir lines)
+  (sources-of (subr driver (drt string strings) sources)
+    (lambda (rt dir lines)
       "A manifest's files, in order: a line each, relative to the manifest;
        blank lines and `;` comments skipped."
       (if (null? lines)
           nil
           (let ((line (line-trimmed (car lines))))
             (if (or (string=? line "") (has-prefix? line ";"))
-                (sources-of dir (cdr lines))
-                (let ((path (path-joined dir line)))
-                  (cons (source (stem path) (read-text path)) (sources-of dir (cdr lines))))))))))
+                (sources-of rt dir (cdr lines))
+                (let* ((path (path-joined dir line))
+                       (text (read-text rt path)))
+                  (cons (source (stem path) text) (sources-of rt dir (cdr lines))))))))))
 
 (define-rec
-  (write-outputs (subr (maxeff driver) (string outputs) unit)
-    (lambda (dir os)
+  (write-outputs (subr driver (drt string outputs) unit)
+    (lambda (rt dir os)
       (if (null? os)
           #u
           (tagcase (car os)
             (output (name text)
-              (begin (write-text (path-joined dir name) text)
-                     (write-outputs dir (cdr os)))))))))
+              (begin (write-text rt (path-joined dir name) text)
+                     (write-outputs rt dir (cdr os)))))))))
 
 "The compiler, run."
 
-(define put-out (subr (io stdout) (string) unit)
-  (lambda (s) (tagcase (write-out s) (done u #u) (failed e #u))))
+(define put-out (subr driver (drt string) unit)
+  (lambda (rt s) (begin ((proj perform! int world @io) rt (sum write s)) #u)))
 
-(define main (subr (maxeff driver) () int)
+"A compile, its uses `as`: the status."
+(define compile-with (subr driver (drt strings) int)
+  (lambda (rt as)
+    (cond ((i64= (size as) 1)
+           (begin (put-out rt (compile-named (car as) (read-text rt (car as)))) 0))
+          ((and (i64= (size as) 2) (string=? (car as) "--toplevel"))
+           (begin (put-out rt (compile-toplevel (car (cdr as)) (read-text rt (car (cdr as))))) 0))
+          ((i64= (size as) 2)
+           (let* ((text (read-text rt (car as)))
+                  (program (sources-of rt (directory-of (car as)) (lines-from (string-chars text) nil))))
+             (begin (write-outputs rt (car (cdr as)) (compile-units program)) 0)))
+          (else
+           (begin (fail-with "usage: kfx [--record LOG | --replay LOG] (FILE.kfx | PROGRAM.unit DIR | --toplevel FILE.kfx)" 2) 2)))))
+
+(define reverse-log (subr (maxeff kfx (read @io) (alloc @io)) ((log @io) (log @io)) (log @io))
+  (lambda (xs acc) (if (null? xs) acc (reverse-log (cdr xs) (cons (car xs) acc)))))
+
+(define main (subr driver () int)
   (lambda ()
     (let ((as (the strings (args))))
-      (cond ((i64= (size as) 1)
-             (begin (put-out (compile-named (car as) (read-text (car as)))) 0))
-            ((and (i64= (size as) 2) (string=? (car as) "--toplevel"))
-             (begin (put-out (compile-toplevel (car (cdr as)) (read-text (car (cdr as))))) 0))
-            ((i64= (size as) 2)
-             (let ((program (sources-of (directory-of (car as)) (lines-from (string-chars (read-text (car as))) nil))))
-               (begin (write-outputs (car (cdr as)) (compile-units program)) 0)))
+      (cond ((and (not (null? as)) (string=? (car as) "--record") (not (null? (cdr as))))
+             (let* ((log (the (ref (log @io) @io) (new nil)))
+                    (status ((proj run-under int world @io) ((proj recording world @io) ((proj live @io)) log)
+                             (lambda ((rt drt)) (compile-with rt (cdr (cdr as)))))))
+               (begin (write-text-now (car (cdr as)) ((proj log-text @io) (reverse-log (get log) nil)))
+                      status)))
+            ((and (not (null? as)) (string=? (car as) "--replay") (not (null? (cdr as))))
+             (let* ((log (the (ref (log @io) @io) (new ((proj log-of-text @io) (read-text-now (car (cdr as)))))))
+                    (status ((proj run-under int world @io) ((proj replaying world @io) log)
+                             (lambda ((rt drt)) (compile-with rt (cdr (cdr as)))))))
+               (if (null? (get log))
+                   status
+                   (begin (fail-with "replay: the run ends before its log does" 1) 1))))
             (else
-             (begin (fail-with "usage: kfx FILE.kfx | kfx PROGRAM.unit DIR | kfx --toplevel FILE.kfx" 2) 2))))))
+             ((proj run-under int world @io) ((proj live @io)) (lambda ((rt drt)) (compile-with rt as))))))))

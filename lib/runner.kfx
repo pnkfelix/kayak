@@ -173,13 +173,21 @@
  backslash are written escaped, a backslash before `t`, `n`, or itself."
 
 (define-rec
-  (escaped (subr (maxeff (read @globals) spin) ((listof char acyclic)) string)
-    (lambda (cs)
-      (cond ((null? cs) "")
-            ((char=? (car cs) #\tab) (string-append "\\t" (escaped (cdr cs))))
-            ((char=? (car cs) #\newline) (string-append "\\n" (escaped (cdr cs))))
-            ((char=? (car cs) #\\) (string-append "\\\\" (escaped (cdr cs))))
-            (else (string-append (char->string (car cs)) (escaped (cdr cs))))))))
+  (escaped-onto (subr (maxeff (read @globals) spin) ((listof char acyclic) (listof char acyclic)) (listof char acyclic))
+    (lambda (cs acc)
+      "`cs` escaped, onto `acc`, newest first."
+      (cond ((null? cs) acc)
+            ((char=? (car cs) #\tab) (escaped-onto (cdr cs) (cons #\t (cons #\\ acc))))
+            ((char=? (car cs) #\newline) (escaped-onto (cdr cs) (cons #\n (cons #\\ acc))))
+            ((char=? (car cs) #\\) (escaped-onto (cdr cs) (cons #\\ (cons #\\ acc))))
+            (else (escaped-onto (cdr cs) (cons (car cs) acc)))))))
+
+(define-rec
+  (chars-reversed (subr (maxeff (read @globals) spin) ((listof char acyclic) (listof char acyclic)) (listof char acyclic))
+    (lambda (xs acc) (if (null? xs) acc (chars-reversed (cdr xs) (cons (car xs) acc))))))
+
+(define escaped (subr (maxeff (read @globals) spin) ((listof char acyclic)) string)
+  (lambda (cs) (list->string (chars-reversed (escaped-onto cs nil) nil))))
 
 (define field (subr (maxeff (read @globals) spin) (string) string)
   (lambda (s) (string-append "\t" (escaped (the (listof char acyclic) (string->list s))))))

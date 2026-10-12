@@ -4,8 +4,9 @@ use kayak_rt::*;
 use super::*;
 
 // lib/live.kfx: the live runner (C51): the world's own answers, by FX-26's
-// I/O (C49). Its effect is `world`, the I/O it does; a program run under
-// it, recorded (lib/runner.kfx's `recording`), replays under `replaying`
+// I/O (C49). Its effect is `world`, every I/O there is, so that a program
+// that does some directly too (its errors, its exit) has one effect. A
+// program run under it, recorded (lib/runner.kfx's `recording`), replays under `replaying`
 // with no I/O at all.
 
 pub fn live() -> &'static dyn Fn(i64, Op) -> kayak_rt::suspend::Body<Answer> {

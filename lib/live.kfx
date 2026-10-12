@@ -1,9 +1,10 @@
 "lib/live.kfx: the live runner (C51): the world's own answers, by FX-26's
- I/O (C49). Its effect is `world`, the I/O it does; a program run under
- it, recorded (lib/runner.kfx's `recording`), replays under `replaying`
+ I/O (C49). Its effect is `world`, every I/O there is, so that a program
+ that does some directly too (its errors, its exit) has one effect. A
+ program run under it, recorded (lib/runner.kfx's `recording`), replays under `replaying`
  with no I/O at all."
 
-(define-effect world (maxeff (io stdin) (io stdout) (io clock) (io fs-read) (io fs-write)))
+(define-effect world (maxeff (io stdin) (io stdout) (io stderr) (io clock) (io fs-read) (io fs-write) (io args) (io exit)))
 
 (define live (poly ((w region)) (subr pure () (answerer world w)))
   (plambda ((w region))

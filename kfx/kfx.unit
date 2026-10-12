@@ -10,4 +10,6 @@ check-defs.kfx
 emit.kfx
 emit-tops.kfx
 compile.kfx
+../lib/runner.kfx
+../lib/live.kfx
 main.kfx

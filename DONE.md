@@ -1157,3 +1157,9 @@ C51: `lib/world.kfx` (operations filed by tasks, answered when the loop is
 idle), `lib/live.kfx`, the log as text. `tests/kfx-io/tasks-world.unit`:
 two tasks live, recorded to a file, replayed from it; Fixpt and Rust
 agree.
+
+## A compile recorded and replayed (2026-10-12)
+
+C52: `kfx --record LOG` and `kfx --replay LOG`; the compiler's reads and
+writes are runner operations. `scripts/fixpoint.sh` records the
+self-compile and replays it as Rust and on Fixpt.

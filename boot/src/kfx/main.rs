@@ -16,15 +16,58 @@ use super::*;
 // order, as `DIR/mod.rs` and a module each. DIR
 // must be there: FX-26 makes no directories.
 //
+// Each may follow `--record LOG` or `--replay LOG` (C52): the compiler's
+// reads and writes are a runner's operations (lib/runner.kfx), answered
+// live (lib/live.kfx), recorded to LOG as text, or answered from LOG,
+// which a run that reads or writes otherwise fails. A replay writes
+// nothing: a compile replayed is the same compile, or it says where it
+// parts.
+//
 // A file that cannot be read, or written, ends the run with status 1; a
 // wrong use, with 2.
+
+// The runner the compiler's reads and writes go to.
+pub type Drt = Tag<Int, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<Int>>>;
 
 pub fn fail_with(message: Str, status: Int) -> Void {
     write_err(string_append(str_lit("kfx: "), string_append(message, str_lit("\n"))));
     match exit(status) {}
 }
 
-pub fn read_text(path: Str) -> Str {
+pub async fn read_text(rt: Drt, path: Str) -> Result<Str, Unwind> {
+    let tagcase_ = kayak_rt::suspend::body((&perform_x)(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::ReadFile(path)))).await?;
+    match *tagcase_ {
+        Sum_4line_3eof_4done_4time_4text_6failed::Text(s) => {
+            Ok(s)
+        }
+        Sum_4line_3eof_4done_4time_4text_6failed::Failed(m) => {
+            Ok(match fail_with(string_append(str_lit("cannot read "), string_append(path, string_append(str_lit(": "), m))), int_lit(1)) {})
+        }
+        _ => {
+            let other = tagcase_;
+            Ok(match fail_with(string_append(str_lit("cannot read "), path), int_lit(1)) {})
+        }
+    }
+}
+
+pub async fn write_text(rt: Drt, path: Str, text: Str) -> Result<(), Unwind> {
+    let tagcase_ = kayak_rt::suspend::body((&perform_x)(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::WriteFile(Product_4path_4text(path, text))))).await?;
+    match *tagcase_ {
+        Sum_4line_3eof_4done_4time_4text_6failed::Done(u) => {
+            Ok(())
+        }
+        Sum_4line_3eof_4done_4time_4text_6failed::Failed(m) => {
+            Ok(match fail_with(string_append(str_lit("cannot write "), string_append(path, string_append(str_lit(": "), m))), int_lit(1)) {})
+        }
+        _ => {
+            let other = tagcase_;
+            Ok(match fail_with(string_append(str_lit("cannot write "), path), int_lit(1)) {})
+        }
+    }
+}
+
+// The same, done directly, for the log itself.
+pub fn read_text_now(path: Str) -> Str {
     let tagcase_ = the::<&'static Sum_4data_6failed<Bytes, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>(read_file(path));
     match *tagcase_ {
         Sum_4data_6failed::Data(b) => {
@@ -44,7 +87,7 @@ pub fn read_text(path: Str) -> Str {
     }
 }
 
-pub fn write_text(path: Str, text: Str) -> () {
+pub fn write_text_now(path: Str, text: Str) -> () {
     let tagcase_ = write_file(path, the::<Bytes>(string_to_utf8(text)));
     match *tagcase_ {
         Sum_4done_6failed::Done(u) => {
@@ -154,10 +197,10 @@ pub fn path_joined(dir: Str, name: Str) -> Str {
 
 /// A manifest's files, in order: a line each, relative to the manifest;
 /// blank lines and `;` comments skipped.
-pub fn sources_of(mut dir: Str, mut lines: Strings) -> Sources {
+pub async fn sources_of(mut rt: Drt, mut dir: Str, mut lines: Strings) -> Result<Sources, Unwind> {
     loop {
         if null_p(lines) {
-            return nil::<&'static Source>();
+            return Ok(nil::<&'static Source>());
         } else {
             let line = line_trimmed(car(lines));
             if (string_eq_p(line, str_lit("")) || has_prefix_p(line, str_lit(";"))) {
@@ -165,21 +208,22 @@ pub fn sources_of(mut dir: Str, mut lines: Strings) -> Sources {
                 continue;
             } else {
                 let path = path_joined(dir, line);
-                return kayak_rt::heap_cons(source(stem(path), read_text(path)), sources_of(dir, cdr(lines)));
+                let text = kayak_rt::suspend::body(read_text(rt, path)).await?;
+                return Ok(kayak_rt::heap_cons(source(stem(path), text), kayak_rt::suspend::body(sources_of(rt, dir, cdr(lines))).await?));
             }
         }
     }
 }
 
-pub fn write_outputs(mut dir: Str, mut os: Outputs) -> () {
+pub async fn write_outputs(mut rt: Drt, mut dir: Str, mut os: Outputs) -> Result<(), Unwind> {
     loop {
         if null_p(os) {
-            return ();
+            return Ok(());
         } else {
             let tagcase_ = car(os);
             match *tagcase_ {
                 Output::Output(name, text) => {
-                    write_text(path_joined(dir, name), text);
+                    kayak_rt::suspend::body(write_text(rt, path_joined(dir, name), text)).await?;
                     os = cdr(os);
                     continue;
                 }
@@ -189,33 +233,65 @@ pub fn write_outputs(mut dir: Str, mut os: Outputs) -> () {
 }
 
 // The compiler, run.
-pub fn put_out(s: Str) -> () {
-    let tagcase_ = write_out(s);
-    match *tagcase_ {
-        Sum_4done_6failed::Done(u) => {
-            ()
-        }
-        Sum_4done_6failed::Failed(e) => {
-            ()
+pub async fn put_out(rt: Drt, s: Str) -> Result<(), Unwind> {
+    kayak_rt::suspend::body((&perform_x)(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::Write(s)))).await?;
+    Ok(())
+}
+
+// A compile, its uses `as`: the status.
+pub async fn compile_with(rt: Drt, r#as: Strings) -> Result<Int, Unwind> {
+    if i64_eq(size(r#as), 1i64) {
+        kayak_rt::suspend::body(put_out(rt, compile_named(car(r#as), kayak_rt::suspend::body(read_text(rt, car(r#as))).await?))).await?;
+        Ok(int_lit(0))
+    } else if (i64_eq(size(r#as), 2i64) && string_eq_p(car(r#as), str_lit("--toplevel"))) {
+        kayak_rt::suspend::body(put_out(rt, compile_toplevel(car(cdr(r#as)), kayak_rt::suspend::body(read_text(rt, car(cdr(r#as)))).await?))).await?;
+        Ok(int_lit(0))
+    } else if i64_eq(size(r#as), 2i64) {
+        let text = kayak_rt::suspend::body(read_text(rt, car(r#as))).await?;
+        let program = kayak_rt::suspend::body(sources_of(rt, directory_of(car(r#as)), lines_from(string_chars(text), nil::<char>()))).await?;
+        kayak_rt::suspend::body(write_outputs(rt, car(cdr(r#as)), compile_units(program))).await?;
+        Ok(int_lit(0))
+    } else {
+        match fail_with(str_lit("usage: kfx [--record LOG | --replay LOG] (FILE.kfx | PROGRAM.unit DIR | --toplevel FILE.kfx)"), int_lit(2)) {};
+        Ok(int_lit(2))
+    }
+}
+
+pub fn reverse_log(mut xs: Log<'static>, mut acc: Log<'static>) -> Log<'static> {
+    loop {
+        if null_p(xs) {
+            return acc;
+        } else {
+            (xs, acc) = (cdr(xs), kayak_rt::heap_cons(car(xs), acc));
+            continue;
         }
     }
 }
 
-pub fn main() -> Int {
+pub async fn main() -> Result<Int, Unwind> {
     let r#as = the::<Strings>(args());
-    if i64_eq(size(r#as), 1i64) {
-        put_out(compile_named(car(r#as), read_text(car(r#as))));
-        int_lit(0)
-    } else if (i64_eq(size(r#as), 2i64) && string_eq_p(car(r#as), str_lit("--toplevel"))) {
-        put_out(compile_toplevel(car(cdr(r#as)), read_text(car(cdr(r#as)))));
-        int_lit(0)
-    } else if i64_eq(size(r#as), 2i64) {
-        let program = sources_of(directory_of(car(r#as)), lines_from(string_chars(read_text(car(r#as))), nil::<char>()));
-        write_outputs(car(cdr(r#as)), compile_units(program));
-        int_lit(0)
+    if (not(null_p(r#as)) && string_eq_p(car(r#as), str_lit("--record")) && not(null_p(cdr(r#as)))) {
+        let log = the::<Ref<Log<'static>>>(kayak_rt::heap_new(nil::<Product_4step_2op_6answer<i64, &'static Sum_9read_line_5write_5clock_9read_file_10write_file<(), Str, (), Str, Product_4path_4text<Str, Str>>, &'static Sum_4line_3eof_4done_4time_4text_6failed<Str, (), (), i64, Str, Str>>>()));
+        let status = kayak_rt::suspend::body((&run_under)((&recording)((&live)(), log), lambda1(move |rt: Drt| kayak_rt::suspend::body(async move {
+            Ok(kayak_rt::suspend::body(compile_with(rt, cdr(cdr(r#as)))).await?)
+        })))).await?;
+        write_text_now(car(cdr(r#as)), (&log_text)(reverse_log(get(log), nil::<Product_4step_2op_6answer<i64, &'static Sum_9read_line_5write_5clock_9read_file_10write_file<(), Str, (), Str, Product_4path_4text<Str, Str>>, &'static Sum_4line_3eof_4done_4time_4text_6failed<Str, (), (), i64, Str, Str>>>())));
+        Ok(status)
+    } else if (not(null_p(r#as)) && string_eq_p(car(r#as), str_lit("--replay")) && not(null_p(cdr(r#as)))) {
+        let log = the::<Ref<Log<'static>>>(kayak_rt::heap_new((&log_of_text)(read_text_now(car(cdr(r#as))))));
+        let status = kayak_rt::suspend::body((&run_under)((&replaying)(log), lambda1(move |rt: Drt| kayak_rt::suspend::body(async move {
+            Ok(kayak_rt::suspend::body(compile_with(rt, cdr(cdr(r#as)))).await?)
+        })))).await?;
+        if null_p(get(log)) {
+            Ok(status)
+        } else {
+            match fail_with(str_lit("replay: the run ends before its log does"), int_lit(1)) {};
+            Ok(int_lit(1))
+        }
     } else {
-        match fail_with(str_lit("usage: kfx FILE.kfx | kfx PROGRAM.unit DIR | kfx --toplevel FILE.kfx"), int_lit(2)) {};
-        int_lit(2)
+        Ok(kayak_rt::suspend::body((&run_under)((&live)(), lambda1(move |rt: Drt| kayak_rt::suspend::body(async move {
+            Ok(kayak_rt::suspend::body(compile_with(rt, r#as)).await?)
+        })))).await?)
     }
 }
 
