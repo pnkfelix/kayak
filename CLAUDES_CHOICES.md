@@ -1579,3 +1579,26 @@ KFX's programs have had no use for.
 
 Measured: 119 of Fixpt's programs through kfx, all agreeing (`datum/quote`
 and `datum/quasiquote` now); the engine 111.
+
+## C81. Self-application by FX-26's `cyclic`; Fixpt's refused programs checked (2026-10-12)
+
+C76's question, answered in code. KFX said `spin` for a call of an unseen
+procedure, and of a `poly` given such a procedure, whenever a type could
+hold any procedure; FX-26 says it only when a type is *cyclic*: a cycle in
+it runs through a procedure's parameter, so that a procedure of it could
+be given itself (Fixpt's `cyclic`, infer.rs). KFX's `self-applicable?` is
+that walk now: only a datatype or `datum` can be met again on the way
+down, so the trail is their names, each with whether a parameter was
+crossed on the way to it; a datatype's arguments are taken, cautiously,
+as parameters, as FX-26 takes them. `run/marks-of.fx` gets past it (to
+the engine's marks), and 28 of Fixpt's programs beyond KFX agree now (26).
+
+A looser rule could accept what FX-26 refuses, so check.sh now runs
+`scripts/refused-fixpt-programs.py`: every program Fixpt's checker
+refuses (268), refused by kfx too. All are.
+
+A gap found on the way: `(let ((ts2 (cons x ts))) ... (any? (lambda (...)
+(f ... ts2)) ...))` in a recursive group, `ts` a list at `acyclic`, which
+FX-26 types as a pair at a fresh region (so no `trails`) and KFX as the
+list; the fixpoint check found it in the compiler's own text. Written
+`(the trails ...)` there; the rule itself is TODO §25's.

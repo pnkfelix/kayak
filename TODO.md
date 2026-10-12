@@ -423,6 +423,7 @@ refuses 165. What is left are subsystems, each its own design note first:
 - **First-class `poly`** (9, and recursive types through it): TODO §22.
 - **`datum`** (9): with C75's uniform values for KFX, and `letfreeze`,
   `const`, quasiquote, vectors.
-- **Smaller**: `call-with-composable-continuation`'s `spin` by FX-26's
-  rule for it, not KFX's general one for a self-applicable instance
-  (C76, `run/marks-of.fx`); bloblets in the engine.
+- **Smaller**: bloblets in the engine; a `cons` bound by a `let`, its
+  region FX-26's fresh one where KFX takes the list's (C81: found only in a
+  recursive group, through a lambda given to a `poly`; reduce it, then
+  take FX-26's rule).

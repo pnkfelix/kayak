@@ -1834,15 +1834,63 @@
                                        vs)))))))))
         (else other #f)))))
 
+"Whether a procedure of a type could be given itself (C81), FX-26's
+ `cyclic` (Fixpt's infer.rs): a cycle in the type runs through a
+ procedure's parameter. A type merely recursive, as a list or a `datum`
+ is, lets nothing loop. In KFX only a datatype, or `datum`, can be met
+ again on the way down: the trail is their names, each with whether a
+ parameter was crossed on the way to it from the one before."
+(define-datatype trail (trail string bool))
+(define-type trails (listof trail acyclic))
+
+(define-rec
+  (crossed-since? (subr kfx (string trails) bool)
+    (lambda (n ts)
+      "Whether a parameter was crossed on the way from `n`, met before, to here."
+      (cond ((null? ts) #f)
+            ((tagcase (car ts) (trail (m p) (string=? m n))) #f)
+            ((tagcase (car ts) (trail (m p) p)) #t)
+            (else (crossed-since? n (cdr ts))))))
+  (on-trail? (subr kfx (string trails) bool)
+    (lambda (n ts) (any? (lambda ((t trail)) (tagcase t (trail (m p) (string=? m n)))) ts)))
+  (cyclic-walk (subr kfx (cv st ty bool trails) bool)
+    (lambda (v s t crossed ts)
+      (if (i64> (size ts) 64)
+          #t
+          (let ((x (walk s t)))
+            (tagcase x
+              (ty-proc (es ps r)
+                (or (any? (lambda ((p ty)) (cyclic-walk v s p #t ts)) ps) (cyclic-walk v s r crossed ts)))
+              (ty-list (e r) (cyclic-walk v s e crossed ts))
+              (ty-ref (e r) (cyclic-walk v s e crossed ts))
+              (ty-flat (e r) (cyclic-walk v s e crossed ts))
+              (ty-shape (p ls fs) (any? (lambda ((f ty)) (cyclic-walk v s f crossed ts)) fs))
+              (ty-tag (a h d r) (or (cyclic-walk v s a crossed ts) (cyclic-walk v s h crossed ts)))
+              (ty-data (d args)
+                (let ((named (or (string=? d "datum") (not (null? (find-family d (cv-dts v)))))))
+                  (cond ((and named (on-trail? d ts)) (or crossed (crossed-since? d ts)))
+                        (named
+                         "Its fields; what it was given, cautiously, as if taken as a
+                          parameter, as FX-26 has it."
+                         (let ((ts2 (the trails (cons (trail d crossed) ts)))
+                               (kids (if (string=? d "datum")
+                                         (datum-members)
+                                         (tagcase (car (find-family d (cv-dts v)))
+                                           (dt (n ps vs) (concat (map (lambda ((x variant)) (tagcase x (variant (tag fs) fs))) vs)))))))
+                           (or (any? (lambda ((k ty)) (cyclic-walk v s k #f ts2)) kids)
+                               (any? (lambda ((k ty)) (cyclic-walk v s k #t ts2)) args))))
+                        ((string=? d "%composable")
+                         (or (cyclic-walk v s (car args) #t ts) (any? (lambda ((k ty)) (cyclic-walk v s k crossed ts)) (cdr args))))
+                        (else (any? (lambda ((k ty)) (cyclic-walk v s k crossed ts)) args)))))
+              (else other #f)))))))
+
 (define self-applicable? (subr kfx (cv st ty) bool)
   (lambda (v s t)
     "Whether a call of a procedure of type `t`, not known, may loop with no
      recursive call: FX-26 says `spin` for one whose type is recursive
-     through a parameter; KFX, more cautious, for one whose parameters or
-     result may hold any procedure."
-    (tagcase (walk s t)
-      (ty-proc (es ps r) (any? (lambda ((x ty)) (holds-procedure? v s x nil)) (cons r ps)))
-      (else other #t))))
+     through a parameter (C81; KFX had said it, more cautiously, for any
+     procedure that might hold a procedure)."
+    (cyclic-walk v s t #f nil)))
 
 (define void? (subr kfx (st ty) bool)
   (lambda (s t) (tagcase (walk s t) (ty-void () #t) (else other #f))))

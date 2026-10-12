@@ -4029,23 +4029,150 @@ pub fn holds_procedure_p(mut v: &'static Cv, mut s: &'static St, mut t: &'static
     }
 }
 
-/// Whether a call of a procedure of type `t`, not known, may loop with no
-/// recursive call: FX-26 says `spin` for one whose type is recursive
-/// through a parameter; KFX, more cautious, for one whose parameters or
-/// result may hold any procedure.
-pub fn self_applicable_p(v: &'static Cv, s: &'static St, t: &'static Ty) -> bool {
-    let tagcase_ = walk(s, t);
-    match *tagcase_ {
-        Ty::TyProc(es, ps, r) => {
-            any_p(lambda1(move |x: &'static Ty| {
-                holds_procedure_p(v, s, x, nil::<Str>())
-            }), kayak_rt::heap_cons(r, ps))
-        }
-        _ => {
-            let other = tagcase_;
-            true
+// Whether a procedure of a type could be given itself (C81), FX-26's
+// `cyclic` (Fixpt's infer.rs): a cycle in the type runs through a
+// procedure's parameter. A type merely recursive, as a list or a `datum`
+// is, lets nothing loop. In KFX only a datatype, or `datum`, can be met
+// again on the way down: the trail is their names, each with whether a
+// parameter was crossed on the way to it from the one before.
+pub enum Trail {
+    Trail(Str, bool),
+}
+
+pub fn trail(f0: Str, f1: bool) -> &'static Trail {
+    kayak_rt::heap_alloc(Trail::Trail(f0, f1))
+}
+
+pub type Trails = List<&'static Trail>;
+
+/// Whether a parameter was crossed on the way from `n`, met before, to here.
+pub fn crossed_since_p(mut n: Str, mut ts: Trails) -> bool {
+    loop {
+        if null_p(ts) {
+            return false;
+        } else if {
+            let tagcase_ = car(ts);
+            match *tagcase_ {
+                Trail::Trail(m, p) => {
+                    string_eq_p(m, n)
+                }
+            }
+        } {
+            return false;
+        } else if {
+            let tagcase_ = car(ts);
+            match *tagcase_ {
+                Trail::Trail(m, p) => {
+                    p
+                }
+            }
+        } {
+            return true;
+        } else {
+            ts = cdr(ts);
+            continue;
         }
     }
+}
+
+pub fn on_trail_p(n: Str, ts: Trails) -> bool {
+    any_p(lambda1(move |t: &'static Trail| {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Trail::Trail(m, p) => {
+                string_eq_p(m, n)
+            }
+        }
+    }), ts)
+}
+
+pub fn cyclic_walk(mut v: &'static Cv, mut s: &'static St, mut t: &'static Ty, mut crossed: bool, mut ts: Trails) -> bool {
+    loop {
+        if i64_gt(size(ts), 64i64) {
+            return true;
+        } else {
+            let x = walk(s, t);
+            let tagcase_ = x;
+            match *tagcase_ {
+                Ty::TyProc(es, ps, r) => {
+                    return (any_p(lambda1(move |p: &'static Ty| {
+                        cyclic_walk(v, s, p, true, ts)
+                    }), ps) || cyclic_walk(v, s, r, crossed, ts));
+                }
+                Ty::TyList(e, r) => {
+                    t = e;
+                    continue;
+                }
+                Ty::TyRef(e, r) => {
+                    t = e;
+                    continue;
+                }
+                Ty::TyFlat(e, r) => {
+                    t = e;
+                    continue;
+                }
+                Ty::TyShape(p, ls, fs) => {
+                    return any_p(lambda1(move |f: &'static Ty| {
+                        cyclic_walk(v, s, f, crossed, ts)
+                    }), fs);
+                }
+                Ty::TyTag(a, h, d, r) => {
+                    return (cyclic_walk(v, s, a, crossed, ts) || cyclic_walk(v, s, h, crossed, ts));
+                }
+                Ty::TyData(d, args) => {
+                    let named = (string_eq_p(d, str_lit("datum")) || not(null_p(find_family(d, cv_dts(v)))));
+                    if (named && on_trail_p(d, ts)) {
+                        return (crossed || crossed_since_p(d, ts));
+                    } else if named {
+                        // Its fields; what it was given, cautiously, as if taken as a
+                        // parameter, as FX-26 has it.
+                        let (ts2, kids) = (the::<Trails>(kayak_rt::heap_cons(trail(d, crossed), ts)), if string_eq_p(d, str_lit("datum")) {
+                            datum_members()
+                        } else {
+                            let tagcase_ = car(find_family(d, cv_dts(v)));
+                            match *tagcase_ {
+                                Dt::Dt(n, ps, vs) => {
+                                    concat(map(lambda1(move |x: &'static Variant| {
+                                        let tagcase_ = x;
+                                        match *tagcase_ {
+                                            Variant::Variant(tag, fs) => {
+                                                fs
+                                            }
+                                        }
+                                    }), vs))
+                                }
+                            }
+                        });
+                        return (any_p(lambda1(move |k: &'static Ty| {
+                            cyclic_walk(v, s, k, false, ts2)
+                        }), kids) || any_p(lambda1(move |k: &'static Ty| {
+                            cyclic_walk(v, s, k, true, ts2)
+                        }), args));
+                    } else if string_eq_p(d, str_lit("%composable")) {
+                        return (cyclic_walk(v, s, car(args), true, ts) || any_p(lambda1(move |k: &'static Ty| {
+                            cyclic_walk(v, s, k, crossed, ts)
+                        }), cdr(args)));
+                    } else {
+                        return any_p(lambda1(move |k: &'static Ty| {
+                            cyclic_walk(v, s, k, crossed, ts)
+                        }), args);
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    return false;
+                }
+            }
+        }
+    }
+}
+
+/// Whether a call of a procedure of type `t`, not known, may loop with no
+/// recursive call: FX-26 says `spin` for one whose type is recursive
+/// through a parameter (C81; KFX had said it, more cautiously, for any
+/// procedure that might hold a procedure).
+pub fn self_applicable_p(v: &'static Cv, s: &'static St, t: &'static Ty) -> bool {
+    cyclic_walk(v, s, t, false, nil::<&'static Trail>())
 }
 
 pub fn void_p(s: &'static St, t: &'static Ty) -> bool {
