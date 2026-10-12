@@ -391,3 +391,21 @@ growth: unions, `datum` and first-class `poly` for KFX, as a `Value` where
 types are not known and Rust's generics, unboxed, where they are;
 coercions at the checker's subsumption points, views for lists. Reverses
 C57 when done. First step: unions of scalars and `datum`, with views.
+
+## 25. FX-26 beyond KFX: what is left, by subsystem (2026-10-12, after C68–C74)
+
+The round of the checker's growth for the engine done: pairs and `nil`,
+narrowing through `not`/`and`/`or`, `eq?`, `set-car!`, variadics, marks,
+`case` on symbols (KFX's too), lambdas heard last (KFX's too). Beyond KFX
+the engine agrees on 31 of Fixpt's programs, none differs; its checker
+refuses 165. What is left are subsystems, each its own design note first:
+- **Modules, FX-26's** (46 programs): first-class modules, parameterised
+  module types, `extend`, `load-module`; KFX's are a Rust-shaped subset.
+- **Sizes** (19, and lemmas' 3): `(nat k)`, `nlist`, a test's
+  propositions in its type, `proves`; a solver.
+- **Higher kinds** (12).
+- **First-class `poly`** (9, and recursive types through it): TODO §22.
+- **`datum`** (9): with C75's uniform values for KFX, and `letfreeze`,
+  `const`, quasiquote, vectors.
+- **Smaller**: KFX's `spin` for a call of an unseen procedure, where FX-26
+  finds none (`run/marks-of.fx`); bloblets in the engine.
