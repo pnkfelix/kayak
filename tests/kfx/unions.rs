@@ -129,7 +129,29 @@ pub fn some_ints() -> List<Int> {
     })
 }
 
+// A procedure given where one of a union's parameter or result is wanted:
+// wrapped, its argument and result boxed (C82).
+pub fn apply_int(f: &'static dyn Fn(Int) -> Int, n: Int) -> Int {
+    f(n)
+}
+
+pub fn small_size(x: Small) -> Int {
+    if int_p(x) {
+        kayak_rt::value::unbox::<Int>(x)
+    } else {
+        string_length(kayak_rt::value::unbox::<Str>(x))
+    }
+}
+
+pub fn call_small(g: &'static dyn Fn() -> Small) -> Small {
+    g()
+}
+
+pub fn seven() -> Int {
+    int_lit(7)
+}
+
 pub fn main() -> Str {
-    string_append(int_to_string(sizes(all())), string_append(str_lit(" "), string_append(kinds(all()), string_append(str_lit(" "), string_append(int_to_string(_plus(next(none()), next(kayak_rt::value::ToValue::to_value(int_lit(41))))), string_append(str_lit(" "), string_append(kind(pick(false, the::<Wide>(kayak_rt::value::ToValue::to_value(int_lit(-3))), the::<Wide>(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("x")))))), string_append(str_lit(" "), int_to_string(smalls(kayak_rt::value::boxed_list(some_ints())))))))))))
+    string_append(int_to_string(sizes(all())), string_append(str_lit(" "), string_append(kinds(all()), string_append(str_lit(" "), string_append(int_to_string(_plus(next(none()), next(kayak_rt::value::ToValue::to_value(int_lit(41))))), string_append(str_lit(" "), string_append(kind(pick(false, the::<Wide>(kayak_rt::value::ToValue::to_value(int_lit(-3))), the::<Wide>(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("x")))))), string_append(str_lit(" "), string_append(int_to_string(smalls(kayak_rt::value::boxed_list(some_ints()))), string_append(str_lit(" "), int_to_string(_plus(apply_int(lambda1(move |a__0| (&small_size)(kayak_rt::value::ToValue::to_value(a__0))), int_lit(5)), small_size(call_small(lambda0(move || kayak_rt::value::ToValue::to_value((&seven)()))))))))))))))))
 }
 

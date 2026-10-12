@@ -398,10 +398,11 @@ C57 when done.
   as a datum by a view; `typecase` as FX-26 writes it.
 - **Done (C79)**: quasiquote; quotes interned in the engine.
 - **Done (C80)**: the reader's `#(...)` and dotted lists, in quotes.
-- **Left of step 2**: coercions under a
-  type deeper than a list's elements (C78: a list of lists; a procedure
-  given where one of union parameters or result is wanted, a wrapper);
-  until then rustc refuses them, not kfx; `datum-int?`;
+- **Done (C82)**: a procedure given where one of a union's parameters or
+  result is wanted, wrapped.
+- **Left of step 2**: coercions more than one level down (C78, C82: a
+  list of lists; a wrapper's procedure argument); rustc refuses them, not
+  kfx; `datum-int?`;
   `bytevector` in `datum`; a local named `nil`, which FX-26 allows and the
   checker's naming rule refuses (`datum/quote-shadowed.fx`); `no-pair`.
 - **Step 3**: first-class `poly`, a generic instantiated at `Value`.

@@ -2791,6 +2791,44 @@ pub fn put_quoted_items(c: &'static Ctx, xs: Sexps, acc: Chars) -> Chars {
     }
 }
 
+/// A wrapper's boxing of a value, its start (C82).
+pub fn put_box_open(how: Str, acc: Chars) -> Chars {
+    if string_eq_p(how, str_lit("-")) {
+        acc
+    } else if string_eq_p(how, str_lit("scalar")) {
+        put(str_lit("kayak_rt::value::ToValue::to_value("), acc)
+    } else if string_eq_p(how, str_lit("list")) {
+        put(str_lit("kayak_rt::value::list("), acc)
+    } else {
+        put(str_lit("kayak_rt::value::other("), acc)
+    }
+}
+
+pub fn put_box_close(how: Str, acc: Chars) -> Chars {
+    if string_eq_p(how, str_lit("-")) {
+        acc
+    } else if has_prefix_p(how, str_lit("other:")) {
+        put(string_append(str_lit(", kayak_rt::value::Shape::"), string_append(after_prefix(how, str_lit("other:")), str_lit(")"))), acc)
+    } else {
+        put(str_lit(")"), acc)
+    }
+}
+
+pub fn put_boxed_args(mut hows: Strings, mut i: i64, mut n: i64, mut acc: Chars) -> Chars {
+    loop {
+        if i64_gt_eq(i, n) {
+            return acc;
+        } else {
+            (hows, i, acc) = (cdr(hows), i64_plus(i, 1i64), put_box_close(car(hows), put(i64_to_string(i), put(str_lit("a__"), put_box_open(car(hows), if i64_eq(i, 0i64) {
+                acc
+            } else {
+                put(str_lit(", "), acc)
+            })))));
+            continue;
+        }
+    }
+}
+
 pub fn unboxed_type(c: &'static Ctx, e: &'static Sexp) -> Str {
     let (a, b) = (fact_with(c, e, str_lit("unbox ")), fact_with(c, e, str_lit("unbox-list ")));
     if not(string_eq_p(a, str_lit(""))) {
@@ -2859,6 +2897,21 @@ pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc:
         error(string_append(str_lit("kfx: "), string_append(datum_file(e), string_append(str_lit(": a union's member KFX cannot give for it yet (C75): "), fact_with(c, e, str_lit("box none "))))))
     } else if not(string_eq_p(fact_with(c, e, str_lit("unbox-none ")), str_lit(""))) {
         error(string_append(str_lit("kfx: "), string_append(datum_file(e), string_append(str_lit(": a union's member KFX cannot take out of it yet (C75): "), fact_with(c, e, str_lit("unbox-none "))))))
+    } else if (not(string_eq_p(fact_with(c, e, str_lit("wrap ")), str_lit(""))) && not(string_member_p(string_append(str_lit("%wrapped "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
+        // A procedure given where one of a union's parameters or result is
+        // wanted (C82): a closure boxing each argument and the result.
+        let hows = map(&sym_name, read_all(string_chars(fact_with(c, e, str_lit("wrap "))), str_lit(""), 1i64));
+        let arity = i64_minus(size(hows), 1i64);
+        let acc = put(string_append(str_lit("lambda"), string_append(i64_to_string(arity), str_lit("(move |"))), acc);
+        let acc = put_arg_names(0i64, arity, acc);
+        let acc = put(str_lit("| "), acc);
+        let acc = put_box_open(last(hows), acc);
+        let acc = put(str_lit("("), acc);
+        let acc = put_exp(with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%wrapped "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), kayak_rt::nil())), e, n, value(), acc);
+        let acc = put(str_lit(")("), acc);
+        let acc = put_boxed_args(hows, 0i64, arity, acc);
+        let acc = put(str_lit(")"), acc);
+        put(str_lit(")"), put_box_close(last(hows), acc))
     } else if (not(string_eq_p(fact_with(c, e, str_lit("box ")), str_lit(""))) && not(string_member_p(string_append(str_lit("%boxed "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
         // A member given for its union (C75): boxed, a scalar as it is, a
         // list as `nil` or its pair, another shape behind `Any`.

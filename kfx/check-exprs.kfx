@@ -851,6 +851,42 @@
           (else other #f)))
       (else other #f))))
 
+(define box-how (subr kfx (st ty ty) string)
+  (lambda (s from to)
+    "How a value of `from` is boxed where a `to` is wanted, as a wrapper's
+     word (C82): `-` not at all, `scalar`, `list`, `other:Shape`, or `none`
+     where kayak-rt boxes no such member."
+    (if (or (not (valued? s to)) (valued? s from))
+        "-"
+        (let ((m (as-member s from)))
+          (cond ((scalar-member? s m) "scalar")
+                ((or (string=? (shape-of m) "list") (string=? (shape-of m) "nil")) "list")
+                ((string=? (rust-shape (shape-of m)) "") "none")
+                (else (string-append "other:" (rust-shape (shape-of m)))))))))
+
+(define-rec
+  (box-hows (subr kfx (st tys tys) strings)
+    (lambda (s froms tos)
+      (if (or (null? froms) (null? tos))
+          nil
+          (cons (box-how s (car froms) (car tos)) (box-hows s (cdr froms) (cdr tos)))))))
+
+(define wrap-hows (subr kfx (st ty ty) strings)
+  (lambda (s t expected)
+    "A procedure given where one of the same arity is wanted: how each
+     argument the caller gives is boxed for it, then how its result is boxed
+     for the caller (C82); none if nothing is."
+    (tagcase (walk s t)
+      (ty-proc (tes tps tr)
+        (tagcase (walk s expected)
+          (ty-proc (ees eps er)
+            (if (not (i64= (size tps) (size eps)))
+                nil
+                (let ((hows (onto (box-hows s eps tps) (list (box-how s tr er)))))
+                  (if (any? (lambda ((h string)) (not (string=? h "-"))) hows) hows nil))))
+          (else other nil)))
+      (else other nil))))
+
 (define coerced (subr kfx (cv st string i64 ty ty) st)
   (lambda (v s file pos t expected)
     "What is of type `t` where an `expected` is wanted, at `file`, `pos`:
@@ -859,6 +895,12 @@
      the engine shares."
     (let ((from (valued? s t)) (to (valued? s expected)))
       (cond ((string=? file "") s)
+            ((and (not from) (not to) (not (null? (wrap-hows s t expected))))
+             "A procedure given where one of a union's parameters or result is
+              wanted (C82): wrapped, each argument and its result boxed."
+             (if (any? (lambda ((h string)) (string=? h "none")) (wrap-hows s t expected))
+                 (note-types s file pos "box none" (list t))
+                 (note-fact s file pos (string-append "wrap " (words-of (wrap-hows s t expected))))))
             ((and (not from) (not to) (boxed-elements? s (as-member s t) (as-member s expected)))
              "A list at `acyclic` given as a list of a union (C78): copied,
               each element boxed, which nothing can tell from FX-26's, the

@@ -1469,6 +1469,28 @@
             ((and (sym-is? (car xs) ".") (not (null? (cdr xs))) (null? (cdr (cdr xs)))) (put-quoted c (car (cdr xs)) acc))
             (else (put ")" (put-quoted-items c (cdr xs) (put ", " (put-quoted c (car xs) (put "kayak_rt::value::cons(" acc))))))))))
 
+(define put-box-open (subr kfx (string chars) chars)
+  (lambda (how acc)
+    "A wrapper's boxing of a value, its start (C82)."
+    (cond ((string=? how "-") acc)
+          ((string=? how "scalar") (put "kayak_rt::value::ToValue::to_value(" acc))
+          ((string=? how "list") (put "kayak_rt::value::list(" acc))
+          (else (put "kayak_rt::value::other(" acc)))))
+
+(define put-box-close (subr kfx (string chars) chars)
+  (lambda (how acc)
+    (cond ((string=? how "-") acc)
+          ((has-prefix? how "other:") (put (string-append ", kayak_rt::value::Shape::" (string-append (after-prefix how "other:") ")")) acc))
+          (else (put ")" acc)))))
+
+(define-rec
+  (put-boxed-args (subr kfx (strings i64 i64 chars) chars)
+    (lambda (hows i n acc)
+      (if (i64>= i n)
+          acc
+          (put-boxed-args (cdr hows) (i64+ i 1) n
+                          (put-box-close (car hows) (put (i64->string i) (put "a__" (put-box-open (car hows) (if (i64= i 0) acc (put ", " acc)))))))))))
+
 (define unboxed-type (subr kfx (ctx sexp) string)
   (lambda (c e)
     (let ((a (fact-with c e "unbox ")) (b (fact-with c e "unbox-list ")))
@@ -1519,6 +1541,22 @@
              (error (string-append "kfx: " (string-append (datum-file e) (string-append ": a union's member KFX cannot give for it yet (C75): " (fact-with c e "box none "))))))
             ((not (string=? (fact-with c e "unbox-none ") ""))
              (error (string-append "kfx: " (string-append (datum-file e) (string-append ": a union's member KFX cannot take out of it yet (C75): " (fact-with c e "unbox-none "))))))
+            ((and (not (string=? (fact-with c e "wrap ") ""))
+                  (not (string-member? (string-append "%wrapped " (string-append (datum-file e) (i64->string (datum-pos e)))) (ctx-locals c))))
+             "A procedure given where one of a union's parameters or result is
+              wanted (C82): a closure boxing each argument and the result."
+             (let* ((hows (map sym-name (read-all (string-chars (fact-with c e "wrap ")) "" 1)))
+                    (arity (i64- (size hows) 1))
+                    (acc (put (string-append "lambda" (string-append (i64->string arity) "(move |")) acc))
+                    (acc (put-arg-names 0 arity acc))
+                    (acc (put "| " acc))
+                    (acc (put-box-open (last hows) acc))
+                    (acc (put "(" acc))
+                    (acc (put-exp (with-locals c (list (string-append "%wrapped " (string-append (datum-file e) (i64->string (datum-pos e)))))) e n (value) acc))
+                    (acc (put ")(" acc))
+                    (acc (put-boxed-args hows 0 arity acc))
+                    (acc (put ")" acc)))
+               (put ")" (put-box-close (last hows) acc))))
             ((and (not (string=? (fact-with c e "box ") ""))
                   (not (string-member? (string-append "%boxed " (string-append (datum-file e) (i64->string (datum-pos e)))) (ctx-locals c))))
              "A member given for its union (C75): boxed, a scalar as it is, a

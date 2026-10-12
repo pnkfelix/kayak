@@ -1602,3 +1602,15 @@ A gap found on the way: `(let ((ts2 (cons x ts))) ... (any? (lambda (...)
 FX-26 types as a pair at a fresh region (so no `trails`) and KFX as the
 list; the fixpoint check found it in the compiler's own text. Written
 `(the trails ...)` there; the rule itself is TODO §25's.
+
+## C82. A procedure given where one of a union's parameters or result is wanted: wrapped (2026-10-12)
+
+`(subr (small) int)` where a `(subr (int) int)` is wanted, or `(subr ()
+int)` where a `(subr () small)` is: the checker notes `wrap` with how each
+argument the caller gives is boxed for the procedure, and how its result
+is boxed for the caller; the emitter writes a closure that does so,
+`lambdaN(move |a__0, ...| box((f)(box(a__0), ...)))`, as a lift (C45) is
+written. A new closure where FX-26 has the old procedure: only `eq?`
+could tell, which KFX refuses. One level, as C78's lists: a wrapper's
+argument that is itself a procedure or a list to convert is not done, and
+rustc, not kfx, refuses it.

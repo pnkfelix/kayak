@@ -1987,6 +1987,70 @@ pub fn boxed_elements_p(s: &'static St, t: &'static Ty, expected: &'static Ty) -
     }
 }
 
+/// How a value of `from` is boxed where a `to` is wanted, as a wrapper's
+/// word (C82): `-` not at all, `scalar`, `list`, `other:Shape`, or `none`
+/// where kayak-rt boxes no such member.
+pub fn box_how(s: &'static St, from: &'static Ty, to: &'static Ty) -> Str {
+    if (not(valued_p(s, to)) || valued_p(s, from)) {
+        str_lit("-")
+    } else {
+        let m = as_member(s, from);
+        if scalar_member_p(s, m) {
+            str_lit("scalar")
+        } else if (string_eq_p(shape_of(m), str_lit("list")) || string_eq_p(shape_of(m), str_lit("nil"))) {
+            str_lit("list")
+        } else if string_eq_p(rust_shape(shape_of(m)), str_lit("")) {
+            str_lit("none")
+        } else {
+            string_append(str_lit("other:"), rust_shape(shape_of(m)))
+        }
+    }
+}
+
+pub fn box_hows(s: &'static St, froms: Tys, tos: Tys) -> Strings {
+    if (null_p(froms) || null_p(tos)) {
+        nil::<Str>()
+    } else {
+        kayak_rt::heap_cons(box_how(s, car(froms), car(tos)), box_hows(s, cdr(froms), cdr(tos)))
+    }
+}
+
+/// A procedure given where one of the same arity is wanted: how each
+/// argument the caller gives is boxed for it, then how its result is boxed
+/// for the caller (C82); none if nothing is.
+pub fn wrap_hows(s: &'static St, t: &'static Ty, expected: &'static Ty) -> Strings {
+    let tagcase_ = walk(s, t);
+    match *tagcase_ {
+        Ty::TyProc(tes, tps, tr) => {
+            let tagcase_ = walk(s, expected);
+            match *tagcase_ {
+                Ty::TyProc(ees, eps, er) => {
+                    if not(i64_eq(size(tps), size(eps))) {
+                        nil::<Str>()
+                    } else {
+                        let hows = onto(box_hows(s, eps, tps), kayak_rt::heap_cons(box_how(s, tr, er), kayak_rt::nil()));
+                        if any_p(lambda1(move |h: Str| {
+                            not(string_eq_p(h, str_lit("-")))
+                        }), hows) {
+                            hows
+                        } else {
+                            nil::<Str>()
+                        }
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<Str>()
+                }
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<Str>()
+        }
+    }
+}
+
 /// What is of type `t` where an `expected` is wanted, at `file`, `pos`:
 /// boxed into a union, unboxed out of one, or as it is; a member KFX
 /// cannot box yet is the emitter's to refuse, not the checker's, which
@@ -1995,6 +2059,16 @@ pub fn coerced(v: &'static Cv, s: &'static St, file: Str, pos: i64, t: &'static 
     let (from, to) = (valued_p(s, t), valued_p(s, expected));
     if string_eq_p(file, str_lit("")) {
         s
+    } else if (not(from) && not(to) && not(null_p(wrap_hows(s, t, expected)))) {
+        // A procedure given where one of a union's parameters or result is
+        // wanted (C82): wrapped, each argument and its result boxed.
+        if any_p(lambda1(move |h: Str| {
+            string_eq_p(h, str_lit("none"))
+        }), wrap_hows(s, t, expected)) {
+            note_types(s, file, pos, str_lit("box none"), kayak_rt::heap_cons(t, kayak_rt::nil()))
+        } else {
+            note_fact(s, file, pos, string_append(str_lit("wrap "), words_of(wrap_hows(s, t, expected))))
+        }
     } else if (not(from) && not(to) && boxed_elements_p(s, as_member(s, t), as_member(s, expected))) {
         // A list at `acyclic` given as a list of a union (C78): copied,
         // each element boxed, which nothing can tell from FX-26's, the

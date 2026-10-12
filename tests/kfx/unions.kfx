@@ -60,10 +60,18 @@
     (lambda (xs) (if (null? xs) 0 (+ (if (int? (car xs)) (car xs) 100) (smalls (cdr xs)))))))
 (define some-ints (listof int acyclic) (list 1 2 3))
 
+"A procedure given where one of a union's parameter or result is wanted:
+ wrapped, its argument and result boxed (C82)."
+(define apply-int (subr kfx ((subr kfx (int) int) int) int) (lambda (f n) (f n)))
+(define small-size (subr kfx (small) int) (lambda (x) (if (int? x) x (string-length x))))
+(define call-small (subr kfx ((subr kfx () small)) small) (lambda (g) (g)))
+(define seven (subr kfx () int) (lambda () 7))
+
 (define main (subr kfx () string)
   (lambda ()
     (string-append (int->string (sizes (all)))
       (string-append " " (string-append (kinds (all))
         (string-append " " (string-append (int->string (+ (next (none)) (next 41)))
           (string-append " " (string-append (kind (pick #f (the wide -3) (the wide 'x)))
-            (string-append " " (int->string (smalls some-ints))))))))))))
+            (string-append " " (string-append (int->string (smalls some-ints))
+              (string-append " " (int->string (+ (apply-int small-size 5) (small-size (call-small seven))))))))))))))))
