@@ -1190,3 +1190,9 @@ C56: standard operations, symbols and quote, arrays of values;
 
 C58: `fx26/`, an interpreter in KFX (IR, lowering, CEK machine), built
 as `kayak-fx26`; 21 of the corpus's 53 programs agree with Fixpt on it.
+
+## The engine collected; the second self-hosting; a REPL (2026-10-12)
+
+C64: the engine's heap of its own, words in flat arrays, a Cheney collector
+in KFX. C65: `kayak-fx26 repl`. C66: the compiler on the engine compiles
+itself to `boot/src/kfx/` exactly (`scripts/selfhost-engine.sh`, 278 s).

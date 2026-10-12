@@ -371,7 +371,8 @@ and what the generated code looks like for the compiler's own source.
   of the control primitives (`composable`, `call-with-composable-
   continuation` as a poly primitive with `proj`) and then unions are its
   own; the restrictions a pass for Rust after it. A design note first.
-- The collector, now needed: the compiler runs on the engine (C63),
-  compiling small programs to the corpus's Rust exactly, but the
-  self-compile runs out of memory (4 GB/s, never freed). Then tasks on the
-  scheduler; the second self-hosting closed.
+- ~~The collector~~ (C64, in KFX); ~~the second self-hosting~~ (C66: the
+  compiler on the engine makes `boot/src/kfx/`, 278 s); ~~a REPL~~ (C65).
+  Next: the engine's speed (thread-local lookups, dispatch); its tasks on
+  the scheduler; bloblets; FX-26 beyond KFX (pairof, datum, sizes,
+  variadics, marks); a GC for kayak-rt itself, a research note.

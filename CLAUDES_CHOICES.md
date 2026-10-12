@@ -1309,3 +1309,17 @@ failing, and KFX catches nothing). `fx26/repl.kfx`.
   `(maxeff (read (globals f)) spin)`, not kfx's atoms.
 - Not yet: Fixpt's `,` commands; line editing; a datatype's definition
   writes nothing.
+
+## C66. The second self-hosting, closed (2026-10-12)
+
+The compiler, run on kayak's own FX-26 engine (`kayak-fx26 --run`, C63,
+on its collected heap, C64), compiles itself and makes `boot/src/kfx/`
+byte for byte: 278 s, 783 MB resident (the self-compile as Rust, 0.6 s).
+`scripts/selfhost-engine.sh`; not in `scripts/check.sh` for its time.
+- **The collector's share**, measured by sampling a compile on the engine:
+  about 5% of the time the engine is busy; the rest the machine's loop,
+  allocation and thread-local lookups of the heap's spaces. The KFX
+  collector stands (C64's plan: Rust if its share mattered).
+- **Speed, next**: the control primitives' numbers were found by name at
+  each primitive's call (fixed: 5x); the thread-local lookups and the
+  machine's dispatch are what is left to win.
