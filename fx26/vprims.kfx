@@ -217,5 +217,6 @@
         ((i64= op 165) (begin (obj-set! a 0 b) w-unit))
         ((i64= op 166) (begin (obj-set! a 1 b) w-unit))
         ((i64= op 167) a)
+        ((i64= op 169) (one-word! ob-ref (fixnum 0)))
         ((i64>= op fixed-base) (fixed-op-word (name-of-number (i64- op fixed-base)) a b))
         (else (begin (error "the engine: a primitive of no number") 0))))))

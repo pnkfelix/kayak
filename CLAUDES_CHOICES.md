@@ -1400,3 +1400,17 @@ of them. Beyond KFX, 24 agree (23).
   corpus the same); kfx now accepts 106 of Fixpt's programs (105), all
   agreeing.
 - Beyond KFX, the engine agrees on 28 (24).
+
+## C72. Continuation marks: the checker's and the engine's (2026-10-12)
+
+`(mark-key T R)` and FX-26's five operations at its types:
+`make-continuation-mark-key`, `with-mark` (a thunk called with the mark on
+the continuation: in place of one of the same key on the frame below, in
+tail position, as Scheme's), `first-mark`, `current-marks`, `marks-of`
+(a captured continuation's). In the engine a mark is a frame of its own
+on the continuation, which a capture takes with the rest, so marks travel
+with continuations as FX-26's do; a key an object compared by identity.
+Refused for Rust by the restriction pass (C18's: a prompt in Rust would
+save and restore the marks around each poll; for cancel scopes in KFX's
+tasks, later). `marks-of.fx` waits on FX-26's inference of a lambda's
+parameter from a later argument. Beyond KFX, 30 agree (28).

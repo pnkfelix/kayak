@@ -874,6 +874,10 @@
                            (ty-data "%flat-array" (list e (ty-rconst (i64->string k))))
                            (refuse v (string-append "a flat array is of a flat, its length a literal (KFX has no arrays of values yet): " (show-sexp t))))))
                    (else other (refuse v (string-append "a flat array's length is a literal (KFX has no arrays of values yet): " (show-sexp t))))))
+                ((and (sym-is? (car xs) "mark-key") (i64= (size xs) 3))
+                 "FX-26's continuation mark's key (C72), `(mark-key T R)`: a place in
+                  the dynamic context, its marks `T`s, at `R`."
+                 (ty-data "%mark-key" (list (parse-type v tvars (second xs)) (parse-mutable-region v tvars (third xs)))))
                 ((and (sym-is? (car xs) "vsubr") (i64= (size xs) 4))
                  "FX-26's variadic procedure (C71), `(vsubr E T R)`: any number of `T`s
                   to an `R`, of effect `E`."
@@ -1129,6 +1133,7 @@
                 ((string=? d "%array") (string-append "(arrayof " (string-append (show-tys s args) ")")))
                 ((string=? d "%union") (string-append "(union " (string-append (show-tys s args) ")")))
                 ((string=? d "%pairof") (string-append "(pairof " (string-append (show-tys s args) ")")))
+                ((string=? d "%mark-key") (string-append "(mark-key " (string-append (show-tys s args) ")")))
                 ((string=? d "%vsubr")
                  (string-append "(vsubr " (string-append (tagcase (car args) (ty-proc (es ps r) (show-effs es)) (else other "?"))
                    (string-append " " (string-append (show-tys s (cdr args)) ")")))))

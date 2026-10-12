@@ -456,6 +456,8 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         w_unit()
     } else if i64_eq(op, 167i64) {
         a
+    } else if i64_eq(op, 169i64) {
+        one_word_x(ob_ref(), fixnum(0i64))
     } else if i64_gt_eq(op, fixed_base()) {
         fixed_op_word(name_of_number(i64_minus(op, fixed_base())), a, b)
     } else {

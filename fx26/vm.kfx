@@ -32,6 +32,9 @@
 (define fk-phandler i64 10)
 (define fk-prompt i64 11)
 (define fk-abort i64 12)
+"A continuation mark (C72): its key (an object, compared by identity) and
+ its value."
+(define fk-mark i64 13)
 
 (define frame-kind (subr (maxeff (read @globals) spin (read @h)) (i64) i64) (lambda (k) (fixnum-value (obj-ref k 1))))
 (define frame-next (subr (maxeff (read @globals) spin (read @h)) (i64) i64) (lambda (k) (obj-ref k 0)))
@@ -103,12 +106,40 @@
 
 (define tag-number (subr kfx (i64) i64) (lambda (w) (immediate-value w)))
 
+"Marks (C72): those of a key in `n` frames from `k` (all, if `n` is -1),
+ the innermost first."
+(define-rec
+  (marks-in (subr hp (i64 i64 i64 i64) i64)
+    (lambda (k key n acc)
+      (cond ((or (i64= k w-nil) (i64= n 0)) (reverse-words! acc w-nil))
+            ((and (i64= (frame-kind k) fk-mark) (i64= (frame-field k 0) key))
+             (marks-in (frame-next k) key (i64- n 1) (pair! (frame-field k 1) acc)))
+            (else (marks-in (frame-next k) key (i64- n 1) acc))))))
+
+(define-rec
+  (marks-count (subr (maxeff (read @globals) spin (read @h)) (i64 i64 i64 i64) i64)
+    (lambda (k key n acc)
+      (cond ((or (i64= k w-nil) (i64= n 0)) acc)
+            ((and (i64= (frame-kind k) fk-mark) (i64= (frame-field k 0) key)) (marks-count (frame-next k) key (i64- n 1) (i64+ acc 1)))
+            (else (marks-count (frame-next k) key (i64- n 1) acc))))))
+
+(define-rec
+  (first-mark-in (subr (maxeff (read @globals) spin (read @h)) (i64 i64 i64) i64)
+    (lambda (k key default)
+      (cond ((i64= k w-nil) default)
+            ((and (i64= (frame-kind k) fk-mark) (i64= (frame-field k 0) key)) (frame-field k 1))
+            (else (first-mark-in (frame-next k) key default))))))
+
 "The control primitives' numbers, their places in `prim-list` (table.kfx),
  written as literals: a constant is a procedure, called at each use."
 (define op-make-tag i64 135)
 (define op-abort i64 136)
 (define op-capture i64 137)
 (define op-suspend i64 138)
+(define op-with-mark i64 170)
+(define op-first-mark i64 171)
+(define op-current-marks i64 172)
+(define op-marks-of i64 173)
 (define op-apply i64 168)
 
 (define-rec
@@ -220,6 +251,7 @@
                           (run 0 body (frame-field k 2) (frame! fk-prompt next 2 (fixnum (tag-number (frame-field k 0))) val 0 0) 0 0 0))
                         (else other (run 1 0 env next val 0 0))))
                      ((i64= kind fk-prompt) (run 1 0 env next val 0 0))
+                     ((i64= kind fk-mark) (run 1 0 env next val 0 0))
                      ((i64= kind fk-abort) (abort-to (fixnum-value (frame-field k 0)) next val))
                      (else (begin (error "the engine: a frame of no kind") 0))))))
             (else (apply-step f args k))))))
@@ -316,6 +348,26 @@
            (cond
              ((i64= op op-make-tag)
               (let ((t (get tags-made))) (begin (set tags-made (i64+ t 1)) (run 1 0 0 k (immediate imm-tag t) 0 0))))
+             ((i64= op op-with-mark)
+              "The thunk called with the mark on the continuation: in place of
+               one of the key there, in tail position, as Scheme's."
+              (let* ((key (pair-car args)) (v (pair-car (pair-cdr args))) (thunk (pair-car (pair-cdr (pair-cdr args))))
+                     (k2 (if (and (not (i64= k w-nil)) (i64= (frame-kind k) fk-mark) (i64= (frame-field k 0) key))
+                             (frame! fk-mark (frame-next k) 2 key v 0 0)
+                             (frame! fk-mark k 2 key v 0 0))))
+                (run 2 0 0 k2 0 thunk w-nil)))
+             ((i64= op op-first-mark) (run 1 0 0 k (first-mark-in k (pair-car args) (pair-car (pair-cdr args))) 0 0))
+             ((i64= op op-current-marks)
+              (let ((need (i64* 6 (i64+ (marks-count k (pair-car args) -1 0) 1))))
+                (if (i64< (heap-room) (i64+ need reserve))
+                    (gc-run 2 0 0 k 0 f args need)
+                    (run 1 0 0 k (marks-in k (pair-car args) -1 w-nil) 0 0))))
+             ((i64= op op-marks-of)
+              (let* ((c (pair-car args)) (key (pair-car (pair-cdr args)))
+                     (need (i64* 6 (i64+ (marks-count (obj-ref c 0) key (fixnum-value (obj-ref c 1)) 0) 1))))
+                (if (i64< (heap-room) (i64+ need reserve))
+                    (gc-run 2 0 0 k 0 f args need)
+                    (run 1 0 0 k (marks-in (obj-ref c 0) key (fixnum-value (obj-ref c 1)) w-nil) 0 0))))
              ((i64= op op-apply)
               "`(apply f xs)` (C71): `f` on `xs`'s elements, the list copied, as
                FX-26 copies it (a fresh list, which a `vlambda` may keep)."

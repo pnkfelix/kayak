@@ -97,6 +97,12 @@ pub fn fk_abort() -> i64 {
     12i64
 }
 
+// A continuation mark (C72): its key (an object, compared by identity) and
+// its value.
+pub fn fk_mark() -> i64 {
+    13i64
+}
+
 pub fn frame_kind(k: i64) -> i64 {
     fixnum_value(obj_ref(k, 1i64))
 }
@@ -243,6 +249,49 @@ pub fn tag_number(w: i64) -> i64 {
     immediate_value(w)
 }
 
+// Marks (C72): those of a key in `n` frames from `k` (all, if `n` is -1),
+// the innermost first.
+pub fn marks_in(mut k: i64, mut key: i64, mut n: i64, mut acc: i64) -> i64 {
+    loop {
+        if (i64_eq(k, w_nil()) || i64_eq(n, 0i64)) {
+            return reverse_words_x(acc, w_nil());
+        } else if (i64_eq(frame_kind(k), fk_mark()) && i64_eq(frame_field(k, 0i64), key)) {
+            (k, n, acc) = (frame_next(k), i64_minus(n, 1i64), pair_x(frame_field(k, 1i64), acc));
+            continue;
+        } else {
+            (k, n) = (frame_next(k), i64_minus(n, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn marks_count(mut k: i64, mut key: i64, mut n: i64, mut acc: i64) -> i64 {
+    loop {
+        if (i64_eq(k, w_nil()) || i64_eq(n, 0i64)) {
+            return acc;
+        } else if (i64_eq(frame_kind(k), fk_mark()) && i64_eq(frame_field(k, 0i64), key)) {
+            (k, n, acc) = (frame_next(k), i64_minus(n, 1i64), i64_plus(acc, 1i64));
+            continue;
+        } else {
+            (k, n) = (frame_next(k), i64_minus(n, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn first_mark_in(mut k: i64, mut key: i64, mut default: i64) -> i64 {
+    loop {
+        if i64_eq(k, w_nil()) {
+            return default;
+        } else if (i64_eq(frame_kind(k), fk_mark()) && i64_eq(frame_field(k, 0i64), key)) {
+            return frame_field(k, 1i64);
+        } else {
+            k = frame_next(k);
+            continue;
+        }
+    }
+}
+
 // The control primitives' numbers, their places in `prim-list` (table.kfx),
 // written as literals: a constant is a procedure, called at each use.
 pub fn op_make_tag() -> i64 {
@@ -259,6 +308,22 @@ pub fn op_capture() -> i64 {
 
 pub fn op_suspend() -> i64 {
     138i64
+}
+
+pub fn op_with_mark() -> i64 {
+    170i64
+}
+
+pub fn op_first_mark() -> i64 {
+    171i64
+}
+
+pub fn op_current_marks() -> i64 {
+    172i64
+}
+
+pub fn op_marks_of() -> i64 {
+    173i64
 }
 
 pub fn op_apply() -> i64 {
@@ -528,6 +593,9 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                     } else if i64_eq(kind, fk_prompt()) {
                         (mode, node, k, f, args) = (1i64, 0i64, next, 0i64, 0i64);
                         continue;
+                    } else if i64_eq(kind, fk_mark()) {
+                        (mode, node, k, f, args) = (1i64, 0i64, next, 0i64, 0i64);
+                        continue;
                     } else if i64_eq(kind, fk_abort()) {
                         return abort_to(fixnum_value(frame_field(k, 0i64)), next, val);
                     } else {
@@ -711,6 +779,36 @@ pub fn apply_step(f: i64, args: i64, k: i64) -> i64 {
             let t = get(tags_made());
             set(tags_made(), i64_plus(t, 1i64));
             run(1i64, 0i64, 0i64, k, immediate(imm_tag(), t), 0i64, 0i64)
+        } else if i64_eq(op, op_with_mark()) {
+            // The thunk called with the mark on the continuation: in place of
+            // one of the key there, in tail position, as Scheme's.
+            let key = pair_car(args);
+            let v = pair_car(pair_cdr(args));
+            let thunk = pair_car(pair_cdr(pair_cdr(args)));
+            let k2 = if (not(i64_eq(k, w_nil())) && i64_eq(frame_kind(k), fk_mark()) && i64_eq(frame_field(k, 0i64), key)) {
+                frame_x(fk_mark(), frame_next(k), 2i64, key, v, 0i64, 0i64)
+            } else {
+                frame_x(fk_mark(), k, 2i64, key, v, 0i64, 0i64)
+            };
+            run(2i64, 0i64, 0i64, k2, 0i64, thunk, w_nil())
+        } else if i64_eq(op, op_first_mark()) {
+            run(1i64, 0i64, 0i64, k, first_mark_in(k, pair_car(args), pair_car(pair_cdr(args))), 0i64, 0i64)
+        } else if i64_eq(op, op_current_marks()) {
+            let need = i64_star(6i64, i64_plus(marks_count(k, pair_car(args), -1i64, 0i64), 1i64));
+            if i64_lt(heap_room(), i64_plus(need, reserve())) {
+                gc_run(2i64, 0i64, 0i64, k, 0i64, f, args, need)
+            } else {
+                run(1i64, 0i64, 0i64, k, marks_in(k, pair_car(args), -1i64, w_nil()), 0i64, 0i64)
+            }
+        } else if i64_eq(op, op_marks_of()) {
+            let c = pair_car(args);
+            let key = pair_car(pair_cdr(args));
+            let need = i64_star(6i64, i64_plus(marks_count(obj_ref(c, 0i64), key, fixnum_value(obj_ref(c, 1i64)), 0i64), 1i64));
+            if i64_lt(heap_room(), i64_plus(need, reserve())) {
+                gc_run(2i64, 0i64, 0i64, k, 0i64, f, args, need)
+            } else {
+                run(1i64, 0i64, 0i64, k, marks_in(obj_ref(c, 0i64), key, fixnum_value(obj_ref(c, 1i64)), w_nil()), 0i64, 0i64)
+            }
         } else if i64_eq(op, op_apply()) {
             // `(apply f xs)` (C71): `f` on `xs`'s elements, the list copied, as
             // FX-26 copies it (a fresh list, which a `vlambda` may keep).

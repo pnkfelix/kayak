@@ -1844,6 +1844,10 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                             return match refuse(v, string_append(str_lit("a flat array's length is a literal (KFX has no arrays of values yet): "), show_sexp(t))) {};
                         }
                     }
+                } else if (sym_is_p(car(xs), str_lit("mark-key")) && i64_eq(size(xs), 3i64)) {
+                    // FX-26's continuation mark's key (C72), `(mark-key T R)`: a place in
+                    // the dynamic context, its marks `T`s, at `R`.
+                    return ty_data(str_lit("%mark-key"), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::heap_cons(parse_mutable_region(v, tvars, third(xs)), kayak_rt::nil())));
                 } else if (sym_is_p(car(xs), str_lit("vsubr")) && i64_eq(size(xs), 4i64)) {
                     // FX-26's variadic procedure (C71), `(vsubr E T R)`: any number of `T`s
                     // to an `R`, of effect `E`.
@@ -2316,6 +2320,8 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
                 string_append(str_lit("(union "), string_append(show_tys(s, args), str_lit(")")))
             } else if string_eq_p(d, str_lit("%pairof")) {
                 string_append(str_lit("(pairof "), string_append(show_tys(s, args), str_lit(")")))
+            } else if string_eq_p(d, str_lit("%mark-key")) {
+                string_append(str_lit("(mark-key "), string_append(show_tys(s, args), str_lit(")")))
             } else if string_eq_p(d, str_lit("%vsubr")) {
                 string_append(str_lit("(vsubr "), string_append({
                     let tagcase_ = car(args);
