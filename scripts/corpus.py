@@ -27,6 +27,10 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import fixptcache  # noqa: E402
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CORPUS = os.path.join(ROOT, "tests", "kfx")
@@ -66,16 +70,27 @@ def files_of(path):
     return manifest(path) if path.endswith(".unit") else [path]
 
 
-def answer(binary, path, tmp):
+def stage0(path, then):
+    """The prelude, the program's files, and `then`, as one file's text."""
     with open(os.path.join(ROOT, "kfx", "prelude.fx")) as f:
         text = f.read()
     for p in files_of(path):
         with open(p) as f:
             text += "\n" + f.read()
-    text += "\n(main)\n"
-    with open(tmp, "w") as f:
-        f.write(text)
-    r = run([binary, "--dialect", "fx26", "--step-limit", "none", "eval", "--raw", tmp])
+    return text + then
+
+
+def fixpt_on(binary, text, args):
+    """Fixpt on `text` as one file, cached (fixptcache.py)."""
+    with tempfile.TemporaryDirectory() as d:
+        tmp = os.path.join(d, "stage0.fx")
+        with open(tmp, "w") as f:
+            f.write(text)
+        return fixptcache.run(binary, ["--dialect", "fx26"] + args + [tmp], [tmp])
+
+
+def answer(binary, path):
+    r = fixpt_on(binary, stage0(path, "\n(main)\n"), ["--step-limit", "none", "eval", "--raw"])
     if r.returncode != 0:
         return None, r.stderr
     return r.stdout, None
@@ -84,24 +99,23 @@ def answer(binary, path, tmp):
 def refused(compiler, interpreter, kind, wrong):
     directory = os.path.join(ROOT, "tests", kind)
     names = sorted(f[:-4] for f in os.listdir(directory) if f.endswith(".kfx"))
-    tmp = os.path.join(directory, ".stage0.fx")
-    for n in names:
+
+    def both(n):
         src = os.path.join(directory, n + ".kfx")
-        r = run([compiler, src])
+        mine = run([compiler, src])
+        theirs = fixpt_on(interpreter, stage0(src, ""), ["eval"]) if interpreter is not None else None
+        return mine, theirs
+
+    ran = fixptcache.parallel(both, names)
+    for n, (r, theirs) in zip(names, ran):
+        src = os.path.join(directory, n + ".kfx")
         if r.returncode == 0:
             wrong.append("%s/%s: kfx accepts it" % (kind, n))
         elif not any(l.startswith("kfx: " + src + ":") for l in r.stderr.splitlines()):
             # Every refusal says where: the file, and the line (TODO.md section 7).
             wrong.append("%s/%s: kfx's message says not where: %s" % (kind, n, r.stderr.strip()[-200:]))
-        if interpreter is not None:
-            with open(os.path.join(ROOT, "kfx", "prelude.fx")) as f:
-                text = f.read()
-            with open(src) as f:
-                text += "\n" + f.read()
-            with open(tmp, "w") as f:
-                f.write(text)
-            accepted = run([interpreter, "--dialect", "fx26", "eval", tmp]).returncode == 0
-            os.remove(tmp)
+        if theirs is not None:
+            accepted = theirs.returncode == 0
             if accepted != (kind == "kfx-stricter"):
                 wrong.append("%s/%s: Fixpt %s it" % (kind, n, "accepts" if accepted else "refuses"))
     return len(names)
@@ -176,34 +190,35 @@ def main():
         else:
             wrong.append(os.path.relpath(path, ROOT) + (" is missing" if old is None else " differs"))
 
-    for n in names:
+    def made(n):
+        """kfx's Rust of program `n` (its files' texts, for a unit), and
+        Fixpt's answer."""
         unit = os.path.join(CORPUS, n + ".unit")
         src = unit if os.path.exists(unit) else os.path.join(CORPUS, n + ".kfx")
-        out = os.path.join(CORPUS, ".kfx-out")
-        if os.path.exists(out):
-            shutil.rmtree(out)
-        os.makedirs(out)  # kfx makes no directories (C50)
-        r = run([compiler, src, out] if src == unit else [compiler, src])
+        with tempfile.TemporaryDirectory() as out:
+            r = run([compiler, src, out] if src == unit else [compiler, src])
+            files = {f: open(os.path.join(out, f)).read() for f in sorted(os.listdir(out))} if src == unit else None
+        theirs = answer(interpreter, src) if interpreter is not None else None
+        return r, files, theirs
+
+    for n, (r, files, theirs) in zip(names, fixptcache.parallel(made, names)):
+        unit = os.path.join(CORPUS, n + ".unit")
+        src = unit if os.path.exists(unit) else os.path.join(CORPUS, n + ".kfx")
         if r.returncode != 0:
             said = [l for l in r.stderr.splitlines() if l.startswith("kfx:")]
             wrong.append("%s: kfx refuses it: %s" % (n, (said or r.stderr.strip().splitlines()[-1:])[0]))
             continue
-        if src == unit:
-            for f in sorted(os.listdir(out)):
-                with open(os.path.join(out, f)) as g:
-                    keep(os.path.join(CORPUS, n, f), g.read())
-            shutil.rmtree(out)
+        if files is not None:
+            for f, text in files.items():
+                keep(os.path.join(CORPUS, n, f), text)
         else:
             keep(os.path.join(CORPUS, n + ".rs"), r.stdout)
-        if interpreter is not None:
-            got, err = answer(interpreter, src, os.path.join(CORPUS, ".stage0.fx"))
+        if theirs is not None:
+            got, err = theirs
             if err is not None:
                 wrong.append("%s: Fixpt refuses it: %s" % (n, err.strip()))
             else:
                 keep(os.path.join(CORPUS, n + ".out"), got)
-    tmp = os.path.join(CORPUS, ".stage0.fx")
-    if os.path.exists(tmp):
-        os.remove(tmp)
     keep(LIB, lib(names))
     counts = [refused(compiler, interpreter, kind, wrong) for kind in ("kfx-refused", "kfx-stricter")]
     for w in wrong:

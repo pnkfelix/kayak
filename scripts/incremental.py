@@ -63,8 +63,14 @@ def main():
             for d in ("warm", "cold"):
                 shutil.rmtree(os.path.join(tmp, d), ignore_errors=True)
                 os.makedirs(os.path.join(tmp, d))
-            run([KFX, "--cache", cache, unit, os.path.join(tmp, "warm")])
-            run([KFX, unit, os.path.join(tmp, "cold")])
+            # The two at once: neither reads what the other writes.
+            both = [subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+                    for args in ([KFX, "--cache", cache, unit, os.path.join(tmp, "warm")], [KFX, unit, os.path.join(tmp, "cold")])]
+            for proc in both:
+                _, err = proc.communicate()
+                if proc.returncode != 0:
+                    sys.stderr.write(err)
+                    sys.exit("incremental: kfx fails")
             warm, cold = files(os.path.join(tmp, "warm")), files(os.path.join(tmp, "cold"))
             if warm != cold:
                 differ = [f for f in cold if warm.get(f) != cold[f]]

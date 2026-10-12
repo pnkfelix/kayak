@@ -17,6 +17,9 @@ import shutil
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import fixptcache  # noqa: E402
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RUNNER = os.path.join(ROOT, "target", "fixpt-programs")
 LIMIT = 30
@@ -132,11 +135,29 @@ def head_of(form):
     return ("expression", 1)
 
 
+VALUES = {}
+
+
 def fixpt_values(binary, path, text):
     """The values Fixpt gives the program's top-level expressions, or why
-    there are none."""
+    there are none; each program's once, and cached (fixptcache.py)."""
+    if path not in VALUES:
+        VALUES[path] = fixpt_values_run(binary, path, text)
+    return VALUES[path]
+
+
+def prefetch(binary, paths):
+    """Fixpt's values for each of `paths`, many at once."""
+    def one(path):
+        with open(path) as g:
+            return path, fixpt_values_run(binary, path, g.read())
+    for path, v in fixptcache.parallel(one, [p for p in paths if p not in VALUES]):
+        VALUES[path] = v
+
+
+def fixpt_values_run(binary, path, text):
     try:
-        r = run([binary, "--dialect", "fx26", "--step-limit", "none", "eval", path], timeout=LIMIT)
+        r = fixptcache.run(binary, ["--dialect", "fx26", "--step-limit", "none", "eval", path], [path], timeout=LIMIT)
     except subprocess.TimeoutExpired:
         return None, "Fixpt runs past %ds" % LIMIT
     if r.returncode != 0:
@@ -168,13 +189,13 @@ def engine_runs(accepted, fixpt, listing, bless):
     if run(["cargo", "build", "--release", "--quiet", "-p", "kayak-fx26"], cwd=ROOT).returncode != 0:
         sys.exit("run-fixpt-programs: the engine does not build")
     agree, differ, cannot = [], [], []
+    ran = dict(zip([p for _, _, p in accepted], fixptcache.parallel(lambda p: timed(engine, p), [p for _, _, p in accepted])))
     for name, rel, path in accepted:
         with open(path) as g:
             text = g.read()
         expected, why = fixpt_values(fixpt, path, text)
-        try:
-            r = run([engine, path], timeout=LIMIT)
-        except subprocess.TimeoutExpired:
+        r = ran[path]
+        if r is None:
             cannot.append((rel, "runs past %ds" % LIMIT))
             continue
         if expected is None and why.startswith("REFUSED: ! evaluation failed"):
@@ -211,21 +232,29 @@ def engine_runs(accepted, fixpt, listing, bless):
     return bool(differ or lost)
 
 
+def timed(binary, *args):
+    """A run, or None if it runs past the limit."""
+    try:
+        return run([binary] + list(args), timeout=LIMIT)
+    except subprocess.TimeoutExpired:
+        return None
+
+
 def beyond_runs(refused, fixpt, listing):
     """The engine on Fixpt's programs that kfx refuses: FX-26 beyond KFX,
     what the engine is for (C58, C60). Counted, not yet failed: a program
     the engine's checker refuses is the checker's to grow."""
     engine = os.path.join(ROOT, "target", "release", "kayak-fx26")
     agree, differ, checker, cannot = [], [], [], []
+    ran = dict(zip([p for _, _, p in refused], fixptcache.parallel(lambda p: timed(engine, p), [p for _, _, p in refused])))
     for _, rel, path in refused:
         with open(path) as g:
             text = g.read()
         expected, why = fixpt_values(fixpt, path, text)
         if expected is None and not why.startswith("REFUSED: ! evaluation failed"):
             continue
-        try:
-            r = run([engine, path], timeout=LIMIT)
-        except subprocess.TimeoutExpired:
+        r = ran[path]
+        if r is None:
             cannot.append((rel, "runs past %ds" % LIMIT))
             continue
         if expected is None:
@@ -267,22 +296,22 @@ def main():
     shutil.rmtree(RUNNER, ignore_errors=True)
     os.makedirs(os.path.join(RUNNER, "src"))
     accepted, refused = [], []
+    paths = []
     for d, _, fs in sorted(os.walk(programs_dir)):
         # Fixpt's diverge/ programs are meant to run for ever.
         if os.path.relpath(d, programs_dir).startswith("diverge"):
             continue
-        for f in sorted(fs):
-            if not f.endswith(".fx"):
-                continue
-            path = os.path.join(d, f)
-            r = run([kfx, "--toplevel", path], timeout=LIMIT)
-            if r.returncode != 0:
-                refused.append(("", os.path.relpath(path, programs_dir), path))
-                continue
-            name = "p%d" % len(accepted)
-            with open(os.path.join(RUNNER, "src", name + ".rs"), "w") as g:
-                g.write(r.stdout)
-            accepted.append((name, os.path.relpath(path, programs_dir), path))
+        paths.extend(os.path.join(d, f) for f in sorted(fs) if f.endswith(".fx"))
+    compiled = fixptcache.parallel(lambda path: run([kfx, "--toplevel", path], timeout=LIMIT), paths)
+    for path, r in zip(paths, compiled):
+        if r.returncode != 0:
+            refused.append(("", os.path.relpath(path, programs_dir), path))
+            continue
+        name = "p%d" % len(accepted)
+        with open(os.path.join(RUNNER, "src", name + ".rs"), "w") as g:
+            g.write(r.stdout)
+        accepted.append((name, os.path.relpath(path, programs_dir), path))
+    prefetch(fixpt, paths)
 
     with open(os.path.join(RUNNER, "Cargo.toml"), "w") as g:
         g.write('[package]\nname = "fixpt-programs"\nversion = "0.1.0"\nedition = "2024"\n\n'
@@ -303,15 +332,15 @@ def main():
     runner = os.path.join(RUNNER, "target", "release", "fixpt-programs")
 
     agree, differ, skipped = 0, [], []
+    rust_ran = dict(zip([n for n, _, _ in accepted], fixptcache.parallel(lambda n: timed(runner, n), [n for n, _, _ in accepted])))
     for name, rel, path in accepted:
         with open(path) as g:
             text = g.read()
         expected, why = fixpt_values(fixpt, path, text)
         if expected is None and why.startswith("REFUSED: ! evaluation failed"):
             # A run-time error, Fixpt's: the Rust must fail too.
-            try:
-                r = run([runner, name], timeout=LIMIT)
-            except subprocess.TimeoutExpired:
+            r = rust_ran[name]
+            if r is None:
                 differ.append((rel, "Rust runs past %ds" % LIMIT))
                 continue
             if r.returncode != 0:
@@ -328,9 +357,8 @@ def main():
         if expected is None:
             skipped.append((rel, why))
             continue
-        try:
-            r = run([runner, name], timeout=LIMIT)
-        except subprocess.TimeoutExpired:
+        r = rust_ran[name]
+        if r is None:
             differ.append((rel, "Rust runs past %ds" % LIMIT))
             continue
         if r.returncode != 0:

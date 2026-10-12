@@ -1323,3 +1323,20 @@ byte for byte: 278 s, 783 MB resident (the self-compile as Rust, 0.6 s).
 - **Speed, next**: the control primitives' numbers were found by name at
   each primitive's call (fixed: 5x); the thread-local lookups and the
   machine's dispatch are what is left to win.
+
+## C67. The feedback loop: the check in 46 s, from about 4 minutes (2026-10-12)
+
+The user's motive for speed: a faster cycle. Measured first, step by step
+(warm): `run-fixpt-programs.py` 133 s, `incremental.py` 39 s,
+`corpus.py` 36 s, `fixpoint.sh` 17 s, the rest a few seconds.
+- **Fixpt's runs cached** (`scripts/fixptcache.py`): what Fixpt says of a
+  file depends on the Fixpt pinned, the arguments and the file's text
+  alone, so each run is kept under a hash of those (`target/fixpt-cache/`).
+  Fixpt's values for each program computed once, not twice.
+- **Run in parallel**, as many as there are processors: kfx's compiles,
+  Fixpt's runs, the Rust programs', the engine's; an incremental check's
+  two compiles of each edit; stage 0's three runs of the compiler.
+- After: `run-fixpt-programs.py` 7 s, `corpus.py` under 1 s warm (4 s
+  cold), `incremental.py` 23 s, `fixpoint.sh` 8 s; `scripts/check.sh`
+  46 s, the same results. `scripts/regen.sh` after an edit to the
+  compiler, 5 s (rustc 2 s of it).
