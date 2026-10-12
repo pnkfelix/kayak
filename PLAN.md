@@ -405,12 +405,14 @@ has neither of).
   `Result` by effect, the recommendation (C18).
 - **Q4. Places**: needed now? (`docs/research/places.md` §4.) Not yet,
   I decided (C23): nothing needs memory reclaimed; yours to overrule.
-- **Q5. Incremental computation** (§6): which is meant? (a) the compiler
-  itself incremental, as Coopt's query compiler (`coopt-query`:
-  revisions, memos, dependencies, early cutoff), so that a change
-  recompiles only what it reaches; (b) a facility for KFX programs,
-  computations memoized with their dependencies tracked, as primitives;
-  or (c) both, (a) built on (b). Open.
+- **Q5. Incremental computation** (§6). Answered (the user,
+  2026-10-12): (a), the compiler itself incremental, as Coopt's query
+  compiler (`coopt-query`: revisions, memos, dependencies, early cutoff),
+  so that a change recompiles only what it reaches. And (b), a facility
+  KFX programs can use, insofar as it gets us (a): the compiler is
+  written in KFX, so its queries are KFX procedures, and the machinery
+  under them (the memo table, the dependency graph, revisions) is
+  `kayak-rt`'s, given to KFX as primitives, as the executor is.
 - **Q6. The reference for async programs.** Fixpt has no scheduler, so
   K1 needs the operations written in FX-26 in `kfx/prelude.fx` (from
   Coopt's library); or Coopt is made the reference for them. My default:

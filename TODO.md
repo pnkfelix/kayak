@@ -246,7 +246,10 @@ The next goal. In order (`PLAN.md` §6.4):
 - **The emitter**: `async fn` by effect, as escapes are `Result` by
   effect (C18); suspending closures; recursion through `Box::pin`.
 - **Corpus programs**, compared with Fixpt.
-- Decide with the user: what incremental computation is for kayak (Q5).
+- **Incremental compiling** (Q5, answered): the compiler's passes as
+  queries, memoized with their dependencies, as `coopt-query`'s; the
+  machinery in `kayak-rt`, given to KFX as primitives. After the
+  executor, since a query run is a task (Coopt's arrangement).
 
 ## 18. Research: regions as exclusive borrows (GhostCell tokens)
 
