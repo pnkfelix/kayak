@@ -1029,6 +1029,36 @@
                            (tagcase (instantiate s sc)
                              (inst (t s regions effects) (res t (naming-effs s name wher t (cv-group v)) s)))))))))))))
 
+  (quasi-items (subr kfx (cv st sexps i64) res)
+    (lambda (v s ds depth)
+      "A quasiquoted list's items at `depth`: what each unquote at depth 1
+       holds, checked; their effects."
+      (if (null? ds)
+          (res (ty-unit) nil s)
+          (tagcase (quasi v s (car ds) depth)
+            (res (t es s) (with-effs (quasi-items v s (cdr ds) depth) es))))))
+
+  (quasi (subr kfx (cv st sexp i64) res)
+    (lambda (v s d depth)
+      (tagcase d
+        (lst (ys f l p)
+          (cond ((null? ys) (res (ty-unit) nil s))
+                ((and (i64= (size ys) 2) (or (head-is? d "unquote") (head-is? d "unquote-splicing")))
+                 (cond ((i64> depth 1) (quasi v s (second ys) (i64- depth 1)))
+                       ((head-is? d "unquote") (check v s (second ys) (ty-data "datum" nil)))
+                       (else
+                        (tagcase (synth v s (second ys))
+                          (res (t es s1)
+                            (tagcase (walk s1 t)
+                              (ty-list (el r)
+                                "A list of datums, as FX-26's `append` takes it: no
+                                 list of ints, say (K1)."
+                                (res t es (fits v (fits v s1 el (ty-data "datum" nil)) (ty-data "datum" nil) el)))
+                              (else other (refuse v (string-append "an unquote-splicing of what is no list of datums: " (show-ty s1 t))))))))))
+                ((and (i64= (size ys) 2) (head-is? d "quasiquote")) (quasi v s (second ys) (i64+ depth 1)))
+                (else (quasi-items v s ys depth))))
+        (else other (res (ty-unit) nil s)))))
+
   (check (subr kfx (cv st sexp ty) res)
     (lambda (v s e expected)
       "`e` where an `expected` is wanted; a member boxed for its union (C75)."
@@ -1164,6 +1194,19 @@
                            ((not (quotable? (car xs))) (refuse v "a quoted datum KFX does not read: a dotted list or a vector"))
                            (else (res (ty-data "datum" nil) nil s))))
                    (else other (refuse v "a quoted datum KFX does not read")))))
+            ((string=? h "quasiquote")
+             "`` `d `` (C79): a quote whose `,e` at depth 1 is `e`, a datum, and
+              whose `,@e` is `e`, a list of datums, appended; a nested `` ` ``
+              deepens, as R7RS counts."
+             (if (not (i64= (size xs) 1))
+                 (refuse v "a quasiquote of one datum")
+                 (tagcase (car xs)
+                   (lst (ys f l p)
+                     (cond ((null? ys) (refuse v "a quasiquote of (), which FX-26 takes as a nil of any type: write nil"))
+                           ((not (quotable? (car xs))) (refuse v "a quasiquoted datum KFX does not read: a dotted list or a vector"))
+                           ((head-is? (car xs) "unquote") (check v s (second ys) (ty-data "datum" nil)))
+                           (else (tagcase (quasi-items v s ys 1) (res (t es s) (res (ty-data "datum" nil) es s))))))
+                   (else other (synth-form v s e "quote" xs)))))
             ((string=? h "the")
              (let ((want (parse-type v (cv-tvars v) (car xs))))
                (tagcase (check v s (second xs) want)
@@ -1277,7 +1320,7 @@
                      (tagcase (region-of v s r)
                        (res (rr rn s) (res expected (effs-union (list (string-append "alloc:" (region-string s rr))) es) s))))))
                (else other (check-by-synth v s e expected))))
-            ((or (string=? h "the") (string=? h "and") (string=? h "or") (string=? h "lambda") (string=? h "list") (string=? h "quote")
+            ((or (string=? h "the") (string=? h "and") (string=? h "or") (string=? h "lambda") (string=? h "list") (string=? h "quote") (string=? h "quasiquote")
                  (string=? h "extract"))
              (check-by-synth v s e expected))
             (else (synth-call v s h xs (list expected))))))

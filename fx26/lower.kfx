@@ -18,6 +18,26 @@
           (else (string-append shape "?")))))
 
 (define-rec
+  (unquoted? (subr kfx (sexp i64) bool)
+    (lambda (d depth)
+      "Whether a quasiquoted datum has an unquote at depth 1: else it is a
+       constant, quoted and interned as a quote is."
+      (tagcase d
+        (lst (ys f l p)
+          (cond ((null? ys) #f)
+                ((and (i64= (size ys) 2) (or (head-is? d "unquote") (head-is? d "unquote-splicing")))
+                 (or (i64= depth 1) (unquoted? (second ys) (i64- depth 1))))
+                ((and (i64= (size ys) 2) (head-is? d "quasiquote")) (unquoted? (second ys) (i64+ depth 1)))
+                (else (any? (lambda ((y sexp)) (unquoted? y depth)) ys))))
+        (else other #f)))))
+
+(define quasi-tagged (subr kfx (string ir) ir)
+  (lambda (tag x)
+    "`(tag x)` as data."
+    (i-call (i-lit (v-prim "cons" 2))
+            (list (i-lit (v-symbol (string->symbol tag))) (i-call (i-lit (v-prim "cons" 2)) (list x (i-lit (v-nil))))))))
+
+(define-rec
   (position-of (subr kfx (string strings i64) i64)
     (lambda (n xs i)
       (cond ((null? xs) -1)
@@ -203,21 +223,40 @@
 
   (lower-quoted (subr kfx (sexp scope strings) ir)
     (lambda (d sc gs)
-      "A quoted datum (C77): a symbol; another atom as itself; a list built
-       by the standard `cons`, whatever the program calls by that name."
+      "A quoted datum (C77, C79): a symbol or `#t`, `#f`; another atom as
+       itself; a list a literal made once at loading and interned there
+       (table.kfx), as FX-26's heap interns a quote."
       (tagcase d
-        (sym (n f p) (if (or (string=? n "#t") (string=? n "#f")) (lower d sc gs) (i-lit (v-symbol (string->symbol n)))))
-        (lst (ys f l p)
-          (if (null? ys)
-              (i-lit (v-nil))
-              (i-call (i-lit (v-prim "cons" 2))
-                      (list (lower-quoted (car ys) sc gs) (lower-quoted (lst (cdr ys) f l p) sc gs)))))
+        (sym (n f p) (cond ((string=? n "#t") (i-lit (v-bool #t))) ((string=? n "#f") (i-lit (v-bool #f))) (else (i-lit (v-symbol (string->symbol n))))))
+        (lst (ys f l p) (if (null? ys) (i-lit (v-nil)) (i-lit (v-datum d))))
         (else other (lower d sc gs)))))
+
+  (lower-quasi (subr kfx (sexp i64 scope strings) ir)
+    (lambda (d depth sc gs)
+      "A quasiquoted datum (C79): an unquote at depth 1 its expression; an
+       unquote-splicing's list appended, by the standard `append`."
+      (tagcase d
+        (lst (ys f l p)
+          (cond ((null? ys) (i-lit (v-nil)))
+                ((and (i64= (size ys) 2) (head-is? d "unquote") (i64= depth 1)) (lower (second ys) sc gs))
+                ((and (i64= (size ys) 2) (or (head-is? d "unquote") (head-is? d "unquote-splicing")))
+                 (quasi-tagged (sym-name (car ys)) (lower-quasi (second ys) (i64- depth 1) sc gs)))
+                ((and (i64= (size ys) 2) (head-is? d "quasiquote"))
+                 (quasi-tagged "quasiquote" (lower-quasi (second ys) (i64+ depth 1) sc gs)))
+                ((and (i64= depth 1) (head-is? (car ys) "unquote-splicing") (i64= (size (items (car ys))) 2))
+                 (i-call (i-lit (v-prim "append" 2))
+                         (list (lower (second (items (car ys))) sc gs) (lower-quasi (lst (cdr ys) f l p) depth sc gs))))
+                ((not (unquoted? d depth)) (lower-quoted d sc gs))
+                (else
+                 (i-call (i-lit (v-prim "cons" 2))
+                         (list (lower-quasi (car ys) depth sc gs) (lower-quasi (lst (cdr ys) f l p) depth sc gs))))))
+        (else other (lower-quoted d sc gs)))))
 
   (lower-form (subr kfx (string sexps sexp scope strings) ir)
     (lambda (h xs e sc gs)
       (cond ((string=? h "the") (lower (second xs) sc gs))
             ((string=? h "quote") (lower-quoted (car xs) sc gs))
+            ((string=? h "quasiquote") (lower-quasi (car xs) 1 sc gs))
             ((or (string=? h "plambda") (string=? h "proj")) (if (string=? h "proj") (lower (car xs) sc gs) (lower (second xs) sc gs)))
             ((string=? h "lambda")
              (let ((names (map binder-name (items (car xs)))))

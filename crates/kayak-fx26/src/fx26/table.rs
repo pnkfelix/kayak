@@ -350,6 +350,98 @@ pub fn literal_word_x(v: &'static Val) -> i64 {
     }
 }
 
+// Quoted data, interned (C79): each pair and atom of a quote made once,
+// at loading, a constant; an equal one found again by its text, so that
+// equal quotes are one object, as FX-26's heap interns them.
+pub enum Quoted {
+    Quoted(Str, i64),
+}
+
+pub fn quoted(f0: Str, f1: i64) -> &'static Quoted {
+    kayak_rt::heap_alloc(Quoted::Quoted(f0, f1))
+}
+
+pub fn quoteds() -> Ref<List<&'static Quoted>> {
+    thread_local!(static ONCE: OnceCell<Ref<List<&'static Quoted>>> = const { OnceCell::new() });
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Quoted>())
+    })
+}
+
+pub fn found_quoted(mut key: Str, mut qs: List<&'static Quoted>) -> i64 {
+    loop {
+        if null_p(qs) {
+            return -1i64;
+        } else if {
+            let tagcase_ = car(qs);
+            match *tagcase_ {
+                Quoted::Quoted(k, i) => {
+                    string_eq_p(k, key)
+                }
+            }
+        } {
+            let tagcase_ = car(qs);
+            match *tagcase_ {
+                Quoted::Quoted(k, i) => {
+                    return i;
+                }
+            }
+        } else {
+            qs = cdr(qs);
+            continue;
+        }
+    }
+}
+
+/// A quoted datum's constant: its own, or an equal one's.
+pub fn quoted_constant_x(d: &'static Sexp) -> i64 {
+    let key = show_sexp(d);
+    let found = found_quoted(key, get(quoteds()));
+    if i64_gt_eq(found, 0i64) {
+        found
+    } else {
+        let w = {
+            let tagcase_ = d;
+            match *tagcase_ {
+                Sexp::Lst(ys, f, l, p) => {
+                    if null_p(ys) {
+                        w_nil()
+                    } else {
+                        let ca = quoted_constant_x(car(ys));
+                        let cd = quoted_constant_x(lst(cdr(ys), f, l, p));
+                        pair_x(constant_at(ca), constant_at(cd))
+                    }
+                }
+                Sexp::Sym(n, f, p) => {
+                    if string_eq_p(n, str_lit("#t")) {
+                        bool_word(true)
+                    } else if string_eq_p(n, str_lit("#f")) {
+                        bool_word(false)
+                    } else {
+                        symbol_word(intern_x(n))
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    let tagcase_ = lower(d, nil::<List<Str>>(), nil::<Str>());
+                    match *tagcase_ {
+                        Ir::ILit(v) => {
+                            literal_word_x(v)
+                        }
+                        _ => {
+                            let other2 = tagcase_;
+                            w_unit()
+                        }
+                    }
+                }
+            }
+        };
+        let i = add_constant_x(w);
+        set(quoteds(), kayak_rt::heap_cons(quoted(key, i), get(quoteds())));
+        i
+    }
+}
+
 pub fn kids_placed_x(mut ns: List<i64>) -> () {
     loop {
         if null_p(ns) {
@@ -405,7 +497,18 @@ pub fn number_x(e: &'static Ir) -> i64 {
     let tagcase_ = e;
     match *tagcase_ {
         Ir::ILit(v) => {
-            add_node_x(n_lit(add_constant_x(literal_word_x(v))))
+            add_node_x(n_lit({
+                let tagcase_ = v;
+                match *tagcase_ {
+                    Val::VDatum(d) => {
+                        quoted_constant_x(d)
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        add_constant_x(literal_word_x(v))
+                    }
+                }
+            }))
         }
         Ir::ILocal(d, s) => {
             add_node_x(n_local(d, s))

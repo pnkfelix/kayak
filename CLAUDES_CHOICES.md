@@ -1547,3 +1547,22 @@ list. One level only: a list of lists of ints given as a list of lists of
 a union is still rustc's error, not kfx's refusal; and so is a procedure
 given where one of wider parameters, or of a union result, is wanted (a
 wrapper, TODO §24).
+
+## C79. Quasiquote; quotes interned in the engine (2026-10-12)
+
+KFX's reader reads `` ` ``, `,` and `,@` (in a program's text, as `'`,
+C56). The checker takes FX-26's rule: `,e` at depth 1 is a datum, `,@e` a
+list of datums (exactly: FX-26's `append` refuses a list of ints, so KFX
+does too, K1); a nested `` ` `` deepens and `,` shallows, as R7RS counts.
+kfx builds a quasiquote with `value::cons` and `value::spliced`; the
+engine with the standard `cons` and `append`, whatever the program binds
+the names to.
+
+The engine interns quotes as FX-26's heap does: a quoted list is a
+literal of its own (`v-datum`), made at loading as constants, each pair
+and atom found again by its text, so that equal quotes, and a
+quasiquote's constant parts, are one object (`eq?`,
+`datum/quote-identity.fx`, which now agrees). kfx needs none of it: it
+refuses `eq?`.
+
+Still not read: vectors' `#(...)` and dotted lists, in a quote or out.

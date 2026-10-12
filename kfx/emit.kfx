@@ -1859,6 +1859,39 @@
                  (acc (put "}" (put-nl n acc))))
             (put-flat-arms c off (cdr arms) n t acc)))))
 
+  (put-quasi (subr kfx (ctx sexp i64 i64 chars) chars)
+    (lambda (c d depth n acc)
+      "A quasiquoted datum (C79), built: an unquote at depth 1 its
+       expression's value, a datum; an unquote-splicing's list appended."
+      (tagcase d
+        (lst (ys f l p)
+          (cond ((null? ys) (put "kayak_rt::value::Value::Nil" acc))
+                ((and (i64= (size ys) 2) (head-is? d "unquote") (i64= depth 1)) (put-exp c (second ys) n (value) acc))
+                ((and (i64= (size ys) 2) (or (head-is? d "unquote") (head-is? d "unquote-splicing")))
+                 (put-quasi-tagged c (sym-name (car ys)) (second ys) (i64- depth 1) n acc))
+                ((and (i64= (size ys) 2) (head-is? d "quasiquote"))
+                 (put-quasi-tagged c "quasiquote" (second ys) (i64+ depth 1) n acc))
+                (else (put-quasi-items c ys depth n acc))))
+        (else other (put-quoted c d acc)))))
+
+  (put-quasi-tagged (subr kfx (ctx string sexp i64 i64 chars) chars)
+    (lambda (c tag d depth n acc)
+      "`(tag d)` as data, `d` at `depth`."
+      (let* ((acc (put "kayak_rt::value::cons(" acc))
+             (acc (put-quoted c (sym tag "" 0) acc))
+             (acc (put ", kayak_rt::value::cons(" acc))
+             (acc (put-quasi c d depth n acc)))
+        (put ", kayak_rt::value::Value::Nil))" acc))))
+
+  (put-quasi-items (subr kfx (ctx sexps i64 i64 chars) chars)
+    (lambda (c ds depth n acc)
+      (cond ((null? ds) (put "kayak_rt::value::Value::Nil" acc))
+            ((and (i64= depth 1) (head-is? (car ds) "unquote-splicing") (i64= (size (items (car ds))) 2))
+             (put ")" (put-quasi-items c (cdr ds) depth n
+                                       (put ", " (put-exp c (second (items (car ds))) n (value) (put "kayak_rt::value::spliced(" acc))))))
+            (else
+             (put ")" (put-quasi-items c (cdr ds) depth n (put ", " (put-quasi c (car ds) depth n (put "kayak_rt::value::cons(" acc)))))))))
+
   (put-lambda (subr kfx (ctx sexp sexps sexps i64 chars) chars)
     (lambda (c e params body n acc)
       "A lambda as a value: a closure, `move`, since what it captures is
@@ -2009,6 +2042,11 @@
                (put "))" (put-exp c (second xs) n (value) acc))))
             ((and (string=? h "list") (null? xs)) (put "()" (put-turbofish c e (put "kayak_rt::nil" acc))))
             ((string=? h "list") (put-list c xs n acc))
+            ((and (string=? h "quasiquote") (tagcase (car xs) (lst (ys f l p) #t) (else other #f)))
+             (if (head-is? (car xs) "unquote")
+                 (put-exp c (second (items (car xs))) n (value) acc)
+                 (put-quasi c (car xs) 1 n acc)))
+            ((string=? h "quasiquote") (put-form c e "quote" xs n t acc))
             ((string=? h "quote")
              (tagcase (car xs)
                (sym (q f p)

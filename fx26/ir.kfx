@@ -35,7 +35,8 @@
   (v-prim string i64)
   (v-ctor string i64)
   (v-tag i64)
-  (v-cont (listof frame acyclic) (ref bool @h) bool))
+  (v-cont (listof frame acyclic) (ref bool @h) bool)
+  (v-datum sexp))
 
 (define-type vals (listof val acyclic))
 (define-type env (listof (arrayof val @h) acyclic))

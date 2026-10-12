@@ -234,6 +234,17 @@ pub fn cons<A: ToValue, B: ToValue>(a: A, b: B) -> Value {
     Value::Pair(crate::alloc(ValuePair(a.to_value(), b.to_value())))
 }
 
+/// A quasiquote's `,@xs`: the list's elements, boxed, before `rest`.
+pub fn spliced<T: ToValue + Copy>(xs: List<T>, rest: Value) -> Value {
+    let mut items = Vec::new();
+    let mut p = xs;
+    while let Some(c) = p {
+        items.push(c.car.to_value());
+        p = c.cdr;
+    }
+    items.into_iter().rev().fold(rest, |tail, x| cons(x, tail))
+}
+
 /// `car` and `cdr` of a union with a pair: checked, as FX-26's every machine
 /// checks.
 pub fn car(v: Value) -> Value {

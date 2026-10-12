@@ -433,6 +433,32 @@ pub fn read_datum(h: &'static Here, file: Str) -> &'static Got {
                         got(lst(kayak_rt::heap_cons(sym(str_lit("quote"), file, pos), kayak_rt::heap_cons(x, kayak_rt::nil())), file, line, pos), after)
                     }
                 }
+            } else if ((i64_eq(char_to_i64(c), 96i64) || i64_eq(char_to_i64(c), 44i64)) && not(null_p(cdr(cs))) && not(string_eq_p(file, str_lit("")))) {
+                // `` `d ``, `,d` and `,@d`: FX-26's `quasiquote`, `unquote` and
+                // `unquote-splicing` (C79), in a program's text.
+                let splice = (i64_eq(char_to_i64(c), 44i64) && char_eq_p(car(cdr(cs)), '@'));
+                let rest = if splice {
+                    cdr(cdr(cs))
+                } else {
+                    cdr(cs)
+                };
+                let head = if i64_eq(char_to_i64(c), 96i64) {
+                    str_lit("quasiquote")
+                } else if splice {
+                    str_lit("unquote-splicing")
+                } else {
+                    str_lit("unquote")
+                };
+                let tagcase_ = read_datum(skip(here(rest, line, i64_plus(pos, if splice {
+                    2i64
+                } else {
+                    1i64
+                }))), file);
+                match *tagcase_ {
+                    Got::Got(x, after) => {
+                        got(lst(kayak_rt::heap_cons(sym(head, file, pos), kayak_rt::heap_cons(x, kayak_rt::nil())), file, line, pos), after)
+                    }
+                }
             } else if char_eq_p(c, '"') {
                 string_body(cdr(cs), nil::<char>(), file, line, pos, line, i64_plus(pos, 1i64))
             } else if (char_eq_p(c, '#') && not(null_p(cdr(cs))) && char_eq_p(car(cdr(cs)), '\\')) {

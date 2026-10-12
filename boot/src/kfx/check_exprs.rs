@@ -2397,6 +2397,68 @@ pub fn synth_name(v: &'static Cv, s: &'static St, name: Str) -> &'static Res {
     }
 }
 
+/// A quasiquoted list's items at `depth`: what each unquote at depth 1
+/// holds, checked; their effects.
+pub fn quasi_items(v: &'static Cv, s: &'static St, ds: Sexps, depth: i64) -> &'static Res {
+    if null_p(ds) {
+        res(ty_unit(), nil::<Str>(), s)
+    } else {
+        let tagcase_ = quasi(v, s, car(ds), depth);
+        match *tagcase_ {
+            Res::Res(t, es, s) => {
+                with_effs(quasi_items(v, s, cdr(ds), depth), es)
+            }
+        }
+    }
+}
+
+pub fn quasi(mut v: &'static Cv, mut s: &'static St, mut d: &'static Sexp, mut depth: i64) -> &'static Res {
+    loop {
+        let tagcase_ = d;
+        match *tagcase_ {
+            Sexp::Lst(ys, f, l, p) => {
+                if null_p(ys) {
+                    return res(ty_unit(), nil::<Str>(), s);
+                } else if (i64_eq(size(ys), 2i64) && (head_is_p(d, str_lit("unquote")) || head_is_p(d, str_lit("unquote-splicing")))) {
+                    if i64_gt(depth, 1i64) {
+                        (d, depth) = (second(ys), i64_minus(depth, 1i64));
+                        continue;
+                    } else if head_is_p(d, str_lit("unquote")) {
+                        return check(v, s, second(ys), ty_data(str_lit("datum"), nil::<&'static Ty>()));
+                    } else {
+                        let tagcase_ = synth(v, s, second(ys));
+                        match *tagcase_ {
+                            Res::Res(t, es, s1) => {
+                                let tagcase_ = walk(s1, t);
+                                match *tagcase_ {
+                                    Ty::TyList(el, r) => {
+                                        // A list of datums, as FX-26's `append` takes it: no
+                                        // list of ints, say (K1).
+                                        return res(t, es, fits(v, fits(v, s1, el, ty_data(str_lit("datum"), nil::<&'static Ty>())), ty_data(str_lit("datum"), nil::<&'static Ty>()), el));
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        return match refuse(v, string_append(str_lit("an unquote-splicing of what is no list of datums: "), show_ty(s1, t))) {};
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else if (i64_eq(size(ys), 2i64) && head_is_p(d, str_lit("quasiquote"))) {
+                    (d, depth) = (second(ys), i64_plus(depth, 1i64));
+                    continue;
+                } else {
+                    return quasi_items(v, s, ys, depth);
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                return res(ty_unit(), nil::<Str>(), s);
+            }
+        }
+    }
+}
+
 /// `e` where an `expected` is wanted; a member boxed for its union (C75).
 pub fn check(v: &'static Cv, s: &'static St, e: &'static Sexp, expected: &'static Ty) -> &'static Res {
     let tagcase_ = check_plain(v, s, e, expected);
@@ -2634,214 +2696,248 @@ pub fn synth_any(v: &'static Cv, s: &'static St, e: &'static Sexp) -> &'static R
     }
 }
 
-pub fn synth_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: Sexps) -> &'static Res {
-    if string_eq_p(h, str_lit("quote")) {
-        // A quoted symbol (C56); a quoted datum of another kind is FX-26's
-        // `datum`, which KFX has not yet.
-        if not(i64_eq(size(xs), 1i64)) {
-            match refuse(v, str_lit("a quote of one datum")) {}
-        } else {
-            let tagcase_ = car(xs);
-            match *tagcase_ {
-                Sexp::Sym(n, f, p) => {
-                    if (string_eq_p(n, str_lit("#t")) || string_eq_p(n, str_lit("#f"))) {
-                        res(ty_bool(), nil::<Str>(), s)
-                    } else {
-                        res(ty_data(str_lit("symbol"), nil::<&'static Ty>()), nil::<Str>(), s)
-                    }
-                }
-                Sexp::Num(k, f, p) => {
-                    res(ty_int(), nil::<Str>(), s)
-                }
-                Sexp::Big(t, f, p) => {
-                    res(ty_int(), nil::<Str>(), s)
-                }
-                Sexp::Real(x, f, p) => {
-                    res(ty_f64(), nil::<Str>(), s)
-                }
-                Sexp::Str(x, f, p) => {
-                    res(ty_string(), nil::<Str>(), s)
-                }
-                Sexp::Chr(c, f, p) => {
-                    res(ty_char(), nil::<Str>(), s)
-                }
-                Sexp::Lst(ys, f, l, p) => {
-                    // A quoted list (C77): a `datum`, built where it is written.
-                    if null_p(ys) {
-                        match refuse(v, str_lit("a quote of (), which FX-26 takes as a nil of any type: write nil")) {}
-                    } else if not(quotable_p(car(xs))) {
-                        match refuse(v, str_lit("a quoted datum KFX does not read: a dotted list or a vector")) {}
-                    } else {
-                        res(ty_data(str_lit("datum"), nil::<&'static Ty>()), nil::<Str>(), s)
-                    }
-                }
-                _ => {
-                    let other = tagcase_;
-                    match refuse(v, str_lit("a quoted datum KFX does not read")) {}
-                }
-            }
-        }
-    } else if string_eq_p(h, str_lit("the")) {
-        let want = parse_type(v, cv_tvars(v), car(xs));
-        let tagcase_ = check(v, s, second(xs), want);
-        match *tagcase_ {
-            Res::Res(t, es, s) => {
-                res(t, es, s)
-            }
-        }
-    } else if string_eq_p(h, str_lit("prompt")) {
-        prompt_form(v, s, xs, nil::<&'static Ty>())
-    } else if string_eq_p(h, str_lit("%found")) {
-        // A definition's value in a module that includes another: found by
-        // itself, through a `the` too, as FX-26 finds it.
-        let x = car(xs);
-        if {
-            let tagcase_ = x;
-            match *tagcase_ {
-                Sexp::Sym(n, at_file, at_pos) => {
-                    string_eq_p(n, str_lit("nil"))
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
-            }
-        } {
-            match refuse(v, str_lit("a nil, in a module that includes another, where FX-26 finds a poly list")) {}
-        } else if head_is_p(x, str_lit("the")) {
-            let tagcase_ = synth(v, s, lst(kayak_rt::heap_cons(sym(str_lit("%found"), str_lit(""), 0i64), kayak_rt::heap_cons(third(items(x)), kayak_rt::nil())), str_lit(""), 0i64, 0i64));
-            match *tagcase_ {
-                Res::Res(t, es, s) => {
-                    let want = parse_type(v, cv_tvars(v), second(items(x)));
-                    res(want, es, fits(v, s, t, want))
-                }
-            }
-        } else {
-            let tagcase_ = synth(v, s, x);
-            match *tagcase_ {
-                Res::Res(t, es, s) => {
-                    res(t, es, freshened(s, t))
-                }
-            }
-        }
-    } else if string_eq_p(h, str_lit("product")) {
-        product_form(v, s, xs, nil::<&'static Ty>())
-    } else if string_eq_p(h, str_lit("sum")) {
-        match refuse(v, str_lit("a sum whose type is not known here: write it, (the (sumof ...) (sum ...))")) {}
-    } else if string_eq_p(h, str_lit("extract")) {
-        if not(i64_eq(size(xs), 2i64)) {
-            match refuse(v, str_lit("(extract e label)")) {}
-        } else {
-            let tagcase_ = synth(v, s, car(xs));
-            match *tagcase_ {
-                Res::Res(t, es, s) => {
-                    let tagcase_ = walk(s, t);
-                    match *tagcase_ {
-                        Ty::TyData(d, args) => {
-                            let flat = if string_eq_p(d, str_lit("%blobref")) {
-                                walk(s, car(cdr(args)))
-                            } else {
-                                ty_unit()
-                            };
-                            let tagcase_ = flat;
-                            match *tagcase_ {
-                                Ty::TyShape(p, ls, ts) => {
-                                    if string_member_p(label_of(second(xs)), ls) {
-                                        res(ty_data(str_lit("%blobref"), kayak_rt::heap_cons(car(args), kayak_rt::heap_cons(member_type(label_of(second(xs)), ls, ts), kayak_rt::nil()))), es, note_fact(note_fact(note_types(s, cv_file(v), cv_pos(v), str_lit("blob-owner"), kayak_rt::heap_cons(car(args), kayak_rt::nil())), cv_file(v), cv_pos(v), string_append(str_lit("blob-field "), i64_to_string(index_of(label_of(second(xs)), ls, 0i64)))), cv_file(v), cv_pos(v), string_append(str_lit("blob-offset "), i64_to_string(field_offset(ls, ts, label_of(second(xs)))))))
-                                    } else {
-                                        match refuse(v, string_append(str_lit("no field "), string_append(label_of(second(xs)), string_append(str_lit(" in a "), show_ty(s, t))))) {}
-                                    }
-                                }
-                                _ => {
-                                    let other = tagcase_;
-                                    match refuse(v, string_append(str_lit("an extract from a "), string_append(show_ty(s, t), str_lit(", no product")))) {}
-                                }
-                            }
-                        }
-                        Ty::TyShape(p, ls, ts) => {
-                            if (p && string_member_p(label_of(second(xs)), ls)) {
-                                res(member_type(label_of(second(xs)), ls, ts), es, note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("extract-index "), i64_to_string(index_of(label_of(second(xs)), ls, 0i64)))))
-                            } else {
-                                match refuse(v, string_append(str_lit("no field "), string_append(label_of(second(xs)), string_append(str_lit(" in a "), show_ty(s, t))))) {}
-                            }
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            match refuse(v, string_append(str_lit("an extract from a "), string_append(show_ty(s, t), str_lit(", no product")))) {}
-                        }
-                    }
-                }
-            }
-        }
-    } else if string_eq_p(h, str_lit("lambda")) {
-        synth_lambda(v, s, items(car(xs)), cdr(xs))
-    } else if (string_eq_p(h, str_lit("vlambda")) && null_p(find_bind(h, cv_binds(v)))) {
-        vlambda_form(v, s, xs, nil::<&'static Ty>())
-    } else if (string_eq_p(h, str_lit("rlambda")) && null_p(find_bind(h, cv_binds(v)))) {
-        rlambda_form(v, s, e, xs, nil::<&'static Ty>())
-    } else if string_eq_p(h, str_lit("proj")) {
-        proj_form(v, s, xs)
-    } else if string_eq_p(h, str_lit("list")) {
-        if null_p(xs) {
-            match refuse(v, str_lit("a (list) of a type nothing here says, as FX-26 finds it: say it, (the (listof T r) (list))")) {}
-        } else {
-            let tagcase_ = if head_is_p(car(xs), str_lit("error")) {
-                let tagcase_ = fresh(s);
+pub fn synth_form(mut v: &'static Cv, mut s: &'static St, mut e: &'static Sexp, mut h: Str, mut xs: Sexps) -> &'static Res {
+    loop {
+        if string_eq_p(h, str_lit("quote")) {
+            // A quoted symbol (C56); a quoted datum of another kind is FX-26's
+            // `datum`, which KFX has not yet.
+            if not(i64_eq(size(xs), 1i64)) {
+                return match refuse(v, str_lit("a quote of one datum")) {};
+            } else {
+                let tagcase_ = car(xs);
                 match *tagcase_ {
-                    Res::Res(m, es, s) => {
-                        check(v, s, car(xs), m)
+                    Sexp::Sym(n, f, p) => {
+                        if (string_eq_p(n, str_lit("#t")) || string_eq_p(n, str_lit("#f"))) {
+                            return res(ty_bool(), nil::<Str>(), s);
+                        } else {
+                            return res(ty_data(str_lit("symbol"), nil::<&'static Ty>()), nil::<Str>(), s);
+                        }
+                    }
+                    Sexp::Num(k, f, p) => {
+                        return res(ty_int(), nil::<Str>(), s);
+                    }
+                    Sexp::Big(t, f, p) => {
+                        return res(ty_int(), nil::<Str>(), s);
+                    }
+                    Sexp::Real(x, f, p) => {
+                        return res(ty_f64(), nil::<Str>(), s);
+                    }
+                    Sexp::Str(x, f, p) => {
+                        return res(ty_string(), nil::<Str>(), s);
+                    }
+                    Sexp::Chr(c, f, p) => {
+                        return res(ty_char(), nil::<Str>(), s);
+                    }
+                    Sexp::Lst(ys, f, l, p) => {
+                        // A quoted list (C77): a `datum`, built where it is written.
+                        if null_p(ys) {
+                            return match refuse(v, str_lit("a quote of (), which FX-26 takes as a nil of any type: write nil")) {};
+                        } else if not(quotable_p(car(xs))) {
+                            return match refuse(v, str_lit("a quoted datum KFX does not read: a dotted list or a vector")) {};
+                        } else {
+                            return res(ty_data(str_lit("datum"), nil::<&'static Ty>()), nil::<Str>(), s);
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return match refuse(v, str_lit("a quoted datum KFX does not read")) {};
+                    }
+                }
+            }
+        } else if string_eq_p(h, str_lit("quasiquote")) {
+            // `` `d `` (C79): a quote whose `,e` at depth 1 is `e`, a datum, and
+            // whose `,@e` is `e`, a list of datums, appended; a nested `` ` ``
+            // deepens, as R7RS counts.
+            if not(i64_eq(size(xs), 1i64)) {
+                return match refuse(v, str_lit("a quasiquote of one datum")) {};
+            } else {
+                let tagcase_ = car(xs);
+                match *tagcase_ {
+                    Sexp::Lst(ys, f, l, p) => {
+                        if null_p(ys) {
+                            return match refuse(v, str_lit("a quasiquote of (), which FX-26 takes as a nil of any type: write nil")) {};
+                        } else if not(quotable_p(car(xs))) {
+                            return match refuse(v, str_lit("a quasiquoted datum KFX does not read: a dotted list or a vector")) {};
+                        } else if head_is_p(car(xs), str_lit("unquote")) {
+                            return check(v, s, second(ys), ty_data(str_lit("datum"), nil::<&'static Ty>()));
+                        } else {
+                            let tagcase_ = quasi_items(v, s, ys, 1i64);
+                            match *tagcase_ {
+                                Res::Res(t, es, s) => {
+                                    return res(ty_data(str_lit("datum"), nil::<&'static Ty>()), es, s);
+                                }
+                            }
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        h = str_lit("quote");
+                        continue;
+                    }
+                }
+            }
+        } else if string_eq_p(h, str_lit("the")) {
+            let want = parse_type(v, cv_tvars(v), car(xs));
+            let tagcase_ = check(v, s, second(xs), want);
+            match *tagcase_ {
+                Res::Res(t, es, s) => {
+                    return res(t, es, s);
+                }
+            }
+        } else if string_eq_p(h, str_lit("prompt")) {
+            return prompt_form(v, s, xs, nil::<&'static Ty>());
+        } else if string_eq_p(h, str_lit("%found")) {
+            // A definition's value in a module that includes another: found by
+            // itself, through a `the` too, as FX-26 finds it.
+            let x = car(xs);
+            if {
+                let tagcase_ = x;
+                match *tagcase_ {
+                    Sexp::Sym(n, at_file, at_pos) => {
+                        string_eq_p(n, str_lit("nil"))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            } {
+                return match refuse(v, str_lit("a nil, in a module that includes another, where FX-26 finds a poly list")) {};
+            } else if head_is_p(x, str_lit("the")) {
+                let tagcase_ = synth(v, s, lst(kayak_rt::heap_cons(sym(str_lit("%found"), str_lit(""), 0i64), kayak_rt::heap_cons(third(items(x)), kayak_rt::nil())), str_lit(""), 0i64, 0i64));
+                match *tagcase_ {
+                    Res::Res(t, es, s) => {
+                        let want = parse_type(v, cv_tvars(v), second(items(x)));
+                        return res(want, es, fits(v, s, t, want));
                     }
                 }
             } else {
-                synth(v, s, car(xs))
-            };
-            match *tagcase_ {
-                Res::Res(t, es0, s) => {
-                    // Its first element's type, a `nat`'s an `int`: FX-26's is that
-                    // element's own `(nat v)`, which no other `nat` is.
-                    if ({
-                        let tagcase_ = walk(s, t);
-                        match *tagcase_ {
-                            Ty::TyNat() => {
-                                true
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                false
-                            }
-                        }
-                    } && not(null_p(cdr(xs)))) {
-                        match refuse(v, str_lit("a list of nats: FX-26 types each its own (nat v), so no two share a list")) {}
-                    } else {
-                        let t = {
-                            let tagcase_ = walk(s, t);
-                            match *tagcase_ {
-                                Ty::TyNat() => {
-                                    ty_int()
-                                }
-                                _ => {
-                                    let other = tagcase_;
-                                    t
-                                }
-                            }
-                        };
-                        with_effs(check(v, s, e, ty_list(t, ty_rconst(str_lit("%fresh")))), es0)
+                let tagcase_ = synth(v, s, x);
+                match *tagcase_ {
+                    Res::Res(t, es, s) => {
+                        return res(t, es, freshened(s, t));
                     }
                 }
             }
+        } else if string_eq_p(h, str_lit("product")) {
+            return product_form(v, s, xs, nil::<&'static Ty>());
+        } else if string_eq_p(h, str_lit("sum")) {
+            return match refuse(v, str_lit("a sum whose type is not known here: write it, (the (sumof ...) (sum ...))")) {};
+        } else if string_eq_p(h, str_lit("extract")) {
+            if not(i64_eq(size(xs), 2i64)) {
+                return match refuse(v, str_lit("(extract e label)")) {};
+            } else {
+                let tagcase_ = synth(v, s, car(xs));
+                match *tagcase_ {
+                    Res::Res(t, es, s) => {
+                        let tagcase_ = walk(s, t);
+                        match *tagcase_ {
+                            Ty::TyData(d, args) => {
+                                let flat = if string_eq_p(d, str_lit("%blobref")) {
+                                    walk(s, car(cdr(args)))
+                                } else {
+                                    ty_unit()
+                                };
+                                let tagcase_ = flat;
+                                match *tagcase_ {
+                                    Ty::TyShape(p, ls, ts) => {
+                                        if string_member_p(label_of(second(xs)), ls) {
+                                            return res(ty_data(str_lit("%blobref"), kayak_rt::heap_cons(car(args), kayak_rt::heap_cons(member_type(label_of(second(xs)), ls, ts), kayak_rt::nil()))), es, note_fact(note_fact(note_types(s, cv_file(v), cv_pos(v), str_lit("blob-owner"), kayak_rt::heap_cons(car(args), kayak_rt::nil())), cv_file(v), cv_pos(v), string_append(str_lit("blob-field "), i64_to_string(index_of(label_of(second(xs)), ls, 0i64)))), cv_file(v), cv_pos(v), string_append(str_lit("blob-offset "), i64_to_string(field_offset(ls, ts, label_of(second(xs)))))));
+                                        } else {
+                                            return match refuse(v, string_append(str_lit("no field "), string_append(label_of(second(xs)), string_append(str_lit(" in a "), show_ty(s, t))))) {};
+                                        }
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        return match refuse(v, string_append(str_lit("an extract from a "), string_append(show_ty(s, t), str_lit(", no product")))) {};
+                                    }
+                                }
+                            }
+                            Ty::TyShape(p, ls, ts) => {
+                                if (p && string_member_p(label_of(second(xs)), ls)) {
+                                    return res(member_type(label_of(second(xs)), ls, ts), es, note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("extract-index "), i64_to_string(index_of(label_of(second(xs)), ls, 0i64)))));
+                                } else {
+                                    return match refuse(v, string_append(str_lit("no field "), string_append(label_of(second(xs)), string_append(str_lit(" in a "), show_ty(s, t))))) {};
+                                }
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                return match refuse(v, string_append(str_lit("an extract from a "), string_append(show_ty(s, t), str_lit(", no product")))) {};
+                            }
+                        }
+                    }
+                }
+            }
+        } else if string_eq_p(h, str_lit("lambda")) {
+            return synth_lambda(v, s, items(car(xs)), cdr(xs));
+        } else if (string_eq_p(h, str_lit("vlambda")) && null_p(find_bind(h, cv_binds(v)))) {
+            return vlambda_form(v, s, xs, nil::<&'static Ty>());
+        } else if (string_eq_p(h, str_lit("rlambda")) && null_p(find_bind(h, cv_binds(v)))) {
+            return rlambda_form(v, s, e, xs, nil::<&'static Ty>());
+        } else if string_eq_p(h, str_lit("proj")) {
+            return proj_form(v, s, xs);
+        } else if string_eq_p(h, str_lit("list")) {
+            if null_p(xs) {
+                return match refuse(v, str_lit("a (list) of a type nothing here says, as FX-26 finds it: say it, (the (listof T r) (list))")) {};
+            } else {
+                let tagcase_ = if head_is_p(car(xs), str_lit("error")) {
+                    let tagcase_ = fresh(s);
+                    match *tagcase_ {
+                        Res::Res(m, es, s) => {
+                            check(v, s, car(xs), m)
+                        }
+                    }
+                } else {
+                    synth(v, s, car(xs))
+                };
+                match *tagcase_ {
+                    Res::Res(t, es0, s) => {
+                        // Its first element's type, a `nat`'s an `int`: FX-26's is that
+                        // element's own `(nat v)`, which no other `nat` is.
+                        if ({
+                            let tagcase_ = walk(s, t);
+                            match *tagcase_ {
+                                Ty::TyNat() => {
+                                    true
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
+                        } && not(null_p(cdr(xs)))) {
+                            return match refuse(v, str_lit("a list of nats: FX-26 types each its own (nat v), so no two share a list")) {};
+                        } else {
+                            let t = {
+                                let tagcase_ = walk(s, t);
+                                match *tagcase_ {
+                                    Ty::TyNat() => {
+                                        ty_int()
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        t
+                                    }
+                                }
+                            };
+                            return with_effs(check(v, s, e, ty_list(t, ty_rconst(str_lit("%fresh")))), es0);
+                        }
+                    }
+                }
+            }
+        } else if control_form_p(h) {
+            return body_form(v, s, h, xs, nil::<&'static Ty>());
+        } else if (string_eq_p(h, str_lit("letrena")) || string_eq_p(h, str_lit("letreap"))) {
+            return letrena_form(v, s, xs, nil::<&'static Ty>());
+        } else if (blob_form_p(h) && null_p(find_bind(h, cv_binds(v)))) {
+            return blob_form(v, s, h, xs, nil::<&'static Ty>());
+        } else if string_eq_p(h, str_lit("and")) {
+            return bools(v, s, xs);
+        } else if string_eq_p(h, str_lit("or")) {
+            return bools(v, s, xs);
+        } else {
+            return synth_call(v, s, h, xs, nil::<&'static Ty>());
         }
-    } else if control_form_p(h) {
-        body_form(v, s, h, xs, nil::<&'static Ty>())
-    } else if (string_eq_p(h, str_lit("letrena")) || string_eq_p(h, str_lit("letreap"))) {
-        letrena_form(v, s, xs, nil::<&'static Ty>())
-    } else if (blob_form_p(h) && null_p(find_bind(h, cv_binds(v)))) {
-        blob_form(v, s, h, xs, nil::<&'static Ty>())
-    } else if string_eq_p(h, str_lit("and")) {
-        bools(v, s, xs)
-    } else if string_eq_p(h, str_lit("or")) {
-        bools(v, s, xs)
-    } else {
-        synth_call(v, s, h, xs, nil::<&'static Ty>())
     }
 }
 
@@ -2971,7 +3067,7 @@ pub fn check_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: 
                 check_by_synth(v, s, e, expected)
             }
         }
-    } else if (string_eq_p(h, str_lit("the")) || string_eq_p(h, str_lit("and")) || string_eq_p(h, str_lit("or")) || string_eq_p(h, str_lit("lambda")) || string_eq_p(h, str_lit("list")) || string_eq_p(h, str_lit("quote")) || string_eq_p(h, str_lit("extract"))) {
+    } else if (string_eq_p(h, str_lit("the")) || string_eq_p(h, str_lit("and")) || string_eq_p(h, str_lit("or")) || string_eq_p(h, str_lit("lambda")) || string_eq_p(h, str_lit("list")) || string_eq_p(h, str_lit("quote")) || string_eq_p(h, str_lit("quasiquote")) || string_eq_p(h, str_lit("extract"))) {
         check_by_synth(v, s, e, expected)
     } else {
         synth_call(v, s, h, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))

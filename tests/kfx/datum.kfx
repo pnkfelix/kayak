@@ -39,6 +39,7 @@
 (define entry-key (subr pure (entry) symbol) (lambda (e) (car e)))
 
 (define ints (listof int acyclic) (list 1 2 3))
+(define data (listof datum acyclic) (list 4 'five))
 (define d datum (list 10 'x "s" #\c #t (cons 20 30)))
 
 (define main (subr kfx () string)
@@ -51,4 +52,5 @@
               (string-append " " (string-append (symbol->string (entry-key e))
                 (string-append " " (string-append (int->string (entry-value e))
                   (string-append " " (string-append (shown (datum-list->vector ints))
-                    (string-append " " (shown (car (cdr d))))))))))))))))))))
+                    (string-append " " (string-append (shown (car (cdr d)))
+                      (string-append " " (shown `(a ,(+ 1 2) ,@data (b ,'c) `(d ,(e ,(* 2 3))) end)))))))))))))))))))))

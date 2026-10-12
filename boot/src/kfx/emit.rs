@@ -3372,6 +3372,50 @@ pub fn put_flat_arms(c: &'static Ctx, off: Str, arms: Sexps, n: i64, t: &'static
     }
 }
 
+/// A quasiquoted datum (C79), built: an unquote at depth 1 its
+/// expression's value, a datum; an unquote-splicing's list appended.
+pub fn put_quasi(c: &'static Ctx, d: &'static Sexp, depth: i64, n: i64, acc: Chars) -> Chars {
+    let tagcase_ = d;
+    match *tagcase_ {
+        Sexp::Lst(ys, f, l, p) => {
+            if null_p(ys) {
+                put(str_lit("kayak_rt::value::Value::Nil"), acc)
+            } else if (i64_eq(size(ys), 2i64) && head_is_p(d, str_lit("unquote")) && i64_eq(depth, 1i64)) {
+                put_exp(c, second(ys), n, value(), acc)
+            } else if (i64_eq(size(ys), 2i64) && (head_is_p(d, str_lit("unquote")) || head_is_p(d, str_lit("unquote-splicing")))) {
+                put_quasi_tagged(c, sym_name(car(ys)), second(ys), i64_minus(depth, 1i64), n, acc)
+            } else if (i64_eq(size(ys), 2i64) && head_is_p(d, str_lit("quasiquote"))) {
+                put_quasi_tagged(c, str_lit("quasiquote"), second(ys), i64_plus(depth, 1i64), n, acc)
+            } else {
+                put_quasi_items(c, ys, depth, n, acc)
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            put_quoted(c, d, acc)
+        }
+    }
+}
+
+/// `(tag d)` as data, `d` at `depth`.
+pub fn put_quasi_tagged(c: &'static Ctx, tag: Str, d: &'static Sexp, depth: i64, n: i64, acc: Chars) -> Chars {
+    let acc = put(str_lit("kayak_rt::value::cons("), acc);
+    let acc = put_quoted(c, sym(tag, str_lit(""), 0i64), acc);
+    let acc = put(str_lit(", kayak_rt::value::cons("), acc);
+    let acc = put_quasi(c, d, depth, n, acc);
+    put(str_lit(", kayak_rt::value::Value::Nil))"), acc)
+}
+
+pub fn put_quasi_items(c: &'static Ctx, ds: Sexps, depth: i64, n: i64, acc: Chars) -> Chars {
+    if null_p(ds) {
+        put(str_lit("kayak_rt::value::Value::Nil"), acc)
+    } else if (i64_eq(depth, 1i64) && head_is_p(car(ds), str_lit("unquote-splicing")) && i64_eq(size(items(car(ds))), 2i64)) {
+        put(str_lit(")"), put_quasi_items(c, cdr(ds), depth, n, put(str_lit(", "), put_exp(c, second(items(car(ds))), n, value(), put(str_lit("kayak_rt::value::spliced("), acc)))))
+    } else {
+        put(str_lit(")"), put_quasi_items(c, cdr(ds), depth, n, put(str_lit(", "), put_quasi(c, car(ds), depth, n, put(str_lit("kayak_rt::value::cons("), acc)))))
+    }
+}
+
 /// A lambda as a value: a closure, `move`, since what it captures is
 /// `Copy`, made a `&'static dyn Fn` by `lambdaN`, `N` its arity.
 pub fn put_lambda(c: &'static Ctx, e: &'static Sexp, params: Sexps, body: Sexps, n: i64, acc: Chars) -> Chars {
@@ -3519,230 +3563,252 @@ pub fn put_list(c: &'static Ctx, xs: Sexps, n: i64, acc: Chars) -> Chars {
 }
 
 /// `e` is the whole form, `h` its head's name and `xs` the rest.
-pub fn put_form(c: &'static Ctx, e: &'static Sexp, h: Str, xs: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
-    if string_eq_p(h, str_lit("if")) {
-        let acc = put(str_lit("if "), acc);
-        let acc = put_exp(c, car(xs), n, value(), acc);
-        let acc = put(str_lit(" "), acc);
-        let acc = put_block(c, kayak_rt::heap_cons(second(xs), kayak_rt::nil()), n, t, acc);
-        let acc = put(str_lit(" else "), acc);
-        put_block(c, kayak_rt::heap_cons(third(xs), kayak_rt::nil()), n, t, acc)
-    } else if string_eq_p(h, str_lit("cond")) {
-        put_cond(c, xs, n, t, acc)
-    } else if string_eq_p(h, str_lit("typecase")) {
-        put_typecase_arms(c, car(xs), fact_at_p(c, e, str_lit("typecase-valued")), cdr(xs), n, t, acc)
-    } else if string_eq_p(h, str_lit("and")) {
-        if null_p(xs) {
-            put(str_lit("true"), acc)
-        } else {
-            put(str_lit(")"), put_joined(c, xs, str_lit(" && "), n, put(str_lit("("), acc)))
-        }
-    } else if string_eq_p(h, str_lit("or")) {
-        if null_p(xs) {
-            put(str_lit("false"), acc)
-        } else {
-            put(str_lit(")"), put_joined(c, xs, str_lit(" || "), n, put(str_lit("("), acc)))
-        }
-    } else if (string_eq_p(h, str_lit("with")) && null_p(cdr(cdr(xs)))) {
-        // A `with` of one expression, no block: only its names are its.
-        put_exp(with_opened(c, e), second(xs), n, opened_tail(c, e, t), acc)
-    } else if (string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("tagcase")) || string_eq_p(h, str_lit("with"))) {
-        put_block(c, kayak_rt::heap_cons(e, kayak_rt::nil()), n, t, acc)
-    } else if string_eq_p(h, str_lit("case")) {
-        let acc = put(str_lit("match "), acc);
-        let acc = put_exp(c, car(xs), n, value(), acc);
-        let acc = put(str_lit(" {"), acc);
-        let acc = put_case_arms(c, case_kind(c, e), cdr(xs), i64_plus(n, 1i64), t, acc);
-        put(str_lit("}"), put_nl(n, acc))
-    } else if string_eq_p(h, str_lit("lambda")) {
-        put_lambda(c, e, items(car(xs)), cdr(xs), n, acc)
-    } else if (string_eq_p(h, str_lit("rlambda")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
-        put_lambda(c, e, items(second(xs)), cdr(cdr(xs)), n, acc)
-    } else if string_eq_p(h, str_lit("proj")) {
-        put_exp(c, car(xs), n, value(), acc)
-    } else if string_eq_p(h, str_lit("product")) {
-        let fs = map(&items, xs);
-        let acc = put(shape_name(true, map(lambda1(move |f: Sexps| {
-            label_of(car(f))
-        }), fs)), acc);
-        put(str_lit(")"), put_joined(c, map(&second, fs), str_lit(", "), n, put(str_lit("("), acc)))
-    } else if string_eq_p(h, str_lit("extract")) {
-        if not(null_p(blob_typed(c, e, str_lit("blob-owner ")))) {
-            put(str_lit(")"), put(fact_with(c, e, str_lit("blob-field ")), put(str_lit(")."), put_exp(c, car(xs), n, value(), put(str_lit("(&("), acc)))))
-        } else if string_eq_p(fact_with(c, e, str_lit("blob-offset ")), str_lit("")) {
-            put(fact_with(c, e, str_lit("extract-index ")), put(str_lit("."), put_exp(c, car(xs), n, value(), acc)))
-        } else {
-            put(str_lit(")"), put(fact_with(c, e, str_lit("blob-offset ")), put(str_lit(").field("), put_exp(c, car(xs), n, value(), put(str_lit("("), acc)))))
-        }
-    } else if string_eq_p(h, str_lit("sum")) {
-        // A sum's enum written with its type's arguments, which only the type
-        // expected, as the checker found it, says.
-        let ty = car(read_all(string_chars(fact_with(c, e, str_lit("sum-type "))), str_lit(""), 1i64));
-        let fs = map(&items, cdr(items(ty)));
-        let acc = put(heap_alloc(c), acc);
-        let acc = put(shape_name(false, map(lambda1(move |f: Sexps| {
-            label_of(car(f))
-        }), fs)), acc);
-        let acc = put(str_lit(">::"), put_types(c, map(&second, fs), put(str_lit("::<"), acc)));
-        let acc = put(variant_name(label_of(car(xs))), acc);
-        let acc = put(str_lit("("), acc);
-        put(str_lit("))"), put_exp(c, second(xs), n, value(), acc))
-    } else if (string_eq_p(h, str_lit("list")) && null_p(xs)) {
-        put(str_lit("()"), put_turbofish(c, e, put(str_lit("kayak_rt::nil"), acc)))
-    } else if string_eq_p(h, str_lit("list")) {
-        put_list(c, xs, n, acc)
-    } else if string_eq_p(h, str_lit("quote")) {
-        let tagcase_ = car(xs);
-        match *tagcase_ {
-            Sexp::Sym(q, f, p) => {
-                if (string_eq_p(q, str_lit("#t")) || string_eq_p(q, str_lit("#f"))) {
-                    put_var(c, q, acc)
-                } else {
-                    put(str_lit("\"))"), put_escaped(string_chars(q), '"', put(str_lit("symbol_lit(str_lit(\""), acc)))
+pub fn put_form(mut c: &'static Ctx, mut e: &'static Sexp, mut h: Str, mut xs: Sexps, mut n: i64, mut t: &'static Tail, mut acc: Chars) -> Chars {
+    loop {
+        if string_eq_p(h, str_lit("if")) {
+            let acc = put(str_lit("if "), acc);
+            let acc = put_exp(c, car(xs), n, value(), acc);
+            let acc = put(str_lit(" "), acc);
+            let acc = put_block(c, kayak_rt::heap_cons(second(xs), kayak_rt::nil()), n, t, acc);
+            let acc = put(str_lit(" else "), acc);
+            return put_block(c, kayak_rt::heap_cons(third(xs), kayak_rt::nil()), n, t, acc);
+        } else if string_eq_p(h, str_lit("cond")) {
+            return put_cond(c, xs, n, t, acc);
+        } else if string_eq_p(h, str_lit("typecase")) {
+            return put_typecase_arms(c, car(xs), fact_at_p(c, e, str_lit("typecase-valued")), cdr(xs), n, t, acc);
+        } else if string_eq_p(h, str_lit("and")) {
+            if null_p(xs) {
+                return put(str_lit("true"), acc);
+            } else {
+                return put(str_lit(")"), put_joined(c, xs, str_lit(" && "), n, put(str_lit("("), acc)));
+            }
+        } else if string_eq_p(h, str_lit("or")) {
+            if null_p(xs) {
+                return put(str_lit("false"), acc);
+            } else {
+                return put(str_lit(")"), put_joined(c, xs, str_lit(" || "), n, put(str_lit("("), acc)));
+            }
+        } else if (string_eq_p(h, str_lit("with")) && null_p(cdr(cdr(xs)))) {
+            // A `with` of one expression, no block: only its names are its.
+            return put_exp(with_opened(c, e), second(xs), n, opened_tail(c, e, t), acc);
+        } else if (string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("tagcase")) || string_eq_p(h, str_lit("with"))) {
+            return put_block(c, kayak_rt::heap_cons(e, kayak_rt::nil()), n, t, acc);
+        } else if string_eq_p(h, str_lit("case")) {
+            let acc = put(str_lit("match "), acc);
+            let acc = put_exp(c, car(xs), n, value(), acc);
+            let acc = put(str_lit(" {"), acc);
+            let acc = put_case_arms(c, case_kind(c, e), cdr(xs), i64_plus(n, 1i64), t, acc);
+            return put(str_lit("}"), put_nl(n, acc));
+        } else if string_eq_p(h, str_lit("lambda")) {
+            return put_lambda(c, e, items(car(xs)), cdr(xs), n, acc);
+        } else if (string_eq_p(h, str_lit("rlambda")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+            return put_lambda(c, e, items(second(xs)), cdr(cdr(xs)), n, acc);
+        } else if string_eq_p(h, str_lit("proj")) {
+            return put_exp(c, car(xs), n, value(), acc);
+        } else if string_eq_p(h, str_lit("product")) {
+            let fs = map(&items, xs);
+            let acc = put(shape_name(true, map(lambda1(move |f: Sexps| {
+                label_of(car(f))
+            }), fs)), acc);
+            return put(str_lit(")"), put_joined(c, map(&second, fs), str_lit(", "), n, put(str_lit("("), acc)));
+        } else if string_eq_p(h, str_lit("extract")) {
+            if not(null_p(blob_typed(c, e, str_lit("blob-owner ")))) {
+                return put(str_lit(")"), put(fact_with(c, e, str_lit("blob-field ")), put(str_lit(")."), put_exp(c, car(xs), n, value(), put(str_lit("(&("), acc)))));
+            } else if string_eq_p(fact_with(c, e, str_lit("blob-offset ")), str_lit("")) {
+                return put(fact_with(c, e, str_lit("extract-index ")), put(str_lit("."), put_exp(c, car(xs), n, value(), acc)));
+            } else {
+                return put(str_lit(")"), put(fact_with(c, e, str_lit("blob-offset ")), put(str_lit(").field("), put_exp(c, car(xs), n, value(), put(str_lit("("), acc)))));
+            }
+        } else if string_eq_p(h, str_lit("sum")) {
+            // A sum's enum written with its type's arguments, which only the type
+            // expected, as the checker found it, says.
+            let ty = car(read_all(string_chars(fact_with(c, e, str_lit("sum-type "))), str_lit(""), 1i64));
+            let fs = map(&items, cdr(items(ty)));
+            let acc = put(heap_alloc(c), acc);
+            let acc = put(shape_name(false, map(lambda1(move |f: Sexps| {
+                label_of(car(f))
+            }), fs)), acc);
+            let acc = put(str_lit(">::"), put_types(c, map(&second, fs), put(str_lit("::<"), acc)));
+            let acc = put(variant_name(label_of(car(xs))), acc);
+            let acc = put(str_lit("("), acc);
+            return put(str_lit("))"), put_exp(c, second(xs), n, value(), acc));
+        } else if (string_eq_p(h, str_lit("list")) && null_p(xs)) {
+            return put(str_lit("()"), put_turbofish(c, e, put(str_lit("kayak_rt::nil"), acc)));
+        } else if string_eq_p(h, str_lit("list")) {
+            return put_list(c, xs, n, acc);
+        } else if (string_eq_p(h, str_lit("quasiquote")) && {
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Sexp::Lst(ys, f, l, p) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
                 }
             }
-            Sexp::Num(k, f, p) => {
-                put(str_lit(")"), put(i64_to_string(k), put(str_lit("int_lit("), acc)))
+        }) {
+            if head_is_p(car(xs), str_lit("unquote")) {
+                return put_exp(c, second(items(car(xs))), n, value(), acc);
+            } else {
+                return put_quasi(c, car(xs), 1i64, n, acc);
             }
-            Sexp::Big(text, f, p) => {
-                put(str_lit("\")"), put(text, put(str_lit("int_text(\""), acc)))
+        } else if string_eq_p(h, str_lit("quasiquote")) {
+            h = str_lit("quote");
+            continue;
+        } else if string_eq_p(h, str_lit("quote")) {
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Sexp::Sym(q, f, p) => {
+                    if (string_eq_p(q, str_lit("#t")) || string_eq_p(q, str_lit("#f"))) {
+                        return put_var(c, q, acc);
+                    } else {
+                        return put(str_lit("\"))"), put_escaped(string_chars(q), '"', put(str_lit("symbol_lit(str_lit(\""), acc)));
+                    }
+                }
+                Sexp::Num(k, f, p) => {
+                    return put(str_lit(")"), put(i64_to_string(k), put(str_lit("int_lit("), acc)));
+                }
+                Sexp::Big(text, f, p) => {
+                    return put(str_lit("\")"), put(text, put(str_lit("int_text(\""), acc)));
+                }
+                Sexp::Lst(ys, f, l, p) => {
+                    return put_quoted(c, car(xs), acc);
+                }
+                _ => {
+                    let other = tagcase_;
+                    return put_exp(c, car(xs), n, value(), acc);
+                }
             }
-            Sexp::Lst(ys, f, l, p) => {
-                put_quoted(c, car(xs), acc)
+        } else if string_eq_p(h, str_lit("the")) {
+            // `the::<T>(e)`: the type said to rustc too, which may need it where
+            // FX-26's checker did (a tag's payload, a list nothing else types).
+            let acc = put(str_lit("the::<"), acc);
+            let acc = put_type(c, car(xs), acc);
+            let acc = put(str_lit(">("), acc);
+            let acc = put_args(c, e, cdr(xs), 0i64, n, acc);
+            return put(str_lit(")"), acc);
+        } else if ((string_eq_p(h, str_lit("letrena")) || string_eq_p(h, str_lit("letreap"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+            return put_letrena(c, e, xs, n, acc);
+        } else if ((string_eq_p(h, str_lit("make-bloblet")) || string_eq_p(h, str_lit("rmake-bloblet"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+            // `make_bloblet(bytes, (Cell::new(e), ...,))`; in a region, `rmake_bloblet(r, ...)`.
+            let placed = string_eq_p(h, str_lit("rmake-bloblet"));
+            let flat = blob_typed(c, e, str_lit("blob-make "));
+            let acc = if null_p(flat) {
+                put(if placed {
+                    str_lit("rmake_bloblet(")
+                } else {
+                    str_lit("make_bloblet(")
+                }, acc)
+            } else if placed {
+                put(str_lit(", _>("), put_flat(c, car(flat), put(str_lit("rmake_tbloblet::<_, "), acc)))
+            } else {
+                put(str_lit(">("), put_flat(c, car(flat), put(str_lit("make_tbloblet::<_, "), acc)))
+            };
+            let acc = if placed {
+                put(str_lit(", "), put_exp(c, car(xs), n, value(), acc))
+            } else {
+                acc
+            };
+            let rest = if placed {
+                cdr(xs)
+            } else {
+                xs
+            };
+            let acc = put(str_lit(", ("), put_exp(c, car(rest), n, value(), acc));
+            let acc = put_sep(lambda2(move |x: &'static Sexp, acc: List<char>| {
+                put(str_lit("),"), put_exp(c, x, n, value(), put(str_lit("std::cell::Cell::new("), acc)))
+            }), str_lit(" "), cdr(rest), acc);
+            return put(str_lit("))"), acc);
+        } else if ((string_eq_p(h, str_lit("bloblet-ref")) || string_eq_p(h, str_lit("bloblet-set!"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+            // A field, a cell: `(b).fields.i.get()`, `.set(e)`.
+            let acc = put(number_text(second(xs)), put(str_lit(").fields."), put_exp(c, car(xs), n, value(), put(str_lit("("), acc))));
+            if string_eq_p(h, str_lit("bloblet-ref")) {
+                return put(str_lit(".get()"), acc);
+            } else {
+                return put(str_lit(")"), put_exp(c, third(xs), n, value(), put(str_lit(".set("), acc)));
             }
-            _ => {
-                let other = tagcase_;
-                put_exp(c, car(xs), n, value(), acc)
+        } else if (string_eq_p(h, str_lit("blobref-variant!")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+            // Its tag written, the label as it is, and a blobref to the variant (C33).
+            return put(str_lit(")"), put(words_of_sep(split_words(fact_with(c, e, str_lit("blob-variant "))), str_lit(", ")), put(str_lit(").variant("), put_exp(c, car(xs), n, value(), put(str_lit("("), acc)))));
+        } else if ((string_eq_p(h, str_lit("blobref-get")) || string_eq_p(h, str_lit("blobref-set!"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+            // A scalar's bytes, read or written as the checker found its flat.
+            let acc = if null_p(blob_typed(c, e, str_lit("blob-owner "))) {
+                put(fact_with(c, e, str_lit("blob-scalar ")), put(if string_eq_p(h, str_lit("blobref-get")) {
+                    str_lit(").get_")
+                } else {
+                    str_lit(").set_")
+                }, put_exp(c, car(xs), n, value(), put(str_lit("("), acc))))
+            } else {
+                put(if string_eq_p(h, str_lit("blobref-get")) {
+                    str_lit(").get")
+                } else {
+                    str_lit(").set")
+                }, put_exp(c, car(xs), n, value(), put(str_lit("("), acc)))
+            };
+            if string_eq_p(h, str_lit("blobref-get")) {
+                return put(str_lit("()"), acc);
+            } else {
+                return put(str_lit(")"), put_exp(c, second(xs), n, value(), put(str_lit("("), acc)));
             }
+        } else if (string_eq_p(h, str_lit("blobref-index")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit("")) && not(null_p(blob_typed(c, e, str_lit("blob-owner "))))) {
+            return put(str_lit(")"), put_exp(c, second(xs), n, value(), put(str_lit(").at("), put_exp(c, car(xs), n, value(), put(str_lit("("), acc)))));
+        } else if (string_eq_p(h, str_lit("blobref-at")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit("")) && not(null_p(blob_typed(c, e, str_lit("blob-at "))))) {
+            // A typed suffix's blobref at 0 (C32): a reference to it.
+            return put(str_lit(").suffix)"), put_exp(c, car(xs), n, value(), put(str_lit("(&("), acc)));
+        } else if (string_eq_p(h, str_lit("blobref-index")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+            let acc = put(str_lit(").index("), put_exp(c, car(xs), n, value(), put(str_lit("("), acc)));
+            let acc = put_exp(c, second(xs), n, value(), acc);
+            return put(str_lit(")"), put(string_append(str_lit(", "), words_of_sep(split_words(fact_with(c, e, str_lit("blob-element "))), str_lit(", "))), acc));
+        } else if (string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion"))) {
+            return put_block(c, kayak_rt::heap_cons(e, kayak_rt::nil()), n, t, acc);
+        } else if abort_p(c, e) {
+            // An abort: an early return, where a `Result` is returned; else no
+            // prompt can be running for its tag (the checker masked its region),
+            // and it fails, as FX-26's does when it runs.
+            let acc = put(if fallible_here_p(c) {
+                str_lit("(return Err(unwind(")
+            } else {
+                str_lit("unreachable_unwind(unwind(")
+            }, acc);
+            let acc = put_joined(c, xs, str_lit(", "), n, acc);
+            return put(if fallible_here_p(c) {
+                str_lit(")))")
+            } else {
+                str_lit("))")
+            }, acc);
+        } else if (string_eq_p(h, str_lit("prompt")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+            return put_prompt(c, e, xs, n, acc);
+        } else if (string_eq_p(h, str_lit("abort-with-continuation")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+            return put_suspension(c, e, xs, n, acc);
+        } else if null_p(xs) {
+            return put_question(c, e, put(str_lit("()"), put_callee(c, e, h, acc)));
+        } else if any_p(lambda1(move |x: &'static Sexp| {
+            module_name_p(c, x)
+        }), xs) {
+            // A module given: the type parameter's argument, its marker.
+            let acc = put(str_lit("::<"), put(callee(c, h), acc));
+            let acc = put_sep(lambda2(move |x: &'static Sexp, acc: Chars| {
+                put(str_lit("::Module"), put(mangle(sym_name(x)), acc))
+            }), str_lit(", "), concat(map(lambda1(move |x: &'static Sexp| {
+                if module_name_p(c, x) {
+                    the::<Sexps>(kayak_rt::heap_cons(x, kayak_rt::nil()))
+                } else {
+                    nil::<&'static Sexp>()
+                }
+            }), xs)), acc);
+            let acc = put(str_lit(">("), acc);
+            let acc = put_joined(c, concat(map(lambda1(move |x: &'static Sexp| {
+                if module_name_p(c, x) {
+                    nil::<&'static Sexp>()
+                } else {
+                    the::<Sexps>(kayak_rt::heap_cons(x, kayak_rt::nil()))
+                }
+            }), xs)), str_lit(", "), n, acc);
+            return put_question(c, e, put(str_lit(")"), acc));
+        } else {
+            return put_question(c, e, put(str_lit(")"), put_args(c, e, xs, 0i64, n, put(str_lit("("), put_callee(c, e, h, acc)))));
         }
-    } else if string_eq_p(h, str_lit("the")) {
-        // `the::<T>(e)`: the type said to rustc too, which may need it where
-        // FX-26's checker did (a tag's payload, a list nothing else types).
-        let acc = put(str_lit("the::<"), acc);
-        let acc = put_type(c, car(xs), acc);
-        let acc = put(str_lit(">("), acc);
-        let acc = put_args(c, e, cdr(xs), 0i64, n, acc);
-        put(str_lit(")"), acc)
-    } else if ((string_eq_p(h, str_lit("letrena")) || string_eq_p(h, str_lit("letreap"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
-        put_letrena(c, e, xs, n, acc)
-    } else if ((string_eq_p(h, str_lit("make-bloblet")) || string_eq_p(h, str_lit("rmake-bloblet"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
-        // `make_bloblet(bytes, (Cell::new(e), ...,))`; in a region, `rmake_bloblet(r, ...)`.
-        let placed = string_eq_p(h, str_lit("rmake-bloblet"));
-        let flat = blob_typed(c, e, str_lit("blob-make "));
-        let acc = if null_p(flat) {
-            put(if placed {
-                str_lit("rmake_bloblet(")
-            } else {
-                str_lit("make_bloblet(")
-            }, acc)
-        } else if placed {
-            put(str_lit(", _>("), put_flat(c, car(flat), put(str_lit("rmake_tbloblet::<_, "), acc)))
-        } else {
-            put(str_lit(">("), put_flat(c, car(flat), put(str_lit("make_tbloblet::<_, "), acc)))
-        };
-        let acc = if placed {
-            put(str_lit(", "), put_exp(c, car(xs), n, value(), acc))
-        } else {
-            acc
-        };
-        let rest = if placed {
-            cdr(xs)
-        } else {
-            xs
-        };
-        let acc = put(str_lit(", ("), put_exp(c, car(rest), n, value(), acc));
-        let acc = put_sep(lambda2(move |x: &'static Sexp, acc: List<char>| {
-            put(str_lit("),"), put_exp(c, x, n, value(), put(str_lit("std::cell::Cell::new("), acc)))
-        }), str_lit(" "), cdr(rest), acc);
-        put(str_lit("))"), acc)
-    } else if ((string_eq_p(h, str_lit("bloblet-ref")) || string_eq_p(h, str_lit("bloblet-set!"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
-        // A field, a cell: `(b).fields.i.get()`, `.set(e)`.
-        let acc = put(number_text(second(xs)), put(str_lit(").fields."), put_exp(c, car(xs), n, value(), put(str_lit("("), acc))));
-        if string_eq_p(h, str_lit("bloblet-ref")) {
-            put(str_lit(".get()"), acc)
-        } else {
-            put(str_lit(")"), put_exp(c, third(xs), n, value(), put(str_lit(".set("), acc)))
-        }
-    } else if (string_eq_p(h, str_lit("blobref-variant!")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
-        // Its tag written, the label as it is, and a blobref to the variant (C33).
-        put(str_lit(")"), put(words_of_sep(split_words(fact_with(c, e, str_lit("blob-variant "))), str_lit(", ")), put(str_lit(").variant("), put_exp(c, car(xs), n, value(), put(str_lit("("), acc)))))
-    } else if ((string_eq_p(h, str_lit("blobref-get")) || string_eq_p(h, str_lit("blobref-set!"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
-        // A scalar's bytes, read or written as the checker found its flat.
-        let acc = if null_p(blob_typed(c, e, str_lit("blob-owner "))) {
-            put(fact_with(c, e, str_lit("blob-scalar ")), put(if string_eq_p(h, str_lit("blobref-get")) {
-                str_lit(").get_")
-            } else {
-                str_lit(").set_")
-            }, put_exp(c, car(xs), n, value(), put(str_lit("("), acc))))
-        } else {
-            put(if string_eq_p(h, str_lit("blobref-get")) {
-                str_lit(").get")
-            } else {
-                str_lit(").set")
-            }, put_exp(c, car(xs), n, value(), put(str_lit("("), acc)))
-        };
-        if string_eq_p(h, str_lit("blobref-get")) {
-            put(str_lit("()"), acc)
-        } else {
-            put(str_lit(")"), put_exp(c, second(xs), n, value(), put(str_lit("("), acc)))
-        }
-    } else if (string_eq_p(h, str_lit("blobref-index")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit("")) && not(null_p(blob_typed(c, e, str_lit("blob-owner "))))) {
-        put(str_lit(")"), put_exp(c, second(xs), n, value(), put(str_lit(").at("), put_exp(c, car(xs), n, value(), put(str_lit("("), acc)))))
-    } else if (string_eq_p(h, str_lit("blobref-at")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit("")) && not(null_p(blob_typed(c, e, str_lit("blob-at "))))) {
-        // A typed suffix's blobref at 0 (C32): a reference to it.
-        put(str_lit(").suffix)"), put_exp(c, car(xs), n, value(), put(str_lit("(&("), acc)))
-    } else if (string_eq_p(h, str_lit("blobref-index")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
-        let acc = put(str_lit(").index("), put_exp(c, car(xs), n, value(), put(str_lit("("), acc)));
-        let acc = put_exp(c, second(xs), n, value(), acc);
-        put(str_lit(")"), put(string_append(str_lit(", "), words_of_sep(split_words(fact_with(c, e, str_lit("blob-element "))), str_lit(", "))), acc))
-    } else if (string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion"))) {
-        put_block(c, kayak_rt::heap_cons(e, kayak_rt::nil()), n, t, acc)
-    } else if abort_p(c, e) {
-        // An abort: an early return, where a `Result` is returned; else no
-        // prompt can be running for its tag (the checker masked its region),
-        // and it fails, as FX-26's does when it runs.
-        let acc = put(if fallible_here_p(c) {
-            str_lit("(return Err(unwind(")
-        } else {
-            str_lit("unreachable_unwind(unwind(")
-        }, acc);
-        let acc = put_joined(c, xs, str_lit(", "), n, acc);
-        put(if fallible_here_p(c) {
-            str_lit(")))")
-        } else {
-            str_lit("))")
-        }, acc)
-    } else if (string_eq_p(h, str_lit("prompt")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
-        put_prompt(c, e, xs, n, acc)
-    } else if (string_eq_p(h, str_lit("abort-with-continuation")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
-        put_suspension(c, e, xs, n, acc)
-    } else if null_p(xs) {
-        put_question(c, e, put(str_lit("()"), put_callee(c, e, h, acc)))
-    } else if any_p(lambda1(move |x: &'static Sexp| {
-        module_name_p(c, x)
-    }), xs) {
-        // A module given: the type parameter's argument, its marker.
-        let acc = put(str_lit("::<"), put(callee(c, h), acc));
-        let acc = put_sep(lambda2(move |x: &'static Sexp, acc: Chars| {
-            put(str_lit("::Module"), put(mangle(sym_name(x)), acc))
-        }), str_lit(", "), concat(map(lambda1(move |x: &'static Sexp| {
-            if module_name_p(c, x) {
-                the::<Sexps>(kayak_rt::heap_cons(x, kayak_rt::nil()))
-            } else {
-                nil::<&'static Sexp>()
-            }
-        }), xs)), acc);
-        let acc = put(str_lit(">("), acc);
-        let acc = put_joined(c, concat(map(lambda1(move |x: &'static Sexp| {
-            if module_name_p(c, x) {
-                nil::<&'static Sexp>()
-            } else {
-                the::<Sexps>(kayak_rt::heap_cons(x, kayak_rt::nil()))
-            }
-        }), xs)), str_lit(", "), n, acc);
-        put_question(c, e, put(str_lit(")"), acc))
-    } else {
-        put_question(c, e, put(str_lit(")"), put_args(c, e, xs, 0i64, n, put(str_lit("("), put_callee(c, e, h, acc)))))
     }
 }
 

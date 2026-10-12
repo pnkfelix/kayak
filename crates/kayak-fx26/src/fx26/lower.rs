@@ -42,6 +42,39 @@ pub fn shape_test(shape: Str) -> Str {
     }
 }
 
+/// Whether a quasiquoted datum has an unquote at depth 1: else it is a
+/// constant, quoted and interned as a quote is.
+pub fn unquoted_p(mut d: &'static Sexp, mut depth: i64) -> bool {
+    loop {
+        let tagcase_ = d;
+        match *tagcase_ {
+            Sexp::Lst(ys, f, l, p) => {
+                if null_p(ys) {
+                    return false;
+                } else if (i64_eq(size(ys), 2i64) && (head_is_p(d, str_lit("unquote")) || head_is_p(d, str_lit("unquote-splicing")))) {
+                    return (i64_eq(depth, 1i64) || unquoted_p(second(ys), i64_minus(depth, 1i64)));
+                } else if (i64_eq(size(ys), 2i64) && head_is_p(d, str_lit("quasiquote"))) {
+                    (d, depth) = (second(ys), i64_plus(depth, 1i64));
+                    continue;
+                } else {
+                    return any_p(lambda1(move |y: &'static Sexp| {
+                        unquoted_p(y, depth)
+                    }), ys);
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                return false;
+            }
+        }
+    }
+}
+
+/// `(tag x)` as data.
+pub fn quasi_tagged(tag: Str, x: &'static Ir) -> &'static Ir {
+    i_call(i_lit(v_prim(str_lit("cons"), 2i64)), kayak_rt::heap_cons(i_lit(v_symbol(string_to_symbol(tag))), kayak_rt::heap_cons(i_call(i_lit(v_prim(str_lit("cons"), 2i64)), kayak_rt::heap_cons(x, kayak_rt::heap_cons(i_lit(v_nil()), kayak_rt::nil()))), kayak_rt::nil())))
+}
+
 pub fn position_of(mut n: Str, mut xs: Strings, mut i: i64) -> i64 {
     loop {
         if null_p(xs) {
@@ -420,14 +453,17 @@ pub fn lower_name(n: Str, sc: Scope, gs: Strings) -> &'static Ir {
     }
 }
 
-/// A quoted datum (C77): a symbol; another atom as itself; a list built
-/// by the standard `cons`, whatever the program calls by that name.
+/// A quoted datum (C77, C79): a symbol or `#t`, `#f`; another atom as
+/// itself; a list a literal made once at loading and interned there
+/// (table.kfx), as FX-26's heap interns a quote.
 pub fn lower_quoted(d: &'static Sexp, sc: Scope, gs: Strings) -> &'static Ir {
     let tagcase_ = d;
     match *tagcase_ {
         Sexp::Sym(n, f, p) => {
-            if (string_eq_p(n, str_lit("#t")) || string_eq_p(n, str_lit("#f"))) {
-                lower(d, sc, gs)
+            if string_eq_p(n, str_lit("#t")) {
+                i_lit(v_bool(true))
+            } else if string_eq_p(n, str_lit("#f")) {
+                i_lit(v_bool(false))
             } else {
                 i_lit(v_symbol(string_to_symbol(n)))
             }
@@ -436,12 +472,41 @@ pub fn lower_quoted(d: &'static Sexp, sc: Scope, gs: Strings) -> &'static Ir {
             if null_p(ys) {
                 i_lit(v_nil())
             } else {
-                i_call(i_lit(v_prim(str_lit("cons"), 2i64)), kayak_rt::heap_cons(lower_quoted(car(ys), sc, gs), kayak_rt::heap_cons(lower_quoted(lst(cdr(ys), f, l, p), sc, gs), kayak_rt::nil())))
+                i_lit(v_datum(d))
             }
         }
         _ => {
             let other = tagcase_;
             lower(d, sc, gs)
+        }
+    }
+}
+
+/// A quasiquoted datum (C79): an unquote at depth 1 its expression; an
+/// unquote-splicing's list appended, by the standard `append`.
+pub fn lower_quasi(d: &'static Sexp, depth: i64, sc: Scope, gs: Strings) -> &'static Ir {
+    let tagcase_ = d;
+    match *tagcase_ {
+        Sexp::Lst(ys, f, l, p) => {
+            if null_p(ys) {
+                i_lit(v_nil())
+            } else if (i64_eq(size(ys), 2i64) && head_is_p(d, str_lit("unquote")) && i64_eq(depth, 1i64)) {
+                lower(second(ys), sc, gs)
+            } else if (i64_eq(size(ys), 2i64) && (head_is_p(d, str_lit("unquote")) || head_is_p(d, str_lit("unquote-splicing")))) {
+                quasi_tagged(sym_name(car(ys)), lower_quasi(second(ys), i64_minus(depth, 1i64), sc, gs))
+            } else if (i64_eq(size(ys), 2i64) && head_is_p(d, str_lit("quasiquote"))) {
+                quasi_tagged(str_lit("quasiquote"), lower_quasi(second(ys), i64_plus(depth, 1i64), sc, gs))
+            } else if (i64_eq(depth, 1i64) && head_is_p(car(ys), str_lit("unquote-splicing")) && i64_eq(size(items(car(ys))), 2i64)) {
+                i_call(i_lit(v_prim(str_lit("append"), 2i64)), kayak_rt::heap_cons(lower(second(items(car(ys))), sc, gs), kayak_rt::heap_cons(lower_quasi(lst(cdr(ys), f, l, p), depth, sc, gs), kayak_rt::nil())))
+            } else if not(unquoted_p(d, depth)) {
+                lower_quoted(d, sc, gs)
+            } else {
+                i_call(i_lit(v_prim(str_lit("cons"), 2i64)), kayak_rt::heap_cons(lower_quasi(car(ys), depth, sc, gs), kayak_rt::heap_cons(lower_quasi(lst(cdr(ys), f, l, p), depth, sc, gs), kayak_rt::nil())))
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            lower_quoted(d, sc, gs)
         }
     }
 }
@@ -452,6 +517,8 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
             return lower(second(xs), sc, gs);
         } else if string_eq_p(h, str_lit("quote")) {
             return lower_quoted(car(xs), sc, gs);
+        } else if string_eq_p(h, str_lit("quasiquote")) {
+            return lower_quasi(car(xs), 1i64, sc, gs);
         } else if (string_eq_p(h, str_lit("plambda")) || string_eq_p(h, str_lit("proj"))) {
             if string_eq_p(h, str_lit("proj")) {
                 return lower(car(xs), sc, gs);

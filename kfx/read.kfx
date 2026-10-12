@@ -218,6 +218,14 @@
                     checker's own (a file named ``), `'r` is a region binder's name."
                    (tagcase (read-datum (skip (here (cdr cs) line (i64+ pos 1))) file)
                      (got (x after) (got (lst (list (sym "quote" file pos) x) file line pos) after))))
+                  ((and (or (i64= (char->i64 c) 96) (i64= (char->i64 c) 44)) (not (null? (cdr cs))) (not (string=? file "")))
+                   "`` `d ``, `,d` and `,@d`: FX-26's `quasiquote`, `unquote` and
+                    `unquote-splicing` (C79), in a program's text."
+                   (let* ((splice (and (i64= (char->i64 c) 44) (char=? (car (cdr cs)) #\@)))
+                          (rest (if splice (cdr (cdr cs)) (cdr cs)))
+                          (head (cond ((i64= (char->i64 c) 96) "quasiquote") (splice "unquote-splicing") (else "unquote"))))
+                     (tagcase (read-datum (skip (here rest line (i64+ pos (if splice 2 1)))) file)
+                       (got (x after) (got (lst (list (sym head file pos) x) file line pos) after)))))
                   ((char=? c #\") (string-body (cdr cs) nil file line pos line (i64+ pos 1)))
                   ((and (char=? c #\#) (not (null? (cdr cs))) (char=? (car (cdr cs)) #\\))
                    (let ((name (cdr (cdr cs))))

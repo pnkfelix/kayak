@@ -94,6 +94,13 @@ pub fn ints() -> List<Int> {
     })
 }
 
+pub fn data() -> List<kayak_rt::value::Value> {
+    thread_local!(static ONCE: OnceCell<List<kayak_rt::value::Value>> = const { OnceCell::new() });
+    once(&ONCE, || {
+        kayak_rt::heap_cons(kayak_rt::value::ToValue::to_value(int_lit(4)), kayak_rt::heap_cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("five"))), kayak_rt::nil()))
+    })
+}
+
 pub fn d() -> kayak_rt::value::Value {
     thread_local!(static ONCE: OnceCell<kayak_rt::value::Value> = const { OnceCell::new() });
     once(&ONCE, || {
@@ -103,6 +110,6 @@ pub fn d() -> kayak_rt::value::Value {
 
 pub fn main() -> Str {
     let e = the::<Entry>(kayak_rt::value::cons(symbol_lit(str_lit("k")), int_lit(5)));
-    string_append(shown()(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(int_lit(1)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(int_lit(2)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("three"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(str_lit("four")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value('5'), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(false), kayak_rt::value::Value::Nil)))))), string_append(str_lit(" "), string_append(shown()(d()), string_append(str_lit(" "), string_append(shown()(kayak_rt::value::list(ints())), string_append(str_lit(" "), string_append(int_to_string(_plus(total()(d()), total()(kayak_rt::value::list(ints())))), string_append(str_lit(" "), string_append(symbol_to_string(entry_key(e)), string_append(str_lit(" "), string_append(int_to_string(entry_value(e)), string_append(str_lit(" "), string_append(shown()(datum_list_to_vector(kayak_rt::value::list(ints()))), string_append(str_lit(" "), shown()(kayak_rt::value::car(kayak_rt::value::cdr(d())))))))))))))))))
+    string_append(shown()(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(int_lit(1)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(int_lit(2)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("three"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(str_lit("four")), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value('5'), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(false), kayak_rt::value::Value::Nil)))))), string_append(str_lit(" "), string_append(shown()(d()), string_append(str_lit(" "), string_append(shown()(kayak_rt::value::list(ints())), string_append(str_lit(" "), string_append(int_to_string(_plus(total()(d()), total()(kayak_rt::value::list(ints())))), string_append(str_lit(" "), string_append(symbol_to_string(entry_key(e)), string_append(str_lit(" "), string_append(int_to_string(entry_value(e)), string_append(str_lit(" "), string_append(shown()(datum_list_to_vector(kayak_rt::value::list(ints()))), string_append(str_lit(" "), string_append(shown()(kayak_rt::value::car(kayak_rt::value::cdr(d()))), string_append(str_lit(" "), shown()(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("a"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(_plus(int_lit(1), int_lit(2))), kayak_rt::value::spliced(data(), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("b"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("c"))), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("quasiquote"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("d"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("unquote"))), kayak_rt::value::cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("e"))), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(_star(int_lit(2), int_lit(3))), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::Value::Nil)), kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("end"))), kayak_rt::value::Value::Nil)))))))))))))))))))))))
 }
 
