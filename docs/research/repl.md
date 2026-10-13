@@ -1,6 +1,7 @@
 # The engine's REPL: Fixpt's features, Coopt's foundation, entries that run while you type
 
-Status: design, 2026-10-13; stages 1 to 3 done (C94, C95), the user's: "spend some time working on
+Status: design, 2026-10-13; stages 1 to 3 done (C94, C95), checking as
+you type (C96); the user's: "spend some time working on
 improving the REPL experience. Fixpt's REPL is the most sophisticated …
 model the high-level feature set off of what it offers. But Coopt's REPL
 … has the stronger foundation, … everything being async-pilled on that
@@ -116,3 +117,43 @@ scheduler's clock is the clock.
    waiting), `,cancel K`, `,wait K`.
 4. **Effects decide concurrency**, as above; `load-module` in the REPL.
 5. **Behaviors** (FrTime), designed first.
+
+## Checking as you type (C96)
+
+The draft is closed off and checked on each change, as Fixpt's REPL
+does: a refusal said under the draft when it is about what has been
+finished, else a hint for the argument at the end; a finished
+expression that only reads and allocates runs early, as a task beside
+the entries, its value under the draft. Details: `CLAUDES_CHOICES.md`
+C96. Left: Fixpt's hints from the arguments so far and from the grammar
+(`next: an arm …`); an underline at the refused subform (the note says
+what, not where); speculating a command's forms (`,type E`).
+
+## Coopt's skimmer, and what kayak might take from it
+
+Coopt splits input into forms, and finds the names each defines, before
+anything is read in full (`coopt-read/src/skim.rs`; its `PLAN.md` §3.2).
+It is lexical only: brackets, strings, characters, comments, and for each
+top-level list a sketch of its elements (a name, a list's head, other) to
+depth two, which a table of definition heads (`define`, `define-rec`,
+`define-type`, `define-datatype`, `define-generative` …) turns into the
+names it provides in each namespace; one it cannot read is *opaque*, and
+a lookup that misses waits on the opaque forms before saying a name is
+unbound. It is fed bytes in chunks of any size (so a keystroke at a
+time), allocates only for what goes into a sketch, and runs at 300 to 480
+MB/s. Its index, (namespace, name) → form, lets each form's checking find
+what it depends on without reading the rest; Coopt's REPL looks up each
+name in the draft there and asks for that form's check at typing
+priority. Where it and the parser disagree, the parser wins.
+
+kayak's closing off (C96) is already such a lexical pass, over one draft.
+Where a skimmer in KFX would pay:
+- **The incremental compiler** (`incr.kfx`, C54): memos are keyed by the
+  text of the items read whole; a skim would find the forms and their
+  names without reading them, so that a changed file reads only the forms
+  that changed. Measure first: whether reading is a cost in a warm compile.
+- **The REPL's names before checking**: a `,load`ed file's names known (to
+  Tab, to `,help`) at once; a draft of several forms, the names its
+  earlier forms define offered while its later ones are typed.
+- **Pending definitions** (Fixpt's entries waiting on types not yet
+  defined): an index says which pending form would provide a name.

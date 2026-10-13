@@ -1,0 +1,23 @@
+kayak-fx26 0.1 — FX-26, the engine written in KFX (an interpreter over a heap of its own, collected)
+(each entry runs while you type the next, its value %k after it; ^C interrupts the newest, ,help for more)
+[Jfx26> (define fib (subr (maxeff spin (read @globals)) (int) int) (lambda (n) (if (< n 2) n (+ (fib (- n 1)) (fib (- n 2))))))
+[2K[1] fib : (subr (maxeff spin (read @globals)) (int) int) ! pure
+[Jfx26> [Jfx26> (+ 1 
+[2margument 2 of + wants int[0m[1A[11C[Jfx26> (+ 1 (car 5) 
+[31ma int is here, where a (listof int ?0) is expected[0m[1A[19C[Jfx26> (+ 1 
+[2margument 2 of + wants int[0m[1A[11C[Jfx26> (+ 1 2)
+[2m= 3 : nat ! pure[0m[1A[13C[Jfx26> (+ 1 2)
+[2K[2] 3 : nat ! pure
+[Jfx26> (+ 1 nosuch 
+[31mnothing is named nosuch[0m[1A[18C[Jfx26> (if #t "ab[Jfx26> (if #t "abc" [Jfx26> '(a b [Jfx26> (define c (ref int @h) (new 1))
+[2K[3] c : (ref int @h) ! pure
+[Jfx26> [Jfx26> (get c)
+[2m= 1 : int ! (maxeff (read @h) (read (globals c)))[0m[1A[13C[Jfx26> (get c)
+[2K[4] 1 : int ! (maxeff (read @h) (read (globals c)))
+[Jfx26> (set c 5)
+[2m… : unit ! (maxeff (write @h) (read (globals c)))  (not run early, for its (wr…[0m[1A[15C[Jfx26> (car (the (listof int @h) nil))
+[31mrunning it fails: car of nil[0m[1A[37C[Jfx26> (fib 32)
+[2m… : int ! (maxeff (read @globals) spin (read (globals fib)))[0m[1A[14C[Jfx26> (fib 32)
+[2m… : int ! (maxeff (read @globals) spin (read (globals fib)))  (not run to its …[0m[1A[14C[Jfx26> (fib 32) 
+[2m… : int ! (maxeff (read @globals) spin (read (globals fib)))  (not run to its …[0m[1A[15C[Jfx26> (+ %2 1)
+[2m= 4 : nat ! (read (globals %2))[0m[1A[14C

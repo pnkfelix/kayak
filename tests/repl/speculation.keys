@@ -1,0 +1,21 @@
+# Checking as you type (C96): a hint for the argument at the end; an
+# error in a finished subform, or a finished name, said at once; one in
+# what closing off made, not; a finished expression run early, its value
+# under the draft; one that may write, not run; a run that fails; a run
+# too long, stopped; a space after a finished form changes nothing.
+0 (define fib (subr (maxeff spin (read @globals)) (int) int) (lambda (n) (if (< n 2) n (+ (fib (- n 1)) (fib (- n 2))))))\r
+10 (+ 1 
+20 (car 5) 
+30 \x7f\x7f\x7f\x7f\x7f\x7f\x7f\x7f
+40 2)
+50 \r(+ 1 nosuch 
+60 \x15(if #t "ab
+70 c" 
+80 \x15'(a b 
+90 \x15(define c (ref int @h) (new 1))\r
+100 (get c)
+110 \r(set c 5)
+120 \x15(car (the (listof int @h) nil))
+130 \x15(fib 32)
+1200 \x05 
+1300 \x15(+ %2 1)

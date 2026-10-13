@@ -9,7 +9,8 @@ kayak-fx26 0.1 — FX-26, the engine written in KFX (an interpreter over a heap 
 [Jfx26> [Jfx26> (+ 1 2)
 [2K[4] 3 : nat ! pure
 [Jfx26> [Jfx26> (+ 1
-     | [1A[Jfx26> (+ 1
+     | 
+[2margument 2 of + wants int[0m[1A[7C[1A[Jfx26> (+ 1
      | 2)
 [2K[5] 3 : nat ! pure
 [Jfx26> [Jfx26> (* 2 3)

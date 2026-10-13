@@ -4,6 +4,7 @@ kayak-fx26 0.1 — FX-26, the engine written in KFX (an interpreter over a heap 
 [2K[1] spin-on : (subr (maxeff spin (read @globals)) (int) int) ! pure
 [Jfx26> [Jfx26> (spin-on 0)
 [2K[2] ⠙ running 0.0 s
-[Jfx26> [1A[2K[2] ⠹ running 0.0 s[1B[Jfx26> [1A[2K[2] ⠹ running 0.1 s[1B[Jfx26> [1A[2K[2] ⠸ running 0.1 s[1B[Jfx26> [1A[2K[2] ⠸ running 0.2 s[1B[Jfx26> [1A[2K[2] ⠼ running 0.2 s[1B[Jfx26> (+ 1[Jfx26> [1A[2K[2] ⠴ running 0.3 s[1B[Jfx26> [1A[2K[2] interrupted  (0.3 s)[1B[Jfx26> [Jfx26> (+ 2 2)
+[Jfx26> [1A[2K[2] ⠹ running 0.0 s[1B[Jfx26> [1A[2K[2] ⠹ running 0.1 s[1B[Jfx26> [1A[2K[2] ⠸ running 0.1 s[1B[Jfx26> [1A[2K[2] ⠸ running 0.2 s[1B[Jfx26> [1A[2K[2] ⠼ running 0.2 s[1B[Jfx26> (+ 1
+[2margument 1 of + wants int[0m[1A[10C[Jfx26> [1A[2K[2] ⠴ running 0.3 s[1B[Jfx26> [1A[2K[2] interrupted  (0.3 s)[1B[Jfx26> [Jfx26> (+ 2 2)
 [2K[3] 4 : nat ! pure
 [Jfx26> 

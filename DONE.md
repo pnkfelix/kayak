@@ -1211,3 +1211,12 @@ C95: the draft edited as Fixpt's REPL edits one, history in
 `,load`, `,pending`, `,cancel`, `,step-limit`, `,apropos`, `,quit`;
 `tests/repl/editing.keys`, `commands.keys`.
 
+
+## Checking as you type (2026-10-13)
+
+C96: the REPL's draft closed off and checked on each change, as Fixpt's
+REPL checks one; a refusal believed only if about what was finished
+(`refuse` says an offset in a `<draft>`), else a hint for the argument;
+a finished expression that only reads and allocates run early as the
+task in slot 0, its IR given back when the draft changes; pasted
+entries' lines in order. `tests/repl/speculation.keys`, `paste.keys`.

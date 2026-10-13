@@ -1,0 +1,17 @@
+kayak-fx26 0.1 — FX-26, the engine written in KFX (an interpreter over a heap of its own, collected)
+(each entry runs while you type the next, its value %k after it; ^C interrupts the newest, ,help for more)
+[Jfx26> (define fib (subr (maxeff spin (read @globals)) (int) int) (lambda (n) (if (< n 2) n (+ (fib (- n 1)) (fib (- n 2))))))
+[2K[1] fib : (subr (maxeff spin (read @globals)) (int) int) ! pure
+[Jfx26> [Jfx26> (string-append "a" "b")
+[2K[2] ⠋ waiting
+[Jfx26> (fib 20)[Jfx26> (fib 20)
+[2K[3] ⠋ waiting
+[Jfx26> (fib 24)[Jfx26> (fib 24)
+[4A[2K[2] "ab" : string ! pure[4B[2A[2K[3] ⠋ running 0.0 s[2B[2K[4] ⠋ running 0.0 s
+[Jfx26> [3A[2K[3] 6765 : int ! (maxeff (read @globals) spin (read (globals fib)))[3B[Jfx26> (+ %4 1)
+[2m… : int ! (read (globals %4))  (run when [4] has ended)[0m[1A[14C[Jfx26> (+ %4 1)
+[2m… : int ! (read (globals %4))  (run when [4] has ended)[0m[1A[14C[1A[2K[4] ⠙ running 0.0 s[1B[Jfx26> (+ %4 1)
+[2m… : int ! (read (globals %4))  (run when [4] has ended)[0m[1A[14C[1A[2K[4] ⠙ running 0.1 s[1B[Jfx26> (+ %4 1)
+[2m… : int ! (read (globals %4))  (run when [4] has ended)[0m[1A[14C[1A[2K[4] 46368 : int ! (maxeff (read @globals) spin (read (globals fib)))  (0.1 s)[1B[Jfx26> (+ %4 1)
+[2m… : int ! (read (globals %4))  (run when [4] has ended)[0m[1A[14C[Jfx26> (+ %4 1)
+[2m= 46369 : int ! (read (globals %4))[0m[1A[14C

@@ -1,0 +1,6 @@
+# Entries pasted, given in the same keys: each line after its draft. An
+# entry naming one still running: the note says it waits.
+0 (define fib (subr (maxeff spin (read @globals)) (int) int) (lambda (n) (if (< n 2) n (+ (fib (- n 1)) (fib (- n 2))))))\r
+10 (string-append "a" "b")\r(fib 20)\r(fib 24)\r
+12 (+ %4 1)
+1000 

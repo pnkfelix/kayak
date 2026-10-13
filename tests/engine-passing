@@ -25,7 +25,9 @@ letrena-poly
 lets
 lifted
 lists
+module-letrec
 module-params
+module-strings
 modules
 mutable
 names

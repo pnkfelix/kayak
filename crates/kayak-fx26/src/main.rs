@@ -79,6 +79,14 @@ fn key(c: u8, now: i64) {
     }
 }
 
+/// The draft checked as it is typed (and run early, if it may be), a
+/// refusal caught.
+fn speculate(now: i64) {
+    if let Err(message) = guarded(|| s::speculate_x(now)) {
+        s::speculation_refused_x(leak_string(message), now);
+    }
+}
+
 /// Slices run, the entries by turns, while `more` says so.
 fn slices(now: &mut dyn FnMut() -> i64, more: &mut dyn FnMut(i64) -> bool) {
     loop {
@@ -157,6 +165,7 @@ fn repl() -> i64 {
             }
             None => {}
         }
+        speculate(now());
         // Slices for a sixtieth of a second at most, then the screen.
         let began = now();
         slices(&mut { now }, &mut |t| t - began < 16);
@@ -213,6 +222,7 @@ fn scripted(path: &str) -> i64 {
             ended = true;
             s::leave_x();
         }
+        speculate(clock);
         let mut ran = 0;
         {
             let c = &mut clock;

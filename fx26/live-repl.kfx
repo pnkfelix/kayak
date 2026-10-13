@@ -17,7 +17,10 @@
  it, the arrows, ^A ^E ^B ^F ^K ^U ^W, history (kept in a file), Tab
  completing a name; and Fixpt's commands (stage 3), each written as an
  entry's line: `,help`, `,type`, `,time`, `,load`, `,pending`,
- `,cancel`, `,step-limit`, `,apropos`, `,quit`.
+ `,cancel`, `,step-limit`, `,apropos`, `,quit`. The draft is checked as
+ it is typed (C96): an error in what has been finished, or a hint, under
+ it; a finished expression that only reads and allocates run early, its
+ value there before Enter.
 
  Live, the screen is drawn with ANSI's moves; plain (no terminal), the
  entries run one after another and each line is written when it ends."
@@ -41,6 +44,42 @@
                    (row (ref i64 @h)) (drawn (ref string @h))
                    (timed bool) (steps (ref i64 @h)) (gcs i64) (gcs-after (ref i64 @h))))
 
+      "The draft's speculation (C96): its note, the line under the draft, and
+       whether it is an error; whether the draft as it is has been tried;
+       where its closed-off text stops being what was typed, the lists it
+       closed, and whether it was finished; its type, if an expression; its
+       run (0: none, 1: running as the task in slot 0, 2: ended), the steps
+       it took, the IR tables' lengths before it was numbered (to give them
+       back); whether it waits for an entry, to be tried again when one
+       ends; and what was checked, so that an edit that changes none of it
+       (a space after a finished form) keeps what was found."
+
+      (define note (ref string @h) (new ""))
+
+      (define note-error (ref bool @h) (new #f))
+
+      (define speculated (ref bool @h) (new #f))
+
+      (define spec-kept (ref i64 @h) (new 0))
+
+      (define spec-open (ref (listof i64 acyclic) @h) (new nil))
+
+      (define spec-finished (ref bool @h) (new #f))
+
+      (define spec-type (ref string @h) (new ""))
+
+      (define spec-state (ref i64 @h) (new 0))
+
+      (define spec-steps (ref i64 @h) (new 0))
+
+      (define spec-marks (ref (listof i64 acyclic) @h) (new nil))
+
+      (define spec-waits (ref bool @h) (new #f))
+
+      (define spec-key (ref string @h) (new ""))
+
+      (define spec-limit i64 2000000)
+
       (define make-entry (subr running (i64 string string string bool (listof i64 acyclic) i64 (listof i64 acyclic) string bool i64) entry)
         (lambda (k text typed defined quiet needs state tops shown timed now)
           (product (num k) (text text) (typed typed) (defined defined) (quiet quiet) (needs needs)
@@ -54,7 +93,8 @@
           (begin
             (set (extract e state) state)
             (set (extract e ended) now)
-            (set (extract e gcs-after) (get collections)))))
+            (set (extract e gcs-after) (get collections))
+            (if (get spec-waits) (begin (set speculated #f) (set spec-key "")) #u))))
 
       (define st-checking i64 0)
 
@@ -250,7 +290,7 @@
           "^C: the draft dropped, if there is one; else the newest entry not
            ended, interrupted."
           (if (not (string=? (get draft) ""))
-              (begin (set draft "") (set cursor 0) (set history-at -1) (set draft-dirty #t))
+              (begin (draft-set! "" 0) (set history-at -1))
               (let ((running (entries-where unfinished? (get entries))))
                 (if (null? running)
                     (set leaving #f)
@@ -275,13 +315,17 @@
         (count-newlines (subr kfx ((listof char acyclic) i64) i64)
           (lambda (cs n) (cond ((null? cs) n) ((char=? (car cs) #\newline) (count-newlines (cdr cs) (i64+ n 1))) (else (count-newlines (cdr cs) n))))))
 
-      (define finish-draft! (subr running () unit)
-        (lambda ()
+      (define finish-draft! (subr running (i64) unit)
+        (lambda (now)
           "The draft, whole, left on the screen as it was drawn: the rows below
-           it the transcript's."
+           it the transcript's. The entries' lines not yet written are written
+           first, so that an entry given in the same keys as the one before it
+           (pasted) comes after that one's line."
           (if (get live)
               (begin
+                (if (some-entry? (lambda ((e entry)) (i64< (get (extract e row)) 0)) (get entries)) (live-screen! now) #u)
                 (up! (get cursor-row))
+                (set note "")
                 (set cursor (string-length-i64 (get draft)))
                 (draw-draft! (get draft))
                 (say! "\r\n")
@@ -295,7 +339,9 @@
 
       (define draft-set! (subr running (string i64) unit)
         (lambda (d at)
-          (begin (set draft d) (set cursor (clamped at (string-length-i64 d))) (set draft-dirty #t))))
+          (begin
+            (if (string=? d (get draft)) #u (set speculated #f))
+            (set draft d) (set cursor (clamped at (string-length-i64 d))) (set draft-dirty #t))))
 
       (define clamped (subr kfx (i64 i64) i64)
         (lambda (i n) (cond ((i64< i 0) 0) ((i64> i n) n) (else i))))
@@ -394,16 +440,16 @@
           (let* ((d (get draft))
                  (trimmed (trimmed-start (string-chars d))))
             (cond ((and (not (null? trimmed)) (char=? (car trimmed) #\,) (command-whole? (list->string trimmed)))
-                   (begin (given! d) (command! (list->string trimmed) now)))
-                  ((repl-complete? d) (begin (given! d) (submit! d "" #f now)))
+                   (begin (given! d now) (command! (list->string trimmed) now)))
+                  ((repl-complete? d) (begin (given! d now) (submit! d "" #f now)))
                   ((null? trimmed) (draft-set! "" 0))
                   (else (inserted! "\n"))))))
 
-      (define given! (subr running (string) unit)
-        (lambda (d)
+      (define given! (subr running (string i64) unit)
+        (lambda (d now)
           "The draft left on the screen, kept in the history, and emptied."
           (begin
-            (finish-draft!)
+            (finish-draft! now)
             (set history (cons (trimmed-end d) (get history)))
             (history-written!)
             (set history-at -1)
@@ -632,6 +678,8 @@ an entry naming one that has not ended waits for it.")
                  (e (make-entry k text "" "" #t nil st-checking nil "" timed now)))
             (begin
               (set repl-count k)
+              ;; Nodes numbered for the draft's run given back before the entry's are.
+              (speculation-dropped!)
               ;; Kept first, so that a refusal (a failure, which the Rust catches)
               ;; finds it: `refused!`.
               (set entries (cons e (get entries)))
@@ -750,19 +798,23 @@ an entry naming one that has not ended waits for it.")
 
       (define draw-draft! (subr running (string) unit)
         (lambda (d)
-          "The draft drawn from the start of its first row, the rows below cleared."
-          (let ((cs (string-chars d)))
+          "The draft drawn from the start of its first row, the rows below cleared;
+           its note, if any, on the row after it."
+          (let ((cs (string-chars d)) (shown (note-shown)))
             (begin
               (say! "\r\x1b;[J")
               (say! "fx26> ")
               (set written (prompted cs (get written)))
-              (set draft-rows (wrapped-rows cs 6 (get screen-cols) 1))
+              (if (string=? shown "")
+                  #u
+                  (begin (say! "\r\n") (say! (if (get note-error) "\x1b;[31m" "\x1b;[2m")) (say! shown) (say! "\x1b;[0m")))
+              (set draft-rows (i64+ (wrapped-rows cs 6 (get screen-cols) 1) (if (string=? shown "") 0 1)))
               (set draft-dirty #f)
               (let* ((before (string-chars (substring d 0 (i64->int (get cursor)))))
                      (row (i64- (wrapped-rows before 6 (get screen-cols) 1) 1))
                      (col (column-after before 6 (get screen-cols))))
                 (begin
-                  (if (i64= (get cursor) (string-length-i64 d))
+                  (if (and (i64= (get cursor) (string-length-i64 d)) (string=? shown ""))
                       #u
                       (begin
                         (up! (i64- (i64- (get draft-rows) 1) row))
@@ -873,6 +925,285 @@ an entry naming one that has not ended waits for it.")
                       ((unfinished? e) #u)
                       (else (begin (set (extract e row) (get rows)) (set (extract e drawn) line) (printed! line))))))))))
 
+      "Speculation (C96): the draft checked as it is typed, as Fixpt's REPL
+       checks one (its speculate.rs). The draft is closed off: a name, number
+       or string still being typed at its end left out, and the lists still
+       open closed. That is checked after what the entries before it defined,
+       nothing kept (the checker writes nothing). A refusal is believed only
+       when it is about what has been finished: a list the user closed, or a
+       name with a delimiter after it; else the note is a hint, what the
+       argument at the cursor must be. A finished expression whose effect
+       only reads and allocates (an entry's that runs beside others) is run
+       too, as the task in slot 0, by turns with the entries, its value under
+       the draft before Enter; dropped, the IR numbered for it with it, when
+       the draft changes."
+
+      (define-datatype closing (not-closable) (closed-off string i64 (listof i64 acyclic) bool))
+
+      (define-datatype scan (unbalanced) (scanned (listof i64 acyclic) bool))
+
+      (define-rec
+        (kept-end (subr kfx ((listof char acyclic) i64 i64 bool i64) i64)
+          (lambda (cs i str comment atom)
+            "Where the text stops being finished: at a string not closed (begun
+             at `str`), or a name, number or character running to the end (begun
+             at `atom`); -1 for none."
+            (cond ((null? cs) (cond ((i64>= str 0) str) ((i64>= atom 0) atom) (else i)))
+                  ((i64>= str 0)
+                   (cond ((char=? (car cs) #\\) (if (null? (cdr cs)) str (kept-end (cdr (cdr cs)) (i64+ i 2) str #f -1)))
+                         ((char=? (car cs) #\") (kept-end (cdr cs) (i64+ i 1) -1 #f -1))
+                         (else (kept-end (cdr cs) (i64+ i 1) str #f -1))))
+                  (comment (kept-end (cdr cs) (i64+ i 1) -1 (not (char=? (car cs) #\newline)) -1))
+                  ((char=? (car cs) #\") (kept-end (cdr cs) (i64+ i 1) i #f -1))
+                  ((i64= (char->i64 (car cs)) 59) (kept-end (cdr cs) (i64+ i 1) -1 #t -1))
+                  ((and (char=? (car cs) #\#) (not (null? (cdr cs))) (char=? (car (cdr cs)) #\\))
+                   (let ((from (if (i64>= atom 0) atom i)))
+                     (if (null? (cdr (cdr cs))) from (kept-end (cdr (cdr (cdr cs))) (i64+ i 3) -1 #f from))))
+                  ((name-char? (car cs)) (kept-end (cdr cs) (i64+ i 1) -1 #f (if (i64>= atom 0) atom i)))
+                  (else (kept-end (cdr cs) (i64+ i 1) -1 #f -1))))))
+
+      (define-rec
+        (before-quotes (subr kfx (string i64) i64)
+          (lambda (s i)
+            "`i`, less the quotes before it, which wait for a datum."
+            (if (and (i64> i 0) (i64= (char->i64 (string-ref-i64 s (i64- i 1))) 39)) (before-quotes s (i64- i 1)) i))))
+
+      (define-rec
+        (open-lists (subr kfx ((listof char acyclic) i64 (listof i64 acyclic) bool bool) scan)
+          (lambda (cs i open str comment)
+            "Where the lists still open begin, the innermost first; and whether the
+             text ends in a comment. A list closed that was never opened: none."
+            (cond ((null? cs) (scanned open comment))
+                  (str
+                   (cond ((char=? (car cs) #\\) (if (null? (cdr cs)) (scanned open #f) (open-lists (cdr (cdr cs)) (i64+ i 2) open #t #f)))
+                         ((char=? (car cs) #\") (open-lists (cdr cs) (i64+ i 1) open #f #f))
+                         (else (open-lists (cdr cs) (i64+ i 1) open #t #f))))
+                  (comment (open-lists (cdr cs) (i64+ i 1) open #f (not (char=? (car cs) #\newline))))
+                  ((char=? (car cs) #\") (open-lists (cdr cs) (i64+ i 1) open #t #f))
+                  ((i64= (char->i64 (car cs)) 59) (open-lists (cdr cs) (i64+ i 1) open #f #t))
+                  ((and (char=? (car cs) #\#) (not (null? (cdr cs))) (char=? (car (cdr cs)) #\\) (not (null? (cdr (cdr cs)))))
+                   (open-lists (cdr (cdr (cdr cs))) (i64+ i 3) open #f #f))
+                  ((char=? (car cs) #\() (open-lists (cdr cs) (i64+ i 1) (cons i open) #f #f))
+                  ((char=? (car cs) #\)) (if (null? open) (unbalanced) (open-lists (cdr cs) (i64+ i 1) (cdr open) #f #f)))
+                  (else (open-lists (cdr cs) (i64+ i 1) open #f #f))))))
+
+      (define-rec
+        (closers (subr kfx (i64) string)
+          (lambda (n) (if (i64<= n 0) "" (string-append ")" (closers (i64- n 1)))))))
+
+      (define closed-text (subr kfx (string) closing)
+        (lambda (text)
+          "The draft closed off: what was typed, less a token still being typed,
+           its lists closed; where that stops being the draft, the lists it
+           closed, and whether the draft was finished (nothing left out or
+           closed)."
+          (let* ((kept (before-quotes text (kept-end (string-chars text) 0 -1 #f -1)))
+                 (typed (cut text 0 kept)))
+            (tagcase (open-lists (string-chars typed) 0 nil #f #f)
+              (unbalanced () (not-closable))
+              (scanned (open comment)
+                (closed-off (string-append typed (string-append (if (and comment (not (null? open))) "\n" "") (closers (size open))))
+                            kept open
+                            (and (null? open) (i64= kept (string-length-i64 text)))))))))
+
+      (define-rec
+        (i64-member? (subr kfx (i64 (listof i64 acyclic)) bool)
+          (lambda (x xs) (cond ((null? xs) #f) ((i64= x (car xs)) #t) (else (i64-member? x (cdr xs)))))))
+
+      (define-rec
+        (nth-ty (subr kfx ((listof ty acyclic) i64) ty)
+          (lambda (ts i) (if (i64= i 0) (car ts) (nth-ty (cdr ts) (i64- i 1))))))
+
+      (define-rec
+        (quoted-at? (subr kfx (string i64) bool)
+          (lambda (s i)
+            "Whether the list at `i` is quoted data: a quote before it."
+            (cond ((i64<= i 0) #f)
+                  ((char-whitespace? (string-ref-i64 s (i64- i 1))) (quoted-at? s (i64- i 1)))
+                  (else (i64= (char->i64 (string-ref-i64 s (i64- i 1))) 39))))))
+
+      (define argument-hint (subr running (string i64) string)
+        (lambda (op k)
+          "What argument `k` of `op` must be, if `op` names a subroutine."
+          (let ((found (find-bind op (cv-binds (get repl-cv)))))
+            (if (null? found)
+                ""
+                (tagcase (car found)
+                  (bind (n sc w)
+                    (tagcase sc
+                      (scheme (tv t)
+                        (tagcase t
+                          (ty-proc (es ps r)
+                            (if (i64> k (size ps))
+                                (string-append op (string-append " takes " (string-append (i64->string (size ps)) (if (i64= (size ps) 1) " argument" " arguments"))))
+                                (string-append "argument " (string-append (i64->string k) (string-append " of " (string-append op (string-append " wants " (show-ty (new-state) (nth-ty ps (i64- k 1))))))))))
+                          (else other ""))))))))))
+
+      (define hint-at (subr running (string i64 (listof i64 acyclic)) string)
+        (lambda (text kept open)
+          "The hint at the cursor: what the next argument of the innermost list
+           open must be, if it is a call of a subroutine the checker knows."
+          (if (or (null? open) (quoted-at? text (car open)))
+              ""
+              (let ((forms (read-all (string-chars (string-append (cut text (car open) kept) ")")) "<hint>" 1)))
+                (if (null? forms)
+                    ""
+                    (let ((xs (items (car forms))))
+                      (if (null? xs)
+                          ""
+                          (tagcase (car xs)
+                            (sym (op f p) (argument-hint op (size xs)))
+                            (else other "")))))))))
+
+      (define noted! (subr running (string bool) unit)
+        (lambda (text error) (begin (set note text) (set note-error error) (set draft-dirty #t))))
+
+      (define note-shown (subr running () string)
+        (lambda ()
+          "The note as drawn: its first line, cut to the screen's width."
+          (let* ((line (first-line (get note)))
+                 (width (i64- (get screen-cols) 1))
+                 (cut-short (or (i64> (string-length-i64 line) width) (has-char-in? (get note) #\newline))))
+            (if cut-short (string-append (cut line 0 (i64- width 1)) "…") line))))
+
+      (define speculation-dropped! (subr running () unit)
+        (lambda ()
+          "The draft's speculation forgotten: its task's registers, the IR its
+           run was numbered into, and its note."
+          (begin
+            (if (i64= (get spec-state) 0)
+                #u
+                (begin
+                  (if (i64= (get spec-state) 1) (parked-cleared! 0) #u)
+                  (let ((ms (get spec-marks)))
+                    (if (i64= (size ms) 4)
+                        (begin
+                          (set node-count (car ms))
+                          (set kid-count (car (cdr ms)))
+                          (set armx-count (car (cdr (cdr ms))))
+                          (set constant-count (car (cdr (cdr (cdr ms))))))
+                        #u))
+                  (set spec-state 0)))
+            (set speculated #f)
+            (set spec-key "")
+            (set spec-waits #f)
+            (if (string=? (get note) "") #u (noted! "" #f)))))
+
+      (define-rec
+        (checked-all (subr running (cv sexps) cv)
+          (lambda (v forms) (if (null? forms) v (checked-all (checked-form v (car forms)) (cdr forms))))))
+
+      (define-rec
+        (definition-lines (subr running (cv sexps) strings)
+          (lambda (v forms)
+            "What the REPL writes of each definition among `forms`."
+            (cond ((null? forms) nil)
+                  ((definition-form? (car forms))
+                   (let ((l (form-type v (car forms))))
+                     (if (string=? l "") (definition-lines v (cdr forms)) (cons l (definition-lines v (cdr forms))))))
+                  (else (definition-lines v (cdr forms)))))))
+
+      (define speculated-forms! (subr running (sexps bool) unit)
+        (lambda (forms finished)
+          "The draft's forms checked, each after those before it (a refusal
+           fails); if finished, an expression's type said, and the expression
+           run if it may be; definitions' types said."
+          (let ((v (checked-all (get repl-cv) forms)))
+            (cond ((or (not finished) (null? forms)) #u)
+                  ((and (null? (cdr forms)) (not (definition-form? (car forms)))) (expression-speculated! (car forms)))
+                  (else (noted! (words-lines (definition-lines v forms)) #f))))))
+
+      (define-rec
+        (unfinished-of (subr running ((listof i64 acyclic)) (listof i64 acyclic))
+          (lambda (ks)
+            "The entries numbered `ks` that have not ended."
+            (cond ((null? ks) nil)
+                  ((some-entry? (lambda ((e entry)) (and (i64= (extract e num) (car ks)) (unfinished? e))) (get entries)) (cons (car ks) (unfinished-of (cdr ks))))
+                  (else (unfinished-of (cdr ks)))))))
+
+      (define expression-speculated! (subr running (sexp) unit)
+        (lambda (form)
+          (let* ((type (form-type (get repl-cv) form))
+                 (effects (expression-effects (get repl-cv) form))
+                 (waiting (unfinished-of (named-results form))))
+            (begin
+              (set spec-type type)
+              (cond ((not (null? waiting))
+                     (begin
+                       (set spec-waits #t)
+                       (noted! (string-append "…" (string-append type (string-append "  (run when [" (string-append (i64->string (car waiting)) "] has ended)")))) #f)))
+                    ((not (quiet-effect? effects))
+                     (noted! (string-append "…" (string-append type (string-append "  (not run early, for its " (string-append (show-effs (loud-atoms effects)) ")")))) #f))
+                    (else
+                     (begin
+                       (set spec-marks (list (get node-count) (get kid-count) (get armx-count) (get constant-count)))
+                       ;; Ended until it starts: the tables given back even if lowering fails.
+                       (set spec-state 2)
+                       (let ((ns (number-tops! (lower-tops (list form) (get repl-globals)))))
+                         (if (or (null? ns) (i64< (car ns) 0))
+                             #u
+                             (begin (start-parked! 0 (car ns)) (set spec-steps 0) (set spec-state 1))))
+                       (noted! (string-append "…" type) #f))))))))
+
+      (define loud-atoms (subr kfx (strings) strings)
+        (lambda (es)
+          "The atoms of an effect that keep an entry from running beside others."
+          (concat (map (lambda ((a string)) (if (quiet-effect? (list a)) nil (list a))) es))))
+
+      (define draft-runnable? (subr running () bool)
+        (lambda ()
+          "Whether the draft's run may take a slice: begun, not ended, and no
+           entry unfinished that does more than read and allocate."
+          (and (i64= (get spec-state) 1)
+               (not (some-entry? (lambda ((d entry)) (and (unfinished? d) (not (extract d quiet)))) (get entries))))))
+
+      (define draft-slice! (subr running (i64) unit)
+        (lambda (now)
+          "A slice of the draft's run."
+          (begin
+            (set last-run 0)
+            (set task-slot 0)
+            (set fuel slice-steps)
+            (let ((w (resume 0)))
+              (begin
+                (set spec-steps (i64+ (get spec-steps) (i64- slice-steps (get fuel))))
+                (set fuel -1)
+                (cond ((not (i64= w w-paused))
+                       (begin
+                         (set spec-state 2)
+                         (parked-cleared! 0)
+                         (noted! (string-append "= " (string-append (show-word w) (get spec-type))) #f)))
+                      ((i64> (get spec-steps) spec-limit)
+                       (begin
+                         (set spec-state 2)
+                         (parked-cleared! 0)
+                         (noted! (string-append "…" (string-append (get spec-type) (string-append "  (not run to its end early: " (string-append (i64->string spec-limit) " steps; Enter runs it)")))) #f)))
+                      (else #u)))))))
+
+      (define refused-offset (subr kfx (string) i64)
+        (lambda (m)
+          "Where in the draft a refusal is, as `refuse` says it for one, or -1."
+          (let ((p "kfx: <draft>@"))
+            (if (has-prefix? m p)
+                (number-from (digits-of (string-chars (cut m (string-length-i64 p) (string-length-i64 m)))) 0)
+                -1))))
+
+      (define-rec
+        (digits-of (subr kfx ((listof char acyclic)) (listof char acyclic))
+          (lambda (cs) (if (and (not (null? cs)) (char-numeric? (car cs))) (cons (car cs) (digits-of (cdr cs))) nil))))
+
+      (define without-prefix (subr kfx (string string) string)
+        (lambda (s p) (if (has-prefix? s p) (cut s (string-length-i64 p) (string-length-i64 s)) s)))
+
+      (define refusal-words (subr kfx (string) string)
+        (lambda (m)
+          "A refusal of the draft without where: what it is."
+          (cond ((has-prefix? m "kfx: <draft>@")
+                 (let ((at (int->i64 (string-search m ": " 13))))
+                   (if (i64< at 0) m (without-prefix (cut m (i64+ at 2) (string-length-i64 m)) "in a top-level expression: "))))
+                ((has-prefix? m "kfx: ") (without-prefix (cut m 5 (string-length-i64 m)) "in a top-level expression: "))
+                (else m))))
+
     (define session-start! (subr running (bool i64 i64 string) string)
       (lambda (is-live height width path)
         (begin
@@ -929,24 +1260,67 @@ an entry naming one that has not ended waits for it.")
                 (set (extract (car es) shown) message)
                 (set (extract (car es) ended) now))))))
 
+    (define speculate! (subr running (i64) unit)
+      (lambda (now)
+        "The draft checked as it is typed, once for each text it has been, and
+         run if finished and its effect allows: its note. A refusal fails, and
+         the Rust gives it to `speculation-refused!`. Not in plain mode, nor
+         for a command's line."
+        (if (or (not (get live)) (get speculated))
+            #u
+            (let* ((d (get draft))
+                   (trimmed (trimmed-start (string-chars d)))
+                   (closing (if (and (not (null? trimmed)) (char=? (car trimmed) #\,)) (not-closable) (closed-text d)))
+                   (key (tagcase closing
+                          (not-closable () "")
+                          (closed-off (closed kept open finished) (string-append (if finished "f|" "u|") (trimmed-end closed))))))
+              (if (and (not (string=? key "")) (string=? key (get spec-key)))
+                  (set speculated #t)
+                  (begin
+                    (speculation-dropped!)
+                    (set speculated #t)
+                    (set spec-key key)
+                    (tagcase closing
+                      (not-closable () #u)
+                      (closed-off (closed kept open finished)
+                        (begin
+                          (set spec-kept kept)
+                          (set spec-open open)
+                          (set spec-finished finished)
+                          (noted! (hint-at d kept open) #f)
+                          (speculated-forms! (read-all (string-chars closed) "<draft>" 1) finished))))))))))
+
+    (define speculation-refused! (subr running (string i64) unit)
+      (lambda (message now)
+        "The draft refused (the Rust caught the failure): said, if it is about
+         what has been finished; else the hint stays."
+        (let ((at (refused-offset message)))
+          (if (or (get spec-finished)
+                  (and (i64>= at 0) (i64< at (get spec-kept)) (not (i64-member? at (get spec-open)))))
+              (noted! (refusal-words message) #t)
+              #u))))
+
     "Running."
 
     (define next-task (subr running () i64)
       (lambda ()
-        "The entry to run a slice of, by turns, or -1."
+        "The entry to run a slice of, by turns, or -1; 0, the draft's run."
         (let* ((ready (entries-where may-run? (oldest-first (get entries) nil)))
                (last (get last-run))
                (after (entries-where (lambda ((e entry)) (i64> (extract e num) last)) ready)))
           (cond ((not (null? after)) (extract (car after) num))
+                ((draft-runnable?) 0)
                 ((not (null? ready)) (extract (car ready) num))
                 (else -1)))))
 
     (define slice! (subr running (i64 i64) unit)
       (lambda (k now)
-        "A slice of entry `k`: its tops run on from where they paused."
+        "A slice of entry `k`: its tops run on from where they paused; or of
+         the draft's run, `k` 0."
         (let ((found (entry-numbered (get entries) k)))
-          (if (null? found)
-              #u
+          (cond ((i64= k 0) (draft-slice! now))
+                ((null? found) #u)
+                (else
               (let ((e (car found)))
                 (begin
                   (set last-run k)
@@ -968,23 +1342,28 @@ an entry naming one that has not ended waits for it.")
                                (ended! e st-failed now)
                                (set (extract e shown) (string-append "! the step limit, " (string-append (i64->string (get step-limit)) ", reached (,step-limit)")))
                                (parked-cleared! k)))
-                            (else #u))))))))))
+                            (else #u)))))))))))
 
     (define failed! (subr running (i64 string i64) unit)
       (lambda (k message now)
-        "Entry `k` failed (the Rust caught the failure)."
+        "Entry `k` failed (the Rust caught the failure); or the draft's run."
         (begin
           (set fuel -1)
           (set capturing #f)
           (let ((found (entry-numbered (get entries) k)))
-            (if (null? found)
-                #u
+            (cond ((i64= k 0)
+                   (begin
+                     (set spec-state 2)
+                     (parked-cleared! 0)
+                     (noted! (string-append "running it fails: " message) #t)))
+                  ((null? found) #u)
+                  (else
                 (let ((e (car found)))
                   (begin
                     (taken-output! e)
                     (ended! e st-failed now)
                     (set (extract e shown) (string-append "! evaluation failed: " message))
-                    (parked-cleared! k))))))))
+                    (parked-cleared! k)))))))))
 
     (define screen! (subr running (i64) string)
       (lambda (now)

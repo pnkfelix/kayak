@@ -460,8 +460,13 @@ Stages 2 and 3 done (C95): editing, history, Tab; Fixpt's commands.
 - Fixpt's commands not yet: `,fits TYPE`, `,returns TYPE`, `,help` as a
   hole inside a form, `,disassemble`, `,list-outdated` and
   `,rerun-outdated` (redefinition at another type), `,redefine b|r`.
-- Per-keystroke checking of the draft (Fixpt's notes as you type,
-  Coopt's draft task), now that a check is cheap beside a run.
+- Checking as you type (C96) done. Left: Fixpt's hints from the
+  arguments so far and from the grammar; an underline at the refused
+  subform; speculating `,type E`'s and `,time E`'s forms.
+- A skimmer in KFX, after Coopt's (repl.md, Coopt's skimmer): forms and
+  the names they define, found lexically; for `incr.kfx` (measure first
+  whether reading costs in a warm compile), and the REPL's names before
+  checking.
 - Stage 4: `load-module` in the REPL; an entry's output beside its line.
 - Stage 5: behaviors (FrTime), a design first.
 - A refusal is caught by the Rust as a failure, so the checker's state

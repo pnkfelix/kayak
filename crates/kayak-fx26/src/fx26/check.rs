@@ -302,6 +302,8 @@ pub fn refuse(v: &'static Cv, message: Str) -> Void {
         Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
             error(string_append(str_lit("kfx: "), string_append(if i64_eq(line, 0i64) {
                 str_lit("")
+            } else if string_eq_p(file, str_lit("<draft>")) {
+                string_append(str_lit("<draft>@"), string_append(i64_to_string(at), str_lit(": ")))
             } else {
                 string_append(file, string_append(str_lit(":"), string_append(i64_to_string(line), str_lit(": "))))
             }, string_append(str_lit("in "), string_append(here, string_append(str_lit(": "), message))))))
@@ -3802,6 +3804,16 @@ pub fn cv_pos(v: &'static Cv) -> i64 {
     match *tagcase_ {
         Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
             at
+        }
+    }
+}
+
+/// `v`, its refusals said at offset `pos`, a datum inside the list it checks.
+pub fn at_offset(v: &'static Cv, pos: i64) -> &'static Cv {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+            cv(bs, ds, als, es, here, group, file, line, fs, tv, pos)
         }
     }
 }

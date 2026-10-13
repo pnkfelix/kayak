@@ -121,7 +121,12 @@
     (tagcase v
       (cv (bs ds als es here group file line fs tv at)
         (error (string-append "kfx: "
-                 (string-append (if (i64= line 0) "" (string-append file (string-append ":" (string-append (i64->string line) ": "))))
+                 (string-append (cond ((i64= line 0) "")
+                                      ;; A REPL's draft, checked as it is typed: where, as an offset
+                                      ;; into it, so that the REPL can tell whether the error is about
+                                      ;; what has been finished (live-repl.kfx, C96).
+                                      ((string=? file "<draft>") (string-append "<draft>@" (string-append (i64->string at) ": ")))
+                                      (else (string-append file (string-append ":" (string-append (i64->string line) ": ")))))
                    (string-append "in " (string-append here (string-append ": " message))))))))))
 
 (define name-of (subr kfx (cv sexp) string)
@@ -1730,6 +1735,10 @@
   (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) fs))))
 (define cv-file (subr kfx (cv) string) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) file))))
 (define cv-pos (subr kfx (cv) i64) (lambda (v) (tagcase v (cv (bs ds als es here group file line fs tv at) at))))
+(define at-offset (subr kfx (cv i64) cv)
+  (lambda (v pos)
+    "`v`, its refusals said at offset `pos`, a datum inside the list it checks."
+    (tagcase v (cv (bs ds als es here group file line fs tv at) (cv bs ds als es here group file line fs tv pos)))))
 
 (define operator-char? (subr kfx (char) bool)
   (lambda (c) (has-char-in? "?!<>=+*/%" c)))

@@ -1975,3 +1975,57 @@ Stages 2 and 3 of `docs/research/repl.md`, in `live-repl.kfx`:
 - **An entry of several forms** says its definitions' lines, then the
   last expression's value; `%k` is that value.
 
+
+## C96. The draft checked as it is typed, and run early if it only reads (2026-10-13)
+
+The user: "Implement speculative checking as you type." Fixpt's design
+(`crates/fixpt-cli/src/speculate.rs`, and its FX-26 `Oracle`), in
+`live-repl.kfx`:
+- **Closing off.** A name, number, character or string still being typed
+  at the draft's end is left out (and a quote before it); the lists still
+  open are closed. What is checked is exactly what has been finished.
+- **Checked, nothing kept.** The forms are checked in turn after what the
+  entries before them defined (`checked-form`, threading the environment).
+  kfx's checker writes nothing (its effect is `kfx`, reading globals), so
+  the environment is dropped after; Fixpt had to truncate its interner.
+- **Believing a refusal.** Only one about what the user has finished: the
+  list it is about was closed by the user, or the draft is finished.
+  That needs where the refusal is, which kfx's refusals did not say
+  beyond a line: `refuse` now says an offset for a text named `<draft>`
+  (`kfx: <draft>@17: …`; other files as before), and a name that is
+  not bound is refused at the name, not its list (`at-offset`), so that
+  `(+ 1 nosuch ` is said at once. The refusal's message is the only way
+  out of a failure, so the offset is in it; the REPL reads it back.
+- **The hint**, when nothing is refused that is believed: what the next
+  argument of the innermost open list must be, if its operator names a
+  subroutine the checker knows (`argument 2 of + wants int`, `f takes 1
+  argument`). Fixpt also solves what the arguments so far determine, and
+  says what the grammar wants (`next: an arm …`); not yet.
+- **Run early** (Fixpt's licence): a finished expression whose effect
+  only reads and allocates (and spins) — the effect an entry has that
+  runs beside others (C94) — runs as the task in slot 0, by turns with
+  the entries, at most 2,000,000 steps; its value is the note (`= 3 :
+  nat ! pure`), before Enter. One that may do more says so and is not
+  run; one naming an entry not ended waits, and is tried again when an
+  entry ends. It does not run while an entry that writes is unfinished.
+- **Its IR given back.** The run's nodes, children, arms and constants
+  are numbered into the machine's tables like an entry's; the tables'
+  lengths before are kept and put back when the draft changes, and an
+  entry submitted drops the speculation first, so that the entry's
+  nodes never follow a draft's. (Tags and labels interned stay; they
+  are bounded by the names there are.)
+- **Once a text.** Speculation runs once a round, in the Rust's loop
+  before the slices (a refusal caught there, `speculation_refused`), for
+  a draft whose closed-off text, trailing spaces aside, has changed: a
+  burst of keys (a paste) is checked once, and a space after a finished
+  `(fib 32)` does not run it again.
+- **The note** is a row under the draft, dim (red for an error), its first
+  line cut to the screen's width. Not in plain mode, nor for a command's
+  line.
+
+Found on the way, and fixed: entries given in the same keys (a paste of
+several lines) wrote the second draft before the first entry's line;
+the entries' new lines are now written before a draft is left on the
+screen.
+
+`tests/repl/speculation.keys`, `paste.keys`.

@@ -2360,7 +2360,7 @@ pub mod expressions {
                 res(ty_string(), nil::<Str>(), s)
             }
             Sexp::Sym(name, at_file, at_pos) => {
-                let tagcase_ = synth_name(v, s, name);
+                let tagcase_ = synth_name(v, s, name, at_pos);
                 match *tagcase_ {
                     Res::Res(t, es, s) => {
                         if string_eq_p(name, str_lit("nil")) {
@@ -2438,7 +2438,7 @@ pub mod expressions {
         }
     }
 
-    pub fn synth_name(v: &'static Cv, s: &'static St, name: Str) -> &'static Res {
+    pub fn synth_name(v: &'static Cv, s: &'static St, name: Str, at_pos: i64) -> &'static Res {
         if (string_eq_p(name, str_lit("#t")) || string_eq_p(name, str_lit("#f"))) {
             res(ty_bool(), nil::<Str>(), s)
         } else if string_eq_p(name, str_lit("#u")) {
@@ -2446,7 +2446,7 @@ pub mod expressions {
         } else {
             let found = find_bind(name, cv_binds(v));
             if null_p(found) {
-                match refuse(v, string_append(str_lit("nothing is named "), name)) {}
+                match refuse(at_offset(v, at_pos), string_append(str_lit("nothing is named "), name)) {}
             } else {
                 let tagcase_ = car(found);
                 match *tagcase_ {

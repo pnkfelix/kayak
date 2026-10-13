@@ -22,7 +22,10 @@ use super::*;
 // it, the arrows, ^A ^E ^B ^F ^K ^U ^W, history (kept in a file), Tab
 // completing a name; and Fixpt's commands (stage 3), each written as an
 // entry's line: `,help`, `,type`, `,time`, `,load`, `,pending`,
-// `,cancel`, `,step-limit`, `,apropos`, `,quit`.
+// `,cancel`, `,step-limit`, `,apropos`, `,quit`. The draft is checked as
+// it is typed (C96): an error in what has been finished, or a hint, under
+// it; a finished expression that only reads and allocates run early, its
+// value there before Enter.
 //
 // Live, the screen is drawn with ANSI's moves; plain (no terminal), the
 // entries run one after another and each line is written when it ends.
@@ -40,6 +43,103 @@ pub mod session {
     // entry's, numbered below zero, which is not written.
     pub type Entry = Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after<i64, Str, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>, bool, Ref<i64>, i64, Ref<i64>>;
 
+    // The draft's speculation (C96): its note, the line under the draft, and
+    // whether it is an error; whether the draft as it is has been tried;
+    // where its closed-off text stops being what was typed, the lists it
+    // closed, and whether it was finished; its type, if an expression; its
+    // run (0: none, 1: running as the task in slot 0, 2: ended), the steps
+    // it took, the IR tables' lengths before it was numbered (to give them
+    // back); whether it waits for an entry, to be tried again when one
+    // ends; and what was checked, so that an edit that changes none of it
+    // (a space after a finished form) keeps what was found.
+    pub fn note() -> Ref<Str> {
+        thread_local!(static ONCE: OnceCell<Ref<Str>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(str_lit(""))
+        })
+    }
+
+    pub fn note_error() -> Ref<bool> {
+        thread_local!(static ONCE: OnceCell<Ref<bool>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(false)
+        })
+    }
+
+    pub fn speculated() -> Ref<bool> {
+        thread_local!(static ONCE: OnceCell<Ref<bool>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(false)
+        })
+    }
+
+    pub fn spec_kept() -> Ref<i64> {
+        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(0i64)
+        })
+    }
+
+    pub fn spec_open() -> Ref<List<i64>> {
+        thread_local!(static ONCE: OnceCell<Ref<List<i64>>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(nil::<i64>())
+        })
+    }
+
+    pub fn spec_finished() -> Ref<bool> {
+        thread_local!(static ONCE: OnceCell<Ref<bool>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(false)
+        })
+    }
+
+    pub fn spec_type() -> Ref<Str> {
+        thread_local!(static ONCE: OnceCell<Ref<Str>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(str_lit(""))
+        })
+    }
+
+    pub fn spec_state() -> Ref<i64> {
+        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(0i64)
+        })
+    }
+
+    pub fn spec_steps() -> Ref<i64> {
+        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(0i64)
+        })
+    }
+
+    pub fn spec_marks() -> Ref<List<i64>> {
+        thread_local!(static ONCE: OnceCell<Ref<List<i64>>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(nil::<i64>())
+        })
+    }
+
+    pub fn spec_waits() -> Ref<bool> {
+        thread_local!(static ONCE: OnceCell<Ref<bool>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(false)
+        })
+    }
+
+    pub fn spec_key() -> Ref<Str> {
+        thread_local!(static ONCE: OnceCell<Ref<Str>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(str_lit(""))
+        })
+    }
+
+    pub fn spec_limit() -> i64 {
+        2000000i64
+    }
+
     pub fn make_entry(k: i64, text: Str, typed: Str, defined: Str, quiet: bool, needs: List<i64>, state: i64, tops: List<i64>, shown: Str, timed: bool, now: i64) -> Entry {
         Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after(k, text, typed, defined, quiet, needs, kayak_rt::heap_new(state), kayak_rt::heap_new(tops), kayak_rt::heap_new(shown), kayak_rt::heap_new(str_lit("")), kayak_rt::heap_new(now), kayak_rt::heap_new(if i64_eq(state, st_done()) {
             now
@@ -52,7 +152,13 @@ pub mod session {
     pub fn ended_x(e: Entry, state: i64, now: i64) -> () {
         set(e.6, state);
         set(e.11, now);
-        set(e.17, get(collections()))
+        set(e.17, get(collections()));
+        if get(spec_waits()) {
+            set(speculated(), false);
+            set(spec_key(), str_lit(""))
+        } else {
+            ()
+        }
     }
 
     pub fn st_checking() -> i64 {
@@ -459,10 +565,8 @@ pub mod session {
     /// ended, interrupted.
     pub fn interrupt_x(now: i64) -> () {
         if not(string_eq_p(get(draft()), str_lit(""))) {
-            set(draft(), str_lit(""));
-            set(cursor(), 0i64);
-            set(history_at(), -1i64);
-            set(draft_dirty(), true)
+            draft_set_x(str_lit(""), 0i64);
+            set(history_at(), -1i64)
         } else {
             let running = entries_where(&unfinished_p, get(entries()));
             if null_p(running) {
@@ -504,10 +608,20 @@ pub mod session {
     }
 
     /// The draft, whole, left on the screen as it was drawn: the rows below
-    /// it the transcript's.
-    pub fn finish_draft_x() -> () {
+    /// it the transcript's. The entries' lines not yet written are written
+    /// first, so that an entry given in the same keys as the one before it
+    /// (pasted) comes after that one's line.
+    pub fn finish_draft_x(now: i64) -> () {
         if get(live()) {
+            if some_entry_p(lambda1(move |e: Entry| {
+                i64_lt(get(e.12), 0i64)
+            }), get(entries())) {
+                live_screen_x(now)
+            } else {
+                ()
+            };
             up_x(get(cursor_row()));
+            set(note(), str_lit(""));
             set(cursor(), string_length_i64(get(draft())));
             draw_draft_x(get(draft()));
             say_x(str_lit("\u{d}\n"));
@@ -522,6 +636,11 @@ pub mod session {
 
     // Editing: the draft and the cursor in it, a character's index.
     pub fn draft_set_x(d: Str, at: i64) -> () {
+        if string_eq_p(d, get(draft())) {
+            ()
+        } else {
+            set(speculated(), false)
+        };
         set(draft(), d);
         set(cursor(), clamped(at, string_length_i64(d)));
         set(draft_dirty(), true)
@@ -717,10 +836,10 @@ pub mod session {
         let d = get(draft());
         let trimmed = trimmed_start(string_chars(d));
         if (not(null_p(trimmed)) && char_eq_p(car(trimmed), ',') && command_whole_p(list_to_string(trimmed))) {
-            given_x(d);
+            given_x(d, now);
             command_x(list_to_string(trimmed), now)
         } else if repl_complete_p(d) {
-            given_x(d);
+            given_x(d, now);
             submit_x(d, str_lit(""), false, now)
         } else if null_p(trimmed) {
             draft_set_x(str_lit(""), 0i64)
@@ -730,8 +849,8 @@ pub mod session {
     }
 
     /// The draft left on the screen, kept in the history, and emptied.
-    pub fn given_x(d: Str) -> () {
-        finish_draft_x();
+    pub fn given_x(d: Str, now: i64) -> () {
+        finish_draft_x(now);
         set(history(), kayak_rt::heap_cons(trimmed_end(d), get(history())));
         history_written_x();
         set(history_at(), -1i64);
@@ -1125,6 +1244,7 @@ pub mod session {
         let k = i64_plus(get(repl_count()), 1i64);
         let e = make_entry(k, text, str_lit(""), str_lit(""), true, nil::<i64>(), st_checking(), nil::<i64>(), str_lit(""), timed, now);
         set(repl_count(), k);
+        speculation_dropped_x();
         set(entries(), kayak_rt::heap_cons(e, get(entries())));
         let forms = read_all(string_chars(text), if string_eq_p(label, str_lit("")) {
             string_append(str_lit("<fx26:"), string_append(i64_to_string(k), str_lit(">")))
@@ -1340,18 +1460,35 @@ pub mod session {
         }
     }
 
-    /// The draft drawn from the start of its first row, the rows below cleared.
+    /// The draft drawn from the start of its first row, the rows below cleared;
+    /// its note, if any, on the row after it.
     pub fn draw_draft_x(d: Str) -> () {
-        let cs = string_chars(d);
+        let (cs, shown) = (string_chars(d), note_shown());
         say_x(str_lit("\u{d}\u{1b}[J"));
         say_x(str_lit("fx26> "));
         set(written(), prompted(cs, get(written())));
-        set(draft_rows(), wrapped_rows(cs, 6i64, get(screen_cols()), 1i64));
+        if string_eq_p(shown, str_lit("")) {
+            ()
+        } else {
+            say_x(str_lit("\u{d}\n"));
+            say_x(if get(note_error()) {
+                str_lit("\u{1b}[31m")
+            } else {
+                str_lit("\u{1b}[2m")
+            });
+            say_x(shown);
+            say_x(str_lit("\u{1b}[0m"))
+        };
+        set(draft_rows(), i64_plus(wrapped_rows(cs, 6i64, get(screen_cols()), 1i64), if string_eq_p(shown, str_lit("")) {
+            0i64
+        } else {
+            1i64
+        }));
         set(draft_dirty(), false);
         let before = string_chars(substring(d, int_lit(0), i64_to_int(get(cursor()))));
         let row = i64_minus(wrapped_rows(before, 6i64, get(screen_cols()), 1i64), 1i64);
         let col = column_after(before, 6i64, get(screen_cols()));
-        if i64_eq(get(cursor()), string_length_i64(d)) {
+        if (i64_eq(get(cursor()), string_length_i64(d)) && string_eq_p(shown, str_lit(""))) {
             ()
         } else {
             up_x(i64_minus(i64_minus(get(draft_rows()), 1i64), row));
@@ -1529,6 +1666,525 @@ pub mod session {
         }
     }
 
+    // Speculation (C96): the draft checked as it is typed, as Fixpt's REPL
+    // checks one (its speculate.rs). The draft is closed off: a name, number
+    // or string still being typed at its end left out, and the lists still
+    // open closed. That is checked after what the entries before it defined,
+    // nothing kept (the checker writes nothing). A refusal is believed only
+    // when it is about what has been finished: a list the user closed, or a
+    // name with a delimiter after it; else the note is a hint, what the
+    // argument at the cursor must be. A finished expression whose effect
+    // only reads and allocates (an entry's that runs beside others) is run
+    // too, as the task in slot 0, by turns with the entries, its value under
+    // the draft before Enter; dropped, the IR numbered for it with it, when
+    // the draft changes.
+    pub enum Closing {
+        NotClosable(),
+        ClosedOff(Str, i64, List<i64>, bool),
+    }
+
+    pub fn not_closable() -> &'static Closing {
+        kayak_rt::heap_alloc(Closing::NotClosable())
+    }
+
+    pub fn closed_off(f0: Str, f1: i64, f2: List<i64>, f3: bool) -> &'static Closing {
+        kayak_rt::heap_alloc(Closing::ClosedOff(f0, f1, f2, f3))
+    }
+
+    pub enum Scan {
+        Unbalanced(),
+        Scanned(List<i64>, bool),
+    }
+
+    pub fn unbalanced() -> &'static Scan {
+        kayak_rt::heap_alloc(Scan::Unbalanced())
+    }
+
+    pub fn scanned(f0: List<i64>, f1: bool) -> &'static Scan {
+        kayak_rt::heap_alloc(Scan::Scanned(f0, f1))
+    }
+
+    /// Where the text stops being finished: at a string not closed (begun
+    /// at `str`), or a name, number or character running to the end (begun
+    /// at `atom`); -1 for none.
+    pub fn kept_end(mut cs: List<char>, mut i: i64, mut str: i64, mut comment: bool, mut atom: i64) -> i64 {
+        loop {
+            if null_p(cs) {
+                if i64_gt_eq(str, 0i64) {
+                    return str;
+                } else if i64_gt_eq(atom, 0i64) {
+                    return atom;
+                } else {
+                    return i;
+                }
+            } else if i64_gt_eq(str, 0i64) {
+                if char_eq_p(car(cs), '\\') {
+                    if null_p(cdr(cs)) {
+                        return str;
+                    } else {
+                        (cs, i, comment, atom) = (cdr(cdr(cs)), i64_plus(i, 2i64), false, -1i64);
+                        continue;
+                    }
+                } else if char_eq_p(car(cs), '"') {
+                    (cs, i, str, comment, atom) = (cdr(cs), i64_plus(i, 1i64), -1i64, false, -1i64);
+                    continue;
+                } else {
+                    (cs, i, comment, atom) = (cdr(cs), i64_plus(i, 1i64), false, -1i64);
+                    continue;
+                }
+            } else if comment {
+                (cs, i, str, comment, atom) = (cdr(cs), i64_plus(i, 1i64), -1i64, not(char_eq_p(car(cs), '\n')), -1i64);
+                continue;
+            } else if char_eq_p(car(cs), '"') {
+                (cs, i, str, comment, atom) = (cdr(cs), i64_plus(i, 1i64), i, false, -1i64);
+                continue;
+            } else if i64_eq(char_to_i64(car(cs)), 59i64) {
+                (cs, i, str, comment, atom) = (cdr(cs), i64_plus(i, 1i64), -1i64, true, -1i64);
+                continue;
+            } else if (char_eq_p(car(cs), '#') && not(null_p(cdr(cs))) && char_eq_p(car(cdr(cs)), '\\')) {
+                let from = if i64_gt_eq(atom, 0i64) {
+                    atom
+                } else {
+                    i
+                };
+                if null_p(cdr(cdr(cs))) {
+                    return from;
+                } else {
+                    (cs, i, str, comment, atom) = (cdr(cdr(cdr(cs))), i64_plus(i, 3i64), -1i64, false, from);
+                    continue;
+                }
+            } else if name_char_p(car(cs)) {
+                (cs, i, str, comment, atom) = (cdr(cs), i64_plus(i, 1i64), -1i64, false, if i64_gt_eq(atom, 0i64) {
+                    atom
+                } else {
+                    i
+                });
+                continue;
+            } else {
+                (cs, i, str, comment, atom) = (cdr(cs), i64_plus(i, 1i64), -1i64, false, -1i64);
+                continue;
+            }
+        }
+    }
+
+    /// `i`, less the quotes before it, which wait for a datum.
+    pub fn before_quotes(mut s: Str, mut i: i64) -> i64 {
+        loop {
+            if (i64_gt(i, 0i64) && i64_eq(char_to_i64(string_ref_i64(s, i64_minus(i, 1i64))), 39i64)) {
+                i = i64_minus(i, 1i64);
+                continue;
+            } else {
+                return i;
+            }
+        }
+    }
+
+    /// Where the lists still open begin, the innermost first; and whether the
+    /// text ends in a comment. A list closed that was never opened: none.
+    pub fn open_lists(mut cs: List<char>, mut i: i64, mut open: List<i64>, mut str: bool, mut comment: bool) -> &'static Scan {
+        loop {
+            if null_p(cs) {
+                return scanned(open, comment);
+            } else if str {
+                if char_eq_p(car(cs), '\\') {
+                    if null_p(cdr(cs)) {
+                        return scanned(open, false);
+                    } else {
+                        (cs, i, str, comment) = (cdr(cdr(cs)), i64_plus(i, 2i64), true, false);
+                        continue;
+                    }
+                } else if char_eq_p(car(cs), '"') {
+                    (cs, i, str, comment) = (cdr(cs), i64_plus(i, 1i64), false, false);
+                    continue;
+                } else {
+                    (cs, i, str, comment) = (cdr(cs), i64_plus(i, 1i64), true, false);
+                    continue;
+                }
+            } else if comment {
+                (cs, i, str, comment) = (cdr(cs), i64_plus(i, 1i64), false, not(char_eq_p(car(cs), '\n')));
+                continue;
+            } else if char_eq_p(car(cs), '"') {
+                (cs, i, str, comment) = (cdr(cs), i64_plus(i, 1i64), true, false);
+                continue;
+            } else if i64_eq(char_to_i64(car(cs)), 59i64) {
+                (cs, i, str, comment) = (cdr(cs), i64_plus(i, 1i64), false, true);
+                continue;
+            } else if (char_eq_p(car(cs), '#') && not(null_p(cdr(cs))) && char_eq_p(car(cdr(cs)), '\\') && not(null_p(cdr(cdr(cs))))) {
+                (cs, i, str, comment) = (cdr(cdr(cdr(cs))), i64_plus(i, 3i64), false, false);
+                continue;
+            } else if char_eq_p(car(cs), '(') {
+                (cs, i, open, str, comment) = (cdr(cs), i64_plus(i, 1i64), kayak_rt::heap_cons(i, open), false, false);
+                continue;
+            } else if char_eq_p(car(cs), ')') {
+                if null_p(open) {
+                    return unbalanced();
+                } else {
+                    (cs, i, open, str, comment) = (cdr(cs), i64_plus(i, 1i64), cdr(open), false, false);
+                    continue;
+                }
+            } else {
+                (cs, i, str, comment) = (cdr(cs), i64_plus(i, 1i64), false, false);
+                continue;
+            }
+        }
+    }
+
+    pub fn closers(n: i64) -> Str {
+        if i64_lt_eq(n, 0i64) {
+            str_lit("")
+        } else {
+            string_append(str_lit(")"), closers(i64_minus(n, 1i64)))
+        }
+    }
+
+    /// The draft closed off: what was typed, less a token still being typed,
+    /// its lists closed; where that stops being the draft, the lists it
+    /// closed, and whether the draft was finished (nothing left out or
+    /// closed).
+    pub fn closed_text(text: Str) -> &'static Closing {
+        let kept = before_quotes(text, kept_end(string_chars(text), 0i64, -1i64, false, -1i64));
+        let typed = cut(text, 0i64, kept);
+        let tagcase_ = open_lists(string_chars(typed), 0i64, nil::<i64>(), false, false);
+        match *tagcase_ {
+            Scan::Unbalanced() => {
+                not_closable()
+            }
+            Scan::Scanned(open, comment) => {
+                closed_off(string_append(typed, string_append(if (comment && not(null_p(open))) {
+                    str_lit("\n")
+                } else {
+                    str_lit("")
+                }, closers(size(open)))), kept, open, (null_p(open) && i64_eq(kept, string_length_i64(text))))
+            }
+        }
+    }
+
+    pub fn i64_member_p(mut x: i64, mut xs: List<i64>) -> bool {
+        loop {
+            if null_p(xs) {
+                return false;
+            } else if i64_eq(x, car(xs)) {
+                return true;
+            } else {
+                xs = cdr(xs);
+                continue;
+            }
+        }
+    }
+
+    pub fn nth_ty(mut ts: List<&'static Ty>, mut i: i64) -> &'static Ty {
+        loop {
+            if i64_eq(i, 0i64) {
+                return car(ts);
+            } else {
+                (ts, i) = (cdr(ts), i64_minus(i, 1i64));
+                continue;
+            }
+        }
+    }
+
+    /// Whether the list at `i` is quoted data: a quote before it.
+    pub fn quoted_at_p(mut s: Str, mut i: i64) -> bool {
+        loop {
+            if i64_lt_eq(i, 0i64) {
+                return false;
+            } else if char_whitespace_p(string_ref_i64(s, i64_minus(i, 1i64))) {
+                i = i64_minus(i, 1i64);
+                continue;
+            } else {
+                return i64_eq(char_to_i64(string_ref_i64(s, i64_minus(i, 1i64))), 39i64);
+            }
+        }
+    }
+
+    /// What argument `k` of `op` must be, if `op` names a subroutine.
+    pub fn argument_hint(op: Str, k: i64) -> Str {
+        let found = find_bind(op, cv_binds(get(repl_cv())));
+        if null_p(found) {
+            str_lit("")
+        } else {
+            let tagcase_ = car(found);
+            match *tagcase_ {
+                Bind::Bind(n, sc, w) => {
+                    let tagcase_ = sc;
+                    match *tagcase_ {
+                        Scheme::Scheme(tv, t) => {
+                            let tagcase_ = t;
+                            match *tagcase_ {
+                                Ty::TyProc(es, ps, r) => {
+                                    if i64_gt(k, size(ps)) {
+                                        string_append(op, string_append(str_lit(" takes "), string_append(i64_to_string(size(ps)), if i64_eq(size(ps), 1i64) {
+                                            str_lit(" argument")
+                                        } else {
+                                            str_lit(" arguments")
+                                        })))
+                                    } else {
+                                        string_append(str_lit("argument "), string_append(i64_to_string(k), string_append(str_lit(" of "), string_append(op, string_append(str_lit(" wants "), show_ty(new_state(), nth_ty(ps, i64_minus(k, 1i64))))))))
+                                    }
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    str_lit("")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// The hint at the cursor: what the next argument of the innermost list
+    /// open must be, if it is a call of a subroutine the checker knows.
+    pub fn hint_at(text: Str, kept: i64, open: List<i64>) -> Str {
+        if (null_p(open) || quoted_at_p(text, car(open))) {
+            str_lit("")
+        } else {
+            let forms = read_all(string_chars(string_append(cut(text, car(open), kept), str_lit(")"))), str_lit("<hint>"), 1i64);
+            if null_p(forms) {
+                str_lit("")
+            } else {
+                let xs = items(car(forms));
+                if null_p(xs) {
+                    str_lit("")
+                } else {
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(op, f, p) => {
+                            argument_hint(op, size(xs))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn noted_x(text: Str, error: bool) -> () {
+        set(note(), text);
+        set(note_error(), error);
+        set(draft_dirty(), true)
+    }
+
+    /// The note as drawn: its first line, cut to the screen's width.
+    pub fn note_shown() -> Str {
+        let line = first_line(get(note()));
+        let width = i64_minus(get(screen_cols()), 1i64);
+        let cut_short = (i64_gt(string_length_i64(line), width) || has_char_in_p(get(note()), '\n'));
+        if cut_short {
+            string_append(cut(line, 0i64, i64_minus(width, 1i64)), str_lit("…"))
+        } else {
+            line
+        }
+    }
+
+    /// The draft's speculation forgotten: its task's registers, the IR its
+    /// run was numbered into, and its note.
+    pub fn speculation_dropped_x() -> () {
+        if i64_eq(get(spec_state()), 0i64) {
+            ()
+        } else {
+            if i64_eq(get(spec_state()), 1i64) {
+                parked_cleared_x(0i64)
+            } else {
+                ()
+            };
+            {
+                let ms = get(spec_marks());
+                if i64_eq(size(ms), 4i64) {
+                    set(node_count(), car(ms));
+                    set(kid_count(), car(cdr(ms)));
+                    set(armx_count(), car(cdr(cdr(ms))));
+                    set(constant_count(), car(cdr(cdr(cdr(ms)))))
+                } else {
+                    ()
+                }
+            };
+            set(spec_state(), 0i64)
+        };
+        set(speculated(), false);
+        set(spec_key(), str_lit(""));
+        set(spec_waits(), false);
+        if string_eq_p(get(note()), str_lit("")) {
+            ()
+        } else {
+            noted_x(str_lit(""), false)
+        }
+    }
+
+    pub fn checked_all(mut v: &'static Cv, mut forms: Sexps) -> &'static Cv {
+        loop {
+            if null_p(forms) {
+                return v;
+            } else {
+                (v, forms) = (checked_form(v, car(forms)), cdr(forms));
+                continue;
+            }
+        }
+    }
+
+    /// What the REPL writes of each definition among `forms`.
+    pub fn definition_lines(mut v: &'static Cv, mut forms: Sexps) -> Strings {
+        loop {
+            if null_p(forms) {
+                return nil::<Str>();
+            } else if definition_form_p(car(forms)) {
+                let l = form_type(v, car(forms));
+                if string_eq_p(l, str_lit("")) {
+                    forms = cdr(forms);
+                    continue;
+                } else {
+                    return kayak_rt::heap_cons(l, definition_lines(v, cdr(forms)));
+                }
+            } else {
+                forms = cdr(forms);
+                continue;
+            }
+        }
+    }
+
+    /// The draft's forms checked, each after those before it (a refusal
+    /// fails); if finished, an expression's type said, and the expression
+    /// run if it may be; definitions' types said.
+    pub fn speculated_forms_x(forms: Sexps, finished: bool) -> () {
+        let v = checked_all(get(repl_cv()), forms);
+        if (not(finished) || null_p(forms)) {
+            ()
+        } else if (null_p(cdr(forms)) && not(definition_form_p(car(forms)))) {
+            expression_speculated_x(car(forms))
+        } else {
+            noted_x(words_lines(definition_lines(v, forms)), false)
+        }
+    }
+
+    /// The entries numbered `ks` that have not ended.
+    pub fn unfinished_of(mut ks: List<i64>) -> List<i64> {
+        loop {
+            if null_p(ks) {
+                return nil::<i64>();
+            } else if some_entry_p(lambda1(move |e: Entry| {
+                (i64_eq(e.0, car(ks)) && unfinished_p(e))
+            }), get(entries())) {
+                return kayak_rt::heap_cons(car(ks), unfinished_of(cdr(ks)));
+            } else {
+                ks = cdr(ks);
+                continue;
+            }
+        }
+    }
+
+    pub fn expression_speculated_x(form: &'static Sexp) -> () {
+        let r#type = form_type(get(repl_cv()), form);
+        let effects = expression_effects(get(repl_cv()), form);
+        let waiting = unfinished_of(named_results(form));
+        set(spec_type(), r#type);
+        if not(null_p(waiting)) {
+            set(spec_waits(), true);
+            noted_x(string_append(str_lit("…"), string_append(r#type, string_append(str_lit("  (run when ["), string_append(i64_to_string(car(waiting)), str_lit("] has ended)"))))), false)
+        } else if not(quiet_effect_p(effects)) {
+            noted_x(string_append(str_lit("…"), string_append(r#type, string_append(str_lit("  (not run early, for its "), string_append(show_effs(loud_atoms(effects)), str_lit(")"))))), false)
+        } else {
+            set(spec_marks(), kayak_rt::heap_cons(get(node_count()), kayak_rt::heap_cons(get(kid_count()), kayak_rt::heap_cons(get(armx_count()), kayak_rt::heap_cons(get(constant_count()), kayak_rt::nil())))));
+            set(spec_state(), 2i64);
+            {
+                let ns = number_tops_x(lower_tops(kayak_rt::heap_cons(form, kayak_rt::nil()), get(repl_globals())));
+                if (null_p(ns) || i64_lt(car(ns), 0i64)) {
+                    ()
+                } else {
+                    start_parked_x(0i64, car(ns));
+                    set(spec_steps(), 0i64);
+                    set(spec_state(), 1i64)
+                }
+            };
+            noted_x(string_append(str_lit("…"), r#type), false)
+        }
+    }
+
+    /// The atoms of an effect that keep an entry from running beside others.
+    pub fn loud_atoms(es: Strings) -> Strings {
+        concat(map(lambda1(move |a: Str| {
+            if quiet_effect_p(kayak_rt::heap_cons(a, kayak_rt::nil())) {
+                nil::<Str>()
+            } else {
+                kayak_rt::heap_cons(a, kayak_rt::nil())
+            }
+        }), es))
+    }
+
+    /// Whether the draft's run may take a slice: begun, not ended, and no
+    /// entry unfinished that does more than read and allocate.
+    pub fn draft_runnable_p() -> bool {
+        (i64_eq(get(spec_state()), 1i64) && not(some_entry_p(lambda1(move |d: Entry| {
+            (unfinished_p(d) && not(d.4))
+        }), get(entries()))))
+    }
+
+    /// A slice of the draft's run.
+    pub fn draft_slice_x(now: i64) -> () {
+        set(last_run(), 0i64);
+        set(task_slot(), 0i64);
+        set(fuel(), slice_steps());
+        let w = resume(0i64);
+        set(spec_steps(), i64_plus(get(spec_steps()), i64_minus(slice_steps(), get(fuel()))));
+        set(fuel(), -1i64);
+        if not(i64_eq(w, w_paused())) {
+            set(spec_state(), 2i64);
+            parked_cleared_x(0i64);
+            noted_x(string_append(str_lit("= "), string_append(show_word(w), get(spec_type()))), false)
+        } else if i64_gt(get(spec_steps()), spec_limit()) {
+            set(spec_state(), 2i64);
+            parked_cleared_x(0i64);
+            noted_x(string_append(str_lit("…"), string_append(get(spec_type()), string_append(str_lit("  (not run to its end early: "), string_append(i64_to_string(spec_limit()), str_lit(" steps; Enter runs it)"))))), false)
+        } else {
+            ()
+        }
+    }
+
+    /// Where in the draft a refusal is, as `refuse` says it for one, or -1.
+    pub fn refused_offset(m: Str) -> i64 {
+        let p = str_lit("kfx: <draft>@");
+        if has_prefix_p(m, p) {
+            number_from(digits_of(string_chars(cut(m, string_length_i64(p), string_length_i64(m)))), 0i64)
+        } else {
+            -1i64
+        }
+    }
+
+    pub fn digits_of(cs: List<char>) -> List<char> {
+        if (not(null_p(cs)) && char_numeric_p(car(cs))) {
+            kayak_rt::heap_cons(car(cs), digits_of(cdr(cs)))
+        } else {
+            nil::<char>()
+        }
+    }
+
+    pub fn without_prefix(s: Str, p: Str) -> Str {
+        if has_prefix_p(s, p) {
+            cut(s, string_length_i64(p), string_length_i64(s))
+        } else {
+            s
+        }
+    }
+
+    /// A refusal of the draft without where: what it is.
+    pub fn refusal_words(m: Str) -> Str {
+        if has_prefix_p(m, str_lit("kfx: <draft>@")) {
+            let at = int_to_i64(string_search(m, str_lit(": "), int_lit(13)));
+            if i64_lt(at, 0i64) {
+                m
+            } else {
+                without_prefix(cut(m, i64_plus(at, 2i64), string_length_i64(m)), str_lit("in a top-level expression: "))
+            }
+        } else if has_prefix_p(m, str_lit("kfx: ")) {
+            without_prefix(cut(m, 5i64, string_length_i64(m)), str_lit("in a top-level expression: "))
+        } else {
+            m
+        }
+    }
+
     pub fn session_start_x(is_live: bool, height: i64, width: i64, path: Str) -> Str {
         repl_start_x();
         set(history_path(), path);
@@ -1624,8 +2280,72 @@ pub mod session {
         }
     }
 
+    /// The draft checked as it is typed, once for each text it has been, and
+    /// run if finished and its effect allows: its note. A refusal fails, and
+    /// the Rust gives it to `speculation-refused!`. Not in plain mode, nor
+    /// for a command's line.
+    pub fn speculate_x(now: i64) -> () {
+        if (not(get(live())) || get(speculated())) {
+            ()
+        } else {
+            let d = get(draft());
+            let trimmed = trimmed_start(string_chars(d));
+            let closing = if (not(null_p(trimmed)) && char_eq_p(car(trimmed), ',')) {
+                not_closable()
+            } else {
+                closed_text(d)
+            };
+            let key = {
+                let tagcase_ = closing;
+                match *tagcase_ {
+                    Closing::NotClosable() => {
+                        str_lit("")
+                    }
+                    Closing::ClosedOff(closed, kept, open, finished) => {
+                        string_append(if finished {
+                            str_lit("f|")
+                        } else {
+                            str_lit("u|")
+                        }, trimmed_end(closed))
+                    }
+                }
+            };
+            if (not(string_eq_p(key, str_lit(""))) && string_eq_p(key, get(spec_key()))) {
+                set(speculated(), true)
+            } else {
+                speculation_dropped_x();
+                set(speculated(), true);
+                set(spec_key(), key);
+                let tagcase_ = closing;
+                match *tagcase_ {
+                    Closing::NotClosable() => {
+                        ()
+                    }
+                    Closing::ClosedOff(closed, kept, open, finished) => {
+                        set(spec_kept(), kept);
+                        set(spec_open(), open);
+                        set(spec_finished(), finished);
+                        noted_x(hint_at(d, kept, open), false);
+                        speculated_forms_x(read_all(string_chars(closed), str_lit("<draft>"), 1i64), finished)
+                    }
+                }
+            }
+        }
+    }
+
+    /// The draft refused (the Rust caught the failure): said, if it is about
+    /// what has been finished; else the hint stays.
+    pub fn speculation_refused_x(message: Str, now: i64) -> () {
+        let at = refused_offset(message);
+        if (get(spec_finished()) || (i64_gt_eq(at, 0i64) && i64_lt(at, get(spec_kept())) && not(i64_member_p(at, get(spec_open()))))) {
+            noted_x(refusal_words(message), true)
+        } else {
+            ()
+        }
+    }
+
     // Running.
-    /// The entry to run a slice of, by turns, or -1.
+    /// The entry to run a slice of, by turns, or -1; 0, the draft's run.
     pub fn next_task() -> i64 {
         let ready = entries_where(&may_run_p, oldest_first(get(entries()), nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after<i64, Str, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>, bool, Ref<i64>, i64, Ref<i64>>>()));
         let last = get(last_run());
@@ -1634,6 +2354,8 @@ pub mod session {
         }), ready);
         if not(null_p(after)) {
             car(after).0
+        } else if draft_runnable_p() {
+            0i64
         } else if not(null_p(ready)) {
             car(ready).0
         } else {
@@ -1641,10 +2363,13 @@ pub mod session {
         }
     }
 
-    /// A slice of entry `k`: its tops run on from where they paused.
+    /// A slice of entry `k`: its tops run on from where they paused; or of
+    /// the draft's run, `k` 0.
     pub fn slice_x(k: i64, now: i64) -> () {
         let found = entry_numbered(get(entries()), k);
-        if null_p(found) {
+        if i64_eq(k, 0i64) {
+            draft_slice_x(now)
+        } else if null_p(found) {
             ()
         } else {
             let e = car(found);
@@ -1679,12 +2404,16 @@ pub mod session {
         }
     }
 
-    /// Entry `k` failed (the Rust caught the failure).
+    /// Entry `k` failed (the Rust caught the failure); or the draft's run.
     pub fn failed_x(k: i64, message: Str, now: i64) -> () {
         set(fuel(), -1i64);
         set(capturing(), false);
         let found = entry_numbered(get(entries()), k);
-        if null_p(found) {
+        if i64_eq(k, 0i64) {
+            set(spec_state(), 2i64);
+            parked_cleared_x(0i64);
+            noted_x(string_append(str_lit("running it fails: "), message), true)
+        } else if null_p(found) {
             ()
         } else {
             let e = car(found);
