@@ -1091,7 +1091,7 @@
                                  ((tagcase sc (scheme (tv t) (tagcase t (ty-proc (es ps r) (any? (lambda ((p ty)) (not (null? (module-spec v p)))) ps)) (else other #f))))
                                   (refuse v (string-append "a procedure of a module parameter, a Rust generic fn, named as a value: " name)))
                                  (else
-                               (tagcase (instantiate s sc)
+                               (tagcase (named-instance v s sc)
                                  (inst (t s regions effects) (res t (naming-effs s name wher t (cv-group v)) s)))))))))))))
 
       (quasi-items (subr kfx (cv st sexps i64) res)
@@ -1137,7 +1137,7 @@
         (lambda (v s e expected)
           (let ((x (walk s expected)))
             (if (draft-hole? e)
-                (refuse v (string-append "the hole: " (tagcase x (ty-meta (m) "an expression") (else other (string-append "an expression of type " (show-ty s (zonk s x)))))))
+                (refuse-named v s (string-append "the hole: " (tagcase x (ty-meta (m) "an expression") (else other (string-append "an expression of type " (show-ty s (zonk s x)))))))
             (if (and (tagcase e (sym (n f p) (string=? n "#f")) (else other #f))
                      (or (string=? (show-ty s x) "false")
                          (tagcase x (ty-data (d args) (and (string=? d "%union") (not (null? (member-of-shape args "bool")))
@@ -1147,7 +1147,7 @@
             (if (and (string=? (shape-of x) "union") (not (string=? (literal-shape e) "")))
                 (let ((m (member-of-shape (members-of x) (literal-shape e))))
                   (if (null? m)
-                      (refuse v (string-append "a literal is here, where a " (string-append (show-ty s x) " is expected")))
+                      (refuse-named v s (string-append "a literal is here, where a " (string-append (show-ty s x) " is expected")))
                       (check v s e (car m))))
             (tagcase e
               (num (k num-file num-pos)
@@ -1174,7 +1174,7 @@
                           ((and (string=? d "i8") (not (i64< k -128)) (not (i64> k 127)))
                            (res x nil (note-fact s num-file num-pos "fixed i8")))
                           ((fixed-width? d) (refuse v (string-append (i64->string k) (string-append " is not a " d))))
-                          (else (refuse v (string-append "a literal is here, where a " (string-append (show-ty s x) " is expected"))))))
+                          (else (refuse-named v s (string-append "a literal is here, where a " (string-append (show-ty s x) " is expected"))))))
                   (else other (refuse v (string-append "a literal is here, where a "
                                                        (string-append (show-ty s x) " is expected"))))))
               (big (text f p)
@@ -1189,7 +1189,7 @@
                                  (and (i64= (string-length-i64 text) 20) (digits-at-most? (string-chars text) (string-chars "18446744073709551615")))))
                         (res x nil (note-fact s f p "fixed u64"))
                         (refuse v (string-append text (string-append " is not a " d)))))
-                  (else other (refuse v (string-append "a literal past an i64 is here, where a " (string-append (show-ty s x) " is expected"))))))
+                  (else other (refuse-named v s (string-append "a literal past an i64 is here, where a " (string-append (show-ty s x) " is expected"))))))
               (lst (xs src-file src-line src-pos)
                 (let ((v (near v src-file src-line src-pos)))
                   (tagcase (car xs)
@@ -1216,7 +1216,7 @@
            type returning no `Result` (`lift N` at it, `N` its arity, wherever
            it stands: an argument, a list's element, a branch, a field)."
           (if (draft-hole? e)
-              (refuse v (string-append "the hole: " (tagcase (walk s expected) (ty-meta (m) "an expression") (else other (string-append "an expression of type " (show-ty s (zonk s expected)))))))
+              (refuse-named v s (string-append "the hole: " (tagcase (walk s expected) (ty-meta (m) "an expression") (else other (string-append "an expression of type " (show-ty s (zonk s expected)))))))
           (tagcase (synth v s e)
             (res (t es s)
               (res expected es
@@ -1561,10 +1561,10 @@
           (tagcase (walk s expected)
             (ty-shape (p ls ts)
               (if (and (not p) (not (null? xs)) (draft-hole? (car xs)))
-                  (refuse v (string-append "the hole: a tag, then its value: " (words-joined (tags-wanted s ls ts) ", ")))
+                  (refuse-named v s (string-append "the hole: a tag, then its value: " (words-joined (tags-wanted s ls ts) ", ")))
               (let ((tag (label-of (car xs))))
                 (if (or p (not (string-member? tag ls)) (not (i64= (size xs) 2)))
-                    (refuse v (string-append "a sum tagged " (string-append tag (string-append ", where a " (string-append (show-ty s expected) " is expected")))))
+                    (refuse-named v s (string-append "a sum tagged " (string-append tag (string-append ", where a " (string-append (show-ty s expected) " is expected")))))
                     (tagcase (check v s (second xs) (member-type tag ls ts))
                       (res (t es s)
                         (res expected es (note-fact s (cv-file v) (cv-pos v)
@@ -1725,7 +1725,7 @@
                   (res (if (null? expected) (ty-void) (car expected)) nil s)
                   (refuse v (string-append "a tagcase of a " (string-append (show-ty s whole) " with no else, and no arm for each tag"))))
               (if (draft-hole? (car tagged))
-                  (refuse v (string-append "the hole: " (arms-wanted s vs (tagcase whole (ty-shape (p ls ts) "name") (else other "(name …)")))))
+                  (refuse-named v s (string-append "the hole: " (arms-wanted s vs (tagcase whole (ty-shape (p ls ts) "name") (else other "(name …)")))))
               (let* ((arm (items (car tagged)))
                      (tag (name-of v (car arm))))
                 (if (string=? tag "else")
@@ -2371,7 +2371,7 @@
                   (tagcase (car found)
                     (bind (n sc wher)
                       (let ((from (st-next s)))
-                      (tagcase (instantiate s sc)
+                      (tagcase (named-instance v s sc)
                         (inst (t s regions effects)
                           (place-needed v h wher sc from
                           (regions-freshened v h wher regions

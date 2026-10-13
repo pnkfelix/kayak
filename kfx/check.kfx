@@ -1275,6 +1275,68 @@
 (define st-next (subr kfx (st) i64)
   (lambda (s) (tagcase s (st (subst next fs) next))))
 
+"Inference variables said by their binders' names (C98): an instance's
+ made in a REPL's draft or entry each noted as the binder it stands for,
+ a fact of the file `%meta` at its number; and a message about it says
+ `t` where it would say `?3`, a second variable of the same name primed,
+ `t'`, as Fixpt says them. No fact is noted in a file's checking, so no
+ file's messages change."
+(define-datatype said (said i64 string))
+(define-type saids (listof said acyclic))
+
+(define-rec
+  (binders-noted (subr kfx (st strings i64) st)
+    (lambda (s tvars k)
+      (if (null? tvars) s (binders-noted (note-fact s "%meta" k (string-append "binder " (car tvars))) (cdr tvars) (i64+ k 1)))))
+  (binder-of (subr kfx (facts i64) string)
+    (lambda (fs k)
+      (if (null? fs)
+          ""
+          (tagcase (car fs)
+            (fact (f p w) (if (and (i64= p k) (string=? f "%meta")) (after-prefix w "binder ") (binder-of (cdr fs) k)))))))
+  (said-as (subr kfx (saids i64) string)
+    (lambda (ss k)
+      (if (null? ss) "" (tagcase (car ss) (said (j n) (if (i64= j k) n (said-as (cdr ss) k)))))))
+  (said-by? (subr kfx (saids string) bool)
+    (lambda (ss n)
+      (and (not (null? ss)) (tagcase (car ss) (said (j m) (or (string=? m n) (said-by? (cdr ss) n)))))))
+  (unsaid (subr kfx (saids string) string)
+    (lambda (ss n)
+      (if (said-by? ss n) (unsaid ss (string-append n "'")) n)))
+  (digits-after (subr kfx (chars i64) i64)
+    (lambda (cs k)
+      (if (and (not (null? cs)) (char-numeric? (car cs)))
+          (digits-after (cdr cs) (i64+ (i64* k 10) (i64- (char->i64 (car cs)) 48)))
+          k)))
+  (past-digits (subr kfx (chars) chars)
+    (lambda (cs)
+      (if (and (not (null? cs)) (char-numeric? (car cs))) (past-digits (cdr cs)) cs)))
+  (metas-said (subr kfx (facts chars saids string) string)
+    (lambda (fs cs ss acc)
+      (cond ((null? cs) acc)
+            ((and (char=? (car cs) #\?) (not (null? (cdr cs))) (char-numeric? (car (cdr cs))))
+             (let* ((k (digits-after (cdr cs) 0))
+                    (was (said-as ss k))
+                    (binder (binder-of fs k)))
+               (cond ((not (string=? was "")) (metas-said fs (past-digits (cdr cs)) ss (string-append acc was)))
+                     ((string=? binder "") (metas-said fs (past-digits (cdr cs)) ss (string-append acc (meta-name k))))
+                     (else (let ((n (unsaid ss binder)))
+                             (metas-said fs (past-digits (cdr cs)) (cons (said k n) ss) (string-append acc n)))))))
+            (else (metas-said fs (cdr cs) ss (string-append acc (char->string (car cs)))))))))
+
+(define metas-named (subr kfx (st string) string)
+  (lambda (s message)
+    (let ((fs (st-facts s)))
+      (if (any? (lambda ((f fact)) (tagcase f (fact (file p w) (string=? file "%meta")))) fs)
+          (metas-said fs (string-chars message) nil "")
+          message))))
+
+(define refuse-named (subr kfx (cv st string) void)
+  (lambda (v s message)
+    "A refusal whose types' inference variables are said by their binders'
+     names, where a draft's instance noted them."
+    (refuse v (metas-named s message))))
+
 (define solve (subr kfx (st i64 ty) st)
   (lambda (s k t)
     (tagcase s (st (subst next fs) (st (cons (sb k t) subst) next fs)))))
@@ -1666,7 +1728,7 @@
           (fits-all v (fits v s (car actuals) (car expecteds)) (cdr actuals) (cdr expecteds)))))
   (mismatch (subr kfx (cv st ty ty) st)
     (lambda (v s a e)
-      (refuse v (string-append "a " (string-append (show-ty s a)
+      (refuse-named v s (string-append "a " (string-append (show-ty s a)
                 (string-append " is here, where a " (string-append (show-ty s e) " is expected"))))))))
 
 "A scheme's instance: each variable an inference variable; those for
@@ -1692,6 +1754,16 @@
                                     (if (char=? (string-ref-i64 (car tvars) 0) #\') (cons k regions) regions)
                                     (if (char=? (string-ref-i64 (car tvars) 0) #\~) (cons k effects) effects)))
                 (else other (inst t s regions effects)))))))))
+
+(define named-instance (subr kfx (cv st scheme) inst)
+  (lambda (v s sc)
+    "`sc`'s instance; in a REPL's draft or entry, its inference variables
+     noted as their binders' names, to be said by them (C98)."
+    (if (tagcase v (cv (bs ds als es here group file line fs tv at) (or (string=? file "<draft>") (has-prefix? file "<fx26:"))))
+        (tagcase (instantiate s sc)
+          (inst (t s2 regions effects)
+            (inst t (binders-noted s2 (tagcase sc (scheme (tvars u) tvars)) (st-next s)) regions effects)))
+        (instantiate s sc))))
 
 
 "The names in scope"

@@ -2638,6 +2638,165 @@ pub fn st_next(s: &'static St) -> i64 {
     }
 }
 
+// Inference variables said by their binders' names (C98): an instance's
+// made in a REPL's draft or entry each noted as the binder it stands for,
+// a fact of the file `%meta` at its number; and a message about it says
+// `t` where it would say `?3`, a second variable of the same name primed,
+// `t'`, as Fixpt says them. No fact is noted in a file's checking, so no
+// file's messages change.
+pub enum Said {
+    Said(i64, Str),
+}
+
+pub fn said(f0: i64, f1: Str) -> &'static Said {
+    kayak_rt::heap_alloc(Said::Said(f0, f1))
+}
+
+pub type Saids = List<&'static Said>;
+
+pub fn binders_noted(mut s: &'static St, mut tvars: Strings, mut k: i64) -> &'static St {
+    loop {
+        if null_p(tvars) {
+            return s;
+        } else {
+            (s, tvars, k) = (note_fact(s, str_lit("%meta"), k, string_append(str_lit("binder "), car(tvars))), cdr(tvars), i64_plus(k, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn binder_of(mut fs: Facts, mut k: i64) -> Str {
+    loop {
+        if null_p(fs) {
+            return str_lit("");
+        } else {
+            let tagcase_ = car(fs);
+            match *tagcase_ {
+                Fact::Fact(f, p, w) => {
+                    if (i64_eq(p, k) && string_eq_p(f, str_lit("%meta"))) {
+                        return after_prefix(w, str_lit("binder "));
+                    } else {
+                        fs = cdr(fs);
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn said_as(mut ss: Saids, mut k: i64) -> Str {
+    loop {
+        if null_p(ss) {
+            return str_lit("");
+        } else {
+            let tagcase_ = car(ss);
+            match *tagcase_ {
+                Said::Said(j, n) => {
+                    if i64_eq(j, k) {
+                        return n;
+                    } else {
+                        ss = cdr(ss);
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn said_by_p(ss: Saids, n: Str) -> bool {
+    (not(null_p(ss)) && {
+        let tagcase_ = car(ss);
+        match *tagcase_ {
+            Said::Said(j, m) => {
+                (string_eq_p(m, n) || said_by_p(cdr(ss), n))
+            }
+        }
+    })
+}
+
+pub fn unsaid(mut ss: Saids, mut n: Str) -> Str {
+    loop {
+        if said_by_p(ss, n) {
+            n = string_append(n, str_lit("'"));
+            continue;
+        } else {
+            return n;
+        }
+    }
+}
+
+pub fn digits_after(mut cs: Chars, mut k: i64) -> i64 {
+    loop {
+        if (not(null_p(cs)) && char_numeric_p(car(cs))) {
+            (cs, k) = (cdr(cs), i64_plus(i64_star(k, 10i64), i64_minus(char_to_i64(car(cs)), 48i64)));
+            continue;
+        } else {
+            return k;
+        }
+    }
+}
+
+pub fn past_digits(mut cs: Chars) -> Chars {
+    loop {
+        if (not(null_p(cs)) && char_numeric_p(car(cs))) {
+            cs = cdr(cs);
+            continue;
+        } else {
+            return cs;
+        }
+    }
+}
+
+pub fn metas_said(mut fs: Facts, mut cs: Chars, mut ss: Saids, mut acc: Str) -> Str {
+    loop {
+        if null_p(cs) {
+            return acc;
+        } else if (char_eq_p(car(cs), '?') && not(null_p(cdr(cs))) && char_numeric_p(car(cdr(cs)))) {
+            let k = digits_after(cdr(cs), 0i64);
+            let was = said_as(ss, k);
+            let binder = binder_of(fs, k);
+            if not(string_eq_p(was, str_lit(""))) {
+                (cs, acc) = (past_digits(cdr(cs)), string_append(acc, was));
+                continue;
+            } else if string_eq_p(binder, str_lit("")) {
+                (cs, acc) = (past_digits(cdr(cs)), string_append(acc, meta_name(k)));
+                continue;
+            } else {
+                let n = unsaid(ss, binder);
+                (cs, ss, acc) = (past_digits(cdr(cs)), kayak_rt::heap_cons(said(k, n), ss), string_append(acc, n));
+                continue;
+            }
+        } else {
+            (cs, acc) = (cdr(cs), string_append(acc, char_to_string(car(cs))));
+            continue;
+        }
+    }
+}
+
+pub fn metas_named(s: &'static St, message: Str) -> Str {
+    let fs = st_facts(s);
+    if any_p(lambda1(move |f: &'static Fact| {
+        let tagcase_ = f;
+        match *tagcase_ {
+            Fact::Fact(file, p, w) => {
+                string_eq_p(file, str_lit("%meta"))
+            }
+        }
+    }), fs) {
+        metas_said(fs, string_chars(message), nil::<&'static Said>(), str_lit(""))
+    } else {
+        message
+    }
+}
+
+/// A refusal whose types' inference variables are said by their binders'
+/// names, where a draft's instance noted them.
+pub fn refuse_named(v: &'static Cv, s: &'static St, message: Str) -> Void {
+    match refuse(v, metas_named(s, message)) {}
+}
+
 pub fn solve(s: &'static St, k: i64, t: &'static Ty) -> &'static St {
     let tagcase_ = s;
     match *tagcase_ {
@@ -3696,7 +3855,7 @@ pub fn fits_all(mut v: &'static Cv, mut s: &'static St, mut actuals: Tys, mut ex
 }
 
 pub fn mismatch(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static Ty) -> &'static St {
-    match refuse(v, string_append(str_lit("a "), string_append(show_ty(s, a), string_append(str_lit(" is here, where a "), string_append(show_ty(s, e), str_lit(" is expected")))))) {}
+    match refuse_named(v, s, string_append(str_lit("a "), string_append(show_ty(s, a), string_append(str_lit(" is here, where a "), string_append(show_ty(s, e), str_lit(" is expected")))))) {}
 }
 
 // A scheme's instance: each variable an inference variable; those for
@@ -3747,6 +3906,35 @@ pub fn instantiate_vars(s: &'static St, tvars: Strings, t: &'static Ty, regions:
                 }
             }
         }
+    }
+}
+
+/// `sc`'s instance; in a REPL's draft or entry, its inference variables
+/// noted as their binders' names, to be said by them (C98).
+pub fn named_instance(v: &'static Cv, s: &'static St, sc: &'static Scheme) -> &'static Inst {
+    if {
+        let tagcase_ = v;
+        match *tagcase_ {
+            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+                (string_eq_p(file, str_lit("<draft>")) || has_prefix_p(file, str_lit("<fx26:")))
+            }
+        }
+    } {
+        let tagcase_ = instantiate(s, sc);
+        match *tagcase_ {
+            Inst::Inst(t, s2, regions, effects) => {
+                inst(t, binders_noted(s2, {
+                    let tagcase_ = sc;
+                    match *tagcase_ {
+                        Scheme::Scheme(tvars, u) => {
+                            tvars
+                        }
+                    }
+                }, st_next(s)), regions, effects)
+            }
+        }
+    } else {
+        instantiate(s, sc)
     }
 }
 

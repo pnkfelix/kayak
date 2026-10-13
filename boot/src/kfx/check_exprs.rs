@@ -2498,7 +2498,7 @@ pub mod expressions {
                         } {
                             match refuse(v, string_append(str_lit("a procedure of a module parameter, a Rust generic fn, named as a value: "), name)) {}
                         } else {
-                            let tagcase_ = instantiate(s, sc);
+                            let tagcase_ = named_instance(v, s, sc);
                             match *tagcase_ {
                                 Inst::Inst(t, s, regions, effects) => {
                                     res(t, naming_effs(s, name, wher, t, cv_group(v)), s)
@@ -2590,7 +2590,7 @@ pub mod expressions {
     pub fn check_plain(v: &'static Cv, s: &'static St, e: &'static Sexp, expected: &'static Ty) -> &'static Res {
         let x = walk(s, expected);
         if draft_hole_p(e) {
-            match refuse(v, string_append(str_lit("the hole: "), {
+            match refuse_named(v, s, string_append(str_lit("the hole: "), {
                 let tagcase_ = x;
                 match *tagcase_ {
                     Ty::TyMeta(m) => {
@@ -2631,7 +2631,7 @@ pub mod expressions {
                 if (string_eq_p(shape_of(x), str_lit("union")) && not(string_eq_p(literal_shape(e), str_lit("")))) {
                     let m = member_of_shape(members_of(x), literal_shape(e));
                     if null_p(m) {
-                        match refuse(v, string_append(str_lit("a literal is here, where a "), string_append(show_ty(s, x), str_lit(" is expected")))) {}
+                        match refuse_named(v, s, string_append(str_lit("a literal is here, where a "), string_append(show_ty(s, x), str_lit(" is expected")))) {}
                     } else {
                         check(v, s, e, car(m))
                     }
@@ -2674,7 +2674,7 @@ pub mod expressions {
                                     } else if fixed_width_p(d) {
                                         match refuse(v, string_append(i64_to_string(k), string_append(str_lit(" is not a "), d))) {}
                                     } else {
-                                        match refuse(v, string_append(str_lit("a literal is here, where a "), string_append(show_ty(s, x), str_lit(" is expected")))) {}
+                                        match refuse_named(v, s, string_append(str_lit("a literal is here, where a "), string_append(show_ty(s, x), str_lit(" is expected")))) {}
                                     }
                                 }
                                 _ => {
@@ -2705,7 +2705,7 @@ pub mod expressions {
                                 }
                                 _ => {
                                     let other = tagcase_;
-                                    match refuse(v, string_append(str_lit("a literal past an i64 is here, where a "), string_append(show_ty(s, x), str_lit(" is expected")))) {}
+                                    match refuse_named(v, s, string_append(str_lit("a literal past an i64 is here, where a "), string_append(show_ty(s, x), str_lit(" is expected")))) {}
                                 }
                             }
                         }
@@ -2758,7 +2758,7 @@ pub mod expressions {
     /// it stands: an argument, a list's element, a branch, a field).
     pub fn check_by_synth(v: &'static Cv, s: &'static St, e: &'static Sexp, expected: &'static Ty) -> &'static Res {
         if draft_hole_p(e) {
-            match refuse(v, string_append(str_lit("the hole: "), {
+            match refuse_named(v, s, string_append(str_lit("the hole: "), {
                 let tagcase_ = walk(s, expected);
                 match *tagcase_ {
                     Ty::TyMeta(m) => {
@@ -3580,11 +3580,11 @@ pub mod expressions {
         match *tagcase_ {
             Ty::TyShape(p, ls, ts) => {
                 if (not(p) && not(null_p(xs)) && draft_hole_p(car(xs))) {
-                    match refuse(v, string_append(str_lit("the hole: a tag, then its value: "), words_joined(tags_wanted(s, ls, ts), str_lit(", ")))) {}
+                    match refuse_named(v, s, string_append(str_lit("the hole: a tag, then its value: "), words_joined(tags_wanted(s, ls, ts), str_lit(", ")))) {}
                 } else {
                     let tag = label_of(car(xs));
                     if (p || not(string_member_p(tag, ls)) || not(i64_eq(size(xs), 2i64))) {
-                        match refuse(v, string_append(str_lit("a sum tagged "), string_append(tag, string_append(str_lit(", where a "), string_append(show_ty(s, expected), str_lit(" is expected")))))) {}
+                        match refuse_named(v, s, string_append(str_lit("a sum tagged "), string_append(tag, string_append(str_lit(", where a "), string_append(show_ty(s, expected), str_lit(" is expected")))))) {}
                     } else {
                         let tagcase_ = check(v, s, second(xs), member_type(tag, ls, ts));
                         match *tagcase_ {
@@ -3997,7 +3997,7 @@ pub mod expressions {
             }
         } else {
             if draft_hole_p(car(tagged)) {
-                match refuse(v, string_append(str_lit("the hole: "), arms_wanted(s, vs, {
+                match refuse_named(v, s, string_append(str_lit("the hole: "), arms_wanted(s, vs, {
                     let tagcase_ = whole;
                     match *tagcase_ {
                         Ty::TyShape(p, ls, ts) => {
@@ -5385,7 +5385,7 @@ pub mod expressions {
             match *tagcase_ {
                 Bind::Bind(n, sc, wher) => {
                     let from = st_next(s);
-                    let tagcase_ = instantiate(s, sc);
+                    let tagcase_ = named_instance(v, s, sc);
                     match *tagcase_ {
                         Inst::Inst(t, s, regions, effects) => {
                             place_needed(v, h, wher, sc, from, regions_freshened(v, h, wher, regions, static_instance(v, h, wher, binder_metas(from, st_next(s), onto(effects, regions)), poly_settled(v, h, wher, args, binder_metas(from, st_next(s), onto(effects, regions)), result_only_p(s, t, binder_metas(from, st_next(s), onto(effects, regions))), void_call(v, (string_eq_p(h, str_lit("error")) && string_eq_p(wher, str_lit("prim"))), (not(null_p(expected)) && {

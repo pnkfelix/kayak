@@ -24,4 +24,5 @@
 170 \x15(+ 1 (car 5) 
 180 \x15(string-append "abc" 5)
 190 \x15((lambda ((f (subr pure (int) bool))) (f 
-200 \x15
+200 \x15(cons car 
+210 \x15

@@ -461,8 +461,8 @@ Stages 2 and 3 done (C95): editing, history, Tab; Fixpt's commands.
   hole inside a form, `,disassemble`, `,list-outdated` and
   `,rerun-outdated` (redefinition at another type), `,redefine b|r`.
 - Checking as you type (C96), hints at a hole and the underline (C97)
-  done. Left: speculating `,type E`'s and `,time E`'s forms; a hint's
-  type variables named as the binders are, not `?0`.
+  done; type variables said by their binders' names (C98). Left:
+  speculating `,type E`'s and `,time E`'s forms.
 - A skimmer in KFX, after Coopt's (repl.md, Coopt's skimmer): forms and
   the names they define, found lexically; for `incr.kfx` (measure first
   whether reading costs in a warm compile), and the REPL's names before

@@ -128,8 +128,9 @@ the entries, its value under the draft. Details: `CLAUDES_CHOICES.md`
 C96. The hints are the checker's, at a hole where the next item goes,
 as Fixpt's: the argument's type as the arguments before it solve it, a
 `tagcase`'s arms not taken, a `sum`'s tags; a refused subform is
-underlined (C97). Left: speculating a command's forms (`,type E`); type
-variables shown as `?0`, where Fixpt shows the binder's name.
+underlined (C97); an inference variable said by its binder's name,
+`t`, a second of the name primed, `t'`, as Fixpt says them (C98). Left:
+speculating a command's forms (`,type E`).
 
 ## Coopt's skimmer, and what kayak might take from it
 

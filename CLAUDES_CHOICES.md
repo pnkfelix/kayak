@@ -2074,3 +2074,24 @@ next; underlining the bad subform." As Fixpt's `describe_hole` and
   a name not bound at itself (C96). The datum is underlined in the draft
   as drawn (its end found lexically: a list's close, a name's delimiter),
   across its lines if it has several.
+
+## C98. Inference variables said by their binders' names, in the REPL (2026-10-13)
+
+The user's: "let's print the type parameters name". A hint said
+`argument 1 of car wants (listof ?1 ?0)`; Fixpt says the binders' names.
+- **Noted at the instance.** Where a name's scheme is instantiated (a
+  call's head, a name as a value), in a datum read from `<draft>` or a
+  REPL entry (`<fx26:k>`), each inference variable made is noted as a
+  fact of the file `%meta` at its number, `binder NAME`. No compile's
+  file has such a name, so no file's facts change (K1, the fixed point);
+  the file `%meta` and the prefix `binder ` are no other fact's.
+- **Said in the message.** A refusal with types in it (`mismatch`, a
+  literal's, a sum's, every hint at a hole) goes by `refuse-named`, which
+  rewrites each `?k` with a noted binder as its name, the text as Fixpt's
+  `show_apart`: the first of a name, in the order read, keeps it, the next
+  is primed. So `(listof t 'r)`, and `(cons car ` wants `(listof (subr
+  (read 'r) ((listof t 'r)) t) 'r')`, `'r'` being `cons`'s. A variable not
+  noted (made by the checker for itself) is still `?k`.
+- **On the text, not the type.** The rename is of the message, so that one
+  priming covers every type in it (a `tagcase`'s arms each show one), and
+  `show-ty` stays as it was for everything else.

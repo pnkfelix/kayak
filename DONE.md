@@ -1228,3 +1228,9 @@ there: an argument's type as those before it solve it, a `tagcase`'s arms
 not taken, a `sum`'s tags; fillers so that a form missing its later parts
 reaches the hole; the speculation a sequence of tries; a refused subform
 (an argument, a name) underlined. `tests/repl/hints.keys`.
+
+## Inference variables by their binders' names (2026-10-13)
+
+C98: in a REPL draft or entry, a message says `(listof t 'r)`, not
+`(listof ?1 ?0)`; a second variable of one name primed, `'r'`, as Fixpt.
+`tests/repl/hints.keys`.
