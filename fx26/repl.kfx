@@ -114,7 +114,7 @@
           ((or (head-is? form "define-type") (head-is? form "define-effect") (head-is? form "define-datatype") (head-is? form "define-generative") (head-is? form "define-rec"))
            "")
           (else
-           (tagcase (synth (at v "a top-level expression" nil) (new-state) form)
+           (tagcase (with expressions (synth (at v "a top-level expression" nil) (new-state) form))
              (res (t es s) (string-append " : " (string-append (show-ty s t) (string-append " ! " (show-effs es))))))))))
 
 (define-rec

@@ -440,10 +440,10 @@ pub fn check_procedure(v: &'static Cv, defined: &'static Sexp, sc: &'static Sche
     let tagcase_ = sc;
     match *tagcase_ {
         Scheme::Scheme(tvars, t) => {
-            let tagcase_ = check_lambda(with_tvars(v, onto(place_marks_of(t), tvars)), new_state(), items(second(lam)), cdr(cdr(lam)), t);
+            let tagcase_ = expressions::check_lambda(with_tvars(v, onto(place_marks_of(t), tvars)), new_state(), items(second(lam)), cdr(cdr(lam)), t);
             match *tagcase_ {
                 Res::Res(u, es, s) => {
-                    with_facts(v, settle_facts(s))
+                    with_facts(v, expressions::settle_facts(s))
                 }
             }
         }
@@ -699,7 +699,7 @@ pub fn check_define_star(v: &'static Cv, xs: Sexps, src_file: Str, src_pos: i64)
                         let wide = ty_proc(effs_union(kayak_rt::heap_cons(str_lit("@globals"), kayak_rt::nil()), declared), ps, r);
                         let itself = ty_proc(effs_union(kayak_rt::heap_cons(string_append(str_lit("g:"), name), kayak_rt::nil()), declared), ps, r);
                         let named = with_binds(v, kayak_rt::heap_cons(global(v, name, scheme(tvars, itself)), kayak_rt::nil()));
-                        let found = lambda_effects(with_tvars(with_tvars(named, tvars), place_marks(third(xs))), new_state(), items(second(lam)), cdr(cdr(lam)), wide);
+                        let found = expressions::lambda_effects(with_tvars(with_tvars(named, tvars), place_marks(third(xs))), new_state(), items(second(lam)), cdr(cdr(lam)), wide);
                         let es = {
                             let tagcase_ = found;
                             match *tagcase_ {
@@ -712,7 +712,7 @@ pub fn check_define_star(v: &'static Cv, xs: Sexps, src_file: Str, src_pos: i64)
                             let tagcase_ = found;
                             match *tagcase_ {
                                 Res::Res(u, es, s) => {
-                                    settle_facts(s)
+                                    expressions::settle_facts(s)
                                 }
                             }
                         };
@@ -768,8 +768,8 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                 // Its body read where it stands, used or not: so that one that
                 // mentions itself, or names no type, is refused.
                 if head_is_p(third(xs), str_lit("moduleof")) {
-                    spec_well_formed(v, third(xs));
-                    module_type_values(module_scope(v, third(xs), str_lit(""), str_lit("")), third(xs));
+                    expressions::spec_well_formed(v, third(xs));
+                    expressions::module_type_values(expressions::module_scope(v, third(xs), str_lit(""), str_lit("")), third(xs));
                     v
                 } else if (head_is_p(third(xs), str_lit("select")) && {
                     let found = find_alias(string_append(name_of(v, second(items(third(xs)))), string_append(str_lit(" "), name_of(v, third(items(third(xs)))))), cv_aliases(v));
@@ -829,10 +829,10 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                         match *tagcase_ {
                             Scheme::Scheme(tvars, t) => {
                                 if null_p(tvars) {
-                                    let tagcase_ = check(v, new_state(), fourth(xs), t);
+                                    let tagcase_ = expressions::check(v, new_state(), fourth(xs), t);
                                     match *tagcase_ {
                                         Res::Res(u, es, s) => {
-                                            with_facts(named, settle_facts(constant_made(v, s, fourth(xs), es)))
+                                            with_facts(named, expressions::settle_facts(constant_made(v, s, fourth(xs), es)))
                                         }
                                     }
                                 } else {
@@ -847,10 +847,10 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
             } else if string_eq_p(h, str_lit("define*")) {
                 check_define_star(v, xs, src_file, src_pos)
             } else {
-                let tagcase_ = synth(at(v, str_lit("a top-level expression"), nil::<Str>()), new_state(), form);
+                let tagcase_ = expressions::synth(at(v, str_lit("a top-level expression"), nil::<Str>()), new_state(), form);
                 match *tagcase_ {
                     Res::Res(t, es, s) => {
-                        with_facts(v, settle_facts({
+                        with_facts(v, expressions::settle_facts({
                             let s = if suspends_p(es) {
                                 note_fact(s, src_file, src_pos, str_lit("suspends"))
                             } else {
@@ -870,10 +870,10 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
         }
         _ => {
             let other = tagcase_;
-            let tagcase_ = synth(at(v, str_lit("a top-level expression"), nil::<Str>()), new_state(), form);
+            let tagcase_ = expressions::synth(at(v, str_lit("a top-level expression"), nil::<Str>()), new_state(), form);
             match *tagcase_ {
                 Res::Res(t, es, s) => {
-                    with_facts(v, settle_facts(if proc_type_p(s, t) {
+                    with_facts(v, expressions::settle_facts(if proc_type_p(s, t) {
                         note_fact(s, datum_file(form), datum_pos(form), str_lit("procedure"))
                     } else {
                         s
@@ -1275,19 +1275,19 @@ pub fn check_untyped(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
     let name = name_of(v, second(xs));
     let v = at(v, name, nil::<Str>());
     let e = third(xs);
-    let tagcase_ = synth(v, new_state(), e);
+    let tagcase_ = expressions::synth(v, new_state(), e);
     match *tagcase_ {
         Res::Res(t, es, s) => {
-            let (written, s) = (if has_var_p(s, t) {
+            let (written, s) = (if expressions::has_var_p(s, t) {
                 match refuse(v, str_lit("a definition with no type, of a type over a binder: write its type")) {}
             } else {
-                ty_sexp(v, s, t)
+                expressions::ty_sexp(v, s, t)
             }, if lambda_form_p(e) {
                 s
             } else {
                 constant_made(v, s, e, es)
             });
-            elab(with_facts(with_binds(v, kayak_rt::heap_cons(global(v, name, scheme(nil::<Str>(), zonk(s, t))), kayak_rt::nil())), settle_facts(s)), kayak_rt::heap_cons(typed(name, written), kayak_rt::nil()))
+            elab(with_facts(with_binds(v, kayak_rt::heap_cons(global(v, name, scheme(nil::<Str>(), zonk(s, t))), kayak_rt::nil())), expressions::settle_facts(s)), kayak_rt::heap_cons(typed(name, written), kayak_rt::nil()))
         }
     }
 }
@@ -1792,7 +1792,7 @@ pub fn except_names(v: &'static Cv, written: Sexps, n: Str) -> Strings {
                         k
                     }
                 }
-            }), opened_aliases(b, cv_aliases(v))))
+            }), expressions::opened_aliases(b, cv_aliases(v))))
         } else {
             map(&sym_name, cdr(items(x)))
         }
@@ -1828,7 +1828,7 @@ pub fn excepted_aliases(v: &'static Cv, written: Sexps, n: Str, als: Aliases) ->
                 }
             }
         }
-    }), opened_aliases(n, als)))
+    }), expressions::opened_aliases(n, als)))
 }
 
 /// Module `m`'s effects, named as `m` names them: an `include` gives them

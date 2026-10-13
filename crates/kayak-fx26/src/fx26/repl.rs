@@ -233,7 +233,7 @@ pub fn form_type(v: &'static Cv, form: &'static Sexp) -> Str {
     } else if (head_is_p(form, str_lit("define-type")) || head_is_p(form, str_lit("define-effect")) || head_is_p(form, str_lit("define-datatype")) || head_is_p(form, str_lit("define-generative")) || head_is_p(form, str_lit("define-rec"))) {
         str_lit("")
     } else {
-        let tagcase_ = synth(at(v, str_lit("a top-level expression"), nil::<Str>()), new_state(), form);
+        let tagcase_ = expressions::synth(at(v, str_lit("a top-level expression"), nil::<Str>()), new_state(), form);
         match *tagcase_ {
             Res::Res(t, es, s) => {
                 string_append(str_lit(" : "), string_append(show_ty(s, t), string_append(str_lit(" ! "), show_effs(es))))
