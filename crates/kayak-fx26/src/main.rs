@@ -135,7 +135,16 @@ fn repl() -> i64 {
     };
     let banner = s::session_start_x(live, rows, cols, leak_string(history));
     let _ = out.write_all(banner.as_str().as_bytes());
+    // A slice at most some milliseconds, so that typing waits no longer.
+    s::slices_timed_x(4);
+    // The prompt, before the first key.
+    let _ = out.write_all(s::screen_x(0).as_str().as_bytes());
+    let _ = out.flush();
     let (tx, rx) = mpsc::channel::<Option<Vec<u8>>>();
+    // Chunks sent, so that a round of slices ends as soon as a key waits.
+    let sent = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let sending = sent.clone();
+    let mut received = 0usize;
     std::thread::spawn(move || {
         let mut stdin = std::io::stdin();
         let mut buf = [0u8; 1024];
@@ -149,6 +158,7 @@ fn repl() -> i64 {
                     if tx.send(Some(buf[..n].to_vec())).is_err() {
                         return;
                     }
+                    sending.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
                 }
             }
         }
@@ -167,19 +177,42 @@ fn repl() -> i64 {
         } else {
             rx.recv_timeout(Duration::from_millis(wait as u64)).ok()
         };
+        let t0 = now();
         match got {
-            Some(Some(bytes)) => bytes.iter().for_each(|&b| key(b, now())),
+            Some(Some(ref bytes)) => {
+                received += 1;
+                bytes.iter().for_each(|&b| key(b, now()))
+            }
             Some(None) => {
                 ended = true;
                 s::leave_x();
             }
             None => {}
         }
+        let t1 = now();
         speculate(now());
-        // Slices for a sixtieth of a second at most, then the screen.
+        let t2 = now();
+        // What was typed, drawn before any slice runs.
+        if matches!(got, Some(Some(_))) {
+            let _ = out.write_all(s::screen_x(now()).as_str().as_bytes());
+            let _ = out.flush();
+        }
+        // Slices for a sixtieth of a second at most, or until a key comes,
+        // then the screen: typing waits for one slice at most.
         let began = now();
-        slices(&mut { now }, &mut |t| t - began < 16);
+        let keys_wait = || sent.load(std::sync::atomic::Ordering::SeqCst) > received;
+        slices(&mut { now }, &mut |t| t - began < 16 && !keys_wait());
+        let t3 = now();
         let _ = out.write_all(s::screen_x(now()).as_str().as_bytes());
+        if std::env::var_os("KAYAK_TIMING").is_some() && now() - t0 > 5 {
+            eprintln!(
+                "keys {} speculate {} slices {} screen {}",
+                t1 - t0,
+                t2 - t1,
+                t3 - t2,
+                now() - t3
+            );
+        }
         let _ = out.flush();
         if s::over_p() {
             if live {

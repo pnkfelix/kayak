@@ -107,14 +107,36 @@
           #u
           (error "the engine: the control primitives' numbers are not their places in prim-list")))))
 
+(define usage string
+  "usage: kayak-fx26 [repl]                       the REPL (,help in it for more)
+       kayak-fx26 FILE ...                     the files, one program, checked
+                                               and run, each top-level
+                                               expression's value written
+       kayak-fx26 --main FILE ...              the same, then (main), its
+                                               string written
+       kayak-fx26 --run FILE ... [-- ARG ...]  the files, then (main) given the
+                                               ARGs, its low byte the status
+       kayak-fx26 --keys FILE                  a REPL session from a script of
+                                               keys (tests/repl/)
+       kayak-fx26 --help                       this
+
+The REPL's history is kept in ~/.kayak_fx26_history. KAYAK_SPEC_DEBUG set,
+it writes each refusal of checking as you type to stderr; KAYAK_TIMING set,
+each turn of its loop that took more than 5 ms, and where the time went.
+")
+
 (define main (subr running () int)
   (lambda ()
     (let* ((as (the strings (args)))
            (running (and (not (null? as)) (string=? (car as) "--run")))
            (with-main (or running (and (not (null? as)) (string=? (car as) "--main"))))
            (paths (before-dashes (if with-main (cdr as) as))))
-      (if (null? paths)
-          (begin (fail-with "usage: kayak-fx26 [--main | --run] FILE ... [-- ARG ...]" 2) 2)
+      (cond
+        ((and (not (null? as)) (or (string=? (car as) "--help") (string=? (car as) "-h")))
+         (begin (say usage) 0))
+        ((null? paths)
+         (begin (write-err usage) (exit 2) 2))
+        (else
           (let* ((forms (read-files paths))
                  (checked (check-program forms))
                  (gs (onto (global-names forms) (module-entries forms))))
@@ -133,4 +155,4 @@
                                 (cond ((is-obj? w ob-string) (begin (say (word-string w)) 0))
                                       ((and running (fixnum? w)) (begin (exit (i64->int (i64-and (fixnum-value w) 255))) 0))
                                       (else (begin (say (show-word w)) 0)))))))
-                      0)))))))))
+                      0))))))))))

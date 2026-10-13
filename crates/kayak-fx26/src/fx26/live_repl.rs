@@ -432,6 +432,23 @@ pub mod session {
         20000i64
     }
 
+    pub fn slice_ns() -> Ref<i64> {
+        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(-1i64)
+        })
+    }
+
+    /// The machine's deadline for a slice, if the session is live (a
+    /// scripted one's slices are steps alone, so that it replays the same).
+    pub fn slice_timed_x() -> () {
+        if i64_gt_eq(get(slice_ns()), 0i64) {
+            set(deadline(), i64_plus(clock(), get(slice_ns())))
+        } else {
+            ()
+        }
+    }
+
     pub fn say_x(s: Str) -> () {
         set(written(), put(s, get(written())))
     }
@@ -2335,9 +2352,11 @@ pub mod session {
         set(last_run(), 0i64);
         set(task_slot(), 0i64);
         set(fuel(), slice_steps());
+        slice_timed_x();
         let w = resume(0i64);
         set(spec_steps(), i64_plus(get(spec_steps()), i64_minus(slice_steps(), get(fuel()))));
         set(fuel(), -1i64);
+        set(deadline(), -1i64);
         if not(i64_eq(w, w_paused())) {
             set(spec_state(), 2i64);
             parked_cleared_x(0i64);
@@ -2645,6 +2664,7 @@ pub mod session {
             };
             set(task_slot(), k);
             set(fuel(), slice_steps());
+            slice_timed_x();
             set(capturing(), true);
             let w = if null_p(get(e.7)) {
                 w_unit()
@@ -2653,6 +2673,7 @@ pub mod session {
             };
             set(e.15, i64_plus(get(e.15), i64_minus(slice_steps(), get(fuel()))));
             set(fuel(), -1i64);
+            set(deadline(), -1i64);
             set(capturing(), false);
             taken_output_x(e);
             if not(i64_eq(w, w_paused())) {
@@ -2670,6 +2691,7 @@ pub mod session {
     /// Entry `k` failed (the Rust caught the failure); or the draft's run.
     pub fn failed_x(k: i64, message: Str, now: i64) -> () {
         set(fuel(), -1i64);
+        set(deadline(), -1i64);
         set(capturing(), false);
         let found = entry_numbered(get(entries()), k);
         if i64_eq(k, 0i64) {
@@ -2699,6 +2721,13 @@ pub mod session {
         let s = rev_to_string(get(written()));
         set(written(), nil::<char>());
         s
+    }
+
+    /// Each slice at most `ms` milliseconds by the clock, about: the keys
+    /// are read between slices, so a slice is how long typing may wait,
+    /// whatever an entry or the draft's early run is doing (C99).
+    pub fn slices_timed_x(ms: i64) -> () {
+        set(slice_ns(), i64_star(ms, 1000000i64))
     }
 
     /// How long the Rust may wait for a key: none if a task may run; long

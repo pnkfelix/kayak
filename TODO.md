@@ -463,6 +463,15 @@ Stages 2 and 3 done (C95): editing, history, Tab; Fixpt's commands.
 - Checking as you type (C96), hints at a hole and the underline (C97)
   done; type variables said by their binders' names (C98). Left:
   speculating `,type E`'s and `,time E`'s forms.
+- The machine on a thread of its own (C99): a slice is 4 ms by the clock,
+  but one transition (a primitive on a huge value, a collection) and the
+  check of the draft still run to their end before a key is drawn. The
+  engine's globals are each a thread's, the session's and the machine's
+  alike: the session would send the machine entries, and the machine its
+  results and output.
+- Bignums in the engine leak (C99): KFX's `int`s are never freed, so each
+  step on a bignum leaks its operands' conversions (500 MB for `(fact
+  3000)`). Arithmetic on the limbs in the heap, or a free in `kayak-rt`.
 - A skimmer in KFX, after Coopt's (repl.md, Coopt's skimmer): forms and
   the names they define, found lexically; for `incr.kfx` (measure first
   whether reading costs in a warm compile), and the REPL's names before

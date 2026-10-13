@@ -157,6 +157,20 @@ fn divide_magnitudes(a: &[u32], b: &[u32]) -> (Vec<u32>, Vec<u32>) {
         trim(&mut rem);
         return (q, rem);
     }
+    // A power of two (the engine's limbs are taken by 2^32): a shift and
+    // the bits below it.
+    if b[..b.len() - 1].iter().all(|x| *x == 0) && b[b.len() - 1].is_power_of_two() {
+        let k = (b.len() - 1) * 32 + b[b.len() - 1].trailing_zeros() as usize;
+        let mut q = shifted_right(a, k);
+        trim(&mut q);
+        let mut r: Vec<u32> = a.iter().take(k.div_ceil(32)).copied().collect();
+        if !k.is_multiple_of(32) && r.len() == k.div_ceil(32) {
+            let last = r.len() - 1;
+            r[last] &= (1u32 << (k % 32)) - 1;
+        }
+        trim(&mut r);
+        return (q, r);
+    }
     let mut q = vec![0u32; a.len()];
     let mut r: Vec<u32> = Vec::new();
     for i in (0..a.len() * 32).rev() {
@@ -172,13 +186,27 @@ fn divide_magnitudes(a: &[u32], b: &[u32]) -> (Vec<u32>, Vec<u32>) {
             r.push(carry);
         }
         if compare_magnitudes(&r, b) != Ordering::Less {
-            r = sub_magnitudes(&r, b);
+            sub_in_place(&mut r, b);
             q[i / 32] |= 1 << (i % 32);
         }
     }
     trim(&mut q);
     trim(&mut r);
     (q, r)
+}
+
+/// `r - b`, into `r`, for `r >= b`, with no zero left at the top.
+fn sub_in_place(r: &mut Vec<u32>, b: &[u32]) {
+    let mut borrow = 0i64;
+    for (i, x) in r.iter_mut().enumerate() {
+        let d = *x as i64 - b.get(i).copied().unwrap_or(0) as i64 - borrow;
+        (*x, borrow) = if d < 0 {
+            ((d + (1 << 32)) as u32, 1)
+        } else {
+            (d as u32, 0)
+        };
+    }
+    trim(r);
 }
 
 fn add(a: Wide, b: Wide) -> Int {
@@ -422,6 +450,40 @@ mod tests {
 
     fn show(n: Int) -> String {
         int_to_string(n).as_str().to_owned()
+    }
+
+    /// The bit at a time division, as it was before the fast paths.
+    fn divided_slowly(a: &[u32], b: &[u32]) -> (Vec<u32>, Vec<u32>) {
+        let mut q = vec![0u32; a.len()];
+        let mut r: Vec<u32> = Vec::new();
+        for i in (0..a.len() * 32).rev() {
+            r.insert(0, 0);
+            r = shifted_right(&r, 31);
+            trim(&mut r);
+            if (a[i / 32] >> (i % 32)) & 1 == 1 {
+                r = add_magnitudes(&r, &[1]);
+            }
+            if compare_magnitudes(&r, b) != Ordering::Less {
+                r = sub_magnitudes(&r, b);
+                q[i / 32] |= 1 << (i % 32);
+            }
+        }
+        trim(&mut q);
+        trim(&mut r);
+        (q, r)
+    }
+
+    #[test]
+    fn division_by_powers_of_two_and_by_many_limbs_as_by_bits() {
+        let a: Vec<u32> = (1..40u32).map(|i| i.wrapping_mul(2654435761)).collect();
+        let mut divisors: Vec<Vec<u32>> =
+            vec![vec![0, 1], vec![0, 0, 8], vec![1 << 31], vec![0, 1 << 31]];
+        divisors.push(vec![7, 9]);
+        divisors.push(vec![0xffff_ffff, 0xffff_ffff, 3]);
+        divisors.push(a[..20].to_vec());
+        for b in &divisors {
+            assert_eq!(divide_magnitudes(&a, b), divided_slowly(&a, b), "by {b:?}");
+        }
     }
 
     fn power(b: i64, e: u32) -> Int {

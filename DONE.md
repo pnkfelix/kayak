@@ -1234,3 +1234,12 @@ reaches the hole; the speculation a sequence of tries; a refused subform
 C98: in a REPL draft or entry, a message says `(listof t 'r)`, not
 `(listof ?1 ?0)`; a second variable of one name primed, `'r'`, as Fixpt.
 `tests/repl/hints.keys`.
+
+## Typing never waits on a computation (2026-10-13)
+
+C99: a slice of the machine ends by the clock (4 ms), every transition
+counted; a key is drawn before the next slice, within 5 ms while `(fact
+30000)` runs (`scripts/repl-latency.py`). Bignums taken apart and put
+together by halves; division by a power of two a shift (`(fact 3000)`:
+355 s to 0.4 s). The prompt drawn before the first key; `kayak-fx26
+--help`.

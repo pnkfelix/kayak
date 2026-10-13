@@ -19,6 +19,21 @@
  the roots, in its task's slot (`parked-at`), so that the collector keeps
  what they reach; `w-paused` is what `run` then gives."
 (define fuel (ref i64 @h) (new -1))
+
+"A slice's end by the clock, in nanoseconds, or -1: looked at every 8
+ of the machine's transitions (fuel counts a node's evaluation alone, and
+ a return, a primitive's application, takes none), so that however long
+ one is, a slice is not much longer; the live REPL's keys are read
+ between slices (C99)."
+(define deadline (ref i64 @h) (new -1))
+
+(define ticks (ref i64 @h) (new 0))
+
+(define past-deadline? (subr (maxeff (read @globals) spin (read @h) (write @h) (io clock)) () bool)
+  (lambda ()
+    (begin
+      (set ticks (i64+ (get ticks) 1))
+      (and (i64= (i64-and (get ticks) 7) 0) (i64> (clock) (get deadline))))))
 (define task-slot (ref i64 @h) (new 0))
 (define w-paused i64 62)
 (define parked-at (subr kfx (i64) i64) (lambda (slot) (i64+ 8 (i64* slot 8))))
@@ -177,6 +192,8 @@
           (gc-run mode node env k val f args 0)
           (cond
             ((i64= (get fuel) 0) (park! mode node env k val f args))
+            ((and (i64>= (get deadline) 0) (past-deadline?))
+             (park! mode node env k val f args))
             ((i64= mode 0)
              (begin
              (if (i64> (get fuel) 0) (set fuel (i64- (get fuel) 1)) #u)

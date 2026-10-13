@@ -193,6 +193,14 @@
 
       (define slice-steps i64 20000)
 
+      (define slice-ns (ref i64 @h) (new -1))
+
+      (define slice-timed! (subr running () unit)
+        (lambda ()
+          "The machine's deadline for a slice, if the session is live (a
+           scripted one's slices are steps alone, so that it replays the same)."
+          (if (i64>= (get slice-ns) 0) (set deadline (i64+ (clock) (get slice-ns))) #u)))
+
       (define say! (subr running (string) unit)
         (lambda (s) (set written (put s (get written)))))
 
@@ -1272,10 +1280,12 @@ an entry naming one that has not ended waits for it.")
             (set last-run 0)
             (set task-slot 0)
             (set fuel slice-steps)
+            (slice-timed!)
             (let ((w (resume 0)))
               (begin
                 (set spec-steps (i64+ (get spec-steps) (i64- slice-steps (get fuel))))
                 (set fuel -1)
+                (set deadline -1)
                 (cond ((not (i64= w w-paused))
                        (begin
                          (set spec-state 2)
@@ -1484,11 +1494,13 @@ an entry naming one that has not ended waits for it.")
                       #u)
                   (set task-slot k)
                   (set fuel slice-steps)
+            (slice-timed!)
                   (set capturing #t)
                   (let ((w (if (null? (get (extract e tops))) w-unit (resume k))))
                     (begin
                       (set (extract e steps) (i64+ (get (extract e steps)) (i64- slice-steps (get fuel))))
                       (set fuel -1)
+                      (set deadline -1)
                       (set capturing #f)
                       (taken-output! e)
                       (cond ((not (i64= w w-paused)) (top-ended! e w now))
@@ -1504,6 +1516,7 @@ an entry naming one that has not ended waits for it.")
         "Entry `k` failed (the Rust caught the failure); or the draft's run."
         (begin
           (set fuel -1)
+          (set deadline -1)
           (set capturing #f)
           (let ((found (entry-numbered (get entries) k)))
             (cond ((i64= k 0)
@@ -1528,6 +1541,13 @@ an entry naming one that has not ended waits for it.")
         (begin
           (if (get live) (live-screen! now) (plain-screen! now))
           (let ((s (rev->string (get written)))) (begin (set written nil) s)))))
+
+    (define slices-timed! (subr running (i64) unit)
+      (lambda (ms)
+        "Each slice at most `ms` milliseconds by the clock, about: the keys
+         are read between slices, so a slice is how long typing may wait,
+         whatever an entry or the draft's early run is doing (C99)."
+        (set slice-ns (i64* ms 1000000))))
 
     (define wait-ms (subr running () i64)
       (lambda ()

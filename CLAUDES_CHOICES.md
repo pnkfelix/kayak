@@ -2095,3 +2095,41 @@ The user's: "let's print the type parameters name". A hint said
 - **On the text, not the type.** The rename is of the message, so that one
   priming covers every type in it (a `tagcase`'s arms each show one), and
   `show-ty` stays as it was for everything else.
+
+## C99. Typing never waits on a computation: slices by the clock (2026-10-13)
+
+The user's: "the speculation etc should not be blocking user interactions
+… I should be able to keep typing and even hit enter … and the speculative
+type-checking and evaluation should not be blocking me". With `(fact
+1000)` typed, the REPL stopped answering keys for seconds.
+- **Why it blocked.** The keys are read between slices, and a slice was
+  20000 units of fuel. Fuel is spent on a node's evaluation alone: a
+  return, and a primitive's application, spend none, so the unwinding of
+  `(fact n)`, a multiply per return, was one slice however long. And each
+  of those multiplies took its bignum apart and put it together limb by
+  limb, quadratic, with a division by 2^32 done bit by bit: 355 s and 9.7
+  GB for `(fact 3000)`.
+- **A deadline.** The machine has one (`vm.kfx`, `deadline`, nanoseconds
+  or -1): every 8 of its transitions, of any kind, it reads the clock and
+  parks if past it. The live REPL sets it for each slice, 4 ms
+  (`slices-timed!`, from the Rust); a scripted session sets none, so that
+  its slices are steps alone and it replays the same.
+- **The loop.** The round of slices ends as soon as a key has arrived (the
+  reader thread counts what it sends), and what was typed is drawn before
+  any slice runs. A key is drawn within a slice: 5 ms, measured, while
+  `(fact 30000)` runs (`scripts/repl-latency.py`, by the clock, so not in
+  `check.sh`); an entry made meanwhile runs beside it, `(+ 1 2)`'s value
+  in 25 ms. The step-adaptive slice tried first (halving the fuel after a
+  slow slice) is gone: it acted only after the slow slice.
+- **Bignums by halves.** `words.kfx` takes an `int` to limbs, and back, by
+  halves (`arithmetic-shift`, `bitwise-and`), n log n; `kayak-rt`'s
+  division by a power of two is a shift and a mask, and its bit at a time
+  division subtracts in place. `(fact 3000)`: 0.4 s, 500 MB.
+- **What still waits.** One transition runs to its end: a primitive on a
+  huge value (a product of two 100000-digit numbers), a collection of the
+  heap, the check of a large draft (on each key, before the screen).
+  Every one of the engine's globals is a thread's (`thread_local`), the
+  session's and the machine's alike, so the answer to those is the
+  machine on a thread of its own, the session sending it entries; in
+  TODO. And KFX's `int`s are never freed, so arithmetic on bignums
+  leaks what it makes (500 MB for `(fact 3000)`).

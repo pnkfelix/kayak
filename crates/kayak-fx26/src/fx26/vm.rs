@@ -36,6 +36,30 @@ pub fn fuel() -> Ref<i64> {
     })
 }
 
+// A slice's end by the clock, in nanoseconds, or -1: looked at every 8
+// of the machine's transitions (fuel counts a node's evaluation alone, and
+// a return, a primitive's application, takes none), so that however long
+// one is, a slice is not much longer; the live REPL's keys are read
+// between slices (C99).
+pub fn deadline() -> Ref<i64> {
+    thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+    once(&ONCE, || {
+        kayak_rt::heap_new(-1i64)
+    })
+}
+
+pub fn ticks() -> Ref<i64> {
+    thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn past_deadline_p() -> bool {
+    set(ticks(), i64_plus(get(ticks()), 1i64));
+    (i64_eq(i64_and(get(ticks()), 7i64), 0i64) && i64_gt(clock(), get(deadline())))
+}
+
 pub fn task_slot() -> Ref<i64> {
     thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
     once(&ONCE, || {
@@ -404,6 +428,8 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
             return gc_run(mode, node, env, k, val, f, args, 0i64);
         } else {
             if i64_eq(get(fuel()), 0i64) {
+                return park_x(mode, node, env, k, val, f, args);
+            } else if (i64_gt_eq(get(deadline()), 0i64) && past_deadline_p()) {
                 return park_x(mode, node, env, k, val, f, args);
             } else if i64_eq(mode, 0i64) {
                 if i64_gt(get(fuel()), 0i64) {
