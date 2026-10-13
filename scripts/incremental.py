@@ -94,7 +94,19 @@ def main():
             ("the module's item taken away", lambda s: s.replace("      (define incr-inner i64 3)\n", "", 1)),
             ("the module item's body back", lambda s: s.replace("(define most-graphs i64 501)", "(define most-graphs i64 500)")),
         ]
-        for what, edit in module_steps:
+        module_steps += [
+            ("a string among a module's items", lambda s: s.replace("    (hide\n", '    (hide\n      "An edit, a comment."\n', 1)),
+            ("the string taken away", lambda s: s.replace('      "An edit, a comment."\n', "", 1)),
+        ]
+        module_steps = [(inner, w, e) for w, e in module_steps]
+        # A procedure the order checks in one `define-rec` with others, not
+        # first among them: its text, after its first, moved.
+        exprs = os.path.join(tmp, "kfx", "check-exprs.kfx")
+        module_steps += [
+            (exprs, "a later item of a define-rec group changed", lambda s: s.replace('"a blobref made where none is expected"', '"a blobref made where no blobref is expected"', 1)),
+            (exprs, "that item back", lambda s: s.replace('"a blobref made where no blobref is expected"', '"a blobref made where none is expected"', 1)),
+        ]
+        for inner, what, edit in module_steps:
             with open(inner) as f:
                 text = f.read()
             changed = edit(text)
@@ -102,7 +114,7 @@ def main():
                 sys.exit("incremental: a module edit found nothing to change: " + what)
             with open(inner, "w") as f:
                 f.write(changed)
-            compare("terminate.kfx: " + what)
+            compare(os.path.basename(inner) + ": " + what)
         # Across files: a later form's text the same, what it reads changed.
         first, last = os.path.join(tmp, "kfx", names[0]), os.path.join(tmp, "kfx", names[-1])
         steps = [

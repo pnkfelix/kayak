@@ -11,12 +11,12 @@
     (hide
       (include emitter)
 
-      ;; Top-level forms
+      "Top-level forms"
 
-      ;; Modules as parameters (C24): a module type, a trait; its abstract types,
-      ;; associated types; its values, functions of no receiver. A module defined at
-      ;; the top level that is given for one is a marker type, `m::Module`, which
-      ;; implements the trait by calling the module's items.
+      "Modules as parameters (C24): a module type, a trait; its abstract types,
+       associated types; its values, functions of no receiver. A module defined at
+       the top level that is given for one is a marker type, `m::Module`, which
+       implements the trait by calling the module's items."
 
       (define-rec
         (subst-descs (subr kfx (sexp (listof sexps acyclic)) sexp)
@@ -434,9 +434,9 @@
           (if (null? xs) nil
               (if (string-member? (car xs) ys) (without (cdr xs) ys) (cons (car xs) (without (cdr xs) ys))))))
 
-      ;; The shapes a program has, each declared once: every `productof`,
-      ;; `sumof` and `product` in it, and in the types the checker elaborated and
-      ;; found for sums. A shape's key is `P` or `S`, then its labels.
+      "The shapes a program has, each declared once: every `productof`,
+       `sumof` and `product` in it, and in the types the checker elaborated and
+       found for sums. A shape's key is `P` or `S`, then its labels."
 
       (define standard-shape? (subr kfx (string) bool)
         (lambda (key)
@@ -542,11 +542,11 @@
                                                                             (put "impl<" acc))))))))))))
                                      acc))))))
 
-      ;; A program's top-level expressions, for running Fixpt's programs as Rust
-      ;; (`kfx --toplevel`, scripts/run-fixpt-programs.py): a `Show` for each
-      ;; datatype, writing a value as Fixpt does, `#<sum TAG>`; and
-      ;; `kfx_toplevel`, which writes each top-level expression's value on a line,
-      ;; top-level strings too, as `fixpt eval` does.
+      "A program's top-level expressions, for running Fixpt's programs as Rust
+       (`kfx --toplevel`, scripts/run-fixpt-programs.py): a `Show` for each
+       datatype, writing a value as Fixpt does, `#<sum TAG>`; and
+       `kfx_toplevel`, which writes each top-level expression's value on a line,
+       top-level strings too, as `fixpt eval` does."
 
       (define put-show-arms (subr kfx (string sexps chars) chars)
         (lambda (d variants acc)
@@ -591,7 +591,7 @@
                    (put-show-impls (cdr forms) (put " {\n    fn show(&self, out: &mut String) {\n        self.0.show(out)\n    }\n}\n\n" acc))))
                 (else (put-show-impls (cdr forms) acc)))))
 
-      ;; What a module's items are written in, and its items (C91).
+      "What a module's items are written in, and its items (C91)."
 
       (define toplevel-form? (subr kfx (sexp) bool)
         (lambda (f) (not (or (definition? f) (head-is? f "define-effect")))))
@@ -626,7 +626,23 @@
                      (let* ((acc (put "    kayak_rt::show_line(&mut out_, (|| -> Result<_, Unwind> { Ok(" acc))
                             (acc (put-exp (with-locals c (list "%fallible")) (car forms) 1 (value) acc)))
                        (put-toplevel-lines c (cdr forms) (put ") })().unwrap_or_else(|u| unreachable_unwind(u)));\n" acc)))))))
+                ((made-here? c (car forms))
+                 "A global's value made where it is defined, as FX-26 makes it, so
+                  that one that fails fails there (a Rust global is made when first
+                  read)."
+                 (put-toplevel-lines c (cdr forms)
+                                     (put "();\n" (put (mangle (sym-name (second (items (car forms))))) (put "    let _ = " acc)))))
                 (else (put-toplevel-lines c (cdr forms) acc))))))
+
+    (define made-here? (subr kfx (ctx sexp) bool)
+      (lambda (c f)
+        "A typed global's value, of no type parameters, no procedure and not
+         suspending: a Rust `fn` of no arguments."
+        (and (head-is? f "define")
+             (i64= (size (items f)) 4)
+             (not (fact-at? c f "suspends"))
+             (not (any? (lambda ((h string)) (head-is? (third (items f)) h)) (list "poly" "subr" "vsubr" "moduleof" "dsubr")))
+             (not (any? (lambda ((h string)) (head-is? (fourth (items f)) h)) (list "lambda" "plambda" "vlambda" "dlambda" "case-lambda"))))))
 
     (define put-module-impls (subr kfx (ctx chars) chars)
       (lambda (c acc)
@@ -714,7 +730,7 @@
                      (put ";\n\n" acc)))
                   ((string=? h "define-datatype") (put-datatype c (cdr xs) acc))
                   ((string=? h "define-generative") (put-generative c (cdr xs) acc))
-                  ((module-def? form) (put-module c (sym-name (second xs)) (module-written form) acc))
+                  ((module-def? form) (put-module c (sym-name (second xs)) (module-noted form) acc))
                   ((or (string=? h "define") (string=? h "define*"))
                    (if (i64= (size xs) 4)
                        (put-define c (second xs) (third xs) (fourth xs) acc)

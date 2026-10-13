@@ -909,9 +909,12 @@
                  (tagcase (third xs)
                    (num (k f p)
                      (let ((e (parse-type v tvars (second xs))))
-                       (if (and (not (i64< k 0)) (flat? e))
-                           (ty-data "%flat-array" (list e (ty-rconst (i64->string k))))
-                           (refuse v (string-append "a flat array is of a flat, its length a literal (KFX has no arrays of values yet): " (show-sexp t))))))
+                       (cond ((or (i64< k 0) (i64> k 268435454))
+                              "Below FX-26's length that means \"to the end of the suffix\"."
+                              (refuse v "a flat array's literal length is 0 to 268435454"))
+                             ((flat? e)
+                              (ty-data "%flat-array" (list e (ty-rconst (i64->string k)))))
+                             (else (refuse v (string-append "a flat array is of a flat, its length a literal (KFX has no arrays of values yet): " (show-sexp t)))))))
                    (else other (refuse v (string-append "a flat array's length is a literal (KFX has no arrays of values yet): " (show-sexp t))))))
                 ((and (sym-is? (car xs) "mark-key") (i64= (size xs) 3))
                  "FX-26's continuation mark's key (C72), `(mark-key T R)`: a place in

@@ -921,14 +921,39 @@ pub fn module_def_p(form: &'static Sexp) -> bool {
     (head_is_p(form, str_lit("define")) && i64_eq(size(items(form)), 3i64) && (head_is_p(third(items(form)), str_lit("module")) || head_is_p(third(items(form)), str_lit("extend"))))
 }
 
+/// Module items without their strings, a `hide`'s too: FX-26's, a string
+/// among a module's items is a comment (Fixpt, 2026-10-12).
+pub fn uncommented(forms: Sexps) -> Sexps {
+    concat(map(lambda1(move |f: &'static Sexp| {
+        let tagcase_ = f;
+        match *tagcase_ {
+            Sexp::Str(s, file, pos) => {
+                nil::<&'static Sexp>()
+            }
+            Sexp::Lst(xs, file, line, pos) => {
+                if head_is_p(f, str_lit("hide")) {
+                    the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(xs), uncommented(cdr(xs))), file, line, pos), kayak_rt::nil()))
+                } else {
+                    the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
+            }
+        }
+    }), forms))
+}
+
 // `(extend e0 e1)` (C87, FX-91's): a module of both's values and types,
 // `e1`'s where both give a name; `e1` sees `e0`'s, its own shadowing them.
 // KFX's, of an `e0` defined at the top level: the module `(include e0
 // (except ...))` then `e1`'s items, or `(include e1)` if `e1` is a name: the
 // names `e1` gives are not taken from `e0`. So the Rust is a `mod` of `pub
 // use`s, and its own items, which Rust's scope lets shadow a glob's.
-/// A module definition's items, as written, or as its `extend` is.
-pub fn module_written(form: &'static Sexp) -> Sexps {
+/// A module definition's items, as written, or as its `extend` is, its
+/// strings among them: what the emitter writes, each string a comment.
+pub fn module_noted(form: &'static Sexp) -> Sexps {
     let x = third(items(form));
     if head_is_p(x, str_lit("module")) {
         cdr(items(x))
@@ -975,7 +1000,7 @@ pub fn module_written(form: &'static Sexp) -> Sexps {
                         } else {
                             the::<Sexps>(kayak_rt::heap_cons(g, kayak_rt::nil()))
                         }
-                    }), own)))))), file, line, pos), kayak_rt::nil()))), file, line, pos), own)
+                    }), uncommented(own))))))), file, line, pos), kayak_rt::nil()))), file, line, pos), own)
                 } else {
                     error(str_lit("kfx: an extend's second module is a name or a module"))
                 }
@@ -986,6 +1011,12 @@ pub fn module_written(form: &'static Sexp) -> Sexps {
             }
         }
     }
+}
+
+/// A module definition's items, as written, or as its `extend` is, without
+/// the strings among them.
+pub fn module_written(form: &'static Sexp) -> Sexps {
+    uncommented(module_noted(form))
 }
 
 /// An `include`'s exception, `(except n ...)` or `(except-module m)`, as a
@@ -2471,7 +2502,8 @@ pub fn components(todo: Mitems, its: Mitems, rs: List<&'static Reached>) -> List
     }
 }
 
-/// Items that reach one another, as one `define-rec` of their procedures.
+/// Items that reach one another, as one `define-rec` of their procedures,
+/// each where its item is (incr.kfx keys the group by their texts).
 pub fn rec_of(members: Sexps) -> Sexps {
     let tagcase_ = car(members);
     match *tagcase_ {
@@ -2481,7 +2513,7 @@ pub fn rec_of(members: Sexps) -> Sexps {
                     cdr(items(g))
                 } else {
                     let ys = items(g);
-                    the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(second(ys), kayak_rt::heap_cons(third(ys), kayak_rt::heap_cons(car(item_value(g)), kayak_rt::nil()))), file, line, pos), kayak_rt::nil()))
+                    the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(second(ys), kayak_rt::heap_cons(third(ys), kayak_rt::heap_cons(car(item_value(g)), kayak_rt::nil()))), datum_file(g), line, datum_pos(g)), kayak_rt::nil()))
                 }
             }), members))), file, line, pos), kayak_rt::nil()))
         }

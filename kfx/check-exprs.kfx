@@ -50,12 +50,12 @@
           "`s`, `what` noted at the form being checked, if it is not ``."
           (if (string=? what "") s (note-fact s (cv-file v) (cv-pos v) what))))
 
-      ;; Turbofish: the types a poly procedure is called at, and a `nil`'s or an
-      ;; empty list's element, which rustc may find nothing else to infer from.
-      ;; Noted as inference variables, `turbofish-metas ?k ...`, at the call's or
-      ;; the datum's place; settled when the definition is, each a type as written,
-      ;; an unsolved one `void`: a type nothing in FX-26 says, of no value, which
-      ;; rustc needs one of and the program never meets.
+      "Turbofish: the types a poly procedure is called at, and a `nil`'s or an
+       empty list's element, which rustc may find nothing else to infer from.
+       Noted as inference variables, `turbofish-metas ?k ...`, at the call's or
+       the datum's place; settled when the definition is, each a type as written,
+       an unsolved one `void`: a type nothing in FX-26 says, of no value, which
+       rustc needs one of and the program never meets."
 
       (define-rec
         (settled-sexp (subr kfx (st ty bool) sexp)
@@ -197,11 +197,11 @@
                                    (list (car ts))))
                       (sum-variants v (cdr ls) (cdr ts) arms))))))
 
-      ;; Modules as parameters (CLAUDES_CHOICES.md C24): a `define-type` of a
-      ;; `(moduleof (abs t type) (desc u T) (val x T) ...)` names a module type, a
-      ;; Rust trait; a top-level procedure's parameter of it, a type parameter.
-      ;; `(abs (a b) type)` gives several. Within, a parameter `m`'s abstract types
-      ;; are `m..t`, as FX-26 names them.
+      "Modules as parameters (CLAUDES_CHOICES.md C24): a `define-type` of a
+       `(moduleof (abs t type) (desc u T) (val x T) ...)` names a module type, a
+       Rust trait; a top-level procedure's parameter of it, a type parameter.
+       `(abs (a b) type)` gives several. Within, a parameter `m`'s abstract types
+       are `m..t`, as FX-26 names them."
 
       (define spec-items (subr kfx (sexp string) (listof sexps acyclic))
         (lambda (spec kind)
@@ -497,8 +497,8 @@
                 (else (tagcase (car vs)
                         (variant (t fields) (if (string=? t tag) (cdr vs) (cons (car vs) (without-tag tag (cdr vs))))))))))
 
-      ;; Pairs (C68): a local whose type is a pair; a pair expected, alone or a
-      ;; union's member.
+      "Pairs (C68): a local whose type is a pair; a pair expected, alone or a
+       union's member."
 
       (define local-pair (subr kfx (cv st sexp) tys)
         (lambda (v s x)
@@ -519,9 +519,9 @@
                   ((string=? (shape-of x) "union") (member-of-shape (members-of x) "pair"))
                   (else nil)))))
 
-      ;; Narrowing (C62): a shape's test of a local of a union, `(int? x)`, says
-      ;; in its `if`'s first branch, and its `cond`'s clause, that `x` is the
-      ;; member of that shape, and after it that `x` is one of the rest.
+      "Narrowing (C62): a shape's test of a local of a union, `(int? x)`, says
+       in its `if`'s first branch, and its `cond`'s clause, that `x` is the
+       member of that shape, and after it that `x` is one of the rest."
 
       (define tested-shape (subr kfx (string) string)
         (lambda (p)
@@ -581,11 +581,11 @@
 
       (define-datatype narrowing (narrowing cv cv))
 
-      ;; Uniform values (C75; docs/research/uniform-values.md): a union's value
-      ;; is a `Value` in Rust. A member given for its union is boxed there, and a
-      ;; union narrowed to a member unboxed: each a fact at the expression, for
-      ;; the emitter. `nil`, a list narrowed so, is a list still, of the element
-      ;; type Rust finds.
+      "Uniform values (C75; docs/research/uniform-values.md): a union's value
+       is a `Value` in Rust. A member given for its union is boxed there, and a
+       union narrowed to a member unboxed: each a fact at the expression, for
+       the emitter. `nil`, a list narrowed so, is a list still, of the element
+       type Rust finds."
 
       (define general-pair? (subr kfx (st ty) bool)
         (lambda (s t)
@@ -866,9 +866,9 @@
                              (else nil)))))
                   (else (narrowings-of-test v s test))))))
 
-      ;; The control primitives KFX types by rules of its own (`abort-call`,
-      ;; `make-tag-call`), at FX-26's types, for a `proj` of one (C60), as FX-26's
-      ;; programs write it.
+      "The control primitives KFX types by rules of its own (`abort-call`,
+       `make-tag-call`), at FX-26's types, for a `proj` of one (C60), as FX-26's
+       programs write it."
 
       (define control-schemes string
         "(make-continuation-prompt-tag (poly ((r region) (a type) (h type) (d effect)) (subr (alloc r) () (prompt-tag a h d r))))
@@ -1982,7 +1982,9 @@
                                      (refuse v "blobref+ of no blobref")
                                      (tagcase (check v s (second xs) (ty-int))
                                        (res (u es s) (res (car expected) (effs-union es0 es)
-                                                          (note-types (fits v s (car args2) (car args)) (cv-file v) (cv-pos v) "blob-raw" (list (car args2))))))))
+                                                          (blob-noted v
+                                                            (note-types (fits v s (car args2) (car args)) (cv-file v) (cv-pos v) "blob-raw" (list (car args2)))
+                                                            (string-append "blob-size " (tagcase (flat-layout (walk s (car (cdr args)))) (layout (size al) (i64->string size))))))))))
                                (else other (refuse v "blobref+ of no blobref")))))))
                    (else other (refuse v "which flat a new blobref points to is said by the type it is checked against: (the (blobref B F) (blobref+ r d))")))))
               (else

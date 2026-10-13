@@ -66,6 +66,8 @@ too).
   drivers, checked in the standard environment, pure.
 - Stage 5 (C89): a module's families, expanded where applied in Rust.
 - C90: modules made in place, hoisted before their user.
+- C93: a string among a module's items, a comment (FX-26's since Fixpt
+  8da8ecf).
 
 120 of Fixpt's programs through kfx before modules; 139 after stage 4;
 146 after stage 5; 149 after C90.

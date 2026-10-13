@@ -21,6 +21,12 @@ pub mod writing {
 
     use super::emitter::{fallible_effect_p, suspending_effect_p, fact_at_p, concat_strings, reverse_strings, split_words, shape_name, ctx_locals, module_body, include_except_names, module_items, type_head_name, item_values, item_constants, item_types, module_here, ctx_typed, with_locals, head_region_params, head_place_params, head_type_params, put_generics_of, collect, type_path, places_used, words_of_sep, all_facts_prefixed, uses_blobrefs_p, family_expanded, put_type, put_flat, expand_aliases, owner_key, typed_flat, has_sum_p, effect_lifetime, atoms_in, element_lifetime, put_fields_tuple, region_arguments, place_arguments, used_place_arguments, type_arguments, put_types, put_nl, put_comment, comment_p, comment_text, hide, put_arg_names, tail_calls_p, arms_tail_calls_p, tag_arms_tail_calls_p, distinct_strings, put_exp, put_call, put_continue, put_joined, put_stmts, put_block, put_typecase_arms, put_cond, put_let1, put_let_star, put_binding_values, put_binding_names, put_let, put_case_arms, put_tagcase_arms, put_fields_of, put_tagcase, put_flat_tagcase, put_flat_arms, put_quasi, put_quasi_tagged, put_quasi_items, put_lambda, put_lambda_params, put_letrec, letrec_loops_p, put_looping_lambda, put_list, put_form, put_args, put_letrena, put_letrena_params, held_at, held_rust, held_type, put_prompt, put_suspending_prompt, put_handler_call, put_suspension, put_question, head_sym_p};
 
+    // Top-level forms
+
+    // Modules as parameters (C24): a module type, a trait; its abstract types,
+    // associated types; its values, functions of no receiver. A module defined at
+    // the top level that is given for one is a marker type, `m::Module`, which
+    // implements the trait by calling the module's items.
     /// A type written in a module type, its descriptions' names replaced by
     /// what they describe.
     pub fn subst_descs(e: &'static Sexp, descs: List<Sexps>) -> &'static Sexp {
@@ -769,6 +775,9 @@ pub mod writing {
         }
     }
 
+    // The shapes a program has, each declared once: every `productof`,
+    // `sumof` and `product` in it, and in the types the checker elaborated and
+    // found for sums. A shape's key is `P` or `S`, then its labels.
     /// A shape kayak-rt declares, as the program's would be (`world.rs`): what
     /// FX-26's I/O and bytes primitives answer with (C49).
     pub fn standard_shape_p(key: Str) -> bool {
@@ -944,6 +953,11 @@ pub mod writing {
         }
     }
 
+    // A program's top-level expressions, for running Fixpt's programs as Rust
+    // (`kfx --toplevel`, scripts/run-fixpt-programs.py): a `Show` for each
+    // datatype, writing a value as Fixpt does, `#<sum TAG>`; and
+    // `kfx_toplevel`, which writes each top-level expression's value on a line,
+    // top-level strings too, as `fixpt eval` does.
     pub fn put_show_arms(d: Str, variants: Sexps, acc: Chars) -> Chars {
         if null_p(variants) {
             acc
@@ -997,6 +1011,7 @@ pub mod writing {
         }
     }
 
+    // What a module's items are written in, and its items (C91).
     pub fn toplevel_form_p(f: &'static Sexp) -> bool {
         not((definition_p(f) || head_is_p(f, str_lit("define-effect"))))
     }
@@ -1036,11 +1051,27 @@ pub mod writing {
                         return put_toplevel_lines(c, cdr(forms), put(str_lit(") })().unwrap_or_else(|u| unreachable_unwind(u)));\n"), acc));
                     }
                 }
+            } else if made_here_p(c, car(forms)) {
+                // A global's value made where it is defined, as FX-26 makes it, so
+                // that one that fails fails there (a Rust global is made when first
+                // read).
+                (forms, acc) = (cdr(forms), put(str_lit("();\n"), put(mangle(sym_name(second(items(car(forms))))), put(str_lit("    let _ = "), acc))));
+                continue;
             } else {
                 forms = cdr(forms);
                 continue;
             }
         }
+    }
+
+    /// A typed global's value, of no type parameters, no procedure and not
+    /// suspending: a Rust `fn` of no arguments.
+    pub fn made_here_p(c: &'static Ctx, f: &'static Sexp) -> bool {
+        (head_is_p(f, str_lit("define")) && i64_eq(size(items(f)), 4i64) && not(fact_at_p(c, f, str_lit("suspends"))) && not(any_p(lambda1(move |h: Str| {
+            head_is_p(third(items(f)), h)
+        }), kayak_rt::heap_cons(str_lit("poly"), kayak_rt::heap_cons(str_lit("subr"), kayak_rt::heap_cons(str_lit("vsubr"), kayak_rt::heap_cons(str_lit("moduleof"), kayak_rt::heap_cons(str_lit("dsubr"), kayak_rt::nil()))))))) && not(any_p(lambda1(move |h: Str| {
+            head_is_p(fourth(items(f)), h)
+        }), kayak_rt::heap_cons(str_lit("lambda"), kayak_rt::heap_cons(str_lit("plambda"), kayak_rt::heap_cons(str_lit("vlambda"), kayak_rt::heap_cons(str_lit("dlambda"), kayak_rt::heap_cons(str_lit("case-lambda"), kayak_rt::nil()))))))))
     }
 
     pub fn put_module_impls(c: &'static Ctx, acc: Chars) -> Chars {
@@ -1241,7 +1272,7 @@ pub mod writing {
         } else if string_eq_p(h, str_lit("define-generative")) {
             put_generative(c, cdr(xs), acc)
         } else if module_def_p(form) {
-            put_module(c, sym_name(second(xs)), module_written(form), acc)
+            put_module(c, sym_name(second(xs)), module_noted(form), acc)
         } else if (string_eq_p(h, str_lit("define")) || string_eq_p(h, str_lit("define*"))) {
             if i64_eq(size(xs), 4i64) {
                 put_define(c, second(xs), third(xs), fourth(xs), acc)

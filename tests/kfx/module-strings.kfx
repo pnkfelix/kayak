@@ -1,0 +1,27 @@
+"A string among a module's items is a comment (FX-26's, 2026-10-12): in a
+ module, a `hide` and an `extend`'s second module; it binds nothing and is
+ not in the module's type. The Rust has it as a comment."
+(define-effect kfx (maxeff (read @globals) spin))
+(define base
+  (module
+    "The first module's note."
+    (define one i64 1)
+    (define two i64 2)))
+(define m
+  (module
+    "Helpers first."
+    (hide
+      "Not in m's type."
+      (define three i64 3)
+      "After the hidden item.")
+    (define inner (module "A nested module's note." (define four i64 4)))
+    (define sum i64 (i64+ three (with inner four)))
+    "Last."))
+(define more
+  (extend base
+    (module
+      "The second module's note."
+      (define two i64 20))))
+(define main (subr kfx () string)
+  (lambda ()
+    (with m (with more (i64->string (i64+ sum (i64+ one two)))))))

@@ -16,11 +16,11 @@ pub fn b() -> O {
 }
 
 pub fn f() -> BlobRef<O> {
-    blobref_at(b(), int_lit(8))
+    blobref_at(b(), int_lit(8), 4)
 }
 
 pub fn s() -> BlobRef<O> {
-    blobref_plus(f(), int_lit(4))
+    blobref_plus(f(), int_lit(4), 4)
 }
 
 pub fn words(xs: List<Str>) -> Str {

@@ -50,7 +50,7 @@ pub mod incremental {
 
     use super::emitter::{fallible_effect_p, suspending_effect_p, fact_at_p, concat_strings, reverse_strings, split_words, shape_name, ctx_locals, module_body, include_except_names, module_items, type_head_name, item_values, item_constants, item_types, module_here, ctx_typed, with_locals, head_region_params, head_place_params, head_type_params, put_generics_of, collect, type_path, places_used, words_of_sep, all_facts_prefixed, uses_blobrefs_p, family_expanded, put_type, put_flat, expand_aliases, owner_key, typed_flat, has_sum_p, effect_lifetime, atoms_in, element_lifetime, put_fields_tuple, region_arguments, place_arguments, used_place_arguments, type_arguments, put_types, put_nl, put_comment, comment_p, comment_text, hide, put_arg_names, tail_calls_p, arms_tail_calls_p, tag_arms_tail_calls_p, distinct_strings, put_exp, put_call, put_continue, put_joined, put_stmts, put_block, put_typecase_arms, put_cond, put_let1, put_let_star, put_binding_values, put_binding_names, put_let, put_case_arms, put_tagcase_arms, put_fields_of, put_tagcase, put_flat_tagcase, put_flat_arms, put_quasi, put_quasi_tagged, put_quasi_items, put_lambda, put_lambda_params, put_letrec, letrec_loops_p, put_looping_lambda, put_list, put_form, put_args, put_letrena, put_letrena_params, held_at, held_rust, held_type, put_prompt, put_suspending_prompt, put_handler_call, put_suspension, put_question, head_sym_p};
 
-    use super::writing::{put_module_impls, definition_p, put_shapes, put_show_generatives, put_top, types_once, put_module, module_parts, put_module_around, put_tops, put_toplevel};
+    use super::writing::{made_here_p, put_module_impls, definition_p, put_shapes, put_show_generatives, put_top, types_once, put_module, module_parts, put_module_around, put_tops, put_toplevel};
 
     pub fn fnv_offset() -> i64 {
         -3750763034362895579i64
@@ -84,6 +84,8 @@ pub mod incremental {
         }
     }
 
+    // The context's fingerprint: everything in it but the facts, which are
+    // taken form by form.
     pub fn typed_text(x: &'static Typed) -> Str {
         let tagcase_ = x;
         match *tagcase_ {
@@ -154,6 +156,8 @@ pub mod incremental {
         }
     }
 
+    // Each form's text, cut from its file's characters at the forms' offsets;
+    // the last to the end of its file, an offset past every other.
     pub fn end_of_file() -> i64 {
         9223372036854775807i64
     }
@@ -180,6 +184,8 @@ pub mod incremental {
         }
     }
 
+    // A file's facts, and those of one form, as text, their offsets from the
+    // form's start.
     pub fn facts_text(mut fs: Facts, mut start: i64, mut end: i64) -> Strings {
         loop {
             if null_p(fs) {
@@ -220,6 +226,8 @@ pub mod incremental {
         }
     }
 
+    // Forms emitted, or their memos taken, and the memos this run made or
+    // took, which are all the next run is given.
     /// A module's items, as `put-tops-memo` writes forms: `text` the module's
     /// own, from offset `start` to `end`. An item the compiler made (no place
     /// in the module's text) is keyed by its printed form.
@@ -280,6 +288,9 @@ pub mod incremental {
         }
     }
 
+    // Memos as text, a line each: the fingerprint, a tab, the Rust escaped
+    // (a backslash before `n` for a newline, before itself for itself); and
+    // back. The driver keeps them in a file.
     pub fn escape_onto(mut cs: Chars, mut acc: Chars) -> Chars {
         loop {
             if null_p(cs) {
@@ -361,6 +372,20 @@ pub mod incremental {
         }
     }
 
+    // The second query (C55): each form's check, kept between compiles. A
+    // form's check is a change to what the forms after it see (the checker's
+    // `cv`): names bound, effects named, facts noted, types found, and where
+    // the checker is. Its memo is that change, as text, addressed by the
+    // fingerprint of the form's text and of all the checker sees before it,
+    // which is a chain: the context the passes before every form make
+    // (datatypes, abbreviations, the primitives), then each form's change in
+    // turn, but for its facts and positions, of which the checker reads only
+    // `place-needs` and `region-within`, which are in the chain. So a body
+    // edited, its interface the same, leaves every later form's key the same:
+    // early cutoff, by content.
+
+    // A type, a scheme and the rest as text, and back: an s-expression of
+    // their constructors, which the reader reads.
     pub fn quoted_onto(mut cs: Chars, mut acc: Chars) -> Chars {
         loop {
             if null_p(cs) {
@@ -577,6 +602,8 @@ pub mod incremental {
         effdef(code_text(car(xs)), code_strings(second(xs)))
     }
 
+    // A fact as text: its offset from the form's start if it is in the form's
+    // file (a 1 first), else where it is (a 0 first).
     pub fn fact_code(file: Str, start: i64, f: &'static Fact) -> Str {
         let tagcase_ = f;
         match *tagcase_ {
@@ -631,6 +658,8 @@ pub mod incremental {
         }
     }
 
+    // A form's change to the checker, `before` to `after`: what the next memo
+    // keeps, as text, and the part of it the chain goes on with.
     pub enum Change {
         Change(Str, Str),
     }
@@ -691,6 +720,7 @@ pub mod incremental {
         }
     }
 
+    // A memo's change made again: the checker after the form, and the types found.
     pub enum Redone {
         Redone(&'static Cv, Typeds, Str),
     }
@@ -722,6 +752,7 @@ pub mod incremental {
         }
     }
 
+    // The context every form is checked in, before the first: its fingerprint.
     pub fn cv_fingerprint(v: &'static Cv) -> i64 {
         let tagcase_ = v;
         match *tagcase_ {
@@ -752,6 +783,12 @@ pub mod incremental {
         }
     }
 
+    // Each form checked, or its memo's change made again, as `check-tops`
+    // (check-defs.kfx) does; `chain` the fingerprint of all before it. Modules
+    // are checked always, and continue the chain by their text.
+
+    // A module's order, kept by its text (C92): an unchanged module's is
+    // not found again, every body of its walked.
     pub enum OrderMemo {
         OrderMemo(Sexps, Memos),
     }
@@ -833,6 +870,38 @@ pub mod incremental {
         }
     }
 
+    /// The start of the item `p` is in: the last of `ps`, in order, not after it.
+    pub fn item_start(mut p: i64, mut ps: List<i64>, mut last: i64) -> i64 {
+        loop {
+            if null_p(ps) {
+                return last;
+            } else if i64_gt(car(ps), p) {
+                return last;
+            } else {
+                (ps, last) = (cdr(ps), car(ps));
+                continue;
+            }
+        }
+    }
+
+    /// The items' starts a group checked at `start` has its members in (a
+    /// `define-rec` the order made, `rec-of`, of items and their
+    /// `define-rec`s), `start` first, each once.
+    pub fn starts_of(start: i64, members: List<i64>, positions: List<i64>) -> List<i64> {
+        if null_p(members) {
+            kayak_rt::heap_cons(start, kayak_rt::nil())
+        } else {
+            let (rest, q) = (starts_of(start, cdr(members), positions), item_start(car(members), positions, -1i64));
+            if (i64_lt(q, 0i64) || any_p(lambda1(move |r: i64| {
+                i64_eq(r, q)
+            }), rest)) {
+                rest
+            } else {
+                onto(rest, kayak_rt::heap_cons(q, kayak_rt::nil()))
+            }
+        }
+    }
+
     /// A module's items, as `check-items` (check-defs.kfx), each its memo's
     /// change if it has one, keyed by its printed form and the chain.
     pub fn check_items_memo(mut v: &'static Cv, mut m: Str, mut its: Sexps, mut old: Memos, mut chain: i64, mut found: Typeds, mut made: Memos, mut src: Chars, mut from: i64, mut positions: List<i64>, mut end: i64) -> &'static CheckedMemo {
@@ -843,8 +912,15 @@ pub mod incremental {
                 let it = car(its);
                 let file = datum_file(it);
                 let start = datum_pos(it);
+                let slice = lambda1(move |p: i64| {
+                    rev_to_string(take_to(drop_to(src, from, p), p, position_after(p, positions, end), nil::<char>()))
+                });
                 let own = if (i64_gt_eq(start, from) && i64_lt(start, end)) {
-                    rev_to_string(take_to(drop_to(src, from, start), start, position_after(start, positions, end), nil::<char>()))
+                    concat_strings(map(slice, starts_of(start, if head_is_p(it, str_lit("define-rec")) {
+                        map(&datum_pos, cdr(items(it)))
+                    } else {
+                        nil::<i64>()
+                    }, positions)))
                 } else {
                     show_sexp(it)
                 };
@@ -1070,7 +1146,7 @@ pub mod incremental {
                 } else {
                     car(cdr(starts))
                 };
-                let tagcase_ = module_parts(c, m, module_written(car(forms)));
+                let tagcase_ = module_parts(c, m, module_noted(car(forms)));
                 match *tagcase_ {
                     Mparts::Mparts(inner, its) => {
                         let tagcase_ = put_items_memo(inner, fs, fnv_strings(concat(map(&item_signature, module_written(car(forms)))), fnv_string(m, global)), old, its, string_chars(car(texts)), start, end, nil::<char>(), made);

@@ -163,6 +163,11 @@ pub mod module_params;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/module-strings.rs"]
+pub mod module_strings;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/modules.rs"]
 pub mod modules;
 
@@ -343,6 +348,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("lists", lists::main),
     ("module-letrec", module_letrec::main),
     ("module-params", module_params::main),
+    ("module-strings", module_strings::main),
     ("modules", modules::main),
     ("mutable", mutable::main),
     ("names", names::main),

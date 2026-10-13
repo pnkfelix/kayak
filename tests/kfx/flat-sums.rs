@@ -38,17 +38,17 @@ pub fn b() -> O {
 }
 
 pub fn r() -> BlobRef<O> {
-    blobref_at(b(), int_lit(0))
+    blobref_at(b(), int_lit(0), 16)
 }
 
 pub fn k() -> BlobRef<O> {
-    blobref_at(b(), int_lit(16))
+    blobref_at(b(), int_lit(16), 16)
 }
 
 pub fn z() -> BlobRef<O> {
     thread_local!(static ONCE: OnceCell<BlobRef<O>> = const { OnceCell::new() });
     once(&ONCE, || {
-        blobref_at(the::<O>(make_bloblet(int_lit(16), ())), int_lit(0))
+        blobref_at(the::<O>(make_bloblet(int_lit(16), ())), int_lit(0), 16)
     })
 }
 
@@ -113,7 +113,7 @@ pub fn main() -> Str {
     let w = the::<BlobRef<O>>((r()).variant(1, 7, 8));
     let u2 = ((w).field(0)).set_i32(3i32);
     let u3 = ((k()).variant(2, 7, 8)).set_i32(99i32);
-    let a = the::<Arr>(blobref_at(the::<O>(make_bloblet(int_lit(240), ())), int_lit(0)));
+    let a = the::<Arr>(blobref_at(the::<O>(make_bloblet(int_lit(240), ())), int_lit(0), 240));
     let u4 = fill(a, 0i64);
     string_append(ints(kayak_rt::heap_cons({
         let tagcase_ = r();

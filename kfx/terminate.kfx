@@ -14,20 +14,20 @@
 (define termination
   (module
     (hide
-      ;; Termination (CLAUDES_CHOICES.md C20). A recursive group whose every run
-      ;; ends needs no `spin`: FX-26's size-change check (Lee, Jones and
-      ;; Ben-Amram; Fixpt's terminate.rs), its measures and no others, so that KFX
-      ;; accepts no group FX-26 would not. Each call within the group is a graph
-      ;; of how the callee's arguments relate to the caller's parameters: a part
-      ;; of one (strictly smaller), the same, or nothing known. The measures:
-      ;; parts, the `car` or `cdr` of a list at `acyclic` and a `tagcase` arm's
-      ;; fields; and an `int` or `nat` less by a literal under a test bounding it
-      ;; below by something fixed for the whole recursion, or greater, bounded
-      ;; above. A member named other than as a call's operator spoils it all.
+      "Termination (CLAUDES_CHOICES.md C20). A recursive group whose every run
+       ends needs no `spin`: FX-26's size-change check (Lee, Jones and
+       Ben-Amram; Fixpt's terminate.rs), its measures and no others, so that KFX
+       accepts no group FX-26 would not. Each call within the group is a graph
+       of how the callee's arguments relate to the caller's parameters: a part
+       of one (strictly smaller), the same, or nothing known. The measures:
+       parts, the `car` or `cdr` of a list at `acyclic` and a `tagcase` arm's
+       fields; and an `int` or `nat` less by a literal under a test bounding it
+       below by something fixed for the whole recursion, or greater, bounded
+       above. A member named other than as a call's operator spoils it all."
 
-      ;; What is known of a value, of the member walked: the parameter, or a part
-      ;; of it (strictly smaller), of a type if known; or an integer parameter
-      ;; plus an offset.
+      "What is known of a value, of the member walked: the parameter, or a part
+       of it (strictly smaller), of a type if known; or an integer parameter
+       plus an offset."
 
       (define-datatype tracked (part i64 bool tys) (int-of i64 i64))
 
@@ -37,14 +37,14 @@
 
       (define-type knowns (listof known acyclic))
 
-      ;; A parameter, bounded below (`#t`) or above.
+      "A parameter, bounded below (`#t`) or above."
 
       (define-datatype guard (guard i64 bool))
 
       (define-type guards (listof guard acyclic))
 
-      ;; A size-change graph's edge: slots `3p + m`, `m` the measure (0 parts,
-      ;; 1 down, 2 up), and whether it is strict.
+      "A size-change graph's edge: slots `3p + m`, `m` the measure (0 parts,
+       1 down, 2 up), and whether it is strict."
 
       (define-datatype edge (edge i64 i64 bool))
 
@@ -54,7 +54,7 @@
 
       (define-type scalls (listof scall acyclic))
 
-      ;; A call's arguments: each the caller's parameter passed on unchanged, or -1.
+      "A call's arguments: each the caller's parameter passed on unchanged, or -1."
 
       (define-datatype passing (passing i64 i64 i64s))
 
@@ -64,14 +64,14 @@
 
       (define-type slots (listof slot acyclic))
 
-      ;; The walk's context: the program's names; the members; the member walked;
-      ;; the names bound on the way down; the guards; its `nat` parameters; the
-      ;; parameters every call passes on unchanged.
+      "The walk's context: the program's names; the members; the member walked;
+       the names bound on the way down; the guards; its `nat` parameters; the
+       parameters every call passes on unchanged."
 
       (define-datatype wc (wc cv strings i64 knowns guards i64s slots))
 
-      ;; What it found: the calls, what each passes on, and whether a member
-      ;; escaped.
+      "What it found: the calls, what each passes on, and whether a member
+       escaped."
 
       (define-datatype ws (ws scalls passings bool))
 
@@ -464,7 +464,7 @@
                              (walk-exp c st (second b))
                              (cdr bindings) body))))))
 
-      ;; A member of a group: its name, parameters, their types, and its body.
+      "A member of a group: its name, parameters, their types, and its body."
 
       (define-datatype rec-member (rec-member string strings tys sexps))
 
@@ -587,7 +587,7 @@
         (lambda (a b)
           (tagcase a (scall (f g es) (tagcase b (scall (f2 g2 es2) (and (i64= f f2) (i64= g g2) (edges=? es es2))))))))
 
-      ;; The closure of the calls under composition stops past this many.
+      "The closure of the calls under composition stops past this many."
 
       (define most-graphs i64 500)
 

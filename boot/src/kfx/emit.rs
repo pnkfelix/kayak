@@ -63,6 +63,20 @@ pub fn assign(f0: Strings, f1: Sexps) -> &'static Assign {
 pub mod emitter {
     use super::*;
 
+    // What the program defines
+
+    // A tag, and its datatype's name.
+
+    // Datatypes' names, their tags, constants (definitions not of procedures),
+    // and the names bound where an expression is. A name named as a value is
+    // a local, a constant (a call of its `fn`), or else a global procedure (a
+    // reference to its `fn`, the program's or kayak-rt's).
+
+    // A family: a datatype or type abbreviation with parameters, its name,
+    // whether it is a datatype, and its parameters' kinds, so that a region's
+    // argument, erased in Rust, is dropped where it is applied.
+
+    // Modules, by name: each `(module item ...)` (check.kfx, C19).
     pub fn filter_typed(mut name: Str, mut xs: Typeds) -> Typeds {
         loop {
             if null_p(xs) {
@@ -201,6 +215,12 @@ pub mod emitter {
         }
     }
 
+    // Products and sums, FX-26's structural data (check.kfx, `ty-shape`): one
+    // generic Rust type for each list of labels, a tuple struct for a product,
+    // `Product_a_b<A0, A1>`, and an enum for a sum, `Sum_leaf_node<A0, A1>`,
+    // a sum's values references, as a datatype's are. The name holds the labels,
+    // so that two products of the same labels and types are one type, as in
+    // FX-26.
     pub fn split_words_from(mut cs: Chars, mut word: Chars, mut acc: Strings) -> Strings {
         loop {
             if null_p(cs) {
@@ -617,6 +637,7 @@ pub mod emitter {
         }
     }
 
+    // Writing Rust
     /// `n`, not negative, in hex, before `acc`.
     pub fn hex_digits(mut n: i64, mut acc: Str) -> Str {
         loop {
@@ -808,6 +829,9 @@ pub mod emitter {
         }
     }
 
+    // `letrena`'s regions (CLAUDES_CHOICES.md C30): each a lifetime of the
+    // `fn` its body is written as, `'r` for the region `r`, marked in the
+    // locals `%letrena r`. Every other region is the heap's, `'static`.
     pub fn innermost_letrena_lifetime(mut ls: Strings) -> Str {
         loop {
             if null_p(ls) {
@@ -1263,6 +1287,14 @@ pub mod emitter {
         }), str_lit(", "), xs, acc)
     }
 
+    // Self tail calls. Rust has no tail calls, so a procedure that calls itself
+    // last is a `loop`: the call assigns its parameters and `continue`s, and
+    // everything else it could end with is `return`ed.
+
+    // `value`: an expression whose value is used. `returns`: the last thing a
+    // looping procedure does, with the procedure's name and parameters; the
+    // flag is false where a binding hides a parameter, since an assignment
+    // would then reach the binding, not the parameter.
     pub fn binding_name(binding: &'static Sexp) -> Str {
         sym_name(car(items(binding)))
     }
@@ -1763,6 +1795,8 @@ pub mod emitter {
         }
     }
 
+    // Every writer of an expression takes `n`, the indentation of the line it
+    // starts on, and `t`, where the expression stands.
     /// Whether a written effect may abort, its abbreviations seen through: a
     /// procedure of it returns a `Result` (docs/research/escapes.md).
     pub fn fallible_effect_p(c: &'static Ctx, e: &'static Sexp) -> bool {
@@ -4001,6 +4035,14 @@ pub mod emitter {
             } else if (string_eq_p(h, str_lit("blobref-at")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit("")) && not(null_p(blob_typed(c, e, str_lit("blob-at "))))) {
                 // A typed suffix's blobref at 0 (C32): a reference to it.
                 return put(str_lit(").suffix)"), put_exp(c, car(xs), n, value(), put(str_lit("(&("), acc)));
+            } else if ((string_eq_p(h, str_lit("blobref-at")) || string_eq_p(h, str_lit("blobref+"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+                // A new blobref, its flat's size checked against the suffix's, as
+                // FX-26 checks it where one is made (TODO §77).
+                return put(str_lit(")"), put(fact_with(c, e, str_lit("blob-size ")), put(str_lit(", "), put_joined(c, xs, str_lit(", "), n, put(if string_eq_p(h, str_lit("blobref-at")) {
+                    str_lit("blobref_at(")
+                } else {
+                    str_lit("blobref_plus(")
+                }, acc)))));
             } else if (string_eq_p(h, str_lit("blobref-index")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
                 let acc = put(str_lit(").index("), put_exp(c, car(xs), n, value(), put(str_lit("("), acc)));
                 let acc = put_exp(c, second(xs), n, value(), acc);

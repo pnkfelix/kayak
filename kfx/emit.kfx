@@ -22,20 +22,20 @@
 (define emitter
   (module
     (hide
-      ;; What the program defines
+      "What the program defines"
 
-      ;; A tag, and its datatype's name.
+      "A tag, and its datatype's name."
 
-      ;; Datatypes' names, their tags, constants (definitions not of procedures),
-      ;; and the names bound where an expression is. A name named as a value is
-      ;; a local, a constant (a call of its `fn`), or else a global procedure (a
-      ;; reference to its `fn`, the program's or kayak-rt's).
+      "Datatypes' names, their tags, constants (definitions not of procedures),
+       and the names bound where an expression is. A name named as a value is
+       a local, a constant (a call of its `fn`), or else a global procedure (a
+       reference to its `fn`, the program's or kayak-rt's)."
 
-      ;; A family: a datatype or type abbreviation with parameters, its name,
-      ;; whether it is a datatype, and its parameters' kinds, so that a region's
-      ;; argument, erased in Rust, is dropped where it is applied.
+      "A family: a datatype or type abbreviation with parameters, its name,
+       whether it is a datatype, and its parameters' kinds, so that a region's
+       argument, erased in Rust, is dropped where it is applied."
 
-      ;; Modules, by name: each `(module item ...)` (check.kfx, C19).
+      "Modules, by name: each `(module item ...)` (check.kfx, C19)."
 
       (define filter-typed (subr kfx (string typeds) typeds)
         (lambda (name xs)
@@ -102,12 +102,12 @@
           (tagcase c
             (ctx (ds ts ks ls xs fs ms es mods) (first-fact fs (datum-file e) (datum-pos e) prefix)))))
 
-      ;; Products and sums, FX-26's structural data (check.kfx, `ty-shape`): one
-      ;; generic Rust type for each list of labels, a tuple struct for a product,
-      ;; `Product_a_b<A0, A1>`, and an enum for a sum, `Sum_leaf_node<A0, A1>`,
-      ;; a sum's values references, as a datatype's are. The name holds the labels,
-      ;; so that two products of the same labels and types are one type, as in
-      ;; FX-26.
+      "Products and sums, FX-26's structural data (check.kfx, `ty-shape`): one
+       generic Rust type for each list of labels, a tuple struct for a product,
+       `Product_a_b<A0, A1>`, and an enum for a sum, `Sum_leaf_node<A0, A1>`,
+       a sum's values references, as a datatype's are. The name holds the labels,
+       so that two products of the same labels and types are one type, as in
+       FX-26."
 
       (define-rec
         (split-words-from (subr kfx (chars chars strings) strings)
@@ -328,7 +328,7 @@
                      (ctx ds ts (cons (sym-name (second (items form))) ks) ls xs fs ms es mods))
                     (else c))))))
 
-      ;; Writing Rust
+      "Writing Rust"
 
       (define hex-digits (subr kfx (i64 string) string)
         (lambda (n acc)
@@ -438,9 +438,9 @@
                   ((has-prefix? (car ls) "%tvar ") (cons (camel (after-prefix (car ls) "%tvar ")) (type-params-in (cdr ls))))
                   (else (type-params-in (cdr ls)))))))
 
-      ;; `letrena`'s regions (CLAUDES_CHOICES.md C30): each a lifetime of the
-      ;; `fn` its body is written as, `'r` for the region `r`, marked in the
-      ;; locals `%letrena r`. Every other region is the heap's, `'static`.
+      "`letrena`'s regions (CLAUDES_CHOICES.md C30): each a lifetime of the
+       `fn` its body is written as, `'r` for the region `r`, marked in the
+       locals `%letrena r`. Every other region is the heap's, `'static`."
 
       (define-rec
         (innermost-letrena-lifetime (subr kfx (strings) string)
@@ -694,14 +694,14 @@
           "Names, separated by commas."
           (put-sep (lambda ((x sexp) acc) (put (mangle (sym-name x)) acc)) ", " xs acc)))
 
-      ;; Self tail calls. Rust has no tail calls, so a procedure that calls itself
-      ;; last is a `loop`: the call assigns its parameters and `continue`s, and
-      ;; everything else it could end with is `return`ed.
+      "Self tail calls. Rust has no tail calls, so a procedure that calls itself
+       last is a `loop`: the call assigns its parameters and `continue`s, and
+       everything else it could end with is `return`ed."
 
-      ;; `value`: an expression whose value is used. `returns`: the last thing a
-      ;; looping procedure does, with the procedure's name and parameters; the
-      ;; flag is false where a binding hides a parameter, since an assignment
-      ;; would then reach the binding, not the parameter.
+      "`value`: an expression whose value is used. `returns`: the last thing a
+       looping procedure does, with the procedure's name and parameters; the
+       flag is false where a binding hides a parameter, since an assignment
+       would then reach the binding, not the parameter."
 
       (define binding-name (subr kfx (sexp) string)
         (lambda (binding) (sym-name (car (items binding)))))
@@ -991,8 +991,8 @@
           (let ((a (fact-with c e "unbox ")) (b (fact-with c e "unbox-list ")))
             (cond ((not (string=? a "")) a) ((not (string=? b "")) b) (else (fact-with c e "unbox-other "))))))
 
-      ;; Every writer of an expression takes `n`, the indentation of the line it
-      ;; starts on, and `t`, where the expression stands.
+      "Every writer of an expression takes `n`, the indentation of the line it
+       starts on, and `t`, where the expression stands."
       )
 
     (define-rec
@@ -2270,6 +2270,11 @@
                 ((and (string=? h "blobref-at") (string=? (local-kind h (ctx-locals c)) "") (not (null? (blob-typed c e "blob-at "))))
                  "A typed suffix's blobref at 0 (C32): a reference to it."
                  (put ").suffix)" (put-exp c (car xs) n (value) (put "(&(" acc))))
+                ((and (or (string=? h "blobref-at") (string=? h "blobref+")) (string=? (local-kind h (ctx-locals c)) ""))
+                 "A new blobref, its flat's size checked against the suffix's, as
+                  FX-26 checks it where one is made (TODO §77)."
+                 (put ")" (put (fact-with c e "blob-size ") (put ", " 
+                      (put-joined c xs ", " n (put (if (string=? h "blobref-at") "blobref_at(" "blobref_plus(") acc))))))
                 ((and (string=? h "blobref-index") (string=? (local-kind h (ctx-locals c)) ""))
                  (let* ((acc (put ").index(" (put-exp c (car xs) n (value) (put "(" acc))))
                         (acc (put-exp c (second xs) n (value) acc)))

@@ -52,7 +52,7 @@ pub fn b() -> O {
 }
 
 pub fn arr() -> BlobRef<O> {
-    blobref_at(b(), int_lit(0))
+    blobref_at(b(), int_lit(0), 72)
 }
 
 pub fn p1() -> BlobRef<O> {
@@ -62,14 +62,14 @@ pub fn p1() -> BlobRef<O> {
 pub type Q = Product_1a_1b_1c_1d<i32, i32, f64, i32>;
 
 pub fn q0() -> BlobRef<O> {
-    blobref_at(b(), int_lit(0))
+    blobref_at(b(), int_lit(0), 24)
 }
 
 // An odd offset, and bytes: an i32 across two words, read back, and its
 // bytes one by one. It overlaps p1's y (bytes 40 to 47), which it changes:
 // written after 2.5, y is 2.500488281249204, as in FX-26.
 pub fn odd() -> BlobRef<O> {
-    blobref_at(b(), int_lit(41))
+    blobref_at(b(), int_lit(41), 4)
 }
 
 // A bloblet in a letrena's arena: a sum over a flat array of f64s.
@@ -127,6 +127,6 @@ pub fn main() -> Str {
     ((p1()).field(16)).set_f64(2.5f64);
     ((p1()).field(8)).set_i32(7i32);
     (odd()).set_i32(-7i32);
-    string_append(ints(kayak_rt::heap_cons(i64_to_int(i64_plus((p()).fields.0.get(), (p()).fields.1.get())), kayak_rt::heap_cons(blobref_offset((p1()).field(0)), kayak_rt::heap_cons(blobref_offset((p1()).field(8)), kayak_rt::heap_cons(blobref_offset((p1()).field(16)), kayak_rt::heap_cons(i32_to_int((((arr()).index(int_lit(1), 24, 3)).field(8)).get_i32()), kayak_rt::heap_cons(blobref_offset((q0()).field(4)), kayak_rt::heap_cons(blobref_offset((q0()).field(8)), kayak_rt::heap_cons(blobref_offset(((the::<BlobRef<O>>(blobref_at(b(), int_lit(0)))).index(int_lit(0), 24, 2)).field(16)), kayak_rt::heap_cons(i32_to_int((odd()).get_i32()), kayak_rt::heap_cons(bloblet_byte(b(), int_lit(41)), kayak_rt::heap_cons(bloblet_byte(b(), int_lit(44)), kayak_rt::heap_cons(bloblet_bytes(b()), kayak_rt::nil()))))))))))))), string_append(f64_to_string(((p1()).field(16)).get_f64()), string_append(str_lit(" "), f64_to_string(total(100i64)))))
+    string_append(ints(kayak_rt::heap_cons(i64_to_int(i64_plus((p()).fields.0.get(), (p()).fields.1.get())), kayak_rt::heap_cons(blobref_offset((p1()).field(0)), kayak_rt::heap_cons(blobref_offset((p1()).field(8)), kayak_rt::heap_cons(blobref_offset((p1()).field(16)), kayak_rt::heap_cons(i32_to_int((((arr()).index(int_lit(1), 24, 3)).field(8)).get_i32()), kayak_rt::heap_cons(blobref_offset((q0()).field(4)), kayak_rt::heap_cons(blobref_offset((q0()).field(8)), kayak_rt::heap_cons(blobref_offset(((the::<BlobRef<O>>(blobref_at(b(), int_lit(0), 48))).index(int_lit(0), 24, 2)).field(16)), kayak_rt::heap_cons(i32_to_int((odd()).get_i32()), kayak_rt::heap_cons(bloblet_byte(b(), int_lit(41)), kayak_rt::heap_cons(bloblet_byte(b(), int_lit(44)), kayak_rt::heap_cons(bloblet_bytes(b()), kayak_rt::nil()))))))))))))), string_append(f64_to_string(((p1()).field(16)).get_f64()), string_append(str_lit(" "), f64_to_string(total(100i64)))))
 }
 

@@ -1903,7 +1903,10 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     match *tagcase_ {
                         Sexp::Num(k, f, p) => {
                             let e = parse_type(v, tvars, second(xs));
-                            if (not(i64_lt(k, 0i64)) && flat_p(e)) {
+                            if (i64_lt(k, 0i64) || i64_gt(k, 268435454i64)) {
+                                // Below FX-26's length that means "to the end of the suffix".
+                                return match refuse(v, str_lit("a flat array's literal length is 0 to 268435454")) {};
+                            } else if flat_p(e) {
                                 return ty_data(str_lit("%flat-array"), kayak_rt::heap_cons(e, kayak_rt::heap_cons(ty_rconst(i64_to_string(k)), kayak_rt::nil())));
                             } else {
                                 return match refuse(v, string_append(str_lit("a flat array is of a flat, its length a literal (KFX has no arrays of values yet): "), show_sexp(t))) {};

@@ -115,6 +115,12 @@ pub mod expressions {
         }
     }
 
+    // Turbofish: the types a poly procedure is called at, and a `nil`'s or an
+    // empty list's element, which rustc may find nothing else to infer from.
+    // Noted as inference variables, `turbofish-metas ?k ...`, at the call's or
+    // the datum's place; settled when the definition is, each a type as written,
+    // an unsolved one `void`: a type nothing in FX-26 says, of no value, which
+    // rustc needs one of and the program never meets.
     /// A type, or with `region` a region, as written, after the definition:
     /// an inference variable unsolved is `void`, or the heap.
     pub fn settled_sexp(s: &'static St, t: &'static Ty, region: bool) -> &'static Sexp {
@@ -457,6 +463,11 @@ pub mod expressions {
         }
     }
 
+    // Modules as parameters (CLAUDES_CHOICES.md C24): a `define-type` of a
+    // `(moduleof (abs t type) (desc u T) (val x T) ...)` names a module type, a
+    // Rust trait; a top-level procedure's parameter of it, a type parameter.
+    // `(abs (a b) type)` gives several. Within, a parameter `m`'s abstract types
+    // are `m..t`, as FX-26 names them.
     /// A moduleof's items of `kind`: `abs`, `desc` or `val`.
     pub fn spec_items(spec: &'static Sexp, kind: Str) -> List<Sexps> {
         concat(map(lambda1(move |x: &'static Sexp| {
@@ -1105,6 +1116,8 @@ pub mod expressions {
         }
     }
 
+    // Pairs (C68): a local whose type is a pair; a pair expected, alone or a
+    // union's member.
     pub fn local_pair(v: &'static Cv, s: &'static St, x: &'static Sexp) -> Tys {
         let tagcase_ = x;
         match *tagcase_ {
@@ -1148,6 +1161,9 @@ pub mod expressions {
         }
     }
 
+    // Narrowing (C62): a shape's test of a local of a union, `(int? x)`, says
+    // in its `if`'s first branch, and its `cond`'s clause, that `x` is the
+    // member of that shape, and after it that `x` is one of the rest.
     pub fn tested_shape(p: Str) -> Str {
         if string_eq_p(p, str_lit("int?")) {
             str_lit("int")
@@ -1326,6 +1342,11 @@ pub mod expressions {
         kayak_rt::heap_alloc(Narrowing::Narrowing(f0, f1))
     }
 
+    // Uniform values (C75; docs/research/uniform-values.md): a union's value
+    // is a `Value` in Rust. A member given for its union is boxed there, and a
+    // union narrowed to a member unboxed: each a fact at the expression, for
+    // the emitter. `nil`, a list narrowed so, is a list still, of the element
+    // type Rust finds.
     /// A pair whose tail is no list: a union's pair, `Value`s in Rust (C77).
     pub fn general_pair_p(s: &'static St, t: &'static Ty) -> bool {
         let tagcase_ = walk(s, t);
@@ -1978,6 +1999,9 @@ pub mod expressions {
         }
     }
 
+    // The control primitives KFX types by rules of its own (`abort-call`,
+    // `make-tag-call`), at FX-26's types, for a `proj` of one (C60), as FX-26's
+    // programs write it.
     pub fn control_schemes() -> Str {
         str_lit("(make-continuation-prompt-tag (poly ((r region) (a type) (h type) (d effect)) (subr (alloc r) () (prompt-tag a h d r))))\n         (abort-current-continuation (poly ((r region) (a type) (h type) (d effect)) (subr (goto r) ((prompt-tag a h d r) h) void)))")
     }
@@ -4520,7 +4544,14 @@ pub mod expressions {
                                             let tagcase_ = check(v, s, second(xs), ty_int());
                                             match *tagcase_ {
                                                 Res::Res(u, es, s) => {
-                                                    res(car(expected), effs_union(es0, es), note_types(fits(v, s, car(args2), car(args)), cv_file(v), cv_pos(v), str_lit("blob-raw"), kayak_rt::heap_cons(car(args2), kayak_rt::nil())))
+                                                    res(car(expected), effs_union(es0, es), blob_noted(v, note_types(fits(v, s, car(args2), car(args)), cv_file(v), cv_pos(v), str_lit("blob-raw"), kayak_rt::heap_cons(car(args2), kayak_rt::nil())), string_append(str_lit("blob-size "), {
+                                                        let tagcase_ = flat_layout(walk(s, car(cdr(args))));
+                                                        match *tagcase_ {
+                                                            Layout::Layout(size, al) => {
+                                                                i64_to_string(size)
+                                                            }
+                                                        }
+                                                    })))
                                                 }
                                             }
                                         }

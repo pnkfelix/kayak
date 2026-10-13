@@ -447,6 +447,5 @@ emitting; a warm compile 0.02 s dearer than with no modules.
   and compile.kfx are mostly interface.
 - The 0.02 s left: each module's scope (`module-prep`) made each compile;
   keep it by the module's text and the chain before it, as items are.
-- Comments between a module's items are `;` comments and so lost to the
-  Rust; FX-26 takes no string as an item. A docstring-like item for KFX,
-  FX-26 willing, would keep them.
+- Comments between a module's items: done (C93), strings again, as FX-26
+  now takes them, and comments in the Rust.

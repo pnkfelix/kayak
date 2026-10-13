@@ -114,11 +114,18 @@ pub fn bloblet_set_byte_x<Fs>(b: &Bloblet<Fs>, i: Int, v: Int) {
 /// What a blobref points into: a bloblet, as a reference of any lifetime
 /// (the heap's, or a `letrena`'s), whose suffix is read and written.
 pub trait Owner: Copy {
+    /// The suffix's length, in bytes.
+    fn bytes(self) -> usize;
     fn read(self, at: usize, n: usize) -> u64;
     fn write(self, at: usize, n: usize, v: u64);
 }
 
 impl<Fs> Owner for &Bloblet<Fs> {
+    #[inline]
+    fn bytes(self) -> usize {
+        self.bytes
+    }
+
     #[inline]
     fn read(self, at: usize, n: usize) -> u64 {
         Bloblet::read(self, at, n)
@@ -140,12 +147,25 @@ pub struct BlobRef<B> {
     at: usize,
 }
 
-/// `(blobref-at b off)`.
-pub fn blobref_at<B: Owner>(b: B, off: Int) -> BlobRef<B> {
-    BlobRef {
-        owner: b,
-        at: index_of(off, "blobref-at: a negative offset"),
+/// `(blobref-at b off)`, of a flat of `size` bytes.
+pub fn blobref_at<B: Owner>(b: B, off: Int, size: usize) -> BlobRef<B> {
+    let at = index_of(off, "blobref-at: a negative offset");
+    whole(BlobRef { owner: b, at }, size)
+}
+
+/// A new blobref, its flat of `size` bytes lying whole in the suffix, as
+/// FX-26 checks it where one is made (Fixpt's TODO §77).
+fn whole<B: Owner>(r: BlobRef<B>, size: usize) -> BlobRef<B> {
+    if r.at
+        .checked_add(size)
+        .is_none_or(|end| end > r.owner.bytes())
+    {
+        fail(&format!(
+            "suffix ref: a flat of {size} bytes at byte {} runs past the end of the suffix",
+            r.at
+        ));
     }
+    r
 }
 
 macro_rules! scalar {
@@ -246,9 +266,9 @@ pub fn blobref_offset<B: Owner>(r: BlobRef<B>) -> Int {
     r.offset()
 }
 
-/// `(blobref+ r d)`.
-pub fn blobref_plus<B: Owner>(r: BlobRef<B>, d: Int) -> BlobRef<B> {
-    r.plus(d)
+/// `(blobref+ r d)`, to a flat of `size` bytes.
+pub fn blobref_plus<B: Owner>(r: BlobRef<B>, d: Int, size: usize) -> BlobRef<B> {
+    whole(r.plus(d), size)
 }
 
 // The typed fast path (C32): a bloblet whose suffix the program reads
@@ -359,7 +379,7 @@ mod tests {
     #[test]
     fn scalars_at_their_offsets_and_not() {
         let b = make_bloblet(int_lit(72), (Cell::new(int_lit(3)),));
-        let r = blobref_at(b, int_lit(0));
+        let r = blobref_at(b, int_lit(0), 72);
         r.field(16).set_f64(2.5);
         r.field(8).set_i32(-7);
         r.field(12).set_u32(4_000_000_000);

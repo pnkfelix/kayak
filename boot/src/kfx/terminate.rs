@@ -26,6 +26,20 @@ pub fn index_of(mut x: Str, mut xs: Strings, mut i: i64) -> i64 {
 pub mod termination {
     use super::*;
 
+    // Termination (CLAUDES_CHOICES.md C20). A recursive group whose every run
+    // ends needs no `spin`: FX-26's size-change check (Lee, Jones and
+    // Ben-Amram; Fixpt's terminate.rs), its measures and no others, so that KFX
+    // accepts no group FX-26 would not. Each call within the group is a graph
+    // of how the callee's arguments relate to the caller's parameters: a part
+    // of one (strictly smaller), the same, or nothing known. The measures:
+    // parts, the `car` or `cdr` of a list at `acyclic` and a `tagcase` arm's
+    // fields; and an `int` or `nat` less by a literal under a test bounding it
+    // below by something fixed for the whole recursion, or greater, bounded
+    // above. A member named other than as a call's operator spoils it all.
+
+    // What is known of a value, of the member walked: the parameter, or a part
+    // of it (strictly smaller), of a type if known; or an integer parameter
+    // plus an offset.
     pub enum Tracked {
         Part(i64, bool, Tys),
         IntOf(i64, i64),
@@ -51,6 +65,7 @@ pub mod termination {
 
     pub type Knowns = List<&'static Known>;
 
+    // A parameter, bounded below (`#t`) or above.
     pub enum Guard {
         Guard(i64, bool),
     }
@@ -61,6 +76,8 @@ pub mod termination {
 
     pub type Guards = List<&'static Guard>;
 
+    // A size-change graph's edge: slots `3p + m`, `m` the measure (0 parts,
+    // 1 down, 2 up), and whether it is strict.
     pub enum Edge {
         Edge(i64, i64, bool),
     }
@@ -81,6 +98,7 @@ pub mod termination {
 
     pub type Scalls = List<&'static Scall>;
 
+    // A call's arguments: each the caller's parameter passed on unchanged, or -1.
     pub enum Passing {
         Passing(i64, i64, I64s),
     }
@@ -101,6 +119,9 @@ pub mod termination {
 
     pub type Slots = List<&'static Slot>;
 
+    // The walk's context: the program's names; the members; the member walked;
+    // the names bound on the way down; the guards; its `nat` parameters; the
+    // parameters every call passes on unchanged.
     pub enum Wc {
         Wc(&'static Cv, Strings, i64, Knowns, Guards, I64s, Slots),
     }
@@ -109,6 +130,8 @@ pub mod termination {
         kayak_rt::heap_alloc(Wc::Wc(f0, f1, f2, f3, f4, f5, f6))
     }
 
+    // What it found: the calls, what each passes on, and whether a member
+    // escaped.
     pub enum Ws {
         Ws(Scalls, Passings, bool),
     }
@@ -978,6 +1001,7 @@ pub mod termination {
         }
     }
 
+    // A member of a group: its name, parameters, their types, and its body.
     pub enum RecMember {
         RecMember(Str, Strings, Tys, Sexps),
     }
@@ -1231,6 +1255,7 @@ pub mod termination {
         }
     }
 
+    // The closure of the calls under composition stops past this many.
     pub fn most_graphs() -> i64 {
         500i64
     }

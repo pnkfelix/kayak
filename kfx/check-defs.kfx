@@ -672,15 +672,30 @@
     (and (head-is? form "define") (i64= (size (items form)) 3)
          (or (head-is? (third (items form)) "module") (head-is? (third (items form)) "extend")))))
 
+(define uncommented (subr kfx (sexps) sexps)
+  (lambda (forms)
+    "Module items without their strings, a `hide`'s too: FX-26's, a string
+     among a module's items is a comment (Fixpt, 2026-10-12)."
+    (concat (map (lambda ((f sexp))
+                   (tagcase f
+                     (str (s file pos) nil)
+                     (lst (xs file line pos)
+                       (if (head-is? f "hide")
+                           (the sexps (list (lst (cons (car xs) (uncommented (cdr xs))) file line pos)))
+                           (the sexps (list f))))
+                     (else other (the sexps (list f)))))
+                 forms))))
+
 "`(extend e0 e1)` (C87, FX-91's): a module of both's values and types,
  `e1`'s where both give a name; `e1` sees `e0`'s, its own shadowing them.
  KFX's, of an `e0` defined at the top level: the module `(include e0
  (except ...))` then `e1`'s items, or `(include e1)` if `e1` is a name: the
  names `e1` gives are not taken from `e0`. So the Rust is a `mod` of `pub
  use`s, and its own items, which Rust's scope lets shadow a glob's."
-(define module-written (subr kfx (sexp) sexps)
+(define module-noted (subr kfx (sexp) sexps)
   (lambda (form)
-    "A module definition's items, as written, or as its `extend` is."
+    "A module definition's items, as written, or as its `extend` is, its
+     strings among them: what the emitter writes, each string a comment."
     (let ((x (third (items form))))
       (if (head-is? x "module")
           (cdr (items x))
@@ -698,12 +713,18 @@
                          (cons (lst (list (sym "include" file pos) e0
                                           (lst (cons (sym "except" file pos)
                                                      (map (lambda ((n string)) (sym n file pos))
-                                                          (concat (map item-names (concat (map (lambda ((g sexp)) (if (head-is? g "hide") (cdr (items g)) (the sexps (list g)))) own))))))
+                                                          (concat (map item-names (concat (map (lambda ((g sexp)) (if (head-is? g "hide") (cdr (items g)) (the sexps (list g)))) (uncommented own)))))))
                                                file line pos))
                                     file line pos)
                                own)))
                       (else (error "kfx: an extend's second module is a name or a module")))))
             (else other nil))))))
+
+(define module-written (subr kfx (sexp) sexps)
+  (lambda (form)
+    "A module definition's items, as written, or as its `extend` is, without
+     the strings among them."
+    (uncommented (module-noted form))))
 
 (define include-except (subr kfx (sexp) sexps)
   (lambda (f)
@@ -1395,7 +1416,8 @@
 
 (define rec-of (subr kfx (sexps) sexps)
   (lambda (members)
-    "Items that reach one another, as one `define-rec` of their procedures."
+    "Items that reach one another, as one `define-rec` of their procedures,
+     each where its item is (incr.kfx keys the group by their texts)."
     (tagcase (car members)
       (lst (xs file line pos)
         (the sexps
@@ -1404,7 +1426,7 @@
                                           (if (head-is? g "define-rec")
                                               (cdr (items g))
                                               (let ((ys (items g)))
-                                                (the sexps (list (lst (list (second ys) (third ys) (car (item-value g))) file line pos))))))
+                                                (the sexps (list (lst (list (second ys) (third ys) (car (item-value g))) (datum-file g) line (datum-pos g)))))))
                                         members)))
                      file line pos))))
       (else other nil))))

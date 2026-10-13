@@ -90,6 +90,11 @@ pub mod restrictions {
         }
     }
 
+    // Names (C61): KFX defines each name once, none a primitive's or
+    // kayak-rt's, since the generated modules each import every other's names
+    // and kayak-rt's; and its types' and modules' names are Rust's too, none
+    // Rust's or kayak-rt's own, each a KFX name (C27), none two alike
+    // camel-cased. FX-26 has neither rule.
     pub fn primitive_names() -> Strings {
         map(lambda1(move |p: &'static Sexp| {
             sym_name(car(items(p)))

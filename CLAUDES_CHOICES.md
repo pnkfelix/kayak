@@ -1882,3 +1882,34 @@ Step 3 of the plan: file by file, by what each would hide.
 - **The conversion script** wraps a file's forms in `(define m (module
   (hide ...) given ...))`, its comment strings `;` comments (FX-26 takes
   no string as a module's item).
+
+## C93. A string among a module's items is a comment; the pin moved to Fixpt 8da8ecf (2026-10-13)
+
+The user asked Fixpt's maintainers for it (C92's trade-off: the converted
+files' notes had become `;` comments), and Fixpt 8da8ecf has it: in a
+`module`, a `hide`, and a `load-module` file's forms, a string binds
+nothing and is not in the module's type.
+- **KFX's**: `module-written`, what the checker and every walk of a
+  module's items read, is `module-noted` without its strings
+  (`uncommented`, a `hide`'s too); the emitter reads `module-noted`, so a
+  string is a `//` comment in the module's Rust, as one between top-level
+  forms is. `tests/kfx/module-strings.kfx`; Fixpt's `modules/strings.fx`
+  through kfx and the engine. The converted files' strings restored
+  (only the comments a conversion had made of strings, matched against
+  the strings each conversion commit removed).
+- **A memo bug found on the way** (`incremental.py` now has the case): a
+  `define-rec` the module's order makes of items that reach one another
+  (`rec-of`) was keyed by the text of its first item alone, every member
+  given that item's position, so an edit to a later member kept the
+  group's old facts (an emitted `match refuse(...) {}` lost). Now each
+  member keeps its own position, and the group's key is the text of every
+  item it has members in (`starts-of`).
+- **What the pin's 28 other commits asked** (Fixpt's TODO §77): a new
+  blobref's flat must lie whole in its suffix, checked where one is made:
+  kayak-rt's `blobref_at` and `blobref_plus` take the flat's size (a
+  `blob-size` fact, at `blobref+` now too) and fail with Fixpt's words;
+  a flat array's literal length is 0 to 268435454, else refused (K1).
+  And in `--toplevel` (Fixpt's programs run as Rust), each typed global
+  value is made where it is defined, `let _ = g();`, as FX-26 makes it, so
+  that one that fails fails there: a Rust global is made when first read.
+
