@@ -243,6 +243,16 @@
       (begin (obj-set! p 0 (fixnum labels)) (obj-set! p 1 k) (obj-set! p 2 d) p))))
 
 
+"Output a program writes while the REPL runs it (live-repl.kfx): kept for
+ its entry, not written."
+(define capturing (ref bool @h) (new #f))
+(define captured (ref chars @h) (new nil))
+
+(define capture! (subr (maxeff hp (alloc @h)) (string) bool)
+  (lambda (s)
+    "What `write-out` does in the REPL: kept for the entry running, if one is."
+    (if (get capturing) (begin (set captured (put s (get captured))) #t) #f)))
+
 (define written-word! (subr (maxeff hp (alloc @h)) ((sumof (done unit) (failed io-error))) i64)
   (lambda (r) (tagcase r (done u (sum-word! "done" w-unit)) (failed e (sum-word! "failed" (io-error-word! e))))))
 

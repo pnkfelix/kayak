@@ -1,0 +1,580 @@
+"live-repl.kfx: the REPL as entries that run while the next is typed
+ (docs/research/repl.md, stage 1). The REPL is a function of what
+ arrives: each key, and the time, given by the Rust around it, which
+ only shuttles bytes (crates/kayak-fx26/src/main.rs); what to write back
+ is the REPL's. An entry, once whole, is checked and lowered at once,
+ given a number and a line, and the prompt comes back; it runs as a
+ task, the machine's registers parked between slices of its steps
+ (vm.kfx's fuel), beside the others; its line shows a spinner until it
+ ends, then its value, rewritten in place. Its value is the global
+ `%k`, which a later entry may name: such an entry waits for it.
+
+ An entry that writes or does I/O runs alone, in the order typed: it
+ waits for those before it, and those after it wait for it; others run
+ together (repl.md, Which entries run together).
+
+ Live, the screen is drawn with ANSI's moves; plain (no terminal), the
+ entries run one after another and each line is written when it ends."
+(define session
+  (module
+    (hide
+      "An entry: its number; the forms' text; what is written after its value
+       (` : type ! effect`), or, for definitions, its whole line; whether it
+       only reads and allocates (`quiet`); the results it names (`%k`); and
+       what changes: its state (`st-…`), its tops to run (main.kfx's numbers),
+       its value as written, its output not yet written, when it began and
+       ended, the row its line is on (-1 if not yet written), and the line as
+       last drawn."
+
+      (define-type entry
+        (productof (num i64) (text string) (typed string) (quiet bool) (needs (listof i64 acyclic))
+                   (state (ref i64 @h)) (tops (ref (listof i64 acyclic) @h)) (shown (ref string @h))
+                   (out (ref string @h)) (began (ref i64 @h)) (ended (ref i64 @h))
+                   (row (ref i64 @h)) (drawn (ref string @h))))
+
+      (define st-checking i64 0)
+
+      (define st-waiting i64 1)
+
+      (define st-running i64 2)
+
+      (define st-done i64 3)
+
+      (define st-failed i64 4)
+
+      (define st-interrupted i64 5)
+
+      (define st-refused i64 6)
+
+      "The session: whether it is live; the screen's size; the entries, the
+       newest first; the draft being typed; the rows written above it; the
+       rows the draft took when last drawn, and whether it is to be drawn
+       again; whether ^D asked to leave; an escape sequence being read; the
+       entry run last (for turns); and what this step writes."
+
+      (define live (ref bool @h) (new #f))
+
+      (define screen-rows (ref i64 @h) (new 24))
+
+      (define screen-cols (ref i64 @h) (new 80))
+
+      (define entries (ref (listof entry acyclic) @h) (new nil))
+
+      (define draft (ref string @h) (new ""))
+
+      (define rows (ref i64 @h) (new 0))
+
+      (define draft-rows (ref i64 @h) (new 0))
+
+      (define draft-dirty (ref bool @h) (new #t))
+
+      (define leaving (ref bool @h) (new #f))
+
+      (define escape (ref i64 @h) (new 0))
+
+      (define last-run (ref i64 @h) (new 0))
+
+      (define written (ref chars @h) (new nil))
+
+      (define slice-steps i64 20000)
+
+      (define say! (subr running (string) unit)
+        (lambda (s) (set written (put s (get written)))))
+
+      (define-rec
+        (each-entry! (subr running ((subr running (entry) unit) (listof entry acyclic)) unit)
+          (lambda (f es) (if (null? es) #u (begin (f (car es)) (each-entry! f (cdr es)))))))
+
+      (define-rec
+        (some-entry? (subr running ((subr running (entry) bool) (listof entry acyclic)) bool)
+          (lambda (f es) (cond ((null? es) #f) ((f (car es)) #t) (else (some-entry? f (cdr es)))))))
+
+      (define-rec
+        (entries-where (subr running ((subr running (entry) bool) (listof entry acyclic)) (listof entry acyclic))
+          (lambda (f es) (cond ((null? es) nil) ((f (car es)) (cons (car es) (entries-where f (cdr es)))) (else (entries-where f (cdr es)))))))
+
+      (define-rec
+        (some-number? (subr running ((subr running (i64) bool) (listof i64 acyclic)) bool)
+          (lambda (f ns) (cond ((null? ns) #f) ((f (car ns)) #t) (else (some-number? f (cdr ns)))))))
+
+      (define-rec
+        (each-line! (subr running ((subr running (string) unit) strings) unit)
+          (lambda (f ls) (if (null? ls) #u (begin (f (car ls)) (each-line! f (cdr ls)))))))
+
+      (define-rec
+        (number-from (subr kfx ((listof char acyclic) i64) i64)
+          (lambda (cs n) (if (null? cs) n (number-from (cdr cs) (i64+ (i64* n 10) (i64- (char->i64 (car cs)) 48)))))))
+
+      (define definition-form? (subr kfx (sexp) bool)
+        (lambda (f)
+          (any? (lambda ((h string)) (head-is? f h))
+                (list "define" "define*" "define-rec" "define-type" "define-datatype" "define-generative" "define-effect"))))
+
+      "Entries, by number and state."
+
+      (define-rec
+        (entry-numbered (subr running ((listof entry acyclic) i64) (listof entry acyclic))
+          (lambda (es k)
+            (cond ((null? es) nil)
+                  ((i64= (extract (car es) num) k) (list (car es)))
+                  (else (entry-numbered (cdr es) k))))))
+
+      (define unfinished? (subr running (entry) bool)
+        (lambda (e)
+          (let ((s (get (extract e state))))
+            (or (i64= s st-checking) (i64= s st-waiting) (i64= s st-running)))))
+
+      (define-rec
+        (oldest-first (subr kfx ((listof entry acyclic) (listof entry acyclic)) (listof entry acyclic))
+          (lambda (es acc) (if (null? es) acc (oldest-first (cdr es) (cons (car es) acc))))))
+
+      (define may-run? (subr running (entry) bool)
+        (lambda (e)
+          "Whether `e` may take a slice now: unfinished, the results it names
+           made, and no entry before it that it must wait for: in plain mode
+           any; else, one that is not quiet, or any if `e` is not."
+          (and (or (i64= (get (extract e state)) st-waiting) (i64= (get (extract e state)) st-running))
+               (not (some-number? (lambda ((k i64))
+                            (let ((found (entry-numbered (get entries) k)))
+                              (and (not (null? found)) (unfinished? (car found)))))
+                          (extract e needs)))
+               (not (some-entry? (lambda ((d entry))
+                            (and (i64< (extract d num) (extract e num))
+                                 (unfinished? d)
+                                 (or (not (get live)) (not (extract e quiet)) (not (extract d quiet)))))
+                          (get entries))))))
+
+      "Reading what was typed: the `%k` an entry names."
+
+      (define-rec
+        (named-results (subr kfx (sexp) (listof i64 acyclic))
+          (lambda (x)
+            (tagcase x
+              (sym (n f p)
+                (let ((cs (string-chars n)))
+                  (if (and (not (null? cs)) (char=? (car cs) #\%) (not (null? (cdr cs)))
+                           (not (any? (lambda ((c char)) (not (char-numeric? c))) (cdr cs))))
+                      (list (number-from (cdr cs) 0))
+                      nil)))
+              (lst (xs f l p) (concat (map named-results xs)))
+              (else other nil)))))
+
+      (define quiet-effect? (subr kfx (strings) bool)
+        (lambda (es)
+          "Whether an effect only reads globals, allocates, and spins: an entry
+           with it runs beside others."
+          (not (any? (lambda ((a string))
+                       (not (or (string=? a "spin") (string=? a "@globals") (has-prefix? a "g:")
+                                (has-prefix? a "read:") (has-prefix? a "alloc:"))))
+                     es))))
+
+      "What an entry's line says."
+
+      (define seconds (subr kfx (i64) string)
+        (lambda (ms)
+          (string-append (i64->string (i64-quotient ms 1000))
+                         (string-append "." (string-append (i64->string (i64-quotient (i64-remainder ms 1000) 100)) " s")))))
+
+      (define spinner (subr kfx (i64) string)
+        (lambda (now)
+          (let ((frames "⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏"))
+            (char->string (string-ref-i64 frames (i64-remainder (i64-quotient now 80) 10))))))
+
+      (define entry-line (subr running (entry i64) string)
+        (lambda (e now)
+          (let* ((s (get (extract e state)))
+                 (head (if (get live) (string-append "[" (string-append (i64->string (extract e num)) "] ")) ""))
+                 (took (i64- (if (i64>= (get (extract e ended)) 0) (get (extract e ended)) now) (get (extract e began))))
+                 (time (if (and (get live) (i64>= took 100)) (string-append "  (" (string-append (seconds took) ")")) "")))
+            (cond ((i64= s st-checking) (string-append head "…"))
+                  ((i64= s st-waiting) (string-append head (string-append (spinner now) " waiting")))
+                  ((i64= s st-running) (string-append head (string-append (spinner now) (string-append " running " (seconds took)))))
+                  ((i64= s st-done) (string-append head (string-append (get (extract e shown)) time)))
+                  ((i64= s st-interrupted) (string-append head (string-append "interrupted" time)))
+                  (else (string-append head (get (extract e shown))))))))
+
+      (define interrupt! (subr running (i64) unit)
+        (lambda (now)
+          "^C: the draft dropped, if there is one; else the newest entry not
+           ended, interrupted."
+          (if (not (string=? (get draft) ""))
+              (begin (set draft "") (set draft-dirty #t))
+              (let ((running (entries-where unfinished? (get entries))))
+                (if (null? running)
+                    (set leaving #f)
+                    (let ((e (car running)))
+                      (begin
+                        (set (extract e state) st-interrupted)
+                        (set (extract e ended) now)
+                        (parked-cleared! (extract e num)))))))))
+
+      (define parked-cleared! (subr running (i64) unit)
+        (lambda (slot)
+          "A task's registers dropped, so that the collector keeps nothing for it."
+          (begin
+            (roots-room! slot)
+            (let ((r (get roots)) (at (parked-at slot)))
+              (begin (flatarray-set-i64! r (i64+ at 2) 0) (flatarray-set-i64! r (i64+ at 3) w-nil)
+                     (flatarray-set-i64! r (i64+ at 4) 0) (flatarray-set-i64! r (i64+ at 5) 0) (flatarray-set-i64! r (i64+ at 6) w-nil))))))
+
+      (define-rec
+        (count-newlines (subr kfx ((listof char acyclic) i64) i64)
+          (lambda (cs n) (cond ((null? cs) n) ((char=? (car cs) #\newline) (count-newlines (cdr cs) (i64+ n 1))) (else (count-newlines (cdr cs) n))))))
+
+      (define finish-draft! (subr running () unit)
+        (lambda ()
+          "The draft, whole, left on the screen as it was drawn: the rows below
+           it the transcript's."
+          (if (get live)
+              (begin
+                (draw-draft! (string-append (get draft) ""))
+                (say! "\r\n")
+                (set rows (i64+ (get rows) (get draft-rows)))
+                (set draft-rows 1)
+                (set draft-dirty #t))
+              #u)))
+
+      "An entry submitted: checked, lowered, and made a task."
+
+      (define submit! (subr running (string i64) unit)
+        (lambda (text now)
+          (let* ((k (i64+ (get repl-count) 1))
+                 (e (the entry (product (num k) (text text) (typed "") (quiet #t) (needs nil)
+                                        (state (new st-checking)) (tops (new nil)) (shown (new "")) (out (new ""))
+                                        (began (new now)) (ended (new -1)) (row (new -1)) (drawn (new ""))))))
+            (begin
+              (set repl-count k)
+              ;; Kept first, so that a refusal (a failure, which the Rust catches)
+              ;; finds it: `refused!`.
+              (set entries (cons e (get entries)))
+              (let* ((forms (read-all (string-chars text) (string-append "<fx26:" (string-append (i64->string k) ">")) 1))
+                     (made (entry-forms k forms "" #t nil)))
+                (tagcase made
+                  (made-entry (typed quiet tops)
+                    (let ((e2 (the entry (product (num k) (text text) (typed typed) (quiet quiet)
+                                                  (needs (concat (map named-results forms)))
+                                                  (state (new st-waiting)) (tops (new tops)) (shown (new "")) (out (new ""))
+                                                  (began (new now)) (ended (new -1)) (row (new -1)) (drawn (new ""))))))
+                      (set entries (cons e2 (cdr (get entries))))))))))))
+
+      (define-datatype made-entry (made-entry string bool (listof i64 acyclic)))
+
+      (define-rec
+        (entry-forms (subr running (i64 sexps string bool (listof i64 acyclic)) made-entry)
+          (lambda (k forms typed quiet tops)
+            "Each form checked and lowered, as `repl-forms` does, in order; an
+             expression's value `%k`'s, the global bound at its type."
+            (if (null? forms)
+                (made-entry typed quiet tops)
+                (let* ((form (car forms))
+                       (expression (not (definition-form? form)))
+                       (shown-type (if expression (form-type (get repl-cv) form) ""))
+                       (effects (if expression (expression-effects (get repl-cv) form) nil))
+                       (name (string-append "%" (i64->string k)))
+                       (checked (checked-form (get repl-cv) form))
+                       (v (if expression (result-bound checked form name) checked))
+                       (gs (onto (get repl-globals) (new-names (if expression (list name) (global-names (list form))) (get repl-globals))))
+                       (line (if expression shown-type (form-type v form))))
+                  (begin
+                    (set repl-cv v)
+                    (set repl-globals gs)
+                    (globals-room! gs)
+                    (let ((ns (number-tops! (lower-tops (list form) gs))))
+                      (entry-forms k (cdr forms)
+                                   (cond ((string=? line "") typed)
+                                         ((string=? typed "") line)
+                                         (else (string-append typed (string-append "\n" line))))
+                                   (and quiet expression (quiet-effect? effects))
+                                   (onto tops (concat (map (lambda ((n i64)) (if (i64= n -1) nil (list n))) ns)))))))))))
+
+      (define result-bound (subr running (cv sexp string) cv)
+        (lambda (v form name)
+          "The checker's environment with `name` a global of `form`'s type."
+          (tagcase (with expressions (synth (at v "a top-level expression" nil) (new-state) form))
+            (res (t es s) (with-binds v (list (global v name (scheme nil (zonk s t)))))))))
+
+      (define expression-effects (subr running (cv sexp) strings)
+        (lambda (v form)
+          (tagcase (with expressions (synth (at v "a top-level expression" nil) (new-state) form))
+            (res (t es s) es))))
+
+      (define start-top! (subr running (entry) unit)
+        (lambda (e)
+          (let ((ts (get (extract e tops))))
+            (if (null? ts) #u (start-parked! (extract e num) (if (i64< (car ts) 0) (i64- (i64- 0 (car ts)) 2) (car ts)))))))
+
+      (define top-ended! (subr running (entry i64 i64) unit)
+        (lambda (e w now)
+          "A top ended (its number not negative if an expression, whose value
+           is then `%k`'s): the next begun, or the entry done."
+          (let* ((ts (get (extract e tops)))
+                 (rest (if (null? ts) nil (cdr ts)))
+                 (i (global-index (string-append "%" (i64->string (extract e num))) (get repl-globals) 0)))
+            (begin
+              (if (and (i64>= i 0) (not (null? ts)) (i64>= (car ts) 0)) (flatarray-set-i64! (get globals) i w) #u)
+              (set (extract e tops) rest)
+              (if (null? rest)
+                  (begin
+                    (set (extract e state) st-done)
+                    (set (extract e ended) now)
+                    (set (extract e shown)
+                         (if (i64< i 0)
+                             (extract e typed)
+                             (string-append (show-word (flatarray-ref-i64 (get globals) i)) (extract e typed))))
+                    (parked-cleared! (extract e num)))
+                  (start-top! e))))))
+
+      (define-rec
+        (global-index (subr running (string strings i64) i64)
+          (lambda (n gs i) (cond ((null? gs) -1) ((string=? (car gs) n) i) (else (global-index n (cdr gs) (i64+ i 1)))))))
+
+      (define taken-output! (subr running (entry) unit)
+        (lambda (e)
+          (begin
+            (set (extract e out) (string-append (get (extract e out)) (rev->string (get captured))))
+            (set captured nil))))
+
+      "The screen."
+
+      (define-rec
+        (wrapped-rows (subr kfx ((listof char acyclic) i64 i64 i64) i64)
+          (lambda (cs col width n)
+            "The rows text takes, starting at `col`, its lines wrapped at `width`."
+            (cond ((null? cs) n)
+                  ((char=? (car cs) #\newline) (wrapped-rows (cdr cs) 7 width (i64+ n 1)))
+                  ((i64>= col width) (wrapped-rows (cdr cs) 1 width (i64+ n 1)))
+                  (else (wrapped-rows (cdr cs) (i64+ col 1) width n))))))
+
+      (define-rec
+        (prompted (subr kfx ((listof char acyclic) chars) chars)
+          (lambda (cs acc)
+            "The draft as drawn: each line after the first after `     | `."
+            (cond ((null? cs) acc)
+                  ((char=? (car cs) #\newline) (prompted (cdr cs) (put "\r\n     | " acc)))
+                  (else (prompted (cdr cs) (cons (car cs) acc)))))))
+
+      (define draw-draft! (subr running (string) unit)
+        (lambda (d)
+          "The draft drawn from the start of its first row, the rows below cleared."
+          (let ((cs (string-chars d)))
+            (begin
+              (say! "\r\x1b;[J")
+              (say! "fx26> ")
+              (set written (prompted cs (get written)))
+              (set draft-rows (wrapped-rows cs 6 (get screen-cols) 1))
+              (set draft-dirty #f)))))
+
+      (define up! (subr running (i64) unit)
+        (lambda (n) (if (i64> n 0) (say! (string-append "\x1b;[" (string-append (i64->string n) "A"))) #u)))
+
+      (define down! (subr running (i64) unit)
+        (lambda (n) (if (i64> n 0) (say! (string-append "\x1b;[" (string-append (i64->string n) "B"))) #u)))
+
+      (define-rec
+        (lines-of (subr kfx ((listof char acyclic) chars strings) strings)
+          (lambda (cs acc out)
+            "Text's lines, the last, if not ended by a newline, too."
+            (cond ((null? cs) (if (null? acc) (oldest-first-strings out nil) (oldest-first-strings (cons (rev->string acc) out) nil)))
+                  ((char=? (car cs) #\newline) (lines-of (cdr cs) nil (cons (rev->string acc) out)))
+                  (else (lines-of (cdr cs) (cons (car cs) acc) out))))))
+
+      (define-rec
+        (oldest-first-strings (subr kfx (strings strings) strings)
+          (lambda (xs acc) (if (null? xs) acc (oldest-first-strings (cdr xs) (cons (car xs) acc))))))
+
+      (define printed! (subr running (string) unit)
+        (lambda (line)
+          "A row added to the transcript, above the draft."
+          (begin
+            (say! (if (get live) "\x1b;[2K" ""))
+            (say! line)
+            (say! (if (get live) "\r\n" "\n"))
+            (set rows (i64+ (get rows) (i64+ 1 (i64- (wrapped-rows (string-chars line) 0 (get screen-cols) 1) 1)))))))
+
+      (define plain-screen! (subr running (i64) unit)
+        (lambda (now)
+          (each-entry! (lambda ((e entry))
+                 (begin
+                   (if (string=? (get (extract e out)) "") #u (begin (say! (get (extract e out))) (set (extract e out) "")))
+                   (if (and (not (unfinished? e)) (i64< (get (extract e row)) 0))
+                       (let ((line (entry-line e now)))
+                         (begin (set (extract e row) 0) (if (string=? line "") #u (say! (string-append line "\n")))))
+                       #u)))
+               (oldest-first (get entries) nil))))
+
+      (define live-screen! (subr running (i64) unit)
+        (lambda (now)
+          (let ((es (oldest-first (get entries) nil))
+                (before (rev->string (get written))))
+            (begin
+              (set written nil)
+              ;; To the draft's first row.
+              (up! (i64- (get draft-rows) 1))
+              (say! "\r")
+              (let ((moved (rev->string (get written))))
+                (begin
+                  (set written nil)
+                  (each-entry! (lambda ((e entry)) (entry-drawn! e now)) es)
+                  (let ((changes (rev->string (get written))))
+                    (begin
+                      (set written (put before nil))
+                      (if (and (string=? changes "") (not (get draft-dirty)))
+                          #u
+                          (begin
+                            (say! moved)
+                            (say! changes)
+                            (draw-draft! (get draft))))))))))))
+
+      (define entry-drawn! (subr running (entry i64) unit)
+        (lambda (e now)
+          "An entry's output, as rows above the draft, and its line: written
+           new if not yet, rewritten where it is if changed and on the screen, or
+           written new if it ended off the screen. The cursor is left at the
+           draft's first row."
+          (let ((out (get (extract e out))))
+            (begin
+              (if (string=? out "")
+                  #u
+                  (begin
+                    (set (extract e out) "")
+                    (each-line! (lambda ((l string)) (printed! (string-append "[" (string-append (i64->string (extract e num)) (string-append "]│ " l)))))
+                         (lines-of (string-chars out) nil nil))))
+              (let* ((line (entry-line e now))
+                     (row (get (extract e row)))
+                     (up (i64- (get rows) row)))
+                (cond ((string=? line (get (extract e drawn))) #u)
+                      ((i64< row 0)
+                       (begin (set (extract e row) (get rows)) (set (extract e drawn) line) (printed! line)))
+                      ((i64< up (i64- (get screen-rows) (get draft-rows)))
+                       (begin
+                         (set (extract e drawn) line)
+                         (up! up)
+                         (say! "\r\x1b;[2K")
+                         (say! line)
+                         (down! up)
+                         (say! "\r")))
+                      ((unfinished? e) #u)
+                      (else (begin (set (extract e row) (get rows)) (set (extract e drawn) line) (printed! line))))))))))
+
+    (define session-start! (subr running (bool i64 i64) string)
+      (lambda (is-live height width)
+        (begin
+          (repl-start!)
+          (set live is-live)
+          (set screen-rows height)
+          (set screen-cols width)
+          (if is-live
+              (string-append (repl-banner) "\r\n(each entry runs while you type the next, its value %k after it; ^C interrupts the newest, ^D leaves)\r\n")
+              ""))))
+
+    "Keys."
+
+    (define key! (subr running (i64 i64) unit)
+      (lambda (c now)
+        "One key: a character typed, or ^C, ^D, Enter, Backspace; an escape
+         sequence (arrows: stage 2) read past."
+        (cond ((i64= (get escape) 1) (set escape (if (i64= c 91) 2 0)))
+              ((i64= (get escape) 2) (if (or (i64< c 64) (i64> c 126)) #u (set escape 0)))
+              ((i64= c 27) (set escape 1))
+              ((i64= c 3) (interrupt! now))
+              ((i64= c 4) (if (string=? (get draft) "") (set leaving #t) #u))
+              ((or (i64= c 127) (i64= c 8))
+               (let ((d (get draft)))
+                 (if (string=? d "")
+                     #u
+                     (begin (set draft (substring d 0 (i64->int (i64- (string-length-i64 d) 1)))) (set draft-dirty #t)))))
+              ((or (i64= c 13) (i64= c 10))
+               (let ((d (string-append (get draft) "\n")))
+                 (if (repl-complete? d)
+                     (begin (finish-draft!) (set draft "") (submit! d now))
+                     (begin (set draft d) (set draft-dirty #t)))))
+              ((i64< c 32) #u)
+              (else (begin (set draft (string-append (get draft) (char->string (integer->char (i64->int c))))) (set draft-dirty #t))))))
+
+    (define refused! (subr running (string i64) unit)
+      (lambda (message now)
+        "The entry being checked refused (the Rust caught the failure)."
+        (let ((es (get entries)))
+          (if (or (null? es) (not (i64= (get (extract (car es) state)) st-checking)))
+              #u
+              (begin
+                (set (extract (car es) state) st-refused)
+                (set (extract (car es) shown) message)
+                (set (extract (car es) ended) now))))))
+
+    "Running."
+
+    (define next-task (subr running () i64)
+      (lambda ()
+        "The entry to run a slice of, by turns, or -1."
+        (let* ((ready (entries-where may-run? (oldest-first (get entries) nil)))
+               (last (get last-run))
+               (after (entries-where (lambda ((e entry)) (i64> (extract e num) last)) ready)))
+          (cond ((not (null? after)) (extract (car after) num))
+                ((not (null? ready)) (extract (car ready) num))
+                (else -1)))))
+
+    (define slice! (subr running (i64 i64) unit)
+      (lambda (k now)
+        "A slice of entry `k`: its tops run on from where they paused."
+        (let ((found (entry-numbered (get entries) k)))
+          (if (null? found)
+              #u
+              (let ((e (car found)))
+                (begin
+                  (set last-run k)
+                  (if (i64= (get (extract e state)) st-waiting)
+                      (begin (set (extract e state) st-running) (start-top! e))
+                      #u)
+                  (set task-slot k)
+                  (set fuel slice-steps)
+                  (set capturing #t)
+                  (let ((w (if (null? (get (extract e tops))) w-unit (resume k))))
+                    (begin
+                      (set fuel -1)
+                      (set capturing #f)
+                      (taken-output! e)
+                      (if (i64= w w-paused) #u (top-ended! e w now))))))))))
+
+    (define failed! (subr running (i64 string i64) unit)
+      (lambda (k message now)
+        "Entry `k` failed (the Rust caught the failure)."
+        (begin
+          (set fuel -1)
+          (set capturing #f)
+          (let ((found (entry-numbered (get entries) k)))
+            (if (null? found)
+                #u
+                (let ((e (car found)))
+                  (begin
+                    (taken-output! e)
+                    (set (extract e state) st-failed)
+                    (set (extract e shown) (string-append "! evaluation failed: " message))
+                    (set (extract e ended) now)
+                    (parked-cleared! k))))))))
+
+    (define screen! (subr running (i64) string)
+      (lambda (now)
+        "What to write: in plain mode, each entry's output, and its line when
+         it ends, in order; live, the lines that changed, rewritten in place
+         if on the screen, new rows above the draft, and the draft."
+        (begin
+          (if (get live) (live-screen! now) (plain-screen! now))
+          (let ((s (rev->string (get written)))) (begin (set written nil) s)))))
+
+    (define wait-ms (subr running () i64)
+      (lambda ()
+        "How long the Rust may wait for a key: none if a task may run; long
+         enough for a spinner's next frame if an entry is unfinished; or until
+         one comes."
+        (cond ((i64>= (next-task) 0) 0)
+              ((some-entry? unfinished? (get entries)) (if (get live) 80 0))
+              (else -1))))
+
+    (define over? (subr running () bool)
+      (lambda ()
+        "Whether to leave: ^D (or the input's end) asked, and no entry unfinished."
+        (and (get leaving) (not (some-entry? unfinished? (get entries))))))
+
+    (define leave! (subr running () unit)
+      (lambda () (set leaving #t)))))

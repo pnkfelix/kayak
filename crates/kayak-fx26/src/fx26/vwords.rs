@@ -539,6 +539,32 @@ pub fn io_error_word_x(e: Product_4kind_6detail<&'static Sum_9not_found_17permis
     p
 }
 
+// Output a program writes while the REPL runs it (live-repl.kfx): kept for
+// its entry, not written.
+pub fn capturing() -> Ref<bool> {
+    thread_local!(static ONCE: OnceCell<Ref<bool>> = const { OnceCell::new() });
+    once(&ONCE, || {
+        kayak_rt::heap_new(false)
+    })
+}
+
+pub fn captured() -> Ref<Chars> {
+    thread_local!(static ONCE: OnceCell<Ref<Chars>> = const { OnceCell::new() });
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<char>())
+    })
+}
+
+/// What `write-out` does in the REPL: kept for the entry running, if one is.
+pub fn capture_x(s: Str) -> bool {
+    if get(capturing()) {
+        set(captured(), put(s, get(captured())));
+        true
+    } else {
+        false
+    }
+}
+
 pub fn written_word_x(r: &'static Sum_4done_6failed<(), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>) -> i64 {
     let tagcase_ = r;
     match *tagcase_ {

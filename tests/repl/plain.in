@@ -1,0 +1,7 @@
+(define x int 5)
+(+ x 1)
+(write-out "hi\n")
+(+ %2 x)
+(quotient x 0)
+(define y int (+ x %4))
+y

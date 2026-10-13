@@ -449,3 +449,24 @@ emitting; a warm compile 0.02 s dearer than with no modules.
   keep it by the module's text and the chain before it, as items are.
 - Comments between a module's items: done (C93), strings again, as FX-26
   now takes them, and comments in the Rust.
+
+## 27. The REPL (the user's, 2026-10-13; `docs/research/repl.md`, C94)
+
+Stage 1 done: entries run while the next is typed, each a task on the
+machine (fuel, parked registers), a live line rewritten in place, `%k`,
+waiting on a pending `%k`, ^C, effects deciding which run together;
+scripted sessions (`tests/repl/`, `scripts/repl-sessions.py`).
+- Stage 2, editing as Fixpt's (`fixpt/crates/fixpt-cli/src/lineedit.rs`):
+  arrows, ^A ^E ^K ^U ^W, history in a file, completion of names.
+- Stage 3, commands as Fixpt's: `,help`, `,type`, `,time`, `,load`,
+  `,quit`, `,step-limit`, `,apropos`, `,pending`, `,cancel K`, `,wait K`.
+- Stage 4: `load-module` in the REPL; an entry's output beside its line.
+- Stage 5: behaviors (FrTime), a design first.
+- A refusal is caught by the Rust as a failure, so the checker's state
+  after one is whatever the failed check left (as before C94).
+- kfx: a file `f.kfx` whose module is named `f` makes ambiguous Rust
+  (`pub use f::*` beside `f::f`); refuse it, or name the file's Rust
+  module apart.
+- kfx's checker fails (`car: nil`), not refuses with words, on
+  `(listof int)`, a `listof` with no region.
+

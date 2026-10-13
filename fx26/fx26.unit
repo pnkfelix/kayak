@@ -19,3 +19,4 @@ vm.kfx
 vshow.kfx
 main.kfx
 repl.kfx
+live-repl.kfx

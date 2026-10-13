@@ -13,6 +13,15 @@
 (define reserve i64 65536)
 
 (define roots (ref (flatarrayof i64 @h) @h) (new (make-flatarray-i64 6 0)))
+
+"Fuel (the REPL's, docs/research/repl.md): the steps a run may take
+ before it pauses, or -1, no limit. A paused run's registers are kept in
+ the roots, in its task's slot (`parked-at`), so that the collector keeps
+ what they reach; `w-paused` is what `run` then gives."
+(define fuel (ref i64 @h) (new -1))
+(define task-slot (ref i64 @h) (new 0))
+(define w-paused i64 62)
+(define parked-at (subr kfx (i64) i64) (lambda (slot) (i64+ 8 (i64* slot 8))))
 (define globals (ref (flatarrayof i64 @h) @h) (new (make-flatarray-i64 1 0)))
 (define global-name-table (ref (arrayof string @h) @h) (new (make-array 1 "")))
 (define tags-made (ref i64 @h) (new 0))
@@ -167,7 +176,10 @@
       (if (i64< (heap-room) reserve)
           (gc-run mode node env k val f args 0)
           (cond
+            ((i64= (get fuel) 0) (park! mode node env k val f args))
             ((i64= mode 0)
+             (begin
+             (if (i64> (get fuel) 0) (set fuel (i64- (get fuel) 1)) #u)
              (tagcase (node-at node)
                (n-lit (c) (run 1 0 env k (constant-at c) 0 0))
                (n-local (d s) (run 1 0 env k (obj-ref (env-up env d) (i64+ s 1)) 0 0))
@@ -202,7 +214,7 @@
                      (run 0 (kid-at at) env (frame! fk-list k 4 (code-word node) (fixnum 1) env w-nil) 0 0 0)))
                (n-extract (l x) (run 0 x env (frame! fk-extract k 1 (fixnum l) 0 0 0) 0 0 0))
                (n-tagcase (x start count default) (run 0 x env (frame! fk-tagcase k 2 (code-word node) env 0 0) 0 0 0))
-               (n-prompt (t h body) (run 0 t env (frame! fk-ptag k 2 (code-word node) env 0 0) 0 0 0))))
+               (n-prompt (t h body) (run 0 t env (frame! fk-ptag k 2 (code-word node) env 0 0) 0 0 0)))))
             ((i64= mode 1)
              (if (i64= k w-nil)
                  val
@@ -255,6 +267,16 @@
                      ((i64= kind fk-abort) (abort-to (fixnum-value (frame-field k 0)) next val))
                      (else (begin (error "the engine: a frame of no kind") 0))))))
             (else (apply-step f args k))))))
+
+  (park! (subr vm (i64 i64 i64 i64 i64 i64 i64) i64)
+    (lambda (mode node env k val f args)
+      "The registers kept in the task's slot of the roots; `w-paused`."
+      (let ((r (get roots)) (at (parked-at (get task-slot))))
+        (begin
+          (flatarray-set-i64! r at (fixnum mode)) (flatarray-set-i64! r (i64+ at 1) (fixnum node))
+          (flatarray-set-i64! r (i64+ at 2) env) (flatarray-set-i64! r (i64+ at 3) k) (flatarray-set-i64! r (i64+ at 4) val)
+          (flatarray-set-i64! r (i64+ at 5) f) (flatarray-set-i64! r (i64+ at 6) args)
+          w-paused))))
 
   (gc-run (subr vm (i64 i64 i64 i64 i64 i64 i64 i64) i64)
     (lambda (mode node env k val f args need)
@@ -396,3 +418,36 @@
                     (gc-run 2 0 0 k 0 f args need)
                     (run 1 0 0 k (apply-op op args) 0 0)))))))
         (else (begin (error "the engine: a call of no procedure") 0))))))
+
+(define resume (subr vm (i64) i64)
+  (lambda (slot)
+    "A paused run of the task in `slot` run on, until it ends or pauses."
+    (let ((r (get roots)) (at (parked-at slot)))
+      (run (fixnum-value (flatarray-ref-i64 r at)) (fixnum-value (flatarray-ref-i64 r (i64+ at 1)))
+           (flatarray-ref-i64 r (i64+ at 2)) (flatarray-ref-i64 r (i64+ at 3)) (flatarray-ref-i64 r (i64+ at 4))
+           (flatarray-ref-i64 r (i64+ at 5)) (flatarray-ref-i64 r (i64+ at 6))))))
+
+(define-rec
+  (roots-copied! (subr vm ((flatarrayof i64 @h) (flatarrayof i64 @h) i64 i64) unit)
+    (lambda (from to i n) (if (i64>= i n) #u (begin (flatarray-set-i64! to i (flatarray-ref-i64 from i)) (roots-copied! from to (i64+ i 1) n))))))
+
+(define roots-room! (subr vm (i64) unit)
+  (lambda (slot)
+    "The roots long enough for `slot`'s registers."
+    (let ((old (get roots)) (need (parked-at (i64+ slot 1))))
+      (if (i64<= need (flatarray-length-i64 old))
+          #u
+          (let ((bigger (the (flatarrayof i64 @h) (make-flatarray-i64 (i64* need 2) 0))))
+            (begin (roots-copied! old bigger 0 (flatarray-length-i64 old)) (set roots bigger)))))))
+
+(define start-parked! (subr vm (i64 i64) unit)
+  (lambda (slot node)
+    "The task in `slot` made to begin evaluating `node`, a top-level form:
+     as if paused before its first step."
+    (begin
+      (roots-room! slot)
+      (let ((r (get roots)) (at (parked-at slot)))
+        (begin
+          (flatarray-set-i64! r at (fixnum 0)) (flatarray-set-i64! r (i64+ at 1) (fixnum node))
+          (flatarray-set-i64! r (i64+ at 2) 0) (flatarray-set-i64! r (i64+ at 3) w-nil) (flatarray-set-i64! r (i64+ at 4) 0)
+          (flatarray-set-i64! r (i64+ at 5) 0) (flatarray-set-i64! r (i64+ at 6) w-nil))))))

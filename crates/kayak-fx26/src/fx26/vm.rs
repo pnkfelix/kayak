@@ -25,6 +25,32 @@ pub fn roots() -> Ref<FlatArray<i64>> {
     })
 }
 
+// Fuel (the REPL's, docs/research/repl.md): the steps a run may take
+// before it pauses, or -1, no limit. A paused run's registers are kept in
+// the roots, in its task's slot (`parked-at`), so that the collector keeps
+// what they reach; `w-paused` is what `run` then gives.
+pub fn fuel() -> Ref<i64> {
+    thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+    once(&ONCE, || {
+        kayak_rt::heap_new(-1i64)
+    })
+}
+
+pub fn task_slot() -> Ref<i64> {
+    thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn w_paused() -> i64 {
+    62i64
+}
+
+pub fn parked_at(slot: i64) -> i64 {
+    i64_plus(8i64, i64_star(slot, 8i64))
+}
+
 pub fn globals() -> Ref<FlatArray<i64>> {
     thread_local!(static ONCE: OnceCell<Ref<FlatArray<i64>>> = const { OnceCell::new() });
     once(&ONCE, || {
@@ -377,7 +403,14 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
         if i64_lt(heap_room(), reserve()) {
             return gc_run(mode, node, env, k, val, f, args, 0i64);
         } else {
-            if i64_eq(mode, 0i64) {
+            if i64_eq(get(fuel()), 0i64) {
+                return park_x(mode, node, env, k, val, f, args);
+            } else if i64_eq(mode, 0i64) {
+                if i64_gt(get(fuel()), 0i64) {
+                    set(fuel(), i64_minus(get(fuel()), 1i64))
+                } else {
+                    ()
+                };
                 let tagcase_ = node_at(node);
                 match *tagcase_ {
                     Node::NLit(c) => {
@@ -608,6 +641,19 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
             }
         }
     }
+}
+
+/// The registers kept in the task's slot of the roots; `w-paused`.
+pub fn park_x(mode: i64, node: i64, env: i64, k: i64, val: i64, f: i64, args: i64) -> i64 {
+    let (r, at) = (get(roots()), parked_at(get(task_slot())));
+    flatarray_set_i64_x(r, at, fixnum(mode));
+    flatarray_set_i64_x(r, i64_plus(at, 1i64), fixnum(node));
+    flatarray_set_i64_x(r, i64_plus(at, 2i64), env);
+    flatarray_set_i64_x(r, i64_plus(at, 3i64), k);
+    flatarray_set_i64_x(r, i64_plus(at, 4i64), val);
+    flatarray_set_i64_x(r, i64_plus(at, 5i64), f);
+    flatarray_set_i64_x(r, i64_plus(at, 6i64), args);
+    w_paused()
 }
 
 /// The registers to the roots, the heap collected (made room for `need`
@@ -860,5 +906,49 @@ pub fn apply_step(f: i64, args: i64, k: i64) -> i64 {
         error(str_lit("the engine: a call of no procedure"));
         0i64
     }
+}
+
+/// A paused run of the task in `slot` run on, until it ends or pauses.
+pub fn resume(slot: i64) -> i64 {
+    let (r, at) = (get(roots()), parked_at(slot));
+    run(fixnum_value(flatarray_ref_i64(r, at)), fixnum_value(flatarray_ref_i64(r, i64_plus(at, 1i64))), flatarray_ref_i64(r, i64_plus(at, 2i64)), flatarray_ref_i64(r, i64_plus(at, 3i64)), flatarray_ref_i64(r, i64_plus(at, 4i64)), flatarray_ref_i64(r, i64_plus(at, 5i64)), flatarray_ref_i64(r, i64_plus(at, 6i64)))
+}
+
+pub fn roots_copied_x(mut from: FlatArray<i64>, mut to: FlatArray<i64>, mut i: i64, mut n: i64) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            flatarray_set_i64_x(to, i, flatarray_ref_i64(from, i));
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+/// The roots long enough for `slot`'s registers.
+pub fn roots_room_x(slot: i64) -> () {
+    let (old, need) = (get(roots()), parked_at(i64_plus(slot, 1i64)));
+    if i64_lt_eq(need, flatarray_length_i64(old)) {
+        ()
+    } else {
+        let bigger = the::<FlatArray<i64>>(make_flatarray_i64(i64_star(need, 2i64), 0i64));
+        roots_copied_x(old, bigger, 0i64, flatarray_length_i64(old));
+        set(roots(), bigger)
+    }
+}
+
+/// The task in `slot` made to begin evaluating `node`, a top-level form:
+/// as if paused before its first step.
+pub fn start_parked_x(slot: i64, node: i64) -> () {
+    roots_room_x(slot);
+    let (r, at) = (get(roots()), parked_at(slot));
+    flatarray_set_i64_x(r, at, fixnum(0i64));
+    flatarray_set_i64_x(r, i64_plus(at, 1i64), fixnum(node));
+    flatarray_set_i64_x(r, i64_plus(at, 2i64), 0i64);
+    flatarray_set_i64_x(r, i64_plus(at, 3i64), w_nil());
+    flatarray_set_i64_x(r, i64_plus(at, 4i64), 0i64);
+    flatarray_set_i64_x(r, i64_plus(at, 5i64), 0i64);
+    flatarray_set_i64_x(r, i64_plus(at, 6i64), w_nil())
 }
 

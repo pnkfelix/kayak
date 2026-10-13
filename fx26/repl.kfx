@@ -1,10 +1,8 @@
-"repl.kfx: the engine's REPL (C65), after Fixpt's: each form read as it
- is typed, checked against what was defined before it, run on the machine
+"repl.kfx: the engine's REPL (C65), after Fixpt's: what it keeps between
+ forms, checked against what was defined before them, run on the machine
  over words (vm.kfx), whose heap and globals it keeps, and written as
- `fixpt repl` writes it, `value : type ! effect`. Its loop and its
- prompts are the hand-written Rust's (crates/kayak-fx26/src/main.rs),
- which also catches a refusal or a failure, so that the REPL goes on:
- the checker refuses by failing, and KFX catches nothing."
+ `fixpt repl` writes it, `value : type ! effect`. Its entries, keys and
+ screen are live-repl.kfx's (C94)."
 
 "What the REPL keeps between forms: the checker's environment, the globals'
  names (an index each, as `lower.kfx` has them), and how many forms."
@@ -41,8 +39,7 @@
 
 (define repl-banner (subr kfx () string)
   (lambda ()
-    "kayak-fx26 0.1 — FX-26, the engine written in KFX (an interpreter over a heap of its own, collected)
-(each form is checked by the compiler's checker, lowered, and run; ^D leaves.)"))
+    "kayak-fx26 0.1 — FX-26, the engine written in KFX (an interpreter over a heap of its own, collected)"))
 
 "Globals: their array grown as definitions come."
 (define-rec
@@ -116,39 +113,3 @@
           (else
            (tagcase (with expressions (synth (at v "a top-level expression" nil) (new-state) form))
              (res (t es s) (string-append " : " (string-append (show-ty s t) (string-append " ! " (show-effs es))))))))))
-
-(define-rec
-  (run-repl-tops (subr running ((listof i64 acyclic) string) string)
-    (lambda (ns typed)
-      (if (null? ns)
-          typed
-          (let ((n (car ns)))
-            (cond ((i64= n -1) (run-repl-tops (cdr ns) typed))
-                  ((i64< n 0) (begin (run 0 (i64- (i64- 0 n) 2) 0 w-nil 0 0 0) (run-repl-tops (cdr ns) typed)))
-                  (else (let ((w (run 0 n 0 w-nil 0 0 0))) (string-append (show-word w) typed)))))))))
-
-(define-rec
-  (repl-forms (subr running (sexps string) string)
-    (lambda (forms out)
-      (if (null? forms)
-          out
-          (let* ((form (car forms))
-                 (v (checked-form (get repl-cv) form))
-                 (gs (onto (get repl-globals) (new-names (global-names (list form)) (get repl-globals))))
-                 (shown (form-type v form)))
-            (begin
-              (set repl-cv v)
-              (set repl-globals gs)
-              (globals-room! gs)
-              (let* ((ns (number-tops! (lower-tops (list form) gs)))
-                     (line (run-repl-tops ns (if (string=? shown "") "" shown)))
-                     (written (if (or (head-is? form "define") (head-is? form "define*")) shown line)))
-                (repl-forms (cdr forms) (if (string=? written "") out (string-append out (string-append written "\n")))))))))))
-
-(define repl-eval! (subr running (string) string)
-  (lambda (text)
-    "A form, or several, as typed: what the REPL writes of them."
-    (let ((k (get repl-count)))
-      (begin
-        (set repl-count (i64+ k 1))
-        (repl-forms (read-all (string-chars text) (string-append "<fx26:" (string-append (i64->string (i64+ k 1)) ">")) 1) "")))))

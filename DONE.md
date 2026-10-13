@@ -1196,3 +1196,11 @@ as `kayak-fx26`; 21 of the corpus's 53 programs agree with Fixpt on it.
 C64: the engine's heap of its own, words in flat arrays, a Cheney collector
 in KFX. C65: `kayak-fx26 repl`. C66: the compiler on the engine compiles
 itself to `boot/src/kfx/` exactly (`scripts/selfhost-engine.sh`, 278 s).
+
+## The REPL, live: entries that run while the next is typed (2026-10-13)
+
+C94: `fx26/live-repl.kfx` (a module, `session`), the machine's fuel and
+parked registers (`vm.kfx`), the Rust shell as a shuttle of bytes and
+time (`crates/kayak-fx26/src/main.rs`), `--keys` sessions in virtual
+time; `tests/repl/`, `scripts/repl-sessions.py` in the check.
+

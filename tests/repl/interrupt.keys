@@ -1,0 +1,7 @@
+# ^C drops a draft; with none, it interrupts the newest entry running.
+0 (define spin-on (subr (maxeff spin (read @globals)) (int) int) (lambda (n) (spin-on (+ n 1))))\r
+100 (spin-on 0)\r
+300 (+ 1
+350 \x03
+400 \x03
+500 (+ 2 2)\r

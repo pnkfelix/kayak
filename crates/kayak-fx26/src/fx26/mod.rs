@@ -38,3 +38,9 @@ pub mod main;
 pub use main::*;
 pub mod repl;
 pub use repl::*;
+pub mod live_repl;
+pub use live_repl::*;
+#[allow(non_camel_case_types)]
+#[derive(Clone, Copy)]
+pub struct Product_3num_4text_5typed_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5, pub A6, pub A7, pub A8, pub A9, pub A10, pub A11, pub A12);
+

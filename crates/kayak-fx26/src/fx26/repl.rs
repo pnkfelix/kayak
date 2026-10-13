@@ -3,13 +3,11 @@
 use kayak_rt::*;
 use super::*;
 
-// repl.kfx: the engine's REPL (C65), after Fixpt's: each form read as it
-// is typed, checked against what was defined before it, run on the machine
+// repl.kfx: the engine's REPL (C65), after Fixpt's: what it keeps between
+// forms, checked against what was defined before them, run on the machine
 // over words (vm.kfx), whose heap and globals it keeps, and written as
-// `fixpt repl` writes it, `value : type ! effect`. Its loop and its
-// prompts are the hand-written Rust's (crates/kayak-fx26/src/main.rs),
-// which also catches a refusal or a failure, so that the REPL goes on:
-// the checker refuses by failing, and KFX catches nothing.
+// `fixpt repl` writes it, `value : type ! effect`. Its entries, keys and
+// screen are live-repl.kfx's (C94).
 
 // What the REPL keeps between forms: the checker's environment, the globals'
 // names (an index each, as `lower.kfx` has them), and how many forms.
@@ -95,7 +93,7 @@ pub fn repl_complete_p(text: Str) -> bool {
 }
 
 pub fn repl_banner() -> Str {
-    str_lit("kayak-fx26 0.1 — FX-26, the engine written in KFX (an interpreter over a heap of its own, collected)\n(each form is checked by the compiler's checker, lowered, and run; ^D leaves.)")
+    str_lit("kayak-fx26 0.1 — FX-26, the engine written in KFX (an interpreter over a heap of its own, collected)")
 }
 
 // Globals: their array grown as definitions come.
@@ -240,66 +238,5 @@ pub fn form_type(v: &'static Cv, form: &'static Sexp) -> Str {
             }
         }
     }
-}
-
-pub fn run_repl_tops(mut ns: List<i64>, mut typed: Str) -> Str {
-    loop {
-        if null_p(ns) {
-            return typed;
-        } else {
-            let n = car(ns);
-            if i64_eq(n, -1i64) {
-                ns = cdr(ns);
-                continue;
-            } else if i64_lt(n, 0i64) {
-                run(0i64, i64_minus(i64_minus(0i64, n), 2i64), 0i64, w_nil(), 0i64, 0i64, 0i64);
-                ns = cdr(ns);
-                continue;
-            } else {
-                let w = run(0i64, n, 0i64, w_nil(), 0i64, 0i64, 0i64);
-                return string_append(show_word(w), typed);
-            }
-        }
-    }
-}
-
-pub fn repl_forms(mut forms: Sexps, mut out: Str) -> Str {
-    loop {
-        if null_p(forms) {
-            return out;
-        } else {
-            let form = car(forms);
-            let v = checked_form(get(repl_cv()), form);
-            let gs = onto(get(repl_globals()), new_names(global_names(kayak_rt::heap_cons(form, kayak_rt::nil())), get(repl_globals())));
-            let shown = form_type(v, form);
-            set(repl_cv(), v);
-            set(repl_globals(), gs);
-            globals_room_x(gs);
-            let ns = number_tops_x(lower_tops(kayak_rt::heap_cons(form, kayak_rt::nil()), gs));
-            let line = run_repl_tops(ns, if string_eq_p(shown, str_lit("")) {
-                str_lit("")
-            } else {
-                shown
-            });
-            let written = if (head_is_p(form, str_lit("define")) || head_is_p(form, str_lit("define*"))) {
-                shown
-            } else {
-                line
-            };
-            (forms, out) = (cdr(forms), if string_eq_p(written, str_lit("")) {
-                out
-            } else {
-                string_append(out, string_append(written, str_lit("\n")))
-            });
-            continue;
-        }
-    }
-}
-
-/// A form, or several, as typed: what the REPL writes of them.
-pub fn repl_eval_x(text: Str) -> Str {
-    let k = get(repl_count());
-    set(repl_count(), i64_plus(k, 1i64));
-    repl_forms(read_all(string_chars(text), string_append(str_lit("<fx26:"), string_append(i64_to_string(i64_plus(k, 1i64)), str_lit(">"))), 1i64), str_lit(""))
 }
 

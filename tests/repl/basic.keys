@@ -1,0 +1,6 @@
+# A slow entry, and two typed while it runs: one ends first; one names
+# the slow one's value, %2, and waits for it.
+0 (define fib (subr (maxeff spin (read @globals)) (int) int) (lambda (n) (if (< n 2) n (+ (fib (- n 1)) (fib (- n 2))))))\r
+100 (fib 25)\r
+130 (+ 1 2)\r
+160 (+ %2 %3)\r

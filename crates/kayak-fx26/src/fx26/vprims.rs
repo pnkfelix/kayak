@@ -377,7 +377,12 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 124i64) {
         bool_word(is_obj_p(a, ob_bytes()))
     } else if i64_eq(op, 125i64) {
-        written_word_x(write_out(word_string(a)))
+        let text = word_string(a);
+        if capture_x(text) {
+            sum_word_x(str_lit("done"), w_unit())
+        } else {
+            written_word_x(write_out(text))
+        }
     } else if i64_eq(op, 126i64) {
         written_word_x(write_err(word_string(a)))
     } else if i64_eq(op, 127i64) {

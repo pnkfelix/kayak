@@ -1913,3 +1913,41 @@ nothing and is not in the module's type.
   value is made where it is defined, `let _ = g();`, as FX-26 makes it, so
   that one that fails fails there: a Rust global is made when first read.
 
+## C94. The REPL's first stage: entries as tasks on the machine, a live transcript (2026-10-13)
+
+The user (2026-10-13): improve the REPL, Fixpt's features on Coopt's
+foundation, and an entry's line live while the next prompt is already up
+(FrTime's spirit). Design: `docs/research/repl.md`.
+- **The foundation is kayak's Coopt-like design, not Coopt's crates**
+  (PLAN §6.1 had declined them: their executor's policy is Rust, against
+  K7, and they bring `libc`): the REPL is a function of what arrives
+  (`live-repl.kfx`, in KFX: keys, entries, which runs, the screen as
+  bytes); the Rust only shuttles bytes and time (raw mode by `stty`, as
+  Fixpt's; a reader thread; slices for 16 ms; failures caught, since
+  KFX catches nothing). So a session is deterministic given its
+  arrivals: `kayak-fx26 --keys FILE` runs one in virtual time, a slice a
+  millisecond, and its bytes are the tests (Coopt's sim runner).
+- **An entry is a task: the machine's registers, parked.** The engine is
+  a CEK machine whose continuation is in its heap, so a run pauses when
+  its fuel (steps) is spent, its seven registers kept in its slot of the
+  collector's roots, and resumes from them; no Rust thread, no future.
+  The fuel check cost nothing measurable (`(fib 27)` 0.14 s, 0.16 before).
+- **Which run together**: an entry whose effect only reads globals,
+  allocates and spins runs beside others; one that writes, defines or
+  does I/O waits for all before it, and all after it wait for it; one
+  that names `%k` waits for entry `k`. Plain mode (no terminal) runs them
+  one after another and writes each line when it ends, as before.
+- **Results are `%k`**, not `$k` (KFX's names, which the engine's checker
+  keeps, have no `$`): an expression entry's value, the global bound at
+  its type when it is checked, stored when it ends.
+- **The screen**: a new entry's line is written below its draft; a line
+  that changes is rewritten in place (ANSI up, clear, down) if on the
+  screen, else written anew above the draft; output an entry writes is
+  kept for it (`write-out` captured) and written as `[k]│ ` rows.
+- **^C** drops the draft, or, with none, interrupts the newest entry not
+  ended; ^D (or the input's end) leaves once none is unfinished.
+- **`live-repl.kfx` is a module** (dogfood, C86–C93): its state and
+  helpers hidden, the Rust given ten names. Its file is not named
+  `session.kfx`: kfx's Rust for a file and a module of one name is
+  ambiguous (TODO §27).
+
