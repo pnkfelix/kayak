@@ -2075,16 +2075,22 @@
                           (tagcase (car found) (bind (b sc wher) (tagcase sc (scheme (tvars t) (mentions? s t r)))))))))
             (names-in body)))))
 
+(define-rec
+  (binds-prefixed (subr kfx (string binds) binds)
+    (lambda (prefix bs)
+      (if (null? bs)
+          nil
+          (tagcase (car bs)
+            (bind (n sc wher)
+              (if (and (string=? wher "export") (has-prefix? n prefix))
+                  (cons (bind (after-prefix n prefix) sc "item") (binds-prefixed prefix (cdr bs)))
+                  (binds-prefixed prefix (cdr bs)))))))))
+
 (define opened-binds (subr kfx (string binds) binds)
   (lambda (m bs)
-    "Module `m`'s values, as items, named as `m` names them."
-    (if (null? bs)
-        nil
-        (tagcase (car bs)
-          (bind (n sc wher)
-            (if (and (string=? wher "export") (has-prefix? n (string-append m " ")))
-                (cons (bind (after-prefix n (string-append m " ")) sc "item") (opened-binds m (cdr bs)))
-                (opened-binds m (cdr bs))))))))
+    "Module `m`'s values, as items, named as `m` names them (the prefix made
+     once, C92: a module including another asks it often)."
+    (binds-prefixed (string-append m " ") bs)))
 
 (define well-formed? (subr kfx (string sexps) bool)
   (lambda (h xs)

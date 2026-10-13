@@ -1125,6 +1125,16 @@
     (let ((ex (except-names v written n)))
       (concat (map (lambda ((d bind)) (tagcase d (bind (k sc w) (if (string-member? k ex) nil (the binds (list d)))))) (opened-binds n bs))))))
 
+"Each module a module includes, with the values it gives it, found once."
+(define-datatype typed-binds (typed-binds string binds))
+
+(define-rec
+  (binds-of-include (subr kfx (string (listof typed-binds acyclic)) binds)
+    (lambda (n ibs)
+      (cond ((null? ibs) nil)
+            ((tagcase (car ibs) (typed-binds (k bs) (string=? k n))) (tagcase (car ibs) (typed-binds (k bs) bs)))
+            (else (binds-of-include n (cdr ibs)))))))
+
 (define excepted-aliases (subr kfx (cv sexps string aliases) aliases)
   (lambda (v written n als)
     (let ((ex (except-names v written n)))
@@ -1185,13 +1195,21 @@
             (else nil)))))
 
 (define-rec
-  (refs-in (subr kfx (sexp strings sexps) strings)
+  (nset-names (subr kfx (nset) strings)
+    (lambda (s) (tagcase s (nempty () nil) (nnode (l k r) (onto (nset-names l) (cons k (nset-names r))))))))
+
+(define nset-without (subr kfx (nset strings) nset)
+  (lambda (s out) (nset-of (concat (map (lambda ((n string)) (if (string-member? n out) nil (the strings (list n)))) (nset-names s))))))
+
+(define-rec
+  (refs-in (subr kfx (sexp nset sexps) strings)
     (lambda (e names forms)
       "The items among `names` that `e` names; in a `(with m ...)` of a
        module item, not the names `m` gives, which are `m`'s (C88, FX-26's
-       `(define x (with m x))`)."
+       `(define x (with m x))`). `names` a tree (C92): this walks every
+       item's body, every compile."
       (tagcase e
-        (sym (n f p) (if (string-member? n names) (the strings (list n)) nil))
+        (sym (n f p) (if (in-nset? n names) (the strings (list n)) nil))
         (lst (xs f l p)
           (if (and (head-is? e "with") (not (null? (cdr xs))) (tagcase (second xs) (sym (n f2 p2) #t) (else other #f)))
               (let* ((m (sym-name (second xs)))
@@ -1200,8 +1218,8 @@
                                                (concat (map item-names (module-written g)))
                                                nil))
                                          forms)))
-                     (inner (concat (map (lambda ((n string)) (if (string-member? n given) nil (the strings (list n)))) names))))
-                (onto (if (string-member? m names) (the strings (list m)) nil)
+                     (inner (if (null? given) names (nset-without names given))))
+                (onto (if (in-nset? m names) (the strings (list m)) nil)
                       (concat (map (lambda ((x sexp)) (refs-in x inner forms)) (cdr (cdr xs))))))
               (concat (map (lambda ((x sexp)) (refs-in x names forms)) xs))))
         (else other nil)))))
@@ -1225,12 +1243,70 @@
       (map (lambda ((f sexp))
              (mitem f (item-names f)
                     (let ((own (if (module-def? f) (concat (map item-names (unhidden (module-written f)))) nil)))
-                      (concat (map (lambda ((e sexp))
-                                     (refs-in e (concat (map (lambda ((n string)) (if (string-member? n own) nil (the strings (list n)))) names)) forms))
-                                   (item-value f))))
+                      (let ((set (nset-of (concat (map (lambda ((n string)) (if (string-member? n own) nil (the strings (list n)))) names)))))
+                        (concat (map (lambda ((e sexp)) (refs-in e set forms)) (item-value f)))))
                     (and (or (head-is? f "define-rec") (head-is? f "define*") (i64= (size (items f)) 4))
                          (not (any? (lambda ((e sexp)) (not (lambda-form? e))) (item-value f))))))
            values))))
+
+(define-datatype reached (reached string strings))
+
+(define-rec
+  (reached-of (subr kfx (string (listof reached acyclic)) strings)
+    (lambda (n rs)
+      (cond ((null? rs) nil)
+            ((tagcase (car rs) (reached (k ks) (string=? k n))) (tagcase (car rs) (reached (k ks) ks)))
+            (else (reached-of n (cdr rs)))))))
+
+"Items by name, a tree (C92)."
+(define-datatype itree (ileaf) (inode itree string mitem itree))
+(define-datatype named-item (named-item string mitem))
+
+(define-rec
+  (itree-built (subr kfx ((listof named-item acyclic) i64) itree)
+    (lambda (xs n)
+      (if (i64<= n 0)
+          (ileaf)
+          (let* ((half (i64-quotient n 2))
+                 (rest (named-dropped xs half)))
+            (tagcase (car rest)
+              (named-item (k it) (inode (itree-built xs half) k it (itree-built (cdr rest) (i64- (i64- n half) 1)))))))))
+  (named-dropped (subr kfx ((listof named-item acyclic) i64) (listof named-item acyclic))
+    (lambda (xs n) (if (or (null? xs) (i64<= n 0)) xs (named-dropped (cdr xs) (i64- n 1)))))
+  (named-sorted (subr kfx ((listof named-item acyclic)) (listof named-item acyclic))
+    (lambda (xs)
+      (if (or (null? xs) (null? (cdr xs)))
+          xs
+          (named-merged (named-sorted (named-halves xs #t)) (named-sorted (named-halves xs #f))))))
+  (named-halves (subr kfx ((listof named-item acyclic) bool) (listof named-item acyclic))
+    (lambda (xs first) (cond ((null? xs) nil) (first (cons (car xs) (named-halves (cdr xs) #f))) (else (named-halves (cdr xs) #t)))))
+  (named-merged (subr kfx ((listof named-item acyclic) (listof named-item acyclic)) (listof named-item acyclic))
+    (lambda (a b)
+      (cond ((null? a) b)
+            ((null? b) a)
+            ((tagcase (car b) (named-item (kb ib) (tagcase (car a) (named-item (ka ia) (string<? kb ka)))))
+             (cons (car b) (named-merged a (cdr b))))
+            (else (cons (car a) (named-merged (cdr a) b)))))))
+
+(define itree-of (subr kfx (mitems) itree)
+  (lambda (its)
+    (let ((pairs (named-sorted (concat (map (lambda ((it mitem)) (tagcase it (mitem (f ns rs l) (map (lambda ((n string)) (named-item n it)) ns)))) its)))))
+      (itree-built pairs (size pairs)))))
+
+(define-rec
+  (in-itree (subr kfx (string itree) mitems)
+    (lambda (x t)
+      (tagcase t
+        (ileaf () nil)
+        (inode (l k it r) (cond ((string=? x k) (the mitems (list it))) ((string<? x k) (in-itree x l)) (else (in-itree x r))))))))
+
+(define-rec
+  (nset-added (subr kfx (string nset) nset)
+    (lambda (x s)
+      "`s` with `x`, unbalanced: for what a walk has seen."
+      (tagcase s
+        (nempty () (nnode (nempty) x (nempty)))
+        (nnode (l k r) (cond ((string=? x k) s) ((string<? x k) (nnode (nset-added x l) k r)) (else (nnode l k (nset-added x r)))))))))
 
 (define-rec
   (item-of (subr kfx (string mitems) mitems)
@@ -1238,28 +1314,32 @@
       (cond ((null? its) nil)
             ((tagcase (car its) (mitem (f ns rs l) (string-member? n ns))) (the mitems (list (car its))))
             (else (item-of n (cdr its))))))
-  (reach (subr kfx (strings mitems strings bool) strings)
-    (lambda (todo its seen through-lambdas)
+  (reach (subr kfx (strings itree strings bool) strings)
+    (lambda (todo t seen through-lambdas)
       "The items `todo` reach, through every item's references, or, with
        `through-lambdas`, only through procedures' (what making a value
-       runs)."
+       runs); by trees, the items found and those seen (C92: by lists, it
+       had been cubic in a module's items)."
+      (reach-in todo t (nempty) seen through-lambdas)))
+  (reach-in (subr kfx (strings itree nset strings bool) strings)
+    (lambda (todo t seen-set seen through-lambdas)
       (cond ((null? todo) seen)
-            ((string-member? (car todo) seen) (reach (cdr todo) its seen through-lambdas))
+            ((in-nset? (car todo) seen-set) (reach-in (cdr todo) t seen-set seen through-lambdas))
             (else
-             (let ((it (item-of (car todo) its)))
-               (reach (onto (if (null? it)
-                                nil
-                                (tagcase (car it)
-                                  (mitem (f ns rs l) (if (or l (not through-lambdas)) rs nil))))
-                            (cdr todo))
-                      its (cons (car todo) seen) through-lambdas)))))))
+             (let ((it (in-itree (car todo) t)))
+               (reach-in (onto (if (null? it)
+                                   nil
+                                   (tagcase (car it)
+                                     (mitem (f ns rs l) (if (or l (not through-lambdas)) rs nil))))
+                               (cdr todo))
+                         t (nset-added (car todo) seen-set) (cons (car todo) seen) through-lambdas)))))))
 
 (define-rec
   (index-in (subr kfx (string strings i64) i64)
     (lambda (n ns i) (cond ((null? ns) -1) ((string=? (car ns) n) i) (else (index-in n (cdr ns) (i64+ i 1)))))))
 
-(define made-before (subr kfx (cv mitems) unit)
-  (lambda (v its)
+(define made-before (subr kfx (cv mitems itree) unit)
+  (lambda (v its t)
     "FX-26's rule: a value that is no procedure is made when its item is,
      so every item it reaches through procedures must be made before it."
     (let ((order (concat (map (lambda ((it mitem)) (tagcase it (mitem (f ns rs l) ns))) its))))
@@ -1271,7 +1351,7 @@
                        #u
                        (let ((late (concat (map (lambda ((n string))
                                                   (if (i64>= (index-in n order 0) (index-in (car ns) order 0)) (the strings (list n)) nil))
-                                                (reach rs its nil #t)))))
+                                                (reach rs t nil #t)))))
                          (if (null? late)
                              #u
                              (refuse v (string-append (car ns) (string-append " is made from " (string-append (car late)
@@ -1280,77 +1360,130 @@
         #u))))
 
 (define-rec
-  (components (subr kfx (mitems mitems) (listof mitems acyclic))
-    (lambda (todo its)
+  (components (subr kfx (mitems mitems (listof reached acyclic)) (listof mitems acyclic))
+    (lambda (todo its rs)
       "The items, as sets that reach one another, each set after those it
-       reaches: the order they are checked in."
+       reaches: the order they are checked in. `rs`, what each reaches,
+       found once (C92: found here again for each pair, it had cost a
+       module of 160 items a tenth of a second)."
       (if (null? todo)
           nil
           (let* ((it (car todo))
-                 (n (tagcase it (mitem (f ns rs l) (car ns))))
-                 (mine (reach (list n) its nil #f))
+                 (n (tagcase it (mitem (f ns rs2 l) (car ns))))
+                 (mine (reached-of n rs))
                  (same (concat (map (lambda ((x mitem))
-                                      (tagcase x (mitem (f ns rs l)
-                                                   (if (and (string-member? (car ns) mine) (string-member? n (reach (list (car ns)) its nil #f)))
+                                      (tagcase x (mitem (f ns rs2 l)
+                                                   (if (and (string-member? (car ns) mine) (string-member? n (reached-of (car ns) rs)))
                                                        (the mitems (list x)) nil))))
                                     its)))
                  (rest (concat (map (lambda ((x mitem))
-                                      (tagcase x (mitem (f ns rs l)
+                                      (tagcase x (mitem (f ns rs2 l)
                                                    (if (any? (lambda ((y mitem)) (tagcase y (mitem (g ms qs k) (string=? (car ms) (car ns))))) same)
                                                        nil (the mitems (list x))))))
                                     todo)))
                  (deps (concat (map (lambda ((x mitem))
-                                      (tagcase x (mitem (f ns rs l)
+                                      (tagcase x (mitem (f ns rs2 l)
                                                    (if (and (string-member? (car ns) mine)
                                                             (not (any? (lambda ((y mitem)) (tagcase y (mitem (g ms qs k) (string=? (car ms) (car ns))))) same)))
                                                        (the mitems (list x)) nil))))
                                     rest)))
                  (later (concat (map (lambda ((x mitem))
-                                       (if (any? (lambda ((y mitem)) (tagcase y (mitem (g ms qs k) (tagcase x (mitem (f ns rs l) (string=? (car ms) (car ns))))))) deps)
+                                       (if (any? (lambda ((y mitem)) (tagcase y (mitem (g ms qs k) (tagcase x (mitem (f ns rs2 l) (string=? (car ms) (car ns))))))) deps)
                                            nil (the mitems (list x))))
                                      rest))))
-            (onto (components deps its) (cons same (components later its))))))))
+            (onto (components deps its rs) (cons same (components later its rs))))))))
+
+(define rec-of (subr kfx (sexps) sexps)
+  (lambda (members)
+    "Items that reach one another, as one `define-rec` of their procedures."
+    (tagcase (car members)
+      (lst (xs file line pos)
+        (the sexps
+          (list (lst (cons (sym "define-rec" file pos)
+                           (concat (map (lambda ((g sexp))
+                                          (if (head-is? g "define-rec")
+                                              (cdr (items g))
+                                              (let ((ys (items g)))
+                                                (the sexps (list (lst (list (second ys) (third ys) (car (item-value g))) file line pos))))))
+                                        members)))
+                     file line pos))))
+      (else other nil))))
+
+(define alone? (subr kfx (mitems) bool)
+  (lambda (group)
+    "Whether a set of items is checked as written: one, reaching not itself."
+    (and (null? (cdr group))
+         (tagcase (car group) (mitem (f ns rs l) (or (not l) (head-is? f "define-rec") (head-is? f "define*") (not (any? (lambda ((r string)) (string-member? r ns)) rs))))))))
 
 (define as-group (subr kfx (cv mitems) sexps)
   (lambda (v group)
     "A set of items to check: one alone, as written, unless it reaches
      itself; else one `define-rec` of their procedures."
-    (let ((one (car group)))
-      (if (and (null? (cdr group))
-               (tagcase one (mitem (f ns rs l) (or (not l) (head-is? f "define-rec") (head-is? f "define*") (not (any? (lambda ((r string)) (string-member? r ns)) rs))))))
-          (the sexps (list (tagcase one (mitem (f ns rs l) f))))
-          (if (any? (lambda ((it mitem)) (tagcase it (mitem (f ns rs l) (or (not l) (head-is? f "define*"))))) group)
-              (refuse v (string-append "items that reach one another, not each a typed lambda: "
-                                       (words-of (concat (map (lambda ((it mitem)) (tagcase it (mitem (f ns rs l) ns))) group)))))
-              (tagcase one
-                (mitem (f ns rs l)
-                  (tagcase f
-                    (lst (xs file line pos)
-                      (the sexps
-                        (list (lst (cons (sym "define-rec" file pos)
-                                         (concat (map (lambda ((it mitem))
-                                                        (tagcase it
-                                                          (mitem (g gs qs k)
-                                                            (if (head-is? g "define-rec")
-                                                                (cdr (items g))
-                                                                (let ((ys (items g)))
-                                                                  (the sexps (list (lst (list (second ys) (third ys) (car (item-value g))) file line pos))))))))
-                                                      group)))
-                                   file line pos))))
-                    (else other nil)))))))))
+    (cond ((alone? group) (the sexps (list (tagcase (car group) (mitem (f ns rs l) f)))))
+          ((any? (lambda ((it mitem)) (tagcase it (mitem (f ns rs l) (or (not l) (head-is? f "define*"))))) group)
+           (refuse v (string-append "items that reach one another, not each a typed lambda: "
+                                    (words-of (concat (map (lambda ((it mitem)) (tagcase it (mitem (f ns rs l) ns))) group))))))
+          (else (rec-of (map (lambda ((it mitem)) (tagcase it (mitem (f ns rs l) f))) group))))))
 
-(define module-order (subr kfx (cv sexps) sexps)
+"A module's order, and its code (C92): `(s P)` for an item checked as
+ written, `(r P ...)` for items checked as one `define-rec`, `P` where
+ each is, from where the module's first item is (an edit before the
+ module moves every item, and the order with them); which incr.kfx keeps,
+ so that an unchanged module's order is not found again, its every body
+ walked."
+(define-rec
+  (least-position (subr kfx (sexps i64) i64)
+    (lambda (forms least)
+      (cond ((null? forms) least)
+            ((and (i64> (datum-pos (car forms)) 0) (or (i64< least 0) (i64< (datum-pos (car forms)) least)))
+             (least-position (cdr forms) (datum-pos (car forms))))
+            (else (least-position (cdr forms) least))))))
+
+(define first-position (subr kfx (sexps) i64)
+  (lambda (forms) (least-position forms -1)))
+(define-datatype ordered (ordered sexps string))
+
+(define first-checked (subr kfx (sexps) sexps)
+  (lambda (forms)
+    "A module's types and modules, as written, checked before its values."
+    (concat (map (lambda ((f sexp)) (if (or (null? (item-value f)) (module-def? f)) (the sexps (list f)) nil)) forms))))
+
+(define module-order-coded (subr kfx (cv sexps) ordered)
   (lambda (v forms)
     "A module's items in the order KFX checks them: its types and modules
      as written (a type may select a module's), then its values, each after
      what it reaches, those that reach one another as one group. A module
      item is made where it is written all the same (C88)."
     (let* ((its (letrec-items forms))
-           (values (concat (map (lambda ((it mitem)) (tagcase it (mitem (f ns rs l) (if (module-def? f) nil (the mitems (list it)))))) its))))
-      (begin
-        (made-before v its)
-        (onto (concat (map (lambda ((f sexp)) (if (or (null? (item-value f)) (module-def? f)) (the sexps (list f)) nil)) forms))
-              (concat (map (lambda ((g mitems)) (as-group v g)) (components values its))))))))
+           (t (itree-of its))
+           (values (concat (map (lambda ((it mitem)) (tagcase it (mitem (f ns rs l) (if (module-def? f) nil (the mitems (list it)))))) its)))
+           (groups (begin
+                     (made-before v its t)
+                     (components values its (map (lambda ((it mitem)) (tagcase it (mitem (f ns rs l) (reached (car ns) (reach (list (car ns)) t nil #f))))) its)))))
+      (ordered (onto (first-checked forms) (concat (map (lambda ((g mitems)) (as-group v g)) groups)))
+               (words-of (map (lambda ((g mitems))
+                                (string-append (if (alone? g) "(s " "(r ")
+                                               (string-append (words-of (map (lambda ((it mitem)) (tagcase it (mitem (f ns rs l) (i64->string (i64- (datum-pos f) (first-position forms)))))) g)) ")")))
+                              groups))))))
+
+(define module-order (subr kfx (cv sexps) sexps)
+  (lambda (v forms) (tagcase (module-order-coded v forms) (ordered (fs code) fs))))
+
+(define-rec
+  (form-at (subr kfx (i64 sexps) sexps)
+    (lambda (p forms)
+      (cond ((null? forms) nil)
+            ((i64= (datum-pos (car forms)) p) (the sexps (list (car forms))))
+            (else (form-at p (cdr forms)))))))
+
+(define order-from-code (subr kfx (sexps string) sexps)
+  (lambda (forms code)
+    "An order kept (`module-order-coded`'s code), made again."
+    (onto (first-checked forms)
+          (concat (map (lambda ((g sexp))
+                         (let ((members (concat (map (lambda ((p sexp)) (form-at (tagcase p (num (k f q) (i64+ k (first-position forms))) (else other -1)) forms)) (cdr (items g))))))
+                           (if (head-is? g "s") members (rec-of members))))
+                       (read-all (string-chars code) "" 1))))))
 
 "A module checked (C91): its scope made (`module-prep`), its items checked
  in order, and what it gives the forms after it (`module-finish`); split so
@@ -1382,15 +1515,17 @@
              (forms (unhidden written))
              (escapes (hidden-escapes v written))
              (hidden-types (hidden-type-names written))
+             (all-includes (onto (included v forms) (included v (concat (map (lambda ((f sexp)) (if (head-is? f "hide") (cdr (items f)) nil)) written)))))
+             (include-binds (map (lambda ((n string)) (typed-binds n (excepted-binds v written n (cv-binds v)))) all-includes))
              (hidden (onto (hidden-value-names written)
                            (map (lambda ((b bind)) (tagcase b (bind (n sc w) n)))
-                                (concat (map (lambda ((n string)) (excepted-binds v written n (cv-binds v)))
+                                (concat (map (lambda ((n string)) (binds-of-include n include-binds))
                                              (included v (concat (map (lambda ((f sexp)) (if (head-is? f "hide") (cdr (items f)) nil)) written))))))))
              (includes (included v forms))
              (names (module-types v forms))
              (given-values (onto (concat (map item-value-names forms))
                                  (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (if (has-prefix? n "%") nil (the strings (list n))))))
-                                              (concat (map (lambda ((n string)) (excepted-binds v written n (cv-binds v))) includes))))))
+                                              (concat (map (lambda ((n string)) (binds-of-include n include-binds)) includes))))))
              (given-types (concat (map item-type-names forms)))
              (included-aliases (map (lambda ((a alias)) (tagcase a (alias (n ps body) (alias n ps (resolved-alias body (cv-aliases v))))))
                                     (concat (map (lambda ((n string)) (excepted-aliases v written n (cv-aliases v))) includes))))
@@ -1400,7 +1535,7 @@
                     v))
              (typed (tagcase v
                       (cv (bs ds als es here group file line fs tv at)
-                        (cv (bind-onto (concat (map (lambda ((n string)) (excepted-binds v written n bs)) includes))
+                        (cv (bind-onto (concat (map (lambda ((n string)) (binds-of-include n include-binds)) includes))
                                        (cons (bind "%module" (scheme nil (ty-unit)) m) bs))
                             (onto (module-dts v m forms) ds)
                             (onto (module-aliases v m names forms #t)

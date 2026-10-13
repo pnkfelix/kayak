@@ -2,789 +2,797 @@
  definitions, modules and their traits, shapes, and `kfx --toplevel`'s
  values. Split from emit.kfx."
 
-"Top-level forms"
-
-"Modules as parameters (C24): a module type, a trait; its abstract types,
- associated types; its values, functions of no receiver. A module defined at
- the top level that is given for one is a marker type, `m::Module`, which
- implements the trait by calling the module's items."
-
-(define-rec
-  (subst-descs (subr kfx (sexp (listof sexps acyclic)) sexp)
-    (lambda (e descs)
-      "A type written in a module type, its descriptions' names replaced by
-       what they describe."
-      (tagcase e
-        (sym (n at-file at-pos)
-          (let ((found (concat (map (lambda ((d sexps)) (if (string=? (sym-name (second d)) n) (the sexps (list (third d))) nil)) descs))))
-            (if (null? found) e (car found))))
-        (lst (xs f l p) (lst (map (lambda ((x sexp)) (subst-descs x descs)) xs) f l p))
-        (else other e)))))
-
-(define spec-of (subr kfx (sexp string) (listof sexps acyclic))
-  (lambda (spec kind)
-    (concat (map (lambda ((x sexp)) (if (head-is? x kind) (the (listof sexps acyclic) (list (items x))) nil)) (cdr (items spec))))))
-
-(define abs-of (subr kfx (sexp) strings)
-  (lambda (spec)
-    (concat (map (lambda ((a sexps)) (tagcase (second a) (sym (n at-file at-pos) (the strings (list n))) (lst (ns f l p) (map sym-name ns)) (else other nil)))
-                 (spec-of spec "abs")))))
-
-(define in-trait (subr kfx (ctx sexp) ctx)
-  (lambda (c spec)
-    "`c` where a module type's abstract types are `Self`'s."
-    (with-locals c (cons "%with Self" (map (lambda ((t string)) (string-append "%type " t)) (abs-of spec))))))
-
-(define-rec
-  (put-arg-params (subr kfx (ctx sexps i64 chars) chars)
-    (lambda (c ts i acc)
-      (if (null? ts)
-          acc
-          (put-arg-params c (cdr ts) (i64+ i 1)
-                          (put-type c (car ts) (put ": " (put (i64->string i) (put (if (i64= i 0) "a__" ", a__") acc)))))))))
-
-(define put-val-sig (subr kfx (ctx sexps (listof sexps acyclic) chars) chars)
-  (lambda (c val descs acc)
-    "`fn x(a0: P0, ...) -> R`, a module type's value `(val x T)`."
-    (let* ((t (subst-descs (third val) descs))
-           (acc (put (mangle (sym-name (second val))) (put "fn " acc))))
-      (if (head-is? t "subr")
-          (put-type c (fourth (items t)) (put ") -> " (put-arg-params c (items (third (items t))) 0 (put "(" acc))))
-          (put-type c t (put "() -> " acc))))))
-
-(define put-trait (subr kfx (ctx string sexp chars) chars)
-  (lambda (c name spec acc)
-    (let* ((inner (in-trait c spec))
-           (descs (spec-of spec "desc"))
-           (acc (put " {\n" (put (camel name) (put "pub trait " acc))))
-           (acc (put-sep (lambda ((t string) (acc chars)) (put ": Copy + 'static;\n" (put (camel t) (put "    type " acc)))) "" (abs-of spec) acc))
-           (acc (put-sep (lambda ((v sexps) (acc chars)) (put ";\n" (put-val-sig inner v descs (put "    " acc)))) "" (spec-of spec "val") acc)))
-      (put "}\n\n" acc))))
-
-(define module-impls (subr kfx (ctx) strings)
-  (lambda (c)
-    "Each module given for a module type, `m x`, once."
-    (tagcase c
-      (ctx (ds ts ks ls xs fs ms es mods)
-        (reverse-strings
-         (concat (map (lambda ((f fact))
-                        (tagcase f (fact (ff fp fw) (if (has-prefix? fw "module-impl ") (the strings (list (after-prefix fw "module-impl "))) nil))))
-                      fs))
-         nil)))))
-
-(define-rec
-  (deduped (subr kfx (strings strings) strings)
-    (lambda (xs seen)
-      (cond ((null? xs) (reverse-strings seen nil))
-            ((string-member? (car xs) seen) (deduped (cdr xs) seen))
-            (else (deduped (cdr xs) (cons (car xs) seen)))))))
-
-(define put-impl (subr kfx (ctx string string chars) chars)
-  (lambda (c m x acc)
-    (let* ((spec (car (module-body c (string-append "%moduleof " x))))
-           (inner (in-trait c spec))
-           (descs (spec-of spec "desc"))
-           (consts (item-constants (module-items c m)))
-           (acc (put " {\n" (put "::Module" (put (mangle m) (put " for " (put (camel x) (put "impl " acc)))))))
-           (acc (put-sep (lambda ((t string) (acc chars)) (put ";\n" (put (type-path c m t) (put " = " (put (camel t) (put "    type " acc))))))
-                         "" (abs-of spec) acc))
-           (acc (put-sep (lambda ((v sexps) (acc chars))
-                           (let* ((t (subst-descs (third v) descs))
-                                  (name (sym-name (second v)))
-                                  (acc (put " {\n        " (put-val-sig inner v descs (put "    " acc))))
-                                  (acc (put (mangle name) (put "::" (put (mangle m) acc))))
-                                  (acc (if (string-member? name consts) (put "()" acc) acc))
-                                  (acc (if (head-is? t "subr")
-                                           (put ")" (put-arg-names 0 (size (items (third (items t)))) (put "(" acc)))
-                                           acc)))
-                             (put "\n    }\n" acc)))
-                         "" (spec-of spec "val") acc)))
-      (put "}\n\n" acc))))
-
-(define put-module-impls (subr kfx (ctx chars) chars)
-  (lambda (c acc)
-    (put-sep (lambda ((k string) (acc chars))
-               (let ((ws (split-words k))) (put-impl c (car ws) (car (cdr ws)) acc)))
-             "" (deduped (module-impls c) nil) acc)))
-
-(define module-params (subr kfx (ctx sexps sexps) strings)
-  (lambda (c names types)
-    "The parameters of a module type, each `m x`."
-    (if (or (null? names) (null? types))
-        nil
-        (let ((rest (module-params c (cdr names) (cdr types))))
-          (tagcase (car types)
-            (sym (t at-file at-pos) (if (null? (module-body c (string-append "%moduleof " t)))
-                         rest
-                         (cons (string-append (sym-name (tagcase (car names) (lst (xs f l p) (car xs)) (else other other)))
-                                              (string-append " " t))
-                               rest)))
-            (else other rest))))))
-
-(define-rec
-  (unmoduled (subr kfx (ctx sexps sexps bool) sexps)
-    (lambda (c names types want-names)
-      "`names` or `types`, without the module parameters."
-      (cond ((or (null? names) (null? types)) nil)
-            ((tagcase (car types) (sym (t at-file at-pos) (not (null? (module-body c (string-append "%moduleof " t))))) (else other #f))
-             (unmoduled c (cdr names) (cdr types) want-names))
-            (else (cons (if want-names (car names) (car types)) (unmoduled c (cdr names) (cdr types) want-names)))))))
-
-(define put-params (subr kfx (ctx sexps sexps bool chars) chars)
-  (lambda (c names types mutable acc)
-    "Parameters, from a lambda's names and its `subr` type's; `mut` if
-     `mutable`, for a procedure that loops."
-    (if (null? names)
-        acc
-        (let* ((name (tagcase (car names) (lst (xs src-file src-line src-pos) (car xs)) (else other other)))
-               (acc (if mutable (put "mut " acc) acc))
-               (acc (put (mangle (sym-name name)) acc))
-               (acc (put ": " acc))
-               (acc (put-type c (car types) acc)))
-          (put-params c (cdr names) (cdr types) mutable
-                      (if (null? (cdr names)) acc (put ", " acc)))))))
-
-(define put-generics (subr kfx (sexps bool chars) chars)
-  (lambda (binders first acc)
-    "A poly's binders as a fn's generics: a type is a Rust type parameter,
-     `Copy` and `'static` as every KFX value is; an effect is erased, and so,
-     until places come (TODO.md section 14), is a region, every one's place
-     being the heap."
-    (if (null? binders)
-        (if first acc (put ">" acc))
-        (let* ((b (items (car binders)))
-               (kind (sym-name (second b))))
-          (cond ((string=? kind "type")
-                 (let* ((acc (put (if first "<" ", ") acc))
-                        (acc (put (camel (sym-name (car b))) acc)))
-                   (put-generics (cdr binders) #f (put ": Copy + 'static" acc))))
-                ((or (string=? kind "effect") (string=? kind "region")) (put-generics (cdr binders) first acc))
-                (else (error (string-append "kfx: KFX-0 has no poly over a " kind))))))))
-
-(define unpoly (subr kfx (sexp) sexp)
-  (lambda (e)
-    "A poly type's body, or a plambda's: what is under the binders."
-    (if (or (head-is? e "poly") (head-is? e "plambda")) (third (items e)) e)))
-
-(define put-place-generics (subr kfx (ctx string sexps strings strings chars) chars)
-  (lambda (c name binders lives places acc)
-    "A procedure given places' generics (C34): each place a lifetime, `'p`,
-     and a type, `Place_P`, bound to hold what the procedure makes there,
-     by itself or by those it gives the place to; the types `Copy`."
-    (let* ((needs (all-facts-prefixed c (string-append "place-needs " (string-append name " "))))
-           (types (concat (map (lambda ((b sexp)) (if (sym-is? (second (items b)) "type") (the strings (list (camel (sym-name (car (items b)))))) nil)) binders)))
-           (bounds (lambda ((p string))
-                     (distinct-strings
-                       (concat (map (lambda ((n string))
-                                      (let ((ws (read-all (string-chars n) "" 1)))
-                                        (if (string=? (sym-name (car ws)) (string-append "'" p))
-                                            (the strings (list (string-append "Holds<" (string-append (held-rust c (sym-name (second ws)) (lifetime p) (third ws)) ">"))))
-                                            nil)))
-                                    needs)))))
-           (params (onto (map (lambda ((p string)) (lifetime p)) (onto lives places))
-                         (onto (map (lambda ((t string)) (string-append t ": Copy + 'static")) types)
-                               (map (lambda ((p string))
-                                      (let ((bs (bounds p)))
-                                        (string-append "Place_" (string-append (camel p) (if (null? bs) "" (string-append ": " (words-of-sep bs " + ")))))))
-                                    places)))))
-      (put (string-append "<" (string-append (words-of-sep params ", ") ">")) acc))))
-
-(define free-regions (subr kfx (sexps) strings)
-  (lambda (binders)
-    "A poly's region binders not within a place, `(r region)` or `(r region
-     distinct)`: each a lifetime of the procedure, `'r` (C42)."
-    (concat (map (lambda ((b sexp))
-                   (let ((bs (items b)))
-                     (if (and (sym-is? (second bs) "region") (or (i64= (size bs) 2) (sym-is? (third bs) "distinct")))
-                         (the strings (list (sym-name (car bs))))
-                         nil)))
-                 binders))))
-
-(define-rec
-  (mentions-suspension? (subr kfx (ctx sexp) bool)
-    (lambda (c t)
-      "Whether a type is, or holds, a procedure that may suspend: one whose
-       future, `'static`, can hold no lifetime's data (C46)."
-      (tagcase (family-expanded c t)
-        (lst (xs f l p)
-          (cond ((null? xs) #f)
-                ((and (sym-is? (car xs) "subr") (suspending-effect? c (second xs))) #t)
-                ((sym-is? (car xs) "subr")
-                 (or (any? (lambda ((x sexp)) (mentions-suspension? c x)) (items (third xs)))
-                     (mentions-suspension? c (fourth xs))))
-                (else (any? (lambda ((x sexp)) (mentions-suspension? c x)) (cdr xs)))))
-        (sym (n f p)
-          (let ((found (module-body c (string-append "%abbreviation " n))))
-            (if (null? found) #f (mentions-suspension? c (second (items (car found)))))))
-        (else other #f)))))
-
-(define may-suspend? (subr kfx (ctx sexps sexp) bool)
-  (lambda (c binders typ)
-    "Whether a definition is of a procedure that may suspend, or that takes
-     or gives one: its effect says so, or names one of its effect binders,
-     or its type holds such a procedure. Its regions then have no
-     lifetimes (C46): its future is `'static`, as a capture's must be, and
-     it touches no `letrena`'s data, since none may be suspended in (C45)."
-    (let ((t (if (head-is? typ "poly") (third (items typ)) typ))
-          (c (with-locals c (concat (map (lambda ((b sexp))
-                                           (if (sym-is? (second (items b)) "effect")
-                                               (the strings (list (string-append "%evar " (sym-name (car (items b))))))
-                                               nil))
-                                         binders)))))
-      (mentions-suspension? c t))))
-
-(define put-lifetime-generics (subr kfx (strings sexps chars) chars)
-  (lambda (lives binders acc)
-    "A procedure's generics: its regions' lifetimes, then its types'."
-    (let ((types (concat (map (lambda ((b sexp)) (if (sym-is? (second (items b)) "type") (the strings (list (string-append (camel (sym-name (car (items b)))) ": Copy + 'static"))) nil)) binders))))
-      (put (string-append "<" (string-append (words-of-sep (onto (map lifetime lives) types) ", ") ">")) acc))))
-
-(define put-define (subr kfx (ctx sexp sexp sexp chars) chars)
-  (lambda (c name typ defined acc)
-    "A definition, a `fn`: a procedure's of its parameters; a constant's of
-     none, run at each use, or, if it allocates, made at its first use and
-     kept (C21)."
-    (let* ((binders (if (head-is? typ "poly") (items (second (items typ))) nil))
-           (places (concat (map (lambda ((b sexp)) (if (sym-is? (second (items b)) "place") (the strings (list (sym-name (car (items b))))) nil)) binders)))
-           (lives (if (may-suspend? c binders typ) nil (free-regions binders)))
-           (c (with-locals c (onto (onto (map (lambda ((r string)) (string-append "%letrena " r)) lives)
-                                         (concat (map (lambda ((p string)) (the strings (list (string-append "%letrena " p) (string-append "%placeparam " p)))) places)))
-                                   (onto (concat (map (lambda ((b sexp))
-                                                        (let ((bs (items b)))
-                                                          (if (and (i64= (size bs) 3) (sym-is? (second bs) "region") (not (sym-is? (third bs) "distinct")))
-                                                              (the strings (list (string-append "%within " (string-append (sym-name (car bs)) (string-append " " (sym-name (third bs)))))))
-                                                              nil)))
-                                                      binders))
-                                   (concat (map (lambda ((b sexp))
-                                                  (cond ((sym-is? (second (items b)) "type") (the strings (list (string-append "%tvar " (sym-name (car (items b)))))))
-                                                        ((sym-is? (second (items b)) "effect") (the strings (list (string-append "%evar " (sym-name (car (items b)))))))
-                                                        (else nil)))
-                                                binders))))))
-           (typ (family-expanded c (unpoly typ)))
-           (defined (unpoly defined))
-           (lambda? (head-is? defined "lambda"))
-           (body (if lambda? (cdr (cdr (items defined))) (the sexps (list defined))))
-           (doc? (and (comment? (car body)) (not (null? (cdr body)))))
-           (acc (if doc? (put "\n" (put-comment (string-chars (comment-text (car body))) "///" 0 #t acc)) acc))
-           (body (if doc? (cdr body) body))
-           (fallible (and lambda? (fallible-effect? c (second (items typ)))))
-           (suspends (and lambda? (suspending-effect? c (second (items typ)))))
-           (mparams (if lambda? (module-params c (items (second (items defined))) (items (third (items typ)))) nil))
-           (t (if lambda?
-                  (returns (sym-name name) (map param-name (items (second (items defined)))) (null? mparams) fallible)
-                  (value)))
-           (loops? (and lambda? (tail-calls? t (last body))))
-           (inner (if lambda?
-                      (with-locals c (onto (cons (if suspends "%async" "%sync") (cons (if fallible "%fallible" "%infallible")
-                                                 (map param-name (items (second (items defined))))))
-                                           (map (lambda ((mp string)) (string-append "%modparam " mp)) mparams)))
-                      c))
-           (acc (put (if suspends "pub async fn " "pub fn ") acc))
-           (acc (put (mangle (sym-name name)) acc))
-           (acc (cond ((not (null? places)) (put-place-generics c (sym-name name) binders lives places acc))
-                      ((not (null? lives)) (put-lifetime-generics lives binders acc))
-                      (else (put-generics binders #t acc))))
-           (acc (cond ((null? mparams) acc)
-                      ((not (null? binders)) (error "kfx: a poly procedure with a module parameter, which KFX does not write yet"))
-                      (else (put ">" (put-sep (lambda ((mp string) (acc chars))
-                                                (let ((ws (split-words mp))) (put (camel (car (cdr ws))) (put ": " (put (camel (car ws)) (put "Mod_" acc))))))
-                                              ", " mparams (put "<" acc))))))
-           (acc (if lambda?
-                    (let* ((acc (put "(" acc))
-                           (acc (put-params c (unmoduled c (items (second (items defined))) (items (third (items typ))) #t)
-                                            (unmoduled c (items (second (items defined))) (items (third (items typ))) #f)
-                                            loops? acc))
-                           (acc (put ") -> " acc)))
-                      (if fallible
-                          (put ", Unwind>" (put-type c (fourth (items typ)) (put "Result<" acc)))
-                          (put-type c (fourth (items typ)) acc)))
-                    (put-type c typ (put "() -> " acc))))
-           (acc (put " {" acc)))
-      (if loops?
-          (let* ((acc (put-nl 2 (put "loop {" (put-nl 1 acc))))
-                 (acc (put-stmts inner body 2 t acc)))
-            (put "\n    }\n}\n\n" acc))
-          (if (and (not lambda?) (fact-at? c defined "once"))
-              (let* ((acc (put-nl 1 acc))
-                     (acc (put "thread_local!(static ONCE: OnceCell<" acc))
-                     (acc (put-type c typ acc))
-                     (acc (put "> = const { OnceCell::new() });" acc))
-                     (acc (put-nl 1 acc))
-                     (acc (put "once(&ONCE, || {" acc))
-                     (acc (put-stmts inner body 2 (value) (put-nl 2 acc))))
-                (put "\n    })\n}\n\n" acc))
-              (put "\n}\n\n" (put-stmts inner body 1 (if fallible (ok-value) (value)) (put-nl 1 acc))))))))
-
-(define put-rec (subr kfx (ctx sexps chars) chars)
-  (lambda (c bindings acc)
-    (if (null? bindings)
-        acc
-        (let ((b (items (car bindings))))
-          (put-rec c (cdr bindings) (put-define c (car b) (second b) (third b) acc))))))
-
-(define put-variants (subr kfx (ctx sexps chars) chars)
-  (lambda (c variants acc)
-    (if (null? variants)
-        acc
-        (let* ((v (items (car variants)))
-               (acc (put "    " acc))
-               (acc (put (camel (sym-name (car v))) acc))
-               (acc (put "(" acc))
-               (acc (put-types c (cdr v) acc)))
-          (put-variants c (cdr variants) (put "),\n" acc))))))
-
-(define put-fields (subr kfx (ctx sexps i64 bool chars) chars)
-  (lambda (c types i typed acc)
-    "Fields `f0`, `f1`, ..., from `i`, with their types if `typed`."
-    (if (null? types)
-        acc
-        (let* ((acc (if (i64= i 0) acc (put ", " acc)))
-               (acc (put "f" acc))
-               (acc (put (i64->string i) acc))
-               (acc (if typed (put-type c (car types) (put ": " acc)) acc)))
-          (put-fields c (cdr types) (i64+ i 1) typed acc)))))
-
-(define put-constructors (subr kfx (ctx string strings sexps chars) chars)
-  (lambda (c d params variants acc)
-    (if (null? variants)
-        acc
-        (let* ((v (items (car variants)))
-               (tag (sym-name (car v)))
-               (acc (put "pub fn " acc))
-               (acc (put (mangle tag) acc))
-               (acc (put-generics-of params #t acc))
-               (acc (put "(" acc))
-               (acc (put-fields c (cdr v) 0 #t acc))
-               (acc (put ") -> &'static " acc))
-               (acc (put (camel d) acc))
-               (acc (put-generics-of params #f acc))
-               (acc (put " {\n    kayak_rt::heap_alloc(" acc))
-               (acc (put (camel d) acc))
-               (acc (put "::" acc))
-               (acc (put (variant-name tag) acc))
-               (acc (put "(" acc))
-               (acc (put-fields c (cdr v) 0 #f acc)))
-          (put-constructors c d params (cdr variants) (put "))\n}\n\n" acc))))))
-
-(define put-datatype (subr kfx (ctx sexps chars) chars)
-  (lambda (c xs acc)
-    "An enum, generic in its type parameters (its regions are erased), and a
-     constructor for each variant."
-    (let* ((d (type-head-name (car xs)))
-           (params (head-type-params (car xs)))
-           (acc (put "pub enum " acc))
-           (acc (put (camel d) acc))
-           (acc (put-generics-of params #t acc))
-           (acc (put " {\n" acc))
-           (acc (put-variants c (cdr xs) acc))
-           (acc (put "}\n\n" acc)))
-      (put-constructors c d params (cdr xs) acc))))
-
-(define put-generative (subr kfx (ctx sexps chars) chars)
-  (lambda (c xs acc)
-    "A generative type: a new type, a newtype in Rust, and its conversions."
-    (let* ((t (type-head-name (car xs)))
-           (params (head-type-params (car xs)))
-           (inside (not (string=? (module-here c) "")))
-           (acc (put "#[derive(Clone, Copy)]\npub struct " acc))
-           (acc (put (camel t) acc))
-           (acc (put-generics-of params #t acc))
-           (acc (put (if inside "(" "(pub ") acc))
-           (acc (put-type c (second xs) acc))
-           (acc (put (if inside ");\n\nfn up_" ");\n\npub fn up_") acc))
-           (acc (put (mangle t) acc))
-           (acc (put-generics-of params #t acc))
-           (acc (put "(x: " acc))
-           (acc (put-type c (second xs) acc))
-           (acc (put ") -> " acc))
-           (acc (put (camel t) acc))
-           (acc (put-generics-of params #f acc))
-           (acc (put " {\n    " acc))
-           (acc (put (camel t) acc))
-           (acc (put (if inside "(x)\n}\n\nfn down_" "(x)\n}\n\npub fn down_") acc))
-           (acc (put (mangle t) acc))
-           (acc (put-generics-of params #t acc))
-           (acc (put "(x: " acc))
-           (acc (put (camel t) acc))
-           (acc (put-generics-of params #f acc))
-           (acc (put ") -> " acc))
-           (acc (put-type c (second xs) acc)))
-      (put " {\n    x.0\n}\n\n" acc))))
-
-(define-rec
-  (indented (subr kfx (chars bool chars) chars)
-    (lambda (cs start acc)
-      "Lines, each not empty four spaces in: `acc`, a module's items."
-      (cond ((null? cs) acc)
-            ((char=? (car cs) #\newline) (indented (cdr cs) #t (cons (car cs) acc)))
-            (start (indented (cdr cs) #f (cons (car cs) (put "    " acc))))
-            (else (indented (cdr cs) #f (cons (car cs) acc)))))))
-
-(define-rec
-  (trimmed (subr kfx (chars) chars)
-    (lambda (cs)
-      "Written text, its last newlines dropped."
-      (if (and (not (null? cs)) (char=? (car cs) #\newline)) (trimmed (cdr cs)) cs))))
-
-(define without (subr kfx (strings strings) strings)
-  (lambda (xs ys)
-    (if (null? xs) nil
-        (if (string-member? (car xs) ys) (without (cdr xs) ys) (cons (car xs) (without (cdr xs) ys))))))
-
-(define definition? (subr kfx (sexp) bool)
-  (lambda (e)
-    (or (head-is? e "define") (head-is? e "define*") (head-is? e "define-rec") (module-def? e)
-        (head-is? e "define-datatype") (head-is? e "define-type") (head-is? e "define-generative"))))
-
-"The shapes a program has, each declared once: every `productof`,
- `sumof` and `product` in it, and in the types the checker elaborated and
- found for sums. A shape's key is `P` or `S`, then its labels."
-
-(define standard-shape? (subr kfx (string) bool)
-  (lambda (key)
-    "A shape kayak-rt declares, as the program's would be (`world.rs`): what
-     FX-26's I/O and bytes primitives answer with (C49)."
-    (string-member? key (list "S text bad" "S done failed" "S line eof failed" "S data failed" "S names failed" "P kind detail"
-                              "S not-found permission-denied already-exists not-a-directory is-a-directory broken-pipe invalid-data other"))))
-
-(define shape-key (subr kfx (sexp) strings)
-  (lambda (e)
-    "The key of the shape `e` writes, if it writes one."
-    (tagcase e
-      (lst (xs f l p)
-        (if (and (not (null? xs))
-                 (or (sym-is? (car xs) "productof") (sym-is? (car xs) "product") (sym-is? (car xs) "sumof"))
-                 (not (any? (lambda ((x sexp)) (tagcase x (lst (ys f2 l2 p2) (null? ys)) (else other #t))) (cdr xs))))
-            (the strings
-              (list (string-append (if (sym-is? (car xs) "sumof") "S" "P")
-                                   (concat-strings (map (lambda ((x sexp)) (string-append " " (label-of (car (items x))))) (cdr xs))))))
-            nil))
-      (else other nil))))
-
-(define-rec
-  (shapes-in (subr kfx (sexp strings) strings)
-    (lambda (e acc)
-      (tagcase e
-        (lst (xs f l p)
-          (let ((acc (shapes-in-all xs acc))
-                (key (shape-key e)))
-            (if (or (null? key) (string-member? (car key) acc) (standard-shape? (car key))) acc (cons (car key) acc))))
-        (else other acc))))
-  (shapes-in-all (subr kfx (sexps strings) strings)
-    (lambda (es acc) (if (null? es) acc (shapes-in-all (cdr es) (shapes-in (car es) acc))))))
-
-(define program-shapes (subr kfx (ctx sexps) strings)
-  (lambda (c forms)
-    (tagcase c
-      (ctx (ds ts ks ls xs fs ms es mods)
-        (reverse-strings
-         (shapes-in-all (onto (map (lambda ((x typed)) (tagcase x (typed (n t) t))) xs)
-                              (concat (map (lambda ((f fact))
-                                             (tagcase f
-                                               (fact (ff fp fw)
-                                                 (if (has-prefix? fw "sum-type ")
-                                                     (read-all (string-chars (after-prefix fw "sum-type ")) "" 1)
-                                                     nil))))
-                                           fs)))
-                        (shapes-in-all forms nil))
-         nil)))))
-
-(define-rec
-  (put-params-of (subr kfx (i64 i64 chars) chars)
-    (lambda (i n acc)
-      (if (i64< i n)
-          (put-params-of (i64+ i 1) n (put (i64->string i) (put (if (i64= i 0) "A" ", A") acc)))
-          acc))))
-
-(define put-generic-params (subr kfx (i64 chars) chars)
-  (lambda (n acc) (if (i64= n 0) acc (put ">" (put-params-of 0 n (put "<" acc))))))
-
-(define-rec
-  (put-variants-of (subr kfx (strings i64 chars) chars)
-    (lambda (tags i acc)
-      (if (null? tags)
-          acc
-          (put-variants-of (cdr tags) (i64+ i 1)
-                           (put "),\n" (put (i64->string i) (put "(A" (put (variant-name (car tags)) (put "    " acc))))))))))
-
-(define put-shape-decls (subr kfx (strings bool bool chars) chars)
-  (lambda (keys shows flats acc)
-    "Each shape's declaration, and, for `kfx --toplevel`, its `Show`, as
-     Fixpt writes one: `#<product of 2>`, `#<sum leaf>`; with `flats`, a
-     product's `Flat`, for a typed suffix (C32): its fields' zero bytes."
-    (if (null? keys)
-        acc
-        (let* ((key (car keys))
-               (product (string=? (substring-of key 1) "P"))
-               (labels (split-words (after-prefix key (substring-of key 1))))
-               (name (shape-name product labels))
-               (n (size labels))
-               (acc (put "#[allow(non_camel_case_types)]\n" acc))
-               (acc (if product
-                        (put ");\n\n" (put-sep (lambda ((i i64) (acc chars)) (put (i64->string i) (put "pub A" acc))) ", " (counting 0 n)
-                                             (put "(" (put-generic-params n (put name (put "#[derive(Clone, Copy)]\npub struct " acc))))))
-                        (put "}\n\n" (put-variants-of labels 0 (put " {\n" (put-generic-params n (put name (put "pub enum " acc))))))))
-               (acc (if (not shows)
-                        acc
-                        (let ((acc (put " {\n    fn show(&self, out: &mut String) {\n" (put-generic-params n (put name (put " Show for " (put-generic-params n (put "impl" acc))))))))
-                          (put "    }\n}\n\n"
-                               (if product
-                                   (put ">\");\n" (put (i64->string n) (put "        out.push_str(\"#<product of " acc)))
-                                   (put "        }\n"
-                                        (put-sep (lambda ((l string) (acc chars))
-                                                   (put ">\"),\n" (put l (put "(..) => out.push_str(\"#<sum " (put (variant-name l) (put "::" (put name (put "            " acc))))))))
-                                                 "" labels (put "        match self {\n" acc)))))))))
-          (put-shape-decls (cdr keys) shows flats
-                           (if (and flats product)
-                               (put "    }\n}\n\n"
-                                    (put ")\n"
-                                         (put-sep (lambda ((i i64) (acc chars)) (put "::zeroed()" (put (i64->string i) (put "A" acc)))) ", " (counting 0 n)
-                                                  (put "(" (put name (put " {\n    fn zeroed() -> Self {\n        " (put-generic-params n (put name (put " Flat for "
-                                                    (put ">" (put-sep (lambda ((i i64) (acc chars)) (put ": Flat" (put (i64->string i) (put "A" acc)))) ", " (counting 0 n)
-                                                                      (put "impl<" acc))))))))))))
-                               acc))))))
-
-(define put-shapes (subr kfx (ctx sexps bool chars) chars)
-  (lambda (c forms shows acc) (put-shape-decls (program-shapes c forms) shows (uses-blobrefs? c) acc)))
-
-"A program's top-level expressions, for running Fixpt's programs as Rust
- (`kfx --toplevel`, scripts/run-fixpt-programs.py): a `Show` for each
- datatype, writing a value as Fixpt does, `#<sum TAG>`; and
- `kfx_toplevel`, which writes each top-level expression's value on a line,
- top-level strings too, as `fixpt eval` does."
-
-(define put-show-arms (subr kfx (string sexps chars) chars)
-  (lambda (d variants acc)
-    (if (null? variants)
-        acc
-        (let* ((tag (sym-name (car (items (car variants)))))
-               (acc (put "            " acc))
-               (acc (put (camel d) acc))
-               (acc (put "::" acc))
-               (acc (put (variant-name tag) acc))
-               (acc (put "(..) => out.push_str(str_lit(\"#<sum " acc))
-               (acc (put tag acc)))
-          (put-show-arms d (cdr variants) (put ">\").as_str()),\n" acc))))))
-
-(define put-show-impls (subr kfx (sexps chars) chars)
-  (lambda (forms acc)
-    (cond ((null? forms) acc)
-          ((head-is? (car forms) "define-datatype")
-           (let* ((xs (cdr (items (car forms))))
-                  (d (type-head-name (car xs)))
-                  (params (head-type-params (car xs)))
-                  (acc (put "impl" acc))
-                  (acc (put-generics-of params #t acc))
-                  (acc (put " Show for " acc))
-                  (acc (put (camel d) acc))
-                  (acc (put-generics-of params #f acc))
-                  (acc (put " {\n    fn show(&self, out: &mut String) {\n        match self {\n" acc))
-                  (acc (put-show-arms d (cdr xs) acc)))
-             (put-show-impls (cdr forms) (put "        }\n    }\n}\n\n" acc))))
-          ((head-is? (car forms) "define-generative")
-           (let* ((h (second (items (car forms))))
-                  (params (head-type-params h))
-                  (acc (put "impl" acc))
-                  (acc (if (null? params)
-                           acc
-                           (put ">" (put-sep (lambda ((n string) (acc chars))
-                                               (put ": Copy + 'static + Show" (put (camel n) acc)))
-                                             ", " params (put "<" acc)))))
-                  (acc (put " Show for " acc))
-                  (acc (put (camel (type-head-name h)) acc))
-                  (acc (put-generics-of params #f acc)))
-             (put-show-impls (cdr forms) (put " {\n    fn show(&self, out: &mut String) {\n        self.0.show(out)\n    }\n}\n\n" acc))))
-          (else (put-show-impls (cdr forms) acc)))))
-
-"What a module's items are written in, and its items (C91)."
 (define-datatype mparts (mparts ctx sexps))
 
-(define put-show-generatives (subr kfx (sexps chars) chars)
-  (lambda (forms acc)
-    "In toplevel mode, a module's datatypes' and generative types' `Show`,
-     inside it, where their representations are seen."
-    (put-show-impls (concat (map (lambda ((f sexp)) (if (or (head-is? f "define-generative") (head-is? f "define-datatype")) (the sexps (list f)) nil)) forms)) acc)))
+"Writing the top level is a module (C92): the emitter included, hidden;
+ its helpers hidden too."
+(define writing
+  (module
+    (hide
+      (include emitter)
 
-(define-rec
-  (put-top (subr kfx (ctx sexp chars) chars)
-    (lambda (c form acc)
-      (let* ((xs (tagcase form (lst (ys f l p) ys) (else other nil)))
-             (h (if (null? xs) "" (tagcase (car xs) (sym (n at-file at-pos) n) (else other "")))))
-        (cond ((string=? h "define-effect") acc)
-              ((or (string=? h "include") (string=? h "%use"))
-               (let* ((n (sym-name (second xs)))
-                      (its (module-items c n))
-                      (skip (concat (map (lambda ((x sexp)) (if (head-is? x "skip") (map sym-name (cdr (items x))) nil)) (cdr (cdr xs)))))
-                      (ex (concat (map (lambda ((x sexp))
-                                         (cond ((head-is? x "except") (map sym-name (cdr (items x))))
-                                               ((head-is? x "except-module")
-                                                (let ((b (module-items c (sym-name (second (items x)))))) (onto (item-values b) (item-types b))))
-                                               (else nil)))
-                                       (cdr (cdr xs)))))
-                      (names (onto (map mangle (concat (map (lambda ((t string)) (if (string-member? t ex) nil (the strings (list t)))) (item-values its))))
-                                   (map camel (concat (map (lambda ((t string)) (if (or (string-member? t skip) (string-member? t ex)) nil (the strings (list t)))) (item-types its)))))))
-                 (if (null? names)
-                     acc
-                     (put "};\n\n" (put-sep (lambda ((x string) (acc chars)) (put x acc)) ", " names
-                                             (put "::{" (put (mangle n) (put (if (string=? h "include") "pub use super::" "use super::") acc))))))))
-              ((and (string=? h "define-type")
-                    (or (head-is? (third xs) "arrayof")
-                        (and (head-is? (third xs) "sumof") (not (null? (cdr (items (third xs)))))
-                             (tagcase (second (items (third xs))) (sym (n f p) #t) (else other #f)))))
-               "A flat array or a keyed flat sum: a layout in a bloblet's suffix
-                (C31, C33), no value's type, and so no Rust type's."
-               acc)
-              ((and (string=? h "define-type") (head-is? (third xs) "moduleof"))
-               (put-trait c (sym-name (second xs)) (third xs) acc))
-              ((and (string=? h "define-type")
-                    (tagcase (second xs)
-                      (lst (hs hf hl hp)
-                        (any? (lambda ((b sexp)) (tagcase b (lst (bs bf bl bp) (and (i64= (size bs) 2) (sym-is? (second bs) "effect"))) (else other #f))) (cdr hs)))
-                      (else other #f)))
-               "An abbreviation over an effect (C46): no Rust alias, since what
-                it stands for in Rust depends on the effect; each use expanded."
-               acc)
-              ((and (string=? h "define-type")
-                    (not (null? (module-body c (string-append "%expand " (type-head-name (second xs)))))))
-               "An abbreviation of a module's family: expanded where applied (C89)."
-               acc)
-              ((and (string=? h "define-type") (tagcase (second xs) (lst (ys f l p) #t) (else other #f))
-                    (any? (lambda ((k string)) (has-prefix? k "%in ")) (ctx-locals c)))
-               "A module's family: expanded where applied (C89), no Rust alias."
-               acc)
-              ((string=? h "define-type")
-               "A type abbreviation; its regions, Rust lifetimes (C39), as a
-                `letrena`'s are, so that a use of it at one is at its lifetime."
-               (let* ((places (head-place-params (second xs)))
-                      (regions (onto (head-region-params (second xs)) places))
-                      (inner (with-locals c (onto (map (lambda ((r string)) (string-append "%letrena " r)) regions)
-                                                  (map (lambda ((p string)) (string-append "%placeparam " p)) places))))
-                      (acc (put "pub type " acc))
-                      (acc (put (camel (type-head-name (second xs))) acc))
-                      (params (onto (map (lambda ((r string)) (lifetime r)) regions)
-                                    (onto (map camel (head-type-params (second xs)))
-                                          (map (lambda ((p string)) (string-append "Place_" (camel p)))
-                                               (concat (map (lambda ((p string)) (if (string-member? p (places-used (third xs))) (the strings (list p)) nil)) places))))))
-                      (acc (if (null? params) acc (put (string-append "<" (string-append (words-of-sep params ", ") ">")) acc)))
-                      (acc (put " = " acc))
-                      (acc (put-type inner (third xs) acc)))
-                 (put ";\n\n" acc)))
-              ((string=? h "define-datatype") (put-datatype c (cdr xs) acc))
-              ((string=? h "define-generative") (put-generative c (cdr xs) acc))
-              ((module-def? form) (put-module c (sym-name (second xs)) (module-written form) acc))
-              ((or (string=? h "define") (string=? h "define*"))
-               (if (i64= (size xs) 4)
-                   (put-define c (second xs) (third xs) (fourth xs) acc)
-                   (put-define c (second xs) (car (ctx-typed c (sym-name (second xs)))) (third xs) acc)))
-              ((string=? h "define-rec") (put-rec c (cdr xs) acc))
-              (else acc)))))
+      ;; Top-level forms
 
-  (types-once (subr kfx (ctx sexps strings) sexps)
-    (lambda (c forms given)
-      "A module's `include`s, each marked with the types one before it gave
-       already, which it does not import again (C86: the same type, given by
-       two, is one name)."
-      (cond ((null? forms) nil)
-            ((or (head-is? (car forms) "include") (head-is? (car forms) "%use"))
-             (let* ((xs (items (car forms)))
-                    (ts (item-types (module-items c (sym-name (second xs))))))
-               (cons (lst (cons (car xs) (cons (second xs) (cons (lst (cons (sym "skip" "" 0) (map (lambda ((t string)) (sym t "" 0)) given)) "" 0 0) (cdr (cdr xs))))) "" 0 0)
-                     (types-once c (cdr forms) (onto ts given)))))
-            (else (cons (car forms) (types-once c (cdr forms) given))))))
+      ;; Modules as parameters (C24): a module type, a trait; its abstract types,
+      ;; associated types; its values, functions of no receiver. A module defined at
+      ;; the top level that is given for one is a marker type, `m::Module`, which
+      ;; implements the trait by calling the module's items.
 
-  (put-module (subr kfx (ctx string sexps chars) chars)
-    (lambda (c m written acc)
-      "A module, a Rust `mod` (C19): its items as a program's, the program's
-       names in scope, its own hiding them."
-      (tagcase (module-parts c m written)
-        (mparts (inner forms)
-          (let* ((body (put-tops inner forms nil))
-                 (body (if (string-member? "%toplevel" (ctx-locals c)) (put-show-generatives forms body) body)))
-            (put-module-around c m body acc))))))
+      (define-rec
+        (subst-descs (subr kfx (sexp (listof sexps acyclic)) sexp)
+          (lambda (e descs)
+            "A type written in a module type, its descriptions' names replaced by
+             what they describe."
+            (tagcase e
+              (sym (n at-file at-pos)
+                (let ((found (concat (map (lambda ((d sexps)) (if (string=? (sym-name (second d)) n) (the sexps (list (third d))) nil)) descs))))
+                  (if (null? found) e (car found))))
+              (lst (xs f l p) (lst (map (lambda ((x sexp)) (subst-descs x descs)) xs) f l p))
+              (else other e)))))
 
-  (module-parts (subr kfx (ctx string sexps) mparts)
-    (lambda (c m written)
-      "What a module's items are written in, and the items (C91: shared
-       with the emitter that keeps memos, incr.kfx)."
-      (let* ((forms (concat (map (lambda ((f sexp))
-                                   (if (head-is? f "hide")
-                                       (map (lambda ((g sexp))
-                                              (if (head-is? g "include") (lst (cons (sym "%use" "" 0) (cdr (items g))) "" 0 0) g))
-                                            (cdr (items f)))
-                                       (the sexps (list f))))
-                                 written)))
-             (forms (types-once c forms nil))
-             (outer (tagcase c (ctx (ds ts ks ls xs fs ms es mods)
-                                 (ctx ds ts
-                                      (onto (concat (map (lambda ((f sexp))
-                                                           (if (or (head-is? f "include") (head-is? f "%use"))
-                                                               (item-constants (module-items c (sym-name (second (items f)))))
-                                                               nil))
-                                                         forms))
-                                            (without ks (item-values forms)))
-                                      ls xs fs ms es mods)))))
-        (mparts (with-locals (collect forms outer) (list (string-append "%in " m))) forms))))
+      (define spec-of (subr kfx (sexp string) (listof sexps acyclic))
+        (lambda (spec kind)
+          (concat (map (lambda ((x sexp)) (if (head-is? x kind) (the (listof sexps acyclic) (list (items x))) nil)) (cdr (items spec))))))
 
-  (put-module-around (subr kfx (ctx string chars chars) chars)
-    (lambda (c m body acc)
-      "A module's `pub mod`, around its items' Rust, `body`, newest first."
-      (let* ((acc (put "pub mod " acc))
-             (acc (put (mangle m) acc))
-             (acc (put " {\n    use super::*;\n\n" acc))
-             (acc (if (any? (lambda ((k string)) (string=? (car (split-words k)) m)) (module-impls c))
-                      (put "    /// This module, given for a module type (C24).\n    pub struct Module;\n\n" acc)
-                      acc)))
-        (put "\n}\n\n" (indented (rev-onto (trimmed body) nil) #t acc)))))
+      (define abs-of (subr kfx (sexp) strings)
+        (lambda (spec)
+          (concat (map (lambda ((a sexps)) (tagcase (second a) (sym (n at-file at-pos) (the strings (list n))) (lst (ns f l p) (map sym-name ns)) (else other nil)))
+                       (spec-of spec "abs")))))
 
-  (put-tops (subr kfx (ctx sexps chars) chars)
-    (lambda (c forms acc)
-      "A string at the top level is a comment. A procedure's documentation is
-       a string first in its body, as a Lisp docstring is: see `put-define`."
-      (cond ((null? forms) acc)
-            ((comment? (car forms))
-             (let* ((doc (and (not (null? (cdr forms))) (definition? (second forms))))
-                    (acc (put-comment (string-chars (comment-text (car forms))) "//" 0 #t acc)))
-               (put-tops c (cdr forms) (put (if doc "\n" "\n\n") acc))))
-            (else (put-tops c (cdr forms) (put-top c (car forms) acc)))))))
+      (define in-trait (subr kfx (ctx sexp) ctx)
+        (lambda (c spec)
+          "`c` where a module type's abstract types are `Self`'s."
+          (with-locals c (cons "%with Self" (map (lambda ((t string)) (string-append "%type " t)) (abs-of spec))))))
 
-(define toplevel-form? (subr kfx (sexp) bool)
-  (lambda (f) (not (or (definition? f) (head-is? f "define-effect")))))
+      (define-rec
+        (put-arg-params (subr kfx (ctx sexps i64 chars) chars)
+          (lambda (c ts i acc)
+            (if (null? ts)
+                acc
+                (put-arg-params c (cdr ts) (i64+ i 1)
+                                (put-type c (car ts) (put ": " (put (i64->string i) (put (if (i64= i 0) "a__" ", a__") acc)))))))))
 
-(define put-toplevel-lines (subr kfx (ctx sexps chars) chars)
-  (lambda (c forms acc)
-    "Each top-level expression's value written; a `void` one, which never
-     gives one, run, its type said; one that may suspend, a future run to
-     its end (C45)."
-    (cond ((null? forms) acc)
-          ((toplevel-form? (car forms))
-           (cond
-             ((fact-at? c (car forms) "suspends")
-              (if (fact-at? c (car forms) "void")
-                  (let* ((acc (put "    let _: () = kayak_rt::suspend::block(kayak_rt::suspend::body(async move { let _: Void = " acc))
-                         (acc (put-exp (with-locals c (list "%async" "%fallible")) (car forms) 1 (value) acc)))
-                    (put-toplevel-lines c (cdr forms) (put "; Ok(()) })).unwrap_or_else(|u| unreachable_unwind(u));\n" acc)))
-                  (let* ((acc (put "    kayak_rt::show_line(&mut out_, kayak_rt::suspend::block(kayak_rt::suspend::body(async move { Ok(" acc))
-                         (acc (put-exp (with-locals c (list "%async" "%fallible")) (car forms) 1 (value) acc)))
-                    (put-toplevel-lines c (cdr forms) (put ") })).unwrap_or_else(|u| unreachable_unwind(u)));\n" acc)))))
-             ((fact-at? c (car forms) "procedure")
-              "A procedure, as Fixpt writes one, whatever made it: a global's
-               own `fn` is no `dyn Fn`, whose `Show` this would otherwise be."
-              (let* ((acc (put "    kayak_rt::show_line(&mut out_, (|| -> Result<_, Unwind> { let _ = " acc))
-                     (acc (put-exp (with-locals c (list "%fallible")) (car forms) 1 (value) acc)))
-                (put-toplevel-lines c (cdr forms) (put "; Ok(kayak_rt::Procedure) })().unwrap_or_else(|u| unreachable_unwind(u)));\n" acc))))
-             (else
-           (if (fact-at? c (car forms) "void")
-               (let* ((acc (put "    let _: () = (|| -> Result<(), Unwind> { let _: Void = " acc))
-                      (acc (put-exp (with-locals c (list "%fallible")) (car forms) 1 (value) acc)))
-                 (put-toplevel-lines c (cdr forms) (put "; Ok(()) })().unwrap_or_else(|u| unreachable_unwind(u));\n" acc)))
-               (let* ((acc (put "    kayak_rt::show_line(&mut out_, (|| -> Result<_, Unwind> { Ok(" acc))
-                      (acc (put-exp (with-locals c (list "%fallible")) (car forms) 1 (value) acc)))
-                 (put-toplevel-lines c (cdr forms) (put ") })().unwrap_or_else(|u| unreachable_unwind(u)));\n" acc)))))))
-          (else (put-toplevel-lines c (cdr forms) acc)))))
+      (define put-val-sig (subr kfx (ctx sexps (listof sexps acyclic) chars) chars)
+        (lambda (c val descs acc)
+          "`fn x(a0: P0, ...) -> R`, a module type's value `(val x T)`."
+          (let* ((t (subst-descs (third val) descs))
+                 (acc (put (mangle (sym-name (second val))) (put "fn " acc))))
+            (if (head-is? t "subr")
+                (put-type c (fourth (items t)) (put ") -> " (put-arg-params c (items (third (items t))) 0 (put "(" acc))))
+                (put-type c t (put "() -> " acc))))))
 
-(define put-toplevel (subr kfx (ctx sexps chars) chars)
-  (lambda (c forms acc)
-    (let* ((acc (put-show-impls forms acc))
-           (acc (put "/// The program's top-level expressions' values, as Fixpt writes them.\npub fn kfx_toplevel() -> Str {\n    let mut out_ = String::new();\n" acc))
-           (acc (put-toplevel-lines c forms acc)))
-      (put "    kayak_rt::shown(out_)\n}\n" acc))))
+      (define put-trait (subr kfx (ctx string sexp chars) chars)
+        (lambda (c name spec acc)
+          (let* ((inner (in-trait c spec))
+                 (descs (spec-of spec "desc"))
+                 (acc (put " {\n" (put (camel name) (put "pub trait " acc))))
+                 (acc (put-sep (lambda ((t string) (acc chars)) (put ": Copy + 'static;\n" (put (camel t) (put "    type " acc)))) "" (abs-of spec) acc))
+                 (acc (put-sep (lambda ((v sexps) (acc chars)) (put ";\n" (put-val-sig inner v descs (put "    " acc)))) "" (spec-of spec "val") acc)))
+            (put "}\n\n" acc))))
+
+      (define module-impls (subr kfx (ctx) strings)
+        (lambda (c)
+          "Each module given for a module type, `m x`, once."
+          (tagcase c
+            (ctx (ds ts ks ls xs fs ms es mods)
+              (reverse-strings
+               (concat (map (lambda ((f fact))
+                              (tagcase f (fact (ff fp fw) (if (has-prefix? fw "module-impl ") (the strings (list (after-prefix fw "module-impl "))) nil))))
+                            fs))
+               nil)))))
+
+      (define-rec
+        (deduped (subr kfx (strings strings) strings)
+          (lambda (xs seen)
+            (cond ((null? xs) (reverse-strings seen nil))
+                  ((string-member? (car xs) seen) (deduped (cdr xs) seen))
+                  (else (deduped (cdr xs) (cons (car xs) seen)))))))
+
+      (define put-impl (subr kfx (ctx string string chars) chars)
+        (lambda (c m x acc)
+          (let* ((spec (car (module-body c (string-append "%moduleof " x))))
+                 (inner (in-trait c spec))
+                 (descs (spec-of spec "desc"))
+                 (consts (item-constants (module-items c m)))
+                 (acc (put " {\n" (put "::Module" (put (mangle m) (put " for " (put (camel x) (put "impl " acc)))))))
+                 (acc (put-sep (lambda ((t string) (acc chars)) (put ";\n" (put (type-path c m t) (put " = " (put (camel t) (put "    type " acc))))))
+                               "" (abs-of spec) acc))
+                 (acc (put-sep (lambda ((v sexps) (acc chars))
+                                 (let* ((t (subst-descs (third v) descs))
+                                        (name (sym-name (second v)))
+                                        (acc (put " {\n        " (put-val-sig inner v descs (put "    " acc))))
+                                        (acc (put (mangle name) (put "::" (put (mangle m) acc))))
+                                        (acc (if (string-member? name consts) (put "()" acc) acc))
+                                        (acc (if (head-is? t "subr")
+                                                 (put ")" (put-arg-names 0 (size (items (third (items t)))) (put "(" acc)))
+                                                 acc)))
+                                   (put "\n    }\n" acc)))
+                               "" (spec-of spec "val") acc)))
+            (put "}\n\n" acc))))
+
+      (define module-params (subr kfx (ctx sexps sexps) strings)
+        (lambda (c names types)
+          "The parameters of a module type, each `m x`."
+          (if (or (null? names) (null? types))
+              nil
+              (let ((rest (module-params c (cdr names) (cdr types))))
+                (tagcase (car types)
+                  (sym (t at-file at-pos) (if (null? (module-body c (string-append "%moduleof " t)))
+                               rest
+                               (cons (string-append (sym-name (tagcase (car names) (lst (xs f l p) (car xs)) (else other other)))
+                                                    (string-append " " t))
+                                     rest)))
+                  (else other rest))))))
+
+      (define-rec
+        (unmoduled (subr kfx (ctx sexps sexps bool) sexps)
+          (lambda (c names types want-names)
+            "`names` or `types`, without the module parameters."
+            (cond ((or (null? names) (null? types)) nil)
+                  ((tagcase (car types) (sym (t at-file at-pos) (not (null? (module-body c (string-append "%moduleof " t))))) (else other #f))
+                   (unmoduled c (cdr names) (cdr types) want-names))
+                  (else (cons (if want-names (car names) (car types)) (unmoduled c (cdr names) (cdr types) want-names)))))))
+
+      (define put-params (subr kfx (ctx sexps sexps bool chars) chars)
+        (lambda (c names types mutable acc)
+          "Parameters, from a lambda's names and its `subr` type's; `mut` if
+           `mutable`, for a procedure that loops."
+          (if (null? names)
+              acc
+              (let* ((name (tagcase (car names) (lst (xs src-file src-line src-pos) (car xs)) (else other other)))
+                     (acc (if mutable (put "mut " acc) acc))
+                     (acc (put (mangle (sym-name name)) acc))
+                     (acc (put ": " acc))
+                     (acc (put-type c (car types) acc)))
+                (put-params c (cdr names) (cdr types) mutable
+                            (if (null? (cdr names)) acc (put ", " acc)))))))
+
+      (define put-generics (subr kfx (sexps bool chars) chars)
+        (lambda (binders first acc)
+          "A poly's binders as a fn's generics: a type is a Rust type parameter,
+           `Copy` and `'static` as every KFX value is; an effect is erased, and so,
+           until places come (TODO.md section 14), is a region, every one's place
+           being the heap."
+          (if (null? binders)
+              (if first acc (put ">" acc))
+              (let* ((b (items (car binders)))
+                     (kind (sym-name (second b))))
+                (cond ((string=? kind "type")
+                       (let* ((acc (put (if first "<" ", ") acc))
+                              (acc (put (camel (sym-name (car b))) acc)))
+                         (put-generics (cdr binders) #f (put ": Copy + 'static" acc))))
+                      ((or (string=? kind "effect") (string=? kind "region")) (put-generics (cdr binders) first acc))
+                      (else (error (string-append "kfx: KFX-0 has no poly over a " kind))))))))
+
+      (define unpoly (subr kfx (sexp) sexp)
+        (lambda (e)
+          "A poly type's body, or a plambda's: what is under the binders."
+          (if (or (head-is? e "poly") (head-is? e "plambda")) (third (items e)) e)))
+
+      (define put-place-generics (subr kfx (ctx string sexps strings strings chars) chars)
+        (lambda (c name binders lives places acc)
+          "A procedure given places' generics (C34): each place a lifetime, `'p`,
+           and a type, `Place_P`, bound to hold what the procedure makes there,
+           by itself or by those it gives the place to; the types `Copy`."
+          (let* ((needs (all-facts-prefixed c (string-append "place-needs " (string-append name " "))))
+                 (types (concat (map (lambda ((b sexp)) (if (sym-is? (second (items b)) "type") (the strings (list (camel (sym-name (car (items b)))))) nil)) binders)))
+                 (bounds (lambda ((p string))
+                           (distinct-strings
+                             (concat (map (lambda ((n string))
+                                            (let ((ws (read-all (string-chars n) "" 1)))
+                                              (if (string=? (sym-name (car ws)) (string-append "'" p))
+                                                  (the strings (list (string-append "Holds<" (string-append (held-rust c (sym-name (second ws)) (lifetime p) (third ws)) ">"))))
+                                                  nil)))
+                                          needs)))))
+                 (params (onto (map (lambda ((p string)) (lifetime p)) (onto lives places))
+                               (onto (map (lambda ((t string)) (string-append t ": Copy + 'static")) types)
+                                     (map (lambda ((p string))
+                                            (let ((bs (bounds p)))
+                                              (string-append "Place_" (string-append (camel p) (if (null? bs) "" (string-append ": " (words-of-sep bs " + ")))))))
+                                          places)))))
+            (put (string-append "<" (string-append (words-of-sep params ", ") ">")) acc))))
+
+      (define free-regions (subr kfx (sexps) strings)
+        (lambda (binders)
+          "A poly's region binders not within a place, `(r region)` or `(r region
+           distinct)`: each a lifetime of the procedure, `'r` (C42)."
+          (concat (map (lambda ((b sexp))
+                         (let ((bs (items b)))
+                           (if (and (sym-is? (second bs) "region") (or (i64= (size bs) 2) (sym-is? (third bs) "distinct")))
+                               (the strings (list (sym-name (car bs))))
+                               nil)))
+                       binders))))
+
+      (define-rec
+        (mentions-suspension? (subr kfx (ctx sexp) bool)
+          (lambda (c t)
+            "Whether a type is, or holds, a procedure that may suspend: one whose
+             future, `'static`, can hold no lifetime's data (C46)."
+            (tagcase (family-expanded c t)
+              (lst (xs f l p)
+                (cond ((null? xs) #f)
+                      ((and (sym-is? (car xs) "subr") (suspending-effect? c (second xs))) #t)
+                      ((sym-is? (car xs) "subr")
+                       (or (any? (lambda ((x sexp)) (mentions-suspension? c x)) (items (third xs)))
+                           (mentions-suspension? c (fourth xs))))
+                      (else (any? (lambda ((x sexp)) (mentions-suspension? c x)) (cdr xs)))))
+              (sym (n f p)
+                (let ((found (module-body c (string-append "%abbreviation " n))))
+                  (if (null? found) #f (mentions-suspension? c (second (items (car found)))))))
+              (else other #f)))))
+
+      (define may-suspend? (subr kfx (ctx sexps sexp) bool)
+        (lambda (c binders typ)
+          "Whether a definition is of a procedure that may suspend, or that takes
+           or gives one: its effect says so, or names one of its effect binders,
+           or its type holds such a procedure. Its regions then have no
+           lifetimes (C46): its future is `'static`, as a capture's must be, and
+           it touches no `letrena`'s data, since none may be suspended in (C45)."
+          (let ((t (if (head-is? typ "poly") (third (items typ)) typ))
+                (c (with-locals c (concat (map (lambda ((b sexp))
+                                                 (if (sym-is? (second (items b)) "effect")
+                                                     (the strings (list (string-append "%evar " (sym-name (car (items b))))))
+                                                     nil))
+                                               binders)))))
+            (mentions-suspension? c t))))
+
+      (define put-lifetime-generics (subr kfx (strings sexps chars) chars)
+        (lambda (lives binders acc)
+          "A procedure's generics: its regions' lifetimes, then its types'."
+          (let ((types (concat (map (lambda ((b sexp)) (if (sym-is? (second (items b)) "type") (the strings (list (string-append (camel (sym-name (car (items b)))) ": Copy + 'static"))) nil)) binders))))
+            (put (string-append "<" (string-append (words-of-sep (onto (map lifetime lives) types) ", ") ">")) acc))))
+
+      (define put-define (subr kfx (ctx sexp sexp sexp chars) chars)
+        (lambda (c name typ defined acc)
+          "A definition, a `fn`: a procedure's of its parameters; a constant's of
+           none, run at each use, or, if it allocates, made at its first use and
+           kept (C21)."
+          (let* ((binders (if (head-is? typ "poly") (items (second (items typ))) nil))
+                 (places (concat (map (lambda ((b sexp)) (if (sym-is? (second (items b)) "place") (the strings (list (sym-name (car (items b))))) nil)) binders)))
+                 (lives (if (may-suspend? c binders typ) nil (free-regions binders)))
+                 (c (with-locals c (onto (onto (map (lambda ((r string)) (string-append "%letrena " r)) lives)
+                                               (concat (map (lambda ((p string)) (the strings (list (string-append "%letrena " p) (string-append "%placeparam " p)))) places)))
+                                         (onto (concat (map (lambda ((b sexp))
+                                                              (let ((bs (items b)))
+                                                                (if (and (i64= (size bs) 3) (sym-is? (second bs) "region") (not (sym-is? (third bs) "distinct")))
+                                                                    (the strings (list (string-append "%within " (string-append (sym-name (car bs)) (string-append " " (sym-name (third bs)))))))
+                                                                    nil)))
+                                                            binders))
+                                         (concat (map (lambda ((b sexp))
+                                                        (cond ((sym-is? (second (items b)) "type") (the strings (list (string-append "%tvar " (sym-name (car (items b)))))))
+                                                              ((sym-is? (second (items b)) "effect") (the strings (list (string-append "%evar " (sym-name (car (items b)))))))
+                                                              (else nil)))
+                                                      binders))))))
+                 (typ (family-expanded c (unpoly typ)))
+                 (defined (unpoly defined))
+                 (lambda? (head-is? defined "lambda"))
+                 (body (if lambda? (cdr (cdr (items defined))) (the sexps (list defined))))
+                 (doc? (and (comment? (car body)) (not (null? (cdr body)))))
+                 (acc (if doc? (put "\n" (put-comment (string-chars (comment-text (car body))) "///" 0 #t acc)) acc))
+                 (body (if doc? (cdr body) body))
+                 (fallible (and lambda? (fallible-effect? c (second (items typ)))))
+                 (suspends (and lambda? (suspending-effect? c (second (items typ)))))
+                 (mparams (if lambda? (module-params c (items (second (items defined))) (items (third (items typ)))) nil))
+                 (t (if lambda?
+                        (returns (sym-name name) (map param-name (items (second (items defined)))) (null? mparams) fallible)
+                        (value)))
+                 (loops? (and lambda? (tail-calls? t (last body))))
+                 (inner (if lambda?
+                            (with-locals c (onto (cons (if suspends "%async" "%sync") (cons (if fallible "%fallible" "%infallible")
+                                                       (map param-name (items (second (items defined))))))
+                                                 (map (lambda ((mp string)) (string-append "%modparam " mp)) mparams)))
+                            c))
+                 (acc (put (if suspends "pub async fn " "pub fn ") acc))
+                 (acc (put (mangle (sym-name name)) acc))
+                 (acc (cond ((not (null? places)) (put-place-generics c (sym-name name) binders lives places acc))
+                            ((not (null? lives)) (put-lifetime-generics lives binders acc))
+                            (else (put-generics binders #t acc))))
+                 (acc (cond ((null? mparams) acc)
+                            ((not (null? binders)) (error "kfx: a poly procedure with a module parameter, which KFX does not write yet"))
+                            (else (put ">" (put-sep (lambda ((mp string) (acc chars))
+                                                      (let ((ws (split-words mp))) (put (camel (car (cdr ws))) (put ": " (put (camel (car ws)) (put "Mod_" acc))))))
+                                                    ", " mparams (put "<" acc))))))
+                 (acc (if lambda?
+                          (let* ((acc (put "(" acc))
+                                 (acc (put-params c (unmoduled c (items (second (items defined))) (items (third (items typ))) #t)
+                                                  (unmoduled c (items (second (items defined))) (items (third (items typ))) #f)
+                                                  loops? acc))
+                                 (acc (put ") -> " acc)))
+                            (if fallible
+                                (put ", Unwind>" (put-type c (fourth (items typ)) (put "Result<" acc)))
+                                (put-type c (fourth (items typ)) acc)))
+                          (put-type c typ (put "() -> " acc))))
+                 (acc (put " {" acc)))
+            (if loops?
+                (let* ((acc (put-nl 2 (put "loop {" (put-nl 1 acc))))
+                       (acc (put-stmts inner body 2 t acc)))
+                  (put "\n    }\n}\n\n" acc))
+                (if (and (not lambda?) (fact-at? c defined "once"))
+                    (let* ((acc (put-nl 1 acc))
+                           (acc (put "thread_local!(static ONCE: OnceCell<" acc))
+                           (acc (put-type c typ acc))
+                           (acc (put "> = const { OnceCell::new() });" acc))
+                           (acc (put-nl 1 acc))
+                           (acc (put "once(&ONCE, || {" acc))
+                           (acc (put-stmts inner body 2 (value) (put-nl 2 acc))))
+                      (put "\n    })\n}\n\n" acc))
+                    (put "\n}\n\n" (put-stmts inner body 1 (if fallible (ok-value) (value)) (put-nl 1 acc))))))))
+
+      (define put-rec (subr kfx (ctx sexps chars) chars)
+        (lambda (c bindings acc)
+          (if (null? bindings)
+              acc
+              (let ((b (items (car bindings))))
+                (put-rec c (cdr bindings) (put-define c (car b) (second b) (third b) acc))))))
+
+      (define put-variants (subr kfx (ctx sexps chars) chars)
+        (lambda (c variants acc)
+          (if (null? variants)
+              acc
+              (let* ((v (items (car variants)))
+                     (acc (put "    " acc))
+                     (acc (put (camel (sym-name (car v))) acc))
+                     (acc (put "(" acc))
+                     (acc (put-types c (cdr v) acc)))
+                (put-variants c (cdr variants) (put "),\n" acc))))))
+
+      (define put-fields (subr kfx (ctx sexps i64 bool chars) chars)
+        (lambda (c types i typed acc)
+          "Fields `f0`, `f1`, ..., from `i`, with their types if `typed`."
+          (if (null? types)
+              acc
+              (let* ((acc (if (i64= i 0) acc (put ", " acc)))
+                     (acc (put "f" acc))
+                     (acc (put (i64->string i) acc))
+                     (acc (if typed (put-type c (car types) (put ": " acc)) acc)))
+                (put-fields c (cdr types) (i64+ i 1) typed acc)))))
+
+      (define put-constructors (subr kfx (ctx string strings sexps chars) chars)
+        (lambda (c d params variants acc)
+          (if (null? variants)
+              acc
+              (let* ((v (items (car variants)))
+                     (tag (sym-name (car v)))
+                     (acc (put "pub fn " acc))
+                     (acc (put (mangle tag) acc))
+                     (acc (put-generics-of params #t acc))
+                     (acc (put "(" acc))
+                     (acc (put-fields c (cdr v) 0 #t acc))
+                     (acc (put ") -> &'static " acc))
+                     (acc (put (camel d) acc))
+                     (acc (put-generics-of params #f acc))
+                     (acc (put " {\n    kayak_rt::heap_alloc(" acc))
+                     (acc (put (camel d) acc))
+                     (acc (put "::" acc))
+                     (acc (put (variant-name tag) acc))
+                     (acc (put "(" acc))
+                     (acc (put-fields c (cdr v) 0 #f acc)))
+                (put-constructors c d params (cdr variants) (put "))\n}\n\n" acc))))))
+
+      (define put-datatype (subr kfx (ctx sexps chars) chars)
+        (lambda (c xs acc)
+          "An enum, generic in its type parameters (its regions are erased), and a
+           constructor for each variant."
+          (let* ((d (type-head-name (car xs)))
+                 (params (head-type-params (car xs)))
+                 (acc (put "pub enum " acc))
+                 (acc (put (camel d) acc))
+                 (acc (put-generics-of params #t acc))
+                 (acc (put " {\n" acc))
+                 (acc (put-variants c (cdr xs) acc))
+                 (acc (put "}\n\n" acc)))
+            (put-constructors c d params (cdr xs) acc))))
+
+      (define put-generative (subr kfx (ctx sexps chars) chars)
+        (lambda (c xs acc)
+          "A generative type: a new type, a newtype in Rust, and its conversions."
+          (let* ((t (type-head-name (car xs)))
+                 (params (head-type-params (car xs)))
+                 (inside (not (string=? (module-here c) "")))
+                 (acc (put "#[derive(Clone, Copy)]\npub struct " acc))
+                 (acc (put (camel t) acc))
+                 (acc (put-generics-of params #t acc))
+                 (acc (put (if inside "(" "(pub ") acc))
+                 (acc (put-type c (second xs) acc))
+                 (acc (put (if inside ");\n\nfn up_" ");\n\npub fn up_") acc))
+                 (acc (put (mangle t) acc))
+                 (acc (put-generics-of params #t acc))
+                 (acc (put "(x: " acc))
+                 (acc (put-type c (second xs) acc))
+                 (acc (put ") -> " acc))
+                 (acc (put (camel t) acc))
+                 (acc (put-generics-of params #f acc))
+                 (acc (put " {\n    " acc))
+                 (acc (put (camel t) acc))
+                 (acc (put (if inside "(x)\n}\n\nfn down_" "(x)\n}\n\npub fn down_") acc))
+                 (acc (put (mangle t) acc))
+                 (acc (put-generics-of params #t acc))
+                 (acc (put "(x: " acc))
+                 (acc (put (camel t) acc))
+                 (acc (put-generics-of params #f acc))
+                 (acc (put ") -> " acc))
+                 (acc (put-type c (second xs) acc)))
+            (put " {\n    x.0\n}\n\n" acc))))
+
+      (define-rec
+        (indented (subr kfx (chars bool chars) chars)
+          (lambda (cs start acc)
+            "Lines, each not empty four spaces in: `acc`, a module's items."
+            (cond ((null? cs) acc)
+                  ((char=? (car cs) #\newline) (indented (cdr cs) #t (cons (car cs) acc)))
+                  (start (indented (cdr cs) #f (cons (car cs) (put "    " acc))))
+                  (else (indented (cdr cs) #f (cons (car cs) acc)))))))
+
+      (define-rec
+        (trimmed (subr kfx (chars) chars)
+          (lambda (cs)
+            "Written text, its last newlines dropped."
+            (if (and (not (null? cs)) (char=? (car cs) #\newline)) (trimmed (cdr cs)) cs))))
+
+      (define without (subr kfx (strings strings) strings)
+        (lambda (xs ys)
+          (if (null? xs) nil
+              (if (string-member? (car xs) ys) (without (cdr xs) ys) (cons (car xs) (without (cdr xs) ys))))))
+
+      ;; The shapes a program has, each declared once: every `productof`,
+      ;; `sumof` and `product` in it, and in the types the checker elaborated and
+      ;; found for sums. A shape's key is `P` or `S`, then its labels.
+
+      (define standard-shape? (subr kfx (string) bool)
+        (lambda (key)
+          "A shape kayak-rt declares, as the program's would be (`world.rs`): what
+           FX-26's I/O and bytes primitives answer with (C49)."
+          (string-member? key (list "S text bad" "S done failed" "S line eof failed" "S data failed" "S names failed" "P kind detail"
+                                    "S not-found permission-denied already-exists not-a-directory is-a-directory broken-pipe invalid-data other"))))
+
+      (define shape-key (subr kfx (sexp) strings)
+        (lambda (e)
+          "The key of the shape `e` writes, if it writes one."
+          (tagcase e
+            (lst (xs f l p)
+              (if (and (not (null? xs))
+                       (or (sym-is? (car xs) "productof") (sym-is? (car xs) "product") (sym-is? (car xs) "sumof"))
+                       (not (any? (lambda ((x sexp)) (tagcase x (lst (ys f2 l2 p2) (null? ys)) (else other #t))) (cdr xs))))
+                  (the strings
+                    (list (string-append (if (sym-is? (car xs) "sumof") "S" "P")
+                                         (concat-strings (map (lambda ((x sexp)) (string-append " " (label-of (car (items x))))) (cdr xs))))))
+                  nil))
+            (else other nil))))
+
+      (define-rec
+        (shapes-in (subr kfx (sexp strings) strings)
+          (lambda (e acc)
+            (tagcase e
+              (lst (xs f l p)
+                (let ((acc (shapes-in-all xs acc))
+                      (key (shape-key e)))
+                  (if (or (null? key) (string-member? (car key) acc) (standard-shape? (car key))) acc (cons (car key) acc))))
+              (else other acc))))
+        (shapes-in-all (subr kfx (sexps strings) strings)
+          (lambda (es acc) (if (null? es) acc (shapes-in-all (cdr es) (shapes-in (car es) acc))))))
+
+      (define program-shapes (subr kfx (ctx sexps) strings)
+        (lambda (c forms)
+          (tagcase c
+            (ctx (ds ts ks ls xs fs ms es mods)
+              (reverse-strings
+               (shapes-in-all (onto (map (lambda ((x typed)) (tagcase x (typed (n t) t))) xs)
+                                    (concat (map (lambda ((f fact))
+                                                   (tagcase f
+                                                     (fact (ff fp fw)
+                                                       (if (has-prefix? fw "sum-type ")
+                                                           (read-all (string-chars (after-prefix fw "sum-type ")) "" 1)
+                                                           nil))))
+                                                 fs)))
+                              (shapes-in-all forms nil))
+               nil)))))
+
+      (define-rec
+        (put-params-of (subr kfx (i64 i64 chars) chars)
+          (lambda (i n acc)
+            (if (i64< i n)
+                (put-params-of (i64+ i 1) n (put (i64->string i) (put (if (i64= i 0) "A" ", A") acc)))
+                acc))))
+
+      (define put-generic-params (subr kfx (i64 chars) chars)
+        (lambda (n acc) (if (i64= n 0) acc (put ">" (put-params-of 0 n (put "<" acc))))))
+
+      (define-rec
+        (put-variants-of (subr kfx (strings i64 chars) chars)
+          (lambda (tags i acc)
+            (if (null? tags)
+                acc
+                (put-variants-of (cdr tags) (i64+ i 1)
+                                 (put "),\n" (put (i64->string i) (put "(A" (put (variant-name (car tags)) (put "    " acc))))))))))
+
+      (define put-shape-decls (subr kfx (strings bool bool chars) chars)
+        (lambda (keys shows flats acc)
+          "Each shape's declaration, and, for `kfx --toplevel`, its `Show`, as
+           Fixpt writes one: `#<product of 2>`, `#<sum leaf>`; with `flats`, a
+           product's `Flat`, for a typed suffix (C32): its fields' zero bytes."
+          (if (null? keys)
+              acc
+              (let* ((key (car keys))
+                     (product (string=? (substring-of key 1) "P"))
+                     (labels (split-words (after-prefix key (substring-of key 1))))
+                     (name (shape-name product labels))
+                     (n (size labels))
+                     (acc (put "#[allow(non_camel_case_types)]\n" acc))
+                     (acc (if product
+                              (put ");\n\n" (put-sep (lambda ((i i64) (acc chars)) (put (i64->string i) (put "pub A" acc))) ", " (counting 0 n)
+                                                   (put "(" (put-generic-params n (put name (put "#[derive(Clone, Copy)]\npub struct " acc))))))
+                              (put "}\n\n" (put-variants-of labels 0 (put " {\n" (put-generic-params n (put name (put "pub enum " acc))))))))
+                     (acc (if (not shows)
+                              acc
+                              (let ((acc (put " {\n    fn show(&self, out: &mut String) {\n" (put-generic-params n (put name (put " Show for " (put-generic-params n (put "impl" acc))))))))
+                                (put "    }\n}\n\n"
+                                     (if product
+                                         (put ">\");\n" (put (i64->string n) (put "        out.push_str(\"#<product of " acc)))
+                                         (put "        }\n"
+                                              (put-sep (lambda ((l string) (acc chars))
+                                                         (put ">\"),\n" (put l (put "(..) => out.push_str(\"#<sum " (put (variant-name l) (put "::" (put name (put "            " acc))))))))
+                                                       "" labels (put "        match self {\n" acc)))))))))
+                (put-shape-decls (cdr keys) shows flats
+                                 (if (and flats product)
+                                     (put "    }\n}\n\n"
+                                          (put ")\n"
+                                               (put-sep (lambda ((i i64) (acc chars)) (put "::zeroed()" (put (i64->string i) (put "A" acc)))) ", " (counting 0 n)
+                                                        (put "(" (put name (put " {\n    fn zeroed() -> Self {\n        " (put-generic-params n (put name (put " Flat for "
+                                                          (put ">" (put-sep (lambda ((i i64) (acc chars)) (put ": Flat" (put (i64->string i) (put "A" acc)))) ", " (counting 0 n)
+                                                                            (put "impl<" acc))))))))))))
+                                     acc))))))
+
+      ;; A program's top-level expressions, for running Fixpt's programs as Rust
+      ;; (`kfx --toplevel`, scripts/run-fixpt-programs.py): a `Show` for each
+      ;; datatype, writing a value as Fixpt does, `#<sum TAG>`; and
+      ;; `kfx_toplevel`, which writes each top-level expression's value on a line,
+      ;; top-level strings too, as `fixpt eval` does.
+
+      (define put-show-arms (subr kfx (string sexps chars) chars)
+        (lambda (d variants acc)
+          (if (null? variants)
+              acc
+              (let* ((tag (sym-name (car (items (car variants)))))
+                     (acc (put "            " acc))
+                     (acc (put (camel d) acc))
+                     (acc (put "::" acc))
+                     (acc (put (variant-name tag) acc))
+                     (acc (put "(..) => out.push_str(str_lit(\"#<sum " acc))
+                     (acc (put tag acc)))
+                (put-show-arms d (cdr variants) (put ">\").as_str()),\n" acc))))))
+
+      (define put-show-impls (subr kfx (sexps chars) chars)
+        (lambda (forms acc)
+          (cond ((null? forms) acc)
+                ((head-is? (car forms) "define-datatype")
+                 (let* ((xs (cdr (items (car forms))))
+                        (d (type-head-name (car xs)))
+                        (params (head-type-params (car xs)))
+                        (acc (put "impl" acc))
+                        (acc (put-generics-of params #t acc))
+                        (acc (put " Show for " acc))
+                        (acc (put (camel d) acc))
+                        (acc (put-generics-of params #f acc))
+                        (acc (put " {\n    fn show(&self, out: &mut String) {\n        match self {\n" acc))
+                        (acc (put-show-arms d (cdr xs) acc)))
+                   (put-show-impls (cdr forms) (put "        }\n    }\n}\n\n" acc))))
+                ((head-is? (car forms) "define-generative")
+                 (let* ((h (second (items (car forms))))
+                        (params (head-type-params h))
+                        (acc (put "impl" acc))
+                        (acc (if (null? params)
+                                 acc
+                                 (put ">" (put-sep (lambda ((n string) (acc chars))
+                                                     (put ": Copy + 'static + Show" (put (camel n) acc)))
+                                                   ", " params (put "<" acc)))))
+                        (acc (put " Show for " acc))
+                        (acc (put (camel (type-head-name h)) acc))
+                        (acc (put-generics-of params #f acc)))
+                   (put-show-impls (cdr forms) (put " {\n    fn show(&self, out: &mut String) {\n        self.0.show(out)\n    }\n}\n\n" acc))))
+                (else (put-show-impls (cdr forms) acc)))))
+
+      ;; What a module's items are written in, and its items (C91).
+
+      (define toplevel-form? (subr kfx (sexp) bool)
+        (lambda (f) (not (or (definition? f) (head-is? f "define-effect")))))
+
+      (define put-toplevel-lines (subr kfx (ctx sexps chars) chars)
+        (lambda (c forms acc)
+          "Each top-level expression's value written; a `void` one, which never
+           gives one, run, its type said; one that may suspend, a future run to
+           its end (C45)."
+          (cond ((null? forms) acc)
+                ((toplevel-form? (car forms))
+                 (cond
+                   ((fact-at? c (car forms) "suspends")
+                    (if (fact-at? c (car forms) "void")
+                        (let* ((acc (put "    let _: () = kayak_rt::suspend::block(kayak_rt::suspend::body(async move { let _: Void = " acc))
+                               (acc (put-exp (with-locals c (list "%async" "%fallible")) (car forms) 1 (value) acc)))
+                          (put-toplevel-lines c (cdr forms) (put "; Ok(()) })).unwrap_or_else(|u| unreachable_unwind(u));\n" acc)))
+                        (let* ((acc (put "    kayak_rt::show_line(&mut out_, kayak_rt::suspend::block(kayak_rt::suspend::body(async move { Ok(" acc))
+                               (acc (put-exp (with-locals c (list "%async" "%fallible")) (car forms) 1 (value) acc)))
+                          (put-toplevel-lines c (cdr forms) (put ") })).unwrap_or_else(|u| unreachable_unwind(u)));\n" acc)))))
+                   ((fact-at? c (car forms) "procedure")
+                    "A procedure, as Fixpt writes one, whatever made it: a global's
+                     own `fn` is no `dyn Fn`, whose `Show` this would otherwise be."
+                    (let* ((acc (put "    kayak_rt::show_line(&mut out_, (|| -> Result<_, Unwind> { let _ = " acc))
+                           (acc (put-exp (with-locals c (list "%fallible")) (car forms) 1 (value) acc)))
+                      (put-toplevel-lines c (cdr forms) (put "; Ok(kayak_rt::Procedure) })().unwrap_or_else(|u| unreachable_unwind(u)));\n" acc))))
+                   (else
+                 (if (fact-at? c (car forms) "void")
+                     (let* ((acc (put "    let _: () = (|| -> Result<(), Unwind> { let _: Void = " acc))
+                            (acc (put-exp (with-locals c (list "%fallible")) (car forms) 1 (value) acc)))
+                       (put-toplevel-lines c (cdr forms) (put "; Ok(()) })().unwrap_or_else(|u| unreachable_unwind(u));\n" acc)))
+                     (let* ((acc (put "    kayak_rt::show_line(&mut out_, (|| -> Result<_, Unwind> { Ok(" acc))
+                            (acc (put-exp (with-locals c (list "%fallible")) (car forms) 1 (value) acc)))
+                       (put-toplevel-lines c (cdr forms) (put ") })().unwrap_or_else(|u| unreachable_unwind(u)));\n" acc)))))))
+                (else (put-toplevel-lines c (cdr forms) acc))))))
+
+    (define put-module-impls (subr kfx (ctx chars) chars)
+      (lambda (c acc)
+        (put-sep (lambda ((k string) (acc chars))
+                   (let ((ws (split-words k))) (put-impl c (car ws) (car (cdr ws)) acc)))
+                 "" (deduped (module-impls c) nil) acc)))
+
+    (define definition? (subr kfx (sexp) bool)
+      (lambda (e)
+        (or (head-is? e "define") (head-is? e "define*") (head-is? e "define-rec") (module-def? e)
+            (head-is? e "define-datatype") (head-is? e "define-type") (head-is? e "define-generative"))))
+
+    (define put-shapes (subr kfx (ctx sexps bool chars) chars)
+      (lambda (c forms shows acc) (put-shape-decls (program-shapes c forms) shows (uses-blobrefs? c) acc)))
+
+    (define put-show-generatives (subr kfx (sexps chars) chars)
+      (lambda (forms acc)
+        "In toplevel mode, a module's datatypes' and generative types' `Show`,
+         inside it, where their representations are seen."
+        (put-show-impls (concat (map (lambda ((f sexp)) (if (or (head-is? f "define-generative") (head-is? f "define-datatype")) (the sexps (list f)) nil)) forms)) acc)))
+
+    (define-rec
+      (put-top (subr kfx (ctx sexp chars) chars)
+        (lambda (c form acc)
+          (let* ((xs (tagcase form (lst (ys f l p) ys) (else other nil)))
+                 (h (if (null? xs) "" (tagcase (car xs) (sym (n at-file at-pos) n) (else other "")))))
+            (cond ((string=? h "define-effect") acc)
+                  ((or (string=? h "include") (string=? h "%use"))
+                   (let* ((n (sym-name (second xs)))
+                          (its (module-items c n))
+                          (skip (concat (map (lambda ((x sexp)) (if (head-is? x "skip") (map sym-name (cdr (items x))) nil)) (cdr (cdr xs)))))
+                          (ex (concat (map (lambda ((x sexp))
+                                             (cond ((head-is? x "except") (map sym-name (cdr (items x))))
+                                                   ((head-is? x "except-module")
+                                                    (let ((b (module-items c (sym-name (second (items x)))))) (onto (item-values b) (item-types b))))
+                                                   (else nil)))
+                                           (cdr (cdr xs)))))
+                          (names (onto (map mangle (concat (map (lambda ((t string)) (if (string-member? t ex) nil (the strings (list t)))) (item-values its))))
+                                       (map camel (concat (map (lambda ((t string)) (if (or (string-member? t skip) (string-member? t ex)) nil (the strings (list t)))) (item-types its)))))))
+                     (if (null? names)
+                         acc
+                         (put "};\n\n" (put-sep (lambda ((x string) (acc chars)) (put x acc)) ", " names
+                                                 (put "::{" (put (mangle n) (put (if (string=? h "include") "pub use super::" "use super::") acc))))))))
+                  ((and (string=? h "define-type")
+                        (or (head-is? (third xs) "arrayof")
+                            (and (head-is? (third xs) "sumof") (not (null? (cdr (items (third xs)))))
+                                 (tagcase (second (items (third xs))) (sym (n f p) #t) (else other #f)))))
+                   "A flat array or a keyed flat sum: a layout in a bloblet's suffix
+                    (C31, C33), no value's type, and so no Rust type's."
+                   acc)
+                  ((and (string=? h "define-type") (head-is? (third xs) "moduleof"))
+                   (put-trait c (sym-name (second xs)) (third xs) acc))
+                  ((and (string=? h "define-type")
+                        (tagcase (second xs)
+                          (lst (hs hf hl hp)
+                            (any? (lambda ((b sexp)) (tagcase b (lst (bs bf bl bp) (and (i64= (size bs) 2) (sym-is? (second bs) "effect"))) (else other #f))) (cdr hs)))
+                          (else other #f)))
+                   "An abbreviation over an effect (C46): no Rust alias, since what
+                    it stands for in Rust depends on the effect; each use expanded."
+                   acc)
+                  ((and (string=? h "define-type")
+                        (not (null? (module-body c (string-append "%expand " (type-head-name (second xs)))))))
+                   "An abbreviation of a module's family: expanded where applied (C89)."
+                   acc)
+                  ((and (string=? h "define-type") (tagcase (second xs) (lst (ys f l p) #t) (else other #f))
+                        (any? (lambda ((k string)) (has-prefix? k "%in ")) (ctx-locals c)))
+                   "A module's family: expanded where applied (C89), no Rust alias."
+                   acc)
+                  ((string=? h "define-type")
+                   "A type abbreviation; its regions, Rust lifetimes (C39), as a
+                    `letrena`'s are, so that a use of it at one is at its lifetime."
+                   (let* ((places (head-place-params (second xs)))
+                          (regions (onto (head-region-params (second xs)) places))
+                          (inner (with-locals c (onto (map (lambda ((r string)) (string-append "%letrena " r)) regions)
+                                                      (map (lambda ((p string)) (string-append "%placeparam " p)) places))))
+                          (acc (put "pub type " acc))
+                          (acc (put (camel (type-head-name (second xs))) acc))
+                          (params (onto (map (lambda ((r string)) (lifetime r)) regions)
+                                        (onto (map camel (head-type-params (second xs)))
+                                              (map (lambda ((p string)) (string-append "Place_" (camel p)))
+                                                   (concat (map (lambda ((p string)) (if (string-member? p (places-used (third xs))) (the strings (list p)) nil)) places))))))
+                          (acc (if (null? params) acc (put (string-append "<" (string-append (words-of-sep params ", ") ">")) acc)))
+                          (acc (put " = " acc))
+                          (acc (put-type inner (third xs) acc)))
+                     (put ";\n\n" acc)))
+                  ((string=? h "define-datatype") (put-datatype c (cdr xs) acc))
+                  ((string=? h "define-generative") (put-generative c (cdr xs) acc))
+                  ((module-def? form) (put-module c (sym-name (second xs)) (module-written form) acc))
+                  ((or (string=? h "define") (string=? h "define*"))
+                   (if (i64= (size xs) 4)
+                       (put-define c (second xs) (third xs) (fourth xs) acc)
+                       (put-define c (second xs) (car (ctx-typed c (sym-name (second xs)))) (third xs) acc)))
+                  ((string=? h "define-rec") (put-rec c (cdr xs) acc))
+                  (else acc)))))
+
+      (types-once (subr kfx (ctx sexps strings) sexps)
+        (lambda (c forms given)
+          "A module's `include`s, each marked with the types one before it gave
+           already, which it does not import again (C86: the same type, given by
+           two, is one name)."
+          (cond ((null? forms) nil)
+                ((or (head-is? (car forms) "include") (head-is? (car forms) "%use"))
+                 (let* ((xs (items (car forms)))
+                        (ts (item-types (module-items c (sym-name (second xs))))))
+                   (cons (lst (cons (car xs) (cons (second xs) (cons (lst (cons (sym "skip" "" 0) (map (lambda ((t string)) (sym t "" 0)) given)) "" 0 0) (cdr (cdr xs))))) "" 0 0)
+                         (types-once c (cdr forms) (onto ts given)))))
+                (else (cons (car forms) (types-once c (cdr forms) given))))))
+
+      (put-module (subr kfx (ctx string sexps chars) chars)
+        (lambda (c m written acc)
+          "A module, a Rust `mod` (C19): its items as a program's, the program's
+           names in scope, its own hiding them."
+          (tagcase (module-parts c m written)
+            (mparts (inner forms)
+              (let* ((body (put-tops inner forms nil))
+                     (body (if (string-member? "%toplevel" (ctx-locals c)) (put-show-generatives forms body) body)))
+                (put-module-around c m body acc))))))
+
+      (module-parts (subr kfx (ctx string sexps) mparts)
+        (lambda (c m written)
+          "What a module's items are written in, and the items (C91: shared
+           with the emitter that keeps memos, incr.kfx)."
+          (let* ((forms (concat (map (lambda ((f sexp))
+                                       (if (head-is? f "hide")
+                                           (map (lambda ((g sexp))
+                                                  (if (head-is? g "include") (lst (cons (sym "%use" "" 0) (cdr (items g))) "" 0 0) g))
+                                                (cdr (items f)))
+                                           (the sexps (list f))))
+                                     written)))
+                 (forms (types-once c forms nil))
+                 (outer (tagcase c (ctx (ds ts ks ls xs fs ms es mods)
+                                     (ctx ds ts
+                                          (onto (concat (map (lambda ((f sexp))
+                                                               (if (or (head-is? f "include") (head-is? f "%use"))
+                                                                   (item-constants (module-items c (sym-name (second (items f)))))
+                                                                   nil))
+                                                             forms))
+                                                (without ks (item-values forms)))
+                                          ls xs fs ms es mods)))))
+            (mparts (with-locals (collect forms outer) (list (string-append "%in " m))) forms))))
+
+      (put-module-around (subr kfx (ctx string chars chars) chars)
+        (lambda (c m body acc)
+          "A module's `pub mod`, around its items' Rust, `body`, newest first."
+          (let* ((acc (put "pub mod " acc))
+                 (acc (put (mangle m) acc))
+                 (acc (put " {\n    use super::*;\n\n" acc))
+                 (acc (if (any? (lambda ((k string)) (string=? (car (split-words k)) m)) (module-impls c))
+                          (put "    /// This module, given for a module type (C24).\n    pub struct Module;\n\n" acc)
+                          acc)))
+            (put "\n}\n\n" (indented (rev-onto (trimmed body) nil) #t acc)))))
+
+      (put-tops (subr kfx (ctx sexps chars) chars)
+        (lambda (c forms acc)
+          "A string at the top level is a comment. A procedure's documentation is
+           a string first in its body, as a Lisp docstring is: see `put-define`."
+          (cond ((null? forms) acc)
+                ((comment? (car forms))
+                 (let* ((doc (and (not (null? (cdr forms))) (definition? (second forms))))
+                        (acc (put-comment (string-chars (comment-text (car forms))) "//" 0 #t acc)))
+                   (put-tops c (cdr forms) (put (if doc "\n" "\n\n") acc))))
+                (else (put-tops c (cdr forms) (put-top c (car forms) acc)))))))
+
+    (define put-toplevel (subr kfx (ctx sexps chars) chars)
+      (lambda (c forms acc)
+        (let* ((acc (put-show-impls forms acc))
+               (acc (put "/// The program's top-level expressions' values, as Fixpt writes them.\npub fn kfx_toplevel() -> Str {\n    let mut out_ = String::new();\n" acc))
+               (acc (put-toplevel-lines c forms acc)))
+          (put "    kayak_rt::shown(out_)\n}\n" acc))))))

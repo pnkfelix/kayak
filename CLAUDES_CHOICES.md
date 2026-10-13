@@ -1849,3 +1849,36 @@ Measured, the compiler on itself, best of three: cold 0.89 s (0.91 before
 the module), warm with memos 0.26 (0.25), warm after an edit inside the
 module 0.25 (0.26 for the same edit before). `incremental.py` edits inside
 the module now too (27 compiles, each as one from scratch).
+
+## C92. The compiler in modules: restrictions, incremental, expressions, emitter, writing (2026-10-12)
+
+Step 3 of the plan: file by file, by what each would hide.
+- **`restrictions`** (restrict.kfx: `restrict` given), **`incremental`**
+  (incr.kfx: seven names given; its datatypes before it), **`expressions`**
+  (check-exprs.kfx: 142 helpers hidden, 11 names given to check-defs.kfx
+  and the engine's REPL), **`emitter`** (emit.kfx: 41 given) and
+  **`writing`** (emit-tops.kfx: 9 given, `emitter` included and hidden in
+  it; `incremental` includes both). A file's datatypes and type
+  abbreviations stay before its module: types are what files share.
+  Callers write `(with m (f ...))`, a Rust path, `m::f(...)`.
+- **What the conversions cost, and what was done about it**, measured on
+  the compiler compiling itself (cold the same, ±0.03 s of noise; warm,
+  with memos, 0.29 s for the same source with no modules): warm 0.35 s
+  at first. Made 0.31 s by
+  - each module's included values found once (they had been found four
+    times, each a walk of every binding);
+  - an item's memo keyed by its text, not its printed form;
+  - a module's emitting context fingerprinted from the program's, its
+    name, and its items' signatures, as a list (a string joined with
+    `words-of`, quadratic, had been the largest single cost);
+  - the order a module's items are checked in kept as a memo by its text,
+    its positions from the module's first item (else found again each
+    compile, every body walked; absolute positions had broken when an
+    edit moved the module, which `incremental.py` found);
+  - only the interface of a module's change found for the chain (its
+    whole change, every fact written out, kept by no memo);
+  - the item graph's reachability by trees, found once per item.
+  What is left (0.02 s) is each module's scope made each compile.
+- **The conversion script** wraps a file's forms in `(define m (module
+  (hide ...) given ...))`, its comment strings `;` comments (FX-26 takes
+  no string as a module's item).

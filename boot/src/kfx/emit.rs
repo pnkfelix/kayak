@@ -4,10 +4,6 @@ use kayak_rt::*;
 use super::*;
 
 // emit.kfx: writing Rust.
-
-// What the program defines
-
-// A tag, and its datatype's name.
 pub enum Tagof {
     Tagof(Str, Str),
 }
@@ -18,14 +14,6 @@ pub fn tagof(f0: Str, f1: Str) -> &'static Tagof {
 
 pub type Tagofs = List<&'static Tagof>;
 
-// Datatypes' names, their tags, constants (definitions not of procedures),
-// and the names bound where an expression is. A name named as a value is
-// a local, a constant (a call of its `fn`), or else a global procedure (a
-// reference to its `fn`, the program's or kayak-rt's).
-
-// A family: a datatype or type abbreviation with parameters, its name,
-// whether it is a datatype, and its parameters' kinds, so that a region's
-// argument, erased in Rust, is dropped where it is applied.
 pub enum Family {
     Family(Str, bool, Strings),
 }
@@ -36,7 +24,6 @@ pub fn family(f0: Str, f1: bool, f2: Strings) -> &'static Family {
 
 pub type Families = List<&'static Family>;
 
-// Modules, by name: each `(module item ...)` (check.kfx, C19).
 pub enum Ctx {
     Ctx(Strings, Tagofs, Strings, Strings, Typeds, Facts, Families, Typeds, Typeds),
 }
@@ -45,2351 +32,6 @@ pub fn ctx(f0: Strings, f1: Tagofs, f2: Strings, f3: Strings, f4: Typeds, f5: Fa
     kayak_rt::heap_alloc(Ctx::Ctx(f0, f1, f2, f3, f4, f5, f6, f7, f8))
 }
 
-pub fn filter_typed(mut name: Str, mut xs: Typeds) -> Typeds {
-    loop {
-        if null_p(xs) {
-            return nil::<&'static Typed>();
-        } else if {
-            let tagcase_ = car(xs);
-            match *tagcase_ {
-                Typed::Typed(n, t) => {
-                    string_eq_p(n, name)
-                }
-            }
-        } {
-            return kayak_rt::heap_cons(car(xs), kayak_rt::nil());
-        } else {
-            xs = cdr(xs);
-            continue;
-        }
-    }
-}
-
-pub fn ctx_effects(c: &'static Ctx) -> Typeds {
-    let tagcase_ = c;
-    match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-            es
-        }
-    }
-}
-
-/// Whether `n` is the effect binder of the poly being written, or the mark
-/// an effect given a family carries (C46): it may stand for an effect
-/// that aborts or suspends.
-pub fn effect_binder_p(c: &'static Ctx, n: Str) -> bool {
-    (string_eq_p(n, str_lit("%effect-given")) || {
-        let tagcase_ = c;
-        match *tagcase_ {
-            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-                string_member_p(string_append(str_lit("%evar "), n), ls)
-            }
-        }
-    })
-}
-
-/// Whether a written effect may abort, its abbreviations seen through: a
-/// procedure of it returns a `Result` (docs/research/escapes.md).
-pub fn fallible_effect_p(c: &'static Ctx, e: &'static Sexp) -> bool {
-    let tagcase_ = e;
-    match *tagcase_ {
-        Sexp::Sym(n, at_file, at_pos) => {
-            (effect_binder_p(c, n) || any_p(lambda1(move |x: &'static Typed| {
-                let tagcase_ = x;
-                match *tagcase_ {
-                    Typed::Typed(m, body) => {
-                        (string_eq_p(m, n) && fallible_effect_p(c, body))
-                    }
-                }
-            }), ctx_effects(c)))
-        }
-        Sexp::Lst(xs, src_file, src_line, src_pos) => {
-            if sym_is_p(car(xs), str_lit("goto")) {
-                true
-            } else if sym_is_p(car(xs), str_lit("comefrom")) {
-                true
-            } else if sym_is_p(car(xs), str_lit("maxeff")) {
-                any_p(lambda1(move |x: &'static Sexp| {
-                    fallible_effect_p(c, x)
-                }), cdr(xs))
-            } else {
-                false
-            }
-        }
-        _ => {
-            let other = tagcase_;
-            false
-        }
-    }
-}
-
-/// Whether a written effect may suspend, a `comefrom` (C45): a procedure
-/// of it is an `async fn`, or as a value returns a boxed future.
-pub fn suspending_effect_p(c: &'static Ctx, e: &'static Sexp) -> bool {
-    let tagcase_ = e;
-    match *tagcase_ {
-        Sexp::Sym(n, at_file, at_pos) => {
-            (effect_binder_p(c, n) || any_p(lambda1(move |x: &'static Typed| {
-                let tagcase_ = x;
-                match *tagcase_ {
-                    Typed::Typed(m, body) => {
-                        (string_eq_p(m, n) && suspending_effect_p(c, body))
-                    }
-                }
-            }), ctx_effects(c)))
-        }
-        Sexp::Lst(xs, src_file, src_line, src_pos) => {
-            if sym_is_p(car(xs), str_lit("comefrom")) {
-                true
-            } else if sym_is_p(car(xs), str_lit("maxeff")) {
-                any_p(lambda1(move |x: &'static Sexp| {
-                    suspending_effect_p(c, x)
-                }), cdr(xs))
-            } else {
-                false
-            }
-        }
-        _ => {
-            let other = tagcase_;
-            false
-        }
-    }
-}
-
-/// Whether the checker found `what` about the place `file`, `pos`.
-pub fn ctx_fact_p(c: &'static Ctx, file: Str, pos: i64, what: Str) -> bool {
-    let tagcase_ = c;
-    match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-            any_p(lambda1(move |f: &'static Fact| {
-                let tagcase_ = f;
-                match *tagcase_ {
-                    Fact::Fact(ff, fp, fw) => {
-                        (i64_eq(fp, pos) && string_eq_p(fw, what) && string_eq_p(ff, file))
-                    }
-                }
-            }), fs)
-        }
-    }
-}
-
-/// Whether the checker found `what` about the datum `e`.
-pub fn fact_at_p(c: &'static Ctx, e: &'static Sexp, what: Str) -> bool {
-    ctx_fact_p(c, datum_file(e), datum_pos(e), what)
-}
-
-/// The rest of the first fact at `file`, `pos` that begins `prefix`; or
-/// ``. A search, not a list made: the emitter asks at every name.
-pub fn first_fact(mut fs: Facts, mut file: Str, mut pos: i64, mut prefix: Str) -> Str {
-    loop {
-        if null_p(fs) {
-            return str_lit("");
-        } else {
-            let tagcase_ = car(fs);
-            match *tagcase_ {
-                Fact::Fact(ff, fp, fw) => {
-                    if (i64_eq(fp, pos) && string_eq_p(ff, file) && has_prefix_p(fw, prefix)) {
-                        return after_prefix(fw, prefix);
-                    } else {
-                        fs = cdr(fs);
-                        continue;
-                    }
-                }
-            }
-        }
-    }
-}
-
-pub fn facts_at_place(mut fs: Facts, mut file: Str, mut pos: i64) -> Facts {
-    loop {
-        if null_p(fs) {
-            return nil::<&'static Fact>();
-        } else if {
-            let tagcase_ = car(fs);
-            match *tagcase_ {
-                Fact::Fact(ff, fp, fw) => {
-                    (i64_eq(fp, pos) && string_eq_p(ff, file))
-                }
-            }
-        } {
-            return kayak_rt::heap_cons(car(fs), facts_at_place(cdr(fs), file, pos));
-        } else {
-            fs = cdr(fs);
-            continue;
-        }
-    }
-}
-
-/// The facts at the datum `e`, found once (C84).
-pub fn facts_at(c: &'static Ctx, e: &'static Sexp) -> Facts {
-    let tagcase_ = c;
-    match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-            facts_at_place(fs, datum_file(e), datum_pos(e))
-        }
-    }
-}
-
-pub fn fact_in(fs: Facts, e: &'static Sexp, prefix: Str) -> Str {
-    first_fact(fs, datum_file(e), datum_pos(e), prefix)
-}
-
-pub fn fact_in_p(fs: Facts, e: &'static Sexp, what: Str) -> bool {
-    any_p(lambda1(move |f: &'static Fact| {
-        let tagcase_ = f;
-        match *tagcase_ {
-            Fact::Fact(ff, fp, fw) => {
-                string_eq_p(fw, what)
-            }
-        }
-    }), fs)
-}
-
-/// What the checker found about the datum `e` that begins `prefix`, the
-/// rest of it; or ``.
-pub fn fact_with(c: &'static Ctx, e: &'static Sexp, prefix: Str) -> Str {
-    let tagcase_ = c;
-    match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-            first_fact(fs, datum_file(e), datum_pos(e), prefix)
-        }
-    }
-}
-
-// Products and sums, FX-26's structural data (check.kfx, `ty-shape`): one
-// generic Rust type for each list of labels, a tuple struct for a product,
-// `Product_a_b<A0, A1>`, and an enum for a sum, `Sum_leaf_node<A0, A1>`,
-// a sum's values references, as a datatype's are. The name holds the labels,
-// so that two products of the same labels and types are one type, as in
-// FX-26.
-pub fn concat_strings(xs: Strings) -> Str {
-    if null_p(xs) {
-        str_lit("")
-    } else {
-        string_append(car(xs), concat_strings(cdr(xs)))
-    }
-}
-
-pub fn reverse_strings(mut xs: Strings, mut acc: Strings) -> Strings {
-    loop {
-        if null_p(xs) {
-            return acc;
-        } else {
-            (xs, acc) = (cdr(xs), kayak_rt::heap_cons(car(xs), acc));
-            continue;
-        }
-    }
-}
-
-pub fn split_words_from(mut cs: Chars, mut word: Chars, mut acc: Strings) -> Strings {
-    loop {
-        if null_p(cs) {
-            if null_p(word) {
-                return acc;
-            } else {
-                return kayak_rt::heap_cons(rev_to_string(word), acc);
-            }
-        } else if char_eq_p(car(cs), ' ') {
-            (cs, word, acc) = (cdr(cs), nil::<char>(), if null_p(word) {
-                acc
-            } else {
-                kayak_rt::heap_cons(rev_to_string(word), acc)
-            });
-            continue;
-        } else {
-            (cs, word) = (cdr(cs), kayak_rt::heap_cons(car(cs), word));
-            continue;
-        }
-    }
-}
-
-pub fn split_words(s: Str) -> Strings {
-    reverse_strings(split_words_from(string_chars(s), nil::<char>(), nil::<Str>()), nil::<Str>())
-}
-
-/// A mangled name without its raw identifier's `r#`.
-pub fn plain_name(n: Str) -> Str {
-    if has_prefix_p(n, str_lit("r#")) {
-        after_prefix(n, str_lit("r#"))
-    } else {
-        n
-    }
-}
-
-/// `Product_1x_1y`: each label as a Rust name, its length first, so that
-/// no two lists of labels, nor a type the program names, share one.
-pub fn shape_name(product: bool, labels: Strings) -> Str {
-    string_append(if product {
-        str_lit("Product")
-    } else {
-        str_lit("Sum")
-    }, concat_strings(map(lambda1(move |l: Str| {
-        let n = plain_name(mangle(l));
-        string_append(str_lit("_"), string_append(i64_to_string(string_length_i64(n)), n))
-    }), labels)))
-}
-
-pub fn ctx_datatypes(c: &'static Ctx) -> Strings {
-    let tagcase_ = c;
-    match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-            ds
-        }
-    }
-}
-
-pub fn ctx_tags(c: &'static Ctx) -> Tagofs {
-    let tagcase_ = c;
-    match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-            ts
-        }
-    }
-}
-
-pub fn ctx_constants(c: &'static Ctx) -> Strings {
-    let tagcase_ = c;
-    match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-            ks
-        }
-    }
-}
-
-pub fn ctx_locals(c: &'static Ctx) -> Strings {
-    let tagcase_ = c;
-    match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-            ls
-        }
-    }
-}
-
-pub fn strings_onto(mut xs: Strings, mut ys: Strings) -> Strings {
-    loop {
-        if null_p(xs) {
-            return ys;
-        } else {
-            (xs, ys) = (cdr(xs), kayak_rt::heap_cons(car(xs), ys));
-            continue;
-        }
-    }
-}
-
-/// What `mods` keeps under `name`, as a list of one: a module, or, under
-/// `%moduleof x`, a module type.
-pub fn module_body(c: &'static Ctx, name: Str) -> Sexps {
-    let tagcase_ = c;
-    match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-            concat(map(lambda1(move |x: &'static Typed| {
-                let tagcase_ = x;
-                match *tagcase_ {
-                    Typed::Typed(n, body) => {
-                        if string_eq_p(n, name) {
-                            the::<Sexps>(kayak_rt::heap_cons(body, kayak_rt::nil()))
-                        } else {
-                            nil::<&'static Sexp>()
-                        }
-                    }
-                }
-            }), mods))
-        }
-    }
-}
-
-/// The module type of the module parameter `m` in scope, or ``.
-pub fn param_module_type(mut m: Str, mut ls: Strings) -> Str {
-    loop {
-        if null_p(ls) {
-            return str_lit("");
-        } else if string_eq_p(car(ls), m) {
-            return str_lit("");
-        } else if has_prefix_p(car(ls), string_append(str_lit("%modparam "), string_append(m, str_lit(" ")))) {
-            return after_prefix(car(ls), string_append(str_lit("%modparam "), string_append(m, str_lit(" "))));
-        } else {
-            ls = cdr(ls);
-            continue;
-        }
-    }
-}
-
-/// The names an `include` does not take (C87).
-pub fn include_except_names(c: &'static Ctx, f: &'static Sexp) -> Strings {
-    let ex = include_except(f);
-    if null_p(ex) {
-        nil::<Str>()
-    } else if head_is_p(car(ex), str_lit("except-module")) {
-        concat(map(&item_names, module_items(c, sym_name(second(items(car(ex)))))))
-    } else {
-        map(&sym_name, cdr(items(car(ex))))
-    }
-}
-
-/// Module `m`'s items; a module parameter's, as its type's values would be
-/// written (a value not a procedure a constant).
-pub fn module_items(c: &'static Ctx, m: Str) -> Sexps {
-    let x = param_module_type(m, ctx_locals(c));
-    if string_eq_p(x, str_lit("")) {
-        let found = module_body(c, m);
-        if null_p(found) {
-            nil::<&'static Sexp>()
-        } else {
-            concat(map(lambda1(move |f: &'static Sexp| {
-                if head_is_p(f, str_lit("include")) {
-                    let ex = include_except_names(c, f);
-                    concat(map(lambda1(move |g: &'static Sexp| {
-                        if any_p(lambda1(move |n: Str| {
-                            string_member_p(n, ex)
-                        }), item_names(g)) {
-                            nil::<&'static Sexp>()
-                        } else {
-                            the::<Sexps>(kayak_rt::heap_cons(g, kayak_rt::nil()))
-                        }
-                    }), module_items(c, sym_name(second(items(f))))))
-                } else {
-                    the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
-                }
-            }), cdr(items(car(found)))))
-        }
-    } else {
-        let spec = module_body(c, string_append(str_lit("%moduleof "), x));
-        if null_p(spec) {
-            nil::<&'static Sexp>()
-        } else {
-            concat(map(lambda1(move |it: &'static Sexp| {
-                let ys = items(it);
-                if sym_is_p(car(ys), str_lit("val")) {
-                    the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("define"), str_lit(""), 0i64), kayak_rt::heap_cons(second(ys), kayak_rt::heap_cons(third(ys), kayak_rt::heap_cons(if head_is_p(third(ys), str_lit("subr")) {
-                        lst(kayak_rt::heap_cons(sym(str_lit("lambda"), str_lit(""), 0i64), kayak_rt::nil()), str_lit(""), 0i64, 0i64)
-                    } else {
-                        sym(str_lit("#u"), str_lit(""), 0i64)
-                    }, kayak_rt::nil())))), str_lit(""), 0i64, 0i64), kayak_rt::nil()))
-                } else if sym_is_p(car(ys), str_lit("abs")) {
-                    map(lambda1(move |t: &'static Sexp| {
-                        lst(kayak_rt::heap_cons(sym(str_lit("define-type"), str_lit(""), 0i64), kayak_rt::heap_cons(t, kayak_rt::heap_cons(sym(str_lit("i64"), str_lit(""), 0i64), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
-                    }), {
-                        let tagcase_ = second(ys);
-                        match *tagcase_ {
-                            Sexp::Lst(ns, f, l, p) => {
-                                ns
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                kayak_rt::heap_cons(second(ys), kayak_rt::nil())
-                            }
-                        }
-                    })
-                } else {
-                    nil::<&'static Sexp>()
-                }
-            }), cdr(items(car(spec)))))
-        }
-    }
-}
-
-/// A module's Rust path: a module parameter's is its type parameter.
-pub fn module_path(c: &'static Ctx, m: Str) -> Str {
-    if string_eq_p(param_module_type(m, ctx_locals(c)), str_lit("")) {
-        mangle(m)
-    } else {
-        string_append(str_lit("Mod_"), camel(m))
-    }
-}
-
-/// A type definition's name, from its head: a name, or `(name binder ...)`.
-pub fn type_head_name(head: &'static Sexp) -> Str {
-    let tagcase_ = head;
-    match *tagcase_ {
-        Sexp::Lst(xs, src_file, src_line, src_pos) => {
-            sym_name(car(xs))
-        }
-        _ => {
-            let other = tagcase_;
-            sym_name(other)
-        }
-    }
-}
-
-/// The names a module's items give values to: its type's values.
-pub fn item_values(forms: Sexps) -> Strings {
-    concat(map(lambda1(move |f: &'static Sexp| {
-        if (head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) {
-            the::<Strings>(kayak_rt::heap_cons(sym_name(second(items(f))), kayak_rt::nil()))
-        } else if head_is_p(f, str_lit("define-rec")) {
-            map(lambda1(move |b: &'static Sexp| {
-                sym_name(car(items(b)))
-            }), cdr(items(f)))
-        } else if head_is_p(f, str_lit("define-datatype")) {
-            map(lambda1(move |vt: &'static Sexp| {
-                sym_name(car(items(vt)))
-            }), cdr(cdr(items(f))))
-        } else {
-            nil::<Str>()
-        }
-    }), forms))
-}
-
-/// The names a module's items give values not procedures to.
-pub fn item_constants(forms: Sexps) -> Strings {
-    concat(map(lambda1(move |f: &'static Sexp| {
-        if (head_is_p(f, str_lit("define")) && not(lambda_form_p(last(items(f))))) {
-            the::<Strings>(kayak_rt::heap_cons(sym_name(second(items(f))), kayak_rt::nil()))
-        } else {
-            nil::<Str>()
-        }
-    }), forms))
-}
-
-pub fn item_types(forms: Sexps) -> Strings {
-    concat(map(lambda1(move |f: &'static Sexp| {
-        if ((head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype"))) && not((head_is_p(f, str_lit("define-type")) && {
-            let tagcase_ = second(items(f));
-            match *tagcase_ {
-                Sexp::Lst(ys, fl, l, p) => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
-            }
-        }))) {
-            the::<Strings>(kayak_rt::heap_cons(type_head_name(second(items(f))), kayak_rt::nil()))
-        } else {
-            nil::<Str>()
-        }
-    }), forms))
-}
-
-/// The module whose `with` gave `entry`, a value's or a type's: the
-/// innermost, and only if no local inside it hides it.
-pub fn opener(mut entry: Str, mut ls: Strings) -> Str {
-    loop {
-        if null_p(ls) {
-            return str_lit("");
-        } else if string_eq_p(car(ls), entry) {
-            let rest = after_with(cdr(ls));
-            return rest;
-        } else {
-            ls = cdr(ls);
-            continue;
-        }
-    }
-}
-
-pub fn after_with(mut ls: Strings) -> Str {
-    loop {
-        if null_p(ls) {
-            return str_lit("");
-        } else if has_prefix_p(car(ls), str_lit("%with ")) {
-            return after_prefix(car(ls), str_lit("%with "));
-        } else {
-            ls = cdr(ls);
-            continue;
-        }
-    }
-}
-
-pub fn after_in(mut ls: Strings) -> Str {
-    loop {
-        if null_p(ls) {
-            return str_lit("");
-        } else if has_prefix_p(car(ls), str_lit("%in ")) {
-            return after_prefix(car(ls), str_lit("%in "));
-        } else {
-            ls = cdr(ls);
-            continue;
-        }
-    }
-}
-
-/// The module whose items are being written, or ``.
-pub fn module_here(c: &'static Ctx) -> Str {
-    after_in(ctx_locals(c))
-}
-
-/// The type the checker found for a definition written with none, as a
-/// list of one.
-pub fn ctx_typed(c: &'static Ctx, name: Str) -> Sexps {
-    let tagcase_ = c;
-    match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-            map(lambda1(move |x: &'static Typed| {
-                let tagcase_ = x;
-                match *tagcase_ {
-                    Typed::Typed(n, t) => {
-                        t
-                    }
-                }
-            }), filter_typed(if string_eq_p(after_in(ls), str_lit("")) {
-                name
-            } else {
-                string_append(after_in(ls), string_append(str_lit(" "), name))
-            }, xs))
-        }
-    }
-}
-
-/// `c`, where `names` are bound too.
-pub fn with_locals(c: &'static Ctx, names: Strings) -> &'static Ctx {
-    let tagcase_ = c;
-    match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-            ctx(ds, ts, ks, strings_onto(names, ls), xs, fs, ms, es, mods)
-        }
-    }
-}
-
-pub fn tag_datatype(mut tag: Str, mut ts: Tagofs) -> Str {
-    loop {
-        if null_p(ts) {
-            return error(string_append(str_lit("kfx: not a datatype's tag: "), tag));
-        } else {
-            let tagcase_ = car(ts);
-            match *tagcase_ {
-                Tagof::Tagof(t, d) => {
-                    if string_eq_p(t, tag) {
-                        return d;
-                    } else {
-                        ts = cdr(ts);
-                        continue;
-                    }
-                }
-            }
-        }
-    }
-}
-
-pub fn note_tags(mut variants: Sexps, mut d: Str, mut ts: Tagofs) -> Tagofs {
-    loop {
-        if null_p(variants) {
-            return ts;
-        } else {
-            (variants, ts) = (cdr(variants), kayak_rt::heap_cons(tagof(sym_name(car(items(car(variants)))), d), ts));
-            continue;
-        }
-    }
-}
-
-pub fn binder_kinds(bs: Sexps) -> Strings {
-    map(lambda1(move |b: &'static Sexp| {
-        sym_name(second(items(b)))
-    }), bs)
-}
-
-/// The names of the binders of kind `type`: Rust's type parameters.
-pub fn type_params_of(mut bs: Sexps) -> Strings {
-    loop {
-        if null_p(bs) {
-            return nil::<Str>();
-        } else if sym_is_p(second(items(car(bs))), str_lit("type")) {
-            return kayak_rt::heap_cons(sym_name(car(items(car(bs)))), type_params_of(cdr(bs)));
-        } else {
-            bs = cdr(bs);
-            continue;
-        }
-    }
-}
-
-/// The names of the binders of kind `region`: an abbreviation's lifetimes.
-pub fn region_params_of(bs: Sexps) -> Strings {
-    concat(map(lambda1(move |b: &'static Sexp| {
-        if sym_is_p(second(items(b)), str_lit("region")) {
-            the::<Strings>(kayak_rt::heap_cons(sym_name(car(items(b))), kayak_rt::nil()))
-        } else {
-            nil::<Str>()
-        }
-    }), bs))
-}
-
-pub fn head_region_params(head: &'static Sexp) -> Strings {
-    let tagcase_ = head;
-    match *tagcase_ {
-        Sexp::Lst(xs, src_file, src_line, src_pos) => {
-            region_params_of(cdr(xs))
-        }
-        _ => {
-            let other = tagcase_;
-            nil::<Str>()
-        }
-    }
-}
-
-/// The names of the binders of kind `place`: an abbreviation's lifetimes,
-/// and its type parameters for the places' types (C40).
-pub fn place_params_of(bs: Sexps) -> Strings {
-    concat(map(lambda1(move |b: &'static Sexp| {
-        if sym_is_p(second(items(b)), str_lit("place")) {
-            the::<Strings>(kayak_rt::heap_cons(sym_name(car(items(b))), kayak_rt::nil()))
-        } else {
-            nil::<Str>()
-        }
-    }), bs))
-}
-
-pub fn head_place_params(head: &'static Sexp) -> Strings {
-    let tagcase_ = head;
-    match *tagcase_ {
-        Sexp::Lst(xs, src_file, src_line, src_pos) => {
-            place_params_of(cdr(xs))
-        }
-        _ => {
-            let other = tagcase_;
-            nil::<Str>()
-        }
-    }
-}
-
-pub fn head_type_params(head: &'static Sexp) -> Strings {
-    let tagcase_ = head;
-    match *tagcase_ {
-        Sexp::Lst(xs, src_file, src_line, src_pos) => {
-            type_params_of(cdr(xs))
-        }
-        _ => {
-            let other = tagcase_;
-            nil::<Str>()
-        }
-    }
-}
-
-pub fn note_family(head: &'static Sexp, datatype: bool, ms: Families) -> Families {
-    let tagcase_ = head;
-    match *tagcase_ {
-        Sexp::Lst(xs, src_file, src_line, src_pos) => {
-            kayak_rt::heap_cons(family(sym_name(car(xs)), datatype, binder_kinds(cdr(xs))), ms)
-        }
-        _ => {
-            let other = tagcase_;
-            ms
-        }
-    }
-}
-
-pub fn filter_family(mut name: Str, mut ms: Families) -> Families {
-    loop {
-        if null_p(ms) {
-            return nil::<&'static Family>();
-        } else if {
-            let tagcase_ = car(ms);
-            match *tagcase_ {
-                Family::Family(n, d, ks) => {
-                    string_eq_p(n, name)
-                }
-            }
-        } {
-            return kayak_rt::heap_cons(car(ms), kayak_rt::nil());
-        } else {
-            ms = cdr(ms);
-            continue;
-        }
-    }
-}
-
-pub fn find_family_of(c: &'static Ctx, name: Str) -> Families {
-    let tagcase_ = c;
-    match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-            let found = filter_family(name, ms);
-            found
-        }
-    }
-}
-
-/// `<T, U>`, or with `bounded`, `<T: Copy + 'static, U: Copy + 'static>`
-/// as every KFX value is; nothing for no names.
-pub fn put_generics_of(names: Strings, bounded: bool, acc: Chars) -> Chars {
-    if null_p(names) {
-        acc
-    } else {
-        put(str_lit(">"), put_sep(lambda2(move |n: Str, acc: Chars| {
-            let acc = put(camel(n), acc);
-            if bounded {
-                put(str_lit(": Copy + 'static"), acc)
-            } else {
-                acc
-            }
-        }), str_lit(", "), names, put(str_lit("<"), acc)))
-    }
-}
-
-/// A type written in module `m`, its own types named `m..u`.
-pub fn qualified_types(m: Str, names: Strings, t: &'static Sexp) -> &'static Sexp {
-    let tagcase_ = t;
-    match *tagcase_ {
-        Sexp::Sym(n, f, p) => {
-            if string_member_p(n, names) {
-                sym(string_append(m, string_append(str_lit(".."), n)), f, p)
-            } else {
-                t
-            }
-        }
-        Sexp::Lst(xs, f, l, p) => {
-            if head_is_p(t, str_lit("select")) {
-                t
-            } else {
-                lst(map(lambda1(move |x: &'static Sexp| {
-                    qualified_types(m, names, x)
-                }), xs), f, l, p)
-            }
-        }
-        _ => {
-            let other = tagcase_;
-            t
-        }
-    }
-}
-
-/// A module's datatypes, as the program names them, `m..d`, with their tags.
-pub fn note_module_datatypes(mut m: Str, mut forms: Sexps, mut c: &'static Ctx) -> &'static Ctx {
-    loop {
-        if null_p(forms) {
-            return c;
-        } else if head_is_p(car(forms), str_lit("define-datatype")) {
-            let d = string_append(m, string_append(str_lit(".."), type_head_name(second(items(car(forms))))));
-            (forms, c) = (cdr(forms), {
-                let tagcase_ = c;
-                match *tagcase_ {
-                    Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-                        ctx(kayak_rt::heap_cons(d, ds), note_tags(cdr(cdr(items(car(forms)))), d, ts), ks, ls, xs, fs, ms, es, mods)
-                    }
-                }
-            });
-            continue;
-        } else if (head_is_p(car(forms), str_lit("define-type")) && not(head_is_p(third(items(car(forms))), str_lit("moduleof"))) && {
-            let tagcase_ = second(items(car(forms)));
-            match *tagcase_ {
-                Sexp::Lst(ys, f, l, p) => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
-            }
-        }) {
-            // A module's type family (C89): no Rust alias (one over a `Value`
-            // would leave its parameters unused), but what it stands for, where
-            // it is applied, by its name inside the module, `t`, and outside it,
-            // `m..t`, its own types named `m..u` there.
-            let head = second(items(car(forms)));
-            let t = type_head_name(head);
-            let q = string_append(m, string_append(str_lit(".."), t));
-            let local_types = concat(map(lambda1(move |f: &'static Sexp| {
-                if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype"))) {
-                    the::<Strings>(kayak_rt::heap_cons(type_head_name(second(items(f))), kayak_rt::nil()))
-                } else {
-                    nil::<Str>()
-                }
-            }), forms));
-            let qhead = {
-                let tagcase_ = head;
-                match *tagcase_ {
-                    Sexp::Lst(ys, f, l, p) => {
-                        lst(kayak_rt::heap_cons(sym(q, f, p), cdr(ys)), f, l, p)
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        head
-                    }
-                }
-            };
-            (forms, c) = (cdr(forms), {
-                let tagcase_ = c;
-                match *tagcase_ {
-                    Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-                        ctx(ds, ts, ks, ls, xs, fs, note_family(qhead, false, note_family(head, false, ms)), es, kayak_rt::heap_cons(typed(string_append(str_lit("%expand "), t), sym(t, str_lit(""), 0i64)), kayak_rt::heap_cons(typed(string_append(str_lit("%expand "), q), sym(q, str_lit(""), 0i64)), kayak_rt::heap_cons(typed(string_append(str_lit("%abbreviation "), t), lst(kayak_rt::heap_cons(head, kayak_rt::heap_cons(third(items(car(forms))), kayak_rt::nil())), str_lit(""), 0i64, 0i64)), kayak_rt::heap_cons(typed(string_append(str_lit("%abbreviation "), q), lst(kayak_rt::heap_cons(qhead, kayak_rt::heap_cons(qualified_types(m, local_types, third(items(car(forms)))), kayak_rt::nil())), str_lit(""), 0i64, 0i64)), mods)))))
-                    }
-                }
-            });
-            continue;
-        } else {
-            forms = cdr(forms);
-            continue;
-        }
-    }
-}
-
-/// `(select m t)`'s type as the program names it, `m..t`.
-pub fn selected_name(sel: &'static Sexp) -> Str {
-    string_append(sym_name(second(items(sel))), string_append(str_lit(".."), sym_name(third(items(sel)))))
-}
-
-pub fn note(form: &'static Sexp, c: &'static Ctx) -> &'static Ctx {
-    let tagcase_ = c;
-    match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-            if head_is_p(form, str_lit("define-datatype")) {
-                let d = type_head_name(second(items(form)));
-                ctx(kayak_rt::heap_cons(d, ds), note_tags(cdr(cdr(items(form))), d, ts), ks, ls, xs, fs, note_family(second(items(form)), true, ms), es, mods)
-            } else if (head_is_p(form, str_lit("define-type")) && head_is_p(third(items(form)), str_lit("moduleof"))) {
-                ctx(ds, ts, ks, ls, xs, fs, ms, es, kayak_rt::heap_cons(typed(string_append(str_lit("%moduleof "), sym_name(second(items(form)))), third(items(form))), mods))
-            } else if (head_is_p(form, str_lit("define-type")) && head_is_p(third(items(form)), str_lit("select")) && not(null_p(module_body(c, string_append(str_lit("%abbreviation "), selected_name(third(items(form)))))))) {
-                // An abbreviation of a module's family (C89): that family, expanded
-                // where applied, under this name too; no Rust alias.
-                let t = sym_name(second(items(form)));
-                let fam = car(module_body(c, string_append(str_lit("%abbreviation "), selected_name(third(items(form))))));
-                let qhead = car(items(fam));
-                let params = cdr(items(qhead));
-                let names = map(lambda1(move |b: &'static Sexp| {
-                    sym(sym_name(car(items(b))), str_lit(""), 0i64)
-                }), params);
-                let head = lst(kayak_rt::heap_cons(sym(t, str_lit(""), 0i64), params), str_lit(""), 0i64, 0i64);
-                ctx(ds, ts, ks, ls, xs, fs, note_family(head, false, ms), es, kayak_rt::heap_cons(typed(string_append(str_lit("%expand "), t), sym(t, str_lit(""), 0i64)), kayak_rt::heap_cons(typed(string_append(str_lit("%abbreviation "), t), lst(kayak_rt::heap_cons(head, kayak_rt::heap_cons(lst(kayak_rt::heap_cons(third(items(form)), names), str_lit(""), 0i64, 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64)), mods)))
-            } else if (head_is_p(form, str_lit("define-type")) && {
-                let tagcase_ = second(items(form));
-                match *tagcase_ {
-                    Sexp::Sym(n, f, p) => {
-                        true
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        false
-                    }
-                }
-            }) {
-                // A type abbreviation's body, kept for the typed suffixes (C32), which
-                // compare types as written out.
-                ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms), es, kayak_rt::heap_cons(typed(string_append(str_lit("%alias "), sym_name(second(items(form)))), third(items(form))), mods))
-            } else if head_is_p(form, str_lit("define-type")) {
-                // A family abbreviation: its regions Rust lifetimes (C39), as a
-                // generative type's are not. One whose body applies a module's family
-                // is expanded where applied, as that family is (C89).
-                ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms), es, onto(if head_is_p(car(items(third(items(form)))), str_lit("select")) {
-                    the::<Typeds>(kayak_rt::heap_cons(typed(string_append(str_lit("%expand "), type_head_name(second(items(form)))), sym(str_lit(""), str_lit(""), 0i64)), kayak_rt::nil()))
-                } else {
-                    nil::<&'static Typed>()
-                }, kayak_rt::heap_cons(typed(string_append(str_lit("%abbreviation "), type_head_name(second(items(form)))), lst(kayak_rt::heap_cons(second(items(form)), kayak_rt::heap_cons(third(items(form)), kayak_rt::nil())), str_lit(""), 0i64, 0i64)), mods)))
-            } else if head_is_p(form, str_lit("define-generative")) {
-                ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms), es, mods)
-            } else if head_is_p(form, str_lit("define-effect")) {
-                ctx(ds, ts, ks, ls, xs, fs, ms, kayak_rt::heap_cons(typed(sym_name(second(items(form))), third(items(form))), es), mods)
-            } else if module_def_p(form) {
-                let m = sym_name(second(items(form)));
-                note_module_datatypes(m, unhidden(module_written(form)), ctx(ds, ts, ks, ls, xs, fs, ms, es, kayak_rt::heap_cons(typed(m, lst(kayak_rt::heap_cons(sym(str_lit("module"), str_lit(""), 0i64), module_written(form)), str_lit(""), 0i64, 0i64)), mods)))
-            } else if (head_is_p(form, str_lit("define")) && (i64_eq(size(items(form)), 3i64) || i64_eq(size(items(form)), 4i64)) && not(lambda_form_p(last(items(form))))) {
-                ctx(ds, ts, kayak_rt::heap_cons(sym_name(second(items(form))), ks), ls, xs, fs, ms, es, mods)
-            } else {
-                c
-            }
-        }
-    }
-}
-
-pub fn collect(mut forms: Sexps, mut c: &'static Ctx) -> &'static Ctx {
-    loop {
-        if null_p(forms) {
-            return c;
-        } else {
-            (forms, c) = (cdr(forms), note(car(forms), c));
-            continue;
-        }
-    }
-}
-
-// Writing Rust
-/// `n`, not negative, in hex, before `acc`.
-pub fn hex_digits(mut n: i64, mut acc: Str) -> Str {
-    loop {
-        let d = i64_remainder(n, 16i64);
-        let s = string_append(char_to_string(string_ref_i64(str_lit("0123456789abcdef"), d)), acc);
-        if i64_lt(n, 16i64) {
-            return s;
-        } else {
-            (n, acc) = (i64_quotient(n, 16i64), s);
-            continue;
-        }
-    }
-}
-
-pub fn escape_char(c: char, q: char) -> Str {
-    if char_eq_p(c, '\\') {
-        str_lit("\\\\")
-    } else if char_eq_p(c, q) {
-        string_append(str_lit("\\"), char_to_string(c))
-    } else if char_eq_p(c, '\n') {
-        str_lit("\\n")
-    } else if char_eq_p(c, '\t') {
-        str_lit("\\t")
-    } else if (i64_lt(char_to_i64(c), 32i64) || i64_eq(char_to_i64(c), 127i64)) {
-        // A control character, as Rust's unicode escape, its code in hex.
-        string_append(str_lit("\\u{"), string_append(hex_digits(char_to_i64(c), str_lit("")), str_lit("}")))
-    } else {
-        char_to_string(c)
-    }
-}
-
-/// `cs` as the inside of a Rust literal delimited by `q`.
-pub fn put_escaped(mut cs: Chars, mut q: char, mut acc: Chars) -> Chars {
-    loop {
-        if null_p(cs) {
-            return acc;
-        } else {
-            (cs, acc) = (cdr(cs), put(escape_char(car(cs), q), acc));
-            continue;
-        }
-    }
-}
-
-pub fn dotted_from(mut seen: Chars, mut cs: Chars) -> Strings {
-    loop {
-        if (null_p(cs) || null_p(cdr(cs))) {
-            return nil::<Str>();
-        } else if (char_eq_p(car(cs), '.') && char_eq_p(car(cdr(cs)), '.')) {
-            return the::<Strings>(kayak_rt::heap_cons(rev_to_string(seen), kayak_rt::heap_cons(list_to_string(cdr(cdr(cs))), kayak_rt::nil())));
-        } else {
-            (seen, cs) = (kayak_rt::heap_cons(car(cs), seen), cdr(cs));
-            continue;
-        }
-    }
-}
-
-/// A module's type as the program names it, `m..t`: `m` and `t`; else none.
-pub fn dotted(s: Str) -> Strings {
-    dotted_from(nil::<char>(), string_chars(s))
-}
-
-/// Module `m`'s type `t`, from outside it: a datatype's a reference.
-pub fn type_path(c: &'static Ctx, m: Str, t: Str) -> Str {
-    string_append(if string_member_p(string_append(m, string_append(str_lit(".."), t)), ctx_datatypes(c)) {
-        str_lit("&'static ")
-    } else {
-        str_lit("")
-    }, string_append(if string_eq_p(m, str_lit("Self")) {
-        m
-    } else {
-        module_path(c, m)
-    }, string_append(str_lit("::"), camel(t))))
-}
-
-/// A datatype's enum, a module's named by its path.
-pub fn datatype_path(d: Str) -> Str {
-    if null_p(dotted(d)) {
-        camel(d)
-    } else {
-        string_append(mangle(car(dotted(d))), string_append(str_lit("::"), camel(car(cdr(dotted(d))))))
-    }
-}
-
-/// What a module parameter's described type `s`, opened by a `with`,
-/// describes, as a list of one; or none.
-pub fn desc_type(mut c: &'static Ctx, mut s: Str, mut ls: Strings) -> Sexps {
-    loop {
-        if null_p(ls) {
-            return nil::<&'static Sexp>();
-        } else if has_prefix_p(car(ls), str_lit("%with ")) {
-            let m = after_prefix(car(ls), str_lit("%with "));
-            let x = param_module_type(m, cdr(ls));
-            let spec = if string_eq_p(x, str_lit("")) {
-                nil::<&'static Sexp>()
-            } else {
-                module_body(c, string_append(str_lit("%moduleof "), x))
-            };
-            let found = if null_p(spec) {
-                nil::<&'static Sexp>()
-            } else {
-                concat(map(lambda1(move |d: &'static Sexp| {
-                    if (head_is_p(d, str_lit("desc")) && string_eq_p(sym_name(second(items(d))), s)) {
-                        the::<Sexps>(kayak_rt::heap_cons(third(items(d)), kayak_rt::nil()))
-                    } else {
-                        nil::<&'static Sexp>()
-                    }
-                }), cdr(items(car(spec)))))
-            };
-            if null_p(found) {
-                ls = cdr(ls);
-                continue;
-            } else {
-                return found;
-            }
-        } else {
-            ls = cdr(ls);
-            continue;
-        }
-    }
-}
-
-/// The lifetimes of the `letrena`s around, innermost first.
-pub fn letrena_lifetimes_inner(mut ls: Strings) -> Strings {
-    loop {
-        if null_p(ls) {
-            return nil::<Str>();
-        } else if has_prefix_p(car(ls), str_lit("%letrena ")) {
-            return kayak_rt::heap_cons(lifetime(after_prefix(car(ls), str_lit("%letrena "))), letrena_lifetimes_inner(cdr(ls)));
-        } else {
-            ls = cdr(ls);
-            continue;
-        }
-    }
-}
-
-pub fn chars_prefix_p(p: Chars, cs: Chars) -> bool {
-    (null_p(p) || (not(null_p(cs)) && char_eq_p(car(p), car(cs)) && chars_prefix_p(cdr(p), cdr(cs))))
-}
-
-pub fn chars_after(mut cs: Chars, mut n: i64) -> Chars {
-    loop {
-        if (null_p(cs) || i64_lt(n, 1i64)) {
-            return cs;
-        } else {
-            (cs, n) = (cdr(cs), i64_minus(n, 1i64));
-            continue;
-        }
-    }
-}
-
-/// Whether `text` has the lifetime `l`, a name's end after it.
-pub fn mentions_lifetime_p(mut text: Chars, mut l: Chars) -> bool {
-    loop {
-        if null_p(text) {
-            return false;
-        } else if (chars_prefix_p(l, text) && {
-            let after = chars_after(text, size(l));
-            (null_p(after) || not((char_alphabetic_p(car(after)) || char_numeric_p(car(after)) || char_eq_p(car(after), '_'))))
-        }) {
-            return true;
-        } else {
-            text = cdr(text);
-            continue;
-        }
-    }
-}
-
-pub fn first_lifetime_in(mut text: Str, mut lives: Strings) -> Str {
-    loop {
-        if null_p(lives) {
-            return str_lit("");
-        } else if mentions_lifetime_p(string_chars(text), string_chars(car(lives))) {
-            return car(lives);
-        } else {
-            lives = cdr(lives);
-            continue;
-        }
-    }
-}
-
-pub fn run_together_strings(xs: Strings) -> Str {
-    if null_p(xs) {
-        str_lit("")
-    } else {
-        string_append(car(xs), run_together_strings(cdr(xs)))
-    }
-}
-
-/// The type parameters of the procedure being written, `%tvar a` each,
-/// camel-cased: a `letrena`'s fn and type declare them again, as a
-/// nested item must (C30).
-pub fn type_params_in(mut ls: Strings) -> Strings {
-    loop {
-        if null_p(ls) {
-            return nil::<Str>();
-        } else if has_prefix_p(car(ls), str_lit("%tvar ")) {
-            return kayak_rt::heap_cons(camel(after_prefix(car(ls), str_lit("%tvar "))), type_params_in(cdr(ls)));
-        } else {
-            ls = cdr(ls);
-            continue;
-        }
-    }
-}
-
-/// The places `(place p)` names in `e`: those an abbreviation needs a
-/// type parameter for (an unused one Rust refuses).
-pub fn places_used(e: &'static Sexp) -> Strings {
-    let tagcase_ = e;
-    match *tagcase_ {
-        Sexp::Lst(xs, f, l, p) => {
-            if (sym_is_p(car(xs), str_lit("place")) && not(null_p(cdr(xs)))) {
-                let tagcase_ = second(xs);
-                match *tagcase_ {
-                    Sexp::Sym(n, f2, p2) => {
-                        the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        nil::<Str>()
-                    }
-                }
-            } else {
-                concat(map(lambda1(move |x: &'static Sexp| {
-                    places_used(x)
-                }), xs))
-            }
-        }
-        _ => {
-            let other = tagcase_;
-            nil::<Str>()
-        }
-    }
-}
-
-pub fn words_of_sep(xs: Strings, sep: Str) -> Str {
-    if null_p(xs) {
-        str_lit("")
-    } else if null_p(cdr(xs)) {
-        car(xs)
-    } else {
-        string_append(car(xs), string_append(sep, words_of_sep(cdr(xs), sep)))
-    }
-}
-
-// `letrena`'s regions (CLAUDES_CHOICES.md C30): each a lifetime of the
-// `fn` its body is written as, `'r` for the region `r`, marked in the
-// locals `%letrena r`. Every other region is the heap's, `'static`.
-pub fn innermost_letrena_lifetime(mut ls: Strings) -> Str {
-    loop {
-        if null_p(ls) {
-            return str_lit("");
-        } else if has_prefix_p(car(ls), str_lit("%letrena ")) {
-            return lifetime(after_prefix(car(ls), str_lit("%letrena ")));
-        } else {
-            ls = cdr(ls);
-            continue;
-        }
-    }
-}
-
-/// The lifetime of the innermost `letrena` around the binding `marker`
-/// is, or ``.
-pub fn letrena_outside(mut ls: Strings, mut marker: Str) -> Str {
-    loop {
-        if null_p(ls) {
-            return str_lit("");
-        } else if string_eq_p(car(ls), marker) {
-            return innermost_letrena_lifetime(cdr(ls));
-        } else {
-            ls = cdr(ls);
-            continue;
-        }
-    }
-}
-
-/// The place a region binder `(r region p)` is within, or ``.
-pub fn within_of(mut ls: Strings, mut n: Str) -> Str {
-    loop {
-        if null_p(ls) {
-            return str_lit("");
-        } else if has_prefix_p(car(ls), string_append(str_lit("%within "), string_append(n, str_lit(" ")))) {
-            return after_prefix(car(ls), string_append(str_lit("%within "), string_append(n, str_lit(" "))));
-        } else {
-            ls = cdr(ls);
-            continue;
-        }
-    }
-}
-
-/// The lifetime of the region `r` names: a `letrena`'s, its own; a region
-/// within a place, the place's, where its data is (C40); a `letregion`
-/// inside a `letrena`, that one's, which its data may be in; or ``.
-pub fn region_lifetime(c: &'static Ctx, r: &'static Sexp) -> Str {
-    let n = {
-        let tagcase_ = r;
-        match *tagcase_ {
-            Sexp::Sym(x, f, p) => {
-                if has_prefix_p(x, str_lit("'")) {
-                    after_prefix(x, str_lit("'"))
-                } else {
-                    x
-                }
-            }
-            _ => {
-                let other = tagcase_;
-                str_lit("")
-            }
-        }
-    };
-    if string_eq_p(n, str_lit("")) {
-        str_lit("")
-    } else if string_member_p(string_append(str_lit("%letrena "), n), ctx_locals(c)) {
-        lifetime(n)
-    } else if not(string_eq_p(within_of(ctx_locals(c), n), str_lit(""))) {
-        lifetime(within_of(ctx_locals(c), n))
-    } else if string_member_p(string_append(str_lit("%letregion "), n), ctx_locals(c)) {
-        letrena_outside(ctx_locals(c), string_append(str_lit("%letregion "), n))
-    } else {
-        str_lit("")
-    }
-}
-
-/// What the checker found at `file`, `pos` that begins `prefix`, the rest;
-/// or ``.
-pub fn fact_at_place(c: &'static Ctx, file: Str, pos: i64, prefix: Str) -> Str {
-    let tagcase_ = c;
-    match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-            first_fact(fs, file, pos, prefix)
-        }
-    }
-}
-
-/// Everything the checker found at `file`, `pos` that begins `prefix`.
-pub fn all_facts_at(c: &'static Ctx, file: Str, pos: i64, prefix: Str) -> Strings {
-    let tagcase_ = c;
-    match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-            concat(map(lambda1(move |f: &'static Fact| {
-                let tagcase_ = f;
-                match *tagcase_ {
-                    Fact::Fact(ff, fp, fw) => {
-                        if (i64_eq(fp, pos) && string_eq_p(ff, file) && has_prefix_p(fw, prefix)) {
-                            the::<Strings>(kayak_rt::heap_cons(fw, kayak_rt::nil()))
-                        } else {
-                            nil::<Str>()
-                        }
-                    }
-                }
-            }), fs))
-        }
-    }
-}
-
-/// Everything the checker found anywhere that begins `prefix`, the rest.
-pub fn all_facts_prefixed(c: &'static Ctx, prefix: Str) -> Strings {
-    let tagcase_ = c;
-    match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-            concat(map(lambda1(move |f: &'static Fact| {
-                let tagcase_ = f;
-                match *tagcase_ {
-                    Fact::Fact(ff, fp, fw) => {
-                        if has_prefix_p(fw, prefix) {
-                            the::<Strings>(kayak_rt::heap_cons(after_prefix(fw, prefix), kayak_rt::nil()))
-                        } else {
-                            nil::<Str>()
-                        }
-                    }
-                }
-            }), fs))
-        }
-    }
-}
-
-pub fn digits_number(s: Str) -> i64 {
-    i64_minus(0i64, digits_value(string_chars(s), 0i64, str_lit(""), 0i64))
-}
-
-pub fn uses_blobrefs_p(c: &'static Ctx) -> bool {
-    let tagcase_ = c;
-    match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-            any_p(lambda1(move |f: &'static Fact| {
-                let tagcase_ = f;
-                match *tagcase_ {
-                    Fact::Fact(ff, fp, fw) => {
-                        has_prefix_p(fw, str_lit("blob-at "))
-                    }
-                }
-            }), fs)
-        }
-    }
-}
-
-/// Of the `letrena`s' lifetimes, outermost first, those outside `l`.
-pub fn lifetimes_before(lives: Strings, l: Str) -> Strings {
-    if (null_p(lives) || string_eq_p(car(lives), l)) {
-        nil::<Str>()
-    } else {
-        kayak_rt::heap_cons(car(lives), lifetimes_before(cdr(lives), l))
-    }
-}
-
-pub fn chars_after_space(mut cs: Chars) -> Chars {
-    loop {
-        if null_p(cs) {
-            return nil::<char>();
-        } else if char_eq_p(car(cs), ' ') {
-            return cdr(cs);
-        } else {
-            cs = cdr(cs);
-            continue;
-        }
-    }
-}
-
-pub fn after_first_space(s: Str) -> Str {
-    rev_to_string(rev_onto(chars_after_space(string_chars(s)), nil::<char>()))
-}
-
-pub fn unquoted(n: Str) -> Str {
-    if has_prefix_p(n, str_lit("'")) {
-        after_prefix(n, str_lit("'"))
-    } else {
-        n
-    }
-}
-
-/// A reference's lifetime for data at region `r`: its `letrena`'s, or the heap's.
-pub fn owner_lifetime(c: &'static Ctx, r: &'static Sexp) -> Str {
-    let l = region_lifetime(c, r);
-    if string_eq_p(l, str_lit("")) {
-        str_lit("'static")
-    } else {
-        l
-    }
-}
-
-pub fn number_text(e: &'static Sexp) -> Str {
-    let tagcase_ = e;
-    match *tagcase_ {
-        Sexp::Num(k, f, p) => {
-            i64_to_string(k)
-        }
-        _ => {
-            let other = tagcase_;
-            str_lit("0")
-        }
-    }
-}
-
-/// A procedure's lifetime: the innermost `letrena`'s, whose arena a
-/// closure may hold; or `'static`.
-pub fn innermost_lifetime(mut ls: Strings) -> Str {
-    loop {
-        if null_p(ls) {
-            return str_lit("'static");
-        } else if has_prefix_p(car(ls), str_lit("%letrena ")) {
-            return lifetime(after_prefix(car(ls), str_lit("%letrena ")));
-        } else {
-            ls = cdr(ls);
-            continue;
-        }
-    }
-}
-
-/// The lifetimes of the `letrena`s around, outermost first.
-pub fn letrena_lifetimes(mut ls: Strings) -> Strings {
-    loop {
-        if null_p(ls) {
-            return nil::<Str>();
-        } else if has_prefix_p(car(ls), str_lit("%letrena ")) {
-            return onto(letrena_lifetimes(cdr(ls)), kayak_rt::heap_cons(lifetime(after_prefix(car(ls), str_lit("%letrena "))), kayak_rt::nil()));
-        } else {
-            ls = cdr(ls);
-            continue;
-        }
-    }
-}
-
-/// `e`, each of `names` replaced by its argument.
-pub fn substituted(names: Strings, args: Sexps, e: &'static Sexp) -> &'static Sexp {
-    let tagcase_ = e;
-    match *tagcase_ {
-        Sexp::Sym(n, f, p) => {
-            let find__knot = knot::<&'static dyn Fn(Strings, Sexps) -> &'static Sexp>();
-            let find = lambda2(move |mut ns: Strings, mut vs: Sexps| {
-                loop {
-                    if (null_p(ns) || null_p(vs)) {
-                        return e;
-                    } else if string_eq_p(car(ns), n) {
-                        return car(vs);
-                    } else {
-                        (ns, vs) = (cdr(ns), cdr(vs));
-                        continue;
-                    }
-                }
-            });
-            find__knot.set(find);
-            find(names, args)
-        }
-        Sexp::Lst(xs, f, l, p) => {
-            lst(map(lambda1(move |x: &'static Sexp| {
-                substituted(names, args, x)
-            }), xs), f, l, p)
-        }
-        _ => {
-            let other = tagcase_;
-            e
-        }
-    }
-}
-
-/// A family's arguments, each effect's marked `%effect-given` (C46): the
-/// procedures of it are in Rust as the family's own are, which may
-/// suspend, whatever effect is given.
-pub fn marked_effects(binders: Sexps, args: Sexps) -> Sexps {
-    if (null_p(binders) || null_p(args)) {
-        args
-    } else {
-        kayak_rt::heap_cons(if sym_is_p(second(items(car(binders))), str_lit("effect")) {
-            lst(kayak_rt::heap_cons(sym(str_lit("maxeff"), str_lit(""), 0i64), kayak_rt::heap_cons(car(args), kayak_rt::heap_cons(sym(str_lit("%effect-given"), str_lit(""), 0i64), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
-        } else {
-            car(args)
-        }, marked_effects(cdr(binders), cdr(args)))
-    }
-}
-
-/// A family abbreviation's application, `(builder p r)`, as what it stands
-/// for, its parameters replaced by the arguments: where the emitter must
-/// see a procedure's type whole (a `letrec`'s, a definition's).
-pub fn family_expanded(mut c: &'static Ctx, mut t: &'static Sexp) -> &'static Sexp {
-    loop {
-        let tagcase_ = t;
-        match *tagcase_ {
-            Sexp::Lst(xs, f, l, p) => {
-                let found = if null_p(xs) {
-                    nil::<&'static Sexp>()
-                } else {
-                    let tagcase_ = car(xs);
-                    match *tagcase_ {
-                        Sexp::Sym(n, f2, p2) => {
-                            module_body(c, string_append(str_lit("%abbreviation "), n))
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            nil::<&'static Sexp>()
-                        }
-                    }
-                };
-                if null_p(found) {
-                    return t;
-                } else {
-                    let parts = items(car(found));
-                    let head = car(parts);
-                    let binders = {
-                        let tagcase_ = head;
-                        match *tagcase_ {
-                            Sexp::Lst(hs, f3, l3, p3) => {
-                                cdr(hs)
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                nil::<&'static Sexp>()
-                            }
-                        }
-                    };
-                    let names = map(lambda1(move |b: &'static Sexp| {
-                        sym_name(car(items(b)))
-                    }), binders);
-                    let args = marked_effects(binders, cdr(xs));
-                    t = substituted(names, args, second(parts));
-                    continue;
-                }
-            }
-            _ => {
-                let other = tagcase_;
-                return t;
-            }
-        }
-    }
-}
-
-/// Whether a type is a list's, an abbreviation's or written.
-pub fn list_type_p(mut c: &'static Ctx, mut t: &'static Sexp) -> bool {
-    loop {
-        if head_is_p(t, str_lit("listof")) {
-            return true;
-        } else if {
-            let tagcase_ = t;
-            match *tagcase_ {
-                Sexp::Sym(n, f, p) => {
-                    not(null_p(module_body(c, string_append(str_lit("%alias "), n))))
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
-            }
-        } {
-            t = car(module_body(c, string_append(str_lit("%alias "), sym_name(t))));
-            continue;
-        } else {
-            return false;
-        }
-    }
-}
-
-/// A type. A name that is no base type or datatype is a type abbreviation
-/// or a type variable, either way a Rust type of the same name.
-pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Chars {
-    loop {
-        let tagcase_ = t;
-        match *tagcase_ {
-            Sexp::Sym(s, at_file, at_pos) => {
-                if string_eq_p(s, str_lit("i64")) {
-                    return put(str_lit("i64"), acc);
-                } else if string_eq_p(s, str_lit("int")) {
-                    return put(str_lit("Int"), acc);
-                } else if string_eq_p(s, str_lit("nat")) {
-                    return put(str_lit("Int"), acc);
-                } else if string_eq_p(s, str_lit("f64")) {
-                    return put(str_lit("f64"), acc);
-                } else if (fixed_width_p(s) || string_eq_p(s, str_lit("f32"))) {
-                    return put(s, acc);
-                } else if string_eq_p(s, str_lit("symbol")) {
-                    return put(str_lit("Symbol"), acc);
-                } else if (string_eq_p(s, str_lit("bool")) || string_eq_p(s, str_lit("false"))) {
-                    return put(str_lit("bool"), acc);
-                } else if string_eq_p(s, str_lit("nil")) {
-                    return put(str_lit("List<_>"), acc);
-                } else if string_eq_p(s, str_lit("datum")) {
-                    return put(str_lit("kayak_rt::value::Value"), acc);
-                } else if string_eq_p(s, str_lit("vector")) {
-                    return put(str_lit("kayak_rt::value::Vector"), acc);
-                } else if string_eq_p(s, str_lit("char")) {
-                    return put(str_lit("char"), acc);
-                } else if string_eq_p(s, str_lit("unit")) {
-                    return put(str_lit("()"), acc);
-                } else if string_eq_p(s, str_lit("void")) {
-                    return put(str_lit("Void"), acc);
-                } else if string_eq_p(s, str_lit("string")) {
-                    return put(str_lit("Str"), acc);
-                } else if (string_eq_p(s, str_lit("io-error")) && string_eq_p(opener(string_append(str_lit("%type "), s), ctx_locals(c)), str_lit("")) && null_p(desc_type(c, s, ctx_locals(c))) && not(string_member_p(s, ctx_datatypes(c)))) {
-                    t = car(read_all(string_chars(io_error_text()), str_lit(""), 1i64));
-                    continue;
-                } else if not(null_p(dotted(s))) {
-                    return put(type_path(c, car(dotted(s)), car(cdr(dotted(s)))), acc);
-                } else if string_member_p(s, ctx_datatypes(c)) {
-                    return put(camel(s), put(str_lit("&'static "), acc));
-                } else if not(null_p(desc_type(c, s, ctx_locals(c)))) {
-                    t = car(desc_type(c, s, ctx_locals(c)));
-                    continue;
-                } else if not(string_eq_p(opener(string_append(str_lit("%type "), s), ctx_locals(c)), str_lit(""))) {
-                    return put(type_path(c, opener(string_append(str_lit("%type "), s), ctx_locals(c)), s), acc);
-                } else {
-                    return put(camel(s), acc);
-                }
-            }
-            Sexp::Lst(xs, src_file, src_line, src_pos) => {
-                if (sym_is_p(car(xs), str_lit("listof")) && not(string_eq_p(region_lifetime(c, third(xs)), str_lit("")))) {
-                    return put(str_lit(">"), put_type(c, second(xs), put(str_lit(", "), put(region_lifetime(c, third(xs)), put(str_lit("ListAt<"), acc)))));
-                } else if (sym_is_p(car(xs), str_lit("listof")) && not(string_eq_p(element_lifetime(c, second(xs)), str_lit("")))) {
-                    // A list at the heap of what lives only as long as a `letrena`'s
-                    // region: at that region's lifetime, as Rust's pairs must be.
-                    return put(str_lit(">"), put_type(c, second(xs), put(str_lit(", "), put(element_lifetime(c, second(xs)), put(str_lit("ListAt<"), acc)))));
-                } else if sym_is_p(car(xs), str_lit("listof")) {
-                    return put(str_lit(">"), put_type(c, second(xs), put(str_lit("List<"), acc)));
-                } else if sym_is_p(car(xs), str_lit("flatarrayof")) {
-                    return put(str_lit(">"), put_type(c, second(xs), put(str_lit("FlatArray<"), acc)));
-                } else if (sym_is_p(car(xs), str_lit("union")) || sym_is_p(car(xs), str_lit("%union"))) {
-                    // A union's value (C75): kayak-rt's uniform one.
-                    return put(str_lit("kayak_rt::value::Value"), acc);
-                } else if ((sym_is_p(car(xs), str_lit("pairof")) || sym_is_p(car(xs), str_lit("%pairof"))) && list_type_p(c, third(xs))) {
-                    // A pair whose tail is a list: that list, not `nil` (C68).
-                    t = third(xs);
-                    continue;
-                } else if (sym_is_p(car(xs), str_lit("pairof")) || sym_is_p(car(xs), str_lit("%pairof"))) {
-                    // A pair whose tail is no list: a union's pair, `Value`s (C77).
-                    return put(str_lit("kayak_rt::value::Value"), acc);
-                } else if sym_is_p(car(xs), str_lit("bytevectorof")) {
-                    return put(str_lit("Bytes"), acc);
-                } else if (sym_is_p(car(xs), str_lit("arrayof")) && i64_eq(size(xs), 3i64) && {
-                    let tagcase_ = third(xs);
-                    match *tagcase_ {
-                        Sexp::Num(k, f, p) => {
-                            false
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            true
-                        }
-                    }
-                }) {
-                    return put(str_lit(">"), put_type(c, second(xs), put(str_lit("Array<"), acc)));
-                } else if (sym_is_p(car(xs), str_lit("ref")) && not(string_eq_p(region_lifetime(c, third(xs)), str_lit("")))) {
-                    return put(str_lit(">"), put_type(c, second(xs), put(str_lit(", "), put(region_lifetime(c, third(xs)), put(str_lit("RefAt<"), acc)))));
-                } else if (sym_is_p(car(xs), str_lit("ref")) && not(string_eq_p(element_lifetime(c, second(xs)), str_lit("")))) {
-                    return put(str_lit(">"), put_type(c, second(xs), put(str_lit(", "), put(element_lifetime(c, second(xs)), put(str_lit("RefAt<"), acc)))));
-                } else if sym_is_p(car(xs), str_lit("ref")) {
-                    return put(str_lit(">"), put_type(c, second(xs), put(str_lit("Ref<"), acc)));
-                } else if sym_is_p(car(xs), str_lit("subr")) {
-                    let acc = put(str_lit(" dyn Fn("), put(effect_lifetime(c, second(xs)), put(str_lit("&"), acc)));
-                    let acc = put_types(c, items(third(xs)), acc);
-                    let acc = put(str_lit(") -> "), acc);
-                    if suspending_effect_p(c, second(xs)) {
-                        return put(str_lit(">"), put_type(c, fourth(xs), put(str_lit("kayak_rt::suspend::Body<"), acc)));
-                    } else if fallible_effect_p(c, second(xs)) {
-                        return put(str_lit(", Unwind>"), put_type(c, fourth(xs), put(str_lit("Result<"), acc)));
-                    } else {
-                        return put_type(c, fourth(xs), acc);
-                    }
-                } else if (sym_is_p(car(xs), str_lit("place")) && string_member_p(string_append(str_lit("%placeparam "), unquoted(sym_name(second(xs)))), ctx_locals(c))) {
-                    let p = unquoted(sym_name(second(xs)));
-                    return put(string_append(str_lit("&"), string_append(lifetime(p), string_append(str_lit(" Place_"), camel(p)))), acc);
-                } else if sym_is_p(car(xs), str_lit("place")) {
-                    let r = unquoted(sym_name(second(xs)));
-                    let lives = letrena_lifetimes(ctx_locals(c));
-                    let life = lifetime(r);
-                    return put(string_append(str_lit("&"), string_append(life, string_append(str_lit(" Region_"), string_append(camel(r), string_append(str_lit("<"), string_append(words_of_sep(onto(kayak_rt::heap_cons(life, lifetimes_before(lives, life)), type_params_in(ctx_locals(c))), str_lit(", ")), str_lit(">"))))))), acc);
-                } else if (sym_is_p(car(xs), str_lit("bloblet")) && not(null_p(typed_flat(c, t)))) {
-                    return put(str_lit(">"), put_flat(c, car(typed_flat(c, t)), put(str_lit(", "), put_fields_tuple(c, cdr(items(second(xs))), put(str_lit("TBloblet<"), put(str_lit(" "), put(owner_lifetime(c, third(xs)), put(str_lit("&"), acc))))))));
-                } else if sym_is_p(car(xs), str_lit("bloblet")) {
-                    return put(str_lit(">"), put_fields_tuple(c, cdr(items(second(xs))), put(str_lit("Bloblet<"), put(str_lit(" "), put(owner_lifetime(c, third(xs)), put(str_lit("&"), acc))))));
-                } else if (sym_is_p(car(xs), str_lit("blobref")) && not(null_p(typed_flat(c, second(xs))))) {
-                    return put_flat(c, expand_aliases(c, third(xs)), put(str_lit(" "), put(owner_lifetime(c, third(items(expand_aliases(c, second(xs))))), put(str_lit("&"), acc))));
-                } else if sym_is_p(car(xs), str_lit("blobref")) {
-                    return put(str_lit(">"), put_type(c, second(xs), put(str_lit("BlobRef<"), acc)));
-                } else if sym_is_p(car(xs), str_lit("prompt-tag")) {
-                    return put(str_lit(">"), put_type(c, third(xs), put(str_lit(", "), put_type(c, second(xs), put(str_lit("Tag<"), acc)))));
-                } else if sym_is_p(car(xs), str_lit("select")) {
-                    return put(type_path(c, sym_name(second(xs)), sym_name(third(xs))), acc);
-                } else if (sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("sumof"))) {
-                    let product = sym_is_p(car(xs), str_lit("productof"));
-                    let fs = map(&items, cdr(xs));
-                    let acc = put(shape_name(product, map(lambda1(move |f: Sexps| {
-                        label_of(car(f))
-                    }), fs)), if product {
-                        acc
-                    } else {
-                        put(str_lit("&'static "), acc)
-                    });
-                    if null_p(fs) {
-                        return acc;
-                    } else {
-                        return put(str_lit(">"), put_types(c, map(&second, fs), put(str_lit("<"), acc)));
-                    }
-                } else if sym_is_p(car(xs), str_lit("poly")) {
-                    return error(str_lit("kfx: a poly type is only a definition's, at its top"));
-                } else if head_is_p(car(xs), str_lit("select")) {
-                    // A module's family applied by `select` (C89): `m..t` applied.
-                    let sel = items(car(xs));
-                    t = lst(kayak_rt::heap_cons(sym(string_append(sym_name(second(sel)), string_append(str_lit(".."), sym_name(third(sel)))), str_lit(""), 0i64), cdr(xs)), src_file, src_line, src_pos);
-                    continue;
-                } else if {
-                    let tagcase_ = car(xs);
-                    match *tagcase_ {
-                        Sexp::Sym(n, at_file, at_pos) => {
-                            not(null_p(find_family_of(c, n)))
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            false
-                        }
-                    }
-                } {
-                    // A family applied; an abbreviation over an effect (C46) as what it
-                    // stands for, here, since what Rust it is depends on the effect.
-                    let tagcase_ = car(find_family_of(c, sym_name(car(xs))));
-                    match *tagcase_ {
-                        Family::Family(n, datatype, kinds) => {
-                            if (not(datatype) && (string_member_p(str_lit("effect"), kinds) || not(null_p(module_body(c, string_append(str_lit("%expand "), n)))))) {
-                                t = family_expanded(c, t);
-                                continue;
-                            } else {
-                                let acc = if datatype {
-                                    put(str_lit("&'static "), acc)
-                                } else {
-                                    acc
-                                };
-                                let acc = put(camel(n), acc);
-                                let args = type_arguments(cdr(xs), kinds);
-                                let lives = if null_p(module_body(c, string_append(str_lit("%abbreviation "), n))) {
-                                    nil::<Str>()
-                                } else {
-                                    region_arguments(c, cdr(xs), kinds)
-                                };
-                                let places = if null_p(module_body(c, string_append(str_lit("%abbreviation "), n))) {
-                                    nil::<Str>()
-                                } else {
-                                    used_place_arguments(c, n, cdr(xs), kinds)
-                                };
-                                let parts = onto(lives, onto(map(lambda1(move |t: &'static Sexp| {
-                                    rev_to_string(put_type(c, t, nil::<char>()))
-                                }), args), places));
-                                if null_p(parts) {
-                                    return acc;
-                                } else {
-                                    return put(string_append(str_lit("<"), string_append(words_of_sep(parts, str_lit(", ")), str_lit(">"))), acc);
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    return error(str_lit("kfx: a type KFX-0 does not have"));
-                }
-            }
-            _ => {
-                let other = tagcase_;
-                return error(str_lit("kfx: a type KFX-0 does not have"));
-            }
-        }
-    }
-}
-
-/// A flat in a typed suffix (C32): a scalar's cell, a product of them, an
-/// array of them, `FlatArr<T, n>`.
-pub fn put_flat(c: &'static Ctx, f: &'static Sexp, acc: Chars) -> Chars {
-    let tagcase_ = f;
-    match *tagcase_ {
-        Sexp::Sym(n, fl, p) => {
-            put(str_lit(">"), put_type(c, f, put(str_lit("std::cell::Cell<"), acc)))
-        }
-        Sexp::Lst(xs, fl, ln, p) => {
-            if sym_is_p(car(xs), str_lit("arrayof")) {
-                put(str_lit(">"), put(number_text(third(xs)), put(str_lit(", "), put_flat(c, second(xs), put(str_lit("FlatArr<"), acc)))))
-            } else {
-                let fs = map(&items, cdr(xs));
-                put(str_lit(">"), put_sep(lambda2(move |x: &'static Sexp, acc: List<char>| {
-                    put_flat(c, x, acc)
-                }), str_lit(", "), map(&second, fs), put(str_lit("<"), put(shape_name(true, map(lambda1(move |g: Sexps| {
-                    label_of(car(g))
-                }), fs)), acc))))
-            }
-        }
-        _ => {
-            let other = tagcase_;
-            acc
-        }
-    }
-}
-
-/// A type, its abbreviations written out, as the checker's facts write it.
-pub fn expand_aliases(mut c: &'static Ctx, mut e: &'static Sexp) -> &'static Sexp {
-    loop {
-        let tagcase_ = e;
-        match *tagcase_ {
-            Sexp::Sym(n, fl, p) => {
-                let found = module_body(c, string_append(str_lit("%alias "), n));
-                if null_p(found) {
-                    return e;
-                } else {
-                    e = car(found);
-                    continue;
-                }
-            }
-            Sexp::Lst(xs, fl, ln, p) => {
-                if null_p(xs) {
-                    return e;
-                } else if (sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("sumof"))) {
-                    return lst(kayak_rt::heap_cons(car(xs), map(lambda1(move |g: &'static Sexp| {
-                        let tagcase_ = g;
-                        match *tagcase_ {
-                            Sexp::Lst(ys, f2, l2, p2) => {
-                                lst(kayak_rt::heap_cons(car(ys), kayak_rt::heap_cons(expand_aliases(c, second(ys)), kayak_rt::nil())), f2, l2, p2)
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                g
-                            }
-                        }
-                    }), cdr(xs))), fl, ln, p);
-                } else {
-                    return lst(kayak_rt::heap_cons(car(xs), map(lambda1(move |g: &'static Sexp| {
-                        expand_aliases(c, g)
-                    }), cdr(xs))), fl, ln, p);
-                }
-            }
-            _ => {
-                let other = tagcase_;
-                return e;
-            }
-        }
-    }
-}
-
-/// A bloblet type's key: its fields, written out, whatever its region.
-pub fn owner_key(c: &'static Ctx, b: &'static Sexp) -> Str {
-    let b = expand_aliases(c, b);
-    if head_is_p(b, str_lit("bloblet")) {
-        rev_to_string(put_fields_tuple(c, cdr(items(second(items(b)))), nil::<char>()))
-    } else {
-        str_lit("")
-    }
-}
-
-/// The flat a bloblet type's suffix is typed as (C32), as a list of one;
-/// or none. Typed if the program makes a blobref into one only by
-/// `blobref-at` at offset 0, always of one flat, and never reads its
-/// bytes otherwise (`blobref+`, `-owner`, `-offset`, `bloblet-byte`...);
-/// and makes every one of literal size, room for that flat.
-pub fn typed_flat(c: &'static Ctx, b: &'static Sexp) -> Sexps {
-    let key = owner_key(c, b);
-    let fs = {
-        let tagcase_ = c;
-        match *tagcase_ {
-            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-                fs
-            }
-        }
-    };
-    let ats = concat(map(lambda1(move |f: &'static Fact| {
-        let tagcase_ = f;
-        match *tagcase_ {
-            Fact::Fact(file, pos, what) => {
-                if has_prefix_p(what, str_lit("blob-at ")) {
-                    let ts = read_all(string_chars(after_prefix(what, str_lit("blob-at "))), str_lit(""), 1i64);
-                    if string_eq_p(owner_key(c, car(ts)), key) {
-                        the::<List<&'static Fact>>(kayak_rt::heap_cons(f, kayak_rt::nil()))
-                    } else {
-                        nil::<&'static Fact>()
-                    }
-                } else {
-                    nil::<&'static Fact>()
-                }
-            }
-        }
-    }), fs));
-    if (string_eq_p(key, str_lit("")) || null_p(ats)) {
-        nil::<&'static Sexp>()
-    } else {
-        let flat_of = lambda1(move |f: &'static Fact| {
-            let tagcase_ = f;
-            match *tagcase_ {
-                Fact::Fact(file, pos, what) => {
-                    second(read_all(string_chars(after_prefix(what, str_lit("blob-at "))), str_lit(""), 1i64))
-                }
-            }
-        });
-        let first = expand_aliases(c, flat_of(car(ats)));
-        let text = if has_sum_p(first) {
-            str_lit("")
-        } else {
-            rev_to_string(put_flat(c, first, nil::<char>()))
-        };
-        let size = {
-            let tagcase_ = car(ats);
-            match *tagcase_ {
-                Fact::Fact(file, pos, what) => {
-                    fact_at_place(c, file, pos, str_lit("blob-size "))
-                }
-            }
-        };
-        let same = not(any_p(lambda1(move |f: &'static Fact| {
-            let tagcase_ = f;
-            match *tagcase_ {
-                Fact::Fact(file, pos, what) => {
-                    (not(ctx_fact_p(c, file, pos, str_lit("blob-zero"))) || has_sum_p(expand_aliases(c, flat_of(f))) || not(string_eq_p(rev_to_string(put_flat(c, expand_aliases(c, flat_of(f)), nil::<char>())), text)))
-                }
-            }
-        }), ats));
-        let bytewise = any_p(lambda1(move |f: &'static Fact| {
-            let tagcase_ = f;
-            match *tagcase_ {
-                Fact::Fact(file, pos, what) => {
-                    (has_prefix_p(what, str_lit("blob-raw ")) && string_eq_p(owner_key(c, car(read_all(string_chars(after_prefix(what, str_lit("blob-raw "))), str_lit(""), 1i64))), key))
-                }
-            }
-        }), fs);
-        let short = any_p(lambda1(move |f: &'static Fact| {
-            let tagcase_ = f;
-            match *tagcase_ {
-                Fact::Fact(file, pos, what) => {
-                    (has_prefix_p(what, str_lit("blob-make ")) && string_eq_p(owner_key(c, car(read_all(string_chars(after_prefix(what, str_lit("blob-make "))), str_lit(""), 1i64))), key) && {
-                        let bytes = fact_at_place(c, file, pos, str_lit("blob-bytes "));
-                        (string_eq_p(bytes, str_lit("")) || i64_lt(digits_number(bytes), digits_number(size)))
-                    })
-                }
-            }
-        }), fs);
-        if (same && not(bytewise) && not(short) && not(has_sum_p(first))) {
-            the::<Sexps>(kayak_rt::heap_cons(first, kayak_rt::nil()))
-        } else {
-            nil::<&'static Sexp>()
-        }
-    }
-}
-
-/// Whether a flat has a flat sum in it: a typed suffix holds none, since
-/// a sum's variants share their bytes, which a stale blobref to one sees
-/// (C33).
-pub fn has_sum_p(f: &'static Sexp) -> bool {
-    let tagcase_ = f;
-    match *tagcase_ {
-        Sexp::Lst(xs, fl, ln, p) => {
-            (sym_is_p(car(xs), str_lit("sumof")) || any_p(lambda1(move |x: &'static Sexp| {
-                has_sum_p(x)
-            }), cdr(xs)))
-        }
-        _ => {
-            let other = tagcase_;
-            false
-        }
-    }
-}
-
-/// A procedure's lifetime: a `letrena` region's its latent effect names
-/// (calling it reads that region, so it may hold what is there), or
-/// the innermost one's (C38, C39).
-pub fn effect_lifetime(c: &'static Ctx, eff: &'static Sexp) -> Str {
-    let named = concat(map(lambda1(move |x: &'static Sexp| {
-        let l = region_lifetime(c, x);
-        if string_eq_p(l, str_lit("")) {
-            nil::<Str>()
-        } else {
-            the::<Strings>(kayak_rt::heap_cons(l, kayak_rt::nil()))
-        }
-    }), atoms_in(eff)));
-    if null_p(named) {
-        innermost_lifetime(ctx_locals(c))
-    } else {
-        car(named)
-    }
-}
-
-pub fn atoms_in(e: &'static Sexp) -> Sexps {
-    let tagcase_ = e;
-    match *tagcase_ {
-        Sexp::Lst(xs, f, l, p) => {
-            concat(map(lambda1(move |x: &'static Sexp| {
-                atoms_in(x)
-            }), xs))
-        }
-        _ => {
-            let other = tagcase_;
-            the::<Sexps>(kayak_rt::heap_cons(e, kayak_rt::nil()))
-        }
-    }
-}
-
-/// The innermost `letrena` lifetime `t`'s Rust type mentions, or ``.
-pub fn element_lifetime(c: &'static Ctx, t: &'static Sexp) -> Str {
-    let text = rev_to_string(put_type(c, t, nil::<char>()));
-    first_lifetime_in(text, letrena_lifetimes_inner(ctx_locals(c)))
-}
-
-/// A bloblet's fields, a tuple of cells: `(Cell<T>, ...,)`.
-pub fn put_fields_tuple(c: &'static Ctx, ts: Sexps, acc: Chars) -> Chars {
-    put(str_lit(")"), put_sep(lambda2(move |t: &'static Sexp, acc: List<char>| {
-        put(str_lit(">,"), put_type(c, t, put(str_lit("std::cell::Cell<"), acc)))
-    }), str_lit(" "), ts, put(str_lit("("), acc)))
-}
-
-/// An abbreviation's arguments for its regions, as lifetimes (C39): a
-/// `letrena`'s, its lifetime; the heap's, `'static`, or in a `letrena`
-/// the innermost one's, since a `'static` list may hold nothing that
-/// lives less, and a heap list is one at any lifetime.
-pub fn region_arguments(mut c: &'static Ctx, mut args: Sexps, mut kinds: Strings) -> Strings {
-    loop {
-        if (null_p(args) || null_p(kinds)) {
-            return nil::<Str>();
-        } else if (string_eq_p(car(kinds), str_lit("region")) || string_eq_p(car(kinds), str_lit("place"))) {
-            return kayak_rt::heap_cons({
-                let l = region_lifetime(c, car(args));
-                if string_eq_p(l, str_lit("")) {
-                    innermost_lifetime(ctx_locals(c))
-                } else {
-                    l
-                }
-            }, region_arguments(c, cdr(args), cdr(kinds)));
-        } else {
-            (args, kinds) = (cdr(args), cdr(kinds));
-            continue;
-        }
-    }
-}
-
-/// An abbreviation's arguments for its places, as the places' Rust types
-/// (C40): a place parameter's `Place_P`, a `letrena`'s region type.
-pub fn place_arguments(mut c: &'static Ctx, mut args: Sexps, mut kinds: Strings) -> Strings {
-    loop {
-        if (null_p(args) || null_p(kinds)) {
-            return nil::<Str>();
-        } else if string_eq_p(car(kinds), str_lit("place")) {
-            return kayak_rt::heap_cons({
-                let full = rev_to_string(put_type(c, lst(kayak_rt::heap_cons(sym(str_lit("place"), str_lit(""), 0i64), kayak_rt::heap_cons(car(args), kayak_rt::nil())), str_lit(""), 0i64, 0i64), nil::<char>()));
-                after_first_space(full)
-            }, place_arguments(c, cdr(args), cdr(kinds)));
-        } else {
-            (args, kinds) = (cdr(args), cdr(kinds));
-            continue;
-        }
-    }
-}
-
-/// Of an abbreviation's place arguments, those for places its body names.
-pub fn used_place_arguments(c: &'static Ctx, n: Str, args: Sexps, kinds: Strings) -> Strings {
-    let found = module_body(c, string_append(str_lit("%abbreviation "), n));
-    let parts = items(car(found));
-    let names = {
-        let tagcase_ = car(parts);
-        match *tagcase_ {
-            Sexp::Lst(hs, f, l, p) => {
-                map(lambda1(move |b: &'static Sexp| {
-                    sym_name(car(items(b)))
-                }), cdr(hs))
-            }
-            _ => {
-                let other = tagcase_;
-                nil::<Str>()
-            }
-        }
-    };
-    let used = places_used(second(parts));
-    let go__knot = knot::<&'static dyn Fn(Strings, Sexps, Strings) -> Strings>();
-    let go = lambda3(move |mut ns: Strings, mut xs: Sexps, mut ks: Strings| {
-        loop {
-            if (null_p(ns) || null_p(xs) || null_p(ks)) {
-                return nil::<Str>();
-            } else if (string_eq_p(car(ks), str_lit("place")) && string_member_p(car(ns), used)) {
-                return kayak_rt::heap_cons(after_first_space(rev_to_string(put_type(c, lst(kayak_rt::heap_cons(sym(str_lit("place"), str_lit(""), 0i64), kayak_rt::heap_cons(car(xs), kayak_rt::nil())), str_lit(""), 0i64, 0i64), nil::<char>()))), (go__knot.get())(cdr(ns), cdr(xs), cdr(ks)));
-            } else {
-                (ns, xs, ks) = (cdr(ns), cdr(xs), cdr(ks));
-                continue;
-            }
-        }
-    });
-    go__knot.set(go);
-    go(names, args, kinds)
-}
-
-/// A family's arguments for its parameters of kind `type`: the others,
-/// regions, are erased.
-pub fn type_arguments(mut args: Sexps, mut kinds: Strings) -> Sexps {
-    loop {
-        if (null_p(args) || null_p(kinds)) {
-            return nil::<&'static Sexp>();
-        } else if string_eq_p(car(kinds), str_lit("type")) {
-            return kayak_rt::heap_cons(car(args), type_arguments(cdr(args), cdr(kinds)));
-        } else {
-            (args, kinds) = (cdr(args), cdr(kinds));
-            continue;
-        }
-    }
-}
-
-/// Types, separated by commas.
-pub fn put_types(c: &'static Ctx, types: Sexps, acc: Chars) -> Chars {
-    put_sep(lambda2(move |t: &'static Sexp, acc: List<char>| {
-        put_type(c, t, acc)
-    }), str_lit(", "), types, acc)
-}
-
-/// What `s` is where it is named: `local`, `knot` (a procedure of a
-/// `letrec`, in its group's lambdas, before it is made: reached through
-/// its knot), or `` (not bound locally). The innermost binding counts.
-pub fn local_kind(mut s: Str, mut ls: Strings) -> Str {
-    loop {
-        if null_p(ls) {
-            return str_lit("");
-        } else if string_eq_p(car(ls), s) {
-            return str_lit("local");
-        } else if string_eq_p(car(ls), string_append(str_lit("%knot "), s)) {
-            return str_lit("knot");
-        } else if string_eq_p(car(ls), string_append(str_lit("%item "), s)) {
-            return str_lit("item");
-        } else {
-            ls = cdr(ls);
-            continue;
-        }
-    }
-}
-
-/// A module's value, named in a `with`: `m::x`, called if a constant.
-pub fn item_path(c: &'static Ctx, s: Str) -> Str {
-    let m = opener(string_append(str_lit("%item "), s), ctx_locals(c));
-    string_append(module_path(c, m), string_append(str_lit("::"), string_append(mangle(s), if string_member_p(s, item_constants(module_items(c, m))) {
-        str_lit("()")
-    } else {
-        str_lit("")
-    })))
-}
-
-pub fn innermost_fallible(mut ls: Strings) -> bool {
-    loop {
-        if null_p(ls) {
-            return false;
-        } else if string_eq_p(car(ls), str_lit("%fallible")) {
-            return true;
-        } else if string_eq_p(car(ls), str_lit("%infallible")) {
-            return false;
-        } else {
-            ls = cdr(ls);
-            continue;
-        }
-    }
-}
-
-pub fn innermost_async(mut ls: Strings) -> bool {
-    loop {
-        if null_p(ls) {
-            return false;
-        } else if string_eq_p(car(ls), str_lit("%async")) {
-            return true;
-        } else if string_eq_p(car(ls), str_lit("%sync")) {
-            return false;
-        } else {
-            ls = cdr(ls);
-            continue;
-        }
-    }
-}
-
-/// Whether the function, closure or block being written is `async`, so
-/// that a future in it is `.await`ed (C45): the innermost's mark says.
-pub fn async_here_p(c: &'static Ctx) -> bool {
-    innermost_async(ctx_locals(c))
-}
-
-/// Whether the function or closure being written returns a `Result`: the
-/// innermost's mark says.
-pub fn fallible_here_p(c: &'static Ctx) -> bool {
-    innermost_fallible(ctx_locals(c))
-}
-
-/// Whether every lifetime the emitter writes here is `'static`: no
-/// `letrena`, place or region binder around (each a `%letrena`). Then
-/// the heap's data is made in its arenas, by bumping (C43).
-pub fn heap_static_p(mut ls: Strings) -> bool {
-    loop {
-        if null_p(ls) {
-            return true;
-        } else if has_prefix_p(car(ls), str_lit("%letrena ")) {
-            return false;
-        } else {
-            ls = cdr(ls);
-            continue;
-        }
-    }
-}
-
-pub fn heap_alloc(c: &'static Ctx) -> Str {
-    if heap_static_p(ctx_locals(c)) {
-        str_lit("kayak_rt::heap_alloc(")
-    } else {
-        str_lit("alloc(")
-    }
-}
-
-/// A call's operator: a knot's procedure, a constant's value (a
-/// procedure a definition made, not a lambda), or a name.
-pub fn callee(c: &'static Ctx, h: Str) -> Str {
-    let kind = local_kind(h, ctx_locals(c));
-    if string_eq_p(kind, str_lit("knot")) {
-        string_append(str_lit("("), string_append(mangle_bare(h), str_lit("__knot.get())")))
-    } else if string_eq_p(kind, str_lit("item")) {
-        item_path(c, h)
-    } else if (string_eq_p(kind, str_lit("")) && string_member_p(h, ctx_constants(c))) {
-        string_append(mangle(h), str_lit("()"))
-    } else if (string_eq_p(kind, str_lit("")) && (string_eq_p(h, str_lit("cons")) || string_eq_p(h, str_lit("new"))) && heap_static_p(ctx_locals(c))) {
-        string_append(str_lit("kayak_rt::heap_"), h)
-    } else {
-        mangle(h)
-    }
-}
-
-/// `::<T, ...>`, the types the checker found the datum `e` written at (a
-/// poly procedure's call, a `nil`), where rustc may have nothing else to
-/// infer them from; nothing if it found none.
-pub fn put_turbofish(c: &'static Ctx, e: &'static Sexp, acc: Chars) -> Chars {
-    let found = fact_with(c, e, str_lit("turbofish "));
-    if string_eq_p(found, str_lit("")) {
-        acc
-    } else {
-        put(str_lit(">"), put_types(c, read_all(string_chars(found), str_lit(""), 1i64), put(str_lit("::<"), acc)))
-    }
-}
-
-/// Whether a call's operator is written as a function's path, which a
-/// turbofish may follow.
-pub fn plain_callee_p(c: &'static Ctx, h: Str) -> bool {
-    let kind = local_kind(h, ctx_locals(c));
-    (string_eq_p(kind, str_lit("item")) || (string_eq_p(kind, str_lit("")) && not(string_member_p(h, ctx_constants(c)))))
-}
-
-/// A call's operator, and its turbofish if it is a function's path.
-pub fn put_callee(c: &'static Ctx, e: &'static Sexp, h: Str, acc: Chars) -> Chars {
-    let acc = put(callee(c, h), acc);
-    if plain_callee_p(c, h) {
-        put_turbofish(c, e, acc)
-    } else {
-        acc
-    }
-}
-
-pub fn put_var(c: &'static Ctx, s: Str, acc: Chars) -> Chars {
-    if string_eq_p(s, str_lit("#t")) {
-        put(str_lit("true"), acc)
-    } else if string_eq_p(s, str_lit("#f")) {
-        put(str_lit("false"), acc)
-    } else if string_eq_p(s, str_lit("#u")) {
-        put(str_lit("()"), acc)
-    } else if string_eq_p(local_kind(s, ctx_locals(c)), str_lit("knot")) {
-        put(str_lit(".get()"), put(str_lit("__knot"), put(mangle_bare(s), acc)))
-    } else if string_eq_p(local_kind(s, ctx_locals(c)), str_lit("local")) {
-        put(mangle(s), acc)
-    } else if string_eq_p(local_kind(s, ctx_locals(c)), str_lit("item")) {
-        let m = opener(string_append(str_lit("%item "), s), ctx_locals(c));
-        put(item_path(c, s), if string_member_p(s, item_constants(module_items(c, m))) {
-            acc
-        } else {
-            put(str_lit("&"), acc)
-        })
-    } else if (string_eq_p(s, str_lit("nil")) || string_member_p(s, ctx_constants(c))) {
-        put(str_lit("()"), put(mangle(s), acc))
-    } else {
-        put(mangle(s), put(str_lit("&"), acc))
-    }
-}
-
-pub fn put_spaces(mut k: i64, mut acc: Chars) -> Chars {
-    loop {
-        if i64_eq(k, 0i64) {
-            return acc;
-        } else {
-            (k, acc) = (i64_minus(k, 1i64), put(str_lit("    "), acc));
-            continue;
-        }
-    }
-}
-
-/// A new line, indented `n` levels.
-pub fn put_nl(n: i64, acc: Chars) -> Chars {
-    put_spaces(n, put(str_lit("\n"), acc))
-}
-
-/// A string literal where a body's value is not taken is a comment: KFX's
-/// comments are strings, since `;` comments do not survive reading. Each of
-/// its lines is written after `prefix` (`//` or `///`), leading spaces
-/// dropped; `fresh` says no prefix has been written for this line yet.
-pub fn put_comment(mut cs: Chars, mut prefix: Str, mut n: i64, mut fresh: bool, mut acc: Chars) -> Chars {
-    loop {
-        if null_p(cs) {
-            return acc;
-        } else if char_eq_p(car(cs), '\n') {
-            (cs, fresh, acc) = (cdr(cs), true, put_nl(n, if fresh {
-                put(prefix, acc)
-            } else {
-                acc
-            }));
-            continue;
-        } else if (fresh && char_eq_p(car(cs), ' ')) {
-            (cs, fresh) = (cdr(cs), true);
-            continue;
-        } else if fresh {
-            (cs, fresh, acc) = (cdr(cs), false, kayak_rt::heap_cons(car(cs), put(str_lit(" "), put(prefix, acc))));
-            continue;
-        } else {
-            (cs, fresh, acc) = (cdr(cs), false, kayak_rt::heap_cons(car(cs), acc));
-            continue;
-        }
-    }
-}
-
-pub fn comment_p(e: &'static Sexp) -> bool {
-    let tagcase_ = e;
-    match *tagcase_ {
-        Sexp::Str(s, at_file, at_pos) => {
-            true
-        }
-        _ => {
-            let other = tagcase_;
-            false
-        }
-    }
-}
-
-pub fn comment_text(e: &'static Sexp) -> Str {
-    let tagcase_ = e;
-    match *tagcase_ {
-        Sexp::Str(s, at_file, at_pos) => {
-            s
-        }
-        _ => {
-            let other = tagcase_;
-            str_lit("")
-        }
-    }
-}
-
-/// Names, separated by commas.
-pub fn put_names(xs: Sexps, acc: Chars) -> Chars {
-    put_sep(lambda2(move |x: &'static Sexp, acc: List<char>| {
-        put(mangle(sym_name(x)), acc)
-    }), str_lit(", "), xs, acc)
-}
-
-// Self tail calls. Rust has no tail calls, so a procedure that calls itself
-// last is a `loop`: the call assigns its parameters and `continue`s, and
-// everything else it could end with is `return`ed.
 pub enum Tail {
     Value(),
     Returns(Str, Strings, bool, bool),
@@ -2408,289 +50,6 @@ pub fn ok_value() -> &'static Tail {
     kayak_rt::heap_alloc(Tail::OkValue())
 }
 
-// `value`: an expression whose value is used. `returns`: the last thing a
-// looping procedure does, with the procedure's name and parameters; the
-// flag is false where a binding hides a parameter, since an assignment
-// would then reach the binding, not the parameter.
-pub fn binding_name(binding: &'static Sexp) -> Str {
-    sym_name(car(items(binding)))
-}
-
-/// `t`, under bindings of `names`: no longer a loop if one hides a
-/// parameter, or the procedure's own name (a call of it is the local's).
-pub fn hide(t: &'static Tail, names: Strings) -> &'static Tail {
-    let tagcase_ = t;
-    match *tagcase_ {
-        Tail::Returns(f, ps, live, ok) => {
-            if (live && any_p(lambda1(move |x: Str| {
-                (string_eq_p(x, f) || string_member_p(x, ps))
-            }), names)) {
-                returns(f, ps, false, ok)
-            } else {
-                t
-            }
-        }
-        _ => {
-            let other = tagcase_;
-            t
-        }
-    }
-}
-
-pub fn ok_value_p(t: &'static Tail) -> bool {
-    let tagcase_ = t;
-    match *tagcase_ {
-        Tail::OkValue() => {
-            true
-        }
-        _ => {
-            let other = tagcase_;
-            false
-        }
-    }
-}
-
-pub fn returns_ok_p(t: &'static Tail) -> bool {
-    let tagcase_ = t;
-    match *tagcase_ {
-        Tail::Returns(f, ps, live, ok) => {
-            ok
-        }
-        _ => {
-            let other = tagcase_;
-            false
-        }
-    }
-}
-
-pub fn returns_p(t: &'static Tail) -> bool {
-    let tagcase_ = t;
-    match *tagcase_ {
-        Tail::Returns(f, ps, live, ok) => {
-            true
-        }
-        _ => {
-            let other = tagcase_;
-            false
-        }
-    }
-}
-
-pub fn map2_params(params: Sexps, types: Sexps) -> Sexps {
-    if (null_p(params) || null_p(types)) {
-        params
-    } else {
-        kayak_rt::heap_cons({
-            let tagcase_ = car(params);
-            match *tagcase_ {
-                Sexp::Sym(n, at_file, at_pos) => {
-                    lst(kayak_rt::heap_cons(car(params), kayak_rt::heap_cons(car(types), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
-                }
-                _ => {
-                    let other = tagcase_;
-                    other
-                }
-            }
-        }, map2_params(cdr(params), cdr(types)))
-    }
-}
-
-/// A letrec's lambda, its parameters given the types its binding's says,
-/// so that Rust need not infer a closure's from its uses: it cannot, where
-/// the first is a `match` (a lambda's place kept, for its facts).
-pub fn typed_lambda(lam: &'static Sexp, typ: &'static Sexp) -> &'static Sexp {
-    let tagcase_ = lam;
-    match *tagcase_ {
-        Sexp::Lst(xs, file, line, pos) => {
-            lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(lst(map2_params(items(second(xs)), items(third(items(typ)))), str_lit(""), 0i64, 0i64), cdr(cdr(xs)))), file, line, pos)
-        }
-        _ => {
-            let other = tagcase_;
-            lam
-        }
-    }
-}
-
-/// Whether `x` names a module defined at the top level, not hidden.
-pub fn module_name_p(c: &'static Ctx, x: &'static Sexp) -> bool {
-    let tagcase_ = x;
-    match *tagcase_ {
-        Sexp::Sym(n, at_file, at_pos) => {
-            (string_eq_p(local_kind(n, ctx_locals(c)), str_lit("")) && not(null_p(module_body(c, n))))
-        }
-        _ => {
-            let other = tagcase_;
-            false
-        }
-    }
-}
-
-/// What a case is on, as the checker found.
-pub fn case_kind(c: &'static Ctx, e: &'static Sexp) -> Str {
-    if fact_at_p(c, e, str_lit("case int")) {
-        str_lit("int")
-    } else if fact_at_p(c, e, str_lit("case string")) {
-        str_lit("string")
-    } else if fact_at_p(c, e, str_lit("case bool")) {
-        str_lit("bool")
-    } else if fact_at_p(c, e, str_lit("case symbol")) {
-        str_lit("symbol")
-    } else {
-        str_lit("char")
-    }
-}
-
-/// A lambda's parameters, each written with no type given the one the
-/// checker found, where it found them all: Rust may not find a closure's
-/// parameter's type from its uses.
-pub fn lambda_params_typed(c: &'static Ctx, e: &'static Sexp, params: Sexps) -> Sexps {
-    let found = fact_with(c, e, str_lit("param-types "));
-    if string_eq_p(found, str_lit("")) {
-        params
-    } else {
-        map2_params(params, items(car(read_all(string_chars(found), str_lit(""), 1i64))))
-    }
-}
-
-pub fn put_arg_names(mut i: i64, mut n: i64, mut acc: Chars) -> Chars {
-    loop {
-        if i64_lt(i, n) {
-            (i, acc) = (i64_plus(i, 1i64), put(i64_to_string(i), put(if i64_eq(i, 0i64) {
-                str_lit("a__")
-            } else {
-                str_lit(", a__")
-            }, acc)));
-            continue;
-        } else {
-            return acc;
-        }
-    }
-}
-
-/// An abort: `return Err(...)` in Rust, so no value to return or wrap.
-pub fn abort_p(c: &'static Ctx, e: &'static Sexp) -> bool {
-    (head_is_p(e, str_lit("abort-current-continuation")) && string_eq_p(local_kind(str_lit("abort-current-continuation"), ctx_locals(c)), str_lit("")))
-}
-
-pub fn self_call_p(t: &'static Tail, e: &'static Sexp) -> bool {
-    let tagcase_ = t;
-    match *tagcase_ {
-        Tail::Returns(f, ps, live, ok) => {
-            (live && head_is_p(e, f) && i64_eq(size(cdr(items(e))), size(ps)))
-        }
-        _ => {
-            let other = tagcase_;
-            false
-        }
-    }
-}
-
-/// The forms whose last parts stand where they do.
-pub fn control_p(e: &'static Sexp) -> bool {
-    (head_is_p(e, str_lit("if")) || head_is_p(e, str_lit("cond")) || head_is_p(e, str_lit("case")) || head_is_p(e, str_lit("tagcase")) || head_is_p(e, str_lit("let")) || head_is_p(e, str_lit("let*")) || head_is_p(e, str_lit("begin")) || head_is_p(e, str_lit("letrec")) || head_is_p(e, str_lit("letregion")) || head_is_p(e, str_lit("with")))
-}
-
-/// `c` in `(with m ...)`: `m`'s values and types, hiding what is outside.
-pub fn with_opened(c: &'static Ctx, e: &'static Sexp) -> &'static Ctx {
-    let m = sym_name(second(items(e)));
-    let forms = module_items(c, m);
-    with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%with "), m), onto(map(lambda1(move |x: Str| {
-        string_append(str_lit("%type "), x)
-    }), item_types(forms)), map(lambda1(move |x: Str| {
-        string_append(str_lit("%item "), x)
-    }), item_values(forms)))))
-}
-
-/// `t` in `(with m ...)`: a procedure `m` gives, named as the one written,
-/// is not it, and a parameter `m` hides is not to be assigned.
-pub fn opened_tail(c: &'static Ctx, e: &'static Sexp, t: &'static Tail) -> &'static Tail {
-    let names = item_values(module_items(c, sym_name(second(items(e)))));
-    let tagcase_ = t;
-    match *tagcase_ {
-        Tail::Returns(f, ps, live, ok) => {
-            if string_member_p(f, names) {
-                returns(f, ps, false, ok)
-            } else {
-                hide(t, names)
-            }
-        }
-        _ => {
-            let other = tagcase_;
-            t
-        }
-    }
-}
-
-/// Whether `e`, standing at `t`, makes a self tail call: whether its
-/// procedure loops.
-pub fn tail_calls_p(mut t: &'static Tail, mut e: &'static Sexp) -> bool {
-    loop {
-        if self_call_p(t, e) {
-            return true;
-        } else if head_is_p(e, str_lit("if")) {
-            let xs = cdr(items(e));
-            return (tail_calls_p(t, second(xs)) || tail_calls_p(t, third(xs)));
-        } else if head_is_p(e, str_lit("cond")) {
-            return arms_tail_calls_p(t, cdr(items(e)));
-        } else if head_is_p(e, str_lit("case")) {
-            return arms_tail_calls_p(t, cdr(cdr(items(e))));
-        } else if head_is_p(e, str_lit("tagcase")) {
-            return tag_arms_tail_calls_p(t, cdr(cdr(items(e))));
-        } else if (head_is_p(e, str_lit("let")) || head_is_p(e, str_lit("let*")) || head_is_p(e, str_lit("letrec"))) {
-            let xs = cdr(items(e));
-            (t, e) = (hide(t, map(&binding_name, items(car(xs)))), last(cdr(xs)));
-            continue;
-        } else if head_is_p(e, str_lit("begin")) {
-            e = last(cdr(items(e)));
-            continue;
-        } else if head_is_p(e, str_lit("letregion")) {
-            e = last(cdr(cdr(items(e))));
-            continue;
-        } else {
-            return false;
-        }
-    }
-}
-
-/// A `cond`'s clauses, or a `case`'s arms: each a test or data, then a body.
-pub fn arms_tail_calls_p(mut t: &'static Tail, mut arms: Sexps) -> bool {
-    loop {
-        if null_p(arms) {
-            return false;
-        } else if tail_calls_p(t, last(cdr(items(car(arms))))) {
-            return true;
-        } else {
-            arms = cdr(arms);
-            continue;
-        }
-    }
-}
-
-pub fn tag_arms_tail_calls_p(t: &'static Tail, arms: Sexps) -> bool {
-    if null_p(arms) {
-        false
-    } else {
-        let arm = items(car(arms));
-        let bound = if (sym_is_p(car(arm), str_lit("else")) || {
-            let tagcase_ = second(arm);
-            match *tagcase_ {
-                Sexp::Sym(x, at_file, at_pos) => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
-            }
-        }) {
-            the::<Strings>(kayak_rt::heap_cons(sym_name(second(arm)), kayak_rt::nil()))
-        } else {
-            map(&sym_name, items(second(arm)))
-        };
-        (tail_calls_p(hide(t, bound), last(cdr(cdr(arm)))) || tag_arms_tail_calls_p(t, cdr(arms)))
-    }
-}
-
 pub enum Assign {
     Assign(Strings, Sexps),
 }
@@ -2699,1562 +58,4215 @@ pub fn assign(f0: Strings, f1: Sexps) -> &'static Assign {
     kayak_rt::heap_alloc(Assign::Assign(f0, f1))
 }
 
-/// The parameters a self tail call changes, and their new values: an
-/// argument that is the parameter itself changes nothing.
-pub fn changes(ps: Strings, args: Sexps) -> &'static Assign {
-    if null_p(ps) {
-        assign(nil::<Str>(), nil::<&'static Sexp>())
-    } else {
-        let tagcase_ = changes(cdr(ps), cdr(args));
+// The emitter's expressions and types are a module (C92): its helpers
+// hidden, what writing the top level needs (emit-tops.kfx) given.
+pub mod emitter {
+    use super::*;
+
+    pub fn filter_typed(mut name: Str, mut xs: Typeds) -> Typeds {
+        loop {
+            if null_p(xs) {
+                return nil::<&'static Typed>();
+            } else if {
+                let tagcase_ = car(xs);
+                match *tagcase_ {
+                    Typed::Typed(n, t) => {
+                        string_eq_p(n, name)
+                    }
+                }
+            } {
+                return kayak_rt::heap_cons(car(xs), kayak_rt::nil());
+            } else {
+                xs = cdr(xs);
+                continue;
+            }
+        }
+    }
+
+    pub fn ctx_effects(c: &'static Ctx) -> Typeds {
+        let tagcase_ = c;
         match *tagcase_ {
-            Assign::Assign(names, values) => {
-                if sym_is_p(car(args), car(ps)) {
-                    assign(names, values)
-                } else {
-                    assign(kayak_rt::heap_cons(car(ps), names), kayak_rt::heap_cons(car(args), values))
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                es
+            }
+        }
+    }
+
+    /// Whether `n` is the effect binder of the poly being written, or the mark
+    /// an effect given a family carries (C46): it may stand for an effect
+    /// that aborts or suspends.
+    pub fn effect_binder_p(c: &'static Ctx, n: Str) -> bool {
+        (string_eq_p(n, str_lit("%effect-given")) || {
+            let tagcase_ = c;
+            match *tagcase_ {
+                Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                    string_member_p(string_append(str_lit("%evar "), n), ls)
+                }
+            }
+        })
+    }
+
+    /// Whether the checker found `what` about the place `file`, `pos`.
+    pub fn ctx_fact_p(c: &'static Ctx, file: Str, pos: i64, what: Str) -> bool {
+        let tagcase_ = c;
+        match *tagcase_ {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                any_p(lambda1(move |f: &'static Fact| {
+                    let tagcase_ = f;
+                    match *tagcase_ {
+                        Fact::Fact(ff, fp, fw) => {
+                            (i64_eq(fp, pos) && string_eq_p(fw, what) && string_eq_p(ff, file))
+                        }
+                    }
+                }), fs)
+            }
+        }
+    }
+
+    /// The rest of the first fact at `file`, `pos` that begins `prefix`; or
+    /// ``. A search, not a list made: the emitter asks at every name.
+    pub fn first_fact(mut fs: Facts, mut file: Str, mut pos: i64, mut prefix: Str) -> Str {
+        loop {
+            if null_p(fs) {
+                return str_lit("");
+            } else {
+                let tagcase_ = car(fs);
+                match *tagcase_ {
+                    Fact::Fact(ff, fp, fw) => {
+                        if (i64_eq(fp, pos) && string_eq_p(ff, file) && has_prefix_p(fw, prefix)) {
+                            return after_prefix(fw, prefix);
+                        } else {
+                            fs = cdr(fs);
+                            continue;
+                        }
+                    }
                 }
             }
         }
     }
-}
 
-/// Names, mangled, separated by commas.
-pub fn put_strings(xs: Strings, acc: Chars) -> Chars {
-    put_sep(lambda2(move |x: Str, acc: List<char>| {
-        put(mangle(x), acc)
-    }), str_lit(", "), xs, acc)
-}
+    pub fn facts_at_place(mut fs: Facts, mut file: Str, mut pos: i64) -> Facts {
+        loop {
+            if null_p(fs) {
+                return nil::<&'static Fact>();
+            } else if {
+                let tagcase_ = car(fs);
+                match *tagcase_ {
+                    Fact::Fact(ff, fp, fw) => {
+                        (i64_eq(fp, pos) && string_eq_p(ff, file))
+                    }
+                }
+            } {
+                return kayak_rt::heap_cons(car(fs), facts_at_place(cdr(fs), file, pos));
+            } else {
+                fs = cdr(fs);
+                continue;
+            }
+        }
+    }
 
-/// `xs`, each once, in the order of its first.
-pub fn distinct_strings(xs: Strings) -> Strings {
-    if null_p(xs) {
-        nil::<Str>()
-    } else {
-        kayak_rt::heap_cons(car(xs), distinct_strings(concat(map(lambda1(move |x: Str| {
-            if string_eq_p(x, car(xs)) {
+    /// The facts at the datum `e`, found once (C84).
+    pub fn facts_at(c: &'static Ctx, e: &'static Sexp) -> Facts {
+        let tagcase_ = c;
+        match *tagcase_ {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                facts_at_place(fs, datum_file(e), datum_pos(e))
+            }
+        }
+    }
+
+    pub fn fact_in(fs: Facts, e: &'static Sexp, prefix: Str) -> Str {
+        first_fact(fs, datum_file(e), datum_pos(e), prefix)
+    }
+
+    pub fn fact_in_p(fs: Facts, e: &'static Sexp, what: Str) -> bool {
+        any_p(lambda1(move |f: &'static Fact| {
+            let tagcase_ = f;
+            match *tagcase_ {
+                Fact::Fact(ff, fp, fw) => {
+                    string_eq_p(fw, what)
+                }
+            }
+        }), fs)
+    }
+
+    /// What the checker found about the datum `e` that begins `prefix`, the
+    /// rest of it; or ``.
+    pub fn fact_with(c: &'static Ctx, e: &'static Sexp, prefix: Str) -> Str {
+        let tagcase_ = c;
+        match *tagcase_ {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                first_fact(fs, datum_file(e), datum_pos(e), prefix)
+            }
+        }
+    }
+
+    pub fn split_words_from(mut cs: Chars, mut word: Chars, mut acc: Strings) -> Strings {
+        loop {
+            if null_p(cs) {
+                if null_p(word) {
+                    return acc;
+                } else {
+                    return kayak_rt::heap_cons(rev_to_string(word), acc);
+                }
+            } else if char_eq_p(car(cs), ' ') {
+                (cs, word, acc) = (cdr(cs), nil::<char>(), if null_p(word) {
+                    acc
+                } else {
+                    kayak_rt::heap_cons(rev_to_string(word), acc)
+                });
+                continue;
+            } else {
+                (cs, word) = (cdr(cs), kayak_rt::heap_cons(car(cs), word));
+                continue;
+            }
+        }
+    }
+
+    /// A mangled name without its raw identifier's `r#`.
+    pub fn plain_name(n: Str) -> Str {
+        if has_prefix_p(n, str_lit("r#")) {
+            after_prefix(n, str_lit("r#"))
+        } else {
+            n
+        }
+    }
+
+    pub fn ctx_datatypes(c: &'static Ctx) -> Strings {
+        let tagcase_ = c;
+        match *tagcase_ {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                ds
+            }
+        }
+    }
+
+    pub fn ctx_tags(c: &'static Ctx) -> Tagofs {
+        let tagcase_ = c;
+        match *tagcase_ {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                ts
+            }
+        }
+    }
+
+    pub fn ctx_constants(c: &'static Ctx) -> Strings {
+        let tagcase_ = c;
+        match *tagcase_ {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                ks
+            }
+        }
+    }
+
+    pub fn strings_onto(mut xs: Strings, mut ys: Strings) -> Strings {
+        loop {
+            if null_p(xs) {
+                return ys;
+            } else {
+                (xs, ys) = (cdr(xs), kayak_rt::heap_cons(car(xs), ys));
+                continue;
+            }
+        }
+    }
+
+    /// The module type of the module parameter `m` in scope, or ``.
+    pub fn param_module_type(mut m: Str, mut ls: Strings) -> Str {
+        loop {
+            if null_p(ls) {
+                return str_lit("");
+            } else if string_eq_p(car(ls), m) {
+                return str_lit("");
+            } else if has_prefix_p(car(ls), string_append(str_lit("%modparam "), string_append(m, str_lit(" ")))) {
+                return after_prefix(car(ls), string_append(str_lit("%modparam "), string_append(m, str_lit(" "))));
+            } else {
+                ls = cdr(ls);
+                continue;
+            }
+        }
+    }
+
+    /// A module's Rust path: a module parameter's is its type parameter.
+    pub fn module_path(c: &'static Ctx, m: Str) -> Str {
+        if string_eq_p(param_module_type(m, ctx_locals(c)), str_lit("")) {
+            mangle(m)
+        } else {
+            string_append(str_lit("Mod_"), camel(m))
+        }
+    }
+
+    /// The module whose `with` gave `entry`, a value's or a type's: the
+    /// innermost, and only if no local inside it hides it.
+    pub fn opener(mut entry: Str, mut ls: Strings) -> Str {
+        loop {
+            if null_p(ls) {
+                return str_lit("");
+            } else if string_eq_p(car(ls), entry) {
+                let rest = after_with(cdr(ls));
+                return rest;
+            } else {
+                ls = cdr(ls);
+                continue;
+            }
+        }
+    }
+
+    pub fn after_with(mut ls: Strings) -> Str {
+        loop {
+            if null_p(ls) {
+                return str_lit("");
+            } else if has_prefix_p(car(ls), str_lit("%with ")) {
+                return after_prefix(car(ls), str_lit("%with "));
+            } else {
+                ls = cdr(ls);
+                continue;
+            }
+        }
+    }
+
+    pub fn after_in(mut ls: Strings) -> Str {
+        loop {
+            if null_p(ls) {
+                return str_lit("");
+            } else if has_prefix_p(car(ls), str_lit("%in ")) {
+                return after_prefix(car(ls), str_lit("%in "));
+            } else {
+                ls = cdr(ls);
+                continue;
+            }
+        }
+    }
+
+    pub fn tag_datatype(mut tag: Str, mut ts: Tagofs) -> Str {
+        loop {
+            if null_p(ts) {
+                return error(string_append(str_lit("kfx: not a datatype's tag: "), tag));
+            } else {
+                let tagcase_ = car(ts);
+                match *tagcase_ {
+                    Tagof::Tagof(t, d) => {
+                        if string_eq_p(t, tag) {
+                            return d;
+                        } else {
+                            ts = cdr(ts);
+                            continue;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn note_tags(mut variants: Sexps, mut d: Str, mut ts: Tagofs) -> Tagofs {
+        loop {
+            if null_p(variants) {
+                return ts;
+            } else {
+                (variants, ts) = (cdr(variants), kayak_rt::heap_cons(tagof(sym_name(car(items(car(variants)))), d), ts));
+                continue;
+            }
+        }
+    }
+
+    pub fn binder_kinds(bs: Sexps) -> Strings {
+        map(lambda1(move |b: &'static Sexp| {
+            sym_name(second(items(b)))
+        }), bs)
+    }
+
+    /// The names of the binders of kind `type`: Rust's type parameters.
+    pub fn type_params_of(mut bs: Sexps) -> Strings {
+        loop {
+            if null_p(bs) {
+                return nil::<Str>();
+            } else if sym_is_p(second(items(car(bs))), str_lit("type")) {
+                return kayak_rt::heap_cons(sym_name(car(items(car(bs)))), type_params_of(cdr(bs)));
+            } else {
+                bs = cdr(bs);
+                continue;
+            }
+        }
+    }
+
+    /// The names of the binders of kind `region`: an abbreviation's lifetimes.
+    pub fn region_params_of(bs: Sexps) -> Strings {
+        concat(map(lambda1(move |b: &'static Sexp| {
+            if sym_is_p(second(items(b)), str_lit("region")) {
+                the::<Strings>(kayak_rt::heap_cons(sym_name(car(items(b))), kayak_rt::nil()))
+            } else {
                 nil::<Str>()
-            } else {
-                the::<Strings>(kayak_rt::heap_cons(x, kayak_rt::nil()))
             }
-        }), cdr(xs)))))
+        }), bs))
     }
-}
 
-/// The `rcons`es and `rnew`s in `es` that make in the place `r`.
-pub fn allocations(r: Str, es: Sexps) -> Sexps {
-    concat(map(lambda1(move |e: &'static Sexp| {
-        let tagcase_ = e;
+    /// The names of the binders of kind `place`: an abbreviation's lifetimes,
+    /// and its type parameters for the places' types (C40).
+    pub fn place_params_of(bs: Sexps) -> Strings {
+        concat(map(lambda1(move |b: &'static Sexp| {
+            if sym_is_p(second(items(b)), str_lit("place")) {
+                the::<Strings>(kayak_rt::heap_cons(sym_name(car(items(b))), kayak_rt::nil()))
+            } else {
+                nil::<Str>()
+            }
+        }), bs))
+    }
+
+    pub fn note_family(head: &'static Sexp, datatype: bool, ms: Families) -> Families {
+        let tagcase_ = head;
         match *tagcase_ {
-            Sexp::Lst(xs, f, l, p) => {
-                if ((head_is_p(e, str_lit("rcons")) || head_is_p(e, str_lit("rnew")) || head_is_p(e, str_lit("rmake-bloblet"))) && not(null_p(cdr(xs))) && sym_is_p(second(xs), r)) {
-                    the::<Sexps>(kayak_rt::heap_cons(e, allocations(r, cdr(xs))))
+            Sexp::Lst(xs, src_file, src_line, src_pos) => {
+                kayak_rt::heap_cons(family(sym_name(car(xs)), datatype, binder_kinds(cdr(xs))), ms)
+            }
+            _ => {
+                let other = tagcase_;
+                ms
+            }
+        }
+    }
+
+    pub fn filter_family(mut name: Str, mut ms: Families) -> Families {
+        loop {
+            if null_p(ms) {
+                return nil::<&'static Family>();
+            } else if {
+                let tagcase_ = car(ms);
+                match *tagcase_ {
+                    Family::Family(n, d, ks) => {
+                        string_eq_p(n, name)
+                    }
+                }
+            } {
+                return kayak_rt::heap_cons(car(ms), kayak_rt::nil());
+            } else {
+                ms = cdr(ms);
+                continue;
+            }
+        }
+    }
+
+    pub fn find_family_of(c: &'static Ctx, name: Str) -> Families {
+        let tagcase_ = c;
+        match *tagcase_ {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                let found = filter_family(name, ms);
+                found
+            }
+        }
+    }
+
+    /// A type written in module `m`, its own types named `m..u`.
+    pub fn qualified_types(m: Str, names: Strings, t: &'static Sexp) -> &'static Sexp {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                if string_member_p(n, names) {
+                    sym(string_append(m, string_append(str_lit(".."), n)), f, p)
                 } else {
-                    allocations(r, xs)
+                    t
+                }
+            }
+            Sexp::Lst(xs, f, l, p) => {
+                if head_is_p(t, str_lit("select")) {
+                    t
+                } else {
+                    lst(map(lambda1(move |x: &'static Sexp| {
+                        qualified_types(m, names, x)
+                    }), xs), f, l, p)
                 }
             }
             _ => {
                 let other = tagcase_;
-                nil::<&'static Sexp>()
+                t
             }
         }
-    }), es))
-}
+    }
 
-pub fn put_held_fields(mut held: Strings, mut i: i64, mut acc: Chars) -> Chars {
-    loop {
-        if null_p(held) {
-            return acc;
-        } else {
-            (held, i, acc) = (cdr(held), i64_plus(i, 1i64), put(string_append(str_lit(" a"), string_append(i64_to_string(i), string_append(str_lit(": Arena<"), string_append(car(held), str_lit(">,"))))), acc));
-            continue;
+    /// A module's datatypes, as the program names them, `m..d`, with their tags.
+    pub fn note_module_datatypes(mut m: Str, mut forms: Sexps, mut c: &'static Ctx) -> &'static Ctx {
+        loop {
+            if null_p(forms) {
+                return c;
+            } else if head_is_p(car(forms), str_lit("define-datatype")) {
+                let d = string_append(m, string_append(str_lit(".."), type_head_name(second(items(car(forms))))));
+                (forms, c) = (cdr(forms), {
+                    let tagcase_ = c;
+                    match *tagcase_ {
+                        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                            ctx(kayak_rt::heap_cons(d, ds), note_tags(cdr(cdr(items(car(forms)))), d, ts), ks, ls, xs, fs, ms, es, mods)
+                        }
+                    }
+                });
+                continue;
+            } else if (head_is_p(car(forms), str_lit("define-type")) && not(head_is_p(third(items(car(forms))), str_lit("moduleof"))) && {
+                let tagcase_ = second(items(car(forms)));
+                match *tagcase_ {
+                    Sexp::Lst(ys, f, l, p) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                // A module's type family (C89): no Rust alias (one over a `Value`
+                // would leave its parameters unused), but what it stands for, where
+                // it is applied, by its name inside the module, `t`, and outside it,
+                // `m..t`, its own types named `m..u` there.
+                let head = second(items(car(forms)));
+                let t = type_head_name(head);
+                let q = string_append(m, string_append(str_lit(".."), t));
+                let local_types = concat(map(lambda1(move |f: &'static Sexp| {
+                    if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype"))) {
+                        the::<Strings>(kayak_rt::heap_cons(type_head_name(second(items(f))), kayak_rt::nil()))
+                    } else {
+                        nil::<Str>()
+                    }
+                }), forms));
+                let qhead = {
+                    let tagcase_ = head;
+                    match *tagcase_ {
+                        Sexp::Lst(ys, f, l, p) => {
+                            lst(kayak_rt::heap_cons(sym(q, f, p), cdr(ys)), f, l, p)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            head
+                        }
+                    }
+                };
+                (forms, c) = (cdr(forms), {
+                    let tagcase_ = c;
+                    match *tagcase_ {
+                        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                            ctx(ds, ts, ks, ls, xs, fs, note_family(qhead, false, note_family(head, false, ms)), es, kayak_rt::heap_cons(typed(string_append(str_lit("%expand "), t), sym(t, str_lit(""), 0i64)), kayak_rt::heap_cons(typed(string_append(str_lit("%expand "), q), sym(q, str_lit(""), 0i64)), kayak_rt::heap_cons(typed(string_append(str_lit("%abbreviation "), t), lst(kayak_rt::heap_cons(head, kayak_rt::heap_cons(third(items(car(forms))), kayak_rt::nil())), str_lit(""), 0i64, 0i64)), kayak_rt::heap_cons(typed(string_append(str_lit("%abbreviation "), q), lst(kayak_rt::heap_cons(qhead, kayak_rt::heap_cons(qualified_types(m, local_types, third(items(car(forms)))), kayak_rt::nil())), str_lit(""), 0i64, 0i64)), mods)))))
+                        }
+                    }
+                });
+                continue;
+            } else {
+                forms = cdr(forms);
+                continue;
+            }
         }
     }
-}
 
-/// `Holds` for each type the region holds: its arena.
-pub fn put_held_impls(mut held: Strings, mut i: i64, mut region: Str, mut lives: Str, mut bounded: Str, mut n: i64, mut acc: Chars) -> Chars {
-    loop {
-        if null_p(held) {
-            return acc;
-        } else {
-            (held, i, acc) = (cdr(held), i64_plus(i, 1i64), put(string_append(str_lit("impl<"), string_append(bounded, string_append(str_lit("> Holds<"), string_append(car(held), string_append(str_lit("> for "), string_append(region, string_append(str_lit("<"), string_append(lives, string_append(str_lit("> { fn arena(&self) -> &Arena<"), string_append(car(held), string_append(str_lit("> { &self.a"), string_append(i64_to_string(i), str_lit(" } }"))))))))))))), put_nl(n, acc)));
-            continue;
+    /// `(select m t)`'s type as the program names it, `m..t`.
+    pub fn selected_name(sel: &'static Sexp) -> Str {
+        string_append(sym_name(second(items(sel))), string_append(str_lit(".."), sym_name(third(items(sel)))))
+    }
+
+    pub fn note(form: &'static Sexp, c: &'static Ctx) -> &'static Ctx {
+        let tagcase_ = c;
+        match *tagcase_ {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                if head_is_p(form, str_lit("define-datatype")) {
+                    let d = type_head_name(second(items(form)));
+                    ctx(kayak_rt::heap_cons(d, ds), note_tags(cdr(cdr(items(form))), d, ts), ks, ls, xs, fs, note_family(second(items(form)), true, ms), es, mods)
+                } else if (head_is_p(form, str_lit("define-type")) && head_is_p(third(items(form)), str_lit("moduleof"))) {
+                    ctx(ds, ts, ks, ls, xs, fs, ms, es, kayak_rt::heap_cons(typed(string_append(str_lit("%moduleof "), sym_name(second(items(form)))), third(items(form))), mods))
+                } else if (head_is_p(form, str_lit("define-type")) && head_is_p(third(items(form)), str_lit("select")) && not(null_p(module_body(c, string_append(str_lit("%abbreviation "), selected_name(third(items(form)))))))) {
+                    // An abbreviation of a module's family (C89): that family, expanded
+                    // where applied, under this name too; no Rust alias.
+                    let t = sym_name(second(items(form)));
+                    let fam = car(module_body(c, string_append(str_lit("%abbreviation "), selected_name(third(items(form))))));
+                    let qhead = car(items(fam));
+                    let params = cdr(items(qhead));
+                    let names = map(lambda1(move |b: &'static Sexp| {
+                        sym(sym_name(car(items(b))), str_lit(""), 0i64)
+                    }), params);
+                    let head = lst(kayak_rt::heap_cons(sym(t, str_lit(""), 0i64), params), str_lit(""), 0i64, 0i64);
+                    ctx(ds, ts, ks, ls, xs, fs, note_family(head, false, ms), es, kayak_rt::heap_cons(typed(string_append(str_lit("%expand "), t), sym(t, str_lit(""), 0i64)), kayak_rt::heap_cons(typed(string_append(str_lit("%abbreviation "), t), lst(kayak_rt::heap_cons(head, kayak_rt::heap_cons(lst(kayak_rt::heap_cons(third(items(form)), names), str_lit(""), 0i64, 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64)), mods)))
+                } else if (head_is_p(form, str_lit("define-type")) && {
+                    let tagcase_ = second(items(form));
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            true
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }) {
+                    // A type abbreviation's body, kept for the typed suffixes (C32), which
+                    // compare types as written out.
+                    ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms), es, kayak_rt::heap_cons(typed(string_append(str_lit("%alias "), sym_name(second(items(form)))), third(items(form))), mods))
+                } else if head_is_p(form, str_lit("define-type")) {
+                    // A family abbreviation: its regions Rust lifetimes (C39), as a
+                    // generative type's are not. One whose body applies a module's family
+                    // is expanded where applied, as that family is (C89).
+                    ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms), es, onto(if head_is_p(car(items(third(items(form)))), str_lit("select")) {
+                        the::<Typeds>(kayak_rt::heap_cons(typed(string_append(str_lit("%expand "), type_head_name(second(items(form)))), sym(str_lit(""), str_lit(""), 0i64)), kayak_rt::nil()))
+                    } else {
+                        nil::<&'static Typed>()
+                    }, kayak_rt::heap_cons(typed(string_append(str_lit("%abbreviation "), type_head_name(second(items(form)))), lst(kayak_rt::heap_cons(second(items(form)), kayak_rt::heap_cons(third(items(form)), kayak_rt::nil())), str_lit(""), 0i64, 0i64)), mods)))
+                } else if head_is_p(form, str_lit("define-generative")) {
+                    ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms), es, mods)
+                } else if head_is_p(form, str_lit("define-effect")) {
+                    ctx(ds, ts, ks, ls, xs, fs, ms, kayak_rt::heap_cons(typed(sym_name(second(items(form))), third(items(form))), es), mods)
+                } else if module_def_p(form) {
+                    let m = sym_name(second(items(form)));
+                    note_module_datatypes(m, unhidden(module_written(form)), ctx(ds, ts, ks, ls, xs, fs, ms, es, kayak_rt::heap_cons(typed(m, lst(kayak_rt::heap_cons(sym(str_lit("module"), str_lit(""), 0i64), module_written(form)), str_lit(""), 0i64, 0i64)), mods)))
+                } else if (head_is_p(form, str_lit("define")) && (i64_eq(size(items(form)), 3i64) || i64_eq(size(items(form)), 4i64)) && not(lambda_form_p(last(items(form))))) {
+                    ctx(ds, ts, kayak_rt::heap_cons(sym_name(second(items(form))), ks), ls, xs, fs, ms, es, mods)
+                } else {
+                    c
+                }
+            }
         }
     }
-}
 
-/// Every list in `es`, at any depth: the places facts are at.
-pub fn datums_in(es: Sexps) -> Sexps {
-    concat(map(lambda1(move |e: &'static Sexp| {
+    /// `n`, not negative, in hex, before `acc`.
+    pub fn hex_digits(mut n: i64, mut acc: Str) -> Str {
+        loop {
+            let d = i64_remainder(n, 16i64);
+            let s = string_append(char_to_string(string_ref_i64(str_lit("0123456789abcdef"), d)), acc);
+            if i64_lt(n, 16i64) {
+                return s;
+            } else {
+                (n, acc) = (i64_quotient(n, 16i64), s);
+                continue;
+            }
+        }
+    }
+
+    pub fn escape_char(c: char, q: char) -> Str {
+        if char_eq_p(c, '\\') {
+            str_lit("\\\\")
+        } else if char_eq_p(c, q) {
+            string_append(str_lit("\\"), char_to_string(c))
+        } else if char_eq_p(c, '\n') {
+            str_lit("\\n")
+        } else if char_eq_p(c, '\t') {
+            str_lit("\\t")
+        } else if (i64_lt(char_to_i64(c), 32i64) || i64_eq(char_to_i64(c), 127i64)) {
+            // A control character, as Rust's unicode escape, its code in hex.
+            string_append(str_lit("\\u{"), string_append(hex_digits(char_to_i64(c), str_lit("")), str_lit("}")))
+        } else {
+            char_to_string(c)
+        }
+    }
+
+    /// `cs` as the inside of a Rust literal delimited by `q`.
+    pub fn put_escaped(mut cs: Chars, mut q: char, mut acc: Chars) -> Chars {
+        loop {
+            if null_p(cs) {
+                return acc;
+            } else {
+                (cs, acc) = (cdr(cs), put(escape_char(car(cs), q), acc));
+                continue;
+            }
+        }
+    }
+
+    pub fn dotted_from(mut seen: Chars, mut cs: Chars) -> Strings {
+        loop {
+            if (null_p(cs) || null_p(cdr(cs))) {
+                return nil::<Str>();
+            } else if (char_eq_p(car(cs), '.') && char_eq_p(car(cdr(cs)), '.')) {
+                return the::<Strings>(kayak_rt::heap_cons(rev_to_string(seen), kayak_rt::heap_cons(list_to_string(cdr(cdr(cs))), kayak_rt::nil())));
+            } else {
+                (seen, cs) = (kayak_rt::heap_cons(car(cs), seen), cdr(cs));
+                continue;
+            }
+        }
+    }
+
+    /// A module's type as the program names it, `m..t`: `m` and `t`; else none.
+    pub fn dotted(s: Str) -> Strings {
+        dotted_from(nil::<char>(), string_chars(s))
+    }
+
+    /// A datatype's enum, a module's named by its path.
+    pub fn datatype_path(d: Str) -> Str {
+        if null_p(dotted(d)) {
+            camel(d)
+        } else {
+            string_append(mangle(car(dotted(d))), string_append(str_lit("::"), camel(car(cdr(dotted(d))))))
+        }
+    }
+
+    /// What a module parameter's described type `s`, opened by a `with`,
+    /// describes, as a list of one; or none.
+    pub fn desc_type(mut c: &'static Ctx, mut s: Str, mut ls: Strings) -> Sexps {
+        loop {
+            if null_p(ls) {
+                return nil::<&'static Sexp>();
+            } else if has_prefix_p(car(ls), str_lit("%with ")) {
+                let m = after_prefix(car(ls), str_lit("%with "));
+                let x = param_module_type(m, cdr(ls));
+                let spec = if string_eq_p(x, str_lit("")) {
+                    nil::<&'static Sexp>()
+                } else {
+                    module_body(c, string_append(str_lit("%moduleof "), x))
+                };
+                let found = if null_p(spec) {
+                    nil::<&'static Sexp>()
+                } else {
+                    concat(map(lambda1(move |d: &'static Sexp| {
+                        if (head_is_p(d, str_lit("desc")) && string_eq_p(sym_name(second(items(d))), s)) {
+                            the::<Sexps>(kayak_rt::heap_cons(third(items(d)), kayak_rt::nil()))
+                        } else {
+                            nil::<&'static Sexp>()
+                        }
+                    }), cdr(items(car(spec)))))
+                };
+                if null_p(found) {
+                    ls = cdr(ls);
+                    continue;
+                } else {
+                    return found;
+                }
+            } else {
+                ls = cdr(ls);
+                continue;
+            }
+        }
+    }
+
+    /// The lifetimes of the `letrena`s around, innermost first.
+    pub fn letrena_lifetimes_inner(mut ls: Strings) -> Strings {
+        loop {
+            if null_p(ls) {
+                return nil::<Str>();
+            } else if has_prefix_p(car(ls), str_lit("%letrena ")) {
+                return kayak_rt::heap_cons(lifetime(after_prefix(car(ls), str_lit("%letrena "))), letrena_lifetimes_inner(cdr(ls)));
+            } else {
+                ls = cdr(ls);
+                continue;
+            }
+        }
+    }
+
+    pub fn chars_prefix_p(p: Chars, cs: Chars) -> bool {
+        (null_p(p) || (not(null_p(cs)) && char_eq_p(car(p), car(cs)) && chars_prefix_p(cdr(p), cdr(cs))))
+    }
+
+    pub fn chars_after(mut cs: Chars, mut n: i64) -> Chars {
+        loop {
+            if (null_p(cs) || i64_lt(n, 1i64)) {
+                return cs;
+            } else {
+                (cs, n) = (cdr(cs), i64_minus(n, 1i64));
+                continue;
+            }
+        }
+    }
+
+    /// Whether `text` has the lifetime `l`, a name's end after it.
+    pub fn mentions_lifetime_p(mut text: Chars, mut l: Chars) -> bool {
+        loop {
+            if null_p(text) {
+                return false;
+            } else if (chars_prefix_p(l, text) && {
+                let after = chars_after(text, size(l));
+                (null_p(after) || not((char_alphabetic_p(car(after)) || char_numeric_p(car(after)) || char_eq_p(car(after), '_'))))
+            }) {
+                return true;
+            } else {
+                text = cdr(text);
+                continue;
+            }
+        }
+    }
+
+    pub fn first_lifetime_in(mut text: Str, mut lives: Strings) -> Str {
+        loop {
+            if null_p(lives) {
+                return str_lit("");
+            } else if mentions_lifetime_p(string_chars(text), string_chars(car(lives))) {
+                return car(lives);
+            } else {
+                lives = cdr(lives);
+                continue;
+            }
+        }
+    }
+
+    pub fn run_together_strings(xs: Strings) -> Str {
+        if null_p(xs) {
+            str_lit("")
+        } else {
+            string_append(car(xs), run_together_strings(cdr(xs)))
+        }
+    }
+
+    /// The type parameters of the procedure being written, `%tvar a` each,
+    /// camel-cased: a `letrena`'s fn and type declare them again, as a
+    /// nested item must (C30).
+    pub fn type_params_in(mut ls: Strings) -> Strings {
+        loop {
+            if null_p(ls) {
+                return nil::<Str>();
+            } else if has_prefix_p(car(ls), str_lit("%tvar ")) {
+                return kayak_rt::heap_cons(camel(after_prefix(car(ls), str_lit("%tvar "))), type_params_in(cdr(ls)));
+            } else {
+                ls = cdr(ls);
+                continue;
+            }
+        }
+    }
+
+    pub fn innermost_letrena_lifetime(mut ls: Strings) -> Str {
+        loop {
+            if null_p(ls) {
+                return str_lit("");
+            } else if has_prefix_p(car(ls), str_lit("%letrena ")) {
+                return lifetime(after_prefix(car(ls), str_lit("%letrena ")));
+            } else {
+                ls = cdr(ls);
+                continue;
+            }
+        }
+    }
+
+    /// The lifetime of the innermost `letrena` around the binding `marker`
+    /// is, or ``.
+    pub fn letrena_outside(mut ls: Strings, mut marker: Str) -> Str {
+        loop {
+            if null_p(ls) {
+                return str_lit("");
+            } else if string_eq_p(car(ls), marker) {
+                return innermost_letrena_lifetime(cdr(ls));
+            } else {
+                ls = cdr(ls);
+                continue;
+            }
+        }
+    }
+
+    /// The place a region binder `(r region p)` is within, or ``.
+    pub fn within_of(mut ls: Strings, mut n: Str) -> Str {
+        loop {
+            if null_p(ls) {
+                return str_lit("");
+            } else if has_prefix_p(car(ls), string_append(str_lit("%within "), string_append(n, str_lit(" ")))) {
+                return after_prefix(car(ls), string_append(str_lit("%within "), string_append(n, str_lit(" "))));
+            } else {
+                ls = cdr(ls);
+                continue;
+            }
+        }
+    }
+
+    /// The lifetime of the region `r` names: a `letrena`'s, its own; a region
+    /// within a place, the place's, where its data is (C40); a `letregion`
+    /// inside a `letrena`, that one's, which its data may be in; or ``.
+    pub fn region_lifetime(c: &'static Ctx, r: &'static Sexp) -> Str {
+        let n = {
+            let tagcase_ = r;
+            match *tagcase_ {
+                Sexp::Sym(x, f, p) => {
+                    if has_prefix_p(x, str_lit("'")) {
+                        after_prefix(x, str_lit("'"))
+                    } else {
+                        x
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("")
+                }
+            }
+        };
+        if string_eq_p(n, str_lit("")) {
+            str_lit("")
+        } else if string_member_p(string_append(str_lit("%letrena "), n), ctx_locals(c)) {
+            lifetime(n)
+        } else if not(string_eq_p(within_of(ctx_locals(c), n), str_lit(""))) {
+            lifetime(within_of(ctx_locals(c), n))
+        } else if string_member_p(string_append(str_lit("%letregion "), n), ctx_locals(c)) {
+            letrena_outside(ctx_locals(c), string_append(str_lit("%letregion "), n))
+        } else {
+            str_lit("")
+        }
+    }
+
+    /// What the checker found at `file`, `pos` that begins `prefix`, the rest;
+    /// or ``.
+    pub fn fact_at_place(c: &'static Ctx, file: Str, pos: i64, prefix: Str) -> Str {
+        let tagcase_ = c;
+        match *tagcase_ {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                first_fact(fs, file, pos, prefix)
+            }
+        }
+    }
+
+    /// Everything the checker found at `file`, `pos` that begins `prefix`.
+    pub fn all_facts_at(c: &'static Ctx, file: Str, pos: i64, prefix: Str) -> Strings {
+        let tagcase_ = c;
+        match *tagcase_ {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                concat(map(lambda1(move |f: &'static Fact| {
+                    let tagcase_ = f;
+                    match *tagcase_ {
+                        Fact::Fact(ff, fp, fw) => {
+                            if (i64_eq(fp, pos) && string_eq_p(ff, file) && has_prefix_p(fw, prefix)) {
+                                the::<Strings>(kayak_rt::heap_cons(fw, kayak_rt::nil()))
+                            } else {
+                                nil::<Str>()
+                            }
+                        }
+                    }
+                }), fs))
+            }
+        }
+    }
+
+    pub fn digits_number(s: Str) -> i64 {
+        i64_minus(0i64, digits_value(string_chars(s), 0i64, str_lit(""), 0i64))
+    }
+
+    /// Of the `letrena`s' lifetimes, outermost first, those outside `l`.
+    pub fn lifetimes_before(lives: Strings, l: Str) -> Strings {
+        if (null_p(lives) || string_eq_p(car(lives), l)) {
+            nil::<Str>()
+        } else {
+            kayak_rt::heap_cons(car(lives), lifetimes_before(cdr(lives), l))
+        }
+    }
+
+    pub fn chars_after_space(mut cs: Chars) -> Chars {
+        loop {
+            if null_p(cs) {
+                return nil::<char>();
+            } else if char_eq_p(car(cs), ' ') {
+                return cdr(cs);
+            } else {
+                cs = cdr(cs);
+                continue;
+            }
+        }
+    }
+
+    pub fn after_first_space(s: Str) -> Str {
+        rev_to_string(rev_onto(chars_after_space(string_chars(s)), nil::<char>()))
+    }
+
+    pub fn unquoted(n: Str) -> Str {
+        if has_prefix_p(n, str_lit("'")) {
+            after_prefix(n, str_lit("'"))
+        } else {
+            n
+        }
+    }
+
+    /// A reference's lifetime for data at region `r`: its `letrena`'s, or the heap's.
+    pub fn owner_lifetime(c: &'static Ctx, r: &'static Sexp) -> Str {
+        let l = region_lifetime(c, r);
+        if string_eq_p(l, str_lit("")) {
+            str_lit("'static")
+        } else {
+            l
+        }
+    }
+
+    pub fn number_text(e: &'static Sexp) -> Str {
         let tagcase_ = e;
         match *tagcase_ {
-            Sexp::Lst(xs, f, l, p) => {
-                the::<Sexps>(kayak_rt::heap_cons(e, datums_in(xs)))
+            Sexp::Num(k, f, p) => {
+                i64_to_string(k)
             }
             _ => {
                 let other = tagcase_;
-                nil::<&'static Sexp>()
+                str_lit("0")
             }
         }
-    }), es))
-}
+    }
 
-pub fn split_chars(mut cs: Chars, mut c: char, mut acc: Chars) -> Strings {
-    loop {
-        if null_p(cs) {
-            return kayak_rt::heap_cons(rev_to_string(acc), kayak_rt::nil());
-        } else if char_eq_p(car(cs), c) {
-            return kayak_rt::heap_cons(rev_to_string(acc), split_chars(cdr(cs), c, nil::<char>()));
-        } else {
-            (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
-            continue;
+    /// A procedure's lifetime: the innermost `letrena`'s, whose arena a
+    /// closure may hold; or `'static`.
+    pub fn innermost_lifetime(mut ls: Strings) -> Str {
+        loop {
+            if null_p(ls) {
+                return str_lit("'static");
+            } else if has_prefix_p(car(ls), str_lit("%letrena ")) {
+                return lifetime(after_prefix(car(ls), str_lit("%letrena ")));
+            } else {
+                ls = cdr(ls);
+                continue;
+            }
         }
     }
-}
 
-pub fn split_at_char(s: Str, c: char) -> Strings {
-    split_chars(string_chars(s), c, nil::<char>())
-}
-
-/// An `rlambda` as the lambda it is in Rust, at its own place, where the
-/// checker's facts about it are (C38); anything else as it is.
-pub fn as_lambda(e: &'static Sexp) -> &'static Sexp {
-    let tagcase_ = e;
-    match *tagcase_ {
-        Sexp::Lst(xs, f, l, p) => {
-            if sym_is_p(car(xs), str_lit("rlambda")) {
-                lst(kayak_rt::heap_cons(sym(str_lit("lambda"), str_lit(""), 0i64), cdr(cdr(xs))), f, l, p)
+    /// The lifetimes of the `letrena`s around, outermost first.
+    pub fn letrena_lifetimes(mut ls: Strings) -> Strings {
+        loop {
+            if null_p(ls) {
+                return nil::<Str>();
+            } else if has_prefix_p(car(ls), str_lit("%letrena ")) {
+                return onto(letrena_lifetimes(cdr(ls)), kayak_rt::heap_cons(lifetime(after_prefix(car(ls), str_lit("%letrena "))), kayak_rt::nil()));
             } else {
+                ls = cdr(ls);
+                continue;
+            }
+        }
+    }
+
+    /// `e`, each of `names` replaced by its argument.
+    pub fn substituted(names: Strings, args: Sexps, e: &'static Sexp) -> &'static Sexp {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                let find__knot = knot::<&'static dyn Fn(Strings, Sexps) -> &'static Sexp>();
+                let find = lambda2(move |mut ns: Strings, mut vs: Sexps| {
+                    loop {
+                        if (null_p(ns) || null_p(vs)) {
+                            return e;
+                        } else if string_eq_p(car(ns), n) {
+                            return car(vs);
+                        } else {
+                            (ns, vs) = (cdr(ns), cdr(vs));
+                            continue;
+                        }
+                    }
+                });
+                find__knot.set(find);
+                find(names, args)
+            }
+            Sexp::Lst(xs, f, l, p) => {
+                lst(map(lambda1(move |x: &'static Sexp| {
+                    substituted(names, args, x)
+                }), xs), f, l, p)
+            }
+            _ => {
+                let other = tagcase_;
                 e
             }
         }
-        _ => {
-            let other = tagcase_;
-            e
-        }
     }
-}
 
-pub fn second_string(xs: Strings) -> Str {
-    if (null_p(xs) || null_p(cdr(xs))) {
-        str_lit("0")
-    } else {
-        car(cdr(xs))
-    }
-}
-
-/// The flat of the typed suffix (C32) of the owner the checker noted at
-/// `e` under `prefix`, as a list of one; or none.
-pub fn blob_typed(c: &'static Ctx, e: &'static Sexp, prefix: Str) -> Sexps {
-    let found = fact_with(c, e, prefix);
-    if string_eq_p(found, str_lit("")) {
-        nil::<&'static Sexp>()
-    } else {
-        typed_flat(c, car(read_all(string_chars(found), str_lit(""), 1i64)))
-    }
-}
-
-/// Whether `e` names `n` anywhere.
-pub fn name_in_p(n: Str, e: &'static Sexp) -> bool {
-    let tagcase_ = e;
-    match *tagcase_ {
-        Sexp::Sym(m, f, p) => {
-            string_eq_p(m, n)
-        }
-        Sexp::Lst(xs, f, l, p) => {
-            any_p(lambda1(move |x: &'static Sexp| {
-                name_in_p(n, x)
-            }), xs)
-        }
-        _ => {
-            let other = tagcase_;
-            false
-        }
-    }
-}
-
-/// A `typecase` arm's test: its shape's predicate, kayak-rt's.
-pub fn shape_test(shape: Str, valued: bool) -> Str {
-    if string_eq_p(shape, str_lit("nil")) {
-        if valued {
-            str_lit("kayak_rt::value::null_p")
+    /// A family's arguments, each effect's marked `%effect-given` (C46): the
+    /// procedures of it are in Rust as the family's own are, which may
+    /// suspend, whatever effect is given.
+    pub fn marked_effects(binders: Sexps, args: Sexps) -> Sexps {
+        if (null_p(binders) || null_p(args)) {
+            args
         } else {
-            str_lit("null_p")
-        }
-    } else if string_eq_p(shape, str_lit("box")) {
-        str_lit("ref_p")
-    } else {
-        string_append(mangle(shape), str_lit("_p"))
-    }
-}
-
-pub fn unboxing_in(fs: Facts, e: &'static Sexp) -> Str {
-    if not(string_eq_p(fact_in(fs, e, str_lit("unbox ")), str_lit(""))) {
-        str_lit("unbox")
-    } else if not(string_eq_p(fact_in(fs, e, str_lit("unbox-list ")), str_lit(""))) {
-        str_lit("unbox_list")
-    } else if not(string_eq_p(fact_in(fs, e, str_lit("unbox-other ")), str_lit(""))) {
-        str_lit("unbox_other")
-    } else {
-        str_lit("")
-    }
-}
-
-pub fn unboxed_type_in(fs: Facts, e: &'static Sexp) -> Str {
-    let (a, b) = (fact_in(fs, e, str_lit("unbox ")), fact_in(fs, e, str_lit("unbox-list ")));
-    if not(string_eq_p(a, str_lit(""))) {
-        a
-    } else if not(string_eq_p(b, str_lit(""))) {
-        b
-    } else {
-        fact_in(fs, e, str_lit("unbox-other "))
-    }
-}
-
-/// How a union is unboxed at `e`, kayak-rt's function; or `` (C75).
-pub fn unboxing(c: &'static Ctx, e: &'static Sexp) -> Str {
-    if not(string_eq_p(fact_with(c, e, str_lit("unbox ")), str_lit(""))) {
-        str_lit("unbox")
-    } else if not(string_eq_p(fact_with(c, e, str_lit("unbox-list ")), str_lit(""))) {
-        str_lit("unbox_list")
-    } else if not(string_eq_p(fact_with(c, e, str_lit("unbox-other ")), str_lit(""))) {
-        str_lit("unbox_other")
-    } else {
-        str_lit("")
-    }
-}
-
-/// The type a union is unboxed at (C75): a list's element type, for
-/// `unbox_list`; Rust's to find, for `nil`'s.
-pub fn put_unboxed_type(c: &'static Ctx, how: Str, text: Str, acc: Chars) -> Chars {
-    let t = car(read_all(string_chars(text), str_lit(""), 1i64));
-    if not(string_eq_p(how, str_lit("unbox_list"))) {
-        put_type(c, t, acc)
-    } else if head_is_p(t, str_lit("listof")) {
-        put_type(c, second(items(t)), acc)
-    } else {
-        put(str_lit("_"), acc)
-    }
-}
-
-/// A quoted datum, built (C77): a list's pairs `cons`ed, each atom boxed.
-pub fn put_quoted(c: &'static Ctx, d: &'static Sexp, acc: Chars) -> Chars {
-    let tagcase_ = d;
-    match *tagcase_ {
-        Sexp::Lst(xs, f, l, p) => {
-            if head_is_p(d, str_lit("#vector")) {
-                put(str_lit(")"), put_quoted_items(c, cdr(xs), put(str_lit("kayak_rt::value::datum_list_to_vector("), acc)))
+            kayak_rt::heap_cons(if sym_is_p(second(items(car(binders))), str_lit("effect")) {
+                lst(kayak_rt::heap_cons(sym(str_lit("maxeff"), str_lit(""), 0i64), kayak_rt::heap_cons(car(args), kayak_rt::heap_cons(sym(str_lit("%effect-given"), str_lit(""), 0i64), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
             } else {
-                put_quoted_items(c, xs, acc)
+                car(args)
+            }, marked_effects(cdr(binders), cdr(args)))
+        }
+    }
+
+    /// Whether a type is a list's, an abbreviation's or written.
+    pub fn list_type_p(mut c: &'static Ctx, mut t: &'static Sexp) -> bool {
+        loop {
+            if head_is_p(t, str_lit("listof")) {
+                return true;
+            } else if {
+                let tagcase_ = t;
+                match *tagcase_ {
+                    Sexp::Sym(n, f, p) => {
+                        not(null_p(module_body(c, string_append(str_lit("%alias "), n))))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            } {
+                t = car(module_body(c, string_append(str_lit("%alias "), sym_name(t))));
+                continue;
+            } else {
+                return false;
             }
         }
-        Sexp::Sym(q, f, p) => {
-            if (string_eq_p(q, str_lit("#t")) || string_eq_p(q, str_lit("#f"))) {
-                put(str_lit(")"), put_var(c, q, put(str_lit("kayak_rt::value::ToValue::to_value("), acc)))
+    }
+
+    /// What `s` is where it is named: `local`, `knot` (a procedure of a
+    /// `letrec`, in its group's lambdas, before it is made: reached through
+    /// its knot), or `` (not bound locally). The innermost binding counts.
+    pub fn local_kind(mut s: Str, mut ls: Strings) -> Str {
+        loop {
+            if null_p(ls) {
+                return str_lit("");
+            } else if string_eq_p(car(ls), s) {
+                return str_lit("local");
+            } else if string_eq_p(car(ls), string_append(str_lit("%knot "), s)) {
+                return str_lit("knot");
+            } else if string_eq_p(car(ls), string_append(str_lit("%item "), s)) {
+                return str_lit("item");
             } else {
-                put(str_lit("\")))"), put_escaped(string_chars(q), '"', put(str_lit("kayak_rt::value::ToValue::to_value(symbol_lit(str_lit(\""), acc)))
+                ls = cdr(ls);
+                continue;
             }
         }
-        Sexp::Num(k, f, p) => {
-            put(str_lit("))"), put(i64_to_string(k), put(str_lit("kayak_rt::value::ToValue::to_value(int_lit("), acc)))
-        }
-        Sexp::Big(text, f, p) => {
-            put(str_lit("\"))"), put(text, put(str_lit("kayak_rt::value::ToValue::to_value(int_text(\""), acc)))
-        }
-        Sexp::Str(x, f, p) => {
-            put(str_lit("\"))"), put_escaped(string_chars(x), '"', put(str_lit("kayak_rt::value::ToValue::to_value(str_lit(\""), acc)))
-        }
-        Sexp::Chr(ch, f, p) => {
-            put(str_lit("')"), put_escaped(kayak_rt::heap_cons(ch, kayak_rt::nil()), '\'', put(str_lit("kayak_rt::value::ToValue::to_value('"), acc)))
-        }
-        Sexp::Real(x, f, p) => {
-            let acc = put(x, put(str_lit("kayak_rt::value::ToValue::to_value("), acc));
-            put(str_lit("f64)"), if char_eq_p(last(string_chars(x)), '.') {
-                put(str_lit("0"), acc)
+    }
+
+    /// A module's value, named in a `with`: `m::x`, called if a constant.
+    pub fn item_path(c: &'static Ctx, s: Str) -> Str {
+        let m = opener(string_append(str_lit("%item "), s), ctx_locals(c));
+        string_append(module_path(c, m), string_append(str_lit("::"), string_append(mangle(s), if string_member_p(s, item_constants(module_items(c, m))) {
+            str_lit("()")
+        } else {
+            str_lit("")
+        })))
+    }
+
+    pub fn innermost_fallible(mut ls: Strings) -> bool {
+        loop {
+            if null_p(ls) {
+                return false;
+            } else if string_eq_p(car(ls), str_lit("%fallible")) {
+                return true;
+            } else if string_eq_p(car(ls), str_lit("%infallible")) {
+                return false;
             } else {
+                ls = cdr(ls);
+                continue;
+            }
+        }
+    }
+
+    pub fn innermost_async(mut ls: Strings) -> bool {
+        loop {
+            if null_p(ls) {
+                return false;
+            } else if string_eq_p(car(ls), str_lit("%async")) {
+                return true;
+            } else if string_eq_p(car(ls), str_lit("%sync")) {
+                return false;
+            } else {
+                ls = cdr(ls);
+                continue;
+            }
+        }
+    }
+
+    /// Whether the function, closure or block being written is `async`, so
+    /// that a future in it is `.await`ed (C45): the innermost's mark says.
+    pub fn async_here_p(c: &'static Ctx) -> bool {
+        innermost_async(ctx_locals(c))
+    }
+
+    /// Whether the function or closure being written returns a `Result`: the
+    /// innermost's mark says.
+    pub fn fallible_here_p(c: &'static Ctx) -> bool {
+        innermost_fallible(ctx_locals(c))
+    }
+
+    /// Whether every lifetime the emitter writes here is `'static`: no
+    /// `letrena`, place or region binder around (each a `%letrena`). Then
+    /// the heap's data is made in its arenas, by bumping (C43).
+    pub fn heap_static_p(mut ls: Strings) -> bool {
+        loop {
+            if null_p(ls) {
+                return true;
+            } else if has_prefix_p(car(ls), str_lit("%letrena ")) {
+                return false;
+            } else {
+                ls = cdr(ls);
+                continue;
+            }
+        }
+    }
+
+    pub fn heap_alloc(c: &'static Ctx) -> Str {
+        if heap_static_p(ctx_locals(c)) {
+            str_lit("kayak_rt::heap_alloc(")
+        } else {
+            str_lit("alloc(")
+        }
+    }
+
+    /// A call's operator: a knot's procedure, a constant's value (a
+    /// procedure a definition made, not a lambda), or a name.
+    pub fn callee(c: &'static Ctx, h: Str) -> Str {
+        let kind = local_kind(h, ctx_locals(c));
+        if string_eq_p(kind, str_lit("knot")) {
+            string_append(str_lit("("), string_append(mangle_bare(h), str_lit("__knot.get())")))
+        } else if string_eq_p(kind, str_lit("item")) {
+            item_path(c, h)
+        } else if (string_eq_p(kind, str_lit("")) && string_member_p(h, ctx_constants(c))) {
+            string_append(mangle(h), str_lit("()"))
+        } else if (string_eq_p(kind, str_lit("")) && (string_eq_p(h, str_lit("cons")) || string_eq_p(h, str_lit("new"))) && heap_static_p(ctx_locals(c))) {
+            string_append(str_lit("kayak_rt::heap_"), h)
+        } else {
+            mangle(h)
+        }
+    }
+
+    /// `::<T, ...>`, the types the checker found the datum `e` written at (a
+    /// poly procedure's call, a `nil`), where rustc may have nothing else to
+    /// infer them from; nothing if it found none.
+    pub fn put_turbofish(c: &'static Ctx, e: &'static Sexp, acc: Chars) -> Chars {
+        let found = fact_with(c, e, str_lit("turbofish "));
+        if string_eq_p(found, str_lit("")) {
+            acc
+        } else {
+            put(str_lit(">"), put_types(c, read_all(string_chars(found), str_lit(""), 1i64), put(str_lit("::<"), acc)))
+        }
+    }
+
+    /// Whether a call's operator is written as a function's path, which a
+    /// turbofish may follow.
+    pub fn plain_callee_p(c: &'static Ctx, h: Str) -> bool {
+        let kind = local_kind(h, ctx_locals(c));
+        (string_eq_p(kind, str_lit("item")) || (string_eq_p(kind, str_lit("")) && not(string_member_p(h, ctx_constants(c)))))
+    }
+
+    /// A call's operator, and its turbofish if it is a function's path.
+    pub fn put_callee(c: &'static Ctx, e: &'static Sexp, h: Str, acc: Chars) -> Chars {
+        let acc = put(callee(c, h), acc);
+        if plain_callee_p(c, h) {
+            put_turbofish(c, e, acc)
+        } else {
+            acc
+        }
+    }
+
+    pub fn put_var(c: &'static Ctx, s: Str, acc: Chars) -> Chars {
+        if string_eq_p(s, str_lit("#t")) {
+            put(str_lit("true"), acc)
+        } else if string_eq_p(s, str_lit("#f")) {
+            put(str_lit("false"), acc)
+        } else if string_eq_p(s, str_lit("#u")) {
+            put(str_lit("()"), acc)
+        } else if string_eq_p(local_kind(s, ctx_locals(c)), str_lit("knot")) {
+            put(str_lit(".get()"), put(str_lit("__knot"), put(mangle_bare(s), acc)))
+        } else if string_eq_p(local_kind(s, ctx_locals(c)), str_lit("local")) {
+            put(mangle(s), acc)
+        } else if string_eq_p(local_kind(s, ctx_locals(c)), str_lit("item")) {
+            let m = opener(string_append(str_lit("%item "), s), ctx_locals(c));
+            put(item_path(c, s), if string_member_p(s, item_constants(module_items(c, m))) {
                 acc
+            } else {
+                put(str_lit("&"), acc)
             })
-        }
-        _ => {
-            let other = tagcase_;
-            error(str_lit("kfx: a quoted datum KFX does not build"))
-        }
-    }
-}
-
-pub fn put_quoted_items(c: &'static Ctx, xs: Sexps, acc: Chars) -> Chars {
-    if null_p(xs) {
-        put(str_lit("kayak_rt::value::Value::Nil"), acc)
-    } else if (sym_is_p(car(xs), str_lit(".")) && not(null_p(cdr(xs))) && null_p(cdr(cdr(xs)))) {
-        put_quoted(c, car(cdr(xs)), acc)
-    } else {
-        put(str_lit(")"), put_quoted_items(c, cdr(xs), put(str_lit(", "), put_quoted(c, car(xs), put(str_lit("kayak_rt::value::cons("), acc)))))
-    }
-}
-
-/// A wrapper's boxing of a value, its start (C82).
-pub fn put_box_open(how: Str, acc: Chars) -> Chars {
-    if string_eq_p(how, str_lit("-")) {
-        acc
-    } else if string_eq_p(how, str_lit("scalar")) {
-        put(str_lit("kayak_rt::value::ToValue::to_value("), acc)
-    } else if string_eq_p(how, str_lit("list")) {
-        put(str_lit("kayak_rt::value::list("), acc)
-    } else {
-        put(str_lit("kayak_rt::value::other("), acc)
-    }
-}
-
-pub fn put_box_close(how: Str, acc: Chars) -> Chars {
-    if string_eq_p(how, str_lit("-")) {
-        acc
-    } else if has_prefix_p(how, str_lit("other:")) {
-        put(string_append(str_lit(", kayak_rt::value::Shape::"), string_append(after_prefix(how, str_lit("other:")), str_lit(")"))), acc)
-    } else {
-        put(str_lit(")"), acc)
-    }
-}
-
-pub fn put_boxed_args(mut hows: Strings, mut i: i64, mut n: i64, mut acc: Chars) -> Chars {
-    loop {
-        if i64_gt_eq(i, n) {
-            return acc;
+        } else if (string_eq_p(s, str_lit("nil")) || string_member_p(s, ctx_constants(c))) {
+            put(str_lit("()"), put(mangle(s), acc))
         } else {
-            (hows, i, acc) = (cdr(hows), i64_plus(i, 1i64), put_box_close(car(hows), put(i64_to_string(i), put(str_lit("a__"), put_box_open(car(hows), if i64_eq(i, 0i64) {
-                acc
+            put(mangle(s), put(str_lit("&"), acc))
+        }
+    }
+
+    pub fn put_spaces(mut k: i64, mut acc: Chars) -> Chars {
+        loop {
+            if i64_eq(k, 0i64) {
+                return acc;
             } else {
-                put(str_lit(", "), acc)
-            })))));
-            continue;
+                (k, acc) = (i64_minus(k, 1i64), put(str_lit("    "), acc));
+                continue;
+            }
         }
     }
-}
 
-pub fn unboxed_type(c: &'static Ctx, e: &'static Sexp) -> Str {
-    let (a, b) = (fact_with(c, e, str_lit("unbox ")), fact_with(c, e, str_lit("unbox-list ")));
-    if not(string_eq_p(a, str_lit(""))) {
-        a
-    } else if not(string_eq_p(b, str_lit(""))) {
-        b
-    } else {
-        fact_with(c, e, str_lit("unbox-other "))
+    /// Names, separated by commas.
+    pub fn put_names(xs: Sexps, acc: Chars) -> Chars {
+        put_sep(lambda2(move |x: &'static Sexp, acc: List<char>| {
+            put(mangle(sym_name(x)), acc)
+        }), str_lit(", "), xs, acc)
     }
-}
 
-// Every writer of an expression takes `n`, the indentation of the line it
-// starts on, and `t`, where the expression stands.
-/// The facts at `e` found once, here: the clauses below ask of them
-/// alone, not of all the program's (C84: seven searches of every fact
-/// for each expression had made kfx three times slower).
-pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc: Chars) -> Chars {
-    let fs = facts_at(c, e);
-    if self_call_p(t, e) {
-        put_continue(c, cdr(items(e)), n, t, acc)
-    } else if (returns_p(t) && abort_p(c, e)) {
-        put(str_lit(";"), put_exp(c, e, n, value(), acc))
-    } else if (returns_p(t) && not(control_p(e))) {
-        if returns_ok_p(t) {
-            put(str_lit(");"), put_exp(c, e, n, value(), put(str_lit("return Ok("), acc)))
-        } else {
-            put(str_lit(";"), put_exp(c, e, n, value(), put(str_lit("return "), acc)))
+    pub fn binding_name(binding: &'static Sexp) -> Str {
+        sym_name(car(items(binding)))
+    }
+
+    pub fn ok_value_p(t: &'static Tail) -> bool {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Tail::OkValue() => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
         }
-    } else if (ok_value_p(t) && not(control_p(e)) && not(abort_p(c, e))) {
-        put(str_lit(")"), put_exp(c, e, n, value(), put(str_lit("Ok("), acc)))
-    } else if (not(string_eq_p(fact_in(fs, e, str_lit("lift-suspend")), str_lit(""))) && not(string_member_p(string_append(str_lit("%lifted "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
-        // A procedure that cannot suspend where one that may is wanted: a
-        // closure that returns its value, `Ok` unless it is a `Result`
-        // already, as a future (C45).
-        let fallible = not(string_eq_p(fact_in(fs, e, str_lit("lift-suspend-fallible ")), str_lit("")));
-        let lift = digits_number(if fallible {
-            fact_in(fs, e, str_lit("lift-suspend-fallible "))
+    }
+
+    pub fn returns_ok_p(t: &'static Tail) -> bool {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Tail::Returns(f, ps, live, ok) => {
+                ok
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }
+
+    pub fn returns_p(t: &'static Tail) -> bool {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Tail::Returns(f, ps, live, ok) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }
+
+    pub fn map2_params(params: Sexps, types: Sexps) -> Sexps {
+        if (null_p(params) || null_p(types)) {
+            params
         } else {
-            fact_in(fs, e, str_lit("lift-suspend "))
-        });
-        let acc = put(i64_to_string(lift), put(str_lit("lambda"), acc));
-        let acc = put(str_lit("(move |"), acc);
-        let acc = put_arg_names(0i64, lift, acc);
-        let acc = put(if fallible {
-            str_lit("| kayak_rt::suspend::body(async move { (")
+            kayak_rt::heap_cons({
+                let tagcase_ = car(params);
+                match *tagcase_ {
+                    Sexp::Sym(n, at_file, at_pos) => {
+                        lst(kayak_rt::heap_cons(car(params), kayak_rt::heap_cons(car(types), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        other
+                    }
+                }
+            }, map2_params(cdr(params), cdr(types)))
+        }
+    }
+
+    /// A letrec's lambda, its parameters given the types its binding's says,
+    /// so that Rust need not infer a closure's from its uses: it cannot, where
+    /// the first is a `match` (a lambda's place kept, for its facts).
+    pub fn typed_lambda(lam: &'static Sexp, typ: &'static Sexp) -> &'static Sexp {
+        let tagcase_ = lam;
+        match *tagcase_ {
+            Sexp::Lst(xs, file, line, pos) => {
+                lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(lst(map2_params(items(second(xs)), items(third(items(typ)))), str_lit(""), 0i64, 0i64), cdr(cdr(xs)))), file, line, pos)
+            }
+            _ => {
+                let other = tagcase_;
+                lam
+            }
+        }
+    }
+
+    /// Whether `x` names a module defined at the top level, not hidden.
+    pub fn module_name_p(c: &'static Ctx, x: &'static Sexp) -> bool {
+        let tagcase_ = x;
+        match *tagcase_ {
+            Sexp::Sym(n, at_file, at_pos) => {
+                (string_eq_p(local_kind(n, ctx_locals(c)), str_lit("")) && not(null_p(module_body(c, n))))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }
+
+    /// What a case is on, as the checker found.
+    pub fn case_kind(c: &'static Ctx, e: &'static Sexp) -> Str {
+        if fact_at_p(c, e, str_lit("case int")) {
+            str_lit("int")
+        } else if fact_at_p(c, e, str_lit("case string")) {
+            str_lit("string")
+        } else if fact_at_p(c, e, str_lit("case bool")) {
+            str_lit("bool")
+        } else if fact_at_p(c, e, str_lit("case symbol")) {
+            str_lit("symbol")
         } else {
-            str_lit("| kayak_rt::suspend::body(async move { Ok((")
-        }, acc);
-        let acc = put_exp(with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%lifted "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), kayak_rt::nil())), e, n, value(), acc);
-        let acc = put(str_lit(")("), acc);
-        let acc = put_arg_names(0i64, lift, acc);
-        put(if fallible {
-            str_lit(") }))")
+            str_lit("char")
+        }
+    }
+
+    /// A lambda's parameters, each written with no type given the one the
+    /// checker found, where it found them all: Rust may not find a closure's
+    /// parameter's type from its uses.
+    pub fn lambda_params_typed(c: &'static Ctx, e: &'static Sexp, params: Sexps) -> Sexps {
+        let found = fact_with(c, e, str_lit("param-types "));
+        if string_eq_p(found, str_lit("")) {
+            params
         } else {
-            str_lit(")) }))")
-        }, acc)
-    } else if (not(string_eq_p(fact_in(fs, e, str_lit("lift ")), str_lit(""))) && not(string_member_p(string_append(str_lit("%lifted "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
-        // A procedure that cannot abort where one that may is wanted: a
-        // closure that returns its value `Ok`.
-        let lift = digits_number(fact_in(fs, e, str_lit("lift ")));
-        let acc = put(i64_to_string(lift), put(str_lit("lambda"), acc));
-        let acc = put(str_lit("(move |"), acc);
-        let acc = put_arg_names(0i64, lift, acc);
-        let acc = put(str_lit("| Ok(("), acc);
-        let acc = put_exp(with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%lifted "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), kayak_rt::nil())), e, n, value(), acc);
-        let acc = put(str_lit(")("), acc);
-        let acc = put_arg_names(0i64, lift, acc);
-        put(str_lit(")))"), acc)
-    } else if not(string_eq_p(fact_in(fs, e, str_lit("box none ")), str_lit(""))) {
-        error(string_append(str_lit("kfx: "), string_append(datum_file(e), string_append(str_lit(": a union's member KFX cannot give for it yet (C75): "), fact_in(fs, e, str_lit("box none "))))))
-    } else if not(string_eq_p(fact_in(fs, e, str_lit("unbox-none ")), str_lit(""))) {
-        error(string_append(str_lit("kfx: "), string_append(datum_file(e), string_append(str_lit(": a union's member KFX cannot take out of it yet (C75): "), fact_in(fs, e, str_lit("unbox-none "))))))
-    } else if (not(string_eq_p(fact_in(fs, e, str_lit("wrap ")), str_lit(""))) && not(string_member_p(string_append(str_lit("%wrapped "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
-        // A procedure given where one of a union's parameters or result is
-        // wanted (C82): a closure boxing each argument and the result.
-        let hows = map(&sym_name, read_all(string_chars(fact_in(fs, e, str_lit("wrap "))), str_lit(""), 1i64));
-        let arity = i64_minus(size(hows), 1i64);
-        let acc = put(string_append(str_lit("lambda"), string_append(i64_to_string(arity), str_lit("(move |"))), acc);
-        let acc = put_arg_names(0i64, arity, acc);
-        let acc = put(str_lit("| "), acc);
-        let acc = put_box_open(last(hows), acc);
-        let acc = put(str_lit("("), acc);
-        let acc = put_exp(with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%wrapped "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), kayak_rt::nil())), e, n, value(), acc);
-        let acc = put(str_lit(")("), acc);
-        let acc = put_boxed_args(hows, 0i64, arity, acc);
-        let acc = put(str_lit(")"), acc);
-        put(str_lit(")"), put_box_close(last(hows), acc))
-    } else if string_eq_p(fact_in(fs, e, str_lit("box ")), str_lit("nil")) {
-        // `nil` given for a union's `nil` member (C84): the empty value,
-        // which no expression of type `nil` computes otherwise.
-        put(str_lit("kayak_rt::value::Value::Nil"), acc)
-    } else if (not(string_eq_p(fact_in(fs, e, str_lit("box ")), str_lit(""))) && not(string_member_p(string_append(str_lit("%boxed "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
-        // A member given for its union (C75): boxed, a scalar as it is, a
-        // list as `nil` or its pair, another shape behind `Any`.
-        let how = fact_in(fs, e, str_lit("box "));
-        let acc = put(if string_eq_p(how, str_lit("scalar")) {
-            str_lit("kayak_rt::value::ToValue::to_value(")
-        } else if string_eq_p(how, str_lit("elements")) {
-            str_lit("kayak_rt::value::boxed_list(")
-        } else if string_eq_p(how, str_lit("list")) {
-            str_lit("kayak_rt::value::list(")
+            map2_params(params, items(car(read_all(string_chars(found), str_lit(""), 1i64))))
+        }
+    }
+
+    /// An abort: `return Err(...)` in Rust, so no value to return or wrap.
+    pub fn abort_p(c: &'static Ctx, e: &'static Sexp) -> bool {
+        (head_is_p(e, str_lit("abort-current-continuation")) && string_eq_p(local_kind(str_lit("abort-current-continuation"), ctx_locals(c)), str_lit("")))
+    }
+
+    pub fn self_call_p(t: &'static Tail, e: &'static Sexp) -> bool {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Tail::Returns(f, ps, live, ok) => {
+                (live && head_is_p(e, f) && i64_eq(size(cdr(items(e))), size(ps)))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }
+
+    /// The forms whose last parts stand where they do.
+    pub fn control_p(e: &'static Sexp) -> bool {
+        (head_is_p(e, str_lit("if")) || head_is_p(e, str_lit("cond")) || head_is_p(e, str_lit("case")) || head_is_p(e, str_lit("tagcase")) || head_is_p(e, str_lit("let")) || head_is_p(e, str_lit("let*")) || head_is_p(e, str_lit("begin")) || head_is_p(e, str_lit("letrec")) || head_is_p(e, str_lit("letregion")) || head_is_p(e, str_lit("with")))
+    }
+
+    /// `c` in `(with m ...)`: `m`'s values and types, hiding what is outside.
+    pub fn with_opened(c: &'static Ctx, e: &'static Sexp) -> &'static Ctx {
+        let m = sym_name(second(items(e)));
+        let forms = module_items(c, m);
+        with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%with "), m), onto(map(lambda1(move |x: Str| {
+            string_append(str_lit("%type "), x)
+        }), item_types(forms)), map(lambda1(move |x: Str| {
+            string_append(str_lit("%item "), x)
+        }), item_values(forms)))))
+    }
+
+    /// `t` in `(with m ...)`: a procedure `m` gives, named as the one written,
+    /// is not it, and a parameter `m` hides is not to be assigned.
+    pub fn opened_tail(c: &'static Ctx, e: &'static Sexp, t: &'static Tail) -> &'static Tail {
+        let names = item_values(module_items(c, sym_name(second(items(e)))));
+        let tagcase_ = t;
+        match *tagcase_ {
+            Tail::Returns(f, ps, live, ok) => {
+                if string_member_p(f, names) {
+                    returns(f, ps, false, ok)
+                } else {
+                    hide(t, names)
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                t
+            }
+        }
+    }
+
+    /// The parameters a self tail call changes, and their new values: an
+    /// argument that is the parameter itself changes nothing.
+    pub fn changes(ps: Strings, args: Sexps) -> &'static Assign {
+        if null_p(ps) {
+            assign(nil::<Str>(), nil::<&'static Sexp>())
         } else {
-            str_lit("kayak_rt::value::other(")
-        }, acc);
-        let acc = put_exp(with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%boxed "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), kayak_rt::nil())), e, n, value(), acc);
-        put(if has_prefix_p(how, str_lit("other ")) {
-            string_append(str_lit(", kayak_rt::value::Shape::"), string_append(after_prefix(how, str_lit("other ")), str_lit(")")))
-        } else {
-            str_lit(")")
-        }, acc)
-    } else if (not(string_eq_p(unboxing_in(fs, e), str_lit(""))) && not(string_member_p(string_append(str_lit("%unboxed "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
-        // A union narrowed to a member (C75): unboxed, at the member's type.
-        let acc = put(unboxing_in(fs, e), put(str_lit("kayak_rt::value::"), acc));
-        let acc = put(str_lit(">("), put_unboxed_type(c, unboxing_in(fs, e), unboxed_type_in(fs, e), put(str_lit("::<"), acc)));
-        let acc = put_exp(with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%unboxed "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), kayak_rt::nil())), e, n, value(), acc);
-        put(str_lit(")"), acc)
-    } else {
+            let tagcase_ = changes(cdr(ps), cdr(args));
+            match *tagcase_ {
+                Assign::Assign(names, values) => {
+                    if sym_is_p(car(args), car(ps)) {
+                        assign(names, values)
+                    } else {
+                        assign(kayak_rt::heap_cons(car(ps), names), kayak_rt::heap_cons(car(args), values))
+                    }
+                }
+            }
+        }
+    }
+
+    /// Names, mangled, separated by commas.
+    pub fn put_strings(xs: Strings, acc: Chars) -> Chars {
+        put_sep(lambda2(move |x: Str, acc: List<char>| {
+            put(mangle(x), acc)
+        }), str_lit(", "), xs, acc)
+    }
+
+    /// The `rcons`es and `rnew`s in `es` that make in the place `r`.
+    pub fn allocations(r: Str, es: Sexps) -> Sexps {
+        concat(map(lambda1(move |e: &'static Sexp| {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Sexp::Lst(xs, f, l, p) => {
+                    if ((head_is_p(e, str_lit("rcons")) || head_is_p(e, str_lit("rnew")) || head_is_p(e, str_lit("rmake-bloblet"))) && not(null_p(cdr(xs))) && sym_is_p(second(xs), r)) {
+                        the::<Sexps>(kayak_rt::heap_cons(e, allocations(r, cdr(xs))))
+                    } else {
+                        allocations(r, xs)
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<&'static Sexp>()
+                }
+            }
+        }), es))
+    }
+
+    pub fn put_held_fields(mut held: Strings, mut i: i64, mut acc: Chars) -> Chars {
+        loop {
+            if null_p(held) {
+                return acc;
+            } else {
+                (held, i, acc) = (cdr(held), i64_plus(i, 1i64), put(string_append(str_lit(" a"), string_append(i64_to_string(i), string_append(str_lit(": Arena<"), string_append(car(held), str_lit(">,"))))), acc));
+                continue;
+            }
+        }
+    }
+
+    /// `Holds` for each type the region holds: its arena.
+    pub fn put_held_impls(mut held: Strings, mut i: i64, mut region: Str, mut lives: Str, mut bounded: Str, mut n: i64, mut acc: Chars) -> Chars {
+        loop {
+            if null_p(held) {
+                return acc;
+            } else {
+                (held, i, acc) = (cdr(held), i64_plus(i, 1i64), put(string_append(str_lit("impl<"), string_append(bounded, string_append(str_lit("> Holds<"), string_append(car(held), string_append(str_lit("> for "), string_append(region, string_append(str_lit("<"), string_append(lives, string_append(str_lit("> { fn arena(&self) -> &Arena<"), string_append(car(held), string_append(str_lit("> { &self.a"), string_append(i64_to_string(i), str_lit(" } }"))))))))))))), put_nl(n, acc)));
+                continue;
+            }
+        }
+    }
+
+    /// Every list in `es`, at any depth: the places facts are at.
+    pub fn datums_in(es: Sexps) -> Sexps {
+        concat(map(lambda1(move |e: &'static Sexp| {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Sexp::Lst(xs, f, l, p) => {
+                    the::<Sexps>(kayak_rt::heap_cons(e, datums_in(xs)))
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<&'static Sexp>()
+                }
+            }
+        }), es))
+    }
+
+    pub fn split_chars(mut cs: Chars, mut c: char, mut acc: Chars) -> Strings {
+        loop {
+            if null_p(cs) {
+                return kayak_rt::heap_cons(rev_to_string(acc), kayak_rt::nil());
+            } else if char_eq_p(car(cs), c) {
+                return kayak_rt::heap_cons(rev_to_string(acc), split_chars(cdr(cs), c, nil::<char>()));
+            } else {
+                (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
+                continue;
+            }
+        }
+    }
+
+    pub fn split_at_char(s: Str, c: char) -> Strings {
+        split_chars(string_chars(s), c, nil::<char>())
+    }
+
+    /// An `rlambda` as the lambda it is in Rust, at its own place, where the
+    /// checker's facts about it are (C38); anything else as it is.
+    pub fn as_lambda(e: &'static Sexp) -> &'static Sexp {
         let tagcase_ = e;
         match *tagcase_ {
-            Sexp::Num(k, num_file, num_pos) => {
-                if fact_in_p(fs, e, str_lit("int")) {
-                    put(str_lit(")"), put(i64_to_string(k), put(str_lit("int_lit("), acc)))
-                } else if fact_in_p(fs, e, str_lit("fixed i32")) {
-                    put(str_lit("i32"), put(i64_to_string(k), acc))
-                } else if fact_in_p(fs, e, str_lit("fixed u32")) {
-                    put(str_lit("u32"), put(i64_to_string(k), acc))
-                } else if fact_in_p(fs, e, str_lit("fixed u64")) {
-                    put(str_lit("u64"), put(i64_to_string(k), acc))
-                } else if fact_in_p(fs, e, str_lit("fixed u8")) {
-                    put(str_lit("u8"), put(i64_to_string(k), acc))
-                } else if fact_in_p(fs, e, str_lit("fixed i8")) {
-                    put(str_lit("i8"), put(i64_to_string(k), acc))
+            Sexp::Lst(xs, f, l, p) => {
+                if sym_is_p(car(xs), str_lit("rlambda")) {
+                    lst(kayak_rt::heap_cons(sym(str_lit("lambda"), str_lit(""), 0i64), cdr(cdr(xs))), f, l, p)
                 } else {
-                    put(str_lit("i64"), put(i64_to_string(k), acc))
+                    e
                 }
+            }
+            _ => {
+                let other = tagcase_;
+                e
+            }
+        }
+    }
+
+    pub fn second_string(xs: Strings) -> Str {
+        if (null_p(xs) || null_p(cdr(xs))) {
+            str_lit("0")
+        } else {
+            car(cdr(xs))
+        }
+    }
+
+    /// The flat of the typed suffix (C32) of the owner the checker noted at
+    /// `e` under `prefix`, as a list of one; or none.
+    pub fn blob_typed(c: &'static Ctx, e: &'static Sexp, prefix: Str) -> Sexps {
+        let found = fact_with(c, e, prefix);
+        if string_eq_p(found, str_lit("")) {
+            nil::<&'static Sexp>()
+        } else {
+            typed_flat(c, car(read_all(string_chars(found), str_lit(""), 1i64)))
+        }
+    }
+
+    /// Whether `e` names `n` anywhere.
+    pub fn name_in_p(n: Str, e: &'static Sexp) -> bool {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Sym(m, f, p) => {
+                string_eq_p(m, n)
+            }
+            Sexp::Lst(xs, f, l, p) => {
+                any_p(lambda1(move |x: &'static Sexp| {
+                    name_in_p(n, x)
+                }), xs)
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }
+
+    /// A `typecase` arm's test: its shape's predicate, kayak-rt's.
+    pub fn shape_test(shape: Str, valued: bool) -> Str {
+        if string_eq_p(shape, str_lit("nil")) {
+            if valued {
+                str_lit("kayak_rt::value::null_p")
+            } else {
+                str_lit("null_p")
+            }
+        } else if string_eq_p(shape, str_lit("box")) {
+            str_lit("ref_p")
+        } else {
+            string_append(mangle(shape), str_lit("_p"))
+        }
+    }
+
+    pub fn unboxing_in(fs: Facts, e: &'static Sexp) -> Str {
+        if not(string_eq_p(fact_in(fs, e, str_lit("unbox ")), str_lit(""))) {
+            str_lit("unbox")
+        } else if not(string_eq_p(fact_in(fs, e, str_lit("unbox-list ")), str_lit(""))) {
+            str_lit("unbox_list")
+        } else if not(string_eq_p(fact_in(fs, e, str_lit("unbox-other ")), str_lit(""))) {
+            str_lit("unbox_other")
+        } else {
+            str_lit("")
+        }
+    }
+
+    pub fn unboxed_type_in(fs: Facts, e: &'static Sexp) -> Str {
+        let (a, b) = (fact_in(fs, e, str_lit("unbox ")), fact_in(fs, e, str_lit("unbox-list ")));
+        if not(string_eq_p(a, str_lit(""))) {
+            a
+        } else if not(string_eq_p(b, str_lit(""))) {
+            b
+        } else {
+            fact_in(fs, e, str_lit("unbox-other "))
+        }
+    }
+
+    /// How a union is unboxed at `e`, kayak-rt's function; or `` (C75).
+    pub fn unboxing(c: &'static Ctx, e: &'static Sexp) -> Str {
+        if not(string_eq_p(fact_with(c, e, str_lit("unbox ")), str_lit(""))) {
+            str_lit("unbox")
+        } else if not(string_eq_p(fact_with(c, e, str_lit("unbox-list ")), str_lit(""))) {
+            str_lit("unbox_list")
+        } else if not(string_eq_p(fact_with(c, e, str_lit("unbox-other ")), str_lit(""))) {
+            str_lit("unbox_other")
+        } else {
+            str_lit("")
+        }
+    }
+
+    /// The type a union is unboxed at (C75): a list's element type, for
+    /// `unbox_list`; Rust's to find, for `nil`'s.
+    pub fn put_unboxed_type(c: &'static Ctx, how: Str, text: Str, acc: Chars) -> Chars {
+        let t = car(read_all(string_chars(text), str_lit(""), 1i64));
+        if not(string_eq_p(how, str_lit("unbox_list"))) {
+            put_type(c, t, acc)
+        } else if head_is_p(t, str_lit("listof")) {
+            put_type(c, second(items(t)), acc)
+        } else {
+            put(str_lit("_"), acc)
+        }
+    }
+
+    /// A quoted datum, built (C77): a list's pairs `cons`ed, each atom boxed.
+    pub fn put_quoted(c: &'static Ctx, d: &'static Sexp, acc: Chars) -> Chars {
+        let tagcase_ = d;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                if head_is_p(d, str_lit("#vector")) {
+                    put(str_lit(")"), put_quoted_items(c, cdr(xs), put(str_lit("kayak_rt::value::datum_list_to_vector("), acc)))
+                } else {
+                    put_quoted_items(c, xs, acc)
+                }
+            }
+            Sexp::Sym(q, f, p) => {
+                if (string_eq_p(q, str_lit("#t")) || string_eq_p(q, str_lit("#f"))) {
+                    put(str_lit(")"), put_var(c, q, put(str_lit("kayak_rt::value::ToValue::to_value("), acc)))
+                } else {
+                    put(str_lit("\")))"), put_escaped(string_chars(q), '"', put(str_lit("kayak_rt::value::ToValue::to_value(symbol_lit(str_lit(\""), acc)))
+                }
+            }
+            Sexp::Num(k, f, p) => {
+                put(str_lit("))"), put(i64_to_string(k), put(str_lit("kayak_rt::value::ToValue::to_value(int_lit("), acc)))
             }
             Sexp::Big(text, f, p) => {
-                if fact_in_p(fs, e, str_lit("fixed u64")) {
-                    put(str_lit("u64"), put(text, acc))
-                } else {
-                    put(str_lit("\")"), put(text, put(str_lit("int_text(\""), acc)))
-                }
+                put(str_lit("\"))"), put(text, put(str_lit("kayak_rt::value::ToValue::to_value(int_text(\""), acc)))
             }
-            Sexp::Chr(ch, at_file, at_pos) => {
-                put(str_lit("'"), put_escaped(kayak_rt::heap_cons(ch, kayak_rt::nil()), '\'', put(str_lit("'"), acc)))
+            Sexp::Str(x, f, p) => {
+                put(str_lit("\"))"), put_escaped(string_chars(x), '"', put(str_lit("kayak_rt::value::ToValue::to_value(str_lit(\""), acc)))
             }
-            Sexp::Real(x, at_file, at_pos) => {
-                // As Rust writes a double: a digit after the point (`1.` is `1.0`).
-                put(str_lit("f64"), if char_eq_p(last(string_chars(x)), '.') {
-                    put(str_lit("0"), put(x, acc))
+            Sexp::Chr(ch, f, p) => {
+                put(str_lit("')"), put_escaped(kayak_rt::heap_cons(ch, kayak_rt::nil()), '\'', put(str_lit("kayak_rt::value::ToValue::to_value('"), acc)))
+            }
+            Sexp::Real(x, f, p) => {
+                let acc = put(x, put(str_lit("kayak_rt::value::ToValue::to_value("), acc));
+                put(str_lit("f64)"), if char_eq_p(last(string_chars(x)), '.') {
+                    put(str_lit("0"), acc)
                 } else {
-                    put(x, acc)
+                    acc
                 })
             }
-            Sexp::Str(s, at_file, at_pos) => {
-                put(str_lit("\")"), put_escaped(string_chars(s), '"', put(str_lit("str_lit(\""), acc)))
+            _ => {
+                let other = tagcase_;
+                error(str_lit("kfx: a quoted datum KFX does not build"))
             }
-            Sexp::Sym(s, at_file, at_pos) => {
-                if (string_eq_p(s, str_lit("nil")) && string_eq_p(local_kind(s, ctx_locals(c)), str_lit(""))) {
-                    put(str_lit("()"), put_turbofish(c, e, put(str_lit("nil"), acc)))
-                } else if not(string_eq_p(fact_in(fs, e, str_lit("async-global ")), str_lit(""))) {
-                    let arity = digits_number(fact_in(fs, e, str_lit("async-global ")));
-                    let acc = put(string_append(str_lit("lambda"), string_append(i64_to_string(arity), str_lit("(move |"))), acc);
-                    let acc = put_arg_names(0i64, arity, acc);
-                    let acc = put(str_lit("| kayak_rt::suspend::body("), acc);
-                    let acc = put(mangle(s), acc);
-                    let acc = put(str_lit("("), acc);
-                    let acc = put_arg_names(0i64, arity, acc);
-                    put(str_lit(")))"), acc)
+        }
+    }
+
+    pub fn put_quoted_items(c: &'static Ctx, xs: Sexps, acc: Chars) -> Chars {
+        if null_p(xs) {
+            put(str_lit("kayak_rt::value::Value::Nil"), acc)
+        } else if (sym_is_p(car(xs), str_lit(".")) && not(null_p(cdr(xs))) && null_p(cdr(cdr(xs)))) {
+            put_quoted(c, car(cdr(xs)), acc)
+        } else {
+            put(str_lit(")"), put_quoted_items(c, cdr(xs), put(str_lit(", "), put_quoted(c, car(xs), put(str_lit("kayak_rt::value::cons("), acc)))))
+        }
+    }
+
+    /// A wrapper's boxing of a value, its start (C82).
+    pub fn put_box_open(how: Str, acc: Chars) -> Chars {
+        if string_eq_p(how, str_lit("-")) {
+            acc
+        } else if string_eq_p(how, str_lit("scalar")) {
+            put(str_lit("kayak_rt::value::ToValue::to_value("), acc)
+        } else if string_eq_p(how, str_lit("list")) {
+            put(str_lit("kayak_rt::value::list("), acc)
+        } else {
+            put(str_lit("kayak_rt::value::other("), acc)
+        }
+    }
+
+    pub fn put_box_close(how: Str, acc: Chars) -> Chars {
+        if string_eq_p(how, str_lit("-")) {
+            acc
+        } else if has_prefix_p(how, str_lit("other:")) {
+            put(string_append(str_lit(", kayak_rt::value::Shape::"), string_append(after_prefix(how, str_lit("other:")), str_lit(")"))), acc)
+        } else {
+            put(str_lit(")"), acc)
+        }
+    }
+
+    pub fn put_boxed_args(mut hows: Strings, mut i: i64, mut n: i64, mut acc: Chars) -> Chars {
+        loop {
+            if i64_gt_eq(i, n) {
+                return acc;
+            } else {
+                (hows, i, acc) = (cdr(hows), i64_plus(i, 1i64), put_box_close(car(hows), put(i64_to_string(i), put(str_lit("a__"), put_box_open(car(hows), if i64_eq(i, 0i64) {
+                    acc
                 } else {
-                    put_var(c, s, acc)
-                }
+                    put(str_lit(", "), acc)
+                })))));
+                continue;
+            }
+        }
+    }
+
+    pub fn unboxed_type(c: &'static Ctx, e: &'static Sexp) -> Str {
+        let (a, b) = (fact_with(c, e, str_lit("unbox ")), fact_with(c, e, str_lit("unbox-list ")));
+        if not(string_eq_p(a, str_lit(""))) {
+            a
+        } else if not(string_eq_p(b, str_lit(""))) {
+            b
+        } else {
+            fact_with(c, e, str_lit("unbox-other "))
+        }
+    }
+
+    /// Whether a written effect may abort, its abbreviations seen through: a
+    /// procedure of it returns a `Result` (docs/research/escapes.md).
+    pub fn fallible_effect_p(c: &'static Ctx, e: &'static Sexp) -> bool {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Sym(n, at_file, at_pos) => {
+                (effect_binder_p(c, n) || any_p(lambda1(move |x: &'static Typed| {
+                    let tagcase_ = x;
+                    match *tagcase_ {
+                        Typed::Typed(m, body) => {
+                            (string_eq_p(m, n) && fallible_effect_p(c, body))
+                        }
+                    }
+                }), ctx_effects(c)))
             }
             Sexp::Lst(xs, src_file, src_line, src_pos) => {
-                if fact_in_p(fs, e, str_lit("void-call")) {
-                    put(str_lit(" {}"), put_call(c, e, xs, n, t, put(str_lit("match "), acc)))
-                } else if fact_in_p(fs, e, str_lit("void-error")) {
-                    put(str_lit(")"), put_call(c, e, xs, n, t, put(str_lit("the::<Void>("), acc)))
-                } else if (fact_in_p(fs, e, str_lit("union-test")) || fact_in_p(fs, e, str_lit("value-call"))) {
-                    put_call(c, e, xs, n, t, put(str_lit("kayak_rt::value::"), acc))
-                } else if fact_in_p(fs, e, str_lit("value-cons")) {
-                    put(str_lit(")"), put_joined(c, cdr(xs), str_lit(", "), n, put(str_lit("kayak_rt::value::cons("), acc)))
+                if sym_is_p(car(xs), str_lit("goto")) {
+                    true
+                } else if sym_is_p(car(xs), str_lit("comefrom")) {
+                    true
+                } else if sym_is_p(car(xs), str_lit("maxeff")) {
+                    any_p(lambda1(move |x: &'static Sexp| {
+                        fallible_effect_p(c, x)
+                    }), cdr(xs))
                 } else {
-                    put_call(c, e, xs, n, t, acc)
+                    false
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }
+
+    /// Whether a written effect may suspend, a `comefrom` (C45): a procedure
+    /// of it is an `async fn`, or as a value returns a boxed future.
+    pub fn suspending_effect_p(c: &'static Ctx, e: &'static Sexp) -> bool {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Sym(n, at_file, at_pos) => {
+                (effect_binder_p(c, n) || any_p(lambda1(move |x: &'static Typed| {
+                    let tagcase_ = x;
+                    match *tagcase_ {
+                        Typed::Typed(m, body) => {
+                            (string_eq_p(m, n) && suspending_effect_p(c, body))
+                        }
+                    }
+                }), ctx_effects(c)))
+            }
+            Sexp::Lst(xs, src_file, src_line, src_pos) => {
+                if sym_is_p(car(xs), str_lit("comefrom")) {
+                    true
+                } else if sym_is_p(car(xs), str_lit("maxeff")) {
+                    any_p(lambda1(move |x: &'static Sexp| {
+                        suspending_effect_p(c, x)
+                    }), cdr(xs))
+                } else {
+                    false
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }
+
+    /// Whether the checker found `what` about the datum `e`.
+    pub fn fact_at_p(c: &'static Ctx, e: &'static Sexp, what: Str) -> bool {
+        ctx_fact_p(c, datum_file(e), datum_pos(e), what)
+    }
+
+    pub fn concat_strings(xs: Strings) -> Str {
+        if null_p(xs) {
+            str_lit("")
+        } else {
+            string_append(car(xs), concat_strings(cdr(xs)))
+        }
+    }
+
+    pub fn reverse_strings(mut xs: Strings, mut acc: Strings) -> Strings {
+        loop {
+            if null_p(xs) {
+                return acc;
+            } else {
+                (xs, acc) = (cdr(xs), kayak_rt::heap_cons(car(xs), acc));
+                continue;
+            }
+        }
+    }
+
+    pub fn split_words(s: Str) -> Strings {
+        reverse_strings(split_words_from(string_chars(s), nil::<char>(), nil::<Str>()), nil::<Str>())
+    }
+
+    /// `Product_1x_1y`: each label as a Rust name, its length first, so that
+    /// no two lists of labels, nor a type the program names, share one.
+    pub fn shape_name(product: bool, labels: Strings) -> Str {
+        string_append(if product {
+            str_lit("Product")
+        } else {
+            str_lit("Sum")
+        }, concat_strings(map(lambda1(move |l: Str| {
+            let n = plain_name(mangle(l));
+            string_append(str_lit("_"), string_append(i64_to_string(string_length_i64(n)), n))
+        }), labels)))
+    }
+
+    pub fn ctx_locals(c: &'static Ctx) -> Strings {
+        let tagcase_ = c;
+        match *tagcase_ {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                ls
+            }
+        }
+    }
+
+    /// What `mods` keeps under `name`, as a list of one: a module, or, under
+    /// `%moduleof x`, a module type.
+    pub fn module_body(c: &'static Ctx, name: Str) -> Sexps {
+        let tagcase_ = c;
+        match *tagcase_ {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                concat(map(lambda1(move |x: &'static Typed| {
+                    let tagcase_ = x;
+                    match *tagcase_ {
+                        Typed::Typed(n, body) => {
+                            if string_eq_p(n, name) {
+                                the::<Sexps>(kayak_rt::heap_cons(body, kayak_rt::nil()))
+                            } else {
+                                nil::<&'static Sexp>()
+                            }
+                        }
+                    }
+                }), mods))
+            }
+        }
+    }
+
+    /// The names an `include` does not take (C87).
+    pub fn include_except_names(c: &'static Ctx, f: &'static Sexp) -> Strings {
+        let ex = include_except(f);
+        if null_p(ex) {
+            nil::<Str>()
+        } else if head_is_p(car(ex), str_lit("except-module")) {
+            concat(map(&item_names, module_items(c, sym_name(second(items(car(ex)))))))
+        } else {
+            map(&sym_name, cdr(items(car(ex))))
+        }
+    }
+
+    /// Module `m`'s items; a module parameter's, as its type's values would be
+    /// written (a value not a procedure a constant).
+    pub fn module_items(c: &'static Ctx, m: Str) -> Sexps {
+        let x = param_module_type(m, ctx_locals(c));
+        if string_eq_p(x, str_lit("")) {
+            let found = module_body(c, m);
+            if null_p(found) {
+                nil::<&'static Sexp>()
+            } else {
+                concat(map(lambda1(move |f: &'static Sexp| {
+                    if head_is_p(f, str_lit("include")) {
+                        let ex = include_except_names(c, f);
+                        concat(map(lambda1(move |g: &'static Sexp| {
+                            if any_p(lambda1(move |n: Str| {
+                                string_member_p(n, ex)
+                            }), item_names(g)) {
+                                nil::<&'static Sexp>()
+                            } else {
+                                the::<Sexps>(kayak_rt::heap_cons(g, kayak_rt::nil()))
+                            }
+                        }), module_items(c, sym_name(second(items(f))))))
+                    } else {
+                        the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
+                    }
+                }), cdr(items(car(found)))))
+            }
+        } else {
+            let spec = module_body(c, string_append(str_lit("%moduleof "), x));
+            if null_p(spec) {
+                nil::<&'static Sexp>()
+            } else {
+                concat(map(lambda1(move |it: &'static Sexp| {
+                    let ys = items(it);
+                    if sym_is_p(car(ys), str_lit("val")) {
+                        the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("define"), str_lit(""), 0i64), kayak_rt::heap_cons(second(ys), kayak_rt::heap_cons(third(ys), kayak_rt::heap_cons(if head_is_p(third(ys), str_lit("subr")) {
+                            lst(kayak_rt::heap_cons(sym(str_lit("lambda"), str_lit(""), 0i64), kayak_rt::nil()), str_lit(""), 0i64, 0i64)
+                        } else {
+                            sym(str_lit("#u"), str_lit(""), 0i64)
+                        }, kayak_rt::nil())))), str_lit(""), 0i64, 0i64), kayak_rt::nil()))
+                    } else if sym_is_p(car(ys), str_lit("abs")) {
+                        map(lambda1(move |t: &'static Sexp| {
+                            lst(kayak_rt::heap_cons(sym(str_lit("define-type"), str_lit(""), 0i64), kayak_rt::heap_cons(t, kayak_rt::heap_cons(sym(str_lit("i64"), str_lit(""), 0i64), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
+                        }), {
+                            let tagcase_ = second(ys);
+                            match *tagcase_ {
+                                Sexp::Lst(ns, f, l, p) => {
+                                    ns
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    kayak_rt::heap_cons(second(ys), kayak_rt::nil())
+                                }
+                            }
+                        })
+                    } else {
+                        nil::<&'static Sexp>()
+                    }
+                }), cdr(items(car(spec)))))
+            }
+        }
+    }
+
+    /// A type definition's name, from its head: a name, or `(name binder ...)`.
+    pub fn type_head_name(head: &'static Sexp) -> Str {
+        let tagcase_ = head;
+        match *tagcase_ {
+            Sexp::Lst(xs, src_file, src_line, src_pos) => {
+                sym_name(car(xs))
+            }
+            _ => {
+                let other = tagcase_;
+                sym_name(other)
+            }
+        }
+    }
+
+    /// The names a module's items give values to: its type's values.
+    pub fn item_values(forms: Sexps) -> Strings {
+        concat(map(lambda1(move |f: &'static Sexp| {
+            if (head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) {
+                the::<Strings>(kayak_rt::heap_cons(sym_name(second(items(f))), kayak_rt::nil()))
+            } else if head_is_p(f, str_lit("define-rec")) {
+                map(lambda1(move |b: &'static Sexp| {
+                    sym_name(car(items(b)))
+                }), cdr(items(f)))
+            } else if head_is_p(f, str_lit("define-datatype")) {
+                map(lambda1(move |vt: &'static Sexp| {
+                    sym_name(car(items(vt)))
+                }), cdr(cdr(items(f))))
+            } else {
+                nil::<Str>()
+            }
+        }), forms))
+    }
+
+    /// The names a module's items give values not procedures to.
+    pub fn item_constants(forms: Sexps) -> Strings {
+        concat(map(lambda1(move |f: &'static Sexp| {
+            if (head_is_p(f, str_lit("define")) && not(lambda_form_p(last(items(f))))) {
+                the::<Strings>(kayak_rt::heap_cons(sym_name(second(items(f))), kayak_rt::nil()))
+            } else {
+                nil::<Str>()
+            }
+        }), forms))
+    }
+
+    pub fn item_types(forms: Sexps) -> Strings {
+        concat(map(lambda1(move |f: &'static Sexp| {
+            if ((head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype"))) && not((head_is_p(f, str_lit("define-type")) && {
+                let tagcase_ = second(items(f));
+                match *tagcase_ {
+                    Sexp::Lst(ys, fl, l, p) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }))) {
+                the::<Strings>(kayak_rt::heap_cons(type_head_name(second(items(f))), kayak_rt::nil()))
+            } else {
+                nil::<Str>()
+            }
+        }), forms))
+    }
+
+    /// The module whose items are being written, or ``.
+    pub fn module_here(c: &'static Ctx) -> Str {
+        after_in(ctx_locals(c))
+    }
+
+    /// The type the checker found for a definition written with none, as a
+    /// list of one.
+    pub fn ctx_typed(c: &'static Ctx, name: Str) -> Sexps {
+        let tagcase_ = c;
+        match *tagcase_ {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                map(lambda1(move |x: &'static Typed| {
+                    let tagcase_ = x;
+                    match *tagcase_ {
+                        Typed::Typed(n, t) => {
+                            t
+                        }
+                    }
+                }), filter_typed(if string_eq_p(after_in(ls), str_lit("")) {
+                    name
+                } else {
+                    string_append(after_in(ls), string_append(str_lit(" "), name))
+                }, xs))
+            }
+        }
+    }
+
+    /// `c`, where `names` are bound too.
+    pub fn with_locals(c: &'static Ctx, names: Strings) -> &'static Ctx {
+        let tagcase_ = c;
+        match *tagcase_ {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                ctx(ds, ts, ks, strings_onto(names, ls), xs, fs, ms, es, mods)
+            }
+        }
+    }
+
+    pub fn head_region_params(head: &'static Sexp) -> Strings {
+        let tagcase_ = head;
+        match *tagcase_ {
+            Sexp::Lst(xs, src_file, src_line, src_pos) => {
+                region_params_of(cdr(xs))
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<Str>()
+            }
+        }
+    }
+
+    pub fn head_place_params(head: &'static Sexp) -> Strings {
+        let tagcase_ = head;
+        match *tagcase_ {
+            Sexp::Lst(xs, src_file, src_line, src_pos) => {
+                place_params_of(cdr(xs))
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<Str>()
+            }
+        }
+    }
+
+    pub fn head_type_params(head: &'static Sexp) -> Strings {
+        let tagcase_ = head;
+        match *tagcase_ {
+            Sexp::Lst(xs, src_file, src_line, src_pos) => {
+                type_params_of(cdr(xs))
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<Str>()
+            }
+        }
+    }
+
+    /// `<T, U>`, or with `bounded`, `<T: Copy + 'static, U: Copy + 'static>`
+    /// as every KFX value is; nothing for no names.
+    pub fn put_generics_of(names: Strings, bounded: bool, acc: Chars) -> Chars {
+        if null_p(names) {
+            acc
+        } else {
+            put(str_lit(">"), put_sep(lambda2(move |n: Str, acc: Chars| {
+                let acc = put(camel(n), acc);
+                if bounded {
+                    put(str_lit(": Copy + 'static"), acc)
+                } else {
+                    acc
+                }
+            }), str_lit(", "), names, put(str_lit("<"), acc)))
+        }
+    }
+
+    pub fn collect(mut forms: Sexps, mut c: &'static Ctx) -> &'static Ctx {
+        loop {
+            if null_p(forms) {
+                return c;
+            } else {
+                (forms, c) = (cdr(forms), note(car(forms), c));
+                continue;
+            }
+        }
+    }
+
+    /// Module `m`'s type `t`, from outside it: a datatype's a reference.
+    pub fn type_path(c: &'static Ctx, m: Str, t: Str) -> Str {
+        string_append(if string_member_p(string_append(m, string_append(str_lit(".."), t)), ctx_datatypes(c)) {
+            str_lit("&'static ")
+        } else {
+            str_lit("")
+        }, string_append(if string_eq_p(m, str_lit("Self")) {
+            m
+        } else {
+            module_path(c, m)
+        }, string_append(str_lit("::"), camel(t))))
+    }
+
+    /// The places `(place p)` names in `e`: those an abbreviation needs a
+    /// type parameter for (an unused one Rust refuses).
+    pub fn places_used(e: &'static Sexp) -> Strings {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                if (sym_is_p(car(xs), str_lit("place")) && not(null_p(cdr(xs)))) {
+                    let tagcase_ = second(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f2, p2) => {
+                            the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            nil::<Str>()
+                        }
+                    }
+                } else {
+                    concat(map(lambda1(move |x: &'static Sexp| {
+                        places_used(x)
+                    }), xs))
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<Str>()
+            }
+        }
+    }
+
+    pub fn words_of_sep(xs: Strings, sep: Str) -> Str {
+        if null_p(xs) {
+            str_lit("")
+        } else if null_p(cdr(xs)) {
+            car(xs)
+        } else {
+            string_append(car(xs), string_append(sep, words_of_sep(cdr(xs), sep)))
+        }
+    }
+
+    /// Everything the checker found anywhere that begins `prefix`, the rest.
+    pub fn all_facts_prefixed(c: &'static Ctx, prefix: Str) -> Strings {
+        let tagcase_ = c;
+        match *tagcase_ {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                concat(map(lambda1(move |f: &'static Fact| {
+                    let tagcase_ = f;
+                    match *tagcase_ {
+                        Fact::Fact(ff, fp, fw) => {
+                            if has_prefix_p(fw, prefix) {
+                                the::<Strings>(kayak_rt::heap_cons(after_prefix(fw, prefix), kayak_rt::nil()))
+                            } else {
+                                nil::<Str>()
+                            }
+                        }
+                    }
+                }), fs))
+            }
+        }
+    }
+
+    pub fn uses_blobrefs_p(c: &'static Ctx) -> bool {
+        let tagcase_ = c;
+        match *tagcase_ {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                any_p(lambda1(move |f: &'static Fact| {
+                    let tagcase_ = f;
+                    match *tagcase_ {
+                        Fact::Fact(ff, fp, fw) => {
+                            has_prefix_p(fw, str_lit("blob-at "))
+                        }
+                    }
+                }), fs)
+            }
+        }
+    }
+
+    /// A family abbreviation's application, `(builder p r)`, as what it stands
+    /// for, its parameters replaced by the arguments: where the emitter must
+    /// see a procedure's type whole (a `letrec`'s, a definition's).
+    pub fn family_expanded(mut c: &'static Ctx, mut t: &'static Sexp) -> &'static Sexp {
+        loop {
+            let tagcase_ = t;
+            match *tagcase_ {
+                Sexp::Lst(xs, f, l, p) => {
+                    let found = if null_p(xs) {
+                        nil::<&'static Sexp>()
+                    } else {
+                        let tagcase_ = car(xs);
+                        match *tagcase_ {
+                            Sexp::Sym(n, f2, p2) => {
+                                module_body(c, string_append(str_lit("%abbreviation "), n))
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                nil::<&'static Sexp>()
+                            }
+                        }
+                    };
+                    if null_p(found) {
+                        return t;
+                    } else {
+                        let parts = items(car(found));
+                        let head = car(parts);
+                        let binders = {
+                            let tagcase_ = head;
+                            match *tagcase_ {
+                                Sexp::Lst(hs, f3, l3, p3) => {
+                                    cdr(hs)
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    nil::<&'static Sexp>()
+                                }
+                            }
+                        };
+                        let names = map(lambda1(move |b: &'static Sexp| {
+                            sym_name(car(items(b)))
+                        }), binders);
+                        let args = marked_effects(binders, cdr(xs));
+                        t = substituted(names, args, second(parts));
+                        continue;
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    return t;
                 }
             }
         }
     }
-}
 
-/// A list form; a call giving a `Void` the caller wraps, `match ... {}`,
-/// which is of any type, as FX-26's `void` is below every type. A call
-/// that may suspend: its future boxed, so that an `async fn` may call
-/// itself, and awaited (C45).
-pub fn put_call(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
-    let tagcase_ = car(xs);
-    match *tagcase_ {
-        Sexp::Sym(h, at_file, at_pos) => {
-            if not(string_eq_p(fact_with(c, e, str_lit("head-unbox ")), str_lit(""))) {
-                // A call of a union narrowed to its procedure (C75).
-                let acc = put(str_lit("(kayak_rt::value::unbox_other::<"), acc);
-                let acc = put_type(c, car(read_all(string_chars(fact_with(c, e, str_lit("head-unbox "))), str_lit(""), 1i64)), acc);
-                let acc = put(str_lit(">("), acc);
-                let acc = put_var(c, h, acc);
-                let acc = put(str_lit("))("), acc);
+    /// A type. A name that is no base type or datatype is a type abbreviation
+    /// or a type variable, either way a Rust type of the same name.
+    pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Chars {
+        loop {
+            let tagcase_ = t;
+            match *tagcase_ {
+                Sexp::Sym(s, at_file, at_pos) => {
+                    if string_eq_p(s, str_lit("i64")) {
+                        return put(str_lit("i64"), acc);
+                    } else if string_eq_p(s, str_lit("int")) {
+                        return put(str_lit("Int"), acc);
+                    } else if string_eq_p(s, str_lit("nat")) {
+                        return put(str_lit("Int"), acc);
+                    } else if string_eq_p(s, str_lit("f64")) {
+                        return put(str_lit("f64"), acc);
+                    } else if (fixed_width_p(s) || string_eq_p(s, str_lit("f32"))) {
+                        return put(s, acc);
+                    } else if string_eq_p(s, str_lit("symbol")) {
+                        return put(str_lit("Symbol"), acc);
+                    } else if (string_eq_p(s, str_lit("bool")) || string_eq_p(s, str_lit("false"))) {
+                        return put(str_lit("bool"), acc);
+                    } else if string_eq_p(s, str_lit("nil")) {
+                        return put(str_lit("List<_>"), acc);
+                    } else if string_eq_p(s, str_lit("datum")) {
+                        return put(str_lit("kayak_rt::value::Value"), acc);
+                    } else if string_eq_p(s, str_lit("vector")) {
+                        return put(str_lit("kayak_rt::value::Vector"), acc);
+                    } else if string_eq_p(s, str_lit("char")) {
+                        return put(str_lit("char"), acc);
+                    } else if string_eq_p(s, str_lit("unit")) {
+                        return put(str_lit("()"), acc);
+                    } else if string_eq_p(s, str_lit("void")) {
+                        return put(str_lit("Void"), acc);
+                    } else if string_eq_p(s, str_lit("string")) {
+                        return put(str_lit("Str"), acc);
+                    } else if (string_eq_p(s, str_lit("io-error")) && string_eq_p(opener(string_append(str_lit("%type "), s), ctx_locals(c)), str_lit("")) && null_p(desc_type(c, s, ctx_locals(c))) && not(string_member_p(s, ctx_datatypes(c)))) {
+                        t = car(read_all(string_chars(io_error_text()), str_lit(""), 1i64));
+                        continue;
+                    } else if not(null_p(dotted(s))) {
+                        return put(type_path(c, car(dotted(s)), car(cdr(dotted(s)))), acc);
+                    } else if string_member_p(s, ctx_datatypes(c)) {
+                        return put(camel(s), put(str_lit("&'static "), acc));
+                    } else if not(null_p(desc_type(c, s, ctx_locals(c)))) {
+                        t = car(desc_type(c, s, ctx_locals(c)));
+                        continue;
+                    } else if not(string_eq_p(opener(string_append(str_lit("%type "), s), ctx_locals(c)), str_lit(""))) {
+                        return put(type_path(c, opener(string_append(str_lit("%type "), s), ctx_locals(c)), s), acc);
+                    } else {
+                        return put(camel(s), acc);
+                    }
+                }
+                Sexp::Lst(xs, src_file, src_line, src_pos) => {
+                    if (sym_is_p(car(xs), str_lit("listof")) && not(string_eq_p(region_lifetime(c, third(xs)), str_lit("")))) {
+                        return put(str_lit(">"), put_type(c, second(xs), put(str_lit(", "), put(region_lifetime(c, third(xs)), put(str_lit("ListAt<"), acc)))));
+                    } else if (sym_is_p(car(xs), str_lit("listof")) && not(string_eq_p(element_lifetime(c, second(xs)), str_lit("")))) {
+                        // A list at the heap of what lives only as long as a `letrena`'s
+                        // region: at that region's lifetime, as Rust's pairs must be.
+                        return put(str_lit(">"), put_type(c, second(xs), put(str_lit(", "), put(element_lifetime(c, second(xs)), put(str_lit("ListAt<"), acc)))));
+                    } else if sym_is_p(car(xs), str_lit("listof")) {
+                        return put(str_lit(">"), put_type(c, second(xs), put(str_lit("List<"), acc)));
+                    } else if sym_is_p(car(xs), str_lit("flatarrayof")) {
+                        return put(str_lit(">"), put_type(c, second(xs), put(str_lit("FlatArray<"), acc)));
+                    } else if (sym_is_p(car(xs), str_lit("union")) || sym_is_p(car(xs), str_lit("%union"))) {
+                        // A union's value (C75): kayak-rt's uniform one.
+                        return put(str_lit("kayak_rt::value::Value"), acc);
+                    } else if ((sym_is_p(car(xs), str_lit("pairof")) || sym_is_p(car(xs), str_lit("%pairof"))) && list_type_p(c, third(xs))) {
+                        // A pair whose tail is a list: that list, not `nil` (C68).
+                        t = third(xs);
+                        continue;
+                    } else if (sym_is_p(car(xs), str_lit("pairof")) || sym_is_p(car(xs), str_lit("%pairof"))) {
+                        // A pair whose tail is no list: a union's pair, `Value`s (C77).
+                        return put(str_lit("kayak_rt::value::Value"), acc);
+                    } else if sym_is_p(car(xs), str_lit("bytevectorof")) {
+                        return put(str_lit("Bytes"), acc);
+                    } else if (sym_is_p(car(xs), str_lit("arrayof")) && i64_eq(size(xs), 3i64) && {
+                        let tagcase_ = third(xs);
+                        match *tagcase_ {
+                            Sexp::Num(k, f, p) => {
+                                false
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                true
+                            }
+                        }
+                    }) {
+                        return put(str_lit(">"), put_type(c, second(xs), put(str_lit("Array<"), acc)));
+                    } else if (sym_is_p(car(xs), str_lit("ref")) && not(string_eq_p(region_lifetime(c, third(xs)), str_lit("")))) {
+                        return put(str_lit(">"), put_type(c, second(xs), put(str_lit(", "), put(region_lifetime(c, third(xs)), put(str_lit("RefAt<"), acc)))));
+                    } else if (sym_is_p(car(xs), str_lit("ref")) && not(string_eq_p(element_lifetime(c, second(xs)), str_lit("")))) {
+                        return put(str_lit(">"), put_type(c, second(xs), put(str_lit(", "), put(element_lifetime(c, second(xs)), put(str_lit("RefAt<"), acc)))));
+                    } else if sym_is_p(car(xs), str_lit("ref")) {
+                        return put(str_lit(">"), put_type(c, second(xs), put(str_lit("Ref<"), acc)));
+                    } else if sym_is_p(car(xs), str_lit("subr")) {
+                        let acc = put(str_lit(" dyn Fn("), put(effect_lifetime(c, second(xs)), put(str_lit("&"), acc)));
+                        let acc = put_types(c, items(third(xs)), acc);
+                        let acc = put(str_lit(") -> "), acc);
+                        if suspending_effect_p(c, second(xs)) {
+                            return put(str_lit(">"), put_type(c, fourth(xs), put(str_lit("kayak_rt::suspend::Body<"), acc)));
+                        } else if fallible_effect_p(c, second(xs)) {
+                            return put(str_lit(", Unwind>"), put_type(c, fourth(xs), put(str_lit("Result<"), acc)));
+                        } else {
+                            return put_type(c, fourth(xs), acc);
+                        }
+                    } else if (sym_is_p(car(xs), str_lit("place")) && string_member_p(string_append(str_lit("%placeparam "), unquoted(sym_name(second(xs)))), ctx_locals(c))) {
+                        let p = unquoted(sym_name(second(xs)));
+                        return put(string_append(str_lit("&"), string_append(lifetime(p), string_append(str_lit(" Place_"), camel(p)))), acc);
+                    } else if sym_is_p(car(xs), str_lit("place")) {
+                        let r = unquoted(sym_name(second(xs)));
+                        let lives = letrena_lifetimes(ctx_locals(c));
+                        let life = lifetime(r);
+                        return put(string_append(str_lit("&"), string_append(life, string_append(str_lit(" Region_"), string_append(camel(r), string_append(str_lit("<"), string_append(words_of_sep(onto(kayak_rt::heap_cons(life, lifetimes_before(lives, life)), type_params_in(ctx_locals(c))), str_lit(", ")), str_lit(">"))))))), acc);
+                    } else if (sym_is_p(car(xs), str_lit("bloblet")) && not(null_p(typed_flat(c, t)))) {
+                        return put(str_lit(">"), put_flat(c, car(typed_flat(c, t)), put(str_lit(", "), put_fields_tuple(c, cdr(items(second(xs))), put(str_lit("TBloblet<"), put(str_lit(" "), put(owner_lifetime(c, third(xs)), put(str_lit("&"), acc))))))));
+                    } else if sym_is_p(car(xs), str_lit("bloblet")) {
+                        return put(str_lit(">"), put_fields_tuple(c, cdr(items(second(xs))), put(str_lit("Bloblet<"), put(str_lit(" "), put(owner_lifetime(c, third(xs)), put(str_lit("&"), acc))))));
+                    } else if (sym_is_p(car(xs), str_lit("blobref")) && not(null_p(typed_flat(c, second(xs))))) {
+                        return put_flat(c, expand_aliases(c, third(xs)), put(str_lit(" "), put(owner_lifetime(c, third(items(expand_aliases(c, second(xs))))), put(str_lit("&"), acc))));
+                    } else if sym_is_p(car(xs), str_lit("blobref")) {
+                        return put(str_lit(">"), put_type(c, second(xs), put(str_lit("BlobRef<"), acc)));
+                    } else if sym_is_p(car(xs), str_lit("prompt-tag")) {
+                        return put(str_lit(">"), put_type(c, third(xs), put(str_lit(", "), put_type(c, second(xs), put(str_lit("Tag<"), acc)))));
+                    } else if sym_is_p(car(xs), str_lit("select")) {
+                        return put(type_path(c, sym_name(second(xs)), sym_name(third(xs))), acc);
+                    } else if (sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("sumof"))) {
+                        let product = sym_is_p(car(xs), str_lit("productof"));
+                        let fs = map(&items, cdr(xs));
+                        let acc = put(shape_name(product, map(lambda1(move |f: Sexps| {
+                            label_of(car(f))
+                        }), fs)), if product {
+                            acc
+                        } else {
+                            put(str_lit("&'static "), acc)
+                        });
+                        if null_p(fs) {
+                            return acc;
+                        } else {
+                            return put(str_lit(">"), put_types(c, map(&second, fs), put(str_lit("<"), acc)));
+                        }
+                    } else if sym_is_p(car(xs), str_lit("poly")) {
+                        return error(str_lit("kfx: a poly type is only a definition's, at its top"));
+                    } else if head_is_p(car(xs), str_lit("select")) {
+                        // A module's family applied by `select` (C89): `m..t` applied.
+                        let sel = items(car(xs));
+                        t = lst(kayak_rt::heap_cons(sym(string_append(sym_name(second(sel)), string_append(str_lit(".."), sym_name(third(sel)))), str_lit(""), 0i64), cdr(xs)), src_file, src_line, src_pos);
+                        continue;
+                    } else if {
+                        let tagcase_ = car(xs);
+                        match *tagcase_ {
+                            Sexp::Sym(n, at_file, at_pos) => {
+                                not(null_p(find_family_of(c, n)))
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    } {
+                        // A family applied; an abbreviation over an effect (C46) as what it
+                        // stands for, here, since what Rust it is depends on the effect.
+                        let tagcase_ = car(find_family_of(c, sym_name(car(xs))));
+                        match *tagcase_ {
+                            Family::Family(n, datatype, kinds) => {
+                                if (not(datatype) && (string_member_p(str_lit("effect"), kinds) || not(null_p(module_body(c, string_append(str_lit("%expand "), n)))))) {
+                                    t = family_expanded(c, t);
+                                    continue;
+                                } else {
+                                    let acc = if datatype {
+                                        put(str_lit("&'static "), acc)
+                                    } else {
+                                        acc
+                                    };
+                                    let acc = put(camel(n), acc);
+                                    let args = type_arguments(cdr(xs), kinds);
+                                    let lives = if null_p(module_body(c, string_append(str_lit("%abbreviation "), n))) {
+                                        nil::<Str>()
+                                    } else {
+                                        region_arguments(c, cdr(xs), kinds)
+                                    };
+                                    let places = if null_p(module_body(c, string_append(str_lit("%abbreviation "), n))) {
+                                        nil::<Str>()
+                                    } else {
+                                        used_place_arguments(c, n, cdr(xs), kinds)
+                                    };
+                                    let parts = onto(lives, onto(map(lambda1(move |t: &'static Sexp| {
+                                        rev_to_string(put_type(c, t, nil::<char>()))
+                                    }), args), places));
+                                    if null_p(parts) {
+                                        return acc;
+                                    } else {
+                                        return put(string_append(str_lit("<"), string_append(words_of_sep(parts, str_lit(", ")), str_lit(">"))), acc);
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        return error(str_lit("kfx: a type KFX-0 does not have"));
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    return error(str_lit("kfx: a type KFX-0 does not have"));
+                }
+            }
+        }
+    }
+
+    /// A flat in a typed suffix (C32): a scalar's cell, a product of them, an
+    /// array of them, `FlatArr<T, n>`.
+    pub fn put_flat(c: &'static Ctx, f: &'static Sexp, acc: Chars) -> Chars {
+        let tagcase_ = f;
+        match *tagcase_ {
+            Sexp::Sym(n, fl, p) => {
+                put(str_lit(">"), put_type(c, f, put(str_lit("std::cell::Cell<"), acc)))
+            }
+            Sexp::Lst(xs, fl, ln, p) => {
+                if sym_is_p(car(xs), str_lit("arrayof")) {
+                    put(str_lit(">"), put(number_text(third(xs)), put(str_lit(", "), put_flat(c, second(xs), put(str_lit("FlatArr<"), acc)))))
+                } else {
+                    let fs = map(&items, cdr(xs));
+                    put(str_lit(">"), put_sep(lambda2(move |x: &'static Sexp, acc: List<char>| {
+                        put_flat(c, x, acc)
+                    }), str_lit(", "), map(&second, fs), put(str_lit("<"), put(shape_name(true, map(lambda1(move |g: Sexps| {
+                        label_of(car(g))
+                    }), fs)), acc))))
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                acc
+            }
+        }
+    }
+
+    /// A type, its abbreviations written out, as the checker's facts write it.
+    pub fn expand_aliases(mut c: &'static Ctx, mut e: &'static Sexp) -> &'static Sexp {
+        loop {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Sexp::Sym(n, fl, p) => {
+                    let found = module_body(c, string_append(str_lit("%alias "), n));
+                    if null_p(found) {
+                        return e;
+                    } else {
+                        e = car(found);
+                        continue;
+                    }
+                }
+                Sexp::Lst(xs, fl, ln, p) => {
+                    if null_p(xs) {
+                        return e;
+                    } else if (sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("sumof"))) {
+                        return lst(kayak_rt::heap_cons(car(xs), map(lambda1(move |g: &'static Sexp| {
+                            let tagcase_ = g;
+                            match *tagcase_ {
+                                Sexp::Lst(ys, f2, l2, p2) => {
+                                    lst(kayak_rt::heap_cons(car(ys), kayak_rt::heap_cons(expand_aliases(c, second(ys)), kayak_rt::nil())), f2, l2, p2)
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    g
+                                }
+                            }
+                        }), cdr(xs))), fl, ln, p);
+                    } else {
+                        return lst(kayak_rt::heap_cons(car(xs), map(lambda1(move |g: &'static Sexp| {
+                            expand_aliases(c, g)
+                        }), cdr(xs))), fl, ln, p);
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    return e;
+                }
+            }
+        }
+    }
+
+    /// A bloblet type's key: its fields, written out, whatever its region.
+    pub fn owner_key(c: &'static Ctx, b: &'static Sexp) -> Str {
+        let b = expand_aliases(c, b);
+        if head_is_p(b, str_lit("bloblet")) {
+            rev_to_string(put_fields_tuple(c, cdr(items(second(items(b)))), nil::<char>()))
+        } else {
+            str_lit("")
+        }
+    }
+
+    /// The flat a bloblet type's suffix is typed as (C32), as a list of one;
+    /// or none. Typed if the program makes a blobref into one only by
+    /// `blobref-at` at offset 0, always of one flat, and never reads its
+    /// bytes otherwise (`blobref+`, `-owner`, `-offset`, `bloblet-byte`...);
+    /// and makes every one of literal size, room for that flat.
+    pub fn typed_flat(c: &'static Ctx, b: &'static Sexp) -> Sexps {
+        let key = owner_key(c, b);
+        let fs = {
+            let tagcase_ = c;
+            match *tagcase_ {
+                Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                    fs
+                }
+            }
+        };
+        let ats = concat(map(lambda1(move |f: &'static Fact| {
+            let tagcase_ = f;
+            match *tagcase_ {
+                Fact::Fact(file, pos, what) => {
+                    if has_prefix_p(what, str_lit("blob-at ")) {
+                        let ts = read_all(string_chars(after_prefix(what, str_lit("blob-at "))), str_lit(""), 1i64);
+                        if string_eq_p(owner_key(c, car(ts)), key) {
+                            the::<List<&'static Fact>>(kayak_rt::heap_cons(f, kayak_rt::nil()))
+                        } else {
+                            nil::<&'static Fact>()
+                        }
+                    } else {
+                        nil::<&'static Fact>()
+                    }
+                }
+            }
+        }), fs));
+        if (string_eq_p(key, str_lit("")) || null_p(ats)) {
+            nil::<&'static Sexp>()
+        } else {
+            let flat_of = lambda1(move |f: &'static Fact| {
+                let tagcase_ = f;
+                match *tagcase_ {
+                    Fact::Fact(file, pos, what) => {
+                        second(read_all(string_chars(after_prefix(what, str_lit("blob-at "))), str_lit(""), 1i64))
+                    }
+                }
+            });
+            let first = expand_aliases(c, flat_of(car(ats)));
+            let text = if has_sum_p(first) {
+                str_lit("")
+            } else {
+                rev_to_string(put_flat(c, first, nil::<char>()))
+            };
+            let size = {
+                let tagcase_ = car(ats);
+                match *tagcase_ {
+                    Fact::Fact(file, pos, what) => {
+                        fact_at_place(c, file, pos, str_lit("blob-size "))
+                    }
+                }
+            };
+            let same = not(any_p(lambda1(move |f: &'static Fact| {
+                let tagcase_ = f;
+                match *tagcase_ {
+                    Fact::Fact(file, pos, what) => {
+                        (not(ctx_fact_p(c, file, pos, str_lit("blob-zero"))) || has_sum_p(expand_aliases(c, flat_of(f))) || not(string_eq_p(rev_to_string(put_flat(c, expand_aliases(c, flat_of(f)), nil::<char>())), text)))
+                    }
+                }
+            }), ats));
+            let bytewise = any_p(lambda1(move |f: &'static Fact| {
+                let tagcase_ = f;
+                match *tagcase_ {
+                    Fact::Fact(file, pos, what) => {
+                        (has_prefix_p(what, str_lit("blob-raw ")) && string_eq_p(owner_key(c, car(read_all(string_chars(after_prefix(what, str_lit("blob-raw "))), str_lit(""), 1i64))), key))
+                    }
+                }
+            }), fs);
+            let short = any_p(lambda1(move |f: &'static Fact| {
+                let tagcase_ = f;
+                match *tagcase_ {
+                    Fact::Fact(file, pos, what) => {
+                        (has_prefix_p(what, str_lit("blob-make ")) && string_eq_p(owner_key(c, car(read_all(string_chars(after_prefix(what, str_lit("blob-make "))), str_lit(""), 1i64))), key) && {
+                            let bytes = fact_at_place(c, file, pos, str_lit("blob-bytes "));
+                            (string_eq_p(bytes, str_lit("")) || i64_lt(digits_number(bytes), digits_number(size)))
+                        })
+                    }
+                }
+            }), fs);
+            if (same && not(bytewise) && not(short) && not(has_sum_p(first))) {
+                the::<Sexps>(kayak_rt::heap_cons(first, kayak_rt::nil()))
+            } else {
+                nil::<&'static Sexp>()
+            }
+        }
+    }
+
+    /// Whether a flat has a flat sum in it: a typed suffix holds none, since
+    /// a sum's variants share their bytes, which a stale blobref to one sees
+    /// (C33).
+    pub fn has_sum_p(f: &'static Sexp) -> bool {
+        let tagcase_ = f;
+        match *tagcase_ {
+            Sexp::Lst(xs, fl, ln, p) => {
+                (sym_is_p(car(xs), str_lit("sumof")) || any_p(lambda1(move |x: &'static Sexp| {
+                    has_sum_p(x)
+                }), cdr(xs)))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }
+
+    /// A procedure's lifetime: a `letrena` region's its latent effect names
+    /// (calling it reads that region, so it may hold what is there), or
+    /// the innermost one's (C38, C39).
+    pub fn effect_lifetime(c: &'static Ctx, eff: &'static Sexp) -> Str {
+        let named = concat(map(lambda1(move |x: &'static Sexp| {
+            let l = region_lifetime(c, x);
+            if string_eq_p(l, str_lit("")) {
+                nil::<Str>()
+            } else {
+                the::<Strings>(kayak_rt::heap_cons(l, kayak_rt::nil()))
+            }
+        }), atoms_in(eff)));
+        if null_p(named) {
+            innermost_lifetime(ctx_locals(c))
+        } else {
+            car(named)
+        }
+    }
+
+    pub fn atoms_in(e: &'static Sexp) -> Sexps {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                concat(map(lambda1(move |x: &'static Sexp| {
+                    atoms_in(x)
+                }), xs))
+            }
+            _ => {
+                let other = tagcase_;
+                the::<Sexps>(kayak_rt::heap_cons(e, kayak_rt::nil()))
+            }
+        }
+    }
+
+    /// The innermost `letrena` lifetime `t`'s Rust type mentions, or ``.
+    pub fn element_lifetime(c: &'static Ctx, t: &'static Sexp) -> Str {
+        let text = rev_to_string(put_type(c, t, nil::<char>()));
+        first_lifetime_in(text, letrena_lifetimes_inner(ctx_locals(c)))
+    }
+
+    /// A bloblet's fields, a tuple of cells: `(Cell<T>, ...,)`.
+    pub fn put_fields_tuple(c: &'static Ctx, ts: Sexps, acc: Chars) -> Chars {
+        put(str_lit(")"), put_sep(lambda2(move |t: &'static Sexp, acc: List<char>| {
+            put(str_lit(">,"), put_type(c, t, put(str_lit("std::cell::Cell<"), acc)))
+        }), str_lit(" "), ts, put(str_lit("("), acc)))
+    }
+
+    /// An abbreviation's arguments for its regions, as lifetimes (C39): a
+    /// `letrena`'s, its lifetime; the heap's, `'static`, or in a `letrena`
+    /// the innermost one's, since a `'static` list may hold nothing that
+    /// lives less, and a heap list is one at any lifetime.
+    pub fn region_arguments(mut c: &'static Ctx, mut args: Sexps, mut kinds: Strings) -> Strings {
+        loop {
+            if (null_p(args) || null_p(kinds)) {
+                return nil::<Str>();
+            } else if (string_eq_p(car(kinds), str_lit("region")) || string_eq_p(car(kinds), str_lit("place"))) {
+                return kayak_rt::heap_cons({
+                    let l = region_lifetime(c, car(args));
+                    if string_eq_p(l, str_lit("")) {
+                        innermost_lifetime(ctx_locals(c))
+                    } else {
+                        l
+                    }
+                }, region_arguments(c, cdr(args), cdr(kinds)));
+            } else {
+                (args, kinds) = (cdr(args), cdr(kinds));
+                continue;
+            }
+        }
+    }
+
+    /// An abbreviation's arguments for its places, as the places' Rust types
+    /// (C40): a place parameter's `Place_P`, a `letrena`'s region type.
+    pub fn place_arguments(mut c: &'static Ctx, mut args: Sexps, mut kinds: Strings) -> Strings {
+        loop {
+            if (null_p(args) || null_p(kinds)) {
+                return nil::<Str>();
+            } else if string_eq_p(car(kinds), str_lit("place")) {
+                return kayak_rt::heap_cons({
+                    let full = rev_to_string(put_type(c, lst(kayak_rt::heap_cons(sym(str_lit("place"), str_lit(""), 0i64), kayak_rt::heap_cons(car(args), kayak_rt::nil())), str_lit(""), 0i64, 0i64), nil::<char>()));
+                    after_first_space(full)
+                }, place_arguments(c, cdr(args), cdr(kinds)));
+            } else {
+                (args, kinds) = (cdr(args), cdr(kinds));
+                continue;
+            }
+        }
+    }
+
+    /// Of an abbreviation's place arguments, those for places its body names.
+    pub fn used_place_arguments(c: &'static Ctx, n: Str, args: Sexps, kinds: Strings) -> Strings {
+        let found = module_body(c, string_append(str_lit("%abbreviation "), n));
+        let parts = items(car(found));
+        let names = {
+            let tagcase_ = car(parts);
+            match *tagcase_ {
+                Sexp::Lst(hs, f, l, p) => {
+                    map(lambda1(move |b: &'static Sexp| {
+                        sym_name(car(items(b)))
+                    }), cdr(hs))
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<Str>()
+                }
+            }
+        };
+        let used = places_used(second(parts));
+        let go__knot = knot::<&'static dyn Fn(Strings, Sexps, Strings) -> Strings>();
+        let go = lambda3(move |mut ns: Strings, mut xs: Sexps, mut ks: Strings| {
+            loop {
+                if (null_p(ns) || null_p(xs) || null_p(ks)) {
+                    return nil::<Str>();
+                } else if (string_eq_p(car(ks), str_lit("place")) && string_member_p(car(ns), used)) {
+                    return kayak_rt::heap_cons(after_first_space(rev_to_string(put_type(c, lst(kayak_rt::heap_cons(sym(str_lit("place"), str_lit(""), 0i64), kayak_rt::heap_cons(car(xs), kayak_rt::nil())), str_lit(""), 0i64, 0i64), nil::<char>()))), (go__knot.get())(cdr(ns), cdr(xs), cdr(ks)));
+                } else {
+                    (ns, xs, ks) = (cdr(ns), cdr(xs), cdr(ks));
+                    continue;
+                }
+            }
+        });
+        go__knot.set(go);
+        go(names, args, kinds)
+    }
+
+    /// A family's arguments for its parameters of kind `type`: the others,
+    /// regions, are erased.
+    pub fn type_arguments(mut args: Sexps, mut kinds: Strings) -> Sexps {
+        loop {
+            if (null_p(args) || null_p(kinds)) {
+                return nil::<&'static Sexp>();
+            } else if string_eq_p(car(kinds), str_lit("type")) {
+                return kayak_rt::heap_cons(car(args), type_arguments(cdr(args), cdr(kinds)));
+            } else {
+                (args, kinds) = (cdr(args), cdr(kinds));
+                continue;
+            }
+        }
+    }
+
+    /// Types, separated by commas.
+    pub fn put_types(c: &'static Ctx, types: Sexps, acc: Chars) -> Chars {
+        put_sep(lambda2(move |t: &'static Sexp, acc: List<char>| {
+            put_type(c, t, acc)
+        }), str_lit(", "), types, acc)
+    }
+
+    /// A new line, indented `n` levels.
+    pub fn put_nl(n: i64, acc: Chars) -> Chars {
+        put_spaces(n, put(str_lit("\n"), acc))
+    }
+
+    /// A string literal where a body's value is not taken is a comment: KFX's
+    /// comments are strings, since `;` comments do not survive reading. Each of
+    /// its lines is written after `prefix` (`//` or `///`), leading spaces
+    /// dropped; `fresh` says no prefix has been written for this line yet.
+    pub fn put_comment(mut cs: Chars, mut prefix: Str, mut n: i64, mut fresh: bool, mut acc: Chars) -> Chars {
+        loop {
+            if null_p(cs) {
+                return acc;
+            } else if char_eq_p(car(cs), '\n') {
+                (cs, fresh, acc) = (cdr(cs), true, put_nl(n, if fresh {
+                    put(prefix, acc)
+                } else {
+                    acc
+                }));
+                continue;
+            } else if (fresh && char_eq_p(car(cs), ' ')) {
+                (cs, fresh) = (cdr(cs), true);
+                continue;
+            } else if fresh {
+                (cs, fresh, acc) = (cdr(cs), false, kayak_rt::heap_cons(car(cs), put(str_lit(" "), put(prefix, acc))));
+                continue;
+            } else {
+                (cs, fresh, acc) = (cdr(cs), false, kayak_rt::heap_cons(car(cs), acc));
+                continue;
+            }
+        }
+    }
+
+    pub fn comment_p(e: &'static Sexp) -> bool {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Str(s, at_file, at_pos) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }
+
+    pub fn comment_text(e: &'static Sexp) -> Str {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Str(s, at_file, at_pos) => {
+                s
+            }
+            _ => {
+                let other = tagcase_;
+                str_lit("")
+            }
+        }
+    }
+
+    /// `t`, under bindings of `names`: no longer a loop if one hides a
+    /// parameter, or the procedure's own name (a call of it is the local's).
+    pub fn hide(t: &'static Tail, names: Strings) -> &'static Tail {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Tail::Returns(f, ps, live, ok) => {
+                if (live && any_p(lambda1(move |x: Str| {
+                    (string_eq_p(x, f) || string_member_p(x, ps))
+                }), names)) {
+                    returns(f, ps, false, ok)
+                } else {
+                    t
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                t
+            }
+        }
+    }
+
+    pub fn put_arg_names(mut i: i64, mut n: i64, mut acc: Chars) -> Chars {
+        loop {
+            if i64_lt(i, n) {
+                (i, acc) = (i64_plus(i, 1i64), put(i64_to_string(i), put(if i64_eq(i, 0i64) {
+                    str_lit("a__")
+                } else {
+                    str_lit(", a__")
+                }, acc)));
+                continue;
+            } else {
+                return acc;
+            }
+        }
+    }
+
+    /// Whether `e`, standing at `t`, makes a self tail call: whether its
+    /// procedure loops.
+    pub fn tail_calls_p(mut t: &'static Tail, mut e: &'static Sexp) -> bool {
+        loop {
+            if self_call_p(t, e) {
+                return true;
+            } else if head_is_p(e, str_lit("if")) {
+                let xs = cdr(items(e));
+                return (tail_calls_p(t, second(xs)) || tail_calls_p(t, third(xs)));
+            } else if head_is_p(e, str_lit("cond")) {
+                return arms_tail_calls_p(t, cdr(items(e)));
+            } else if head_is_p(e, str_lit("case")) {
+                return arms_tail_calls_p(t, cdr(cdr(items(e))));
+            } else if head_is_p(e, str_lit("tagcase")) {
+                return tag_arms_tail_calls_p(t, cdr(cdr(items(e))));
+            } else if (head_is_p(e, str_lit("let")) || head_is_p(e, str_lit("let*")) || head_is_p(e, str_lit("letrec"))) {
+                let xs = cdr(items(e));
+                (t, e) = (hide(t, map(&binding_name, items(car(xs)))), last(cdr(xs)));
+                continue;
+            } else if head_is_p(e, str_lit("begin")) {
+                e = last(cdr(items(e)));
+                continue;
+            } else if head_is_p(e, str_lit("letregion")) {
+                e = last(cdr(cdr(items(e))));
+                continue;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    /// A `cond`'s clauses, or a `case`'s arms: each a test or data, then a body.
+    pub fn arms_tail_calls_p(mut t: &'static Tail, mut arms: Sexps) -> bool {
+        loop {
+            if null_p(arms) {
+                return false;
+            } else if tail_calls_p(t, last(cdr(items(car(arms))))) {
+                return true;
+            } else {
+                arms = cdr(arms);
+                continue;
+            }
+        }
+    }
+
+    pub fn tag_arms_tail_calls_p(t: &'static Tail, arms: Sexps) -> bool {
+        if null_p(arms) {
+            false
+        } else {
+            let arm = items(car(arms));
+            let bound = if (sym_is_p(car(arm), str_lit("else")) || {
+                let tagcase_ = second(arm);
+                match *tagcase_ {
+                    Sexp::Sym(x, at_file, at_pos) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                the::<Strings>(kayak_rt::heap_cons(sym_name(second(arm)), kayak_rt::nil()))
+            } else {
+                map(&sym_name, items(second(arm)))
+            };
+            (tail_calls_p(hide(t, bound), last(cdr(cdr(arm)))) || tag_arms_tail_calls_p(t, cdr(arms)))
+        }
+    }
+
+    /// `xs`, each once, in the order of its first.
+    pub fn distinct_strings(xs: Strings) -> Strings {
+        if null_p(xs) {
+            nil::<Str>()
+        } else {
+            kayak_rt::heap_cons(car(xs), distinct_strings(concat(map(lambda1(move |x: Str| {
+                if string_eq_p(x, car(xs)) {
+                    nil::<Str>()
+                } else {
+                    the::<Strings>(kayak_rt::heap_cons(x, kayak_rt::nil()))
+                }
+            }), cdr(xs)))))
+        }
+    }
+
+    /// The facts at `e` found once, here: the clauses below ask of them
+    /// alone, not of all the program's (C84: seven searches of every fact
+    /// for each expression had made kfx three times slower).
+    pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc: Chars) -> Chars {
+        let fs = facts_at(c, e);
+        if self_call_p(t, e) {
+            put_continue(c, cdr(items(e)), n, t, acc)
+        } else if (returns_p(t) && abort_p(c, e)) {
+            put(str_lit(";"), put_exp(c, e, n, value(), acc))
+        } else if (returns_p(t) && not(control_p(e))) {
+            if returns_ok_p(t) {
+                put(str_lit(");"), put_exp(c, e, n, value(), put(str_lit("return Ok("), acc)))
+            } else {
+                put(str_lit(";"), put_exp(c, e, n, value(), put(str_lit("return "), acc)))
+            }
+        } else if (ok_value_p(t) && not(control_p(e)) && not(abort_p(c, e))) {
+            put(str_lit(")"), put_exp(c, e, n, value(), put(str_lit("Ok("), acc)))
+        } else if (not(string_eq_p(fact_in(fs, e, str_lit("lift-suspend")), str_lit(""))) && not(string_member_p(string_append(str_lit("%lifted "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
+            // A procedure that cannot suspend where one that may is wanted: a
+            // closure that returns its value, `Ok` unless it is a `Result`
+            // already, as a future (C45).
+            let fallible = not(string_eq_p(fact_in(fs, e, str_lit("lift-suspend-fallible ")), str_lit("")));
+            let lift = digits_number(if fallible {
+                fact_in(fs, e, str_lit("lift-suspend-fallible "))
+            } else {
+                fact_in(fs, e, str_lit("lift-suspend "))
+            });
+            let acc = put(i64_to_string(lift), put(str_lit("lambda"), acc));
+            let acc = put(str_lit("(move |"), acc);
+            let acc = put_arg_names(0i64, lift, acc);
+            let acc = put(if fallible {
+                str_lit("| kayak_rt::suspend::body(async move { (")
+            } else {
+                str_lit("| kayak_rt::suspend::body(async move { Ok((")
+            }, acc);
+            let acc = put_exp(with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%lifted "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), kayak_rt::nil())), e, n, value(), acc);
+            let acc = put(str_lit(")("), acc);
+            let acc = put_arg_names(0i64, lift, acc);
+            put(if fallible {
+                str_lit(") }))")
+            } else {
+                str_lit(")) }))")
+            }, acc)
+        } else if (not(string_eq_p(fact_in(fs, e, str_lit("lift ")), str_lit(""))) && not(string_member_p(string_append(str_lit("%lifted "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
+            // A procedure that cannot abort where one that may is wanted: a
+            // closure that returns its value `Ok`.
+            let lift = digits_number(fact_in(fs, e, str_lit("lift ")));
+            let acc = put(i64_to_string(lift), put(str_lit("lambda"), acc));
+            let acc = put(str_lit("(move |"), acc);
+            let acc = put_arg_names(0i64, lift, acc);
+            let acc = put(str_lit("| Ok(("), acc);
+            let acc = put_exp(with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%lifted "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), kayak_rt::nil())), e, n, value(), acc);
+            let acc = put(str_lit(")("), acc);
+            let acc = put_arg_names(0i64, lift, acc);
+            put(str_lit(")))"), acc)
+        } else if not(string_eq_p(fact_in(fs, e, str_lit("box none ")), str_lit(""))) {
+            error(string_append(str_lit("kfx: "), string_append(datum_file(e), string_append(str_lit(": a union's member KFX cannot give for it yet (C75): "), fact_in(fs, e, str_lit("box none "))))))
+        } else if not(string_eq_p(fact_in(fs, e, str_lit("unbox-none ")), str_lit(""))) {
+            error(string_append(str_lit("kfx: "), string_append(datum_file(e), string_append(str_lit(": a union's member KFX cannot take out of it yet (C75): "), fact_in(fs, e, str_lit("unbox-none "))))))
+        } else if (not(string_eq_p(fact_in(fs, e, str_lit("wrap ")), str_lit(""))) && not(string_member_p(string_append(str_lit("%wrapped "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
+            // A procedure given where one of a union's parameters or result is
+            // wanted (C82): a closure boxing each argument and the result.
+            let hows = map(&sym_name, read_all(string_chars(fact_in(fs, e, str_lit("wrap "))), str_lit(""), 1i64));
+            let arity = i64_minus(size(hows), 1i64);
+            let acc = put(string_append(str_lit("lambda"), string_append(i64_to_string(arity), str_lit("(move |"))), acc);
+            let acc = put_arg_names(0i64, arity, acc);
+            let acc = put(str_lit("| "), acc);
+            let acc = put_box_open(last(hows), acc);
+            let acc = put(str_lit("("), acc);
+            let acc = put_exp(with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%wrapped "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), kayak_rt::nil())), e, n, value(), acc);
+            let acc = put(str_lit(")("), acc);
+            let acc = put_boxed_args(hows, 0i64, arity, acc);
+            let acc = put(str_lit(")"), acc);
+            put(str_lit(")"), put_box_close(last(hows), acc))
+        } else if string_eq_p(fact_in(fs, e, str_lit("box ")), str_lit("nil")) {
+            // `nil` given for a union's `nil` member (C84): the empty value,
+            // which no expression of type `nil` computes otherwise.
+            put(str_lit("kayak_rt::value::Value::Nil"), acc)
+        } else if (not(string_eq_p(fact_in(fs, e, str_lit("box ")), str_lit(""))) && not(string_member_p(string_append(str_lit("%boxed "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
+            // A member given for its union (C75): boxed, a scalar as it is, a
+            // list as `nil` or its pair, another shape behind `Any`.
+            let how = fact_in(fs, e, str_lit("box "));
+            let acc = put(if string_eq_p(how, str_lit("scalar")) {
+                str_lit("kayak_rt::value::ToValue::to_value(")
+            } else if string_eq_p(how, str_lit("elements")) {
+                str_lit("kayak_rt::value::boxed_list(")
+            } else if string_eq_p(how, str_lit("list")) {
+                str_lit("kayak_rt::value::list(")
+            } else {
+                str_lit("kayak_rt::value::other(")
+            }, acc);
+            let acc = put_exp(with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%boxed "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), kayak_rt::nil())), e, n, value(), acc);
+            put(if has_prefix_p(how, str_lit("other ")) {
+                string_append(str_lit(", kayak_rt::value::Shape::"), string_append(after_prefix(how, str_lit("other ")), str_lit(")")))
+            } else {
+                str_lit(")")
+            }, acc)
+        } else if (not(string_eq_p(unboxing_in(fs, e), str_lit(""))) && not(string_member_p(string_append(str_lit("%unboxed "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
+            // A union narrowed to a member (C75): unboxed, at the member's type.
+            let acc = put(unboxing_in(fs, e), put(str_lit("kayak_rt::value::"), acc));
+            let acc = put(str_lit(">("), put_unboxed_type(c, unboxing_in(fs, e), unboxed_type_in(fs, e), put(str_lit("::<"), acc)));
+            let acc = put_exp(with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%unboxed "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), kayak_rt::nil())), e, n, value(), acc);
+            put(str_lit(")"), acc)
+        } else {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Sexp::Num(k, num_file, num_pos) => {
+                    if fact_in_p(fs, e, str_lit("int")) {
+                        put(str_lit(")"), put(i64_to_string(k), put(str_lit("int_lit("), acc)))
+                    } else if fact_in_p(fs, e, str_lit("fixed i32")) {
+                        put(str_lit("i32"), put(i64_to_string(k), acc))
+                    } else if fact_in_p(fs, e, str_lit("fixed u32")) {
+                        put(str_lit("u32"), put(i64_to_string(k), acc))
+                    } else if fact_in_p(fs, e, str_lit("fixed u64")) {
+                        put(str_lit("u64"), put(i64_to_string(k), acc))
+                    } else if fact_in_p(fs, e, str_lit("fixed u8")) {
+                        put(str_lit("u8"), put(i64_to_string(k), acc))
+                    } else if fact_in_p(fs, e, str_lit("fixed i8")) {
+                        put(str_lit("i8"), put(i64_to_string(k), acc))
+                    } else {
+                        put(str_lit("i64"), put(i64_to_string(k), acc))
+                    }
+                }
+                Sexp::Big(text, f, p) => {
+                    if fact_in_p(fs, e, str_lit("fixed u64")) {
+                        put(str_lit("u64"), put(text, acc))
+                    } else {
+                        put(str_lit("\")"), put(text, put(str_lit("int_text(\""), acc)))
+                    }
+                }
+                Sexp::Chr(ch, at_file, at_pos) => {
+                    put(str_lit("'"), put_escaped(kayak_rt::heap_cons(ch, kayak_rt::nil()), '\'', put(str_lit("'"), acc)))
+                }
+                Sexp::Real(x, at_file, at_pos) => {
+                    // As Rust writes a double: a digit after the point (`1.` is `1.0`).
+                    put(str_lit("f64"), if char_eq_p(last(string_chars(x)), '.') {
+                        put(str_lit("0"), put(x, acc))
+                    } else {
+                        put(x, acc)
+                    })
+                }
+                Sexp::Str(s, at_file, at_pos) => {
+                    put(str_lit("\")"), put_escaped(string_chars(s), '"', put(str_lit("str_lit(\""), acc)))
+                }
+                Sexp::Sym(s, at_file, at_pos) => {
+                    if (string_eq_p(s, str_lit("nil")) && string_eq_p(local_kind(s, ctx_locals(c)), str_lit(""))) {
+                        put(str_lit("()"), put_turbofish(c, e, put(str_lit("nil"), acc)))
+                    } else if not(string_eq_p(fact_in(fs, e, str_lit("async-global ")), str_lit(""))) {
+                        let arity = digits_number(fact_in(fs, e, str_lit("async-global ")));
+                        let acc = put(string_append(str_lit("lambda"), string_append(i64_to_string(arity), str_lit("(move |"))), acc);
+                        let acc = put_arg_names(0i64, arity, acc);
+                        let acc = put(str_lit("| kayak_rt::suspend::body("), acc);
+                        let acc = put(mangle(s), acc);
+                        let acc = put(str_lit("("), acc);
+                        let acc = put_arg_names(0i64, arity, acc);
+                        put(str_lit(")))"), acc)
+                    } else {
+                        put_var(c, s, acc)
+                    }
+                }
+                Sexp::Lst(xs, src_file, src_line, src_pos) => {
+                    if fact_in_p(fs, e, str_lit("void-call")) {
+                        put(str_lit(" {}"), put_call(c, e, xs, n, t, put(str_lit("match "), acc)))
+                    } else if fact_in_p(fs, e, str_lit("void-error")) {
+                        put(str_lit(")"), put_call(c, e, xs, n, t, put(str_lit("the::<Void>("), acc)))
+                    } else if (fact_in_p(fs, e, str_lit("union-test")) || fact_in_p(fs, e, str_lit("value-call"))) {
+                        put_call(c, e, xs, n, t, put(str_lit("kayak_rt::value::"), acc))
+                    } else if fact_in_p(fs, e, str_lit("value-cons")) {
+                        put(str_lit(")"), put_joined(c, cdr(xs), str_lit(", "), n, put(str_lit("kayak_rt::value::cons("), acc)))
+                    } else {
+                        put_call(c, e, xs, n, t, acc)
+                    }
+                }
+            }
+        }
+    }
+
+    /// A list form; a call giving a `Void` the caller wraps, `match ... {}`,
+    /// which is of any type, as FX-26's `void` is below every type. A call
+    /// that may suspend: its future boxed, so that an `async fn` may call
+    /// itself, and awaited (C45).
+    pub fn put_call(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
+        let tagcase_ = car(xs);
+        match *tagcase_ {
+            Sexp::Sym(h, at_file, at_pos) => {
+                if not(string_eq_p(fact_with(c, e, str_lit("head-unbox ")), str_lit(""))) {
+                    // A call of a union narrowed to its procedure (C75).
+                    let acc = put(str_lit("(kayak_rt::value::unbox_other::<"), acc);
+                    let acc = put_type(c, car(read_all(string_chars(fact_with(c, e, str_lit("head-unbox "))), str_lit(""), 1i64)), acc);
+                    let acc = put(str_lit(">("), acc);
+                    let acc = put_var(c, h, acc);
+                    let acc = put(str_lit("))("), acc);
+                    put_question(c, e, put(str_lit(")"), if null_p(cdr(xs)) {
+                        acc
+                    } else {
+                        put_joined(c, cdr(xs), str_lit(", "), n, acc)
+                    }))
+                } else if not(fact_at_p(c, e, str_lit("suspending-call"))) {
+                    put_form(c, e, h, cdr(xs), n, t, acc)
+                } else if async_here_p(c) {
+                    put_form(c, e, h, cdr(xs), n, t, put(str_lit("kayak_rt::suspend::body("), acc))
+                } else {
+                    put_form(c, e, h, cdr(xs), n, t, put(str_lit("kayak_rt::suspend::block(kayak_rt::suspend::body("), acc))
+                }
+            }
+            _ => {
+                let head = tagcase_;
+                let acc = if not(fact_at_p(c, e, str_lit("suspending-call"))) {
+                    acc
+                } else if async_here_p(c) {
+                    put(str_lit("kayak_rt::suspend::body("), acc)
+                } else {
+                    put(str_lit("kayak_rt::suspend::block(kayak_rt::suspend::body("), acc)
+                };
+                let acc = put(str_lit("("), acc);
+                let acc = put_exp(c, head, n, value(), acc);
+                let acc = put(str_lit(")("), acc);
                 put_question(c, e, put(str_lit(")"), if null_p(cdr(xs)) {
                     acc
                 } else {
                     put_joined(c, cdr(xs), str_lit(", "), n, acc)
                 }))
-            } else if not(fact_at_p(c, e, str_lit("suspending-call"))) {
-                put_form(c, e, h, cdr(xs), n, t, acc)
-            } else if async_here_p(c) {
-                put_form(c, e, h, cdr(xs), n, t, put(str_lit("kayak_rt::suspend::body("), acc))
-            } else {
-                put_form(c, e, h, cdr(xs), n, t, put(str_lit("kayak_rt::suspend::block(kayak_rt::suspend::body("), acc))
             }
         }
-        _ => {
-            let head = tagcase_;
-            let acc = if not(fact_at_p(c, e, str_lit("suspending-call"))) {
-                acc
-            } else if async_here_p(c) {
-                put(str_lit("kayak_rt::suspend::body("), acc)
-            } else {
-                put(str_lit("kayak_rt::suspend::block(kayak_rt::suspend::body("), acc)
-            };
-            let acc = put(str_lit("("), acc);
-            let acc = put_exp(c, head, n, value(), acc);
-            let acc = put(str_lit(")("), acc);
-            put_question(c, e, put(str_lit(")"), if null_p(cdr(xs)) {
-                acc
-            } else {
-                put_joined(c, cdr(xs), str_lit(", "), n, acc)
-            }))
-        }
     }
-}
 
-/// A self tail call: the parameters it changes assigned, all at once.
-pub fn put_continue(c: &'static Ctx, args: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
-    let tagcase_ = t;
-    match *tagcase_ {
-        Tail::Returns(f, ps, live, ok) => {
-            let tagcase_ = changes(ps, args);
-            match *tagcase_ {
-                Assign::Assign(names, values) => {
-                    let acc = if null_p(names) {
-                        acc
-                    } else if null_p(cdr(names)) {
-                        let acc = put(mangle(car(names)), acc);
-                        let acc = put(str_lit(" = "), acc);
-                        let acc = put_exp(c, car(values), n, value(), acc);
-                        put_nl(n, put(str_lit(";"), acc))
-                    } else {
-                        let acc = put(str_lit("("), acc);
-                        let acc = put_strings(names, acc);
-                        let acc = put(str_lit(") = ("), acc);
-                        let acc = put_joined(c, values, str_lit(", "), n, acc);
-                        put_nl(n, put(str_lit(");"), acc))
-                    };
-                    put(str_lit("continue;"), acc)
-                }
-            }
-        }
-        _ => {
-            let other = tagcase_;
-            error(str_lit("kfx: a self tail call where no procedure loops"))
-        }
-    }
-}
-
-/// Expressions separated by `sep`.
-pub fn put_joined(c: &'static Ctx, xs: Sexps, sep: Str, n: i64, acc: Chars) -> Chars {
-    put_sep(lambda2(move |x: &'static Sexp, acc: List<char>| {
-        put_exp(c, x, n, value(), acc)
-    }), sep, xs, acc)
-}
-
-/// A body as the inside of a block: each expression on a line of its own,
-/// the last standing at `t`. A last `let`, `let*`, `begin` or `tagcase`
-/// is written into the block rather than as a block of its own.
-pub fn put_stmts(mut c: &'static Ctx, mut es: Sexps, mut n: i64, mut t: &'static Tail, mut acc: Chars) -> Chars {
-    loop {
-        let e = car(es);
-        if not(null_p(cdr(es))) {
-            let acc = if comment_p(e) {
-                put_comment(string_chars(comment_text(e)), str_lit("//"), n, true, acc)
-            } else {
-                put(str_lit(";"), put_exp(c, e, n, value(), acc))
-            };
-            return put_stmts(c, cdr(es), n, t, put_nl(n, acc));
-        } else if (head_is_p(e, str_lit("let")) || head_is_p(e, str_lit("let*"))) {
-            let xs = cdr(items(e));
-            let names = map(&binding_name, items(car(xs)));
-            (c, es, t, acc) = (with_locals(c, names), cdr(xs), hide(t, names), if head_is_p(e, str_lit("let")) {
-                put_let(c, items(car(xs)), n, acc)
-            } else {
-                put_let_star(c, items(car(xs)), n, acc)
-            });
-            continue;
-        } else if head_is_p(e, str_lit("begin")) {
-            es = cdr(items(e));
-            continue;
-        } else if head_is_p(e, str_lit("letregion")) {
-            (c, es) = (with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%letregion "), sym_name(second(items(e)))), kayak_rt::nil())), cdr(cdr(items(e))));
-            continue;
-        } else if head_is_p(e, str_lit("with")) {
-            (c, es, t) = (with_opened(c, e), cdr(cdr(items(e))), opened_tail(c, e, t));
-            continue;
-        } else if head_is_p(e, str_lit("letrec")) {
-            let xs = cdr(items(e));
-            let bindings = items(car(xs));
-            let names = map(&binding_name, bindings);
-            (c, es, t, acc) = (with_locals(c, names), cdr(xs), hide(t, names), put_letrec(c, bindings, names, n, acc));
-            continue;
-        } else if head_is_p(e, str_lit("tagcase")) {
-            return put_tagcase(c, e, cdr(items(e)), n, t, acc);
-        } else {
-            return put_exp(c, e, n, t, acc);
-        }
-    }
-}
-
-pub fn put_block(c: &'static Ctx, es: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
-    let acc = put_nl(i64_plus(n, 1i64), put(str_lit("{"), acc));
-    let acc = put_stmts(c, es, i64_plus(n, 1i64), t, acc);
-    put(str_lit("}"), put_nl(n, acc))
-}
-
-/// A `typecase` of `x` (C62, C75): each arm its shape's test, its name
-/// bound to `x`, unboxed if `x` is a union's; the last arm, or `else`,
-/// what is left.
-pub fn put_typecase_arms(c: &'static Ctx, x: &'static Sexp, valued: bool, arms: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
-    let arm = items(car(arms));
-    if (sym_is_p(car(arm), str_lit("else")) && i64_eq(size(arm), 2i64)) {
-        put_block(c, cdr(arm), n, t, acc)
-    } else {
-        let name = sym_name(second(arm));
-        let how = unboxing(c, car(arms));
-        let last = null_p(cdr(arms));
-        let acc = if last {
-            acc
-        } else {
-            put(str_lit(") "), put_var(c, sym_name(x), put(str_lit("("), put(shape_test(sym_name(car(arm)), valued), put(str_lit("if "), acc)))))
-        };
-        let acc = put_nl(i64_plus(n, 1i64), put(str_lit("{"), acc));
-        let used = any_p(lambda1(move |b: &'static Sexp| {
-            name_in_p(name, b)
-        }), cdr(cdr(arm)));
-        let acc = if used {
-            put(str_lit(" = "), put(mangle(name), put(str_lit("let "), acc)))
-        } else {
-            acc
-        };
-        let acc = if not(used) {
-            acc
-        } else if string_eq_p(how, str_lit("")) {
-            put_var(c, sym_name(x), acc)
-        } else {
-            put(str_lit(")"), put_var(c, sym_name(x), put(str_lit(">("), put_unboxed_type(c, how, unboxed_type(c, car(arms)), put(str_lit("::<"), put(how, put(str_lit("kayak_rt::value::"), acc)))))))
-        };
-        let acc = if used {
-            put_nl(i64_plus(n, 1i64), put(str_lit(";"), acc))
-        } else {
-            acc
-        };
-        let acc = put_stmts(with_locals(c, kayak_rt::heap_cons(name, kayak_rt::nil())), cdr(cdr(arm)), i64_plus(n, 1i64), hide(t, kayak_rt::heap_cons(name, kayak_rt::nil())), acc);
-        let acc = put(str_lit("}"), put_nl(n, acc));
-        if last {
-            acc
-        } else {
-            put_typecase_arms(c, x, valued, cdr(arms), n, t, put(str_lit(" else "), acc))
-        }
-    }
-}
-
-pub fn put_cond(c: &'static Ctx, clauses: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
-    let clause = items(car(clauses));
-    if sym_is_p(car(clause), str_lit("else")) {
-        put_block(c, cdr(clause), n, t, acc)
-    } else {
-        let acc = put(str_lit("if "), acc);
-        let acc = put_exp(c, car(clause), n, value(), acc);
-        let acc = put(str_lit(" "), acc);
-        let acc = put_block(c, cdr(clause), n, t, acc);
-        let acc = put(str_lit(" else "), acc);
-        put_cond(c, cdr(clauses), n, t, acc)
-    }
-}
-
-pub fn put_let1(c: &'static Ctx, binding: &'static Sexp, n: i64, acc: Chars) -> Chars {
-    let acc = put(str_lit("let "), acc);
-    let acc = put(mangle(sym_name(car(items(binding)))), acc);
-    let acc = put(str_lit(" = "), acc);
-    let acc = put_exp(c, second(items(binding)), n, value(), acc);
-    put_nl(n, put(str_lit(";"), acc))
-}
-
-/// Each binding sees those before it.
-pub fn put_let_star(mut c: &'static Ctx, mut bindings: Sexps, mut n: i64, mut acc: Chars) -> Chars {
-    loop {
-        if null_p(bindings) {
-            return acc;
-        } else {
-            (c, bindings, acc) = (with_locals(c, map(&binding_name, kayak_rt::heap_cons(car(bindings), kayak_rt::nil()))), cdr(bindings), put_let1(c, car(bindings), n, acc));
-            continue;
-        }
-    }
-}
-
-pub fn put_binding_values(c: &'static Ctx, bindings: Sexps, n: i64, acc: Chars) -> Chars {
-    let acc = put_exp(c, second(items(car(bindings))), n, value(), acc);
-    if null_p(cdr(bindings)) {
-        acc
-    } else {
-        put_binding_values(c, cdr(bindings), n, put(str_lit(", "), acc))
-    }
-}
-
-pub fn put_binding_names(bindings: Sexps, acc: Chars) -> Chars {
-    let acc = put(mangle(sym_name(car(items(car(bindings))))), acc);
-    if null_p(cdr(bindings)) {
-        acc
-    } else {
-        put_binding_names(cdr(bindings), put(str_lit(", "), acc))
-    }
-}
-
-/// `let` binds in parallel: more than one binding is a tuple.
-pub fn put_let(c: &'static Ctx, bindings: Sexps, n: i64, acc: Chars) -> Chars {
-    if null_p(bindings) {
-        acc
-    } else if null_p(cdr(bindings)) {
-        put_let1(c, car(bindings), n, acc)
-    } else {
-        let acc = put(str_lit("let ("), acc);
-        let acc = put_binding_names(bindings, acc);
-        let acc = put(str_lit(") = ("), acc);
-        let acc = put_binding_values(c, bindings, n, acc);
-        put_nl(n, put(str_lit(");"), acc))
-    }
-}
-
-/// A `match` arm a case arm: a character's and a boolean's data its
-/// patterns; an int's or a string's, compared in its guard, as Rust has
-/// no patterns for them.
-pub fn put_case_arms(c: &'static Ctx, kind: Str, arms: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
-    if null_p(arms) {
-        acc
-    } else {
-        let arm = items(car(arms));
-        let acc = put_nl(n, acc);
-        let acc = if sym_is_p(car(arm), str_lit("else")) {
-            put(str_lit("_"), acc)
-        } else if string_eq_p(kind, str_lit("symbol")) {
-            // A symbol's data compared in the guard, by name (C73).
-            put_sep(lambda2(move |d: &'static Sexp, acc: Chars| {
-                put(str_lit("\")))"), put_escaped(string_chars(sym_name(d)), '"', put(str_lit("kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit(\""), acc)))
-            }), str_lit(" || "), items(car(arm)), put(str_lit("case_ if "), acc))
-        } else if (string_eq_p(kind, str_lit("int")) || string_eq_p(kind, str_lit("string"))) {
-            put_sep(lambda2(move |d: &'static Sexp, acc: Chars| {
-                put(str_lit(")"), put_exp(c, d, n, value(), put(if string_eq_p(kind, str_lit("int")) {
-                    str_lit("kayak_rt::_eq(case_, ")
-                } else {
-                    str_lit("kayak_rt::string_eq_p(case_, ")
-                }, acc)))
-            }), str_lit(" || "), items(car(arm)), put(str_lit("case_ if "), acc))
-        } else {
-            put_joined(c, items(car(arm)), str_lit(" | "), n, acc)
-        };
-        let acc = put(str_lit(" => "), acc);
-        let acc = put_block(c, cdr(arm), n, t, acc);
-        put_case_arms(c, kind, cdr(arms), n, t, acc)
-    }
-}
-
-pub fn put_tagcase_arms(c: &'static Ctx, sum: Str, arms: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
-    if null_p(arms) {
-        acc
-    } else {
-        let arm = items(car(arms));
-        let tag = sym_name(car(arm));
-        let else_p = string_eq_p(tag, str_lit("else"));
-        let whole_p = {
-            let tagcase_ = second(arm);
-            match *tagcase_ {
-                Sexp::Sym(x, at_file, at_pos) => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
-            }
-        };
-        let bound = if (else_p || whole_p) {
-            the::<Strings>(kayak_rt::heap_cons(sym_name(second(arm)), kayak_rt::nil()))
-        } else {
-            map(&sym_name, items(second(arm)))
-        };
-        let acc = put_nl(n, acc);
-        let acc = if else_p {
-            let acc = put(str_lit("_ => {"), acc);
-            let acc = put_nl(i64_plus(n, 1i64), acc);
-            let acc = put(str_lit("let "), acc);
-            let acc = put(mangle(sym_name(second(arm))), acc);
-            put_nl(i64_plus(n, 1i64), put(str_lit(" = tagcase_;"), acc))
-        } else {
-            let acc = put(if string_eq_p(sum, str_lit("")) {
-                datatype_path(tag_datatype(tag, ctx_tags(c)))
-            } else {
-                sum
-            }, acc);
-            let acc = put(str_lit("::"), acc);
-            let acc = put(variant_name(tag), acc);
-            let acc = put(str_lit("("), acc);
-            if string_eq_p(sum, str_lit("")) {
-                put_nl(i64_plus(n, 1i64), put(str_lit(") => {"), put_names(items(second(arm)), acc)))
-            } else if whole_p {
-                put_nl(i64_plus(n, 1i64), put(str_lit(") => {"), put(mangle(sym_name(second(arm))), acc)))
-            } else {
-                put_fields_of(items(second(arm)), 0i64, i64_plus(n, 1i64), put_nl(i64_plus(n, 1i64), put(str_lit("product_) => {"), acc)))
-            }
-        };
-        let acc = put_stmts(with_locals(c, bound), cdr(cdr(arm)), i64_plus(n, 1i64), hide(t, bound), acc);
-        let acc = put(str_lit("}"), put_nl(n, acc));
-        put_tagcase_arms(c, sum, cdr(arms), n, t, acc)
-    }
-}
-
-/// A sum's member, a product, taken apart: a `let` for each field.
-pub fn put_fields_of(mut names: Sexps, mut i: i64, mut n: i64, mut acc: Chars) -> Chars {
-    loop {
-        if null_p(names) {
-            return acc;
-        } else {
-            (names, i, acc) = (cdr(names), i64_plus(i, 1i64), put_nl(n, put(str_lit(";"), put(i64_to_string(i), put(str_lit(" = product_."), put(mangle(sym_name(car(names))), put(str_lit("let "), acc)))))));
-            continue;
-        }
-    }
-}
-
-/// A `tagcase` as statements: its value bound once, then a `match`; of a
-/// sum, its enum's name from the tags the checker found.
-pub fn put_tagcase(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
-    if not(string_eq_p(fact_with(c, e, str_lit("blob-tagcase ")), str_lit(""))) {
-        put_flat_tagcase(c, e, xs, n, t, acc)
-    } else {
-        let tags = fact_with(c, e, str_lit("tagcase-sum "));
-        let sum = if string_eq_p(tags, str_lit("")) {
-            str_lit("")
-        } else {
-            shape_name(false, split_words(tags))
-        };
-        let acc = put(str_lit("let tagcase_ = "), acc);
-        let acc = put_exp(c, car(xs), n, value(), acc);
-        let acc = put_nl(n, put(str_lit(";"), acc));
-        let acc = put(str_lit("match *tagcase_ {"), acc);
-        let acc = put_tagcase_arms(c, sum, cdr(xs), i64_plus(n, 1i64), t, acc);
-        put(str_lit("}"), put_nl(n, acc))
-    }
-}
-
-/// A `tagcase` on a blobref to a flat sum (C33): its tag read once, of
-/// the key's width; each arm's name a blobref to the variant, past the
-/// tag; a tag no arm has, `else`'s, or an error, as in FX-26.
-pub fn put_flat_tagcase(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
-    let found = split_words(fact_with(c, e, str_lit("blob-tagcase ")));
-    let acc = put(str_lit("let tagcase_ = "), acc);
-    let acc = put_exp(c, car(xs), n, value(), acc);
-    let acc = put_nl(n, put(str_lit(";"), acc));
-    let acc = put(string_append(str_lit("match tagcase_.tag("), string_append(car(found), str_lit(") {"))), acc);
-    let acc = put_flat_arms(c, second_string(found), cdr(xs), i64_plus(n, 1i64), t, acc);
-    let acc = if any_p(lambda1(move |a: &'static Sexp| {
-        sym_is_p(car(items(a)), str_lit("else"))
-    }), cdr(xs)) {
-        acc
-    } else {
-        put(str_lit("_ => no_flat_tag(),"), put_nl(i64_plus(n, 1i64), acc))
-    };
-    put(str_lit("}"), put_nl(n, acc))
-}
-
-pub fn put_flat_arms(c: &'static Ctx, off: Str, arms: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
-    if null_p(arms) {
-        acc
-    } else {
-        let arm = items(car(arms));
-        let else_p = sym_is_p(car(arm), str_lit("else"));
-        let x = sym_name(second(arm));
-        let acc = put_nl(n, acc);
-        let acc = put(if else_p {
-            str_lit("_ => {")
-        } else {
-            string_append(number_text(car(arm)), str_lit(" => {"))
-        }, acc);
-        let acc = put_nl(i64_plus(n, 1i64), acc);
-        let acc = put(string_append(str_lit("let "), string_append(mangle(x), if else_p {
-            str_lit(" = tagcase_;")
-        } else {
-            string_append(str_lit(" = tagcase_.field("), string_append(off, str_lit(");")))
-        })), acc);
-        let acc = put_nl(i64_plus(n, 1i64), acc);
-        let acc = put_stmts(with_locals(c, kayak_rt::heap_cons(x, kayak_rt::nil())), cdr(cdr(arm)), i64_plus(n, 1i64), hide(t, kayak_rt::heap_cons(x, kayak_rt::nil())), acc);
-        let acc = put(str_lit("}"), put_nl(n, acc));
-        put_flat_arms(c, off, cdr(arms), n, t, acc)
-    }
-}
-
-/// A quasiquoted datum (C79), built: an unquote at depth 1 its
-/// expression's value, a datum; an unquote-splicing's list appended.
-pub fn put_quasi(c: &'static Ctx, d: &'static Sexp, depth: i64, n: i64, acc: Chars) -> Chars {
-    let tagcase_ = d;
-    match *tagcase_ {
-        Sexp::Lst(ys, f, l, p) => {
-            if null_p(ys) {
-                put(str_lit("kayak_rt::value::Value::Nil"), acc)
-            } else if (i64_eq(size(ys), 2i64) && head_is_p(d, str_lit("unquote")) && i64_eq(depth, 1i64)) {
-                put_exp(c, second(ys), n, value(), acc)
-            } else if (i64_eq(size(ys), 2i64) && (head_is_p(d, str_lit("unquote")) || head_is_p(d, str_lit("unquote-splicing")))) {
-                put_quasi_tagged(c, sym_name(car(ys)), second(ys), i64_minus(depth, 1i64), n, acc)
-            } else if (i64_eq(size(ys), 2i64) && head_is_p(d, str_lit("quasiquote"))) {
-                put_quasi_tagged(c, str_lit("quasiquote"), second(ys), i64_plus(depth, 1i64), n, acc)
-            } else if head_is_p(d, str_lit("#vector")) {
-                put(str_lit(")"), put_quasi_items(c, cdr(ys), depth, n, put(str_lit("kayak_rt::value::datum_list_to_vector("), acc)))
-            } else {
-                put_quasi_items(c, ys, depth, n, acc)
-            }
-        }
-        _ => {
-            let other = tagcase_;
-            put_quoted(c, d, acc)
-        }
-    }
-}
-
-/// `(tag d)` as data, `d` at `depth`.
-pub fn put_quasi_tagged(c: &'static Ctx, tag: Str, d: &'static Sexp, depth: i64, n: i64, acc: Chars) -> Chars {
-    let acc = put(str_lit("kayak_rt::value::cons("), acc);
-    let acc = put_quoted(c, sym(tag, str_lit(""), 0i64), acc);
-    let acc = put(str_lit(", kayak_rt::value::cons("), acc);
-    let acc = put_quasi(c, d, depth, n, acc);
-    put(str_lit(", kayak_rt::value::Value::Nil))"), acc)
-}
-
-pub fn put_quasi_items(c: &'static Ctx, ds: Sexps, depth: i64, n: i64, acc: Chars) -> Chars {
-    if null_p(ds) {
-        put(str_lit("kayak_rt::value::Value::Nil"), acc)
-    } else if (sym_is_p(car(ds), str_lit(".")) && not(null_p(cdr(ds))) && null_p(cdr(cdr(ds)))) {
-        put_quasi(c, car(cdr(ds)), depth, n, acc)
-    } else if (i64_eq(depth, 1i64) && head_is_p(car(ds), str_lit("unquote-splicing")) && i64_eq(size(items(car(ds))), 2i64)) {
-        put(str_lit(")"), put_quasi_items(c, cdr(ds), depth, n, put(str_lit(", "), put_exp(c, second(items(car(ds))), n, value(), put(str_lit("kayak_rt::value::spliced("), acc)))))
-    } else {
-        put(str_lit(")"), put_quasi_items(c, cdr(ds), depth, n, put(str_lit(", "), put_quasi(c, car(ds), depth, n, put(str_lit("kayak_rt::value::cons("), acc)))))
-    }
-}
-
-/// A lambda as a value: a closure, `move`, since what it captures is
-/// `Copy`, made a `&'static dyn Fn` by `lambdaN`, `N` its arity.
-pub fn put_lambda(c: &'static Ctx, e: &'static Sexp, params: Sexps, body: Sexps, n: i64, acc: Chars) -> Chars {
-    let acc = put(str_lit("lambda"), acc);
-    let acc = put(i64_to_string(size(params)), acc);
-    let acc = put(str_lit("(move |"), acc);
-    let acc = put_lambda_params(c, lambda_params_typed(c, e, params), acc);
-    let acc = put(str_lit("| "), acc);
-    if fact_at_p(c, e, str_lit("suspends")) {
-        // One that may suspend returns its body as a future, boxed (C45).
-        put(str_lit("))"), put_block(with_locals(c, kayak_rt::heap_cons(str_lit("%async"), kayak_rt::heap_cons(str_lit("%fallible"), map(&param_name, params)))), body, n, ok_value(), put(str_lit("kayak_rt::suspend::body(async move "), acc)))
-    } else if fact_at_p(c, e, str_lit("fallible")) {
-        put(str_lit(")"), put_block(with_locals(c, kayak_rt::heap_cons(str_lit("%sync"), kayak_rt::heap_cons(str_lit("%fallible"), map(&param_name, params)))), body, n, ok_value(), acc))
-    } else {
-        put(str_lit(")"), put_block(with_locals(c, kayak_rt::heap_cons(str_lit("%sync"), kayak_rt::heap_cons(str_lit("%infallible"), map(&param_name, params)))), body, n, value(), acc))
-    }
-}
-
-/// `x`, or `(x T)` as `x: T`.
-pub fn put_lambda_params(c: &'static Ctx, params: Sexps, acc: Chars) -> Chars {
-    if null_p(params) {
-        acc
-    } else {
-        let acc = {
-            let tagcase_ = car(params);
-            match *tagcase_ {
-                Sexp::Lst(xt, src_file, src_line, src_pos) => {
-                    put_type(c, second(xt), put(str_lit(": "), put(mangle(sym_name(car(xt))), acc)))
-                }
-                _ => {
-                    let name = tagcase_;
-                    put(mangle(sym_name(name)), acc)
-                }
-            }
-        };
-        put_lambda_params(c, cdr(params), if null_p(cdr(params)) {
-            acc
-        } else {
-            put(str_lit(", "), acc)
-        })
-    }
-}
-
-/// A letrec's procedures, made through knots: each knot made, then each
-/// closure, whose group it reaches through the knots, then each knot
-/// tied; a statement a line.
-pub fn put_letrec(c: &'static Ctx, bindings: Sexps, names: Strings, n: i64, acc: Chars) -> Chars {
-    let inside = with_locals(c, map(lambda1(move |x: Str| {
-        string_append(str_lit("%knot "), x)
-    }), names));
-    let acc = put_sep(lambda2(move |b: &'static Sexp, acc: Chars| {
-        let ys = items(b);
-        let acc = put(str_lit("let "), acc);
-        let acc = put(mangle_bare(sym_name(car(ys))), acc);
-        let acc = put(str_lit("__knot = knot::<"), acc);
-        let acc = put_type(c, second(ys), acc);
-        put_nl(n, put(str_lit(">();"), acc))
-    }), str_lit(""), bindings, acc);
-    let acc = put_sep(lambda2(move |b: &'static Sexp, acc: Chars| {
-        let ys = items(b);
-        let acc = put(str_lit("let "), acc);
-        let acc = put(mangle(sym_name(car(ys))), acc);
-        let acc = put(str_lit(" = "), acc);
-        let lam = typed_lambda(as_lambda(third(ys)), family_expanded(c, second(ys)));
-        let acc = if letrec_loops_p(inside, sym_name(car(ys)), lam) {
-            put_looping_lambda(inside, sym_name(car(ys)), lam, n, acc)
-        } else {
-            put_exp(inside, lam, n, value(), acc)
-        };
-        put_nl(n, put(str_lit(";"), acc))
-    }), str_lit(""), bindings, acc);
-    put_sep(lambda2(move |x: Str, acc: Chars| {
-        put_nl(n, put(str_lit(");"), put(mangle(x), put(str_lit("__knot.set("), put(mangle_bare(x), acc)))))
-    }), str_lit(""), names, acc)
-}
-
-/// Whether a `letrec`'s procedure calls itself last: a loop, as a
-/// top-level procedure's is, so that it grows no stack.
-pub fn letrec_loops_p(c: &'static Ctx, f: Str, lam: &'static Sexp) -> bool {
-    let xs = items(lam);
-    let names = map(&param_name, items(second(xs)));
-    tail_calls_p(returns(f, names, true, fact_at_p(c, lam, str_lit("fallible"))), last(cdr(cdr(xs))))
-}
-
-/// A `letrec`'s procedure that calls itself last: a closure whose body
-/// is a `loop`, its parameters `mut`, a call of itself an assignment to
-/// them and a `continue`, as a top-level procedure's.
-pub fn put_looping_lambda(c: &'static Ctx, f: Str, lam: &'static Sexp, n: i64, acc: Chars) -> Chars {
-    let xs = items(lam);
-    let params = lambda_params_typed(c, lam, items(second(xs)));
-    let names = map(&param_name, params);
-    let fallible = fact_at_p(c, lam, str_lit("fallible"));
-    let suspends = fact_at_p(c, lam, str_lit("suspends"));
-    let t = returns(f, names, true, fallible);
-    let inner = with_locals(c, kayak_rt::heap_cons(if suspends {
-        str_lit("%async")
-    } else {
-        str_lit("%sync")
-    }, kayak_rt::heap_cons(if fallible {
-        str_lit("%fallible")
-    } else {
-        str_lit("%infallible")
-    }, names)));
-    let acc = put(string_append(str_lit("lambda"), string_append(i64_to_string(size(params)), str_lit("(move |"))), acc);
-    let acc = put_sep(lambda2(move |p: &'static Sexp, acc: List<char>| {
-        let tagcase_ = p;
+    /// A self tail call: the parameters it changes assigned, all at once.
+    pub fn put_continue(c: &'static Ctx, args: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
+        let tagcase_ = t;
         match *tagcase_ {
-            Sexp::Lst(pt, f2, l2, p2) => {
-                put_type(c, second(pt), put(str_lit(": "), put(mangle(sym_name(car(pt))), put(str_lit("mut "), acc))))
+            Tail::Returns(f, ps, live, ok) => {
+                let tagcase_ = changes(ps, args);
+                match *tagcase_ {
+                    Assign::Assign(names, values) => {
+                        let acc = if null_p(names) {
+                            acc
+                        } else if null_p(cdr(names)) {
+                            let acc = put(mangle(car(names)), acc);
+                            let acc = put(str_lit(" = "), acc);
+                            let acc = put_exp(c, car(values), n, value(), acc);
+                            put_nl(n, put(str_lit(";"), acc))
+                        } else {
+                            let acc = put(str_lit("("), acc);
+                            let acc = put_strings(names, acc);
+                            let acc = put(str_lit(") = ("), acc);
+                            let acc = put_joined(c, values, str_lit(", "), n, acc);
+                            put_nl(n, put(str_lit(");"), acc))
+                        };
+                        put(str_lit("continue;"), acc)
+                    }
+                }
             }
             _ => {
                 let other = tagcase_;
-                put(mangle(sym_name(other)), put(str_lit("mut "), acc))
+                error(str_lit("kfx: a self tail call where no procedure loops"))
             }
         }
-    }), str_lit(", "), params, acc);
-    let acc = put(if suspends {
-        str_lit("| kayak_rt::suspend::body(async move {")
-    } else {
-        str_lit("| {")
-    }, acc);
-    let acc = put_nl(i64_plus(n, 2i64), put(str_lit("loop {"), put_nl(i64_plus(n, 1i64), acc)));
-    let acc = put_stmts(inner, cdr(cdr(xs)), i64_plus(n, 2i64), t, acc);
-    put(if suspends {
-        str_lit("}))")
-    } else {
-        str_lit("})")
-    }, put_nl(n, put(str_lit("}"), put_nl(i64_plus(n, 1i64), acc))))
-}
-
-pub fn put_list(c: &'static Ctx, xs: Sexps, n: i64, acc: Chars) -> Chars {
-    if null_p(xs) {
-        put(str_lit("kayak_rt::nil()"), acc)
-    } else {
-        let acc = put(if heap_static_p(ctx_locals(c)) {
-            str_lit("kayak_rt::heap_cons(")
-        } else {
-            str_lit("kayak_rt::cons(")
-        }, acc);
-        let acc = put_exp(c, car(xs), n, value(), acc);
-        let acc = put(str_lit(", "), acc);
-        let acc = put_list(c, cdr(xs), n, acc);
-        put(str_lit(")"), acc)
     }
-}
 
-/// `e` is the whole form, `h` its head's name and `xs` the rest.
-pub fn put_form(mut c: &'static Ctx, mut e: &'static Sexp, mut h: Str, mut xs: Sexps, mut n: i64, mut t: &'static Tail, mut acc: Chars) -> Chars {
-    loop {
-        if string_eq_p(h, str_lit("if")) {
-            let acc = put(str_lit("if "), acc);
-            let acc = put_exp(c, car(xs), n, value(), acc);
-            let acc = put(str_lit(" "), acc);
-            let acc = put_block(c, kayak_rt::heap_cons(second(xs), kayak_rt::nil()), n, t, acc);
-            let acc = put(str_lit(" else "), acc);
-            return put_block(c, kayak_rt::heap_cons(third(xs), kayak_rt::nil()), n, t, acc);
-        } else if string_eq_p(h, str_lit("cond")) {
-            return put_cond(c, xs, n, t, acc);
-        } else if string_eq_p(h, str_lit("typecase")) {
-            return put_typecase_arms(c, car(xs), fact_at_p(c, e, str_lit("typecase-valued")), cdr(xs), n, t, acc);
-        } else if string_eq_p(h, str_lit("and")) {
-            if null_p(xs) {
-                return put(str_lit("true"), acc);
-            } else {
-                return put(str_lit(")"), put_joined(c, xs, str_lit(" && "), n, put(str_lit("("), acc)));
-            }
-        } else if string_eq_p(h, str_lit("or")) {
-            if null_p(xs) {
-                return put(str_lit("false"), acc);
-            } else {
-                return put(str_lit(")"), put_joined(c, xs, str_lit(" || "), n, put(str_lit("("), acc)));
-            }
-        } else if (string_eq_p(h, str_lit("with")) && null_p(cdr(cdr(xs)))) {
-            // A `with` of one expression, no block: only its names are its.
-            return put_exp(with_opened(c, e), second(xs), n, opened_tail(c, e, t), acc);
-        } else if (string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("tagcase")) || string_eq_p(h, str_lit("with"))) {
-            return put_block(c, kayak_rt::heap_cons(e, kayak_rt::nil()), n, t, acc);
-        } else if string_eq_p(h, str_lit("case")) {
-            let acc = put(str_lit("match "), acc);
-            let acc = put_exp(c, car(xs), n, value(), acc);
-            let acc = put(str_lit(" {"), acc);
-            let acc = put_case_arms(c, case_kind(c, e), cdr(xs), i64_plus(n, 1i64), t, acc);
-            return put(str_lit("}"), put_nl(n, acc));
-        } else if string_eq_p(h, str_lit("lambda")) {
-            return put_lambda(c, e, items(car(xs)), cdr(xs), n, acc);
-        } else if (string_eq_p(h, str_lit("rlambda")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
-            return put_lambda(c, e, items(second(xs)), cdr(cdr(xs)), n, acc);
-        } else if string_eq_p(h, str_lit("proj")) {
-            return put_exp(c, car(xs), n, value(), acc);
-        } else if string_eq_p(h, str_lit("product")) {
-            let fs = map(&items, xs);
-            let acc = put(shape_name(true, map(lambda1(move |f: Sexps| {
-                label_of(car(f))
-            }), fs)), acc);
-            return put(str_lit(")"), put_joined(c, map(&second, fs), str_lit(", "), n, put(str_lit("("), acc)));
-        } else if string_eq_p(h, str_lit("extract")) {
-            if not(null_p(blob_typed(c, e, str_lit("blob-owner ")))) {
-                return put(str_lit(")"), put(fact_with(c, e, str_lit("blob-field ")), put(str_lit(")."), put_exp(c, car(xs), n, value(), put(str_lit("(&("), acc)))));
-            } else if string_eq_p(fact_with(c, e, str_lit("blob-offset ")), str_lit("")) {
-                return put(fact_with(c, e, str_lit("extract-index ")), put(str_lit("."), put_exp(c, car(xs), n, value(), acc)));
-            } else {
-                return put(str_lit(")"), put(fact_with(c, e, str_lit("blob-offset ")), put(str_lit(").field("), put_exp(c, car(xs), n, value(), put(str_lit("("), acc)))));
-            }
-        } else if string_eq_p(h, str_lit("sum")) {
-            // A sum's enum written with its type's arguments, which only the type
-            // expected, as the checker found it, says.
-            let ty = car(read_all(string_chars(fact_with(c, e, str_lit("sum-type "))), str_lit(""), 1i64));
-            let fs = map(&items, cdr(items(ty)));
-            let acc = put(heap_alloc(c), acc);
-            let acc = put(shape_name(false, map(lambda1(move |f: Sexps| {
-                label_of(car(f))
-            }), fs)), acc);
-            let acc = put(str_lit(">::"), put_types(c, map(&second, fs), put(str_lit("::<"), acc)));
-            let acc = put(variant_name(label_of(car(xs))), acc);
-            let acc = put(str_lit("("), acc);
-            return put(str_lit("))"), put_exp(c, second(xs), n, value(), acc));
-        } else if (string_eq_p(h, str_lit("list")) && null_p(xs)) {
-            return put(str_lit("()"), put_turbofish(c, e, put(str_lit("kayak_rt::nil"), acc)));
-        } else if string_eq_p(h, str_lit("list")) {
-            return put_list(c, xs, n, acc);
-        } else if (string_eq_p(h, str_lit("quasiquote")) && {
-            let tagcase_ = car(xs);
-            match *tagcase_ {
-                Sexp::Lst(ys, f, l, p) => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
-            }
-        }) {
-            if head_is_p(car(xs), str_lit("unquote")) {
-                return put_exp(c, second(items(car(xs))), n, value(), acc);
-            } else {
-                return put_quasi(c, car(xs), 1i64, n, acc);
-            }
-        } else if string_eq_p(h, str_lit("quasiquote")) {
-            h = str_lit("quote");
-            continue;
-        } else if string_eq_p(h, str_lit("quote")) {
-            let tagcase_ = car(xs);
-            match *tagcase_ {
-                Sexp::Sym(q, f, p) => {
-                    if (string_eq_p(q, str_lit("#t")) || string_eq_p(q, str_lit("#f"))) {
-                        return put_var(c, q, acc);
-                    } else {
-                        return put(str_lit("\"))"), put_escaped(string_chars(q), '"', put(str_lit("symbol_lit(str_lit(\""), acc)));
-                    }
-                }
-                Sexp::Num(k, f, p) => {
-                    return put(str_lit(")"), put(i64_to_string(k), put(str_lit("int_lit("), acc)));
-                }
-                Sexp::Big(text, f, p) => {
-                    return put(str_lit("\")"), put(text, put(str_lit("int_text(\""), acc)));
-                }
-                Sexp::Lst(ys, f, l, p) => {
-                    return put_quoted(c, car(xs), acc);
-                }
-                _ => {
-                    let other = tagcase_;
-                    return put_exp(c, car(xs), n, value(), acc);
-                }
-            }
-        } else if string_eq_p(h, str_lit("the")) {
-            // `the::<T>(e)`: the type said to rustc too, which may need it where
-            // FX-26's checker did (a tag's payload, a list nothing else types).
-            let acc = put(str_lit("the::<"), acc);
-            let acc = put_type(c, car(xs), acc);
-            let acc = put(str_lit(">("), acc);
-            let acc = put_args(c, e, cdr(xs), 0i64, n, acc);
-            return put(str_lit(")"), acc);
-        } else if ((string_eq_p(h, str_lit("letrena")) || string_eq_p(h, str_lit("letreap"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
-            return put_letrena(c, e, xs, n, acc);
-        } else if ((string_eq_p(h, str_lit("make-bloblet")) || string_eq_p(h, str_lit("rmake-bloblet"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
-            // `make_bloblet(bytes, (Cell::new(e), ...,))`; in a region, `rmake_bloblet(r, ...)`.
-            let placed = string_eq_p(h, str_lit("rmake-bloblet"));
-            let flat = blob_typed(c, e, str_lit("blob-make "));
-            let acc = if null_p(flat) {
-                put(if placed {
-                    str_lit("rmake_bloblet(")
+    /// Expressions separated by `sep`.
+    pub fn put_joined(c: &'static Ctx, xs: Sexps, sep: Str, n: i64, acc: Chars) -> Chars {
+        put_sep(lambda2(move |x: &'static Sexp, acc: List<char>| {
+            put_exp(c, x, n, value(), acc)
+        }), sep, xs, acc)
+    }
+
+    /// A body as the inside of a block: each expression on a line of its own,
+    /// the last standing at `t`. A last `let`, `let*`, `begin` or `tagcase`
+    /// is written into the block rather than as a block of its own.
+    pub fn put_stmts(mut c: &'static Ctx, mut es: Sexps, mut n: i64, mut t: &'static Tail, mut acc: Chars) -> Chars {
+        loop {
+            let e = car(es);
+            if not(null_p(cdr(es))) {
+                let acc = if comment_p(e) {
+                    put_comment(string_chars(comment_text(e)), str_lit("//"), n, true, acc)
                 } else {
-                    str_lit("make_bloblet(")
-                }, acc)
-            } else if placed {
-                put(str_lit(", _>("), put_flat(c, car(flat), put(str_lit("rmake_tbloblet::<_, "), acc)))
+                    put(str_lit(";"), put_exp(c, e, n, value(), acc))
+                };
+                return put_stmts(c, cdr(es), n, t, put_nl(n, acc));
+            } else if (head_is_p(e, str_lit("let")) || head_is_p(e, str_lit("let*"))) {
+                let xs = cdr(items(e));
+                let names = map(&binding_name, items(car(xs)));
+                (c, es, t, acc) = (with_locals(c, names), cdr(xs), hide(t, names), if head_is_p(e, str_lit("let")) {
+                    put_let(c, items(car(xs)), n, acc)
+                } else {
+                    put_let_star(c, items(car(xs)), n, acc)
+                });
+                continue;
+            } else if head_is_p(e, str_lit("begin")) {
+                es = cdr(items(e));
+                continue;
+            } else if head_is_p(e, str_lit("letregion")) {
+                (c, es) = (with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%letregion "), sym_name(second(items(e)))), kayak_rt::nil())), cdr(cdr(items(e))));
+                continue;
+            } else if head_is_p(e, str_lit("with")) {
+                (c, es, t) = (with_opened(c, e), cdr(cdr(items(e))), opened_tail(c, e, t));
+                continue;
+            } else if head_is_p(e, str_lit("letrec")) {
+                let xs = cdr(items(e));
+                let bindings = items(car(xs));
+                let names = map(&binding_name, bindings);
+                (c, es, t, acc) = (with_locals(c, names), cdr(xs), hide(t, names), put_letrec(c, bindings, names, n, acc));
+                continue;
+            } else if head_is_p(e, str_lit("tagcase")) {
+                return put_tagcase(c, e, cdr(items(e)), n, t, acc);
             } else {
-                put(str_lit(">("), put_flat(c, car(flat), put(str_lit("make_tbloblet::<_, "), acc)))
+                return put_exp(c, e, n, t, acc);
+            }
+        }
+    }
+
+    pub fn put_block(c: &'static Ctx, es: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
+        let acc = put_nl(i64_plus(n, 1i64), put(str_lit("{"), acc));
+        let acc = put_stmts(c, es, i64_plus(n, 1i64), t, acc);
+        put(str_lit("}"), put_nl(n, acc))
+    }
+
+    /// A `typecase` of `x` (C62, C75): each arm its shape's test, its name
+    /// bound to `x`, unboxed if `x` is a union's; the last arm, or `else`,
+    /// what is left.
+    pub fn put_typecase_arms(c: &'static Ctx, x: &'static Sexp, valued: bool, arms: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
+        let arm = items(car(arms));
+        if (sym_is_p(car(arm), str_lit("else")) && i64_eq(size(arm), 2i64)) {
+            put_block(c, cdr(arm), n, t, acc)
+        } else {
+            let name = sym_name(second(arm));
+            let how = unboxing(c, car(arms));
+            let last = null_p(cdr(arms));
+            let acc = if last {
+                acc
+            } else {
+                put(str_lit(") "), put_var(c, sym_name(x), put(str_lit("("), put(shape_test(sym_name(car(arm)), valued), put(str_lit("if "), acc)))))
             };
-            let acc = if placed {
-                put(str_lit(", "), put_exp(c, car(xs), n, value(), acc))
+            let acc = put_nl(i64_plus(n, 1i64), put(str_lit("{"), acc));
+            let used = any_p(lambda1(move |b: &'static Sexp| {
+                name_in_p(name, b)
+            }), cdr(cdr(arm)));
+            let acc = if used {
+                put(str_lit(" = "), put(mangle(name), put(str_lit("let "), acc)))
             } else {
                 acc
             };
-            let rest = if placed {
-                cdr(xs)
+            let acc = if not(used) {
+                acc
+            } else if string_eq_p(how, str_lit("")) {
+                put_var(c, sym_name(x), acc)
             } else {
-                xs
+                put(str_lit(")"), put_var(c, sym_name(x), put(str_lit(">("), put_unboxed_type(c, how, unboxed_type(c, car(arms)), put(str_lit("::<"), put(how, put(str_lit("kayak_rt::value::"), acc)))))))
             };
-            let acc = put(str_lit(", ("), put_exp(c, car(rest), n, value(), acc));
-            let acc = put_sep(lambda2(move |x: &'static Sexp, acc: List<char>| {
-                put(str_lit("),"), put_exp(c, x, n, value(), put(str_lit("std::cell::Cell::new("), acc)))
-            }), str_lit(" "), cdr(rest), acc);
-            return put(str_lit("))"), acc);
-        } else if ((string_eq_p(h, str_lit("bloblet-ref")) || string_eq_p(h, str_lit("bloblet-set!"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
-            // A field, a cell: `(b).fields.i.get()`, `.set(e)`.
-            let acc = put(number_text(second(xs)), put(str_lit(").fields."), put_exp(c, car(xs), n, value(), put(str_lit("("), acc))));
-            if string_eq_p(h, str_lit("bloblet-ref")) {
-                return put(str_lit(".get()"), acc);
+            let acc = if used {
+                put_nl(i64_plus(n, 1i64), put(str_lit(";"), acc))
             } else {
-                return put(str_lit(")"), put_exp(c, third(xs), n, value(), put(str_lit(".set("), acc)));
-            }
-        } else if (string_eq_p(h, str_lit("blobref-variant!")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
-            // Its tag written, the label as it is, and a blobref to the variant (C33).
-            return put(str_lit(")"), put(words_of_sep(split_words(fact_with(c, e, str_lit("blob-variant "))), str_lit(", ")), put(str_lit(").variant("), put_exp(c, car(xs), n, value(), put(str_lit("("), acc)))));
-        } else if ((string_eq_p(h, str_lit("blobref-get")) || string_eq_p(h, str_lit("blobref-set!"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
-            // A scalar's bytes, read or written as the checker found its flat.
-            let acc = if null_p(blob_typed(c, e, str_lit("blob-owner "))) {
-                put(fact_with(c, e, str_lit("blob-scalar ")), put(if string_eq_p(h, str_lit("blobref-get")) {
-                    str_lit(").get_")
-                } else {
-                    str_lit(").set_")
-                }, put_exp(c, car(xs), n, value(), put(str_lit("("), acc))))
-            } else {
-                put(if string_eq_p(h, str_lit("blobref-get")) {
-                    str_lit(").get")
-                } else {
-                    str_lit(").set")
-                }, put_exp(c, car(xs), n, value(), put(str_lit("("), acc)))
+                acc
             };
-            if string_eq_p(h, str_lit("blobref-get")) {
-                return put(str_lit("()"), acc);
+            let acc = put_stmts(with_locals(c, kayak_rt::heap_cons(name, kayak_rt::nil())), cdr(cdr(arm)), i64_plus(n, 1i64), hide(t, kayak_rt::heap_cons(name, kayak_rt::nil())), acc);
+            let acc = put(str_lit("}"), put_nl(n, acc));
+            if last {
+                acc
             } else {
-                return put(str_lit(")"), put_exp(c, second(xs), n, value(), put(str_lit("("), acc)));
+                put_typecase_arms(c, x, valued, cdr(arms), n, t, put(str_lit(" else "), acc))
             }
-        } else if (string_eq_p(h, str_lit("blobref-index")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit("")) && not(null_p(blob_typed(c, e, str_lit("blob-owner "))))) {
-            return put(str_lit(")"), put_exp(c, second(xs), n, value(), put(str_lit(").at("), put_exp(c, car(xs), n, value(), put(str_lit("("), acc)))));
-        } else if (string_eq_p(h, str_lit("blobref-at")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit("")) && not(null_p(blob_typed(c, e, str_lit("blob-at "))))) {
-            // A typed suffix's blobref at 0 (C32): a reference to it.
-            return put(str_lit(").suffix)"), put_exp(c, car(xs), n, value(), put(str_lit("(&("), acc)));
-        } else if (string_eq_p(h, str_lit("blobref-index")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
-            let acc = put(str_lit(").index("), put_exp(c, car(xs), n, value(), put(str_lit("("), acc)));
-            let acc = put_exp(c, second(xs), n, value(), acc);
-            return put(str_lit(")"), put(string_append(str_lit(", "), words_of_sep(split_words(fact_with(c, e, str_lit("blob-element "))), str_lit(", "))), acc));
-        } else if (string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion"))) {
-            return put_block(c, kayak_rt::heap_cons(e, kayak_rt::nil()), n, t, acc);
-        } else if abort_p(c, e) {
-            // An abort: an early return, where a `Result` is returned; else no
-            // prompt can be running for its tag (the checker masked its region),
-            // and it fails, as FX-26's does when it runs.
-            let acc = put(if fallible_here_p(c) {
-                str_lit("(return Err(unwind(")
-            } else {
-                str_lit("unreachable_unwind(unwind(")
-            }, acc);
-            let acc = put_joined(c, xs, str_lit(", "), n, acc);
-            return put(if fallible_here_p(c) {
-                str_lit(")))")
-            } else {
-                str_lit("))")
-            }, acc);
-        } else if (string_eq_p(h, str_lit("prompt")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
-            return put_prompt(c, e, xs, n, acc);
-        } else if (string_eq_p(h, str_lit("abort-with-continuation")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
-            return put_suspension(c, e, xs, n, acc);
-        } else if null_p(xs) {
-            return put_question(c, e, put(str_lit("()"), put_callee(c, e, h, acc)));
-        } else if any_p(lambda1(move |x: &'static Sexp| {
-            module_name_p(c, x)
-        }), xs) {
-            // A module given: the type parameter's argument, its marker.
-            let acc = put(str_lit("::<"), put(callee(c, h), acc));
-            let acc = put_sep(lambda2(move |x: &'static Sexp, acc: Chars| {
-                put(str_lit("::Module"), put(mangle(sym_name(x)), acc))
-            }), str_lit(", "), concat(map(lambda1(move |x: &'static Sexp| {
-                if module_name_p(c, x) {
-                    the::<Sexps>(kayak_rt::heap_cons(x, kayak_rt::nil()))
-                } else {
-                    nil::<&'static Sexp>()
-                }
-            }), xs)), acc);
-            let acc = put(str_lit(">("), acc);
-            let acc = put_joined(c, concat(map(lambda1(move |x: &'static Sexp| {
-                if module_name_p(c, x) {
-                    nil::<&'static Sexp>()
-                } else {
-                    the::<Sexps>(kayak_rt::heap_cons(x, kayak_rt::nil()))
-                }
-            }), xs)), str_lit(", "), n, acc);
-            return put_question(c, e, put(str_lit(")"), acc));
-        } else {
-            return put_question(c, e, put(str_lit(")"), put_args(c, e, xs, 0i64, n, put(str_lit("("), put_callee(c, e, h, acc)))));
         }
     }
-}
 
-/// A call's arguments; one the checker found must be lifted, a procedure
-/// that cannot abort given where one that may is expected, wrapped in a
-/// closure returning `Ok`.
-pub fn put_args(c: &'static Ctx, e: &'static Sexp, xs: Sexps, i: i64, n: i64, acc: Chars) -> Chars {
-    if null_p(xs) {
-        acc
-    } else {
-        let acc = put_exp(c, car(xs), n, value(), acc);
-        put_args(c, e, cdr(xs), i64_plus(i, 1i64), n, if null_p(cdr(xs)) {
+    pub fn put_cond(c: &'static Ctx, clauses: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
+        let clause = items(car(clauses));
+        if sym_is_p(car(clause), str_lit("else")) {
+            put_block(c, cdr(clause), n, t, acc)
+        } else {
+            let acc = put(str_lit("if "), acc);
+            let acc = put_exp(c, car(clause), n, value(), acc);
+            let acc = put(str_lit(" "), acc);
+            let acc = put_block(c, cdr(clause), n, t, acc);
+            let acc = put(str_lit(" else "), acc);
+            put_cond(c, cdr(clauses), n, t, acc)
+        }
+    }
+
+    pub fn put_let1(c: &'static Ctx, binding: &'static Sexp, n: i64, acc: Chars) -> Chars {
+        let acc = put(str_lit("let "), acc);
+        let acc = put(mangle(sym_name(car(items(binding)))), acc);
+        let acc = put(str_lit(" = "), acc);
+        let acc = put_exp(c, second(items(binding)), n, value(), acc);
+        put_nl(n, put(str_lit(";"), acc))
+    }
+
+    /// Each binding sees those before it.
+    pub fn put_let_star(mut c: &'static Ctx, mut bindings: Sexps, mut n: i64, mut acc: Chars) -> Chars {
+        loop {
+            if null_p(bindings) {
+                return acc;
+            } else {
+                (c, bindings, acc) = (with_locals(c, map(&binding_name, kayak_rt::heap_cons(car(bindings), kayak_rt::nil()))), cdr(bindings), put_let1(c, car(bindings), n, acc));
+                continue;
+            }
+        }
+    }
+
+    pub fn put_binding_values(c: &'static Ctx, bindings: Sexps, n: i64, acc: Chars) -> Chars {
+        let acc = put_exp(c, second(items(car(bindings))), n, value(), acc);
+        if null_p(cdr(bindings)) {
             acc
         } else {
-            put(str_lit(", "), acc)
-        })
-    }
-}
-
-/// `(letrena r body ...)` (C30): a block that declares the region's type,
-/// an arena for each type made in it, and a `fn` of the region's
-/// lifetime, the body, given the arena and the locals the body names;
-/// makes the arena; and calls the `fn` with them. The arena is dropped
-/// when the block ends, by a return or an abort.
-pub fn put_letrena(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Chars) -> Chars {
-    let r = sym_name(car(xs));
-    let life = lifetime(r);
-    let region = string_append(str_lit("Region_"), camel(r));
-    let outer = letrena_lifetimes(ctx_locals(c));
-    let tvars = type_params_in(ctx_locals(c));
-    let lives = words_of_sep(onto(kayak_rt::heap_cons(life, outer), tvars), str_lit(", "));
-    let lives_bounded = words_of_sep(onto(kayak_rt::heap_cons(life, outer), map(lambda1(move |t: Str| {
-        string_append(t, str_lit(": Copy + 'static"))
-    }), tvars)), str_lit(", "));
-    let names = split_words(fact_with(c, e, str_lit("letrena-names ")));
-    let types = read_all(string_chars(fact_with(c, e, str_lit("letrena-locals "))), str_lit(""), 1i64);
-    let fallible = fact_at_p(c, e, str_lit("fallible"));
-    let inner = with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%letrena "), r), kayak_rt::heap_cons(str_lit("%sync"), kayak_rt::heap_cons(if fallible {
-        str_lit("%fallible")
-    } else {
-        str_lit("%infallible")
-    }, kayak_rt::heap_cons(r, names)))));
-    let held = distinct_strings(concat(map(lambda1(move |x: &'static Sexp| {
-        held_at(inner, string_append(str_lit("'"), r), x)
-    }), datums_in(cdr(xs)))));
-    let n1 = i64_plus(n, 1i64);
-    let acc = put_nl(n1, put(str_lit("{"), acc));
-    let acc = put(string_append(str_lit("struct "), string_append(region, string_append(str_lit("<"), string_append(lives_bounded, str_lit("> {"))))), acc);
-    let acc = put_held_fields(held, 0i64, acc);
-    let acc = put(string_append(str_lit(" phantom_: std::marker::PhantomData<("), string_append(words_of_sep(onto(map(lambda1(move |l: Str| {
-        string_append(str_lit("&"), string_append(l, str_lit(" ()")))
-    }), kayak_rt::heap_cons(life, outer)), tvars), str_lit(", ")), str_lit(",)> }"))), acc);
-    let acc = put_nl(n1, acc);
-    let acc = put(string_append(str_lit("impl<"), string_append(lives_bounded, string_append(str_lit("> Default for "), string_append(region, string_append(str_lit("<"), string_append(lives, string_append(str_lit("> { fn default() -> Self { "), string_append(region, string_append(str_lit(" { "), string_append(run_together_strings(map(lambda1(move |i: i64| {
-        string_append(str_lit("a"), string_append(i64_to_string(i), str_lit(": Arena::default(), ")))
-    }), counting(0i64, size(held)))), str_lit("phantom_: std::marker::PhantomData } } }"))))))))))), acc);
-    let acc = put_held_impls(held, 0i64, region, lives, lives_bounded, n1, acc);
-    let acc = put_nl(n1, acc);
-    let acc = put(string_append(str_lit("fn letrena__"), string_append(mangle_bare(r), string_append(str_lit("<"), string_append(words_of_sep(onto(onto(outer, kayak_rt::heap_cons(life, kayak_rt::nil())), map(lambda1(move |t: Str| {
-        string_append(t, str_lit(": Copy + 'static"))
-    }), tvars)), str_lit(", ")), str_lit(">("))))), acc);
-    let acc = put(string_append(mangle(r), string_append(str_lit(": &"), string_append(life, string_append(str_lit(" "), string_append(region, string_append(str_lit("<"), string_append(lives, str_lit(">")))))))), acc);
-    let acc = put_letrena_params(inner, names, types, acc);
-    let acc = put(str_lit(") -> "), acc);
-    let acc = if fallible {
-        put(str_lit(", Unwind>"), put_type(inner, car(read_all(string_chars(fact_with(c, e, str_lit("letrena-type "))), str_lit(""), 1i64)), put(str_lit("Result<"), acc)))
-    } else {
-        put_type(inner, car(read_all(string_chars(fact_with(c, e, str_lit("letrena-type "))), str_lit(""), 1i64)), acc)
-    };
-    let acc = put(str_lit(" "), acc);
-    let acc = put_block(inner, cdr(xs), n1, if fallible {
-        ok_value()
-    } else {
-        value()
-    }, acc);
-    let acc = put_nl(n1, acc);
-    let acc = put(string_append(str_lit("let "), string_append(mangle_bare(r), string_append(str_lit("__arena = "), string_append(region, str_lit("::default();"))))), acc);
-    let acc = put_nl(n1, acc);
-    let acc = put(string_append(str_lit("letrena__"), string_append(mangle_bare(r), string_append(str_lit("(&"), string_append(mangle_bare(r), str_lit("__arena"))))), acc);
-    let acc = put_sep(lambda2(move |x: Str, acc: List<char>| {
-        put_var(c, x, put(str_lit(", "), acc))
-    }), str_lit(""), names, acc);
-    let acc = put(str_lit(")"), acc);
-    let acc = if not(fallible) {
-        acc
-    } else if fallible_here_p(c) {
-        put(str_lit("?"), acc)
-    } else {
-        put(str_lit(".unwrap_or_else(|u| unreachable_unwind(u))"), acc)
-    };
-    put(str_lit("}"), put_nl(n, acc))
-}
-
-pub fn put_letrena_params(mut c: &'static Ctx, mut names: Strings, mut types: Sexps, mut acc: Chars) -> Chars {
-    loop {
-        if (null_p(names) || null_p(types)) {
-            return acc;
-        } else {
-            (names, types, acc) = (cdr(names), cdr(types), put_type(c, car(types), put(str_lit(": "), put(mangle(car(names)), put(str_lit(", "), acc)))));
-            continue;
+            put_binding_values(c, cdr(bindings), n, put(str_lit(", "), acc))
         }
     }
-}
 
-/// What is made, or needed, at the datum `x` in the place `place` (C34):
-/// each a Rust type an arena holds.
-pub fn held_at(c: &'static Ctx, place: Str, x: &'static Sexp) -> Strings {
-    concat(map(lambda1(move |w: Str| {
-        let rest = if has_prefix_p(w, str_lit("rheld-")) {
-            after_prefix(w, str_lit("rheld-"))
+    pub fn put_binding_names(bindings: Sexps, acc: Chars) -> Chars {
+        let acc = put(mangle(sym_name(car(items(car(bindings))))), acc);
+        if null_p(cdr(bindings)) {
+            acc
         } else {
-            after_prefix(w, str_lit("rneed-"))
+            put_binding_names(cdr(bindings), put(str_lit(", "), acc))
+        }
+    }
+
+    /// `let` binds in parallel: more than one binding is a tuple.
+    pub fn put_let(c: &'static Ctx, bindings: Sexps, n: i64, acc: Chars) -> Chars {
+        if null_p(bindings) {
+            acc
+        } else if null_p(cdr(bindings)) {
+            put_let1(c, car(bindings), n, acc)
+        } else {
+            let acc = put(str_lit("let ("), acc);
+            let acc = put_binding_names(bindings, acc);
+            let acc = put(str_lit(") = ("), acc);
+            let acc = put_binding_values(c, bindings, n, acc);
+            put_nl(n, put(str_lit(");"), acc))
+        }
+    }
+
+    /// A `match` arm a case arm: a character's and a boolean's data its
+    /// patterns; an int's or a string's, compared in its guard, as Rust has
+    /// no patterns for them.
+    pub fn put_case_arms(c: &'static Ctx, kind: Str, arms: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
+        if null_p(arms) {
+            acc
+        } else {
+            let arm = items(car(arms));
+            let acc = put_nl(n, acc);
+            let acc = if sym_is_p(car(arm), str_lit("else")) {
+                put(str_lit("_"), acc)
+            } else if string_eq_p(kind, str_lit("symbol")) {
+                // A symbol's data compared in the guard, by name (C73).
+                put_sep(lambda2(move |d: &'static Sexp, acc: Chars| {
+                    put(str_lit("\")))"), put_escaped(string_chars(sym_name(d)), '"', put(str_lit("kayak_rt::symbol_eq_p(case_, symbol_lit(str_lit(\""), acc)))
+                }), str_lit(" || "), items(car(arm)), put(str_lit("case_ if "), acc))
+            } else if (string_eq_p(kind, str_lit("int")) || string_eq_p(kind, str_lit("string"))) {
+                put_sep(lambda2(move |d: &'static Sexp, acc: Chars| {
+                    put(str_lit(")"), put_exp(c, d, n, value(), put(if string_eq_p(kind, str_lit("int")) {
+                        str_lit("kayak_rt::_eq(case_, ")
+                    } else {
+                        str_lit("kayak_rt::string_eq_p(case_, ")
+                    }, acc)))
+                }), str_lit(" || "), items(car(arm)), put(str_lit("case_ if "), acc))
+            } else {
+                put_joined(c, items(car(arm)), str_lit(" | "), n, acc)
+            };
+            let acc = put(str_lit(" => "), acc);
+            let acc = put_block(c, cdr(arm), n, t, acc);
+            put_case_arms(c, kind, cdr(arms), n, t, acc)
+        }
+    }
+
+    pub fn put_tagcase_arms(c: &'static Ctx, sum: Str, arms: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
+        if null_p(arms) {
+            acc
+        } else {
+            let arm = items(car(arms));
+            let tag = sym_name(car(arm));
+            let else_p = string_eq_p(tag, str_lit("else"));
+            let whole_p = {
+                let tagcase_ = second(arm);
+                match *tagcase_ {
+                    Sexp::Sym(x, at_file, at_pos) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            };
+            let bound = if (else_p || whole_p) {
+                the::<Strings>(kayak_rt::heap_cons(sym_name(second(arm)), kayak_rt::nil()))
+            } else {
+                map(&sym_name, items(second(arm)))
+            };
+            let acc = put_nl(n, acc);
+            let acc = if else_p {
+                let acc = put(str_lit("_ => {"), acc);
+                let acc = put_nl(i64_plus(n, 1i64), acc);
+                let acc = put(str_lit("let "), acc);
+                let acc = put(mangle(sym_name(second(arm))), acc);
+                put_nl(i64_plus(n, 1i64), put(str_lit(" = tagcase_;"), acc))
+            } else {
+                let acc = put(if string_eq_p(sum, str_lit("")) {
+                    datatype_path(tag_datatype(tag, ctx_tags(c)))
+                } else {
+                    sum
+                }, acc);
+                let acc = put(str_lit("::"), acc);
+                let acc = put(variant_name(tag), acc);
+                let acc = put(str_lit("("), acc);
+                if string_eq_p(sum, str_lit("")) {
+                    put_nl(i64_plus(n, 1i64), put(str_lit(") => {"), put_names(items(second(arm)), acc)))
+                } else if whole_p {
+                    put_nl(i64_plus(n, 1i64), put(str_lit(") => {"), put(mangle(sym_name(second(arm))), acc)))
+                } else {
+                    put_fields_of(items(second(arm)), 0i64, i64_plus(n, 1i64), put_nl(i64_plus(n, 1i64), put(str_lit("product_) => {"), acc)))
+                }
+            };
+            let acc = put_stmts(with_locals(c, bound), cdr(cdr(arm)), i64_plus(n, 1i64), hide(t, bound), acc);
+            let acc = put(str_lit("}"), put_nl(n, acc));
+            put_tagcase_arms(c, sum, cdr(arms), n, t, acc)
+        }
+    }
+
+    /// A sum's member, a product, taken apart: a `let` for each field.
+    pub fn put_fields_of(mut names: Sexps, mut i: i64, mut n: i64, mut acc: Chars) -> Chars {
+        loop {
+            if null_p(names) {
+                return acc;
+            } else {
+                (names, i, acc) = (cdr(names), i64_plus(i, 1i64), put_nl(n, put(str_lit(";"), put(i64_to_string(i), put(str_lit(" = product_."), put(mangle(sym_name(car(names))), put(str_lit("let "), acc)))))));
+                continue;
+            }
+        }
+    }
+
+    /// A `tagcase` as statements: its value bound once, then a `match`; of a
+    /// sum, its enum's name from the tags the checker found.
+    pub fn put_tagcase(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
+        if not(string_eq_p(fact_with(c, e, str_lit("blob-tagcase ")), str_lit(""))) {
+            put_flat_tagcase(c, e, xs, n, t, acc)
+        } else {
+            let tags = fact_with(c, e, str_lit("tagcase-sum "));
+            let sum = if string_eq_p(tags, str_lit("")) {
+                str_lit("")
+            } else {
+                shape_name(false, split_words(tags))
+            };
+            let acc = put(str_lit("let tagcase_ = "), acc);
+            let acc = put_exp(c, car(xs), n, value(), acc);
+            let acc = put_nl(n, put(str_lit(";"), acc));
+            let acc = put(str_lit("match *tagcase_ {"), acc);
+            let acc = put_tagcase_arms(c, sum, cdr(xs), i64_plus(n, 1i64), t, acc);
+            put(str_lit("}"), put_nl(n, acc))
+        }
+    }
+
+    /// A `tagcase` on a blobref to a flat sum (C33): its tag read once, of
+    /// the key's width; each arm's name a blobref to the variant, past the
+    /// tag; a tag no arm has, `else`'s, or an error, as in FX-26.
+    pub fn put_flat_tagcase(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
+        let found = split_words(fact_with(c, e, str_lit("blob-tagcase ")));
+        let acc = put(str_lit("let tagcase_ = "), acc);
+        let acc = put_exp(c, car(xs), n, value(), acc);
+        let acc = put_nl(n, put(str_lit(";"), acc));
+        let acc = put(string_append(str_lit("match tagcase_.tag("), string_append(car(found), str_lit(") {"))), acc);
+        let acc = put_flat_arms(c, second_string(found), cdr(xs), i64_plus(n, 1i64), t, acc);
+        let acc = if any_p(lambda1(move |a: &'static Sexp| {
+            sym_is_p(car(items(a)), str_lit("else"))
+        }), cdr(xs)) {
+            acc
+        } else {
+            put(str_lit("_ => no_flat_tag(),"), put_nl(i64_plus(n, 1i64), acc))
         };
-        let kind = car(split_at_char(rest, '@'));
-        let after = after_prefix(rest, string_append(kind, str_lit("@")));
-        let ws = read_all(string_chars(after), str_lit(""), 1i64);
-        if string_eq_p(sym_name(car(ws)), place) {
-            the::<Strings>(kayak_rt::heap_cons(held_rust(c, kind, lifetime(after_prefix(place, str_lit("'"))), second(ws)), kayak_rt::nil()))
+        put(str_lit("}"), put_nl(n, acc))
+    }
+
+    pub fn put_flat_arms(c: &'static Ctx, off: Str, arms: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
+        if null_p(arms) {
+            acc
         } else {
-            nil::<Str>()
+            let arm = items(car(arms));
+            let else_p = sym_is_p(car(arm), str_lit("else"));
+            let x = sym_name(second(arm));
+            let acc = put_nl(n, acc);
+            let acc = put(if else_p {
+                str_lit("_ => {")
+            } else {
+                string_append(number_text(car(arm)), str_lit(" => {"))
+            }, acc);
+            let acc = put_nl(i64_plus(n, 1i64), acc);
+            let acc = put(string_append(str_lit("let "), string_append(mangle(x), if else_p {
+                str_lit(" = tagcase_;")
+            } else {
+                string_append(str_lit(" = tagcase_.field("), string_append(off, str_lit(");")))
+            })), acc);
+            let acc = put_nl(i64_plus(n, 1i64), acc);
+            let acc = put_stmts(with_locals(c, kayak_rt::heap_cons(x, kayak_rt::nil())), cdr(cdr(arm)), i64_plus(n, 1i64), hide(t, kayak_rt::heap_cons(x, kayak_rt::nil())), acc);
+            let acc = put(str_lit("}"), put_nl(n, acc));
+            put_flat_arms(c, off, cdr(arms), n, t, acc)
         }
-    }), onto(all_facts_at(c, datum_file(x), datum_pos(x), str_lit("rheld-")), all_facts_at(c, datum_file(x), datum_pos(x), str_lit("rneed-")))))
-}
-
-/// An arena's type, for a making of `kind` in a place of lifetime `life`:
-/// a pair, `Cons<'r, T>`; a reference's cell; a bloblet.
-pub fn held_rust(c: &'static Ctx, kind: Str, life: Str, t: &'static Sexp) -> Str {
-    if string_eq_p(kind, str_lit("cons")) {
-        string_append(str_lit("Cons<"), string_append(life, string_append(str_lit(", "), string_append(rev_to_string(put_type(c, t, nil::<char>())), str_lit(">")))))
-    } else if string_eq_p(kind, str_lit("ref")) {
-        string_append(str_lit("std::cell::Cell<"), string_append(rev_to_string(put_type(c, t, nil::<char>())), str_lit(">")))
-    } else if not(null_p(typed_flat(c, t))) {
-        string_append(str_lit("TBloblet<"), string_append(rev_to_string(put_fields_tuple(c, cdr(items(second(items(t)))), nil::<char>())), string_append(str_lit(", "), string_append(rev_to_string(put_flat(c, car(typed_flat(c, t)), nil::<char>())), str_lit(">")))))
-    } else {
-        string_append(str_lit("Bloblet<"), string_append(rev_to_string(put_fields_tuple(c, cdr(items(second(items(t)))), nil::<char>())), str_lit(">")))
     }
-}
 
-/// What an allocation in region `r` makes, as Rust's type: a pair,
-/// `Cons<'r, T>`, or a reference's cell, `Cell<T>`.
-pub fn held_type(c: &'static Ctx, r: Str, call: &'static Sexp) -> Str {
-    let t = car(read_all(string_chars(fact_with(c, call, str_lit("rheld "))), str_lit(""), 1i64));
-    if head_is_p(call, str_lit("rcons")) {
-        string_append(str_lit("Cons<"), string_append(lifetime(r), string_append(str_lit(", "), string_append(rev_to_string(put_type(c, t, nil::<char>())), str_lit(">")))))
-    } else if (head_is_p(call, str_lit("rmake-bloblet")) && not(null_p(typed_flat(c, t)))) {
-        string_append(str_lit("TBloblet<"), string_append(rev_to_string(put_fields_tuple(c, cdr(items(second(items(t)))), nil::<char>())), string_append(str_lit(", "), string_append(rev_to_string(put_flat(c, car(typed_flat(c, t)), nil::<char>())), str_lit(">")))))
-    } else if head_is_p(call, str_lit("rmake-bloblet")) {
-        string_append(str_lit("Bloblet<"), string_append(rev_to_string(put_fields_tuple(c, cdr(items(second(items(t)))), nil::<char>())), str_lit(">")))
-    } else {
-        string_append(str_lit("std::cell::Cell<"), string_append(rev_to_string(put_type(c, t, nil::<char>())), str_lit(">")))
+    /// A quasiquoted datum (C79), built: an unquote at depth 1 its
+    /// expression's value, a datum; an unquote-splicing's list appended.
+    pub fn put_quasi(c: &'static Ctx, d: &'static Sexp, depth: i64, n: i64, acc: Chars) -> Chars {
+        let tagcase_ = d;
+        match *tagcase_ {
+            Sexp::Lst(ys, f, l, p) => {
+                if null_p(ys) {
+                    put(str_lit("kayak_rt::value::Value::Nil"), acc)
+                } else if (i64_eq(size(ys), 2i64) && head_is_p(d, str_lit("unquote")) && i64_eq(depth, 1i64)) {
+                    put_exp(c, second(ys), n, value(), acc)
+                } else if (i64_eq(size(ys), 2i64) && (head_is_p(d, str_lit("unquote")) || head_is_p(d, str_lit("unquote-splicing")))) {
+                    put_quasi_tagged(c, sym_name(car(ys)), second(ys), i64_minus(depth, 1i64), n, acc)
+                } else if (i64_eq(size(ys), 2i64) && head_is_p(d, str_lit("quasiquote"))) {
+                    put_quasi_tagged(c, str_lit("quasiquote"), second(ys), i64_plus(depth, 1i64), n, acc)
+                } else if head_is_p(d, str_lit("#vector")) {
+                    put(str_lit(")"), put_quasi_items(c, cdr(ys), depth, n, put(str_lit("kayak_rt::value::datum_list_to_vector("), acc)))
+                } else {
+                    put_quasi_items(c, ys, depth, n, acc)
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                put_quoted(c, d, acc)
+            }
+        }
     }
-}
 
-/// `(prompt tag body handler)`: the body run in a closure that returns a
-/// `Result`, and its abort to the tag handled; any other abort passed on,
-/// if the function written may abort, else none can come (the checker
-/// found the prompt contains every abort its body may make).
-pub fn put_prompt(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Chars) -> Chars {
-    if fact_at_p(c, e, str_lit("suspending-body")) {
-        put_suspending_prompt(c, e, xs, n, acc)
-    } else {
-        let inner = with_locals(c, kayak_rt::heap_cons(str_lit("%sync"), kayak_rt::heap_cons(str_lit("%fallible"), kayak_rt::nil())));
+    /// `(tag d)` as data, `d` at `depth`.
+    pub fn put_quasi_tagged(c: &'static Ctx, tag: Str, d: &'static Sexp, depth: i64, n: i64, acc: Chars) -> Chars {
+        let acc = put(str_lit("kayak_rt::value::cons("), acc);
+        let acc = put_quoted(c, sym(tag, str_lit(""), 0i64), acc);
+        let acc = put(str_lit(", kayak_rt::value::cons("), acc);
+        let acc = put_quasi(c, d, depth, n, acc);
+        put(str_lit(", kayak_rt::value::Value::Nil))"), acc)
+    }
+
+    pub fn put_quasi_items(c: &'static Ctx, ds: Sexps, depth: i64, n: i64, acc: Chars) -> Chars {
+        if null_p(ds) {
+            put(str_lit("kayak_rt::value::Value::Nil"), acc)
+        } else if (sym_is_p(car(ds), str_lit(".")) && not(null_p(cdr(ds))) && null_p(cdr(cdr(ds)))) {
+            put_quasi(c, car(cdr(ds)), depth, n, acc)
+        } else if (i64_eq(depth, 1i64) && head_is_p(car(ds), str_lit("unquote-splicing")) && i64_eq(size(items(car(ds))), 2i64)) {
+            put(str_lit(")"), put_quasi_items(c, cdr(ds), depth, n, put(str_lit(", "), put_exp(c, second(items(car(ds))), n, value(), put(str_lit("kayak_rt::value::spliced("), acc)))))
+        } else {
+            put(str_lit(")"), put_quasi_items(c, cdr(ds), depth, n, put(str_lit(", "), put_quasi(c, car(ds), depth, n, put(str_lit("kayak_rt::value::cons("), acc)))))
+        }
+    }
+
+    /// A lambda as a value: a closure, `move`, since what it captures is
+    /// `Copy`, made a `&'static dyn Fn` by `lambdaN`, `N` its arity.
+    pub fn put_lambda(c: &'static Ctx, e: &'static Sexp, params: Sexps, body: Sexps, n: i64, acc: Chars) -> Chars {
+        let acc = put(str_lit("lambda"), acc);
+        let acc = put(i64_to_string(size(params)), acc);
+        let acc = put(str_lit("(move |"), acc);
+        let acc = put_lambda_params(c, lambda_params_typed(c, e, params), acc);
+        let acc = put(str_lit("| "), acc);
+        if fact_at_p(c, e, str_lit("suspends")) {
+            // One that may suspend returns its body as a future, boxed (C45).
+            put(str_lit("))"), put_block(with_locals(c, kayak_rt::heap_cons(str_lit("%async"), kayak_rt::heap_cons(str_lit("%fallible"), map(&param_name, params)))), body, n, ok_value(), put(str_lit("kayak_rt::suspend::body(async move "), acc)))
+        } else if fact_at_p(c, e, str_lit("fallible")) {
+            put(str_lit(")"), put_block(with_locals(c, kayak_rt::heap_cons(str_lit("%sync"), kayak_rt::heap_cons(str_lit("%fallible"), map(&param_name, params)))), body, n, ok_value(), acc))
+        } else {
+            put(str_lit(")"), put_block(with_locals(c, kayak_rt::heap_cons(str_lit("%sync"), kayak_rt::heap_cons(str_lit("%infallible"), map(&param_name, params)))), body, n, value(), acc))
+        }
+    }
+
+    /// `x`, or `(x T)` as `x: T`.
+    pub fn put_lambda_params(c: &'static Ctx, params: Sexps, acc: Chars) -> Chars {
+        if null_p(params) {
+            acc
+        } else {
+            let acc = {
+                let tagcase_ = car(params);
+                match *tagcase_ {
+                    Sexp::Lst(xt, src_file, src_line, src_pos) => {
+                        put_type(c, second(xt), put(str_lit(": "), put(mangle(sym_name(car(xt))), acc)))
+                    }
+                    _ => {
+                        let name = tagcase_;
+                        put(mangle(sym_name(name)), acc)
+                    }
+                }
+            };
+            put_lambda_params(c, cdr(params), if null_p(cdr(params)) {
+                acc
+            } else {
+                put(str_lit(", "), acc)
+            })
+        }
+    }
+
+    /// A letrec's procedures, made through knots: each knot made, then each
+    /// closure, whose group it reaches through the knots, then each knot
+    /// tied; a statement a line.
+    pub fn put_letrec(c: &'static Ctx, bindings: Sexps, names: Strings, n: i64, acc: Chars) -> Chars {
+        let inside = with_locals(c, map(lambda1(move |x: Str| {
+            string_append(str_lit("%knot "), x)
+        }), names));
+        let acc = put_sep(lambda2(move |b: &'static Sexp, acc: Chars| {
+            let ys = items(b);
+            let acc = put(str_lit("let "), acc);
+            let acc = put(mangle_bare(sym_name(car(ys))), acc);
+            let acc = put(str_lit("__knot = knot::<"), acc);
+            let acc = put_type(c, second(ys), acc);
+            put_nl(n, put(str_lit(">();"), acc))
+        }), str_lit(""), bindings, acc);
+        let acc = put_sep(lambda2(move |b: &'static Sexp, acc: Chars| {
+            let ys = items(b);
+            let acc = put(str_lit("let "), acc);
+            let acc = put(mangle(sym_name(car(ys))), acc);
+            let acc = put(str_lit(" = "), acc);
+            let lam = typed_lambda(as_lambda(third(ys)), family_expanded(c, second(ys)));
+            let acc = if letrec_loops_p(inside, sym_name(car(ys)), lam) {
+                put_looping_lambda(inside, sym_name(car(ys)), lam, n, acc)
+            } else {
+                put_exp(inside, lam, n, value(), acc)
+            };
+            put_nl(n, put(str_lit(";"), acc))
+        }), str_lit(""), bindings, acc);
+        put_sep(lambda2(move |x: Str, acc: Chars| {
+            put_nl(n, put(str_lit(");"), put(mangle(x), put(str_lit("__knot.set("), put(mangle_bare(x), acc)))))
+        }), str_lit(""), names, acc)
+    }
+
+    /// Whether a `letrec`'s procedure calls itself last: a loop, as a
+    /// top-level procedure's is, so that it grows no stack.
+    pub fn letrec_loops_p(c: &'static Ctx, f: Str, lam: &'static Sexp) -> bool {
+        let xs = items(lam);
+        let names = map(&param_name, items(second(xs)));
+        tail_calls_p(returns(f, names, true, fact_at_p(c, lam, str_lit("fallible"))), last(cdr(cdr(xs))))
+    }
+
+    /// A `letrec`'s procedure that calls itself last: a closure whose body
+    /// is a `loop`, its parameters `mut`, a call of itself an assignment to
+    /// them and a `continue`, as a top-level procedure's.
+    pub fn put_looping_lambda(c: &'static Ctx, f: Str, lam: &'static Sexp, n: i64, acc: Chars) -> Chars {
+        let xs = items(lam);
+        let params = lambda_params_typed(c, lam, items(second(xs)));
+        let names = map(&param_name, params);
+        let fallible = fact_at_p(c, lam, str_lit("fallible"));
+        let suspends = fact_at_p(c, lam, str_lit("suspends"));
+        let t = returns(f, names, true, fallible);
+        let inner = with_locals(c, kayak_rt::heap_cons(if suspends {
+            str_lit("%async")
+        } else {
+            str_lit("%sync")
+        }, kayak_rt::heap_cons(if fallible {
+            str_lit("%fallible")
+        } else {
+            str_lit("%infallible")
+        }, names)));
+        let acc = put(string_append(str_lit("lambda"), string_append(i64_to_string(size(params)), str_lit("(move |"))), acc);
+        let acc = put_sep(lambda2(move |p: &'static Sexp, acc: List<char>| {
+            let tagcase_ = p;
+            match *tagcase_ {
+                Sexp::Lst(pt, f2, l2, p2) => {
+                    put_type(c, second(pt), put(str_lit(": "), put(mangle(sym_name(car(pt))), put(str_lit("mut "), acc))))
+                }
+                _ => {
+                    let other = tagcase_;
+                    put(mangle(sym_name(other)), put(str_lit("mut "), acc))
+                }
+            }
+        }), str_lit(", "), params, acc);
+        let acc = put(if suspends {
+            str_lit("| kayak_rt::suspend::body(async move {")
+        } else {
+            str_lit("| {")
+        }, acc);
+        let acc = put_nl(i64_plus(n, 2i64), put(str_lit("loop {"), put_nl(i64_plus(n, 1i64), acc)));
+        let acc = put_stmts(inner, cdr(cdr(xs)), i64_plus(n, 2i64), t, acc);
+        put(if suspends {
+            str_lit("}))")
+        } else {
+            str_lit("})")
+        }, put_nl(n, put(str_lit("}"), put_nl(i64_plus(n, 1i64), acc))))
+    }
+
+    pub fn put_list(c: &'static Ctx, xs: Sexps, n: i64, acc: Chars) -> Chars {
+        if null_p(xs) {
+            put(str_lit("kayak_rt::nil()"), acc)
+        } else {
+            let acc = put(if heap_static_p(ctx_locals(c)) {
+                str_lit("kayak_rt::heap_cons(")
+            } else {
+                str_lit("kayak_rt::cons(")
+            }, acc);
+            let acc = put_exp(c, car(xs), n, value(), acc);
+            let acc = put(str_lit(", "), acc);
+            let acc = put_list(c, cdr(xs), n, acc);
+            put(str_lit(")"), acc)
+        }
+    }
+
+    /// `e` is the whole form, `h` its head's name and `xs` the rest.
+    pub fn put_form(mut c: &'static Ctx, mut e: &'static Sexp, mut h: Str, mut xs: Sexps, mut n: i64, mut t: &'static Tail, mut acc: Chars) -> Chars {
+        loop {
+            if string_eq_p(h, str_lit("if")) {
+                let acc = put(str_lit("if "), acc);
+                let acc = put_exp(c, car(xs), n, value(), acc);
+                let acc = put(str_lit(" "), acc);
+                let acc = put_block(c, kayak_rt::heap_cons(second(xs), kayak_rt::nil()), n, t, acc);
+                let acc = put(str_lit(" else "), acc);
+                return put_block(c, kayak_rt::heap_cons(third(xs), kayak_rt::nil()), n, t, acc);
+            } else if string_eq_p(h, str_lit("cond")) {
+                return put_cond(c, xs, n, t, acc);
+            } else if string_eq_p(h, str_lit("typecase")) {
+                return put_typecase_arms(c, car(xs), fact_at_p(c, e, str_lit("typecase-valued")), cdr(xs), n, t, acc);
+            } else if string_eq_p(h, str_lit("and")) {
+                if null_p(xs) {
+                    return put(str_lit("true"), acc);
+                } else {
+                    return put(str_lit(")"), put_joined(c, xs, str_lit(" && "), n, put(str_lit("("), acc)));
+                }
+            } else if string_eq_p(h, str_lit("or")) {
+                if null_p(xs) {
+                    return put(str_lit("false"), acc);
+                } else {
+                    return put(str_lit(")"), put_joined(c, xs, str_lit(" || "), n, put(str_lit("("), acc)));
+                }
+            } else if (string_eq_p(h, str_lit("with")) && null_p(cdr(cdr(xs)))) {
+                // A `with` of one expression, no block: only its names are its.
+                return put_exp(with_opened(c, e), second(xs), n, opened_tail(c, e, t), acc);
+            } else if (string_eq_p(h, str_lit("begin")) || string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*")) || string_eq_p(h, str_lit("tagcase")) || string_eq_p(h, str_lit("with"))) {
+                return put_block(c, kayak_rt::heap_cons(e, kayak_rt::nil()), n, t, acc);
+            } else if string_eq_p(h, str_lit("case")) {
+                let acc = put(str_lit("match "), acc);
+                let acc = put_exp(c, car(xs), n, value(), acc);
+                let acc = put(str_lit(" {"), acc);
+                let acc = put_case_arms(c, case_kind(c, e), cdr(xs), i64_plus(n, 1i64), t, acc);
+                return put(str_lit("}"), put_nl(n, acc));
+            } else if string_eq_p(h, str_lit("lambda")) {
+                return put_lambda(c, e, items(car(xs)), cdr(xs), n, acc);
+            } else if (string_eq_p(h, str_lit("rlambda")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+                return put_lambda(c, e, items(second(xs)), cdr(cdr(xs)), n, acc);
+            } else if string_eq_p(h, str_lit("proj")) {
+                return put_exp(c, car(xs), n, value(), acc);
+            } else if string_eq_p(h, str_lit("product")) {
+                let fs = map(&items, xs);
+                let acc = put(shape_name(true, map(lambda1(move |f: Sexps| {
+                    label_of(car(f))
+                }), fs)), acc);
+                return put(str_lit(")"), put_joined(c, map(&second, fs), str_lit(", "), n, put(str_lit("("), acc)));
+            } else if string_eq_p(h, str_lit("extract")) {
+                if not(null_p(blob_typed(c, e, str_lit("blob-owner ")))) {
+                    return put(str_lit(")"), put(fact_with(c, e, str_lit("blob-field ")), put(str_lit(")."), put_exp(c, car(xs), n, value(), put(str_lit("(&("), acc)))));
+                } else if string_eq_p(fact_with(c, e, str_lit("blob-offset ")), str_lit("")) {
+                    return put(fact_with(c, e, str_lit("extract-index ")), put(str_lit("."), put_exp(c, car(xs), n, value(), acc)));
+                } else {
+                    return put(str_lit(")"), put(fact_with(c, e, str_lit("blob-offset ")), put(str_lit(").field("), put_exp(c, car(xs), n, value(), put(str_lit("("), acc)))));
+                }
+            } else if string_eq_p(h, str_lit("sum")) {
+                // A sum's enum written with its type's arguments, which only the type
+                // expected, as the checker found it, says.
+                let ty = car(read_all(string_chars(fact_with(c, e, str_lit("sum-type "))), str_lit(""), 1i64));
+                let fs = map(&items, cdr(items(ty)));
+                let acc = put(heap_alloc(c), acc);
+                let acc = put(shape_name(false, map(lambda1(move |f: Sexps| {
+                    label_of(car(f))
+                }), fs)), acc);
+                let acc = put(str_lit(">::"), put_types(c, map(&second, fs), put(str_lit("::<"), acc)));
+                let acc = put(variant_name(label_of(car(xs))), acc);
+                let acc = put(str_lit("("), acc);
+                return put(str_lit("))"), put_exp(c, second(xs), n, value(), acc));
+            } else if (string_eq_p(h, str_lit("list")) && null_p(xs)) {
+                return put(str_lit("()"), put_turbofish(c, e, put(str_lit("kayak_rt::nil"), acc)));
+            } else if string_eq_p(h, str_lit("list")) {
+                return put_list(c, xs, n, acc);
+            } else if (string_eq_p(h, str_lit("quasiquote")) && {
+                let tagcase_ = car(xs);
+                match *tagcase_ {
+                    Sexp::Lst(ys, f, l, p) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                if head_is_p(car(xs), str_lit("unquote")) {
+                    return put_exp(c, second(items(car(xs))), n, value(), acc);
+                } else {
+                    return put_quasi(c, car(xs), 1i64, n, acc);
+                }
+            } else if string_eq_p(h, str_lit("quasiquote")) {
+                h = str_lit("quote");
+                continue;
+            } else if string_eq_p(h, str_lit("quote")) {
+                let tagcase_ = car(xs);
+                match *tagcase_ {
+                    Sexp::Sym(q, f, p) => {
+                        if (string_eq_p(q, str_lit("#t")) || string_eq_p(q, str_lit("#f"))) {
+                            return put_var(c, q, acc);
+                        } else {
+                            return put(str_lit("\"))"), put_escaped(string_chars(q), '"', put(str_lit("symbol_lit(str_lit(\""), acc)));
+                        }
+                    }
+                    Sexp::Num(k, f, p) => {
+                        return put(str_lit(")"), put(i64_to_string(k), put(str_lit("int_lit("), acc)));
+                    }
+                    Sexp::Big(text, f, p) => {
+                        return put(str_lit("\")"), put(text, put(str_lit("int_text(\""), acc)));
+                    }
+                    Sexp::Lst(ys, f, l, p) => {
+                        return put_quoted(c, car(xs), acc);
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return put_exp(c, car(xs), n, value(), acc);
+                    }
+                }
+            } else if string_eq_p(h, str_lit("the")) {
+                // `the::<T>(e)`: the type said to rustc too, which may need it where
+                // FX-26's checker did (a tag's payload, a list nothing else types).
+                let acc = put(str_lit("the::<"), acc);
+                let acc = put_type(c, car(xs), acc);
+                let acc = put(str_lit(">("), acc);
+                let acc = put_args(c, e, cdr(xs), 0i64, n, acc);
+                return put(str_lit(")"), acc);
+            } else if ((string_eq_p(h, str_lit("letrena")) || string_eq_p(h, str_lit("letreap"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+                return put_letrena(c, e, xs, n, acc);
+            } else if ((string_eq_p(h, str_lit("make-bloblet")) || string_eq_p(h, str_lit("rmake-bloblet"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+                // `make_bloblet(bytes, (Cell::new(e), ...,))`; in a region, `rmake_bloblet(r, ...)`.
+                let placed = string_eq_p(h, str_lit("rmake-bloblet"));
+                let flat = blob_typed(c, e, str_lit("blob-make "));
+                let acc = if null_p(flat) {
+                    put(if placed {
+                        str_lit("rmake_bloblet(")
+                    } else {
+                        str_lit("make_bloblet(")
+                    }, acc)
+                } else if placed {
+                    put(str_lit(", _>("), put_flat(c, car(flat), put(str_lit("rmake_tbloblet::<_, "), acc)))
+                } else {
+                    put(str_lit(">("), put_flat(c, car(flat), put(str_lit("make_tbloblet::<_, "), acc)))
+                };
+                let acc = if placed {
+                    put(str_lit(", "), put_exp(c, car(xs), n, value(), acc))
+                } else {
+                    acc
+                };
+                let rest = if placed {
+                    cdr(xs)
+                } else {
+                    xs
+                };
+                let acc = put(str_lit(", ("), put_exp(c, car(rest), n, value(), acc));
+                let acc = put_sep(lambda2(move |x: &'static Sexp, acc: List<char>| {
+                    put(str_lit("),"), put_exp(c, x, n, value(), put(str_lit("std::cell::Cell::new("), acc)))
+                }), str_lit(" "), cdr(rest), acc);
+                return put(str_lit("))"), acc);
+            } else if ((string_eq_p(h, str_lit("bloblet-ref")) || string_eq_p(h, str_lit("bloblet-set!"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+                // A field, a cell: `(b).fields.i.get()`, `.set(e)`.
+                let acc = put(number_text(second(xs)), put(str_lit(").fields."), put_exp(c, car(xs), n, value(), put(str_lit("("), acc))));
+                if string_eq_p(h, str_lit("bloblet-ref")) {
+                    return put(str_lit(".get()"), acc);
+                } else {
+                    return put(str_lit(")"), put_exp(c, third(xs), n, value(), put(str_lit(".set("), acc)));
+                }
+            } else if (string_eq_p(h, str_lit("blobref-variant!")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+                // Its tag written, the label as it is, and a blobref to the variant (C33).
+                return put(str_lit(")"), put(words_of_sep(split_words(fact_with(c, e, str_lit("blob-variant "))), str_lit(", ")), put(str_lit(").variant("), put_exp(c, car(xs), n, value(), put(str_lit("("), acc)))));
+            } else if ((string_eq_p(h, str_lit("blobref-get")) || string_eq_p(h, str_lit("blobref-set!"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+                // A scalar's bytes, read or written as the checker found its flat.
+                let acc = if null_p(blob_typed(c, e, str_lit("blob-owner "))) {
+                    put(fact_with(c, e, str_lit("blob-scalar ")), put(if string_eq_p(h, str_lit("blobref-get")) {
+                        str_lit(").get_")
+                    } else {
+                        str_lit(").set_")
+                    }, put_exp(c, car(xs), n, value(), put(str_lit("("), acc))))
+                } else {
+                    put(if string_eq_p(h, str_lit("blobref-get")) {
+                        str_lit(").get")
+                    } else {
+                        str_lit(").set")
+                    }, put_exp(c, car(xs), n, value(), put(str_lit("("), acc)))
+                };
+                if string_eq_p(h, str_lit("blobref-get")) {
+                    return put(str_lit("()"), acc);
+                } else {
+                    return put(str_lit(")"), put_exp(c, second(xs), n, value(), put(str_lit("("), acc)));
+                }
+            } else if (string_eq_p(h, str_lit("blobref-index")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit("")) && not(null_p(blob_typed(c, e, str_lit("blob-owner "))))) {
+                return put(str_lit(")"), put_exp(c, second(xs), n, value(), put(str_lit(").at("), put_exp(c, car(xs), n, value(), put(str_lit("("), acc)))));
+            } else if (string_eq_p(h, str_lit("blobref-at")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit("")) && not(null_p(blob_typed(c, e, str_lit("blob-at "))))) {
+                // A typed suffix's blobref at 0 (C32): a reference to it.
+                return put(str_lit(").suffix)"), put_exp(c, car(xs), n, value(), put(str_lit("(&("), acc)));
+            } else if (string_eq_p(h, str_lit("blobref-index")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+                let acc = put(str_lit(").index("), put_exp(c, car(xs), n, value(), put(str_lit("("), acc)));
+                let acc = put_exp(c, second(xs), n, value(), acc);
+                return put(str_lit(")"), put(string_append(str_lit(", "), words_of_sep(split_words(fact_with(c, e, str_lit("blob-element "))), str_lit(", "))), acc));
+            } else if (string_eq_p(h, str_lit("letrec")) || string_eq_p(h, str_lit("letregion"))) {
+                return put_block(c, kayak_rt::heap_cons(e, kayak_rt::nil()), n, t, acc);
+            } else if abort_p(c, e) {
+                // An abort: an early return, where a `Result` is returned; else no
+                // prompt can be running for its tag (the checker masked its region),
+                // and it fails, as FX-26's does when it runs.
+                let acc = put(if fallible_here_p(c) {
+                    str_lit("(return Err(unwind(")
+                } else {
+                    str_lit("unreachable_unwind(unwind(")
+                }, acc);
+                let acc = put_joined(c, xs, str_lit(", "), n, acc);
+                return put(if fallible_here_p(c) {
+                    str_lit(")))")
+                } else {
+                    str_lit("))")
+                }, acc);
+            } else if (string_eq_p(h, str_lit("prompt")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+                return put_prompt(c, e, xs, n, acc);
+            } else if (string_eq_p(h, str_lit("abort-with-continuation")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+                return put_suspension(c, e, xs, n, acc);
+            } else if null_p(xs) {
+                return put_question(c, e, put(str_lit("()"), put_callee(c, e, h, acc)));
+            } else if any_p(lambda1(move |x: &'static Sexp| {
+                module_name_p(c, x)
+            }), xs) {
+                // A module given: the type parameter's argument, its marker.
+                let acc = put(str_lit("::<"), put(callee(c, h), acc));
+                let acc = put_sep(lambda2(move |x: &'static Sexp, acc: Chars| {
+                    put(str_lit("::Module"), put(mangle(sym_name(x)), acc))
+                }), str_lit(", "), concat(map(lambda1(move |x: &'static Sexp| {
+                    if module_name_p(c, x) {
+                        the::<Sexps>(kayak_rt::heap_cons(x, kayak_rt::nil()))
+                    } else {
+                        nil::<&'static Sexp>()
+                    }
+                }), xs)), acc);
+                let acc = put(str_lit(">("), acc);
+                let acc = put_joined(c, concat(map(lambda1(move |x: &'static Sexp| {
+                    if module_name_p(c, x) {
+                        nil::<&'static Sexp>()
+                    } else {
+                        the::<Sexps>(kayak_rt::heap_cons(x, kayak_rt::nil()))
+                    }
+                }), xs)), str_lit(", "), n, acc);
+                return put_question(c, e, put(str_lit(")"), acc));
+            } else {
+                return put_question(c, e, put(str_lit(")"), put_args(c, e, xs, 0i64, n, put(str_lit("("), put_callee(c, e, h, acc)))));
+            }
+        }
+    }
+
+    /// A call's arguments; one the checker found must be lifted, a procedure
+    /// that cannot abort given where one that may is expected, wrapped in a
+    /// closure returning `Ok`.
+    pub fn put_args(c: &'static Ctx, e: &'static Sexp, xs: Sexps, i: i64, n: i64, acc: Chars) -> Chars {
+        if null_p(xs) {
+            acc
+        } else {
+            let acc = put_exp(c, car(xs), n, value(), acc);
+            put_args(c, e, cdr(xs), i64_plus(i, 1i64), n, if null_p(cdr(xs)) {
+                acc
+            } else {
+                put(str_lit(", "), acc)
+            })
+        }
+    }
+
+    /// `(letrena r body ...)` (C30): a block that declares the region's type,
+    /// an arena for each type made in it, and a `fn` of the region's
+    /// lifetime, the body, given the arena and the locals the body names;
+    /// makes the arena; and calls the `fn` with them. The arena is dropped
+    /// when the block ends, by a return or an abort.
+    pub fn put_letrena(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Chars) -> Chars {
+        let r = sym_name(car(xs));
+        let life = lifetime(r);
+        let region = string_append(str_lit("Region_"), camel(r));
+        let outer = letrena_lifetimes(ctx_locals(c));
+        let tvars = type_params_in(ctx_locals(c));
+        let lives = words_of_sep(onto(kayak_rt::heap_cons(life, outer), tvars), str_lit(", "));
+        let lives_bounded = words_of_sep(onto(kayak_rt::heap_cons(life, outer), map(lambda1(move |t: Str| {
+            string_append(t, str_lit(": Copy + 'static"))
+        }), tvars)), str_lit(", "));
+        let names = split_words(fact_with(c, e, str_lit("letrena-names ")));
+        let types = read_all(string_chars(fact_with(c, e, str_lit("letrena-locals "))), str_lit(""), 1i64);
+        let fallible = fact_at_p(c, e, str_lit("fallible"));
+        let inner = with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%letrena "), r), kayak_rt::heap_cons(str_lit("%sync"), kayak_rt::heap_cons(if fallible {
+            str_lit("%fallible")
+        } else {
+            str_lit("%infallible")
+        }, kayak_rt::heap_cons(r, names)))));
+        let held = distinct_strings(concat(map(lambda1(move |x: &'static Sexp| {
+            held_at(inner, string_append(str_lit("'"), r), x)
+        }), datums_in(cdr(xs)))));
+        let n1 = i64_plus(n, 1i64);
+        let acc = put_nl(n1, put(str_lit("{"), acc));
+        let acc = put(string_append(str_lit("struct "), string_append(region, string_append(str_lit("<"), string_append(lives_bounded, str_lit("> {"))))), acc);
+        let acc = put_held_fields(held, 0i64, acc);
+        let acc = put(string_append(str_lit(" phantom_: std::marker::PhantomData<("), string_append(words_of_sep(onto(map(lambda1(move |l: Str| {
+            string_append(str_lit("&"), string_append(l, str_lit(" ()")))
+        }), kayak_rt::heap_cons(life, outer)), tvars), str_lit(", ")), str_lit(",)> }"))), acc);
+        let acc = put_nl(n1, acc);
+        let acc = put(string_append(str_lit("impl<"), string_append(lives_bounded, string_append(str_lit("> Default for "), string_append(region, string_append(str_lit("<"), string_append(lives, string_append(str_lit("> { fn default() -> Self { "), string_append(region, string_append(str_lit(" { "), string_append(run_together_strings(map(lambda1(move |i: i64| {
+            string_append(str_lit("a"), string_append(i64_to_string(i), str_lit(": Arena::default(), ")))
+        }), counting(0i64, size(held)))), str_lit("phantom_: std::marker::PhantomData } } }"))))))))))), acc);
+        let acc = put_held_impls(held, 0i64, region, lives, lives_bounded, n1, acc);
+        let acc = put_nl(n1, acc);
+        let acc = put(string_append(str_lit("fn letrena__"), string_append(mangle_bare(r), string_append(str_lit("<"), string_append(words_of_sep(onto(onto(outer, kayak_rt::heap_cons(life, kayak_rt::nil())), map(lambda1(move |t: Str| {
+            string_append(t, str_lit(": Copy + 'static"))
+        }), tvars)), str_lit(", ")), str_lit(">("))))), acc);
+        let acc = put(string_append(mangle(r), string_append(str_lit(": &"), string_append(life, string_append(str_lit(" "), string_append(region, string_append(str_lit("<"), string_append(lives, str_lit(">")))))))), acc);
+        let acc = put_letrena_params(inner, names, types, acc);
+        let acc = put(str_lit(") -> "), acc);
+        let acc = if fallible {
+            put(str_lit(", Unwind>"), put_type(inner, car(read_all(string_chars(fact_with(c, e, str_lit("letrena-type "))), str_lit(""), 1i64)), put(str_lit("Result<"), acc)))
+        } else {
+            put_type(inner, car(read_all(string_chars(fact_with(c, e, str_lit("letrena-type "))), str_lit(""), 1i64)), acc)
+        };
+        let acc = put(str_lit(" "), acc);
+        let acc = put_block(inner, cdr(xs), n1, if fallible {
+            ok_value()
+        } else {
+            value()
+        }, acc);
+        let acc = put_nl(n1, acc);
+        let acc = put(string_append(str_lit("let "), string_append(mangle_bare(r), string_append(str_lit("__arena = "), string_append(region, str_lit("::default();"))))), acc);
+        let acc = put_nl(n1, acc);
+        let acc = put(string_append(str_lit("letrena__"), string_append(mangle_bare(r), string_append(str_lit("(&"), string_append(mangle_bare(r), str_lit("__arena"))))), acc);
+        let acc = put_sep(lambda2(move |x: Str, acc: List<char>| {
+            put_var(c, x, put(str_lit(", "), acc))
+        }), str_lit(""), names, acc);
+        let acc = put(str_lit(")"), acc);
+        let acc = if not(fallible) {
+            acc
+        } else if fallible_here_p(c) {
+            put(str_lit("?"), acc)
+        } else {
+            put(str_lit(".unwrap_or_else(|u| unreachable_unwind(u))"), acc)
+        };
+        put(str_lit("}"), put_nl(n, acc))
+    }
+
+    pub fn put_letrena_params(mut c: &'static Ctx, mut names: Strings, mut types: Sexps, mut acc: Chars) -> Chars {
+        loop {
+            if (null_p(names) || null_p(types)) {
+                return acc;
+            } else {
+                (names, types, acc) = (cdr(names), cdr(types), put_type(c, car(types), put(str_lit(": "), put(mangle(car(names)), put(str_lit(", "), acc)))));
+                continue;
+            }
+        }
+    }
+
+    /// What is made, or needed, at the datum `x` in the place `place` (C34):
+    /// each a Rust type an arena holds.
+    pub fn held_at(c: &'static Ctx, place: Str, x: &'static Sexp) -> Strings {
+        concat(map(lambda1(move |w: Str| {
+            let rest = if has_prefix_p(w, str_lit("rheld-")) {
+                after_prefix(w, str_lit("rheld-"))
+            } else {
+                after_prefix(w, str_lit("rneed-"))
+            };
+            let kind = car(split_at_char(rest, '@'));
+            let after = after_prefix(rest, string_append(kind, str_lit("@")));
+            let ws = read_all(string_chars(after), str_lit(""), 1i64);
+            if string_eq_p(sym_name(car(ws)), place) {
+                the::<Strings>(kayak_rt::heap_cons(held_rust(c, kind, lifetime(after_prefix(place, str_lit("'"))), second(ws)), kayak_rt::nil()))
+            } else {
+                nil::<Str>()
+            }
+        }), onto(all_facts_at(c, datum_file(x), datum_pos(x), str_lit("rheld-")), all_facts_at(c, datum_file(x), datum_pos(x), str_lit("rneed-")))))
+    }
+
+    /// An arena's type, for a making of `kind` in a place of lifetime `life`:
+    /// a pair, `Cons<'r, T>`; a reference's cell; a bloblet.
+    pub fn held_rust(c: &'static Ctx, kind: Str, life: Str, t: &'static Sexp) -> Str {
+        if string_eq_p(kind, str_lit("cons")) {
+            string_append(str_lit("Cons<"), string_append(life, string_append(str_lit(", "), string_append(rev_to_string(put_type(c, t, nil::<char>())), str_lit(">")))))
+        } else if string_eq_p(kind, str_lit("ref")) {
+            string_append(str_lit("std::cell::Cell<"), string_append(rev_to_string(put_type(c, t, nil::<char>())), str_lit(">")))
+        } else if not(null_p(typed_flat(c, t))) {
+            string_append(str_lit("TBloblet<"), string_append(rev_to_string(put_fields_tuple(c, cdr(items(second(items(t)))), nil::<char>())), string_append(str_lit(", "), string_append(rev_to_string(put_flat(c, car(typed_flat(c, t)), nil::<char>())), str_lit(">")))))
+        } else {
+            string_append(str_lit("Bloblet<"), string_append(rev_to_string(put_fields_tuple(c, cdr(items(second(items(t)))), nil::<char>())), str_lit(">")))
+        }
+    }
+
+    /// What an allocation in region `r` makes, as Rust's type: a pair,
+    /// `Cons<'r, T>`, or a reference's cell, `Cell<T>`.
+    pub fn held_type(c: &'static Ctx, r: Str, call: &'static Sexp) -> Str {
+        let t = car(read_all(string_chars(fact_with(c, call, str_lit("rheld "))), str_lit(""), 1i64));
+        if head_is_p(call, str_lit("rcons")) {
+            string_append(str_lit("Cons<"), string_append(lifetime(r), string_append(str_lit(", "), string_append(rev_to_string(put_type(c, t, nil::<char>())), str_lit(">")))))
+        } else if (head_is_p(call, str_lit("rmake-bloblet")) && not(null_p(typed_flat(c, t)))) {
+            string_append(str_lit("TBloblet<"), string_append(rev_to_string(put_fields_tuple(c, cdr(items(second(items(t)))), nil::<char>())), string_append(str_lit(", "), string_append(rev_to_string(put_flat(c, car(typed_flat(c, t)), nil::<char>())), str_lit(">")))))
+        } else if head_is_p(call, str_lit("rmake-bloblet")) {
+            string_append(str_lit("Bloblet<"), string_append(rev_to_string(put_fields_tuple(c, cdr(items(second(items(t)))), nil::<char>())), str_lit(">")))
+        } else {
+            string_append(str_lit("std::cell::Cell<"), string_append(rev_to_string(put_type(c, t, nil::<char>())), str_lit(">")))
+        }
+    }
+
+    /// `(prompt tag body handler)`: the body run in a closure that returns a
+    /// `Result`, and its abort to the tag handled; any other abort passed on,
+    /// if the function written may abort, else none can come (the checker
+    /// found the prompt contains every abort its body may make).
+    pub fn put_prompt(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Chars) -> Chars {
+        if fact_at_p(c, e, str_lit("suspending-body")) {
+            put_suspending_prompt(c, e, xs, n, acc)
+        } else {
+            let inner = with_locals(c, kayak_rt::heap_cons(str_lit("%sync"), kayak_rt::heap_cons(str_lit("%fallible"), kayak_rt::nil())));
+            let acc = put_nl(i64_plus(n, 1i64), put(str_lit("{"), acc));
+            let acc = put(str_lit("let prompt_tag__ = "), acc);
+            let acc = put_exp(c, car(xs), i64_plus(n, 1i64), value(), acc);
+            let acc = put_nl(i64_plus(n, 1i64), put(str_lit(";"), acc));
+            let acc = put(str_lit("match (move || -> Result<_, Unwind> "), acc);
+            let acc = put_block(inner, kayak_rt::heap_cons(second(xs), kayak_rt::nil()), i64_plus(n, 1i64), ok_value(), acc);
+            let acc = put(str_lit(")() {"), acc);
+            let acc = put_nl(i64_plus(n, 2i64), acc);
+            let acc = put(str_lit("Ok(v_) => v_,"), acc);
+            let acc = put_nl(i64_plus(n, 2i64), acc);
+            let acc = put(str_lit("Err(u_) if u_.is(prompt_tag__) => "), acc);
+            let acc = put_handler_call(c, third(xs), str_lit("prompt_tag__.payload(u_)"), i64_plus(n, 2i64), acc);
+            let acc = put(str_lit(","), acc);
+            let acc = put_nl(i64_plus(n, 2i64), acc);
+            let acc = put(if (fact_at_p(c, e, str_lit("contains")) || not(fallible_here_p(c))) {
+                str_lit("Err(u_) => unreachable_unwind(u_),")
+            } else {
+                str_lit("Err(u_) => return Err(u_),")
+            }, acc);
+            let acc = put_nl(i64_plus(n, 1i64), acc);
+            let acc = put(str_lit("}"), acc);
+            put(str_lit("}"), put_nl(n, acc))
+        }
+    }
+
+    /// A prompt whose body may suspend (C45): the body a future, boxed, which
+    /// `kayak_rt::prompt` polls; a capture to its tag ends it, the payload
+    /// made, as an abort to it does. Awaited where the code written is
+    /// `async`; else (the prompt delimits every capture) run to its end.
+    pub fn put_suspending_prompt(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Chars) -> Chars {
+        let inner = with_locals(c, kayak_rt::heap_cons(str_lit("%async"), kayak_rt::heap_cons(str_lit("%fallible"), kayak_rt::nil())));
         let acc = put_nl(i64_plus(n, 1i64), put(str_lit("{"), acc));
         let acc = put(str_lit("let prompt_tag__ = "), acc);
         let acc = put_exp(c, car(xs), i64_plus(n, 1i64), value(), acc);
         let acc = put_nl(i64_plus(n, 1i64), put(str_lit(";"), acc));
-        let acc = put(str_lit("match (move || -> Result<_, Unwind> "), acc);
+        let acc = put(if async_here_p(c) {
+            str_lit("match kayak_rt::suspend::prompt(prompt_tag__, kayak_rt::suspend::body(async move ")
+        } else {
+            str_lit("match kayak_rt::suspend::block(kayak_rt::suspend::prompt(prompt_tag__, kayak_rt::suspend::body(async move ")
+        }, acc);
         let acc = put_block(inner, kayak_rt::heap_cons(second(xs), kayak_rt::nil()), i64_plus(n, 1i64), ok_value(), acc);
-        let acc = put(str_lit(")() {"), acc);
+        let acc = put(if async_here_p(c) {
+            str_lit(")).await {")
+        } else {
+            str_lit("))) {")
+        }, acc);
         let acc = put_nl(i64_plus(n, 2i64), acc);
-        let acc = put(str_lit("Ok(v_) => v_,"), acc);
+        let acc = put(str_lit("Ok(kayak_rt::suspend::Prompted::Done(v_)) => v_,"), acc);
         let acc = put_nl(i64_plus(n, 2i64), acc);
-        let acc = put(str_lit("Err(u_) if u_.is(prompt_tag__) => "), acc);
-        let acc = put_handler_call(c, third(xs), str_lit("prompt_tag__.payload(u_)"), i64_plus(n, 2i64), acc);
+        let acc = put(str_lit("Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => "), acc);
+        let acc = put_handler_call(c, third(xs), str_lit("h_"), i64_plus(n, 2i64), acc);
         let acc = put(str_lit(","), acc);
         let acc = put_nl(i64_plus(n, 2i64), acc);
         let acc = put(if (fact_at_p(c, e, str_lit("contains")) || not(fallible_here_p(c))) {
@@ -4266,139 +4278,101 @@ pub fn put_prompt(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Cha
         let acc = put(str_lit("}"), acc);
         put(str_lit("}"), put_nl(n, acc))
     }
-}
 
-/// A prompt whose body may suspend (C45): the body a future, boxed, which
-/// `kayak_rt::prompt` polls; a capture to its tag ends it, the payload
-/// made, as an abort to it does. Awaited where the code written is
-/// `async`; else (the prompt delimits every capture) run to its end.
-pub fn put_suspending_prompt(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Chars) -> Chars {
-    let inner = with_locals(c, kayak_rt::heap_cons(str_lit("%async"), kayak_rt::heap_cons(str_lit("%fallible"), kayak_rt::nil())));
-    let acc = put_nl(i64_plus(n, 1i64), put(str_lit("{"), acc));
-    let acc = put(str_lit("let prompt_tag__ = "), acc);
-    let acc = put_exp(c, car(xs), i64_plus(n, 1i64), value(), acc);
-    let acc = put_nl(i64_plus(n, 1i64), put(str_lit(";"), acc));
-    let acc = put(if async_here_p(c) {
-        str_lit("match kayak_rt::suspend::prompt(prompt_tag__, kayak_rt::suspend::body(async move ")
-    } else {
-        str_lit("match kayak_rt::suspend::block(kayak_rt::suspend::prompt(prompt_tag__, kayak_rt::suspend::body(async move ")
-    }, acc);
-    let acc = put_block(inner, kayak_rt::heap_cons(second(xs), kayak_rt::nil()), i64_plus(n, 1i64), ok_value(), acc);
-    let acc = put(if async_here_p(c) {
-        str_lit(")).await {")
-    } else {
-        str_lit("))) {")
-    }, acc);
-    let acc = put_nl(i64_plus(n, 2i64), acc);
-    let acc = put(str_lit("Ok(kayak_rt::suspend::Prompted::Done(v_)) => v_,"), acc);
-    let acc = put_nl(i64_plus(n, 2i64), acc);
-    let acc = put(str_lit("Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => "), acc);
-    let acc = put_handler_call(c, third(xs), str_lit("h_"), i64_plus(n, 2i64), acc);
-    let acc = put(str_lit(","), acc);
-    let acc = put_nl(i64_plus(n, 2i64), acc);
-    let acc = put(if (fact_at_p(c, e, str_lit("contains")) || not(fallible_here_p(c))) {
-        str_lit("Err(u_) => unreachable_unwind(u_),")
-    } else {
-        str_lit("Err(u_) => return Err(u_),")
-    }, acc);
-    let acc = put_nl(i64_plus(n, 1i64), acc);
-    let acc = put(str_lit("}"), acc);
-    put(str_lit("}"), put_nl(n, acc))
-}
-
-/// A prompt's handler called on the payload: awaited if it may suspend,
-/// and `?`ed if it may abort (C46), as a call of a procedure value.
-pub fn put_handler_call(c: &'static Ctx, h: &'static Sexp, payload: Str, n: i64, acc: Chars) -> Chars {
-    let suspends = fact_at_p(c, h, str_lit("suspends"));
-    let fallible = fact_at_p(c, h, str_lit("fallible"));
-    let acc = if (suspends && not(async_here_p(c))) {
-        put(str_lit("kayak_rt::suspend::block("), acc)
-    } else {
-        acc
-    };
-    let acc = put(str_lit("("), acc);
-    let acc = put_exp(c, h, n, value(), acc);
-    let acc = put(str_lit(")("), acc);
-    let acc = put(payload, acc);
-    let acc = put(str_lit(")"), acc);
-    let acc = if not(suspends) {
-        acc
-    } else if async_here_p(c) {
-        put(str_lit(".await"), acc)
-    } else {
-        put(str_lit(")"), acc)
-    };
-    if not(fallible) {
-        acc
-    } else if fallible_here_p(c) {
-        put(str_lit("?"), acc)
-    } else {
-        put(str_lit(".unwrap_or_else(|u| unreachable_unwind(u))"), acc)
+    /// A prompt's handler called on the payload: awaited if it may suspend,
+    /// and `?`ed if it may abort (C46), as a call of a procedure value.
+    pub fn put_handler_call(c: &'static Ctx, h: &'static Sexp, payload: Str, n: i64, acc: Chars) -> Chars {
+        let suspends = fact_at_p(c, h, str_lit("suspends"));
+        let fallible = fact_at_p(c, h, str_lit("fallible"));
+        let acc = if (suspends && not(async_here_p(c))) {
+            put(str_lit("kayak_rt::suspend::block("), acc)
+        } else {
+            acc
+        };
+        let acc = put(str_lit("("), acc);
+        let acc = put_exp(c, h, n, value(), acc);
+        let acc = put(str_lit(")("), acc);
+        let acc = put(payload, acc);
+        let acc = put(str_lit(")"), acc);
+        let acc = if not(suspends) {
+            acc
+        } else if async_here_p(c) {
+            put(str_lit(".await"), acc)
+        } else {
+            put(str_lit(")"), acc)
+        };
+        if not(fallible) {
+            acc
+        } else if fallible_here_p(c) {
+            put(str_lit("?"), acc)
+        } else {
+            put(str_lit(".unwrap_or_else(|u| unreachable_unwind(u))"), acc)
+        }
     }
-}
 
-/// `(abort-with-continuation tag (lambda ((k K)) body))` (C45): the
-/// rest up to the tag's prompt given to the closure as `k`, a procedure
-/// that may suspend, and its value the abort's payload; awaited, the
-/// value `k` is resumed with.
-pub fn put_suspension(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Chars) -> Chars {
-    let lam = items(second(xs));
-    let param = items(car(items(second(lam))));
-    let k = sym_name(car(param));
-    let inner = with_locals(c, kayak_rt::heap_cons(str_lit("%sync"), kayak_rt::heap_cons(str_lit("%infallible"), kayak_rt::heap_cons(k, kayak_rt::nil()))));
-    let acc = put(str_lit("kayak_rt::suspend::abort_with_continuation("), acc);
-    let acc = put_exp(c, car(xs), n, value(), acc);
-    let acc = put(str_lit(", move |"), acc);
-    let acc = put(mangle(k), acc);
-    let acc = put(str_lit(": "), acc);
-    let acc = put_type(c, second(param), acc);
-    let acc = put(str_lit("| "), acc);
-    let acc = put_block(inner, cdr(cdr(lam)), n, value(), acc);
-    let acc = put(str_lit(").await"), acc);
-    if fallible_here_p(c) {
-        put(str_lit("?"), acc)
-    } else {
-        put(str_lit(".unwrap_or_else(|u| unreachable_unwind(u))"), acc)
+    /// `(abort-with-continuation tag (lambda ((k K)) body))` (C45): the
+    /// rest up to the tag's prompt given to the closure as `k`, a procedure
+    /// that may suspend, and its value the abort's payload; awaited, the
+    /// value `k` is resumed with.
+    pub fn put_suspension(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Chars) -> Chars {
+        let lam = items(second(xs));
+        let param = items(car(items(second(lam))));
+        let k = sym_name(car(param));
+        let inner = with_locals(c, kayak_rt::heap_cons(str_lit("%sync"), kayak_rt::heap_cons(str_lit("%infallible"), kayak_rt::heap_cons(k, kayak_rt::nil()))));
+        let acc = put(str_lit("kayak_rt::suspend::abort_with_continuation("), acc);
+        let acc = put_exp(c, car(xs), n, value(), acc);
+        let acc = put(str_lit(", move |"), acc);
+        let acc = put(mangle(k), acc);
+        let acc = put(str_lit(": "), acc);
+        let acc = put_type(c, second(param), acc);
+        let acc = put(str_lit("| "), acc);
+        let acc = put_block(inner, cdr(cdr(lam)), n, value(), acc);
+        let acc = put(str_lit(").await"), acc);
+        if fallible_here_p(c) {
+            put(str_lit("?"), acc)
+        } else {
+            put(str_lit(".unwrap_or_else(|u| unreachable_unwind(u))"), acc)
+        }
     }
-}
 
-/// A call the checker found may abort takes a `?`; one that may suspend
-/// is awaited first, its future boxed if it is a named procedure's.
-pub fn put_question(c: &'static Ctx, e: &'static Sexp, acc: Chars) -> Chars {
-    let acc = if not(fact_at_p(c, e, str_lit("suspending-call"))) {
-        acc
-    } else if async_here_p(c) {
-        put(str_lit(").await"), acc)
-    } else {
-        put(str_lit("))"), acc)
-    };
-    if not(fact_at_p(c, e, str_lit("fallible-call"))) {
-        acc
-    } else if fallible_here_p(c) {
-        put(str_lit("?"), acc)
-    } else {
-        put(str_lit(".unwrap_or_else(|u| unreachable_unwind(u))"), acc)
+    /// A call the checker found may abort takes a `?`; one that may suspend
+    /// is awaited first, its future boxed if it is a named procedure's.
+    pub fn put_question(c: &'static Ctx, e: &'static Sexp, acc: Chars) -> Chars {
+        let acc = if not(fact_at_p(c, e, str_lit("suspending-call"))) {
+            acc
+        } else if async_here_p(c) {
+            put(str_lit(").await"), acc)
+        } else {
+            put(str_lit("))"), acc)
+        };
+        if not(fact_at_p(c, e, str_lit("fallible-call"))) {
+            acc
+        } else if fallible_here_p(c) {
+            put(str_lit("?"), acc)
+        } else {
+            put(str_lit(".unwrap_or_else(|u| unreachable_unwind(u))"), acc)
+        }
     }
-}
 
-pub fn head_sym_p(e: &'static Sexp) -> bool {
-    let tagcase_ = e;
-    match *tagcase_ {
-        Sexp::Lst(xs, f, l, p) => {
-            let tagcase_ = car(xs);
-            match *tagcase_ {
-                Sexp::Sym(n, f2, p2) => {
-                    true
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
+    pub fn head_sym_p(e: &'static Sexp) -> bool {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                let tagcase_ = car(xs);
+                match *tagcase_ {
+                    Sexp::Sym(n, f2, p2) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
                 }
             }
-        }
-        _ => {
-            let other = tagcase_;
-            false
+            _ => {
+                let other = tagcase_;
+                false
+            }
         }
     }
 }

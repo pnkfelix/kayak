@@ -145,3 +145,109 @@ pub fn counting(from: i64, n: i64) -> List<i64> {
     }
 }
 
+// A set of names, a balanced tree (C92): a membership test in a few
+// comparisons, where a list of hundreds took as many.
+pub enum Nset {
+    Nempty(),
+    Nnode(&'static Nset, Str, &'static Nset),
+}
+
+pub fn nempty() -> &'static Nset {
+    kayak_rt::heap_alloc(Nset::Nempty())
+}
+
+pub fn nnode(f0: &'static Nset, f1: Str, f2: &'static Nset) -> &'static Nset {
+    kayak_rt::heap_alloc(Nset::Nnode(f0, f1, f2))
+}
+
+pub fn merged_strings(a: List<Str>, b: List<Str>) -> List<Str> {
+    if null_p(a) {
+        b
+    } else if null_p(b) {
+        a
+    } else if string_lt_p(car(b), car(a)) {
+        kayak_rt::heap_cons(car(b), merged_strings(a, cdr(b)))
+    } else {
+        kayak_rt::heap_cons(car(a), merged_strings(cdr(a), b))
+    }
+}
+
+pub fn sorted_strings(xs: List<Str>) -> List<Str> {
+    if (null_p(xs) || null_p(cdr(xs))) {
+        xs
+    } else {
+        merged_strings(sorted_strings(halves(xs, true)), sorted_strings(halves(xs, false)))
+    }
+}
+
+/// Every other element, the first's or the second's.
+pub fn halves(mut xs: List<Str>, mut first: bool) -> List<Str> {
+    loop {
+        if null_p(xs) {
+            return nil::<Str>();
+        } else if first {
+            return kayak_rt::heap_cons(car(xs), halves(cdr(xs), false));
+        } else {
+            (xs, first) = (cdr(xs), true);
+            continue;
+        }
+    }
+}
+
+pub fn taken(xs: List<Str>, n: i64) -> List<Str> {
+    if (null_p(xs) || i64_lt_eq(n, 0i64)) {
+        nil::<Str>()
+    } else {
+        kayak_rt::heap_cons(car(xs), taken(cdr(xs), i64_minus(n, 1i64)))
+    }
+}
+
+pub fn dropped(mut xs: List<Str>, mut n: i64) -> List<Str> {
+    loop {
+        if (null_p(xs) || i64_lt_eq(n, 0i64)) {
+            return xs;
+        } else {
+            (xs, n) = (cdr(xs), i64_minus(n, 1i64));
+            continue;
+        }
+    }
+}
+
+/// The first `n` of `xs`, sorted, as a balanced tree.
+pub fn tree_of(xs: List<Str>, n: i64) -> &'static Nset {
+    if i64_lt_eq(n, 0i64) {
+        nempty()
+    } else {
+        let half = i64_quotient(n, 2i64);
+        let rest = dropped(xs, half);
+        nnode(tree_of(xs, half), car(rest), tree_of(cdr(rest), i64_minus(i64_minus(n, half), 1i64)))
+    }
+}
+
+pub fn nset_of(xs: List<Str>) -> &'static Nset {
+    let sorted = sorted_strings(xs);
+    tree_of(sorted, size(sorted))
+}
+
+pub fn in_nset_p(mut x: Str, mut s: &'static Nset) -> bool {
+    loop {
+        let tagcase_ = s;
+        match *tagcase_ {
+            Nset::Nempty() => {
+                return false;
+            }
+            Nset::Nnode(l, k, r) => {
+                if string_eq_p(x, k) {
+                    return true;
+                } else if string_lt_p(x, k) {
+                    s = l;
+                    continue;
+                } else {
+                    s = r;
+                    continue;
+                }
+            }
+        }
+    }
+}
+

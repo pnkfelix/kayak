@@ -1815,6 +1815,40 @@ pub fn excepted_binds(v: &'static Cv, written: Sexps, n: Str, bs: Binds) -> Bind
     }), opened_binds(n, bs)))
 }
 
+// Each module a module includes, with the values it gives it, found once.
+pub enum TypedBinds {
+    TypedBinds(Str, Binds),
+}
+
+pub fn typed_binds(f0: Str, f1: Binds) -> &'static TypedBinds {
+    kayak_rt::heap_alloc(TypedBinds::TypedBinds(f0, f1))
+}
+
+pub fn binds_of_include(mut n: Str, mut ibs: List<&'static TypedBinds>) -> Binds {
+    loop {
+        if null_p(ibs) {
+            return nil::<&'static Bind>();
+        } else if {
+            let tagcase_ = car(ibs);
+            match *tagcase_ {
+                TypedBinds::TypedBinds(k, bs) => {
+                    string_eq_p(k, n)
+                }
+            }
+        } {
+            let tagcase_ = car(ibs);
+            match *tagcase_ {
+                TypedBinds::TypedBinds(k, bs) => {
+                    return bs;
+                }
+            }
+        } else {
+            ibs = cdr(ibs);
+            continue;
+        }
+    }
+}
+
 pub fn excepted_aliases(v: &'static Cv, written: Sexps, n: Str, als: Aliases) -> Aliases {
     let ex = except_names(v, written, n);
     concat(map(lambda1(move |a: &'static Alias| {
@@ -1930,14 +1964,37 @@ pub fn item_value(f: &'static Sexp) -> Sexps {
     }
 }
 
+pub fn nset_names(s: &'static Nset) -> Strings {
+    let tagcase_ = s;
+    match *tagcase_ {
+        Nset::Nempty() => {
+            nil::<Str>()
+        }
+        Nset::Nnode(l, k, r) => {
+            onto(nset_names(l), kayak_rt::heap_cons(k, nset_names(r)))
+        }
+    }
+}
+
+pub fn nset_without(s: &'static Nset, out: Strings) -> &'static Nset {
+    nset_of(concat(map(lambda1(move |n: Str| {
+        if string_member_p(n, out) {
+            nil::<Str>()
+        } else {
+            the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+        }
+    }), nset_names(s))))
+}
+
 /// The items among `names` that `e` names; in a `(with m ...)` of a
 /// module item, not the names `m` gives, which are `m`'s (C88, FX-26's
-/// `(define x (with m x))`).
-pub fn refs_in(e: &'static Sexp, names: Strings, forms: Sexps) -> Strings {
+/// `(define x (with m x))`). `names` a tree (C92): this walks every
+/// item's body, every compile.
+pub fn refs_in(e: &'static Sexp, names: &'static Nset, forms: Sexps) -> Strings {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Sym(n, f, p) => {
-            if string_member_p(n, names) {
+            if in_nset_p(n, names) {
                 the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
             } else {
                 nil::<Str>()
@@ -1964,14 +2021,12 @@ pub fn refs_in(e: &'static Sexp, names: Strings, forms: Sexps) -> Strings {
                         nil::<Str>()
                     }
                 }), forms));
-                let inner = concat(map(lambda1(move |n: Str| {
-                    if string_member_p(n, given) {
-                        nil::<Str>()
-                    } else {
-                        the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
-                    }
-                }), names));
-                onto(if string_member_p(m, names) {
+                let inner = if null_p(given) {
+                    names
+                } else {
+                    nset_without(names, given)
+                };
+                onto(if in_nset_p(m, names) {
                     the::<Strings>(kayak_rt::heap_cons(m, kayak_rt::nil()))
                 } else {
                     nil::<Str>()
@@ -2022,19 +2077,201 @@ pub fn letrec_items(forms: Sexps) -> Mitems {
             } else {
                 nil::<Str>()
             };
+            let set = nset_of(concat(map(lambda1(move |n: Str| {
+                if string_member_p(n, own) {
+                    nil::<Str>()
+                } else {
+                    the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                }
+            }), names)));
             concat(map(lambda1(move |e: &'static Sexp| {
-                refs_in(e, concat(map(lambda1(move |n: Str| {
-                    if string_member_p(n, own) {
-                        nil::<Str>()
-                    } else {
-                        the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
-                    }
-                }), names)), forms)
+                refs_in(e, set, forms)
             }), item_value(f)))
         }, ((head_is_p(f, str_lit("define-rec")) || head_is_p(f, str_lit("define*")) || i64_eq(size(items(f)), 4i64)) && not(any_p(lambda1(move |e: &'static Sexp| {
             not(lambda_form_p(e))
         }), item_value(f)))))
     }), values)
+}
+
+pub enum Reached {
+    Reached(Str, Strings),
+}
+
+pub fn reached(f0: Str, f1: Strings) -> &'static Reached {
+    kayak_rt::heap_alloc(Reached::Reached(f0, f1))
+}
+
+pub fn reached_of(mut n: Str, mut rs: List<&'static Reached>) -> Strings {
+    loop {
+        if null_p(rs) {
+            return nil::<Str>();
+        } else if {
+            let tagcase_ = car(rs);
+            match *tagcase_ {
+                Reached::Reached(k, ks) => {
+                    string_eq_p(k, n)
+                }
+            }
+        } {
+            let tagcase_ = car(rs);
+            match *tagcase_ {
+                Reached::Reached(k, ks) => {
+                    return ks;
+                }
+            }
+        } else {
+            rs = cdr(rs);
+            continue;
+        }
+    }
+}
+
+// Items by name, a tree (C92).
+pub enum Itree {
+    Ileaf(),
+    Inode(&'static Itree, Str, &'static Mitem, &'static Itree),
+}
+
+pub fn ileaf() -> &'static Itree {
+    kayak_rt::heap_alloc(Itree::Ileaf())
+}
+
+pub fn inode(f0: &'static Itree, f1: Str, f2: &'static Mitem, f3: &'static Itree) -> &'static Itree {
+    kayak_rt::heap_alloc(Itree::Inode(f0, f1, f2, f3))
+}
+
+pub enum NamedItem {
+    NamedItem(Str, &'static Mitem),
+}
+
+pub fn named_item(f0: Str, f1: &'static Mitem) -> &'static NamedItem {
+    kayak_rt::heap_alloc(NamedItem::NamedItem(f0, f1))
+}
+
+pub fn itree_built(xs: List<&'static NamedItem>, n: i64) -> &'static Itree {
+    if i64_lt_eq(n, 0i64) {
+        ileaf()
+    } else {
+        let half = i64_quotient(n, 2i64);
+        let rest = named_dropped(xs, half);
+        let tagcase_ = car(rest);
+        match *tagcase_ {
+            NamedItem::NamedItem(k, it) => {
+                inode(itree_built(xs, half), k, it, itree_built(cdr(rest), i64_minus(i64_minus(n, half), 1i64)))
+            }
+        }
+    }
+}
+
+pub fn named_dropped(mut xs: List<&'static NamedItem>, mut n: i64) -> List<&'static NamedItem> {
+    loop {
+        if (null_p(xs) || i64_lt_eq(n, 0i64)) {
+            return xs;
+        } else {
+            (xs, n) = (cdr(xs), i64_minus(n, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn named_sorted(xs: List<&'static NamedItem>) -> List<&'static NamedItem> {
+    if (null_p(xs) || null_p(cdr(xs))) {
+        xs
+    } else {
+        named_merged(named_sorted(named_halves(xs, true)), named_sorted(named_halves(xs, false)))
+    }
+}
+
+pub fn named_halves(mut xs: List<&'static NamedItem>, mut first: bool) -> List<&'static NamedItem> {
+    loop {
+        if null_p(xs) {
+            return nil::<&'static NamedItem>();
+        } else if first {
+            return kayak_rt::heap_cons(car(xs), named_halves(cdr(xs), false));
+        } else {
+            (xs, first) = (cdr(xs), true);
+            continue;
+        }
+    }
+}
+
+pub fn named_merged(a: List<&'static NamedItem>, b: List<&'static NamedItem>) -> List<&'static NamedItem> {
+    if null_p(a) {
+        b
+    } else if null_p(b) {
+        a
+    } else if {
+        let tagcase_ = car(b);
+        match *tagcase_ {
+            NamedItem::NamedItem(kb, ib) => {
+                let tagcase_ = car(a);
+                match *tagcase_ {
+                    NamedItem::NamedItem(ka, ia) => {
+                        string_lt_p(kb, ka)
+                    }
+                }
+            }
+        }
+    } {
+        kayak_rt::heap_cons(car(b), named_merged(a, cdr(b)))
+    } else {
+        kayak_rt::heap_cons(car(a), named_merged(cdr(a), b))
+    }
+}
+
+pub fn itree_of(its: Mitems) -> &'static Itree {
+    let pairs = named_sorted(concat(map(lambda1(move |it: &'static Mitem| {
+        let tagcase_ = it;
+        match *tagcase_ {
+            Mitem::Mitem(f, ns, rs, l) => {
+                map(lambda1(move |n: Str| {
+                    named_item(n, it)
+                }), ns)
+            }
+        }
+    }), its)));
+    itree_built(pairs, size(pairs))
+}
+
+pub fn in_itree(mut x: Str, mut t: &'static Itree) -> Mitems {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Itree::Ileaf() => {
+                return nil::<&'static Mitem>();
+            }
+            Itree::Inode(l, k, it, r) => {
+                if string_eq_p(x, k) {
+                    return the::<Mitems>(kayak_rt::heap_cons(it, kayak_rt::nil()));
+                } else if string_lt_p(x, k) {
+                    t = l;
+                    continue;
+                } else {
+                    t = r;
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+/// `s` with `x`, unbalanced: for what a walk has seen.
+pub fn nset_added(x: Str, s: &'static Nset) -> &'static Nset {
+    let tagcase_ = s;
+    match *tagcase_ {
+        Nset::Nempty() => {
+            nnode(nempty(), x, nempty())
+        }
+        Nset::Nnode(l, k, r) => {
+            if string_eq_p(x, k) {
+                s
+            } else if string_lt_p(x, k) {
+                nnode(nset_added(x, l), k, r)
+            } else {
+                nnode(l, k, nset_added(x, r))
+            }
+        }
+    }
 }
 
 pub fn item_of(mut n: Str, mut its: Mitems) -> Mitems {
@@ -2059,17 +2296,22 @@ pub fn item_of(mut n: Str, mut its: Mitems) -> Mitems {
 
 /// The items `todo` reach, through every item's references, or, with
 /// `through-lambdas`, only through procedures' (what making a value
-/// runs).
-pub fn reach(mut todo: Strings, mut its: Mitems, mut seen: Strings, mut through_lambdas: bool) -> Strings {
+/// runs); by trees, the items found and those seen (C92: by lists, it
+/// had been cubic in a module's items).
+pub fn reach(todo: Strings, t: &'static Itree, seen: Strings, through_lambdas: bool) -> Strings {
+    reach_in(todo, t, nempty(), seen, through_lambdas)
+}
+
+pub fn reach_in(mut todo: Strings, mut t: &'static Itree, mut seen_set: &'static Nset, mut seen: Strings, mut through_lambdas: bool) -> Strings {
     loop {
         if null_p(todo) {
             return seen;
-        } else if string_member_p(car(todo), seen) {
+        } else if in_nset_p(car(todo), seen_set) {
             todo = cdr(todo);
             continue;
         } else {
-            let it = item_of(car(todo), its);
-            (todo, seen) = (onto(if null_p(it) {
+            let it = in_itree(car(todo), t);
+            (todo, seen_set, seen) = (onto(if null_p(it) {
                 nil::<Str>()
             } else {
                 let tagcase_ = car(it);
@@ -2082,7 +2324,7 @@ pub fn reach(mut todo: Strings, mut its: Mitems, mut seen: Strings, mut through_
                         }
                     }
                 }
-            }, cdr(todo)), kayak_rt::heap_cons(car(todo), seen));
+            }, cdr(todo)), nset_added(car(todo), seen_set), kayak_rt::heap_cons(car(todo), seen));
             continue;
         }
     }
@@ -2103,7 +2345,7 @@ pub fn index_in(mut n: Str, mut ns: Strings, mut i: i64) -> i64 {
 
 /// FX-26's rule: a value that is no procedure is made when its item is,
 /// so every item it reaches through procedures must be made before it.
-pub fn made_before(v: &'static Cv, its: Mitems) -> () {
+pub fn made_before(v: &'static Cv, its: Mitems, t: &'static Itree) -> () {
     let order = concat(map(lambda1(move |it: &'static Mitem| {
         let tagcase_ = it;
         match *tagcase_ {
@@ -2125,7 +2367,7 @@ pub fn made_before(v: &'static Cv, its: Mitems) -> () {
                         } else {
                             nil::<Str>()
                         }
-                    }), reach(rs, its, nil::<Str>(), true)));
+                    }), reach(rs, t, nil::<Str>(), true)));
                     if null_p(late) {
                         ()
                     } else {
@@ -2139,8 +2381,10 @@ pub fn made_before(v: &'static Cv, its: Mitems) -> () {
 }
 
 /// The items, as sets that reach one another, each set after those it
-/// reaches: the order they are checked in.
-pub fn components(todo: Mitems, its: Mitems) -> List<Mitems> {
+/// reaches: the order they are checked in. `rs`, what each reaches,
+/// found once (C92: found here again for each pair, it had cost a
+/// module of 160 items a tenth of a second).
+pub fn components(todo: Mitems, its: Mitems, rs: List<&'static Reached>) -> List<Mitems> {
     if null_p(todo) {
         nil::<List<&'static Mitem>>()
     } else {
@@ -2148,17 +2392,17 @@ pub fn components(todo: Mitems, its: Mitems) -> List<Mitems> {
         let n = {
             let tagcase_ = it;
             match *tagcase_ {
-                Mitem::Mitem(f, ns, rs, l) => {
+                Mitem::Mitem(f, ns, rs2, l) => {
                     car(ns)
                 }
             }
         };
-        let mine = reach(kayak_rt::heap_cons(n, kayak_rt::nil()), its, nil::<Str>(), false);
+        let mine = reached_of(n, rs);
         let same = concat(map(lambda1(move |x: &'static Mitem| {
             let tagcase_ = x;
             match *tagcase_ {
-                Mitem::Mitem(f, ns, rs, l) => {
-                    if (string_member_p(car(ns), mine) && string_member_p(n, reach(kayak_rt::heap_cons(car(ns), kayak_rt::nil()), its, nil::<Str>(), false))) {
+                Mitem::Mitem(f, ns, rs2, l) => {
+                    if (string_member_p(car(ns), mine) && string_member_p(n, reached_of(car(ns), rs))) {
                         the::<Mitems>(kayak_rt::heap_cons(x, kayak_rt::nil()))
                     } else {
                         nil::<&'static Mitem>()
@@ -2169,7 +2413,7 @@ pub fn components(todo: Mitems, its: Mitems) -> List<Mitems> {
         let rest = concat(map(lambda1(move |x: &'static Mitem| {
             let tagcase_ = x;
             match *tagcase_ {
-                Mitem::Mitem(f, ns, rs, l) => {
+                Mitem::Mitem(f, ns, rs2, l) => {
                     if any_p(lambda1(move |y: &'static Mitem| {
                         let tagcase_ = y;
                         match *tagcase_ {
@@ -2188,7 +2432,7 @@ pub fn components(todo: Mitems, its: Mitems) -> List<Mitems> {
         let deps = concat(map(lambda1(move |x: &'static Mitem| {
             let tagcase_ = x;
             match *tagcase_ {
-                Mitem::Mitem(f, ns, rs, l) => {
+                Mitem::Mitem(f, ns, rs2, l) => {
                     if (string_member_p(car(ns), mine) && not(any_p(lambda1(move |y: &'static Mitem| {
                         let tagcase_ = y;
                         match *tagcase_ {
@@ -2211,7 +2455,7 @@ pub fn components(todo: Mitems, its: Mitems) -> List<Mitems> {
                     Mitem::Mitem(g, ms, qs, k) => {
                         let tagcase_ = x;
                         match *tagcase_ {
-                            Mitem::Mitem(f, ns, rs, l) => {
+                            Mitem::Mitem(f, ns, rs2, l) => {
                                 string_eq_p(car(ms), car(ns))
                             }
                         }
@@ -2223,16 +2467,35 @@ pub fn components(todo: Mitems, its: Mitems) -> List<Mitems> {
                 the::<Mitems>(kayak_rt::heap_cons(x, kayak_rt::nil()))
             }
         }), rest));
-        onto(components(deps, its), kayak_rt::heap_cons(same, components(later, its)))
+        onto(components(deps, its, rs), kayak_rt::heap_cons(same, components(later, its, rs)))
     }
 }
 
-/// A set of items to check: one alone, as written, unless it reaches
-/// itself; else one `define-rec` of their procedures.
-pub fn as_group(v: &'static Cv, group: Mitems) -> Sexps {
-    let one = car(group);
-    if (null_p(cdr(group)) && {
-        let tagcase_ = one;
+/// Items that reach one another, as one `define-rec` of their procedures.
+pub fn rec_of(members: Sexps) -> Sexps {
+    let tagcase_ = car(members);
+    match *tagcase_ {
+        Sexp::Lst(xs, file, line, pos) => {
+            the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("define-rec"), file, pos), concat(map(lambda1(move |g: &'static Sexp| {
+                if head_is_p(g, str_lit("define-rec")) {
+                    cdr(items(g))
+                } else {
+                    let ys = items(g);
+                    the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(second(ys), kayak_rt::heap_cons(third(ys), kayak_rt::heap_cons(car(item_value(g)), kayak_rt::nil()))), file, line, pos), kayak_rt::nil()))
+                }
+            }), members))), file, line, pos), kayak_rt::nil()))
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<&'static Sexp>()
+        }
+    }
+}
+
+/// Whether a set of items is checked as written: one, reaching not itself.
+pub fn alone_p(group: Mitems) -> bool {
+    (null_p(cdr(group)) && {
+        let tagcase_ = car(group);
         match *tagcase_ {
             Mitem::Mitem(f, ns, rs, l) => {
                 (not(l) || head_is_p(f, str_lit("define-rec")) || head_is_p(f, str_lit("define*")) || not(any_p(lambda1(move |r: Str| {
@@ -2240,70 +2503,99 @@ pub fn as_group(v: &'static Cv, group: Mitems) -> Sexps {
                 }), rs)))
             }
         }
-    }) {
+    })
+}
+
+/// A set of items to check: one alone, as written, unless it reaches
+/// itself; else one `define-rec` of their procedures.
+pub fn as_group(v: &'static Cv, group: Mitems) -> Sexps {
+    if alone_p(group) {
         the::<Sexps>(kayak_rt::heap_cons({
-            let tagcase_ = one;
+            let tagcase_ = car(group);
             match *tagcase_ {
                 Mitem::Mitem(f, ns, rs, l) => {
                     f
                 }
             }
         }, kayak_rt::nil()))
-    } else {
-        if any_p(lambda1(move |it: &'static Mitem| {
+    } else if any_p(lambda1(move |it: &'static Mitem| {
+        let tagcase_ = it;
+        match *tagcase_ {
+            Mitem::Mitem(f, ns, rs, l) => {
+                (not(l) || head_is_p(f, str_lit("define*")))
+            }
+        }
+    }), group) {
+        match refuse(v, string_append(str_lit("items that reach one another, not each a typed lambda: "), words_of(concat(map(lambda1(move |it: &'static Mitem| {
             let tagcase_ = it;
             match *tagcase_ {
                 Mitem::Mitem(f, ns, rs, l) => {
-                    (not(l) || head_is_p(f, str_lit("define*")))
+                    ns
                 }
             }
-        }), group) {
-            match refuse(v, string_append(str_lit("items that reach one another, not each a typed lambda: "), words_of(concat(map(lambda1(move |it: &'static Mitem| {
-                let tagcase_ = it;
-                match *tagcase_ {
-                    Mitem::Mitem(f, ns, rs, l) => {
-                        ns
-                    }
-                }
-            }), group))))) {}
-        } else {
-            let tagcase_ = one;
+        }), group))))) {}
+    } else {
+        rec_of(map(lambda1(move |it: &'static Mitem| {
+            let tagcase_ = it;
             match *tagcase_ {
                 Mitem::Mitem(f, ns, rs, l) => {
-                    let tagcase_ = f;
-                    match *tagcase_ {
-                        Sexp::Lst(xs, file, line, pos) => {
-                            the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("define-rec"), file, pos), concat(map(lambda1(move |it: &'static Mitem| {
-                                let tagcase_ = it;
-                                match *tagcase_ {
-                                    Mitem::Mitem(g, gs, qs, k) => {
-                                        if head_is_p(g, str_lit("define-rec")) {
-                                            cdr(items(g))
-                                        } else {
-                                            let ys = items(g);
-                                            the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(second(ys), kayak_rt::heap_cons(third(ys), kayak_rt::heap_cons(car(item_value(g)), kayak_rt::nil()))), file, line, pos), kayak_rt::nil()))
-                                        }
-                                    }
-                                }
-                            }), group))), file, line, pos), kayak_rt::nil()))
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            nil::<&'static Sexp>()
-                        }
-                    }
+                    f
                 }
             }
+        }), group))
+    }
+}
+
+// A module's order, and its code (C92): `(s P)` for an item checked as
+// written, `(r P ...)` for items checked as one `define-rec`, `P` where
+// each is, from where the module's first item is (an edit before the
+// module moves every item, and the order with them); which incr.kfx keeps,
+// so that an unchanged module's order is not found again, its every body
+// walked.
+pub fn least_position(mut forms: Sexps, mut least: i64) -> i64 {
+    loop {
+        if null_p(forms) {
+            return least;
+        } else if (i64_gt(datum_pos(car(forms)), 0i64) && (i64_lt(least, 0i64) || i64_lt(datum_pos(car(forms)), least))) {
+            (forms, least) = (cdr(forms), datum_pos(car(forms)));
+            continue;
+        } else {
+            forms = cdr(forms);
+            continue;
         }
     }
+}
+
+pub fn first_position(forms: Sexps) -> i64 {
+    least_position(forms, -1i64)
+}
+
+pub enum Ordered {
+    Ordered(Sexps, Str),
+}
+
+pub fn ordered(f0: Sexps, f1: Str) -> &'static Ordered {
+    kayak_rt::heap_alloc(Ordered::Ordered(f0, f1))
+}
+
+/// A module's types and modules, as written, checked before its values.
+pub fn first_checked(forms: Sexps) -> Sexps {
+    concat(map(lambda1(move |f: &'static Sexp| {
+        if (null_p(item_value(f)) || module_def_p(f)) {
+            the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
+        } else {
+            nil::<&'static Sexp>()
+        }
+    }), forms))
 }
 
 /// A module's items in the order KFX checks them: its types and modules
 /// as written (a type may select a module's), then its values, each after
 /// what it reaches, those that reach one another as one group. A module
 /// item is made where it is written all the same (C88).
-pub fn module_order(v: &'static Cv, forms: Sexps) -> Sexps {
+pub fn module_order_coded(v: &'static Cv, forms: Sexps) -> &'static Ordered {
     let its = letrec_items(forms);
+    let t = itree_of(its);
     let values = concat(map(lambda1(move |it: &'static Mitem| {
         let tagcase_ = it;
         match *tagcase_ {
@@ -2316,16 +2608,80 @@ pub fn module_order(v: &'static Cv, forms: Sexps) -> Sexps {
             }
         }
     }), its));
-    made_before(v, its);
-    onto(concat(map(lambda1(move |f: &'static Sexp| {
-        if (null_p(item_value(f)) || module_def_p(f)) {
-            the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
-        } else {
-            nil::<&'static Sexp>()
-        }
-    }), forms)), concat(map(lambda1(move |g: Mitems| {
+    let groups = {
+        made_before(v, its, t);
+        components(values, its, map(lambda1(move |it: &'static Mitem| {
+            let tagcase_ = it;
+            match *tagcase_ {
+                Mitem::Mitem(f, ns, rs, l) => {
+                    reached(car(ns), reach(kayak_rt::heap_cons(car(ns), kayak_rt::nil()), t, nil::<Str>(), false))
+                }
+            }
+        }), its))
+    };
+    ordered(onto(first_checked(forms), concat(map(lambda1(move |g: Mitems| {
         as_group(v, g)
-    }), components(values, its))))
+    }), groups))), words_of(map(lambda1(move |g: Mitems| {
+        string_append(if alone_p(g) {
+            str_lit("(s ")
+        } else {
+            str_lit("(r ")
+        }, string_append(words_of(map(lambda1(move |it: &'static Mitem| {
+            let tagcase_ = it;
+            match *tagcase_ {
+                Mitem::Mitem(f, ns, rs, l) => {
+                    i64_to_string(i64_minus(datum_pos(f), first_position(forms)))
+                }
+            }
+        }), g)), str_lit(")")))
+    }), groups)))
+}
+
+pub fn module_order(v: &'static Cv, forms: Sexps) -> Sexps {
+    let tagcase_ = module_order_coded(v, forms);
+    match *tagcase_ {
+        Ordered::Ordered(fs, code) => {
+            fs
+        }
+    }
+}
+
+pub fn form_at(mut p: i64, mut forms: Sexps) -> Sexps {
+    loop {
+        if null_p(forms) {
+            return nil::<&'static Sexp>();
+        } else if i64_eq(datum_pos(car(forms)), p) {
+            return the::<Sexps>(kayak_rt::heap_cons(car(forms), kayak_rt::nil()));
+        } else {
+            forms = cdr(forms);
+            continue;
+        }
+    }
+}
+
+/// An order kept (`module-order-coded`'s code), made again.
+pub fn order_from_code(forms: Sexps, code: Str) -> Sexps {
+    onto(first_checked(forms), concat(map(lambda1(move |g: &'static Sexp| {
+        let members = concat(map(lambda1(move |p: &'static Sexp| {
+            form_at({
+                let tagcase_ = p;
+                match *tagcase_ {
+                    Sexp::Num(k, f, q) => {
+                        i64_plus(k, first_position(forms))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        -1i64
+                    }
+                }
+            }, forms)
+        }), cdr(items(g))));
+        if head_is_p(g, str_lit("s")) {
+            members
+        } else {
+            rec_of(members)
+        }
+    }), read_all(string_chars(code), str_lit(""), 1i64))))
 }
 
 // A module checked (C91): its scope made (`module-prep`), its items checked
@@ -2394,6 +2750,16 @@ pub fn module_prep(v: &'static Cv, form: &'static Sexp) -> &'static Mprep {
     let forms = unhidden(written);
     let escapes = hidden_escapes(v, written);
     let hidden_types = hidden_type_names(written);
+    let all_includes = onto(included(v, forms), included(v, concat(map(lambda1(move |f: &'static Sexp| {
+        if head_is_p(f, str_lit("hide")) {
+            cdr(items(f))
+        } else {
+            nil::<&'static Sexp>()
+        }
+    }), written))));
+    let include_binds = map(lambda1(move |n: Str| {
+        typed_binds(n, excepted_binds(v, written, n, cv_binds(v)))
+    }), all_includes);
     let hidden = onto(hidden_value_names(written), map(lambda1(move |b: &'static Bind| {
         let tagcase_ = b;
         match *tagcase_ {
@@ -2402,7 +2768,7 @@ pub fn module_prep(v: &'static Cv, form: &'static Sexp) -> &'static Mprep {
             }
         }
     }), concat(map(lambda1(move |n: Str| {
-        excepted_binds(v, written, n, cv_binds(v))
+        binds_of_include(n, include_binds)
     }), included(v, concat(map(lambda1(move |f: &'static Sexp| {
         if head_is_p(f, str_lit("hide")) {
             cdr(items(f))
@@ -2424,7 +2790,7 @@ pub fn module_prep(v: &'static Cv, form: &'static Sexp) -> &'static Mprep {
             }
         }
     }), concat(map(lambda1(move |n: Str| {
-        excepted_binds(v, written, n, cv_binds(v))
+        binds_of_include(n, include_binds)
     }), includes)))));
     let given_types = concat(map(&item_type_names, forms));
     let included_aliases = map(lambda1(move |a: &'static Alias| {
@@ -2454,7 +2820,7 @@ pub fn module_prep(v: &'static Cv, form: &'static Sexp) -> &'static Mprep {
         match *tagcase_ {
             Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
                 cv(bind_onto(concat(map(lambda1(move |n: Str| {
-                    excepted_binds(v, written, n, bs)
+                    binds_of_include(n, include_binds)
                 }), includes)), kayak_rt::heap_cons(bind(str_lit("%module"), scheme(nil::<Str>(), ty_unit()), m), bs)), onto(module_dts(v, m, forms), ds), onto(module_aliases(v, m, names, forms, true), onto(concat(map(lambda1(move |n: Str| {
                     excepted_aliases(v, written, n, als)
                 }), includes)), als)), onto(concat(map(lambda1(move |n: Str| {

@@ -48,6 +48,10 @@ pub fn checked_memo(f0: &'static Cv, f1: Typeds, f2: Memos) -> &'static CheckedM
 pub mod incremental {
     use super::*;
 
+    use super::emitter::{fallible_effect_p, suspending_effect_p, fact_at_p, concat_strings, reverse_strings, split_words, shape_name, ctx_locals, module_body, include_except_names, module_items, type_head_name, item_values, item_constants, item_types, module_here, ctx_typed, with_locals, head_region_params, head_place_params, head_type_params, put_generics_of, collect, type_path, places_used, words_of_sep, all_facts_prefixed, uses_blobrefs_p, family_expanded, put_type, put_flat, expand_aliases, owner_key, typed_flat, has_sum_p, effect_lifetime, atoms_in, element_lifetime, put_fields_tuple, region_arguments, place_arguments, used_place_arguments, type_arguments, put_types, put_nl, put_comment, comment_p, comment_text, hide, put_arg_names, tail_calls_p, arms_tail_calls_p, tag_arms_tail_calls_p, distinct_strings, put_exp, put_call, put_continue, put_joined, put_stmts, put_block, put_typecase_arms, put_cond, put_let1, put_let_star, put_binding_values, put_binding_names, put_let, put_case_arms, put_tagcase_arms, put_fields_of, put_tagcase, put_flat_tagcase, put_flat_arms, put_quasi, put_quasi_tagged, put_quasi_items, put_lambda, put_lambda_params, put_letrec, letrec_loops_p, put_looping_lambda, put_list, put_form, put_args, put_letrena, put_letrena_params, held_at, held_rust, held_type, put_prompt, put_suspending_prompt, put_handler_call, put_suspension, put_question, head_sym_p};
+
+    use super::writing::{put_module_impls, definition_p, put_shapes, put_show_generatives, put_top, types_once, put_module, module_parts, put_module_around, put_tops, put_toplevel};
+
     pub fn fnv_offset() -> i64 {
         -3750763034362895579i64
     }
@@ -137,14 +141,14 @@ pub mod incremental {
     /// A module the emitter keeps, as its fingerprint sees it: its items'
     /// signatures, not their bodies, so that an edit inside a body leaves
     /// every other form's memo (C91).
-    pub fn module_entry_text(x: &'static Typed) -> Str {
+    pub fn module_entry_strings(x: &'static Typed) -> Strings {
         let tagcase_ = x;
         match *tagcase_ {
             Typed::Typed(n, t) => {
                 if head_is_p(t, str_lit("module")) {
-                    string_append(n, string_append(str_lit(" "), words_of(concat(map(&item_signature, cdr(items(t)))))))
+                    kayak_rt::heap_cons(n, concat(map(&item_signature, cdr(items(t)))))
                 } else {
-                    typed_text(x)
+                    the::<Strings>(kayak_rt::heap_cons(typed_text(x), kayak_rt::nil()))
                 }
             }
         }
@@ -655,6 +659,24 @@ pub mod incremental {
         }), fs))), kayak_rt::nil()))))))))
     }
 
+    /// Of a form's change, only what the chain goes on with (C92: a
+    /// module's whole change, every fact of it written out, is kept by
+    /// no memo, and had cost a warm compile a tenth of its time).
+    pub fn forward_of(before: &'static Cv, after: &'static Cv) -> Str {
+        let tagcase_ = after;
+        match *tagcase_ {
+            Cv::Cv(bs, ds, als, es, here, group, f, line, fs, tv, at) => {
+                forward_text(leading(bs, i64_minus(size(bs), size(cv_binds(before)))), leading(es, i64_minus(size(es), size(cv_effdefs(before)))), here, group, tv, concat(map(lambda1(move |x: &'static Fact| {
+                    if interface_fact_p(x) {
+                        the::<Facts>(kayak_rt::heap_cons(x, kayak_rt::nil()))
+                    } else {
+                        nil::<&'static Fact>()
+                    }
+                }), leading(fs, i64_minus(size(fs), size(cv_facts(before)))))))
+            }
+        }
+    }
+
     pub fn change_of(before: &'static Cv, after: &'static Cv, found: Typeds, file: Str, start: i64) -> &'static Change {
         let tagcase_ = after;
         match *tagcase_ {
@@ -730,9 +752,90 @@ pub mod incremental {
         }
     }
 
+    pub enum OrderMemo {
+        OrderMemo(Sexps, Memos),
+    }
+
+    pub fn order_memo(f0: Sexps, f1: Memos) -> &'static OrderMemo {
+        kayak_rt::heap_alloc(OrderMemo::OrderMemo(f0, f1))
+    }
+
+    pub fn order_memo_forms(o: &'static OrderMemo) -> Sexps {
+        let tagcase_ = o;
+        match *tagcase_ {
+            OrderMemo::OrderMemo(fs, ms) => {
+                fs
+            }
+        }
+    }
+
+    pub fn order_memo_made(o: &'static OrderMemo) -> Memos {
+        let tagcase_ = o;
+        match *tagcase_ {
+            OrderMemo::OrderMemo(fs, ms) => {
+                ms
+            }
+        }
+    }
+
+    pub fn module_order_memo(v: &'static Cv, forms: Sexps, text: Str, old: Memos, made: Memos) -> &'static OrderMemo {
+        let key = fnv_string(text, fnv_string(str_lit("order"), fnv_offset()));
+        let hit = memo_find(old, key);
+        if null_p(hit) {
+            let tagcase_ = module_order_coded(v, forms);
+            match *tagcase_ {
+                Ordered::Ordered(fs, code) => {
+                    order_memo(fs, kayak_rt::heap_cons(memo(key, code), made))
+                }
+            }
+        } else {
+            let tagcase_ = car(hit);
+            match *tagcase_ {
+                Memo::Memo(h, code) => {
+                    order_memo(order_from_code(forms, code), kayak_rt::heap_cons(car(hit), made))
+                }
+            }
+        }
+    }
+
+    /// Positions, ascending (an insertion each: a module has tens of items).
+    pub fn sorted_positions(mut ps: List<i64>, mut acc: List<i64>) -> List<i64> {
+        loop {
+            if null_p(ps) {
+                return acc;
+            } else {
+                (ps, acc) = (cdr(ps), inserted(car(ps), acc));
+                continue;
+            }
+        }
+    }
+
+    pub fn inserted(p: i64, ps: List<i64>) -> List<i64> {
+        if null_p(ps) {
+            kayak_rt::heap_cons(p, kayak_rt::nil())
+        } else if i64_lt(p, car(ps)) {
+            kayak_rt::heap_cons(p, ps)
+        } else {
+            kayak_rt::heap_cons(car(ps), inserted(p, cdr(ps)))
+        }
+    }
+
+    pub fn position_after(mut p: i64, mut ps: List<i64>, mut end: i64) -> i64 {
+        loop {
+            if null_p(ps) {
+                return end;
+            } else if i64_gt(car(ps), p) {
+                return car(ps);
+            } else {
+                ps = cdr(ps);
+                continue;
+            }
+        }
+    }
+
     /// A module's items, as `check-items` (check-defs.kfx), each its memo's
     /// change if it has one, keyed by its printed form and the chain.
-    pub fn check_items_memo(mut v: &'static Cv, mut m: Str, mut its: Sexps, mut old: Memos, mut chain: i64, mut found: Typeds, mut made: Memos) -> &'static CheckedMemo {
+    pub fn check_items_memo(mut v: &'static Cv, mut m: Str, mut its: Sexps, mut old: Memos, mut chain: i64, mut found: Typeds, mut made: Memos, mut src: Chars, mut from: i64, mut positions: List<i64>, mut end: i64) -> &'static CheckedMemo {
         loop {
             if null_p(its) {
                 return checked_memo(v, found, made);
@@ -740,7 +843,12 @@ pub mod incremental {
                 let it = car(its);
                 let file = datum_file(it);
                 let start = datum_pos(it);
-                let key = fnv_string(show_sexp(it), fnv_string(str_lit("item"), chain));
+                let own = if (i64_gt_eq(start, from) && i64_lt(start, end)) {
+                    rev_to_string(take_to(drop_to(src, from, start), start, position_after(start, positions, end), nil::<char>()))
+                } else {
+                    show_sexp(it)
+                };
+                let key = fnv_string(own, fnv_string(str_lit("item"), chain));
                 let hit = memo_find(old, key);
                 if not(null_p(hit)) {
                     let tagcase_ = car(hit);
@@ -761,8 +869,8 @@ pub mod incremental {
                         Elab::Elab(v2, more) => {
                             let tagcase_ = change_of(v, v2, more, file, start);
                             match *tagcase_ {
-                                Change::Change(text, forward) => {
-                                    (v, its, chain, found, made) = (v2, cdr(its), fnv_string(forward, chain), onto(more, found), kayak_rt::heap_cons(memo(key, text), made));
+                                Change::Change(text2, forward) => {
+                                    (v, its, chain, found, made) = (v2, cdr(its), fnv_string(forward, chain), onto(more, found), kayak_rt::heap_cons(memo(key, text2), made));
                                     continue;
                                 }
                             }
@@ -794,6 +902,7 @@ pub mod incremental {
                         Sexp::Lst(xs, src_file, src_line, src_pos) => {
                             let p = module_prep(near(v, src_file, src_line, src_pos), form);
                             let inner = prep_inner(p);
+                            let ordering = module_order_memo(inner, prep_forms(p), car(texts), old, made);
                             let scope = fnv_strings(kayak_rt::heap_cons(prep_name(p), concat(map(lambda1(move |f: &'static Sexp| {
                                 if null_p(item_value(f)) {
                                     the::<Strings>(kayak_rt::heap_cons(show_sexp(f), kayak_rt::nil()))
@@ -801,19 +910,18 @@ pub mod incremental {
                                     nil::<Str>()
                                 }
                             }), unhidden(module_written(form))))), fnv_string(str_lit("module"), chain));
-                            let tagcase_ = check_items_memo(inner, prep_name(p), module_order(inner, prep_forms(p)), old, scope, nil::<&'static Typed>(), made);
+                            let tagcase_ = check_items_memo(inner, prep_name(p), order_memo_forms(ordering), old, scope, nil::<&'static Typed>(), order_memo_made(ordering), string_chars(car(texts)), start, sorted_positions(map(&datum_pos, unhidden(module_written(form))), nil::<i64>()), if null_p(cdr(texts)) {
+                                end_of_file()
+                            } else {
+                                i64_plus(start, string_length_i64(car(texts)))
+                            });
                             match *tagcase_ {
                                 CheckedMemo::CheckedMemo(done, items_found, made2) => {
                                     let tagcase_ = module_finish(p, elab(done, items_found));
                                     match *tagcase_ {
                                         Elab::Elab(v2, more) => {
-                                            let tagcase_ = change_of(v, v2, more, file, start);
-                                            match *tagcase_ {
-                                                Change::Change(text, forward) => {
-                                                    (v, forms, texts, chain, found, made) = (at(v2, str_lit(""), nil::<Str>()), cdr(forms), cdr(texts), fnv_string(forward, chain), onto(more, found), made2);
-                                                    continue;
-                                                }
-                                            }
+                                            (v, forms, texts, chain, found, made) = (at(v2, str_lit(""), nil::<Str>()), cdr(forms), cdr(texts), fnv_string(forward_of(v, v2), chain), onto(more, found), made2);
+                                            continue;
                                         }
                                     }
                                 }
@@ -897,7 +1005,7 @@ pub mod incremental {
                             }, words_of(kinds)))
                         }
                     }
-                }), ms)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("effects"), map(&typed_text, es)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("modules"), map(&module_entry_text, mods)), kayak_rt::nil()))))))))), fnv_offset())
+                }), ms)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("effects"), map(&typed_text, es)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("modules"), concat(map(&module_entry_strings, mods))), kayak_rt::nil()))))))))), fnv_offset())
             }
         }
     }
@@ -965,7 +1073,7 @@ pub mod incremental {
                 let tagcase_ = module_parts(c, m, module_written(car(forms)));
                 match *tagcase_ {
                     Mparts::Mparts(inner, its) => {
-                        let tagcase_ = put_items_memo(inner, fs, ctx_fingerprint(inner), old, its, string_chars(car(texts)), start, end, nil::<char>(), made);
+                        let tagcase_ = put_items_memo(inner, fs, fnv_strings(concat(map(&item_signature, module_written(car(forms)))), fnv_string(m, global)), old, its, string_chars(car(texts)), start, end, nil::<char>(), made);
                         match *tagcase_ {
                             Emitted::Emitted(body, made2) => {
                                 let body = if string_member_p(str_lit("%toplevel"), ctx_locals(c)) {

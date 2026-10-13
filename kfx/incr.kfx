@@ -26,6 +26,9 @@
 (define incremental
   (module
     (hide
+      (include emitter)
+      (include writing)
+
       (define fnv-offset i64 -3750763034362895579)
 
       (define-rec
@@ -68,7 +71,7 @@
                     ((tagcase f (lst (ys fl l p) #t) (else other #f)) (the strings (list (show-sexp f))))
                     (else nil))))))
 
-      (define module-entry-text (subr kfx (typed) string)
+      (define module-entry-strings (subr kfx (typed) strings)
         (lambda (x)
           "A module the emitter keeps, as its fingerprint sees it: its items'
            signatures, not their bodies, so that an edit inside a body leaves
@@ -76,8 +79,8 @@
           (tagcase x
             (typed (n t)
               (if (head-is? t "module")
-                  (string-append n (string-append " " (words-of (concat (map item-signature (cdr (items t)))))))
-                  (typed-text x))))))
+                  (cons n (concat (map item-signature (cdr (items t)))))
+                  (the strings (list (typed-text x))))))))
 
       ;; Each form's text, cut from its file's characters at the forms' offsets;
       ;; the last to the end of its file, an offset past every other.
@@ -345,6 +348,19 @@
             (list (words-of (map bind-code bs)) "|" (words-of (map effdef-code es)) "|" (where-text here group tv) "|"
                   (words-of (concat (map (lambda ((x fact)) (tagcase x (fact (ff p w) (if (interface-fact? x) (the strings (list w)) nil)))) fs)))))))
 
+      (define forward-of (subr kfx (cv cv) string)
+        (lambda (before after)
+          "Of a form's change, only what the chain goes on with (C92: a
+           module's whole change, every fact of it written out, is kept by
+           no memo, and had cost a warm compile a tenth of its time)."
+          (tagcase after
+            (cv (bs ds als es here group f line fs tv at)
+              (forward-text (leading bs (i64- (size bs) (size (cv-binds before))))
+                            (leading es (i64- (size es) (size (cv-effdefs before))))
+                            here group tv
+                            (concat (map (lambda ((x fact)) (if (interface-fact? x) (the facts (list x)) nil))
+                                         (leading fs (i64- (size fs) (size (cv-facts before)))))))))))
+
       (define change-of (subr kfx (cv cv typeds string i64) change)
         (lambda (before after found file start)
           (tagcase after
@@ -408,9 +424,41 @@
       ;; (check-defs.kfx) does; `chain` the fingerprint of all before it. Modules
       ;; are checked always, and continue the chain by their text.
 
+      ;; A module's order, kept by its text (C92): an unchanged module's is
+      ;; not found again, every body of its walked.
+      (define-datatype order-memo (order-memo sexps memos))
+
+      (define order-memo-forms (subr kfx (order-memo) sexps)
+        (lambda (o) (tagcase o (order-memo (fs ms) fs))))
+
+      (define order-memo-made (subr kfx (order-memo) memos)
+        (lambda (o) (tagcase o (order-memo (fs ms) ms))))
+
+      (define module-order-memo (subr kfx (cv sexps string memos memos) order-memo)
+        (lambda (v forms text old made)
+          (let* ((key (fnv-string text (fnv-string "order" fnv-offset)))
+                 (hit (memo-find old key)))
+            (if (null? hit)
+                (tagcase (module-order-coded v forms)
+                  (ordered (fs code) (order-memo fs (cons (memo key code) made))))
+                (tagcase (car hit)
+                  (memo (h code) (order-memo (order-from-code forms code) (cons (car hit) made))))))))
+
       (define-rec
-        (check-items-memo (subr kfx (cv string sexps memos i64 typeds memos) checked-memo)
-          (lambda (v m its old chain found made)
+        (sorted-positions (subr kfx ((listof i64 acyclic) (listof i64 acyclic)) (listof i64 acyclic))
+          (lambda (ps acc)
+            "Positions, ascending (an insertion each: a module has tens of items)."
+            (if (null? ps) acc (sorted-positions (cdr ps) (inserted (car ps) acc)))))
+        (inserted (subr kfx (i64 (listof i64 acyclic)) (listof i64 acyclic))
+          (lambda (p ps) (cond ((null? ps) (list p)) ((i64< p (car ps)) (cons p ps)) (else (cons (car ps) (inserted p (cdr ps))))))))
+
+      (define-rec
+        (position-after (subr kfx (i64 (listof i64 acyclic) i64) i64)
+          (lambda (p ps end) (cond ((null? ps) end) ((i64> (car ps) p) (car ps)) (else (position-after p (cdr ps) end))))))
+
+      (define-rec
+        (check-items-memo (subr kfx (cv string sexps memos i64 typeds memos chars i64 (listof i64 acyclic) i64) checked-memo)
+          (lambda (v m its old chain found made src from positions end)
             "A module's items, as `check-items` (check-defs.kfx), each its memo's
              change if it has one, keyed by its printed form and the chain."
             (if (null? its)
@@ -418,19 +466,22 @@
                 (let* ((it (car its))
                        (file (datum-file it))
                        (start (datum-pos it))
-                       (key (fnv-string (show-sexp it) (fnv-string "item" chain)))
+                       (own (if (and (i64>= start from) (i64< start end))
+                                (rev->string (take-to (drop-to src from start) start (position-after start positions end) nil))
+                                (show-sexp it)))
+                       (key (fnv-string own (fnv-string "item" chain)))
                        (hit (memo-find old key)))
                   (if (not (null? hit))
                       (tagcase (car hit)
                         (memo (h text)
                           (tagcase (change-applied v text file start)
                             (redone (v2 more forward)
-                              (check-items-memo v2 m (cdr its) old (fnv-string forward chain) (onto more found) (cons (car hit) made))))))
+                              (check-items-memo v2 m (cdr its) old (fnv-string forward chain) (onto more found) (cons (car hit) made) src from positions end)))))
                       (tagcase (check-item v m it)
                         (elab (v2 more)
                           (tagcase (change-of v v2 more file start)
-                            (change (text forward)
-                              (check-items-memo v2 m (cdr its) old (fnv-string forward chain) (onto more found) (cons (memo key text) made))))))))))))
+                            (change (text2 forward)
+                              (check-items-memo v2 m (cdr its) old (fnv-string forward chain) (onto more found) (cons (memo key text2) made) src from positions end)))))))))))
 
       (define-rec
         (check-tops-memo (subr kfx (cv sexps strings memos i64 typeds memos) checked-memo)
@@ -452,17 +503,19 @@
                            (lst (xs src-file src-line src-pos)
                              (let* ((p (module-prep (near v src-file src-line src-pos) form))
                                     (inner (prep-inner p))
-                                    (scope (fnv-strings (cons (prep-name p)
+                                    (ordering (module-order-memo inner (prep-forms p) (car texts) old made))
+                              (scope (fnv-strings (cons (prep-name p)
                                                               (concat (map (lambda ((f sexp)) (if (null? (item-value f)) (the strings (list (show-sexp f))) nil))
                                                                            (unhidden (module-written form)))))
                                                         (fnv-string "module" chain))))
-                               (tagcase (check-items-memo inner (prep-name p) (module-order inner (prep-forms p)) old scope nil made)
+                               (tagcase (check-items-memo inner (prep-name p) (order-memo-forms ordering) old scope nil (order-memo-made ordering)
+                                                    (string-chars (car texts)) start
+                                                    (sorted-positions (map datum-pos (unhidden (module-written form))) nil)
+                                                    (if (null? (cdr texts)) end-of-file (i64+ start (string-length-i64 (car texts)))))
                                  (checked-memo (done items-found made2)
                                    (tagcase (module-finish p (elab done items-found))
                                      (elab (v2 more)
-                                       (tagcase (change-of v v2 more file start)
-                                         (change (text forward)
-                                           (check-tops-memo (at v2 "" nil) (cdr forms) (cdr texts) old (fnv-string forward chain) (onto more found) made2)))))))))
+                                       (check-tops-memo (at v2 "" nil) (cdr forms) (cdr texts) old (fnv-string (forward-of v v2) chain) (onto more found) made2)))))))
                            (else other (check-tops-memo v (cdr forms) (cdr texts) old chain found made))))
                         ((not (null? hit))
                          (tagcase (car hit)
@@ -500,7 +553,7 @@
                                                     (tagcase f (family (n d kinds) (string-append n (string-append (if d " datatype " " ") (words-of kinds))))))
                                                   ms))
                             (cons "effects" (map typed-text es))
-                            (cons "modules" (map module-entry-text mods))))
+                            (cons "modules" (concat (map module-entry-strings mods)))))
               fnv-offset)))))
 
     (define-rec
@@ -540,7 +593,8 @@
                         (end (if (null? (cdr starts)) end-of-file (car (cdr starts)))))
                    (tagcase (module-parts c m (module-written (car forms)))
                      (mparts (inner its)
-                       (tagcase (put-items-memo inner fs (ctx-fingerprint inner) old its (string-chars (car texts)) start end nil made)
+                       (tagcase (put-items-memo inner fs (fnv-strings (concat (map item-signature (module-written (car forms)))) (fnv-string m global))
+                                            old its (string-chars (car texts)) start end nil made)
                          (emitted (body made2)
                            (let ((body (if (string-member? "%toplevel" (ctx-locals c)) (put-show-generatives its body) body)))
                              (put-tops-memo c fs global old (cdr forms) (cdr texts) (cdr starts) (put-module-around c m body acc) made2))))))))

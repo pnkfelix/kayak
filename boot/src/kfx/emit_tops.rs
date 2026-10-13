@@ -6,1013 +6,6 @@ use super::*;
 // emit-tops.kfx: writing a program's top-level forms as Rust (emit.kfx):
 // definitions, modules and their traits, shapes, and `kfx --toplevel`'s
 // values. Split from emit.kfx.
-
-// Top-level forms
-
-// Modules as parameters (C24): a module type, a trait; its abstract types,
-// associated types; its values, functions of no receiver. A module defined at
-// the top level that is given for one is a marker type, `m::Module`, which
-// implements the trait by calling the module's items.
-/// A type written in a module type, its descriptions' names replaced by
-/// what they describe.
-pub fn subst_descs(e: &'static Sexp, descs: List<Sexps>) -> &'static Sexp {
-    let tagcase_ = e;
-    match *tagcase_ {
-        Sexp::Sym(n, at_file, at_pos) => {
-            let found = concat(map(lambda1(move |d: Sexps| {
-                if string_eq_p(sym_name(second(d)), n) {
-                    the::<Sexps>(kayak_rt::heap_cons(third(d), kayak_rt::nil()))
-                } else {
-                    nil::<&'static Sexp>()
-                }
-            }), descs));
-            if null_p(found) {
-                e
-            } else {
-                car(found)
-            }
-        }
-        Sexp::Lst(xs, f, l, p) => {
-            lst(map(lambda1(move |x: &'static Sexp| {
-                subst_descs(x, descs)
-            }), xs), f, l, p)
-        }
-        _ => {
-            let other = tagcase_;
-            e
-        }
-    }
-}
-
-pub fn spec_of(spec: &'static Sexp, kind: Str) -> List<Sexps> {
-    concat(map(lambda1(move |x: &'static Sexp| {
-        if head_is_p(x, kind) {
-            the::<List<Sexps>>(kayak_rt::heap_cons(items(x), kayak_rt::nil()))
-        } else {
-            nil::<List<&'static Sexp>>()
-        }
-    }), cdr(items(spec))))
-}
-
-pub fn abs_of(spec: &'static Sexp) -> Strings {
-    concat(map(lambda1(move |a: Sexps| {
-        let tagcase_ = second(a);
-        match *tagcase_ {
-            Sexp::Sym(n, at_file, at_pos) => {
-                the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
-            }
-            Sexp::Lst(ns, f, l, p) => {
-                map(&sym_name, ns)
-            }
-            _ => {
-                let other = tagcase_;
-                nil::<Str>()
-            }
-        }
-    }), spec_of(spec, str_lit("abs"))))
-}
-
-/// `c` where a module type's abstract types are `Self`'s.
-pub fn in_trait(c: &'static Ctx, spec: &'static Sexp) -> &'static Ctx {
-    with_locals(c, kayak_rt::heap_cons(str_lit("%with Self"), map(lambda1(move |t: Str| {
-        string_append(str_lit("%type "), t)
-    }), abs_of(spec))))
-}
-
-pub fn put_arg_params(mut c: &'static Ctx, mut ts: Sexps, mut i: i64, mut acc: Chars) -> Chars {
-    loop {
-        if null_p(ts) {
-            return acc;
-        } else {
-            (ts, i, acc) = (cdr(ts), i64_plus(i, 1i64), put_type(c, car(ts), put(str_lit(": "), put(i64_to_string(i), put(if i64_eq(i, 0i64) {
-                str_lit("a__")
-            } else {
-                str_lit(", a__")
-            }, acc)))));
-            continue;
-        }
-    }
-}
-
-/// `fn x(a0: P0, ...) -> R`, a module type's value `(val x T)`.
-pub fn put_val_sig(c: &'static Ctx, val: Sexps, descs: List<Sexps>, acc: Chars) -> Chars {
-    let t = subst_descs(third(val), descs);
-    let acc = put(mangle(sym_name(second(val))), put(str_lit("fn "), acc));
-    if head_is_p(t, str_lit("subr")) {
-        put_type(c, fourth(items(t)), put(str_lit(") -> "), put_arg_params(c, items(third(items(t))), 0i64, put(str_lit("("), acc))))
-    } else {
-        put_type(c, t, put(str_lit("() -> "), acc))
-    }
-}
-
-pub fn put_trait(c: &'static Ctx, name: Str, spec: &'static Sexp, acc: Chars) -> Chars {
-    let inner = in_trait(c, spec);
-    let descs = spec_of(spec, str_lit("desc"));
-    let acc = put(str_lit(" {\n"), put(camel(name), put(str_lit("pub trait "), acc)));
-    let acc = put_sep(lambda2(move |t: Str, acc: Chars| {
-        put(str_lit(": Copy + 'static;\n"), put(camel(t), put(str_lit("    type "), acc)))
-    }), str_lit(""), abs_of(spec), acc);
-    let acc = put_sep(lambda2(move |v: Sexps, acc: Chars| {
-        put(str_lit(";\n"), put_val_sig(inner, v, descs, put(str_lit("    "), acc)))
-    }), str_lit(""), spec_of(spec, str_lit("val")), acc);
-    put(str_lit("}\n\n"), acc)
-}
-
-/// Each module given for a module type, `m x`, once.
-pub fn module_impls(c: &'static Ctx) -> Strings {
-    let tagcase_ = c;
-    match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-            reverse_strings(concat(map(lambda1(move |f: &'static Fact| {
-                let tagcase_ = f;
-                match *tagcase_ {
-                    Fact::Fact(ff, fp, fw) => {
-                        if has_prefix_p(fw, str_lit("module-impl ")) {
-                            the::<Strings>(kayak_rt::heap_cons(after_prefix(fw, str_lit("module-impl ")), kayak_rt::nil()))
-                        } else {
-                            nil::<Str>()
-                        }
-                    }
-                }
-            }), fs)), nil::<Str>())
-        }
-    }
-}
-
-pub fn deduped(mut xs: Strings, mut seen: Strings) -> Strings {
-    loop {
-        if null_p(xs) {
-            return reverse_strings(seen, nil::<Str>());
-        } else if string_member_p(car(xs), seen) {
-            xs = cdr(xs);
-            continue;
-        } else {
-            (xs, seen) = (cdr(xs), kayak_rt::heap_cons(car(xs), seen));
-            continue;
-        }
-    }
-}
-
-pub fn put_impl(c: &'static Ctx, m: Str, x: Str, acc: Chars) -> Chars {
-    let spec = car(module_body(c, string_append(str_lit("%moduleof "), x)));
-    let inner = in_trait(c, spec);
-    let descs = spec_of(spec, str_lit("desc"));
-    let consts = item_constants(module_items(c, m));
-    let acc = put(str_lit(" {\n"), put(str_lit("::Module"), put(mangle(m), put(str_lit(" for "), put(camel(x), put(str_lit("impl "), acc))))));
-    let acc = put_sep(lambda2(move |t: Str, acc: Chars| {
-        put(str_lit(";\n"), put(type_path(c, m, t), put(str_lit(" = "), put(camel(t), put(str_lit("    type "), acc)))))
-    }), str_lit(""), abs_of(spec), acc);
-    let acc = put_sep(lambda2(move |v: Sexps, acc: Chars| {
-        let t = subst_descs(third(v), descs);
-        let name = sym_name(second(v));
-        let acc = put(str_lit(" {\n        "), put_val_sig(inner, v, descs, put(str_lit("    "), acc)));
-        let acc = put(mangle(name), put(str_lit("::"), put(mangle(m), acc)));
-        let acc = if string_member_p(name, consts) {
-            put(str_lit("()"), acc)
-        } else {
-            acc
-        };
-        let acc = if head_is_p(t, str_lit("subr")) {
-            put(str_lit(")"), put_arg_names(0i64, size(items(third(items(t)))), put(str_lit("("), acc)))
-        } else {
-            acc
-        };
-        put(str_lit("\n    }\n"), acc)
-    }), str_lit(""), spec_of(spec, str_lit("val")), acc);
-    put(str_lit("}\n\n"), acc)
-}
-
-pub fn put_module_impls(c: &'static Ctx, acc: Chars) -> Chars {
-    put_sep(lambda2(move |k: Str, acc: Chars| {
-        let ws = split_words(k);
-        put_impl(c, car(ws), car(cdr(ws)), acc)
-    }), str_lit(""), deduped(module_impls(c), nil::<Str>()), acc)
-}
-
-/// The parameters of a module type, each `m x`.
-pub fn module_params(c: &'static Ctx, names: Sexps, types: Sexps) -> Strings {
-    if (null_p(names) || null_p(types)) {
-        nil::<Str>()
-    } else {
-        let rest = module_params(c, cdr(names), cdr(types));
-        let tagcase_ = car(types);
-        match *tagcase_ {
-            Sexp::Sym(t, at_file, at_pos) => {
-                if null_p(module_body(c, string_append(str_lit("%moduleof "), t))) {
-                    rest
-                } else {
-                    kayak_rt::heap_cons(string_append(sym_name({
-                        let tagcase_ = car(names);
-                        match *tagcase_ {
-                            Sexp::Lst(xs, f, l, p) => {
-                                car(xs)
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                other
-                            }
-                        }
-                    }), string_append(str_lit(" "), t)), rest)
-                }
-            }
-            _ => {
-                let other = tagcase_;
-                rest
-            }
-        }
-    }
-}
-
-/// `names` or `types`, without the module parameters.
-pub fn unmoduled(mut c: &'static Ctx, mut names: Sexps, mut types: Sexps, mut want_names: bool) -> Sexps {
-    loop {
-        if (null_p(names) || null_p(types)) {
-            return nil::<&'static Sexp>();
-        } else if {
-            let tagcase_ = car(types);
-            match *tagcase_ {
-                Sexp::Sym(t, at_file, at_pos) => {
-                    not(null_p(module_body(c, string_append(str_lit("%moduleof "), t))))
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
-            }
-        } {
-            (names, types) = (cdr(names), cdr(types));
-            continue;
-        } else {
-            return kayak_rt::heap_cons(if want_names {
-                car(names)
-            } else {
-                car(types)
-            }, unmoduled(c, cdr(names), cdr(types), want_names));
-        }
-    }
-}
-
-/// Parameters, from a lambda's names and its `subr` type's; `mut` if
-/// `mutable`, for a procedure that loops.
-pub fn put_params(c: &'static Ctx, names: Sexps, types: Sexps, mutable: bool, acc: Chars) -> Chars {
-    if null_p(names) {
-        acc
-    } else {
-        let name = {
-            let tagcase_ = car(names);
-            match *tagcase_ {
-                Sexp::Lst(xs, src_file, src_line, src_pos) => {
-                    car(xs)
-                }
-                _ => {
-                    let other = tagcase_;
-                    other
-                }
-            }
-        };
-        let acc = if mutable {
-            put(str_lit("mut "), acc)
-        } else {
-            acc
-        };
-        let acc = put(mangle(sym_name(name)), acc);
-        let acc = put(str_lit(": "), acc);
-        let acc = put_type(c, car(types), acc);
-        put_params(c, cdr(names), cdr(types), mutable, if null_p(cdr(names)) {
-            acc
-        } else {
-            put(str_lit(", "), acc)
-        })
-    }
-}
-
-/// A poly's binders as a fn's generics: a type is a Rust type parameter,
-/// `Copy` and `'static` as every KFX value is; an effect is erased, and so,
-/// until places come (TODO.md section 14), is a region, every one's place
-/// being the heap.
-pub fn put_generics(mut binders: Sexps, mut first: bool, mut acc: Chars) -> Chars {
-    loop {
-        if null_p(binders) {
-            if first {
-                return acc;
-            } else {
-                return put(str_lit(">"), acc);
-            }
-        } else {
-            let b = items(car(binders));
-            let kind = sym_name(second(b));
-            if string_eq_p(kind, str_lit("type")) {
-                let acc = put(if first {
-                    str_lit("<")
-                } else {
-                    str_lit(", ")
-                }, acc);
-                let acc = put(camel(sym_name(car(b))), acc);
-                return put_generics(cdr(binders), false, put(str_lit(": Copy + 'static"), acc));
-            } else if (string_eq_p(kind, str_lit("effect")) || string_eq_p(kind, str_lit("region"))) {
-                binders = cdr(binders);
-                continue;
-            } else {
-                return error(string_append(str_lit("kfx: KFX-0 has no poly over a "), kind));
-            }
-        }
-    }
-}
-
-/// A poly type's body, or a plambda's: what is under the binders.
-pub fn unpoly(e: &'static Sexp) -> &'static Sexp {
-    if (head_is_p(e, str_lit("poly")) || head_is_p(e, str_lit("plambda"))) {
-        third(items(e))
-    } else {
-        e
-    }
-}
-
-/// A procedure given places' generics (C34): each place a lifetime, `'p`,
-/// and a type, `Place_P`, bound to hold what the procedure makes there,
-/// by itself or by those it gives the place to; the types `Copy`.
-pub fn put_place_generics(c: &'static Ctx, name: Str, binders: Sexps, lives: Strings, places: Strings, acc: Chars) -> Chars {
-    let needs = all_facts_prefixed(c, string_append(str_lit("place-needs "), string_append(name, str_lit(" "))));
-    let types = concat(map(lambda1(move |b: &'static Sexp| {
-        if sym_is_p(second(items(b)), str_lit("type")) {
-            the::<Strings>(kayak_rt::heap_cons(camel(sym_name(car(items(b)))), kayak_rt::nil()))
-        } else {
-            nil::<Str>()
-        }
-    }), binders));
-    let bounds = lambda1(move |p: Str| {
-        distinct_strings(concat(map(lambda1(move |n: Str| {
-            let ws = read_all(string_chars(n), str_lit(""), 1i64);
-            if string_eq_p(sym_name(car(ws)), string_append(str_lit("'"), p)) {
-                the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("Holds<"), string_append(held_rust(c, sym_name(second(ws)), lifetime(p), third(ws)), str_lit(">"))), kayak_rt::nil()))
-            } else {
-                nil::<Str>()
-            }
-        }), needs)))
-    });
-    let params = onto(map(lambda1(move |p: Str| {
-        lifetime(p)
-    }), onto(lives, places)), onto(map(lambda1(move |t: Str| {
-        string_append(t, str_lit(": Copy + 'static"))
-    }), types), map(lambda1(move |p: Str| {
-        let bs = bounds(p);
-        string_append(str_lit("Place_"), string_append(camel(p), if null_p(bs) {
-            str_lit("")
-        } else {
-            string_append(str_lit(": "), words_of_sep(bs, str_lit(" + ")))
-        }))
-    }), places)));
-    put(string_append(str_lit("<"), string_append(words_of_sep(params, str_lit(", ")), str_lit(">"))), acc)
-}
-
-/// A poly's region binders not within a place, `(r region)` or `(r region
-/// distinct)`: each a lifetime of the procedure, `'r` (C42).
-pub fn free_regions(binders: Sexps) -> Strings {
-    concat(map(lambda1(move |b: &'static Sexp| {
-        let bs = items(b);
-        if (sym_is_p(second(bs), str_lit("region")) && (i64_eq(size(bs), 2i64) || sym_is_p(third(bs), str_lit("distinct")))) {
-            the::<Strings>(kayak_rt::heap_cons(sym_name(car(bs)), kayak_rt::nil()))
-        } else {
-            nil::<Str>()
-        }
-    }), binders))
-}
-
-/// Whether a type is, or holds, a procedure that may suspend: one whose
-/// future, `'static`, can hold no lifetime's data (C46).
-pub fn mentions_suspension_p(mut c: &'static Ctx, mut t: &'static Sexp) -> bool {
-    loop {
-        let tagcase_ = family_expanded(c, t);
-        match *tagcase_ {
-            Sexp::Lst(xs, f, l, p) => {
-                if null_p(xs) {
-                    return false;
-                } else if (sym_is_p(car(xs), str_lit("subr")) && suspending_effect_p(c, second(xs))) {
-                    return true;
-                } else if sym_is_p(car(xs), str_lit("subr")) {
-                    return (any_p(lambda1(move |x: &'static Sexp| {
-                        mentions_suspension_p(c, x)
-                    }), items(third(xs))) || mentions_suspension_p(c, fourth(xs)));
-                } else {
-                    return any_p(lambda1(move |x: &'static Sexp| {
-                        mentions_suspension_p(c, x)
-                    }), cdr(xs));
-                }
-            }
-            Sexp::Sym(n, f, p) => {
-                let found = module_body(c, string_append(str_lit("%abbreviation "), n));
-                if null_p(found) {
-                    return false;
-                } else {
-                    t = second(items(car(found)));
-                    continue;
-                }
-            }
-            _ => {
-                let other = tagcase_;
-                return false;
-            }
-        }
-    }
-}
-
-/// Whether a definition is of a procedure that may suspend, or that takes
-/// or gives one: its effect says so, or names one of its effect binders,
-/// or its type holds such a procedure. Its regions then have no
-/// lifetimes (C46): its future is `'static`, as a capture's must be, and
-/// it touches no `letrena`'s data, since none may be suspended in (C45).
-pub fn may_suspend_p(c: &'static Ctx, binders: Sexps, typ: &'static Sexp) -> bool {
-    let (t, c) = (if head_is_p(typ, str_lit("poly")) {
-        third(items(typ))
-    } else {
-        typ
-    }, with_locals(c, concat(map(lambda1(move |b: &'static Sexp| {
-        if sym_is_p(second(items(b)), str_lit("effect")) {
-            the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%evar "), sym_name(car(items(b)))), kayak_rt::nil()))
-        } else {
-            nil::<Str>()
-        }
-    }), binders))));
-    mentions_suspension_p(c, t)
-}
-
-/// A procedure's generics: its regions' lifetimes, then its types'.
-pub fn put_lifetime_generics(lives: Strings, binders: Sexps, acc: Chars) -> Chars {
-    let types = concat(map(lambda1(move |b: &'static Sexp| {
-        if sym_is_p(second(items(b)), str_lit("type")) {
-            the::<Strings>(kayak_rt::heap_cons(string_append(camel(sym_name(car(items(b)))), str_lit(": Copy + 'static")), kayak_rt::nil()))
-        } else {
-            nil::<Str>()
-        }
-    }), binders));
-    put(string_append(str_lit("<"), string_append(words_of_sep(onto(map(&lifetime, lives), types), str_lit(", ")), str_lit(">"))), acc)
-}
-
-/// A definition, a `fn`: a procedure's of its parameters; a constant's of
-/// none, run at each use, or, if it allocates, made at its first use and
-/// kept (C21).
-pub fn put_define(c: &'static Ctx, name: &'static Sexp, typ: &'static Sexp, defined: &'static Sexp, acc: Chars) -> Chars {
-    let binders = if head_is_p(typ, str_lit("poly")) {
-        items(second(items(typ)))
-    } else {
-        nil::<&'static Sexp>()
-    };
-    let places = concat(map(lambda1(move |b: &'static Sexp| {
-        if sym_is_p(second(items(b)), str_lit("place")) {
-            the::<Strings>(kayak_rt::heap_cons(sym_name(car(items(b))), kayak_rt::nil()))
-        } else {
-            nil::<Str>()
-        }
-    }), binders));
-    let lives = if may_suspend_p(c, binders, typ) {
-        nil::<Str>()
-    } else {
-        free_regions(binders)
-    };
-    let c = with_locals(c, onto(onto(map(lambda1(move |r: Str| {
-        string_append(str_lit("%letrena "), r)
-    }), lives), concat(map(lambda1(move |p: Str| {
-        the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%letrena "), p), kayak_rt::heap_cons(string_append(str_lit("%placeparam "), p), kayak_rt::nil())))
-    }), places))), onto(concat(map(lambda1(move |b: &'static Sexp| {
-        let bs = items(b);
-        if (i64_eq(size(bs), 3i64) && sym_is_p(second(bs), str_lit("region")) && not(sym_is_p(third(bs), str_lit("distinct")))) {
-            the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%within "), string_append(sym_name(car(bs)), string_append(str_lit(" "), sym_name(third(bs))))), kayak_rt::nil()))
-        } else {
-            nil::<Str>()
-        }
-    }), binders)), concat(map(lambda1(move |b: &'static Sexp| {
-        if sym_is_p(second(items(b)), str_lit("type")) {
-            the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%tvar "), sym_name(car(items(b)))), kayak_rt::nil()))
-        } else if sym_is_p(second(items(b)), str_lit("effect")) {
-            the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%evar "), sym_name(car(items(b)))), kayak_rt::nil()))
-        } else {
-            nil::<Str>()
-        }
-    }), binders)))));
-    let typ = family_expanded(c, unpoly(typ));
-    let defined = unpoly(defined);
-    let lambda_p = head_is_p(defined, str_lit("lambda"));
-    let body = if lambda_p {
-        cdr(cdr(items(defined)))
-    } else {
-        the::<Sexps>(kayak_rt::heap_cons(defined, kayak_rt::nil()))
-    };
-    let doc_p = (comment_p(car(body)) && not(null_p(cdr(body))));
-    let acc = if doc_p {
-        put(str_lit("\n"), put_comment(string_chars(comment_text(car(body))), str_lit("///"), 0i64, true, acc))
-    } else {
-        acc
-    };
-    let body = if doc_p {
-        cdr(body)
-    } else {
-        body
-    };
-    let fallible = (lambda_p && fallible_effect_p(c, second(items(typ))));
-    let suspends = (lambda_p && suspending_effect_p(c, second(items(typ))));
-    let mparams = if lambda_p {
-        module_params(c, items(second(items(defined))), items(third(items(typ))))
-    } else {
-        nil::<Str>()
-    };
-    let t = if lambda_p {
-        returns(sym_name(name), map(&param_name, items(second(items(defined)))), null_p(mparams), fallible)
-    } else {
-        value()
-    };
-    let loops_p = (lambda_p && tail_calls_p(t, last(body)));
-    let inner = if lambda_p {
-        with_locals(c, onto(kayak_rt::heap_cons(if suspends {
-            str_lit("%async")
-        } else {
-            str_lit("%sync")
-        }, kayak_rt::heap_cons(if fallible {
-            str_lit("%fallible")
-        } else {
-            str_lit("%infallible")
-        }, map(&param_name, items(second(items(defined)))))), map(lambda1(move |mp: Str| {
-            string_append(str_lit("%modparam "), mp)
-        }), mparams)))
-    } else {
-        c
-    };
-    let acc = put(if suspends {
-        str_lit("pub async fn ")
-    } else {
-        str_lit("pub fn ")
-    }, acc);
-    let acc = put(mangle(sym_name(name)), acc);
-    let acc = if not(null_p(places)) {
-        put_place_generics(c, sym_name(name), binders, lives, places, acc)
-    } else if not(null_p(lives)) {
-        put_lifetime_generics(lives, binders, acc)
-    } else {
-        put_generics(binders, true, acc)
-    };
-    let acc = if null_p(mparams) {
-        acc
-    } else if not(null_p(binders)) {
-        error(str_lit("kfx: a poly procedure with a module parameter, which KFX does not write yet"))
-    } else {
-        put(str_lit(">"), put_sep(lambda2(move |mp: Str, acc: Chars| {
-            let ws = split_words(mp);
-            put(camel(car(cdr(ws))), put(str_lit(": "), put(camel(car(ws)), put(str_lit("Mod_"), acc))))
-        }), str_lit(", "), mparams, put(str_lit("<"), acc)))
-    };
-    let acc = if lambda_p {
-        let acc = put(str_lit("("), acc);
-        let acc = put_params(c, unmoduled(c, items(second(items(defined))), items(third(items(typ))), true), unmoduled(c, items(second(items(defined))), items(third(items(typ))), false), loops_p, acc);
-        let acc = put(str_lit(") -> "), acc);
-        if fallible {
-            put(str_lit(", Unwind>"), put_type(c, fourth(items(typ)), put(str_lit("Result<"), acc)))
-        } else {
-            put_type(c, fourth(items(typ)), acc)
-        }
-    } else {
-        put_type(c, typ, put(str_lit("() -> "), acc))
-    };
-    let acc = put(str_lit(" {"), acc);
-    if loops_p {
-        let acc = put_nl(2i64, put(str_lit("loop {"), put_nl(1i64, acc)));
-        let acc = put_stmts(inner, body, 2i64, t, acc);
-        put(str_lit("\n    }\n}\n\n"), acc)
-    } else {
-        if (not(lambda_p) && fact_at_p(c, defined, str_lit("once"))) {
-            let acc = put_nl(1i64, acc);
-            let acc = put(str_lit("thread_local!(static ONCE: OnceCell<"), acc);
-            let acc = put_type(c, typ, acc);
-            let acc = put(str_lit("> = const { OnceCell::new() });"), acc);
-            let acc = put_nl(1i64, acc);
-            let acc = put(str_lit("once(&ONCE, || {"), acc);
-            let acc = put_stmts(inner, body, 2i64, value(), put_nl(2i64, acc));
-            put(str_lit("\n    })\n}\n\n"), acc)
-        } else {
-            put(str_lit("\n}\n\n"), put_stmts(inner, body, 1i64, if fallible {
-                ok_value()
-            } else {
-                value()
-            }, put_nl(1i64, acc)))
-        }
-    }
-}
-
-pub fn put_rec(mut c: &'static Ctx, mut bindings: Sexps, mut acc: Chars) -> Chars {
-    loop {
-        if null_p(bindings) {
-            return acc;
-        } else {
-            let b = items(car(bindings));
-            (bindings, acc) = (cdr(bindings), put_define(c, car(b), second(b), third(b), acc));
-            continue;
-        }
-    }
-}
-
-pub fn put_variants(c: &'static Ctx, variants: Sexps, acc: Chars) -> Chars {
-    if null_p(variants) {
-        acc
-    } else {
-        let v = items(car(variants));
-        let acc = put(str_lit("    "), acc);
-        let acc = put(camel(sym_name(car(v))), acc);
-        let acc = put(str_lit("("), acc);
-        let acc = put_types(c, cdr(v), acc);
-        put_variants(c, cdr(variants), put(str_lit("),\n"), acc))
-    }
-}
-
-/// Fields `f0`, `f1`, ..., from `i`, with their types if `typed`.
-pub fn put_fields(c: &'static Ctx, types: Sexps, i: i64, typed: bool, acc: Chars) -> Chars {
-    if null_p(types) {
-        acc
-    } else {
-        let acc = if i64_eq(i, 0i64) {
-            acc
-        } else {
-            put(str_lit(", "), acc)
-        };
-        let acc = put(str_lit("f"), acc);
-        let acc = put(i64_to_string(i), acc);
-        let acc = if typed {
-            put_type(c, car(types), put(str_lit(": "), acc))
-        } else {
-            acc
-        };
-        put_fields(c, cdr(types), i64_plus(i, 1i64), typed, acc)
-    }
-}
-
-pub fn put_constructors(c: &'static Ctx, d: Str, params: Strings, variants: Sexps, acc: Chars) -> Chars {
-    if null_p(variants) {
-        acc
-    } else {
-        let v = items(car(variants));
-        let tag = sym_name(car(v));
-        let acc = put(str_lit("pub fn "), acc);
-        let acc = put(mangle(tag), acc);
-        let acc = put_generics_of(params, true, acc);
-        let acc = put(str_lit("("), acc);
-        let acc = put_fields(c, cdr(v), 0i64, true, acc);
-        let acc = put(str_lit(") -> &'static "), acc);
-        let acc = put(camel(d), acc);
-        let acc = put_generics_of(params, false, acc);
-        let acc = put(str_lit(" {\n    kayak_rt::heap_alloc("), acc);
-        let acc = put(camel(d), acc);
-        let acc = put(str_lit("::"), acc);
-        let acc = put(variant_name(tag), acc);
-        let acc = put(str_lit("("), acc);
-        let acc = put_fields(c, cdr(v), 0i64, false, acc);
-        put_constructors(c, d, params, cdr(variants), put(str_lit("))\n}\n\n"), acc))
-    }
-}
-
-/// An enum, generic in its type parameters (its regions are erased), and a
-/// constructor for each variant.
-pub fn put_datatype(c: &'static Ctx, xs: Sexps, acc: Chars) -> Chars {
-    let d = type_head_name(car(xs));
-    let params = head_type_params(car(xs));
-    let acc = put(str_lit("pub enum "), acc);
-    let acc = put(camel(d), acc);
-    let acc = put_generics_of(params, true, acc);
-    let acc = put(str_lit(" {\n"), acc);
-    let acc = put_variants(c, cdr(xs), acc);
-    let acc = put(str_lit("}\n\n"), acc);
-    put_constructors(c, d, params, cdr(xs), acc)
-}
-
-/// A generative type: a new type, a newtype in Rust, and its conversions.
-pub fn put_generative(c: &'static Ctx, xs: Sexps, acc: Chars) -> Chars {
-    let t = type_head_name(car(xs));
-    let params = head_type_params(car(xs));
-    let inside = not(string_eq_p(module_here(c), str_lit("")));
-    let acc = put(str_lit("#[derive(Clone, Copy)]\npub struct "), acc);
-    let acc = put(camel(t), acc);
-    let acc = put_generics_of(params, true, acc);
-    let acc = put(if inside {
-        str_lit("(")
-    } else {
-        str_lit("(pub ")
-    }, acc);
-    let acc = put_type(c, second(xs), acc);
-    let acc = put(if inside {
-        str_lit(");\n\nfn up_")
-    } else {
-        str_lit(");\n\npub fn up_")
-    }, acc);
-    let acc = put(mangle(t), acc);
-    let acc = put_generics_of(params, true, acc);
-    let acc = put(str_lit("(x: "), acc);
-    let acc = put_type(c, second(xs), acc);
-    let acc = put(str_lit(") -> "), acc);
-    let acc = put(camel(t), acc);
-    let acc = put_generics_of(params, false, acc);
-    let acc = put(str_lit(" {\n    "), acc);
-    let acc = put(camel(t), acc);
-    let acc = put(if inside {
-        str_lit("(x)\n}\n\nfn down_")
-    } else {
-        str_lit("(x)\n}\n\npub fn down_")
-    }, acc);
-    let acc = put(mangle(t), acc);
-    let acc = put_generics_of(params, true, acc);
-    let acc = put(str_lit("(x: "), acc);
-    let acc = put(camel(t), acc);
-    let acc = put_generics_of(params, false, acc);
-    let acc = put(str_lit(") -> "), acc);
-    let acc = put_type(c, second(xs), acc);
-    put(str_lit(" {\n    x.0\n}\n\n"), acc)
-}
-
-/// Lines, each not empty four spaces in: `acc`, a module's items.
-pub fn indented(mut cs: Chars, mut start: bool, mut acc: Chars) -> Chars {
-    loop {
-        if null_p(cs) {
-            return acc;
-        } else if char_eq_p(car(cs), '\n') {
-            (cs, start, acc) = (cdr(cs), true, kayak_rt::heap_cons(car(cs), acc));
-            continue;
-        } else if start {
-            (cs, start, acc) = (cdr(cs), false, kayak_rt::heap_cons(car(cs), put(str_lit("    "), acc)));
-            continue;
-        } else {
-            (cs, start, acc) = (cdr(cs), false, kayak_rt::heap_cons(car(cs), acc));
-            continue;
-        }
-    }
-}
-
-/// Written text, its last newlines dropped.
-pub fn trimmed(mut cs: Chars) -> Chars {
-    loop {
-        if (not(null_p(cs)) && char_eq_p(car(cs), '\n')) {
-            cs = cdr(cs);
-            continue;
-        } else {
-            return cs;
-        }
-    }
-}
-
-pub fn without(mut xs: Strings, mut ys: Strings) -> Strings {
-    loop {
-        if null_p(xs) {
-            return nil::<Str>();
-        } else {
-            if string_member_p(car(xs), ys) {
-                xs = cdr(xs);
-                continue;
-            } else {
-                return kayak_rt::heap_cons(car(xs), without(cdr(xs), ys));
-            }
-        }
-    }
-}
-
-pub fn definition_p(e: &'static Sexp) -> bool {
-    (head_is_p(e, str_lit("define")) || head_is_p(e, str_lit("define*")) || head_is_p(e, str_lit("define-rec")) || module_def_p(e) || head_is_p(e, str_lit("define-datatype")) || head_is_p(e, str_lit("define-type")) || head_is_p(e, str_lit("define-generative")))
-}
-
-// The shapes a program has, each declared once: every `productof`,
-// `sumof` and `product` in it, and in the types the checker elaborated and
-// found for sums. A shape's key is `P` or `S`, then its labels.
-/// A shape kayak-rt declares, as the program's would be (`world.rs`): what
-/// FX-26's I/O and bytes primitives answer with (C49).
-pub fn standard_shape_p(key: Str) -> bool {
-    string_member_p(key, kayak_rt::heap_cons(str_lit("S text bad"), kayak_rt::heap_cons(str_lit("S done failed"), kayak_rt::heap_cons(str_lit("S line eof failed"), kayak_rt::heap_cons(str_lit("S data failed"), kayak_rt::heap_cons(str_lit("S names failed"), kayak_rt::heap_cons(str_lit("P kind detail"), kayak_rt::heap_cons(str_lit("S not-found permission-denied already-exists not-a-directory is-a-directory broken-pipe invalid-data other"), kayak_rt::nil()))))))))
-}
-
-/// The key of the shape `e` writes, if it writes one.
-pub fn shape_key(e: &'static Sexp) -> Strings {
-    let tagcase_ = e;
-    match *tagcase_ {
-        Sexp::Lst(xs, f, l, p) => {
-            if (not(null_p(xs)) && (sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("product")) || sym_is_p(car(xs), str_lit("sumof"))) && not(any_p(lambda1(move |x: &'static Sexp| {
-                let tagcase_ = x;
-                match *tagcase_ {
-                    Sexp::Lst(ys, f2, l2, p2) => {
-                        null_p(ys)
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        true
-                    }
-                }
-            }), cdr(xs)))) {
-                the::<Strings>(kayak_rt::heap_cons(string_append(if sym_is_p(car(xs), str_lit("sumof")) {
-                    str_lit("S")
-                } else {
-                    str_lit("P")
-                }, concat_strings(map(lambda1(move |x: &'static Sexp| {
-                    string_append(str_lit(" "), label_of(car(items(x))))
-                }), cdr(xs)))), kayak_rt::nil()))
-            } else {
-                nil::<Str>()
-            }
-        }
-        _ => {
-            let other = tagcase_;
-            nil::<Str>()
-        }
-    }
-}
-
-pub fn shapes_in(e: &'static Sexp, acc: Strings) -> Strings {
-    let tagcase_ = e;
-    match *tagcase_ {
-        Sexp::Lst(xs, f, l, p) => {
-            let (acc, key) = (shapes_in_all(xs, acc), shape_key(e));
-            if (null_p(key) || string_member_p(car(key), acc) || standard_shape_p(car(key))) {
-                acc
-            } else {
-                kayak_rt::heap_cons(car(key), acc)
-            }
-        }
-        _ => {
-            let other = tagcase_;
-            acc
-        }
-    }
-}
-
-pub fn shapes_in_all(mut es: Sexps, mut acc: Strings) -> Strings {
-    loop {
-        if null_p(es) {
-            return acc;
-        } else {
-            (es, acc) = (cdr(es), shapes_in(car(es), acc));
-            continue;
-        }
-    }
-}
-
-pub fn program_shapes(c: &'static Ctx, forms: Sexps) -> Strings {
-    let tagcase_ = c;
-    match *tagcase_ {
-        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-            reverse_strings(shapes_in_all(onto(map(lambda1(move |x: &'static Typed| {
-                let tagcase_ = x;
-                match *tagcase_ {
-                    Typed::Typed(n, t) => {
-                        t
-                    }
-                }
-            }), xs), concat(map(lambda1(move |f: &'static Fact| {
-                let tagcase_ = f;
-                match *tagcase_ {
-                    Fact::Fact(ff, fp, fw) => {
-                        if has_prefix_p(fw, str_lit("sum-type ")) {
-                            read_all(string_chars(after_prefix(fw, str_lit("sum-type "))), str_lit(""), 1i64)
-                        } else {
-                            nil::<&'static Sexp>()
-                        }
-                    }
-                }
-            }), fs))), shapes_in_all(forms, nil::<Str>())), nil::<Str>())
-        }
-    }
-}
-
-pub fn put_params_of(mut i: i64, mut n: i64, mut acc: Chars) -> Chars {
-    loop {
-        if i64_lt(i, n) {
-            (i, acc) = (i64_plus(i, 1i64), put(i64_to_string(i), put(if i64_eq(i, 0i64) {
-                str_lit("A")
-            } else {
-                str_lit(", A")
-            }, acc)));
-            continue;
-        } else {
-            return acc;
-        }
-    }
-}
-
-pub fn put_generic_params(n: i64, acc: Chars) -> Chars {
-    if i64_eq(n, 0i64) {
-        acc
-    } else {
-        put(str_lit(">"), put_params_of(0i64, n, put(str_lit("<"), acc)))
-    }
-}
-
-pub fn put_variants_of(mut tags: Strings, mut i: i64, mut acc: Chars) -> Chars {
-    loop {
-        if null_p(tags) {
-            return acc;
-        } else {
-            (tags, i, acc) = (cdr(tags), i64_plus(i, 1i64), put(str_lit("),\n"), put(i64_to_string(i), put(str_lit("(A"), put(variant_name(car(tags)), put(str_lit("    "), acc))))));
-            continue;
-        }
-    }
-}
-
-/// Each shape's declaration, and, for `kfx --toplevel`, its `Show`, as
-/// Fixpt writes one: `#<product of 2>`, `#<sum leaf>`; with `flats`, a
-/// product's `Flat`, for a typed suffix (C32): its fields' zero bytes.
-pub fn put_shape_decls(keys: Strings, shows: bool, flats: bool, acc: Chars) -> Chars {
-    if null_p(keys) {
-        acc
-    } else {
-        let key = car(keys);
-        let product = string_eq_p(substring_of(key, 1i64), str_lit("P"));
-        let labels = split_words(after_prefix(key, substring_of(key, 1i64)));
-        let name = shape_name(product, labels);
-        let n = size(labels);
-        let acc = put(str_lit("#[allow(non_camel_case_types)]\n"), acc);
-        let acc = if product {
-            put(str_lit(");\n\n"), put_sep(lambda2(move |i: i64, acc: Chars| {
-                put(i64_to_string(i), put(str_lit("pub A"), acc))
-            }), str_lit(", "), counting(0i64, n), put(str_lit("("), put_generic_params(n, put(name, put(str_lit("#[derive(Clone, Copy)]\npub struct "), acc))))))
-        } else {
-            put(str_lit("}\n\n"), put_variants_of(labels, 0i64, put(str_lit(" {\n"), put_generic_params(n, put(name, put(str_lit("pub enum "), acc))))))
-        };
-        let acc = if not(shows) {
-            acc
-        } else {
-            let acc = put(str_lit(" {\n    fn show(&self, out: &mut String) {\n"), put_generic_params(n, put(name, put(str_lit(" Show for "), put_generic_params(n, put(str_lit("impl"), acc))))));
-            put(str_lit("    }\n}\n\n"), if product {
-                put(str_lit(">\");\n"), put(i64_to_string(n), put(str_lit("        out.push_str(\"#<product of "), acc)))
-            } else {
-                put(str_lit("        }\n"), put_sep(lambda2(move |l: Str, acc: Chars| {
-                    put(str_lit(">\"),\n"), put(l, put(str_lit("(..) => out.push_str(\"#<sum "), put(variant_name(l), put(str_lit("::"), put(name, put(str_lit("            "), acc)))))))
-                }), str_lit(""), labels, put(str_lit("        match self {\n"), acc)))
-            })
-        };
-        put_shape_decls(cdr(keys), shows, flats, if (flats && product) {
-            put(str_lit("    }\n}\n\n"), put(str_lit(")\n"), put_sep(lambda2(move |i: i64, acc: Chars| {
-                put(str_lit("::zeroed()"), put(i64_to_string(i), put(str_lit("A"), acc)))
-            }), str_lit(", "), counting(0i64, n), put(str_lit("("), put(name, put(str_lit(" {\n    fn zeroed() -> Self {\n        "), put_generic_params(n, put(name, put(str_lit(" Flat for "), put(str_lit(">"), put_sep(lambda2(move |i: i64, acc: Chars| {
-                put(str_lit(": Flat"), put(i64_to_string(i), put(str_lit("A"), acc)))
-            }), str_lit(", "), counting(0i64, n), put(str_lit("impl<"), acc))))))))))))
-        } else {
-            acc
-        })
-    }
-}
-
-pub fn put_shapes(c: &'static Ctx, forms: Sexps, shows: bool, acc: Chars) -> Chars {
-    put_shape_decls(program_shapes(c, forms), shows, uses_blobrefs_p(c), acc)
-}
-
-// A program's top-level expressions, for running Fixpt's programs as Rust
-// (`kfx --toplevel`, scripts/run-fixpt-programs.py): a `Show` for each
-// datatype, writing a value as Fixpt does, `#<sum TAG>`; and
-// `kfx_toplevel`, which writes each top-level expression's value on a line,
-// top-level strings too, as `fixpt eval` does.
-pub fn put_show_arms(d: Str, variants: Sexps, acc: Chars) -> Chars {
-    if null_p(variants) {
-        acc
-    } else {
-        let tag = sym_name(car(items(car(variants))));
-        let acc = put(str_lit("            "), acc);
-        let acc = put(camel(d), acc);
-        let acc = put(str_lit("::"), acc);
-        let acc = put(variant_name(tag), acc);
-        let acc = put(str_lit("(..) => out.push_str(str_lit(\"#<sum "), acc);
-        let acc = put(tag, acc);
-        put_show_arms(d, cdr(variants), put(str_lit(">\").as_str()),\n"), acc))
-    }
-}
-
-pub fn put_show_impls(mut forms: Sexps, mut acc: Chars) -> Chars {
-    loop {
-        if null_p(forms) {
-            return acc;
-        } else if head_is_p(car(forms), str_lit("define-datatype")) {
-            let xs = cdr(items(car(forms)));
-            let d = type_head_name(car(xs));
-            let params = head_type_params(car(xs));
-            let acc = put(str_lit("impl"), acc);
-            let acc = put_generics_of(params, true, acc);
-            let acc = put(str_lit(" Show for "), acc);
-            let acc = put(camel(d), acc);
-            let acc = put_generics_of(params, false, acc);
-            let acc = put(str_lit(" {\n    fn show(&self, out: &mut String) {\n        match self {\n"), acc);
-            let acc = put_show_arms(d, cdr(xs), acc);
-            return put_show_impls(cdr(forms), put(str_lit("        }\n    }\n}\n\n"), acc));
-        } else if head_is_p(car(forms), str_lit("define-generative")) {
-            let h = second(items(car(forms)));
-            let params = head_type_params(h);
-            let acc = put(str_lit("impl"), acc);
-            let acc = if null_p(params) {
-                acc
-            } else {
-                put(str_lit(">"), put_sep(lambda2(move |n: Str, acc: Chars| {
-                    put(str_lit(": Copy + 'static + Show"), put(camel(n), acc))
-                }), str_lit(", "), params, put(str_lit("<"), acc)))
-            };
-            let acc = put(str_lit(" Show for "), acc);
-            let acc = put(camel(type_head_name(h)), acc);
-            let acc = put_generics_of(params, false, acc);
-            return put_show_impls(cdr(forms), put(str_lit(" {\n    fn show(&self, out: &mut String) {\n        self.0.show(out)\n    }\n}\n\n"), acc));
-        } else {
-            forms = cdr(forms);
-            continue;
-        }
-    }
-}
-
-// What a module's items are written in, and its items (C91).
 pub enum Mparts {
     Mparts(&'static Ctx, Sexps),
 }
@@ -1021,357 +14,1356 @@ pub fn mparts(f0: &'static Ctx, f1: Sexps) -> &'static Mparts {
     kayak_rt::heap_alloc(Mparts::Mparts(f0, f1))
 }
 
-/// In toplevel mode, a module's datatypes' and generative types' `Show`,
-/// inside it, where their representations are seen.
-pub fn put_show_generatives(forms: Sexps, acc: Chars) -> Chars {
-    put_show_impls(concat(map(lambda1(move |f: &'static Sexp| {
-        if (head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype"))) {
-            the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
-        } else {
-            nil::<&'static Sexp>()
-        }
-    }), forms)), acc)
-}
+// Writing the top level is a module (C92): the emitter included, hidden;
+// its helpers hidden too.
+pub mod writing {
+    use super::*;
 
-pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
-    let xs = {
-        let tagcase_ = form;
-        match *tagcase_ {
-            Sexp::Lst(ys, f, l, p) => {
-                ys
-            }
-            _ => {
-                let other = tagcase_;
-                nil::<&'static Sexp>()
-            }
-        }
-    };
-    let h = if null_p(xs) {
-        str_lit("")
-    } else {
-        let tagcase_ = car(xs);
+    use super::emitter::{fallible_effect_p, suspending_effect_p, fact_at_p, concat_strings, reverse_strings, split_words, shape_name, ctx_locals, module_body, include_except_names, module_items, type_head_name, item_values, item_constants, item_types, module_here, ctx_typed, with_locals, head_region_params, head_place_params, head_type_params, put_generics_of, collect, type_path, places_used, words_of_sep, all_facts_prefixed, uses_blobrefs_p, family_expanded, put_type, put_flat, expand_aliases, owner_key, typed_flat, has_sum_p, effect_lifetime, atoms_in, element_lifetime, put_fields_tuple, region_arguments, place_arguments, used_place_arguments, type_arguments, put_types, put_nl, put_comment, comment_p, comment_text, hide, put_arg_names, tail_calls_p, arms_tail_calls_p, tag_arms_tail_calls_p, distinct_strings, put_exp, put_call, put_continue, put_joined, put_stmts, put_block, put_typecase_arms, put_cond, put_let1, put_let_star, put_binding_values, put_binding_names, put_let, put_case_arms, put_tagcase_arms, put_fields_of, put_tagcase, put_flat_tagcase, put_flat_arms, put_quasi, put_quasi_tagged, put_quasi_items, put_lambda, put_lambda_params, put_letrec, letrec_loops_p, put_looping_lambda, put_list, put_form, put_args, put_letrena, put_letrena_params, held_at, held_rust, held_type, put_prompt, put_suspending_prompt, put_handler_call, put_suspension, put_question, head_sym_p};
+
+    /// A type written in a module type, its descriptions' names replaced by
+    /// what they describe.
+    pub fn subst_descs(e: &'static Sexp, descs: List<Sexps>) -> &'static Sexp {
+        let tagcase_ = e;
         match *tagcase_ {
             Sexp::Sym(n, at_file, at_pos) => {
-                n
-            }
-            _ => {
-                let other = tagcase_;
-                str_lit("")
-            }
-        }
-    };
-    if string_eq_p(h, str_lit("define-effect")) {
-        acc
-    } else if (string_eq_p(h, str_lit("include")) || string_eq_p(h, str_lit("%use"))) {
-        let n = sym_name(second(xs));
-        let its = module_items(c, n);
-        let skip = concat(map(lambda1(move |x: &'static Sexp| {
-            if head_is_p(x, str_lit("skip")) {
-                map(&sym_name, cdr(items(x)))
-            } else {
-                nil::<Str>()
-            }
-        }), cdr(cdr(xs))));
-        let ex = concat(map(lambda1(move |x: &'static Sexp| {
-            if head_is_p(x, str_lit("except")) {
-                map(&sym_name, cdr(items(x)))
-            } else if head_is_p(x, str_lit("except-module")) {
-                let b = module_items(c, sym_name(second(items(x))));
-                onto(item_values(b), item_types(b))
-            } else {
-                nil::<Str>()
-            }
-        }), cdr(cdr(xs))));
-        let names = onto(map(&mangle, concat(map(lambda1(move |t: Str| {
-            if string_member_p(t, ex) {
-                nil::<Str>()
-            } else {
-                the::<Strings>(kayak_rt::heap_cons(t, kayak_rt::nil()))
-            }
-        }), item_values(its)))), map(&camel, concat(map(lambda1(move |t: Str| {
-            if (string_member_p(t, skip) || string_member_p(t, ex)) {
-                nil::<Str>()
-            } else {
-                the::<Strings>(kayak_rt::heap_cons(t, kayak_rt::nil()))
-            }
-        }), item_types(its)))));
-        if null_p(names) {
-            acc
-        } else {
-            put(str_lit("};\n\n"), put_sep(lambda2(move |x: Str, acc: Chars| {
-                put(x, acc)
-            }), str_lit(", "), names, put(str_lit("::{"), put(mangle(n), put(if string_eq_p(h, str_lit("include")) {
-                str_lit("pub use super::")
-            } else {
-                str_lit("use super::")
-            }, acc)))))
-        }
-    } else if (string_eq_p(h, str_lit("define-type")) && (head_is_p(third(xs), str_lit("arrayof")) || (head_is_p(third(xs), str_lit("sumof")) && not(null_p(cdr(items(third(xs))))) && {
-        let tagcase_ = second(items(third(xs)));
-        match *tagcase_ {
-            Sexp::Sym(n, f, p) => {
-                true
-            }
-            _ => {
-                let other = tagcase_;
-                false
-            }
-        }
-    }))) {
-        // A flat array or a keyed flat sum: a layout in a bloblet's suffix
-        // (C31, C33), no value's type, and so no Rust type's.
-        acc
-    } else if (string_eq_p(h, str_lit("define-type")) && head_is_p(third(xs), str_lit("moduleof"))) {
-        put_trait(c, sym_name(second(xs)), third(xs), acc)
-    } else if (string_eq_p(h, str_lit("define-type")) && {
-        let tagcase_ = second(xs);
-        match *tagcase_ {
-            Sexp::Lst(hs, hf, hl, hp) => {
-                any_p(lambda1(move |b: &'static Sexp| {
-                    let tagcase_ = b;
-                    match *tagcase_ {
-                        Sexp::Lst(bs, bf, bl, bp) => {
-                            (i64_eq(size(bs), 2i64) && sym_is_p(second(bs), str_lit("effect")))
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            false
-                        }
+                let found = concat(map(lambda1(move |d: Sexps| {
+                    if string_eq_p(sym_name(second(d)), n) {
+                        the::<Sexps>(kayak_rt::heap_cons(third(d), kayak_rt::nil()))
+                    } else {
+                        nil::<&'static Sexp>()
                     }
-                }), cdr(hs))
-            }
-            _ => {
-                let other = tagcase_;
-                false
-            }
-        }
-    }) {
-        // An abbreviation over an effect (C46): no Rust alias, since what
-        // it stands for in Rust depends on the effect; each use expanded.
-        acc
-    } else if (string_eq_p(h, str_lit("define-type")) && not(null_p(module_body(c, string_append(str_lit("%expand "), type_head_name(second(xs))))))) {
-        // An abbreviation of a module's family: expanded where applied (C89).
-        acc
-    } else if (string_eq_p(h, str_lit("define-type")) && {
-        let tagcase_ = second(xs);
-        match *tagcase_ {
-            Sexp::Lst(ys, f, l, p) => {
-                true
-            }
-            _ => {
-                let other = tagcase_;
-                false
-            }
-        }
-    } && any_p(lambda1(move |k: Str| {
-        has_prefix_p(k, str_lit("%in "))
-    }), ctx_locals(c))) {
-        // A module's family: expanded where applied (C89), no Rust alias.
-        acc
-    } else if string_eq_p(h, str_lit("define-type")) {
-        // A type abbreviation; its regions, Rust lifetimes (C39), as a
-        // `letrena`'s are, so that a use of it at one is at its lifetime.
-        let places = head_place_params(second(xs));
-        let regions = onto(head_region_params(second(xs)), places);
-        let inner = with_locals(c, onto(map(lambda1(move |r: Str| {
-            string_append(str_lit("%letrena "), r)
-        }), regions), map(lambda1(move |p: Str| {
-            string_append(str_lit("%placeparam "), p)
-        }), places)));
-        let acc = put(str_lit("pub type "), acc);
-        let acc = put(camel(type_head_name(second(xs))), acc);
-        let params = onto(map(lambda1(move |r: Str| {
-            lifetime(r)
-        }), regions), onto(map(&camel, head_type_params(second(xs))), map(lambda1(move |p: Str| {
-            string_append(str_lit("Place_"), camel(p))
-        }), concat(map(lambda1(move |p: Str| {
-            if string_member_p(p, places_used(third(xs))) {
-                the::<Strings>(kayak_rt::heap_cons(p, kayak_rt::nil()))
-            } else {
-                nil::<Str>()
-            }
-        }), places)))));
-        let acc = if null_p(params) {
-            acc
-        } else {
-            put(string_append(str_lit("<"), string_append(words_of_sep(params, str_lit(", ")), str_lit(">"))), acc)
-        };
-        let acc = put(str_lit(" = "), acc);
-        let acc = put_type(inner, third(xs), acc);
-        put(str_lit(";\n\n"), acc)
-    } else if string_eq_p(h, str_lit("define-datatype")) {
-        put_datatype(c, cdr(xs), acc)
-    } else if string_eq_p(h, str_lit("define-generative")) {
-        put_generative(c, cdr(xs), acc)
-    } else if module_def_p(form) {
-        put_module(c, sym_name(second(xs)), module_written(form), acc)
-    } else if (string_eq_p(h, str_lit("define")) || string_eq_p(h, str_lit("define*"))) {
-        if i64_eq(size(xs), 4i64) {
-            put_define(c, second(xs), third(xs), fourth(xs), acc)
-        } else {
-            put_define(c, second(xs), car(ctx_typed(c, sym_name(second(xs)))), third(xs), acc)
-        }
-    } else if string_eq_p(h, str_lit("define-rec")) {
-        put_rec(c, cdr(xs), acc)
-    } else {
-        acc
-    }
-}
-
-/// A module's `include`s, each marked with the types one before it gave
-/// already, which it does not import again (C86: the same type, given by
-/// two, is one name).
-pub fn types_once(c: &'static Ctx, forms: Sexps, given: Strings) -> Sexps {
-    if null_p(forms) {
-        nil::<&'static Sexp>()
-    } else if (head_is_p(car(forms), str_lit("include")) || head_is_p(car(forms), str_lit("%use"))) {
-        let xs = items(car(forms));
-        let ts = item_types(module_items(c, sym_name(second(xs))));
-        kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("skip"), str_lit(""), 0i64), map(lambda1(move |t: Str| {
-            sym(t, str_lit(""), 0i64)
-        }), given)), str_lit(""), 0i64, 0i64), cdr(cdr(xs))))), str_lit(""), 0i64, 0i64), types_once(c, cdr(forms), onto(ts, given)))
-    } else {
-        kayak_rt::heap_cons(car(forms), types_once(c, cdr(forms), given))
-    }
-}
-
-/// A module, a Rust `mod` (C19): its items as a program's, the program's
-/// names in scope, its own hiding them.
-pub fn put_module(c: &'static Ctx, m: Str, written: Sexps, acc: Chars) -> Chars {
-    let tagcase_ = module_parts(c, m, written);
-    match *tagcase_ {
-        Mparts::Mparts(inner, forms) => {
-            let body = put_tops(inner, forms, nil::<char>());
-            let body = if string_member_p(str_lit("%toplevel"), ctx_locals(c)) {
-                put_show_generatives(forms, body)
-            } else {
-                body
-            };
-            put_module_around(c, m, body, acc)
-        }
-    }
-}
-
-/// What a module's items are written in, and the items (C91: shared
-/// with the emitter that keeps memos, incr.kfx).
-pub fn module_parts(c: &'static Ctx, m: Str, written: Sexps) -> &'static Mparts {
-    let forms = concat(map(lambda1(move |f: &'static Sexp| {
-        if head_is_p(f, str_lit("hide")) {
-            map(lambda1(move |g: &'static Sexp| {
-                if head_is_p(g, str_lit("include")) {
-                    lst(kayak_rt::heap_cons(sym(str_lit("%use"), str_lit(""), 0i64), cdr(items(g))), str_lit(""), 0i64, 0i64)
+                }), descs));
+                if null_p(found) {
+                    e
                 } else {
-                    g
+                    car(found)
                 }
-            }), cdr(items(f)))
-        } else {
-            the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
+            }
+            Sexp::Lst(xs, f, l, p) => {
+                lst(map(lambda1(move |x: &'static Sexp| {
+                    subst_descs(x, descs)
+                }), xs), f, l, p)
+            }
+            _ => {
+                let other = tagcase_;
+                e
+            }
         }
-    }), written));
-    let forms = types_once(c, forms, nil::<Str>());
-    let outer = {
+    }
+
+    pub fn spec_of(spec: &'static Sexp, kind: Str) -> List<Sexps> {
+        concat(map(lambda1(move |x: &'static Sexp| {
+            if head_is_p(x, kind) {
+                the::<List<Sexps>>(kayak_rt::heap_cons(items(x), kayak_rt::nil()))
+            } else {
+                nil::<List<&'static Sexp>>()
+            }
+        }), cdr(items(spec))))
+    }
+
+    pub fn abs_of(spec: &'static Sexp) -> Strings {
+        concat(map(lambda1(move |a: Sexps| {
+            let tagcase_ = second(a);
+            match *tagcase_ {
+                Sexp::Sym(n, at_file, at_pos) => {
+                    the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                }
+                Sexp::Lst(ns, f, l, p) => {
+                    map(&sym_name, ns)
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<Str>()
+                }
+            }
+        }), spec_of(spec, str_lit("abs"))))
+    }
+
+    /// `c` where a module type's abstract types are `Self`'s.
+    pub fn in_trait(c: &'static Ctx, spec: &'static Sexp) -> &'static Ctx {
+        with_locals(c, kayak_rt::heap_cons(str_lit("%with Self"), map(lambda1(move |t: Str| {
+            string_append(str_lit("%type "), t)
+        }), abs_of(spec))))
+    }
+
+    pub fn put_arg_params(mut c: &'static Ctx, mut ts: Sexps, mut i: i64, mut acc: Chars) -> Chars {
+        loop {
+            if null_p(ts) {
+                return acc;
+            } else {
+                (ts, i, acc) = (cdr(ts), i64_plus(i, 1i64), put_type(c, car(ts), put(str_lit(": "), put(i64_to_string(i), put(if i64_eq(i, 0i64) {
+                    str_lit("a__")
+                } else {
+                    str_lit(", a__")
+                }, acc)))));
+                continue;
+            }
+        }
+    }
+
+    /// `fn x(a0: P0, ...) -> R`, a module type's value `(val x T)`.
+    pub fn put_val_sig(c: &'static Ctx, val: Sexps, descs: List<Sexps>, acc: Chars) -> Chars {
+        let t = subst_descs(third(val), descs);
+        let acc = put(mangle(sym_name(second(val))), put(str_lit("fn "), acc));
+        if head_is_p(t, str_lit("subr")) {
+            put_type(c, fourth(items(t)), put(str_lit(") -> "), put_arg_params(c, items(third(items(t))), 0i64, put(str_lit("("), acc))))
+        } else {
+            put_type(c, t, put(str_lit("() -> "), acc))
+        }
+    }
+
+    pub fn put_trait(c: &'static Ctx, name: Str, spec: &'static Sexp, acc: Chars) -> Chars {
+        let inner = in_trait(c, spec);
+        let descs = spec_of(spec, str_lit("desc"));
+        let acc = put(str_lit(" {\n"), put(camel(name), put(str_lit("pub trait "), acc)));
+        let acc = put_sep(lambda2(move |t: Str, acc: Chars| {
+            put(str_lit(": Copy + 'static;\n"), put(camel(t), put(str_lit("    type "), acc)))
+        }), str_lit(""), abs_of(spec), acc);
+        let acc = put_sep(lambda2(move |v: Sexps, acc: Chars| {
+            put(str_lit(";\n"), put_val_sig(inner, v, descs, put(str_lit("    "), acc)))
+        }), str_lit(""), spec_of(spec, str_lit("val")), acc);
+        put(str_lit("}\n\n"), acc)
+    }
+
+    /// Each module given for a module type, `m x`, once.
+    pub fn module_impls(c: &'static Ctx) -> Strings {
         let tagcase_ = c;
         match *tagcase_ {
             Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-                ctx(ds, ts, onto(concat(map(lambda1(move |f: &'static Sexp| {
-                    if (head_is_p(f, str_lit("include")) || head_is_p(f, str_lit("%use"))) {
-                        item_constants(module_items(c, sym_name(second(items(f)))))
-                    } else {
-                        nil::<Str>()
+                reverse_strings(concat(map(lambda1(move |f: &'static Fact| {
+                    let tagcase_ = f;
+                    match *tagcase_ {
+                        Fact::Fact(ff, fp, fw) => {
+                            if has_prefix_p(fw, str_lit("module-impl ")) {
+                                the::<Strings>(kayak_rt::heap_cons(after_prefix(fw, str_lit("module-impl ")), kayak_rt::nil()))
+                            } else {
+                                nil::<Str>()
+                            }
+                        }
                     }
-                }), forms)), without(ks, item_values(forms))), ls, xs, fs, ms, es, mods)
+                }), fs)), nil::<Str>())
             }
         }
-    };
-    mparts(with_locals(collect(forms, outer), kayak_rt::heap_cons(string_append(str_lit("%in "), m), kayak_rt::nil())), forms)
-}
+    }
 
-/// A module's `pub mod`, around its items' Rust, `body`, newest first.
-pub fn put_module_around(c: &'static Ctx, m: Str, body: Chars, acc: Chars) -> Chars {
-    let acc = put(str_lit("pub mod "), acc);
-    let acc = put(mangle(m), acc);
-    let acc = put(str_lit(" {\n    use super::*;\n\n"), acc);
-    let acc = if any_p(lambda1(move |k: Str| {
-        string_eq_p(car(split_words(k)), m)
-    }), module_impls(c)) {
-        put(str_lit("    /// This module, given for a module type (C24).\n    pub struct Module;\n\n"), acc)
-    } else {
-        acc
-    };
-    put(str_lit("\n}\n\n"), indented(rev_onto(trimmed(body), nil::<char>()), true, acc))
-}
-
-/// A string at the top level is a comment. A procedure's documentation is
-/// a string first in its body, as a Lisp docstring is: see `put-define`.
-pub fn put_tops(mut c: &'static Ctx, mut forms: Sexps, mut acc: Chars) -> Chars {
-    loop {
-        if null_p(forms) {
-            return acc;
-        } else if comment_p(car(forms)) {
-            let doc = (not(null_p(cdr(forms))) && definition_p(second(forms)));
-            let acc = put_comment(string_chars(comment_text(car(forms))), str_lit("//"), 0i64, true, acc);
-            return put_tops(c, cdr(forms), put(if doc {
-                str_lit("\n")
+    pub fn deduped(mut xs: Strings, mut seen: Strings) -> Strings {
+        loop {
+            if null_p(xs) {
+                return reverse_strings(seen, nil::<Str>());
+            } else if string_member_p(car(xs), seen) {
+                xs = cdr(xs);
+                continue;
             } else {
-                str_lit("\n\n")
-            }, acc));
-        } else {
-            (forms, acc) = (cdr(forms), put_top(c, car(forms), acc));
-            continue;
+                (xs, seen) = (cdr(xs), kayak_rt::heap_cons(car(xs), seen));
+                continue;
+            }
         }
     }
-}
 
-pub fn toplevel_form_p(f: &'static Sexp) -> bool {
-    not((definition_p(f) || head_is_p(f, str_lit("define-effect"))))
-}
-
-/// Each top-level expression's value written; a `void` one, which never
-/// gives one, run, its type said; one that may suspend, a future run to
-/// its end (C45).
-pub fn put_toplevel_lines(mut c: &'static Ctx, mut forms: Sexps, mut acc: Chars) -> Chars {
-    loop {
-        if null_p(forms) {
-            return acc;
-        } else if toplevel_form_p(car(forms)) {
-            if fact_at_p(c, car(forms), str_lit("suspends")) {
-                if fact_at_p(c, car(forms), str_lit("void")) {
-                    let acc = put(str_lit("    let _: () = kayak_rt::suspend::block(kayak_rt::suspend::body(async move { let _: Void = "), acc);
-                    let acc = put_exp(with_locals(c, kayak_rt::heap_cons(str_lit("%async"), kayak_rt::heap_cons(str_lit("%fallible"), kayak_rt::nil()))), car(forms), 1i64, value(), acc);
-                    return put_toplevel_lines(c, cdr(forms), put(str_lit("; Ok(()) })).unwrap_or_else(|u| unreachable_unwind(u));\n"), acc));
-                } else {
-                    let acc = put(str_lit("    kayak_rt::show_line(&mut out_, kayak_rt::suspend::block(kayak_rt::suspend::body(async move { Ok("), acc);
-                    let acc = put_exp(with_locals(c, kayak_rt::heap_cons(str_lit("%async"), kayak_rt::heap_cons(str_lit("%fallible"), kayak_rt::nil()))), car(forms), 1i64, value(), acc);
-                    return put_toplevel_lines(c, cdr(forms), put(str_lit(") })).unwrap_or_else(|u| unreachable_unwind(u)));\n"), acc));
-                }
-            } else if fact_at_p(c, car(forms), str_lit("procedure")) {
-                // A procedure, as Fixpt writes one, whatever made it: a global's
-                // own `fn` is no `dyn Fn`, whose `Show` this would otherwise be.
-                let acc = put(str_lit("    kayak_rt::show_line(&mut out_, (|| -> Result<_, Unwind> { let _ = "), acc);
-                let acc = put_exp(with_locals(c, kayak_rt::heap_cons(str_lit("%fallible"), kayak_rt::nil())), car(forms), 1i64, value(), acc);
-                return put_toplevel_lines(c, cdr(forms), put(str_lit("; Ok(kayak_rt::Procedure) })().unwrap_or_else(|u| unreachable_unwind(u)));\n"), acc));
+    pub fn put_impl(c: &'static Ctx, m: Str, x: Str, acc: Chars) -> Chars {
+        let spec = car(module_body(c, string_append(str_lit("%moduleof "), x)));
+        let inner = in_trait(c, spec);
+        let descs = spec_of(spec, str_lit("desc"));
+        let consts = item_constants(module_items(c, m));
+        let acc = put(str_lit(" {\n"), put(str_lit("::Module"), put(mangle(m), put(str_lit(" for "), put(camel(x), put(str_lit("impl "), acc))))));
+        let acc = put_sep(lambda2(move |t: Str, acc: Chars| {
+            put(str_lit(";\n"), put(type_path(c, m, t), put(str_lit(" = "), put(camel(t), put(str_lit("    type "), acc)))))
+        }), str_lit(""), abs_of(spec), acc);
+        let acc = put_sep(lambda2(move |v: Sexps, acc: Chars| {
+            let t = subst_descs(third(v), descs);
+            let name = sym_name(second(v));
+            let acc = put(str_lit(" {\n        "), put_val_sig(inner, v, descs, put(str_lit("    "), acc)));
+            let acc = put(mangle(name), put(str_lit("::"), put(mangle(m), acc)));
+            let acc = if string_member_p(name, consts) {
+                put(str_lit("()"), acc)
             } else {
-                if fact_at_p(c, car(forms), str_lit("void")) {
-                    let acc = put(str_lit("    let _: () = (|| -> Result<(), Unwind> { let _: Void = "), acc);
-                    let acc = put_exp(with_locals(c, kayak_rt::heap_cons(str_lit("%fallible"), kayak_rt::nil())), car(forms), 1i64, value(), acc);
-                    return put_toplevel_lines(c, cdr(forms), put(str_lit("; Ok(()) })().unwrap_or_else(|u| unreachable_unwind(u));\n"), acc));
-                } else {
-                    let acc = put(str_lit("    kayak_rt::show_line(&mut out_, (|| -> Result<_, Unwind> { Ok("), acc);
-                    let acc = put_exp(with_locals(c, kayak_rt::heap_cons(str_lit("%fallible"), kayak_rt::nil())), car(forms), 1i64, value(), acc);
-                    return put_toplevel_lines(c, cdr(forms), put(str_lit(") })().unwrap_or_else(|u| unreachable_unwind(u)));\n"), acc));
+                acc
+            };
+            let acc = if head_is_p(t, str_lit("subr")) {
+                put(str_lit(")"), put_arg_names(0i64, size(items(third(items(t)))), put(str_lit("("), acc)))
+            } else {
+                acc
+            };
+            put(str_lit("\n    }\n"), acc)
+        }), str_lit(""), spec_of(spec, str_lit("val")), acc);
+        put(str_lit("}\n\n"), acc)
+    }
+
+    /// The parameters of a module type, each `m x`.
+    pub fn module_params(c: &'static Ctx, names: Sexps, types: Sexps) -> Strings {
+        if (null_p(names) || null_p(types)) {
+            nil::<Str>()
+        } else {
+            let rest = module_params(c, cdr(names), cdr(types));
+            let tagcase_ = car(types);
+            match *tagcase_ {
+                Sexp::Sym(t, at_file, at_pos) => {
+                    if null_p(module_body(c, string_append(str_lit("%moduleof "), t))) {
+                        rest
+                    } else {
+                        kayak_rt::heap_cons(string_append(sym_name({
+                            let tagcase_ = car(names);
+                            match *tagcase_ {
+                                Sexp::Lst(xs, f, l, p) => {
+                                    car(xs)
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    other
+                                }
+                            }
+                        }), string_append(str_lit(" "), t)), rest)
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    rest
                 }
             }
-        } else {
-            forms = cdr(forms);
-            continue;
         }
     }
-}
 
-pub fn put_toplevel(c: &'static Ctx, forms: Sexps, acc: Chars) -> Chars {
-    let acc = put_show_impls(forms, acc);
-    let acc = put(str_lit("/// The program's top-level expressions' values, as Fixpt writes them.\npub fn kfx_toplevel() -> Str {\n    let mut out_ = String::new();\n"), acc);
-    let acc = put_toplevel_lines(c, forms, acc);
-    put(str_lit("    kayak_rt::shown(out_)\n}\n"), acc)
+    /// `names` or `types`, without the module parameters.
+    pub fn unmoduled(mut c: &'static Ctx, mut names: Sexps, mut types: Sexps, mut want_names: bool) -> Sexps {
+        loop {
+            if (null_p(names) || null_p(types)) {
+                return nil::<&'static Sexp>();
+            } else if {
+                let tagcase_ = car(types);
+                match *tagcase_ {
+                    Sexp::Sym(t, at_file, at_pos) => {
+                        not(null_p(module_body(c, string_append(str_lit("%moduleof "), t))))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            } {
+                (names, types) = (cdr(names), cdr(types));
+                continue;
+            } else {
+                return kayak_rt::heap_cons(if want_names {
+                    car(names)
+                } else {
+                    car(types)
+                }, unmoduled(c, cdr(names), cdr(types), want_names));
+            }
+        }
+    }
+
+    /// Parameters, from a lambda's names and its `subr` type's; `mut` if
+    /// `mutable`, for a procedure that loops.
+    pub fn put_params(c: &'static Ctx, names: Sexps, types: Sexps, mutable: bool, acc: Chars) -> Chars {
+        if null_p(names) {
+            acc
+        } else {
+            let name = {
+                let tagcase_ = car(names);
+                match *tagcase_ {
+                    Sexp::Lst(xs, src_file, src_line, src_pos) => {
+                        car(xs)
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        other
+                    }
+                }
+            };
+            let acc = if mutable {
+                put(str_lit("mut "), acc)
+            } else {
+                acc
+            };
+            let acc = put(mangle(sym_name(name)), acc);
+            let acc = put(str_lit(": "), acc);
+            let acc = put_type(c, car(types), acc);
+            put_params(c, cdr(names), cdr(types), mutable, if null_p(cdr(names)) {
+                acc
+            } else {
+                put(str_lit(", "), acc)
+            })
+        }
+    }
+
+    /// A poly's binders as a fn's generics: a type is a Rust type parameter,
+    /// `Copy` and `'static` as every KFX value is; an effect is erased, and so,
+    /// until places come (TODO.md section 14), is a region, every one's place
+    /// being the heap.
+    pub fn put_generics(mut binders: Sexps, mut first: bool, mut acc: Chars) -> Chars {
+        loop {
+            if null_p(binders) {
+                if first {
+                    return acc;
+                } else {
+                    return put(str_lit(">"), acc);
+                }
+            } else {
+                let b = items(car(binders));
+                let kind = sym_name(second(b));
+                if string_eq_p(kind, str_lit("type")) {
+                    let acc = put(if first {
+                        str_lit("<")
+                    } else {
+                        str_lit(", ")
+                    }, acc);
+                    let acc = put(camel(sym_name(car(b))), acc);
+                    return put_generics(cdr(binders), false, put(str_lit(": Copy + 'static"), acc));
+                } else if (string_eq_p(kind, str_lit("effect")) || string_eq_p(kind, str_lit("region"))) {
+                    binders = cdr(binders);
+                    continue;
+                } else {
+                    return error(string_append(str_lit("kfx: KFX-0 has no poly over a "), kind));
+                }
+            }
+        }
+    }
+
+    /// A poly type's body, or a plambda's: what is under the binders.
+    pub fn unpoly(e: &'static Sexp) -> &'static Sexp {
+        if (head_is_p(e, str_lit("poly")) || head_is_p(e, str_lit("plambda"))) {
+            third(items(e))
+        } else {
+            e
+        }
+    }
+
+    /// A procedure given places' generics (C34): each place a lifetime, `'p`,
+    /// and a type, `Place_P`, bound to hold what the procedure makes there,
+    /// by itself or by those it gives the place to; the types `Copy`.
+    pub fn put_place_generics(c: &'static Ctx, name: Str, binders: Sexps, lives: Strings, places: Strings, acc: Chars) -> Chars {
+        let needs = all_facts_prefixed(c, string_append(str_lit("place-needs "), string_append(name, str_lit(" "))));
+        let types = concat(map(lambda1(move |b: &'static Sexp| {
+            if sym_is_p(second(items(b)), str_lit("type")) {
+                the::<Strings>(kayak_rt::heap_cons(camel(sym_name(car(items(b)))), kayak_rt::nil()))
+            } else {
+                nil::<Str>()
+            }
+        }), binders));
+        let bounds = lambda1(move |p: Str| {
+            distinct_strings(concat(map(lambda1(move |n: Str| {
+                let ws = read_all(string_chars(n), str_lit(""), 1i64);
+                if string_eq_p(sym_name(car(ws)), string_append(str_lit("'"), p)) {
+                    the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("Holds<"), string_append(held_rust(c, sym_name(second(ws)), lifetime(p), third(ws)), str_lit(">"))), kayak_rt::nil()))
+                } else {
+                    nil::<Str>()
+                }
+            }), needs)))
+        });
+        let params = onto(map(lambda1(move |p: Str| {
+            lifetime(p)
+        }), onto(lives, places)), onto(map(lambda1(move |t: Str| {
+            string_append(t, str_lit(": Copy + 'static"))
+        }), types), map(lambda1(move |p: Str| {
+            let bs = bounds(p);
+            string_append(str_lit("Place_"), string_append(camel(p), if null_p(bs) {
+                str_lit("")
+            } else {
+                string_append(str_lit(": "), words_of_sep(bs, str_lit(" + ")))
+            }))
+        }), places)));
+        put(string_append(str_lit("<"), string_append(words_of_sep(params, str_lit(", ")), str_lit(">"))), acc)
+    }
+
+    /// A poly's region binders not within a place, `(r region)` or `(r region
+    /// distinct)`: each a lifetime of the procedure, `'r` (C42).
+    pub fn free_regions(binders: Sexps) -> Strings {
+        concat(map(lambda1(move |b: &'static Sexp| {
+            let bs = items(b);
+            if (sym_is_p(second(bs), str_lit("region")) && (i64_eq(size(bs), 2i64) || sym_is_p(third(bs), str_lit("distinct")))) {
+                the::<Strings>(kayak_rt::heap_cons(sym_name(car(bs)), kayak_rt::nil()))
+            } else {
+                nil::<Str>()
+            }
+        }), binders))
+    }
+
+    /// Whether a type is, or holds, a procedure that may suspend: one whose
+    /// future, `'static`, can hold no lifetime's data (C46).
+    pub fn mentions_suspension_p(mut c: &'static Ctx, mut t: &'static Sexp) -> bool {
+        loop {
+            let tagcase_ = family_expanded(c, t);
+            match *tagcase_ {
+                Sexp::Lst(xs, f, l, p) => {
+                    if null_p(xs) {
+                        return false;
+                    } else if (sym_is_p(car(xs), str_lit("subr")) && suspending_effect_p(c, second(xs))) {
+                        return true;
+                    } else if sym_is_p(car(xs), str_lit("subr")) {
+                        return (any_p(lambda1(move |x: &'static Sexp| {
+                            mentions_suspension_p(c, x)
+                        }), items(third(xs))) || mentions_suspension_p(c, fourth(xs)));
+                    } else {
+                        return any_p(lambda1(move |x: &'static Sexp| {
+                            mentions_suspension_p(c, x)
+                        }), cdr(xs));
+                    }
+                }
+                Sexp::Sym(n, f, p) => {
+                    let found = module_body(c, string_append(str_lit("%abbreviation "), n));
+                    if null_p(found) {
+                        return false;
+                    } else {
+                        t = second(items(car(found)));
+                        continue;
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    return false;
+                }
+            }
+        }
+    }
+
+    /// Whether a definition is of a procedure that may suspend, or that takes
+    /// or gives one: its effect says so, or names one of its effect binders,
+    /// or its type holds such a procedure. Its regions then have no
+    /// lifetimes (C46): its future is `'static`, as a capture's must be, and
+    /// it touches no `letrena`'s data, since none may be suspended in (C45).
+    pub fn may_suspend_p(c: &'static Ctx, binders: Sexps, typ: &'static Sexp) -> bool {
+        let (t, c) = (if head_is_p(typ, str_lit("poly")) {
+            third(items(typ))
+        } else {
+            typ
+        }, with_locals(c, concat(map(lambda1(move |b: &'static Sexp| {
+            if sym_is_p(second(items(b)), str_lit("effect")) {
+                the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%evar "), sym_name(car(items(b)))), kayak_rt::nil()))
+            } else {
+                nil::<Str>()
+            }
+        }), binders))));
+        mentions_suspension_p(c, t)
+    }
+
+    /// A procedure's generics: its regions' lifetimes, then its types'.
+    pub fn put_lifetime_generics(lives: Strings, binders: Sexps, acc: Chars) -> Chars {
+        let types = concat(map(lambda1(move |b: &'static Sexp| {
+            if sym_is_p(second(items(b)), str_lit("type")) {
+                the::<Strings>(kayak_rt::heap_cons(string_append(camel(sym_name(car(items(b)))), str_lit(": Copy + 'static")), kayak_rt::nil()))
+            } else {
+                nil::<Str>()
+            }
+        }), binders));
+        put(string_append(str_lit("<"), string_append(words_of_sep(onto(map(&lifetime, lives), types), str_lit(", ")), str_lit(">"))), acc)
+    }
+
+    /// A definition, a `fn`: a procedure's of its parameters; a constant's of
+    /// none, run at each use, or, if it allocates, made at its first use and
+    /// kept (C21).
+    pub fn put_define(c: &'static Ctx, name: &'static Sexp, typ: &'static Sexp, defined: &'static Sexp, acc: Chars) -> Chars {
+        let binders = if head_is_p(typ, str_lit("poly")) {
+            items(second(items(typ)))
+        } else {
+            nil::<&'static Sexp>()
+        };
+        let places = concat(map(lambda1(move |b: &'static Sexp| {
+            if sym_is_p(second(items(b)), str_lit("place")) {
+                the::<Strings>(kayak_rt::heap_cons(sym_name(car(items(b))), kayak_rt::nil()))
+            } else {
+                nil::<Str>()
+            }
+        }), binders));
+        let lives = if may_suspend_p(c, binders, typ) {
+            nil::<Str>()
+        } else {
+            free_regions(binders)
+        };
+        let c = with_locals(c, onto(onto(map(lambda1(move |r: Str| {
+            string_append(str_lit("%letrena "), r)
+        }), lives), concat(map(lambda1(move |p: Str| {
+            the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%letrena "), p), kayak_rt::heap_cons(string_append(str_lit("%placeparam "), p), kayak_rt::nil())))
+        }), places))), onto(concat(map(lambda1(move |b: &'static Sexp| {
+            let bs = items(b);
+            if (i64_eq(size(bs), 3i64) && sym_is_p(second(bs), str_lit("region")) && not(sym_is_p(third(bs), str_lit("distinct")))) {
+                the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%within "), string_append(sym_name(car(bs)), string_append(str_lit(" "), sym_name(third(bs))))), kayak_rt::nil()))
+            } else {
+                nil::<Str>()
+            }
+        }), binders)), concat(map(lambda1(move |b: &'static Sexp| {
+            if sym_is_p(second(items(b)), str_lit("type")) {
+                the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%tvar "), sym_name(car(items(b)))), kayak_rt::nil()))
+            } else if sym_is_p(second(items(b)), str_lit("effect")) {
+                the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%evar "), sym_name(car(items(b)))), kayak_rt::nil()))
+            } else {
+                nil::<Str>()
+            }
+        }), binders)))));
+        let typ = family_expanded(c, unpoly(typ));
+        let defined = unpoly(defined);
+        let lambda_p = head_is_p(defined, str_lit("lambda"));
+        let body = if lambda_p {
+            cdr(cdr(items(defined)))
+        } else {
+            the::<Sexps>(kayak_rt::heap_cons(defined, kayak_rt::nil()))
+        };
+        let doc_p = (comment_p(car(body)) && not(null_p(cdr(body))));
+        let acc = if doc_p {
+            put(str_lit("\n"), put_comment(string_chars(comment_text(car(body))), str_lit("///"), 0i64, true, acc))
+        } else {
+            acc
+        };
+        let body = if doc_p {
+            cdr(body)
+        } else {
+            body
+        };
+        let fallible = (lambda_p && fallible_effect_p(c, second(items(typ))));
+        let suspends = (lambda_p && suspending_effect_p(c, second(items(typ))));
+        let mparams = if lambda_p {
+            module_params(c, items(second(items(defined))), items(third(items(typ))))
+        } else {
+            nil::<Str>()
+        };
+        let t = if lambda_p {
+            returns(sym_name(name), map(&param_name, items(second(items(defined)))), null_p(mparams), fallible)
+        } else {
+            value()
+        };
+        let loops_p = (lambda_p && tail_calls_p(t, last(body)));
+        let inner = if lambda_p {
+            with_locals(c, onto(kayak_rt::heap_cons(if suspends {
+                str_lit("%async")
+            } else {
+                str_lit("%sync")
+            }, kayak_rt::heap_cons(if fallible {
+                str_lit("%fallible")
+            } else {
+                str_lit("%infallible")
+            }, map(&param_name, items(second(items(defined)))))), map(lambda1(move |mp: Str| {
+                string_append(str_lit("%modparam "), mp)
+            }), mparams)))
+        } else {
+            c
+        };
+        let acc = put(if suspends {
+            str_lit("pub async fn ")
+        } else {
+            str_lit("pub fn ")
+        }, acc);
+        let acc = put(mangle(sym_name(name)), acc);
+        let acc = if not(null_p(places)) {
+            put_place_generics(c, sym_name(name), binders, lives, places, acc)
+        } else if not(null_p(lives)) {
+            put_lifetime_generics(lives, binders, acc)
+        } else {
+            put_generics(binders, true, acc)
+        };
+        let acc = if null_p(mparams) {
+            acc
+        } else if not(null_p(binders)) {
+            error(str_lit("kfx: a poly procedure with a module parameter, which KFX does not write yet"))
+        } else {
+            put(str_lit(">"), put_sep(lambda2(move |mp: Str, acc: Chars| {
+                let ws = split_words(mp);
+                put(camel(car(cdr(ws))), put(str_lit(": "), put(camel(car(ws)), put(str_lit("Mod_"), acc))))
+            }), str_lit(", "), mparams, put(str_lit("<"), acc)))
+        };
+        let acc = if lambda_p {
+            let acc = put(str_lit("("), acc);
+            let acc = put_params(c, unmoduled(c, items(second(items(defined))), items(third(items(typ))), true), unmoduled(c, items(second(items(defined))), items(third(items(typ))), false), loops_p, acc);
+            let acc = put(str_lit(") -> "), acc);
+            if fallible {
+                put(str_lit(", Unwind>"), put_type(c, fourth(items(typ)), put(str_lit("Result<"), acc)))
+            } else {
+                put_type(c, fourth(items(typ)), acc)
+            }
+        } else {
+            put_type(c, typ, put(str_lit("() -> "), acc))
+        };
+        let acc = put(str_lit(" {"), acc);
+        if loops_p {
+            let acc = put_nl(2i64, put(str_lit("loop {"), put_nl(1i64, acc)));
+            let acc = put_stmts(inner, body, 2i64, t, acc);
+            put(str_lit("\n    }\n}\n\n"), acc)
+        } else {
+            if (not(lambda_p) && fact_at_p(c, defined, str_lit("once"))) {
+                let acc = put_nl(1i64, acc);
+                let acc = put(str_lit("thread_local!(static ONCE: OnceCell<"), acc);
+                let acc = put_type(c, typ, acc);
+                let acc = put(str_lit("> = const { OnceCell::new() });"), acc);
+                let acc = put_nl(1i64, acc);
+                let acc = put(str_lit("once(&ONCE, || {"), acc);
+                let acc = put_stmts(inner, body, 2i64, value(), put_nl(2i64, acc));
+                put(str_lit("\n    })\n}\n\n"), acc)
+            } else {
+                put(str_lit("\n}\n\n"), put_stmts(inner, body, 1i64, if fallible {
+                    ok_value()
+                } else {
+                    value()
+                }, put_nl(1i64, acc)))
+            }
+        }
+    }
+
+    pub fn put_rec(mut c: &'static Ctx, mut bindings: Sexps, mut acc: Chars) -> Chars {
+        loop {
+            if null_p(bindings) {
+                return acc;
+            } else {
+                let b = items(car(bindings));
+                (bindings, acc) = (cdr(bindings), put_define(c, car(b), second(b), third(b), acc));
+                continue;
+            }
+        }
+    }
+
+    pub fn put_variants(c: &'static Ctx, variants: Sexps, acc: Chars) -> Chars {
+        if null_p(variants) {
+            acc
+        } else {
+            let v = items(car(variants));
+            let acc = put(str_lit("    "), acc);
+            let acc = put(camel(sym_name(car(v))), acc);
+            let acc = put(str_lit("("), acc);
+            let acc = put_types(c, cdr(v), acc);
+            put_variants(c, cdr(variants), put(str_lit("),\n"), acc))
+        }
+    }
+
+    /// Fields `f0`, `f1`, ..., from `i`, with their types if `typed`.
+    pub fn put_fields(c: &'static Ctx, types: Sexps, i: i64, typed: bool, acc: Chars) -> Chars {
+        if null_p(types) {
+            acc
+        } else {
+            let acc = if i64_eq(i, 0i64) {
+                acc
+            } else {
+                put(str_lit(", "), acc)
+            };
+            let acc = put(str_lit("f"), acc);
+            let acc = put(i64_to_string(i), acc);
+            let acc = if typed {
+                put_type(c, car(types), put(str_lit(": "), acc))
+            } else {
+                acc
+            };
+            put_fields(c, cdr(types), i64_plus(i, 1i64), typed, acc)
+        }
+    }
+
+    pub fn put_constructors(c: &'static Ctx, d: Str, params: Strings, variants: Sexps, acc: Chars) -> Chars {
+        if null_p(variants) {
+            acc
+        } else {
+            let v = items(car(variants));
+            let tag = sym_name(car(v));
+            let acc = put(str_lit("pub fn "), acc);
+            let acc = put(mangle(tag), acc);
+            let acc = put_generics_of(params, true, acc);
+            let acc = put(str_lit("("), acc);
+            let acc = put_fields(c, cdr(v), 0i64, true, acc);
+            let acc = put(str_lit(") -> &'static "), acc);
+            let acc = put(camel(d), acc);
+            let acc = put_generics_of(params, false, acc);
+            let acc = put(str_lit(" {\n    kayak_rt::heap_alloc("), acc);
+            let acc = put(camel(d), acc);
+            let acc = put(str_lit("::"), acc);
+            let acc = put(variant_name(tag), acc);
+            let acc = put(str_lit("("), acc);
+            let acc = put_fields(c, cdr(v), 0i64, false, acc);
+            put_constructors(c, d, params, cdr(variants), put(str_lit("))\n}\n\n"), acc))
+        }
+    }
+
+    /// An enum, generic in its type parameters (its regions are erased), and a
+    /// constructor for each variant.
+    pub fn put_datatype(c: &'static Ctx, xs: Sexps, acc: Chars) -> Chars {
+        let d = type_head_name(car(xs));
+        let params = head_type_params(car(xs));
+        let acc = put(str_lit("pub enum "), acc);
+        let acc = put(camel(d), acc);
+        let acc = put_generics_of(params, true, acc);
+        let acc = put(str_lit(" {\n"), acc);
+        let acc = put_variants(c, cdr(xs), acc);
+        let acc = put(str_lit("}\n\n"), acc);
+        put_constructors(c, d, params, cdr(xs), acc)
+    }
+
+    /// A generative type: a new type, a newtype in Rust, and its conversions.
+    pub fn put_generative(c: &'static Ctx, xs: Sexps, acc: Chars) -> Chars {
+        let t = type_head_name(car(xs));
+        let params = head_type_params(car(xs));
+        let inside = not(string_eq_p(module_here(c), str_lit("")));
+        let acc = put(str_lit("#[derive(Clone, Copy)]\npub struct "), acc);
+        let acc = put(camel(t), acc);
+        let acc = put_generics_of(params, true, acc);
+        let acc = put(if inside {
+            str_lit("(")
+        } else {
+            str_lit("(pub ")
+        }, acc);
+        let acc = put_type(c, second(xs), acc);
+        let acc = put(if inside {
+            str_lit(");\n\nfn up_")
+        } else {
+            str_lit(");\n\npub fn up_")
+        }, acc);
+        let acc = put(mangle(t), acc);
+        let acc = put_generics_of(params, true, acc);
+        let acc = put(str_lit("(x: "), acc);
+        let acc = put_type(c, second(xs), acc);
+        let acc = put(str_lit(") -> "), acc);
+        let acc = put(camel(t), acc);
+        let acc = put_generics_of(params, false, acc);
+        let acc = put(str_lit(" {\n    "), acc);
+        let acc = put(camel(t), acc);
+        let acc = put(if inside {
+            str_lit("(x)\n}\n\nfn down_")
+        } else {
+            str_lit("(x)\n}\n\npub fn down_")
+        }, acc);
+        let acc = put(mangle(t), acc);
+        let acc = put_generics_of(params, true, acc);
+        let acc = put(str_lit("(x: "), acc);
+        let acc = put(camel(t), acc);
+        let acc = put_generics_of(params, false, acc);
+        let acc = put(str_lit(") -> "), acc);
+        let acc = put_type(c, second(xs), acc);
+        put(str_lit(" {\n    x.0\n}\n\n"), acc)
+    }
+
+    /// Lines, each not empty four spaces in: `acc`, a module's items.
+    pub fn indented(mut cs: Chars, mut start: bool, mut acc: Chars) -> Chars {
+        loop {
+            if null_p(cs) {
+                return acc;
+            } else if char_eq_p(car(cs), '\n') {
+                (cs, start, acc) = (cdr(cs), true, kayak_rt::heap_cons(car(cs), acc));
+                continue;
+            } else if start {
+                (cs, start, acc) = (cdr(cs), false, kayak_rt::heap_cons(car(cs), put(str_lit("    "), acc)));
+                continue;
+            } else {
+                (cs, start, acc) = (cdr(cs), false, kayak_rt::heap_cons(car(cs), acc));
+                continue;
+            }
+        }
+    }
+
+    /// Written text, its last newlines dropped.
+    pub fn trimmed(mut cs: Chars) -> Chars {
+        loop {
+            if (not(null_p(cs)) && char_eq_p(car(cs), '\n')) {
+                cs = cdr(cs);
+                continue;
+            } else {
+                return cs;
+            }
+        }
+    }
+
+    pub fn without(mut xs: Strings, mut ys: Strings) -> Strings {
+        loop {
+            if null_p(xs) {
+                return nil::<Str>();
+            } else {
+                if string_member_p(car(xs), ys) {
+                    xs = cdr(xs);
+                    continue;
+                } else {
+                    return kayak_rt::heap_cons(car(xs), without(cdr(xs), ys));
+                }
+            }
+        }
+    }
+
+    /// A shape kayak-rt declares, as the program's would be (`world.rs`): what
+    /// FX-26's I/O and bytes primitives answer with (C49).
+    pub fn standard_shape_p(key: Str) -> bool {
+        string_member_p(key, kayak_rt::heap_cons(str_lit("S text bad"), kayak_rt::heap_cons(str_lit("S done failed"), kayak_rt::heap_cons(str_lit("S line eof failed"), kayak_rt::heap_cons(str_lit("S data failed"), kayak_rt::heap_cons(str_lit("S names failed"), kayak_rt::heap_cons(str_lit("P kind detail"), kayak_rt::heap_cons(str_lit("S not-found permission-denied already-exists not-a-directory is-a-directory broken-pipe invalid-data other"), kayak_rt::nil()))))))))
+    }
+
+    /// The key of the shape `e` writes, if it writes one.
+    pub fn shape_key(e: &'static Sexp) -> Strings {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                if (not(null_p(xs)) && (sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("product")) || sym_is_p(car(xs), str_lit("sumof"))) && not(any_p(lambda1(move |x: &'static Sexp| {
+                    let tagcase_ = x;
+                    match *tagcase_ {
+                        Sexp::Lst(ys, f2, l2, p2) => {
+                            null_p(ys)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            true
+                        }
+                    }
+                }), cdr(xs)))) {
+                    the::<Strings>(kayak_rt::heap_cons(string_append(if sym_is_p(car(xs), str_lit("sumof")) {
+                        str_lit("S")
+                    } else {
+                        str_lit("P")
+                    }, concat_strings(map(lambda1(move |x: &'static Sexp| {
+                        string_append(str_lit(" "), label_of(car(items(x))))
+                    }), cdr(xs)))), kayak_rt::nil()))
+                } else {
+                    nil::<Str>()
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<Str>()
+            }
+        }
+    }
+
+    pub fn shapes_in(e: &'static Sexp, acc: Strings) -> Strings {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                let (acc, key) = (shapes_in_all(xs, acc), shape_key(e));
+                if (null_p(key) || string_member_p(car(key), acc) || standard_shape_p(car(key))) {
+                    acc
+                } else {
+                    kayak_rt::heap_cons(car(key), acc)
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                acc
+            }
+        }
+    }
+
+    pub fn shapes_in_all(mut es: Sexps, mut acc: Strings) -> Strings {
+        loop {
+            if null_p(es) {
+                return acc;
+            } else {
+                (es, acc) = (cdr(es), shapes_in(car(es), acc));
+                continue;
+            }
+        }
+    }
+
+    pub fn program_shapes(c: &'static Ctx, forms: Sexps) -> Strings {
+        let tagcase_ = c;
+        match *tagcase_ {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                reverse_strings(shapes_in_all(onto(map(lambda1(move |x: &'static Typed| {
+                    let tagcase_ = x;
+                    match *tagcase_ {
+                        Typed::Typed(n, t) => {
+                            t
+                        }
+                    }
+                }), xs), concat(map(lambda1(move |f: &'static Fact| {
+                    let tagcase_ = f;
+                    match *tagcase_ {
+                        Fact::Fact(ff, fp, fw) => {
+                            if has_prefix_p(fw, str_lit("sum-type ")) {
+                                read_all(string_chars(after_prefix(fw, str_lit("sum-type "))), str_lit(""), 1i64)
+                            } else {
+                                nil::<&'static Sexp>()
+                            }
+                        }
+                    }
+                }), fs))), shapes_in_all(forms, nil::<Str>())), nil::<Str>())
+            }
+        }
+    }
+
+    pub fn put_params_of(mut i: i64, mut n: i64, mut acc: Chars) -> Chars {
+        loop {
+            if i64_lt(i, n) {
+                (i, acc) = (i64_plus(i, 1i64), put(i64_to_string(i), put(if i64_eq(i, 0i64) {
+                    str_lit("A")
+                } else {
+                    str_lit(", A")
+                }, acc)));
+                continue;
+            } else {
+                return acc;
+            }
+        }
+    }
+
+    pub fn put_generic_params(n: i64, acc: Chars) -> Chars {
+        if i64_eq(n, 0i64) {
+            acc
+        } else {
+            put(str_lit(">"), put_params_of(0i64, n, put(str_lit("<"), acc)))
+        }
+    }
+
+    pub fn put_variants_of(mut tags: Strings, mut i: i64, mut acc: Chars) -> Chars {
+        loop {
+            if null_p(tags) {
+                return acc;
+            } else {
+                (tags, i, acc) = (cdr(tags), i64_plus(i, 1i64), put(str_lit("),\n"), put(i64_to_string(i), put(str_lit("(A"), put(variant_name(car(tags)), put(str_lit("    "), acc))))));
+                continue;
+            }
+        }
+    }
+
+    /// Each shape's declaration, and, for `kfx --toplevel`, its `Show`, as
+    /// Fixpt writes one: `#<product of 2>`, `#<sum leaf>`; with `flats`, a
+    /// product's `Flat`, for a typed suffix (C32): its fields' zero bytes.
+    pub fn put_shape_decls(keys: Strings, shows: bool, flats: bool, acc: Chars) -> Chars {
+        if null_p(keys) {
+            acc
+        } else {
+            let key = car(keys);
+            let product = string_eq_p(substring_of(key, 1i64), str_lit("P"));
+            let labels = split_words(after_prefix(key, substring_of(key, 1i64)));
+            let name = shape_name(product, labels);
+            let n = size(labels);
+            let acc = put(str_lit("#[allow(non_camel_case_types)]\n"), acc);
+            let acc = if product {
+                put(str_lit(");\n\n"), put_sep(lambda2(move |i: i64, acc: Chars| {
+                    put(i64_to_string(i), put(str_lit("pub A"), acc))
+                }), str_lit(", "), counting(0i64, n), put(str_lit("("), put_generic_params(n, put(name, put(str_lit("#[derive(Clone, Copy)]\npub struct "), acc))))))
+            } else {
+                put(str_lit("}\n\n"), put_variants_of(labels, 0i64, put(str_lit(" {\n"), put_generic_params(n, put(name, put(str_lit("pub enum "), acc))))))
+            };
+            let acc = if not(shows) {
+                acc
+            } else {
+                let acc = put(str_lit(" {\n    fn show(&self, out: &mut String) {\n"), put_generic_params(n, put(name, put(str_lit(" Show for "), put_generic_params(n, put(str_lit("impl"), acc))))));
+                put(str_lit("    }\n}\n\n"), if product {
+                    put(str_lit(">\");\n"), put(i64_to_string(n), put(str_lit("        out.push_str(\"#<product of "), acc)))
+                } else {
+                    put(str_lit("        }\n"), put_sep(lambda2(move |l: Str, acc: Chars| {
+                        put(str_lit(">\"),\n"), put(l, put(str_lit("(..) => out.push_str(\"#<sum "), put(variant_name(l), put(str_lit("::"), put(name, put(str_lit("            "), acc)))))))
+                    }), str_lit(""), labels, put(str_lit("        match self {\n"), acc)))
+                })
+            };
+            put_shape_decls(cdr(keys), shows, flats, if (flats && product) {
+                put(str_lit("    }\n}\n\n"), put(str_lit(")\n"), put_sep(lambda2(move |i: i64, acc: Chars| {
+                    put(str_lit("::zeroed()"), put(i64_to_string(i), put(str_lit("A"), acc)))
+                }), str_lit(", "), counting(0i64, n), put(str_lit("("), put(name, put(str_lit(" {\n    fn zeroed() -> Self {\n        "), put_generic_params(n, put(name, put(str_lit(" Flat for "), put(str_lit(">"), put_sep(lambda2(move |i: i64, acc: Chars| {
+                    put(str_lit(": Flat"), put(i64_to_string(i), put(str_lit("A"), acc)))
+                }), str_lit(", "), counting(0i64, n), put(str_lit("impl<"), acc))))))))))))
+            } else {
+                acc
+            })
+        }
+    }
+
+    pub fn put_show_arms(d: Str, variants: Sexps, acc: Chars) -> Chars {
+        if null_p(variants) {
+            acc
+        } else {
+            let tag = sym_name(car(items(car(variants))));
+            let acc = put(str_lit("            "), acc);
+            let acc = put(camel(d), acc);
+            let acc = put(str_lit("::"), acc);
+            let acc = put(variant_name(tag), acc);
+            let acc = put(str_lit("(..) => out.push_str(str_lit(\"#<sum "), acc);
+            let acc = put(tag, acc);
+            put_show_arms(d, cdr(variants), put(str_lit(">\").as_str()),\n"), acc))
+        }
+    }
+
+    pub fn put_show_impls(mut forms: Sexps, mut acc: Chars) -> Chars {
+        loop {
+            if null_p(forms) {
+                return acc;
+            } else if head_is_p(car(forms), str_lit("define-datatype")) {
+                let xs = cdr(items(car(forms)));
+                let d = type_head_name(car(xs));
+                let params = head_type_params(car(xs));
+                let acc = put(str_lit("impl"), acc);
+                let acc = put_generics_of(params, true, acc);
+                let acc = put(str_lit(" Show for "), acc);
+                let acc = put(camel(d), acc);
+                let acc = put_generics_of(params, false, acc);
+                let acc = put(str_lit(" {\n    fn show(&self, out: &mut String) {\n        match self {\n"), acc);
+                let acc = put_show_arms(d, cdr(xs), acc);
+                return put_show_impls(cdr(forms), put(str_lit("        }\n    }\n}\n\n"), acc));
+            } else if head_is_p(car(forms), str_lit("define-generative")) {
+                let h = second(items(car(forms)));
+                let params = head_type_params(h);
+                let acc = put(str_lit("impl"), acc);
+                let acc = if null_p(params) {
+                    acc
+                } else {
+                    put(str_lit(">"), put_sep(lambda2(move |n: Str, acc: Chars| {
+                        put(str_lit(": Copy + 'static + Show"), put(camel(n), acc))
+                    }), str_lit(", "), params, put(str_lit("<"), acc)))
+                };
+                let acc = put(str_lit(" Show for "), acc);
+                let acc = put(camel(type_head_name(h)), acc);
+                let acc = put_generics_of(params, false, acc);
+                return put_show_impls(cdr(forms), put(str_lit(" {\n    fn show(&self, out: &mut String) {\n        self.0.show(out)\n    }\n}\n\n"), acc));
+            } else {
+                forms = cdr(forms);
+                continue;
+            }
+        }
+    }
+
+    pub fn toplevel_form_p(f: &'static Sexp) -> bool {
+        not((definition_p(f) || head_is_p(f, str_lit("define-effect"))))
+    }
+
+    /// Each top-level expression's value written; a `void` one, which never
+    /// gives one, run, its type said; one that may suspend, a future run to
+    /// its end (C45).
+    pub fn put_toplevel_lines(mut c: &'static Ctx, mut forms: Sexps, mut acc: Chars) -> Chars {
+        loop {
+            if null_p(forms) {
+                return acc;
+            } else if toplevel_form_p(car(forms)) {
+                if fact_at_p(c, car(forms), str_lit("suspends")) {
+                    if fact_at_p(c, car(forms), str_lit("void")) {
+                        let acc = put(str_lit("    let _: () = kayak_rt::suspend::block(kayak_rt::suspend::body(async move { let _: Void = "), acc);
+                        let acc = put_exp(with_locals(c, kayak_rt::heap_cons(str_lit("%async"), kayak_rt::heap_cons(str_lit("%fallible"), kayak_rt::nil()))), car(forms), 1i64, value(), acc);
+                        return put_toplevel_lines(c, cdr(forms), put(str_lit("; Ok(()) })).unwrap_or_else(|u| unreachable_unwind(u));\n"), acc));
+                    } else {
+                        let acc = put(str_lit("    kayak_rt::show_line(&mut out_, kayak_rt::suspend::block(kayak_rt::suspend::body(async move { Ok("), acc);
+                        let acc = put_exp(with_locals(c, kayak_rt::heap_cons(str_lit("%async"), kayak_rt::heap_cons(str_lit("%fallible"), kayak_rt::nil()))), car(forms), 1i64, value(), acc);
+                        return put_toplevel_lines(c, cdr(forms), put(str_lit(") })).unwrap_or_else(|u| unreachable_unwind(u)));\n"), acc));
+                    }
+                } else if fact_at_p(c, car(forms), str_lit("procedure")) {
+                    // A procedure, as Fixpt writes one, whatever made it: a global's
+                    // own `fn` is no `dyn Fn`, whose `Show` this would otherwise be.
+                    let acc = put(str_lit("    kayak_rt::show_line(&mut out_, (|| -> Result<_, Unwind> { let _ = "), acc);
+                    let acc = put_exp(with_locals(c, kayak_rt::heap_cons(str_lit("%fallible"), kayak_rt::nil())), car(forms), 1i64, value(), acc);
+                    return put_toplevel_lines(c, cdr(forms), put(str_lit("; Ok(kayak_rt::Procedure) })().unwrap_or_else(|u| unreachable_unwind(u)));\n"), acc));
+                } else {
+                    if fact_at_p(c, car(forms), str_lit("void")) {
+                        let acc = put(str_lit("    let _: () = (|| -> Result<(), Unwind> { let _: Void = "), acc);
+                        let acc = put_exp(with_locals(c, kayak_rt::heap_cons(str_lit("%fallible"), kayak_rt::nil())), car(forms), 1i64, value(), acc);
+                        return put_toplevel_lines(c, cdr(forms), put(str_lit("; Ok(()) })().unwrap_or_else(|u| unreachable_unwind(u));\n"), acc));
+                    } else {
+                        let acc = put(str_lit("    kayak_rt::show_line(&mut out_, (|| -> Result<_, Unwind> { Ok("), acc);
+                        let acc = put_exp(with_locals(c, kayak_rt::heap_cons(str_lit("%fallible"), kayak_rt::nil())), car(forms), 1i64, value(), acc);
+                        return put_toplevel_lines(c, cdr(forms), put(str_lit(") })().unwrap_or_else(|u| unreachable_unwind(u)));\n"), acc));
+                    }
+                }
+            } else {
+                forms = cdr(forms);
+                continue;
+            }
+        }
+    }
+
+    pub fn put_module_impls(c: &'static Ctx, acc: Chars) -> Chars {
+        put_sep(lambda2(move |k: Str, acc: Chars| {
+            let ws = split_words(k);
+            put_impl(c, car(ws), car(cdr(ws)), acc)
+        }), str_lit(""), deduped(module_impls(c), nil::<Str>()), acc)
+    }
+
+    pub fn definition_p(e: &'static Sexp) -> bool {
+        (head_is_p(e, str_lit("define")) || head_is_p(e, str_lit("define*")) || head_is_p(e, str_lit("define-rec")) || module_def_p(e) || head_is_p(e, str_lit("define-datatype")) || head_is_p(e, str_lit("define-type")) || head_is_p(e, str_lit("define-generative")))
+    }
+
+    pub fn put_shapes(c: &'static Ctx, forms: Sexps, shows: bool, acc: Chars) -> Chars {
+        put_shape_decls(program_shapes(c, forms), shows, uses_blobrefs_p(c), acc)
+    }
+
+    /// In toplevel mode, a module's datatypes' and generative types' `Show`,
+    /// inside it, where their representations are seen.
+    pub fn put_show_generatives(forms: Sexps, acc: Chars) -> Chars {
+        put_show_impls(concat(map(lambda1(move |f: &'static Sexp| {
+            if (head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype"))) {
+                the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
+            } else {
+                nil::<&'static Sexp>()
+            }
+        }), forms)), acc)
+    }
+
+    pub fn put_top(c: &'static Ctx, form: &'static Sexp, acc: Chars) -> Chars {
+        let xs = {
+            let tagcase_ = form;
+            match *tagcase_ {
+                Sexp::Lst(ys, f, l, p) => {
+                    ys
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<&'static Sexp>()
+                }
+            }
+        };
+        let h = if null_p(xs) {
+            str_lit("")
+        } else {
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Sexp::Sym(n, at_file, at_pos) => {
+                    n
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("")
+                }
+            }
+        };
+        if string_eq_p(h, str_lit("define-effect")) {
+            acc
+        } else if (string_eq_p(h, str_lit("include")) || string_eq_p(h, str_lit("%use"))) {
+            let n = sym_name(second(xs));
+            let its = module_items(c, n);
+            let skip = concat(map(lambda1(move |x: &'static Sexp| {
+                if head_is_p(x, str_lit("skip")) {
+                    map(&sym_name, cdr(items(x)))
+                } else {
+                    nil::<Str>()
+                }
+            }), cdr(cdr(xs))));
+            let ex = concat(map(lambda1(move |x: &'static Sexp| {
+                if head_is_p(x, str_lit("except")) {
+                    map(&sym_name, cdr(items(x)))
+                } else if head_is_p(x, str_lit("except-module")) {
+                    let b = module_items(c, sym_name(second(items(x))));
+                    onto(item_values(b), item_types(b))
+                } else {
+                    nil::<Str>()
+                }
+            }), cdr(cdr(xs))));
+            let names = onto(map(&mangle, concat(map(lambda1(move |t: Str| {
+                if string_member_p(t, ex) {
+                    nil::<Str>()
+                } else {
+                    the::<Strings>(kayak_rt::heap_cons(t, kayak_rt::nil()))
+                }
+            }), item_values(its)))), map(&camel, concat(map(lambda1(move |t: Str| {
+                if (string_member_p(t, skip) || string_member_p(t, ex)) {
+                    nil::<Str>()
+                } else {
+                    the::<Strings>(kayak_rt::heap_cons(t, kayak_rt::nil()))
+                }
+            }), item_types(its)))));
+            if null_p(names) {
+                acc
+            } else {
+                put(str_lit("};\n\n"), put_sep(lambda2(move |x: Str, acc: Chars| {
+                    put(x, acc)
+                }), str_lit(", "), names, put(str_lit("::{"), put(mangle(n), put(if string_eq_p(h, str_lit("include")) {
+                    str_lit("pub use super::")
+                } else {
+                    str_lit("use super::")
+                }, acc)))))
+            }
+        } else if (string_eq_p(h, str_lit("define-type")) && (head_is_p(third(xs), str_lit("arrayof")) || (head_is_p(third(xs), str_lit("sumof")) && not(null_p(cdr(items(third(xs))))) && {
+            let tagcase_ = second(items(third(xs)));
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }))) {
+            // A flat array or a keyed flat sum: a layout in a bloblet's suffix
+            // (C31, C33), no value's type, and so no Rust type's.
+            acc
+        } else if (string_eq_p(h, str_lit("define-type")) && head_is_p(third(xs), str_lit("moduleof"))) {
+            put_trait(c, sym_name(second(xs)), third(xs), acc)
+        } else if (string_eq_p(h, str_lit("define-type")) && {
+            let tagcase_ = second(xs);
+            match *tagcase_ {
+                Sexp::Lst(hs, hf, hl, hp) => {
+                    any_p(lambda1(move |b: &'static Sexp| {
+                        let tagcase_ = b;
+                        match *tagcase_ {
+                            Sexp::Lst(bs, bf, bl, bp) => {
+                                (i64_eq(size(bs), 2i64) && sym_is_p(second(bs), str_lit("effect")))
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    }), cdr(hs))
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }) {
+            // An abbreviation over an effect (C46): no Rust alias, since what
+            // it stands for in Rust depends on the effect; each use expanded.
+            acc
+        } else if (string_eq_p(h, str_lit("define-type")) && not(null_p(module_body(c, string_append(str_lit("%expand "), type_head_name(second(xs))))))) {
+            // An abbreviation of a module's family: expanded where applied (C89).
+            acc
+        } else if (string_eq_p(h, str_lit("define-type")) && {
+            let tagcase_ = second(xs);
+            match *tagcase_ {
+                Sexp::Lst(ys, f, l, p) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        } && any_p(lambda1(move |k: Str| {
+            has_prefix_p(k, str_lit("%in "))
+        }), ctx_locals(c))) {
+            // A module's family: expanded where applied (C89), no Rust alias.
+            acc
+        } else if string_eq_p(h, str_lit("define-type")) {
+            // A type abbreviation; its regions, Rust lifetimes (C39), as a
+            // `letrena`'s are, so that a use of it at one is at its lifetime.
+            let places = head_place_params(second(xs));
+            let regions = onto(head_region_params(second(xs)), places);
+            let inner = with_locals(c, onto(map(lambda1(move |r: Str| {
+                string_append(str_lit("%letrena "), r)
+            }), regions), map(lambda1(move |p: Str| {
+                string_append(str_lit("%placeparam "), p)
+            }), places)));
+            let acc = put(str_lit("pub type "), acc);
+            let acc = put(camel(type_head_name(second(xs))), acc);
+            let params = onto(map(lambda1(move |r: Str| {
+                lifetime(r)
+            }), regions), onto(map(&camel, head_type_params(second(xs))), map(lambda1(move |p: Str| {
+                string_append(str_lit("Place_"), camel(p))
+            }), concat(map(lambda1(move |p: Str| {
+                if string_member_p(p, places_used(third(xs))) {
+                    the::<Strings>(kayak_rt::heap_cons(p, kayak_rt::nil()))
+                } else {
+                    nil::<Str>()
+                }
+            }), places)))));
+            let acc = if null_p(params) {
+                acc
+            } else {
+                put(string_append(str_lit("<"), string_append(words_of_sep(params, str_lit(", ")), str_lit(">"))), acc)
+            };
+            let acc = put(str_lit(" = "), acc);
+            let acc = put_type(inner, third(xs), acc);
+            put(str_lit(";\n\n"), acc)
+        } else if string_eq_p(h, str_lit("define-datatype")) {
+            put_datatype(c, cdr(xs), acc)
+        } else if string_eq_p(h, str_lit("define-generative")) {
+            put_generative(c, cdr(xs), acc)
+        } else if module_def_p(form) {
+            put_module(c, sym_name(second(xs)), module_written(form), acc)
+        } else if (string_eq_p(h, str_lit("define")) || string_eq_p(h, str_lit("define*"))) {
+            if i64_eq(size(xs), 4i64) {
+                put_define(c, second(xs), third(xs), fourth(xs), acc)
+            } else {
+                put_define(c, second(xs), car(ctx_typed(c, sym_name(second(xs)))), third(xs), acc)
+            }
+        } else if string_eq_p(h, str_lit("define-rec")) {
+            put_rec(c, cdr(xs), acc)
+        } else {
+            acc
+        }
+    }
+
+    /// A module's `include`s, each marked with the types one before it gave
+    /// already, which it does not import again (C86: the same type, given by
+    /// two, is one name).
+    pub fn types_once(c: &'static Ctx, forms: Sexps, given: Strings) -> Sexps {
+        if null_p(forms) {
+            nil::<&'static Sexp>()
+        } else if (head_is_p(car(forms), str_lit("include")) || head_is_p(car(forms), str_lit("%use"))) {
+            let xs = items(car(forms));
+            let ts = item_types(module_items(c, sym_name(second(xs))));
+            kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("skip"), str_lit(""), 0i64), map(lambda1(move |t: Str| {
+                sym(t, str_lit(""), 0i64)
+            }), given)), str_lit(""), 0i64, 0i64), cdr(cdr(xs))))), str_lit(""), 0i64, 0i64), types_once(c, cdr(forms), onto(ts, given)))
+        } else {
+            kayak_rt::heap_cons(car(forms), types_once(c, cdr(forms), given))
+        }
+    }
+
+    /// A module, a Rust `mod` (C19): its items as a program's, the program's
+    /// names in scope, its own hiding them.
+    pub fn put_module(c: &'static Ctx, m: Str, written: Sexps, acc: Chars) -> Chars {
+        let tagcase_ = module_parts(c, m, written);
+        match *tagcase_ {
+            Mparts::Mparts(inner, forms) => {
+                let body = put_tops(inner, forms, nil::<char>());
+                let body = if string_member_p(str_lit("%toplevel"), ctx_locals(c)) {
+                    put_show_generatives(forms, body)
+                } else {
+                    body
+                };
+                put_module_around(c, m, body, acc)
+            }
+        }
+    }
+
+    /// What a module's items are written in, and the items (C91: shared
+    /// with the emitter that keeps memos, incr.kfx).
+    pub fn module_parts(c: &'static Ctx, m: Str, written: Sexps) -> &'static Mparts {
+        let forms = concat(map(lambda1(move |f: &'static Sexp| {
+            if head_is_p(f, str_lit("hide")) {
+                map(lambda1(move |g: &'static Sexp| {
+                    if head_is_p(g, str_lit("include")) {
+                        lst(kayak_rt::heap_cons(sym(str_lit("%use"), str_lit(""), 0i64), cdr(items(g))), str_lit(""), 0i64, 0i64)
+                    } else {
+                        g
+                    }
+                }), cdr(items(f)))
+            } else {
+                the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
+            }
+        }), written));
+        let forms = types_once(c, forms, nil::<Str>());
+        let outer = {
+            let tagcase_ = c;
+            match *tagcase_ {
+                Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                    ctx(ds, ts, onto(concat(map(lambda1(move |f: &'static Sexp| {
+                        if (head_is_p(f, str_lit("include")) || head_is_p(f, str_lit("%use"))) {
+                            item_constants(module_items(c, sym_name(second(items(f)))))
+                        } else {
+                            nil::<Str>()
+                        }
+                    }), forms)), without(ks, item_values(forms))), ls, xs, fs, ms, es, mods)
+                }
+            }
+        };
+        mparts(with_locals(collect(forms, outer), kayak_rt::heap_cons(string_append(str_lit("%in "), m), kayak_rt::nil())), forms)
+    }
+
+    /// A module's `pub mod`, around its items' Rust, `body`, newest first.
+    pub fn put_module_around(c: &'static Ctx, m: Str, body: Chars, acc: Chars) -> Chars {
+        let acc = put(str_lit("pub mod "), acc);
+        let acc = put(mangle(m), acc);
+        let acc = put(str_lit(" {\n    use super::*;\n\n"), acc);
+        let acc = if any_p(lambda1(move |k: Str| {
+            string_eq_p(car(split_words(k)), m)
+        }), module_impls(c)) {
+            put(str_lit("    /// This module, given for a module type (C24).\n    pub struct Module;\n\n"), acc)
+        } else {
+            acc
+        };
+        put(str_lit("\n}\n\n"), indented(rev_onto(trimmed(body), nil::<char>()), true, acc))
+    }
+
+    /// A string at the top level is a comment. A procedure's documentation is
+    /// a string first in its body, as a Lisp docstring is: see `put-define`.
+    pub fn put_tops(mut c: &'static Ctx, mut forms: Sexps, mut acc: Chars) -> Chars {
+        loop {
+            if null_p(forms) {
+                return acc;
+            } else if comment_p(car(forms)) {
+                let doc = (not(null_p(cdr(forms))) && definition_p(second(forms)));
+                let acc = put_comment(string_chars(comment_text(car(forms))), str_lit("//"), 0i64, true, acc);
+                return put_tops(c, cdr(forms), put(if doc {
+                    str_lit("\n")
+                } else {
+                    str_lit("\n\n")
+                }, acc));
+            } else {
+                (forms, acc) = (cdr(forms), put_top(c, car(forms), acc));
+                continue;
+            }
+        }
+    }
+
+    pub fn put_toplevel(c: &'static Ctx, forms: Sexps, acc: Chars) -> Chars {
+        let acc = put_show_impls(forms, acc);
+        let acc = put(str_lit("/// The program's top-level expressions' values, as Fixpt writes them.\npub fn kfx_toplevel() -> Str {\n    let mut out_ = String::new();\n"), acc);
+        let acc = put_toplevel_lines(c, forms, acc);
+        put(str_lit("    kayak_rt::shown(out_)\n}\n"), acc)
+    }
 }
 

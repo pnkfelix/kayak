@@ -82,3 +82,50 @@
       "`from`, `from` + 1, ..., to before `n` (C91: from terminate.kfx, which
        the emitter used too, now a module of its own)."
       (if (i64< from n) (cons from (counting (i64+ from 1) n)) nil))))
+
+"A set of names, a balanced tree (C92): a membership test in a few
+ comparisons, where a list of hundreds took as many."
+(define-datatype nset (nempty) (nnode nset string nset))
+
+(define-rec
+  (merged-strings (subr kfx ((listof string acyclic) (listof string acyclic)) (listof string acyclic))
+    (lambda (a b)
+      (cond ((null? a) b)
+            ((null? b) a)
+            ((string<? (car b) (car a)) (cons (car b) (merged-strings a (cdr b))))
+            (else (cons (car a) (merged-strings (cdr a) b))))))
+  (sorted-strings (subr kfx ((listof string acyclic)) (listof string acyclic))
+    (lambda (xs)
+      (if (or (null? xs) (null? (cdr xs)))
+          xs
+          (merged-strings (sorted-strings (halves xs #t)) (sorted-strings (halves xs #f))))))
+  (halves (subr kfx ((listof string acyclic) bool) (listof string acyclic))
+    (lambda (xs first)
+      "Every other element, the first's or the second's."
+      (cond ((null? xs) nil)
+            (first (cons (car xs) (halves (cdr xs) #f)))
+            (else (halves (cdr xs) #t))))))
+
+(define-rec
+  (taken (subr kfx ((listof string acyclic) i64) (listof string acyclic))
+    (lambda (xs n) (if (or (null? xs) (i64<= n 0)) nil (cons (car xs) (taken (cdr xs) (i64- n 1))))))
+  (dropped (subr kfx ((listof string acyclic) i64) (listof string acyclic))
+    (lambda (xs n) (if (or (null? xs) (i64<= n 0)) xs (dropped (cdr xs) (i64- n 1)))))
+  (tree-of (subr kfx ((listof string acyclic) i64) nset)
+    (lambda (xs n)
+      "The first `n` of `xs`, sorted, as a balanced tree."
+      (if (i64<= n 0)
+          (nempty)
+          (let* ((half (i64-quotient n 2))
+                 (rest (dropped xs half)))
+            (nnode (tree-of xs half) (car rest) (tree-of (cdr rest) (i64- (i64- n half) 1))))))))
+
+(define nset-of (subr kfx ((listof string acyclic)) nset)
+  (lambda (xs) (let ((sorted (sorted-strings xs))) (tree-of sorted (size sorted)))))
+
+(define-rec
+  (in-nset? (subr kfx (string nset) bool)
+    (lambda (x s)
+      (tagcase s
+        (nempty () #f)
+        (nnode (l k r) (cond ((string=? x k) #t) ((string<? x k) (in-nset? x l)) (else (in-nset? x r))))))))

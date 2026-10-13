@@ -4571,8 +4571,7 @@ pub fn reaches_p(v: &'static Cv, s: &'static St, body: &'static Sexp, tag: &'sta
     }), names_in(body))
 }
 
-/// Module `m`'s values, as items, named as `m` names them.
-pub fn opened_binds(mut m: Str, mut bs: Binds) -> Binds {
+pub fn binds_prefixed(mut prefix: Str, mut bs: Binds) -> Binds {
     loop {
         if null_p(bs) {
             return nil::<&'static Bind>();
@@ -4580,8 +4579,8 @@ pub fn opened_binds(mut m: Str, mut bs: Binds) -> Binds {
             let tagcase_ = car(bs);
             match *tagcase_ {
                 Bind::Bind(n, sc, wher) => {
-                    if (string_eq_p(wher, str_lit("export")) && has_prefix_p(n, string_append(m, str_lit(" ")))) {
-                        return kayak_rt::heap_cons(bind(after_prefix(n, string_append(m, str_lit(" "))), sc, str_lit("item")), opened_binds(m, cdr(bs)));
+                    if (string_eq_p(wher, str_lit("export")) && has_prefix_p(n, prefix)) {
+                        return kayak_rt::heap_cons(bind(after_prefix(n, prefix), sc, str_lit("item")), binds_prefixed(prefix, cdr(bs)));
                     } else {
                         bs = cdr(bs);
                         continue;
@@ -4590,6 +4589,12 @@ pub fn opened_binds(mut m: Str, mut bs: Binds) -> Binds {
             }
         }
     }
+}
+
+/// Module `m`'s values, as items, named as `m` names them (the prefix made
+/// once, C92: a module including another asks it often).
+pub fn opened_binds(m: Str, bs: Binds) -> Binds {
+    binds_prefixed(string_append(m, str_lit(" ")), bs)
 }
 
 /// Whether a control form has the parts it needs, before they are taken.
