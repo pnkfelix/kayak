@@ -436,3 +436,17 @@ refuses 165. What is left are subsystems, each its own design note first:
   FX-26's typing of `cons` (the Rust unchanged: such a pair is the list),
   checked against the compiler's every `cons`; the fixpoint check (Fixpt
   checking the compiler's own text) catches any in the compiler meanwhile.
+
+## 26. The compiler in modules (the user's, 2026-10-12; C91, C92)
+
+Done: `termination`, `restrictions`, `incremental`, `expressions`,
+`emitter`, `writing`; memos per item inside a module, for checking and
+emitting; a warm compile 0.02 s dearer than with no modules.
+- Next by what each would hide: check-defs.kfx (98 of 127 names), check.kfx
+  (82 of 215: a large interface), read.kfx (22), names.kfx (7). base.kfx
+  and compile.kfx are mostly interface.
+- The 0.02 s left: each module's scope (`module-prep`) made each compile;
+  keep it by the module's text and the chain before it, as items are.
+- Comments between a module's items are `;` comments and so lost to the
+  Rust; FX-26 takes no string as an item. A docstring-like item for KFX,
+  FX-26 willing, would keep them.
