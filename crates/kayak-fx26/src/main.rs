@@ -110,7 +110,13 @@ fn repl() -> i64 {
     let _raw = live.then(Raw::new);
     let (rows, cols) = if live { size() } else { (24, 80) };
     let mut out = std::io::stdout();
-    let _ = out.write_all(s::session_start_x(live, rows, cols).as_str().as_bytes());
+    // The history's file, a live session's alone.
+    let history = match std::env::var("HOME") {
+        Ok(home) if live => format!("{home}/.kayak_fx26_history"),
+        _ => String::new(),
+    };
+    let banner = s::session_start_x(live, rows, cols, leak_string(history));
+    let _ = out.write_all(banner.as_str().as_bytes());
     let (tx, rx) = mpsc::channel::<Option<Vec<u8>>>();
     std::thread::spawn(move || {
         let mut stdin = std::io::stdin();
@@ -166,7 +172,7 @@ fn repl() -> i64 {
 }
 
 /// `--keys FILE`: a session from a script, each line `MS TEXT`, TEXT's
-/// keys arriving at MS on a virtual clock (`\n`, `\r`, `\e`, `\xHH`
+/// keys arriving at MS on a virtual clock (`\n`, `\r`, `\t`, `\e`, `\xHH`
 /// escapes); a slice a millisecond. The input ends after the last line.
 fn scripted(path: &str) -> i64 {
     std::panic::set_hook(Box::new(|info| {
@@ -194,7 +200,8 @@ fn scripted(path: &str) -> i64 {
         .collect();
     arrivals.reverse();
     let mut out = std::io::stdout();
-    let _ = out.write_all(s::session_start_x(true, 24, 80).as_str().as_bytes());
+    let banner = s::session_start_x(true, 24, 80, leak_string(String::new()));
+    let _ = out.write_all(banner.as_str().as_bytes());
     let mut clock = 0i64;
     let mut ended = false;
     loop {
@@ -242,6 +249,7 @@ fn unescape(s: &str) -> Vec<u8> {
             match b[i + 1] {
                 b'n' => out.push(b'\n'),
                 b'r' => out.push(b'\r'),
+                b't' => out.push(b'\t'),
                 b'e' => out.push(27),
                 b'\\' => out.push(b'\\'),
                 b'x' if i + 3 < b.len() => {

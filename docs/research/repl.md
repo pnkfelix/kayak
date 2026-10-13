@@ -1,6 +1,6 @@
 # The engine's REPL: Fixpt's features, Coopt's foundation, entries that run while you type
 
-Status: design, 2026-10-13; stage 1 done (C94), the user's: "spend some time working on
+Status: design, 2026-10-13; stages 1 to 3 done (C94, C95), the user's: "spend some time working on
 improving the REPL experience. Fixpt's REPL is the most sophisticated …
 model the high-level feature set off of what it offers. But Coopt's REPL
 … has the stronger foundation, … everything being async-pilled on that

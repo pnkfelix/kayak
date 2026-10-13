@@ -1,0 +1,13 @@
+# Editing as Fixpt's REPL edits: Tab completes a name; ^B and Delete;
+# up recalls the last entry; Enter in an open form is a newline; ^U
+# drops the line before the cursor; ^A and ^E; ^W a word.
+0 (define fib-of (subr (maxeff spin (read @globals)) (int) int) (lambda (n) (if (< n 2) n (+ (fib-of (- n 1)) (fib-of (- n 2))))))\r
+100 (fib-o\t
+110  10)\r
+200 (+ 1 9)\x02\x02\e[3~2\r
+300 \e[A\r
+400 (+ 1\r
+410 2)\r
+500 (+ 5 5)\x15(* 2 3)\r
+600 2 3)\x01(* \x05\r
+700 (+ 1 1 junk\x17)\r

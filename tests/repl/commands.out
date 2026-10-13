@@ -1,0 +1,44 @@
+kayak-fx26 0.1 — FX-26, the engine written in KFX (an interpreter over a heap of its own, collected)
+(each entry runs while you type the next, its value %k after it; ^C interrupts the newest, ,help for more)
+[Jfx26> ,help
+[2K,help              this; ,help NAME: what NAME is
+[2K,type E            E's type and effect, checked and not run
+[2K,time E            E run, then its time, steps and collections
+[2K,load FILE         FILE's forms, an entry
+[2K,pending           the entries not ended
+[2K,cancel K          entry K interrupted (^C: the newest)
+[2K,step-limit [N|none]  how many steps an entry may take
+[2K,apropos TEXT      the names containing TEXT
+[2K,quit              leave now (^D: when every entry has ended)
+[2KAnything else is forms, checked and run as an entry; %K is entry K's value;
+[2Kan entry naming one that has not ended waits for it.
+[Jfx26> [Jfx26> ,type (+ 1 2)
+[2K(+ 1 2) : nat ! pure
+[Jfx26> [Jfx26> ,time (+ 1 2)
+[2K[1] 3 : nat ! pure  (0.0 s, 4 steps, 0 collections)
+[Jfx26> [Jfx26> ,apropos string-app
+[2Kstring-append
+[Jfx26> [Jfx26> ,help string-append
+[2Kstring-append : (subr pure (string string) string), a primitive
+[Jfx26> [Jfx26> ,step-limit 5000
+[2Kan entry may take 5000 steps
+[Jfx26> [Jfx26> (define forever (subr (maxeff spin (read @globals)) (int) int) (lambda (n) (forever (+ n 1))))
+[2K[2] forever : (subr (maxeff spin (read @globals)) (int) int) ! pure
+[Jfx26> [Jfx26> (forever 0)
+[2K[3] ! the step limit, 5000, reached (,step-limit)
+[Jfx26> [Jfx26> ,step-limit none
+[2Kno step limit
+[Jfx26> [Jfx26> (forever 0)
+[2K[4] ⠙ running 0.0 s
+[Jfx26> [1A[2K[4] ⠹ running 0.0 s[1B[Jfx26> [1A[2K[4] ⠹ running 0.1 s[1B[Jfx26> [Jfx26> ,pending
+[2K[4] (forever 0)
+[Jfx26> [3A[2K[4] ⠸ running 0.1 s[3B[Jfx26> [3A[2K[4] ⠸ running 0.2 s[3B[Jfx26> [Jfx26> ,cancel 4
+[4A[2K[4] interrupted  (0.2 s)[4B[Jfx26> [Jfx26> ,bogus
+[2Kno command ,bogus; ,help for those there are
+[Jfx26> [Jfx26> ,load tests/repl/load-me.fx
+[2K[5] loaded-x : int ! pure
+[2K42 : int ! (read (globals loaded-x))
+[Jfx26> [Jfx26> (+ %4 1)
+[2K[6] ! evaluation failed: the engine: used before it is defined, %4
+[Jfx26> [Jfx26> ,quit
+[Jfx26> 

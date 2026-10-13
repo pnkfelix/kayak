@@ -4,7 +4,7 @@ use kayak_rt::*;
 use super::*;
 
 // live-repl.kfx: the REPL as entries that run while the next is typed
-// (docs/research/repl.md, stage 1). The REPL is a function of what
+// (docs/research/repl.md, stages 1 to 3). The REPL is a function of what
 // arrives: each key, and the time, given by the Rust around it, which
 // only shuttles bytes (crates/kayak-fx26/src/main.rs); what to write back
 // is the REPL's. An entry, once whole, is checked and lowered at once,
@@ -18,6 +18,12 @@ use super::*;
 // waits for those before it, and those after it wait for it; others run
 // together (repl.md, Which entries run together).
 //
+// The draft is edited as Fixpt's REPL edits one (stage 2): a cursor in
+// it, the arrows, ^A ^E ^B ^F ^K ^U ^W, history (kept in a file), Tab
+// completing a name; and Fixpt's commands (stage 3), each written as an
+// entry's line: `,help`, `,type`, `,time`, `,load`, `,pending`,
+// `,cancel`, `,step-limit`, `,apropos`, `,quit`.
+//
 // Live, the screen is drawn with ANSI's moves; plain (no terminal), the
 // entries run one after another and each line is written when it ends.
 pub mod session {
@@ -28,9 +34,26 @@ pub mod session {
     // only reads and allocates (`quiet`); the results it names (`%k`); and
     // what changes: its state (`st-…`), its tops to run (main.kfx's numbers),
     // its value as written, its output not yet written, when it began and
-    // ended, the row its line is on (-1 if not yet written), and the line as
-    // last drawn.
-    pub type Entry = Product_3num_4text_5typed_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn<i64, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>>;
+    // ended, the row its line is on (-1 if not yet written), the line as
+    // last drawn; whether `,time` asked for its steps and collections, its
+    // steps so far, and the collections before it. A command's line is an
+    // entry's, numbered below zero, which is not written.
+    pub type Entry = Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after<i64, Str, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>, bool, Ref<i64>, i64, Ref<i64>>;
+
+    pub fn make_entry(k: i64, text: Str, typed: Str, defined: Str, quiet: bool, needs: List<i64>, state: i64, tops: List<i64>, shown: Str, timed: bool, now: i64) -> Entry {
+        Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after(k, text, typed, defined, quiet, needs, kayak_rt::heap_new(state), kayak_rt::heap_new(tops), kayak_rt::heap_new(shown), kayak_rt::heap_new(str_lit("")), kayak_rt::heap_new(now), kayak_rt::heap_new(if i64_eq(state, st_done()) {
+            now
+        } else {
+            -1i64
+        }), kayak_rt::heap_new(-1i64), kayak_rt::heap_new(str_lit("")), timed, kayak_rt::heap_new(0i64), get(collections()), kayak_rt::heap_new(-1i64))
+    }
+
+    /// An entry ended, in `state`: when, and the collections so far.
+    pub fn ended_x(e: Entry, state: i64, now: i64) -> () {
+        set(e.6, state);
+        set(e.11, now);
+        set(e.17, get(collections()))
+    }
 
     pub fn st_checking() -> i64 {
         0i64
@@ -64,7 +87,10 @@ pub mod session {
     // newest first; the draft being typed; the rows written above it; the
     // rows the draft took when last drawn, and whether it is to be drawn
     // again; whether ^D asked to leave; an escape sequence being read; the
-    // entry run last (for turns); and what this step writes.
+    // entry run last (for turns); what this step writes; where the cursor
+    // is in the draft, and on which of its rows; the history (newest
+    // first), where in it ^P/up is, the draft put aside meanwhile, and its
+    // file; the steps an entry may take; the commands given; ,quit.
     pub fn live() -> Ref<bool> {
         thread_local!(static ONCE: OnceCell<Ref<bool>> = const { OnceCell::new() });
         once(&ONCE, || {
@@ -89,7 +115,7 @@ pub mod session {
     pub fn entries() -> Ref<List<Entry>> {
         thread_local!(static ONCE: OnceCell<Ref<List<Entry>>> = const { OnceCell::new() });
         once(&ONCE, || {
-            kayak_rt::heap_new(nil::<Product_3num_4text_5typed_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn<i64, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>>>())
+            kayak_rt::heap_new(nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after<i64, Str, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>, bool, Ref<i64>, i64, Ref<i64>>>())
         })
     }
 
@@ -149,6 +175,76 @@ pub mod session {
         })
     }
 
+    pub fn cursor() -> Ref<i64> {
+        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(0i64)
+        })
+    }
+
+    pub fn cursor_row() -> Ref<i64> {
+        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(0i64)
+        })
+    }
+
+    pub fn escape_param() -> Ref<i64> {
+        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(0i64)
+        })
+    }
+
+    pub fn history() -> Ref<Strings> {
+        thread_local!(static ONCE: OnceCell<Ref<Strings>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(nil::<Str>())
+        })
+    }
+
+    pub fn history_at() -> Ref<i64> {
+        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(-1i64)
+        })
+    }
+
+    pub fn stash() -> Ref<Str> {
+        thread_local!(static ONCE: OnceCell<Ref<Str>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(str_lit(""))
+        })
+    }
+
+    pub fn history_path() -> Ref<Str> {
+        thread_local!(static ONCE: OnceCell<Ref<Str>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(str_lit(""))
+        })
+    }
+
+    pub fn step_limit() -> Ref<i64> {
+        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(-1i64)
+        })
+    }
+
+    pub fn commands() -> Ref<i64> {
+        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(0i64)
+        })
+    }
+
+    pub fn quitting() -> Ref<bool> {
+        thread_local!(static ONCE: OnceCell<Ref<bool>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(false)
+        })
+    }
+
     pub fn slice_steps() -> i64 {
         20000i64
     }
@@ -185,7 +281,7 @@ pub mod session {
     pub fn entries_where(mut f: &'static dyn Fn(Entry) -> bool, mut es: List<Entry>) -> List<Entry> {
         loop {
             if null_p(es) {
-                return nil::<Product_3num_4text_5typed_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn<i64, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>>>();
+                return nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after<i64, Str, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>, bool, Ref<i64>, i64, Ref<i64>>>();
             } else if f(car(es)) {
                 return kayak_rt::heap_cons(car(es), entries_where(f, cdr(es)));
             } else {
@@ -241,7 +337,7 @@ pub mod session {
     pub fn entry_numbered(mut es: List<Entry>, mut k: i64) -> List<Entry> {
         loop {
             if null_p(es) {
-                return nil::<Product_3num_4text_5typed_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn<i64, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>>>();
+                return nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after<i64, Str, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>, bool, Ref<i64>, i64, Ref<i64>>>();
             } else if i64_eq(car(es).0, k) {
                 return kayak_rt::heap_cons(car(es), kayak_rt::nil());
             } else {
@@ -252,7 +348,7 @@ pub mod session {
     }
 
     pub fn unfinished_p(e: Entry) -> bool {
-        let s = get(e.5);
+        let s = get(e.6);
         (i64_eq(s, st_checking()) || i64_eq(s, st_waiting()) || i64_eq(s, st_running()))
     }
 
@@ -271,11 +367,11 @@ pub mod session {
     /// made, and no entry before it that it must wait for: in plain mode
     /// any; else, one that is not quiet, or any if `e` is not.
     pub fn may_run_p(e: Entry) -> bool {
-        ((i64_eq(get(e.5), st_waiting()) || i64_eq(get(e.5), st_running())) && not(some_number_p(lambda1(move |k: i64| {
+        ((i64_eq(get(e.6), st_waiting()) || i64_eq(get(e.6), st_running())) && not(some_number_p(lambda1(move |k: i64| {
             let found = entry_numbered(get(entries()), k);
             (not(null_p(found)) && unfinished_p(car(found)))
-        }), e.4)) && not(some_entry_p(lambda1(move |d: Entry| {
-            (i64_lt(d.0, e.0) && unfinished_p(d) && (not(get(live())) || not(e.3) || not(d.3)))
+        }), e.5)) && not(some_entry_p(lambda1(move |d: Entry| {
+            (i64_lt(d.0, e.0) && unfinished_p(d) && (not(get(live())) || not(e.4) || not(d.4)))
         }), get(entries()))))
     }
 
@@ -322,18 +418,24 @@ pub mod session {
     }
 
     pub fn entry_line(e: Entry, now: i64) -> Str {
-        let s = get(e.5);
-        let head = if get(live()) {
+        let s = get(e.6);
+        let head = if (get(live()) && i64_gt(e.0, 0i64)) {
             string_append(str_lit("["), string_append(i64_to_string(e.0), str_lit("] ")))
         } else {
             str_lit("")
         };
-        let took = i64_minus(if i64_gt_eq(get(e.10), 0i64) {
-            get(e.10)
+        let took = i64_minus(if i64_gt_eq(get(e.11), 0i64) {
+            get(e.11)
         } else {
             now
-        }, get(e.9));
-        let time = if (get(live()) && i64_gt_eq(took, 100i64)) {
+        }, get(e.10));
+        let time = if e.14 {
+            string_append(str_lit("  ("), string_append(seconds(took), string_append(str_lit(", "), string_append(i64_to_string(get(e.15)), string_append(str_lit(" steps, "), string_append(i64_to_string(i64_minus(if i64_lt(get(e.17), 0i64) {
+                get(collections())
+            } else {
+                get(e.17)
+            }, e.16)), str_lit(" collections)")))))))
+        } else if (get(live()) && i64_gt_eq(took, 100i64)) {
             string_append(str_lit("  ("), string_append(seconds(took), str_lit(")")))
         } else {
             str_lit("")
@@ -345,11 +447,11 @@ pub mod session {
         } else if i64_eq(s, st_running()) {
             string_append(head, string_append(spinner(now), string_append(str_lit(" running "), seconds(took))))
         } else if i64_eq(s, st_done()) {
-            string_append(head, string_append(get(e.7), time))
+            string_append(head, string_append(get(e.8), time))
         } else if i64_eq(s, st_interrupted()) {
             string_append(head, string_append(str_lit("interrupted"), time))
         } else {
-            string_append(head, get(e.7))
+            string_append(head, get(e.8))
         }
     }
 
@@ -358,18 +460,22 @@ pub mod session {
     pub fn interrupt_x(now: i64) -> () {
         if not(string_eq_p(get(draft()), str_lit(""))) {
             set(draft(), str_lit(""));
+            set(cursor(), 0i64);
+            set(history_at(), -1i64);
             set(draft_dirty(), true)
         } else {
             let running = entries_where(&unfinished_p, get(entries()));
             if null_p(running) {
                 set(leaving(), false)
             } else {
-                let e = car(running);
-                set(e.5, st_interrupted());
-                set(e.10, now);
-                parked_cleared_x(e.0)
+                interrupted_x(car(running), now)
             }
         }
+    }
+
+    pub fn interrupted_x(e: Entry, now: i64) -> () {
+        ended_x(e, st_interrupted(), now);
+        parked_cleared_x(e.0)
     }
 
     /// A task's registers dropped, so that the collector keeps nothing for it.
@@ -401,47 +507,661 @@ pub mod session {
     /// it the transcript's.
     pub fn finish_draft_x() -> () {
         if get(live()) {
-            draw_draft_x(string_append(get(draft()), str_lit("")));
+            up_x(get(cursor_row()));
+            set(cursor(), string_length_i64(get(draft())));
+            draw_draft_x(get(draft()));
             say_x(str_lit("\u{d}\n"));
             set(rows(), i64_plus(get(rows()), get(draft_rows())));
             set(draft_rows(), 1i64);
+            set(cursor_row(), 0i64);
             set(draft_dirty(), true)
         } else {
             ()
         }
     }
 
-    // An entry submitted: checked, lowered, and made a task.
-    pub fn submit_x(text: Str, now: i64) -> () {
-        let k = i64_plus(get(repl_count()), 1i64);
-        let e = the::<Entry>(Product_3num_4text_5typed_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn(k, text, str_lit(""), true, nil::<i64>(), kayak_rt::heap_new(st_checking()), kayak_rt::heap_new(nil::<i64>()), kayak_rt::heap_new(str_lit("")), kayak_rt::heap_new(str_lit("")), kayak_rt::heap_new(now), kayak_rt::heap_new(-1i64), kayak_rt::heap_new(-1i64), kayak_rt::heap_new(str_lit(""))));
-        set(repl_count(), k);
-        set(entries(), kayak_rt::heap_cons(e, get(entries())));
-        let forms = read_all(string_chars(text), string_append(str_lit("<fx26:"), string_append(i64_to_string(k), str_lit(">"))), 1i64);
-        let made = entry_forms(k, forms, str_lit(""), true, nil::<i64>());
-        let tagcase_ = made;
-        match *tagcase_ {
-            MadeEntry::MadeEntry(typed, quiet, tops) => {
-                let e2 = the::<Entry>(Product_3num_4text_5typed_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn(k, text, typed, quiet, concat(map(&named_results, forms)), kayak_rt::heap_new(st_waiting()), kayak_rt::heap_new(tops), kayak_rt::heap_new(str_lit("")), kayak_rt::heap_new(str_lit("")), kayak_rt::heap_new(now), kayak_rt::heap_new(-1i64), kayak_rt::heap_new(-1i64), kayak_rt::heap_new(str_lit(""))));
-                set(entries(), kayak_rt::heap_cons(e2, cdr(get(entries()))))
+    // Editing: the draft and the cursor in it, a character's index.
+    pub fn draft_set_x(d: Str, at: i64) -> () {
+        set(draft(), d);
+        set(cursor(), clamped(at, string_length_i64(d)));
+        set(draft_dirty(), true)
+    }
+
+    pub fn clamped(i: i64, n: i64) -> i64 {
+        if i64_lt(i, 0i64) {
+            0i64
+        } else if i64_gt(i, n) {
+            n
+        } else {
+            i
+        }
+    }
+
+    pub fn cut(s: Str, from: i64, to: i64) -> Str {
+        let n = string_length_i64(s);
+        substring(s, i64_to_int(clamped(from, n)), i64_to_int(clamped(to, n)))
+    }
+
+    pub fn inserted_x(text: Str) -> () {
+        let (d, at) = (get(draft()), get(cursor()));
+        draft_set_x(string_append(cut(d, 0i64, at), string_append(text, cut(d, at, string_length_i64(d)))), i64_plus(at, string_length_i64(text)))
+    }
+
+    pub fn deleted_x(from: i64, to: i64) -> () {
+        let d = get(draft());
+        let n = string_length_i64(d);
+        let a = clamped(from, n);
+        let b = clamped(to, n);
+        if i64_gt_eq(a, b) {
+            ()
+        } else {
+            draft_set_x(string_append(cut(d, 0i64, a), cut(d, b, n)), a)
+        }
+    }
+
+    pub fn moved_x(at: i64) -> () {
+        set(cursor(), clamped(at, string_length_i64(get(draft()))));
+        set(draft_dirty(), true)
+    }
+
+    pub fn line_start(mut s: Str, mut i: i64) -> i64 {
+        loop {
+            if (i64_lt_eq(i, 0i64) || char_eq_p(string_ref_i64(s, i64_minus(i, 1i64)), '\n')) {
+                return i;
+            } else {
+                i = i64_minus(i, 1i64);
+                continue;
             }
         }
     }
 
-    pub enum MadeEntry {
-        MadeEntry(Str, bool, List<i64>),
+    pub fn line_end(mut s: Str, mut i: i64) -> i64 {
+        loop {
+            if (i64_gt_eq(i, string_length_i64(s)) || char_eq_p(string_ref_i64(s, i), '\n')) {
+                return i;
+            } else {
+                i = i64_plus(i, 1i64);
+                continue;
+            }
+        }
     }
 
-    pub fn made_entry(f0: Str, f1: bool, f2: List<i64>) -> &'static MadeEntry {
-        kayak_rt::heap_alloc(MadeEntry::MadeEntry(f0, f1, f2))
+    pub fn name_char_p(c: char) -> bool {
+        not((char_whitespace_p(c) || char_eq_p(c, '(') || char_eq_p(c, ')') || char_eq_p(c, '"') || char_eq_p(c, '\'')))
+    }
+
+    pub fn spaces_start(mut s: Str, mut i: i64) -> i64 {
+        loop {
+            if (i64_gt(i, 0i64) && char_whitespace_p(string_ref_i64(s, i64_minus(i, 1i64)))) {
+                i = i64_minus(i, 1i64);
+                continue;
+            } else {
+                return i;
+            }
+        }
+    }
+
+    /// Where ^W deletes back to: past spaces, then a name, or one other character.
+    pub fn word_start(s: Str, i: i64) -> i64 {
+        let j = spaces_start(s, i);
+        if (i64_gt(j, 0i64) && name_char_p(string_ref_i64(s, i64_minus(j, 1i64)))) {
+            name_start(s, j)
+        } else if (i64_gt(j, 0i64) && i64_eq(j, i)) {
+            i64_minus(j, 1i64)
+        } else {
+            j
+        }
+    }
+
+    pub fn name_start(mut s: Str, mut i: i64) -> i64 {
+        loop {
+            if (i64_gt(i, 0i64) && name_char_p(string_ref_i64(s, i64_minus(i, 1i64)))) {
+                i = i64_minus(i, 1i64);
+                continue;
+            } else {
+                return i;
+            }
+        }
+    }
+
+    /// An escape sequence's final key: up and down move between the draft's
+    /// lines, or through the history at its first or last; left, right,
+    /// Home, End, Delete.
+    pub fn escaped_x(c: i64, now: i64) -> () {
+        let d = get(draft());
+        let at = get(cursor());
+        let start = line_start(d, at);
+        if i64_eq(c, 65i64) {
+            if i64_eq(start, 0i64) {
+                history_moved_x(1i64)
+            } else {
+                moved_x(column_on(d, line_start(d, i64_minus(start, 1i64)), i64_minus(at, start)))
+            }
+        } else if i64_eq(c, 66i64) {
+            let end = line_end(d, at);
+            if i64_gt_eq(end, string_length_i64(d)) {
+                history_moved_x(-1i64)
+            } else {
+                moved_x(column_on(d, i64_plus(end, 1i64), i64_minus(at, start)))
+            }
+        } else if i64_eq(c, 67i64) {
+            moved_x(i64_plus(at, 1i64))
+        } else if i64_eq(c, 68i64) {
+            moved_x(i64_minus(at, 1i64))
+        } else if i64_eq(c, 72i64) {
+            moved_x(start)
+        } else if i64_eq(c, 70i64) {
+            moved_x(line_end(d, at))
+        } else if (i64_eq(c, 126i64) && i64_eq(get(escape_param()), 3i64)) {
+            deleted_x(at, i64_plus(at, 1i64))
+        } else if (i64_eq(c, 126i64) && i64_eq(get(escape_param()), 1i64)) {
+            moved_x(start)
+        } else if (i64_eq(c, 126i64) && i64_eq(get(escape_param()), 4i64)) {
+            moved_x(line_end(d, at))
+        } else {
+            ()
+        }
+    }
+
+    /// The index `col` along the line beginning at `start`, or its end.
+    pub fn column_on(d: Str, start: i64, col: i64) -> i64 {
+        let end = line_end(d, start);
+        if i64_lt(i64_plus(start, col), end) {
+            i64_plus(start, col)
+        } else {
+            end
+        }
+    }
+
+    pub fn nth_string(mut xs: Strings, mut i: i64) -> Str {
+        loop {
+            if null_p(xs) {
+                return str_lit("");
+            } else if i64_eq(i, 0i64) {
+                return car(xs);
+            } else {
+                (xs, i) = (cdr(xs), i64_minus(i, 1i64));
+                continue;
+            }
+        }
+    }
+
+    /// Up (`by` 1) to an older entry's text, or down; past the newest, the
+    /// draft that was put aside.
+    pub fn history_moved_x(by: i64) -> () {
+        let (to, n) = (i64_plus(get(history_at()), by), size(get(history())));
+        if i64_gt_eq(to, n) {
+            ()
+        } else if i64_lt(to, 0i64) {
+            if i64_lt(get(history_at()), 0i64) {
+                ()
+            } else {
+                set(history_at(), -1i64);
+                draft_set_x(get(stash()), string_length_i64(get(stash())))
+            }
+        } else {
+            if i64_lt(get(history_at()), 0i64) {
+                set(stash(), get(draft()))
+            } else {
+                ()
+            };
+            set(history_at(), to);
+            let t = nth_string(get(history()), to);
+            draft_set_x(t, string_length_i64(t))
+        }
+    }
+
+    /// Enter: the draft given, if whole (a command's line, or forms); else a
+    /// newline where the cursor is.
+    pub fn entered_x(now: i64) -> () {
+        let d = get(draft());
+        let trimmed = trimmed_start(string_chars(d));
+        if (not(null_p(trimmed)) && char_eq_p(car(trimmed), ',') && command_whole_p(list_to_string(trimmed))) {
+            given_x(d);
+            command_x(list_to_string(trimmed), now)
+        } else if repl_complete_p(d) {
+            given_x(d);
+            submit_x(d, str_lit(""), false, now)
+        } else if null_p(trimmed) {
+            draft_set_x(str_lit(""), 0i64)
+        } else {
+            inserted_x(str_lit("\n"))
+        }
+    }
+
+    /// The draft left on the screen, kept in the history, and emptied.
+    pub fn given_x(d: Str) -> () {
+        finish_draft_x();
+        set(history(), kayak_rt::heap_cons(trimmed_end(d), get(history())));
+        history_written_x();
+        set(history_at(), -1i64);
+        set(stash(), str_lit(""));
+        draft_set_x(str_lit(""), 0i64)
+    }
+
+    pub fn trimmed_start(mut cs: List<char>) -> List<char> {
+        loop {
+            if (not(null_p(cs)) && char_whitespace_p(car(cs))) {
+                cs = cdr(cs);
+                continue;
+            } else {
+                return cs;
+            }
+        }
+    }
+
+    pub fn trimmed_end(s: Str) -> Str {
+        list_to_string(oldest_first_chars(trimmed_start(oldest_first_chars(string_chars(s), nil::<char>())), nil::<char>()))
+    }
+
+    pub fn oldest_first_chars(mut cs: List<char>, mut acc: List<char>) -> List<char> {
+        loop {
+            if null_p(cs) {
+                return acc;
+            } else {
+                (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
+                continue;
+            }
+        }
+    }
+
+    // History: a file of entries, each a line, its newlines and backslashes
+    // escaped; the last 500 kept.
+    pub fn escaped(mut cs: List<char>, mut acc: Chars) -> Chars {
+        loop {
+            if null_p(cs) {
+                return acc;
+            } else if char_eq_p(car(cs), '\n') {
+                (cs, acc) = (cdr(cs), put(str_lit("\\n"), acc));
+                continue;
+            } else if char_eq_p(car(cs), '\\') {
+                (cs, acc) = (cdr(cs), put(str_lit("\\\\"), acc));
+                continue;
+            } else {
+                (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
+                continue;
+            }
+        }
+    }
+
+    pub fn unescaped(mut cs: List<char>, mut acc: Chars) -> Chars {
+        loop {
+            if null_p(cs) {
+                return acc;
+            } else if (char_eq_p(car(cs), '\\') && not(null_p(cdr(cs)))) {
+                (cs, acc) = (cdr(cdr(cs)), kayak_rt::heap_cons(if char_eq_p(car(cdr(cs)), 'n') {
+                    '\n'
+                } else {
+                    car(cdr(cs))
+                }, acc));
+                continue;
+            } else {
+                (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
+                continue;
+            }
+        }
+    }
+
+    /// The history, oldest first, `n` entries at most, as the file has it.
+    pub fn history_text(hs: Strings, n: i64, acc: Chars) -> Chars {
+        if (null_p(hs) || i64_lt_eq(n, 0i64)) {
+            acc
+        } else {
+            put(str_lit("\n"), escaped(string_chars(car(hs)), history_text(cdr(hs), i64_minus(n, 1i64), acc)))
+        }
+    }
+
+    pub fn history_written_x() -> () {
+        if string_eq_p(get(history_path()), str_lit("")) {
+            ()
+        } else {
+            let tagcase_ = write_file(get(history_path()), the::<Bytes>(string_to_utf8(rev_to_string(history_text(get(history()), 500i64, nil::<char>())))));
+            match *tagcase_ {
+                Sum_4done_6failed::Done(u) => {
+                    ()
+                }
+                Sum_4done_6failed::Failed(e) => {
+                    ()
+                }
+            }
+        }
+    }
+
+    pub fn history_read_x() -> () {
+        if string_eq_p(get(history_path()), str_lit("")) {
+            ()
+        } else {
+            let tagcase_ = the::<&'static Sum_4data_6failed<Bytes, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>(read_file(get(history_path())));
+            match *tagcase_ {
+                Sum_4data_6failed::Data(b) => {
+                    let tagcase_ = utf8_to_string(b);
+                    match *tagcase_ {
+                        Sum_4text_3bad::Text(t) => {
+                            set(history(), oldest_first_strings(map(lambda1(move |l: Str| {
+                                rev_to_string(unescaped(string_chars(l), nil::<char>()))
+                            }), lines_of(string_chars(t), nil::<char>(), nil::<Str>())), nil::<Str>()))
+                        }
+                        Sum_4text_3bad::Bad(k) => {
+                            ()
+                        }
+                    }
+                }
+                Sum_4data_6failed::Failed(e) => {
+                    ()
+                }
+            }
+        }
+    }
+
+    // Completion: the name before the cursor, among the checker's.
+    pub fn known_names() -> Strings {
+        concat(map(lambda1(move |b: &'static Bind| {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Bind::Bind(n, sc, w) => {
+                    if (has_prefix_p(n, str_lit("%")) || has_char_in_p(n, ' ')) {
+                        nil::<Str>()
+                    } else {
+                        kayak_rt::heap_cons(n, kayak_rt::nil())
+                    }
+                }
+            }
+        }), cv_binds(get(repl_cv()))))
+    }
+
+    pub fn common_prefix(mut p: Str, mut xs: Strings) -> Str {
+        loop {
+            if null_p(xs) {
+                return p;
+            } else if has_prefix_p(car(xs), p) {
+                xs = cdr(xs);
+                continue;
+            } else {
+                p = substring(p, int_lit(0), i64_to_int(i64_minus(string_length_i64(p), 1i64)));
+                continue;
+            }
+        }
+    }
+
+    /// Tab: the name before the cursor completed as far as the names it
+    /// begins agree; if that adds nothing and there are several, they are
+    /// said.
+    pub fn completed_x(now: i64) -> () {
+        let d = get(draft());
+        let at = get(cursor());
+        let from = name_start(d, at);
+        let p = cut(d, from, at);
+        let found = sorted_strings(deduped_names(concat(map(lambda1(move |n: Str| {
+            if has_prefix_p(n, p) {
+                kayak_rt::heap_cons(n, kayak_rt::nil())
+            } else {
+                nil::<Str>()
+            }
+        }), known_names())), nil::<Str>()));
+        if (string_eq_p(p, str_lit("")) || null_p(found)) {
+            ()
+        } else {
+            let common = common_prefix(car(found), cdr(found));
+            if i64_gt(string_length_i64(common), string_length_i64(p)) {
+                inserted_x(cut(common, string_length_i64(p), string_length_i64(common)))
+            } else if null_p(cdr(found)) {
+                ()
+            } else {
+                said_x(words_of_at_most(found, 12i64), now)
+            }
+        }
+    }
+
+    pub fn deduped_names(mut xs: Strings, mut seen: Strings) -> Strings {
+        loop {
+            if null_p(xs) {
+                return nil::<Str>();
+            } else if string_member_p(car(xs), seen) {
+                xs = cdr(xs);
+                continue;
+            } else {
+                return kayak_rt::heap_cons(car(xs), deduped_names(cdr(xs), kayak_rt::heap_cons(car(xs), seen)));
+            }
+        }
+    }
+
+    pub fn words_of_at_most(xs: Strings, n: i64) -> Str {
+        if null_p(xs) {
+            str_lit("")
+        } else if i64_eq(n, 0i64) {
+            str_lit("…")
+        } else if null_p(cdr(xs)) {
+            car(xs)
+        } else {
+            string_append(car(xs), string_append(str_lit(" "), words_of_at_most(cdr(xs), i64_minus(n, 1i64))))
+        }
+    }
+
+    // Commands, as Fixpt's REPL has them: a line beginning with a comma.
+    pub fn help_text() -> Str {
+        str_lit(",help              this; ,help NAME: what NAME is\n,type E            E's type and effect, checked and not run\n,time E            E run, then its time, steps and collections\n,load FILE         FILE's forms, an entry\n,pending           the entries not ended\n,cancel K          entry K interrupted (^C: the newest)\n,step-limit [N|none]  how many steps an entry may take\n,apropos TEXT      the names containing TEXT\n,quit              leave now (^D: when every entry has ended)\nAnything else is forms, checked and run as an entry; %K is entry K's value;\nan entry naming one that has not ended waits for it.")
+    }
+
+    /// Whether a command's line is whole: its forms, if any, closed.
+    pub fn command_whole_p(line: Str) -> bool {
+        let rest = command_rest(line);
+        (null_p(trimmed_start(string_chars(rest))) || repl_complete_p(rest))
+    }
+
+    pub fn word_end(mut cs: List<char>, mut i: i64) -> i64 {
+        loop {
+            if (null_p(cs) || char_whitespace_p(car(cs))) {
+                return i;
+            } else {
+                (cs, i) = (cdr(cs), i64_plus(i, 1i64));
+                continue;
+            }
+        }
+    }
+
+    pub fn command_word(line: Str) -> Str {
+        substring(line, int_lit(0), i64_to_int(word_end(string_chars(line), 0i64)))
+    }
+
+    pub fn command_rest(line: Str) -> Str {
+        let n = word_end(string_chars(line), 0i64);
+        list_to_string(trimmed_start(string_chars(substring(line, i64_to_int(n), i64_to_int(string_length_i64(line))))))
+    }
+
+    pub fn command_x(line: Str, now: i64) -> () {
+        let w = command_word(line);
+        let rest = trimmed_end(command_rest(line));
+        if string_eq_p(w, str_lit(",help")) {
+            if string_eq_p(rest, str_lit("")) {
+                said_x(help_text(), now)
+            } else {
+                said_x(described(rest), now)
+            }
+        } else if string_eq_p(w, str_lit(",type")) {
+            typed_only_x(rest, now)
+        } else if string_eq_p(w, str_lit(",time")) {
+            submit_x(rest, str_lit(""), true, now)
+        } else if string_eq_p(w, str_lit(",load")) {
+            loaded_x(rest, now)
+        } else if string_eq_p(w, str_lit(",pending")) {
+            said_x(pending_text(now), now)
+        } else if string_eq_p(w, str_lit(",cancel")) {
+            let found = entry_numbered(get(entries()), number_from(string_chars(rest), 0i64));
+            if (not(null_p(found)) && unfinished_p(car(found))) {
+                interrupted_x(car(found), now)
+            } else {
+                said_x(string_append(str_lit("no entry "), string_append(rest, str_lit(" is running"))), now)
+            }
+        } else if string_eq_p(w, str_lit(",step-limit")) {
+            if string_eq_p(rest, str_lit("none")) {
+                set(step_limit(), -1i64)
+            } else if string_eq_p(rest, str_lit("")) {
+                ()
+            } else {
+                set(step_limit(), number_from(string_chars(rest), 0i64))
+            };
+            said_x(if i64_lt(get(step_limit()), 0i64) {
+                str_lit("no step limit")
+            } else {
+                string_append(str_lit("an entry may take "), string_append(i64_to_string(get(step_limit())), str_lit(" steps")))
+            }, now)
+        } else if string_eq_p(w, str_lit(",apropos")) {
+            said_x({
+                let found = sorted_strings(deduped_names(concat(map(lambda1(move |n: Str| {
+                    if i64_gt_eq(int_to_i64(string_search(n, rest, int_lit(0))), 0i64) {
+                        kayak_rt::heap_cons(n, kayak_rt::nil())
+                    } else {
+                        nil::<Str>()
+                    }
+                }), known_names())), nil::<Str>()));
+                if null_p(found) {
+                    str_lit("nothing")
+                } else {
+                    words_of_at_most(found, 40i64)
+                }
+            }, now)
+        } else if string_eq_p(w, str_lit(",quit")) {
+            set(quitting(), true)
+        } else {
+            said_x(string_append(str_lit("no command "), string_append(w, str_lit("; ,help for those there are"))), now)
+        }
+    }
+
+    /// `,type E`: E checked, its type and effect said, not run. A refusal
+    /// finds the line, as an entry's (`refused!`).
+    pub fn typed_only_x(text: Str, now: i64) -> () {
+        set(commands(), i64_plus(get(commands()), 1i64));
+        set(entries(), kayak_rt::heap_cons(make_entry(i64_minus(0i64, get(commands())), text, str_lit(""), str_lit(""), true, nil::<i64>(), st_checking(), nil::<i64>(), str_lit(""), false, now), get(entries())));
+        let forms = read_all(string_chars(text), str_lit("<,type>"), 1i64);
+        if null_p(forms) {
+            refused_x(str_lit("nothing to type"), now)
+        } else {
+            let shown = form_type(get(repl_cv()), car(forms));
+            set(car(get(entries())).8, string_append(text, shown));
+            set(car(get(entries())).6, st_done());
+            set(car(get(entries())).11, now)
+        }
+    }
+
+    /// `,help NAME`: NAME's type, as the checker has it.
+    pub fn described(n: Str) -> Str {
+        let found = find_bind(n, cv_binds(get(repl_cv())));
+        if null_p(found) {
+            string_append(n, str_lit(" is not defined"))
+        } else {
+            let tagcase_ = car(found);
+            match *tagcase_ {
+                Bind::Bind(n2, sc, w) => {
+                    let tagcase_ = sc;
+                    match *tagcase_ {
+                        Scheme::Scheme(tvars, t) => {
+                            string_append(n, string_append(str_lit(" : "), string_append(show_ty(new_state(), t), if string_eq_p(w, str_lit("prim")) {
+                                str_lit(", a primitive")
+                            } else {
+                                str_lit("")
+                            })))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// `,load FILE`: the file's forms, one entry.
+    pub fn loaded_x(path: Str, now: i64) -> () {
+        let tagcase_ = the::<&'static Sum_4data_6failed<Bytes, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>(read_file(path));
+        match *tagcase_ {
+            Sum_4data_6failed::Data(b) => {
+                let tagcase_ = utf8_to_string(b);
+                match *tagcase_ {
+                    Sum_4text_3bad::Text(t) => {
+                        submit_x(t, path, false, now)
+                    }
+                    Sum_4text_3bad::Bad(k) => {
+                        said_x(string_append(path, str_lit(": not UTF-8")), now)
+                    }
+                }
+            }
+            Sum_4data_6failed::Failed(e) => {
+                said_x(string_append(str_lit("cannot read "), string_append(path, string_append(str_lit(": "), e.1))), now)
+            }
+        }
+    }
+
+    pub fn pending_text(now: i64) -> Str {
+        let open = entries_where(&unfinished_p, oldest_first(get(entries()), nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after<i64, Str, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>, bool, Ref<i64>, i64, Ref<i64>>>()));
+        if null_p(open) {
+            str_lit("no entry is running")
+        } else {
+            words_lines(map(lambda1(move |e: Entry| {
+                string_append(str_lit("["), string_append(i64_to_string(e.0), string_append(str_lit("] "), first_line(e.1))))
+            }), open))
+        }
+    }
+
+    pub fn words_lines(xs: Strings) -> Str {
+        if null_p(xs) {
+            str_lit("")
+        } else if null_p(cdr(xs)) {
+            car(xs)
+        } else {
+            string_append(car(xs), string_append(str_lit("\n"), words_lines(cdr(xs))))
+        }
+    }
+
+    pub fn first_line(s: Str) -> Str {
+        let ls = lines_of(string_chars(s), nil::<char>(), nil::<Str>());
+        if null_p(ls) {
+            str_lit("")
+        } else {
+            car(ls)
+        }
+    }
+
+    // An entry submitted: checked, lowered, and made a task.
+    /// An entry of `text`, its forms read as from `label` (`<fx26:k>`, or a
+    /// file `,load` reads).
+    pub fn submit_x(text: Str, label: Str, timed: bool, now: i64) -> () {
+        let k = i64_plus(get(repl_count()), 1i64);
+        let e = make_entry(k, text, str_lit(""), str_lit(""), true, nil::<i64>(), st_checking(), nil::<i64>(), str_lit(""), timed, now);
+        set(repl_count(), k);
+        set(entries(), kayak_rt::heap_cons(e, get(entries())));
+        let forms = read_all(string_chars(text), if string_eq_p(label, str_lit("")) {
+            string_append(str_lit("<fx26:"), string_append(i64_to_string(k), str_lit(">")))
+        } else {
+            label
+        }, 1i64);
+        let made = entry_forms(k, forms, str_lit(""), str_lit(""), true, nil::<i64>());
+        let tagcase_ = made;
+        match *tagcase_ {
+            MadeEntry::MadeEntry(typed, defined, quiet, tops) => {
+                set(entries(), kayak_rt::heap_cons(make_entry(k, text, typed, defined, quiet, concat(map(&named_results, forms)), st_waiting(), tops, str_lit(""), timed, now), cdr(get(entries()))))
+            }
+        }
+    }
+
+    /// A command's line, as an entry's that is done.
+    pub fn said_x(line: Str, now: i64) -> () {
+        set(commands(), i64_plus(get(commands()), 1i64));
+        set(entries(), kayak_rt::heap_cons(make_entry(i64_minus(0i64, get(commands())), str_lit(""), str_lit(""), str_lit(""), true, nil::<i64>(), st_done(), nil::<i64>(), line, false, now), get(entries())))
+    }
+
+    pub enum MadeEntry {
+        MadeEntry(Str, Str, bool, List<i64>),
+    }
+
+    pub fn made_entry(f0: Str, f1: Str, f2: bool, f3: List<i64>) -> &'static MadeEntry {
+        kayak_rt::heap_alloc(MadeEntry::MadeEntry(f0, f1, f2, f3))
     }
 
     /// Each form checked and lowered, as `repl-forms` does, in order; an
-    /// expression's value `%k`'s, the global bound at its type.
-    pub fn entry_forms(mut k: i64, mut forms: Sexps, mut typed: Str, mut quiet: bool, mut tops: List<i64>) -> &'static MadeEntry {
+    /// expression's value `%k`'s, the global bound at its type: what is
+    /// written after its value (the last expression's), and the lines of
+    /// the definitions.
+    pub fn entry_forms(mut k: i64, mut forms: Sexps, mut typed: Str, mut defined: Str, mut quiet: bool, mut tops: List<i64>) -> &'static MadeEntry {
         loop {
             if null_p(forms) {
-                return made_entry(typed, quiet, tops);
+                return made_entry(typed, defined, quiet, tops);
             } else {
                 let form = car(forms);
                 let expression = not(definition_form_p(form));
@@ -476,12 +1196,16 @@ pub mod session {
                 set(repl_globals(), gs);
                 globals_room_x(gs);
                 let ns = number_tops_x(lower_tops(kayak_rt::heap_cons(form, kayak_rt::nil()), gs));
-                (forms, typed, quiet, tops) = (cdr(forms), if string_eq_p(line, str_lit("")) {
-                    typed
-                } else if string_eq_p(typed, str_lit("")) {
+                (forms, typed, defined, quiet, tops) = (cdr(forms), if expression {
                     line
                 } else {
-                    string_append(typed, string_append(str_lit("\n"), line))
+                    typed
+                }, if (expression || string_eq_p(line, str_lit(""))) {
+                    defined
+                } else if string_eq_p(defined, str_lit("")) {
+                    line
+                } else {
+                    string_append(defined, string_append(str_lit("\n"), line))
                 }, (quiet && expression && quiet_effect_p(effects)), onto(tops, concat(map(lambda1(move |n: i64| {
                     if i64_eq(n, -1i64) {
                         nil::<i64>()
@@ -514,7 +1238,7 @@ pub mod session {
     }
 
     pub fn start_top_x(e: Entry) -> () {
-        let ts = get(e.6);
+        let ts = get(e.7);
         if null_p(ts) {
             ()
         } else {
@@ -529,7 +1253,7 @@ pub mod session {
     /// A top ended (its number not negative if an expression, whose value
     /// is then `%k`'s): the next begun, or the entry done.
     pub fn top_ended_x(e: Entry, w: i64, now: i64) -> () {
-        let ts = get(e.6);
+        let ts = get(e.7);
         let rest = if null_p(ts) {
             nil::<i64>()
         } else {
@@ -541,14 +1265,22 @@ pub mod session {
         } else {
             ()
         };
-        set(e.6, rest);
+        set(e.7, rest);
         if null_p(rest) {
-            set(e.5, st_done());
-            set(e.10, now);
-            set(e.7, if i64_lt(i, 0i64) {
-                e.2
-            } else {
-                string_append(show_word(flatarray_ref_i64(get(globals()), i)), e.2)
+            ended_x(e, st_done(), now);
+            set(e.8, {
+                let value = if i64_lt(i, 0i64) {
+                    str_lit("")
+                } else {
+                    string_append(show_word(flatarray_ref_i64(get(globals()), i)), e.2)
+                };
+                if string_eq_p(value, str_lit("")) {
+                    e.3
+                } else if string_eq_p(e.3, str_lit("")) {
+                    value
+                } else {
+                    string_append(e.3, string_append(str_lit("\n"), value))
+                }
             });
             parked_cleared_x(e.0)
         } else {
@@ -570,7 +1302,7 @@ pub mod session {
     }
 
     pub fn taken_output_x(e: Entry) -> () {
-        set(e.8, string_append(get(e.8), rev_to_string(get(captured()))));
+        set(e.9, string_append(get(e.9), rev_to_string(get(captured()))));
         set(captured(), nil::<char>())
     }
 
@@ -615,7 +1347,40 @@ pub mod session {
         say_x(str_lit("fx26> "));
         set(written(), prompted(cs, get(written())));
         set(draft_rows(), wrapped_rows(cs, 6i64, get(screen_cols()), 1i64));
-        set(draft_dirty(), false)
+        set(draft_dirty(), false);
+        let before = string_chars(substring(d, int_lit(0), i64_to_int(get(cursor()))));
+        let row = i64_minus(wrapped_rows(before, 6i64, get(screen_cols()), 1i64), 1i64);
+        let col = column_after(before, 6i64, get(screen_cols()));
+        if i64_eq(get(cursor()), string_length_i64(d)) {
+            ()
+        } else {
+            up_x(i64_minus(i64_minus(get(draft_rows()), 1i64), row));
+            say_x(str_lit("\u{d}"));
+            if i64_gt(col, 0i64) {
+                say_x(string_append(str_lit("\u{1b}["), string_append(i64_to_string(col), str_lit("C"))))
+            } else {
+                ()
+            }
+        };
+        set(cursor_row(), row)
+    }
+
+    /// The column text leaves the cursor at, wrapped as `wrapped-rows` wraps it.
+    pub fn column_after(mut cs: List<char>, mut col: i64, mut width: i64) -> i64 {
+        loop {
+            if null_p(cs) {
+                return col;
+            } else if char_eq_p(car(cs), '\n') {
+                (cs, col) = (cdr(cs), 7i64);
+                continue;
+            } else if i64_gt_eq(col, width) {
+                (cs, col) = (cdr(cs), 1i64);
+                continue;
+            } else {
+                (cs, col) = (cdr(cs), i64_plus(col, 1i64));
+                continue;
+            }
+        }
     }
 
     pub fn up_x(n: i64) -> () {
@@ -664,33 +1429,35 @@ pub mod session {
         }
     }
 
-    /// A row added to the transcript, above the draft.
-    pub fn printed_x(line: Str) -> () {
-        say_x(if get(live()) {
-            str_lit("\u{1b}[2K")
-        } else {
-            str_lit("")
-        });
-        say_x(line);
-        say_x(if get(live()) {
-            str_lit("\u{d}\n")
-        } else {
-            str_lit("\n")
-        });
-        set(rows(), i64_plus(get(rows()), i64_plus(1i64, i64_minus(wrapped_rows(string_chars(line), 0i64, get(screen_cols()), 1i64), 1i64))))
+    /// Rows added to the transcript, above the draft: each line of `text`.
+    pub fn printed_x(text: Str) -> () {
+        each_line_x(lambda1(move |line: Str| {
+            say_x(if get(live()) {
+                str_lit("\u{1b}[2K")
+            } else {
+                str_lit("")
+            });
+            say_x(line);
+            say_x(if get(live()) {
+                str_lit("\u{d}\n")
+            } else {
+                str_lit("\n")
+            });
+            set(rows(), i64_plus(get(rows()), wrapped_rows(string_chars(line), 0i64, get(screen_cols()), 1i64)))
+        }), lines_of(string_chars(text), nil::<char>(), nil::<Str>()))
     }
 
     pub fn plain_screen_x(now: i64) -> () {
         each_entry_x(lambda1(move |e: Entry| {
-            if string_eq_p(get(e.8), str_lit("")) {
+            if string_eq_p(get(e.9), str_lit("")) {
                 ()
             } else {
-                say_x(get(e.8));
-                set(e.8, str_lit(""))
+                say_x(get(e.9));
+                set(e.9, str_lit(""))
             };
-            if (not(unfinished_p(e)) && i64_lt(get(e.11), 0i64)) {
+            if (not(unfinished_p(e)) && i64_lt(get(e.12), 0i64)) {
                 let line = entry_line(e, now);
-                set(e.11, 0i64);
+                set(e.12, 0i64);
                 if string_eq_p(line, str_lit("")) {
                     ()
                 } else {
@@ -699,13 +1466,13 @@ pub mod session {
             } else {
                 ()
             }
-        }), oldest_first(get(entries()), nil::<Product_3num_4text_5typed_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn<i64, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>>>()))
+        }), oldest_first(get(entries()), nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after<i64, Str, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>, bool, Ref<i64>, i64, Ref<i64>>>()))
     }
 
     pub fn live_screen_x(now: i64) -> () {
-        let (es, before) = (oldest_first(get(entries()), nil::<Product_3num_4text_5typed_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn<i64, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>>>()), rev_to_string(get(written())));
+        let (es, before) = (oldest_first(get(entries()), nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after<i64, Str, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>, bool, Ref<i64>, i64, Ref<i64>>>()), rev_to_string(get(written())));
         set(written(), nil::<char>());
-        up_x(i64_minus(get(draft_rows()), 1i64));
+        up_x(get(cursor_row()));
         say_x(str_lit("\u{d}"));
         let moved = rev_to_string(get(written()));
         set(written(), nil::<char>());
@@ -728,26 +1495,26 @@ pub mod session {
     /// written new if it ended off the screen. The cursor is left at the
     /// draft's first row.
     pub fn entry_drawn_x(e: Entry, now: i64) -> () {
-        let out = get(e.8);
+        let out = get(e.9);
         if string_eq_p(out, str_lit("")) {
             ()
         } else {
-            set(e.8, str_lit(""));
+            set(e.9, str_lit(""));
             each_line_x(lambda1(move |l: Str| {
                 printed_x(string_append(str_lit("["), string_append(i64_to_string(e.0), string_append(str_lit("]│ "), l))))
             }), lines_of(string_chars(out), nil::<char>(), nil::<Str>()))
         };
         let line = entry_line(e, now);
-        let row = get(e.11);
+        let row = get(e.12);
         let up = i64_minus(get(rows()), row);
-        if string_eq_p(line, get(e.12)) {
+        if string_eq_p(line, get(e.13)) {
             ()
         } else if i64_lt(row, 0i64) {
-            set(e.11, get(rows()));
-            set(e.12, line);
+            set(e.12, get(rows()));
+            set(e.13, line);
             printed_x(line)
-        } else if i64_lt(up, i64_minus(get(screen_rows()), get(draft_rows()))) {
-            set(e.12, line);
+        } else if (i64_lt(up, i64_minus(get(screen_rows()), get(draft_rows()))) && not(has_char_in_p(line, '\n'))) {
+            set(e.13, line);
             up_x(up);
             say_x(str_lit("\u{d}\u{1b}[2K"));
             say_x(line);
@@ -756,39 +1523,43 @@ pub mod session {
         } else if unfinished_p(e) {
             ()
         } else {
-            set(e.11, get(rows()));
-            set(e.12, line);
+            set(e.12, get(rows()));
+            set(e.13, line);
             printed_x(line)
         }
     }
 
-    pub fn session_start_x(is_live: bool, height: i64, width: i64) -> Str {
+    pub fn session_start_x(is_live: bool, height: i64, width: i64, path: Str) -> Str {
         repl_start_x();
+        set(history_path(), path);
+        history_read_x();
         set(live(), is_live);
         set(screen_rows(), height);
         set(screen_cols(), width);
         if is_live {
-            string_append(repl_banner(), str_lit("\u{d}\n(each entry runs while you type the next, its value %k after it; ^C interrupts the newest, ^D leaves)\u{d}\n"))
+            string_append(repl_banner(), str_lit("\u{d}\n(each entry runs while you type the next, its value %k after it; ^C interrupts the newest, ,help for more)\u{d}\n"))
         } else {
             str_lit("")
         }
     }
 
     // Keys.
-    /// One key: a character typed, or ^C, ^D, Enter, Backspace; an escape
-    /// sequence (arrows: stage 2) read past.
+    /// One key: typed, an editing key, or part of an escape sequence (ESC
+    /// `[` digits and a final key: the arrows, Home, End, Delete).
     pub fn key_x(c: i64, now: i64) -> () {
         if i64_eq(get(escape()), 1i64) {
-            set(escape(), if i64_eq(c, 91i64) {
-                2i64
-            } else {
-                0i64
-            })
-        } else if i64_eq(get(escape()), 2i64) {
-            if (i64_lt(c, 64i64) || i64_gt(c, 126i64)) {
-                ()
+            if (i64_eq(c, 91i64) || i64_eq(c, 79i64)) {
+                set(escape(), 2i64);
+                set(escape_param(), 0i64)
             } else {
                 set(escape(), 0i64)
+            }
+        } else if i64_eq(get(escape()), 2i64) {
+            if (i64_gt_eq(c, 48i64) && i64_lt_eq(c, 57i64)) {
+                set(escape_param(), i64_plus(i64_star(get(escape_param()), 10i64), i64_minus(c, 48i64)))
+            } else {
+                set(escape(), 0i64);
+                escaped_x(c, now)
             }
         } else if i64_eq(c, 27i64) {
             set(escape(), 1i64)
@@ -798,50 +1569,65 @@ pub mod session {
             if string_eq_p(get(draft()), str_lit("")) {
                 set(leaving(), true)
             } else {
-                ()
+                deleted_x(get(cursor()), i64_plus(get(cursor()), 1i64))
             }
         } else if (i64_eq(c, 127i64) || i64_eq(c, 8i64)) {
-            let d = get(draft());
-            if string_eq_p(d, str_lit("")) {
-                ()
-            } else {
-                set(draft(), substring(d, int_lit(0), i64_to_int(i64_minus(string_length_i64(d), 1i64))));
-                set(draft_dirty(), true)
-            }
+            deleted_x(i64_minus(get(cursor()), 1i64), get(cursor()))
         } else if (i64_eq(c, 13i64) || i64_eq(c, 10i64)) {
-            let d = string_append(get(draft()), str_lit("\n"));
-            if repl_complete_p(d) {
-                finish_draft_x();
-                set(draft(), str_lit(""));
-                submit_x(d, now)
+            entered_x(now)
+        } else if i64_eq(c, 1i64) {
+            moved_x(line_start(get(draft()), get(cursor())))
+        } else if i64_eq(c, 5i64) {
+            moved_x(line_end(get(draft()), get(cursor())))
+        } else if i64_eq(c, 2i64) {
+            moved_x(i64_minus(get(cursor()), 1i64))
+        } else if i64_eq(c, 6i64) {
+            moved_x(i64_plus(get(cursor()), 1i64))
+        } else if i64_eq(c, 11i64) {
+            let e = line_end(get(draft()), get(cursor()));
+            deleted_x(get(cursor()), if i64_eq(e, get(cursor())) {
+                i64_plus(e, 1i64)
             } else {
-                set(draft(), d);
-                set(draft_dirty(), true)
-            }
+                e
+            })
+        } else if i64_eq(c, 21i64) {
+            deleted_x(line_start(get(draft()), get(cursor())), get(cursor()))
+        } else if i64_eq(c, 23i64) {
+            deleted_x(word_start(get(draft()), get(cursor())), get(cursor()))
+        } else if i64_eq(c, 16i64) {
+            history_moved_x(1i64)
+        } else if i64_eq(c, 14i64) {
+            history_moved_x(-1i64)
+        } else if i64_eq(c, 9i64) {
+            completed_x(now)
+        } else if i64_eq(c, 12i64) {
+            say_x(str_lit("\u{1b}[H\u{1b}[2J"));
+            set(rows(), i64_plus(get(rows()), get(screen_rows())));
+            set(cursor_row(), 0i64);
+            set(draft_dirty(), true)
         } else if i64_lt(c, 32i64) {
             ()
         } else {
-            set(draft(), string_append(get(draft()), char_to_string(integer_to_char(i64_to_int(c)))));
-            set(draft_dirty(), true)
+            inserted_x(char_to_string(integer_to_char(i64_to_int(c))))
         }
     }
 
     /// The entry being checked refused (the Rust caught the failure).
     pub fn refused_x(message: Str, now: i64) -> () {
         let es = get(entries());
-        if (null_p(es) || not(i64_eq(get(car(es).5), st_checking()))) {
+        if (null_p(es) || not(i64_eq(get(car(es).6), st_checking()))) {
             ()
         } else {
-            set(car(es).5, st_refused());
-            set(car(es).7, message);
-            set(car(es).10, now)
+            set(car(es).6, st_refused());
+            set(car(es).8, message);
+            set(car(es).11, now)
         }
     }
 
     // Running.
     /// The entry to run a slice of, by turns, or -1.
     pub fn next_task() -> i64 {
-        let ready = entries_where(&may_run_p, oldest_first(get(entries()), nil::<Product_3num_4text_5typed_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn<i64, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>>>()));
+        let ready = entries_where(&may_run_p, oldest_first(get(entries()), nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after<i64, Str, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>, bool, Ref<i64>, i64, Ref<i64>>>()));
         let last = get(last_run());
         let after = entries_where(lambda1(move |e: Entry| {
             i64_gt(e.0, last)
@@ -863,8 +1649,8 @@ pub mod session {
         } else {
             let e = car(found);
             set(last_run(), k);
-            if i64_eq(get(e.5), st_waiting()) {
-                set(e.5, st_running());
+            if i64_eq(get(e.6), st_waiting()) {
+                set(e.6, st_running());
                 start_top_x(e)
             } else {
                 ()
@@ -872,18 +1658,23 @@ pub mod session {
             set(task_slot(), k);
             set(fuel(), slice_steps());
             set(capturing(), true);
-            let w = if null_p(get(e.6)) {
+            let w = if null_p(get(e.7)) {
                 w_unit()
             } else {
                 resume(k)
             };
+            set(e.15, i64_plus(get(e.15), i64_minus(slice_steps(), get(fuel()))));
             set(fuel(), -1i64);
             set(capturing(), false);
             taken_output_x(e);
-            if i64_eq(w, w_paused()) {
-                ()
-            } else {
+            if not(i64_eq(w, w_paused())) {
                 top_ended_x(e, w, now)
+            } else if (i64_gt_eq(get(step_limit()), 0i64) && i64_gt(get(e.15), get(step_limit()))) {
+                ended_x(e, st_failed(), now);
+                set(e.8, string_append(str_lit("! the step limit, "), string_append(i64_to_string(get(step_limit())), str_lit(", reached (,step-limit)"))));
+                parked_cleared_x(k)
+            } else {
+                ()
             }
         }
     }
@@ -898,9 +1689,8 @@ pub mod session {
         } else {
             let e = car(found);
             taken_output_x(e);
-            set(e.5, st_failed());
-            set(e.7, string_append(str_lit("! evaluation failed: "), message));
-            set(e.10, now);
+            ended_x(e, st_failed(), now);
+            set(e.8, string_append(str_lit("! evaluation failed: "), message));
             parked_cleared_x(k)
         }
     }
@@ -938,7 +1728,7 @@ pub mod session {
 
     /// Whether to leave: ^D (or the input's end) asked, and no entry unfinished.
     pub fn over_p() -> bool {
-        (get(leaving()) && not(some_entry_p(&unfinished_p, get(entries()))))
+        (get(quitting()) || (get(leaving()) && not(some_entry_p(&unfinished_p, get(entries())))))
     }
 
     pub fn leave_x() -> () {

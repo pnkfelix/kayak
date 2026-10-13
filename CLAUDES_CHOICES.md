@@ -1951,3 +1951,27 @@ foundation, and an entry's line live while the next prompt is already up
   `session.kfx`: kfx's Rust for a file and a module of one name is
   ambiguous (TODO §27).
 
+## C95. The REPL's editing and commands, as Fixpt's (2026-10-13)
+
+Stages 2 and 3 of `docs/research/repl.md`, in `live-repl.kfx`:
+- **Editing** as Fixpt's `lineedit.rs`: a cursor in the draft, which is
+  one buffer however many lines; left and right, ^B ^F, Home ^A, End ^E,
+  ^K (to the line's end, or its newline), ^U (to its start), ^W (a word
+  back), Delete and ^D in a draft, Backspace; up and down move between
+  the draft's lines, and at its first or last through the history (^P
+  ^N too), the draft put aside meanwhile; ^L clears the screen; Enter
+  gives the draft if it is whole, else is a newline where the cursor is.
+- **History**: the entries given, in `~/.kayak_fx26_history` (a live
+  session's only, as Fixpt's `~/.fixpt_fx26_history`; not a piped or
+  scripted one), a line each, newlines escaped, the last 500.
+- **Tab** completes the name before the cursor among the checker's as
+  far as they agree, and says them if that adds nothing.
+- **Commands**, each said as an entry's line (so that a refusal finds it
+  as an entry's, and the screen has one way of writing): `,help [NAME]`,
+  `,type E` (checked, not run), `,time E` (its steps and collections
+  too), `,load FILE` (one entry), `,pending`, `,cancel K`, `,step-limit
+  [N|none]` (an entry that takes more fails, its slot dropped),
+  `,apropos TEXT`, `,quit` (now; ^D waits for the entries).
+- **An entry of several forms** says its definitions' lines, then the
+  last expression's value; `%k` is that value.
+

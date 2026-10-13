@@ -1204,3 +1204,10 @@ parked registers (`vm.kfx`), the Rust shell as a shuttle of bytes and
 time (`crates/kayak-fx26/src/main.rs`), `--keys` sessions in virtual
 time; `tests/repl/`, `scripts/repl-sessions.py` in the check.
 
+## The REPL's editing and commands (2026-10-13)
+
+C95: the draft edited as Fixpt's REPL edits one, history in
+`~/.kayak_fx26_history`, Tab completing names; `,help`, `,type`, `,time`,
+`,load`, `,pending`, `,cancel`, `,step-limit`, `,apropos`, `,quit`;
+`tests/repl/editing.keys`, `commands.keys`.
+

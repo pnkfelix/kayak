@@ -1,0 +1,17 @@
+# Fixpt's commands, each written as an entry's line.
+0 ,help\r
+100 ,type (+ 1 2)\r
+200 ,time (+ 1 2)\r
+300 ,apropos string-app\r
+400 ,help string-append\r
+500 ,step-limit 5000\r
+600 (define forever (subr (maxeff spin (read @globals)) (int) int) (lambda (n) (forever (+ n 1))))\r
+700 (forever 0)\r
+800 ,step-limit none\r
+900 (forever 0)\r
+1000 ,pending\r
+1100 ,cancel 4\r
+1200 ,bogus\r
+1300 ,load tests/repl/load-me.fx\r
+1400 (+ %4 1)\r
+1500 ,quit\r

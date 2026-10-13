@@ -1,0 +1,21 @@
+kayak-fx26 0.1 — FX-26, the engine written in KFX (an interpreter over a heap of its own, collected)
+(each entry runs while you type the next, its value %k after it; ^C interrupts the newest, ,help for more)
+[Jfx26> (define fib-of (subr (maxeff spin (read @globals)) (int) int) (lambda (n) (if (< n 2) n (+ (fib-of (- n 1)) (fib-of (- n 2))))))
+[2K[1] fib-of : (subr (maxeff spin (read @globals)) (int) int) ! pure
+[Jfx26> [Jfx26> (fib-of[Jfx26> (fib-of 10)
+[2K[2] 55 : int ! (maxeff (read @globals) spin (read (globals fib-of)))
+[Jfx26> [Jfx26> (+ 1 2)
+[2K[3] 3 : nat ! pure
+[Jfx26> [Jfx26> (+ 1 2)
+[2K[4] 3 : nat ! pure
+[Jfx26> [Jfx26> (+ 1
+     | [1A[Jfx26> (+ 1
+     | 2)
+[2K[5] 3 : nat ! pure
+[Jfx26> [Jfx26> (* 2 3)
+[2K[6] 6 : int ! pure
+[Jfx26> [Jfx26> (* 2 3)
+[2K[7] 6 : int ! pure
+[Jfx26> [Jfx26> (+ 1 1 )
+[2K[8] 2 : nat ! pure
+[Jfx26> 

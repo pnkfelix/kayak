@@ -27,10 +27,10 @@ def main():
     for f in names:
         path = os.path.join(DIR, f)
         if f.endswith(".keys"):
-            r = subprocess.run([engine, "--keys", path], capture_output=True, timeout=120)
+            r = subprocess.run([engine, "--keys", path], capture_output=True, timeout=120, cwd=ROOT)
         else:
             with open(path, "rb") as given:
-                r = subprocess.run([engine, "repl"], stdin=given, capture_output=True, timeout=120)
+                r = subprocess.run([engine, "repl"], stdin=given, capture_output=True, timeout=120, cwd=ROOT)
         out = os.path.join(DIR, os.path.splitext(f)[0] + ".out")
         if r.returncode != 0:
             failed.append(f"{f}: status {r.returncode}: {r.stderr.decode(errors='replace')[-300:]}")

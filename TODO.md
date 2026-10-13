@@ -456,10 +456,12 @@ Stage 1 done: entries run while the next is typed, each a task on the
 machine (fuel, parked registers), a live line rewritten in place, `%k`,
 waiting on a pending `%k`, ^C, effects deciding which run together;
 scripted sessions (`tests/repl/`, `scripts/repl-sessions.py`).
-- Stage 2, editing as Fixpt's (`fixpt/crates/fixpt-cli/src/lineedit.rs`):
-  arrows, ^A ^E ^K ^U ^W, history in a file, completion of names.
-- Stage 3, commands as Fixpt's: `,help`, `,type`, `,time`, `,load`,
-  `,quit`, `,step-limit`, `,apropos`, `,pending`, `,cancel K`, `,wait K`.
+Stages 2 and 3 done (C95): editing, history, Tab; Fixpt's commands.
+- Fixpt's commands not yet: `,fits TYPE`, `,returns TYPE`, `,help` as a
+  hole inside a form, `,disassemble`, `,list-outdated` and
+  `,rerun-outdated` (redefinition at another type), `,redefine b|r`.
+- Per-keystroke checking of the draft (Fixpt's notes as you type,
+  Coopt's draft task), now that a check is cheap beside a run.
 - Stage 4: `load-module` in the REPL; an entry's output beside its line.
 - Stage 5: behaviors (FrTime), a design first.
 - A refusal is caught by the Rust as a failure, so the checker's state

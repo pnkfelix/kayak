@@ -1,5 +1,5 @@
 kayak-fx26 0.1 — FX-26, the engine written in KFX (an interpreter over a heap of its own, collected)
-(each entry runs while you type the next, its value %k after it; ^C interrupts the newest, ^D leaves)
+(each entry runs while you type the next, its value %k after it; ^C interrupts the newest, ,help for more)
 [Jfx26> (define fib (subr (maxeff spin (read @globals)) (int) int) (lambda (n) (if (< n 2) n (+ (fib (- n 1)) (fib (- n 2))))))
 [2K[1] fib : (subr (maxeff spin (read @globals)) (int) int) ! pure
 [Jfx26> [Jfx26> (fib 25)
