@@ -28,7 +28,7 @@ thread_local! {
 }
 
 /// `f` run; a failure's message if it fails.
-fn guarded(f: impl FnOnce()) -> Result<(), String> {
+fn guarded<T>(f: impl FnOnce() -> T) -> Result<T, String> {
     std::panic::catch_unwind(std::panic::AssertUnwindSafe(f))
         .map_err(|_| FAILURE.with(|m| std::mem::take(&mut *m.borrow_mut())))
 }
@@ -79,11 +79,21 @@ fn key(c: u8, now: i64) {
     }
 }
 
-/// The draft checked as it is typed (and run early, if it may be), a
-/// refusal caught.
+/// The draft checked as it is typed (and run early, if it may be), a try
+/// at a time while the session has another to make, each refusal caught.
+/// `KAYAK_SPEC_DEBUG` set, each refusal is written to stderr.
 fn speculate(now: i64) {
-    if let Err(message) = guarded(|| s::speculate_x(now)) {
-        s::speculation_refused_x(leak_string(message), now);
+    loop {
+        match guarded(|| s::speculate_x(now)) {
+            Ok(true) => {}
+            Ok(false) => return,
+            Err(message) => {
+                if std::env::var_os("KAYAK_SPEC_DEBUG").is_some() {
+                    eprintln!("speculation refused: {message}");
+                }
+                s::speculation_refused_x(leak_string(message), now)
+            }
+        }
     }
 }
 

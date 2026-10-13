@@ -78,6 +78,34 @@
 
       (define spec-key (ref string @h) (new ""))
 
+      "What the hints are found from (C97): the tries made so far (`phase`: 1
+       the draft checked, 2 with holes, 4 done); the texts with a hole not
+       yet tried, and whether one is being tried; where
+       the hole is; the innermost open list's operator, if a name, and the
+       hole's place in that list (0, the operator's own); the hint found, and
+       the narrowest refusal of a list around the hole and where it is; and
+       the subform a refusal said is wrong, to underline (`from` = `to`: none)."
+
+      (define spec-phase (ref i64 @h) (new 4))
+
+      (define hole-texts (ref strings @h) (new nil))
+
+      (define trying-holes (ref bool @h) (new #f))
+
+      (define hole-at (ref i64 @h) (new -1))
+
+      (define hole-op (ref string @h) (new ""))
+
+      (define hole-place (ref i64 @h) (new 0))
+
+      (define around (ref string @h) (new ""))
+
+      (define around-at (ref i64 @h) (new -1))
+
+      (define under-from (ref i64 @h) (new 0))
+
+      (define under-to (ref i64 @h) (new 0))
+
       (define spec-limit i64 2000000)
 
       (define make-entry (subr running (i64 string string string bool (listof i64 acyclic) i64 (listof i64 acyclic) string bool i64) entry)
@@ -326,6 +354,8 @@
                 (if (some-entry? (lambda ((e entry)) (i64< (get (extract e row)) 0)) (get entries)) (live-screen! now) #u)
                 (up! (get cursor-row))
                 (set note "")
+                (set under-from 0)
+                (set under-to 0)
                 (set cursor (string-length-i64 (get draft)))
                 (draw-draft! (get draft))
                 (say! "\r\n")
@@ -789,12 +819,21 @@ an entry naming one that has not ended waits for it.")
                   (else (wrapped-rows (cdr cs) (i64+ col 1) width n))))))
 
       (define-rec
-        (prompted (subr kfx ((listof char acyclic) chars) chars)
-          (lambda (cs acc)
-            "The draft as drawn: each line after the first after `     | `."
-            (cond ((null? cs) acc)
-                  ((char=? (car cs) #\newline) (prompted (cdr cs) (put "\r\n     | " acc)))
-                  (else (prompted (cdr cs) (cons (car cs) acc)))))))
+        (prompted (subr kfx ((listof char acyclic) i64 i64 i64 chars) chars)
+          (lambda (cs i from to acc)
+            "The draft as drawn: each line after the first after `     | `; the
+             characters `from` to `to` underlined, a subform a refusal is about."
+            (let ((marked (cond ((i64>= from to) acc)
+                                ((i64= i from) (put "\x1b;[4m" acc))
+                                ((i64= i to) (put "\x1b;[24m" acc))
+                                (else acc))))
+              (cond ((null? cs) marked)
+                    ((char=? (car cs) #\newline)
+                     (prompted (cdr cs) (i64+ i 1) from to
+                               (if (and (i64>= i from) (i64< i to))
+                                   (put "\x1b;[4m" (put "\r\n     | " (put "\x1b;[24m" marked)))
+                                   (put "\r\n     | " marked))))
+                    (else (prompted (cdr cs) (i64+ i 1) from to (cons (car cs) marked))))))))
 
       (define draw-draft! (subr running (string) unit)
         (lambda (d)
@@ -804,7 +843,7 @@ an entry naming one that has not ended waits for it.")
             (begin
               (say! "\r\x1b;[J")
               (say! "fx26> ")
-              (set written (prompted cs (get written)))
+              (set written (prompted cs 0 (get under-from) (get under-to) (get written)))
               (if (string=? shown "")
                   #u
                   (begin (say! "\r\n") (say! (if (get note-error) "\x1b;[31m" "\x1b;[2m")) (say! shown) (say! "\x1b;[0m")))
@@ -1011,10 +1050,6 @@ an entry naming one that has not ended waits for it.")
           (lambda (x xs) (cond ((null? xs) #f) ((i64= x (car xs)) #t) (else (i64-member? x (cdr xs)))))))
 
       (define-rec
-        (nth-ty (subr kfx ((listof ty acyclic) i64) ty)
-          (lambda (ts i) (if (i64= i 0) (car ts) (nth-ty (cdr ts) (i64- i 1))))))
-
-      (define-rec
         (quoted-at? (subr kfx (string i64) bool)
           (lambda (s i)
             "Whether the list at `i` is quoted data: a quote before it."
@@ -1022,38 +1057,106 @@ an entry naming one that has not ended waits for it.")
                   ((char-whitespace? (string-ref-i64 s (i64- i 1))) (quoted-at? s (i64- i 1)))
                   (else (i64= (char->i64 (string-ref-i64 s (i64- i 1))) 39))))))
 
-      (define argument-hint (subr running (string i64) string)
-        (lambda (op k)
-          "What argument `k` of `op` must be, if `op` names a subroutine."
-          (let ((found (find-bind op (cv-binds (get repl-cv)))))
-            (if (null? found)
-                ""
-                (tagcase (car found)
-                  (bind (n sc w)
-                    (tagcase sc
-                      (scheme (tv t)
-                        (tagcase t
-                          (ty-proc (es ps r)
-                            (if (i64> k (size ps))
-                                (string-append op (string-append " takes " (string-append (i64->string (size ps)) (if (i64= (size ps) 1) " argument" " arguments"))))
-                                (string-append "argument " (string-append (i64->string k) (string-append " of " (string-append op (string-append " wants " (show-ty (new-state) (nth-ty ps (i64- k 1))))))))))
-                          (else other ""))))))))))
+      (define-rec
+        (list-end (subr kfx ((listof char acyclic) i64 i64 bool bool) i64)
+          (lambda (cs i depth str comment)
+            "Where the list begun at the first of `cs` (at `i`) ends, past its
+             close; or the text's end."
+            (cond ((null? cs) i)
+                  (str
+                   (cond ((char=? (car cs) #\\) (if (null? (cdr cs)) (i64+ i 1) (list-end (cdr (cdr cs)) (i64+ i 2) depth #t #f)))
+                         ((char=? (car cs) #\") (list-end (cdr cs) (i64+ i 1) depth #f #f))
+                         (else (list-end (cdr cs) (i64+ i 1) depth #t #f))))
+                  (comment (list-end (cdr cs) (i64+ i 1) depth #f (not (char=? (car cs) #\newline))))
+                  ((char=? (car cs) #\") (list-end (cdr cs) (i64+ i 1) depth #t #f))
+                  ((i64= (char->i64 (car cs)) 59) (list-end (cdr cs) (i64+ i 1) depth #f #t))
+                  ((and (char=? (car cs) #\#) (not (null? (cdr cs))) (char=? (car (cdr cs)) #\\) (not (null? (cdr (cdr cs)))))
+                   (list-end (cdr (cdr (cdr cs))) (i64+ i 3) depth #f #f))
+                  ((char=? (car cs) #\() (list-end (cdr cs) (i64+ i 1) (i64+ depth 1) #f #f))
+                  ((char=? (car cs) #\)) (if (i64<= depth 1) (i64+ i 1) (list-end (cdr cs) (i64+ i 1) (i64- depth 1) #f #f)))
+                  (else (list-end (cdr cs) (i64+ i 1) depth #f #f))))))
 
-      (define hint-at (subr running (string i64 (listof i64 acyclic)) string)
+      (define-rec
+        (name-end (subr kfx (string i64) i64)
+          (lambda (s i) (if (and (i64< i (string-length-i64 s)) (name-char? (string-ref-i64 s i))) (name-end s (i64+ i 1)) i))))
+
+      (define datum-end (subr kfx (string i64) i64)
+        (lambda (s at)
+          "Where the datum written at `at` ends: a list at its close, a string at
+           its quote, a name or number at the delimiter after it."
+          (cond ((i64>= at (string-length-i64 s)) at)
+                ((or (char=? (string-ref-i64 s at) #\() (char=? (string-ref-i64 s at) #\"))
+                 (list-end (string-chars (cut s at (string-length-i64 s))) at 0 #f #f))
+                (else (name-end s (i64+ at 1))))))
+
+      (define-rec
+        (closers-filled (subr kfx (i64 i64 i64) string)
+          (lambda (i n filled)
+            "The closers of `n` open lists from the innermost (`i` 0), a filler
+             before each if `filled` is -1, else before list `filled`'s alone."
+            (if (i64>= i n)
+                ""
+                (string-append (if (or (i64= filled -1) (i64= filled i)) " %fill)" ")") (closers-filled (i64+ i 1) n filled))))))
+
+      (define-rec
+        (each-filled (subr kfx (string i64 i64) strings)
+          (lambda (text i n)
+            "`text` closed with a filler in list `i` alone, for each list around
+             the innermost."
+            (if (i64>= i n) nil (cons (string-append text (closers-filled 0 n i)) (each-filled text (i64+ i 1) n))))))
+
+      (define holes-set! (subr running (string i64 (listof i64 acyclic)) unit)
         (lambda (text kept open)
-          "The hint at the cursor: what the next argument of the innermost list
-           open must be, if it is a call of a subroutine the checker knows."
+          "The draft with a hole where the next item of its innermost open list
+           goes: closed, and with a filler after the hole in each list around it,
+           so that a form missing its later parts still reaches the hole; and
+           what the hole is in that list. None if no list is open, or it is
+           quoted data. (A `let`'s binding wants a filler for its body, and
+           none in its list of bindings; an `if`'s, for its branch.)"
           (if (or (null? open) (quoted-at? text (car open)))
-              ""
-              (let ((forms (read-all (string-chars (string-append (cut text (car open) kept) ")")) "<hint>" 1)))
-                (if (null? forms)
-                    ""
-                    (let ((xs (items (car forms))))
-                      (if (null? xs)
-                          ""
-                          (tagcase (car xs)
-                            (sym (op f p) (argument-hint op (size xs)))
-                            (else other "")))))))))
+              (begin (set hole-texts nil) (set hole-at -1))
+              (let* ((typed (trimmed-end (cut text 0 kept)))
+                     (inner (read-all (string-chars (string-append (cut text (car open) kept) ")")) "<hint>" 1))
+                     (xs (if (null? inner) nil (items (car inner)))))
+                (begin
+                  ;; Bare; a filler after the hole in every list; in one list around it alone.
+                  (set hole-texts (cons (string-append typed (string-append " %hole" (closers (size open))))
+                                        (cons (string-append typed (string-append " %hole" (closers-filled 0 (size open) -1)))
+                                              (each-filled (string-append typed " %hole") 1 (size open)))))
+                  (set hole-at (i64+ (string-length-i64 typed) 1))
+                  (set hole-place (size xs))
+                  (set hole-op (if (null? xs) "" (tagcase (car xs) (sym (op f p) (if (keyword? op) "" op)) (else other "")))))))))
+
+      (define hole-tried! (subr running (string) unit)
+        (lambda (text)
+          "A text with a hole checked: the checker refuses at the hole, saying
+           what goes there (`speculation-refused!`), or at a list around it."
+          (if (string=? text "") #u (begin (checked-all (get repl-cv) (read-all (string-chars text) "<draft>" 1)) #u))))
+
+      (define hint-words (subr running (string string) string)
+        (lambda (what argument)
+          "What the hole wants, as the note says it: a call's `argument` (`argument
+           2`, if the checker said it is one), with its operator if a name; else
+           what goes next."
+          (let ((want "an expression of type "))
+            (cond ((and (has-prefix? what want) (not (string=? argument "")))
+                   (string-append argument (string-append (if (string=? (get hole-op) "") "" (string-append " of " (get hole-op)))
+                                                          (string-append " wants " (cut what (string-length-i64 want) (string-length-i64 what))))))
+                  ((and (string=? what "an expression") (not (string=? argument "")))
+                   (string-append argument (if (string=? (get hole-op) "") ": anything" (string-append " of " (string-append (get hole-op) ": anything")))))
+                  ((and (has-prefix? what "nothing, the call has its ") (not (string=? (get hole-op) "")))
+                   (string-append (get hole-op) (string-append " takes " (cut what 26 (string-length-i64 what)))))
+                  ;; An operator could be anything; saying so says nothing.
+                  ((and (string=? what "an expression") (i64= (get hole-place) 0)) "")
+                  (else (string-append "next: " what))))))
+
+      (define hints-said! (subr running () unit)
+        (lambda ()
+          "No hole reached: the narrowest refusal of a list around it, if any,
+           says what that list must be."
+          (begin
+            (set spec-phase 4)
+            (if (string=? (get around) "") #u (noted! (string-append "next: " (get around)) #f)))))
 
       (define noted! (subr running (string bool) unit)
         (lambda (text error) (begin (set note text) (set note-error error) (set draft-dirty #t))))
@@ -1087,6 +1190,11 @@ an entry naming one that has not ended waits for it.")
             (set speculated #f)
             (set spec-key "")
             (set spec-waits #f)
+            (set spec-phase 4)
+            (set around "")
+            (set around-at -1)
+            (set under-from 0)
+            (set under-to 0)
             (if (string=? (get note) "") #u (noted! "" #f)))))
 
       (define-rec
@@ -1260,45 +1368,92 @@ an entry naming one that has not ended waits for it.")
                 (set (extract (car es) shown) message)
                 (set (extract (car es) ended) now))))))
 
-    (define speculate! (subr running (i64) unit)
+    (define speculate! (subr running (i64) bool)
       (lambda (now)
-        "The draft checked as it is typed, once for each text it has been, and
-         run if finished and its effect allows: its note. A refusal fails, and
-         the Rust gives it to `speculation-refused!`. Not in plain mode, nor
-         for a command's line."
-        (if (or (not (get live)) (get speculated))
-            #u
-            (let* ((d (get draft))
-                   (trimmed (trimmed-start (string-chars d)))
-                   (closing (if (and (not (null? trimmed)) (char=? (car trimmed) #\,)) (not-closable) (closed-text d)))
-                   (key (tagcase closing
-                          (not-closable () "")
-                          (closed-off (closed kept open finished) (string-append (if finished "f|" "u|") (trimmed-end closed))))))
-              (if (and (not (string=? key "")) (string=? key (get spec-key)))
-                  (set speculated #t)
-                  (begin
-                    (speculation-dropped!)
-                    (set speculated #t)
-                    (set spec-key key)
-                    (tagcase closing
-                      (not-closable () #u)
-                      (closed-off (closed kept open finished)
-                        (begin
-                          (set spec-kept kept)
-                          (set spec-open open)
-                          (set spec-finished finished)
-                          (noted! (hint-at d kept open) #f)
-                          (speculated-forms! (read-all (string-chars closed) "<draft>" 1) finished))))))))))
+        "The draft checked as it is typed, a try at a time, while this says
+         there is another to make: checked as it is, once for each text it has
+         been (and run, if finished and its effect allows); then, if a list is
+         open, with a hole where its next item goes, and with fillers after
+         that, until the checker says what goes there (C97). A try that is
+         refused fails, and the Rust gives the refusal to
+         `speculation-refused!`. Not in plain mode, nor for a command's line."
+        (cond ((not (get live)) #f)
+              ((not (get speculated)) (begin (draft-tried! now) (i64< (get spec-phase) 4)))
+              ((and (i64< (get spec-phase) 4) (not (null? (get hole-texts))))
+               (let ((text (car (get hole-texts))))
+                 (begin
+                   (set spec-phase 2)
+                   (set hole-texts (cdr (get hole-texts)))
+                   (set trying-holes #t)
+                   (hole-tried! text)
+                   (set trying-holes #f)
+                   #t)))
+              ((i64< (get spec-phase) 4) (begin (hints-said!) #f))
+              (else #f))))
+
+    (define draft-tried! (subr running (i64) unit)
+      (lambda (now)
+        (let* ((d (get draft))
+               (trimmed (trimmed-start (string-chars d)))
+               (closing (if (and (not (null? trimmed)) (char=? (car trimmed) #\,)) (not-closable) (closed-text d)))
+               (key (tagcase closing
+                      (not-closable () "")
+                      (closed-off (closed kept open finished) (string-append (if finished "f|" "u|") (trimmed-end closed))))))
+          (if (and (not (string=? key "")) (string=? key (get spec-key)))
+              (set speculated #t)
+              (begin
+                (speculation-dropped!)
+                (set speculated #t)
+                (set spec-key key)
+                (tagcase closing
+                  (not-closable () #u)
+                  (closed-off (closed kept open finished)
+                    (begin
+                      (set spec-kept kept)
+                      (set spec-open open)
+                      (set spec-finished finished)
+                      (holes-set! d kept open)
+                      ;; Holes next, unless this is finished or refused for what is.
+                      (set spec-phase (if (or finished (null? (get hole-texts))) 4 1))
+                      (speculated-forms! (read-all (string-chars closed) "<draft>" 1) finished)))))))))
 
     (define speculation-refused! (subr running (string i64) unit)
       (lambda (message now)
-        "The draft refused (the Rust caught the failure): said, if it is about
-         what has been finished; else the hint stays."
-        (let ((at (refused-offset message)))
-          (if (or (get spec-finished)
-                  (and (i64>= at 0) (i64< at (get spec-kept)) (not (i64-member? at (get spec-open)))))
-              (noted! (refusal-words message) #t)
-              #u))))
+        "A try refused (the Rust caught the failure). The draft as it is: said,
+         its subform underlined, if it is about what has been finished. With a
+         hole: what goes there, if the checker reached it; else, if about a
+         list around the hole, kept if the narrowest so far."
+        (let ((at (refused-offset message)) (words (refusal-words message)) (holes (get trying-holes)))
+          (begin
+          (set trying-holes #f)
+          (cond ((not holes)
+                 (if (or (get spec-finished)
+                         (and (i64>= at 0) (i64< at (get spec-kept)) (not (i64-member? at (get spec-open)))))
+                     (begin
+                       (set spec-phase 4)
+                       (if (i64>= at 0)
+                           (begin (set under-from at) (set under-to (datum-end (get draft) at)))
+                           #u)
+                       (noted! words #t))
+                     #u))
+                ;; With the hole, the closing off no longer breaks the forms around
+                ;; it, so an error in a finished subform may come out now.
+                ((and (i64>= at 0) (i64< at (get spec-kept)) (not (i64-member? at (get spec-open))))
+                 (begin
+                   (set spec-phase 4)
+                   (set under-from at)
+                   (set under-to (datum-end (get draft) at))
+                   (noted! words #t)))
+                                ((has-prefix? words "the hole: ")
+                 (begin (set spec-phase 4) (noted! (hint-words (cut words 10 (string-length-i64 words)) "") #f)))
+                ;; A call's argument: `in argument K: the hole: …`.
+                ((and (has-prefix? words "in argument ") (i64>= (int->i64 (string-search words ": the hole: " 0)) 0))
+                 (let ((at (int->i64 (string-search words ": the hole: " 0))))
+                   (begin (set spec-phase 4) (noted! (hint-words (cut words (i64+ at 12) (string-length-i64 words)) (cut words 3 at)) #f))))
+                ((and (i64-member? at (get spec-open)) (i64> at (get around-at))
+                      (i64< (int->i64 (string-search words "%hole" 0)) 0) (i64< (int->i64 (string-search words "%fill" 0)) 0))
+                 (begin (set around words) (set around-at at)))
+                (else #u))))))
 
     "Running."
 

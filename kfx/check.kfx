@@ -1740,6 +1740,45 @@
     "`v`, its refusals said at offset `pos`, a datum inside the list it checks."
     (tagcase v (cv (bs ds als es here group file line fs tv at) (cv bs ds als es here group file line fs tv pos)))))
 
+(define-rec
+  (tys-first (subr kfx ((listof ty acyclic) i64) (listof ty acyclic))
+    (lambda (ts n) (if (or (null? ts) (i64<= n 0)) nil (cons (car ts) (tys-first (cdr ts) (i64- n 1)))))))
+
+(define-rec
+  (words-joined (subr kfx (strings string) string)
+    (lambda (xs between)
+      (cond ((null? xs) "")
+            ((null? (cdr xs)) (car xs))
+            (else (string-append (car xs) (string-append between (words-joined (cdr xs) between))))))))
+
+(define draft-hole? (subr kfx (sexp) bool)
+  (lambda (e)
+    "Whether `e` is the hole the REPL puts where the next item of a draft
+     goes, to ask what may go there (live-repl.kfx, C97): `%hole`, in a
+     `<draft>` only, so that no file's meaning changes."
+    (tagcase e (sym (n f p) (and (string=? n "%hole") (string=? f "<draft>"))) (else other #f))))
+
+(define said-in (subr kfx (cv string) cv)
+  (lambda (v here)
+    "`v`, its refusals said to be in `here`."
+    (tagcase v (cv (bs ds als es h group file line fs tv at) (cv bs ds als es here group file line fs tv at)))))
+
+(define-rec
+  (through-hole (subr kfx (sexps) sexps)
+    (lambda (xs)
+      "`xs` to the REPL's hole, which ends them: what follows it fills a
+       form's later parts, and is no call's argument."
+      (cond ((null? xs) nil)
+            ((draft-hole? (car xs)) (list (car xs)))
+            (else (cons (car xs) (through-hole (cdr xs))))))))
+
+(define in-draft (subr kfx (cv sexp) cv)
+  (lambda (v e)
+    "`v`, its refusals said at `e`, if `e` is in a REPL's draft: where an
+     argument is refused, underlined (C97). Elsewhere `v`, so that no fact's
+     place changes."
+    (if (string=? (datum-file e) "<draft>") (at-offset v (datum-pos e)) v)))
+
 (define operator-char? (subr kfx (char) bool)
   (lambda (c) (has-char-in? "?!<>=+*/%" c)))
 
@@ -2108,8 +2147,10 @@
   (lambda (h xs)
     "Whether a control form has the parts it needs, before they are taken."
     (let ((lists? (lambda ((x sexp) (n i64) (exact bool))
-                    (and (tagcase x (lst (ys f l p) #t) (else other #f))
-                         (if exact (i64= (size (items x)) n) (not (i64< (size (items x)) n)))))))
+                    ;; A REPL's hole stands for a part not yet typed (C97).
+                    (or (draft-hole? x)
+                        (and (tagcase x (lst (ys f l p) #t) (else other #f))
+                             (if exact (i64= (size (items x)) n) (not (i64< (size (items x)) n))))))))
       (cond ((string=? h "if") (i64= (size xs) 3))
             ((string=? h "cond") (and (not (null? xs)) (not (any? (lambda ((c sexp)) (not (lists? c 2 #f))) xs))))
             ((or (string=? h "let") (string=? h "let*"))

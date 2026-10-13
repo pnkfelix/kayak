@@ -1,0 +1,27 @@
+# Hints as you type (C97), Fixpt's cases: what the argument at the end
+# must be, from the operator's type and the arguments before it (also a
+# local procedure's); a call with all its arguments; a tagcase's arms not
+# taken yet; a sum's tags, then the value's type; a branch's type from
+# around it; an error in a finished argument that the closing off hid.
+0 (define-type t (sumof (x int) (y int)))\r
+5 (define v (the t (sum x 3)))\r
+10 (+ 1 
+20 \x15(car 
+30 \x15(cons 1 
+40 \x15(set-car! (cons 1 #t) 
+50 \x15(tagcase v 
+60 \x15(tagcase v (x n n) 
+70 \x15(tagcase v (x n n) (y m m) 
+80 \x15(the t (sum 
+90 \x15(the t (sum x 
+100 \x15(the int (if #t 1 
+110 \x15(the int (tagcase v (x n n) (y m 
+120 \x15(+ 1 2 
+130 \x15(lambda (
+140 \x15(let ((a 
+150 \x15(the (subr 
+160 \x15(+ 1 #t 
+170 \x15(+ 1 (car 5) 
+180 \x15(string-append "abc" 5)
+190 \x15((lambda ((f (subr pure (int) bool))) (f 
+200 \x15

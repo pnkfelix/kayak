@@ -2029,3 +2029,48 @@ the entries' new lines are now written before a draft is left on the
 screen.
 
 `tests/repl/speculation.keys`, `paste.keys`.
+
+## C97. Hints from the checker at a hole, and the refused subform underlined (2026-10-13)
+
+The user: "Work on implementing each of: Fixpt's smarter hints, which infer
+types from the arguments already typed or say what the syntax expects
+next; underlining the bad subform." As Fixpt's `describe_hole` and
+`describe_argument` (`fixpt-fx26/src/top.rs`):
+- **A hole.** The REPL puts `%hole` where the next item of the innermost
+  open list goes, and checks that. The checker, reaching it, refuses
+  saying what goes there (`the hole: an expression of type int`): kfx
+  refuses by failing, so the description leaves the checker as Fixpt's
+  error does, in the refusal. Where: `check` and `check-by-synth` (the
+  type expected, solved as far as what came before it says, so `(cons 1 `
+  wants `(listof int ?0)`), `synth` (`an expression`), a `tagcase`'s arms
+  (the tags no arm has taken, each with its fields' types, or `nothing:
+  every tag has an arm`), a `sum`'s tag (the tags and their values'
+  types). A call whose last argument is the hole checks the arguments
+  before it, against as many parameters, so that the types they fix show
+  (`(f a b ` of a three-argument `f`); with every argument, it says so.
+  The hole as an argument is said to be in `argument K` (the refusal's
+  `in …`), so that the REPL says `argument 2 of + wants int`, and not of
+  a `tagcase` arm's body.
+- **Only in a draft.** Every one of these is for a datum read from a text
+  named `<draft>`, which only the REPL's speculation reads (C96): a file's
+  `%hole` means what it always did, and no fact or message of a compile
+  changes (K1, and the fixed point).
+- **Fillers.** Closing off can leave a form without its later parts, so
+  that it is refused before the hole is reached: `(if c %hole)`, `(let ((a
+  %hole)))`. As Fixpt, the hole form is tried again with `%fill` after
+  the hole: in every list, and (kayak's) in each list around the
+  innermost alone, which a `let` binding's value wants (its body filled,
+  not its list of bindings). Fillers after the hole are no call's
+  arguments. The first try that reaches the hole answers; else the
+  narrowest refusal of a list around it says what that list must be.
+- **Tries.** Each try is a check that may fail, so the speculation is now
+  a sequence of them, the Rust calling `speculate` while it says there is
+  another, each refusal caught (`KAYAK_SPEC_DEBUG` writes them).
+- **An error the closing off hid.** `(set-car! (cons 1 #t) ` closed off is
+  a call of too few arguments, refused before its argument; with the hole
+  it is not, and the argument's error, in a finished subform, is said.
+- **Underlined.** A refusal believed is about a datum at an offset: in a
+  draft, an argument is refused at itself (`in-draft`), not its call, and
+  a name not bound at itself (C96). The datum is underlined in the draft
+  as drawn (its end found lexically: a list's close, a name's delimiter),
+  across its lines if it has several.

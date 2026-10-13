@@ -179,6 +179,10 @@
                     (else other arm))))
             (else other arm))))
 
+      (define-rec
+        (unholed (subr kfx (sexps) sexps)
+          (lambda (xs) (cond ((null? xs) nil) ((draft-hole? (car xs)) (unholed (cdr xs))) (else (cons (car xs) (unholed (cdr xs))))))))
+
       (define sum-variants (subr kfx (cv strings tys sexps) variants)
         (lambda (v ls ts arms)
           "A sum's tags as variants: a member taken apart by its arm, `(tag (x y)
@@ -1031,6 +1035,8 @@
     (define-rec
       (synth (subr kfx (cv st sexp) res)
         (lambda (v s e)
+          (if (draft-hole? e)
+              (refuse v "the hole: an expression")
           (tagcase e
             (num (k num-file num-pos) (res (ty-int) nil (note-fact s num-file num-pos "int")))
             (big (text f p) (res (ty-int) nil s))
@@ -1050,7 +1056,7 @@
                 (tagcase (car xs)
                   (sym (h at-file at-pos) (synth-form v s e h (cdr xs)))
                   (else head (void-call v #f #f (synth-call-of v s (synth v s head) (cdr xs) nil nil
-                                                               (if (head-is? head "proj") nil (list "spin")))))))))))
+                                                               (if (head-is? head "proj") nil (list "spin"))))))))))))
 
       (async-global (subr kfx (cv st string string i64) st)
         (lambda (v s name file pos)
@@ -1130,6 +1136,8 @@
       (check-plain (subr kfx (cv st sexp ty) res)
         (lambda (v s e expected)
           (let ((x (walk s expected)))
+            (if (draft-hole? e)
+                (refuse v (string-append "the hole: " (tagcase x (ty-meta (m) "an expression") (else other (string-append "an expression of type " (show-ty s (zonk s x)))))))
             (if (and (tagcase e (sym (n f p) (string=? n "#f")) (else other #f))
                      (or (string=? (show-ty s x) "false")
                          (tagcase x (ty-data (d args) (and (string=? d "%union") (not (null? (member-of-shape args "bool")))
@@ -1199,7 +1207,7 @@
                          (ty-list (el r) (res x nil (note-turbofish s at-file at-pos (list el))))
                          (else other (check-by-synth v s e x))))
                       (else (check-by-synth v s e x))))
-              (else other (check-by-synth v s e x))))))))
+              (else other (check-by-synth v s e x)))))))))
 
       (check-by-synth (subr kfx (cv st sexp ty) res)
         (lambda (v s e expected)
@@ -1207,6 +1215,8 @@
            that cannot abort where one that may is expected is lifted, its Rust
            type returning no `Result` (`lift N` at it, `N` its arity, wherever
            it stands: an argument, a list's element, a branch, a field)."
+          (if (draft-hole? e)
+              (refuse v (string-append "the hole: " (tagcase (walk s expected) (ty-meta (m) "an expression") (else other (string-append "an expression of type " (show-ty s (zonk s expected)))))))
           (tagcase (synth v s e)
             (res (t es s)
               (res expected es
@@ -1221,7 +1231,7 @@
                                     (note-fact s (datum-file e) (datum-pos e) (string-append "lift " (i64->string (size ps)))))
                                    (else s)))
                            (else other s)))
-                       (else other s))))))))
+                       (else other s)))))))))
 
       (body (subr kfx (cv st sexps tys) res)
         (lambda (v s es expected)
@@ -1499,7 +1509,7 @@
                              (refuse v (string-append "tagcase of a " (string-append (show-ty s t) ", no sum")))
                              (let ((arms (cdr xs)))
                                (with-effs (tag-arms v (note-fact s (cv-file v) (cv-pos v) (string-append "tagcase-sum " (words-of ls)))
-                                                    (walk s t) (map sum-arm arms) (sum-variants v ls ts arms) expected)
+                                                    (walk s t) (map sum-arm arms) (sum-variants v ls ts (unholed arms)) expected)
                                           es))))
                        (else other (refuse v (string-append "tagcase of a " (string-append (show-ty s t) ", no datatype")))))))))))
 
@@ -1550,14 +1560,18 @@
            whole, which the emitter is told, for Rust's sake."
           (tagcase (walk s expected)
             (ty-shape (p ls ts)
+              (if (and (not p) (not (null? xs)) (draft-hole? (car xs)))
+                  (refuse v (string-append "the hole: a tag, then its value: " (words-joined (tags-wanted s ls ts) ", ")))
               (let ((tag (label-of (car xs))))
                 (if (or p (not (string-member? tag ls)) (not (i64= (size xs) 2)))
                     (refuse v (string-append "a sum tagged " (string-append tag (string-append ", where a " (string-append (show-ty s expected) " is expected")))))
                     (tagcase (check v s (second xs) (member-type tag ls ts))
                       (res (t es s)
                         (res expected es (note-fact s (cv-file v) (cv-pos v)
-                                                    (string-append "sum-type " (show-sexp (ty-sexp v s (zonk s expected)))))))))))
-            (else other (refuse v "a sum whose type is not known here: write it, (the (sumof ...) (sum ...))")))))
+                                                    (string-append "sum-type " (show-sexp (ty-sexp v s (zonk s expected))))))))))))
+            (else other (if (and (not (null? xs)) (draft-hole? (car xs)))
+                            (refuse v "the hole: a tag, then an expression")
+                            (refuse v "a sum whose type is not known here: write it, (the (sumof ...) (sum ...))"))))))
 
       (arms (subr kfx (cv st sexps tys) res)
         (lambda (v s branches expected)
@@ -1710,6 +1724,8 @@
               (if (null? vs)
                   (res (if (null? expected) (ty-void) (car expected)) nil s)
                   (refuse v (string-append "a tagcase of a " (string-append (show-ty s whole) " with no else, and no arm for each tag"))))
+              (if (draft-hole? (car tagged))
+                  (refuse v (string-append "the hole: " (arms-wanted s vs (tagcase whole (ty-shape (p ls ts) "name") (else other "(name …)")))))
               (let* ((arm (items (car tagged)))
                      (tag (name-of v (car arm))))
                 (if (string=? tag "else")
@@ -1724,7 +1740,29 @@
                           (tagcase (body (with-binds v (bind-fields v names fields)) s (cdr (cdr arm)) expected)
                             (res (t es s)
                               (tagcase (tag-arms v s whole (cdr tagged) (without-tag tag vs) (next-expected s t expected))
-                                (res (t2 es2 s) (res (joined s t t2 expected) (effs-union es es2) (join-state v s t t2 expected)))))))))))))
+                                (res (t2 es2 s) (res (joined s t t2 expected) (effs-union es es2) (join-state v s t t2 expected))))))))))))))
+
+      (tags-wanted (subr kfx (st strings tys) strings)
+        (lambda (s ls ts)
+          "Each tag of a sum, and its value's type."
+          (if (or (null? ls) (null? ts))
+              nil
+              (cons (string-append "`" (string-append (car ls) (string-append "` (" (string-append (show-ty s (car ts)) ")"))))
+                    (tags-wanted s (cdr ls) (cdr ts))))))
+
+      (arms-wanted (subr kfx (st variants string) string)
+        (lambda (s vs binds)
+          "What a tagcase's next arm may be: one for a tag no arm has taken, or
+           else; nothing, once each has one. A sum's arm `binds` a name, a
+           datatype's a list of them."
+          (if (null? vs)
+              "nothing: every tag has an arm"
+              (string-append (string-append "an arm `(tag " (string-append binds " body …)` for "))
+                (string-append (words-joined (map (lambda ((x variant))
+                                                    (tagcase x (variant (tag ts) (string-append "`" (string-append tag (string-append "` (" (string-append (words-joined (map (lambda ((t ty)) (show-ty s t)) ts) " ") ")")))))))
+                                                  vs)
+                                             ", ")
+                               ", or `(else name body …)`")))))
 
       (let-values (subr kfx (cv st sexps sexps tys binds bool) res)
         (lambda (v s bindings forms expected bound sequential)
@@ -2466,7 +2504,7 @@
               (and (tagcase (car args)
                      (num (k f p) (and (not (i64< k 0)) (not (i64> k 1152921504606846975))))
                      (big (text f p) #f)
-                     (sym (n f p) (tagcase (synth v s (car args)) (res (t es s2) (nat? s2 t))))
+                     (sym (n f p) (and (not (draft-hole? (car args))) (tagcase (synth v s (car args)) (res (t es s2) (nat? s2 t)))))
                      (lst (xs f l p)
                        (and (head-is? (car args) "+") (not (null? (find-bind "+" (cv-binds v))))
                             (tagcase (car (find-bind "+" (cv-binds v))) (bind (n sc w) (string=? w "prim")))
@@ -2608,13 +2646,19 @@
            fresh one, as FX-26's is: not one a later use may choose (C36)."
           (tagcase callee
             (res (t es0 s)
+              (let ((args (if (string=? (cv-file v) "<draft>") (through-hole args) args)))
               (tagcase (vsubr-as-proc (composable-as-proc s (walk s t)) (size args))
                 (ty-proc (latent ps r)
-                  (if (not (i64= (size ps) (size args)))
-                      (refuse v (string-append "a call of the wrong number of arguments: "
-                                               (show-sexps args)))
+                  (cond ((and (not (i64= (size ps) (size args))) (not (any? draft-hole? args)))
+                         (refuse v (string-append "a call of the wrong number of arguments: "
+                                                  (show-sexps args))))
+                        ;; A REPL's hole among the arguments (C97): those before it
+                        ;; checked, against as many parameters; none may follow all.
+                        ((i64> (size args) (size ps))
+                         (refuse v (string-append "the hole: nothing, the call has its " (string-append (i64->string (size ps)) (if (i64= (size ps) 1) " argument" " arguments")))))
+                        (else
                       (tagcase (let ((s1 (if (or (null? expected) (proc-type? s (car expected))) s (fits v s r (car expected)))))
-                                 (call-args v s1 args ps (fixed-by s s1 (concat (map metas-of ps)))))
+                                 (call-args v s1 args (if (i64= (size ps) (size args)) ps (tys-first ps (size args))) (fixed-by s s1 (concat (map metas-of ps)))))
                         (res (u es1 s0)
                          (let ((s (if (null? expected)
                                       (freshened s0 r)
@@ -2622,8 +2666,8 @@
                           (tagcase (name-regions v s latent regions)
                             (res (u named s)
                               (res r (effs-union (close-effs s named) (effs-union more (effs-union es0 es1)))
-                                   (lift-noted v (noted-call v s named) r expected)))))))))
-                (else other (refuse v (string-append "a call of a " (string-append (show-ty s t) ", no procedure")))))))))
+                                   (lift-noted v (noted-call v s named) r expected))))))))))
+                (else other (refuse v (string-append "a call of a " (string-append (show-ty s t) ", no procedure"))))))))))
 
       (noted-lambda (subr kfx (cv st strings) st)
         (lambda (v s es)
@@ -2662,8 +2706,8 @@
           "The arguments, in order, but for `nil` given for a parameter that is
            an inference variable, which is heard after the rest, as FX-26 hears
            it. A literal is not: FX-26 makes it an `int` where it stands."
-          (tagcase (call-args-pass v s args ps #f fixed)
-            (res (u es s) (with-effs (call-args-pass v s args ps #t fixed) es)))))
+          (tagcase (call-args-pass v s args ps #f fixed 1)
+            (res (u es s) (with-effs (call-args-pass v s args ps #t fixed 1) es)))))
 
       (module-argument (subr kfx (cv st sexp ty) res)
         (lambda (v s arg t)
@@ -2678,20 +2722,21 @@
                      (conforms v s name (tagcase t (ty-data (d args) (after-prefix d "%module ")) (else other ""))
                                (car (module-spec v t))))))))
 
-      (call-args-pass (subr kfx (cv st sexps tys bool i64s) res)
-        (lambda (v s args ps later fixed)
-          "The arguments `deferred?` says are `later`'s."
+      (call-args-pass (subr kfx (cv st sexps tys bool i64s i64) res)
+        (lambda (v s args ps later fixed k)
+          "The arguments `deferred?` says are `later`'s; the first is argument
+           `k`. The REPL's hole as one is said to be in it (C97)."
           (cond ((null? args) (res (ty-unit) nil s))
                 ((eqv-bool? (deferred? (car args) (car ps)) later)
                  (tagcase (cond ((not (null? (module-spec v (walk s (car ps)))))
-                                 (module-argument v s (car args) (walk s (car ps))))
+                                 (module-argument (in-draft v (car args)) s (car args) (walk s (car ps))))
                                 ((and (not (lambda-form? (car args)))
                                       (has-open? s (car ps)))
                                  "An argument for a parameter whose type is not known whole yet:
                                   found by itself, as FX-26 finds it (a literal an `int`, a
                                   control form's branches of one type, a `list` at a fresh
                                   region); a lambda, told its parameters, is checked."
-                                 (check-by-synth v s (car args) (car ps)))
-                                (else (check v s (car args) (car ps))))
-                   (res (t es s) (with-effs (call-args-pass v s (cdr args) (cdr ps) later fixed) es))))
-                (else (call-args-pass v s (cdr args) (cdr ps) later fixed))))))))
+                                 (check-by-synth (in-draft (if (draft-hole? (car args)) (said-in v (string-append "argument " (i64->string k))) v) (car args)) s (car args) (car ps)))
+                                (else (check (in-draft (if (draft-hole? (car args)) (said-in v (string-append "argument " (i64->string k))) v) (car args)) s (car args) (car ps))))
+                   (res (t es s) (with-effs (call-args-pass v s (cdr args) (cdr ps) later fixed (i64+ k 1)) es))))
+                (else (call-args-pass v s (cdr args) (cdr ps) later fixed (i64+ k 1)))))))))

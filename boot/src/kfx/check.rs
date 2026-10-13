@@ -3818,6 +3818,73 @@ pub fn at_offset(v: &'static Cv, pos: i64) -> &'static Cv {
     }
 }
 
+pub fn tys_first(ts: List<&'static Ty>, n: i64) -> List<&'static Ty> {
+    if (null_p(ts) || i64_lt_eq(n, 0i64)) {
+        nil::<&'static Ty>()
+    } else {
+        kayak_rt::heap_cons(car(ts), tys_first(cdr(ts), i64_minus(n, 1i64)))
+    }
+}
+
+pub fn words_joined(xs: Strings, between: Str) -> Str {
+    if null_p(xs) {
+        str_lit("")
+    } else if null_p(cdr(xs)) {
+        car(xs)
+    } else {
+        string_append(car(xs), string_append(between, words_joined(cdr(xs), between)))
+    }
+}
+
+/// Whether `e` is the hole the REPL puts where the next item of a draft
+/// goes, to ask what may go there (live-repl.kfx, C97): `%hole`, in a
+/// `<draft>` only, so that no file's meaning changes.
+pub fn draft_hole_p(e: &'static Sexp) -> bool {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Sym(n, f, p) => {
+            (string_eq_p(n, str_lit("%hole")) && string_eq_p(f, str_lit("<draft>")))
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+/// `v`, its refusals said to be in `here`.
+pub fn said_in(v: &'static Cv, here: Str) -> &'static Cv {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, als, es, h, group, file, line, fs, tv, at) => {
+            cv(bs, ds, als, es, here, group, file, line, fs, tv, at)
+        }
+    }
+}
+
+/// `xs` to the REPL's hole, which ends them: what follows it fills a
+/// form's later parts, and is no call's argument.
+pub fn through_hole(xs: Sexps) -> Sexps {
+    if null_p(xs) {
+        nil::<&'static Sexp>()
+    } else if draft_hole_p(car(xs)) {
+        kayak_rt::heap_cons(car(xs), kayak_rt::nil())
+    } else {
+        kayak_rt::heap_cons(car(xs), through_hole(cdr(xs)))
+    }
+}
+
+/// `v`, its refusals said at `e`, if `e` is in a REPL's draft: where an
+/// argument is refused, underlined (C97). Elsewhere `v`, so that no fact's
+/// place changes.
+pub fn in_draft(v: &'static Cv, e: &'static Sexp) -> &'static Cv {
+    if string_eq_p(datum_file(e), str_lit("<draft>")) {
+        at_offset(v, datum_pos(e))
+    } else {
+        v
+    }
+}
+
 pub fn operator_char_p(c: char) -> bool {
     has_char_in_p(str_lit("?!<>=+*/%"), c)
 }
@@ -4615,7 +4682,7 @@ pub fn opened_binds(m: Str, bs: Binds) -> Binds {
 /// Whether a control form has the parts it needs, before they are taken.
 pub fn well_formed_p(h: Str, xs: Sexps) -> bool {
     let lists_p = lambda3(move |x: &'static Sexp, n: i64, exact: bool| {
-        ({
+        (draft_hole_p(x) || ({
             let tagcase_ = x;
             match *tagcase_ {
                 Sexp::Lst(ys, f, l, p) => {
@@ -4630,7 +4697,7 @@ pub fn well_formed_p(h: Str, xs: Sexps) -> bool {
             i64_eq(size(items(x)), n)
         } else {
             not(i64_lt(size(items(x)), n))
-        })
+        }))
     });
     if string_eq_p(h, str_lit("if")) {
         i64_eq(size(xs), 3i64)

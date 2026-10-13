@@ -3,13 +3,15 @@ kayak-fx26 0.1 — FX-26, the engine written in KFX (an interpreter over a heap 
 [Jfx26> (define fib (subr (maxeff spin (read @globals)) (int) int) (lambda (n) (if (< n 2) n (+ (fib (- n 1)) (fib (- n 2))))))
 [2K[1] fib : (subr (maxeff spin (read @globals)) (int) int) ! pure
 [Jfx26> [Jfx26> (+ 1 
-[2margument 2 of + wants int[0m[1A[11C[Jfx26> (+ 1 (car 5) 
+[2margument 2 of + wants int[0m[1A[11C[Jfx26> (+ 1 (car [4m5[24m) 
 [31ma int is here, where a (listof int ?0) is expected[0m[1A[19C[Jfx26> (+ 1 
 [2margument 2 of + wants int[0m[1A[11C[Jfx26> (+ 1 2)
 [2m= 3 : nat ! pure[0m[1A[13C[Jfx26> (+ 1 2)
 [2K[2] 3 : nat ! pure
-[Jfx26> (+ 1 nosuch 
-[31mnothing is named nosuch[0m[1A[18C[Jfx26> (if #t "ab[Jfx26> (if #t "abc" [Jfx26> '(a b [Jfx26> (define c (ref int @h) (new 1))
+[Jfx26> (+ 1 [4mnosuch[24m 
+[31mnothing is named nosuch[0m[1A[18C[Jfx26> (if #t "ab
+[2mnext: an expression[0m[1A[16C[Jfx26> (if #t "abc" 
+[2mnext: an expression[0m[1A[19C[Jfx26> '(a b [Jfx26> (define c (ref int @h) (new 1))
 [2K[3] c : (ref int @h) ! pure
 [Jfx26> [Jfx26> (get c)
 [2m= 1 : int ! (maxeff (read @h) (read (globals c)))[0m[1A[13C[Jfx26> (get c)

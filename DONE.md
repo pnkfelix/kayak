@@ -1220,3 +1220,11 @@ REPL checks one; a refusal believed only if about what was finished
 a finished expression that only reads and allocates run early as the
 task in slot 0, its IR given back when the draft changes; pasted
 entries' lines in order. `tests/repl/speculation.keys`, `paste.keys`.
+
+## Hints at a hole, and the refused subform underlined (2026-10-13)
+
+C97: the checker, at the REPL's `%hole` in a `<draft>`, says what goes
+there: an argument's type as those before it solve it, a `tagcase`'s arms
+not taken, a `sum`'s tags; fillers so that a form missing its later parts
+reaches the hole; the speculation a sequence of tries; a refused subform
+(an argument, a name) underlined. `tests/repl/hints.keys`.

@@ -136,6 +136,83 @@ pub mod session {
         })
     }
 
+    // What the hints are found from (C97): the tries made so far (`phase`: 1
+    // the draft checked, 2 with holes, 4 done); the texts with a hole not
+    // yet tried, and whether one is being tried; where
+    // the hole is; the innermost open list's operator, if a name, and the
+    // hole's place in that list (0, the operator's own); the hint found, and
+    // the narrowest refusal of a list around the hole and where it is; and
+    // the subform a refusal said is wrong, to underline (`from` = `to`: none).
+    pub fn spec_phase() -> Ref<i64> {
+        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(4i64)
+        })
+    }
+
+    pub fn hole_texts() -> Ref<Strings> {
+        thread_local!(static ONCE: OnceCell<Ref<Strings>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(nil::<Str>())
+        })
+    }
+
+    pub fn trying_holes() -> Ref<bool> {
+        thread_local!(static ONCE: OnceCell<Ref<bool>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(false)
+        })
+    }
+
+    pub fn hole_at() -> Ref<i64> {
+        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(-1i64)
+        })
+    }
+
+    pub fn hole_op() -> Ref<Str> {
+        thread_local!(static ONCE: OnceCell<Ref<Str>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(str_lit(""))
+        })
+    }
+
+    pub fn hole_place() -> Ref<i64> {
+        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(0i64)
+        })
+    }
+
+    pub fn around() -> Ref<Str> {
+        thread_local!(static ONCE: OnceCell<Ref<Str>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(str_lit(""))
+        })
+    }
+
+    pub fn around_at() -> Ref<i64> {
+        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(-1i64)
+        })
+    }
+
+    pub fn under_from() -> Ref<i64> {
+        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(0i64)
+        })
+    }
+
+    pub fn under_to() -> Ref<i64> {
+        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        once(&ONCE, || {
+            kayak_rt::heap_new(0i64)
+        })
+    }
+
     pub fn spec_limit() -> i64 {
         2000000i64
     }
@@ -622,6 +699,8 @@ pub mod session {
             };
             up_x(get(cursor_row()));
             set(note(), str_lit(""));
+            set(under_from(), 0i64);
+            set(under_to(), 0i64);
             set(cursor(), string_length_i64(get(draft())));
             draw_draft_x(get(draft()));
             say_x(str_lit("\u{d}\n"));
@@ -1445,16 +1524,30 @@ pub mod session {
         }
     }
 
-    /// The draft as drawn: each line after the first after `     | `.
-    pub fn prompted(mut cs: List<char>, mut acc: Chars) -> Chars {
+    /// The draft as drawn: each line after the first after `     | `; the
+    /// characters `from` to `to` underlined, a subform a refusal is about.
+    pub fn prompted(mut cs: List<char>, mut i: i64, mut from: i64, mut to: i64, mut acc: Chars) -> Chars {
         loop {
+            let marked = if i64_gt_eq(from, to) {
+                acc
+            } else if i64_eq(i, from) {
+                put(str_lit("\u{1b}[4m"), acc)
+            } else if i64_eq(i, to) {
+                put(str_lit("\u{1b}[24m"), acc)
+            } else {
+                acc
+            };
             if null_p(cs) {
-                return acc;
+                return marked;
             } else if char_eq_p(car(cs), '\n') {
-                (cs, acc) = (cdr(cs), put(str_lit("\u{d}\n     | "), acc));
+                (cs, i, acc) = (cdr(cs), i64_plus(i, 1i64), if (i64_gt_eq(i, from) && i64_lt(i, to)) {
+                    put(str_lit("\u{1b}[4m"), put(str_lit("\u{d}\n     | "), put(str_lit("\u{1b}[24m"), marked)))
+                } else {
+                    put(str_lit("\u{d}\n     | "), marked)
+                });
                 continue;
             } else {
-                (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
+                (cs, i, acc) = (cdr(cs), i64_plus(i, 1i64), kayak_rt::heap_cons(car(cs), marked));
                 continue;
             }
         }
@@ -1466,7 +1559,7 @@ pub mod session {
         let (cs, shown) = (string_chars(d), note_shown());
         say_x(str_lit("\u{d}\u{1b}[J"));
         say_x(str_lit("fx26> "));
-        set(written(), prompted(cs, get(written())));
+        set(written(), prompted(cs, 0i64, get(under_from()), get(under_to()), get(written())));
         if string_eq_p(shown, str_lit("")) {
             ()
         } else {
@@ -1872,17 +1965,6 @@ pub mod session {
         }
     }
 
-    pub fn nth_ty(mut ts: List<&'static Ty>, mut i: i64) -> &'static Ty {
-        loop {
-            if i64_eq(i, 0i64) {
-                return car(ts);
-            } else {
-                (ts, i) = (cdr(ts), i64_minus(i, 1i64));
-                continue;
-            }
-        }
-    }
-
     /// Whether the list at `i` is quoted data: a quote before it.
     pub fn quoted_at_p(mut s: Str, mut i: i64) -> bool {
         loop {
@@ -1897,69 +1979,190 @@ pub mod session {
         }
     }
 
-    /// What argument `k` of `op` must be, if `op` names a subroutine.
-    pub fn argument_hint(op: Str, k: i64) -> Str {
-        let found = find_bind(op, cv_binds(get(repl_cv())));
-        if null_p(found) {
-            str_lit("")
-        } else {
-            let tagcase_ = car(found);
-            match *tagcase_ {
-                Bind::Bind(n, sc, w) => {
-                    let tagcase_ = sc;
-                    match *tagcase_ {
-                        Scheme::Scheme(tv, t) => {
-                            let tagcase_ = t;
-                            match *tagcase_ {
-                                Ty::TyProc(es, ps, r) => {
-                                    if i64_gt(k, size(ps)) {
-                                        string_append(op, string_append(str_lit(" takes "), string_append(i64_to_string(size(ps)), if i64_eq(size(ps), 1i64) {
-                                            str_lit(" argument")
-                                        } else {
-                                            str_lit(" arguments")
-                                        })))
-                                    } else {
-                                        string_append(str_lit("argument "), string_append(i64_to_string(k), string_append(str_lit(" of "), string_append(op, string_append(str_lit(" wants "), show_ty(new_state(), nth_ty(ps, i64_minus(k, 1i64))))))))
-                                    }
-                                }
-                                _ => {
-                                    let other = tagcase_;
-                                    str_lit("")
-                                }
-                            }
-                        }
+    /// Where the list begun at the first of `cs` (at `i`) ends, past its
+    /// close; or the text's end.
+    pub fn list_end(mut cs: List<char>, mut i: i64, mut depth: i64, mut str: bool, mut comment: bool) -> i64 {
+        loop {
+            if null_p(cs) {
+                return i;
+            } else if str {
+                if char_eq_p(car(cs), '\\') {
+                    if null_p(cdr(cs)) {
+                        return i64_plus(i, 1i64);
+                    } else {
+                        (cs, i, str, comment) = (cdr(cdr(cs)), i64_plus(i, 2i64), true, false);
+                        continue;
                     }
+                } else if char_eq_p(car(cs), '"') {
+                    (cs, i, str, comment) = (cdr(cs), i64_plus(i, 1i64), false, false);
+                    continue;
+                } else {
+                    (cs, i, str, comment) = (cdr(cs), i64_plus(i, 1i64), true, false);
+                    continue;
                 }
+            } else if comment {
+                (cs, i, str, comment) = (cdr(cs), i64_plus(i, 1i64), false, not(char_eq_p(car(cs), '\n')));
+                continue;
+            } else if char_eq_p(car(cs), '"') {
+                (cs, i, str, comment) = (cdr(cs), i64_plus(i, 1i64), true, false);
+                continue;
+            } else if i64_eq(char_to_i64(car(cs)), 59i64) {
+                (cs, i, str, comment) = (cdr(cs), i64_plus(i, 1i64), false, true);
+                continue;
+            } else if (char_eq_p(car(cs), '#') && not(null_p(cdr(cs))) && char_eq_p(car(cdr(cs)), '\\') && not(null_p(cdr(cdr(cs))))) {
+                (cs, i, str, comment) = (cdr(cdr(cdr(cs))), i64_plus(i, 3i64), false, false);
+                continue;
+            } else if char_eq_p(car(cs), '(') {
+                (cs, i, depth, str, comment) = (cdr(cs), i64_plus(i, 1i64), i64_plus(depth, 1i64), false, false);
+                continue;
+            } else if char_eq_p(car(cs), ')') {
+                if i64_lt_eq(depth, 1i64) {
+                    return i64_plus(i, 1i64);
+                } else {
+                    (cs, i, depth, str, comment) = (cdr(cs), i64_plus(i, 1i64), i64_minus(depth, 1i64), false, false);
+                    continue;
+                }
+            } else {
+                (cs, i, str, comment) = (cdr(cs), i64_plus(i, 1i64), false, false);
+                continue;
             }
         }
     }
 
-    /// The hint at the cursor: what the next argument of the innermost list
-    /// open must be, if it is a call of a subroutine the checker knows.
-    pub fn hint_at(text: Str, kept: i64, open: List<i64>) -> Str {
-        if (null_p(open) || quoted_at_p(text, car(open))) {
+    pub fn name_end(mut s: Str, mut i: i64) -> i64 {
+        loop {
+            if (i64_lt(i, string_length_i64(s)) && name_char_p(string_ref_i64(s, i))) {
+                i = i64_plus(i, 1i64);
+                continue;
+            } else {
+                return i;
+            }
+        }
+    }
+
+    /// Where the datum written at `at` ends: a list at its close, a string at
+    /// its quote, a name or number at the delimiter after it.
+    pub fn datum_end(s: Str, at: i64) -> i64 {
+        if i64_gt_eq(at, string_length_i64(s)) {
+            at
+        } else if (char_eq_p(string_ref_i64(s, at), '(') || char_eq_p(string_ref_i64(s, at), '"')) {
+            list_end(string_chars(cut(s, at, string_length_i64(s))), at, 0i64, false, false)
+        } else {
+            name_end(s, i64_plus(at, 1i64))
+        }
+    }
+
+    /// The closers of `n` open lists from the innermost (`i` 0), a filler
+    /// before each if `filled` is -1, else before list `filled`'s alone.
+    pub fn closers_filled(i: i64, n: i64, filled: i64) -> Str {
+        if i64_gt_eq(i, n) {
             str_lit("")
         } else {
-            let forms = read_all(string_chars(string_append(cut(text, car(open), kept), str_lit(")"))), str_lit("<hint>"), 1i64);
-            if null_p(forms) {
+            string_append(if (i64_eq(filled, -1i64) || i64_eq(filled, i)) {
+                str_lit(" %fill)")
+            } else {
+                str_lit(")")
+            }, closers_filled(i64_plus(i, 1i64), n, filled))
+        }
+    }
+
+    /// `text` closed with a filler in list `i` alone, for each list around
+    /// the innermost.
+    pub fn each_filled(text: Str, i: i64, n: i64) -> Strings {
+        if i64_gt_eq(i, n) {
+            nil::<Str>()
+        } else {
+            kayak_rt::heap_cons(string_append(text, closers_filled(0i64, n, i)), each_filled(text, i64_plus(i, 1i64), n))
+        }
+    }
+
+    /// The draft with a hole where the next item of its innermost open list
+    /// goes: closed, and with a filler after the hole in each list around it,
+    /// so that a form missing its later parts still reaches the hole; and
+    /// what the hole is in that list. None if no list is open, or it is
+    /// quoted data. (A `let`'s binding wants a filler for its body, and
+    /// none in its list of bindings; an `if`'s, for its branch.)
+    pub fn holes_set_x(text: Str, kept: i64, open: List<i64>) -> () {
+        if (null_p(open) || quoted_at_p(text, car(open))) {
+            set(hole_texts(), nil::<Str>());
+            set(hole_at(), -1i64)
+        } else {
+            let typed = trimmed_end(cut(text, 0i64, kept));
+            let inner = read_all(string_chars(string_append(cut(text, car(open), kept), str_lit(")"))), str_lit("<hint>"), 1i64);
+            let xs = if null_p(inner) {
+                nil::<&'static Sexp>()
+            } else {
+                items(car(inner))
+            };
+            set(hole_texts(), kayak_rt::heap_cons(string_append(typed, string_append(str_lit(" %hole"), closers(size(open)))), kayak_rt::heap_cons(string_append(typed, string_append(str_lit(" %hole"), closers_filled(0i64, size(open), -1i64))), each_filled(string_append(typed, str_lit(" %hole")), 1i64, size(open)))));
+            set(hole_at(), i64_plus(string_length_i64(typed), 1i64));
+            set(hole_place(), size(xs));
+            set(hole_op(), if null_p(xs) {
                 str_lit("")
             } else {
-                let xs = items(car(forms));
-                if null_p(xs) {
-                    str_lit("")
-                } else {
-                    let tagcase_ = car(xs);
-                    match *tagcase_ {
-                        Sexp::Sym(op, f, p) => {
-                            argument_hint(op, size(xs))
-                        }
-                        _ => {
-                            let other = tagcase_;
+                let tagcase_ = car(xs);
+                match *tagcase_ {
+                    Sexp::Sym(op, f, p) => {
+                        if keyword_p(op) {
                             str_lit("")
+                        } else {
+                            op
                         }
                     }
+                    _ => {
+                        let other = tagcase_;
+                        str_lit("")
+                    }
                 }
-            }
+            })
+        }
+    }
+
+    /// A text with a hole checked: the checker refuses at the hole, saying
+    /// what goes there (`speculation-refused!`), or at a list around it.
+    pub fn hole_tried_x(text: Str) -> () {
+        if string_eq_p(text, str_lit("")) {
+            ()
+        } else {
+            checked_all(get(repl_cv()), read_all(string_chars(text), str_lit("<draft>"), 1i64));
+            ()
+        }
+    }
+
+    /// What the hole wants, as the note says it: a call's `argument` (`argument
+    /// 2`, if the checker said it is one), with its operator if a name; else
+    /// what goes next.
+    pub fn hint_words(what: Str, argument: Str) -> Str {
+        let want = str_lit("an expression of type ");
+        if (has_prefix_p(what, want) && not(string_eq_p(argument, str_lit("")))) {
+            string_append(argument, string_append(if string_eq_p(get(hole_op()), str_lit("")) {
+                str_lit("")
+            } else {
+                string_append(str_lit(" of "), get(hole_op()))
+            }, string_append(str_lit(" wants "), cut(what, string_length_i64(want), string_length_i64(what)))))
+        } else if (string_eq_p(what, str_lit("an expression")) && not(string_eq_p(argument, str_lit("")))) {
+            string_append(argument, if string_eq_p(get(hole_op()), str_lit("")) {
+                str_lit(": anything")
+            } else {
+                string_append(str_lit(" of "), string_append(get(hole_op()), str_lit(": anything")))
+            })
+        } else if (has_prefix_p(what, str_lit("nothing, the call has its ")) && not(string_eq_p(get(hole_op()), str_lit("")))) {
+            string_append(get(hole_op()), string_append(str_lit(" takes "), cut(what, 26i64, string_length_i64(what))))
+        } else if (string_eq_p(what, str_lit("an expression")) && i64_eq(get(hole_place()), 0i64)) {
+            str_lit("")
+        } else {
+            string_append(str_lit("next: "), what)
+        }
+    }
+
+    /// No hole reached: the narrowest refusal of a list around it, if any,
+    /// says what that list must be.
+    pub fn hints_said_x() -> () {
+        set(spec_phase(), 4i64);
+        if string_eq_p(get(around()), str_lit("")) {
+            ()
+        } else {
+            noted_x(string_append(str_lit("next: "), get(around())), false)
         }
     }
 
@@ -2008,6 +2211,11 @@ pub mod session {
         set(speculated(), false);
         set(spec_key(), str_lit(""));
         set(spec_waits(), false);
+        set(spec_phase(), 4i64);
+        set(around(), str_lit(""));
+        set(around_at(), -1i64);
+        set(under_from(), 0i64);
+        set(under_to(), 0i64);
         if string_eq_p(get(note()), str_lit("")) {
             ()
         } else {
@@ -2280,65 +2488,120 @@ pub mod session {
         }
     }
 
-    /// The draft checked as it is typed, once for each text it has been, and
-    /// run if finished and its effect allows: its note. A refusal fails, and
-    /// the Rust gives it to `speculation-refused!`. Not in plain mode, nor
-    /// for a command's line.
-    pub fn speculate_x(now: i64) -> () {
-        if (not(get(live())) || get(speculated())) {
-            ()
+    /// The draft checked as it is typed, a try at a time, while this says
+    /// there is another to make: checked as it is, once for each text it has
+    /// been (and run, if finished and its effect allows); then, if a list is
+    /// open, with a hole where its next item goes, and with fillers after
+    /// that, until the checker says what goes there (C97). A try that is
+    /// refused fails, and the Rust gives the refusal to
+    /// `speculation-refused!`. Not in plain mode, nor for a command's line.
+    pub fn speculate_x(now: i64) -> bool {
+        if not(get(live())) {
+            false
+        } else if not(get(speculated())) {
+            draft_tried_x(now);
+            i64_lt(get(spec_phase()), 4i64)
+        } else if (i64_lt(get(spec_phase()), 4i64) && not(null_p(get(hole_texts())))) {
+            let text = car(get(hole_texts()));
+            set(spec_phase(), 2i64);
+            set(hole_texts(), cdr(get(hole_texts())));
+            set(trying_holes(), true);
+            hole_tried_x(text);
+            set(trying_holes(), false);
+            true
+        } else if i64_lt(get(spec_phase()), 4i64) {
+            hints_said_x();
+            false
         } else {
-            let d = get(draft());
-            let trimmed = trimmed_start(string_chars(d));
-            let closing = if (not(null_p(trimmed)) && char_eq_p(car(trimmed), ',')) {
-                not_closable()
-            } else {
-                closed_text(d)
-            };
-            let key = {
-                let tagcase_ = closing;
-                match *tagcase_ {
-                    Closing::NotClosable() => {
-                        str_lit("")
-                    }
-                    Closing::ClosedOff(closed, kept, open, finished) => {
-                        string_append(if finished {
-                            str_lit("f|")
-                        } else {
-                            str_lit("u|")
-                        }, trimmed_end(closed))
-                    }
+            false
+        }
+    }
+
+    pub fn draft_tried_x(now: i64) -> () {
+        let d = get(draft());
+        let trimmed = trimmed_start(string_chars(d));
+        let closing = if (not(null_p(trimmed)) && char_eq_p(car(trimmed), ',')) {
+            not_closable()
+        } else {
+            closed_text(d)
+        };
+        let key = {
+            let tagcase_ = closing;
+            match *tagcase_ {
+                Closing::NotClosable() => {
+                    str_lit("")
                 }
-            };
-            if (not(string_eq_p(key, str_lit(""))) && string_eq_p(key, get(spec_key()))) {
-                set(speculated(), true)
-            } else {
-                speculation_dropped_x();
-                set(speculated(), true);
-                set(spec_key(), key);
-                let tagcase_ = closing;
-                match *tagcase_ {
-                    Closing::NotClosable() => {
-                        ()
-                    }
-                    Closing::ClosedOff(closed, kept, open, finished) => {
-                        set(spec_kept(), kept);
-                        set(spec_open(), open);
-                        set(spec_finished(), finished);
-                        noted_x(hint_at(d, kept, open), false);
-                        speculated_forms_x(read_all(string_chars(closed), str_lit("<draft>"), 1i64), finished)
-                    }
+                Closing::ClosedOff(closed, kept, open, finished) => {
+                    string_append(if finished {
+                        str_lit("f|")
+                    } else {
+                        str_lit("u|")
+                    }, trimmed_end(closed))
+                }
+            }
+        };
+        if (not(string_eq_p(key, str_lit(""))) && string_eq_p(key, get(spec_key()))) {
+            set(speculated(), true)
+        } else {
+            speculation_dropped_x();
+            set(speculated(), true);
+            set(spec_key(), key);
+            let tagcase_ = closing;
+            match *tagcase_ {
+                Closing::NotClosable() => {
+                    ()
+                }
+                Closing::ClosedOff(closed, kept, open, finished) => {
+                    set(spec_kept(), kept);
+                    set(spec_open(), open);
+                    set(spec_finished(), finished);
+                    holes_set_x(d, kept, open);
+                    set(spec_phase(), if (finished || null_p(get(hole_texts()))) {
+                        4i64
+                    } else {
+                        1i64
+                    });
+                    speculated_forms_x(read_all(string_chars(closed), str_lit("<draft>"), 1i64), finished)
                 }
             }
         }
     }
 
-    /// The draft refused (the Rust caught the failure): said, if it is about
-    /// what has been finished; else the hint stays.
+    /// A try refused (the Rust caught the failure). The draft as it is: said,
+    /// its subform underlined, if it is about what has been finished. With a
+    /// hole: what goes there, if the checker reached it; else, if about a
+    /// list around the hole, kept if the narrowest so far.
     pub fn speculation_refused_x(message: Str, now: i64) -> () {
-        let at = refused_offset(message);
-        if (get(spec_finished()) || (i64_gt_eq(at, 0i64) && i64_lt(at, get(spec_kept())) && not(i64_member_p(at, get(spec_open()))))) {
-            noted_x(refusal_words(message), true)
+        let (at, words, holes) = (refused_offset(message), refusal_words(message), get(trying_holes()));
+        set(trying_holes(), false);
+        if not(holes) {
+            if (get(spec_finished()) || (i64_gt_eq(at, 0i64) && i64_lt(at, get(spec_kept())) && not(i64_member_p(at, get(spec_open()))))) {
+                set(spec_phase(), 4i64);
+                if i64_gt_eq(at, 0i64) {
+                    set(under_from(), at);
+                    set(under_to(), datum_end(get(draft()), at))
+                } else {
+                    ()
+                };
+                noted_x(words, true)
+            } else {
+                ()
+            }
+        } else if (i64_gt_eq(at, 0i64) && i64_lt(at, get(spec_kept())) && not(i64_member_p(at, get(spec_open())))) {
+            set(spec_phase(), 4i64);
+            set(under_from(), at);
+            set(under_to(), datum_end(get(draft()), at));
+            noted_x(words, true)
+        } else if has_prefix_p(words, str_lit("the hole: ")) {
+            set(spec_phase(), 4i64);
+            noted_x(hint_words(cut(words, 10i64, string_length_i64(words)), str_lit("")), false)
+        } else if (has_prefix_p(words, str_lit("in argument ")) && i64_gt_eq(int_to_i64(string_search(words, str_lit(": the hole: "), int_lit(0))), 0i64)) {
+            let at = int_to_i64(string_search(words, str_lit(": the hole: "), int_lit(0)));
+            set(spec_phase(), 4i64);
+            noted_x(hint_words(cut(words, i64_plus(at, 12i64), string_length_i64(words)), cut(words, 3i64, at)), false)
+        } else if (i64_member_p(at, get(spec_open())) && i64_gt(at, get(around_at())) && i64_lt(int_to_i64(string_search(words, str_lit("%hole"), int_lit(0))), 0i64) && i64_lt(int_to_i64(string_search(words, str_lit("%fill"), int_lit(0))), 0i64)) {
+            set(around(), words);
+            set(around_at(), at)
         } else {
             ()
         }

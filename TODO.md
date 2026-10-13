@@ -460,9 +460,9 @@ Stages 2 and 3 done (C95): editing, history, Tab; Fixpt's commands.
 - Fixpt's commands not yet: `,fits TYPE`, `,returns TYPE`, `,help` as a
   hole inside a form, `,disassemble`, `,list-outdated` and
   `,rerun-outdated` (redefinition at another type), `,redefine b|r`.
-- Checking as you type (C96) done. Left: Fixpt's hints from the
-  arguments so far and from the grammar; an underline at the refused
-  subform; speculating `,type E`'s and `,time E`'s forms.
+- Checking as you type (C96), hints at a hole and the underline (C97)
+  done. Left: speculating `,type E`'s and `,time E`'s forms; a hint's
+  type variables named as the binders are, not `?0`.
 - A skimmer in KFX, after Coopt's (repl.md, Coopt's skimmer): forms and
   the names they define, found lexically; for `incr.kfx` (measure first
   whether reading costs in a warm compile), and the REPL's names before

@@ -418,6 +418,19 @@ pub mod expressions {
         }
     }
 
+    pub fn unholed(mut xs: Sexps) -> Sexps {
+        loop {
+            if null_p(xs) {
+                return nil::<&'static Sexp>();
+            } else if draft_hole_p(car(xs)) {
+                xs = cdr(xs);
+                continue;
+            } else {
+                return kayak_rt::heap_cons(car(xs), unholed(cdr(xs)));
+            }
+        }
+    }
+
     /// A sum's tags as variants: a member taken apart by its arm, `(tag (x y)
     /// ...)`, of the fields of the product it is; else of the member.
     pub fn sum_variants(v: &'static Cv, ls: Strings, ts: Tys, arms: Sexps) -> Variants {
@@ -2342,58 +2355,62 @@ pub mod expressions {
     }
 
     pub fn synth(v: &'static Cv, s: &'static St, e: &'static Sexp) -> &'static Res {
-        let tagcase_ = e;
-        match *tagcase_ {
-            Sexp::Num(k, num_file, num_pos) => {
-                res(ty_int(), nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("int")))
-            }
-            Sexp::Big(text, f, p) => {
-                res(ty_int(), nil::<Str>(), s)
-            }
-            Sexp::Chr(c, at_file, at_pos) => {
-                res(ty_char(), nil::<Str>(), s)
-            }
-            Sexp::Real(x, at_file, at_pos) => {
-                res(ty_f64(), nil::<Str>(), s)
-            }
-            Sexp::Str(x, at_file, at_pos) => {
-                res(ty_string(), nil::<Str>(), s)
-            }
-            Sexp::Sym(name, at_file, at_pos) => {
-                let tagcase_ = synth_name(v, s, name, at_pos);
-                match *tagcase_ {
-                    Res::Res(t, es, s) => {
-                        if string_eq_p(name, str_lit("nil")) {
-                            let tagcase_ = walk(s, t);
-                            match *tagcase_ {
-                                Ty::TyList(el, r) => {
-                                    res(t, es, note_turbofish(s, at_file, at_pos, kayak_rt::heap_cons(el, kayak_rt::nil())))
+        if draft_hole_p(e) {
+            match refuse(v, str_lit("the hole: an expression")) {}
+        } else {
+            let tagcase_ = e;
+            match *tagcase_ {
+                Sexp::Num(k, num_file, num_pos) => {
+                    res(ty_int(), nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("int")))
+                }
+                Sexp::Big(text, f, p) => {
+                    res(ty_int(), nil::<Str>(), s)
+                }
+                Sexp::Chr(c, at_file, at_pos) => {
+                    res(ty_char(), nil::<Str>(), s)
+                }
+                Sexp::Real(x, at_file, at_pos) => {
+                    res(ty_f64(), nil::<Str>(), s)
+                }
+                Sexp::Str(x, at_file, at_pos) => {
+                    res(ty_string(), nil::<Str>(), s)
+                }
+                Sexp::Sym(name, at_file, at_pos) => {
+                    let tagcase_ = synth_name(v, s, name, at_pos);
+                    match *tagcase_ {
+                        Res::Res(t, es, s) => {
+                            if string_eq_p(name, str_lit("nil")) {
+                                let tagcase_ = walk(s, t);
+                                match *tagcase_ {
+                                    Ty::TyList(el, r) => {
+                                        res(t, es, note_turbofish(s, at_file, at_pos, kayak_rt::heap_cons(el, kayak_rt::nil())))
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        res(t, es, s)
+                                    }
                                 }
-                                _ => {
-                                    let other = tagcase_;
-                                    res(t, es, s)
-                                }
+                            } else {
+                                res(t, es, narrowing_unboxed(v, async_global(v, s, name, at_file, at_pos), name, at_file, at_pos, t))
                             }
-                        } else {
-                            res(t, es, narrowing_unboxed(v, async_global(v, s, name, at_file, at_pos), name, at_file, at_pos, t))
                         }
                     }
                 }
-            }
-            Sexp::Lst(xs, src_file, src_line, src_pos) => {
-                let v = near(v, src_file, src_line, src_pos);
-                let tagcase_ = car(xs);
-                match *tagcase_ {
-                    Sexp::Sym(h, at_file, at_pos) => {
-                        synth_form(v, s, e, h, cdr(xs))
-                    }
-                    _ => {
-                        let head = tagcase_;
-                        void_call(v, false, false, synth_call_of(v, s, synth(v, s, head), cdr(xs), nil::<i64>(), nil::<&'static Ty>(), if head_is_p(head, str_lit("proj")) {
-                            nil::<Str>()
-                        } else {
-                            kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil())
-                        }))
+                Sexp::Lst(xs, src_file, src_line, src_pos) => {
+                    let v = near(v, src_file, src_line, src_pos);
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(h, at_file, at_pos) => {
+                            synth_form(v, s, e, h, cdr(xs))
+                        }
+                        _ => {
+                            let head = tagcase_;
+                            void_call(v, false, false, synth_call_of(v, s, synth(v, s, head), cdr(xs), nil::<i64>(), nil::<&'static Ty>(), if head_is_p(head, str_lit("proj")) {
+                                nil::<Str>()
+                            } else {
+                                kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil())
+                            }))
+                        }
                     }
                 }
             }
@@ -2572,148 +2589,163 @@ pub mod expressions {
 
     pub fn check_plain(v: &'static Cv, s: &'static St, e: &'static Sexp, expected: &'static Ty) -> &'static Res {
         let x = walk(s, expected);
-        if ({
-            let tagcase_ = e;
-            match *tagcase_ {
-                Sexp::Sym(n, f, p) => {
-                    string_eq_p(n, str_lit("#f"))
+        if draft_hole_p(e) {
+            match refuse(v, string_append(str_lit("the hole: "), {
+                let tagcase_ = x;
+                match *tagcase_ {
+                    Ty::TyMeta(m) => {
+                        str_lit("an expression")
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        string_append(str_lit("an expression of type "), show_ty(s, zonk(s, x)))
+                    }
                 }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
-            }
-        } && (string_eq_p(show_ty(s, x), str_lit("false")) || {
-            let tagcase_ = x;
-            match *tagcase_ {
-                Ty::TyData(d, args) => {
-                    (string_eq_p(d, str_lit("%union")) && not(null_p(member_of_shape(args, str_lit("bool")))) && string_eq_p(show_ty(s, car(member_of_shape(args, str_lit("bool")))), str_lit("false")))
-                }
-                _ => {
-                    let other = tagcase_;
-                    false
-                }
-            }
-        })) {
-            res(ty_data(str_lit("false"), nil::<&'static Ty>()), nil::<Str>(), s)
+            })) {}
         } else {
-            if (string_eq_p(shape_of(x), str_lit("union")) && not(string_eq_p(literal_shape(e), str_lit("")))) {
-                let m = member_of_shape(members_of(x), literal_shape(e));
-                if null_p(m) {
-                    match refuse(v, string_append(str_lit("a literal is here, where a "), string_append(show_ty(s, x), str_lit(" is expected")))) {}
-                } else {
-                    check(v, s, e, car(m))
-                }
-            } else {
+            if ({
                 let tagcase_ = e;
                 match *tagcase_ {
-                    Sexp::Num(k, num_file, num_pos) => {
-                        // A literal is an `i64` where one is expected, and otherwise an
-                        // `int`, as in FX-26: an inference variable it meets is solved
-                        // to `int`.
-                        let tagcase_ = x;
-                        match *tagcase_ {
-                            Ty::TyI64() => {
-                                res(x, nil::<Str>(), s)
-                            }
-                            Ty::TyInt() => {
-                                res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("int")))
-                            }
-                            Ty::TyNat() => {
-                                if (i64_lt(k, 0i64) || i64_gt(k, 1152921504606846975i64)) {
-                                    match refuse(v, string_append(i64_to_string(k), str_lit(" is no nat: FX-26's nat literals are below 2^60"))) {}
-                                } else {
+                    Sexp::Sym(n, f, p) => {
+                        string_eq_p(n, str_lit("#f"))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            } && (string_eq_p(show_ty(s, x), str_lit("false")) || {
+                let tagcase_ = x;
+                match *tagcase_ {
+                    Ty::TyData(d, args) => {
+                        (string_eq_p(d, str_lit("%union")) && not(null_p(member_of_shape(args, str_lit("bool")))) && string_eq_p(show_ty(s, car(member_of_shape(args, str_lit("bool")))), str_lit("false")))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            })) {
+                res(ty_data(str_lit("false"), nil::<&'static Ty>()), nil::<Str>(), s)
+            } else {
+                if (string_eq_p(shape_of(x), str_lit("union")) && not(string_eq_p(literal_shape(e), str_lit("")))) {
+                    let m = member_of_shape(members_of(x), literal_shape(e));
+                    if null_p(m) {
+                        match refuse(v, string_append(str_lit("a literal is here, where a "), string_append(show_ty(s, x), str_lit(" is expected")))) {}
+                    } else {
+                        check(v, s, e, car(m))
+                    }
+                } else {
+                    let tagcase_ = e;
+                    match *tagcase_ {
+                        Sexp::Num(k, num_file, num_pos) => {
+                            // A literal is an `i64` where one is expected, and otherwise an
+                            // `int`, as in FX-26: an inference variable it meets is solved
+                            // to `int`.
+                            let tagcase_ = x;
+                            match *tagcase_ {
+                                Ty::TyI64() => {
+                                    res(x, nil::<Str>(), s)
+                                }
+                                Ty::TyInt() => {
                                     res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("int")))
                                 }
-                            }
-                            Ty::TyMeta(m) => {
-                                res(ty_int(), nil::<Str>(), note_fact(solve(s, m, ty_int()), num_file, num_pos, str_lit("int")))
-                            }
-                            Ty::TyData(d, args) => {
-                                if (string_eq_p(d, str_lit("i32")) && not(i64_lt(k, -2147483648i64)) && not(i64_gt(k, 2147483647i64))) {
-                                    res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("fixed i32")))
-                                } else if (string_eq_p(d, str_lit("u32")) && not(i64_lt(k, 0i64)) && not(i64_gt(k, 4294967295i64))) {
-                                    res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("fixed u32")))
-                                } else if (string_eq_p(d, str_lit("u64")) && not(i64_lt(k, 0i64))) {
-                                    res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("fixed u64")))
-                                } else if (string_eq_p(d, str_lit("u8")) && not(i64_lt(k, 0i64)) && not(i64_gt(k, 255i64))) {
-                                    res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("fixed u8")))
-                                } else if (string_eq_p(d, str_lit("i8")) && not(i64_lt(k, -128i64)) && not(i64_gt(k, 127i64))) {
-                                    res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("fixed i8")))
-                                } else if fixed_width_p(d) {
-                                    match refuse(v, string_append(i64_to_string(k), string_append(str_lit(" is not a "), d))) {}
-                                } else {
+                                Ty::TyNat() => {
+                                    if (i64_lt(k, 0i64) || i64_gt(k, 1152921504606846975i64)) {
+                                        match refuse(v, string_append(i64_to_string(k), str_lit(" is no nat: FX-26's nat literals are below 2^60"))) {}
+                                    } else {
+                                        res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("int")))
+                                    }
+                                }
+                                Ty::TyMeta(m) => {
+                                    res(ty_int(), nil::<Str>(), note_fact(solve(s, m, ty_int()), num_file, num_pos, str_lit("int")))
+                                }
+                                Ty::TyData(d, args) => {
+                                    if (string_eq_p(d, str_lit("i32")) && not(i64_lt(k, -2147483648i64)) && not(i64_gt(k, 2147483647i64))) {
+                                        res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("fixed i32")))
+                                    } else if (string_eq_p(d, str_lit("u32")) && not(i64_lt(k, 0i64)) && not(i64_gt(k, 4294967295i64))) {
+                                        res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("fixed u32")))
+                                    } else if (string_eq_p(d, str_lit("u64")) && not(i64_lt(k, 0i64))) {
+                                        res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("fixed u64")))
+                                    } else if (string_eq_p(d, str_lit("u8")) && not(i64_lt(k, 0i64)) && not(i64_gt(k, 255i64))) {
+                                        res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("fixed u8")))
+                                    } else if (string_eq_p(d, str_lit("i8")) && not(i64_lt(k, -128i64)) && not(i64_gt(k, 127i64))) {
+                                        res(x, nil::<Str>(), note_fact(s, num_file, num_pos, str_lit("fixed i8")))
+                                    } else if fixed_width_p(d) {
+                                        match refuse(v, string_append(i64_to_string(k), string_append(str_lit(" is not a "), d))) {}
+                                    } else {
+                                        match refuse(v, string_append(str_lit("a literal is here, where a "), string_append(show_ty(s, x), str_lit(" is expected")))) {}
+                                    }
+                                }
+                                _ => {
+                                    let other = tagcase_;
                                     match refuse(v, string_append(str_lit("a literal is here, where a "), string_append(show_ty(s, x), str_lit(" is expected")))) {}
                                 }
                             }
-                            _ => {
-                                let other = tagcase_;
-                                match refuse(v, string_append(str_lit("a literal is here, where a "), string_append(show_ty(s, x), str_lit(" is expected")))) {}
-                            }
                         }
-                    }
-                    Sexp::Big(text, f, p) => {
-                        // A literal past an i64: an `int`, or a `nat` if not negative.
-                        let tagcase_ = x;
-                        match *tagcase_ {
-                            Ty::TyInt() => {
-                                res(x, nil::<Str>(), s)
-                            }
-                            Ty::TyNat() => {
-                                match refuse(v, string_append(text, str_lit(" is no nat: FX-26's nat literals are below 2^60"))) {}
-                            }
-                            Ty::TyMeta(m) => {
-                                res(ty_int(), nil::<Str>(), solve(s, m, ty_int()))
-                            }
-                            Ty::TyData(d, args) => {
-                                if (string_eq_p(d, str_lit("u64")) && not(char_eq_p(string_ref_i64(text, 0i64), '-')) && (i64_lt(string_length_i64(text), 20i64) || (i64_eq(string_length_i64(text), 20i64) && digits_at_most_p(string_chars(text), string_chars(str_lit("18446744073709551615")))))) {
-                                    res(x, nil::<Str>(), note_fact(s, f, p, str_lit("fixed u64")))
-                                } else {
-                                    match refuse(v, string_append(text, string_append(str_lit(" is not a "), d))) {}
-                                }
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                match refuse(v, string_append(str_lit("a literal past an i64 is here, where a "), string_append(show_ty(s, x), str_lit(" is expected")))) {}
-                            }
-                        }
-                    }
-                    Sexp::Lst(xs, src_file, src_line, src_pos) => {
-                        let v = near(v, src_file, src_line, src_pos);
-                        let tagcase_ = car(xs);
-                        match *tagcase_ {
-                            Sexp::Sym(h, at_file, at_pos) => {
-                                check_form(v, s, e, h, cdr(xs), x)
-                            }
-                            _ => {
-                                let other = tagcase_;
-                                check_by_synth(v, s, e, x)
-                            }
-                        }
-                    }
-                    Sexp::Sym(name, at_file, at_pos) => {
-                        if (string_eq_p(name, str_lit("nil")) && string_eq_p(shape_of(x), str_lit("union")) && not(null_p(member_of_shape(members_of(x), str_lit("nil")))) && null_p(member_of_shape(members_of(x), str_lit("list")))) {
-                            // `nil` where a union with a `nil` member is wanted (C84): that
-                            // member, as FX-26 has it.
-                            res(ty_data(str_lit("nil"), nil::<&'static Ty>()), nil::<Str>(), s)
-                        } else if string_eq_p(name, str_lit("nil")) {
+                        Sexp::Big(text, f, p) => {
+                            // A literal past an i64: an `int`, or a `nat` if not negative.
                             let tagcase_ = x;
                             match *tagcase_ {
-                                Ty::TyList(el, r) => {
-                                    res(x, nil::<Str>(), note_turbofish(s, at_file, at_pos, kayak_rt::heap_cons(el, kayak_rt::nil())))
+                                Ty::TyInt() => {
+                                    res(x, nil::<Str>(), s)
+                                }
+                                Ty::TyNat() => {
+                                    match refuse(v, string_append(text, str_lit(" is no nat: FX-26's nat literals are below 2^60"))) {}
+                                }
+                                Ty::TyMeta(m) => {
+                                    res(ty_int(), nil::<Str>(), solve(s, m, ty_int()))
+                                }
+                                Ty::TyData(d, args) => {
+                                    if (string_eq_p(d, str_lit("u64")) && not(char_eq_p(string_ref_i64(text, 0i64), '-')) && (i64_lt(string_length_i64(text), 20i64) || (i64_eq(string_length_i64(text), 20i64) && digits_at_most_p(string_chars(text), string_chars(str_lit("18446744073709551615")))))) {
+                                        res(x, nil::<Str>(), note_fact(s, f, p, str_lit("fixed u64")))
+                                    } else {
+                                        match refuse(v, string_append(text, string_append(str_lit(" is not a "), d))) {}
+                                    }
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    match refuse(v, string_append(str_lit("a literal past an i64 is here, where a "), string_append(show_ty(s, x), str_lit(" is expected")))) {}
+                                }
+                            }
+                        }
+                        Sexp::Lst(xs, src_file, src_line, src_pos) => {
+                            let v = near(v, src_file, src_line, src_pos);
+                            let tagcase_ = car(xs);
+                            match *tagcase_ {
+                                Sexp::Sym(h, at_file, at_pos) => {
+                                    check_form(v, s, e, h, cdr(xs), x)
                                 }
                                 _ => {
                                     let other = tagcase_;
                                     check_by_synth(v, s, e, x)
                                 }
                             }
-                        } else {
+                        }
+                        Sexp::Sym(name, at_file, at_pos) => {
+                            if (string_eq_p(name, str_lit("nil")) && string_eq_p(shape_of(x), str_lit("union")) && not(null_p(member_of_shape(members_of(x), str_lit("nil")))) && null_p(member_of_shape(members_of(x), str_lit("list")))) {
+                                // `nil` where a union with a `nil` member is wanted (C84): that
+                                // member, as FX-26 has it.
+                                res(ty_data(str_lit("nil"), nil::<&'static Ty>()), nil::<Str>(), s)
+                            } else if string_eq_p(name, str_lit("nil")) {
+                                let tagcase_ = x;
+                                match *tagcase_ {
+                                    Ty::TyList(el, r) => {
+                                        res(x, nil::<Str>(), note_turbofish(s, at_file, at_pos, kayak_rt::heap_cons(el, kayak_rt::nil())))
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        check_by_synth(v, s, e, x)
+                                    }
+                                }
+                            } else {
+                                check_by_synth(v, s, e, x)
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
                             check_by_synth(v, s, e, x)
                         }
-                    }
-                    _ => {
-                        let other = tagcase_;
-                        check_by_synth(v, s, e, x)
                     }
                 }
             }
@@ -2725,41 +2757,56 @@ pub mod expressions {
     /// type returning no `Result` (`lift N` at it, `N` its arity, wherever
     /// it stands: an argument, a list's element, a branch, a field).
     pub fn check_by_synth(v: &'static Cv, s: &'static St, e: &'static Sexp, expected: &'static Ty) -> &'static Res {
-        let tagcase_ = synth(v, s, e);
-        match *tagcase_ {
-            Res::Res(t, es, s) => {
-                res(expected, es, {
-                    let s = coerced(v, fits(v, s, t, expected), datum_file(e), datum_pos(e), t, expected);
-                    let tagcase_ = walk(s, t);
-                    match *tagcase_ {
-                        Ty::TyProc(pes, ps, r) => {
-                            let tagcase_ = walk(s, expected);
-                            match *tagcase_ {
-                                Ty::TyProc(ees, eps, er) => {
-                                    if (suspends_p(ees) && not(suspends_p(pes))) {
-                                        note_fact(s, datum_file(e), datum_pos(e), string_append(if escapes_p(pes) {
-                                            str_lit("lift-suspend-fallible ")
+        if draft_hole_p(e) {
+            match refuse(v, string_append(str_lit("the hole: "), {
+                let tagcase_ = walk(s, expected);
+                match *tagcase_ {
+                    Ty::TyMeta(m) => {
+                        str_lit("an expression")
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        string_append(str_lit("an expression of type "), show_ty(s, zonk(s, expected)))
+                    }
+                }
+            })) {}
+        } else {
+            let tagcase_ = synth(v, s, e);
+            match *tagcase_ {
+                Res::Res(t, es, s) => {
+                    res(expected, es, {
+                        let s = coerced(v, fits(v, s, t, expected), datum_file(e), datum_pos(e), t, expected);
+                        let tagcase_ = walk(s, t);
+                        match *tagcase_ {
+                            Ty::TyProc(pes, ps, r) => {
+                                let tagcase_ = walk(s, expected);
+                                match *tagcase_ {
+                                    Ty::TyProc(ees, eps, er) => {
+                                        if (suspends_p(ees) && not(suspends_p(pes))) {
+                                            note_fact(s, datum_file(e), datum_pos(e), string_append(if escapes_p(pes) {
+                                                str_lit("lift-suspend-fallible ")
+                                            } else {
+                                                str_lit("lift-suspend ")
+                                            }, i64_to_string(size(ps))))
+                                        } else if (escapes_p(ees) && not(escapes_p(pes))) {
+                                            note_fact(s, datum_file(e), datum_pos(e), string_append(str_lit("lift "), i64_to_string(size(ps))))
                                         } else {
-                                            str_lit("lift-suspend ")
-                                        }, i64_to_string(size(ps))))
-                                    } else if (escapes_p(ees) && not(escapes_p(pes))) {
-                                        note_fact(s, datum_file(e), datum_pos(e), string_append(str_lit("lift "), i64_to_string(size(ps))))
-                                    } else {
+                                            s
+                                        }
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
                                         s
                                     }
                                 }
-                                _ => {
-                                    let other = tagcase_;
-                                    s
-                                }
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                s
                             }
                         }
-                        _ => {
-                            let other = tagcase_;
-                            s
-                        }
-                    }
-                })
+                    })
+                }
             }
         }
     }
@@ -3409,7 +3456,7 @@ pub mod expressions {
                                 match refuse(v, string_append(str_lit("tagcase of a "), string_append(show_ty(s, t), str_lit(", no sum")))) {}
                             } else {
                                 let arms = cdr(xs);
-                                with_effs(tag_arms(v, note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("tagcase-sum "), words_of(ls))), walk(s, t), map(&sum_arm, arms), sum_variants(v, ls, ts, arms), expected), es)
+                                with_effs(tag_arms(v, note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("tagcase-sum "), words_of(ls))), walk(s, t), map(&sum_arm, arms), sum_variants(v, ls, ts, unholed(arms)), expected), es)
                             }
                         }
                         _ => {
@@ -3532,21 +3579,29 @@ pub mod expressions {
         let tagcase_ = walk(s, expected);
         match *tagcase_ {
             Ty::TyShape(p, ls, ts) => {
-                let tag = label_of(car(xs));
-                if (p || not(string_member_p(tag, ls)) || not(i64_eq(size(xs), 2i64))) {
-                    match refuse(v, string_append(str_lit("a sum tagged "), string_append(tag, string_append(str_lit(", where a "), string_append(show_ty(s, expected), str_lit(" is expected")))))) {}
+                if (not(p) && not(null_p(xs)) && draft_hole_p(car(xs))) {
+                    match refuse(v, string_append(str_lit("the hole: a tag, then its value: "), words_joined(tags_wanted(s, ls, ts), str_lit(", ")))) {}
                 } else {
-                    let tagcase_ = check(v, s, second(xs), member_type(tag, ls, ts));
-                    match *tagcase_ {
-                        Res::Res(t, es, s) => {
-                            res(expected, es, note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("sum-type "), show_sexp(ty_sexp(v, s, zonk(s, expected))))))
+                    let tag = label_of(car(xs));
+                    if (p || not(string_member_p(tag, ls)) || not(i64_eq(size(xs), 2i64))) {
+                        match refuse(v, string_append(str_lit("a sum tagged "), string_append(tag, string_append(str_lit(", where a "), string_append(show_ty(s, expected), str_lit(" is expected")))))) {}
+                    } else {
+                        let tagcase_ = check(v, s, second(xs), member_type(tag, ls, ts));
+                        match *tagcase_ {
+                            Res::Res(t, es, s) => {
+                                res(expected, es, note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("sum-type "), show_sexp(ty_sexp(v, s, zonk(s, expected))))))
+                            }
                         }
                     }
                 }
             }
             _ => {
                 let other = tagcase_;
-                match refuse(v, str_lit("a sum whose type is not known here: write it, (the (sumof ...) (sum ...))")) {}
+                if (not(null_p(xs)) && draft_hole_p(car(xs))) {
+                    match refuse(v, str_lit("the hole: a tag, then an expression")) {}
+                } else {
+                    match refuse(v, str_lit("a sum whose type is not known here: write it, (the (sumof ...) (sum ...))")) {}
+                }
             }
         }
     }
@@ -3941,33 +3996,77 @@ pub mod expressions {
                 match refuse(v, string_append(str_lit("a tagcase of a "), string_append(show_ty(s, whole), str_lit(" with no else, and no arm for each tag")))) {}
             }
         } else {
-            let arm = items(car(tagged));
-            let tag = name_of(v, car(arm));
-            if string_eq_p(tag, str_lit("else")) {
-                if null_p(cdr(tagged)) {
-                    body(with_binds(v, kayak_rt::heap_cons(local(v, name_of(v, second(arm)), whole), kayak_rt::nil())), s, cdr(cdr(arm)), expected)
-                } else {
-                    match refuse(v, str_lit("a tagcase's else is its last arm")) {}
-                }
-            } else {
-                let fields = variant_fields(v, show_ty(s, whole), tag, vs);
-                let names = items(second(arm));
-                if not(i64_eq(size(names), size(fields))) {
-                    match refuse(v, string_append(str_lit("the arm for "), string_append(tag, str_lit(" names the wrong number of fields")))) {}
-                } else {
-                    let tagcase_ = body(with_binds(v, bind_fields(v, names, fields)), s, cdr(cdr(arm)), expected);
+            if draft_hole_p(car(tagged)) {
+                match refuse(v, string_append(str_lit("the hole: "), arms_wanted(s, vs, {
+                    let tagcase_ = whole;
                     match *tagcase_ {
-                        Res::Res(t, es, s) => {
-                            let tagcase_ = tag_arms(v, s, whole, cdr(tagged), without_tag(tag, vs), next_expected(s, t, expected));
-                            match *tagcase_ {
-                                Res::Res(t2, es2, s) => {
-                                    res(joined(s, t, t2, expected), effs_union(es, es2), join_state(v, s, t, t2, expected))
+                        Ty::TyShape(p, ls, ts) => {
+                            str_lit("name")
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("(name …)")
+                        }
+                    }
+                }))) {}
+            } else {
+                let arm = items(car(tagged));
+                let tag = name_of(v, car(arm));
+                if string_eq_p(tag, str_lit("else")) {
+                    if null_p(cdr(tagged)) {
+                        body(with_binds(v, kayak_rt::heap_cons(local(v, name_of(v, second(arm)), whole), kayak_rt::nil())), s, cdr(cdr(arm)), expected)
+                    } else {
+                        match refuse(v, str_lit("a tagcase's else is its last arm")) {}
+                    }
+                } else {
+                    let fields = variant_fields(v, show_ty(s, whole), tag, vs);
+                    let names = items(second(arm));
+                    if not(i64_eq(size(names), size(fields))) {
+                        match refuse(v, string_append(str_lit("the arm for "), string_append(tag, str_lit(" names the wrong number of fields")))) {}
+                    } else {
+                        let tagcase_ = body(with_binds(v, bind_fields(v, names, fields)), s, cdr(cdr(arm)), expected);
+                        match *tagcase_ {
+                            Res::Res(t, es, s) => {
+                                let tagcase_ = tag_arms(v, s, whole, cdr(tagged), without_tag(tag, vs), next_expected(s, t, expected));
+                                match *tagcase_ {
+                                    Res::Res(t2, es2, s) => {
+                                        res(joined(s, t, t2, expected), effs_union(es, es2), join_state(v, s, t, t2, expected))
+                                    }
                                 }
                             }
                         }
                     }
                 }
             }
+        }
+    }
+
+    /// Each tag of a sum, and its value's type.
+    pub fn tags_wanted(s: &'static St, ls: Strings, ts: Tys) -> Strings {
+        if (null_p(ls) || null_p(ts)) {
+            nil::<Str>()
+        } else {
+            kayak_rt::heap_cons(string_append(str_lit("`"), string_append(car(ls), string_append(str_lit("` ("), string_append(show_ty(s, car(ts)), str_lit(")"))))), tags_wanted(s, cdr(ls), cdr(ts)))
+        }
+    }
+
+    /// What a tagcase's next arm may be: one for a tag no arm has taken, or
+    /// else; nothing, once each has one. A sum's arm `binds` a name, a
+    /// datatype's a list of them.
+    pub fn arms_wanted(s: &'static St, vs: Variants, binds: Str) -> Str {
+        if null_p(vs) {
+            str_lit("nothing: every tag has an arm")
+        } else {
+            string_append(string_append(str_lit("an arm `(tag "), string_append(binds, str_lit(" body …)` for "))), string_append(words_joined(map(lambda1(move |x: &'static Variant| {
+                let tagcase_ = x;
+                match *tagcase_ {
+                    Variant::Variant(tag, ts) => {
+                        string_append(str_lit("`"), string_append(tag, string_append(str_lit("` ("), string_append(words_joined(map(lambda1(move |t: &'static Ty| {
+                            show_ty(s, t)
+                        }), ts), str_lit(" ")), str_lit(")")))))
+                    }
+                }
+            }), vs), str_lit(", ")), str_lit(", or `(else name body …)`")))
         }
     }
 
@@ -5544,12 +5643,14 @@ pub mod expressions {
                     false
                 }
                 Sexp::Sym(n, f, p) => {
-                    let tagcase_ = synth(v, s, car(args));
-                    match *tagcase_ {
-                        Res::Res(t, es, s2) => {
-                            nat_p(s2, t)
+                    (not(draft_hole_p(car(args))) && {
+                        let tagcase_ = synth(v, s, car(args));
+                        match *tagcase_ {
+                            Res::Res(t, es, s2) => {
+                                nat_p(s2, t)
+                            }
                         }
-                    }
+                    })
                 }
                 Sexp::Lst(xs, f, l, p) => {
                     (head_is_p(car(args), str_lit("+")) && not(null_p(find_bind(str_lit("+"), cv_binds(v)))) && {
@@ -5805,11 +5906,22 @@ pub mod expressions {
         let tagcase_ = callee;
         match *tagcase_ {
             Res::Res(t, es0, s) => {
+                let args = if string_eq_p(cv_file(v), str_lit("<draft>")) {
+                    through_hole(args)
+                } else {
+                    args
+                };
                 let tagcase_ = vsubr_as_proc(composable_as_proc(s, walk(s, t)), size(args));
                 match *tagcase_ {
                     Ty::TyProc(latent, ps, r) => {
-                        if not(i64_eq(size(ps), size(args))) {
+                        if (not(i64_eq(size(ps), size(args))) && not(any_p(&draft_hole_p, args))) {
                             match refuse(v, string_append(str_lit("a call of the wrong number of arguments: "), show_sexps(args))) {}
+                        } else if i64_gt(size(args), size(ps)) {
+                            match refuse(v, string_append(str_lit("the hole: nothing, the call has its "), string_append(i64_to_string(size(ps)), if i64_eq(size(ps), 1i64) {
+                                str_lit(" argument")
+                            } else {
+                                str_lit(" arguments")
+                            }))) {}
                         } else {
                             let tagcase_ = {
                                 let s1 = if (null_p(expected) || proc_type_p(s, car(expected))) {
@@ -5817,7 +5929,11 @@ pub mod expressions {
                                 } else {
                                     fits(v, s, r, car(expected))
                                 };
-                                call_args(v, s1, args, ps, fixed_by(s, s1, concat(map(&metas_of, ps))))
+                                call_args(v, s1, args, if i64_eq(size(ps), size(args)) {
+                                    ps
+                                } else {
+                                    tys_first(ps, size(args))
+                                }, fixed_by(s, s1, concat(map(&metas_of, ps))))
                             };
                             match *tagcase_ {
                                 Res::Res(u, es1, s0) => {
@@ -5921,10 +6037,10 @@ pub mod expressions {
     /// an inference variable, which is heard after the rest, as FX-26 hears
     /// it. A literal is not: FX-26 makes it an `int` where it stands.
     pub fn call_args(v: &'static Cv, s: &'static St, args: Sexps, ps: Tys, fixed: I64s) -> &'static Res {
-        let tagcase_ = call_args_pass(v, s, args, ps, false, fixed);
+        let tagcase_ = call_args_pass(v, s, args, ps, false, fixed, 1i64);
         match *tagcase_ {
             Res::Res(u, es, s) => {
-                with_effs(call_args_pass(v, s, args, ps, true, fixed), es)
+                with_effs(call_args_pass(v, s, args, ps, true, fixed, 1i64), es)
             }
         }
     }
@@ -5969,30 +6085,39 @@ pub mod expressions {
         }
     }
 
-    /// The arguments `deferred?` says are `later`'s.
-    pub fn call_args_pass(mut v: &'static Cv, mut s: &'static St, mut args: Sexps, mut ps: Tys, mut later: bool, mut fixed: I64s) -> &'static Res {
+    /// The arguments `deferred?` says are `later`'s; the first is argument
+    /// `k`. The REPL's hole as one is said to be in it (C97).
+    pub fn call_args_pass(mut v: &'static Cv, mut s: &'static St, mut args: Sexps, mut ps: Tys, mut later: bool, mut fixed: I64s, mut k: i64) -> &'static Res {
         loop {
             if null_p(args) {
                 return res(ty_unit(), nil::<Str>(), s);
             } else if eqv_bool_p(deferred_p(car(args), car(ps)), later) {
                 let tagcase_ = if not(null_p(module_spec(v, walk(s, car(ps))))) {
-                    module_argument(v, s, car(args), walk(s, car(ps)))
+                    module_argument(in_draft(v, car(args)), s, car(args), walk(s, car(ps)))
                 } else if (not(lambda_form_p(car(args))) && has_open_p(s, car(ps))) {
                     // An argument for a parameter whose type is not known whole yet:
                     // found by itself, as FX-26 finds it (a literal an `int`, a
                     // control form's branches of one type, a `list` at a fresh
                     // region); a lambda, told its parameters, is checked.
-                    check_by_synth(v, s, car(args), car(ps))
+                    check_by_synth(in_draft(if draft_hole_p(car(args)) {
+                        said_in(v, string_append(str_lit("argument "), i64_to_string(k)))
+                    } else {
+                        v
+                    }, car(args)), s, car(args), car(ps))
                 } else {
-                    check(v, s, car(args), car(ps))
+                    check(in_draft(if draft_hole_p(car(args)) {
+                        said_in(v, string_append(str_lit("argument "), i64_to_string(k)))
+                    } else {
+                        v
+                    }, car(args)), s, car(args), car(ps))
                 };
                 match *tagcase_ {
                     Res::Res(t, es, s) => {
-                        return with_effs(call_args_pass(v, s, cdr(args), cdr(ps), later, fixed), es);
+                        return with_effs(call_args_pass(v, s, cdr(args), cdr(ps), later, fixed, i64_plus(k, 1i64)), es);
                     }
                 }
             } else {
-                (args, ps) = (cdr(args), cdr(ps));
+                (args, ps, k) = (cdr(args), cdr(ps), i64_plus(k, 1i64));
                 continue;
             }
         }

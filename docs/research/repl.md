@@ -1,7 +1,7 @@
 # The engine's REPL: Fixpt's features, Coopt's foundation, entries that run while you type
 
 Status: design, 2026-10-13; stages 1 to 3 done (C94, C95), checking as
-you type (C96); the user's: "spend some time working on
+you type (C96, C97); the user's: "spend some time working on
 improving the REPL experience. Fixpt's REPL is the most sophisticated …
 model the high-level feature set off of what it offers. But Coopt's REPL
 … has the stronger foundation, … everything being async-pilled on that
@@ -125,9 +125,11 @@ does: a refusal said under the draft when it is about what has been
 finished, else a hint for the argument at the end; a finished
 expression that only reads and allocates runs early, as a task beside
 the entries, its value under the draft. Details: `CLAUDES_CHOICES.md`
-C96. Left: Fixpt's hints from the arguments so far and from the grammar
-(`next: an arm …`); an underline at the refused subform (the note says
-what, not where); speculating a command's forms (`,type E`).
+C96. The hints are the checker's, at a hole where the next item goes,
+as Fixpt's: the argument's type as the arguments before it solve it, a
+`tagcase`'s arms not taken, a `sum`'s tags; a refused subform is
+underlined (C97). Left: speculating a command's forms (`,type E`); type
+variables shown as `?0`, where Fixpt shows the binder's name.
 
 ## Coopt's skimmer, and what kayak might take from it
 
