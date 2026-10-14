@@ -2301,3 +2301,10 @@ key, as a 4 ms slice (C99) still could.
 - **Costs.** Each entry is checked twice, once on each side; the prelude
   loaded twice. The check of a large draft still runs on the front's
   thread, before the next key.
+
+## C104. The pin moved to Fixpt e0418bd (2026-10-14)
+
+The user: "you should update to latest Fixpt". One commit past fea5c66,
+on native code's typed calls (TODO §93), nothing KFX has: check.sh
+passes as before (156 of Fixpt's programs through kfx agree, 287 refused
+by both).
