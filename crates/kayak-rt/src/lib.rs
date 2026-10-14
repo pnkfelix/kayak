@@ -122,11 +122,16 @@ pub enum Void {}
 
 #[inline]
 pub fn error(message: Str) -> ! {
-    panic!("{}", message.text)
+    fail(message.text)
 }
 
-/// A run-time error of the runtime's own, as `error` is a program's.
+/// A run-time error of the runtime's own, as `error` is a program's: a
+/// panic, which the program's hook says; in a monitored process (C108),
+/// one no hook sees, since its watcher is told instead.
 pub(crate) fn fail(message: &str) -> ! {
+    if process::monitored() {
+        std::panic::resume_unwind(Box::new(message.to_string()))
+    }
     panic!("{message}")
 }
 

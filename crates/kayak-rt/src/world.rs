@@ -12,7 +12,7 @@ use crate::{
     Int, List, Show, Str, Void, fail, heap_alloc, heap_cons, i64_to_int, int_to_i64, leak_string,
     nil,
 };
-use std::cell::{Cell, OnceCell};
+use std::cell::Cell;
 use std::io::{BufRead, Write};
 use std::time::Instant;
 
@@ -312,11 +312,13 @@ pub fn read_line() -> &'static Sum_4line_3eof_6failed<Str, (), IoError> {
     })
 }
 
-thread_local!(static START: OnceCell<Instant> = const { OnceCell::new() });
+static START: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
 
-/// Monotonic nanoseconds since the clock was first asked.
+/// Monotonic nanoseconds since the clock was first asked, by any thread:
+/// one clock for every process, so that a deadline one makes is another's
+/// too (C108).
 pub fn clock() -> i64 {
-    START.with(|s| s.get_or_init(Instant::now).elapsed().as_nanos() as i64)
+    START.get_or_init(Instant::now).elapsed().as_nanos() as i64
 }
 
 pub fn sleep_until(t: i64) {

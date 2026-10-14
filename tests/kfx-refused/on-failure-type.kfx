@@ -1,0 +1,7 @@
+"A monitor's `on-failure` makes the watcher's message of a failure's
+ (C108): here an int, where the watcher takes a report."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type report (sumof (ok int) (failed string)))
+(define* start (subr (maxeff (alloc @w) (send @p) nondet spin) ((addr report @p)) (addr int @w))
+  (lambda (collector)
+    (spawn-monitored collector (lambda ((m string)) 0) (box int r) (begin (receive box) #u))))

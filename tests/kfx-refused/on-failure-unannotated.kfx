@@ -1,0 +1,8 @@
+"A monitor's `on-failure` is found, not checked against what the watcher
+ takes (C108), as FX-26 finds it: a lambda's parameter is not known from
+ it, and must be written."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type report (sumof (ok int) (failed string)))
+(define* start (subr (maxeff (alloc @w) (send @p) nondet spin) ((addr report @p)) (addr int @w))
+  (lambda (collector)
+    (spawn-monitored collector (lambda (m) (sum failed m)) (box int r) (begin (receive box) #u))))

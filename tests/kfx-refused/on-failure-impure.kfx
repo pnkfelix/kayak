@@ -1,0 +1,9 @@
+"A monitor's `on-failure` is pure (C108): it is run where the process
+ failed, for its watcher."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-type report (sumof (ok int) (failed string)))
+(define* start (subr (maxeff (alloc @w) (send @p) nondet spin) ((addr report @p)) (addr int @w))
+  (lambda (collector)
+    (spawn-monitored collector
+                     (lambda ((m string)) (begin (send collector (the report (sum failed m))) (the report (sum failed m))))
+                     (box int r) (begin (receive box) #u))))

@@ -1,0 +1,4 @@
+"FX-26's `race` (C108): KFX has it not yet, and refuses it as a form, not
+ a call."
+(define-effect kfx (maxeff (read @globals) spin))
+(define main (subr nondet () int) (lambda () (race 1 2)))

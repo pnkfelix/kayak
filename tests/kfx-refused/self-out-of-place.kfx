@@ -1,0 +1,6 @@
+"A process's own address is at its place (C108): it cannot leave the
+ place, here by an I-cell outside it."
+(define-effect kfx (maxeff (read @globals) spin))
+(define* start (subr (maxeff (alloc @w) (init @c) nondet spin) ((icell (addr int @w) @c)) (addr int @w))
+  (lambda (answer)
+    (spawn (box int r) (icell-put! answer (self box)))))

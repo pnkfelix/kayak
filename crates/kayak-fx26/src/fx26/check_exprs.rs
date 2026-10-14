@@ -2987,7 +2987,8 @@ pub mod expressions {
         }
     }
 
-    /// `((icell-get c) x body ...)` or `((receive box) x body ...)`.
+    /// `((icell-get c) x body ...)`, `((receive box) x body ...)` or
+    /// `((sleep-until t) x body ...)`, a deadline (C108).
     pub fn pselect_arm_p(arm: &'static Sexp) -> bool {
         let tagcase_ = arm;
         match *tagcase_ {
@@ -3007,7 +3008,7 @@ pub mod expressions {
                     let tagcase_ = car(ys);
                     match *tagcase_ {
                         Sexp::Lst(ws, f3, l3, p3) => {
-                            (i64_eq(size(ws), 2i64) && (sym_is_p(car(ws), str_lit("icell-get")) || sym_is_p(car(ws), str_lit("receive"))))
+                            (i64_eq(size(ws), 2i64) && (sym_is_p(car(ws), str_lit("icell-get")) || sym_is_p(car(ws), str_lit("receive")) || sym_is_p(car(ws), str_lit("sleep-until"))))
                         }
                         _ => {
                             let other = tagcase_;
@@ -3627,6 +3628,72 @@ pub mod expressions {
         }
     }
 
+    /// `(spawn-monitored w on-failure (box M r) body ...)` (C108): `spawn`,
+    /// but a failure of the process is no failure of the program: its
+    /// watcher, `w`, an `(addr W R)`, is sent `(on-failure message)`,
+    /// `on-failure` a `(subr pure (string) W)`, found, not checked, as
+    /// FX-26 finds it. The effect `spawn`'s, the two's, and `(send R)`
+    /// (`synth_spawn_monitored`).
+    pub fn spawn_monitored_form(v: &'static Cv, s: &'static St, xs: Sexps, expected: Tys) -> &'static Res {
+        if i64_lt(size(xs), 4i64) {
+            match refuse(v, str_lit("`(spawn-monitored watcher on-failure (mailbox message-type place) body …)`")) {}
+        } else {
+            let tagcase_ = synth(v, s, car(xs));
+            match *tagcase_ {
+                Res::Res(wt, wes, s) => {
+                    let tagcase_ = walk(s, wt);
+                    match *tagcase_ {
+                        Ty::TyData(d, args) => {
+                            if not(string_eq_p(d, str_lit("%addr"))) {
+                                match refuse(v, string_append(str_lit("a watcher is a process's address, `(addr M R)`, and this is a "), show_ty(s, wt))) {}
+                            } else {
+                                let tagcase_ = synth(v, s, second(xs));
+                                match *tagcase_ {
+                                    Res::Res(ft, fes, s) => {
+                                        let (s, sent) = (fits(v, s, ft, ty_proc(nil::<Str>(), kayak_rt::heap_cons(ty_string(), kayak_rt::nil()), car(args))), string_append(str_lit("send:"), region_string(s, car(cdr(args)))));
+                                        with_effs(with_effs(spawn_form(v, s, cdr(cdr(xs)), expected), effs_union(wes, fes)), kayak_rt::heap_cons(sent, kayak_rt::nil()))
+                                    }
+                                }
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            match refuse(v, string_append(str_lit("a watcher is a process's address, `(addr M R)`, and this is a "), show_ty(s, wt))) {}
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// `(self box)` (C108): the process's own address, at its place, from
+    /// its mailbox: `(subr pure ((inbox M r)) (addr M r))`.
+    pub fn self_form(v: &'static Cv, s: &'static St, xs: Sexps) -> &'static Res {
+        if not(i64_eq(size(xs), 1i64)) {
+            match refuse(v, str_lit("`(self mailbox)`")) {}
+        } else {
+            let tagcase_ = synth(v, s, car(xs));
+            match *tagcase_ {
+                Res::Res(t, es, s) => {
+                    let tagcase_ = walk(s, t);
+                    match *tagcase_ {
+                        Ty::TyData(d, args) => {
+                            if string_eq_p(d, str_lit("%inbox")) {
+                                res(ty_data(str_lit("%addr"), args), es, s)
+                            } else {
+                                match refuse(v, string_append(str_lit("`self` is given a process's mailbox, and this is a "), show_ty(s, t))) {}
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            match refuse(v, string_append(str_lit("`self` is given a process's mailbox, and this is a "), show_ty(s, t))) {}
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     /// `par`'s branches, each its own effect, then its body, their values
     /// bound as a `let`'s: no branch may transfer control out of itself,
     /// and no two may interfere (`synth_par`).
@@ -3739,15 +3806,16 @@ pub mod expressions {
     }
 
     /// `(pselect (W x body ...) ...)`: waits until one arm's wait is ready,
-    /// an I-cell filled or a message come, and runs that arm, the first so
-    /// in order; which are ready is the schedule's, so `nondet`.
+    /// an I-cell filled, a message come or a deadline passed, and runs
+    /// that arm, the first so in order; which are ready is the schedule's,
+    /// so `nondet`.
     pub fn pselect_form(v: &'static Cv, s: &'static St, xs: Sexps, expected: Tys) -> &'static Res {
         if null_p(xs) {
             match refuse(v, str_lit("`(pselect ((icell-get i-cell) name body …) ((receive mailbox) name body …) …)`")) {}
         } else if any_p(lambda1s(move |a: &'static Sexp| {
             not(pselect_arm_p(a))
         }), xs) {
-            match refuse(v, str_lit("a `pselect` arm is `((icell-get i-cell) name body …)` or `((receive mailbox) name body …)`")) {}
+            match refuse(v, str_lit("a `pselect` arm is `((icell-get i-cell) name body …)`, `((receive mailbox) name body …)` or `((sleep-until time) name body …)`")) {}
         } else {
             with_effs(pselect_arms(v, s, xs, expected), kayak_rt::heap_cons(str_lit("nondet"), kayak_rt::nil()))
         }
@@ -3757,6 +3825,14 @@ pub mod expressions {
         loop {
             if string_eq_p(h, str_lit("spawn")) {
                 return spawn_form(v, s, xs, nil::<&'static Ty>());
+            } else if string_eq_p(h, str_lit("spawn-monitored")) {
+                return spawn_monitored_form(v, s, xs, nil::<&'static Ty>());
+            } else if string_eq_p(h, str_lit("self")) {
+                return self_form(v, s, xs);
+            } else if string_eq_p(h, str_lit("race")) {
+                // FX-26's `race`, a form wherever it heads a list: refused, not a
+                // call of what a program names `race` (C108).
+                return match refuse(v, str_lit("`(race e …)` is FX-26's form, which KFX does not have yet")) {};
             } else if string_eq_p(h, str_lit("par")) {
                 return par_form(v, s, xs, nil::<&'static Ty>());
             } else if string_eq_p(h, str_lit("pselect")) {
@@ -4007,6 +4083,10 @@ pub mod expressions {
     pub fn check_form(v: &'static Cv, s: &'static St, e: &'static Sexp, h: Str, xs: Sexps, expected: &'static Ty) -> &'static Res {
         if string_eq_p(h, str_lit("spawn")) {
             spawn_form(v, s, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
+        } else if string_eq_p(h, str_lit("spawn-monitored")) {
+            spawn_monitored_form(v, s, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
+        } else if (string_eq_p(h, str_lit("self")) || string_eq_p(h, str_lit("race"))) {
+            check_by_synth(v, s, e, expected)
         } else if string_eq_p(h, str_lit("par")) {
             par_form(v, s, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
         } else if string_eq_p(h, str_lit("pselect")) {

@@ -15,15 +15,26 @@
 //! thread of its own, or a `par` branch of one) with none left to make it
 //! ready is a deadlock, an error, as Fixpt's is; a process that waits for
 //! ever is no error (a server whose clients are done).
+//!
+//! A process and the branches of its `par`s are a group (C108): a failure
+//! in any is the process's, and cancels the rest at their next wait. An
+//! unmonitored process's failure is the program's; a monitored one's is a
+//! message to its watcher.
 
+use std::cell::Cell;
 use std::collections::VecDeque;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Condvar, Mutex, MutexGuard};
+use std::time::Duration;
 
 struct Sched {
     /// Tasks that can run: neither waiting nor joining a branch.
     running: usize,
-    /// Tasks waiting for an I-cell or a message.
+    /// Tasks waiting for an I-cell, a message or a deadline.
     waiting: usize,
+    /// Those of them waiting with a deadline, which no one need make
+    /// ready: while any does, no wait is a deadlock.
+    timed: usize,
     /// Changes made that a waiter may be waiting for: a message sent, an
     /// I-cell filled. A waiter looks again after each.
     epoch: u64,
@@ -38,6 +49,7 @@ struct Sched {
 static SCHED: Mutex<Sched> = Mutex::new(Sched {
     running: 0,
     waiting: 0,
+    timed: 0,
     epoch: 0,
     stale: 0,
     failed: None,
@@ -72,6 +84,51 @@ impl Drop for Task {
 
 thread_local! {
     static TASK: std::cell::OnceCell<Task> = const { std::cell::OnceCell::new() };
+    static GROUP: Cell<Option<&'static Group>> = const { Cell::new(None) };
+}
+
+/// A process and its `par` branches (C108): what is done at its first
+/// failure, which then cancels the rest.
+struct Group {
+    monitored: bool,
+    on_failure: Box<dyn Fn(String) + Send + Sync>,
+    failed: AtomicBool,
+}
+
+/// The unwinding of a task its group cancelled: no failure of its own.
+struct Cancelled;
+
+fn group() -> Option<&'static Group> {
+    GROUP.with(|g| g.get())
+}
+
+/// Whether this thread is a monitored process's, whose failure no panic
+/// hook should say.
+pub(crate) fn monitored() -> bool {
+    group().is_some_and(|g| g.monitored)
+}
+
+/// A task's failure, `e`: its group's, if the first, said by the group's
+/// `on_failure`; the rest of the group cancelled. A cancellation is none.
+fn group_failed(e: &(dyn std::any::Any + Send)) {
+    if e.is::<Cancelled>() {
+        return;
+    }
+    if let Some(gr) = group()
+        && !gr.failed.swap(true, Ordering::SeqCst)
+    {
+        changed(lock());
+        (gr.on_failure)(panic_message(e));
+    }
+}
+
+/// Unwinds, if this task's group has failed, as a task cancelled.
+fn check_cancelled(g: MutexGuard<'static, Sched>) -> MutexGuard<'static, Sched> {
+    if group().is_some_and(|gr| gr.failed.load(Ordering::SeqCst)) {
+        drop(g);
+        std::panic::resume_unwind(Box::new(Cancelled))
+    }
+    g
 }
 
 /// Whether this thread is the program's; counted, if it is new.
@@ -111,21 +168,31 @@ fn changed(mut g: MutexGuard<'static, Sched>) {
     WAKE.notify_all();
 }
 
-/// Waits until `ready` gives a value, looking again after each change; a
-/// wait of the program's when no task can run and every waiter has looked
-/// since the last change, so none can, fails with `deadlock`.
-fn wait_until<R>(program: bool, mut ready: impl FnMut() -> Option<R>, deadlock: &str) -> R {
+/// Waits until `ready` gives a value, looking again after each change, and
+/// at `deadline` (on the `clock`), if there is one; a wait of the
+/// program's when no task can run, none waits for a deadline, and every
+/// waiter has looked since the last change, so none can, fails with
+/// `deadlock`. A task of a group that failed is cancelled here.
+fn wait_until<R>(
+    program: bool,
+    deadline: Option<i64>,
+    mut ready: impl FnMut() -> Option<R>,
+    deadlock: &str,
+) -> R {
     let mut g = lock();
     loop {
         check_failed(&g, program);
+        g = check_cancelled(g);
         if let Some(r) = ready() {
             return r;
         }
         let seen = g.epoch;
+        let timed = usize::from(deadline.is_some());
         g.running -= 1;
         g.waiting += 1;
+        g.timed += timed;
         loop {
-            if g.running == 0 && g.stale == 0 {
+            if g.running == 0 && g.stale == 0 && g.timed == 0 {
                 if program {
                     g.running += 1;
                     g.waiting -= 1;
@@ -135,15 +202,36 @@ fn wait_until<R>(program: bool, mut ready: impl FnMut() -> Option<R>, deadlock: 
                 // The program may be waiting: it looks again, and finds it is stuck.
                 WAKE.notify_all();
             }
-            g = WAKE.wait(g).unwrap_or_else(|p| p.into_inner());
+            let passed = match deadline {
+                None => {
+                    g = WAKE.wait(g).unwrap_or_else(|p| p.into_inner());
+                    false
+                }
+                Some(t) => {
+                    let left = t.saturating_sub(crate::world::clock());
+                    if left > 0 {
+                        let (g2, r) = WAKE
+                            .wait_timeout(g, Duration::from_nanos(left as u64))
+                            .unwrap_or_else(|p| p.into_inner());
+                        g = g2;
+                        r.timed_out()
+                    } else {
+                        true
+                    }
+                }
+            };
             if g.epoch != seen {
                 g.stale = g.stale.saturating_sub(1);
+                break;
+            }
+            if passed {
                 break;
             }
             check_failed(&g, program);
         }
         g.running += 1;
         g.waiting -= 1;
+        g.timed -= timed;
     }
 }
 
@@ -182,6 +270,7 @@ pub fn icell_put_x<T: Copy>(c: ICell<T>, v: T) {
 pub fn icell_get<T: Copy>(c: ICell<T>) -> T {
     wait_until(
         program(),
+        None,
         || *held(&c.value),
         "an i-cell read before it was written, and no task is left to write it: a deadlock",
     )
@@ -210,16 +299,42 @@ pub fn send<M: Send>(a: Addr<M>, m: M) {
 pub fn receive<M>(b: Inbox<M>) -> M {
     wait_until(
         program(),
+        None,
         || held(&b.queue).pop_front(),
         "a message no task is left to send: a deadlock",
     )
 }
 
+/// `(self box)` (C108): the process's own address, which in Rust is its
+/// mailbox.
+pub fn own_address<M>(b: Inbox<M>) -> Addr<M> {
+    b
+}
+
 /// What `pselect` waits on: an I-cell, ready once filled; a mailbox, once
-/// it has a message.
+/// it has a message; a deadline, once the clock reaches it.
 pub trait Waitable {
     fn ready(&self) -> bool;
+    /// When it is ready of itself, if it is a deadline.
+    fn deadline(&self) -> Option<i64> {
+        None
+    }
 }
+
+/// `pselect`'s `(sleep-until t)` arm (C108): a time on the `clock`.
+pub struct Deadline(pub i64);
+
+impl Waitable for Deadline {
+    fn ready(&self) -> bool {
+        crate::world::clock() >= self.0
+    }
+    fn deadline(&self) -> Option<i64> {
+        Some(self.0)
+    }
+}
+
+/// A deadline arm's value, once chosen: unit.
+pub fn sleep_until(_: &Deadline) {}
 
 impl<T> Waitable for ICellBox<T> {
     fn ready(&self) -> bool {
@@ -240,6 +355,7 @@ impl<M> Waitable for MailboxBox<M> {
 pub fn sync(events: &[&dyn Waitable]) -> usize {
     wait_until(
         program(),
+        events.iter().filter_map(|e| e.deadline()).min(),
         || events.iter().position(|e| e.ready()),
         "a `pselect` whose events no task is left to make ready: a deadlock",
     )
@@ -256,11 +372,46 @@ fn panic_message(e: &(dyn std::any::Any + Send)) -> String {
 }
 
 /// `(spawn (box M r) body ...)`: a process on a thread of its own, running
-/// `body` with its mailbox; its address.
+/// `body` with its mailbox; its address. Its failure is the program's.
 pub fn spawn<M: Send + 'static>(body: impl FnOnce(Inbox<M>) + Send + 'static) -> Addr<M> {
+    start(
+        Group {
+            monitored: false,
+            on_failure: Box::new(|m| {
+                let mut g = lock();
+                g.failed.get_or_insert(m);
+                changed(g)
+            }),
+            failed: AtomicBool::new(false),
+        },
+        body,
+    )
+}
+
+/// `(spawn-monitored w on-failure (box M r) body ...)` (C108): `spawn`, but
+/// the process's failure is no failure of the program: `watcher` is sent
+/// `on_failure` of what the failure says, once.
+pub fn spawn_monitored<W: Send + 'static, M: Send + 'static>(
+    watcher: Addr<W>,
+    on_failure: impl Fn(crate::Str) -> W + Send + Sync + 'static,
+    body: impl FnOnce(Inbox<M>) + Send + 'static,
+) -> Addr<M> {
+    start(
+        Group {
+            monitored: true,
+            on_failure: Box::new(move |m| send(watcher, on_failure(crate::leak_string(m)))),
+            failed: AtomicBool::new(false),
+        },
+        body,
+    )
+}
+
+/// A process of group `group` on a thread of its own.
+fn start<M: Send + 'static>(group: Group, body: impl FnOnce(Inbox<M>) + Send + 'static) -> Addr<M> {
     let mb: Addr<M> = crate::alloc(MailboxBox {
         queue: Mutex::new(VecDeque::new()),
     });
+    let group: &'static Group = Box::leak(Box::new(group));
     let program = program();
     {
         let mut g = lock();
@@ -271,9 +422,9 @@ pub fn spawn<M: Send + 'static>(body: impl FnOnce(Inbox<M>) + Send + 'static) ->
         .stack_size(STACK)
         .spawn(move || {
             counted(false);
+            GROUP.with(|g| g.set(Some(group)));
             if let Err(e) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| body(mb))) {
-                let m = panic_message(&*e);
-                lock().failed.get_or_insert(m);
+                group_failed(&*e);
             }
         })
         .unwrap_or_else(|e| crate::fail(&format!("spawn: no thread: {e}")));
@@ -281,10 +432,26 @@ pub fn spawn<M: Send + 'static>(body: impl FnOnce(Inbox<M>) + Send + 'static) ->
 }
 
 /// A `par` branch on another thread: counted by its maker, as the
-/// program's if its `par` is; its failure kept for the join.
-fn branch<B>(program: bool, g: impl FnOnce() -> B) -> std::thread::Result<B> {
+/// program's if its `par` is, and of its maker's group; its failure the
+/// group's at once, and kept for the join.
+fn branch<B>(
+    program: bool,
+    group: Option<&'static Group>,
+    g: impl FnOnce() -> B,
+) -> std::thread::Result<B> {
     counted(program);
-    std::panic::catch_unwind(std::panic::AssertUnwindSafe(g))
+    GROUP.with(|c| c.set(group));
+    caught(g)
+}
+
+/// `f`'s value, or its failure, which is its group's at once, so that the
+/// rest of the group stops waiting.
+fn caught<A>(f: impl FnOnce() -> A) -> std::thread::Result<A> {
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f));
+    if let Err(e) = &r {
+        group_failed(&**e);
+    }
+    r
 }
 
 /// `par`'s two branches, `f` here and `g` on a thread of its own, at once;
@@ -293,30 +460,31 @@ fn branch<B>(program: bool, g: impl FnOnce() -> B) -> std::thread::Result<B> {
 /// kept.
 pub fn par2<A, B: Send>(f: impl FnOnce() -> A, g: impl FnOnce() -> B + Send) -> (A, B) {
     let program = program();
+    let group = group();
     std::thread::scope(|scope| {
         lock().running += 1;
         let other = std::thread::Builder::new()
             .stack_size(STACK)
-            .spawn_scoped(scope, move || branch(program, g))
+            .spawn_scoped(scope, move || branch(program, group, g))
             .unwrap_or_else(|e| crate::fail(&format!("par: no thread: {e}")));
-        let a = f();
+        let a = caught(f);
         joined(a, || other.join())
     })
 }
 
 /// `f`'s value `a` and the other branch's, joined: joining is waiting, as
-/// the other branch may be what can run.
+/// the other branch may be what can run. Either's failure, the `par`'s.
 fn joined<A, B>(
-    a: A,
+    a: std::thread::Result<A>,
     join: impl FnOnce() -> std::thread::Result<std::thread::Result<B>>,
 ) -> (A, B) {
     lock().running -= 1;
     WAKE.notify_all();
     let r = join();
     lock().running += 1;
-    match r {
-        Ok(Ok(b)) => (a, b),
-        Ok(Err(e)) | Err(e) => std::panic::resume_unwind(e),
+    match (a, r) {
+        (Ok(a), Ok(Ok(b))) => (a, b),
+        (Err(e), _) | (_, Ok(Err(e))) | (_, Err(e)) => std::panic::resume_unwind(e),
     }
 }
 
@@ -331,17 +499,25 @@ pub fn par2_shared<A, B>(f: impl FnOnce() -> A, g: impl FnOnce() -> B) -> (A, B)
     #[cfg(feature = "unsafe-par")]
     {
         let program = program();
+        let group = group();
         lock().running += 1;
         // The branch's marks are its maker's, as FX-26's continuation has them.
         let marks = crate::marks::snapshot();
-        kayak_sync::par2_unchecked(
-            f,
+        let (a, b) = kayak_sync::par2_unchecked(
+            move || caught(f),
             move || {
                 crate::marks::install(marks);
-                branch(program, g)
+                branch(program, group, g)
             },
-            |a, join| joined(a, join),
-        )
+            |a, join| {
+                let (a, b) = joined(a, join);
+                (Ok(a), b)
+            },
+        );
+        match a {
+            Ok(a) => (a, b),
+            Err(e) => std::panic::resume_unwind(e),
+        }
     }
     #[cfg(not(feature = "unsafe-par"))]
     {

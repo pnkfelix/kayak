@@ -2302,7 +2302,17 @@
                  "A form of processes that is a call (C101): the runtime's, whatever
                   the program names so."
                  (put ")" (put-joined c xs ", " n (put (string-append "kayak_rt::process::" (string-append (mangle h) "(")) acc))))
-                ((string=? h "spawn") (put-spawn c e xs n acc))
+                ((string=? h "spawn") (put-process c e xs n (put "kayak_rt::process::spawn(" acc)))
+                ((string=? h "spawn-monitored")
+                 "`(spawn-monitored w on-failure (box M r) body ...)` (C108): the
+                  watcher and what makes its message, then the process as `spawn`'s."
+                 (let* ((acc (put "kayak_rt::process::spawn_monitored(" acc))
+                        (acc (put ", " (put-exp c (car xs) n (value) acc)))
+                        (acc (put ", " (put-exp c (second xs) n (value) acc))))
+                   (put-process c e (cdr (cdr xs)) n acc)))
+                ((string=? h "self")
+                 "`(self box)` (C108): the mailbox's address, the same in Rust."
+                 (put ")" (put-exp c (car xs) n (value) (put "kayak_rt::process::own_address(" acc))))
                 ((string=? h "par") (put-par c e xs n t acc))
                 ((string=? h "pselect") (put-pselect c e xs n t acc))
                 ((string=? h "proj") (put-exp c (car xs) n (value) acc))
@@ -2482,15 +2492,16 @@
                             (else (put ".unwrap_or_else(|u| unreachable_unwind(u))" acc)))))
             (put "}" (put-nl n acc)))))
 
-      (put-spawn (subr kfx (ctx sexp sexps i64 chars) chars)
+      (put-process (subr kfx (ctx sexp sexps i64 chars) chars)
         (lambda (c e xs n acc)
-          "`(spawn (box M r) body ...)` (C101): a thread of its own, given its
-           mailbox, running the body as a `letreap` of its place, `r`, whose
-           facts the checker noted at the `spawn`; the body's value dropped."
+          "`(spawn (box M r) body ...)`'s process (C101), after the runtime's
+           call is begun: a thread of its own, given its mailbox, running the
+           body as a `letreap` of its place, `r`, whose facts the checker noted
+           at the `spawn`; the body's value dropped."
           (let* ((header (items (car xs)))
                  (box (sym-name (car header)))
                  (m (car (read-all (string-chars (fact-with c e "spawn ")) "" 1)))
-                 (acc (put "kayak_rt::process::spawn(move |" acc))
+                 (acc (put "move |" acc))
                  (acc (put (mangle box) acc))
                  (acc (put ": kayak_rt::Inbox<" acc))
                  (acc (put-type c m acc))
@@ -2548,16 +2559,21 @@
 
       (put-pselect (subr kfx (ctx sexp sexps i64 tail chars) chars)
         (lambda (c e arms n t acc)
-          "`(pselect (W x body ...) ...)` (C101): each arm's I-cell or mailbox
-           bound, `sel_k__`; `sync`, the number of the first ready; that arm's
-           wait taken, which is ready, its value bound for its body."
+          "`(pselect (W x body ...) ...)` (C101): each arm's I-cell, mailbox or
+           deadline (C108) bound, `sel_k__`; `sync`, the number of the first
+           ready; that arm's wait taken, which is ready, its value bound for
+           its body."
           (let* ((n1 (i64+ n 1))
                  (n2 (i64+ n 2))
                  (ks (counting 0 (size arms)))
                  (acc (put-nl n1 (put "{" acc)))
                  (acc (put-sep (lambda ((k i64) (acc chars))
-                                 (let ((w (items (car (items (sexp-at arms k))))))
-                                   (put-nl n1 (put ";" (put-exp c (second w) n1 (value) (put (string-append "let sel_" (string-append (i64->string k) "__ = ")) acc))))))
+                                 (let* ((w (items (car (items (sexp-at arms k)))))
+                                        (deadline (sym-is? (car w) "sleep-until"))
+                                        (acc (put (string-append "let sel_" (string-append (i64->string k) "__ = ")) acc))
+                                        (acc (if deadline (put "&kayak_rt::process::Deadline(" acc) acc))
+                                        (acc (put-exp c (second w) n1 (value) acc)))
+                                   (put-nl n1 (put ";" (if deadline (put ")" acc) acc)))))
                                "" ks acc))
                  (acc (put "match kayak_rt::process::sync(&[" acc))
                  (acc (put-sep (lambda ((k i64) (acc chars))

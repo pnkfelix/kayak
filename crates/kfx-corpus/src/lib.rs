@@ -178,6 +178,11 @@ pub mod modules;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/monitors.rs"]
+pub mod monitors;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/mutable.rs"]
 pub mod mutable;
 
@@ -361,6 +366,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("module-params", module_params::main),
     ("module-strings", module_strings::main),
     ("modules", modules::main),
+    ("monitors", monitors::main),
     ("mutable", mutable::main),
     ("names", names::main),
     ("open-types", open_types::main),

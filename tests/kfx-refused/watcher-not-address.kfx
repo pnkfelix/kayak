@@ -1,0 +1,5 @@
+"A monitored process's watcher is an address (C108), as FX-26's is."
+(define-effect kfx (maxeff (read @globals) spin))
+(define* start (subr (maxeff (alloc @w) nondet spin) () (addr int @w))
+  (lambda ()
+    (spawn-monitored 7 (lambda ((m string)) 0) (box int r) (begin (receive box) #u))))

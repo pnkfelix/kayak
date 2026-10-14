@@ -1,0 +1,111 @@
+"FX-26's monitors (C108): Fixpt's `programs/monitors`, in KFX. A process
+ made by `spawn-monitored` that fails, by `error` or a trap, fails no
+ program: its watcher is sent what the failure says, once, however many
+ of its `par`'s branches fail, and the program goes on."
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-type report (sumof (ok int) (failed string)))
+
+(define* failed (subr pure (string) report) (lambda (m) (sum failed m)))
+
+"What a report counts: an answer, itself; a failure, by what it says."
+(define* score (subr pure (report) int)
+  (lambda (r)
+    (tagcase r
+      (ok v v)
+      (failed m (cond ((string=? m "bad input") 100)
+                      ((or (string=? m "left") (string=? m "right")) 200)
+                      ((string=? m "") 0)
+                      (else 50))))))
+
+"A collector of `count` reports, their scores summed into `out`; after
+ them, one more waited for 20 ms, which adds 999 if it comes: a monitored
+ process's watcher is sent one message for its failure, however it
+ failed."
+(define* start-collector (subr (maxeff (alloc @p) (init @c) (io clock) nondet spin) (int (icell int @c)) (addr report @p))
+  (lambda (count out)
+    (spawn (box report r)
+      (letrec ((go (subr (maxeff (receive r) (init @c) (io clock) nondet spin (read (globals score))) (int int) unit)
+                 (lambda (n total)
+                   (if (= n count)
+                       (pselect ((receive box) m (icell-put! out (+ total 999)))
+                                ((sleep-until (i64+ (clock) (int->i64 20000000))) u (icell-put! out total)))
+                       (go (+ n 1) (+ total (score (receive box))))))))
+        (go 0 0)))))
+
+(define* work (subr spin (int) int) (lambda (k) (if (= k 0) (error "bad input") k)))
+
+"A worker, which answers one number, or fails (Fixpt's worker-fails.fx)."
+(define* start-worker (subr (maxeff (alloc @w) (send @p) nondet spin) ((addr report @p)) (addr int @w))
+  (lambda (collector)
+    (spawn-monitored collector failed (box int r) (send collector (sum ok (work (receive box)))))))
+
+"A worker whose `par` branches may fail, the left at 0, the right too if
+ `both` (Fixpt's par-branch.fx, one-message.fx)."
+(define* start-pair (subr (maxeff (alloc @w) (send @p) nondet spin) ((addr report @p) bool) (addr int @w))
+  (lambda (collector both)
+    (spawn-monitored collector failed (box int r)
+      (let ((n (receive box)))
+        (par ((a (if (= n 0) (error "left") n))
+              (b (if (and both (= n 0)) (error "right") (* n 2))))
+          (send collector (sum ok (+ a b))))))))
+
+"A worker that divides by what it is sent: a trap, whatever the runtime
+ says of it, not `error` (Fixpt's trap.fx)."
+(define* start-divider (subr (maxeff (alloc @w) (send @p) nondet spin) ((addr report @p)) (addr int @w))
+  (lambda (collector)
+    (spawn-monitored collector failed (box int r) (send collector (sum ok (quotient 7 (receive box)))))))
+
+(define-effect watching (maxeff kfx (alloc @p) (alloc @w) (alloc @c) (send @p) (send @w) (init @c) (await @c) (io clock) nondet))
+
+"Three workers, the second failing: 1 + 100 + 1."
+(define three (subr watching () int)
+  (lambda ()
+    (let* ((total (the (icell int @c) (make-icell)))
+           (collector (start-collector 3 total))
+           (w1 (start-worker collector))
+           (w2 (start-worker collector))
+           (w3 (start-worker collector)))
+      (begin (send w1 1) (send w2 0) (send w3 1) (icell-get total)))))
+
+"A process whose `par` fails once, or twice: either way one message."
+(define pair (subr watching (bool) int)
+  (lambda (both)
+    (let* ((total (the (icell int @c) (make-icell)))
+           (collector (start-collector 1 total))
+           (w (start-pair collector both)))
+      (begin (send w 0) (icell-get total)))))
+
+"A trap, then an answer from the same kind of worker."
+(define divided (subr watching () int)
+  (lambda ()
+    (let* ((total (the (icell int @c) (make-icell)))
+           (collector (start-collector 2 total))
+           (w1 (start-divider collector))
+           (w2 (start-divider collector)))
+      (begin (send w1 0) (send w2 7) (icell-get total)))))
+
+"A process's own address, `(self box)`: it sends itself the rest of a
+ count down, and fills `out` at 0."
+(define* start-counter (subr (maxeff (alloc @w) (init @c) nondet spin) ((icell int @c)) (addr int @w))
+  (lambda (out)
+    (spawn (box int r)
+      (letrec ((go (subr (maxeff (receive r) (send r) (init @c) nondet spin) (int) unit)
+                 (lambda (steps)
+                   (let ((n (receive box)))
+                     (if (= n 0) (icell-put! out steps) (begin (send (self box) (- n 1)) (go (+ steps 1))))))))
+        (go 0)))))
+
+(define counted (subr watching () int)
+  (lambda ()
+    (let* ((out (the (icell int @c) (make-icell)))
+           (w (start-counter out)))
+      (begin (send w 5) (icell-get out)))))
+
+(define show (subr kfx ((listof int acyclic)) string)
+  (lambda (xs)
+    (if (null? xs) "" (string-append (int->string (car xs)) (string-append " " (show (cdr xs)))))))
+
+(define main (subr watching () string)
+  (lambda ()
+    (show (list (three) (pair #f) (pair #t) (divided) (counted)))))

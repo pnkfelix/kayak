@@ -1,0 +1,5 @@
+"`(self box)` is given a process's mailbox (C108)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define* start (subr (maxeff (alloc @w) nondet spin) () (addr int @w))
+  (lambda ()
+    (spawn (box int r) (begin (send (self 3) 1) #u))))

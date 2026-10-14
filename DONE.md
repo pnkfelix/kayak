@@ -1273,3 +1273,13 @@ polymorphic in regions as parameters' (rank 2); Fixpt's
 checked and run as Fixpt's text has them, in kfx and in the engine.
 `tests/kfx/conditions.kfx`; kfx accepts 163 of Fixpt's programs, all
 agreeing.
+
+## Monitors in KFX (2026-10-14)
+
+C108: the pin at Fixpt 0a0e277, which has process monitors, built at
+kayak's request. `spawn-monitored`, `self` and `pselect`'s deadline arm
+in KFX; in kayak-rt a process and its `par` branches a group, its first
+failure the watcher's message and the rest cancelled. `race` and
+`spawn-monitored` heads refused as forms, as FX-26 parses them.
+`tests/kfx/monitors.kfx`; kfx accepts 164 of Fixpt's programs, all
+agreeing.

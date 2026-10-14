@@ -484,12 +484,17 @@ Stages 2 and 3 done (C95): editing, history, Tab; Fixpt's commands.
   type with type or effect binders (rank 2 beyond regions); a `let`'s
   `nil` generalized, as FX-26's is; `load-module` in the REPL; Fixpt's
   other built-in modules (`fx26:processes.fx`, ...).
-- **The REPL's front as a KFX process (C103)** still waits: the checker
-  refuses by failing, a panic, and FX-26 catches a panic nowhere, a
-  process's failing the form it ran in (Fixpt's processes.md, 6). Either
-  the checker raises (a key or a tag given to every procedure of it, its
-  effects polymorphic in the handler's), or FX-26 lets a process watch
-  another's failure (a monitor). Asked of the user, 2026-10-14.
+- **The REPL's front as a KFX process (C103)**: FX-26 now has monitors
+  (C108), so a check may run in a process whose refusal its watcher is
+  told. What is left: the session's state is in refs at `@h`, which no
+  process may write (only its place), so the front's state must move to
+  its place, its procedures given it; the draft's early run uses the
+  engine, at `@h`, so it moves to the machine; keys, raw mode and the
+  terminal's size are the Rust's (FX-26 reads lines only), sent into the
+  front's mailbox.
+- **From Fixpt 0a0e277 (C108), not yet in KFX:** `race` (cancellable
+  branches; a failed one lost), the `sendable` kind; the engine's
+  processes and monitors.
 - **The emitter's memos gave wrong Rust** (2026-10-14; again the same day,
   `target/memo-bug2/`, while C107 was built: generation 2 of the bootstrap
   without `void-call`'s `match … {}`, a fresh cache right): a memo file made

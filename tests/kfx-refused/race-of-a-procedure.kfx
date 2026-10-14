@@ -1,0 +1,6 @@
+"`race` heads FX-26's form wherever it heads a list, as `spawn` does, so a
+ call of a procedure a program names `race` is the form, and refused
+ (C108): FX-26 takes it for a race of 1 and 2, of effect `nondet`."
+(define-effect kfx (maxeff (read @globals) spin))
+(define race (subr pure (int int) int) (lambda (a b) a))
+(define main (subr (read (globals race)) () int) (lambda () (race 1 2)))

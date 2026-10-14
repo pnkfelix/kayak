@@ -1,0 +1,5 @@
+"`spawn-monitored` heads FX-26's form wherever it heads a list (C108): a
+ call of a procedure so named is the form, here ill-formed."
+(define-effect kfx (maxeff (read @globals) spin))
+(define spawn-monitored (subr pure (int int) int) (lambda (a b) a))
+(define main (subr (read (globals spawn-monitored)) () int) (lambda () (spawn-monitored 1 2)))

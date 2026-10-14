@@ -4100,7 +4100,17 @@ pub mod emitter {
                 // the program names so.
                 return put(str_lit(")"), put_joined(c, xs, str_lit(", "), n, put(string_append(str_lit("kayak_rt::process::"), string_append(mangle(h), str_lit("("))), acc)));
             } else if string_eq_p(h, str_lit("spawn")) {
-                return put_spawn(c, e, xs, n, acc);
+                return put_process(c, e, xs, n, put(str_lit("kayak_rt::process::spawn("), acc));
+            } else if string_eq_p(h, str_lit("spawn-monitored")) {
+                // `(spawn-monitored w on-failure (box M r) body ...)` (C108): the
+                // watcher and what makes its message, then the process as `spawn`'s.
+                let acc = put(str_lit("kayak_rt::process::spawn_monitored("), acc);
+                let acc = put(str_lit(", "), put_exp(c, car(xs), n, value(), acc));
+                let acc = put(str_lit(", "), put_exp(c, second(xs), n, value(), acc));
+                return put_process(c, e, cdr(cdr(xs)), n, acc);
+            } else if string_eq_p(h, str_lit("self")) {
+                // `(self box)` (C108): the mailbox's address, the same in Rust.
+                return put(str_lit(")"), put_exp(c, car(xs), n, value(), put(str_lit("kayak_rt::process::own_address("), acc)));
             } else if string_eq_p(h, str_lit("par")) {
                 return put_par(c, e, xs, n, t, acc);
             } else if string_eq_p(h, str_lit("pselect")) {
@@ -4416,14 +4426,15 @@ pub mod emitter {
         put(str_lit("}"), put_nl(n, acc))
     }
 
-    /// `(spawn (box M r) body ...)` (C101): a thread of its own, given its
-    /// mailbox, running the body as a `letreap` of its place, `r`, whose
-    /// facts the checker noted at the `spawn`; the body's value dropped.
-    pub fn put_spawn(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Chars) -> Chars {
+    /// `(spawn (box M r) body ...)`'s process (C101), after the runtime's
+    /// call is begun: a thread of its own, given its mailbox, running the
+    /// body as a `letreap` of its place, `r`, whose facts the checker noted
+    /// at the `spawn`; the body's value dropped.
+    pub fn put_process(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Chars) -> Chars {
         let header = items(car(xs));
         let r#box = sym_name(car(header));
         let m = car(read_all(string_chars(fact_with(c, e, str_lit("spawn "))), str_lit(""), 1i64));
-        let acc = put(str_lit("kayak_rt::process::spawn(move |"), acc);
+        let acc = put(str_lit("move |"), acc);
         let acc = put(mangle(r#box), acc);
         let acc = put(str_lit(": kayak_rt::Inbox<"), acc);
         let acc = put_type(c, m, acc);
@@ -4504,9 +4515,10 @@ pub mod emitter {
         }
     }
 
-    /// `(pselect (W x body ...) ...)` (C101): each arm's I-cell or mailbox
-    /// bound, `sel_k__`; `sync`, the number of the first ready; that arm's
-    /// wait taken, which is ready, its value bound for its body.
+    /// `(pselect (W x body ...) ...)` (C101): each arm's I-cell, mailbox or
+    /// deadline (C108) bound, `sel_k__`; `sync`, the number of the first
+    /// ready; that arm's wait taken, which is ready, its value bound for
+    /// its body.
     pub fn put_pselect(c: &'static Ctx, e: &'static Sexp, arms: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
         let n1 = i64_plus(n, 1i64);
         let n2 = i64_plus(n, 2i64);
@@ -4514,7 +4526,19 @@ pub mod emitter {
         let acc = put_nl(n1, put(str_lit("{"), acc));
         let acc = put_sep(lambda2s(move |k: i64, acc: Chars| {
             let w = items(car(items(sexp_at(arms, k))));
-            put_nl(n1, put(str_lit(";"), put_exp(c, second(w), n1, value(), put(string_append(str_lit("let sel_"), string_append(i64_to_string(k), str_lit("__ = "))), acc))))
+            let deadline = sym_is_p(car(w), str_lit("sleep-until"));
+            let acc = put(string_append(str_lit("let sel_"), string_append(i64_to_string(k), str_lit("__ = "))), acc);
+            let acc = if deadline {
+                put(str_lit("&kayak_rt::process::Deadline("), acc)
+            } else {
+                acc
+            };
+            let acc = put_exp(c, second(w), n1, value(), acc);
+            put_nl(n1, put(str_lit(";"), if deadline {
+                put(str_lit(")"), acc)
+            } else {
+                acc
+            }))
         }), str_lit(""), ks, acc);
         let acc = put(str_lit("match kayak_rt::process::sync(&["), acc);
         let acc = put_sep(lambda2s(move |k: i64, acc: Chars| {

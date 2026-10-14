@@ -1378,13 +1378,14 @@
 
     (define pselect-arm? (subr kfx (sexp) bool)
       (lambda (arm)
-        "`((icell-get c) x body ...)` or `((receive box) x body ...)`."
+        "`((icell-get c) x body ...)`, `((receive box) x body ...)` or
+         `((sleep-until t) x body ...)`, a deadline (C108)."
         (tagcase arm
           (lst (ys f l p)
             (and (i64>= (size ys) 3)
                  (tagcase (second ys) (sym (n f2 p2) #t) (else other #f))
                  (tagcase (car ys)
-                   (lst (ws f3 l3 p3) (and (i64= (size ws) 2) (or (sym-is? (car ws) "icell-get") (sym-is? (car ws) "receive"))))
+                   (lst (ws f3 l3 p3) (and (i64= (size ws) 2) (or (sym-is? (car ws) "icell-get") (sym-is? (car ws) "receive") (sym-is? (car ws) "sleep-until"))))
                    (else other #f))))
           (else other #f))))
 
@@ -1668,6 +1669,44 @@
                                           (effs-union (list (string-append "alloc:" (region-string s at))) seen)
                                           s)))))))))))))
 
+      (spawn-monitored-form (subr kfx (cv st sexps tys) res)
+        (lambda (v s xs expected)
+          "`(spawn-monitored w on-failure (box M r) body ...)` (C108): `spawn`,
+           but a failure of the process is no failure of the program: its
+           watcher, `w`, an `(addr W R)`, is sent `(on-failure message)`,
+           `on-failure` a `(subr pure (string) W)`, found, not checked, as
+           FX-26 finds it. The effect `spawn`'s, the two's, and `(send R)`
+           (`synth_spawn_monitored`)."
+          (if (i64< (size xs) 4)
+              (refuse v "`(spawn-monitored watcher on-failure (mailbox message-type place) body …)`")
+              (tagcase (synth v s (car xs))
+                (res (wt wes s)
+                  (tagcase (walk s wt)
+                    (ty-data (d args)
+                      (if (not (string=? d "%addr"))
+                          (refuse v (string-append "a watcher is a process's address, `(addr M R)`, and this is a " (show-ty s wt)))
+                          (tagcase (synth v s (second xs))
+                            (res (ft fes s)
+                              (let ((s (fits v s ft (ty-proc nil (list (ty-string)) (car args))))
+                                    (sent (string-append "send:" (region-string s (car (cdr args))))))
+                                (with-effs (with-effs (spawn-form v s (cdr (cdr xs)) expected) (effs-union wes fes)) (list sent)))))))
+                    (else other (refuse v (string-append "a watcher is a process's address, `(addr M R)`, and this is a " (show-ty s wt))))))))))
+
+      (self-form (subr kfx (cv st sexps) res)
+        (lambda (v s xs)
+          "`(self box)` (C108): the process's own address, at its place, from
+           its mailbox: `(subr pure ((inbox M r)) (addr M r))`."
+          (if (not (i64= (size xs) 1))
+              (refuse v "`(self mailbox)`")
+              (tagcase (synth v s (car xs))
+                (res (t es s)
+                  (tagcase (walk s t)
+                    (ty-data (d args)
+                      (if (string=? d "%inbox")
+                          (res (ty-data "%addr" args) es s)
+                          (refuse v (string-append "`self` is given a process's mailbox, and this is a " (show-ty s t)))))
+                    (else other (refuse v (string-append "`self` is given a process's mailbox, and this is a " (show-ty s t))))))))))
+
 
       (par-values (subr kfx (cv st sexps sexps tys binds (listof strings acyclic) sexps) res)
           (lambda (v s bindings forms expected bound effs all)
@@ -1731,17 +1770,24 @@
       (pselect-form (subr kfx (cv st sexps tys) res)
         (lambda (v s xs expected)
           "`(pselect (W x body ...) ...)`: waits until one arm's wait is ready,
-           an I-cell filled or a message come, and runs that arm, the first so
-           in order; which are ready is the schedule's, so `nondet`."
+           an I-cell filled, a message come or a deadline passed, and runs
+           that arm, the first so in order; which are ready is the schedule's,
+           so `nondet`."
           (cond ((null? xs)
                  (refuse v "`(pselect ((icell-get i-cell) name body …) ((receive mailbox) name body …) …)`"))
                 ((any? (lambda ((a sexp)) (not (pselect-arm? a))) xs)
-                 (refuse v "a `pselect` arm is `((icell-get i-cell) name body …)` or `((receive mailbox) name body …)`"))
+                 (refuse v "a `pselect` arm is `((icell-get i-cell) name body …)`, `((receive mailbox) name body …)` or `((sleep-until time) name body …)`"))
                 (else (with-effs (pselect-arms v s xs expected) (list "nondet"))))))
 
       (synth-form (subr kfx (cv st sexp string sexps) res)
         (lambda (v s e h xs)
           (cond ((string=? h "spawn") (spawn-form v s xs nil))
+                ((string=? h "spawn-monitored") (spawn-monitored-form v s xs nil))
+                ((string=? h "self") (self-form v s xs))
+                ((string=? h "race")
+                 "FX-26's `race`, a form wherever it heads a list: refused, not a
+                  call of what a program names `race` (C108)."
+                 (refuse v "`(race e …)` is FX-26's form, which KFX does not have yet"))
                 ((string=? h "par") (par-form v s xs nil))
                 ((string=? h "pselect") (pselect-form v s xs nil))
                 ((string=? h "quote")
@@ -1845,6 +1891,8 @@
       (check-form (subr kfx (cv st sexp string sexps ty) res)
         (lambda (v s e h xs expected)
           (cond ((string=? h "spawn") (spawn-form v s xs (list expected)))
+                ((string=? h "spawn-monitored") (spawn-monitored-form v s xs (list expected)))
+                ((or (string=? h "self") (string=? h "race")) (check-by-synth v s e expected))
                 ((string=? h "par") (par-form v s xs (list expected)))
                 ((string=? h "pselect") (pselect-form v s xs (list expected)))
                 ((control-form? h) (body-form v s h xs (list expected)))

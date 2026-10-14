@@ -2414,3 +2414,43 @@ runs, in kfx and in the engine, Fixpt's own text.
   refuses all 287 Fixpt refuses; the engine agrees on 152 (145).
   `tests/kfx/conditions.kfx`: the library's raise, handle and restart, an
   escape tag and a mark by hand.
+
+## C108. Monitors, `self` and deadlines; the pin at Fixpt 0a0e277 (2026-10-14)
+
+Fixpt built process monitors at kayak's request (its `TODO.md` §94),
+with `race`, `self`, the `sendable` kind, `pselect`'s deadline arm and
+preemption. The pin moves there; KFX takes what the REPL needs:
+- **`(spawn-monitored w on-failure (box M r) body ...)`**: `w` found, an
+  `(addr W R)`; `on-failure` found, not checked, and fitted to `(subr
+  pure (string) W)`, as Fixpt's `synth_spawn_monitored` does (a lambda's
+  parameter must be written); the body `spawn`'s; the effect `spawn`'s,
+  the two's, and `(send R)`. In Rust, `process::spawn_monitored(w, f,
+  body)`.
+- **Groups in kayak-rt**: a process and its `par` branches are one; the
+  first failure in any is the group's, and cancels the rest at their next
+  wait (a `Cancelled` unwinding, no failure of its own), so a branch left
+  waiting does not hold the message back. An unmonitored group's failure
+  is the program's at once (before, only when the process's thread
+  ended); a monitored one's, `on-failure` of its message sent to the
+  watcher, once. `error`'s string comes through as given. In a monitored
+  process a failure of kayak-rt's (`error`, a division by zero) unwinds
+  past the panic hook, which would print it: Fixpt prints nothing. A
+  Rust panic of another kind (a stack overflow aborts) is not caught so.
+- **`(self box)`**: the mailbox's address, `(addr M r)`, at the place;
+  in Rust the mailbox itself (`own_address`).
+- **`pselect`'s `(sleep-until t)` arm**, its value unit: a `Deadline`
+  waitable; a waiter with one waits with a timeout, and while any does, no
+  wait is a deadlock. The clock is now one for every thread (it was each
+  thread's, so a deadline made by one process meant another time to
+  the next).
+- **`race`** is refused as a form wherever it heads a list, not taken for
+  a call of what a program names `race`, which FX-26 parses as the form
+  (K1: KFX accepted `(race 1 2)` of a procedure so named, which FX-26
+  refuses as `nondet`). The same for `spawn-monitored` and `self`.
+  `race` itself waits (`tests/kfx-stricter/race.kfx`), as does
+  `sendable`, which KFX's `poly` refuses as a kind.
+- Not taken: preemption, which kayak-rt's threads have of the OS.
+- `tests/kfx/monitors.kfx` (Fixpt's `programs/monitors` in KFX: workers
+  that fail by `error` and by a trap, a `par` failing once and twice, one
+  message, a deadline, `self`); eight refused programs. kfx accepts 164 of
+  Fixpt's programs, all agreeing, and refuses all 294 Fixpt refuses.
