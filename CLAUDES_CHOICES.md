@@ -2551,10 +2551,18 @@ engine's failures as values (C110), it is: `fx26/repl-tasks.kfx`, module
   `fx26/live-repl.kfx`): `repl-sessions.py --rust-repl` and
   `repl-latency.py --rust-repl` run it, built in `target/rust-repl/`;
   `check.sh` runs its sessions too.
-- Measured, C111 against C103: the eight sessions the same bytes, in
-  0.76 s against 0.90 s; on a pty while `(fact 30000)` runs, each key
-  drawn in 0 ms both ways, `(+ 1 2)`'s value in 25 ms against 18 ms, the
-  draft `(fact 1000)`'s early value in 92 against 95 ms. Failing entries
+- Measured, C111 against C103: the eight sessions the same bytes. Ten
+  runs each, alternated (the single runs first reported, 0.76 s against
+  0.90 s and 25 against 18 ms, were noise): the sessions in 679 ms
+  against 605 ms (each run within 8 ms of its median), C111 some 7 ms
+  slower in each; a plain `repl` with no input 17 ms against 10 ms
+  (batch mode, the same engine, 9.7 against 9.0 ms), and some 55 µs more
+  for each entry (200 entries: 34 against 16 ms), its two threads made
+  and messages sent. The constant's cause not found: not the constants
+  kept for each thread (built with `kayak-rt/unsafe-par`, the same). On a
+  pty while `(fact 30000)` runs, the same within noise: each key drawn
+  in 0 ms, `(+ 1 2)`'s value in 20 to 23 ms both, the draft `(fact
+  1000)`'s early value in 73 to 76 ms (C103 twice 93 and 97). Failing entries
   (`car` of nil, `error`, a division by zero, a name not yet defined, a
   refusal) are said the same, and the REPL goes on.
 - KFX gaps met: a procedure polymorphic in a place alone, whose place is

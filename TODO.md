@@ -522,3 +522,4 @@ Stages 2 and 3 done (C95): editing, history, Tab; Fixpt's commands.
 - kfx's checker fails (`car: nil`), not refuses with words, on
   `(listof int)`, a `listof` with no region.
 
+- The KFX REPL (C111) starts some 7 ms slower than C103's (17 against 10 ms for an empty plain session), cause not found (not the per-thread constants); and some 55 µs more per entry, its worker and relay threads.
