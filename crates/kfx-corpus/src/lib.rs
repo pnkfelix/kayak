@@ -198,6 +198,11 @@ pub mod places_mutual;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/processes.rs"]
+pub mod processes;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/procs.rs"]
 pub mod procs;
 
@@ -355,6 +360,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("open-types", open_types::main),
     ("places", places::main),
     ("places-mutual", places_mutual::main),
+    ("processes", processes::main),
     ("procs", procs::main),
     ("promises", promises_main),
     ("recursion", recursion::main),

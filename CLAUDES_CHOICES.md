@@ -2233,3 +2233,33 @@ it again, rather than `unsafe` trusting it.
   it, at once, by `kayak-sync`, the one crate with `unsafe` (two
   assertions, each said in a SAFETY comment), and every constant kept for
   the program (`kept_constant!` a `kayak_sync::Global`).
+- **Emitted** (2026-10-14): `spawn` is `kayak_rt::process::spawn(move |box:
+  Inbox<M>| { let _ = <the body, a letreap of the place>; })`, the body
+  checked by `letrena-form` at the `spawn` so that the emitter's `letreap`
+  finds its facts; a message's, an I-cell's, a mailbox's type is written
+  with no `letrena` around (`in-heap`), so its procedures are `'static`.
+  `send`, `receive`, `icell-get`, `icell-put!` are always
+  `kayak_rt::process::…`, so that a program's own `send` cannot take the
+  call. `pselect` binds each arm's cell or mailbox, `match`es on `sync`,
+  and takes from the chosen. Between top-level forms of `--toplevel`, and
+  after the last, `quiesce`.
+- **`par` in turn needs an order.** Fixpt's `par.fx` has a branch await
+  an I-cell another fills: in their written order, run in turn, that
+  deadlocks. The checker notes `par-order`, each branch that fills a
+  region before each that awaits one that may be it; the emitter nests
+  them so. A cycle (each awaiting what the other fills) has no such order:
+  run in turn it is a deadlock, said so; `unsafe-par` runs it.
+- **Counting tasks.** A thread is counted from when it first meets the
+  scheduler (a program's thread: `kfx-corpus` runs each program on a
+  test's thread, not `main`'s), or from before it starts (a process, a
+  branch, counted by its maker); uncounted when it ends, by a
+  thread-local's drop. A woken waiter counts itself only when it gets the
+  lock, so a send or a fill starts an epoch, every waiter stale until it
+  has looked again: a deadlock is said only when no task runs and none is
+  stale (a race found by running the corpus a hundred times).
+- **Tests**: `tests/kfx/processes.kfx` (a server and its replies, a worker
+  sent procedures, `pselect` with a stop cell, `par` on threads and `par`
+  shared with dataflow; 100 runs each way, `unsafe-par` too);
+  `tests/kfx-refused/process-*`, `par-interfere`, `pselect-arm`;
+  `tests/kfx-stricter/process-constant`, `process-union-message`,
+  `lambda-holds-ref`. Fixpt's `par.fx` and `pselect-deadlock.fx` agree.

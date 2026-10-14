@@ -1,0 +1,4 @@
+"A `pselect` arm waits for an I-cell or a mailbox (C101; Fixpt's
+ pselect-arm.fx)."
+(define f (subr (maxeff (await @c) nondet) ((icell int @c)) int)
+  (lambda (a) (pselect ((icell-get a) x x) ((get a) y y))))

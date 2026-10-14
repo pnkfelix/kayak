@@ -1,0 +1,8 @@
+"A procedure whose effect a process may have may cross into another
+ thread, so its Rust is `Send + Sync`, and what it holds must be too
+ (C102): this one holds a reference it never touches, which FX-26 lets
+ cross, judging what it does, and Rust would not, judging what it holds."
+(define f (subr (alloc @c) () (subr pure () int))
+  (lambda ()
+    (let ((r (the (ref int @c) (new 0))))
+      (lambda () (begin r 1)))))

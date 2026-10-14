@@ -1243,3 +1243,14 @@ counted; a key is drawn before the next slice, within 5 ms while `(fact
 together by halves; division by a power of two a shift (`(fact 3000)`:
 355 s to 0.4 s). The prompt drawn before the first key; `kayak-fx26
 --help`.
+
+## FX-26's processes and `par` in KFX (2026-10-14)
+
+C100–C102: the pin at Fixpt fea5c66; `spawn`, `send`, `receive`,
+I-cells, `par`, `pselect` checked as Fixpt's rules say, and emitted: a
+process an OS thread, mailboxes and I-cells in safe Rust; transmissible
+types `Send + Sync` in the Rust, so rustc checks the crossing again;
+`par` on threads where its branches share nothing written, else in turn
+(dataflow first), or at once with the `unsafe-par` feature (`kayak-sync`,
+the one crate with `unsafe`). `tests/kfx/processes.kfx`; Fixpt's 156
+programs kfx accepts agree.

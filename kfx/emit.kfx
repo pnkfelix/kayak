@@ -1180,6 +1180,14 @@
         "`c`, where `names` are bound too."
         (tagcase c (ctx (ds ts ks ls xs fs ms es mods) (ctx ds ts ks (strings-onto names ls) xs fs ms es mods)))))
 
+    (define in-heap (subr kfx (ctx) ctx)
+      (lambda (c)
+        "`c`, but with no `letrena` around: where a type is a message's, an
+         I-cell's or a mailbox's, which is transmissible, so nothing in it is
+         in a place, and its procedures are `'static` (C101)."
+        (tagcase c (ctx (ds ts ks ls xs fs ms es mods)
+                     (ctx ds ts ks (concat (map (lambda ((l string)) (if (has-prefix? l "%letrena ") nil (the strings (list l)))) ls)) xs fs ms es mods)))))
+
     (define head-region-params (subr kfx (sexp) strings)
       (lambda (head) (tagcase head (lst (xs src-file src-line src-pos) (region-params-of (cdr xs))) (else other nil))))
 
@@ -1312,6 +1320,10 @@
                     ((or (sym-is? (car xs) "pairof") (sym-is? (car xs) "%pairof"))
                      "A pair whose tail is no list: a union's pair, `Value`s (C77)."
                      (put "kayak_rt::value::Value" acc))
+                    ((and (or (sym-is? (car xs) "addr") (sym-is? (car xs) "inbox") (sym-is? (car xs) "icell")) (i64= (size xs) 3))
+                     "FX-26's processes (C101): kayak-rt's `Addr<M>`, `Inbox<M>`, `ICell<T>`,
+                      the region erased."
+                     (put ">" (put-type (in-heap c) (second xs) (put (cond ((sym-is? (car xs) "addr") "Addr<") ((sym-is? (car xs) "inbox") "Inbox<") (else "ICell<")) acc))))
                     ((sym-is? (car xs) "bytevectorof") (put "Bytes" acc))
                     ((and (sym-is? (car xs) "arrayof") (i64= (size xs) 3) (tagcase (third xs) (num (k f p) #f) (else other #t)))
                      (put ">" (put-type c (second xs) (put "Array<" acc))))
@@ -2214,6 +2226,13 @@
                    (put "}" (put-nl n acc))))
                 ((string=? h "lambda") (put-lambda c e (items (car xs)) (cdr xs) n acc))
                 ((and (string=? h "rlambda") (string=? (local-kind h (ctx-locals c)) "")) (put-lambda c e (items (second xs)) (cdr (cdr xs)) n acc))
+                ((process-call? h)
+                 "A form of processes that is a call (C101): the runtime's, whatever
+                  the program names so."
+                 (put ")" (put-joined c xs ", " n (put (string-append "kayak_rt::process::" (string-append (mangle h) "(")) acc))))
+                ((string=? h "spawn") (put-spawn c e xs n acc))
+                ((string=? h "par") (put-par c e xs n t acc))
+                ((string=? h "pselect") (put-pselect c e xs n t acc))
                 ((string=? h "proj") (put-exp c (car xs) n (value) acc))
                 ((string=? h "product")
                  (let* ((fs (map items xs))
@@ -2386,6 +2405,106 @@
                             ((fallible-here? c) (put "?" acc))
                             (else (put ".unwrap_or_else(|u| unreachable_unwind(u))" acc)))))
             (put "}" (put-nl n acc)))))
+
+      (put-spawn (subr kfx (ctx sexp sexps i64 chars) chars)
+        (lambda (c e xs n acc)
+          "`(spawn (box M r) body ...)` (C101): a thread of its own, given its
+           mailbox, running the body as a `letreap` of its place, `r`, whose
+           facts the checker noted at the `spawn`; the body's value dropped."
+          (let* ((header (items (car xs)))
+                 (box (sym-name (car header)))
+                 (m (car (read-all (string-chars (fact-with c e "spawn ")) "" 1)))
+                 (acc (put "kayak_rt::process::spawn(move |" acc))
+                 (acc (put (mangle box) acc))
+                 (acc (put ": kayak_rt::Inbox<" acc))
+                 (acc (put-type c m acc))
+                 (acc (put ">| {" acc))
+                 (acc (put-nl (i64+ n 1) acc))
+                 (acc (put "let _ = " acc))
+                 (acc (put-letrena (with-locals c (list box)) e (cons (third header) (cdr xs)) (i64+ n 1) acc)))
+            (put "})" (put-nl n (put ";" acc))))))
+
+      (put-par (subr kfx (ctx sexp sexps i64 tail chars) chars)
+        (lambda (c e xs n t acc)
+          "`(par ((x e) ...) body ...)` (C101, C102): the branches as closures,
+           the first here and the rest each on a thread, nested by twos, their
+           values a tuple bound for the body. `par2` if the checker found the
+           branches hold only what may cross, which rustc checks again; else
+           `par2_shared`, in turn, in the order the checker found, each that
+           fills an I-cell before each that awaits it, or at once with
+           `unsafe-par`."
+          (let* ((written (items (car xs)))
+                 (order (map digits-number (split-words (fact-with c e "par-order "))))
+                 (bindings (if (null? order) written (map (lambda ((k i64)) (sexp-at written k)) order)))
+                 (names (map binding-name bindings))
+                 (n1 (i64+ n 1))
+                 (op (if (fact-at? c e "par-threads") "kayak_rt::process::par2(" "kayak_rt::process::par2_shared("))
+                 (acc (put-nl n1 (put "{" acc)))
+                 (acc (put "let " acc))
+                 (acc (put-par-pattern names acc))
+                 (acc (put " = " acc))
+                 (acc (put-par-tree c op (map (lambda ((b sexp)) (second (items b))) bindings) n1 acc))
+                 (acc (put-nl n1 (put ";" acc)))
+                 (acc (put-stmts (with-locals c names) (cdr xs) n1 (hide t names) acc)))
+            (put "}" (put-nl n acc)))))
+
+      (put-par-pattern (subr kfx (strings chars) chars)
+        (lambda (names acc)
+          "`(x1, (x2, x3))`: the names as the nested pairs bind them."
+          (if (null? (cdr names))
+              (put (mangle (car names)) acc)
+              (put ")" (put-par-pattern (cdr names) (put ", " (put (mangle (car names)) (put "(" acc))))))))
+
+      (put-par-tree (subr kfx (ctx string sexps i64 chars) chars)
+        (lambda (c op es n acc)
+          "`par2(move || e1, move || par2(move || e2, move || e3))`."
+          (if (null? (cdr es))
+              (put-exp c (car es) n (value) acc)
+              (let* ((acc (put op acc))
+                     (acc (put "move || " acc))
+                     (acc (put-exp c (car es) n (value) acc))
+                     (acc (put ", move || " acc))
+                     (acc (put-par-tree c op (cdr es) n acc)))
+                (put ")" acc)))))
+
+      (sexp-at (subr kfx (sexps i64) sexp)
+        (lambda (xs k) (if (i64= k 0) (car xs) (sexp-at (cdr xs) (i64- k 1)))))
+
+      (put-pselect (subr kfx (ctx sexp sexps i64 tail chars) chars)
+        (lambda (c e arms n t acc)
+          "`(pselect (W x body ...) ...)` (C101): each arm's I-cell or mailbox
+           bound, `sel_k__`; `sync`, the number of the first ready; that arm's
+           wait taken, which is ready, its value bound for its body."
+          (let* ((n1 (i64+ n 1))
+                 (n2 (i64+ n 2))
+                 (ks (counting 0 (size arms)))
+                 (acc (put-nl n1 (put "{" acc)))
+                 (acc (put-sep (lambda ((k i64) (acc chars))
+                                 (let ((w (items (car (items (sexp-at arms k))))))
+                                   (put-nl n1 (put ";" (put-exp c (second w) n1 (value) (put (string-append "let sel_" (string-append (i64->string k) "__ = ")) acc))))))
+                               "" ks acc))
+                 (acc (put "match kayak_rt::process::sync(&[" acc))
+                 (acc (put-sep (lambda ((k i64) (acc chars))
+                                 (put (string-append "sel_" (string-append (i64->string k) "__ as &dyn kayak_rt::process::Waitable")) acc))
+                               ", " ks acc))
+                 (acc (put "]) {" acc))
+                 (acc (put-sep (lambda ((k i64) (acc chars))
+                                 (let* ((arm (items (sexp-at arms k)))
+                                        (w (items (car arm)))
+                                        (x (sym-name (second arm)))
+                                        (acc (put-nl n2 acc))
+                                        (acc (put (string-append (i64->string k) " => {") acc))
+                                        (acc (put-nl (i64+ n2 1) acc))
+                                        (acc (put (string-append "let " (string-append (mangle x) (string-append " = kayak_rt::process::"
+                                                    (string-append (mangle (sym-name (car w))) (string-append "(sel_" (string-append (i64->string k) "__);"))))))
+                                                  acc))
+                                        (acc (put-nl (i64+ n2 1) acc))
+                                        (acc (put-stmts (with-locals c (list x)) (cdr (cdr arm)) (i64+ n2 1) (hide t (list x)) acc)))
+                                   (put "}" (put-nl n2 acc))))
+                               "" ks acc))
+                 (acc (put-nl n2 acc))
+                 (acc (put "_ => unreachable!()," acc)))
+            (put "}" (put-nl n (put "}" (put-nl n1 acc)))))))
 
       (put-letrena-params (subr kfx (ctx strings sexps chars) chars)
         (lambda (c names types acc)

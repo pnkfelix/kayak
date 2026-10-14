@@ -2590,6 +2590,142 @@ pub mod expressions {
         (null_p(ts) || (sync_type_p(v, s, car(ts), seen) && all_sync_p(v, s, cdr(ts), seen)))
     }
 
+    pub fn reverse_effs(mut xs: List<Strings>, mut acc: List<Strings>) -> List<Strings> {
+        loop {
+            if null_p(xs) {
+                return acc;
+            } else {
+                (xs, acc) = (cdr(xs), kayak_rt::heap_cons(car(xs), acc));
+                continue;
+            }
+        }
+    }
+
+    /// Whether every local the expressions `es` name, bound outside them,
+    /// is `Sync` (C102); one bound in them too counts, as `synced-lambda`'s.
+    pub fn held_sync_p(v: &'static Cv, s: &'static St, es: Sexps) -> bool {
+        not(any_p(lambda1s(move |n: Str| {
+            let found = find_bind(n, cv_binds(v));
+            (not(null_p(found)) && {
+                let tagcase_ = car(found);
+                match *tagcase_ {
+                    Bind::Bind(b, sc, wher) => {
+                        ((string_eq_p(wher, str_lit("local")) || string_eq_p(wher, str_lit("narrowed")) || string_eq_p(wher, str_lit("rec")) || string_eq_p(wher, str_lit("ends"))) && not(sync_type_p(v, s, {
+                            let tagcase_ = sc;
+                            match *tagcase_ {
+                                Scheme::Scheme(tv, t) => {
+                                    t
+                                }
+                            }
+                        }, nil::<Str>())))
+                    }
+                }
+            })
+        }), distinct(names_in_all(es))))
+    }
+
+    /// Two regions that may be one: the same, or either not a constant;
+    /// two constants of other names are two.
+    pub fn regions_may_be_one_p(p: Str, q: Str) -> bool {
+        (string_eq_p(p, q) || not(has_prefix_p(p, str_lit("@"))) || not(has_prefix_p(q, str_lit("@"))))
+    }
+
+    /// Whether a branch of effect `a` fills an I-cell one of effect `b` may
+    /// await: `a` must run first, if they run in turn.
+    pub fn fills_before_p(a: Strings, b: Strings) -> bool {
+        any_p(lambda1s(move |x: Str| {
+            (has_prefix_p(x, str_lit("init:")) && any_p(lambda1s(move |y: Str| {
+                (has_prefix_p(y, str_lit("await:")) && regions_may_be_one_p(atom_region(x), atom_region(y)))
+            }), b))
+        }), a)
+    }
+
+    /// An order to run `par`'s branches in turn, `effs` their effects in
+    /// order: the first left that no branch left must fill for, again and
+    /// again; in their order where a cycle leaves none, which run in turn
+    /// deadlocks (C102: `unsafe-par` runs them at once).
+    pub fn par_order(mut effs: List<Strings>, mut left: List<i64>, mut acc: List<i64>) -> List<i64> {
+        loop {
+            if null_p(left) {
+                return reverse_i64s(acc, nil::<i64>());
+            } else {
+                let ready = lambda1s(move |i: i64| {
+                    not(any_p(lambda1s(move |j: i64| {
+                        (not(i64_eq(i, j)) && fills_before_p(effs_at(effs, j), effs_at(effs, i)))
+                    }), left))
+                });
+                let pick = if any_p(ready, left) {
+                    car(concat(map(lambda1s(move |i: i64| {
+                        if ready(i) {
+                            the::<List<i64>>(kayak_rt::heap_cons(i, kayak_rt::nil()))
+                        } else {
+                            nil::<i64>()
+                        }
+                    }), left)))
+                } else {
+                    car(left)
+                };
+                (left, acc) = (concat(map(lambda1s(move |i: i64| {
+                    if i64_eq(i, pick) {
+                        nil::<i64>()
+                    } else {
+                        the::<List<i64>>(kayak_rt::heap_cons(i, kayak_rt::nil()))
+                    }
+                }), left)), kayak_rt::heap_cons(pick, acc));
+                continue;
+            }
+        }
+    }
+
+    pub fn effs_at(mut effs: List<Strings>, mut i: i64) -> Strings {
+        loop {
+            if i64_eq(i, 0i64) {
+                return car(effs);
+            } else {
+                (effs, i) = (cdr(effs), i64_minus(i, 1i64));
+                continue;
+            }
+        }
+    }
+
+    pub fn reverse_i64s(mut xs: List<i64>, mut acc: List<i64>) -> List<i64> {
+        loop {
+            if null_p(xs) {
+                return acc;
+            } else {
+                (xs, acc) = (cdr(xs), kayak_rt::heap_cons(car(xs), acc));
+                continue;
+            }
+        }
+    }
+
+    /// Whether `par`'s branches may run on threads in safe Rust (C102): each
+    /// branch's effect one a process may have, so that it touches nothing
+    /// another can write; what each holds, and gives back, `Sync`. Else they
+    /// share what is written, in regions no other branch touches, which
+    /// only the interference check knows: `par2_shared`.
+    pub fn par_threads_p(v: &'static Cv, s: &'static St, effs: List<Strings>, bound: Binds, es: Sexps) -> bool {
+        (not(any_p(lambda1s(move |es: Strings| {
+            not(crossing_p(map(lambda1s(move |a: Str| {
+                resolve_atom(s, a)
+            }), es)))
+        }), effs)) && not(any_p(lambda1s(move |b: &'static Bind| {
+            let tagcase_ = b;
+            match *tagcase_ {
+                Bind::Bind(n, sc, w) => {
+                    not(sync_type_p(v, s, {
+                        let tagcase_ = sc;
+                        match *tagcase_ {
+                            Scheme::Scheme(tv, t) => {
+                                t
+                            }
+                        }
+                    }, nil::<Str>()))
+                }
+            }
+        }), bound)) && held_sync_p(v, s, es))
+    }
+
     /// A lambda whose latent effect `es` a process may have: its closure, in
     /// Rust, `Send + Sync` (C102), noted for the emitter, so that it may be
     /// held on another thread, as FX-26 lets it be; so each local it holds
@@ -2789,12 +2925,6 @@ pub mod expressions {
         } else {
             false
         }
-    }
-
-    /// Two regions that may be one: the same, or either not a constant;
-    /// two constants of other names are two.
-    pub fn regions_may_be_one_p(p: Str, q: Str) -> bool {
-        (string_eq_p(p, q) || not(has_prefix_p(p, str_lit("@"))) || not(has_prefix_p(q, str_lit("@"))))
     }
 
     /// The first pair of atoms, one of `x` and one of `y`, that interfere;
@@ -3417,7 +3547,7 @@ pub mod expressions {
             if string_member_p(name, cv_tvars(v)) {
                 match refuse(v, string_append(str_lit("a process's place named as one already: "), r)) {}
             } else {
-                let tagcase_ = body(with_binds(with_tvars(v, kayak_rt::heap_cons(mark, kayak_rt::heap_cons(name, kayak_rt::heap_cons(string_append(str_lit("%place "), name), kayak_rt::nil())))), kayak_rt::heap_cons(bind(mark, scheme(nil::<Str>(), ty_unit()), str_lit("mark")), kayak_rt::heap_cons(local(v, r, ty_data(str_lit("%place"), kayak_rt::heap_cons(ty_var(name), kayak_rt::nil()))), kayak_rt::heap_cons(local(v, r#box, ty_data(str_lit("%inbox"), kayak_rt::heap_cons(m, kayak_rt::heap_cons(ty_var(name), kayak_rt::nil())))), kayak_rt::nil())))), s, cdr(xs), nil::<&'static Ty>());
+                let tagcase_ = letrena_form(with_binds(with_tvars(v, kayak_rt::heap_cons(mark, kayak_rt::nil())), kayak_rt::heap_cons(bind(mark, scheme(nil::<Str>(), ty_unit()), str_lit("mark")), kayak_rt::heap_cons(local(v, r#box, ty_data(str_lit("%inbox"), kayak_rt::heap_cons(m, kayak_rt::heap_cons(ty_var(name), kayak_rt::nil())))), kayak_rt::nil()))), s, kayak_rt::heap_cons(third(header), cdr(xs)), nil::<&'static Ty>());
                 match *tagcase_ {
                     Res::Res(t, es, s) => {
                         let s = holds_checked(v, s, id);
@@ -3472,10 +3602,17 @@ pub mod expressions {
     /// `par`'s branches, each its own effect, then its body, their values
     /// bound as a `let`'s: no branch may transfer control out of itself,
     /// and no two may interfere (`synth_par`).
-    pub fn par_values(v: &'static Cv, s: &'static St, bindings: Sexps, forms: Sexps, expected: Tys, bound: Binds, effs: List<Strings>) -> &'static Res {
+    pub fn par_values(v: &'static Cv, s: &'static St, bindings: Sexps, forms: Sexps, expected: Tys, bound: Binds, effs: List<Strings>, all: Sexps) -> &'static Res {
         if null_p(bindings) {
             par_clash(v, effs);
-            body(with_binds(v, bound), s, forms, expected)
+            body(with_binds(v, bound), if par_threads_p(v, s, effs, bound, map(lambda1s(move |b: &'static Sexp| {
+                second(items(b))
+            }), all)) {
+                note_fact(s, cv_file(v), cv_pos(v), str_lit("par-threads"))
+            } else {
+                let in_order = reverse_effs(effs, nil::<List<Str>>());
+                note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("par-order "), words_of(map(&i64_to_string, par_order(in_order, counting(0i64, size(in_order)), nil::<i64>())))))
+            }, forms, expected)
         } else {
             let b = items(car(bindings));
             let tagcase_ = synth(v, s, second(b));
@@ -3490,7 +3627,7 @@ pub mod expressions {
                     if not(null_p(out)) {
                         match refuse(v, string_append(str_lit("a `par` branch must end where it began, and this one has "), show_effs(out))) {}
                     } else {
-                        with_effs(par_values(v, s, cdr(bindings), forms, expected, kayak_rt::heap_cons(local(v, name_of(v, car(b)), t), bound), kayak_rt::heap_cons(es, effs)), es)
+                        with_effs(par_values(v, s, cdr(bindings), forms, expected, kayak_rt::heap_cons(local(v, name_of(v, car(b)), t), bound), kayak_rt::heap_cons(es, effs), all), es)
                     }
                 }
             }
@@ -3542,7 +3679,7 @@ pub mod expressions {
         } else if i64_lt(size(items(car(xs))), 2i64) {
             match refuse(v, str_lit("`par` runs two branches or more: `(par ((name expression) …) body …)`")) {}
         } else {
-            par_values(v, s, items(car(xs)), cdr(xs), expected, nil::<&'static Bind>(), nil::<List<Str>>())
+            par_values(v, s, items(car(xs)), cdr(xs), expected, nil::<&'static Bind>(), nil::<List<Str>>(), items(car(xs)))
         }
     }
 

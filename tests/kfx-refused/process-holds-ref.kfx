@@ -1,0 +1,5 @@
+"A process may hold nothing another can write (C101; Fixpt's
+ share-ref.fx): its body names a reference, outside it."
+(define counter (ref int @c) (new 0))
+(define* start (subr (maxeff (alloc @w) (read @c) (write @c) nondet) () (addr int @w))
+  (lambda () (spawn (box int p) (set counter (receive box)))))

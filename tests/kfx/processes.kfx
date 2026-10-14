@@ -1,0 +1,116 @@
+"FX-26's processes and `par` (C101, C102): Fixpt's `programs/processes`,
+ in KFX, where a process is made by a procedure, since KFX makes a
+ constant at its first use (C21). Each process an OS thread here, and
+ a task of Fixpt's scheduler there: the answers are the same."
+(define-effect kfx (maxeff (read @globals) spin))
+
+"A server: each request carries the I-cell its answer goes in, and the
+ one asking waits on it (Fixpt's reply.fx)."
+(define-type req (productof (n int) (reply (icell int @r))))
+
+(define* start-doubler (subr (maxeff (alloc @srv) (init @r) nondet spin) () (addr req @srv))
+  (lambda ()
+    (spawn (box req p)
+      (letrec ((serve (subr (maxeff (receive p) (init @r) nondet spin) () unit)
+                 (lambda ()
+                   (let ((m (receive box)))
+                     (begin (icell-put! (extract m reply) (* 2 (extract m n))) (serve))))))
+        (serve)))))
+
+(define* ask (subr (maxeff (send @srv) (alloc @r) (await @r)) ((addr req @srv) int) int)
+  (lambda (server n)
+    (let ((c (the (icell int @r) (make-icell))))
+      (begin (send server (product (n n) (reply c))) (icell-get c)))))
+
+"A process given a procedure in each message, which writes nothing
+ outside itself, so it may cross (Fixpt's closures.fx)."
+(define-type job (productof (f (subr pure (int) int)) (x int) (out (icell int @o))))
+
+(define* start-worker (subr (maxeff (alloc @w) (init @o) nondet spin) () (addr job @w))
+  (lambda ()
+    (spawn (box job p)
+      (letrec ((go (subr (maxeff (receive p) (init @o) nondet spin) () unit)
+                 (lambda ()
+                   (let ((j (receive box)))
+                     (begin (icell-put! (extract j out) ((extract j f) (extract j x))) (go))))))
+        (go)))))
+
+"A process that sums what it is sent until told to stop, by an I-cell,
+ then answers: `pselect` over its mailbox and the cell, the mailbox
+ first, so every message sent before the stop is summed (Fixpt's
+ pselect-stop.fx)."
+(define-type summing (productof (stop (icell unit @c)) (total (icell int @c))))
+
+(define* start-summer (subr (maxeff (alloc @p) (await @c) (init @c) nondet spin) (summing) (addr int @p))
+  (lambda (cells)
+    (spawn (box int r)
+      (letrec ((loop (subr (maxeff (receive r) (await @c) (init @c) nondet spin) (int) unit)
+                 (lambda (n)
+                   (pselect ((receive box) m (loop (+ n m)))
+                            ((icell-get (extract cells stop)) u (icell-put! (extract cells total) n))))))
+        (loop 0)))))
+
+"`par` of branches that hold and touch nothing another can write: on
+ threads, checked by rustc too (C102)."
+(define-rec
+  (fib (subr kfx (int) int)
+    (lambda (n) (if (< n 2) n (+ (fib (- n 1)) (fib (- n 2)))))))
+
+(define fibs (subr kfx () int)
+  (lambda ()
+    (par ((a (fib 20)) (b (fib 21)) (c (fib 22)))
+      (+ a (+ b c)))))
+
+"`par` of branches that write arrays at regions of their own, read one no
+ branch writes, and pass a value through an I-cell, one filling what
+ another awaits (Fixpt's par.fx): in turn, the filling first, or at once
+ with `unsafe-par`."
+(define-effect arrays (maxeff kfx (alloc @x) (alloc @y) (alloc @s) (alloc @c) (read @x) (read @y) (read @s)
+                              (write @x) (write @y) (init @c) (await @c)))
+
+(define fill-x (subr (maxeff (write @x) (read @s)) ((arrayof int @x) (arrayof int @s) int) int)
+  (lambda (a shared k)
+    (begin (array-set! a 0 (* k (array-ref shared 0))) (array-set! a 1 k) (array-ref shared 0))))
+
+(define fill-y (subr (maxeff (write @y) (read @s)) ((arrayof int @y) (arrayof int @s) int) int)
+  (lambda (a shared k)
+    (begin (array-set! a 0 (* k (array-ref shared 0))) (array-set! a 1 k) (array-ref shared 0))))
+
+(define dataflow (subr arrays () int)
+  (lambda ()
+    (let ((xs (the (arrayof int @x) (make-array 3 0)))
+          (ys (the (arrayof int @y) (make-array 3 0)))
+          (shared (the (arrayof int @s) (make-array 1 7)))
+          (c (the (icell int @c) (make-icell))))
+      (par ((p (fill-x xs shared 100))
+            (q (fill-y ys shared 50))
+            (r (+ 1 (icell-get c)))
+            (s (begin (icell-put! c 2) 0)))
+        (+ (+ (+ (array-ref xs 0) (array-ref ys 0)) (+ p q))
+           (+ (+ r s) (+ (array-ref xs 1) (array-ref ys 1))))))))
+
+(define show (subr kfx ((listof int acyclic)) string)
+  (lambda (xs)
+    (if (null? xs) "" (string-append (int->string (car xs)) (string-append " " (show (cdr xs)))))))
+
+(define main (subr (maxeff arrays (alloc @srv) (alloc @r) (alloc @w) (alloc @o) (alloc @p)
+                           (send @srv) (send @w) (send @p) (init @r) (init @o) (init @c)
+                           (await @r) (await @o) (await @c) nondet)
+                   () string)
+  (lambda ()
+    (let* ((doubler (start-doubler))
+           (worker (start-worker))
+           (out (the (icell int @o) (make-icell)))
+           (cells (product (stop (the (icell unit @c) (make-icell))) (total (the (icell int @c) (make-icell)))))
+           (summer (start-summer cells)))
+      (begin
+        (send worker (product (f (lambda ((k int)) (* k k))) (x 7) (out out)))
+        (send summer 10)
+        (send summer 20)
+        (send summer 30)
+        (icell-put! (extract cells stop) #u)
+        (show (list (+ (ask doubler 20) (ask doubler 1))
+                    (icell-get out)
+                    (icell-get (extract cells total))
+                    (fibs)
+                    (dataflow)))))))

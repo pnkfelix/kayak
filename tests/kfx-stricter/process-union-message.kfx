@@ -1,0 +1,4 @@
+"A union as a message: FX-26 sends one; KFX's Rust holds a union's
+ value as kayak-rt's `Value`, which is not `Send`, so KFX does not (C102)."
+(define* start (subr (maxeff (alloc @w) nondet) () (addr (union int string) @w))
+  (lambda () (spawn (box (union int string) p) (begin (receive box) #u))))

@@ -1,0 +1,4 @@
+"A message is copied to its process, so it must be transmissible (C101;
+ Fixpt's message-ref.fx): a reference is not."
+(define* start (subr (maxeff (alloc @w) (write @c) nondet) () (addr (ref int @c) @w))
+  (lambda () (spawn (box (ref int @c) p) (set (receive box) 1))))

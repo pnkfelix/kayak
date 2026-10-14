@@ -1,0 +1,4 @@
+"A process made as a global's value: FX-26 makes it where it is
+ defined; KFX makes a constant at its first use (C21), so its value may
+ not spawn one (C101). Make it in a procedure."
+(define w (addr int @w) (spawn (box int p) (begin (receive box) #u)))

@@ -2173,6 +2173,24 @@ pub mod emitter {
         }
     }
 
+    /// `c`, but with no `letrena` around: where a type is a message's, an
+    /// I-cell's or a mailbox's, which is transmissible, so nothing in it is
+    /// in a place, and its procedures are `'static` (C101).
+    pub fn in_heap(c: &'static Ctx) -> &'static Ctx {
+        let tagcase_ = c;
+        match *tagcase_ {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                ctx(ds, ts, ks, concat(map(lambda1s(move |l: Str| {
+                    if has_prefix_p(l, str_lit("%letrena ")) {
+                        nil::<Str>()
+                    } else {
+                        the::<Strings>(kayak_rt::heap_cons(l, kayak_rt::nil()))
+                    }
+                }), ls)), xs, fs, ms, es, mods)
+            }
+        }
+    }
+
     pub fn head_region_params(head: &'static Sexp) -> Strings {
         let tagcase_ = head;
         match *tagcase_ {
@@ -2457,6 +2475,16 @@ pub mod emitter {
                     } else if (sym_is_p(car(xs), str_lit("pairof")) || sym_is_p(car(xs), str_lit("%pairof"))) {
                         // A pair whose tail is no list: a union's pair, `Value`s (C77).
                         return put(str_lit("kayak_rt::value::Value"), acc);
+                    } else if ((sym_is_p(car(xs), str_lit("addr")) || sym_is_p(car(xs), str_lit("inbox")) || sym_is_p(car(xs), str_lit("icell"))) && i64_eq(size(xs), 3i64)) {
+                        // FX-26's processes (C101): kayak-rt's `Addr<M>`, `Inbox<M>`, `ICell<T>`,
+                        // the region erased.
+                        return put(str_lit(">"), put_type(in_heap(c), second(xs), put(if sym_is_p(car(xs), str_lit("addr")) {
+                            str_lit("Addr<")
+                        } else if sym_is_p(car(xs), str_lit("inbox")) {
+                            str_lit("Inbox<")
+                        } else {
+                            str_lit("ICell<")
+                        }, acc)));
                     } else if sym_is_p(car(xs), str_lit("bytevectorof")) {
                         return put(str_lit("Bytes"), acc);
                     } else if (sym_is_p(car(xs), str_lit("arrayof")) && i64_eq(size(xs), 3i64) && {
@@ -3963,6 +3991,16 @@ pub mod emitter {
                 return put_lambda(c, e, items(car(xs)), cdr(xs), n, acc);
             } else if (string_eq_p(h, str_lit("rlambda")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
                 return put_lambda(c, e, items(second(xs)), cdr(cdr(xs)), n, acc);
+            } else if process_call_p(h) {
+                // A form of processes that is a call (C101): the runtime's, whatever
+                // the program names so.
+                return put(str_lit(")"), put_joined(c, xs, str_lit(", "), n, put(string_append(str_lit("kayak_rt::process::"), string_append(mangle(h), str_lit("("))), acc)));
+            } else if string_eq_p(h, str_lit("spawn")) {
+                return put_spawn(c, e, xs, n, acc);
+            } else if string_eq_p(h, str_lit("par")) {
+                return put_par(c, e, xs, n, t, acc);
+            } else if string_eq_p(h, str_lit("pselect")) {
+                return put_pselect(c, e, xs, n, t, acc);
             } else if string_eq_p(h, str_lit("proj")) {
                 return put_exp(c, car(xs), n, value(), acc);
             } else if string_eq_p(h, str_lit("product")) {
@@ -4268,6 +4306,128 @@ pub mod emitter {
             put(str_lit(".unwrap_or_else(|u| unreachable_unwind(u))"), acc)
         };
         put(str_lit("}"), put_nl(n, acc))
+    }
+
+    /// `(spawn (box M r) body ...)` (C101): a thread of its own, given its
+    /// mailbox, running the body as a `letreap` of its place, `r`, whose
+    /// facts the checker noted at the `spawn`; the body's value dropped.
+    pub fn put_spawn(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, acc: Chars) -> Chars {
+        let header = items(car(xs));
+        let r#box = sym_name(car(header));
+        let m = car(read_all(string_chars(fact_with(c, e, str_lit("spawn "))), str_lit(""), 1i64));
+        let acc = put(str_lit("kayak_rt::process::spawn(move |"), acc);
+        let acc = put(mangle(r#box), acc);
+        let acc = put(str_lit(": kayak_rt::Inbox<"), acc);
+        let acc = put_type(c, m, acc);
+        let acc = put(str_lit(">| {"), acc);
+        let acc = put_nl(i64_plus(n, 1i64), acc);
+        let acc = put(str_lit("let _ = "), acc);
+        let acc = put_letrena(with_locals(c, kayak_rt::heap_cons(r#box, kayak_rt::nil())), e, kayak_rt::heap_cons(third(header), cdr(xs)), i64_plus(n, 1i64), acc);
+        put(str_lit("})"), put_nl(n, put(str_lit(";"), acc)))
+    }
+
+    /// `(par ((x e) ...) body ...)` (C101, C102): the branches as closures,
+    /// the first here and the rest each on a thread, nested by twos, their
+    /// values a tuple bound for the body. `par2` if the checker found the
+    /// branches hold only what may cross, which rustc checks again; else
+    /// `par2_shared`, in turn, in the order the checker found, each that
+    /// fills an I-cell before each that awaits it, or at once with
+    /// `unsafe-par`.
+    pub fn put_par(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
+        let written = items(car(xs));
+        let order = map(&digits_number, split_words(fact_with(c, e, str_lit("par-order "))));
+        let bindings = if null_p(order) {
+            written
+        } else {
+            map(lambda1s(move |k: i64| {
+                sexp_at(written, k)
+            }), order)
+        };
+        let names = map(&binding_name, bindings);
+        let n1 = i64_plus(n, 1i64);
+        let op = if fact_at_p(c, e, str_lit("par-threads")) {
+            str_lit("kayak_rt::process::par2(")
+        } else {
+            str_lit("kayak_rt::process::par2_shared(")
+        };
+        let acc = put_nl(n1, put(str_lit("{"), acc));
+        let acc = put(str_lit("let "), acc);
+        let acc = put_par_pattern(names, acc);
+        let acc = put(str_lit(" = "), acc);
+        let acc = put_par_tree(c, op, map(lambda1s(move |b: &'static Sexp| {
+            second(items(b))
+        }), bindings), n1, acc);
+        let acc = put_nl(n1, put(str_lit(";"), acc));
+        let acc = put_stmts(with_locals(c, names), cdr(xs), n1, hide(t, names), acc);
+        put(str_lit("}"), put_nl(n, acc))
+    }
+
+    /// `(x1, (x2, x3))`: the names as the nested pairs bind them.
+    pub fn put_par_pattern(names: Strings, acc: Chars) -> Chars {
+        if null_p(cdr(names)) {
+            put(mangle(car(names)), acc)
+        } else {
+            put(str_lit(")"), put_par_pattern(cdr(names), put(str_lit(", "), put(mangle(car(names)), put(str_lit("("), acc)))))
+        }
+    }
+
+    /// `par2(move || e1, move || par2(move || e2, move || e3))`.
+    pub fn put_par_tree(c: &'static Ctx, op: Str, es: Sexps, n: i64, acc: Chars) -> Chars {
+        if null_p(cdr(es)) {
+            put_exp(c, car(es), n, value(), acc)
+        } else {
+            let acc = put(op, acc);
+            let acc = put(str_lit("move || "), acc);
+            let acc = put_exp(c, car(es), n, value(), acc);
+            let acc = put(str_lit(", move || "), acc);
+            let acc = put_par_tree(c, op, cdr(es), n, acc);
+            put(str_lit(")"), acc)
+        }
+    }
+
+    pub fn sexp_at(mut xs: Sexps, mut k: i64) -> &'static Sexp {
+        loop {
+            if i64_eq(k, 0i64) {
+                return car(xs);
+            } else {
+                (xs, k) = (cdr(xs), i64_minus(k, 1i64));
+                continue;
+            }
+        }
+    }
+
+    /// `(pselect (W x body ...) ...)` (C101): each arm's I-cell or mailbox
+    /// bound, `sel_k__`; `sync`, the number of the first ready; that arm's
+    /// wait taken, which is ready, its value bound for its body.
+    pub fn put_pselect(c: &'static Ctx, e: &'static Sexp, arms: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
+        let n1 = i64_plus(n, 1i64);
+        let n2 = i64_plus(n, 2i64);
+        let ks = counting(0i64, size(arms));
+        let acc = put_nl(n1, put(str_lit("{"), acc));
+        let acc = put_sep(lambda2s(move |k: i64, acc: Chars| {
+            let w = items(car(items(sexp_at(arms, k))));
+            put_nl(n1, put(str_lit(";"), put_exp(c, second(w), n1, value(), put(string_append(str_lit("let sel_"), string_append(i64_to_string(k), str_lit("__ = "))), acc))))
+        }), str_lit(""), ks, acc);
+        let acc = put(str_lit("match kayak_rt::process::sync(&["), acc);
+        let acc = put_sep(lambda2s(move |k: i64, acc: Chars| {
+            put(string_append(str_lit("sel_"), string_append(i64_to_string(k), str_lit("__ as &dyn kayak_rt::process::Waitable"))), acc)
+        }), str_lit(", "), ks, acc);
+        let acc = put(str_lit("]) {"), acc);
+        let acc = put_sep(lambda2s(move |k: i64, acc: Chars| {
+            let arm = items(sexp_at(arms, k));
+            let w = items(car(arm));
+            let x = sym_name(second(arm));
+            let acc = put_nl(n2, acc);
+            let acc = put(string_append(i64_to_string(k), str_lit(" => {")), acc);
+            let acc = put_nl(i64_plus(n2, 1i64), acc);
+            let acc = put(string_append(str_lit("let "), string_append(mangle(x), string_append(str_lit(" = kayak_rt::process::"), string_append(mangle(sym_name(car(w))), string_append(str_lit("(sel_"), string_append(i64_to_string(k), str_lit("__);"))))))), acc);
+            let acc = put_nl(i64_plus(n2, 1i64), acc);
+            let acc = put_stmts(with_locals(c, kayak_rt::heap_cons(x, kayak_rt::nil())), cdr(cdr(arm)), i64_plus(n2, 1i64), hide(t, kayak_rt::heap_cons(x, kayak_rt::nil())), acc);
+            put(str_lit("}"), put_nl(n2, acc))
+        }), str_lit(""), ks, acc);
+        let acc = put_nl(n2, acc);
+        let acc = put(str_lit("_ => unreachable!(),"), acc);
+        put(str_lit("}"), put_nl(n, put(str_lit("}"), put_nl(n1, acc))))
     }
 
     pub fn put_letrena_params(mut c: &'static Ctx, mut names: Strings, mut types: Sexps, mut acc: Chars) -> Chars {

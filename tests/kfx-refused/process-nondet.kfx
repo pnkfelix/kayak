@@ -1,0 +1,4 @@
+"A process that receives may see its messages in any order, so making
+ one is `nondet`, which no mask removes (C101; Fixpt's nondet.fx)."
+(define* start (subr (alloc @w) () (addr int @w))
+  (lambda () (spawn (box int p) (begin (receive box) #u))))

@@ -600,9 +600,11 @@
         (lambda (c forms acc)
           "Each top-level expression's value written; a `void` one, which never
            gives one, run, its type said; one that may suspend, a future run to
-           its end (C45)."
-          (cond ((null? forms) acc)
+           its end (C45). Between two forms, and after the last, the processes
+           that can run run (`quiesce`), as Fixpt ends a form (C101)."
+          (cond ((null? forms) (put "    kayak_rt::process::quiesce();\n" acc))
                 ((toplevel-form? (car forms))
+                 (let ((acc (put "    kayak_rt::process::quiesce();\n" acc)))
                  (cond
                    ((fact-at? c (car forms) "suspends")
                     (if (fact-at? c (car forms) "void")
@@ -625,7 +627,7 @@
                        (put-toplevel-lines c (cdr forms) (put "; Ok(()) })().unwrap_or_else(|u| unreachable_unwind(u));\n" acc)))
                      (let* ((acc (put "    kayak_rt::show_line(&mut out_, (|| -> Result<_, Unwind> { Ok(" acc))
                             (acc (put-exp (with-locals c (list "%fallible")) (car forms) 1 (value) acc)))
-                       (put-toplevel-lines c (cdr forms) (put ") })().unwrap_or_else(|u| unreachable_unwind(u)));\n" acc)))))))
+                       (put-toplevel-lines c (cdr forms) (put ") })().unwrap_or_else(|u| unreachable_unwind(u)));\n" acc))))))))
                 ((made-here? c (car forms))
                  "A global's value made where it is defined, as FX-26 makes it, so
                   that one that fails fails there (a Rust global is made when first

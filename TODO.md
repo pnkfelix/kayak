@@ -472,11 +472,11 @@ Stages 2 and 3 done (C95): editing, history, Tab; Fixpt's commands.
 - Bignums in the engine leak (C99): KFX's `int`s are never freed, so each
   step on a bignum leaks its operands' conversions (500 MB for `(fact
   3000)`). Arithmetic on the limbs in the heap, or a free in `kayak-rt`.
-- **Processes, the rest (C101, C102):** the emitter's `spawn`, `send`,
-  `receive`, `pselect`, `par` (choosing `par2` or `par2_shared`), the
-  barrier after each top-level form (`quiesce`); the engine's; KFX tests;
-  then the REPL's session and machine (the machine's state is in globals
-  a process may not hold: to be designed with the user).
+- **Processes, the rest (C101, C102):** the engine's (it says "cannot
+  yet"); then the REPL's session and machine, whose state is in globals a
+  process may not hold: to be designed with the user. Measure `par`'s
+  threads against running in turn, and a pool if a thread a branch costs
+  too much.
 - **The emitter's memos gave wrong Rust** (2026-10-14): a memo file made
   while the checker changed (today's intermediate compilers) held, under a
   key today's sources make, Rust without the facts of `synth` (no `match

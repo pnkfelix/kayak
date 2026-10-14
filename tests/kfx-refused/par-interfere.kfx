@@ -1,0 +1,8 @@
+"`par`'s branches may run at once, so none may write what another reads
+ (C101; Fixpt's par-interfere.fx)."
+(define f (subr (maxeff (alloc @x) (read @x) (write @x)) () int)
+  (lambda ()
+    (let ((xs (the (arrayof int @x) (make-array 3 0))))
+      (par ((a (begin (array-set! xs 0 1) 0))
+            (b (array-ref xs 0)))
+        (+ a b)))))

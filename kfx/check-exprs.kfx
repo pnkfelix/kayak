@@ -1146,6 +1146,67 @@
         (lambda (v s ts seen)
           (or (null? ts) (and (sync-type? v s (car ts) seen) (all-sync? v s (cdr ts) seen))))))
 
+    (define-rec
+      (reverse-effs (subr kfx ((listof strings acyclic) (listof strings acyclic)) (listof strings acyclic))
+        (lambda (xs acc) (if (null? xs) acc (reverse-effs (cdr xs) (cons (car xs) acc))))))
+
+    (define held-sync? (subr kfx (cv st sexps) bool)
+      (lambda (v s es)
+        "Whether every local the expressions `es` name, bound outside them,
+         is `Sync` (C102); one bound in them too counts, as `synced-lambda`'s."
+        (not (any? (lambda ((n string))
+                     (let ((found (find-bind n (cv-binds v))))
+                       (and (not (null? found))
+                            (tagcase (car found)
+                              (bind (b sc wher)
+                                (and (or (string=? wher "local") (string=? wher "narrowed") (string=? wher "rec") (string=? wher "ends"))
+                                     (not (sync-type? v s (tagcase sc (scheme (tv t) t)) nil))))))))
+                   (distinct (names-in-all es))))))
+
+    (define regions-may-be-one? (subr kfx (string string) bool)
+      (lambda (p q)
+        "Two regions that may be one: the same, or either not a constant;
+         two constants of other names are two."
+        (or (string=? p q) (not (has-prefix? p "@")) (not (has-prefix? q "@")))))
+
+    (define-rec
+      (fills-before? (subr kfx (strings strings) bool)
+        (lambda (a b)
+          "Whether a branch of effect `a` fills an I-cell one of effect `b` may
+           await: `a` must run first, if they run in turn."
+          (any? (lambda ((x string))
+                  (and (has-prefix? x "init:")
+                       (any? (lambda ((y string)) (and (has-prefix? y "await:") (regions-may-be-one? (atom-region x) (atom-region y)))) b)))
+                a))))
+
+    (define-rec
+      (par-order (subr kfx ((listof strings acyclic) (listof i64 acyclic) (listof i64 acyclic)) (listof i64 acyclic))
+        (lambda (effs left acc)
+          "An order to run `par`'s branches in turn, `effs` their effects in
+           order: the first left that no branch left must fill for, again and
+           again; in their order where a cycle leaves none, which run in turn
+           deadlocks (C102: `unsafe-par` runs them at once)."
+          (if (null? left)
+              (reverse-i64s acc nil)
+              (let* ((ready (lambda ((i i64)) (not (any? (lambda ((j i64)) (and (not (i64= i j)) (fills-before? (effs-at effs j) (effs-at effs i)))) left))))
+                     (pick (if (any? ready left) (car (concat (map (lambda ((i i64)) (if (ready i) (the (listof i64 acyclic) (list i)) nil)) left))) (car left))))
+                (par-order effs (concat (map (lambda ((i i64)) (if (i64= i pick) nil (the (listof i64 acyclic) (list i)))) left)) (cons pick acc))))))
+      (effs-at (subr kfx ((listof strings acyclic) i64) strings)
+        (lambda (effs i) (if (i64= i 0) (car effs) (effs-at (cdr effs) (i64- i 1)))))
+      (reverse-i64s (subr kfx ((listof i64 acyclic) (listof i64 acyclic)) (listof i64 acyclic))
+        (lambda (xs acc) (if (null? xs) acc (reverse-i64s (cdr xs) (cons (car xs) acc))))))
+
+    (define par-threads? (subr kfx (cv st (listof strings acyclic) binds sexps) bool)
+      (lambda (v s effs bound es)
+        "Whether `par`'s branches may run on threads in safe Rust (C102): each
+         branch's effect one a process may have, so that it touches nothing
+         another can write; what each holds, and gives back, `Sync`. Else they
+         share what is written, in regions no other branch touches, which
+         only the interference check knows: `par2_shared`."
+        (and (not (any? (lambda ((es strings)) (not (crossing? (map (lambda ((a string)) (resolve-atom s a)) es)))) effs))
+             (not (any? (lambda ((b bind)) (tagcase b (bind (n sc w) (not (sync-type? v s (tagcase sc (scheme (tv t) t)) nil))))) bound))
+             (held-sync? v s es))))
+
     (define synced-lambda (subr kfx (cv st strings sexps sexps) st)
       (lambda (v s es params forms)
         "A lambda whose latent effect `es` a process may have: its closure, in
@@ -1264,12 +1325,6 @@
                 ((kind a "io") (kind b "io"))
                 (else #f)))))
 
-
-    (define regions-may-be-one? (subr kfx (string string) bool)
-      (lambda (p q)
-        "Two regions that may be one: the same, or either not a constant;
-         two constants of other names are two."
-        (or (string=? p q) (not (has-prefix? p "@")) (not (has-prefix? q "@")))))
 
 
     (define-rec
@@ -1558,11 +1613,10 @@
                        (mark (string-append "%process " (i64->string id))))
                   (if (string-member? name (cv-tvars v))
                       (refuse v (string-append "a process's place named as one already: " r))
-                      (tagcase (body (with-binds (with-tvars v (list mark name (string-append "%place " name)))
-                                                 (list (bind mark (scheme nil (ty-unit)) "mark")
-                                                       (local v r (ty-data "%place" (list (ty-var name))))
-                                                       (local v box (ty-data "%inbox" (list m (ty-var name))))))
-                                     s (cdr xs) nil)
+                      (tagcase (letrena-form (with-binds (with-tvars v (list mark))
+                                                         (list (bind mark (scheme nil (ty-unit)) "mark")
+                                                               (local v box (ty-data "%inbox" (list m (ty-var name))))))
+                                             s (cons (third header) (cdr xs)) nil)
                         (res (t es s)
                           (let* ((s (holds-checked v s id))
                                  (why (untransmissible v s m nil nil))
@@ -1588,13 +1642,21 @@
                                           s)))))))))))))
 
 
-      (par-values (subr kfx (cv st sexps sexps tys binds (listof strings acyclic)) res)
-          (lambda (v s bindings forms expected bound effs)
+      (par-values (subr kfx (cv st sexps sexps tys binds (listof strings acyclic) sexps) res)
+          (lambda (v s bindings forms expected bound effs all)
             "`par`'s branches, each its own effect, then its body, their values
              bound as a `let`'s: no branch may transfer control out of itself,
              and no two may interfere (`synth_par`)."
             (if (null? bindings)
-                (begin (par-clash v effs) (body (with-binds v bound) s forms expected))
+                (begin
+                  (par-clash v effs)
+                  (body (with-binds v bound)
+                        (if (par-threads? v s effs bound (map (lambda ((b sexp)) (second (items b))) all))
+                            (note-fact s (cv-file v) (cv-pos v) "par-threads")
+                            (let ((in-order (reverse-effs effs nil)))
+                              (note-fact s (cv-file v) (cv-pos v)
+                                         (string-append "par-order " (words-of (map i64->string (par-order in-order (counting 0 (size in-order)) nil)))))))
+                        forms expected))
                 (let ((b (items (car bindings))))
                   (tagcase (synth v s (second b))
                     (res (t es s)
@@ -1603,7 +1665,7 @@
                         (if (not (null? out))
                             (refuse v (string-append "a `par` branch must end where it began, and this one has " (show-effs out)))
                             (with-effs (par-values v s (cdr bindings) forms expected
-                                                   (cons (local v (name-of v (car b)) t) bound) (cons es effs))
+                                                   (cons (local v (name-of v (car b)) t) bound) (cons es effs) all)
                                        es)))))))))
 
 
@@ -1619,7 +1681,7 @@
                  (refuse v "a `par` binding is `(name expression)`"))
                 ((i64< (size (items (car xs))) 2)
                  (refuse v "`par` runs two branches or more: `(par ((name expression) …) body …)`"))
-                (else (par-values v s (items (car xs)) (cdr xs) expected nil nil)))))
+                (else (par-values v s (items (car xs)) (cdr xs) expected nil nil (items (car xs)))))))
 
 
       (pselect-arms (subr kfx (cv st sexps tys) res)

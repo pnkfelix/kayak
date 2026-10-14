@@ -19,7 +19,7 @@ pub fn mparts(f0: &'static Ctx, f1: Sexps) -> &'static Mparts {
 pub mod writing {
     use super::*;
 
-    use super::emitter::{fallible_effect_p, crossing_effect_p, suspending_effect_p, fact_at_p, concat_strings, reverse_strings, split_words, shape_name, ctx_locals, module_body, include_except_names, module_items, type_head_name, item_values, item_constants, item_types, module_here, ctx_typed, with_locals, head_region_params, head_place_params, head_type_params, put_generics_of, collect, type_path, places_used, words_of_sep, all_facts_prefixed, uses_blobrefs_p, family_expanded, put_type, put_flat, expand_aliases, owner_key, typed_flat, has_sum_p, effect_lifetime, atoms_in, element_lifetime, put_fields_tuple, region_arguments, place_arguments, used_place_arguments, type_arguments, put_types, put_nl, put_comment, comment_p, comment_text, hide, put_arg_names, tail_calls_p, arms_tail_calls_p, tag_arms_tail_calls_p, distinct_strings, put_exp, put_call, put_continue, put_joined, put_stmts, put_block, put_typecase_arms, put_cond, put_let1, put_let_star, put_binding_values, put_binding_names, put_let, put_case_arms, put_tagcase_arms, put_fields_of, put_tagcase, put_flat_tagcase, put_flat_arms, put_quasi, put_quasi_tagged, put_quasi_items, put_lambda, put_lambda_params, put_letrec, letrec_loops_p, put_looping_lambda, put_list, put_form, put_args, put_letrena, put_letrena_params, held_at, held_rust, held_type, put_prompt, put_suspending_prompt, put_handler_call, put_suspension, put_question, head_sym_p};
+    use super::emitter::{fallible_effect_p, crossing_effect_p, suspending_effect_p, fact_at_p, concat_strings, reverse_strings, split_words, shape_name, ctx_locals, module_body, include_except_names, module_items, type_head_name, item_values, item_constants, item_types, module_here, ctx_typed, with_locals, in_heap, head_region_params, head_place_params, head_type_params, put_generics_of, collect, type_path, places_used, words_of_sep, all_facts_prefixed, uses_blobrefs_p, family_expanded, put_type, put_flat, expand_aliases, owner_key, typed_flat, has_sum_p, effect_lifetime, atoms_in, element_lifetime, put_fields_tuple, region_arguments, place_arguments, used_place_arguments, type_arguments, put_types, put_nl, put_comment, comment_p, comment_text, hide, put_arg_names, tail_calls_p, arms_tail_calls_p, tag_arms_tail_calls_p, distinct_strings, put_exp, put_call, put_continue, put_joined, put_stmts, put_block, put_typecase_arms, put_cond, put_let1, put_let_star, put_binding_values, put_binding_names, put_let, put_case_arms, put_tagcase_arms, put_fields_of, put_tagcase, put_flat_tagcase, put_flat_arms, put_quasi, put_quasi_tagged, put_quasi_items, put_lambda, put_lambda_params, put_letrec, letrec_loops_p, put_looping_lambda, put_list, put_form, put_args, put_letrena, put_spawn, put_par, put_par_pattern, put_par_tree, sexp_at, put_pselect, put_letrena_params, held_at, held_rust, held_type, put_prompt, put_suspending_prompt, put_handler_call, put_suspension, put_question, head_sym_p};
 
     // Top-level forms
 
@@ -1020,12 +1020,14 @@ pub mod writing {
 
     /// Each top-level expression's value written; a `void` one, which never
     /// gives one, run, its type said; one that may suspend, a future run to
-    /// its end (C45).
+    /// its end (C45). Between two forms, and after the last, the processes
+    /// that can run run (`quiesce`), as Fixpt ends a form (C101).
     pub fn put_toplevel_lines(mut c: &'static Ctx, mut forms: Sexps, mut acc: Chars) -> Chars {
         loop {
             if null_p(forms) {
-                return acc;
+                return put(str_lit("    kayak_rt::process::quiesce();\n"), acc);
             } else if toplevel_form_p(car(forms)) {
+                let acc = put(str_lit("    kayak_rt::process::quiesce();\n"), acc);
                 if fact_at_p(c, car(forms), str_lit("suspends")) {
                     if fact_at_p(c, car(forms), str_lit("void")) {
                         let acc = put(str_lit("    let _: () = kayak_rt::suspend::block(kayak_rt::suspend::body(async move { let _: Void = "), acc);
