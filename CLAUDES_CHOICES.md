@@ -2133,3 +2133,22 @@ type-checking and evaluation should not be blocking me". With `(fact
   machine on a thread of its own, the session sending it entries; in
   TODO. And KFX's `int`s are never freed, so arithmetic on bignums
   leaks what it makes (500 MB for `(fact 3000)`).
+
+## C100. The pin moved to Fixpt fea5c66: processes, `par`, `pselect` (2026-10-13)
+
+The user: concurrency in the language, asked of Fixpt (separate processes
+sharing only immutable data; deterministic `par`); Fixpt built it
+(`docs/research/processes.md` there: per-task place stacks; `spawn`,
+`send`, `receive`, `(addr M R)`, `(inbox M r)`, `nondet`, transmissible
+types, I-cells that suspend, `(init R)`; `par` checked for interference;
+`pselect`). The pin's other commits: `append` and `string-append` as
+variadic standard procedures, typed calls of native closures from
+cellular code. Every check passes as it was: KFX has none of the new
+forms, and refuses every program of Fixpt's that uses them (K1); none
+of kayak's sources names `spawn`, `send`, `receive`, `par`, `pselect`,
+`icell-get` or `icell-put!`, which are FX-26's keywords now. Next, in
+order (the user's "go"): the forms in KFX's checker, as Fixpt's rules;
+processes in the engine and runtime, each an OS thread with a heap of its
+own (Fixpt's note: the transmissible rule makes per-process heaps an
+implementation's free choice); the REPL's session and machine as two
+processes.
