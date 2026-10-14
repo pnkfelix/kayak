@@ -1254,3 +1254,12 @@ types `Send + Sync` in the Rust, so rustc checks the crossing again;
 (dataflow first), or at once with the `unsafe-par` feature (`kayak-sync`,
 the one crate with `unsafe`). `tests/kfx/processes.kfx`; Fixpt's 156
 programs kfx accepts agree.
+
+## The REPL's front and its machine on two threads (2026-10-14)
+
+C103: keys, editing, checking and the screen on one thread; the entries'
+runs on another, each with a copy of the session of its own, the two
+speaking by `request`s and `news` (live-repl.kfx). A key is drawn at
+once (0 ms in `scripts/repl-latency.py`, while `(fact 30000)` runs),
+whatever one step of a run takes. Scripted sessions run the two in step:
+all eight as before.

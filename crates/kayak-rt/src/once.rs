@@ -14,6 +14,12 @@ use std::cell::OnceCell;
 use std::sync::OnceLock;
 use std::thread::LocalKey;
 
+/// Whether a constant of no transmissible type is kept once for the
+/// program (`unsafe-par`) rather than once for each thread: a program that
+/// gives each thread a session of its own (kayak-fx26's REPL, C103) needs
+/// it not to be.
+pub const KEPT_FOR_PROGRAM: bool = cfg!(feature = "unsafe-par");
+
 /// Where a constant is kept.
 pub trait OnceSlot<T> {
     fn kept(&'static self, make: &mut dyn FnMut() -> T) -> T;

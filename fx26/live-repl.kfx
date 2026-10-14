@@ -1,11 +1,14 @@
 "live-repl.kfx: the REPL as entries that run while the next is typed
  (docs/research/repl.md, stages 1 to 3). The REPL is a function of what
  arrives: each key, and the time, given by the Rust around it, which
- only shuttles bytes (crates/kayak-fx26/src/main.rs); what to write back
- is the REPL's. An entry, once whole, is checked and lowered at once,
- given a number and a line, and the prompt comes back; it runs as a
- task, the machine's registers parked between slices of its steps
- (vm.kfx's fuel), beside the others; its line shows a spinner until it
+ only shuttles bytes and messages (crates/kayak-fx26/src/main.rs); what
+ to write back is the REPL's. It has two sides, each a thread with a copy
+ of all this of its own (C103): the front reads the keys, edits, checks
+ and draws; the machine runs. An entry, once whole, is checked at once
+ (on both sides) and lowered (on the machine's), given a number and a
+ line, and the prompt comes back; it runs as a task, the machine's
+ registers parked between slices of its steps (vm.kfx's fuel), beside
+ the others; its line shows a spinner until it
  ends, then its value, rewritten in place. Its value is the global
  `%k`, which a later entry may name: such an entry waits for it.
 
@@ -24,6 +27,32 @@
 
  Live, the screen is drawn with ANSI's moves; plain (no terminal), the
  entries run one after another and each line is written when it ends."
+
+"The two sides (C103): the front, which reads the keys, edits, checks
+ and draws, and the machine, which runs, each on a thread of its own,
+ each with its own copy of everything here (a ref, kept for each
+ thread, C102), the two speaking only by these, which the Rust
+ carries. The front checks each entry, as the machine does, so that
+ the draft is checked after it; the machine lowers and runs it.
+
+ To the machine: an entry given (its number, text, label, whether
+ timed); the draft to run early (its serial, text and type), or
+ dropped; an entry cancelled; the step limit. From it: an entry as it
+ is now (its number, state, line, the output since, when begun and
+ ended, its steps, the collections meanwhile); the draft's run's
+ outcome (its serial, its note, whether an error)."
+
+(define-datatype request
+  (entry-given i64 string string bool)
+  (draft-given i64 string string)
+  (draft-dropped)
+  (cancelled i64)
+  (limited i64))
+
+(define-datatype news
+  (entry-news i64 i64 string string i64 i64 i64 i64)
+  (draft-news i64 string bool))
+
 (define session
   (module
     (hide
@@ -137,6 +166,27 @@
       (define st-interrupted i64 5)
 
       (define st-refused i64 6)
+
+      "Which side this is; the requests the front has not yet sent, and the
+       news the machine has not, the newest first; the draft's run's serial,
+       and the text it was closed off as."
+
+      (define machine-side (ref bool @h) (new #f))
+
+      (define requests (ref (listof request acyclic) @h) (new nil))
+
+      (define news-out (ref (listof news acyclic) @h) (new nil))
+
+      (define spec-serial (ref i64 @h) (new 0))
+
+      (define spec-text (ref string @h) (new ""))
+
+      (define asked! (subr running (request) unit)
+        (lambda (r) (set requests (cons r (get requests)))))
+
+      (define-rec
+        (reversed-onto (poly ((a type)) (subr kfx ((listof a acyclic) (listof a acyclic)) (listof a acyclic)))
+          (lambda (xs acc) (if (null? xs) acc (reversed-onto (cdr xs) (cons (car xs) acc))))))
 
       "The session: whether it is live; the screen's size; the entries, the
        newest first; the draft being typed; the rows written above it; the
@@ -330,7 +380,7 @@
               (let ((running (entries-where unfinished? (get entries))))
                 (if (null? running)
                     (set leaving #f)
-                    (interrupted! (car running) now))))))
+                    (asked! (cancelled (extract (car running) num))))))))
 
       (define interrupted! (subr running (entry i64) unit)
         (lambda (e now)
@@ -640,13 +690,14 @@ an entry naming one that has not ended waits for it.")
                   ((string=? w ",cancel")
                    (let ((found (entry-numbered (get entries) (number-from (string-chars rest) 0))))
                      (if (and (not (null? found)) (unfinished? (car found)))
-                         (interrupted! (car found) now)
+                         (asked! (cancelled (extract (car found) num)))
                          (said! (string-append "no entry " (string-append rest " is running")) now))))
                   ((string=? w ",step-limit")
                    (begin
                      (cond ((string=? rest "none") (set step-limit -1))
                            ((string=? rest "") #u)
                            (else (set step-limit (number-from (string-chars rest) 0))))
+                     (asked! (limited (get step-limit)))
                      (said! (if (i64< (get step-limit) 0) "no step limit" (string-append "an entry may take " (string-append (i64->string (get step-limit)) " steps"))) now)))
                   ((string=? w ",apropos")
                    (said! (let ((found (sorted-strings (deduped-names (concat (map (lambda ((n string)) (if (i64>= (int->i64 (string-search n rest 0)) 0) (list n) nil)) (known-names))) nil))))
@@ -721,6 +772,9 @@ an entry naming one that has not ended waits for it.")
               ;; Kept first, so that a refusal (a failure, which the Rust catches)
               ;; finds it: `refused!`.
               (set entries (cons e (get entries)))
+              ;; The machine is given it before it is checked here: it is
+              ;; numbered there too, refused or not.
+              (if (get machine-side) #u (asked! (entry-given k text label timed)))
               (let* ((forms (read-all (string-chars text) (if (string=? label "") (string-append "<fx26:" (string-append (i64->string k) ">")) label) 1))
                      (made (entry-forms k forms "" "" #t nil)))
                 (tagcase made
@@ -758,8 +812,10 @@ an entry naming one that has not ended waits for it.")
                   (begin
                     (set repl-cv v)
                     (set repl-globals gs)
-                    (globals-room! gs)
-                    (let ((ns (number-tops! (lower-tops (list form) gs))))
+                    ;; Lowered on the machine's side alone, which runs it.
+                    (let ((ns (if (get machine-side)
+                                  (begin (globals-room! gs) (number-tops! (lower-tops (list form) gs)))
+                                  nil)))
                       (entry-forms k (cdr forms)
                                    (if expression line typed)
                                    (cond ((or expression (string=? line "")) defined)
@@ -814,6 +870,28 @@ an entry naming one that has not ended waits for it.")
           (begin
             (set (extract e out) (string-append (get (extract e out)) (rev->string (get captured))))
             (set captured nil))))
+
+      (define entry-key (subr running (entry) string)
+        (lambda (e)
+          "What the front is told of an entry, apart from its output and steps,
+           as a text, to know when it changed (C103)."
+          (string-append (i64->string (get (extract e state)))
+                         (string-append "|" (string-append (i64->string (get (extract e ended))) (string-append "|" (get (extract e shown))))))))
+
+      (define-rec
+        (entries-news (subr running ((listof entry acyclic)) (listof news acyclic))
+          (lambda (es)
+            "Each entry as it is now, its output since taken, for the front."
+            (if (null? es)
+                nil
+                (let* ((e (car es)) (out (get (extract e out))))
+                  (begin
+                    (set (extract e out) "")
+                    (set (extract e drawn) (entry-key e))
+                    (cons (entry-news (extract e num) (get (extract e state)) (get (extract e shown)) out
+                                      (get (extract e began)) (get (extract e ended)) (get (extract e steps))
+                                      (i64- (if (i64< (get (extract e gcs-after)) 0) (get collections) (get (extract e gcs-after))) (extract e gcs)))
+                          (entries-news (cdr es)))))))))
 
       "The screen."
 
@@ -1167,7 +1245,12 @@ an entry naming one that has not ended waits for it.")
             (if (string=? (get around) "") #u (noted! (string-append "next: " (get around)) #f)))))
 
       (define noted! (subr running (string bool) unit)
-        (lambda (text error) (begin (set note text) (set note-error error) (set draft-dirty #t))))
+        (lambda (text error)
+          "The note under the draft; on the machine's side, the draft's run's
+           outcome, sent to the front."
+          (if (get machine-side)
+              (if (string=? text "") #u (set news-out (cons (draft-news (get spec-serial) text error) (get news-out))))
+              (begin (set note text) (set note-error error) (set draft-dirty #t)))))
 
       (define note-shown (subr running () string)
         (lambda ()
@@ -1185,7 +1268,9 @@ an entry naming one that has not ended waits for it.")
             (if (i64= (get spec-state) 0)
                 #u
                 (begin
-                  (if (i64= (get spec-state) 1) (parked-cleared! 0) #u)
+                  (if (i64= (get spec-state) 1)
+                      (if (get machine-side) (parked-cleared! 0) (asked! (draft-dropped)))
+                      #u)
                   (let ((ms (get spec-marks)))
                     (if (i64= (size ms) 4)
                         (begin
@@ -1252,14 +1337,29 @@ an entry naming one that has not ended waits for it.")
                      (noted! (string-append "…" (string-append type (string-append "  (not run early, for its " (string-append (show-effs (loud-atoms effects)) ")")))) #f))
                     (else
                      (begin
-                       (set spec-marks (list (get node-count) (get kid-count) (get armx-count) (get constant-count)))
-                       ;; Ended until it starts: the tables given back even if lowering fails.
-                       (set spec-state 2)
-                       (let ((ns (number-tops! (lower-tops (list form) (get repl-globals)))))
-                         (if (or (null? ns) (i64< (car ns) 0))
-                             #u
-                             (begin (start-parked! 0 (car ns)) (set spec-steps 0) (set spec-state 1))))
+                       (set spec-serial (i64+ (get spec-serial) 1))
+                       (asked! (draft-given (get spec-serial) (get spec-text) type))
+                       (set spec-state 1)
                        (noted! (string-append "…" type) #f))))))))
+
+      (define draft-run! (subr running (i64 string string) unit)
+        (lambda (serial text type)
+          "On the machine's side: the draft's run begun, as the task in slot 0,
+           its outcome a note sent back with `serial`."
+          (begin
+            (speculation-dropped!)
+            (set spec-serial serial)
+            (set spec-type type)
+            (set spec-marks (list (get node-count) (get kid-count) (get armx-count) (get constant-count)))
+            ;; Ended until it starts: the tables given back even if lowering fails.
+            (set spec-state 2)
+            (let ((forms (read-all (string-chars text) "<draft>" 1)))
+              (if (null? forms)
+                  #u
+                  (let ((ns (number-tops! (lower-tops (list (car forms)) (get repl-globals)))))
+                    (if (or (null? ns) (i64< (car ns) 0))
+                        #u
+                        (begin (start-parked! 0 (car ns)) (set spec-steps 0) (set spec-state 1)))))))))
 
       (define loud-atoms (subr kfx (strings) strings)
         (lambda (es)
@@ -1419,6 +1519,7 @@ an entry naming one that has not ended waits for it.")
                   (not-closable () #u)
                   (closed-off (closed kept open finished)
                     (begin
+                      (set spec-text closed)
                       (set spec-kept kept)
                       (set spec-open open)
                       (set spec-finished finished)
@@ -1551,12 +1652,93 @@ an entry naming one that has not ended waits for it.")
 
     (define wait-ms (subr running () i64)
       (lambda ()
-        "How long the Rust may wait for a key: none if a task may run; long
-         enough for a spinner's next frame if an entry is unfinished; or until
-         one comes."
-        (cond ((i64>= (next-task) 0) 0)
-              ((some-entry? unfinished? (get entries)) (if (get live) 80 0))
+        "How long the Rust may wait for what comes next: on the machine's
+         side, for a request, none if a task may run, else until one comes;
+         on the front's, for a key or news, long enough for a spinner's next
+         frame if an entry is unfinished and the screen live, else until one
+         comes."
+        (cond ((get machine-side) (if (i64>= (next-task) 0) 0 -1))
+              ((and (get live) (some-entry? unfinished? (get entries))) 80)
               (else -1))))
+
+    "The two sides (C103)."
+
+    (define machine-start! (subr running (bool) unit)
+      (lambda (is-live)
+        "This thread the machine's side: the REPL's start, and nothing drawn."
+        (begin
+          (set machine-side #t)
+          (repl-start!)
+          (set live is-live))))
+
+    (define requests! (subr running () (listof request acyclic))
+      (lambda ()
+        "The front's requests not yet sent, the oldest first."
+        (let ((rs (get requests)))
+          (begin (set requests nil) (reversed-onto rs nil)))))
+
+    (define request! (subr running (request i64) unit)
+      (lambda (r now)
+        "On the machine's side, a request from the front. An entry given is
+         checked again here, after those before it, as there; a refusal fails,
+         and the Rust gives it to `machine-refused!`."
+        (tagcase r
+          (entry-given (k text label timed) (begin (set repl-count (i64- k 1)) (submit! text label timed now)))
+          (draft-given (serial text type) (draft-run! serial text type))
+          (draft-dropped () (speculation-dropped!))
+          (cancelled (k)
+            (let ((found (entry-numbered (get entries) k)))
+              (if (and (not (null? found)) (unfinished? (car found))) (interrupted! (car found) now) #u)))
+          (limited (n) (set step-limit n)))))
+
+    (define machine-refused! (subr running (string i64) unit)
+      (lambda (message now)
+        "A request that failed on the machine's side: an entry's check, which
+         the front's refused as well; or the draft's lowering."
+        (let ((es (get entries)))
+          (if (and (not (null? es)) (i64= (get (extract (car es) state)) st-checking))
+              (refused! message now)
+              (begin (set spec-state 2) (noted! (string-append "running it fails: " message) #t))))))
+
+    (define news-taken! (subr running (i64) (listof news acyclic))
+      (lambda (now)
+        "On the machine's side, the news not yet sent, the oldest first: each
+         entry whose state or line changed, or that wrote; then the draft's
+         run's outcome. What was sent of an entry is kept as its `drawn`,
+         which this side draws nothing to."
+        (let ((es (entries-where (lambda ((e entry))
+                                   (and (i64> (extract e num) 0)
+                                        (or (not (string=? (get (extract e out)) ""))
+                                            (not (string=? (entry-key e) (get (extract e drawn)))))))
+                                 (oldest-first (get entries) nil)))
+              (drafts (get news-out)))
+          (begin
+            (set news-out nil)
+            (onto (entries-news es) (reversed-onto drafts nil))))))
+
+    (define news! (subr running (news i64) unit)
+      (lambda (n now)
+        "On the front's side, news from the machine: an entry's state, line
+         and output; the draft's run's outcome, if that run is still the
+         draft's."
+        (tagcase n
+          (entry-news (k state shown out began ended steps collected)
+            (let ((found (entry-numbered (get entries) k)))
+              (if (null? found)
+                  #u
+                  (let ((e (car found)))
+                    (begin
+                      (set (extract e shown) shown)
+                      (set (extract e out) (string-append (get (extract e out)) out))
+                      (set (extract e began) began)
+                      (set (extract e steps) steps)
+                      (if (and (unfinished? e) (not (i64<= state st-running)))
+                          (begin (ended! e state ended) (set (extract e gcs-after) (i64+ (extract e gcs) collected)))
+                          (set (extract e state) state)))))))
+          (draft-news (serial text error)
+            (if (and (i64= serial (get spec-serial)) (i64= (get spec-state) 1))
+                (begin (set spec-state 2) (noted! text error))
+                #u)))))
 
     (define over? (subr running () bool)
       (lambda ()

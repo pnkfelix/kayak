@@ -2263,3 +2263,41 @@ it again, rather than `unsafe` trusting it.
   `tests/kfx-refused/process-*`, `par-interfere`, `pselect-arm`;
   `tests/kfx-stricter/process-constant`, `process-union-message`,
   `lambda-holds-ref`. Fixpt's `par.fx` and `pselect-deadlock.fx` agree.
+
+## C103. The REPL's front and its machine on two threads (2026-10-14)
+
+The user, asked whether the REPL's front end or its machine should become
+a process: "Okay do option 1", the front apart from the machine, so that
+no step of a run (a primitive on a huge bignum, a collection) holds up a
+key, as a 4 ms slice (C99) still could.
+- **Threads, not a KFX `spawn`.** The front calls the checker, which
+  refuses by failing, and KFX catches nothing (FX-26's conditions, by
+  escape tags, are not KFX's yet): only the Rust can catch a refusal, so
+  the Rust makes the two threads, as it made the keys' thread, and
+  catches on each.
+- **Each side a copy of the whole session.** Every constant of no
+  transmissible type, every ref among them, is kept for each thread
+  (C102), so the front and the machine each have their own: the entries,
+  the checker's environment, the machine's heap and tables. Nothing
+  written is shared, which rustc checks: what crosses is a `request` or a
+  `news` (live-repl.kfx), datatypes of numbers and strings, `Send`.
+  kayak-fx26 refuses to build with `unsafe-par`, which would keep one
+  copy for the program (`KEPT_FOR_PROGRAM`).
+- **Who does what.** The front reads keys, edits, draws, and checks each
+  entry (so that the draft is checked after it) but lowers nothing; it
+  sends the entry, numbered, before checking it, so the machine numbers
+  it the same, refused or not. The machine checks it again, lowers and
+  runs it, and sends each entry as it is now (its state, line, output
+  since, times, steps, collections) when it changed: `news-taken!`. The
+  draft's early run: the front sends its closed-off text and type with a
+  serial, the machine runs it as the task in slot 0, and the outcome comes
+  back as a note, taken only if the serial is still the draft's. ^C,
+  `,cancel` and `,step-limit` are requests; `,type`, `,help`, `,apropos`,
+  `,pending` the front's alone (its copy of the entries' states).
+- **Scripted sessions in step.** `--keys` runs the two sides by turns, a
+  round of the front's requests then 16 slices on the virtual clock, so
+  that it replays the same: the eight sessions are byte for byte as
+  before.
+- **Costs.** Each entry is checked twice, once on each side; the prelude
+  loaded twice. The check of a large draft still runs on the front's
+  thread, before the next key.

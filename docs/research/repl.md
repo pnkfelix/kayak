@@ -132,6 +132,15 @@ underlined (C97); an inference variable said by its binder's name,
 `t`, a second of the name primed, `t'`, as Fixpt says them (C98). Left:
 speculating a command's forms (`,type E`).
 
+## The front and the machine (C103)
+
+Two threads, each with its own copy of the session: the front reads the
+keys, edits, checks and draws; the machine lowers and runs. The front
+sends each entry, the draft to run early, ^C and `,cancel`; the machine
+sends back each entry as it changes and the draft's run's outcome. So a
+key is drawn whatever a run is doing, one step of it however long. The
+draft's own check is still the front's, before the next key.
+
 ## Coopt's skimmer, and what kayak might take from it
 
 Coopt splits input into forms, and finds the names each defines, before

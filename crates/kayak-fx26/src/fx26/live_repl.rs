@@ -6,11 +6,14 @@ use super::*;
 // live-repl.kfx: the REPL as entries that run while the next is typed
 // (docs/research/repl.md, stages 1 to 3). The REPL is a function of what
 // arrives: each key, and the time, given by the Rust around it, which
-// only shuttles bytes (crates/kayak-fx26/src/main.rs); what to write back
-// is the REPL's. An entry, once whole, is checked and lowered at once,
-// given a number and a line, and the prompt comes back; it runs as a
-// task, the machine's registers parked between slices of its steps
-// (vm.kfx's fuel), beside the others; its line shows a spinner until it
+// only shuttles bytes and messages (crates/kayak-fx26/src/main.rs); what
+// to write back is the REPL's. It has two sides, each a thread with a copy
+// of all this of its own (C103): the front reads the keys, edits, checks
+// and draws; the machine runs. An entry, once whole, is checked at once
+// (on both sides) and lowered (on the machine's), given a number and a
+// line, and the prompt comes back; it runs as a task, the machine's
+// registers parked between slices of its steps (vm.kfx's fuel), beside
+// the others; its line shows a spinner until it
 // ends, then its value, rewritten in place. Its value is the global
 // `%k`, which a later entry may name: such an entry waits for it.
 //
@@ -29,6 +32,61 @@ use super::*;
 //
 // Live, the screen is drawn with ANSI's moves; plain (no terminal), the
 // entries run one after another and each line is written when it ends.
+
+// The two sides (C103): the front, which reads the keys, edits, checks
+// and draws, and the machine, which runs, each on a thread of its own,
+// each with its own copy of everything here (a ref, kept for each
+// thread, C102), the two speaking only by these, which the Rust
+// carries. The front checks each entry, as the machine does, so that
+// the draft is checked after it; the machine lowers and runs it.
+//
+// To the machine: an entry given (its number, text, label, whether
+// timed); the draft to run early (its serial, text and type), or
+// dropped; an entry cancelled; the step limit. From it: an entry as it
+// is now (its number, state, line, the output since, when begun and
+// ended, its steps, the collections meanwhile); the draft's run's
+// outcome (its serial, its note, whether an error).
+pub enum Request {
+    EntryGiven(i64, Str, Str, bool),
+    DraftGiven(i64, Str, Str),
+    DraftDropped(),
+    Cancelled(i64),
+    Limited(i64),
+}
+
+pub fn entry_given(f0: i64, f1: Str, f2: Str, f3: bool) -> &'static Request {
+    kayak_rt::heap_alloc(Request::EntryGiven(f0, f1, f2, f3))
+}
+
+pub fn draft_given(f0: i64, f1: Str, f2: Str) -> &'static Request {
+    kayak_rt::heap_alloc(Request::DraftGiven(f0, f1, f2))
+}
+
+pub fn draft_dropped() -> &'static Request {
+    kayak_rt::heap_alloc(Request::DraftDropped())
+}
+
+pub fn cancelled(f0: i64) -> &'static Request {
+    kayak_rt::heap_alloc(Request::Cancelled(f0))
+}
+
+pub fn limited(f0: i64) -> &'static Request {
+    kayak_rt::heap_alloc(Request::Limited(f0))
+}
+
+pub enum News {
+    EntryNews(i64, i64, Str, Str, i64, i64, i64, i64),
+    DraftNews(i64, Str, bool),
+}
+
+pub fn entry_news(f0: i64, f1: i64, f2: Str, f3: Str, f4: i64, f5: i64, f6: i64, f7: i64) -> &'static News {
+    kayak_rt::heap_alloc(News::EntryNews(f0, f1, f2, f3, f4, f5, f6, f7))
+}
+
+pub fn draft_news(f0: i64, f1: Str, f2: bool) -> &'static News {
+    kayak_rt::heap_alloc(News::DraftNews(f0, f1, f2))
+}
+
 pub mod session {
     use super::*;
 
@@ -264,6 +322,59 @@ pub mod session {
 
     pub fn st_refused() -> i64 {
         6i64
+    }
+
+    // Which side this is; the requests the front has not yet sent, and the
+    // news the machine has not, the newest first; the draft's run's serial,
+    // and the text it was closed off as.
+    pub fn machine_side() -> Ref<bool> {
+        kayak_rt::kept_constant!(ONCE: Ref<bool>);
+        once(&ONCE, || {
+            kayak_rt::heap_new(false)
+        })
+    }
+
+    pub fn requests() -> Ref<List<&'static Request>> {
+        kayak_rt::kept_constant!(ONCE: Ref<List<&'static Request>>);
+        once(&ONCE, || {
+            kayak_rt::heap_new(nil::<&'static Request>())
+        })
+    }
+
+    pub fn news_out() -> Ref<List<&'static News>> {
+        kayak_rt::kept_constant!(ONCE: Ref<List<&'static News>>);
+        once(&ONCE, || {
+            kayak_rt::heap_new(nil::<&'static News>())
+        })
+    }
+
+    pub fn spec_serial() -> Ref<i64> {
+        kayak_rt::kept_constant!(ONCE: Ref<i64>);
+        once(&ONCE, || {
+            kayak_rt::heap_new(0i64)
+        })
+    }
+
+    pub fn spec_text() -> Ref<Str> {
+        kayak_rt::kept_constant!(ONCE: Ref<Str>);
+        once(&ONCE, || {
+            kayak_rt::heap_new(str_lit(""))
+        })
+    }
+
+    pub fn asked_x(r: &'static Request) -> () {
+        set(requests(), kayak_rt::heap_cons(r, get(requests())))
+    }
+
+    pub fn reversed_onto<A: Copy + 'static>(mut xs: List<A>, mut acc: List<A>) -> List<A> {
+        loop {
+            if null_p(xs) {
+                return acc;
+            } else {
+                (xs, acc) = (cdr(xs), kayak_rt::heap_cons(car(xs), acc));
+                continue;
+            }
+        }
     }
 
     // The session: whether it is live; the screen's size; the entries, the
@@ -666,7 +777,7 @@ pub mod session {
             if null_p(running) {
                 set(leaving(), false)
             } else {
-                interrupted_x(car(running), now)
+                asked_x(cancelled(car(running).0))
             }
         }
     }
@@ -1203,7 +1314,7 @@ pub mod session {
         } else if string_eq_p(w, str_lit(",cancel")) {
             let found = entry_numbered(get(entries()), number_from(string_chars(rest), 0i64));
             if (not(null_p(found)) && unfinished_p(car(found))) {
-                interrupted_x(car(found), now)
+                asked_x(cancelled(car(found).0))
             } else {
                 said_x(string_append(str_lit("no entry "), string_append(rest, str_lit(" is running"))), now)
             }
@@ -1215,6 +1326,7 @@ pub mod session {
             } else {
                 set(step_limit(), number_from(string_chars(rest), 0i64))
             };
+            asked_x(limited(get(step_limit())));
             said_x(if i64_lt(get(step_limit()), 0i64) {
                 str_lit("no step limit")
             } else {
@@ -1342,6 +1454,11 @@ pub mod session {
         set(repl_count(), k);
         speculation_dropped_x();
         set(entries(), kayak_rt::heap_cons(e, get(entries())));
+        if get(machine_side()) {
+            ()
+        } else {
+            asked_x(entry_given(k, text, label, timed))
+        };
         let forms = read_all(string_chars(text), if string_eq_p(label, str_lit("")) {
             string_append(str_lit("<fx26:"), string_append(i64_to_string(k), str_lit(">")))
         } else {
@@ -1410,8 +1527,12 @@ pub mod session {
                 };
                 set(repl_cv(), v);
                 set(repl_globals(), gs);
-                globals_room_x(gs);
-                let ns = number_tops_x(lower_tops(kayak_rt::heap_cons(form, kayak_rt::nil()), gs));
+                let ns = if get(machine_side()) {
+                    globals_room_x(gs);
+                    number_tops_x(lower_tops(kayak_rt::heap_cons(form, kayak_rt::nil()), gs))
+                } else {
+                    nil::<i64>()
+                };
                 (forms, typed, defined, quiet, tops) = (cdr(forms), if expression {
                     line
                 } else {
@@ -1520,6 +1641,29 @@ pub mod session {
     pub fn taken_output_x(e: Entry) -> () {
         set(e.9, string_append(get(e.9), rev_to_string(get(captured()))));
         set(captured(), nil::<char>())
+    }
+
+    /// What the front is told of an entry, apart from its output and steps,
+    /// as a text, to know when it changed (C103).
+    pub fn entry_key(e: Entry) -> Str {
+        string_append(i64_to_string(get(e.6)), string_append(str_lit("|"), string_append(i64_to_string(get(e.11)), string_append(str_lit("|"), get(e.8)))))
+    }
+
+    /// Each entry as it is now, its output since taken, for the front.
+    pub fn entries_news(es: List<Entry>) -> List<&'static News> {
+        if null_p(es) {
+            nil::<&'static News>()
+        } else {
+            let e = car(es);
+            let out = get(e.9);
+            set(e.9, str_lit(""));
+            set(e.13, entry_key(e));
+            kayak_rt::heap_cons(entry_news(e.0, get(e.6), get(e.8), out, get(e.10), get(e.11), get(e.15), i64_minus(if i64_lt(get(e.17), 0i64) {
+                get(collections())
+            } else {
+                get(e.17)
+            }, e.16)), entries_news(cdr(es)))
+        }
     }
 
     // The screen.
@@ -2183,10 +2327,20 @@ pub mod session {
         }
     }
 
+    /// The note under the draft; on the machine's side, the draft's run's
+    /// outcome, sent to the front.
     pub fn noted_x(text: Str, error: bool) -> () {
-        set(note(), text);
-        set(note_error(), error);
-        set(draft_dirty(), true)
+        if get(machine_side()) {
+            if string_eq_p(text, str_lit("")) {
+                ()
+            } else {
+                set(news_out(), kayak_rt::heap_cons(draft_news(get(spec_serial()), text, error), get(news_out())))
+            }
+        } else {
+            set(note(), text);
+            set(note_error(), error);
+            set(draft_dirty(), true)
+        }
     }
 
     /// The note as drawn: its first line, cut to the screen's width.
@@ -2208,7 +2362,11 @@ pub mod session {
             ()
         } else {
             if i64_eq(get(spec_state()), 1i64) {
-                parked_cleared_x(0i64)
+                if get(machine_side()) {
+                    parked_cleared_x(0i64)
+                } else {
+                    asked_x(draft_dropped())
+                }
             } else {
                 ()
             };
@@ -2312,19 +2470,33 @@ pub mod session {
         } else if not(quiet_effect_p(effects)) {
             noted_x(string_append(str_lit("…"), string_append(r#type, string_append(str_lit("  (not run early, for its "), string_append(show_effs(loud_atoms(effects)), str_lit(")"))))), false)
         } else {
-            set(spec_marks(), kayak_rt::heap_cons(get(node_count()), kayak_rt::heap_cons(get(kid_count()), kayak_rt::heap_cons(get(armx_count()), kayak_rt::heap_cons(get(constant_count()), kayak_rt::nil())))));
-            set(spec_state(), 2i64);
-            {
-                let ns = number_tops_x(lower_tops(kayak_rt::heap_cons(form, kayak_rt::nil()), get(repl_globals())));
-                if (null_p(ns) || i64_lt(car(ns), 0i64)) {
-                    ()
-                } else {
-                    start_parked_x(0i64, car(ns));
-                    set(spec_steps(), 0i64);
-                    set(spec_state(), 1i64)
-                }
-            };
+            set(spec_serial(), i64_plus(get(spec_serial()), 1i64));
+            asked_x(draft_given(get(spec_serial()), get(spec_text()), r#type));
+            set(spec_state(), 1i64);
             noted_x(string_append(str_lit("…"), r#type), false)
+        }
+    }
+
+    /// On the machine's side: the draft's run begun, as the task in slot 0,
+    /// its outcome a note sent back with `serial`.
+    pub fn draft_run_x(serial: i64, text: Str, r#type: Str) -> () {
+        speculation_dropped_x();
+        set(spec_serial(), serial);
+        set(spec_type(), r#type);
+        set(spec_marks(), kayak_rt::heap_cons(get(node_count()), kayak_rt::heap_cons(get(kid_count()), kayak_rt::heap_cons(get(armx_count()), kayak_rt::heap_cons(get(constant_count()), kayak_rt::nil())))));
+        set(spec_state(), 2i64);
+        let forms = read_all(string_chars(text), str_lit("<draft>"), 1i64);
+        if null_p(forms) {
+            ()
+        } else {
+            let ns = number_tops_x(lower_tops(kayak_rt::heap_cons(car(forms), kayak_rt::nil()), get(repl_globals())));
+            if (null_p(ns) || i64_lt(car(ns), 0i64)) {
+                ()
+            } else {
+                start_parked_x(0i64, car(ns));
+                set(spec_steps(), 0i64);
+                set(spec_state(), 1i64)
+            }
         }
     }
 
@@ -2571,6 +2743,7 @@ pub mod session {
                     ()
                 }
                 Closing::ClosedOff(closed, kept, open, finished) => {
+                    set(spec_text(), closed);
                     set(spec_kept(), kept);
                     set(spec_open(), open);
                     set(spec_finished(), finished);
@@ -2730,20 +2903,126 @@ pub mod session {
         set(slice_ns(), i64_star(ms, 1000000i64))
     }
 
-    /// How long the Rust may wait for a key: none if a task may run; long
-    /// enough for a spinner's next frame if an entry is unfinished; or until
-    /// one comes.
+    /// How long the Rust may wait for what comes next: on the machine's
+    /// side, for a request, none if a task may run, else until one comes;
+    /// on the front's, for a key or news, long enough for a spinner's next
+    /// frame if an entry is unfinished and the screen live, else until one
+    /// comes.
     pub fn wait_ms() -> i64 {
-        if i64_gt_eq(next_task(), 0i64) {
-            0i64
-        } else if some_entry_p(&unfinished_p, get(entries())) {
-            if get(live()) {
-                80i64
-            } else {
+        if get(machine_side()) {
+            if i64_gt_eq(next_task(), 0i64) {
                 0i64
+            } else {
+                -1i64
             }
+        } else if (get(live()) && some_entry_p(&unfinished_p, get(entries()))) {
+            80i64
         } else {
             -1i64
+        }
+    }
+
+    // The two sides (C103).
+    /// This thread the machine's side: the REPL's start, and nothing drawn.
+    pub fn machine_start_x(is_live: bool) -> () {
+        set(machine_side(), true);
+        repl_start_x();
+        set(live(), is_live)
+    }
+
+    /// The front's requests not yet sent, the oldest first.
+    pub fn requests_x() -> List<&'static Request> {
+        let rs = get(requests());
+        set(requests(), nil::<&'static Request>());
+        reversed_onto(rs, nil::<&'static Request>())
+    }
+
+    /// On the machine's side, a request from the front. An entry given is
+    /// checked again here, after those before it, as there; a refusal fails,
+    /// and the Rust gives it to `machine-refused!`.
+    pub fn request_x(r: &'static Request, now: i64) -> () {
+        let tagcase_ = r;
+        match *tagcase_ {
+            Request::EntryGiven(k, text, label, timed) => {
+                set(repl_count(), i64_minus(k, 1i64));
+                submit_x(text, label, timed, now)
+            }
+            Request::DraftGiven(serial, text, r#type) => {
+                draft_run_x(serial, text, r#type)
+            }
+            Request::DraftDropped() => {
+                speculation_dropped_x()
+            }
+            Request::Cancelled(k) => {
+                let found = entry_numbered(get(entries()), k);
+                if (not(null_p(found)) && unfinished_p(car(found))) {
+                    interrupted_x(car(found), now)
+                } else {
+                    ()
+                }
+            }
+            Request::Limited(n) => {
+                set(step_limit(), n)
+            }
+        }
+    }
+
+    /// A request that failed on the machine's side: an entry's check, which
+    /// the front's refused as well; or the draft's lowering.
+    pub fn machine_refused_x(message: Str, now: i64) -> () {
+        let es = get(entries());
+        if (not(null_p(es)) && i64_eq(get(car(es).6), st_checking())) {
+            refused_x(message, now)
+        } else {
+            set(spec_state(), 2i64);
+            noted_x(string_append(str_lit("running it fails: "), message), true)
+        }
+    }
+
+    /// On the machine's side, the news not yet sent, the oldest first: each
+    /// entry whose state or line changed, or that wrote; then the draft's
+    /// run's outcome. What was sent of an entry is kept as its `drawn`,
+    /// which this side draws nothing to.
+    pub fn news_taken_x(now: i64) -> List<&'static News> {
+        let (es, drafts) = (entries_where(lambda1(move |e: Entry| {
+            (i64_gt(e.0, 0i64) && (not(string_eq_p(get(e.9), str_lit(""))) || not(string_eq_p(entry_key(e), get(e.13)))))
+        }), oldest_first(get(entries()), nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after<i64, Str, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>, bool, Ref<i64>, i64, Ref<i64>>>())), get(news_out()));
+        set(news_out(), nil::<&'static News>());
+        onto(entries_news(es), reversed_onto(drafts, nil::<&'static News>()))
+    }
+
+    /// On the front's side, news from the machine: an entry's state, line
+    /// and output; the draft's run's outcome, if that run is still the
+    /// draft's.
+    pub fn news_x(n: &'static News, now: i64) -> () {
+        let tagcase_ = n;
+        match *tagcase_ {
+            News::EntryNews(k, state, shown, out, began, ended, steps, collected) => {
+                let found = entry_numbered(get(entries()), k);
+                if null_p(found) {
+                    ()
+                } else {
+                    let e = car(found);
+                    set(e.8, shown);
+                    set(e.9, string_append(get(e.9), out));
+                    set(e.10, began);
+                    set(e.15, steps);
+                    if (unfinished_p(e) && not(i64_lt_eq(state, st_running()))) {
+                        ended_x(e, state, ended);
+                        set(e.17, i64_plus(e.16, collected))
+                    } else {
+                        set(e.6, state)
+                    }
+                }
+            }
+            News::DraftNews(serial, text, error) => {
+                if (i64_eq(serial, get(spec_serial())) && i64_eq(get(spec_state()), 1i64)) {
+                    set(spec_state(), 2i64);
+                    noted_x(text, error)
+                } else {
+                    ()
+                }
+            }
         }
     }
 

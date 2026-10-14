@@ -463,18 +463,19 @@ Stages 2 and 3 done (C95): editing, history, Tab; Fixpt's commands.
 - Checking as you type (C96), hints at a hole and the underline (C97)
   done; type variables said by their binders' names (C98). Left:
   speculating `,type E`'s and `,time E`'s forms.
-- The machine on a thread of its own (C99): a slice is 4 ms by the clock,
-  but one transition (a primitive on a huge value, a collection) and the
-  check of the draft still run to their end before a key is drawn. The
-  engine's globals are each a thread's, the session's and the machine's
-  alike: the session would send the machine entries, and the machine its
-  results and output.
+- The machine on a thread of its own: done (C103). Left on the front's
+  thread: the check of a large draft, which runs to its end before the
+  next key is drawn (a third thread for speculation, or the check in
+  slices).
 - Bignums in the engine leak (C99): KFX's `int`s are never freed, so each
   step on a bignum leaks its operands' conversions (500 MB for `(fact
   3000)`). Arithmetic on the limbs in the heap, or a free in `kayak-rt`.
 - **Processes, the rest (C101, C102):** the engine's (it says "cannot
-  yet"); then the REPL's session and machine, whose state is in globals a
-  process may not hold: to be designed with the user. Measure `par`'s
+  yet"). The REPL's front and machine are two threads the Rust makes
+  (C103), not KFX processes, since the checker's refusals must be caught;
+  once KFX has FX-26's conditions, a `spawn`. Entries as processes of
+  their own would need the machine's state out of globals and its heap
+  split by region. Measure `par`'s
   threads against running in turn, and a pool if a thread a branch costs
   too much.
 - **The emitter's memos gave wrong Rust** (2026-10-14): a memo file made
