@@ -172,6 +172,12 @@ pub mod expressions {
                     }), args)), str_lit(""), 0i64, 0i64)
                 } else if string_eq_p(d, str_lit("%place")) {
                     lst(kayak_rt::heap_cons(sym(str_lit("place"), str_lit(""), 0i64), kayak_rt::heap_cons(settled_sexp(s, car(args), true), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
+                } else if string_eq_p(d, str_lit("%mark-key")) {
+                    lst(kayak_rt::heap_cons(sym(str_lit("mark-key"), str_lit(""), 0i64), kayak_rt::heap_cons(settled_sexp(s, car(args), false), kayak_rt::heap_cons(settled_sexp(s, car(cdr(args)), true), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
+                } else if string_eq_p(d, str_lit("%poly")) {
+                    lst(kayak_rt::heap_cons(sym(str_lit("poly"), str_lit(""), 0i64), kayak_rt::heap_cons(lst(map(lambda1s(move |n: Str| {
+                        lst(kayak_rt::heap_cons(sym(written_binder(n), str_lit(""), 0i64), kayak_rt::heap_cons(sym(str_lit("region"), str_lit(""), 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
+                    }), poly_binders_of(args)), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(settled_sexp(s, poly_written(args), false), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
                 } else if string_eq_p(d, str_lit("%escape-tag")) {
                     lst(kayak_rt::heap_cons(sym(str_lit("escape-tag"), str_lit(""), 0i64), kayak_rt::heap_cons(settled_sexp(s, car(args), false), kayak_rt::heap_cons(settled_sexp(s, car(cdr(args)), false), kayak_rt::heap_cons(settled_sexp(s, car(cdr(cdr(args))), true), kayak_rt::nil())))), str_lit(""), 0i64, 0i64)
                 } else if (string_eq_p(d, str_lit("%addr")) || string_eq_p(d, str_lit("%inbox")) || string_eq_p(d, str_lit("%icell"))) {
@@ -2111,6 +2117,12 @@ pub mod expressions {
                     lst(kayak_rt::heap_cons(sym(str_lit("escape-tag"), str_lit(""), 0i64), map(lambda1s(move |x: &'static Ty| {
                         ty_sexp(v, s, x)
                     }), args)), str_lit(""), 0i64, 0i64)
+                } else if string_eq_p(d, str_lit("%mark-key")) {
+                    lst(kayak_rt::heap_cons(sym(str_lit("mark-key"), str_lit(""), 0i64), kayak_rt::heap_cons(ty_sexp(v, s, car(args)), kayak_rt::heap_cons(ty_sexp(v, s, car(cdr(args))), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
+                } else if string_eq_p(d, str_lit("%poly")) {
+                    lst(kayak_rt::heap_cons(sym(str_lit("poly"), str_lit(""), 0i64), kayak_rt::heap_cons(lst(map(lambda1s(move |n: Str| {
+                        lst(kayak_rt::heap_cons(sym(written_binder(n), str_lit(""), 0i64), kayak_rt::heap_cons(sym(str_lit("region"), str_lit(""), 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
+                    }), poly_binders_of(args)), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(ty_sexp(v, s, poly_written(args)), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
                 } else if (string_eq_p(d, str_lit("%addr")) || string_eq_p(d, str_lit("%inbox")) || string_eq_p(d, str_lit("%icell"))) {
                     lst(kayak_rt::heap_cons(sym(after_prefix(d, str_lit("%")), str_lit(""), 0i64), kayak_rt::heap_cons(ty_sexp(v, s, car(args)), kayak_rt::heap_cons(ty_sexp(v, s, car(cdr(args))), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
                 } else if string_eq_p(d, str_lit("%flat-sum")) {
@@ -3066,11 +3078,15 @@ pub mod expressions {
                             let tagcase_ = hr;
                             match *tagcase_ {
                                 Res::Res(ht, hes, hs) => {
-                                    void_call(v, false, false, synth_call_of(v, s, hr, cdr(xs), nil::<i64>(), nil::<&'static Ty>(), if (head_is_p(head, str_lit("proj")) || head_is_p(head, str_lit("lambda")) || not(self_applicable_p(v, hs, ht))) {
+                                    mark_lifted(v, if head_is_p(head, str_lit("proj")) {
+                                        proj_base(v, head)
+                                    } else {
+                                        str_lit("")
+                                    }, cdr(xs), void_call(v, false, false, synth_call_of(v, s, hr, cdr(xs), nil::<i64>(), nil::<&'static Ty>(), if (head_is_p(head, str_lit("proj")) || head_is_p(head, str_lit("lambda")) || not(self_applicable_p(v, hs, ht))) {
                                         nil::<Str>()
                                     } else {
                                         kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil())
-                                    }))
+                                    })))
                                 }
                             }
                         }
@@ -4011,6 +4027,8 @@ pub mod expressions {
             sum_form(v, s, xs, expected)
         } else if (string_eq_p(h, str_lit("rlambda")) && null_p(find_bind(h, cv_binds(v)))) {
             rlambda_form(v, s, e, xs, kayak_rt::heap_cons(expected, kayak_rt::nil()))
+        } else if (string_eq_p(h, str_lit("plambda")) && poly_type_p(s, expected)) {
+            plambda_form(v, s, xs, expected)
         } else if (string_eq_p(h, str_lit("vlambda")) && null_p(find_bind(h, cv_binds(v))) && {
             let tagcase_ = walk(s, expected);
             match *tagcase_ {
@@ -5755,42 +5773,66 @@ pub mod expressions {
                             let tagcase_ = sc;
                             match *tagcase_ {
                                 Scheme::Scheme(tvars, t) => {
-                                    if not(i64_eq(size(tvars), size(cdr(xs)))) {
-                                        return match refuse(v, string_append(str_lit("a proj of "), string_append(n, str_lit(" given the wrong number of arguments")))) {};
-                                    } else {
-                                        bounds_kept(v, s, n, lambda1s(move |x: Str| {
-                                            projected(v, tvars, cdr(xs), ty_var(x))
-                                        }));
-                                        return res(projected(v, tvars, cdr(xs), t), naming_effs(s, n, wher, t, cv_group(v)), {
-                                            let s = if null_p({
-                                                let tagcase_ = car(xs);
-                                                match *tagcase_ {
-                                                    Sexp::Sym(n2, f2, p2) => {
-                                                        find_bind(n2, cv_binds(v))
-                                                    }
-                                                    _ => {
-                                                        let other = tagcase_;
-                                                        nil::<&'static Bind>()
-                                                    }
-                                                }
-                                            }) {
-                                                note_fact(s, cv_file(v), cv_pos(v), str_lit("control"))
-                                            } else {
-                                                s
-                                            };
-                                            let tagcase_ = car(xs);
+                                    if (null_p(tvars) && poly_type_p(s, t)) {
+                                        // A value of a poly type, a parameter's (rank 2, C107): its
+                                        // body at the regions given.
+                                        let args = {
+                                            let tagcase_ = walk(s, t);
                                             match *tagcase_ {
-                                                Sexp::Sym(name, at_file, at_pos) => {
-                                                    // A global that may suspend, as a value: its future boxed, as a
-                                                    // name's is (`async-global`), at any effect it is given.
-                                                    async_global(v, proj_needs(v, s, n, tvars, cdr(xs)), name, at_file, at_pos)
+                                                Ty::TyData(d, args) => {
+                                                    args
                                                 }
                                                 _ => {
                                                     let other = tagcase_;
-                                                    proj_needs(v, s, n, tvars, cdr(xs))
+                                                    nil::<&'static Ty>()
                                                 }
                                             }
-                                        });
+                                        };
+                                        if not(i64_eq(size(poly_binders_of(args)), size(cdr(xs)))) {
+                                            return match refuse(v, string_append(str_lit("a proj of "), string_append(n, str_lit(" given the wrong number of regions")))) {};
+                                        } else {
+                                            return res(poly_instance(args, map(lambda1s(move |r: &'static Sexp| {
+                                                parse_region(v, cv_tvars(v), r)
+                                            }), cdr(xs))), nil::<Str>(), s);
+                                        }
+                                    } else {
+                                        if not(i64_eq(size(tvars), size(cdr(xs)))) {
+                                            return match refuse(v, string_append(str_lit("a proj of "), string_append(n, str_lit(" given the wrong number of arguments")))) {};
+                                        } else {
+                                            bounds_kept(v, s, n, lambda1s(move |x: Str| {
+                                                projected(v, tvars, cdr(xs), ty_var(x))
+                                            }));
+                                            return res(projected(v, tvars, cdr(xs), t), naming_effs(s, n, wher, t, cv_group(v)), {
+                                                let s = if null_p({
+                                                    let tagcase_ = car(xs);
+                                                    match *tagcase_ {
+                                                        Sexp::Sym(n2, f2, p2) => {
+                                                            find_bind(n2, cv_binds(v))
+                                                        }
+                                                        _ => {
+                                                            let other = tagcase_;
+                                                            nil::<&'static Bind>()
+                                                        }
+                                                    }
+                                                }) {
+                                                    note_fact(s, cv_file(v), cv_pos(v), str_lit("control"))
+                                                } else {
+                                                    s
+                                                };
+                                                let tagcase_ = car(xs);
+                                                match *tagcase_ {
+                                                    Sexp::Sym(name, at_file, at_pos) => {
+                                                        // A global that may suspend, as a value: its future boxed, as a
+                                                        // name's is (`async-global`), at any effect it is given.
+                                                        async_global(v, proj_needs(v, s, n, tvars, cdr(xs)), name, at_file, at_pos)
+                                                    }
+                                                    _ => {
+                                                        let other = tagcase_;
+                                                        proj_needs(v, s, n, tvars, cdr(xs))
+                                                    }
+                                                }
+                                            });
+                                        }
                                     }
                                 }
                             }
@@ -6342,7 +6384,11 @@ pub mod expressions {
                                         false
                                     }
                                 }
-                            }), poly_self_application(v, sc, t, knot_free_call(v, synth_call_of(v, s, res(t, nil::<Str>(), head_unboxed(v, s, h, wher, t)), args, regions, expected, effs_union(if string_eq_p(wher, str_lit("global")) {
+                            }), mark_lifted(v, if string_eq_p(wher, str_lit("prim")) {
+                                h
+                            } else {
+                                str_lit("")
+                            }, args, poly_self_application(v, sc, t, knot_free_call(v, synth_call_of(v, s, res(t, nil::<Str>(), head_unboxed(v, s, h, wher, t)), args, regions, expected, effs_union(if string_eq_p(wher, str_lit("global")) {
                                 kayak_rt::heap_cons(string_append(str_lit("g:"), h), kayak_rt::nil())
                             } else {
                                 nil::<Str>()
@@ -6350,7 +6396,136 @@ pub mod expressions {
                                 kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil())
                             } else {
                                 nil::<Str>()
-                            })))))))))
+                            }))))))))))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// The primitive a chain of `proj`s instantiates, if it is one, or none.
+    pub fn proj_base(mut v: &'static Cv, mut e: &'static Sexp) -> Str {
+        loop {
+            if head_is_p(e, str_lit("proj")) {
+                e = second(items(e));
+                continue;
+            } else {
+                let tagcase_ = e;
+                match *tagcase_ {
+                    Sexp::Sym(n, f, p) => {
+                        let found = find_bind(n, cv_binds(v));
+                        if (not(null_p(found)) && {
+                            let tagcase_ = car(found);
+                            match *tagcase_ {
+                                Bind::Bind(m, sc, w) => {
+                                    string_eq_p(w, str_lit("prim"))
+                                }
+                            }
+                        }) {
+                            return n;
+                        } else {
+                            return str_lit("");
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return str_lit("");
+                    }
+                }
+            }
+        }
+    }
+
+    /// A procedure kept in a mark (C106) is, in Rust, the one form whatever
+    /// its effect, a future's (`(subr e ...)`, `e` a variable, as generic
+    /// code has it): so `with-mark`'s value and `first-mark`'s default,
+    /// where their key's type says a procedure that cannot suspend, are
+    /// lifted to it (`lift-suspend N`, or `-fallible` if what is given
+    /// returns a `Result`), and `first-mark`'s value, there, run to its end
+    /// where it is called (`mark-unlift N`, or `-fallible`, by the key's
+    /// effect).
+    pub fn mark_lifted(v: &'static Cv, h: Str, args: Sexps, r: &'static Res) -> &'static Res {
+        if (not(string_member_p(h, kayak_rt::heap_cons(str_lit("with-mark"), kayak_rt::heap_cons(str_lit("first-mark"), kayak_rt::nil())))) || i64_lt(size(args), 2i64)) {
+            r
+        } else {
+            let tagcase_ = r;
+            match *tagcase_ {
+                Res::Res(t, es, s) => {
+                    let tagcase_ = synth(v, s, car(args));
+                    match *tagcase_ {
+                        Res::Res(kt, kes, ks) => {
+                            let parts = {
+                                let tagcase_ = walk(ks, kt);
+                                match *tagcase_ {
+                                    Ty::TyData(d, ps) => {
+                                        if string_eq_p(d, str_lit("%mark-key")) {
+                                            ps
+                                        } else {
+                                            nil::<&'static Ty>()
+                                        }
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        nil::<&'static Ty>()
+                                    }
+                                }
+                            };
+                            if null_p(parts) {
+                                r
+                            } else {
+                                let tagcase_ = walk(ks, car(parts));
+                                match *tagcase_ {
+                                    Ty::TyProc(pes, ps, pr) => {
+                                        let pes = map(lambda1s(move |a: Str| {
+                                            resolve_atom(ks, a)
+                                        }), pes);
+                                        if suspends_p(pes) {
+                                            r
+                                        } else {
+                                            let tagcase_ = synth(v, ks, second(args));
+                                            match *tagcase_ {
+                                                Res::Res(gt, ges, gs) => {
+                                                    let n = i64_to_string(size(ps));
+                                                    let given_fallible = {
+                                                        let tagcase_ = walk(gs, gt);
+                                                        match *tagcase_ {
+                                                            Ty::TyProc(ges2, ps2, r2) => {
+                                                                escapes_p(map(lambda1s(move |a: Str| {
+                                                                    resolve_atom(gs, a)
+                                                                }), ges2))
+                                                            }
+                                                            _ => {
+                                                                let other = tagcase_;
+                                                                false
+                                                            }
+                                                        }
+                                                    };
+                                                    let s = note_fact(s, datum_file(second(args)), datum_pos(second(args)), string_append(if given_fallible {
+                                                        str_lit("lift-suspend-fallible ")
+                                                    } else {
+                                                        str_lit("lift-suspend ")
+                                                    }, n));
+                                                    let s = if string_eq_p(h, str_lit("first-mark")) {
+                                                        note_fact(s, cv_file(v), cv_pos(v), string_append(if escapes_p(pes) {
+                                                            str_lit("mark-unlift-fallible ")
+                                                        } else {
+                                                            str_lit("mark-unlift ")
+                                                        }, n))
+                                                    } else {
+                                                        s
+                                                    };
+                                                    res(t, es, s)
+                                                }
+                                            }
+                                        }
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        r
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -6830,6 +7005,81 @@ pub mod expressions {
         }
     }
 
+    pub fn poly_type_p(s: &'static St, t: &'static Ty) -> bool {
+        let tagcase_ = walk(s, t);
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                string_eq_p(d, str_lit("%poly"))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }
+
+    /// `(plambda ((r region) ...) (lambda ...))` where a poly type is expected
+    /// (rank 2, C107): the lambda checked against the type's body, its
+    /// binders the plambda's regions, rigid, in scope; none may be named as
+    /// one in scope already, nor escape into a type found outside it.
+    pub fn plambda_form(v: &'static Cv, s: &'static St, xs: Sexps, expected: &'static Ty) -> &'static Res {
+        let args = {
+            let tagcase_ = walk(s, expected);
+            match *tagcase_ {
+                Ty::TyData(d, args) => {
+                    args
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<&'static Ty>()
+                }
+            }
+        };
+        let names = map(lambda1s(move |b: &'static Sexp| {
+            if ({
+                let tagcase_ = b;
+                match *tagcase_ {
+                    Sexp::Lst(ys, f, l, p) => {
+                        i64_eq(size(ys), 2i64)
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            } && sym_is_p(second(items(b)), str_lit("region"))) {
+                string_append(str_lit("'"), sym_name(car(items(b))))
+            } else {
+                match refuse(v, str_lit("a plambda where a poly type is expected binds regions alone, in KFX (C107)")) {}
+            }
+        }), items(car(xs)));
+        if not(i64_eq(size(names), size(poly_binders_of(args)))) {
+            match refuse(v, str_lit("a plambda of as many regions as the poly type expected")) {}
+        } else if any_p(lambda1s(move |n: Str| {
+            string_member_p(n, cv_tvars(v))
+        }), names) {
+            match refuse(v, str_lit("a plambda's region named as one in scope already, which KFX does not take (C107)")) {}
+        } else {
+            let before = st_next(s);
+            let tagcase_ = check(with_tvars(v, names), s, second(xs), poly_instance(args, map(lambda1s(move |n: Str| {
+                ty_var(n)
+            }), names)));
+            match *tagcase_ {
+                Res::Res(t, es, s2) => {
+                    if any_p(lambda1s(move |k: i64| {
+                        any_p(lambda1s(move |n: Str| {
+                            mentions_p(s2, ty_meta(k), n)
+                        }), names)
+                    }), i64s_below(before)) {
+                        match refuse(v, str_lit("a plambda's region escapes it, in a type found outside it")) {}
+                    } else {
+                        res(expected, es, s2)
+                    }
+                }
+            }
+        }
+    }
+
     /// An escape-only tag's answer, payload and region, or none.
     pub fn escape_tag_parts(s: &'static St, t: &'static Ty) -> Tys {
         let tagcase_ = walk(s, t);
@@ -6869,7 +7119,39 @@ pub mod expressions {
     /// `?`ed and awaited (C46).
     pub fn handler_of(v: &'static Cv, s: &'static St, e: &'static Sexp, h: &'static Ty, a: &'static Ty) -> &'static Res {
         if not(head_is_p(e, str_lit("lambda"))) {
-            match refuse(v, str_lit("a prompt's handler is a lambda, in KFX")) {}
+            let tagcase_ = synth(v, s, e);
+            match *tagcase_ {
+                Res::Res(t, es0, s) => {
+                    let tagcase_ = walk(s, t);
+                    match *tagcase_ {
+                        Ty::TyProc(les, ps, r) => {
+                            if not(i64_eq(size(ps), 1i64)) {
+                                match refuse(v, str_lit("a prompt's handler takes one value, the payload")) {}
+                            } else {
+                                let s = fits(v, fits(v, s, h, car(ps)), r, a);
+                                let les = map(lambda1s(move |x: Str| {
+                                    resolve_atom(s, x)
+                                }), les);
+                                let s = if escapes_p(les) {
+                                    note_fact(s, datum_file(e), datum_pos(e), str_lit("fallible"))
+                                } else {
+                                    s
+                                };
+                                let s = if suspends_p(les) {
+                                    note_fact(s, datum_file(e), datum_pos(e), str_lit("suspends"))
+                                } else {
+                                    s
+                                };
+                                res(a, effs_union(les, es0), s)
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            match refuse(v, string_append(str_lit("a prompt's handler of a "), string_append(show_ty(s, t), str_lit(", no procedure")))) {}
+                        }
+                    }
+                }
+            }
         } else {
             let lam = items(e);
             let tagcase_ = lambda_effects(v, s, items(second(lam)), cdr(cdr(lam)), ty_proc(nil::<Str>(), kayak_rt::heap_cons(h, kayak_rt::nil()), a));

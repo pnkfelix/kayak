@@ -853,6 +853,61 @@ pub fn replace_var(name: Str, m: &'static Ty, t: &'static Ty) -> &'static Ty {
     }
 }
 
+/// Each region binder `n` of a poly type written at `pos`, `'n`, named
+/// `'n@pos` (C107).
+pub fn fold_renames(mut names: Strings, mut pos: i64, mut t: &'static Ty) -> &'static Ty {
+    loop {
+        if null_p(names) {
+            return t;
+        } else {
+            (names, t) = (cdr(names), replace_var(string_append(str_lit("'"), car(names)), ty_var(string_append(str_lit("'"), string_append(car(names), string_append(str_lit("@"), i64_to_string(pos))))), t));
+            continue;
+        }
+    }
+}
+
+/// A poly type's binders' names: all its parts but the last, its body.
+pub fn poly_binders_of(args: Tys) -> Strings {
+    if (null_p(args) || null_p(cdr(args))) {
+        nil::<Str>()
+    } else {
+        kayak_rt::heap_cons({
+            let tagcase_ = car(args);
+            match *tagcase_ {
+                Ty::TyVar(n) => {
+                    n
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("")
+                }
+            }
+        }, poly_binders_of(cdr(args)))
+    }
+}
+
+pub fn poly_body(args: Tys) -> &'static Ty {
+    last(args)
+}
+
+pub fn taken_before(cs: Chars, c: char) -> Chars {
+    if (null_p(cs) || char_eq_p(car(cs), c)) {
+        nil::<char>()
+    } else {
+        kayak_rt::heap_cons(car(cs), taken_before(cdr(cs), c))
+    }
+}
+
+/// A poly type's binder as written: `'r@P` is `r`.
+pub fn written_binder(n: Str) -> Str {
+    let cs = string_chars(if has_prefix_p(n, str_lit("'")) {
+        after_prefix(n, str_lit("'"))
+    } else {
+        n
+    });
+    list_to_string(taken_before(cs, '@'))
+}
+
 pub fn substitute_each(mut params: Strings, mut args: Tys, mut t: &'static Ty) -> &'static Ty {
     loop {
         if (null_p(params) || null_p(args)) {
@@ -878,6 +933,37 @@ pub fn substitute(params: Strings, args: Tys, t: &'static Ty) -> &'static Ty {
     substitute_each(temps, args, substitute_each(params, map(lambda1s(move |p: Str| {
         ty_var(p)
     }), temps), t))
+}
+
+pub fn i64s_below(n: i64) -> List<i64> {
+    if i64_lt_eq(n, 0i64) {
+        nil::<i64>()
+    } else {
+        kayak_rt::heap_cons(i64_minus(n, 1i64), i64s_below(i64_minus(n, 1i64)))
+    }
+}
+
+/// A poly type's body, its binders given `regions` (C107).
+pub fn poly_instance(args: Tys, regions: Tys) -> &'static Ty {
+    substitute(poly_binders_of(args), regions, poly_body(args))
+}
+
+/// A poly type's region binders, as written.
+pub fn binders_shown(ns: Strings) -> Str {
+    if null_p(ns) {
+        str_lit("")
+    } else if null_p(cdr(ns)) {
+        string_append(str_lit("("), string_append(written_binder(car(ns)), str_lit(" region)")))
+    } else {
+        string_append(str_lit("("), string_append(written_binder(car(ns)), string_append(str_lit(" region) "), binders_shown(cdr(ns)))))
+    }
+}
+
+/// A poly type's body, its binders as written, `'r` (C107).
+pub fn poly_written(args: Tys) -> &'static Ty {
+    poly_instance(args, map(lambda1s(move |n: Str| {
+        ty_var(string_append(str_lit("'"), written_binder(n)))
+    }), poly_binders_of(args)))
 }
 
 // Types
@@ -1975,6 +2061,37 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     // process's mailbox at `R`; `(inbox M r)`, the right to take from it,
                     // its process's alone; `(icell T R)`, a `T` written once.
                     return ty_data(string_append(str_lit("%"), sym_name(car(xs))), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::heap_cons(parse_region(v, tvars, third(xs)), kayak_rt::nil())));
+                } else if (sym_is_p(car(xs), str_lit("poly")) && i64_eq(size(xs), 3i64)) {
+                    // A type polymorphic in regions alone, a procedure's parameter's (rank 2,
+                    // C107): `(poly ((r region) ...) T)`, its binders named apart by where
+                    // it is written, `'r@P`, so that none is another's.
+                    let bs = items(second(xs));
+                    let names = map(lambda1s(move |b: &'static Sexp| {
+                        if ({
+                            let tagcase_ = b;
+                            match *tagcase_ {
+                                Sexp::Lst(ys, f, l, p) => {
+                                    i64_eq(size(ys), 2i64)
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
+                        } && sym_is_p(second(items(b)), str_lit("region"))) {
+                            sym_name(car(items(b)))
+                        } else {
+                            match refuse(v, str_lit("a poly type whose binders are not all regions, which KFX has not yet (C107)")) {}
+                        }
+                    }), bs);
+                    let pos = datum_pos(t);
+                    let body = parse_type(v, onto(map(lambda1s(move |n: Str| {
+                        string_append(str_lit("'"), n)
+                    }), names), tvars), third(xs));
+                    let renamed = fold_renames(names, pos, body);
+                    return ty_data(str_lit("%poly"), onto(map(lambda1s(move |n: Str| {
+                        ty_var(string_append(str_lit("'"), string_append(n, string_append(str_lit("@"), i64_to_string(pos)))))
+                    }), names), kayak_rt::heap_cons(renamed, kayak_rt::nil())));
                 } else if (sym_is_p(car(xs), str_lit("escape-tag")) && i64_eq(size(xs), 4i64)) {
                     // FX-26's escape-only tag (C105), `(escape-tag A H R)`: escaped to as a
                     // prompt tag is aborted to, never captured with, so it bounds nothing
@@ -2484,6 +2601,8 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
                 string_append(str_lit("(mark-key "), string_append(show_tys(s, args), str_lit(")")))
             } else if string_eq_p(d, str_lit("%escape-tag")) {
                 string_append(str_lit("(escape-tag "), string_append(show_tys(s, args), str_lit(")")))
+            } else if string_eq_p(d, str_lit("%poly")) {
+                string_append(str_lit("(poly ("), string_append(binders_shown(poly_binders_of(args)), string_append(str_lit(") "), string_append(show_ty(s, poly_written(args)), str_lit(")")))))
             } else if (string_eq_p(d, str_lit("%addr")) || string_eq_p(d, str_lit("%inbox")) || string_eq_p(d, str_lit("%icell"))) {
                 string_append(str_lit("("), string_append(after_prefix(d, str_lit("%")), string_append(str_lit(" "), string_append(show_tys(s, args), str_lit(")")))))
             } else if string_eq_p(d, str_lit("%vsubr")) {
@@ -3774,6 +3893,11 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                 Ty::TyData(y, ys) => {
                     if not((string_eq_p(x, y) && i64_eq(size(xs), size(ys)))) {
                         mismatch(v, s, a, e)
+                    } else if string_eq_p(x, str_lit("%poly")) {
+                        // Two poly types (C107): the one's binders the other's, then their bodies.
+                        fits(v, s, poly_body(xs), poly_instance(ys, map(lambda1s(move |n: Str| {
+                            ty_var(n)
+                        }), poly_binders_of(xs))))
                     } else if string_eq_p(x, str_lit("%composable")) {
                         // Its bound `D` the same both ways, as a tag's (C60).
                         let xd = {

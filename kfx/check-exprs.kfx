@@ -80,6 +80,13 @@
                       ((string=? d "%array") (lst (list (sym "arrayof" "" 0) (settled-sexp s (car args) #f) (settled-sexp s (car (cdr args)) #t)) "" 0 0))
                       ((string=? d "%flat-array") (lst (cons (sym "arrayof" "" 0) (map (lambda ((x ty)) (settled-sexp s x #f)) args)) "" 0 0))
                       ((string=? d "%place") (lst (list (sym "place" "" 0) (settled-sexp s (car args) #t)) "" 0 0))
+                      ((string=? d "%mark-key")
+                       (lst (list (sym "mark-key" "" 0) (settled-sexp s (car args) #f) (settled-sexp s (car (cdr args)) #t)) "" 0 0))
+                      ((string=? d "%poly")
+                       (lst (list (sym "poly" "" 0)
+                                  (lst (map (lambda ((n string)) (lst (list (sym (written-binder n) "" 0) (sym "region" "" 0)) "" 0 0)) (poly-binders-of args)) "" 0 0)
+                                  (settled-sexp s (poly-written args) #f))
+                            "" 0 0))
                       ((string=? d "%escape-tag")
                        (lst (list (sym "escape-tag" "" 0) (settled-sexp s (car args) #f) (settled-sexp s (car (cdr args)) #f) (settled-sexp s (car (cdr (cdr args))) #t)) "" 0 0))
                       ((or (string=? d "%addr") (string=? d "%inbox") (string=? d "%icell"))
@@ -920,6 +927,12 @@
                     ((string=? d "%flat-array") (lst (cons (sym "arrayof" "" 0) (map (lambda ((x ty)) (ty-sexp v s x)) args)) "" 0 0))
                     ((string=? d "%place") (lst (list (sym "place" "" 0) (ty-sexp v s (car args))) "" 0 0))
                     ((string=? d "%escape-tag") (lst (cons (sym "escape-tag" "" 0) (map (lambda ((x ty)) (ty-sexp v s x)) args)) "" 0 0))
+                    ((string=? d "%mark-key") (lst (list (sym "mark-key" "" 0) (ty-sexp v s (car args)) (ty-sexp v s (car (cdr args)))) "" 0 0))
+                    ((string=? d "%poly")
+                     (lst (list (sym "poly" "" 0)
+                                (lst (map (lambda ((n string)) (lst (list (sym (written-binder n) "" 0) (sym "region" "" 0)) "" 0 0)) (poly-binders-of args)) "" 0 0)
+                                (ty-sexp v s (poly-written args)))
+                          "" 0 0))
                     ((or (string=? d "%addr") (string=? d "%inbox") (string=? d "%icell"))
                      (lst (list (sym (after-prefix d "%") "" 0) (ty-sexp v s (car args)) (ty-sexp v s (car (cdr args)))) "" 0 0))
                     ((string=? d "%flat-sum")
@@ -1406,10 +1419,11 @@
                     (let ((hr (synth v s head)))
                       (tagcase hr
                         (res (ht hes hs)
+                          (mark-lifted v (if (head-is? head "proj") (proj-base v head) "") (cdr xs)
                           (void-call v #f #f (synth-call-of v s hr (cdr xs) nil nil
                                                             (if (or (head-is? head "proj") (head-is? head "lambda") (not (self-applicable? v hs ht)))
                                                                 nil
-                                                                (list "spin")))))))))))))))
+                                                                (list "spin"))))))))))))))))
 
       (async-global (subr kfx (cv st string string i64) st)
         (lambda (v s name file pos)
@@ -1841,6 +1855,7 @@
                 ((string=? h "product") (product-form v s xs (list expected)))
                 ((string=? h "sum") (sum-form v s xs expected))
                 ((and (string=? h "rlambda") (null? (find-bind h (cv-binds v)))) (rlambda-form v s e xs (list expected)))
+                ((and (string=? h "plambda") (poly-type? s expected)) (plambda-form v s xs expected))
                 ((and (string=? h "vlambda") (null? (find-bind h (cv-binds v)))
                       (tagcase (walk s expected) (ty-data (d args) (string=? d "%vsubr")) (else other #f)))
                  "A vlambda where a `vsubr` is expected (C71): checked as the lambda of
@@ -2580,6 +2595,15 @@
                   (bind (n sc wher)
                     (tagcase sc
                       (scheme (tvars t)
+                        (cond
+                         ((and (null? tvars) (poly-type? s t))
+                          "A value of a poly type, a parameter's (rank 2, C107): its
+                           body at the regions given."
+                          (let ((args (tagcase (walk s t) (ty-data (d args) args) (else other nil))))
+                            (if (not (i64= (size (poly-binders-of args)) (size (cdr xs))))
+                                (refuse v (string-append "a proj of " (string-append n " given the wrong number of regions")))
+                                (res (poly-instance args (map (lambda ((r sexp)) (parse-region v (cv-tvars v) r)) (cdr xs))) nil s))))
+                         (else
                         (if (not (i64= (size tvars) (size (cdr xs))))
                             (refuse v (string-append "a proj of " (string-append n " given the wrong number of arguments")))
                             (begin
@@ -2594,7 +2618,7 @@
                                        "A global that may suspend, as a value: its future boxed, as a
                                         name's is (`async-global`), at any effect it is given."
                                        (async-global v (proj-needs v s n tvars (cdr xs)) name at-file at-pos))
-                                     (else other (proj-needs v s n tvars (cdr xs)))))))))))))))))
+                                     (else other (proj-needs v s n tvars (cdr xs)))))))))))))))))))
 
       (bounds-kept (subr kfx (cv st string (subr kfx (string) ty)) unit)
         (lambda (v s n region-of-binder)
@@ -2876,6 +2900,7 @@
                           (poly-settled v h wher args (binder-metas from (st-next s) (onto effects regions)) (result-only? s t (binder-metas from (st-next s) (onto effects regions)))
                           (void-call v (and (string=? h "error") (string=? wher "prim"))
                                      (and (not (null? expected)) (tagcase (walk s (car expected)) (ty-meta (k) #t) (else other #f)))
+                          (mark-lifted v (if (string=? wher "prim") h "") args
                           (poly-self-application v sc t (knot-free-call v (synth-call-of v s (res t nil (head-unboxed v s h wher t)) args regions expected
                                          (effs-union
                                            (if (string=? wher "global") (list (string-append "g:" h)) nil)
@@ -2883,7 +2908,55 @@
                                                    (and (or (string=? wher "local") (string=? wher "narrowed")) (self-applicable? v s t))
                                                    (and (string-member? h (cv-group v)) (or (string=? wher "global") (string=? wher "item"))))
                                                (list "spin")
-                                               nil))))))))))))))))))))
+                                               nil)))))))))))))))))))))
+
+      (proj-base (subr kfx (cv sexp) string)
+        (lambda (v e)
+          "The primitive a chain of `proj`s instantiates, if it is one, or none."
+          (cond ((head-is? e "proj") (proj-base v (second (items e))))
+                (else (tagcase e
+                        (sym (n f p)
+                          (let ((found (find-bind n (cv-binds v))))
+                            (if (and (not (null? found)) (tagcase (car found) (bind (m sc w) (string=? w "prim")))) n "")))
+                        (else other ""))))))
+
+      (mark-lifted (subr kfx (cv string sexps res) res)
+        (lambda (v h args r)
+          "A procedure kept in a mark (C106) is, in Rust, the one form whatever
+           its effect, a future's (`(subr e ...)`, `e` a variable, as generic
+           code has it): so `with-mark`'s value and `first-mark`'s default,
+           where their key's type says a procedure that cannot suspend, are
+           lifted to it (`lift-suspend N`, or `-fallible` if what is given
+           returns a `Result`), and `first-mark`'s value, there, run to its end
+           where it is called (`mark-unlift N`, or `-fallible`, by the key's
+           effect)."
+          (if (or (not (string-member? h (list "with-mark" "first-mark"))) (i64< (size args) 2))
+              r
+              (tagcase r
+                (res (t es s)
+                  (tagcase (synth v s (car args))
+                    (res (kt kes ks)
+                      (let ((parts (tagcase (walk ks kt) (ty-data (d ps) (if (string=? d "%mark-key") ps nil)) (else other nil))))
+                        (if (null? parts)
+                            r
+                            (tagcase (walk ks (car parts))
+                              (ty-proc (pes ps pr)
+                                (let ((pes (map (lambda ((a string)) (resolve-atom ks a)) pes)))
+                                  (if (suspends? pes)
+                                      r
+                                      (tagcase (synth v ks (second args))
+                                        (res (gt ges gs)
+                                          (let* ((n (i64->string (size ps)))
+                                                 (given-fallible (tagcase (walk gs gt)
+                                                                   (ty-proc (ges2 ps2 r2) (escapes? (map (lambda ((a string)) (resolve-atom gs a)) ges2)))
+                                                                   (else other #f)))
+                                                 (s (note-fact s (datum-file (second args)) (datum-pos (second args))
+                                                               (string-append (if given-fallible "lift-suspend-fallible " "lift-suspend ") n)))
+                                                 (s (if (string=? h "first-mark")
+                                                        (note-fact s (cv-file v) (cv-pos v) (string-append (if (escapes? pes) "mark-unlift-fallible " "mark-unlift ") n))
+                                                        s)))
+                                            (res t es s)))))))
+                              (else other r)))))))))))
 
       (static-instance (subr kfx (cv string string (listof i64 acyclic) res) res)
         (lambda (v h wher metas r)
@@ -3131,6 +3204,34 @@
                                   (res a (effs-union es0 (effs-union es2 (if delimits (masked-goto es1 rn) es1))) s)))))))))
                 (else other (refuse v (string-append "a prompt of a " (string-append (show-ty s tt) ", no prompt-tag")))))))))
 
+      (poly-type? (subr kfx (st ty) bool)
+        (lambda (s t) (tagcase (walk s t) (ty-data (d args) (string=? d "%poly")) (else other #f))))
+
+      (plambda-form (subr kfx (cv st sexps ty) res)
+        (lambda (v s xs expected)
+          "`(plambda ((r region) ...) (lambda ...))` where a poly type is expected
+           (rank 2, C107): the lambda checked against the type's body, its
+           binders the plambda's regions, rigid, in scope; none may be named as
+           one in scope already, nor escape into a type found outside it."
+          (let* ((args (tagcase (walk s expected) (ty-data (d args) args) (else other nil)))
+                 (names (map (lambda ((b sexp))
+                               (if (and (tagcase b (lst (ys f l p) (i64= (size ys) 2)) (else other #f))
+                                        (sym-is? (second (items b)) "region"))
+                                   (string-append "'" (sym-name (car (items b))))
+                                   (refuse v "a plambda where a poly type is expected binds regions alone, in KFX (C107)")))
+                             (items (car xs)))))
+            (cond ((not (i64= (size names) (size (poly-binders-of args))))
+                   (refuse v "a plambda of as many regions as the poly type expected"))
+                  ((any? (lambda ((n string)) (string-member? n (cv-tvars v))) names)
+                   (refuse v "a plambda's region named as one in scope already, which KFX does not take (C107)"))
+                  (else
+                   (let ((before (st-next s)))
+                     (tagcase (check (with-tvars v names) s (second xs) (poly-instance args (map (lambda ((n string)) (ty-var n)) names)))
+                       (res (t es s2)
+                         (if (any? (lambda ((k i64)) (any? (lambda ((n string)) (mentions? s2 (ty-meta k) n)) names)) (i64s-below before))
+                             (refuse v "a plambda's region escapes it, in a type found outside it")
+                             (res expected es s2))))))))))
+
       (escape-tag-parts (subr kfx (st ty) tys)
         (lambda (s t)
           "An escape-only tag's answer, payload and region, or none."
@@ -3157,7 +3258,21 @@
            may abort or suspend is noted so, as any lambda is, and its call is
            `?`ed and awaited (C46)."
           (if (not (head-is? e "lambda"))
-              (refuse v "a prompt's handler is a lambda, in KFX")
+              ;; A procedure given, as FX-26 takes one (C107): of the payload to
+              ;; the answer, called by the prompt, so its latent effect the
+              ;; prompt's; noted as a lambda would be, for the emitter's call.
+              (tagcase (synth v s e)
+                (res (t es0 s)
+                  (tagcase (walk s t)
+                    (ty-proc (les ps r)
+                      (if (not (i64= (size ps) 1))
+                          (refuse v "a prompt's handler takes one value, the payload")
+                          (let* ((s (fits v (fits v s h (car ps)) r a))
+                                 (les (map (lambda ((x string)) (resolve-atom s x)) les))
+                                 (s (if (escapes? les) (note-fact s (datum-file e) (datum-pos e) "fallible") s))
+                                 (s (if (suspends? les) (note-fact s (datum-file e) (datum-pos e) "suspends") s)))
+                            (res a (effs-union les es0) s))))
+                    (else other (refuse v (string-append "a prompt's handler of a " (string-append (show-ty s t) ", no procedure")))))))
               (let ((lam (items e)))
                 (tagcase (lambda-effects v s (items (second lam)) (cdr (cdr lam)) (ty-proc nil (list h) a))
                   (res (u es s)

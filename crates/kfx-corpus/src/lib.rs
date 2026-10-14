@@ -38,6 +38,11 @@ pub mod clock;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/conditions.rs"]
+pub mod conditions;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/constants.rs"]
 pub mod constants;
 
@@ -328,6 +333,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("caller-place", caller_place::main),
     ("cases", cases::main),
     ("clock", clock_main),
+    ("conditions", conditions::main),
     ("constants", constants::main),
     ("control", control::main),
     ("data", data::main),

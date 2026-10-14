@@ -324,7 +324,10 @@
                                               (ctx ds ts ks ls xs fs ms es (cons (typed m (lst (cons (sym "module" "" 0) (module-written form)) "" 0 0)) mods)))))
                     ((and (head-is? form "define")
                           (or (i64= (size (items form)) 3) (i64= (size (items form)) 4))
-                          (not (lambda-form? (last (items form)))))
+                          (not (lambda-form? (last (items form))))
+                          ;; A module's poly procedure given on is that procedure (C107).
+                          (not (any? (lambda ((x typed)) (tagcase x (typed (n t) (and (string=? n (sym-name (second (items form)))) (head-is? t "%reexport")))))
+                                     xs)))
                      (ctx ds ts (cons (sym-name (second (items form))) ks) ls xs fs ms es mods))
                     (else c))))))
 
@@ -669,7 +672,11 @@
       (define put-callee (subr kfx (ctx sexp string chars) chars)
         (lambda (c e h acc)
           "A call's operator, and its turbofish if it is a function's path."
-          (let ((acc (put (callee c h) acc)))
+          (let ((acc (if (and (string=? h "with-mark") (string=? (local-kind h (ctx-locals c)) "")
+                              (ctx-fact? c (datum-file e) (datum-pos e) "suspending-call"))
+                         ;; Its body may suspend: its mark pushed for each poll (C106).
+                         (put "with_mark_async" acc)
+                         (put (callee c h) acc))))
             (if (plain-callee? c h) (put-turbofish c e acc) acc))))
 
       (define put-var (subr kfx (ctx string chars) chars)
@@ -774,14 +781,17 @@
       (define unprojected (subr kfx (ctx sexp) sexp)
         (lambda (c e)
           "A call of an abort or an escape through `proj`s, as FX-26's programs
-           write one, `((proj (proj escape r) a h) t v)` (C105): the call of the
-           primitive, written so, at the call's place, where its facts are."
+           write one, `((proj (proj escape r) a h) t v)` (C105), or of a tag's or
+           a mark's primitive (C106): the call of the primitive, written so, at
+           the call's place, where its facts are."
           (tagcase e
             (lst (xs f l p)
               (if (and (not (null? xs)) (head-is? (car xs) "proj"))
                   (let ((n (projected-name (car xs))))
-                    (if (and (string-member? n (list "abort-current-continuation" "escape" "make-continuation-prompt-tag"))
-                             (ctx-fact? c (datum-file (car xs)) (datum-pos (car xs)) "control"))
+                    (if (or (and (string-member? n (list "abort-current-continuation" "escape" "make-continuation-prompt-tag"))
+                                 (ctx-fact? c (datum-file (car xs)) (datum-pos (car xs)) "control"))
+                            (and (string-member? n (list "make-escape-tag" "make-continuation-mark-key" "with-mark" "first-mark"))
+                                 (string=? (local-kind n (ctx-locals c)) "")))
                         ;; The primitive's name where the `proj` was, at which the
                         ;; checker said it is the primitive's.
                         (lst (cons (sym n (datum-file (car xs)) (datum-pos (car xs))) (cdr xs)) f l p)
@@ -1241,6 +1251,11 @@
       (lambda (forms c)
         (if (null? forms) c (collect (cdr forms) (note (car forms) c)))))
 
+    (define value-path (subr kfx (ctx string string) string)
+      (lambda (c m x)
+        "Module `m`'s value `x`, from outside it (C107's `pub use`)."
+        (string-append (module-path c m) (string-append "::" (mangle x)))))
+
     (define type-path (subr kfx (ctx string string) string)
       (lambda (c m t)
         "Module `m`'s type `t`, from outside it: a datatype's a reference."
@@ -1398,6 +1413,14 @@
                                (put " " (put (owner-lifetime c (third (items (expand-aliases c (second xs))))) (put "&" acc)))))
                     ((sym-is? (car xs) "blobref")
                      (put ">" (put-type c (second xs) (put "BlobRef<" acc))))
+                    ((sym-is? (car xs) "mark-key")
+                     "A mark's procedure in its one form, a future's, whatever its
+                      effect (C106): written as generic code writes `(subr e ...)`."
+                     (put ">" (put-type c (let ((t (second xs)))
+                                            (if (head-is? t "subr")
+                                                (lst (cons (car (items t)) (cons (sym "%effect-given" "" 0) (cdr (cdr (items t))))) "" 0 0)
+                                                t))
+                                        (put "MarkKey<" acc))))
                     ((or (sym-is? (car xs) "prompt-tag") (sym-is? (car xs) "escape-tag"))
                      (put ">" (put-type c (third xs) (put ", " (put-type c (second xs) (put "Tag<" acc))))))
                     ((sym-is? (car xs) "select")
@@ -1408,6 +1431,11 @@
                             (acc (put (shape-name product (map (lambda ((f sexps)) (label-of (car f))) fs))
                                       (if product acc (put "&'static " acc)))))
                        (if (null? fs) acc (put ">" (put-types c (map second fs) (put "<" acc))))))
+                    ((and (sym-is? (car xs) "poly")
+                          (not (any? (lambda ((b sexp)) (not (sym-is? (second (items b)) "region"))) (items (second xs)))))
+                     "A type polymorphic in regions alone (rank 2, C107): its body's,
+                      the regions erased, as a tag's, a key's are."
+                     (put-type c (third xs) acc))
                     ((sym-is? (car xs) "poly")
                      (error "kfx: a poly type is only a definition's, at its top"))
                     ((head-is? (car xs) "select")
@@ -1714,6 +1742,20 @@
                         (acc (put ")(" acc))
                         (acc (put-arg-names 0 lift acc)))
                    (put (if fallible ") }))" ")) }))") acc)))
+                ((and (or (not (string=? (fact-in fs e "mark-unlift ") "")) (not (string=? (fact-in fs e "mark-unlift-fallible ") "")))
+                      (not (string-member? (string-append "%unlifted " (string-append (datum-file e) (i64->string (datum-pos e)))) (ctx-locals c))))
+                 "A mark's procedure, a future's (C106), where one that cannot suspend
+                  is wanted: a closure that runs it to its end."
+                 (let* ((fallible (not (string=? (fact-in fs e "mark-unlift-fallible ") "")))
+                        (arity (digits-number (if fallible (fact-in fs e "mark-unlift-fallible ") (fact-in fs e "mark-unlift "))))
+                        (acc (put (i64->string arity) (put "lambda" acc)))
+                        (acc (put "(move |" acc))
+                        (acc (put-arg-names 0 arity acc))
+                        (acc (put "| kayak_rt::suspend::block((" acc))
+                        (acc (put-exp (with-locals c (list (string-append "%unlifted " (string-append (datum-file e) (i64->string (datum-pos e)))))) e n (value) acc))
+                        (acc (put ")(" acc))
+                        (acc (put-arg-names 0 arity acc)))
+                   (put (if fallible "))" ")).unwrap_or_else(|u| unreachable_unwind(u))") acc)))
                 ((and (not (string=? (fact-in fs e "lift ") ""))
                       (not (string-member? (string-append "%lifted " (string-append (datum-file e) (i64->string (datum-pos e)))) (ctx-locals c))))
                  "A procedure that cannot abort where one that may is wanted: a
@@ -2264,6 +2306,10 @@
                 ((string=? h "par") (put-par c e xs n t acc))
                 ((string=? h "pselect") (put-pselect c e xs n t acc))
                 ((string=? h "proj") (put-exp c (car xs) n (value) acc))
+                ((and (string=? h "plambda") (string=? (local-kind h (ctx-locals c)) ""))
+                 "A `plambda` given for a poly type's parameter (rank 2, C107): its
+                  lambda, the regions erased."
+                 (put-exp c (second xs) n (value) acc))
                 ((string=? h "product")
                  (let* ((fs (map items xs))
                         (acc (put (shape-name #t (map (lambda ((f sexps)) (label-of (car f))) fs)) acc)))

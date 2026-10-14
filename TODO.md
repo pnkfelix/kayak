@@ -478,7 +478,21 @@ Stages 2 and 3 done (C95): editing, history, Tab; Fixpt's commands.
   split by region. Measure `par`'s
   threads against running in turn, and a pool if a thread a branch costs
   too much.
-- **The emitter's memos gave wrong Rust** (2026-10-14): a memo file made
+- **Conditions, what is left (C105–C107):** `current-marks` and
+  `marks-of` (a `with-mark` in tail position replacing its key's mark);
+  a procedure deeper in a mark's value than the key's own, lifted; a poly
+  type with type or effect binders (rank 2 beyond regions); a `let`'s
+  `nil` generalized, as FX-26's is; `load-module` in the REPL; Fixpt's
+  other built-in modules (`fx26:processes.fx`, ...).
+- **The REPL's front as a KFX process (C103)** still waits: the checker
+  refuses by failing, a panic, and FX-26 catches a panic nowhere, a
+  process's failing the form it ran in (Fixpt's processes.md, 6). Either
+  the checker raises (a key or a tag given to every procedure of it, its
+  effects polymorphic in the handler's), or FX-26 lets a process watch
+  another's failure (a monitor). Asked of the user, 2026-10-14.
+- **The emitter's memos gave wrong Rust** (2026-10-14; again the same day,
+  `target/memo-bug2/`, while C107 was built: generation 2 of the bootstrap
+  without `void-call`'s `match … {}`, a fresh cache right): a memo file made
   while the checker changed (today's intermediate compilers) held, under a
   key today's sources make, Rust without the facts of `synth` (no `match
   … {}` for a `void` call, no turbofish). A fresh cache is right. Kept:

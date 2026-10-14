@@ -6,6 +6,7 @@
 ../kfx/check.kfx
 ../kfx/terminate.kfx
 ../kfx/check-exprs.kfx
+../kfx/built-in.kfx
 ../kfx/check-defs.kfx
 ir.kfx
 prims.kfx

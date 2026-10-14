@@ -873,6 +873,23 @@
 (define-type typeds (listof typed acyclic))
 (define-datatype elab (elab cv typeds))
 
+(define reexported (subr kfx (cv sexp) (listof scheme acyclic))
+  (lambda (v e)
+    "`(with m y)`, `m` a module defined at the top level and `y` its poly
+     item: `y`'s scheme; else none (C107)."
+    (if (and (head-is? e "with") (i64= (size (items e)) 3)
+             (tagcase (second (items e)) (sym (n f p) #t) (else other #f))
+             (tagcase (third (items e)) (sym (n f p) #t) (else other #f)))
+        (let ((m (find-bind (sym-name (second (items e))) (cv-binds v))))
+          (if (or (null? m) (not (tagcase (car m) (bind (n sc w) (string=? w "module")))))
+              nil
+              (let ((y (find-bind (sym-name (third (items e))) (opened-binds (sym-name (second (items e))) (cv-binds v)))))
+                (if (null? y)
+                    nil
+                    (tagcase (car y)
+                      (bind (n sc w) (tagcase sc (scheme (tvars t) (if (null? tvars) nil (list sc))))))))))
+        nil)))
+
 (define check-untyped (subr kfx (cv sexp) elab)
   (lambda (v form)
     "`(define x e)`: `e`'s type found, `x` not in scope in `e` (as FX-26
@@ -880,7 +897,13 @@
     (let* ((xs (items form))
            (name (name-of v (second xs)))
            (v (at v name nil))
-           (e (third xs)))
+           (e (third xs))
+           (again (reexported v e)))
+      (if (not (null? again))
+          ;; A module's poly procedure given on, `(define x (with m y))` (C107):
+          ;; at `y`'s scheme, and in Rust `y` itself, `pub use`d.
+          (elab (with-binds v (list (global v name (car again))))
+                (list (typed name (lst (list (sym "%reexport" "" 0) (second (items e)) (third (items e))) "" 0 0))))
       (tagcase (with expressions (synth v (new-state) e))
         (res (t es s)
           (let ((written (if (with expressions (has-var? s t))
@@ -888,7 +911,7 @@
                              (with expressions (ty-sexp v s t))))
                 (s (if (lambda-form? e) s (constant-made v s e es t))))
             (elab (with-facts (with-binds v (list (global v name (scheme nil (zonk s t))))) (with expressions (settle-facts s)))
-                  (list (typed name written)))))))))
+                  (list (typed name written))))))))))
 
 "Modules (CLAUDES_CHOICES.md C19): `(define m (module item ...))` at the
  top level, a Rust `mod`. Its items are a program's definitions, each
@@ -1732,6 +1755,11 @@
            (before (before-last (string-chars name) #\. nil nil)))
       (if (or (null? before) (null? (cdr before))) name (rev->string (cdr before))))))
 
+(define built-in-path? (subr kfx (string) bool)
+  (lambda (path)
+    "Whether `path` names a module Fixpt builds in, `fx26:NAME` (C107)."
+    (has-prefix? path "fx26:")))
+
 (define path-joined (subr kfx (string string) string)
   (lambda (dir name)
     (if (string=? dir "") name (string-append dir (string-append "/" name)))))
@@ -1747,9 +1775,19 @@
       (tagcase e
         (lst (xs f l p)
           (if (and (head-is? e "load-module") (i64= (size xs) 2) (tagcase (second xs) (str (s f2 p2) #t) (else other #f)))
-              (tagcase (second xs) (str (s f2 p2) (the strings (list (path-joined dir s)))) (else other nil))
+              ;; A module built in (C107) is read from no file.
+              (tagcase (second xs) (str (s f2 p2) (if (built-in-path? s) nil (the strings (list (path-joined dir s))))) (else other nil))
               (concat (map (lambda ((x sexp)) (load-paths x dir)) xs))))
         (else other nil)))))
+
+(define-rec
+  (loads? (subr kfx (sexp) bool)
+    (lambda (e)
+      "Whether `e` has a `load-module` in it: of a module built in, perhaps,
+       which no file is read for (C107)."
+      (tagcase e
+        (lst (xs f l p) (or (head-is? e "load-module") (any? loads? xs)))
+        (else other #f)))))
 
 (define load-paths-all (subr kfx (sexps string) strings)
   (lambda (forms dir) (concat (map (lambda ((f sexp)) (load-paths f dir)) forms))))
@@ -1761,8 +1799,10 @@
       (tagcase e
         (lst (xs f l p)
           (if (and (head-is? e "load-module") (i64= (size xs) 2) (tagcase (second xs) (str (s f2 p2) #t) (else other #f)))
-              (let* ((path (tagcase (second xs) (str (s f2 p2) (path-joined dir s)) (else other "")))
-                     (found (concat (map (lambda ((x filed)) (tagcase x (filed (n text) (if (string=? n path) (the strings (list text)) nil)))) loaded))))
+              (let* ((path (tagcase (second xs) (str (s f2 p2) (if (built-in-path? s) s (path-joined dir s))) (else other "")))
+                     (found (if (built-in-path? path)
+                                (if (string=? (built-in-text path) "") nil (the strings (list (built-in-text path))))
+                                (concat (map (lambda ((x filed)) (tagcase x (filed (n text) (if (string=? n path) (the strings (list text)) nil)))) loaded)))))
                 (cond ((string-member? path chain)
                        (error (string-append "kfx: " (string-append f (string-append ": a load cycle: " (words-of (reverse (the strings (cons path chain)))))))))
                       ((null? found) (error (string-append "kfx: cannot read " path)))
@@ -1826,8 +1866,47 @@
                     (else (the sexps (list f))))))
           (else other (the sexps (list f)))))))
 
+(define-rec
+  (flat-plambda (subr kfx (sexp) sexp)
+    (lambda (e)
+      "A `plambda` directly in a `plambda`, as FX-26's library writes one
+       whose type is a `poly` in a `poly` (C70, C107): one, the binders in
+       order."
+      (if (and (head-is? e "plambda") (i64= (size (items e)) 3) (head-is? (third (items e)) "plambda"))
+          (let ((inner (flat-plambda (third (items e)))))
+            (lst (list (car (items e)) (lst (onto (items (second (items e))) (items (second (items inner)))) "" 0 0) (third (items inner)))
+                 (datum-file e) 0 (datum-pos e)))
+          e)))
+  (flat-definition (subr kfx (sexp) sexp)
+    (lambda (f)
+      "A definition whose type is a `poly` in a `poly` and whose value a
+       `plambda` in a `plambda`, as one of each; a module's, each of its
+       items'."
+      (tagcase f
+        (lst (xs file line pos)
+          (cond ((and (or (head-is? f "define") (head-is? f "define*")) (i64= (size xs) 4))
+                 (lst (list (car xs) (second xs) (flat-poly (third xs)) (flat-plambda (fourth xs))) file line pos))
+                ((head-is? f "define-rec")
+                 (lst (cons (car xs) (map (lambda ((m sexp))
+                                            (tagcase m
+                                              (lst (ys f2 l2 p2)
+                                                (if (i64= (size ys) 3) (lst (list (car ys) (flat-poly (second ys)) (flat-plambda (third ys))) f2 l2 p2) m))
+                                              (else other m)))
+                                          (cdr xs)))
+                      file line pos))
+                ((or (head-is? f "module") (head-is? f "hide"))
+                 (lst (cons (car xs) (map flat-definition (cdr xs))) file line pos))
+                ((and (head-is? f "define") (i64= (size xs) 3) (head-is? (third xs) "module"))
+                 (lst (list (car xs) (second xs) (flat-definition (third xs))) file line pos))
+                (else f)))
+        (else other f)))))
+
 (define with-loads (subr kfx (sexps string fileds) sexps)
   (lambda (forms file loaded)
     "A program's forms: what it loads spliced in (C88), and what its modules
-     make in place defined before them (C90)."
-    (concat (map hoisted (if (null? loaded) forms (map (lambda ((f sexp)) (spliced f (directory-of file) loaded nil)) forms))))))
+     make in place defined before them (C90); a `poly` in a `poly` around a
+     definition, one (C107)."
+    (map flat-definition
+         (concat (map hoisted (if (and (null? loaded) (not (any? loads? forms)))
+                                  forms
+                                  (map (lambda ((f sexp)) (spliced f (directory-of file) loaded nil)) forms)))))))

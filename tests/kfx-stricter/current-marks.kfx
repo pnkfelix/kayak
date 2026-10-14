@@ -1,0 +1,8 @@
+"A mark's list: KFX has `with-mark` and `first-mark`, but not yet
+ `current-marks`, whose list would tell a `with-mark` in tail position,
+ which replaces its key's mark on the frame below, from one that pushes
+ another (C106)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define key (mark-key int @m) (make-continuation-mark-key))
+(define main (subr (maxeff (read @m) (write @m) (alloc @m) (read (globals key))) () (listof int @m))
+  (lambda () (with-mark key 1 (lambda () (current-marks key)))))

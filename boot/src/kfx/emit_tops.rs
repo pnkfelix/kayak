@@ -19,7 +19,7 @@ pub fn mparts(f0: &'static Ctx, f1: Sexps) -> &'static Mparts {
 pub mod writing {
     use super::*;
 
-    use super::emitter::{fallible_effect_p, crossing_effect_p, suspending_effect_p, fact_at_p, concat_strings, reverse_strings, split_words, shape_name, ctx_locals, module_body, include_except_names, module_items, type_head_name, item_values, item_constants, item_types, module_here, ctx_typed, with_locals, in_heap, head_region_params, head_place_params, head_type_params, put_generics_of, collect, type_path, places_used, words_of_sep, all_facts_prefixed, uses_blobrefs_p, family_expanded, put_type, put_flat, expand_aliases, owner_key, typed_flat, has_sum_p, effect_lifetime, atoms_in, element_lifetime, put_fields_tuple, region_arguments, place_arguments, used_place_arguments, type_arguments, put_types, put_nl, put_comment, comment_p, comment_text, hide, put_arg_names, tail_calls_p, arms_tail_calls_p, tag_arms_tail_calls_p, distinct_strings, put_exp, put_call, put_continue, put_joined, put_stmts, put_block, put_typecase_arms, put_cond, put_let1, put_let_star, put_binding_values, put_binding_names, put_let, put_case_arms, put_tagcase_arms, put_fields_of, put_tagcase, put_flat_tagcase, put_flat_arms, put_quasi, put_quasi_tagged, put_quasi_items, put_lambda, put_lambda_params, put_letrec, letrec_loops_p, put_looping_lambda, put_list, put_form, put_args, put_letrena, put_spawn, put_par, put_par_pattern, put_par_tree, sexp_at, put_pselect, put_letrena_params, held_at, held_rust, held_type, put_prompt, put_suspending_prompt, put_handler_call, put_suspension, put_question, head_sym_p};
+    use super::emitter::{fallible_effect_p, crossing_effect_p, suspending_effect_p, fact_at_p, concat_strings, reverse_strings, split_words, shape_name, ctx_locals, module_body, include_except_names, module_items, type_head_name, item_values, item_constants, item_types, module_here, ctx_typed, with_locals, in_heap, head_region_params, head_place_params, head_type_params, put_generics_of, collect, value_path, type_path, places_used, words_of_sep, all_facts_prefixed, uses_blobrefs_p, family_expanded, put_type, put_flat, expand_aliases, owner_key, typed_flat, has_sum_p, effect_lifetime, atoms_in, element_lifetime, put_fields_tuple, region_arguments, place_arguments, used_place_arguments, type_arguments, put_types, put_nl, put_comment, comment_p, comment_text, hide, put_arg_names, tail_calls_p, arms_tail_calls_p, tag_arms_tail_calls_p, distinct_strings, put_exp, put_call, put_continue, put_joined, put_stmts, put_block, put_typecase_arms, put_cond, put_let1, put_let_star, put_binding_values, put_binding_names, put_let, put_case_arms, put_tagcase_arms, put_fields_of, put_tagcase, put_flat_tagcase, put_flat_arms, put_quasi, put_quasi_tagged, put_quasi_items, put_lambda, put_lambda_params, put_letrec, letrec_loops_p, put_looping_lambda, put_list, put_form, put_args, put_letrena, put_spawn, put_par, put_par_pattern, put_par_tree, sexp_at, put_pselect, put_letrena_params, held_at, held_rust, held_type, put_prompt, put_suspending_prompt, put_handler_call, put_suspension, put_question, head_sym_p};
 
     // Top-level forms
 
@@ -1277,6 +1277,16 @@ pub mod writing {
             put_generative(c, cdr(xs), acc)
         } else if module_def_p(form) {
             put_module(c, sym_name(second(xs)), module_noted(form), acc)
+        } else if (string_eq_p(h, str_lit("define")) && i64_eq(size(xs), 3i64) && not(null_p(ctx_typed(c, sym_name(second(xs))))) && head_is_p(car(ctx_typed(c, sym_name(second(xs)))), str_lit("%reexport"))) {
+            // A module's poly procedure given on (C107): that procedure, `pub use`d.
+            let r = items(car(ctx_typed(c, sym_name(second(xs)))));
+            let y = sym_name(third(r));
+            let x = sym_name(second(xs));
+            put(str_lit(";\n\n"), put(if string_eq_p(x, y) {
+                str_lit("")
+            } else {
+                string_append(str_lit(" as "), mangle(x))
+            }, put(value_path(c, sym_name(second(r)), y), put(str_lit("pub use "), acc))))
         } else if (string_eq_p(h, str_lit("define")) || string_eq_p(h, str_lit("define*"))) {
             if i64_eq(size(xs), 4i64) {
                 put_define(c, second(xs), third(xs), fourth(xs), acc)

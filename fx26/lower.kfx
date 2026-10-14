@@ -253,7 +253,7 @@
               ((string=? n "#u") (i-lit (v-unit)))
               ((i64>= (position-of n gs 0) 0) (i-global (position-of n gs 0) n))
               ((or (string=? n "nil") (string=? n "no-pair")) (i-lit (v-nil)))
-              ((i64>= (prim-arity n) 0) (i-lit (v-prim n (prim-arity n))))
+              ((i64>= (prim-arity (prim-alias n)) 0) (i-lit (v-prim (prim-alias n) (prim-arity (prim-alias n)))))
               (else (begin (error (string-append "the engine: nothing is named " n)) (i-lit (v-unit))))))))
 
   (lower-quoted (subr kfx (sexp scope strings) ir)

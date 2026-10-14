@@ -332,7 +332,16 @@ pub fn par2_shared<A, B>(f: impl FnOnce() -> A, g: impl FnOnce() -> B) -> (A, B)
     {
         let program = program();
         lock().running += 1;
-        kayak_sync::par2_unchecked(f, move || branch(program, g), |a, join| joined(a, join))
+        // The branch's marks are its maker's, as FX-26's continuation has them.
+        let marks = crate::marks::snapshot();
+        kayak_sync::par2_unchecked(
+            f,
+            move || {
+                crate::marks::install(marks);
+                branch(program, g)
+            },
+            |a, join| joined(a, join),
+        )
     }
     #[cfg(not(feature = "unsafe-par"))]
     {

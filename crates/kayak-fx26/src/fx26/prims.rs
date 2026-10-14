@@ -90,6 +90,18 @@ pub fn program_args() -> Ref<Strings> {
     })
 }
 
+/// The primitive `n` is at run time: an escape-only tag a prompt tag, an
+/// escape an abort (C105, as Fixpt runs them); else `n`.
+pub fn prim_alias(n: Str) -> Str {
+    if string_eq_p(n, str_lit("make-escape-tag")) {
+        str_lit("make-continuation-prompt-tag")
+    } else if string_eq_p(n, str_lit("escape")) {
+        str_lit("abort-current-continuation")
+    } else {
+        n
+    }
+}
+
 /// A primitive's arity, or -1 if `n` names none.
 pub fn prim_arity(n: Str) -> i64 {
     if string_member_p(n, kayak_rt::heap_cons(str_lit("i64+"), kayak_rt::heap_cons(str_lit("i64-"), kayak_rt::heap_cons(str_lit("i64*"), kayak_rt::heap_cons(str_lit("i64-quotient"), kayak_rt::heap_cons(str_lit("i64-remainder"), kayak_rt::heap_cons(str_lit("i64-and"), kayak_rt::heap_cons(str_lit("i64-or"), kayak_rt::heap_cons(str_lit("i64-xor"), kayak_rt::heap_cons(str_lit("i64="), kayak_rt::heap_cons(str_lit("i64<"), kayak_rt::heap_cons(str_lit("i64>"), kayak_rt::heap_cons(str_lit("i64<="), kayak_rt::heap_cons(str_lit("i64>="), kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::heap_cons(str_lit("quotient"), kayak_rt::heap_cons(str_lit("remainder"), kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">="), kayak_rt::heap_cons(str_lit("max"), kayak_rt::heap_cons(str_lit("min"), kayak_rt::heap_cons(str_lit("bitwise-and"), kayak_rt::heap_cons(str_lit("bitwise-ior"), kayak_rt::heap_cons(str_lit("bitwise-xor"), kayak_rt::heap_cons(str_lit("arithmetic-shift"), kayak_rt::heap_cons(str_lit("string-append"), kayak_rt::heap_cons(str_lit("string=?"), kayak_rt::heap_cons(str_lit("string<?"), kayak_rt::heap_cons(str_lit("string>?"), kayak_rt::heap_cons(str_lit("char=?"), kayak_rt::heap_cons(str_lit("char<?"), kayak_rt::heap_cons(str_lit("char>?"), kayak_rt::heap_cons(str_lit("bool=?"), kayak_rt::heap_cons(str_lit("string-ref"), kayak_rt::heap_cons(str_lit("string-ref-i64"), kayak_rt::heap_cons(str_lit("cons"), kayak_rt::heap_cons(str_lit("set"), kayak_rt::heap_cons(str_lit("symbol=?"), kayak_rt::heap_cons(str_lit("array-ref"), kayak_rt::heap_cons(str_lit("make-array"), kayak_rt::heap_cons(str_lit("abort-current-continuation"), kayak_rt::heap_cons(str_lit("call-with-composable-continuation"), kayak_rt::heap_cons(str_lit("abort-with-continuation"), kayak_rt::heap_cons(str_lit("string-compare"), kayak_rt::nil())))))))))))))))))))))))))))))))))))))))))))))))))) {

@@ -441,6 +441,39 @@
                    (map (lambda ((p ty)) (replace-var name m p)) ps) (replace-var name m r)))
         (else other t)))))
 
+(define-rec
+  (fold-renames (subr kfx (strings i64 ty) ty)
+    (lambda (names pos t)
+      "Each region binder `n` of a poly type written at `pos`, `'n`, named
+       `'n@pos` (C107)."
+      (if (null? names)
+          t
+          (fold-renames (cdr names) pos
+                        (replace-var (string-append "'" (car names))
+                                     (ty-var (string-append "'" (string-append (car names) (string-append "@" (i64->string pos)))))
+                                     t))))))
+
+(define-rec
+  (poly-binders-of (subr kfx (tys) strings)
+    (lambda (args)
+      "A poly type's binders' names: all its parts but the last, its body."
+      (if (or (null? args) (null? (cdr args)))
+          nil
+          (cons (tagcase (car args) (ty-var (n) n) (else other "")) (poly-binders-of (cdr args)))))))
+
+(define poly-body (subr kfx (tys) ty)
+  (lambda (args) (last args)))
+
+(define-rec
+  (taken-before (subr kfx (chars char) chars)
+    (lambda (cs c) (if (or (null? cs) (char=? (car cs) c)) nil (cons (car cs) (taken-before (cdr cs) c))))))
+
+(define written-binder (subr kfx (string) string)
+  (lambda (n)
+    "A poly type's binder as written: `'r@P` is `r`."
+    (let ((cs (string-chars (if (has-prefix? n "'") (after-prefix n "'") n))))
+      (list->string (taken-before cs #\@)))))
+
 (define substitute-each (subr kfx (strings tys ty) ty)
   (lambda (params args t)
     (if (or (null? params) (null? args))
@@ -455,6 +488,28 @@
     (let ((temps (map (lambda ((p string)) (string-append (if (has-prefix? p "~") "~%subst " "%subst ") p)) params)))
       (substitute-each temps args
                        (substitute-each params (map (lambda ((p string)) (ty-var p)) temps) t)))))
+
+(define-rec
+  (i64s-below (subr kfx (i64) (listof i64 acyclic))
+    (lambda (n) (if (i64<= n 0) nil (cons (i64- n 1) (i64s-below (i64- n 1)))))))
+
+(define poly-instance (subr kfx (tys tys) ty)
+  (lambda (args regions)
+    "A poly type's body, its binders given `regions` (C107)."
+    (substitute (poly-binders-of args) regions (poly-body args))))
+
+(define-rec
+  (binders-shown (subr kfx (strings) string)
+    (lambda (ns)
+      "A poly type's region binders, as written."
+      (cond ((null? ns) "")
+            ((null? (cdr ns)) (string-append "(" (string-append (written-binder (car ns)) " region)")))
+            (else (string-append "(" (string-append (written-binder (car ns)) (string-append " region) " (binders-shown (cdr ns))))))))))
+
+(define poly-written (subr kfx (tys) ty)
+  (lambda (args)
+    "A poly type's body, its binders as written, `'r` (C107)."
+    (poly-instance args (map (lambda ((n string)) (ty-var (string-append "'" (written-binder n)))) (poly-binders-of args)))))
 
 "Types"
 
@@ -971,6 +1026,22 @@
                   process's mailbox at `R`; `(inbox M r)`, the right to take from it,
                   its process's alone; `(icell T R)`, a `T` written once."
                  (ty-data (string-append "%" (sym-name (car xs))) (list (parse-type v tvars (second xs)) (parse-region v tvars (third xs)))))
+                ((and (sym-is? (car xs) "poly") (i64= (size xs) 3))
+                 "A type polymorphic in regions alone, a procedure's parameter's (rank 2,
+                  C107): `(poly ((r region) ...) T)`, its binders named apart by where
+                  it is written, `'r@P`, so that none is another's."
+                 (let* ((bs (items (second xs)))
+                        (names (map (lambda ((b sexp))
+                                      (if (and (tagcase b (lst (ys f l p) (i64= (size ys) 2)) (else other #f))
+                                               (sym-is? (second (items b)) "region"))
+                                          (sym-name (car (items b)))
+                                          (refuse v "a poly type whose binders are not all regions, which KFX has not yet (C107)")))
+                                    bs))
+                        (pos (datum-pos t))
+                        (body (parse-type v (onto (map (lambda ((n string)) (string-append "'" n)) names) tvars) (third xs)))
+                        (renamed (fold-renames names pos body)))
+                   (ty-data "%poly" (onto (map (lambda ((n string)) (ty-var (string-append "'" (string-append n (string-append "@" (i64->string pos)))))) names)
+                                          (list renamed)))))
                 ((and (sym-is? (car xs) "escape-tag") (i64= (size xs) 4))
                  "FX-26's escape-only tag (C105), `(escape-tag A H R)`: escaped to as a
                   prompt tag is aborted to, never captured with, so it bounds nothing
@@ -1248,6 +1319,9 @@
                 ((string=? d "%pairof") (string-append "(pairof " (string-append (show-tys s args) ")")))
                 ((string=? d "%mark-key") (string-append "(mark-key " (string-append (show-tys s args) ")")))
                 ((string=? d "%escape-tag") (string-append "(escape-tag " (string-append (show-tys s args) ")")))
+                ((string=? d "%poly")
+                 (string-append "(poly (" (string-append (binders-shown (poly-binders-of args))
+                   (string-append ") " (string-append (show-ty s (poly-written args)) ")")))))
                 ((or (string=? d "%addr") (string=? d "%inbox") (string=? d "%icell"))
                  (string-append "(" (string-append (after-prefix d "%") (string-append " " (string-append (show-tys s args) ")")))))
                 ((string=? d "%vsubr")
@@ -1729,6 +1803,9 @@
           (tagcase e
             (ty-data (y ys)
               (cond ((not (and (string=? x y) (i64= (size xs) (size ys)))) (mismatch v s a e))
+                    ((string=? x "%poly")
+                     "Two poly types (C107): the one's binders the other's, then their bodies."
+                     (fits v s (poly-body xs) (poly-instance ys (map (lambda ((n string)) (ty-var n)) (poly-binders-of xs)))))
                     ((string=? x "%composable")
                      "Its bound `D` the same both ways, as a tag's (C60)."
                      (let* ((xd (tagcase (car (cdr (cdr xs))) (ty-proc (es ps r) es) (else other nil)))

@@ -1,0 +1,7 @@
+"An abort to an escape-only tag: `abort-current-continuation` takes a
+ prompt tag, which an escape tag is not (C105)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define f (subr (maxeff (goto @p) (alloc @p)) () int)
+  (lambda ()
+    (let ((t (the (escape-tag int int @p) (make-escape-tag))))
+      (abort-current-continuation t 1))))

@@ -628,7 +628,14 @@ pub mod emitter {
                 } else if module_def_p(form) {
                     let m = sym_name(second(items(form)));
                     note_module_datatypes(m, unhidden(module_written(form)), ctx(ds, ts, ks, ls, xs, fs, ms, es, kayak_rt::heap_cons(typed(m, lst(kayak_rt::heap_cons(sym(str_lit("module"), str_lit(""), 0i64), module_written(form)), str_lit(""), 0i64, 0i64)), mods)))
-                } else if (head_is_p(form, str_lit("define")) && (i64_eq(size(items(form)), 3i64) || i64_eq(size(items(form)), 4i64)) && not(lambda_form_p(last(items(form))))) {
+                } else if (head_is_p(form, str_lit("define")) && (i64_eq(size(items(form)), 3i64) || i64_eq(size(items(form)), 4i64)) && not(lambda_form_p(last(items(form)))) && not(any_p(lambda1s(move |x: &'static Typed| {
+                    let tagcase_ = x;
+                    match *tagcase_ {
+                        Typed::Typed(n, t) => {
+                            (string_eq_p(n, sym_name(second(items(form)))) && head_is_p(t, str_lit("%reexport")))
+                        }
+                    }
+                }), xs))) {
                     ctx(ds, ts, kayak_rt::heap_cons(sym_name(second(items(form))), ks), ls, xs, fs, ms, es, mods)
                 } else {
                     c
@@ -1236,7 +1243,11 @@ pub mod emitter {
 
     /// A call's operator, and its turbofish if it is a function's path.
     pub fn put_callee(c: &'static Ctx, e: &'static Sexp, h: Str, acc: Chars) -> Chars {
-        let acc = put(callee(c, h), acc);
+        let acc = if (string_eq_p(h, str_lit("with-mark")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit("")) && ctx_fact_p(c, datum_file(e), datum_pos(e), str_lit("suspending-call"))) {
+            put(str_lit("with_mark_async"), acc)
+        } else {
+            put(callee(c, h), acc)
+        };
         if plain_callee_p(c, h) {
             put_turbofish(c, e, acc)
         } else {
@@ -1436,15 +1447,16 @@ pub mod emitter {
     }
 
     /// A call of an abort or an escape through `proj`s, as FX-26's programs
-    /// write one, `((proj (proj escape r) a h) t v)` (C105): the call of the
-    /// primitive, written so, at the call's place, where its facts are.
+    /// write one, `((proj (proj escape r) a h) t v)` (C105), or of a tag's or
+    /// a mark's primitive (C106): the call of the primitive, written so, at
+    /// the call's place, where its facts are.
     pub fn unprojected(c: &'static Ctx, e: &'static Sexp) -> &'static Sexp {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
                 if (not(null_p(xs)) && head_is_p(car(xs), str_lit("proj"))) {
                     let n = projected_name(car(xs));
-                    if (string_member_p(n, kayak_rt::heap_cons(str_lit("abort-current-continuation"), kayak_rt::heap_cons(str_lit("escape"), kayak_rt::heap_cons(str_lit("make-continuation-prompt-tag"), kayak_rt::nil())))) && ctx_fact_p(c, datum_file(car(xs)), datum_pos(car(xs)), str_lit("control"))) {
+                    if ((string_member_p(n, kayak_rt::heap_cons(str_lit("abort-current-continuation"), kayak_rt::heap_cons(str_lit("escape"), kayak_rt::heap_cons(str_lit("make-continuation-prompt-tag"), kayak_rt::nil())))) && ctx_fact_p(c, datum_file(car(xs)), datum_pos(car(xs)), str_lit("control"))) || (string_member_p(n, kayak_rt::heap_cons(str_lit("make-escape-tag"), kayak_rt::heap_cons(str_lit("make-continuation-mark-key"), kayak_rt::heap_cons(str_lit("with-mark"), kayak_rt::heap_cons(str_lit("first-mark"), kayak_rt::nil()))))) && string_eq_p(local_kind(n, ctx_locals(c)), str_lit("")))) {
                         lst(kayak_rt::heap_cons(sym(n, datum_file(car(xs)), datum_pos(car(xs))), cdr(xs)), f, l, p)
                     } else {
                         e
@@ -2306,6 +2318,11 @@ pub mod emitter {
         }
     }
 
+    /// Module `m`'s value `x`, from outside it (C107's `pub use`).
+    pub fn value_path(c: &'static Ctx, m: Str, x: Str) -> Str {
+        string_append(module_path(c, m), string_append(str_lit("::"), mangle(x)))
+    }
+
     /// Module `m`'s type `t`, from outside it: a datatype's a reference.
     pub fn type_path(c: &'static Ctx, m: Str, t: Str) -> Str {
         string_append(if string_member_p(string_append(m, string_append(str_lit(".."), t)), ctx_datatypes(c)) {
@@ -2590,6 +2607,17 @@ pub mod emitter {
                         return put_flat(c, expand_aliases(c, third(xs)), put(str_lit(" "), put(owner_lifetime(c, third(items(expand_aliases(c, second(xs))))), put(str_lit("&"), acc))));
                     } else if sym_is_p(car(xs), str_lit("blobref")) {
                         return put(str_lit(">"), put_type(c, second(xs), put(str_lit("BlobRef<"), acc)));
+                    } else if sym_is_p(car(xs), str_lit("mark-key")) {
+                        // A mark's procedure in its one form, a future's, whatever its
+                        // effect (C106): written as generic code writes `(subr e ...)`.
+                        return put(str_lit(">"), put_type(c, {
+                            let t = second(xs);
+                            if head_is_p(t, str_lit("subr")) {
+                                lst(kayak_rt::heap_cons(car(items(t)), kayak_rt::heap_cons(sym(str_lit("%effect-given"), str_lit(""), 0i64), cdr(cdr(items(t))))), str_lit(""), 0i64, 0i64)
+                            } else {
+                                t
+                            }
+                        }, put(str_lit("MarkKey<"), acc)));
                     } else if (sym_is_p(car(xs), str_lit("prompt-tag")) || sym_is_p(car(xs), str_lit("escape-tag"))) {
                         return put(str_lit(">"), put_type(c, third(xs), put(str_lit(", "), put_type(c, second(xs), put(str_lit("Tag<"), acc)))));
                     } else if sym_is_p(car(xs), str_lit("select")) {
@@ -2609,6 +2637,13 @@ pub mod emitter {
                         } else {
                             return put(str_lit(">"), put_types(c, map(&second, fs), put(str_lit("<"), acc)));
                         }
+                    } else if (sym_is_p(car(xs), str_lit("poly")) && not(any_p(lambda1s(move |b: &'static Sexp| {
+                        not(sym_is_p(second(items(b)), str_lit("region")))
+                    }), items(second(xs))))) {
+                        // A type polymorphic in regions alone (rank 2, C107): its body's,
+                        // the regions erased, as a tag's, a key's are.
+                        t = third(xs);
+                        continue;
                     } else if sym_is_p(car(xs), str_lit("poly")) {
                         return error(str_lit("kfx: a poly type is only a definition's, at its top"));
                     } else if head_is_p(car(xs), str_lit("select")) {
@@ -3237,6 +3272,27 @@ pub mod emitter {
                 str_lit(") }))")
             } else {
                 str_lit(")) }))")
+            }, acc)
+        } else if ((not(string_eq_p(fact_in(fs, e, str_lit("mark-unlift ")), str_lit(""))) || not(string_eq_p(fact_in(fs, e, str_lit("mark-unlift-fallible ")), str_lit("")))) && not(string_member_p(string_append(str_lit("%unlifted "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
+            // A mark's procedure, a future's (C106), where one that cannot suspend
+            // is wanted: a closure that runs it to its end.
+            let fallible = not(string_eq_p(fact_in(fs, e, str_lit("mark-unlift-fallible ")), str_lit("")));
+            let arity = digits_number(if fallible {
+                fact_in(fs, e, str_lit("mark-unlift-fallible "))
+            } else {
+                fact_in(fs, e, str_lit("mark-unlift "))
+            });
+            let acc = put(i64_to_string(arity), put(str_lit("lambda"), acc));
+            let acc = put(str_lit("(move |"), acc);
+            let acc = put_arg_names(0i64, arity, acc);
+            let acc = put(str_lit("| kayak_rt::suspend::block(("), acc);
+            let acc = put_exp(with_locals(c, kayak_rt::heap_cons(string_append(str_lit("%unlifted "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), kayak_rt::nil())), e, n, value(), acc);
+            let acc = put(str_lit(")("), acc);
+            let acc = put_arg_names(0i64, arity, acc);
+            put(if fallible {
+                str_lit("))")
+            } else {
+                str_lit(")).unwrap_or_else(|u| unreachable_unwind(u))")
             }, acc)
         } else if (not(string_eq_p(fact_in(fs, e, str_lit("lift ")), str_lit(""))) && not(string_member_p(string_append(str_lit("%lifted "), string_append(datum_file(e), i64_to_string(datum_pos(e)))), ctx_locals(c)))) {
             // A procedure that cannot abort where one that may is wanted: a
@@ -4051,6 +4107,10 @@ pub mod emitter {
                 return put_pselect(c, e, xs, n, t, acc);
             } else if string_eq_p(h, str_lit("proj")) {
                 return put_exp(c, car(xs), n, value(), acc);
+            } else if (string_eq_p(h, str_lit("plambda")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+                // A `plambda` given for a poly type's parameter (rank 2, C107): its
+                // lambda, the regions erased.
+                return put_exp(c, second(xs), n, value(), acc);
             } else if string_eq_p(h, str_lit("product")) {
                 let fs = map(&items, xs);
                 let acc = put(shape_name(true, map(lambda1s(move |f: Sexps| {

@@ -1,0 +1,6 @@
+"An escape to a prompt tag: `escape` takes an escape-only tag, of a type
+ of its own (C105), as FX-26's is a generative type."
+(define-effect kfx (maxeff (read @globals) spin))
+(define t (prompt-tag int int pure @p) (make-continuation-prompt-tag))
+(define f (subr (maxeff (goto @p) (read (globals t))) () int)
+  (lambda () (escape t 1)))

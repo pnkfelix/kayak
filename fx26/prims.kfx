@@ -43,6 +43,14 @@
 "The program's own arguments, as `--run`'s driver gives them (main.kfx)."
 (define program-args (ref strings @h) (new nil))
 
+(define prim-alias (subr kfx (string) string)
+  (lambda (n)
+    "The primitive `n` is at run time: an escape-only tag a prompt tag, an
+     escape an abort (C105, as Fixpt runs them); else `n`."
+    (cond ((string=? n "make-escape-tag") "make-continuation-prompt-tag")
+          ((string=? n "escape") "abort-current-continuation")
+          (else n))))
+
 (define prim-arity (subr kfx (string) i64)
   (lambda (n)
     "A primitive's arity, or -1 if `n` names none."

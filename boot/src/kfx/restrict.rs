@@ -60,8 +60,8 @@ pub mod restrictions {
             Sexp::Sym(n, f, p) => {
                 if (string_eq_p(n, str_lit("call-with-composable-continuation")) || string_eq_p(n, str_lit("call-with-current-continuation")) || string_eq_p(n, str_lit("call/cc"))) {
                     match restriction_refused(file, line, string_append(n, str_lit(" keeps a continuation FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)"))) {}
-                } else if string_member_p(n, kayak_rt::heap_cons(str_lit("make-continuation-mark-key"), kayak_rt::heap_cons(str_lit("with-mark"), kayak_rt::heap_cons(str_lit("first-mark"), kayak_rt::heap_cons(str_lit("current-marks"), kayak_rt::heap_cons(str_lit("marks-of"), kayak_rt::nil())))))) {
-                    match restriction_refused(file, line, string_append(n, str_lit(", a continuation mark, which KFX has not yet (C18, C72)"))) {}
+                } else if string_member_p(n, kayak_rt::heap_cons(str_lit("current-marks"), kayak_rt::heap_cons(str_lit("marks-of"), kayak_rt::nil()))) {
+                    match restriction_refused(file, line, string_append(n, str_lit(", which KFX has not yet: its marks' list would tell a with-mark in tail position from one that is not (C106)"))) {}
                 } else if string_member_p(n, kayak_rt::heap_cons(str_lit("no-pair"), kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::heap_cons(str_lit("set-car!"), kayak_rt::heap_cons(str_lit("set-cdr!"), kayak_rt::heap_cons(str_lit("stay-cellular"), kayak_rt::nil())))))) {
                     match restriction_refused(file, line, string_append(n, str_lit(", which KFX has not: it tells apart, or writes through, what a union's value in Rust (C75) would copy"))) {}
                 } else {
@@ -71,8 +71,6 @@ pub mod restrictions {
             Sexp::Lst(xs, f, l, p) => {
                 if null_p(xs) {
                     ()
-                } else if sym_is_p(car(xs), str_lit("mark-key")) {
-                    match restriction_refused(f, l, str_lit("a continuation mark's key, which KFX has not yet (C18): a prompt in Rust would save and restore the marks around each poll (C72)")) {}
                 } else if (sym_is_p(car(xs), str_lit("vsubr")) || sym_is_p(car(xs), str_lit("vlambda")) || sym_is_p(car(xs), str_lit("apply"))) {
                     match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", FX-26's variadic procedures, which KFX has not yet: a Rust fn has its arity (C71)"))) {}
                 } else if sym_is_p(car(xs), str_lit("composable")) {

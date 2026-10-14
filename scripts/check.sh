@@ -17,6 +17,7 @@ scripts/fixpoint.sh
 python3 -I scripts/incremental.py
 # Fixpt's own programs that kfx accepts, run both ways (needs the clone).
 if scripts/fixpt.sh > /dev/null 2>&1; then
+    python3 -I scripts/built-in.py --check
     python3 -I scripts/run-fixpt-programs.py
     python3 -I scripts/refused-fixpt-programs.py
 fi

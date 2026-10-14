@@ -12,6 +12,8 @@ pub mod terminate;
 pub use terminate::*;
 pub mod check_exprs;
 pub use check_exprs::*;
+pub mod built_in;
+pub use built_in::*;
 pub mod check_defs;
 pub use check_defs::*;
 pub mod ir;

@@ -2342,3 +2342,75 @@ lacked all four parts; this is the first two.
   them `control/escape-tag.fx` and the conditions examples
   `escape-polymorphic.fx`, `escape-through-generic.fx`; all 287 Fixpt
   refuses, kfx refuses. The engine agrees on 148 (145).
+
+## C106. Continuation marks in KFX's Rust (2026-10-14)
+
+The second part of conditions (C105): `make-continuation-mark-key`,
+`with-mark`, `first-mark`, which the checker had (C72) and the
+restriction pass refused for Rust.
+- **The marks a stack, the thread's** (`kayak_rt::marks`): `with-mark`
+  pushes its mark for its body's run and takes it off after, by a drop,
+  however the body ends (a value, an abort's early return, a failure the
+  REPL catches). A key an identity, its value's type erased in the stack
+  and checked by a downcast.
+- **A body that may suspend** (C45, C46) is a future: `with_mark_async`
+  pushes the mark for each poll of it, on the poller's marks, so a
+  continuation resumed elsewhere sees its own marks on the resumer's, as
+  FX-26 composes them. The emitter chooses it by the call's
+  `suspending-call` fact. This is what C72 left: KFX's effect-polymorphic
+  code is async, and the library's `with-handler` is such code.
+- **A procedure in a mark has one Rust form**, a future's, whatever its
+  effect: the key's type is written as generic code writes `(subr e ...)`;
+  where the key's procedure type cannot suspend, `with-mark`'s value and
+  `first-mark`'s default are lifted to it (`lift-suspend N`), and
+  `first-mark`'s value is run to its end where it is called (`mark-unlift
+  N`). Else a handler made where its effect is known (`pure`, `(goto r)`)
+  and called by `raise`, generic in it, would be two Rust types under one
+  key. Only the key's procedure itself: a procedure deeper in a mark's
+  value (in a list) is not lifted, and rustc refuses the Rust.
+- **Processes and `par`**: a key's region is written, so reading one is
+  not a crossing effect, and no branch that reads marks runs on a thread
+  but with `unsafe-par`, whose branch is given its maker's marks.
+- **Not yet**: `current-marks`, `marks-of`. FX-26's `with-mark` in tail
+  position replaces its key's mark on the frame below; KFX's pushes. No
+  `first-mark` can tell them apart; a list of the marks could
+  (`tests/kfx-stricter/current-marks.kfx`). A loop that marks each time
+  round grows the Rust stack, where FX-26's runs in constant space.
+
+## C107. Rank 2 in regions, and Fixpt's library built in (2026-10-14)
+
+The rest of conditions (C105): `fx26:conditions.fx` loads, checks and
+runs, in kfx and in the engine, Fixpt's own text.
+- **A type polymorphic in regions alone**, `(poly ((r region) ...) T)`,
+  as a parameter's type (`%poly`, its binders named apart by where the
+  type is written, `'r@P`); a `proj` of a local of one instantiates it;
+  a `plambda` where one is expected is checked against its body, its
+  regions rigid, in scope, none named as one in scope already, none
+  escaping into a type found outside it (KFX binds a local at one type
+  where FX-26 generalizes a `let`'s `nil`, so it refuses more:
+  `tests/kfx-stricter/poly-type-binder-escapes.kfx`). Two such types fit
+  when their bodies do, the one's binders the other's. In Rust the regions
+  are erased: a poly type is its body's, a `plambda` its lambda, a `proj`
+  of a local the local. A binder of a type or an effect is refused.
+- **A `poly` in a `poly`, a `plambda` in a `plambda`, around a
+  definition**, as the library writes `raise`: one of each, flattened as
+  the forms are read (`flat-definition`, with `load-module`'s splicing),
+  as C70 already took the type.
+- **A prompt's handler any procedure**, as FX-26 has it, not only a
+  `lambda`: its type's latent effect the prompt's, noted `fallible` or
+  `suspends` for the emitter's call.
+- **`(define x (with m y))`, `y` a module's poly procedure**: `x` at `y`'s
+  scheme, and in Rust `pub use m::y as x`, not a constant.
+- **Built in**: a `load-module` of `fx26:NAME` reads no file; its text is
+  KFX's copy of Fixpt's, `kfx/built-in.kfx`, written by
+  `scripts/built-in.py` from the clone at the pin and checked by
+  `check.sh`. Only `fx26:conditions.fx` so far.
+- **The engine**: an escape-only tag a prompt tag at run time, `escape`
+  an abort (`prim-alias`), as Fixpt runs them; its marks and the rest were
+  there (C72).
+- Measured: Fixpt's `run/conditions.fx`, and its examples `handlers.fx`,
+  `library.fx`, `unhandled.fx`, give Fixpt's answers in kfx's Rust; kfx
+  accepts 163 of Fixpt's programs (156 before C105), all agreeing, and
+  refuses all 287 Fixpt refuses; the engine agrees on 152 (145).
+  `tests/kfx/conditions.kfx`: the library's raise, handle and restart, an
+  escape tag and a mark by hand.

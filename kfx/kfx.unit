@@ -6,6 +6,7 @@ names.kfx
 check.kfx
 terminate.kfx
 check-exprs.kfx
+built-in.kfx
 check-defs.kfx
 restrict.kfx
 emit.kfx

@@ -1,0 +1,14 @@
+"A `plambda` given for a parameter of a poly type (rank 2, C107), whose
+ body puts its region in a list bound outside it. FX-26 takes `nil`, a
+ `let`'s, at a type of its own at each use, so the list there is at a
+ fresh region; KFX binds a local at one type, so its region would be the
+ plambda's, which then escapes it: refused."
+(define-effect kfx (maxeff (read @globals) spin))
+(define run (poly ((a type)) (subr pure ((poly ((r region)) (subr (alloc r) () (escape-tag int int r)))) int))
+  (plambda ((a type)) (lambda (f) 0)))
+(define main (subr (read (globals run)) () int)
+  (lambda ()
+    (let ((xs nil))
+      ((proj run int)
+       (plambda ((r region))
+         (lambda () (car (cons (the (escape-tag int int r) (make-escape-tag)) xs))))))))

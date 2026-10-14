@@ -17,6 +17,7 @@ mod fixed;
 mod float;
 mod heap;
 mod int;
+pub mod marks;
 mod once;
 pub mod process;
 mod show;
@@ -36,6 +37,7 @@ pub use heap::*;
 pub use int::*;
 #[cfg(feature = "unsafe-par")]
 pub use kayak_sync::Global;
+pub use marks::{MarkKey, first_mark, make_continuation_mark_key, with_mark, with_mark_async};
 pub use once::*;
 pub use process::{Addr, ICell, Inbox, icell_get, icell_put_x, make_icell};
 pub use show::*;

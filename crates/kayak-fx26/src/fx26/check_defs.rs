@@ -1321,6 +1321,69 @@ pub fn elab(f0: &'static Cv, f1: Typeds) -> &'static Elab {
     kayak_rt::heap_alloc(Elab::Elab(f0, f1))
 }
 
+/// `(with m y)`, `m` a module defined at the top level and `y` its poly
+/// item: `y`'s scheme; else none (C107).
+pub fn reexported(v: &'static Cv, e: &'static Sexp) -> List<&'static Scheme> {
+    if (head_is_p(e, str_lit("with")) && i64_eq(size(items(e)), 3i64) && {
+        let tagcase_ = second(items(e));
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } && {
+        let tagcase_ = third(items(e));
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        let m = find_bind(sym_name(second(items(e))), cv_binds(v));
+        if (null_p(m) || not({
+            let tagcase_ = car(m);
+            match *tagcase_ {
+                Bind::Bind(n, sc, w) => {
+                    string_eq_p(w, str_lit("module"))
+                }
+            }
+        })) {
+            nil::<&'static Scheme>()
+        } else {
+            let y = find_bind(sym_name(third(items(e))), opened_binds(sym_name(second(items(e))), cv_binds(v)));
+            if null_p(y) {
+                nil::<&'static Scheme>()
+            } else {
+                let tagcase_ = car(y);
+                match *tagcase_ {
+                    Bind::Bind(n, sc, w) => {
+                        let tagcase_ = sc;
+                        match *tagcase_ {
+                            Scheme::Scheme(tvars, t) => {
+                                if null_p(tvars) {
+                                    nil::<&'static Scheme>()
+                                } else {
+                                    kayak_rt::heap_cons(sc, kayak_rt::nil())
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        nil::<&'static Scheme>()
+    }
+}
+
 /// `(define x e)`: `e`'s type found, `x` not in scope in `e` (as FX-26
 /// has it, for a lambda too), and the type kept for the emitter.
 pub fn check_untyped(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
@@ -1328,19 +1391,24 @@ pub fn check_untyped(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
     let name = name_of(v, second(xs));
     let v = at(v, name, nil::<Str>());
     let e = third(xs);
-    let tagcase_ = expressions::synth(v, new_state(), e);
-    match *tagcase_ {
-        Res::Res(t, es, s) => {
-            let (written, s) = (if expressions::has_var_p(s, t) {
-                match refuse(v, str_lit("a definition with no type, of a type over a binder: write its type")) {}
-            } else {
-                expressions::ty_sexp(v, s, t)
-            }, if lambda_form_p(e) {
-                s
-            } else {
-                constant_made(v, s, e, es, t)
-            });
-            elab(with_facts(with_binds(v, kayak_rt::heap_cons(global(v, name, scheme(nil::<Str>(), zonk(s, t))), kayak_rt::nil())), expressions::settle_facts(s)), kayak_rt::heap_cons(typed(name, written), kayak_rt::nil()))
+    let again = reexported(v, e);
+    if not(null_p(again)) {
+        elab(with_binds(v, kayak_rt::heap_cons(global(v, name, car(again)), kayak_rt::nil())), kayak_rt::heap_cons(typed(name, lst(kayak_rt::heap_cons(sym(str_lit("%reexport"), str_lit(""), 0i64), kayak_rt::heap_cons(second(items(e)), kayak_rt::heap_cons(third(items(e)), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)), kayak_rt::nil()))
+    } else {
+        let tagcase_ = expressions::synth(v, new_state(), e);
+        match *tagcase_ {
+            Res::Res(t, es, s) => {
+                let (written, s) = (if expressions::has_var_p(s, t) {
+                    match refuse(v, str_lit("a definition with no type, of a type over a binder: write its type")) {}
+                } else {
+                    expressions::ty_sexp(v, s, t)
+                }, if lambda_form_p(e) {
+                    s
+                } else {
+                    constant_made(v, s, e, es, t)
+                });
+                elab(with_facts(with_binds(v, kayak_rt::heap_cons(global(v, name, scheme(nil::<Str>(), zonk(s, t))), kayak_rt::nil())), expressions::settle_facts(s)), kayak_rt::heap_cons(typed(name, written), kayak_rt::nil()))
+            }
         }
     }
 }
@@ -3182,6 +3250,11 @@ pub fn stem(path: Str) -> Str {
     }
 }
 
+/// Whether `path` names a module Fixpt builds in, `fx26:NAME` (C107).
+pub fn built_in_path_p(path: Str) -> bool {
+    has_prefix_p(path, str_lit("fx26:"))
+}
+
 pub fn path_joined(dir: Str, name: Str) -> Str {
     if string_eq_p(dir, str_lit("")) {
         name
@@ -3214,7 +3287,11 @@ pub fn load_paths(e: &'static Sexp, dir: Str) -> Strings {
                 let tagcase_ = second(xs);
                 match *tagcase_ {
                     Sexp::Str(s, f2, p2) => {
-                        the::<Strings>(kayak_rt::heap_cons(path_joined(dir, s), kayak_rt::nil()))
+                        if built_in_path_p(s) {
+                            nil::<Str>()
+                        } else {
+                            the::<Strings>(kayak_rt::heap_cons(path_joined(dir, s), kayak_rt::nil()))
+                        }
                     }
                     _ => {
                         let other = tagcase_;
@@ -3230,6 +3307,21 @@ pub fn load_paths(e: &'static Sexp, dir: Str) -> Strings {
         _ => {
             let other = tagcase_;
             nil::<Str>()
+        }
+    }
+}
+
+/// Whether `e` has a `load-module` in it: of a module built in, perhaps,
+/// which no file is read for (C107).
+pub fn loads_p(e: &'static Sexp) -> bool {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            (head_is_p(e, str_lit("load-module")) || any_p(&loads_p, xs))
+        }
+        _ => {
+            let other = tagcase_;
+            false
         }
     }
 }
@@ -3261,7 +3353,11 @@ pub fn spliced(e: &'static Sexp, dir: Str, loaded: Fileds, chain: Strings) -> &'
                     let tagcase_ = second(xs);
                     match *tagcase_ {
                         Sexp::Str(s, f2, p2) => {
-                            path_joined(dir, s)
+                            if built_in_path_p(s) {
+                                s
+                            } else {
+                                path_joined(dir, s)
+                            }
                         }
                         _ => {
                             let other = tagcase_;
@@ -3269,18 +3365,26 @@ pub fn spliced(e: &'static Sexp, dir: Str, loaded: Fileds, chain: Strings) -> &'
                         }
                     }
                 };
-                let found = concat(map(lambda1s(move |x: &'static Filed| {
-                    let tagcase_ = x;
-                    match *tagcase_ {
-                        Filed::Filed(n, text) => {
-                            if string_eq_p(n, path) {
-                                the::<Strings>(kayak_rt::heap_cons(text, kayak_rt::nil()))
-                            } else {
-                                nil::<Str>()
+                let found = if built_in_path_p(path) {
+                    if string_eq_p(built_in_text(path), str_lit("")) {
+                        nil::<Str>()
+                    } else {
+                        the::<Strings>(kayak_rt::heap_cons(built_in_text(path), kayak_rt::nil()))
+                    }
+                } else {
+                    concat(map(lambda1s(move |x: &'static Filed| {
+                        let tagcase_ = x;
+                        match *tagcase_ {
+                            Filed::Filed(n, text) => {
+                                if string_eq_p(n, path) {
+                                    the::<Strings>(kayak_rt::heap_cons(text, kayak_rt::nil()))
+                                } else {
+                                    nil::<Str>()
+                                }
                             }
                         }
-                    }
-                }), loaded));
+                    }), loaded))
+                };
                 if string_member_p(path, chain) {
                     error(string_append(str_lit("kfx: "), string_append(f, string_append(str_lit(": a load cycle: "), words_of(reverse(the::<Strings>(kayak_rt::heap_cons(path, chain))))))))
                 } else if null_p(found) {
@@ -3372,15 +3476,69 @@ pub fn hoisted(f: &'static Sexp) -> Sexps {
     }
 }
 
+/// A `plambda` directly in a `plambda`, as FX-26's library writes one
+/// whose type is a `poly` in a `poly` (C70, C107): one, the binders in
+/// order.
+pub fn flat_plambda(e: &'static Sexp) -> &'static Sexp {
+    if (head_is_p(e, str_lit("plambda")) && i64_eq(size(items(e)), 3i64) && head_is_p(third(items(e)), str_lit("plambda"))) {
+        let inner = flat_plambda(third(items(e)));
+        lst(kayak_rt::heap_cons(car(items(e)), kayak_rt::heap_cons(lst(onto(items(second(items(e))), items(second(items(inner)))), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(third(items(inner)), kayak_rt::nil()))), datum_file(e), 0i64, datum_pos(e))
+    } else {
+        e
+    }
+}
+
+/// A definition whose type is a `poly` in a `poly` and whose value a
+/// `plambda` in a `plambda`, as one of each; a module's, each of its
+/// items'.
+pub fn flat_definition(f: &'static Sexp) -> &'static Sexp {
+    let tagcase_ = f;
+    match *tagcase_ {
+        Sexp::Lst(xs, file, line, pos) => {
+            if ((head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) && i64_eq(size(xs), 4i64)) {
+                lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(flat_poly(third(xs)), kayak_rt::heap_cons(flat_plambda(fourth(xs)), kayak_rt::nil())))), file, line, pos)
+            } else if head_is_p(f, str_lit("define-rec")) {
+                lst(kayak_rt::heap_cons(car(xs), map(lambda1s(move |m: &'static Sexp| {
+                    let tagcase_ = m;
+                    match *tagcase_ {
+                        Sexp::Lst(ys, f2, l2, p2) => {
+                            if i64_eq(size(ys), 3i64) {
+                                lst(kayak_rt::heap_cons(car(ys), kayak_rt::heap_cons(flat_poly(second(ys)), kayak_rt::heap_cons(flat_plambda(third(ys)), kayak_rt::nil()))), f2, l2, p2)
+                            } else {
+                                m
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            m
+                        }
+                    }
+                }), cdr(xs))), file, line, pos)
+            } else if (head_is_p(f, str_lit("module")) || head_is_p(f, str_lit("hide"))) {
+                lst(kayak_rt::heap_cons(car(xs), map(&flat_definition, cdr(xs))), file, line, pos)
+            } else if (head_is_p(f, str_lit("define")) && i64_eq(size(xs), 3i64) && head_is_p(third(xs), str_lit("module"))) {
+                lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(flat_definition(third(xs)), kayak_rt::nil()))), file, line, pos)
+            } else {
+                f
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            f
+        }
+    }
+}
+
 /// A program's forms: what it loads spliced in (C88), and what its modules
-/// make in place defined before them (C90).
+/// make in place defined before them (C90); a `poly` in a `poly` around a
+/// definition, one (C107).
 pub fn with_loads(forms: Sexps, file: Str, loaded: Fileds) -> Sexps {
-    concat(map(&hoisted, if null_p(loaded) {
+    map(&flat_definition, concat(map(&hoisted, if (null_p(loaded) && not(any_p(&loads_p, forms))) {
         forms
     } else {
         map(lambda1s(move |f: &'static Sexp| {
             spliced(f, directory_of(file), loaded, nil::<Str>())
         }), forms)
-    }))
+    })))
 }
 

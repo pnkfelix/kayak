@@ -513,8 +513,8 @@ pub fn lower_name(n: Str, sc: Scope, gs: Strings) -> &'static Ir {
         i_global(position_of(n, gs, 0i64), n)
     } else if (string_eq_p(n, str_lit("nil")) || string_eq_p(n, str_lit("no-pair"))) {
         i_lit(v_nil())
-    } else if i64_gt_eq(prim_arity(n), 0i64) {
-        i_lit(v_prim(n, prim_arity(n)))
+    } else if i64_gt_eq(prim_arity(prim_alias(n)), 0i64) {
+        i_lit(v_prim(prim_alias(n), prim_arity(prim_alias(n))))
     } else {
         error(string_append(str_lit("the engine: nothing is named "), n));
         i_lit(v_unit())

@@ -1,0 +1,78 @@
+(define-effect kfx (maxeff (read @globals) spin))
+
+"FX-26's conditions in KFX (C105–C107): Fixpt's library, built in and
+ loaded by its name, over escape-only tags, continuation marks and
+ procedures polymorphic in a region they are given (rank 2). A parser of
+ numbers raises where a character is no digit; what then happens is the
+ caller's to choose: a value to go on with, or a restart."
+(define c (load-module "fx26:conditions.fx"))
+(define handle (with c handle))
+(define with-handler (with c with-handler))
+(define raise (with c raise))
+
+"A digit's value; a character that is none raised, with the handler's
+ effect `eh`, whatever it is."
+(define* digit
+  (poly ((k region) (eh effect))
+    (subr (maxeff (read k) eh) ((mark-key (subr eh (char) int) k) char) int))
+  (plambda ((k region) (eh effect))
+    (lambda (key ch)
+      (if (and (char>=? ch #\0) (char<=? ch #\9)) (- (char->integer ch) 48) (raise key ch)))))
+
+"The number `s`'s characters from `i` make, after `acc`, each by `f`."
+(define* number-from
+  (poly ((e effect)) (subr (maxeff e spin) ((subr e (char) int) string int int) int))
+  (plambda ((e effect))
+    (lambda (f s i acc)
+      (if (>= i (string-length s)) acc ((proj number-from e) f s (+ i 1) (+ (* acc 10) (f (string-ref s i))))))))
+
+(define-effect parsing (maxeff (read (globals digit raise number-from)) spin))
+
+"Hex letters let through, each its value: the handler gives one, and the
+ parse goes on where it was."
+(define* lax (subr (maxeff (read (globals digit number-from with-handler)) spin) (string) int)
+  (lambda (s)
+    ((proj with-handler char int int parsing pure)
+     (lambda ((ch char)) (+ 10 (- (char->integer ch) (char->integer #\a))))
+     (plambda ((k region))
+       (lambda ((key (mark-key (subr pure (char) int) k)))
+         (number-from (lambda ((ch char)) (digit key ch)) s 0 0))))))
+
+"Any character that is no digit makes the whole -1: the handler escapes
+ to a `handle` around it, a restart."
+(define* strict (subr (maxeff (read (globals digit number-from with-handler handle)) spin) (string) int)
+  (lambda (s)
+    ((proj handle int string (maxeff parsing (read (globals with-handler))))
+     (plambda ((r region))
+       (lambda ((t (escape-tag int string r)))
+         ((proj with-handler char int int parsing (goto r))
+          (lambda ((ch char)) (escape t (string-append "no digit: " (char->string ch))))
+          (plambda ((k region))
+            (lambda ((key (mark-key (subr (goto r) (char) int) k)))
+              (number-from (lambda ((ch char)) (digit key ch)) s 0 0))))))
+     (lambda ((why string)) -1))))
+
+"An escape-only tag and a mark, with no library: the first negative
+ number escapes; a mark says how deep the search went."
+(define depth (mark-key int @d) (make-continuation-mark-key))
+
+(define-rec
+  (first-negative (poly ((r region)) (subr (maxeff (goto r) (read @d) (write @d) (read (globals depth first-negative)) spin) ((escape-tag int int r) (listof int acyclic) int) int))
+    (plambda ((r region))
+      (lambda (t xs n)
+        (cond ((null? xs) -1)
+              ((< (car xs) 0) (escape t (* 100 (first-mark depth 0))))
+              (else (with-mark depth (+ n 1) (lambda () ((proj first-negative r) t (cdr xs) (+ n 1))))))))))
+
+(define found (subr (maxeff (read (globals first-negative depth)) (read @d) (write @d) (alloc @t) spin) ((listof int acyclic)) int)
+  (lambda (xs)
+    (let ((t (the (escape-tag int int @t) (make-escape-tag))))
+      (prompt t ((proj first-negative @t) t xs 0) (lambda ((v int)) v)))))
+
+(define show (subr kfx ((listof int acyclic)) string)
+  (lambda (xs)
+    (if (null? xs) "" (string-append (int->string (car xs)) (string-append " " (show (cdr xs)))))))
+
+(define main (subr (maxeff kfx (read @d) (write @d) (alloc @t)) () string)
+  (lambda ()
+    (show (list (lax "12") (lax "1f") (strict "123") (strict "1x3") (found (list 4 5 -6 7)) (found (list 1 2))))))

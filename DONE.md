@@ -1263,3 +1263,13 @@ speaking by `request`s and `news` (live-repl.kfx). A key is drawn at
 once (0 ms in `scripts/repl-latency.py`, while `(fact 30000)` runs),
 whatever one step of a run takes. Scripted sessions run the two in step:
 all eight as before.
+
+## FX-26's conditions in KFX (2026-10-14)
+
+C104–C107: the pin at Fixpt e0418bd; escape-only tags; continuation
+marks in the Rust, a body that may suspend marked for each poll; types
+polymorphic in regions as parameters' (rank 2); Fixpt's
+`fx26:conditions.fx` built in, `handle`, `with-handler` and `raise`
+checked and run as Fixpt's text has them, in kfx and in the engine.
+`tests/kfx/conditions.kfx`; kfx accepts 163 of Fixpt's programs, all
+agreeing.
