@@ -670,7 +670,7 @@ pub fn io_error_text() -> Str {
 
 /// The `io` effects' kinds, a fixed family (C49).
 pub fn io_kind_p(k: Str) -> bool {
-    string_member_p(k, kayak_rt::heap_cons(str_lit("stdin"), kayak_rt::heap_cons(str_lit("stdout"), kayak_rt::heap_cons(str_lit("stderr"), kayak_rt::heap_cons(str_lit("fs-read"), kayak_rt::heap_cons(str_lit("fs-write"), kayak_rt::heap_cons(str_lit("clock"), kayak_rt::heap_cons(str_lit("args"), kayak_rt::heap_cons(str_lit("exit"), kayak_rt::nil())))))))))
+    string_member_p(k, kayak_rt::heap_cons(str_lit("stdin"), kayak_rt::heap_cons(str_lit("stdout"), kayak_rt::heap_cons(str_lit("stderr"), kayak_rt::heap_cons(str_lit("fs-read"), kayak_rt::heap_cons(str_lit("fs-write"), kayak_rt::heap_cons(str_lit("clock"), kayak_rt::heap_cons(str_lit("args"), kayak_rt::heap_cons(str_lit("exit"), kayak_rt::heap_cons(str_lit("terminal"), kayak_rt::nil()))))))))))
 }
 
 pub fn parse_effect(v: &'static Cv, tvars: Strings, e: &'static Sexp) -> Strings {

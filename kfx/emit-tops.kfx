@@ -443,6 +443,7 @@
           "A shape kayak-rt declares, as the program's would be (`world.rs`): what
            FX-26's I/O and bytes primitives answer with (C49)."
           (string-member? key (list "S text bad" "S done failed" "S line eof failed" "S data failed" "S names failed" "P kind detail"
+                                    "S byte eof failed" "S count eof failed" "S done not-a-terminal failed" "S size not-a-terminal failed" "P rows columns"
                                     "S not-found permission-denied already-exists not-a-directory is-a-directory broken-pipe invalid-data other"))))
 
       (define shape-key (subr kfx (sexp) strings)

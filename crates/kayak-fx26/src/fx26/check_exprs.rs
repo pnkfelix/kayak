@@ -2987,8 +2987,9 @@ pub mod expressions {
         }
     }
 
-    /// `((icell-get c) x body ...)`, `((receive box) x body ...)` or
-    /// `((sleep-until t) x body ...)`, a deadline (C108).
+    /// `((icell-get c) x body ...)`, `((receive box) x body ...)`,
+    /// `((sleep-until t) x body ...)`, a deadline (C108), or `((read-byte) x
+    /// body ...)`, a key (C109).
     pub fn pselect_arm_p(arm: &'static Sexp) -> bool {
         let tagcase_ = arm;
         match *tagcase_ {
@@ -3008,7 +3009,7 @@ pub mod expressions {
                     let tagcase_ = car(ys);
                     match *tagcase_ {
                         Sexp::Lst(ws, f3, l3, p3) => {
-                            (i64_eq(size(ws), 2i64) && (sym_is_p(car(ws), str_lit("icell-get")) || sym_is_p(car(ws), str_lit("receive")) || sym_is_p(car(ws), str_lit("sleep-until"))))
+                            ((i64_eq(size(ws), 2i64) && (sym_is_p(car(ws), str_lit("icell-get")) || sym_is_p(car(ws), str_lit("receive")) || sym_is_p(car(ws), str_lit("sleep-until")))) || (i64_eq(size(ws), 1i64) && sym_is_p(car(ws), str_lit("read-byte"))))
                         }
                         _ => {
                             let other = tagcase_;
@@ -3806,16 +3807,16 @@ pub mod expressions {
     }
 
     /// `(pselect (W x body ...) ...)`: waits until one arm's wait is ready,
-    /// an I-cell filled, a message come or a deadline passed, and runs
-    /// that arm, the first so in order; which are ready is the schedule's,
-    /// so `nondet`.
+    /// an I-cell filled, a message come, a deadline passed or a key
+    /// typed, and runs that arm, the first so in order; which are ready
+    /// is the schedule's, so `nondet`.
     pub fn pselect_form(v: &'static Cv, s: &'static St, xs: Sexps, expected: Tys) -> &'static Res {
         if null_p(xs) {
             match refuse(v, str_lit("`(pselect ((icell-get i-cell) name body …) ((receive mailbox) name body …) …)`")) {}
         } else if any_p(lambda1s(move |a: &'static Sexp| {
             not(pselect_arm_p(a))
         }), xs) {
-            match refuse(v, str_lit("a `pselect` arm is `((icell-get i-cell) name body …)`, `((receive mailbox) name body …)` or `((sleep-until time) name body …)`")) {}
+            match refuse(v, str_lit("a `pselect` arm is `((icell-get i-cell) name body …)`, `((receive mailbox) name body …)`, `((sleep-until time) name body …)` or `((read-byte) name body …)`")) {}
         } else {
             with_effs(pselect_arms(v, s, xs, expected), kayak_rt::heap_cons(str_lit("nondet"), kayak_rt::nil()))
         }

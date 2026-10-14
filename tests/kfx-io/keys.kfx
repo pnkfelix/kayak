@@ -1,0 +1,65 @@
+"The standard input by bytes, and the terminal (C109): a line read, then
+ bytes one at a time and a span at once, from one stream; a key waited
+ for by a process's `pselect`, beside its mailbox; the terminal's modes
+ and size, which a pipe has not, so each says `not-a-terminal`. The
+ status is how many bytes came."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define said (subr (io stdout) (string) unit)
+  (lambda (s) (tagcase (write-out (string-append s "\n")) (done u #u) (failed e #u))))
+
+(define-type byte-result (sumof (byte u8) (eof unit) (failed io-error)))
+
+(define* code (subr pure (byte-result) int)
+  (lambda (b) (tagcase b (byte k (u8->int k)) (eof u -1) (failed e -2))))
+
+(define terminal (subr (io terminal) () string)
+  (lambda ()
+    (string-append
+     (tagcase (terminal-raw) (done u "raw") (not-a-terminal u "no terminal") (failed e "failed"))
+     (tagcase (terminal-size)
+       (size z (string-append ", " (string-append (int->string (extract z rows)) (string-append "x" (int->string (extract z columns))))))
+       (not-a-terminal u ", no size")
+       (failed e ", failed")))))
+
+"A process that waits for a key or a message, whichever comes first, and
+ answers the key's code, or the message, in `out`."
+(define* start-keyed (subr (maxeff (alloc @k) (init @c) (io stdin) nondet spin) ((icell int @c)) (addr int @k))
+  (lambda (out)
+    (spawn (box int r)
+      (pselect ((read-byte) b (icell-put! out (code b)))
+               ((receive box) m (icell-put! out m))))))
+
+(define keyed (subr (maxeff kfx (alloc @k) (alloc @c) (init @c) (await @c) (io stdin) nondet) () int)
+  (lambda ()
+    (let* ((out (the (icell int @c) (make-icell)))
+           (w (start-keyed out)))
+      (icell-get out))))
+
+"The bytes left, counted, each span at most 4."
+(define counted (subr (maxeff kfx (io stdin) (read @b) (write @b)) ((bytevectorof @b) int) int)
+  (lambda (bv n)
+    (tagcase (read-bytes bv 0 4)
+      (count k (counted bv (+ n k)))
+      (eof u n)
+      (failed e -1))))
+
+(define main (subr (maxeff kfx (io stdin) (io stdout) (io terminal) (alloc @k) (alloc @c) (init @c) (await @c) (alloc @b) (read @b) (write @b) nondet) () int)
+  (lambda ()
+    (let* ((line (tagcase (read-line) (line s s) (eof u "(end)") (failed e "(failed)")))
+           (b1 (code (read-byte)))
+           (b2 (code (read-byte)))
+           (k (keyed))
+           (ready (stdin-ready?))
+           (bv (the (bytevectorof @b) (make-bytevector 4 0)))
+           (none (read-bytes bv 0 0))
+           (rest (counted bv 0)))
+      (begin
+        (said line)
+        (said (string-append (int->string b1) (string-append " " (string-append (int->string b2) (string-append " " (int->string k))))))
+        (said (if ready "ready" "waiting"))
+        (said (tagcase none (count z (int->string z)) (else o "?")))
+        (said (terminal))
+        (said (int->string (code (read-byte))))
+        rest))))

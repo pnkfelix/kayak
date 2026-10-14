@@ -352,7 +352,7 @@
 (define io-kind? (subr kfx (string) bool)
   (lambda (k)
     "The `io` effects' kinds, a fixed family (C49)."
-    (string-member? k (list "stdin" "stdout" "stderr" "fs-read" "fs-write" "clock" "args" "exit"))))
+    (string-member? k (list "stdin" "stdout" "stderr" "fs-read" "fs-write" "clock" "args" "exit" "terminal"))))
 
 (define-rec
   (parse-effect (subr kfx (cv strings sexp) strings)

@@ -489,9 +489,11 @@ Stages 2 and 3 done (C95): editing, history, Tab; Fixpt's commands.
   told. What is left: the session's state is in refs at `@h`, which no
   process may write (only its place), so the front's state must move to
   its place, its procedures given it; the draft's early run uses the
-  engine, at `@h`, so it moves to the machine; keys, raw mode and the
-  terminal's size are the Rust's (FX-26 reads lines only), sent into the
-  front's mailbox.
+  engine, at `@h`, so it moves to the machine. Keys, raw mode and the
+  terminal's size are FX-26's now (C109), so the Rust driver may go
+  whole.
+- **The engine's I/O beside C109**: `read-byte`, `read-bytes`,
+  `stdin-ready?` and the terminal's are KFX's but not yet the engine's.
 - **From Fixpt 0a0e277 (C108), not yet in KFX:** `race` (cancellable
   branches; a failed one lost), the `sendable` kind; the engine's
   processes and monitors.

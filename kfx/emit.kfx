@@ -2559,8 +2559,8 @@
 
       (put-pselect (subr kfx (ctx sexp sexps i64 tail chars) chars)
         (lambda (c e arms n t acc)
-          "`(pselect (W x body ...) ...)` (C101): each arm's I-cell, mailbox or
-           deadline (C108) bound, `sel_k__`; `sync`, the number of the first
+          "`(pselect (W x body ...) ...)` (C101): each arm's I-cell, mailbox,
+           deadline (C108) or the standard input (C109) bound, `sel_k__`; `sync`, the number of the first
            ready; that arm's wait taken, which is ready, its value bound for
            its body."
           (let* ((n1 (i64+ n 1))
@@ -2570,10 +2570,10 @@
                  (acc (put-sep (lambda ((k i64) (acc chars))
                                  (let* ((w (items (car (items (sexp-at arms k)))))
                                         (deadline (sym-is? (car w) "sleep-until"))
-                                        (acc (put (string-append "let sel_" (string-append (i64->string k) "__ = ")) acc))
-                                        (acc (if deadline (put "&kayak_rt::process::Deadline(" acc) acc))
-                                        (acc (put-exp c (second w) n1 (value) acc)))
-                                   (put-nl n1 (put ";" (if deadline (put ")" acc) acc)))))
+                                        (acc (put (string-append "let sel_" (string-append (i64->string k) "__ = ")) acc)))
+                                   (put-nl n1 (put ";" (cond ((null? (cdr w)) (put "&kayak_rt::process::Stdin" acc))
+                                                             (deadline (put ")" (put-exp c (second w) n1 (value) (put "&kayak_rt::process::Deadline(" acc))))
+                                                             (else (put-exp c (second w) n1 (value) acc)))))))
                                "" ks acc))
                  (acc (put "match kayak_rt::process::sync(&[" acc))
                  (acc (put-sep (lambda ((k i64) (acc chars))

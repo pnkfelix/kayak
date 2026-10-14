@@ -1378,14 +1378,16 @@
 
     (define pselect-arm? (subr kfx (sexp) bool)
       (lambda (arm)
-        "`((icell-get c) x body ...)`, `((receive box) x body ...)` or
-         `((sleep-until t) x body ...)`, a deadline (C108)."
+        "`((icell-get c) x body ...)`, `((receive box) x body ...)`,
+         `((sleep-until t) x body ...)`, a deadline (C108), or `((read-byte) x
+         body ...)`, a key (C109)."
         (tagcase arm
           (lst (ys f l p)
             (and (i64>= (size ys) 3)
                  (tagcase (second ys) (sym (n f2 p2) #t) (else other #f))
                  (tagcase (car ys)
-                   (lst (ws f3 l3 p3) (and (i64= (size ws) 2) (or (sym-is? (car ws) "icell-get") (sym-is? (car ws) "receive") (sym-is? (car ws) "sleep-until"))))
+                   (lst (ws f3 l3 p3) (or (and (i64= (size ws) 2) (or (sym-is? (car ws) "icell-get") (sym-is? (car ws) "receive") (sym-is? (car ws) "sleep-until")))
+                                          (and (i64= (size ws) 1) (sym-is? (car ws) "read-byte"))))
                    (else other #f))))
           (else other #f))))
 
@@ -1770,13 +1772,13 @@
       (pselect-form (subr kfx (cv st sexps tys) res)
         (lambda (v s xs expected)
           "`(pselect (W x body ...) ...)`: waits until one arm's wait is ready,
-           an I-cell filled, a message come or a deadline passed, and runs
-           that arm, the first so in order; which are ready is the schedule's,
-           so `nondet`."
+           an I-cell filled, a message come, a deadline passed or a key
+           typed, and runs that arm, the first so in order; which are ready
+           is the schedule's, so `nondet`."
           (cond ((null? xs)
                  (refuse v "`(pselect ((icell-get i-cell) name body …) ((receive mailbox) name body …) …)`"))
                 ((any? (lambda ((a sexp)) (not (pselect-arm? a))) xs)
-                 (refuse v "a `pselect` arm is `((icell-get i-cell) name body …)`, `((receive mailbox) name body …)` or `((sleep-until time) name body …)`"))
+                 (refuse v "a `pselect` arm is `((icell-get i-cell) name body …)`, `((receive mailbox) name body …)`, `((sleep-until time) name body …)` or `((read-byte) name body …)`"))
                 (else (with-effs (pselect-arms v s xs expected) (list "nondet"))))))
 
       (synth-form (subr kfx (cv st sexp string sexps) res)

@@ -4515,8 +4515,8 @@ pub mod emitter {
         }
     }
 
-    /// `(pselect (W x body ...) ...)` (C101): each arm's I-cell, mailbox or
-    /// deadline (C108) bound, `sel_k__`; `sync`, the number of the first
+    /// `(pselect (W x body ...) ...)` (C101): each arm's I-cell, mailbox,
+    /// deadline (C108) or the standard input (C109) bound, `sel_k__`; `sync`, the number of the first
     /// ready; that arm's wait taken, which is ready, its value bound for
     /// its body.
     pub fn put_pselect(c: &'static Ctx, e: &'static Sexp, arms: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
@@ -4528,16 +4528,12 @@ pub mod emitter {
             let w = items(car(items(sexp_at(arms, k))));
             let deadline = sym_is_p(car(w), str_lit("sleep-until"));
             let acc = put(string_append(str_lit("let sel_"), string_append(i64_to_string(k), str_lit("__ = "))), acc);
-            let acc = if deadline {
-                put(str_lit("&kayak_rt::process::Deadline("), acc)
+            put_nl(n1, put(str_lit(";"), if null_p(cdr(w)) {
+                put(str_lit("&kayak_rt::process::Stdin"), acc)
+            } else if deadline {
+                put(str_lit(")"), put_exp(c, second(w), n1, value(), put(str_lit("&kayak_rt::process::Deadline("), acc)))
             } else {
-                acc
-            };
-            let acc = put_exp(c, second(w), n1, value(), acc);
-            put_nl(n1, put(str_lit(";"), if deadline {
-                put(str_lit(")"), acc)
-            } else {
-                acc
+                put_exp(c, second(w), n1, value(), acc)
             }))
         }), str_lit(""), ks, acc);
         let acc = put(str_lit("match kayak_rt::process::sync(&["), acc);

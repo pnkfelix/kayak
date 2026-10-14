@@ -13,7 +13,9 @@ use crate::{
     nil,
 };
 use std::cell::Cell;
-use std::io::{BufRead, Write};
+use std::collections::VecDeque;
+use std::io::{Read, Write};
+use std::sync::{Condvar, Mutex, MutexGuard, Once};
 use std::time::Instant;
 
 // The standard shapes, as `put-shape-decls` writes a program's.
@@ -36,6 +38,38 @@ pub enum Sum_4line_3eof_6failed<A0, A1, A2> {
     Eof(A1),
     Failed(A2),
 }
+
+#[allow(non_camel_case_types)]
+pub enum Sum_4byte_3eof_6failed<A0, A1, A2> {
+    Byte(A0),
+    Eof(A1),
+    Failed(A2),
+}
+
+#[allow(non_camel_case_types)]
+pub enum Sum_5count_3eof_6failed<A0, A1, A2> {
+    Count(A0),
+    Eof(A1),
+    Failed(A2),
+}
+
+#[allow(non_camel_case_types)]
+pub enum Sum_4done_14not_a_terminal_6failed<A0, A1, A2> {
+    Done(A0),
+    NotATerminal(A1),
+    Failed(A2),
+}
+
+#[allow(non_camel_case_types)]
+pub enum Sum_4size_14not_a_terminal_6failed<A0, A1, A2> {
+    Size(A0),
+    NotATerminal(A1),
+    Failed(A2),
+}
+
+#[allow(non_camel_case_types)]
+#[derive(Clone, Copy)]
+pub struct Product_4rows_7columns<A0, A1>(pub A0, pub A1);
 
 #[allow(non_camel_case_types)]
 pub enum Sum_4data_6failed<A0, A1> {
@@ -90,6 +124,10 @@ show_sum!(Sum_4text_3bad<A0, A1> { Text => "text", Bad => "bad" });
 show_sum!(Sum_4done_6failed<A0, A1> { Done => "done", Failed => "failed" });
 show_sum!(Sum_4line_3eof_6failed<A0, A1, A2> { Line => "line", Eof => "eof", Failed => "failed" });
 show_sum!(Sum_4data_6failed<A0, A1> { Data => "data", Failed => "failed" });
+show_sum!(Sum_4byte_3eof_6failed<A0, A1, A2> { Byte => "byte", Eof => "eof", Failed => "failed" });
+show_sum!(Sum_5count_3eof_6failed<A0, A1, A2> { Count => "count", Eof => "eof", Failed => "failed" });
+show_sum!(Sum_4done_14not_a_terminal_6failed<A0, A1, A2> { Done => "done", NotATerminal => "not-a-terminal", Failed => "failed" });
+show_sum!(Sum_4size_14not_a_terminal_6failed<A0, A1, A2> { Size => "size", NotATerminal => "not-a-terminal", Failed => "failed" });
 show_sum!(Sum_5names_6failed<A0, A1> { Names => "names", Failed => "failed" });
 show_sum!(Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<A0, A1, A2, A3, A4, A5, A6, A7> {
     NotFound => "not-found", PermissionDenied => "permission-denied", AlreadyExists => "already-exists",
@@ -98,6 +136,12 @@ show_sum!(Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_
 });
 
 impl<A0, A1> Show for Product_4kind_6detail<A0, A1> {
+    fn show(&self, out: &mut String) {
+        out.push_str("#<product of 2>");
+    }
+}
+
+impl<A0, A1> Show for Product_4rows_7columns<A0, A1> {
     fn show(&self, out: &mut String) {
         out.push_str("#<product of 2>");
     }
@@ -290,26 +334,260 @@ pub fn exit(n: Int) -> Void {
     std::process::exit((int_to_i64(n) & 0xff) as i32)
 }
 
+// The standard input (C109): one stream, read by a thread of its own into
+// a buffer, so that reads by lines and by bytes take from it alike, and
+// whether a read would wait is known without one (a `pselect`'s key arm).
+// Safe Rust has no read that does not wait, nor a poll: the thread is how.
+
+struct Input {
+    /// Read and not yet taken.
+    buf: VecDeque<u8>,
+    /// The input is at its end, or failed, once `buf` is taken.
+    ended: bool,
+    /// The failure the next read gives, once `buf` is taken.
+    error: Option<std::io::Error>,
+}
+
+static INPUT: Mutex<Input> = Mutex::new(Input {
+    buf: VecDeque::new(),
+    ended: false,
+    error: None,
+});
+static ARRIVED: Condvar = Condvar::new();
+static READER: Once = Once::new();
+
+fn input() -> MutexGuard<'static, Input> {
+    INPUT.lock().unwrap_or_else(|p| p.into_inner())
+}
+
+/// The reader's thread, started at the first read or question: each
+/// chunk as it comes, and the end; every waiter told.
+fn reading() {
+    READER.call_once(|| {
+        let started = std::thread::Builder::new()
+            .name("kayak-stdin".to_string())
+            .spawn(|| {
+                let mut stdin = std::io::stdin();
+                let mut chunk = [0u8; 4096];
+                loop {
+                    let r = stdin.read(&mut chunk);
+                    let mut i = input();
+                    match r {
+                        Ok(0) => i.ended = true,
+                        Ok(n) => i.buf.extend(&chunk[..n]),
+                        Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+                        Err(e) => {
+                            i.error = Some(e);
+                            i.ended = true;
+                        }
+                    }
+                    let ended = i.ended;
+                    drop(i);
+                    ARRIVED.notify_all();
+                    crate::process::input_changed();
+                    if ended {
+                        return;
+                    }
+                }
+            });
+        if let Err(e) = started {
+            let mut i = input();
+            i.error = Some(e);
+            i.ended = true;
+        }
+    });
+}
+
+/// The input once a read would not wait: a byte there, or the end.
+fn arrived() -> MutexGuard<'static, Input> {
+    reading();
+    let mut i = input();
+    while i.buf.is_empty() && !i.ended {
+        i = ARRIVED.wait(i).unwrap_or_else(|p| p.into_inner());
+    }
+    i
+}
+
+/// Whether a read of the standard input would not wait: a byte has come,
+/// or it is at its end.
+pub fn stdin_ready_p() -> bool {
+    reading();
+    let i = input();
+    !i.buf.is_empty() || i.ended
+}
+
 /// The next line, its ending (`\n` or `\r\n`) left off; a line not UTF-8
 /// an `invalid-data` failure, reading going on after it.
 pub fn read_line() -> &'static Sum_4line_3eof_6failed<Str, (), IoError> {
-    let mut buf = Vec::new();
-    heap_alloc(match std::io::stdin().lock().read_until(b'\n', &mut buf) {
-        Ok(0) => Sum_4line_3eof_6failed::Eof(()),
-        Ok(_) => {
-            if buf.last() == Some(&b'\n') {
-                buf.pop();
-                if buf.last() == Some(&b'\r') {
-                    buf.pop();
-                }
+    let mut line = Vec::new();
+    let mut i = arrived();
+    loop {
+        match i.buf.iter().position(|&b| b == b'\n') {
+            Some(k) => {
+                line.extend(i.buf.drain(..=k));
+                break;
             }
-            match String::from_utf8(buf) {
-                Ok(s) => Sum_4line_3eof_6failed::Line(leak_string(s)),
-                Err(_) => Sum_4line_3eof_6failed::Failed(invalid_data("a line not UTF-8")),
+            None => {
+                line.extend(i.buf.drain(..));
+                if i.ended {
+                    break;
+                }
+                drop(i);
+                i = arrived();
             }
         }
-        Err(e) => Sum_4line_3eof_6failed::Failed(io_error(&e)),
+    }
+    if line.is_empty() {
+        return heap_alloc(match i.error.take() {
+            Some(e) => Sum_4line_3eof_6failed::Failed(io_error(&e)),
+            None => Sum_4line_3eof_6failed::Eof(()),
+        });
+    }
+    drop(i);
+    if line.last() == Some(&b'\n') {
+        line.pop();
+        if line.last() == Some(&b'\r') {
+            line.pop();
+        }
+    }
+    heap_alloc(match String::from_utf8(line) {
+        Ok(s) => Sum_4line_3eof_6failed::Line(leak_string(s)),
+        Err(_) => Sum_4line_3eof_6failed::Failed(invalid_data("a line not UTF-8")),
     })
+}
+
+/// The next byte, waiting for one; `eof` at the end.
+pub fn read_byte() -> &'static Sum_4byte_3eof_6failed<u8, (), IoError> {
+    let mut i = arrived();
+    heap_alloc(match i.buf.pop_front() {
+        Some(b) => Sum_4byte_3eof_6failed::Byte(b),
+        None => match i.error.take() {
+            Some(e) => Sum_4byte_3eof_6failed::Failed(io_error(&e)),
+            None => Sum_4byte_3eof_6failed::Eof(()),
+        },
+    })
+}
+
+/// `(read-bytes bv start end)`: waits for one byte, then takes as many as
+/// have come, at most `end - start`, into `bv` from `start`; how many, or
+/// `eof`. None asked for, 0 at once.
+pub fn read_bytes(
+    bv: Bytes,
+    start: Int,
+    end: Int,
+) -> &'static Sum_5count_3eof_6failed<Int, (), IoError> {
+    let (s, e) = span(bv, start, end, "read-bytes: a span that does not fit");
+    if s == e {
+        return heap_alloc(Sum_5count_3eof_6failed::Count(i64_to_int(0)));
+    }
+    let mut i = arrived();
+    if i.buf.is_empty() {
+        return heap_alloc(match i.error.take() {
+            Some(e) => Sum_5count_3eof_6failed::Failed(io_error(&e)),
+            None => Sum_5count_3eof_6failed::Eof(()),
+        });
+    }
+    let k = i.buf.len().min(e - s);
+    for (cell, b) in bv.0[s..s + k].iter().zip(i.buf.drain(..k)) {
+        cell.set(b);
+    }
+    heap_alloc(Sum_5count_3eof_6failed::Count(i64_to_int(k as i64)))
+}
+
+// The terminal (C109), by `stty`, as kayak-fx26's REPL set it before: safe
+// Rust has no `tcsetattr`. Raw mode as Fixpt's: no echo, no line editing,
+// each key as it comes, ^C, ^Z and ^\ keys, no flow control, a return not
+// made a newline; output as before.
+
+/// The modes before raw mode was first asked for, to put back.
+static SAVED: Mutex<Option<String>> = Mutex::new(None);
+
+/// `stty` with `args`, on the standard input: what it says; none if the
+/// standard input is no terminal.
+fn stty(args: &[&str]) -> Option<std::io::Result<String>> {
+    use std::io::IsTerminal;
+    if !std::io::stdin().is_terminal() {
+        return None;
+    }
+    Some(
+        std::process::Command::new("stty")
+            .args(args)
+            .stdin(std::process::Stdio::inherit())
+            .stderr(std::process::Stdio::piped())
+            .output()
+            .and_then(|o| {
+                if o.status.success() {
+                    Ok(String::from_utf8_lossy(&o.stdout).trim().to_string())
+                } else {
+                    Err(std::io::Error::other(
+                        String::from_utf8_lossy(&o.stderr).trim().to_string(),
+                    ))
+                }
+            }),
+    )
+}
+
+fn moded(
+    r: Option<std::io::Result<String>>,
+) -> &'static Sum_4done_14not_a_terminal_6failed<(), (), IoError> {
+    heap_alloc(match r {
+        None => Sum_4done_14not_a_terminal_6failed::NotATerminal(()),
+        Some(Ok(_)) => Sum_4done_14not_a_terminal_6failed::Done(()),
+        Some(Err(e)) => Sum_4done_14not_a_terminal_6failed::Failed(io_error(&e)),
+    })
+}
+
+/// The terminal in raw mode, its modes before saved the first time.
+pub fn terminal_raw() -> &'static Sum_4done_14not_a_terminal_6failed<(), (), IoError> {
+    let mut saved = SAVED.lock().unwrap_or_else(|p| p.into_inner());
+    if saved.is_none() {
+        match stty(&["-g"]) {
+            Some(Ok(modes)) => *saved = Some(modes),
+            other => return moded(other),
+        }
+    }
+    moded(stty(&[
+        "-echo", "-icanon", "-iexten", "-isig", "-ixon", "-icrnl", "-brkint", "-inpck", "-istrip",
+        "cs8", "min", "1", "time", "0",
+    ]))
+}
+
+/// The terminal's modes as before raw mode, if it was asked for.
+pub fn terminal_restore() -> &'static Sum_4done_14not_a_terminal_6failed<(), (), IoError> {
+    let saved = SAVED.lock().unwrap_or_else(|p| p.into_inner()).take();
+    match saved {
+        Some(modes) => moded(stty(&[modes.as_str()])),
+        None => moded(stty(&["-g"])),
+    }
+}
+
+/// The terminal's rows and columns.
+pub fn terminal_size()
+-> &'static Sum_4size_14not_a_terminal_6failed<Product_4rows_7columns<Int, Int>, (), IoError> {
+    heap_alloc(match stty(&["size"]) {
+        None => Sum_4size_14not_a_terminal_6failed::NotATerminal(()),
+        Some(Err(e)) => Sum_4size_14not_a_terminal_6failed::Failed(io_error(&e)),
+        Some(Ok(s)) => {
+            let ws: Vec<i64> = s
+                .split_whitespace()
+                .filter_map(|w| w.parse().ok())
+                .collect();
+            match ws[..] {
+                [rows, columns] => Sum_4size_14not_a_terminal_6failed::Size(
+                    Product_4rows_7columns(i64_to_int(rows), i64_to_int(columns)),
+                ),
+                _ => Sum_4size_14not_a_terminal_6failed::Failed(invalid_data(
+                    "stty size: no rows and columns",
+                )),
+            }
+        }
+    })
+}
+
+/// The terminal put back as the run found it, when the run ends, failed or
+/// not, as `fixpt` does: for a program's driver to call.
+pub fn finish() {
+    let _ = terminal_restore();
 }
 
 static START: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();

@@ -2454,3 +2454,32 @@ preemption. The pin moves there; KFX takes what the REPL needs:
   that fail by `error` and by a trap, a `par` failing once and twice, one
   message, a deadline, `self`); eight refused programs. kfx accepts 164 of
   Fixpt's programs, all agreeing, and refuses all 294 Fixpt refuses.
+
+## C109. Bytes from the standard input, a key in `pselect`, terminal modes; the pin at Fixpt 09acf16 (2026-10-14)
+
+Fixpt built these at kayak's request (its `TODO.md` §95), so that a
+front end that edits a line as it is typed is an FX-26 program:
+- **The primitives**, FX-26's types: `read-byte`, `read-bytes` (into a
+  bytevector's span, `(write r)`), `stdin-ready?`, all `(io stdin)`;
+  `terminal-raw`, `terminal-restore`, `terminal-size`, of a new kind,
+  `(io terminal)`, each `not-a-terminal` when the input is none. Their
+  sums and the size's product are kayak-rt's standard shapes.
+- **`pselect`'s `((read-byte) b body ...)` arm**: ready once a read would
+  not wait, its body given what `read-byte` gives. A waiter on it, like
+  one on a deadline, keeps a wait of the program's from being a deadlock.
+- **One stream in kayak-rt**: a thread of its own reads the standard
+  input into a buffer, from which `read-line`, `read-byte` and
+  `read-bytes` all take, and which tells the scheduler as bytes come.
+  Fixpt polls the descriptor (`libc::poll`); safe Rust has no poll, nor a
+  read that does not wait, and K4 keeps `unsafe` out of kayak-rt, so the
+  thread is how a `pselect` knows a read would not wait.
+- **Raw mode by `stty`**, on the standard input, as kayak-fx26's driver
+  set it (C103), with Fixpt's flags; the modes before saved by `stty -g`
+  and put back by `terminal-restore`, and by `kayak_rt::finish` at the
+  run's end, which `kfx-io` calls, failed or not, as `fixpt` restores the
+  terminal. `stty size` for the size. No `unsafe`, no new dependency.
+- `tests/kfx-io/keys.kfx`: a line, bytes, a span, `stdin-ready?`, a key
+  waited for by a process beside its mailbox, the terminal from a pipe;
+  Fixpt's answers. On a pseudo-terminal (`script`), raw mode gives each
+  key as typed, ^C as 3, and restores. kfx accepts 167 of Fixpt's
+  programs, all agreeing, and refuses all 296 Fixpt refuses.

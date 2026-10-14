@@ -783,7 +783,7 @@ pub mod writing {
     /// A shape kayak-rt declares, as the program's would be (`world.rs`): what
     /// FX-26's I/O and bytes primitives answer with (C49).
     pub fn standard_shape_p(key: Str) -> bool {
-        string_member_p(key, kayak_rt::heap_cons(str_lit("S text bad"), kayak_rt::heap_cons(str_lit("S done failed"), kayak_rt::heap_cons(str_lit("S line eof failed"), kayak_rt::heap_cons(str_lit("S data failed"), kayak_rt::heap_cons(str_lit("S names failed"), kayak_rt::heap_cons(str_lit("P kind detail"), kayak_rt::heap_cons(str_lit("S not-found permission-denied already-exists not-a-directory is-a-directory broken-pipe invalid-data other"), kayak_rt::nil()))))))))
+        string_member_p(key, kayak_rt::heap_cons(str_lit("S text bad"), kayak_rt::heap_cons(str_lit("S done failed"), kayak_rt::heap_cons(str_lit("S line eof failed"), kayak_rt::heap_cons(str_lit("S data failed"), kayak_rt::heap_cons(str_lit("S names failed"), kayak_rt::heap_cons(str_lit("P kind detail"), kayak_rt::heap_cons(str_lit("S byte eof failed"), kayak_rt::heap_cons(str_lit("S count eof failed"), kayak_rt::heap_cons(str_lit("S done not-a-terminal failed"), kayak_rt::heap_cons(str_lit("S size not-a-terminal failed"), kayak_rt::heap_cons(str_lit("P rows columns"), kayak_rt::heap_cons(str_lit("S not-found permission-denied already-exists not-a-directory is-a-directory broken-pipe invalid-data other"), kayak_rt::nil())))))))))))))
     }
 
     /// The key of the shape `e` writes, if it writes one.

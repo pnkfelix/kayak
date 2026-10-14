@@ -18,8 +18,11 @@ pub fn status(main: fn() -> Int) -> i32 {
         };
         eprintln!("{message}");
     }));
-    match std::panic::catch_unwind(main) {
+    let status = match std::panic::catch_unwind(main) {
         Ok(n) => (int_to_i64(n) & 0xff) as i32,
         Err(_) => 70,
-    }
+    };
+    // The terminal as the run found it, as `fixpt` leaves it (C109).
+    kayak_rt::finish();
+    status
 }

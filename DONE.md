@@ -1283,3 +1283,12 @@ failure the watcher's message and the rest cancelled. `race` and
 `spawn-monitored` heads refused as forms, as FX-26 parses them.
 `tests/kfx/monitors.kfx`; kfx accepts 164 of Fixpt's programs, all
 agreeing.
+
+## Keys and the terminal in KFX (2026-10-14)
+
+C109: the pin at Fixpt 09acf16. `read-byte`, `read-bytes`,
+`stdin-ready?`, `pselect`'s key arm, and `terminal-raw`,
+`terminal-restore` and `terminal-size` (`(io terminal)`), in safe Rust: a
+reader thread for the one stream, `stty` for the modes.
+`tests/kfx-io/keys.kfx`; kfx accepts 167 of Fixpt's programs, all
+agreeing.

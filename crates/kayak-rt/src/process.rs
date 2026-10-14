@@ -170,12 +170,14 @@ fn changed(mut g: MutexGuard<'static, Sched>) {
 
 /// Waits until `ready` gives a value, looking again after each change, and
 /// at `deadline` (on the `clock`), if there is one; a wait of the
-/// program's when no task can run, none waits for a deadline, and every
-/// waiter has looked since the last change, so none can, fails with
-/// `deadlock`. A task of a group that failed is cancelled here.
+/// program's when no task can run, none waits for a deadline or for what
+/// comes from outside (`outside`, the standard input), and every waiter
+/// has looked since the last change, so none can, fails with `deadlock`. A
+/// task of a group that failed is cancelled here.
 fn wait_until<R>(
     program: bool,
     deadline: Option<i64>,
+    outside: bool,
     mut ready: impl FnMut() -> Option<R>,
     deadlock: &str,
 ) -> R {
@@ -187,7 +189,7 @@ fn wait_until<R>(
             return r;
         }
         let seen = g.epoch;
-        let timed = usize::from(deadline.is_some());
+        let timed = usize::from(deadline.is_some() || outside);
         g.running -= 1;
         g.waiting += 1;
         g.timed += timed;
@@ -271,6 +273,7 @@ pub fn icell_get<T: Copy>(c: ICell<T>) -> T {
     wait_until(
         program(),
         None,
+        false,
         || *held(&c.value),
         "an i-cell read before it was written, and no task is left to write it: a deadlock",
     )
@@ -300,6 +303,7 @@ pub fn receive<M>(b: Inbox<M>) -> M {
     wait_until(
         program(),
         None,
+        false,
         || held(&b.queue).pop_front(),
         "a message no task is left to send: a deadlock",
     )
@@ -319,6 +323,37 @@ pub trait Waitable {
     fn deadline(&self) -> Option<i64> {
         None
     }
+    /// Whether what makes it ready comes from outside the program (the
+    /// standard input), so that waiting for it is no deadlock.
+    fn outside(&self) -> bool {
+        false
+    }
+}
+
+/// `pselect`'s `(read-byte)` arm (C109): a key, ready once a read of the
+/// standard input would not wait.
+pub struct Stdin;
+
+impl Waitable for Stdin {
+    fn ready(&self) -> bool {
+        crate::world::stdin_ready_p()
+    }
+    fn outside(&self) -> bool {
+        true
+    }
+}
+
+/// A key arm's value, once chosen: what `read-byte` gives, which does not
+/// wait.
+pub fn read_byte(
+    _: &Stdin,
+) -> &'static crate::world::Sum_4byte_3eof_6failed<u8, (), crate::world::IoError> {
+    crate::world::read_byte()
+}
+
+/// The standard input has more, or has ended: every waiter looks again.
+pub(crate) fn input_changed() {
+    changed(lock())
 }
 
 /// `pselect`'s `(sleep-until t)` arm (C108): a time on the `clock`.
@@ -356,6 +391,7 @@ pub fn sync(events: &[&dyn Waitable]) -> usize {
     wait_until(
         program(),
         events.iter().filter_map(|e| e.deadline()).min(),
+        events.iter().any(|e| e.outside()),
         || events.iter().position(|e| e.ready()),
         "a `pselect` whose events no task is left to make ready: a deadlock",
     )
