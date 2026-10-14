@@ -23,8 +23,8 @@ pub fn node(f0: &'static Tree, f1: &'static Tree) -> &'static Tree {
 
 // Over a list at `acyclic`: its `cdr` is smaller.
 pub fn len(xs: Ints) -> Int {
-    let go__knot = knot::<&'static dyn Fn(Ints, Int) -> Int>();
-    let go = lambda2(move |mut xs: Ints, mut n: Int| {
+    let go__knot = knot::<&'static (dyn Fn(Ints, Int) -> Int + Send + Sync)>();
+    let go = lambda2s(move |mut xs: Ints, mut n: Int| {
         loop {
             if null_p(xs) {
                 return n;
@@ -40,8 +40,8 @@ pub fn len(xs: Ints) -> Int {
 
 // Down to a bound below, and up to one above that every call passes on.
 pub fn count(n: Int) -> Int {
-    let c__knot = knot::<&'static dyn Fn(Int) -> Int>();
-    let c = lambda1(move |n: Int| {
+    let c__knot = knot::<&'static (dyn Fn(Int) -> Int + Send + Sync)>();
+    let c = lambda1s(move |n: Int| {
         if _gt(n, int_lit(0)) {
             _plus(int_lit(1), (c__knot.get())(_minus(n, int_lit(1))))
         } else {
@@ -53,8 +53,8 @@ pub fn count(n: Int) -> Int {
 }
 
 pub fn sum_to(top: Int) -> Int {
-    let up__knot = knot::<&'static dyn Fn(Int, Int, Int) -> Int>();
-    let up = lambda3(move |mut i: Int, mut n: Int, mut acc: Int| {
+    let up__knot = knot::<&'static (dyn Fn(Int, Int, Int) -> Int + Send + Sync)>();
+    let up = lambda3s(move |mut i: Int, mut n: Int, mut acc: Int| {
         loop {
             if _lt(i, n) {
                 (i, acc) = (_plus(i, int_lit(1)), _plus(acc, i));
@@ -70,8 +70,8 @@ pub fn sum_to(top: Int) -> Int {
 
 // A tree, by its arms' fields; and Ackermann's function, by two measures.
 pub fn total(t: &'static Tree) -> Int {
-    let walk__knot = knot::<&'static dyn Fn(&'static Tree) -> Int>();
-    let walk = lambda1(move |t: &'static Tree| {
+    let walk__knot = knot::<&'static (dyn Fn(&'static Tree) -> Int + Send + Sync)>();
+    let walk = lambda1s(move |t: &'static Tree| {
         let tagcase_ = t;
         match *tagcase_ {
             Tree::Leaf(n) => {
@@ -87,8 +87,8 @@ pub fn total(t: &'static Tree) -> Int {
 }
 
 pub fn ack(m: Int, n: Int) -> Int {
-    let a__knot = knot::<&'static dyn Fn(Int, Int) -> Int>();
-    let a = lambda2(move |mut m: Int, mut n: Int| {
+    let a__knot = knot::<&'static (dyn Fn(Int, Int) -> Int + Send + Sync)>();
+    let a = lambda2s(move |mut m: Int, mut n: Int| {
         loop {
             if _lt_eq(m, int_lit(0)) {
                 return _plus(n, int_lit(1));
@@ -108,9 +108,9 @@ pub fn ack(m: Int, n: Int) -> Int {
 // A procedure given, called: pure, as its type says, since no procedure is
 // in what it takes or gives (FX-26 says `spin` only for a type recursive
 // through a parameter).
-pub fn map_pure<A: Copy + 'static, B: Copy + 'static>(f: &'static dyn Fn(A) -> B, xs: List<A>) -> List<B> {
-    let go__knot = knot::<&'static dyn Fn(List<A>) -> List<B>>();
-    let go = lambda1(move |ys: List<A>| {
+pub fn map_pure<A: Copy + 'static, B: Copy + 'static>(f: &'static (dyn Fn(A) -> B + Send + Sync), xs: List<A>) -> List<B> {
+    let go__knot = knot::<&'static (dyn Fn(List<A>) -> List<B> + Send + Sync)>();
+    let go = lambda1s(move |ys: List<A>| {
         if null_p(ys) {
             nil::<B>()
         } else {
@@ -143,7 +143,7 @@ pub fn main() -> Str {
         str_lit("even")
     } else {
         str_lit("odd")
-    }, string_append(str_lit(" "), int_to_string(len(map_pure(lambda1(move |x: i64| {
+    }, string_append(str_lit(" "), int_to_string(len(map_pure(lambda1s(move |x: i64| {
         i64_star(x, 2i64)
     }), kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::heap_cons(4i64, kayak_rt::nil())))))))))))))))))))
 }

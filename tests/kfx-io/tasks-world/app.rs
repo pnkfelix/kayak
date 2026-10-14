@@ -13,13 +13,13 @@ use super::*;
 pub type Wl = Product_4loop_5filed_5steps<Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, Ref<List<Product_2op_5reply<Op, Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, Answer>>>>>, Ref<i64>>;
 
 pub async fn say_x(lp: Wl, s: Str) -> Result<(), Unwind> {
-    kayak_rt::suspend::body((&perform_in_x)(lp, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::Write(s)))).await?;
+    kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_in_x(a__0, a__1))))(lp, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::Write(s)))).await?;
     Ok(())
 }
 
 pub async fn echo_x(mut lp: Wl, mut n: i64) -> Result<i64, Unwind> {
     loop {
-        let tagcase_ = kayak_rt::suspend::body((&perform_in_x)(lp, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::ReadLine(())))).await?;
+        let tagcase_ = kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_in_x(a__0, a__1))))(lp, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::ReadLine(())))).await?;
         match *tagcase_ {
             Sum_4line_3eof_4done_4time_4text_6failed::Line(s) => {
                 kayak_rt::suspend::body(say_x(lp, string_append(str_lit("echo "), string_append(s, str_lit("\n"))))).await?;
@@ -40,7 +40,7 @@ pub async fn count_x(mut lp: Wl, mut k: i64) -> Result<(), Unwind> {
             return Ok(());
         } else {
             kayak_rt::suspend::body(say_x(lp, string_append(str_lit("count "), string_append(i64_to_string(k), str_lit("\n"))))).await?;
-            kayak_rt::suspend::body((&yield_x)(lp.0)).await?;
+            kayak_rt::suspend::body((lambda1(move |a__0| kayak_rt::suspend::body(yield_x(a__0))))(lp.0)).await?;
             k = i64_plus(k, 1i64);
             continue;
         }
@@ -50,13 +50,13 @@ pub async fn count_x(mut lp: Wl, mut k: i64) -> Result<(), Unwind> {
 // The two tasks, run with `answer` answering; the lines read.
 pub async fn run_both(answer: &'static dyn Fn(i64, Op) -> kayak_rt::suspend::Body<Answer>) -> Result<i64, Unwind> {
     let (lp, lines) = (the::<Wl>((&make_world_loop)()), the::<Ref<i64>>(kayak_rt::heap_new(0i64)));
-    kayak_rt::suspend::body((&spawn_x)(lp.0, lambda0(move || kayak_rt::suspend::body(async move {
+    kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(spawn_x(a__0, a__1))))(lp.0, lambda0(move || kayak_rt::suspend::body(async move {
         Ok(set(lines, kayak_rt::suspend::body(echo_x(lp, 0i64)).await?))
     })))).await?;
-    kayak_rt::suspend::body((&spawn_x)(lp.0, lambda0(move || kayak_rt::suspend::body(async move {
+    kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(spawn_x(a__0, a__1))))(lp.0, lambda0(move || kayak_rt::suspend::body(async move {
         Ok(kayak_rt::suspend::body(count_x(lp, 1i64)).await?)
     })))).await?;
-    kayak_rt::suspend::body((&run_world_x)(lp, answer)).await?;
+    kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(run_world_x(a__0, a__1))))(lp, answer)).await?;
     Ok(get(lines))
 }
 

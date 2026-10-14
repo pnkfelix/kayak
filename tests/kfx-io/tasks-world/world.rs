@@ -28,7 +28,7 @@ pub fn make_world_loop() -> Product_4loop_5filed_5steps<Product_3tag_5ready_8sle
 pub async fn perform_in_x(wl: Product_4loop_5filed_5steps<Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, Ref<List<Product_2op_5reply<Op, Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, Answer>>>>>, Ref<i64>>, o: Op) -> Result<Answer, Unwind> {
     let iv = the::<Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, Answer>>>((&make_ivar)(wl.0));
     set(wl.1, kayak_rt::heap_cons(Product_2op_5reply(o, iv), get(wl.1)));
-    Ok(kayak_rt::suspend::body((&ivar_get_x)(wl.0, iv)).await?)
+    Ok(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(ivar_get_x(a__0, a__1))))(wl.0, iv)).await?)
 }
 
 pub fn reverse_filed(xs: List<Product_2op_5reply<Op, Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, Answer>>>>, acc: List<Product_2op_5reply<Op, Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, Answer>>>>) -> List<Product_2op_5reply<Op, Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, Answer>>>> {
@@ -48,21 +48,21 @@ pub async fn answer_all_x(wl: Product_4loop_5filed_5steps<Product_3tag_5ready_8s
         let n = get(wl.2);
         set(wl.2, i64_plus(n, 1i64));
         (&ivar_put_x)(wl.0, f.1, kayak_rt::suspend::body(answer(n, f.0)).await?);
-        Ok(kayak_rt::suspend::body((&answer_all_x)(wl, answer, cdr(fs))).await?)
+        Ok(kayak_rt::suspend::body((lambda3(move |a__0, a__1, a__2| kayak_rt::suspend::body(answer_all_x(a__0, a__1, a__2))))(wl, answer, cdr(fs))).await?)
     }
 }
 
 // Run the tasks until none is left, the world answering by `answer`.
 pub async fn run_world_x(wl: Product_4loop_5filed_5steps<Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, Ref<List<Product_2op_5reply<Op, Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, Answer>>>>>, Ref<i64>>, answer: &'static dyn Fn(i64, Op) -> kayak_rt::suspend::Body<Answer>) -> Result<(), Unwind> {
-    kayak_rt::suspend::body((&run_ready_x)(wl.0)).await?;
+    kayak_rt::suspend::body((lambda1(move |a__0| kayak_rt::suspend::body(run_ready_x(a__0))))(wl.0)).await?;
     let fs = get(wl.1);
     if not(null_p(fs)) {
         set(wl.1, nil::<Product_2op_5reply<&'static Sum_9read_line_5write_5clock_9read_file_10write_file<(), Str, (), Str, Product_4path_4text<Str, Str>>, Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, &'static Sum_4line_3eof_4done_4time_4text_6failed<Str, (), (), i64, Str, Str>>>>>());
-        kayak_rt::suspend::body((&answer_all_x)(wl, answer, (&reverse_filed)(fs, nil::<Product_2op_5reply<&'static Sum_9read_line_5write_5clock_9read_file_10write_file<(), Str, (), Str, Product_4path_4text<Str, Str>>, Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, &'static Sum_4line_3eof_4done_4time_4text_6failed<Str, (), (), i64, Str, Str>>>>>()))).await?;
-        Ok(kayak_rt::suspend::body((&run_world_x)(wl, answer)).await?)
+        kayak_rt::suspend::body((lambda3(move |a__0, a__1, a__2| kayak_rt::suspend::body(answer_all_x(a__0, a__1, a__2))))(wl, answer, (&reverse_filed)(fs, nil::<Product_2op_5reply<&'static Sum_9read_line_5write_5clock_9read_file_10write_file<(), Str, (), Str, Product_4path_4text<Str, Str>>, Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, &'static Sum_4line_3eof_4done_4time_4text_6failed<Str, (), (), i64, Str, Str>>>>>()))).await?;
+        Ok(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(run_world_x(a__0, a__1))))(wl, answer)).await?)
     } else if (&sleeping_p)(wl.0) {
         (&wake_first_x)(wl.0);
-        Ok(kayak_rt::suspend::body((&run_world_x)(wl, answer)).await?)
+        Ok(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(run_world_x(a__0, a__1))))(wl, answer)).await?)
     } else {
         Ok(())
     }

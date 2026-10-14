@@ -48,7 +48,7 @@ pub fn checked_memo(f0: &'static Cv, f1: Typeds, f2: Memos) -> &'static CheckedM
 pub mod incremental {
     use super::*;
 
-    use super::emitter::{fallible_effect_p, suspending_effect_p, fact_at_p, concat_strings, reverse_strings, split_words, shape_name, ctx_locals, module_body, include_except_names, module_items, type_head_name, item_values, item_constants, item_types, module_here, ctx_typed, with_locals, head_region_params, head_place_params, head_type_params, put_generics_of, collect, type_path, places_used, words_of_sep, all_facts_prefixed, uses_blobrefs_p, family_expanded, put_type, put_flat, expand_aliases, owner_key, typed_flat, has_sum_p, effect_lifetime, atoms_in, element_lifetime, put_fields_tuple, region_arguments, place_arguments, used_place_arguments, type_arguments, put_types, put_nl, put_comment, comment_p, comment_text, hide, put_arg_names, tail_calls_p, arms_tail_calls_p, tag_arms_tail_calls_p, distinct_strings, put_exp, put_call, put_continue, put_joined, put_stmts, put_block, put_typecase_arms, put_cond, put_let1, put_let_star, put_binding_values, put_binding_names, put_let, put_case_arms, put_tagcase_arms, put_fields_of, put_tagcase, put_flat_tagcase, put_flat_arms, put_quasi, put_quasi_tagged, put_quasi_items, put_lambda, put_lambda_params, put_letrec, letrec_loops_p, put_looping_lambda, put_list, put_form, put_args, put_letrena, put_letrena_params, held_at, held_rust, held_type, put_prompt, put_suspending_prompt, put_handler_call, put_suspension, put_question, head_sym_p};
+    use super::emitter::{fallible_effect_p, crossing_effect_p, suspending_effect_p, fact_at_p, concat_strings, reverse_strings, split_words, shape_name, ctx_locals, module_body, include_except_names, module_items, type_head_name, item_values, item_constants, item_types, module_here, ctx_typed, with_locals, head_region_params, head_place_params, head_type_params, put_generics_of, collect, type_path, places_used, words_of_sep, all_facts_prefixed, uses_blobrefs_p, family_expanded, put_type, put_flat, expand_aliases, owner_key, typed_flat, has_sum_p, effect_lifetime, atoms_in, element_lifetime, put_fields_tuple, region_arguments, place_arguments, used_place_arguments, type_arguments, put_types, put_nl, put_comment, comment_p, comment_text, hide, put_arg_names, tail_calls_p, arms_tail_calls_p, tag_arms_tail_calls_p, distinct_strings, put_exp, put_call, put_continue, put_joined, put_stmts, put_block, put_typecase_arms, put_cond, put_let1, put_let_star, put_binding_values, put_binding_names, put_let, put_case_arms, put_tagcase_arms, put_fields_of, put_tagcase, put_flat_tagcase, put_flat_arms, put_quasi, put_quasi_tagged, put_quasi_items, put_lambda, put_lambda_params, put_letrec, letrec_loops_p, put_looping_lambda, put_list, put_form, put_args, put_letrena, put_letrena_params, held_at, held_rust, held_type, put_prompt, put_suspending_prompt, put_handler_call, put_suspension, put_question, head_sym_p};
 
     use super::writing::{made_here_p, put_module_impls, definition_p, put_shapes, put_show_generatives, put_top, types_once, put_module, module_parts, put_module_around, put_tops, put_toplevel};
 
@@ -115,11 +115,11 @@ pub mod incremental {
                 })), kayak_rt::nil()))
             }
         } else if head_is_p(f, str_lit("define-rec")) {
-            map(lambda1(move |b: &'static Sexp| {
+            map(lambda1s(move |b: &'static Sexp| {
                 string_append(show_sexp(car(items(b))), show_sexp(second(items(b))))
             }), cdr(xs))
         } else if head_is_p(f, str_lit("hide")) {
-            map(lambda1(move |x: Str| {
+            map(lambda1s(move |x: Str| {
                 string_append(str_lit("hidden "), x)
             }), concat(map(&item_signature, cdr(xs))))
         } else if {
@@ -674,7 +674,7 @@ pub mod incremental {
 
     /// What of a form's change the chain goes on with.
     pub fn forward_text(bs: Binds, es: Effdefs, here: Str, group: Strings, tv: Strings, fs: Facts) -> Str {
-        concat_strings(kayak_rt::heap_cons(words_of(map(&bind_code, bs)), kayak_rt::heap_cons(str_lit("|"), kayak_rt::heap_cons(words_of(map(&effdef_code, es)), kayak_rt::heap_cons(str_lit("|"), kayak_rt::heap_cons(where_text(here, group, tv), kayak_rt::heap_cons(str_lit("|"), kayak_rt::heap_cons(words_of(concat(map(lambda1(move |x: &'static Fact| {
+        concat_strings(kayak_rt::heap_cons(words_of(map(&bind_code, bs)), kayak_rt::heap_cons(str_lit("|"), kayak_rt::heap_cons(words_of(map(&effdef_code, es)), kayak_rt::heap_cons(str_lit("|"), kayak_rt::heap_cons(where_text(here, group, tv), kayak_rt::heap_cons(str_lit("|"), kayak_rt::heap_cons(words_of(concat(map(lambda1s(move |x: &'static Fact| {
             let tagcase_ = x;
             match *tagcase_ {
                 Fact::Fact(ff, p, w) => {
@@ -695,7 +695,7 @@ pub mod incremental {
         let tagcase_ = after;
         match *tagcase_ {
             Cv::Cv(bs, ds, als, es, here, group, f, line, fs, tv, at) => {
-                forward_text(leading(bs, i64_minus(size(bs), size(cv_binds(before)))), leading(es, i64_minus(size(es), size(cv_effdefs(before)))), here, group, tv, concat(map(lambda1(move |x: &'static Fact| {
+                forward_text(leading(bs, i64_minus(size(bs), size(cv_binds(before)))), leading(es, i64_minus(size(es), size(cv_effdefs(before)))), here, group, tv, concat(map(lambda1s(move |x: &'static Fact| {
                     if interface_fact_p(x) {
                         the::<Facts>(kayak_rt::heap_cons(x, kayak_rt::nil()))
                     } else {
@@ -713,7 +713,7 @@ pub mod incremental {
                 let new_binds = leading(bs, i64_minus(size(bs), size(cv_binds(before))));
                 let new_effs = leading(es, i64_minus(size(es), size(cv_effdefs(before))));
                 let new_facts = leading(fs, i64_minus(size(fs), size(cv_facts(before))));
-                change(concat_strings(kayak_rt::heap_cons(str_lit("(("), kayak_rt::heap_cons(words_of(map(&bind_code, new_binds)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(&effdef_code, new_effs)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(lambda1(move |x: &'static Fact| {
+                change(concat_strings(kayak_rt::heap_cons(str_lit("(("), kayak_rt::heap_cons(words_of(map(&bind_code, new_binds)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(&effdef_code, new_effs)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(lambda1s(move |x: &'static Fact| {
                     fact_code(file, start, x)
                 }), new_facts)), kayak_rt::heap_cons(str_lit(") ("), kayak_rt::heap_cons(words_of(map(&typed_code, found)), kayak_rt::heap_cons(str_lit(") "), kayak_rt::heap_cons(where_text(here, group, tv), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(quoted(f), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(line), kayak_rt::heap_cons(str_lit(" "), kayak_rt::heap_cons(i64_to_string(at), kayak_rt::heap_cons(str_lit(")"), kayak_rt::nil())))))))))))))))))), forward_text(new_binds, new_effs, here, group, tv, new_facts))
             }
@@ -733,7 +733,7 @@ pub mod incremental {
         let parts = items(car(read_all(string_chars(text), str_lit(""), 1i64)));
         let new_binds = map(&code_bind, items(car(parts)));
         let new_effs = map(&code_effdef, items(second(parts)));
-        let new_facts = map(lambda1(move |e: &'static Sexp| {
+        let new_facts = map(lambda1s(move |e: &'static Sexp| {
             code_fact(file, start, e)
         }), items(third(parts)));
         let found = map(&code_typed, items(fourth(parts)));
@@ -757,11 +757,11 @@ pub mod incremental {
         let tagcase_ = v;
         match *tagcase_ {
             Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-                fnv_strings(concat(kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("binds"), map(&bind_code, bs)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("datatypes"), map(lambda1(move |d: &'static Dt| {
+                fnv_strings(concat(kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("binds"), map(&bind_code, bs)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("datatypes"), map(lambda1s(move |d: &'static Dt| {
                     let tagcase_ = d;
                     match *tagcase_ {
                         Dt::Dt(n, ps, vs) => {
-                            string_append(quoted(n), string_append(quoted_all(ps), words_of(map(lambda1(move |x: &'static Variant| {
+                            string_append(quoted(n), string_append(quoted_all(ps), words_of(map(lambda1s(move |x: &'static Variant| {
                                 let tagcase_ = x;
                                 match *tagcase_ {
                                     Variant::Variant(t, ts) => {
@@ -771,7 +771,7 @@ pub mod incremental {
                             }), vs))))
                         }
                     }
-                }), ds)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("aliases"), map(lambda1(move |a: &'static Alias| {
+                }), ds)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("aliases"), map(lambda1s(move |a: &'static Alias| {
                     let tagcase_ = a;
                     match *tagcase_ {
                         Alias::Alias(n, ps, body) => {
@@ -892,7 +892,7 @@ pub mod incremental {
             kayak_rt::heap_cons(start, kayak_rt::nil())
         } else {
             let (rest, q) = (starts_of(start, cdr(members), positions), item_start(car(members), positions, -1i64));
-            if (i64_lt(q, 0i64) || any_p(lambda1(move |r: i64| {
+            if (i64_lt(q, 0i64) || any_p(lambda1s(move |r: i64| {
                 i64_eq(r, q)
             }), rest)) {
                 rest
@@ -912,7 +912,7 @@ pub mod incremental {
                 let it = car(its);
                 let file = datum_file(it);
                 let start = datum_pos(it);
-                let slice = lambda1(move |p: i64| {
+                let slice = lambda1s(move |p: i64| {
                     rev_to_string(take_to(drop_to(src, from, p), p, position_after(p, positions, end), nil::<char>()))
                 });
                 let own = if (i64_gt_eq(start, from) && i64_lt(start, end)) {
@@ -979,7 +979,7 @@ pub mod incremental {
                             let p = module_prep(near(v, src_file, src_line, src_pos), form);
                             let inner = prep_inner(p);
                             let ordering = module_order_memo(inner, prep_forms(p), car(texts), old, made);
-                            let scope = fnv_strings(kayak_rt::heap_cons(prep_name(p), concat(map(lambda1(move |f: &'static Sexp| {
+                            let scope = fnv_strings(kayak_rt::heap_cons(prep_name(p), concat(map(lambda1s(move |f: &'static Sexp| {
                                 if null_p(item_value(f)) {
                                     the::<Strings>(kayak_rt::heap_cons(show_sexp(f), kayak_rt::nil()))
                                 } else {
@@ -1063,14 +1063,14 @@ pub mod incremental {
         let tagcase_ = c;
         match *tagcase_ {
             Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-                fnv_strings(concat(kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("datatypes"), ds), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("tags"), map(lambda1(move |t: &'static Tagof| {
+                fnv_strings(concat(kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("datatypes"), ds), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("tags"), map(lambda1s(move |t: &'static Tagof| {
                     let tagcase_ = t;
                     match *tagcase_ {
                         Tagof::Tagof(n, d) => {
                             string_append(n, string_append(str_lit(" "), d))
                         }
                     }
-                }), ts)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("constants"), ks), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("locals"), ls), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("typeds"), map(&typed_text, xs)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("families"), map(lambda1(move |f: &'static Family| {
+                }), ts)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("constants"), ks), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("locals"), ls), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("typeds"), map(&typed_text, xs)), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("families"), map(lambda1s(move |f: &'static Family| {
                     let tagcase_ = f;
                     match *tagcase_ {
                         Family::Family(n, d, kinds) => {

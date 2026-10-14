@@ -12,6 +12,13 @@ dependencies = [
 [[package]]
 name = "kayak-rt"
 version = "0.1.0"
+dependencies = [
+ "kayak-sync",
+]
+
+[[package]]
+name = "kayak-sync"
+version = "0.1.0"
 
 [[package]]
 name = "kfx"

@@ -13,7 +13,7 @@ use super::*;
 // The fixed widths but `i64` (`i64`'s are above): a name, its type and its
 // operation; each operation done on `int` and wrapped as the type wraps.
 pub fn fixed_types() -> Strings {
-    thread_local!(static ONCE: OnceCell<Strings> = const { OnceCell::new() });
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
         kayak_rt::heap_cons(str_lit("i32"), kayak_rt::heap_cons(str_lit("u32"), kayak_rt::heap_cons(str_lit("u64"), kayak_rt::heap_cons(str_lit("u8"), kayak_rt::heap_cons(str_lit("i8"), kayak_rt::nil())))))
     })
@@ -84,7 +84,7 @@ pub fn width_of(t: Str) -> Int {
 
 // The program's own arguments, as `--run`'s driver gives them (main.kfx).
 pub fn program_args() -> Ref<Strings> {
-    thread_local!(static ONCE: OnceCell<Ref<Strings>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<Strings>);
     once(&ONCE, || {
         kayak_rt::heap_new(nil::<Str>())
     })

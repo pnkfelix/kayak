@@ -406,7 +406,7 @@ pub fn label_of(e: &'static Sexp) -> Str {
 /// `comefrom` (C45), which aborts to its prompt. Such a procedure, in
 /// Rust, returns a `Result` (emit.kfx).
 pub fn escapes_p(es: Strings) -> bool {
-    any_p(lambda1(move |x: Str| {
+    any_p(lambda1s(move |x: Str| {
         (has_prefix_p(x, str_lit("goto:")) || has_prefix_p(x, str_lit("comefrom:")) || has_prefix_p(x, str_lit("~")))
     }), es)
 }
@@ -415,7 +415,7 @@ pub fn escapes_p(es: Strings) -> bool {
 /// effect variable, which may stand for one (C46). Such a procedure, in
 /// Rust, is an `async fn` (C45).
 pub fn suspends_p(es: Strings) -> bool {
-    any_p(lambda1(move |x: Str| {
+    any_p(lambda1s(move |x: Str| {
         (has_prefix_p(x, str_lit("comefrom:")) || has_prefix_p(x, str_lit("~")))
     }), es)
 }
@@ -429,7 +429,7 @@ pub fn frozen_atom_p(x: Str) -> bool {
 pub fn effs_union(mut a: Strings, mut b: Strings) -> Strings {
     loop {
         if null_p(a) {
-            if any_p(lambda1(move |x: Str| {
+            if any_p(lambda1s(move |x: Str| {
                 frozen_atom_p(x)
             }), b) {
                 (a, b) = (b, nil::<Str>());
@@ -453,9 +453,10 @@ pub fn global_atom_p(x: Str) -> bool {
 }
 
 /// Whether effect `a` is within `b`: a read of one global is within a
-/// read of all of them.
+/// read of all of them, and an I-cell's fill within a write of its region
+/// (C101: FX's `init`, told apart from a write by `par` alone).
 pub fn effs_within_p(a: Strings, b: Strings) -> bool {
-    (null_p(a) || ((string_member_p(car(a), b) || string_eq_p(car(a), str_lit("~!")) || (global_atom_p(car(a)) && string_member_p(str_lit("@globals"), b))) && effs_within_p(cdr(a), b)))
+    (null_p(a) || ((string_member_p(car(a), b) || string_eq_p(car(a), str_lit("~!")) || (global_atom_p(car(a)) && string_member_p(str_lit("@globals"), b)) || (has_prefix_p(car(a), str_lit("init:")) && string_member_p(string_append(str_lit("write:"), after_prefix(car(a), str_lit("init:"))), b))) && effs_within_p(cdr(a), b)))
 }
 
 pub fn words_of(xs: Strings) -> Str {
@@ -468,10 +469,68 @@ pub fn words_of(xs: Strings) -> Str {
     }
 }
 
+// The kinds of an effect atom on a region, `read:@a`: FX-26's store
+// effects and control effects, and its processes' (C101): a message sent
+// to a mailbox at a region, taken from one, an I-cell filled, awaited.
+pub fn region_kinds() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("read"), kayak_rt::heap_cons(str_lit("write"), kayak_rt::heap_cons(str_lit("alloc"), kayak_rt::heap_cons(str_lit("goto"), kayak_rt::heap_cons(str_lit("comefrom"), kayak_rt::heap_cons(str_lit("send"), kayak_rt::heap_cons(str_lit("receive"), kayak_rt::heap_cons(str_lit("init"), kayak_rt::heap_cons(str_lit("await"), kayak_rt::nil())))))))))
+    })
+}
+
+pub fn after_colon(mut cs: List<char>) -> List<char> {
+    loop {
+        if null_p(cs) {
+            return nil::<char>();
+        } else if char_eq_p(car(cs), ':') {
+            return cdr(cs);
+        } else {
+            cs = cdr(cs);
+            continue;
+        }
+    }
+}
+
+pub fn region_atom_p(x: Str) -> bool {
+    any_p(lambda1s(move |k: Str| {
+        has_prefix_p(x, string_append(k, str_lit(":")))
+    }), region_kinds())
+}
+
+pub fn atom_kind(x: Str) -> Str {
+    substring_of(x, i64_minus(string_length_i64(x), size(after_colon(string_to_list(x)))))
+}
+
+pub fn atom_region(x: Str) -> Str {
+    list_to_string(after_colon(string_to_list(x)))
+}
+
+/// Whether atom `a` is one a process may have that is seen outside it:
+/// a send, a fill or an await, I/O, `spin`, `nondet`, reading globals'
+/// bindings or data frozen in the heap, allocating at a region that is
+/// no place (a constant, or the heap); or anything on a binder in
+/// `bound`, which a caller gives (`crossing_atom`).
+pub fn crossing_atom_p(bound: Strings, a: Str) -> bool {
+    (string_eq_p(a, str_lit("spin")) || string_eq_p(a, str_lit("nondet")) || string_eq_p(a, str_lit("@globals")) || string_eq_p(a, str_lit("~!")) || global_atom_p(a) || has_prefix_p(a, str_lit("io:")) || has_prefix_p(a, str_lit("send:")) || has_prefix_p(a, str_lit("init:")) || has_prefix_p(a, str_lit("await:")) || string_eq_p(a, str_lit("read:acyclic")) || string_eq_p(a, str_lit("read:%fresh")) || string_member_p(a, bound) || (has_prefix_p(a, str_lit("alloc:")) && {
+        let r = after_prefix(a, str_lit("alloc:"));
+        (has_prefix_p(r, str_lit("@")) || string_eq_p(r, str_lit("acyclic")) || string_eq_p(r, str_lit("%fresh")))
+    }) || (region_atom_p(a) && string_member_p(atom_region(a), bound)))
+}
+
+/// Whether a latent effect is one a process may have (C101), so that a
+/// procedure of it may be held on another thread: its closure, in Rust, is
+/// `Send + Sync` (C102).
+pub fn crossing_p(es: Strings) -> bool {
+    not(any_p(lambda1s(move |a: Str| {
+        not(crossing_atom_p(nil::<Str>(), a))
+    }), es))
+}
+
 /// An effect atom as FX-26 writes it; a read of one global is gathered
 /// by `show-effs`.
 pub fn atom_written(x: Str) -> Str {
-    let at = lambda1(move |p: Str| {
+    let at = lambda1s(move |p: Str| {
         let r = after_prefix(x, p);
         if has_prefix_p(r, str_lit("'")) {
             after_prefix(r, str_lit("'"))
@@ -481,20 +540,14 @@ pub fn atom_written(x: Str) -> Str {
     });
     if string_eq_p(x, str_lit("spin")) {
         str_lit("spin")
+    } else if string_eq_p(x, str_lit("nondet")) {
+        str_lit("nondet")
     } else if string_eq_p(x, str_lit("@globals")) {
         str_lit("(read @globals)")
-    } else if has_prefix_p(x, str_lit("read:")) {
-        string_append(str_lit("(read "), string_append(at(str_lit("read:")), str_lit(")")))
-    } else if has_prefix_p(x, str_lit("write:")) {
-        string_append(str_lit("(write "), string_append(at(str_lit("write:")), str_lit(")")))
-    } else if has_prefix_p(x, str_lit("alloc:")) {
-        string_append(str_lit("(alloc "), string_append(at(str_lit("alloc:")), str_lit(")")))
-    } else if has_prefix_p(x, str_lit("goto:")) {
-        string_append(str_lit("(goto "), string_append(at(str_lit("goto:")), str_lit(")")))
-    } else if has_prefix_p(x, str_lit("comefrom:")) {
-        string_append(str_lit("(comefrom "), string_append(at(str_lit("comefrom:")), str_lit(")")))
     } else if has_prefix_p(x, str_lit("io:")) {
         string_append(str_lit("(io "), string_append(after_prefix(x, str_lit("io:")), str_lit(")")))
+    } else if region_atom_p(x) {
+        string_append(str_lit("("), string_append(substring_of(atom_kind(x), i64_minus(string_length_i64(atom_kind(x)), 1i64)), string_append(str_lit(" "), string_append(at(atom_kind(x)), str_lit(")")))))
     } else if has_prefix_p(x, str_lit("~")) {
         after_prefix(x, str_lit("~"))
     } else {
@@ -505,14 +558,14 @@ pub fn atom_written(x: Str) -> Str {
 /// An effect as FX-26 writes it: `pure`, an atom, or `(maxeff ...)`, the
 /// globals read gathered, `(read (globals f g))`.
 pub fn show_effs(es: Strings) -> Str {
-    let globals = concat(map(lambda1(move |x: Str| {
+    let globals = concat(map(lambda1s(move |x: Str| {
         if global_atom_p(x) {
             the::<Strings>(kayak_rt::heap_cons(after_prefix(x, str_lit("g:")), kayak_rt::nil()))
         } else {
             nil::<Str>()
         }
     }), es));
-    let others = concat(map(lambda1(move |x: Str| {
+    let others = concat(map(lambda1s(move |x: Str| {
         if (global_atom_p(x) || string_eq_p(x, str_lit("~!"))) {
             nil::<Str>()
         } else {
@@ -628,6 +681,10 @@ pub fn parse_effect(v: &'static Cv, tvars: Strings, e: &'static Sexp) -> Strings
                 nil::<Str>()
             } else if string_eq_p(s, str_lit("spin")) {
                 kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil())
+            } else if string_eq_p(s, str_lit("nondet")) {
+                // That an answer may differ from run to run (C101): no region, so
+                // never masked, as `spin`.
+                kayak_rt::heap_cons(str_lit("nondet"), kayak_rt::nil())
             } else if string_member_p(string_append(str_lit("~"), s), tvars) {
                 // A poly's effect binder (C46): an atom of its own, `~e`.
                 kayak_rt::heap_cons(string_append(str_lit("~"), s), kayak_rt::nil())
@@ -658,10 +715,12 @@ pub fn parse_effect(v: &'static Cv, tvars: Strings, e: &'static Sexp) -> Strings
             } else if (sym_is_p(car(xs), str_lit("read")) && sym_is_p(second(xs), str_lit("@globals"))) {
                 kayak_rt::heap_cons(str_lit("@globals"), kayak_rt::nil())
             } else if (sym_is_p(car(xs), str_lit("read")) && head_is_p(second(xs), str_lit("globals"))) {
-                map(lambda1(move |g: &'static Sexp| {
+                map(lambda1s(move |g: &'static Sexp| {
                     string_append(str_lit("g:"), name_of(v, g))
                 }), cdr(items(second(xs))))
-            } else if (sym_is_p(car(xs), str_lit("read")) || sym_is_p(car(xs), str_lit("write")) || sym_is_p(car(xs), str_lit("alloc")) || sym_is_p(car(xs), str_lit("goto")) || sym_is_p(car(xs), str_lit("comefrom"))) {
+            } else if (i64_eq(size(xs), 2i64) && any_p(lambda1s(move |k: Str| {
+                sym_is_p(car(xs), k)
+            }), region_kinds())) {
                 kayak_rt::heap_cons(string_append(name_of(v, car(xs)), string_append(str_lit(":"), region_name(v, tvars, second(xs)))), kayak_rt::nil())
             } else {
                 match refuse(v, string_append(str_lit("an effect KFX does not have: "), show_sexp(e))) {}
@@ -684,17 +743,9 @@ pub fn parse_effects(v: &'static Cv, tvars: Strings, es: Sexps) -> Strings {
 
 /// Effect atoms on region `from` made atoms on region `to`.
 pub fn rename_atoms(es: Strings, from: Str, to: Str) -> Strings {
-    map(lambda1(move |x: Str| {
-        if string_eq_p(x, string_append(str_lit("read:"), from)) {
-            string_append(str_lit("read:"), to)
-        } else if string_eq_p(x, string_append(str_lit("write:"), from)) {
-            string_append(str_lit("write:"), to)
-        } else if string_eq_p(x, string_append(str_lit("alloc:"), from)) {
-            string_append(str_lit("alloc:"), to)
-        } else if string_eq_p(x, string_append(str_lit("goto:"), from)) {
-            string_append(str_lit("goto:"), to)
-        } else if string_eq_p(x, string_append(str_lit("comefrom:"), from)) {
-            string_append(str_lit("comefrom:"), to)
+    map(lambda1s(move |x: Str| {
+        if (region_atom_p(x) && string_eq_p(atom_region(x), from)) {
+            string_append(atom_kind(x), to)
         } else if (has_prefix_p(from, str_lit("~")) && string_eq_p(x, from)) {
             if has_prefix_p(to, str_lit("~")) {
                 to
@@ -775,7 +826,7 @@ pub fn replace_var(name: Str, m: &'static Ty, t: &'static Ty) -> &'static Ty {
             ty_flat(replace_var(name, m, e), replace_var(name, m, r))
         }
         Ty::TyShape(p, ls, ts) => {
-            ty_shape(p, ls, map(lambda1(move |x: &'static Ty| {
+            ty_shape(p, ls, map(lambda1s(move |x: &'static Ty| {
                 replace_var(name, m, x)
             }), ts))
         }
@@ -783,7 +834,7 @@ pub fn replace_var(name: Str, m: &'static Ty, t: &'static Ty) -> &'static Ty {
             ty_tag(replace_var(name, m, a), replace_var(name, m, h), rename_region(d, name, m), replace_var(name, m, r))
         }
         Ty::TyData(d, args) => {
-            ty_data(d, map(lambda1(move |x: &'static Ty| {
+            ty_data(d, map(lambda1s(move |x: &'static Ty| {
                 replace_var(name, m, x)
             }), args))
         }
@@ -791,7 +842,7 @@ pub fn replace_var(name: Str, m: &'static Ty, t: &'static Ty) -> &'static Ty {
             ty_ref(replace_var(name, m, e), replace_var(name, m, r))
         }
         Ty::TyProc(es, ps, r) => {
-            ty_proc(rename_region(es, name, m), map(lambda1(move |p: &'static Ty| {
+            ty_proc(rename_region(es, name, m), map(lambda1s(move |p: &'static Ty| {
                 replace_var(name, m, p)
             }), ps), replace_var(name, m, r))
         }
@@ -817,14 +868,14 @@ pub fn substitute_each(mut params: Strings, mut args: Tys, mut t: &'static Ty) -
 /// by a name no argument has, so that an argument naming a parameter is
 /// not replaced again.
 pub fn substitute(params: Strings, args: Tys, t: &'static Ty) -> &'static Ty {
-    let temps = map(lambda1(move |p: Str| {
+    let temps = map(lambda1s(move |p: Str| {
         string_append(if has_prefix_p(p, str_lit("~")) {
             str_lit("~%subst ")
         } else {
             str_lit("%subst ")
         }, p)
     }), params);
-    substitute_each(temps, args, substitute_each(params, map(lambda1(move |p: Str| {
+    substitute_each(temps, args, substitute_each(params, map(lambda1s(move |p: Str| {
         ty_var(p)
     }), temps), t))
 }
@@ -886,7 +937,7 @@ pub fn with_tvars(v: &'static Cv, names: Strings) -> &'static Cv {
 }
 
 pub fn dt_named_p(name: Str, ds: Dts) -> bool {
-    any_p(lambda1(move |d: &'static Dt| {
+    any_p(lambda1s(move |d: &'static Dt| {
         let tagcase_ = d;
         match *tagcase_ {
             Dt::Dt(n, ps, vs) => {
@@ -1033,7 +1084,7 @@ pub fn rust_type_names() -> Strings {
 /// `__`); and none whose Rust name kayak-rt or the emitter writes.
 pub fn kfx_name_p(n: Str) -> bool {
     let cs = string_chars(n);
-    (not(null_p(cs)) && not(rust_keyword_clash_p(n)) && (char_lower_p(car(cs)) || has_char_in_p(str_lit("?!<>=+*/%-"), car(cs))) && not(any_p(lambda1(move |c: char| {
+    (not(null_p(cs)) && not(rust_keyword_clash_p(n)) && (char_lower_p(car(cs)) || has_char_in_p(str_lit("?!<>=+*/%-"), car(cs))) && not(any_p(lambda1s(move |c: char| {
         not((char_lower_p(c) || char_numeric_p(c) || has_char_in_p(str_lit("?!<>=+*/%-"), c)))
     }), cs)) && not(string_has_p(n, str_lit("--"))) && not(string_member_p(mangle(n), kayak_rt::heap_cons(str_lit("str_lit"), kayak_rt::heap_cons(str_lit("int_lit"), kayak_rt::heap_cons(str_lit("int_text"), kayak_rt::heap_cons(str_lit("unreachable_unwind"), kayak_rt::heap_cons(str_lit("kfx_toplevel"), kayak_rt::heap_cons(str_lit("once"), kayak_rt::heap_cons(str_lit("alloc"), kayak_rt::heap_cons(str_lit("the"), kayak_rt::heap_cons(str_lit("unwind"), kayak_rt::heap_cons(str_lit("knot"), kayak_rt::heap_cons(str_lit("lambda0"), kayak_rt::heap_cons(str_lit("lambda1"), kayak_rt::heap_cons(str_lit("lambda2"), kayak_rt::heap_cons(str_lit("lambda3"), kayak_rt::heap_cons(str_lit("lambda4"), kayak_rt::heap_cons(str_lit("leak_string"), kayak_rt::heap_cons(str_lit("with_big_stack"), kayak_rt::heap_cons(str_lit("fail"), kayak_rt::heap_cons(str_lit("make_continuation_prompt_tag"), kayak_rt::heap_cons(str_lit("nil"), kayak_rt::heap_cons(str_lit("cons"), kayak_rt::nil()))))))))))))))))))))))))
 }
@@ -1069,7 +1120,7 @@ pub fn reads_kept(atoms: Strings, kept: Strings, every: bool) -> Strings {
     if string_member_p(str_lit("spin"), atoms) {
         nil::<Str>()
     } else {
-        concat(map(lambda1(move |x: Str| {
+        concat(map(lambda1s(move |x: Str| {
             if (has_prefix_p(x, str_lit("read:")) && (string_member_p(after_prefix(x, str_lit("read:")), kept) || (every && not(string_eq_p(after_prefix(x, str_lit("read:")), str_lit("acyclic")))))) {
                 the::<Strings>(kayak_rt::heap_cons(after_prefix(x, str_lit("read:")), kayak_rt::nil()))
             } else {
@@ -1081,7 +1132,7 @@ pub fn reads_kept(atoms: Strings, kept: Strings, every: bool) -> Strings {
 
 /// The region of a knot `t` ties, kept in `kept` (everywhere, if
 /// `every`); or none.
-pub fn knot_in(mut v: &'static Cv, mut res: &'static dyn Fn(Str) -> Str, mut t: &'static Ty, mut kept: Strings, mut every: bool, mut seen: Strings) -> Strings {
+pub fn knot_in(mut v: &'static Cv, mut res: &'static (dyn Fn(Str) -> Str + Send + Sync), mut t: &'static Ty, mut kept: Strings, mut every: bool, mut seen: Strings) -> Strings {
     loop {
         let tagcase_ = t;
         match *tagcase_ {
@@ -1149,11 +1200,11 @@ pub fn knot_in(mut v: &'static Cv, mut res: &'static dyn Fn(Str) -> Str, mut t: 
                                         }
                                     }, args), kept, true, kayak_rt::heap_cons(d, seen));
                                 } else {
-                                    return first_knot(v, res, concat(map(lambda1(move |x: &'static Variant| {
+                                    return first_knot(v, res, concat(map(lambda1s(move |x: &'static Variant| {
                                         let tagcase_ = x;
                                         match *tagcase_ {
                                             Variant::Variant(tag, fs) => {
-                                                map(lambda1(move |f: &'static Ty| {
+                                                map(lambda1s(move |f: &'static Ty| {
                                                     substitute(ps, args, f)
                                                 }), fs)
                                             }
@@ -1173,7 +1224,7 @@ pub fn knot_in(mut v: &'static Cv, mut res: &'static dyn Fn(Str) -> Str, mut t: 
     }
 }
 
-pub fn first_knot(mut v: &'static Cv, mut res: &'static dyn Fn(Str) -> Str, mut ts: Tys, mut kept: Strings, mut every: bool, mut seen: Strings) -> Strings {
+pub fn first_knot(mut v: &'static Cv, mut res: &'static (dyn Fn(Str) -> Str + Send + Sync), mut ts: Tys, mut kept: Strings, mut every: bool, mut seen: Strings) -> Strings {
     loop {
         if null_p(ts) {
             return nil::<Str>();
@@ -1189,7 +1240,7 @@ pub fn first_knot(mut v: &'static Cv, mut res: &'static dyn Fn(Str) -> Str, mut 
     }
 }
 
-pub fn no_knot(v: &'static Cv, res: &'static dyn Fn(Str) -> Str, t: &'static Ty) -> &'static Ty {
+pub fn no_knot(v: &'static Cv, res: &'static (dyn Fn(Str) -> Str + Send + Sync), t: &'static Ty) -> &'static Ty {
     let found = knot_in(v, res, t, nil::<Str>(), false, nil::<Str>());
     if null_p(found) {
         t
@@ -1287,7 +1338,7 @@ pub fn flat_p(t: &'static Ty) -> bool {
             ((null_p(args) && (string_eq_p(d, str_lit("i32")) || string_eq_p(d, str_lit("u32")) || string_eq_p(d, str_lit("u64")) || string_eq_p(d, str_lit("f32")))) || (string_eq_p(d, str_lit("%flat-array")) && flat_p(car(args))) || string_eq_p(d, str_lit("%flat-sum")))
         }
         Ty::TyShape(p, ls, ts) => {
-            (p && not(null_p(ts)) && not(any_p(lambda1(move |x: &'static Ty| {
+            (p && not(null_p(ts)) && not(any_p(lambda1s(move |x: &'static Ty| {
                 not(flat_p(x))
             }), ts)))
         }
@@ -1329,12 +1380,12 @@ pub fn field_may_knot_p(mut t: &'static Ty) -> bool {
                 return true;
             }
             Ty::TyShape(p, ls, ts) => {
-                return any_p(lambda1(move |x: &'static Ty| {
+                return any_p(lambda1s(move |x: &'static Ty| {
                     field_may_knot_p(x)
                 }), ts);
             }
             Ty::TyData(d, args) => {
-                return any_p(lambda1(move |x: &'static Ty| {
+                return any_p(lambda1s(move |x: &'static Ty| {
                     field_may_knot_p(x)
                 }), args);
             }
@@ -1386,7 +1437,7 @@ pub fn flat_layout(t: &'static Ty) -> &'static Layout {
             } else if string_eq_p(d, str_lit("%flat-sum")) {
                 let k = key_width(car(args));
                 let vs = flat_sum_variants(args);
-                let widest = any_layout(map(lambda1(move |f: &'static Fvar| {
+                let widest = any_layout(map(lambda1s(move |f: &'static Fvar| {
                     let tagcase_ = f;
                     match *tagcase_ {
                         Fvar::Fvar(l, x) => {
@@ -1473,7 +1524,7 @@ pub fn fields_layout(mut ts: Tys, mut at: i64, mut align: i64) -> &'static Layou
 /// Where a keyed flat sum's variant begins: after its tag, at the widest
 /// variant's alignment.
 pub fn variant_offset(args: Tys) -> i64 {
-    let tagcase_ = any_layout(map(lambda1(move |f: &'static Fvar| {
+    let tagcase_ = any_layout(map(lambda1s(move |f: &'static Fvar| {
         let tagcase_ = f;
         match *tagcase_ {
             Fvar::Fvar(l, x) => {
@@ -1490,8 +1541,8 @@ pub fn variant_offset(args: Tys) -> i64 {
 
 /// The offset of a flat product's field `l`.
 pub fn field_offset(ls: Strings, ts: Tys, l: Str) -> i64 {
-    let go__knot = knot::<&'static dyn Fn(Strings, Tys, i64) -> i64>();
-    let go = lambda3(move |mut ls: Strings, mut ts: Tys, mut at: i64| {
+    let go__knot = knot::<&'static (dyn Fn(Strings, Tys, i64) -> i64 + Send + Sync)>();
+    let go = lambda3s(move |mut ls: Strings, mut ts: Tys, mut at: i64| {
         loop {
             let tagcase_ = flat_layout(car(ts));
             match *tagcase_ {
@@ -1801,7 +1852,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
             }
             Sexp::Lst(xs, src_file, src_line, src_pos) => {
                 if sym_is_p(car(xs), str_lit("listof")) {
-                    return no_knot(v, lambda1(move |x: Str| {
+                    return no_knot(v, lambda1s(move |x: Str| {
                         x
                     }), ty_list(parse_type(v, tvars, second(xs)), parse_region(v, tvars, third(xs))));
                 } else if sym_is_p(car(xs), str_lit("flatarrayof")) {
@@ -1819,7 +1870,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                         return match refuse(v, string_append(str_lit("(bytevectorof R): "), show_sexp(t))) {};
                     }
                 } else if sym_is_p(car(xs), str_lit("ref")) {
-                    return no_knot(v, lambda1(move |x: Str| {
+                    return no_knot(v, lambda1s(move |x: Str| {
                         x
                     }), ty_ref(parse_type(v, tvars, second(xs)), parse_mutable_region(v, tvars, third(xs))));
                 } else if sym_is_p(car(xs), str_lit("place")) {
@@ -1851,7 +1902,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                         return match refuse(v, string_append(str_lit("a bloblet type KFX does not have yet (its fields frozen, or not of the form (bloblet (fields T ...) R)): "), show_sexp(t))) {};
                     } else {
                         let fields = parse_types(v, tvars, cdr(items(second(xs))));
-                        if any_p(lambda1(move |f: &'static Ty| {
+                        if any_p(lambda1s(move |f: &'static Ty| {
                             field_may_knot_p(f)
                         }), fields) {
                             return match refuse(v, string_append(str_lit("a bloblet field that may hold a procedure, which KFX does not have: "), show_sexp(t))) {};
@@ -1897,7 +1948,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                 }) {
                     // An array of values (C56), `(arrayof T R)`, at a region: kayak-rt's
                     // `Array<T>`, a row of cells.
-                    return no_knot(v, lambda1(move |x: Str| {
+                    return no_knot(v, lambda1s(move |x: Str| {
                         x
                     }), ty_data(str_lit("%array"), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::heap_cons(parse_mutable_region(v, tvars, third(xs)), kayak_rt::nil()))));
                 } else if sym_is_p(car(xs), str_lit("arrayof")) {
@@ -1919,6 +1970,11 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                             return match refuse(v, string_append(str_lit("a flat array's length is a literal (KFX has no arrays of values yet): "), show_sexp(t))) {};
                         }
                     }
+                } else if ((sym_is_p(car(xs), str_lit("addr")) || sym_is_p(car(xs), str_lit("inbox")) || sym_is_p(car(xs), str_lit("icell"))) && i64_eq(size(xs), 3i64)) {
+                    // FX-26's processes (C101): `(addr M R)`, the right to send an `M` to a
+                    // process's mailbox at `R`; `(inbox M r)`, the right to take from it,
+                    // its process's alone; `(icell T R)`, a `T` written once.
+                    return ty_data(string_append(str_lit("%"), sym_name(car(xs))), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::heap_cons(parse_region(v, tvars, third(xs)), kayak_rt::nil())));
                 } else if (sym_is_p(car(xs), str_lit("mark-key")) && i64_eq(size(xs), 3i64)) {
                     // FX-26's continuation mark's key (C72), `(mark-key T R)`: a place in
                     // the dynamic context, its marks `T`s, at `R`.
@@ -1936,7 +1992,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     let shapes = map(&shape_of, members);
                     if i64_lt(size(members), 2i64) {
                         return match refuse(v, string_append(str_lit("a union of fewer than two members: "), show_sexp(t))) {};
-                    } else if (string_member_p(str_lit(""), shapes) || any_p(lambda1(move |m: &'static Ty| {
+                    } else if (string_member_p(str_lit(""), shapes) || any_p(lambda1s(move |m: &'static Ty| {
                         generative_p(v, m)
                     }), members)) {
                         return match refuse(v, string_append(str_lit("a union's member with no shape known (a type variable, an abstract or generative type, a tag): "), show_sexp(t))) {};
@@ -1972,7 +2028,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     if not(string_member_p(key, kayak_rt::heap_cons(str_lit("u8"), kayak_rt::heap_cons(str_lit("u16"), kayak_rt::heap_cons(str_lit("u32"), kayak_rt::nil()))))) {
                         return match refuse(v, str_lit("a flat sum's key is `u8`, `u16` or `u32`")) {};
                     } else {
-                        return ty_data(str_lit("%flat-sum"), kayak_rt::heap_cons(ty_rconst(key), concat(map(lambda1(move |g: &'static Sexp| {
+                        return ty_data(str_lit("%flat-sum"), kayak_rt::heap_cons(ty_rconst(key), concat(map(lambda1s(move |g: &'static Sexp| {
                             let parts = {
                                 let tagcase_ = g;
                                 match *tagcase_ {
@@ -2019,7 +2075,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                             }
                         }), cdr(cdr(xs))))));
                     }
-                } else if ((sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("sumof"))) && any_p(lambda1(move |x: &'static Sexp| {
+                } else if ((sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("sumof"))) && any_p(lambda1s(move |x: &'static Sexp| {
                     let tagcase_ = x;
                     match *tagcase_ {
                         Sexp::Lst(ys, f, l, p) => {
@@ -2034,11 +2090,11 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     return match refuse(v, string_append(str_lit("a type KFX does not have: "), show_sexp(t))) {};
                 } else if (sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("sumof"))) {
                     let fields = map(&items, cdr(xs));
-                    if (any_p(lambda1(move |f: Sexps| {
+                    if (any_p(lambda1s(move |f: Sexps| {
                         not(i64_eq(size(f), 2i64))
-                    }), fields) || any_p(lambda1(move |f: Sexps| {
+                    }), fields) || any_p(lambda1s(move |f: Sexps| {
                         string_eq_p(label_of(car(f)), str_lit(""))
-                    }), fields) || (sym_is_p(car(xs), str_lit("sumof")) && any_p(lambda1(move |f: Sexps| {
+                    }), fields) || (sym_is_p(car(xs), str_lit("sumof")) && any_p(lambda1s(move |f: Sexps| {
                         let tagcase_ = car(f);
                         match *tagcase_ {
                             Sexp::Sym(n, at_file, at_pos) => {
@@ -2052,7 +2108,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     }), fields))) {
                         return match refuse(v, string_append(str_lit("a type KFX does not have: "), show_sexp(t))) {};
                     } else {
-                        if (any_p(lambda1(move |f: Sexps| {
+                        if (any_p(lambda1s(move |f: Sexps| {
                             let tagcase_ = car(f);
                             match *tagcase_ {
                                 Sexp::Sym(n, at_file, at_pos) => {
@@ -2063,16 +2119,16 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                                     false
                                 }
                             }
-                        }), fields) || repeated_p(map(lambda1(move |f: Sexps| {
+                        }), fields) || repeated_p(map(lambda1s(move |f: Sexps| {
                             label_of(car(f))
-                        }), fields)) || repeated_p(map(lambda1(move |f: Sexps| {
+                        }), fields)) || repeated_p(map(lambda1s(move |f: Sexps| {
                             variant_name(label_of(car(f)))
                         }), fields))) {
                             return match refuse(v, string_append(str_lit("a label appears twice in "), show_sexp(t))) {};
                         } else {
-                            return ty_shape(sym_is_p(car(xs), str_lit("productof")), map(lambda1(move |f: Sexps| {
+                            return ty_shape(sym_is_p(car(xs), str_lit("productof")), map(lambda1s(move |f: Sexps| {
                                 label_of(car(f))
-                            }), fields), map(lambda1(move |f: Sexps| {
+                            }), fields), map(lambda1s(move |f: Sexps| {
                                 parse_type(v, tvars, second(f))
                             }), fields));
                         }
@@ -2103,7 +2159,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                         }
                     }
                 } {
-                    return no_knot(v, lambda1(move |x: Str| {
+                    return no_knot(v, lambda1s(move |x: Str| {
                         x
                     }), parse_application(v, tvars, name_of(v, car(xs)), cdr(xs)));
                 } else {
@@ -2119,7 +2175,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
 }
 
 pub fn parse_types(v: &'static Cv, tvars: Strings, ts: Sexps) -> Tys {
-    map(lambda1(move |t: &'static Sexp| {
+    map(lambda1s(move |t: &'static Sexp| {
         parse_type(v, tvars, t)
     }), ts)
 }
@@ -2180,9 +2236,9 @@ pub fn parse_application(v: &'static Cv, tvars: Strings, name: Str, args: Sexps)
                     if string_member_p(string_append(str_lit("%expanding "), name), tvars) {
                         match refuse(v, string_append(str_lit("a type abbreviation that mentions itself, "), string_append(name, str_lit(": Rust's type aliases cannot; a datatype can")))) {}
                     } else {
-                        substitute(ps, parse_arguments(v, tvars, ps, args), parse_type(v, kayak_rt::heap_cons(string_append(str_lit("%expanding "), name), onto(map(lambda1(move |p: Str| {
+                        substitute(ps, parse_arguments(v, tvars, ps, args), parse_type(v, kayak_rt::heap_cons(string_append(str_lit("%expanding "), name), onto(map(lambda1s(move |p: Str| {
                             string_append(str_lit("%place "), p)
-                        }), concat(map(lambda1(move |p: Str| {
+                        }), concat(map(lambda1s(move |p: Str| {
                             if has_prefix_p(p, str_lit("'")) {
                                 the::<Strings>(kayak_rt::heap_cons(p, kayak_rt::nil()))
                             } else {
@@ -2202,7 +2258,7 @@ pub fn family_params(v: &'static Cv, head: &'static Sexp) -> Strings {
     let tagcase_ = head;
     match *tagcase_ {
         Sexp::Lst(xs, src_file, src_line, src_pos) => {
-            map(lambda1(move |b: &'static Sexp| {
+            map(lambda1s(move |b: &'static Sexp| {
                 let b = items(b);
                 if (i64_eq(size(b), 3i64) && sym_is_p(second(b), str_lit("region")) && not(sym_is_p(third(b), str_lit("distinct")))) {
                     // A region within a place, `(r region p)` (C40).
@@ -2250,16 +2306,16 @@ pub fn bare_type_name(mut cs: Chars, mut acc: Chars) -> Str {
 /// would hide in Rust and not in FX-26. A region's, with `'`, is none, nor
 /// an effect's, with `~`, which Rust does not see (C46).
 pub fn type_binders_apart(v: &'static Cv, tvars: Strings, types: Strings) -> () {
-    let (reserved, theirs, tvars) = (rust_type_names(), map(lambda1(move |t: Str| {
+    let (reserved, theirs, tvars) = (rust_type_names(), map(lambda1s(move |t: Str| {
         camel(bare_type_name(string_chars(t), nil::<char>()))
-    }), types), concat(map(lambda1(move |n: Str| {
+    }), types), concat(map(lambda1s(move |n: Str| {
         if (has_prefix_p(n, str_lit("'")) || has_prefix_p(n, str_lit("~"))) {
             nil::<Str>()
         } else {
             the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
         }
     }), tvars)));
-    map(lambda1(move |n: Str| {
+    map(lambda1s(move |n: Str| {
         if not(kfx_name_p(n)) {
             match refuse(v, string_append(str_lit("a type variable's name KFX's names are not (C27): "), n)) {}
         } else if string_member_p(camel(n), reserved) {
@@ -2282,7 +2338,7 @@ pub fn type_binders_apart(v: &'static Cv, tvars: Strings, types: Strings) -> () 
 /// from its types (a primitive's not).
 pub fn poly_binders(v: &'static Cv, t: &'static Sexp, own: bool) -> Strings {
     if head_is_p(t, str_lit("poly")) {
-        let tvars = map(lambda1(move |b: &'static Sexp| {
+        let tvars = map(lambda1s(move |b: &'static Sexp| {
             let b = items(b);
             if (i64_eq(size(b), 3i64) && sym_is_p(second(b), str_lit("region")) && not(sym_is_p(third(b), str_lit("distinct")))) {
                 // A region within a place, `(r region p)` (C40): its data may be
@@ -2303,14 +2359,14 @@ pub fn poly_binders(v: &'static Cv, t: &'static Sexp, own: bool) -> Strings {
             }
         }), items(second(items(t))));
         if own {
-            type_binders_apart(v, tvars, onto(map(lambda1(move |d: &'static Dt| {
+            type_binders_apart(v, tvars, onto(map(lambda1s(move |d: &'static Dt| {
                 let tagcase_ = d;
                 match *tagcase_ {
                     Dt::Dt(n, ps, vs) => {
                         n
                     }
                 }
-            }), cv_dts(v)), map(lambda1(move |a: &'static Alias| {
+            }), cv_dts(v)), map(lambda1s(move |a: &'static Alias| {
                 let tagcase_ = a;
                 match *tagcase_ {
                     Alias::Alias(n, ps, body) => {
@@ -2331,7 +2387,7 @@ pub fn poly_binders(v: &'static Cv, t: &'static Sexp, own: bool) -> Strings {
 /// written (C34). A place is a region too, `'p`.
 pub fn place_marks(t: &'static Sexp) -> Strings {
     if head_is_p(t, str_lit("poly")) {
-        concat(map(lambda1(move |b: &'static Sexp| {
+        concat(map(lambda1s(move |b: &'static Sexp| {
             let xs = items(b);
             if (i64_eq(size(xs), 2i64) && sym_is_p(second(xs), str_lit("place"))) {
                 the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%place '"), sym_name(car(xs))), kayak_rt::nil()))
@@ -2421,6 +2477,8 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
                 string_append(str_lit("(pairof "), string_append(show_tys(s, args), str_lit(")")))
             } else if string_eq_p(d, str_lit("%mark-key")) {
                 string_append(str_lit("(mark-key "), string_append(show_tys(s, args), str_lit(")")))
+            } else if (string_eq_p(d, str_lit("%addr")) || string_eq_p(d, str_lit("%inbox")) || string_eq_p(d, str_lit("%icell"))) {
+                string_append(str_lit("("), string_append(after_prefix(d, str_lit("%")), string_append(str_lit(" "), string_append(show_tys(s, args), str_lit(")")))))
             } else if string_eq_p(d, str_lit("%vsubr")) {
                 string_append(str_lit("(vsubr "), string_append({
                     let tagcase_ = car(args);
@@ -2450,7 +2508,7 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
             } else if string_eq_p(d, str_lit("%flat-array")) {
                 string_append(str_lit("(arrayof "), string_append(show_tys(s, args), str_lit(")")))
             } else if string_eq_p(d, str_lit("%flat-sum")) {
-                string_append(str_lit("(sumof "), string_append(show_ty(s, car(args)), string_append(run_together(map(lambda1(move |f: &'static Fvar| {
+                string_append(str_lit("(sumof "), string_append(show_ty(s, car(args)), string_append(run_together(map(lambda1s(move |f: &'static Fvar| {
                     let tagcase_ = f;
                     match *tagcase_ {
                         Fvar::Fvar(l, x) => {
@@ -2574,7 +2632,7 @@ pub fn has_meta_p(s: &'static St, t: &'static Ty) -> bool {
             (has_meta_p(s, e) || has_meta_p(s, r))
         }
         Ty::TyShape(p, ls, ts) => {
-            any_p(lambda1(move |x: &'static Ty| {
+            any_p(lambda1s(move |x: &'static Ty| {
                 has_meta_p(s, x)
             }), ts)
         }
@@ -2582,7 +2640,7 @@ pub fn has_meta_p(s: &'static St, t: &'static Ty) -> bool {
             (has_meta_p(s, a) || has_meta_p(s, h) || has_meta_p(s, r))
         }
         Ty::TyData(d, args) => {
-            any_p(lambda1(move |x: &'static Ty| {
+            any_p(lambda1s(move |x: &'static Ty| {
                 has_meta_p(s, x)
             }), args)
         }
@@ -2590,7 +2648,7 @@ pub fn has_meta_p(s: &'static St, t: &'static Ty) -> bool {
             (has_meta_p(s, e) || has_meta_p(s, r))
         }
         Ty::TyProc(es, ps, r) => {
-            (has_meta_p(s, r) || any_p(lambda1(move |p: &'static Ty| {
+            (has_meta_p(s, r) || any_p(lambda1s(move |p: &'static Ty| {
                 has_meta_p(s, p)
             }), ps))
         }
@@ -2777,7 +2835,7 @@ pub fn metas_said(mut fs: Facts, mut cs: Chars, mut ss: Saids, mut acc: Str) -> 
 
 pub fn metas_named(s: &'static St, message: Str) -> Str {
     let fs = st_facts(s);
-    if any_p(lambda1(move |f: &'static Fact| {
+    if any_p(lambda1s(move |f: &'static Fact| {
         let tagcase_ = f;
         match *tagcase_ {
             Fact::Fact(file, p, w) => {
@@ -2819,7 +2877,7 @@ pub fn occurs_p(s: &'static St, k: i64, t: &'static Ty) -> bool {
             (occurs_p(s, k, e) || occurs_p(s, k, r))
         }
         Ty::TyShape(p, ls, ts) => {
-            any_p(lambda1(move |x: &'static Ty| {
+            any_p(lambda1s(move |x: &'static Ty| {
                 occurs_p(s, k, x)
             }), ts)
         }
@@ -2827,7 +2885,7 @@ pub fn occurs_p(s: &'static St, k: i64, t: &'static Ty) -> bool {
             (occurs_p(s, k, a) || occurs_p(s, k, h) || occurs_p(s, k, r))
         }
         Ty::TyData(d, args) => {
-            any_p(lambda1(move |x: &'static Ty| {
+            any_p(lambda1s(move |x: &'static Ty| {
                 occurs_p(s, k, x)
             }), args)
         }
@@ -2835,7 +2893,7 @@ pub fn occurs_p(s: &'static St, k: i64, t: &'static Ty) -> bool {
             (occurs_p(s, k, e) || occurs_p(s, k, r))
         }
         Ty::TyProc(es, ps, r) => {
-            (occurs_p(s, k, r) || any_p(lambda1(move |p: &'static Ty| {
+            (occurs_p(s, k, r) || any_p(lambda1s(move |p: &'static Ty| {
                 occurs_p(s, k, p)
             }), ps))
         }
@@ -3073,7 +3131,7 @@ pub fn open_effects_p(mut s: &'static St, mut t: &'static Ty) -> bool {
         let tagcase_ = walk(s, t);
         match *tagcase_ {
             Ty::TyProc(es, ps, r) => {
-                return (any_p(lambda1(move |e: Str| {
+                return (any_p(lambda1s(move |e: Str| {
                     let at = effect_region(e);
                     (has_prefix_p(at, str_lit("?")) && {
                         let tagcase_ = walk(s, ty_meta(meta_number(at)));
@@ -3087,7 +3145,7 @@ pub fn open_effects_p(mut s: &'static St, mut t: &'static Ty) -> bool {
                             }
                         }
                     })
-                }), es) || open_effects_p(s, r) || any_p(lambda1(move |p: &'static Ty| {
+                }), es) || open_effects_p(s, r) || any_p(lambda1s(move |p: &'static Ty| {
                     open_effects_p(s, p)
                 }), ps));
             }
@@ -3100,12 +3158,12 @@ pub fn open_effects_p(mut s: &'static St, mut t: &'static Ty) -> bool {
                 continue;
             }
             Ty::TyData(d, args) => {
-                return any_p(lambda1(move |x: &'static Ty| {
+                return any_p(lambda1s(move |x: &'static Ty| {
                     open_effects_p(s, x)
                 }), args);
             }
             Ty::TyShape(p, ls, ts) => {
-                return any_p(lambda1(move |x: &'static Ty| {
+                return any_p(lambda1s(move |x: &'static Ty| {
                     open_effects_p(s, x)
                 }), ts);
             }
@@ -3119,31 +3177,6 @@ pub fn open_effects_p(mut s: &'static St, mut t: &'static Ty) -> bool {
 
 pub fn has_open_p(s: &'static St, t: &'static Ty) -> bool {
     (has_meta_p(s, t) || open_effects_p(s, t))
-}
-
-pub fn after_colon(mut cs: List<char>) -> List<char> {
-    loop {
-        if null_p(cs) {
-            return nil::<char>();
-        } else if char_eq_p(car(cs), ':') {
-            return cdr(cs);
-        } else {
-            cs = cdr(cs);
-            continue;
-        }
-    }
-}
-
-pub fn region_atom_p(x: Str) -> bool {
-    (i64_gt(string_length_i64(x), 5i64) && (string_eq_p(substring_of(x, 5i64), str_lit("read:")) || string_eq_p(substring_of(x, 5i64), str_lit("goto:")) || string_eq_p(substring_of(x, 6i64), str_lit("write:")) || string_eq_p(substring_of(x, 6i64), str_lit("alloc:")) || has_prefix_p(x, str_lit("comefrom:"))))
-}
-
-pub fn atom_kind(x: Str) -> Str {
-    substring_of(x, i64_minus(string_length_i64(x), size(after_colon(string_to_list(x)))))
-}
-
-pub fn atom_region(x: Str) -> Str {
-    list_to_string(after_colon(string_to_list(x)))
 }
 
 /// An effect atom, its region an inference variable solved replaced by
@@ -3168,7 +3201,7 @@ pub fn zonk(s: &'static St, t: &'static Ty) -> &'static Ty {
             ty_flat(zonk(s, e), zonk(s, r))
         }
         Ty::TyShape(p, ls, ts) => {
-            ty_shape(p, ls, map(lambda1(move |x: &'static Ty| {
+            ty_shape(p, ls, map(lambda1s(move |x: &'static Ty| {
                 zonk(s, x)
             }), ts))
         }
@@ -3176,7 +3209,7 @@ pub fn zonk(s: &'static St, t: &'static Ty) -> &'static Ty {
             ty_tag(zonk(s, a), zonk(s, h), d, zonk(s, r))
         }
         Ty::TyData(d, args) => {
-            ty_data(d, map(lambda1(move |x: &'static Ty| {
+            ty_data(d, map(lambda1s(move |x: &'static Ty| {
                 zonk(s, x)
             }), args))
         }
@@ -3184,7 +3217,7 @@ pub fn zonk(s: &'static St, t: &'static Ty) -> &'static Ty {
             ty_ref(zonk(s, e), zonk(s, r))
         }
         Ty::TyProc(es, ps, r) => {
-            ty_proc(es, map(lambda1(move |p: &'static Ty| {
+            ty_proc(es, map(lambda1s(move |p: &'static Ty| {
                 zonk(s, p)
             }), ps), zonk(s, r))
         }
@@ -3297,7 +3330,7 @@ pub fn fit_effs(mut s: &'static St, mut a: Strings, mut e: Strings) -> List<&'st
             return kayak_rt::heap_cons(s, kayak_rt::nil());
         } else {
             let ax = expand_effs(s, a);
-            let es = map(lambda1(move |y: Str| {
+            let es = map(lambda1s(move |y: Str| {
                 resolve_atom(s, y)
             }), expand_effs(s, e));
             if null_p(ax) {
@@ -3944,6 +3977,18 @@ pub fn keyword_p(name: Str) -> bool {
     (string_eq_p(name, str_lit("lambda")) || string_eq_p(name, str_lit("plambda")) || string_eq_p(name, str_lit("proj")) || string_eq_p(name, str_lit("if")) || string_eq_p(name, str_lit("letrec")) || string_eq_p(name, str_lit("let")) || string_eq_p(name, str_lit("begin")) || string_eq_p(name, str_lit("define")) || string_eq_p(name, str_lit("define*")) || string_eq_p(name, str_lit("define-type")) || string_eq_p(name, str_lit("define-generative")) || string_eq_p(name, str_lit("subr")) || string_eq_p(name, str_lit("poly")) || string_eq_p(name, str_lit("ref")) || string_eq_p(name, str_lit("pairof")) || string_eq_p(name, str_lit("dletrec")) || string_eq_p(name, str_lit("void")) || string_eq_p(name, str_lit("pure")) || string_eq_p(name, str_lit("maxeff")) || string_eq_p(name, str_lit("read")) || string_eq_p(name, str_lit("write")) || string_eq_p(name, str_lit("alloc")) || string_eq_p(name, str_lit("goto")) || string_eq_p(name, str_lit("comefrom")) || string_eq_p(name, str_lit("region")) || string_eq_p(name, str_lit("effect")) || string_eq_p(name, str_lit("type")) || string_eq_p(name, str_lit("prompt")) || string_eq_p(name, str_lit("prompt-tag")) || string_eq_p(name, str_lit("composable")) || string_eq_p(name, str_lit("mark-key")) || string_eq_p(name, str_lit("listof")) || string_eq_p(name, str_lit("cond")) || string_eq_p(name, str_lit("case")) || string_eq_p(name, str_lit("else")) || string_eq_p(name, str_lit("and")) || string_eq_p(name, str_lit("or")) || string_eq_p(name, str_lit("let*")) || string_eq_p(name, str_lit("define-effect")) || string_eq_p(name, str_lit("module-parameters")) || string_eq_p(name, str_lit("the")) || string_eq_p(name, str_lit("bloblet")) || string_eq_p(name, str_lit("fields")) || string_eq_p(name, str_lit("frozen")) || string_eq_p(name, str_lit("arrayof")) || string_eq_p(name, str_lit("icell")) || string_eq_p(name, str_lit("await")) || string_eq_p(name, str_lit("define-rec")) || string_eq_p(name, str_lit("letrena")) || string_eq_p(name, str_lit("letreap")) || string_eq_p(name, str_lit("rlambda")) || string_eq_p(name, str_lit("quote")) || string_eq_p(name, str_lit("productof")) || string_eq_p(name, str_lit("sumof")) || string_eq_p(name, str_lit("product")) || string_eq_p(name, str_lit("extract")) || string_eq_p(name, str_lit("sum")) || string_eq_p(name, str_lit("tagcase")) || string_eq_p(name, str_lit("module")) || string_eq_p(name, str_lit("moduleof")) || string_eq_p(name, str_lit("with")) || string_eq_p(name, str_lit("select")) || string_eq_p(name, str_lit("load-module")) || string_eq_p(name, str_lit("define-datatype")) || string_eq_p(name, str_lit("make-bloblet")) || string_eq_p(name, str_lit("bloblet-ref")) || string_eq_p(name, str_lit("bloblet-set!")) || string_eq_p(name, str_lit("bloblet-freeze")) || string_eq_p(name, str_lit("bloblet-byte")) || string_eq_p(name, str_lit("bloblet-set-byte!")) || string_eq_p(name, str_lit("bloblet-bytes")) || string_eq_p(name, str_lit("rmake-bloblet")) || string_eq_p(name, str_lit("dlambda")) || string_eq_p(name, str_lit("=>")) || string_eq_p(name, str_lit("blobref-at")) || string_eq_p(name, str_lit("blobref+")) || string_eq_p(name, str_lit("blobref-owner")) || string_eq_p(name, str_lit("blobref-offset")) || string_eq_p(name, str_lit("blobref-get")) || string_eq_p(name, str_lit("blobref-set!")) || string_eq_p(name, str_lit("blobref-index")) || string_eq_p(name, str_lit("blobref-variant!")))
 }
 
+/// FX-26's forms of processes that are calls (C101): typed as procedures
+/// are, but a call headed by one is the form, whatever binds its name.
+pub fn process_call_p(h: Str) -> bool {
+    string_member_p(h, kayak_rt::heap_cons(str_lit("send"), kayak_rt::heap_cons(str_lit("receive"), kayak_rt::heap_cons(str_lit("icell-get"), kayak_rt::heap_cons(str_lit("icell-put!"), kayak_rt::nil())))))
+}
+
+/// FX-26's forms of processes and `par` (C101), each a form wherever it
+/// heads a list, whatever binds its name.
+pub fn process_form_p(h: Str) -> bool {
+    (process_call_p(h) || string_member_p(h, kayak_rt::heap_cons(str_lit("spawn"), kayak_rt::heap_cons(str_lit("par"), kayak_rt::heap_cons(str_lit("pselect"), kayak_rt::nil())))))
+}
+
 pub fn bind_onto(mut xs: Binds, mut ys: Binds) -> Binds {
     loop {
         if null_p(xs) {
@@ -4082,7 +4127,7 @@ pub fn operator_char_p(c: char) -> bool {
 pub fn might_clash_p(n: Str) -> bool {
     (any_p(&operator_char_p, string_chars(n)) || {
         let m = mangle(n);
-        any_p(lambda1(move |part: Str| {
+        any_p(lambda1s(move |part: Str| {
             string_has_p(m, part)
         }), kayak_rt::heap_cons(str_lit("_p"), kayak_rt::heap_cons(str_lit("_x"), kayak_rt::heap_cons(str_lit("_to_"), kayak_rt::heap_cons(str_lit("_plus"), kayak_rt::heap_cons(str_lit("_star"), kayak_rt::heap_cons(str_lit("_slash"), kayak_rt::heap_cons(str_lit("_lt"), kayak_rt::heap_cons(str_lit("_gt"), kayak_rt::heap_cons(str_lit("_eq"), kayak_rt::heap_cons(str_lit("_pct"), kayak_rt::heap_cons(str_lit("_minus"), kayak_rt::nil()))))))))))))
     })
@@ -4095,7 +4140,7 @@ pub fn mangled_clash(n: Str, bs: Binds) -> Strings {
         nil::<Str>()
     } else {
         let m = mangle(n);
-        concat(map(lambda1(move |b: &'static Bind| {
+        concat(map(lambda1s(move |b: &'static Bind| {
             let tagcase_ = b;
             match *tagcase_ {
                 Bind::Bind(x, sc, w) => {
@@ -4137,7 +4182,7 @@ pub fn remove_bind(b: &'static Bind, bs: Binds) -> Binds {
 /// every Rust name kfx and kayak-rt write that a KFX name could meet has
 /// a `_` (`i64_plus`, `tagcase_`), so none is ever hidden.
 pub fn with_binds(v: &'static Cv, more: Binds) -> &'static Cv {
-    if any_p(lambda1(move |b: &'static Bind| {
+    if any_p(lambda1s(move |b: &'static Bind| {
         let tagcase_ = b;
         match *tagcase_ {
             Bind::Bind(n, sc, w) => {
@@ -4145,7 +4190,7 @@ pub fn with_binds(v: &'static Cv, more: Binds) -> &'static Cv {
             }
         }
     }), more) {
-        match refuse(v, string_append(str_lit("a name KFX's names are not (lower case, digits, `-` and `?!<>=+*/%`, no `--`, none Rust writes): "), car(concat(map(lambda1(move |b: &'static Bind| {
+        match refuse(v, string_append(str_lit("a name KFX's names are not (lower case, digits, `-` and `?!<>=+*/%`, no `--`, none Rust writes): "), car(concat(map(lambda1s(move |b: &'static Bind| {
             let tagcase_ = b;
             match *tagcase_ {
                 Bind::Bind(n, sc, w) => {
@@ -4158,14 +4203,14 @@ pub fn with_binds(v: &'static Cv, more: Binds) -> &'static Cv {
             }
         }), more))))) {}
     } else {
-        let clash = onto(concat(map(lambda1(move |b: &'static Bind| {
+        let clash = onto(concat(map(lambda1s(move |b: &'static Bind| {
             let tagcase_ = b;
             match *tagcase_ {
                 Bind::Bind(n, sc, w) => {
                     mangled_clash(n, cv_binds(v))
                 }
             }
-        }), more)), concat(map(lambda1(move |b: &'static Bind| {
+        }), more)), concat(map(lambda1s(move |b: &'static Bind| {
             let tagcase_ = b;
             match *tagcase_ {
                 Bind::Bind(n, sc, w) => {
@@ -4293,12 +4338,12 @@ pub fn holds_procedure_p(mut v: &'static Cv, mut s: &'static St, mut t: &'static
                 return (holds_procedure_p(v, s, a, seen) || holds_procedure_p(v, s, h, seen));
             }
             Ty::TyShape(p, ls, ts) => {
-                return any_p(lambda1(move |x: &'static Ty| {
+                return any_p(lambda1s(move |x: &'static Ty| {
                     holds_procedure_p(v, s, x, seen)
                 }), ts);
             }
             Ty::TyData(d, args) => {
-                return (any_p(lambda1(move |x: &'static Ty| {
+                return (any_p(lambda1s(move |x: &'static Ty| {
                     holds_procedure_p(v, s, x, seen)
                 }), args) || (not(string_member_p(d, seen)) && {
                     let found = find_family(d, cv_dts(v));
@@ -4335,11 +4380,11 @@ pub fn holds_procedure_p(mut v: &'static Cv, mut s: &'static St, mut t: &'static
                                         }
                                     }
                                 } else {
-                                    any_p(lambda1(move |x: &'static Variant| {
+                                    any_p(lambda1s(move |x: &'static Variant| {
                                         let tagcase_ = x;
                                         match *tagcase_ {
                                             Variant::Variant(tag, fs) => {
-                                                any_p(lambda1(move |f: &'static Ty| {
+                                                any_p(lambda1s(move |f: &'static Ty| {
                                                     holds_procedure_p(v, s, substitute(ps, args, f), kayak_rt::heap_cons(d, seen))
                                                 }), fs)
                                             }
@@ -4406,7 +4451,7 @@ pub fn crossed_since_p(mut n: Str, mut ts: Trails) -> bool {
 }
 
 pub fn on_trail_p(n: Str, ts: Trails) -> bool {
-    any_p(lambda1(move |t: &'static Trail| {
+    any_p(lambda1s(move |t: &'static Trail| {
         let tagcase_ = t;
         match *tagcase_ {
             Trail::Trail(m, p) => {
@@ -4425,7 +4470,7 @@ pub fn cyclic_walk(mut v: &'static Cv, mut s: &'static St, mut t: &'static Ty, m
             let tagcase_ = x;
             match *tagcase_ {
                 Ty::TyProc(es, ps, r) => {
-                    return (any_p(lambda1(move |p: &'static Ty| {
+                    return (any_p(lambda1s(move |p: &'static Ty| {
                         cyclic_walk(v, s, p, true, ts)
                     }), ps) || cyclic_walk(v, s, r, crossed, ts));
                 }
@@ -4442,7 +4487,7 @@ pub fn cyclic_walk(mut v: &'static Cv, mut s: &'static St, mut t: &'static Ty, m
                     continue;
                 }
                 Ty::TyShape(p, ls, fs) => {
-                    return any_p(lambda1(move |f: &'static Ty| {
+                    return any_p(lambda1s(move |f: &'static Ty| {
                         cyclic_walk(v, s, f, crossed, ts)
                     }), fs);
                 }
@@ -4466,7 +4511,7 @@ pub fn cyclic_walk(mut v: &'static Cv, mut s: &'static St, mut t: &'static Ty, m
                                 let tagcase_ = kayak_rt::value::unbox_other::<&'static Dt>(found);
                                 match *tagcase_ {
                                     Dt::Dt(n, ps, vs) => {
-                                        concat(map(lambda1(move |x: &'static Variant| {
+                                        concat(map(lambda1s(move |x: &'static Variant| {
                                             let tagcase_ = x;
                                             match *tagcase_ {
                                                 Variant::Variant(tag, fs) => {
@@ -4478,17 +4523,17 @@ pub fn cyclic_walk(mut v: &'static Cv, mut s: &'static St, mut t: &'static Ty, m
                                 }
                             }
                         });
-                        return (any_p(lambda1(move |k: &'static Ty| {
+                        return (any_p(lambda1s(move |k: &'static Ty| {
                             cyclic_walk(v, s, k, false, ts2)
-                        }), kids) || any_p(lambda1(move |k: &'static Ty| {
+                        }), kids) || any_p(lambda1s(move |k: &'static Ty| {
                             cyclic_walk(v, s, k, true, ts2)
                         }), args));
                     } else if string_eq_p(d, str_lit("%composable")) {
-                        return (cyclic_walk(v, s, car(args), true, ts) || any_p(lambda1(move |k: &'static Ty| {
+                        return (cyclic_walk(v, s, car(args), true, ts) || any_p(lambda1s(move |k: &'static Ty| {
                             cyclic_walk(v, s, k, crossed, ts)
                         }), cdr(args)));
                     } else {
-                        return any_p(lambda1(move |k: &'static Ty| {
+                        return any_p(lambda1s(move |k: &'static Ty| {
                             cyclic_walk(v, s, k, crossed, ts)
                         }), args);
                     }
@@ -4605,7 +4650,7 @@ pub fn masked(mut es: Strings, mut r: Str) -> Strings {
     loop {
         if null_p(es) {
             return nil::<Str>();
-        } else if (string_eq_p(car(es), string_append(str_lit("read:"), r)) || string_eq_p(car(es), string_append(str_lit("write:"), r)) || string_eq_p(car(es), string_append(str_lit("alloc:"), r)) || string_eq_p(car(es), string_append(str_lit("goto:"), r)) || string_eq_p(car(es), string_append(str_lit("comefrom:"), r))) {
+        } else if (region_atom_p(car(es)) && string_eq_p(atom_region(car(es)), r)) {
             es = cdr(es);
             continue;
         } else {
@@ -4628,7 +4673,7 @@ pub fn mentions_p(s: &'static St, t: &'static Ty, r: Str) -> bool {
             (mentions_p(s, e, r) || mentions_p(s, x, r))
         }
         Ty::TyShape(p, ls, ts) => {
-            any_p(lambda1(move |x: &'static Ty| {
+            any_p(lambda1s(move |x: &'static Ty| {
                 mentions_p(s, x, r)
             }), ts)
         }
@@ -4639,12 +4684,12 @@ pub fn mentions_p(s: &'static St, t: &'static Ty, r: Str) -> bool {
             (mentions_p(s, e, r) || mentions_p(s, x, r))
         }
         Ty::TyData(d, args) => {
-            any_p(lambda1(move |a: &'static Ty| {
+            any_p(lambda1s(move |a: &'static Ty| {
                 mentions_p(s, a, r)
             }), args)
         }
         Ty::TyProc(es, ps, x) => {
-            (not(string_eq_p(words_of(masked(es, r)), words_of(es))) || mentions_p(s, x, r) || any_p(lambda1(move |p: &'static Ty| {
+            (not(string_eq_p(words_of(masked(es, r)), words_of(es))) || mentions_p(s, x, r) || any_p(lambda1s(move |p: &'static Ty| {
                 mentions_p(s, p, r)
             }), ps))
         }
@@ -4732,7 +4777,7 @@ pub fn deferred_p(arg: &'static Sexp, param: &'static Ty) -> bool {
                 false
             }
         }
-    } && sym_is_p(arg, str_lit("nil"))) || (head_is_p(arg, str_lit("lambda")) && any_p(lambda1(move |p: &'static Sexp| {
+    } && sym_is_p(arg, str_lit("nil"))) || (head_is_p(arg, str_lit("lambda")) && any_p(lambda1s(move |p: &'static Sexp| {
         let tagcase_ = p;
         match *tagcase_ {
             Sexp::Sym(n, f, x) => {
@@ -4821,7 +4866,7 @@ pub fn reaches_p(v: &'static Cv, s: &'static St, body: &'static Sexp, tag: &'sta
             }
         }
     };
-    any_p(lambda1(move |n: Str| {
+    any_p(lambda1s(move |n: Str| {
         (not(string_eq_p(n, tag_name)) && {
             let found = find_bind(n, cv_binds(v));
             (not(null_p(found)) && {
@@ -4869,7 +4914,7 @@ pub fn opened_binds(m: Str, bs: Binds) -> Binds {
 
 /// Whether a control form has the parts it needs, before they are taken.
 pub fn well_formed_p(h: Str, xs: Sexps) -> bool {
-    let lists_p = lambda3(move |x: &'static Sexp, n: i64, exact: bool| {
+    let lists_p = lambda3s(move |x: &'static Sexp, n: i64, exact: bool| {
         (draft_hole_p(x) || ({
             let tagcase_ = x;
             match *tagcase_ {
@@ -4890,19 +4935,19 @@ pub fn well_formed_p(h: Str, xs: Sexps) -> bool {
     if string_eq_p(h, str_lit("if")) {
         i64_eq(size(xs), 3i64)
     } else if string_eq_p(h, str_lit("cond")) {
-        (not(null_p(xs)) && not(any_p(lambda1(move |c: &'static Sexp| {
+        (not(null_p(xs)) && not(any_p(lambda1s(move |c: &'static Sexp| {
             not(lists_p(c, 2i64, false))
         }), xs)))
     } else if (string_eq_p(h, str_lit("let")) || string_eq_p(h, str_lit("let*"))) {
-        (i64_gt(size(xs), 1i64) && lists_p(car(xs), 0i64, false) && not(any_p(lambda1(move |b: &'static Sexp| {
+        (i64_gt(size(xs), 1i64) && lists_p(car(xs), 0i64, false) && not(any_p(lambda1s(move |b: &'static Sexp| {
             not(lists_p(b, 2i64, true))
         }), items(car(xs)))))
     } else if string_eq_p(h, str_lit("letrec")) {
-        (i64_gt(size(xs), 1i64) && lists_p(car(xs), 0i64, false) && not(any_p(lambda1(move |b: &'static Sexp| {
+        (i64_gt(size(xs), 1i64) && lists_p(car(xs), 0i64, false) && not(any_p(lambda1s(move |b: &'static Sexp| {
             not(lists_p(b, 3i64, true))
         }), items(car(xs)))))
     } else if (string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("tagcase"))) {
-        (i64_gt(size(xs), 1i64) && not(any_p(lambda1(move |c: &'static Sexp| {
+        (i64_gt(size(xs), 1i64) && not(any_p(lambda1s(move |c: &'static Sexp| {
             not(lists_p(c, 2i64, false))
         }), cdr(xs))))
     } else if (string_eq_p(h, str_lit("with")) || string_eq_p(h, str_lit("letregion"))) {

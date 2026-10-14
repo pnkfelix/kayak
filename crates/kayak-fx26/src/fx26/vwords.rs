@@ -491,7 +491,7 @@ pub fn sum_word_x(tag: Str, w: i64) -> i64 {
 
 // The labels of `io-error`'s product, a range of `kids`, made at loading.
 pub fn io_error_labels() -> Ref<i64> {
-    thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
         kayak_rt::heap_new(-1i64)
     })
@@ -542,14 +542,14 @@ pub fn io_error_word_x(e: Product_4kind_6detail<&'static Sum_9not_found_17permis
 // Output a program writes while the REPL runs it (live-repl.kfx): kept for
 // its entry, not written.
 pub fn capturing() -> Ref<bool> {
-    thread_local!(static ONCE: OnceCell<Ref<bool>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<bool>);
     once(&ONCE, || {
         kayak_rt::heap_new(false)
     })
 }
 
 pub fn captured() -> Ref<Chars> {
-    thread_local!(static ONCE: OnceCell<Ref<Chars>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<Chars>);
     once(&ONCE, || {
         kayak_rt::heap_new(nil::<char>())
     })
@@ -602,21 +602,21 @@ pub fn args_room() -> i64 {
 }
 
 pub fn pending_line() -> Ref<&'static Sum_4line_3eof_6failed<Str, (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>> {
-    thread_local!(static ONCE: OnceCell<Ref<&'static Sum_4line_3eof_6failed<Str, (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<&'static Sum_4line_3eof_6failed<Str, (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>);
     once(&ONCE, || {
         kayak_rt::heap_new(kayak_rt::heap_alloc(Sum_4line_3eof_6failed::<Str, (), Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>::Eof(())))
     })
 }
 
 pub fn pending_file() -> Ref<&'static Sum_4data_6failed<Bytes, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>> {
-    thread_local!(static ONCE: OnceCell<Ref<&'static Sum_4data_6failed<Bytes, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<&'static Sum_4data_6failed<Bytes, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>);
     once(&ONCE, || {
         kayak_rt::heap_new(kayak_rt::heap_alloc(Sum_4data_6failed::<Bytes, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>::Data(make_bytevector(int_lit(0), int_to_u8(int_lit(0))))))
     })
 }
 
 pub fn pending_names() -> Ref<&'static Sum_5names_6failed<Strings, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>> {
-    thread_local!(static ONCE: OnceCell<Ref<&'static Sum_5names_6failed<Strings, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<&'static Sum_5names_6failed<Strings, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>>);
     once(&ONCE, || {
         kayak_rt::heap_new(kayak_rt::heap_alloc(Sum_5names_6failed::<List<Str>, Product_4kind_6detail<&'static Sum_9not_found_17permission_denied_14already_exists_15not_a_directory_14is_a_directory_11broken_pipe_12invalid_data_5other<(), (), (), (), (), (), (), ()>, Str>>::Names(nil::<Str>())))
     })

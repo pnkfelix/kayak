@@ -153,7 +153,20 @@
    (cons (poly ((r region) (t type)) (subr (alloc r) (t (listof t r)) (listof t r))))
    (car (poly ((r region) (t type)) (subr (read r) ((listof t r)) t)))
    (cdr (poly ((r region) (t type)) (subr (read r) ((listof t r)) (listof t r))))
-   (null? (poly ((r region) (t type)) (subr pure ((listof t r)) bool)))")
+   (null? (poly ((r region) (t type)) (subr pure ((listof t r)) bool)))
+   (make-icell (poly ((r region) (t type)) (subr (alloc r) () (icell t r))))
+   (icell-get (poly ((r region) (t type)) (subr (await r) ((icell t r)) t)))
+   (icell-put! (poly ((r region) (t type)) (subr (init r) ((icell t r) t) unit)))")
+
+"FX-26's forms of processes that are calls (C101), at the types FX-26's
+ checker gives them: a call headed by one is the form, whatever a program
+ binds the name to, as FX-26 parses it; `send` and `receive` are no
+ values, and `icell-get` and `icell-put!` are the primitives too."
+(define process-forms string
+  "(send (poly ((r region) (m type)) (subr (send r) ((addr m r) m) unit)))
+   (receive (poly ((r region) (m type)) (subr (maxeff (receive r) nondet) ((inbox m r)) m)))
+   (icell-get (poly ((r region) (t type)) (subr (await r) ((icell t r)) t)))
+   (icell-put! (poly ((r region) (t type)) (subr (init r) ((icell t r) t) unit)))")
 
 "kayak-rt's primitives at KFX's types: the prelude's (kfx/prelude.fx), and
  FX-26's standard environment's at `acyclic`, where making and reading
@@ -180,7 +193,9 @@
 (define prim-binds (subr kfx (cv) binds)
   (lambda (v)
     (onto (table-binds v primitives "kayak-rt's primitives" "prim")
-          (table-binds v prelude "kfx/prelude.fx" "global"))))
+          (onto (map (lambda ((b bind)) (tagcase b (bind (n sc w) (bind (string-append "%form " n) sc w))))
+                     (table-binds v process-forms "FX-26's processes" "prim"))
+                (table-binds v prelude "kfx/prelude.fx" "global")))))
 
 (define head-name (subr kfx (cv sexp) string)
   (lambda (v head)
@@ -380,8 +395,8 @@
                (or (sym-is? (car xs) "list") (sym-is? (car xs) "cons") (any? makes-pairs? (cdr xs)))))
         (else other #f)))))
 
-(define constant-made (subr kfx (cv st sexp strings) st)
-  (lambda (v s e es)
+(define constant-made (subr kfx (cv st sexp strings ty) st)
+  (lambda (v s e es t)
     "A constant's value, of effect `es`: it may read globals, and allocate,
      and is then made once, at its first use, and kept (C21), which the
      emitter is told; nothing else, since when it is made is not when
@@ -398,7 +413,13 @@
            (refuse v (string-append "a loaded file is one value for all its loads, made once, so making it must be pure, and this one has "
                                     (string-append (show-effs es) ": make its state in a `lambda` it gives, which each caller applies"))))
           ((or (any? (lambda ((x string)) (has-prefix? x "alloc:")) es) (makes-pairs? e))
-           (tagcase e (lst (xs file line pos) (note-fact s file pos "once")) (else other s)))
+           "Kept for the whole program if its type's Rust is `Sync`, which a
+            process may hold; else for each thread, which none may (C102)."
+           (tagcase e
+             (lst (xs file line pos)
+               (let ((s (note-fact s file pos "once")))
+                 (if (with expressions (sync-type? v s t nil)) (note-fact s file pos "shared") s)))
+             (else other s)))
           (else s))))
 
 (define place-marks-of (subr kfx (ty) strings)
@@ -643,7 +664,7 @@
                              (scheme (tvars t)
                                (if (null? tvars)
                                    (tagcase (with expressions (check v (new-state) (fourth xs) t))
-                                     (res (u es s) (with-facts named (with expressions (settle-facts (constant-made v s (fourth xs) es))))))
+                                     (res (u es s) (with-facts named (with expressions (settle-facts (constant-made v s (fourth xs) es t))))))
                                    (refuse v "a poly constant: only a procedure may be poly"))))))))
                 ((string=? h "define-rec") (check-rec v (cdr xs)))
                 ((string=? h "define*") (check-define* v xs src-file src-pos))
@@ -864,7 +885,7 @@
           (let ((written (if (with expressions (has-var? s t))
                              (refuse v "a definition with no type, of a type over a binder: write its type")
                              (with expressions (ty-sexp v s t))))
-                (s (if (lambda-form? e) s (constant-made v s e es))))
+                (s (if (lambda-form? e) s (constant-made v s e es t))))
             (elab (with-facts (with-binds v (list (global v name (scheme nil (zonk s t))))) (with expressions (settle-facts s)))
                   (list (typed name written)))))))))
 

@@ -56,7 +56,7 @@ pub async fn suspend_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static
 
 // To the back of the ready queue.
 pub async fn yield_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>) -> Result<(), Unwind> {
-    Ok(kayak_rt::suspend::body((&suspend_x)(lp, lambda1(move |k: &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>| kayak_rt::suspend::body(async move {
+    Ok(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(suspend_x(a__0, a__1))))(lp, lambda1(move |k: &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>| kayak_rt::suspend::body(async move {
         Ok((&enqueue_x)(lp, k))
     })))).await?)
 }
@@ -74,7 +74,7 @@ pub fn insert_sleeper(at: i64, k: &'static dyn Fn(()) -> kayak_rt::suspend::Body
 // Asleep until the clock reads `d` more than now.
 pub async fn sleep_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>, d: i64) -> Result<(), Unwind> {
     let at = i64_plus((&now)(lp), d);
-    Ok(kayak_rt::suspend::body((&suspend_x)(lp, lambda1(move |k: &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>| kayak_rt::suspend::body(async move {
+    Ok(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(suspend_x(a__0, a__1))))(lp, lambda1(move |k: &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>| kayak_rt::suspend::body(async move {
         let ss = lp.2;
         Ok(set(ss, (&insert_sleeper)(at, k, get(ss))))
     })))).await?)
@@ -85,7 +85,7 @@ pub async fn spawn_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static d
     Ok({
         let prompt_tag__ = lp.0;
         match kayak_rt::suspend::prompt(prompt_tag__, kayak_rt::suspend::body(async move {
-            kayak_rt::suspend::body((&yield_x)(lp)).await?;
+            kayak_rt::suspend::body((lambda1(move |a__0| kayak_rt::suspend::body(yield_x(a__0))))(lp)).await?;
             Ok(kayak_rt::suspend::body(thunk()).await?)
         })).await {
             Ok(kayak_rt::suspend::Prompted::Done(v_)) => v_,
@@ -138,7 +138,7 @@ pub async fn run_ready_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'stat
                 Err(u_) => return Err(u_),
             }
         };
-        Ok(kayak_rt::suspend::body((&run_ready_x)(lp)).await?)
+        Ok(kayak_rt::suspend::body((lambda1(move |a__0| kayak_rt::suspend::body(run_ready_x(a__0))))(lp)).await?)
     }
 }
 
@@ -165,10 +165,10 @@ pub async fn run_x(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn
                 Err(u_) => return Err(u_),
             }
         };
-        Ok(kayak_rt::suspend::body((&run_x)(lp)).await?)
+        Ok(kayak_rt::suspend::body((lambda1(move |a__0| kayak_rt::suspend::body(run_x(a__0))))(lp)).await?)
     } else if not(null_p(get(lp.2))) {
         (&wake_first_x)(lp);
-        Ok(kayak_rt::suspend::body((&run_x)(lp)).await?)
+        Ok(kayak_rt::suspend::body((lambda1(move |a__0| kayak_rt::suspend::body(run_x(a__0))))(lp)).await?)
     } else {
         Ok(())
     }
@@ -187,10 +187,10 @@ pub async fn ivar_get_x<A: Copy + 'static>(lp: Product_3tag_5ready_8sleeping_5cl
             Ok(v)
         }
         Sum_5empty_4full::Empty(ws) => {
-            kayak_rt::suspend::body((&suspend_x)(lp, lambda1(move |k: &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>| kayak_rt::suspend::body(async move {
+            kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(suspend_x(a__0, a__1))))(lp, lambda1(move |k: &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>| kayak_rt::suspend::body(async move {
                 Ok(set(iv, kayak_rt::heap_alloc(Sum_5empty_4full::<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, A>::Empty(kayak_rt::heap_cons(k, ws)))))
             })))).await?;
-            Ok(kayak_rt::suspend::body((&ivar_get_x)(lp, iv)).await?)
+            Ok(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(ivar_get_x(a__0, a__1))))(lp, iv)).await?)
         }
     }
 }

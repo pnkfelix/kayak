@@ -335,7 +335,7 @@ pub fn fits_i64_p(cs: Chars) -> bool {
 
 /// Whether every character of `cs` is one of `allowed`'s.
 pub fn only_of_p(cs: Chars, allowed: Str) -> bool {
-    not(any_p(lambda1(move |c: char| {
+    not(any_p(lambda1s(move |c: char| {
         not(has_char_p(string_chars(allowed), c))
     }), cs))
 }

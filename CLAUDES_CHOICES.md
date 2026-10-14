@@ -2152,3 +2152,84 @@ processes in the engine and runtime, each an OS thread with a heap of its
 own (Fixpt's note: the transmissible rule makes per-process heaps an
 implementation's free choice); the REPL's session and machine as two
 processes.
+
+## C101. FX-26's processes and `par`, in KFX's checker (2026-10-14)
+
+The user's "go" after C100: Fixpt's forms in KFX, rule for rule
+(Fixpt's `docs/fx26.md` "Processes and `par`", `processes.rs`).
+- **Types and effects.** `(addr M R)`, `(inbox M r)`, `(icell T R)` are
+  `ty-data` `%addr`, `%inbox`, `%icell`. The atoms on a region are now one
+  list, `region-kinds`: FX-26's `read write alloc goto comefrom` and the
+  processes' `send receive init await`; `nondet` has no region, as
+  `spin`, and no masking removes it. `init` is within `write`
+  (`effs-within?`). `make-icell`, `icell-get`, `icell-put!` are primitives.
+- **Forms, as Fixpt parses them.** A call headed `send`, `receive`,
+  `icell-get` or `icell-put!` is the form whatever binds the name (its
+  type the binding `%form NAME`, which no program can name); `spawn`,
+  `par`, `pselect` likewise. None is a keyword: Fixpt's `KEYWORDS` has
+  none of them, and `(define send int 1)` is FX-26 (tried on Fixpt).
+- **`spawn`** is checked as a `letreap` of the process's place
+  (`letrena-form`, whose facts the emitter's `letreap` reads), the mailbox
+  bound. What its body holds from outside is found as it is named: a
+  marker `%process N` among the type variables and the bindings, and a
+  name found older than the marker noted `held` (for every process it is
+  outside of); once the body is checked, each held name's type must be
+  transmissible (`untransmissible`, Fixpt's, in its words), as must the
+  message type; the body's effect without its place must be what a
+  process may do (`crossing-atom?`); `nondet` added if it does I/O.
+- **`par`**: each branch's effect apart; none with `goto`/`comefrom`; no
+  two interfering by FX's table extended to sends, receives and I/O
+  (`interferes?`); two regions may be one unless both are constants of
+  other names.
+- **`pselect`**: arms `((icell-get c) x body ...)`, `((receive b) x body
+  ...)`, typed as `if`'s arms are, and `nondet`.
+- **Refused where Fixpt accepts** (K1 allows): a process defined as a
+  global's value (KFX makes a constant at its first use, C21, so its
+  value may not spawn); a `define-type` that mentions itself (Fixpt's
+  `exchange.fx`, `deadlock.fx`); unions, non-list pairs, `vsubr`s as
+  messages (C102). Found on the way, not processes': inside a global's
+  value, Fixpt does not count a local lambda's reads of globals against
+  its declared effect; KFX does (TODO).
+- **A bug found on the way, older:** a `proj` of a global that may
+  suspend, as a value, was `&f` where its future must be boxed; now noted
+  `async-global` as a name is. Fixpt's `higher-kinds/proj-await.fx`,
+  refused before (KFX had no `await`), is accepted and agrees.
+
+## C102. Transmissible types as `Send + Sync`; `par` in two modes (2026-10-14)
+
+The user: "emit transmissible types as Send/Sync, we should do that", and
+for `par` "a mode switch … I am willing to have unsafe but I'll be
+happier if we also have a non-unsafe variant to also experiment with".
+So the checker's proof is carried into the Rust's types, and rustc checks
+it again, rather than `unsafe` trusting it.
+- **Procedures.** One whose latent effect a process may have (`crossing?`:
+  sends, fills, awaits, I/O, `spin`, `nondet`, reading globals or frozen
+  data, allocating at a constant) is `&'static (dyn Fn(..) -> R + Send +
+  Sync)`, made by `lambdaNs`; the checker notes `sync` at such a lambda,
+  and the emitter finds the same of a written type (`crossing-effect?`).
+  The settled type the checker writes says `pure` for such an effect and
+  `%local` for any other that neither aborts nor suspends.
+- **What such a lambda holds** must then be `Sync` (`sync-type?`), or rustc
+  refuses the Rust: KFX refuses first, in its words (`synced-lambda`). A
+  local named in the body but bound in it too counts: KFX refuses more
+  than it must, never less. Rust's `Send` is about what a closure holds,
+  FX's rule about what it does; the extra rule makes them one.
+- **A `letrec`'s knot** is a `OnceLock`, tied once, so that a closure
+  holding it may cross.
+- **Constants.** One whose type is `Sync` is kept for the whole program,
+  `static ONCE: OnceLock<T>` (the checker notes `shared`), so a process
+  sees the program's I-cell, address, value; any other is
+  `kayak_rt::kept_constant!`: each thread's, which no process can tell,
+  holding none.
+- **Processes** (`kayak-rt/src/process.rs`): an OS thread each, `spawn`,
+  `send` bounded by `Send`; mailboxes and I-cells a `Mutex` each; one
+  lock and condition variable for every wait, counting the tasks that can
+  run, so the program's wait with none left is Fixpt's deadlock, in
+  Fixpt's words; a process's failure the program's, at its next meeting
+  with the scheduler. Messages shared, not copied: never written.
+- **`par`**: branches that hold only what may cross go to `par2`, threads,
+  checked by rustc. Others to `par2_shared`: without the cargo feature
+  `unsafe-par`, in turn (the same answer, by the interference check); with
+  it, at once, by `kayak-sync`, the one crate with `unsafe` (two
+  assertions, each said in a SAFETY comment), and every constant kept for
+  the program (`kept_constant!` a `kayak_sync::Global`).

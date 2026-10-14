@@ -60,7 +60,7 @@ pub fn loads_read(mut todo: Strings, mut done: Fileds) -> Fileds {
     loop {
         if null_p(todo) {
             return done;
-        } else if any_p(lambda1(move |s: &'static Filed| {
+        } else if any_p(lambda1s(move |s: &'static Filed| {
             let tagcase_ = s;
             match *tagcase_ {
                 Filed::Filed(n, t) => {

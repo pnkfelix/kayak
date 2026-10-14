@@ -19,7 +19,7 @@ pub fn reserve() -> i64 {
 }
 
 pub fn roots() -> Ref<FlatArray<i64>> {
-    thread_local!(static ONCE: OnceCell<Ref<FlatArray<i64>>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
         kayak_rt::heap_new(make_flatarray_i64(6i64, 0i64))
     })
@@ -30,7 +30,7 @@ pub fn roots() -> Ref<FlatArray<i64>> {
 // the roots, in its task's slot (`parked-at`), so that the collector keeps
 // what they reach; `w-paused` is what `run` then gives.
 pub fn fuel() -> Ref<i64> {
-    thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
         kayak_rt::heap_new(-1i64)
     })
@@ -42,14 +42,14 @@ pub fn fuel() -> Ref<i64> {
 // one is, a slice is not much longer; the live REPL's keys are read
 // between slices (C99).
 pub fn deadline() -> Ref<i64> {
-    thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
         kayak_rt::heap_new(-1i64)
     })
 }
 
 pub fn ticks() -> Ref<i64> {
-    thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
         kayak_rt::heap_new(0i64)
     })
@@ -61,7 +61,7 @@ pub fn past_deadline_p() -> bool {
 }
 
 pub fn task_slot() -> Ref<i64> {
-    thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
         kayak_rt::heap_new(0i64)
     })
@@ -76,21 +76,21 @@ pub fn parked_at(slot: i64) -> i64 {
 }
 
 pub fn globals() -> Ref<FlatArray<i64>> {
-    thread_local!(static ONCE: OnceCell<Ref<FlatArray<i64>>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
         kayak_rt::heap_new(make_flatarray_i64(1i64, 0i64))
     })
 }
 
 pub fn global_name_table() -> Ref<Array<Str>> {
-    thread_local!(static ONCE: OnceCell<Ref<Array<Str>>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<Array<Str>>);
     once(&ONCE, || {
         kayak_rt::heap_new(make_array(int_lit(1), str_lit("")))
     })
 }
 
 pub fn tags_made() -> Ref<i64> {
-    thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
         kayak_rt::heap_new(0i64)
     })

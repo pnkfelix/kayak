@@ -4,8 +4,14 @@ version.workspace = true
 edition.workspace = true
 license.workspace = true
 
+[dependencies]
+kayak-sync = { path = "../kayak-sync", optional = true }
+
 [features]
 heap-stats = []
+# `par`'s branches that share what is written, at once (C102), by kayak-sync's
+# `unsafe`; without it they run in turn.
+unsafe-par = ["dep:kayak-sync"]
 
 [lints]
 workspace = true

@@ -12,7 +12,7 @@ pub type Strings = List<Str>;
 
 pub type Ints = List<i64>;
 
-pub fn map<A: Copy + 'static, B: Copy + 'static>(f: &'static dyn Fn(A) -> B, xs: List<A>) -> List<B> {
+pub fn map<A: Copy + 'static, B: Copy + 'static>(f: &'static (dyn Fn(A) -> B + Send + Sync), xs: List<A>) -> List<B> {
     if null_p(xs) {
         nil::<B>()
     } else {
@@ -21,7 +21,7 @@ pub fn map<A: Copy + 'static, B: Copy + 'static>(f: &'static dyn Fn(A) -> B, xs:
 }
 
 /// A self tail call in a poly procedure: it loops too.
-pub fn fold<A: Copy + 'static, B: Copy + 'static>(mut f: &'static dyn Fn(B, A) -> B, mut acc: B, mut xs: List<A>) -> B {
+pub fn fold<A: Copy + 'static, B: Copy + 'static>(mut f: &'static (dyn Fn(B, A) -> B + Send + Sync), mut acc: B, mut xs: List<A>) -> B {
     loop {
         if null_p(xs) {
             return acc;
@@ -36,7 +36,7 @@ pub fn words(xs: Strings) -> Str {
     if null_p(xs) {
         str_lit("")
     } else {
-        fold(lambda2(move |acc: Str, w: Str| {
+        fold(lambda2s(move |acc: Str, w: Str| {
             string_append(acc, string_append(str_lit(" "), w))
         }), car(xs), cdr(xs))
     }
@@ -46,21 +46,21 @@ pub fn add1(n: i64) -> i64 {
     i64_plus(n, 1i64)
 }
 
-pub fn adder(n: i64) -> &'static dyn Fn(i64) -> i64 {
-    lambda1(move |m: i64| {
+pub fn adder(n: i64) -> &'static (dyn Fn(i64) -> i64 + Send + Sync) {
+    lambda1s(move |m: i64| {
         i64_plus(n, m)
     })
 }
 
-pub fn twice<A: Copy + 'static>(f: &'static dyn Fn(A) -> A, x: A) -> A {
+pub fn twice<A: Copy + 'static>(f: &'static (dyn Fn(A) -> A + Send + Sync), x: A) -> A {
     f(f(x))
 }
 
 pub enum Op {
-    Op(Str, &'static dyn Fn(i64, i64) -> i64),
+    Op(Str, &'static (dyn Fn(i64, i64) -> i64 + Send + Sync)),
 }
 
-pub fn op(f0: Str, f1: &'static dyn Fn(i64, i64) -> i64) -> &'static Op {
+pub fn op(f0: Str, f1: &'static (dyn Fn(i64, i64) -> i64 + Send + Sync)) -> &'static Op {
     kayak_rt::heap_alloc(Op::Op(f0, f1))
 }
 
@@ -81,13 +81,13 @@ pub fn main() -> Str {
     let xs = the::<Ints>(kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(2i64, kayak_rt::heap_cons(3i64, kayak_rt::nil()))));
     let k = the::<i64>(100i64);
     let shows = map(&i64_to_string, map(&add1, xs));
-    words(kayak_rt::heap_cons(words(shows), kayak_rt::heap_cons(words(map(lambda1(move |x: i64| {
+    words(kayak_rt::heap_cons(words(shows), kayak_rt::heap_cons(words(map(lambda1s(move |x: i64| {
         i64_to_string(i64_star(x, 10i64))
-    }), xs)), kayak_rt::heap_cons(words(map(&i64_to_string, map(adder(k), xs))), kayak_rt::heap_cons(i64_to_string((adder(3i64))(4i64)), kayak_rt::heap_cons(i64_to_string(twice(&add1, 0i64)), kayak_rt::heap_cons(twice(lambda1(move |s: Str| {
+    }), xs)), kayak_rt::heap_cons(words(map(&i64_to_string, map(adder(k), xs))), kayak_rt::heap_cons(i64_to_string((adder(3i64))(4i64)), kayak_rt::heap_cons(i64_to_string(twice(&add1, 0i64)), kayak_rt::heap_cons(twice(lambda1s(move |s: Str| {
         string_append(s, str_lit("!"))
-    }), str_lit("hey")), kayak_rt::heap_cons(i64_to_string(fold(lambda2(move |acc: i64, x: i64| {
+    }), str_lit("hey")), kayak_rt::heap_cons(i64_to_string(fold(lambda2s(move |acc: i64, x: i64| {
         i64_plus(acc, x)
-    }), 0i64, xs)), kayak_rt::heap_cons(apply_op(op(str_lit("plus"), lambda2(move |a: i64, b: i64| {
+    }), 0i64, xs)), kayak_rt::heap_cons(apply_op(op(str_lit("plus"), lambda2s(move |a: i64, b: i64| {
         i64_plus(a, b)
     })), 2i64, 3i64), kayak_rt::heap_cons(apply_op(op(str_lit("times"), &i64_star_wrapped), 2i64, 3i64), kayak_rt::nil()))))))))))
 }

@@ -265,7 +265,7 @@ pub mod termination {
 
     /// Each integer known, `k` more; one that would overflow known no longer.
     pub fn shifted(ts: Trackeds, k: i64) -> Trackeds {
-        concat(map(lambda1(move |t: &'static Tracked| {
+        concat(map(lambda1s(move |t: &'static Tracked| {
             let tagcase_ = t;
             match *tagcase_ {
                 Tracked::IntOf(p, o) => {
@@ -349,7 +349,7 @@ pub mod termination {
                         e = third(xs);
                         continue;
                     } else if ((string_eq_p(op, str_lit("car")) || string_eq_p(op, str_lit("cdr"))) && i64_eq(size(xs), 2i64)) {
-                        return concat(map(lambda1(move |t: &'static Tracked| {
+                        return concat(map(lambda1s(move |t: &'static Tracked| {
                             let tagcase_ = t;
                             match *tagcase_ {
                                 Tracked::Part(p, strict, ty) => {
@@ -454,11 +454,11 @@ pub mod termination {
                             if null_p(b) {
                                 return not(string_member_p(n, ms));
                             } else {
-                                return any_p(lambda1(move |t: &'static Tracked| {
+                                return any_p(lambda1s(move |t: &'static Tracked| {
                                     let tagcase_ = t;
                                     match *tagcase_ {
                                         Tracked::Part(p, strict, ty) => {
-                                            (not(strict) && any_p(lambda1(move |x: &'static Slot| {
+                                            (not(strict) && any_p(lambda1s(move |x: &'static Slot| {
                                                 let tagcase_ = x;
                                                 match *tagcase_ {
                                                     Slot::Slot(i, j) => {
@@ -481,7 +481,7 @@ pub mod termination {
                                 e = third(xs);
                                 continue;
                             } else if ((string_eq_p(op, str_lit("string-length")) && i64_eq(size(xs), 2i64)) || ((string_eq_p(op, str_lit("+")) || string_eq_p(op, str_lit("-"))) && i64_eq(size(xs), 3i64))) {
-                                return not(any_p(lambda1(move |a: &'static Sexp| {
+                                return not(any_p(lambda1s(move |a: &'static Sexp| {
                                     not(fixed_p(c, a))
                                 }), cdr(xs)));
                             } else {
@@ -513,11 +513,11 @@ pub mod termination {
 
     pub fn guards_on(c: &'static Wc, x: &'static Sexp, other: &'static Sexp, bounds: List<bool>) -> Guards {
         if fixed_p(c, other) {
-            concat(map(lambda1(move |t: &'static Tracked| {
+            concat(map(lambda1s(move |t: &'static Tracked| {
                 let tagcase_ = t;
                 match *tagcase_ {
                     Tracked::IntOf(p, o) => {
-                        map(lambda1(move |b: bool| {
+                        map(lambda1s(move |b: bool| {
                             guard(p, b)
                         }), bounds)
                     }
@@ -543,15 +543,15 @@ pub mod termination {
                         (test, holds) = (second(xs), not(holds));
                         continue;
                     } else if (i64_eq(size(xs), 3i64) && not(null_p(bounds_put(op, holds)))) {
-                        return onto(guards_on(c, second(xs), third(xs), bounds_put(op, holds)), guards_on(c, third(xs), second(xs), map(lambda1(move |b: bool| {
+                        return onto(guards_on(c, second(xs), third(xs), bounds_put(op, holds)), guards_on(c, third(xs), second(xs), map(lambda1s(move |b: bool| {
                             not(b)
                         }), bounds_put(op, holds))));
                     } else if (sym_is_p(car(xs), str_lit("and")) && holds && i64_gt(size(xs), 2i64)) {
-                        return concat(map(lambda1(move |a: &'static Sexp| {
+                        return concat(map(lambda1s(move |a: &'static Sexp| {
                             facts_of(c, a, true)
                         }), cdr(xs)));
                     } else if (sym_is_p(car(xs), str_lit("or")) && not(holds) && i64_gt(size(xs), 2i64)) {
-                        return concat(map(lambda1(move |a: &'static Sexp| {
+                        return concat(map(lambda1s(move |a: &'static Sexp| {
                             facts_of(c, a, false)
                         }), cdr(xs)));
                     } else {
@@ -576,7 +576,7 @@ pub mod termination {
     }
 
     pub fn hiding(c: &'static Wc, names: Strings) -> &'static Wc {
-        in_scope(c, map(lambda1(move |n: Str| {
+        in_scope(c, map(lambda1s(move |n: Str| {
             known(n, nil::<&'static termination::Tracked>())
         }), names))
     }
@@ -594,14 +594,14 @@ pub mod termination {
         let tagcase_ = c;
         match *tagcase_ {
             Wc::Wc(v, ms, cur, sc, gs, nats, inv) => {
-                (any_p(lambda1(move |g: &'static Guard| {
+                (any_p(lambda1s(move |g: &'static Guard| {
                     let tagcase_ = g;
                     match *tagcase_ {
                         Guard::Guard(q, b) => {
                             (i64_eq(q, p) && eqv_bool_p(b, lower))
                         }
                     }
-                }), gs) || (lower && any_p(lambda1(move |n: i64| {
+                }), gs) || (lower && any_p(lambda1s(move |n: i64| {
                     i64_eq(n, p)
                 }), nats)))
             }
@@ -677,7 +677,7 @@ pub mod termination {
     }
 
     pub fn passed_on(c: &'static Wc, a: &'static Sexp) -> i64 {
-        let unchanged = concat(map(lambda1(move |t: &'static Tracked| {
+        let unchanged = concat(map(lambda1s(move |t: &'static Tracked| {
             let tagcase_ = t;
             match *tagcase_ {
                 Tracked::Part(p, strict, ty) => {
@@ -707,7 +707,7 @@ pub mod termination {
                 let tagcase_ = st;
                 match *tagcase_ {
                     Ws::Ws(calls, passed, escaped) => {
-                        ws(kayak_rt::heap_cons(scall(cur, to, args_edges(c, args, 0i64, nil::<&'static termination::Edge>())), calls), kayak_rt::heap_cons(passing(cur, to, map(lambda1(move |a: &'static Sexp| {
+                        ws(kayak_rt::heap_cons(scall(cur, to, args_edges(c, args, 0i64, nil::<&'static termination::Edge>())), calls), kayak_rt::heap_cons(passing(cur, to, map(lambda1s(move |a: &'static Sexp| {
                             passed_on(c, a)
                         }), args)), passed), escaped)
                     }
@@ -726,7 +726,7 @@ pub mod termination {
     }
 
     pub fn param_names(params: Sexps) -> Strings {
-        map(lambda1(move |p: &'static Sexp| {
+        map(lambda1s(move |p: &'static Sexp| {
             let tagcase_ = p;
             match *tagcase_ {
                 Sexp::Sym(n, at_file, at_pos) => {
@@ -746,7 +746,7 @@ pub mod termination {
     /// What an arm of a `tagcase` on `whole` binds for its field `i`: a part,
     /// strictly smaller, of the type the variant says if the whole's is known.
     pub fn variant_part(v: &'static Cv, whole: Trackeds, tag: Str, i: i64) -> Trackeds {
-        concat(map(lambda1(move |t: &'static Tracked| {
+        concat(map(lambda1s(move |t: &'static Tracked| {
             let tagcase_ = t;
             match *tagcase_ {
                 Tracked::Part(p, strict, ty) => {
@@ -763,7 +763,7 @@ pub mod termination {
                                     let tagcase_ = kayak_rt::value::unbox_other::<&'static Dt>(found);
                                     match *tagcase_ {
                                         Dt::Dt(n, ps, vs) => {
-                                            let fs = concat(map(lambda1(move |x: &'static Variant| {
+                                            let fs = concat(map(lambda1s(move |x: &'static Variant| {
                                                 let tagcase_ = x;
                                                 match *tagcase_ {
                                                     Variant::Variant(vt, ft) => {
@@ -775,7 +775,7 @@ pub mod termination {
                                                     }
                                                 }
                                             }), vs));
-                                            map(lambda1(move |f: &'static Ty| {
+                                            map(lambda1s(move |f: &'static Ty| {
                                                 substitute(ps, args, f)
                                             }), nth_ty(fs, i))
                                         }
@@ -840,14 +840,14 @@ pub mod termination {
                     } else if string_eq_p(h, str_lit("cond")) {
                         return walk_clauses(c, st, cdr(xs));
                     } else if string_eq_p(h, str_lit("case")) {
-                        return walk_all(c, walk_exp(c, st, second(xs)), concat(map(lambda1(move |arm: &'static Sexp| {
+                        return walk_all(c, walk_exp(c, st, second(xs)), concat(map(lambda1s(move |arm: &'static Sexp| {
                             cdr(items(arm))
                         }), cdr(cdr(xs)))));
                     } else if string_eq_p(h, str_lit("tagcase")) {
                         return walk_arms(c, walk_exp(c, st, second(xs)), tracked_of(c, second(xs)), cdr(cdr(xs)));
                     } else if string_eq_p(h, str_lit("typecase")) {
                         // Each arm's name the value tested, as it is (C77).
-                        return walk_all(c, walk_exp(c, st, second(xs)), map(lambda1(move |arm: &'static Sexp| {
+                        return walk_all(c, walk_exp(c, st, second(xs)), map(lambda1s(move |arm: &'static Sexp| {
                             let a = items(arm);
                             if i64_eq(size(a), 3i64) {
                                 lst(kayak_rt::heap_cons(sym(str_lit("let"), str_lit(""), 0i64), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(second(a), kayak_rt::heap_cons(second(xs), kayak_rt::nil())), str_lit(""), 0i64, 0i64), kayak_rt::nil()), str_lit(""), 0i64, 0i64), kayak_rt::heap_cons(third(a), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
@@ -856,19 +856,19 @@ pub mod termination {
                             }
                         }), cdr(cdr(xs))));
                     } else if string_eq_p(h, str_lit("let")) {
-                        let st = walk_all(c, st, map(lambda1(move |b: &'static Sexp| {
+                        let st = walk_all(c, st, map(lambda1s(move |b: &'static Sexp| {
                             second(items(b))
                         }), items(second(xs))));
-                        return walk_all(in_scope(c, map(lambda1(move |b: &'static Sexp| {
+                        return walk_all(in_scope(c, map(lambda1s(move |b: &'static Sexp| {
                             known(sym_name(car(items(b))), tracked_of(c, second(items(b))))
                         }), items(second(xs)))), st, cdr(cdr(xs)));
                     } else if string_eq_p(h, str_lit("let*")) {
                         return walk_let_star(c, st, items(second(xs)), cdr(cdr(xs)));
                     } else if string_eq_p(h, str_lit("letrec")) {
-                        let c = hiding(c, map(lambda1(move |b: &'static Sexp| {
+                        let c = hiding(c, map(lambda1s(move |b: &'static Sexp| {
                             sym_name(car(items(b)))
                         }), items(second(xs))));
-                        return walk_all(c, walk_all(c, st, map(lambda1(move |b: &'static Sexp| {
+                        return walk_all(c, walk_all(c, st, map(lambda1s(move |b: &'static Sexp| {
                             third(items(b))
                         }), items(second(xs)))), cdr(cdr(xs)));
                     } else if (string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("letrena")) || string_eq_p(h, str_lit("letreap"))) {
@@ -884,7 +884,7 @@ pub mod termination {
                         let tagcase_ = c;
                         match *tagcase_ {
                             Wc::Wc(v, ms, cur, sc, gs, nats, inv) => {
-                                return walk_all(hiding(c, map(lambda1(move |b: &'static Bind| {
+                                return walk_all(hiding(c, map(lambda1s(move |b: &'static Bind| {
                                     let tagcase_ = b;
                                     match *tagcase_ {
                                         Bind::Bind(n, t, w) => {
@@ -933,7 +933,7 @@ pub mod termination {
             } else {
                 let arm = items(car(arms));
                 (st, arms) = (if sym_is_p(car(arm), str_lit("else")) {
-                    walk_all(in_scope(c, the::<Knowns>(kayak_rt::heap_cons(known(sym_name(second(arm)), concat(map(lambda1(move |t: &'static Tracked| {
+                    walk_all(in_scope(c, the::<Knowns>(kayak_rt::heap_cons(known(sym_name(second(arm)), concat(map(lambda1s(move |t: &'static Tracked| {
                         let tagcase_ = t;
                         match *tagcase_ {
                             Tracked::Part(p, s, ty) => {
@@ -951,7 +951,7 @@ pub mod termination {
                         match *tagcase_ {
                             Sexp::Sym(x, at_file, at_pos) => {
                                 // A sum's member, bound whole: a part, its type not known here.
-                                the::<Knowns>(kayak_rt::heap_cons(known(x, concat(map(lambda1(move |t: &'static Tracked| {
+                                the::<Knowns>(kayak_rt::heap_cons(known(x, concat(map(lambda1s(move |t: &'static Tracked| {
                                     let tagcase_ = t;
                                     match *tagcase_ {
                                         Tracked::Part(p, s, ty) => {
@@ -1099,7 +1099,7 @@ pub mod termination {
     }
 
     pub fn slot_in_p(i: i64, j: i64, inv: Slots) -> bool {
-        any_p(lambda1(move |x: &'static Slot| {
+        any_p(lambda1s(move |x: &'static Slot| {
             let tagcase_ = x;
             match *tagcase_ {
                 Slot::Slot(a, b) => {
@@ -1124,11 +1124,11 @@ pub mod termination {
 
     /// The slots every call passes on unchanged, of those still thought so.
     pub fn kept_slots(inv: Slots, passed: Passings) -> Slots {
-        concat(map(lambda1(move |x: &'static Slot| {
+        concat(map(lambda1s(move |x: &'static Slot| {
             let tagcase_ = x;
             match *tagcase_ {
                 Slot::Slot(to, j) => {
-                    if any_p(lambda1(move |p: &'static Passing| {
+                    if any_p(lambda1s(move |p: &'static Passing| {
                         let tagcase_ = p;
                         match *tagcase_ {
                             Passing::Passing(f, t, args) => {
@@ -1167,7 +1167,7 @@ pub mod termination {
             let tagcase_ = car(ms);
             match *tagcase_ {
                 RecMember::RecMember(n, ps, ts, body) => {
-                    onto(map(lambda1(move |j: i64| {
+                    onto(map(lambda1s(move |j: i64| {
                         slot(i, j)
                     }), counting(0i64, size(ps))), all_slots(cdr(ms), i64_plus(i, 1i64)))
                 }
@@ -1270,7 +1270,7 @@ pub mod termination {
             let tagcase_ = car(todo);
             match *tagcase_ {
                 Scall::Scall(f, g, a) => {
-                    close_over(calls, all, cdr(todo), f, a, concat(map(lambda1(move |x: &'static Scall| {
+                    close_over(calls, all, cdr(todo), f, a, concat(map(lambda1s(move |x: &'static Scall| {
                         let tagcase_ = x;
                         match *tagcase_ {
                             Scall::Scall(g2, h, b) => {
@@ -1296,7 +1296,7 @@ pub mod termination {
                 match *tagcase_ {
                     Scall::Scall(g, h, b) => {
                         let c = scall(f, h, compose(a, b));
-                        if any_p(lambda1(move |x: &'static Scall| {
+                        if any_p(lambda1s(move |x: &'static Scall| {
                             scall_eq_p(x, c)
                         }), all) {
                             nexts = cdr(nexts);
@@ -1315,11 +1315,11 @@ pub mod termination {
     /// its own composition has a slot strictly smaller.
     pub fn ends_p(calls: Scalls) -> bool {
         let all = paths(calls, calls, calls);
-        (not(null_p(all)) && not(any_p(lambda1(move |x: &'static Scall| {
+        (not(null_p(all)) && not(any_p(lambda1s(move |x: &'static Scall| {
             let tagcase_ = x;
             match *tagcase_ {
                 Scall::Scall(f, g, a) => {
-                    (i64_eq(f, g) && edges_eq_p(compose(a, a), a) && not(any_p(lambda1(move |e: &'static Edge| {
+                    (i64_eq(f, g) && edges_eq_p(compose(a, a), a) && not(any_p(lambda1s(move |e: &'static Edge| {
                         let tagcase_ = e;
                         match *tagcase_ {
                             Edge::Edge(p, q, s) => {
@@ -1356,12 +1356,12 @@ pub mod termination {
     /// operator, and it does not.
     pub fn terminates_p(v: &'static Cv, names: Strings, types: Tys, defined: Sexps) -> bool {
         let lambdas = map(&lambda_of, defined);
-        if any_p(lambda1(move |l: Sexps| {
+        if any_p(lambda1s(move |l: Sexps| {
             null_p(l)
         }), lambdas) {
             false
         } else {
-            let ms = rec_members_of(names, types, map(lambda1(move |l: Sexps| {
+            let ms = rec_members_of(names, types, map(lambda1s(move |l: Sexps| {
                 car(l)
             }), lambdas));
             let w1 = walk_rec_members(v, names, ms, 0i64, nil::<&'static termination::Slot>(), ws(nil::<&'static termination::Scall>(), nil::<&'static termination::Passing>(), false));

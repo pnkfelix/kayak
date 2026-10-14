@@ -8,7 +8,15 @@ use super::*;
 
 // Definitions
 pub fn primitives() -> Str {
-    str_lit("(i64+ (subr pure (i64 i64) i64)) (i64- (subr pure (i64 i64) i64)) (i64* (subr pure (i64 i64) i64))\n   (i64-quotient (subr pure (i64 i64) i64)) (i64-remainder (subr pure (i64 i64) i64))\n   (i64-and (subr pure (i64 i64) i64)) (i64-or (subr pure (i64 i64) i64)) (i64-xor (subr pure (i64 i64) i64))\n   (i64-not (subr pure (i64) i64))\n   (i64= (subr pure (i64 i64) bool)) (i64< (subr pure (i64 i64) bool)) (i64> (subr pure (i64 i64) bool))\n   (i64<= (subr pure (i64 i64) bool)) (i64>= (subr pure (i64 i64) bool))\n   (not (subr pure (bool) bool))\n   (i32+ (subr pure (i32 i32) i32)) (i32- (subr pure (i32 i32) i32)) (i32* (subr pure (i32 i32) i32))\n   (i32-quotient (subr pure (i32 i32) i32)) (i32-remainder (subr pure (i32 i32) i32))\n   (i32-and (subr pure (i32 i32) i32)) (i32-or (subr pure (i32 i32) i32)) (i32-xor (subr pure (i32 i32) i32)) (i32-not (subr pure (i32) i32))\n   (i32-shl (subr pure (i32 int) i32)) (i32-shr (subr pure (i32 int) i32))\n   (i32= (subr pure (i32 i32) bool)) (i32< (subr pure (i32 i32) bool)) (i32> (subr pure (i32 i32) bool)) (i32<= (subr pure (i32 i32) bool)) (i32>= (subr pure (i32 i32) bool))\n   (int->i32 (subr pure (int) i32)) (i32->int (subr pure (i32) int))\n   (u8+ (subr pure (u8 u8) u8)) (u8- (subr pure (u8 u8) u8)) (u8* (subr pure (u8 u8) u8))\n   (u8-quotient (subr pure (u8 u8) u8)) (u8-remainder (subr pure (u8 u8) u8))\n   (u8-and (subr pure (u8 u8) u8)) (u8-or (subr pure (u8 u8) u8)) (u8-xor (subr pure (u8 u8) u8)) (u8-not (subr pure (u8) u8))\n   (u8-shl (subr pure (u8 int) u8)) (u8-shr (subr pure (u8 int) u8))\n   (u8= (subr pure (u8 u8) bool)) (u8< (subr pure (u8 u8) bool)) (u8> (subr pure (u8 u8) bool)) (u8<= (subr pure (u8 u8) bool)) (u8>= (subr pure (u8 u8) bool))\n   (int->u8 (subr pure (int) u8)) (u8->int (subr pure (u8) int))\n   (i8+ (subr pure (i8 i8) i8)) (i8- (subr pure (i8 i8) i8)) (i8* (subr pure (i8 i8) i8))\n   (i8-quotient (subr pure (i8 i8) i8)) (i8-remainder (subr pure (i8 i8) i8))\n   (i8-and (subr pure (i8 i8) i8)) (i8-or (subr pure (i8 i8) i8)) (i8-xor (subr pure (i8 i8) i8)) (i8-not (subr pure (i8) i8))\n   (i8-shl (subr pure (i8 int) i8)) (i8-shr (subr pure (i8 int) i8))\n   (i8= (subr pure (i8 i8) bool)) (i8< (subr pure (i8 i8) bool)) (i8> (subr pure (i8 i8) bool)) (i8<= (subr pure (i8 i8) bool)) (i8>= (subr pure (i8 i8) bool))\n   (int->i8 (subr pure (int) i8)) (i8->int (subr pure (i8) int))\n   (u32+ (subr pure (u32 u32) u32)) (u32- (subr pure (u32 u32) u32)) (u32* (subr pure (u32 u32) u32))\n   (u32-quotient (subr pure (u32 u32) u32)) (u32-remainder (subr pure (u32 u32) u32))\n   (u32-and (subr pure (u32 u32) u32)) (u32-or (subr pure (u32 u32) u32)) (u32-xor (subr pure (u32 u32) u32)) (u32-not (subr pure (u32) u32))\n   (u32-shl (subr pure (u32 int) u32)) (u32-shr (subr pure (u32 int) u32))\n   (u32= (subr pure (u32 u32) bool)) (u32< (subr pure (u32 u32) bool)) (u32> (subr pure (u32 u32) bool)) (u32<= (subr pure (u32 u32) bool)) (u32>= (subr pure (u32 u32) bool))\n   (int->u32 (subr pure (int) u32)) (u32->int (subr pure (u32) int))\n   (u64+ (subr pure (u64 u64) u64)) (u64- (subr pure (u64 u64) u64)) (u64* (subr pure (u64 u64) u64))\n   (u64-quotient (subr pure (u64 u64) u64)) (u64-remainder (subr pure (u64 u64) u64))\n   (u64-and (subr pure (u64 u64) u64)) (u64-or (subr pure (u64 u64) u64)) (u64-xor (subr pure (u64 u64) u64)) (u64-not (subr pure (u64) u64))\n   (u64-shl (subr pure (u64 int) u64)) (u64-shr (subr pure (u64 int) u64))\n   (u64= (subr pure (u64 u64) bool)) (u64< (subr pure (u64 u64) bool)) (u64> (subr pure (u64 u64) bool)) (u64<= (subr pure (u64 u64) bool)) (u64>= (subr pure (u64 u64) bool))\n   (int->u64 (subr pure (int) u64)) (u64->int (subr pure (u64) int))\n   (i64-shl (subr pure (i64 int) i64)) (i64-shr (subr pure (i64 int) i64))\n   (+ (subr pure (int int) int)) (- (subr pure (int int) int)) (* (subr pure (int int) int))\n   (quotient (subr pure (int int) int)) (remainder (subr pure (int int) int)) (modulo (subr pure (int int) int))\n   (= (subr pure (int int) bool)) (< (subr pure (int int) bool)) (> (subr pure (int int) bool))\n   (<= (subr pure (int int) bool)) (>= (subr pure (int int) bool))\n   (int->string (subr pure (int) string)) (int->i64 (subr pure (int) i64)) (i64->int (subr pure (i64) int))\n   (zero? (subr pure (int) bool)) (max (subr pure (int int) int)) (min (subr pure (int int) int))\n   (f64+ (subr pure (f64 f64) f64)) (f64- (subr pure (f64 f64) f64)) (f64* (subr pure (f64 f64) f64))\n   (f64/ (subr pure (f64 f64) f64)) (f64-min (subr pure (f64 f64) f64)) (f64-max (subr pure (f64 f64) f64))\n   (f64< (subr pure (f64 f64) bool)) (f64<= (subr pure (f64 f64) bool)) (f64> (subr pure (f64 f64) bool))\n   (f64>= (subr pure (f64 f64) bool)) (f64= (subr pure (f64 f64) bool))\n   (f64-abs (subr pure (f64) f64)) (f64-neg (subr pure (f64) f64)) (f64-sqrt (subr pure (f64) f64))\n   (f64-floor (subr pure (f64) f64)) (f64-ceiling (subr pure (f64) f64))\n   (f64-truncate (subr pure (f64) f64)) (f64-round (subr pure (f64) f64))\n   (f64-nan? (subr pure (f64) bool)) (f64-infinite? (subr pure (f64) bool)) (f64-finite? (subr pure (f64) bool))\n   (int->f64 (subr pure (int) f64)) (f64->int (subr pure (f64) int)) (f64->string (subr pure (f64) string))\n   (f32+ (subr pure (f32 f32) f32)) (f32- (subr pure (f32 f32) f32)) (f32* (subr pure (f32 f32) f32))\n   (f32/ (subr pure (f32 f32) f32)) (f32-min (subr pure (f32 f32) f32)) (f32-max (subr pure (f32 f32) f32))\n   (f32< (subr pure (f32 f32) bool)) (f32<= (subr pure (f32 f32) bool)) (f32> (subr pure (f32 f32) bool))\n   (f32>= (subr pure (f32 f32) bool)) (f32= (subr pure (f32 f32) bool))\n   (f32-abs (subr pure (f32) f32)) (f32-neg (subr pure (f32) f32)) (f32-sqrt (subr pure (f32) f32))\n   (f32-floor (subr pure (f32) f32)) (f32-ceiling (subr pure (f32) f32))\n   (f32-truncate (subr pure (f32) f32)) (f32-round (subr pure (f32) f32))\n   (f32-nan? (subr pure (f32) bool)) (f32-infinite? (subr pure (f32) bool)) (f32-finite? (subr pure (f32) bool))\n   (int->f32 (subr pure (int) f32)) (f32->int (subr pure (f32) int)) (f32->string (subr pure (f32) string))\n   (f32->f64 (subr pure (f32) f64)) (f64->f32 (subr pure (f64) f32))\n   (f32->bits (subr pure (f32) u32)) (bits->f32 (subr pure (u32) f32))\n   (f64->bits (subr pure (f64) u64)) (bits->f64 (subr pure (u64) f64))\n   (string-length (subr pure (string) nat)) (string-ref (subr pure (string int) char))\n   (length (poly ((t type)) (subr pure ((listof t acyclic)) nat)))\n   (list-length (poly ((r region) (t type)) (subr (read r) ((listof t r)) nat)))\n   (append (poly ((r1 region) (r2 region) (t type)) (subr (maxeff (read r1) (alloc r2)) ((listof t r1) (listof t r2)) (listof t r2))))\n   (reverse (poly ((r1 region) (r2 region) (t type)) (subr (maxeff (read r1) (alloc r2)) ((listof t r1)) (listof t r2))))\n   (char=? (subr pure (char char) bool)) (char-whitespace? (subr pure (char) bool))\n   (char-numeric? (subr pure (char) bool)) (char-alphabetic? (subr pure (char) bool))\n   (char-upcase (subr pure (char) char)) (char->string (subr pure (char) string))\n   (string-append (subr pure (string string) string)) (string=? (subr pure (string string) bool))\n   (list->string (poly ((r region)) (subr (read r) ((listof char r)) string)))\n   (string->list (poly ((r region)) (subr (alloc r) (string) (listof char r))))\n   (error (subr pure (string) void))\n   (char->integer (subr pure (char) int)) (integer->char (subr pure (int) char))\n   (int? (poly ((t type)) (subr pure (t) bool)))\n   (string? (poly ((t type)) (subr pure (t) bool)))\n   (bool? (poly ((t type)) (subr pure (t) bool)))\n   (char? (poly ((t type)) (subr pure (t) bool)))\n   (symbol? (poly ((t type)) (subr pure (t) bool)))\n   (array? (poly ((t type)) (subr pure (t) bool)))\n   (procedure? (poly ((t type)) (subr pure (t) bool)))\n   (pair? (poly ((t type)) (subr pure (t) bool)))\n   (f64? (poly ((t type)) (subr pure (t) bool)))\n   (ref? (poly ((t type)) (subr pure (t) bool)))\n   (sum? (poly ((t type)) (subr pure (t) bool)))\n   (product? (poly ((t type)) (subr pure (t) bool)))\n   (bytevector? (poly ((t type)) (subr pure (t) bool)))\n   (vector? (poly ((t type)) (subr pure (t) bool)))\n   (f32? (poly ((t type)) (subr pure (t) bool)))\n   (datum-list->vector (subr pure (datum) datum))\n   (make-continuation-mark-key (poly ((r region) (t type)) (subr (alloc r) () (mark-key t r))))\n   (with-mark (poly ((r region) (t type) (a type) (e effect)) (subr (maxeff (write r) e) ((mark-key t r) t (subr e () a)) a)))\n   (first-mark (poly ((r region) (t type)) (subr (read r) ((mark-key t r) t) t)))\n   (current-marks (poly ((r region) (l region) (t type)) (subr (maxeff (read r) (alloc l)) ((mark-key t r)) (listof t l))))\n   (marks-of (poly ((q region) (r region) (l region) (v type) (t type) (a type) (d effect))\n               (subr (maxeff (read q) (alloc l)) ((composable t a d r) (mark-key v q)) (listof v l))))\n   (stay-cellular (poly ((t type)) (subr pure (t) t)))\n   (eq? (poly ((t type)) (subr pure (t t) bool)))\n   (set-car! (poly ((r region) (t1 type) (t2 type)) (subr (write r) ((union nil (pairof t1 t2 r)) t1) unit)))\n   (set-cdr! (poly ((r region) (t1 type) (t2 type)) (subr (write r) ((union nil (pairof t1 t2 r)) t2) unit)))\n   (no-pair (poly ((r region) (t1 type) (t2 type)) (union nil (pairof t1 t2 r))))\n   (call-with-composable-continuation (poly ((r region) (a type) (h type) (d effect) (t type) (e effect))\n                                        (subr (maxeff (comefrom r) e) ((subr e ((composable t a d r)) t) (prompt-tag a h d r)) t)))\n   (bitwise-and (subr pure (int int) int)) (bitwise-ior (subr pure (int int) int)) (bitwise-xor (subr pure (int int) int))\n   (bitwise-not (subr pure (int) int)) (arithmetic-shift (subr pure (int int) int))\n   (bool=? (subr pure (bool bool) bool))\n   (char<? (subr pure (char char) bool)) (char<=? (subr pure (char char) bool)) (char>? (subr pure (char char) bool)) (char>=? (subr pure (char char) bool))\n   (char-downcase (subr pure (char) char))\n   (string<? (subr pure (string string) bool)) (string<=? (subr pure (string string) bool)) (string>? (subr pure (string string) bool)) (string>=? (subr pure (string string) bool))\n   (string-compare (subr pure (string string) int)) (string-search (subr pure (string string int) int))\n   (string-ci=? (subr pure (string string) bool)) (string-downcase (subr pure (string) string)) (substring (subr pure (string int int) string))\n   (string->symbol (subr pure (string) symbol)) (symbol->string (subr pure (symbol) string)) (symbol=? (subr pure (symbol symbol) bool))\n   (symbol-compare (subr pure (symbol symbol) int))\n   (make-array (poly ((r region) (t type)) (subr (alloc r) (int t) (arrayof t r))))\n   (array-ref (poly ((r region) (t type)) (subr (read r) ((arrayof t r) int) t)))\n   (array-set! (poly ((r region) (t type)) (subr (write r) ((arrayof t r) int t) unit)))\n   (array-length (poly ((r region) (t type)) (subr pure ((arrayof t r)) nat)))\n   (array->list (poly ((r1 region) (r2 region) (t type)) (subr (maxeff (read r1) (alloc r2)) ((arrayof t r1)) (listof t r2))))\n   (list->array (poly ((r1 region) (r2 region) (t type)) (subr (maxeff (read r1) (alloc r2)) ((listof t r1)) (arrayof t r2))))\n   (make-bytevector (poly ((r region)) (subr (alloc r) (int u8) (bytevectorof r))))\n   (bytevector-length (poly ((r region)) (subr pure ((bytevectorof r)) nat)))\n   (bytevector-u8-ref (poly ((r region)) (subr (read r) ((bytevectorof r) int) u8)))\n   (bytevector-u8-set! (poly ((r region)) (subr (write r) ((bytevectorof r) int u8) unit)))\n   (bytevector-copy (poly ((r1 region) (r2 region)) (subr (maxeff (read r1) (alloc r2)) ((bytevectorof r1) int int) (bytevectorof r2))))\n   (bytevector-copy! (poly ((r1 region) (r2 region)) (subr (maxeff (read r1) (write r2)) ((bytevectorof r2) int (bytevectorof r1) int int) unit)))\n   (bytevector=? (poly ((r1 region) (r2 region)) (subr (maxeff (read r1) (read r2)) ((bytevectorof r1) (bytevectorof r2)) bool)))\n   (string->utf8 (poly ((r region)) (subr (alloc r) (string) (bytevectorof r))))\n   (utf8->string (poly ((r region)) (subr (read r) ((bytevectorof r)) (sumof (text string) (bad int)))))\n   (write-out (subr (io stdout) (string) (sumof (done unit) (failed io-error))))\n   (write-err (subr (io stderr) (string) (sumof (done unit) (failed io-error))))\n   (exit (subr (io exit) (int) void))\n   (read-line (subr (io stdin) () (sumof (line string) (eof unit) (failed io-error))))\n   (clock (subr (io clock) () i64))\n   (sleep-until (subr (io clock) (i64) unit))\n   (args (poly ((r region)) (subr (maxeff (io args) (alloc r)) () (listof string r))))\n   (read-file (poly ((r region)) (subr (maxeff (io fs-read) (alloc r)) (string) (sumof (data (bytevectorof r)) (failed io-error)))))\n   (list-dir (poly ((r region)) (subr (maxeff (io fs-read) (alloc r)) (string) (sumof (names (listof string r)) (failed io-error)))))\n   (write-file (poly ((r region)) (subr (maxeff (io fs-write) (read r)) (string (bytevectorof r)) (sumof (done unit) (failed io-error)))))\n   (new (poly ((r region) (t type)) (subr (alloc r) (t) (ref t r))))\n   (get (poly ((r region) (t type)) (subr (read r) ((ref t r)) t)))\n   (set (poly ((r region) (t type)) (subr (write r) ((ref t r) t) unit)))\n   (nil (poly ((r region) (t type)) (listof t r)))\n   (cons (poly ((r region) (t type)) (subr (alloc r) (t (listof t r)) (listof t r))))\n   (car (poly ((r region) (t type)) (subr (read r) ((listof t r)) t)))\n   (cdr (poly ((r region) (t type)) (subr (read r) ((listof t r)) (listof t r))))\n   (null? (poly ((r region) (t type)) (subr pure ((listof t r)) bool)))")
+    str_lit("(i64+ (subr pure (i64 i64) i64)) (i64- (subr pure (i64 i64) i64)) (i64* (subr pure (i64 i64) i64))\n   (i64-quotient (subr pure (i64 i64) i64)) (i64-remainder (subr pure (i64 i64) i64))\n   (i64-and (subr pure (i64 i64) i64)) (i64-or (subr pure (i64 i64) i64)) (i64-xor (subr pure (i64 i64) i64))\n   (i64-not (subr pure (i64) i64))\n   (i64= (subr pure (i64 i64) bool)) (i64< (subr pure (i64 i64) bool)) (i64> (subr pure (i64 i64) bool))\n   (i64<= (subr pure (i64 i64) bool)) (i64>= (subr pure (i64 i64) bool))\n   (not (subr pure (bool) bool))\n   (i32+ (subr pure (i32 i32) i32)) (i32- (subr pure (i32 i32) i32)) (i32* (subr pure (i32 i32) i32))\n   (i32-quotient (subr pure (i32 i32) i32)) (i32-remainder (subr pure (i32 i32) i32))\n   (i32-and (subr pure (i32 i32) i32)) (i32-or (subr pure (i32 i32) i32)) (i32-xor (subr pure (i32 i32) i32)) (i32-not (subr pure (i32) i32))\n   (i32-shl (subr pure (i32 int) i32)) (i32-shr (subr pure (i32 int) i32))\n   (i32= (subr pure (i32 i32) bool)) (i32< (subr pure (i32 i32) bool)) (i32> (subr pure (i32 i32) bool)) (i32<= (subr pure (i32 i32) bool)) (i32>= (subr pure (i32 i32) bool))\n   (int->i32 (subr pure (int) i32)) (i32->int (subr pure (i32) int))\n   (u8+ (subr pure (u8 u8) u8)) (u8- (subr pure (u8 u8) u8)) (u8* (subr pure (u8 u8) u8))\n   (u8-quotient (subr pure (u8 u8) u8)) (u8-remainder (subr pure (u8 u8) u8))\n   (u8-and (subr pure (u8 u8) u8)) (u8-or (subr pure (u8 u8) u8)) (u8-xor (subr pure (u8 u8) u8)) (u8-not (subr pure (u8) u8))\n   (u8-shl (subr pure (u8 int) u8)) (u8-shr (subr pure (u8 int) u8))\n   (u8= (subr pure (u8 u8) bool)) (u8< (subr pure (u8 u8) bool)) (u8> (subr pure (u8 u8) bool)) (u8<= (subr pure (u8 u8) bool)) (u8>= (subr pure (u8 u8) bool))\n   (int->u8 (subr pure (int) u8)) (u8->int (subr pure (u8) int))\n   (i8+ (subr pure (i8 i8) i8)) (i8- (subr pure (i8 i8) i8)) (i8* (subr pure (i8 i8) i8))\n   (i8-quotient (subr pure (i8 i8) i8)) (i8-remainder (subr pure (i8 i8) i8))\n   (i8-and (subr pure (i8 i8) i8)) (i8-or (subr pure (i8 i8) i8)) (i8-xor (subr pure (i8 i8) i8)) (i8-not (subr pure (i8) i8))\n   (i8-shl (subr pure (i8 int) i8)) (i8-shr (subr pure (i8 int) i8))\n   (i8= (subr pure (i8 i8) bool)) (i8< (subr pure (i8 i8) bool)) (i8> (subr pure (i8 i8) bool)) (i8<= (subr pure (i8 i8) bool)) (i8>= (subr pure (i8 i8) bool))\n   (int->i8 (subr pure (int) i8)) (i8->int (subr pure (i8) int))\n   (u32+ (subr pure (u32 u32) u32)) (u32- (subr pure (u32 u32) u32)) (u32* (subr pure (u32 u32) u32))\n   (u32-quotient (subr pure (u32 u32) u32)) (u32-remainder (subr pure (u32 u32) u32))\n   (u32-and (subr pure (u32 u32) u32)) (u32-or (subr pure (u32 u32) u32)) (u32-xor (subr pure (u32 u32) u32)) (u32-not (subr pure (u32) u32))\n   (u32-shl (subr pure (u32 int) u32)) (u32-shr (subr pure (u32 int) u32))\n   (u32= (subr pure (u32 u32) bool)) (u32< (subr pure (u32 u32) bool)) (u32> (subr pure (u32 u32) bool)) (u32<= (subr pure (u32 u32) bool)) (u32>= (subr pure (u32 u32) bool))\n   (int->u32 (subr pure (int) u32)) (u32->int (subr pure (u32) int))\n   (u64+ (subr pure (u64 u64) u64)) (u64- (subr pure (u64 u64) u64)) (u64* (subr pure (u64 u64) u64))\n   (u64-quotient (subr pure (u64 u64) u64)) (u64-remainder (subr pure (u64 u64) u64))\n   (u64-and (subr pure (u64 u64) u64)) (u64-or (subr pure (u64 u64) u64)) (u64-xor (subr pure (u64 u64) u64)) (u64-not (subr pure (u64) u64))\n   (u64-shl (subr pure (u64 int) u64)) (u64-shr (subr pure (u64 int) u64))\n   (u64= (subr pure (u64 u64) bool)) (u64< (subr pure (u64 u64) bool)) (u64> (subr pure (u64 u64) bool)) (u64<= (subr pure (u64 u64) bool)) (u64>= (subr pure (u64 u64) bool))\n   (int->u64 (subr pure (int) u64)) (u64->int (subr pure (u64) int))\n   (i64-shl (subr pure (i64 int) i64)) (i64-shr (subr pure (i64 int) i64))\n   (+ (subr pure (int int) int)) (- (subr pure (int int) int)) (* (subr pure (int int) int))\n   (quotient (subr pure (int int) int)) (remainder (subr pure (int int) int)) (modulo (subr pure (int int) int))\n   (= (subr pure (int int) bool)) (< (subr pure (int int) bool)) (> (subr pure (int int) bool))\n   (<= (subr pure (int int) bool)) (>= (subr pure (int int) bool))\n   (int->string (subr pure (int) string)) (int->i64 (subr pure (int) i64)) (i64->int (subr pure (i64) int))\n   (zero? (subr pure (int) bool)) (max (subr pure (int int) int)) (min (subr pure (int int) int))\n   (f64+ (subr pure (f64 f64) f64)) (f64- (subr pure (f64 f64) f64)) (f64* (subr pure (f64 f64) f64))\n   (f64/ (subr pure (f64 f64) f64)) (f64-min (subr pure (f64 f64) f64)) (f64-max (subr pure (f64 f64) f64))\n   (f64< (subr pure (f64 f64) bool)) (f64<= (subr pure (f64 f64) bool)) (f64> (subr pure (f64 f64) bool))\n   (f64>= (subr pure (f64 f64) bool)) (f64= (subr pure (f64 f64) bool))\n   (f64-abs (subr pure (f64) f64)) (f64-neg (subr pure (f64) f64)) (f64-sqrt (subr pure (f64) f64))\n   (f64-floor (subr pure (f64) f64)) (f64-ceiling (subr pure (f64) f64))\n   (f64-truncate (subr pure (f64) f64)) (f64-round (subr pure (f64) f64))\n   (f64-nan? (subr pure (f64) bool)) (f64-infinite? (subr pure (f64) bool)) (f64-finite? (subr pure (f64) bool))\n   (int->f64 (subr pure (int) f64)) (f64->int (subr pure (f64) int)) (f64->string (subr pure (f64) string))\n   (f32+ (subr pure (f32 f32) f32)) (f32- (subr pure (f32 f32) f32)) (f32* (subr pure (f32 f32) f32))\n   (f32/ (subr pure (f32 f32) f32)) (f32-min (subr pure (f32 f32) f32)) (f32-max (subr pure (f32 f32) f32))\n   (f32< (subr pure (f32 f32) bool)) (f32<= (subr pure (f32 f32) bool)) (f32> (subr pure (f32 f32) bool))\n   (f32>= (subr pure (f32 f32) bool)) (f32= (subr pure (f32 f32) bool))\n   (f32-abs (subr pure (f32) f32)) (f32-neg (subr pure (f32) f32)) (f32-sqrt (subr pure (f32) f32))\n   (f32-floor (subr pure (f32) f32)) (f32-ceiling (subr pure (f32) f32))\n   (f32-truncate (subr pure (f32) f32)) (f32-round (subr pure (f32) f32))\n   (f32-nan? (subr pure (f32) bool)) (f32-infinite? (subr pure (f32) bool)) (f32-finite? (subr pure (f32) bool))\n   (int->f32 (subr pure (int) f32)) (f32->int (subr pure (f32) int)) (f32->string (subr pure (f32) string))\n   (f32->f64 (subr pure (f32) f64)) (f64->f32 (subr pure (f64) f32))\n   (f32->bits (subr pure (f32) u32)) (bits->f32 (subr pure (u32) f32))\n   (f64->bits (subr pure (f64) u64)) (bits->f64 (subr pure (u64) f64))\n   (string-length (subr pure (string) nat)) (string-ref (subr pure (string int) char))\n   (length (poly ((t type)) (subr pure ((listof t acyclic)) nat)))\n   (list-length (poly ((r region) (t type)) (subr (read r) ((listof t r)) nat)))\n   (append (poly ((r1 region) (r2 region) (t type)) (subr (maxeff (read r1) (alloc r2)) ((listof t r1) (listof t r2)) (listof t r2))))\n   (reverse (poly ((r1 region) (r2 region) (t type)) (subr (maxeff (read r1) (alloc r2)) ((listof t r1)) (listof t r2))))\n   (char=? (subr pure (char char) bool)) (char-whitespace? (subr pure (char) bool))\n   (char-numeric? (subr pure (char) bool)) (char-alphabetic? (subr pure (char) bool))\n   (char-upcase (subr pure (char) char)) (char->string (subr pure (char) string))\n   (string-append (subr pure (string string) string)) (string=? (subr pure (string string) bool))\n   (list->string (poly ((r region)) (subr (read r) ((listof char r)) string)))\n   (string->list (poly ((r region)) (subr (alloc r) (string) (listof char r))))\n   (error (subr pure (string) void))\n   (char->integer (subr pure (char) int)) (integer->char (subr pure (int) char))\n   (int? (poly ((t type)) (subr pure (t) bool)))\n   (string? (poly ((t type)) (subr pure (t) bool)))\n   (bool? (poly ((t type)) (subr pure (t) bool)))\n   (char? (poly ((t type)) (subr pure (t) bool)))\n   (symbol? (poly ((t type)) (subr pure (t) bool)))\n   (array? (poly ((t type)) (subr pure (t) bool)))\n   (procedure? (poly ((t type)) (subr pure (t) bool)))\n   (pair? (poly ((t type)) (subr pure (t) bool)))\n   (f64? (poly ((t type)) (subr pure (t) bool)))\n   (ref? (poly ((t type)) (subr pure (t) bool)))\n   (sum? (poly ((t type)) (subr pure (t) bool)))\n   (product? (poly ((t type)) (subr pure (t) bool)))\n   (bytevector? (poly ((t type)) (subr pure (t) bool)))\n   (vector? (poly ((t type)) (subr pure (t) bool)))\n   (f32? (poly ((t type)) (subr pure (t) bool)))\n   (datum-list->vector (subr pure (datum) datum))\n   (make-continuation-mark-key (poly ((r region) (t type)) (subr (alloc r) () (mark-key t r))))\n   (with-mark (poly ((r region) (t type) (a type) (e effect)) (subr (maxeff (write r) e) ((mark-key t r) t (subr e () a)) a)))\n   (first-mark (poly ((r region) (t type)) (subr (read r) ((mark-key t r) t) t)))\n   (current-marks (poly ((r region) (l region) (t type)) (subr (maxeff (read r) (alloc l)) ((mark-key t r)) (listof t l))))\n   (marks-of (poly ((q region) (r region) (l region) (v type) (t type) (a type) (d effect))\n               (subr (maxeff (read q) (alloc l)) ((composable t a d r) (mark-key v q)) (listof v l))))\n   (stay-cellular (poly ((t type)) (subr pure (t) t)))\n   (eq? (poly ((t type)) (subr pure (t t) bool)))\n   (set-car! (poly ((r region) (t1 type) (t2 type)) (subr (write r) ((union nil (pairof t1 t2 r)) t1) unit)))\n   (set-cdr! (poly ((r region) (t1 type) (t2 type)) (subr (write r) ((union nil (pairof t1 t2 r)) t2) unit)))\n   (no-pair (poly ((r region) (t1 type) (t2 type)) (union nil (pairof t1 t2 r))))\n   (call-with-composable-continuation (poly ((r region) (a type) (h type) (d effect) (t type) (e effect))\n                                        (subr (maxeff (comefrom r) e) ((subr e ((composable t a d r)) t) (prompt-tag a h d r)) t)))\n   (bitwise-and (subr pure (int int) int)) (bitwise-ior (subr pure (int int) int)) (bitwise-xor (subr pure (int int) int))\n   (bitwise-not (subr pure (int) int)) (arithmetic-shift (subr pure (int int) int))\n   (bool=? (subr pure (bool bool) bool))\n   (char<? (subr pure (char char) bool)) (char<=? (subr pure (char char) bool)) (char>? (subr pure (char char) bool)) (char>=? (subr pure (char char) bool))\n   (char-downcase (subr pure (char) char))\n   (string<? (subr pure (string string) bool)) (string<=? (subr pure (string string) bool)) (string>? (subr pure (string string) bool)) (string>=? (subr pure (string string) bool))\n   (string-compare (subr pure (string string) int)) (string-search (subr pure (string string int) int))\n   (string-ci=? (subr pure (string string) bool)) (string-downcase (subr pure (string) string)) (substring (subr pure (string int int) string))\n   (string->symbol (subr pure (string) symbol)) (symbol->string (subr pure (symbol) string)) (symbol=? (subr pure (symbol symbol) bool))\n   (symbol-compare (subr pure (symbol symbol) int))\n   (make-array (poly ((r region) (t type)) (subr (alloc r) (int t) (arrayof t r))))\n   (array-ref (poly ((r region) (t type)) (subr (read r) ((arrayof t r) int) t)))\n   (array-set! (poly ((r region) (t type)) (subr (write r) ((arrayof t r) int t) unit)))\n   (array-length (poly ((r region) (t type)) (subr pure ((arrayof t r)) nat)))\n   (array->list (poly ((r1 region) (r2 region) (t type)) (subr (maxeff (read r1) (alloc r2)) ((arrayof t r1)) (listof t r2))))\n   (list->array (poly ((r1 region) (r2 region) (t type)) (subr (maxeff (read r1) (alloc r2)) ((listof t r1)) (arrayof t r2))))\n   (make-bytevector (poly ((r region)) (subr (alloc r) (int u8) (bytevectorof r))))\n   (bytevector-length (poly ((r region)) (subr pure ((bytevectorof r)) nat)))\n   (bytevector-u8-ref (poly ((r region)) (subr (read r) ((bytevectorof r) int) u8)))\n   (bytevector-u8-set! (poly ((r region)) (subr (write r) ((bytevectorof r) int u8) unit)))\n   (bytevector-copy (poly ((r1 region) (r2 region)) (subr (maxeff (read r1) (alloc r2)) ((bytevectorof r1) int int) (bytevectorof r2))))\n   (bytevector-copy! (poly ((r1 region) (r2 region)) (subr (maxeff (read r1) (write r2)) ((bytevectorof r2) int (bytevectorof r1) int int) unit)))\n   (bytevector=? (poly ((r1 region) (r2 region)) (subr (maxeff (read r1) (read r2)) ((bytevectorof r1) (bytevectorof r2)) bool)))\n   (string->utf8 (poly ((r region)) (subr (alloc r) (string) (bytevectorof r))))\n   (utf8->string (poly ((r region)) (subr (read r) ((bytevectorof r)) (sumof (text string) (bad int)))))\n   (write-out (subr (io stdout) (string) (sumof (done unit) (failed io-error))))\n   (write-err (subr (io stderr) (string) (sumof (done unit) (failed io-error))))\n   (exit (subr (io exit) (int) void))\n   (read-line (subr (io stdin) () (sumof (line string) (eof unit) (failed io-error))))\n   (clock (subr (io clock) () i64))\n   (sleep-until (subr (io clock) (i64) unit))\n   (args (poly ((r region)) (subr (maxeff (io args) (alloc r)) () (listof string r))))\n   (read-file (poly ((r region)) (subr (maxeff (io fs-read) (alloc r)) (string) (sumof (data (bytevectorof r)) (failed io-error)))))\n   (list-dir (poly ((r region)) (subr (maxeff (io fs-read) (alloc r)) (string) (sumof (names (listof string r)) (failed io-error)))))\n   (write-file (poly ((r region)) (subr (maxeff (io fs-write) (read r)) (string (bytevectorof r)) (sumof (done unit) (failed io-error)))))\n   (new (poly ((r region) (t type)) (subr (alloc r) (t) (ref t r))))\n   (get (poly ((r region) (t type)) (subr (read r) ((ref t r)) t)))\n   (set (poly ((r region) (t type)) (subr (write r) ((ref t r) t) unit)))\n   (nil (poly ((r region) (t type)) (listof t r)))\n   (cons (poly ((r region) (t type)) (subr (alloc r) (t (listof t r)) (listof t r))))\n   (car (poly ((r region) (t type)) (subr (read r) ((listof t r)) t)))\n   (cdr (poly ((r region) (t type)) (subr (read r) ((listof t r)) (listof t r))))\n   (null? (poly ((r region) (t type)) (subr pure ((listof t r)) bool)))\n   (make-icell (poly ((r region) (t type)) (subr (alloc r) () (icell t r))))\n   (icell-get (poly ((r region) (t type)) (subr (await r) ((icell t r)) t)))\n   (icell-put! (poly ((r region) (t type)) (subr (init r) ((icell t r) t) unit)))")
+}
+
+// FX-26's forms of processes that are calls (C101), at the types FX-26's
+// checker gives them: a call headed by one is the form, whatever a program
+// binds the name to, as FX-26 parses it; `send` and `receive` are no
+// values, and `icell-get` and `icell-put!` are the primitives too.
+pub fn process_forms() -> Str {
+    str_lit("(send (poly ((r region) (m type)) (subr (send r) ((addr m r) m) unit)))\n   (receive (poly ((r region) (m type)) (subr (maxeff (receive r) nondet) ((inbox m r)) m)))\n   (icell-get (poly ((r region) (t type)) (subr (await r) ((icell t r)) t)))\n   (icell-put! (poly ((r region) (t type)) (subr (init r) ((icell t r) t) unit)))")
 }
 
 // kayak-rt's primitives at KFX's types: the prelude's (kfx/prelude.fx), and
@@ -21,14 +29,21 @@ pub fn prelude() -> Str {
 // The prelude's (kfx/prelude.fx), at the types it gives them. To FX-26
 // they are globals, the prelude's definitions: calling one reads it.
 pub fn table_binds(v: &'static Cv, table: Str, file: Str, wher: Str) -> Binds {
-    map(lambda1(move |p: &'static Sexp| {
+    map(lambda1s(move |p: &'static Sexp| {
         let xs = items(p);
         bind(name_of(v, car(xs)), parse_scheme_of(v, second(xs), false), wher)
     }), read_all(string_chars(table), file, 1i64))
 }
 
 pub fn prim_binds(v: &'static Cv) -> Binds {
-    onto(table_binds(v, primitives(), str_lit("kayak-rt's primitives"), str_lit("prim")), table_binds(v, prelude(), str_lit("kfx/prelude.fx"), str_lit("global")))
+    onto(table_binds(v, primitives(), str_lit("kayak-rt's primitives"), str_lit("prim")), onto(map(lambda1s(move |b: &'static Bind| {
+        let tagcase_ = b;
+        match *tagcase_ {
+            Bind::Bind(n, sc, w) => {
+                bind(string_append(str_lit("%form "), n), sc, w)
+            }
+        }
+    }), table_binds(v, process_forms(), str_lit("FX-26's processes"), str_lit("prim"))), table_binds(v, prelude(), str_lit("kfx/prelude.fx"), str_lit("global"))))
 }
 
 pub fn head_name(v: &'static Cv, head: &'static Sexp) -> Str {
@@ -47,7 +62,7 @@ pub fn head_name(v: &'static Cv, head: &'static Sexp) -> Str {
 /// A define-datatype's name, parameters and variants, whose fields'
 /// types may name the parameters; no two tags camel-cased alike in Rust.
 pub fn datatype_of(v: &'static Cv, xs: Sexps) -> &'static Dt {
-    if repeated_p(map(lambda1(move |vt: &'static Sexp| {
+    if repeated_p(map(lambda1s(move |vt: &'static Sexp| {
         variant_name({
             let tagcase_ = car(items(vt));
             match *tagcase_ {
@@ -64,7 +79,7 @@ pub fn datatype_of(v: &'static Cv, xs: Sexps) -> &'static Dt {
         match refuse(v, str_lit("two tags of one datatype named alike in Rust (camel-cased)")) {}
     } else {
         let params = family_params(v, car(xs));
-        dt(head_name(v, car(xs)), params, map(lambda1(move |vt: &'static Sexp| {
+        dt(head_name(v, car(xs)), params, map(lambda1s(move |vt: &'static Sexp| {
             let ys = items(vt);
             variant(name_of(v, car(ys)), parse_types(v, params, cdr(ys)))
         }), cdr(xs)))
@@ -75,11 +90,11 @@ pub fn constructors(d: &'static Dt) -> Binds {
     let tagcase_ = d;
     match *tagcase_ {
         Dt::Dt(name, ps, vs) => {
-            map(lambda1(move |vt: &'static Variant| {
+            map(lambda1s(move |vt: &'static Variant| {
                 let tagcase_ = vt;
                 match *tagcase_ {
                     Variant::Variant(tag, fields) => {
-                        bind(tag, scheme(ps, ty_proc(nil::<Str>(), fields, ty_data(name, map(lambda1(move |p: Str| {
+                        bind(tag, scheme(ps, ty_proc(nil::<Str>(), fields, ty_data(name, map(lambda1s(move |p: Str| {
                             ty_var(p)
                         }), ps)))), str_lit("global"))
                     }
@@ -266,7 +281,7 @@ pub fn global(v: &'static Cv, name: Str, sc: &'static Scheme) -> &'static Bind {
 pub fn conversions(v: &'static Cv, xs: Sexps) -> Binds {
     let name = head_name(v, second(xs));
     let params = family_params(v, second(xs));
-    let made = ty_data(name, map(lambda1(move |p: Str| {
+    let made = ty_data(name, map(lambda1s(move |p: Str| {
         ty_var(p)
     }), params));
     let repr = parse_type(with_tvars(v, params), params, third(xs));
@@ -314,7 +329,7 @@ pub fn no_reaching_itself(v: &'static Cv, group: Strings, sc: &'static Scheme) -
             let tagcase_ = t;
             match *tagcase_ {
                 Ty::TyProc(es, ps, r) => {
-                    if (not(string_member_p(str_lit("spin"), es)) && any_p(lambda1(move |n: Str| {
+                    if (not(string_member_p(str_lit("spin"), es)) && any_p(lambda1s(move |n: Str| {
                         string_member_p(string_append(str_lit("g:"), n), es)
                     }), group)) {
                         match refuse(v, string_append(str_lit("calling it reads "), string_append(words_of(group), str_lit(": it may reach itself through a global, so its type must say spin")))) {}
@@ -362,24 +377,31 @@ pub fn makes_pairs_p(e: &'static Sexp) -> bool {
 /// and is then made once, at its first use, and kept (C21), which the
 /// emitter is told; nothing else, since when it is made is not when
 /// FX-26 makes it, where it is defined.
-pub fn constant_made(v: &'static Cv, s: &'static St, e: &'static Sexp, es: Strings) -> &'static St {
-    if any_p(lambda1(move |x: Str| {
+pub fn constant_made(v: &'static Cv, s: &'static St, e: &'static Sexp, es: Strings, t: &'static Ty) -> &'static St {
+    if any_p(lambda1s(move |x: Str| {
         not((string_eq_p(x, str_lit("spin")) || string_eq_p(x, str_lit("@globals")) || global_atom_p(x) || has_prefix_p(x, str_lit("alloc:"))))
     }), es) {
         match refuse(v, string_append(str_lit("a constant whose value has the effect "), string_append(show_effs(es), str_lit(": KFX makes a constant at its first use, so its value may only read globals and allocate")))) {}
-    } else if (not(null_p(find_bind(str_lit("%loaded"), cv_binds(v)))) && any_p(lambda1(move |x: Str| {
+    } else if (not(null_p(find_bind(str_lit("%loaded"), cv_binds(v)))) && any_p(lambda1s(move |x: Str| {
         not((string_eq_p(x, str_lit("@globals")) || global_atom_p(x)))
     }), es)) {
         // In a file loaded (C88): FX-26 makes it once, for all its loads, so
         // making it must be pure but for reading globals.
         match refuse(v, string_append(str_lit("a loaded file is one value for all its loads, made once, so making it must be pure, and this one has "), string_append(show_effs(es), str_lit(": make its state in a `lambda` it gives, which each caller applies")))) {}
-    } else if (any_p(lambda1(move |x: Str| {
+    } else if (any_p(lambda1s(move |x: Str| {
         has_prefix_p(x, str_lit("alloc:"))
     }), es) || makes_pairs_p(e)) {
+        // Kept for the whole program if its type's Rust is `Sync`, which a
+        // process may hold; else for each thread, which none may (C102).
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Lst(xs, file, line, pos) => {
-                note_fact(s, file, pos, str_lit("once"))
+                let s = note_fact(s, file, pos, str_lit("once"));
+                if expressions::sync_type_p(v, s, t, nil::<Str>()) {
+                    note_fact(s, file, pos, str_lit("shared"))
+                } else {
+                    s
+                }
             }
             _ => {
                 let other = tagcase_;
@@ -397,7 +419,7 @@ pub fn place_marks_of(t: &'static Ty) -> Strings {
     let tagcase_ = t;
     match *tagcase_ {
         Ty::TyProc(es, ps, r) => {
-            concat(map(lambda1(move |p: &'static Ty| {
+            concat(map(lambda1s(move |p: &'static Ty| {
                 let tagcase_ = p;
                 match *tagcase_ {
                     Ty::TyData(d, args) => {
@@ -526,7 +548,7 @@ pub fn place_need(what: Str, places: Strings) -> Str {
 /// kind T` at its definition, for its calls and for the Rust it is: a
 /// place's type, a type parameter bound to hold each.
 pub fn with_place_needs(v: &'static Cv, name: Str, sc: &'static Scheme, before: i64, file: Str, pos: i64) -> &'static Cv {
-    let places = concat(map(lambda1(move |m: Str| {
+    let places = concat(map(lambda1s(move |m: Str| {
         the::<Strings>(kayak_rt::heap_cons(after_prefix(m, str_lit("%place ")), kayak_rt::nil()))
     }), place_marks_of({
         let tagcase_ = sc;
@@ -541,7 +563,7 @@ pub fn with_place_needs(v: &'static Cv, name: Str, sc: &'static Scheme, before: 
     if null_p(places) {
         v
     } else {
-        with_facts(v, concat(map(lambda1(move |f: &'static Fact| {
+        with_facts(v, concat(map(lambda1s(move |f: &'static Fact| {
             let tagcase_ = f;
             match *tagcase_ {
                 Fact::Fact(ff, fp, what) => {
@@ -559,7 +581,7 @@ pub fn with_place_needs(v: &'static Cv, name: Str, sc: &'static Scheme, before: 
 
 /// `s`'s words, split at spaces.
 pub fn split_words_check(s: Str) -> Strings {
-    map(lambda1(move |x: &'static Sexp| {
+    map(lambda1s(move |x: &'static Sexp| {
         sym_name(x)
     }), read_all(string_chars(s), str_lit(""), 1i64))
 }
@@ -571,9 +593,9 @@ pub fn split_words_check(s: Str) -> Strings {
 pub fn with_group_needs(v: &'static Cv, bindings: Sexps, before: i64) -> &'static Cv {
     let fs = cv_facts(v);
     let new = first_n(fs, i64_minus(size(fs), before));
-    let members = map(lambda1(move |b: &'static Sexp| {
+    let members = map(lambda1s(move |b: &'static Sexp| {
         let ys = items(b);
-        fact(datum_file(b), datum_pos(b), string_append(sym_name(car(ys)), string_append(str_lit(" "), words_of(map(lambda1(move |m: Str| {
+        fact(datum_file(b), datum_pos(b), string_append(sym_name(car(ys)), string_append(str_lit(" "), words_of(map(lambda1s(move |m: Str| {
             after_prefix(m, str_lit("%place "))
         }), place_marks_of({
             let tagcase_ = parse_scheme(v, second(ys));
@@ -584,7 +606,7 @@ pub fn with_group_needs(v: &'static Cv, bindings: Sexps, before: i64) -> &'stati
             }
         }))))))
     }), bindings);
-    let all_places = concat(map(lambda1(move |m: &'static Fact| {
+    let all_places = concat(map(lambda1s(move |m: &'static Fact| {
         let tagcase_ = m;
         match *tagcase_ {
             Fact::Fact(f, p, w) => {
@@ -592,7 +614,7 @@ pub fn with_group_needs(v: &'static Cv, bindings: Sexps, before: i64) -> &'stati
             }
         }
     }), members));
-    let needs = concat(map(lambda1(move |f: &'static Fact| {
+    let needs = concat(map(lambda1s(move |f: &'static Fact| {
         let tagcase_ = f;
         match *tagcase_ {
             Fact::Fact(ff, fp, what) => {
@@ -608,13 +630,13 @@ pub fn with_group_needs(v: &'static Cv, bindings: Sexps, before: i64) -> &'stati
     if null_p(all_places) {
         v
     } else {
-        with_facts(v, concat(map(lambda1(move |m: &'static Fact| {
+        with_facts(v, concat(map(lambda1s(move |m: &'static Fact| {
             let tagcase_ = m;
             match *tagcase_ {
                 Fact::Fact(f, p, w) => {
                     let ws = split_words_check(w);
                     let mine = cdr(ws);
-                    concat(map(lambda1(move |n: Str| {
+                    concat(map(lambda1s(move |n: Str| {
                         if string_member_p(before_char(n, ' '), mine) {
                             the::<Facts>(kayak_rt::heap_cons(fact(f, p, string_append(str_lit("place-needs "), string_append(car(ws), string_append(str_lit(" "), n)))), kayak_rt::nil()))
                         } else {
@@ -629,20 +651,20 @@ pub fn with_group_needs(v: &'static Cv, bindings: Sexps, before: i64) -> &'stati
 
 /// A define-rec: every member in scope in each, and each a lambda.
 pub fn check_rec(v: &'static Cv, bindings: Sexps) -> &'static Cv {
-    let names = map(lambda1(move |b: &'static Sexp| {
+    let names = map(lambda1s(move |b: &'static Sexp| {
         name_of(v, car(items(b)))
     }), bindings);
-    let ends = termination::terminates_p(v, names, map(lambda1(move |b: &'static Sexp| {
+    let ends = termination::terminates_p(v, names, map(lambda1s(move |b: &'static Sexp| {
         let tagcase_ = parse_scheme(v, second(items(b)));
         match *tagcase_ {
             Scheme::Scheme(tvars, t) => {
                 t
             }
         }
-    }), bindings), map(lambda1(move |b: &'static Sexp| {
+    }), bindings), map(lambda1s(move |b: &'static Sexp| {
         third(items(b))
     }), bindings));
-    let named = with_binds(v, map(lambda1(move |b: &'static Sexp| {
+    let named = with_binds(v, map(lambda1s(move |b: &'static Sexp| {
         let ys = items(b);
         global(v, name_of(v, car(ys)), parse_scheme(v, second(ys)))
     }), bindings));
@@ -719,7 +741,7 @@ pub fn check_define_star(v: &'static Cv, xs: Sexps, src_file: Str, src_pos: i64)
                         if effs_within_p(es, effs_union(kayak_rt::heap_cons(str_lit("@globals"), kayak_rt::nil()), declared)) {
                             let sc = scheme(tvars, ty_proc(effs_union(global_reads(es), declared), ps, r));
                             let w = with_binds(no_reaching_itself(v, kayak_rt::heap_cons(name, kayak_rt::nil()), sc), kayak_rt::heap_cons(global(v, name, sc), kayak_rt::nil()));
-                            with_facts(with_place_needs(with_facts(w, fs), name, sc, size(cv_facts(w)), src_file, src_pos), concat(map(lambda1(move |m: Str| {
+                            with_facts(with_place_needs(with_facts(w, fs), name, sc, size(cv_facts(w)), src_file, src_pos), concat(map(lambda1s(move |m: Str| {
                                 if has_prefix_p(m, str_lit("%within ")) {
                                     the::<Facts>(kayak_rt::heap_cons(fact(src_file, src_pos, string_append(str_lit("region-within "), string_append(name, string_append(str_lit(" "), after_prefix(m, str_lit("%within ")))))), kayak_rt::nil()))
                                 } else {
@@ -787,9 +809,9 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                 } else {
                     let name = head_name(v, second(xs));
                     let params = family_params(v, second(xs));
-                    let body = parse_type(v, kayak_rt::heap_cons(string_append(str_lit("%expanding "), name), onto(map(lambda1(move |p: Str| {
+                    let body = parse_type(v, kayak_rt::heap_cons(string_append(str_lit("%expanding "), name), onto(map(lambda1s(move |p: Str| {
                         string_append(str_lit("%place "), p)
-                    }), concat(map(lambda1(move |p: Str| {
+                    }), concat(map(lambda1s(move |p: Str| {
                         if has_prefix_p(p, str_lit("'")) {
                             the::<Strings>(kayak_rt::heap_cons(p, kayak_rt::nil()))
                         } else {
@@ -817,7 +839,7 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                     let v = no_reaching_itself(v, kayak_rt::heap_cons(name, kayak_rt::nil()), sc);
                     let named = with_binds(v, kayak_rt::heap_cons(global(v, name, sc), kayak_rt::nil()));
                     if lambda_form_p(fourth(xs)) {
-                        with_facts(with_place_needs(check_procedure(with_tvars(named, place_marks(third(xs))), fourth(xs), sc), name, sc, size(cv_facts(named)), src_file, src_pos), concat(map(lambda1(move |m: Str| {
+                        with_facts(with_place_needs(check_procedure(with_tvars(named, place_marks(third(xs))), fourth(xs), sc), name, sc, size(cv_facts(named)), src_file, src_pos), concat(map(lambda1s(move |m: Str| {
                             if has_prefix_p(m, str_lit("%within ")) {
                                 the::<Facts>(kayak_rt::heap_cons(fact(src_file, src_pos, string_append(str_lit("region-within "), string_append(name, string_append(str_lit(" "), after_prefix(m, str_lit("%within ")))))), kayak_rt::nil()))
                             } else {
@@ -832,7 +854,7 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                                     let tagcase_ = expressions::check(v, new_state(), fourth(xs), t);
                                     match *tagcase_ {
                                         Res::Res(u, es, s) => {
-                                            with_facts(named, expressions::settle_facts(constant_made(v, s, fourth(xs), es)))
+                                            with_facts(named, expressions::settle_facts(constant_made(v, s, fourth(xs), es, t)))
                                         }
                                     }
                                 } else {
@@ -898,7 +920,7 @@ pub fn item_names(f: &'static Sexp) -> Strings {
             }
         }
     } else if head_is_p(f, str_lit("define-rec")) {
-        map(lambda1(move |b: &'static Sexp| {
+        map(lambda1s(move |b: &'static Sexp| {
             sym_name(car(items(b)))
         }), cdr(items(f)))
     } else if head_is_p(f, str_lit("define-datatype")) {
@@ -924,7 +946,7 @@ pub fn module_def_p(form: &'static Sexp) -> bool {
 /// Module items without their strings, a `hide`'s too: FX-26's, a string
 /// among a module's items is a comment (Fixpt, 2026-10-12).
 pub fn uncommented(forms: Sexps) -> Sexps {
-    concat(map(lambda1(move |f: &'static Sexp| {
+    concat(map(lambda1s(move |f: &'static Sexp| {
         let tagcase_ = f;
         match *tagcase_ {
             Sexp::Str(s, file, pos) => {
@@ -992,9 +1014,9 @@ pub fn module_noted(form: &'static Sexp) -> Sexps {
                     kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("include"), file, pos), kayak_rt::heap_cons(e0, kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("except-module"), file, pos), kayak_rt::heap_cons(e1, kayak_rt::nil())), file, line, pos), kayak_rt::nil()))), file, line, pos), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("include"), file, pos), kayak_rt::heap_cons(e1, kayak_rt::nil())), file, line, pos), kayak_rt::nil()))
                 } else if head_is_p(e1, str_lit("module")) {
                     let own = cdr(items(e1));
-                    kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("include"), file, pos), kayak_rt::heap_cons(e0, kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("except"), file, pos), map(lambda1(move |n: Str| {
+                    kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("include"), file, pos), kayak_rt::heap_cons(e0, kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("except"), file, pos), map(lambda1s(move |n: Str| {
                         sym(n, file, pos)
-                    }), concat(map(&item_names, concat(map(lambda1(move |g: &'static Sexp| {
+                    }), concat(map(&item_names, concat(map(lambda1s(move |g: &'static Sexp| {
                         if head_is_p(g, str_lit("hide")) {
                             cdr(items(g))
                         } else {
@@ -1031,7 +1053,7 @@ pub fn include_except(f: &'static Sexp) -> Sexps {
 
 /// The names of the types and modules `forms` define, one Rust scope's.
 pub fn type_level_names(forms: Sexps) -> Strings {
-    concat(map(lambda1(move |f: &'static Sexp| {
+    concat(map(lambda1s(move |f: &'static Sexp| {
         if (head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-datatype")) || head_is_p(f, str_lit("define-generative"))) {
             let tagcase_ = second(items(f));
             match *tagcase_ {
@@ -1065,9 +1087,9 @@ pub fn type_level_names(forms: Sexps) -> Strings {
 
 /// Each Rust scope's type and module names: the program's, then each module's.
 pub fn type_scopes(forms: Sexps) -> List<Strings> {
-    kayak_rt::heap_cons(type_level_names(forms), concat(map(lambda1(move |f: &'static Sexp| {
+    kayak_rt::heap_cons(type_level_names(forms), concat(map(lambda1s(move |f: &'static Sexp| {
         if module_def_p(f) {
-            the::<List<Strings>>(kayak_rt::heap_cons(type_level_names(concat(map(lambda1(move |g: &'static Sexp| {
+            the::<List<Strings>>(kayak_rt::heap_cons(type_level_names(concat(map(lambda1s(move |g: &'static Sexp| {
                 if head_is_p(g, str_lit("hide")) {
                     cdr(items(g))
                 } else {
@@ -1089,7 +1111,7 @@ pub fn type_namer(mut forms: Sexps, mut name: Str) -> Sexps {
         } else if string_member_p(name, type_level_names(kayak_rt::heap_cons(car(forms), kayak_rt::nil()))) {
             return kayak_rt::heap_cons(car(forms), kayak_rt::nil());
         } else if module_def_p(car(forms)) {
-            let inner = type_namer(concat(map(lambda1(move |g: &'static Sexp| {
+            let inner = type_namer(concat(map(lambda1s(move |g: &'static Sexp| {
                 if head_is_p(g, str_lit("hide")) {
                     cdr(items(g))
                 } else {
@@ -1131,11 +1153,11 @@ pub fn type_namer_near(v: &'static Cv, forms: Sexps, name: Str) -> &'static Cv {
 /// The labels of every product and sum written in `es`, types and
 /// `product` forms alike, each a shape the Rust names by its labels.
 pub fn label_lists(es: Sexps) -> List<Strings> {
-    concat(map(lambda1(move |e: &'static Sexp| {
+    concat(map(lambda1s(move |e: &'static Sexp| {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Lst(xs, f, l, p) => {
-                let here = if (not(null_p(xs)) && (sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("sumof")) || sym_is_p(car(xs), str_lit("product"))) && not(null_p(cdr(xs))) && not(any_p(lambda1(move |x: &'static Sexp| {
+                let here = if (not(null_p(xs)) && (sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("sumof")) || sym_is_p(car(xs), str_lit("product"))) && not(null_p(cdr(xs))) && not(any_p(lambda1s(move |x: &'static Sexp| {
                     let tagcase_ = x;
                     match *tagcase_ {
                         Sexp::Lst(ys, f2, l2, p2) => {
@@ -1147,7 +1169,7 @@ pub fn label_lists(es: Sexps) -> List<Strings> {
                         }
                     }
                 }), cdr(xs)))) {
-                    the::<List<Strings>>(kayak_rt::heap_cons(map(lambda1(move |x: &'static Sexp| {
+                    the::<List<Strings>>(kayak_rt::heap_cons(map(lambda1s(move |x: &'static Sexp| {
                         let tagcase_ = car(items(x));
                         match *tagcase_ {
                             Sexp::Sym(n, f3, p3) => {
@@ -1176,8 +1198,8 @@ pub fn label_lists(es: Sexps) -> List<Strings> {
 /// mangled (`a?` and `a-p` are both `a_p`).
 pub fn shapes_apart(v: &'static Cv, forms: Sexps) -> () {
     let lists = label_lists(forms);
-    if any_p(lambda1(move |ls: Strings| {
-        any_p(lambda1(move |ms: Strings| {
+    if any_p(lambda1s(move |ls: Strings| {
+        any_p(lambda1s(move |ms: Strings| {
             (not(string_eq_p(words_of(ls), words_of(ms))) && string_eq_p(words_of(map(&mangle, ls)), words_of(map(&mangle, ms))))
         }), lists)
     }), lists) {
@@ -1193,7 +1215,7 @@ pub fn shapes_apart(v: &'static Cv, forms: Sexps) -> () {
 /// pass's (restrict.kfx, C61).
 pub fn type_names_free(v: &'static Cv, forms: Sexps) -> () {
     shapes_apart(v, forms);
-    map(lambda1(move |f: &'static Sexp| {
+    map(lambda1s(move |f: &'static Sexp| {
         if ((head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-datatype")) || head_is_p(f, str_lit("define-generative"))) && string_member_p({
             let tagcase_ = second(items(f));
             match *tagcase_ {
@@ -1217,7 +1239,7 @@ pub fn type_names_free(v: &'static Cv, forms: Sexps) -> () {
                     str_lit("")
                 }
             }
-        }, concat(map(lambda1(move |g: &'static Sexp| {
+        }, concat(map(lambda1s(move |g: &'static Sexp| {
             if head_is_p(g, str_lit("define-effect")) {
                 let tagcase_ = second(items(g));
                 match *tagcase_ {
@@ -1247,7 +1269,7 @@ pub fn type_names_free(v: &'static Cv, forms: Sexps) -> () {
             ()
         }
     }), forms);
-    map(lambda1(move |f: &'static Sexp| {
+    map(lambda1s(move |f: &'static Sexp| {
         if ((head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-datatype"))) && {
             let tagcase_ = second(items(f));
             match *tagcase_ {
@@ -1316,7 +1338,7 @@ pub fn check_untyped(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
             }, if lambda_form_p(e) {
                 s
             } else {
-                constant_made(v, s, e, es)
+                constant_made(v, s, e, es, t)
             });
             elab(with_facts(with_binds(v, kayak_rt::heap_cons(global(v, name, scheme(nil::<Str>(), zonk(s, t))), kayak_rt::nil())), expressions::settle_facts(s)), kayak_rt::heap_cons(typed(name, written), kayak_rt::nil()))
         }
@@ -1330,11 +1352,11 @@ pub fn check_untyped(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
 // conversions stay inside. Outside, `m`'s values and types are named `m x`,
 // found by `with` and `select`.
 pub fn tag_taken_p(tag: Str, ds: Dts) -> bool {
-    any_p(lambda1(move |d: &'static Dt| {
+    any_p(lambda1s(move |d: &'static Dt| {
         let tagcase_ = d;
         match *tagcase_ {
             Dt::Dt(n, ps, vs) => {
-                any_p(lambda1(move |x: &'static Variant| {
+                any_p(lambda1s(move |x: &'static Variant| {
                     let tagcase_ = x;
                     match *tagcase_ {
                         Variant::Variant(t, fs) => {
@@ -1355,7 +1377,7 @@ pub fn module_types(mut v: &'static Cv, mut forms: Sexps) -> Strings {
             return nil::<Str>();
         } else {
             let f = car(forms);
-            if (head_is_p(f, str_lit("define-datatype")) && any_p(lambda1(move |vt: &'static Sexp| {
+            if (head_is_p(f, str_lit("define-datatype")) && any_p(lambda1s(move |vt: &'static Sexp| {
                 tag_taken_p(sym_name(car(items(vt))), cv_dts(v))
             }), cdr(cdr(items(f))))) {
                 return match refuse(v, str_lit("a module's datatype whose tag another datatype has: KFX's tags name one datatype each")) {};
@@ -1394,7 +1416,7 @@ pub fn qualify_type(m: Str, names: Strings, t: &'static Sexp) -> &'static Sexp {
             if head_is_p(t, str_lit("select")) {
                 t
             } else {
-                lst(map(lambda1(move |x: &'static Sexp| {
+                lst(map(lambda1s(move |x: &'static Sexp| {
                     qualify_type(m, names, x)
                 }), xs), file, line, pos)
             }
@@ -1410,7 +1432,7 @@ pub fn qualify_type(m: Str, names: Strings, t: &'static Sexp) -> &'static Sexp {
 /// family, `(t (p kind) ...)` (C89), the same, applied: `t` stands for
 /// `(m..t p ...)`.
 pub fn module_aliases(v: &'static Cv, m: Str, names: Strings, forms: Sexps, inside: bool) -> Aliases {
-    concat(map(lambda1(move |f: &'static Sexp| {
+    concat(map(lambda1s(move |f: &'static Sexp| {
         if not((head_is_p(f, str_lit("define-type")) || head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype")))) {
             nil::<&'static Alias>()
         } else {
@@ -1426,7 +1448,7 @@ pub fn module_aliases(v: &'static Cv, m: Str, names: Strings, forms: Sexps, insi
             let named = alias(name, ps, if null_p(ps) {
                 sym(q, str_lit(""), 0i64)
             } else {
-                lst(kayak_rt::heap_cons(sym(q, str_lit(""), 0i64), map(lambda1(move |p: Str| {
+                lst(kayak_rt::heap_cons(sym(q, str_lit(""), 0i64), map(lambda1s(move |p: Str| {
                     sym(if has_prefix_p(p, str_lit("'")) {
                         after_prefix(p, str_lit("'"))
                     } else {
@@ -1444,7 +1466,7 @@ pub fn module_aliases(v: &'static Cv, m: Str, names: Strings, forms: Sexps, insi
 }
 
 pub fn module_dts(v: &'static Cv, m: Str, forms: Sexps) -> Dts {
-    concat(map(lambda1(move |f: &'static Sexp| {
+    concat(map(lambda1s(move |f: &'static Sexp| {
         if (head_is_p(f, str_lit("define-generative")) || head_is_p(f, str_lit("define-datatype"))) {
             the::<Dts>(kayak_rt::heap_cons(dt(string_append(m, string_append(str_lit(".."), head_name(v, second(items(f))))), family_params(v, second(items(f))), nil::<&'static Variant>()), kayak_rt::nil()))
         } else {
@@ -1456,7 +1478,7 @@ pub fn module_dts(v: &'static Cv, m: Str, forms: Sexps) -> Dts {
 /// A module's generative types' conversions, `up-t` and `down-t`: its
 /// items', not in its type, so that outside `m..t` is abstract.
 pub fn module_conversions(v: &'static Cv, m: Str, forms: Sexps) -> Binds {
-    concat(map(lambda1(move |f: &'static Sexp| {
+    concat(map(lambda1s(move |f: &'static Sexp| {
         if head_is_p(f, str_lit("define-generative")) {
             let xs = items(f);
             let t = sym_name(second(xs));
@@ -1471,7 +1493,7 @@ pub fn module_conversions(v: &'static Cv, m: Str, forms: Sexps) -> Binds {
 
 /// A module's datatypes, their variants read where its types are named.
 pub fn module_datatypes(v: &'static Cv, m: Str, forms: Sexps) -> Dts {
-    concat(map(lambda1(move |f: &'static Sexp| {
+    concat(map(lambda1s(move |f: &'static Sexp| {
         if head_is_p(f, str_lit("define-datatype")) {
             let tagcase_ = datatype_of(v, cdr(items(f)));
             match *tagcase_ {
@@ -1488,10 +1510,10 @@ pub fn module_datatypes(v: &'static Cv, m: Str, forms: Sexps) -> Dts {
 /// A module's effect abbreviations, as `m e`: what each is, as the module
 /// read it.
 pub fn module_effects(m: Str, forms: Sexps, es: Effdefs) -> Effdefs {
-    concat(map(lambda1(move |f: &'static Sexp| {
+    concat(map(lambda1s(move |f: &'static Sexp| {
         if head_is_p(f, str_lit("define-effect")) {
             let name = sym_name(second(items(f)));
-            concat(map(lambda1(move |d: &'static Effdef| {
+            concat(map(lambda1s(move |d: &'static Effdef| {
                 let tagcase_ = d;
                 match *tagcase_ {
                     Effdef::Effdef(n, atoms) => {
@@ -1542,7 +1564,7 @@ pub fn untyped_p(form: &'static Sexp) -> bool {
 // in its type. The module included is one defined at the top level.
 /// The items, those of a `hide` among them.
 pub fn unhidden(forms: Sexps) -> Sexps {
-    concat(map(lambda1(move |f: &'static Sexp| {
+    concat(map(lambda1s(move |f: &'static Sexp| {
         if head_is_p(f, str_lit("hide")) {
             cdr(items(f))
         } else {
@@ -1564,7 +1586,7 @@ pub fn item_names_in(e: &'static Sexp, names: Strings) -> Strings {
             }
         }
         Sexp::Lst(xs, f, l, p) => {
-            concat(map(lambda1(move |x: &'static Sexp| {
+            concat(map(lambda1s(move |x: &'static Sexp| {
                 item_names_in(x, names)
             }), xs))
         }
@@ -1635,14 +1657,14 @@ pub fn distinct_aliases(mut als: Aliases) -> Aliases {
     loop {
         if null_p(als) {
             return nil::<&'static Alias>();
-        } else if any_p(lambda1(move |b: &'static Alias| {
+        } else if any_p(lambda1s(move |b: &'static Alias| {
             let tagcase_ = car(als);
             match *tagcase_ {
                 Alias::Alias(n, ps, body) => {
                     let tagcase_ = b;
                     match *tagcase_ {
                         Alias::Alias(m, qs, body2) => {
-                            (string_eq_p(n, m) && string_eq_p(show_sexp(body), show_sexp(body2)) && null_p(item_names_in(body, map(lambda1(move |a: &'static Alias| {
+                            (string_eq_p(n, m) && string_eq_p(show_sexp(body), show_sexp(body2)) && null_p(item_names_in(body, map(lambda1s(move |a: &'static Alias| {
                                 let tagcase_ = a;
                                 match *tagcase_ {
                                     Alias::Alias(k, ks, kb) => {
@@ -1664,7 +1686,7 @@ pub fn distinct_aliases(mut als: Aliases) -> Aliases {
 }
 
 pub fn hidden_items(forms: Sexps) -> Sexps {
-    concat(map(lambda1(move |f: &'static Sexp| {
+    concat(map(lambda1s(move |f: &'static Sexp| {
         if head_is_p(f, str_lit("hide")) {
             cdr(items(f))
         } else {
@@ -1677,9 +1699,9 @@ pub fn hidden_items(forms: Sexps) -> Sexps {
 /// A hidden type does not hide a value of its name, nor a value a type's
 /// (C86, FX-26's).
 pub fn hidden_value_names(forms: Sexps) -> Strings {
-    concat(map(lambda1(move |g: &'static Sexp| {
+    concat(map(lambda1s(move |g: &'static Sexp| {
         if head_is_p(g, str_lit("define-datatype")) {
-            map(lambda1(move |x: &'static Sexp| {
+            map(lambda1s(move |x: &'static Sexp| {
                 let tagcase_ = x;
                 match *tagcase_ {
                     Sexp::Lst(ys, f, l, p) => {
@@ -1707,13 +1729,13 @@ pub fn hidden_type_names(forms: Sexps) -> Strings {
 /// A hidden datatype or generative type in a type the module shows is
 /// refused, as FX-26 refuses it, for now (`modules/hide-escape.fx`).
 pub fn hidden_escapes(v: &'static Cv, forms: Sexps) -> () {
-    let r#abstract = concat(map(lambda1(move |g: &'static Sexp| {
+    let r#abstract = concat(map(lambda1s(move |g: &'static Sexp| {
         if (head_is_p(g, str_lit("define-datatype")) || head_is_p(g, str_lit("define-generative"))) {
             item_names(g)
         } else if head_is_p(g, str_lit("include")) {
             // A hidden include's abstract types are hidden too (C90).
             let n = sym_name(second(items(g)));
-            concat(map(lambda1(move |d: &'static Dt| {
+            concat(map(lambda1s(move |d: &'static Dt| {
                 let tagcase_ = d;
                 match *tagcase_ {
                     Dt::Dt(dn, ps, vs) => {
@@ -1732,13 +1754,13 @@ pub fn hidden_escapes(v: &'static Cv, forms: Sexps) -> () {
     if null_p(r#abstract) {
         ()
     } else {
-        map(lambda1(move |f: &'static Sexp| {
+        map(lambda1s(move |f: &'static Sexp| {
             let ts = if (head_is_p(f, str_lit("define")) && i64_eq(size(items(f)), 4i64)) {
                 the::<Sexps>(kayak_rt::heap_cons(third(items(f)), kayak_rt::nil()))
             } else if head_is_p(f, str_lit("define*")) {
                 the::<Sexps>(kayak_rt::heap_cons(third(items(f)), kayak_rt::nil()))
             } else if head_is_p(f, str_lit("define-rec")) {
-                map(lambda1(move |b: &'static Sexp| {
+                map(lambda1s(move |b: &'static Sexp| {
                     second(items(b))
                 }), cdr(items(f)))
             } else if head_is_p(f, str_lit("define-type")) {
@@ -1746,14 +1768,14 @@ pub fn hidden_escapes(v: &'static Cv, forms: Sexps) -> () {
             } else {
                 nil::<&'static Sexp>()
             };
-            if any_p(lambda1(move |t: &'static Sexp| {
+            if any_p(lambda1s(move |t: &'static Sexp| {
                 not(null_p(item_names_in(t, r#abstract)))
             }), ts) {
                 match refuse(v, string_append(str_lit("a hidden type in a type the module shows: "), words_of(r#abstract))) {}
             } else {
                 ()
             }
-        }), concat(map(lambda1(move |f: &'static Sexp| {
+        }), concat(map(lambda1s(move |f: &'static Sexp| {
             if head_is_p(f, str_lit("hide")) {
                 nil::<&'static Sexp>()
             } else {
@@ -1766,7 +1788,7 @@ pub fn hidden_escapes(v: &'static Cv, forms: Sexps) -> () {
 
 /// The modules `forms` include, each defined at the top level.
 pub fn included(v: &'static Cv, forms: Sexps) -> Strings {
-    concat(map(lambda1(move |f: &'static Sexp| {
+    concat(map(lambda1s(move |f: &'static Sexp| {
         if head_is_p(f, str_lit("include")) {
             let n = name_of(v, second(items(f)));
             if (null_p(find_bind(n, cv_binds(v))) || not({
@@ -1790,13 +1812,13 @@ pub fn included(v: &'static Cv, forms: Sexps) -> Strings {
 /// The names an `include` of `n` among `written` does not take (C87): an
 /// `extend`'s second module's.
 pub fn except_names(v: &'static Cv, written: Sexps, n: Str) -> Strings {
-    let incs = concat(map(lambda1(move |f: &'static Sexp| {
+    let incs = concat(map(lambda1s(move |f: &'static Sexp| {
         if (head_is_p(f, str_lit("include")) && string_eq_p(sym_name(second(items(f))), n)) {
             include_except(f)
         } else {
             nil::<&'static Sexp>()
         }
-    }), onto(written, concat(map(lambda1(move |f: &'static Sexp| {
+    }), onto(written, concat(map(lambda1s(move |f: &'static Sexp| {
         if head_is_p(f, str_lit("hide")) {
             cdr(items(f))
         } else {
@@ -1809,14 +1831,14 @@ pub fn except_names(v: &'static Cv, written: Sexps, n: Str) -> Strings {
         let x = car(incs);
         if head_is_p(x, str_lit("except-module")) {
             let b = sym_name(second(items(x)));
-            onto(map(lambda1(move |d: &'static Bind| {
+            onto(map(lambda1s(move |d: &'static Bind| {
                 let tagcase_ = d;
                 match *tagcase_ {
                     Bind::Bind(k, sc, w) => {
                         k
                     }
                 }
-            }), opened_binds(b, cv_binds(v))), map(lambda1(move |a: &'static Alias| {
+            }), opened_binds(b, cv_binds(v))), map(lambda1s(move |a: &'static Alias| {
                 let tagcase_ = a;
                 match *tagcase_ {
                     Alias::Alias(k, ps, body) => {
@@ -1832,7 +1854,7 @@ pub fn except_names(v: &'static Cv, written: Sexps, n: Str) -> Strings {
 
 pub fn excepted_binds(v: &'static Cv, written: Sexps, n: Str, bs: Binds) -> Binds {
     let ex = except_names(v, written, n);
-    concat(map(lambda1(move |d: &'static Bind| {
+    concat(map(lambda1s(move |d: &'static Bind| {
         let tagcase_ = d;
         match *tagcase_ {
             Bind::Bind(k, sc, w) => {
@@ -1882,7 +1904,7 @@ pub fn binds_of_include(mut n: Str, mut ibs: List<&'static TypedBinds>) -> Binds
 
 pub fn excepted_aliases(v: &'static Cv, written: Sexps, n: Str, als: Aliases) -> Aliases {
     let ex = except_names(v, written, n);
-    concat(map(lambda1(move |a: &'static Alias| {
+    concat(map(lambda1s(move |a: &'static Alias| {
         let tagcase_ = a;
         match *tagcase_ {
             Alias::Alias(k, ps, body) => {
@@ -1899,7 +1921,7 @@ pub fn excepted_aliases(v: &'static Cv, written: Sexps, n: Str, als: Aliases) ->
 /// Module `m`'s effects, named as `m` names them: an `include` gives them
 /// the module, as a `with` gives them its body (C87, FX-26's).
 pub fn opened_effdefs(m: Str, es: Effdefs) -> Effdefs {
-    concat(map(lambda1(move |d: &'static Effdef| {
+    concat(map(lambda1s(move |d: &'static Effdef| {
         let tagcase_ = d;
         match *tagcase_ {
             Effdef::Effdef(n, atoms) => {
@@ -1915,7 +1937,7 @@ pub fn opened_effdefs(m: Str, es: Effdefs) -> Effdefs {
 
 /// The modules included not in a `hide`: their types are the module's.
 pub fn unhidden_includes(v: &'static Cv, written: Sexps) -> Strings {
-    included(v, concat(map(lambda1(move |f: &'static Sexp| {
+    included(v, concat(map(lambda1s(move |f: &'static Sexp| {
         if head_is_p(f, str_lit("hide")) {
             nil::<&'static Sexp>()
         } else {
@@ -1926,7 +1948,7 @@ pub fn unhidden_includes(v: &'static Cv, written: Sexps) -> Strings {
 
 /// Module `n`'s types, opened, as module `m`'s: `m t`.
 pub fn renamed_aliases(n: Str, m: Str, als: Aliases) -> Aliases {
-    map(lambda1(move |a: &'static Alias| {
+    map(lambda1s(move |a: &'static Alias| {
         let tagcase_ = a;
         match *tagcase_ {
             Alias::Alias(t, ps, body) => {
@@ -1938,7 +1960,7 @@ pub fn renamed_aliases(n: Str, m: Str, als: Aliases) -> Aliases {
 
 /// A module's exported types, those hidden dropped.
 pub fn without_aliases(hidden: Strings, m: Str, als: Aliases) -> Aliases {
-    concat(map(lambda1(move |a: &'static Alias| {
+    concat(map(lambda1s(move |a: &'static Alias| {
         let tagcase_ = a;
         match *tagcase_ {
             Alias::Alias(t, ps, body) => {
@@ -1987,7 +2009,7 @@ pub fn item_value(f: &'static Sexp) -> Sexps {
     } else if head_is_p(f, str_lit("define*")) {
         the::<Sexps>(kayak_rt::heap_cons(fourth(xs), kayak_rt::nil()))
     } else if head_is_p(f, str_lit("define-rec")) {
-        map(lambda1(move |b: &'static Sexp| {
+        map(lambda1s(move |b: &'static Sexp| {
             third(items(b))
         }), cdr(xs))
     } else {
@@ -2008,7 +2030,7 @@ pub fn nset_names(s: &'static Nset) -> Strings {
 }
 
 pub fn nset_without(s: &'static Nset, out: Strings) -> &'static Nset {
-    nset_of(concat(map(lambda1(move |n: Str| {
+    nset_of(concat(map(lambda1s(move |n: Str| {
         if string_member_p(n, out) {
             nil::<Str>()
         } else {
@@ -2045,7 +2067,7 @@ pub fn refs_in(e: &'static Sexp, names: &'static Nset, forms: Sexps) -> Strings 
                 }
             }) {
                 let m = sym_name(second(xs));
-                let given = concat(map(lambda1(move |g: &'static Sexp| {
+                let given = concat(map(lambda1s(move |g: &'static Sexp| {
                     if (module_def_p(g) && string_eq_p(sym_name(second(items(g))), m)) {
                         concat(map(&item_names, module_written(g)))
                     } else {
@@ -2061,11 +2083,11 @@ pub fn refs_in(e: &'static Sexp, names: &'static Nset, forms: Sexps) -> Strings 
                     the::<Strings>(kayak_rt::heap_cons(m, kayak_rt::nil()))
                 } else {
                     nil::<Str>()
-                }, concat(map(lambda1(move |x: &'static Sexp| {
+                }, concat(map(lambda1s(move |x: &'static Sexp| {
                     refs_in(x, inner, forms)
                 }), cdr(cdr(xs)))))
             } else {
-                concat(map(lambda1(move |x: &'static Sexp| {
+                concat(map(lambda1s(move |x: &'static Sexp| {
                     refs_in(x, names, forms)
                 }), xs))
             }
@@ -2093,7 +2115,7 @@ pub fn standard_scope(v: &'static Cv) -> &'static Cv {
 /// The value items: each its form, its names, the items it names, and
 /// whether it is procedures (made, not run, when its item is).
 pub fn letrec_items(forms: Sexps) -> Mitems {
-    let values = concat(map(lambda1(move |f: &'static Sexp| {
+    let values = concat(map(lambda1s(move |f: &'static Sexp| {
         if null_p(item_value(f)) {
             nil::<&'static Sexp>()
         } else {
@@ -2101,24 +2123,24 @@ pub fn letrec_items(forms: Sexps) -> Mitems {
         }
     }), forms));
     let names = concat(map(&item_names, values));
-    map(lambda1(move |f: &'static Sexp| {
+    map(lambda1s(move |f: &'static Sexp| {
         mitem(f, item_names(f), {
             let own = if module_def_p(f) {
                 concat(map(&item_names, unhidden(module_written(f))))
             } else {
                 nil::<Str>()
             };
-            let set = nset_of(concat(map(lambda1(move |n: Str| {
+            let set = nset_of(concat(map(lambda1s(move |n: Str| {
                 if string_member_p(n, own) {
                     nil::<Str>()
                 } else {
                     the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
                 }
             }), names)));
-            concat(map(lambda1(move |e: &'static Sexp| {
+            concat(map(lambda1s(move |e: &'static Sexp| {
                 refs_in(e, set, forms)
             }), item_value(f)))
-        }, ((head_is_p(f, str_lit("define-rec")) || head_is_p(f, str_lit("define*")) || i64_eq(size(items(f)), 4i64)) && not(any_p(lambda1(move |e: &'static Sexp| {
+        }, ((head_is_p(f, str_lit("define-rec")) || head_is_p(f, str_lit("define*")) || i64_eq(size(items(f)), 4i64)) && not(any_p(lambda1s(move |e: &'static Sexp| {
             not(lambda_form_p(e))
         }), item_value(f)))))
     }), values)
@@ -2251,11 +2273,11 @@ pub fn named_merged(a: List<&'static NamedItem>, b: List<&'static NamedItem>) ->
 }
 
 pub fn itree_of(its: Mitems) -> &'static Itree {
-    let pairs = named_sorted(concat(map(lambda1(move |it: &'static Mitem| {
+    let pairs = named_sorted(concat(map(lambda1s(move |it: &'static Mitem| {
         let tagcase_ = it;
         match *tagcase_ {
             Mitem::Mitem(f, ns, rs, l) => {
-                map(lambda1(move |n: Str| {
+                map(lambda1s(move |n: Str| {
                     named_item(n, it)
                 }), ns)
             }
@@ -2377,7 +2399,7 @@ pub fn index_in(mut n: Str, mut ns: Strings, mut i: i64) -> i64 {
 /// FX-26's rule: a value that is no procedure is made when its item is,
 /// so every item it reaches through procedures must be made before it.
 pub fn made_before(v: &'static Cv, its: Mitems, t: &'static Itree) -> () {
-    let order = concat(map(lambda1(move |it: &'static Mitem| {
+    let order = concat(map(lambda1s(move |it: &'static Mitem| {
         let tagcase_ = it;
         match *tagcase_ {
             Mitem::Mitem(f, ns, rs, l) => {
@@ -2385,14 +2407,14 @@ pub fn made_before(v: &'static Cv, its: Mitems, t: &'static Itree) -> () {
             }
         }
     }), its));
-    map(lambda1(move |it: &'static Mitem| {
+    map(lambda1s(move |it: &'static Mitem| {
         let tagcase_ = it;
         match *tagcase_ {
             Mitem::Mitem(f, ns, rs, l) => {
                 if l {
                     ()
                 } else {
-                    let late = concat(map(lambda1(move |n: Str| {
+                    let late = concat(map(lambda1s(move |n: Str| {
                         if i64_gt_eq(index_in(n, order, 0i64), index_in(car(ns), order, 0i64)) {
                             the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
                         } else {
@@ -2429,7 +2451,7 @@ pub fn components(todo: Mitems, its: Mitems, rs: List<&'static Reached>) -> List
             }
         };
         let mine = reached_of(n, rs);
-        let same = concat(map(lambda1(move |x: &'static Mitem| {
+        let same = concat(map(lambda1s(move |x: &'static Mitem| {
             let tagcase_ = x;
             match *tagcase_ {
                 Mitem::Mitem(f, ns, rs2, l) => {
@@ -2441,11 +2463,11 @@ pub fn components(todo: Mitems, its: Mitems, rs: List<&'static Reached>) -> List
                 }
             }
         }), its));
-        let rest = concat(map(lambda1(move |x: &'static Mitem| {
+        let rest = concat(map(lambda1s(move |x: &'static Mitem| {
             let tagcase_ = x;
             match *tagcase_ {
                 Mitem::Mitem(f, ns, rs2, l) => {
-                    if any_p(lambda1(move |y: &'static Mitem| {
+                    if any_p(lambda1s(move |y: &'static Mitem| {
                         let tagcase_ = y;
                         match *tagcase_ {
                             Mitem::Mitem(g, ms, qs, k) => {
@@ -2460,11 +2482,11 @@ pub fn components(todo: Mitems, its: Mitems, rs: List<&'static Reached>) -> List
                 }
             }
         }), todo));
-        let deps = concat(map(lambda1(move |x: &'static Mitem| {
+        let deps = concat(map(lambda1s(move |x: &'static Mitem| {
             let tagcase_ = x;
             match *tagcase_ {
                 Mitem::Mitem(f, ns, rs2, l) => {
-                    if (string_member_p(car(ns), mine) && not(any_p(lambda1(move |y: &'static Mitem| {
+                    if (string_member_p(car(ns), mine) && not(any_p(lambda1s(move |y: &'static Mitem| {
                         let tagcase_ = y;
                         match *tagcase_ {
                             Mitem::Mitem(g, ms, qs, k) => {
@@ -2479,8 +2501,8 @@ pub fn components(todo: Mitems, its: Mitems, rs: List<&'static Reached>) -> List
                 }
             }
         }), rest));
-        let later = concat(map(lambda1(move |x: &'static Mitem| {
-            if any_p(lambda1(move |y: &'static Mitem| {
+        let later = concat(map(lambda1s(move |x: &'static Mitem| {
+            if any_p(lambda1s(move |y: &'static Mitem| {
                 let tagcase_ = y;
                 match *tagcase_ {
                     Mitem::Mitem(g, ms, qs, k) => {
@@ -2508,7 +2530,7 @@ pub fn rec_of(members: Sexps) -> Sexps {
     let tagcase_ = car(members);
     match *tagcase_ {
         Sexp::Lst(xs, file, line, pos) => {
-            the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("define-rec"), file, pos), concat(map(lambda1(move |g: &'static Sexp| {
+            the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("define-rec"), file, pos), concat(map(lambda1s(move |g: &'static Sexp| {
                 if head_is_p(g, str_lit("define-rec")) {
                     cdr(items(g))
                 } else {
@@ -2530,7 +2552,7 @@ pub fn alone_p(group: Mitems) -> bool {
         let tagcase_ = car(group);
         match *tagcase_ {
             Mitem::Mitem(f, ns, rs, l) => {
-                (not(l) || head_is_p(f, str_lit("define-rec")) || head_is_p(f, str_lit("define*")) || not(any_p(lambda1(move |r: Str| {
+                (not(l) || head_is_p(f, str_lit("define-rec")) || head_is_p(f, str_lit("define*")) || not(any_p(lambda1s(move |r: Str| {
                     string_member_p(r, ns)
                 }), rs)))
             }
@@ -2550,7 +2572,7 @@ pub fn as_group(v: &'static Cv, group: Mitems) -> Sexps {
                 }
             }
         }, kayak_rt::nil()))
-    } else if any_p(lambda1(move |it: &'static Mitem| {
+    } else if any_p(lambda1s(move |it: &'static Mitem| {
         let tagcase_ = it;
         match *tagcase_ {
             Mitem::Mitem(f, ns, rs, l) => {
@@ -2558,7 +2580,7 @@ pub fn as_group(v: &'static Cv, group: Mitems) -> Sexps {
             }
         }
     }), group) {
-        match refuse(v, string_append(str_lit("items that reach one another, not each a typed lambda: "), words_of(concat(map(lambda1(move |it: &'static Mitem| {
+        match refuse(v, string_append(str_lit("items that reach one another, not each a typed lambda: "), words_of(concat(map(lambda1s(move |it: &'static Mitem| {
             let tagcase_ = it;
             match *tagcase_ {
                 Mitem::Mitem(f, ns, rs, l) => {
@@ -2567,7 +2589,7 @@ pub fn as_group(v: &'static Cv, group: Mitems) -> Sexps {
             }
         }), group))))) {}
     } else {
-        rec_of(map(lambda1(move |it: &'static Mitem| {
+        rec_of(map(lambda1s(move |it: &'static Mitem| {
             let tagcase_ = it;
             match *tagcase_ {
                 Mitem::Mitem(f, ns, rs, l) => {
@@ -2612,7 +2634,7 @@ pub fn ordered(f0: Sexps, f1: Str) -> &'static Ordered {
 
 /// A module's types and modules, as written, checked before its values.
 pub fn first_checked(forms: Sexps) -> Sexps {
-    concat(map(lambda1(move |f: &'static Sexp| {
+    concat(map(lambda1s(move |f: &'static Sexp| {
         if (null_p(item_value(f)) || module_def_p(f)) {
             the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
         } else {
@@ -2628,7 +2650,7 @@ pub fn first_checked(forms: Sexps) -> Sexps {
 pub fn module_order_coded(v: &'static Cv, forms: Sexps) -> &'static Ordered {
     let its = letrec_items(forms);
     let t = itree_of(its);
-    let values = concat(map(lambda1(move |it: &'static Mitem| {
+    let values = concat(map(lambda1s(move |it: &'static Mitem| {
         let tagcase_ = it;
         match *tagcase_ {
             Mitem::Mitem(f, ns, rs, l) => {
@@ -2642,7 +2664,7 @@ pub fn module_order_coded(v: &'static Cv, forms: Sexps) -> &'static Ordered {
     }), its));
     let groups = {
         made_before(v, its, t);
-        components(values, its, map(lambda1(move |it: &'static Mitem| {
+        components(values, its, map(lambda1s(move |it: &'static Mitem| {
             let tagcase_ = it;
             match *tagcase_ {
                 Mitem::Mitem(f, ns, rs, l) => {
@@ -2651,14 +2673,14 @@ pub fn module_order_coded(v: &'static Cv, forms: Sexps) -> &'static Ordered {
             }
         }), its))
     };
-    ordered(onto(first_checked(forms), concat(map(lambda1(move |g: Mitems| {
+    ordered(onto(first_checked(forms), concat(map(lambda1s(move |g: Mitems| {
         as_group(v, g)
-    }), groups))), words_of(map(lambda1(move |g: Mitems| {
+    }), groups))), words_of(map(lambda1s(move |g: Mitems| {
         string_append(if alone_p(g) {
             str_lit("(s ")
         } else {
             str_lit("(r ")
-        }, string_append(words_of(map(lambda1(move |it: &'static Mitem| {
+        }, string_append(words_of(map(lambda1s(move |it: &'static Mitem| {
             let tagcase_ = it;
             match *tagcase_ {
                 Mitem::Mitem(f, ns, rs, l) => {
@@ -2693,8 +2715,8 @@ pub fn form_at(mut p: i64, mut forms: Sexps) -> Sexps {
 
 /// An order kept (`module-order-coded`'s code), made again.
 pub fn order_from_code(forms: Sexps, code: Str) -> Sexps {
-    onto(first_checked(forms), concat(map(lambda1(move |g: &'static Sexp| {
-        let members = concat(map(lambda1(move |p: &'static Sexp| {
+    onto(first_checked(forms), concat(map(lambda1s(move |g: &'static Sexp| {
+        let members = concat(map(lambda1s(move |p: &'static Sexp| {
             form_at({
                 let tagcase_ = p;
                 match *tagcase_ {
@@ -2782,26 +2804,26 @@ pub fn module_prep(v: &'static Cv, form: &'static Sexp) -> &'static Mprep {
     let forms = unhidden(written);
     let escapes = hidden_escapes(v, written);
     let hidden_types = hidden_type_names(written);
-    let all_includes = onto(included(v, forms), included(v, concat(map(lambda1(move |f: &'static Sexp| {
+    let all_includes = onto(included(v, forms), included(v, concat(map(lambda1s(move |f: &'static Sexp| {
         if head_is_p(f, str_lit("hide")) {
             cdr(items(f))
         } else {
             nil::<&'static Sexp>()
         }
     }), written))));
-    let include_binds = map(lambda1(move |n: Str| {
+    let include_binds = map(lambda1s(move |n: Str| {
         typed_binds(n, excepted_binds(v, written, n, cv_binds(v)))
     }), all_includes);
-    let hidden = onto(hidden_value_names(written), map(lambda1(move |b: &'static Bind| {
+    let hidden = onto(hidden_value_names(written), map(lambda1s(move |b: &'static Bind| {
         let tagcase_ = b;
         match *tagcase_ {
             Bind::Bind(n, sc, w) => {
                 n
             }
         }
-    }), concat(map(lambda1(move |n: Str| {
+    }), concat(map(lambda1s(move |n: Str| {
         binds_of_include(n, include_binds)
-    }), included(v, concat(map(lambda1(move |f: &'static Sexp| {
+    }), included(v, concat(map(lambda1s(move |f: &'static Sexp| {
         if head_is_p(f, str_lit("hide")) {
             cdr(items(f))
         } else {
@@ -2810,7 +2832,7 @@ pub fn module_prep(v: &'static Cv, form: &'static Sexp) -> &'static Mprep {
     }), written)))))));
     let includes = included(v, forms);
     let names = module_types(v, forms);
-    let given_values = onto(concat(map(&item_value_names, forms)), concat(map(lambda1(move |b: &'static Bind| {
+    let given_values = onto(concat(map(&item_value_names, forms)), concat(map(lambda1s(move |b: &'static Bind| {
         let tagcase_ = b;
         match *tagcase_ {
             Bind::Bind(n, sc, w) => {
@@ -2821,21 +2843,21 @@ pub fn module_prep(v: &'static Cv, form: &'static Sexp) -> &'static Mprep {
                 }
             }
         }
-    }), concat(map(lambda1(move |n: Str| {
+    }), concat(map(lambda1s(move |n: Str| {
         binds_of_include(n, include_binds)
     }), includes)))));
     let given_types = concat(map(&item_type_names, forms));
-    let included_aliases = map(lambda1(move |a: &'static Alias| {
+    let included_aliases = map(lambda1s(move |a: &'static Alias| {
         let tagcase_ = a;
         match *tagcase_ {
             Alias::Alias(n, ps, body) => {
                 alias(n, ps, resolved_alias(body, cv_aliases(v)))
             }
         }
-    }), concat(map(lambda1(move |n: Str| {
+    }), concat(map(lambda1s(move |n: Str| {
         excepted_aliases(v, written, n, cv_aliases(v))
     }), includes)));
-    let v = if (repeated_p(given_values) || repeated_p(onto(given_types, map(lambda1(move |a: &'static Alias| {
+    let v = if (repeated_p(given_values) || repeated_p(onto(given_types, map(lambda1s(move |a: &'static Alias| {
         let tagcase_ = a;
         match *tagcase_ {
             Alias::Alias(n, ps, b) => {
@@ -2851,11 +2873,11 @@ pub fn module_prep(v: &'static Cv, form: &'static Sexp) -> &'static Mprep {
         let tagcase_ = v;
         match *tagcase_ {
             Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-                cv(bind_onto(concat(map(lambda1(move |n: Str| {
+                cv(bind_onto(concat(map(lambda1s(move |n: Str| {
                     binds_of_include(n, include_binds)
-                }), includes)), kayak_rt::heap_cons(bind(str_lit("%module"), scheme(nil::<Str>(), ty_unit()), m), bs)), onto(module_dts(v, m, forms), ds), onto(module_aliases(v, m, names, forms, true), onto(concat(map(lambda1(move |n: Str| {
+                }), includes)), kayak_rt::heap_cons(bind(str_lit("%module"), scheme(nil::<Str>(), ty_unit()), m), bs)), onto(module_dts(v, m, forms), ds), onto(module_aliases(v, m, names, forms, true), onto(concat(map(lambda1s(move |n: Str| {
                     excepted_aliases(v, written, n, als)
-                }), includes)), als)), onto(concat(map(lambda1(move |n: Str| {
+                }), includes)), als)), onto(concat(map(lambda1s(move |n: Str| {
                     opened_effdefs(n, es)
                 }), includes)), es), here, group, file, line, fs, tv, at)
             }
@@ -2885,7 +2907,7 @@ pub fn module_finish(p: &'static Mprep, checked: &'static Elab) -> &'static Elab
                     let tagcase_ = done;
                     match *tagcase_ {
                         Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-                            elab(cv(kayak_rt::heap_cons(made, bind_onto(module_exports(m, onto(hidden, map(lambda1(move |b: &'static Bind| {
+                            elab(cv(kayak_rt::heap_cons(made, bind_onto(module_exports(m, onto(hidden, map(lambda1s(move |b: &'static Bind| {
                                 let tagcase_ = b;
                                 match *tagcase_ {
                                     Bind::Bind(n, sc, w) => {
@@ -2896,10 +2918,10 @@ pub fn module_finish(p: &'static Mprep, checked: &'static Elab) -> &'static Elab
                                 onto(ds, cv_dts(outer))
                             } else {
                                 ds
-                            }, onto(without_aliases(hidden_types, m, module_aliases(v, m, names, forms, false)), onto(concat(map(lambda1(move |n: Str| {
+                            }, onto(without_aliases(hidden_types, m, module_aliases(v, m, names, forms, false)), onto(concat(map(lambda1s(move |n: Str| {
                                 renamed_aliases(n, m, excepted_aliases(v, written, n, als))
-                            }), unhidden_includes(v, written))), cv_aliases(outer))), onto(module_effects(m, forms, es), onto(concat(map(lambda1(move |n: Str| {
-                                map(lambda1(move |d: &'static Effdef| {
+                            }), unhidden_includes(v, written))), cv_aliases(outer))), onto(module_effects(m, forms, es), onto(concat(map(lambda1s(move |n: Str| {
+                                map(lambda1s(move |d: &'static Effdef| {
                                     let tagcase_ = d;
                                     match *tagcase_ {
                                         Effdef::Effdef(k, atoms) => {
@@ -2946,7 +2968,7 @@ pub fn check_item(v: &'static Cv, m: Str, form: &'static Sexp) -> &'static Elab 
                 let tagcase_ = check_untyped(near(v, src_file, src_line, src_pos), form);
                 match *tagcase_ {
                     Elab::Elab(v2, more) => {
-                        elab(at(v2, str_lit(""), nil::<Str>()), map(lambda1(move |x: &'static Typed| {
+                        elab(at(v2, str_lit(""), nil::<Str>()), map(lambda1s(move |x: &'static Typed| {
                             let tagcase_ = x;
                             match *tagcase_ {
                                 Typed::Typed(n, t) => {
@@ -3200,7 +3222,7 @@ pub fn load_paths(e: &'static Sexp, dir: Str) -> Strings {
                     }
                 }
             } else {
-                concat(map(lambda1(move |x: &'static Sexp| {
+                concat(map(lambda1s(move |x: &'static Sexp| {
                     load_paths(x, dir)
                 }), xs))
             }
@@ -3213,7 +3235,7 @@ pub fn load_paths(e: &'static Sexp, dir: Str) -> Strings {
 }
 
 pub fn load_paths_all(forms: Sexps, dir: Str) -> Strings {
-    concat(map(lambda1(move |f: &'static Sexp| {
+    concat(map(lambda1s(move |f: &'static Sexp| {
         load_paths(f, dir)
     }), forms))
 }
@@ -3247,7 +3269,7 @@ pub fn spliced(e: &'static Sexp, dir: Str, loaded: Fileds, chain: Strings) -> &'
                         }
                     }
                 };
-                let found = concat(map(lambda1(move |x: &'static Filed| {
+                let found = concat(map(lambda1s(move |x: &'static Filed| {
                     let tagcase_ = x;
                     match *tagcase_ {
                         Filed::Filed(n, text) => {
@@ -3264,12 +3286,12 @@ pub fn spliced(e: &'static Sexp, dir: Str, loaded: Fileds, chain: Strings) -> &'
                 } else if null_p(found) {
                     error(string_append(str_lit("kfx: cannot read "), path))
                 } else {
-                    lst(kayak_rt::heap_cons(sym(str_lit("module"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("%loaded"), f, p), kayak_rt::heap_cons(str(path, f, p), kayak_rt::nil())), f, l, p), map(lambda1(move |g: &'static Sexp| {
+                    lst(kayak_rt::heap_cons(sym(str_lit("module"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("%loaded"), f, p), kayak_rt::heap_cons(str(path, f, p), kayak_rt::nil())), f, l, p), map(lambda1s(move |g: &'static Sexp| {
                         spliced(g, directory_of(path), loaded, kayak_rt::heap_cons(path, chain))
                     }), read_all(string_chars(car(found)), path, 1i64)))), f, l, p)
                 }
             } else {
-                lst(map(lambda1(move |x: &'static Sexp| {
+                lst(map(lambda1s(move |x: &'static Sexp| {
                     spliced(x, dir, loaded, chain)
                 }), xs), f, l, p)
             }
@@ -3295,7 +3317,7 @@ pub fn made_here_p(e: &'static Sexp) -> bool {
 
 /// The modules made in place among a module's items, each defined.
 pub fn made_in(its: Sexps) -> Sexps {
-    concat(map(lambda1(move |g: &'static Sexp| {
+    concat(map(lambda1s(move |g: &'static Sexp| {
         if (head_is_p(g, str_lit("include")) && made_here_p(second(items(g)))) {
             the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("define"), str_lit(""), 0i64), kayak_rt::heap_cons(sym(made_name(second(items(g))), str_lit(""), 0i64), kayak_rt::heap_cons(second(items(g)), kayak_rt::nil()))), str_lit(""), 0i64, 0i64), kayak_rt::nil()))
         } else if head_is_p(g, str_lit("hide")) {
@@ -3308,7 +3330,7 @@ pub fn made_in(its: Sexps) -> Sexps {
 
 /// A module's items, each module made in place named.
 pub fn named_made(its: Sexps) -> Sexps {
-    map(lambda1(move |g: &'static Sexp| {
+    map(lambda1s(move |g: &'static Sexp| {
         if (head_is_p(g, str_lit("include")) && made_here_p(second(items(g)))) {
             lst(kayak_rt::heap_cons(car(items(g)), kayak_rt::heap_cons(sym(made_name(second(items(g))), str_lit(""), 0i64), cdr(cdr(items(g))))), str_lit(""), 0i64, 0i64)
         } else if head_is_p(g, str_lit("hide")) {
@@ -3356,7 +3378,7 @@ pub fn with_loads(forms: Sexps, file: Str, loaded: Fileds) -> Sexps {
     concat(map(&hoisted, if null_p(loaded) {
         forms
     } else {
-        map(lambda1(move |f: &'static Sexp| {
+        map(lambda1s(move |f: &'static Sexp| {
             spliced(f, directory_of(file), loaded, nil::<Str>())
         }), forms)
     }))

@@ -39,7 +39,7 @@ pub fn fail_with(message: Str, status: Int) -> Void {
 }
 
 pub async fn read_text(rt: Drt, path: Str) -> Result<Str, Unwind> {
-    let tagcase_ = kayak_rt::suspend::body((&perform_x)(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::ReadFile(path)))).await?;
+    let tagcase_ = kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_x(a__0, a__1))))(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::ReadFile(path)))).await?;
     match *tagcase_ {
         Sum_4line_3eof_4done_4time_4text_6failed::Text(s) => {
             Ok(s)
@@ -55,7 +55,7 @@ pub async fn read_text(rt: Drt, path: Str) -> Result<Str, Unwind> {
 }
 
 pub async fn write_text(rt: Drt, path: Str, text: Str) -> Result<(), Unwind> {
-    let tagcase_ = kayak_rt::suspend::body((&perform_x)(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::WriteFile(Product_4path_4text(path, text))))).await?;
+    let tagcase_ = kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_x(a__0, a__1))))(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::WriteFile(Product_4path_4text(path, text))))).await?;
     match *tagcase_ {
         Sum_4line_3eof_4done_4time_4text_6failed::Done(u) => {
             Ok(())
@@ -177,7 +177,7 @@ pub async fn write_outputs(mut rt: Drt, mut dir: Str, mut os: Outputs) -> Result
 
 // The compiler, run.
 pub async fn put_out(rt: Drt, s: Str) -> Result<(), Unwind> {
-    kayak_rt::suspend::body((&perform_x)(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::Write(s)))).await?;
+    kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_x(a__0, a__1))))(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::Write(s)))).await?;
     Ok(())
 }
 
@@ -187,7 +187,7 @@ pub async fn loads_read(mut rt: Drt, mut todo: Strings, mut done: Fileds) -> Res
     loop {
         if null_p(todo) {
             return Ok(done);
-        } else if any_p(lambda1(move |s: &'static Filed| {
+        } else if any_p(lambda1s(move |s: &'static Filed| {
             let tagcase_ = s;
             match *tagcase_ {
                 Filed::Filed(n, t) => {
@@ -229,7 +229,7 @@ pub async fn compile_with(rt: Drt, r#as: Strings) -> Result<Int, Unwind> {
         let text = kayak_rt::suspend::body(read_text(rt, unit)).await?;
         let program = kayak_rt::suspend::body(sources_of(rt, directory_of(unit), lines_from(string_chars(text), nil::<char>()))).await?;
         let old = {
-            let tagcase_ = kayak_rt::suspend::body((&perform_x)(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::ReadFile(cache)))).await?;
+            let tagcase_ = kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_x(a__0, a__1))))(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::ReadFile(cache)))).await?;
             match *tagcase_ {
                 Sum_4line_3eof_4done_4time_4text_6failed::Text(t) => {
                     incremental::memos_of_text(t)
@@ -269,14 +269,14 @@ pub async fn main() -> Result<Int, Unwind> {
     let r#as = the::<Strings>(args());
     if (not(null_p(r#as)) && string_eq_p(car(r#as), str_lit("--record")) && not(null_p(cdr(r#as)))) {
         let log = the::<Ref<Log<'static>>>(kayak_rt::heap_new(nil::<Product_4step_2op_6answer<i64, &'static Sum_9read_line_5write_5clock_9read_file_10write_file<(), Str, (), Str, Product_4path_4text<Str, Str>>, &'static Sum_4line_3eof_4done_4time_4text_6failed<Str, (), (), i64, Str, Str>>>()));
-        let status = kayak_rt::suspend::body((&run_under)((&recording)((&live)(), log), lambda1(move |rt: Drt| kayak_rt::suspend::body(async move {
+        let status = kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(run_under(a__0, a__1))))((&recording)((&live)(), log), lambda1(move |rt: Drt| kayak_rt::suspend::body(async move {
             Ok(kayak_rt::suspend::body(compile_with(rt, cdr(cdr(r#as)))).await?)
         })))).await?;
         write_text_now(car(cdr(r#as)), (&log_text)(reverse_log(get(log), nil::<Product_4step_2op_6answer<i64, &'static Sum_9read_line_5write_5clock_9read_file_10write_file<(), Str, (), Str, Product_4path_4text<Str, Str>>, &'static Sum_4line_3eof_4done_4time_4text_6failed<Str, (), (), i64, Str, Str>>>())));
         Ok(status)
     } else if (not(null_p(r#as)) && string_eq_p(car(r#as), str_lit("--replay")) && not(null_p(cdr(r#as)))) {
         let log = the::<Ref<Log<'static>>>(kayak_rt::heap_new((&log_of_text)(read_text_now(car(cdr(r#as))))));
-        let status = kayak_rt::suspend::body((&run_under)((&replaying)(log), lambda1(move |rt: Drt| kayak_rt::suspend::body(async move {
+        let status = kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(run_under(a__0, a__1))))((&replaying)(log), lambda1(move |rt: Drt| kayak_rt::suspend::body(async move {
             Ok(kayak_rt::suspend::body(compile_with(rt, cdr(cdr(r#as)))).await?)
         })))).await?;
         if null_p(get(log)) {
@@ -286,7 +286,7 @@ pub async fn main() -> Result<Int, Unwind> {
             Ok(int_lit(1))
         }
     } else {
-        Ok(kayak_rt::suspend::body((&run_under)((&live)(), lambda1(move |rt: Drt| kayak_rt::suspend::body(async move {
+        Ok(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(run_under(a__0, a__1))))((&live)(), lambda1(move |rt: Drt| kayak_rt::suspend::body(async move {
             Ok(kayak_rt::suspend::body(compile_with(rt, r#as)).await?)
         })))).await?)
     }

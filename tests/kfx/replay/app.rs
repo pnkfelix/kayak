@@ -13,10 +13,10 @@ pub type Rt = Tag<i64, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::s
 // Read until `eof`, writing each line numbered and stamped; the count.
 pub async fn echo(mut r: Rt, mut n: i64) -> Result<i64, Unwind> {
     loop {
-        let tagcase_ = kayak_rt::suspend::body((&read_line_x)(r)).await?;
+        let tagcase_ = kayak_rt::suspend::body((lambda1(move |a__0| kayak_rt::suspend::body(read_line_x(a__0))))(r)).await?;
         match *tagcase_ {
             Sum_4line_3eof_4done_4time_4text_6failed::Line(s) => {
-                kayak_rt::suspend::body((&write_x)(r, string_append(i64_to_string(n), string_append(str_lit(": "), string_append(s, string_append(str_lit(" @"), i64_to_string(kayak_rt::suspend::body((&clock_x)(r)).await?))))))).await?;
+                kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(write_x(a__0, a__1))))(r, string_append(i64_to_string(n), string_append(str_lit(": "), string_append(s, string_append(str_lit(" @"), i64_to_string(kayak_rt::suspend::body((lambda1(move |a__0| kayak_rt::suspend::body(clock_x(a__0))))(r)).await?))))))).await?;
                 n = i64_plus(n, 1i64);
                 continue;
             }
@@ -53,13 +53,13 @@ pub async fn main() -> Result<Str, Unwind> {
     let input = the::<Ref<List<Str>>>(kayak_rt::heap_new(kayak_rt::heap_cons(str_lit("alpha"), kayak_rt::heap_cons(str_lit("beta"), kayak_rt::nil()))));
     let out = the::<Ref<List<Str>>>(kayak_rt::heap_new(nil::<Str>()));
     let log = the::<Ref<Log<'static>>>(kayak_rt::heap_new(nil::<Product_4step_2op_6answer<i64, &'static Sum_9read_line_5write_5clock_9read_file_10write_file<(), Str, (), Str, Product_4path_4text<Str, Str>>, &'static Sum_4line_3eof_4done_4time_4text_6failed<Str, (), (), i64, Str, Str>>>()));
-    let n = kayak_rt::suspend::body((&run_under)((&recording)((&sim)(input, out), log), lambda1(move |r: Rt| kayak_rt::suspend::body(async move {
+    let n = kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(run_under(a__0, a__1))))((&recording)((&sim)(input, out), log), lambda1(move |r: Rt| kayak_rt::suspend::body(async move {
         Ok(kayak_rt::suspend::body(echo(r, 1i64)).await?)
     })))).await?;
     let recorded = words(get(out));
     let log = the::<Ref<Log<'static>>>(kayak_rt::heap_new(reverse_log(get(log), nil::<Product_4step_2op_6answer<i64, &'static Sum_9read_line_5write_5clock_9read_file_10write_file<(), Str, (), Str, Product_4path_4text<Str, Str>>, &'static Sum_4line_3eof_4done_4time_4text_6failed<Str, (), (), i64, Str, Str>>>())));
     let out2 = the::<Ref<List<Str>>>(kayak_rt::heap_new(nil::<Str>()));
-    let m = kayak_rt::suspend::body((&run_under)((&replaying)(log), lambda1(move |r: Rt| kayak_rt::suspend::body(async move {
+    let m = kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(run_under(a__0, a__1))))((&replaying)(log), lambda1(move |r: Rt| kayak_rt::suspend::body(async move {
         Ok(kayak_rt::suspend::body(echo(r, 1i64)).await?)
     })))).await?;
     Ok(string_append(i64_to_string(i64_minus(n, 1i64)), string_append(str_lit(" lines: "), string_append(recorded, string_append(str_lit("; replayed, "), string_append(i64_to_string(i64_minus(m, 1i64)), str_lit(" lines")))))))

@@ -21,21 +21,21 @@ pub type Tasks = List<Task>;
 pub type Promise = Ref<&'static Sum_7pending_8resolved<Tasks, i64>>;
 
 pub fn sched() -> Tag<(), &'static dyn Fn() -> ()> {
-    thread_local!(static ONCE: OnceCell<Tag<(), &'static dyn Fn() -> ()>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Tag<(), &'static dyn Fn() -> ()>);
     once(&ONCE, || {
         make_continuation_prompt_tag()
     })
 }
 
 pub fn queue() -> Ref<Tasks> {
-    thread_local!(static ONCE: OnceCell<Ref<Tasks>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<Tasks>);
     once(&ONCE, || {
         kayak_rt::heap_new(nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>())
     })
 }
 
 pub fn log() -> Ref<List<i64>> {
-    thread_local!(static ONCE: OnceCell<Ref<List<i64>>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<List<i64>>);
     once(&ONCE, || {
         kayak_rt::heap_new(nil::<i64>())
     })
@@ -151,7 +151,7 @@ pub async fn spawn_x(thunk: &'static dyn Fn() -> kayak_rt::suspend::Body<()>) ->
 }
 
 pub fn fut() -> Promise {
-    thread_local!(static ONCE: OnceCell<Promise> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Promise);
     once(&ONCE, || {
         kayak_rt::heap_new(kayak_rt::heap_alloc(Sum_7pending_8resolved::<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, i64>::Pending(nil::<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>())))
     })

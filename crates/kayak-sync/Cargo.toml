@@ -1,0 +1,11 @@
+[package]
+name = "kayak-sync"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# The one crate of kayak's with `unsafe` (PLAN.md Q7, K7; C101): what the
+# checker proves may cross threads, asserted to Rust, and the lock that
+# guards mailboxes and I-cells.
+[lints.rust]
+unsafe_code = "allow"

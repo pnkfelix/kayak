@@ -21,7 +21,7 @@ pub type Chars = List<char>;
 pub type Strings = List<Str>;
 
 // Lists, of anything
-pub fn map<A: Copy + 'static, B: Copy + 'static>(f: &'static dyn Fn(A) -> B, xs: List<A>) -> List<B> {
+pub fn map<A: Copy + 'static, B: Copy + 'static>(f: &'static (dyn Fn(A) -> B + Send + Sync), xs: List<A>) -> List<B> {
     if null_p(xs) {
         nil::<B>()
     } else {
@@ -29,7 +29,7 @@ pub fn map<A: Copy + 'static, B: Copy + 'static>(f: &'static dyn Fn(A) -> B, xs:
     }
 }
 
-pub fn any_p<A: Copy + 'static>(p: &'static dyn Fn(A) -> bool, xs: List<A>) -> bool {
+pub fn any_p<A: Copy + 'static>(p: &'static (dyn Fn(A) -> bool + Send + Sync), xs: List<A>) -> bool {
     (not(null_p(xs)) && (p(car(xs)) || any_p(p, cdr(xs))))
 }
 
@@ -114,7 +114,7 @@ pub fn put(s: Str, acc: Chars) -> Chars {
 }
 
 /// Each of `xs` added to `acc` by `each`, separated by `sep`.
-pub fn put_sep<A: Copy + 'static>(mut each: &'static dyn Fn(A, Chars) -> Chars, mut sep: Str, mut xs: List<A>, mut acc: Chars) -> Chars {
+pub fn put_sep<A: Copy + 'static>(mut each: &'static (dyn Fn(A, Chars) -> Chars + Send + Sync), mut sep: Str, mut xs: List<A>, mut acc: Chars) -> Chars {
     loop {
         if null_p(xs) {
             return acc;

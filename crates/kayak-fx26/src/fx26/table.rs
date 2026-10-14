@@ -99,56 +99,56 @@ pub fn armx(f0: i64, f1: i64, f2: i64) -> &'static Armx {
 }
 
 pub fn nodes() -> Ref<Array<&'static Node>> {
-    thread_local!(static ONCE: OnceCell<Ref<Array<&'static Node>>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<Array<&'static Node>>);
     once(&ONCE, || {
         kayak_rt::heap_new(make_array(int_lit(1024), n_lit(0i64)))
     })
 }
 
 pub fn node_count() -> Ref<i64> {
-    thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
         kayak_rt::heap_new(0i64)
     })
 }
 
 pub fn kids() -> Ref<FlatArray<i64>> {
-    thread_local!(static ONCE: OnceCell<Ref<FlatArray<i64>>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
         kayak_rt::heap_new(make_flatarray_i64(1024i64, 0i64))
     })
 }
 
 pub fn kid_count() -> Ref<i64> {
-    thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
         kayak_rt::heap_new(0i64)
     })
 }
 
 pub fn armxs() -> Ref<Array<&'static Armx>> {
-    thread_local!(static ONCE: OnceCell<Ref<Array<&'static Armx>>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<Array<&'static Armx>>);
     once(&ONCE, || {
         kayak_rt::heap_new(make_array(int_lit(64), armx(0i64, 0i64, 0i64)))
     })
 }
 
 pub fn armx_count() -> Ref<i64> {
-    thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
         kayak_rt::heap_new(0i64)
     })
 }
 
 pub fn constants() -> Ref<FlatArray<i64>> {
-    thread_local!(static ONCE: OnceCell<Ref<FlatArray<i64>>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
         kayak_rt::heap_new(make_flatarray_i64(256i64, 0i64))
     })
 }
 
 pub fn constant_count() -> Ref<i64> {
-    thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
         kayak_rt::heap_new(0i64)
     })
@@ -265,7 +265,7 @@ pub fn constant_at(i: i64) -> i64 {
 // The primitives, numbered: a primitive's word holds its number here, which
 // the machine's `apply-op` takes apart by number, never by name.
 pub fn prim_list() -> Strings {
-    thread_local!(static ONCE: OnceCell<Strings> = const { OnceCell::new() });
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
     once(&ONCE, || {
         kayak_rt::heap_cons(str_lit("i64+"), kayak_rt::heap_cons(str_lit("i64-"), kayak_rt::heap_cons(str_lit("i64*"), kayak_rt::heap_cons(str_lit("i64-quotient"), kayak_rt::heap_cons(str_lit("i64-remainder"), kayak_rt::heap_cons(str_lit("i64-and"), kayak_rt::heap_cons(str_lit("i64-or"), kayak_rt::heap_cons(str_lit("i64-xor"), kayak_rt::heap_cons(str_lit("i64-not"), kayak_rt::heap_cons(str_lit("i64="), kayak_rt::heap_cons(str_lit("i64<"), kayak_rt::heap_cons(str_lit("i64>"), kayak_rt::heap_cons(str_lit("i64<="), kayak_rt::heap_cons(str_lit("i64>="), kayak_rt::heap_cons(str_lit("i64-shl"), kayak_rt::heap_cons(str_lit("i64-shr"), kayak_rt::heap_cons(str_lit("+"), kayak_rt::heap_cons(str_lit("-"), kayak_rt::heap_cons(str_lit("*"), kayak_rt::heap_cons(str_lit("quotient"), kayak_rt::heap_cons(str_lit("remainder"), kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("="), kayak_rt::heap_cons(str_lit("<"), kayak_rt::heap_cons(str_lit(">"), kayak_rt::heap_cons(str_lit("<="), kayak_rt::heap_cons(str_lit(">="), kayak_rt::heap_cons(str_lit("max"), kayak_rt::heap_cons(str_lit("min"), kayak_rt::heap_cons(str_lit("zero?"), kayak_rt::heap_cons(str_lit("bitwise-and"), kayak_rt::heap_cons(str_lit("bitwise-ior"), kayak_rt::heap_cons(str_lit("bitwise-xor"), kayak_rt::heap_cons(str_lit("bitwise-not"), kayak_rt::heap_cons(str_lit("arithmetic-shift"), kayak_rt::heap_cons(str_lit("int->i64"), kayak_rt::heap_cons(str_lit("i64->int"), kayak_rt::heap_cons(str_lit("int->string"), kayak_rt::heap_cons(str_lit("i64->string"), kayak_rt::heap_cons(str_lit("not"), kayak_rt::heap_cons(str_lit("bool=?"), kayak_rt::heap_cons(str_lit("string-append"), kayak_rt::heap_cons(str_lit("string=?"), kayak_rt::heap_cons(str_lit("string<?"), kayak_rt::heap_cons(str_lit("string>?"), kayak_rt::heap_cons(str_lit("string<=?"), kayak_rt::heap_cons(str_lit("string>=?"), kayak_rt::heap_cons(str_lit("string-compare"), kayak_rt::heap_cons(str_lit("string-search"), kayak_rt::heap_cons(str_lit("string-downcase"), kayak_rt::heap_cons(str_lit("string-length"), kayak_rt::heap_cons(str_lit("string-length-i64"), kayak_rt::heap_cons(str_lit("string-ref"), kayak_rt::heap_cons(str_lit("string-ref-i64"), kayak_rt::heap_cons(str_lit("substring"), kayak_rt::heap_cons(str_lit("char->i64"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("i64->char"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("char->string"), kayak_rt::heap_cons(str_lit("char=?"), kayak_rt::heap_cons(str_lit("char<?"), kayak_rt::heap_cons(str_lit("char>?"), kayak_rt::heap_cons(str_lit("char<=?"), kayak_rt::heap_cons(str_lit("char>=?"), kayak_rt::heap_cons(str_lit("char-upcase"), kayak_rt::heap_cons(str_lit("char-downcase"), kayak_rt::heap_cons(str_lit("char-whitespace?"), kayak_rt::heap_cons(str_lit("char-numeric?"), kayak_rt::heap_cons(str_lit("char-alphabetic?"), kayak_rt::heap_cons(str_lit("string->list"), kayak_rt::heap_cons(str_lit("list->string"), kayak_rt::heap_cons(str_lit("string->symbol"), kayak_rt::heap_cons(str_lit("symbol->string"), kayak_rt::heap_cons(str_lit("symbol=?"), kayak_rt::heap_cons(str_lit("symbol-compare"), kayak_rt::heap_cons(str_lit("cons"), kayak_rt::heap_cons(str_lit("car"), kayak_rt::heap_cons(str_lit("cdr"), kayak_rt::heap_cons(str_lit("null?"), kayak_rt::heap_cons(str_lit("pair?"), kayak_rt::heap_cons(str_lit("length"), kayak_rt::heap_cons(str_lit("list-length"), kayak_rt::heap_cons(str_lit("reverse"), kayak_rt::heap_cons(str_lit("append"), kayak_rt::heap_cons(str_lit("new"), kayak_rt::heap_cons(str_lit("get"), kayak_rt::heap_cons(str_lit("set"), kayak_rt::heap_cons(str_lit("rnew"), kayak_rt::heap_cons(str_lit("rcons"), kayak_rt::heap_cons(str_lit("make-array"), kayak_rt::heap_cons(str_lit("array-ref"), kayak_rt::heap_cons(str_lit("array-set!"), kayak_rt::heap_cons(str_lit("array-length"), kayak_rt::heap_cons(str_lit("array->list"), kayak_rt::heap_cons(str_lit("list->array"), kayak_rt::heap_cons(str_lit("rmake-array"), kayak_rt::heap_cons(str_lit("make-flatarray-i64"), kayak_rt::heap_cons(str_lit("flatarray-ref-i64"), kayak_rt::heap_cons(str_lit("flatarray-set-i64!"), kayak_rt::heap_cons(str_lit("flatarray-length-i64"), kayak_rt::heap_cons(str_lit("make-bytevector"), kayak_rt::heap_cons(str_lit("bytevector-length"), kayak_rt::heap_cons(str_lit("bytevector-u8-ref"), kayak_rt::heap_cons(str_lit("bytevector-u8-set!"), kayak_rt::heap_cons(str_lit("bytevector-copy"), kayak_rt::heap_cons(str_lit("bytevector-copy!"), kayak_rt::heap_cons(str_lit("bytevector=?"), kayak_rt::heap_cons(str_lit("string->utf8"), kayak_rt::heap_cons(str_lit("utf8->string"), kayak_rt::heap_cons(str_lit("error"), kayak_rt::heap_cons(str_lit("%identity"), kayak_rt::heap_cons(str_lit("%case="), kayak_rt::heap_cons(str_lit("int?"), kayak_rt::heap_cons(str_lit("string?"), kayak_rt::heap_cons(str_lit("bool?"), kayak_rt::heap_cons(str_lit("char?"), kayak_rt::heap_cons(str_lit("symbol?"), kayak_rt::heap_cons(str_lit("array?"), kayak_rt::heap_cons(str_lit("procedure?"), kayak_rt::heap_cons(str_lit("f64?"), kayak_rt::heap_cons(str_lit("ref?"), kayak_rt::heap_cons(str_lit("sum?"), kayak_rt::heap_cons(str_lit("product?"), kayak_rt::heap_cons(str_lit("bytevector?"), kayak_rt::heap_cons(str_lit("write-out"), kayak_rt::heap_cons(str_lit("write-err"), kayak_rt::heap_cons(str_lit("exit"), kayak_rt::heap_cons(str_lit("clock"), kayak_rt::heap_cons(str_lit("sleep-until"), kayak_rt::heap_cons(str_lit("args"), kayak_rt::heap_cons(str_lit("read-line"), kayak_rt::heap_cons(str_lit("read-file"), kayak_rt::heap_cons(str_lit("write-file"), kayak_rt::heap_cons(str_lit("list-dir"), kayak_rt::heap_cons(str_lit("make-continuation-prompt-tag"), kayak_rt::heap_cons(str_lit("abort-current-continuation"), kayak_rt::heap_cons(str_lit("call-with-composable-continuation"), kayak_rt::heap_cons(str_lit("abort-with-continuation"), kayak_rt::heap_cons(str_lit("int->f64"), kayak_rt::heap_cons(str_lit("f64->int"), kayak_rt::heap_cons(str_lit("f64->string"), kayak_rt::heap_cons(str_lit("f64+"), kayak_rt::heap_cons(str_lit("f64-"), kayak_rt::heap_cons(str_lit("f64*"), kayak_rt::heap_cons(str_lit("f64/"), kayak_rt::heap_cons(str_lit("f64<"), kayak_rt::heap_cons(str_lit("f64<="), kayak_rt::heap_cons(str_lit("f64>"), kayak_rt::heap_cons(str_lit("f64>="), kayak_rt::heap_cons(str_lit("f64="), kayak_rt::heap_cons(str_lit("f64-abs"), kayak_rt::heap_cons(str_lit("f64-neg"), kayak_rt::heap_cons(str_lit("f64-sqrt"), kayak_rt::heap_cons(str_lit("f64-floor"), kayak_rt::heap_cons(str_lit("f64-ceiling"), kayak_rt::heap_cons(str_lit("f64-truncate"), kayak_rt::heap_cons(str_lit("f64-round"), kayak_rt::heap_cons(str_lit("f64-min"), kayak_rt::heap_cons(str_lit("f64-max"), kayak_rt::heap_cons(str_lit("f64-nan?"), kayak_rt::heap_cons(str_lit("f64-infinite?"), kayak_rt::heap_cons(str_lit("f64-finite?"), kayak_rt::heap_cons(str_lit("string-ci=?"), kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::heap_cons(str_lit("set-car!"), kayak_rt::heap_cons(str_lit("set-cdr!"), kayak_rt::heap_cons(str_lit("stay-cellular"), kayak_rt::heap_cons(str_lit("apply"), kayak_rt::heap_cons(str_lit("make-continuation-mark-key"), kayak_rt::heap_cons(str_lit("with-mark"), kayak_rt::heap_cons(str_lit("first-mark"), kayak_rt::heap_cons(str_lit("current-marks"), kayak_rt::heap_cons(str_lit("marks-of"), kayak_rt::heap_cons(str_lit("vector?"), kayak_rt::heap_cons(str_lit("datum-list->vector"), kayak_rt::nil()))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))
     })
@@ -362,7 +362,7 @@ pub fn quoted(f0: Str, f1: i64) -> &'static Quoted {
 }
 
 pub fn quoteds() -> Ref<List<&'static Quoted>> {
-    thread_local!(static ONCE: OnceCell<Ref<List<&'static Quoted>>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Quoted>>);
     once(&ONCE, || {
         kayak_rt::heap_new(nil::<&'static Quoted>())
     })

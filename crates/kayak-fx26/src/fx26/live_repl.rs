@@ -53,84 +53,84 @@ pub mod session {
     // ends; and what was checked, so that an edit that changes none of it
     // (a space after a finished form) keeps what was found.
     pub fn note() -> Ref<Str> {
-        thread_local!(static ONCE: OnceCell<Ref<Str>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
             kayak_rt::heap_new(str_lit(""))
         })
     }
 
     pub fn note_error() -> Ref<bool> {
-        thread_local!(static ONCE: OnceCell<Ref<bool>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<bool>);
         once(&ONCE, || {
             kayak_rt::heap_new(false)
         })
     }
 
     pub fn speculated() -> Ref<bool> {
-        thread_local!(static ONCE: OnceCell<Ref<bool>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<bool>);
         once(&ONCE, || {
             kayak_rt::heap_new(false)
         })
     }
 
     pub fn spec_kept() -> Ref<i64> {
-        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
             kayak_rt::heap_new(0i64)
         })
     }
 
     pub fn spec_open() -> Ref<List<i64>> {
-        thread_local!(static ONCE: OnceCell<Ref<List<i64>>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<List<i64>>);
         once(&ONCE, || {
             kayak_rt::heap_new(nil::<i64>())
         })
     }
 
     pub fn spec_finished() -> Ref<bool> {
-        thread_local!(static ONCE: OnceCell<Ref<bool>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<bool>);
         once(&ONCE, || {
             kayak_rt::heap_new(false)
         })
     }
 
     pub fn spec_type() -> Ref<Str> {
-        thread_local!(static ONCE: OnceCell<Ref<Str>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
             kayak_rt::heap_new(str_lit(""))
         })
     }
 
     pub fn spec_state() -> Ref<i64> {
-        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
             kayak_rt::heap_new(0i64)
         })
     }
 
     pub fn spec_steps() -> Ref<i64> {
-        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
             kayak_rt::heap_new(0i64)
         })
     }
 
     pub fn spec_marks() -> Ref<List<i64>> {
-        thread_local!(static ONCE: OnceCell<Ref<List<i64>>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<List<i64>>);
         once(&ONCE, || {
             kayak_rt::heap_new(nil::<i64>())
         })
     }
 
     pub fn spec_waits() -> Ref<bool> {
-        thread_local!(static ONCE: OnceCell<Ref<bool>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<bool>);
         once(&ONCE, || {
             kayak_rt::heap_new(false)
         })
     }
 
     pub fn spec_key() -> Ref<Str> {
-        thread_local!(static ONCE: OnceCell<Ref<Str>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
             kayak_rt::heap_new(str_lit(""))
         })
@@ -144,70 +144,70 @@ pub mod session {
     // the narrowest refusal of a list around the hole and where it is; and
     // the subform a refusal said is wrong, to underline (`from` = `to`: none).
     pub fn spec_phase() -> Ref<i64> {
-        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
             kayak_rt::heap_new(4i64)
         })
     }
 
     pub fn hole_texts() -> Ref<Strings> {
-        thread_local!(static ONCE: OnceCell<Ref<Strings>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<Strings>);
         once(&ONCE, || {
             kayak_rt::heap_new(nil::<Str>())
         })
     }
 
     pub fn trying_holes() -> Ref<bool> {
-        thread_local!(static ONCE: OnceCell<Ref<bool>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<bool>);
         once(&ONCE, || {
             kayak_rt::heap_new(false)
         })
     }
 
     pub fn hole_at() -> Ref<i64> {
-        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
             kayak_rt::heap_new(-1i64)
         })
     }
 
     pub fn hole_op() -> Ref<Str> {
-        thread_local!(static ONCE: OnceCell<Ref<Str>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
             kayak_rt::heap_new(str_lit(""))
         })
     }
 
     pub fn hole_place() -> Ref<i64> {
-        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
             kayak_rt::heap_new(0i64)
         })
     }
 
     pub fn around() -> Ref<Str> {
-        thread_local!(static ONCE: OnceCell<Ref<Str>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
             kayak_rt::heap_new(str_lit(""))
         })
     }
 
     pub fn around_at() -> Ref<i64> {
-        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
             kayak_rt::heap_new(-1i64)
         })
     }
 
     pub fn under_from() -> Ref<i64> {
-        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
             kayak_rt::heap_new(0i64)
         })
     }
 
     pub fn under_to() -> Ref<i64> {
-        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
             kayak_rt::heap_new(0i64)
         })
@@ -275,154 +275,154 @@ pub mod session {
     // first), where in it ^P/up is, the draft put aside meanwhile, and its
     // file; the steps an entry may take; the commands given; ,quit.
     pub fn live() -> Ref<bool> {
-        thread_local!(static ONCE: OnceCell<Ref<bool>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<bool>);
         once(&ONCE, || {
             kayak_rt::heap_new(false)
         })
     }
 
     pub fn screen_rows() -> Ref<i64> {
-        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
             kayak_rt::heap_new(24i64)
         })
     }
 
     pub fn screen_cols() -> Ref<i64> {
-        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
             kayak_rt::heap_new(80i64)
         })
     }
 
     pub fn entries() -> Ref<List<Entry>> {
-        thread_local!(static ONCE: OnceCell<Ref<List<Entry>>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<List<Entry>>);
         once(&ONCE, || {
             kayak_rt::heap_new(nil::<Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after<i64, Str, Str, Str, bool, List<i64>, Ref<i64>, Ref<List<i64>>, Ref<Str>, Ref<Str>, Ref<i64>, Ref<i64>, Ref<i64>, Ref<Str>, bool, Ref<i64>, i64, Ref<i64>>>())
         })
     }
 
     pub fn draft() -> Ref<Str> {
-        thread_local!(static ONCE: OnceCell<Ref<Str>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
             kayak_rt::heap_new(str_lit(""))
         })
     }
 
     pub fn rows() -> Ref<i64> {
-        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
             kayak_rt::heap_new(0i64)
         })
     }
 
     pub fn draft_rows() -> Ref<i64> {
-        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
             kayak_rt::heap_new(0i64)
         })
     }
 
     pub fn draft_dirty() -> Ref<bool> {
-        thread_local!(static ONCE: OnceCell<Ref<bool>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<bool>);
         once(&ONCE, || {
             kayak_rt::heap_new(true)
         })
     }
 
     pub fn leaving() -> Ref<bool> {
-        thread_local!(static ONCE: OnceCell<Ref<bool>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<bool>);
         once(&ONCE, || {
             kayak_rt::heap_new(false)
         })
     }
 
     pub fn escape() -> Ref<i64> {
-        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
             kayak_rt::heap_new(0i64)
         })
     }
 
     pub fn last_run() -> Ref<i64> {
-        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
             kayak_rt::heap_new(0i64)
         })
     }
 
     pub fn written() -> Ref<Chars> {
-        thread_local!(static ONCE: OnceCell<Ref<Chars>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<Chars>);
         once(&ONCE, || {
             kayak_rt::heap_new(nil::<char>())
         })
     }
 
     pub fn cursor() -> Ref<i64> {
-        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
             kayak_rt::heap_new(0i64)
         })
     }
 
     pub fn cursor_row() -> Ref<i64> {
-        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
             kayak_rt::heap_new(0i64)
         })
     }
 
     pub fn escape_param() -> Ref<i64> {
-        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
             kayak_rt::heap_new(0i64)
         })
     }
 
     pub fn history() -> Ref<Strings> {
-        thread_local!(static ONCE: OnceCell<Ref<Strings>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<Strings>);
         once(&ONCE, || {
             kayak_rt::heap_new(nil::<Str>())
         })
     }
 
     pub fn history_at() -> Ref<i64> {
-        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
             kayak_rt::heap_new(-1i64)
         })
     }
 
     pub fn stash() -> Ref<Str> {
-        thread_local!(static ONCE: OnceCell<Ref<Str>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
             kayak_rt::heap_new(str_lit(""))
         })
     }
 
     pub fn history_path() -> Ref<Str> {
-        thread_local!(static ONCE: OnceCell<Ref<Str>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<Str>);
         once(&ONCE, || {
             kayak_rt::heap_new(str_lit(""))
         })
     }
 
     pub fn step_limit() -> Ref<i64> {
-        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
             kayak_rt::heap_new(-1i64)
         })
     }
 
     pub fn commands() -> Ref<i64> {
-        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
             kayak_rt::heap_new(0i64)
         })
     }
 
     pub fn quitting() -> Ref<bool> {
-        thread_local!(static ONCE: OnceCell<Ref<bool>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<bool>);
         once(&ONCE, || {
             kayak_rt::heap_new(false)
         })
@@ -433,7 +433,7 @@ pub mod session {
     }
 
     pub fn slice_ns() -> Ref<i64> {
-        thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+        kayak_rt::kept_constant!(ONCE: Ref<i64>);
         once(&ONCE, || {
             kayak_rt::heap_new(-1i64)
         })
@@ -528,7 +528,7 @@ pub mod session {
     }
 
     pub fn definition_form_p(f: &'static Sexp) -> bool {
-        any_p(lambda1(move |h: Str| {
+        any_p(lambda1s(move |h: Str| {
             head_is_p(f, h)
         }), kayak_rt::heap_cons(str_lit("define"), kayak_rt::heap_cons(str_lit("define*"), kayak_rt::heap_cons(str_lit("define-rec"), kayak_rt::heap_cons(str_lit("define-type"), kayak_rt::heap_cons(str_lit("define-datatype"), kayak_rt::heap_cons(str_lit("define-generative"), kayak_rt::heap_cons(str_lit("define-effect"), kayak_rt::nil()))))))))
     }
@@ -581,7 +581,7 @@ pub mod session {
         match *tagcase_ {
             Sexp::Sym(n, f, p) => {
                 let cs = string_chars(n);
-                if (not(null_p(cs)) && char_eq_p(car(cs), '%') && not(null_p(cdr(cs))) && not(any_p(lambda1(move |c: char| {
+                if (not(null_p(cs)) && char_eq_p(car(cs), '%') && not(null_p(cdr(cs))) && not(any_p(lambda1s(move |c: char| {
                     not(char_numeric_p(c))
                 }), cdr(cs)))) {
                     kayak_rt::heap_cons(number_from(cdr(cs), 0i64), kayak_rt::nil())
@@ -602,7 +602,7 @@ pub mod session {
     /// Whether an effect only reads globals, allocates, and spins: an entry
     /// with it runs beside others.
     pub fn quiet_effect_p(es: Strings) -> bool {
-        not(any_p(lambda1(move |a: Str| {
+        not(any_p(lambda1s(move |a: Str| {
             not((string_eq_p(a, str_lit("spin")) || string_eq_p(a, str_lit("@globals")) || has_prefix_p(a, str_lit("g:")) || has_prefix_p(a, str_lit("read:")) || has_prefix_p(a, str_lit("alloc:"))))
         }), es))
     }
@@ -1052,7 +1052,7 @@ pub mod session {
                     let tagcase_ = utf8_to_string(b);
                     match *tagcase_ {
                         Sum_4text_3bad::Text(t) => {
-                            set(history(), oldest_first_strings(map(lambda1(move |l: Str| {
+                            set(history(), oldest_first_strings(map(lambda1s(move |l: Str| {
                                 rev_to_string(unescaped(string_chars(l), nil::<char>()))
                             }), lines_of(string_chars(t), nil::<char>(), nil::<Str>())), nil::<Str>()))
                         }
@@ -1070,7 +1070,7 @@ pub mod session {
 
     // Completion: the name before the cursor, among the checker's.
     pub fn known_names() -> Strings {
-        concat(map(lambda1(move |b: &'static Bind| {
+        concat(map(lambda1s(move |b: &'static Bind| {
             let tagcase_ = b;
             match *tagcase_ {
                 Bind::Bind(n, sc, w) => {
@@ -1106,7 +1106,7 @@ pub mod session {
         let at = get(cursor());
         let from = name_start(d, at);
         let p = cut(d, from, at);
-        let found = sorted_strings(deduped_names(concat(map(lambda1(move |n: Str| {
+        let found = sorted_strings(deduped_names(concat(map(lambda1s(move |n: Str| {
             if has_prefix_p(n, p) {
                 kayak_rt::heap_cons(n, kayak_rt::nil())
             } else {
@@ -1222,7 +1222,7 @@ pub mod session {
             }, now)
         } else if string_eq_p(w, str_lit(",apropos")) {
             said_x({
-                let found = sorted_strings(deduped_names(concat(map(lambda1(move |n: Str| {
+                let found = sorted_strings(deduped_names(concat(map(lambda1s(move |n: Str| {
                     if i64_gt_eq(int_to_i64(string_search(n, rest, int_lit(0))), 0i64) {
                         kayak_rt::heap_cons(n, kayak_rt::nil())
                     } else {
@@ -1308,7 +1308,7 @@ pub mod session {
         if null_p(open) {
             str_lit("no entry is running")
         } else {
-            words_lines(map(lambda1(move |e: Entry| {
+            words_lines(map(lambda1s(move |e: Entry| {
                 string_append(str_lit("["), string_append(i64_to_string(e.0), string_append(str_lit("] "), first_line(e.1))))
             }), open))
         }
@@ -1422,7 +1422,7 @@ pub mod session {
                     line
                 } else {
                     string_append(defined, string_append(str_lit("\n"), line))
-                }, (quiet && expression && quiet_effect_p(effects)), onto(tops, concat(map(lambda1(move |n: i64| {
+                }, (quiet && expression && quiet_effect_p(effects)), onto(tops, concat(map(lambda1s(move |n: i64| {
                     if i64_eq(n, -1i64) {
                         nil::<i64>()
                     } else {
@@ -2330,7 +2330,7 @@ pub mod session {
 
     /// The atoms of an effect that keep an entry from running beside others.
     pub fn loud_atoms(es: Strings) -> Strings {
-        concat(map(lambda1(move |a: Str| {
+        concat(map(lambda1s(move |a: Str| {
             if quiet_effect_p(kayak_rt::heap_cons(a, kayak_rt::nil())) {
                 nil::<Str>()
             } else {

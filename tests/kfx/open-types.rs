@@ -16,7 +16,7 @@ pub fn apply_to<'r>(t: Tag<i64, i64>, f: &'r dyn Fn(i64) -> Result<i64, Unwind>,
     Ok(f(x)?)
 }
 
-pub fn go(a_0: &'static dyn Fn(i64) -> i64) -> i64 {
+pub fn go(a_0: &'static (dyn Fn(i64) -> i64 + Send + Sync)) -> i64 {
     let t = the::<Tag<i64, i64>>(make_continuation_prompt_tag());
     {
         let prompt_tag__ = t;
@@ -49,7 +49,7 @@ pub fn main() -> Str {
         str_lit("empty ")
     } else {
         str_lit("full ")
-    }, i64_to_string(go(lambda1(move |y: i64| {
+    }, i64_to_string(go(lambda1s(move |y: i64| {
         i64_plus(y, 1i64)
     }))))))
 }

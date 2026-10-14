@@ -1010,6 +1010,28 @@
                     ((sym-is? (car xs) "maxeff") (any? (lambda ((x sexp)) (fallible-effect? c x)) (cdr xs)))
                     (else #f)))
             (else other #f))))
+      (crossing-effect? (subr kfx (ctx sexp) bool)
+        (lambda (c e)
+          "Whether a written effect is one a process may have (C101), as the
+           checker's `crossing?` says of the same effect: a procedure of it is
+           `Send + Sync` in Rust, so that it may be held on another thread
+           (C102). `pure` is one, and so the checker writes such an effect,
+           and `%local` any other that neither aborts nor suspends."
+          (tagcase e
+            (sym (n at-file at-pos)
+              (cond ((or (string=? n "pure") (string=? n "spin") (string=? n "nondet")) #t)
+                    ((or (string=? n "%local") (effect-binder? c n)) #f)
+                    (else (any? (lambda ((x typed)) (tagcase x (typed (m body) (and (string=? m n) (crossing-effect? c body)))))
+                                (ctx-effects c)))))
+            (lst (xs src-file src-line src-pos)
+              (let ((at (if (i64= (size xs) 2) (tagcase (second xs) (sym (n f p) n) (else other "")) "")))
+                (cond ((sym-is? (car xs) "maxeff") (not (any? (lambda ((x sexp)) (not (crossing-effect? c x))) (cdr xs))))
+                      ((or (sym-is? (car xs) "send") (sym-is? (car xs) "init") (sym-is? (car xs) "await") (sym-is? (car xs) "io")) #t)
+                      ((sym-is? (car xs) "read")
+                       (or (string=? at "@globals") (string=? at "acyclic") (head-is? (second xs) "globals")))
+                      ((sym-is? (car xs) "alloc") (or (has-prefix? at "@") (string=? at "acyclic")))
+                      (else #f))))
+            (else other #f))))
       (suspending-effect? (subr kfx (ctx sexp) bool)
         (lambda (c e)
           "Whether a written effect may suspend, a `comefrom` (C45): a procedure
@@ -1300,13 +1322,17 @@
                     ((sym-is? (car xs) "ref")
                      (put ">" (put-type c (second xs) (put "Ref<" acc))))
                     ((sym-is? (car xs) "subr")
-                     (let* ((acc (put " dyn Fn(" (put (effect-lifetime c (second xs)) (put "&" acc))))
+                     "A procedure: a `dyn Fn`, `Send + Sync` if its effect is one a process
+                      may have (C102)."
+                     (let* ((sync (crossing-effect? c (second xs)))
+                            (acc (put (if sync " (dyn Fn(" " dyn Fn(") (put (effect-lifetime c (second xs)) (put "&" acc))))
                             (acc (put-types c (items (third xs)) acc))
                             (acc (put ") -> " acc)))
                        (cond ((suspending-effect? c (second xs))
                               (put ">" (put-type c (fourth xs) (put "kayak_rt::suspend::Body<" acc))))
                              ((fallible-effect? c (second xs))
                               (put ", Unwind>" (put-type c (fourth xs) (put "Result<" acc))))
+                             (sync (put " + Send + Sync)" (put-type c (fourth xs) acc)))
                              (else (put-type c (fourth xs) acc)))))
                     ((and (sym-is? (car xs) "place") (string-member? (string-append "%placeparam " (unquoted (sym-name (second xs)))) (ctx-locals c)))
                      (let ((p (unquoted (sym-name (second xs)))))
@@ -1669,7 +1695,7 @@
                   wanted (C82): a closure boxing each argument and the result."
                  (let* ((hows (map sym-name (read-all (string-chars (fact-in fs e "wrap ")) "" 1)))
                         (arity (i64- (size hows) 1))
-                        (acc (put (string-append "lambda" (string-append (i64->string arity) "(move |")) acc))
+                        (acc (put (string-append "lambda" (string-append (i64->string arity) (if (fact-at? c e "wrap-sync") "s(move |" "(move |"))) acc))
                         (acc (put-arg-names 0 arity acc))
                         (acc (put "| " acc))
                         (acc (put-box-open (last hows) acc))
@@ -2068,7 +2094,7 @@
            `Copy`, made a `&'static dyn Fn` by `lambdaN`, `N` its arity."
           (let* ((acc (put "lambda" acc))
                  (acc (put (i64->string (size params)) acc))
-                 (acc (put "(move |" acc))
+                 (acc (put (if (fact-at? c e "sync") "s(move |" "(move |") acc))
                  (acc (put-lambda-params c (lambda-params-typed c e params) acc))
                  (acc (put "| " acc)))
             (cond ((fact-at? c e "suspends")
@@ -2138,7 +2164,7 @@
                  (suspends (fact-at? c lam "suspends"))
                  (t (returns f names #t fallible))
                  (inner (with-locals c (cons (if suspends "%async" "%sync") (cons (if fallible "%fallible" "%infallible") names))))
-                 (acc (put (string-append "lambda" (string-append (i64->string (size params)) "(move |")) acc))
+                 (acc (put (string-append "lambda" (string-append (i64->string (size params)) (if (fact-at? c lam "sync") "s(move |" "(move |"))) acc))
                  (acc (put-sep (lambda ((p sexp) acc)
                                  (tagcase p
                                    (lst (pt f2 l2 p2) (put-type c (second pt) (put ": " (put (mangle (sym-name (car pt))) (put "mut " acc)))))

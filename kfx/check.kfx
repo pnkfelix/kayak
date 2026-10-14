@@ -221,11 +221,13 @@
 (define effs-within? (subr kfx (strings strings) bool)
   (lambda (a b)
     "Whether effect `a` is within `b`: a read of one global is within a
-     read of all of them."
+     read of all of them, and an I-cell's fill within a write of its region
+     (C101: FX's `init`, told apart from a write by `par` alone)."
     (or (null? a)
         (and (or (string-member? (car a) b)
                  (string=? (car a) "~!")
-                 (and (global-atom? (car a)) (string-member? "@globals" b)))
+                 (and (global-atom? (car a)) (string-member? "@globals" b))
+                 (and (has-prefix? (car a) "init:") (string-member? (string-append "write:" (after-prefix (car a) "init:")) b)))
              (effs-within? (cdr a) b)))))
 
 (define words-of (subr kfx (strings) string)
@@ -234,6 +236,51 @@
           ((null? (cdr xs)) (car xs))
           (else (string-append (car xs) (string-append " " (words-of (cdr xs))))))))
 
+"The kinds of an effect atom on a region, `read:@a`: FX-26's store
+ effects and control effects, and its processes' (C101): a message sent
+ to a mailbox at a region, taken from one, an I-cell filled, awaited."
+(define region-kinds strings
+  (list "read" "write" "alloc" "goto" "comefrom" "send" "receive" "init" "await"))
+
+(define-rec
+  (after-colon (subr kfx ((listof char acyclic)) (listof char acyclic))
+    (lambda (cs)
+      (cond ((null? cs) nil)
+            ((char=? (car cs) #\:) (cdr cs))
+            (else (after-colon (cdr cs)))))))
+
+(define region-atom? (subr kfx (string) bool)
+  (lambda (x) (any? (lambda ((k string)) (has-prefix? x (string-append k ":"))) region-kinds)))
+
+(define atom-kind (subr kfx (string) string)
+  (lambda (x) (substring-of x (i64- (string-length-i64 x) (size (after-colon (string->list x)))))))
+
+(define atom-region (subr kfx (string) string)
+  (lambda (x) (list->string (after-colon (string->list x)))))
+
+(define crossing-atom? (subr kfx (strings string) bool)
+  (lambda (bound a)
+    "Whether atom `a` is one a process may have that is seen outside it:
+     a send, a fill or an await, I/O, `spin`, `nondet`, reading globals'
+     bindings or data frozen in the heap, allocating at a region that is
+     no place (a constant, or the heap); or anything on a binder in
+     `bound`, which a caller gives (`crossing_atom`)."
+    (or (string=? a "spin") (string=? a "nondet") (string=? a "@globals") (string=? a "~!")
+        (global-atom? a) (has-prefix? a "io:")
+        (has-prefix? a "send:") (has-prefix? a "init:") (has-prefix? a "await:")
+        (string=? a "read:acyclic") (string=? a "read:%fresh")
+        (string-member? a bound)
+        (and (has-prefix? a "alloc:")
+             (let ((r (after-prefix a "alloc:"))) (or (has-prefix? r "@") (string=? r "acyclic") (string=? r "%fresh"))))
+        (and (region-atom? a) (string-member? (atom-region a) bound)))))
+
+(define crossing? (subr kfx (strings) bool)
+  (lambda (es)
+    "Whether a latent effect is one a process may have (C101), so that a
+     procedure of it may be held on another thread: its closure, in Rust, is
+     `Send + Sync` (C102)."
+    (not (any? (lambda ((a string)) (not (crossing-atom? nil a))) es))))
+
 (define-rec
   (atom-written (subr kfx (string) string)
     (lambda (x)
@@ -241,13 +288,12 @@
        by `show-effs`."
       (let ((at (lambda ((p string)) (let ((r (after-prefix x p))) (if (has-prefix? r "'") (after-prefix r "'") r)))))
         (cond ((string=? x "spin") "spin")
+              ((string=? x "nondet") "nondet")
               ((string=? x "@globals") "(read @globals)")
-              ((has-prefix? x "read:") (string-append "(read " (string-append (at "read:") ")")))
-              ((has-prefix? x "write:") (string-append "(write " (string-append (at "write:") ")")))
-              ((has-prefix? x "alloc:") (string-append "(alloc " (string-append (at "alloc:") ")")))
-              ((has-prefix? x "goto:") (string-append "(goto " (string-append (at "goto:") ")")))
-              ((has-prefix? x "comefrom:") (string-append "(comefrom " (string-append (at "comefrom:") ")")))
               ((has-prefix? x "io:") (string-append "(io " (string-append (after-prefix x "io:") ")")))
+              ((region-atom? x)
+               (string-append "(" (string-append (substring-of (atom-kind x) (i64- (string-length-i64 (atom-kind x)) 1))
+                 (string-append " " (string-append (at (atom-kind x)) ")")))))
               ((has-prefix? x "~") (after-prefix x "~"))
               (else x))))))
 
@@ -315,6 +361,10 @@
         (sym (s at-file at-pos)
           (cond ((string=? s "pure") nil)
                 ((string=? s "spin") (list "spin"))
+                ((string=? s "nondet")
+                 "That an answer may differ from run to run (C101): no region, so
+                  never masked, as `spin`."
+                 (list "nondet"))
                 ((string-member? (string-append "~" s) tvars)
                  "A poly's effect binder (C46): an atom of its own, `~e`."
                  (list (string-append "~" s)))
@@ -330,8 +380,7 @@
                 ((and (sym-is? (car xs) "read") (sym-is? (second xs) "@globals")) (list "@globals"))
                 ((and (sym-is? (car xs) "read") (head-is? (second xs) "globals"))
                  (map (lambda ((g sexp)) (string-append "g:" (name-of v g))) (cdr (items (second xs)))))
-                ((or (sym-is? (car xs) "read") (sym-is? (car xs) "write") (sym-is? (car xs) "alloc")
-                     (sym-is? (car xs) "goto") (sym-is? (car xs) "comefrom"))
+                ((and (i64= (size xs) 2) (any? (lambda ((k string)) (sym-is? (car xs) k)) region-kinds))
                  (list (string-append (name-of v (car xs)) (string-append ":" (region-name v tvars (second xs))))))
                 (else (refuse v (string-append "an effect KFX does not have: " (show-sexp e))))))
         (else other (refuse v (string-append "an effect KFX does not have: " (show-sexp e)))))))
@@ -343,11 +392,7 @@
   (lambda (es from to)
     "Effect atoms on region `from` made atoms on region `to`."
     (map (lambda ((x string))
-           (cond ((string=? x (string-append "read:" from)) (string-append "read:" to))
-                 ((string=? x (string-append "write:" from)) (string-append "write:" to))
-                 ((string=? x (string-append "alloc:" from)) (string-append "alloc:" to))
-                 ((string=? x (string-append "goto:" from)) (string-append "goto:" to))
-                 ((string=? x (string-append "comefrom:" from)) (string-append "comefrom:" to))
+           (cond ((and (region-atom? x) (string=? (atom-region x) from)) (string-append (atom-kind x) to))
                  ((and (has-prefix? from "~") (string=? x from)) (if (has-prefix? to "~") to (string-append "~" to)))
                  (else x)))
          es)))
@@ -921,6 +966,11 @@
                               (ty-data "%flat-array" (list e (ty-rconst (i64->string k)))))
                              (else (refuse v (string-append "a flat array is of a flat, its length a literal (KFX has no arrays of values yet): " (show-sexp t)))))))
                    (else other (refuse v (string-append "a flat array's length is a literal (KFX has no arrays of values yet): " (show-sexp t))))))
+                ((and (or (sym-is? (car xs) "addr") (sym-is? (car xs) "inbox") (sym-is? (car xs) "icell")) (i64= (size xs) 3))
+                 "FX-26's processes (C101): `(addr M R)`, the right to send an `M` to a
+                  process's mailbox at `R`; `(inbox M r)`, the right to take from it,
+                  its process's alone; `(icell T R)`, a `T` written once."
+                 (ty-data (string-append "%" (sym-name (car xs))) (list (parse-type v tvars (second xs)) (parse-region v tvars (third xs)))))
                 ((and (sym-is? (car xs) "mark-key") (i64= (size xs) 3))
                  "FX-26's continuation mark's key (C72), `(mark-key T R)`: a place in
                   the dynamic context, its marks `T`s, at `R`."
@@ -1191,6 +1241,8 @@
                 ((string=? d "%union") (string-append "(union " (string-append (show-tys s args) ")")))
                 ((string=? d "%pairof") (string-append "(pairof " (string-append (show-tys s args) ")")))
                 ((string=? d "%mark-key") (string-append "(mark-key " (string-append (show-tys s args) ")")))
+                ((or (string=? d "%addr") (string=? d "%inbox") (string=? d "%icell"))
+                 (string-append "(" (string-append (after-prefix d "%") (string-append " " (string-append (show-tys s args) ")")))))
                 ((string=? d "%vsubr")
                  (string-append "(vsubr " (string-append (tagcase (car args) (ty-proc (es ps r) (show-effs es)) (else other "?"))
                    (string-append " " (string-append (show-tys s (cdr args)) ")")))))
@@ -1435,26 +1487,6 @@
 
 (define has-open? (subr kfx (st ty) bool)
   (lambda (s t) (or (has-meta? s t) (open-effects? s t))))
-
-(define-rec
-  (after-colon (subr kfx ((listof char acyclic)) (listof char acyclic))
-    (lambda (cs)
-      (cond ((null? cs) nil)
-            ((char=? (car cs) #\:) (cdr cs))
-            (else (after-colon (cdr cs)))))))
-
-(define region-atom? (subr kfx (string) bool)
-  (lambda (x)
-    (and (i64> (string-length-i64 x) 5)
-         (or (string=? (substring-of x 5) "read:") (string=? (substring-of x 5) "goto:")
-             (string=? (substring-of x 6) "write:") (string=? (substring-of x 6) "alloc:")
-             (has-prefix? x "comefrom:")))))
-
-(define atom-kind (subr kfx (string) string)
-  (lambda (x) (substring-of x (i64- (string-length-i64 x) (size (after-colon (string->list x)))))))
-
-(define atom-region (subr kfx (string) string)
-  (lambda (x) (list->string (after-colon (string->list x)))))
 
 (define resolve-atom (subr kfx (st string) string)
   (lambda (s x)
@@ -1793,6 +1825,18 @@
         (string=? name "blobref-owner") (string=? name "blobref-offset") (string=? name "blobref-get") (string=? name "blobref-set!")
         (string=? name "blobref-index") (string=? name "blobref-variant!"))))
 
+(define process-call? (subr kfx (string) bool)
+  (lambda (h)
+    "FX-26's forms of processes that are calls (C101): typed as procedures
+     are, but a call headed by one is the form, whatever binds its name."
+    (string-member? h (list "send" "receive" "icell-get" "icell-put!"))))
+
+(define process-form? (subr kfx (string) bool)
+  (lambda (h)
+    "FX-26's forms of processes and `par` (C101), each a form wherever it
+     heads a list, whatever binds its name."
+    (or (process-call? h) (string-member? h (list "spawn" "par" "pselect")))))
+
 (define bind-onto (subr kfx (binds binds) binds)
   (lambda (xs ys) (if (null? xs) ys (bind-onto (cdr xs) (cons (car xs) ys)))))
 
@@ -2100,9 +2144,7 @@
   (lambda (es r)
     "Effects, those on region `r` removed."
     (cond ((null? es) nil)
-          ((or (string=? (car es) (string-append "read:" r)) (string=? (car es) (string-append "write:" r))
-               (string=? (car es) (string-append "alloc:" r)) (string=? (car es) (string-append "goto:" r))
-               (string=? (car es) (string-append "comefrom:" r)))
+          ((and (region-atom? (car es)) (string=? (atom-region (car es)) r))
            (masked (cdr es) r))
           (else (cons (car es) (masked (cdr es) r))))))
 

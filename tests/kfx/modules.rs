@@ -73,7 +73,7 @@ pub mod stack {
         push(2i64, push(1i64, empty()))
     }
 
-    pub fn pusher() -> &'static dyn Fn(i64, Items) -> Items {
+    pub fn pusher() -> &'static (dyn Fn(i64, Items) -> Items + Send + Sync) {
         &push
     }
 
@@ -176,7 +176,7 @@ pub mod both {
 
 pub type Shape = &'static geometry::Shape;
 
-pub fn rect() -> &'static dyn Fn(i64, i64) -> &'static geometry::Shape {
+pub fn rect() -> &'static (dyn Fn(i64, i64) -> &'static geometry::Shape + Send + Sync) {
     &geometry::rect
 }
 

@@ -7,7 +7,7 @@ use kayak_rt::*;
 // A cell defined at the top level is one cell, however often it is named.
 
 pub fn cell() -> Ref<i64> {
-    thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
         kayak_rt::heap_new(40i64)
     })
@@ -20,7 +20,7 @@ pub fn bump_x() -> i64 {
 
 // A procedure over state of its own, made once.
 pub fn next_x() -> &'static dyn Fn() -> i64 {
-    thread_local!(static ONCE: OnceCell<&'static dyn Fn() -> i64> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: &'static dyn Fn() -> i64);
     once(&ONCE, || {
         let n = the::<Ref<i64>>(kayak_rt::heap_new(0i64));
         lambda0(move || {
@@ -32,7 +32,7 @@ pub fn next_x() -> &'static dyn Fn() -> i64 {
 
 // A constant found, not written, that allocates too.
 pub fn tally() -> Ref<i64> {
-    thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
         the::<Ref<i64>>(kayak_rt::heap_new(7i64))
     })

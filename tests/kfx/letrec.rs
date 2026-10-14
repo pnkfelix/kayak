@@ -7,8 +7,8 @@ use kayak_rt::*;
 // through knots, as FX-26's I-cells tie them.
 
 pub fn count_to(n: i64, step: i64) -> Str {
-    let go__knot = knot::<&'static dyn Fn(i64, Str) -> Str>();
-    let go = lambda2(move |mut i: i64, mut acc: Str| {
+    let go__knot = knot::<&'static (dyn Fn(i64, Str) -> Str + Send + Sync)>();
+    let go = lambda2s(move |mut i: i64, mut acc: Str| {
         loop {
             if i64_gt(i, n) {
                 return acc;
@@ -23,16 +23,16 @@ pub fn count_to(n: i64, step: i64) -> Str {
 }
 
 pub fn parity(n: i64) -> Str {
-    let ev_p__knot = knot::<&'static dyn Fn(i64) -> bool>();
-    let od_p__knot = knot::<&'static dyn Fn(i64) -> bool>();
-    let ev_p = lambda1(move |k: i64| {
+    let ev_p__knot = knot::<&'static (dyn Fn(i64) -> bool + Send + Sync)>();
+    let od_p__knot = knot::<&'static (dyn Fn(i64) -> bool + Send + Sync)>();
+    let ev_p = lambda1s(move |k: i64| {
         if i64_eq(k, 0i64) {
             true
         } else {
             (od_p__knot.get())(i64_minus(k, 1i64))
         }
     });
-    let od_p = lambda1(move |k: i64| {
+    let od_p = lambda1s(move |k: i64| {
         if i64_eq(k, 0i64) {
             false
         } else {
@@ -50,8 +50,8 @@ pub fn parity(n: i64) -> Str {
 
 /// A parameter named as the procedure is: inside, the parameter.
 pub fn shadow(x: i64) -> i64 {
-    let f__knot = knot::<&'static dyn Fn(i64) -> i64>();
-    let f = lambda1(move |f: i64| {
+    let f__knot = knot::<&'static (dyn Fn(i64) -> i64 + Send + Sync)>();
+    let f = lambda1s(move |f: i64| {
         i64_star(f, 2i64)
     });
     f__knot.set(f);

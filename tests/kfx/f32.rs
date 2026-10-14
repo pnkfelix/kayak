@@ -9,7 +9,7 @@ use kayak_rt::*;
 pub type O = &'static Bloblet<()>;
 
 pub fn b() -> O {
-    thread_local!(static ONCE: OnceCell<O> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: O);
     once(&ONCE, || {
         make_bloblet(int_lit(16), ())
     })

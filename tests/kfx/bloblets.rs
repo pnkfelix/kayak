@@ -28,7 +28,7 @@ impl<A0: Flat, A1: Flat, A2: Flat, A3: Flat> Flat for Product_1a_1b_1c_1d<A0, A1
 
 // Fixpt's bloblet/point.fx, at i64: fields read and written.
 pub fn p() -> &'static Bloblet<(std::cell::Cell<i64>, std::cell::Cell<i64>,)> {
-    thread_local!(static ONCE: OnceCell<&'static Bloblet<(std::cell::Cell<i64>, std::cell::Cell<i64>,)>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: &'static Bloblet<(std::cell::Cell<i64>, std::cell::Cell<i64>,)>);
     once(&ONCE, || {
         make_bloblet(int_lit(0), (std::cell::Cell::new(3i64), std::cell::Cell::new(4i64),))
     })
@@ -45,7 +45,7 @@ pub type Pt = Product_1x_1n_1y<f64, i32, f64>;
 pub type O = &'static Bloblet<()>;
 
 pub fn b() -> O {
-    thread_local!(static ONCE: OnceCell<O> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: O);
     once(&ONCE, || {
         make_bloblet(int_lit(72), ())
     })

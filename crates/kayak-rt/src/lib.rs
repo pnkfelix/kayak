@@ -18,6 +18,7 @@ mod float;
 mod heap;
 mod int;
 mod once;
+pub mod process;
 mod show;
 mod stats;
 pub mod suspend;
@@ -33,7 +34,10 @@ pub use fixed::*;
 pub use float::*;
 pub use heap::*;
 pub use int::*;
+#[cfg(feature = "unsafe-par")]
+pub use kayak_sync::Global;
 pub use once::*;
+pub use process::{Addr, ICell, Inbox, icell_get, icell_put_x, make_icell};
 pub use show::*;
 pub use stats::heap_stats_report;
 use std::cell::Cell;
@@ -153,27 +157,67 @@ pub fn lambda4<'a, A, B, C, D, R>(f: impl Fn(A, B, C, D) -> R + 'a) -> &'a dyn F
     alloc(f)
 }
 
+/// A procedure of an effect a process may have (C102): its closure
+/// `Send + Sync`, which rustc checks of what it holds, so that it may be
+/// held on another thread.
+#[inline]
+pub fn lambda0s<'a, R>(f: impl Fn() -> R + Send + Sync + 'a) -> &'a (dyn Fn() -> R + Send + Sync) {
+    alloc(f)
+}
+
+#[inline]
+pub fn lambda1s<'a, A, R>(
+    f: impl Fn(A) -> R + Send + Sync + 'a,
+) -> &'a (dyn Fn(A) -> R + Send + Sync) {
+    alloc(f)
+}
+
+#[inline]
+pub fn lambda2s<'a, A, B, R>(
+    f: impl Fn(A, B) -> R + Send + Sync + 'a,
+) -> &'a (dyn Fn(A, B) -> R + Send + Sync) {
+    alloc(f)
+}
+
+#[inline]
+pub fn lambda3s<'a, A, B, C, R>(
+    f: impl Fn(A, B, C) -> R + Send + Sync + 'a,
+) -> &'a (dyn Fn(A, B, C) -> R + Send + Sync) {
+    alloc(f)
+}
+
+#[inline]
+pub fn lambda4s<'a, A, B, C, D, R>(
+    f: impl Fn(A, B, C, D) -> R + Send + Sync + 'a,
+) -> &'a (dyn Fn(A, B, C, D) -> R + Send + Sync) {
+    alloc(f)
+}
+
 /// A `letrec`'s knot: a procedure's place, empty until the procedure is
 /// made, so that the procedures of a group, closures that cannot name
 /// themselves, can name each other through it. FX-26's `letrec` binds only
-/// lambdas, so no knot is read before it is tied.
-pub struct Knot<T>(Cell<Option<T>>);
+/// lambdas, so no knot is read before it is tied; tied once, it is `Sync`
+/// when the procedure is (C102), so a closure holding it may cross.
+pub struct Knot<T>(std::sync::OnceLock<T>);
 
 impl<T: Copy> Knot<T> {
     pub fn get(&self) -> T {
-        self.0
+        *self
+            .0
             .get()
             .unwrap_or_else(|| fail("letrec: a procedure used before it is made"))
     }
 
     pub fn set(&self, v: T) {
-        self.0.set(Some(v))
+        if self.0.set(v).is_err() {
+            fail("letrec: a procedure made twice")
+        }
     }
 }
 
 #[inline]
 pub fn knot<'a, T: Copy + 'a>() -> &'a Knot<T> {
-    alloc(Knot(Cell::new(None)))
+    alloc(Knot(std::sync::OnceLock::new()))
 }
 
 // Lists.

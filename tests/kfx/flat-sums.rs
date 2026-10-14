@@ -31,7 +31,7 @@ impl<A0: Flat, A1: Flat> Flat for Product_1w_1h<A0, A1> {
 pub type O = &'static Bloblet<()>;
 
 pub fn b() -> O {
-    thread_local!(static ONCE: OnceCell<O> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: O);
     once(&ONCE, || {
         make_bloblet(int_lit(32), ())
     })
@@ -46,7 +46,7 @@ pub fn k() -> BlobRef<O> {
 }
 
 pub fn z() -> BlobRef<O> {
-    thread_local!(static ONCE: OnceCell<BlobRef<O>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: BlobRef<O>);
     once(&ONCE, || {
         blobref_at(the::<O>(make_bloblet(int_lit(16), ())), int_lit(0), 16)
     })

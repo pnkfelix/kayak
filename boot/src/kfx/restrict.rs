@@ -96,7 +96,7 @@ pub mod restrictions {
     // Rust's or kayak-rt's own, each a KFX name (C27), none two alike
     // camel-cased. FX-26 has neither rule.
     pub fn primitive_names() -> Strings {
-        map(lambda1(move |p: &'static Sexp| {
+        map(lambda1s(move |p: &'static Sexp| {
             sym_name(car(items(p)))
         }), onto(read_all(string_chars(primitives()), str_lit(""), 1i64), read_all(string_chars(prelude()), str_lit(""), 1i64)))
     }
@@ -168,7 +168,7 @@ pub mod restrictions {
     }
 
     pub fn module_own_items(f: &'static Sexp) -> Sexps {
-        concat(map(lambda1(move |g: &'static Sexp| {
+        concat(map(lambda1s(move |g: &'static Sexp| {
             if head_is_p(g, str_lit("hide")) {
                 cdr(items(g))
             } else {
@@ -196,8 +196,8 @@ pub mod restrictions {
     }
 
     pub fn types_named(forms: Sexps) -> () {
-        map(lambda1(move |names: Strings| {
-            map(lambda1(move |n: Str| {
+        map(lambda1s(move |names: Strings| {
+            map(lambda1s(move |n: Str| {
                 if string_member_p(camel(n), rust_type_names()) {
                     match type_refused(forms, n, string_append(str_lit("Rust or kayak-rt has a type "), string_append(camel(n), str_lit(" of its own")))) {}
                 } else if (not(kfx_name_p(n)) && not(has_prefix_p(n, str_lit("made--")))) {
@@ -218,7 +218,7 @@ pub mod restrictions {
     pub fn names_restricted(forms: Sexps) -> () {
         let prims = primitive_names();
         names_once(defined_names(forms), nil::<Str>(), prims);
-        map(lambda1(move |f: &'static Sexp| {
+        map(lambda1s(move |f: &'static Sexp| {
             if module_def_p(f) {
                 names_once(defined_names(module_own_items(f)), nil::<Str>(), nil::<Str>())
             } else {

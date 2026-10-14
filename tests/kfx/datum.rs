@@ -8,10 +8,10 @@ use kayak_rt::*;
 // checked, and a walk of one needs no `spin`.
 
 // A datum written as Fixpt writes one.
-pub fn shown() -> &'static dyn Fn(kayak_rt::value::Value) -> Str {
-    let shown__knot = knot::<&'static dyn Fn(kayak_rt::value::Value) -> Str>();
-    let rest__knot = knot::<&'static dyn Fn(kayak_rt::value::Value) -> Str>();
-    let shown = lambda1(move |d: kayak_rt::value::Value| {
+pub fn shown() -> &'static (dyn Fn(kayak_rt::value::Value) -> Str + Send + Sync) {
+    let shown__knot = knot::<&'static (dyn Fn(kayak_rt::value::Value) -> Str + Send + Sync)>();
+    let rest__knot = knot::<&'static (dyn Fn(kayak_rt::value::Value) -> Str + Send + Sync)>();
+    let shown = lambda1s(move |d: kayak_rt::value::Value| {
         if int_p(d) {
             let i = kayak_rt::value::unbox::<Int>(d);
             int_to_string(i)
@@ -42,7 +42,7 @@ pub fn shown() -> &'static dyn Fn(kayak_rt::value::Value) -> Str {
             str_lit("?")
         }
     });
-    let rest = lambda1(move |d: kayak_rt::value::Value| {
+    let rest = lambda1s(move |d: kayak_rt::value::Value| {
         if kayak_rt::value::null_p(d) {
             str_lit("")
         } else if pair_p(d) {
@@ -59,9 +59,9 @@ pub fn shown() -> &'static dyn Fn(kayak_rt::value::Value) -> Str {
 }
 
 // A walk through `car` and `cdr`: the sum of the ints in it.
-pub fn total() -> &'static dyn Fn(kayak_rt::value::Value) -> Int {
-    let total__knot = knot::<&'static dyn Fn(kayak_rt::value::Value) -> Int>();
-    let total = lambda1(move |d: kayak_rt::value::Value| {
+pub fn total() -> &'static (dyn Fn(kayak_rt::value::Value) -> Int + Send + Sync) {
+    let total__knot = knot::<&'static (dyn Fn(kayak_rt::value::Value) -> Int + Send + Sync)>();
+    let total = lambda1s(move |d: kayak_rt::value::Value| {
         if kayak_rt::value::pair_p(d) {
             _plus((total__knot.get())(kayak_rt::value::car(d)), (total__knot.get())(kayak_rt::value::cdr(d)))
         } else {
@@ -88,21 +88,21 @@ pub fn entry_key(e: Entry) -> Symbol {
 }
 
 pub fn ints() -> List<Int> {
-    thread_local!(static ONCE: OnceCell<List<Int>> = const { OnceCell::new() });
+    static ONCE: std::sync::OnceLock<List<Int>> = std::sync::OnceLock::new();
     once(&ONCE, || {
         kayak_rt::heap_cons(int_lit(1), kayak_rt::heap_cons(int_lit(2), kayak_rt::heap_cons(int_lit(3), kayak_rt::nil())))
     })
 }
 
 pub fn data() -> List<kayak_rt::value::Value> {
-    thread_local!(static ONCE: OnceCell<List<kayak_rt::value::Value>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: List<kayak_rt::value::Value>);
     once(&ONCE, || {
         kayak_rt::heap_cons(kayak_rt::value::ToValue::to_value(int_lit(4)), kayak_rt::heap_cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("five"))), kayak_rt::nil()))
     })
 }
 
 pub fn d() -> kayak_rt::value::Value {
-    thread_local!(static ONCE: OnceCell<kayak_rt::value::Value> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: kayak_rt::value::Value);
     once(&ONCE, || {
         kayak_rt::value::list(kayak_rt::heap_cons(kayak_rt::value::ToValue::to_value(int_lit(10)), kayak_rt::heap_cons(kayak_rt::value::ToValue::to_value(symbol_lit(str_lit("x"))), kayak_rt::heap_cons(kayak_rt::value::ToValue::to_value(str_lit("s")), kayak_rt::heap_cons(kayak_rt::value::ToValue::to_value('c'), kayak_rt::heap_cons(kayak_rt::value::ToValue::to_value(true), kayak_rt::heap_cons(kayak_rt::value::cons(kayak_rt::value::ToValue::to_value(int_lit(20)), kayak_rt::value::ToValue::to_value(int_lit(30))), kayak_rt::nil())))))))
     })

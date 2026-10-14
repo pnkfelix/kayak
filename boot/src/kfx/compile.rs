@@ -100,12 +100,12 @@ pub fn put_mods(ss: Sources, acc: Chars) -> Chars {
 /// A program of several files, as Rust: its modules, then their `mod.rs`.
 /// The whole program is checked, and each file written as a module.
 pub fn compile_units(ss: Sources) -> Outputs {
-    let forms = concat(map(lambda1(move |s: &'static Source| {
+    let forms = concat(map(lambda1s(move |s: &'static Source| {
         source_forms(s)
     }), ss));
     let checked = restrict_checked(check_program(forms), forms);
     let c = emitter::collect(forms, ctx(nil::<Str>(), nil::<&'static Tagof>(), nil::<Str>(), nil::<Str>(), verdict_typeds(checked), verdict_facts(checked), nil::<&'static Family>(), nil::<&'static Typed>(), nil::<&'static Typed>()));
-    let modules = map(lambda1(move |s: &'static Source| {
+    let modules = map(lambda1s(move |s: &'static Source| {
         let tagcase_ = s;
         match *tagcase_ {
             Source::Source(name, text) => {
@@ -137,7 +137,7 @@ pub fn memo_modules(mut c: &'static Ctx, mut fs: Facts, mut global: i64, mut old
                 Source::Source(name, text) => {
                     let file = string_append(name, str_lit(".kfx"));
                     let forms = source_forms(car(ss));
-                    let starts = map(lambda1(move |f: &'static Sexp| {
+                    let starts = map(lambda1s(move |f: &'static Sexp| {
                         datum_pos(f)
                     }), forms);
                     let texts = incremental::form_texts(string_chars(text), 0i64, starts);
@@ -170,7 +170,7 @@ pub fn source_texts(s: &'static Source) -> Strings {
     let tagcase_ = s;
     match *tagcase_ {
         Source::Source(name, text) => {
-            incremental::form_texts(string_chars(text), 0i64, map(lambda1(move |f: &'static Sexp| {
+            incremental::form_texts(string_chars(text), 0i64, map(lambda1s(move |f: &'static Sexp| {
                 datum_pos(f)
             }), source_forms(s)))
         }
@@ -178,7 +178,7 @@ pub fn source_texts(s: &'static Source) -> Strings {
 }
 
 pub fn compile_units_memo(ss: Sources, old: Memos) -> &'static Compiled {
-    let forms = concat(map(lambda1(move |s: &'static Source| {
+    let forms = concat(map(lambda1s(move |s: &'static Source| {
         source_forms(s)
     }), ss));
     let texts = concat(map(&source_texts, ss));

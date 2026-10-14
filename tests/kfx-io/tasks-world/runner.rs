@@ -41,16 +41,16 @@ pub async fn perform_x<A: Copy + 'static>(rt: Tag<A, Product_2op_1k<Op, &'static
 
 // The operations, as a program writes them.
 pub async fn read_line_x<A: Copy + 'static>(rt: Tag<A, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>>) -> Result<Answer, Unwind> {
-    Ok(kayak_rt::suspend::body((&perform_x)(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::ReadLine(())))).await?)
+    Ok(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_x(a__0, a__1))))(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::ReadLine(())))).await?)
 }
 
 pub async fn write_x<A: Copy + 'static>(rt: Tag<A, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>>, s: Str) -> Result<(), Unwind> {
-    kayak_rt::suspend::body((&perform_x)(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::Write(s)))).await?;
+    kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_x(a__0, a__1))))(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::Write(s)))).await?;
     Ok(())
 }
 
 pub async fn clock_x<A: Copy + 'static>(rt: Tag<A, Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>>) -> Result<i64, Unwind> {
-    let tagcase_ = kayak_rt::suspend::body((&perform_x)(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::Clock(())))).await?;
+    let tagcase_ = kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(perform_x(a__0, a__1))))(rt, kayak_rt::heap_alloc(Sum_9read_line_5write_5clock_9read_file_10write_file::<(), Str, (), Str, Product_4path_4text<Str, Str>>::Clock(())))).await?;
     match *tagcase_ {
         Sum_4line_3eof_4done_4time_4text_6failed::Time(t) => {
             Ok(t)
@@ -82,7 +82,7 @@ pub async fn serve<A: Copy + 'static>(rt: Tag<A, Product_2op_1k<Op, &'static dyn
         })).await {
             Ok(kayak_rt::suspend::Prompted::Done(v_)) => v_,
             Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => (lambda1(move |next: Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>| kayak_rt::suspend::body(async move {
-                Ok(kayak_rt::suspend::body((&serve)(rt, answer, steps, next)).await?)
+                Ok(kayak_rt::suspend::body((lambda4(move |a__0, a__1, a__2, a__3| kayak_rt::suspend::body(serve(a__0, a__1, a__2, a__3))))(rt, answer, steps, next)).await?)
             })))(h_).await?,
             Err(u_) => return Err(u_),
         }
@@ -98,7 +98,7 @@ pub async fn run_under<A: Copy + 'static>(answer: &'static dyn Fn(i64, Op) -> ka
         })).await {
             Ok(kayak_rt::suspend::Prompted::Done(v_)) => v_,
             Ok(kayak_rt::suspend::Prompted::Aborted(h_)) => (lambda1(move |req: Product_2op_1k<Op, &'static dyn Fn(Answer) -> kayak_rt::suspend::Body<A>>| kayak_rt::suspend::body(async move {
-                Ok(kayak_rt::suspend::body((&serve)(rt, answer, steps, req)).await?)
+                Ok(kayak_rt::suspend::body((lambda4(move |a__0, a__1, a__2, a__3| kayak_rt::suspend::body(serve(a__0, a__1, a__2, a__3))))(rt, answer, steps, req)).await?)
             })))(h_).await?,
             Err(u_) => return Err(u_),
         }

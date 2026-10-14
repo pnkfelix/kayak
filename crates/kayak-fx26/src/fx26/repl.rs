@@ -12,21 +12,21 @@ use super::*;
 // What the REPL keeps between forms: the checker's environment, the globals'
 // names (an index each, as `lower.kfx` has them), and how many forms.
 pub fn repl_cv() -> Ref<&'static Cv> {
-    thread_local!(static ONCE: OnceCell<Ref<&'static Cv>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<&'static Cv>);
     once(&ONCE, || {
         kayak_rt::heap_new(cv(nil::<&'static Bind>(), nil::<&'static Dt>(), nil::<&'static Alias>(), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the REPL"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64))
     })
 }
 
 pub fn repl_globals() -> Ref<Strings> {
-    thread_local!(static ONCE: OnceCell<Ref<Strings>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<Strings>);
     once(&ONCE, || {
         kayak_rt::heap_new(nil::<Str>())
     })
 }
 
 pub fn repl_count() -> Ref<i64> {
-    thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
         kayak_rt::heap_new(0i64)
     })
@@ -87,7 +87,7 @@ pub fn drop_comment(mut cs: List<char>) -> List<char> {
 
 pub fn repl_complete_p(text: Str) -> bool {
     let cs = string_chars(text);
-    (any_p(lambda1(move |c: char| {
+    (any_p(lambda1s(move |c: char| {
         not(char_whitespace_p(c))
     }), cs) && complete_from(cs, 0i64, false, false))
 }

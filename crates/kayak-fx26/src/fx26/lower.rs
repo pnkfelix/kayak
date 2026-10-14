@@ -57,7 +57,7 @@ pub fn unquoted_p(mut d: &'static Sexp, mut depth: i64) -> bool {
                     (d, depth) = (second(ys), i64_plus(depth, 1i64));
                     continue;
                 } else {
-                    return any_p(lambda1(move |y: &'static Sexp| {
+                    return any_p(lambda1s(move |y: &'static Sexp| {
                         unquoted_p(y, depth)
                     }), ys);
                 }
@@ -194,7 +194,7 @@ pub fn include_exports(f: &'static Sexp, gs: Strings) -> Strings {
             map(&sym_name, cdr(items(car(ex))))
         }
     };
-    concat(map(lambda1(move |n: Str| {
+    concat(map(lambda1s(move |n: Str| {
         if string_member_p(n, out) {
             nil::<Str>()
         } else {
@@ -213,11 +213,11 @@ pub fn module_item_names(its: Sexps, gs: Strings, exported: bool) -> Strings {
         onto(if (head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) {
             kayak_rt::heap_cons(binder_name(second(items(f))), kayak_rt::nil())
         } else if head_is_p(f, str_lit("define-rec")) {
-            map(lambda1(move |g: &'static Sexp| {
+            map(lambda1s(move |g: &'static Sexp| {
                 sym_name(car(items(g)))
             }), cdr(items(f)))
         } else if head_is_p(f, str_lit("define-datatype")) {
-            map(lambda1(move |g: &'static Sexp| {
+            map(lambda1s(move |g: &'static Sexp| {
                 sym_name(car(items(g)))
             }), cdr(cdr(items(f))))
         } else if head_is_p(f, str_lit("define-generative")) {
@@ -239,14 +239,14 @@ pub fn module_item_names(its: Sexps, gs: Strings, exported: bool) -> Strings {
 
 /// A module's items, its `include`s first, hidden or not.
 pub fn includes_first(its: Sexps) -> Sexps {
-    let inc_p = lambda1(move |f: &'static Sexp| {
+    let inc_p = lambda1s(move |f: &'static Sexp| {
         head_is_p(f, str_lit("include"))
     });
-    onto(concat(map(lambda1(move |f: &'static Sexp| {
+    onto(concat(map(lambda1s(move |f: &'static Sexp| {
         if inc_p(f) {
             the::<Sexps>(kayak_rt::heap_cons(f, kayak_rt::nil()))
         } else if head_is_p(f, str_lit("hide")) {
-            let hs = concat(map(lambda1(move |g: &'static Sexp| {
+            let hs = concat(map(lambda1s(move |g: &'static Sexp| {
                 if inc_p(g) {
                     the::<Sexps>(kayak_rt::heap_cons(g, kayak_rt::nil()))
                 } else {
@@ -261,11 +261,11 @@ pub fn includes_first(its: Sexps) -> Sexps {
         } else {
             nil::<&'static Sexp>()
         }
-    }), its)), concat(map(lambda1(move |f: &'static Sexp| {
+    }), its)), concat(map(lambda1s(move |f: &'static Sexp| {
         if inc_p(f) {
             nil::<&'static Sexp>()
         } else if head_is_p(f, str_lit("hide")) {
-            the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(items(f)), concat(map(lambda1(move |g: &'static Sexp| {
+            the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(items(f)), concat(map(lambda1s(move |g: &'static Sexp| {
                 if inc_p(g) {
                     nil::<&'static Sexp>()
                 } else {
@@ -359,11 +359,11 @@ pub fn global_names(forms: Sexps) -> Strings {
         onto(if (head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) {
             kayak_rt::heap_cons(binder_name(second(items(f))), kayak_rt::nil())
         } else if head_is_p(f, str_lit("define-rec")) {
-            map(lambda1(move |g: &'static Sexp| {
+            map(lambda1s(move |g: &'static Sexp| {
                 sym_name(car(items(g)))
             }), cdr(items(f)))
         } else if head_is_p(f, str_lit("define-datatype")) {
-            map(lambda1(move |g: &'static Sexp| {
+            map(lambda1s(move |g: &'static Sexp| {
                 sym_name(car(items(g)))
             }), cdr(cdr(items(f))))
         } else if head_is_p(f, str_lit("define-generative")) {
@@ -416,7 +416,7 @@ pub fn moduleof_names(forms: Sexps) -> Strings {
     } else {
         let f = car(forms);
         onto(if (head_is_p(f, str_lit("define-type")) && head_is_p(third(items(f)), str_lit("moduleof"))) {
-            concat(map(lambda1(move |it: &'static Sexp| {
+            concat(map(lambda1s(move |it: &'static Sexp| {
                 if head_is_p(it, str_lit("val")) {
                     the::<Strings>(kayak_rt::heap_cons(sym_name(second(items(it))), kayak_rt::nil()))
                 } else {
@@ -613,9 +613,9 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
             return i_seq(lower_all(xs, sc, gs));
         } else if string_eq_p(h, str_lit("let")) {
             let bs = items(car(xs));
-            return i_let(map(lambda1(move |b: &'static Sexp| {
+            return i_let(map(lambda1s(move |b: &'static Sexp| {
                 lower(last(items(b)), sc, gs)
-            }), bs), lower_body(cdr(xs), kayak_rt::heap_cons(map(lambda1(move |b: &'static Sexp| {
+            }), bs), lower_body(cdr(xs), kayak_rt::heap_cons(map(lambda1s(move |b: &'static Sexp| {
                 binder_name(car(items(b)))
             }), bs), sc), gs));
         } else if string_eq_p(h, str_lit("let*")) {
@@ -627,10 +627,10 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
             }
         } else if string_eq_p(h, str_lit("letrec")) {
             let bs = items(car(xs));
-            let inner = kayak_rt::heap_cons(map(lambda1(move |b: &'static Sexp| {
+            let inner = kayak_rt::heap_cons(map(lambda1s(move |b: &'static Sexp| {
                 binder_name(car(items(b)))
             }), bs), sc);
-            return i_letrec(map(lambda1(move |b: &'static Sexp| {
+            return i_letrec(map(lambda1s(move |b: &'static Sexp| {
                 lower(last(items(b)), inner, gs)
             }), bs), lower_body(cdr(xs), inner, gs));
         } else if string_eq_p(h, str_lit("cond")) {
@@ -696,9 +696,9 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
         } else if string_eq_p(h, str_lit("sum")) {
             return i_sum(label_of(car(xs)), lower(second(xs), sc, gs));
         } else if string_eq_p(h, str_lit("product")) {
-            return i_product(map(lambda1(move |f: &'static Sexp| {
+            return i_product(map(lambda1s(move |f: &'static Sexp| {
                 label_of(car(items(f)))
-            }), xs), map(lambda1(move |f: &'static Sexp| {
+            }), xs), map(lambda1s(move |f: &'static Sexp| {
                 lower(second(items(f)), sc, gs)
             }), xs));
         } else if string_eq_p(h, str_lit("extract")) {
@@ -723,7 +723,7 @@ pub fn lower_module(written: Sexps, sc: Scope, gs: Strings) -> &'static Ir {
     let names = module_item_names(its, gs, false);
     let given = module_item_names(its, gs, true);
     let inner = kayak_rt::heap_cons(names, sc);
-    i_letrec(module_values(its, inner, gs), i_product(given, map(lambda1(move |n: Str| {
+    i_letrec(module_values(its, inner, gs), i_product(given, map(lambda1s(move |n: Str| {
         i_local(0i64, position_of(n, names, 0i64))
     }), given)))
 }
@@ -736,18 +736,18 @@ pub fn module_values(its: Sexps, sc: Scope, gs: Strings) -> Irs {
         onto(if (head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) {
             kayak_rt::heap_cons(lower(last(items(f)), sc, gs), kayak_rt::nil())
         } else if head_is_p(f, str_lit("define-rec")) {
-            map(lambda1(move |g: &'static Sexp| {
+            map(lambda1s(move |g: &'static Sexp| {
                 lower(last(items(g)), sc, gs)
             }), cdr(items(f)))
         } else if head_is_p(f, str_lit("define-datatype")) {
-            map(lambda1(move |g: &'static Sexp| {
+            map(lambda1s(move |g: &'static Sexp| {
                 i_lit(v_ctor(sym_name(car(items(g))), i64_minus(size(items(g)), 1i64)))
             }), cdr(cdr(items(f))))
         } else if head_is_p(f, str_lit("define-generative")) {
             kayak_rt::heap_cons(i_lit(v_prim(str_lit("%identity"), 1i64)), kayak_rt::heap_cons(i_lit(v_prim(str_lit("%identity"), 1i64)), kayak_rt::nil()))
         } else if head_is_p(f, str_lit("include")) {
             let m = sym_name(second(items(f)));
-            map(lambda1(move |n: Str| {
+            map(lambda1s(move |n: Str| {
                 i_extract(n, lower_name(m, sc, gs))
             }), include_exports(f, gs))
         } else if head_is_p(f, str_lit("hide")) {
@@ -828,21 +828,21 @@ pub fn lower_cond(clauses: Sexps, sc: Scope, gs: Strings) -> &'static Ir {
 /// `(tagcase e (tag x body) (tag (x ...) body) ... (else x body))`.
 pub fn lower_tagcase(xs: Sexps, sc: Scope, gs: Strings) -> &'static Ir {
     let arms = cdr(xs);
-    let default = concat(map(lambda1(move |a: &'static Sexp| {
+    let default = concat(map(lambda1s(move |a: &'static Sexp| {
         if sym_is_p(car(items(a)), str_lit("else")) {
             the::<Sexps>(kayak_rt::heap_cons(a, kayak_rt::nil()))
         } else {
             nil::<&'static Sexp>()
         }
     }), arms));
-    let named = concat(map(lambda1(move |a: &'static Sexp| {
+    let named = concat(map(lambda1s(move |a: &'static Sexp| {
         if sym_is_p(car(items(a)), str_lit("else")) {
             nil::<&'static Sexp>()
         } else {
             the::<Sexps>(kayak_rt::heap_cons(a, kayak_rt::nil()))
         }
     }), arms));
-    i_tagcase(lower(car(xs), sc, gs), map(lambda1(move |a: &'static Sexp| {
+    i_tagcase(lower(car(xs), sc, gs), map(lambda1s(move |a: &'static Sexp| {
         let parts = items(a);
         let binder = second(parts);
         let whole = {
@@ -939,12 +939,12 @@ pub fn lower_tops(forms: Sexps, gs: Strings) -> List<&'static Top> {
             let xs = items(f);
             kayak_rt::heap_cons(top_define(i_define(position_of(binder_name(second(xs)), gs, 0i64), lower(last(xs), nil::<List<Str>>(), gs))), kayak_rt::nil())
         } else if head_is_p(f, str_lit("define-rec")) {
-            map(lambda1(move |g: &'static Sexp| {
+            map(lambda1s(move |g: &'static Sexp| {
                 let ys = items(g);
                 top_define(i_define(position_of(sym_name(car(ys)), gs, 0i64), lower(last(ys), nil::<List<Str>>(), gs)))
             }), cdr(items(f)))
         } else if head_is_p(f, str_lit("define-datatype")) {
-            map(lambda1(move |g: &'static Sexp| {
+            map(lambda1s(move |g: &'static Sexp| {
                 let ys = items(g);
                 top_define(i_define(position_of(sym_name(car(ys)), gs, 0i64), i_lit(v_ctor(sym_name(car(ys)), i64_minus(size(ys), 1i64)))))
             }), cdr(cdr(items(f))))

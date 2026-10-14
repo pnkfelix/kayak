@@ -25,7 +25,7 @@ pub async fn twice<A: Copy + 'static>(f: &'static dyn Fn(A) -> kayak_rt::suspend
 }
 
 pub fn total() -> Ref<i64> {
-    thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
         kayak_rt::heap_new(0i64)
     })

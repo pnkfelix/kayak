@@ -8,7 +8,7 @@ use super::*;
 // effect, `u`, is what they do to the log, at @a.
 
 pub fn log() -> Ref<List<Str>> {
-    thread_local!(static ONCE: OnceCell<Ref<List<Str>>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<List<Str>>);
     once(&ONCE, || {
         kayak_rt::heap_new(nil::<Str>())
     })
@@ -46,24 +46,24 @@ pub fn stamp(lp: Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() 
 pub async fn main() -> Result<Str, Unwind> {
     let lp = the::<Product_3tag_5ready_8sleeping_5clock<Tag<(), &'static dyn Fn() -> kayak_rt::suspend::Body<()>>, Ref<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>, Ref<List<Product_2at_1k<i64, &'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>>>, Ref<i64>>>((&make_loop)());
     let iv = the::<Ref<&'static Sum_5empty_4full<List<&'static dyn Fn(()) -> kayak_rt::suspend::Body<()>>, i64>>>((&make_ivar)(lp));
-    kayak_rt::suspend::body((&spawn_x)(lp, lambda0(move || kayak_rt::suspend::body(async move {
-        kayak_rt::suspend::body((&sleep_x)(lp, 30i64)).await?;
+    kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(spawn_x(a__0, a__1))))(lp, lambda0(move || kayak_rt::suspend::body(async move {
+        kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(sleep_x(a__0, a__1))))(lp, 30i64)).await?;
         note_x(stamp(lp, str_lit("slow")));
         Ok((&ivar_put_x)(lp, iv, 42i64))
     })))).await?;
-    kayak_rt::suspend::body((&spawn_x)(lp, lambda0(move || kayak_rt::suspend::body(async move {
-        kayak_rt::suspend::body((&sleep_x)(lp, 10i64)).await?;
+    kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(spawn_x(a__0, a__1))))(lp, lambda0(move || kayak_rt::suspend::body(async move {
+        kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(sleep_x(a__0, a__1))))(lp, 10i64)).await?;
         Ok(note_x(stamp(lp, str_lit("quick"))))
     })))).await?;
-    kayak_rt::suspend::body((&spawn_x)(lp, lambda0(move || kayak_rt::suspend::body(async move {
+    kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(spawn_x(a__0, a__1))))(lp, lambda0(move || kayak_rt::suspend::body(async move {
         note_x(stamp(lp, str_lit("waiting")));
-        Ok(note_x(stamp(lp, i64_to_string(kayak_rt::suspend::body((&ivar_get_x)(lp, iv)).await?))))
+        Ok(note_x(stamp(lp, i64_to_string(kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(ivar_get_x(a__0, a__1))))(lp, iv)).await?))))
     })))).await?;
-    kayak_rt::suspend::body((&spawn_x)(lp, lambda0(move || kayak_rt::suspend::body(async move {
-        kayak_rt::suspend::body((&yield_x)(lp)).await?;
+    kayak_rt::suspend::body((lambda2(move |a__0, a__1| kayak_rt::suspend::body(spawn_x(a__0, a__1))))(lp, lambda0(move || kayak_rt::suspend::body(async move {
+        kayak_rt::suspend::body((lambda1(move |a__0| kayak_rt::suspend::body(yield_x(a__0))))(lp)).await?;
         Ok(note_x(stamp(lp, str_lit("yielded"))))
     })))).await?;
-    kayak_rt::suspend::body((&run_x)(lp)).await?;
+    kayak_rt::suspend::body((lambda1(move |a__0| kayak_rt::suspend::body(run_x(a__0))))(lp)).await?;
     Ok(words(reverse_log(get(log()), nil::<Str>())))
 }
 

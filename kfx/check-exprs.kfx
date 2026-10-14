@@ -80,6 +80,8 @@
                       ((string=? d "%array") (lst (list (sym "arrayof" "" 0) (settled-sexp s (car args) #f) (settled-sexp s (car (cdr args)) #t)) "" 0 0))
                       ((string=? d "%flat-array") (lst (cons (sym "arrayof" "" 0) (map (lambda ((x ty)) (settled-sexp s x #f)) args)) "" 0 0))
                       ((string=? d "%place") (lst (list (sym "place" "" 0) (settled-sexp s (car args) #t)) "" 0 0))
+                      ((or (string=? d "%addr") (string=? d "%inbox") (string=? d "%icell"))
+                       (lst (list (sym (after-prefix d "%") "" 0) (settled-sexp s (car args) #f) (settled-sexp s (car (cdr args)) #t)) "" 0 0))
                       ((string=? d "%flat-sum")
                        (lst (cons (sym "sumof" "" 0)
                                   (cons (tagcase (car args) (ty-rconst (n) (sym n "" 0)) (else other (sym "u8" "" 0)))
@@ -91,7 +93,8 @@
               (ty-proc (es ps r)
                 (lst (list (sym "subr" "" 0) (cond ((suspends? es) (lst (list (sym "maxeff" "" 0) (lst (list (sym "goto" "" 0) (sym "@escape" "" 0)) "" 0 0) (lst (list (sym "comefrom" "" 0) (sym "@escape" "" 0)) "" 0 0)) "" 0 0))
                                                       ((escapes? es) (lst (list (sym "goto" "" 0) (sym "@escape" "" 0)) "" 0 0))
-                                                      (else (sym "pure" "" 0)))
+                                                      ((crossing? (map (lambda ((a string)) (resolve-atom s a)) es)) (sym "pure" "" 0))
+                                                      (else (sym "%local" "" 0)))
                            (lst (map (lambda ((p ty)) (settled-sexp s p #f)) ps) "" 0 0) (settled-sexp s r #f)) "" 0 0))
               (else other (sym (show-ty s other) "" 0)))))
         (settled-fields (subr kfx (st strings tys) sexps)
@@ -763,7 +766,11 @@
                     wanted (C82): wrapped, each argument and its result boxed."
                    (if (any? (lambda ((h string)) (string=? h "none")) (wrap-hows s t expected))
                        (note-types s file pos "box none" (list t))
-                       (note-fact s file pos (string-append "wrap " (words-of (wrap-hows s t expected))))))
+                       (let ((s (note-fact s file pos (string-append "wrap " (words-of (wrap-hows s t expected))))))
+                         "Its closure `Send + Sync` where the procedure wanted is (C102)."
+                         (tagcase (walk s expected)
+                           (ty-proc (es ps r) (if (crossing? (map (lambda ((a string)) (resolve-atom s a)) es)) (note-fact s file pos "wrap-sync") s))
+                           (else other s)))))
                   ((and (not from) (not to) (boxed-elements? s (as-member s t) (as-member s expected)))
                    "A list at `acyclic` given as a list of a union (C78): copied,
                     each element boxed, which nothing can tell from FX-26's, the
@@ -909,6 +916,8 @@
                     ((string=? d "%array") (lst (list (sym "arrayof" "" 0) (ty-sexp v s (car args)) (ty-sexp v s (car (cdr args)))) "" 0 0))
                     ((string=? d "%flat-array") (lst (cons (sym "arrayof" "" 0) (map (lambda ((x ty)) (ty-sexp v s x)) args)) "" 0 0))
                     ((string=? d "%place") (lst (list (sym "place" "" 0) (ty-sexp v s (car args))) "" 0 0))
+                    ((or (string=? d "%addr") (string=? d "%inbox") (string=? d "%icell"))
+                     (lst (list (sym (after-prefix d "%") "" 0) (ty-sexp v s (car args)) (ty-sexp v s (car (cdr args)))) "" 0 0))
                     ((string=? d "%flat-sum")
                      (lst (cons (sym "sumof" "" 0)
                                 (cons (tagcase (car args) (ty-rconst (n) (sym n "" 0)) (else other (sym "u8" "" 0)))
@@ -925,7 +934,8 @@
             (ty-proc (es ps r)
               (lst (list (sym "subr" "" 0) (cond ((suspends? es) (lst (list (sym "maxeff" "" 0) (lst (list (sym "goto" "" 0) (sym "@escape" "" 0)) "" 0 0) (lst (list (sym "comefrom" "" 0) (sym "@escape" "" 0)) "" 0 0)) "" 0 0))
                                                     ((escapes? es) (lst (list (sym "goto" "" 0) (sym "@escape" "" 0)) "" 0 0))
-                                                    (else (sym "pure" "" 0)))
+                                                    ((crossing? (map (lambda ((a string)) (resolve-atom s a)) es)) (sym "pure" "" 0))
+                                                    (else (sym "%local" "" 0)))
                          (lst (map (lambda ((p ty)) (ty-sexp v s p)) ps) "" 0 0) (ty-sexp v s r)) "" 0 0))
             (ty-var (n)
               "A poly's binder, inside it: as written, a region's without its `'`."
@@ -1032,6 +1042,281 @@
                     (cons (alias (after-prefix n (string-append m " ")) ps body) (opened-aliases m (cdr als)))
                     (opened-aliases m (cdr als))))))))
 
+    "Processes and `par` (C101), as FX-26 has them (Fixpt's `docs/fx26.md`,
+     \"Processes and `par`\"; its `processes.rs`, rule for rule and in its
+     words)."
+
+
+
+    (define or-else (subr kfx (string string) string)
+      (lambda (why next) (if (string=? why "") next why)))
+
+
+    (define-rec
+      (any-of (subr kfx ((subr kfx (string) bool) strings) strings)
+        (lambda (p xs)
+          "The first of `xs` that `p` holds of, alone; none if none."
+          (cond ((null? xs) nil) ((p (car xs)) (list (car xs))) (else (any-of p (cdr xs)))))))
+
+
+    (define-rec
+      (untransmissible (subr kfx (cv st ty strings strings) string)
+        (lambda (v s t bound seen)
+          "Why a value of type `t` may not cross into another process, or \"\"
+           if it may (`untransmissible`): `bound`, the binders of the polys
+           around; `seen`, the datatypes looked into."
+          (let ((data-at (lambda ((r ty) (what string))
+                           (let ((n (region-string s r)))
+                             (if (or (string=? n "acyclic") (string=? n "%fresh") (string-member? n bound))
+                                 ""
+                                 (string-append "a " (string-append what (string-append " at " (string-append (show-ty s r) ", which can be written")))))))))
+            (tagcase (walk s t)
+              (ty-meta (k) "a value whose type is not known here: say it, with `the`")
+              (ty-var (n) (if (string-member? n bound) "" (string-append "a `" (string-append n "`, which could be anything"))))
+              (ty-list (e r) (or-else (data-at r "list") (untransmissible v s e bound seen)))
+              (ty-ref (e r) (or-else (data-at r "reference") (untransmissible v s e bound seen)))
+              (ty-flat (e r) (data-at r "flat array"))
+              (ty-tag (a h d r) (string-append "a " (show-ty s t)))
+              (ty-shape (p ls ts) (untransmissible-all v s ts bound seen))
+              (ty-proc (es ps r)
+                (let ((bad (any-of (lambda ((a string)) (not (crossing-atom? bound a))) es)))
+                  (if (null? bad)
+                      (untransmissible-all v s (cons r ps) bound seen)
+                      (string-append "a procedure that has " (show-effs bad)))))
+              (ty-data (d args)
+                (cond ((or (null? args) (string=? d "%addr")) "")
+                      ((string=? d "%icell") (untransmissible v s (car args) bound seen))
+                      ((string=? d "%inbox")
+                       (if (string-member? (region-string s (car (cdr args))) bound)
+                           ""
+                           "a process's own mailbox, which only it may take from"))
+                      ((string=? d "%array") (or-else (data-at (car (cdr args)) "array") (untransmissible v s (car args) bound seen)))
+                      ((or (string=? d "%pairof") (string=? d "%union") (string=? d "%vsubr"))
+                       "kayak's own (C102): FX-26 lets one cross, but its Rust, kayak-rt's
+                        `Value` or a variadic closure, is not `Send`."
+                       (string-append "a " (string-append (show-ty s t) ", which KFX's Rust does not share between threads (C102)")))
+                      ((string-member? d seen) "")
+                      ((and (dt-named? d (cv-dts v)) (not (generative? v (walk s t))))
+                       "A datatype, FX-26's sum of products: as its fields are."
+                       (untransmissible-all v s (concat (map (lambda ((x variant)) (tagcase x (variant (tag fields) fields)))
+                                                             (instantiate-variants (family-of v d) args (variants-of v d))))
+                                            bound (cons d seen)))
+                      (else (string-append "a " (show-ty s t)))))
+              (else other "")))))
+      (untransmissible-all (subr kfx (cv st tys strings strings) string)
+        (lambda (v s ts bound seen)
+          (if (null? ts) "" (or-else (untransmissible v s (car ts) bound seen) (untransmissible-all v s (cdr ts) bound seen))))))
+
+
+    (define-rec
+      (sync-type? (subr kfx (cv st ty strings) bool)
+        (lambda (v s t seen)
+          "Whether a value of type `t` is, in Rust, `Send` and `Sync` (C102): a
+           scalar, a string; a list, a product, a sum, a datatype of such; an
+           address or an I-cell of one; a procedure whose latent effect a
+           process may have, which the emitter writes `Send + Sync`. Not a
+           cell (a reference, an array, a bloblet), a union's `Value`, a type
+           variable (a Rust type parameter, of no such bound), a tag."
+          (tagcase (walk s t)
+            (ty-list (e r) (sync-type? v s e seen))
+            (ty-ref (e r) #f)
+            (ty-flat (e r) #f)
+            (ty-tag (a h d r) #f)
+            (ty-var (n) #f)
+            (ty-shape (p ls ts) (all-sync? v s ts seen))
+            (ty-proc (es ps r) (crossing? (map (lambda ((a string)) (resolve-atom s a)) es)))
+            (ty-data (d args)
+              (cond ((null? args) (not (or (string=? d "datum") (has-prefix? d "%module"))))
+                    ((or (string=? d "%addr") (string=? d "%inbox") (string=? d "%icell")) (sync-type? v s (car args) seen))
+                    ((string=? d "%pairof")
+                     "A pair whose tail is a list is that list, in Rust (C68); any other a
+                      union's `Value`."
+                     (tagcase (walk s (car (cdr args)))
+                       (ty-list (e r) (and (sync-type? v s (car args) seen) (sync-type? v s e seen)))
+                       (else other #f)))
+                    ((has-prefix? d "%") #f)
+                    ((string-member? d seen) #t)
+                    ((and (dt-named? d (cv-dts v)) (not (generative? v (walk s t))))
+                     (all-sync? v s (concat (map (lambda ((x variant)) (tagcase x (variant (tag fields) fields)))
+                                                 (instantiate-variants (family-of v d) args (variants-of v d))))
+                                (cons d seen)))
+                    (else #f)))
+            (else other #t))))
+      (all-sync? (subr kfx (cv st tys strings) bool)
+        (lambda (v s ts seen)
+          (or (null? ts) (and (sync-type? v s (car ts) seen) (all-sync? v s (cdr ts) seen))))))
+
+    (define synced-lambda (subr kfx (cv st strings sexps sexps) st)
+      (lambda (v s es params forms)
+        "A lambda whose latent effect `es` a process may have: its closure, in
+         Rust, `Send + Sync` (C102), noted for the emitter, so that it may be
+         held on another thread, as FX-26 lets it be; so each local it holds
+         must be `Sync` too, which rustc checks of the Rust and KFX here, said
+         in KFX's words. A local named by the body but bound in it too is
+         taken as held: KFX refuses more than it must, then, never less."
+        (if (not (crossing? (map (lambda ((a string)) (resolve-atom s a)) es)))
+            s
+            (let ((own (map (lambda ((p sexp)) (tagcase p (lst (ys f l q) (sym-name (car ys))) (else other (sym-name other)))) params)))
+              (begin
+                (map (lambda ((n string))
+                       (let ((found (find-bind n (cv-binds v))))
+                         (if (or (null? found) (string-member? n own))
+                             #u
+                             (tagcase (car found)
+                               (bind (b sc wher)
+                                 (if (and (or (string=? wher "local") (string=? wher "narrowed") (string=? wher "rec") (string=? wher "ends"))
+                                          (not (sync-type? v s (tagcase sc (scheme (tv t) t)) nil)))
+                                     (begin
+                                       (refuse v (string-append "a procedure that may be held on another thread, its effect being one a process may have, holds `"
+                                                   (string-append n (string-append "`, a " (string-append (show-ty s (tagcase sc (scheme (tv t) t)))
+                                                     ", which may not be: KFX's procedures hold only what they may share (C102)")))))
+                                       #u)
+                                     #u))))))
+                     (distinct (names-in-all forms)))
+                (note-fact s (cv-file v) (cv-pos v) "sync"))))))
+
+    (define-rec
+      (binds-from (subr kfx (string binds) binds)
+        (lambda (name bs)
+          "The bindings from the innermost of `name` on, the older after it."
+          (cond ((null? bs) nil)
+                ((tagcase (car bs) (bind (n sc w) (string=? n name))) bs)
+                (else (binds-from name (cdr bs)))))))
+
+    (define process-marks (subr kfx (strings) strings)
+      (lambda (tvars)
+        "The processes' bodies being checked, innermost first: each a
+         `%process N` among the type variables, and a binding of that name."
+        (concat (map (lambda ((n string)) (if (has-prefix? n "%process ") (the strings (list n)) nil)) tvars))))
+
+
+    (define-rec
+      (fold-digits (subr kfx ((listof char acyclic) i64) i64)
+        (lambda (cs k) (if (null? cs) k (fold-digits (cdr cs) (i64+ (i64* k 10) (i64- (char->i64 (car cs)) 48)))))))
+
+
+    (define digits-value (subr kfx (string) i64)
+      (lambda (x) (fold-digits (string->list x) 0)))
+
+
+    (define-rec
+      (held (subr kfx (cv st string binds strings) st)
+        (lambda (v s name found marks)
+          "That a process's body names `name`, bound outside it (as `found`
+           is): noted, for each process it is outside of, to be checked
+           transmissible once the body is."
+          (if (null? marks)
+              s
+              (let ((mark (binds-from (car marks) (cv-binds v))))
+                (held v (if (and (not (null? mark)) (i64< (size (binds-from name (cv-binds v))) (size mark)))
+                            (note-fact s "%process" (digits-value (after-prefix (car marks) "%process ")) (string-append "held " name))
+                            s)
+                      name found (cdr marks)))))))
+
+
+    (define holds-checked (subr kfx (cv st i64) st)
+      (lambda (v s id)
+        "Each name a process's body holds from outside it, of a transmissible
+         type: but the standard bindings, which are the runtime's."
+        (begin
+          (map (lambda ((f fact))
+                 (tagcase f
+                   (fact (file pos what)
+                     (if (and (string=? file "%process") (i64= pos id) (has-prefix? what "held "))
+                         (let* ((name (after-prefix what "held "))
+                                (found (find-bind name (cv-binds v))))
+                           (if (null? found)
+                               #u
+                               (tagcase (car found)
+                                 (bind (n sc wher)
+                                   (if (string=? wher "prim")
+                                       #u
+                                       (tagcase sc
+                                         (scheme (tvars t)
+                                           (let ((why (untransmissible v s t tvars nil)))
+                                             (if (string=? why "")
+                                                 #u
+                                                 (begin
+                                                   (refuse v (string-append "a process may share nothing that can be written, and its body holds `"
+                                                               (string-append name (string-append "`: " why))))
+                                                   #u))))))))))
+                         #u))))
+               (st-facts s))
+          s)))
+
+
+    (define interferes? (subr kfx (string string) bool)
+      (lambda (a b)
+        "Whether atom `a` interferes with `b`, one way, on regions that may be
+         one: a write against a read, a write, a fill or an await; a fill
+         against a write; a send against a send; a receive against a send
+         or a receive; I/O against I/O; an effect variable against all but
+         an allocation, `spin` and `nondet` (`interferes`)."
+        (let* ((harmless (lambda ((x string)) (or (has-prefix? x "alloc:") (string=? x "spin") (string=? x "nondet")
+                                                  (global-atom? x) (string=? x "@globals"))))
+               (one (and (region-atom? a) (region-atom? b) (regions-may-be-one? (atom-region a) (atom-region b))))
+               (kind (lambda ((x string) (k string)) (has-prefix? x (string-append k ":")))))
+          (cond ((and (has-prefix? a "~") (not (string=? a "~!"))) (not (harmless b)))
+                ((kind a "write") (and one (or (kind b "read") (kind b "write") (kind b "init") (kind b "await"))))
+                ((kind a "init") (and one (kind b "write")))
+                ((kind a "send") (and one (kind b "send")))
+                ((kind a "receive") (and one (or (kind b "send") (kind b "receive"))))
+                ((kind a "io") (kind b "io"))
+                (else #f)))))
+
+
+    (define regions-may-be-one? (subr kfx (string string) bool)
+      (lambda (p q)
+        "Two regions that may be one: the same, or either not a constant;
+         two constants of other names are two."
+        (or (string=? p q) (not (has-prefix? p "@")) (not (has-prefix? q "@")))))
+
+
+    (define-rec
+      (clash-of (subr kfx (strings strings) strings)
+        (lambda (x y)
+          "The first pair of atoms, one of `x` and one of `y`, that interfere;
+           none if none."
+          (if (null? x)
+              nil
+              (let ((hit (any-of (lambda ((b string)) (or (interferes? (car x) b) (interferes? b (car x)))) y)))
+                (if (null? hit) (clash-of (cdr x) y) (list (car x) (car hit))))))))
+
+
+    (define-rec
+      (par-clash (subr kfx (cv (listof strings acyclic)) unit)
+        (lambda (v effs)
+          "No two branches of `par` interfere, `effs` their effects, the last
+           branch's first."
+          (if (null? effs)
+              #u
+              (begin
+                (map (lambda ((other strings))
+                       (let ((c (clash-of other (car effs))))
+                         (if (null? c)
+                             #u
+                             (begin
+                               (refuse v (string-append "`par`'s branches interfere: one has " (string-append (show-effs (list (car c)))
+                                           (string-append " and another " (string-append (show-effs (cdr c))
+                                             ", so the answer could depend on which runs first")))))
+                               #u))))
+                     (cdr effs))
+                (par-clash v (cdr effs)))))))
+
+
+    (define pselect-arm? (subr kfx (sexp) bool)
+      (lambda (arm)
+        "`((icell-get c) x body ...)` or `((receive box) x body ...)`."
+        (tagcase arm
+          (lst (ys f l p)
+            (and (i64>= (size ys) 3)
+                 (tagcase (second ys) (sym (n f2 p2) #t) (else other #f))
+                 (tagcase (car ys)
+                   (lst (ws f3 l3 p3) (and (i64= (size ws) 2) (or (sym-is? (car ws) "icell-get") (sym-is? (car ws) "receive"))))
+                   (else other #f))))
+          (else other #f))))
+
+
     (define-rec
       (synth (subr kfx (cv st sexp) res)
         (lambda (v s e)
@@ -1091,7 +1376,7 @@
                                  ((tagcase sc (scheme (tv t) (tagcase t (ty-proc (es ps r) (any? (lambda ((p ty)) (not (null? (module-spec v p)))) ps)) (else other #f))))
                                   (refuse v (string-append "a procedure of a module parameter, a Rust generic fn, named as a value: " name)))
                                  (else
-                               (tagcase (named-instance v s sc)
+                               (tagcase (named-instance v (held v s name found (process-marks (cv-tvars v))) sc)
                                  (inst (t s regions effects) (res t (naming-effs s name wher t (cv-group v)) s)))))))))))))
 
       (quasi-items (subr kfx (cv st sexps i64) res)
@@ -1249,9 +1534,128 @@
             (str (x at-file at-pos) (res (ty-unit) nil s))
             (else other (synth v s e)))))
 
+      (spawn-form (subr kfx (cv st sexps tys) res)
+        (lambda (v s xs expected)
+          "`(spawn (box M r) body ...)`: a process, its value the process's
+           address, `(addr M A)`; `box`, its mailbox, `(inbox M r)`; `r`, its
+           place, a reap. Its body is checked as a `letreap`'s is, with the
+           mailbox bound; what it holds from outside, globals too, and its
+           messages, must be transmissible; what it does but on `r`, what a
+           process may do. That is the spawn's effect, with `nondet` if it
+           does I/O, and the address's allocation (`synth_spawn`)."
+          (let ((usage "a process's body is `(spawn (mailbox message-type place) body …)`"))
+            (if (or (i64< (size xs) 2) (not (i64= (size (items (car xs))) 3))
+                    (tagcase (car (items (car xs))) (sym (n f p) #f) (else other #t))
+                    (tagcase (third (items (car xs))) (sym (n f p) #f) (else other #t)))
+                (refuse v usage)
+                (let* ((header (items (car xs)))
+                       (box (sym-name (car header)))
+                       (r (sym-name (third header)))
+                       (name (string-append "'" r))
+                       (m (parse-type v (cv-tvars v) (second header)))
+                       (id (st-next s))
+                       (s (tagcase (fresh s) (res (u es s2) s2)))
+                       (mark (string-append "%process " (i64->string id))))
+                  (if (string-member? name (cv-tvars v))
+                      (refuse v (string-append "a process's place named as one already: " r))
+                      (tagcase (body (with-binds (with-tvars v (list mark name (string-append "%place " name)))
+                                                 (list (bind mark (scheme nil (ty-unit)) "mark")
+                                                       (local v r (ty-data "%place" (list (ty-var name))))
+                                                       (local v box (ty-data "%inbox" (list m (ty-var name))))))
+                                     s (cdr xs) nil)
+                        (res (t es s)
+                          (let* ((s (holds-checked v s id))
+                                 (why (untransmissible v s m nil nil))
+                                 (seen (masked (map (lambda ((a string)) (resolve-atom s a)) es) name))
+                                 (bad (any-of (lambda ((a string)) (not (crossing-atom? nil a))) seen)))
+                            (cond ((not (string=? why ""))
+                                   (refuse v (string-append "a process's messages are copied to it, so they must be transmissible, and a "
+                                               (string-append (show-ty s m) (string-append " is not: " why)))))
+                                  ((not (null? bad))
+                                   (refuse v (string-append "a process may share nothing that can be written, and its body has "
+                                               (string-append (show-effs bad) ", on a region outside it"))))
+                                  (else
+                                   (let* ((at (tagcase (if (null? expected) (ty-unit) (walk s (car expected)))
+                                                (ty-data (d args)
+                                                  (if (and (string=? d "%addr") (string=? (show-ty s (car args)) (show-ty s m)))
+                                                      (car (cdr args))
+                                                      (ty-rconst "@process")))
+                                                (else other (ty-rconst "@process"))))
+                                          (seen (if (any? (lambda ((a string)) (has-prefix? a "io:")) seen) (effs-union (list "nondet") seen) seen))
+                                          (s (note-types s (cv-file v) (cv-pos v) "spawn" (list m))))
+                                     (res (ty-data "%addr" (list m at))
+                                          (effs-union (list (string-append "alloc:" (region-string s at))) seen)
+                                          s)))))))))))))
+
+
+      (par-values (subr kfx (cv st sexps sexps tys binds (listof strings acyclic)) res)
+          (lambda (v s bindings forms expected bound effs)
+            "`par`'s branches, each its own effect, then its body, their values
+             bound as a `let`'s: no branch may transfer control out of itself,
+             and no two may interfere (`synth_par`)."
+            (if (null? bindings)
+                (begin (par-clash v effs) (body (with-binds v bound) s forms expected))
+                (let ((b (items (car bindings))))
+                  (tagcase (synth v s (second b))
+                    (res (t es s)
+                      (let* ((es (map (lambda ((a string)) (resolve-atom s a)) es))
+                             (out (any-of (lambda ((a string)) (or (has-prefix? a "goto:") (has-prefix? a "comefrom:"))) es)))
+                        (if (not (null? out))
+                            (refuse v (string-append "a `par` branch must end where it began, and this one has " (show-effs out)))
+                            (with-effs (par-values v s (cdr bindings) forms expected
+                                                   (cons (local v (name-of v (car b)) t) bound) (cons es effs))
+                                       es)))))))))
+
+
+      (par-form (subr kfx (cv st sexps tys) res)
+        (lambda (v s xs expected)
+          "`(par ((x e) ...) body ...)`: the branches, two or more, which may run
+           at once, their values bound for the body."
+          (cond ((or (i64< (size xs) 2) (tagcase (car xs) (lst (ys f l p) #f) (else other #t)))
+                 (refuse v "`(par ((name expression) …) body …)`"))
+                ((any? (lambda ((b sexp)) (or (tagcase b (lst (ys f l p) #f) (else other #t)) (not (i64= (size (items b)) 2))
+                                              (tagcase (car (items b)) (sym (n f p) #f) (else other #t))))
+                       (items (car xs)))
+                 (refuse v "a `par` binding is `(name expression)`"))
+                ((i64< (size (items (car xs))) 2)
+                 (refuse v "`par` runs two branches or more: `(par ((name expression) …) body …)`"))
+                (else (par-values v s (items (car xs)) (cdr xs) expected nil nil)))))
+
+
+      (pselect-arms (subr kfx (cv st sexps tys) res)
+          (lambda (v s arms expected)
+            "Each arm's wait, its value bound for its body; the arms of one type,
+             the first found, if none is expected, and the rest checked against
+             it."
+            (let ((ys (items (car arms))))
+              (tagcase (synth v s (car ys))
+                (res (w wes s)
+                  (tagcase (body (with-binds v (list (local v (name-of v (second ys)) w))) s (cdr (cdr ys)) expected)
+                    (res (t es s)
+                      (if (null? (cdr arms))
+                          (res t (effs-union wes es) s)
+                          (tagcase (pselect-arms v s (cdr arms) (next-expected s t expected))
+                            (res (t2 es2 s)
+                              (res (joined s t t2 expected) (effs-union wes (effs-union es es2)) (join-state v s t t2 expected))))))))))))
+
+
+      (pselect-form (subr kfx (cv st sexps tys) res)
+        (lambda (v s xs expected)
+          "`(pselect (W x body ...) ...)`: waits until one arm's wait is ready,
+           an I-cell filled or a message come, and runs that arm, the first so
+           in order; which are ready is the schedule's, so `nondet`."
+          (cond ((null? xs)
+                 (refuse v "`(pselect ((icell-get i-cell) name body …) ((receive mailbox) name body …) …)`"))
+                ((any? (lambda ((a sexp)) (not (pselect-arm? a))) xs)
+                 (refuse v "a `pselect` arm is `((icell-get i-cell) name body …)` or `((receive mailbox) name body …)`"))
+                (else (with-effs (pselect-arms v s xs expected) (list "nondet"))))))
+
       (synth-form (subr kfx (cv st sexp string sexps) res)
         (lambda (v s e h xs)
-          (cond ((string=? h "quote")
+          (cond ((string=? h "spawn") (spawn-form v s xs nil))
+                ((string=? h "par") (par-form v s xs nil))
+                ((string=? h "pselect") (pselect-form v s xs nil))
+                ((string=? h "quote")
                  "A quoted symbol (C56); a quoted datum of another kind is FX-26's
                   `datum`, which KFX has not yet."
                  (if (not (i64= (size xs) 1))
@@ -1351,7 +1755,10 @@
 
       (check-form (subr kfx (cv st sexp string sexps ty) res)
         (lambda (v s e h xs expected)
-          (cond ((control-form? h) (body-form v s h xs (list expected)))
+          (cond ((string=? h "spawn") (spawn-form v s xs (list expected)))
+                ((string=? h "par") (par-form v s xs (list expected)))
+                ((string=? h "pselect") (pselect-form v s xs (list expected)))
+                ((control-form? h) (body-form v s h xs (list expected)))
                 ((or (string=? h "letrena") (string=? h "letreap")) (letrena-form v s xs (list expected)))
                 ((and (blob-form? h) (null? (find-bind h (cv-binds v)))) (blob-form v s h xs (list expected)))
                 ((string=? h "prompt") (prompt-form v s xs (list expected)))
@@ -2103,7 +2510,12 @@
                             (begin
                               (bounds-kept v s n (lambda ((x string)) (projected v tvars (cdr xs) (ty-var x))))
                               (res (projected v tvars (cdr xs) t) (naming-effs s n wher t (cv-group v))
-                                   (proj-needs v s n tvars (cdr xs))))))))))))))
+                                   (tagcase (car xs)
+                                     (sym (name at-file at-pos)
+                                       "A global that may suspend, as a value: its future boxed, as a
+                                        name's is (`async-global`), at any effect it is given."
+                                       (async-global v (proj-needs v s n tvars (cdr xs)) name at-file at-pos))
+                                     (else other (proj-needs v s n tvars (cdr xs))))))))))))))))
 
       (bounds-kept (subr kfx (cv st string (subr kfx (string) ty)) unit)
         (lambda (v s n region-of-binder)
@@ -2195,7 +2607,7 @@
             (if (any? (lambda ((p ty)) (not (null? (module-spec v p)))) types)
                 (refuse v "a module parameter is a top-level procedure's (C24)")
             (tagcase (body (with-binds v (bind-params v params types)) s forms nil)
-              (res (r es s) (res (ty-proc es types r) nil (noted-lambda v s es))))))))
+              (res (r es s) (res (ty-proc es types r) nil (synced-lambda v (noted-lambda v s es) es params forms))))))))
 
       (module-params-apart (subr kfx (cv sexps tys st) st)
         (lambda (v params types s)
@@ -2235,7 +2647,7 @@
                                           s
                                           (note-fact s (cv-file v) (cv-pos v)
                                                      (string-append "param-types " (show-sexp (lst (map (lambda ((p ty)) (ty-sexp v s (zonk s p))) eps) "" 0 0)))))))
-                              (res expected nil (noted-lambda v s ees)))
+                              (res expected nil (synced-lambda v (noted-lambda v s ees) ees params forms)))
                             (refuse v (string-append "a lambda whose effect " (string-append (show-effs es)
                                       (string-append " is not within " (show-effs ees))))))))))))
             (else other (refuse v "a lambda where no procedure is expected")))))
@@ -2274,8 +2686,12 @@
       (synth-call (subr kfx (cv st string sexps tys) res)
         (lambda (v s h args expected)
           "A call of a name: a procedure in this group is `spin`, one that is a
-           local's value is a call of a procedure not known, so `spin` too."
-          (let ((found (find-bind h (cv-binds v))))
+           local's value is a call of a procedure not known, so `spin` too. A
+           form of processes that is a call is the form, whatever the program
+           binds its name to, as FX-26 parses it (C101)."
+          (let ((found (if (process-call? h)
+                           (find-bind (string-append "%form " h) (cv-binds v))
+                           (find-bind h (cv-binds v)))))
             (cond ((keyword? h)
                    (refuse v (string-append "(" (string-append h " ...) is FX-26's form, which KFX does not have, or a call of a local named by that keyword"))))
                   ((and (null? found) (string=? h "abort-current-continuation")) (abort-call v s args))
@@ -2370,7 +2786,8 @@
                   (else
                   (tagcase (car found)
                     (bind (n sc wher)
-                      (let ((from (st-next s)))
+                      (let* ((s (held v s h found (process-marks (cv-tvars v))))
+                             (from (st-next s)))
                       (tagcase (named-instance v s sc)
                         (inst (t s regions effects)
                           (place-needed v h wher sc from

@@ -6,7 +6,7 @@ use kayak_rt::*;
 // checks lambdas last, and so does kfx now; rustc, which checks a call in
 // order, is given the closure's parameter's type the checker found.
 
-pub fn map<A: Copy + 'static, B: Copy + 'static>(f: &'static dyn Fn(A) -> B, xs: List<A>) -> List<B> {
+pub fn map<A: Copy + 'static, B: Copy + 'static>(f: &'static (dyn Fn(A) -> B + Send + Sync), xs: List<A>) -> List<B> {
     if null_p(xs) {
         nil::<B>()
     } else {
@@ -15,7 +15,7 @@ pub fn map<A: Copy + 'static, B: Copy + 'static>(f: &'static dyn Fn(A) -> B, xs:
 }
 
 pub fn g(xs: List<i64>) -> List<i64> {
-    map(lambda1(move |x: i64| {
+    map(lambda1s(move |x: i64| {
         i64_plus(x, 1i64)
     }), xs)
 }

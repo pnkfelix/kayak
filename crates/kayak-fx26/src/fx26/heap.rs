@@ -214,28 +214,28 @@ pub fn w_unbound() -> i64 {
 // The heap: the space allocated in, the other, the next free index, and
 // the limit past which a step may not go. A constant each, made once.
 pub fn space() -> Ref<FlatArray<i64>> {
-    thread_local!(static ONCE: OnceCell<Ref<FlatArray<i64>>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
         kayak_rt::heap_new(make_flatarray_i64(1i64, 0i64))
     })
 }
 
 pub fn other_space() -> Ref<FlatArray<i64>> {
-    thread_local!(static ONCE: OnceCell<Ref<FlatArray<i64>>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
         kayak_rt::heap_new(make_flatarray_i64(1i64, 0i64))
     })
 }
 
 pub fn free_at() -> Ref<i64> {
-    thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
         kayak_rt::heap_new(1i64)
     })
 }
 
 pub fn collections() -> Ref<i64> {
-    thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
         kayak_rt::heap_new(0i64)
     })
@@ -414,14 +414,14 @@ pub fn collect_x(roots: FlatArray<i64>, globals: FlatArray<i64>, consts: FlatArr
 // Interned names: symbols, tags, labels and label lists, each a number in a
 // table of strings, made once a name, never freed.
 pub fn names() -> Ref<Array<Str>> {
-    thread_local!(static ONCE: OnceCell<Ref<Array<Str>>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<Array<Str>>);
     once(&ONCE, || {
         kayak_rt::heap_new(make_array(int_lit(64), str_lit("")))
     })
 }
 
 pub fn name_count() -> Ref<i64> {
-    thread_local!(static ONCE: OnceCell<Ref<i64>> = const { OnceCell::new() });
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
         kayak_rt::heap_new(0i64)
     })

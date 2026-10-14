@@ -472,6 +472,19 @@ Stages 2 and 3 done (C95): editing, history, Tab; Fixpt's commands.
 - Bignums in the engine leak (C99): KFX's `int`s are never freed, so each
   step on a bignum leaks its operands' conversions (500 MB for `(fact
   3000)`). Arithmetic on the limbs in the heap, or a free in `kayak-rt`.
+- **Processes, the rest (C101, C102):** the emitter's `spawn`, `send`,
+  `receive`, `pselect`, `par` (choosing `par2` or `par2_shared`), the
+  barrier after each top-level form (`quiesce`); the engine's; KFX tests;
+  then the REPL's session and machine (the machine's state is in globals
+  a process may not hold: to be designed with the user).
+- **The emitter's memos gave wrong Rust** (2026-10-14): a memo file made
+  while the checker changed (today's intermediate compilers) held, under a
+  key today's sources make, Rust without the facts of `synth` (no `match
+  … {}` for a `void` call, no turbofish). A fresh cache is right. Kept:
+  `target/memo-bug/` (the memo file, the commit, the sources' diff).
+- Inside a global's value, Fixpt does not count a local lambda's reads of
+  globals against its declared effect; KFX does, so refuses
+  `pselect-stop.fx` and the like (C101).
 - A skimmer in KFX, after Coopt's (repl.md, Coopt's skimmer): forms and
   the names they define, found lexically; for `incr.kfx` (measure first
   whether reading costs in a warm compile), and the REPL's names before

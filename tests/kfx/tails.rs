@@ -113,7 +113,7 @@ pub fn rebound(n: i64, acc: i64) -> i64 {
     if i64_eq(n, 0i64) {
         acc
     } else {
-        let rebound = the::<&'static dyn Fn(i64, i64) -> i64>(lambda2(move |a: i64, b: i64| {
+        let rebound = the::<&'static (dyn Fn(i64, i64) -> i64 + Send + Sync)>(lambda2s(move |a: i64, b: i64| {
             i64_star(100i64, b)
         }));
         rebound(i64_minus(n, 1i64), i64_plus(acc, 1i64))
