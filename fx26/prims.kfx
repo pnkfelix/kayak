@@ -98,19 +98,19 @@
 "Values taken apart, a wrong shape an error: the checker has seen to it
  that none is, but a primitive is not to trust that."
 (define val-int (subr eng (val) int)
-  (lambda (v) (tagcase v (v-int (n) n) (else other (begin (error "the engine: an integer is expected") 0)))))
+  (lambda (v) (tagcase v (v-int (n) n) (else other (begin (failed-with! "the engine: an integer is expected") 0)))))
 
 (define string-of (subr eng (val) string)
-  (lambda (v) (tagcase v (v-string (s) s) (else other (begin (error "the engine: a string is expected") "")))))
+  (lambda (v) (tagcase v (v-string (s) s) (else other (begin (failed-with! "the engine: a string is expected") "")))))
 
 (define char-of (subr eng (val) char)
-  (lambda (v) (tagcase v (v-char (c) c) (else other (begin (error "the engine: a character is expected") #\space)))))
+  (lambda (v) (tagcase v (v-char (c) c) (else other (begin (failed-with! "the engine: a character is expected") #\space)))))
 
 (define bool-of (subr eng (val) bool)
-  (lambda (v) (tagcase v (v-bool (b) b) (else other (begin (error "the engine: a boolean is expected") #f)))))
+  (lambda (v) (tagcase v (v-bool (b) b) (else other (begin (failed-with! "the engine: a boolean is expected") #f)))))
 
 (define symbol-of (subr eng (val) symbol)
-  (lambda (v) (tagcase v (v-symbol (s) s) (else other (begin (error "the engine: a symbol is expected") (string->symbol ""))))))
+  (lambda (v) (tagcase v (v-symbol (s) s) (else other (begin (failed-with! "the engine: a symbol is expected") (string->symbol ""))))))
 
 (define w64 (subr kfx (int) int)
   (lambda (n) "An `i64`'s value: the low 64 bits, two's complement." (i64->int (int->i64 n))))
@@ -152,7 +152,7 @@
 (define flag (subr kfx (bool) val) (lambda (b) (v-bool b)))
 
 (define bytes-of (subr eng (val) (bytevectorof @h))
-  (lambda (v) (tagcase v (v-bytes (b) b) (else other (begin (error "the engine: a bytevector is expected") (make-bytevector 0 (int->u8 0)))))))
+  (lambda (v) (tagcase v (v-bytes (b) b) (else other (begin (failed-with! "the engine: a bytevector is expected") (make-bytevector 0 (int->u8 0)))))))
 
 "An I/O error as FX-26 has it: a product of its kind, a sum, and the
  system's words."
@@ -180,7 +180,7 @@
     (lambda (xs acc) (if (null? xs) acc (reverse-vals (cdr xs) (cons (car xs) acc))))))
 
 (define real-of (subr eng (val) f64)
-  (lambda (v) (tagcase v (v-real (x) x) (else other (begin (error "the engine: an f64 is expected") 0.0)))))
+  (lambda (v) (tagcase v (v-real (x) x) (else other (begin (failed-with! "the engine: an f64 is expected") 0.0)))))
 
 (define same-atom? (subr eng (val val) bool)
   (lambda (a b)
@@ -217,7 +217,7 @@
                      ((string=? op ">") (flag (> x y)))
                      ((string=? op "<=") (flag (<= x y)))
                      ((string=? op ">=") (flag (>= x y)))
-                     (else (begin (error (string-append "the engine has no primitive " (string-append t op))) (v-unit))))))))))
+                     (else (begin (failed-with! (string-append "the engine has no primitive " (string-append t op))) (v-unit))))))))))
 
 (define f64-prim (subr eng (string val val) val)
   (lambda (n a b)
@@ -247,7 +247,7 @@
                      ((string=? n "f64>") (flag (f64> x y)))
                      ((string=? n "f64>=") (flag (f64>= x y)))
                      ((string=? n "f64=") (flag (f64= x y)))
-                     (else (begin (error (string-append "the engine has no primitive " n)) (v-unit))))))))))
+                     (else (begin (failed-with! (string-append "the engine has no primitive " n)) (v-unit))))))))))
 
 (define apply-prim (subr eng (string vals) val)
   (lambda (n xs)
@@ -320,22 +320,22 @@
             ((string=? n "symbol->string") (v-string (symbol->string (symbol-of a))))
             ((string=? n "symbol=?") (flag (symbol=? (symbol-of a) (symbol-of b))))
             ((string=? n "cons") (v-pair (new a) (new b)))
-            ((string=? n "car") (tagcase a (v-pair (h t) (get h)) (else other (begin (error "car of nil") (v-unit)))))
-            ((string=? n "cdr") (tagcase a (v-pair (h t) (get t)) (else other (begin (error "cdr of nil") (v-unit)))))
+            ((string=? n "car") (tagcase a (v-pair (h t) (get h)) (else other (begin (failed-with! "car of nil") (v-unit)))))
+            ((string=? n "cdr") (tagcase a (v-pair (h t) (get t)) (else other (begin (failed-with! "cdr of nil") (v-unit)))))
             ((string=? n "null?") (tagcase a (v-nil () (flag #t)) (else other (flag #f))))
             ((string=? n "pair?") (tagcase a (v-pair (h t) (flag #t)) (else other (flag #f))))
             ((or (string=? n "length") (string=? n "list-length")) (v-int (i64->int (size (list-of a)))))
             ((string=? n "reverse") (list-val (reverse-vals (list-of a) nil)))
             ((string=? n "new") (v-ref (new a)))
-            ((string=? n "get") (tagcase a (v-ref (r) (get r)) (else other (begin (error "the engine: a reference is expected") (v-unit)))))
-            ((string=? n "set") (tagcase a (v-ref (r) (begin (set r b) (v-unit))) (else other (begin (error "the engine: a reference is expected") (v-unit)))))
+            ((string=? n "get") (tagcase a (v-ref (r) (get r)) (else other (begin (failed-with! "the engine: a reference is expected") (v-unit)))))
+            ((string=? n "set") (tagcase a (v-ref (r) (begin (set r b) (v-unit))) (else other (begin (failed-with! "the engine: a reference is expected") (v-unit)))))
             ((string=? n "make-array") (v-array (make-array (val-int a) b)))
             ((string=? n "array-ref") (tagcase a (v-array (arr) (array-ref arr (val-int b))) (else other (v-unit))))
             ((string=? n "array-set!") (tagcase a (v-array (arr) (begin (array-set! arr (val-int b) (car (cdr (cdr xs)))) (v-unit))) (else other (v-unit))))
             ((string=? n "array-length") (tagcase a (v-array (arr) (v-int (array-length arr))) (else other (v-unit))))
             ((string=? n "array->list") (tagcase a (v-array (arr) (list-val (array-vals arr 0))) (else other (v-unit))))
             ((string=? n "list->array") (v-array (vals-array (list-of a))))
-            ((string=? n "error") (begin (error (string-of a)) (v-unit)))
+            ((string=? n "error") (begin (failed-with! (string-of a)) (v-unit)))
             ((string=? n "%identity") a)
             ((string=? n "int?") (flag (tagcase a (v-int (x) #t) (else other #f))))
             ((string=? n "string?") (flag (tagcase a (v-string (x) #t) (else other #f))))
@@ -396,4 +396,4 @@
             ((not (string=? (fixed-type n) "")) (fixed-prim (fixed-type n) (fixed-op n) a b))
             ((string=? n "int->f64") (v-real (int->f64 (val-int a))))
             ((has-prefix? n "f64") (f64-prim n a b))
-            (else (begin (error (string-append "the engine has no primitive " n)) (v-unit)))))))
+            (else (begin (failed-with! (string-append "the engine has no primitive " n)) (v-unit)))))))

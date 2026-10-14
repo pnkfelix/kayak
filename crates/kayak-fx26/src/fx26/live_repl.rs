@@ -275,6 +275,15 @@ pub mod session {
         2000000i64
     }
 
+    /// The tops numbered; what the engine cannot number a failure (C110), as
+    /// it was before the engine said one rather than failing, for the Rust
+    /// to catch (`machine-refused!`).
+    pub fn numbered_or_failed_x(tops: List<&'static Top>) -> List<i64> {
+        let ns = number_tops_x(tops);
+        failure_raised_x();
+        ns
+    }
+
     pub fn make_entry(k: i64, text: Str, typed: Str, defined: Str, quiet: bool, needs: List<i64>, state: i64, tops: List<i64>, shown: Str, timed: bool, now: i64) -> Entry {
         Product_3num_4text_5typed_7defined_5quiet_5needs_5state_4tops_5shown_3out_5began_5ended_3row_5drawn_5timed_5steps_3gcs_9gcs_after(k, text, typed, defined, quiet, needs, kayak_rt::heap_new(state), kayak_rt::heap_new(tops), kayak_rt::heap_new(shown), kayak_rt::heap_new(str_lit("")), kayak_rt::heap_new(now), kayak_rt::heap_new(if i64_eq(state, st_done()) {
             now
@@ -1529,7 +1538,7 @@ pub mod session {
                 set(repl_globals(), gs);
                 let ns = if get(machine_side()) {
                     globals_room_x(gs);
-                    number_tops_x(lower_tops(kayak_rt::heap_cons(form, kayak_rt::nil()), gs))
+                    numbered_or_failed_x(lower_tops(kayak_rt::heap_cons(form, kayak_rt::nil()), gs))
                 } else {
                     nil::<i64>()
                 };
@@ -2489,7 +2498,7 @@ pub mod session {
         if null_p(forms) {
             ()
         } else {
-            let ns = number_tops_x(lower_tops(kayak_rt::heap_cons(car(forms), kayak_rt::nil()), get(repl_globals())));
+            let ns = numbered_or_failed_x(lower_tops(kayak_rt::heap_cons(car(forms), kayak_rt::nil()), get(repl_globals())));
             if (null_p(ns) || i64_lt(car(ns), 0i64)) {
                 ()
             } else {
@@ -2519,6 +2528,28 @@ pub mod session {
         }), get(entries()))))
     }
 
+    /// Entry `k` failed, the engine said (C110), or the Rust caught it; or
+    /// the draft's run.
+    pub fn run_failed_x(k: i64, message: Str, now: i64) -> () {
+        set(fuel(), -1i64);
+        set(deadline(), -1i64);
+        set(capturing(), false);
+        let found = entry_numbered(get(entries()), k);
+        if i64_eq(k, 0i64) {
+            set(spec_state(), 2i64);
+            parked_cleared_x(0i64);
+            noted_x(string_append(str_lit("running it fails: "), message), true)
+        } else if null_p(found) {
+            ()
+        } else {
+            let e = car(found);
+            taken_output_x(e);
+            ended_x(e, st_failed(), now);
+            set(e.8, string_append(str_lit("! evaluation failed: "), message));
+            parked_cleared_x(k)
+        }
+    }
+
     /// A slice of the draft's run.
     pub fn draft_slice_x(now: i64) -> () {
         set(last_run(), 0i64);
@@ -2529,7 +2560,9 @@ pub mod session {
         set(spec_steps(), i64_plus(get(spec_steps()), i64_minus(slice_steps(), get(fuel()))));
         set(fuel(), -1i64);
         set(deadline(), -1i64);
-        if not(i64_eq(w, w_paused())) {
+        if get(engine_failed()) {
+            run_failed_x(0i64, failure_taken_x(), now)
+        } else if not(i64_eq(w, w_paused())) {
             set(spec_state(), 2i64);
             parked_cleared_x(0i64);
             noted_x(string_append(str_lit("= "), string_append(show_word(w), get(spec_type()))), false)
@@ -2849,7 +2882,9 @@ pub mod session {
             set(deadline(), -1i64);
             set(capturing(), false);
             taken_output_x(e);
-            if not(i64_eq(w, w_paused())) {
+            if get(engine_failed()) {
+                run_failed_x(k, failure_taken_x(), now)
+            } else if not(i64_eq(w, w_paused())) {
                 top_ended_x(e, w, now)
             } else if (i64_gt_eq(get(step_limit()), 0i64) && i64_gt(get(e.15), get(step_limit()))) {
                 ended_x(e, st_failed(), now);
@@ -2863,23 +2898,7 @@ pub mod session {
 
     /// Entry `k` failed (the Rust caught the failure); or the draft's run.
     pub fn failed_x(k: i64, message: Str, now: i64) -> () {
-        set(fuel(), -1i64);
-        set(deadline(), -1i64);
-        set(capturing(), false);
-        let found = entry_numbered(get(entries()), k);
-        if i64_eq(k, 0i64) {
-            set(spec_state(), 2i64);
-            parked_cleared_x(0i64);
-            noted_x(string_append(str_lit("running it fails: "), message), true)
-        } else if null_p(found) {
-            ()
-        } else {
-            let e = car(found);
-            taken_output_x(e);
-            ended_x(e, st_failed(), now);
-            set(e.8, string_append(str_lit("! evaluation failed: "), message));
-            parked_cleared_x(k)
-        }
+        run_failed_x(k, message, now)
     }
 
     /// What to write: in plain mode, each entry's output, and its line when

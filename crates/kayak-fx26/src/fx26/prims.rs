@@ -167,7 +167,7 @@ pub fn val_int(v: &'static Val) -> Int {
         }
         _ => {
             let other = tagcase_;
-            error(str_lit("the engine: an integer is expected"));
+            failed_with_x(str_lit("the engine: an integer is expected"));
             int_lit(0)
         }
     }
@@ -181,7 +181,7 @@ pub fn string_of(v: &'static Val) -> Str {
         }
         _ => {
             let other = tagcase_;
-            error(str_lit("the engine: a string is expected"));
+            failed_with_x(str_lit("the engine: a string is expected"));
             str_lit("")
         }
     }
@@ -195,7 +195,7 @@ pub fn char_of(v: &'static Val) -> char {
         }
         _ => {
             let other = tagcase_;
-            error(str_lit("the engine: a character is expected"));
+            failed_with_x(str_lit("the engine: a character is expected"));
             ' '
         }
     }
@@ -209,7 +209,7 @@ pub fn bool_of(v: &'static Val) -> bool {
         }
         _ => {
             let other = tagcase_;
-            error(str_lit("the engine: a boolean is expected"));
+            failed_with_x(str_lit("the engine: a boolean is expected"));
             false
         }
     }
@@ -223,7 +223,7 @@ pub fn symbol_of(v: &'static Val) -> Symbol {
         }
         _ => {
             let other = tagcase_;
-            error(str_lit("the engine: a symbol is expected"));
+            failed_with_x(str_lit("the engine: a symbol is expected"));
             string_to_symbol(str_lit(""))
         }
     }
@@ -323,7 +323,7 @@ pub fn bytes_of(v: &'static Val) -> Bytes {
         }
         _ => {
             let other = tagcase_;
-            error(str_lit("the engine: a bytevector is expected"));
+            failed_with_x(str_lit("the engine: a bytevector is expected"));
             make_bytevector(int_lit(0), int_to_u8(int_lit(0)))
         }
     }
@@ -411,7 +411,7 @@ pub fn real_of(v: &'static Val) -> f64 {
         }
         _ => {
             let other = tagcase_;
-            error(str_lit("the engine: an f64 is expected"));
+            failed_with_x(str_lit("the engine: an f64 is expected"));
             0.0f64
         }
     }
@@ -531,7 +531,7 @@ pub fn fixed_prim(t: Str, op: Str, a: &'static Val, b: &'static Val) -> &'static
         } else if string_eq_p(op, str_lit(">=")) {
             flag(_gt_eq(x, y))
         } else {
-            error(string_append(str_lit("the engine has no primitive "), string_append(t, op)));
+            failed_with_x(string_append(str_lit("the engine has no primitive "), string_append(t, op)));
             v_unit()
         }
     }
@@ -588,7 +588,7 @@ pub fn f64_prim(n: Str, a: &'static Val, b: &'static Val) -> &'static Val {
         } else if string_eq_p(n, str_lit("f64=")) {
             flag(f64_eq(x, y))
         } else {
-            error(string_append(str_lit("the engine has no primitive "), n));
+            failed_with_x(string_append(str_lit("the engine has no primitive "), n));
             v_unit()
         }
     }
@@ -745,7 +745,7 @@ pub fn apply_prim(n: Str, xs: Vals) -> &'static Val {
             }
             _ => {
                 let other = tagcase_;
-                error(str_lit("car of nil"));
+                failed_with_x(str_lit("car of nil"));
                 v_unit()
             }
         }
@@ -757,7 +757,7 @@ pub fn apply_prim(n: Str, xs: Vals) -> &'static Val {
             }
             _ => {
                 let other = tagcase_;
-                error(str_lit("cdr of nil"));
+                failed_with_x(str_lit("cdr of nil"));
                 v_unit()
             }
         }
@@ -797,7 +797,7 @@ pub fn apply_prim(n: Str, xs: Vals) -> &'static Val {
             }
             _ => {
                 let other = tagcase_;
-                error(str_lit("the engine: a reference is expected"));
+                failed_with_x(str_lit("the engine: a reference is expected"));
                 v_unit()
             }
         }
@@ -810,7 +810,7 @@ pub fn apply_prim(n: Str, xs: Vals) -> &'static Val {
             }
             _ => {
                 let other = tagcase_;
-                error(str_lit("the engine: a reference is expected"));
+                failed_with_x(str_lit("the engine: a reference is expected"));
                 v_unit()
             }
         }
@@ -864,7 +864,7 @@ pub fn apply_prim(n: Str, xs: Vals) -> &'static Val {
     } else if string_eq_p(n, str_lit("list->array")) {
         v_array(vals_array(list_of(a)))
     } else if string_eq_p(n, str_lit("error")) {
-        error(string_of(a));
+        failed_with_x(string_of(a));
         v_unit()
     } else if string_eq_p(n, str_lit("%identity")) {
         a
@@ -1189,7 +1189,7 @@ pub fn apply_prim(n: Str, xs: Vals) -> &'static Val {
     } else if has_prefix_p(n, str_lit("f64")) {
         f64_prim(n, a, b)
     } else {
-        error(string_append(str_lit("the engine has no primitive "), n));
+        failed_with_x(string_append(str_lit("the engine has no primitive "), n));
         v_unit()
     }
 }

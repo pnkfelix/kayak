@@ -36,7 +36,7 @@ pub fn checked_car(p: i64) -> i64 {
     if is_obj_p(p, ob_pair()) {
         pair_car(p)
     } else {
-        error(str_lit("car of nil"));
+        failed_with_x(str_lit("car of nil"));
         0i64
     }
 }
@@ -45,7 +45,7 @@ pub fn checked_cdr(p: i64) -> i64 {
     if is_obj_p(p, ob_pair()) {
         pair_cdr(p)
     } else {
-        error(str_lit("cdr of nil"));
+        failed_with_x(str_lit("cdr of nil"));
         0i64
     }
 }
@@ -74,7 +74,7 @@ pub fn fill_unbound_x(p: i64, from: i64, n: i64) -> () {
 
 pub fn filled_x(kind: i64, n: i64, w: i64) -> i64 {
     if i64_lt(n, 0i64) {
-        error(str_lit("a negative length"));
+        failed_with_x(str_lit("a negative length"));
         0i64
     } else {
         let p = alloc_x(kind, n);
@@ -89,7 +89,7 @@ pub fn filled_raw_x(kind: i64, n: i64, raw: i64) -> i64 {
 
 pub fn element(p: i64, i: i64) -> i64 {
     if (i64_lt(i, 0i64) || i64_gt_eq(i, obj_size(p))) {
-        error(str_lit("an index out of range"));
+        failed_with_x(str_lit("an index out of range"));
         0i64
     } else {
         obj_ref(p, i)
@@ -98,7 +98,7 @@ pub fn element(p: i64, i: i64) -> i64 {
 
 pub fn element_set_x(p: i64, i: i64, w: i64) -> () {
     if (i64_lt(i, 0i64) || i64_gt_eq(i, obj_size(p))) {
-        error(str_lit("an index out of range"));
+        failed_with_x(str_lit("an index out of range"));
         ()
     } else {
         obj_set_x(p, i, w)
@@ -156,7 +156,7 @@ pub fn copied_range_x(mut to: i64, mut from: i64, mut start: i64, mut i: i64, mu
 
 pub fn substring_w_x(s: i64, start: i64, end: i64) -> i64 {
     if (i64_lt(start, 0i64) || i64_lt(end, start) || i64_gt(end, string_length_w(s))) {
-        error(str_lit("substring range out of bounds"));
+        failed_with_x(str_lit("substring range out of bounds"));
         0i64
     } else {
         let p = alloc_x(ob_string(), i64_minus(end, start));
@@ -374,7 +374,7 @@ pub fn same_atom_w_p(a: i64, b: i64) -> bool {
 // Bytes: a byte a word.
 pub fn bytes_copy_x(b: i64, start: i64, end: i64) -> i64 {
     if (i64_lt(start, 0i64) || i64_lt(end, start) || i64_gt(end, obj_size(b))) {
-        error(str_lit("bytevector-copy: a span that does not fit"));
+        failed_with_x(str_lit("bytevector-copy: a span that does not fit"));
         0i64
     } else {
         let p = alloc_x(ob_bytes(), i64_minus(end, start));
@@ -418,7 +418,7 @@ pub fn bytes_moved_back_x(mut to: i64, mut at: i64, mut from: i64, mut start: i6
 pub fn bytes_copy_into_x(to: i64, at: i64, from: i64, start: i64, end: i64) -> () {
     let (s, e, t) = (fixnum_value(start), fixnum_value(end), fixnum_value(at));
     if (i64_lt(s, 0i64) || i64_lt(e, s) || i64_gt(e, obj_size(from)) || i64_lt(t, 0i64) || i64_gt(i64_plus(t, i64_minus(e, s)), obj_size(to))) {
-        error(str_lit("bytevector-copy!: a span that does not fit"))
+        failed_with_x(str_lit("bytevector-copy!: a span that does not fit"))
     } else if i64_gt(t, s) {
         bytes_moved_back_x(to, t, from, s, i64_minus(e, 1i64))
     } else {
@@ -725,6 +725,10 @@ pub fn fixed_op_word(name: Str, a: i64, b: i64) -> i64 {
             int_word_x(wrapped(t, _minus(x, y)))
         } else if string_eq_p(op, str_lit("*")) {
             int_word_x(wrapped(t, _star(x, y)))
+        } else if ((string_eq_p(op, str_lit("-quotient")) || string_eq_p(op, str_lit("-remainder"))) && zero_p(y)) {
+            // kayak-rt's failure, the engine's first (C110).
+            failed_with_x(string_append(name, str_lit(": division by zero")));
+            0i64
         } else if string_eq_p(op, str_lit("-quotient")) {
             int_word_x(wrapped(t, quotient(x, y)))
         } else if string_eq_p(op, str_lit("-remainder")) {
@@ -750,7 +754,7 @@ pub fn fixed_op_word(name: Str, a: i64, b: i64) -> i64 {
         } else if string_eq_p(op, str_lit(">=")) {
             bool_word(_gt_eq(x, y))
         } else {
-            error(string_append(str_lit("the engine has no primitive "), name));
+            failed_with_x(string_append(str_lit("the engine has no primitive "), name));
             0i64
         }
     }

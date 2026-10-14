@@ -2483,3 +2483,31 @@ front end that edits a line as it is typed is an FX-26 program:
   Fixpt's answers. On a pseudo-terminal (`script`), raw mode gives each
   key as typed, ^C as 3, and restores. kfx accepts 167 of Fixpt's
   programs, all agreeing, and refuses all 296 Fixpt refuses.
+
+## C110. The engine's failures are values (2026-10-14)
+
+For the REPL in KFX processes (C111): the machine's state is at `@h`,
+which no process may write, so the machine is the program's own
+computation, and FX-26 catches no failure there. So the engine says a
+run's failure rather than failing, as a Rust program returns an `Err`:
+- `engine-failed` and `engine-failure` (ir.kfx), set once by
+  `failed-with!`, for every `error` the engine had: a program's `error`,
+  `car` of nil, an index out of range, what the engine cannot do, its own
+  invariants of a run. `run` stops at the top of its next step, giving
+  `w-failed`; a primitive's loop that goes on meanwhile works on a dummy
+  value, harmless since the run is over. The heap's own invariant
+  (`alloc!` past the room it was given) and `load!`'s stay failures:
+  going on after either could break the heap later runs use.
+- **kayak-rt's failures beneath a primitive**, audited (its `fail` sites
+  the engine reaches): division by zero (`i64`, `int`, the fixed widths),
+  `arithmetic-shift` by a count past 2^32, `integer->char` of no
+  character, `f64->int` of no integer. Each is checked first and said as
+  the engine's, in kayak-rt's words. A debug build's backtraces show each
+  goes by the engine's failure, none by kayak-rt's.
+- **As before**: `kayak-fx26 FILE` fails with the message, raised again
+  (`failure-raised!`), so the corpus's and Fixpt's programs run as they
+  did; C103's REPL ends the entry (or the draft's run) failed, as the
+  Rust's catch did, and numbering's failure is raised for its catch.
+- Left failing: lowering's (`lower.kfx`, of effect `kfx`), which C111
+  tries first in a worker; `exit`, which ends the REPL, as in Fixpt's;
+  a stack overflow.

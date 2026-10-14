@@ -10,6 +10,43 @@ use super::*;
 // The engine's effect: its heap, and the world, which an FX-26 program's
 // I/O is (C49).
 
+// A run's failure (C110): `error`, a trap (`car` of nil, an index out of
+// range), or what the engine cannot do. The engine says one here, not by
+// failing itself, so that a run that fails is a value its caller sees: the
+// machine's step stops at it (`w-failed`), and the REPL ends the entry,
+// where a failure would end the REPL, since FX-26 catches none in a
+// program's own computation. Its message, the first said; whether one was.
+pub fn engine_failed() -> Ref<bool> {
+    kayak_rt::kept_constant!(ONCE: Ref<bool>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(false)
+    })
+}
+
+pub fn engine_failure() -> Ref<Str> {
+    kayak_rt::kept_constant!(ONCE: Ref<Str>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(str_lit(""))
+    })
+}
+
+pub fn failed_with_x(message: Str) -> () {
+    if get(engine_failed()) {
+        ()
+    } else {
+        set(engine_failure(), message);
+        set(engine_failed(), true)
+    }
+}
+
+// The failure said, taken: its message, and none kept.
+pub fn failure_taken_x() -> Str {
+    let m = get(engine_failure());
+    set(engine_failed(), false);
+    set(engine_failure(), str_lit(""));
+    m
+}
+
 // A value, of any shape: uniform, so that a member of a union is its
 // union's value already (C57). Integers of every width are `int`, wrapped
 // by their operations. A pair's head and tail are cells, as FX-26's pairs

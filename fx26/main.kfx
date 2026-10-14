@@ -79,6 +79,12 @@
                      (top-none () (the i64 -1)))))
             (cons n (number-tops! (cdr tops))))))))
 
+"A failure the engine said (C110), the program's, as it was before the
+ engine said one rather than failing: `kayak-fx26 FILE` fails as Fixpt
+ does, with its message."
+(define failure-raised! (subr running () unit)
+  (lambda () (if (get engine-failed) (error (failure-taken!)) #u)))
+
 (define-rec
   (run-tops (subr running ((listof i64 acyclic) bool) unit)
     (lambda (ns quiet)
@@ -87,8 +93,8 @@
           (let ((n (car ns)))
             (begin
               (cond ((i64= n -1) #u)
-                    ((i64< n 0) (begin (run 0 (i64- (i64- 0 n) 2) 0 w-nil 0 0 0) #u))
-                    (else (let ((w (run 0 n 0 w-nil 0 0 0))) (if quiet #u (say (string-append (show-word w) "\n"))))))
+                    ((i64< n 0) (begin (run 0 (i64- (i64- 0 n) 2) 0 w-nil 0 0 0) (failure-raised!)))
+                    (else (let ((w (run 0 n 0 w-nil 0 0 0))) (begin (failure-raised!) (if quiet #u (say (string-append (show-word w) "\n")))))))
               (run-tops (cdr ns) quiet)))))))
 
 (define load! (subr running (strings) unit)
@@ -144,6 +150,7 @@ each turn of its loop that took more than 5 ms, and where the time went.
               (load! gs)
               (let ((ns (number-tops! (lower-tops forms gs))))
                 (begin
+                  (failure-raised!)
                   (run-tops ns with-main)
                   (if with-main
                       (let ((i (position-of "main" gs 0)))
@@ -152,7 +159,7 @@ each turn of its loop that took more than 5 ms, and where the time went.
                             (begin
                               (set program-args (after-dashes as))
                               (let ((w (run 2 0 0 w-nil 0 (flatarray-ref-i64 (get globals) i) w-nil)))
-                                (cond ((is-obj? w ob-string) (begin (say (word-string w)) 0))
+                                (cond ((get engine-failed) (begin (failure-raised!) 0)) ((is-obj? w ob-string) (begin (say (word-string w)) 0))
                                       ((and running (fixnum? w)) (begin (exit (i64->int (i64-and (fixnum-value w) 255))) 0))
                                       (else (begin (say (show-word w)) 0)))))))
                       0))))))))))

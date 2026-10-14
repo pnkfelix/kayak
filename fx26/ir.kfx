@@ -7,6 +7,24 @@
 (define-effect eng (maxeff (read @globals) spin (read @h) (write @h) (alloc @h)
                            (io stdin) (io stdout) (io stderr) (io clock) (io fs-read) (io fs-write) (io args) (io exit)))
 
+"A run's failure (C110): `error`, a trap (`car` of nil, an index out of
+ range), or what the engine cannot do. The engine says one here, not by
+ failing itself, so that a run that fails is a value its caller sees: the
+ machine's step stops at it (`w-failed`), and the REPL ends the entry,
+ where a failure would end the REPL, since FX-26 catches none in a
+ program's own computation. Its message, the first said; whether one was."
+(define engine-failed (ref bool @h) (new #f))
+(define engine-failure (ref string @h) (new ""))
+
+(define failed-with! (subr (maxeff (read @globals) spin (read @h) (write @h)) (string) unit)
+  (lambda (message)
+    (if (get engine-failed) #u (begin (set engine-failure message) (set engine-failed #t)))))
+
+"The failure said, taken: its message, and none kept."
+(define failure-taken! (subr (maxeff (read @globals) spin (read @h) (write @h)) () string)
+  (lambda ()
+    (let ((m (get engine-failure))) (begin (set engine-failed #f) (set engine-failure "") m))))
+
 "A value, of any shape: uniform, so that a member of a union is its
  union's value already (C57). Integers of every width are `int`, wrapped
  by their operations. A pair's head and tail are cells, as FX-26's pairs

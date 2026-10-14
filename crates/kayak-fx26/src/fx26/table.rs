@@ -297,7 +297,7 @@ pub fn prim_number(n: Str) -> i64 {
     } else if not(string_eq_p(fixed_type(n), str_lit(""))) {
         i64_plus(fixed_base(), intern_x(n))
     } else {
-        error(string_append(str_lit("the engine has no primitive "), n));
+        failed_with_x(string_append(str_lit("the engine has no primitive "), n));
         0i64
     }
 }
@@ -344,7 +344,7 @@ pub fn literal_word_x(v: &'static Val) -> i64 {
         }
         _ => {
             let other = tagcase_;
-            error(str_lit("the engine: a literal it cannot make"));
+            failed_with_x(str_lit("the engine: a literal it cannot make"));
             0i64
         }
     }

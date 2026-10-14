@@ -153,7 +153,7 @@
     (let ((i (list-position n prim-list 0)))
       (cond ((i64>= i 0) i)
             ((not (string=? (fixed-type n) "")) (i64+ fixed-base (intern! n)))
-            (else (begin (error (string-append "the engine has no primitive " n)) 0))))))
+            (else (begin (failed-with! (string-append "the engine has no primitive " n)) 0))))))
 
 (define-effect numbering (maxeff loading (read @h) (write @h)))
 
@@ -172,7 +172,7 @@
       (v-prim (n a) (immediate imm-prim (prim-number n)))
       (v-ctor (t n) (let ((p (alloc! ob-ctor 2))) (begin (obj-set! p 0 (fixnum (intern! t))) (obj-set! p 1 (fixnum n)) p)))
       (v-tag (n) (immediate imm-tag n))
-      (else other (begin (error "the engine: a literal it cannot make") 0)))))
+      (else other (begin (failed-with! "the engine: a literal it cannot make") 0)))))
 
 "Quoted data, interned (C79): each pair and atom of a quote made once,
  at loading, a constant; an equal one found again by its text, so that

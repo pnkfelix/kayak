@@ -46,6 +46,18 @@
         ((i64>= op fixed-base) 8)
         (else 64)))))
 
+"What kayak-rt would fail at, beneath a primitive, said first as the
+ engine's failure (C110), in kayak-rt's words: a failure there would end
+ the REPL, the program's own computation, which nothing catches."
+(define refused-op! (subr hp (string) i64)
+  (lambda (message) (begin (failed-with! message) 0)))
+
+(define char-code? (subr kfx (i64) bool)
+  (lambda (n) (and (i64>= n 0) (i64<= n 1114111) (not (and (i64>= n 55296) (i64<= n 57343))))))
+
+(define integral? (subr kfx (f64) bool)
+  (lambda (x) (and (f64-finite? x) (f64= (f64-floor x) x))))
+
 (define apply-op (subr vm (i64 i64) i64)
   (lambda (op args)
     (let* ((a (if (i64= args w-nil) (the i64 0) (pair-car args)))
@@ -57,6 +69,8 @@
         ((i64= op 0) (i64-word! (i64+ (word-i64 a) (word-i64 b))))
         ((i64= op 1) (i64-word! (i64- (word-i64 a) (word-i64 b))))
         ((i64= op 2) (i64-word! (i64* (word-i64 a) (word-i64 b))))
+        ((and (or (i64= op 3) (i64= op 4)) (i64= (word-i64 b) 0))
+         (refused-op! (if (i64= op 3) "i64-quotient: division by zero" "i64-remainder: division by zero")))
         ((i64= op 3) (i64-word! (i64-quotient (word-i64 a) (word-i64 b))))
         ((i64= op 4) (i64-word! (i64-remainder (word-i64 a) (word-i64 b))))
         ((i64= op 5) (i64-word! (i64-and (word-i64 a) (word-i64 b))))
@@ -73,6 +87,8 @@
         ((i64= op 16) (int-word! (+ (word-int a) (word-int b))))
         ((i64= op 17) (int-word! (- (word-int a) (word-int b))))
         ((i64= op 18) (int-word! (* (word-int a) (word-int b))))
+        ((and (i64>= op 19) (i64<= op 21) (zero? (word-int b)))
+         (refused-op! (if (i64= op 19) "quotient: division by zero" "remainder: division by zero")))
         ((i64= op 19) (int-word! (quotient (word-int a) (word-int b))))
         ((i64= op 20) (int-word! (remainder (word-int a) (word-int b))))
         ((i64= op 21) (int-word! (modulo (word-int a) (word-int b))))
@@ -88,6 +104,8 @@
         ((i64= op 31) (int-word! (bitwise-ior (word-int a) (word-int b))))
         ((i64= op 32) (int-word! (bitwise-xor (word-int a) (word-int b))))
         ((i64= op 33) (int-word! (bitwise-not (word-int a))))
+        ((and (i64= op 34) (> (word-int b) 4294967296) (not (zero? (word-int a))))
+         (refused-op! "arithmetic-shift: the count is too large"))
         ((i64= op 34) (int-word! (arithmetic-shift (word-int a) (word-int b))))
         ((i64= op 35) (i64-word! (int->i64 (word-int a))))
         ((i64= op 36) a)
@@ -111,6 +129,8 @@
         ((i64= op 54) (substring-w! a (fixnum-value b) (fixnum-value c)))
         ((i64= op 55) (fixnum (immediate-value a)))
         ((i64= op 56) (fixnum (immediate-value a)))
+        ((and (or (i64= op 57) (i64= op 58)) (not (char-code? (fixnum-value a))))
+         (refused-op! "integer->char: no character has that code"))
         ((i64= op 57) (immediate imm-char (fixnum-value a)))
         ((i64= op 58) (immediate imm-char (fixnum-value a)))
         ((i64= op 59) (char-string! a))
@@ -164,7 +184,7 @@
         ((i64= op 107) (bool-word (raw-equal? a b 0)))
         ((i64= op 108) (kfx-bytes-word! (string->utf8 (word-string a))))
         ((i64= op 109) (utf8-word! a))
-        ((i64= op 110) (begin (error (word-string a)) 0))
+        ((i64= op 110) (begin (failed-with! (word-string a)) 0))
         ((i64= op 111) a)
         ((i64= op 112) (bool-word (same-atom-w? a b)))
         ((i64= op 113) (bool-word (or (fixnum? a) (is-obj? a ob-big))))
@@ -190,6 +210,7 @@
         ((i64= op 133) (written-word! (write-file (word-string a) (word-kfx-bytes b))))
         ((i64= op 134) (list-dir-word! a))
         ((i64= op 139) (real-word! (int->f64 (word-int a))))
+        ((and (i64= op 140) (not (integral? (word-real a)))) (refused-op! "f64->int: not an integer"))
         ((i64= op 140) (int-word! (f64->int (word-real a))))
         ((i64= op 141) (string-word! (f64->string (word-real a))))
         ((i64= op 142) (real-word! (f64+ (word-real a) (word-real b))))
@@ -222,4 +243,4 @@
         ((i64= op 174) (bool-word (is-obj? a ob-vector)))
         ((i64= op 175) (list-array! ob-vector a))
         ((i64>= op fixed-base) (fixed-op-word (name-of-number (i64- op fixed-base)) a b))
-        (else (begin (error "the engine: a primitive of no number") 0))))))
+        (else (begin (failed-with! "the engine: a primitive of no number") 0))))))

@@ -137,6 +137,13 @@
 
       (define spec-limit i64 2000000)
 
+      (define numbered-or-failed! (subr running ((listof top acyclic)) (listof i64 acyclic))
+        (lambda (tops)
+          "The tops numbered; what the engine cannot number a failure (C110), as
+           it was before the engine said one rather than failing, for the Rust
+           to catch (`machine-refused!`)."
+          (let ((ns (number-tops! tops))) (begin (failure-raised!) ns))))
+
       (define make-entry (subr running (i64 string string string bool (listof i64 acyclic) i64 (listof i64 acyclic) string bool i64) entry)
         (lambda (k text typed defined quiet needs state tops shown timed now)
           (product (num k) (text text) (typed typed) (defined defined) (quiet quiet) (needs needs)
@@ -814,7 +821,7 @@ an entry naming one that has not ended waits for it.")
                     (set repl-globals gs)
                     ;; Lowered on the machine's side alone, which runs it.
                     (let ((ns (if (get machine-side)
-                                  (begin (globals-room! gs) (number-tops! (lower-tops (list form) gs)))
+                                  (begin (globals-room! gs) (numbered-or-failed! (lower-tops (list form) gs)))
                                   nil)))
                       (entry-forms k (cdr forms)
                                    (if expression line typed)
@@ -1356,7 +1363,7 @@ an entry naming one that has not ended waits for it.")
             (let ((forms (read-all (string-chars text) "<draft>" 1)))
               (if (null? forms)
                   #u
-                  (let ((ns (number-tops! (lower-tops (list (car forms)) (get repl-globals)))))
+                  (let ((ns (numbered-or-failed! (lower-tops (list (car forms)) (get repl-globals)))))
                     (if (or (null? ns) (i64< (car ns) 0))
                         #u
                         (begin (start-parked! 0 (car ns)) (set spec-steps 0) (set spec-state 1)))))))))
@@ -1373,6 +1380,29 @@ an entry naming one that has not ended waits for it.")
           (and (i64= (get spec-state) 1)
                (not (some-entry? (lambda ((d entry)) (and (unfinished? d) (not (extract d quiet)))) (get entries))))))
 
+      (define run-failed! (subr running (i64 string i64) unit)
+        (lambda (k message now)
+          "Entry `k` failed, the engine said (C110), or the Rust caught it; or
+           the draft's run."
+          (begin
+            (set fuel -1)
+            (set deadline -1)
+            (set capturing #f)
+            (let ((found (entry-numbered (get entries) k)))
+              (cond ((i64= k 0)
+                     (begin
+                       (set spec-state 2)
+                       (parked-cleared! 0)
+                       (noted! (string-append "running it fails: " message) #t)))
+                    ((null? found) #u)
+                    (else
+                  (let ((e (car found)))
+                    (begin
+                      (taken-output! e)
+                      (ended! e st-failed now)
+                      (set (extract e shown) (string-append "! evaluation failed: " message))
+                      (parked-cleared! k)))))))))
+
       (define draft-slice! (subr running (i64) unit)
         (lambda (now)
           "A slice of the draft's run."
@@ -1386,7 +1416,8 @@ an entry naming one that has not ended waits for it.")
                 (set spec-steps (i64+ (get spec-steps) (i64- slice-steps (get fuel))))
                 (set fuel -1)
                 (set deadline -1)
-                (cond ((not (i64= w w-paused))
+                (cond ((get engine-failed) (run-failed! 0 (failure-taken!) now))
+                      ((not (i64= w w-paused))
                        (begin
                          (set spec-state 2)
                          (parked-cleared! 0)
@@ -1604,7 +1635,8 @@ an entry naming one that has not ended waits for it.")
                       (set deadline -1)
                       (set capturing #f)
                       (taken-output! e)
-                      (cond ((not (i64= w w-paused)) (top-ended! e w now))
+                      (cond ((get engine-failed) (run-failed! k (failure-taken!) now))
+                            ((not (i64= w w-paused)) (top-ended! e w now))
                             ((and (i64>= (get step-limit) 0) (i64> (get (extract e steps)) (get step-limit)))
                              (begin
                                (ended! e st-failed now)
@@ -1615,24 +1647,7 @@ an entry naming one that has not ended waits for it.")
     (define failed! (subr running (i64 string i64) unit)
       (lambda (k message now)
         "Entry `k` failed (the Rust caught the failure); or the draft's run."
-        (begin
-          (set fuel -1)
-          (set deadline -1)
-          (set capturing #f)
-          (let ((found (entry-numbered (get entries) k)))
-            (cond ((i64= k 0)
-                   (begin
-                     (set spec-state 2)
-                     (parked-cleared! 0)
-                     (noted! (string-append "running it fails: " message) #t)))
-                  ((null? found) #u)
-                  (else
-                (let ((e (car found)))
-                  (begin
-                    (taken-output! e)
-                    (ended! e st-failed now)
-                    (set (extract e shown) (string-append "! evaluation failed: " message))
-                    (parked-cleared! k)))))))))
+        (run-failed! k message now)))
 
     (define screen! (subr running (i64) string)
       (lambda (now)

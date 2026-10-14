@@ -94,6 +94,22 @@ pub fn op_need(op: i64, args: i64) -> i64 {
     }
 }
 
+// What kayak-rt would fail at, beneath a primitive, said first as the
+// engine's failure (C110), in kayak-rt's words: a failure there would end
+// the REPL, the program's own computation, which nothing catches.
+pub fn refused_op_x(message: Str) -> i64 {
+    failed_with_x(message);
+    0i64
+}
+
+pub fn char_code_p(n: i64) -> bool {
+    (i64_gt_eq(n, 0i64) && i64_lt_eq(n, 1114111i64) && not((i64_gt_eq(n, 55296i64) && i64_lt_eq(n, 57343i64))))
+}
+
+pub fn integral_p(x: f64) -> bool {
+    (f64_finite_p(x) && f64_eq(f64_floor(x), x))
+}
+
 pub fn apply_op(op: i64, args: i64) -> i64 {
     let a = if i64_eq(args, w_nil()) {
         the::<i64>(0i64)
@@ -126,6 +142,12 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         i64_word_x(i64_minus(word_i64(a), word_i64(b)))
     } else if i64_eq(op, 2i64) {
         i64_word_x(i64_star(word_i64(a), word_i64(b)))
+    } else if ((i64_eq(op, 3i64) || i64_eq(op, 4i64)) && i64_eq(word_i64(b), 0i64)) {
+        refused_op_x(if i64_eq(op, 3i64) {
+            str_lit("i64-quotient: division by zero")
+        } else {
+            str_lit("i64-remainder: division by zero")
+        })
     } else if i64_eq(op, 3i64) {
         i64_word_x(i64_quotient(word_i64(a), word_i64(b)))
     } else if i64_eq(op, 4i64) {
@@ -158,6 +180,12 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         int_word_x(_minus(word_int(a), word_int(b)))
     } else if i64_eq(op, 18i64) {
         int_word_x(_star(word_int(a), word_int(b)))
+    } else if (i64_gt_eq(op, 19i64) && i64_lt_eq(op, 21i64) && zero_p(word_int(b))) {
+        refused_op_x(if i64_eq(op, 19i64) {
+            str_lit("quotient: division by zero")
+        } else {
+            str_lit("remainder: division by zero")
+        })
     } else if i64_eq(op, 19i64) {
         int_word_x(quotient(word_int(a), word_int(b)))
     } else if i64_eq(op, 20i64) {
@@ -188,6 +216,8 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         int_word_x(bitwise_xor(word_int(a), word_int(b)))
     } else if i64_eq(op, 33i64) {
         int_word_x(bitwise_not(word_int(a)))
+    } else if (i64_eq(op, 34i64) && _gt(word_int(b), int_lit(4294967296)) && not(zero_p(word_int(a)))) {
+        refused_op_x(str_lit("arithmetic-shift: the count is too large"))
     } else if i64_eq(op, 34i64) {
         int_word_x(arithmetic_shift(word_int(a), word_int(b)))
     } else if i64_eq(op, 35i64) {
@@ -234,6 +264,8 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         fixnum(immediate_value(a))
     } else if i64_eq(op, 56i64) {
         fixnum(immediate_value(a))
+    } else if ((i64_eq(op, 57i64) || i64_eq(op, 58i64)) && not(char_code_p(fixnum_value(a)))) {
+        refused_op_x(str_lit("integer->char: no character has that code"))
     } else if i64_eq(op, 57i64) {
         immediate(imm_char(), fixnum_value(a))
     } else if i64_eq(op, 58i64) {
@@ -346,7 +378,7 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if i64_eq(op, 109i64) {
         utf8_word_x(a)
     } else if i64_eq(op, 110i64) {
-        error(word_string(a));
+        failed_with_x(word_string(a));
         0i64
     } else if i64_eq(op, 111i64) {
         a
@@ -405,6 +437,8 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         list_dir_word_x(a)
     } else if i64_eq(op, 139i64) {
         real_word_x(int_to_f64(word_int(a)))
+    } else if (i64_eq(op, 140i64) && not(integral_p(word_real(a)))) {
+        refused_op_x(str_lit("f64->int: not an integer"))
     } else if i64_eq(op, 140i64) {
         int_word_x(f64_to_int(word_real(a)))
     } else if i64_eq(op, 141i64) {
@@ -472,7 +506,7 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
     } else if i64_gt_eq(op, fixed_base()) {
         fixed_op_word(name_of_number(i64_minus(op, fixed_base())), a, b)
     } else {
-        error(str_lit("the engine: a primitive of no number"));
+        failed_with_x(str_lit("the engine: a primitive of no number"));
         0i64
     }
 }

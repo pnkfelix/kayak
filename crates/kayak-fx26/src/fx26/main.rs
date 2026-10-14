@@ -150,6 +150,17 @@ pub fn number_tops_x(tops: List<&'static Top>) -> List<i64> {
     }
 }
 
+// A failure the engine said (C110), the program's, as it was before the
+// engine said one rather than failing: `kayak-fx26 FILE` fails as Fixpt
+// does, with its message.
+pub fn failure_raised_x() -> () {
+    if get(engine_failed()) {
+        error(failure_taken_x())
+    } else {
+        ()
+    }
+}
+
 pub fn run_tops(mut ns: List<i64>, mut quiet: bool) -> () {
     loop {
         if null_p(ns) {
@@ -160,9 +171,10 @@ pub fn run_tops(mut ns: List<i64>, mut quiet: bool) -> () {
                 ()
             } else if i64_lt(n, 0i64) {
                 run(0i64, i64_minus(i64_minus(0i64, n), 2i64), 0i64, w_nil(), 0i64, 0i64, 0i64);
-                ()
+                failure_raised_x()
             } else {
                 let w = run(0i64, n, 0i64, w_nil(), 0i64, 0i64, 0i64);
+                failure_raised_x();
                 if quiet {
                     ()
                 } else {
@@ -217,6 +229,7 @@ pub fn main() -> Int {
         let gs = onto(global_names(forms), module_entries(forms));
         load_x(gs);
         let ns = number_tops_x(lower_tops(forms, gs));
+        failure_raised_x();
         run_tops(ns, with_main);
         if with_main {
             let i = position_of(str_lit("main"), gs, 0i64);
@@ -226,7 +239,10 @@ pub fn main() -> Int {
             } else {
                 set(program_args(), after_dashes(r#as));
                 let w = run(2i64, 0i64, 0i64, w_nil(), 0i64, flatarray_ref_i64(get(globals()), i), w_nil());
-                if is_obj_p(w, ob_string()) {
+                if get(engine_failed()) {
+                    failure_raised_x();
+                    int_lit(0)
+                } else if is_obj_p(w, ob_string()) {
                     say(word_string(w));
                     int_lit(0)
                 } else if (running && fixnum_p(w)) {

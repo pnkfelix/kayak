@@ -71,6 +71,11 @@ pub fn w_paused() -> i64 {
     62i64
 }
 
+// What `run` gives when the run failed (C110): `engine-failure` says how.
+pub fn w_failed() -> i64 {
+    94i64
+}
+
 pub fn parked_at(slot: i64) -> i64 {
     i64_plus(8i64, i64_star(slot, 8i64))
 }
@@ -414,7 +419,7 @@ pub fn arm_found(mut start: i64, mut n: i64, mut tag: i64) -> i64 {
 }
 
 pub fn unbound_global(i: i64) -> i64 {
-    error(string_append(str_lit("the engine: used before it is defined, "), array_ref(get(global_name_table()), i64_to_int(i))));
+    failed_with_x(string_append(str_lit("the engine: used before it is defined, "), array_ref(get(global_name_table()), i64_to_int(i))));
     0i64
 }
 
@@ -424,7 +429,9 @@ pub fn consts() -> FlatArray<i64> {
 
 pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64, mut f: i64, mut args: i64) -> i64 {
     loop {
-        if i64_lt(heap_room(), reserve()) {
+        if get(engine_failed()) {
+            return w_failed();
+        } else if i64_lt(heap_room(), reserve()) {
             return gc_run(mode, node, env, k, val, f, args, 0i64);
         } else {
             if i64_eq(get(fuel()), 0i64) {
@@ -615,7 +622,7 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                     } else if i64_eq(kind, fk_extract()) {
                         let i = label_position(fixnum_value(obj_ref(val, 0i64)), i64_minus(obj_size(val), 1i64), fixnum_value(frame_field(k, 0i64)), 0i64);
                         if i64_lt(i, 0i64) {
-                            error(str_lit("the engine: extract of a field the product has not"));
+                            failed_with_x(str_lit("the engine: extract of a field the product has not"));
                             return 0i64;
                         } else {
                             (mode, node, k, val, f, args) = (1i64, 0i64, next, obj_ref(val, i64_plus(i, 1i64)), 0i64, 0i64);
@@ -658,7 +665,7 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                     } else if i64_eq(kind, fk_abort()) {
                         return abort_to(fixnum_value(frame_field(k, 0i64)), next, val);
                     } else {
-                        error(str_lit("the engine: a frame of no kind"));
+                        failed_with_x(str_lit("the engine: a frame of no kind"));
                         return 0i64;
                     }
                 }
@@ -734,7 +741,7 @@ pub fn list_step(k: i64, next: i64, val: i64) -> i64 {
         }
         _ => {
             let other = tagcase_;
-            error(str_lit("the engine: a list frame of no list"));
+            failed_with_x(str_lit("the engine: a list frame of no list"));
             0i64
         }
     }
@@ -784,7 +791,7 @@ pub fn tagcase_step(k: i64, next: i64, val: i64) -> i64 {
         }
         _ => {
             let other = tagcase_;
-            error(str_lit("the engine: a tagcase frame of no tagcase"));
+            failed_with_x(str_lit("the engine: a tagcase frame of no tagcase"));
             0i64
         }
     }
@@ -794,7 +801,7 @@ pub fn tagcase_step(k: i64, next: i64, val: i64) -> i64 {
 pub fn abort_to(tag: i64, k: i64, v: i64) -> i64 {
     let n = frames_to(k, tag, 0i64);
     if i64_lt(n, 0i64) {
-        error(str_lit("the engine: no prompt for the tag"));
+        failed_with_x(str_lit("the engine: no prompt for the tag"));
         0i64
     } else {
         let p = frame_after(k, n);
@@ -822,7 +829,7 @@ pub fn apply_step(f: i64, args: i64, k: i64) -> i64 {
             }
             _ => {
                 let other = tagcase_;
-                error(str_lit("the engine: a procedure of no lambda"));
+                failed_with_x(str_lit("the engine: a procedure of no lambda"));
                 0i64
             }
         }
@@ -839,7 +846,7 @@ pub fn apply_step(f: i64, args: i64, k: i64) -> i64 {
         if i64_lt(heap_room(), i64_plus(room, reserve())) {
             gc_run(2i64, 0i64, 0i64, k, 0i64, f, args, room)
         } else if (truthy_p(obj_ref(f, 3i64)) && truthy_p(obj_ref(f, 2i64))) {
-            error(str_lit("a continuation resumed twice"));
+            failed_with_x(str_lit("a continuation resumed twice"));
             0i64
         } else {
             obj_set_x(f, 2i64, w_true());
@@ -896,7 +903,7 @@ pub fn apply_step(f: i64, args: i64, k: i64) -> i64 {
             let tag = tag_number(pair_car(pair_cdr(args)));
             let n = frames_to(k, tag, 0i64);
             if i64_lt(n, 0i64) {
-                error(str_lit("the engine: no prompt for the tag"));
+                failed_with_x(str_lit("the engine: no prompt for the tag"));
                 0i64
             } else {
                 let c = alloc_x(ob_cont(), 4i64);
@@ -910,7 +917,7 @@ pub fn apply_step(f: i64, args: i64, k: i64) -> i64 {
             let tag = tag_number(pair_car(args));
             let n = frames_to(k, tag, 0i64);
             if i64_lt(n, 0i64) {
-                error(str_lit("the engine: no prompt for the tag"));
+                failed_with_x(str_lit("the engine: no prompt for the tag"));
                 0i64
             } else {
                 let c = alloc_x(ob_cont(), 4i64);
@@ -929,7 +936,7 @@ pub fn apply_step(f: i64, args: i64, k: i64) -> i64 {
             }
         }
     } else {
-        error(str_lit("the engine: a call of no procedure"));
+        failed_with_x(str_lit("the engine: a call of no procedure"));
         0i64
     }
 }

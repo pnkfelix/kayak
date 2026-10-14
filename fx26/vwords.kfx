@@ -13,11 +13,11 @@
   (append-words! (subr hp (i64 i64) i64)
     (lambda (rev tail) "`rev`, a list reversed, before `tail`." (if (i64= rev w-nil) tail (append-words! (pair-cdr rev) (pair! (pair-car rev) tail))))))
 
-(define checked-car (subr (maxeff (read @globals) spin (read @h)) (i64) i64)
-  (lambda (p) (if (is-obj? p ob-pair) (pair-car p) (begin (error "car of nil") 0))))
+(define checked-car (subr (maxeff (read @globals) spin (read @h) (write @h)) (i64) i64)
+  (lambda (p) (if (is-obj? p ob-pair) (pair-car p) (begin (failed-with! "car of nil") 0))))
 
-(define checked-cdr (subr (maxeff (read @globals) spin (read @h)) (i64) i64)
-  (lambda (p) (if (is-obj? p ob-pair) (pair-cdr p) (begin (error "cdr of nil") 0))))
+(define checked-cdr (subr (maxeff (read @globals) spin (read @h) (write @h)) (i64) i64)
+  (lambda (p) (if (is-obj? p ob-pair) (pair-cdr p) (begin (failed-with! "cdr of nil") 0))))
 
 (define one-word! (subr hp (i64 i64) i64)
   (lambda (kind w) (let ((p (alloc! kind 1))) (begin (obj-set! p 0 w) p))))
@@ -31,23 +31,23 @@
 
 (define filled! (subr hp (i64 i64 i64) i64)
   (lambda (kind n w)
-    (if (i64< n 0) (begin (error "a negative length") 0) (let ((p (alloc! kind n))) (begin (fill! p 0 n w) p)))))
+    (if (i64< n 0) (begin (failed-with! "a negative length") 0) (let ((p (alloc! kind n))) (begin (fill! p 0 n w) p)))))
 
 (define filled-raw! (subr hp (i64 i64 i64) i64)
   (lambda (kind n raw) (filled! kind n raw)))
 
-(define element (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
-  (lambda (p i) (if (or (i64< i 0) (i64>= i (obj-size p))) (begin (error "an index out of range") 0) (obj-ref p i))))
+(define element (subr (maxeff (read @globals) spin (read @h) (write @h)) (i64 i64) i64)
+  (lambda (p i) (if (or (i64< i 0) (i64>= i (obj-size p))) (begin (failed-with! "an index out of range") 0) (obj-ref p i))))
 
 (define element-set! (subr hp (i64 i64 i64) unit)
-  (lambda (p i w) (if (or (i64< i 0) (i64>= i (obj-size p))) (begin (error "an index out of range") #u) (obj-set! p i w))))
+  (lambda (p i w) (if (or (i64< i 0) (i64>= i (obj-size p))) (begin (failed-with! "an index out of range") #u) (obj-set! p i w))))
 
 (define-rec
   (array-list! (subr hp (i64 i64 i64) i64)
     (lambda (p i acc) (if (i64< i 0) acc (array-list! p (i64- i 1) (pair! (obj-ref p i) acc))))))
 
 "Strings: a character's code a word each."
-(define string-ref-w (subr (maxeff (read @globals) spin (read @h)) (i64 i64) i64)
+(define string-ref-w (subr (maxeff (read @globals) spin (read @h) (write @h)) (i64 i64) i64)
   (lambda (s i) (immediate imm-char (element s i))))
 
 (define-rec
@@ -66,7 +66,7 @@
 (define substring-w! (subr hp (i64 i64 i64) i64)
   (lambda (s start end)
     (if (or (i64< start 0) (i64< end start) (i64> end (string-length-w s)))
-        (begin (error "substring range out of bounds") 0)
+        (begin (failed-with! "substring range out of bounds") 0)
         (let ((p (alloc! ob-string (i64- end start))))
           (begin (copied-range! p s start 0 (i64- end start)) p)))))
 
@@ -174,7 +174,7 @@
 (define bytes-copy! (subr hp (i64 i64 i64) i64)
   (lambda (b start end)
     (if (or (i64< start 0) (i64< end start) (i64> end (obj-size b)))
-        (begin (error "bytevector-copy: a span that does not fit") 0)
+        (begin (failed-with! "bytevector-copy: a span that does not fit") 0)
         (let ((p (alloc! ob-bytes (i64- end start)))) (begin (copied-range! p b start 0 (i64- end start)) p)))))
 
 (define fourth-arg (subr (maxeff (read @globals) spin (read @h)) (i64) i64) (lambda (xs) (pair-car (pair-cdr (pair-cdr (pair-cdr xs))))))
@@ -194,7 +194,7 @@
   (lambda (to at from start end)
     (let ((s (fixnum-value start)) (e (fixnum-value end)) (t (fixnum-value at)))
       (cond ((or (i64< s 0) (i64< e s) (i64> e (obj-size from)) (i64< t 0) (i64> (i64+ t (i64- e s)) (obj-size to)))
-             (error "bytevector-copy!: a span that does not fit"))
+             (failed-with! "bytevector-copy!: a span that does not fit"))
             ((i64> t s) (bytes-moved-back! to t from s (i64- e 1)))
             (else (bytes-moved! to t from s e))))))
 
@@ -321,6 +321,9 @@
                (cond ((string=? op "+") (int-word! (wrapped t (+ x y))))
                      ((string=? op "-") (int-word! (wrapped t (- x y))))
                      ((string=? op "*") (int-word! (wrapped t (* x y))))
+                     ((and (or (string=? op "-quotient") (string=? op "-remainder")) (zero? y))
+                      "kayak-rt's failure, the engine's first (C110)."
+                      (begin (failed-with! (string-append name ": division by zero")) 0))
                      ((string=? op "-quotient") (int-word! (wrapped t (quotient x y))))
                      ((string=? op "-remainder") (int-word! (wrapped t (remainder x y))))
                      ((string=? op "-and") (int-word! (wrapped t (bitwise-and x y))))
@@ -333,4 +336,4 @@
                      ((string=? op ">") (bool-word (> x y)))
                      ((string=? op "<=") (bool-word (<= x y)))
                      ((string=? op ">=") (bool-word (>= x y)))
-                     (else (begin (error (string-append "the engine has no primitive " name)) 0)))))))))
+                     (else (begin (failed-with! (string-append "the engine has no primitive " name)) 0)))))))))
