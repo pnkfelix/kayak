@@ -606,9 +606,23 @@ pub fn sleep_until(t: i64) {
     }
 }
 
-/// The program's arguments: what follows the program's name.
+/// The program's arguments as its host gives them, in place of what
+/// follows the program's name on the command line (C111): FX-26 reads no
+/// environment, so a host that knows more (kayak-fx26, the REPL's history
+/// file under `$HOME`) says it as arguments. The first given is kept.
+static GIVEN_ARGS: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
+
+pub fn set_args(args: Vec<String>) {
+    let _ = GIVEN_ARGS.set(args);
+}
+
+/// The program's arguments: what follows the program's name, or what its
+/// host gave (`set_args`).
 pub fn args() -> List<Str> {
-    let all: Vec<String> = std::env::args().skip(1).collect();
+    let all: Vec<String> = match GIVEN_ARGS.get() {
+        Some(given) => given.clone(),
+        None => std::env::args().skip(1).collect(),
+    };
     all.into_iter()
         .rev()
         .fold(nil(), |acc, a| heap_cons(leak_string(a), acc))

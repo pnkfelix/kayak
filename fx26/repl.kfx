@@ -76,7 +76,7 @@
         (load! nil)
         (set repl-cv (with-binds empty (prim-binds empty)))))))
 
-(define checked-form (subr running (cv sexp) cv)
+(define checked-form (subr kfx (cv sexp) cv)
   (lambda (v form)
     "The checker's environment after `form`, its types and datatypes
      declared first, as `check-program` declares a program's."
@@ -98,7 +98,7 @@
                    (else other typed)))
                 (else (check-top typed form))))))))
 
-(define form-type (subr running (cv sexp) string)
+(define form-type (subr kfx (cv sexp) string)
   (lambda (v form)
     "What the REPL writes of a form: an expression's type and effect, a
      definition's name and type."

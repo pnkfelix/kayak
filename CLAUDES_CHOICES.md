@@ -2511,3 +2511,53 @@ run's failure rather than failing, as a Rust program returns an `Err`:
 - Left failing: lowering's (`lower.kfx`, of effect `kfx`), which C111
   tries first in a worker; `exit`, which ends the REPL, as in Fixpt's;
   a stack overflow.
+
+## C111. The REPL as FX-26 processes (2026-10-14)
+
+The user's ask since C103: the REPL's front a KFX process, not Rust's
+threads. With monitors (C108), keys and the terminal (C109) and the
+engine's failures as values (C110), it is: `fx26/repl-tasks.kfx`, module
+`tasks`, and `fx26/start.kfx`'s `main`.
+- **Four kinds of task.** The machine is the program's own computation,
+  the engine at `@h` (no process may write a region not its place, and
+  the engine's tables, heap and globals are all `@h`'s: moving them into
+  a place would rewrite the engine, option 2 of the user's choice). The
+  front is a process, its state in its place, its procedures polymorphic
+  in that region (`(fstate r)`, `(fentry r)`; refs made by `new` at `r`,
+  since a process may hold no procedure taking a place, as Fixpt says
+  too). Each check is a worker, `spawn-monitored`, its watcher a relay of
+  one message into an I-cell, so a refusal comes back as `refused-done`.
+  A relay process is the machine's mailbox: the program's own
+  computation has none, so it asks the relay by an I-cell, waiting or not.
+- **The front checks; the machine runs.** An entry's worker checks and
+  lowers it (C103 checked it on both sides): the machine lowers it again,
+  which cannot fail now, and numbers it, a failure of which (what the
+  engine cannot number) refuses it there. An entry refused leaves nothing:
+  C103 kept the definitions before the refused form in the checker's
+  environment, never run.
+- **The front never fails by the checker**: what reads or checks (the
+  hole's list too, `hole-items`) is a worker's job. A failure of the
+  front itself, a bug, is the relay's message (`front-failed`), which the
+  machine says, restoring the terminal, and ends.
+- **Scripted sessions** run front and machine in step, a round at a time,
+  the round's end a request carrying where to put what it ran: the eight
+  sessions give C103's bytes, the clock read at each look for a task, the
+  last too, as C103's did.
+- **The host**: kayak-fx26's Rust only gives the history file's path, as
+  arguments (`kayak_rt::set_args`: FX-26 reads no environment), and puts
+  the terminal back at the end (`kayak_rt::finish`). A new pty's size is
+  0 by 0: 24 by 80 then, as C103 had it.
+- **C103 kept**, behind `rust-repl` (`crates/kayak-fx26/src/rust_repl.rs`,
+  `fx26/live-repl.kfx`): `repl-sessions.py --rust-repl` and
+  `repl-latency.py --rust-repl` run it, built in `target/rust-repl/`;
+  `check.sh` runs its sessions too.
+- Measured, C111 against C103: the eight sessions the same bytes, in
+  0.76 s against 0.90 s; on a pty while `(fact 30000)` runs, each key
+  drawn in 0 ms both ways, `(+ 1 2)`'s value in 25 ms against 18 ms, the
+  draft `(fact 1000)`'s early value in 92 against 95 ms. Failing entries
+  (`car` of nil, `error`, a division by zero, a name not yet defined, a
+  refusal) are said the same, and the REPL goes on.
+- KFX gaps met: a procedure polymorphic in a place alone, whose place is
+  only its mailbox's, leaves a Rust type parameter unconstrained (the
+  relay's loop is in its `spawn` instead); constructor tags are global,
+  so this file's are named apart from live-repl.kfx's.

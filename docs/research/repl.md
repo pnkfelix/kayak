@@ -141,6 +141,28 @@ sends back each entry as it changes and the draft's run's outcome. So a
 key is drawn whatever a run is doing, one step of it however long. The
 draft's own check is still the front's, before the next key.
 
+## FX-26's processes (C111)
+
+The same two sides, as FX-26 tasks, with nothing in Rust but the history
+file's path (`fx26/repl-tasks.kfx`; C103's Rust kept behind kayak-fx26's
+`rust-repl` feature, to compare):
+- **The machine** is the program's own computation, since the engine's
+  heap is at `@h`, which no process may write. Nothing catches a failure
+  there, so the engine says a run's failure as a value (C110).
+- **The front** is a process, its state in its place: keys by `pselect`'s
+  key arm beside its mailbox and a spinner's deadline (C109), raw mode
+  and the size by `terminal-raw` and `terminal-size`.
+- **Each check** is a worker, monitored (C108): the checker refuses by
+  failing, which fails the worker alone; its watcher, a relay of one
+  message, gives the refusal back as a value. An entry's worker lowers it
+  too, so the machine's lowering cannot fail.
+- **A relay** process is the machine's mailbox, which the program's own
+  computation has not: it keeps the front's requests until the machine
+  asks, by an I-cell, waiting or not.
+
+The eight sessions give the same bytes both ways, and the latency is the
+same (keys drawn in 0 ms while a run computes).
+
 ## Coopt's skimmer, and what kayak might take from it
 
 Coopt splits input into forms, and finds the names each defines, before

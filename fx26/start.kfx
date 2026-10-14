@@ -1,0 +1,19 @@
+"start.kfx: kayak-fx26's `main` (C111): the REPL, live or plain
+ (`kayak-fx26` or `kayak-fx26 repl`, its history's file given by the Rust
+ as `--history FILE`, since FX-26 reads no environment), a scripted
+ session (`--keys FILE`), or the engine run on files (`engine-main`)."
+
+(define-rec
+  (history-of (subr kfx (strings) string)
+    (lambda (as)
+      (cond ((or (null? as) (null? (cdr as))) "")
+            ((string=? (car as) "--history") (car (cdr as)))
+            (else (history-of (cdr as)))))))
+
+(define main (subr (maxeff running repling) () int)
+  (lambda ()
+    (let ((as (the strings (args))))
+      (cond ((or (null? as) (string=? (car as) "repl")) ((with tasks repl!) (history-of as)))
+            ((and (string=? (car as) "--keys") (not (null? (cdr as))) (null? (cdr (cdr as))))
+             ((with tasks scripted!) (car (cdr as))))
+            (else (engine-main))))))

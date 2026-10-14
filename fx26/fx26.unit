@@ -21,3 +21,5 @@ vshow.kfx
 main.kfx
 repl.kfx
 live-repl.kfx
+repl-tasks.kfx
+start.kfx

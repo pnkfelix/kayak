@@ -13,6 +13,9 @@ cargo test --release --workspace --quiet
 python3 -I scripts/corpus.py
 python3 -I scripts/engine-programs.py
 python3 -I scripts/repl-sessions.py
+# C103's REPL, kept to compare with C111's: the same sessions, the same bytes.
+python3 -I scripts/repl-sessions.py --rust-repl
+cargo clippy --release -p kayak-fx26 --features rust-repl --target-dir target/rust-repl --quiet -- -D warnings
 scripts/fixpoint.sh
 python3 -I scripts/incremental.py
 # Fixpt's own programs that kfx accepts, run both ways (needs the clone).

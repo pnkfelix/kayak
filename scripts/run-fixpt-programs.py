@@ -26,7 +26,10 @@ LIMIT = 30
 
 
 def run(args, **kw):
-    return subprocess.run(args, capture_output=True, text=True, **kw)
+    """`args` run, its standard input empty, at its end at once, whatever
+    this script's is: a program that reads it, or waits for a key
+    (C109), gets `eof`, as Fixpt's run gets it (fixptcache.py)."""
+    return subprocess.run(args, capture_output=True, text=True, stdin=subprocess.DEVNULL, **kw)
 
 
 def forms(text):

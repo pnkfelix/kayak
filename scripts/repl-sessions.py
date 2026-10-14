@@ -3,7 +3,11 @@ keys at virtual times, run by `kayak-fx26 --keys`, its bytes as a 24 by
 80 terminal is sent them NAME.out; and each NAME.in, piped (plain mode),
 its output NAME.out. --bless rewrites the .out files.
 
-usage: python3 -I scripts/repl-sessions.py [--bless]
+With --rust-repl, the REPL is C103's, kayak-fx26 built with its
+`rust-repl` feature (in target/rust-repl/), to compare the two (C111): the
+sessions are the same files, and each must give the same bytes.
+
+usage: python3 -I scripts/repl-sessions.py [--bless] [--rust-repl]
 """
 
 import os
@@ -15,19 +19,23 @@ DIR = os.path.join(ROOT, "tests", "repl")
 
 
 def main():
-    bless = sys.argv[1:] == ["--bless"]
-    if sys.argv[1:] not in ([], ["--bless"]):
-        sys.exit("usage: repl-sessions.py [--bless]")
-    r = subprocess.run(["cargo", "build", "--release", "--quiet", "-p", "kayak-fx26"], cwd=ROOT)
+    flags = sys.argv[1:]
+    bless = "--bless" in flags
+    rust = "--rust-repl" in flags
+    if any(f not in ("--bless", "--rust-repl") for f in flags):
+        sys.exit("usage: repl-sessions.py [--bless] [--rust-repl]")
+    target = os.path.join(ROOT, "target", "rust-repl") if rust else os.path.join(ROOT, "target")
+    build = ["cargo", "build", "--release", "--quiet", "-p", "kayak-fx26", "--target-dir", target]
+    r = subprocess.run(build + (["--features", "rust-repl"] if rust else []), cwd=ROOT)
     if r.returncode != 0:
         sys.exit("repl-sessions: the engine does not build")
-    engine = os.path.join(ROOT, "target", "release", "kayak-fx26")
+    engine = os.path.join(target, "release", "kayak-fx26")
     names = sorted(f for f in os.listdir(DIR) if f.endswith(".keys") or f.endswith(".in"))
     failed = []
     for f in names:
         path = os.path.join(DIR, f)
         if f.endswith(".keys"):
-            r = subprocess.run([engine, "--keys", path], capture_output=True, timeout=120, cwd=ROOT)
+            r = subprocess.run([engine, "--keys", path], capture_output=True, timeout=120, cwd=ROOT, stdin=subprocess.DEVNULL)
         else:
             with open(path, "rb") as given:
                 r = subprocess.run([engine, "repl"], stdin=given, capture_output=True, timeout=120, cwd=ROOT)
@@ -44,7 +52,7 @@ def main():
         print("repl-sessions: " + line)
     if failed:
         sys.exit(1)
-    print("repl-sessions: %d sessions %s" % (len(names), "blessed" if bless else "as before"))
+    print("repl-sessions: %d sessions %s%s" % (len(names), "blessed" if bless else "as before", ", C103's REPL" if rust else ""))
 
 
 main()

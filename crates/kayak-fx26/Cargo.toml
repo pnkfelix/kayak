@@ -9,3 +9,8 @@ workspace = true
 
 [dependencies]
 kayak-rt = { path = "../kayak-rt" }
+
+[features]
+# C103's REPL, its two threads and catching in Rust, to compare with C111's
+# in KFX processes.
+rust-repl = []

@@ -1292,3 +1292,12 @@ C109: the pin at Fixpt 09acf16. `read-byte`, `read-bytes`,
 reader thread for the one stream, `stty` for the modes.
 `tests/kfx-io/keys.kfx`; kfx accepts 167 of Fixpt's programs, all
 agreeing.
+
+## The REPL as FX-26 processes (2026-10-14)
+
+C110, C111: the engine's failures are values; the REPL is
+`fx26/repl-tasks.kfx`, the machine the program's own computation, the
+front a process with its state in its place, each check a monitored
+worker, a relay for the machine's mailbox; kayak-fx26's Rust only gives
+the history's path. C103's REPL is kept behind `rust-repl` to compare: the
+eight sessions give the same bytes both ways, and the latency is the same.

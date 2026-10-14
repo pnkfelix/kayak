@@ -204,10 +204,12 @@ pub fn load_x(gs: Strings) -> () {
 }
 
 pub fn usage() -> Str {
-    str_lit("usage: kayak-fx26 [repl]                       the REPL (,help in it for more)\n       kayak-fx26 FILE ...                     the files, one program, checked\n                                               and run, each top-level\n                                               expression's value written\n       kayak-fx26 --main FILE ...              the same, then (main), its\n                                               string written\n       kayak-fx26 --run FILE ... [-- ARG ...]  the files, then (main) given the\n                                               ARGs, its low byte the status\n       kayak-fx26 --keys FILE                  a REPL session from a script of\n                                               keys (tests/repl/)\n       kayak-fx26 --help                       this\n\nThe REPL's history is kept in ~/.kayak_fx26_history. KAYAK_SPEC_DEBUG set,\nit writes each refusal of checking as you type to stderr; KAYAK_TIMING set,\neach turn of its loop that took more than 5 ms, and where the time went.\n")
+    str_lit("usage: kayak-fx26 [repl]                       the REPL (,help in it for more)\n       kayak-fx26 FILE ...                     the files, one program, checked\n                                               and run, each top-level\n                                               expression's value written\n       kayak-fx26 --main FILE ...              the same, then (main), its\n                                               string written\n       kayak-fx26 --run FILE ... [-- ARG ...]  the files, then (main) given the\n                                               ARGs, its low byte the status\n       kayak-fx26 --keys FILE                  a REPL session from a script of\n                                               keys (tests/repl/)\n       kayak-fx26 --help                       this\n\nThe REPL's history is kept in ~/.kayak_fx26_history. Built with the\nrust-repl feature, the REPL is C103's, in Rust's threads: there,\nKAYAK_SPEC_DEBUG set, it writes each refusal of checking as you type to\nstderr; KAYAK_TIMING set, each turn of its loop that took more than 5 ms,\nand where the time went.\n")
 }
 
-pub fn main() -> Int {
+// The engine run on files (`kayak-fx26 FILE ...`), as `main` (start.kfx) runs
+// it for whatever is not the REPL.
+pub fn engine_main() -> Int {
     let r#as = the::<Strings>(args());
     let running = (not(null_p(r#as)) && string_eq_p(car(r#as), str_lit("--run")));
     let with_main = (running || (not(null_p(r#as)) && string_eq_p(car(r#as), str_lit("--main"))));

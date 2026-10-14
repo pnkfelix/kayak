@@ -38,7 +38,7 @@ def run(binary, args, files, timeout=None):
         with open(path) as g:
             d = json.load(g)
         return Ran(d["code"], d["out"], d["err"])
-    r = subprocess.run([binary] + args, capture_output=True, text=True, timeout=timeout)
+    r = subprocess.run([binary] + args, capture_output=True, text=True, timeout=timeout, stdin=subprocess.DEVNULL)
     os.makedirs(CACHE, exist_ok=True)
     tmp = path + ".%d" % os.getpid()
     with open(tmp, "w") as g:

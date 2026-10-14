@@ -126,12 +126,16 @@
                                                keys (tests/repl/)
        kayak-fx26 --help                       this
 
-The REPL's history is kept in ~/.kayak_fx26_history. KAYAK_SPEC_DEBUG set,
-it writes each refusal of checking as you type to stderr; KAYAK_TIMING set,
-each turn of its loop that took more than 5 ms, and where the time went.
+The REPL's history is kept in ~/.kayak_fx26_history. Built with the
+rust-repl feature, the REPL is C103's, in Rust's threads: there,
+KAYAK_SPEC_DEBUG set, it writes each refusal of checking as you type to
+stderr; KAYAK_TIMING set, each turn of its loop that took more than 5 ms,
+and where the time went.
 ")
 
-(define main (subr running () int)
+"The engine run on files (`kayak-fx26 FILE ...`), as `main` (start.kfx) runs
+ it for whatever is not the REPL."
+(define engine-main (subr running () int)
   (lambda ()
     (let* ((as (the strings (args)))
            (running (and (not (null? as)) (string=? (car as) "--run")))

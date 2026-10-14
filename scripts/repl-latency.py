@@ -5,7 +5,10 @@ form a key at a time, measuring how long each takes to be drawn; enters
 one, and types and enters another, measuring how long their values take.
 By the clock, so not part of scripts/check.sh.
 
-usage: python3 -I scripts/repl-latency.py
+With --rust-repl, the REPL is C103's (kayak-fx26's `rust-repl` feature,
+built in target/rust-repl/), to compare the two (C111).
+
+usage: python3 -I scripts/repl-latency.py [--rust-repl]
 """
 
 import os
@@ -21,10 +24,15 @@ ESCAPES = re.compile(rb"\x1b\[[0-9;?]*[A-Za-z]")
 
 
 def main():
-    r = subprocess.run(["cargo", "build", "--release", "--quiet", "-p", "kayak-fx26"], cwd=ROOT)
+    rust = sys.argv[1:] == ["--rust-repl"]
+    if sys.argv[1:] not in ([], ["--rust-repl"]):
+        sys.exit("usage: repl-latency.py [--rust-repl]")
+    target = os.path.join(ROOT, "target", "rust-repl") if rust else os.path.join(ROOT, "target")
+    build = ["cargo", "build", "--release", "--quiet", "-p", "kayak-fx26", "--target-dir", target]
+    r = subprocess.run(build + (["--features", "rust-repl"] if rust else []), cwd=ROOT)
     if r.returncode != 0:
         sys.exit(1)
-    engine = os.path.join(ROOT, "target", "release", "kayak-fx26")
+    engine = os.path.join(target, "release", "kayak-fx26")
     pid, fd = pty.fork()
     if pid == 0:
         os.environ["HOME"] = "/nonexistent"  # no history kept
