@@ -27,6 +27,10 @@ kayak prototypes a bootstrappable system:
 5. **Async and incremental throughout**: the runtime asynchronous from
    the ground up, in Coopt's mindset, and the compiler too, async and
    incremental (§6).
+6. **kayak to become FX-26's reference** (the user, 2026-10-14): the
+   eventual goal is to retire Fixpt's code base, kayak then the
+   definition of FX-26 and the oracle for its answers. What that asks,
+   and in what order, is §9.
 
 Companion files, as in the sibling repositories:
 - [`TODO.md`](TODO.md): every task not yet done, numbered;
@@ -37,7 +41,7 @@ Companion files, as in the sibling repositories:
 
 **References.** Fixpt and coopt move fast on their own, so kayak works
 from clones: `~/Dev/Rust/kayak-refs/fixpt` and `~/Dev/Rust/kayak-refs/coopt`
-(at `8d4fb96`, read only, for its design). Citations (`fixpt/docs/fx26.md`)
+(at `c366857`, read only, for its design). Citations (`fixpt/docs/fx26.md`)
 are to the clones.
 
 **The Fixpt pin is `FIXPT_REV`**, the full hash of the commit stage 0
@@ -618,4 +622,35 @@ Likely next cases, to be confirmed by the code:
 - **The heap as data**: a collector in KFX works on a heap that is an
   array of words, values as indices (Fixpt's and Coopt's arrangement,
   which is safe); what it needs from bloblets and blobrefs.
+
+---
+
+## 9. kayak as the reference, Fixpt retired (the user, 2026-10-14)
+
+"My eventual goal is to retire the Fixpt code base and have the codebase
+currently known as Kayak be the reference." Until then Fixpt stays the
+oracle (K1, K6); the work is to make every comparison with it come out
+equal, then to make kayak's own comparisons (between its tiers) carry
+what Fixpt's did. Where kayak stood that day:
+
+| What the reference is | Fixpt | kayak |
+|---|---|---|
+| The language's definition | `docs/fx26.md` (2762 lines); two checkers, Rust and FX-26, compared | KFX's checker (`kfx/check*.kfx`, 7700 lines); of Fixpt's 187 programs beyond KFX, 161 refused by it |
+| The answers | nine machines, compared | the engine: 152 of the 167 KFX programs and 25 beyond agree with Fixpt, 15 not run yet; the compiled Rust, 167 of 167 |
+| Speed | interpreters to native arm64 (fib: 118 ms to 2.8 ms) | the engine (fib: 1039 ms), the Rust (5.2 ms, KFX only, rustc's latency) |
+| Memory | a generational collector, heap images (`dump-heap`, `build`, `run-image`) | the engine's Cheney copy; kayak-rt never frees |
+| Tools | `check` and `compile` (the two of each compared), `bench`, the REPL | the REPL, `scripts/bench.py` |
+| Tests | 653 `.fx` files under `crates/fixpt-fx26/tests` | Fixpt's programs run both ways; the corpus; the refused |
+| Other languages | Scheme, FX-87, FX-91 front ends | none |
+
+Order, proposed: (1) the checker for FX-26 at large, written in KFX
+(phase B, §6.5 step 8), its acceptance and each form's type and effect
+compared with `fixpt check` over all of Fixpt's programs, both
+directions (K1 asks only that kayak refuse what Fixpt refuses; a
+reference must also accept what it accepts); (2) every Fixpt program run
+on the engine, agreeing; (3) the specification moved into kayak; (4) the
+ladder of machines (§6.5 phase D), each checked against the engine, so
+that kayak's tiers cross-check one another as Fixpt's do; (5) the
+collector (`docs/research/coopt-heap.md`) and heap images. Open: whether
+Fixpt's Scheme, FX-87 and FX-91 front ends are to be carried over.
 
