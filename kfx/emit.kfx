@@ -764,11 +764,41 @@
                 params
                 (map2-params params (items (car (read-all (string-chars found) "" 1))))))))
 
+      (define-rec
+        (projected-name (subr kfx (sexp) string)
+          (lambda (e)
+            "The name a chain of `proj`s instantiates, or none."
+            (cond ((head-is? e "proj") (projected-name (second (items e))))
+                  (else (tagcase e (sym (n f p) n) (else other "")))))))
+
+      (define unprojected (subr kfx (ctx sexp) sexp)
+        (lambda (c e)
+          "A call of an abort or an escape through `proj`s, as FX-26's programs
+           write one, `((proj (proj escape r) a h) t v)` (C105): the call of the
+           primitive, written so, at the call's place, where its facts are."
+          (tagcase e
+            (lst (xs f l p)
+              (if (and (not (null? xs)) (head-is? (car xs) "proj"))
+                  (let ((n (projected-name (car xs))))
+                    (if (and (string-member? n (list "abort-current-continuation" "escape" "make-continuation-prompt-tag"))
+                             (ctx-fact? c (datum-file (car xs)) (datum-pos (car xs)) "control"))
+                        ;; The primitive's name where the `proj` was, at which the
+                        ;; checker said it is the primitive's.
+                        (lst (cons (sym n (datum-file (car xs)) (datum-pos (car xs))) (cdr xs)) f l p)
+                        e))
+                  e))
+            (else other e))))
+
       (define abort? (subr kfx (ctx sexp) bool)
         (lambda (c e)
-          "An abort: `return Err(...)` in Rust, so no value to return or wrap."
-          (and (head-is? e "abort-current-continuation")
-               (string=? (local-kind "abort-current-continuation" (ctx-locals c)) ""))))
+          "An abort, or an escape (C105): `return Err(...)` in Rust, so no value
+           to return or wrap."
+          (let ((e (unprojected c e)))
+            (or (and (head-is? e "abort-current-continuation")
+                     (string=? (local-kind "abort-current-continuation" (ctx-locals c)) ""))
+                (and (head-is? e "escape")
+                     (or (ctx-fact? c (datum-file e) (datum-pos e) "control")
+                         (ctx-fact? c (datum-file (car (items e))) (datum-pos (car (items e))) "control")))))))
 
       (define self-call? (subr kfx (tail sexp) bool)
         (lambda (t e)
@@ -1368,7 +1398,7 @@
                                (put " " (put (owner-lifetime c (third (items (expand-aliases c (second xs))))) (put "&" acc)))))
                     ((sym-is? (car xs) "blobref")
                      (put ">" (put-type c (second xs) (put "BlobRef<" acc))))
-                    ((sym-is? (car xs) "prompt-tag")
+                    ((or (sym-is? (car xs) "prompt-tag") (sym-is? (car xs) "escape-tag"))
                      (put ">" (put-type c (third xs) (put ", " (put-type c (second xs) (put "Tag<" acc))))))
                     ((sym-is? (car xs) "select")
                      (put (type-path c (sym-name (second xs)) (sym-name (third xs))) acc))
@@ -1660,7 +1690,7 @@
           "The facts at `e` found once, here: the clauses below ask of them
            alone, not of all the program's (C84: seven searches of every fact
            for each expression had made kfx three times slower)."
-          (let ((fs (facts-at c e)))
+          (let ((fs (facts-at c e)) (e (unprojected c e)))
           (cond ((self-call? t e) (put-continue c (cdr (items e)) n t acc))
                 ((and (returns? t) (abort? c e)) (put ";" (put-exp c e n (value) acc)))
                 ((and (returns? t) (not (control? e)))
@@ -1776,7 +1806,7 @@
                               (put ")))" acc)))
                            (else (put-var c s acc))))
                    (lst (xs src-file src-line src-pos)
-                     (cond ((fact-in? fs e "void-call") (put " {}" (put-call c e xs n t (put "match " acc))))
+                     (cond ((and (fact-in? fs e "void-call") (not (abort? c e))) (put " {}" (put-call c e xs n t (put "match " acc))))
                            ((fact-in? fs e "void-error") (put ")" (put-call c e xs n t (put "the::<Void>(" acc))))
                            ((or (fact-in? fs e "union-test") (fact-in? fs e "value-call")) (put-call c e xs n t (put "kayak_rt::value::" acc)))
                            ((fact-in? fs e "value-cons") (put ")" (put-joined c (cdr xs) ", " n (put "kayak_rt::value::cons(" acc))))

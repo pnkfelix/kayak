@@ -17,7 +17,14 @@
       (define control-primitive? (subr kfx (string) bool)
         (lambda (n)
           (string-member? n (list "call-with-composable-continuation" "call-with-current-continuation" "call/cc"
-                                  "abort-current-continuation" "make-continuation-prompt-tag"))))
+                                  "abort-current-continuation" "make-continuation-prompt-tag" "escape"))))
+
+      (define-rec
+        (projected-control (subr kfx (sexp) string)
+          (lambda (e)
+            "The control primitive a chain of `proj`s instantiates, or none."
+            (cond ((head-is? e "proj") (projected-control (second (items e))))
+                  (else (tagcase e (sym (n f p) (if (control-primitive? n) n "")) (else other "")))))))
 
       (define restriction-refused (subr kfx (string i64 string) void)
         (lambda (file line message)
@@ -48,6 +55,11 @@
                        (restriction-refused f l "a composable continuation, which FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)"))
                       ((and (sym-is? (car xs) "poly") (i64= (size xs) 3) (head-is? (third xs) "poly"))
                        (restriction-refused f l "a poly in a poly, which KFX's Rust writes as one: write it so (C70)"))
+                      ((and (head-is? (car xs) "proj")
+                            (string-member? (projected-control (car xs)) (list "abort-current-continuation" "escape" "make-continuation-prompt-tag")))
+                       "An abort or an escape through `proj`s, called: the emitter writes
+                        it as the primitive's call (C105)."
+                       (restricted-all (cdr xs) f l))
                       ((and (sym-is? (car xs) "proj") (not (null? (cdr xs)))
                             (tagcase (second xs) (sym (n f2 p2) (control-primitive? n)) (else other #f)))
                        (restriction-refused f l (string-append "a proj of " (string-append (sym-name (second xs)) ", a control primitive KFX types by its own rule"))))

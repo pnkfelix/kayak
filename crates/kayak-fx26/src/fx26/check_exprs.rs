@@ -172,6 +172,8 @@ pub mod expressions {
                     }), args)), str_lit(""), 0i64, 0i64)
                 } else if string_eq_p(d, str_lit("%place")) {
                     lst(kayak_rt::heap_cons(sym(str_lit("place"), str_lit(""), 0i64), kayak_rt::heap_cons(settled_sexp(s, car(args), true), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
+                } else if string_eq_p(d, str_lit("%escape-tag")) {
+                    lst(kayak_rt::heap_cons(sym(str_lit("escape-tag"), str_lit(""), 0i64), kayak_rt::heap_cons(settled_sexp(s, car(args), false), kayak_rt::heap_cons(settled_sexp(s, car(cdr(args)), false), kayak_rt::heap_cons(settled_sexp(s, car(cdr(cdr(args))), true), kayak_rt::nil())))), str_lit(""), 0i64, 0i64)
                 } else if (string_eq_p(d, str_lit("%addr")) || string_eq_p(d, str_lit("%inbox")) || string_eq_p(d, str_lit("%icell"))) {
                     lst(kayak_rt::heap_cons(sym(after_prefix(d, str_lit("%")), str_lit(""), 0i64), kayak_rt::heap_cons(settled_sexp(s, car(args), false), kayak_rt::heap_cons(settled_sexp(s, car(cdr(args)), true), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
                 } else if string_eq_p(d, str_lit("%flat-sum")) {
@@ -2039,7 +2041,7 @@ pub mod expressions {
     // `make-tag-call`), at FX-26's types, for a `proj` of one (C60), as FX-26's
     // programs write it.
     pub fn control_schemes() -> Str {
-        str_lit("(make-continuation-prompt-tag (poly ((r region) (a type) (h type) (d effect)) (subr (alloc r) () (prompt-tag a h d r))))\n         (abort-current-continuation (poly ((r region) (a type) (h type) (d effect)) (subr (goto r) ((prompt-tag a h d r) h) void)))")
+        str_lit("(make-continuation-prompt-tag (poly ((r region) (a type) (h type) (d effect)) (subr (alloc r) () (prompt-tag a h d r))))\n         (abort-current-continuation (poly ((r region) (a type) (h type) (d effect)) (subr (goto r) ((prompt-tag a h d r) h) void)))\n         (escape (poly ((r region) (a type) (h type)) (subr (goto r) ((escape-tag a h r) h) void)))")
     }
 
     pub fn control_binds(v: &'static Cv) -> Binds {
@@ -2105,6 +2107,10 @@ pub mod expressions {
                     }), args)), str_lit(""), 0i64, 0i64)
                 } else if string_eq_p(d, str_lit("%place")) {
                     lst(kayak_rt::heap_cons(sym(str_lit("place"), str_lit(""), 0i64), kayak_rt::heap_cons(ty_sexp(v, s, car(args)), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
+                } else if string_eq_p(d, str_lit("%escape-tag")) {
+                    lst(kayak_rt::heap_cons(sym(str_lit("escape-tag"), str_lit(""), 0i64), map(lambda1s(move |x: &'static Ty| {
+                        ty_sexp(v, s, x)
+                    }), args)), str_lit(""), 0i64, 0i64)
                 } else if (string_eq_p(d, str_lit("%addr")) || string_eq_p(d, str_lit("%inbox")) || string_eq_p(d, str_lit("%icell"))) {
                     lst(kayak_rt::heap_cons(sym(after_prefix(d, str_lit("%")), str_lit(""), 0i64), kayak_rt::heap_cons(ty_sexp(v, s, car(args)), kayak_rt::heap_cons(ty_sexp(v, s, car(cdr(args))), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
                 } else if string_eq_p(d, str_lit("%flat-sum")) {
@@ -3056,11 +3062,17 @@ pub mod expressions {
                         }
                         _ => {
                             let head = tagcase_;
-                            void_call(v, false, false, synth_call_of(v, s, synth(v, s, head), cdr(xs), nil::<i64>(), nil::<&'static Ty>(), if head_is_p(head, str_lit("proj")) {
-                                nil::<Str>()
-                            } else {
-                                kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil())
-                            }))
+                            let hr = synth(v, s, head);
+                            let tagcase_ = hr;
+                            match *tagcase_ {
+                                Res::Res(ht, hes, hs) => {
+                                    void_call(v, false, false, synth_call_of(v, s, hr, cdr(xs), nil::<i64>(), nil::<&'static Ty>(), if (head_is_p(head, str_lit("proj")) || head_is_p(head, str_lit("lambda")) || not(self_applicable_p(v, hs, ht))) {
+                                        nil::<Str>()
+                                    } else {
+                                        kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil())
+                                    }))
+                                }
+                            }
                         }
                     }
                 }
@@ -5750,6 +5762,22 @@ pub mod expressions {
                                             projected(v, tvars, cdr(xs), ty_var(x))
                                         }));
                                         return res(projected(v, tvars, cdr(xs), t), naming_effs(s, n, wher, t, cv_group(v)), {
+                                            let s = if null_p({
+                                                let tagcase_ = car(xs);
+                                                match *tagcase_ {
+                                                    Sexp::Sym(n2, f2, p2) => {
+                                                        find_bind(n2, cv_binds(v))
+                                                    }
+                                                    _ => {
+                                                        let other = tagcase_;
+                                                        nil::<&'static Bind>()
+                                                    }
+                                                }
+                                            }) {
+                                                note_fact(s, cv_file(v), cv_pos(v), str_lit("control"))
+                                            } else {
+                                                s
+                                            };
                                             let tagcase_ = car(xs);
                                             match *tagcase_ {
                                                 Sexp::Sym(name, at_file, at_pos) => {
@@ -6277,6 +6305,8 @@ pub mod expressions {
             suspend_call(v, s, args, expected)
         } else if (null_p(found) && string_eq_p(h, str_lit("make-continuation-prompt-tag"))) {
             make_tag_call(v, s, args, expected)
+        } else if (null_p(found) && string_eq_p(h, str_lit("escape"))) {
+            escape_call(v, s, args)
         } else if (null_p(found) && (string_eq_p(h, str_lit("rcons")) || string_eq_p(h, str_lit("rnew")))) {
             region_alloc_call(v, s, h, args, expected)
         } else if null_p(found) {
@@ -6612,6 +6642,31 @@ pub mod expressions {
         }
     }
 
+    /// `(escape tag v)` (C105): to the innermost prompt of the escape-only
+    /// `tag`, with `v`, as an abort is to a prompt tag's; of type `void`.
+    pub fn escape_call(v: &'static Cv, s: &'static St, args: Sexps) -> &'static Res {
+        if not(i64_eq(size(args), 2i64)) {
+            match refuse(v, str_lit("escape takes a tag and a value")) {}
+        } else {
+            let tagcase_ = synth(v, s, car(args));
+            match *tagcase_ {
+                Res::Res(t, es0, s) => {
+                    let parts = escape_tag_parts(s, t);
+                    if null_p(parts) {
+                        match refuse(v, string_append(str_lit("an escape to a "), string_append(show_ty(s, t), str_lit(", no escape-tag")))) {}
+                    } else {
+                        let tagcase_ = check(v, s, second(args), car(cdr(parts)));
+                        match *tagcase_ {
+                            Res::Res(u, es1, s) => {
+                                res(ty_void(), effs_union(kayak_rt::heap_cons(string_append(str_lit("goto:"), region_string(s, car(cdr(cdr(parts))))), kayak_rt::nil()), effs_union(es0, es1)), note_fact(s, cv_file(v), cv_pos(v), str_lit("control")))
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     /// `(abort-with-continuation tag (lambda ((k K)) body))` (kfx/prelude.fx,
     /// C45): the rest up to `tag`'s prompt, `k`, resumable once, of `K`, a
     /// `(subr (maxeff D (goto R) (comefrom R) (read R) (write R)) (V) A)`
@@ -6721,14 +6776,14 @@ pub mod expressions {
         let tagcase_ = synth(v, s, car(xs));
         match *tagcase_ {
             Res::Res(tt, es0, s) => {
-                let tagcase_ = walk(s, tt);
+                let tagcase_ = as_prompt_tag(s, tt);
                 match *tagcase_ {
                     Ty::TyTag(a, h, d, r) => {
                         let rn = region_string(s, r);
                         let tagcase_ = check(v, s, second(xs), a);
                         match *tagcase_ {
                             Res::Res(u, es1, s) => {
-                                if not(effs_within_p(masked_goto(es1, rn), d)) {
+                                if (not(escape_tag_p(s, tt)) && not(effs_within_p(masked_goto(es1, rn), d))) {
                                     match refuse(v, string_append(str_lit("the tag allows its delimited computations "), string_append(show_effs(d), string_append(str_lit(", and this body also has "), show_effs(masked_goto(es1, rn)))))) {}
                                 } else {
                                     let tagcase_ = handler_of(v, s, third(xs), h, a);
@@ -6772,6 +6827,39 @@ pub mod expressions {
                     }
                 }
             }
+        }
+    }
+
+    /// An escape-only tag's answer, payload and region, or none.
+    pub fn escape_tag_parts(s: &'static St, t: &'static Ty) -> Tys {
+        let tagcase_ = walk(s, t);
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                if string_eq_p(d, str_lit("%escape-tag")) {
+                    args
+                } else {
+                    nil::<&'static Ty>()
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<&'static Ty>()
+            }
+        }
+    }
+
+    pub fn escape_tag_p(s: &'static St, t: &'static Ty) -> bool {
+        not(null_p(escape_tag_parts(s, t)))
+    }
+
+    /// A tag as a prompt sees it: an escape-only tag as a prompt tag that
+    /// bounds nothing (its `D` unused, C105).
+    pub fn as_prompt_tag(s: &'static St, t: &'static Ty) -> &'static Ty {
+        let parts = escape_tag_parts(s, t);
+        if null_p(parts) {
+            walk(s, t)
+        } else {
+            ty_tag(car(parts), car(cdr(parts)), nil::<Str>(), car(cdr(cdr(parts))))
         }
     }
 

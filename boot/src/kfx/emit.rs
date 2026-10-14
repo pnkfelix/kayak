@@ -1414,9 +1414,57 @@ pub mod emitter {
         }
     }
 
-    /// An abort: `return Err(...)` in Rust, so no value to return or wrap.
+    /// The name a chain of `proj`s instantiates, or none.
+    pub fn projected_name(mut e: &'static Sexp) -> Str {
+        loop {
+            if head_is_p(e, str_lit("proj")) {
+                e = second(items(e));
+                continue;
+            } else {
+                let tagcase_ = e;
+                match *tagcase_ {
+                    Sexp::Sym(n, f, p) => {
+                        return n;
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return str_lit("");
+                    }
+                }
+            }
+        }
+    }
+
+    /// A call of an abort or an escape through `proj`s, as FX-26's programs
+    /// write one, `((proj (proj escape r) a h) t v)` (C105): the call of the
+    /// primitive, written so, at the call's place, where its facts are.
+    pub fn unprojected(c: &'static Ctx, e: &'static Sexp) -> &'static Sexp {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                if (not(null_p(xs)) && head_is_p(car(xs), str_lit("proj"))) {
+                    let n = projected_name(car(xs));
+                    if (string_member_p(n, kayak_rt::heap_cons(str_lit("abort-current-continuation"), kayak_rt::heap_cons(str_lit("escape"), kayak_rt::heap_cons(str_lit("make-continuation-prompt-tag"), kayak_rt::nil())))) && ctx_fact_p(c, datum_file(car(xs)), datum_pos(car(xs)), str_lit("control"))) {
+                        lst(kayak_rt::heap_cons(sym(n, datum_file(car(xs)), datum_pos(car(xs))), cdr(xs)), f, l, p)
+                    } else {
+                        e
+                    }
+                } else {
+                    e
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                e
+            }
+        }
+    }
+
+    /// An abort, or an escape (C105): `return Err(...)` in Rust, so no value
+    /// to return or wrap.
     pub fn abort_p(c: &'static Ctx, e: &'static Sexp) -> bool {
-        (head_is_p(e, str_lit("abort-current-continuation")) && string_eq_p(local_kind(str_lit("abort-current-continuation"), ctx_locals(c)), str_lit("")))
+        let e = unprojected(c, e);
+        ((head_is_p(e, str_lit("abort-current-continuation")) && string_eq_p(local_kind(str_lit("abort-current-continuation"), ctx_locals(c)), str_lit(""))) || (head_is_p(e, str_lit("escape")) && (ctx_fact_p(c, datum_file(e), datum_pos(e), str_lit("control")) || ctx_fact_p(c, datum_file(car(items(e))), datum_pos(car(items(e))), str_lit("control")))))
     }
 
     pub fn self_call_p(t: &'static Tail, e: &'static Sexp) -> bool {
@@ -2542,7 +2590,7 @@ pub mod emitter {
                         return put_flat(c, expand_aliases(c, third(xs)), put(str_lit(" "), put(owner_lifetime(c, third(items(expand_aliases(c, second(xs))))), put(str_lit("&"), acc))));
                     } else if sym_is_p(car(xs), str_lit("blobref")) {
                         return put(str_lit(">"), put_type(c, second(xs), put(str_lit("BlobRef<"), acc)));
-                    } else if sym_is_p(car(xs), str_lit("prompt-tag")) {
+                    } else if (sym_is_p(car(xs), str_lit("prompt-tag")) || sym_is_p(car(xs), str_lit("escape-tag"))) {
                         return put(str_lit(">"), put_type(c, third(xs), put(str_lit(", "), put_type(c, second(xs), put(str_lit("Tag<"), acc)))));
                     } else if sym_is_p(car(xs), str_lit("select")) {
                         return put(type_path(c, sym_name(second(xs)), sym_name(third(xs))), acc);
@@ -3151,7 +3199,7 @@ pub mod emitter {
     /// alone, not of all the program's (C84: seven searches of every fact
     /// for each expression had made kfx three times slower).
     pub fn put_exp(c: &'static Ctx, e: &'static Sexp, n: i64, t: &'static Tail, acc: Chars) -> Chars {
-        let fs = facts_at(c, e);
+        let (fs, e) = (facts_at(c, e), unprojected(c, e));
         if self_call_p(t, e) {
             put_continue(c, cdr(items(e)), n, t, acc)
         } else if (returns_p(t) && abort_p(c, e)) {
@@ -3312,7 +3360,7 @@ pub mod emitter {
                     }
                 }
                 Sexp::Lst(xs, src_file, src_line, src_pos) => {
-                    if fact_in_p(fs, e, str_lit("void-call")) {
+                    if (fact_in_p(fs, e, str_lit("void-call")) && not(abort_p(c, e))) {
                         put(str_lit(" {}"), put_call(c, e, xs, n, t, put(str_lit("match "), acc)))
                     } else if fact_in_p(fs, e, str_lit("void-error")) {
                         put(str_lit(")"), put_call(c, e, xs, n, t, put(str_lit("the::<Void>("), acc)))

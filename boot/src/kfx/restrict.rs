@@ -20,7 +20,32 @@ pub mod restrictions {
     use super::*;
 
     pub fn control_primitive_p(n: Str) -> bool {
-        string_member_p(n, kayak_rt::heap_cons(str_lit("call-with-composable-continuation"), kayak_rt::heap_cons(str_lit("call-with-current-continuation"), kayak_rt::heap_cons(str_lit("call/cc"), kayak_rt::heap_cons(str_lit("abort-current-continuation"), kayak_rt::heap_cons(str_lit("make-continuation-prompt-tag"), kayak_rt::nil()))))))
+        string_member_p(n, kayak_rt::heap_cons(str_lit("call-with-composable-continuation"), kayak_rt::heap_cons(str_lit("call-with-current-continuation"), kayak_rt::heap_cons(str_lit("call/cc"), kayak_rt::heap_cons(str_lit("abort-current-continuation"), kayak_rt::heap_cons(str_lit("make-continuation-prompt-tag"), kayak_rt::heap_cons(str_lit("escape"), kayak_rt::nil())))))))
+    }
+
+    /// The control primitive a chain of `proj`s instantiates, or none.
+    pub fn projected_control(mut e: &'static Sexp) -> Str {
+        loop {
+            if head_is_p(e, str_lit("proj")) {
+                e = second(items(e));
+                continue;
+            } else {
+                let tagcase_ = e;
+                match *tagcase_ {
+                    Sexp::Sym(n, f, p) => {
+                        if control_primitive_p(n) {
+                            return n;
+                        } else {
+                            return str_lit("");
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        return str_lit("");
+                    }
+                }
+            }
+        }
     }
 
     pub fn restriction_refused(file: Str, line: i64, message: Str) -> Void {
@@ -54,6 +79,10 @@ pub mod restrictions {
                     match restriction_refused(f, l, str_lit("a composable continuation, which FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)")) {}
                 } else if (sym_is_p(car(xs), str_lit("poly")) && i64_eq(size(xs), 3i64) && head_is_p(third(xs), str_lit("poly"))) {
                     match restriction_refused(f, l, str_lit("a poly in a poly, which KFX's Rust writes as one: write it so (C70)")) {}
+                } else if (head_is_p(car(xs), str_lit("proj")) && string_member_p(projected_control(car(xs)), kayak_rt::heap_cons(str_lit("abort-current-continuation"), kayak_rt::heap_cons(str_lit("escape"), kayak_rt::heap_cons(str_lit("make-continuation-prompt-tag"), kayak_rt::nil()))))) {
+                    // An abort or an escape through `proj`s, called: the emitter writes
+                    // it as the primitive's call (C105).
+                    restricted_all(cdr(xs), f, l)
                 } else if (sym_is_p(car(xs), str_lit("proj")) && not(null_p(cdr(xs))) && {
                     let tagcase_ = second(xs);
                     match *tagcase_ {

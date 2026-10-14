@@ -39,6 +39,12 @@ pub fn make_continuation_prompt_tag<A, H>() -> Tag<A, H> {
     }
 }
 
+/// `(make-escape-tag)` (C105): an escape-only tag, at run time a prompt
+/// tag; that nothing captures with one is the checker's.
+pub fn make_escape_tag<A, H>() -> Tag<A, H> {
+    make_continuation_prompt_tag()
+}
+
 pub fn unwind<A, H: 'static>(tag: Tag<A, H>, payload: H) -> Unwind {
     Unwind {
         tag: tag.id,

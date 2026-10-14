@@ -971,6 +971,12 @@
                   process's mailbox at `R`; `(inbox M r)`, the right to take from it,
                   its process's alone; `(icell T R)`, a `T` written once."
                  (ty-data (string-append "%" (sym-name (car xs))) (list (parse-type v tvars (second xs)) (parse-region v tvars (third xs)))))
+                ((and (sym-is? (car xs) "escape-tag") (i64= (size xs) 4))
+                 "FX-26's escape-only tag (C105), `(escape-tag A H R)`: escaped to as a
+                  prompt tag is aborted to, never captured with, so it bounds nothing
+                  its prompts' bodies do. In Rust, a prompt tag's `Tag<A, H>`."
+                 (ty-data "%escape-tag" (list (parse-type v tvars (second xs)) (parse-type v tvars (third xs))
+                                              (parse-mutable-region v tvars (fourth xs)))))
                 ((and (sym-is? (car xs) "mark-key") (i64= (size xs) 3))
                  "FX-26's continuation mark's key (C72), `(mark-key T R)`: a place in
                   the dynamic context, its marks `T`s, at `R`."
@@ -1241,6 +1247,7 @@
                 ((string=? d "%union") (string-append "(union " (string-append (show-tys s args) ")")))
                 ((string=? d "%pairof") (string-append "(pairof " (string-append (show-tys s args) ")")))
                 ((string=? d "%mark-key") (string-append "(mark-key " (string-append (show-tys s args) ")")))
+                ((string=? d "%escape-tag") (string-append "(escape-tag " (string-append (show-tys s args) ")")))
                 ((or (string=? d "%addr") (string=? d "%inbox") (string=? d "%icell"))
                  (string-append "(" (string-append (after-prefix d "%") (string-append " " (string-append (show-tys s args) ")")))))
                 ((string=? d "%vsubr")

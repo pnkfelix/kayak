@@ -98,6 +98,7 @@
    (vector? (poly ((t type)) (subr pure (t) bool)))
    (f32? (poly ((t type)) (subr pure (t) bool)))
    (datum-list->vector (subr pure (datum) datum))
+   (make-escape-tag (poly ((r region) (a type) (h type)) (subr (alloc r) () (escape-tag a h r))))
    (make-continuation-mark-key (poly ((r region) (t type)) (subr (alloc r) () (mark-key t r))))
    (with-mark (poly ((r region) (t type) (a type) (e effect)) (subr (maxeff (write r) e) ((mark-key t r) t (subr e () a)) a)))
    (first-mark (poly ((r region) (t type)) (subr (read r) ((mark-key t r) t) t)))

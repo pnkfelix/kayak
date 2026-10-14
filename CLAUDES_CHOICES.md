@@ -2308,3 +2308,37 @@ The user: "you should update to latest Fixpt". One commit past fea5c66,
 on native code's typed calls (TODO §93), nothing KFX has: check.sh
 passes as before (156 of Fixpt's programs through kfx agree, 287 refused
 by both).
+
+## C105. Conditions, first: FX-26's escape tags, and `spin` for a call of a value (2026-10-14)
+
+The user: "Let's add conditions to KFX then", so that the REPL's front
+could become a KFX process (C103). FX-26's conditions are a library,
+`fx26:conditions.fx` (Fixpt's `docs/research/conditions.md` §6b): `handle`
+over an escape-only tag, `with-handler` and `raise` over continuation
+marks, each procedure taking a region-polymorphic body (rank 2). KFX
+lacked all four parts; this is the first two.
+- **`spin` for a call of a computed procedure** only where FX-26 says it:
+  the callee no `lambda` and its type cyclic (`self-applicable?`, Fixpt's
+  `cyclic`, infer.rs), as for a call of a local (C81). KFX said it for
+  every such call, which refused the library's `raise` (a call of the
+  handler `first-mark` gives).
+- **Escape tags**: `(escape-tag A H R)`, a type of its own (`%escape-tag`),
+  never a `prompt-tag` and never the other way, as FX-26's is a generative
+  type; `make-escape-tag` a primitive; `(escape t v)` typed as an abort is,
+  a `goto` on `R`, of type `void`; a `prompt` of one bounds nothing its
+  body does, and masks the `goto` as for a prompt tag. In Rust a prompt
+  tag's `Tag<A, H>`, and an escape is an abort's early return. No capture
+  takes one: KFX's only capture, `abort-with-continuation`, wants a
+  `prompt-tag`. Not transmissible (a tag in `R`).
+- **`proj` of a control primitive as a call's head**,
+  `((proj (proj escape r) a h) t v)`, as FX-26's programs write it: the
+  checker types it by the primitive's FX-26 scheme and notes `control` at
+  the `proj` (so that a program's own `escape`, as Fixpt's
+  `run/region-escapes.fx` defines, is its own), and the emitter writes the
+  primitive's call; for `abort-current-continuation`, `escape` and
+  `make-continuation-prompt-tag`. The restriction pass still refuses one
+  anywhere else.
+- Measured: kfx accepts 160 of Fixpt's programs (156), all agreeing, among
+  them `control/escape-tag.fx` and the conditions examples
+  `escape-polymorphic.fx`, `escape-through-generic.fx`; all 287 Fixpt
+  refuses, kfx refuses. The engine agrees on 148 (145).

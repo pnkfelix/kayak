@@ -1975,6 +1975,11 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     // process's mailbox at `R`; `(inbox M r)`, the right to take from it,
                     // its process's alone; `(icell T R)`, a `T` written once.
                     return ty_data(string_append(str_lit("%"), sym_name(car(xs))), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::heap_cons(parse_region(v, tvars, third(xs)), kayak_rt::nil())));
+                } else if (sym_is_p(car(xs), str_lit("escape-tag")) && i64_eq(size(xs), 4i64)) {
+                    // FX-26's escape-only tag (C105), `(escape-tag A H R)`: escaped to as a
+                    // prompt tag is aborted to, never captured with, so it bounds nothing
+                    // its prompts' bodies do. In Rust, a prompt tag's `Tag<A, H>`.
+                    return ty_data(str_lit("%escape-tag"), kayak_rt::heap_cons(parse_type(v, tvars, second(xs)), kayak_rt::heap_cons(parse_type(v, tvars, third(xs)), kayak_rt::heap_cons(parse_mutable_region(v, tvars, fourth(xs)), kayak_rt::nil()))));
                 } else if (sym_is_p(car(xs), str_lit("mark-key")) && i64_eq(size(xs), 3i64)) {
                     // FX-26's continuation mark's key (C72), `(mark-key T R)`: a place in
                     // the dynamic context, its marks `T`s, at `R`.
@@ -2477,6 +2482,8 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
                 string_append(str_lit("(pairof "), string_append(show_tys(s, args), str_lit(")")))
             } else if string_eq_p(d, str_lit("%mark-key")) {
                 string_append(str_lit("(mark-key "), string_append(show_tys(s, args), str_lit(")")))
+            } else if string_eq_p(d, str_lit("%escape-tag")) {
+                string_append(str_lit("(escape-tag "), string_append(show_tys(s, args), str_lit(")")))
             } else if (string_eq_p(d, str_lit("%addr")) || string_eq_p(d, str_lit("%inbox")) || string_eq_p(d, str_lit("%icell"))) {
                 string_append(str_lit("("), string_append(after_prefix(d, str_lit("%")), string_append(str_lit(" "), string_append(show_tys(s, args), str_lit(")")))))
             } else if string_eq_p(d, str_lit("%vsubr")) {

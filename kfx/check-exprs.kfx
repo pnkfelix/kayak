@@ -80,6 +80,8 @@
                       ((string=? d "%array") (lst (list (sym "arrayof" "" 0) (settled-sexp s (car args) #f) (settled-sexp s (car (cdr args)) #t)) "" 0 0))
                       ((string=? d "%flat-array") (lst (cons (sym "arrayof" "" 0) (map (lambda ((x ty)) (settled-sexp s x #f)) args)) "" 0 0))
                       ((string=? d "%place") (lst (list (sym "place" "" 0) (settled-sexp s (car args) #t)) "" 0 0))
+                      ((string=? d "%escape-tag")
+                       (lst (list (sym "escape-tag" "" 0) (settled-sexp s (car args) #f) (settled-sexp s (car (cdr args)) #f) (settled-sexp s (car (cdr (cdr args))) #t)) "" 0 0))
                       ((or (string=? d "%addr") (string=? d "%inbox") (string=? d "%icell"))
                        (lst (list (sym (after-prefix d "%") "" 0) (settled-sexp s (car args) #f) (settled-sexp s (car (cdr args)) #t)) "" 0 0))
                       ((string=? d "%flat-sum")
@@ -883,7 +885,8 @@
 
       (define control-schemes string
         "(make-continuation-prompt-tag (poly ((r region) (a type) (h type) (d effect)) (subr (alloc r) () (prompt-tag a h d r))))
-         (abort-current-continuation (poly ((r region) (a type) (h type) (d effect)) (subr (goto r) ((prompt-tag a h d r) h) void)))")
+         (abort-current-continuation (poly ((r region) (a type) (h type) (d effect)) (subr (goto r) ((prompt-tag a h d r) h) void)))
+         (escape (poly ((r region) (a type) (h type)) (subr (goto r) ((escape-tag a h r) h) void)))")
 
       (define control-binds (subr kfx (cv) binds)
         (lambda (v)
@@ -916,6 +919,7 @@
                     ((string=? d "%array") (lst (list (sym "arrayof" "" 0) (ty-sexp v s (car args)) (ty-sexp v s (car (cdr args)))) "" 0 0))
                     ((string=? d "%flat-array") (lst (cons (sym "arrayof" "" 0) (map (lambda ((x ty)) (ty-sexp v s x)) args)) "" 0 0))
                     ((string=? d "%place") (lst (list (sym "place" "" 0) (ty-sexp v s (car args))) "" 0 0))
+                    ((string=? d "%escape-tag") (lst (cons (sym "escape-tag" "" 0) (map (lambda ((x ty)) (ty-sexp v s x)) args)) "" 0 0))
                     ((or (string=? d "%addr") (string=? d "%inbox") (string=? d "%icell"))
                      (lst (list (sym (after-prefix d "%") "" 0) (ty-sexp v s (car args)) (ty-sexp v s (car (cdr args)))) "" 0 0))
                     ((string=? d "%flat-sum")
@@ -1395,8 +1399,17 @@
               (let ((v (near v src-file src-line src-pos)))
                 (tagcase (car xs)
                   (sym (h at-file at-pos) (synth-form v s e h (cdr xs)))
-                  (else head (void-call v #f #f (synth-call-of v s (synth v s head) (cdr xs) nil nil
-                                                               (if (head-is? head "proj") nil (list "spin"))))))))))))
+                  ;; A procedure computed, not named: `spin` only if its type
+                  ;; is cyclic, so that it could be given itself (FX-26's rule,
+                  ;; Fixpt's infer.rs; C105).
+                  (else head
+                    (let ((hr (synth v s head)))
+                      (tagcase hr
+                        (res (ht hes hs)
+                          (void-call v #f #f (synth-call-of v s hr (cdr xs) nil nil
+                                                            (if (or (head-is? head "proj") (head-is? head "lambda") (not (self-applicable? v hs ht)))
+                                                                nil
+                                                                (list "spin")))))))))))))))
 
       (async-global (subr kfx (cv st string string i64) st)
         (lambda (v s name file pos)
@@ -2572,12 +2585,16 @@
                             (begin
                               (bounds-kept v s n (lambda ((x string)) (projected v tvars (cdr xs) (ty-var x))))
                               (res (projected v tvars (cdr xs) t) (naming-effs s n wher t (cv-group v))
+                                   (let ((s (if (null? (tagcase (car xs) (sym (n2 f2 p2) (find-bind n2 (cv-binds v))) (else other nil)))
+                                                ;; A control primitive's, no binding of the program's (C105).
+                                                (note-fact s (cv-file v) (cv-pos v) "control")
+                                                s)))
                                    (tagcase (car xs)
                                      (sym (name at-file at-pos)
                                        "A global that may suspend, as a value: its future boxed, as a
                                         name's is (`async-global`), at any effect it is given."
                                        (async-global v (proj-needs v s n tvars (cdr xs)) name at-file at-pos))
-                                     (else other (proj-needs v s n tvars (cdr xs))))))))))))))))
+                                     (else other (proj-needs v s n tvars (cdr xs)))))))))))))))))
 
       (bounds-kept (subr kfx (cv st string (subr kfx (string) ty)) unit)
         (lambda (v s n region-of-binder)
@@ -2837,6 +2854,7 @@
                      (else other (refuse v "a pair that is none"))))
                   ((and (null? found) (string=? h "abort-with-continuation")) (suspend-call v s args expected))
                   ((and (null? found) (string=? h "make-continuation-prompt-tag")) (make-tag-call v s args expected))
+                  ((and (null? found) (string=? h "escape")) (escape-call v s args))
                   ((and (null? found) (or (string=? h "rcons") (string=? h "rnew"))) (region-alloc-call v s h args expected))
 
                   ((null? found)
@@ -3006,6 +3024,22 @@
                           (res (ty-void) (effs-union (list (string-append "goto:" (region-string s r))) (effs-union es0 es1)) s))))
                     (else other (refuse v (string-append "an abort to a " (string-append (show-ty s t) ", no prompt-tag"))))))))))
 
+      (escape-call (subr kfx (cv st sexps) res)
+        (lambda (v s args)
+          "`(escape tag v)` (C105): to the innermost prompt of the escape-only
+           `tag`, with `v`, as an abort is to a prompt tag's; of type `void`."
+          (if (not (i64= (size args) 2))
+              (refuse v "escape takes a tag and a value")
+              (tagcase (synth v s (car args))
+                (res (t es0 s)
+                  (let ((parts (escape-tag-parts s t)))
+                    (if (null? parts)
+                        (refuse v (string-append "an escape to a " (string-append (show-ty s t) ", no escape-tag")))
+                        (tagcase (check v s (second args) (car (cdr parts)))
+                          (res (u es1 s)
+                            (res (ty-void) (effs-union (list (string-append "goto:" (region-string s (car (cdr (cdr parts)))))) (effs-union es0 es1))
+                                 (note-fact s (cv-file v) (cv-pos v) "control")))))))))))
+
       (suspend-call (subr kfx (cv st sexps tys) res)
         (lambda (v s args expected)
           "`(abort-with-continuation tag (lambda ((k K)) body))` (kfx/prelude.fx,
@@ -3077,12 +3111,12 @@
            variables, never laxer)."
           (tagcase (synth v s (car xs))
             (res (tt es0 s)
-              (tagcase (walk s tt)
+              (tagcase (as-prompt-tag s tt)
                 (ty-tag (a h d r)
                   (let ((rn (region-string s r)))
                     (tagcase (check v s (second xs) a)
                       (res (u es1 s)
-                        (if (not (effs-within? (masked-goto es1 rn) d))
+                        (if (and (not (escape-tag? s tt)) (not (effs-within? (masked-goto es1 rn) d)))
                             (refuse v (string-append "the tag allows its delimited computations " (string-append (show-effs d)
                                       (string-append ", and this body also has " (show-effs (masked-goto es1 rn))))))
                             (tagcase (handler-of v s (third xs) h a)
@@ -3096,6 +3130,25 @@
                                        (s (if (null? expected) s (fits v s a (car expected)))))
                                   (res a (effs-union es0 (effs-union es2 (if delimits (masked-goto es1 rn) es1))) s)))))))))
                 (else other (refuse v (string-append "a prompt of a " (string-append (show-ty s tt) ", no prompt-tag")))))))))
+
+      (escape-tag-parts (subr kfx (st ty) tys)
+        (lambda (s t)
+          "An escape-only tag's answer, payload and region, or none."
+          (tagcase (walk s t)
+            (ty-data (d args) (if (string=? d "%escape-tag") args nil))
+            (else other nil))))
+
+      (escape-tag? (subr kfx (st ty) bool)
+        (lambda (s t) (not (null? (escape-tag-parts s t)))))
+
+      (as-prompt-tag (subr kfx (st ty) ty)
+        (lambda (s t)
+          "A tag as a prompt sees it: an escape-only tag as a prompt tag that
+           bounds nothing (its `D` unused, C105)."
+          (let ((parts (escape-tag-parts s t)))
+            (if (null? parts)
+                (walk s t)
+                (ty-tag (car parts) (car (cdr parts)) nil (car (cdr (cdr parts))))))))
 
       (handler-of (subr kfx (cv st sexp ty ty) res)
         (lambda (v s e h a)
