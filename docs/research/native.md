@@ -111,17 +111,18 @@ both, written once.
 4. **`unsafe` in one new crate** (`kayak-jit`, Q7): reserving and mapping
    memory (the code area's two views), writing and flushing code, the trampolines into native code and back,
    flushing native frames. Nothing else.
-5. **K1 at the boundary.** KFX can call only what FX-26 has, and FX-26
-   has no primitive to run machine code. So the call into a machine is a
-   KFX procedure whose FX-26 body is tier 1's interpreter (what Fixpt runs,
-   and the reference meaning), which kayak-rt replaces with the machine
-   chosen. Not the final state for every call (the user): once code is
-   native, it calls native code directly, and only the boundary between
-   KFX's own code and the machine goes through this procedure. If that
-   proves too narrow, FX-26 primitives for code objects are a request for
-   Fixpt, raised with the user first: since FX-26 has bloblets already, a
-   bloblet made in the code area, its suffix instructions, called as a
-   procedure, is the natural shape for one.
+5. **K1 at the boundary: FX-26 extended, in Fixpt** (the user,
+   2026-10-14: "we need the extensions in Fixpt"). KFX can use only what
+   FX-26 has, and FX-26 has no way to place and run machine code, so
+   FX-26 gains primitives for it, which Fixpt implements and kayak's
+   KFX then uses: code bloblets in the double-mapped code area (made with
+   fields and a suffix's size, written, sealed, made a procedure at a
+   stated type under an effect of their own), and later the contract
+   native code needs (value layout, registers, call-outs, frames for the
+   collector, fuel) as part of FX-26's definition. Not kayak-rt standing
+   in for a KFX procedure's FX-26 body, which was the other way (dropped).
+   The request is the user's to send; until the pin moves, kayak's side
+   (the code area, the encoder) is built against it.
 6. **Each tier checked against the one below**, by code where both make
    code (cells with Fixpt's, instructions between tiers 4 and 5 where they
    overlap) and by answers on every program, as Fixpt's
