@@ -108,6 +108,12 @@ both, written once.
    (a copied code space, code reaching everything through the machine's
    state) fits only the cellular machines' compiled words, as Fixpt uses
    it there; `MAP_JIT` toggling measured 32 ns a field write (Fixpt).
+   Non-moving is a choice, not a promise kept to Fixpt: FX-26's
+   `seal-code` (Fixpt §97) says nothing of moving, nor does its `native`
+   declaration (code reached by its reference plus `x26`, fields
+   PC-relatively, the frame's return slot named in its stack map), so
+   kayak's collector may yet move code (the user, 2026-10-15), if kayak's
+   generators keep no raw code address the convention does not describe.
 4. **`unsafe` in one new crate** (`kayak-jit`, Q7): reserving and mapping
    memory (the code area's two views), writing and flushing code, the trampolines into native code and back,
    flushing native frames. Nothing else.
