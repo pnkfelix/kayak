@@ -566,8 +566,8 @@ accepts: 22 the same, 52 alike, 110 different, 173 refused by kayak.
 
 `docs/research/native.md`: tiers 0 to 6 (the engine; cells interpreted;
 the hand machine; stencils from kayak-rt; cells compiled; register code;
-the native convention), Fixpt's formats taken whole, code in a code space
-as accomplice's, `unsafe` in one crate (`kayak-jit`).
+the native convention), Fixpt's formats taken whole, code bloblets in a
+double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one crate (`kayak-jit`).
 1. Module files in KFX; Fixpt's front end's 143 files surveyed again,
    to choose where stage A comes from (A: Fixpt's front end through KFX;
    B: Fixpt's compilers ported onto kayak's checker).

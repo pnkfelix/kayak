@@ -50,8 +50,8 @@ Larceny's accomplice fork (`~/Dev/LangPlay/accomplice`, read only:
      oldest generation, copied to a new code semispace; under the
      regional collector, by a separate pass that forwards code and fixes
      every pointer to it. Return addresses are kept relative to their code.
-   - *Fixpt*: code bloblets in a non-moving, mark-swept code area of the
-     heap, **double-mapped** (a writable view and an executable view, by
+   - *Fixpt*: code bloblets, their fields beside their code, in a
+     non-moving, mark-swept code area of the heap, **double-mapped** (a writable view and an executable view, by
      `mach_vm_remap`), since its code bloblets' fields (constants, callees,
      globals) are written often and `MAP_JIT` toggling measured 32 ns a
      write. Native frames are laid out as bloblets, with a liveness mask as
@@ -93,16 +93,23 @@ both, written once.
    reserved memory, at an address that never changes, which native code
    is given. Values are indices into it for KFX, and addresses for native
    code with a base register, until measured otherwise.
-3. **Code in a code space, as accomplice's**: pointer-free code objects
-   (a procedure's constants, callees and globals in an object of its own,
-   in the data heap), installed by one copy between turning writing on
-   and off, its instruction cache flushed; collected as a semispace of its
-   own, or by a pass, with whichever collector the heap has. Return
-   addresses relative to their code. Fixpt's double mapping is the
-   alternative if code objects' fields must be written after
-   installation; accomplice's design avoids that.
+3. **Code bloblets, as Fixpt's** (its `docs/object-model.md`, "Code"
+   and "A collected code area"): a procedure's code is the suffix of a
+   bloblet whose fields (its constants, callees, globals, name, frame
+   layout, the checker's facts) sit at fixed negative offsets from its
+   first instruction, read PC-relatively; a closure, a code bloblet whose
+   captured values are fields. They live in a non-moving code area of the
+   heap, mark-swept within the copying collection (the collector updating
+   fields in place), mapped twice: fields written through a read+write
+   view, code run from a read+execute view of the same pages, so nothing
+   is ever both, and no write toggles anything. This keeps the bloblet's
+   point, code beside its environment (the user, 2026-10-14), which
+   accomplice's pointer-free code space gives up. Accomplice's design
+   (a copied code space, code reaching everything through the machine's
+   state) fits only the cellular machines' compiled words, as Fixpt uses
+   it there; `MAP_JIT` toggling measured 32 ns a field write (Fixpt).
 4. **`unsafe` in one new crate** (`kayak-jit`, Q7): reserving and mapping
-   memory, installing code, the trampolines into native code and back,
+   memory (the code area's two views), writing and flushing code, the trampolines into native code and back,
    flushing native frames. Nothing else.
 5. **K1 at the boundary.** KFX can call only what FX-26 has, and FX-26
    has no primitive to run machine code. So the call into a machine is a
@@ -112,7 +119,9 @@ both, written once.
    native, it calls native code directly, and only the boundary between
    KFX's own code and the machine goes through this procedure. If that
    proves too narrow, FX-26 primitives for code objects are a request for
-   Fixpt, raised with the user first.
+   Fixpt, raised with the user first: since FX-26 has bloblets already, a
+   bloblet made in the code area, its suffix instructions, called as a
+   procedure, is the natural shape for one.
 6. **Each tier checked against the one below**, by code where both make
    code (cells with Fixpt's, instructions between tiers 4 and 5 where they
    overlap) and by answers on every program, as Fixpt's
