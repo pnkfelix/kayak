@@ -2,7 +2,7 @@ x : int ! pure
 6 : int ! (read (globals x))
 hi
 #<sum done> : (sumof (done unit) (failed (productof (kind (sumof (not-found unit) (permission-denied unit) (already-exists unit) (not-a-directory unit) (is-a-directory unit) (broken-pipe unit) (invalid-data unit) (other unit))) (detail string)))) ! (io stdout)
-11 : int ! (read (globals x %2))
+11 : int ! (read (globals %2 x))
 ! evaluation failed: quotient: division by zero
 y : int ! pure
 16 : int ! (read (globals y))

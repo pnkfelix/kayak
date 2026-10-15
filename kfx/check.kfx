@@ -300,10 +300,11 @@
 (define show-effs (subr kfx (strings) string)
   (lambda (es)
     "An effect as FX-26 writes it: `pure`, an atom, or `(maxeff ...)`, the
-     globals read gathered, `(read (globals f g))`."
-    (let* ((globals (concat (map (lambda ((x string)) (if (global-atom? x) (the strings (list (after-prefix x "g:"))) nil)) es)))
+     globals read gathered, `(read (globals f g))`; its atoms, and the
+     globals' names, in order, as Fixpt writes them (TODO §30)."
+    (let* ((globals (sorted-strings (concat (map (lambda ((x string)) (if (global-atom? x) (the strings (list (after-prefix x "g:"))) nil)) es))))
            (others (concat (map (lambda ((x string)) (if (or (global-atom? x) (string=? x "~!")) nil (the strings (list (atom-written x))))) es)))
-           (parts (if (null? globals) others (onto others (list (string-append "(read (globals " (string-append (words-of globals) "))")))))))
+           (parts (sorted-strings (if (null? globals) others (onto others (list (string-append "(read (globals " (string-append (words-of globals) "))"))))))))
       (cond ((null? parts) "pure")
             ((null? (cdr parts)) (car parts))
             (else (string-append "(maxeff " (string-append (words-of parts) ")")))))))

@@ -2642,3 +2642,11 @@ it refuses, kayak refuses all.
 - Else possible: compare only verdicts (accept or refuse). The types and
   effects are what a reference says, and where most of the differences
   are.
+
+## C115. Effects written in Fixpt's order (2026-10-14, TODO §30 step 1)
+
+`show-effs` sorts an effect's atoms, and the names in `(read (globals
+...))`, as strings, as Fixpt writes them: `(maxeff (read (globals fib))
+(read @globals) spin)`. Everywhere an effect is written: the REPL, kfx's
+messages, `--check`. The comparison (C114): the same lines for 74 of the
+357 programs Fixpt accepts, from 22; no program is now merely alike.

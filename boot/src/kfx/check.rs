@@ -556,15 +556,16 @@ pub fn atom_written(x: Str) -> Str {
 }
 
 /// An effect as FX-26 writes it: `pure`, an atom, or `(maxeff ...)`, the
-/// globals read gathered, `(read (globals f g))`.
+/// globals read gathered, `(read (globals f g))`; its atoms, and the
+/// globals' names, in order, as Fixpt writes them (TODO §30).
 pub fn show_effs(es: Strings) -> Str {
-    let globals = concat(map(lambda1s(move |x: Str| {
+    let globals = sorted_strings(concat(map(lambda1s(move |x: Str| {
         if global_atom_p(x) {
             the::<Strings>(kayak_rt::heap_cons(after_prefix(x, str_lit("g:")), kayak_rt::nil()))
         } else {
             nil::<Str>()
         }
-    }), es));
+    }), es)));
     let others = concat(map(lambda1s(move |x: Str| {
         if (global_atom_p(x) || string_eq_p(x, str_lit("~!"))) {
             nil::<Str>()
@@ -572,11 +573,11 @@ pub fn show_effs(es: Strings) -> Str {
             the::<Strings>(kayak_rt::heap_cons(atom_written(x), kayak_rt::nil()))
         }
     }), es));
-    let parts = if null_p(globals) {
+    let parts = sorted_strings(if null_p(globals) {
         others
     } else {
         onto(others, kayak_rt::heap_cons(string_append(str_lit("(read (globals "), string_append(words_of(globals), str_lit("))"))), kayak_rt::nil()))
-    };
+    });
     if null_p(parts) {
         str_lit("pure")
     } else if null_p(cdr(parts)) {

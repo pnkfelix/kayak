@@ -23,7 +23,7 @@ kayak-fx26 0.1 — FX-26, the engine written in KFX (an interpreter over a heap 
 [Jfx26> [Jfx26> ,step-limit 5000
 [2Kan entry may take 5000 steps
 [Jfx26> [Jfx26> (define forever (subr (maxeff spin (read @globals)) (int) int) (lambda (n) (forever (+ n 1))))
-[2K[2] forever : (subr (maxeff spin (read @globals)) (int) int) ! pure
+[2K[2] forever : (subr (maxeff (read @globals) spin) (int) int) ! pure
 [Jfx26> [Jfx26> (forever 0)
 [2K[3] ! the step limit, 5000, reached (,step-limit)
 [Jfx26> [Jfx26> ,step-limit none

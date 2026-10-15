@@ -1,9 +1,9 @@
 kayak-fx26 0.1 — FX-26, the engine written in KFX (an interpreter over a heap of its own, collected)
 (each entry runs while you type the next, its value %k after it; ^C interrupts the newest, ,help for more)
 [Jfx26> (define inner (subr (maxeff spin (read @g) (read @globals)) (i64) i64) (lambda (n) (if (i64= n 0) (car (the (listof i64 @g) nil)) (i64+ 1 (inner (i64- n 1))))))
-[2K[1] inner : (subr (maxeff spin (read @g) (read @globals)) (i64) i64) ! pure
+[2K[1] inner : (subr (maxeff (read @g) (read @globals) spin) (i64) i64) ! pure
 [Jfx26> [Jfx26> (define middle (subr (maxeff spin (read @g) (read @globals)) (i64) i64) (lambda (n) (i64* 2 (inner n))))
-[2K[2] middle : (subr (maxeff spin (read @g) (read @globals)) (i64) i64) ! pure
+[2K[2] middle : (subr (maxeff (read @g) (read @globals) spin) (i64) i64) ! pure
 [Jfx26> [Jfx26> (middle 3)
 [2K[3] ! evaluation failed: car of nil
 [2K!   in inner (<fx26:1>:1), 4 calls
@@ -16,11 +16,11 @@ kayak-fx26 0.1 — FX-26, the engine written in KFX (an interpreter over a heap 
 [Jfx26> [Jfx26> (car (the (listof i64 @g) nil))
 [2K[5] ! evaluation failed: car of nil
 [Jfx26> [Jfx26> (define spin (subr (maxeff spin (read @globals)) (i64) i64) (lambda (n) (if (i64= n 0) 0 (spin (i64- n 1)))))
-[2K[6] spin : (subr (maxeff spin (read @globals)) (i64) i64) ! pure
+[2K[6] spin : (subr (maxeff (read @globals) spin) (i64) i64) ! pure
 [Jfx26> [Jfx26> (spin 300000)
 [2K[7] ⠧ running 0.0 s
 [Jfx26> [1A[2K[7] ⠇ running 0.0 s[1B[Jfx26> [Jfx26> (middle 1)
 [2K[8] ! evaluation failed: car of nil
 [2K!   in inner (<fx26:1>:1), 2 calls
 [2K!   in middle (<fx26:2>:1)
-[Jfx26> [5A[2K[7] ⠇ running 0.1 s[5B[Jfx26> [5A[2K[7] ⠏ running 0.1 s[5B[Jfx26> [5A[2K[7] 0 : i64 ! (maxeff (read @globals) spin (read (globals spin)))  (0.1 s)[5B[Jfx26> 
+[Jfx26> [5A[2K[7] ⠇ running 0.1 s[5B[Jfx26> [5A[2K[7] ⠏ running 0.1 s[5B[Jfx26> [5A[2K[7] 0 : i64 ! (maxeff (read (globals spin)) (read @globals) spin)  (0.1 s)[5B[Jfx26> 
