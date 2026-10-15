@@ -4,8 +4,18 @@
 # against the compiler and Fixpt, the bootstrap's fixed point, and Fixpt's
 # own programs that kfx accepts, run as Rust and by Fixpt, and those Fixpt
 # refuses, refused by kfx too (C81).
+#
+# With --quick (TODO §28), for each round of work: Fixpt's runs of the
+# compiler (stage 0, minutes) left out, and fewer incremental edits; the
+# full check before a commit that touches the compiler or the language.
 set -eu
 cd "$(dirname "$0")/.."
+quick=
+case "${1-}" in
+--quick) quick=--quick ;;
+"") ;;
+*) echo "usage: scripts/check.sh [--quick]" >&2; exit 2 ;;
+esac
 cargo fmt --all --check
 python3 -I scripts/io-programs.py
 cargo clippy --release --workspace --all-targets --quiet -- -D warnings
@@ -16,12 +26,12 @@ python3 -I scripts/repl-sessions.py
 # C103's REPL, kept to compare with C111's: the same sessions, the same bytes.
 python3 -I scripts/repl-sessions.py --rust-repl
 cargo clippy --release -p kayak-fx26 --features rust-repl --target-dir target/rust-repl --quiet -- -D warnings
-scripts/fixpoint.sh
-python3 -I scripts/incremental.py
+scripts/fixpoint.sh $quick
+python3 -I scripts/incremental.py $quick
 # Fixpt's own programs that kfx accepts, run both ways (needs the clone).
 if scripts/fixpt.sh > /dev/null 2>&1; then
     python3 -I scripts/built-in.py --check
     python3 -I scripts/run-fixpt-programs.py
     python3 -I scripts/refused-fixpt-programs.py
 fi
-echo "check: all passed"
+echo "check: all passed${quick:+ (quick: no stage 0)}"

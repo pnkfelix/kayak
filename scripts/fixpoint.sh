@@ -3,7 +3,15 @@
 #   K2: boot/'s compiler, run on kfx/kfx.unit, makes boot/src/kfx/ again;
 #   K1: Fixpt, running the compiler as FX-26 (stage 0), makes it too;
 #   and the first run, recorded (C52), replays: as Rust, and on Fixpt.
+# With --quick, K2 and the replay as Rust alone: Fixpt's runs are minutes
+# (TODO §28), kept for the full check.
 set -eu
+quick=0
+case "${1-}" in
+--quick) quick=1 ;;
+"") ;;
+*) echo "usage: scripts/fixpoint.sh [--quick]" >&2; exit 2 ;;
+esac
 cd "$(dirname "$0")/.."
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
@@ -21,6 +29,10 @@ echo "fixpoint: boot/'s kfx makes boot/src/kfx/ again, in $took s"
 
 # Stage 0 runs the Fixpt of FIXPT_REV (scripts/fixpt.sh), and is skipped,
 # saying so, only when there is no clone at all.
+if [ $quick = 1 ]; then
+    echo "fixpoint: stage 0 skipped (--quick)"
+    exit 0
+fi
 status=0
 scripts/fixpt.sh > /dev/null || status=$?
 case $status in

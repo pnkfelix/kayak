@@ -1301,3 +1301,8 @@ front a process with its state in its place, each check a monitored
 worker, a relay for the machine's mailbox; kayak-fx26's Rust only gives
 the history's path. C103's REPL is kept behind `rust-repl` to compare: the
 eight sessions give the same bytes both ways, and the latency is the same.
+
+## §28: a quick check (2026-10-14)
+
+C112: `scripts/check.sh --quick`, 49 s warm (the full check, about 5
+minutes): no stage 0 on Fixpt, fewer incremental edits.

@@ -1,6 +1,6 @@
 """The incremental compile checked against a compile from scratch (C54).
 
-usage: python3 -I scripts/incremental.py [--all]
+usage: python3 -I scripts/incremental.py [--all | --quick]
 
 A copy of the compiler's sources (kfx/, and lib/ beside it) is edited, an
 edit at a time, and after each the copy is compiled twice: with the memos
@@ -10,7 +10,8 @@ accepts; together they move forms (an insertion before them), change a
 form's text and its facts, add definitions, a datatype (the context), and
 take them away again; and across files, a form whose text is the same but
 whose type is found from a definition that changes. With --all, every edit in every file; by default, a
-few files, for scripts/check.sh.
+few files, for scripts/check.sh; with --quick, fewer still (one file's
+first edits, and the edits across files), for `scripts/check.sh --quick`.
 """
 
 import os
@@ -44,7 +45,10 @@ def files(d):
 
 
 def main():
-    every = "--all" in sys.argv[1:]
+    flags = sys.argv[1:]
+    if flags not in ([], ["--all"], ["--quick"]):
+        sys.exit("usage: incremental.py [--all | --quick]")
+    every, quick = flags == ["--all"], flags == ["--quick"]
     r = subprocess.run(["cargo", "build", "--release", "--quiet", "-p", "kfx"], cwd=ROOT)
     if r.returncode != 0:
         sys.exit("incremental: kfx does not build")
@@ -54,7 +58,8 @@ def main():
         unit = os.path.join(tmp, "kfx", "kfx.unit")
         cache = os.path.join(tmp, "cache")
         names = [l.strip() for l in open(unit) if l.strip() and not l.startswith(";")]
-        chosen = names if every else [names[0], names[len(names) // 2], names[-1]]
+        chosen = names if every else [names[len(names) // 2]] if quick else [names[0], names[len(names) // 2], names[-1]]
+        edits = EDITS[:3] + EDITS[-1:] if quick else EDITS
         out = os.path.join(tmp, "out")
         count = 0
 
@@ -80,7 +85,7 @@ def main():
         compare("nothing")
         for name in chosen:
             path = os.path.join(tmp, "kfx", name)
-            for what, edit in EDITS:
+            for what, edit in edits:
                 with open(path) as f:
                     text = f.read()
                 with open(path, "w") as f:
@@ -106,7 +111,7 @@ def main():
             (exprs, "a later item of a define-rec group changed", lambda s: s.replace('"a blobref made where none is expected"', '"a blobref made where no blobref is expected"', 1)),
             (exprs, "that item back", lambda s: s.replace('"a blobref made where no blobref is expected"', '"a blobref made where none is expected"', 1)),
         ]
-        for inner, what, edit in module_steps:
+        for inner, what, edit in [] if quick else module_steps:
             with open(inner) as f:
                 text = f.read()
             changed = edit(text)

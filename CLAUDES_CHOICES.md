@@ -2569,3 +2569,18 @@ engine's failures as values (C110), it is: `fx26/repl-tasks.kfx`, module
   only its mailbox's, leaves a Rust type parameter unconstrained (the
   relay's loop is in its `spawn` instead); constructor tags are global,
   so this file's are named apart from live-repl.kfx's.
+
+## C112. A quick check (2026-10-14, TODO §28, the user's order)
+
+`scripts/check.sh --quick`, 49 s warm against about 5 minutes: every
+step but Fixpt's runs of the compiler (`scripts/fixpoint.sh --quick`:
+K2 and the replay as Rust, no stage 0) and with fewer incremental edits
+(`scripts/incremental.py --quick`: one file's first three edits and its
+last, and the four across files; 9 compiles, not 31). Fixpt's programs
+run both ways and the refused ones are kept: 13 s, and K1's widest net.
+- Else possible: stage 0 in the background, its answer late; or no
+  incremental run at all. The first leaves a check that has not ended
+  when it says it has; the second, the memos unchecked for days.
+- The full check stays the one before a commit that touches the compiler
+  or the language: stage 0 is what shows Fixpt accepts the compiler's own
+  source, and gives the same Rust.

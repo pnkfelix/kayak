@@ -526,21 +526,12 @@ Stages 2 and 3 done (C95): editing, history, Tab; Fixpt's commands.
 
 ## 28. A quick check (the user, 2026-10-14: first of three)
 
-The full check takes about 5 minutes, warm: `scripts/fixpoint.sh` 212 s
-(Fixpt running the compiler on its own source, stage 0, three runs at
-once), `scripts/incremental.py` 55 s, the rest about 30 s. Fixpt's
-fastest machine takes 200 s for the compile that takes kfx's Rust 1 to
-1.6 s, so stage 0 is the long pole.
-- `scripts/check.sh --quick`: every step but stage 0 and the full
-  incremental run (a few edits, or none), for each round of work; the
-  full check kept for commits that touch the compiler or the language,
-  stage 0 being what shows that Fixpt accepts the compiler's own source
-  (K1 for the compiler).
-- Then, maybe: a cheaper K1 for the compiler (`fixpt check` of its
-  source rather than running it on Fixpt), timed against stage 0.
-- Why stage 0 is so slow on Fixpt's fastest machine (its output says
-  many procedures are "not in the native convention yet"): worth a
-  note to Fixpt, if it is theirs to fix.
+Done (C112): `scripts/check.sh --quick`, 49 s. Left:
+- A cheaper K1 for the compiler (`fixpt check` of its source rather than
+  running it on Fixpt), timed against stage 0.
+- Why stage 0 is so slow on Fixpt's fastest machine (200 s, against 1 to
+  1.6 s as kfx's Rust; its output says many procedures are "not in the
+  native convention yet"): worth a note to Fixpt, if it is theirs.
 
 ## 29. KFX-level backtraces on the engine (the user, 2026-10-14: second)
 
