@@ -561,3 +561,17 @@ accepts: 22 the same, 52 alike, 110 different, 173 refused by kayak.
   value checked again by the printer (a `proj` there).
 - Of Fixpt's 143 front-end files, kfx accepts 7 as they are; 121 are
   refused first at a module file's form (`(module ...)`, its `hide`).
+
+## 31. FX-26 to native code, as Fixpt's ladder (the user, 2026-10-14; PLAN §9, the main line)
+
+`docs/research/native.md`: tiers 0 to 6 (the engine; cells interpreted;
+the hand machine; stencils from kayak-rt; cells compiled; register code;
+the native convention), Fixpt's formats taken whole, code in a code space
+as accomplice's, `unsafe` in one crate (`kayak-jit`).
+1. Module files in KFX; Fixpt's front end's 143 files surveyed again,
+   to choose where stage A comes from (A: Fixpt's front end through KFX;
+   B: Fixpt's compilers ported onto kayak's checker).
+2. The layout table for KFX; the heap in Fixpt's format; tier 1.
+3. `kayak-jit`; the arm64 encoder in KFX; tier 2.
+4. Tiers 4, 5, 6; then 3.
+5. Twobit's passes; the compiler compiled into its own heap.

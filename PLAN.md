@@ -643,6 +643,18 @@ what Fixpt's did. Where kayak stood that day:
 | Tests | 653 `.fx` files under `crates/fixpt-fx26/tests` | Fixpt's programs run both ways; the corpus; the refused |
 | Other languages | Scheme, FX-87, FX-91 front ends | none |
 
+**Reordered (the user, 2026-10-14):** "If the FX26 compiler and runtime
+in Kayak is slow, then Kayak has no purpose." The main line is FX-26's
+native compiler, written in KFX, delivered as Fixpt's ladder of machines
+is (its README, "Which compiler makes the machine code"): the evaluator,
+cellular words interpreted, a hand machine, stencils (theirs from Rust,
+here kayak-rt's), words compiled to arm64, register code, the native
+calling convention; each tier checked against the one below it and
+against Fixpt. Then Twobit's optimizations, in KFX, and the compiler
+compiled by itself into its own runtime's heap: a third self-hosting,
+with no rustc in the loop. The checker (§30, below) grows behind it, as
+the native path's programs need. The plan: `docs/research/native.md`.
+
 Order, proposed: (1) the checker for FX-26 at large, written in KFX
 (phase B, §6.5 step 8), its acceptance and each form's type and effect
 compared with `fixpt check` over all of Fixpt's programs, both
