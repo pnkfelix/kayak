@@ -113,7 +113,10 @@ both, written once.
    declaration (code reached by its reference plus `x26`, fields
    PC-relatively, the frame's return slot named in its stack map), so
    kayak's collector may yet move code (the user, 2026-10-15), if kayak's
-   generators keep no raw code address the convention does not describe.
+   generators keep no raw code address the convention does not describe:
+   a callee is reached through a field of the caller's code bloblet,
+   loaded PC-relatively and branched to, never by a direct call; a direct
+   call to a closure the collector may move is not part of the design.
 4. **`unsafe` in one new crate** (`kayak-jit`, Q7): reserving and mapping
    memory (the code area's two views), writing and flushing code, the trampolines into native code and back,
    flushing native frames. Nothing else.
