@@ -523,3 +523,49 @@ Stages 2 and 3 done (C95): editing, history, Tab; Fixpt's commands.
   `(listof int)`, a `listof` with no region.
 
 - The KFX REPL (C111) starts some 7 ms slower than C103's (17 against 10 ms for an empty plain session), cause not found (not the per-thread constants); and some 55 µs more per entry, its worker and relay threads.
+
+## 28. A quick check (the user, 2026-10-14: first of three)
+
+The full check takes about 5 minutes, warm: `scripts/fixpoint.sh` 212 s
+(Fixpt running the compiler on its own source, stage 0, three runs at
+once), `scripts/incremental.py` 55 s, the rest about 30 s. Fixpt's
+fastest machine takes 200 s for the compile that takes kfx's Rust 1 to
+1.6 s, so stage 0 is the long pole.
+- `scripts/check.sh --quick`: every step but stage 0 and the full
+  incremental run (a few edits, or none), for each round of work; the
+  full check kept for commits that touch the compiler or the language,
+  stage 0 being what shows that Fixpt accepts the compiler's own source
+  (K1 for the compiler).
+- Then, maybe: a cheaper K1 for the compiler (`fixpt check` of its
+  source rather than running it on Fixpt), timed against stage 0.
+- Why stage 0 is so slow on Fixpt's fastest machine (its output says
+  many procedures are "not in the native convention yet"): worth a
+  note to Fixpt, if it is theirs to fix.
+
+## 29. KFX-level backtraces on the engine (the user, 2026-10-14: second)
+
+A failure on the engine (C110: a value now) is said with its message
+alone. The continuation is data, its frames in the heap: write them as
+the KFX procedures and source positions they are, innermost first, as
+Fixpt's REPL does, in the REPL and in `kayak-fx26 FILE`.
+- The frames need what they came from: the IR's nodes kept with their
+  lambda's name and its form's position (`lower.kfx`), or a table from
+  node to both.
+- A proper tail call leaves no frame: said as Fixpt says it, or not.
+- Then: the compiler loaded into the engine's REPL (`load-module` in the
+  REPL, §27), to call its procedures on small inputs; and a panic of the
+  compiled Rust naming the KFX definition it came from.
+
+## 30. The checker for FX-26 at large (the user, 2026-10-14: third; PLAN §9)
+
+PLAN §6.5 step 8, now first among the steps to kayak being the reference:
+FX-26's checker, written in KFX, and KFX's restrictions a pass of their
+own after it. Compared with `fixpt check`, form by form (type and
+effect), over all of Fixpt's programs, both ways: kayak accepts what
+Fixpt accepts, and refuses what it refuses. Where it stood, 2026-10-14:
+of Fixpt's 187 programs beyond KFX, 161 refused by kayak's checker.
+- Fixpt's checker in FX-26 (`crates/fixpt-fx26/src/check-*.fx`, some
+  60 files) is the one to port, rule for rule. Of Fixpt's 143 front-end
+  files, kfx accepts 7 as they are; 121 are refused first at the form of
+  a module file (`(module ...)`, its `hide`), so that form is the first
+  KFX extension the port wants; what lies behind it is not known yet.
