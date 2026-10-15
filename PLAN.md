@@ -651,6 +651,8 @@ reference must also accept what it accepts); (2) every Fixpt program run
 on the engine, agreeing; (3) the specification moved into kayak; (4) the
 ladder of machines (§6.5 phase D), each checked against the engine, so
 that kayak's tiers cross-check one another as Fixpt's do; (5) the
-collector (`docs/research/coopt-heap.md`) and heap images. Open: whether
-Fixpt's Scheme, FX-87 and FX-91 front ends are to be carried over.
+collector (`docs/research/coopt-heap.md`) and heap images. Fixpt's
+Scheme, FX-87 and FX-91 front ends are not part of this (the user,
+2026-10-14): "maybe we will do that for fun", and then in FX-26 at
+large, not in KFX.
 
