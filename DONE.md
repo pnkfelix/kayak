@@ -1306,3 +1306,9 @@ eight sessions give the same bytes both ways, and the latency is the same.
 
 C112: `scripts/check.sh --quick`, 49 s warm (the full check, about 5
 minutes): no stage 0 on Fixpt, fewer incremental edits.
+
+## §29: a failure's backtrace on the engine (2026-10-14)
+
+C113: the procedures a failing run's continuation holds, innermost first,
+with a recursion's calls counted; in the REPL and in `kayak-fx26 --run`,
+which now ends as Fixpt's run does (status 70). `tests/repl/backtrace.keys`.

@@ -34,6 +34,15 @@
 (define armxs (ref (arrayof armx @h) @h) (new (make-array 64 (armx 0 0 0))))
 (define armx-count (ref i64 @h) (new 0))
 (define constants (ref (flatarrayof i64 @h) @h) (new (make-flatarray-i64 256 0)))
+
+"For a failure's backtrace (TODO §29): each node's lambda, the innermost
+ whose body holds it (its node's number), or -1 outside every lambda; and
+ a lambda node's words for a backtrace line, its name and where it is
+ written, \"\" for any other node. A lambda's body is numbered just before
+ it (`number!`), so its nodes are a range ending at it, and an inner
+ lambda's take theirs first."
+(define owners (ref (flatarrayof i64 @h) @h) (new (make-flatarray-i64 1024 -1)))
+(define wheres (ref (arrayof string @h) @h) (new (make-array 1024 "")))
 (define constant-count (ref i64 @h) (new 0))
 
 (define-effect loading (maxeff (read @globals) spin (read @h) (write @h) (alloc @h)))
@@ -50,13 +59,21 @@
   (words-copied! (subr loading ((flatarrayof i64 @h) (flatarrayof i64 @h) i64 i64) unit)
     (lambda (from to i n) (if (i64>= i n) #u (begin (flatarray-set-i64! to i (flatarray-ref-i64 from i)) (words-copied! from to (i64+ i 1) n))))))
 
+(define-rec
+  (strings-copied! (subr loading ((arrayof string @h) (arrayof string @h) i64 i64) unit)
+    (lambda (from to i n) (if (i64>= i n) #u (begin (array-set! to (i64->int i) (array-ref from (i64->int i))) (strings-copied! from to (i64+ i 1) n))))))
+
 (define add-node! (subr loading (node) i64)
   (lambda (x)
     (let ((n (get node-count)))
       (begin
         (if (i64>= n (int->i64 (array-length (get nodes))))
-            (let ((bigger (the (arrayof node @h) (make-array (i64->int (i64* n 2)) (n-lit 0)))))
-              (begin (nodes-copied! (get nodes) bigger 0 n) (set nodes bigger)))
+            (let ((bigger (the (arrayof node @h) (make-array (i64->int (i64* n 2)) (n-lit 0))))
+                  (os (the (flatarrayof i64 @h) (make-flatarray-i64 (i64* n 2) -1)))
+                  (ws (the (arrayof string @h) (make-array (i64->int (i64* n 2)) ""))))
+              (begin (nodes-copied! (get nodes) bigger 0 n) (set nodes bigger)
+                     (words-copied! (get owners) os 0 n) (set owners os)
+                     (strings-copied! (get wheres) ws 0 n) (set wheres ws)))
             #u)
         (array-set! (get nodes) (i64->int n) x)
         (set node-count (i64+ n 1))
@@ -97,6 +114,27 @@
         (flatarray-set-i64! (get constants) n w)
         (set constant-count (i64+ n 1))
         n))))
+
+(define-rec
+  (owned! (subr loading (i64 i64 i64) unit)
+    (lambda (i end l)
+      "The nodes from `i` to `end` that no inner lambda has, `l`'s."
+      (if (i64>= i end)
+          #u
+          (begin
+            (if (i64< (flatarray-ref-i64 (get owners) i) 0) (flatarray-set-i64! (get owners) i l) #u)
+            (owned! (i64+ i 1) end l))))))
+
+"A node's lambda's backtrace words, or \"\" outside every lambda."
+(define node-where (subr (maxeff (read @globals) spin (read @h)) (i64) string)
+  (lambda (i)
+    (if (or (i64< i 0) (i64>= i (get node-count)))
+        ""
+        (let ((l (flatarray-ref-i64 (get owners) i))) (if (i64< l 0) "" (array-ref (get wheres) (i64->int l)))))))
+
+"A node's lambda's number, or -1."
+(define node-owner (subr (maxeff (read @globals) spin (read @h)) (i64) i64)
+  (lambda (i) (if (or (i64< i 0) (i64>= i (get node-count))) -1 (flatarray-ref-i64 (get owners) i))))
 
 (define node-at (subr (maxeff (read @globals) spin (read @h)) (i64) node)
   (lambda (i) (array-ref (get nodes) (i64->int i))))
@@ -242,7 +280,16 @@
         (i-lit (v) (add-node! (n-lit (tagcase v (v-datum (d) (quoted-constant! d)) (else other (add-constant! (literal-word! v)))))))
         (i-local (d s) (add-node! (n-local d s)))
         (i-global (i n) (add-node! (n-global i)))
-        (i-lambda (n body) (let ((b (number! body))) (add-node! (n-lambda n b))))
+        (i-lambda (n body name place)
+          (let* ((start (get node-count))
+                 (b (number! body))
+                 (l (add-node! (n-lambda n b))))
+            (begin
+              (owned! start l l)
+              (array-set! (get wheres) (i64->int l)
+                          (if (string=? name "") (string-append "a lambda (" (string-append place ")"))
+                              (string-append name (string-append " (" (string-append place ")")))))
+              l)))
         (i-call (f args) (let ((at (number-all! (cons f args)))) (add-node! (n-call at (i64+ (size args) 1)))))
         (i-if (x y z) (let* ((a (number! x)) (b (number! y)) (c (number! z))) (add-node! (n-if a b c))))
         (i-seq (es) (let ((at (number-all! es))) (add-node! (n-seq at (size es)))))

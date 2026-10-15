@@ -147,6 +147,26 @@ pub fn constants() -> Ref<FlatArray<i64>> {
     })
 }
 
+// For a failure's backtrace (TODO §29): each node's lambda, the innermost
+// whose body holds it (its node's number), or -1 outside every lambda; and
+// a lambda node's words for a backtrace line, its name and where it is
+// written, "" for any other node. A lambda's body is numbered just before
+// it (`number!`), so its nodes are a range ending at it, and an inner
+// lambda's take theirs first.
+pub fn owners() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(1024i64, -1i64))
+    })
+}
+
+pub fn wheres() -> Ref<Array<Str>> {
+    kayak_rt::kept_constant!(ONCE: Ref<Array<Str>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_array(int_lit(1024), str_lit("")))
+    })
+}
+
 pub fn constant_count() -> Ref<i64> {
     kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
@@ -190,12 +210,28 @@ pub fn words_copied_x(mut from: FlatArray<i64>, mut to: FlatArray<i64>, mut i: i
     }
 }
 
+pub fn strings_copied_x(mut from: Array<Str>, mut to: Array<Str>, mut i: i64, mut n: i64) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            array_set_x(to, i64_to_int(i), array_ref(from, i64_to_int(i)));
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
 pub fn add_node_x(x: &'static Node) -> i64 {
     let n = get(node_count());
     if i64_gt_eq(n, int_to_i64(array_length(get(nodes())))) {
-        let bigger = the::<Array<&'static Node>>(make_array(i64_to_int(i64_star(n, 2i64)), n_lit(0i64)));
+        let (bigger, os, ws) = (the::<Array<&'static Node>>(make_array(i64_to_int(i64_star(n, 2i64)), n_lit(0i64))), the::<FlatArray<i64>>(make_flatarray_i64(i64_star(n, 2i64), -1i64)), the::<Array<Str>>(make_array(i64_to_int(i64_star(n, 2i64)), str_lit(""))));
         nodes_copied_x(get(nodes()), bigger, 0i64, n);
-        set(nodes(), bigger)
+        set(nodes(), bigger);
+        words_copied_x(get(owners()), os, 0i64, n);
+        set(owners(), os);
+        strings_copied_x(get(wheres()), ws, 0i64, n);
+        set(wheres(), ws)
     } else {
         ()
     };
@@ -244,6 +280,46 @@ pub fn add_constant_x(w: i64) -> i64 {
     flatarray_set_i64_x(get(constants()), n, w);
     set(constant_count(), i64_plus(n, 1i64));
     n
+}
+
+/// The nodes from `i` to `end` that no inner lambda has, `l`'s.
+pub fn owned_x(mut i: i64, mut end: i64, mut l: i64) -> () {
+    loop {
+        if i64_gt_eq(i, end) {
+            return ();
+        } else {
+            if i64_lt(flatarray_ref_i64(get(owners()), i), 0i64) {
+                flatarray_set_i64_x(get(owners()), i, l)
+            } else {
+                ()
+            };
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+// A node's lambda's backtrace words, or "" outside every lambda.
+pub fn node_where(i: i64) -> Str {
+    if (i64_lt(i, 0i64) || i64_gt_eq(i, get(node_count()))) {
+        str_lit("")
+    } else {
+        let l = flatarray_ref_i64(get(owners()), i);
+        if i64_lt(l, 0i64) {
+            str_lit("")
+        } else {
+            array_ref(get(wheres()), i64_to_int(l))
+        }
+    }
+}
+
+// A node's lambda's number, or -1.
+pub fn node_owner(i: i64) -> i64 {
+    if (i64_lt(i, 0i64) || i64_gt_eq(i, get(node_count()))) {
+        -1i64
+    } else {
+        flatarray_ref_i64(get(owners()), i)
+    }
 }
 
 pub fn node_at(i: i64) -> &'static Node {
@@ -520,9 +596,17 @@ pub fn number_x(e: &'static Ir) -> i64 {
         Ir::IGlobal(i, n) => {
             add_node_x(n_global(i))
         }
-        Ir::ILambda(n, body) => {
+        Ir::ILambda(n, body, name, place) => {
+            let start = get(node_count());
             let b = number_x(body);
-            add_node_x(n_lambda(n, b))
+            let l = add_node_x(n_lambda(n, b));
+            owned_x(start, l, l);
+            array_set_x(get(wheres()), i64_to_int(l), if string_eq_p(name, str_lit("")) {
+                string_append(str_lit("a lambda ("), string_append(place, str_lit(")")))
+            } else {
+                string_append(name, string_append(str_lit(" ("), string_append(place, str_lit(")"))))
+            });
+            l
         }
         Ir::ICall(f, args) => {
             let at = number_all_x(kayak_rt::heap_cons(f, args));

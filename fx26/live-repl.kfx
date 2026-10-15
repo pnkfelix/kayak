@@ -1635,7 +1635,7 @@ an entry naming one that has not ended waits for it.")
                       (set deadline -1)
                       (set capturing #f)
                       (taken-output! e)
-                      (cond ((get engine-failed) (run-failed! k (failure-taken!) now))
+                      (cond ((get engine-failed) (run-failed! k (failure-traced! "!   ") now))
                             ((not (i64= w w-paused)) (top-ended! e w now))
                             ((and (i64>= (get step-limit) 0) (i64> (get (extract e steps)) (get step-limit)))
                              (begin

@@ -79,11 +79,14 @@
                      (top-none () (the i64 -1)))))
             (cons n (number-tops! (cdr tops))))))))
 
-"A failure the engine said (C110), the program's, as it was before the
- engine said one rather than failing: `kayak-fx26 FILE` fails as Fixpt
- does, with its message."
+"A failure the engine said (C110), the program's: `kayak-fx26 FILE` ends
+ as Fixpt's run does, its message written, and status 70; then its
+ backtrace (TODO §29), which Fixpt has not."
 (define failure-raised! (subr running () unit)
-  (lambda () (if (get engine-failed) (error (failure-taken!)) #u)))
+  (lambda ()
+    (if (get engine-failed)
+        (begin (write-err (string-append "kayak-fx26: " (string-append (failure-traced! "  ") "\n"))) (exit 70) #u)
+        #u)))
 
 (define-rec
   (run-tops (subr running ((listof i64 acyclic) bool) unit)

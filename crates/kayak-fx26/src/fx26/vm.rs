@@ -427,10 +427,163 @@ pub fn consts() -> FlatArray<i64> {
     get(constants())
 }
 
+// A failure's backtrace (TODO §29), made when the machine stops at it:
+// the procedures whose activations its continuation holds, innermost
+// first, from the call it failed in (`node`, in `env`; -1 if none is
+// known) out. A frame's node says its lambda (`node-owner`), and its
+// environment its activation: one activation's frames have environments
+// each an ancestor of the one before, where two calls' of one procedure
+// have neither. A proper tail call leaves no frame, so its caller is not
+// there, as in any machine that has tail calls. Consecutive activations of
+// one procedure are one line, with their count; what is outside every
+// lambda, none.
+pub enum Activation {
+    Activation(i64, i64, i64),
+}
+
+pub fn activation(f0: i64, f1: i64, f2: i64) -> &'static Activation {
+    kayak_rt::heap_alloc(Activation::Activation(f0, f1, f2))
+}
+
+pub fn frame_node(k: i64) -> i64 {
+    let kind = frame_kind(k);
+    if (i64_eq(kind, fk_if()) || i64_eq(kind, fk_seq()) || i64_eq(kind, fk_list()) || i64_eq(kind, fk_letrec()) || i64_eq(kind, fk_tagcase()) || i64_eq(kind, fk_ptag())) {
+        code_index(frame_field(k, 0i64))
+    } else if i64_eq(kind, fk_phandler()) {
+        code_index(frame_field(k, 1i64))
+    } else {
+        -1i64
+    }
+}
+
+pub fn frame_env(k: i64) -> i64 {
+    let kind = frame_kind(k);
+    if (i64_eq(kind, fk_if()) || i64_eq(kind, fk_tagcase()) || i64_eq(kind, fk_ptag())) {
+        frame_field(k, 1i64)
+    } else if (i64_eq(kind, fk_seq()) || i64_eq(kind, fk_list()) || i64_eq(kind, fk_letrec()) || i64_eq(kind, fk_phandler())) {
+        frame_field(k, 2i64)
+    } else {
+        0i64
+    }
+}
+
+/// Whether `outer` is `e` or one of its parents.
+pub fn env_within_p(mut outer: i64, mut e: i64, mut depth: i64) -> bool {
+    loop {
+        if i64_eq(e, outer) {
+            return true;
+        } else if (i64_gt(depth, 256i64) || not(pointer_p(e)) || not(is_obj_p(e, ob_env()))) {
+            return false;
+        } else {
+            (e, depth) = (obj_ref(e, 0i64), i64_plus(depth, 1i64));
+            continue;
+        }
+    }
+}
+
+// The walk out along the frames, a loop however deep the continuation:
+// the activation it is in (`owner`, -1 none yet; `env`), how many of that
+// lambda's have come one after another (`n`), and the runs finished, the
+// first 17 kept (last first), and how many.
+pub enum Walked {
+    Walked(List<&'static Activation>, i64),
+}
+
+pub fn walked(f0: List<&'static Activation>, f1: i64) -> &'static Walked {
+    kayak_rt::heap_alloc(Walked::Walked(f0, f1))
+}
+
+pub fn activations(mut owner: i64, mut env: i64, mut n: i64, mut k: i64, mut acc: List<&'static Activation>, mut runs: i64) -> &'static Walked {
+    loop {
+        if i64_eq(k, w_nil()) {
+            if i64_lt(owner, 0i64) {
+                return walked(acc, runs);
+            } else {
+                return walked(kayak_rt::heap_cons(activation(owner, env, n), acc), i64_plus(runs, 1i64));
+            }
+        } else {
+            let nd = frame_node(k);
+            let o = node_owner(nd);
+            let e = frame_env(k);
+            let next = frame_next(k);
+            if i64_lt(nd, 0i64) {
+                k = next;
+                continue;
+            } else if i64_lt(owner, 0i64) {
+                (owner, env, n, k) = (o, e, 1i64, next);
+                continue;
+            } else if (i64_eq(o, owner) && env_within_p(e, env, 0i64)) {
+                (env, k) = (e, next);
+                continue;
+            } else if i64_eq(o, owner) {
+                (env, n, k) = (e, i64_plus(n, 1i64), next);
+                continue;
+            } else {
+                (owner, env, n, k, acc, runs) = (o, e, 1i64, next, if i64_lt(runs, 17i64) {
+                    kayak_rt::heap_cons(activation(owner, env, n), acc)
+                } else {
+                    acc
+                }, i64_plus(runs, 1i64));
+                continue;
+            }
+        }
+    }
+}
+
+pub fn activations_reversed(mut xs: List<&'static Activation>, mut acc: List<&'static Activation>) -> List<&'static Activation> {
+    loop {
+        if null_p(xs) {
+            return acc;
+        } else {
+            (xs, acc) = (cdr(xs), kayak_rt::heap_cons(car(xs), acc));
+            continue;
+        }
+    }
+}
+
+pub fn trace_lines(xs: List<&'static Activation>, shown: i64, runs: i64) -> List<Str> {
+    if null_p(xs) {
+        nil::<Str>()
+    } else if i64_gt_eq(shown, 16i64) {
+        kayak_rt::heap_cons(string_append(str_lit("... and "), string_append(i64_to_string(i64_minus(runs, 16i64)), str_lit(" more"))), kayak_rt::nil())
+    } else {
+        let tagcase_ = car(xs);
+        match *tagcase_ {
+            Activation::Activation(o, e, n) => {
+                kayak_rt::heap_cons(string_append(str_lit("in "), string_append(array_ref(get(wheres()), i64_to_int(o)), if i64_gt(n, 1i64) {
+                    string_append(str_lit(", "), string_append(i64_to_string(n), str_lit(" calls")))
+                } else {
+                    str_lit("")
+                })), trace_lines(cdr(xs), i64_plus(shown, 1i64), runs))
+            }
+        }
+    }
+}
+
+/// The machine stopped at a failure: its backtrace kept, if none is
+/// yet; `w-failed`.
+pub fn stopped_x(node: i64, env: i64, k: i64) -> i64 {
+    if null_p(get(engine_trace())) {
+        let tagcase_ = activations(node_owner(node), env, 1i64, k, nil::<&'static Activation>(), 0i64);
+        match *tagcase_ {
+            Walked::Walked(acc, runs) => {
+                set(engine_trace(), trace_lines(activations_reversed(acc, nil::<&'static Activation>()), 0i64, runs))
+            }
+        }
+    } else {
+        ()
+    };
+    w_failed()
+}
+
 pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64, mut f: i64, mut args: i64) -> i64 {
     loop {
         if get(engine_failed()) {
-            return w_failed();
+            return stopped_x(if i64_eq(mode, 0i64) {
+                node
+            } else {
+                -1i64
+            }, env, k);
         } else if i64_lt(heap_room(), reserve()) {
             return gc_run(mode, node, env, k, val, f, args, 0i64);
         } else {
@@ -457,7 +610,8 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                     Node::NGlobal(i) => {
                         let w = flatarray_ref_i64(get(globals()), i);
                         if i64_eq(w, w_unbound()) {
-                            return unbound_global(i);
+                            unbound_global(i);
+                            return stopped_x(node, env, k);
                         } else {
                             (mode, node, val, f, args) = (1i64, 0i64, w, 0i64, 0i64);
                             continue;
@@ -623,7 +777,7 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                         let i = label_position(fixnum_value(obj_ref(val, 0i64)), i64_minus(obj_size(val), 1i64), fixnum_value(frame_field(k, 0i64)), 0i64);
                         if i64_lt(i, 0i64) {
                             failed_with_x(str_lit("the engine: extract of a field the product has not"));
-                            return 0i64;
+                            return stopped_x(-1i64, 0i64, k);
                         } else {
                             (mode, node, k, val, f, args) = (1i64, 0i64, next, obj_ref(val, i64_plus(i, 1i64)), 0i64, 0i64);
                             continue;
@@ -666,11 +820,11 @@ pub fn run(mut mode: i64, mut node: i64, mut env: i64, mut k: i64, mut val: i64,
                         return abort_to(fixnum_value(frame_field(k, 0i64)), next, val);
                     } else {
                         failed_with_x(str_lit("the engine: a frame of no kind"));
-                        return 0i64;
+                        return stopped_x(-1i64, 0i64, k);
                     }
                 }
             } else {
-                return apply_step(f, args, k);
+                return apply_step(node, env, f, args, k);
             }
         }
     }
@@ -716,7 +870,7 @@ pub fn list_step(k: i64, next: i64, val: i64) -> i64 {
                 run(0i64, kid_at(i64_plus(at, pos)), env, frame_x(fk_list(), next, 4i64, frame_field(k, 0i64), fixnum(i64_plus(pos, 1i64)), env, got), 0i64, 0i64, 0i64)
             } else {
                 let xs = reverse_words_x(got, w_nil());
-                run(2i64, 0i64, env, next, 0i64, pair_car(xs), pair_cdr(xs))
+                run(2i64, nd, env, next, 0i64, pair_car(xs), pair_cdr(xs))
             }
         }
         Node::NLet(at, count, body) => {
@@ -742,7 +896,7 @@ pub fn list_step(k: i64, next: i64, val: i64) -> i64 {
         _ => {
             let other = tagcase_;
             failed_with_x(str_lit("the engine: a list frame of no list"));
-            0i64
+            stopped_x(-1i64, 0i64, k)
         }
     }
 }
@@ -792,7 +946,7 @@ pub fn tagcase_step(k: i64, next: i64, val: i64) -> i64 {
         _ => {
             let other = tagcase_;
             failed_with_x(str_lit("the engine: a tagcase frame of no tagcase"));
-            0i64
+            stopped_x(-1i64, 0i64, k)
         }
     }
 }
@@ -802,14 +956,16 @@ pub fn abort_to(tag: i64, k: i64, v: i64) -> i64 {
     let n = frames_to(k, tag, 0i64);
     if i64_lt(n, 0i64) {
         failed_with_x(str_lit("the engine: no prompt for the tag"));
-        0i64
+        stopped_x(-1i64, 0i64, k)
     } else {
         let p = frame_after(k, n);
-        run(2i64, 0i64, 0i64, frame_next(p), 0i64, frame_field(p, 1i64), pair_x(v, w_nil()))
+        run(2i64, -1i64, 0i64, frame_next(p), 0i64, frame_field(p, 1i64), pair_x(v, w_nil()))
     }
 }
 
-pub fn apply_step(f: i64, args: i64, k: i64) -> i64 {
+/// `f` applied to `args`, at the call `node` in `env` (-1: none known),
+/// which a failure's backtrace starts at.
+pub fn apply_step(node: i64, env: i64, f: i64, args: i64, k: i64) -> i64 {
     if is_obj_p(f, ob_proc()) {
         let tagcase_ = node_at(code_index(obj_ref(f, 0i64)));
         match *tagcase_ {
@@ -830,7 +986,7 @@ pub fn apply_step(f: i64, args: i64, k: i64) -> i64 {
             _ => {
                 let other = tagcase_;
                 failed_with_x(str_lit("the engine: a procedure of no lambda"));
-                0i64
+                stopped_x(node, env, k)
             }
         }
     } else if is_obj_p(f, ob_ctor()) {
@@ -847,7 +1003,7 @@ pub fn apply_step(f: i64, args: i64, k: i64) -> i64 {
             gc_run(2i64, 0i64, 0i64, k, 0i64, f, args, room)
         } else if (truthy_p(obj_ref(f, 3i64)) && truthy_p(obj_ref(f, 2i64))) {
             failed_with_x(str_lit("a continuation resumed twice"));
-            0i64
+            stopped_x(node, env, k)
         } else {
             obj_set_x(f, 2i64, w_true());
             run(1i64, 0i64, 0i64, frames_copied_x(top, n, k), pair_car(args), 0i64, 0i64)
@@ -869,7 +1025,7 @@ pub fn apply_step(f: i64, args: i64, k: i64) -> i64 {
             } else {
                 frame_x(fk_mark(), k, 2i64, key, v, 0i64, 0i64)
             };
-            run(2i64, 0i64, 0i64, k2, 0i64, thunk, w_nil())
+            run(2i64, -1i64, 0i64, k2, 0i64, thunk, w_nil())
         } else if i64_eq(op, op_first_mark()) {
             run(1i64, 0i64, 0i64, k, first_mark_in(k, pair_car(args), pair_car(pair_cdr(args))), 0i64, 0i64)
         } else if i64_eq(op, op_current_marks()) {
@@ -895,7 +1051,7 @@ pub fn apply_step(f: i64, args: i64, k: i64) -> i64 {
             if i64_lt(heap_room(), i64_plus(need, reserve())) {
                 gc_run(2i64, 0i64, 0i64, k, 0i64, f, args, need)
             } else {
-                run(2i64, 0i64, 0i64, k, 0i64, pair_car(args), reverse_words_x(reverse_words_x(pair_car(pair_cdr(args)), w_nil()), w_nil()))
+                run(2i64, -1i64, 0i64, k, 0i64, pair_car(args), reverse_words_x(reverse_words_x(pair_car(pair_cdr(args)), w_nil()), w_nil()))
             }
         } else if i64_eq(op, op_abort()) {
             abort_to(tag_number(pair_car(args)), k, pair_car(pair_cdr(args)))
@@ -904,40 +1060,45 @@ pub fn apply_step(f: i64, args: i64, k: i64) -> i64 {
             let n = frames_to(k, tag, 0i64);
             if i64_lt(n, 0i64) {
                 failed_with_x(str_lit("the engine: no prompt for the tag"));
-                0i64
+                stopped_x(node, env, k)
             } else {
                 let c = alloc_x(ob_cont(), 4i64);
                 obj_set_x(c, 0i64, k);
                 obj_set_x(c, 1i64, fixnum(n));
                 obj_set_x(c, 2i64, w_false());
                 obj_set_x(c, 3i64, w_false());
-                run(2i64, 0i64, 0i64, k, 0i64, pair_car(args), pair_x(c, w_nil()))
+                run(2i64, -1i64, 0i64, k, 0i64, pair_car(args), pair_x(c, w_nil()))
             }
         } else if i64_eq(op, op_suspend()) {
             let tag = tag_number(pair_car(args));
             let n = frames_to(k, tag, 0i64);
             if i64_lt(n, 0i64) {
                 failed_with_x(str_lit("the engine: no prompt for the tag"));
-                0i64
+                stopped_x(node, env, k)
             } else {
                 let c = alloc_x(ob_cont(), 4i64);
                 obj_set_x(c, 0i64, k);
                 obj_set_x(c, 1i64, fixnum(n));
                 obj_set_x(c, 2i64, w_false());
                 obj_set_x(c, 3i64, w_true());
-                run(2i64, 0i64, 0i64, frame_x(fk_abort(), k, 1i64, fixnum(tag), 0i64, 0i64, 0i64), 0i64, pair_car(pair_cdr(args)), pair_x(c, w_nil()))
+                run(2i64, -1i64, 0i64, frame_x(fk_abort(), k, 1i64, fixnum(tag), 0i64, 0i64, 0i64), 0i64, pair_car(pair_cdr(args)), pair_x(c, w_nil()))
             }
         } else {
             let need = op_need(op, args);
             if i64_lt(heap_room(), i64_plus(need, reserve())) {
                 gc_run(2i64, 0i64, 0i64, k, 0i64, f, args, need)
             } else {
-                run(1i64, 0i64, 0i64, k, apply_op(op, args), 0i64, 0i64)
+                let v = apply_op(op, args);
+                if get(engine_failed()) {
+                    stopped_x(node, env, k)
+                } else {
+                    run(1i64, 0i64, 0i64, k, v, 0i64, 0i64)
+                }
             }
         }
     } else {
         failed_with_x(str_lit("the engine: a call of no procedure"));
-        0i64
+        stopped_x(node, env, k)
     }
 }
 

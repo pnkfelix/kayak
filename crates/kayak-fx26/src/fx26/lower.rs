@@ -429,6 +429,34 @@ pub fn moduleof_names(forms: Sexps) -> Strings {
     }
 }
 
+// Where a form is written, `file:line`, for a lambda's backtrace line.
+pub fn form_place(e: &'static Sexp) -> Str {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            string_append(f, string_append(str_lit(":"), i64_to_string(l)))
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("")
+        }
+    }
+}
+
+// A lambda given the name it is bound to; anything else as it is.
+pub fn named(n: Str, e: &'static Ir) -> &'static Ir {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Ir::ILambda(a, body, m, w) => {
+            i_lambda(a, body, n, w)
+        }
+        _ => {
+            let other = tagcase_;
+            e
+        }
+    }
+}
+
 pub fn lower(e: &'static Sexp, sc: Scope, gs: Strings) -> &'static Ir {
     let tagcase_ = e;
     match *tagcase_ {
@@ -602,11 +630,11 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
             }
         } else if string_eq_p(h, str_lit("lambda")) {
             let names = map(&binder_name, items(car(xs)));
-            return i_lambda(size(names), lower_body(cdr(xs), kayak_rt::heap_cons(names, sc), gs));
+            return i_lambda(size(names), lower_body(cdr(xs), kayak_rt::heap_cons(names, sc), gs), str_lit(""), form_place(e));
         } else if string_eq_p(h, str_lit("vlambda")) {
             // A variadic procedure (C71): arity -1, its one parameter the list of
             // its arguments.
-            return i_lambda(-1i64, lower_body(cdr(xs), kayak_rt::heap_cons(kayak_rt::heap_cons(binder_name(car(xs)), kayak_rt::nil()), sc), gs));
+            return i_lambda(-1i64, lower_body(cdr(xs), kayak_rt::heap_cons(kayak_rt::heap_cons(binder_name(car(xs)), kayak_rt::nil()), sc), gs), str_lit(""), form_place(e));
         } else if string_eq_p(h, str_lit("if")) {
             return i_if(lower(car(xs), sc, gs), lower(second(xs), sc, gs), lower(third(xs), sc, gs));
         } else if string_eq_p(h, str_lit("begin")) {
@@ -614,7 +642,7 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
         } else if string_eq_p(h, str_lit("let")) {
             let bs = items(car(xs));
             return i_let(map(lambda1s(move |b: &'static Sexp| {
-                lower(last(items(b)), sc, gs)
+                named(binder_name(car(items(b))), lower(last(items(b)), sc, gs))
             }), bs), lower_body(cdr(xs), kayak_rt::heap_cons(map(lambda1s(move |b: &'static Sexp| {
                 binder_name(car(items(b)))
             }), bs), sc), gs));
@@ -623,7 +651,7 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
             if null_p(bs) {
                 return lower_body(cdr(xs), sc, gs);
             } else {
-                return i_let(kayak_rt::heap_cons(lower(last(items(car(bs))), sc, gs), kayak_rt::nil()), lower_form(str_lit("let*"), kayak_rt::heap_cons(lst(cdr(bs), str_lit(""), 0i64, 0i64), cdr(xs)), e, kayak_rt::heap_cons(kayak_rt::heap_cons(binder_name(car(items(car(bs)))), kayak_rt::nil()), sc), gs));
+                return i_let(kayak_rt::heap_cons(named(binder_name(car(items(car(bs)))), lower(last(items(car(bs))), sc, gs)), kayak_rt::nil()), lower_form(str_lit("let*"), kayak_rt::heap_cons(lst(cdr(bs), str_lit(""), 0i64, 0i64), cdr(xs)), e, kayak_rt::heap_cons(kayak_rt::heap_cons(binder_name(car(items(car(bs)))), kayak_rt::nil()), sc), gs));
             }
         } else if string_eq_p(h, str_lit("letrec")) {
             let bs = items(car(xs));
@@ -631,7 +659,7 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
                 binder_name(car(items(b)))
             }), bs), sc);
             return i_letrec(map(lambda1s(move |b: &'static Sexp| {
-                lower(last(items(b)), inner, gs)
+                named(binder_name(car(items(b))), lower(last(items(b)), inner, gs))
             }), bs), lower_body(cdr(xs), inner, gs));
         } else if string_eq_p(h, str_lit("cond")) {
             return lower_cond(xs, sc, gs);
@@ -734,10 +762,10 @@ pub fn module_values(its: Sexps, sc: Scope, gs: Strings) -> Irs {
     } else {
         let f = car(its);
         onto(if (head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) {
-            kayak_rt::heap_cons(lower(last(items(f)), sc, gs), kayak_rt::nil())
+            kayak_rt::heap_cons(named(binder_name(second(items(f))), lower(last(items(f)), sc, gs)), kayak_rt::nil())
         } else if head_is_p(f, str_lit("define-rec")) {
             map(lambda1s(move |g: &'static Sexp| {
-                lower(last(items(g)), sc, gs)
+                named(sym_name(car(items(g))), lower(last(items(g)), sc, gs))
             }), cdr(items(f)))
         } else if head_is_p(f, str_lit("define-datatype")) {
             map(lambda1s(move |g: &'static Sexp| {
@@ -934,14 +962,14 @@ pub fn lower_tops(forms: Sexps, gs: Strings) -> List<&'static Top> {
             }))), kayak_rt::nil())
         } else if head_is_p(f, str_lit("define")) {
             let xs = items(f);
-            kayak_rt::heap_cons(top_define(i_define(position_of(binder_name(second(xs)), gs, 0i64), lower(last(xs), nil::<List<Str>>(), gs))), kayak_rt::nil())
+            kayak_rt::heap_cons(top_define(i_define(position_of(binder_name(second(xs)), gs, 0i64), named(binder_name(second(xs)), lower(last(xs), nil::<List<Str>>(), gs)))), kayak_rt::nil())
         } else if head_is_p(f, str_lit("define*")) {
             let xs = items(f);
-            kayak_rt::heap_cons(top_define(i_define(position_of(binder_name(second(xs)), gs, 0i64), lower(last(xs), nil::<List<Str>>(), gs))), kayak_rt::nil())
+            kayak_rt::heap_cons(top_define(i_define(position_of(binder_name(second(xs)), gs, 0i64), named(binder_name(second(xs)), lower(last(xs), nil::<List<Str>>(), gs)))), kayak_rt::nil())
         } else if head_is_p(f, str_lit("define-rec")) {
             map(lambda1s(move |g: &'static Sexp| {
                 let ys = items(g);
-                top_define(i_define(position_of(sym_name(car(ys)), gs, 0i64), lower(last(ys), nil::<List<Str>>(), gs)))
+                top_define(i_define(position_of(sym_name(car(ys)), gs, 0i64), named(sym_name(car(ys)), lower(last(ys), nil::<List<Str>>(), gs))))
             }), cdr(items(f)))
         } else if head_is_p(f, str_lit("define-datatype")) {
             map(lambda1s(move |g: &'static Sexp| {

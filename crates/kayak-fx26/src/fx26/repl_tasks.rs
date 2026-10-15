@@ -1772,7 +1772,7 @@ pub mod tasks {
             set(capturing(), false);
             taken_output_x(e);
             if get(engine_failed()) {
-                m_run_failed_x(k, failure_taken_x(), now)
+                m_run_failed_x(k, failure_traced_x(str_lit("!   ")), now)
             } else if not(i64_eq(w, w_paused())) {
                 top_ended_x(e, w, now)
             } else if (i64_gt_eq(get(m_step_limit()), 0i64) && i64_gt(get(e.13), get(m_step_limit()))) {

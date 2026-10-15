@@ -2584,3 +2584,40 @@ run both ways and the refused ones are kept: 13 s, and K1's widest net.
 - The full check stays the one before a commit that touches the compiler
   or the language: stage 0 is what shows Fixpt accepts the compiler's own
   source, and gives the same Rust.
+
+## C113. A failure's backtrace on the engine (2026-10-14, TODO §29)
+
+A run that fails on the engine says, after its message, the procedures
+its continuation holds, innermost first: `in inner (bt.fx:2), 4 calls`,
+then `in middle (bt.fx:4)`, and so on, at most 16 lines and a count of
+the rest. In the REPL each line follows `! evaluation failed:` after
+`!   `; `kayak-fx26 --run` writes `kayak-fx26: MESSAGE` and the lines
+to stderr and ends with status 70, as Fixpt's run does (it ended with a
+Rust panic, status 1, before). Fixpt has no backtrace on any machine: a
+kayak addition.
+- **What a line is.** A lambda in the IR keeps its name (`define`,
+  `define-rec`, `let`, `letrec`, a module's item) or none, and where it is
+  written (`lower.kfx`). The table (`table.kfx`) numbers a lambda's body
+  just before it, so a lambda's nodes are a range ending at its own; each
+  node's lambda is kept (`owners`), and each lambda's words (`wheres`),
+  at loading.
+- **Activations, from frames.** The machine's frames are an expression's
+  rest (an `if`'s arms, a call's arguments), not calls. A frame's node
+  says its lambda; its environment, which activation: one activation's
+  frames have environments each an ancestor of the one before (a `let`
+  inside adds one), where two calls of one procedure have siblings.
+  Consecutive activations of one procedure are one line, counted.
+- **Where it starts.** A primitive's failure is found after it returns,
+  when the call's node is gone, so the call's node rides in the `node`
+  register of an application (mode 2, where it was unused), and the
+  primitive's caller checks for a failure before going on. The walk is a
+  loop, keeping the first 17 lines, so a deep recursion's failure is
+  said without a deep Rust stack. The machine's step is as fast as before
+  (fib 1019 ms against 1039).
+- **What it cannot say.** A proper tail call leaves no frame, so its
+  caller is not there; Fixpt's machines would have the same gap. Frames
+  outside every lambda (a top-level form's) say nothing.
+- Else possible: a "procedure" frame pushed at each call, as a stack
+  machine has: exact, but a frame a call, and tail calls no longer free;
+  or a shadow stack only while a flag is on, which a failure on the first
+  run would not have.

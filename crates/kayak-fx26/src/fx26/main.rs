@@ -150,12 +150,14 @@ pub fn number_tops_x(tops: List<&'static Top>) -> List<i64> {
     }
 }
 
-// A failure the engine said (C110), the program's, as it was before the
-// engine said one rather than failing: `kayak-fx26 FILE` fails as Fixpt
-// does, with its message.
+// A failure the engine said (C110), the program's: `kayak-fx26 FILE` ends
+// as Fixpt's run does, its message written, and status 70; then its
+// backtrace (TODO §29), which Fixpt has not.
 pub fn failure_raised_x() -> () {
     if get(engine_failed()) {
-        error(failure_taken_x())
+        write_err(string_append(str_lit("kayak-fx26: "), string_append(failure_traced_x(str_lit("  ")), str_lit("\n"))));
+        match exit(int_lit(70)) {};
+        ()
     } else {
         ()
     }

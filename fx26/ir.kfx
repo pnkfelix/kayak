@@ -15,6 +15,10 @@
  program's own computation. Its message, the first said; whether one was."
 (define engine-failed (ref bool @h) (new #f))
 (define engine-failure (ref string @h) (new ""))
+"Its backtrace (TODO §29): a line for each procedure, innermost first;
+ none until the machine has stopped at it (vm.kfx's `stopped!`), or if
+ nothing is known."
+(define engine-trace (ref (listof string @h) @h) (new nil))
 
 (define failed-with! (subr (maxeff (read @globals) spin (read @h) (write @h)) (string) unit)
   (lambda (message)
@@ -23,7 +27,18 @@
 "The failure said, taken: its message, and none kept."
 (define failure-taken! (subr (maxeff (read @globals) spin (read @h) (write @h)) () string)
   (lambda ()
-    (let ((m (get engine-failure))) (begin (set engine-failed #f) (set engine-failure "") m))))
+    (let ((m (get engine-failure))) (begin (set engine-failed #f) (set engine-failure "") (set engine-trace nil) m))))
+
+(define-rec
+  (traced (subr (maxeff (read @globals) spin (read @h)) ((listof string @h) string) string)
+    (lambda (ls prefix)
+      (if (null? ls) "" (string-append "\n" (string-append prefix (string-append (car ls) (traced (cdr ls) prefix))))))))
+
+"The failure said, taken, with its backtrace: each line after its message,
+ on a line of its own, after `prefix`."
+(define failure-traced! (subr (maxeff (read @globals) spin (read @h) (write @h)) (string) string)
+  (lambda (prefix)
+    (let* ((t (get engine-trace)) (m (failure-taken!))) (string-append m (traced t prefix)))))
 
 "A value, of any shape: uniform, so that a member of a union is its
  union's value already (C57). Integers of every width are `int`, wrapped
@@ -63,12 +78,14 @@
  an index into the globals; a primitive call names its primitive. `let`
  makes a frame of its values; `letrec` makes the frame first, its values
  seeing it. A `tagcase`'s arm binds its variant's fields, or a sum's one
- value, in a frame of its own."
+ value, in a frame of its own. A lambda keeps its name, if it is bound to
+ one, and where it is written (`file:line`), for a failure's backtrace
+ (TODO §29)."
 (define-datatype ir
   (i-lit val)
   (i-local i64 i64)
   (i-global i64 string)
-  (i-lambda i64 ir)
+  (i-lambda i64 ir string string)
   (i-call ir (listof ir acyclic))
   (i-if ir ir ir)
   (i-seq (listof ir acyclic))

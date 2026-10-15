@@ -30,6 +30,16 @@ pub fn engine_failure() -> Ref<Str> {
     })
 }
 
+// Its backtrace (TODO §29): a line for each procedure, innermost first;
+// none until the machine has stopped at it (vm.kfx's `stopped!`), or if
+// nothing is known.
+pub fn engine_trace() -> Ref<List<Str>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<Str>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<Str>())
+    })
+}
+
 pub fn failed_with_x(message: Str) -> () {
     if get(engine_failed()) {
         ()
@@ -44,7 +54,24 @@ pub fn failure_taken_x() -> Str {
     let m = get(engine_failure());
     set(engine_failed(), false);
     set(engine_failure(), str_lit(""));
+    set(engine_trace(), nil::<Str>());
     m
+}
+
+pub fn traced(ls: List<Str>, prefix: Str) -> Str {
+    if null_p(ls) {
+        str_lit("")
+    } else {
+        string_append(str_lit("\n"), string_append(prefix, string_append(car(ls), traced(cdr(ls), prefix))))
+    }
+}
+
+// The failure said, taken, with its backtrace: each line after its message,
+// on a line of its own, after `prefix`.
+pub fn failure_traced_x(prefix: Str) -> Str {
+    let t = get(engine_trace());
+    let m = failure_taken_x();
+    string_append(m, traced(t, prefix))
 }
 
 // A value, of any shape: uniform, so that a member of a union is its
@@ -175,12 +202,14 @@ pub type Env = List<Array<&'static Val>>;
 // an index into the globals; a primitive call names its primitive. `let`
 // makes a frame of its values; `letrec` makes the frame first, its values
 // seeing it. A `tagcase`'s arm binds its variant's fields, or a sum's one
-// value, in a frame of its own.
+// value, in a frame of its own. A lambda keeps its name, if it is bound to
+// one, and where it is written (`file:line`), for a failure's backtrace
+// (TODO §29).
 pub enum Ir {
     ILit(&'static Val),
     ILocal(i64, i64),
     IGlobal(i64, Str),
-    ILambda(i64, &'static Ir),
+    ILambda(i64, &'static Ir, Str, Str),
     ICall(&'static Ir, List<&'static Ir>),
     IIf(&'static Ir, &'static Ir, &'static Ir),
     ISeq(List<&'static Ir>),
@@ -206,8 +235,8 @@ pub fn i_global(f0: i64, f1: Str) -> &'static Ir {
     kayak_rt::heap_alloc(Ir::IGlobal(f0, f1))
 }
 
-pub fn i_lambda(f0: i64, f1: &'static Ir) -> &'static Ir {
-    kayak_rt::heap_alloc(Ir::ILambda(f0, f1))
+pub fn i_lambda(f0: i64, f1: &'static Ir, f2: Str, f3: Str) -> &'static Ir {
+    kayak_rt::heap_alloc(Ir::ILambda(f0, f1, f2, f3))
 }
 
 pub fn i_call(f0: &'static Ir, f1: List<&'static Ir>) -> &'static Ir {

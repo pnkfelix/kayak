@@ -535,17 +535,14 @@ Done (C112): `scripts/check.sh --quick`, 49 s. Left:
 
 ## 29. KFX-level backtraces on the engine (the user, 2026-10-14: second)
 
-A failure on the engine (C110: a value now) is said with its message
-alone. The continuation is data, its frames in the heap: write them as
-the KFX procedures and source positions they are, innermost first, as
-Fixpt's REPL does, in the REPL and in `kayak-fx26 FILE`.
-- The frames need what they came from: the IR's nodes kept with their
-  lambda's name and its form's position (`lower.kfx`), or a table from
-  node to both.
-- A proper tail call leaves no frame: said as Fixpt says it, or not.
-- Then: the compiler loaded into the engine's REPL (`load-module` in the
-  REPL, §27), to call its procedures on small inputs; and a panic of the
-  compiled Rust naming the KFX definition it came from.
+Done (C113): a failure on the engine says its procedures, innermost
+first, in the REPL and in `kayak-fx26 --run` (status 70 now, as Fixpt's).
+Left:
+- The compiler loaded into the engine's REPL (`load-module` in the REPL,
+  §27), to call its procedures on small inputs.
+- A panic of the compiled Rust naming the KFX definition it came from.
+- A test of `kayak-fx26 --run`'s failure (its stderr and status): the
+  REPL's session (`tests/repl/backtrace.keys`) is the only one now.
 
 ## 30. The checker for FX-26 at large (the user, 2026-10-14: third; PLAN §9)
 

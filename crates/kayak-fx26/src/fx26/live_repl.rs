@@ -2883,7 +2883,7 @@ pub mod session {
             set(capturing(), false);
             taken_output_x(e);
             if get(engine_failed()) {
-                run_failed_x(k, failure_taken_x(), now)
+                run_failed_x(k, failure_traced_x(str_lit("!   ")), now)
             } else if not(i64_eq(w, w_paused())) {
                 top_ended_x(e, w, now)
             } else if (i64_gt_eq(get(step_limit()), 0i64) && i64_gt(get(e.15), get(step_limit()))) {

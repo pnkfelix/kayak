@@ -1,0 +1,12 @@
+# A failure's backtrace (TODO §29): each procedure the continuation holds,
+# innermost first, a recursion's calls counted; a lambda bound by `let`
+# named by it, and an unnamed one by where it is written. While an entry
+# is written, a later failure, and one at the top level with no procedure.
+0 (define inner (subr (maxeff spin (read @g) (read @globals)) (i64) i64) (lambda (n) (if (i64= n 0) (car (the (listof i64 @g) nil)) (i64+ 1 (inner (i64- n 1))))))\r
+100 (define middle (subr (maxeff spin (read @g) (read @globals)) (i64) i64) (lambda (n) (i64* 2 (inner n))))\r
+200 (middle 3)\r
+300 (let ((twice (lambda ((f (subr (maxeff spin (read @g) (read @globals)) (i64) i64))) (i64+ 1 (f 0))))) (twice (lambda ((x i64)) (middle x))))\r
+400 (car (the (listof i64 @g) nil))\r
+500 (define spin (subr (maxeff spin (read @globals)) (i64) i64) (lambda (n) (if (i64= n 0) 0 (spin (i64- n 1)))))\r
+600 (spin 300000)\r
+650 (middle 1)\r
