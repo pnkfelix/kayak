@@ -2621,3 +2621,24 @@ kayak addition.
   machine has: exact, but a frame a call, and tail calls no longer free;
   or a shadow stack only while a flag is on, which a failure on the first
   run would not have.
+
+## C114. The checkers compared, form by form (2026-10-14, TODO §30)
+
+`kayak-fx26 --check FILE` writes what `fixpt check` writes, and
+`scripts/compare-checkers.py` compares the two over all 653 of Fixpt's
+programs (`docs/research/fx26-checker.md`). In `scripts/check.sh`, it
+fails only on a K1 breach (kayak accepting what Fixpt refuses); the rest
+is §30's measure. That day: of 357 programs Fixpt accepts, 22 the same,
+52 alike (effects sorted), 110 different, 173 refused by kayak; of 296
+it refuses, kayak refuses all.
+- **The checker for FX-26 is grown in place**, the question
+  `front-end.md` left open: K2 and the incremental compile hold at every
+  step, and the comparison measures each. Fixpt's checker in FX-26 is
+  read for each feature's rules.
+- `--check`'s lines are made after the checker, outside it: a
+  definition's type as its scheme has it, inside the `poly` binders
+  written (schemes keep binders' names only); its effect, its value
+  checked against its type, as `check-top` checks a constant's.
+- Else possible: compare only verdicts (accept or refuse). The types and
+  effects are what a reference says, and where most of the differences
+  are.

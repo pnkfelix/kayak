@@ -20,12 +20,170 @@ pub fn history_of(mut r#as: Strings) -> Str {
     }
 }
 
+// `kayak-fx26 --check FILE ...` (TODO §30): what `fixpt check` writes of a
+// program, to compare the checkers form by form
+// (`scripts/compare-checkers.py`): each definition's line, `define NAME :
+// TYPE ! EFFECT` (a datatype's constructors too), each expression's,
+// `TYPE ! EFFECT`. A refusal fails, as the checker does, with its message.
+/// `body` inside the `poly` binders written in `w`, a definition's type,
+/// nested as written (the checker's schemes keep binders' names only).
+pub fn poly_wrapped(w: &'static Sexp, body: Str) -> Str {
+    if (head_is_p(w, str_lit("poly")) && i64_eq(size(items(w)), 3i64) && not(has_prefix_p(body, str_lit("(poly ")))) {
+        string_append(str_lit("(poly "), string_append(show_sexp(second(items(w))), string_append(str_lit(" "), string_append(poly_wrapped(third(items(w)), body), str_lit(")")))))
+    } else {
+        body
+    }
+}
+
+/// A definition's line: its name, its type as the checker has it, inside
+/// its written binders, and the effect of making its value.
+pub fn bound_line(v: &'static Cv, n: Str, written: &'static Sexp, effect: Str) -> Str {
+    let found = find_bind(n, cv_binds(v));
+    if null_p(found) {
+        string_append(str_lit("define "), n)
+    } else {
+        let tagcase_ = car(found);
+        match *tagcase_ {
+            Bind::Bind(n2, sc, w) => {
+                let tagcase_ = sc;
+                match *tagcase_ {
+                    Scheme::Scheme(tvars, t) => {
+                        string_append(str_lit("define "), string_append(n, string_append(str_lit(" : "), string_append(poly_wrapped(written, show_ty(new_state(), t)), string_append(str_lit(" ! "), effect)))))
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn no_form() -> &'static Sexp {
+    lst(nil::<&'static Sexp>(), str_lit(""), 0i64, 0i64)
+}
+
+/// The effect of evaluating `n`'s value `e`, checked against its type as
+/// the checker checks a constant's: none for a procedure.
+pub fn value_effect(v: &'static Cv, n: Str, e: &'static Sexp) -> Str {
+    let found = find_bind(n, cv_binds(v));
+    if (null_p(found) || lambda_form_p(e)) {
+        str_lit("pure")
+    } else {
+        let tagcase_ = car(found);
+        match *tagcase_ {
+            Bind::Bind(n2, sc, w) => {
+                let tagcase_ = sc;
+                match *tagcase_ {
+                    Scheme::Scheme(tvars, t) => {
+                        if null_p(tvars) {
+                            let tagcase_ = expressions::check(at(v, str_lit("a definition's value"), nil::<Str>()), new_state(), e, t);
+                            match *tagcase_ {
+                                Res::Res(u, es, s) => {
+                                    show_effs(es)
+                                }
+                            }
+                        } else {
+                            str_lit("pure")
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// What `fixpt check` writes of `form`, checked: `v`, the checker's
+/// environment after it.
+pub fn form_lines(v: &'static Cv, form: &'static Sexp) -> Strings {
+    if module_def_p(form) {
+        nil::<Str>()
+    } else if (head_is_p(form, str_lit("define")) || head_is_p(form, str_lit("define*"))) {
+        let xs = items(form);
+        kayak_rt::heap_cons(bound_line(v, binder_name(second(xs)), if i64_eq(size(xs), 4i64) {
+            third(xs)
+        } else {
+            no_form()
+        }, value_effect(v, binder_name(second(xs)), last(xs))), kayak_rt::nil())
+    } else if head_is_p(form, str_lit("define-rec")) {
+        map(lambda1s(move |g: &'static Sexp| {
+            bound_line(v, sym_name(car(items(g))), if i64_eq(size(items(g)), 3i64) {
+                second(items(g))
+            } else {
+                no_form()
+            }, str_lit("pure"))
+        }), cdr(items(form)))
+    } else if head_is_p(form, str_lit("define-datatype")) {
+        map(lambda1s(move |g: &'static Sexp| {
+            bound_line(v, sym_name(car(items(g))), no_form(), str_lit("pure"))
+        }), cdr(cdr(items(form))))
+    } else if head_is_p(form, str_lit("define-generative")) {
+        let n = binder_name(second(items(form)));
+        kayak_rt::heap_cons(bound_line(v, string_append(str_lit("up-"), n), no_form(), str_lit("pure")), kayak_rt::heap_cons(bound_line(v, string_append(str_lit("down-"), n), no_form(), str_lit("pure")), kayak_rt::nil()))
+    } else if (head_is_p(form, str_lit("define-type")) || head_is_p(form, str_lit("define-effect"))) {
+        nil::<Str>()
+    } else {
+        let tagcase_ = expressions::synth(at(v, str_lit("a top-level expression"), nil::<Str>()), new_state(), form);
+        match *tagcase_ {
+            Res::Res(t, es, s) => {
+                kayak_rt::heap_cons(string_append(show_ty(s, t), string_append(str_lit(" ! "), show_effs(es))), kayak_rt::nil())
+            }
+        }
+    }
+}
+
+pub fn lines_checked(v: &'static Cv, forms: Sexps) -> Strings {
+    if null_p(forms) {
+        nil::<Str>()
+    } else {
+        let tagcase_ = check_tops(v, kayak_rt::heap_cons(car(forms), kayak_rt::nil()), nil::<&'static Typed>());
+        match *tagcase_ {
+            Elab::Elab(v2, found) => {
+                onto(form_lines(v2, car(forms)), lines_checked(v2, cdr(forms)))
+            }
+        }
+    }
+}
+
+pub fn lines_text(ls: Strings) -> Str {
+    if null_p(ls) {
+        str_lit("")
+    } else {
+        string_append(car(ls), string_append(str_lit("\n"), lines_text(cdr(ls))))
+    }
+}
+
+pub fn check_command(paths: Strings) -> Int {
+    let forms = read_files(paths);
+    let empty = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), nil::<&'static Alias>(), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64);
+    let start = cv(nil::<&'static Bind>(), nil::<&'static Dt>(), declare_types(empty, forms, nil::<&'static Alias>()), nil::<&'static Effdef>(), str_lit("a type"), nil::<Str>(), str_lit("the program"), 0i64, nil::<&'static Fact>(), nil::<Str>(), 0i64);
+    let types = type_names_free(start, forms);
+    let named = {
+        let tagcase_ = start;
+        match *tagcase_ {
+            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+                cv(bs, datatype_names(start, forms, nil::<&'static Dt>()), als, es, here, group, file, line, fs, tv, at)
+            }
+        }
+    };
+    let typed = {
+        let tagcase_ = named;
+        match *tagcase_ {
+            Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+                cv(bs, declare_datatypes(named, forms, nil::<&'static Dt>()), als, es, here, group, file, line, fs, tv, at)
+            }
+        }
+    };
+    let v = with_binds(typed, prim_binds(typed));
+    say(lines_text(lines_checked(v, forms)));
+    int_lit(0)
+}
+
 pub fn main() -> Int {
     let r#as = the::<Strings>(args());
     if (null_p(r#as) || string_eq_p(car(r#as), str_lit("repl"))) {
         (&tasks::repl_x)(history_of(r#as))
     } else if (string_eq_p(car(r#as), str_lit("--keys")) && not(null_p(cdr(r#as))) && null_p(cdr(cdr(r#as)))) {
         (&tasks::scripted_x)(car(cdr(r#as)))
+    } else if (string_eq_p(car(r#as), str_lit("--check")) && not(null_p(cdr(r#as)))) {
+        check_command(cdr(r#as))
     } else {
         engine_main()
     }

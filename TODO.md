@@ -546,14 +546,18 @@ Left:
 
 ## 30. The checker for FX-26 at large (the user, 2026-10-14: third; PLAN §9)
 
-PLAN §6.5 step 8, now first among the steps to kayak being the reference:
-FX-26's checker, written in KFX, and KFX's restrictions a pass of their
-own after it. Compared with `fixpt check`, form by form (type and
-effect), over all of Fixpt's programs, both ways: kayak accepts what
-Fixpt accepts, and refuses what it refuses. Where it stood, 2026-10-14:
-of Fixpt's 187 programs beyond KFX, 161 refused by kayak's checker.
-- Fixpt's checker in FX-26 (`crates/fixpt-fx26/src/check-*.fx`, some
-  60 files) is the one to port, rule for rule. Of Fixpt's 143 front-end
-  files, kfx accepts 7 as they are; 121 are refused first at the form of
-  a module file (`(module ...)`, its `hide`), so that form is the first
-  KFX extension the port wants; what lies behind it is not known yet.
+PLAN §6.5 step 8, now first among the steps to kayak being the reference.
+The measure (C114): `scripts/compare-checkers.py`; the plan,
+`docs/research/fx26-checker.md`. That day, of 357 programs Fixpt
+accepts: 22 the same, 52 alike, 110 different, 173 refused by kayak.
+1. Printing as Fixpt prints, in `show-ty`: effects sorted, abbreviations
+   by name, `poly` as written, module types (and `--check` writing
+   module definitions).
+2. The restriction pass split off the checker (`front-end.md` stage 2).
+3. FX-26's subsystems: modules, sizes, processes, higher kinds, bloblets,
+   recursive types, unions; each a note first.
+4. Refusals' messages and places compared, for what both refuse.
+- `higher-kinds/proj-await.fx`: refused by `--check` alone, its constant's
+  value checked again by the printer (a `proj` there).
+- Of Fixpt's 143 front-end files, kfx accepts 7 as they are; 121 are
+  refused first at a module file's form (`(module ...)`, its `hide`).

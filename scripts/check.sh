@@ -33,5 +33,8 @@ if scripts/fixpt.sh > /dev/null 2>&1; then
     python3 -I scripts/built-in.py --check
     python3 -I scripts/run-fixpt-programs.py
     python3 -I scripts/refused-fixpt-programs.py
+    # The checkers compared, form by form (TODO §30): fails only if kayak's
+    # accepts a program Fixpt's refuses; the rest is the measure of §30.
+    python3 -I scripts/compare-checkers.py --summary
 fi
 echo "check: all passed${quick:+ (quick: no stage 0)}"

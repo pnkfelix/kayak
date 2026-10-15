@@ -10,10 +10,100 @@
             ((string=? (car as) "--history") (car (cdr as)))
             (else (history-of (cdr as)))))))
 
+"`kayak-fx26 --check FILE ...` (TODO §30): what `fixpt check` writes of a
+ program, to compare the checkers form by form
+ (`scripts/compare-checkers.py`): each definition's line, `define NAME :
+ TYPE ! EFFECT` (a datatype's constructors too), each expression's,
+ `TYPE ! EFFECT`. A refusal fails, as the checker does, with its message."
+(define-rec
+  (poly-wrapped (subr kfx (sexp string) string)
+    (lambda (w body)
+      "`body` inside the `poly` binders written in `w`, a definition's type,
+       nested as written (the checker's schemes keep binders' names only)."
+      (if (and (head-is? w "poly") (i64= (size (items w)) 3) (not (has-prefix? body "(poly ")))
+          (string-append "(poly " (string-append (show-sexp (second (items w))) (string-append " " (string-append (poly-wrapped (third (items w)) body) ")"))))
+          body))))
+
+(define bound-line (subr kfx (cv string sexp string) string)
+  (lambda (v n written effect)
+    "A definition's line: its name, its type as the checker has it, inside
+     its written binders, and the effect of making its value."
+    (let ((found (find-bind n (cv-binds v))))
+      (if (null? found)
+          (string-append "define " n)
+          (tagcase (car found)
+            (bind (n2 sc w)
+              (tagcase sc
+                (scheme (tvars t)
+                  (string-append "define " (string-append n (string-append " : " (string-append (poly-wrapped written (show-ty (new-state) t)) (string-append " ! " effect)))))))))))))
+
+(define no-form sexp (lst nil "" 0 0))
+
+(define value-effect (subr kfx (cv string sexp) string)
+  (lambda (v n e)
+    "The effect of evaluating `n`'s value `e`, checked against its type as
+     the checker checks a constant's: none for a procedure."
+    (let ((found (find-bind n (cv-binds v))))
+      (if (or (null? found) (lambda-form? e))
+          "pure"
+          (tagcase (car found)
+            (bind (n2 sc w)
+              (tagcase sc
+                (scheme (tvars t)
+                  (if (null? tvars)
+                      (tagcase (with expressions (check (at v "a definition's value" nil) (new-state) e t)) (res (u es s) (show-effs es)))
+                      "pure")))))))))
+
+(define form-lines (subr kfx (cv sexp) strings)
+  (lambda (v form)
+    "What `fixpt check` writes of `form`, checked: `v`, the checker's
+     environment after it."
+    (cond ((module-def? form) nil)
+          ((or (head-is? form "define") (head-is? form "define*"))
+           (let ((xs (items form)))
+             (list (bound-line v (binder-name (second xs)) (if (i64= (size xs) 4) (third xs) no-form) (value-effect v (binder-name (second xs)) (last xs))))))
+          ((head-is? form "define-rec")
+           (map (lambda ((g sexp)) (bound-line v (sym-name (car (items g))) (if (i64= (size (items g)) 3) (second (items g)) no-form) "pure"))
+                (cdr (items form))))
+          ((head-is? form "define-datatype")
+           (map (lambda ((g sexp)) (bound-line v (sym-name (car (items g))) no-form "pure")) (cdr (cdr (items form)))))
+          ((head-is? form "define-generative")
+           (let ((n (binder-name (second (items form)))))
+             (list (bound-line v (string-append "up-" n) no-form "pure") (bound-line v (string-append "down-" n) no-form "pure"))))
+          ((or (head-is? form "define-type") (head-is? form "define-effect"))
+           nil)
+          (else
+           (tagcase (with expressions (synth (at v "a top-level expression" nil) (new-state) form))
+             (res (t es s) (list (string-append (show-ty s t) (string-append " ! " (show-effs es))))))))))
+
+(define-rec
+  (lines-checked (subr kfx (cv sexps) strings)
+    (lambda (v forms)
+      (if (null? forms)
+          nil
+          (tagcase (check-tops v (list (car forms)) nil)
+            (elab (v2 found) (onto (form-lines v2 (car forms)) (lines-checked v2 (cdr forms)))))))))
+
+(define-rec
+  (lines-text (subr kfx (strings) string)
+    (lambda (ls) (if (null? ls) "" (string-append (car ls) (string-append "\n" (lines-text (cdr ls))))))))
+
+(define check-command (subr running (strings) int)
+  (lambda (paths)
+    (let* ((forms (read-files paths))
+           (empty (cv nil nil nil nil "a type" nil "the program" 0 nil nil 0))
+           (start (cv nil nil (declare-types empty forms nil) nil "a type" nil "the program" 0 nil nil 0))
+           (types (type-names-free start forms))
+           (named (tagcase start (cv (bs ds als es here group file line fs tv at) (cv bs (datatype-names start forms nil) als es here group file line fs tv at))))
+           (typed (tagcase named (cv (bs ds als es here group file line fs tv at) (cv bs (declare-datatypes named forms nil) als es here group file line fs tv at))))
+           (v (with-binds typed (prim-binds typed))))
+      (begin (say (lines-text (lines-checked v forms))) 0))))
+
 (define main (subr (maxeff running repling) () int)
   (lambda ()
     (let ((as (the strings (args))))
       (cond ((or (null? as) (string=? (car as) "repl")) ((with tasks repl!) (history-of as)))
             ((and (string=? (car as) "--keys") (not (null? (cdr as))) (null? (cdr (cdr as))))
              ((with tasks scripted!) (car (cdr as))))
+            ((and (string=? (car as) "--check") (not (null? (cdr as)))) (check-command (cdr as)))
             (else (engine-main))))))
