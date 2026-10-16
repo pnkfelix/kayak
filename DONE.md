@@ -1357,3 +1357,12 @@ FX-26's `import`; `symbol-name-hash` and `string-hash`. Fixpt's
 `modules/import.fx` agrees. Then a module's family named by a
 parameterless abbreviation and applied, and effects selected from a
 shared load: the survey, 54 of 150 files accepted.
+
+## §31: strategy B, and Fixpt followed upstream (2026-10-16, C120, C121)
+
+Stage A by B: kayak's front end, Fixpt's compilers ported onto it.
+Fixpt's object layout built in (`fx26:layout.fx` and its signatures),
+`kayak-jit`'s constants tested against it (`tests/layout.rs`); ported
+files marked `fixpt-source: PATH@REV`, `scripts/fixpt-drift.py --check`
+in `check.sh`; PLAN.md's pin move says so. `tests/kfx/layout.kfx` makes
+a header from Fixpt's layout, as Fixpt does.

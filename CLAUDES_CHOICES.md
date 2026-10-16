@@ -2890,3 +2890,30 @@ environment only because Fixpt's compiler needed them; KFX does not take
 them (TODO §32: they should leave the language; not raised with Fixpt
 yet). The rest of the front end stays A as far as it goes.
 `scripts/survey-front-end.py` counts those files apart.
+
+## C121. Strategy B for stage A, and following Fixpt upstream (the user, 2026-10-16)
+
+The user, after C120 and the functor files' look: "strategy B is
+inevitable in some cases", then "So now we move ahead via strategy b,
+right?" and, of the plan below, "Sounds great. Get started".
+- **B for stage A**: kayak's front end (its reader and checker, grown in
+  place, TODO §30 at its own pace), Fixpt's `compile*.fx` and
+  `regcode*.fx` ported onto kayak's checked forms and facts. Fixpt's
+  formats stay kayak's (native.md decision 1). What goes through KFX as
+  written is still taken so (`arm64.fx`, `convention.fx`, the layout).
+- **Taken whole, at the pin**: `scripts/built-in.py` now also builds in
+  `fx26:layout.fx`, `fx26:layout-types.fx`, `fx26:native-layout.fx`
+  (Fixpt generates `layout.fx` from its `layout.rs`), and copies
+  `layout.fx` into `kayak-jit`, whose hand-written tags, kinds, closure
+  field and header bits `tests/layout.rs` compares with it.
+- **Ported files say from what**: a line `fixpt-source: PATH@REV` in the
+  file's comments; `scripts/fixpt-drift.py` lists the upstream commits
+  to PATH since REV, and with `--check` (in `check.sh`) fails while any
+  is unhandled. Marked so far: `kayak-rt`'s symbol and string hashes
+  (`fixpt-heap/src/heap.rs`), `kayak-jit` (`docs/object-model.md`).
+  Handling a drift: carry the change over, or decide against it in a
+  C-note, and move the mark to the pin. PLAN.md's pin move says so.
+- **Words compared** with `fixpt compile`'s, cell for cell, once stage A
+  makes them: a change upstream the marks missed still shows.
+- **Not chosen**: a mirror of Fixpt's commits into issues, or a bot; the
+  pin moves when chosen, as before.

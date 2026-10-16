@@ -144,7 +144,29 @@ both, written once.
    overlap) and by answers on every program, as Fixpt's
    `every_program_on_every_machine`.
 
-## Open: where stage A comes from
+## Where stage A comes from: B (the user, 2026-10-16; C120, C121)
+
+Decided: **B**, kayak's own front end, Fixpt's compilers ported onto its
+checked forms and facts. A went far enough to show its cost: 56 of the
+front end's 150 files through KFX as written, the rest Fixpt's checker
+and compilers, which meet every place KFX's checker is more cautious
+than Fixpt's (TODO §30), and its cellular types (`wcell`, `tword`,
+`wglobal`, TODO §32). What A brought stays: Fixpt's encoder and
+convention reader through KFX as written, and whatever else of Fixpt's
+goes through cleanly is taken so.
+
+**Following Fixpt upstream** (C121): what can be taken whole is copied at
+the pin by `scripts/built-in.py` (its built-in modules, the native
+convention, the object layout `layout.fx`), and kayak's constants are
+tested against those copies (`kayak-jit`'s `tests/declaration.rs`,
+`tests/layout.rs`); each file ported says from what, `fixpt-source:
+PATH@REV`, and `scripts/fixpt-drift.py --check` (in `check.sh`) fails
+while a source has changed since; and the words stage A makes are to be
+compared with `fixpt compile`'s, cell for cell, so a change missed shows
+as a difference. The pin moves when chosen, and a move is done when the
+drift is handled and the check passes.
+
+### The question, as it stood
 
 Fixpt's stage A compiles Fixpt's checker's trees, using its facts (types,
 effects, constants: tables keyed by span). Two ways:
@@ -198,8 +220,8 @@ what is accepted), or Fixpt's reader is written without them.
 
 ## Steps
 
-1. Module files in KFX; the front end's files surveyed again (decides A
-   or B).
+1. Module files in KFX; the front end's files surveyed again (decided:
+   B, C120, C121).
 2. The layout table, generated for KFX; the heap in Fixpt's format; tier
    1, cells interpreted, with words made by hand, then by stage A.
 3. `kayak-jit`: the code space, installation, the trampoline; the arm64

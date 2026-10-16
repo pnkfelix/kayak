@@ -128,6 +128,11 @@ pub mod lambda_order;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/layout.rs"]
+pub mod layout;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/letreap.rs"]
 pub mod letreap;
 
@@ -441,6 +446,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("hashes", hashes::main),
     ("imports", imports::main),
     ("lambda-order", lambda_order::main),
+    ("layout", layout::main),
     ("letreap", letreap::main),
     ("letrec", letrec::main),
     ("letregion-nat", letregion_nat::main),

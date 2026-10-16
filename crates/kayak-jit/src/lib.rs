@@ -26,6 +26,11 @@
 //!
 //! Only on arm64 macOS; elsewhere [`native_code`] is false, and FX-26's
 //! `native-code?` with it.
+//!
+//! Ported from Fixpt's object model (C121; `scripts/fixpt-drift.py`); its
+//! constants are tested against Fixpt's own (`tests/layout.rs`,
+//! `tests/declaration.rs`):
+//! fixpt-source: docs/object-model.md@7641962
 
 use std::cell::Cell;
 use std::sync::{Mutex, OnceLock};

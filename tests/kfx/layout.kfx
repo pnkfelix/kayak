@@ -1,0 +1,13 @@
+"Fixpt's object layout, built in as Fixpt generates it (C121): a header
+ made from its fields' places, as Fixpt's machines read one."
+
+(define layout (load-module "fx26:layout.fx"))
+
+(define main (subr (read @globals) () string)
+  (lambda ()
+    (with layout
+      (int->string
+        (+ tag-header
+           (+ (arithmetic-shift kind-native-closure header-kind-lo)
+              (+ (arithmetic-shift 3 header-fields-lo)
+                 (arithmetic-shift 64 header-bytes-lo))))))))

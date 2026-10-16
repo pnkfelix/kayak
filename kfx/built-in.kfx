@@ -876,6 +876,448 @@
   (lambda () (cv-read-clauses (the cv-strs (native-convention)))))))
 ")
 
+(define built-in-5 string
+  ";;; The object layout, generated from `crates/fixpt-heap/src/layout.rs`.
+;;; Do not edit: change the table there and regenerate, with
+;;;   FIXPT_BLESS=1 cargo test -p fixpt-fx26 --test layout
+;;; See `docs/object-model.md`. A module file, which the conductor loads.
+
+;;; Tags: the low three bits of every word.
+(define tag-fixnum int 0)  ; 61-bit signed integer; also what a zeroed word is
+(define tag-pair int 1)  ; index of a two-word car/cdr cell, which has no header
+;; a pointer into a bloblet's binary suffix: owner in bits 3..37, byte offset in 37..64
+(define tag-suffix-ref int 2)
+(define tag-immediate int 3)  ; #f, #t, (), unit, eof, characters, …
+(define tag-bloblet int 4)  ; index of the start of a bloblet's suffix
+(define tag-trailer int 5)  ; the last field of a bloblet that has one; runtime-reserved payload
+(define tag-header int 6)  ; never a value: starts an object
+(define tag-forward int 7)  ; a forwarding pointer, only during a collection
+(define tag-bits int 3)
+
+;;; The header word's bit fields: lowest bit, and width.
+(define header-tag-lo int 0)
+(define header-tag-width int 3)  ; 110, the header tag
+(define header-kind-lo int 3)
+(define header-kind-width int 8)  ; what the object is to the language
+(define header-large-lo int 11)
+(define header-large-width int 1)  ; F is too big for this word: it is in the next one
+(define header-fields-frozen-lo int 12)
+(define header-fields-frozen-width int 1)  ; the fields are immutable
+(define header-suffix-frozen-lo int 13)
+(define header-suffix-frozen-width int 1)  ; the suffix is immutable
+(define header-fields-lo int 14)
+(define header-fields-width int 18)  ; F, the number of tagged fields
+(define header-bytes-lo int 32)
+(define header-bytes-width int 32)  ; B, the suffix length in bytes
+(define extension-fields-lo int 11)
+(define extension-fields-width int 53)  ; F, for an object whose F does not fit the main header
+
+;;; Kinds.
+(define kind-string int 1)
+(define kind-symbol int 2)
+(define kind-vector int 3)
+(define kind-bytevector int 4)
+(define kind-flonum int 5)
+(define kind-bignum int 6)
+(define kind-ratnum int 7)
+(define kind-closure int 8)
+(define kind-code int 9)
+(define kind-box int 10)
+(define kind-record int 11)
+(define kind-record-type int 12)
+(define kind-port int 13)
+(define kind-continuation int 14)
+(define kind-values int 15)
+(define kind-promise int 16)
+(define kind-hash-table int 17)
+(define kind-environment int 18)
+(define kind-primitive int 19)
+(define kind-bloblet int 32)
+(define kind-cellular-code int 33)
+(define kind-compiled-code int 34)
+(define kind-env-frame int 35)
+(define kind-sum int 36)
+(define kind-product int 37)
+(define kind-cellular-closure int 38)
+(define kind-cellular-continuation int 39)
+(define kind-register-code int 40)
+(define kind-native-closure int 41)
+(define kind-flat-array int 42)
+(define kind-eqtable int 43)
+(define kind-weak-pair int 44)
+(define kind-native-frame int 45)
+(define kind-icell int 46)
+(define kind-mailbox int 47)
+(define kind-extension int 255)
+
+;;; A closure's fields, and an environment frame's, by negative offset.
+(define closure-code int 2)
+(define closure-extra0 int 3)
+(define frame-parent int 2)
+(define frame-slot0 int 3)
+
+;;; A code bloblet's fields, by negative offset from its code. 1 is the trailer.
+(define code-entry int 2)
+(define code-frame int 3)
+(define code-free int 4)
+(define code-has-rest int 5)
+(define code-arity int 6)
+(define code-name int 7)
+(define code-items int 8)
+(define code-item0 int 9)
+
+;;; A cellular word's fields, by negative offset, and its routines by number.
+(define word-entry int 2)
+(define word-name int 3)
+(define word-twin int 4)
+(define word-cell0 int 5)
+(define cellular-closure-word int 2)
+(define cellular-closure-free0 int 3)
+(define global-value int 2)
+(define global-writes int 4)
+(define routine-docol int 0)  ; run a word's cells
+(define routine-exit int 1)  ; return to the calling word
+(define routine-halt int 2)  ; stop, leaving the data stack as the result
+(define routine-lit int 3)  ; ( -- x ), x the next cell
+(define routine-branch int 4)  ; skip the next cell's fixnum of cells, counted after it
+(define routine-zbranch int 5)  ; ( flag -- ), branch if flag is #f
+(define routine-execute int 6)  ; ( w -- ), run a word, or a primitive given as its fixnum
+(define routine-dup int 7)  ; ( a -- a a )
+(define routine-drop int 8)  ; ( a -- )
+(define routine-swap int 9)  ; ( a b -- b a )
+(define routine-over int 10)  ; ( a b -- a b a )
+(define routine-add int 11)  ; ( a b -- a+b ), fixnums
+(define routine-sub int 12)  ; ( a b -- a-b ), fixnums
+(define routine-less int 13)  ; ( a b -- a<b ), fixnums
+(define routine-eq int 14)  ; ( a b -- flag ), the same Value
+(define routine-field-ref int 15)  ; ( obj k -- x ), field k of a bloblet
+(define routine-field-set int 16)  ; ( x obj k -- ), field k of a bloblet
+(define routine-cons int 17)  ; ( a b -- pair )
+(define routine-car int 18)  ; ( pair -- a )
+(define routine-cdr int 19)  ; ( pair -- b )
+(define routine-slot int 20)  ; ( -- x ), slot i of this frame; i the next cell
+(define routine-slot! int 21)  ; ( x -- ), into slot i of this frame
+(define routine-free int 22)  ; ( -- x ), free value i of the closure running
+(define routine-global int 23)  ; ( -- x ), what the cell that is the next cell holds
+(define routine-global! int 24)  ; ( x -- ), into the cell that is the next cell
+;; ( v1 … vn -- c ), word w closed over the v's; w and n the next cells
+(define routine-closure int 25)
+;; ( x1 … xn c -- r ), n the next cell: the x's become the callee's frame
+(define routine-call int 26)
+(define routine-tailcall int 27)  ; ( x1 … xn c -- r ), the same, the x's replacing this frame
+(define routine-return int 28)  ; ( … r -- r ), leave this frame, keeping r, and return
+(define routine-prim int 29)  ; ( x1 … xn -- r ), the runtime's primitive p; p and n the next cells
+(define routine-prompt int 30)  ; ( tag handler thunk -- r ), run the thunk under a prompt for tag
+(define routine-abort int 31)  ; ( tag v -- ), to the nearest prompt for tag, whose handler gets v
+;; ( proc tag -- r ), call proc with the continuation up to tag's prompt
+(define routine-callcomp int 32)
+(define routine-callcc int 33)  ; ( proc -- r ), call proc with the whole continuation
+(define routine-withmark int 34)  ; ( key v thunk -- r ), run the thunk with key marked v
+(define routine-firstmark int 35)  ; ( key default -- v ), the innermost mark for key
+(define routine-currentmarks int 36)  ; ( key -- list ), every mark for key, innermost first
+(define routine-marksof int 37)  ; ( k key -- list ), the marks for key in continuation k
+;; ( key v thunk -- r ), withmark in tail position: the frame is left, and a mark for key on top
+;; replaced
+(define routine-withmark-tail int 38)
+(define routine-tcall int 39)  ; ( x1 … xn c -- r ), call closure c; n the next cell
+(define routine-ttailcall int 40)  ; ( x1 … xn c -- ), tail-call closure c; n the next cell
+(define routine-resume int 41)  ; ( v k -- ), give continuation k the value v, in this frame's place
+(define routine-undefined int 42)  ; ( -- ), trap: called before it was defined
+(define routine-int-add int 43)  ; ( a b -- a+b ), ints: a bignum past a fixnum
+(define routine-int-sub int 44)  ; ( a b -- a-b ), ints: a bignum past a fixnum
+(define routine-int-less int 45)  ; ( a b -- a<b ), ints
+(define routine-pair-car int 46)  ; ( pair -- a ), a pair
+(define routine-pair-cdr int 47)  ; ( pair -- b ), a pair
+(define routine-field int 48)  ; ( obj -- x ), field k of a bloblet that has it; k the next cell
+(define routine-rest int 49)  ; ( -- list ), this frame's values, from slot 0, as a list
+(define routine-int-eq int 50)  ; ( a b -- a=b ), ints, fixnums or bignums
+;; ( v1 … vn -- c ), word w closed over the v's, in the native convention; w and n the next cells
+(define routine-nclosure int 51)
+;; ( proc tag -- r ), callcomp, the continuation in the native convention
+(define routine-ncallcomp int 52)
+(define routine-ncallcc int 53)  ; ( proc -- r ), callcc, the continuation in the native convention
+;; ( proc tag -- r ), callcomp, the continuation resumed at most once
+(define routine-callone int 54)
+;; ( proc tag -- r ), callone, the continuation in the native convention
+(define routine-ncallone int 55)
+
+;;; Register code's instructions by number, and how many registers it has.
+;; 1: entered with n arguments in REG1…REGn; first, and only first (arities are static: nothing is
+;; checked)
+(define rop-args int 0)
+(define rop-const int 1)  ; 1: RESULT := x, the operand
+(define rop-global int 2)  ; 1: RESULT := the value in global cell g
+(define rop-setglbl int 3)  ; 1: global cell g := RESULT
+(define rop-reg int 4)  ; 1: RESULT := REGk
+(define rop-setreg int 5)  ; 1: REGk := RESULT
+(define rop-movereg int 6)  ; 2: REGk2 := REGk1
+(define rop-lexical int 7)  ; 1: RESULT := free value i of the closure running (REG0)
+(define rop-save int 8)  ; 1: push a frame of n slots, each #f
+(define rop-pop int 9)  ; 1: pop the frame of n slots
+(define rop-stack int 10)  ; 1: RESULT := frame slot n
+(define rop-setstk int 11)  ; 1: frame slot n := RESULT
+(define rop-load int 12)  ; 2: REGk := frame slot n
+(define rop-store int 13)  ; 2: frame slot n := REGk
+(define rop-op1 int 14)  ; 1: RESULT := cellular routine r applied to RESULT
+(define rop-op2 int 15)  ; 2: RESULT := cellular routine r applied to RESULT and REGk
+(define rop-op2imm int 16)  ; 2: RESULT := cellular routine r applied to RESULT and x
+(define rop-field int 17)  ; 1: RESULT := field k of the bloblet in RESULT
+(define rop-setfield int 18)  ; 2: field k of the bloblet in RESULT := REGj
+(define rop-prim int 19)  ; 2: RESULT := runtime primitive p applied to REG1…REGn; may collect
+;; 3: RESULT := a closure of cellular word w over REG1…REGn, as stack routine r makes it (`closure`,
+;; or `nclosure` in a program whose convention is native); natively, a native closure; may collect
+(define rop-lambda int 20)
+;; 2: call the procedure in RESULT with REG1…REGn, of convention c by its type (`CONVS`); RESULT :=
+;; its value; may collect
+(define rop-invoke int 21)
+;; 2: the same in tail position, the frame popped: its value is this one's
+(define rop-tailinvoke int 22)
+(define rop-return int 23)  ; 0: return RESULT, the frame popped
+(define rop-branch int 24)  ; 1: skip the operand's count of cells, counted after it
+(define rop-branchf int 25)  ; 1: the same if RESULT is #f
+;; 2: cellular routine r with REG1…REGn as its data stack operands; RESULT := what it leaves; may
+;; collect
+(define rop-cellular int 26)
+;; 1: call the procedure running (REG0) with REG1…REGn, by its own entry; RESULT := its value; may
+;; collect
+(define rop-invokeself int 27)
+;; 3: unless global cell g has been written n times (`cellular::GLOBAL_WRITES`), as when this code
+;; was compiled: what a fast version assumed of the global (a procedure inlined or specialized, a
+;; constant folded, a module's member folded through a `with`, `TODO.md` §42) it still holds; else
+;; skip the third operand's count of cells, counted after it; RESULT kept
+(define rop-global-guard int 28)
+(define rop-brancht int 29)  ; 1: the same as branch if RESULT is not #f
+;; 0: entered with any number of arguments, their count in a register (x9, natively), in REG1…REGn
+;; (past REGS, a list of the rest in the last); first, instead of args, and only first
+(define rop-vargs int 30)
+;; 1: RESULT := runtime primitive p applied to RESULT: one that never collects
+;; (`fixpt_runtime::never_collects`), so that no register need be in the frame
+(define rop-prim1 int 31)
+(define rop-prim2 int 32)  ; 2: RESULT := such a primitive p applied to RESULT and REGk
+(define rop-prim2imm int 33)  ; 2: RESULT := such a primitive p applied to RESULT and x
+(define rop-prim3imm int 34)  ; 3: RESULT := such a primitive p applied to RESULT, x and REGk
+(define register-regs int 8)
+
+;;; The conventions of an `invoke`'s callee, by its type (its second operand).
+(define rconv-fx int 0)  ; any procedure: its kind looked at
+(define rconv-cellular int 1)  ; a cellular closure: called as one, with no look
+;; a native closure: natively, its code called, with no look; on a cellular machine, as fx, an
+;; adapter (`nclosure`) called through what it adapts
+(define rconv-native int 2)
+")
+
+(define built-in-6 string
+  ";;; The signature of `layout.fx`, its `layout-module`, as its clients use it
+;;; (`TODO.md` §68): a module file of no state. That file is generated; this
+;;; one is not.
+
+;; What `native.fx` uses of the routines' numbers.
+(define-type layout-sig
+  (moduleof (val global-writes int)
+            (val routine-docol int)
+            (val routine-exit int)
+            (val routine-halt int)
+            (val routine-lit int)
+            (val routine-branch int)
+            (val routine-zbranch int)
+            (val routine-execute int)
+            (val routine-dup int)
+            (val routine-drop int)
+            (val routine-swap int)
+            (val routine-over int)
+            (val routine-add int)
+            (val routine-sub int)
+            (val routine-less int)
+            (val routine-eq int)
+            (val routine-field-ref int)
+            (val routine-car int)
+            (val routine-cdr int)
+            (val routine-slot int)
+            (val routine-slot! int)
+            (val routine-free int)
+            (val routine-global int)
+            (val routine-global! int)
+            (val routine-call int)
+            (val routine-tailcall int)
+            (val routine-return int)
+            (val routine-tcall int)
+            (val routine-ttailcall int)
+            (val routine-int-add int)
+            (val routine-int-sub int)
+            (val routine-int-less int)
+            (val routine-pair-car int)
+            (val routine-pair-cdr int)
+            (val routine-field int)
+            (val routine-int-eq int)
+            (val routine-cons int)
+            (val rop-args int)
+            (val rop-reg int)
+            (val rop-setreg int)
+            (val rop-save int)
+            (val rop-setstk int)
+            (val rop-store int)
+            (val rop-op1 int)
+            (val rop-op2 int)
+            (val rop-field int)
+            (val rop-prim int)
+            (val rop-cellular int)
+            (val rop-prim1 int)
+            (val rop-prim2 int)
+            (val register-regs int)
+            (val cellular-closure-free0 int)
+            (val routine-prompt int)
+            (val routine-withmark-tail int)
+            (val rop-const int)
+            (val rop-global int)
+            (val rop-movereg int)
+            (val rop-stack int)
+            (val rop-load int)
+            (val rop-setfield int)
+            (val rop-lambda int)
+            (val rop-invoke int)
+            (val rconv-fx int)
+            (val rconv-cellular int)
+            (val rconv-native int)
+            (val rop-tailinvoke int)
+            (val rop-return int)
+            (val rop-invokeself int)
+            (val rop-prim2imm int)
+            (val rop-prim3imm int)
+            (val rop-lexical int)
+            (val rop-op2imm int)
+            (val rop-global-guard int)
+            (val routine-abort int)
+            (val routine-callcomp int)
+            (val routine-callcc int)
+            (val routine-ncallcomp int)
+            (val routine-ncallcc int)
+            (val routine-callone int)
+            (val routine-ncallone int)
+            (val routine-withmark int)
+            (val routine-firstmark int)
+            (val routine-currentmarks int)
+            (val routine-marksof int)
+            (val rop-pop int)
+            (val rop-branch int)
+            (val rop-branchf int)
+            (val rop-brancht int)
+            (val routine-closure int)
+            (val routine-nclosure int)
+            (val routine-field-set int)
+            (val routine-prim int)))
+")
+
+(define built-in-7 string
+  ";;; Generated by `fixpt_native::cellular::fx26_module` from the hand-encoded
+;;; machine; `FIXPT_BLESS=1 cargo test -p fixpt-fx26 --test layout` rewrites it.
+;;; A module file, which the conductor loads (`TODO.md` §68).
+
+(define n-base int 19)  ; a register
+(define n-ip int 20)  ; a register
+(define n-cur int 21)  ; a register
+(define n-dsp int 22)  ; a register
+(define n-rsp int 23)  ; a register
+(define n-st int 24)  ; a register
+(define n-table int 25)  ; a register
+(define n-fp int 26)  ; a register
+(define n-clo int 27)  ; a register
+(define n-fuel int 28)  ; a register
+(define n-w int 9)  ; a register
+(define n-x10 int 10)  ; a register
+(define n-x11 int 11)  ; a register
+(define n-x13 int 13)  ; a register
+(define n-x14 int 14)  ; a register
+(define n-x15 int 15)  ; a register
+(define n-x16 int 16)  ; a register
+(define n-st-base int 0)  ; a State field's offset
+(define n-st-cur int 8)  ; a State field's offset
+(define n-st-d int 16)  ; a State field's offset
+(define n-st-dsp int 24)  ; a State field's offset
+(define n-st-rsp int 32)  ; a State field's offset
+(define n-st-table int 40)  ; a State field's offset
+(define n-st-fuel int 64)  ; a State field's offset
+(define n-st-callout int 88)  ; a State field's offset
+(define n-st-ds-base int 112)  ; a State field's offset
+(define n-st-ds-limit int 128)  ; a State field's offset
+(define n-st-rs-limit int 136)  ; a State field's offset
+(define n-st-fp int 144)  ; a State field's offset
+(define n-st-clo int 152)  ; a State field's offset
+(define n-st-resume int 168)  ; a State field's offset
+(define n-st-trap int 736)  ; a State field's offset
+(define n-st-exit int 744)  ; a State field's offset
+(define n-st-cards int 208)  ; a State field's offset
+(define n-st-code-lo int 216)  ; a State field's offset
+(define n-false int 3)  ; a Value's bits
+(define n-true int 11)  ; a Value's bits
+(define n-prompt-mark int 51)  ; a Value's bits
+(define n-mark-mark int 43)  ; a Value's bits
+(define n-tag-bloblet int 4)  ; a tag
+(define n-tag-pair int 1)  ; a tag
+(define n-tag-trailer int 5)  ; a tag
+(define n-kind-word int 33)  ; the kind of a cellular word
+(define n-kind-closure int 38)  ; the kind of a cellular closure
+(define n-closure-word int 2)  ; a closure's field
+(define n-closure-free0 int 3)  ; a closure's field
+(define n-word-entry int 2)  ; a word's field
+(define n-word-cell0 int 5)  ; a word's field
+(define n-primitives int 56)  ; routines that may be cells
+(define n-trap-type int 1)  ; a trap's code; a routine's number is its detail
+(define n-trap-overflow int 2)  ; a trap's code; a routine's number is its detail
+(define n-trap-underflow int 3)  ; a trap's code; a routine's number is its detail
+(define n-trap-field int 4)  ; a trap's code; a routine's number is its detail
+(define n-trap-no-routine int 5)  ; a trap's code; a routine's number is its detail
+(define n-trap-not-a-word int 6)  ; a trap's code; a routine's number is its detail
+(define n-trap-out-of-fuel int 7)  ; a trap's code; a routine's number is its detail
+(define n-trap-stack-overflow int 8)  ; a trap's code; a routine's number is its detail
+(define n-trap-too-deep int 9)  ; a trap's code; a routine's number is its detail
+
+;; How many operand cells follow routine `n`.
+(define n-operands (subr pure (int) int)
+  (lambda (n)
+    (case n
+      ((3) 1)  ; lit
+      ((4) 1)  ; branch
+      ((5) 1)  ; 0branch
+      ((20) 1)  ; slot
+      ((21) 1)  ; slot!
+      ((22) 1)  ; free
+      ((23) 1)  ; global
+      ((24) 1)  ; global!
+      ((25) 2)  ; closure
+      ((26) 1)  ; call
+      ((27) 1)  ; tailcall
+      ((29) 2)  ; prim
+      ((39) 1)  ; tcall
+      ((40) 1)  ; ttailcall
+      ((48) 1)  ; field
+      ((51) 2)  ; nclosure
+      (else 0))))
+
+;; Whether routine `n`'s call-out may leave the machine anywhere.
+(define n-control? (subr pure (int) bool)
+  (lambda (n)
+    (case n
+      ((0) #t)  ; docol
+      ((1) #t)  ; exit
+      ((2) #t)  ; halt
+      ((6) #t)  ; execute
+      ((26) #t)  ; call
+      ((27) #t)  ; tailcall
+      ((28) #t)  ; return
+      ((30) #t)  ; prompt
+      ((31) #t)  ; abort
+      ((32) #t)  ; callcomp
+      ((33) #t)  ; callcc
+      ((34) #t)  ; withmark
+      ((38) #t)  ; withmark-tail
+      ((39) #t)  ; tcall
+      ((40) #t)  ; ttailcall
+      ((41) #t)  ; resume
+      ((42) #t)  ; undefined
+      ((54) #t)  ; callone
+      (else #f))))
+")
+
 "Fixpt's native convention, declared (C116): one clause a line."
 (define native-convention-text string
   "(target arm64)
@@ -898,4 +1340,7 @@
           ((string=? path "fx26:arm64.fx") built-in-2)
           ((string=? path "fx26:convention-types.fx") built-in-3)
           ((string=? path "fx26:convention.fx") built-in-4)
+          ((string=? path "fx26:layout.fx") built-in-5)
+          ((string=? path "fx26:layout-types.fx") built-in-6)
+          ((string=? path "fx26:native-layout.fx") built-in-7)
           (else ""))))

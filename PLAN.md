@@ -50,7 +50,12 @@ with no changes of its own, builds it (quick when nothing changed), and
 gives the binary; `stage0.py` and `fixpoint.sh` use nothing else. It
 never checks out by itself. To move the pin: fetch and check out the
 clone at the new commit, write it into `FIXPT_REV`, run
-`scripts/fixpoint.sh`, and commit, saying what changed in Fixpt.
+`scripts/built-in.py` (Fixpt's files kayak takes whole: built-in
+modules, the native convention, the object layout) and
+`scripts/fixpt-drift.py` (what changed upstream in the sources kayak
+ported, each marked `fixpt-source: PATH@REV`, C121: carry each change
+over or decide against it, and move the mark to the pin), then
+`scripts/check.sh`, and commit, saying what changed in Fixpt.
 
 ---
 

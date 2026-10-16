@@ -571,9 +571,11 @@ accepts: 22 the same, 52 alike, 110 different, 173 refused by kayak.
 the hand machine; stencils from kayak-rt; cells compiled; register code;
 the native convention), Fixpt's formats taken whole, code bloblets in a
 double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one crate (`kayak-jit`).
-1. Module files in KFX; Fixpt's front end's 143 files surveyed again,
-   to choose where stage A comes from (A: Fixpt's front end through KFX;
-   B: Fixpt's compilers ported onto kayak's checker).
+1. ~~Module files in KFX; Fixpt's front end's files surveyed again, to
+   choose where stage A comes from~~: **B** (C120, C121), Fixpt's
+   compilers ported onto kayak's checker; Fixpt followed upstream by the
+   pin (`built-in.py`, `fixpt-drift.py`, words compared). What A left
+   open, below, is for whatever else of Fixpt's we take as written.
    **At Fixpt `7641962` (C119)**: 54 of 150 accepted. Fixpt's compilers
    in FX-26, which use `wcell`, `tword`, `wglobal` (16 files), are
    strategy B (the user, 2026-10-16; C120): ported onto kayak's checker,
@@ -596,7 +598,10 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    `check-holds-types.fx` and `check-modules-types.fx`: fixed, C119; 56
    accepted then.) And `call-with-oneshot-continuation` whose
    procedure ends in an abort to its tag, as C45's form (C118).
-2. The layout table for KFX; the heap in Fixpt's format; tier 1.
+2. The layout table for KFX (**done**, C121: Fixpt's `layout.fx` built
+   in, `kayak-jit`'s constants tested against it); the heap in Fixpt's
+   format; tier 1, cells interpreted, on words made by hand, then by
+   stage A ported (`compile*.fx`, each marked `fixpt-source:`).
 3. `kayak-jit`; the arm64 encoder in KFX; tier 2. **Begun (C116,
    2026-10-15)**: Fixpt's §97 operations in KFX, the code area, the
    trampoline, `tests/kfx/made-code.kfx`. Next, toward Fixpt's
