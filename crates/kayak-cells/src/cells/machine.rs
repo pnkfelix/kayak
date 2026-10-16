@@ -198,6 +198,49 @@ pub fn word_p(v: i64) -> bool {
     is_kind_p(v, k_code())
 }
 
+// Collection (C122), at a safepoint only, as Fixpt's machine collects:
+// everything live is then on the stacks, in `cur` and `clo`, or in the
+// tables of what was read. When the space is three quarters full; or at
+// every safepoint, under stress (`--gc-stress`, Coopt's policy for tests).
+pub fn gc_stress() -> Ref<bool> {
+    kayak_rt::kept_constant!(ONCE: Ref<bool>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(false)
+    })
+}
+
+pub fn stack_forwarded_x(mut a: FlatArray<i64>, mut i: i64, mut n: i64) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            flatarray_set_i64_x(a, i, forward_x(flatarray_ref_i64(a, i)));
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+pub fn collect_x() -> () {
+    collect_begin_x();
+    set(words(), named_forwarded(get(words())));
+    set(literals(), named_forwarded(get(literals())));
+    set(undefined_closure(), forward_x(get(undefined_closure())));
+    stack_forwarded_x(get(ds()), 0i64, get(dsp()));
+    stack_forwarded_x(get(rs()), 0i64, get(rsp()));
+    set(cur(), forward_x(get(cur())));
+    set(clo(), forward_x(get(clo())));
+    collect_end_x()
+}
+
+pub fn safepoint_x() -> () {
+    if (get(gc_stress()) || i64_gt(i64_star(4i64, get(top())), i64_star(3i64, flatarray_length_i64(get(mem()))))) {
+        collect_x()
+    } else {
+        ()
+    }
+}
+
 // Flows: what a routine leaves the loop to do.
 pub fn next() -> i64 {
     0i64
@@ -348,6 +391,7 @@ pub fn routine_x(mut n: i64) -> i64 {
                 return exit_flow();
             }
         } else if i64_eq(n, r_closure()) {
+            let u = safepoint_x();
             let w = operand_x();
             let count = fix_val(operand_x());
             if i64_lt(get(dsp()), i64_plus(get(fp()), count)) {
@@ -430,6 +474,7 @@ pub fn routine_x(mut n: i64) -> i64 {
                 trap_x(string_append(str_lit("`"), string_append(prim_name(p), string_append(str_lit("` given "), string_append(i64_to_string(count), str_lit(" argument(s)"))))));
                 return next();
             } else {
+                let u = safepoint_x();
                 let from = i64_minus(get(dsp()), count);
                 let args = args_of(from, get(dsp()), nil::<i64>());
                 set(dsp(), from);
@@ -441,6 +486,7 @@ pub fn routine_x(mut n: i64) -> i64 {
                 underflow_trap_x(n);
                 return next();
             } else {
+                let u = safepoint_x();
                 let b = pop_x(n);
                 let a = pop_x(n);
                 push_x(cons_x(a, b));

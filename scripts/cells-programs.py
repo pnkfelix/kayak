@@ -15,7 +15,8 @@ fails), or is not run: its listing is not exact (a literal cut short,
 ...), it needs what tier 1 has not yet (C122), it leaves no value (a
 program of definitions), or Fixpt refuses it. The programs that agree are
 kept in tests/cells-passing (--bless rewrites it); one that agreed and
-no longer does fails the check.
+no longer does fails the check. Each but Fixpt's benchmarks is run again
+with a collection at every safepoint (`--gc-stress`), to the same end.
 """
 
 import os
@@ -136,10 +137,30 @@ def one(binary, cells, name, path):
     if got.returncode != 0 and got_fail is None:
         return "differ", "kayak-cells failed: " + got.stderr.strip()[-200:]
     if want_fail is not None or got_fail is not None:
-        same = want_fail == got_fail
-        return ("agree" if same else "differ"), "" if same else "fixpt: %r, kayak: %r" % (want_fail, got_fail)
+        if want_fail != got_fail:
+            return "differ", "fixpt: %r, kayak: %r" % (want_fail, got_fail)
+        return stressed(cells, name, co.stdout, limit, "", got_fail)
     have = got.stdout.strip()
-    return ("agree", "") if have == want else ("differ", "fixpt: %r, kayak: %r" % (want, have))
+    if have != want:
+        return "differ", "fixpt: %r, kayak: %r" % (want, have)
+    return stressed(cells, name, co.stdout, limit, have, None)
+
+
+def stressed(cells, name, text, limit, have, fail):
+    """The same answer with a collection at every safepoint (C122, Coopt's
+    stress policy); Fixpt's benchmarks, long, are not run so."""
+    if name.startswith(UNLIMITED):
+        return "agree", ""
+    with tempfile.NamedTemporaryFile("w", suffix=".cells", delete=False) as f:
+        f.write(text)
+        listing = f.name
+    try:
+        again = run([cells, listing, "--gc-stress"], timeout=600)
+    finally:
+        os.unlink(listing)
+    if failure(again.stderr) != fail or (fail is None and again.stdout.strip() != have):
+        return "differ", "under --gc-stress: %r %r" % (again.stdout.strip(), failure(again.stderr))
+    return "agree", ""
 
 
 def main():

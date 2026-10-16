@@ -8,7 +8,7 @@ use super::*;
 // images have it. Pairs are two words; every other object a bloblet: a
 // header, its fields below its suffix (field `k` at `p - k`, the trailer
 // field 1, its payload the distance back to the header), its suffix's
-// bytes. No collection yet: the array grows (C122: Coopt's collector, next).
+// bytes. Collected by Coopt's collector's baseline, below (C122).
 // fixpt-source: crates/fixpt-heap/src/heap.rs@7641962
 pub fn mem() -> Ref<FlatArray<i64>> {
     kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
@@ -49,10 +49,25 @@ pub fn room_x(n: i64) -> () {
     }
 }
 
+pub fn zeroed_x(mut m: FlatArray<i64>, mut i: i64, mut n: i64) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            flatarray_set_i64_x(m, i, 0i64);
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+/// `n` words, each 0 (fixnum 0): the space is used again after a
+/// collection.
 pub fn alloc_x(n: i64) -> i64 {
     room_x(n);
     let at = get(top());
     set(top(), i64_plus(at, n));
+    zeroed_x(get(mem()), at, i64_plus(at, n));
     at
 }
 
@@ -377,5 +392,199 @@ pub fn symbol_x(name: Str) -> i64 {
 
 pub fn symbol_text(s: i64) -> Str {
     string_text(slot_of(s, 2i64))
+}
+
+// The collector: Coopt's baseline, a Cheney copy of everything live into
+// the other space (`coopt-heap`'s `forward`, `forward_pair`,
+// `forward_bloblet`, `cheney`, at Coopt c366857), the spaces swapped, never
+// freed (kayak-rt frees nothing): its generations, regions, summaries and
+// marking to come, each against this one. A forwarding word, tag 7, holds
+// its copy's address: in a pair's first word; in a bloblet's header, and in
+// the word just below its suffix when that is no trailer, so that a pointer
+// finds it at once (Fixpt's arrangement, Coopt's).
+pub fn other() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(1i64, 0i64))
+    })
+}
+
+pub fn to_top() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(8i64)
+    })
+}
+
+pub fn collections() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn words_copied() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn to_at(i: i64) -> i64 {
+    flatarray_ref_i64(get(other()), i)
+}
+
+pub fn to_set_x(i: i64, w: i64) -> () {
+    flatarray_set_i64_x(get(other()), i, w)
+}
+
+pub fn to_alloc_x(n: i64) -> i64 {
+    let at = get(to_top());
+    set(to_top(), i64_plus(at, n));
+    set(words_copied(), i64_plus(get(words_copied()), n));
+    at
+}
+
+/// An object's words, from its header: itself, its fields, its suffix.
+pub fn words_of(head: i64) -> i64 {
+    i64_plus(i64_plus(1i64, bits(head, lay::header_fields_lo(), lay::header_fields_width())), i64_quotient(i64_plus(bits(head, lay::header_bytes_lo(), lay::header_bytes_width()), 7i64), 8i64))
+}
+
+pub fn copied_words_x(mut from: i64, mut at: i64, mut n: i64) -> () {
+    loop {
+        if i64_lt_eq(n, 0i64) {
+            return ();
+        } else {
+            to_set_x(at, word_at(from));
+            (from, at, n) = (i64_plus(from, 1i64), i64_plus(at, 1i64), i64_minus(n, 1i64));
+            continue;
+        }
+    }
+}
+
+/// The word for `w` after the collection: its object's copy, copied first
+/// if need be; itself, if it is no pointer.
+pub fn forward_x(w: i64) -> i64 {
+    if is_pair_p(w) {
+        let o = address(w);
+        let first = word_at(o);
+        if i64_eq(tag_of(first), t_forward()) {
+            i64_or(i64_and(first, -8i64), t_pair())
+        } else {
+            let at = to_alloc_x(2i64);
+            to_set_x(at, first);
+            to_set_x(i64_plus(at, 1i64), word_at(i64_plus(o, 1i64)));
+            word_set_x(o, i64_or(i64_shl(at, int_lit(3)), t_forward()));
+            i64_or(i64_shl(at, int_lit(3)), t_pair())
+        }
+    } else if is_bloblet_p(w) {
+        let p = address(w);
+        let before = word_at(i64_minus(p, 1i64));
+        if i64_eq(tag_of(before), t_forward()) {
+            i64_or(i64_shl(i64_plus(i64_shr(before, int_lit(3)), 1i64), int_lit(3)), t_bloblet())
+        } else {
+            let h = if i64_eq(tag_of(before), t_trailer()) {
+                i64_minus(i64_minus(p, 1i64), i64_shr(before, int_lit(3)))
+            } else {
+                i64_minus(p, 1i64)
+            };
+            let head = word_at(h);
+            if i64_eq(tag_of(head), t_forward()) {
+                i64_or(i64_shl(i64_plus(i64_shr(head, int_lit(3)), i64_minus(p, h)), int_lit(3)), t_bloblet())
+            } else {
+                let n = words_of(head);
+                let f = bits(head, lay::header_fields_lo(), lay::header_fields_width());
+                let at = to_alloc_x(n);
+                copied_words_x(h, at, n);
+                word_set_x(h, i64_or(i64_shl(at, int_lit(3)), t_forward()));
+                if (i64_gt(f, 0i64) && not(i64_eq(tag_of(before), t_trailer()))) {
+                    word_set_x(i64_minus(p, 1i64), i64_or(i64_shl(i64_plus(at, f), int_lit(3)), t_forward()))
+                } else {
+                    ()
+                };
+                i64_or(i64_shl(i64_plus(at, i64_minus(p, h)), int_lit(3)), t_bloblet())
+            }
+        }
+    } else {
+        w
+    }
+}
+
+pub fn fields_forwarded_x(mut i: i64, mut end: i64) -> () {
+    loop {
+        if i64_gt(i, end) {
+            return ();
+        } else {
+            to_set_x(i, forward_x(to_at(i)));
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+/// Cheney's scan: each object copied, its traced words forwarded, until
+/// the scan meets the copying.
+pub fn scanned_x(mut i: i64) -> () {
+    loop {
+        if i64_gt_eq(i, get(to_top())) {
+            return ();
+        } else {
+            let w = to_at(i);
+            if i64_eq(tag_of(w), t_header()) {
+                let f = bits(w, lay::header_fields_lo(), lay::header_fields_width());
+                fields_forwarded_x(i64_plus(i, 1i64), i64_plus(i, f));
+                i = i64_plus(i, words_of(w));
+                continue;
+            } else {
+                fields_forwarded_x(i, i64_plus(i, 1i64));
+                i = i64_plus(i, 2i64);
+                continue;
+            }
+        }
+    }
+}
+
+pub fn named_forwarded(xs: List<&'static Named>) -> List<&'static Named> {
+    if null_p(xs) {
+        nil::<&'static Named>()
+    } else {
+        kayak_rt::heap_cons({
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Named::Named(n, v) => {
+                    named(n, forward_x(v))
+                }
+            }
+        }, named_forwarded(cdr(xs)))
+    }
+}
+
+/// The other space made ready, as big as this one: the roots are then
+/// forwarded (`forward!`), then `collect-end!`.
+pub fn collect_begin_x() -> () {
+    if i64_lt(flatarray_length_i64(get(other())), flatarray_length_i64(get(mem()))) {
+        set(other(), the::<FlatArray<i64>>(make_flatarray_i64(flatarray_length_i64(get(mem())), 0i64)))
+    } else {
+        ()
+    };
+    set(to_top(), 8i64);
+    set(symbols(), named_forwarded(get(symbols())));
+    set(globals(), named_forwarded(get(globals())))
+}
+
+/// Everything the roots reach, copied; the spaces swapped; the space grown,
+/// both, if what lives fills more than half.
+pub fn collect_end_x() -> () {
+    scanned_x(8i64);
+    let old = get(mem());
+    set(mem(), get(other()));
+    set(other(), old);
+    set(top(), get(to_top()));
+    set(collections(), i64_plus(get(collections()), 1i64));
+    if i64_gt(i64_star(2i64, get(top())), flatarray_length_i64(get(mem()))) {
+        room_x(flatarray_length_i64(get(mem())))
+    } else {
+        ()
+    }
 }
 

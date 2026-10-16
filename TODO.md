@@ -602,8 +602,9 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    in, `kayak-jit`'s constants tested against it); the heap in Fixpt's
    format and tier 1, cells interpreted (**begun**, C122: `cells/`, on
    the words Fixpt's compiler lists; 175 of Fixpt's programs agree, 0
-   differ). Next for tier 1: Coopt's collector (its Cheney baseline, then
-   its steps); prompts, marks and continuations (routines 30–38, 41,
+   differ). Next for tier 1: Coopt's collector's steps past its Cheney
+   baseline (done, C122: generational, regions, summaries, marking,
+   pacing, each against the one before); prompts, marks and continuations (routines 30–38, 41,
    51–55; `captures`); bignums; more primitives, their failures worded as
    Fixpt's runtime words them; then stage A ported (`compile*.fx`, each
    marked `fixpt-source:`), its words compared with the listing.

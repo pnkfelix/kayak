@@ -3,7 +3,8 @@
 use kayak_rt::*;
 use super::*;
 
-// main.kfx: `kayak-cells LISTING [--step-limit N|none]` (C122): the words
+// main.kfx: `kayak-cells LISTING [--step-limit N|none] [--gc-stress]
+// [--gc-stats]` (C122): the words
 // of a listing Fixpt's compiler wrote, its `program` run, at most N
 // instructions (Fixpt's FX-26 default, 20,000,000; `none`, no limit), its
 // value written as Fixpt writes it; or, if it fails, `evaluation failed:
@@ -84,7 +85,14 @@ pub fn cells_main() -> Int {
         int_lit(2)
     } else {
         let w = listing_words_x(read_text(car(r#as)));
+        let u = set(gc_stress(), string_member_p(str_lit("--gc-stress"), r#as));
         let r = run_word_x(w, steps_of(cdr(r#as)));
+        let u2 = if string_member_p(str_lit("--gc-stats"), r#as) {
+            write_err(string_append(str_lit("collections: "), string_append(i64_to_string(get(collections())), string_append(str_lit(", words copied: "), string_append(i64_to_string(get(words_copied())), str_lit("\n"))))));
+            ()
+        } else {
+            ()
+        };
         let tagcase_ = r;
         match *tagcase_ {
             Ran::RanAnswer(v) => {

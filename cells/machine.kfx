@@ -82,6 +82,36 @@
 (define closure? (subr cm (i64) bool) (lambda (v) (is-kind? v k-closure)))
 (define word? (subr cm (i64) bool) (lambda (v) (is-kind? v k-code)))
 
+"Collection (C122), at a safepoint only, as Fixpt's machine collects:
+ everything live is then on the stacks, in `cur` and `clo`, or in the
+ tables of what was read. When the space is three quarters full; or at
+ every safepoint, under stress (`--gc-stress`, Coopt's policy for tests)."
+(define gc-stress (ref bool @c) (new #f))
+
+(define-rec
+  (stack-forwarded! (subr cm ((flatarrayof i64 @c) i64 i64) unit)
+    (lambda (a i n)
+      (if (i64>= i n) #u (begin (flatarray-set-i64! a i (forward! (flatarray-ref-i64 a i))) (stack-forwarded! a (i64+ i 1) n))))))
+
+(define collect! (subr cm () unit)
+  (lambda ()
+    (begin
+      (collect-begin!)
+      (set words (named-forwarded (get words)))
+      (set literals (named-forwarded (get literals)))
+      (set undefined-closure (forward! (get undefined-closure)))
+      (stack-forwarded! (get ds) 0 (get dsp))
+      (stack-forwarded! (get rs) 0 (get rsp))
+      (set cur (forward! (get cur)))
+      (set clo (forward! (get clo)))
+      (collect-end!))))
+
+(define safepoint! (subr cm () unit)
+  (lambda ()
+    (if (or (get gc-stress) (i64> (i64* 4 (get top)) (i64* 3 (flatarray-length-i64 (get mem)))))
+        (collect!)
+        #u)))
+
 "Flows: what a routine leaves the loop to do."
 (define next i64 0)
 (define exit-flow i64 1)
@@ -161,7 +191,7 @@
                (begin (underflow-trap! n) next)
                (begin (set dsp (get fp)) (push! v) exit-flow))))
         ((i64= n r-closure)
-         (let* ((w (operand!)) (count (fix-val (operand!))))
+         (let* ((u (safepoint!)) (w (operand!)) (count (fix-val (operand!))))
            (if (i64< (get dsp) (i64+ (get fp) count))
                (begin (underflow-trap! n) next)
                (let ((c (make-bloblet! k-closure (i64+ count 1) 0 #t #f))
@@ -207,13 +237,14 @@
                  ((or (i64< count (prim-min p)) (and (i64>= (prim-max p) 0) (i64> count (prim-max p))))
                   (begin (trap! (string-append "`" (string-append (prim-name p) (string-append "` given " (string-append (i64->string count) " argument(s)"))))) next))
                  (else
-                  (let* ((from (i64- (get dsp) count))
+                  (let* ((u (safepoint!))
+                         (from (i64- (get dsp) count))
                          (args (args-of from (get dsp) nil)))
                     (begin (set dsp from) (push! (prim-apply! p args)) next))))))
         ((i64= n r-cons)
          (if (i64< (get dsp) 2)
              (begin (underflow-trap! n) next)
-             (let* ((b (pop! n)) (a (pop! n))) (begin (push! (cons! a b)) next))))
+             (let* ((u (safepoint!)) (b (pop! n)) (a (pop! n))) (begin (push! (cons! a b)) next))))
         ((i64= n r-branch)
          (let ((off (fix-val (operand!)))) (begin (set kk (i64+ (get kk) off)) (check-limits!) next)))
         ((or (i64= n r-add) (i64= n r-sub) (i64= n r-less)) (fix-op! n))

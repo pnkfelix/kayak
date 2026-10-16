@@ -2977,3 +2977,13 @@ look at Coopt's collector".
 - **A primitive's failure** that Fixpt words through its runtime's error
   objects is marked `(C122)` and counted as not yet, until those words
   are ported.
+- **Collected** (the same day): Coopt's baseline, its `forward`,
+  `forward_pair`, `forward_bloblet` and `cheney` in KFX (`cells/heap.kfx`,
+  at Coopt c366857), two spaces swapped (kayak-rt frees nothing, so none
+  is made per collection), at the machine's safepoints only (`cons`,
+  `closure`, `prim`), as Fixpt's: when three quarters full, or at every
+  safepoint under `--gc-stress`, Coopt's stress policy. The roots: the
+  stacks, `cur`, `clo`, the tables of what the listing made. Allocation
+  now zeroes what it gives. `cells-programs.py` runs each agreeing
+  program again under stress: all 175 agree so too. `lists` collects 2,999
+  times, copying 3.2 million words, in about the time it took uncollected.
