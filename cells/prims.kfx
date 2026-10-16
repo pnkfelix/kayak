@@ -173,6 +173,12 @@
 (define o-product-cell i64 161)
 (define o-list-p i64 162)
 (define o-convert i64 163)
+(define o-sched i64 164)
+(define o-icell-put i64 165)
+(define o-preempt-done i64 166)
+(define o-clock i64 167)
+(define o-sleep-until i64 168)
+(define o-address-identity i64 169)
 (define o-fixed i64 1000)
 (define o-f64 i64 1200)
 (define o-f32-ops i64 1300)
@@ -275,7 +281,9 @@
          (pdef "%fx26-string->utf8" 1 1 o-string-utf8) (pdef "%fx26-utf8->string" 1 1 o-utf8-string)
          (pdef "%fx26-bytevector" 1 1 o-bytevector-of) (pdef "%fx26-byte?" 1 1 o-byte) (pdef "%fx26-unit-cell" 0 0 o-unit-cell)
          (pdef "%fx26-nil-cell" 0 0 o-nil-cell) (pdef "%fx26-sum-cell" 2 2 o-sum-cell) (pdef "%fx26-pair-cell" 2 2 o-pair-cell)
-         (pdef "%fx26-product-cell" 1 1 o-product-cell) (pdef "%fx26-list?" 1 1 o-list-p) (pdef "%fx26-convert" 2 2 o-convert))
+         (pdef "%fx26-product-cell" 1 1 o-product-cell) (pdef "%fx26-list?" 1 1 o-list-p) (pdef "%fx26-convert" 2 2 o-convert)
+         (pdef "%fx26-sched" 3 3 o-sched) (pdef "%fx26-icell-put!" 2 2 o-icell-put) (pdef "%fx26-preempt-done" 0 0 o-preempt-done)
+         (pdef "%fx26-clock" 0 0 o-clock) (pdef "%fx26-sleep-until" 1 1 o-sleep-until) (pdef "%fx26-address-identity" 0 0 o-address-identity))
    (onto (fixed-families fixed-widths 0)
          (onto (family "%fx26-f64" f64-suffixes o-f64 0 13)
                (family "%fx26-f32" f32-suffixes o-f32-ops 0 13)))))
@@ -303,10 +311,6 @@
 (define prim-min (subr kfx (i64) i64) (lambda (p) (i64-and (i64-shr p 8) 255)))
 (define prim-max (subr kfx (i64) i64) (lambda (p) (let ((m (i64-and p 255))) (if (i64= m 255) -1 m))))
 
-"A region's number, as Fixpt's `%region-enter` gives one. Tier 1 keeps
- a region's objects in the one heap: what a region frees is memory, never
- an answer."
-(define regions (ref i64 @c) (new 0))
 
 "Failures, as Fixpt's runtime says them (`rt.fail`, `rt.type_error`)."
 (define fail! (subr cm (string) i64) (lambda (m) (begin (trap! m) 0)))
@@ -320,10 +324,6 @@
     (fail! (string-append "tier 1: `" (string-append (prim-name p) (string-append "` " (string-append why ", not yet as Fixpt (C122)")))))))
 
 "Arguments."
-(define-rec
-  (list-of (subr cm ((listof i64 @c)) i64)
-    (lambda (xs) (if (null? xs) v-null (cons! (car xs) (list-of (cdr xs)))))))
-
 (define-rec
   (args-count (subr cm ((listof i64 @c) i64) i64)
     (lambda (xs n) (if (null? xs) n (args-count (cdr xs) (i64+ n 1))))))
@@ -470,16 +470,6 @@
 
 "Bloblets."
 (define plain? (subr cm (i64) bool) (lambda (v) (is-kind? v k-bloblet)))
-(define suffix-frozen? (subr cm (i64) bool)
-  (lambda (v) (i64= 1 (bits (header-of v) (with lay header-suffix-frozen-lo) 1))))
-(define frozen-as! (subr cm (i64 bool bool) unit)
-  (lambda (v f sf)
-    "A bloblet's fields frozen if `f`, its suffix if `sf` (Fixpt's
-     `freeze_bloblet`: it only sets)."
-    (let ((h (header-index v)))
-      (word-set! h (i64-or (word-at h)
-                     (i64-or (if f (i64-shl 1 (with lay header-fields-frozen-lo)) 0)
-                             (if sf (i64-shl 1 (with lay header-suffix-frozen-lo)) 0)))))))
 
 "The most fields an ordinary header holds; more need Fixpt's large one,
  which tier 1 does not make yet."
@@ -961,12 +951,6 @@
   (butlast (subr cm ((listof i64 @c)) (listof i64 @c))
     (lambda (xs) (if (or (null? xs) (null? (cdr xs))) nil (cons (car xs) (butlast (cdr xs)))))))
 
-(define make-icell! (subr cm () i64)
-  (lambda ()
-    "An i-cell (Fixpt's `sched::make_icell`): empty, no one waiting."
-    (let ((c (make-bloblet! k-icell 3 0 #t #f)))
-      (begin (slot-set! c 2 v-false) (slot-set! c 3 v-false) (slot-set! c 4 v-null) c))))
-
 (define vlambda! (subr cm (i64) i64)
   (lambda (f)
     "FX-26's `vlambda` (Fixpt's `%fx26-vlambda`): a closure over `f` of a
@@ -997,6 +981,110 @@
       (cond ((not (string=? (field-trouble o (i64+ i 2)) "")) -1)
             ((i64= (slot-of o (i64+ i 2)) label) i)
             (else (label-field o label (i64+ i 1)))))))
+
+(define-rec
+  (filled-cells! (subr cm (i64 i64 (listof i64 @c)) unit)
+    (lambda (w k xs) (if (null? xs) #u (begin (slot-set! w k (fix (car xs))) (filled-cells! w (i64+ k 1) (cdr xs)))))))
+
+(define trampoline! (subr cm () i64)
+  (lambda ()
+    "The word a machine enters at a poll with `preempt` on its data stack:
+     `call 0`, `drop`, `%fx26-preempt-done`, `drop`, `exit` (Fixpt's
+     `%preempt-trampoline`)."
+    (let ((w (make-word! "%preempt-trampoline" 8 r-docol)))
+      (begin
+        (filled-cells! w f-cell0 (list r-call 0 r-drop r-prim (prim-number "%fx26-preempt-done") 0 r-drop r-exit))
+        w))))
+
+(define sched-op! (subr cm (i64 i64 i64) i64)
+  (lambda (n a b)
+    "`%fx26-sched`'s operation `n` on `a` and `b` (Fixpt's `sched::run_op`),
+     each operand checked to be what the operation takes."
+    (cond
+      ((and (or (i64= n 1) (i64= n 2) (i64= n 24) (i64= n 35) (i64= n 36) (i64= n 39) (i64= n 40))
+            (not (and (is-fixnum? a) (task-live? (fix-val a)))))
+       (fail! (string-append "%fx26-sched: no such task (op " (string-append (i64->string n) ")"))))
+      ((and (or (i64= n 7) (i64= n 8) (i64= n 9) (i64= n 17) (i64= n 23)) (not (is-kind? a k-mailbox))) (expected! "a mailbox"))
+      ((and (or (i64= n 10) (i64= n 11) (i64= n 15) (i64= n 22) (i64= n 34)) (not (is-kind? a k-icell))) (expected! "an i-cell"))
+      ((or (i64= n 18) (i64= n 19))
+       (cond ((not (fixed-in? 4 a)) (expected! "an i64"))
+             ((i64= n 19) (boolean (i64>= (clock) (int->i64 (int-of a)))))
+             (else (timer-add! (int->i64 (int-of a)) b))))
+      ((i64= n 21) (timers-wait! #t))
+      ((i64= n 30) (timers-wait! #f))
+      ((i64= n 38)
+       (if (str? a) (task-failed! (string-text a) #t) (expected! "a string")))
+      ((i64= n 31)
+       (let ((w (and (is-kind? (get sched-state) k-vector) (wanted! #t))))
+         (begin (if w (quiet-enter!) #u) (boolean w))))
+      ((i64= n 32) (begin (quiet-leave!) v-unit))
+      ((i64= n 33) (begin (quiet-enter!) v-unit))
+      ((i64= n 0) (fix (task-new!)))
+      ((i64= n 1) (fix (task-switch! (fix-val a))))
+      ((i64= n 2)
+       (begin (if (i64= (fix-val a) 0) #u (begin (task-end! (fix-val a)) (forget-task! a))) v-unit))
+      ((or (i64= n 35) (i64= n 39))
+       (let ((p (if (i64= n 39) (group-of (fix (get task-now))) v-false)))
+         (begin
+           (if (i64= p v-false) #u (st-cons! s-parents (cons! a p)))
+           (st-cons! s-groups (cons! a a))
+           (st-cons! s-monitors (cons! a b))
+           v-unit)))
+      ((i64= n 36)
+       (let ((g (group-of (fix (get task-now)))))
+         (begin (if (i64= g v-false) #u (st-cons! s-groups (cons! a g))) v-unit)))
+      ((i64= n 37)
+       (let ((f (st s-failure)))
+         (begin
+           (if (i64= f v-false)
+               #u
+               (begin
+                 (st-set! s-failure v-false)
+                 (if (i64= (get task-now) 0) #u (let ((t (get task-now))) (begin (task-end! t) (forget-task! (fix t)))))))
+           f)))
+      ((i64= n 24) (begin (if (i64= (fix-val a) 0) #u (st-cons! s-cancelled a)) v-unit))
+      ((i64= n 25) (boolean (cancelled? a)))
+      ((i64= n 3) (fix (get task-now)))
+      ((i64= n 4) (begin (queue-push! a) v-unit))
+      ((i64= n 5) (queue-pop!))
+      ((i64= n 26)
+       (begin
+         (st-set! s-preempt a)
+         (if (i64= (st s-trampoline) v-false) (st-set! s-trampoline (trampoline!)) #u)
+         v-unit))
+      ((i64= n 43) (fail! "tier 1: `%fx26-sched` of the standard input, not yet as Fixpt (C122)"))
+      ((i64= n 44) (begin (st-cons! s-stdin a) v-unit))
+      ((i64= n 45) (begin (st-set! s-stdin (without! (st s-stdin) (lambda (w) (i64= w a)))) v-unit))
+      ((i64= n 40) (begin (st-cons! s-waiting (cons! a b)) v-unit))
+      ((i64= n 41) (begin (st-set! s-waiting (without! (st s-waiting) (lambda (e) (i64= (pair-car e) a)))) v-unit))
+      ((i64= n 42) (reaped!))
+      ((i64= n 27) (begin (st-cons! s-parked a) v-unit))
+      ((i64= n 28) (pop-any!))
+      ((i64= n 29)
+       (let ((r (i64+ (fix-val (st s-running)) (if (is-fixnum? a) (fix-val a) (the i64 0)))))
+         (begin (st-set! s-running (fix (if (i64< r 0) (the i64 0) r))) v-unit)))
+      ((i64= n 6) (make-mailbox!))
+      ((i64= n 7) (mailbox-put! a b))
+      ((i64= n 17) (boolean (mailbox-ready? a)))
+      ((i64= n 8) (mailbox-take! a))
+      ((i64= n 9)
+       (begin (if (mailbox-ready? a) (queue-push! b) (slot-set! a 4 b)) v-unit))
+      ((i64= n 10) (slot-of a 2))
+      ((i64= n 15) (slot-of a 3))
+      ((i64= n 11)
+       (begin (if (i64= (slot-of a 2) v-false) (slot-set! a 4 (cons! b (slot-of a 4))) (queue-push! b)) v-unit))
+      ((i64= n 22) (begin (slot-set! a 4 (without! (slot-of a 4) (lambda (w) (i64= w b)))) v-unit))
+      ((i64= n 23) (begin (if (i64= (slot-of a 4) b) (slot-set! a 4 v-false) #u) v-unit))
+      ((i64= n 20) (begin (st-set! s-timers (without! (st s-timers) (lambda (t) (i64= (pair-cdr t) a)))) v-unit))
+      ((i64= n 14) (cell-put! a b))
+      ((i64= n 34) (if (i64= (slot-of a 2) v-false) (cell-put! a b) v-unit))
+      ((i64= n 12)
+       (if (i64= (st s-tag) v-false)
+           (frozen-of! k-sum (list (symbol! "none") v-unit))
+           (frozen-of! k-sum (list (symbol! "some") (st s-tag)))))
+      ((i64= n 13) (begin (st-set! s-tag a) v-unit))
+      ((i64= n 16) (begin (set regions (i64+ (get regions) 1)) (fix (get regions))))
+      (else (fail! "%fx26-sched: no such operation")))))
 
 (define prim-apply! (subr cm (i64 (listof i64 @c)) i64)
   (lambda (p args)
@@ -1384,6 +1472,12 @@
         ((i64= op o-pair-cell) (cons! a b))
         ((i64= op o-product-cell)
          (if (i64< (proper-length a) 0) (expected! "a list") (frozen-of! k-product (list-items a))))
+        ((i64= op o-sched) (if (is-fixnum? a) (sched-op! (fix-val a) b c) (expected! "an operation's number")))
+        ((i64= op o-icell-put) (cell-put! a b))
+        ((i64= op o-preempt-done) (begin (quiet-leave!) v-unit))
+        ((i64= op o-clock) (int-value! (i64->int (clock))))
+        ((i64= op o-sleep-until) (if (fixed-in? 4 a) (begin (sleep-until (int->i64 (int-of a))) v-unit) (expected! "an i64")))
+        ((i64= op o-address-identity) (fix 0))
         ((i64= op o-convert)
          (let ((native (i64= (i64-and (fix-val b) 3) 2))
                (cellular (or (is-kind? a k-closure) (is-kind? a k-continuation)))

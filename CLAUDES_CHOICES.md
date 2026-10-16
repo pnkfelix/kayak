@@ -3108,3 +3108,55 @@ reading both.
 - **Result:** 292 of Fixpt's programs agree on tier 1 (was 194), 0
   differ, each again under `--gc-stress`. `%fx26-native-code?` is false,
   as Fixpt's Rust interpreter of cells says.
+
+## C125. Tier 1's scheduler, Fixpt's runtime's (2026-10-16, TODO §31 step 2)
+
+- **Chosen: Fixpt's, not Coopt's** (the user asked which). Tier 1's
+  contract is Fixpt's answers on the words Fixpt's compiler makes, and
+  the scheduler of processes, `par`, `race`, `pselect` and monitors is
+  FX-26 code, `fx26:processes.fx`, already compiled into those words:
+  what tier 1 provides is only what it calls, `%fx26-sched`'s 46
+  operations (Fixpt's `sched.rs`), the machine's poll at a slice's end,
+  and the machine's catching of a monitored task's failure. Those must be
+  Fixpt's to the decision, or the order tasks run in differs. Coopt's
+  `coopt-sched` is a host scheduler (Rust futures; priorities; effects
+  deciding what may interleave; seeded; a virtual clock of steps) and
+  its in-language tasks a different model (an async loop, nurseries),
+  with no mailboxes or I-cells: it is the model for kayak's own runtime
+  once kayak is the reference (PLAN §9), as Coopt's collector is the
+  baseline under tier 1's Fixpt-placed safepoints (C122).
+- **`cells/sched.kfx`:** the state a heap vector of Fixpt's 17 slots, the
+  collector's root; tasks numbered lowest free first, each with Fixpt's
+  quiet count and grace; the run queue, parking, mailboxes (messages
+  copied as `copy_within` copies: pairs and the copied kinds, sharing and
+  cycles kept, frozen flags kept), I-cells, timers, cancellation, reaps,
+  monitored groups and `race` groups, failures kept for the handler. The
+  dispatcher, `sched-op!`, in `prims.kfx`, with `%fx26-icell-put!`,
+  `%fx26-preempt-done`, `%fx26-clock`, `%fx26-sleep-until`,
+  `%fx26-address-identity` (0, as Fixpt's). The machine: Fixpt's fuel
+  and reserve, a poll at each slice's end entering Fixpt's trampoline
+  word (`call 0; drop; prim %fx26-preempt-done 0; drop; exit`) with
+  `preempt`; a trap in a task of a monitored group an abort to the
+  scheduler's prompt (`abort-to!`, the `abort` routine's body).
+- **The clock is the wall clock**, KFX's `(clock)`, as Fixpt's
+  `clock_ns`, so that deadlines come due as Fixpt's do; `cm` gains `(io
+  clock)`. Coopt's virtual clock (steps are time) is where kayak's own
+  runtime should go, which would make deadline programs deterministic.
+- **Not yet, marked `(C122)`:** the standard input waited for
+  (`STDIN_READY`, a timer wait with an input waiter); the seed (Fixpt's
+  `FIXPT_SCHED_SEED`, which its tests do not set). Regions remain one
+  heap (C122), so a task's places are only numbers.
+- **`--slice N`** for kayak-cells, as Fixpt's `FIXPT_SLICE`, to preempt
+  at nearly every poll in a test. `cells-programs.py` runs each program
+  that runs tasks again at a slice of 2, with no step limit, its answer
+  the same. Of the 34 such programs, run at slice 2 on Fixpt and on tier 1,
+  all agree but two, neither tier 1's fault: `schedules/process-fails.fx`,
+  whose task fails during the next form, which Fixpt then reports as an
+  error of its run, not of a form; and `preempt/allocating-short.fx`,
+  which needs more than 20,000,000 steps in all at that slice. Fixpt's
+  limit is each top-level form's, and tier 1 runs the listing's one
+  `program` word, so its limit is the whole program's: a program whose
+  forms each fit but whose sum does not differs (none at Fixpt's slice).
+  A slice of 1 is degenerate: after a preemption's grace no cell is a
+  task's own, and Fixpt's run of `monitors/one-message.fx` does not end
+  (tier 1's overflows its stack).

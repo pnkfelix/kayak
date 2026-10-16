@@ -606,9 +606,10 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    prompts, marks and continuations (but routines 51–55). Done: the
    listings Fixpt now writes in full (`--full-literals`, C123), read; three
    gaps in them worked around, to be raised with Fixpt (C123). Done: the primitives, Fixpt's
-   runtime's (C124; 292 agree). Next: the scheduler (`%fx26-sched`, 29
-   programs: processes, `par`, monitors), the clock, eqtables,
-   `%fx26-intern-datum`, I/O; native code's primitives with tier 2;
+   runtime's (C124; 292 agree). Done: the scheduler's runtime, Fixpt's
+   (C125; 326 agree): processes, `par`, `race`, `pselect`, monitors,
+   preemption, the clock. Next: eqtables, `%fx26-intern-datum`, I/O (the
+   standard input waited for, too); native code's primitives with tier 2;
    Coopt's collector's steps past Cheney (generational, regions,
    summaries, marking, pacing, each against the one before); then stage A
    ported (`compile*.fx`, each marked `fixpt-source:`), its words
@@ -617,6 +618,11 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
      its components callees first: a group Fixpt accepts KFX may refuse.
      Fixpt's order, if one does. `->*` in a module's items and `letrec`:
      refused yet.
+   - Tier 1's step limit is the whole program's, Fixpt's each form's
+     (C125): the listing has one `program` word. Marks between forms in
+     Fixpt's listing would let tier 1 count as Fixpt does.
+   - Tier 1's clock is the wall clock, as Fixpt's (C125); kayak's own
+     runtime, later, Coopt's virtual clock of steps.
    - `scripts/gen-vprims.py` is stale: `fx26/vprims.kfx` was edited by
      hand since (C110's refusals), so regenerating drops them. Bring the
      generator up to the file, or retire it.

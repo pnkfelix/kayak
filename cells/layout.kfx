@@ -7,8 +7,9 @@
 
 (define lay (load-module "fx26:layout.fx"))
 
-"What tier 1 does: reads and writes its heap and stacks, at region `@c`."
-(define-effect cm (maxeff (read @globals) spin (read @c) (write @c) (alloc @c)))
+"What tier 1 does: reads and writes its heap and stacks, at region `@c`;
+ reads the clock, for FX-26's deadlines (C125)."
+(define-effect cm (maxeff (read @globals) spin (read @c) (write @c) (alloc @c) (io clock)))
 
 "Tags."
 (define t-fixnum i64 (int->i64 (with lay tag-fixnum)))
@@ -37,6 +38,7 @@
 (define k-ratnum i64 (int->i64 (with lay kind-ratnum)))
 (define k-flat-array i64 (int->i64 (with lay kind-flat-array)))
 (define k-icell i64 (int->i64 (with lay kind-icell)))
+(define k-mailbox i64 (int->i64 (with lay kind-mailbox)))
 (define k-native-closure i64 (int->i64 (with lay kind-native-closure)))
 
 "A word's fields, a closure's, a global cell's."

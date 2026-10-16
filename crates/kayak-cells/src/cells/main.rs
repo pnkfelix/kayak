@@ -3,10 +3,11 @@
 use kayak_rt::*;
 use super::*;
 
-// main.kfx: `kayak-cells LISTING [--step-limit N|none] [--gc-stress]
-// [--gc-stats]` (C122): the words
+// main.kfx: `kayak-cells LISTING [--step-limit N|none] [--slice N]
+// [--gc-stress] [--gc-stats]` (C122, C125): the words
 // of a listing Fixpt's compiler wrote, its `program` run, at most N
-// instructions (Fixpt's FX-26 default, 20,000,000; `none`, no limit), its
+// instructions (Fixpt's FX-26 default, 20,000,000; `none`, no limit), a
+// task's time slice N polls (Fixpt's 65,536, or its `FIXPT_SLICE`), its
 // value written as Fixpt writes it; or, if it fails, `evaluation failed:
 // MESSAGE` on the standard error and status 1.
 
@@ -51,11 +52,12 @@ pub fn default_steps() -> i64 {
     20000000i64
 }
 
-pub fn steps_of(mut r#as: List<Str>) -> i64 {
+/// Option `name`'s number, `none` the most there is; else `otherwise`.
+pub fn option_of(mut r#as: List<Str>, mut name: Str, mut otherwise: i64) -> i64 {
     loop {
         if (null_p(r#as) || null_p(cdr(r#as))) {
-            return default_steps();
-        } else if string_eq_p(car(r#as), str_lit("--step-limit")) {
+            return otherwise;
+        } else if string_eq_p(car(r#as), name) {
             if string_eq_p(car(cdr(r#as)), str_lit("none")) {
                 return 9223372036854775807i64;
             } else {
@@ -63,11 +65,15 @@ pub fn steps_of(mut r#as: List<Str>) -> i64 {
                 let tagcase_ = car(ds);
                 match *tagcase_ {
                     Sexp::Num(n, f, p) => {
-                        return n;
+                        if i64_gt(n, 0i64) {
+                            return n;
+                        } else {
+                            return otherwise;
+                        }
                     }
                     _ => {
                         let other = tagcase_;
-                        return default_steps();
+                        return otherwise;
                     }
                 }
             }
@@ -86,7 +92,8 @@ pub fn cells_main() -> Int {
     } else {
         let w = listing_words_x(read_text(car(r#as)));
         let u = set(gc_stress(), string_member_p(str_lit("--gc-stress"), r#as));
-        let r = run_word_x(w, steps_of(cdr(r#as)));
+        let u1 = set(slice(), option_of(cdr(r#as), str_lit("--slice"), 65536i64));
+        let r = run_word_x(w, option_of(cdr(r#as), str_lit("--step-limit"), default_steps()));
         let u2 = if string_member_p(str_lit("--gc-stats"), r#as) {
             write_err(string_append(str_lit("collections: "), string_append(i64_to_string(get(collections())), string_append(str_lit(", words copied: "), string_append(i64_to_string(get(words_copied())), str_lit("\n"))))));
             ()

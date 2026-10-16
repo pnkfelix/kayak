@@ -83,6 +83,14 @@ pub fn fuel() -> Ref<i64> {
     })
 }
 
+// What is left of the step limit past this slice (Fixpt's `reserve`).
+pub fn reserve() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
 pub fn quoted(n: i64) -> Str {
     string_append(str_lit("`"), string_append(routine_name(n), str_lit("`")))
 }
@@ -204,6 +212,10 @@ pub fn check_limits_x() -> () {
     }
 }
 
+pub fn limits_ok_p() -> bool {
+    not((i64_gt(get(dsp()), ds_limit()) || i64_gt_eq(i64_quotient(get(rsp()), 4i64), rs_limit())))
+}
+
 pub fn operand_x() -> i64 {
     let v = slot_of(get(cur()), get(kk()));
     set(kk(), i64_plus(get(kk()), 1i64));
@@ -250,6 +262,7 @@ pub fn collect_x() -> () {
     stack_forwarded_x(get(rs()), 0i64, get(rsp()));
     set(cur(), forward_x(get(cur())));
     set(clo(), forward_x(get(clo())));
+    set(sched_state(), forward_x(get(sched_state())));
     collect_end_x()
 }
 
@@ -685,6 +698,23 @@ pub fn enter_above_x(n: i64, thunk: i64, m0: i64, m1: i64, m2: i64, m3: i64) -> 
     }
 }
 
+/// An abort to the innermost prompt for `tag`, its handler given `v`.
+pub fn abort_to_x(n: i64, tag: i64, v: i64) -> i64 {
+    let at = find_marked(get(rsp()), prompt_mark(), tag);
+    if i64_lt(at, 0i64) {
+        trap_x(str_lit("abort: no prompt for this tag"));
+        next()
+    } else {
+        let (handler, height) = (rs_at(i64_plus(at, 2i64)), prompt_height(rs_at(i64_plus(at, 3i64))));
+        set(rsp(), at);
+        pop_return_x();
+        set(dsp(), height);
+        push_x(v);
+        push_x(handler);
+        call_x(n, 1i64, false)
+    }
+}
+
 /// Routine `n`, its operands the cells after it: what to do next.
 pub fn routine_x(mut n: i64) -> i64 {
     loop {
@@ -958,19 +988,7 @@ pub fn routine_x(mut n: i64) -> i64 {
         } else if i64_eq(n, r_abort()) {
             let v = pop_x(n);
             let tag = pop_x(n);
-            let at = find_marked(get(rsp()), prompt_mark(), tag);
-            if i64_lt(at, 0i64) {
-                trap_x(str_lit("abort: no prompt for this tag"));
-                return next();
-            } else {
-                let (handler, height) = (rs_at(i64_plus(at, 2i64)), prompt_height(rs_at(i64_plus(at, 3i64))));
-                set(rsp(), at);
-                pop_return_x();
-                set(dsp(), height);
-                push_x(v);
-                push_x(handler);
-                return call_x(n, 1i64, false);
-            }
+            return abort_to_x(n, tag, v);
         } else if (i64_eq(n, r_callcomp()) || i64_eq(n, r_callone()) || i64_eq(n, r_callcc())) {
             let tag = if i64_eq(n, r_callcc()) {
                 v_false()
@@ -1082,14 +1100,74 @@ pub fn enter_x(w: i64) -> bool {
     }
 }
 
+// Processes (C125): the scheduler's prompt, whether it is on the return
+// stack; a time slice's end, where the scheduler may have another task
+// run; and a trap in a task of a monitored group, the group's failure.
+pub fn reach_p() -> bool {
+    let t = sched_tag();
+    (not(i64_eq(t, v_false())) && i64_gt_eq(find_marked(get(rsp()), prompt_mark(), t), 0i64))
+}
+
+/// A slice's end, between fetching a cell and running it: the next slice
+/// given out of the reserve, and, if the scheduler would have another task
+/// run, its `preempt` called first: the cell put back, a return to it
+/// pushed, the trampoline entered with `preempt` on the data stack.
+/// Whether it was (Fixpt's `poll`).
+pub fn poll_x() -> bool {
+    let take = if i64_lt(get(reserve()), get(slice())) {
+        get(reserve())
+    } else {
+        get(slice())
+    };
+    set(fuel(), take);
+    set(reserve(), i64_minus(get(reserve()), take));
+    let f = preempt_due_x(reach_p());
+    if i64_eq(f, v_false()) {
+        false
+    } else if not(limits_ok_p()) {
+        quiet_leave_x();
+        take_grace_x();
+        false
+    } else {
+        set(kk(), i64_minus(get(kk()), 1i64));
+        push_return_x();
+        set(cur(), st(s_trampoline()));
+        set(kk(), f_cell0());
+        set(fp(), get(dsp()));
+        set(clo(), v_false());
+        push_x(f);
+        true
+    }
+}
+
+/// After a trap, if the current task is of a monitored group: an abort to
+/// the scheduler's prompt, the trap forgotten, and on (Fixpt's
+/// `task_failed`). Whether it was.
+pub fn failed_in_task_x() -> bool {
+    if string_eq_p(get(trap_message()), str_lit("evaluation step limit exceeded")) {
+        false
+    } else {
+        let tag = task_failed_x(get(trap_message()), reach_p());
+        if i64_eq(tag, v_false()) {
+            false
+        } else {
+            set(trap_message(), str_lit(""));
+            abort_to_x(r_abort(), tag, v_unit());
+            not(trapped_p())
+        }
+    }
+}
+
 /// Cells, one after another, until the run ends, halts or traps.
 pub fn run_x(mut base: i64) -> i64 {
     loop {
         let cell = slot_of(get(cur()), get(kk()));
         set(kk(), i64_plus(get(kk()), 1i64));
-        if i64_eq(get(fuel()), 0i64) {
+        if (i64_eq(get(fuel()), 0i64) && i64_eq(get(reserve()), 0i64)) {
             trap_x(str_lit("evaluation step limit exceeded"));
             return halt_flow();
+        } else if (i64_eq(get(fuel()), 0i64) && poll_x()) {
+            continue;
         } else {
             set(fuel(), i64_minus(get(fuel()), 1i64));
             let flow = if is_fixnum_p(cell) {
@@ -1098,7 +1176,9 @@ pub fn run_x(mut base: i64) -> i64 {
                 enter_x(cell);
                 next()
             };
-            if trapped_p() {
+            if (trapped_p() && failed_in_task_x()) {
+                continue;
+            } else if trapped_p() {
                 return halt_flow();
             } else if i64_eq(flow, next()) {
                 continue;
@@ -1138,7 +1218,13 @@ pub fn run_word_x(w: i64, steps: i64) -> &'static Ran {
     set(kk(), 0i64);
     set(fp(), 0i64);
     set(clo(), v_false());
-    set(fuel(), steps);
+    if i64_gt(steps, get(slice())) {
+        set(fuel(), get(slice()));
+        set(reserve(), i64_minus(steps, get(slice())))
+    } else {
+        set(fuel(), steps);
+        set(reserve(), 0i64)
+    };
     set(trap_message(), str_lit(""));
     if enter_x(w) {
         run_x(0i64);

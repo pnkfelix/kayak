@@ -12,6 +12,8 @@ pub mod numbers;
 pub use numbers::*;
 pub mod show;
 pub use show::*;
+pub mod sched;
+pub use sched::*;
 pub mod prims;
 pub use prims::*;
 pub mod listing;

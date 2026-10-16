@@ -7,6 +7,7 @@ layout.kfx
 heap.kfx
 numbers.kfx
 show.kfx
+sched.kfx
 prims.kfx
 listing.kfx
 machine.kfx

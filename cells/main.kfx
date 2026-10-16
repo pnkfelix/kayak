@@ -1,7 +1,8 @@
-"main.kfx: `kayak-cells LISTING [--step-limit N|none] [--gc-stress]
- [--gc-stats]` (C122): the words
+"main.kfx: `kayak-cells LISTING [--step-limit N|none] [--slice N]
+ [--gc-stress] [--gc-stats]` (C122, C125): the words
  of a listing Fixpt's compiler wrote, its `program` run, at most N
- instructions (Fixpt's FX-26 default, 20,000,000; `none`, no limit), its
+ instructions (Fixpt's FX-26 default, 20,000,000; `none`, no limit), a
+ task's time slice N polls (Fixpt's 65,536, or its `FIXPT_SLICE`), its
  value written as Fixpt writes it; or, if it fails, `evaluation failed:
  MESSAGE` on the standard error and status 1."
 
@@ -23,15 +24,16 @@
 (define default-steps i64 20000000)
 
 (define-rec
-  (steps-of (subr kfx ((listof string acyclic)) i64)
-    (lambda (as)
-      (cond ((or (null? as) (null? (cdr as))) default-steps)
-            ((string=? (car as) "--step-limit")
+  (option-of (subr kfx ((listof string acyclic) string i64) i64)
+    (lambda (as name otherwise)
+      "Option `name`'s number, `none` the most there is; else `otherwise`."
+      (cond ((or (null? as) (null? (cdr as))) otherwise)
+            ((string=? (car as) name)
              (if (string=? (car (cdr as)) "none")
                  9223372036854775807
                  (let ((ds (read-all (string-chars (car (cdr as))) "<args>" 1)))
-                   (tagcase (car ds) (num (n f p) n) (else other default-steps)))))
-            (else (steps-of (cdr as)))))))
+                   (tagcase (car ds) (num (n f p) (if (i64> n 0) n otherwise)) (else other otherwise)))))
+            (else (option-of (cdr as) name otherwise))))))
 
 (define cells-main (subr driving () int)
   (lambda ()
@@ -40,7 +42,8 @@
           (begin (fail-with "usage: kayak-cells LISTING [--step-limit N|none]" 2) 2)
           (let* ((w (listing-words! (read-text (car as))))
                  (u (set gc-stress (string-member? "--gc-stress" as)))
-                 (r (run-word! w (steps-of (cdr as))))
+                 (u1 (set slice (option-of (cdr as) "--slice" 65536)))
+                 (r (run-word! w (option-of (cdr as) "--step-limit" default-steps)))
                  (u2 (if (string-member? "--gc-stats" as)
                          (begin
                            (write-err (string-append "collections: " (string-append (i64->string (get collections))

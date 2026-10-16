@@ -19,6 +19,8 @@
 (define fp (ref i64 @c) (new 0))
 (define clo (ref i64 @c) (new 3))
 (define fuel (ref i64 @c) (new 0))
+"What is left of the step limit past this slice (Fixpt's `reserve`)."
+(define reserve (ref i64 @c) (new 0))
 
 (define quoted (subr kfx (i64) string) (lambda (n) (string-append "`" (string-append (routine-name n) "`"))))
 (define type-trap! (subr cm (i64) unit)
@@ -87,6 +89,9 @@
         (trap! "stack overflow")
         #u)))
 
+(define limits-ok? (subr cm () bool)
+  (lambda () (not (or (i64> (get dsp) ds-limit) (i64>= (i64-quotient (get rsp) 4) rs-limit)))))
+
 (define operand! (subr cm () i64)
   (lambda () (let ((v (slot-of (get cur) (get kk)))) (begin (set kk (i64+ (get kk) 1)) v))))
 
@@ -115,6 +120,7 @@
       (stack-forwarded! (get rs) 0 (get rsp))
       (set cur (forward! (get cur)))
       (set clo (forward! (get clo)))
+      (set sched-state (forward! (get sched-state)))
       (collect-end!))))
 
 (define safepoint! (subr cm () unit)
@@ -359,6 +365,21 @@
           (rs-push! m0) (rs-push! m1) (rs-push! m2) (rs-push! m3)
           (set cur (slot-of thunk f-word)) (set kk f-cell0) (set fp (get dsp)) (set clo thunk)))))
 
+(define abort-to! (subr cm (i64 i64 i64) i64)
+  (lambda (n tag v)
+    "An abort to the innermost prompt for `tag`, its handler given `v`."
+    (let ((at (find-marked (get rsp) prompt-mark tag)))
+      (if (i64< at 0)
+          (begin (trap! "abort: no prompt for this tag") next)
+          (let ((handler (rs-at (i64+ at 2))) (height (prompt-height (rs-at (i64+ at 3)))))
+            (begin
+              (set rsp at)
+              (pop-return!)
+              (set dsp height)
+              (push! v)
+              (push! handler)
+              (call! n 1 #f)))))))
+
 (define-rec
   (routine! (subr cm (i64) i64)
     (lambda (n)
@@ -506,17 +527,7 @@
                    (set cur (slot-of thunk f-word)) (set kk f-cell0) (set fp (get dsp)) (set clo thunk)
                    next)))))
         ((i64= n r-abort)
-         (let* ((v (pop! n)) (tag (pop! n)) (at (find-marked (get rsp) prompt-mark tag)))
-           (if (i64< at 0)
-               (begin (trap! "abort: no prompt for this tag") next)
-               (let ((handler (rs-at (i64+ at 2))) (height (prompt-height (rs-at (i64+ at 3)))))
-                 (begin
-                   (set rsp at)
-                   (pop-return!)
-                   (set dsp height)
-                   (push! v)
-                   (push! handler)
-                   (call! n 1 #f))))))
+         (let* ((v (pop! n)) (tag (pop! n))) (abort-to! n tag v)))
         ((or (i64= n r-callcomp) (i64= n r-callone) (i64= n r-callcc))
          (let* ((tag (if (i64= n r-callcc) v-false (pop! n)))
                 (proc (pop! n))
@@ -574,6 +585,46 @@
                   #u)
               #f))))))
 
+"Processes (C125): the scheduler's prompt, whether it is on the return
+ stack; a time slice's end, where the scheduler may have another task
+ run; and a trap in a task of a monitored group, the group's failure."
+(define reach? (subr cm () bool)
+  (lambda () (let ((t (sched-tag))) (and (not (i64= t v-false)) (i64>= (find-marked (get rsp) prompt-mark t) 0)))))
+
+(define poll! (subr cm () bool)
+  (lambda ()
+    "A slice's end, between fetching a cell and running it: the next slice
+     given out of the reserve, and, if the scheduler would have another task
+     run, its `preempt` called first: the cell put back, a return to it
+     pushed, the trampoline entered with `preempt` on the data stack.
+     Whether it was (Fixpt's `poll`)."
+    (let ((take (if (i64< (get reserve) (get slice)) (get reserve) (get slice))))
+      (begin
+        (set fuel take)
+        (set reserve (i64- (get reserve) take))
+        (let ((f (preempt-due! (reach?))))
+          (cond ((i64= f v-false) #f)
+                ((not (limits-ok?)) (begin (quiet-leave!) (take-grace!) #f))
+                (else
+                 (begin
+                   (set kk (i64- (get kk) 1))
+                   (push-return!)
+                   (set cur (st s-trampoline)) (set kk f-cell0) (set fp (get dsp)) (set clo v-false)
+                   (push! f)
+                   #t))))))))
+
+(define failed-in-task! (subr cm () bool)
+  (lambda ()
+    "After a trap, if the current task is of a monitored group: an abort to
+     the scheduler's prompt, the trap forgotten, and on (Fixpt's
+     `task_failed`). Whether it was."
+    (if (string=? (get trap-message) "evaluation step limit exceeded")
+        #f
+        (let ((tag (task-failed! (get trap-message) (reach?))))
+          (if (i64= tag v-false)
+              #f
+              (begin (set trap-message "") (abort-to! r-abort tag v-unit) (not (trapped?))))))))
+
 (define-rec
   (run! (subr cm (i64) i64)
     (lambda (base)
@@ -581,16 +632,20 @@
       (let ((cell (slot-of (get cur) (get kk))))
         (begin
           (set kk (i64+ (get kk) 1))
-          (if (i64= (get fuel) 0)
-              (begin (trap! "evaluation step limit exceeded") halt-flow)
+          (cond
+            ((and (i64= (get fuel) 0) (i64= (get reserve) 0))
+             (begin (trap! "evaluation step limit exceeded") halt-flow))
+            ((and (i64= (get fuel) 0) (poll!)) (run! base))
+            (else
               (begin
                 (set fuel (i64- (get fuel) 1))
                 (let ((flow (if (is-fixnum? cell) (routine! (fix-val cell)) (begin (enter! cell) next))))
-                  (cond ((trapped?) halt-flow)
+                  (cond ((and (trapped?) (failed-in-task!)) (run! base))
+                        ((trapped?) halt-flow)
                         ((i64= flow next) (run! base))
                         ((i64= flow exit-flow)
                          (if (i64= (get rsp) base) halt-flow (begin (pop-return!) (run! base))))
-                        (else halt-flow))))))))))
+                        (else halt-flow)))))))))))
 
 (define-datatype ran (ran-answer i64) (ran-failed string))
 
@@ -600,7 +655,8 @@
      `run_word`): what it leaves on top, or why it failed."
     (begin
       (set dsp 0) (set rsp 0) (set cur v-false) (set kk 0) (set fp 0) (set clo v-false)
-      (set fuel steps) (set trap-message "")
+      (if (i64> steps (get slice)) (begin (set fuel (get slice)) (set reserve (i64- steps (get slice)))) (begin (set fuel steps) (set reserve 0)))
+      (set trap-message "")
       (if (enter! w) (begin (run! 0) #u) #u)
       (cond ((trapped?) (ran-failed (get trap-message)))
             ((i64= (get dsp) 0) (ran-failed "the word left nothing"))

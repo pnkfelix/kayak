@@ -723,7 +723,8 @@ pub mod lay {
     pub use super::made__load__0::{tag_fixnum, tag_pair, tag_suffix_ref, tag_immediate, tag_bloblet, tag_trailer, tag_header, tag_forward, tag_bits, header_tag_lo, header_tag_width, header_kind_lo, header_kind_width, header_large_lo, header_large_width, header_fields_frozen_lo, header_fields_frozen_width, header_suffix_frozen_lo, header_suffix_frozen_width, header_fields_lo, header_fields_width, header_bytes_lo, header_bytes_width, extension_fields_lo, extension_fields_width, kind_string, kind_symbol, kind_vector, kind_bytevector, kind_flonum, kind_bignum, kind_ratnum, kind_closure, kind_code, kind_box, kind_record, kind_record_type, kind_port, kind_continuation, kind_values, kind_promise, kind_hash_table, kind_environment, kind_primitive, kind_bloblet, kind_cellular_code, kind_compiled_code, kind_env_frame, kind_sum, kind_product, kind_cellular_closure, kind_cellular_continuation, kind_register_code, kind_native_closure, kind_flat_array, kind_eqtable, kind_weak_pair, kind_native_frame, kind_icell, kind_mailbox, kind_extension, closure_code, closure_extra0, frame_parent, frame_slot0, code_entry, code_frame, code_free, code_has_rest, code_arity, code_name, code_items, code_item0, word_entry, word_name, word_twin, word_cell0, cellular_closure_word, cellular_closure_free0, global_value, global_writes, routine_docol, routine_exit, routine_halt, routine_lit, routine_branch, routine_zbranch, routine_execute, routine_dup, routine_drop, routine_swap, routine_over, routine_add, routine_sub, routine_less, routine_eq, routine_field_ref, routine_field_set, routine_cons, routine_car, routine_cdr, routine_slot, routine_slot_x, routine_free, routine_global, routine_global_x, routine_closure, routine_call, routine_tailcall, routine_return, routine_prim, routine_prompt, routine_abort, routine_callcomp, routine_callcc, routine_withmark, routine_firstmark, routine_currentmarks, routine_marksof, routine_withmark_tail, routine_tcall, routine_ttailcall, routine_resume, routine_undefined, routine_int_add, routine_int_sub, routine_int_less, routine_pair_car, routine_pair_cdr, routine_field, routine_rest, routine_int_eq, routine_nclosure, routine_ncallcomp, routine_ncallcc, routine_callone, routine_ncallone, rop_args, rop_const, rop_global, rop_setglbl, rop_reg, rop_setreg, rop_movereg, rop_lexical, rop_save, rop_pop, rop_stack, rop_setstk, rop_load, rop_store, rop_op1, rop_op2, rop_op2imm, rop_field, rop_setfield, rop_prim, rop_lambda, rop_invoke, rop_tailinvoke, rop_return, rop_branch, rop_branchf, rop_cellular, rop_invokeself, rop_global_guard, rop_brancht, rop_vargs, rop_prim1, rop_prim2, rop_prim2imm, rop_prim3imm, register_regs, rconv_fx, rconv_cellular, rconv_native};
 }
 
-// What tier 1 does: reads and writes its heap and stacks, at region `@c`.
+// What tier 1 does: reads and writes its heap and stacks, at region `@c`;
+// reads the clock, for FX-26's deadlines (C125).
 
 // Tags.
 pub fn t_fixnum() -> i64 {
@@ -821,6 +822,10 @@ pub fn k_flat_array() -> i64 {
 
 pub fn k_icell() -> i64 {
     int_to_i64(lay::kind_icell())
+}
+
+pub fn k_mailbox() -> i64 {
+    int_to_i64(lay::kind_mailbox())
 }
 
 pub fn k_native_closure() -> i64 {

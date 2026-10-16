@@ -1394,3 +1394,13 @@ Fixpt's runtime primitives in KFX, about 300, each with Fixpt's checks
 and failure messages: strings, the fixed widths, floats, bignums,
 bloblets, suffix refs, flat arrays, bytevectors. 292 of Fixpt's programs
 agree on tier 1, none differ.
+
+## §31: tier 1's scheduler (2026-10-16, C125)
+
+What FX-26's processes, `par`, `race`, `pselect` and monitors need of the
+runtime, as Fixpt's `sched.rs` has it, in KFX (`cells/sched.kfx`): the
+run queue, mailboxes with messages copied, I-cells, timers, cancelling,
+monitored groups; the machine's poll at a time slice's end, and a
+monitored task's failure caught. The scheduler itself is Fixpt's FX-26,
+in the words its compiler makes. 326 of Fixpt's programs agree on tier 1,
+none differ.

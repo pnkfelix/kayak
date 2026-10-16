@@ -87,6 +87,11 @@
 (define pair-car (subr cm (i64) i64) (lambda (p) (word-at (address p))))
 (define pair-cdr (subr cm (i64) i64) (lambda (p) (word-at (i64+ (address p) 1))))
 
+"A list in the heap, of KFX's list of its items."
+(define-rec
+  (list-of (subr cm ((listof i64 @c)) i64)
+    (lambda (xs) (if (null? xs) v-null (cons! (car xs) (list-of (cdr xs)))))))
+
 "Bloblets."
 (define header-word (subr kfx (i64 i64 i64 bool bool) i64)
   (lambda (kind fields bytes ff sf)
@@ -143,6 +148,17 @@
   (lambda (v) (i64= 1 (bits (header-of v) (with lay header-fields-frozen-lo) 1))))
 (define is-kind? (subr cm (i64 i64) bool)
   (lambda (v k) (and (is-bloblet? v) (i64= (kind-of v) k))))
+
+(define suffix-frozen? (subr cm (i64) bool)
+  (lambda (v) (i64= 1 (bits (header-of v) (with lay header-suffix-frozen-lo) 1))))
+(define frozen-as! (subr cm (i64 bool bool) unit)
+  (lambda (v f sf)
+    "A bloblet's fields frozen if `f`, its suffix if `sf` (Fixpt's
+     `freeze_bloblet`: it only sets)."
+    (let ((h (header-index v)))
+      (word-set! h (i64-or (word-at h)
+                     (i64-or (if f (i64-shl 1 (with lay header-fields-frozen-lo)) 0)
+                             (if sf (i64-shl 1 (with lay header-suffix-frozen-lo)) 0)))))))
 
 "Field `k` of a bloblet, read and written as code that knows its shape
  does (Fixpt's `bloblet_slot`): not checked."

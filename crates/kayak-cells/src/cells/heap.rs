@@ -192,6 +192,15 @@ pub fn pair_cdr(p: i64) -> i64 {
     word_at(i64_plus(address(p), 1i64))
 }
 
+// A list in the heap, of KFX's list of its items.
+pub fn list_of(xs: List<i64>) -> i64 {
+    if null_p(xs) {
+        v_null()
+    } else {
+        cons_x(car(xs), list_of(cdr(xs)))
+    }
+}
+
 // Bloblets.
 pub fn header_word(kind: i64, fields: i64, bytes: i64, ff: bool, sf: bool) -> i64 {
     i64_or(t_header(), i64_or(i64_shl(kind, lay::header_kind_lo()), i64_or(if ff {
@@ -274,6 +283,25 @@ pub fn fields_frozen_p(v: i64) -> bool {
 
 pub fn is_kind_p(v: i64, k: i64) -> bool {
     (is_bloblet_p(v) && i64_eq(kind_of(v), k))
+}
+
+pub fn suffix_frozen_p(v: i64) -> bool {
+    i64_eq(1i64, bits(header_of(v), lay::header_suffix_frozen_lo(), int_lit(1)))
+}
+
+/// A bloblet's fields frozen if `f`, its suffix if `sf` (Fixpt's
+/// `freeze_bloblet`: it only sets).
+pub fn frozen_as_x(v: i64, f: bool, sf: bool) -> () {
+    let h = header_index(v);
+    word_set_x(h, i64_or(word_at(h), i64_or(if f {
+        i64_shl(1i64, lay::header_fields_frozen_lo())
+    } else {
+        0i64
+    }, if sf {
+        i64_shl(1i64, lay::header_suffix_frozen_lo())
+    } else {
+        0i64
+    })))
 }
 
 // Field `k` of a bloblet, read and written as code that knows its shape

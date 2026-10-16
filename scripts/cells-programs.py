@@ -16,10 +16,17 @@ fails), or is not run: its listing is not exact (a literal cut short,
 program of definitions), or Fixpt refuses it. The programs that agree are
 kept in tests/cells-passing (--bless rewrites it); one that agreed and
 no longer does fails the check. Each but Fixpt's benchmarks is run again
-with a collection at every safepoint (`--gc-stress`), to the same end.
+with a collection at every safepoint (`--gc-stress`), to the same end;
+and each that runs tasks (processes, `par`, `race`, `pselect`), again
+with a time slice of two polls (`--slice 2`, as Fixpt's `FIXPT_SLICE`,
+C125), preempted at nearly every poll; with no step limit, as Fixpt's
+limit is each form's and tier 1 runs the program as one word. (A slice of
+one poll leaves a task none of its own after its grace: Fixpt's run of
+`monitors/one-message.fx` so does not end.)
 """
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -150,27 +157,35 @@ def one(binary, cells, name, path):
     if want_fail is not None or got_fail is not None:
         if want_fail != got_fail:
             return "differ", "fixpt: %r, kayak: %r" % (want_fail, got_fail)
-        return stressed(cells, name, text, limit, "", got_fail)
+        return stressed(cells, name, path, text, limit, "", got_fail)
     have = got.stdout.strip()
     if have != want:
         return "differ", "fixpt: %r, kayak: %r" % (want, have)
-    return stressed(cells, name, text, limit, have, None)
+    return stressed(cells, name, path, text, limit, have, None)
 
 
-def stressed(cells, name, text, limit, have, fail):
+TASKS = re.compile(r"\((spawn|spawn-monitored|par|race|pselect|send|receive|icell-get|icell-put!)\b")
+
+
+def stressed(cells, name, path, text, limit, have, fail):
     """The same answer with a collection at every safepoint (C122, Coopt's
-    stress policy); Fixpt's benchmarks, long, are not run so."""
+    stress policy), and, for a program that runs tasks, preempted at every
+    poll (C125); Fixpt's benchmarks, long, are not run so."""
     if name.startswith(UNLIMITED):
         return "agree", ""
+    ways = [["--gc-stress"]]
+    if TASKS.search(open(path, encoding="utf-8").read()):
+        ways.append(["--slice", "2", "--step-limit", "none"])
     with tempfile.NamedTemporaryFile("w", suffix=".cells", delete=False) as f:
         f.write(text)
         listing = f.name
     try:
-        again = run([cells, listing, "--gc-stress"], timeout=600)
+        for way in ways:
+            again = run([cells, listing] + way, timeout=600)
+            if failure(again.stderr) != fail or (fail is None and again.stdout.strip() != have):
+                return "differ", "under %s: %r %r" % (" ".join(way), again.stdout.strip(), failure(again.stderr))
     finally:
         os.unlink(listing)
-    if failure(again.stderr) != fail or (fail is None and again.stdout.strip() != have):
-        return "differ", "under --gc-stress: %r %r" % (again.stdout.strip(), failure(again.stderr))
     return "agree", ""
 
 
