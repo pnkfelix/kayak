@@ -31,6 +31,18 @@ pub fn colon() -> char {
     i64_to_char(58i64)
 }
 
+pub fn dquote() -> char {
+    i64_to_char(34i64)
+}
+
+pub fn bar() -> char {
+    i64_to_char(124i64)
+}
+
+pub fn backslash() -> char {
+    i64_to_char(92i64)
+}
+
 // Lines, each its characters.
 pub fn lines_of(mut cs: Chars, mut acc: Chars, mut out: List<Chars>) -> List<Chars> {
     loop {
@@ -204,9 +216,6 @@ pub fn blocks(mut ls: List<Chars>, mut out: List<&'static Block>, mut skipping: 
             } else if starts_p(l, string_chars(str_lit("  its "))) {
                 (ls, skipping) = (cdr(ls), true);
                 continue;
-            } else if skipping {
-                (ls, skipping) = (cdr(ls), true);
-                continue;
             } else if null_p(out) {
                 (ls, skipping) = (cdr(ls), false);
                 continue;
@@ -217,15 +226,28 @@ pub fn blocks(mut ls: List<Chars>, mut out: List<&'static Block>, mut skipping: 
                 if contains_p(text, string_chars(str_lit("…"))) {
                     match listing_error(str_lit("a literal cut short")) {};
                     return nil::<&'static Block>();
+                } else if (skipping && not(starts_p(text, string_chars(str_lit("const "))))) {
+                    (ls, skipping) = (cdr(ls), true);
+                    continue;
                 } else {
-                    (ls, out, skipping) = (cdr(ls), {
+                    // A register code's `const`, kept at -1: what it makes may be
+                    // labelled, and named later (C123).
+                    (ls, out) = (cdr(ls), {
                         let tagcase_ = car(out);
                         match *tagcase_ {
                             Block::Block(n, c, e, is) => {
-                                kayak_rt::heap_cons(block(n, c, e, kayak_rt::heap_cons(iline(at, text), is)), cdr(out))
+                                kayak_rt::heap_cons(block(n, c, e, kayak_rt::heap_cons(iline(if skipping {
+                                    -1i64
+                                } else {
+                                    at
+                                }, if skipping {
+                                    drop_n(text, 6i64)
+                                } else {
+                                    text
+                                }), is)), cdr(out))
                             }
                         }
-                    }, false);
+                    });
                     continue;
                 }
             }
@@ -299,66 +321,527 @@ pub fn global_named(name: Str) -> i64 {
     }
 }
 
-/// A literal, as `write` wrote it, as a value.
-pub fn datum_value(d: &'static Sexp) -> i64 {
-    let tagcase_ = d;
-    match *tagcase_ {
-        Sexp::Num(n, f, p) => {
-            if fits_p(n) {
-                fix(n)
-            } else {
-                match listing_error(str_lit("a literal past a fixnum")) {};
-                0i64
+// Literals as `fixpt compile --full-literals` writes them (C123): every one
+// in full, so that it is built again exactly (Fixpt's `literal.rs`;
+// `docs/fx26.md`, "The compile listing's literals"). An object reached
+// more than once is labelled `#N=` where first written and named `#N#`
+// after, across the whole listing, so that what is `eq?` in the program is
+// `eq?` here. A labelled pair is made before what is in it, so that a
+// cycle through pairs is too; one through a vector or other bloblet is
+// refused (not yet).
+// fixpt-source: crates/fixpt-runtime/src/literal.rs@1925bca
+pub enum Lab {
+    Lab(i64, i64),
+}
+
+pub fn lab(f0: i64, f1: i64) -> &'static Lab {
+    kayak_rt::heap_alloc(Lab::Lab(f0, f1))
+}
+
+pub fn labels() -> Ref<List<&'static Lab>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Lab>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Lab>())
+    })
+}
+
+// What reading gives: a value, an integer, a text or values, and what is
+// left to read.
+pub enum Lgot {
+    Lgot(i64, Chars),
+}
+
+pub fn lgot(f0: i64, f1: Chars) -> &'static Lgot {
+    kayak_rt::heap_alloc(Lgot::Lgot(f0, f1))
+}
+
+pub enum Gint {
+    Gint(Int, Chars),
+}
+
+pub fn gint(f0: Int, f1: Chars) -> &'static Gint {
+    kayak_rt::heap_alloc(Gint::Gint(f0, f1))
+}
+
+pub enum Gtext {
+    Gtext(Str, Chars),
+}
+
+pub fn gtext(f0: Str, f1: Chars) -> &'static Gtext {
+    kayak_rt::heap_alloc(Gtext::Gtext(f0, f1))
+}
+
+pub enum Gall {
+    Gall(List<i64>, Chars),
+}
+
+pub fn gall(f0: List<i64>, f1: Chars) -> &'static Gall {
+    kayak_rt::heap_alloc(Gall::Gall(f0, f1))
+}
+
+pub fn label_value(mut ls: List<&'static Lab>, mut n: i64) -> i64 {
+    loop {
+        if null_p(ls) {
+            return 0i64;
+        } else if {
+            let tagcase_ = car(ls);
+            match *tagcase_ {
+                Lab::Lab(m, v) => {
+                    i64_eq(m, n)
+                }
             }
-        }
-        Sexp::Str(s, f, p) => {
-            make_string_x(s)
-        }
-        Sexp::Chr(c, f, p) => {
-            char_value(char_to_i64(c))
-        }
-        Sexp::Sym(n, f, p) => {
-            if string_eq_p(n, str_lit("#t")) {
-                v_true()
-            } else if string_eq_p(n, str_lit("#f")) {
-                v_false()
-            } else if string_eq_p(n, str_lit("#u")) {
-                v_unit()
-            } else if string_eq_p(n, str_lit("#<unspecified>")) {
-                v_unspecified()
-            } else {
-                symbol_x(n)
+        } {
+            let tagcase_ = car(ls);
+            match *tagcase_ {
+                Lab::Lab(m, v) => {
+                    return v;
+                }
             }
-        }
-        Sexp::Lst(xs, f, l, p) => {
-            items_value(xs)
-        }
-        _ => {
-            let other = tagcase_;
-            match listing_error(str_lit("a literal tier 1 does not have yet")) {};
-            0i64
+        } else {
+            ls = cdr(ls);
+            continue;
         }
     }
 }
 
-pub fn items_value(xs: Sexps) -> i64 {
-    if null_p(xs) {
-        v_null()
-    } else if (not(null_p(cdr(xs))) && {
-        let tagcase_ = car(cdr(xs));
+pub fn labelled_x(n: i64, v: i64) -> i64 {
+    set(labels(), kayak_rt::heap_cons(lab(n, v), get(labels())));
+    v
+}
+
+pub fn hex_digit_value(c: char) -> i64 {
+    let n = char_to_i64(c);
+    if (i64_gt_eq(n, 48i64) && i64_lt_eq(n, 57i64)) {
+        i64_minus(n, 48i64)
+    } else if (i64_gt_eq(n, 97i64) && i64_lt_eq(n, 102i64)) {
+        i64_minus(n, 87i64)
+    } else {
+        -1i64
+    }
+}
+
+pub fn hex_int(mut cs: Chars, mut acc: Int) -> &'static Gint {
+    loop {
+        if (not(null_p(cs)) && i64_gt_eq(hex_digit_value(car(cs)), 0i64)) {
+            (cs, acc) = (cdr(cs), _plus(_star(acc, int_lit(16)), i64_to_int(hex_digit_value(car(cs)))));
+            continue;
+        } else {
+            return gint(acc, cs);
+        }
+    }
+}
+
+pub fn decimal_int(mut cs: Chars, mut acc: Int) -> &'static Gint {
+    loop {
+        if (not(null_p(cs)) && char_numeric_p(car(cs))) {
+            (cs, acc) = (cdr(cs), _plus(_star(acc, int_lit(10)), i64_to_int(i64_minus(char_to_i64(car(cs)), 48i64))));
+            continue;
+        } else {
+            return gint(acc, cs);
+        }
+    }
+}
+
+pub fn signed_int(cs: Chars) -> &'static Gint {
+    if (not(null_p(cs)) && char_eq_p(car(cs), '-')) {
+        let tagcase_ = decimal_int(cdr(cs), int_lit(0));
         match *tagcase_ {
-            Sexp::Sym(n, f, p) => {
-                string_eq_p(n, str_lit("."))
-            }
-            _ => {
-                let other = tagcase_;
-                false
+            Gint::Gint(n, rest) => {
+                gint(_minus(int_lit(0), n), rest)
             }
         }
-    }) {
-        cons_x(datum_value(car(xs)), datum_value(car(cdr(cdr(xs)))))
     } else {
-        cons_x(datum_value(car(xs)), items_value(cdr(xs)))
+        decimal_int(cs, int_lit(0))
+    }
+}
+
+/// A string's or a symbol's characters up to `q`: one that is not
+/// printable ASCII, or is `q` or a backslash, written by its code in hex,
+/// after a backslash and an `x`, before a `;`.
+pub fn escaped_text(mut cs: Chars, mut q: char, mut acc: Chars) -> &'static Gtext {
+    loop {
+        if null_p(cs) {
+            match listing_error(str_lit("a literal's text runs to the end")) {};
+            return gtext(str_lit(""), nil::<char>());
+        } else if char_eq_p(car(cs), q) {
+            return gtext(list_to_string(the::<Chars>(reverse(acc))), cdr(cs));
+        } else if char_eq_p(car(cs), backslash()) {
+            let tagcase_ = hex_int(drop_n(cs, 2i64), int_lit(0));
+            match *tagcase_ {
+                Gint::Gint(n, rest) => {
+                    (cs, acc) = (cdr(rest), kayak_rt::heap_cons(i64_to_char(int_to_i64(n)), acc));
+                    continue;
+                }
+            }
+        } else {
+            (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
+            continue;
+        }
+    }
+}
+
+pub fn expect(cs: Chars, prefix: Str) -> Chars {
+    if starts_p(cs, string_chars(prefix)) {
+        drop_n(cs, string_length_i64(prefix))
+    } else {
+        match listing_error(string_append(str_lit("a literal tier 1 does not read: "), list_to_string(cs))) {};
+        nil::<char>()
+    }
+}
+
+pub fn ends_word_p(cs: Chars) -> bool {
+    (null_p(cs) || char_eq_p(car(cs), ' ') || char_eq_p(car(cs), close_paren()))
+}
+
+pub fn kind_numbered(mut name: Str, mut k: i64) -> i64 {
+    loop {
+        if i64_gt(k, 255i64) {
+            match listing_error(string_append(str_lit("a bloblet of no kind tier 1 knows: "), name)) {};
+            return 0i64;
+        } else if string_eq_p(kind_name(k), name) {
+            return k;
+        } else {
+            k = i64_plus(k, 1i64);
+            continue;
+        }
+    }
+}
+
+pub fn fields_set_x(mut b: i64, mut k: i64, mut xs: List<i64>) -> () {
+    loop {
+        if null_p(xs) {
+            return ();
+        } else {
+            slot_set_x(b, k, car(xs));
+            (k, xs) = (i64_plus(k, 1i64), cdr(xs));
+            continue;
+        }
+    }
+}
+
+/// Byte `i` of the raw words from word `p` := `x`, little-endian.
+pub fn byte_set_x(p: i64, i: i64, x: i64) -> () {
+    let at = i64_plus(p, i64_quotient(i, 8i64));
+    let shift = i64_to_int(i64_star(8i64, i64_remainder(i, 8i64)));
+    word_set_x(at, i64_or(i64_and(word_at(at), i64_not(i64_shl(255i64, shift))), i64_shl(x, shift)))
+}
+
+pub fn bytes_set_x(mut p: i64, mut i: i64, mut xs: List<i64>) -> () {
+    loop {
+        if null_p(xs) {
+            return ();
+        } else {
+            byte_set_x(p, i, fix_val(car(xs)));
+            (i, xs) = (i64_plus(i, 1i64), cdr(xs));
+            continue;
+        }
+    }
+}
+
+pub fn trailer_in_p(mut xs: List<i64>) -> bool {
+    loop {
+        if null_p(xs) {
+            return false;
+        } else if i64_eq(tag_of(car(xs)), t_trailer()) {
+            return true;
+        } else {
+            xs = cdr(xs);
+            continue;
+        }
+    }
+}
+
+/// `#bloblet(KIND (FIELD ...) #u8(BYTE ...))`: its fields from 1, field 1
+/// its trailer, `#trailer N`, if it has one; frozen if a sum or product,
+/// as Fixpt makes those (the listing does not say).
+pub fn bloblet_literal_x(kind: Str, fields: List<i64>, bytes: List<i64>) -> i64 {
+    let k = kind_numbered(kind, 0i64);
+    let f = args_count(fields, 0i64);
+    let trailer = (not(null_p(fields)) && i64_eq(tag_of(car(fields)), t_trailer()));
+    let b = make_bloblet_x(k, if trailer {
+        i64_minus(f, 1i64)
+    } else {
+        f
+    }, args_count(bytes, 0i64), trailer, false);
+    if (trailer && not(i64_eq(i64_shr(car(fields), int_lit(3)), f))) {
+        match listing_error(str_lit("a bloblet's trailer that says not its fields")) {}
+    } else {
+        ()
+    };
+    if trailer_in_p(if trailer {
+        cdr(fields)
+    } else {
+        fields
+    }) {
+        match listing_error(str_lit("a trailer that is not a bloblet's field 1")) {}
+    } else {
+        ()
+    };
+    fields_set_x(b, if trailer {
+        the::<i64>(2i64)
+    } else {
+        the::<i64>(1i64)
+    }, if trailer {
+        cdr(fields)
+    } else {
+        fields
+    });
+    bytes_set_x(address(b), 0i64, bytes);
+    if (i64_eq(k, k_sum()) || i64_eq(k, k_product())) {
+        frozen_whole_x(b)
+    } else {
+        ()
+    };
+    b
+}
+
+pub fn until_delimiter(mut cs: Chars, mut acc: Chars) -> Chars {
+    loop {
+        if (null_p(cs) || char_eq_p(car(cs), ' ') || char_eq_p(car(cs), close_paren()) || char_eq_p(car(cs), open_paren())) {
+            return the::<Chars>(reverse(acc));
+        } else {
+            (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
+            continue;
+        }
+    }
+}
+
+pub fn vector_literal_x(xs: List<i64>) -> i64 {
+    let v = make_bloblet_x(k_vector(), args_count(xs, 0i64), 0i64, true, false);
+    let fill__knot = knot::<&'static dyn Fn(List<i64>, i64) -> ()>();
+    let fill = lambda2(move |mut ys: List<i64>, mut i: i64| {
+        loop {
+            if null_p(ys) {
+                return ();
+            } else {
+                obj_set_x(v, i, car(ys));
+                (ys, i) = (cdr(ys), i64_plus(i, 1i64));
+                continue;
+            }
+        }
+    });
+    fill__knot.set(fill);
+    fill(xs, 0i64);
+    v
+}
+
+/// A bytevector (Fixpt's `make_bytevector`): its length, a raw word, then
+/// its bytes.
+pub fn bytevector_literal_x(xs: List<i64>) -> i64 {
+    let n = args_count(xs, 0i64);
+    let b = make_bloblet_x(k_bytevector(), 0i64, i64_star(8i64, i64_plus(1i64, i64_quotient(i64_plus(n, 7i64), 8i64))), false, false);
+    word_set_x(address(b), n);
+    bytes_set_x(i64_plus(address(b), 1i64), 0i64, xs);
+    b
+}
+
+/// One literal, from the start of `cs`.
+pub fn lit_datum(cs: Chars) -> &'static Lgot {
+    if null_p(cs) {
+        match listing_error(str_lit("a literal is missing")) {};
+        lgot(0i64, nil::<char>())
+    } else if (char_numeric_p(car(cs)) || char_eq_p(car(cs), '-')) {
+        let tagcase_ = signed_int(cs);
+        match *tagcase_ {
+            Gint::Gint(n, rest) => {
+                if (not(null_p(rest)) && char_eq_p(car(rest), '/')) {
+                    let tagcase_ = decimal_int(cdr(rest), int_lit(0));
+                    match *tagcase_ {
+                        Gint::Gint(d, rest2) => {
+                            lgot(make_ratnum_x(int_value_x(n), int_value_x(d)), rest2)
+                        }
+                    }
+                } else {
+                    lgot(int_value_x(n), rest)
+                }
+            }
+        }
+    } else if char_eq_p(car(cs), dquote()) {
+        let tagcase_ = escaped_text(cdr(cs), dquote(), nil::<char>());
+        match *tagcase_ {
+            Gtext::Gtext(t, rest) => {
+                lgot(make_string_x(t), rest)
+            }
+        }
+    } else if char_eq_p(car(cs), bar()) {
+        let tagcase_ = escaped_text(cdr(cs), bar(), nil::<char>());
+        match *tagcase_ {
+            Gtext::Gtext(t, rest) => {
+                lgot(symbol_x(t), rest)
+            }
+        }
+    } else if starts_p(cs, string_chars(str_lit("()"))) {
+        lgot(v_null(), drop_n(cs, 2i64))
+    } else if char_eq_p(car(cs), open_paren()) {
+        pair_rest(cdr(cs), cons_x(v_null(), v_null()))
+    } else if starts_p(cs, string_chars(str_lit("#f64x"))) {
+        let tagcase_ = hex_int(drop_n(cs, 5i64), int_lit(0));
+        match *tagcase_ {
+            Gint::Gint(n, rest) => {
+                lgot(flonum_bits_x(int_to_i64(n)), rest)
+            }
+        }
+    } else if starts_p(cs, string_chars(str_lit("#f32x"))) {
+        let tagcase_ = hex_int(drop_n(cs, 5i64), int_lit(0));
+        match *tagcase_ {
+            Gint::Gint(n, rest) => {
+                lgot(f32_bits(int_to_i64(n)), rest)
+            }
+        }
+    } else if starts_p(cs, string_chars(str_lit("#\\x"))) {
+        let tagcase_ = hex_int(drop_n(cs, 3i64), int_lit(0));
+        match *tagcase_ {
+            Gint::Gint(n, rest) => {
+                lgot(char_value(int_to_i64(n)), rest)
+            }
+        }
+    } else if starts_p(cs, string_chars(str_lit("#u8("))) {
+        let tagcase_ = lit_items(drop_n(cs, 4i64), nil::<i64>());
+        match *tagcase_ {
+            Gall::Gall(xs, rest) => {
+                lgot(bytevector_literal_x(xs), rest)
+            }
+        }
+    } else if starts_p(cs, string_chars(str_lit("#("))) {
+        let tagcase_ = lit_items(drop_n(cs, 2i64), nil::<i64>());
+        match *tagcase_ {
+            Gall::Gall(xs, rest) => {
+                lgot(vector_literal_x(xs), rest)
+            }
+        }
+    } else if starts_p(cs, string_chars(str_lit("#word "))) {
+        let tagcase_ = escaped_text(cdr(drop_n(cs, 6i64)), dquote(), nil::<char>());
+        match *tagcase_ {
+            Gtext::Gtext(t, rest) => {
+                lgot(word_named(string_chars(t)), rest)
+            }
+        }
+    } else if starts_p(cs, string_chars(str_lit("#global "))) {
+        let tagcase_ = escaped_text(cdr(drop_n(cs, 8i64)), dquote(), nil::<char>());
+        match *tagcase_ {
+            Gtext::Gtext(t, rest) => {
+                lgot(global_named(t), rest)
+            }
+        }
+    } else if starts_p(cs, string_chars(str_lit("#trailer "))) {
+        let tagcase_ = decimal_int(drop_n(cs, 9i64), int_lit(0));
+        match *tagcase_ {
+            Gint::Gint(n, rest) => {
+                lgot(i64_or(i64_shl(int_to_i64(n), int_lit(3)), t_trailer()), rest)
+            }
+        }
+    } else if starts_p(cs, string_chars(str_lit("#bloblet("))) {
+        let at = drop_n(cs, 9i64);
+        let kind = list_to_string(before_char(at, ' '));
+        let tagcase_ = lit_items(expect(drop_n(at, i64_plus(string_length_i64(kind), 1i64)), str_lit("(")), nil::<i64>());
+        match *tagcase_ {
+            Gall::Gall(fields, rest) => {
+                let tagcase_ = lit_items(expect(spaces_dropped(rest), str_lit("#u8(")), nil::<i64>());
+                match *tagcase_ {
+                    Gall::Gall(bytes, rest2) => {
+                        lgot(bloblet_literal_x(kind, fields, bytes), expect(rest2, str_lit(")")))
+                    }
+                }
+            }
+        }
+    } else if starts_p(cs, string_chars(str_lit("#suffix-ref("))) {
+        let tagcase_ = lit_datum(drop_n(cs, 12i64));
+        match *tagcase_ {
+            Lgot::Lgot(o, rest) => {
+                let tagcase_ = decimal_int(spaces_dropped(rest), int_lit(0));
+                match *tagcase_ {
+                    Gint::Gint(n, rest2) => {
+                        lgot(make_sref(address(o), int_to_i64(n)), expect(rest2, str_lit(")")))
+                    }
+                }
+            }
+        }
+    } else if (char_eq_p(car(cs), '#') && not(null_p(cdr(cs))) && char_numeric_p(car(cdr(cs)))) {
+        let tagcase_ = decimal_int(cdr(cs), int_lit(0));
+        match *tagcase_ {
+            Gint::Gint(n, rest) => {
+                if starts_p(rest, string_chars(str_lit("#"))) {
+                    let v = label_value(get(labels()), int_to_i64(n));
+                    if i64_eq(v, 0i64) {
+                        match listing_error(str_lit("a label named before what it labels is made: a cycle through a vector or bloblet, not yet")) {};
+                        lgot(0i64, nil::<char>())
+                    } else {
+                        lgot(v, cdr(rest))
+                    }
+                } else if (starts_p(rest, string_chars(str_lit("=("))) && not(starts_p(rest, string_chars(str_lit("=()"))))) {
+                    pair_rest(drop_n(rest, 2i64), labelled_x(int_to_i64(n), cons_x(v_null(), v_null())))
+                } else if starts_p(rest, string_chars(str_lit("="))) {
+                    let tagcase_ = lit_datum(cdr(rest));
+                    match *tagcase_ {
+                        Lgot::Lgot(v, rest2) => {
+                            lgot(labelled_x(int_to_i64(n), v), rest2)
+                        }
+                    }
+                } else {
+                    match listing_error(str_lit("a label neither made nor named")) {};
+                    lgot(0i64, nil::<char>())
+                }
+            }
+        }
+    } else if char_eq_p(car(cs), '#') {
+        let name = list_to_string(before_char(until_delimiter(cs, nil::<char>()), ' '));
+        let rest = drop_n(cs, string_length_i64(name));
+        if string_eq_p(name, str_lit("#t")) {
+            lgot(v_true(), rest)
+        } else if string_eq_p(name, str_lit("#f")) {
+            lgot(v_false(), rest)
+        } else if string_eq_p(name, str_lit("#u")) {
+            lgot(v_unit(), rest)
+        } else if string_eq_p(name, str_lit("#eof")) {
+            lgot(v_eof(), rest)
+        } else if string_eq_p(name, str_lit("#unspecified")) {
+            lgot(v_unspecified(), rest)
+        } else if string_eq_p(name, str_lit("#default")) {
+            lgot(v_default(), rest)
+        } else if string_eq_p(name, str_lit("#unbound")) {
+            lgot(v_unbound(), rest)
+        } else {
+            match listing_error(string_append(str_lit("a literal tier 1 does not have yet: "), name)) {};
+            lgot(0i64, nil::<char>())
+        }
+    } else {
+        match listing_error(string_append(str_lit("a literal tier 1 does not read: "), list_to_string(cs))) {};
+        lgot(0i64, nil::<char>())
+    }
+}
+
+/// A pair's `car . cdr)`, into pair `p`, made already.
+pub fn pair_rest(cs: Chars, p: i64) -> &'static Lgot {
+    let tagcase_ = lit_datum(cs);
+    match *tagcase_ {
+        Lgot::Lgot(a, rest) => {
+            word_set_x(address(p), a);
+            let tagcase_ = lit_datum(expect(rest, str_lit(" . ")));
+            match *tagcase_ {
+                Lgot::Lgot(d, rest2) => {
+                    word_set_x(i64_plus(address(p), 1i64), d);
+                    lgot(p, expect(rest2, str_lit(")")))
+                }
+            }
+        }
+    }
+}
+
+/// Literals a space apart, to a `)`.
+pub fn lit_items(cs: Chars, acc: List<i64>) -> &'static Gall {
+    let cs = spaces_dropped(cs);
+    if null_p(cs) {
+        match listing_error(str_lit("a literal's items run to the end")) {};
+        gall(nil::<i64>(), nil::<char>())
+    } else if char_eq_p(car(cs), close_paren()) {
+        gall(the::<List<i64>>(reverse(acc)), cdr(cs))
+    } else {
+        let tagcase_ = lit_datum(cs);
+        match *tagcase_ {
+            Lgot::Lgot(v, rest) => {
+                lit_items(rest, kayak_rt::heap_cons(v, acc))
+            }
+        }
     }
 }
 
@@ -432,12 +915,16 @@ pub fn literal(cs: Chars) -> i64 {
     } else if starts_p(cs, string_chars(str_lit("closure of "))) {
         closure_literal(word_named(drop_n(cs, 11i64)))
     } else {
-        let ds = read_all(cs, str_lit("<listing>"), 1i64);
-        if i64_eq(size(ds), 1i64) {
-            datum_value(car(ds))
-        } else {
-            match listing_error(string_append(str_lit("a literal: "), list_to_string(cs))) {};
-            0i64
+        let tagcase_ = lit_datum(cs);
+        match *tagcase_ {
+            Lgot::Lgot(v, rest) => {
+                if null_p(spaces_dropped(rest)) {
+                    v
+                } else {
+                    match listing_error(string_append(str_lit("a literal: "), list_to_string(cs))) {};
+                    0i64
+                }
+            }
         }
     }
 }
@@ -450,40 +937,45 @@ pub fn instruction_x(w: i64, il: &'static Iline) -> () {
     let tagcase_ = il;
     match *tagcase_ {
         Iline::Iline(at, text) => {
-            let name = list_to_string(before_char(text, ' '));
-            let ops = spaces_dropped(drop_n(text, string_length_i64(name)));
-            let n = index_in(routine_names(), name, 0i64);
-            if string_eq_p(name, str_lit("word")) {
-                cell_set_x(w, at, word_named(ops))
-            } else if i64_lt(n, 0i64) {
-                match listing_error(string_append(str_lit("no routine is named "), name)) {}
+            if i64_lt(at, 0i64) {
+                literal(text);
+                ()
             } else {
-                cell_set_x(w, at, fix(n));
-                if i64_eq(n, r_lit()) {
-                    cell_set_x(w, i64_plus(at, 1i64), literal(ops))
-                } else if (i64_eq(n, r_branch()) || i64_eq(n, r_zbranch())) {
-                    cell_set_x(w, i64_plus(at, 1i64), fix(i64_minus(number_of(drop_n(ops, 2i64)), i64_plus(at, 2i64))))
-                } else if (i64_eq(n, r_global()) || i64_eq(n, r_global_set())) {
-                    cell_set_x(w, i64_plus(at, 1i64), global_named(list_to_string(ops)))
-                } else if i64_eq(n, r_prim()) {
-                    let pname = list_to_string(before_char(ops, ' '));
-                    let p = prim_number(pname);
-                    if i64_lt(p, 0i64) {
-                        match listing_error(string_append(str_lit("a primitive tier 1 does not have yet: "), pname)) {}
-                    } else {
-                        cell_set_x(w, i64_plus(at, 1i64), fix(p));
-                        cell_set_x(w, i64_plus(at, 2i64), fix(number_of(after_char(ops, ' '))))
-                    }
-                } else if i64_eq(n, r_closure()) {
-                    let rest = drop_n(ops, 5i64);
-                    cell_set_x(w, i64_plus(at, 1i64), word_named(rest));
-                    cell_set_x(w, i64_plus(at, 2i64), fix(number_of(drop_n(after_char(rest, ' '), 5i64))))
-                } else if i64_eq(operand_count(n), 1i64) {
-                    cell_set_x(w, i64_plus(at, 1i64), fix(number_of(ops)))
-                } else if i64_eq(operand_count(n), 0i64) {
-                    ()
+                let name = list_to_string(before_char(text, ' '));
+                let ops = spaces_dropped(drop_n(text, string_length_i64(name)));
+                let n = index_in(routine_names(), name, 0i64);
+                if string_eq_p(name, str_lit("word")) {
+                    cell_set_x(w, at, word_named(ops))
+                } else if i64_lt(n, 0i64) {
+                    match listing_error(string_append(str_lit("no routine is named "), name)) {}
                 } else {
-                    match listing_error(string_append(str_lit("operands tier 1 does not read yet: "), name)) {}
+                    cell_set_x(w, at, fix(n));
+                    if i64_eq(n, r_lit()) {
+                        cell_set_x(w, i64_plus(at, 1i64), literal(ops))
+                    } else if (i64_eq(n, r_branch()) || i64_eq(n, r_zbranch())) {
+                        cell_set_x(w, i64_plus(at, 1i64), fix(i64_minus(number_of(drop_n(ops, 2i64)), i64_plus(at, 2i64))))
+                    } else if (i64_eq(n, r_global()) || i64_eq(n, r_global_set())) {
+                        cell_set_x(w, i64_plus(at, 1i64), global_named(list_to_string(ops)))
+                    } else if i64_eq(n, r_prim()) {
+                        let pname = list_to_string(before_char(ops, ' '));
+                        let p = prim_number(pname);
+                        if i64_lt(p, 0i64) {
+                            match listing_error(string_append(str_lit("a primitive tier 1 does not have yet: "), pname)) {}
+                        } else {
+                            cell_set_x(w, i64_plus(at, 1i64), fix(p));
+                            cell_set_x(w, i64_plus(at, 2i64), fix(number_of(after_char(ops, ' '))))
+                        }
+                    } else if i64_eq(n, r_closure()) {
+                        let rest = drop_n(ops, 5i64);
+                        cell_set_x(w, i64_plus(at, 1i64), word_named(rest));
+                        cell_set_x(w, i64_plus(at, 2i64), fix(number_of(drop_n(after_char(rest, ' '), 5i64))))
+                    } else if i64_eq(operand_count(n), 1i64) {
+                        cell_set_x(w, i64_plus(at, 1i64), fix(number_of(ops)))
+                    } else if i64_eq(operand_count(n), 0i64) {
+                        ()
+                    } else {
+                        match listing_error(string_append(str_lit("operands tier 1 does not read yet: "), name)) {}
+                    }
                 }
             }
         }
@@ -500,6 +992,34 @@ pub fn chars_eq_p(a: Chars, b: Chars) -> bool {
     }
 }
 
+/// After a label's digits.
+pub fn label_end(mut cs: Chars) -> Chars {
+    loop {
+        if (not(null_p(cs)) && char_numeric_p(car(cs))) {
+            cs = cdr(cs);
+            continue;
+        } else {
+            return cs;
+        }
+    }
+}
+
+/// A line, its labels made (`#N=`) taken out: a word listed twice is the
+/// same word though its literals were labelled the first time (C123).
+pub fn unlabelled(mut cs: Chars, mut acc: Chars) -> Chars {
+    loop {
+        if null_p(cs) {
+            return the::<Chars>(reverse(acc));
+        } else if (char_eq_p(car(cs), '#') && not(null_p(cdr(cs))) && char_numeric_p(car(cdr(cs))) && not(null_p(label_end(cdr(cs)))) && char_eq_p(car(label_end(cdr(cs))), '=')) {
+            cs = cdr(label_end(cdr(cs)));
+            continue;
+        } else {
+            (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
+            continue;
+        }
+    }
+}
+
 pub fn ilines_eq_p(a: List<&'static Iline>, b: List<&'static Iline>) -> bool {
     if null_p(a) {
         null_p(b)
@@ -513,7 +1033,7 @@ pub fn ilines_eq_p(a: List<&'static Iline>, b: List<&'static Iline>) -> bool {
                     let tagcase_ = car(b);
                     match *tagcase_ {
                         Iline::Iline(y, ys) => {
-                            (i64_eq(x, y) && chars_eq_p(xs, ys))
+                            (i64_eq(x, y) && chars_eq_p(unlabelled(xs, nil::<char>()), unlabelled(ys, nil::<char>())))
                         }
                     }
                 }
@@ -613,30 +1133,66 @@ pub fn cells_written_x(mut w: i64, mut is: List<&'static Iline>) -> () {
     }
 }
 
-pub fn blocks_written_x(mut bs: List<&'static Block>) -> () {
+/// A word listed again: its literals read, for the labels they make, and
+/// dropped.
+pub fn literals_read_x(mut is: List<&'static Iline>) -> () {
+    loop {
+        if null_p(is) {
+            return ();
+        } else {
+            {
+                let tagcase_ = car(is);
+                match *tagcase_ {
+                    Iline::Iline(at, text) => {
+                        if i64_lt(at, 0i64) {
+                            literal(text);
+                            ()
+                        } else if starts_p(text, string_chars(str_lit("lit "))) {
+                            literal(drop_n(text, 4i64));
+                            ()
+                        } else {
+                            ()
+                        }
+                    }
+                }
+            };
+            is = cdr(is);
+            continue;
+        }
+    }
+}
+
+/// Every block's cells, in the listing's order, so that a label is made
+/// where Fixpt writes it first: a word's first listing written into it,
+/// a later one's literals only read.
+pub fn blocks_written_x(mut bs: List<&'static Block>, mut seen: Strings) -> () {
     loop {
         if null_p(bs) {
             return ();
         } else {
-            {
-                let tagcase_ = car(bs);
-                match *tagcase_ {
-                    Block::Block(n, c, e, is) => {
+            let tagcase_ = car(bs);
+            match *tagcase_ {
+                Block::Block(n, c, e, is) => {
+                    let is = the::<List<&'static Iline>>(reverse(is));
+                    if string_member_p(n, seen) {
+                        literals_read_x(is)
+                    } else {
                         cells_written_x(lookup(get(words()), n), is)
-                    }
+                    };
+                    (bs, seen) = (cdr(bs), kayak_rt::heap_cons(n, seen));
+                    continue;
                 }
-            };
-            bs = cdr(bs);
-            continue;
+            }
         }
     }
 }
 
 /// The words of a listing, made; the word named `program`.
 pub fn listing_words_x(text: Str) -> i64 {
-    let bs = distinct_blocks(blocks(lines_of(string_chars(text), nil::<char>(), nil::<List<char>>()), nil::<&'static Block>(), false), nil::<&'static Block>());
+    let all = blocks(lines_of(string_chars(text), nil::<char>(), nil::<List<char>>()), nil::<&'static Block>(), false);
+    let bs = distinct_blocks(all, nil::<&'static Block>());
     words_made_x(bs);
-    blocks_written_x(bs);
+    blocks_written_x(all, nil::<Str>());
     literals_checked_x(get(literals()));
     let p = lookup(get(words()), str_lit("program"));
     if i64_eq(p, 0i64) {

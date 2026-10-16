@@ -754,6 +754,10 @@ pub fn t_forward() -> i64 {
     int_to_i64(lay::tag_forward())
 }
 
+pub fn t_suffix_ref() -> i64 {
+    int_to_i64(lay::tag_suffix_ref())
+}
+
 // Kinds.
 pub fn k_string() -> i64 {
     int_to_i64(lay::kind_string())
@@ -793,6 +797,34 @@ pub fn k_continuation() -> i64 {
 
 pub fn k_product() -> i64 {
     int_to_i64(lay::kind_product())
+}
+
+pub fn k_bytevector() -> i64 {
+    int_to_i64(lay::kind_bytevector())
+}
+
+pub fn k_flonum() -> i64 {
+    int_to_i64(lay::kind_flonum())
+}
+
+pub fn k_bignum() -> i64 {
+    int_to_i64(lay::kind_bignum())
+}
+
+pub fn k_ratnum() -> i64 {
+    int_to_i64(lay::kind_ratnum())
+}
+
+pub fn k_flat_array() -> i64 {
+    int_to_i64(lay::kind_flat_array())
+}
+
+pub fn k_icell() -> i64 {
+    int_to_i64(lay::kind_icell())
+}
+
+pub fn k_native_closure() -> i64 {
+    int_to_i64(lay::kind_native_closure())
 }
 
 // A word's fields, a closure's, a global cell's.
@@ -864,6 +896,24 @@ pub fn v_unbound() -> i64 {
 
 pub fn sub_char() -> i64 {
     8i64
+}
+
+pub fn sub_f32() -> i64 {
+    9i64
+}
+
+// Suffix refs (Fixpt's `value.rs`): tag 2, the word index of the owner's
+// suffix above it, 34 bits, and the byte offset into it above those.
+pub fn sref_owner_mask() -> i64 {
+    17179869183i64
+}
+
+pub fn sref_offset_shift() -> i64 {
+    37i64
+}
+
+pub fn sref_offset_limit() -> i64 {
+    134217728i64
 }
 
 // Routines, by Fixpt's numbers.

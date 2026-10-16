@@ -3061,3 +3061,24 @@ reading both.
   two): `tests/kfx-refused/branches-cons-list.kfx`. Retyping KFX's
   `cons` as FX-26's `pairof` would be exact, and touch every use of it;
   not now. One place in `cells/` needed its type written.
+- **Full literals read** (the same day): `cells/listing.kfx` reads
+  `--full-literals` listings (`lit-datum`: Fixpt's `literal.rs`, every
+  form; labels across the listing, register code's `const`s read for the
+  labels they make; a labelled pair made before what is in it, a cycle
+  through a vector or other bloblet refused, not yet). A word listed twice
+  is compared with its labels taken out (`unlabelled`). Bignums and
+  ratnums are made as Fixpt's (`cells/numbers.kfx`, through KFX's `int`);
+  vectors and symbols are laid out in `alloc`'s order (`obj-ref`), as
+  Fixpt's; `|#u|` is the symbol `#u`, which FX-26's cellular code uses
+  for unit (`%fx26-unit-cell`), not the immediate tier 1 had read. Every
+  program not run is now waiting on a primitive.
+- **Three gaps in Fixpt's `--full-literals`**, worked around, to be
+  raised: (1) where its two compilers make the same words but one shares
+  a literal the other makes twice (flonums), its text comparison says
+  they disagree and fails (63 programs); `cells-programs.py` then takes
+  the FX-26 compiler's listing, if the plain listing says both made the
+  same. (2) A cellular `lit` of a closure made at compile time is still
+  `closure of W` (the register code's `const` writes it in full): tier 1
+  reads it as before (a closure over nothing, refused if its word reads a
+  free value). (3) `#bloblet(…)` says no frozen flags: tier 1 freezes sums
+  and products, as Fixpt makes them, and nothing else.

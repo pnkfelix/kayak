@@ -5,6 +5,7 @@
 ../kfx/read.kfx
 layout.kfx
 heap.kfx
+numbers.kfx
 show.kfx
 prims.kfx
 listing.kfx

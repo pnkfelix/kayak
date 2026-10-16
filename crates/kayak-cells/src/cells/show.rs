@@ -151,6 +151,22 @@ pub fn kind_name(k: i64) -> Str {
     }
 }
 
+/// Byte `i` of the raw words from word `p`, little-endian.
+pub fn byte_at(p: i64, i: i64) -> i64 {
+    i64_and(i64_shr(word_at(i64_plus(p, i64_quotient(i, 8i64))), i64_to_int(i64_star(8i64, i64_remainder(i, 8i64)))), 255i64)
+}
+
+/// A bytevector's bytes from `i`, its length `n`: after its length's word.
+pub fn bytes_written(p: i64, i: i64, n: i64) -> Str {
+    if i64_gt_eq(i, n) {
+        str_lit("")
+    } else if i64_eq(i, 0i64) {
+        string_append(i64_to_string(byte_at(i64_plus(p, 1i64), 0i64)), bytes_written(p, 1i64, n))
+    } else {
+        string_append(str_lit(" "), string_append(i64_to_string(byte_at(i64_plus(p, 1i64), i)), bytes_written(p, i64_plus(i, 1i64), n)))
+    }
+}
+
 pub fn written(v: i64) -> Str {
     if is_fixnum_p(v) {
         i64_to_string(fix_val(v))
@@ -172,6 +188,8 @@ pub fn written(v: i64) -> Str {
         str_lit("#<unbound>")
     } else if is_char_p(v) {
         char_written(i64_shr(v, int_lit(8)))
+    } else if is_f32_p(v) {
+        number_text(v)
     } else if i64_eq(tag_of(v), t_immediate()) {
         str_lit("#<immediate>")
     } else if is_pair_p(v) {
@@ -180,6 +198,12 @@ pub fn written(v: i64) -> Str {
         string_append(str_lit("\""), string_append(escaped(string_text(v), 0i64, str_lit("")), str_lit("\"")))
     } else if is_kind_p(v, k_symbol()) {
         symbol_text(v)
+    } else if (is_big_p(v) || is_flonum_p(v) || is_kind_p(v, k_ratnum())) {
+        number_text(v)
+    } else if is_kind_p(v, k_vector()) {
+        string_append(str_lit("#("), string_append(elements_written(v, 0i64, obj_length(v)), str_lit(")")))
+    } else if is_kind_p(v, k_bytevector()) {
+        string_append(str_lit("#u8("), string_append(bytes_written(address(v), 0i64, word_at(address(v))), str_lit(")")))
     } else if (is_kind_p(v, k_continuation()) || (is_kind_p(v, k_closure()) && i64_eq(fields_of(v), f_free0()) && is_kind_p(slot_of(v, f_free0()), k_continuation()))) {
         str_lit("#<continuation>")
     } else if is_kind_p(v, k_box()) {
@@ -192,8 +216,21 @@ pub fn written(v: i64) -> Str {
         string_append(str_lit("#<cellular-word "), string_append(written(slot_of(v, f_name())), str_lit(">")))
     } else if is_bloblet_p(v) {
         string_append(str_lit("#<"), string_append(kind_name(kind_of(v)), string_append(str_lit(" "), string_append(i64_to_string(fields_of(v)), string_append(str_lit(" fields "), string_append(i64_to_string(bytes_of(v)), str_lit(" bytes>")))))))
+    } else if is_sref_p(v) {
+        string_append(str_lit("#<suffix-ref "), string_append(kind_name(kind_of(sref_owner(v))), string_append(str_lit(" +"), string_append(i64_to_string(sref_offset(v)), str_lit(">")))))
     } else {
         str_lit("#<unknown>")
+    }
+}
+
+/// A vector's elements from `i`, a space between.
+pub fn elements_written(v: i64, i: i64, n: i64) -> Str {
+    if i64_gt_eq(i, n) {
+        str_lit("")
+    } else if i64_eq(i, 0i64) {
+        string_append(written(obj_ref(v, 0i64)), elements_written(v, 1i64, n))
+    } else {
+        string_append(str_lit(" "), string_append(written(obj_ref(v, i)), elements_written(v, i64_plus(i, 1i64), n)))
     }
 }
 

@@ -152,15 +152,15 @@
 
 (define vector-from! (subr cm ((flatarrayof i64 @c) i64 i64) i64)
   (lambda (a from to)
-    "A vector of `a`'s words from `from` up to `to`: a bloblet of them, each
-     a field from 2 up, under a trailer."
+    "A vector of `a`'s words from `from` up to `to`, as Fixpt's
+     `vector_from` lays one out (`obj-set!`)."
     (let ((v (make-bloblet! k-vector (i64- to from) 0 #t #f)))
       (letrec ((fill (subr cm (i64) unit)
-                 (lambda (i) (if (i64>= i to) #u (begin (slot-set! v (i64+ 2 (i64- i from)) (flatarray-ref-i64 a i)) (fill (i64+ i 1)))))))
+                 (lambda (i) (if (i64>= i to) #u (begin (obj-set! v (i64- i from) (flatarray-ref-i64 a i)) (fill (i64+ i 1)))))))
         (begin (fill from) v)))))
 
-(define vector-length (subr cm (i64) i64) (lambda (v) (i64- (fields-of v) 1)))
-(define vector-ref (subr cm (i64 i64) i64) (lambda (v i) (slot-of v (i64+ 2 i))))
+(define vector-length (subr cm (i64) i64) (lambda (v) (obj-length v)))
+(define vector-ref (subr cm (i64 i64) i64) (lambda (v i) (obj-ref v i)))
 
 (define capture! (subr cm (i64 i64 bool) i64)
   (lambda (rs-from ds-from whole)

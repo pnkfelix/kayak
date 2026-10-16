@@ -8,6 +8,8 @@ pub mod layout;
 pub use layout::*;
 pub mod heap;
 pub use heap::*;
+pub mod numbers;
+pub use numbers::*;
 pub mod show;
 pub use show::*;
 pub mod prims;

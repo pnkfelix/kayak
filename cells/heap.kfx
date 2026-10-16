@@ -68,6 +68,17 @@
 (define is-char? (subr kfx (i64) bool)
   (lambda (w) (and (i64= (tag-of w) t-immediate) (i64= (i64-and (i64-shr w 3) 31) sub-char))))
 
+"Suffix refs."
+(define is-sref? (subr kfx (i64) bool) (lambda (w) (i64= (tag-of w) t-suffix-ref)))
+(define make-sref (subr kfx (i64 i64) i64)
+  (lambda (owner offset)
+    "A suffix ref to byte `offset` of the suffix at word `owner`."
+    (i64-or (i64-shl offset (i64->int sref-offset-shift)) (i64-or (i64-shl owner 3) t-suffix-ref))))
+(define sref-owner (subr kfx (i64) i64)
+  (lambda (r) "Its owner, a bloblet." (i64-or (i64-shl (i64-and (i64-shr r 3) sref-owner-mask) 3) t-bloblet)))
+(define sref-offset (subr kfx (i64) i64)
+  (lambda (r) (i64-and (i64-shr r (i64->int sref-offset-shift)) (i64- sref-offset-limit 1))))
+
 "Pairs."
 (define cons! (subr cm (i64 i64) i64)
   (lambda (a d)
@@ -138,6 +149,13 @@
 (define slot-of (subr cm (i64 i64) i64) (lambda (v k) (word-at (i64- (address v) k))))
 (define slot-set! (subr cm (i64 i64 i64) unit) (lambda (v k x) (word-set! (i64- (address v) k) x)))
 
+"An object `alloc` lays out (Fixpt's `obj_ref`, `obj_set`): its payload
+ in order from the header up, the trailer last, so that element `i` is
+ field `F - i`, `F` its fields with the trailer."
+(define obj-ref (subr cm (i64 i64) i64) (lambda (v i) (slot-of v (i64- (fields-of v) i))))
+(define obj-set! (subr cm (i64 i64 i64) unit) (lambda (v i x) (slot-set! v (i64- (fields-of v) i) x)))
+(define obj-length (subr cm (i64) i64) (lambda (v) (i64- (fields-of v) 1)))
+
 "Whether field `k` may be read (Fixpt's `field_slot`): one of the
  bloblet's, not its trailer."
 (define field-ok? (subr cm (i64 i64) bool)
@@ -176,8 +194,9 @@
                          (text (i64+ i 1) (string-append acc (char->string (i64->char cp)))))))))
         (text 0 "")))))
 
-"Symbols, interned: a bloblet of its name, its hash and its global slot
- (Fixpt's), one for each name."
+"Symbols, interned: an object of its name, its hash and its global slot,
+ in `alloc`'s order (Fixpt's `intern`), one for each name. Tier 1 keeps
+ no global slots: each is 0."
 (define-datatype named (named string i64))
 (define symbols (ref (listof named @c) @c) (new nil))
 (define globals (ref (listof named @c) @c) (new nil))
@@ -196,13 +215,13 @@
           had
           (let ((s (make-bloblet! k-symbol 3 0 #t #f)))
             (begin
-              (slot-set! s 2 (make-string! name))
-              (slot-set! s 3 (fix (int->i64 (symbol-name-hash (string->symbol name)))))
-              (slot-set! s 4 v-false)
+              (obj-set! s 0 (make-string! name))
+              (obj-set! s 1 (fix (int->i64 (symbol-name-hash (string->symbol name)))))
+              (obj-set! s 2 (fix 0))
               (set symbols (cons (named name s) (get symbols)))
               s))))))
 
-(define symbol-text (subr cm (i64) string) (lambda (s) (string-text (slot-of s 2))))
+(define symbol-text (subr cm (i64) string) (lambda (s) (string-text (obj-ref s 0))))
 
 "The collector: Coopt's baseline, a Cheney copy of everything live into
  the other space (`coopt-heap`'s `forward`, `forward_pair`,
@@ -233,10 +252,10 @@
     (lambda (from at n)
       (if (i64<= n 0) #u (begin (to-set! at (word-at from)) (copied-words! (i64+ from 1) (i64+ at 1) (i64- n 1)))))))
 
-(define forward! (subr cm (i64) i64)
+(define forward-object! (subr cm (i64) i64)
   (lambda (w)
-    "The word for `w` after the collection: its object's copy, copied first
-     if need be; itself, if it is no pointer."
+    "The word for `w`, a pair or bloblet, after the collection: its
+     object's copy, copied first if need be; itself, if it is no pointer."
     (cond
       ((is-pair? w)
        (let* ((o (address w)) (first (word-at o)))
@@ -267,6 +286,14 @@
                            #u)
                        (i64-or (i64-shl (i64+ at (i64- p h)) 3) t-bloblet))))))))
       (else w))))
+
+(define forward! (subr cm (i64) i64)
+  (lambda (w)
+    "As `forward-object!`; a suffix ref, at its owner's copy: Coopt's
+     heap has none, Fixpt's collector keeps the owner (`object_of`)."
+    (if (is-sref? w)
+        (make-sref (address (forward-object! (sref-owner w))) (sref-offset w))
+        (forward-object! w))))
 
 (define-rec
   (fields-forwarded! (subr cm (i64 i64) unit)

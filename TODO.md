@@ -603,10 +603,10 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    format and tier 1, cells interpreted (**begun**, C122: `cells/`, on
    the words Fixpt's compiler lists; at Fixpt 1925bca, 194 of Fixpt's
    programs agree, 0 differ). Done for tier 1: Coopt's Cheney baseline;
-   prompts, marks and continuations (but routines 51–55). Next: the
-   listings Fixpt now writes in full (`--full-literals`, C123: floats by
-   their bits, labels across the listing, any bloblet by its fields), read
-   in place of the cut ones; more primitives (fixed widths, floats, suffix
+   prompts, marks and continuations (but routines 51–55). Done: the
+   listings Fixpt now writes in full (`--full-literals`, C123), read; three
+   gaps in them worked around, to be raised with Fixpt (C123). Next: more
+   primitives (fixed widths, floats, suffix
    refs, flat arrays, bytevectors, strings), their failures in Fixpt's
    words, integers past a fixnum as Fixpt's bignums through KFX's `int`;
    Coopt's collector's steps past Cheney (generational, regions,

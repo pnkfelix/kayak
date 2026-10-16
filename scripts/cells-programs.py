@@ -117,11 +117,22 @@ def one(binary, cells, name, path):
     if want_fail is None and (not lines or last_defines(path)):
         return "no-value", ""
     want = None if want_fail is not None else lines[-1].rsplit(" ! ", 1)[0].rsplit(" : ", 1)[0]
-    co = fixptcache.run(binary, MACHINE + ["compile", path], [path])
-    if co.returncode != 0:
+    co = fixptcache.run(binary, MACHINE + ["compile", "--full-literals", path], [path])
+    text = co.stdout
+    if co.returncode != 0 and "; the compilers disagree" in co.stdout:
+        # Fixpt 1925bca's `--full-literals` compares its two compilers'
+        # listings as text, and one labels literals the other makes twice
+        # (flonums): they disagree only so, when the plain listing says both
+        # made the same. Then the first, the FX-26 compiler's (C123).
+        plain = fixptcache.run(binary, MACHINE + ["compile", path], [path])
+        if plain.returncode == 0 and "; both compilers made this" in plain.stdout:
+            text = co.stdout.split("; the Rust compiler:", 1)[0]
+        else:
+            return "fixpt-refuses", ""
+    elif co.returncode != 0:
         return "fixpt-refuses", ""
     with tempfile.NamedTemporaryFile("w", suffix=".cells", delete=False) as f:
-        f.write(co.stdout)
+        f.write(text)
         listing = f.name
     try:
         got = run([cells, listing] + (["--step-limit", "none"] if limit else []), timeout=600)
@@ -139,11 +150,11 @@ def one(binary, cells, name, path):
     if want_fail is not None or got_fail is not None:
         if want_fail != got_fail:
             return "differ", "fixpt: %r, kayak: %r" % (want_fail, got_fail)
-        return stressed(cells, name, co.stdout, limit, "", got_fail)
+        return stressed(cells, name, text, limit, "", got_fail)
     have = got.stdout.strip()
     if have != want:
         return "differ", "fixpt: %r, kayak: %r" % (want, have)
-    return stressed(cells, name, co.stdout, limit, have, None)
+    return stressed(cells, name, text, limit, have, None)
 
 
 def stressed(cells, name, text, limit, have, fail):

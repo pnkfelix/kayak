@@ -14,6 +14,9 @@
 (define close-paren char (i64->char 41))
 (define comma char (i64->char 44))
 (define colon char (i64->char 58))
+(define dquote char (i64->char 34))
+(define bar char (i64->char 124))
+(define backslash char (i64->char 92))
 
 "Lines, each its characters."
 (define-rec
@@ -100,18 +103,22 @@
                    (begin (listing-error "the compilers disagree") nil))
                   ((or (null? l) (char=? (car l) #\;)) (blocks (cdr ls) out #f))
                   ((starts? l (string-chars "  its ")) (blocks (cdr ls) out #t))
-                  (skipping (blocks (cdr ls) out #t))
                   ((null? out) (blocks (cdr ls) out #f))
                   (else
                    (let* ((t (spaces-dropped l))
                           (at (digits-of t 0))
                           (text (spaces-dropped (after-char t colon))))
-                     (if (contains? text (string-chars "…"))
-                         (begin (listing-error "a literal cut short") nil)
-                         (blocks (cdr ls)
-                                 (tagcase (car out)
-                                   (block (n c e is) (cons (block n c e (cons (iline at text) is)) (cdr out))))
-                                 #f))))))))))
+                     (cond ((contains? text (string-chars "…"))
+                            (begin (listing-error "a literal cut short") nil))
+                           ((and skipping (not (starts? text (string-chars "const "))))
+                            (blocks (cdr ls) out #t))
+                           (else
+                            "A register code's `const`, kept at -1: what it makes may be
+                             labelled, and named later (C123)."
+                            (blocks (cdr ls)
+                                    (tagcase (car out)
+                                      (block (n c e is) (cons (block n c e (cons (iline (if skipping -1 at) (if skipping (drop-n text 6) text)) is)) (cdr out))))
+                                    skipping)))))))))))
 
 "The words, by name."
 (define words (ref (listof named @c) @c) (new nil))
@@ -165,26 +172,232 @@
               (set globals (cons (named name g) (get globals)))
               g))))))
 
+"Literals as `fixpt compile --full-literals` writes them (C123): every one
+ in full, so that it is built again exactly (Fixpt's `literal.rs`;
+ `docs/fx26.md`, \"The compile listing's literals\"). An object reached
+ more than once is labelled `#N=` where first written and named `#N#`
+ after, across the whole listing, so that what is `eq?` in the program is
+ `eq?` here. A labelled pair is made before what is in it, so that a
+ cycle through pairs is too; one through a vector or other bloblet is
+ refused (not yet).
+ fixpt-source: crates/fixpt-runtime/src/literal.rs@1925bca"
+(define-datatype lab (lab i64 i64))
+(define labels (ref (listof lab @c) @c) (new nil))
+
+"What reading gives: a value, an integer, a text or values, and what is
+ left to read."
+(define-datatype lgot (lgot i64 chars))
+(define-datatype gint (gint int chars))
+(define-datatype gtext (gtext string chars))
+(define-datatype gall (gall (listof i64 @c) chars))
+
 (define-rec
-  (datum-value (subr cm (sexp) i64)
-    (lambda (d)
-      "A literal, as `write` wrote it, as a value."
-      (tagcase d
-        (num (n f p) (if (fits? n) (fix n) (begin (listing-error "a literal past a fixnum") 0)))
-        (str (s f p) (make-string! s))
-        (chr (c f p) (char-value (char->i64 c)))
-        (sym (n f p)
-          (cond ((string=? n "#t") v-true) ((string=? n "#f") v-false) ((string=? n "#u") v-unit)
-                ((string=? n "#<unspecified>") v-unspecified)
-                (else (symbol! n))))
-        (lst (xs f l p) (items-value xs))
-        (else other (begin (listing-error "a literal tier 1 does not have yet") 0)))))
-  (items-value (subr cm (sexps) i64)
-    (lambda (xs)
-      (cond ((null? xs) v-null)
-            ((and (not (null? (cdr xs))) (tagcase (car (cdr xs)) (sym (n f p) (string=? n ".")) (else other #f)))
-             (cons! (datum-value (car xs)) (datum-value (car (cdr (cdr xs))))))
-            (else (cons! (datum-value (car xs)) (items-value (cdr xs))))))))
+  (label-value (subr cm ((listof lab @c) i64) i64)
+    (lambda (ls n)
+      (cond ((null? ls) 0)
+            ((tagcase (car ls) (lab (m v) (i64= m n))) (tagcase (car ls) (lab (m v) v)))
+            (else (label-value (cdr ls) n))))))
+
+(define labelled! (subr cm (i64 i64) i64)
+  (lambda (n v) (begin (set labels (cons (lab n v) (get labels))) v)))
+
+(define hex-digit-value (subr kfx (char) i64)
+  (lambda (c)
+    (let ((n (char->i64 c)))
+      (cond ((and (i64>= n 48) (i64<= n 57)) (i64- n 48))
+            ((and (i64>= n 97) (i64<= n 102)) (i64- n 87))
+            (else -1)))))
+
+(define-rec
+  (hex-int (subr kfx (chars int) gint)
+    (lambda (cs acc)
+      (if (and (not (null? cs)) (i64>= (hex-digit-value (car cs)) 0))
+          (hex-int (cdr cs) (+ (* acc 16) (i64->int (hex-digit-value (car cs)))))
+          (gint acc cs)))))
+
+(define-rec
+  (decimal-int (subr kfx (chars int) gint)
+    (lambda (cs acc)
+      (if (and (not (null? cs)) (char-numeric? (car cs)))
+          (decimal-int (cdr cs) (+ (* acc 10) (i64->int (i64- (char->i64 (car cs)) 48))))
+          (gint acc cs)))))
+
+(define signed-int (subr kfx (chars) gint)
+  (lambda (cs)
+    (if (and (not (null? cs)) (char=? (car cs) #\-))
+        (tagcase (decimal-int (cdr cs) 0) (gint (n rest) (gint (- 0 n) rest)))
+        (decimal-int cs 0))))
+
+(define-rec
+  (escaped-text (subr kfx (chars char chars) gtext)
+    (lambda (cs q acc)
+      "A string's or a symbol's characters up to `q`: one that is not
+       printable ASCII, or is `q` or a backslash, written by its code in hex,
+       after a backslash and an `x`, before a `;`."
+      (cond ((null? cs) (begin (listing-error "a literal's text runs to the end") (gtext "" nil)))
+            ((char=? (car cs) q) (gtext (list->string (the chars (reverse acc))) (cdr cs)))
+            ((char=? (car cs) backslash)
+             (tagcase (hex-int (drop-n cs 2) 0)
+               (gint (n rest) (escaped-text (cdr rest) q (cons (i64->char (int->i64 n)) acc)))))
+            (else (escaped-text (cdr cs) q (cons (car cs) acc)))))))
+
+(define expect (subr kfx (chars string) chars)
+  (lambda (cs prefix)
+    (if (starts? cs (string-chars prefix))
+        (drop-n cs (string-length-i64 prefix))
+        (begin (listing-error (string-append "a literal tier 1 does not read: " (list->string cs))) nil))))
+
+(define ends-word? (subr kfx (chars) bool)
+  (lambda (cs) (or (null? cs) (char=? (car cs) #\space) (char=? (car cs) close-paren))))
+
+(define-rec
+  (kind-numbered (subr kfx (string i64) i64)
+    (lambda (name k)
+      (cond ((i64> k 255) (begin (listing-error (string-append "a bloblet of no kind tier 1 knows: " name)) 0))
+            ((string=? (kind-name k) name) k)
+            (else (kind-numbered name (i64+ k 1)))))))
+
+(define-rec
+  (fields-set! (subr cm (i64 i64 (listof i64 @c)) unit)
+    (lambda (b k xs)
+      (if (null? xs) #u (begin (slot-set! b k (car xs)) (fields-set! b (i64+ k 1) (cdr xs)))))))
+
+(define byte-set! (subr cm (i64 i64 i64) unit)
+  (lambda (p i x)
+    "Byte `i` of the raw words from word `p` := `x`, little-endian."
+    (let* ((at (i64+ p (i64-quotient i 8)))
+           (shift (i64->int (i64* 8 (i64-remainder i 8)))))
+      (word-set! at (i64-or (i64-and (word-at at) (i64-not (i64-shl 255 shift))) (i64-shl x shift))))))
+
+(define-rec
+  (bytes-set! (subr cm (i64 i64 (listof i64 @c)) unit)
+    (lambda (p i xs) (if (null? xs) #u (begin (byte-set! p i (fix-val (car xs))) (bytes-set! p (i64+ i 1) (cdr xs)))))))
+
+(define-rec
+  (trailer-in? (subr cm ((listof i64 @c)) bool)
+    (lambda (xs) (cond ((null? xs) #f) ((i64= (tag-of (car xs)) t-trailer) #t) (else (trailer-in? (cdr xs)))))))
+
+(define bloblet-literal! (subr cm (string (listof i64 @c) (listof i64 @c)) i64)
+  (lambda (kind fields bytes)
+    "`#bloblet(KIND (FIELD ...) #u8(BYTE ...))`: its fields from 1, field 1
+     its trailer, `#trailer N`, if it has one; frozen if a sum or product,
+     as Fixpt makes those (the listing does not say)."
+    (let* ((k (kind-numbered kind 0))
+           (f (args-count fields 0))
+           (trailer (and (not (null? fields)) (i64= (tag-of (car fields)) t-trailer)))
+           (b (make-bloblet! k (if trailer (i64- f 1) f) (args-count bytes 0) trailer #f)))
+      (begin
+        (if (and trailer (not (i64= (i64-shr (car fields) 3) f)))
+            (listing-error "a bloblet's trailer that says not its fields")
+            #u)
+        (if (trailer-in? (if trailer (cdr fields) fields))
+            (listing-error "a trailer that is not a bloblet's field 1")
+            #u)
+        (fields-set! b (if trailer (the i64 2) (the i64 1)) (if trailer (cdr fields) fields))
+        (bytes-set! (address b) 0 bytes)
+        (if (or (i64= k k-sum) (i64= k k-product)) (frozen-whole! b) #u)
+        b))))
+
+(define-rec
+  (until-delimiter (subr kfx (chars chars) chars)
+    (lambda (cs acc)
+      (if (or (null? cs) (char=? (car cs) #\space) (char=? (car cs) close-paren) (char=? (car cs) open-paren))
+          (the chars (reverse acc))
+          (until-delimiter (cdr cs) (cons (car cs) acc))))))
+
+(define vector-literal! (subr cm ((listof i64 @c)) i64)
+  (lambda (xs)
+    (let ((v (make-bloblet! k-vector (args-count xs 0) 0 #t #f)))
+      (letrec ((fill (subr cm ((listof i64 @c) i64) unit)
+                 (lambda (ys i) (if (null? ys) #u (begin (obj-set! v i (car ys)) (fill (cdr ys) (i64+ i 1)))))))
+        (begin (fill xs 0) v)))))
+
+(define bytevector-literal! (subr cm ((listof i64 @c)) i64)
+  (lambda (xs)
+    "A bytevector (Fixpt's `make_bytevector`): its length, a raw word, then
+     its bytes."
+    (let* ((n (args-count xs 0))
+           (b (make-bloblet! k-bytevector 0 (i64* 8 (i64+ 1 (i64-quotient (i64+ n 7) 8))) #f #f)))
+      (begin (word-set! (address b) n) (bytes-set! (i64+ (address b) 1) 0 xs) b))))
+
+(define-rec
+  (lit-datum (subr cm (chars) lgot)
+    (lambda (cs)
+      "One literal, from the start of `cs`."
+      (cond
+        ((null? cs) (begin (listing-error "a literal is missing") (lgot 0 nil)))
+        ((or (char-numeric? (car cs)) (char=? (car cs) #\-))
+         (tagcase (signed-int cs)
+           (gint (n rest)
+             (if (and (not (null? rest)) (char=? (car rest) #\/))
+                 (tagcase (decimal-int (cdr rest) 0)
+                   (gint (d rest2) (lgot (make-ratnum! (int-value! n) (int-value! d)) rest2)))
+                 (lgot (int-value! n) rest)))))
+        ((char=? (car cs) dquote) (tagcase (escaped-text (cdr cs) dquote nil) (gtext (t rest) (lgot (make-string! t) rest))))
+        ((char=? (car cs) bar) (tagcase (escaped-text (cdr cs) bar nil) (gtext (t rest) (lgot (symbol! t) rest))))
+        ((starts? cs (string-chars "()")) (lgot v-null (drop-n cs 2)))
+        ((char=? (car cs) open-paren) (pair-rest (cdr cs) (cons! v-null v-null)))
+        ((starts? cs (string-chars "#f64x")) (tagcase (hex-int (drop-n cs 5) 0) (gint (n rest) (lgot (flonum-bits! (int->i64 n)) rest))))
+        ((starts? cs (string-chars "#f32x")) (tagcase (hex-int (drop-n cs 5) 0) (gint (n rest) (lgot (f32-bits (int->i64 n)) rest))))
+        ((starts? cs (string-chars "#\\x")) (tagcase (hex-int (drop-n cs 3) 0) (gint (n rest) (lgot (char-value (int->i64 n)) rest))))
+        ((starts? cs (string-chars "#u8(")) (tagcase (lit-items (drop-n cs 4) nil) (gall (xs rest) (lgot (bytevector-literal! xs) rest))))
+        ((starts? cs (string-chars "#(")) (tagcase (lit-items (drop-n cs 2) nil) (gall (xs rest) (lgot (vector-literal! xs) rest))))
+        ((starts? cs (string-chars "#word ")) (tagcase (escaped-text (cdr (drop-n cs 6)) dquote nil) (gtext (t rest) (lgot (word-named (string-chars t)) rest))))
+        ((starts? cs (string-chars "#global ")) (tagcase (escaped-text (cdr (drop-n cs 8)) dquote nil) (gtext (t rest) (lgot (global-named t) rest))))
+        ((starts? cs (string-chars "#trailer ")) (tagcase (decimal-int (drop-n cs 9) 0) (gint (n rest) (lgot (i64-or (i64-shl (int->i64 n) 3) t-trailer) rest))))
+        ((starts? cs (string-chars "#bloblet("))
+         (let* ((at (drop-n cs 9))
+                (kind (list->string (before-char at #\space))))
+           (tagcase (lit-items (expect (drop-n at (i64+ (string-length-i64 kind) 1)) "(") nil)
+             (gall (fields rest)
+               (tagcase (lit-items (expect (spaces-dropped rest) "#u8(") nil)
+                 (gall (bytes rest2) (lgot (bloblet-literal! kind fields bytes) (expect rest2 ")"))))))))
+        ((starts? cs (string-chars "#suffix-ref("))
+         (tagcase (lit-datum (drop-n cs 12))
+           (lgot (o rest)
+             (tagcase (decimal-int (spaces-dropped rest) 0)
+               (gint (n rest2) (lgot (make-sref (address o) (int->i64 n)) (expect rest2 ")")))))))
+        ((and (char=? (car cs) #\#) (not (null? (cdr cs))) (char-numeric? (car (cdr cs))))
+         (tagcase (decimal-int (cdr cs) 0)
+           (gint (n rest)
+             (cond ((starts? rest (string-chars "#"))
+                    (let ((v (label-value (get labels) (int->i64 n))))
+                      (if (i64= v 0)
+                          (begin (listing-error "a label named before what it labels is made: a cycle through a vector or bloblet, not yet") (lgot 0 nil))
+                          (lgot v (cdr rest)))))
+                   ((and (starts? rest (string-chars "=(")) (not (starts? rest (string-chars "=()"))))
+                    (pair-rest (drop-n rest 2) (labelled! (int->i64 n) (cons! v-null v-null))))
+                   ((starts? rest (string-chars "="))
+                    (tagcase (lit-datum (cdr rest)) (lgot (v rest2) (lgot (labelled! (int->i64 n) v) rest2))))
+                   (else (begin (listing-error "a label neither made nor named") (lgot 0 nil)))))))
+        ((char=? (car cs) #\#)
+         (let* ((name (list->string (before-char (until-delimiter cs nil) #\space)))
+                (rest (drop-n cs (string-length-i64 name))))
+           (cond ((string=? name "#t") (lgot v-true rest))
+                 ((string=? name "#f") (lgot v-false rest))
+                 ((string=? name "#u") (lgot v-unit rest))
+                 ((string=? name "#eof") (lgot v-eof rest))
+                 ((string=? name "#unspecified") (lgot v-unspecified rest))
+                 ((string=? name "#default") (lgot v-default rest))
+                 ((string=? name "#unbound") (lgot v-unbound rest))
+                 (else (begin (listing-error (string-append "a literal tier 1 does not have yet: " name)) (lgot 0 nil))))))
+        (else (begin (listing-error (string-append "a literal tier 1 does not read: " (list->string cs))) (lgot 0 nil))))))
+  (pair-rest (subr cm (chars i64) lgot)
+    (lambda (cs p)
+      "A pair's `car . cdr)`, into pair `p`, made already."
+      (tagcase (lit-datum cs)
+        (lgot (a rest)
+          (begin
+            (word-set! (address p) a)
+            (tagcase (lit-datum (expect rest " . "))
+              (lgot (d rest2) (begin (word-set! (i64+ (address p) 1) d) (lgot p (expect rest2 ")"))))))))))
+  (lit-items (subr cm (chars (listof i64 @c)) gall)
+    (lambda (cs acc)
+      "Literals a space apart, to a `)`."
+      (let ((cs (spaces-dropped cs)))
+        (cond ((null? cs) (begin (listing-error "a literal's items run to the end") (gall nil nil)))
+              ((char=? (car cs) close-paren) (gall (the (listof i64 @c) (reverse acc)) (cdr cs)))
+              (else (tagcase (lit-datum cs) (lgot (v rest) (lit-items rest (cons v acc))))))))))
 
 "A closure the compiler made, a literal: the listing shows its word, not
  its free values, so it is taken as a closure of none, one for each word,
@@ -228,8 +441,11 @@
   (lambda (cs)
     (cond ((starts? cs (string-chars "word ")) (word-named (drop-n cs 5)))
           ((starts? cs (string-chars "closure of ")) (closure-literal (word-named (drop-n cs 11))))
-          (else (let ((ds (read-all cs "<listing>" 1)))
-                  (if (i64= (size ds) 1) (datum-value (car ds)) (begin (listing-error (string-append "a literal: " (list->string cs))) 0)))))))
+          (else (tagcase (lit-datum cs)
+                  (lgot (v rest)
+                    (if (null? (spaces-dropped rest))
+                        v
+                        (begin (listing-error (string-append "a literal: " (list->string cs))) 0))))))))
 
 (define cell-set! (subr cm (i64 i64 i64) unit)
   (lambda (w at v) (slot-set! w (i64+ f-cell0 at) v)))
@@ -238,6 +454,8 @@
   (lambda (w il)
     (tagcase il
       (iline (at text)
+        (if (i64< at 0)
+            (begin (literal text) #u)
         (let* ((name (list->string (before-char text #\space)))
                (ops (spaces-dropped (drop-n text (string-length-i64 name))))
                (n (index-in routine-names name 0)))
@@ -266,7 +484,7 @@
                               (cell-set! w (i64+ at 2) (fix (number-of (drop-n (after-char rest #\space) 5)))))))
                          ((i64= (operand-count n) 1) (cell-set! w (i64+ at 1) (fix (number-of ops))))
                          ((i64= (operand-count n) 0) #u)
-                         (else (listing-error (string-append "operands tier 1 does not read yet: " name))))))))))))
+                         (else (listing-error (string-append "operands tier 1 does not read yet: " name)))))))))))))
 
 (define-rec
   (chars=? (subr kfx (chars chars) bool)
@@ -276,11 +494,26 @@
             (else (and (char=? (car a) (car b)) (chars=? (cdr a) (cdr b))))))))
 
 (define-rec
+  (label-end (subr kfx (chars) chars)
+    (lambda (cs) "After a label's digits." (if (and (not (null? cs)) (char-numeric? (car cs))) (label-end (cdr cs)) cs))))
+
+(define-rec
+  (unlabelled (subr kfx (chars chars) chars)
+    (lambda (cs acc)
+      "A line, its labels made (`#N=`) taken out: a word listed twice is the
+       same word though its literals were labelled the first time (C123)."
+      (cond ((null? cs) (the chars (reverse acc)))
+            ((and (char=? (car cs) #\#) (not (null? (cdr cs))) (char-numeric? (car (cdr cs)))
+                  (not (null? (label-end (cdr cs)))) (char=? (car (label-end (cdr cs))) #\=))
+             (unlabelled (cdr (label-end (cdr cs))) acc))
+            (else (unlabelled (cdr cs) (cons (car cs) acc)))))))
+
+(define-rec
   (ilines=? (subr kfx ((listof iline acyclic) (listof iline acyclic)) bool)
     (lambda (a b)
       (cond ((null? a) (null? b))
             ((null? b) #f)
-            (else (and (tagcase (car a) (iline (x xs) (tagcase (car b) (iline (y ys) (and (i64= x y) (chars=? xs ys))))))
+            (else (and (tagcase (car a) (iline (x xs) (tagcase (car b) (iline (y ys) (and (i64= x y) (chars=? (unlabelled xs nil) (unlabelled ys nil)))))))
                        (ilines=? (cdr a) (cdr b))))))))
 
 (define-rec
@@ -321,21 +554,41 @@
             (words-made! (cdr bs))))))
   (cells-written! (subr cm (i64 (listof iline acyclic)) unit)
     (lambda (w is) (if (null? is) #u (begin (instruction! w (car is)) (cells-written! w (cdr is))))))
-  (blocks-written! (subr cm ((listof block acyclic)) unit)
-    (lambda (bs)
-      (if (null? bs)
+  (literals-read! (subr cm ((listof iline acyclic)) unit)
+    (lambda (is)
+      "A word listed again: its literals read, for the labels they make, and
+       dropped."
+      (if (null? is)
           #u
           (begin
-            (tagcase (car bs) (block (n c e is) (cells-written! (lookup (get words) n) is)))
-            (blocks-written! (cdr bs)))))))
+            (tagcase (car is)
+              (iline (at text)
+                (cond ((i64< at 0) (begin (literal text) #u))
+                      ((starts? text (string-chars "lit ")) (begin (literal (drop-n text 4)) #u))
+                      (else #u))))
+            (literals-read! (cdr is))))))
+  (blocks-written! (subr cm ((listof block acyclic) strings) unit)
+    (lambda (bs seen)
+      "Every block's cells, in the listing's order, so that a label is made
+       where Fixpt writes it first: a word's first listing written into it,
+       a later one's literals only read."
+      (if (null? bs)
+          #u
+          (tagcase (car bs)
+            (block (n c e is)
+              (let ((is (the (listof iline acyclic) (reverse is))))
+                (begin
+                  (if (string-member? n seen) (literals-read! is) (cells-written! (lookup (get words) n) is))
+                  (blocks-written! (cdr bs) (cons n seen))))))))))
 
 (define listing-words! (subr cm (string) i64)
   (lambda (text)
     "The words of a listing, made; the word named `program`."
-    (let ((bs (distinct-blocks (blocks (lines-of (string-chars text) nil nil) nil #f) nil)))
+    (let* ((all (blocks (lines-of (string-chars text) nil nil) nil #f))
+           (bs (distinct-blocks all nil)))
       (begin
         (words-made! bs)
-        (blocks-written! bs)
+        (blocks-written! all nil)
         (literals-checked! (get literals))
         (let ((p (lookup (get words) "program")))
           (if (i64= p 0) (begin (listing-error "no word is named program") 0) p))))))

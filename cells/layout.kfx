@@ -18,6 +18,7 @@
 (define t-trailer i64 (int->i64 (with lay tag-trailer)))
 (define t-header i64 (int->i64 (with lay tag-header)))
 (define t-forward i64 (int->i64 (with lay tag-forward)))
+(define t-suffix-ref i64 (int->i64 (with lay tag-suffix-ref)))
 
 "Kinds."
 (define k-string i64 (int->i64 (with lay kind-string)))
@@ -30,6 +31,13 @@
 (define k-vector i64 (int->i64 (with lay kind-vector)))
 (define k-continuation i64 (int->i64 (with lay kind-cellular-continuation)))
 (define k-product i64 (int->i64 (with lay kind-product)))
+(define k-bytevector i64 (int->i64 (with lay kind-bytevector)))
+(define k-flonum i64 (int->i64 (with lay kind-flonum)))
+(define k-bignum i64 (int->i64 (with lay kind-bignum)))
+(define k-ratnum i64 (int->i64 (with lay kind-ratnum)))
+(define k-flat-array i64 (int->i64 (with lay kind-flat-array)))
+(define k-icell i64 (int->i64 (with lay kind-icell)))
+(define k-native-closure i64 (int->i64 (with lay kind-native-closure)))
 
 "A word's fields, a closure's, a global cell's."
 (define f-entry i64 (int->i64 (with lay word-entry)))
@@ -52,6 +60,13 @@
 (define v-default i64 51)
 (define v-unbound i64 59)
 (define sub-char i64 8)
+(define sub-f32 i64 9)
+
+"Suffix refs (Fixpt's `value.rs`): tag 2, the word index of the owner's
+ suffix above it, 34 bits, and the byte offset into it above those."
+(define sref-owner-mask i64 17179869183)
+(define sref-offset-shift i64 37)
+(define sref-offset-limit i64 134217728)
 
 "Routines, by Fixpt's numbers."
 (define r-docol i64 (int->i64 (with lay routine-docol)))

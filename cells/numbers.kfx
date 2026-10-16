@@ -1,0 +1,97 @@
+"numbers.kfx: tier 1's numbers as Fixpt's runtime keeps them (C122,
+ C123): a fixnum while an integer fits 61 bits; past that a bignum, a raw
+ object of its sign (a fixnum, 1 if negative), its count of limbs (a
+ fixnum) and the limbs, 64 bits each, the low first (`write_bignum`); a
+ ratnum, an object of two fields, its numerator and denominator; an `f64`,
+ a flonum, a raw object of the double's bits; an `f32`, an immediate of
+ subtag 9, its bits in the word's high half. Computed through KFX's `int`,
+ `f64` and `f32`, which are FX-26's.
+ fixpt-source: crates/fixpt-runtime/src/num.rs@1925bca"
+
+(define two-64 int (arithmetic-shift 1 64))
+(define fix-max-int int (i64->int fix-max))
+(define fix-min-int int (i64->int fix-min))
+
+(define is-big? (subr cm (i64) bool) (lambda (v) (is-kind? v k-bignum)))
+(define is-integer? (subr cm (i64) bool) (lambda (v) (or (is-fixnum? v) (is-big? v))))
+(define is-flonum? (subr cm (i64) bool) (lambda (v) (is-kind? v k-flonum)))
+(define is-f32? (subr kfx (i64) bool)
+  (lambda (v) (and (i64= (tag-of v) t-immediate) (i64= (i64-and (i64-shr v 3) 31) sub-f32))))
+
+(define unsigned-int (subr kfx (i64) int)
+  (lambda (w) "A word's 64 bits, as an unsigned integer." (if (i64< w 0) (+ (i64->int w) two-64) (i64->int w))))
+
+(define-rec
+  (limbs-int (subr cm (i64 i64 int) int)
+    (lambda (p j acc)
+      "Limbs `j` down to 0 of the bignum at word `p`, after `acc`."
+      (if (i64< j 0)
+          acc
+          (limbs-int p (i64- j 1) (+ (arithmetic-shift acc 64) (unsigned-int (word-at (i64+ p (i64+ 2 j))))))))))
+
+(define int-of (subr cm (i64) int)
+  (lambda (v)
+    "An exact integer's value: a fixnum's, or a bignum's (`read_bignum`)."
+    (if (is-fixnum? v)
+        (i64->int (fix-val v))
+        (let* ((p (address v))
+               (m (limbs-int p (i64- (fix-val (word-at (i64+ p 1))) 1) 0)))
+          (if (i64= (word-at p) (fix 1)) (- 0 m) m)))))
+
+(define-rec
+  (limbs-needed (subr kfx (int i64) i64)
+    (lambda (m k) (if (zero? m) k (limbs-needed (arithmetic-shift m -64) (i64+ k 1))))))
+
+(define-rec
+  (limbs-written! (subr cm (i64 int i64 i64) unit)
+    (lambda (p m j k)
+      (if (i64>= j k)
+          #u
+          (begin (word-set! (i64+ p (i64+ 2 j)) (int->i64 m))
+                 (limbs-written! p (arithmetic-shift m -64) (i64+ j 1) k))))))
+
+(define int-value! (subr cm (int) i64)
+  (lambda (n)
+    "`n` as Fixpt's runtime keeps it: a fixnum where it fits, else a bignum
+     made (`N::store`)."
+    (if (and (<= n fix-max-int) (>= n fix-min-int))
+        (fix (int->i64 n))
+        (let* ((m (if (< n 0) (- 0 n) n))
+               (k (limbs-needed m 0))
+               (b (make-bloblet! k-bignum 0 (i64* 8 (i64+ 2 k)) #f #f))
+               (p (address b)))
+          (begin
+            (word-set! p (fix (if (< n 0) (the i64 1) (the i64 0))))
+            (word-set! (i64+ p 1) (fix k))
+            (limbs-written! p m 0 k)
+            b)))))
+
+(define make-ratnum! (subr cm (i64 i64) i64)
+  (lambda (num den)
+    "A ratnum: two fields, the numerator first, as `alloc` lays them out."
+    (let ((r (make-bloblet! k-ratnum 2 0 #t #f)))
+      (begin (slot-set! r 3 num) (slot-set! r 2 den) r))))
+
+(define flonum-bits! (subr cm (i64) i64)
+  (lambda (bits)
+    "A flonum of a double's bits (`make_flonum`)."
+    (let ((b (make-bloblet! k-flonum 0 8 #f #f))) (begin (word-set! (address b) bits) b))))
+(define make-flonum! (subr cm (f64) i64)
+  (lambda (x) (flonum-bits! (int->i64 (u64->int (f64->bits x))))))
+(define flonum-of (subr cm (i64) f64)
+  (lambda (v) (bits->f64 (int->u64 (unsigned-int (word-at (address v)))))))
+
+(define f32-bits (subr kfx (i64) i64)
+  (lambda (bits) "An `f32` of a binary32's bits." (i64-or (i64-shl bits 32) (i64-or (i64-shl sub-f32 3) t-immediate))))
+(define f32-value (subr kfx (f32) i64) (lambda (x) (f32-bits (int->i64 (u32->int (f32->bits x))))))
+(define f32-of (subr kfx (i64) f32)
+  (lambda (v) (bits->f32 (int->u32 (i64->int (i64-and (i64-shr v 32) 4294967295))))))
+
+(define number-text (subr cm (i64) string)
+  (lambda (v)
+    "A number, as Fixpt's `to_string_radix` writes it in base 10."
+    (cond ((is-fixnum? v) (i64->string (fix-val v)))
+          ((is-big? v) (int->string (int-of v)))
+          ((is-kind? v k-ratnum) (string-append (int->string (int-of (slot-of v 3))) (string-append "/" (int->string (int-of (slot-of v 2))))))
+          ((is-f32? v) (f32->string (f32-of v)))
+          (else (f64->string (flonum-of v))))))

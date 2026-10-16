@@ -340,8 +340,8 @@ pub fn shots_spent() -> i64 {
     2i64
 }
 
-/// A vector of `a`'s words from `from` up to `to`: a bloblet of them, each
-/// a field from 2 up, under a trailer.
+/// A vector of `a`'s words from `from` up to `to`, as Fixpt's
+/// `vector_from` lays one out (`obj-set!`).
 pub fn vector_from_x(a: FlatArray<i64>, from: i64, to: i64) -> i64 {
     let v = make_bloblet_x(k_vector(), i64_minus(to, from), 0i64, true, false);
     let fill__knot = knot::<&'static dyn Fn(i64) -> ()>();
@@ -350,7 +350,7 @@ pub fn vector_from_x(a: FlatArray<i64>, from: i64, to: i64) -> i64 {
             if i64_gt_eq(i, to) {
                 return ();
             } else {
-                slot_set_x(v, i64_plus(2i64, i64_minus(i, from)), flatarray_ref_i64(a, i));
+                obj_set_x(v, i64_minus(i, from), flatarray_ref_i64(a, i));
                 i = i64_plus(i, 1i64);
                 continue;
             }
@@ -362,11 +362,11 @@ pub fn vector_from_x(a: FlatArray<i64>, from: i64, to: i64) -> i64 {
 }
 
 pub fn vector_length(v: i64) -> i64 {
-    i64_minus(fields_of(v), 1i64)
+    obj_length(v)
 }
 
 pub fn vector_ref(v: i64, i: i64) -> i64 {
-    slot_of(v, i64_plus(2i64, i))
+    obj_ref(v, i)
 }
 
 pub fn capture_x(rs_from: i64, ds_from: i64, whole: bool) -> i64 {

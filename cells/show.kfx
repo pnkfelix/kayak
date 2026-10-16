@@ -73,6 +73,19 @@
           ((i64= k (int->i64 (with lay kind-extension))) "extension")
           (else "?"))))
 
+(define byte-at (subr cm (i64 i64) i64)
+  (lambda (p i)
+    "Byte `i` of the raw words from word `p`, little-endian."
+    (i64-and (i64-shr (word-at (i64+ p (i64-quotient i 8))) (i64->int (i64* 8 (i64-remainder i 8)))) 255)))
+
+(define-rec
+  (bytes-written (subr cm (i64 i64 i64) string)
+    (lambda (p i n)
+      "A bytevector's bytes from `i`, its length `n`: after its length's word."
+      (cond ((i64>= i n) "")
+            ((i64= i 0) (string-append (i64->string (byte-at (i64+ p 1) 0)) (bytes-written p 1 n)))
+            (else (string-append " " (string-append (i64->string (byte-at (i64+ p 1) i)) (bytes-written p (i64+ i 1) n))))))))
+
 (define-rec
   (written (subr cm (i64) string)
     (lambda (v)
@@ -86,10 +99,15 @@
             ((i64= v v-default) "#<default>")
             ((i64= v v-unbound) "#<unbound>")
             ((is-char? v) (char-written (i64-shr v 8)))
+            ((is-f32? v) (number-text v))
             ((i64= (tag-of v) t-immediate) "#<immediate>")
             ((is-pair? v) (string-append "(" (string-append (written (pair-car v)) (string-append (tail-written (pair-cdr v)) ")"))))
             ((is-kind? v k-string) (string-append "\"" (string-append (escaped (string-text v) 0 "") "\"")))
             ((is-kind? v k-symbol) (symbol-text v))
+            ((or (is-big? v) (is-flonum? v) (is-kind? v k-ratnum)) (number-text v))
+            ((is-kind? v k-vector) (string-append "#(" (string-append (elements-written v 0 (obj-length v)) ")")))
+            ((is-kind? v k-bytevector)
+             (string-append "#u8(" (string-append (bytes-written (address v) 0 (word-at (address v))) ")")))
             ((or (is-kind? v k-continuation)
                  (and (is-kind? v k-closure) (i64= (fields-of v) f-free0) (is-kind? (slot-of v f-free0) k-continuation)))
              "#<continuation>")
@@ -101,7 +119,16 @@
              (string-append "#<" (string-append (kind-name (kind-of v))
                (string-append " " (string-append (i64->string (fields-of v))
                  (string-append " fields " (string-append (i64->string (bytes-of v)) " bytes>")))))))
+            ((is-sref? v)
+             (string-append "#<suffix-ref " (string-append (kind-name (kind-of (sref-owner v)))
+               (string-append " +" (string-append (i64->string (sref-offset v)) ">")))))
             (else "#<unknown>"))))
+  (elements-written (subr cm (i64 i64 i64) string)
+    (lambda (v i n)
+      "A vector's elements from `i`, a space between."
+      (cond ((i64>= i n) "")
+            ((i64= i 0) (string-append (written (obj-ref v 0)) (elements-written v 1 n)))
+            (else (string-append " " (string-append (written (obj-ref v i)) (elements-written v (i64+ i 1) n)))))))
   (tail-written (subr cm (i64) string)
     (lambda (rest)
       (cond ((i64= rest v-null) "")

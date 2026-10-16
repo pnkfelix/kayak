@@ -157,6 +157,25 @@ pub fn is_char_p(w: i64) -> bool {
     (i64_eq(tag_of(w), t_immediate()) && i64_eq(i64_and(i64_shr(w, int_lit(3)), 31i64), sub_char()))
 }
 
+// Suffix refs.
+pub fn is_sref_p(w: i64) -> bool {
+    i64_eq(tag_of(w), t_suffix_ref())
+}
+
+/// A suffix ref to byte `offset` of the suffix at word `owner`.
+pub fn make_sref(owner: i64, offset: i64) -> i64 {
+    i64_or(i64_shl(offset, i64_to_int(sref_offset_shift())), i64_or(i64_shl(owner, int_lit(3)), t_suffix_ref()))
+}
+
+/// Its owner, a bloblet.
+pub fn sref_owner(r: i64) -> i64 {
+    i64_or(i64_shl(i64_and(i64_shr(r, int_lit(3)), sref_owner_mask()), int_lit(3)), t_bloblet())
+}
+
+pub fn sref_offset(r: i64) -> i64 {
+    i64_and(i64_shr(r, i64_to_int(sref_offset_shift())), i64_minus(sref_offset_limit(), 1i64))
+}
+
 // Pairs.
 pub fn cons_x(a: i64, d: i64) -> i64 {
     let at = alloc_x(2i64);
@@ -267,6 +286,21 @@ pub fn slot_set_x(v: i64, k: i64, x: i64) -> () {
     word_set_x(i64_minus(address(v), k), x)
 }
 
+// An object `alloc` lays out (Fixpt's `obj_ref`, `obj_set`): its payload
+// in order from the header up, the trailer last, so that element `i` is
+// field `F - i`, `F` its fields with the trailer.
+pub fn obj_ref(v: i64, i: i64) -> i64 {
+    slot_of(v, i64_minus(fields_of(v), i))
+}
+
+pub fn obj_set_x(v: i64, i: i64, x: i64) -> () {
+    slot_set_x(v, i64_minus(fields_of(v), i), x)
+}
+
+pub fn obj_length(v: i64) -> i64 {
+    i64_minus(fields_of(v), 1i64)
+}
+
 // Whether field `k` may be read (Fixpt's `field_slot`): one of the
 // bloblet's, not its trailer.
 pub fn field_ok_p(v: i64, k: i64) -> bool {
@@ -327,8 +361,9 @@ pub fn string_text(v: i64) -> Str {
     text(0i64, str_lit(""))
 }
 
-// Symbols, interned: a bloblet of its name, its hash and its global slot
-// (Fixpt's), one for each name.
+// Symbols, interned: an object of its name, its hash and its global slot,
+// in `alloc`'s order (Fixpt's `intern`), one for each name. Tier 1 keeps
+// no global slots: each is 0.
 pub enum Named {
     Named(Str, i64),
 }
@@ -382,16 +417,16 @@ pub fn symbol_x(name: Str) -> i64 {
         had
     } else {
         let s = make_bloblet_x(k_symbol(), 3i64, 0i64, true, false);
-        slot_set_x(s, 2i64, make_string_x(name));
-        slot_set_x(s, 3i64, fix(int_to_i64(symbol_name_hash(string_to_symbol(name)))));
-        slot_set_x(s, 4i64, v_false());
+        obj_set_x(s, 0i64, make_string_x(name));
+        obj_set_x(s, 1i64, fix(int_to_i64(symbol_name_hash(string_to_symbol(name)))));
+        obj_set_x(s, 2i64, fix(0i64));
         set(symbols(), kayak_rt::heap_cons(named(name, s), get(symbols())));
         s
     }
 }
 
 pub fn symbol_text(s: i64) -> Str {
-    string_text(slot_of(s, 2i64))
+    string_text(obj_ref(s, 0i64))
 }
 
 // The collector: Coopt's baseline, a Cheney copy of everything live into
@@ -462,9 +497,9 @@ pub fn copied_words_x(mut from: i64, mut at: i64, mut n: i64) -> () {
     }
 }
 
-/// The word for `w` after the collection: its object's copy, copied first
-/// if need be; itself, if it is no pointer.
-pub fn forward_x(w: i64) -> i64 {
+/// The word for `w`, a pair or bloblet, after the collection: its
+/// object's copy, copied first if need be; itself, if it is no pointer.
+pub fn forward_object_x(w: i64) -> i64 {
     if is_pair_p(w) {
         let o = address(w);
         let first = word_at(o);
@@ -507,6 +542,16 @@ pub fn forward_x(w: i64) -> i64 {
         }
     } else {
         w
+    }
+}
+
+/// As `forward-object!`; a suffix ref, at its owner's copy: Coopt's
+/// heap has none, Fixpt's collector keeps the owner (`object_of`).
+pub fn forward_x(w: i64) -> i64 {
+    if is_sref_p(w) {
+        make_sref(address(forward_object_x(sref_owner(w))), sref_offset(w))
+    } else {
+        forward_object_x(w)
     }
 }
 
