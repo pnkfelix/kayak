@@ -699,7 +699,14 @@
                                                    (else nil)))
                                            (cdr (cdr xs)))))
                           (names (onto (map mangle (concat (map (lambda ((t string)) (if (string-member? t ex) nil (the strings (list t)))) (item-values its))))
-                                       (map camel (concat (map (lambda ((t string)) (if (or (string-member? t skip) (string-member? t ex)) nil (the strings (list t)))) (item-types its)))))))
+                                       (map camel (concat (map (lambda ((t string))
+                                                                   ;; An abbreviation of a module's family is no Rust
+                                                                   ;; item, expanded where applied (C89, C119).
+                                                                   (if (or (string-member? t skip) (string-member? t ex)
+                                                                           (not (null? (module-body c (string-append "%expand " t)))))
+                                                                       nil
+                                                                       (the strings (list t))))
+                                                                 (item-types its)))))))
                      (if (null? names)
                          acc
                          (put "};\n\n" (put-sep (lambda ((x string) (acc chars)) (put x acc)) ", " names

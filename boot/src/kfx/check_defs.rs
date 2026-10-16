@@ -240,11 +240,26 @@ pub fn with_effdef(v: &'static Cv, xs: Sexps) -> &'static Cv {
     }
 }
 
+/// Whether `e` selects from a module not made yet: not a shared load's,
+/// `made--load--K`, which is made before the module that loads it
+/// (C119), so that an effect selected from it is read with the module's
+/// own, and those after it may name it.
 pub fn selects_p(e: &'static Sexp) -> bool {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Lst(xs, f, l, p) => {
-            (sym_is_p(car(xs), str_lit("select")) || any_p(&selects_p, xs))
+            ((sym_is_p(car(xs), str_lit("select")) && not(null_p(cdr(xs))) && {
+                let tagcase_ = second(xs);
+                match *tagcase_ {
+                    Sexp::Sym(n, f2, p2) => {
+                        not(has_prefix_p(n, str_lit("made--load--")))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        true
+                    }
+                }
+            }) || any_p(&selects_p, xs))
         }
         _ => {
             let other = tagcase_;

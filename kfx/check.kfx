@@ -1176,17 +1176,30 @@
                          (else (parse-type v tvars (car args))))
                    (parse-arguments v tvars (cdr params) (cdr args)))))))
 
+  (select-behind (subr kfx (cv string i64) sexps)
+    (lambda (v name depth)
+      "The `(select m u)` an abbreviation with no parameters stands for,
+       through others with none (a module's `t` is its `m..t`, C119); or
+       none."
+      (let ((named (find-alias name (cv-aliases v))))
+        (if (or (null? named) (i64> depth 16))
+            nil
+            (tagcase (car named)
+              (alias (n ps body)
+                (cond ((not (null? ps)) nil)
+                      ((head-is? body "select") (the sexps (list body)))
+                      (else (tagcase body (sym (m f p) (select-behind v m (i64+ depth 1))) (else other nil))))))))))
+
   (parse-application (subr kfx (cv strings string sexps) ty)
     (lambda (v tvars name args)
       "`(name arg ...)`: a datatype with parameters, applied; or a type
        abbreviation with them, what it stands for with its arguments; or an
        abbreviation of a module's family, `(define-type t (select m u))`,
        that family applied (C89)."
-      (let ((found (find-family name (cv-dts v)))
-            (named (find-alias name (cv-aliases v))))
-        (if (and (null? found) (not (null? named))
-                 (tagcase (car named) (alias (n ps body) (and (null? ps) (head-is? body "select")))))
-            (tagcase (car named) (alias (n ps body) (parse-type v tvars (lst (cons body args) "" 0 0))))
+      (let* ((found (find-family name (cv-dts v)))
+             (behind (if (null? found) (select-behind v name 0) nil)))
+        (if (not (null? behind))
+            (parse-type v tvars (lst (cons (car behind) args) "" 0 0))
         (if (not (null? found))
             (tagcase found (dt (n ps vs) (ty-data name (parse-arguments v tvars ps args))))
             (tagcase (car (find-alias name (cv-aliases v)))

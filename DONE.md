@@ -1354,4 +1354,6 @@ Then (C119): module types' values polymorphic in a type and that may
 abort; knots through arrays, I-cells and bloblets checked as Fixpt does
 (a K1 breach closed: arrays went unchecked), a bloblet's fields generic;
 FX-26's `import`; `symbol-name-hash` and `string-hash`. Fixpt's
-`modules/import.fx` agrees. The survey: 29 of 150 files accepted.
+`modules/import.fx` agrees. Then a module's family named by a
+parameterless abbreviation and applied, and effects selected from a
+shared load: the survey, 54 of 150 files accepted.

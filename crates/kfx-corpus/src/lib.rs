@@ -173,6 +173,11 @@ pub mod lists;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/loaded-family.rs"]
+pub mod loaded_family;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/loaded-select.rs"]
 pub mod loaded_select;
 
@@ -435,6 +440,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("lets", lets::main),
     ("lifted", lifted::main),
     ("lists", lists::main),
+    ("loaded-family", loaded_family::main),
     ("loaded-select", loaded_select::main),
     ("made-allocated", made_allocated::main),
     ("made-code", made_code::main),

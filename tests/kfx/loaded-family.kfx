@@ -1,0 +1,7 @@
+"A loaded module's family, named in another by `select` and applied
+ there (C119), as Fixpt's front end names its tables' type."
+
+(define u (load-module "loads/uses-family.fx"))
+
+(define main (subr (read @globals) () string)
+  (lambda () (with u (extract (swap (made)) fst))))

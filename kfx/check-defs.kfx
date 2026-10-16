@@ -312,8 +312,15 @@
 (define-rec
   (selects? (subr kfx (sexp) bool)
     (lambda (e)
+      "Whether `e` selects from a module not made yet: not a shared load's,
+       `made--load--K`, which is made before the module that loads it
+       (C119), so that an effect selected from it is read with the module's
+       own, and those after it may name it."
       (tagcase e
-        (lst (xs f l p) (or (sym-is? (car xs) "select") (any? selects? xs)))
+        (lst (xs f l p)
+          (or (and (sym-is? (car xs) "select") (not (null? (cdr xs)))
+                   (tagcase (second xs) (sym (n f2 p2) (not (has-prefix? n "made--load--"))) (else other #t)))
+              (any? selects? xs)))
         (else other #f)))))
 
 (define declare-datatypes (subr kfx (cv sexps dts) dts)

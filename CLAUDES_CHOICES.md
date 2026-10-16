@@ -2853,4 +2853,13 @@ signatures (`check-types-sig`, `tables-sig`) first.
 - **A module's markers** (`m %toplambda`) are no names it gives: a module
   loaded twice in one had them "defined twice". The refusal now names
   the name.
-- **Measured**: 29 of 150 files accepted (from 11).
+- **Then, the same day:** an abbreviation with no parameters of a
+  module's family, inside a module (`(define-type table (select m
+  table))`, applied as `(table k v r)`), followed to the family through
+  the module's own name for it (`select-behind`), and no Rust item
+  re-exported for it (`loaded-family`); an effect a module selects from a
+  shared load read with its own, so that those after it may name it
+  (`kreads`, then `kmakes`).
+- **Measured**: 54 of 150 files accepted (from 11). Next: `wcell`,
+  `tword`, `wglobal`, the cellular machine's types that Fixpt's compilers
+  in FX-26 use (14), a question for the tiers, not a quick one.

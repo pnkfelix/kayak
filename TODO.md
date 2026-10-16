@@ -574,16 +574,16 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
 1. Module files in KFX; Fixpt's front end's 143 files surveyed again,
    to choose where stage A comes from (A: Fixpt's front end through KFX;
    B: Fixpt's compilers ported onto kayak's checker).
-   **At Fixpt `7641962` (C119)**: 29 of 150 accepted. Next, by files:
-   "a type given the wrong number of arguments" (31, from
-   `check-env-types.fx:25` and `table.fx:26`); `kreads` not found through
-   `check-subst-types.fx`'s `(define-effect kreads (select m kreads))`
-   (13); a module's effect that may abort (5); `load-input` of a file
-   that is one `lambda` (the `regcode*`, `compile*`, `eval*` files); the
-   eager reader's own states (2, expected: its continuations are
-   composable); a nested load's path joined to an absolute one (2, a
-   bug). And `call-with-oneshot-continuation` whose procedure ends in an
-   abort to its tag, as C45's form (C118).
+   **At Fixpt `7641962` (C119)**: 54 of 150 accepted. Next, by files:
+   `wcell`, `tword`, `wglobal`, the cellular machine's types Fixpt's
+   compilers in FX-26 use (14; how kayak's tiers stand to Fixpt's cells
+   decides it); `atom is made from atom` in `parser.fx`'s module order
+   (4); `table.fx`'s `table-has?`, a `v` where a list is expected (3, a
+   KFX checker gap, Fixpt accepts it); `load-input` of a file that is one
+   `lambda` (`regcode*`, `compile*`, `eval*`, `native.fx`); the eager
+   reader's own states (2, expected); a nested load's path joined to an
+   absolute one (2, a bug). And `call-with-oneshot-continuation` whose
+   procedure ends in an abort to its tag, as C45's form (C118).
 2. The layout table for KFX; the heap in Fixpt's format; tier 1.
 3. `kayak-jit`; the arm64 encoder in KFX; tier 2. **Begun (C116,
    2026-10-15)**: Fixpt's §97 operations in KFX, the code area, the

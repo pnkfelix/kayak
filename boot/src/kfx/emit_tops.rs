@@ -1196,7 +1196,7 @@ pub mod writing {
                     the::<Strings>(kayak_rt::heap_cons(t, kayak_rt::nil()))
                 }
             }), item_values(its)))), map(&camel, concat(map(lambda1s(move |t: Str| {
-                if (string_member_p(t, skip) || string_member_p(t, ex)) {
+                if (string_member_p(t, skip) || string_member_p(t, ex) || not(null_p(module_body(c, string_append(str_lit("%expand "), t))))) {
                     nil::<Str>()
                 } else {
                     the::<Strings>(kayak_rt::heap_cons(t, kayak_rt::nil()))

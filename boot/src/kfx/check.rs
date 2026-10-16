@@ -2334,26 +2334,54 @@ pub fn parse_arguments(v: &'static Cv, tvars: Strings, params: Strings, args: Se
     }
 }
 
+/// The `(select m u)` an abbreviation with no parameters stands for,
+/// through others with none (a module's `t` is its `m..t`, C119); or
+/// none.
+pub fn select_behind(mut v: &'static Cv, mut name: Str, mut depth: i64) -> Sexps {
+    loop {
+        let named = find_alias(name, cv_aliases(v));
+        if (null_p(named) || i64_gt(depth, 16i64)) {
+            return nil::<&'static Sexp>();
+        } else {
+            let tagcase_ = car(named);
+            match *tagcase_ {
+                Alias::Alias(n, ps, body) => {
+                    if not(null_p(ps)) {
+                        return nil::<&'static Sexp>();
+                    } else if head_is_p(body, str_lit("select")) {
+                        return the::<Sexps>(kayak_rt::heap_cons(body, kayak_rt::nil()));
+                    } else {
+                        let tagcase_ = body;
+                        match *tagcase_ {
+                            Sexp::Sym(m, f, p) => {
+                                (name, depth) = (m, i64_plus(depth, 1i64));
+                                continue;
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                return nil::<&'static Sexp>();
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// `(name arg ...)`: a datatype with parameters, applied; or a type
 /// abbreviation with them, what it stands for with its arguments; or an
 /// abbreviation of a module's family, `(define-type t (select m u))`,
 /// that family applied (C89).
 pub fn parse_application(v: &'static Cv, tvars: Strings, name: Str, args: Sexps) -> &'static Ty {
-    let (found, named) = (find_family(name, cv_dts(v)), find_alias(name, cv_aliases(v)));
-    if (kayak_rt::value::null_p(found) && not(null_p(named)) && {
-        let tagcase_ = car(named);
-        match *tagcase_ {
-            Alias::Alias(n, ps, body) => {
-                (null_p(ps) && head_is_p(body, str_lit("select")))
-            }
-        }
-    }) {
-        let tagcase_ = car(named);
-        match *tagcase_ {
-            Alias::Alias(n, ps, body) => {
-                parse_type(v, tvars, lst(kayak_rt::heap_cons(body, args), str_lit(""), 0i64, 0i64))
-            }
-        }
+    let found = find_family(name, cv_dts(v));
+    let behind = if kayak_rt::value::null_p(found) {
+        select_behind(v, name, 0i64)
+    } else {
+        nil::<&'static Sexp>()
+    };
+    if not(null_p(behind)) {
+        parse_type(v, tvars, lst(kayak_rt::heap_cons(car(behind), args), str_lit(""), 0i64, 0i64))
     } else {
         if not(kayak_rt::value::null_p(found)) {
             let tagcase_ = kayak_rt::value::unbox_other::<&'static Dt>(found);
