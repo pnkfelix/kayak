@@ -46,8 +46,11 @@ with ThreadPoolExecutor(8) as ex:
 ok = [f for f, (h, e) in results.items() if e is None]
 print('accepted %d of %d' % (len(ok), len(files)))
 def kind(e):
+    # Fixpt's compilers' cellular types: strategy B for them, not KFX's (C120).
+    if re.search(r'\b(wcell|tword|wglobal)\b', e):
+        return 'strategy B (C120): the cellular machine\'s wcell, tword, wglobal'
     m = re.sub(r'^kfx: ', '', e)
-    m = re.sub(r'^\S+:\d+: ', '', m)
+    m = re.sub(r'^\S+?(:\d+)?: ', '', m)
     m = re.sub(r'^in [^:]+: ', '', m)
     m = re.sub(r'`[^`]*`', '`…`', m)
     return m[:110]

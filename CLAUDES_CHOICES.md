@@ -2863,3 +2863,15 @@ signatures (`check-types-sig`, `tables-sig`) first.
 - **Measured**: 54 of 150 files accepted (from 11). Next: `wcell`,
   `tword`, `wglobal`, the cellular machine's types that Fixpt's compilers
   in FX-26 use (14), a question for the tiers, not a quick one.
+
+## C120. Fixpt's compilers in FX-26: strategy B (the user, 2026-10-16)
+
+TODO §31 step 1 asked where stage A comes from: A, Fixpt's FX-26 code
+through KFX as written; B, ported onto kayak's checker. For the files that
+use `wcell`, `tword` and `wglobal` (Fixpt's compilers in FX-26, 16 at
+`7641962`), **B** (the user: "Just switch to strategy B for them"). Those
+types are Fixpt's cellular machine's, in FX-26's grammar and standard
+environment only because Fixpt's compiler needed them; KFX does not take
+them (TODO §32: they should leave the language; not raised with Fixpt
+yet). The rest of the front end stays A as far as it goes.
+`scripts/survey-front-end.py` counts those files apart.

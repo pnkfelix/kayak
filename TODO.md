@@ -574,15 +574,17 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
 1. Module files in KFX; Fixpt's front end's 143 files surveyed again,
    to choose where stage A comes from (A: Fixpt's front end through KFX;
    B: Fixpt's compilers ported onto kayak's checker).
-   **At Fixpt `7641962` (C119)**: 54 of 150 accepted. Next, by files:
-   `wcell`, `tword`, `wglobal`, the cellular machine's types Fixpt's
-   compilers in FX-26 use (14; how kayak's tiers stand to Fixpt's cells
-   decides it); `atom is made from atom` in `parser.fx`'s module order
+   **At Fixpt `7641962` (C119)**: 54 of 150 accepted. Fixpt's compilers
+   in FX-26, which use `wcell`, `tword`, `wglobal` (16 files), are
+   strategy B (the user, 2026-10-16; C120): ported onto kayak's checker,
+   not taken through KFX. Next, by files: `atom is made from atom` in `parser.fx`'s module order
    (4); `table.fx`'s `table-has?`, a `v` where a list is expected (3, a
    KFX checker gap, Fixpt accepts it); `load-input` of a file that is one
    `lambda` (`regcode*`, `compile*`, `eval*`, `native.fx`); the eager
    reader's own states (2, expected); a nested load's path joined to an
-   absolute one (2, a bug). And `call-with-oneshot-continuation` whose
+   absolute one (2, a bug); **kfx overflows its stack** loading
+   `check-holds-types.fx` and `check-modules-types.fx` (2, a bug: it
+   should refuse or accept, never crash). And `call-with-oneshot-continuation` whose
    procedure ends in an abort to its tag, as C45's form (C118).
 2. The layout table for KFX; the heap in Fixpt's format; tier 1.
 3. `kayak-jit`; the arm64 encoder in KFX; tier 2. **Begun (C116,
@@ -606,3 +608,16 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
      a procedure native code gives back.
 4. Tiers 4, 5, 6; then 3.
 5. Twobit's passes; the compiler compiled into its own heap.
+
+## 32. `wcell`, `tword`, `wglobal` out of FX-26 (the user, 2026-10-16; C120)
+
+Fixpt's grammar has them as base types beside `int` and `string`, and its
+checker makes them at its start (`check.rs`, "Cellular code, for the
+compiler written in FX-26"), with standard constants (`wcell-unit`,
+`wcell-global`, `wcell-sum`, ...): handles on Fixpt's cellular machine,
+added with its compiler in FX-26 (`61369385`, 2026-09-26). They belong to
+an implementation, not the language: they should leave FX-26 proper, as
+a built-in module, say, as native code's operations came with `(io
+native)`. **Not raised with Fixpt yet** (the user: not to bother them
+about it for now). Until then KFX refuses them, which K1 allows.
+
