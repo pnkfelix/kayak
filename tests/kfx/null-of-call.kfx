@@ -1,0 +1,18 @@
+"`null?` of a call whose result is a union of `nil` and a pair that is no
+ list (C119), as Fixpt's `table-has?` writes it."
+
+(define-type (entry (k type) (v type)) (union nil (pairof k v acyclic)))
+
+(define find (subr (read @globals) ((listof i64 acyclic) i64) (entry i64 string))
+  (lambda (xs n)
+    (cond ((null? xs) nil)
+          ((i64= (car xs) n) (the (entry i64 string) (cons n "found")))
+          (else (find (cdr xs) n)))))
+
+(define has? (subr (read @globals) ((listof i64 acyclic) i64) bool)
+  (lambda (xs n) (not (null? (find xs n)))))
+
+(define main (subr (read @globals) () string)
+  (lambda ()
+    (string-append (if (has? (list 1 2 3) 2) "yes" "no")
+      (string-append " " (if (has? (list 1 2 3) 5) "yes" "no")))))

@@ -2866,6 +2866,15 @@ signatures (`check-types-sig`, `tables-sig`) first.
   family's instance; writing `t` out met the select, whose `t` it wrote
   out again, without end. A `select`'s parts are names, not types, and
   are left as they are. Test: `loaded-bloblet-family` (overflows before).
+- **`null?` of a call** whose declared result is a union, a pair or
+  `nil` (Fixpt's `table-has?`), as of a local of one (`null-of-call`).
+  And a top-level family whose body is a union is expanded where applied,
+  with no Rust alias: `pub type Entry<K, V> = Value;` left its
+  parameters unused, which rustc refuses (E0091).
+- **The functor files looked at, not taken on** (the user: "don't go
+  crazy"; TODO §31 step 1): 62 files, each applied once in
+  `conductor.fx`; expandable statically, but their bodies meet every
+  place KFX's checker is more cautious than Fixpt's.
 - **Measured**: 54 of 150 files accepted (from 11); 56 after the fix. Next: `wcell`,
   `tword`, `wglobal`, the cellular machine's types that Fixpt's compilers
   in FX-26 use (14), a question for the tiers, not a quick one.

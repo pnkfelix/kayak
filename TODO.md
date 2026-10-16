@@ -578,9 +578,19 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    in FX-26, which use `wcell`, `tword`, `wglobal` (16 files), are
    strategy B (the user, 2026-10-16; C120): ported onto kayak's checker,
    not taken through KFX. Next, by files: `atom is made from atom` in `parser.fx`'s module order
-   (4); `table.fx`'s `table-has?`, a `v` where a list is expected (3, a
-   KFX checker gap, Fixpt accepts it); `load-input` of a file that is one
-   `lambda` (`regcode*`, `compile*`, `eval*`, `native.fx`); the eager
+   (4); `table.fx` (3, now at `rehash-array`: KFX's `spin` for a call of
+   a procedure over a type variable, C25, more cautious than FX-26's;
+   TODO §30's kind); **the functor files** (62, looked at 2026-10-16,
+   not taken on): each a `let*` of loads around a `lambda` taking modules
+   by signature and giving a module that includes them, applied once each
+   in `conductor.fx`'s one `let*`. KFX could expand each application
+   statically (known modules, applied once), as C117 does a file's
+   regions; a hand-made probe of `check-types.fx` so stopped first in
+   `table.fx`. The cost is less the form than what follows it: the
+   bodies are Fixpt's checker, and every place KFX's checker is more
+   cautious than Fixpt's (TODO §30) stops one. Strategy B is the likelier
+   road for much of it (the user: "strategy B is inevitable in some
+   cases"); the eager
    reader's own states (2, expected); a nested load's path joined to an
    absolute one (2, a bug). (kfx's stack overflow on
    `check-holds-types.fx` and `check-modules-types.fx`: fixed, C119; 56

@@ -308,9 +308,12 @@
                     ((head-is? form "define-type")
                      "A family abbreviation: its regions Rust lifetimes (C39), as a
                       generative type's are not. One whose body applies a module's family
-                      is expanded where applied, as that family is (C89)."
+                      is expanded where applied, as that family is (C89); so is one
+                      whose body is a union, a `Value` in Rust, which an alias could not
+                      give its parameters (C119: Fixpt's `entry`)."
                      (ctx ds ts ks ls xs fs (note-family (second (items form)) #f ms) es
-                          (onto (if (head-is? (car (items (third (items form)))) "select")
+                          (onto (if (or (head-is? (car (items (third (items form)))) "select")
+                                        (head-is? (third (items form)) "union"))
                                     (the typeds (list (typed (string-append "%expand " (type-head-name (second (items form)))) (sym "" "" 0))))
                                     nil)
                                 (cons (typed (string-append "%abbreviation " (type-head-name (second (items form)))) (lst (list (second (items form)) (third (items form))) "" 0 0)) mods))))

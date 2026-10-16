@@ -615,8 +615,10 @@ pub mod emitter {
                 } else if head_is_p(form, str_lit("define-type")) {
                     // A family abbreviation: its regions Rust lifetimes (C39), as a
                     // generative type's are not. One whose body applies a module's family
-                    // is expanded where applied, as that family is (C89).
-                    ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms), es, onto(if head_is_p(car(items(third(items(form)))), str_lit("select")) {
+                    // is expanded where applied, as that family is (C89); so is one
+                    // whose body is a union, a `Value` in Rust, which an alias could not
+                    // give its parameters (C119: Fixpt's `entry`).
+                    ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms), es, onto(if (head_is_p(car(items(third(items(form)))), str_lit("select")) || head_is_p(third(items(form)), str_lit("union"))) {
                         the::<Typeds>(kayak_rt::heap_cons(typed(string_append(str_lit("%expand "), type_head_name(second(items(form)))), sym(str_lit(""), str_lit(""), 0i64)), kayak_rt::nil()))
                     } else {
                         nil::<&'static Typed>()

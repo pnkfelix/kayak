@@ -2894,6 +2894,21 @@
                               (and (not (null? b))
                                    (tagcase (car b) (bind (n2 sc w) (tagcase sc (scheme (tv t)
                                      (string-member? (shape-of (walk s t)) (list "union" "pair" "nil")))))))))
+                          (lst (ys f l p)
+                            "Or a call of a global whose result is declared so (C119:
+                             Fixpt's `table-has?`, `(null? (table-entry t key))`)."
+                            (and (not (null? ys))
+                                 (tagcase (car ys)
+                                   (sym (n f2 p2)
+                                     (let ((b (find-bind n (cv-binds v))))
+                                       (and (not (null? b))
+                                            (tagcase (car b) (bind (n2 sc w)
+                                              (and (not (string=? w "prim"))
+                                                   (tagcase sc (scheme (tv t)
+                                                     (tagcase t
+                                                       (ty-proc (es ps r) (string-member? (shape-of (walk s r)) (list "union" "pair" "nil")))
+                                                       (else other #f))))))))))
+                                   (else other #f))))
                           (else other #f)))
                    "FX-26's `null?` and `pair?` of any value (C68): of a local of a
                     union, a pair or `nil`, which KFX's, of a list, would not take."

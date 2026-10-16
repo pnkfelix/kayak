@@ -273,6 +273,11 @@ pub mod names;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/null-of-call.rs"]
+pub mod null_of_call;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/open-types.rs"]
 pub mod open_types;
 
@@ -465,6 +470,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("monitors", monitors::main),
     ("mutable", mutable::main),
     ("names", names::main),
+    ("null-of-call", null_of_call::main),
     ("open-types", open_types::main),
     ("places", places::main),
     ("places-mutual", places_mutual::main),

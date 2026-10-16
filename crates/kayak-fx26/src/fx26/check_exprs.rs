@@ -6358,6 +6358,46 @@ pub mod expressions {
                             }
                         })
                     }
+                    Sexp::Lst(ys, f, l, p) => {
+                        // Or a call of a global whose result is declared so (C119:
+                        // Fixpt's `table-has?`, `(null? (table-entry t key))`).
+                        (not(null_p(ys)) && {
+                            let tagcase_ = car(ys);
+                            match *tagcase_ {
+                                Sexp::Sym(n, f2, p2) => {
+                                    let b = find_bind(n, cv_binds(v));
+                                    (not(null_p(b)) && {
+                                        let tagcase_ = car(b);
+                                        match *tagcase_ {
+                                            Bind::Bind(n2, sc, w) => {
+                                                (not(string_eq_p(w, str_lit("prim"))) && {
+                                                    let tagcase_ = sc;
+                                                    match *tagcase_ {
+                                                        Scheme::Scheme(tv, t) => {
+                                                            let tagcase_ = t;
+                                                            match *tagcase_ {
+                                                                Ty::TyProc(es, ps, r) => {
+                                                                    string_member_p(shape_of(walk(s, r)), kayak_rt::heap_cons(str_lit("union"), kayak_rt::heap_cons(str_lit("pair"), kayak_rt::heap_cons(str_lit("nil"), kayak_rt::nil()))))
+                                                                }
+                                                                _ => {
+                                                                    let other = tagcase_;
+                                                                    false
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                })
+                                            }
+                                        }
+                                    })
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
+                        })
+                    }
                     _ => {
                         let other = tagcase_;
                         false
