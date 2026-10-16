@@ -50,7 +50,7 @@
                          (begin
                            (write-err (string-append "collections: " (string-append (i64->string (get collections))
                                         (string-append ", words copied: " (string-append (i64->string (get words-copied))
-                                          (string-append ", machine entries: " (string-append (i64->string (get hand-entries)) "\n")))))))
+                                          (string-append ", machine entries: " (string-append (i64->string (get hand-entries)) (string-append "\n" (given-shown 0 "")))))))))
                            #u)
                          #u)))
             (tagcase r

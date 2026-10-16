@@ -218,15 +218,18 @@
     "`x13` the one below the top, `x14` the top; both fixnums, else give back."
     (begin (need! 2) (ldur! x13 x-dsp -16) (ldur! x14 x-dsp -8) (orr! x15 x13 x14) (tstl! x15 3) (give-if! c-ne))))
 
-(define closure-in! (->* (int) unit)
-  (lambda (r)
+(define kind-in! (->* (int i64) unit)
+  (lambda (r kind)
     "`x11` the heap's address of the value in `r` plus 4; given back unless
-     it is a cellular closure: its trailer says how far back its header is,
-     the header its kind (Fixpt's `is_closure`)."
+     it is a bloblet with a trailer whose header says `kind` (Fixpt's
+     `is_closure`)."
     (begin
       (andl! x13 r 3) (cmpi! x13 4) (give-if! c-ne)
       (add! x11 x-mem r) (ldur! x15 x11 -12) (andl! x13 x15 3) (cmpi! x13 5) (give-if! c-ne)
-      (sub! x14 x11 x15) (ldur! x14 x14 -7) (ubfx! x14 x14 3 8) (cmpi! x14 (i64->int k-closure)) (give-if! c-ne))))
+      (sub! x14 x11 x15) (ldur! x14 x14 -7) (ubfx! x14 x14 3 8) (cmpi! x14 (i64->int kind)) (give-if! c-ne))))
+
+(define closure-in! (->* (int) unit)
+  (lambda (r) "`kind-in!`, of a cellular closure." (kind-in! r k-closure)))
 
 (define called! (->* (bool) unit)
   (lambda (tail)
@@ -293,14 +296,32 @@
       (ldr! x14 x-st (at-st st-mem-length)) (cmp! x15 x14) (give-if! c-hi)
       (lsl! x16 x13 3) (add! x16 x-mem x16))))
 
-(define consed! (->* () unit)
-  (lambda ()
-    "`cons`: the pair at the heap's top, as tier 1's `cons!` makes it."
+(define consed! (->* (bool) unit)
+  (lambda (region)
+    "`cons`, or `%region-cons` (its region below the two, and dropped):
+     the pair at the heap's top, as tier 1's `cons!` makes it."
     (begin
-      (need! 2) (allocating! 2 31)
+      (if region (begin (addi! x13 x-dsb 24) (cmp! x-dsp x13) (give-if! c-lo)) (need! 2))
+      (allocating! 2 31)
       (ldur! x14 x-dsp -16) (ldur! x15 x-dsp -8) (stp! x14 x15 x16 0)
       (addi! x15 x13 2) (str! x15 x-st (at-st st-top))
+      (if region (subi! x-dsp x-dsp 8) #u)
       (lsl! x14 x13 3) (addi! x14 x14 1) (put-top! x14))))
+
+(define primed! (->* () unit)
+  (lambda ()
+    "`prim P COUNT`: those primitives the machine has, else given back.
+     `P`'s op is above its 16 bits of arity (prims.kfx's `prim-op`); the
+     count has been checked against the arity when it is the arity's one."
+    (let ((region-cons (label!)))
+      (begin
+        (ldr-post! x13 x-ip -8) (ldr-post! x17 x-ip -8)
+        (lsr! x14 x13 19)
+        (cmpi! x14 (i64->int o-region-cons)) (bc! c-eq region-cons)
+        (b! (get l-give))
+        (bind! region-cons)
+        (cmpi! x17 24) (give-if! c-ne)
+        (consed! #t)))))
 
 (define closed! (->* () unit)
   (lambda ()
@@ -326,6 +347,25 @@
         (lsr! x14 x17 3) (add! x14 x14 x13) (addi! x14 x14 3) (str! x14 x-st (at-st st-top))
         (sub! x14 x11 x-mem) (addi! x14 x14 4) (str-post! x14 x-dsp 8)
         (next!)))))
+
+(define word-entered! (->* () unit)
+  (lambda ()
+    "The word in `x9`, a cell, entered as tier 1's `enter!` does, if its
+     entry is `docol`."
+    (begin
+      (andl! x13 x-w 3) (cmpi! x13 4) (give-if! c-ne)
+      (add! x11 x-mem x-w)
+      (ldur! x10 x11 (- -4 (* 8 (i64->int f-entry))))
+      (movz! x13 (* 8 (i64->int r-docol))) (cmp! x10 x13) (give-if! c-ne)
+      (limits!)
+      (andl! x13 x-cur 3) (cmpi! x13 4) (give-if! c-ne)
+      (ldr! x16 x-st (at-st st-rs-end)) (cmp! x-rsp x16) (give-if! c-hs)
+      (add! x13 x-mem x-cur) (subi! x13 x13 4) (sub! x13 x13 x-ip)
+      (sub! x14 x-fp x-dsb)
+      (stp! x-cur x13 x-rsp 0) (stp! x14 x-clo x-rsp 16) (addi! x-rsp x-rsp 32)
+      (mov! x-cur x-w)
+      (subi! x-ip x11 (+ 4 (* 8 (i64->int f-cell0))))
+      (next!))))
 
 (define entered! (->* (int) unit)
   (lambda (n)
@@ -394,7 +434,19 @@
          (need! 1) (ldr-post! x13 x-ip -8) (ldur! x10 x-dsp -8)
          (andl! x14 x10 3) (cmpi! x14 4) (give-if! c-ne) (add! x11 x-mem x10)
          (field-read!) (stur! x16 x-dsp -8) (next!)))
-      ((= n (i64->int r-cons)) (consed!))
+      ((= n (i64->int r-global-set))
+       (begin
+         (need! 1) (ldr-post! x13 x-ip -8) (add! x14 x-mem x13)
+         (ldur! x15 x-dsp -8) (stur! x15 x14 (- -4 (* 8 (i64->int f-value))))
+         (ldur! x16 x14 (- -4 (* 8 (i64->int f-writes)))) (addi! x16 x16 8) (stur! x16 x14 (- -4 (* 8 (i64->int f-writes))))
+         (subi! x-dsp x-dsp 8) (next!)))
+      ((= n (i64->int r-field-ref))
+       (begin
+         (need! 2) (ldur! x13 x-dsp -8) (tstl! x13 3) (give-if! c-ne)
+         (ldur! x10 x-dsp -16) (andl! x14 x10 3) (cmpi! x14 4) (give-if! c-ne) (add! x11 x-mem x10)
+         (field-read!) (put-top! x16)))
+      ((= n (i64->int r-cons)) (consed! #f))
+      ((= n (i64->int r-prim)) (primed!))
       ((= n (i64->int r-closure)) (closed!))
       ((= n (i64->int r-exit))
        (begin (ldr! x16 x-st (at-st st-rsb)) (cmp! x-rsp x16) (give-if! c-eq) (b! (get l-pop-return))))
@@ -488,21 +540,8 @@
         (adr! x16 table)
         (add! x16 x16 x10)
         (br! x16)
-        ;; A word, entered as tier 1's `enter!` does, if its entry is `docol`.
         (bind! word)
-        (andl! x13 x-w 3) (cmpi! x13 4) (give-if! c-ne)
-        (add! x11 x-mem x-w)
-        (ldur! x10 x11 (- -4 (* 8 (i64->int f-entry))))
-        (movz! x13 (* 8 (i64->int r-docol))) (cmp! x10 x13) (give-if! c-ne)
-        (limits!)
-        (andl! x13 x-cur 3) (cmpi! x13 4) (give-if! c-ne)
-        (ldr! x16 x-st (at-st st-rs-end)) (cmp! x-rsp x16) (give-if! c-hs)
-        (add! x13 x-mem x-cur) (subi! x13 x13 4) (sub! x13 x13 x-ip)
-        (sub! x14 x-fp x-dsb)
-        (stp! x-cur x13 x-rsp 0) (stp! x14 x-clo x-rsp 16) (addi! x-rsp x-rsp 32)
-        (mov! x-cur x-w)
-        (subi! x-ip x11 (+ 4 (* 8 (i64->int f-cell0))))
-        (next!)
+        (word-entered!)
         ;; Giving back: the step's fuel returned, if it was spent.
         (bind! (get l-give))
         (addi! x-fuel x-fuel 1)

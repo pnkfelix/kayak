@@ -97,7 +97,7 @@ pub fn cells_main() -> Int {
         let u3 = set(hand_on(), string_member_p(str_lit("--hand"), r#as));
         let r = run_word_x(w, option_of(cdr(r#as), str_lit("--step-limit"), default_steps()));
         let u2 = if string_member_p(str_lit("--gc-stats"), r#as) {
-            write_err(string_append(str_lit("collections: "), string_append(i64_to_string(get(collections())), string_append(str_lit(", words copied: "), string_append(i64_to_string(get(words_copied())), string_append(str_lit(", machine entries: "), string_append(i64_to_string(get(hand_entries())), str_lit("\n"))))))));
+            write_err(string_append(str_lit("collections: "), string_append(i64_to_string(get(collections())), string_append(str_lit(", words copied: "), string_append(i64_to_string(get(words_copied())), string_append(str_lit(", machine entries: "), string_append(i64_to_string(get(hand_entries())), string_append(str_lit("\n"), given_shown(0i64, str_lit(""))))))))));
             ()
         } else {
             ()

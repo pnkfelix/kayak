@@ -978,9 +978,9 @@ pub fn two_fixnums_x() -> () {
 }
 
 /// `x11` the heap's address of the value in `r` plus 4; given back unless
-/// it is a cellular closure: its trailer says how far back its header is,
-/// the header its kind (Fixpt's `is_closure`).
-pub fn closure_in_x(r: Int) -> () {
+/// it is a bloblet with a trailer whose header says `kind` (Fixpt's
+/// `is_closure`).
+pub fn kind_in_x(r: Int, kind: i64) -> () {
     andl_x(x13(), r, int_lit(3));
     cmpi_x(x13(), int_lit(4));
     give_if_x(c_ne());
@@ -992,8 +992,13 @@ pub fn closure_in_x(r: Int) -> () {
     sub_x(x14(), x11(), x15());
     ldur_x(x14(), x14(), int_lit(-7));
     ubfx_x(x14(), x14(), int_lit(3), int_lit(8));
-    cmpi_x(x14(), i64_to_int(k_closure()));
+    cmpi_x(x14(), i64_to_int(kind));
     give_if_x(c_ne())
+}
+
+/// `kind-in!`, of a cellular closure.
+pub fn closure_in_x(r: Int) -> () {
+    kind_in_x(r, k_closure())
 }
 
 /// A call of the closure on top with the `count` values below it (tier
@@ -1098,18 +1103,47 @@ pub fn allocating_x(words: Int, count8: Int) -> () {
     add_x(x16(), x_mem(), x16())
 }
 
-/// `cons`: the pair at the heap's top, as tier 1's `cons!` makes it.
-pub fn consed_x() -> () {
-    need_x(int_lit(2));
+/// `cons`, or `%region-cons` (its region below the two, and dropped):
+/// the pair at the heap's top, as tier 1's `cons!` makes it.
+pub fn consed_x(region: bool) -> () {
+    if region {
+        addi_x(x13(), x_dsb(), int_lit(24));
+        cmp_x(x_dsp(), x13());
+        give_if_x(c_lo())
+    } else {
+        need_x(int_lit(2))
+    };
     allocating_x(int_lit(2), int_lit(31));
     ldur_x(x14(), x_dsp(), int_lit(-16));
     ldur_x(x15(), x_dsp(), int_lit(-8));
     stp_x(x14(), x15(), x16(), int_lit(0));
     addi_x(x15(), x13(), int_lit(2));
     str_x(x15(), x_st(), at_st(st_top()));
+    if region {
+        subi_x(x_dsp(), x_dsp(), int_lit(8))
+    } else {
+        ()
+    };
     lsl_x(x14(), x13(), int_lit(3));
     addi_x(x14(), x14(), int_lit(1));
     put_top_x(x14())
+}
+
+/// `prim P COUNT`: those primitives the machine has, else given back.
+/// `P`'s op is above its 16 bits of arity (prims.kfx's `prim-op`); the
+/// count has been checked against the arity when it is the arity's one.
+pub fn primed_x() -> () {
+    let region_cons = label_x();
+    ldr_post_x(x13(), x_ip(), int_lit(-8));
+    ldr_post_x(x17(), x_ip(), int_lit(-8));
+    lsr_x(x14(), x13(), int_lit(19));
+    cmpi_x(x14(), i64_to_int(o_region_cons()));
+    bc_x(c_eq(), region_cons);
+    b_x(get(l_give()));
+    bind_x(region_cons);
+    cmpi_x(x17(), int_lit(24));
+    give_if_x(c_ne());
+    consed_x(true)
 }
 
 /// `closure W COUNT`: a cellular closure of word `W` over the `COUNT`
@@ -1152,6 +1186,36 @@ pub fn closed_x() -> () {
     sub_x(x14(), x11(), x_mem());
     addi_x(x14(), x14(), int_lit(4));
     str_post_x(x14(), x_dsp(), int_lit(8));
+    next_x()
+}
+
+/// The word in `x9`, a cell, entered as tier 1's `enter!` does, if its
+/// entry is `docol`.
+pub fn word_entered_x() -> () {
+    andl_x(x13(), x_w(), int_lit(3));
+    cmpi_x(x13(), int_lit(4));
+    give_if_x(c_ne());
+    add_x(x11(), x_mem(), x_w());
+    ldur_x(x10(), x11(), _minus(int_lit(-4), _star(int_lit(8), i64_to_int(f_entry()))));
+    movz_x(x13(), _star(int_lit(8), i64_to_int(r_docol())));
+    cmp_x(x10(), x13());
+    give_if_x(c_ne());
+    limits_x();
+    andl_x(x13(), x_cur(), int_lit(3));
+    cmpi_x(x13(), int_lit(4));
+    give_if_x(c_ne());
+    ldr_x(x16(), x_st(), at_st(st_rs_end()));
+    cmp_x(x_rsp(), x16());
+    give_if_x(c_hs());
+    add_x(x13(), x_mem(), x_cur());
+    subi_x(x13(), x13(), int_lit(4));
+    sub_x(x13(), x13(), x_ip());
+    sub_x(x14(), x_fp(), x_dsb());
+    stp_x(x_cur(), x13(), x_rsp(), int_lit(0));
+    stp_x(x14(), x_clo(), x_rsp(), int_lit(16));
+    addi_x(x_rsp(), x_rsp(), int_lit(32));
+    mov_x(x_cur(), x_w());
+    subi_x(x_ip(), x11(), _plus(int_lit(4), _star(int_lit(8), i64_to_int(f_cell0()))));
     next_x()
 }
 
@@ -1303,8 +1367,33 @@ pub fn entered_x(n: Int) -> () {
         field_read_x();
         stur_x(x16(), x_dsp(), int_lit(-8));
         next_x()
+    } else if _eq(n, i64_to_int(r_global_set())) {
+        need_x(int_lit(1));
+        ldr_post_x(x13(), x_ip(), int_lit(-8));
+        add_x(x14(), x_mem(), x13());
+        ldur_x(x15(), x_dsp(), int_lit(-8));
+        stur_x(x15(), x14(), _minus(int_lit(-4), _star(int_lit(8), i64_to_int(f_value()))));
+        ldur_x(x16(), x14(), _minus(int_lit(-4), _star(int_lit(8), i64_to_int(f_writes()))));
+        addi_x(x16(), x16(), int_lit(8));
+        stur_x(x16(), x14(), _minus(int_lit(-4), _star(int_lit(8), i64_to_int(f_writes()))));
+        subi_x(x_dsp(), x_dsp(), int_lit(8));
+        next_x()
+    } else if _eq(n, i64_to_int(r_field_ref())) {
+        need_x(int_lit(2));
+        ldur_x(x13(), x_dsp(), int_lit(-8));
+        tstl_x(x13(), int_lit(3));
+        give_if_x(c_ne());
+        ldur_x(x10(), x_dsp(), int_lit(-16));
+        andl_x(x14(), x10(), int_lit(3));
+        cmpi_x(x14(), int_lit(4));
+        give_if_x(c_ne());
+        add_x(x11(), x_mem(), x10());
+        field_read_x();
+        put_top_x(x16())
     } else if _eq(n, i64_to_int(r_cons())) {
-        consed_x()
+        consed_x(false)
+    } else if _eq(n, i64_to_int(r_prim())) {
+        primed_x()
     } else if _eq(n, i64_to_int(r_closure())) {
         closed_x()
     } else if _eq(n, i64_to_int(r_exit())) {
@@ -1473,31 +1562,7 @@ pub fn machine_x() -> () {
     add_x(x16(), x16(), x10());
     br_x(x16());
     bind_x(word);
-    andl_x(x13(), x_w(), int_lit(3));
-    cmpi_x(x13(), int_lit(4));
-    give_if_x(c_ne());
-    add_x(x11(), x_mem(), x_w());
-    ldur_x(x10(), x11(), _minus(int_lit(-4), _star(int_lit(8), i64_to_int(f_entry()))));
-    movz_x(x13(), _star(int_lit(8), i64_to_int(r_docol())));
-    cmp_x(x10(), x13());
-    give_if_x(c_ne());
-    limits_x();
-    andl_x(x13(), x_cur(), int_lit(3));
-    cmpi_x(x13(), int_lit(4));
-    give_if_x(c_ne());
-    ldr_x(x16(), x_st(), at_st(st_rs_end()));
-    cmp_x(x_rsp(), x16());
-    give_if_x(c_hs());
-    add_x(x13(), x_mem(), x_cur());
-    subi_x(x13(), x13(), int_lit(4));
-    sub_x(x13(), x13(), x_ip());
-    sub_x(x14(), x_fp(), x_dsb());
-    stp_x(x_cur(), x13(), x_rsp(), int_lit(0));
-    stp_x(x14(), x_clo(), x_rsp(), int_lit(16));
-    addi_x(x_rsp(), x_rsp(), int_lit(32));
-    mov_x(x_cur(), x_w());
-    subi_x(x_ip(), x11(), _plus(int_lit(4), _star(int_lit(8), i64_to_int(f_cell0()))));
-    next_x();
+    word_entered_x();
     bind_x(get(l_give()));
     addi_x(x_fuel(), x_fuel(), int_lit(1));
     bind_x(get(l_give_pre()));

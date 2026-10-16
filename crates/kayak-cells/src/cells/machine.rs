@@ -1229,6 +1229,58 @@ pub fn hand_entries() -> Ref<i64> {
     })
 }
 
+// What the machine gave back, counted for `--gc-stats`: a routine at its
+// number, a word at 63, a `prim` at 64 plus its op.
+pub fn given_size() -> i64 {
+    2048i64
+}
+
+pub fn hand_given() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(given_size(), 0i64))
+    })
+}
+
+pub fn given_x() -> () {
+    let cell = slot_of(get(cur()), get(kk()));
+    let i = if not(is_fixnum_p(cell)) {
+        the::<i64>(63i64)
+    } else if i64_eq(fix_val(cell), r_prim()) {
+        i64_plus(64i64, prim_op(fix_val(slot_of(get(cur()), i64_plus(get(kk()), 1i64)))))
+    } else {
+        fix_val(cell)
+    };
+    if i64_lt(i, given_size()) {
+        flatarray_set_i64_x(get(hand_given()), i, i64_plus(flatarray_ref_i64(get(hand_given()), i), 1i64))
+    } else {
+        ()
+    }
+}
+
+/// Each kind given back, with its count.
+pub fn given_shown(mut i: i64, mut acc: Str) -> Str {
+    loop {
+        if i64_gt_eq(i, given_size()) {
+            return acc;
+        } else {
+            let n = flatarray_ref_i64(get(hand_given()), i);
+            (i, acc) = (i64_plus(i, 1i64), if i64_eq(n, 0i64) {
+                acc
+            } else {
+                string_append(acc, string_append(str_lit("  "), string_append(if i64_lt(i, 63i64) {
+                    routine_name(i)
+                } else if i64_eq(i, 63i64) {
+                    str_lit("a word")
+                } else {
+                    pdef_of(prims(), i64_minus(i, 64i64))
+                }, string_append(str_lit(" "), string_append(i64_to_string(n), str_lit("\n"))))))
+            });
+            continue;
+        }
+    }
+}
+
 /// The machine run from tier 1's registers until it gives a cell back:
 /// whether it did (else it stopped the run, which it traps).
 pub fn hand_x(m: HandCode) -> bool {
@@ -1262,6 +1314,7 @@ pub fn hand_x(m: HandCode) -> bool {
     set(fuel(), flatarray_ref_i64(s, int_to_i64(st_fuel())));
     set(top(), flatarray_ref_i64(s, int_to_i64(st_top())));
     if i64_eq(why, gave_back()) {
+        given_x();
         true
     } else {
         trap_x(str_lit("tier 2: the return stack ran out under its marks (C126)"));

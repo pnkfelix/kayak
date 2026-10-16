@@ -633,10 +633,12 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    control routines (**done**: 23 routines, 326 agree, `--hand`), (3) the
    rest, by how often programs give back: ~~calls (`call`, `tailcall`,
    `tcall`, `ttailcall`), `free`, `field`~~, ~~allocation (`cons`,
-   `closure`)~~ (C126); `prim` next: the primitive KFX's, reached without
-   leaving the machine (kayak-jit's `foreign`), or the hottest in machine
-   code (`%region-cons`); then prompts, marks, continuations, `execute`,
-   `rest`, `global!`, `field@`, `field!`. **Begun (C116,
+   `closure`)~~, ~~`prim`'s `%region-cons`, `global!`, `field@`~~ (C126): every
+   routine Fixpt's hand machine has in arm64 but `halt` (once a run) and
+   `execute` (no listing of Fixpt's programs has it). Given back still, as Fixpt's calls out for them: the other
+   primitives, prompts, marks, continuations, `rest`, `field!`; each
+   moved when a program gives it back often (`--gc-stats`). Then tier 3,
+   stencils. **Begun (C116,
    2026-10-15)**: Fixpt's §97 operations in KFX, the code area, the
    trampoline, `tests/kfx/made-code.kfx`. Next, toward Fixpt's
    `made-code/frames.fx` and `generated.fx` on kayak:

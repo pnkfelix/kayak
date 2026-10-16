@@ -657,6 +657,36 @@
 (define hand-state (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 st-size 0)))
 (define hand-entries (ref i64 @c) (new 0))
 
+"What the machine gave back, counted for `--gc-stats`: a routine at its
+ number, a word at 63, a `prim` at 64 plus its op."
+(define given-size i64 2048)
+(define hand-given (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 given-size 0)))
+
+(define given! (subr cm () unit)
+  (lambda ()
+    (let* ((cell (slot-of (get cur) (get kk)))
+           (i (cond ((not (is-fixnum? cell)) (the i64 63))
+                    ((i64= (fix-val cell) r-prim) (i64+ 64 (prim-op (fix-val (slot-of (get cur) (i64+ (get kk) 1))))))
+                    (else (fix-val cell)))))
+      (if (i64< i given-size)
+          (flatarray-set-i64! (get hand-given) i (i64+ (flatarray-ref-i64 (get hand-given) i) 1))
+          #u))))
+
+(define-rec
+  (given-shown (subr cm (i64 string) string)
+    (lambda (i acc)
+      "Each kind given back, with its count."
+      (if (i64>= i given-size)
+          acc
+          (let ((n (flatarray-ref-i64 (get hand-given) i)))
+            (given-shown (i64+ i 1)
+              (if (i64= n 0)
+                  acc
+                  (string-append acc
+                    (string-append "  "
+                      (string-append (cond ((i64< i 63) (routine-name i)) ((i64= i 63) "a word") (else (pdef-of prims (i64- i 64))))
+                        (string-append " " (string-append (i64->string n) "\n"))))))))))))
+
 (define hand! (subr cm (hand-code) bool)
   (lambda (m)
     "The machine run from tier 1's registers until it gives a cell back:
@@ -684,7 +714,7 @@
             (set fuel (flatarray-ref-i64 s (int->i64 st-fuel)))
             (set top (flatarray-ref-i64 s (int->i64 st-top)))
             (if (i64= why gave-back)
-                #t
+                (begin (given!) #t)
                 (begin (trap! "tier 2: the return stack ran out under its marks (C126)") #f))))))))
 
 (define-rec

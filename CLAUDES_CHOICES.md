@@ -3251,3 +3251,18 @@ discrepancy needs them.
   0.48, 0.02; `helpers` 2.56, 0.12; `lists-region` 1.38, 0.25; `lists`
   1.22, 0.06; `loop` 2.15, 0.11; `tak` 0.21, 0.01. What is given back
   most now is `prim` (`lists-region`'s region primitives, three million).
+- **`prim`, `global!`, `field@`, `execute` (2026-10-16).** What is
+  given back, counted (`--gc-stats` now lists it by routine, and a
+  `prim` by its primitive), past the slices' ends: `lists-region`'s
+  `%region-cons`, three million; `captures`' `prompt`, `abort`,
+  `callcomp`, `resume`, twenty thousand each; collections. So `prim`
+  has machine code for `%region-cons` (the rest given back), and
+  `lists-region` takes 0.07 s on tier 2 (0.25 before). Fixpt's own hand
+  machine calls out to Rust for `prim`, `cons`, `closure` and every
+  control routine (`CONTROL_CALLOUTS`: prompts, marks, continuations),
+  as tier 2 gives them back; it has in arm64 three routines tier 2 did
+  not: `global!` (its count of writes kept) and `field@` (`field-read!`,
+  as `field`), now added; and `execute`, which no listing of Fixpt's
+  programs has, so it is left given back until one does (untested code
+  in the machine would be code that agrees by luck).
+  Continuations stay with tier 1 until a program needs them faster.
