@@ -167,13 +167,33 @@ pub fn push_return_x() -> () {
     }
 }
 
+// A prompt's entry on the return stack, `(PROMPT-MARK tag handler
+// height)`, and a mark's, `(MARK-MARK key value 0)`, just above the entry
+// its body returns to (Fixpt's).
+pub fn prompt_mark() -> i64 {
+    v_default()
+}
+
+pub fn mark_mark() -> i64 {
+    v_unspecified()
+}
+
+/// Return to the entry on top; a prompt's or a mark's on the way is left
+/// behind, as its body is returning through it.
 pub fn pop_return_x() -> () {
-    let n = get(rsp());
-    set(clo(), rs_at(i64_minus(n, 1i64)));
-    set(fp(), fix_val(rs_at(i64_minus(n, 2i64))));
-    set(kk(), fix_val(rs_at(i64_minus(n, 3i64))));
-    set(cur(), rs_at(i64_minus(n, 4i64)));
-    set(rsp(), i64_minus(n, 4i64))
+    loop {
+        let n = get(rsp());
+        if (i64_eq(rs_at(i64_minus(n, 4i64)), prompt_mark()) || i64_eq(rs_at(i64_minus(n, 4i64)), mark_mark())) {
+            set(rsp(), i64_minus(n, 4i64));
+            continue;
+        } else {
+            set(clo(), rs_at(i64_minus(n, 1i64)));
+            set(fp(), fix_val(rs_at(i64_minus(n, 2i64))));
+            set(kk(), fix_val(rs_at(i64_minus(n, 3i64))));
+            set(cur(), rs_at(i64_minus(n, 4i64)));
+            return set(rsp(), i64_minus(n, 4i64));
+        }
+    }
 }
 
 pub fn check_limits_x() -> () {
@@ -254,6 +274,272 @@ pub fn halt_flow() -> i64 {
     2i64
 }
 
+// Continuations (Fixpt's `continuation`, `reinstate`): a bloblet of the
+// stacks' values and return entries taken, as two vectors, the registers,
+// the data stack's height they were taken from, whether it is everything,
+// and how many times it may be resumed; given to a program as a closure
+// over the word `slot 0; free 0; resume`.
+pub fn cont_ds() -> i64 {
+    2i64
+}
+
+pub fn cont_rs() -> i64 {
+    3i64
+}
+
+pub fn cont_cur() -> i64 {
+    4i64
+}
+
+pub fn cont_k() -> i64 {
+    5i64
+}
+
+pub fn cont_fp() -> i64 {
+    6i64
+}
+
+pub fn cont_clo() -> i64 {
+    7i64
+}
+
+pub fn cont_base() -> i64 {
+    8i64
+}
+
+pub fn cont_whole() -> i64 {
+    9i64
+}
+
+pub fn cont_regions() -> i64 {
+    10i64
+}
+
+pub fn cont_run() -> i64 {
+    11i64
+}
+
+pub fn cont_inner() -> i64 {
+    12i64
+}
+
+pub fn cont_shots() -> i64 {
+    13i64
+}
+
+// Shots: many, once, spent.
+pub fn shots_many() -> i64 {
+    0i64
+}
+
+pub fn shots_once() -> i64 {
+    1i64
+}
+
+pub fn shots_spent() -> i64 {
+    2i64
+}
+
+/// A vector of `a`'s words from `from` up to `to`: a bloblet of them, each
+/// a field from 2 up, under a trailer.
+pub fn vector_from_x(a: FlatArray<i64>, from: i64, to: i64) -> i64 {
+    let v = make_bloblet_x(k_vector(), i64_minus(to, from), 0i64, true, false);
+    let fill__knot = knot::<&'static dyn Fn(i64) -> ()>();
+    let fill = lambda1(move |mut i: i64| {
+        loop {
+            if i64_gt_eq(i, to) {
+                return ();
+            } else {
+                slot_set_x(v, i64_plus(2i64, i64_minus(i, from)), flatarray_ref_i64(a, i));
+                i = i64_plus(i, 1i64);
+                continue;
+            }
+        }
+    });
+    fill__knot.set(fill);
+    fill(from);
+    v
+}
+
+pub fn vector_length(v: i64) -> i64 {
+    i64_minus(fields_of(v), 1i64)
+}
+
+pub fn vector_ref(v: i64, i: i64) -> i64 {
+    slot_of(v, i64_plus(2i64, i))
+}
+
+pub fn capture_x(rs_from: i64, ds_from: i64, whole: bool) -> i64 {
+    let d = vector_from_x(get(ds()), ds_from, get(dsp()));
+    let r = vector_from_x(get(rs()), rs_from, get(rsp()));
+    let k = make_bloblet_x(k_continuation(), 12i64, 0i64, true, false);
+    slot_set_x(k, cont_ds(), d);
+    slot_set_x(k, cont_rs(), r);
+    slot_set_x(k, cont_cur(), get(cur()));
+    slot_set_x(k, cont_k(), fix(get(kk())));
+    slot_set_x(k, cont_fp(), fix(get(fp())));
+    slot_set_x(k, cont_clo(), get(clo()));
+    slot_set_x(k, cont_base(), fix(ds_from));
+    slot_set_x(k, cont_whole(), boolean(whole));
+    slot_set_x(k, cont_regions(), fix(0i64));
+    slot_set_x(k, cont_run(), fix(0i64));
+    slot_set_x(k, cont_inner(), v_false());
+    slot_set_x(k, cont_shots(), fix(shots_many()));
+    k
+}
+
+/// `k` as a closure, so that everything callable is one.
+pub fn continuation_closure_x(k: i64) -> i64 {
+    let (w, c) = (make_word_x(str_lit("continuation"), 5i64, r_docol()), make_bloblet_x(k_closure(), 2i64, 0i64, true, false));
+    slot_set_x(w, f_cell0(), fix(r_slot()));
+    slot_set_x(w, i64_plus(f_cell0(), 1i64), fix(0i64));
+    slot_set_x(w, i64_plus(f_cell0(), 2i64), fix(r_free()));
+    slot_set_x(w, i64_plus(f_cell0(), 3i64), fix(0i64));
+    slot_set_x(w, i64_plus(f_cell0(), 4i64), fix(r_resume()));
+    slot_set_x(c, f_word(), w);
+    slot_set_x(c, f_free0(), k);
+    c
+}
+
+/// The continuation `v` is, or stands for as such a closure; or 0.
+pub fn continuation_of(v: i64) -> i64 {
+    if is_kind_p(v, k_continuation()) {
+        v
+    } else if (is_kind_p(v, k_closure()) && i64_eq(fields_of(v), f_free0()) && is_kind_p(slot_of(v, f_free0()), k_continuation()) && string_eq_p(symbol_text(slot_of(slot_of(v, f_word()), f_name())), str_lit("continuation"))) {
+        slot_of(v, f_free0())
+    } else {
+        0i64
+    }
+}
+
+pub fn prompt_height(w: i64) -> i64 {
+    i64_and(fix_val(w), 4294967295i64)
+}
+
+pub fn prompt_word(h: i64) -> i64 {
+    fix(i64_and(h, 4294967295i64))
+}
+
+/// Where the innermost entry below `i` marked `sentinel` for `key`
+/// starts, or -1.
+pub fn find_marked(mut i: i64, mut sentinel: i64, mut key: i64) -> i64 {
+    loop {
+        if i64_lt(i, 4i64) {
+            return -1i64;
+        } else if (i64_eq(rs_at(i64_minus(i, 4i64)), sentinel) && i64_eq(rs_at(i64_minus(i, 3i64)), key)) {
+            return i64_minus(i, 4i64);
+        } else {
+            i = i64_minus(i, 4i64);
+            continue;
+        }
+    }
+}
+
+/// Marks for `key` in `rs`'s entries below `i`, innermost first.
+pub fn marks_of_stack(mut i: i64, mut key: i64) -> List<i64> {
+    loop {
+        if i64_lt(i, 4i64) {
+            return nil::<i64>();
+        } else if (i64_eq(rs_at(i64_minus(i, 4i64)), mark_mark()) && i64_eq(rs_at(i64_minus(i, 3i64)), key)) {
+            return kayak_rt::heap_cons(rs_at(i64_minus(i, 2i64)), marks_of_stack(i64_minus(i, 4i64), key));
+        } else {
+            i = i64_minus(i, 4i64);
+            continue;
+        }
+    }
+}
+
+/// Marks for `key` in a continuation's return entries below entry `i`,
+/// innermost first.
+pub fn marks_of_vector(mut v: i64, mut i: i64, mut key: i64) -> List<i64> {
+    loop {
+        if i64_lt(i, 4i64) {
+            return nil::<i64>();
+        } else if (i64_eq(vector_ref(v, i64_minus(i, 4i64)), mark_mark()) && i64_eq(vector_ref(v, i64_minus(i, 3i64)), key)) {
+            return kayak_rt::heap_cons(vector_ref(v, i64_minus(i, 2i64)), marks_of_vector(v, i64_minus(i, 4i64), key));
+        } else {
+            i = i64_minus(i, 4i64);
+            continue;
+        }
+    }
+}
+
+pub fn pushed_from_vector_x(mut v: i64, mut i: i64) -> () {
+    loop {
+        if i64_gt_eq(i, vector_length(v)) {
+            return ();
+        } else {
+            push_x(vector_ref(v, i));
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+/// A continuation's return entries back on the return stack, frames and
+/// prompts' heights moved by `delta`.
+pub fn entries_reinstated_x(mut v: i64, mut i: i64, mut delta: i64) -> () {
+    loop {
+        if i64_gt_eq(i, vector_length(v)) {
+            return ();
+        } else {
+            let (e0, e1, e2, e3) = (vector_ref(v, i), vector_ref(v, i64_plus(i, 1i64)), vector_ref(v, i64_plus(i, 2i64)), vector_ref(v, i64_plus(i, 3i64)));
+            rs_push_x(e0);
+            rs_push_x(e1);
+            rs_push_x(if (i64_eq(e0, prompt_mark()) || i64_eq(e0, mark_mark())) {
+                e2
+            } else {
+                fix(i64_plus(fix_val(e2), delta))
+            });
+            rs_push_x(if i64_eq(e0, prompt_mark()) {
+                prompt_word(i64_plus(prompt_height(e3), delta))
+            } else {
+                e3
+            });
+            i = i64_plus(i, 4i64);
+            continue;
+        }
+    }
+}
+
+/// Give continuation `k` the value `v`: a delimited one composed on top
+/// of these stacks, returning here (or, from a tail call, to this
+/// frame's caller); a whole one replacing them.
+pub fn reinstate_x(k: i64, v: i64, tail: bool) -> () {
+    let (whole, old_base) = (i64_eq(slot_of(k, cont_whole()), v_true()), fix_val(slot_of(k, cont_base())));
+    if whole {
+        set(dsp(), 0i64);
+        set(rsp(), 0i64)
+    } else if tail {
+        set(dsp(), get(fp()))
+    } else {
+        push_return_x()
+    };
+    let delta = i64_minus(get(dsp()), old_base);
+    pushed_from_vector_x(slot_of(k, cont_ds()), 0i64);
+    entries_reinstated_x(slot_of(k, cont_rs()), 0i64, delta);
+    set(cur(), slot_of(k, cont_cur()));
+    set(kk(), fix_val(slot_of(k, cont_k())));
+    set(fp(), i64_plus(fix_val(slot_of(k, cont_fp())), delta));
+    set(clo(), slot_of(k, cont_clo()));
+    push_x(v)
+}
+
+/// Whether `k` may be given a value: not if it is one-shot and was; a
+/// one-shot one spent.
+pub fn spend_x(k: i64) -> bool {
+    let s = fix_val(slot_of(k, cont_shots()));
+    if i64_eq(s, shots_spent()) {
+        trap_x(str_lit("a one-shot continuation resumed twice"));
+        false
+    } else if i64_eq(s, shots_once()) {
+        slot_set_x(k, cont_shots(), fix(shots_spent()));
+        true
+    } else {
+        true
+    }
+}
+
 /// Call the closure on top with the `count` values below it, which become
 /// its frame; in tail position, its frame slid down over this one.
 pub fn call_x(n: i64, count: i64, tail: bool) -> i64 {
@@ -262,7 +548,21 @@ pub fn call_x(n: i64, count: i64, tail: bool) -> i64 {
         next()
     } else {
         let c = pop_x(n);
-        if not(closure_p(c)) {
+        if is_kind_p(c, k_continuation()) {
+            if not(i64_eq(count, 1i64)) {
+                trap_x(string_append(str_lit("a continuation takes one value, and was given "), i64_to_string(count)));
+                next()
+            } else {
+                let v = pop_x(n);
+                check_limits_x();
+                if spend_x(c) {
+                    reinstate_x(c, v, tail)
+                } else {
+                    ()
+                };
+                next()
+            }
+        } else if not(closure_p(c)) {
             type_trap_x(n);
             next()
         } else {
@@ -353,6 +653,25 @@ pub fn fix_op_x(n: i64) -> i64 {
         }
     };
     next()
+}
+
+/// Run closure `thunk` with no arguments above a marker entry `(m0 m1 m2
+/// m3)`: its frame, the marker, and where to resume after.
+pub fn enter_above_x(n: i64, thunk: i64, m0: i64, m1: i64, m2: i64, m3: i64) -> () {
+    if not(closure_p(thunk)) {
+        type_trap_x(n)
+    } else {
+        check_limits_x();
+        push_return_x();
+        rs_push_x(m0);
+        rs_push_x(m1);
+        rs_push_x(m2);
+        rs_push_x(m3);
+        set(cur(), slot_of(thunk, f_word()));
+        set(kk(), f_cell0());
+        set(fp(), get(dsp()));
+        set(clo(), thunk)
+    }
 }
 
 /// Routine `n`, its operands the cells after it: what to do next.
@@ -586,6 +905,133 @@ pub fn routine_x(mut n: i64) -> i64 {
                 push_x(ds_at(i64_minus(get(dsp()), 2i64)))
             };
             return next();
+        } else if (i64_eq(n, r_prompt()) || i64_eq(n, r_withmark())) {
+            let thunk = pop_x(n);
+            let b = pop_x(n);
+            let a = pop_x(n);
+            enter_above_x(n, thunk, if i64_eq(n, r_prompt()) {
+                prompt_mark()
+            } else {
+                mark_mark()
+            }, a, b, if i64_eq(n, r_prompt()) {
+                prompt_word(get(dsp()))
+            } else {
+                fix(0i64)
+            });
+            return next();
+        } else if i64_eq(n, r_withmark_tail()) {
+            let thunk = pop_x(n);
+            let v = pop_x(n);
+            let key = pop_x(n);
+            if not(closure_p(thunk)) {
+                type_trap_x(n);
+                return next();
+            } else {
+                let top = get(rsp());
+                check_limits_x();
+                set(dsp(), get(fp()));
+                if (i64_gt_eq(top, 4i64) && i64_eq(rs_at(i64_minus(top, 4i64)), mark_mark()) && i64_eq(rs_at(i64_minus(top, 3i64)), key)) {
+                    flatarray_set_i64_x(get(rs()), i64_minus(top, 2i64), v)
+                } else {
+                    rs_push_x(mark_mark());
+                    rs_push_x(key);
+                    rs_push_x(v);
+                    rs_push_x(fix(0i64))
+                };
+                set(cur(), slot_of(thunk, f_word()));
+                set(kk(), f_cell0());
+                set(fp(), get(dsp()));
+                set(clo(), thunk);
+                return next();
+            }
+        } else if i64_eq(n, r_abort()) {
+            let v = pop_x(n);
+            let tag = pop_x(n);
+            let at = find_marked(get(rsp()), prompt_mark(), tag);
+            if i64_lt(at, 0i64) {
+                trap_x(str_lit("abort: no prompt for this tag"));
+                return next();
+            } else {
+                let (handler, height) = (rs_at(i64_plus(at, 2i64)), prompt_height(rs_at(i64_plus(at, 3i64))));
+                set(rsp(), at);
+                pop_return_x();
+                set(dsp(), height);
+                push_x(v);
+                push_x(handler);
+                return call_x(n, 1i64, false);
+            }
+        } else if (i64_eq(n, r_callcomp()) || i64_eq(n, r_callone()) || i64_eq(n, r_callcc())) {
+            let tag = if i64_eq(n, r_callcc()) {
+                v_false()
+            } else {
+                pop_x(n)
+            };
+            let proc = pop_x(n);
+            let at = if i64_eq(n, r_callcc()) {
+                the::<i64>(-1i64)
+            } else {
+                find_marked(get(rsp()), prompt_mark(), tag)
+            };
+            if (i64_lt(at, 0i64) && not(i64_eq(n, r_callcc()))) {
+                trap_x(str_lit("call-with-composable-continuation: no prompt for this tag"));
+                return next();
+            } else {
+                push_x(proc);
+                safepoint_x();
+                let proc = pop_x(n);
+                let k = if i64_lt(at, 0i64) {
+                    capture_x(0i64, 0i64, true)
+                } else {
+                    capture_x(i64_plus(at, 4i64), prompt_height(rs_at(i64_plus(at, 3i64))), false)
+                };
+                if i64_eq(n, r_callone()) {
+                    slot_set_x(k, cont_shots(), fix(shots_once()))
+                } else {
+                    ()
+                };
+                push_x(continuation_closure_x(k));
+                push_x(proc);
+                return call_x(n, 1i64, false);
+            }
+        } else if i64_eq(n, r_resume()) {
+            let k = pop_x(n);
+            let v = pop_x(n);
+            if not(is_kind_p(k, k_continuation())) {
+                type_trap_x(n);
+                return next();
+            } else {
+                check_limits_x();
+                if spend_x(k) {
+                    reinstate_x(k, v, true)
+                } else {
+                    ()
+                };
+                return next();
+            }
+        } else if i64_eq(n, r_firstmark()) {
+            let default = pop_x(n);
+            let key = pop_x(n);
+            let at = find_marked(get(rsp()), mark_mark(), key);
+            push_x(if i64_lt(at, 0i64) {
+                default
+            } else {
+                rs_at(i64_plus(at, 2i64))
+            });
+            return next();
+        } else if i64_eq(n, r_currentmarks()) {
+            let key = pop_x(n);
+            push_x(list_of(marks_of_stack(get(rsp()), key)));
+            return next();
+        } else if i64_eq(n, r_marksof()) {
+            let key = pop_x(n);
+            let k = continuation_of(pop_x(n));
+            if i64_eq(k, 0i64) {
+                type_trap_x(n);
+                return next();
+            } else {
+                push_x(list_of(marks_of_vector(slot_of(k, cont_rs()), vector_length(slot_of(k, cont_rs())), key)));
+                return next();
+            }
         } else if i64_eq(n, r_halt()) {
             return halt_flow();
         } else if i64_eq(n, r_undefined()) {

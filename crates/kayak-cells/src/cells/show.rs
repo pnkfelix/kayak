@@ -180,6 +180,8 @@ pub fn written(v: i64) -> Str {
         string_append(str_lit("\""), string_append(escaped(string_text(v), 0i64, str_lit("")), str_lit("\"")))
     } else if is_kind_p(v, k_symbol()) {
         symbol_text(v)
+    } else if (is_kind_p(v, k_continuation()) || (is_kind_p(v, k_closure()) && i64_eq(fields_of(v), f_free0()) && is_kind_p(slot_of(v, f_free0()), k_continuation()))) {
+        str_lit("#<continuation>")
     } else if is_kind_p(v, k_box()) {
         string_append(str_lit("#<box "), string_append(written(slot_of(v, 2i64)), str_lit(">")))
     } else if is_kind_p(v, k_sum()) {

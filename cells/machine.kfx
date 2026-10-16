@@ -60,15 +60,26 @@
         (trap! "stack overflow")
         (begin (rs-push! (get cur)) (rs-push! (fix (get kk))) (rs-push! (fix (get fp))) (rs-push! (get clo))))))
 
-(define pop-return! (subr cm () unit)
-  (lambda ()
-    (let ((n (get rsp)))
-      (begin
-        (set clo (rs-at (i64- n 1)))
-        (set fp (fix-val (rs-at (i64- n 2))))
-        (set kk (fix-val (rs-at (i64- n 3))))
-        (set cur (rs-at (i64- n 4)))
-        (set rsp (i64- n 4))))))
+"A prompt's entry on the return stack, `(PROMPT-MARK tag handler
+ height)`, and a mark's, `(MARK-MARK key value 0)`, just above the entry
+ its body returns to (Fixpt's)."
+(define prompt-mark i64 v-default)
+(define mark-mark i64 v-unspecified)
+
+(define-rec
+  (pop-return! (subr cm () unit)
+    (lambda ()
+      "Return to the entry on top; a prompt's or a mark's on the way is left
+       behind, as its body is returning through it."
+      (let ((n (get rsp)))
+        (if (or (i64= (rs-at (i64- n 4)) prompt-mark) (i64= (rs-at (i64- n 4)) mark-mark))
+            (begin (set rsp (i64- n 4)) (pop-return!))
+            (begin
+              (set clo (rs-at (i64- n 1)))
+              (set fp (fix-val (rs-at (i64- n 2))))
+              (set kk (fix-val (rs-at (i64- n 3))))
+              (set cur (rs-at (i64- n 4)))
+              (set rsp (i64- n 4))))))))
 
 (define check-limits! (subr cm () unit)
   (lambda ()
@@ -117,6 +128,157 @@
 (define exit-flow i64 1)
 (define halt-flow i64 2)
 
+"Continuations (Fixpt's `continuation`, `reinstate`): a bloblet of the
+ stacks' values and return entries taken, as two vectors, the registers,
+ the data stack's height they were taken from, whether it is everything,
+ and how many times it may be resumed; given to a program as a closure
+ over the word `slot 0; free 0; resume`."
+(define cont-ds i64 2)
+(define cont-rs i64 3)
+(define cont-cur i64 4)
+(define cont-k i64 5)
+(define cont-fp i64 6)
+(define cont-clo i64 7)
+(define cont-base i64 8)
+(define cont-whole i64 9)
+(define cont-regions i64 10)
+(define cont-run i64 11)
+(define cont-inner i64 12)
+(define cont-shots i64 13)
+"Shots: many, once, spent."
+(define shots-many i64 0)
+(define shots-once i64 1)
+(define shots-spent i64 2)
+
+(define vector-from! (subr cm ((flatarrayof i64 @c) i64 i64) i64)
+  (lambda (a from to)
+    "A vector of `a`'s words from `from` up to `to`: a bloblet of them, each
+     a field from 2 up, under a trailer."
+    (let ((v (make-bloblet! k-vector (i64- to from) 0 #t #f)))
+      (letrec ((fill (subr cm (i64) unit)
+                 (lambda (i) (if (i64>= i to) #u (begin (slot-set! v (i64+ 2 (i64- i from)) (flatarray-ref-i64 a i)) (fill (i64+ i 1)))))))
+        (begin (fill from) v)))))
+
+(define vector-length (subr cm (i64) i64) (lambda (v) (i64- (fields-of v) 1)))
+(define vector-ref (subr cm (i64 i64) i64) (lambda (v i) (slot-of v (i64+ 2 i))))
+
+(define capture! (subr cm (i64 i64 bool) i64)
+  (lambda (rs-from ds-from whole)
+    (let* ((d (vector-from! (get ds) ds-from (get dsp)))
+           (r (vector-from! (get rs) rs-from (get rsp)))
+           (k (make-bloblet! k-continuation 12 0 #t #f)))
+      (begin
+        (slot-set! k cont-ds d) (slot-set! k cont-rs r)
+        (slot-set! k cont-cur (get cur)) (slot-set! k cont-k (fix (get kk)))
+        (slot-set! k cont-fp (fix (get fp))) (slot-set! k cont-clo (get clo))
+        (slot-set! k cont-base (fix ds-from)) (slot-set! k cont-whole (boolean whole))
+        (slot-set! k cont-regions (fix 0)) (slot-set! k cont-run (fix 0))
+        (slot-set! k cont-inner v-false) (slot-set! k cont-shots (fix shots-many))
+        k))))
+
+(define continuation-closure! (subr cm (i64) i64)
+  (lambda (k)
+    "`k` as a closure, so that everything callable is one."
+    (let ((w (make-word! "continuation" 5 r-docol))
+          (c (make-bloblet! k-closure 2 0 #t #f)))
+      (begin
+        (slot-set! w f-cell0 (fix r-slot)) (slot-set! w (i64+ f-cell0 1) (fix 0))
+        (slot-set! w (i64+ f-cell0 2) (fix r-free)) (slot-set! w (i64+ f-cell0 3) (fix 0))
+        (slot-set! w (i64+ f-cell0 4) (fix r-resume))
+        (slot-set! c f-word w)
+        (slot-set! c f-free0 k)
+        c))))
+
+(define continuation-of (subr cm (i64) i64)
+  (lambda (v)
+    "The continuation `v` is, or stands for as such a closure; or 0."
+    (cond ((is-kind? v k-continuation) v)
+          ((and (is-kind? v k-closure) (i64= (fields-of v) f-free0)
+                (is-kind? (slot-of v f-free0) k-continuation)
+                (string=? (symbol-text (slot-of (slot-of v f-word) f-name)) "continuation"))
+           (slot-of v f-free0))
+          (else 0))))
+
+(define prompt-height (subr kfx (i64) i64) (lambda (w) (i64-and (fix-val w) 4294967295)))
+(define prompt-word (subr kfx (i64) i64) (lambda (h) (fix (i64-and h 4294967295))))
+
+(define-rec
+  (find-marked (subr cm (i64 i64 i64) i64)
+    (lambda (i sentinel key)
+      "Where the innermost entry below `i` marked `sentinel` for `key`
+       starts, or -1."
+      (cond ((i64< i 4) -1)
+            ((and (i64= (rs-at (i64- i 4)) sentinel) (i64= (rs-at (i64- i 3)) key)) (i64- i 4))
+            (else (find-marked (i64- i 4) sentinel key))))))
+
+(define-rec
+  (marks-of-stack (subr cm (i64 i64) (listof i64 @c))
+    (lambda (i key)
+      "Marks for `key` in `rs`'s entries below `i`, innermost first."
+      (cond ((i64< i 4) nil)
+            ((and (i64= (rs-at (i64- i 4)) mark-mark) (i64= (rs-at (i64- i 3)) key))
+             (cons (rs-at (i64- i 2)) (marks-of-stack (i64- i 4) key)))
+            (else (marks-of-stack (i64- i 4) key))))))
+
+(define-rec
+  (marks-of-vector (subr cm (i64 i64 i64) (listof i64 @c))
+    (lambda (v i key)
+      "Marks for `key` in a continuation's return entries below entry `i`,
+       innermost first."
+      (cond ((i64< i 4) nil)
+            ((and (i64= (vector-ref v (i64- i 4)) mark-mark) (i64= (vector-ref v (i64- i 3)) key))
+             (cons (vector-ref v (i64- i 2)) (marks-of-vector v (i64- i 4) key)))
+            (else (marks-of-vector v (i64- i 4) key))))))
+
+(define-rec
+  (pushed-from-vector! (subr cm (i64 i64) unit)
+    (lambda (v i) (if (i64>= i (vector-length v)) #u (begin (push! (vector-ref v i)) (pushed-from-vector! v (i64+ i 1)))))))
+
+(define-rec
+  (entries-reinstated! (subr cm (i64 i64 i64) unit)
+    (lambda (v i delta)
+      "A continuation's return entries back on the return stack, frames and
+       prompts' heights moved by `delta`."
+      (if (i64>= i (vector-length v))
+          #u
+          (let ((e0 (vector-ref v i)) (e1 (vector-ref v (i64+ i 1))) (e2 (vector-ref v (i64+ i 2))) (e3 (vector-ref v (i64+ i 3))))
+            (begin
+              (rs-push! e0)
+              (rs-push! e1)
+              (rs-push! (if (or (i64= e0 prompt-mark) (i64= e0 mark-mark)) e2 (fix (i64+ (fix-val e2) delta))))
+              (rs-push! (if (i64= e0 prompt-mark) (prompt-word (i64+ (prompt-height e3) delta)) e3))
+              (entries-reinstated! v (i64+ i 4) delta)))))))
+
+(define reinstate! (subr cm (i64 i64 bool) unit)
+  (lambda (k v tail)
+    "Give continuation `k` the value `v`: a delimited one composed on top
+     of these stacks, returning here (or, from a tail call, to this
+     frame's caller); a whole one replacing them."
+    (let ((whole (i64= (slot-of k cont-whole) v-true))
+          (old-base (fix-val (slot-of k cont-base))))
+      (begin
+        (cond (whole (begin (set dsp 0) (set rsp 0)))
+              (tail (set dsp (get fp)))
+              (else (push-return!)))
+        (let ((delta (i64- (get dsp) old-base)))
+          (begin
+            (pushed-from-vector! (slot-of k cont-ds) 0)
+            (entries-reinstated! (slot-of k cont-rs) 0 delta)
+            (set cur (slot-of k cont-cur))
+            (set kk (fix-val (slot-of k cont-k)))
+            (set fp (i64+ (fix-val (slot-of k cont-fp)) delta))
+            (set clo (slot-of k cont-clo))
+            (push! v)))))))
+
+(define spend! (subr cm (i64) bool)
+  (lambda (k)
+    "Whether `k` may be given a value: not if it is one-shot and was; a
+     one-shot one spent."
+    (let ((s (fix-val (slot-of k cont-shots))))
+      (cond ((i64= s shots-spent) (begin (trap! "a one-shot continuation resumed twice") #f))
+            ((i64= s shots-once) (begin (slot-set! k cont-shots (fix shots-spent)) #t))
+            (else #t)))))
+
 (define call! (subr cm (i64 i64 bool) i64)
   (lambda (n count tail)
     "Call the closure on top with the `count` values below it, which become
@@ -124,8 +286,15 @@
     (if (i64< (get dsp) (i64+ (get fp) (i64+ count 1)))
         (begin (underflow-trap! n) next)
         (let ((c (pop! n)))
-          (if (not (closure? c))
-              (begin (type-trap! n) next)
+          (cond
+            ((is-kind? c k-continuation)
+             (if (not (i64= count 1))
+                 (begin (trap! (string-append "a continuation takes one value, and was given " (i64->string count))) next)
+                 (let ((v (pop! n)))
+                   (begin (check-limits!) (if (spend! c) (reinstate! c v tail) #u) next))))
+            ((not (closure? c))
+              (begin (type-trap! n) next))
+            (else
               (begin
                 (check-limits!)
                 (if tail
@@ -140,7 +309,7 @@
                 (set cur (slot-of c f-word))
                 (set kk f-cell0)
                 (set clo c)
-                next))))))
+                next)))))))
 
 (define-rec
   (args-of (subr cm (i64 i64 (listof i64 @c)) (listof i64 @c))
@@ -169,6 +338,18 @@
               (else (let ((r (if (i64= n r-add) (i64+ x y) (i64- x y))))
                       (if (fits? r) (push! (fix r)) (overflow-trap! n)))))
         next))))
+
+(define enter-above! (subr cm (i64 i64 i64 i64 i64 i64) unit)
+  (lambda (n thunk m0 m1 m2 m3)
+    "Run closure `thunk` with no arguments above a marker entry `(m0 m1 m2
+     m3)`: its frame, the marker, and where to resume after."
+    (if (not (closure? thunk))
+        (type-trap! n)
+        (begin
+          (check-limits!)
+          (push-return!)
+          (rs-push! m0) (rs-push! m1) (rs-push! m2) (rs-push! m3)
+          (set cur (slot-of thunk f-word)) (set kk f-cell0) (set fp (get dsp)) (set clo thunk)))))
 
 (define-rec
   (routine! (subr cm (i64) i64)
@@ -296,6 +477,72 @@
          (let* ((b (pop! n)) (a (pop! n))) (begin (push! b) (push! a) next)))
         ((i64= n r-over)
          (begin (if (i64< (get dsp) 2) (underflow-trap! n) (push! (ds-at (i64- (get dsp) 2)))) next))
+        ((or (i64= n r-prompt) (i64= n r-withmark))
+         (let* ((thunk (pop! n)) (b (pop! n)) (a (pop! n)))
+           (begin
+             (enter-above! n thunk
+               (if (i64= n r-prompt) prompt-mark mark-mark) a b
+               (if (i64= n r-prompt) (prompt-word (get dsp)) (fix 0)))
+             next)))
+        ((i64= n r-withmark-tail)
+         (let* ((thunk (pop! n)) (v (pop! n)) (key (pop! n)))
+           (if (not (closure? thunk))
+               (begin (type-trap! n) next)
+               (let ((top (get rsp)))
+                 (begin
+                   (check-limits!)
+                   (set dsp (get fp))
+                   (if (and (i64>= top 4) (i64= (rs-at (i64- top 4)) mark-mark) (i64= (rs-at (i64- top 3)) key))
+                       (flatarray-set-i64! (get rs) (i64- top 2) v)
+                       (begin (rs-push! mark-mark) (rs-push! key) (rs-push! v) (rs-push! (fix 0))))
+                   (set cur (slot-of thunk f-word)) (set kk f-cell0) (set fp (get dsp)) (set clo thunk)
+                   next)))))
+        ((i64= n r-abort)
+         (let* ((v (pop! n)) (tag (pop! n)) (at (find-marked (get rsp) prompt-mark tag)))
+           (if (i64< at 0)
+               (begin (trap! "abort: no prompt for this tag") next)
+               (let ((handler (rs-at (i64+ at 2))) (height (prompt-height (rs-at (i64+ at 3)))))
+                 (begin
+                   (set rsp at)
+                   (pop-return!)
+                   (set dsp height)
+                   (push! v)
+                   (push! handler)
+                   (call! n 1 #f))))))
+        ((or (i64= n r-callcomp) (i64= n r-callone) (i64= n r-callcc))
+         (let* ((tag (if (i64= n r-callcc) v-false (pop! n)))
+                (proc (pop! n))
+                (at (if (i64= n r-callcc) (the i64 -1) (find-marked (get rsp) prompt-mark tag))))
+           (if (and (i64< at 0) (not (i64= n r-callcc)))
+               (begin (trap! "call-with-composable-continuation: no prompt for this tag") next)
+               (begin
+                 (push! proc)
+                 (safepoint!)
+                 (let* ((proc (pop! n))
+                        (k (if (i64< at 0)
+                               (capture! 0 0 #t)
+                               (capture! (i64+ at 4) (prompt-height (rs-at (i64+ at 3))) #f))))
+                   (begin
+                     (if (i64= n r-callone) (slot-set! k cont-shots (fix shots-once)) #u)
+                     (push! (continuation-closure! k))
+                     (push! proc)
+                     (call! n 1 #f)))))))
+        ((i64= n r-resume)
+         (let* ((k (pop! n)) (v (pop! n)))
+           (if (not (is-kind? k k-continuation))
+               (begin (type-trap! n) next)
+               (begin (check-limits!) (if (spend! k) (reinstate! k v #t) #u) next))))
+        ((i64= n r-firstmark)
+         (let* ((default (pop! n)) (key (pop! n)) (at (find-marked (get rsp) mark-mark key)))
+           (begin (push! (if (i64< at 0) default (rs-at (i64+ at 2)))) next)))
+        ((i64= n r-currentmarks)
+         (let ((key (pop! n)))
+           (begin (push! (list-of (marks-of-stack (get rsp) key))) next)))
+        ((i64= n r-marksof)
+         (let* ((key (pop! n)) (k (continuation-of (pop! n))))
+           (if (i64= k 0)
+               (begin (type-trap! n) next)
+               (begin (push! (list-of (marks-of-vector (slot-of k cont-rs) (vector-length (slot-of k cont-rs)) key))) next))))
         ((i64= n r-halt) halt-flow)
         ((i64= n r-undefined) (begin (trap! "a procedure was called before it was defined") next))
         ((or (i64< n 1) (i64>= n r-count))

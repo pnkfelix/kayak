@@ -27,6 +27,8 @@
 (define k-code i64 (int->i64 (with lay kind-cellular-code)))
 (define k-closure i64 (int->i64 (with lay kind-cellular-closure)))
 (define k-sum i64 (int->i64 (with lay kind-sum)))
+(define k-vector i64 (int->i64 (with lay kind-vector)))
+(define k-continuation i64 (int->i64 (with lay kind-cellular-continuation)))
 (define k-product i64 (int->i64 (with lay kind-product)))
 
 "A word's fields, a closure's, a global cell's."
@@ -93,6 +95,17 @@
 (define r-field i64 (int->i64 (with lay routine-field)))
 (define r-rest i64 (int->i64 (with lay routine-rest)))
 (define r-int-eq i64 (int->i64 (with lay routine-int-eq)))
+(define r-prompt i64 (int->i64 (with lay routine-prompt)))
+(define r-abort i64 (int->i64 (with lay routine-abort)))
+(define r-callcomp i64 (int->i64 (with lay routine-callcomp)))
+(define r-callcc i64 (int->i64 (with lay routine-callcc)))
+(define r-withmark i64 (int->i64 (with lay routine-withmark)))
+(define r-firstmark i64 (int->i64 (with lay routine-firstmark)))
+(define r-currentmarks i64 (int->i64 (with lay routine-currentmarks)))
+(define r-marksof i64 (int->i64 (with lay routine-marksof)))
+(define r-withmark-tail i64 (int->i64 (with lay routine-withmark-tail)))
+(define r-resume i64 (int->i64 (with lay routine-resume)))
+(define r-callone i64 (int->i64 (with lay routine-callone)))
 "How many routines there are: a word's entry at or past it is native code."
 (define r-count i64 56)
 

@@ -2987,3 +2987,15 @@ look at Coopt's collector".
   now zeroes what it gives. `cells-programs.py` runs each agreeing
   program again under stress: all 175 agree so too. `lists` collects 2,999
   times, copying 3.2 million words, in about the time it took uncollected.
+- **Prompts, marks and continuations** (the same day): Fixpt's routines
+  `prompt`, `abort`, `callcomp`, `callcc`, `callone`, `resume`,
+  `withmark`, `withmark-tail`, `firstmark`, `currentmarks`, `marksof`;
+  a continuation a bloblet of Fixpt's fields (its stacks as two vectors),
+  given as a closure over `slot 0; free 0; resume`; reinstating moves
+  frames and prompts' heights by the depth's difference; one-shot ones
+  fail a second resume with Fixpt's message. Regions, which tier 1 keeps
+  in the one heap, are no part of a prompt's word yet. Not taken: the
+  native-convention routines (51–55) and runs native code called
+  (`crossing`). A stale tag held across `callcomp`'s safepoint showed
+  only under `--gc-stress`, which is what it is for. Now 190 agree, 0
+  differ, all eight benchmarks.

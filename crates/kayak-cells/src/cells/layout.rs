@@ -783,6 +783,14 @@ pub fn k_sum() -> i64 {
     int_to_i64(lay::kind_sum())
 }
 
+pub fn k_vector() -> i64 {
+    int_to_i64(lay::kind_vector())
+}
+
+pub fn k_continuation() -> i64 {
+    int_to_i64(lay::kind_cellular_continuation())
+}
+
 pub fn k_product() -> i64 {
     int_to_i64(lay::kind_product())
 }
@@ -1021,6 +1029,50 @@ pub fn r_rest() -> i64 {
 
 pub fn r_int_eq() -> i64 {
     int_to_i64(lay::routine_int_eq())
+}
+
+pub fn r_prompt() -> i64 {
+    int_to_i64(lay::routine_prompt())
+}
+
+pub fn r_abort() -> i64 {
+    int_to_i64(lay::routine_abort())
+}
+
+pub fn r_callcomp() -> i64 {
+    int_to_i64(lay::routine_callcomp())
+}
+
+pub fn r_callcc() -> i64 {
+    int_to_i64(lay::routine_callcc())
+}
+
+pub fn r_withmark() -> i64 {
+    int_to_i64(lay::routine_withmark())
+}
+
+pub fn r_firstmark() -> i64 {
+    int_to_i64(lay::routine_firstmark())
+}
+
+pub fn r_currentmarks() -> i64 {
+    int_to_i64(lay::routine_currentmarks())
+}
+
+pub fn r_marksof() -> i64 {
+    int_to_i64(lay::routine_marksof())
+}
+
+pub fn r_withmark_tail() -> i64 {
+    int_to_i64(lay::routine_withmark_tail())
+}
+
+pub fn r_resume() -> i64 {
+    int_to_i64(lay::routine_resume())
+}
+
+pub fn r_callone() -> i64 {
+    int_to_i64(lay::routine_callone())
 }
 
 // How many routines there are: a word's entry at or past it is native code.
