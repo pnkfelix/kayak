@@ -62,6 +62,40 @@
         (trap! "stack overflow")
         (begin (rs-push! (get cur)) (rs-push! (fix (get kk))) (rs-push! (fix (get fp))) (rs-push! (get clo))))))
 
+"Register code's registers (C129): `RESULT` at 0, `REG1`…`REG8` at 1 to 8
+ (`REG0` is `clo`). Live only between instructions that cannot collect:
+ Fixpt's compiler saves what lives across a call or a call-out in the
+ frame, and a poll spills them all to the data stack."
+(define rr (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 9 0)))
+(define reg-at (subr cm (i64) i64) (lambda (k) (if (i64= k 0) (get clo) (flatarray-ref-i64 (get rr) k))))
+(define reg-set! (subr cm (i64 i64) unit) (lambda (k v) (flatarray-set-i64! (get rr) k v)))
+(define result (subr cm () i64) (lambda () (flatarray-ref-i64 (get rr) 0)))
+(define result! (subr cm (i64) unit) (lambda (v) (flatarray-set-i64! (get rr) 0 v)))
+
+"A register word's `kk` below 0: a point to resume at once something
+ else has run. `-K`: after a call or a call-out, its value on the data
+ stack, popped into `RESULT`; `-K - POLLED`: after a poll, every register
+ on it (Fixpt marks the entries a `blr` made, negating `8k`)."
+(define polled i64 1048576)
+
+(define-rec
+  (regs-cleared! (subr cm (i64) unit)
+    (lambda (k)
+      "`REGk`… to `REG8` 0: dead, and so harmless when a poll spills them
+       for the collector to see (Fixpt spills only what lives; a dead
+       register may hold what a collection since has moved)."
+      (if (i64> k register-regs) #u (begin (reg-set! k 0) (regs-cleared! (i64+ k 1)))))))
+
+(define-rec
+  (adapted! (subr cm (i64 i64 i64) unit)
+    (lambda (rw i count)
+      "A word with register code entered by a stack-code call (Fixpt's
+       adapter): the frame's values into `REG1`… from `i`, the frame
+       dropped, on in the register word, past `args`."
+      (if (i64< i count)
+          (begin (reg-set! (i64+ i 1) (ds-at (i64+ (get fp) i))) (adapted! rw (i64+ i 1) count))
+          (begin (regs-cleared! (i64+ count 1)) (result! 0) (set dsp (get fp)) (set cur rw) (set kk (i64+ f-cell0 2)))))))
+
 "A prompt's entry on the return stack, `(PROMPT-MARK tag handler
  height)`, and a mark's, `(MARK-MARK key value 0)`, just above the entry
  its body returns to (Fixpt's)."
@@ -315,6 +349,10 @@
                 (set cur (slot-of c f-word))
                 (set kk f-cell0)
                 (set clo c)
+                (let ((rw (slot-of (get cur) f-twin)))
+                  (if (and (not (i64= rw v-false)) (i64= (fix count) (slot-of rw (i64+ f-cell0 1))))
+                      (adapted! rw 0 count)
+                      #u))
                 next)))))))
 
 (define-rec
@@ -380,6 +418,41 @@
               (push! handler)
               (call! n 1 #f)))))))
 
+(define closure-made! (subr cm (i64 i64) i64)
+  (lambda (n at)
+    "`closure W COUNT`, its operands at field `at` of `cur` (read past the
+     safepoint, which may move them): a closure of `W` over the `COUNT`
+     values on top. Register code's `lambda` too (C129)."
+    (let* ((u (safepoint!)) (w (slot-of (get cur) at)) (count (fix-val (slot-of (get cur) (i64+ at 1)))))
+      (if (i64< (get dsp) (i64+ (get fp) count))
+          (begin (underflow-trap! n) next)
+          (let ((c (make-bloblet! k-closure (i64+ count 1) 0 #t #f))
+                (base (i64- (get dsp) count)))
+            (letrec ((fill (subr cm (i64) unit)
+                       (lambda (i)
+                         (if (i64>= i count)
+                             #u
+                             (begin (slot-set! c (i64+ f-free0 i) (ds-at (i64+ base i))) (fill (i64+ i 1)))))))
+              (begin
+                (slot-set! c f-word w)
+                (fill 0)
+                (set dsp base)
+                (push! c)
+                next)))))))
+
+(define prim-run! (subr cm (i64 i64 i64) i64)
+  (lambda (n p count)
+    "`prim P COUNT` on the `COUNT` values on top. Register code's `prim` too
+     (C129)."
+    (cond ((i64< (get dsp) count) (begin (underflow-trap! n) next))
+          ((or (i64< count (prim-min p)) (and (i64>= (prim-max p) 0) (i64> count (prim-max p))))
+           (begin (trap! (string-append "`" (string-append (prim-name p) (string-append "` given " (string-append (i64->string count) " argument(s)"))))) next))
+          (else
+           (let* ((u (safepoint!))
+                  (from (i64- (get dsp) count))
+                  (args (args-of from (get dsp) nil)))
+             (begin (set dsp from) (push! (prim-apply! p args)) next))))))
+
 (define-rec
   (routine! (subr cm (i64) i64)
     (lambda (n)
@@ -401,22 +474,7 @@
                (begin (underflow-trap! n) next)
                (begin (set dsp (get fp)) (push! v) exit-flow))))
         ((i64= n r-closure)
-         (let* ((u (safepoint!)) (w (operand!)) (count (fix-val (operand!))))
-           (if (i64< (get dsp) (i64+ (get fp) count))
-               (begin (underflow-trap! n) next)
-               (let ((c (make-bloblet! k-closure (i64+ count 1) 0 #t #f))
-                     (base (i64- (get dsp) count)))
-                 (letrec ((fill (subr cm (i64) unit)
-                            (lambda (i)
-                              (if (i64>= i count)
-                                  #u
-                                  (begin (slot-set! c (i64+ f-free0 i) (ds-at (i64+ base i))) (fill (i64+ i 1)))))))
-                   (begin
-                     (slot-set! c f-word w)
-                     (fill 0)
-                     (set dsp base)
-                     (push! c)
-                     next))))))
+         (let ((at (get kk))) (begin (set kk (i64+ at 2)) (closure-made! n at))))
         ((i64= n r-global-set)
          (let* ((g (operand!)) (x (pop! n)))
            (begin
@@ -442,15 +500,7 @@
                  (type-trap! n))
              next)))
         ((i64= n r-prim)
-         (let* ((p (fix-val (operand!))) (count (fix-val (operand!))))
-           (cond ((i64< (get dsp) count) (begin (underflow-trap! n) next))
-                 ((or (i64< count (prim-min p)) (and (i64>= (prim-max p) 0) (i64> count (prim-max p))))
-                  (begin (trap! (string-append "`" (string-append (prim-name p) (string-append "` given " (string-append (i64->string count) " argument(s)"))))) next))
-                 (else
-                  (let* ((u (safepoint!))
-                         (from (i64- (get dsp) count))
-                         (args (args-of from (get dsp) nil)))
-                    (begin (set dsp from) (push! (prim-apply! p args)) next))))))
+         (let* ((p (fix-val (operand!))) (count (fix-val (operand!)))) (prim-run! n p count)))
         ((i64= n r-cons)
          (if (i64< (get dsp) 2)
              (begin (underflow-trap! n) next)
@@ -591,27 +641,37 @@
 (define reach? (subr cm () bool)
   (lambda () (let ((t (sched-tag))) (and (not (i64= t v-false)) (i64>= (find-marked (get rsp) prompt-mark t) 0)))))
 
-(define poll! (subr cm () bool)
+(define poll-due! (subr cm () i64)
   (lambda ()
-    "A slice's end, between fetching a cell and running it: the next slice
-     given out of the reserve, and, if the scheduler would have another task
-     run, its `preempt` called first: the cell put back, a return to it
-     pushed, the trampoline entered with `preempt` on the data stack.
-     Whether it was (Fixpt's `poll`)."
+    "A slice's end: the next slice given out of the reserve; the
+     scheduler's `preempt`, if it would have another task run, else `#f`
+     (Fixpt's `poll`)."
     (let ((take (if (i64< (get reserve) (get slice)) (get reserve) (get slice))))
       (begin
         (set fuel take)
         (set reserve (i64- (get reserve) take))
         (let ((f (preempt-due! (reach?))))
-          (cond ((i64= f v-false) #f)
-                ((not (limits-ok?)) (begin (quiet-leave!) (take-grace!) #f))
-                (else
-                 (begin
-                   (set kk (i64- (get kk) 1))
-                   (push-return!)
-                   (set cur (st s-trampoline)) (set kk f-cell0) (set fp (get dsp)) (set clo v-false)
-                   (push! f)
-                   #t))))))))
+          (cond ((i64= f v-false) v-false)
+                ((not (limits-ok?)) (begin (quiet-leave!) (take-grace!) v-false))
+                (else f)))))))
+
+(define preempt-entered! (subr cm (i64) unit)
+  (lambda (f)
+    "A return to here pushed, the trampoline entered with `f`, `preempt`,
+     on the data stack."
+    (begin
+      (push-return!)
+      (set cur (st s-trampoline)) (set kk f-cell0) (set fp (get dsp)) (set clo v-false)
+      (push! f))))
+
+(define poll! (subr cm () bool)
+  (lambda ()
+    "A slice's end, between fetching a cell and running it: if `preempt` is
+     due, called first, the cell put back. Whether it was."
+    (let ((f (poll-due!)))
+      (if (i64= f v-false)
+          #f
+          (begin (set kk (i64- (get kk) 1)) (preempt-entered! f) #t)))))
 
 (define failed-in-task! (subr cm () bool)
   (lambda ()
@@ -625,9 +685,172 @@
               #f
               (begin (set trap-message "") (abort-to! r-abort tag v-unit) (not (trapped?))))))))
 
-(define step! (subr cm (i64) bool)
+"Register code (C129), run as Fixpt's tier 5 compiles it, on this
+ machine: its frames on the data stack (`save M`: `M` slots, `#f`, then
+ the link, here 0, `fp` at the first), its calls' and call-outs' values
+ returned there, as stack code's are, so that each may call the other.
+ One step an instruction, as a cell."
+(define-rec
+  (regs-pushed! (subr cm (i64 i64) unit)
+    (lambda (i n)
+      "`REG1`…`REGn` pushed from `REGi`; past `REGS`, the rest a list in the
+       last (Fixpt's `push_regs`)."
+      (cond ((i64> i n) #u)
+            ((and (i64= i register-regs) (i64> n register-regs)) (list-pushed! (reg-at i) (i64- n (i64- i 1))))
+            (else (begin (push! (reg-at i)) (regs-pushed! (i64+ i 1) n))))))
+  (list-pushed! (subr cm (i64 i64) unit)
+    (lambda (l n) (if (i64<= n 0) #u (begin (push! (pair-car l)) (list-pushed! (pair-cdr l) (i64- n 1)))))))
+
+(define-rec
+  (regs-spilled! (subr cm (i64) unit)
+    (lambda (i) "`RESULT`, then `REG1`…`REG8`, pushed." (if (i64> i register-regs) #u (begin (push! (flatarray-ref-i64 (get rr) i)) (regs-spilled! (i64+ i 1))))))
+  (regs-unspilled! (subr cm (i64) unit)
+    (lambda (i) (if (i64< i 0) #u (begin (flatarray-set-i64! (get rr) i (pop! r-return)) (regs-unspilled! (i64- i 1)))))))
+
+(define reg-resumed! (subr cm () unit)
+  (lambda ()
+    "Past a point to resume at, the registers back."
+    (let ((k (get kk)))
+      (cond ((i64>= k 0) #u)
+            ((i64> k (i64- 0 polled)) (begin (regs-cleared! 1) (result! (pop! r-return)) (set kk (i64- 0 k))))
+            (else (begin (regs-unspilled! register-regs) (set kk (i64- (i64- 0 k) polled))))))))
+
+(define register-entered! (subr cm (i64 i64 bool) i64)
+  (lambda (c rw tail)
+    "Closure `c`, whose word's twin is `rw`, called by `invoke` with its
+     arguments in the registers (not in tail position, a return here
+     pushed first)."
+    (begin
+      (check-limits!)
+      (if tail #u (push-return!))
+      (set clo c) (set cur rw) (set kk (i64+ f-cell0 2))
+      next)))
+
+(define reg-op! (subr cm () i64)
+  (lambda ()
+    "The instruction at `kk`: what to do next."
+    (let* ((w (get cur)) (k (get kk)) (op (fix-val (slot-of w k)))
+           (o0 (slot-of w (i64+ k 1))) (o1 (slot-of w (i64+ k 2)))
+           (nx (i64+ k (i64+ 1 (rop-operands op))))
+           (val (lambda ((v i64)) (begin (result! v) (set kk nx) next)))
+           (slot-ok? (lambda ((i i64)) (i64< (i64+ (get fp) i) (get dsp)))))
+      (cond
+        ((i64= op ro-const) (val o0))
+        ((i64= op ro-reg) (val (reg-at (fix-val o0))))
+        ((i64= op ro-setreg) (begin (reg-set! (fix-val o0) (result)) (set kk nx) next))
+        ((i64= op ro-movereg) (begin (reg-set! (fix-val o1) (reg-at (fix-val o0))) (set kk nx) next))
+        ((i64= op ro-global) (val (slot-of o0 f-value)))
+        ((i64= op ro-setglbl)
+         (begin
+           (slot-set! o0 f-value (result))
+           (slot-set! o0 f-writes (fix (i64+ (fix-val (slot-of o0 f-writes)) 1)))
+           (set kk nx) next))
+        ((i64= op ro-lexical)
+         (if (and (is-bloblet? (get clo)) (field-ok? (get clo) (i64+ f-free0 (fix-val o0))))
+             (val (slot-of (get clo) (i64+ f-free0 (fix-val o0))))
+             (begin (field-trap! r-free) next)))
+        ((i64= op ro-save)
+         (let ((base (get dsp)))
+           (letrec ((slots (subr cm (i64) unit) (lambda (i) (if (i64<= i 0) #u (begin (push! v-false) (slots (i64- i 1)))))))
+             (begin (slots (fix-val o0)) (push! (fix 0)) (set fp base) (check-limits!) (set kk nx) next))))
+        ((i64= op ro-pop)
+         (if (i64< (get dsp) (i64+ (fix-val o0) 1))
+             (begin (underflow-trap! r-return) next)
+             (begin (set dsp (i64- (get dsp) (i64+ (fix-val o0) 1))) (set kk nx) next)))
+        ((or (i64= op ro-stack) (i64= op ro-load))
+         (let ((i (fix-val (if (i64= op ro-stack) o0 o1))))
+           (cond ((not (slot-ok? i)) (begin (field-trap! r-slot) next))
+                 ((i64= op ro-stack) (val (ds-at (i64+ (get fp) i))))
+                 (else (begin (reg-set! (fix-val o0) (ds-at (i64+ (get fp) i))) (set kk nx) next)))))
+        ((or (i64= op ro-setstk) (i64= op ro-store))
+         (let ((i (fix-val (if (i64= op ro-setstk) o0 o1))))
+           (if (not (slot-ok? i))
+               (begin (field-trap! r-slot-set) next)
+               (begin (ds-set! (i64+ (get fp) i) (if (i64= op ro-setstk) (result) (reg-at (fix-val o0)))) (set kk nx) next))))
+        ((or (i64= op ro-op1) (i64= op ro-op2) (i64= op ro-op2imm))
+         (begin
+           (set kk nx)
+           (push! (result))
+           (if (i64= op ro-op1) #u (push! (if (i64= op ro-op2) (reg-at (fix-val o1)) o1)))
+           (let ((flow (routine! (fix-val o0))))
+             (begin (if (trapped?) #u (result! (pop! (fix-val o0)))) flow))))
+        ((i64= op ro-field)
+         (let ((x (result)))
+           (cond ((not (is-bloblet? x)) (begin (type-trap! r-field) next))
+                 ((field-ok? x (fix-val o0)) (val (slot-of x (fix-val o0))))
+                 (else (begin (field-trap! r-field) next)))))
+        ((i64= op ro-setfield)
+         (let ((x (result)))
+           (cond ((not (is-bloblet? x)) (begin (type-trap! r-field-set) next))
+                 ((field-ok? x (fix-val o0)) (begin (slot-set! x (fix-val o0) (reg-at (fix-val o1))) (set kk nx) next))
+                 (else (begin (field-trap! r-field-set) next)))))
+        ((i64= op ro-prim1) (val (prim-apply! (fix-val o0) (list (result)))))
+        ((i64= op ro-prim2) (val (prim-apply! (fix-val o0) (list (result) (reg-at (fix-val o1))))))
+        ((i64= op ro-prim2imm) (val (prim-apply! (fix-val o0) (list (result) o1))))
+        ((i64= op ro-prim3imm)
+         (val (prim-apply! (fix-val o0) (list (result) o1 (reg-at (fix-val (slot-of w (i64+ k 3))))))))
+        ;; What may collect, or run elsewhere first: its value comes back on
+        ;; the data stack, to the point after it.
+        ((i64= op ro-prim)
+         (begin (set kk (i64- 0 nx)) (regs-pushed! 1 (fix-val o1)) (prim-run! r-prim (fix-val o0) (fix-val o1))))
+        ((i64= op ro-lambda)
+         (begin (set kk (i64- 0 nx)) (regs-pushed! 1 (fix-val o1)) (closure-made! r-closure (i64+ k 1))))
+        ((i64= op ro-cellular)
+         (begin (set kk (i64- 0 nx)) (regs-pushed! 1 (fix-val o1)) (routine! (fix-val o0))))
+        ((or (i64= op ro-invoke) (i64= op ro-tailinvoke))
+         (let* ((tail (i64= op ro-tailinvoke)) (c (result))
+                (rw (if (closure? c) (slot-of (slot-of c f-word) f-twin) v-false)))
+           (begin
+             (if tail #u (set kk (i64- 0 nx)))
+             (if (and (not (i64= rw v-false)) (i64= o0 (slot-of rw (i64+ f-cell0 1))))
+                 (register-entered! c rw tail)
+                 (begin
+                   (if tail (set fp (get dsp)) #u)
+                   (regs-pushed! 1 (fix-val o0))
+                   (push! c)
+                   (call! (if tail r-tailcall r-call) (fix-val o0) tail))))))
+        ((i64= op ro-invokeself)
+         (begin (set kk (i64- 0 nx)) (register-entered! (get clo) w #f)))
+        ((i64= op ro-return) (begin (push! (result)) exit-flow))
+        ((i64= op ro-branch) (begin (set kk (i64+ k (i64+ 2 (fix-val o0)))) next))
+        ((or (i64= op ro-branchf) (i64= op ro-brancht))
+         (begin
+           (set kk (if (if (i64= op ro-branchf) (i64= (result) v-false) (not (i64= (result) v-false))) (i64+ k (i64+ 2 (fix-val o0))) nx))
+           next))
+        ((i64= op ro-global-guard)
+         (begin
+           (set kk (if (i64= (slot-of o0 f-writes) o1) nx (i64+ k (i64+ 4 (fix-val (slot-of w (i64+ k 3)))))))
+           next))
+        (else (begin (trap! (string-append "tier 1 runs no register operation " (nth-name rop-names op))) next))))))
+
+(define reg-step! (subr cm (i64) bool)
   (lambda (base)
-    "One cell, as tier 1 runs it: whether the run goes on."
+    "One register instruction, as `step!` runs a cell; at a poll that
+     preempts, every register spilled first."
+    (begin
+      (reg-resumed!)
+      (cond
+        ((and (i64= (get fuel) 0) (i64= (get reserve) 0))
+         (begin (trap! "evaluation step limit exceeded") #f))
+        ((and (i64= (get fuel) 0)
+              (let ((f (poll-due!)))
+                (if (i64= f v-false)
+                    #f
+                    (begin (regs-spilled! 0) (set kk (i64- (i64- 0 (get kk)) polled)) (preempt-entered! f) #t))))
+         #t)
+        (else
+          (begin
+            (set fuel (i64- (get fuel) 1))
+            (let ((flow (reg-op!)))
+              (cond ((and (trapped?) (failed-in-task!)) #t)
+                    ((trapped?) #f)
+                    ((i64= flow next) #t)
+                    ((i64= flow exit-flow)
+                     (if (i64= (get rsp) base) #f (begin (pop-return!) #t)))
+                    (else #f)))))))))
+
+(define cell-step! (subr cm (i64) bool)
+  (lambda (base)
     (let ((cell (slot-of (get cur) (get kk))))
       (begin
         (set kk (i64+ (get kk) 1))
@@ -646,6 +869,13 @@
                        (if (i64= (get rsp) base) #f (begin (pop-return!) #t)))
                       (else #f))))))))))
 
+(define step! (subr cm (i64) bool)
+  (lambda (base)
+    "One cell, as tier 1 runs it: whether the run goes on."
+    (if (and (get regs-on) (is-kind? (get cur) k-register-code))
+        (reg-step! base)
+        (cell-step! base))))
+
 (define-rec
   (run! (subr cm (i64) unit)
     (lambda (base) "Cells, one after another, until the run ends, halts or traps." (if (step! base) (run! base) #u))))
@@ -658,14 +888,16 @@
 (define hand-entries (ref i64 @c) (new 0))
 
 "What the machine gave back, counted for `--gc-stats`: a routine at its
- number, a word at 63, a `prim` at 64 plus its op."
+ number, register code at 62, a word at 63, a `prim` at 64 plus its op."
 (define given-size i64 2048)
 (define hand-given (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 given-size 0)))
 
 (define given! (subr cm () unit)
   (lambda ()
-    (let* ((cell (slot-of (get cur) (get kk)))
-           (i (cond ((not (is-fixnum? cell)) (the i64 63))
+    (let* ((reg (is-kind? (get cur) k-register-code))
+           (cell (if reg (the i64 0) (slot-of (get cur) (get kk))))
+           (i (cond (reg (the i64 62))
+                    ((not (is-fixnum? cell)) (the i64 63))
                     ((i64= (fix-val cell) r-prim) (i64+ 64 (prim-op (fix-val (slot-of (get cur) (i64+ (get kk) 1))))))
                     (else (fix-val cell)))))
       (if (i64< i given-size)
@@ -684,7 +916,7 @@
                   acc
                   (string-append acc
                     (string-append "  "
-                      (string-append (cond ((i64< i 63) (routine-name i)) ((i64= i 63) "a word") (else (pdef-of prims (i64- i 64))))
+                      (string-append (cond ((i64< i 62) (routine-name i)) ((i64= i 62) "register code") ((i64= i 63) "a word") (else (pdef-of prims (i64- i 64))))
                         (string-append " " (string-append (i64->string n) "\n"))))))))))))
 
 (define hand! (subr cm (hand-code) bool)

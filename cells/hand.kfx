@@ -161,6 +161,7 @@
 (define orr! (->* (int int int) unit) (lambda (d n m) (e! ((with a64 arm-orr) d n m))))
 (define andl! (->* (int int int) unit) (lambda (d n bits) (e! ((with a64 arm-and-low) d n bits))))
 (define tstl! (->* (int int) unit) (lambda (n bits) (e! ((with a64 arm-tst-low) n bits))))
+(define asr! (->* (int int int) unit) (lambda (d n s) (e! ((with a64 arm-asr-imm) d n s))))
 (define lsr! (->* (int int int) unit) (lambda (d n s) (e! ((with a64 arm-lsr-imm) d n s))))
 (define csel! (->* (int int int int) unit) (lambda (d n m c) (e! ((with a64 arm-csel) d n m c))))
 (define br! (->* (int) unit) (lambda (n) (e! ((with a64 arm-br) n))))
@@ -186,6 +187,7 @@
 (define l-ran-out (ref int @c) (new 0))
 (define l-pop-return (ref int @c) (new 0))
 (define l-resume (ref int @c) (new 0))
+(define l-resume-give (ref int @c) (new 0))
 
 "Compiling a word (tier 4, C128): the label of the next cell's code, and
  of a branch's target's; -1 in the machine, or for a target not compiled."
@@ -255,6 +257,9 @@
         (add! x14 x-fp x17) (addi! x14 x14 8) (cmp! x-dsp x14) (give-if! c-lo)
         (ldur! x10 x-dsp -8)
         (closure-in! x10)
+        ;; A word with register code (`--regs`, C129): tier 1's call, its adapter.
+        (ldur! x13 x11 (- -4 (* 8 (i64->int f-word)))) (add! x13 x-mem x13)
+        (ldur! x13 x13 (- -4 (* 8 (i64->int f-twin)))) (cmpi! x13 3) (give-if! c-ne)
         (limits!)
         (if tail
             (begin
@@ -517,7 +522,7 @@
      with `why`, a fixnum."
     (begin
       (str! x-cur x-st (at-st st-cur))
-      (add! x13 x-mem x-cur) (subi! x13 x13 4) (sub! x13 x13 x-cell) (lsr! x13 x13 3) (str! x13 x-st (at-st st-kk))
+      (add! x13 x-mem x-cur) (subi! x13 x13 4) (sub! x13 x13 x-cell) (asr! x13 x13 3) (str! x13 x-st (at-st st-kk))
       (sub! x13 x-fp x-dsb) (lsr! x13 x13 3) (str! x13 x-st (at-st st-fp))
       (str! x-clo x-st (at-st st-clo))
       (sub! x13 x-dsp x-dsb) (lsr! x13 x13 3) (str! x13 x-st (at-st st-dsp))
@@ -546,7 +551,10 @@
       (add! x11 x-mem x-cur) (ldur! x10 x11 (- -4 (* 8 (i64->int f-entry))))
       (cmpi! x10 (* 8 (i64->int r-count))) (bc! c-lo (get l-next))
       (subi! x10 x10 (* 8 (i64->int r-count)))
-      (adr! x16 (get l-words)) (ldr-reg! x14 x16 x10)
+      ;; Past the words compiled (a register word's entry is -1, C129):
+      ;; given back, at the cell the ip is at.
+      (adr! x16 (get l-words)) (ldr! x14 x16 0) (cmp! x10 x14) (bc! c-hs (get l-resume-give))
+      (addi! x16 x16 8) (ldr-reg! x14 x16 x10)
       (adr! x16 (get l-start)) (add! x16 x16 x14)
       (subi! x15 x11 4) (sub! x15 x15 x-ip)
       (ldr! x14 x16 0) (cmp! x15 x14) (bc! c-hs (get l-next))
@@ -566,7 +574,7 @@
       (begin
         (set hand-labels (+ base (i64->int r-count)))
         (set l-next (label!)) (set l-give (label!)) (set l-give-pre (label!)) (set l-ran-out (label!)) (set l-pop-return (label!))
-        (set l-resume (label!))
+        (set l-resume (label!)) (set l-resume-give (label!))
         (bind! (get l-entry))
         (entry!)
         (resumed!)
@@ -594,6 +602,8 @@
         (leave! gave-back)
         (bind! (get l-ran-out))
         (leave! ran-out)
+        (bind! (get l-resume-give))
+        (mov! x-cell x-ip) (b! (get l-give-pre))
         ;; A return, as tier 1's `pop-return!`: a prompt's or a mark's entry
         ;; passed by.
         (bind! (get l-pop-return))
@@ -788,7 +798,8 @@
                           (cons (jump j-b 0 (get l-entry))
                             (cons (ins 0)
                               (cons (label-here (get l-words))
-                                (append (words-table rts nil) (append (reverse (get hand-data)) (reverse (get hand-items))))))))))
+                                (cons (ins (* 8 (count-of rts 0))) (cons (ins 0)
+                                (append (words-table rts nil) (append (reverse (get hand-data)) (reverse (get hand-items))))))))))))
                  (ls (the (flatarrayof i64 @c) (make-flatarray-i64 (int->i64 (get hand-labels)) 0)))
                  (count (placed! its 0 ls))
                  (b (the (bloblet (fields) @heap) (make-bloblet (* 4 count))))

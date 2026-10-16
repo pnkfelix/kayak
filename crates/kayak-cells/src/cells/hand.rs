@@ -840,6 +840,10 @@ pub fn tstl_x(n: Int, bits: Int) -> () {
     e_x((&a64::arm_tst_low)(n, bits))
 }
 
+pub fn asr_x(d: Int, n: Int, s: Int) -> () {
+    e_x((&a64::arm_asr_imm)(d, n, s))
+}
+
 pub fn lsr_x(d: Int, n: Int, s: Int) -> () {
     e_x((&a64::arm_lsr_imm)(d, n, s))
 }
@@ -933,6 +937,13 @@ pub fn l_pop_return() -> Ref<Int> {
 }
 
 pub fn l_resume() -> Ref<Int> {
+    kayak_rt::kept_constant!(ONCE: Ref<Int>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(int_lit(0))
+    })
+}
+
+pub fn l_resume_give() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
         kayak_rt::heap_new(int_lit(0))
@@ -1073,6 +1084,11 @@ pub fn called_x(tail: bool) -> () {
     give_if_x(c_lo());
     ldur_x(x10(), x_dsp(), int_lit(-8));
     closure_in_x(x10());
+    ldur_x(x13(), x11(), _minus(int_lit(-4), _star(int_lit(8), i64_to_int(f_word()))));
+    add_x(x13(), x_mem(), x13());
+    ldur_x(x13(), x13(), _minus(int_lit(-4), _star(int_lit(8), i64_to_int(f_twin()))));
+    cmpi_x(x13(), int_lit(3));
+    give_if_x(c_ne());
     limits_x();
     if tail {
         subi_x(x14(), x_dsp(), int_lit(8));
@@ -1567,7 +1583,7 @@ pub fn leave_x(why: i64) -> () {
     add_x(x13(), x_mem(), x_cur());
     subi_x(x13(), x13(), int_lit(4));
     sub_x(x13(), x13(), x_cell());
-    lsr_x(x13(), x13(), int_lit(3));
+    asr_x(x13(), x13(), int_lit(3));
     str_x(x13(), x_st(), at_st(st_kk()));
     sub_x(x13(), x_fp(), x_dsb());
     lsr_x(x13(), x13(), int_lit(3));
@@ -1630,6 +1646,10 @@ pub fn resumed_x() -> () {
     bc_x(c_lo(), get(l_next()));
     subi_x(x10(), x10(), _star(int_lit(8), i64_to_int(r_count())));
     adr_x(x16(), get(l_words()));
+    ldr_x(x14(), x16(), int_lit(0));
+    cmp_x(x10(), x14());
+    bc_x(c_hs(), get(l_resume_give()));
+    addi_x(x16(), x16(), int_lit(8));
     ldr_reg_x(x14(), x16(), x10());
     adr_x(x16(), get(l_start()));
     add_x(x16(), x16(), x14());
@@ -1667,6 +1687,7 @@ pub fn machine_x() -> () {
     set(l_ran_out(), label_x());
     set(l_pop_return(), label_x());
     set(l_resume(), label_x());
+    set(l_resume_give(), label_x());
     bind_x(get(l_entry()));
     entry_x();
     resumed_x();
@@ -1691,6 +1712,9 @@ pub fn machine_x() -> () {
     leave_x(gave_back());
     bind_x(get(l_ran_out()));
     leave_x(ran_out());
+    bind_x(get(l_resume_give()));
+    mov_x(x_cell(), x_ip());
+    b_x(get(l_give_pre()));
     bind_x(get(l_pop_return()));
     bind_x(r#loop);
     ldr_x(x16(), x_st(), at_st(st_rsb()));
@@ -2000,7 +2024,7 @@ pub fn hand_code_x() -> &'static Sum_4made_6failed<HandCode, Str> {
             nil::<Int>()
         };
         let u = set(words_compiled(), count_of(rts, int_lit(0)));
-        let its = the::<List<&'static Item>>(kayak_rt::heap_cons(label_here(get(l_start())), kayak_rt::heap_cons(jump(j_b(), int_lit(0), get(l_entry())), kayak_rt::heap_cons(ins(int_lit(0)), kayak_rt::heap_cons(label_here(get(l_words())), append(words_table(rts, nil::<&'static Item>()), append(reverse(get(hand_data())), reverse(get(hand_items())))))))));
+        let its = the::<List<&'static Item>>(kayak_rt::heap_cons(label_here(get(l_start())), kayak_rt::heap_cons(jump(j_b(), int_lit(0), get(l_entry())), kayak_rt::heap_cons(ins(int_lit(0)), kayak_rt::heap_cons(label_here(get(l_words())), kayak_rt::heap_cons(ins(_star(int_lit(8), count_of(rts, int_lit(0)))), kayak_rt::heap_cons(ins(int_lit(0)), append(words_table(rts, nil::<&'static Item>()), append(reverse(get(hand_data())), reverse(get(hand_items())))))))))));
         let ls = the::<FlatArray<i64>>(make_flatarray_i64(int_to_i64(get(hand_labels())), 0i64));
         let count = placed_x(its, int_lit(0), ls);
         let b = the::<&'static Bloblet<()>>(make_bloblet(_star(int_lit(4), count), ()));

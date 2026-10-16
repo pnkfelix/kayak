@@ -3,7 +3,8 @@
  its header, `word NAME (N cells, cellular):`, then a line for each
  instruction, `AT: ROUTINE OPERAND ...`. Exact, but where a literal is
  cut short (`…`), two words share a name, or the compilers disagree:
- those are refused. Each word's register code is passed over.
+ those are refused. Each word's register code (`its register code`) is
+ read into a register word, its twin under `--regs` (C129).
  fixpt-source: crates/fixpt-runtime/src/disasm.rs@1925bca"
 
 (define listing-error (subr kfx (string) void)
@@ -91,34 +92,32 @@
       (block name n entry nil))))
 
 (define-rec
-  (blocks (subr kfx ((listof chars acyclic) (listof block acyclic) bool) (listof block acyclic))
-    (lambda (ls out skipping)
-      "The blocks of a listing's lines, newest last."
+  (blocks (subr kfx ((listof chars acyclic) (listof block acyclic) i64) (listof block acyclic))
+    (lambda (ls out mode)
+      "The blocks of a listing's lines, newest last. `mode`: 0 in a word's
+       cells, 1 in its register code (each instruction kept at `-2 - AT`),
+       2 in what else is listed of it, passed over."
       (if (null? ls)
           (the (listof block acyclic) (reverse out))
           (let ((l (car ls)))
             (cond ((starts? l (string-chars "word "))
-                   (blocks (cdr ls) (cons (header-block l) out) #f))
+                   (blocks (cdr ls) (cons (header-block l) out) 0))
                   ((starts? l (string-chars "; the compilers disagree"))
                    (begin (listing-error "the compilers disagree") nil))
-                  ((or (null? l) (char=? (car l) #\;)) (blocks (cdr ls) out #f))
-                  ((starts? l (string-chars "  its ")) (blocks (cdr ls) out #t))
-                  ((null? out) (blocks (cdr ls) out #f))
+                  ((or (null? l) (char=? (car l) #\;)) (blocks (cdr ls) out 0))
+                  ((starts? l (string-chars "  its register code ")) (blocks (cdr ls) out 1))
+                  ((starts? l (string-chars "  its ")) (blocks (cdr ls) out 2))
+                  ((or (null? out) (i64= mode 2)) (blocks (cdr ls) out mode))
                   (else
                    (let* ((t (spaces-dropped l))
                           (at (digits-of t 0))
                           (text (spaces-dropped (after-char t colon))))
-                     (cond ((contains? text (string-chars "…"))
-                            (begin (listing-error "a literal cut short") nil))
-                           ((and skipping (not (starts? text (string-chars "const "))))
-                            (blocks (cdr ls) out #t))
-                           (else
-                            "A register code's `const`, kept at -1: what it makes may be
-                             labelled, and named later (C123)."
-                            (blocks (cdr ls)
-                                    (tagcase (car out)
-                                      (block (n c e is) (cons (block n c e (cons (iline (if skipping -1 at) (if skipping (drop-n text 6) text)) is)) (cdr out))))
-                                    skipping)))))))))))
+                     (if (contains? text (string-chars "…"))
+                         (begin (listing-error "a literal cut short") nil)
+                         (blocks (cdr ls)
+                                 (tagcase (car out)
+                                   (block (n c e is) (cons (block n c e (cons (iline (if (i64= mode 1) (i64- -2 at) at) text) is)) (cdr out))))
+                                 mode))))))))))
 
 "The words, by name."
 (define words (ref (listof named @c) @c) (new nil))
@@ -436,15 +435,80 @@
                         v
                         (begin (listing-error (string-append "a literal: " (list->string cs))) 0))))))))
 
+"Register words (C129), by name: a word's register code, read as Fixpt's
+ `register_lines` writes it, into a bloblet of kind register-code, as
+ Fixpt's `make_register_word` makes one: its entry -1 here (Fixpt's 0,
+ not compiled, is `docol` to tier 1), its twin the word."
+(define register-words (ref (listof named @c) @c) (new nil))
+"Whether a word's twin is its register word, which tier 1 then runs."
+(define regs-on (ref bool @c) (new #f))
+
+(define reg-put! (subr cm (i64 i64 i64 i64) unit)
+  (lambda (rw at j v) (if (i64= rw 0) #u (slot-set! rw (i64+ f-cell0 (i64+ at j)) v))))
+
+(define reg-instruction! (subr cm (i64 i64 chars) unit)
+  (lambda (rw at text)
+    "Register instruction `text` at cell `at` of `rw` (0: its literals only
+     read, for the labels they make)."
+    (let* ((name (list->string (before-char text #\space)))
+           (ops (spaces-dropped (drop-n text (string-length-i64 name))))
+           (n (index-in rop-names name 0))
+           (second (spaces-dropped (after-char ops #\space)))
+           (num (lambda ((cs chars)) (fix (number-of cs))))
+           (routine (lambda ((cs chars))
+                      (let ((r (index-in routine-names (list->string (before-char cs #\space)) 0)))
+                        (if (i64< r 0) (begin (listing-error (string-append "no routine is named " (list->string cs))) (the i64 0)) (fix r)))))
+           (prim (lambda ((cs chars))
+                   (let ((p (prim-number (list->string (before-char cs #\space)))))
+                     (if (i64< p 0) (begin (listing-error (string-append "a primitive tier 1 does not have yet: " (list->string cs))) (the i64 0)) (fix p))))))
+      (cond
+        ((i64< n 0) (listing-error (string-append "no register operation is named " name)))
+        (else
+         (begin
+           (reg-put! rw at 0 (fix n))
+           (cond
+             ((or (i64= n ro-vargs) (i64= n ro-return)) #u)
+             ((i64= n ro-const) (reg-put! rw at 1 (literal ops)))
+             ((or (i64= n ro-global) (i64= n ro-setglbl)) (reg-put! rw at 1 (global-named (list->string ops))))
+             ((i64= n ro-op1) (reg-put! rw at 1 (routine ops)))
+             ((or (i64= n ro-op2) (i64= n ro-cellular)) (begin (reg-put! rw at 1 (routine ops)) (reg-put! rw at 2 (num second))))
+             ((i64= n ro-op2imm) (begin (reg-put! rw at 1 (routine ops)) (reg-put! rw at 2 (literal second))))
+             ((i64= n ro-prim) (begin (reg-put! rw at 1 (prim ops)) (reg-put! rw at 2 (num second))))
+             ((i64= n ro-prim1) (reg-put! rw at 1 (prim ops)))
+             ((i64= n ro-prim2) (begin (reg-put! rw at 1 (prim ops)) (reg-put! rw at 2 (num second))))
+             ((i64= n ro-prim2imm) (begin (reg-put! rw at 1 (prim ops)) (reg-put! rw at 2 (literal second))))
+             ((i64= n ro-prim3imm)
+              (begin
+                (reg-put! rw at 1 (prim ops))
+                (tagcase (lit-datum second)
+                  (lgot (v rest) (begin (reg-put! rw at 2 v) (reg-put! rw at 3 (num (spaces-dropped rest))))))))
+             ((i64= n ro-lambda)
+              (let ((rest (drop-n ops 5)))
+                (begin
+                  (reg-put! rw at 1 (word-named (before-char rest #\space)))
+                  (reg-put! rw at 2 (num (drop-n (after-char rest #\space) 5)))
+                  (reg-put! rw at 3 (fix r-closure)))))
+             ((or (i64= n ro-branch) (i64= n ro-branchf) (i64= n ro-brancht))
+              (reg-put! rw at 1 (fix (i64- (number-of (drop-n ops 2)) (i64+ at 2)))))
+             ((i64= n ro-global-guard)
+              (let* ((written (after-char (after-char ops #\space) #\space))
+                     (to (drop-n (after-char (after-char written #\space) #\space) 2)))
+                (begin
+                  (reg-put! rw at 1 (global-named (list->string (before-char ops #\space))))
+                  (reg-put! rw at 2 (num written))
+                  (reg-put! rw at 3 (fix (i64- (number-of to) (i64+ at 4)))))))
+             ((i64= (rop-operands n) 1) (reg-put! rw at 1 (num ops)))
+             (else (begin (reg-put! rw at 1 (num ops)) (reg-put! rw at 2 (num second)))))))))))
+
 (define cell-set! (subr cm (i64 i64 i64) unit)
   (lambda (w at v) (slot-set! w (i64+ f-cell0 at) v)))
 
-(define instruction! (subr cm (i64 iline) unit)
-  (lambda (w il)
+(define instruction! (subr cm (i64 i64 iline) unit)
+  (lambda (w rw il)
     (tagcase il
       (iline (at text)
         (if (i64< at 0)
-            (begin (literal text) #u)
+            (reg-instruction! rw (i64- -2 at) text)
         (let* ((name (list->string (before-char text #\space)))
                (ops (spaces-dropped (drop-n text (string-length-i64 name))))
                (n (index-in routine-names name 0)))
@@ -529,6 +593,48 @@
                       (else (begin (listing-error (string-append "two words are named " n)) nil))))))))))
 
 (define-rec
+  (register-cells (subr kfx ((listof iline acyclic) i64) i64)
+    (lambda (is n)
+      "How many cells a word's register code has: past its last instruction."
+      (if (null? is)
+          n
+          (tagcase (car is)
+            (iline (at text)
+              (if (i64< at -1)
+                  (let* ((k (i64- -2 at)) (op (index-in rop-names (list->string (before-char text #\space)) 0))
+                         (end (i64+ k (i64+ 1 (if (i64< op 0) 0 (rop-operands op))))))
+                    (register-cells (cdr is) (if (i64> end n) end n)))
+                  (register-cells (cdr is) n))))))))
+
+(define make-register-word! (subr cm (string i64 i64) i64)
+  (lambda (name twin n)
+    "A register word of `n` cells, standing for word `twin` (Fixpt's
+     `make_register_word`)."
+    (let ((w (make-bloblet! k-register-code (i64+ (i64- f-cell0 2) n) 0 #t #t)))
+      (begin
+        (slot-set! w f-entry (fix -1))
+        (slot-set! w f-name (symbol! name))
+        (slot-set! w f-twin twin)
+        w))))
+
+(define-rec
+  (twins-linked! (subr cm ((listof named @c)) unit)
+    (lambda (rs)
+      "Each register word its word's twin (`--regs`), where tier 1 runs it:
+       one entered with its arguments in registers, at most `REGS` of them
+       (Fixpt runs the others, `vargs` and more, as stack code too)."
+      (if (null? rs)
+          #u
+          (begin
+            (tagcase (car rs)
+              (named (n rw)
+                (if (and (i64= (slot-of rw f-cell0) (fix ro-args))
+                         (i64<= (fix-val (slot-of rw (i64+ f-cell0 1))) register-regs))
+                    (slot-set! (slot-of rw f-twin) f-twin rw)
+                    #u)))
+            (twins-linked! (cdr rs)))))))
+
+(define-rec
   (words-made! (subr cm ((listof block acyclic)) unit)
     (lambda (bs)
       "Each block's word, made, its cells not yet written."
@@ -539,10 +645,13 @@
               (block (n c e is)
                 (if (not (i64= (lookup (get words) n) 0))
                     (listing-error (string-append "two words are named " n))
-                    (set words (cons (named n (make-word! n c e)) (get words))))))
+                    (let ((w (make-word! n c e)) (rc (register-cells is 0)))
+                      (begin
+                        (set words (cons (named n w) (get words)))
+                        (if (i64> rc 0) (set register-words (cons (named n (make-register-word! n w rc)) (get register-words))) #u))))))
             (words-made! (cdr bs))))))
-  (cells-written! (subr cm (i64 (listof iline acyclic)) unit)
-    (lambda (w is) (if (null? is) #u (begin (instruction! w (car is)) (cells-written! w (cdr is))))))
+  (cells-written! (subr cm (i64 i64 (listof iline acyclic)) unit)
+    (lambda (w rw is) (if (null? is) #u (begin (instruction! w rw (car is)) (cells-written! w rw (cdr is))))))
   (literals-read! (subr cm ((listof iline acyclic)) unit)
     (lambda (is)
       "A word listed again: its literals read, for the labels they make, and
@@ -552,7 +661,7 @@
           (begin
             (tagcase (car is)
               (iline (at text)
-                (cond ((i64< at 0) (begin (literal text) #u))
+                (cond ((i64< at 0) (reg-instruction! 0 (i64- -2 at) text))
                       ((starts? text (string-chars "lit ")) (begin (literal (drop-n text 4)) #u))
                       (else #u))))
             (literals-read! (cdr is))))))
@@ -567,17 +676,18 @@
             (block (n c e is)
               (let ((is (the (listof iline acyclic) (reverse is))))
                 (begin
-                  (if (string-member? n seen) (literals-read! is) (cells-written! (lookup (get words) n) is))
+                  (if (string-member? n seen) (literals-read! is) (cells-written! (lookup (get words) n) (lookup (get register-words) n) is))
                   (blocks-written! (cdr bs) (cons n seen))))))))))
 
 (define listing-words! (subr cm (string) i64)
   (lambda (text)
     "The words of a listing, made; the word named `program`."
-    (let* ((all (blocks (lines-of (string-chars text) nil nil) nil #f))
+    (let* ((all (blocks (lines-of (string-chars text) nil nil) nil 0))
            (bs (distinct-blocks all nil)))
       (begin
         (words-made! bs)
         (blocks-written! all nil)
         (literals-checked! (get literals))
+        (if (get regs-on) (twins-linked! (get register-words)) #u)
         (let ((p (lookup (get words) "program")))
           (if (i64= p 0) (begin (listing-error "no word is named program") 0) p))))))

@@ -640,10 +640,12 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    moved when a program gives it back often (`--gc-stats`). **Tier 4
    (C128, 2026-10-16)**: the listing's words compiled with tier 2's
    routines (`--compiled`), entered through tables of where to resume;
-   326 agree. Next, tier 5: register code, which Fixpt's listings already
-   carry ("its register code"), read as tier 1 reads cells and compiled
-   to arm64 in this machine's convention, ahead of stage A's port; tier
-   3, stencils, last (`native.md` step 5). **Begun (C116,
+   326 agree. **Tier 5 begun (C129, 2026-10-16)**: register code, which
+   Fixpt's listings already carry, read into register words and
+   interpreted by tier 1 (`--regs`, the reference; 326 agree). Next: it
+   compiled to arm64 in this machine (C130), giving back to tier 1's
+   interpreter; then the instructions it gives back most. Tier 3,
+   stencils, last (`native.md` step 5). **Begun (C116,
    2026-10-15)**: Fixpt's §97 operations in KFX, the code area, the
    trampoline, `tests/kfx/made-code.kfx`. Next, toward Fixpt's
    `made-code/frames.fx` and `generated.fx` on kayak:

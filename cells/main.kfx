@@ -1,10 +1,11 @@
 "main.kfx: `kayak-cells LISTING [--step-limit N|none] [--slice N]
- [--hand|--compiled] [--gc-stress] [--gc-stats]` (C122, C125, C126,
- C128): the words of a listing Fixpt's compiler wrote, its `program`
- run, at most N instructions (Fixpt's FX-26 default, 20,000,000; `none`,
- no limit), a task's time slice N polls (Fixpt's 65,536, or its
- `FIXPT_SLICE`), by tier 2's machine if `--hand`, with the words
- compiled (tier 4) if `--compiled`, its
+ [--hand|--compiled] [--regs] [--gc-stress] [--gc-stats]` (C122, C125,
+ C126, C128, C129): the words of a listing Fixpt's compiler wrote, its
+ `program` run, at most N instructions (Fixpt's FX-26 default,
+ 20,000,000; `none`, no limit), a task's time slice N polls (Fixpt's
+ 65,536, or its `FIXPT_SLICE`), by tier 2's machine if `--hand`, with
+ the words compiled (tier 4) if `--compiled`, with their register code
+ where they have it if `--regs`, its
  value written as Fixpt writes it; or, if it fails, `evaluation failed:
  MESSAGE` on the standard error and status 1."
 
@@ -42,7 +43,8 @@
     (let ((as (the strings (args))))
       (if (null? as)
           (begin (fail-with "usage: kayak-cells LISTING [--step-limit N|none]" 2) 2)
-          (let* ((w (listing-words! (read-text (car as))))
+          (let* ((u0 (set regs-on (string-member? "--regs" as)))
+                 (w (listing-words! (read-text (car as))))
                  (u (set gc-stress (string-member? "--gc-stress" as)))
                  (u1 (set slice (option-of (cdr as) "--slice" 65536)))
                  (u3 (set hand-on (or (string-member? "--hand" as) (string-member? "--compiled" as))))

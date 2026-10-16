@@ -4,12 +4,13 @@ use kayak_rt::*;
 use super::*;
 
 // main.kfx: `kayak-cells LISTING [--step-limit N|none] [--slice N]
-// [--hand|--compiled] [--gc-stress] [--gc-stats]` (C122, C125, C126,
-// C128): the words of a listing Fixpt's compiler wrote, its `program`
-// run, at most N instructions (Fixpt's FX-26 default, 20,000,000; `none`,
-// no limit), a task's time slice N polls (Fixpt's 65,536, or its
-// `FIXPT_SLICE`), by tier 2's machine if `--hand`, with the words
-// compiled (tier 4) if `--compiled`, its
+// [--hand|--compiled] [--regs] [--gc-stress] [--gc-stats]` (C122, C125,
+// C126, C128, C129): the words of a listing Fixpt's compiler wrote, its
+// `program` run, at most N instructions (Fixpt's FX-26 default,
+// 20,000,000; `none`, no limit), a task's time slice N polls (Fixpt's
+// 65,536, or its `FIXPT_SLICE`), by tier 2's machine if `--hand`, with
+// the words compiled (tier 4) if `--compiled`, with their register code
+// where they have it if `--regs`, its
 // value written as Fixpt writes it; or, if it fails, `evaluation failed:
 // MESSAGE` on the standard error and status 1.
 
@@ -92,6 +93,7 @@ pub fn cells_main() -> Int {
         match fail_with(str_lit("usage: kayak-cells LISTING [--step-limit N|none]"), int_lit(2)) {};
         int_lit(2)
     } else {
+        let u0 = set(regs_on(), string_member_p(str_lit("--regs"), r#as));
         let w = listing_words_x(read_text(car(r#as)));
         let u = set(gc_stress(), string_member_p(str_lit("--gc-stress"), r#as));
         let u1 = set(slice(), option_of(cdr(r#as), str_lit("--slice"), 65536i64));

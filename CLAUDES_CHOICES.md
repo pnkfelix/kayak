@@ -3302,3 +3302,59 @@ in step, so that compiled code and cells mix at any cell.
   likewise a little faster than its tier 2 (fib 14 ms, 17): what is left
   is each cell's work, the operands still read from the word; register
   code (tier 5) is where the next factor is.
+
+## C129. Tier 5 begun: register code read, and interpreted by tier 1 (2026-10-16, the user: "go ahead with Tier 5")
+
+Fixpt's tier 5 (`fx-regs-rsjit-cellcc`, `fixpt-native/src/cellular/regcode.rs`)
+compiles each lambda's register code (Larceny's MacScheme machine:
+`RESULT`, `REG1`…`REG8`, frames, 35 operations, `layout.rs`'s
+`regcode::OPS`) to arm64 inside its hand machine; nothing of Fixpt
+interprets register code, so its meaning there is that code's. Kayak
+takes the road it took from tier 1 to tier 2: register code interpreted
+in KFX first, on tier 1's machine, the reference the compiled code is
+checked against and gives back to; then compiled.
+- **Read from the listing.** Fixpt's listings already carry each word's
+  register code (`its register code (N cells, not compiled)`, written by
+  `disasm.rs`'s `register_lines`): kayak's reader keeps it (it passed it
+  over, but for its literals' labels) and makes a register word as
+  Fixpt's `make_register_word` does, its twin the word. `lambda`'s third
+  operand, the routine that makes the closure, is not listed: `closure`,
+  the cellular convention's.
+- **Fixpt's conventions, on tier 1's stacks** (growing up): `save M`
+  pushes `M` slots of `#f` and the link (0 here: no `blr`), `fp` at the
+  first; `pop M` drops them; a `return` pushes `RESULT` and returns as
+  stack code does, so a caller of either kind finds the value on the data
+  stack. A stack-code call of a word whose twin is register code goes
+  through the adapter (its frame's values into the registers, the frame
+  dropped); an `invoke` of one keeps the arguments in the registers.
+  What may collect (`prim`, `lambda`, `cellular`, a call) has its
+  operands pushed and its value come back on the data stack, as Fixpt's
+  call-outs: the registers are dead there (Fixpt's compiler keeps what
+  lives across in the frame), so the collector need not see them.
+- **Points to resume at, in `kk`.** A register word's `kk` below zero
+  marks where to resume once something else has run: after a call or a
+  call-out, `RESULT` popped; after a poll that preempts, every register
+  (spilled to the data stack first, as Fixpt's `poll_regs` keeps the live
+  ones). So return entries, continuations, the collector and the
+  scheduler work on register code unchanged (Fixpt marks the entries a
+  `blr` made the same way, negating `8k`).
+- **Steps**: one an instruction, as a cell (Fixpt's tier 5 polls at
+  entries and loops); `--regs` links the twins (`kayak-cells --regs`).
+  Tiers 2 and 4 give back a call of a word with register code (the
+  adapter is tier 1's) and a return into register code (a register
+  word's entry is -1, past every compiled word's), until tier 5 compiles
+  it.
+- **Dead registers cleared.** Fixpt's poll spills only the live registers
+  (`liveness`); tier 1 spills all nine, so a dead one must not hold what
+  a collection has since moved (forwarding it wrote into the heap at
+  random: `schedules/arrival-order.fx`, a slice of two). Every register
+  is dead where register code is entered from stack code past its
+  arguments, and after a call or call-out: cleared to 0 there.
+- **A slice of three, for register code.** At a slice of two a preempted
+  task running register code never runs on: the trampoline's way back
+  (`drop`, `%fx26-preempt-done`, `drop`, `exit`) spends the slice, and the
+  next poll preempts it before its next instruction, as a slice of one
+  does to cells (C125). `--regs` with tasks is checked at three.
+  (At two, `schedules/process-fails.fx` answered 3, Fixpt's per-form
+  answer: where preemption falls decides whether its failing process
+  fails before the program's last form ends.)
