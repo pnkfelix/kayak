@@ -178,6 +178,8 @@ def stressed(cells, name, path, text, limit, have, fail):
     ways = [["--hand"] + (["--step-limit", "none"] if limit else [])] if HAND else []
     if not name.startswith(UNLIMITED):
         ways.append(["--gc-stress"])
+        if HAND:
+            ways.append(["--hand", "--gc-stress"])
         if TASKS.search(open(path, encoding="utf-8").read()):
             ways.append(["--slice", "2", "--step-limit", "none"])
     with tempfile.NamedTemporaryFile("w", suffix=".cells", delete=False) as f:

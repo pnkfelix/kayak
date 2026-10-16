@@ -1244,6 +1244,13 @@ pub fn hand_x(m: HandCode) -> bool {
     flatarray_set_i64_x(s, int_to_i64(st_rs_limit()), i64_star(4i64, rs_limit()));
     flatarray_set_i64_x(s, int_to_i64(st_ds_length()), flatarray_length_i64(get(ds())));
     flatarray_set_i64_x(s, int_to_i64(st_rs_push()), i64_minus(flatarray_length_i64(get(rs())), 4i64));
+    flatarray_set_i64_x(s, int_to_i64(st_top()), get(top()));
+    flatarray_set_i64_x(s, int_to_i64(st_alloc_limit()), if get(gc_stress()) {
+        0i64
+    } else {
+        i64_quotient(i64_star(3i64, flatarray_length_i64(get(mem()))), 4i64)
+    });
+    flatarray_set_i64_x(s, int_to_i64(st_mem_length()), flatarray_length_i64(get(mem())));
     set(hand_entries(), i64_plus(get(hand_entries()), 1i64));
     let why = int_to_i64(m(s, get(mem()), get(ds()), get(rs())));
     set(cur(), flatarray_ref_i64(s, int_to_i64(st_cur())));
@@ -1253,6 +1260,7 @@ pub fn hand_x(m: HandCode) -> bool {
     set(dsp(), flatarray_ref_i64(s, int_to_i64(st_dsp())));
     set(rsp(), flatarray_ref_i64(s, int_to_i64(st_rsp())));
     set(fuel(), flatarray_ref_i64(s, int_to_i64(st_fuel())));
+    set(top(), flatarray_ref_i64(s, int_to_i64(st_top())));
     if i64_eq(why, gave_back()) {
         true
     } else {

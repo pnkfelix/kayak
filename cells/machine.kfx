@@ -671,6 +671,10 @@
         (flatarray-set-i64! s (int->i64 st-rs-limit) (i64* 4 rs-limit))
         (flatarray-set-i64! s (int->i64 st-ds-length) (flatarray-length-i64 (get ds)))
         (flatarray-set-i64! s (int->i64 st-rs-push) (i64- (flatarray-length-i64 (get rs)) 4))
+        (flatarray-set-i64! s (int->i64 st-top) (get top))
+        (flatarray-set-i64! s (int->i64 st-alloc-limit)
+                            (if (get gc-stress) 0 (i64-quotient (i64* 3 (flatarray-length-i64 (get mem))) 4)))
+        (flatarray-set-i64! s (int->i64 st-mem-length) (flatarray-length-i64 (get mem)))
         (set hand-entries (i64+ (get hand-entries) 1))
         (let ((why (int->i64 (m s (get mem) (get ds) (get rs)))))
           (begin
@@ -678,6 +682,7 @@
             (set fp (flatarray-ref-i64 s (int->i64 st-fp))) (set clo (flatarray-ref-i64 s (int->i64 st-clo)))
             (set dsp (flatarray-ref-i64 s (int->i64 st-dsp))) (set rsp (flatarray-ref-i64 s (int->i64 st-rsp)))
             (set fuel (flatarray-ref-i64 s (int->i64 st-fuel)))
+            (set top (flatarray-ref-i64 s (int->i64 st-top)))
             (if (i64= why gave-back)
                 #t
                 (begin (trap! "tier 2: the return stack ran out under its marks (C126)") #f))))))))

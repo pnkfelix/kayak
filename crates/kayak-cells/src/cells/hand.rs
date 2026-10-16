@@ -489,7 +489,9 @@ pub fn c_lt() -> Int {
 
 // The state, a flat array of `i64`, by element: what tier 1 gives the
 // machine and takes back (`cur`, `kk`, `fp`, `clo`, `dsp`, `rsp`, `fuel`),
-// why the machine stopped, the limits as tier 1 checks them, and what the
+// why the machine stopped, the limits as tier 1 checks them, the heap's
+// `top`, the most it may be at an allocation before tier 1 would collect
+// (0 under `--gc-stress`), the heap's length, and what the
 // machine works out from them at its entry: the return stack's base, and
 // the limits as addresses.
 pub fn st_cur() -> Int {
@@ -554,6 +556,18 @@ pub fn st_ds_end() -> Int {
 
 pub fn st_rs_end() -> Int {
     int_lit(16)
+}
+
+pub fn st_top() -> Int {
+    int_lit(17)
+}
+
+pub fn st_alloc_limit() -> Int {
+    int_lit(18)
+}
+
+pub fn st_mem_length() -> Int {
+    int_lit(19)
 }
 
 pub fn st_size() -> i64 {
@@ -844,6 +858,15 @@ pub fn ubfx_x(d: Int, n: Int, lsb: Int, w: Int) -> () {
     e_x((&a64::arm_ubfx)(d, n, lsb, w))
 }
 
+// `lsl xd, xn, #s`, which `arm64.fx` has not: `ubfm` of `64 - s`, `63 - s`.
+pub fn arm_lsl(d: Int, n: Int, sh: Int) -> Int {
+    _plus(int_lit(3544186880), _plus(_star(modulo(_minus(int_lit(64), sh), int_lit(64)), int_lit(65536)), _plus(_star(_minus(int_lit(63), sh), int_lit(1024)), _plus(_star(n, int_lit(32)), d))))
+}
+
+pub fn lsl_x(d: Int, n: Int, sh: Int) -> () {
+    e_x(arm_lsl(d, n, sh))
+}
+
 pub fn ret_x() -> () {
     e_x(a64::arm_ret())
 }
@@ -1052,6 +1075,86 @@ pub fn field_read_x() -> () {
     ldur_x(x16(), x16(), int_lit(-4))
 }
 
+/// Room for an object of `words` words more than `count8 / 8` (`count8`
+/// a register, or 31 for none): `x13` the heap's `top`, `x16` its
+/// address. Given back if tier 1's `safepoint!` would collect first, or
+/// `room!` grow the heap.
+pub fn allocating_x(words: Int, count8: Int) -> () {
+    ldr_x(x13(), x_st(), at_st(st_top()));
+    ldr_x(x14(), x_st(), at_st(st_alloc_limit()));
+    cmp_x(x13(), x14());
+    give_if_x(c_hi());
+    addi_x(x15(), x13(), words);
+    if _eq(count8, int_lit(31)) {
+        ()
+    } else {
+        lsr_x(x14(), count8, int_lit(3));
+        add_x(x15(), x15(), x14())
+    };
+    ldr_x(x14(), x_st(), at_st(st_mem_length()));
+    cmp_x(x15(), x14());
+    give_if_x(c_hi());
+    lsl_x(x16(), x13(), int_lit(3));
+    add_x(x16(), x_mem(), x16())
+}
+
+/// `cons`: the pair at the heap's top, as tier 1's `cons!` makes it.
+pub fn consed_x() -> () {
+    need_x(int_lit(2));
+    allocating_x(int_lit(2), int_lit(31));
+    ldur_x(x14(), x_dsp(), int_lit(-16));
+    ldur_x(x15(), x_dsp(), int_lit(-8));
+    stp_x(x14(), x15(), x16(), int_lit(0));
+    addi_x(x15(), x13(), int_lit(2));
+    str_x(x15(), x_st(), at_st(st_top()));
+    lsl_x(x14(), x13(), int_lit(3));
+    addi_x(x14(), x14(), int_lit(1));
+    put_top_x(x14())
+}
+
+/// `closure W COUNT`: a cellular closure of word `W` over the `COUNT`
+/// values on top, as tier 1's `make-bloblet!` lays it out: its header,
+/// its fields (`count + 2`, the trailer one), its trailer.
+pub fn closed_x() -> () {
+    let (r#loop, done) = (label_x(), label_x());
+    h_room_x();
+    ldr_post_x(x10(), x_ip(), int_lit(-8));
+    ldr_post_x(x17(), x_ip(), int_lit(-8));
+    add_x(x14(), x_fp(), x17());
+    cmp_x(x_dsp(), x14());
+    give_if_x(c_lo());
+    allocating_x(int_lit(3), x17());
+    movz_x(x15(), _plus(int_lit(6), _star(int_lit(8), i64_to_int(k_closure()))));
+    lsr_x(x14(), x17(), int_lit(3));
+    addi_x(x14(), x14(), int_lit(2));
+    lsl_x(x14(), x14(), int_lit(14));
+    orr_x(x15(), x15(), x14());
+    str_x(x15(), x16(), int_lit(0));
+    add_x(x11(), x16(), x17());
+    addi_x(x11(), x11(), int_lit(24));
+    addi_x(x14(), x17(), int_lit(21));
+    stur_x(x14(), x11(), int_lit(-8));
+    stur_x(x10(), x11(), int_lit(-16));
+    sub_x(x15(), x_dsp(), x17());
+    subi_x(x_w(), x11(), int_lit(24));
+    bind_x(r#loop);
+    cmp_x(x15(), x_dsp());
+    bc_x(c_hs(), done);
+    ldr_post_x(x14(), x15(), int_lit(8));
+    str_post_x(x14(), x_w(), int_lit(-8));
+    b_x(r#loop);
+    bind_x(done);
+    sub_x(x_dsp(), x_dsp(), x17());
+    lsr_x(x14(), x17(), int_lit(3));
+    add_x(x14(), x14(), x13());
+    addi_x(x14(), x14(), int_lit(3));
+    str_x(x14(), x_st(), at_st(st_top()));
+    sub_x(x14(), x11(), x_mem());
+    addi_x(x14(), x14(), int_lit(4));
+    str_post_x(x14(), x_dsp(), int_lit(8));
+    next_x()
+}
+
 /// Routine number `n`'s code; what it does not do it gives back.
 pub fn entered_x(n: Int) -> () {
     if _eq(n, i64_to_int(r_lit())) {
@@ -1200,6 +1303,10 @@ pub fn entered_x(n: Int) -> () {
         field_read_x();
         stur_x(x16(), x_dsp(), int_lit(-8));
         next_x()
+    } else if _eq(n, i64_to_int(r_cons())) {
+        consed_x()
+    } else if _eq(n, i64_to_int(r_closure())) {
+        closed_x()
     } else if _eq(n, i64_to_int(r_exit())) {
         ldr_x(x16(), x_st(), at_st(st_rsb()));
         cmp_x(x_rsp(), x16());

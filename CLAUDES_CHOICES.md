@@ -3241,3 +3241,13 @@ discrepancy needs them.
   0.2 s of each: 0.22 to 0.31.) What is given back most now: allocation
   (`cons`, `closure`) and `prim`: `closures`, `lists` and `lists-region`
   give back three million cells each.
+- **Allocation (2026-10-16).** `cons` and `closure` bump tier 1's heap's
+  `top` in machine code, laid out as tier 1's `cons!` and `make-bloblet!`
+  lay them out; given back where tier 1's `safepoint!` would collect
+  first (`top` past three quarters of the heap; always under
+  `--gc-stress`) or `room!` grow the heap. `cells-programs.py` runs each
+  program on tier 2 under `--gc-stress` too. Benchmarks, tier 1 then tier
+  2, user seconds: `captures` 0.12, 0.03; `closures` 1.73, 0.09; `fib`
+  0.48, 0.02; `helpers` 2.56, 0.12; `lists-region` 1.38, 0.25; `lists`
+  1.22, 0.06; `loop` 2.15, 0.11; `tak` 0.21, 0.01. What is given back
+  most now is `prim` (`lists-region`'s region primitives, three million).

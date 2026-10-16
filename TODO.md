@@ -632,9 +632,11 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    shared with native code (**done**), (2) entry, `NEXT`, exit, stack and
    control routines (**done**: 23 routines, 326 agree, `--hand`), (3) the
    rest, by how often programs give back: ~~calls (`call`, `tailcall`,
-   `tcall`, `ttailcall`), `free`, `field`~~ (C126), `prim` (its arguments
-   through, the primitive KFX's), allocation (`cons`, `closure`, bump
-   allocation in tier 1's heap, collecting given back). **Begun (C116,
+   `tcall`, `ttailcall`), `free`, `field`~~, ~~allocation (`cons`,
+   `closure`)~~ (C126); `prim` next: the primitive KFX's, reached without
+   leaving the machine (kayak-jit's `foreign`), or the hottest in machine
+   code (`%region-cons`); then prompts, marks, continuations, `execute`,
+   `rest`, `global!`, `field@`, `field!`. **Begun (C116,
    2026-10-15)**: Fixpt's §97 operations in KFX, the code area, the
    trampoline, `tests/kfx/made-code.kfx`. Next, toward Fixpt's
    `made-code/frames.fx` and `generated.fx` on kayak:

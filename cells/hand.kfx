@@ -51,7 +51,9 @@
 
 "The state, a flat array of `i64`, by element: what tier 1 gives the
  machine and takes back (`cur`, `kk`, `fp`, `clo`, `dsp`, `rsp`, `fuel`),
- why the machine stopped, the limits as tier 1 checks them, and what the
+ why the machine stopped, the limits as tier 1 checks them, the heap's
+ `top`, the most it may be at an allocation before tier 1 would collect
+ (0 under `--gc-stress`), the heap's length, and what the
  machine works out from them at its entry: the return stack's base, and
  the limits as addresses."
 (define st-cur int 0)
@@ -70,6 +72,9 @@
 (define st-rs-lim int 14)
 (define st-ds-end int 15)
 (define st-rs-end int 16)
+(define st-top int 17)
+(define st-alloc-limit int 18)
+(define st-mem-length int 19)
 (define st-size i64 24)
 (define at-st (->* (int) int) (lambda (i) (* 8 i)))
 
@@ -163,6 +168,10 @@
 (define stp! (->* (int int int int) unit) (lambda (t t2 n i) (e! ((with a64 arm-stp) t t2 n i))))
 (define ldp! (->* (int int int int) unit) (lambda (t t2 n i) (e! ((with a64 arm-ldp) t t2 n i))))
 (define ubfx! (->* (int int int int) unit) (lambda (d n lsb w) (e! ((with a64 arm-ubfx) d n lsb w))))
+"`lsl xd, xn, #s`, which `arm64.fx` has not: `ubfm` of `64 - s`, `63 - s`."
+(define arm-lsl (->* (int int int) int)
+  (lambda (d n sh) (+ 3544186880 (+ (* (modulo (- 64 sh) 64) 65536) (+ (* (- 63 sh) 1024) (+ (* n 32) d))))))
+(define lsl! (->* (int int int) unit) (lambda (d n sh) (e! (arm-lsl d n sh))))
 (define ret! (->* () unit) (lambda () (e! (with a64 arm-ret))))
 
 (define times8! (->* (int) unit)
@@ -271,6 +280,53 @@
       (cmp! x13 x14) (give-if! c-lt) (cmp! x13 x15) (give-if! c-hi)
       (sub! x16 x11 x13) (ldur! x16 x16 -4))))
 
+(define allocating! (->* (int int) unit)
+  (lambda (words count8)
+    "Room for an object of `words` words more than `count8 / 8` (`count8`
+     a register, or 31 for none): `x13` the heap's `top`, `x16` its
+     address. Given back if tier 1's `safepoint!` would collect first, or
+     `room!` grow the heap."
+    (begin
+      (ldr! x13 x-st (at-st st-top)) (ldr! x14 x-st (at-st st-alloc-limit)) (cmp! x13 x14) (give-if! c-hi)
+      (addi! x15 x13 words)
+      (if (= count8 31) #u (begin (lsr! x14 count8 3) (add! x15 x15 x14)))
+      (ldr! x14 x-st (at-st st-mem-length)) (cmp! x15 x14) (give-if! c-hi)
+      (lsl! x16 x13 3) (add! x16 x-mem x16))))
+
+(define consed! (->* () unit)
+  (lambda ()
+    "`cons`: the pair at the heap's top, as tier 1's `cons!` makes it."
+    (begin
+      (need! 2) (allocating! 2 31)
+      (ldur! x14 x-dsp -16) (ldur! x15 x-dsp -8) (stp! x14 x15 x16 0)
+      (addi! x15 x13 2) (str! x15 x-st (at-st st-top))
+      (lsl! x14 x13 3) (addi! x14 x14 1) (put-top! x14))))
+
+(define closed! (->* () unit)
+  (lambda ()
+    "`closure W COUNT`: a cellular closure of word `W` over the `COUNT`
+     values on top, as tier 1's `make-bloblet!` lays it out: its header,
+     its fields (`count + 2`, the trailer one), its trailer."
+    (let ((loop (label!)) (done (label!)))
+      (begin
+        (h-room!)
+        (ldr-post! x10 x-ip -8) (ldr-post! x17 x-ip -8)
+        (add! x14 x-fp x17) (cmp! x-dsp x14) (give-if! c-lo)
+        (allocating! 3 x17)
+        (movz! x15 (+ 6 (* 8 (i64->int k-closure)))) (lsr! x14 x17 3) (addi! x14 x14 2) (lsl! x14 x14 14) (orr! x15 x15 x14)
+        (str! x15 x16 0)
+        (add! x11 x16 x17) (addi! x11 x11 24)
+        (addi! x14 x17 21) (stur! x14 x11 -8)
+        (stur! x10 x11 -16)
+        (sub! x15 x-dsp x17) (subi! x-w x11 24)
+        (bind! loop) (cmp! x15 x-dsp) (bc! c-hs done)
+        (ldr-post! x14 x15 8) (str-post! x14 x-w -8) (b! loop)
+        (bind! done)
+        (sub! x-dsp x-dsp x17)
+        (lsr! x14 x17 3) (add! x14 x14 x13) (addi! x14 x14 3) (str! x14 x-st (at-st st-top))
+        (sub! x14 x11 x-mem) (addi! x14 x14 4) (str-post! x14 x-dsp 8)
+        (next!)))))
+
 (define entered! (->* (int) unit)
   (lambda (n)
     "Routine number `n`'s code; what it does not do it gives back."
@@ -338,6 +394,8 @@
          (need! 1) (ldr-post! x13 x-ip -8) (ldur! x10 x-dsp -8)
          (andl! x14 x10 3) (cmpi! x14 4) (give-if! c-ne) (add! x11 x-mem x10)
          (field-read!) (stur! x16 x-dsp -8) (next!)))
+      ((= n (i64->int r-cons)) (consed!))
+      ((= n (i64->int r-closure)) (closed!))
       ((= n (i64->int r-exit))
        (begin (ldr! x16 x-st (at-st st-rsb)) (cmp! x-rsp x16) (give-if! c-eq) (b! (get l-pop-return))))
       ((= n (i64->int r-return))
