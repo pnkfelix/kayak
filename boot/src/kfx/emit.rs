@@ -2795,6 +2795,12 @@ pub mod emitter {
                 Sexp::Lst(xs, fl, ln, p) => {
                     if null_p(xs) {
                         return e;
+                    } else if sym_is_p(car(xs), str_lit("select")) {
+                        // `(select m t)`: a module and its type's name, not types; `t`
+                        // written out would be this module's `t`, which may be this
+                        // very select (C119: a stack overflowed on Fixpt's
+                        // `check-holds-types.fx`).
+                        return e;
                     } else if (sym_is_p(car(xs), str_lit("productof")) || sym_is_p(car(xs), str_lit("sumof"))) {
                         return lst(kayak_rt::heap_cons(car(xs), map(lambda1s(move |g: &'static Sexp| {
                             let tagcase_ = g;

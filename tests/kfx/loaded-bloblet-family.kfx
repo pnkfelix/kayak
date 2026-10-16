@@ -1,0 +1,8 @@
+"A loaded module's bloblet family, named in another by `select` under its
+ own name and applied there (C119), as Fixpt's checker names its tables."
+
+(define u (load-module "loads/uses-cell.fx"))
+
+(define main (subr (maxeff (read @globals) (alloc @t) (read @t) (write @t)) () string)
+  (lambda ()
+    (i64->string (with u (bump (fresh))))))

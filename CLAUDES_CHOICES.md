@@ -2860,7 +2860,13 @@ signatures (`check-types-sig`, `tables-sig`) first.
   re-exported for it (`loaded-family`); an effect a module selects from a
   shared load read with its own, so that those after it may name it
   (`kreads`, then `kmakes`).
-- **Measured**: 54 of 150 files accepted (from 11). Next: `wcell`,
+- **A stack overflow in the emitter** (`expand-aliases`), on Fixpt's
+  `check-holds-types.fx` and `check-modules-types.fx`: a type selected
+  under its own name, `(define-type t (select m t))`, in a bloblet
+  family's instance; writing `t` out met the select, whose `t` it wrote
+  out again, without end. A `select`'s parts are names, not types, and
+  are left as they are. Test: `loaded-bloblet-family` (overflows before).
+- **Measured**: 54 of 150 files accepted (from 11); 56 after the fix. Next: `wcell`,
   `tword`, `wglobal`, the cellular machine's types that Fixpt's compilers
   in FX-26 use (14), a question for the tiers, not a quick one.
 

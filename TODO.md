@@ -582,9 +582,9 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    KFX checker gap, Fixpt accepts it); `load-input` of a file that is one
    `lambda` (`regcode*`, `compile*`, `eval*`, `native.fx`); the eager
    reader's own states (2, expected); a nested load's path joined to an
-   absolute one (2, a bug); **kfx overflows its stack** loading
-   `check-holds-types.fx` and `check-modules-types.fx` (2, a bug: it
-   should refuse or accept, never crash). And `call-with-oneshot-continuation` whose
+   absolute one (2, a bug). (kfx's stack overflow on
+   `check-holds-types.fx` and `check-modules-types.fx`: fixed, C119; 56
+   accepted then.) And `call-with-oneshot-continuation` whose
    procedure ends in an abort to its tag, as C45's form (C118).
 2. The layout table for KFX; the heap in Fixpt's format; tier 1.
 3. `kayak-jit`; the arm64 encoder in KFX; tier 2. **Begun (C116,
