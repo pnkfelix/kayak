@@ -2999,3 +2999,65 @@ look at Coopt's collector".
   (`crossing`). A stale tag held across `callcomp`'s safepoint showed
   only under `--gc-stress`, which is what it is for. Now 190 agree, 0
   differ, all eight benchmarks.
+
+## C123. The pin at Fixpt 1925bca: full literals, and `->` and `->*` in KFX (2026-10-16)
+
+The user asked Fixpt for listings whose literals can be read back
+exactly (C122's 35 programs cut short, 2 more unwritable); Fixpt gave
+`fixpt compile --full-literals` (1925bca), not `dump-heap` for FX-26.
+Between the old pin and it, ten commits of FX-26's own: `(-> (T ...) R)`,
+a pure procedure's type written short, and `(->* (T ...) R)`, a
+definition's type whose effect its `lambda` says, found in one pass
+(the user's, upstream). Fixpt's `arm64.fx` and `convention.fx`, which
+kfx builds in (C121), now use `->*`, so the pin moves only with KFX
+reading both.
+
+- **Chosen:** both rewritten where `import` is expanded (`imports-in`),
+  in no quoted datum: `(-> PS R)` as `(subr pure PS R)`, which it is;
+  `(->* PS R)` as `(subr %found PS R)`, a marker only a definition's
+  checking takes (`parse-effect` refuses it elsewhere, in Fixpt's words).
+  A `define` of one has its effect found (`found-define`, by
+  `lambda-effects`, as `define*` finds its globals: a call of itself
+  reads itself, and what reads itself is `spin`, Fixpt's
+  `arrow_star_spins`), written into its type, and the definition is then
+  checked, and emitted, as an ordinary one. A `define-rec`'s members
+  (`found-rec`): a first pass with each `->*` member standing for
+  `pure`, then each given its own effect and every non-`poly` member's,
+  `spin` if that reads a member's global.
+- **In modules:** a module's `->*` items are checked as its other
+  items are (`check-top`); a module value that names one is refused, as
+  Fixpt refuses it (its effect is found only after the module's values
+  are made: Fixpt's `arrows/star-module-value.fx`, which kfx first
+  accepted). `load-input` files are rewritten too (`convention.fx`).
+- **Not chosen:** Fixpt's components, callees first. KFX takes the whole
+  group as one component, so a member may be given more effect than
+  Fixpt finds it: KFX may refuse a group Fixpt accepts, never the other
+  way (K1). Nor `->*` in modules' items, or `letrec`: refused, as the
+  marker is anywhere but a top-level `define` or `define-rec`.
+- **Why:** the rewrite leaves the checker's and emitter's every other
+  path as it was: they see a `subr` whose effect is written, the effect
+  the definition's lambda has.
+- **Tests:** `tests/kfx/arrows.kfx` (both forms, alone, in a group,
+  under `poly`; Fixpt gives the same answer); refused:
+  `arrow-star-param` (a parameter's type), `arrow-pure-global` (`->`
+  that writes). The built-in files check, and `made-*` run, at the pin.
+- **Also with the pin:** `f64-exp`, `-log`, `-sin`, `-cos`, `-tan`,
+  `-asin`, `-acos`, `-atan`, `-atan2`, `-expt` in KFX and the engine
+  (FX-26's, which tier 1's primitives need; `tests/kfx/floats.kfx`).
+  `scripts/gen-vprims.py` is stale (C110's refusals were written into
+  `fx26/vprims.kfx` by hand since), so the engine's ten were added by
+  hand; in TODO.
+- **Drift at the pin:** `disasm.rs` (`cells/listing.kfx`'s source)
+  changed only to thread a literal writer through; its default listing,
+  the one tier 1 reads, is as it was (194 of Fixpt's programs agree at
+  the pin, as before plus Fixpt's new ones). Reading `--full-literals`
+  is the next step, in TODO §31.
+- **A K1 breach found on the way:** KFX joined branches that mix a pair
+  `cons` makes with a list, nothing expected; FX-26 types the pair a
+  `(pairof ...)`, which joins no `(listof ...)`, and refuses (stage 0
+  caught it in this very change). KFX now refuses such branches in an
+  `if`, `cond`, `case`, `tagcase`, `typecase` (`pairs-mixed?`, by the
+  branches' forms: `cons`, a `let`/`begin` ending in one, an `if` of
+  two): `tests/kfx-refused/branches-cons-list.kfx`. Retyping KFX's
+  `cons` as FX-26's `pairof` would be exact, and touch every use of it;
+  not now. One place in `cells/` needed its type written.

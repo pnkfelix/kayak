@@ -53,6 +53,10 @@
    (f64< (subr pure (f64 f64) bool)) (f64<= (subr pure (f64 f64) bool)) (f64> (subr pure (f64 f64) bool))
    (f64>= (subr pure (f64 f64) bool)) (f64= (subr pure (f64 f64) bool))
    (f64-abs (subr pure (f64) f64)) (f64-neg (subr pure (f64) f64)) (f64-sqrt (subr pure (f64) f64))
+   (f64-exp (subr pure (f64) f64)) (f64-log (subr pure (f64) f64)) (f64-sin (subr pure (f64) f64))
+   (f64-cos (subr pure (f64) f64)) (f64-tan (subr pure (f64) f64)) (f64-asin (subr pure (f64) f64))
+   (f64-acos (subr pure (f64) f64)) (f64-atan (subr pure (f64) f64))
+   (f64-atan2 (subr pure (f64 f64) f64)) (f64-expt (subr pure (f64 f64) f64))
    (f64-floor (subr pure (f64) f64)) (f64-ceiling (subr pure (f64) f64))
    (f64-truncate (subr pure (f64) f64)) (f64-round (subr pure (f64) f64))
    (f64-nan? (subr pure (f64) bool)) (f64-infinite? (subr pure (f64) bool)) (f64-finite? (subr pure (f64) bool))
@@ -658,14 +662,155 @@
                                   (string-append " is not within " (show-effs declared))))))))
                 (else other (refuse v "a define* is of a procedure")))))))))
 
+"FX-26's `(->* (T ...) R)` (Fixpt 2a0e6fd..99bc9b1, the user's,
+ 2026-10-16), read as `(subr %found (T ...) R)` (`imports-in`): a
+ definition's type whose effect its `lambda` says, found in one pass and
+ written in, so that the definition is then checked, and emitted, as
+ though its type had said it."
+(define-rec
+  (arrow-star? (subr kfx (sexp) bool)
+    (lambda (t)
+      "Whether a definition's type is `->*`'s, under any `poly`s."
+      (tagcase t
+        (lst (xs f l p)
+          (cond ((null? xs) #f)
+                ((and (sym-is? (car xs) "subr") (i64= (size xs) 4)) (sym-is? (second xs) "%found"))
+                ((and (sym-is? (car xs) "poly") (i64= (size xs) 3)) (arrow-star? (third xs)))
+                (else #f)))
+        (else other #f))))
+  (effect-put (subr kfx (sexp sexp) sexp)
+    (lambda (t e)
+      "`->*`'s type `t`, its effect `e`."
+      (tagcase t
+        (lst (xs f l p)
+          (if (sym-is? (car xs) "poly")
+              (lst (list (car xs) (second xs) (effect-put (third xs) e)) f l p)
+              (lst (list (car xs) e (third xs) (fourth xs)) f l p)))
+        (else other t)))))
+
+(define bare-sym (subr kfx (string) sexp) (lambda (n) (sym n "" 0)))
+
+(define atom-sexp (subr kfx (string) sexp)
+  (lambda (a)
+    "An effect's atom, as `parse-effect` reads it: written again."
+    (cond ((or (string=? a "spin") (string=? a "nondet")) (bare-sym a))
+          ((string=? a "@globals") (lst (list (bare-sym "read") (bare-sym "@globals")) "" 0 0))
+          ((has-prefix? a "g:") (lst (list (bare-sym "read") (lst (list (bare-sym "globals") (bare-sym (after-prefix a "g:"))) "" 0 0)) "" 0 0))
+          ((has-prefix? a "io:") (lst (list (bare-sym "io") (bare-sym (after-prefix a "io:"))) "" 0 0))
+          ((has-prefix? a "~") (bare-sym (after-prefix a "~")))
+          (else (let ((k (before-char a #\:))) (lst (list (bare-sym k) (bare-sym (after-prefix a (string-append k ":")))) "" 0 0))))))
+
+(define effect-sexp (subr kfx (strings) sexp)
+  (lambda (es) (lst (cons (sym "maxeff" "" 0) (map atom-sexp es)) "" 0 0)))
+
+(define found-latent (subr kfx (cv string sexp sexp) strings)
+  (lambda (v name type defined)
+    "The effect of `->*` definition `name`'s lambda (Fixpt's
+     `arrow_star_latent`): its body checked against the parameters and
+     result its type says, but not an effect. Its calls of itself read
+     itself, as a `define*`'s do (C71); what reads itself is `spin` too
+     (`arrow_star_spins`)."
+    (if (not (lambda-form? defined))
+        (refuse v "`->*` finds a procedure's effect from its `lambda`: define it as one")
+        (let ((lam (items (if (head-is? defined "plambda") (third (items defined)) defined))))
+          (tagcase (parse-scheme v (effect-put type (sym "pure" "" 0)))
+            (scheme (tvars t)
+              (tagcase t
+                (ty-proc (declared ps r)
+                  (let* ((found (with expressions (lambda-effects (with-tvars (with-tvars v tvars) (place-marks type)) (new-state) (items (second lam)) (cdr (cdr lam)) t)))
+                         (es (tagcase found (res (u es s) es))))
+                    (if (string-member? (string-append "g:" name) es) (effs-union (list "spin") es) es)))
+                (else other (refuse v "`->*` is a procedure's type")))))))))
+
+(define found-define (subr kfx (cv sexps) sexps)
+  (lambda (v xs)
+    "A `define` of `->*`, its effect found (a component of one, which saw
+     no placeholder but itself, read as reading itself)."
+    (let* ((name (name-of v (second xs)))
+           (itself (effect-put (third xs) (effect-sexp (list (string-append "g:" name)))))
+           (sc (parse-scheme v itself))
+           (named (with-binds (at v name (if (ends-alone? v name sc (fourth xs)) nil (list name))) (list (global v name sc)))))
+      (list (car xs) (second xs) (effect-put (third xs) (effect-sexp (found-latent named name (third xs) (fourth xs)))) (fourth xs)))))
+
+(define poly-type? (subr kfx (sexp) bool) (lambda (t) (head-is? t "poly")))
+
+(define-rec
+  (shared-effects (subr kfx (sexps (listof strings acyclic)) strings)
+    (lambda (bs es)
+      "The effects of a group's members but its `poly` ones'."
+      (if (or (null? bs) (null? es))
+          nil
+          (effs-union (if (poly-type? (second (items (car bs)))) nil (car es)) (shared-effects (cdr bs) (cdr es)))))))
+
+(define-rec
+  (found-members (subr kfx (sexps (listof strings acyclic) strings strings) sexps)
+    (lambda (bs es shared names)
+      "Each `->*` member at its own effect and the shared ones, `spin` too
+       if they read a member's global."
+      (if (or (null? bs) (null? es))
+          nil
+          (cons (tagcase (car bs)
+                  (lst (ys f l p)
+                    (if (not (arrow-star? (second ys)))
+                        (car bs)
+                        (let* ((all (effs-union (car es) shared))
+                               (all (if (any? (lambda ((n string)) (string-member? (string-append "g:" n) all)) names) (effs-union (list "spin") all) all)))
+                          (lst (list (car ys) (effect-put (second ys) (effect-sexp all)) (third ys)) f l p))))
+                  (else other (car bs)))
+                (found-members (cdr bs) (cdr es) shared names))))))
+
+(define found-rec (subr kfx (cv sexps) sexps)
+  (lambda (v bindings)
+    "A `define-rec` with `->*` members, each one's effect found (Fixpt's
+     `arrow_star_group`): first in one pass, every `->*` member standing
+     for nothing (`pure`), the rest at their types; then each with the
+     effects of the others (but a `poly` one's, which say its own binders),
+     and `spin` if that reads a member's global. Fixpt takes the group's
+     components, callees first; KFX takes the group as one, so each member
+     is given what any finds: no less than Fixpt's, never more accepted."
+    (let* ((names (map (lambda ((b sexp)) (name-of v (car (items b)))) bindings))
+           (placed (map (lambda ((b sexp))
+                          (let ((ys (items b)))
+                            (if (arrow-star? (second ys))
+                                (lst (list (car ys) (effect-put (second ys) (sym "pure" "" 0)) (third ys)) "" 0 0)
+                                b)))
+                        bindings))
+           (ends (with termination (terminates? v names (map (lambda ((b sexp)) (tagcase (parse-scheme v (second (items b))) (scheme (tvars t) t))) placed)
+                              (map (lambda ((b sexp)) (third (items b))) bindings))))
+           (named (with-binds v (map (lambda ((b sexp)) (let ((ys (items b))) (global v (name-of v (car ys)) (parse-scheme v (second ys))))) placed)))
+           (own (map (lambda ((b sexp))
+                       (let ((ys (items b)))
+                         (if (arrow-star? (second ys))
+                             (found-latent (at named (name-of v (car ys)) (if ends nil names)) (name-of v (car ys)) (second ys) (third ys))
+                             (tagcase (parse-scheme v (second ys)) (scheme (tvars t) (tagcase t (ty-proc (es ps r) es) (else other nil)))))))
+                     bindings))
+           (shared (shared-effects bindings own)))
+      (found-members bindings own shared names))))
+
+(define star-items (subr kfx (sexps) strings)
+  (lambda (forms)
+    "The names of a module's items whose type is `->*`'s."
+    (concat (map (lambda ((f sexp))
+                   (cond ((and (head-is? f "define") (i64= (size (items f)) 4) (arrow-star? (third (items f))))
+                          (the strings (list (sym-name (second (items f))))))
+                         ((head-is? f "define-rec")
+                          (concat (map (lambda ((b sexp)) (if (and (i64= (size (items b)) 3) (arrow-star? (second (items b)))) (the strings (list (sym-name (car (items b))))) nil))
+                                       (cdr (items f)))))
+                         (else nil)))
+                 forms))))
+
 (define check-top (subr kfx (cv sexp) cv)
   (lambda (v form)
     "One top-level form, which may add to what the forms after it see."
     (tagcase form
       (str (x at-file at-pos) v)
       (lst (xs src-file src-line src-pos)
-        (let ((v (near v src-file src-line src-pos))
-              (h (if (null? xs) "" (tagcase (car xs) (sym (n at-file at-pos) n) (else other "")))))
+        (let* ((v (near v src-file src-line src-pos))
+               (h (if (null? xs) "" (tagcase (car xs) (sym (n at-file at-pos) n) (else other ""))))
+               (xs (cond ((and (string=? h "define") (i64= (size xs) 4) (arrow-star? (third xs))) (found-define v xs))
+                         ((and (string=? h "define-rec") (any? (lambda ((b sexp)) (and (i64= (size (items b)) 3) (arrow-star? (second (items b))))) (cdr xs)))
+                          (the sexps (cons (car xs) (found-rec v (cdr xs)))))
+                         (else xs))))
           (cond ((string=? h "define-effect") (with-effdef v xs))
                 ((string=? h "define-convention") v)
                 ((string=? h "define-type")
@@ -1787,8 +1932,14 @@
 
   (check-module (subr kfx (cv sexp) elab)
     (lambda (v form)
-      (let ((p (module-prep v form)))
-        (module-finish p (check-items (prep-inner p) (prep-name p) (module-order (prep-inner p) (prep-forms p)) nil))))))
+      (let* ((p (module-prep v form))
+             (stars (star-items (prep-forms p))))
+        (if (any? (lambda ((f sexp))
+                    (and (head-is? f "define") (i64= (size (items f)) 4) (not (lambda-form? (fourth (items f))))
+                         (any? (lambda ((n string)) (string-member? n stars)) (names-in (fourth (items f))))))
+                  (prep-forms p))
+            (refuse v "a module's value names a `->*` procedure of the module, whose effect is found only after the module's values are made (Fixpt's)")
+            (module-finish p (check-items (prep-inner p) (prep-name p) (module-order (prep-inner p) (prep-forms p)) nil)))))))
 
 (define check-tops (subr kfx (cv sexps typeds) elab)
   (lambda (v forms found)
@@ -2050,11 +2201,18 @@
                    its))))
   (imports-in (subr kfx (sexp) sexp)
     (lambda (e)
+      "Imports expanded; and FX-26's procedure types written short (Fixpt
+       2a0e6fd, 38df01e): `(-> (T ...) R)` as `(subr pure (T ...) R)`, which
+       it is, and `(->* (T ...) R)` as `(subr %found (T ...) R)`, whose
+       effect a definition finds (`found-define`); in no quoted datum."
       (tagcase e
         (lst (xs f l p)
-          (if (or (head-is? e "module") (head-is? e "hide"))
-              (lst (cons (car xs) (import-items (cdr xs))) f l p)
-              (lst (map imports-in xs) f l p)))
+          (cond ((or (head-is? e "quote") (head-is? e "quasiquote")) e)
+                ((or (head-is? e "module") (head-is? e "hide"))
+                 (lst (cons (car xs) (import-items (cdr xs))) f l p))
+                ((and (or (head-is? e "->") (head-is? e "->*")) (i64= (size xs) 3))
+                 (lst (list (sym "subr" f p) (sym (if (head-is? e "->") "pure" "%found") f p) (imports-in (second xs)) (imports-in (third xs))) f l p))
+                (else (lst (map imports-in xs) f l p))))
         (else other e)))))
 
 (define-rec
@@ -2238,7 +2396,7 @@
                                (if (null? found) "" (car found)))))
                    (es (if (string=? text "")
                            (error (string-append "kfx: " (string-append fl (string-append ": cannot read " path))))
-                           (map (lambda ((x sexp)) (if (built-in-path? path) x (loads-from x (directory-of path))))
+                           (map (lambda ((x sexp)) (imports-in (if (built-in-path? path) x (loads-from x (directory-of path)))))
                                 (read-all (string-chars text) path 1))))
                    (e (if (i64= (size es) 1) (car es) (error (string-append "kfx: " (string-append path ": not a file of one expression")))))
                    (bound (if (head-is? e "let") (items (second (items e))) nil))

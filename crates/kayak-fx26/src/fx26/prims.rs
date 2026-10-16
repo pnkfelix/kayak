@@ -143,7 +143,7 @@ pub fn prim_arity(n: Str) -> i64 {
     } else if not(string_eq_p(fixed_type(n), str_lit(""))) {
         fixed_arity(fixed_op(n))
     } else if has_prefix_p(n, str_lit("f64")) {
-        if string_member_p(n, kayak_rt::heap_cons(str_lit("f64-abs"), kayak_rt::heap_cons(str_lit("f64-neg"), kayak_rt::heap_cons(str_lit("f64-sqrt"), kayak_rt::heap_cons(str_lit("f64-floor"), kayak_rt::heap_cons(str_lit("f64-ceiling"), kayak_rt::heap_cons(str_lit("f64-truncate"), kayak_rt::heap_cons(str_lit("f64-round"), kayak_rt::heap_cons(str_lit("f64->string"), kayak_rt::heap_cons(str_lit("f64->int"), kayak_rt::heap_cons(str_lit("f64-nan?"), kayak_rt::heap_cons(str_lit("f64-infinite?"), kayak_rt::heap_cons(str_lit("f64-finite?"), kayak_rt::nil()))))))))))))) {
+        if string_member_p(n, kayak_rt::heap_cons(str_lit("f64-abs"), kayak_rt::heap_cons(str_lit("f64-neg"), kayak_rt::heap_cons(str_lit("f64-sqrt"), kayak_rt::heap_cons(str_lit("f64-floor"), kayak_rt::heap_cons(str_lit("f64-ceiling"), kayak_rt::heap_cons(str_lit("f64-truncate"), kayak_rt::heap_cons(str_lit("f64-round"), kayak_rt::heap_cons(str_lit("f64-exp"), kayak_rt::heap_cons(str_lit("f64-log"), kayak_rt::heap_cons(str_lit("f64-sin"), kayak_rt::heap_cons(str_lit("f64-cos"), kayak_rt::heap_cons(str_lit("f64-tan"), kayak_rt::heap_cons(str_lit("f64-asin"), kayak_rt::heap_cons(str_lit("f64-acos"), kayak_rt::heap_cons(str_lit("f64-atan"), kayak_rt::heap_cons(str_lit("f64->string"), kayak_rt::heap_cons(str_lit("f64->int"), kayak_rt::heap_cons(str_lit("f64-nan?"), kayak_rt::heap_cons(str_lit("f64-infinite?"), kayak_rt::heap_cons(str_lit("f64-finite?"), kayak_rt::nil()))))))))))))))))))))) {
             1i64
         } else {
             2i64
@@ -549,6 +549,22 @@ pub fn f64_prim(n: Str, a: &'static Val, b: &'static Val) -> &'static Val {
         v_real(f64_neg(x))
     } else if string_eq_p(n, str_lit("f64-sqrt")) {
         v_real(f64_sqrt(x))
+    } else if string_eq_p(n, str_lit("f64-exp")) {
+        v_real(f64_exp(x))
+    } else if string_eq_p(n, str_lit("f64-log")) {
+        v_real(f64_log(x))
+    } else if string_eq_p(n, str_lit("f64-sin")) {
+        v_real(f64_sin(x))
+    } else if string_eq_p(n, str_lit("f64-cos")) {
+        v_real(f64_cos(x))
+    } else if string_eq_p(n, str_lit("f64-tan")) {
+        v_real(f64_tan(x))
+    } else if string_eq_p(n, str_lit("f64-asin")) {
+        v_real(f64_asin(x))
+    } else if string_eq_p(n, str_lit("f64-acos")) {
+        v_real(f64_acos(x))
+    } else if string_eq_p(n, str_lit("f64-atan")) {
+        v_real(f64_atan(x))
     } else if string_eq_p(n, str_lit("f64-floor")) {
         v_real(f64_floor(x))
     } else if string_eq_p(n, str_lit("f64-ceiling")) {
@@ -577,6 +593,10 @@ pub fn f64_prim(n: Str, a: &'static Val, b: &'static Val) -> &'static Val {
             v_real(f64_min(x, y))
         } else if string_eq_p(n, str_lit("f64-max")) {
             v_real(f64_max(x, y))
+        } else if string_eq_p(n, str_lit("f64-atan2")) {
+            v_real(f64_atan2(x, y))
+        } else if string_eq_p(n, str_lit("f64-expt")) {
+            v_real(f64_expt(x, y))
         } else if string_eq_p(n, str_lit("f64<")) {
             flag(f64_lt(x, y))
         } else if string_eq_p(n, str_lit("f64<=")) {

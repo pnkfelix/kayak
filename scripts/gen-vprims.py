@@ -93,9 +93,9 @@ spec["write-file"]="(written-word! (write-file (word-string a) (word-kfx-bytes b
 spec["list-dir"]="(list-dir-word! a)"
 spec["int->f64"]="(real-word! (int->f64 (word-int a)))"; spec["f64->int"]=W("(f64->int (word-real a))")
 spec["f64->string"]="(string-word! (f64->string (word-real a)))"
-for op in ["f64+","f64-","f64*","f64/","f64-min","f64-max"]: spec[op]=f"(real-word! ({op} (word-real a) (word-real b)))"
+for op in ["f64+","f64-","f64*","f64/","f64-min","f64-max","f64-atan2","f64-expt"]: spec[op]=f"(real-word! ({op} (word-real a) (word-real b)))"
 for op in ["f64<","f64<=","f64>","f64>=","f64="]: spec[op]=B(f"({op} (word-real a) (word-real b))")
-for op in ["f64-abs","f64-neg","f64-sqrt","f64-floor","f64-ceiling","f64-truncate","f64-round"]: spec[op]=f"(real-word! ({op} (word-real a)))"
+for op in ["f64-abs","f64-neg","f64-sqrt","f64-floor","f64-ceiling","f64-truncate","f64-round","f64-exp","f64-log","f64-sin","f64-cos","f64-tan","f64-asin","f64-acos","f64-atan"]: spec[op]=f"(real-word! ({op} (word-real a)))"
 spec["f64-nan?"]=B("(f64-nan? (word-real a))"); spec["f64-infinite?"]=B("(f64-infinite? (word-real a))"); spec["f64-finite?"]=B("(f64-finite? (word-real a))")
 spec["string-ci=?"]=B("(string=? (string-downcase (word-string a)) (string-downcase (word-string b)))")
 spec["eq?"]=B("(i64= a b)"); spec["set-car!"]="(begin (obj-set! a 0 b) w-unit)"; spec["set-cdr!"]="(begin (obj-set! a 1 b) w-unit)"; spec["stay-cellular"]="a"

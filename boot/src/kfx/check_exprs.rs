@@ -4295,6 +4295,8 @@ pub mod expressions {
     pub fn body_form(v: &'static Cv, s: &'static St, h: Str, xs: Sexps, expected: Tys) -> &'static Res {
         if not(well_formed_p(h, xs)) {
             match refuse(v, string_append(str_lit("a ("), string_append(h, str_lit(" ...) not of the form FX-26 has")))) {}
+        } else if (null_p(expected) && pairs_mixed_p(h, xs)) {
+            match refuse(v, string_append(str_lit("the branches are a pair `cons` makes, a (pairof ...), and what is not one: FX-26 joins no (pairof ...) with a (listof ...); write the type, (the (listof ...) ("), string_append(h, str_lit(" ...))")))) {}
         } else if string_eq_p(h, str_lit("if")) {
             let ns = narrowings(v, s, car(xs));
             let tagcase_ = check(v, s, car(xs), ty_bool());

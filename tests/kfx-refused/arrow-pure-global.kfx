@@ -1,0 +1,5 @@
+"`(-> (T ...) R)` is pure as written: a procedure that writes a global is
+ not, and says so with `subr`."
+(define-effect kfx (maxeff (read @globals) spin))
+(define counter (ref int @c) (new 0))
+(define bump (-> () unit) (lambda () (set counter 1)))

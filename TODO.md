@@ -601,13 +601,25 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
 2. The layout table for KFX (**done**, C121: Fixpt's `layout.fx` built
    in, `kayak-jit`'s constants tested against it); the heap in Fixpt's
    format and tier 1, cells interpreted (**begun**, C122: `cells/`, on
-   the words Fixpt's compiler lists; 175 of Fixpt's programs agree, 0
-   differ). Next for tier 1: Coopt's collector's steps past its Cheney
-   baseline (done, C122: generational, regions, summaries, marking,
-   pacing, each against the one before); prompts, marks and continuations (routines 30–38, 41,
-   51–55; `captures`); bignums; more primitives, their failures worded as
-   Fixpt's runtime words them; then stage A ported (`compile*.fx`, each
-   marked `fixpt-source:`), its words compared with the listing.
+   the words Fixpt's compiler lists; at Fixpt 1925bca, 194 of Fixpt's
+   programs agree, 0 differ). Done for tier 1: Coopt's Cheney baseline;
+   prompts, marks and continuations (but routines 51–55). Next: the
+   listings Fixpt now writes in full (`--full-literals`, C123: floats by
+   their bits, labels across the listing, any bloblet by its fields), read
+   in place of the cut ones; more primitives (fixed widths, floats, suffix
+   refs, flat arrays, bytevectors, strings), their failures in Fixpt's
+   words, integers past a fixnum as Fixpt's bignums through KFX's `int`;
+   Coopt's collector's steps past Cheney (generational, regions,
+   summaries, marking, pacing, each against the one before); then stage A
+   ported (`compile*.fx`, each marked `fixpt-source:`), its words
+   compared with the listing.
+   - `->*` in KFX takes a `define-rec` as one component (C123), Fixpt
+     its components callees first: a group Fixpt accepts KFX may refuse.
+     Fixpt's order, if one does. `->*` in a module's items and `letrec`:
+     refused yet.
+   - `scripts/gen-vprims.py` is stale: `fx26/vprims.kfx` was edited by
+     hand since (C110's refusals), so regenerating drops them. Bring the
+     generator up to the file, or retire it.
 3. `kayak-jit`; the arm64 encoder in KFX; tier 2. **Begun (C116,
    2026-10-15)**: Fixpt's §97 operations in KFX, the code area, the
    trampoline, `tests/kfx/made-code.kfx`. Next, toward Fixpt's

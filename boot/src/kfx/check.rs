@@ -696,6 +696,8 @@ pub fn parse_effect(v: &'static Cv, tvars: Strings, e: &'static Sexp) -> Strings
                 nil::<Str>()
             } else if string_eq_p(s, str_lit("spin")) {
                 kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil())
+            } else if string_eq_p(s, str_lit("%found")) {
+                match refuse(v, str_lit("`(->* (param ...) result)` is only the type a definition declares (`define`, `define-rec`)")) {}
             } else if string_eq_p(s, str_lit("nondet")) {
                 // That an answer may differ from run to run (C101): no region, so
                 // never masked, as `spin`.
@@ -5203,6 +5205,97 @@ pub fn binds_prefixed(mut prefix: Str, mut bs: Binds) -> Binds {
 /// once, C92: a module including another asks it often).
 pub fn opened_binds(m: Str, bs: Binds) -> Binds {
     binds_prefixed(string_append(m, str_lit(" ")), bs)
+}
+
+// Whether an expression's value is a pair `cons` makes: FX-26 types one a
+// `(pairof ...)`, never a `(listof ...)`, so that branches of which some
+// are and some are not do not join where nothing is expected (KFX's
+// `cons` is a list: `pairs-mixed?`, a K1 breach found 2026-10-16).
+pub fn pair_made_p(mut e: &'static Sexp) -> bool {
+    loop {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                if null_p(xs) {
+                    return false;
+                } else if sym_is_p(car(xs), str_lit("cons")) {
+                    return true;
+                } else if ((sym_is_p(car(xs), str_lit("let")) || sym_is_p(car(xs), str_lit("let*")) || sym_is_p(car(xs), str_lit("letrec")) || sym_is_p(car(xs), str_lit("begin"))) && i64_gt(size(xs), 1i64)) {
+                    e = car(the::<Sexps>(reverse(xs)));
+                    continue;
+                } else if (sym_is_p(car(xs), str_lit("if")) && i64_eq(size(xs), 4i64)) {
+                    return (pair_made_p(third(xs)) && pair_made_p(fourth(xs)));
+                } else {
+                    return false;
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                return false;
+            }
+        }
+    }
+}
+
+/// The expressions whose values a branching form gives: an `if`'s two;
+/// the last of each clause of a `cond`, `case`, `tagcase`, `typecase`.
+pub fn branch_values(h: Str, xs: Sexps) -> Sexps {
+    if string_eq_p(h, str_lit("if")) {
+        if i64_eq(size(xs), 3i64) {
+            cdr(xs)
+        } else {
+            nil::<&'static Sexp>()
+        }
+    } else if string_eq_p(h, str_lit("cond")) {
+        concat(map(lambda1s(move |c: &'static Sexp| {
+            let tagcase_ = c;
+            match *tagcase_ {
+                Sexp::Lst(ys, f, l, p) => {
+                    if null_p(ys) {
+                        nil::<&'static Sexp>()
+                    } else {
+                        the::<Sexps>(kayak_rt::heap_cons(car(the::<Sexps>(reverse(ys))), kayak_rt::nil()))
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<&'static Sexp>()
+                }
+            }
+        }), xs))
+    } else if (string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("tagcase")) || string_eq_p(h, str_lit("typecase"))) {
+        if null_p(xs) {
+            nil::<&'static Sexp>()
+        } else {
+            concat(map(lambda1s(move |c: &'static Sexp| {
+                let tagcase_ = c;
+                match *tagcase_ {
+                    Sexp::Lst(ys, f, l, p) => {
+                        if i64_lt(size(ys), 2i64) {
+                            nil::<&'static Sexp>()
+                        } else {
+                            the::<Sexps>(kayak_rt::heap_cons(car(the::<Sexps>(reverse(ys))), kayak_rt::nil()))
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<&'static Sexp>()
+                    }
+                }
+            }), cdr(xs)))
+        }
+    } else {
+        nil::<&'static Sexp>()
+    }
+}
+
+/// Whether a branching form's branches, nothing expected, mix a pair
+/// `cons` makes with what is not one (`pair-made?`).
+pub fn pairs_mixed_p(h: Str, xs: Sexps) -> bool {
+    let vs = branch_values(h, xs);
+    (any_p(&pair_made_p, vs) && any_p(lambda1s(move |x: &'static Sexp| {
+        not(pair_made_p(x))
+    }), vs))
 }
 
 /// Whether a control form has the parts it needs, before they are taken.

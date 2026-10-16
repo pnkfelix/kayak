@@ -1981,6 +1981,8 @@
            whose last parts give the value; `expected` is the type, if known."
           (cond ((not (well-formed? h xs))
                  (refuse v (string-append "a (" (string-append h " ...) not of the form FX-26 has"))))
+                ((and (null? expected) (pairs-mixed? h xs))
+                 (refuse v (string-append "the branches are a pair `cons` makes, a (pairof ...), and what is not one: FX-26 joins no (pairof ...) with a (listof ...); write the type, (the (listof ...) (" (string-append h " ...))"))))
                 ((string=? h "if")
                  (let ((ns (narrowings v s (car xs))))
                    (tagcase (check v s (car xs) (ty-bool))

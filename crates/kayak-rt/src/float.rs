@@ -75,6 +75,58 @@ pub fn f64_sqrt(x: f64) -> f64 {
     x.sqrt()
 }
 
+/// FX-26's transcendental `f64` operations (Fixpt's `f64_op`): Rust's,
+/// as Fixpt's runtime computes them.
+#[inline]
+pub fn f64_exp(x: f64) -> f64 {
+    x.exp()
+}
+
+#[inline]
+pub fn f64_log(x: f64) -> f64 {
+    x.ln()
+}
+
+#[inline]
+pub fn f64_sin(x: f64) -> f64 {
+    x.sin()
+}
+
+#[inline]
+pub fn f64_cos(x: f64) -> f64 {
+    x.cos()
+}
+
+#[inline]
+pub fn f64_tan(x: f64) -> f64 {
+    x.tan()
+}
+
+#[inline]
+pub fn f64_asin(x: f64) -> f64 {
+    x.asin()
+}
+
+#[inline]
+pub fn f64_acos(x: f64) -> f64 {
+    x.acos()
+}
+
+#[inline]
+pub fn f64_atan(x: f64) -> f64 {
+    x.atan()
+}
+
+#[inline]
+pub fn f64_atan2(y: f64, x: f64) -> f64 {
+    y.atan2(x)
+}
+
+#[inline]
+pub fn f64_expt(x: f64, y: f64) -> f64 {
+    x.powf(y)
+}
+
 #[inline]
 pub fn f64_floor(x: f64) -> f64 {
     x.floor()

@@ -370,6 +370,8 @@
         (sym (s at-file at-pos)
           (cond ((string=? s "pure") nil)
                 ((string=? s "spin") (list "spin"))
+                ((string=? s "%found")
+                 (refuse v "`(->* (param ...) result)` is only the type a definition declares (`define`, `define-rec`)"))
                 ((string=? s "nondet")
                  "That an answer may differ from run to run (C101): no region, so
                   never masked, as `spin`."
@@ -2436,6 +2438,40 @@
     "Module `m`'s values, as items, named as `m` names them (the prefix made
      once, C92: a module including another asks it often)."
     (binds-prefixed (string-append m " ") bs)))
+
+"Whether an expression's value is a pair `cons` makes: FX-26 types one a
+ `(pairof ...)`, never a `(listof ...)`, so that branches of which some
+ are and some are not do not join where nothing is expected (KFX's
+ `cons` is a list: `pairs-mixed?`, a K1 breach found 2026-10-16)."
+(define-rec
+  (pair-made? (subr kfx (sexp) bool)
+    (lambda (e)
+      (tagcase e
+        (lst (xs f l p)
+          (cond ((null? xs) #f)
+                ((sym-is? (car xs) "cons") #t)
+                ((and (or (sym-is? (car xs) "let") (sym-is? (car xs) "let*") (sym-is? (car xs) "letrec") (sym-is? (car xs) "begin"))
+                      (i64> (size xs) 1))
+                 (pair-made? (car (the sexps (reverse xs)))))
+                ((and (sym-is? (car xs) "if") (i64= (size xs) 4)) (and (pair-made? (third xs)) (pair-made? (fourth xs))))
+                (else #f)))
+        (else other #f))))
+  (branch-values (subr kfx (string sexps) sexps)
+    (lambda (h xs)
+      "The expressions whose values a branching form gives: an `if`'s two;
+       the last of each clause of a `cond`, `case`, `tagcase`, `typecase`."
+      (cond ((string=? h "if") (if (i64= (size xs) 3) (cdr xs) nil))
+            ((string=? h "cond") (concat (map (lambda ((c sexp)) (tagcase c (lst (ys f l p) (if (null? ys) nil (the sexps (list (car (the sexps (reverse ys))))))) (else other nil))) xs)))
+            ((or (string=? h "case") (string=? h "tagcase") (string=? h "typecase"))
+             (if (null? xs) nil (concat (map (lambda ((c sexp)) (tagcase c (lst (ys f l p) (if (i64< (size ys) 2) nil (the sexps (list (car (the sexps (reverse ys))))))) (else other nil))) (cdr xs)))))
+            (else nil)))))
+
+(define pairs-mixed? (subr kfx (string sexps) bool)
+  (lambda (h xs)
+    "Whether a branching form's branches, nothing expected, mix a pair
+     `cons` makes with what is not one (`pair-made?`)."
+    (let ((vs (branch-values h xs)))
+      (and (any? pair-made? vs) (any? (lambda ((x sexp)) (not (pair-made? x))) vs)))))
 
 (define well-formed? (subr kfx (string sexps) bool)
   (lambda (h xs)

@@ -9,7 +9,7 @@ use super::*;
 // instruction, `AT: ROUTINE OPERAND ...`. Exact, but where a literal is
 // cut short (`…`), two words share a name, or the compilers disagree:
 // those are refused. Each word's register code is passed over.
-// fixpt-source: crates/fixpt-runtime/src/disasm.rs@7641962
+// fixpt-source: crates/fixpt-runtime/src/disasm.rs@1925bca
 pub fn listing_error(why: Str) -> Void {
     error(string_append(str_lit("kayak-cells: the listing: "), why))
 }
@@ -35,11 +35,11 @@ pub fn colon() -> char {
 pub fn lines_of(mut cs: Chars, mut acc: Chars, mut out: List<Chars>) -> List<Chars> {
     loop {
         if null_p(cs) {
-            return the::<List<Chars>>(reverse(if null_p(acc) {
+            return the::<List<Chars>>(reverse(the::<List<Chars>>(if null_p(acc) {
                 out
             } else {
                 kayak_rt::heap_cons(the::<Chars>(reverse(acc)), out)
-            }));
+            })));
         } else if char_eq_p(car(cs), '\n') {
             (cs, acc, out) = (cdr(cs), nil::<char>(), kayak_rt::heap_cons(the::<Chars>(reverse(acc)), out));
             continue;

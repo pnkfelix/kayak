@@ -8,6 +8,11 @@ pub mod arith;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/arrows.rs"]
+pub mod arrows;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/bignum.rs"]
 pub mod bignum;
 
@@ -427,6 +432,7 @@ fn tasks_main() -> kayak_rt::Str {
 /// Each program's name, and its `main`.
 pub const PROGRAMS: &[(&str, Main)] = &[
     ("arith", arith::main),
+    ("arrows", arrows::main),
     ("bignum", bignum::main),
     ("bloblet-generic", bloblet_generic::main),
     ("bloblets", bloblets::main),

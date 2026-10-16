@@ -1,0 +1,34 @@
+"FX-26's procedure types written short (Fixpt 2a0e6fd..99bc9b1): `(->
+ (T ...) R)`, a pure procedure's; `(->* (T ...) R)`, a definition's whose
+ effect its lambda says, alone, in a `define-rec`, and under a `poly`."
+
+(define-effect kfx (maxeff (read @globals) spin (read @c) (write @c)))
+
+(define double (-> (int) int) (lambda (n) (* 2 n)))
+
+(define twice (->* (int) int) (lambda (n) (double (double n))))
+
+(define counter (ref int @c) (new 0))
+
+(define bump (->* () int) (lambda () (begin (set counter (+ (get counter) 1)) (get counter))))
+
+(define-rec
+  (even-n? (->* (int) bool) (lambda (n) (if (= n 0) #t (odd-n? (- n 1)))))
+  (odd-n? (->* (int) bool) (lambda (n) (if (= n 0) #f (even-n? (- n 1))))))
+
+(define-rec
+  (count-down (->* (int) int) (lambda (n) (if (< n 1) 0 (count-down (- n 1))))))
+
+(define first-of (poly ((t type)) (->* ((listof t acyclic) t) t))
+  (lambda (xs d) (if (null? xs) d (car xs))))
+
+(define apply-to (-> ((-> (int) int) int) int) (lambda (f x) (f x)))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (string-append (int->string (twice 5))
+      (string-append " " (string-append (int->string (begin (bump) (bump)))
+        (string-append " " (string-append (if (even-n? 10) "even" "odd")
+          (string-append " " (string-append (int->string (count-down 7))
+            (string-append " " (string-append (int->string (first-of (list 4 5) 0))
+              (string-append " " (int->string (apply-to double 21))))))))))))))

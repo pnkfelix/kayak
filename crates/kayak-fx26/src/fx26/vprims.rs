@@ -505,6 +505,26 @@ pub fn apply_op(op: i64, args: i64) -> i64 {
         list_array_x(ob_vector(), a)
     } else if i64_gt_eq(op, fixed_base()) {
         fixed_op_word(name_of_number(i64_minus(op, fixed_base())), a, b)
+    } else if i64_eq(op, 176i64) {
+        real_word_x(f64_exp(word_real(a)))
+    } else if i64_eq(op, 177i64) {
+        real_word_x(f64_log(word_real(a)))
+    } else if i64_eq(op, 178i64) {
+        real_word_x(f64_sin(word_real(a)))
+    } else if i64_eq(op, 179i64) {
+        real_word_x(f64_cos(word_real(a)))
+    } else if i64_eq(op, 180i64) {
+        real_word_x(f64_tan(word_real(a)))
+    } else if i64_eq(op, 181i64) {
+        real_word_x(f64_asin(word_real(a)))
+    } else if i64_eq(op, 182i64) {
+        real_word_x(f64_acos(word_real(a)))
+    } else if i64_eq(op, 183i64) {
+        real_word_x(f64_atan(word_real(a)))
+    } else if i64_eq(op, 184i64) {
+        real_word_x(f64_atan2(word_real(a), word_real(b)))
+    } else if i64_eq(op, 185i64) {
+        real_word_x(f64_expt(word_real(a), word_real(b)))
     } else {
         failed_with_x(str_lit("the engine: a primitive of no number"));
         0i64

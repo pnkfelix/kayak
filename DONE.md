@@ -1374,3 +1374,16 @@ machine routine by routine as Fixpt's Rust interpreter, its words read
 from Fixpt's compiler's listing. 175 of Fixpt's FX-26 programs give
 Fixpt's answers (`scripts/cells-programs.py`, in `check.sh`), none
 differ; seven of its eight benchmarks.
+Then collected (Coopt's Cheney baseline), and with prompts, marks and
+continuations: 190, all eight benchmarks.
+
+## The pin at Fixpt 1925bca: `->`, `->*`, full literals (2026-10-16, C123)
+
+Fixpt's `fixpt compile --full-literals`, asked for tier 1, and ten
+commits of FX-26's `(-> …)` and `(->* …)`, which Fixpt's built-in
+`arm64.fx` and `convention.fx` now use: KFX reads both (`(->* …)`'s
+effect found from its definition's `lambda`, alone, in a `define-rec`,
+in a module), and the float operations FX-26 has beyond KFX's. Two K1
+breaches found and closed on the way: branches mixing a `cons` with a
+list, and a module value calling its module's `->*` procedure. 194 of
+Fixpt's programs agree on tier 1.

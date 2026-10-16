@@ -8,7 +8,7 @@ use super::*;
 
 // Definitions
 pub fn primitives() -> Str {
-    str_lit("(i64+ (subr pure (i64 i64) i64)) (i64- (subr pure (i64 i64) i64)) (i64* (subr pure (i64 i64) i64))\n   (i64-quotient (subr pure (i64 i64) i64)) (i64-remainder (subr pure (i64 i64) i64))\n   (i64-and (subr pure (i64 i64) i64)) (i64-or (subr pure (i64 i64) i64)) (i64-xor (subr pure (i64 i64) i64))\n   (i64-not (subr pure (i64) i64))\n   (i64= (subr pure (i64 i64) bool)) (i64< (subr pure (i64 i64) bool)) (i64> (subr pure (i64 i64) bool))\n   (i64<= (subr pure (i64 i64) bool)) (i64>= (subr pure (i64 i64) bool))\n   (not (subr pure (bool) bool))\n   (i32+ (subr pure (i32 i32) i32)) (i32- (subr pure (i32 i32) i32)) (i32* (subr pure (i32 i32) i32))\n   (i32-quotient (subr pure (i32 i32) i32)) (i32-remainder (subr pure (i32 i32) i32))\n   (i32-and (subr pure (i32 i32) i32)) (i32-or (subr pure (i32 i32) i32)) (i32-xor (subr pure (i32 i32) i32)) (i32-not (subr pure (i32) i32))\n   (i32-shl (subr pure (i32 int) i32)) (i32-shr (subr pure (i32 int) i32))\n   (i32= (subr pure (i32 i32) bool)) (i32< (subr pure (i32 i32) bool)) (i32> (subr pure (i32 i32) bool)) (i32<= (subr pure (i32 i32) bool)) (i32>= (subr pure (i32 i32) bool))\n   (int->i32 (subr pure (int) i32)) (i32->int (subr pure (i32) int))\n   (u8+ (subr pure (u8 u8) u8)) (u8- (subr pure (u8 u8) u8)) (u8* (subr pure (u8 u8) u8))\n   (u8-quotient (subr pure (u8 u8) u8)) (u8-remainder (subr pure (u8 u8) u8))\n   (u8-and (subr pure (u8 u8) u8)) (u8-or (subr pure (u8 u8) u8)) (u8-xor (subr pure (u8 u8) u8)) (u8-not (subr pure (u8) u8))\n   (u8-shl (subr pure (u8 int) u8)) (u8-shr (subr pure (u8 int) u8))\n   (u8= (subr pure (u8 u8) bool)) (u8< (subr pure (u8 u8) bool)) (u8> (subr pure (u8 u8) bool)) (u8<= (subr pure (u8 u8) bool)) (u8>= (subr pure (u8 u8) bool))\n   (int->u8 (subr pure (int) u8)) (u8->int (subr pure (u8) int))\n   (i8+ (subr pure (i8 i8) i8)) (i8- (subr pure (i8 i8) i8)) (i8* (subr pure (i8 i8) i8))\n   (i8-quotient (subr pure (i8 i8) i8)) (i8-remainder (subr pure (i8 i8) i8))\n   (i8-and (subr pure (i8 i8) i8)) (i8-or (subr pure (i8 i8) i8)) (i8-xor (subr pure (i8 i8) i8)) (i8-not (subr pure (i8) i8))\n   (i8-shl (subr pure (i8 int) i8)) (i8-shr (subr pure (i8 int) i8))\n   (i8= (subr pure (i8 i8) bool)) (i8< (subr pure (i8 i8) bool)) (i8> (subr pure (i8 i8) bool)) (i8<= (subr pure (i8 i8) bool)) (i8>= (subr pure (i8 i8) bool))\n   (int->i8 (subr pure (int) i8)) (i8->int (subr pure (i8) int))\n   (u32+ (subr pure (u32 u32) u32)) (u32- (subr pure (u32 u32) u32)) (u32* (subr pure (u32 u32) u32))\n   (u32-quotient (subr pure (u32 u32) u32)) (u32-remainder (subr pure (u32 u32) u32))\n   (u32-and (subr pure (u32 u32) u32)) (u32-or (subr pure (u32 u32) u32)) (u32-xor (subr pure (u32 u32) u32)) (u32-not (subr pure (u32) u32))\n   (u32-shl (subr pure (u32 int) u32)) (u32-shr (subr pure (u32 int) u32))\n   (u32= (subr pure (u32 u32) bool)) (u32< (subr pure (u32 u32) bool)) (u32> (subr pure (u32 u32) bool)) (u32<= (subr pure (u32 u32) bool)) (u32>= (subr pure (u32 u32) bool))\n   (int->u32 (subr pure (int) u32)) (u32->int (subr pure (u32) int))\n   (u64+ (subr pure (u64 u64) u64)) (u64- (subr pure (u64 u64) u64)) (u64* (subr pure (u64 u64) u64))\n   (u64-quotient (subr pure (u64 u64) u64)) (u64-remainder (subr pure (u64 u64) u64))\n   (u64-and (subr pure (u64 u64) u64)) (u64-or (subr pure (u64 u64) u64)) (u64-xor (subr pure (u64 u64) u64)) (u64-not (subr pure (u64) u64))\n   (u64-shl (subr pure (u64 int) u64)) (u64-shr (subr pure (u64 int) u64))\n   (u64= (subr pure (u64 u64) bool)) (u64< (subr pure (u64 u64) bool)) (u64> (subr pure (u64 u64) bool)) (u64<= (subr pure (u64 u64) bool)) (u64>= (subr pure (u64 u64) bool))\n   (int->u64 (subr pure (int) u64)) (u64->int (subr pure (u64) int))\n   (i64-shl (subr pure (i64 int) i64)) (i64-shr (subr pure (i64 int) i64))\n   (+ (subr pure (int int) int)) (- (subr pure (int int) int)) (* (subr pure (int int) int))\n   (quotient (subr pure (int int) int)) (remainder (subr pure (int int) int)) (modulo (subr pure (int int) int))\n   (= (subr pure (int int) bool)) (< (subr pure (int int) bool)) (> (subr pure (int int) bool))\n   (<= (subr pure (int int) bool)) (>= (subr pure (int int) bool))\n   (int->string (subr pure (int) string)) (int->i64 (subr pure (int) i64)) (i64->int (subr pure (i64) int))\n   (zero? (subr pure (int) bool)) (max (subr pure (int int) int)) (min (subr pure (int int) int))\n   (f64+ (subr pure (f64 f64) f64)) (f64- (subr pure (f64 f64) f64)) (f64* (subr pure (f64 f64) f64))\n   (f64/ (subr pure (f64 f64) f64)) (f64-min (subr pure (f64 f64) f64)) (f64-max (subr pure (f64 f64) f64))\n   (f64< (subr pure (f64 f64) bool)) (f64<= (subr pure (f64 f64) bool)) (f64> (subr pure (f64 f64) bool))\n   (f64>= (subr pure (f64 f64) bool)) (f64= (subr pure (f64 f64) bool))\n   (f64-abs (subr pure (f64) f64)) (f64-neg (subr pure (f64) f64)) (f64-sqrt (subr pure (f64) f64))\n   (f64-floor (subr pure (f64) f64)) (f64-ceiling (subr pure (f64) f64))\n   (f64-truncate (subr pure (f64) f64)) (f64-round (subr pure (f64) f64))\n   (f64-nan? (subr pure (f64) bool)) (f64-infinite? (subr pure (f64) bool)) (f64-finite? (subr pure (f64) bool))\n   (int->f64 (subr pure (int) f64)) (f64->int (subr pure (f64) int)) (f64->string (subr pure (f64) string))\n   (f32+ (subr pure (f32 f32) f32)) (f32- (subr pure (f32 f32) f32)) (f32* (subr pure (f32 f32) f32))\n   (f32/ (subr pure (f32 f32) f32)) (f32-min (subr pure (f32 f32) f32)) (f32-max (subr pure (f32 f32) f32))\n   (f32< (subr pure (f32 f32) bool)) (f32<= (subr pure (f32 f32) bool)) (f32> (subr pure (f32 f32) bool))\n   (f32>= (subr pure (f32 f32) bool)) (f32= (subr pure (f32 f32) bool))\n   (f32-abs (subr pure (f32) f32)) (f32-neg (subr pure (f32) f32)) (f32-sqrt (subr pure (f32) f32))\n   (f32-floor (subr pure (f32) f32)) (f32-ceiling (subr pure (f32) f32))\n   (f32-truncate (subr pure (f32) f32)) (f32-round (subr pure (f32) f32))\n   (f32-nan? (subr pure (f32) bool)) (f32-infinite? (subr pure (f32) bool)) (f32-finite? (subr pure (f32) bool))\n   (int->f32 (subr pure (int) f32)) (f32->int (subr pure (f32) int)) (f32->string (subr pure (f32) string))\n   (f32->f64 (subr pure (f32) f64)) (f64->f32 (subr pure (f64) f32))\n   (f32->bits (subr pure (f32) u32)) (bits->f32 (subr pure (u32) f32))\n   (f64->bits (subr pure (f64) u64)) (bits->f64 (subr pure (u64) f64))\n   (string-length (subr pure (string) nat)) (string-ref (subr pure (string int) char))\n   (length (poly ((t type)) (subr pure ((listof t acyclic)) nat)))\n   (list-length (poly ((r region) (t type)) (subr (read r) ((listof t r)) nat)))\n   (append (poly ((r1 region) (r2 region) (t type)) (subr (maxeff (read r1) (alloc r2)) ((listof t r1) (listof t r2)) (listof t r2))))\n   (reverse (poly ((r1 region) (r2 region) (t type)) (subr (maxeff (read r1) (alloc r2)) ((listof t r1)) (listof t r2))))\n   (char=? (subr pure (char char) bool)) (char-whitespace? (subr pure (char) bool))\n   (char-numeric? (subr pure (char) bool)) (char-alphabetic? (subr pure (char) bool))\n   (char-upcase (subr pure (char) char)) (char->string (subr pure (char) string))\n   (string-append (subr pure (string string) string)) (string=? (subr pure (string string) bool))\n   (list->string (poly ((r region)) (subr (read r) ((listof char r)) string)))\n   (string->list (poly ((r region)) (subr (alloc r) (string) (listof char r))))\n   (error (subr pure (string) void))\n   (char->integer (subr pure (char) int)) (integer->char (subr pure (int) char))\n   (int? (poly ((t type)) (subr pure (t) bool)))\n   (string? (poly ((t type)) (subr pure (t) bool)))\n   (bool? (poly ((t type)) (subr pure (t) bool)))\n   (char? (poly ((t type)) (subr pure (t) bool)))\n   (symbol? (poly ((t type)) (subr pure (t) bool)))\n   (array? (poly ((t type)) (subr pure (t) bool)))\n   (procedure? (poly ((t type)) (subr pure (t) bool)))\n   (pair? (poly ((t type)) (subr pure (t) bool)))\n   (f64? (poly ((t type)) (subr pure (t) bool)))\n   (ref? (poly ((t type)) (subr pure (t) bool)))\n   (sum? (poly ((t type)) (subr pure (t) bool)))\n   (product? (poly ((t type)) (subr pure (t) bool)))\n   (bytevector? (poly ((t type)) (subr pure (t) bool)))\n   (vector? (poly ((t type)) (subr pure (t) bool)))\n   (f32? (poly ((t type)) (subr pure (t) bool)))\n   (datum-list->vector (subr pure (datum) datum))\n   (make-escape-tag (poly ((r region) (a type) (h type)) (subr (alloc r) () (escape-tag a h r))))\n   (make-continuation-mark-key (poly ((r region) (t type)) (subr (alloc r) () (mark-key t r))))\n   (with-mark (poly ((r region) (t type) (a type) (e effect)) (subr (maxeff (write r) e) ((mark-key t r) t (subr e () a)) a)))\n   (first-mark (poly ((r region) (t type)) (subr (read r) ((mark-key t r) t) t)))\n   (current-marks (poly ((r region) (l region) (t type)) (subr (maxeff (read r) (alloc l)) ((mark-key t r)) (listof t l))))\n   (marks-of (poly ((q region) (r region) (l region) (v type) (t type) (a type) (d effect))\n               (subr (maxeff (read q) (alloc l)) ((composable t a d r) (mark-key v q)) (listof v l))))\n   (stay-cellular (poly ((t type)) (subr pure (t) t)))\n   (eq? (poly ((t type)) (subr pure (t t) bool)))\n   (set-car! (poly ((r region) (t1 type) (t2 type)) (subr (write r) ((union nil (pairof t1 t2 r)) t1) unit)))\n   (set-cdr! (poly ((r region) (t1 type) (t2 type)) (subr (write r) ((union nil (pairof t1 t2 r)) t2) unit)))\n   (no-pair (poly ((r region) (t1 type) (t2 type)) (union nil (pairof t1 t2 r))))\n   (call-with-composable-continuation (poly ((r region) (a type) (h type) (d effect) (t type) (e effect))\n                                        (subr (maxeff (comefrom r) e) ((subr e ((composable t a d r)) t) (prompt-tag a h d r)) t)))\n   (bitwise-and (subr pure (int int) int)) (bitwise-ior (subr pure (int int) int)) (bitwise-xor (subr pure (int int) int))\n   (bitwise-not (subr pure (int) int)) (arithmetic-shift (subr pure (int int) int))\n   (bool=? (subr pure (bool bool) bool))\n   (char<? (subr pure (char char) bool)) (char<=? (subr pure (char char) bool)) (char>? (subr pure (char char) bool)) (char>=? (subr pure (char char) bool))\n   (char-downcase (subr pure (char) char))\n   (string<? (subr pure (string string) bool)) (string<=? (subr pure (string string) bool)) (string>? (subr pure (string string) bool)) (string>=? (subr pure (string string) bool))\n   (string-compare (subr pure (string string) int)) (string-search (subr pure (string string int) int))\n   (string-ci=? (subr pure (string string) bool)) (string-downcase (subr pure (string) string)) (substring (subr pure (string int int) string))\n   (string->symbol (subr pure (string) symbol)) (symbol->string (subr pure (symbol) string)) (symbol=? (subr pure (symbol symbol) bool))\n   (symbol-compare (subr pure (symbol symbol) int))\n   (symbol-name-hash (subr pure (symbol) int)) (string-hash (subr pure (string) int))\n   (make-array (poly ((r region) (t type)) (subr (alloc r) (int t) (arrayof t r))))\n   (array-ref (poly ((r region) (t type)) (subr (read r) ((arrayof t r) int) t)))\n   (array-set! (poly ((r region) (t type)) (subr (write r) ((arrayof t r) int t) unit)))\n   (array-length (poly ((r region) (t type)) (subr pure ((arrayof t r)) nat)))\n   (array->list (poly ((r1 region) (r2 region) (t type)) (subr (maxeff (read r1) (alloc r2)) ((arrayof t r1)) (listof t r2))))\n   (list->array (poly ((r1 region) (r2 region) (t type)) (subr (maxeff (read r1) (alloc r2)) ((listof t r1)) (arrayof t r2))))\n   (make-bytevector (poly ((r region)) (subr (alloc r) (int u8) (bytevectorof r))))\n   (bytevector-length (poly ((r region)) (subr pure ((bytevectorof r)) nat)))\n   (bytevector-u8-ref (poly ((r region)) (subr (read r) ((bytevectorof r) int) u8)))\n   (bytevector-u8-set! (poly ((r region)) (subr (write r) ((bytevectorof r) int u8) unit)))\n   (bytevector-copy (poly ((r1 region) (r2 region)) (subr (maxeff (read r1) (alloc r2)) ((bytevectorof r1) int int) (bytevectorof r2))))\n   (bytevector-copy! (poly ((r1 region) (r2 region)) (subr (maxeff (read r1) (write r2)) ((bytevectorof r2) int (bytevectorof r1) int int) unit)))\n   (bytevector=? (poly ((r1 region) (r2 region)) (subr (maxeff (read r1) (read r2)) ((bytevectorof r1) (bytevectorof r2)) bool)))\n   (string->utf8 (poly ((r region)) (subr (alloc r) (string) (bytevectorof r))))\n   (utf8->string (poly ((r region)) (subr (read r) ((bytevectorof r)) (sumof (text string) (bad int)))))\n   (write-out (subr (io stdout) (string) (sumof (done unit) (failed io-error))))\n   (write-err (subr (io stderr) (string) (sumof (done unit) (failed io-error))))\n   (exit (subr (io exit) (int) void))\n   (read-line (subr (io stdin) () (sumof (line string) (eof unit) (failed io-error))))\n   (read-byte (subr (io stdin) () (sumof (byte u8) (eof unit) (failed io-error))))\n   (read-bytes (poly ((r region)) (subr (maxeff (io stdin) (write r)) ((bytevectorof r) int int) (sumof (count int) (eof unit) (failed io-error)))))\n   (stdin-ready? (subr (io stdin) () bool))\n   (terminal-raw (subr (io terminal) () (sumof (done unit) (not-a-terminal unit) (failed io-error))))\n   (terminal-restore (subr (io terminal) () (sumof (done unit) (not-a-terminal unit) (failed io-error))))\n   (terminal-size (subr (io terminal) () (sumof (size (productof (rows int) (columns int))) (not-a-terminal unit) (failed io-error))))\n   (native-code? (subr pure () bool))\n   (native-convention (poly ((r region)) (subr (alloc r) () (listof string r))))\n   (seal-code (poly ((r region)) (subr (io native) ((bloblet (fields) r)) (bloblet (fields) r))))\n   (clock (subr (io clock) () i64))\n   (sleep-until (subr (io clock) (i64) unit))\n   (args (poly ((r region)) (subr (maxeff (io args) (alloc r)) () (listof string r))))\n   (read-file (poly ((r region)) (subr (maxeff (io fs-read) (alloc r)) (string) (sumof (data (bytevectorof r)) (failed io-error)))))\n   (list-dir (poly ((r region)) (subr (maxeff (io fs-read) (alloc r)) (string) (sumof (names (listof string r)) (failed io-error)))))\n   (write-file (poly ((r region)) (subr (maxeff (io fs-write) (read r)) (string (bytevectorof r)) (sumof (done unit) (failed io-error)))))\n   (new (poly ((r region) (t type)) (subr (alloc r) (t) (ref t r))))\n   (get (poly ((r region) (t type)) (subr (read r) ((ref t r)) t)))\n   (set (poly ((r region) (t type)) (subr (write r) ((ref t r) t) unit)))\n   (nil (poly ((r region) (t type)) (listof t r)))\n   (cons (poly ((r region) (t type)) (subr (alloc r) (t (listof t r)) (listof t r))))\n   (car (poly ((r region) (t type)) (subr (read r) ((listof t r)) t)))\n   (cdr (poly ((r region) (t type)) (subr (read r) ((listof t r)) (listof t r))))\n   (null? (poly ((r region) (t type)) (subr pure ((listof t r)) bool)))\n   (make-icell (poly ((r region) (t type)) (subr (alloc r) () (icell t r))))\n   (icell-get (poly ((r region) (t type)) (subr (await r) ((icell t r)) t)))\n   (icell-put! (poly ((r region) (t type)) (subr (init r) ((icell t r) t) unit)))")
+    str_lit("(i64+ (subr pure (i64 i64) i64)) (i64- (subr pure (i64 i64) i64)) (i64* (subr pure (i64 i64) i64))\n   (i64-quotient (subr pure (i64 i64) i64)) (i64-remainder (subr pure (i64 i64) i64))\n   (i64-and (subr pure (i64 i64) i64)) (i64-or (subr pure (i64 i64) i64)) (i64-xor (subr pure (i64 i64) i64))\n   (i64-not (subr pure (i64) i64))\n   (i64= (subr pure (i64 i64) bool)) (i64< (subr pure (i64 i64) bool)) (i64> (subr pure (i64 i64) bool))\n   (i64<= (subr pure (i64 i64) bool)) (i64>= (subr pure (i64 i64) bool))\n   (not (subr pure (bool) bool))\n   (i32+ (subr pure (i32 i32) i32)) (i32- (subr pure (i32 i32) i32)) (i32* (subr pure (i32 i32) i32))\n   (i32-quotient (subr pure (i32 i32) i32)) (i32-remainder (subr pure (i32 i32) i32))\n   (i32-and (subr pure (i32 i32) i32)) (i32-or (subr pure (i32 i32) i32)) (i32-xor (subr pure (i32 i32) i32)) (i32-not (subr pure (i32) i32))\n   (i32-shl (subr pure (i32 int) i32)) (i32-shr (subr pure (i32 int) i32))\n   (i32= (subr pure (i32 i32) bool)) (i32< (subr pure (i32 i32) bool)) (i32> (subr pure (i32 i32) bool)) (i32<= (subr pure (i32 i32) bool)) (i32>= (subr pure (i32 i32) bool))\n   (int->i32 (subr pure (int) i32)) (i32->int (subr pure (i32) int))\n   (u8+ (subr pure (u8 u8) u8)) (u8- (subr pure (u8 u8) u8)) (u8* (subr pure (u8 u8) u8))\n   (u8-quotient (subr pure (u8 u8) u8)) (u8-remainder (subr pure (u8 u8) u8))\n   (u8-and (subr pure (u8 u8) u8)) (u8-or (subr pure (u8 u8) u8)) (u8-xor (subr pure (u8 u8) u8)) (u8-not (subr pure (u8) u8))\n   (u8-shl (subr pure (u8 int) u8)) (u8-shr (subr pure (u8 int) u8))\n   (u8= (subr pure (u8 u8) bool)) (u8< (subr pure (u8 u8) bool)) (u8> (subr pure (u8 u8) bool)) (u8<= (subr pure (u8 u8) bool)) (u8>= (subr pure (u8 u8) bool))\n   (int->u8 (subr pure (int) u8)) (u8->int (subr pure (u8) int))\n   (i8+ (subr pure (i8 i8) i8)) (i8- (subr pure (i8 i8) i8)) (i8* (subr pure (i8 i8) i8))\n   (i8-quotient (subr pure (i8 i8) i8)) (i8-remainder (subr pure (i8 i8) i8))\n   (i8-and (subr pure (i8 i8) i8)) (i8-or (subr pure (i8 i8) i8)) (i8-xor (subr pure (i8 i8) i8)) (i8-not (subr pure (i8) i8))\n   (i8-shl (subr pure (i8 int) i8)) (i8-shr (subr pure (i8 int) i8))\n   (i8= (subr pure (i8 i8) bool)) (i8< (subr pure (i8 i8) bool)) (i8> (subr pure (i8 i8) bool)) (i8<= (subr pure (i8 i8) bool)) (i8>= (subr pure (i8 i8) bool))\n   (int->i8 (subr pure (int) i8)) (i8->int (subr pure (i8) int))\n   (u32+ (subr pure (u32 u32) u32)) (u32- (subr pure (u32 u32) u32)) (u32* (subr pure (u32 u32) u32))\n   (u32-quotient (subr pure (u32 u32) u32)) (u32-remainder (subr pure (u32 u32) u32))\n   (u32-and (subr pure (u32 u32) u32)) (u32-or (subr pure (u32 u32) u32)) (u32-xor (subr pure (u32 u32) u32)) (u32-not (subr pure (u32) u32))\n   (u32-shl (subr pure (u32 int) u32)) (u32-shr (subr pure (u32 int) u32))\n   (u32= (subr pure (u32 u32) bool)) (u32< (subr pure (u32 u32) bool)) (u32> (subr pure (u32 u32) bool)) (u32<= (subr pure (u32 u32) bool)) (u32>= (subr pure (u32 u32) bool))\n   (int->u32 (subr pure (int) u32)) (u32->int (subr pure (u32) int))\n   (u64+ (subr pure (u64 u64) u64)) (u64- (subr pure (u64 u64) u64)) (u64* (subr pure (u64 u64) u64))\n   (u64-quotient (subr pure (u64 u64) u64)) (u64-remainder (subr pure (u64 u64) u64))\n   (u64-and (subr pure (u64 u64) u64)) (u64-or (subr pure (u64 u64) u64)) (u64-xor (subr pure (u64 u64) u64)) (u64-not (subr pure (u64) u64))\n   (u64-shl (subr pure (u64 int) u64)) (u64-shr (subr pure (u64 int) u64))\n   (u64= (subr pure (u64 u64) bool)) (u64< (subr pure (u64 u64) bool)) (u64> (subr pure (u64 u64) bool)) (u64<= (subr pure (u64 u64) bool)) (u64>= (subr pure (u64 u64) bool))\n   (int->u64 (subr pure (int) u64)) (u64->int (subr pure (u64) int))\n   (i64-shl (subr pure (i64 int) i64)) (i64-shr (subr pure (i64 int) i64))\n   (+ (subr pure (int int) int)) (- (subr pure (int int) int)) (* (subr pure (int int) int))\n   (quotient (subr pure (int int) int)) (remainder (subr pure (int int) int)) (modulo (subr pure (int int) int))\n   (= (subr pure (int int) bool)) (< (subr pure (int int) bool)) (> (subr pure (int int) bool))\n   (<= (subr pure (int int) bool)) (>= (subr pure (int int) bool))\n   (int->string (subr pure (int) string)) (int->i64 (subr pure (int) i64)) (i64->int (subr pure (i64) int))\n   (zero? (subr pure (int) bool)) (max (subr pure (int int) int)) (min (subr pure (int int) int))\n   (f64+ (subr pure (f64 f64) f64)) (f64- (subr pure (f64 f64) f64)) (f64* (subr pure (f64 f64) f64))\n   (f64/ (subr pure (f64 f64) f64)) (f64-min (subr pure (f64 f64) f64)) (f64-max (subr pure (f64 f64) f64))\n   (f64< (subr pure (f64 f64) bool)) (f64<= (subr pure (f64 f64) bool)) (f64> (subr pure (f64 f64) bool))\n   (f64>= (subr pure (f64 f64) bool)) (f64= (subr pure (f64 f64) bool))\n   (f64-abs (subr pure (f64) f64)) (f64-neg (subr pure (f64) f64)) (f64-sqrt (subr pure (f64) f64))\n   (f64-exp (subr pure (f64) f64)) (f64-log (subr pure (f64) f64)) (f64-sin (subr pure (f64) f64))\n   (f64-cos (subr pure (f64) f64)) (f64-tan (subr pure (f64) f64)) (f64-asin (subr pure (f64) f64))\n   (f64-acos (subr pure (f64) f64)) (f64-atan (subr pure (f64) f64))\n   (f64-atan2 (subr pure (f64 f64) f64)) (f64-expt (subr pure (f64 f64) f64))\n   (f64-floor (subr pure (f64) f64)) (f64-ceiling (subr pure (f64) f64))\n   (f64-truncate (subr pure (f64) f64)) (f64-round (subr pure (f64) f64))\n   (f64-nan? (subr pure (f64) bool)) (f64-infinite? (subr pure (f64) bool)) (f64-finite? (subr pure (f64) bool))\n   (int->f64 (subr pure (int) f64)) (f64->int (subr pure (f64) int)) (f64->string (subr pure (f64) string))\n   (f32+ (subr pure (f32 f32) f32)) (f32- (subr pure (f32 f32) f32)) (f32* (subr pure (f32 f32) f32))\n   (f32/ (subr pure (f32 f32) f32)) (f32-min (subr pure (f32 f32) f32)) (f32-max (subr pure (f32 f32) f32))\n   (f32< (subr pure (f32 f32) bool)) (f32<= (subr pure (f32 f32) bool)) (f32> (subr pure (f32 f32) bool))\n   (f32>= (subr pure (f32 f32) bool)) (f32= (subr pure (f32 f32) bool))\n   (f32-abs (subr pure (f32) f32)) (f32-neg (subr pure (f32) f32)) (f32-sqrt (subr pure (f32) f32))\n   (f32-floor (subr pure (f32) f32)) (f32-ceiling (subr pure (f32) f32))\n   (f32-truncate (subr pure (f32) f32)) (f32-round (subr pure (f32) f32))\n   (f32-nan? (subr pure (f32) bool)) (f32-infinite? (subr pure (f32) bool)) (f32-finite? (subr pure (f32) bool))\n   (int->f32 (subr pure (int) f32)) (f32->int (subr pure (f32) int)) (f32->string (subr pure (f32) string))\n   (f32->f64 (subr pure (f32) f64)) (f64->f32 (subr pure (f64) f32))\n   (f32->bits (subr pure (f32) u32)) (bits->f32 (subr pure (u32) f32))\n   (f64->bits (subr pure (f64) u64)) (bits->f64 (subr pure (u64) f64))\n   (string-length (subr pure (string) nat)) (string-ref (subr pure (string int) char))\n   (length (poly ((t type)) (subr pure ((listof t acyclic)) nat)))\n   (list-length (poly ((r region) (t type)) (subr (read r) ((listof t r)) nat)))\n   (append (poly ((r1 region) (r2 region) (t type)) (subr (maxeff (read r1) (alloc r2)) ((listof t r1) (listof t r2)) (listof t r2))))\n   (reverse (poly ((r1 region) (r2 region) (t type)) (subr (maxeff (read r1) (alloc r2)) ((listof t r1)) (listof t r2))))\n   (char=? (subr pure (char char) bool)) (char-whitespace? (subr pure (char) bool))\n   (char-numeric? (subr pure (char) bool)) (char-alphabetic? (subr pure (char) bool))\n   (char-upcase (subr pure (char) char)) (char->string (subr pure (char) string))\n   (string-append (subr pure (string string) string)) (string=? (subr pure (string string) bool))\n   (list->string (poly ((r region)) (subr (read r) ((listof char r)) string)))\n   (string->list (poly ((r region)) (subr (alloc r) (string) (listof char r))))\n   (error (subr pure (string) void))\n   (char->integer (subr pure (char) int)) (integer->char (subr pure (int) char))\n   (int? (poly ((t type)) (subr pure (t) bool)))\n   (string? (poly ((t type)) (subr pure (t) bool)))\n   (bool? (poly ((t type)) (subr pure (t) bool)))\n   (char? (poly ((t type)) (subr pure (t) bool)))\n   (symbol? (poly ((t type)) (subr pure (t) bool)))\n   (array? (poly ((t type)) (subr pure (t) bool)))\n   (procedure? (poly ((t type)) (subr pure (t) bool)))\n   (pair? (poly ((t type)) (subr pure (t) bool)))\n   (f64? (poly ((t type)) (subr pure (t) bool)))\n   (ref? (poly ((t type)) (subr pure (t) bool)))\n   (sum? (poly ((t type)) (subr pure (t) bool)))\n   (product? (poly ((t type)) (subr pure (t) bool)))\n   (bytevector? (poly ((t type)) (subr pure (t) bool)))\n   (vector? (poly ((t type)) (subr pure (t) bool)))\n   (f32? (poly ((t type)) (subr pure (t) bool)))\n   (datum-list->vector (subr pure (datum) datum))\n   (make-escape-tag (poly ((r region) (a type) (h type)) (subr (alloc r) () (escape-tag a h r))))\n   (make-continuation-mark-key (poly ((r region) (t type)) (subr (alloc r) () (mark-key t r))))\n   (with-mark (poly ((r region) (t type) (a type) (e effect)) (subr (maxeff (write r) e) ((mark-key t r) t (subr e () a)) a)))\n   (first-mark (poly ((r region) (t type)) (subr (read r) ((mark-key t r) t) t)))\n   (current-marks (poly ((r region) (l region) (t type)) (subr (maxeff (read r) (alloc l)) ((mark-key t r)) (listof t l))))\n   (marks-of (poly ((q region) (r region) (l region) (v type) (t type) (a type) (d effect))\n               (subr (maxeff (read q) (alloc l)) ((composable t a d r) (mark-key v q)) (listof v l))))\n   (stay-cellular (poly ((t type)) (subr pure (t) t)))\n   (eq? (poly ((t type)) (subr pure (t t) bool)))\n   (set-car! (poly ((r region) (t1 type) (t2 type)) (subr (write r) ((union nil (pairof t1 t2 r)) t1) unit)))\n   (set-cdr! (poly ((r region) (t1 type) (t2 type)) (subr (write r) ((union nil (pairof t1 t2 r)) t2) unit)))\n   (no-pair (poly ((r region) (t1 type) (t2 type)) (union nil (pairof t1 t2 r))))\n   (call-with-composable-continuation (poly ((r region) (a type) (h type) (d effect) (t type) (e effect))\n                                        (subr (maxeff (comefrom r) e) ((subr e ((composable t a d r)) t) (prompt-tag a h d r)) t)))\n   (bitwise-and (subr pure (int int) int)) (bitwise-ior (subr pure (int int) int)) (bitwise-xor (subr pure (int int) int))\n   (bitwise-not (subr pure (int) int)) (arithmetic-shift (subr pure (int int) int))\n   (bool=? (subr pure (bool bool) bool))\n   (char<? (subr pure (char char) bool)) (char<=? (subr pure (char char) bool)) (char>? (subr pure (char char) bool)) (char>=? (subr pure (char char) bool))\n   (char-downcase (subr pure (char) char))\n   (string<? (subr pure (string string) bool)) (string<=? (subr pure (string string) bool)) (string>? (subr pure (string string) bool)) (string>=? (subr pure (string string) bool))\n   (string-compare (subr pure (string string) int)) (string-search (subr pure (string string int) int))\n   (string-ci=? (subr pure (string string) bool)) (string-downcase (subr pure (string) string)) (substring (subr pure (string int int) string))\n   (string->symbol (subr pure (string) symbol)) (symbol->string (subr pure (symbol) string)) (symbol=? (subr pure (symbol symbol) bool))\n   (symbol-compare (subr pure (symbol symbol) int))\n   (symbol-name-hash (subr pure (symbol) int)) (string-hash (subr pure (string) int))\n   (make-array (poly ((r region) (t type)) (subr (alloc r) (int t) (arrayof t r))))\n   (array-ref (poly ((r region) (t type)) (subr (read r) ((arrayof t r) int) t)))\n   (array-set! (poly ((r region) (t type)) (subr (write r) ((arrayof t r) int t) unit)))\n   (array-length (poly ((r region) (t type)) (subr pure ((arrayof t r)) nat)))\n   (array->list (poly ((r1 region) (r2 region) (t type)) (subr (maxeff (read r1) (alloc r2)) ((arrayof t r1)) (listof t r2))))\n   (list->array (poly ((r1 region) (r2 region) (t type)) (subr (maxeff (read r1) (alloc r2)) ((listof t r1)) (arrayof t r2))))\n   (make-bytevector (poly ((r region)) (subr (alloc r) (int u8) (bytevectorof r))))\n   (bytevector-length (poly ((r region)) (subr pure ((bytevectorof r)) nat)))\n   (bytevector-u8-ref (poly ((r region)) (subr (read r) ((bytevectorof r) int) u8)))\n   (bytevector-u8-set! (poly ((r region)) (subr (write r) ((bytevectorof r) int u8) unit)))\n   (bytevector-copy (poly ((r1 region) (r2 region)) (subr (maxeff (read r1) (alloc r2)) ((bytevectorof r1) int int) (bytevectorof r2))))\n   (bytevector-copy! (poly ((r1 region) (r2 region)) (subr (maxeff (read r1) (write r2)) ((bytevectorof r2) int (bytevectorof r1) int int) unit)))\n   (bytevector=? (poly ((r1 region) (r2 region)) (subr (maxeff (read r1) (read r2)) ((bytevectorof r1) (bytevectorof r2)) bool)))\n   (string->utf8 (poly ((r region)) (subr (alloc r) (string) (bytevectorof r))))\n   (utf8->string (poly ((r region)) (subr (read r) ((bytevectorof r)) (sumof (text string) (bad int)))))\n   (write-out (subr (io stdout) (string) (sumof (done unit) (failed io-error))))\n   (write-err (subr (io stderr) (string) (sumof (done unit) (failed io-error))))\n   (exit (subr (io exit) (int) void))\n   (read-line (subr (io stdin) () (sumof (line string) (eof unit) (failed io-error))))\n   (read-byte (subr (io stdin) () (sumof (byte u8) (eof unit) (failed io-error))))\n   (read-bytes (poly ((r region)) (subr (maxeff (io stdin) (write r)) ((bytevectorof r) int int) (sumof (count int) (eof unit) (failed io-error)))))\n   (stdin-ready? (subr (io stdin) () bool))\n   (terminal-raw (subr (io terminal) () (sumof (done unit) (not-a-terminal unit) (failed io-error))))\n   (terminal-restore (subr (io terminal) () (sumof (done unit) (not-a-terminal unit) (failed io-error))))\n   (terminal-size (subr (io terminal) () (sumof (size (productof (rows int) (columns int))) (not-a-terminal unit) (failed io-error))))\n   (native-code? (subr pure () bool))\n   (native-convention (poly ((r region)) (subr (alloc r) () (listof string r))))\n   (seal-code (poly ((r region)) (subr (io native) ((bloblet (fields) r)) (bloblet (fields) r))))\n   (clock (subr (io clock) () i64))\n   (sleep-until (subr (io clock) (i64) unit))\n   (args (poly ((r region)) (subr (maxeff (io args) (alloc r)) () (listof string r))))\n   (read-file (poly ((r region)) (subr (maxeff (io fs-read) (alloc r)) (string) (sumof (data (bytevectorof r)) (failed io-error)))))\n   (list-dir (poly ((r region)) (subr (maxeff (io fs-read) (alloc r)) (string) (sumof (names (listof string r)) (failed io-error)))))\n   (write-file (poly ((r region)) (subr (maxeff (io fs-write) (read r)) (string (bytevectorof r)) (sumof (done unit) (failed io-error)))))\n   (new (poly ((r region) (t type)) (subr (alloc r) (t) (ref t r))))\n   (get (poly ((r region) (t type)) (subr (read r) ((ref t r)) t)))\n   (set (poly ((r region) (t type)) (subr (write r) ((ref t r) t) unit)))\n   (nil (poly ((r region) (t type)) (listof t r)))\n   (cons (poly ((r region) (t type)) (subr (alloc r) (t (listof t r)) (listof t r))))\n   (car (poly ((r region) (t type)) (subr (read r) ((listof t r)) t)))\n   (cdr (poly ((r region) (t type)) (subr (read r) ((listof t r)) (listof t r))))\n   (null? (poly ((r region) (t type)) (subr pure ((listof t r)) bool)))\n   (make-icell (poly ((r region) (t type)) (subr (alloc r) () (icell t r))))\n   (icell-get (poly ((r region) (t type)) (subr (await r) ((icell t r)) t)))\n   (icell-put! (poly ((r region) (t type)) (subr (init r) ((icell t r) t) unit)))")
 }
 
 // FX-26's forms of processes that are calls (C101), at the types FX-26's
@@ -842,6 +842,271 @@ pub fn check_define_star(v: &'static Cv, xs: Sexps, src_file: Str, src_pos: i64)
     }
 }
 
+// FX-26's `(->* (T ...) R)` (Fixpt 2a0e6fd..99bc9b1, the user's,
+// 2026-10-16), read as `(subr %found (T ...) R)` (`imports-in`): a
+// definition's type whose effect its `lambda` says, found in one pass and
+// written in, so that the definition is then checked, and emitted, as
+// though its type had said it.
+/// Whether a definition's type is `->*`'s, under any `poly`s.
+pub fn arrow_star_p(mut t: &'static Sexp) -> bool {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                if null_p(xs) {
+                    return false;
+                } else if (sym_is_p(car(xs), str_lit("subr")) && i64_eq(size(xs), 4i64)) {
+                    return sym_is_p(second(xs), str_lit("%found"));
+                } else if (sym_is_p(car(xs), str_lit("poly")) && i64_eq(size(xs), 3i64)) {
+                    t = third(xs);
+                    continue;
+                } else {
+                    return false;
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                return false;
+            }
+        }
+    }
+}
+
+/// `->*`'s type `t`, its effect `e`.
+pub fn effect_put(t: &'static Sexp, e: &'static Sexp) -> &'static Sexp {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            if sym_is_p(car(xs), str_lit("poly")) {
+                lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(effect_put(third(xs), e), kayak_rt::nil()))), f, l, p)
+            } else {
+                lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(e, kayak_rt::heap_cons(third(xs), kayak_rt::heap_cons(fourth(xs), kayak_rt::nil())))), f, l, p)
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            t
+        }
+    }
+}
+
+pub fn bare_sym(n: Str) -> &'static Sexp {
+    sym(n, str_lit(""), 0i64)
+}
+
+/// An effect's atom, as `parse-effect` reads it: written again.
+pub fn atom_sexp(a: Str) -> &'static Sexp {
+    if (string_eq_p(a, str_lit("spin")) || string_eq_p(a, str_lit("nondet"))) {
+        bare_sym(a)
+    } else if string_eq_p(a, str_lit("@globals")) {
+        lst(kayak_rt::heap_cons(bare_sym(str_lit("read")), kayak_rt::heap_cons(bare_sym(str_lit("@globals")), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
+    } else if has_prefix_p(a, str_lit("g:")) {
+        lst(kayak_rt::heap_cons(bare_sym(str_lit("read")), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(bare_sym(str_lit("globals")), kayak_rt::heap_cons(bare_sym(after_prefix(a, str_lit("g:"))), kayak_rt::nil())), str_lit(""), 0i64, 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
+    } else if has_prefix_p(a, str_lit("io:")) {
+        lst(kayak_rt::heap_cons(bare_sym(str_lit("io")), kayak_rt::heap_cons(bare_sym(after_prefix(a, str_lit("io:"))), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
+    } else if has_prefix_p(a, str_lit("~")) {
+        bare_sym(after_prefix(a, str_lit("~")))
+    } else {
+        let k = before_char(a, ':');
+        lst(kayak_rt::heap_cons(bare_sym(k), kayak_rt::heap_cons(bare_sym(after_prefix(a, string_append(k, str_lit(":")))), kayak_rt::nil())), str_lit(""), 0i64, 0i64)
+    }
+}
+
+pub fn effect_sexp(es: Strings) -> &'static Sexp {
+    lst(kayak_rt::heap_cons(sym(str_lit("maxeff"), str_lit(""), 0i64), map(&atom_sexp, es)), str_lit(""), 0i64, 0i64)
+}
+
+/// The effect of `->*` definition `name`'s lambda (Fixpt's
+/// `arrow_star_latent`): its body checked against the parameters and
+/// result its type says, but not an effect. Its calls of itself read
+/// itself, as a `define*`'s do (C71); what reads itself is `spin` too
+/// (`arrow_star_spins`).
+pub fn found_latent(v: &'static Cv, name: Str, r#type: &'static Sexp, defined: &'static Sexp) -> Strings {
+    if not(lambda_form_p(defined)) {
+        match refuse(v, str_lit("`->*` finds a procedure's effect from its `lambda`: define it as one")) {}
+    } else {
+        let lam = items(if head_is_p(defined, str_lit("plambda")) {
+            third(items(defined))
+        } else {
+            defined
+        });
+        let tagcase_ = parse_scheme(v, effect_put(r#type, sym(str_lit("pure"), str_lit(""), 0i64)));
+        match *tagcase_ {
+            Scheme::Scheme(tvars, t) => {
+                let tagcase_ = t;
+                match *tagcase_ {
+                    Ty::TyProc(declared, ps, r) => {
+                        let found = expressions::lambda_effects(with_tvars(with_tvars(v, tvars), place_marks(r#type)), new_state(), items(second(lam)), cdr(cdr(lam)), t);
+                        let es = {
+                            let tagcase_ = found;
+                            match *tagcase_ {
+                                Res::Res(u, es, s) => {
+                                    es
+                                }
+                            }
+                        };
+                        if string_member_p(string_append(str_lit("g:"), name), es) {
+                            effs_union(kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil()), es)
+                        } else {
+                            es
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        match refuse(v, str_lit("`->*` is a procedure's type")) {}
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// A `define` of `->*`, its effect found (a component of one, which saw
+/// no placeholder but itself, read as reading itself).
+pub fn found_define(v: &'static Cv, xs: Sexps) -> Sexps {
+    let name = name_of(v, second(xs));
+    let itself = effect_put(third(xs), effect_sexp(kayak_rt::heap_cons(string_append(str_lit("g:"), name), kayak_rt::nil())));
+    let sc = parse_scheme(v, itself);
+    let named = with_binds(at(v, name, if ends_alone_p(v, name, sc, fourth(xs)) {
+        nil::<Str>()
+    } else {
+        kayak_rt::heap_cons(name, kayak_rt::nil())
+    }), kayak_rt::heap_cons(global(v, name, sc), kayak_rt::nil()));
+    kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(effect_put(third(xs), effect_sexp(found_latent(named, name, third(xs), fourth(xs)))), kayak_rt::heap_cons(fourth(xs), kayak_rt::nil()))))
+}
+
+pub fn poly_type_p(t: &'static Sexp) -> bool {
+    head_is_p(t, str_lit("poly"))
+}
+
+/// The effects of a group's members but its `poly` ones'.
+pub fn shared_effects(bs: Sexps, es: List<Strings>) -> Strings {
+    if (null_p(bs) || null_p(es)) {
+        nil::<Str>()
+    } else {
+        effs_union(if poly_type_p(second(items(car(bs)))) {
+            nil::<Str>()
+        } else {
+            car(es)
+        }, shared_effects(cdr(bs), cdr(es)))
+    }
+}
+
+/// Each `->*` member at its own effect and the shared ones, `spin` too
+/// if they read a member's global.
+pub fn found_members(bs: Sexps, es: List<Strings>, shared: Strings, names: Strings) -> Sexps {
+    if (null_p(bs) || null_p(es)) {
+        nil::<&'static Sexp>()
+    } else {
+        kayak_rt::heap_cons({
+            let tagcase_ = car(bs);
+            match *tagcase_ {
+                Sexp::Lst(ys, f, l, p) => {
+                    if not(arrow_star_p(second(ys))) {
+                        car(bs)
+                    } else {
+                        let all = effs_union(car(es), shared);
+                        let all = if any_p(lambda1s(move |n: Str| {
+                            string_member_p(string_append(str_lit("g:"), n), all)
+                        }), names) {
+                            effs_union(kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil()), all)
+                        } else {
+                            all
+                        };
+                        lst(kayak_rt::heap_cons(car(ys), kayak_rt::heap_cons(effect_put(second(ys), effect_sexp(all)), kayak_rt::heap_cons(third(ys), kayak_rt::nil()))), f, l, p)
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    car(bs)
+                }
+            }
+        }, found_members(cdr(bs), cdr(es), shared, names))
+    }
+}
+
+/// A `define-rec` with `->*` members, each one's effect found (Fixpt's
+/// `arrow_star_group`): first in one pass, every `->*` member standing
+/// for nothing (`pure`), the rest at their types; then each with the
+/// effects of the others (but a `poly` one's, which say its own binders),
+/// and `spin` if that reads a member's global. Fixpt takes the group's
+/// components, callees first; KFX takes the group as one, so each member
+/// is given what any finds: no less than Fixpt's, never more accepted.
+pub fn found_rec(v: &'static Cv, bindings: Sexps) -> Sexps {
+    let names = map(lambda1s(move |b: &'static Sexp| {
+        name_of(v, car(items(b)))
+    }), bindings);
+    let placed = map(lambda1s(move |b: &'static Sexp| {
+        let ys = items(b);
+        if arrow_star_p(second(ys)) {
+            lst(kayak_rt::heap_cons(car(ys), kayak_rt::heap_cons(effect_put(second(ys), sym(str_lit("pure"), str_lit(""), 0i64)), kayak_rt::heap_cons(third(ys), kayak_rt::nil()))), str_lit(""), 0i64, 0i64)
+        } else {
+            b
+        }
+    }), bindings);
+    let ends = termination::terminates_p(v, names, map(lambda1s(move |b: &'static Sexp| {
+        let tagcase_ = parse_scheme(v, second(items(b)));
+        match *tagcase_ {
+            Scheme::Scheme(tvars, t) => {
+                t
+            }
+        }
+    }), placed), map(lambda1s(move |b: &'static Sexp| {
+        third(items(b))
+    }), bindings));
+    let named = with_binds(v, map(lambda1s(move |b: &'static Sexp| {
+        let ys = items(b);
+        global(v, name_of(v, car(ys)), parse_scheme(v, second(ys)))
+    }), placed));
+    let own = map(lambda1s(move |b: &'static Sexp| {
+        let ys = items(b);
+        if arrow_star_p(second(ys)) {
+            found_latent(at(named, name_of(v, car(ys)), if ends {
+                nil::<Str>()
+            } else {
+                names
+            }), name_of(v, car(ys)), second(ys), third(ys))
+        } else {
+            let tagcase_ = parse_scheme(v, second(ys));
+            match *tagcase_ {
+                Scheme::Scheme(tvars, t) => {
+                    let tagcase_ = t;
+                    match *tagcase_ {
+                        Ty::TyProc(es, ps, r) => {
+                            es
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            nil::<Str>()
+                        }
+                    }
+                }
+            }
+        }
+    }), bindings);
+    let shared = shared_effects(bindings, own);
+    found_members(bindings, own, shared, names)
+}
+
+/// The names of a module's items whose type is `->*`'s.
+pub fn star_items(forms: Sexps) -> Strings {
+    concat(map(lambda1s(move |f: &'static Sexp| {
+        if (head_is_p(f, str_lit("define")) && i64_eq(size(items(f)), 4i64) && arrow_star_p(third(items(f)))) {
+            the::<Strings>(kayak_rt::heap_cons(sym_name(second(items(f))), kayak_rt::nil()))
+        } else if head_is_p(f, str_lit("define-rec")) {
+            concat(map(lambda1s(move |b: &'static Sexp| {
+                if (i64_eq(size(items(b)), 3i64) && arrow_star_p(second(items(b)))) {
+                    the::<Strings>(kayak_rt::heap_cons(sym_name(car(items(b))), kayak_rt::nil()))
+                } else {
+                    nil::<Str>()
+                }
+            }), cdr(items(f))))
+        } else {
+            nil::<Str>()
+        }
+    }), forms))
+}
+
 /// One top-level form, which may add to what the forms after it see.
 pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
     let tagcase_ = form;
@@ -850,7 +1115,8 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
             v
         }
         Sexp::Lst(xs, src_file, src_line, src_pos) => {
-            let (v, h) = (near(v, src_file, src_line, src_pos), if null_p(xs) {
+            let v = near(v, src_file, src_line, src_pos);
+            let h = if null_p(xs) {
                 str_lit("")
             } else {
                 let tagcase_ = car(xs);
@@ -863,7 +1129,16 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
                         str_lit("")
                     }
                 }
-            });
+            };
+            let xs = if (string_eq_p(h, str_lit("define")) && i64_eq(size(xs), 4i64) && arrow_star_p(third(xs))) {
+                found_define(v, xs)
+            } else if (string_eq_p(h, str_lit("define-rec")) && any_p(lambda1s(move |b: &'static Sexp| {
+                (i64_eq(size(items(b)), 3i64) && arrow_star_p(second(items(b))))
+            }), cdr(xs))) {
+                the::<Sexps>(kayak_rt::heap_cons(car(xs), found_rec(v, cdr(xs))))
+            } else {
+                xs
+            };
             if string_eq_p(h, str_lit("define-effect")) {
                 with_effdef(v, xs)
             } else if string_eq_p(h, str_lit("define-convention")) {
@@ -3276,7 +3551,16 @@ pub fn check_items(mut v: &'static Cv, mut m: Str, mut forms: Sexps, mut found: 
 
 pub fn check_module(v: &'static Cv, form: &'static Sexp) -> &'static Elab {
     let p = module_prep(v, form);
-    module_finish(p, check_items(prep_inner(p), prep_name(p), module_order(prep_inner(p), prep_forms(p)), nil::<&'static Typed>()))
+    let stars = star_items(prep_forms(p));
+    if any_p(lambda1s(move |f: &'static Sexp| {
+        (head_is_p(f, str_lit("define")) && i64_eq(size(items(f)), 4i64) && not(lambda_form_p(fourth(items(f)))) && any_p(lambda1s(move |n: Str| {
+            string_member_p(n, stars)
+        }), names_in(fourth(items(f)))))
+    }), prep_forms(p)) {
+        match refuse(v, str_lit("a module's value names a `->*` procedure of the module, whose effect is found only after the module's values are made (Fixpt's)")) {}
+    } else {
+        module_finish(p, check_items(prep_inner(p), prep_name(p), module_order(prep_inner(p), prep_forms(p)), nil::<&'static Typed>()))
+    }
 }
 
 /// The forms in order; `found`, the types elaborated so far.
@@ -3883,12 +4167,24 @@ pub fn import_items(its: Sexps) -> Sexps {
     }), its))
 }
 
+/// Imports expanded; and FX-26's procedure types written short (Fixpt
+/// 2a0e6fd, 38df01e): `(-> (T ...) R)` as `(subr pure (T ...) R)`, which
+/// it is, and `(->* (T ...) R)` as `(subr %found (T ...) R)`, whose
+/// effect a definition finds (`found-define`); in no quoted datum.
 pub fn imports_in(e: &'static Sexp) -> &'static Sexp {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Lst(xs, f, l, p) => {
-            if (head_is_p(e, str_lit("module")) || head_is_p(e, str_lit("hide"))) {
+            if (head_is_p(e, str_lit("quote")) || head_is_p(e, str_lit("quasiquote"))) {
+                e
+            } else if (head_is_p(e, str_lit("module")) || head_is_p(e, str_lit("hide"))) {
                 lst(kayak_rt::heap_cons(car(xs), import_items(cdr(xs))), f, l, p)
+            } else if ((head_is_p(e, str_lit("->")) || head_is_p(e, str_lit("->*"))) && i64_eq(size(xs), 3i64)) {
+                lst(kayak_rt::heap_cons(sym(str_lit("subr"), f, p), kayak_rt::heap_cons(sym(if head_is_p(e, str_lit("->")) {
+                    str_lit("pure")
+                } else {
+                    str_lit("%found")
+                }, f, p), kayak_rt::heap_cons(imports_in(second(xs)), kayak_rt::heap_cons(imports_in(third(xs)), kayak_rt::nil())))), f, l, p)
             } else {
                 lst(map(&imports_in, xs), f, l, p)
             }
@@ -4239,11 +4535,11 @@ pub fn input_expanded(f: &'static Sexp, dir: Str, loaded: Fileds) -> Sexps {
                     error(string_append(str_lit("kfx: "), string_append(fl, string_append(str_lit(": cannot read "), path))))
                 } else {
                     map(lambda1s(move |x: &'static Sexp| {
-                        if built_in_path_p(path) {
+                        imports_in(if built_in_path_p(path) {
                             x
                         } else {
                             loads_from(x, directory_of(path))
-                        }
+                        })
                     }), read_all(string_chars(text), path, 1i64))
                 };
                 let e = if i64_eq(size(es), 1i64) {

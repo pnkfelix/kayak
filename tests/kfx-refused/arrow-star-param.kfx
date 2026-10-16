@@ -1,0 +1,5 @@
+"`(->* (T ...) R)` is only the type a definition declares: a parameter's
+ type is no definition's (Fixpt's `ARROW_STAR_ONLY`)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define call (subr kfx ((->* (int) int)) int)
+  (lambda (f) (f 1)))

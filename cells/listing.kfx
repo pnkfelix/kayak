@@ -4,7 +4,7 @@
  instruction, `AT: ROUTINE OPERAND ...`. Exact, but where a literal is
  cut short (`…`), two words share a name, or the compilers disagree:
  those are refused. Each word's register code is passed over.
- fixpt-source: crates/fixpt-runtime/src/disasm.rs@7641962"
+ fixpt-source: crates/fixpt-runtime/src/disasm.rs@1925bca"
 
 (define listing-error (subr kfx (string) void)
   (lambda (why) (error (string-append "kayak-cells: the listing: " why))))
@@ -19,7 +19,7 @@
 (define-rec
   (lines-of (subr kfx (chars chars (listof chars acyclic)) (listof chars acyclic))
     (lambda (cs acc out)
-      (cond ((null? cs) (the (listof chars acyclic) (reverse (if (null? acc) out (cons (the chars (reverse acc)) out)))))
+      (cond ((null? cs) (the (listof chars acyclic) (reverse (the (listof chars acyclic) (if (null? acc) out (cons (the chars (reverse acc)) out))))))
             ((char=? (car cs) #\newline) (lines-of (cdr cs) nil (cons (the chars (reverse acc)) out)))
             (else (lines-of (cdr cs) (cons (car cs) acc) out))))))
 

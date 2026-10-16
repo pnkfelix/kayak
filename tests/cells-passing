@@ -6,6 +6,10 @@ bench/lists-region.fx
 bench/lists.fx
 bench/loop.fx
 bench/tak.fx
+bidirectional/arrow-star-groups.fx
+bidirectional/arrow-star-module.fx
+bidirectional/arrow-star.fx
+bidirectional/arrow.fx
 bidirectional/capture-and-resume.fx
 bidirectional/cwcc.fx
 bidirectional/own-abort.fx
