@@ -1026,12 +1026,17 @@
 
     (define module-type-values (subr kfx (cv sexp) binds)
       (lambda (v spec)
-        "A moduleof's values, their types read in `v`, as items."
+        "A moduleof's values, their types read in `v`, as items. A `poly`'s
+         is its scheme (C119): in Rust a generic function of the trait. One
+         that may abort returns a `Result`, as a top-level procedure does."
         (map (lambda ((x sexps))
-               (let ((t (parse-type v (cv-tvars v) (third x))))
-                 (if (escapes? (tagcase t (ty-proc (es ps r) es) (else other nil)))
-                     (refuse v "a module type's value that may abort, which KFX's traits do not have yet")
-                     (bind (sym-name (second x)) (scheme nil t) "item"))))
+               (let* ((sc (if (head-is? (third x) "poly")
+                              (parse-scheme v (third x))
+                              (scheme nil (parse-type v (cv-tvars v) (third x)))))
+                      (t (tagcase sc (scheme (tv t) t))))
+                 (if (suspends? (tagcase t (ty-proc (es ps r) es) (else other nil)))
+                     (refuse v "a module type's value that may suspend, which KFX's traits do not have yet")
+                     (bind (sym-name (second x)) sc "item"))))
              (spec-items spec "val"))))
 
     (define-rec

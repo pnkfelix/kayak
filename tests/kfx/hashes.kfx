@@ -1,0 +1,9 @@
+"FX-26's `symbol-name-hash` and `string-hash` (C119), the same as Fixpt's
+ to the bit: a hash table's buckets are in their order."
+
+(define main (subr (read @globals) () string)
+  (lambda ()
+    (string-append (int->string (symbol-name-hash 'abc))
+      (string-append " " (string-append (int->string (symbol-name-hash 'make-table))
+        (string-append " " (string-append (int->string (string-hash "h\xe9;llo"))
+          (string-append " " (int->string (string-hash ""))))))))))

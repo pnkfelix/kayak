@@ -1,0 +1,5 @@
+"An `import` names its module by a variable (C119), as FX-26 has it."
+
+(import (module (define x 1)) x)
+
+(define main (subr pure () string) (lambda () "x"))

@@ -2103,7 +2103,7 @@ pub mod emitter {
                 concat(map(lambda1s(move |it: &'static Sexp| {
                     let ys = items(it);
                     if sym_is_p(car(ys), str_lit("val")) {
-                        the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("define"), str_lit(""), 0i64), kayak_rt::heap_cons(second(ys), kayak_rt::heap_cons(third(ys), kayak_rt::heap_cons(if head_is_p(third(ys), str_lit("subr")) {
+                        the::<Sexps>(kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("define"), str_lit(""), 0i64), kayak_rt::heap_cons(second(ys), kayak_rt::heap_cons(third(ys), kayak_rt::heap_cons(if (head_is_p(third(ys), str_lit("subr")) || (head_is_p(third(ys), str_lit("poly")) && head_is_p(third(items(third(ys))), str_lit("subr")))) {
                             lst(kayak_rt::heap_cons(sym(str_lit("lambda"), str_lit(""), 0i64), kayak_rt::nil()), str_lit(""), 0i64, 0i64)
                         } else {
                             sym(str_lit("#u"), str_lit(""), 0i64)

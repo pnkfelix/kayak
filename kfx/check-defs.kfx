@@ -122,6 +122,7 @@
    (string-ci=? (subr pure (string string) bool)) (string-downcase (subr pure (string) string)) (substring (subr pure (string int int) string))
    (string->symbol (subr pure (string) symbol)) (symbol->string (subr pure (symbol) string)) (symbol=? (subr pure (symbol symbol) bool))
    (symbol-compare (subr pure (symbol symbol) int))
+   (symbol-name-hash (subr pure (symbol) int)) (string-hash (subr pure (string) int))
    (make-array (poly ((r region) (t type)) (subr (alloc r) (int t) (arrayof t r))))
    (array-ref (poly ((r region) (t type)) (subr (read r) ((arrayof t r) int) t)))
    (array-set! (poly ((r region) (t type)) (subr (write r) ((arrayof t r) int t) unit)))
@@ -1304,6 +1305,18 @@
  their references allow, each set of procedures that reach one another a
  `define-rec` (so `spin` and termination are as a group's); Rust's items
  are in no order, and the emitter writes them as they were."
+(define-rec
+  (marked-in? (subr kfx ((listof char acyclic)) bool)
+    (lambda (cs)
+      (and (not (null? cs)) (not (null? (cdr cs)))
+           (or (and (char=? (car cs) #\space) (char=? (car (cdr cs)) #\%)) (marked-in? (cdr cs)))))))
+
+(define marker-name? (subr kfx (string) bool)
+  (lambda (n)
+    "A binding's name that is a marker, `%x`, or a module's marker, `m %x`
+     (C119), which no program names."
+    (or (has-prefix? n "%") (marked-in? (string-chars n)))))
+
 (define-datatype mitem (mitem sexp strings strings bool))
 (define-type mitems (listof mitem acyclic))
 
@@ -1330,26 +1343,31 @@
   (lambda (s out) (nset-of (concat (map (lambda ((n string)) (if (string-member? n out) nil (the strings (list n)))) (nset-names s))))))
 
 (define-rec
-  (refs-in (subr kfx (sexp nset sexps) strings)
-    (lambda (e names forms)
+  (refs-in (subr kfx (sexp nset sexps binds) strings)
+    (lambda (e names forms bs)
       "The items among `names` that `e` names; in a `(with m ...)` of a
        module item, not the names `m` gives, which are `m`'s (C88, FX-26's
-       `(define x (with m x))`). `names` a tree (C92): this walks every
-       item's body, every compile."
+       `(define x (with m x))`); of a module outside, bound in `bs`, the
+       same (C119: `import` writes it so). `names` a tree (C92): this walks
+       every item's body, every compile."
       (tagcase e
         (sym (n f p) (if (in-nset? n names) (the strings (list n)) nil))
         (lst (xs f l p)
           (if (and (head-is? e "with") (not (null? (cdr xs))) (tagcase (second xs) (sym (n f2 p2) #t) (else other #f)))
               (let* ((m (sym-name (second xs)))
-                     (given (concat (map (lambda ((g sexp))
-                                           (if (and (module-def? g) (string=? (sym-name (second (items g))) m))
-                                               (concat (map item-names (module-written g)))
-                                               nil))
-                                         forms)))
+                     (own (concat (map (lambda ((g sexp))
+                                         (if (and (module-def? g) (string=? (sym-name (second (items g))) m))
+                                             (concat (map item-names (module-written g)))
+                                             nil))
+                                       forms)))
+                     (given (if (or (not (null? own)) (any? (lambda ((g sexp)) (and (module-def? g) (string=? (sym-name (second (items g))) m))) forms))
+                                own
+                                (filter (lambda ((n string)) (not (null? (find-bind (string-append m (string-append " " n)) bs))))
+                                        (nset-names names))))
                      (inner (if (null? given) names (nset-without names given))))
                 (onto (if (in-nset? m names) (the strings (list m)) nil)
-                      (concat (map (lambda ((x sexp)) (refs-in x inner forms)) (cdr (cdr xs))))))
-              (concat (map (lambda ((x sexp)) (refs-in x names forms)) xs))))
+                      (concat (map (lambda ((x sexp)) (refs-in x inner forms bs)) (cdr (cdr xs))))))
+              (concat (map (lambda ((x sexp)) (refs-in x names forms bs)) xs))))
         (else other nil)))))
 
 (define standard-scope (subr kfx (cv strings) cv)
@@ -1372,8 +1390,8 @@
                          here group file line fs tv at)))
           (with-binds bare (cons (bind "%loaded" (scheme nil (ty-unit)) "mark") (prim-binds bare))))))))
 
-(define letrec-items (subr kfx (sexps) mitems)
-  (lambda (forms)
+(define letrec-items (subr kfx (sexps binds) mitems)
+  (lambda (forms bs)
     "The value items: each its form, its names, the items it names, and
      whether it is procedures (made, not run, when its item is)."
     (let* ((values (concat (map (lambda ((f sexp)) (if (null? (item-value f)) nil (the sexps (list f)))) forms)))
@@ -1382,7 +1400,7 @@
              (mitem f (item-names f)
                     (let ((own (if (module-def? f) (concat (map item-names (unhidden (module-written f)))) nil)))
                       (let ((set (nset-of (concat (map (lambda ((n string)) (if (string-member? n own) nil (the strings (list n)))) names)))))
-                        (concat (map (lambda ((e sexp)) (refs-in e set forms)) (item-value f)))))
+                        (concat (map (lambda ((e sexp)) (refs-in e set forms bs)) (item-value f)))))
                     (and (or (head-is? f "define-rec") (head-is? f "define*") (i64= (size (items f)) 4))
                          (not (any? (lambda ((e sexp)) (not (lambda-form? e))) (item-value f))))))
            values))))
@@ -1593,7 +1611,7 @@
      as written (a type may select a module's), then its values, each after
      what it reaches, those that reach one another as one group. A module
      item is made where it is written all the same (C88)."
-    (let* ((its (letrec-items forms))
+    (let* ((its (letrec-items forms (cv-binds v)))
            (t (itree-of its))
            (values (concat (map (lambda ((it mitem)) (tagcase it (mitem (f ns rs l) (if (module-def? f) nil (the mitems (list it)))))) its)))
            (groups (begin
@@ -1672,14 +1690,15 @@
              (includes (included v forms))
              (names (module-types v forms))
              (given-values (onto (concat (map item-value-names forms))
-                                 (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (if (has-prefix? n "%") nil (the strings (list n))))))
+                                 (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (if (marker-name? n) nil (the strings (list n))))))
                                               (concat (map (lambda ((n string)) (binds-of-include n include-binds)) includes))))))
              (given-types (concat (map item-type-names forms)))
              (included-aliases (map (lambda ((a alias)) (tagcase a (alias (n ps body) (alias n ps (resolved-alias body (cv-aliases v))))))
                                     (concat (map (lambda ((n string)) (excepted-aliases v written n (cv-aliases v))) includes))))
-             (v (if (or (repeated? given-values)
-                        (repeated? (onto given-types (map (lambda ((a alias)) (tagcase a (alias (n ps b) n))) (distinct-aliases included-aliases)))))
-                    (refuse v "a name defined twice in this module, its own or included")
+             (all-types (onto given-types (map (lambda ((a alias)) (tagcase a (alias (n ps b) n))) (distinct-aliases included-aliases))))
+             (v (if (or (repeated? given-values) (repeated? all-types))
+                    (refuse v (string-append "a name defined twice in this module, its own or included: "
+                                             (if (repeated? given-values) (first-repeated given-values) (first-repeated all-types))))
                     v))
              (typed (tagcase v
                       (cv (bs ds als es here group file line fs tv at)
@@ -1982,6 +2001,53 @@
             forms
             (error (string-append "kfx: " (string-append path ": given regions, and no module-parameters")))))))
 
+"FX-26's `(import m name ... (type name ...) (effect name ...))` (C119),
+ expanded as it is read, as FX-26 expands it: each value `(define x (with m
+ x))`, each type `(define-type t (select m t))`, each effect
+ `(define-effect e (select m e))`; an item wherever a definition is, at the
+ top level, in a `module`, in a `hide`."
+(define import-defs (subr kfx (sexp) sexps)
+  (lambda (g)
+    (tagcase g
+      (lst (xs f l p)
+        (let ((where (string-append "kfx: " (string-append f (string-append ":" (i64->string l))))))
+          (if (tagcase (second xs) (sym (n f2 p2) #f) (else other #t))
+              (error (string-append where ": an import names its module by a variable"))
+              (let ((m (second xs)))
+                (concat (map (lambda ((x sexp))
+                               (tagcase x
+                                 (sym (n f2 p2) (the sexps (list (lst (list (sym "define" f p) x (lst (list (sym "with" f p) m x) f l p)) f l p))))
+                                 (lst (ys f2 l2 p2)
+                                   (if (and (or (head-is? x "type") (head-is? x "effect"))
+                                            (not (any? (lambda ((y sexp)) (tagcase y (sym (n f3 p3) #f) (else other #t))) (cdr ys))))
+                                       (map (lambda ((y sexp))
+                                              (lst (list (sym (if (head-is? x "type") "define-type" "define-effect") f p) y
+                                                         (lst (list (sym "select" f p) m y) f l p))
+                                                   f l p))
+                                            (cdr ys))
+                                       (error (string-append where ": an import's names are names, (type name ...) or (effect name ...)"))))
+                                 (else other (error (string-append where ": an import's names are names, (type name ...) or (effect name ...)")))))
+                             (cdr (cdr xs))))))))
+      (else other nil))))
+
+(define-rec
+  (import-items (subr kfx (sexps) sexps)
+    (lambda (its)
+      "Items, each `import` its definitions, each other its imports expanded."
+      (concat (map (lambda ((g sexp))
+                     (if (and (head-is? g "import") (i64> (size (items g)) 1))
+                         (import-defs g)
+                         (the sexps (list (imports-in g)))))
+                   its))))
+  (imports-in (subr kfx (sexp) sexp)
+    (lambda (e)
+      (tagcase e
+        (lst (xs f l p)
+          (if (or (head-is? e "module") (head-is? e "hide"))
+              (lst (cons (car xs) (import-items (cdr xs))) f l p)
+              (lst (map imports-in xs) f l p)))
+        (else other e)))))
+
 (define-rec
   (spliced (subr kfx (sexp string fileds strings keyeds) spliced-to)
     (lambda (e dir loaded chain known)
@@ -2004,7 +2070,7 @@
                                (error (string-append "kfx: " (string-append f (string-append ": a load cycle: " (words-of (reverse (the strings (cons path chain)))))))))
                               ((null? found) (error (string-append "kfx: cannot read " path)))
                               (else
-                               (let* ((forms (read-all (string-chars (car found)) path 1))
+                               (let* ((forms (import-items (read-all (string-chars (car found)) path 1)))
                                       (its (parameters-given forms args path))
                                       (inner (spliced-each its (directory-of path) loaded (cons path chain) known nil nil f l p))
                                       (name (string-append "made--load--" (i64->string (size (spliced-known inner)))))
@@ -2111,6 +2177,17 @@
                       file line pos))
                 ((or (head-is? f "module") (head-is? f "hide"))
                  (lst (cons (car xs) (map flat-definition (cdr xs))) file line pos))
+                ((and (head-is? f "define-type") (i64= (size xs) 3) (head-is? (third xs) "moduleof"))
+                 "A module type's value whose type is a `poly` in a `poly`, as
+                  Fixpt's `tables-sig` writes `make-table`: one (C119)."
+                 (lst (list (car xs) (second xs)
+                            (lst (map (lambda ((it sexp))
+                                        (if (and (head-is? it "val") (i64= (size (items it)) 3))
+                                            (lst (list (car (items it)) (second (items it)) (flat-poly (third (items it)))) (datum-file it) 0 (datum-pos it))
+                                            it))
+                                      (items (third xs)))
+                                 file line (datum-pos (third xs))))
+                      file line pos))
                 ((and (head-is? f "define") (i64= (size xs) 3) (head-is? (third xs) "module"))
                  (lst (list (car xs) (second xs) (flat-definition (third xs))) file line pos))
                 (else f)))
@@ -2188,7 +2265,7 @@
     "A program's forms: what it loads spliced in (C88), and what its modules
      make in place defined before them (C90); a `poly` in a `poly` around a
      definition, one (C107); a `load-input` of a module, the module (C116)."
-    (let ((forms (concat (map (lambda ((f sexp)) (input-expanded f (directory-of file) loaded)) forms))))
+    (let ((forms (concat (map (lambda ((f sexp)) (input-expanded f (directory-of file) loaded)) (import-items forms)))))
       (map flat-definition
            (concat (map hoisted (if (and (null? loaded) (not (any? loads? forms)))
                                     forms

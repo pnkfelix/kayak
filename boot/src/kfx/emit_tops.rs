@@ -108,12 +108,70 @@ pub mod writing {
         }
     }
 
-    /// `fn x(a0: P0, ...) -> R`, a module type's value `(val x T)`.
-    pub fn put_val_sig(c: &'static Ctx, val: Sexps, descs: List<Sexps>, acc: Chars) -> Chars {
-        let t = subst_descs(third(val), descs);
-        let acc = put(mangle(sym_name(second(val))), put(str_lit("fn "), acc));
+    /// A poly's binders as a fn's generics: a type is a Rust type parameter,
+    /// `Copy` and `'static` as every KFX value is; an effect is erased, and so,
+    /// until places come (TODO.md section 14), is a region, every one's place
+    /// being the heap.
+    pub fn put_generics(mut binders: Sexps, mut first: bool, mut acc: Chars) -> Chars {
+        loop {
+            if null_p(binders) {
+                if first {
+                    return acc;
+                } else {
+                    return put(str_lit(">"), acc);
+                }
+            } else {
+                let b = items(car(binders));
+                let kind = sym_name(second(b));
+                if string_eq_p(kind, str_lit("type")) {
+                    let acc = put(if first {
+                        str_lit("<")
+                    } else {
+                        str_lit(", ")
+                    }, acc);
+                    let acc = put(camel(sym_name(car(b))), acc);
+                    return put_generics(cdr(binders), false, put(str_lit(": Copy + 'static"), acc));
+                } else if (string_eq_p(kind, str_lit("effect")) || string_eq_p(kind, str_lit("region"))) {
+                    binders = cdr(binders);
+                    continue;
+                } else {
+                    return error(string_append(str_lit("kfx: KFX-0 has no poly over a "), kind));
+                }
+            }
+        }
+    }
+
+    /// `fn x(a0: P0, ...) -> R`, a module type's value `(val x T)`; of a
+    /// `poly`, generic as a top-level procedure is (C119).
+    pub fn put_val_sig(c0: &'static Ctx, val: Sexps, descs: List<Sexps>, acc: Chars) -> Chars {
+        let t0 = subst_descs(third(val), descs);
+        let binders = if head_is_p(t0, str_lit("poly")) {
+            items(second(items(t0)))
+        } else {
+            nil::<&'static Sexp>()
+        };
+        let c = with_locals(c0, concat(map(lambda1s(move |b: &'static Sexp| {
+            if sym_is_p(second(items(b)), str_lit("type")) {
+                the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%tvar "), sym_name(car(items(b)))), kayak_rt::nil()))
+            } else if sym_is_p(second(items(b)), str_lit("effect")) {
+                the::<Strings>(kayak_rt::heap_cons(string_append(str_lit("%evar "), sym_name(car(items(b)))), kayak_rt::nil()))
+            } else {
+                nil::<Str>()
+            }
+        }), binders)));
+        let t = if head_is_p(t0, str_lit("poly")) {
+            third(items(t0))
+        } else {
+            t0
+        };
+        let acc = put_generics(binders, true, put(mangle(sym_name(second(val))), put(str_lit("fn "), acc)));
         if head_is_p(t, str_lit("subr")) {
-            put_type(c, fourth(items(t)), put(str_lit(") -> "), put_arg_params(c, items(third(items(t))), 0i64, put(str_lit("("), acc))))
+            let acc = put(str_lit(") -> "), put_arg_params(c, items(third(items(t))), 0i64, put(str_lit("("), acc)));
+            if fallible_effect_p(c, second(items(t))) {
+                put(str_lit(", Unwind>"), put_type(c, fourth(items(t)), put(str_lit("Result<"), acc)))
+            } else {
+                put_type(c, fourth(items(t)), acc)
+            }
         } else {
             put_type(c, t, put(str_lit("() -> "), acc))
         }
@@ -177,7 +235,12 @@ pub mod writing {
             put(str_lit(";\n"), put(type_path(c, m, t), put(str_lit(" = "), put(camel(t), put(str_lit("    type "), acc)))))
         }), str_lit(""), abs_of(spec), acc);
         let acc = put_sep(lambda2s(move |v: Sexps, acc: Chars| {
-            let t = subst_descs(third(v), descs);
+            let t1 = subst_descs(third(v), descs);
+            let t = if head_is_p(t1, str_lit("poly")) {
+                third(items(t1))
+            } else {
+                t1
+            };
             let name = sym_name(second(v));
             let acc = put(str_lit(" {\n        "), put_val_sig(inner, v, descs, put(str_lit("    "), acc)));
             let acc = put(mangle(name), put(str_lit("::"), put(mangle(m), acc)));
@@ -290,39 +353,6 @@ pub mod writing {
             } else {
                 put(str_lit(", "), acc)
             })
-        }
-    }
-
-    /// A poly's binders as a fn's generics: a type is a Rust type parameter,
-    /// `Copy` and `'static` as every KFX value is; an effect is erased, and so,
-    /// until places come (TODO.md section 14), is a region, every one's place
-    /// being the heap.
-    pub fn put_generics(mut binders: Sexps, mut first: bool, mut acc: Chars) -> Chars {
-        loop {
-            if null_p(binders) {
-                if first {
-                    return acc;
-                } else {
-                    return put(str_lit(">"), acc);
-                }
-            } else {
-                let b = items(car(binders));
-                let kind = sym_name(second(b));
-                if string_eq_p(kind, str_lit("type")) {
-                    let acc = put(if first {
-                        str_lit("<")
-                    } else {
-                        str_lit(", ")
-                    }, acc);
-                    let acc = put(camel(sym_name(car(b))), acc);
-                    return put_generics(cdr(binders), false, put(str_lit(": Copy + 'static"), acc));
-                } else if (string_eq_p(kind, str_lit("effect")) || string_eq_p(kind, str_lit("region"))) {
-                    binders = cdr(binders);
-                    continue;
-                } else {
-                    return error(string_append(str_lit("kfx: KFX-0 has no poly over a "), kind));
-                }
-            }
         }
     }
 

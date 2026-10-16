@@ -1,0 +1,7 @@
+"A bloblet field holding a procedure that reads the bloblet's region
+ (C119): a knot through the store, refused as FX-26 refuses it."
+
+(define f (poly ((r region)) (subr pure ((bloblet (fields (subr (read r) () i64) i64) r)) i64))
+  (lambda (b) 0))
+
+(define main (subr pure () string) (lambda () "x"))

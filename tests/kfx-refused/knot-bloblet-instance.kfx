@@ -1,0 +1,14 @@
+"A bloblet generic in its field's type, made at a procedure that reads its
+ region (C119): the type is fine as written, its instance ties a knot, and
+ is refused where it is made, as FX-26 refuses it."
+
+(define-type (cell (k type) (r region)) (bloblet (fields k) r))
+
+(define make (poly ((r region) (k type)) (subr (alloc r) (k) (cell k r)))
+  (lambda (x) (the (cell k r) (make-bloblet 0 x))))
+
+(define main (subr (read @globals) () string)
+  (lambda ()
+    (letregion r
+      (let ((c (the (cell (subr (read r) () i64) r) (make (the (subr (read r) () i64) (lambda () 1))))))
+        "x"))))

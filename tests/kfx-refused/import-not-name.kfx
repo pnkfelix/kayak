@@ -1,0 +1,6 @@
+"An `import`'s names are names (C119), as FX-26 has it."
+
+(define m (module (define-type t i64)))
+(import m (type 3))
+
+(define main (subr pure () string) (lambda () "x"))

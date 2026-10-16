@@ -135,6 +135,10 @@ def head_of(form):
         return (head, 2)
     if head in ("define", "define*"):
         return (head, 1)
+    if head == "import":
+        # One line for each value it defines; `(type ...)` and `(effect ...)`
+        # none (C119).
+        return (head, len([x for x in xs[2:] if not x.startswith("(")]))
     return ("expression", 1)
 
 

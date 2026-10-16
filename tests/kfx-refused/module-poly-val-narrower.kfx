@@ -1,0 +1,16 @@
+"A module whose value is less general than its module type's poly (C119):
+ `first-or` at i64 lists alone, where the type asks for any. Refused, as
+ FX-26 refuses it."
+
+(define ints
+  (module
+    (define first-or (subr pure ((listof i64 acyclic) i64) i64)
+      (lambda (xs d) (if (null? xs) d (car xs))))))
+
+(define-type firsts
+  (moduleof (val first-or (poly ((t type)) (subr pure ((listof t acyclic) t) t)))))
+
+(define one (subr pure (firsts) i64)
+  (lambda (m) (with m (first-or (the (listof i64 acyclic) nil) 2))))
+
+(define main (subr pure () i64) (lambda () (one ints)))

@@ -2813,3 +2813,44 @@ working types (`cursor` and its kin) apart too.
   about 60 at a `load-input` of a file that is one `lambda`; 4 at a
   bloblet field holding a procedure; 2 at a nested load's path joined to
   an absolute one (a kfx bug).
+
+## C119. Module types' polymorphic and aborting values, knots in arrays and bloblets, `import` (2026-10-16, TODO §31 step 1)
+
+Toward Fixpt's front end through KFX, its checker's and tables'
+signatures (`check-types-sig`, `tables-sig`) first.
+- **A `val` polymorphic** (`(val k-length (poly ((t type)) ...))`): its
+  scheme, and in Rust a generic function of the trait, `fn
+  first_or<T: Copy + 'static>(..)`, regions and effects erased as a
+  top-level procedure's; each impl calls its module's. A module fits when
+  its value is at least as general: the type's variables stay rigid, the
+  module's instantiated. A `poly` in a `poly` there is one, as for a
+  definition (C70). Tests: `module-poly-val`,
+  `kfx-refused/module-poly-val-narrower`.
+- **A `val` that may abort** returns a `Result`, as a top-level procedure
+  does; one that may suspend is still refused (a trait's `async fn`). To
+  fit a module's value whose effect's region only its parameters solve,
+  a procedure's fit tries its parameters first when its effects alone
+  fail (only then: what fitted before fits as before). Test:
+  `module-aborting-val`.
+- **Knots through the store, as Fixpt's `knot_in`**: arrays' elements,
+  I-cells' values and bloblets' fields are kept at their region. Arrays
+  went unchecked before: KFX accepted an array of procedures reading the
+  array's region, which FX-26 refuses (a K1 breach, now
+  `kfx-refused/knot-array`). A bloblet's field may now be a type
+  variable, or any procedure that does not read the bloblet's region
+  unsaid, as in FX-26: the knot found in the instance (C21's check of
+  each call's), not refused at the type (`bloblet-generic`, Fixpt's
+  tables' shape; `knot-bloblet`, `knot-bloblet-instance` refused).
+- **`(import m x ... (type t ...) (effect e ...))`**, FX-26's (2026-10-15),
+  expanded as it is read, as FX-26 does, at the top level and in every
+  `module` and `hide`, of the program and of each file loaded; refused
+  where FX-26 refuses it (its module not a variable, a name not a name).
+  The module order check now knows a `(with m x)` of a module outside
+  gives `x` from `m` (the expansion's `(define x (with m x))`). Fixpt's
+  `modules/import.fx` agrees; `imports`, `kfx-refused/import-not-*`.
+- **`symbol-name-hash`, `string-hash`**: Fixpt's FNV-1a, to the bit (a
+  table's buckets' order). `hashes`.
+- **A module's markers** (`m %toplambda`) are no names it gives: a module
+  loaded twice in one had them "defined twice". The refusal now names
+  the name.
+- **Measured**: 29 of 150 files accepted (from 11).

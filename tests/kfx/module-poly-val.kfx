@@ -1,0 +1,35 @@
+"A module type's value polymorphic in a type (C119), as Fixpt's
+ `check-types-sig` has `k-length`: in Rust a generic function of the
+ trait, each module's impl calling its own."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define picks
+  (module
+    (define first-or (poly ((t type)) (subr pure ((listof t acyclic) t) t))
+      (lambda (xs d) (if (null? xs) d (car xs))))
+    (define pick (poly ((t type) (u type)) (subr pure (bool t t u) t))
+      (lambda (b x y z) (if b x y)))))
+
+(define lasts
+  (module
+    (define-rec
+      (first-or (poly ((t type)) (subr pure ((listof t acyclic) t) t))
+        (lambda (xs d) (if (null? xs) d (first-or (cdr xs) (car xs))))))
+    (define pick (poly ((t type) (u type)) (subr pure (bool t t u) t))
+      (lambda (b x y z) (if b y x)))))
+
+(define-type firsts
+  (moduleof (val first-or (poly ((t type)) (subr pure ((listof t acyclic) t) t)))
+            (val pick (poly ((a type) (b type)) (subr pure (bool a a b) a)))))
+
+"Each value at two types, in one procedure."
+(define both (subr kfx (firsts) string)
+  (lambda (m)
+    (with m
+      (string-append (first-or (list "a" "b") "z")
+        (string-append (i64->string (first-or (the (listof i64 acyclic) nil) 7))
+          (pick #t "p" "q" 0))))))
+
+(define main (subr kfx () string)
+  (lambda () (string-append (both picks) (string-append " " (both lasts)))))

@@ -1,0 +1,26 @@
+"FX-26's `import` (C119): what a module gives, by name, defined where the
+ import is; values, `(type t ...)` and `(effect e ...)`; at the top level
+ and hidden in a module."
+
+(define shapes
+  (module
+    (define-type point (productof (x i64) (y i64)))
+    (define-effect touches (maxeff (read @globals)))
+    (define origin point (product (x 0) (y 0)))
+    (define shift (subr touches (point i64) point)
+      (lambda (p d) (product (x (i64+ (extract p x) d)) (y (extract p y)))))
+    (define x-of (subr pure (point) i64) (lambda (p) (extract p x)))))
+
+(import shapes origin shift (type point) (effect touches))
+
+(define m
+  (module
+    (hide (import shapes x-of (type point)))
+    (define far point (product (x 40) (y 2)))
+    (define reach (subr pure (point) i64) (lambda (p) (i64+ (x-of p) 3)))))
+
+(define mover (subr touches (point) point) (lambda (p) (shift p 2)))
+
+(define main (subr (read @globals) () string)
+  (lambda ()
+    (i64->string (i64+ (with shapes (x-of (mover origin))) (with m (reach far))))))

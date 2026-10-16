@@ -1349,3 +1349,9 @@ parser loading no reader, one-shot continuations). KFX names a type of a
 load bound in a module by `select`, as Fixpt's `parser-types.fx` does;
 `tests/kfx/loaded-select.kfx`, with files of its own. The survey: 11 of
 150 files accepted, 59 next at a type-polymorphic `val` in a `moduleof`.
+
+Then (C119): module types' values polymorphic in a type and that may
+abort; knots through arrays, I-cells and bloblets checked as Fixpt does
+(a K1 breach closed: arrays went unchecked), a bloblet's fields generic;
+FX-26's `import`; `symbol-name-hash` and `string-hash`. Fixpt's
+`modules/import.fx` agrees. The survey: 29 of 150 files accepted.

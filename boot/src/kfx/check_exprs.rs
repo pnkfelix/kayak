@@ -2321,11 +2321,25 @@ pub mod expressions {
         }
     }
 
-    /// A moduleof's values, their types read in `v`, as items.
+    /// A moduleof's values, their types read in `v`, as items. A `poly`'s
+    /// is its scheme (C119): in Rust a generic function of the trait. One
+    /// that may abort returns a `Result`, as a top-level procedure does.
     pub fn module_type_values(v: &'static Cv, spec: &'static Sexp) -> Binds {
         map(lambda1s(move |x: Sexps| {
-            let t = parse_type(v, cv_tvars(v), third(x));
-            if escapes_p({
+            let sc = if head_is_p(third(x), str_lit("poly")) {
+                parse_scheme(v, third(x))
+            } else {
+                scheme(nil::<Str>(), parse_type(v, cv_tvars(v), third(x)))
+            };
+            let t = {
+                let tagcase_ = sc;
+                match *tagcase_ {
+                    Scheme::Scheme(tv, t) => {
+                        t
+                    }
+                }
+            };
+            if suspends_p({
                 let tagcase_ = t;
                 match *tagcase_ {
                     Ty::TyProc(es, ps, r) => {
@@ -2337,9 +2351,9 @@ pub mod expressions {
                     }
                 }
             }) {
-                match refuse(v, str_lit("a module type's value that may abort, which KFX's traits do not have yet")) {}
+                match refuse(v, str_lit("a module type's value that may suspend, which KFX's traits do not have yet")) {}
             } else {
-                bind(sym_name(second(x)), scheme(nil::<Str>(), t), str_lit("item"))
+                bind(sym_name(second(x)), sc, str_lit("item"))
             }
         }), spec_items(spec, str_lit("val")))
     }

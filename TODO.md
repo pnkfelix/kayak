@@ -505,6 +505,9 @@ Stages 2 and 3 done (C95): editing, history, Tab; Fixpt's commands.
   key today's sources make, Rust without the facts of `synth` (no `match
   … {}` for a `void` call, no turbofish). A fresh cache is right. Kept:
   `target/memo-bug/` (the memo file, the commit, the sources' diff).
+  Again four times on 2026-10-16 while C119 was built (generation 1 or 2
+  failing, a fresh cache right each time): common now when the checker
+  changes; worth finding before it costs more.
 - Inside a global's value, Fixpt does not count a local lambda's reads of
   globals against its declared effect; KFX does, so refuses
   `pselect-stop.fx` and the like (C101).
@@ -571,12 +574,16 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
 1. Module files in KFX; Fixpt's front end's 143 files surveyed again,
    to choose where stage A comes from (A: Fixpt's front end through KFX;
    B: Fixpt's compilers ported onto kayak's checker).
-   **At Fixpt `7641962` (C118)**: 11 of 150 accepted. Next, by files
-   unblocked: a `moduleof` whose `val` is polymorphic in a type (59);
-   `load-input` of a file that is one `lambda` (about 60); `import` (8);
-   a bloblet field holding a procedure (4); a nested load's path joined
-   to an absolute one (2, a bug). And `call-with-oneshot-continuation`
-   whose procedure ends in an abort to its tag, as C45's form (C118).
+   **At Fixpt `7641962` (C119)**: 29 of 150 accepted. Next, by files:
+   "a type given the wrong number of arguments" (31, from
+   `check-env-types.fx:25` and `table.fx:26`); `kreads` not found through
+   `check-subst-types.fx`'s `(define-effect kreads (select m kreads))`
+   (13); a module's effect that may abort (5); `load-input` of a file
+   that is one `lambda` (the `regcode*`, `compile*`, `eval*` files); the
+   eager reader's own states (2, expected: its continuations are
+   composable); a nested load's path joined to an absolute one (2, a
+   bug). And `call-with-oneshot-continuation` whose procedure ends in an
+   abort to its tag, as C45's form (C118).
 2. The layout table for KFX; the heap in Fixpt's format; tier 1.
 3. `kayak-jit`; the arm64 encoder in KFX; tier 2. **Begun (C116,
    2026-10-15)**: Fixpt's §97 operations in KFX, the code area, the

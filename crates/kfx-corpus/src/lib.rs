@@ -13,6 +13,11 @@ pub mod bignum;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/bloblet-generic.rs"]
+pub mod bloblet_generic;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/bloblets.rs"]
 pub mod bloblets;
 
@@ -105,6 +110,16 @@ pub mod floats;
 #[rustfmt::skip]
 #[path = "../../../tests/kfx/generative.rs"]
 pub mod generative;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
+#[path = "../../../tests/kfx/hashes.rs"]
+pub mod hashes;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
+#[path = "../../../tests/kfx/imports.rs"]
+pub mod imports;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
@@ -203,6 +218,11 @@ pub mod made_typed_calls;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/module-aborting-val.rs"]
+pub mod module_aborting_val;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/module-letrec.rs"]
 pub mod module_letrec;
 
@@ -210,6 +230,11 @@ pub mod module_letrec;
 #[rustfmt::skip]
 #[path = "../../../tests/kfx/module-params.rs"]
 pub mod module_params;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
+#[path = "../../../tests/kfx/module-poly-val.rs"]
+pub mod module_poly_val;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
@@ -378,6 +403,7 @@ fn tasks_main() -> kayak_rt::Str {
 pub const PROGRAMS: &[(&str, Main)] = &[
     ("arith", arith::main),
     ("bignum", bignum::main),
+    ("bloblet-generic", bloblet_generic::main),
     ("bloblets", bloblets::main),
     ("bytes", bytes::main),
     ("caller-place", caller_place::main),
@@ -397,6 +423,8 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("flat-sums", flat_sums::main),
     ("floats", floats::main),
     ("generative", generative::main),
+    ("hashes", hashes::main),
+    ("imports", imports::main),
     ("lambda-order", lambda_order::main),
     ("letreap", letreap::main),
     ("letrec", letrec::main),
@@ -416,8 +444,10 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("made-generated", made_generated::main),
     ("made-linked", made_linked::main),
     ("made-typed-calls", made_typed_calls::main),
+    ("module-aborting-val", module_aborting_val::main),
     ("module-letrec", module_letrec::main),
     ("module-params", module_params::main),
+    ("module-poly-val", module_poly_val::main),
     ("module-strings", module_strings::main),
     ("modules", modules::main),
     ("monitors", monitors::main),

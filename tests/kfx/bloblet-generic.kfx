@@ -1,0 +1,23 @@
+"A bloblet generic in its fields' types, one of them a procedure (C119),
+ as Fixpt's hash tables keep their key's equality: a one-entry table."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define-type (key-same (k type)) (subr pure (k k) bool))
+(define-type (one (k type) (v type) (r region)) (bloblet (fields (key-same k) k v) r))
+
+(define make-one (poly ((r region) (k type) (v type)) (subr (alloc r) ((key-same k) k v) (one k v r)))
+  (lambda (same key val) (the (one k v r) (make-bloblet 0 same key val))))
+
+(define lookup (poly ((r region) (k type) (v type)) (subr (read r) ((one k v r) k v) v))
+  (lambda (t key d) (if ((bloblet-ref t 0) (bloblet-ref t 1) key) (bloblet-ref t 2) d)))
+
+(define same-i64 (subr pure (i64 i64) bool) (lambda (a b) (i64= a b)))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (letregion r
+      (let ((t (the (one i64 string r) (make-one same-i64 7 "seven"))))
+        (begin
+          (bloblet-set! t 2 "sept")
+          (string-append (lookup t 7 "none") (string-append " " (lookup t 8 "none"))))))))

@@ -1,0 +1,8 @@
+"An array of procedures that read the array's own region (C119): a knot
+ through the store, which FX-26 refuses unless they say `spin`. KFX's
+ check passed arrays over before."
+
+(define f (poly ((r region)) (subr pure ((arrayof (subr (read r) () i64) r)) i64))
+  (lambda (a) 0))
+
+(define main (subr pure () string) (lambda () "x"))

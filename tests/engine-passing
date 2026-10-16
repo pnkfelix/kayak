@@ -16,6 +16,7 @@ families
 fixed
 floats
 generative
+imports
 lambda-order
 letreap
 letrec
@@ -27,8 +28,10 @@ lets
 lifted
 lists
 loaded-select
+module-aborting-val
 module-letrec
 module-params
+module-poly-val
 module-strings
 modules
 mutable

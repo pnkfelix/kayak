@@ -1,0 +1,33 @@
+"A module type's value that may abort (C119): in Rust a trait function
+ returning a `Result`, as a top-level procedure that may abort does; its
+ call through a module parameter passes the abort on."
+
+(define-effect kfx (maxeff (read @globals) spin))
+
+(define strict
+  (module
+    (define check (poly ((z region)) (subr (maxeff (goto z) kfx) ((prompt-tag i64 i64 kfx z) i64) i64))
+      (lambda (t n) (if (i64< n 0) (abort-current-continuation t n) (i64* n 10))))))
+
+(define lax
+  (module
+    (define check (poly ((z region)) (subr (maxeff (goto z) kfx) ((prompt-tag i64 i64 kfx z) i64) i64))
+      (lambda (t n) (if (i64< n 0) 0 n)))))
+
+(define-type checks
+  (moduleof (val check (poly ((z region)) (subr (maxeff (goto z) kfx) ((prompt-tag i64 i64 kfx z) i64) i64)))))
+
+"Each of three checked by `m`, summed; or the first refused, less 1000."
+(define total (subr kfx (checks i64 i64 i64) i64)
+  (lambda (m a b c)
+    (letregion e
+      (let ((t (the (prompt-tag i64 i64 kfx e) (make-continuation-prompt-tag))))
+        (prompt t
+                (with m (i64+ (check t a) (i64+ (check t b) (check t c))))
+                (lambda ((v i64)) (i64- v 1000)))))))
+
+(define main (subr kfx () string)
+  (lambda ()
+    (string-append (i64->string (total strict 1 2 3))
+      (string-append " " (string-append (i64->string (total strict 1 -2 3))
+        (string-append " " (i64->string (total lax 1 -2 3))))))))

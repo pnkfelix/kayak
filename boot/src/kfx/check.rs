@@ -375,6 +375,20 @@ pub fn repeated_p(xs: Strings) -> bool {
     (not(null_p(xs)) && (string_member_p(car(xs), cdr(xs)) || repeated_p(cdr(xs))))
 }
 
+/// The first of `xs` that is there again later, or ``.
+pub fn first_repeated(mut xs: Strings) -> Str {
+    loop {
+        if null_p(xs) {
+            return str_lit("");
+        } else if string_member_p(car(xs), cdr(xs)) {
+            return car(xs);
+        } else {
+            xs = cdr(xs);
+            continue;
+        }
+    }
+}
+
 pub fn strings_eq_p(a: Strings, b: Strings) -> bool {
     if null_p(a) {
         null_p(b)
@@ -1257,7 +1271,15 @@ pub fn knot_in(mut v: &'static Cv, mut res: &'static (dyn Fn(Str) -> Str + Send 
                 return first_knot(v, res, ts, kept, every, seen);
             }
             Ty::TyData(d, args) => {
-                if string_member_p(d, seen) {
+                if ((string_eq_p(d, str_lit("%array")) || string_eq_p(d, str_lit("%icell"))) && i64_eq(size(args), 2i64)) {
+                    // An array's elements and an I-cell's value, kept at its region, as
+                    // Fixpt's `knot_in` has them (C119: arrays went unchecked before).
+                    (t, kept) = (car(args), kayak_rt::heap_cons(region_name_of(car(cdr(args))), kept));
+                    continue;
+                } else if (string_eq_p(d, str_lit("%bloblet")) && not(null_p(args))) {
+                    // A bloblet's fields, kept at its region (C119), as a ref's value.
+                    return first_knot(v, res, cdr(args), kayak_rt::heap_cons(region_name_of(car(args)), kept), every, seen);
+                } else if string_member_p(d, seen) {
                     return nil::<Str>();
                 } else {
                     let found = find_family(d, cv_dts(v));
@@ -1439,59 +1461,6 @@ pub fn flat_p(t: &'static Ty) -> bool {
         _ => {
             let other = tagcase_;
             false
-        }
-    }
-}
-
-/// Whether a type could hold a procedure that ties a knot through the
-/// store: is one whose latent effect reads a region and does not say
-/// `spin` (FX-26's `no_knot`, of any region, where FX-26's is of the
-/// one it is kept at: C116, Fixpt's `linked.fx` keeps `*`), a type
-/// variable, or has one inside.
-pub fn field_may_knot_p(mut t: &'static Ty) -> bool {
-    loop {
-        let tagcase_ = t;
-        match *tagcase_ {
-            Ty::TyProc(es, ps, r) => {
-                return (any_p(lambda1s(move |a: Str| {
-                    has_prefix_p(a, str_lit("read:"))
-                }), es) && not(string_member_p(str_lit("spin"), es)));
-            }
-            Ty::TyVar(n) => {
-                return true;
-            }
-            Ty::TyMeta(k) => {
-                return true;
-            }
-            Ty::TyList(e, r) => {
-                t = e;
-                continue;
-            }
-            Ty::TyRef(e, r) => {
-                t = e;
-                continue;
-            }
-            Ty::TyFlat(e, r) => {
-                t = e;
-                continue;
-            }
-            Ty::TyTag(a, h, d, r) => {
-                return true;
-            }
-            Ty::TyShape(p, ls, ts) => {
-                return any_p(lambda1s(move |x: &'static Ty| {
-                    field_may_knot_p(x)
-                }), ts);
-            }
-            Ty::TyData(d, args) => {
-                return any_p(lambda1s(move |x: &'static Ty| {
-                    field_may_knot_p(x)
-                }), args);
-            }
-            _ => {
-                let other = tagcase_;
-                return false;
-            }
         }
     }
 }
@@ -1994,20 +1963,16 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                         return match refuse(v, string_append(str_lit("a place's type names a letrena's place or a poly's place binder: "), show_sexp(t))) {};
                     }
                 } else if sym_is_p(car(xs), str_lit("bloblet")) {
-                    // `(bloblet (fields T ...) R)` (C31): fields that may be written, so
-                    // none a procedure or a type variable, which could tie a knot
-                    // through the store that no type here shows.
+                    // `(bloblet (fields T ...) R)` (C31): fields that may be written, kept
+                    // at `R`, so none a procedure that reads `R` unless it says `spin`,
+                    // FX-26's rule (`no-knot`); a type variable's instance checked where
+                    // it is made, as a ref's is (C119).
                     if (not(i64_eq(size(xs), 3i64)) || not(head_is_p(second(xs), str_lit("fields")))) {
                         return match refuse(v, string_append(str_lit("a bloblet type KFX does not have yet (its fields frozen, or not of the form (bloblet (fields T ...) R)): "), show_sexp(t))) {};
                     } else {
-                        let fields = parse_types(v, tvars, cdr(items(second(xs))));
-                        if any_p(lambda1s(move |f: &'static Ty| {
-                            field_may_knot_p(f)
-                        }), fields) {
-                            return match refuse(v, string_append(str_lit("a bloblet field that may hold a procedure, which KFX does not have: "), show_sexp(t))) {};
-                        } else {
-                            return ty_data(str_lit("%bloblet"), kayak_rt::heap_cons(parse_mutable_region(v, tvars, third(xs)), fields));
-                        }
+                        return no_knot(v, lambda1s(move |x: Str| {
+                            x
+                        }), ty_data(str_lit("%bloblet"), kayak_rt::heap_cons(parse_mutable_region(v, tvars, third(xs)), parse_types(v, tvars, cdr(items(second(xs)))))));
                     }
                 } else if sym_is_p(car(xs), str_lit("blobref")) {
                     if not(i64_eq(size(xs), 3i64)) {
@@ -4099,7 +4064,16 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                     if not(i64_eq(size(aps), size(eps))) {
                         mismatch(v, s, a, e)
                     } else if null_p(fit_effs(s, aes, ees)) {
-                        mismatch(v, s, a, e)
+                        // A region of `a`'s effect not solved yet, which its parameters solve,
+                        // as where a module's poly value fits its module type's (C119): the
+                        // parameters first, then the effects.
+                        let s2 = fits_all(v, s, eps, aps);
+                        let fitted = fit_effs(s2, aes, ees);
+                        if null_p(fitted) {
+                            mismatch(v, s, a, e)
+                        } else {
+                            fits(v, car(fitted), ar, er)
+                        }
                     } else {
                         fits(v, fits_all(v, car(fit_effs(s, aes, ees)), eps, aps), ar, er)
                     }

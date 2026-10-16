@@ -133,6 +133,31 @@ pub fn symbol_to_string(s: Symbol) -> Str {
     s.0
 }
 
+const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
+const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
+
+/// FX-26's `symbol-name-hash`, as Fixpt computes it (`symbol_hash_of`):
+/// FNV-1a of the name's bytes, its sign bit cleared, as a fixnum of 61
+/// bits, so that a table's buckets are in the same order.
+pub fn symbol_name_hash(s: Symbol) -> Int {
+    let h =
+        s.0.as_str()
+            .bytes()
+            .fold(FNV_OFFSET, |h, b| (h ^ b as u64).wrapping_mul(FNV_PRIME));
+    let n = (h as i64) & i64::MAX;
+    i64_to_int(((n as u64) << 3) as i64 >> 3)
+}
+
+/// FX-26's `string-hash`, as Fixpt computes it (`string_hash_of`): FNV-1a
+/// of the code points, shifted into a fixnum.
+pub fn string_hash(s: Str) -> Int {
+    let h = s
+        .as_str()
+        .chars()
+        .fold(FNV_OFFSET, |h, c| (h ^ c as u64).wrapping_mul(FNV_PRIME));
+    i64_to_int((h >> 4) as i64)
+}
+
 #[inline]
 pub fn symbol_eq_p(a: Symbol, b: Symbol) -> bool {
     a.0.as_str() == b.0.as_str()
