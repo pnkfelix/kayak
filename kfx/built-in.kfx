@@ -51,8 +51,851 @@
        condition)))))
 ")
 
+(define built-in-1 string
+  ";;; The types of `arm64.fx`, and the signature of its module as its
+;;; clients use it: a module file of no state, which it loads, and so may
+;;; its clients (`TODO.md` §68).
+
+;; What the encoders do: read the encoders, and count down.
+(define-effect encodes (maxeff (read @globals) spin))
+;; The encoders of two, three and four operands.
+(define-type arm-op2 (subr encodes (int int) int))
+(define-type arm-op3 (subr encodes (int int int) int))
+(define-type arm-op4 (subr encodes (int int int int) int))
+;; Instructions, in order.
+(define-type arm-code (listof int @k))
+
+;;; ------------------------------------------------------------ signatures
+
+;; What `native.fx` uses of the encoders (`TODO.md` §68).
+(define-type arm64-sig
+  (moduleof (val arm-ldr-post arm-op3)
+            (val arm-str-post arm-op3)
+            (val arm-str-pre arm-op3)
+            (val arm-ldur arm-op3)
+            (val arm-stur arm-op3)
+            (val arm-ldr arm-op3)
+            (val arm-str arm-op3)
+            (val arm-ldr-reg arm-op3)
+            (val arm-stp-pre arm-op4)
+            (val arm-ldp-post arm-op4)
+            (val arm-stp arm-op4)
+            (val arm-ldp arm-op4)
+            (val arm-add-imm arm-op3)
+            (val arm-sub-imm arm-op3)
+            (val arm-subs-imm arm-op3)
+            (val arm-cmp-imm arm-op2)
+            (val arm-add arm-op3)
+            (val arm-sub arm-op3)
+            (val arm-adds arm-op3)
+            (val arm-subs arm-op3)
+            (val arm-orr arm-op3)
+            (val arm-cmp arm-op2)
+            (val arm-mov arm-op2)
+            (val arm-and-low arm-op3)
+            (val arm-tst-low arm-op2)
+            (val arm-ubfx arm-op4)
+            (val arm-asr-imm arm-op3)
+            (val arm-lsr-imm arm-op3)
+            (val arm-strb arm-op2)
+            (val arm-csel arm-op4)
+            (val arm-movz arm-op3)
+            (val arm-mov-imm64 (subr (maxeff (alloc @k) (read @globals) spin) (int int) arm-code))
+            (val arm-b (subr (maxeff (read @globals) spin) (int) int))
+            (val arm-b-cond arm-op2)
+            (val arm-cbz arm-op2)
+            (val arm-cbnz arm-op2)
+            (val arm-br (subr (maxeff (read @globals) spin) (int) int))
+            (val arm-blr (subr (maxeff (read @globals) spin) (int) int))))
+")
+
+(define built-in-2 string
+  ";;; An arm64 encoder, in FX-26 (PLAN.md §11, step 11b): the instructions the
+;;; native machine uses, each a function to its 32-bit word, exactly as
+;;; `fixpt-native/src/arm64.rs` encodes them. That encoder is this one's
+;;; oracle (`tests/arm64.rs` in this crate), as the system assembler is
+;;; that one's.
+;;;
+;;; FX-26 has no bitwise operations and needs none here: an instruction is
+;;; fields that do not overlap, so shifting is multiplying by a power of
+;;; two and combining is adding. A signed field is masked by `modulo`,
+;;; which is never negative for a positive divisor. What does not fit gives
+;;; -1, which no instruction is: the encoders are pure, and whoever places
+;;; the code checks.
+
+;; Registers are 0–30; 31 is sp or xzr, as the instruction takes it.
+;; Conditions: eq 0, ne 1, hs 2, lo 3, vs 6, vc 7, hi 8, ls 9, ge 10,
+;; lt 11, gt 12, le 13.
+
+;; A file of one expression (`load-input`, `TODO.md` §68): the module, of no
+;; state and given nothing, which the conductor gives `native.fx`. Its types
+;; (`arm64-types.fx`) are loaded around it, so that they are not among its
+;; values; the module names what it uses of them.
+(let ((arm64-types (load-module \"fx26:arm64-types.fx\")))
+  (module
+(hide (include arm64-types))
+
+;; 2 to the `n`, `n` ≥ 0: a shift (in line natively), not `n` doublings.
+(define arm-pow2 (subr encodes (int) int)
+  (lambda (n) (arithmetic-shift 1 n)))
+
+;; `v` as a `bits`-bit two's-complement field, or -1 if it does not fit.
+(define arm-simm (subr encodes (int int) int)
+  (lambda (v bits)
+    (let ((half (arm-pow2 (- bits 1))))
+      (if (or (< v (- 0 half)) (>= v half)) -1 (modulo v (* 2 half))))))
+
+;; Fields at their places: each is -1 if it did not fit, and so the sum.
+(define arm-f (subr encodes (int int) int)
+  (lambda (v shift) (if (< v 0) -1 (arithmetic-shift v shift))))
+(define arm-sum (subr pure (int int) int)
+  (lambda (a b) (if (or (< a 0) (< b 0)) -1 (+ a b))))
+(define arm-sum3 (subr (read @globals) (int int int) int)
+  (lambda (a b c) (arm-sum a (arm-sum b c))))
+(define arm-sum4 (subr (read @globals) (int int int int) int)
+  (lambda (a b c d) (arm-sum a (arm-sum3 b c d))))
+(define arm-reg (subr pure (int) int)
+  (lambda (x) (if (and (>= x 0) (<= x 31)) x -1)))
+;; `v` if `ok`, else -1.
+(define arm-check (subr pure (bool int) int)
+  (lambda (ok v) (if ok v -1)))
+;; Whether lo ≤ v < hi.
+(define arm-in? (subr pure (int int int) bool)
+  (lambda (v lo hi) (and (>= v lo) (< v hi))))
+;; Register `x` at `shift`, and `v` as a `bits`-bit signed field at `shift`.
+(define arm-reg-at (subr encodes (int int) int)
+  (lambda (x shift) (arm-f (arm-reg x) shift)))
+(define arm-simm-at (subr encodes (int int int) int)
+  (lambda (v bits shift) (arm-f (arm-simm v bits) shift)))
+;; op | field | n << 5 | t: an instruction on registers `n` and `t` (or
+;; `d`), `field` its other operands at their places.
+(define arm-n-t (subr encodes (int int int int) int)
+  (lambda (op field n t) (arm-sum4 op field (arm-reg-at n 5) (arm-reg t))))
+
+;;; ------------------------------------------------------ loads, stores
+
+;; op | simm9 << 12 | n << 5 | t: the unscaled and indexed forms.
+(define arm-mem9 (subr encodes (int int int int) int)
+  (lambda (op t n imm) (arm-n-t op (arm-simm-at imm 9 12) n t)))
+(define arm-ldr-post arm-op3 (lambda (t n imm) (arm-mem9 #xF8400400 t n imm)))
+(define arm-ldr-pre arm-op3 (lambda (t n imm) (arm-mem9 #xF8400C00 t n imm)))
+(define arm-str-post arm-op3 (lambda (t n imm) (arm-mem9 #xF8000400 t n imm)))
+(define arm-str-pre arm-op3 (lambda (t n imm) (arm-mem9 #xF8000C00 t n imm)))
+(define arm-ldur arm-op3 (lambda (t n imm) (arm-mem9 #xF8400000 t n imm)))
+(define arm-stur arm-op3 (lambda (t n imm) (arm-mem9 #xF8000000 t n imm)))
+
+;; `ldr`/`str xt, [xn, #off]`, `off` a multiple of 8 below 32768.
+(define arm-mem12 (subr encodes (int int int int) int)
+  (lambda (op t n off)
+    (arm-check (and (= (modulo off 8) 0) (>= off 0) (< off 32768))
+               (arm-n-t op (arm-f (quotient off 8) 10) n t))))
+(define arm-ldr arm-op3 (lambda (t n off) (arm-mem12 #xF9400000 t n off)))
+(define arm-str arm-op3 (lambda (t n off) (arm-mem12 #xF9000000 t n off)))
+
+(define arm-ldr-lit arm-op2
+  (lambda (t words) (arm-sum3 #x58000000 (arm-simm-at words 19 5) (arm-reg t))))
+(define arm-ldr-reg arm-op3
+  (lambda (t n m) (arm-n-t #xF8606800 (arm-reg-at m 16) n t)))
+
+;; The pairs: op | simm7(imm / 8) << 15 | t2 << 10 | n << 5 | t.
+(define arm-pair (subr encodes (int int int int int) int)
+  (lambda (op t t2 n imm)
+    (let ((offset (arm-simm-at (quotient imm 8) 7 15)))
+      (arm-check (= (modulo imm 8) 0)
+                 (arm-n-t op (arm-sum offset (arm-reg-at t2 10)) n t)))))
+(define arm-stp-pre arm-op4 (lambda (t t2 n imm) (arm-pair #xA9800000 t t2 n imm)))
+(define arm-ldp-post arm-op4 (lambda (t t2 n imm) (arm-pair #xA8C00000 t t2 n imm)))
+(define arm-stp arm-op4 (lambda (t t2 n imm) (arm-pair #xA9000000 t t2 n imm)))
+(define arm-ldp arm-op4 (lambda (t t2 n imm) (arm-pair #xA9400000 t t2 n imm)))
+
+;;; ------------------------------------------------------ arithmetic
+
+;; op | imm12 << 10 | n << 5 | d.
+(define arm-imm12 (subr encodes (int int int int) int)
+  (lambda (op d n imm)
+    (arm-check (arm-in? imm 0 4096) (arm-n-t op (arm-f imm 10) n d))))
+(define arm-add-imm arm-op3 (lambda (d n imm) (arm-imm12 #x91000000 d n imm)))
+(define arm-sub-imm arm-op3 (lambda (d n imm) (arm-imm12 #xD1000000 d n imm)))
+(define arm-subs-imm arm-op3 (lambda (d n imm) (arm-imm12 #xF1000000 d n imm)))
+(define arm-cmp-imm arm-op2 (lambda (n imm) (arm-imm12 #xF1000000 31 n imm)))
+
+;; op | m << 16 | n << 5 | d.
+(define arm-reg3 (subr encodes (int int int int) int)
+  (lambda (op d n m) (arm-n-t op (arm-reg-at m 16) n d)))
+(define arm-add arm-op3 (lambda (d n m) (arm-reg3 #x8B000000 d n m)))
+(define arm-sub arm-op3 (lambda (d n m) (arm-reg3 #xCB000000 d n m)))
+(define arm-adds arm-op3 (lambda (d n m) (arm-reg3 #xAB000000 d n m)))
+(define arm-subs arm-op3 (lambda (d n m) (arm-reg3 #xEB000000 d n m)))
+(define arm-orr arm-op3 (lambda (d n m) (arm-reg3 #xAA000000 d n m)))
+(define arm-cmp arm-op2 (lambda (n m) (arm-reg3 #xEB000000 31 n m)))
+(define arm-mov arm-op2 (lambda (d m) (arm-reg3 #xAA000000 d 31 m)))
+
+;; The low `bits` bits: 1 ≤ bits < 64. The mask's field is its width less
+;; one at 10.
+(define arm-low-mask (subr encodes (int) int)
+  (lambda (bits) (arm-check (arm-in? bits 1 64) (arm-f (- bits 1) 10))))
+(define arm-and-low arm-op3
+  (lambda (d n bits) (arm-n-t #x92400000 (arm-low-mask bits) n d)))
+(define arm-tst-low arm-op2
+  (lambda (n bits) (arm-sum3 #xF240001F (arm-low-mask bits) (arm-reg-at n 5))))
+(define arm-ubfx arm-op4
+  (lambda (d n lsb width)
+    (let ((immr (arm-f lsb 16))
+          (imms (arm-f (- (+ lsb width) 1) 10)))
+      (arm-check (and (< lsb 64) (>= width 1) (<= (+ lsb width) 64))
+                 (arm-n-t #xD3400000 (arm-sum immr imms) n d)))))
+;; A shift by `s`, 0 ≤ s < 64.
+(define arm-shift-imm (subr encodes (int int int int) int)
+  (lambda (op d n s) (arm-check (arm-in? s 0 64) (arm-n-t op (arm-f s 16) n d))))
+(define arm-asr-imm arm-op3 (lambda (d n s) (arm-shift-imm #x9340FC00 d n s)))
+(define arm-lsr-imm arm-op3 (lambda (d n s) (arm-shift-imm #xD340FC00 d n s)))
+;; `strb wt, [xn]`.
+(define arm-strb arm-op2 (lambda (t n) (arm-sum3 #x39000000 (arm-reg-at n 5) (arm-reg t))))
+(define arm-csel arm-op4
+  (lambda (d n m c) (arm-n-t #x9A800000 (arm-sum (arm-reg-at m 16) (arm-f c 12)) n d)))
+
+;; `movz`/`movk xd, #imm16, lsl #(16 hw)`.
+(define arm-mov16 (subr encodes (int int int int) int)
+  (lambda (op d imm16 hw)
+    (arm-check (and (>= imm16 0) (< imm16 65536) (>= hw 0) (< hw 4))
+               (arm-sum4 op (arm-f hw 21) (arm-f imm16 5) (arm-reg d)))))
+(define arm-movz arm-op3 (lambda (d imm16 hw) (arm-mov16 #xD2800000 d imm16 hw)))
+(define arm-movk arm-op3 (lambda (d imm16 hw) (arm-mov16 #xF2800000 d imm16 hw)))
+;; Any non-negative 64-bit constant below 2^60 (a fixnum's range): `movz`,
+;; then a `movk` for each other nonzero 16 bits, low to high.
+(define arm-mov-imm64 (subr (maxeff (read @globals) (alloc @k) spin) (int int) arm-code)
+  (lambda (d v)
+    (letrec ((ks (subr (maxeff (read @globals) (alloc @k) spin) (int int) arm-code)
+                (lambda (hw rest)
+                  (if (= hw 4)
+                      nil
+                      (let ((part (modulo (quotient rest 65536) 65536)))
+                        (if (= part 0)
+                            (ks (+ hw 1) (quotient rest 65536))
+                            (cons (arm-movk d part hw) (ks (+ hw 1) (quotient rest 65536)))))))))
+      (the arm-code (cons (arm-movz d (modulo v 65536) 0) (ks 1 v))))))
+
+;;; ------------------------------------------------------ control
+
+(define arm-b (subr encodes (int) int) (lambda (words) (arm-sum #x14000000 (arm-simm words 26))))
+(define arm-bl (subr encodes (int) int) (lambda (words) (arm-sum #x94000000 (arm-simm words 26))))
+(define arm-b-cond arm-op2
+  (lambda (c words) (arm-sum3 #x54000000 (arm-simm-at words 19 5) c)))
+(define arm-cbz arm-op2
+  (lambda (t words) (arm-sum3 #xB4000000 (arm-simm-at words 19 5) (arm-reg t))))
+(define arm-cbnz arm-op2
+  (lambda (t words) (arm-sum3 #xB5000000 (arm-simm-at words 19 5) (arm-reg t))))
+(define arm-br (subr encodes (int) int) (lambda (n) (arm-sum #xD61F0000 (arm-reg-at n 5))))
+(define arm-blr (subr encodes (int) int) (lambda (n) (arm-sum #xD63F0000 (arm-reg-at n 5))))
+(define arm-ret int #xD65F03C0)))
+")
+
+(define built-in-3 string
+  ";;; The types of `convention.fx`: a native convention as data a generator
+;;; reads (`TODO.md` §97, `docs/research/declared-conventions.md`, step 6).
+;;; A register is its number, `x0` 0 to `x30` 30, `sp` 31; an offset in the
+;;; state is in bytes from the state's register; a frame's are from the
+;;; frame's register. A module file of no state, which `convention.fx`
+;;; loads, and so may its clients, to name the types.
+
+;; A text read: a name, an integer, or a list of them.
+(define-datatype cv-sx (cx-name string) (cx-int int) (cx-list (listof cv-sx acyclic)))
+(define-type cv-sxs (listof cv-sx acyclic))
+;; What reading does: read the module's procedures, and count down.
+(define-effect cvr (maxeff (read @globals) spin))
+;; A text read from a place in a string, and the place after it.
+(define-type cv-at (productof (x cv-sx) (at int)))
+(define-type cv-sxs-at (productof (xs cv-sxs) (at int)))
+
+;; Names and their numbers, in the declaration's order: tags, immediates,
+;; kinds, a trap's kinds.
+(define-type cv-names (listof (productof (name string) (number int)) acyclic))
+(define-type cv-ints (listof int acyclic))
+(define-type cv-strs (listof string acyclic))
+;; Roles and their registers: a routine's inputs.
+(define-type cv-regs (listof (productof (name string) (registers cv-ints)) acyclic))
+
+(define-type cv-registers
+  (productof (arguments cv-ints) (rest-in int) (count int) (result int) (closure int)
+             (link int) (frame int)
+             ;; Pinned: never changed by code, but fuel as `cv-fuel` says.
+             (state int) (fuel int) (stack-limit int) (code-distance int)))
+
+;; A header's field: its first bit and its width.
+(define-type cv-bits (listof (productof (name string) (at int) (width int)) acyclic))
+(define-type cv-values
+  (productof (tags cv-names) (fixnum-shift int) (fixnum-bits int) (immediates cv-names)
+             (char-subtag int) (char-payload-shift int)
+             ;; A pair's fields, from its reference.
+             (car int) (cdr int)
+             ;; A bloblet's reference: its suffix plus this, the tag; field
+             ;; `k` is `8k` + this before the suffix.
+             (bloblet-past-suffix int) (field-k-before-suffix int)
+             (header cv-bits) (kinds cv-names)))
+
+;; `code-field` is the code bloblet's; its code is native code when at or
+;; past the state's field at `native-when-code-at-least`.
+(define-type cv-closures
+  (productof (kind int) (code-field int) (first-free-field int) (native-when-code-at-least int)))
+
+;; A code bloblet's code runs at its reference plus the code distance's
+;; register; field `k` is `8k` + this before its first instruction.
+(define-type cv-code (productof (field-k-before-code int)))
+
+;; A frame, from its register: its header, link, return, stack map and
+;; first value slot. A map's bit `k` below `live-below` is value slot `k`
+;; live; above `fields-above`, the count of the frame's fields; negative,
+;; every value live. `stub` is a stub's frame's size.
+(define-type cv-frames
+  (productof (align int) (header int) (link int) (return int) (map int) (values-from int)
+             (live-below int) (fields-above int) (stub int)))
+
+;; The state's fields that code reads or writes, by offset.
+(define-type cv-state
+  (productof (fuel int) (reserve int) (trap int) (pc int) (args int) (nargs int) (aux int)
+             (callout int) (rust-sp int) (native-sp int) (fp int) (top int) (words int)
+             (alloc-limit int) (code int) (clo int) (delta int) (code-lo int) (trap-stub int)
+             (foreign int) (closure int) (cards int) (stack-limit int) (overflow int) (poll int)
+             (cons int) (bloblet int)))
+
+;; A routine: its entry's offset in the state, called by `blr`; its inputs,
+;; each a role and its registers; its output's register, -1 for none; whether
+;; it may collect.
+(define-type cv-routine
+  (productof (entry int) (in cv-regs) (out int) (may-collect bool)))
+;; `overflow`, when `sp` is below the stack limit's register once a frame is
+;; made: its entry called with the return in `x30`, the code bloblet in
+;; `code`, in `info` the arguments held (`held-width` bits from `held-at`),
+;; whether the closure was read and whether the procedure is variadic (bits
+;; `closure-read`, `variadic`). It keeps the registers in `keeps`.
+(define-type cv-overflow
+  (productof (entry int) (code int) (info int) (held-at int) (held-width int)
+             (closure-read int) (variadic int) (keeps cv-ints)))
+;; `trap`: its kind in `kind`, each kind's number and name.
+(define-type cv-trap (productof (entry int) (kind int) (kinds cv-names)))
+(define-type cv-routines
+  (productof (foreign cv-routine) (overflow cv-overflow) (poll cv-routine) (cons cv-routine)
+             (bloblet cv-routine) (trap cv-trap)))
+
+;; Fuel: in `register`, less `subtract` on entry and on a back edge; at
+;; zero, a call of `poll`.
+(define-type cv-fuel (productof (register int) (subtract int)))
+;; A store of a value marks `mark` at the card table (at `cards` in the
+;; state) plus the address shifted right by `card-shift`.
+(define-type cv-barrier (productof (cards int) (card-shift int) (mark int)))
+
+(define-type convention
+  (productof (target string) (registers cv-registers) (values cv-values)
+             (closures cv-closures) (code cv-code) (frames cv-frames) (state cv-state)
+             (routines cv-routines) (fuel cv-fuel) (barrier cv-barrier)))
+
+;; A declaration read: the convention, or why not.
+(define-type cv-read (sumof (ok convention) (refused string)))
+")
+
+(define built-in-4 string
+  ";;; A native convention as data a generator reads (`TODO.md` §97,
+;;; `docs/research/declared-conventions.md`, step 6): a declaration's
+;;; clauses, as `native-convention` gives them (canonical: atoms apart by one
+;;; space, integers in decimal), read into a `convention`
+;;; (`convention-types.fx`), whose registers, offsets and routines' entries a
+;;; generator takes rather than numbers copied out of fixpt. So a generator
+;;; is parametric in the convention it is given.
+;;;
+;;; Reading is total: what a clause does not say reads as 0, or -1 for a
+;;; register. Then the convention is printed back, and a declaration it does
+;;; not print back to, clause for clause, is refused, naming the first such
+;;; clause: one a `convention` cannot hold, or misread, is never handed on.
+;;; The rules a declaration states besides its numbers (nothing kept across
+;;; a call but the pinned registers, the map stored before every call, …)
+;;; are what a `convention` means, and are printed as they are.
+
+;; A file of one expression (`load-input`): the module, of no state and
+;; given nothing. Its types (`convention-types.fx`) are loaded around it, so
+;; that they are not among its values.
+(let ((convention-types (load-module \"fx26:convention-types.fx\")))
+  (module
+(hide (include convention-types))
+
+;;; ------------------------------------------------------------ reading
+
+;; The character at `i` of `t`, as a string.
+(define cv-ch (subr pure (string int) string) (lambda (t i) (substring t i (+ i 1))))
+;; Where the atom from `i` of `t` ends: at a space, a parenthesis or the end.
+(define cv-atom-end (subr cvr (string int) int)
+  (lambda (t i)
+    (if (or (>= i (string-length t)) (string=? (cv-ch t i) \" \") (string=? (cv-ch t i) \"(\")
+            (string=? (cv-ch t i) \")\"))
+        i
+        (cv-atom-end t (+ i 1)))))
+;; The decimal digits of `s` from `i`, after `acc`; -1 if one is no digit.
+(define cv-digits (subr cvr (string int int) int)
+  (lambda (s i acc)
+    (cond ((= i (string-length s)) acc)
+          ((char-numeric? (string-ref s i))
+           (cv-digits s (+ i 1) (+ (* acc 10) (- (char->integer (string-ref s i)) 48))))
+          (else -1))))
+;; An atom: an integer, in decimal, perhaps negative; else a name.
+(define cv-atom (subr cvr (string) cv-sx)
+  (lambda (a)
+    (let* ((neg (and (> (string-length a) 1) (string=? (substring a 0 1) \"-\")))
+           (n (if (= (string-length a) 0) -1 (cv-digits a (if neg 1 0) 0))))
+      (cond ((< n 0) (cx-name a))
+            (neg (cx-int (- 0 n)))
+            (else (cx-int n))))))
+(define-rec
+  ;; What is at `i` of `t`, and where it ends.
+  (cv-read-at (subr cvr (string int) cv-at)
+    (lambda (t i)
+      (cond ((>= i (string-length t)) (product (x (cx-list nil)) (at i)))
+            ((string=? (cv-ch t i) \"(\")
+             (let ((r (cv-read-items t (+ i 1))))
+               (product (x (cx-list (extract r xs))) (at (extract r at)))))
+            (else (let ((e (cv-atom-end t i)))
+                    (product (x (cv-atom (substring t i e))) (at e)))))))
+  ;; The items from `i` of `t` to the `)` that ends them, and the place past it.
+  (cv-read-items (subr cvr (string int) cv-sxs-at)
+    (lambda (t i)
+      (cond ((>= i (string-length t)) (product (xs nil) (at i)))
+            ((string=? (cv-ch t i) \")\") (product (xs nil) (at (+ i 1))))
+            ((string=? (cv-ch t i) \" \") (cv-read-items t (+ i 1)))
+            (else (let* ((r (cv-read-at t i)) (rest (cv-read-items t (extract r at))))
+                    (product (xs (the cv-sxs (cons (extract r x) (extract rest xs))))
+                             (at (extract rest at)))))))))
+
+;;; ------------------------------------------------------------ looking up
+
+;; A list's items; none of anything else.
+(define cx-items (subr pure (cv-sx) cv-sxs)
+  (lambda (x) (tagcase x (cx-list (xs) xs) (else y nil))))
+;; A name, or \"\".
+(define cx-name-of (subr pure (cv-sx) string)
+  (lambda (x) (tagcase x (cx-name (n) n) (else y \"\"))))
+;; An integer, or 0.
+(define cx-int-of (subr pure (cv-sx) int)
+  (lambda (x) (tagcase x (cx-int (n) n) (else y 0))))
+;; A clause's role: the name it begins with.
+(define cx-role (subr cvr (cv-sx) string)
+  (lambda (x) (let ((xs (cx-items x))) (if (null? xs) \"\" (cx-name-of (car xs))))))
+;; What follows `role` in the first of `xs` that is `(role …)`; none if none is.
+(define cx-get (subr cvr (cv-sxs string) cv-sxs)
+  (lambda (xs role)
+    (cond ((null? xs) nil)
+          ((string=? (cx-role (car xs)) role) (cdr (cx-items (car xs))))
+          (else (cx-get (cdr xs) role)))))
+;; Whether one of `xs` is `(role …)`.
+(define cx-has? (subr cvr (cv-sxs string) bool)
+  (lambda (xs role)
+    (cond ((null? xs) #f) ((string=? (cx-role (car xs)) role) #t) (else (cx-has? (cdr xs) role)))))
+;; The `k`th of `xs`, from 0; an empty list past the end.
+(define cx-nth (subr cvr (cv-sxs int) cv-sx)
+  (lambda (xs k)
+    (cond ((null? xs) (cx-list nil)) ((= k 0) (car xs)) (else (cx-nth (cdr xs) (- k 1))))))
+;; In `xs`, `(role n …)`'s `n`; `(role a n …)`'s.
+(define cx-int-at (subr cvr (cv-sxs string) int)
+  (lambda (xs role) (cx-int-of (cx-nth (cx-get xs role) 0))))
+(define cx-int2-at (subr cvr (cv-sxs string) int)
+  (lambda (xs role) (cx-int-of (cx-nth (cx-get xs role) 1))))
+;; A register's number: `xN` N, `sp` 31; -1 for anything else.
+(define cx-reg (subr cvr (cv-sx) int)
+  (lambda (x)
+    (let ((n (cx-name-of x)))
+      (cond ((string=? n \"sp\") 31)
+            ((and (> (string-length n) 1) (string=? (substring n 0 1) \"x\")) (cv-digits n 1 0))
+            (else -1)))))
+(define cx-reg-at (subr cvr (cv-sxs string) int)
+  (lambda (xs role) (cx-reg (cx-nth (cx-get xs role) 0))))
+(define cx-regs (subr cvr (cv-sxs) cv-ints)
+  (lambda (xs) (if (null? xs) nil (the cv-ints (cons (cx-reg (car xs)) (cx-regs (cdr xs)))))))
+;; `((name n) …)`, each name and its number; `((n name) …)`, a trap's kinds.
+(define cx-names (subr cvr (cv-sxs) cv-names)
+  (lambda (xs)
+    (if (null? xs)
+        nil
+        (let ((i (cx-items (car xs))))
+          (the cv-names
+               (cons (product (name (cx-name-of (cx-nth i 0))) (number (cx-int-of (cx-nth i 1))))
+                              (cx-names (cdr xs))))))))
+(define cx-numbered (subr cvr (cv-sxs) cv-names)
+  (lambda (xs)
+    (if (null? xs)
+        nil
+        (let ((i (cx-items (car xs))))
+          (the cv-names
+               (cons (product (name (cx-name-of (cx-nth i 1))) (number (cx-int-of (cx-nth i 0))))
+                              (cx-numbered (cdr xs))))))))
+;; `((name at width) …)`: a header's fields.
+(define cx-bits (subr cvr (cv-sxs) cv-bits)
+  (lambda (xs)
+    (if (null? xs)
+        nil
+        (let ((i (cx-items (car xs))))
+          (the cv-bits (cons (product (name (cx-name-of (cx-nth i 0))) (at (cx-int-of (cx-nth i 1)))
+                                      (width (cx-int-of (cx-nth i 2))))
+                             (cx-bits (cdr xs))))))))
+;; `((role register …) …)`: a routine's inputs.
+(define cx-in (subr cvr (cv-sxs) cv-regs)
+  (lambda (xs)
+    (if (null? xs)
+        nil
+        (let ((i (cx-items (car xs))))
+          (the cv-regs (cons (product (name (cx-name-of (car i))) (registers (cx-regs (cdr i))))
+                             (cx-in (cdr xs))))))))
+;; The offset of the state's field that `(role state field …)` in `xs` names.
+(define cx-state-at (subr cvr (cv-sxs string cv-sxs) int)
+  (lambda (xs role st) (cx-int-at st (cx-name-of (cx-nth (cx-get xs role) 1)))))
+
+;;; ------------------------------------------------------------ the clauses
+
+(define cv-registers-of (subr cvr (cv-sxs) cv-registers)
+  (lambda (rg)
+    (let ((pin (cx-get rg \"pinned\")))
+      (product (arguments (cx-regs (cx-get rg \"arguments\"))) (rest-in (cx-reg-at rg \"rest-in\"))
+               (count (cx-reg-at rg \"count\")) (result (cx-reg-at rg \"result\"))
+               (closure (cx-reg-at rg \"closure\")) (link (cx-reg-at rg \"link\"))
+               (frame (cx-reg-at rg \"frame\")) (state (cx-reg-at pin \"state\"))
+               (fuel (cx-reg-at pin \"fuel\")) (stack-limit (cx-reg-at pin \"stack-limit\"))
+               (code-distance (cx-reg-at pin \"code-distance\"))))))
+(define cv-values-of (subr cvr (cv-sxs) cv-values)
+  (lambda (vs)
+    (let ((fx (cx-get vs \"fixnum\")) (ch (cx-get vs \"character\")) (pr (cx-get vs \"pair\"))
+          (bl (cx-get vs \"bloblet\")))
+      (product (tags (cx-names (cx-get vs \"tags\"))) (fixnum-shift (cx-int-at fx \"shift\"))
+               (fixnum-bits (cx-int-at fx \"bits\")) (immediates (cx-names (cx-get vs \"immediates\")))
+               (char-subtag (cx-int-at ch \"subtag\"))
+               (char-payload-shift (cx-int-at ch \"payload-shift\"))
+               (car (cx-int-at pr \"car\")) (cdr (cx-int-at pr \"cdr\"))
+               (bloblet-past-suffix (cx-int2-at bl \"reference\"))
+               (field-k-before-suffix (cx-int-at bl \"field-k-before-suffix\"))
+               (header (cx-bits (cx-get vs \"header\"))) (kinds (cx-names (cx-get vs \"kinds\")))))))
+(define cv-closures-of (subr cvr (cv-sxs cv-sxs) cv-closures)
+  (lambda (cl st)
+    (product (kind (cx-int-at cl \"kind\")) (code-field (cx-int-at cl \"code-field\"))
+             (first-free-field (cx-int-at cl \"first-free-field\"))
+             (native-when-code-at-least
+              (cx-int-at st (cx-name-of (cx-nth (cx-get cl \"native-when-code-at-least\") 0)))))))
+(define cv-frames-of (subr cvr (cv-sxs) cv-frames)
+  (lambda (fr)
+    (let ((m (cx-get fr \"map\")))
+      (product (align (cx-int-at fr \"align\")) (header (cx-int2-at fr \"header\"))
+               (link (cx-int2-at fr \"link\")) (return (cx-int2-at fr \"return\"))
+               (map (cx-int-of (cx-nth m 1))) (values-from (cx-int2-at fr \"values-from\"))
+               (live-below (cx-int-at m \"live-slots-below\"))
+               (fields-above (cx-int-at m \"fields-above\"))
+               (stub (cx-int-at fr \"stub\"))))))
+(define cv-state-of (subr cvr (cv-sxs) cv-state)
+  (lambda (st)
+    (let ((at (lambda ((n string)) (cx-int-at st n))))
+      (product (fuel (at \"fuel\")) (reserve (at \"reserve\")) (trap (at \"trap\")) (pc (at \"pc\"))
+               (args (at \"args\")) (nargs (at \"nargs\")) (aux (at \"aux\")) (callout (at \"callout\"))
+               (rust-sp (at \"rust-sp\")) (native-sp (at \"native-sp\")) (fp (at \"fp\")) (top (at \"top\"))
+               (words (at \"words\")) (alloc-limit (at \"alloc-limit\")) (code (at \"code\"))
+               (clo (at \"clo\"))
+               (delta (at \"delta\")) (code-lo (at \"code-lo\")) (trap-stub (at \"trap-stub\"))
+               (foreign (at \"foreign\")) (closure (at \"closure\")) (cards (at \"cards\"))
+               (stack-limit (at \"stack-limit\")) (overflow (at \"overflow\")) (poll (at \"poll\"))
+               (cons (at \"cons\")) (bloblet (at \"bloblet\"))))))
+(define cv-routine-of (subr cvr (cv-sxs cv-sxs) cv-routine)
+  (lambda (r st)
+    (product (entry (cx-state-at r \"entry\" st)) (in (cx-in (cx-get r \"in\")))
+             (out (if (cx-has? r \"out\") (cx-reg-at r \"out\") -1))
+             (may-collect (cx-has? r \"may-collect\")))))
+(define cv-overflow-of (subr cvr (cv-sxs cv-sxs) cv-overflow)
+  (lambda (o st)
+    (let* ((in (cx-get o \"in\")) (info (cx-get in \"info\")) (held (cx-get info \"arguments-held\")))
+      (product (entry (cx-state-at o \"entry\" st)) (code (cx-reg-at in \"code\"))
+               (info (cx-reg (cx-nth info 0))) (held-at (cx-int-of (cx-nth held 0)))
+               (held-width (cx-int-of (cx-nth held 1)))
+               (closure-read (cx-int-at info \"closure-read\"))
+               (variadic (cx-int-at info \"variadic\")) (keeps (cx-regs (cx-get o \"keeps\")))))))
+(define cv-routines-of (subr cvr (cv-sxs cv-sxs) cv-routines)
+  (lambda (rt st)
+    (let ((t (cx-get rt \"trap\")))
+      (product (foreign (cv-routine-of (cx-get rt \"foreign\") st))
+               (overflow (cv-overflow-of (cx-get rt \"overflow\") st))
+               (poll (cv-routine-of (cx-get rt \"poll\") st))
+               (cons (cv-routine-of (cx-get rt \"cons\") st))
+               (bloblet (cv-routine-of (cx-get rt \"bloblet\") st))
+               (trap (product (entry (cx-state-at t \"entry\" st))
+                              (kind (cx-reg-at (cx-get t \"in\") \"kind\"))
+                              (kinds (cx-numbered (cx-get t \"kinds\")))))))))
+;; A declaration's clauses, read.
+(define cv-of (subr cvr (cv-sxs) convention)
+  (lambda (cs)
+    (let ((st (cx-get cs \"state\")) (fu (cx-get cs \"fuel\")) (ba (cx-get cs \"barrier\")))
+      (product (target (cx-name-of (cx-nth (cx-get cs \"target\") 0)))
+               (registers (cv-registers-of (cx-get cs \"registers\")))
+               (values (cv-values-of (cx-get cs \"values\")))
+               (closures (cv-closures-of (cx-get cs \"closures\") st))
+               (code (product (field-k-before-code (cx-int-at (cx-get cs \"code\")
+                                                              \"field-k-before-code\"))))
+               (frames (cv-frames-of (cx-get cs \"frames\"))) (state (cv-state-of st))
+               (routines (cv-routines-of (cx-get cs \"routines\") st))
+               (fuel (product (register (cx-reg-at fu \"register\"))
+                              (subtract (cx-int-at fu \"subtract\"))))
+               (barrier (product (cards (cx-state-at ba \"cards\" st))
+                                 (card-shift (cx-int-at ba \"card-shift\"))
+                                 (mark (cx-int-at ba \"mark\"))))))))
+
+;;; ------------------------------------------------------------ printing
+
+;; `xs` apart by one space.
+(define cv-cat (subr cvr (cv-strs) string)
+  (lambda (xs)
+    (cond ((null? xs) \"\")
+          ((null? (cdr xs)) (car xs))
+          (else (string-append (car xs) \" \" (cv-cat (cdr xs)))))))
+;; `(role part …)`; `(role n)`.
+(define cv-par (subr cvr (string cv-strs) string)
+  (lambda (role parts) (string-append \"(\" (cv-cat (the cv-strs (cons role parts))) \")\")))
+(define cv-kv (subr cvr (string int) string)
+  (lambda (role n) (cv-par role (list (int->string n)))))
+(define cv-reg (subr pure (int) string)
+  (lambda (r) (if (= r 31) \"sp\" (string-append \"x\" (int->string r)))))
+(define cv-pr-regs (subr cvr (cv-ints) cv-strs)
+  (lambda (rs) (if (null? rs) nil (the cv-strs (cons (cv-reg (car rs)) (cv-pr-regs (cdr rs)))))))
+(define cv-pr-names (subr cvr (cv-names) cv-strs)
+  (lambda (ns)
+    (if (null? ns)
+        nil
+        (the cv-strs
+             (cons (cv-kv (extract (car ns) name) (extract (car ns) number))
+                   (cv-pr-names (cdr ns)))))))
+(define cv-pr-numbered (subr cvr (cv-names) cv-strs)
+  (lambda (ns)
+    (if (null? ns)
+        nil
+        (the cv-strs
+             (cons (cv-par (int->string (extract (car ns) number)) (list (extract (car ns) name)))
+                           (cv-pr-numbered (cdr ns)))))))
+;; The state's fields, each its name and offset, in the declaration's order.
+(define cv-state-names (subr cvr (cv-state) cv-names)
+  (lambda (s)
+    (let ((f (lambda ((n string) (k int)) (product (name n) (number k)))))
+      (list (f \"fuel\" (extract s fuel)) (f \"reserve\" (extract s reserve))
+            (f \"trap\" (extract s trap))
+            (f \"pc\" (extract s pc)) (f \"args\" (extract s args)) (f \"nargs\" (extract s nargs))
+            (f \"aux\" (extract s aux)) (f \"callout\" (extract s callout))
+            (f \"rust-sp\" (extract s rust-sp))
+            (f \"native-sp\" (extract s native-sp)) (f \"fp\" (extract s fp)) (f \"top\" (extract s top))
+            (f \"words\" (extract s words)) (f \"alloc-limit\" (extract s alloc-limit))
+            (f \"code\" (extract s code)) (f \"clo\" (extract s clo)) (f \"delta\" (extract s delta))
+            (f \"code-lo\" (extract s code-lo)) (f \"trap-stub\" (extract s trap-stub))
+            (f \"foreign\" (extract s foreign)) (f \"closure\" (extract s closure))
+            (f \"cards\" (extract s cards)) (f \"stack-limit\" (extract s stack-limit))
+            (f \"overflow\" (extract s overflow)) (f \"poll\" (extract s poll))
+            (f \"cons\" (extract s cons)) (f \"bloblet\" (extract s bloblet))))))
+;; The name of the field at `k` in `ns`; \"\" if none is.
+(define cv-name-at (subr cvr (cv-names int) string)
+  (lambda (ns k)
+    (cond ((null? ns) \"\")
+          ((= (extract (car ns) number) k) (extract (car ns) name))
+          (else (cv-name-at (cdr ns) k)))))
+
+(define cv-pr-registers (subr cvr (cv-registers) string)
+  (lambda (r)
+    (let ((one (lambda ((role string) (n int)) (cv-par role (list (cv-reg n))))))
+      (cv-par \"registers\"
+              (list (cv-par \"arguments\" (cv-pr-regs (extract r arguments)))
+                    (one \"rest-in\" (extract r rest-in))
+                    (one \"count\" (extract r count)) (one \"result\" (extract r result))
+                    (one \"closure\" (extract r closure)) (one \"link\" (extract r link))
+                    (one \"frame\" (extract r frame))
+                    (cv-par \"pinned\"
+                            (list (one \"state\" (extract r state)) (one \"fuel\" (extract r fuel))
+                                           (one \"stack-limit\" (extract r stack-limit))
+                                           (one \"code-distance\" (extract r code-distance))))
+                    \"(lost-across-calls all-but-pinned)\")))))
+(define cv-pr-bits (subr cvr (cv-bits) cv-strs)
+  (lambda (bs)
+    (if (null? bs)
+        nil
+        (let ((b (car bs)))
+          (the cv-strs (cons (cv-par (extract b name) (list (int->string (extract b at))
+                                                            (int->string (extract b width))))
+                             (cv-pr-bits (cdr bs))))))))
+(define cv-pr-values (subr cvr (cv-values) string)
+  (lambda (v)
+    (cv-par \"values\"
+            (list (cv-par \"tags\" (cv-pr-names (extract v tags)))
+                  (cv-par \"fixnum\" (list (cv-kv \"shift\" (extract v fixnum-shift))
+                                         (cv-kv \"bits\" (extract v fixnum-bits))))
+                  (cv-par \"immediates\" (cv-pr-names (extract v immediates)))
+                  (cv-par \"character\" (list (cv-kv \"subtag\" (extract v char-subtag))
+                                            (cv-kv \"payload-shift\" (extract v char-payload-shift))))
+                  (cv-par \"pair\" (list (cv-kv \"car\" (extract v car)) (cv-kv \"cdr\" (extract v cdr))))
+                  (cv-par \"bloblet\"
+                          (list (cv-par \"reference\"
+                                        (list \"suffix\"
+                                              (int->string (extract v bloblet-past-suffix))))
+                                (cv-kv \"field-k-before-suffix\" (extract v field-k-before-suffix))))
+                  (cv-par \"header\" (cv-pr-bits (extract v header)))
+                  (cv-par \"kinds\" (cv-pr-names (extract v kinds)))))))
+(define cv-pr-frames (subr cvr (cv-frames int int) string)
+  (lambda (f fp lr)
+    (let ((at (lambda ((role string) (k int)) (cv-par role (list (cv-reg fp) (int->string k))))))
+      (cv-par \"frames\"
+              (list (cv-kv \"align\" (extract f align)) (at \"header\" (extract f header))
+                    (at \"link\" (extract f link)) (at \"return\" (extract f return))
+                    (cv-par \"map\" (list (cv-reg fp) (int->string (extract f map))
+                                        (cv-kv \"live-slots-below\" (extract f live-below))
+                                        (cv-par \"fields-above\"
+                                                (list (int->string (extract f fields-above))
+                                                      \"link\" \"return\" \"map\" \"values\"))
+                                        \"(all-live negative)\"))
+                    (at \"values-from\" (extract f values-from)) \"(raw-after-values)\"
+                    \"(keeps-its-code)\" \"(map-stored-before calls routines-that-collect)\"
+                    (cv-par \"made\" (list \"sub\" \"sp\" \"stp\" (cv-reg fp) (cv-reg lr) \"add\" (cv-reg fp)
+                                         \"sp\" (int->string (- 0 (extract f header)))))
+                    (cv-kv \"stub\" (extract f stub)))))))
+;; `(entry state field)`, the field's name from its offset.
+(define cv-pr-entry (subr cvr (cv-names int) string)
+  (lambda (sn k) (cv-par \"entry\" (list \"state\" (cv-name-at sn k)))))
+(define cv-pr-in (subr cvr (cv-regs) cv-strs)
+  (lambda (rs)
+    (if (null? rs)
+        nil
+        (the cv-strs
+             (cons (cv-par (extract (car rs) name) (cv-pr-regs (extract (car rs) registers)))
+                           (cv-pr-in (cdr rs)))))))
+;; A routine, `more` after what every routine says.
+(define cv-pr-routine (subr cvr (string cv-routine cv-names cv-strs) string)
+  (lambda (name r sn more)
+    (let* ((tail (if (extract r may-collect) (the cv-strs (cons \"(may-collect)\" more)) more))
+           (tail (if (< (extract r out) 0)
+                     tail
+                     (the cv-strs (cons (cv-par \"out\" (list (cv-reg (extract r out)))) tail)))))
+      (cv-par name (the cv-strs (cons (cv-pr-entry sn (extract r entry))
+                                      (cons (cv-par \"in\" (cv-pr-in (extract r in))) tail)))))))
+(define cv-pr-overflow (subr cvr (cv-overflow cv-names int int) string)
+  (lambda (o sn limit lr)
+    (cv-par \"overflow\"
+            (list (cv-par \"when\" (list \"sp\" \"below\" (cv-reg limit) \"after-frame-made\"))
+                  (cv-par \"entry\" (list \"state\" (cv-name-at sn (extract o entry)) \"by\" (cv-reg lr)))
+                  (cv-par \"in\"
+                          (list (cv-par \"code\" (list (cv-reg (extract o code))))
+                                (cv-par \"info\"
+                                        (list (cv-reg (extract o info))
+                                              (cv-par \"arguments-held\"
+                                                      (list (int->string (extract o held-at))
+                                                            (int->string (extract o held-width))))
+                                              (cv-kv \"closure-read\" (extract o closure-read))
+                                              (cv-kv \"variadic\" (extract o variadic))))))
+                  (cv-par \"keeps\" (cv-pr-regs (extract o keeps)))))))
+(define cv-pr-routines (subr cvr (convention) string)
+  (lambda (c)
+    (let ((rs (extract c routines)) (sn (cv-state-names (extract c state)))
+          (rg (extract c registers)))
+      (cv-par \"routines\"
+              (list (cv-pr-routine \"foreign\" (extract rs foreign) sn nil)
+                    (cv-pr-overflow (extract rs overflow) sn (extract rg stack-limit)
+                                    (extract rg link))
+                    (cv-pr-routine \"poll\" (extract rs poll) sn (list \"(traps-when-spent 1)\"))
+                    (cv-pr-routine \"cons\" (extract rs cons) sn nil)
+                    (cv-pr-routine \"bloblet\" (extract rs bloblet) sn
+                                   (list \"(makes (kind bloblet) (trailer 1) zeroed)\"
+                                         \"(traps-when-refused 3)\"))
+                    (let ((t (extract rs trap)))
+                      (cv-par \"trap\"
+                              (list (cv-pr-entry sn (extract t entry))
+                                    (cv-par \"in\"
+                                            (list (cv-par \"kind\" (list (cv-reg (extract t kind))))))
+                                    (cv-par \"kinds\" (cv-pr-numbered (extract t kinds)))))))))))
+;; A convention's clauses, as a declaration says them, in fixpt's order.
+(define cv-print (subr cvr (convention) cv-strs)
+  (lambda (c)
+    (let ((rg (extract c registers)) (cl (extract c closures))
+          (sn (cv-state-names (extract c state))) (fu (extract c fuel)) (ba (extract c barrier)))
+      (list (cv-par \"target\" (list (extract c target)))
+            (cv-pr-registers rg)
+            (cv-pr-values (extract c values))
+            (cv-par \"closures\"
+                    (list (cv-kv \"kind\" (extract cl kind))
+                          (cv-kv \"code-field\" (extract cl code-field))
+                          (cv-kv \"first-free-field\" (extract cl first-free-field))
+                          (cv-par \"native-when-code-at-least\"
+                                  (list (cv-name-at sn (extract cl native-when-code-at-least))))))
+            (cv-par \"code\"
+                    (list (cv-par \"runs-at\"
+                                  (list \"reference\" \"plus\" (cv-reg (extract rg code-distance))))
+                          (cv-kv \"field-k-before-code\"
+                                 (extract (extract c code) field-k-before-code))))
+            (cv-pr-frames (extract c frames) (extract rg frame) (extract rg link))
+            (cv-par \"state\" (cv-pr-names sn))
+            (cv-pr-routines c)
+            (cv-par \"fuel\" (list (cv-par \"register\" (list (cv-reg (extract fu register))))
+                                 (cv-kv \"subtract\" (extract fu subtract)) \"(on entry back-edge)\"
+                                 \"(borrow poll)\"))
+            (cv-par \"barrier\"
+                    (list (cv-par \"cards\" (list \"state\" (cv-name-at sn (extract ba cards))))
+                          (cv-kv \"card-shift\" (extract ba card-shift))
+                          (cv-kv \"mark\" (extract ba mark))))))))
+
+;;; ------------------------------------------------------------ reading back
+
+;; A clause's role, from its text: up to its first space or `)`.
+(define cv-role-of (subr cvr (string) string)
+  (lambda (t) (substring t 1 (cv-atom-end t 1))))
+;; The clause of `ts` whose role is `role`; \"\" if none is.
+(define cv-clause (subr cvr (cv-strs string) string)
+  (lambda (ts role)
+    (cond ((null? ts) \"\")
+          ((string=? (cv-role-of (car ts)) role) (car ts))
+          (else (cv-clause (cdr ts) role)))))
+;; Why `ts`, declared, is not `back`, printed: \"\" if it is.
+(define cv-differs (subr cvr (cv-strs cv-strs) string)
+  (lambda (ts back)
+    (if (null? back)
+        \"\"
+        (let* ((b (car back)) (role (cv-role-of b)) (t (cv-clause ts role)))
+          (cond ((string=? t \"\") (string-append \"no `\" role \"` clause\"))
+                ((string=? t b) (cv-differs ts (cdr back)))
+                (else (string-append \"the `\" role \"` clause is not one a convention holds: \"
+                                     t)))))))
+;; A clause of `ts` none of `back` has the role of: \"\" if none.
+(define cv-extra (subr cvr (cv-strs cv-strs) string)
+  (lambda (ts back)
+    (cond ((null? ts) \"\")
+          ((string=? (cv-clause back (cv-role-of (car ts))) \"\")
+           (string-append \"a `\" (cv-role-of (car ts))
+                          \"` clause, which a convention has no room for\"))
+          (else (cv-extra (cdr ts) back)))))
+(define cv-parse-all (subr cvr (cv-strs) cv-sxs)
+  (lambda (ts)
+    (if (null? ts)
+        nil
+        (the cv-sxs (cons (extract (cv-read-at (car ts) 0) x) (cv-parse-all (cdr ts)))))))
+;; A declaration's clauses, read: the convention, or why not.
+(define cv-read-clauses (subr cvr (cv-strs) cv-read)
+  (lambda (ts)
+    (let* ((c (cv-of (cv-parse-all ts))) (back (cv-print c))
+           (why (let ((d (cv-differs ts back))) (if (string=? d \"\") (cv-extra ts back) d))))
+      (if (string=? why \"\") (sum ok c) (sum refused why)))))
+;; fixpt's own native convention, read.
+(define cv-native (subr cvr () cv-read)
+  (lambda () (cv-read-clauses (the cv-strs (native-convention)))))))
+")
+
+"Fixpt's native convention, declared (C116): one clause a line."
+(define native-convention-text string
+  "(target arm64)
+(registers (arguments x1 x2 x3 x4 x5 x6 x7 x8) (rest-in x8) (count x9) (result x0) (closure x10) (link x30) (frame x29) (pinned (state x24) (fuel x28) (stack-limit x27) (code-distance x26)) (lost-across-calls all-but-pinned))
+(values (tags (fixnum 0) (pair 1) (suffix-ref 2) (immediate 3) (bloblet 4) (trailer 5) (header 6) (forward 7)) (fixnum (shift 3) (bits 61)) (immediates (false 3) (true 11) (null 19) (unit 27) (eof 35) (unspecified 43) (default 51) (unbound 59)) (character (subtag 8) (payload-shift 8)) (pair (car -1) (cdr 7)) (bloblet (reference suffix 4) (field-k-before-suffix 8)) (header (tag 0 3) (kind 3 8) (large 11 1) (fields-frozen 12 1) (suffix-frozen 13 1) (fields 14 18) (bytes 32 32)) (kinds (string 1) (symbol 2) (vector 3) (bytevector 4) (flonum 5) (bignum 6) (ratnum 7) (closure 8) (code 9) (box 10) (record 11) (record-type 12) (port 13) (continuation 14) (values 15) (promise 16) (hash-table 17) (environment 18) (primitive 19) (bloblet 32) (cellular-code 33) (compiled-code 34) (env-frame 35) (sum 36) (product 37) (cellular-closure 38) (cellular-continuation 39) (register-code 40) (native-closure 41) (flat-array 42) (eqtable 43) (weak-pair 44) (native-frame 45) (icell 46) (mailbox 47)))
+(closures (kind 41) (code-field 2) (first-free-field 3) (native-when-code-at-least code-lo))
+(code (runs-at reference plus x26) (field-k-before-code 8))
+(frames (align 16) (header x29 -8) (link x29 0) (return x29 8) (map x29 16 (live-slots-below 48) (fields-above 48 link return map values) (all-live negative)) (values-from x29 24) (raw-after-values) (keeps-its-code) (map-stored-before calls routines-that-collect) (made sub sp stp x29 x30 add x29 sp 8) (stub 32))
+(state (fuel 24) (reserve 552) (trap 32) (pc 40) (args 48) (nargs 192) (aux 184) (callout 112) (rust-sp 0) (native-sp 136) (fp 144) (top 152) (words 160) (alloc-limit 168) (code 176) (clo 200) (delta 208) (code-lo 216) (trap-stub 280) (foreign 288) (closure 296) (cards 304) (stack-limit 16) (overflow 480) (poll 560) (cons 568) (bloblet 576))
+(routines (foreign (entry state foreign) (in (closure x10) (count x9) (arguments x1 x2 x3 x4 x5 x6 x7 x8)) (out x0) (may-collect)) (overflow (when sp below x27 after-frame-made) (entry state overflow by x30) (in (code x16) (info x17 (arguments-held 0 8) (closure-read 8) (variadic 9))) (keeps x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10)) (poll (entry state poll) (in) (may-collect) (traps-when-spent 1)) (cons (entry state cons) (in (car x1) (cdr x2)) (out x0) (may-collect)) (bloblet (entry state bloblet) (in (bytes x1) (fields x2)) (out x0) (may-collect) (makes (kind bloblet) (trailer 1) zeroed) (traps-when-refused 3)) (trap (entry state trap-stub) (in (kind x9)) (kinds (1 evaluation-step-limit-exceeded) (2 stack-overflow) (3 a-primitive-failed) (4 car-or-cdr-of-a-non-pair) (5 division-by-zero))))
+(fuel (register x28) (subtract 1) (on entry back-edge) (borrow poll))
+(barrier (cards state cards) (card-shift 9) (mark 1))
+")
+
 (define built-in-text (subr kfx (string) string)
   (lambda (path)
     "A built-in module's text, by its name; `` for none."
     (cond ((string=? path "fx26:conditions.fx") built-in-0)
+          ((string=? path "fx26:arm64-types.fx") built-in-1)
+          ((string=? path "fx26:arm64.fx") built-in-2)
+          ((string=? path "fx26:convention-types.fx") built-in-3)
+          ((string=? path "fx26:convention.fx") built-in-4)
           (else ""))))

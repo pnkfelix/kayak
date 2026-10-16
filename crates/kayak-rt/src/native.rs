@@ -101,6 +101,90 @@ impl Native for char {
     }
 }
 
+/// A list, copied each way, as pairs of Fixpt's layout made by kayak-jit
+/// and as kayak's. No KFX program can tell the copy from the list, since
+/// none tells pairs apart nor writes through one (C116).
+impl<T: Native + Clone + 'static> Native for crate::List<T> {
+    fn word(self) -> u64 {
+        let mut items = Vec::new();
+        let mut at = self;
+        while let Some(c) = at {
+            items.push(c.car.clone());
+            at = c.cdr;
+        }
+        items
+            .into_iter()
+            .rev()
+            .fold(kayak_jit::layout::NULL, |l, x| kayak_jit::cons(x.word(), l))
+    }
+    fn of_word(w: u64) -> Self {
+        let mut items = Vec::new();
+        let mut at = w;
+        while let Some((car, cdr)) = kayak_jit::pair(at) {
+            items.push(T::of_word(car));
+            at = cdr;
+        }
+        if at != kayak_jit::layout::NULL {
+            fail("native code: gave what is not a list where one was wanted");
+        }
+        items
+            .into_iter()
+            .rev()
+            .fold(crate::nil(), |l, x| crate::heap_cons(x, l))
+    }
+}
+
+/// A procedure of KFX's, given to native code, which calls it by the
+/// `foreign` routine: a closure of Fixpt's layout over it. Native code
+/// gives none back to KFX (its checker sees to it).
+macro_rules! given {
+    ($($a:ident $i:tt),*) => {
+        impl<$($a: Native + 'static,)* R: Native + 'static> Native for &'static dyn Fn($($a),*) -> R {
+            fn word(self) -> u64 {
+                kayak_jit::foreign_procedure(Box::new(move |args: &[u64]| {
+                    if args.len() != given!(@count $($a)*) {
+                        fail("native code: called a procedure with the wrong number of arguments");
+                    }
+                    self($($a::of_word(args[$i])),*).word()
+                }))
+            }
+            fn of_word(_: u64) -> Self {
+                fail("native code: gave a procedure, which kayak cannot yet take back")
+            }
+        }
+        impl<$($a: Native + 'static,)* R: Native + 'static> Native for &'static (dyn Fn($($a),*) -> R + Send + Sync) {
+            fn word(self) -> u64 {
+                let f: &'static dyn Fn($($a),*) -> R = self;
+                f.word()
+            }
+            fn of_word(_: u64) -> Self {
+                fail("native code: gave a procedure, which kayak cannot yet take back")
+            }
+        }
+    };
+    (@count) => { 0 };
+    (@count $x:ident $($y:ident)*) => { 1 + given!(@count $($y)*) };
+}
+given!();
+given!(A 0);
+given!(A 0, B 1);
+given!(A 0, B 1, C 2);
+
+/// `(native-convention)`: the clauses of the convention made code keeps
+/// here, one a string, as Fixpt gives its own (kayak-jit's, which is
+/// Fixpt's at the pin, C116).
+pub fn native_convention() -> crate::List<crate::Str> {
+    kayak_jit::DECLARATION
+        .lines()
+        .filter(|l| !l.is_empty())
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .fold(crate::nil(), |acc, l| {
+            crate::heap_cons(crate::leak_string(l.to_string()), acc)
+        })
+}
+
 /// `(native-code?)`.
 pub fn native_code_p() -> bool {
     kayak_jit::native_code()

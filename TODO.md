@@ -576,20 +576,19 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    2026-10-15)**: Fixpt's §97 operations in KFX, the code area, the
    trampoline, `tests/kfx/made-code.kfx`. Next, toward Fixpt's
    `made-code/frames.fx` and `generated.fx` on kayak:
-   - fields beside code: a sealed bloblet's fields of types that cross
-     (C116), kept in the code area, `bloblet-set!` writing through;
+   - ~~the routines `poll`, `overflow`, `trap`, `cons`, `foreign`;
+     lists and fx procedures crossing; `define-convention`,
+     `native-convention`~~ (C116: Fixpt's `frames.fx`, `declared.fx`);
+   - `load-input`, and `fx26:arm64.fx`, `fx26:convention.fx` accepted by
+     KFX (built in now, refused: no `load-input`), so that the generators
+     are Fixpt's, and `generated.fx`, `linked.fx`, `allocated.fx` run;
+   - fields beside code: a sealed bloblet's fields of types that cross,
+     kept in the code area, `bloblet-set!` writing through (`linked.fx`
+     puts procedures there);
+   - the `bloblet` routine (`allocated.fx`), the write barrier's cards;
    - a bytevector laid out as Fixpt's (a header before its bytes), so
      that one crosses, and native code reaches data through a field;
-   - procedures that cross through fields, called by `foreign` (a KFX
-     procedure called back from native code: the routine, the frame,
-     arguments marshalled);
-   - the routines `poll`, `overflow`, `trap` for real, then `cons` and
-     `bloblet` (allocating in Fixpt's layout, where nothing of kayak's
-     sees it);
-   - `define-convention` and `native-convention`, kayak's declaration
-     generated from kayak-jit's constants and compared with Fixpt's;
-   - `fx26:arm64.fx` and `fx26:convention.fx` accepted by KFX (built in,
-     as `fx26:conditions.fx` is), so that the generators are Fixpt's;
-   - more than three parameters; integers past a fixnum (Fixpt's bignum).
+   - more than three parameters; integers past a fixnum (Fixpt's bignum);
+     a procedure native code gives back.
 4. Tiers 4, 5, 6; then 3.
 5. Twobit's passes; the compiler compiled into its own heap.

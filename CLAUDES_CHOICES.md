@@ -2691,3 +2691,25 @@ code; `tests/kfx/made-code.kfx` (Fixpt's `leaves.fx`'s adder) answers
   (eq? would not hold, and the cost is per call); or let kayak-rt be the
   native runtime in Rust (the substitution the user ruled out, decision
   5 of `native.md`).
+- **Then, the same day: code that is not a leaf** (Fixpt's `frames.fx`
+  and `declared.fx`, as they are, in the corpus, `made-frames`,
+  `made-declared`). kayak-jit's routines: `poll` gives the next slice;
+  `overflow` and `trap` end the call in a failure (kayak's native stack is
+  the thread's, so past its limit is an overflow, not a cache to flush);
+  `cons` makes a pair of Fixpt's layout in memory of kayak-jit's, never
+  freed; `foreign` calls a KFX procedure given to native code, a closure
+  of Fixpt's layout over a Rust one, its panic carried past the native
+  frames (the trampoline's way back) and resumed beyond; trampolines nest.
+  `bloblet` and `closure` end the call, naming themselves.
+- **What crosses, widened**: lists of what crosses, copied, which no KFX
+  program can tell (KFX has no `eq?`, no `set-car!`); procedures of the
+  fx convention given to native code. `(subr (conv fx) ...)` is a wrapper
+  too (`%fx`): KFX's procedures and native ones fit it, it fits nothing
+  but itself, as Fixpt has `fx` the top.
+- **`define-convention`** accepts the native convention's clauses in any
+  order, each printed as Fixpt prints it, and binds its name to `native`;
+  `native-convention` gives them. The text is Fixpt's at the pin
+  (`scripts/built-in.py` copies it into `kfx/built-in.kfx` and
+  `crates/kayak-jit/src/native-arm64.conv`), and kayak-jit's constants are
+  tested against it, so a change to Fixpt's convention shows when the pin
+  moves.

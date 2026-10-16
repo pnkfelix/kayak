@@ -921,6 +921,7 @@
                     ((string=? d "%bloblet")
                      (lst (list (sym "bloblet" "" 0) (lst (cons (sym "fields" "" 0) (map (lambda ((x ty)) (ty-sexp v s x)) (cdr args))) "" 0 0)
                                 (ty-sexp v s (car args))) "" 0 0))
+                    ((or (string=? d "%native") (string=? d "%fx")) (ty-sexp v s (car args)))
                     ((string=? d "%blobref") (lst (cons (sym "blobref" "" 0) (map (lambda ((x ty)) (ty-sexp v s x)) args)) "" 0 0))
                     ((string=? d "%bytes") (lst (list (sym "bytevectorof" "" 0) (ty-sexp v s (car args))) "" 0 0))
                     ((string=? d "%array") (lst (list (sym "arrayof" "" 0) (ty-sexp v s (car args)) (ty-sexp v s (car (cdr args)))) "" 0 0))
@@ -2803,6 +2804,12 @@
                               (res expected nil (synced-lambda v (noted-lambda v s ees) ees params forms)))
                             (refuse v (string-append "a lambda whose effect " (string-append (show-effs es)
                                       (string-append " is not within " (show-effs ees))))))))))))
+            ;; A lambda where a procedure of any convention is expected (C116):
+            ;; KFX's own, as any procedure of KFX's is.
+            (ty-data (d args)
+              (if (string=? d "%fx")
+                  (check-lambda v s params forms (walk s (car args)))
+                  (refuse v "a lambda where no procedure is expected")))
             (else other (refuse v "a lambda where no procedure is expected")))))
 
       (lambda-effects (subr kfx (cv st sexps sexps ty) res)
@@ -3154,8 +3161,8 @@
                        (tagcase (car xs)
                          (ty-proc (es ps r)
                            (cond ((i64> (size ps) 3) (refuse v "a native procedure of more than three parameters, which KFX does not have yet (C116)"))
-                                 ((any? (lambda ((t ty)) (not (native-crossing? s t))) (cons r ps))
-                                  (refuse v (string-append "a native procedure KFX cannot call yet: only integers, booleans, unit and characters cross between kayak's values and native code (C116): "
+                                 ((or (not (native-crossing? s r)) (any? (lambda ((t ty)) (not (native-given? s t))) ps))
+                                  (refuse v (string-append "a native procedure KFX cannot call yet: only integers, booleans, unit, characters and lists of them cross between kayak's values and native code, and procedures of the fx convention given it (C116): "
                                                            (show-ty s want))))
                                  ((or (escapes? es) (suspends? es))
                                   (refuse v (string-append "a native procedure that may abort or suspend, which KFX does not have: " (show-ty s want))))
@@ -3163,7 +3170,10 @@
                                   (tagcase (synth v s (car args))
                                     (res (t es0 s0)
                                       (if (tagcase (walk s0 t) (ty-data (d2 ys) (and (string=? d2 "%bloblet") (i64= (size ys) 1))) (else other #f))
-                                          (res want (effs-union (list "io:native") es0) s0)
+                                          (res want (effs-union (list "io:native") es0)
+                                               (note-fact s0 (cv-file v) (cv-pos v)
+                                                          (string-append "native-types "
+                                                            (show-sexp (lst (map (lambda ((p ty)) (ty-sexp v s0 (zonk s0 p))) (onto ps (list r))) "" 0 0)))))
                                           (refuse v (string-append "native-procedure of what is not a bloblet of no fields, which KFX does not have: " (show-ty s0 t)))))))))
                          (else other (refuse v "native-procedure of a type not of the native convention"))))
                      (else other (refuse v "native-procedure of a type not of the native convention"))))))))

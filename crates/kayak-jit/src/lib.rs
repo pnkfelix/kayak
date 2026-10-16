@@ -9,18 +9,31 @@
 //!   read+write view, run from a read+execute view of the same pages, at a
 //!   fixed distance, so nothing is ever both and nothing is re-protected.
 //!   Nothing in it is ever freed, as nothing of kayak's heap is (C116).
-//! - **Objects in Fixpt's layout** that code reads (a native closure), in
-//!   memory of their own, never freed either.
+//! - **Objects in Fixpt's layout** that code reads and makes (closures,
+//!   pairs), in memory of their own, never freed either.
 //! - **The trampoline**: from Rust into the convention (the state in `x24`,
 //!   fuel `x28`, the stack's limit `x27`, the code's distance `x26`, the
 //!   closure `x10`, the arguments `x1`–`x8`, their count `x9`) and back,
-//!   every register Rust keeps kept.
+//!   every register Rust keeps kept; nested, as native code calls Rust
+//!   that calls native code.
+//! - **The routines** the convention declares (`routines`), at the state's
+//!   fields: `poll` gives the next slice of fuel; `overflow` and `trap` end
+//!   the call in a failure; `cons` makes a pair; `foreign` calls what is
+//!   not native code, a Rust procedure here ([`foreign_procedure`]), whose
+//!   panic goes back through the native frames by the way the trampoline
+//!   left and is resumed beyond. `bloblet` and `closure` are not kayak's
+//!   yet: they end the call, naming themselves.
 //!
 //! Only on arm64 macOS; elsewhere [`native_code`] is false, and FX-26's
 //! `native-code?` with it.
 
 use std::cell::Cell;
 use std::sync::{Mutex, OnceLock};
+
+/// The native convention kayak keeps, declared: one clause a line, Fixpt's
+/// at the pin (`scripts/built-in.py` copies it), which the constants below
+/// are tested against (`tests/declaration.rs`).
+pub const DECLARATION: &str = include_str!("native-arm64.conv");
 
 /// Fixpt's value layout, as its native convention declares it (`values`).
 pub mod layout {
@@ -39,7 +52,9 @@ pub mod layout {
     /// A character: its code point above bit 8, subtag 8.
     pub const CHAR_SUBTAG: u64 = 8;
     pub const CHAR_SHIFT: u32 = 8;
+    pub const TAG_PAIR: u64 = 1;
     pub const KIND_BLOBLET: u8 = 32;
+    pub const KIND_CELLULAR_CLOSURE: u8 = 38;
     pub const KIND_NATIVE_CLOSURE: u8 = 41;
     /// A native closure's fields, numbered as slots: the trailer is 1.
     pub const CLOSURE_CODE: usize = 2;
@@ -98,7 +113,7 @@ pub mod state {
     pub const CONS: usize = 568;
     pub const BLOBLET: usize = 576;
     /// kayak's own, past what the convention declares: where a routine
-    /// kayak does not have yet goes back to the trampoline.
+    /// that ends the call goes back to the trampoline.
     pub const LEAVE: usize = 584;
     pub const WORDS_IN_STATE: usize = 80;
 }
@@ -223,23 +238,40 @@ impl Code {
 
 // ---------------------------------------------------------------- objects
 
+/// Words of memory for objects, 16-byte aligned, never freed: this
+/// thread's chunk, taken from in turn.
+fn words(n: usize) -> usize {
+    thread_local! {
+        static CHUNK: Cell<(usize, usize)> = const { Cell::new((0, 0)) };
+    }
+    CHUNK.with(|c| {
+        let (mut at, mut end) = c.get();
+        let bytes = (8 * n).next_multiple_of(16);
+        if at + bytes > end {
+            let size = (1 << 16).max(bytes + 16);
+            let chunk: &'static [Cell<u64>] =
+                Box::leak((0..size / 8).map(|_| Cell::new(0)).collect());
+            at = (chunk.as_ptr() as usize).next_multiple_of(16);
+            end = chunk.as_ptr() as usize + size;
+        }
+        c.set((at + bytes, end));
+        at
+    })
+}
+
 /// An object of Fixpt's layout outside the code area, for code to read: a
 /// header, its slots (`slots[0]` slot 1), no suffix. Never freed.
 fn object(kind: u8, slots: &[u64]) -> u64 {
     let n = slots.len();
-    let words: &'static [Cell<u64>] = Box::leak((0..n + 2).map(|_| Cell::new(0)).collect());
     // The suffix (empty) 16-byte aligned, as references are made to it.
-    let first = words.as_ptr() as usize;
-    let header = if (first + 8 * (1 + n)).is_multiple_of(16) {
-        0
-    } else {
-        1
-    };
-    words[header].set(layout::header(kind, n, 0, true, true));
+    let pad = (1 + n) % 2;
+    let header = words(pad + 1 + n) + 8 * pad;
+    let suffix = header + 8 * (1 + n);
+    sys::put(header, layout::header(kind, n, 0, true, true));
     for (k, &w) in slots.iter().enumerate() {
-        words[header + n - k].set(w);
+        sys::put(suffix - 8 * (k + 1), w);
     }
-    (first + 8 * (header + 1 + n)) as u64 | layout::TAG_BLOBLET
+    suffix as u64 | layout::TAG_BLOBLET
 }
 
 /// A native closure of `code` over nothing (FX-26's `native-procedure`).
@@ -250,57 +282,83 @@ pub fn closure(code: Code) -> u64 {
     )
 }
 
+/// What a closure's code is, its slot 2.
+pub fn closure_code(closure: u64) -> u64 {
+    sys::get((closure & !layout::TAG_MASK) as usize - 8 * layout::CLOSURE_CODE)
+}
+
+/// A pair of Fixpt's layout: its car at the reference less 1, its cdr at
+/// 7 more (`(pair (car -1) (cdr 7))`).
+pub fn cons(car: u64, cdr: u64) -> u64 {
+    let at = words(2);
+    sys::put(at, car);
+    sys::put(at + 8, cdr);
+    at as u64 | layout::TAG_PAIR
+}
+
+/// A pair's car and cdr; none if `w` is not a pair.
+pub fn pair(w: u64) -> Option<(u64, u64)> {
+    (w & layout::TAG_MASK == layout::TAG_PAIR).then(|| {
+        let at = (w & !layout::TAG_MASK) as usize;
+        (sys::get(at), sys::get(at + 8))
+    })
+}
+
+/// A procedure of Rust's, given Fixpt's values and giving one, that native
+/// code calls by the `foreign` routine.
+pub type Foreign = Box<dyn Fn(&[u64]) -> u64>;
+type Given = &'static dyn Fn(&[u64]) -> u64;
+
+thread_local! {
+    /// The Rust procedures made closures of on this thread, by number.
+    static FOREIGN: std::cell::RefCell<Vec<Given>> = const { std::cell::RefCell::new(Vec::new()) };
+}
+
+/// A closure of Fixpt's layout over a procedure of Rust's: of kind
+/// `cellular-closure`, its code field a fixnum, its number here, which is
+/// below the code area as the convention has it of what is not native
+/// code, so that native code calls it by `foreign`. On this thread only.
+pub fn foreign_procedure(f: Foreign) -> u64 {
+    let f: Given = Box::leak(f);
+    let k = FOREIGN.with(|t| {
+        let mut t = t.borrow_mut();
+        t.push(f);
+        t.len() - 1
+    });
+    object(
+        layout::KIND_CELLULAR_CLOSURE,
+        &[layout::trailer(2), (k as u64) << layout::FIXNUM_SHIFT],
+    )
+}
+
 // ---------------------------------------------------------------- calls
 
 thread_local! {
     /// This thread's state, at an address that never changes.
     static STATE: &'static [Cell<u64>] = new_state();
+    /// A panic a foreign procedure ended in, carried past native frames.
+    static UNWOUND: Cell<Option<Box<dyn std::any::Any + Send>>> = const { Cell::new(None) };
 }
 
-/// The routines the convention declares, numbered as kayak's stubs say
-/// them, each with its state field.
-const ROUTINES: [(&str, usize); 7] = [
-    ("trap", state::TRAP_STUB),
-    ("foreign", state::FOREIGN),
-    ("poll", state::POLL),
-    ("cons", state::CONS),
-    ("bloblet", state::BLOBLET),
-    ("overflow", state::OVERFLOW),
-    ("closure", state::CLOSURE),
-];
+/// What ends a call other than its code's returning, as the trap word
+/// says it: the routine's number above bit 8, a trap's kind below.
+const BY_TRAP: u64 = 1;
+const BY_UNWINDING: u64 = 8;
+const NOT_KAYAKS: [(&str, u64); 2] = [("bloblet", 5), ("closure", 7)];
 
-/// What made code ended in, when not by returning: a routine kayak does
-/// not have yet, or, by the `trap` routine, one of the convention's traps.
+/// What made code ended in, when not by returning: one of the
+/// convention's traps (by the `trap` routine, or `overflow`'s, a stack
+/// overflow), or a routine kayak does not have yet.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Trap {
-    Routine(&'static str),
     Kind(u64),
+    Routine(&'static str),
 }
 
-/// A stub for each routine, in the code area: its number in `x16` (the
-/// trap's kind, from `x9`, besides), to the trampoline's way back.
-fn stubs() -> &'static [usize] {
-    static STUBS: OnceLock<Vec<usize>> = OnceLock::new();
-    STUBS.get_or_init(|| {
-        let ldr_leave = 0xf940_0000 | ((state::LEAVE / 8) as u32) << 10 | 24 << 5 | 17; // ldr x17, [x24, #LEAVE]
-        let br = 0xd61f_0220; // br x17
-        (1..=ROUTINES.len() as u32)
-            .map(|id| {
-                let first = if id == 1 {
-                    0xaa09_03f0 // mov x16, x9
-                } else {
-                    0xd280_0010 | (id << 8) << 5 // movz x16, #(id << 8)
-                };
-                let second = if id == 1 { 0x9104_0210 } else { 0xd503_201f }; // add x16, x16, #256; nop
-                let code: Vec<u8> = [first, second, ldr_leave, br]
-                    .iter()
-                    .flat_map(|w| w.to_le_bytes())
-                    .collect();
-                seal(layout::KIND_BLOBLET, &[], true, &code).entry()
-            })
-            .collect()
-    })
-}
+/// The trap kind of a stack overflow (`(trap (kinds (2 stack-overflow)))`).
+pub const STACK_OVERFLOW: u64 = 2;
+/// Fuel given at each `poll`.
+const SLICE: u64 = 1 << 20;
 
 fn new_state() -> &'static [Cell<u64>] {
     let s: &'static [Cell<u64>] =
@@ -314,21 +372,20 @@ fn new_state() -> &'static [Cell<u64>] {
                 .wrapping_sub(layout::TAG_BLOBLET),
         );
         set(state::CODE_LO, a.rw as u64);
-    }
-    set(state::FUEL, 1 << 40);
-    set(state::STACK_LIMIT, sys::stack_limit() as u64);
-    if area().is_some() {
-        for (&(_, at), &stub) in ROUTINES.iter().zip(stubs()) {
-            set(at, stub as u64);
+        for (field, at) in sys::routines() {
+            set(field, at as u64);
         }
-        set(state::LEAVE, sys::leave() as u64);
     }
+    set(state::RESERVE, SLICE);
+    set(state::FUEL, SLICE);
+    set(state::STACK_LIMIT, sys::stack_limit() as u64);
     s
 }
 
 /// Call native closure `closure` (a reference of Fixpt's layout), whose
 /// code runs at `entry`, with `args`, Fixpt's values, at most eight; its
-/// answer, one too, or the trap it ended in.
+/// answer, one too, or the trap it ended in. A panic of a foreign procedure
+/// it called goes on here.
 pub fn call(closure: u64, entry: usize, args: &[u64]) -> Result<u64, Trap> {
     assert!(
         args.len() <= 8,
@@ -341,22 +398,60 @@ pub fn call(closure: u64, entry: usize, args: &[u64]) -> Result<u64, Trap> {
         let trap = s[state::TRAP / 8].replace(0);
         match trap >> 8 {
             0 => Ok(answer),
-            1 => Err(Trap::Kind(trap & 0xff)),
-            k => Err(Trap::Routine(ROUTINES[k as usize - 1].0)),
+            BY_TRAP => Err(Trap::Kind(trap & 0xff)),
+            BY_UNWINDING => match UNWOUND.with(|u| u.take()) {
+                Some(p) => std::panic::resume_unwind(p),
+                None => panic!("native code: unwound, and nothing to resume"),
+            },
+            k => match NOT_KAYAKS.iter().find(|(_, n)| *n == k) {
+                Some((r, _)) => Err(Trap::Routine(r)),
+                None => panic!("native code: ended by {trap:#x}, which nothing of kayak's says"),
+            },
         }
     })
 }
 
-/// What a native closure's code is, its slot 2.
-pub fn closure_code(closure: u64) -> u64 {
-    sys::get((closure & !layout::TAG_MASK) as usize - 8 * layout::CLOSURE_CODE)
+/// The `foreign` routine's Rust: the procedure closure `closure` is over,
+/// called with `count` arguments from the state; a panic kept, and the
+/// trap word set so that the routine goes back to the trampoline.
+extern "C" fn foreign(state: usize, closure: u64, count: u64) -> u64 {
+    let s = |off: usize| sys::get(state + off);
+    let run = || {
+        let k = (closure_code(closure) >> layout::FIXNUM_SHIFT) as usize;
+        let f = FOREIGN.with(|t| t.borrow().get(k).copied());
+        let f = f.unwrap_or_else(|| {
+            panic!("native code: called a procedure of another thread's, or none")
+        });
+        if count > 8 {
+            panic!(
+                "native code: called a procedure with more than eight arguments, which kayak cannot yet"
+            )
+        }
+        let args: Vec<u64> = (0..count as usize)
+            .map(|i| s(state::ARGS + 8 * i))
+            .collect();
+        f(&args)
+    };
+    match std::panic::catch_unwind(std::panic::AssertUnwindSafe(run)) {
+        Ok(w) => w,
+        Err(p) => {
+            UNWOUND.with(|u| u.set(Some(p)));
+            sys::put(state + state::TRAP, BY_UNWINDING << 8);
+            0
+        }
+    }
+}
+
+/// The `cons` routine's Rust.
+extern "C" fn cons_routine(car: u64, cdr: u64) -> u64 {
+    cons(car, cdr)
 }
 
 // ---------------------------------------------------------------- the system
 
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 mod sys {
-    use super::{AREA_BYTES, Area};
+    use super::{AREA_BYTES, Area, state};
     use std::sync::Mutex;
 
     type Port = u32;
@@ -390,6 +485,13 @@ mod sys {
             count: u64,
         ) -> u64;
         fn kayak_jit_leave();
+        fn kayak_jit_trap();
+        fn kayak_jit_overflow();
+        fn kayak_jit_poll();
+        fn kayak_jit_cons();
+        fn kayak_jit_foreign();
+        fn kayak_jit_bloblet();
+        fn kayak_jit_closure();
     }
     const PROT_READ: i32 = 1;
     const PROT_WRITE: i32 = 2;
@@ -453,11 +555,11 @@ mod sys {
         })
     }
 
-    /// The word at `at`, an 8-aligned address in the area's read+write view
-    /// or in an object `object` made.
+    /// The word at `at`: an 8-aligned address of a word `take` or `words`
+    /// handed out, or of the state, or one native code gave as a pair's or
+    /// a closure's (trusted, as the code is, by `(io native)`).
     pub(super) fn get(at: usize) -> u64 {
-        // SAFETY: callers give only addresses of words `take` or `object`
-        // handed out, which are mapped, aligned, and never freed.
+        // SAFETY: as said; all such words are mapped and never freed.
         unsafe { std::ptr::read_volatile(at as *const u64) }
     }
 
@@ -485,9 +587,19 @@ mod sys {
         top - size + (1 << 20)
     }
 
-    /// Where a routine's stub goes back to the trampoline.
-    pub(super) fn leave() -> usize {
-        kayak_jit_leave as *const () as usize
+    /// Each routine's state field and where it runs; and the way back.
+    pub(super) fn routines() -> [(usize, usize); 8] {
+        let at = |f: unsafe extern "C" fn()| f as *const () as usize;
+        [
+            (state::TRAP_STUB, at(kayak_jit_trap)),
+            (state::OVERFLOW, at(kayak_jit_overflow)),
+            (state::POLL, at(kayak_jit_poll)),
+            (state::CONS, at(kayak_jit_cons)),
+            (state::FOREIGN, at(kayak_jit_foreign)),
+            (state::BLOBLET, at(kayak_jit_bloblet)),
+            (state::CLOSURE, at(kayak_jit_closure)),
+            (state::LEAVE, at(kayak_jit_leave)),
+        ]
     }
 
     pub(super) fn enter(
@@ -505,13 +617,20 @@ mod sys {
 
     // The trampoline. In: x0 the state, x1 the entry, x2 the closure, x3
     // the arguments, x4 their count. Rust's callee-saved registers (x19–x28,
-    // d8–d15, the frame and link) kept on the stack; the convention's pinned
+    // d8–d15, the frame and link) kept on the stack, with the state's
+    // `rust-sp` of a trampoline outside this one; the convention's pinned
     // registers set from the state, and fuel given back to it after.
+    //
+    // The routines, each where the state's field says. `leave`: the trap
+    // word in x16 kept, Rust's stack as the innermost trampoline left it,
+    // and back as from code. `foreign` and `cons` call Rust (C's
+    // convention keeps x19–x28, so the pinned registers), the arguments in
+    // the state's `args`, and fuel there too, for a trampoline inside.
     std::arch::global_asm!(
         ".globl _kayak_jit_enter",
         ".p2align 2",
         "_kayak_jit_enter:",
-        "stp x29, x30, [sp, #-160]!",
+        "stp x29, x30, [sp, #-176]!",
         "mov x29, sp",
         "stp x19, x20, [sp, #16]",
         "stp x21, x22, [sp, #32]",
@@ -523,6 +642,8 @@ mod sys {
         "stp d12, d13, [sp, #128]",
         "stp d14, d15, [sp, #144]",
         "mov x24, x0",
+        "ldr x17, [x24, #0]",
+        "str x17, [sp, #160]",
         "mov x17, sp",
         "str x17, [x24, #0]",
         "ldr x28, [x24, #24]",
@@ -539,6 +660,8 @@ mod sys {
         "blr x16",
         "1:",
         "str x28, [x24, #24]",
+        "ldr x17, [sp, #160]",
+        "str x17, [x24, #0]",
         "ldp d14, d15, [sp, #144]",
         "ldp d12, d13, [sp, #128]",
         "ldp d10, d11, [sp, #112]",
@@ -548,10 +671,8 @@ mod sys {
         "ldp x23, x24, [sp, #48]",
         "ldp x21, x22, [sp, #32]",
         "ldp x19, x20, [sp, #16]",
-        "ldp x29, x30, [sp], #160",
+        "ldp x29, x30, [sp], #176",
         "ret",
-        // A routine kayak does not have yet: its number in x16, kept as the
-        // trap; Rust's stack as the trampoline left it; back as from code.
         ".globl _kayak_jit_leave",
         ".p2align 2",
         "_kayak_jit_leave:",
@@ -560,6 +681,64 @@ mod sys {
         "mov sp, x17",
         "mov x0, #0",
         "b 1b",
+        ".globl _kayak_jit_trap",
+        ".p2align 2",
+        "_kayak_jit_trap:",
+        "add x16, x9, #256",
+        "b _kayak_jit_leave",
+        ".globl _kayak_jit_overflow",
+        ".p2align 2",
+        "_kayak_jit_overflow:",
+        "movz x16, #258",
+        "b _kayak_jit_leave",
+        ".globl _kayak_jit_bloblet",
+        ".p2align 2",
+        "_kayak_jit_bloblet:",
+        "movz x16, #1280",
+        "b _kayak_jit_leave",
+        ".globl _kayak_jit_closure",
+        ".p2align 2",
+        "_kayak_jit_closure:",
+        "movz x16, #1792",
+        "b _kayak_jit_leave",
+        ".globl _kayak_jit_poll",
+        ".p2align 2",
+        "_kayak_jit_poll:",
+        "ldr x28, [x24, #552]",
+        "ret",
+        ".globl _kayak_jit_cons",
+        ".p2align 2",
+        "_kayak_jit_cons:",
+        "stp x29, x30, [sp, #-16]!",
+        "mov x29, sp",
+        "mov x0, x1",
+        "mov x1, x2",
+        "bl {cons}",
+        "ldp x29, x30, [sp], #16",
+        "ret",
+        ".globl _kayak_jit_foreign",
+        ".p2align 2",
+        "_kayak_jit_foreign:",
+        "stp x29, x30, [sp, #-16]!",
+        "mov x29, sp",
+        "stp x1, x2, [x24, #48]",
+        "stp x3, x4, [x24, #64]",
+        "stp x5, x6, [x24, #80]",
+        "stp x7, x8, [x24, #96]",
+        "str x28, [x24, #24]",
+        "mov x0, x24",
+        "mov x1, x10",
+        "mov x2, x9",
+        "bl {foreign}",
+        "ldr x28, [x24, #24]",
+        "ldr x16, [x24, #32]",
+        "cbnz x16, 2f",
+        "ldp x29, x30, [sp], #16",
+        "ret",
+        "2:",
+        "b _kayak_jit_leave",
+        cons = sym super::cons_routine,
+        foreign = sym super::foreign,
     );
 }
 
@@ -580,10 +759,10 @@ mod sys {
     pub(super) fn stack_limit() -> usize {
         0
     }
+    pub(super) fn routines() -> [(usize, usize); 0] {
+        []
+    }
     pub(super) fn enter(_: usize, _: usize, _: u64, _: &[u64; 8], _: usize) -> u64 {
         panic!("native code: none on this machine")
-    }
-    pub(super) fn leave() -> usize {
-        0
     }
 }

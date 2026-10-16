@@ -2468,6 +2468,29 @@ pub mod emitter {
         }
     }
 
+    /// A type as what it stands for: an abbreviation's name, or a family's
+    /// application (C116: a native procedure's type, its parameters seen).
+    pub fn written_out(mut c: &'static Ctx, mut t: &'static Sexp) -> &'static Sexp {
+        loop {
+            let tagcase_ = t;
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    let found = module_body(c, string_append(str_lit("%abbreviation "), n));
+                    if null_p(found) {
+                        return t;
+                    } else {
+                        t = second(items(car(found)));
+                        continue;
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    return family_expanded(c, t);
+                }
+            }
+        }
+    }
+
     /// A type. A name that is no base type or datatype is a type abbreviation
     /// or a type variable, either way a Rust type of the same name.
     pub fn put_type(mut c: &'static Ctx, mut t: &'static Sexp, mut acc: Chars) -> Chars {
@@ -4203,12 +4226,15 @@ pub mod emitter {
             } else if (string_eq_p(h, str_lit("the")) && head_is_p(second(xs), str_lit("native-procedure")) && string_eq_p(local_kind(str_lit("native-procedure"), ctx_locals(c)), str_lit(""))) {
                 // `native_procedureN::<T, ..., R>(c)` (C116): made code, a procedure
                 // of the type `the` says.
-                let ys = items(without_conv(car(xs)));
-                let ps = items(third(ys));
-                let acc = put(string_append(str_lit("native_procedure"), string_append(i64_to_string(size(ps)), str_lit("::<"))), acc);
+                let ts = items(car(read_all(string_chars(fact_with(c, second(xs), str_lit("native-types "))), str_lit(""), 1i64)));
+                let acc = put(string_append(str_lit("native_procedure"), string_append(i64_to_string(i64_minus(size(ts), 1i64)), str_lit("::<"))), acc);
                 let acc = put_sep(lambda2s(move |p: &'static Sexp, acc: List<char>| {
-                    put_type(c, p, acc)
-                }), str_lit(", "), onto(ps, kayak_rt::heap_cons(fourth(ys), kayak_rt::nil())), acc);
+                    if head_is_p(p, str_lit("subr")) {
+                        put(str_lit("_"), acc)
+                    } else {
+                        put_type(c, p, acc)
+                    }
+                }), str_lit(", "), ts, acc);
                 let acc = put(str_lit(">("), acc);
                 let acc = put_exp(c, second(items(second(xs))), n, value(), acc);
                 return put(str_lit(")"), acc);

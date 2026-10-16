@@ -2270,12 +2270,34 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     }
                 } else if (sym_is_p(car(xs), str_lit("subr")) && i64_eq(size(xs), 5i64) && head_is_p(second(xs), str_lit("conv"))) {
                     // A procedure of a convention (C116), `(subr (conv C) E (T ...) R)`:
-                    // only the native one, which made code keeps (Fixpt's TODO §97), and
-                    // only as `native-procedure` makes it; a name `define-convention`
-                    // binds, not yet. Wrapped, so that no lambda is one, nor is one a
-                    // procedure of KFX's own.
-                    if (i64_eq(size(items(second(xs))), 2i64) && sym_is_p(second(items(second(xs))), str_lit("native"))) {
-                        return ty_data(str_lit("%native"), kayak_rt::heap_cons(ty_proc(parse_effect(v, tvars, third(xs)), parse_types(v, tvars, items(fourth(xs))), parse_type(v, tvars, car(cdr(cdr(cdr(cdr(xs))))))), kayak_rt::nil()));
+                    // the native one, which made code keeps (Fixpt's TODO §97), only as
+                    // `native-procedure` makes it; or `fx`, any procedure, KFX's own
+                    // among them. Each wrapped: no lambda is native, nor is a native
+                    // one KFX's own, and a procedure of any convention is not one of the
+                    // program's, as FX-26 has it. A name `define-convention` binds is
+                    // `native`.
+                    let named = if i64_eq(size(items(second(xs))), 2i64) {
+                        let tagcase_ = second(items(second(xs)));
+                        match *tagcase_ {
+                            Sexp::Sym(n, f, p) => {
+                                n
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                str_lit("")
+                            }
+                        }
+                    } else {
+                        str_lit("")
+                    };
+                    let declared = find_alias(string_append(str_lit("%conv "), named), cv_aliases(v));
+                    let conv = if null_p(declared) {
+                        named
+                    } else {
+                        str_lit("native")
+                    };
+                    if (string_eq_p(conv, str_lit("native")) || string_eq_p(conv, str_lit("fx"))) {
+                        return ty_data(string_append(str_lit("%"), conv), kayak_rt::heap_cons(ty_proc(parse_effect(v, tvars, third(xs)), parse_types(v, tvars, items(fourth(xs))), parse_type(v, tvars, car(cdr(cdr(cdr(cdr(xs))))))), kayak_rt::nil()));
                     } else {
                         return match refuse(v, string_append(str_lit("a convention KFX does not have: "), show_sexp(second(xs)))) {};
                     }
@@ -2617,8 +2639,8 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
                 string_append(str_lit("(poly ("), string_append(binders_shown(poly_binders_of(args)), string_append(str_lit(") "), string_append(show_ty(s, poly_written(args)), str_lit(")")))))
             } else if (string_eq_p(d, str_lit("%addr")) || string_eq_p(d, str_lit("%inbox")) || string_eq_p(d, str_lit("%icell"))) {
                 string_append(str_lit("("), string_append(after_prefix(d, str_lit("%")), string_append(str_lit(" "), string_append(show_tys(s, args), str_lit(")")))))
-            } else if string_eq_p(d, str_lit("%native")) {
-                string_append(str_lit("(subr (conv native) "), after_prefix(show_ty(s, car(args)), str_lit("(subr ")))
+            } else if (string_eq_p(d, str_lit("%native")) || string_eq_p(d, str_lit("%fx"))) {
+                string_append(str_lit("(subr (conv "), string_append(after_prefix(d, str_lit("%")), string_append(str_lit(") "), after_prefix(show_ty(s, car(args)), str_lit("(subr ")))))
             } else if string_eq_p(d, str_lit("%vsubr")) {
                 string_append(str_lit("(vsubr "), string_append({
                     let tagcase_ = car(args);
@@ -3162,33 +3184,72 @@ pub fn repeat_ty(t: &'static Ty, n: i64) -> Tys {
 }
 
 /// Whether a value of type `t` crosses between kayak's values and native
-/// code's as the same word in both (C116, kayak-rt's `Native`).
-pub fn native_crossing_p(s: &'static St, t: &'static Ty) -> bool {
-    let tagcase_ = walk(s, t);
-    match *tagcase_ {
-        Ty::TyInt() => {
-            true
-        }
-        Ty::TyNat() => {
-            true
-        }
-        Ty::TyI64() => {
-            true
-        }
-        Ty::TyBool() => {
-            true
-        }
-        Ty::TyUnit() => {
-            true
-        }
-        Ty::TyChar() => {
-            true
-        }
-        _ => {
-            let other = tagcase_;
-            false
+/// code's (C116, kayak-rt's `Native`): as the same word in both, or
+/// copied, which no KFX program can tell, since none tells pairs apart
+/// (`eq?`) nor writes through one (`set-car!`).
+pub fn native_crossing_p(mut s: &'static St, mut t: &'static Ty) -> bool {
+    loop {
+        let tagcase_ = walk(s, t);
+        match *tagcase_ {
+            Ty::TyInt() => {
+                return true;
+            }
+            Ty::TyNat() => {
+                return true;
+            }
+            Ty::TyI64() => {
+                return true;
+            }
+            Ty::TyBool() => {
+                return true;
+            }
+            Ty::TyUnit() => {
+                return true;
+            }
+            Ty::TyChar() => {
+                return true;
+            }
+            Ty::TyList(x, r) => {
+                t = x;
+                continue;
+            }
+            _ => {
+                let other = tagcase_;
+                return false;
+            }
         }
     }
+}
+
+/// Whether a value of type `t` may be given to native code: one that
+/// crosses, or a procedure of the fx convention whose parameters and
+/// result cross, which native code calls back by `foreign` (C116).
+pub fn native_given_p(s: &'static St, t: &'static Ty) -> bool {
+    (native_crossing_p(s, t) || {
+        let tagcase_ = walk(s, t);
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                (string_eq_p(d, str_lit("%fx")) && {
+                    let tagcase_ = walk(s, car(args));
+                    match *tagcase_ {
+                        Ty::TyProc(es, ps, r) => {
+                            (i64_lt(size(ps), 4i64) && native_crossing_p(s, r) && not(escapes_p(es)) && not(suspends_p(es)) && not(any_p(lambda1s(move |p: &'static Ty| {
+                                not(native_crossing_p(s, p))
+                            }), ps)))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                })
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    })
 }
 
 /// A variadic procedure called with `n` arguments, as the procedure of `n`
@@ -3211,8 +3272,8 @@ pub fn vsubr_as_proc(t: &'static Ty, n: i64) -> &'static Ty {
                         }
                     }
                 }, repeat_ty(car(cdr(args)), n), car(cdr(cdr(args))))
-            } else if string_eq_p(d, str_lit("%native")) {
-                // A native procedure (C116), called as any is.
+            } else if (string_eq_p(d, str_lit("%native")) || string_eq_p(d, str_lit("%fx"))) {
+                // A procedure of a convention (C116), called as any is.
                 car(args)
             } else {
                 t
@@ -3939,7 +4000,10 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
             let tagcase_ = e;
             match *tagcase_ {
                 Ty::TyData(y, ys) => {
-                    if not((string_eq_p(x, y) && i64_eq(size(xs), size(ys)))) {
+                    if (string_eq_p(x, str_lit("%native")) && string_eq_p(y, str_lit("%fx"))) {
+                        // A native procedure where one of any convention is (C116).
+                        fits(v, s, car(xs), car(ys))
+                    } else if not((string_eq_p(x, y) && i64_eq(size(xs), size(ys)))) {
                         mismatch(v, s, a, e)
                     } else if string_eq_p(x, str_lit("%poly")) {
                         // Two poly types (C107): the one's binders the other's, then their bodies.
@@ -4022,6 +4086,13 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                         mismatch(v, s, a, e)
                     } else {
                         fits(v, fits_all(v, car(fit_effs(s, aes, ees)), eps, aps), ar, er)
+                    }
+                }
+                Ty::TyData(d, args) => {
+                    if string_eq_p(d, str_lit("%fx")) {
+                        fits(v, s, a, car(args))
+                    } else {
+                        mismatch(v, s, a, e)
                     }
                 }
                 _ => {
@@ -4459,11 +4530,16 @@ pub fn with_effs(r: &'static Res, es: Strings) -> &'static Res {
     }
 }
 
+/// A procedure's type: KFX's own, or one of any convention (C116), which a
+/// lambda is checked against as its procedure.
 pub fn proc_type_p(s: &'static St, t: &'static Ty) -> bool {
     let tagcase_ = walk(s, t);
     match *tagcase_ {
         Ty::TyProc(es, ps, r) => {
             true
+        }
+        Ty::TyData(d, args) => {
+            string_eq_p(d, str_lit("%fx"))
         }
         _ => {
             let other = tagcase_;

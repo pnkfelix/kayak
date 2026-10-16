@@ -1322,3 +1322,11 @@ as Fixpt's, and enters code by a trampoline in the native convention, the
 routines stubs back to it. `tests/kfx/made-code.kfx` (Fixpt's
 `leaves.fx`'s adder) answers `native 42` as Rust and on Fixpt; four
 programs KFX refuses and Fixpt does not, two both refuse. C116.
+
+Then (C116): kayak-jit's routines (`poll`, `overflow`, `trap`, `cons`,
+`foreign`, with panics carried past native frames, trampolines nested),
+lists and fx procedures crossing, `(subr (conv fx) ...)`,
+`define-convention` (Fixpt's declaration, copied at the pin) and
+`native-convention`. Fixpt's `frames.fx` (a frame, a million pairs by
+`cons`, `poll`, a KFX procedure called back, made at every depth of a
+recursion 3000 deep) and `declared.fx` run on kayak as on Fixpt.

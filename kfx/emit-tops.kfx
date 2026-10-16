@@ -672,7 +672,7 @@
         (lambda (c form acc)
           (let* ((xs (tagcase form (lst (ys f l p) ys) (else other nil)))
                  (h (if (null? xs) "" (tagcase (car xs) (sym (n at-file at-pos) n) (else other "")))))
-            (cond ((string=? h "define-effect") acc)
+            (cond ((or (string=? h "define-effect") (string=? h "define-convention")) acc)
                   ((or (string=? h "include") (string=? h "%use"))
                    (let* ((n (sym-name (second xs)))
                           (its (module-items c n))

@@ -1,0 +1,3 @@
+"A convention declared that is not the native one: its target another
+ (C116; Fixpt's TODO §97 supports one declaration)."
+(define-convention elsewhere (target x86-64))

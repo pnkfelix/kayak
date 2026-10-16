@@ -1315,6 +1315,16 @@
                     (family-expanded c (substituted names args (second parts)))))))
           (else other t))))
 
+    (define written-out (subr kfx (ctx sexp) sexp)
+      (lambda (c t)
+        "A type as what it stands for: an abbreviation's name, or a family's
+         application (C116: a native procedure's type, its parameters seen)."
+        (tagcase t
+          (sym (n f p)
+            (let ((found (module-body c (string-append "%abbreviation " n))))
+              (if (null? found) t (written-out c (second (items (car found)))))))
+          (else other (family-expanded c t)))))
+
     (define-rec
       (put-type (subr kfx (ctx sexp chars) chars)
         (lambda (c t acc)
@@ -2364,10 +2374,9 @@
                 ((and (string=? h "the") (head-is? (second xs) "native-procedure") (string=? (local-kind "native-procedure" (ctx-locals c)) ""))
                  "`native_procedureN::<T, ..., R>(c)` (C116): made code, a procedure
                   of the type `the` says."
-                 (let* ((ys (items (without-conv (car xs))))
-                        (ps (items (third ys)))
-                        (acc (put (string-append "native_procedure" (string-append (i64->string (size ps)) "::<")) acc))
-                        (acc (put-sep (lambda ((p sexp) acc) (put-type c p acc)) ", " (onto ps (list (fourth ys))) acc))
+                 (let* ((ts (items (car (read-all (string-chars (fact-with c (second xs) "native-types ")) "" 1))))
+                        (acc (put (string-append "native_procedure" (string-append (i64->string (i64- (size ts) 1)) "::<")) acc))
+                        (acc (put-sep (lambda ((p sexp) acc) (if (head-is? p "subr") (put "_" acc) (put-type c p acc))) ", " ts acc))
                         (acc (put ">(" acc))
                         (acc (put-exp c (second (items (second xs))) n (value) acc)))
                    (put ")" acc)))

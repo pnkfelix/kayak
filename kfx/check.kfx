@@ -1127,15 +1127,21 @@
                        (parse-type v tvars (sym name "" 0)))))
                 ((and (sym-is? (car xs) "subr") (i64= (size xs) 5) (head-is? (second xs) "conv"))
                  "A procedure of a convention (C116), `(subr (conv C) E (T ...) R)`:
-                  only the native one, which made code keeps (Fixpt's TODO §97), and
-                  only as `native-procedure` makes it; a name `define-convention`
-                  binds, not yet. Wrapped, so that no lambda is one, nor is one a
-                  procedure of KFX's own."
-                 (if (and (i64= (size (items (second xs))) 2) (sym-is? (second (items (second xs))) "native"))
-                     (ty-data "%native" (list (ty-proc (parse-effect v tvars (third xs))
-                                                       (parse-types v tvars (items (fourth xs)))
-                                                       (parse-type v tvars (car (cdr (cdr (cdr (cdr xs)))))))))
-                     (refuse v (string-append "a convention KFX does not have: " (show-sexp (second xs))))))
+                  the native one, which made code keeps (Fixpt's TODO §97), only as
+                  `native-procedure` makes it; or `fx`, any procedure, KFX's own
+                  among them. Each wrapped: no lambda is native, nor is a native
+                  one KFX's own, and a procedure of any convention is not one of the
+                  program's, as FX-26 has it. A name `define-convention` binds is
+                  `native`."
+                 (let* ((named (if (i64= (size (items (second xs))) 2) (tagcase (second (items (second xs))) (sym (n f p) n) (else other "")) ""))
+                        (declared (find-alias (string-append "%conv " named) (cv-aliases v)))
+                        (conv (if (null? declared) named "native")))
+                   (if (or (string=? conv "native") (string=? conv "fx"))
+                       (ty-data (string-append "%" conv)
+                                (list (ty-proc (parse-effect v tvars (third xs))
+                                               (parse-types v tvars (items (fourth xs)))
+                                               (parse-type v tvars (car (cdr (cdr (cdr (cdr xs)))))))))
+                       (refuse v (string-append "a convention KFX does not have: " (show-sexp (second xs)))))))
                 ((sym-is? (car xs) "subr")
                  (ty-proc (parse-effect v tvars (second xs))
                           (parse-types v tvars (items (third xs)))
@@ -1336,8 +1342,8 @@
                    (string-append ") " (string-append (show-ty s (poly-written args)) ")")))))
                 ((or (string=? d "%addr") (string=? d "%inbox") (string=? d "%icell"))
                  (string-append "(" (string-append (after-prefix d "%") (string-append " " (string-append (show-tys s args) ")")))))
-                ((string=? d "%native")
-                 (string-append "(subr (conv native) " (after-prefix (show-ty s (car args)) "(subr ")))
+                ((or (string=? d "%native") (string=? d "%fx"))
+                 (string-append "(subr (conv " (string-append (after-prefix d "%") (string-append ") " (after-prefix (show-ty s (car args)) "(subr ")))))
                 ((string=? d "%vsubr")
                  (string-append "(vsubr " (string-append (tagcase (car args) (ty-proc (es ps r) (show-effs es)) (else other "?"))
                    (string-append " " (string-append (show-tys s (cdr args)) ")")))))
@@ -1519,13 +1525,32 @@
   (repeat-ty (subr kfx (ty i64) tys)
     (lambda (t n) (if (i64< n 1) nil (cons t (repeat-ty t (i64- n 1)))))))
 
-(define native-crossing? (subr kfx (st ty) bool)
-  (lambda (s t)
-    "Whether a value of type `t` crosses between kayak's values and native
-     code's as the same word in both (C116, kayak-rt's `Native`)."
-    (tagcase (walk s t)
-      (ty-int () #t) (ty-nat () #t) (ty-i64 () #t) (ty-bool () #t) (ty-unit () #t) (ty-char () #t)
-      (else other #f))))
+(define-rec
+  (native-crossing? (subr kfx (st ty) bool)
+    (lambda (s t)
+      "Whether a value of type `t` crosses between kayak's values and native
+       code's (C116, kayak-rt's `Native`): as the same word in both, or
+       copied, which no KFX program can tell, since none tells pairs apart
+       (`eq?`) nor writes through one (`set-car!`)."
+      (tagcase (walk s t)
+        (ty-int () #t) (ty-nat () #t) (ty-i64 () #t) (ty-bool () #t) (ty-unit () #t) (ty-char () #t)
+        (ty-list (x r) (native-crossing? s x))
+        (else other #f))))
+  (native-given? (subr kfx (st ty) bool)
+    (lambda (s t)
+      "Whether a value of type `t` may be given to native code: one that
+       crosses, or a procedure of the fx convention whose parameters and
+       result cross, which native code calls back by `foreign` (C116)."
+      (or (native-crossing? s t)
+          (tagcase (walk s t)
+            (ty-data (d args)
+              (and (string=? d "%fx")
+                   (tagcase (walk s (car args))
+                     (ty-proc (es ps r)
+                       (and (i64< (size ps) 4) (native-crossing? s r) (not (escapes? es)) (not (suspends? es))
+                            (not (any? (lambda ((p ty)) (not (native-crossing? s p))) ps))))
+                     (else other #f))))
+            (else other #f))))))
 
 (define vsubr-as-proc (subr kfx (ty i64) ty)
   (lambda (t n)
@@ -1536,7 +1561,7 @@
       (ty-data (d args)
         (cond ((string=? d "%vsubr")
                (ty-proc (tagcase (car args) (ty-proc (es ps r) es) (else other nil)) (repeat-ty (car (cdr args)) n) (car (cdr (cdr args)))))
-              ((string=? d "%native") "A native procedure (C116), called as any is." (car args))
+              ((or (string=? d "%native") (string=? d "%fx")) "A procedure of a convention (C116), called as any is." (car args))
               (else t)))
       (else other t))))
 
@@ -1826,7 +1851,10 @@
         (ty-data (x xs)
           (tagcase e
             (ty-data (y ys)
-              (cond ((not (and (string=? x y) (i64= (size xs) (size ys)))) (mismatch v s a e))
+              (cond ((and (string=? x "%native") (string=? y "%fx"))
+                     "A native procedure where one of any convention is (C116)."
+                     (fits v s (car xs) (car ys)))
+                    ((not (and (string=? x y) (i64= (size xs) (size ys)))) (mismatch v s a e))
                     ((string=? x "%poly")
                      "Two poly types (C107): the one's binders the other's, then their bodies."
                      (fits v s (poly-body xs) (poly-instance ys (map (lambda ((n string)) (ty-var n)) (poly-binders-of xs)))))
@@ -1851,6 +1879,8 @@
               (cond ((not (i64= (size aps) (size eps))) (mismatch v s a e))
                     ((null? (fit-effs s aes ees)) (mismatch v s a e))
                     (else (fits v (fits-all v (car (fit-effs s aes ees)) eps aps) ar er))))
+            ;; A procedure of KFX's own where one of any convention is (C116).
+            (ty-data (d args) (if (string=? d "%fx") (fits v s a (car args)) (mismatch v s a e)))
             (else other (mismatch v s a e))))
         (else other (if (same-base? a e) s (mismatch v s a e))))))
   (fits-each (subr kfx (cv st tys tys) st)
@@ -2086,7 +2116,10 @@
   (lambda (r es) (tagcase r (res (t es0 s) (res t (effs-union es es0) s)))))
 
 (define proc-type? (subr kfx (st ty) bool)
-  (lambda (s t) (tagcase (walk s t) (ty-proc (es ps r) #t) (else other #f))))
+  (lambda (s t)
+    "A procedure's type: KFX's own, or one of any convention (C116), which a
+     lambda is checked against as its procedure."
+    (tagcase (walk s t) (ty-proc (es ps r) #t) (ty-data (d args) (string=? d "%fx")) (else other #f))))
 
 (define naming-effs (subr kfx (st string string ty strings) strings)
   (lambda (s name wher t group)
