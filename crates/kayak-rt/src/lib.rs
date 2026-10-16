@@ -85,6 +85,9 @@ pub type RefAt<'r, T> = &'r Cell<T>;
 pub type Ref<T> = RefAt<'static, T>;
 
 /// `(flatarrayof T R)`: a flat array, raw elements in a row, each a cell.
+/// An `i64` one has Fixpt's flat array's header, element code and trailer
+/// in the three cells before its first, so that native code is given it
+/// as itself, shared (C126; `native.rs`).
 pub type FlatArray<T> = &'static [Cell<T>];
 
 pub struct Cons<'r, T> {
@@ -415,13 +418,24 @@ pub fn set<T: Copy>(r: RefAt<'_, T>, v: T) {
 
 #[inline]
 pub fn make_flatarray_i64(n: i64, v: i64) -> FlatArray<i64> {
+    use kayak_jit::layout as l;
     match usize::try_from(n) {
-        Ok(n) => Box::leak(
-            (0..n)
-                .map(|_| Cell::new(v))
-                .collect::<Vec<_>>()
-                .into_boxed_slice(),
-        ),
+        Ok(n) => {
+            let prefix = [
+                l::header(l::KIND_FLAT_ARRAY, 2, 8 * n, false, false),
+                l::FLAT_I64 << l::FIXNUM_SHIFT,
+                2 << 3 | l::TAG_TRAILER,
+            ];
+            let all: &'static [Cell<i64>] = Box::leak(
+                prefix
+                    .iter()
+                    .map(|&w| Cell::new(w as i64))
+                    .chain((0..n).map(|_| Cell::new(v)))
+                    .collect::<Vec<_>>()
+                    .into_boxed_slice(),
+            );
+            &all[prefix.len()..]
+        }
         Err(_) => fail("make-flatarray: a negative length"),
     }
 }

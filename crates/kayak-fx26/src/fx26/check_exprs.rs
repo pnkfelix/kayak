@@ -5045,8 +5045,26 @@ pub mod expressions {
                     }
                 } else {
                     let fields = variant_fields(v, show_ty(s, whole), tag, vs);
-                    let names = items(second(arm));
-                    if not(i64_eq(size(names), size(fields))) {
+                    let listed = (i64_gt(size(arm), 1i64) && {
+                        let tagcase_ = second(arm);
+                        match *tagcase_ {
+                            Sexp::Lst(xs, f, l, p) => {
+                                true
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    });
+                    let names = if listed {
+                        items(second(arm))
+                    } else {
+                        nil::<&'static Sexp>()
+                    };
+                    if not(listed) {
+                        match refuse(v, string_append(str_lit("the arm for "), string_append(tag, string_append(str_lit(" names its fields in a list: `("), string_append(tag, str_lit(" (name …) body …)`")))))) {}
+                    } else if not(i64_eq(size(names), size(fields))) {
                         match refuse(v, string_append(str_lit("the arm for "), string_append(tag, str_lit(" names the wrong number of fields")))) {}
                     } else {
                         let tagcase_ = body(with_binds(v, bind_fields(v, names, fields)), s, cdr(cdr(arm)), expected);
@@ -7002,8 +7020,8 @@ pub mod expressions {
                     let tagcase_ = car(xs);
                     match *tagcase_ {
                         Ty::TyProc(es, ps, r) => {
-                            if i64_gt(size(ps), 3i64) {
-                                match refuse(v, str_lit("a native procedure of more than three parameters, which KFX does not have yet (C116)")) {}
+                            if i64_gt(size(ps), 4i64) {
+                                match refuse(v, str_lit("a native procedure of more than four parameters, which KFX does not have yet (C116)")) {}
                             } else if (not(native_crossing_p(s, r)) || any_p(lambda1s(move |t: &'static Ty| {
                                 not(native_given_p(s, t))
                             }), ps)) {

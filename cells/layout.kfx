@@ -8,8 +8,9 @@
 (define lay (load-module "fx26:layout.fx"))
 
 "What tier 1 does: reads and writes its heap and stacks, at region `@c`;
- reads the clock, for FX-26's deadlines (C125)."
-(define-effect cm (maxeff (read @globals) spin (read @c) (write @c) (alloc @c) (io clock)))
+ reads the clock, for FX-26's deadlines (C125); makes and runs tier 2's
+ machine code (C126)."
+(define-effect cm (maxeff (read @globals) spin (read @c) (write @c) (alloc @c) (io clock) (io native) (alloc @heap) (read @heap) (write @heap)))
 
 "Tags."
 (define t-fixnum i64 (int->i64 (with lay tag-fixnum)))

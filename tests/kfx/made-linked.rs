@@ -84,7 +84,7 @@ pub enum Sum_2ok_7refused<A0, A1> {
 // which main says (C116): a procedure reached by made code through its own
 // field, `*`, and one of the program's, called by `foreign`.
 
-pub mod made__load__0 {
+pub mod made__load__0__fx26_convention {
     use super::*;
 
     pub enum CvSx {
@@ -153,7 +153,7 @@ pub mod made__load__0 {
 pub mod made__input__4084__convention_types {
     use super::*;
 
-    pub use super::made__load__0::{cx_name, cx_int, cx_list, CvSx, CvSxs, CvAt, CvSxsAt, CvNames, CvInts, CvStrs, CvRegs, CvRegisters, CvBits, CvValues, CvClosures, CvCode, CvFrames, CvState, CvRoutine, CvOverflow, CvTrap, CvRoutines, CvFuel, CvBarrier, Convention, CvRead};
+    pub use super::made__load__0__fx26_convention::{cx_name, cx_int, cx_list, CvSx, CvSxs, CvAt, CvSxsAt, CvNames, CvInts, CvStrs, CvRegs, CvRegisters, CvBits, CvValues, CvClosures, CvCode, CvFrames, CvState, CvRoutine, CvOverflow, CvTrap, CvRoutines, CvFuel, CvBarrier, Convention, CvRead};
 }
 
 pub mod cv {
@@ -211,7 +211,7 @@ pub mod cv {
 
     pub fn cv_read_at(t: Str, i: Int) -> CvAt {
         if _gt_eq(i, string_length(t)) {
-            Product_1x_2at(cx_list(nil::<&'static made__load__0::CvSx>()), i)
+            Product_1x_2at(cx_list(nil::<&'static made__load__0__fx26_convention::CvSx>()), i)
         } else if string_eq_p(cv_ch(t, i), str_lit("(")) {
             let r = cv_read_items(t, _plus(i, int_lit(1)));
             Product_1x_2at(cx_list(r.0), r.1)
@@ -224,9 +224,9 @@ pub mod cv {
     pub fn cv_read_items(mut t: Str, mut i: Int) -> CvSxsAt {
         loop {
             if _gt_eq(i, string_length(t)) {
-                return Product_2xs_2at(nil::<&'static made__load__0::CvSx>(), i);
+                return Product_2xs_2at(nil::<&'static made__load__0__fx26_convention::CvSx>(), i);
             } else if string_eq_p(cv_ch(t, i), str_lit(")")) {
-                return Product_2xs_2at(nil::<&'static made__load__0::CvSx>(), _plus(i, int_lit(1)));
+                return Product_2xs_2at(nil::<&'static made__load__0__fx26_convention::CvSx>(), _plus(i, int_lit(1)));
             } else if string_eq_p(cv_ch(t, i), str_lit(" ")) {
                 i = _plus(i, int_lit(1));
                 continue;
@@ -246,7 +246,7 @@ pub mod cv {
             }
             _ => {
                 let y = tagcase_;
-                nil::<&'static made__load__0::CvSx>()
+                nil::<&'static made__load__0__fx26_convention::CvSx>()
             }
         }
     }
@@ -289,7 +289,7 @@ pub mod cv {
     pub fn cx_get(mut xs: CvSxs, mut role: Str) -> CvSxs {
         loop {
             if null_p(xs) {
-                return nil::<&'static made__load__0::CvSx>();
+                return nil::<&'static made__load__0__fx26_convention::CvSx>();
             } else if string_eq_p(cx_role(car(xs)), role) {
                 return cdr(cx_items(car(xs)));
             } else {
@@ -315,7 +315,7 @@ pub mod cv {
     pub fn cx_nth(mut xs: CvSxs, mut k: Int) -> &'static CvSx {
         loop {
             if null_p(xs) {
-                return cx_list(nil::<&'static made__load__0::CvSx>());
+                return cx_list(nil::<&'static made__load__0__fx26_convention::CvSx>());
             } else if _eq(k, int_lit(0)) {
                 return car(xs);
             } else {
@@ -639,7 +639,7 @@ pub mod cv {
 
     pub fn cv_parse_all(ts: CvStrs) -> CvSxs {
         if null_p(ts) {
-            nil::<&'static made__load__0::CvSx>()
+            nil::<&'static made__load__0__fx26_convention::CvSx>()
         } else {
             the::<CvSxs>(kayak_rt::heap_cons(cv_read_at(car(ts), int_lit(0)).0, cv_parse_all(cdr(ts))))
         }
@@ -671,12 +671,12 @@ pub mod cv {
 pub mod cvt {
     use super::*;
 
-    pub use super::made__load__0::{cx_name, cx_int, cx_list, CvSx, CvSxs, CvAt, CvSxsAt, CvNames, CvInts, CvStrs, CvRegs, CvRegisters, CvBits, CvValues, CvClosures, CvCode, CvFrames, CvState, CvRoutine, CvOverflow, CvTrap, CvRoutines, CvFuel, CvBarrier, Convention, CvRead};
+    pub use super::made__load__0__fx26_convention::{cx_name, cx_int, cx_list, CvSx, CvSxs, CvAt, CvSxsAt, CvNames, CvInts, CvStrs, CvRegs, CvRegisters, CvBits, CvValues, CvClosures, CvCode, CvFrames, CvState, CvRoutine, CvOverflow, CvTrap, CvRoutines, CvFuel, CvBarrier, Convention, CvRead};
 }
 
 pub type Convention = cvt::Convention;
 
-pub mod made__load__1 {
+pub mod made__load__1__fx26_arm64 {
     use super::*;
 
     pub type ArmOp2 = &'static (dyn Fn(Int, Int) -> Int + Send + Sync);
@@ -732,7 +732,7 @@ pub mod made__load__1 {
 pub mod made__input__4234__arm64_types {
     use super::*;
 
-    pub use super::made__load__1::{ArmOp2, ArmOp3, ArmOp4, ArmCode, Arm64Sig};
+    pub use super::made__load__1__fx26_arm64::{ArmOp2, ArmOp3, ArmOp4, ArmCode, Arm64Sig};
 }
 
 pub mod a64 {

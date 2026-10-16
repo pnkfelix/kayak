@@ -3160,3 +3160,72 @@ reading both.
   A slice of 1 is degenerate: after a preemption's grace no cell is a
   task's own, and Fixpt's run of `monitors/one-message.fx` does not end
   (tier 1's overflows its stack).
+
+## C126. Tier 2, the hand machine: how it is built (2026-10-16, TODO §31 step 3)
+
+The user: move to tier 2 now; tier 1's remaining gaps wait until a
+discrepancy needs them.
+- **What tier 2 is**: Fixpt's `fx-cells-asminterp`, the same cellular
+  words tier 1 runs, interpreted by arm64 routines (Fixpt's
+  `fixpt-native/src/cellular.rs`, Rust emitting arm64 with its encoder).
+  Kayak's routines are emitted by KFX, with FX-26's own encoder
+  (`fx26:arm64.fx`, built in), into a bloblet that `seal-code` places and
+  `native-procedure` makes callable: made code, within FX-26 (C116).
+- **On tier 1's memory, shared, not copied.** The hand machine runs on
+  tier 1's heap, stacks and registers as they are: KFX flat arrays
+  (`(flatarrayof i64 @c)`), which kayak-rt never moves or frees. Tier 1's
+  values are already Fixpt's (an index times 8, tagged), which is what
+  Fixpt's machine adds to its heap's base. So a flat array crosses into
+  native code as Fixpt's flat array does, the word of its suffix, with a
+  header of Fixpt's before its elements (kayak-rt), shared; FX-26 takes a
+  flat array as a native procedure's argument (probed on Fixpt).
+- **Grown a routine at a time.** The machine's code runs cells until one
+  it has no routine for (a primitive, an allocation, a collection, a
+  poll, a trap), and gives back to KFX, which runs that cell as tier 1
+  does (`routine!`) and enters the machine again. So it agrees with tier 1
+  from its first routine, and each routine moved into machine code is
+  checked by the same programs (`cells-programs.py`, the machine named),
+  as Fixpt checks its machines against each other.
+- **Steps:** (1) flat arrays shared with native code; (2) the machine's
+  entry, `NEXT` and exit, with the stack and control routines; (3) the
+  rest of Fixpt's routines, by how often the programs give back.
+
+## C127. `->` and `->*` in kayak's own KFX (2026-10-16; the user asked)
+
+- **`->`** (`(subr pure …)`) has almost nothing to replace in kayak's own
+  code: KFX's procedures declare named effects, `kfx` (about 1,400) and
+  `cm` (about 300), and `pure` 4 times. The 261 other `(subr pure …)` are
+  FX-26's primitives' types, as text in `check-defs.kfx`, and Fixpt's
+  built-in files.
+- **`->*`** (the effect found from the definition's `lambda`, C123) is
+  where the gain is, with a cost: a named effect is a bound the checker
+  holds a procedure to, which says what it may do (the compiler's `kfx`,
+  tier 1's `cm`); a found effect states nothing and grows with the body,
+  and every caller's with it. So: `->*` for helpers whose effect is
+  incidental, inside a module whose interface keeps named bounds; named
+  effects where they are the contract (entry points, what other modules
+  call, higher-order parameters, which `->*` cannot type anyway).
+- **Begun with `cells/sched.kfx`**: its 63 top-level and `define-rec`
+  procedures `->*`; kfx accepts it and makes the same Rust, byte for byte.
+  The compiler's own files (`kfx/`) next, helper by helper, where a found
+  effect reads as well as the bound, not as a sweep.
+- **First steps done (2026-10-16).** (1) Flat arrays shared:
+  `tests/kfx/made-flat.kfx` (`native 42 42`, on kayak and on Fixpt); a
+  native procedure of four parameters (`native_procedure4`). (2)
+  `cells/hand.kfx`: the entry, `NEXT` (fuel counted per cell, as tier 1
+  counts it, so step limits and preemption fall where tier 1's do),
+  entering a word, the ways out, a return (`pop-return!`'s), and the
+  routines `lit dup drop swap over eq + - < int-add int-sub int-less
+  int-eq car cdr pair-car pair-cdr slot slot! global branch 0branch exit
+  return`; every other cell given back. `kayak-cells --hand`;
+  `cells-programs.py` runs each program so too: all 326 agree. Fixpt's
+  `bench/fib.fx`: 0.50 s on tier 1, 0.18 s on tier 2, with 2.7 million
+  cells still given back (calls).
+- **KFX, on the way.** `load-input` and `load-module` in two files of one
+  unit named their modules alike (`made--load--0`): now the file's stem
+  is in the name. A datatype's arm naming its fields without a list
+  crashed kfx ("a list is expected"): refused now, with a message
+  (`tests/kfx-stricter/arm-unlisted.kfx`; FX-26 binds the name to the
+  fields as a product). A native procedure's type in a `nil`'s turbofish
+  (`(%native …)`) had no Rust: now a procedure's. kfx's "a type KFX-0
+  does not have" names the type.

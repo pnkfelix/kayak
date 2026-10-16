@@ -18,7 +18,15 @@ pub mod prims;
 pub use prims::*;
 pub mod listing;
 pub use listing::*;
+pub mod hand;
+pub use hand::*;
 pub mod machine;
 pub use machine::*;
 pub mod main;
 pub use main::*;
+#[allow(non_camel_case_types)]
+pub enum Sum_4made_6failed<A0, A1> {
+    Made(A0),
+    Failed(A1),
+}
+

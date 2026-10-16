@@ -17,7 +17,8 @@ program of definitions), or Fixpt refuses it. The programs that agree are
 kept in tests/cells-passing (--bless rewrites it); one that agreed and
 no longer does fails the check. Each but Fixpt's benchmarks is run again
 with a collection at every safepoint (`--gc-stress`), to the same end;
-and each that runs tasks (processes, `par`, `race`, `pselect`), again
+each, on arm64 macOS, by tier 2's machine (`--hand`, C126), its answer
+the same; and each that runs tasks (processes, `par`, `race`, `pselect`), again
 with a time slice of two polls (`--slice 2`, as Fixpt's `FIXPT_SLICE`,
 C125), preempted at nearly every poll; with no step limit, as Fixpt's
 limit is each form's and tier 1 runs the program as one word. (A slice of
@@ -164,6 +165,8 @@ def one(binary, cells, name, path):
     return stressed(cells, name, path, text, limit, have, None)
 
 
+# Tier 2 runs where native code does: arm64 macOS (kayak-jit's).
+HAND = sys.platform == "darwin" and os.uname().machine == "arm64"
 TASKS = re.compile(r"\((spawn|spawn-monitored|par|race|pselect|send|receive|icell-get|icell-put!)\b")
 
 
@@ -171,11 +174,12 @@ def stressed(cells, name, path, text, limit, have, fail):
     """The same answer with a collection at every safepoint (C122, Coopt's
     stress policy), and, for a program that runs tasks, preempted at every
     poll (C125); Fixpt's benchmarks, long, are not run so."""
-    if name.startswith(UNLIMITED):
-        return "agree", ""
-    ways = [["--gc-stress"]]
-    if TASKS.search(open(path, encoding="utf-8").read()):
-        ways.append(["--slice", "2", "--step-limit", "none"])
+    # Tier 2, the hand machine (C126), each program, where native code runs.
+    ways = [["--hand"] + (["--step-limit", "none"] if limit else [])] if HAND else []
+    if not name.startswith(UNLIMITED):
+        ways.append(["--gc-stress"])
+        if TASKS.search(open(path, encoding="utf-8").read()):
+            ways.append(["--slice", "2", "--step-limit", "none"])
     with tempfile.NamedTemporaryFile("w", suffix=".cells", delete=False) as f:
         f.write(text)
         listing = f.name

@@ -1,0 +1,42 @@
+"A flat array given to made code, shared (C126): the code reads two of
+ its elements and writes their sum into a third, which KFX then reads;
+ and gives the sum, as a fixnum, back. Where this machine runs no native
+ code, the answer it would give."
+
+(define a64 (load-input "fx26:arm64.fx"))
+
+;; Instruction `w` at byte `at` of `b`'s suffix, little-endian.
+(define* put4 (subr (write @heap) ((bloblet (fields) @heap) int int) unit)
+  (lambda (b at w)
+    (begin (bloblet-set-byte! b at (modulo w 256))
+           (bloblet-set-byte! b (+ at 1) (modulo (quotient w 256) 256))
+           (bloblet-set-byte! b (+ at 2) (modulo (quotient w 65536) 256))
+           (bloblet-set-byte! b (+ at 3) (quotient w 16777216)))))
+
+(define-type summer (subr (conv native) (maxeff (read @heap) (write @heap)) ((flatarrayof i64 @heap)) int))
+
+"`x1` is the array's suffix, tag 4: element `i` at `8 i - 4` from it.
+ `ldur x2, [x1, #-4]; ldur x3, [x1, #4]; add x2, x2, x3; stur x2, [x1,
+ #12]; add x0, x2, x2; add x0, x0, x0; add x0, x0, x0; ret`."
+(define* summing (subr (maxeff (read @globals) (alloc @heap) (write @heap) (io native) spin) () summer)
+  (lambda ()
+    (let ((b (the (bloblet (fields) @heap) (make-bloblet 32))))
+      (begin (put4 b 0 ((with a64 arm-ldur) 2 1 -4))
+             (put4 b 4 ((with a64 arm-ldur) 3 1 4))
+             (put4 b 8 ((with a64 arm-add) 2 2 3))
+             (put4 b 12 ((with a64 arm-stur) 2 1 12))
+             (put4 b 16 ((with a64 arm-add) 0 2 2))
+             (put4 b 20 ((with a64 arm-add) 0 0 0))
+             (put4 b 24 ((with a64 arm-add) 0 0 0))
+             (put4 b 28 (with a64 arm-ret))
+             (the summer (native-procedure (seal-code b)))))))
+
+(define main (subr (maxeff (read @globals) (alloc @heap) (read @heap) (write @heap) (io native) spin) () string)
+  (lambda ()
+    (let ((a (the (flatarrayof i64 @heap) (make-flatarray-i64 3 0))))
+      (begin
+        (flatarray-set-i64! a 0 20)
+        (flatarray-set-i64! a 1 22)
+        (let ((r (if (native-code?) ((summing) a) (begin (flatarray-set-i64! a 2 42) 42))))
+          (string-append (if (native-code?) "native " "interpreted ")
+            (string-append (int->string r) (string-append " " (i64->string (flatarray-ref-i64 a 2))))))))))

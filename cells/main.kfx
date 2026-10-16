@@ -1,8 +1,9 @@
 "main.kfx: `kayak-cells LISTING [--step-limit N|none] [--slice N]
- [--gc-stress] [--gc-stats]` (C122, C125): the words
+ [--hand] [--gc-stress] [--gc-stats]` (C122, C125, C126): the words
  of a listing Fixpt's compiler wrote, its `program` run, at most N
  instructions (Fixpt's FX-26 default, 20,000,000; `none`, no limit), a
- task's time slice N polls (Fixpt's 65,536, or its `FIXPT_SLICE`), its
+ task's time slice N polls (Fixpt's 65,536, or its `FIXPT_SLICE`), by
+ tier 2's machine if `--hand`, its
  value written as Fixpt writes it; or, if it fails, `evaluation failed:
  MESSAGE` on the standard error and status 1."
 
@@ -43,11 +44,13 @@
           (let* ((w (listing-words! (read-text (car as))))
                  (u (set gc-stress (string-member? "--gc-stress" as)))
                  (u1 (set slice (option-of (cdr as) "--slice" 65536)))
+                 (u3 (set hand-on (string-member? "--hand" as)))
                  (r (run-word! w (option-of (cdr as) "--step-limit" default-steps)))
                  (u2 (if (string-member? "--gc-stats" as)
                          (begin
                            (write-err (string-append "collections: " (string-append (i64->string (get collections))
-                                        (string-append ", words copied: " (string-append (i64->string (get words-copied)) "\n")))))
+                                        (string-append ", words copied: " (string-append (i64->string (get words-copied))
+                                          (string-append ", machine entries: " (string-append (i64->string (get hand-entries)) "\n")))))))
                            #u)
                          #u)))
             (tagcase r

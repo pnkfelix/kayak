@@ -8,7 +8,7 @@ pub struct Product_3fst_3snd<A0, A1>(pub A0, pub A1);
 
 // A `load-input` of a program's file that loads another file beside it
 // (C121), with kfx given the program by an absolute path.
-pub mod made__load__0 {
+pub mod made__load__0__pair_input {
     use super::*;
 
 

@@ -7,7 +7,7 @@ use kayak_rt::*;
 // procedures polymorphic in a region they are given (rank 2). A parser of
 // numbers raises where a character is no digit; what then happens is the
 // caller's to choose: a value to go on with, or a restart.
-pub mod made__load__0 {
+pub mod made__load__0__conditions {
     use super::*;
 
     pub async fn handle<A: Copy + 'static, H: Copy + 'static>(body: &'static dyn Fn(Tag<A, H>) -> kayak_rt::suspend::Body<A>, on_escape: &'static dyn Fn(H) -> kayak_rt::suspend::Body<A>) -> Result<A, Unwind> {
@@ -41,7 +41,7 @@ pub mod made__load__0 {
 pub mod c {
     use super::*;
 
-    pub use super::made__load__0::{handle, with_handler, raise};
+    pub use super::made__load__0__conditions::{handle, with_handler, raise};
 }
 
 pub use c::handle;

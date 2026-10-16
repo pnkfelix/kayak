@@ -1405,6 +1405,10 @@
                      (put ">" (put-type c (second xs) (put ", " (put (element-lifetime c (second xs)) (put "RefAt<" acc))))))
                     ((sym-is? (car xs) "ref")
                      (put ">" (put-type c (second xs) (put "Ref<" acc))))
+                    ((and (or (sym-is? (car xs) "%native") (sym-is? (car xs) "%fx")) (i64= (size xs) 2))
+                     "A procedure of a convention as the checker records it (a `nil`'s
+                      turbofish, C126): as a procedure of KFX's own is."
+                     (put-type c (second xs) acc))
                     ((and (sym-is? (car xs) "subr") (i64= (size xs) 5) (head-is? (second xs) "conv"))
                      "A native procedure (C116): as a procedure of KFX's own is."
                      (put-type c (without-conv t) acc))
@@ -1486,8 +1490,8 @@
                                 (places (if (null? (module-body c (string-append "%abbreviation " n))) nil (used-place-arguments c n (cdr xs) kinds)))
                                 (parts (onto lives (onto (map (lambda ((t sexp)) (rev->string (put-type c t nil))) args) places))))
                            (if (null? parts) acc (put (string-append "<" (string-append (words-of-sep parts ", ") ">")) acc)))))))
-                    (else (error "kfx: a type KFX-0 does not have"))))
-            (else other (error "kfx: a type KFX-0 does not have")))))
+                    (else (error (string-append "kfx: a type KFX-0 does not have: " (show-sexp t))))))
+            (else other (error (string-append "kfx: a type KFX-0 does not have: " (show-sexp t)))))))
 
       (put-flat (subr kfx (ctx sexp chars) chars)
         (lambda (c f acc)

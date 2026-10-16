@@ -4,22 +4,22 @@ use kayak_rt::*;
 
 // A loaded module's bloblet family, named in another by `select` under its
 // own name and applied there (C119), as Fixpt's checker names its tables.
-pub mod made__load__0 {
+pub mod made__load__0__uses_cell {
     use super::*;
 
     pub type Score = i64;
 }
 
-pub mod made__load__1 {
+pub mod made__load__1__loaded_bloblet_family {
     use super::*;
 
     pub mod cells {
         use super::*;
 
-        pub use super::made__load__0::{Score};
+        pub use super::made__load__0__uses_cell::{Score};
     }
 
-    pub type Score = made__load__0::Score;
+    pub type Score = made__load__0__uses_cell::Score;
 
     pub type Counts = &'static Bloblet<(std::cell::Cell<Score>,)>;
 
@@ -36,7 +36,7 @@ pub mod made__load__1 {
 pub mod u {
     use super::*;
 
-    pub use super::made__load__1::{bump, fresh, Score, Counts};
+    pub use super::made__load__1__loaded_bloblet_family::{bump, fresh, Score, Counts};
 }
 
 pub fn main() -> Str {

@@ -634,7 +634,7 @@
                                                  "kfx_toplevel" "once" "alloc" "the" "unwind" "knot" "lambda0" "lambda1"
                                                  "lambda2" "lambda3" "lambda4" "leak_string" "with_big_stack" "fail"
                                                  "make_continuation_prompt_tag" "nil" "cons" "bloblet_written"
-                                                 "native_procedure0" "native_procedure1" "native_procedure2" "native_procedure3")))))))
+                                                 "native_procedure0" "native_procedure1" "native_procedure2" "native_procedure3" "native_procedure4")))))))
 
 (define label-name? (subr kfx (string) bool)
   (lambda (n)
@@ -1571,6 +1571,10 @@
       (or (native-crossing? s t)
           (tagcase (walk s t)
             (ty-data (d args) (and (string=? d "%fx") (native-given? s (car args))))
+            (ty-flat (e r)
+              "An `i64` flat array, shared, laid out as Fixpt's (C126):
+               native code reads and writes the elements KFX does."
+              (tagcase (walk s e) (ty-i64 () #t) (else other #f)))
             (ty-proc (es ps r)
               "A procedure of KFX's own, as one of the fx convention is: in a
                code bloblet's field, made code calls it by `foreign`."

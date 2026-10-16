@@ -1,0 +1,8 @@
+"A datatype's tagcase arm that names its fields without a list: FX-26
+ binds the name to the variant's fields as a product; KFX names each
+ field, in a list, and refused the arm by crashing until 2026-10-16
+ (C126), now with a message."
+(define-effect kfx (maxeff (read @globals) spin))
+(define-datatype item (ins int) (here int))
+(define main (subr kfx () string)
+  (lambda () (int->string (tagcase (the item (ins 3)) (ins w 1) (here l 2)))))

@@ -1,0 +1,437 @@
+"hand.kfx: tier 2's machine (C126), Fixpt's `fx-cells-asminterp`: the
+ cellular words tier 1 runs, run by arm64 routines this file emits with
+ FX-26's own encoder (`fx26:arm64.fx`), placed by `seal-code` and called
+ as a native procedure (C116). It runs on tier 1's memory as it is,
+ shared (C126): the heap, the two stacks and its registers, KFX flat
+ arrays given to it as Fixpt's flat arrays. A cell it has no routine for,
+ or whose checks do not all pass, it gives back before changing anything,
+ for tier 1 to run as ever (machine.kfx's `step!`); then tier 1 enters it
+ again. So it agrees with tier 1 from its first routine, each step
+ counted as tier 1 counts it.
+
+ Its registers: the heap's base, the ip (the address of the next cell),
+ `cur`, the data stack's top and the return stack's (addresses of the next
+ free element), the state's address, the data stack's base, the frame
+ (an address), `clo`, the fuel, and the cell being run (for giving back).
+ Unlike Fixpt's, the stacks grow up, as tier 1's do.
+ fixpt-source: crates/fixpt-native/src/cellular.rs@1925bca"
+
+(define a64 (load-input "fx26:arm64.fx"))
+
+"Registers."
+(define x-mem int 19)
+(define x-ip int 20)
+(define x-cur int 21)
+(define x-dsp int 22)
+(define x-rsp int 23)
+(define x-st int 24)
+(define x-dsb int 25)
+(define x-fp int 26)
+(define x-clo int 27)
+(define x-fuel int 28)
+(define x-cell int 12)
+(define x-w int 9)
+(define x10 int 10)
+(define x11 int 11)
+(define x13 int 13)
+(define x14 int 14)
+(define x15 int 15)
+(define x16 int 16)
+
+"Conditions, as `arm64.fx` numbers them."
+(define c-eq int 0)
+(define c-ne int 1)
+(define c-hs int 2)
+(define c-lo int 3)
+(define c-vs int 6)
+(define c-hi int 8)
+(define c-ls int 9)
+(define c-lt int 11)
+
+"The state, a flat array of `i64`, by element: what tier 1 gives the
+ machine and takes back (`cur`, `kk`, `fp`, `clo`, `dsp`, `rsp`, `fuel`),
+ why the machine stopped, the limits as tier 1 checks them, and what the
+ machine works out from them at its entry: the return stack's base, and
+ the limits as addresses."
+(define st-cur int 0)
+(define st-kk int 1)
+(define st-fp int 2)
+(define st-clo int 3)
+(define st-dsp int 4)
+(define st-rsp int 5)
+(define st-fuel int 6)
+(define st-ds-limit int 8)
+(define st-rs-limit int 9)
+(define st-ds-length int 10)
+(define st-rs-push int 11)
+(define st-rsb int 12)
+(define st-ds-lim int 13)
+(define st-rs-lim int 14)
+(define st-ds-end int 15)
+(define st-rs-end int 16)
+(define st-size i64 24)
+(define at-st (->* (int) int) (lambda (i) (* 8 i)))
+
+"Why the machine stopped: to give a cell back; or the return stack ran
+ out under its entries' marks, which tier 1 would read past."
+(define gave-back i64 1)
+(define ran-out i64 2)
+
+"Code: instructions, and jumps to labels, placed when every label is."
+(define-datatype item (ins int) (jump int int int) (label-here int))
+(define j-b int 0)
+(define j-cond int 1)
+(define j-cbz int 2)
+(define j-adr int 3)
+(define j-cbnz int 4)
+
+(define hand-items (ref (listof item @c) @c) (new nil))
+(define hand-labels (ref int @c) (new 0))
+(define e! (->* (int) unit) (lambda (w) (set hand-items (cons (ins w) (get hand-items)))))
+(define label! (->* () int) (lambda () (let ((l (get hand-labels))) (begin (set hand-labels (+ l 1)) l))))
+(define bind! (->* (int) unit) (lambda (l) (set hand-items (cons (label-here l) (get hand-items)))))
+(define b! (->* (int) unit) (lambda (l) (set hand-items (cons (jump j-b 0 l) (get hand-items)))))
+(define bc! (->* (int int) unit) (lambda (c l) (set hand-items (cons (jump j-cond c l) (get hand-items)))))
+(define cbz! (->* (int int) unit) (lambda (r l) (set hand-items (cons (jump j-cbz r l) (get hand-items)))))
+(define adr! (->* (int int) unit) (lambda (r l) (set hand-items (cons (jump j-adr r l) (get hand-items)))))
+
+"`adr xd, label`, which `arm64.fx` has not: a byte offset of 21 bits."
+(define arm-adr (->* (int int) int)
+  (lambda (d bytes)
+    (let ((v (modulo bytes 2097152)))
+      (+ 268435456 (+ (* (modulo v 4) 536870912) (+ (* (quotient v 4) 32) d))))))
+
+(define-rec
+  (hand-placed (->* ((listof item @c) int (listof (pairof int int @c) @c)) (listof (pairof int int @c) @c))
+    (lambda (xs at acc)
+      "Each label with where it is, in instructions."
+      (if (null? xs)
+          acc
+          (tagcase (car xs)
+            (ins (w) (hand-placed (cdr xs) (+ at 1) acc))
+            (jump (k a l) (hand-placed (cdr xs) (+ at 1) acc))
+            (label-here (l) (hand-placed (cdr xs) at (cons (cons l at) acc))))))))
+
+(define-rec
+  (hand-where (->* ((listof (pairof int int @c) @c) int) int)
+    (lambda (ls l) (cond ((null? ls) -1) ((= (car (car ls)) l) (cdr (car ls))) (else (hand-where (cdr ls) l))))))
+
+(define-rec
+  (hand-encoded (->* ((listof item @c) int (listof (pairof int int @c) @c)) (listof int @c))
+    (lambda (xs at ls)
+      "The instructions, each jump to where its label is."
+      (if (null? xs)
+          nil
+          (tagcase (car xs)
+            (ins (w) (cons w (hand-encoded (cdr xs) (+ at 1) ls)))
+            (jump (k a l)
+              (let ((d (- (hand-where ls l) at)))
+                (cons (cond ((= k j-b) ((with a64 arm-b) d))
+                            ((= k j-cond) ((with a64 arm-b-cond) a d))
+                            ((= k j-cbz) ((with a64 arm-cbz) a d))
+                            ((= k j-cbnz) ((with a64 arm-cbnz) a d))
+                            (else (arm-adr a (* 4 d))))
+                      (hand-encoded (cdr xs) (+ at 1) ls))))
+            (label-here (l) (hand-encoded (cdr xs) at ls)))))))
+
+"Instructions, by `arm64.fx`'s encoders."
+(define ldr! (->* (int int int) unit) (lambda (t n o) (e! ((with a64 arm-ldr) t n o))))
+(define str! (->* (int int int) unit) (lambda (t n o) (e! ((with a64 arm-str) t n o))))
+(define ldur! (->* (int int int) unit) (lambda (t n o) (e! ((with a64 arm-ldur) t n o))))
+(define stur! (->* (int int int) unit) (lambda (t n o) (e! ((with a64 arm-stur) t n o))))
+(define ldr-post! (->* (int int int) unit) (lambda (t n o) (e! ((with a64 arm-ldr-post) t n o))))
+(define str-post! (->* (int int int) unit) (lambda (t n o) (e! ((with a64 arm-str-post) t n o))))
+(define add! (->* (int int int) unit) (lambda (d n m) (e! ((with a64 arm-add) d n m))))
+(define sub! (->* (int int int) unit) (lambda (d n m) (e! ((with a64 arm-sub) d n m))))
+(define adds! (->* (int int int) unit) (lambda (d n m) (e! ((with a64 arm-adds) d n m))))
+(define subs! (->* (int int int) unit) (lambda (d n m) (e! ((with a64 arm-subs) d n m))))
+(define addi! (->* (int int int) unit) (lambda (d n i) (e! ((with a64 arm-add-imm) d n i))))
+(define subi! (->* (int int int) unit) (lambda (d n i) (e! ((with a64 arm-sub-imm) d n i))))
+(define cmp! (->* (int int) unit) (lambda (n m) (e! ((with a64 arm-cmp) n m))))
+(define cmpi! (->* (int int) unit) (lambda (n i) (e! ((with a64 arm-cmp-imm) n i))))
+(define mov! (->* (int int) unit) (lambda (d m) (e! ((with a64 arm-mov) d m))))
+(define movz! (->* (int int) unit) (lambda (d i) (e! ((with a64 arm-movz) d i 0))))
+(define orr! (->* (int int int) unit) (lambda (d n m) (e! ((with a64 arm-orr) d n m))))
+(define andl! (->* (int int int) unit) (lambda (d n bits) (e! ((with a64 arm-and-low) d n bits))))
+(define tstl! (->* (int int) unit) (lambda (n bits) (e! ((with a64 arm-tst-low) n bits))))
+(define lsr! (->* (int int int) unit) (lambda (d n s) (e! ((with a64 arm-lsr-imm) d n s))))
+(define csel! (->* (int int int int) unit) (lambda (d n m c) (e! ((with a64 arm-csel) d n m c))))
+(define br! (->* (int) unit) (lambda (n) (e! ((with a64 arm-br) n))))
+(define stp-pre! (->* (int int int int) unit) (lambda (t t2 n i) (e! ((with a64 arm-stp-pre) t t2 n i))))
+(define ldp-post! (->* (int int int int) unit) (lambda (t t2 n i) (e! ((with a64 arm-ldp-post) t t2 n i))))
+(define stp! (->* (int int int int) unit) (lambda (t t2 n i) (e! ((with a64 arm-stp) t t2 n i))))
+(define ldp! (->* (int int int int) unit) (lambda (t t2 n i) (e! ((with a64 arm-ldp) t t2 n i))))
+(define ret! (->* () unit) (lambda () (e! (with a64 arm-ret))))
+
+(define times8! (->* (int) unit)
+  (lambda (r) "`r` times 8." (begin (add! r r r) (add! r r r) (add! r r r))))
+
+"The labels every routine shares."
+(define l-next (ref int @c) (new 0))
+(define l-give (ref int @c) (new 0))
+(define l-give-pre (ref int @c) (new 0))
+(define l-ran-out (ref int @c) (new 0))
+(define l-pop-return (ref int @c) (new 0))
+
+(define give-if! (->* (int) unit) (lambda (c) "Give the cell back if `c`." (bc! c (get l-give))))
+(define next! (->* () unit) (lambda () (b! (get l-next))))
+
+(define need! (->* (int) unit)
+  (lambda (n)
+    "At least `n` values on the data stack (1 or 2), else give back: tier 1
+     traps there, finding too few."
+    (if (= n 1)
+        (begin (cmp! x-dsp x-dsb) (give-if! c-ls))
+        (begin (addi! x13 x-dsb 8) (cmp! x-dsp x13) (give-if! c-ls)))))
+
+(define h-room! (->* () unit)
+  (lambda ()
+    "Room to push one, else give back (tier 1's `push!` traps)."
+    (begin (ldr! x16 x-st (at-st st-ds-end)) (cmp! x-dsp x16) (give-if! c-hs))))
+
+(define limits! (->* () unit)
+  (lambda ()
+    "Within the limits tier 1's `check-limits!` holds to, else give back."
+    (begin
+      (ldr! x16 x-st (at-st st-ds-lim)) (cmp! x-dsp x16) (give-if! c-hi)
+      (ldr! x16 x-st (at-st st-rs-lim)) (cmp! x-rsp x16) (give-if! c-hs))))
+
+(define put-top! (->* (int) unit)
+  (lambda (r) "Two values replaced by `r`." (begin (subi! x-dsp x-dsp 8) (stur! r x-dsp -8) (next!))))
+
+(define boolean-of! (->* (int) unit)
+  (lambda (c) "`x13` := `#t` if `c`, else `#f`." (begin (movz! x13 11) (movz! x14 3) (csel! x13 x13 x14 c))))
+
+(define two-fixnums! (->* () unit)
+  (lambda ()
+    "`x13` the one below the top, `x14` the top; both fixnums, else give back."
+    (begin (need! 2) (ldur! x13 x-dsp -16) (ldur! x14 x-dsp -8) (orr! x15 x13 x14) (tstl! x15 3) (give-if! c-ne))))
+
+(define entered! (->* (int) unit)
+  (lambda (n)
+    "Routine number `n`'s code; what it does not do it gives back."
+    (cond
+      ((= n (i64->int r-lit))
+       (begin (h-room!) (ldr-post! x13 x-ip -8) (str-post! x13 x-dsp 8) (next!)))
+      ((= n (i64->int r-dup))
+       (begin (need! 1) (h-room!) (ldur! x13 x-dsp -8) (str-post! x13 x-dsp 8) (next!)))
+      ((= n (i64->int r-drop)) (begin (need! 1) (subi! x-dsp x-dsp 8) (next!)))
+      ((= n (i64->int r-swap))
+       (begin (need! 2) (ldur! x13 x-dsp -8) (ldur! x14 x-dsp -16) (stur! x13 x-dsp -16) (stur! x14 x-dsp -8) (next!)))
+      ((= n (i64->int r-over))
+       (begin (need! 2) (h-room!) (ldur! x13 x-dsp -16) (str-post! x13 x-dsp 8) (next!)))
+      ((= n (i64->int r-eq))
+       (begin (need! 2) (ldur! x13 x-dsp -16) (ldur! x14 x-dsp -8) (cmp! x13 x14) (boolean-of! c-eq) (put-top! x13)))
+      ((or (= n (i64->int r-add)) (= n (i64->int r-int-add)))
+       (begin (two-fixnums!) (adds! x13 x13 x14) (give-if! c-vs) (put-top! x13)))
+      ((or (= n (i64->int r-sub)) (= n (i64->int r-int-sub)))
+       (begin (two-fixnums!) (subs! x13 x13 x14) (give-if! c-vs) (put-top! x13)))
+      ((or (= n (i64->int r-less)) (= n (i64->int r-int-less)))
+       (begin (two-fixnums!) (cmp! x13 x14) (boolean-of! c-lt) (put-top! x13)))
+      ((= n (i64->int r-int-eq))
+       (begin (two-fixnums!) (cmp! x13 x14) (boolean-of! c-eq) (put-top! x13)))
+      ((or (= n (i64->int r-car)) (= n (i64->int r-cdr)) (= n (i64->int r-pair-car)) (= n (i64->int r-pair-cdr)))
+       (begin
+         (need! 1) (ldur! x13 x-dsp -8) (andl! x14 x13 3) (cmpi! x14 1) (give-if! c-ne)
+         (add! x15 x-mem x13)
+         (ldur! x16 x15 (if (or (= n (i64->int r-car)) (= n (i64->int r-pair-car))) -1 7))
+         (stur! x16 x-dsp -8) (next!)))
+      ((= n (i64->int r-slot))
+       (begin
+         (ldr-post! x13 x-ip -8) (add! x14 x-fp x13)
+         (cmp! x14 x-dsb) (give-if! c-lo) (cmp! x14 x-dsp) (give-if! c-hs)
+         (h-room!) (ldr! x15 x14 0) (str-post! x15 x-dsp 8) (next!)))
+      ((= n (i64->int r-slot-set))
+       (begin
+         (need! 1) (ldr-post! x13 x-ip -8) (add! x14 x-fp x13) (subi! x15 x-dsp 8)
+         (cmp! x14 x-dsb) (give-if! c-lo) (cmp! x14 x15) (give-if! c-hs)
+         (ldur! x16 x-dsp -8) (str! x16 x14 0) (mov! x-dsp x15) (next!)))
+      ((= n (i64->int r-global))
+       (begin
+         (h-room!) (ldr-post! x13 x-ip -8) (add! x14 x-mem x13)
+         (ldur! x15 x14 (- -4 (* 8 (i64->int f-value)))) (str-post! x15 x-dsp 8) (next!)))
+      ((= n (i64->int r-branch))
+       (begin (limits!) (ldr-post! x13 x-ip -8) (sub! x-ip x-ip x13) (next!)))
+      ((= n (i64->int r-zbranch))
+       (let ((taken (label!)))
+         (begin
+           (need! 1) (ldur! x14 x-dsp -8) (cmpi! x14 3)
+           (bc! c-eq taken)
+           (subi! x-dsp x-dsp 8) (subi! x-ip x-ip 8) (next!)
+           (bind! taken)
+           (limits!) (subi! x-dsp x-dsp 8) (ldr-post! x13 x-ip -8) (sub! x-ip x-ip x13) (next!))))
+      ((= n (i64->int r-exit))
+       (begin (ldr! x16 x-st (at-st st-rsb)) (cmp! x-rsp x16) (give-if! c-eq) (b! (get l-pop-return))))
+      ((= n (i64->int r-return))
+       (begin
+         (need! 1) (subi! x15 x-dsp 8) (cmp! x15 x-fp) (give-if! c-lo)
+         (ldr! x16 x-st (at-st st-rsb)) (cmp! x-rsp x16) (give-if! c-eq)
+         (ldur! x13 x-dsp -8) (mov! x-dsp x-fp) (str-post! x13 x-dsp 8)
+         (b! (get l-pop-return))))
+      (else (b! (get l-give))))))
+
+(define-rec
+  (table! (->* (int int) unit)
+    (lambda (n base)
+      "A jump to each routine's code, by number: routine `n`'s label is
+       `base + n`."
+      (if (>= n (i64->int r-count)) #u (begin (b! (+ base n)) (table! (+ n 1) base))))))
+
+(define-rec
+  (routines! (->* (int int) unit)
+    (lambda (n base)
+      (if (>= n (i64->int r-count))
+          #u
+          (begin (bind! (+ base n)) (entered! n) (routines! (+ n 1) base))))))
+
+(define entry! (->* () unit)
+  (lambda ()
+    "From the native convention: the state, the heap, the data stack and
+     the return stack in `x1` to `x4`, each a flat array's suffix (tag 4).
+     Every register the machine uses kept, as Fixpt's machine keeps them."
+    (begin
+      (stp-pre! 29 30 31 -96) (stp! 19 20 31 16) (stp! 21 22 31 32) (stp! 23 24 31 48) (stp! 25 26 31 64) (stp! 27 28 31 80)
+      (subi! x-st 1 4) (subi! x-mem 2 4) (subi! x-dsb 3 4) (subi! x13 4 4) (str! x13 x-st (at-st st-rsb))
+      ;; The limits, as addresses.
+      (ldr! x14 x-st (at-st st-ds-limit)) (times8! x14) (add! x14 x-dsb x14) (str! x14 x-st (at-st st-ds-lim))
+      (ldr! x14 x-st (at-st st-rs-limit)) (times8! x14) (add! x14 x13 x14) (str! x14 x-st (at-st st-rs-lim))
+      (ldr! x14 x-st (at-st st-ds-length)) (times8! x14) (add! x14 x-dsb x14) (str! x14 x-st (at-st st-ds-end))
+      (ldr! x14 x-st (at-st st-rs-push)) (times8! x14) (add! x14 x13 x14) (str! x14 x-st (at-st st-rs-end))
+      ;; The registers.
+      (ldr! x-cur x-st (at-st st-cur))
+      (ldr! x14 x-st (at-st st-kk)) (times8! x14) (add! x-ip x-mem x-cur) (subi! x-ip x-ip 4) (sub! x-ip x-ip x14)
+      (ldr! x14 x-st (at-st st-fp)) (times8! x14) (add! x-fp x-dsb x14)
+      (ldr! x-clo x-st (at-st st-clo))
+      (ldr! x14 x-st (at-st st-dsp)) (times8! x14) (add! x-dsp x-dsb x14)
+      (ldr! x14 x-st (at-st st-rsp)) (times8! x14) (add! x-rsp x13 x14)
+      (ldr! x-fuel x-st (at-st st-fuel))
+      (next!))))
+
+(define leave! (->* (i64) unit)
+  (lambda (why)
+    "The registers back in the state, the cell being run `kk`'s, and out,
+     with `why`, a fixnum."
+    (begin
+      (str! x-cur x-st (at-st st-cur))
+      (add! x13 x-mem x-cur) (subi! x13 x13 4) (sub! x13 x13 x-cell) (lsr! x13 x13 3) (str! x13 x-st (at-st st-kk))
+      (sub! x13 x-fp x-dsb) (lsr! x13 x13 3) (str! x13 x-st (at-st st-fp))
+      (str! x-clo x-st (at-st st-clo))
+      (sub! x13 x-dsp x-dsb) (lsr! x13 x13 3) (str! x13 x-st (at-st st-dsp))
+      (ldr! x14 x-st (at-st st-rsb)) (sub! x13 x-rsp x14) (lsr! x13 x13 3) (str! x13 x-st (at-st st-rsp))
+      (str! x-fuel x-st (at-st st-fuel))
+      (movz! 0 (i64->int (fix why)))
+      (ldp! 27 28 31 80) (ldp! 25 26 31 64) (ldp! 23 24 31 48) (ldp! 21 22 31 32) (ldp! 19 20 31 16) (ldp-post! 29 30 31 96)
+      (ret!))))
+
+"A prompt's and a mark's entries begin with these (machine.kfx's
+ `prompt-mark`, `mark-mark`)."
+(define prompt-mark-word i64 51)
+(define mark-mark-word i64 43)
+
+(define machine! (->* () unit)
+  (lambda ()
+    "The whole machine: its entry, `NEXT`, the ways out, the table, and a
+     routine for each number."
+    (let ((word (label!)) (table (label!)) (skip (label!)) (loop (label!)) (base (get hand-labels)))
+      (begin
+        (set hand-labels (+ base (i64->int r-count)))
+        (set l-next (label!)) (set l-give (label!)) (set l-give-pre (label!)) (set l-ran-out (label!)) (set l-pop-return (label!))
+        (entry!)
+        ;; NEXT: the cell, as tier 1's `run!` takes it: none if out of fuel
+        ;; (tier 1 then polls or stops), else one step's fuel spent.
+        (bind! (get l-next))
+        (mov! x-cell x-ip)
+        (cbz! x-fuel (get l-give-pre))
+        (subi! x-fuel x-fuel 1)
+        (ldr-post! x-w x-ip -8)
+        (tstl! x-w 3)
+        (bc! c-ne word)
+        (cmpi! x-w (* 8 (i64->int r-count)))
+        (give-if! c-hs)
+        (lsr! x10 x-w 1)
+        (adr! x16 table)
+        (add! x16 x16 x10)
+        (br! x16)
+        ;; A word, entered as tier 1's `enter!` does, if its entry is `docol`.
+        (bind! word)
+        (andl! x13 x-w 3) (cmpi! x13 4) (give-if! c-ne)
+        (add! x11 x-mem x-w)
+        (ldur! x10 x11 (- -4 (* 8 (i64->int f-entry))))
+        (movz! x13 (* 8 (i64->int r-docol))) (cmp! x10 x13) (give-if! c-ne)
+        (limits!)
+        (andl! x13 x-cur 3) (cmpi! x13 4) (give-if! c-ne)
+        (ldr! x16 x-st (at-st st-rs-end)) (cmp! x-rsp x16) (give-if! c-hs)
+        (add! x13 x-mem x-cur) (subi! x13 x13 4) (sub! x13 x13 x-ip)
+        (sub! x14 x-fp x-dsb)
+        (stp! x-cur x13 x-rsp 0) (stp! x14 x-clo x-rsp 16) (addi! x-rsp x-rsp 32)
+        (mov! x-cur x-w)
+        (subi! x-ip x11 (+ 4 (* 8 (i64->int f-cell0))))
+        (next!)
+        ;; Giving back: the step's fuel returned, if it was spent.
+        (bind! (get l-give))
+        (addi! x-fuel x-fuel 1)
+        (bind! (get l-give-pre))
+        (leave! gave-back)
+        (bind! (get l-ran-out))
+        (leave! ran-out)
+        ;; A return, as tier 1's `pop-return!`: a prompt's or a mark's entry
+        ;; passed by.
+        (bind! (get l-pop-return))
+        (bind! loop)
+        (ldr! x16 x-st (at-st st-rsb)) (cmp! x-rsp x16) (bc! c-ls (get l-ran-out))
+        (ldur! x13 x-rsp -32)
+        (cmpi! x13 (i64->int prompt-mark-word)) (bc! c-eq skip)
+        (cmpi! x13 (i64->int mark-mark-word)) (bc! c-eq skip)
+        (mov! x-cur x13)
+        (ldur! x14 x-rsp -24) (ldur! x15 x-rsp -16) (ldur! x-clo x-rsp -8) (subi! x-rsp x-rsp 32)
+        (add! x-ip x-mem x-cur) (subi! x-ip x-ip 4) (sub! x-ip x-ip x14)
+        (add! x-fp x-dsb x15)
+        (next!)
+        (bind! skip)
+        (subi! x-rsp x-rsp 32) (b! loop)
+        (bind! table)
+        (table! 0 base)
+        (routines! 0 base)))))
+
+(define-type hand-code
+  (subr (conv native) (maxeff (read @c) (write @c))
+        ((flatarrayof i64 @c) (flatarrayof i64 @c) (flatarrayof i64 @c) (flatarrayof i64 @c)) int))
+
+;; Instruction `w` at byte `at` of `b`'s suffix, little-endian.
+(define* put4 (subr (write @heap) ((bloblet (fields) @heap) int int) unit)
+  (lambda (b at w)
+    (begin (bloblet-set-byte! b at (modulo w 256))
+           (bloblet-set-byte! b (+ at 1) (modulo (quotient w 256) 256))
+           (bloblet-set-byte! b (+ at 2) (modulo (quotient w 65536) 256))
+           (bloblet-set-byte! b (+ at 3) (quotient w 16777216)))))
+
+(define-rec
+  (all-put! (->* ((bloblet (fields) @heap) (listof int @c) int) int)
+    (lambda (b ws at)
+      "Each instruction placed; the first that did not encode, as its place,
+       or -1."
+      (cond ((null? ws) -1)
+            ((< (car ws) 0) (quotient at 4))
+            (else (begin (put4 b at (car ws)) (all-put! b (cdr ws) (+ at 4))))))))
+
+(define-rec
+  (count-of (->* ((listof int @c) int) int) (lambda (ws n) (if (null? ws) n (count-of (cdr ws) (+ n 1))))))
+
+(define hand-made (ref (listof hand-code @c) @c) (new nil))
+
+(define hand-code! (->* () (sumof (made hand-code) (failed string)))
+  (lambda ()
+    "The machine, made once: emitted, encoded, sealed."
+    (if (not (null? (get hand-made)))
+        (sum made (car (get hand-made)))
+        (begin
+          (set hand-items nil) (set hand-labels 0)
+          (machine!)
+          (let* ((its (the (listof item @c) (reverse (get hand-items))))
+                 (ws (hand-encoded its 0 (hand-placed its 0 nil)))
+                 (b (the (bloblet (fields) @heap) (make-bloblet (* 4 (count-of ws 0)))))
+                 (bad (all-put! b ws 0)))
+            (if (>= bad 0)
+                (sum failed (string-append "tier 2: instruction " (string-append (int->string bad) " does not encode")))
+                (let ((p (the hand-code (native-procedure (seal-code b)))))
+                  (begin (set hand-made (list p)) (sum made p)))))))))

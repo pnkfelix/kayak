@@ -134,6 +134,19 @@ impl<T: Native + Clone + 'static> Native for crate::List<T> {
     }
 }
 
+/// An `i64` flat array, shared, not copied (C126): the word of its first
+/// element, as Fixpt's flat array's suffix, its header, element code and
+/// trailer before it (`make_flatarray_i64`). What native code writes there
+/// KFX reads, and the other way. Native code gives none back.
+impl Native for crate::FlatArray<i64> {
+    fn word(self) -> u64 {
+        self.as_ptr() as u64 | kayak_jit::layout::TAG_BLOBLET
+    }
+    fn of_word(_: u64) -> Self {
+        fail("native code: gave a flat array, which kayak cannot yet take back")
+    }
+}
+
 /// A string, copied each way as one of Fixpt's layout (its code points two
 /// to a word): FX-26's strings are never written.
 impl Native for crate::Str {
@@ -352,5 +365,16 @@ pub fn native_procedure3<'a, A: Native, B: Native, C: Native, R: Native>(
     let (clo, entry) = sealed(c);
     crate::lambda3s(move |a: A, b: B, d: C| {
         R::of_word(run(clo, entry, &[a.word(), b.word(), d.word()]))
+    })
+}
+
+/// At `(subr (conv native) E (A B C D) R)`: tier 2's machine is given its
+/// registers, heap and two stacks (C126).
+pub fn native_procedure4<'a, A: Native, B: Native, C: Native, D: Native, R: Native>(
+    c: &dyn Sealed,
+) -> &'a (dyn Fn(A, B, C, D) -> R + Send + Sync) {
+    let (clo, entry) = sealed(c);
+    crate::lambda4s(move |a: A, b: B, d: C, e: D| {
+        R::of_word(run(clo, entry, &[a.word(), b.word(), d.word(), e.word()]))
     })
 }

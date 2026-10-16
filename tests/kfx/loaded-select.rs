@@ -4,7 +4,7 @@ use kayak_rt::*;
 
 // A module loaded in a loaded module, its type named by `select` (C118):
 // Fixpt's front end names the reader's types so.
-pub mod made__load__0 {
+pub mod made__load__0__areas {
     use super::*;
 
     pub enum Shape {
@@ -25,24 +25,24 @@ pub mod made__load__0 {
     }
 }
 
-pub mod made__load__1 {
+pub mod made__load__1__loaded_select {
     use super::*;
 
     pub mod base {
         use super::*;
 
-        pub use super::made__load__0::{dot, r#box, make_box, Shape};
+        pub use super::made__load__0__areas::{dot, r#box, make_box, Shape};
     }
 
-    pub type Shape = &'static made__load__0::Shape;
+    pub type Shape = &'static made__load__0__areas::Shape;
 
     pub fn area(s: Shape) -> Int {
         let tagcase_ = s;
         match *tagcase_ {
-            made__load__0::Shape::Dot(x) => {
+            made__load__0__areas::Shape::Dot(x) => {
                 int_lit(0)
             }
-            made__load__0::Shape::Box(w, h) => {
+            made__load__0__areas::Shape::Box(w, h) => {
                 _star(w, h)
             }
         }
@@ -56,7 +56,7 @@ pub mod made__load__1 {
 pub mod areas {
     use super::*;
 
-    pub use super::made__load__1::{area, square, Shape};
+    pub use super::made__load__1__loaded_select::{area, square, Shape};
 }
 
 pub fn main() -> Str {

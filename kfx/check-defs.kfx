@@ -2104,6 +2104,14 @@
 (define spliced-defs (subr kfx (spliced-to) sexps) (lambda (s) (tagcase s (spliced-to (x d k) d))))
 (define spliced-known (subr kfx (spliced-to) keyeds) (lambda (s) (tagcase s (spliced-to (x d k) k))))
 
+(define file-tag (subr kfx (string) string)
+  (lambda (f)
+    "File `f`'s name as a part of a name: its letters and digits, each
+     other character `-`; so that the loads of two files of one program,
+     each counted from 0, are not named alike."
+    (rev->string (reverse (the chars (map (lambda ((c char)) (if (or (char-lower? c) (char-numeric? c)) c #\-))
+                                          (string-chars (stem f))))))))
+
 (define included-module (subr kfx (string string i64 i64) sexp)
   (lambda (name f l p)
     "A load of a module already made: a module that includes it."
@@ -2240,7 +2248,7 @@
                                (let* ((forms (import-items (read-all (string-chars (car found)) path 1)))
                                       (its (parameters-given forms args path))
                                       (inner (spliced-each its (directory-of path) loaded (cons path chain) known nil nil f l p))
-                                      (name (string-append "made--load--" (i64->string (size (spliced-known inner)))))
+                                      (name (string-append "made--load--" (string-append (i64->string (size (spliced-known inner))) (string-append "--" (file-tag f)))))
                                       (sees (map (lambda ((k keyed)) (tagcase k (keyed (kk n) (sym n f p)))) (spliced-known inner)))
                                       (made (lst (list (sym "define" f p) (sym name f p)
                                                        (lst (cons (sym "module" f p)

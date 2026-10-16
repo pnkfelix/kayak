@@ -625,27 +625,68 @@
               #f
               (begin (set trap-message "") (abort-to! r-abort tag v-unit) (not (trapped?))))))))
 
+(define step! (subr cm (i64) bool)
+  (lambda (base)
+    "One cell, as tier 1 runs it: whether the run goes on."
+    (let ((cell (slot-of (get cur) (get kk))))
+      (begin
+        (set kk (i64+ (get kk) 1))
+        (cond
+          ((and (i64= (get fuel) 0) (i64= (get reserve) 0))
+           (begin (trap! "evaluation step limit exceeded") #f))
+          ((and (i64= (get fuel) 0) (poll!)) #t)
+          (else
+            (begin
+              (set fuel (i64- (get fuel) 1))
+              (let ((flow (if (is-fixnum? cell) (routine! (fix-val cell)) (begin (enter! cell) next))))
+                (cond ((and (trapped?) (failed-in-task!)) #t)
+                      ((trapped?) #f)
+                      ((i64= flow next) #t)
+                      ((i64= flow exit-flow)
+                       (if (i64= (get rsp) base) #f (begin (pop-return!) #t)))
+                      (else #f))))))))))
+
 (define-rec
-  (run! (subr cm (i64) i64)
-    (lambda (base)
-      "Cells, one after another, until the run ends, halts or traps."
-      (let ((cell (slot-of (get cur) (get kk))))
-        (begin
-          (set kk (i64+ (get kk) 1))
-          (cond
-            ((and (i64= (get fuel) 0) (i64= (get reserve) 0))
-             (begin (trap! "evaluation step limit exceeded") halt-flow))
-            ((and (i64= (get fuel) 0) (poll!)) (run! base))
-            (else
-              (begin
-                (set fuel (i64- (get fuel) 1))
-                (let ((flow (if (is-fixnum? cell) (routine! (fix-val cell)) (begin (enter! cell) next))))
-                  (cond ((and (trapped?) (failed-in-task!)) (run! base))
-                        ((trapped?) halt-flow)
-                        ((i64= flow next) (run! base))
-                        ((i64= flow exit-flow)
-                         (if (i64= (get rsp) base) halt-flow (begin (pop-return!) (run! base))))
-                        (else halt-flow)))))))))))
+  (run! (subr cm (i64) unit)
+    (lambda (base) "Cells, one after another, until the run ends, halts or traps." (if (step! base) (run! base) #u))))
+
+"Tier 2 (C126): the hand machine (hand.kfx) runs cells until it gives
+ one back; tier 1 runs that one; and so on. The machine is given tier 1's
+ registers in its state, and tier 1's heap and stacks themselves."
+(define hand-on (ref bool @c) (new #f))
+(define hand-state (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 st-size 0)))
+(define hand-entries (ref i64 @c) (new 0))
+
+(define hand! (subr cm (hand-code) bool)
+  (lambda (m)
+    "The machine run from tier 1's registers until it gives a cell back:
+     whether it did (else it stopped the run, which it traps)."
+    (let ((s (get hand-state)))
+      (begin
+        (flatarray-set-i64! s (int->i64 st-cur) (get cur)) (flatarray-set-i64! s (int->i64 st-kk) (get kk))
+        (flatarray-set-i64! s (int->i64 st-fp) (get fp)) (flatarray-set-i64! s (int->i64 st-clo) (get clo))
+        (flatarray-set-i64! s (int->i64 st-dsp) (get dsp)) (flatarray-set-i64! s (int->i64 st-rsp) (get rsp))
+        (flatarray-set-i64! s (int->i64 st-fuel) (get fuel))
+        (flatarray-set-i64! s (int->i64 st-ds-limit) ds-limit)
+        (flatarray-set-i64! s (int->i64 st-rs-limit) (i64* 4 rs-limit))
+        (flatarray-set-i64! s (int->i64 st-ds-length) (flatarray-length-i64 (get ds)))
+        (flatarray-set-i64! s (int->i64 st-rs-push) (i64- (flatarray-length-i64 (get rs)) 4))
+        (set hand-entries (i64+ (get hand-entries) 1))
+        (let ((why (int->i64 (m s (get mem) (get ds) (get rs)))))
+          (begin
+            (set cur (flatarray-ref-i64 s (int->i64 st-cur))) (set kk (flatarray-ref-i64 s (int->i64 st-kk)))
+            (set fp (flatarray-ref-i64 s (int->i64 st-fp))) (set clo (flatarray-ref-i64 s (int->i64 st-clo)))
+            (set dsp (flatarray-ref-i64 s (int->i64 st-dsp))) (set rsp (flatarray-ref-i64 s (int->i64 st-rsp)))
+            (set fuel (flatarray-ref-i64 s (int->i64 st-fuel)))
+            (if (i64= why gave-back)
+                #t
+                (begin (trap! "tier 2: the return stack ran out under its marks (C126)") #f))))))))
+
+(define-rec
+  (hand-run! (subr cm (hand-code i64) unit)
+    (lambda (m base)
+      "The machine, then a cell of tier 1's, until the run ends."
+      (if (and (hand! m) (step! base)) (hand-run! m base) #u))))
 
 (define-datatype ran (ran-answer i64) (ran-failed string))
 
@@ -657,7 +698,13 @@
       (set dsp 0) (set rsp 0) (set cur v-false) (set kk 0) (set fp 0) (set clo v-false)
       (if (i64> steps (get slice)) (begin (set fuel (get slice)) (set reserve (i64- steps (get slice)))) (begin (set fuel steps) (set reserve 0)))
       (set trap-message "")
-      (if (enter! w) (begin (run! 0) #u) #u)
+      (if (enter! w)
+          (if (get hand-on)
+              (tagcase (hand-code!)
+                (made m (hand-run! m 0))
+                (failed why (trap! why)))
+              (run! 0))
+          #u)
       (cond ((trapped?) (ran-failed (get trap-message)))
             ((i64= (get dsp) 0) (ran-failed "the word left nothing"))
             (else (ran-answer (ds-at (i64- (get dsp) 1))))))))

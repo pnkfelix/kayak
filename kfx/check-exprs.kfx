@@ -2289,13 +2289,18 @@
                               s (cdr (cdr arm)) expected)
                         (refuse v "a tagcase's else is its last arm"))
                     (let* ((fields (variant-fields v (show-ty s whole) tag vs))
-                           (names (items (second arm))))
-                      (if (not (i64= (size names) (size fields)))
-                          (refuse v (string-append "the arm for " (string-append tag " names the wrong number of fields")))
+                           (listed (and (i64> (size arm) 1) (tagcase (second arm) (lst (xs f l p) #t) (else other #f))))
+                           (names (if listed (items (second arm)) nil)))
+                      (cond
+                        ((not listed)
+                         (refuse v (string-append "the arm for " (string-append tag (string-append " names its fields in a list: `(" (string-append tag " (name …) body …)`"))))))
+                        ((not (i64= (size names) (size fields)))
+                         (refuse v (string-append "the arm for " (string-append tag " names the wrong number of fields"))))
+                        (else
                           (tagcase (body (with-binds v (bind-fields v names fields)) s (cdr (cdr arm)) expected)
                             (res (t es s)
                               (tagcase (tag-arms v s whole (cdr tagged) (without-tag tag vs) (next-expected s t expected))
-                                (res (t2 es2 s) (res (joined s t t2 expected) (effs-union es es2) (join-state v s t t2 expected))))))))))))))
+                                (res (t2 es2 s) (res (joined s t t2 expected) (effs-union es es2) (join-state v s t t2 expected)))))))))))))))
 
       (tags-wanted (subr kfx (st strings tys) strings)
         (lambda (s ls ts)
@@ -3189,7 +3194,7 @@
                      (ty-data (d xs)
                        (tagcase (car xs)
                          (ty-proc (es ps r)
-                           (cond ((i64> (size ps) 3) (refuse v "a native procedure of more than three parameters, which KFX does not have yet (C116)"))
+                           (cond ((i64> (size ps) 4) (refuse v "a native procedure of more than four parameters, which KFX does not have yet (C116)"))
                                  ((or (not (native-crossing? s r)) (any? (lambda ((t ty)) (not (native-given? s t))) ps))
                                   (refuse v (string-append "a native procedure KFX cannot call yet: only integers, booleans, unit, characters, strings, lists of them and bloblets of them cross between kayak's values and native code, and procedures of the fx convention given it (C116): "
                                                            (show-ty s want))))

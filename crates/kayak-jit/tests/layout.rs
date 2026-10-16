@@ -40,6 +40,7 @@ fn the_kinds_and_closure_fields_are_fixpts() {
         ("kind-bloblet", layout::KIND_BLOBLET),
         ("kind-cellular-closure", layout::KIND_CELLULAR_CLOSURE),
         ("kind-native-closure", layout::KIND_NATIVE_CLOSURE),
+        ("kind-flat-array", layout::KIND_FLAT_ARRAY),
     ] {
         assert_eq!(value(name), ours as i64, "{name}");
     }

@@ -2608,6 +2608,11 @@ pub mod emitter {
                         return put(str_lit(">"), put_type(c, second(xs), put(str_lit(", "), put(element_lifetime(c, second(xs)), put(str_lit("RefAt<"), acc)))));
                     } else if sym_is_p(car(xs), str_lit("ref")) {
                         return put(str_lit(">"), put_type(c, second(xs), put(str_lit("Ref<"), acc)));
+                    } else if ((sym_is_p(car(xs), str_lit("%native")) || sym_is_p(car(xs), str_lit("%fx"))) && i64_eq(size(xs), 2i64)) {
+                        // A procedure of a convention as the checker records it (a `nil`'s
+                        // turbofish, C126): as a procedure of KFX's own is.
+                        t = second(xs);
+                        continue;
                     } else if (sym_is_p(car(xs), str_lit("subr")) && i64_eq(size(xs), 5i64) && head_is_p(second(xs), str_lit("conv"))) {
                         // A native procedure (C116): as a procedure of KFX's own is.
                         t = without_conv(t);
@@ -2742,12 +2747,12 @@ pub mod emitter {
                             }
                         }
                     } else {
-                        return error(str_lit("kfx: a type KFX-0 does not have"));
+                        return error(string_append(str_lit("kfx: a type KFX-0 does not have: "), show_sexp(t)));
                     }
                 }
                 _ => {
                     let other = tagcase_;
-                    return error(str_lit("kfx: a type KFX-0 does not have"));
+                    return error(string_append(str_lit("kfx: a type KFX-0 does not have: "), show_sexp(t)));
                 }
             }
         }

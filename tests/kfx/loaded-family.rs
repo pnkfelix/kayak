@@ -8,13 +8,13 @@ pub struct Product_3fst_3snd<A0, A1>(pub A0, pub A1);
 
 // A loaded module's family, named in another by `select` and applied
 // there (C119), as Fixpt's front end names its tables' type.
-pub mod made__load__0 {
+pub mod made__load__0__uses_family {
     use super::*;
 
 
 }
 
-pub mod made__load__1 {
+pub mod made__load__1__loaded_family {
     use super::*;
 
     pub mod fam {
@@ -35,7 +35,7 @@ pub mod made__load__1 {
 pub mod u {
     use super::*;
 
-    pub use super::made__load__1::{swap, made};
+    pub use super::made__load__1__loaded_family::{swap, made};
 }
 
 pub fn main() -> Str {

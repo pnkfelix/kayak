@@ -51,10 +51,10 @@
 (define sched-state (ref i64 @c) (new 3))
 
 (define-rec
-  (filled! (subr cm (i64 i64 (listof i64 @c)) i64)
+  (filled! (->* (i64 i64 (listof i64 @c)) i64)
     (lambda (v i xs) (if (null? xs) v (begin (obj-set! v i (car xs)) (filled! v (i64+ i 1) (cdr xs)))))))
 
-(define state! (subr cm () i64)
+(define state! (->* () i64)
   (lambda ()
     "The state's vector, made if there is none yet (Fixpt's `state`)."
     (if (is-kind? (get sched-state) k-vector)
@@ -64,9 +64,9 @@
                                 v-false v-null v-null v-false v-null v-null v-null))))
           (begin (set sched-state s) s)))))
 
-(define st (subr cm (i64) i64) (lambda (k) (obj-ref (state!) k)))
-(define st-set! (subr cm (i64 i64) unit) (lambda (k v) (obj-set! (state!) k v)))
-(define st-cons! (subr cm (i64 i64) unit) (lambda (k v) (st-set! k (cons! v (st k)))))
+(define st (->* (i64) i64) (lambda (k) (obj-ref (state!) k)))
+(define st-set! (->* (i64 i64) unit) (lambda (k v) (obj-set! (state!) k v)))
+(define st-cons! (->* (i64 i64) unit) (lambda (k v) (st-set! k (cons! v (st k)))))
 
 "Tasks: whether each is ended, and its quiet count with its grace in bit
  7; the first, 0, never ends."
@@ -75,22 +75,22 @@
 (define task-count (ref i64 @c) (new 1))
 (define task-now (ref i64 @c) (new 0))
 
-(define task-live? (subr cm (i64) bool)
+(define task-live? (->* (i64) bool)
   (lambda (t) (and (i64>= t 0) (i64< t (get task-count)) (i64= (flatarray-ref-i64 (get task-ended) t) 0))))
 
 (define-rec
-  (free-task (subr cm (i64) i64)
+  (free-task (->* (i64) i64)
     (lambda (t)
       (cond ((i64>= t (get task-count)) t)
             ((i64= (flatarray-ref-i64 (get task-ended) t) 1) t)
             (else (free-task (i64+ t 1)))))))
 
 (define-rec
-  (grown (subr cm ((flatarrayof i64 @c) (flatarrayof i64 @c) i64) (flatarrayof i64 @c))
+  (grown (->* ((flatarrayof i64 @c) (flatarrayof i64 @c) i64) (flatarrayof i64 @c))
     (lambda (from to i)
       (if (i64>= i (flatarray-length-i64 from)) to (begin (flatarray-set-i64! to i (flatarray-ref-i64 from i)) (grown from to (i64+ i 1)))))))
 
-(define task-new! (subr cm () i64)
+(define task-new! (->* () i64)
   (lambda ()
     "A new task, not current: its number, the lowest free (`task_new`)."
     (let ((t (free-task 1)))
@@ -106,10 +106,10 @@
         (flatarray-set-i64! (get task-quiet) t 0)
         t))))
 
-(define task-switch! (subr cm (i64) i64)
+(define task-switch! (->* (i64) i64)
   (lambda (t) "Task `t` made current: the task that was." (let ((was (get task-now))) (begin (set task-now t) was))))
 
-(define task-end! (subr cm (i64) unit)
+(define task-end! (->* (i64) unit)
   (lambda (t)
     "Task `t`, not the first, ended; if it is current, the first becomes so."
     (if (not (task-live? t))
@@ -119,55 +119,55 @@
             (flatarray-set-i64! (get task-ended) t 1)
             (set task-now (if (i64= was t) (the i64 0) was)))))))
 
-(define quiet (subr cm () i64) (lambda () (flatarray-ref-i64 (get task-quiet) (get task-now))))
-(define quiet-set! (subr cm (i64) unit) (lambda (q) (flatarray-set-i64! (get task-quiet) (get task-now) q)))
-(define quiet? (subr cm () bool) (lambda () (not (i64= (i64-and (quiet) 127) 0))))
-(define quiet-enter! (subr cm () unit)
+(define quiet (->* () i64) (lambda () (flatarray-ref-i64 (get task-quiet) (get task-now))))
+(define quiet-set! (->* (i64) unit) (lambda (q) (flatarray-set-i64! (get task-quiet) (get task-now) q)))
+(define quiet? (->* () bool) (lambda () (not (i64= (i64-and (quiet) 127) 0))))
+(define quiet-enter! (->* () unit)
   (lambda ()
     (let ((q (quiet)))
       (quiet-set! (i64-or (i64-and q 128) (let ((d (i64+ (i64-and q 127) 1))) (if (i64> d 127) (the i64 127) d)))))))
-(define quiet-leave! (subr cm () unit)
+(define quiet-leave! (->* () unit)
   (lambda ()
     "Out of a quiet; out of the last, a grace begins."
     (let* ((q (quiet)) (d (if (i64= (i64-and q 127) 0) (the i64 0) (i64- (i64-and q 127) 1))))
       (quiet-set! (i64-or d (if (i64= d 0) (the i64 128) (i64-and q 128)))))))
-(define take-grace! (subr cm () bool)
+(define take-grace! (->* () bool)
   (lambda () (let ((q (quiet))) (begin (quiet-set! (i64-and q 127)) (not (i64= (i64-and q 128) 0))))))
 
 "Lists in the heap."
 (define-rec
-  (heap-items (subr cm (i64) (listof i64 @c)) (lambda (l) (if (is-pair? l) (cons (pair-car l) (heap-items (pair-cdr l))) nil))))
+  (heap-items (->* (i64) (listof i64 @c)) (lambda (l) (if (is-pair? l) (cons (pair-car l) (heap-items (pair-cdr l))) nil))))
 
 (define-rec
-  (kept-of (subr cm ((listof i64 @c) (subr cm (i64) bool)) (listof i64 @c))
+  (kept-of (->* ((listof i64 @c) (subr cm (i64) bool)) (listof i64 @c))
     (lambda (xs drop) (cond ((null? xs) nil) ((drop (car xs)) (kept-of (cdr xs) drop)) (else (cons (car xs) (kept-of (cdr xs) drop)))))))
 
 (define-rec
-  (any-of? (subr cm (i64 (subr cm (i64) bool)) bool)
+  (any-of? (->* (i64 (subr cm (i64) bool)) bool)
     (lambda (l f) (and (is-pair? l) (or (f (pair-car l)) (any-of? (pair-cdr l) f))))))
 
-(define without! (subr cm (i64 (subr cm (i64) bool)) i64)
+(define without! (->* (i64 (subr cm (i64) bool)) i64)
   (lambda (l drop)
     "List `l` without the items `drop` picks, in order; `l` itself if it
      has none."
     (if (any-of? l drop) (list-of (kept-of (heap-items l) drop)) l)))
 
 (define-rec
-  (reversed-onto! (subr cm (i64 i64) i64)
+  (reversed-onto! (->* (i64 i64) i64)
     (lambda (l acc) (if (is-pair? l) (reversed-onto! (pair-cdr l) (cons! (pair-car l) acc)) acc))))
 
 (define-rec
-  (i64-in? (subr cm ((listof i64 @c) i64) bool)
+  (i64-in? (->* ((listof i64 @c) i64) bool)
     (lambda (xs x) (and (not (null? xs)) (or (i64= (car xs) x) (i64-in? (cdr xs) x))))))
 
 "The run queue."
-(define queue-push! (subr cm (i64) unit) (lambda (thunk) (st-cons! s-back thunk)))
+(define queue-push! (->* (i64) unit) (lambda (thunk) (st-cons! s-back thunk)))
 
 (define-rec
-  (pushed-each! (subr cm ((listof i64 @c)) unit)
+  (pushed-each! (->* ((listof i64 @c)) unit)
     (lambda (ws) (if (null? ws) #u (begin (queue-push! (car ws)) (pushed-each! (cdr ws)))))))
 
-(define queue-pop! (subr cm () i64)
+(define queue-pop! (->* () i64)
   (lambda ()
     "The next task to run, the oldest, or `#f` (`pop`)."
     (let ((front (if (i64= (st s-front) v-null)
@@ -177,7 +177,7 @@
           (begin (st-set! s-front v-null) v-false)
           (begin (st-set! s-front (pair-cdr front)) (pair-car front))))))
 
-(define pop-any! (subr cm () i64)
+(define pop-any! (->* () i64)
   (lambda ()
     "The next task to run, or, with none, the oldest parked one."
     (let ((t (queue-pop!)))
@@ -192,7 +192,7 @@
  copies (Fixpt's `shared`), and the copy (`copy_within`): pairs and
  bloblets, sharing and cycles kept, raw suffixes as they are, frozen
  flags too."
-(define shared? (subr cm (i64) bool)
+(define shared? (->* (i64) bool)
   (lambda (v)
     (and (not (is-pair? v))
          (let ((k (kind-of v)))
@@ -204,17 +204,17 @@
 (define copy-words (ref i64 @c) (new 0))
 
 (define-rec
-  (moved-to (subr cm ((listof moved @c) i64) i64)
+  (moved-to (->* ((listof moved @c) i64) i64)
     (lambda (ms v) (if (null? ms) 0 (tagcase (car ms) (moved (a b) (if (i64= a v) b (moved-to (cdr ms) v))))))))
 
-(define has-trailer? (subr cm (i64) bool) (lambda (v) (i64= (tag-of (word-at (i64- (address v) 1))) t-trailer)))
+(define has-trailer? (->* (i64) bool) (lambda (v) (i64= (tag-of (word-at (i64- (address v) 1))) t-trailer)))
 
 (define-rec
-  (slots-onto (subr cm (i64 i64 i64 (listof i64 @c)) (listof i64 @c))
+  (slots-onto (->* (i64 i64 i64 (listof i64 @c)) (listof i64 @c))
     (lambda (v k last acc) (if (i64> k last) acc (slots-onto v (i64+ k 1) last (cons (slot-of v k) acc))))))
 
 (define-rec
-  (discovered! (subr cm ((listof i64 @c)) unit)
+  (discovered! (->* ((listof i64 @c)) unit)
     (lambda (todo)
       (if (null? todo)
           #u
@@ -239,7 +239,7 @@
                        (set copy-words (i64+ (get copy-words) (i64+ (i64+ 1 (fields-of v)) (i64-quotient (i64+ (bytes-of v) 7) 8))))
                        (discovered! (slots-onto v from (fields-of v) rest)))))))))))
 
-(define copied-value (subr cm (i64) i64)
+(define copied-value (->* (i64) i64)
   (lambda (x)
     "What `x` is in the copy."
     (cond ((is-sref? x)
@@ -250,7 +250,7 @@
           (else x))))
 
 (define-rec
-  (filled-copy! (subr cm ((listof i64 @c)) unit)
+  (filled-copy! (->* ((listof i64 @c)) unit)
     (lambda (vs)
       (if (null? vs)
           #u
@@ -272,7 +272,7 @@
                       (frozen-as! c (fields-frozen? v) (suffix-frozen? v)))))
               (filled-copy! (cdr vs))))))))
 
-(define copy-within! (subr cm (i64) i64)
+(define copy-within! (->* (i64) i64)
   (lambda (root)
     "A copy of what `root` reaches, but for what is shared; the words
      copied counted in the state."
@@ -285,13 +285,13 @@
 
 "I-cells: whether full, the value, the waiters; mailboxes: messages,
  oldest first, then newest first, and the task waiting."
-(define make-icell! (subr cm () i64)
+(define make-icell! (->* () i64)
   (lambda ()
     "An i-cell (Fixpt's `sched::make_icell`): empty, no one waiting."
     (let ((c (make-bloblet! k-icell 3 0 #t #f)))
       (begin (slot-set! c 2 v-false) (slot-set! c 3 v-false) (slot-set! c 4 v-null) c))))
 
-(define cell-put! (subr cm (i64 i64) i64)
+(define cell-put! (->* (i64 i64) i64)
   (lambda (c v)
     "I-cell `c` given `v`, its one write; the tasks waiting for it run, in
      the order they began to wait (`icell_put`)."
@@ -306,14 +306,14 @@
                (pushed-each! (reverse (heap-items ws)))
                v-unit))))))
 
-(define make-mailbox! (subr cm () i64)
+(define make-mailbox! (->* () i64)
   (lambda ()
     (let ((m (make-bloblet! k-mailbox 3 0 #t #f)))
       (begin (slot-set! m 2 v-null) (slot-set! m 3 v-null) (slot-set! m 4 v-false) m))))
 
-(define mailbox-ready? (subr cm (i64) bool) (lambda (m) (or (is-pair? (slot-of m 2)) (is-pair? (slot-of m 3)))))
+(define mailbox-ready? (->* (i64) bool) (lambda (m) (or (is-pair? (slot-of m 2)) (is-pair? (slot-of m 3)))))
 
-(define mailbox-put! (subr cm (i64 i64) i64)
+(define mailbox-put! (->* (i64 i64) i64)
   (lambda (m v)
     "The message copied, at the back; the receiver, if it waits, run."
     (let ((msg (copy-within! v)))
@@ -324,7 +324,7 @@
             (let ((w (slot-of m 4))) (begin (slot-set! m 4 v-false) (queue-push! w))))
         v-unit))))
 
-(define mailbox-take! (subr cm (i64) i64)
+(define mailbox-take! (->* (i64) i64)
   (lambda (m)
     "The oldest message, taken."
     (let ((front (if (is-pair? (slot-of m 2))
@@ -335,7 +335,7 @@
           (begin (slot-set! m 2 (pair-cdr front)) (pair-car front))))))
 
 "Timers: each waker run once the clock reaches its time."
-(define timer-add! (subr cm (i64 i64) i64)
+(define timer-add! (->* (i64 i64) i64)
   (lambda (t w)
     (begin
       (if (i64>= (clock) t)
@@ -343,15 +343,15 @@
           (st-cons! s-timers (cons! (fix (cond ((i64> t fix-max) fix-max) ((i64< t fix-min) fix-min) (else t))) w)))
       v-unit)))
 
-(define timer-due? (subr cm () bool)
+(define timer-due? (->* () bool)
   (lambda () (let ((now (clock))) (any-of? (st s-timers) (lambda (e) (i64<= (fix-val (pair-car e)) now))))))
 
 (define-rec
-  (timers-earliest (subr cm (i64 i64) i64)
+  (timers-earliest (->* (i64 i64) i64)
     (lambda (l e) (if (is-pair? l) (timers-earliest (pair-cdr l) (let ((t (fix-val (pair-car (pair-car l))))) (if (i64< t e) t e))) e))))
 
 (define-rec
-  (timer-by-time (subr cm (i64 (listof i64 @c)) (listof i64 @c))
+  (timer-by-time (->* (i64 (listof i64 @c)) (listof i64 @c))
     (lambda (e xs)
       "Timer `e` among `xs`, sorted by time, after those of its own."
       (cond ((null? xs) (list e))
@@ -359,15 +359,15 @@
             (else (cons (car xs) (timer-by-time e (cdr xs))))))))
 
 (define-rec
-  (timers-sorted (subr cm ((listof i64 @c) (listof i64 @c)) (listof i64 @c))
+  (timers-sorted (->* ((listof i64 @c) (listof i64 @c)) (listof i64 @c))
     (lambda (xs acc) (if (null? xs) acc (timers-sorted (cdr xs) (timer-by-time (car xs) acc))))))
 
 (define-rec
-  (heap-cdrs (subr cm ((listof i64 @c)) (listof i64 @c)) (lambda (xs) (if (null? xs) nil (cons (pair-cdr (car xs)) (heap-cdrs (cdr xs)))))))
+  (heap-cdrs (->* ((listof i64 @c)) (listof i64 @c)) (lambda (xs) (if (null? xs) nil (cons (pair-cdr (car xs)) (heap-cdrs (cdr xs)))))))
 (define-rec
-  (heap-cars (subr cm ((listof i64 @c)) (listof i64 @c)) (lambda (xs) (if (null? xs) nil (cons (pair-car (car xs)) (heap-cars (cdr xs)))))))
+  (heap-cars (->* ((listof i64 @c)) (listof i64 @c)) (lambda (xs) (if (null? xs) nil (cons (pair-car (car xs)) (heap-cars (cdr xs)))))))
 
-(define timers-wait! (subr cm (bool) i64)
+(define timers-wait! (->* (bool) i64)
   (lambda (sleep)
     "When no task can run and the first waits: `#f` if no timer is set;
      else, having slept until the earliest (if `sleep`), each timer due
@@ -388,17 +388,17 @@
 
 "Tasks the scheduler keeps."
 (define-rec
-  (assq-cdr (subr cm (i64 i64) i64)
+  (assq-cdr (->* (i64 i64) i64)
     (lambda (l t)
       "The first entry's of `l` for `t`, its value, or `#f`."
       (cond ((not (is-pair? l)) v-false)
             ((i64= (pair-car (pair-car l)) t) (pair-cdr (pair-car l)))
             (else (assq-cdr (pair-cdr l) t))))))
 
-(define group-of (subr cm (i64) i64)
+(define group-of (->* (i64) i64)
   (lambda (t) "The group task `t` is of, or `#f`." (if (is-kind? (get sched-state) k-vector) (assq-cdr (st s-groups) t) v-false)))
 
-(define forget-task! (subr cm (i64) unit)
+(define forget-task! (->* (i64) unit)
   (lambda (t)
     "What the scheduler kept of task `t`, ended (`forget_task`)."
     (begin
@@ -408,10 +408,10 @@
       (st-set! s-parents (without! (st s-parents) (lambda (e) (or (i64= (pair-car e) t) (i64= (pair-cdr e) t)))))
       (st-set! s-waiting (without! (st s-waiting) (lambda (e) (i64= (pair-car e) t)))))))
 
-(define cancelled? (subr cm (i64) bool)
+(define cancelled? (->* (i64) bool)
   (lambda (t) (any-of? (st s-cancelled) (lambda (c) (i64= c t)))))
 
-(define reaped! (subr cm () i64)
+(define reaped! (->* () i64)
   (lambda ()
     "Each cancelled task that waits, `(task . stop)`, taken from those that
      wait (`REAP`)."
@@ -422,7 +422,7 @@
       (begin (st-set! s-waiting (without! ws gone)) (list-of them)))))
 
 "Preemption and failure, for the machine."
-(define wanted! (subr cm (bool) bool)
+(define wanted! (->* (bool) bool)
   (lambda (reach)
     "Whether the scheduler would have the current task preempted here; in
      a task, `reach` says whether the scheduler's prompt is on the
@@ -433,10 +433,10 @@
                 (i64= (fix-val (st s-running)) 0)))
           (else (and (not (i64= (st s-tag) v-false)) reach)))))
 
-(define sched-tag (subr cm () i64)
+(define sched-tag (->* () i64)
   (lambda () "The scheduler's prompt tag, or `#f`." (if (is-kind? (get sched-state) k-vector) (st s-tag) v-false)))
 
-(define preempt-due! (subr cm (bool) i64)
+(define preempt-due! (->* (bool) i64)
   (lambda (reach)
     "At a poll whose slice is spent: the scheduler's `preempt`, for the
      machine to call there, the task then quiet until it has; or `#f`
@@ -449,7 +449,7 @@
               v-false)))))
 
 (define-rec
-  (groups-within (subr cm ((listof i64 @c)) (listof i64 @c))
+  (groups-within (->* ((listof i64 @c)) (listof i64 @c))
     (lambda (gs)
       "`gs`, with every group inside one of them (`BRANCH_GROUP`)."
       (let ((more (kept-of (heap-cars (kept-of (heap-items (st s-parents)) (lambda ((e i64)) (not (i64-in? gs (pair-cdr e))))))
@@ -457,24 +457,24 @@
         (if (null? more)
             gs
             (groups-within (onto-new gs more))))))
-  (onto-new (subr cm ((listof i64 @c) (listof i64 @c)) (listof i64 @c))
+  (onto-new (->* ((listof i64 @c) (listof i64 @c)) (listof i64 @c))
     (lambda (gs xs) (cond ((null? xs) gs) ((i64-in? gs (car xs)) (onto-new gs (cdr xs))) (else (onto-new (cons (car xs) gs) (cdr xs)))))))
 
 (define-rec
-  (last-monitor (subr cm (i64 i64 i64) i64)
+  (last-monitor (->* (i64 i64 i64) i64)
     (lambda (l g found)
       (cond ((not (is-pair? l)) found)
             ((i64= (pair-car (pair-car l)) g) (last-monitor (pair-cdr l) g (pair-cdr (pair-car l))))
             (else (last-monitor (pair-cdr l) g found))))))
 
 (define-rec
-  (pushed-cancelled! (subr cm ((listof i64 @c)) unit)
+  (pushed-cancelled! (->* ((listof i64 @c)) unit)
     (lambda (ts) (if (null? ts) #u (begin (st-cons! s-cancelled (car ts)) (pushed-cancelled! (cdr ts)))))))
 
 (define-rec
-  (all-quiet-left! (subr cm () unit) (lambda () (if (quiet?) (begin (quiet-leave!) (all-quiet-left!)) #u))))
+  (all-quiet-left! (->* () unit) (lambda () (if (quiet?) (begin (quiet-leave!) (all-quiet-left!)) #u))))
 
-(define task-failed! (subr cm (string bool) i64)
+(define task-failed! (->* (string bool) i64)
   (lambda (message reach)
     "The current task failed with `message`: if it is of a monitored group
      and the scheduler's prompt is on the stack (`reach`), the rest of the

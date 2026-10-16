@@ -1158,40 +1158,116 @@ pub fn failed_in_task_x() -> bool {
     }
 }
 
+/// One cell, as tier 1 runs it: whether the run goes on.
+pub fn step_x(base: i64) -> bool {
+    let cell = slot_of(get(cur()), get(kk()));
+    set(kk(), i64_plus(get(kk()), 1i64));
+    if (i64_eq(get(fuel()), 0i64) && i64_eq(get(reserve()), 0i64)) {
+        trap_x(str_lit("evaluation step limit exceeded"));
+        false
+    } else if (i64_eq(get(fuel()), 0i64) && poll_x()) {
+        true
+    } else {
+        set(fuel(), i64_minus(get(fuel()), 1i64));
+        let flow = if is_fixnum_p(cell) {
+            routine_x(fix_val(cell))
+        } else {
+            enter_x(cell);
+            next()
+        };
+        if (trapped_p() && failed_in_task_x()) {
+            true
+        } else if trapped_p() {
+            false
+        } else if i64_eq(flow, next()) {
+            true
+        } else if i64_eq(flow, exit_flow()) {
+            if i64_eq(get(rsp()), base) {
+                false
+            } else {
+                pop_return_x();
+                true
+            }
+        } else {
+            false
+        }
+    }
+}
+
 /// Cells, one after another, until the run ends, halts or traps.
-pub fn run_x(mut base: i64) -> i64 {
+pub fn run_x(mut base: i64) -> () {
     loop {
-        let cell = slot_of(get(cur()), get(kk()));
-        set(kk(), i64_plus(get(kk()), 1i64));
-        if (i64_eq(get(fuel()), 0i64) && i64_eq(get(reserve()), 0i64)) {
-            trap_x(str_lit("evaluation step limit exceeded"));
-            return halt_flow();
-        } else if (i64_eq(get(fuel()), 0i64) && poll_x()) {
+        if step_x(base) {
             continue;
         } else {
-            set(fuel(), i64_minus(get(fuel()), 1i64));
-            let flow = if is_fixnum_p(cell) {
-                routine_x(fix_val(cell))
-            } else {
-                enter_x(cell);
-                next()
-            };
-            if (trapped_p() && failed_in_task_x()) {
-                continue;
-            } else if trapped_p() {
-                return halt_flow();
-            } else if i64_eq(flow, next()) {
-                continue;
-            } else if i64_eq(flow, exit_flow()) {
-                if i64_eq(get(rsp()), base) {
-                    return halt_flow();
-                } else {
-                    pop_return_x();
-                    continue;
-                }
-            } else {
-                return halt_flow();
-            }
+            return ();
+        }
+    }
+}
+
+// Tier 2 (C126): the hand machine (hand.kfx) runs cells until it gives
+// one back; tier 1 runs that one; and so on. The machine is given tier 1's
+// registers in its state, and tier 1's heap and stacks themselves.
+pub fn hand_on() -> Ref<bool> {
+    kayak_rt::kept_constant!(ONCE: Ref<bool>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(false)
+    })
+}
+
+pub fn hand_state() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(st_size(), 0i64))
+    })
+}
+
+pub fn hand_entries() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+/// The machine run from tier 1's registers until it gives a cell back:
+/// whether it did (else it stopped the run, which it traps).
+pub fn hand_x(m: HandCode) -> bool {
+    let s = get(hand_state());
+    flatarray_set_i64_x(s, int_to_i64(st_cur()), get(cur()));
+    flatarray_set_i64_x(s, int_to_i64(st_kk()), get(kk()));
+    flatarray_set_i64_x(s, int_to_i64(st_fp()), get(fp()));
+    flatarray_set_i64_x(s, int_to_i64(st_clo()), get(clo()));
+    flatarray_set_i64_x(s, int_to_i64(st_dsp()), get(dsp()));
+    flatarray_set_i64_x(s, int_to_i64(st_rsp()), get(rsp()));
+    flatarray_set_i64_x(s, int_to_i64(st_fuel()), get(fuel()));
+    flatarray_set_i64_x(s, int_to_i64(st_ds_limit()), ds_limit());
+    flatarray_set_i64_x(s, int_to_i64(st_rs_limit()), i64_star(4i64, rs_limit()));
+    flatarray_set_i64_x(s, int_to_i64(st_ds_length()), flatarray_length_i64(get(ds())));
+    flatarray_set_i64_x(s, int_to_i64(st_rs_push()), i64_minus(flatarray_length_i64(get(rs())), 4i64));
+    set(hand_entries(), i64_plus(get(hand_entries()), 1i64));
+    let why = int_to_i64(m(s, get(mem()), get(ds()), get(rs())));
+    set(cur(), flatarray_ref_i64(s, int_to_i64(st_cur())));
+    set(kk(), flatarray_ref_i64(s, int_to_i64(st_kk())));
+    set(fp(), flatarray_ref_i64(s, int_to_i64(st_fp())));
+    set(clo(), flatarray_ref_i64(s, int_to_i64(st_clo())));
+    set(dsp(), flatarray_ref_i64(s, int_to_i64(st_dsp())));
+    set(rsp(), flatarray_ref_i64(s, int_to_i64(st_rsp())));
+    set(fuel(), flatarray_ref_i64(s, int_to_i64(st_fuel())));
+    if i64_eq(why, gave_back()) {
+        true
+    } else {
+        trap_x(str_lit("tier 2: the return stack ran out under its marks (C126)"));
+        false
+    }
+}
+
+/// The machine, then a cell of tier 1's, until the run ends.
+pub fn hand_run_x(mut m: HandCode, mut base: i64) -> () {
+    loop {
+        if (hand_x(m) && step_x(base)) {
+            continue;
+        } else {
+            return ();
         }
     }
 }
@@ -1227,8 +1303,19 @@ pub fn run_word_x(w: i64, steps: i64) -> &'static Ran {
     };
     set(trap_message(), str_lit(""));
     if enter_x(w) {
-        run_x(0i64);
-        ()
+        if get(hand_on()) {
+            let tagcase_ = hand_code_x();
+            match *tagcase_ {
+                Sum_4made_6failed::Made(m) => {
+                    hand_run_x(m, 0i64)
+                }
+                Sum_4made_6failed::Failed(why) => {
+                    trap_x(why)
+                }
+            }
+        } else {
+            run_x(0i64)
+        }
     } else {
         ()
     };

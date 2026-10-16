@@ -626,7 +626,15 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    - `scripts/gen-vprims.py` is stale: `fx26/vprims.kfx` was edited by
      hand since (C110's refusals), so regenerating drops them. Bring the
      generator up to the file, or retire it.
-3. `kayak-jit`; the arm64 encoder in KFX; tier 2. **Begun (C116,
+3. `kayak-jit`; the arm64 encoder in KFX; tier 2. **Tier 2 under way
+   (C126, 2026-10-16)**: the hand machine emitted by KFX with
+   `fx26:arm64.fx`, on tier 1's memory shared; steps (1) flat arrays
+   shared with native code (**done**), (2) entry, `NEXT`, exit, stack and
+   control routines (**done**: 23 routines, 326 agree, `--hand`), (3) the
+   rest, by how often programs give back: calls (`call`, `tailcall`,
+   `tcall`, `ttailcall`), `free`, `field`, `prim` (its arguments
+   through, the primitive KFX's), allocation (`cons`, `closure`, bump
+   allocation in tier 1's heap, collecting given back). **Begun (C116,
    2026-10-15)**: Fixpt's §97 operations in KFX, the code area, the
    trampoline, `tests/kfx/made-code.kfx`. Next, toward Fixpt's
    `made-code/frames.fx` and `generated.fx` on kayak:

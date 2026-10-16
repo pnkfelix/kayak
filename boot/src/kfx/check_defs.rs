@@ -3961,6 +3961,19 @@ pub fn spliced_known(s: &'static SplicedTo) -> Keyeds {
     }
 }
 
+/// File `f`'s name as a part of a name: its letters and digits, each
+/// other character `-`; so that the loads of two files of one program,
+/// each counted from 0, are not named alike.
+pub fn file_tag(f: Str) -> Str {
+    rev_to_string(reverse(the::<Chars>(map(lambda1s(move |c: char| {
+        if (char_lower_p(c) || char_numeric_p(c)) {
+            c
+        } else {
+            '-'
+        }
+    }), string_chars(stem(f))))))
+}
+
 /// A load of a module already made: a module that includes it.
 pub fn included_module(name: Str, f: Str, l: i64, p: i64) -> &'static Sexp {
     lst(kayak_rt::heap_cons(sym(str_lit("module"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("include"), f, p), kayak_rt::heap_cons(sym(name, f, p), kayak_rt::nil())), f, l, p), kayak_rt::nil())), f, l, p)
@@ -4266,7 +4279,7 @@ pub fn spliced(e: &'static Sexp, dir: Str, loaded: Fileds, chain: Strings, known
                         let forms = import_items(read_all(string_chars(car(found)), path, 1i64));
                         let its = parameters_given(forms, args, path);
                         let inner = spliced_each(its, directory_of(path), loaded, kayak_rt::heap_cons(path, chain), known, nil::<&'static Sexp>(), nil::<&'static Sexp>(), f, l, p);
-                        let name = string_append(str_lit("made--load--"), i64_to_string(size(spliced_known(inner))));
+                        let name = string_append(str_lit("made--load--"), string_append(i64_to_string(size(spliced_known(inner))), string_append(str_lit("--"), file_tag(f))));
                         let sees = map(lambda1s(move |k: &'static Keyed| {
                             let tagcase_ = k;
                             match *tagcase_ {

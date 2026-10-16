@@ -62,6 +62,11 @@ pub mod layout {
     pub const KIND_BLOBLET: u8 = 32;
     pub const KIND_CELLULAR_CLOSURE: u8 = 38;
     pub const KIND_NATIVE_CLOSURE: u8 = 41;
+    pub const KIND_FLAT_ARRAY: u8 = 42;
+    /// A flat array's element code for `i64` (Fixpt's `FLAT_I64`), its one
+    /// field, slot 2, beside its trailer.
+    pub const FLAT_I64: u64 = 2;
+    pub const FLAT_CODE: usize = 2;
     /// A native closure's fields, numbered as slots: the trailer is 1.
     pub const CLOSURE_CODE: usize = 2;
 
