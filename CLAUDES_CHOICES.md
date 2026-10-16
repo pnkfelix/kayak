@@ -2723,8 +2723,14 @@ code; `tests/kfx/made-code.kfx` (Fixpt's `leaves.fx`'s adder) answers
   a function of kayak-rt's (`cons`), which a Rust field is apart from;
   a procedure's type written as an abbreviation of an included module's
   is written out by the checker for the emitter (`def-type`).
-- **Left for `generated.fx`**: Fixpt makes a path once, however many
-  times it is loaded (one value), so `convention.fx`'s datatypes and the
-  program's own load of `convention-types.fx` are the same; KFX makes
-  each load its own Rust `mod`, and refuses (stricter, so K1 holds).
-  Loads shared, as Fixpt's, is the next step of the module-file work.
+- **Fixpt's `generated.fx`, as it is** (`made-generated`): `frames.fx`'s
+  code made from a convention read as data (`fx26:convention.fx`, reading
+  kayak's own `native-convention`) by Fixpt's encoder. On the way: a
+  hidden `include` of a named module leaves its types that module's, as
+  Fixpt has it (only a module made in place gives the includer its
+  abstract types, `include-abstract-hidden.fx`); `string-append` of more
+  than two; and in the emitter, an included module's datatypes and their
+  tags are a module's own, its tags first, since KFX's tags are found by
+  name and another load of the same file (the program's `cvt`) has the
+  same ones. Loads are not merged: Fixpt keeps each binding's abstract
+  types apart, which one Rust `mod` would not.

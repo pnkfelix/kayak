@@ -1177,14 +1177,23 @@
 (define hidden-type-names (subr kfx (sexps) strings)
   (lambda (forms) (concat (map item-type-names (hidden-items forms)))))
 
+(define made-in-place? (subr kfx (string) bool)
+  (lambda (n)
+    "Whether module `n` is one made in place, defined before its user as
+     `made--P` (C90), not a `load-input`'s module bound by name (C116)."
+    (and (has-prefix? n "made--") (not (has-prefix? n "made--input--")))))
+
 (define hidden-escapes (subr kfx (cv sexps) unit)
   (lambda (v forms)
     "A hidden datatype or generative type in a type the module shows is
      refused, as FX-26 refuses it, for now (`modules/hide-escape.fx`)."
     (let ((abstract (concat (map (lambda ((g sexp))
                                    (cond ((or (head-is? g "define-datatype") (head-is? g "define-generative")) (item-names g))
-                                         ((head-is? g "include")
-                                          "A hidden include's abstract types are hidden too (C90)."
+                                         ((and (head-is? g "include") (made-in-place? (sym-name (second (items g)))))
+                                          "A hidden include's abstract types are hidden too (C90), of a
+                                           module made in place, which are the includer's own; a named
+                                           module's stay its own, as FX-26 has it (C116: Fixpt's
+                                           `convention.fx`, its `let`'s module included)."
                                           (let ((n (sym-name (second (items g)))))
                                             (concat (map (lambda ((d dt)) (tagcase d (dt (dn ps vs)
                                                                             (if (has-prefix? dn (string-append n "..")) (the strings (list (after-prefix dn (string-append n "..")))) nil))))

@@ -1297,6 +1297,12 @@
           (ctx (ds ts ks ls xs fs ms es mods)
             (any? (lambda ((f fact)) (tagcase f (fact (ff fp fw) (has-prefix? fw "blob-at ")))) fs)))))
 
+    (define tags-noted (subr kfx (sexps string tagofs) tagofs)
+      (lambda (variants d ts)
+        "Datatype `d`'s tags, its `variants`', before `ts`: `note-tags`, given on
+         to the writing of modules (C116)."
+        (note-tags variants d ts)))
+
     (define fact-said (subr kfx (ctx sexp string) string)
       (lambda (c e prefix)
         "What the checker found about `e` that begins `prefix`, the rest; or ``:
@@ -1881,7 +1887,11 @@
            itself, and awaited (C45)."
           (tagcase (car xs)
             (sym (h at-file at-pos)
-              (cond ((not (string=? (fact-with c e "head-unbox ") ""))
+              (cond ((and (string=? h "string-append") (i64> (size xs) 3) (string=? (local-kind h (ctx-locals c)) ""))
+                     "FX-26's `string-append` of more than two strings (C116): each
+                      onto the rest's."
+                     (put-call c e (list (car xs) (second xs) (lst (cons (car xs) (cdr (cdr xs))) "" 0 0)) n t acc))
+                    ((not (string=? (fact-with c e "head-unbox ") ""))
                      "A call of a union narrowed to its procedure (C75)."
                      (let* ((acc (put "(kayak_rt::value::unbox_other::<" acc))
                             (acc (put-type c (car (read-all (string-chars (fact-with c e "head-unbox ")) "" 1)) acc))

@@ -1877,14 +1877,23 @@ pub fn hidden_type_names(forms: Sexps) -> Strings {
     concat(map(&item_type_names, hidden_items(forms)))
 }
 
+/// Whether module `n` is one made in place, defined before its user as
+/// `made--P` (C90), not a `load-input`'s module bound by name (C116).
+pub fn made_in_place_p(n: Str) -> bool {
+    (has_prefix_p(n, str_lit("made--")) && not(has_prefix_p(n, str_lit("made--input--"))))
+}
+
 /// A hidden datatype or generative type in a type the module shows is
 /// refused, as FX-26 refuses it, for now (`modules/hide-escape.fx`).
 pub fn hidden_escapes(v: &'static Cv, forms: Sexps) -> () {
     let r#abstract = concat(map(lambda1s(move |g: &'static Sexp| {
         if (head_is_p(g, str_lit("define-datatype")) || head_is_p(g, str_lit("define-generative"))) {
             item_names(g)
-        } else if head_is_p(g, str_lit("include")) {
-            // A hidden include's abstract types are hidden too (C90).
+        } else if (head_is_p(g, str_lit("include")) && made_in_place_p(sym_name(second(items(g))))) {
+            // A hidden include's abstract types are hidden too (C90), of a
+            // module made in place, which are the includer's own; a named
+            // module's stay its own, as FX-26 has it (C116: Fixpt's
+            // `convention.fx`, its `let`'s module included).
             let n = sym_name(second(items(g)));
             concat(map(lambda1s(move |d: &'static Dt| {
                 let tagcase_ = d;

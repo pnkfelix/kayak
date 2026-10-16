@@ -1334,3 +1334,7 @@ recursion 3000 deep) and `declared.fx` run on kayak as on Fixpt.
 Then: `load-input` of a built-in file, `#x` literals, and Fixpt's arm64
 encoder (`fx26:arm64.fx`) through KFX as it is: `made-encoded` encodes
 `sub` by it and runs the code, as on Fixpt.
+
+Then: Fixpt's `generated.fx` as it is (`made-generated`): a convention
+read as data by Fixpt's `convention.fx`, code made from it by Fixpt's
+encoder, run on kayak as on Fixpt.

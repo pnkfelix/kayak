@@ -2856,6 +2856,11 @@
                    (refuse v (string-append "(" (string-append h " ...) is FX-26's form, which KFX does not have, or a call of a local named by that keyword"))))
                   ((and (null? found) (string=? h "abort-current-continuation")) (abort-call v s args))
                   ((and (null? found) (string=? h "native-procedure")) (native-call v s args expected))
+                  ((and (string=? h "string-append") (i64> (size args) 2) (not (null? found))
+                        (tagcase (car found) (bind (n sc w) (string=? w "prim"))))
+                   "FX-26's `string-append` of more than two strings (C116), as KFX's of two,
+                    each onto the rest's."
+                   (synth-call v s h (list (car args) (lst (cons (sym "string-append" "" 0) (cdr args)) "" 0 0)) expected))
                   ((and (null? found) (string=? h "apply") (i64= (size args) 2))
                    "`(apply f xs)` (C71): a variadic procedure on a list's elements."
                    (tagcase (synth v s (car args))

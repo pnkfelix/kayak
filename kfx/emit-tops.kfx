@@ -789,7 +789,35 @@
                                      written)))
                  (forms (types-once c forms nil))
                  (outer (tagcase c (ctx (ds ts ks ls xs fs ms es mods)
-                                     (ctx ds ts
+                                     ;; An included module's datatypes are this one's by their
+                                     ;; names, references as every datatype is (C116: Fixpt's
+                                     ;; `convention.fx`, its types included hidden).
+                                     (ctx (onto (concat (map (lambda ((f sexp))
+                                                               (if (or (head-is? f "include") (head-is? f "%use"))
+                                                                   (concat (map (lambda ((g sexp))
+                                                                                  (if (head-is? g "define-datatype")
+                                                                                      (the strings (list (type-head-name (second (items g)))))
+                                                                                      nil))
+                                                                                (module-items c (sym-name (second (items f))))))
+                                                                   nil))
+                                                             forms))
+                                                ds)
+                                          ;; And their tags first, before any other datatype's of the
+                                          ;; same tags, which another load of the same file has (C116:
+                                          ;; KFX's tags are found by name, the latest first).
+                                          (onto (concat (map (lambda ((f sexp))
+                                                               (if (or (head-is? f "include") (head-is? f "%use"))
+                                                                   (let ((n (sym-name (second (items f)))))
+                                                                     (concat (map (lambda ((g sexp))
+                                                                                    (if (head-is? g "define-datatype")
+                                                                                        (tags-noted (cdr (cdr (items g)))
+                                                                                                   (string-append n (string-append ".." (type-head-name (second (items g)))))
+                                                                                                   nil)
+                                                                                        nil))
+                                                                                  (module-items c n))))
+                                                                   nil))
+                                                             forms))
+                                                ts)
                                           (onto (concat (map (lambda ((f sexp))
                                                                (if (or (head-is? f "include") (head-is? f "%use"))
                                                                    (item-constants (module-items c (sym-name (second (items f)))))

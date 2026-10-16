@@ -19,7 +19,7 @@ pub fn mparts(f0: &'static Ctx, f1: Sexps) -> &'static Mparts {
 pub mod writing {
     use super::*;
 
-    use super::emitter::{fallible_effect_p, crossing_effect_p, suspending_effect_p, fact_at_p, concat_strings, reverse_strings, split_words, shape_name, ctx_locals, module_body, include_except_names, module_items, type_head_name, item_values, item_constants, item_types, module_here, ctx_typed, with_locals, in_heap, head_region_params, head_place_params, head_type_params, put_generics_of, collect, value_path, type_path, places_used, words_of_sep, all_facts_prefixed, uses_blobrefs_p, fact_said, family_expanded, written_out, put_type, put_flat, expand_aliases, owner_key, typed_flat, has_sum_p, effect_lifetime, atoms_in, element_lifetime, put_fields_tuple, region_arguments, place_arguments, used_place_arguments, type_arguments, put_types, put_nl, put_comment, comment_p, comment_text, hide, put_arg_names, tail_calls_p, arms_tail_calls_p, tag_arms_tail_calls_p, distinct_strings, put_exp, put_call, put_continue, put_joined, put_stmts, put_block, put_typecase_arms, put_cond, put_let1, put_let_star, put_binding_values, put_binding_names, put_let, put_case_arms, put_tagcase_arms, put_fields_of, put_tagcase, put_flat_tagcase, put_flat_arms, put_quasi, put_quasi_tagged, put_quasi_items, put_lambda, put_lambda_params, put_letrec, letrec_loops_p, put_looping_lambda, put_list, put_form, put_args, put_letrena, put_process, put_par, put_par_pattern, put_par_tree, sexp_at, put_pselect, put_letrena_params, held_at, held_rust, held_type, put_prompt, put_suspending_prompt, put_handler_call, put_suspension, put_question, head_sym_p};
+    use super::emitter::{fallible_effect_p, crossing_effect_p, suspending_effect_p, fact_at_p, concat_strings, reverse_strings, split_words, shape_name, ctx_locals, module_body, include_except_names, module_items, type_head_name, item_values, item_constants, item_types, module_here, ctx_typed, with_locals, in_heap, head_region_params, head_place_params, head_type_params, put_generics_of, collect, value_path, type_path, places_used, words_of_sep, all_facts_prefixed, uses_blobrefs_p, tags_noted, fact_said, family_expanded, written_out, put_type, put_flat, expand_aliases, owner_key, typed_flat, has_sum_p, effect_lifetime, atoms_in, element_lifetime, put_fields_tuple, region_arguments, place_arguments, used_place_arguments, type_arguments, put_types, put_nl, put_comment, comment_p, comment_text, hide, put_arg_names, tail_calls_p, arms_tail_calls_p, tag_arms_tail_calls_p, distinct_strings, put_exp, put_call, put_continue, put_joined, put_stmts, put_block, put_typecase_arms, put_cond, put_let1, put_let_star, put_binding_values, put_binding_names, put_let, put_case_arms, put_tagcase_arms, put_fields_of, put_tagcase, put_flat_tagcase, put_flat_arms, put_quasi, put_quasi_tagged, put_quasi_items, put_lambda, put_lambda_params, put_letrec, letrec_loops_p, put_looping_lambda, put_list, put_form, put_args, put_letrena, put_process, put_par, put_par_pattern, put_par_tree, sexp_at, put_pselect, put_letrena_params, held_at, held_rust, held_type, put_prompt, put_suspending_prompt, put_handler_call, put_suspension, put_question, head_sym_p};
 
     // Top-level forms
 
@@ -1360,7 +1360,32 @@ pub mod writing {
             let tagcase_ = c;
             match *tagcase_ {
                 Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-                    ctx(ds, ts, onto(concat(map(lambda1s(move |f: &'static Sexp| {
+                    ctx(onto(concat(map(lambda1s(move |f: &'static Sexp| {
+                        if (head_is_p(f, str_lit("include")) || head_is_p(f, str_lit("%use"))) {
+                            concat(map(lambda1s(move |g: &'static Sexp| {
+                                if head_is_p(g, str_lit("define-datatype")) {
+                                    the::<Strings>(kayak_rt::heap_cons(type_head_name(second(items(g))), kayak_rt::nil()))
+                                } else {
+                                    nil::<Str>()
+                                }
+                            }), module_items(c, sym_name(second(items(f))))))
+                        } else {
+                            nil::<Str>()
+                        }
+                    }), forms)), ds), onto(concat(map(lambda1s(move |f: &'static Sexp| {
+                        if (head_is_p(f, str_lit("include")) || head_is_p(f, str_lit("%use"))) {
+                            let n = sym_name(second(items(f)));
+                            concat(map(lambda1s(move |g: &'static Sexp| {
+                                if head_is_p(g, str_lit("define-datatype")) {
+                                    tags_noted(cdr(cdr(items(g))), string_append(n, string_append(str_lit(".."), type_head_name(second(items(g))))), nil::<&'static Tagof>())
+                                } else {
+                                    nil::<&'static Tagof>()
+                                }
+                            }), module_items(c, n)))
+                        } else {
+                            nil::<&'static Tagof>()
+                        }
+                    }), forms)), ts), onto(concat(map(lambda1s(move |f: &'static Sexp| {
                         if (head_is_p(f, str_lit("include")) || head_is_p(f, str_lit("%use"))) {
                             item_constants(module_items(c, sym_name(second(items(f)))))
                         } else {

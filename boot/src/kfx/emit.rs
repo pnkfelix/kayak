@@ -2413,6 +2413,12 @@ pub mod emitter {
         }
     }
 
+    /// Datatype `d`'s tags, its `variants`', before `ts`: `note-tags`, given on
+    /// to the writing of modules (C116).
+    pub fn tags_noted(variants: Sexps, d: Str, ts: Tagofs) -> Tagofs {
+        note_tags(variants, d, ts)
+    }
+
     /// What the checker found about `e` that begins `prefix`, the rest; or ``:
     /// `fact-with`, given on to the writing of definitions (C116).
     pub fn fact_said(c: &'static Ctx, e: &'static Sexp, prefix: Str) -> Str {
@@ -3469,47 +3475,54 @@ pub mod emitter {
     /// which is of any type, as FX-26's `void` is below every type. A call
     /// that may suspend: its future boxed, so that an `async fn` may call
     /// itself, and awaited (C45).
-    pub fn put_call(c: &'static Ctx, e: &'static Sexp, xs: Sexps, n: i64, t: &'static Tail, acc: Chars) -> Chars {
-        let tagcase_ = car(xs);
-        match *tagcase_ {
-            Sexp::Sym(h, at_file, at_pos) => {
-                if not(string_eq_p(fact_with(c, e, str_lit("head-unbox ")), str_lit(""))) {
-                    // A call of a union narrowed to its procedure (C75).
-                    let acc = put(str_lit("(kayak_rt::value::unbox_other::<"), acc);
-                    let acc = put_type(c, car(read_all(string_chars(fact_with(c, e, str_lit("head-unbox "))), str_lit(""), 1i64)), acc);
-                    let acc = put(str_lit(">("), acc);
-                    let acc = put_var(c, h, acc);
-                    let acc = put(str_lit("))("), acc);
-                    put_question(c, e, put(str_lit(")"), if null_p(cdr(xs)) {
+    pub fn put_call(mut c: &'static Ctx, mut e: &'static Sexp, mut xs: Sexps, mut n: i64, mut t: &'static Tail, mut acc: Chars) -> Chars {
+        loop {
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Sexp::Sym(h, at_file, at_pos) => {
+                    if (string_eq_p(h, str_lit("string-append")) && i64_gt(size(xs), 3i64) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+                        // FX-26's `string-append` of more than two strings (C116): each
+                        // onto the rest's.
+                        xs = kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(xs), cdr(cdr(xs))), str_lit(""), 0i64, 0i64), kayak_rt::nil())));
+                        continue;
+                    } else if not(string_eq_p(fact_with(c, e, str_lit("head-unbox ")), str_lit(""))) {
+                        // A call of a union narrowed to its procedure (C75).
+                        let acc = put(str_lit("(kayak_rt::value::unbox_other::<"), acc);
+                        let acc = put_type(c, car(read_all(string_chars(fact_with(c, e, str_lit("head-unbox "))), str_lit(""), 1i64)), acc);
+                        let acc = put(str_lit(">("), acc);
+                        let acc = put_var(c, h, acc);
+                        let acc = put(str_lit("))("), acc);
+                        return put_question(c, e, put(str_lit(")"), if null_p(cdr(xs)) {
+                            acc
+                        } else {
+                            put_joined(c, cdr(xs), str_lit(", "), n, acc)
+                        }));
+                    } else if not(fact_at_p(c, e, str_lit("suspending-call"))) {
+                        return put_form(c, e, h, cdr(xs), n, t, acc);
+                    } else if async_here_p(c) {
+                        return put_form(c, e, h, cdr(xs), n, t, put(str_lit("kayak_rt::suspend::body("), acc));
+                    } else {
+                        return put_form(c, e, h, cdr(xs), n, t, put(str_lit("kayak_rt::suspend::block(kayak_rt::suspend::body("), acc));
+                    }
+                }
+                _ => {
+                    let head = tagcase_;
+                    let acc = if not(fact_at_p(c, e, str_lit("suspending-call"))) {
+                        acc
+                    } else if async_here_p(c) {
+                        put(str_lit("kayak_rt::suspend::body("), acc)
+                    } else {
+                        put(str_lit("kayak_rt::suspend::block(kayak_rt::suspend::body("), acc)
+                    };
+                    let acc = put(str_lit("("), acc);
+                    let acc = put_exp(c, head, n, value(), acc);
+                    let acc = put(str_lit(")("), acc);
+                    return put_question(c, e, put(str_lit(")"), if null_p(cdr(xs)) {
                         acc
                     } else {
                         put_joined(c, cdr(xs), str_lit(", "), n, acc)
-                    }))
-                } else if not(fact_at_p(c, e, str_lit("suspending-call"))) {
-                    put_form(c, e, h, cdr(xs), n, t, acc)
-                } else if async_here_p(c) {
-                    put_form(c, e, h, cdr(xs), n, t, put(str_lit("kayak_rt::suspend::body("), acc))
-                } else {
-                    put_form(c, e, h, cdr(xs), n, t, put(str_lit("kayak_rt::suspend::block(kayak_rt::suspend::body("), acc))
+                    }));
                 }
-            }
-            _ => {
-                let head = tagcase_;
-                let acc = if not(fact_at_p(c, e, str_lit("suspending-call"))) {
-                    acc
-                } else if async_here_p(c) {
-                    put(str_lit("kayak_rt::suspend::body("), acc)
-                } else {
-                    put(str_lit("kayak_rt::suspend::block(kayak_rt::suspend::body("), acc)
-                };
-                let acc = put(str_lit("("), acc);
-                let acc = put_exp(c, head, n, value(), acc);
-                let acc = put(str_lit(")("), acc);
-                put_question(c, e, put(str_lit(")"), if null_p(cdr(xs)) {
-                    acc
-                } else {
-                    put_joined(c, cdr(xs), str_lit(", "), n, acc)
-                }))
             }
         }
     }
