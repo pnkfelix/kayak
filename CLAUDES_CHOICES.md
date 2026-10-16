@@ -2650,3 +2650,44 @@ it refuses, kayak refuses all.
 (read @globals) spin)`. Everywhere an effect is written: the REPL, kfx's
 messages, `--check`. The comparison (C114): the same lines for 74 of the
 357 programs Fixpt accepts, from 22; no program is now merely alike.
+
+## C116. Code a program makes and runs, in KFX (2026-10-15, TODO §31; Fixpt's TODO §97)
+
+FX-26 now places and runs machine code (Fixpt `bc3890e`, our request):
+`seal-code`, `native-procedure`, `native-code?`, `(io native)`, and the
+native convention declared (`define-convention`, Fixpt's
+`native-arm64.conv`). KFX has the first three and the effect, and
+`(subr (conv native) E (T ...) R)`; `crates/kayak-jit` places and runs the
+code; `tests/kfx/made-code.kfx` (Fixpt's `leaves.fx`'s adder) answers
+`native 42` as Rust and on Fixpt.
+- **Where made code meets kayak's values.** On Fixpt the program and its
+  code share one heap; kayak's values are Rust's. So what crosses is what
+  both lay out alike: integers that are fixnums, booleans, unit,
+  characters (kayak-rt's `Native`), and `seal-code` takes a bloblet of no
+  fields. Stricter than FX-26, so K1 holds; widened as the layouts are
+  made to agree (a bytevector with Fixpt's header before its bytes next,
+  for a heap native code reaches through a field).
+- **The direction this sets** for the native compiler's runtime: an FX-26
+  program kayak compiles runs in a heap of Fixpt's layout that KFX code
+  owns as data, collected by KFX, entered by native procedures, its
+  routines (`foreign`, `cons`, `poll`, ...) KFX procedures reached through
+  fields; the same KFX and the same machine code running on Fixpt and on
+  kayak, compared as `made-code.kfx` is. Not kayak-rt standing in for KFX.
+- **The convention**: kayak-jit's state block at the declared offsets;
+  the pinned registers set by a trampoline that keeps every register Rust
+  keeps. The routines are not kayak's yet: each entry is a stub back to
+  the trampoline, so made code calling one fails, naming it, rather than
+  jumping to nothing. `define-convention` not yet.
+- **The code area**: as Fixpt's, mapped twice (`mach_vm_remap`), sealed
+  copies laid out as Fixpt's (header, fields, trailer, code); never freed,
+  as nothing of kayak's heap is. `unsafe` only in kayak-jit (Q7); kayak-rt
+  stays safe.
+- **The type**: `(subr (conv native) ...)` is a wrapper in the checker
+  (`%native`, as `%vsubr` is), so that no lambda is one and none passes
+  for a procedure of KFX's own; past the checker it is the procedure's
+  Rust type (`without-conv`). `native-procedure` only under a `the` of
+  such a type, of at most three parameters.
+- Else possible: copy kayak's values into Fixpt's layout at each call
+  (eq? would not hold, and the cost is per call); or let kayak-rt be the
+  native runtime in Rust (the substitution the user ruled out, decision
+  5 of `native.md`).

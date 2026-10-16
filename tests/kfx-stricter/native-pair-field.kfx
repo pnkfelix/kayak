@@ -1,0 +1,6 @@
+"Fixpt's made-code/leaves.fx's holder: code reading its own field, a
+ pair. kayak's values are not Fixpt's, so KFX seals only a bloblet of no
+ fields, and passes native code only what both lay out alike (C116)."
+(define-type held (bloblet (fields (pairof int int @heap)) @heap))
+(define holder (subr (maxeff (alloc @heap) (write @heap) (io native)) ((pairof int int @heap)) held)
+  (lambda (p) (seal-code (the held (make-bloblet 8 p)))))

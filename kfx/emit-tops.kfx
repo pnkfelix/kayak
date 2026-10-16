@@ -208,7 +208,7 @@
           (lambda (c t)
             "Whether a type is, or holds, a procedure that may suspend: one whose
              future, `'static`, can hold no lifetime's data (C46)."
-            (tagcase (family-expanded c t)
+            (tagcase (without-conv (family-expanded c t))
               (lst (xs f l p)
                 (cond ((null? xs) #f)
                       ((and (sym-is? (car xs) "subr") (suspending-effect? c (second xs))) #t)

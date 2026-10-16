@@ -298,6 +298,18 @@
       (lst (xs src-file src-line src-pos) (and (not (null? xs)) (sym-is? (car xs) s)))
       (else other #f))))
 
+(define without-conv (subr kfx (sexp) sexp)
+  (lambda (t)
+    "A type `(subr (conv C) E (T ...) R)` as `(subr E (T ...) R)`: a native
+     procedure is in Rust as any is (C116), so past the checker no pass
+     need know its convention."
+    (tagcase t
+      (lst (xs f l p)
+        (if (and (head-is? t "subr") (i64= (size xs) 5) (head-is? (car (cdr xs)) "conv"))
+            (lst (cons (car xs) (cdr (cdr xs))) f l p)
+            t))
+      (else other t))))
+
 (define second (subr kfx (sexps) sexp) (lambda (xs) (car (cdr xs))))
 (define third (subr kfx (sexps) sexp) (lambda (xs) (car (cdr (cdr xs)))))
 (define fourth (subr kfx (sexps) sexp) (lambda (xs) (car (cdr (cdr (cdr xs))))))

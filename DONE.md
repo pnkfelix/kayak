@@ -1312,3 +1312,13 @@ minutes): no stage 0 on Fixpt, fewer incremental edits.
 C113: the procedures a failing run's continuation holds, innermost first,
 with a recursion's calls counted; in the REPL and in `kayak-fx26 --run`,
 which now ends as Fixpt's run does (status 70). `tests/repl/backtrace.keys`.
+
+## §31: code a program makes and runs (2026-10-15)
+
+Fixpt pinned at `bc3890e` (its §97, our request). KFX has `seal-code`,
+`native-procedure`, `native-code?`, `(io native)` and `(subr (conv native)
+...)`; `crates/kayak-jit` maps the code area twice, seals copies laid out
+as Fixpt's, and enters code by a trampoline in the native convention, the
+routines stubs back to it. `tests/kfx/made-code.kfx` (Fixpt's
+`leaves.fx`'s adder) answers `native 42` as Rust and on Fixpt; four
+programs KFX refuses and Fixpt does not, two both refuse. C116.

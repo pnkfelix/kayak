@@ -1,0 +1,2 @@
+"A procedure type of a convention nothing declares (C116)."
+(define f (subr (conv nowhere) pure (int) int) (lambda (x) x))

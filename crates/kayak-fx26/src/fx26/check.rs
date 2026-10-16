@@ -671,7 +671,7 @@ pub fn io_error_text() -> Str {
 
 /// The `io` effects' kinds, a fixed family (C49).
 pub fn io_kind_p(k: Str) -> bool {
-    string_member_p(k, kayak_rt::heap_cons(str_lit("stdin"), kayak_rt::heap_cons(str_lit("stdout"), kayak_rt::heap_cons(str_lit("stderr"), kayak_rt::heap_cons(str_lit("fs-read"), kayak_rt::heap_cons(str_lit("fs-write"), kayak_rt::heap_cons(str_lit("clock"), kayak_rt::heap_cons(str_lit("args"), kayak_rt::heap_cons(str_lit("exit"), kayak_rt::heap_cons(str_lit("terminal"), kayak_rt::nil()))))))))))
+    string_member_p(k, kayak_rt::heap_cons(str_lit("stdin"), kayak_rt::heap_cons(str_lit("stdout"), kayak_rt::heap_cons(str_lit("stderr"), kayak_rt::heap_cons(str_lit("fs-read"), kayak_rt::heap_cons(str_lit("fs-write"), kayak_rt::heap_cons(str_lit("clock"), kayak_rt::heap_cons(str_lit("args"), kayak_rt::heap_cons(str_lit("exit"), kayak_rt::heap_cons(str_lit("terminal"), kayak_rt::heap_cons(str_lit("native"), kayak_rt::nil())))))))))))
 }
 
 pub fn parse_effect(v: &'static Cv, tvars: Strings, e: &'static Sexp) -> Strings {
@@ -2268,6 +2268,17 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                         t = sym(name, str_lit(""), 0i64);
                         continue;
                     }
+                } else if (sym_is_p(car(xs), str_lit("subr")) && i64_eq(size(xs), 5i64) && head_is_p(second(xs), str_lit("conv"))) {
+                    // A procedure of a convention (C116), `(subr (conv C) E (T ...) R)`:
+                    // only the native one, which made code keeps (Fixpt's TODO §97), and
+                    // only as `native-procedure` makes it; a name `define-convention`
+                    // binds, not yet. Wrapped, so that no lambda is one, nor is one a
+                    // procedure of KFX's own.
+                    if (i64_eq(size(items(second(xs))), 2i64) && sym_is_p(second(items(second(xs))), str_lit("native"))) {
+                        return ty_data(str_lit("%native"), kayak_rt::heap_cons(ty_proc(parse_effect(v, tvars, third(xs)), parse_types(v, tvars, items(fourth(xs))), parse_type(v, tvars, car(cdr(cdr(cdr(cdr(xs))))))), kayak_rt::nil()));
+                    } else {
+                        return match refuse(v, string_append(str_lit("a convention KFX does not have: "), show_sexp(second(xs)))) {};
+                    }
                 } else if sym_is_p(car(xs), str_lit("subr")) {
                     return ty_proc(parse_effect(v, tvars, second(xs)), parse_types(v, tvars, items(third(xs))), parse_type(v, tvars, fourth(xs)));
                 } else if {
@@ -2606,6 +2617,8 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
                 string_append(str_lit("(poly ("), string_append(binders_shown(poly_binders_of(args)), string_append(str_lit(") "), string_append(show_ty(s, poly_written(args)), str_lit(")")))))
             } else if (string_eq_p(d, str_lit("%addr")) || string_eq_p(d, str_lit("%inbox")) || string_eq_p(d, str_lit("%icell"))) {
                 string_append(str_lit("("), string_append(after_prefix(d, str_lit("%")), string_append(str_lit(" "), string_append(show_tys(s, args), str_lit(")")))))
+            } else if string_eq_p(d, str_lit("%native")) {
+                string_append(str_lit("(subr (conv native) "), after_prefix(show_ty(s, car(args)), str_lit("(subr ")))
             } else if string_eq_p(d, str_lit("%vsubr")) {
                 string_append(str_lit("(vsubr "), string_append({
                     let tagcase_ = car(args);
@@ -3148,8 +3161,39 @@ pub fn repeat_ty(t: &'static Ty, n: i64) -> Tys {
     }
 }
 
+/// Whether a value of type `t` crosses between kayak's values and native
+/// code's as the same word in both (C116, kayak-rt's `Native`).
+pub fn native_crossing_p(s: &'static St, t: &'static Ty) -> bool {
+    let tagcase_ = walk(s, t);
+    match *tagcase_ {
+        Ty::TyInt() => {
+            true
+        }
+        Ty::TyNat() => {
+            true
+        }
+        Ty::TyI64() => {
+            true
+        }
+        Ty::TyBool() => {
+            true
+        }
+        Ty::TyUnit() => {
+            true
+        }
+        Ty::TyChar() => {
+            true
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
 /// A variadic procedure called with `n` arguments, as the procedure of `n`
-/// `T`s it is then (C71); any other type, itself.
+/// `T`s it is then (C71); a native one, its procedure (C116); any other
+/// type, itself.
 pub fn vsubr_as_proc(t: &'static Ty, n: i64) -> &'static Ty {
     let tagcase_ = t;
     match *tagcase_ {
@@ -3167,6 +3211,9 @@ pub fn vsubr_as_proc(t: &'static Ty, n: i64) -> &'static Ty {
                         }
                     }
                 }, repeat_ty(car(cdr(args)), n), car(cdr(cdr(args))))
+            } else if string_eq_p(d, str_lit("%native")) {
+                // A native procedure (C116), called as any is.
+                car(args)
             } else {
                 t
             }

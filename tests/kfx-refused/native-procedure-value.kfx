@@ -1,0 +1,3 @@
+"native-procedure is named only as a call's operator (Fixpt's TODO §97,
+ C116), as `cwcc` is."
+(define make native-procedure)

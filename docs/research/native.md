@@ -132,7 +132,14 @@ both, written once.
    in for a KFX procedure's FX-26 body, which was the other way (dropped).
    The request is the user's to send; until the pin moves, kayak's side
    (the code area, the encoder) is built against it.
-6. **Each tier checked against the one below**, by code where both make
+6. **Made code meets kayak's values where both lay them out alike**
+   (C116, 2026-10-15, once Fixpt had §97): fixnums, booleans, unit,
+   characters; a bloblet of no fields sealed. The native compiler's
+   object programs run in a heap of Fixpt's layout that KFX owns as data
+   and collects, entered by native procedures, the convention's routines
+   KFX procedures reached through fields, so that the same KFX and the
+   same machine code run on Fixpt and on kayak.
+7. **Each tier checked against the one below**, by code where both make
    code (cells with Fixpt's, instructions between tiers 4 and 5 where they
    overlap) and by answers on every program, as Fixpt's
    `every_program_on_every_machine`.

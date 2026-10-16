@@ -1,0 +1,28 @@
+;;; Code a program makes and runs (C116; Fixpt's TODO §97, its
+;;; programs/made-code/leaves.fx): a bloblet whose suffix is arm64 machine
+;;; code, sealed into the code area, made a native procedure at a stated
+;;; type. Where this machine runs no native code, the answer it would give.
+
+;; Instruction `w` at byte `at` of `b`'s suffix, little-endian.
+(define* put4 (subr (write @heap) ((bloblet (fields) @heap) int int) unit)
+  (lambda (b at w)
+    (begin (bloblet-set-byte! b at (modulo w 256))
+           (bloblet-set-byte! b (+ at 1) (modulo (quotient w 256) 256))
+           (bloblet-set-byte! b (+ at 2) (modulo (quotient w 65536) 256))
+           (bloblet-set-byte! b (+ at 3) (quotient w 16777216)))))
+
+;; `add x0, x1, x2; ret`: two fixnums' sum, their tags 0.
+(define* adder (subr (maxeff (alloc @heap) (write @heap) (io native)) ()
+                     (subr (conv native) pure (int int) int))
+  (lambda ()
+    (let ((b (the (bloblet (fields) @heap) (make-bloblet 8))))
+      (begin (put4 b 0 2332164128)
+             (put4 b 4 3596551104)
+             (the (subr (conv native) pure (int int) int) (native-procedure (seal-code b)))))))
+
+"Whether this machine runs made code, and the leaf's sum, or the answer
+ it would give."
+(define main (subr (maxeff (read @globals) (alloc @heap) (write @heap) (io native)) () string)
+  (lambda ()
+    (string-append (if (native-code?) "native " "interpreted ")
+                   (int->string (if (native-code?) ((adder) 20 22) 42)))))

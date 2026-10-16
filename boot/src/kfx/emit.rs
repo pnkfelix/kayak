@@ -2571,6 +2571,10 @@ pub mod emitter {
                         return put(str_lit(">"), put_type(c, second(xs), put(str_lit(", "), put(element_lifetime(c, second(xs)), put(str_lit("RefAt<"), acc)))));
                     } else if sym_is_p(car(xs), str_lit("ref")) {
                         return put(str_lit(">"), put_type(c, second(xs), put(str_lit("Ref<"), acc)));
+                    } else if (sym_is_p(car(xs), str_lit("subr")) && i64_eq(size(xs), 5i64) && head_is_p(second(xs), str_lit("conv"))) {
+                        // A native procedure (C116): as a procedure of KFX's own is.
+                        t = without_conv(t);
+                        continue;
                     } else if sym_is_p(car(xs), str_lit("subr")) {
                         // A procedure: a `dyn Fn`, `Send + Sync` if its effect is one a process
                         // may have (C102).
@@ -4196,6 +4200,18 @@ pub mod emitter {
                         return put_exp(c, car(xs), n, value(), acc);
                     }
                 }
+            } else if (string_eq_p(h, str_lit("the")) && head_is_p(second(xs), str_lit("native-procedure")) && string_eq_p(local_kind(str_lit("native-procedure"), ctx_locals(c)), str_lit(""))) {
+                // `native_procedureN::<T, ..., R>(c)` (C116): made code, a procedure
+                // of the type `the` says.
+                let ys = items(without_conv(car(xs)));
+                let ps = items(third(ys));
+                let acc = put(string_append(str_lit("native_procedure"), string_append(i64_to_string(size(ps)), str_lit("::<"))), acc);
+                let acc = put_sep(lambda2s(move |p: &'static Sexp, acc: List<char>| {
+                    put_type(c, p, acc)
+                }), str_lit(", "), onto(ps, kayak_rt::heap_cons(fourth(ys), kayak_rt::nil())), acc);
+                let acc = put(str_lit(">("), acc);
+                let acc = put_exp(c, second(items(second(xs))), n, value(), acc);
+                return put(str_lit(")"), acc);
             } else if string_eq_p(h, str_lit("the")) {
                 // `the::<T>(e)`: the type said to rustc too, which may need it where
                 // FX-26's checker did (a tag's payload, a list nothing else types).

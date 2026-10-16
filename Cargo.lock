@@ -10,9 +10,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "kayak-jit"
+version = "0.1.0"
+
+[[package]]
 name = "kayak-rt"
 version = "0.1.0"
 dependencies = [
+ "kayak-jit",
  "kayak-sync",
 ]
 

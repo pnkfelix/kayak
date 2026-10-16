@@ -1,0 +1,12 @@
+[package]
+name = "kayak-jit"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+# Machine code a program made, placed and run (docs/research/native.md,
+# decision 4; C116): the code area mapped twice, the instruction cache
+# flushed, the trampoline into the native convention. One of kayak's crates
+# with `unsafe` (PLAN.md Q7), and nothing but this in it.
+[lints.rust]
+unsafe_code = "allow"

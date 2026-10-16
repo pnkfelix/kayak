@@ -649,6 +649,26 @@ pub fn head_is_p(e: &'static Sexp, s: Str) -> bool {
     }
 }
 
+/// A type `(subr (conv C) E (T ...) R)` as `(subr E (T ...) R)`: a native
+/// procedure is in Rust as any is (C116), so past the checker no pass
+/// need know its convention.
+pub fn without_conv(t: &'static Sexp) -> &'static Sexp {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            if (head_is_p(t, str_lit("subr")) && i64_eq(size(xs), 5i64) && head_is_p(car(cdr(xs)), str_lit("conv"))) {
+                lst(kayak_rt::heap_cons(car(xs), cdr(cdr(xs))), f, l, p)
+            } else {
+                t
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            t
+        }
+    }
+}
+
 pub fn second(xs: Sexps) -> &'static Sexp {
     car(cdr(xs))
 }

@@ -389,7 +389,7 @@ pub mod writing {
     /// future, `'static`, can hold no lifetime's data (C46).
     pub fn mentions_suspension_p(mut c: &'static Ctx, mut t: &'static Sexp) -> bool {
         loop {
-            let tagcase_ = family_expanded(c, t);
+            let tagcase_ = without_conv(family_expanded(c, t));
             match *tagcase_ {
                 Sexp::Lst(xs, f, l, p) => {
                     if null_p(xs) {

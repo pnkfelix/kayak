@@ -1,0 +1,3 @@
+"A lambda where a native procedure is wanted: FX-26 makes it a native
+ closure; KFX's native procedures are made code alone (C116)."
+(define f (subr (conv native) pure (int) int) (lambda (x) x))

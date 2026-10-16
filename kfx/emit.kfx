@@ -1378,6 +1378,9 @@
                      (put ">" (put-type c (second xs) (put ", " (put (element-lifetime c (second xs)) (put "RefAt<" acc))))))
                     ((sym-is? (car xs) "ref")
                      (put ">" (put-type c (second xs) (put "Ref<" acc))))
+                    ((and (sym-is? (car xs) "subr") (i64= (size xs) 5) (head-is? (second xs) "conv"))
+                     "A native procedure (C116): as a procedure of KFX's own is."
+                     (put-type c (without-conv t) acc))
                     ((sym-is? (car xs) "subr")
                      "A procedure: a `dyn Fn`, `Send + Sync` if its effect is one a process
                       may have (C102)."
@@ -2358,6 +2361,16 @@
                    (big (text f p) (put "\")" (put text (put "int_text(\"" acc))))
                    (lst (ys f l p) (put-quoted c (car xs) acc))
                    (else other (put-exp c (car xs) n (value) acc))))
+                ((and (string=? h "the") (head-is? (second xs) "native-procedure") (string=? (local-kind "native-procedure" (ctx-locals c)) ""))
+                 "`native_procedureN::<T, ..., R>(c)` (C116): made code, a procedure
+                  of the type `the` says."
+                 (let* ((ys (items (without-conv (car xs))))
+                        (ps (items (third ys)))
+                        (acc (put (string-append "native_procedure" (string-append (i64->string (size ps)) "::<")) acc))
+                        (acc (put-sep (lambda ((p sexp) acc) (put-type c p acc)) ", " (onto ps (list (fourth ys))) acc))
+                        (acc (put ">(" acc))
+                        (acc (put-exp c (second (items (second xs))) n (value) acc)))
+                   (put ")" acc)))
                 ((string=? h "the")
                  "`the::<T>(e)`: the type said to rustc too, which may need it where
                   FX-26's checker did (a tag's payload, a list nothing else types)."

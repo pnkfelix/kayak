@@ -6233,6 +6233,8 @@ pub mod expressions {
             match refuse(v, string_append(str_lit("("), string_append(h, str_lit(" ...) is FX-26's form, which KFX does not have, or a call of a local named by that keyword")))) {}
         } else if (null_p(found) && string_eq_p(h, str_lit("abort-current-continuation"))) {
             abort_call(v, s, args)
+        } else if (null_p(found) && string_eq_p(h, str_lit("native-procedure"))) {
+            native_call(v, s, args, expected)
         } else if (null_p(found) && string_eq_p(h, str_lit("apply")) && i64_eq(size(args), 2i64)) {
             // `(apply f xs)` (C71): a variadic procedure on a list's elements.
             let tagcase_ = synth(v, s, car(args));
@@ -6867,6 +6869,89 @@ pub mod expressions {
                 }
             }
         } && nat_args_p(v, s, cdr(args))))
+    }
+
+    /// `(native-procedure c)` (C116, Fixpt's TODO §97): a native closure of
+    /// code `seal-code` gave, trusted to be of the type expected, as `the`
+    /// says it, which must be a procedure of the native convention. Named
+    /// only as a call's operator, as FX-26 has it. What crosses into the
+    /// code and back is only what kayak's values and Fixpt's lay out alike
+    /// (kayak-rt's `Native`), of a bloblet of no fields, so stricter than
+    /// FX-26.
+    pub fn native_call(v: &'static Cv, s: &'static St, args: Sexps, expected: Tys) -> &'static Res {
+        let want = if null_p(expected) {
+            ty_unit()
+        } else {
+            walk(s, car(expected))
+        };
+        if not(i64_eq(size(args), 1i64)) {
+            match refuse(v, str_lit("native-procedure takes code seal-code gave")) {}
+        } else if null_p(expected) {
+            match refuse(v, str_lit("a native-procedure whose type is not known here: write it, (the (subr (conv native) E (T ...) R) (native-procedure c))")) {}
+        } else if not({
+            let tagcase_ = want;
+            match *tagcase_ {
+                Ty::TyData(d, xs) => {
+                    string_eq_p(d, str_lit("%native"))
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }) {
+            match refuse(v, string_append(str_lit("native-procedure of a type not of the native convention: "), show_ty(s, want))) {}
+        } else {
+            let tagcase_ = want;
+            match *tagcase_ {
+                Ty::TyData(d, xs) => {
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Ty::TyProc(es, ps, r) => {
+                            if i64_gt(size(ps), 3i64) {
+                                match refuse(v, str_lit("a native procedure of more than three parameters, which KFX does not have yet (C116)")) {}
+                            } else if any_p(lambda1s(move |t: &'static Ty| {
+                                not(native_crossing_p(s, t))
+                            }), kayak_rt::heap_cons(r, ps)) {
+                                match refuse(v, string_append(str_lit("a native procedure KFX cannot call yet: only integers, booleans, unit and characters cross between kayak's values and native code (C116): "), show_ty(s, want))) {}
+                            } else if (escapes_p(es) || suspends_p(es)) {
+                                match refuse(v, string_append(str_lit("a native procedure that may abort or suspend, which KFX does not have: "), show_ty(s, want))) {}
+                            } else {
+                                let tagcase_ = synth(v, s, car(args));
+                                match *tagcase_ {
+                                    Res::Res(t, es0, s0) => {
+                                        if {
+                                            let tagcase_ = walk(s0, t);
+                                            match *tagcase_ {
+                                                Ty::TyData(d2, ys) => {
+                                                    (string_eq_p(d2, str_lit("%bloblet")) && i64_eq(size(ys), 1i64))
+                                                }
+                                                _ => {
+                                                    let other = tagcase_;
+                                                    false
+                                                }
+                                            }
+                                        } {
+                                            res(want, effs_union(kayak_rt::heap_cons(str_lit("io:native"), kayak_rt::nil()), es0), s0)
+                                        } else {
+                                            match refuse(v, string_append(str_lit("native-procedure of what is not a bloblet of no fields, which KFX does not have: "), show_ty(s0, t))) {}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            match refuse(v, str_lit("native-procedure of a type not of the native convention")) {}
+                        }
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    match refuse(v, str_lit("native-procedure of a type not of the native convention")) {}
+                }
+            }
+        }
     }
 
     /// `(abort-current-continuation tag v)`: to the innermost prompt of

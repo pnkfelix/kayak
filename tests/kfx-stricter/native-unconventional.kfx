@@ -1,0 +1,7 @@
+"native-procedure at a procedure type of no convention said, the
+ program's own, which Fixpt takes as native; KFX says it, (subr (conv
+ native) ...), so that no procedure of its own is one (C116)."
+(define make (subr (maxeff (alloc @heap) (io native)) () (subr pure (int int) int))
+  (lambda ()
+    (the (subr pure (int int) int)
+         (native-procedure (seal-code (the (bloblet (fields) @heap) (make-bloblet 8)))))))

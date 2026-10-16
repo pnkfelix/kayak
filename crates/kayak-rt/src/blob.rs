@@ -16,6 +16,9 @@ pub struct Bloblet<Fs> {
     pub fields: Fs,
     suffix: Box<[Cell<u64>]>,
     bytes: usize,
+    /// Its copy in the code area, if it is one `seal-code` gave (C116): its
+    /// suffix frozen, its code runnable.
+    pub(crate) code: Option<kayak_jit::Code>,
 }
 
 /// An `int` as a size or an index: one past an `i64` is never small
@@ -34,6 +37,7 @@ impl<Fs> Bloblet<Fs> {
             fields,
             suffix: (0..bytes.div_ceil(8)).map(|_| Cell::new(0)).collect(),
             bytes,
+            code: None,
         }
     }
 
@@ -42,6 +46,9 @@ impl<Fs> Bloblet<Fs> {
     }
 
     fn set_byte(&self, i: usize, v: u64) {
+        if self.code.is_some() {
+            fail("the bloblet's suffix is frozen");
+        }
         let w = &self.suffix[i / 8];
         let sh = (i % 8) * 8;
         w.set((w.get() & !(0xff << sh)) | ((v & 0xff) << sh));
@@ -68,6 +75,9 @@ impl<Fs> Bloblet<Fs> {
         if at.checked_add(n).is_none_or(|end| end > self.bytes) {
             fail("blobref-set!: past the suffix");
         }
+        if self.code.is_some() {
+            fail("the bloblet's suffix is frozen");
+        }
         if n == 8 && at.is_multiple_of(8) {
             self.suffix[at / 8].set(v)
         } else if at.is_multiple_of(n) {
@@ -77,6 +87,21 @@ impl<Fs> Bloblet<Fs> {
             w.set((w.get() & !mask) | ((v << sh) & mask))
         } else {
             (0..n).for_each(|i| self.set_byte(at + i, v >> (i * 8)))
+        }
+    }
+}
+
+impl Bloblet<()> {
+    /// Its copy sealed into the code area (`seal-code`, C116): its suffix
+    /// the code, frozen.
+    pub(crate) fn sealed_copy(&self) -> Self {
+        let bytes: Vec<u8> = (0..self.bytes).map(|i| self.byte(i) as u8).collect();
+        let code = kayak_jit::seal(kayak_jit::layout::KIND_BLOBLET, &[], false, &bytes);
+        Bloblet {
+            fields: (),
+            suffix: self.suffix.clone(),
+            bytes: self.bytes,
+            code: Some(code),
         }
     }
 }
