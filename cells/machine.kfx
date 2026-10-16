@@ -1,0 +1,321 @@
+"machine.kfx: Fixpt's cellular machine (C122), its interpreter as Fixpt's
+ Rust one is (`fx-cells-rsinterp`), routine by routine: a data stack, a
+ return stack of four-word entries (word, next field, frame, closure),
+ the registers `cur k fp clo`. Each check where Fixpt makes it, each trap
+ its message, so a run ends as Fixpt's does. Not yet: prompts, marks,
+ continuations, native code, bignums.
+ fixpt-source: crates/fixpt-engine/src/cellular.rs@7641962"
+
+"The limits: values on the data stack, entries on the return stack."
+(define ds-limit i64 131072)
+(define rs-limit i64 65536)
+
+(define ds (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 (i64+ 131072 1024) 0)))
+(define dsp (ref i64 @c) (new 0))
+(define rs (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 (i64* 4 (i64+ 65536 16)) 0)))
+(define rsp (ref i64 @c) (new 0))
+(define cur (ref i64 @c) (new 3))
+(define kk (ref i64 @c) (new 0))
+(define fp (ref i64 @c) (new 0))
+(define clo (ref i64 @c) (new 3))
+(define fuel (ref i64 @c) (new 0))
+
+(define quoted (subr kfx (i64) string) (lambda (n) (string-append "`" (string-append (routine-name n) "`"))))
+(define type-trap! (subr cm (i64) unit)
+  (lambda (n)
+    (trap! (if (or (i64= n r-pair-car) (i64= n r-pair-cdr))
+               "car or cdr of a non-pair"
+               (string-append (quoted n) " was given a value of the wrong kind")))))
+(define overflow-trap! (subr cm (i64) unit) (lambda (n) (trap! (string-append (quoted n) "'s result does not fit"))))
+(define underflow-trap! (subr cm (i64) unit) (lambda (n) (trap! (string-append (quoted n) " found too few values on the data stack"))))
+(define field-trap! (subr cm (i64) unit) (lambda (n) (trap! (string-append (quoted n) " named a field that is not there"))))
+
+"The data stack."
+(define ds-at (subr cm (i64) i64) (lambda (i) (flatarray-ref-i64 (get ds) i)))
+(define ds-set! (subr cm (i64 i64) unit) (lambda (i v) (flatarray-set-i64! (get ds) i v)))
+(define push! (subr cm (i64) unit)
+  (lambda (v)
+    (if (i64>= (get dsp) (flatarray-length-i64 (get ds)))
+        (trap! "stack overflow")
+        (begin (ds-set! (get dsp) v) (set dsp (i64+ (get dsp) 1))))))
+(define pop! (subr cm (i64) i64)
+  (lambda (n)
+    "The value on top, popped; a trap in routine `n` if there is none."
+    (if (i64= (get dsp) 0)
+        (begin (underflow-trap! n) 0)
+        (begin (set dsp (i64- (get dsp) 1)) (ds-at (get dsp))))))
+(define pop-fix! (subr cm (i64) i64)
+  (lambda (n)
+    (let ((v (pop! n)))
+      (if (is-fixnum? v) (fix-val v) (begin (type-trap! n) 0)))))
+
+"The return stack."
+(define rs-push! (subr cm (i64) unit)
+  (lambda (v) (begin (flatarray-set-i64! (get rs) (get rsp) v) (set rsp (i64+ (get rsp) 1)))))
+(define rs-at (subr cm (i64) i64) (lambda (i) (flatarray-ref-i64 (get rs) i)))
+
+(define push-return! (subr cm () unit)
+  (lambda ()
+    (if (i64>= (i64+ (get rsp) 4) (flatarray-length-i64 (get rs)))
+        (trap! "stack overflow")
+        (begin (rs-push! (get cur)) (rs-push! (fix (get kk))) (rs-push! (fix (get fp))) (rs-push! (get clo))))))
+
+(define pop-return! (subr cm () unit)
+  (lambda ()
+    (let ((n (get rsp)))
+      (begin
+        (set clo (rs-at (i64- n 1)))
+        (set fp (fix-val (rs-at (i64- n 2))))
+        (set kk (fix-val (rs-at (i64- n 3))))
+        (set cur (rs-at (i64- n 4)))
+        (set rsp (i64- n 4))))))
+
+(define check-limits! (subr cm () unit)
+  (lambda ()
+    (if (or (i64> (get dsp) ds-limit) (i64>= (i64-quotient (get rsp) 4) rs-limit))
+        (trap! "stack overflow")
+        #u)))
+
+(define operand! (subr cm () i64)
+  (lambda () (let ((v (slot-of (get cur) (get kk)))) (begin (set kk (i64+ (get kk) 1)) v))))
+
+(define closure? (subr cm (i64) bool) (lambda (v) (is-kind? v k-closure)))
+(define word? (subr cm (i64) bool) (lambda (v) (is-kind? v k-code)))
+
+"Flows: what a routine leaves the loop to do."
+(define next i64 0)
+(define exit-flow i64 1)
+(define halt-flow i64 2)
+
+(define call! (subr cm (i64 i64 bool) i64)
+  (lambda (n count tail)
+    "Call the closure on top with the `count` values below it, which become
+     its frame; in tail position, its frame slid down over this one."
+    (if (i64< (get dsp) (i64+ (get fp) (i64+ count 1)))
+        (begin (underflow-trap! n) next)
+        (let ((c (pop! n)))
+          (if (not (closure? c))
+              (begin (type-trap! n) next)
+              (begin
+                (check-limits!)
+                (if tail
+                    (letrec ((slide (subr cm (i64 i64) unit)
+                               (lambda (from to)
+                                 (if (i64>= from (get dsp))
+                                     #u
+                                     (begin (ds-set! to (ds-at from)) (slide (i64+ from 1) (i64+ to 1)))))))
+                      (let ((from (i64- (get dsp) count)))
+                        (begin (slide from (get fp)) (set dsp (i64+ (get fp) count)))))
+                    (begin (push-return!) (set fp (i64- (get dsp) count))))
+                (set cur (slot-of c f-word))
+                (set kk f-cell0)
+                (set clo c)
+                next))))))
+
+(define-rec
+  (args-of (subr cm (i64 i64 (listof i64 @c)) (listof i64 @c))
+    (lambda (from i acc)
+      "The values from `from` up to `i`, deepest first."
+      (if (i64<= i from) acc (args-of from (i64- i 1) (cons (ds-at (i64- i 1)) acc))))))
+
+(define int-op! (subr cm (i64) i64)
+  (lambda (n)
+    (let* ((b (pop! n)) (a (pop! n)))
+      (begin
+        (if (and (is-fixnum? a) (is-fixnum? b))
+            (let ((x (fix-val a)) (y (fix-val b)))
+              (cond ((i64= n r-int-less) (push! (boolean (i64< x y))))
+                    ((i64= n r-int-eq) (push! (boolean (i64= a b))))
+                    (else (let ((r (if (i64= n r-int-add) (i64+ x y) (i64- x y))))
+                            (if (fits? r) (push! (fix r)) (trap! "tier 1 has no bignums yet (C122)"))))))
+            (type-trap! n))
+        next))))
+
+(define fix-op! (subr cm (i64) i64)
+  (lambda (n)
+    (let* ((y (pop-fix! n)) (x (pop-fix! n)))
+      (begin
+        (cond ((i64= n r-less) (push! (boolean (i64< x y))))
+              (else (let ((r (if (i64= n r-add) (i64+ x y) (i64- x y))))
+                      (if (fits? r) (push! (fix r)) (overflow-trap! n)))))
+        next))))
+
+(define-rec
+  (routine! (subr cm (i64) i64)
+    (lambda (n)
+      "Routine `n`, its operands the cells after it: what to do next."
+      (cond
+        ((i64= n r-slot)
+         (let ((i (fix-val (operand!))))
+           (begin (if (i64< (i64+ (get fp) i) (get dsp)) (push! (ds-at (i64+ (get fp) i))) (field-trap! n)) next)))
+        ((i64= n r-lit) (begin (push! (operand!)) next))
+        ((i64= n r-global) (begin (push! (slot-of (operand!) f-value)) next))
+        ((or (i64= n r-tcall) (i64= n r-ttailcall))
+         (let ((count (fix-val (operand!))))
+           (if (and (i64> (get dsp) (i64+ (get fp) count)) (closure? (ds-at (i64- (get dsp) 1))))
+               (call! n count (i64= n r-ttailcall))
+               (begin (type-trap! n) next))))
+        ((i64= n r-return)
+         (let ((v (pop! n)))
+           (if (i64< (get dsp) (get fp))
+               (begin (underflow-trap! n) next)
+               (begin (set dsp (get fp)) (push! v) exit-flow))))
+        ((i64= n r-closure)
+         (let* ((w (operand!)) (count (fix-val (operand!))))
+           (if (i64< (get dsp) (i64+ (get fp) count))
+               (begin (underflow-trap! n) next)
+               (let ((c (make-bloblet! k-closure (i64+ count 1) 0 #t #f))
+                     (base (i64- (get dsp) count)))
+                 (letrec ((fill (subr cm (i64) unit)
+                            (lambda (i)
+                              (if (i64>= i count)
+                                  #u
+                                  (begin (slot-set! c (i64+ f-free0 i) (ds-at (i64+ base i))) (fill (i64+ i 1)))))))
+                   (begin
+                     (slot-set! c f-word w)
+                     (fill 0)
+                     (set dsp base)
+                     (push! c)
+                     next))))))
+        ((i64= n r-global-set)
+         (let* ((g (operand!)) (x (pop! n)))
+           (begin
+             (slot-set! g f-value x)
+             (slot-set! g f-writes (fix (i64+ (fix-val (slot-of g f-writes)) 1)))
+             next)))
+        ((i64= n r-zbranch)
+         (let* ((flag (pop! n)) (off (fix-val (operand!))))
+           (begin
+             (if (i64= flag v-false) (begin (set kk (i64+ (get kk) off)) (check-limits!)) #u)
+             next)))
+        ((or (i64= n r-int-add) (i64= n r-int-sub) (i64= n r-int-less) (i64= n r-int-eq)) (int-op! n))
+        ((i64= n r-exit) exit-flow)
+        ((i64= n r-slot-set)
+         (let* ((i (fix-val (operand!))) (x (pop! n)))
+           (begin (if (i64< (i64+ (get fp) i) (get dsp)) (ds-set! (i64+ (get fp) i) x) (field-trap! n)) next)))
+        ((i64= n r-eq) (let* ((b (pop! n)) (a (pop! n))) (begin (push! (boolean (i64= a b))) next)))
+        ((or (i64= n r-pair-car) (i64= n r-pair-cdr) (i64= n r-car) (i64= n r-cdr))
+         (let ((p (pop! n)))
+           (begin
+             (if (is-pair? p)
+                 (push! (if (or (i64= n r-pair-car) (i64= n r-car)) (pair-car p) (pair-cdr p)))
+                 (type-trap! n))
+             next)))
+        ((i64= n r-prim)
+         (let* ((p (fix-val (operand!))) (count (fix-val (operand!))))
+           (cond ((i64< (get dsp) count) (begin (underflow-trap! n) next))
+                 ((or (i64< count (prim-min p)) (and (i64>= (prim-max p) 0) (i64> count (prim-max p))))
+                  (begin (trap! (string-append "`" (string-append (prim-name p) (string-append "` given " (string-append (i64->string count) " argument(s)"))))) next))
+                 (else
+                  (let* ((from (i64- (get dsp) count))
+                         (args (args-of from (get dsp) nil)))
+                    (begin (set dsp from) (push! (prim-apply! p args)) next))))))
+        ((i64= n r-cons)
+         (if (i64< (get dsp) 2)
+             (begin (underflow-trap! n) next)
+             (let* ((b (pop! n)) (a (pop! n))) (begin (push! (cons! a b)) next))))
+        ((i64= n r-branch)
+         (let ((off (fix-val (operand!)))) (begin (set kk (i64+ (get kk) off)) (check-limits!) next)))
+        ((or (i64= n r-add) (i64= n r-sub) (i64= n r-less)) (fix-op! n))
+        ((i64= n r-free)
+         (let ((i (fix-val (operand!))))
+           (begin
+             (if (and (is-bloblet? (get clo)) (field-ok? (get clo) (i64+ f-free0 i)))
+                 (push! (slot-of (get clo) (i64+ f-free0 i)))
+                 (field-trap! n))
+             next)))
+        ((or (i64= n r-call) (i64= n r-tailcall))
+         (call! n (fix-val (operand!)) (i64= n r-tailcall)))
+        ((i64= n r-field)
+         (let* ((k (fix-val (operand!))) (obj (pop! n)))
+           (begin
+             (cond ((not (is-bloblet? obj)) (type-trap! n))
+                   ((field-ok? obj k) (push! (slot-of obj k)))
+                   (else (field-trap! n)))
+             next)))
+        ((i64= n r-field-ref)
+         (let* ((kf (pop! n)) (obj (pop! n)))
+           (begin
+             (cond ((or (not (is-fixnum? kf)) (not (is-bloblet? obj))) (type-trap! n))
+                   ((and (i64>= (fix-val kf) 0) (field-ok? obj (fix-val kf))) (push! (slot-of obj (fix-val kf))))
+                   (else (field-trap! n)))
+             next)))
+        ((i64= n r-field-set)
+         (let* ((kf (pop! n)) (obj (pop! n)) (x (pop! n)))
+           (begin
+             (cond ((or (not (is-fixnum? kf)) (not (is-bloblet? obj))) (type-trap! n))
+                   ((or (i64= (tag-of x) t-trailer) (i64= (tag-of x) t-header) (i64= (tag-of x) t-forward)
+                        (i64< (fix-val kf) 0) (not (field-ok? obj (fix-val kf))) (fields-frozen? obj))
+                    (field-trap! n))
+                   (else (slot-set! obj (fix-val kf) x)))
+             next)))
+        ((i64= n r-rest)
+         (if (i64> (get fp) (get dsp))
+             (begin (underflow-trap! n) next)
+             (begin (push! (list-of (args-of (get fp) (get dsp) nil))) next)))
+        ((i64= n r-execute)
+         (let ((w (pop! n)))
+           (cond ((is-fixnum? w) (routine! (fix-val w)))
+                 ((word? w) (begin (enter! w) next))
+                 (else (begin (trap! "`execute` was given what is no word") next)))))
+        ((i64= n r-dup)
+         (begin (if (i64= (get dsp) 0) (underflow-trap! n) (push! (ds-at (i64- (get dsp) 1)))) next))
+        ((i64= n r-drop) (begin (pop! n) next))
+        ((i64= n r-swap)
+         (let* ((b (pop! n)) (a (pop! n))) (begin (push! b) (push! a) next)))
+        ((i64= n r-over)
+         (begin (if (i64< (get dsp) 2) (underflow-trap! n) (push! (ds-at (i64- (get dsp) 2)))) next))
+        ((i64= n r-halt) halt-flow)
+        ((i64= n r-undefined) (begin (trap! "a procedure was called before it was defined") next))
+        ((or (i64< n 1) (i64>= n r-count))
+         (begin (trap! (string-append "no routine is numbered " (i64->string n))) next))
+        (else (begin (trap! (string-append "tier 1 has no routine " (string-append (routine-name n) " yet (C122)"))) next)))))
+  (enter! (subr cm (i64) bool)
+    (lambda (w)
+      "Enter word `w`, sharing this frame, as Forth's words call; or run its
+       routine, if its entry is one: whether it was entered."
+      (let ((entry (fix-val (slot-of w f-entry))))
+        (if (or (i64= entry r-docol) (i64>= entry r-count))
+            (begin
+              (check-limits!)
+              (if (is-bloblet? (get cur)) (push-return!) #u)
+              (set cur w)
+              (set kk f-cell0)
+              #t)
+            (begin
+              (if (not (i64= (routine! entry) next))
+                  (trap! (string-append "no routine is numbered " (i64->string entry)))
+                  #u)
+              #f))))))
+
+(define-rec
+  (run! (subr cm (i64) i64)
+    (lambda (base)
+      "Cells, one after another, until the run ends, halts or traps."
+      (let ((cell (slot-of (get cur) (get kk))))
+        (begin
+          (set kk (i64+ (get kk) 1))
+          (if (i64= (get fuel) 0)
+              (begin (trap! "evaluation step limit exceeded") halt-flow)
+              (begin
+                (set fuel (i64- (get fuel) 1))
+                (let ((flow (if (is-fixnum? cell) (routine! (fix-val cell)) (begin (enter! cell) next))))
+                  (cond ((trapped?) halt-flow)
+                        ((i64= flow next) (run! base))
+                        ((i64= flow exit-flow)
+                         (if (i64= (get rsp) base) halt-flow (begin (pop-return!) (run! base))))
+                        (else halt-flow))))))))))
+
+(define-datatype ran (ran-answer i64) (ran-failed string))
+
+(define run-word! (subr cm (i64 i64) ran)
+  (lambda (w steps)
+    "Word `w` run with an empty stack, at most `steps` instructions (Fixpt's
+     `run_word`): what it leaves on top, or why it failed."
+    (begin
+      (set dsp 0) (set rsp 0) (set cur v-false) (set kk 0) (set fp 0) (set clo v-false)
+      (set fuel steps) (set trap-message "")
+      (if (enter! w) (begin (run! 0) #u) #u)
+      (cond ((trapped?) (ran-failed (get trap-message)))
+            ((i64= (get dsp) 0) (ran-failed "the word left nothing"))
+            (else (ran-answer (ds-at (i64- (get dsp) 1))))))))

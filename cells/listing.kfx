@@ -1,0 +1,341 @@
+"listing.kfx: words read from Fixpt's listing of them (C122), what
+ `fixpt --fx26-machine fx-cells-rsinterp compile` writes: for each word
+ its header, `word NAME (N cells, cellular):`, then a line for each
+ instruction, `AT: ROUTINE OPERAND ...`. Exact, but where a literal is
+ cut short (`…`), two words share a name, or the compilers disagree:
+ those are refused. Each word's register code is passed over.
+ fixpt-source: crates/fixpt-runtime/src/disasm.rs@7641962"
+
+(define listing-error (subr kfx (string) void)
+  (lambda (why) (error (string-append "kayak-cells: the listing: " why))))
+
+"Parentheses, as characters (KFX's reader takes no `#\\(`)."
+(define open-paren char (i64->char 40))
+(define close-paren char (i64->char 41))
+(define comma char (i64->char 44))
+(define colon char (i64->char 58))
+
+"Lines, each its characters."
+(define-rec
+  (lines-of (subr kfx (chars chars (listof chars acyclic)) (listof chars acyclic))
+    (lambda (cs acc out)
+      (cond ((null? cs) (the (listof chars acyclic) (reverse (if (null? acc) out (cons (the chars (reverse acc)) out)))))
+            ((char=? (car cs) #\newline) (lines-of (cdr cs) nil (cons (the chars (reverse acc)) out)))
+            (else (lines-of (cdr cs) (cons (car cs) acc) out))))))
+
+(define-rec
+  (starts? (subr kfx (chars chars) bool)
+    (lambda (cs prefix)
+      (cond ((null? prefix) #t)
+            ((null? cs) #f)
+            (else (and (char=? (car cs) (car prefix)) (starts? (cdr cs) (cdr prefix))))))))
+
+(define-rec
+  (drop-n (subr kfx (chars i64) chars)
+    (lambda (cs n) (if (or (null? cs) (i64= n 0)) cs (drop-n (cdr cs) (i64- n 1))))))
+
+(define-rec
+  (spaces-dropped (subr kfx (chars) chars)
+    (lambda (cs) (if (and (not (null? cs)) (char=? (car cs) #\space)) (spaces-dropped (cdr cs)) cs))))
+
+(define-rec
+  (until-char (subr kfx (chars char chars) chars)
+    (lambda (cs c acc)
+      "The characters before the first `c`."
+      (if (or (null? cs) (char=? (car cs) c)) (the chars (reverse acc)) (until-char (cdr cs) c (cons (car cs) acc))))))
+
+(define before-char (subr kfx (chars char) chars) (lambda (cs c) (until-char cs c nil)))
+
+(define-rec
+  (after-char (subr kfx (chars char) chars)
+    (lambda (cs c) (cond ((null? cs) nil) ((char=? (car cs) c) (cdr cs)) (else (after-char (cdr cs) c))))))
+
+(define-rec
+  (contains? (subr kfx (chars chars) bool)
+    (lambda (cs part) (cond ((starts? cs part) #t) ((null? cs) #f) (else (contains? (cdr cs) part))))))
+
+(define-rec
+  (digits-of (subr kfx (chars i64) i64)
+    (lambda (cs acc)
+      (if (and (not (null? cs)) (char-numeric? (car cs)))
+          (digits-of (cdr cs) (i64+ (i64* acc 10) (i64- (char->i64 (car cs)) 48)))
+          acc))))
+
+(define number-of (subr kfx (chars) i64)
+  (lambda (cs)
+    (let ((cs (spaces-dropped cs)))
+      (cond ((null? cs) (begin (listing-error "a number is missing") 0))
+            ((char=? (car cs) #\-) (i64- 0 (digits-of (cdr cs) 0)))
+            ((char-numeric? (car cs)) (digits-of cs 0))
+            (else (begin (listing-error (string-append "not a number: " (list->string cs))) 0))))))
+
+"A word's block: its name, its cells, its entry, its instructions' lines
+ (each where it starts, and the rest of it)."
+(define-datatype iline (iline i64 chars))
+(define-datatype block (block string i64 i64 (listof iline acyclic)))
+
+(define header-block (subr kfx (chars) block)
+  (lambda (cs)
+    "`word NAME (N cells, cellular):` or `(N cells, the routine R):`."
+    (let* ((rest (drop-n cs 5))
+           (name (list->string (before-char rest #\space)))
+           (inside (after-char rest open-paren))
+           (n (number-of inside))
+           (entry (the i64 (cond ((contains? inside (string-chars "cellular)")) r-docol)
+                        ((contains? inside (string-chars "the routine "))
+                         (index-in routine-names (list->string (before-char (drop-n (after-char (after-char inside comma) #\space) 12) close-paren)) 0))
+                        (else (begin (listing-error (string-append "a word of no kind tier 1 runs: " (list->string cs))) 0))))))
+      (block name n entry nil))))
+
+(define-rec
+  (blocks (subr kfx ((listof chars acyclic) (listof block acyclic) bool) (listof block acyclic))
+    (lambda (ls out skipping)
+      "The blocks of a listing's lines, newest last."
+      (if (null? ls)
+          (the (listof block acyclic) (reverse out))
+          (let ((l (car ls)))
+            (cond ((starts? l (string-chars "word "))
+                   (blocks (cdr ls) (cons (header-block l) out) #f))
+                  ((starts? l (string-chars "; the compilers disagree"))
+                   (begin (listing-error "the compilers disagree") nil))
+                  ((or (null? l) (char=? (car l) #\;)) (blocks (cdr ls) out #f))
+                  ((starts? l (string-chars "  its ")) (blocks (cdr ls) out #t))
+                  (skipping (blocks (cdr ls) out #t))
+                  ((null? out) (blocks (cdr ls) out #f))
+                  (else
+                   (let* ((t (spaces-dropped l))
+                          (at (digits-of t 0))
+                          (text (spaces-dropped (after-char t colon))))
+                     (if (contains? text (string-chars "…"))
+                         (begin (listing-error "a literal cut short") nil)
+                         (blocks (cdr ls)
+                                 (tagcase (car out)
+                                   (block (n c e is) (cons (block n c e (cons (iline at text) is)) (cdr out))))
+                                 #f))))))))))
+
+"The words, by name."
+(define words (ref (listof named @c) @c) (new nil))
+
+(define make-word! (subr cm (string i64 i64) i64)
+  (lambda (name n entry)
+    "A word of `n` cells, its entry `entry`: its fields frozen, as Fixpt
+     publishes a word, each cell written by the reader below."
+    (let ((w (make-bloblet! k-code (i64+ n 3) 0 #t #t)))
+      (begin
+        (slot-set! w f-entry (fix entry))
+        (slot-set! w f-name (symbol! name))
+        (slot-set! w f-twin v-false)
+        w))))
+
+(define word-named (subr cm (chars) i64)
+  (lambda (cs)
+    (let ((w (lookup (get words) (list->string (before-char cs #\space)))))
+      (if (i64= w 0)
+          (begin (listing-error (string-append "no word is named " (list->string cs))) 0)
+          w))))
+
+"The undefined closure: what a global holds before it is written, which
+ traps if called (Fixpt's `undefined_closure`)."
+(define undefined-closure (ref i64 @c) (new 0))
+
+(define the-undefined (subr cm () i64)
+  (lambda ()
+    (if (i64= (get undefined-closure) 0)
+        (let* ((w (make-word! "undefined" 1 r-docol))
+               (c (make-bloblet! k-closure 1 0 #t #f)))
+          (begin
+            (slot-set! w f-cell0 (fix r-undefined))
+            (slot-set! c f-word w)
+            (set undefined-closure c)
+            c))
+        (get undefined-closure))))
+
+(define global-named (subr cm (string) i64)
+  (lambda (name)
+    "Global `name`'s cell (Fixpt's: its value, its name, how many times it
+     was written), made the first time it is named."
+    (let ((g (lookup (get globals) name)))
+      (if (not (i64= g 0))
+          g
+          (let ((g (make-bloblet! k-bloblet 3 0 #t #f)))
+            (begin
+              (slot-set! g f-value (the-undefined))
+              (slot-set! g 3 (symbol! name))
+              (slot-set! g f-writes (fix 0))
+              (set globals (cons (named name g) (get globals)))
+              g))))))
+
+(define-rec
+  (datum-value (subr cm (sexp) i64)
+    (lambda (d)
+      "A literal, as `write` wrote it, as a value."
+      (tagcase d
+        (num (n f p) (if (fits? n) (fix n) (begin (listing-error "a literal past a fixnum") 0)))
+        (str (s f p) (make-string! s))
+        (chr (c f p) (char-value (char->i64 c)))
+        (sym (n f p)
+          (cond ((string=? n "#t") v-true) ((string=? n "#f") v-false) ((string=? n "#u") v-unit)
+                ((string=? n "#<unspecified>") v-unspecified)
+                (else (symbol! n))))
+        (lst (xs f l p) (items-value xs))
+        (else other (begin (listing-error "a literal tier 1 does not have yet") 0)))))
+  (items-value (subr cm (sexps) i64)
+    (lambda (xs)
+      (cond ((null? xs) v-null)
+            ((and (not (null? (cdr xs))) (tagcase (car (cdr xs)) (sym (n f p) (string=? n ".")) (else other #f)))
+             (cons! (datum-value (car xs)) (datum-value (car (cdr (cdr xs))))))
+            (else (cons! (datum-value (car xs)) (items-value (cdr xs))))))))
+
+"A closure the compiler made, a literal: the listing shows its word, not
+ its free values, so it is taken as a closure of none, one for each word,
+ and its word checked to read none (`free-read?`) once all are made."
+(define literals (ref (listof named @c) @c) (new nil))
+
+(define closure-literal (subr cm (i64) i64)
+  (lambda (w)
+    (let* ((name (symbol-text (slot-of w f-name)))
+           (had (lookup (get literals) name)))
+      (if (not (i64= had 0))
+          had
+          (let ((c (make-bloblet! k-closure 1 0 #t #f)))
+            (begin
+              (slot-set! c f-word w)
+              (set literals (cons (named name c) (get literals)))
+              c))))))
+
+(define-rec
+  (free-read? (subr cm (i64 i64) bool)
+    (lambda (w k)
+      "Whether word `w`, from field `k`, reads a free value: instruction by
+       instruction, so that no operand is taken for one."
+      (if (i64> k (fields-of w))
+          #f
+          (let ((cell (slot-of w k)))
+            (cond ((not (is-fixnum? cell)) (free-read? w (i64+ k 1)))
+                  ((i64= (fix-val cell) r-free) #t)
+                  (else (free-read? w (i64+ k (i64+ 1 (operand-count (fix-val cell)))))))))))
+  (literals-checked! (subr cm ((listof named @c)) unit)
+    (lambda (ls)
+      (if (null? ls)
+          #u
+          (tagcase (car ls)
+            (named (n c)
+              (if (free-read? (slot-of c f-word) f-cell0)
+                  (listing-error (string-append "a closure as a literal, whose word reads a free value: " n))
+                  (literals-checked! (cdr ls)))))))))
+
+(define literal (subr cm (chars) i64)
+  (lambda (cs)
+    (cond ((starts? cs (string-chars "word ")) (word-named (drop-n cs 5)))
+          ((starts? cs (string-chars "closure of ")) (closure-literal (word-named (drop-n cs 11))))
+          (else (let ((ds (read-all cs "<listing>" 1)))
+                  (if (i64= (size ds) 1) (datum-value (car ds)) (begin (listing-error (string-append "a literal: " (list->string cs))) 0)))))))
+
+(define cell-set! (subr cm (i64 i64 i64) unit)
+  (lambda (w at v) (slot-set! w (i64+ f-cell0 at) v)))
+
+(define instruction! (subr cm (i64 iline) unit)
+  (lambda (w il)
+    (tagcase il
+      (iline (at text)
+        (let* ((name (list->string (before-char text #\space)))
+               (ops (spaces-dropped (drop-n text (string-length-i64 name))))
+               (n (index-in routine-names name 0)))
+          (cond ((string=? name "word") (cell-set! w at (word-named ops)))
+                ((i64< n 0) (listing-error (string-append "no routine is named " name)))
+                (else
+                 (begin
+                   (cell-set! w at (fix n))
+                   (cond ((i64= n r-lit) (cell-set! w (i64+ at 1) (literal ops)))
+                         ((or (i64= n r-branch) (i64= n r-zbranch))
+                          (cell-set! w (i64+ at 1) (fix (i64- (number-of (drop-n ops 2)) (i64+ at 2)))))
+                         ((or (i64= n r-global) (i64= n r-global-set))
+                          (cell-set! w (i64+ at 1) (global-named (list->string ops))))
+                         ((i64= n r-prim)
+                          (let* ((pname (list->string (before-char ops #\space)))
+                                 (p (prim-number pname)))
+                            (if (i64< p 0)
+                                (listing-error (string-append "a primitive tier 1 does not have yet: " pname))
+                                (begin
+                                  (cell-set! w (i64+ at 1) (fix p))
+                                  (cell-set! w (i64+ at 2) (fix (number-of (after-char ops #\space))))))))
+                         ((i64= n r-closure)
+                          (let ((rest (drop-n ops 5)))
+                            (begin
+                              (cell-set! w (i64+ at 1) (word-named rest))
+                              (cell-set! w (i64+ at 2) (fix (number-of (drop-n (after-char rest #\space) 5)))))))
+                         ((i64= (operand-count n) 1) (cell-set! w (i64+ at 1) (fix (number-of ops))))
+                         ((i64= (operand-count n) 0) #u)
+                         (else (listing-error (string-append "operands tier 1 does not read yet: " name))))))))))))
+
+(define-rec
+  (chars=? (subr kfx (chars chars) bool)
+    (lambda (a b)
+      (cond ((null? a) (null? b))
+            ((null? b) #f)
+            (else (and (char=? (car a) (car b)) (chars=? (cdr a) (cdr b))))))))
+
+(define-rec
+  (ilines=? (subr kfx ((listof iline acyclic) (listof iline acyclic)) bool)
+    (lambda (a b)
+      (cond ((null? a) (null? b))
+            ((null? b) #f)
+            (else (and (tagcase (car a) (iline (x xs) (tagcase (car b) (iline (y ys) (and (i64= x y) (chars=? xs ys))))))
+                       (ilines=? (cdr a) (cdr b))))))))
+
+(define-rec
+  (block-named (subr kfx ((listof block acyclic) string) (listof block acyclic))
+    (lambda (bs n)
+      (cond ((null? bs) nil)
+            ((tagcase (car bs) (block (m c e is) (string=? m n))) (the (listof block acyclic) (list (car bs))))
+            (else (block-named (cdr bs) n))))))
+
+(define-rec
+  (distinct-blocks (subr kfx ((listof block acyclic) (listof block acyclic)) (listof block acyclic))
+    (lambda (bs seen)
+      "The blocks, a word listed twice, cell for cell the same, once (C122:
+       a word reached two ways is listed each time, as words are compared
+       by no program, its two copies are one); two that differ, refused."
+      (if (null? bs)
+          (the (listof block acyclic) (reverse seen))
+          (tagcase (car bs)
+            (block (n c e is)
+              (let ((had (block-named seen n)))
+                (cond ((null? had) (distinct-blocks (cdr bs) (cons (car bs) seen)))
+                      ((tagcase (car had) (block (m c2 e2 is2) (and (i64= c c2) (i64= e e2) (ilines=? is is2))))
+                       (distinct-blocks (cdr bs) seen))
+                      (else (begin (listing-error (string-append "two words are named " n)) nil))))))))))
+
+(define-rec
+  (words-made! (subr cm ((listof block acyclic)) unit)
+    (lambda (bs)
+      "Each block's word, made, its cells not yet written."
+      (if (null? bs)
+          #u
+          (begin
+            (tagcase (car bs)
+              (block (n c e is)
+                (if (not (i64= (lookup (get words) n) 0))
+                    (listing-error (string-append "two words are named " n))
+                    (set words (cons (named n (make-word! n c e)) (get words))))))
+            (words-made! (cdr bs))))))
+  (cells-written! (subr cm (i64 (listof iline acyclic)) unit)
+    (lambda (w is) (if (null? is) #u (begin (instruction! w (car is)) (cells-written! w (cdr is))))))
+  (blocks-written! (subr cm ((listof block acyclic)) unit)
+    (lambda (bs)
+      (if (null? bs)
+          #u
+          (begin
+            (tagcase (car bs) (block (n c e is) (cells-written! (lookup (get words) n) is)))
+            (blocks-written! (cdr bs)))))))
+
+(define listing-words! (subr cm (string) i64)
+  (lambda (text)
+    "The words of a listing, made; the word named `program`."
+    (let ((bs (distinct-blocks (blocks (lines-of (string-chars text) nil nil) nil #f) nil)))
+      (begin
+        (words-made! bs)
+        (blocks-written! bs)
+        (literals-checked! (get literals))
+        (let ((p (lookup (get words) "program")))
+          (if (i64= p 0) (begin (listing-error "no word is named program") 0) p))))))

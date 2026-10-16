@@ -1,0 +1,127 @@
+"layout.kfx: Fixpt's numbers, as tier 1 uses them (C122): its object
+ layout from its own `layout.fx`, built in at the pin (C121), as `i64`s;
+ its immediates and its routines' names, which `layout.fx` does not
+ hold, written here after Fixpt's sources:
+ fixpt-source: crates/fixpt-heap/src/value.rs@7641962
+ fixpt-source: crates/fixpt-heap/src/layout.rs@7641962"
+
+(define lay (load-module "fx26:layout.fx"))
+
+"What tier 1 does: reads and writes its heap and stacks, at region `@c`."
+(define-effect cm (maxeff (read @globals) spin (read @c) (write @c) (alloc @c)))
+
+"Tags."
+(define t-fixnum i64 (int->i64 (with lay tag-fixnum)))
+(define t-pair i64 (int->i64 (with lay tag-pair)))
+(define t-immediate i64 (int->i64 (with lay tag-immediate)))
+(define t-bloblet i64 (int->i64 (with lay tag-bloblet)))
+(define t-trailer i64 (int->i64 (with lay tag-trailer)))
+(define t-header i64 (int->i64 (with lay tag-header)))
+(define t-forward i64 (int->i64 (with lay tag-forward)))
+
+"Kinds."
+(define k-string i64 (int->i64 (with lay kind-string)))
+(define k-symbol i64 (int->i64 (with lay kind-symbol)))
+(define k-box i64 (int->i64 (with lay kind-box)))
+(define k-bloblet i64 (int->i64 (with lay kind-bloblet)))
+(define k-code i64 (int->i64 (with lay kind-cellular-code)))
+(define k-closure i64 (int->i64 (with lay kind-cellular-closure)))
+(define k-sum i64 (int->i64 (with lay kind-sum)))
+(define k-product i64 (int->i64 (with lay kind-product)))
+
+"A word's fields, a closure's, a global cell's."
+(define f-entry i64 (int->i64 (with lay word-entry)))
+(define f-name i64 (int->i64 (with lay word-name)))
+(define f-twin i64 (int->i64 (with lay word-twin)))
+(define f-cell0 i64 (int->i64 (with lay word-cell0)))
+(define f-word i64 (int->i64 (with lay cellular-closure-word)))
+(define f-free0 i64 (int->i64 (with lay cellular-closure-free0)))
+(define f-value i64 (int->i64 (with lay global-value)))
+(define f-writes i64 (int->i64 (with lay global-writes)))
+
+"Immediates (Fixpt's `value.rs`): a sub-tag above the tag, a payload
+ above bit 8."
+(define v-false i64 3)
+(define v-true i64 11)
+(define v-null i64 19)
+(define v-unit i64 27)
+(define v-eof i64 35)
+(define v-unspecified i64 43)
+(define v-default i64 51)
+(define v-unbound i64 59)
+(define sub-char i64 8)
+
+"Routines, by Fixpt's numbers."
+(define r-docol i64 (int->i64 (with lay routine-docol)))
+(define r-exit i64 (int->i64 (with lay routine-exit)))
+(define r-halt i64 (int->i64 (with lay routine-halt)))
+(define r-lit i64 (int->i64 (with lay routine-lit)))
+(define r-branch i64 (int->i64 (with lay routine-branch)))
+(define r-zbranch i64 (int->i64 (with lay routine-zbranch)))
+(define r-execute i64 (int->i64 (with lay routine-execute)))
+(define r-dup i64 (int->i64 (with lay routine-dup)))
+(define r-drop i64 (int->i64 (with lay routine-drop)))
+(define r-swap i64 (int->i64 (with lay routine-swap)))
+(define r-over i64 (int->i64 (with lay routine-over)))
+(define r-add i64 (int->i64 (with lay routine-add)))
+(define r-sub i64 (int->i64 (with lay routine-sub)))
+(define r-less i64 (int->i64 (with lay routine-less)))
+(define r-eq i64 (int->i64 (with lay routine-eq)))
+(define r-field-ref i64 (int->i64 (with lay routine-field-ref)))
+(define r-field-set i64 (int->i64 (with lay routine-field-set)))
+(define r-cons i64 (int->i64 (with lay routine-cons)))
+(define r-car i64 (int->i64 (with lay routine-car)))
+(define r-cdr i64 (int->i64 (with lay routine-cdr)))
+(define r-slot i64 (int->i64 (with lay routine-slot)))
+(define r-slot-set i64 (int->i64 (with lay routine-slot!)))
+(define r-free i64 (int->i64 (with lay routine-free)))
+(define r-global i64 (int->i64 (with lay routine-global)))
+(define r-global-set i64 (int->i64 (with lay routine-global!)))
+(define r-closure i64 (int->i64 (with lay routine-closure)))
+(define r-call i64 (int->i64 (with lay routine-call)))
+(define r-tailcall i64 (int->i64 (with lay routine-tailcall)))
+(define r-return i64 (int->i64 (with lay routine-return)))
+(define r-prim i64 (int->i64 (with lay routine-prim)))
+(define r-tcall i64 (int->i64 (with lay routine-tcall)))
+(define r-ttailcall i64 (int->i64 (with lay routine-ttailcall)))
+(define r-undefined i64 (int->i64 (with lay routine-undefined)))
+(define r-int-add i64 (int->i64 (with lay routine-int-add)))
+(define r-int-sub i64 (int->i64 (with lay routine-int-sub)))
+(define r-int-less i64 (int->i64 (with lay routine-int-less)))
+(define r-pair-car i64 (int->i64 (with lay routine-pair-car)))
+(define r-pair-cdr i64 (int->i64 (with lay routine-pair-cdr)))
+(define r-field i64 (int->i64 (with lay routine-field)))
+(define r-rest i64 (int->i64 (with lay routine-rest)))
+(define r-int-eq i64 (int->i64 (with lay routine-int-eq)))
+"How many routines there are: a word's entry at or past it is native code."
+(define r-count i64 56)
+
+"The routines' names, by number, as Fixpt's `ROUTINES` spells them: in
+ listings, and in a trap's message."
+(define routine-names (listof string acyclic)
+  (list "docol" "exit" "halt" "lit" "branch" "0branch" "execute" "dup" "drop" "swap"
+        "over" "+" "-" "<" "eq" "field@" "field!" "cons" "car" "cdr"
+        "slot" "slot!" "free" "global" "global!" "closure" "call" "tailcall" "return" "prim"
+        "prompt" "abort" "callcomp" "callcc" "withmark" "firstmark" "currentmarks" "marksof" "withmark-tail" "tcall"
+        "ttailcall" "resume" "undefined" "int-add" "int-sub" "int-less" "pair-car" "pair-cdr" "field" "rest"
+        "int-eq" "nclosure" "ncallcomp" "ncallcc" "callone" "ncallone"))
+
+(define-rec
+  (nth-name (subr kfx ((listof string acyclic) i64) string)
+    (lambda (xs n) (cond ((null? xs) "?") ((i64= n 0) (car xs)) (else (nth-name (cdr xs) (i64- n 1)))))))
+
+(define routine-name (subr kfx (i64) string) (lambda (n) (nth-name routine-names n)))
+
+(define-rec
+  (index-in (subr kfx ((listof string acyclic) string i64) i64)
+    (lambda (xs n i) (cond ((null? xs) -1) ((string=? (car xs) n) i) (else (index-in (cdr xs) n (i64+ i 1)))))))
+
+"How many operand cells follow a routine's (Fixpt's `operands`)."
+(define operand-count (subr kfx (i64) i64)
+  (lambda (n)
+    (cond ((or (i64= n r-closure) (i64= n r-prim) (i64= n 51)) 2)
+          ((or (i64= n r-lit) (i64= n r-branch) (i64= n r-zbranch) (i64= n r-slot) (i64= n r-slot-set)
+               (i64= n r-free) (i64= n r-global) (i64= n r-global-set) (i64= n r-call) (i64= n r-tailcall)
+               (i64= n r-tcall) (i64= n r-ttailcall) (i64= n r-field))
+           1)
+          (else 0))))

@@ -600,8 +600,13 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    procedure ends in an abort to its tag, as C45's form (C118).
 2. The layout table for KFX (**done**, C121: Fixpt's `layout.fx` built
    in, `kayak-jit`'s constants tested against it); the heap in Fixpt's
-   format; tier 1, cells interpreted, on words made by hand, then by
-   stage A ported (`compile*.fx`, each marked `fixpt-source:`).
+   format and tier 1, cells interpreted (**begun**, C122: `cells/`, on
+   the words Fixpt's compiler lists; 175 of Fixpt's programs agree, 0
+   differ). Next for tier 1: Coopt's collector (its Cheney baseline, then
+   its steps); prompts, marks and continuations (routines 30–38, 41,
+   51–55; `captures`); bignums; more primitives, their failures worded as
+   Fixpt's runtime words them; then stage A ported (`compile*.fx`, each
+   marked `fixpt-source:`), its words compared with the listing.
 3. `kayak-jit`; the arm64 encoder in KFX; tier 2. **Begun (C116,
    2026-10-15)**: Fixpt's §97 operations in KFX, the code area, the
    trampoline, `tests/kfx/made-code.kfx`. Next, toward Fixpt's

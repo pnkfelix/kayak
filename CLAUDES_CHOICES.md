@@ -2917,3 +2917,63 @@ right?" and, of the plan below, "Sounds great. Get started".
   makes them: a change upstream the marks missed still shows.
 - **Not chosen**: a mirror of Fixpt's commits into issues, or a bot; the
   pin moves when chosen, as before.
+
+## C122. Tier 1: Fixpt's cellular machine in KFX, its heap Coopt's collector's (2026-10-16, TODO §31 step 2)
+
+`native.md`'s tier 1, "cells interpreted": the reference meaning of every
+tier above. The user: keep going autonomously; and "you may want to also
+look at Coopt's collector".
+- **Where**: `cells/`, a KFX unit (`cells/cells.unit`), built as the crate
+  `kayak-cells` from Rust kfx writes (kept, as the engine's is, and
+  checked by `scripts/cells-programs.py`). KFX as Rust: no `unsafe`.
+- **The machine is Fixpt's** (`fixpt-engine/src/cellular.rs`, marked
+  `fixpt-source:`): a data stack and a return stack of 4-value entries
+  (word, next field, frame, closure), registers `cur k fp clo`, the
+  routines by Fixpt's numbers (from `fx26:layout.fx`), the operand counts,
+  fuel by instruction cells, the stacks' limits, and the traps' messages
+  word for word, so an answer or a failure is Fixpt's.
+- **The heap is Fixpt's format** (`native.md` decision 1, 2): one flat
+  array of `i64`, a value's address its index (`address << 3 | tag`, as
+  Fixpt's images have it, relative to 0); pairs of two words; every other
+  object a bloblet (header, fields at negative offsets, trailer, suffix);
+  words, closures, global cells, strings and symbols laid out as Fixpt
+  lays them. Constants from Fixpt's `layout.fx`, built in (C121).
+- **Its collector, Coopt's** (`coopt-heap`, ported, `docs/research/
+  coopt-heap.md`): Coopt's heap is Fixpt's object model already (its
+  `layout.rs` "ported deliberately from Fixpt"), its collector safe Rust
+  over words with a root table. First none (a heap that grows; Fixpt's
+  answers never depend on collection: `eq` is bits, fields relative),
+  then Coopt's Cheney baseline, then its steps (generational, regions,
+  summaries, marking, pacing), each against the one before.
+- **Words, first, Fixpt's own**: read from `fixpt compile`'s listing
+  (`--fx26-machine fx-cells-rsinterp`), which is exact but where a literal
+  is cut short (`…`) or two words share a name: those are refused, not
+  guessed. So tier 1 is tested against Fixpt's own compiler's words and
+  Fixpt's answers before stage A exists; stage A's words, when ported, are
+  compared with the same listing, cell for cell. (Fixpt's `dump-heap` is
+  Scheme-only, else its images would be the exact form: a request,
+  later, if the listing falls short.)
+- **Not yet**: bignums (an `int-add` past a fixnum traps, kayak's own
+  message, until Fixpt's bignum is ported); prompts, marks and
+  continuations (routines 30–38, 41, 51–55); native code; `prim`'s
+  numbers are kayak's table's, by Fixpt's names (Fixpt's runtime
+  primitives' numbers to be generated with the layout, later).
+- **First target**: Fixpt's eight benchmark programs (`tests/programs/
+  bench`), the ones its own `rs-cells-rsinterp` is timed on.
+- **Built** (the same day): `cells/` (layout, heap, printer, primitives,
+  the listing's reader, the machine, the driver, some 1,300 lines of
+  KFX), `crates/kayak-cells`, `scripts/cells-programs.py` in `check.sh`.
+  Of Fixpt's 674 FX-26 test programs, 175 agree on tier 1 (value or
+  failure, word for word), 0 differ; 146 listings not read (primitives
+  not yet, words listed twice that differ), 16 need what tier 1 has not
+  yet (prompts, marks, bignums), 33 end with a definition, 304 Fixpt
+  refuses. Fixpt's eight benchmarks: seven agree (`captures` needs
+  prompts), at two to three times the time of Fixpt's own Rust
+  interpreter.
+- **Two readings of the listing, decided**: a word listed twice, cell for
+  cell the same, is one (words are compared by no program); a closure the
+  compiler made, a literal (`lit closure of W`), is a closure of no free
+  values, one for each word, refused if its word reads one.
+- **A primitive's failure** that Fixpt words through its runtime's error
+  objects is marked `(C122)` and counted as not yet, until those words
+  are ported.

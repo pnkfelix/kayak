@@ -1,0 +1,118 @@
+"prims.kfx: the runtime primitives `prim` calls (C122), by Fixpt's names,
+ numbered by this table (Fixpt's own numbers, later, with the layout).
+ Those Fixpt's eight benchmark programs call, so far.
+ fixpt-source: crates/fixpt-runtime/src/prim.rs@7641962"
+
+"Each primitive: its name, and how many arguments it takes, at least and
+ at most (-1: any)."
+(define-datatype pdef (pdef string i64 i64))
+(define prims (listof pdef acyclic)
+  (list (pdef "list" 0 -1) (pdef "%make-box" 1 1) (pdef "%region-enter" 0 0) (pdef "%region-exit" 2 2)
+        (pdef "%region-cons" 3 3) (pdef "%make-frozen" 1 -1) (pdef "%fx26-mul" 2 2) (pdef "%fx26-quotient" 2 2)
+        (pdef "%fx26-remainder" 2 2) (pdef "%fx26-zero?" 1 1) (pdef "set-car!" 2 2) (pdef "set-cdr!" 2 2)
+        (pdef "length" 1 1) (pdef "pair?" 1 1) (pdef "exact-integer?" 1 1) (pdef "%fx26-nat?" 1 1)
+        (pdef "%fx26-list-copy" 1 1) (pdef "boolean?" 1 1) (pdef "null?" 1 1) (pdef "%fx26-int-less" 2 2)
+        (pdef "%fx26-int-eq" 2 2)))
+
+(define-rec
+  (pdef-at (subr kfx ((listof pdef acyclic) i64) pdef)
+    (lambda (ps n) (if (or (null? (cdr ps)) (i64= n 0)) (car ps) (pdef-at (cdr ps) (i64- n 1))))))
+
+(define-rec
+  (pdef-index (subr kfx ((listof pdef acyclic) string i64) i64)
+    (lambda (ps n i)
+      (cond ((null? ps) -1)
+            ((tagcase (car ps) (pdef (m lo hi) (string=? m n))) i)
+            (else (pdef-index (cdr ps) n (i64+ i 1)))))))
+
+(define prim-number (subr kfx (string) i64) (lambda (n) (pdef-index prims n 0)))
+(define prim-name (subr kfx (i64) string) (lambda (p) (tagcase (pdef-at prims p) (pdef (m lo hi) m))))
+(define prim-min (subr kfx (i64) i64) (lambda (p) (tagcase (pdef-at prims p) (pdef (m lo hi) lo))))
+(define prim-max (subr kfx (i64) i64) (lambda (p) (tagcase (pdef-at prims p) (pdef (m lo hi) hi))))
+
+"A region's number, as Fixpt's `%region-enter` gives one. Tier 1 keeps a
+ region's objects in the one heap: what a region frees is memory, never
+ an answer."
+(define regions (ref i64 @c) (new 0))
+
+(define-rec
+  (list-of (subr cm ((listof i64 @c)) i64)
+    (lambda (xs) (if (null? xs) v-null (cons! (car xs) (list-of (cdr xs)))))))
+
+(define-rec
+  (args-count (subr cm ((listof i64 @c) i64) i64)
+    (lambda (xs n) (if (null? xs) n (args-count (cdr xs) (i64+ n 1))))))
+
+(define-rec
+  (nth-arg (subr cm ((listof i64 @c) i64) i64)
+    (lambda (xs n) (cond ((null? xs) 0) ((i64= n 0) (car xs)) (else (nth-arg (cdr xs) (i64- n 1)))))))
+
+"A failure Fixpt's runtime words as an error object's, which tier 1 does
+ not say as it does yet: marked, so it is not taken for an answer."
+(define prim-failed (subr cm (i64 string) i64)
+  (lambda (p why)
+    (begin (trap! (string-append "tier 1: `" (string-append (prim-name p) (string-append "` failed, " (string-append why ", not yet said as Fixpt says it (C122)"))))) 0)))
+
+(define-rec
+  (proper-length (subr cm (i64 i64) i64)
+    (lambda (xs n) (cond ((i64= xs v-null) n) ((is-pair? xs) (proper-length (pair-cdr xs) (i64+ n 1))) (else -1)))))
+
+(define-rec
+  (proper-copied (subr cm (i64) i64)
+    (lambda (xs) (if (is-pair? xs) (cons! (pair-car xs) (proper-copied (pair-cdr xs))) xs))))
+
+(define int-arith (subr cm (i64 i64 i64) i64)
+  (lambda (p a b)
+    "`%fx26-mul`, `-quotient`, `-remainder`, `-int-less`, `-int-eq` of
+     fixnums (Fixpt's `fx26_int`); past a fixnum, a bignum, not yet."
+    (if (not (and (is-fixnum? a) (is-fixnum? b)))
+        (prim-failed p "given what is no fixnum")
+        (let ((x (fix-val a)) (y (fix-val b)) (n (prim-name p)))
+          (cond ((string=? n "%fx26-int-less") (boolean (i64< x y)))
+                ((string=? n "%fx26-int-eq") (boolean (i64= x y)))
+                ((and (not (string=? n "%fx26-mul")) (i64= y 0)) (prim-failed p "division by zero"))
+                (else
+                 (let ((r (cond ((string=? n "%fx26-mul") (i64* x y))
+                                ((string=? n "%fx26-quotient") (i64-quotient x y))
+                                (else (i64-remainder x y)))))
+                   (if (and (fits? r) (or (not (string=? n "%fx26-mul")) (i64= x 0) (i64= (i64-quotient r x) y)))
+                       (fix r)
+                       (begin (trap! "tier 1 has no bignums yet (C122)") 0)))))))))
+
+(define prim-apply! (subr cm (i64 (listof i64 @c)) i64)
+  (lambda (p args)
+    "Primitive `p` given `args`, deepest first: its value."
+    (let ((n (prim-name p)) (a (if (null? args) (the i64 0) (car args))))
+      (cond ((string=? n "list") (list-of args))
+            ((string=? n "%make-box")
+             (let ((b (make-bloblet! k-box 1 0 #t #f)))
+               (begin (slot-set! b 2 a) b)))
+            ((string=? n "%region-enter") (begin (set regions (i64+ (get regions) 1)) (fix (get regions))))
+            ((string=? n "%region-exit") (nth-arg args 1))
+            ((string=? n "%region-cons") (cons! (nth-arg args 1) (nth-arg args 2)))
+            ((string=? n "%make-frozen")
+             (if (not (and (is-fixnum? a) (or (i64= (fix-val a) k-sum) (i64= (fix-val a) k-product))))
+                 (prim-failed p "given no sum's or product's kind")
+                 (let* ((fields (cdr args))
+                        (b (make-bloblet! (fix-val a) (args-count fields 0) 0 #t #t)))
+                   (letrec ((fill (subr cm ((listof i64 @c) i64) unit)
+                              (lambda (xs k) (if (null? xs) #u (begin (slot-set! b k (car xs)) (fill (cdr xs) (i64+ k 1)))))))
+                     (begin (fill fields 2) (frozen-whole! b) b)))))
+            ((or (string=? n "%fx26-mul") (string=? n "%fx26-quotient") (string=? n "%fx26-remainder")
+                 (string=? n "%fx26-int-less") (string=? n "%fx26-int-eq"))
+             (int-arith p a (nth-arg args 1)))
+            ((string=? n "%fx26-zero?") (boolean (i64= a (fix 0))))
+            ((or (string=? n "set-car!") (string=? n "set-cdr!"))
+             (if (is-pair? a)
+                 (begin (word-set! (if (string=? n "set-car!") (address a) (i64+ (address a) 1)) (nth-arg args 1)) v-unspecified)
+                 (prim-failed p "given no pair")))
+            ((string=? n "length")
+             (let ((k (proper-length a 0))) (if (i64< k 0) (prim-failed p "given no proper list") (fix k))))
+            ((string=? n "pair?") (boolean (is-pair? a)))
+            ((string=? n "null?") (boolean (i64= a v-null)))
+            ((string=? n "boolean?") (boolean (or (i64= a v-true) (i64= a v-false))))
+            ((string=? n "exact-integer?") (boolean (is-fixnum? a)))
+            ((string=? n "%fx26-nat?") (boolean (and (is-fixnum? a) (i64>= (fix-val a) 0))))
+            ((string=? n "%fx26-list-copy")
+             (if (i64< (proper-length a 0) 0) (prim-failed p "given no list") (proper-copied a)))
+            (else (prim-failed p "unknown"))))))

@@ -1,0 +1,44 @@
+"main.kfx: `kayak-cells LISTING [--step-limit N|none]` (C122): the words
+ of a listing Fixpt's compiler wrote, its `program` run, at most N
+ instructions (Fixpt's FX-26 default, 20,000,000; `none`, no limit), its
+ value written as Fixpt writes it; or, if it fails, `evaluation failed:
+ MESSAGE` on the standard error and status 1."
+
+(define-effect driving (maxeff cm (io args) (io fs-read) (io stdout) (io stderr) (io exit) (alloc @io) (read @io)))
+
+(define say (subr (io stdout) (string) unit)
+  (lambda (s) (tagcase (write-out s) (done u #u) (failed e #u))))
+
+(define fail-with (subr (maxeff (io stderr) (io exit)) (string int) void)
+  (lambda (message status)
+    (begin (write-err (string-append "kayak-cells: " (string-append message "\n"))) (exit status))))
+
+(define read-text (subr (maxeff (read @globals) (io fs-read) (io stderr) (io exit) (alloc @io) (read @io)) (string) string)
+  (lambda (path)
+    (tagcase (the (sumof (data (bytevectorof @io)) (failed io-error)) (read-file path))
+      (data b (tagcase (utf8->string b) (text s s) (bad k (fail-with (string-append path ": not UTF-8") 1))))
+      (failed e (fail-with (string-append "cannot read " (string-append path (string-append ": " (extract e detail)))) 1)))))
+
+(define default-steps i64 20000000)
+
+(define-rec
+  (steps-of (subr kfx ((listof string acyclic)) i64)
+    (lambda (as)
+      (cond ((or (null? as) (null? (cdr as))) default-steps)
+            ((string=? (car as) "--step-limit")
+             (if (string=? (car (cdr as)) "none")
+                 9223372036854775807
+                 (let ((ds (read-all (string-chars (car (cdr as))) "<args>" 1)))
+                   (tagcase (car ds) (num (n f p) n) (else other default-steps)))))
+            (else (steps-of (cdr as)))))))
+
+(define cells-main (subr driving () int)
+  (lambda ()
+    (let ((as (the strings (args))))
+      (if (null? as)
+          (begin (fail-with "usage: kayak-cells LISTING [--step-limit N|none]" 2) 2)
+          (let* ((w (listing-words! (read-text (car as))))
+                 (r (run-word! w (steps-of (cdr as)))))
+            (tagcase r
+              (ran-answer (v) (begin (say (string-append (written v) "\n")) 0))
+              (ran-failed (m) (begin (write-err (string-append "evaluation failed: " (string-append m "\n"))) 1))))))))

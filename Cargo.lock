@@ -3,6 +3,13 @@
 version = 4
 
 [[package]]
+name = "kayak-cells"
+version = "0.1.0"
+dependencies = [
+ "kayak-rt",
+]
+
+[[package]]
 name = "kayak-fx26"
 version = "0.1.0"
 dependencies = [

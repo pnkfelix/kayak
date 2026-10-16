@@ -34,6 +34,8 @@ if scripts/fixpt.sh > /dev/null 2>&1; then
     # What kayak ported from Fixpt, each source at the pin (C121).
     python3 -I scripts/fixpt-drift.py --check
     python3 -I scripts/run-fixpt-programs.py
+    # Tier 1, Fixpt's cellular machine in KFX, on Fixpt's own words (C122).
+    python3 -I scripts/cells-programs.py
     python3 -I scripts/refused-fixpt-programs.py
     # The checkers compared, form by form (TODO §30): fails only if kayak's
     # accepts a program Fixpt's refuses; the rest is the measure of §30.

@@ -1,0 +1,195 @@
+"heap.kfx: tier 1's heap, in Fixpt's format (C122): one flat array of
+ `i64`, a value's address its index, `address << 3 | tag`, as Fixpt's
+ images have it. Pairs are two words; every other object a bloblet: a
+ header, its fields below its suffix (field `k` at `p - k`, the trailer
+ field 1, its payload the distance back to the header), its suffix's
+ bytes. No collection yet: the array grows (C122: Coopt's collector, next).
+ fixpt-source: crates/fixpt-heap/src/heap.rs@7641962"
+
+(define mem (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 4096 0)))
+"The next free index. Indices 0 to 7 are never an object's."
+(define top (ref i64 @c) (new 8))
+
+(define-rec
+  (copied-into! (subr cm ((flatarrayof i64 @c) (flatarrayof i64 @c) i64 i64) unit)
+    (lambda (from to i n)
+      (if (i64>= i n)
+          #u
+          (begin (flatarray-set-i64! to i (flatarray-ref-i64 from i))
+                 (copied-into! from to (i64+ i 1) n))))))
+
+(define room! (subr cm (i64) unit)
+  (lambda (n)
+    "Room for `n` more words: the array twice as big, if need be."
+    (let ((m (get mem)))
+      (if (i64<= (i64+ (get top) n) (flatarray-length-i64 m))
+          #u
+          (let ((bigger (the (flatarrayof i64 @c) (make-flatarray-i64 (i64* 2 (i64+ (flatarray-length-i64 m) n)) 0))))
+            (begin (copied-into! m bigger 0 (get top)) (set mem bigger)))))))
+
+(define alloc! (subr cm (i64) i64)
+  (lambda (n) (begin (room! n) (let ((at (get top))) (begin (set top (i64+ at n)) at)))))
+
+(define word-at (subr cm (i64) i64) (lambda (i) (flatarray-ref-i64 (get mem) i)))
+(define word-set! (subr cm (i64 i64) unit) (lambda (i w) (flatarray-set-i64! (get mem) i w)))
+
+"A trap's message, or ``: the first one stops the machine."
+(define trap-message (ref string @c) (new ""))
+
+(define trap! (subr cm (string) unit)
+  (lambda (m) (if (string=? (get trap-message) "") (set trap-message m) #u)))
+(define trapped? (subr cm () bool) (lambda () (not (string=? (get trap-message) ""))))
+
+"Values."
+(define tag-of (subr kfx (i64) i64) (lambda (w) (i64-and w 7)))
+(define is-fixnum? (subr kfx (i64) bool) (lambda (w) (i64= (tag-of w) t-fixnum)))
+(define is-pair? (subr kfx (i64) bool) (lambda (w) (i64= (tag-of w) t-pair)))
+(define is-bloblet? (subr kfx (i64) bool) (lambda (w) (i64= (tag-of w) t-bloblet)))
+(define fix (subr kfx (i64) i64) (lambda (n) (i64-shl n 3)))
+(define fix-val (subr kfx (i64) i64) (lambda (w) (i64-shr w 3)))
+(define address (subr kfx (i64) i64) (lambda (w) (i64-shr w 3)))
+"A fixnum's range: 61 bits, signed."
+(define fix-max i64 1152921504606846975)
+(define fix-min i64 -1152921504606846976)
+(define fits? (subr kfx (i64) bool) (lambda (n) (and (i64<= n fix-max) (i64>= n fix-min))))
+(define boolean (subr kfx (bool) i64) (lambda (b) (if b v-true v-false)))
+(define char-value (subr kfx (i64) i64)
+  (lambda (cp) (i64-or (i64-shl cp 8) (i64-or (i64-shl sub-char 3) t-immediate))))
+(define is-char? (subr kfx (i64) bool)
+  (lambda (w) (and (i64= (tag-of w) t-immediate) (i64= (i64-and (i64-shr w 3) 31) sub-char))))
+
+"Pairs."
+(define cons! (subr cm (i64 i64) i64)
+  (lambda (a d)
+    (let ((at (alloc! 2)))
+      (begin (word-set! at a) (word-set! (i64+ at 1) d) (i64-or (i64-shl at 3) t-pair)))))
+(define pair-car (subr cm (i64) i64) (lambda (p) (word-at (address p))))
+(define pair-cdr (subr cm (i64) i64) (lambda (p) (word-at (i64+ (address p) 1))))
+
+"Bloblets."
+(define header-word (subr kfx (i64 i64 i64 bool bool) i64)
+  (lambda (kind fields bytes ff sf)
+    (i64-or t-header
+      (i64-or (i64-shl kind (with lay header-kind-lo))
+        (i64-or (if ff (i64-shl 1 (with lay header-fields-frozen-lo)) 0)
+          (i64-or (if sf (i64-shl 1 (with lay header-suffix-frozen-lo)) 0)
+            (i64-or (i64-shl fields (with lay header-fields-lo))
+                    (i64-shl bytes (with lay header-bytes-lo)))))))))
+
+(define make-bloblet! (subr cm (i64 i64 i64 bool bool) i64)
+  (lambda (kind n bytes trailer frozen)
+    "A bloblet of `kind`, `n` fields (and a trailer, if `trailer`), each
+     fixnum 0, and `bytes` bytes of suffix, 0: a pointer to its suffix."
+    (let* ((f (if trailer (i64+ n 1) n))
+           (h (alloc! (i64+ (i64+ 1 f) (i64-quotient (i64+ bytes 7) 8))))
+           (p (i64+ h (i64+ 1 f))))
+      (begin
+        (word-set! h (header-word kind f bytes frozen #f))
+        (if trailer (word-set! (i64- p 1) (i64-or (i64-shl f 3) t-trailer)) #u)
+        (i64-or (i64-shl p 3) t-bloblet)))))
+
+(define header-of (subr cm (i64) i64)
+  (lambda (v)
+    "A bloblet's header word: just below its suffix, or as far below as its
+     trailer says."
+    (let* ((p (address v))
+           (w (word-at (i64- p 1))))
+      (if (i64= (tag-of w) t-trailer)
+          (word-at (i64- (i64- p 1) (i64-shr w 3)))
+          w))))
+
+(define header-index (subr cm (i64) i64)
+  (lambda (v)
+    (let* ((p (address v)) (w (word-at (i64- p 1))))
+      (if (i64= (tag-of w) t-trailer) (i64- (i64- p 1) (i64-shr w 3)) (i64- p 1)))))
+
+(define frozen-whole! (subr cm (i64) unit)
+  (lambda (v)
+    "A bloblet's fields and suffix frozen (Fixpt's `freeze_bloblet`)."
+    (let ((h (header-index v)))
+      (word-set! h (i64-or (word-at h)
+                     (i64-or (i64-shl 1 (with lay header-fields-frozen-lo)) (i64-shl 1 (with lay header-suffix-frozen-lo))))))))
+
+(define bits (subr kfx (i64 int int) i64)
+  (lambda (w lo width) (i64-and (i64-shr w lo) (i64- (i64-shl 1 width) 1))))
+(define kind-of (subr cm (i64) i64)
+  (lambda (v) (bits (header-of v) (with lay header-kind-lo) (with lay header-kind-width))))
+(define fields-of (subr cm (i64) i64)
+  (lambda (v) (bits (header-of v) (with lay header-fields-lo) (with lay header-fields-width))))
+(define bytes-of (subr cm (i64) i64)
+  (lambda (v) (bits (header-of v) (with lay header-bytes-lo) (with lay header-bytes-width))))
+(define fields-frozen? (subr cm (i64) bool)
+  (lambda (v) (i64= 1 (bits (header-of v) (with lay header-fields-frozen-lo) 1))))
+(define is-kind? (subr cm (i64 i64) bool)
+  (lambda (v k) (and (is-bloblet? v) (i64= (kind-of v) k))))
+
+"Field `k` of a bloblet, read and written as code that knows its shape
+ does (Fixpt's `bloblet_slot`): not checked."
+(define slot-of (subr cm (i64 i64) i64) (lambda (v k) (word-at (i64- (address v) k))))
+(define slot-set! (subr cm (i64 i64 i64) unit) (lambda (v k x) (word-set! (i64- (address v) k) x)))
+
+"Whether field `k` may be read (Fixpt's `field_slot`): one of the
+ bloblet's, not its trailer."
+(define field-ok? (subr cm (i64 i64) bool)
+  (lambda (v k)
+    (and (i64> k 0) (i64<= k (fields-of v))
+         (not (i64= (tag-of (slot-of v k)) t-trailer)))))
+
+"Strings: a bloblet of no fields, its suffix a word of the length, then
+ the code points two to a word, the first in the low half."
+(define make-string! (subr cm (string) i64)
+  (lambda (s)
+    (let* ((n (string-length-i64 s))
+           (v (make-bloblet! k-string 0 (i64* 8 (i64+ 1 (i64-quotient (i64+ n 1) 2))) #f #f))
+           (p (address v)))
+      (letrec ((fill (subr cm (i64) unit)
+                 (lambda (i)
+                   (if (i64>= i n)
+                       #u
+                       (let ((at (i64+ p (i64+ 1 (i64-quotient i 2))))
+                             (cp (char->i64 (string-ref-i64 s i))))
+                         (begin
+                           (word-set! at (i64-or (word-at at) (if (i64= (i64-remainder i 2) 0) cp (i64-shl cp 32))))
+                           (fill (i64+ i 1))))))))
+        (begin (word-set! p n) (fill 0) v)))))
+
+(define string-text (subr cm (i64) string)
+  (lambda (v)
+    "A string's text, as KFX's."
+    (let* ((p (address v)) (n (word-at p)))
+      (letrec ((text (subr cm (i64 string) string)
+                 (lambda (i acc)
+                   (if (i64>= i n)
+                       acc
+                       (let* ((w (word-at (i64+ p (i64+ 1 (i64-quotient i 2)))))
+                              (cp (if (i64= (i64-remainder i 2) 0) (i64-and w 4294967295) (i64-and (i64-shr w 32) 4294967295))))
+                         (text (i64+ i 1) (string-append acc (char->string (i64->char cp)))))))))
+        (text 0 "")))))
+
+"Symbols, interned: a bloblet of its name, its hash and its global slot
+ (Fixpt's), one for each name."
+(define-datatype named (named string i64))
+(define symbols (ref (listof named @c) @c) (new nil))
+(define globals (ref (listof named @c) @c) (new nil))
+
+(define-rec
+  (lookup (subr cm ((listof named @c) string) i64)
+    (lambda (xs n)
+      (cond ((null? xs) 0)
+            ((tagcase (car xs) (named (m v) (string=? m n))) (tagcase (car xs) (named (m v) v)))
+            (else (lookup (cdr xs) n))))))
+
+(define symbol! (subr cm (string) i64)
+  (lambda (name)
+    (let ((had (lookup (get symbols) name)))
+      (if (not (i64= had 0))
+          had
+          (let ((s (make-bloblet! k-symbol 3 0 #t #f)))
+            (begin
+              (slot-set! s 2 (make-string! name))
+              (slot-set! s 3 (fix (int->i64 (symbol-name-hash (string->symbol name)))))
+              (slot-set! s 4 v-false)
+              (set symbols (cons (named name s) (get symbols)))
+              s))))))
+
+(define symbol-text (subr cm (i64) string) (lambda (s) (string-text (slot-of s 2))))

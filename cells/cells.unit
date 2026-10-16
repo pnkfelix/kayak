@@ -1,0 +1,12 @@
+; Tier 1, cells interpreted (docs/research/native.md, CLAUDES_CHOICES.md
+; C122): Fixpt's cellular machine, in KFX. The compiler's reader, for the
+; literals in Fixpt's listings, then tier 1's own files.
+../kfx/base.kfx
+../kfx/read.kfx
+layout.kfx
+heap.kfx
+show.kfx
+prims.kfx
+listing.kfx
+machine.kfx
+main.kfx

@@ -1366,3 +1366,11 @@ Fixpt's object layout built in (`fx26:layout.fx` and its signatures),
 files marked `fixpt-source: PATH@REV`, `scripts/fixpt-drift.py --check`
 in `check.sh`; PLAN.md's pin move says so. `tests/kfx/layout.kfx` makes
 a header from Fixpt's layout, as Fixpt does.
+
+## §31: tier 1, Fixpt's cellular machine in KFX (2026-10-16, C122)
+
+`cells/` and `crates/kayak-cells`: the heap in Fixpt's format, the
+machine routine by routine as Fixpt's Rust interpreter, its words read
+from Fixpt's compiler's listing. 175 of Fixpt's FX-26 programs give
+Fixpt's answers (`scripts/cells-programs.py`, in `check.sh`), none
+differ; seven of its eight benchmarks.
