@@ -1826,6 +1826,9 @@ pub fn hand_x(m: HandCode) -> bool {
     if i64_eq(why, gave_back()) {
         given_x();
         true
+    } else if i64_eq(why, misaligned()) {
+        trap_x(str_lit("tier 2: its code is not 16-byte aligned (C131)"));
+        false
     } else {
         trap_x(str_lit("tier 2: the return stack ran out under its marks (C126)"));
         false

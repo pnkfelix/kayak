@@ -267,3 +267,31 @@ fn strings_cross() {
     }
     assert_eq!(string_of(fixnum(3)), None);
 }
+
+#[test]
+fn code_is_16_byte_aligned_in_both_views() {
+    // Tier 5 (kayak's C131) keeps return points of its code, 8-aligned
+    // within it, in frames the collector reads as fixnums: so every
+    // sealed suffix starts 16-byte aligned, whatever its fields and size.
+    if !native_code() {
+        return;
+    }
+    for fields in 0..5usize {
+        for n in [1usize, 2, 3, 5, 8] {
+            let mut code = vec![0xd503_201f_u32; n - 1];
+            code.push(0xd65f_03c0);
+            let slots: Vec<u64> = (0..fields).map(|i| fixnum(i as i64)).collect();
+            let c = seal(layout::KIND_BLOBLET, &slots, false, &words(&code));
+            assert_eq!(
+                c.entry() % 16,
+                0,
+                "{fields} fields, {n} instructions: the execute view"
+            );
+            assert_eq!(
+                (c.reference() & !7) % 16,
+                0,
+                "{fields} fields, {n} instructions: the write view"
+            );
+        }
+    }
+}

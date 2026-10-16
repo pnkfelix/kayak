@@ -78,6 +78,8 @@
 "Register code's `RESULT` and `REG1`…`REG8` (C130), in `x0`…`x8` while the
  machine runs, as Fixpt's tier 5 keeps them."
 (define st-regs int 20)
+"Where the code starts (C131): its tables are at fixed places past it."
+(define st-start int 29)
 (define st-size i64 32)
 (define at-st (->* (int) int) (lambda (i) (* 8 i)))
 
@@ -85,14 +87,19 @@
  out under its entries' marks, which tier 1 would read past."
 (define gave-back i64 1)
 (define ran-out i64 2)
+(define misaligned i64 3)
 
 "Code: instructions, and jumps to labels, placed when every label is."
-(define-datatype item (ins int) (jump int int int) (label-here int) (offset-of int))
+(define-datatype item (ins int) (jump int int int) (label-here int) (offset-of int) (align-odd int))
 (define j-b int 0)
 (define j-cond int 1)
 (define j-cbz int 2)
 (define j-adr int 3)
 (define j-cbnz int 4)
+(define j-bl int 5)
+"A `nop`, and `align-odd!`: one if the next instruction's place is even,
+ so that the one after it, where a `blr` returns, is 8-aligned (C131)."
+(define arm-nop int 3573751839)
 
 (define hand-items (ref (listof item @c) @c) (new nil))
 "Data, placed before the code: 8 bytes an entry."
@@ -105,6 +112,8 @@
 (define bc! (->* (int int) unit) (lambda (c l) (set hand-items (cons (jump j-cond c l) (get hand-items)))))
 (define cbz! (->* (int int) unit) (lambda (r l) (set hand-items (cons (jump j-cbz r l) (get hand-items)))))
 (define adr! (->* (int int) unit) (lambda (r l) (set hand-items (cons (jump j-adr r l) (get hand-items)))))
+(define bl! (->* (int) unit) (lambda (l) (set hand-items (cons (jump j-bl 0 l) (get hand-items)))))
+(define align-odd! (->* () unit) (lambda () (set hand-items (cons (align-odd 0) (get hand-items)))))
 (define d! (->* (item) unit) (lambda (i) (set hand-data (cons (ins 0) (cons i (get hand-data))))))
 (define data-label! (->* (int) unit) (lambda (l) (set hand-data (cons (label-here l) (get hand-data)))))
 
@@ -124,6 +133,7 @@
             (ins (w) (placed! (cdr xs) (+ at 1) ls))
             (jump (k a l) (placed! (cdr xs) (+ at 1) ls))
             (offset-of (l) (placed! (cdr xs) (+ at 1) ls))
+            (align-odd (z) (placed! (cdr xs) (if (= (modulo at 2) 0) (+ at 1) at) ls))
             (label-here (l) (begin (flatarray-set-i64! ls (int->i64 l) (int->i64 at)) (placed! (cdr xs) at ls))))))))
 
 (define where (->* ((flatarrayof i64 @c) int) int) (lambda (ls l) (i64->int (flatarray-ref-i64 ls (int->i64 l)))))
@@ -140,8 +150,10 @@
                 ((= k j-cond) ((with a64 arm-b-cond) a d))
                 ((= k j-cbz) ((with a64 arm-cbz) a d))
                 ((= k j-cbnz) ((with a64 arm-cbnz) a d))
+                ((= k j-bl) ((with a64 arm-bl) d))
                 (else (arm-adr a (* 4 d))))))
       (offset-of (l) (* 4 (where ls l)))
+      (align-odd (z) arm-nop)
       (label-here (l) 0))))
 
 "Instructions, by `arm64.fx`'s encoders."
@@ -168,6 +180,7 @@
 (define lsr! (->* (int int int) unit) (lambda (d n s) (e! ((with a64 arm-lsr-imm) d n s))))
 (define csel! (->* (int int int int) unit) (lambda (d n m c) (e! ((with a64 arm-csel) d n m c))))
 (define br! (->* (int) unit) (lambda (n) (e! ((with a64 arm-br) n))))
+(define blr! (->* (int) unit) (lambda (n) (e! ((with a64 arm-blr) n))))
 (define stp-pre! (->* (int int int int) unit) (lambda (t t2 n i) (e! ((with a64 arm-stp-pre) t t2 n i))))
 (define ldp-post! (->* (int int int int) unit) (lambda (t t2 n i) (e! ((with a64 arm-ldp-post) t t2 n i))))
 (define stp! (->* (int int int int) unit) (lambda (t t2 n i) (e! ((with a64 arm-stp) t t2 n i))))
@@ -191,6 +204,12 @@
 (define l-pop-return (ref int @c) (new 0))
 (define l-resume (ref int @c) (new 0))
 (define l-resume-give (ref int @c) (new 0))
+(define l-misaligned (ref int @c) (new 0))
+"Where the code starts, where the machine is entered, and where the
+ table of the compiled words' tables of where to resume is (C128)."
+(define l-start (ref int @c) (new 0))
+(define l-entry (ref int @c) (new 0))
+(define l-words (ref int @c) (new 0))
 
 "Compiling a word (tier 4, C128): the label of the next cell's code, and
  of a branch's target's; -1 in the machine, or for a target not compiled."
@@ -557,7 +576,11 @@
       (ldr! x14 x-st (at-st st-dsp)) (times8! x14) (add! x-dsp x-dsb x14)
       (ldr! x14 x-st (at-st st-rsp)) (times8! x14) (add! x-rsp x13 x14)
       (ldr! x-fuel x-st (at-st st-fuel))
+      ;; The code 16-byte aligned, as kayak-jit seals it (C131: links in
+      ;; frames are fixnums), else out at once.
+      (adr! x16 (get l-start)) (str! x16 x-st (at-st st-start))
       (regs-loaded! 0)
+      (ldr! x16 x-st (at-st st-start)) (tstl! x16 4) (bc! c-ne (get l-misaligned))
       (resume!))))
 
 (define leave! (->* (i64) unit)
@@ -577,11 +600,6 @@
       (ldp! 27 28 31 80) (ldp! 25 26 31 64) (ldp! 23 24 31 48) (ldp! 21 22 31 32) (ldp! 19 20 31 16) (ldp-post! 29 30 31 96)
       (ret!))))
 
-"Where the code starts, where the machine is entered, and where the
- table of the compiled words' tables of where to resume is (C128)."
-(define l-start (ref int @c) (new 0))
-(define l-entry (ref int @c) (new 0))
-(define l-words (ref int @c) (new 0))
 
 (define resumed! (->* () unit)
   (lambda ()
@@ -592,6 +610,8 @@
      times 8, then for each cell `k` its code's offset, or 0."
     (begin
       (bind! (get l-resume))
+      ;; Entered so, register code has no link: it returns the stack's way.
+      (mov! 30 31)
       (andl! x13 x-cur 3) (cmpi! x13 4) (bc! c-ne (get l-next))
       (add! x11 x-mem x-cur) (ldur! x10 x11 (- -4 (* 8 (i64->int f-entry))))
       (cmpi! x10 (* 8 (i64->int r-count))) (bc! c-lo (get l-next))
@@ -629,7 +649,7 @@
       (begin
         (set hand-labels (+ base (i64->int r-count)))
         (set l-next (label!)) (set l-give (label!)) (set l-give-pre (label!)) (set l-ran-out (label!)) (set l-pop-return (label!))
-        (set l-resume (label!)) (set l-resume-give (label!))
+        (set l-resume (label!)) (set l-resume-give (label!)) (set l-misaligned (label!))
         (bind! (get l-entry))
         (entry!)
         (resumed!)
@@ -657,6 +677,8 @@
         (leave! gave-back)
         (bind! (get l-ran-out))
         (leave! ran-out)
+        (bind! (get l-misaligned))
+        (mov! x-cell x-ip) (leave! misaligned)
         (bind! (get l-resume-give))
         (mov! x-cell x-ip) (b! (get l-give-pre))
         ;; A return, as tier 1's `pop-return!`: a prompt's or a mark's entry
@@ -832,6 +854,31 @@
   (frees-stored! (->* (int int) unit)
     (lambda (r n) (if (> r n) #u (begin (stur! r x11 (- -24 (* 8 (- r 1)))) (frees-stored! (+ r 1) n))))))
 
+"The frame's slot that keeps the link, past `save M`'s `M` (C131); -1
+ before one, a leaf's link staying in `x30`."
+(define h-link (ref int @c) (new -1))
+
+(define link-reloaded! (->* (int) unit)
+  (lambda (m) "`x30` the link again, after a call." (if (>= m 0) (ldr! 30 x-fp (* 8 m)) (mov! 30 31))))
+
+(define entry-address! (->* (int int) unit)
+  (lambda (r none)
+    "`x16` the code of register word `r`'s first instruction past `args`,
+     by the tables past the code's start; to `none` if it has none."
+    (begin
+      (ldr! x13 x-st (at-st st-start))
+      (add! x14 x-mem r) (ldur! x15 x14 (at-field f-entry))
+      (cmpi! x15 (* 8 (i64->int r-count))) (bc! c-lo none)
+      (subi! x15 x15 (* 8 (i64->int r-count)))
+      (ldr! x14 x13 8) (cmp! x15 x14) (bc! c-hs none)
+      (add! x16 x13 x15) (ldr! x14 x16 16)
+      (add! x16 x13 x14) (ldr! x14 x16 (* 8 (+ 1 (+ (i64->int f-cell0) 2))))
+      (add! x16 x13 x14))))
+
+(define-rec
+  (args-pushed! (->* (int int) unit)
+    (lambda (r n) (if (> r n) #u (begin (str-post! r x-dsp 8) (args-pushed! (+ r 1) n))))))
+
 (define reg-ins! (->* (i64 i64 i64 int (flatarrayof i64 @c)) unit)
   (lambda (rw i n base resumes)
     "Register instruction `i` of `rw`'s `n` cells, at label `base + i`;
@@ -872,7 +919,9 @@
                    (fill-false! m)
                    (let ((loop (label!)))
                      (begin (sub-const! x15 x16 8) (bind! loop) (str-post! x13 x-dsp 8) (cmp! x-dsp x15) (bc! c-lo loop))))
-               (str-post! 31 x-dsp 8))))
+               ;; The link (C131): 8-aligned, a fixnum to the collector.
+               (str-post! 30 x-dsp 8)
+               (set h-link m))))
           ((i64= op ro-pop)
            (begin (sub-const! x16 x-dsp (* 8 (+ (i64->int (o 0)) 1))) (cmp! x16 x-dsb) (give-if! c-lo) (mov! x-dsp x16)))
           ((or (i64= op ro-stack) (i64= op ro-load) (i64= op ro-setstk) (i64= op ro-store))
@@ -917,27 +966,56 @@
                (addi! x14 x13 (+ 3 n)) (str! x14 x-st (at-st st-top))
                (sub! x14 x11 x-mem) (addi! 0 x14 4))))
           ((or (i64= op ro-invoke) (i64= op ro-tailinvoke))
-           (begin
-             (closure-in! 0)
-             (ldur! x13 x11 (at-field f-word)) (add! x14 x-mem x13)
-             (ldur! x10 x14 (at-field f-twin)) (cmpi! x10 3) (give-if! c-eq)
-             (add! x14 x-mem x10) (ldur! x15 x14 (at-field (i64+ f-cell0 1)))
-             (cmpi! x15 (* 8 (i64->int (o 0)))) (give-if! c-ne)
-             (limits!)
-             (if (i64= op ro-invoke)
-                 (begin (return-pushed! (i64+ f-cell0 nx)) (flatarray-set-i64! resumes nx 1))
-                 #u)
-             (mov! x-clo 0) (mov! x-cur x10)
-             (add! x-ip x-mem x-cur) (subi! x-ip x-ip (+ 4 (* 8 (+ (i64->int f-cell0) 2))))
-             (resume!)))
+           (let ((tail (i64= op ro-tailinvoke)) (stack-code (label!)) (stack-way (label!)) (n (i64->int (o 0))))
+             (begin
+               (closure-in! 0)
+               (ldur! x13 x11 (at-field f-word)) (add! x14 x-mem x13)
+               (ldur! x10 x14 (at-field f-twin)) (cmpi! x10 3) (bc! c-eq stack-code)
+               (add! x14 x-mem x10) (ldur! x15 x14 (at-field (i64+ f-cell0 1)))
+               (cmpi! x15 (* 8 n)) (give-if! c-ne)
+               (limits!)
+               (if tail #u (return-pushed! (i64+ f-cell0 nx)))
+               (mov! x-clo 0) (mov! x-cur x10)
+               ;; Register code compiled: by `blr` (in tail position, `br`,
+               ;; the link this one's), its value in `x0`.
+               (entry-address! x10 stack-way)
+               (if tail
+                   (br! x16)
+                   (begin (align-odd!) (blr! x16) (link-reloaded! (get h-link)) (b! (+ base (i64->int nx)))))
+               (bind! stack-way)
+               (add! x-ip x-mem x-cur) (subi! x-ip x-ip (+ 4 (* 8 (+ (i64->int f-cell0) 2))))
+               (resume!)
+               ;; Stack code: the arguments its frame, as tier 1's `call!`.
+               (bind! stack-code)
+               (if (> n 8)
+                   (b! (get l-give))
+                   (begin
+                     (mov! x10 x13)
+                     (limits!)
+                     (add-const! x16 x-dsp (* 8 n)) (ldr! x14 x-st (at-st st-ds-end)) (cmp! x16 x14) (give-if! c-hi)
+                     (if tail #u (return-pushed! (i64+ f-cell0 nx)))
+                     (mov! x-fp x-dsp) (args-pushed! 1 n)
+                     (mov! x-clo 0) (mov! x-cur x10)
+                     (add! x-ip x-mem x-cur) (subi! x-ip x-ip (+ 4 (* 8 (i64->int f-cell0))))
+                     (resume!))))))
           ((i64= op ro-invokeself)
            (begin
-             (limits!) (return-pushed! (i64+ f-cell0 nx)) (flatarray-set-i64! resumes nx 1)
-             (b! (+ base 2))))
+             (limits!) (return-pushed! (i64+ f-cell0 nx))
+             (align-odd!) (bl! (+ base 2)) (link-reloaded! (get h-link))))
           ((i64= op ro-return)
-           (begin
-             (ldr! x16 x-st (at-st st-rsb)) (cmp! x-rsp x16) (give-if! c-eq)
-             (h-room!) (str-post! 0 x-dsp 8) (b! (get l-pop-return))))
+           (let ((stack-way (label!)))
+             (begin
+               (ldr! x16 x-st (at-st st-rsb)) (cmp! x-rsp x16) (give-if! c-eq)
+               ;; With a link, to the caller's code, the entry it pushed
+               ;; popped (C131); else the stack's way.
+               (cbz! 30 stack-way)
+               (ldur! x13 x-rsp -32)
+               (cmpi! x13 (i64->int prompt-mark-word)) (bc! c-eq stack-way)
+               (cmpi! x13 (i64->int mark-mark-word)) (bc! c-eq stack-way)
+               (mov! x-cur x13) (ldur! x14 x-rsp -16) (ldur! x-clo x-rsp -8) (subi! x-rsp x-rsp 32)
+               (add! x-fp x-dsb x14) (br! 30)
+               (bind! stack-way)
+               (h-room!) (str-post! 0 x-dsp 8) (b! (get l-pop-return)))))
           ((i64= op ro-branch) (b! (to 1 (o 0))))
           ((i64= op ro-branchf) (begin (cmpi! 0 3) (bc! c-eq (to 1 (o 0)))))
           ((i64= op ro-brancht) (begin (cmpi! 0 3) (bc! c-ne (to 1 (o 0)))))
@@ -949,7 +1027,7 @@
         ;; Where a call or a call-out comes back to: its value on the data
         ;; stack, whether it ran here or was given back.
         (if (or (i64= op ro-prim) (i64= op ro-lambda) (i64= op ro-cellular) (i64= op ro-invoke) (i64= op ro-invokeself))
-            (flatarray-set-i64! resumes nx 1)
+            (flatarray-set-i64! resumes nx (int->i64 (+ (get h-link) 2)))
             #u)))))
 
 (define-rec
@@ -970,10 +1048,11 @@
       (if (i64>= i n)
           #u
           (begin
-            (if (i64= (flatarray-ref-i64 resumes i) 1)
+            (if (i64>= (flatarray-ref-i64 resumes i) 1)
                 (begin
                   (bind! (+ rbase (i64->int i)))
                   (cmp! x-dsp x-dsb) (bc! c-ls rgive) (regs-zeroed! 1) (subi! x-dsp x-dsp 8) (ldr! 0 x-dsp 0)
+                  (link-reloaded! (- (i64->int (flatarray-ref-i64 resumes i)) 2))
                   (b! (+ base (i64->int i))))
                 #u)
             (resumes-emitted! (i64+ i 1) n base rbase rgive resumes))))))
@@ -986,7 +1065,7 @@
       (if (i64>= k (i64+ f-cell0 n))
           #u
           (begin
-            (if (and (i64>= k f-cell0) (i64= (flatarray-ref-i64 marks (i64- k f-cell0)) 1))
+            (if (and (i64>= k f-cell0) (i64>= (flatarray-ref-i64 marks (i64- k f-cell0)) 1))
                 (d! (offset-of (+ base (i64->int (i64- k f-cell0)))))
                 (d! (offset-of rgive)))
             (reg-table! (i64+ k 1) n base rgive marks))))))
@@ -1002,6 +1081,7 @@
            (machine-give (get l-give)) (machine-give-pre (get l-give-pre)))
       (begin
         (set hand-labels (+ rgive 1))
+        (set h-link -1)
         (set l-give give) (set l-give-pre give-pre)
         (reg-instructions! rw 0 n base starts resumes)
         (bind! (+ base n-cells)) (b! give)
@@ -1071,6 +1151,7 @@
           -1
           (tagcase (car xs)
             (label-here (l) (all-put! b (cdr xs) at ls))
+            (align-odd (z) (if (= (modulo at 2) 0) (begin (put4 b (* 4 at) arm-nop) (all-put! b (cdr xs) (+ at 1) ls)) (all-put! b (cdr xs) at ls)))
             (else x
               (let ((w (encoded x at ls)))
                 (if (< w 0)

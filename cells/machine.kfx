@@ -959,9 +959,9 @@
             (set fuel (flatarray-ref-i64 s (int->i64 st-fuel)))
             (set top (flatarray-ref-i64 s (int->i64 st-top)))
             (regs-copied! s (int->i64 st-regs) (get rr) 0 9)
-            (if (i64= why gave-back)
-                (begin (given!) #t)
-                (begin (trap! "tier 2: the return stack ran out under its marks (C126)") #f))))))))
+            (cond ((i64= why gave-back) (begin (given!) #t))
+                  ((i64= why misaligned) (begin (trap! "tier 2: its code is not 16-byte aligned (C131)") #f))
+                  (else (begin (trap! "tier 2: the return stack ran out under its marks (C126)") #f)))))))))
 
 (define-rec
   (hand-run! (subr cm (hand-code i64) unit)

@@ -212,7 +212,9 @@ pub fn seal(kind: u8, fields: &[u64], fields_frozen: bool, suffix: &[u8]) -> Cod
     let n = fields.len();
     let words = suffix.len().div_ceil(8);
     // The header, so that the suffix is 16-byte aligned: instructions need
-    // only 4, but frames and literal pools are simpler so.
+    // only 4, but frames and literal pools are simpler so, and kayak's
+    // tier 5 keeps its 8-aligned return points in frames as fixnums
+    // (C131; `tests/code.rs` holds this to it).
     let pad = (1 + n) % 2;
     let base = take(pad + 1 + n + words);
     let header = base + 8 * pad;

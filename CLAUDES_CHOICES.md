@@ -3397,3 +3397,28 @@ back at any instruction, tier 1's interpreter (C129) going on from there.
   36.4. What register code gives back most now: `cellular` (`captures`'
   control routines, 60,000; `cons` when a collection is due).
   `--gc-stats` counts register instructions given back by name.
+
+## C131. Tier 5's calls by link, and of stack code (2026-10-16)
+
+As Fixpt's tier 5 calls register code: an `invoke` of a register word
+whose code is compiled jumps to it by `blr` (in tail position `br`, the
+link this procedure's), the arguments in the registers; `save` keeps the
+link in the frame's link slot (0 before: tier 1's frames, and a link
+that would not read as a fixnum); after a call the link is loaded again
+from it. A `return` with a link goes straight back to the caller's code,
+`RESULT` in `x0`, popping the entry the caller pushed (as tier 1 pops it,
+and passing by none: a prompt's or a mark's on top sends it the stack's
+way). With none (entered from tier 1, after giving back, from stack
+code: `l-resume` clears `x30`), it returns the stack's way, as before.
+Both stay right because the caller always pushes its marked entry and
+has code to resume at: a link only skips the way round. The points a
+`blr` returns to are 8-aligned within the code (`align-odd!`), and the
+code itself 16-byte aligned (kayak-jit's `seal`, held to it by
+`tests/code.rs`; the machine's entry checks it, and traps rather than
+run otherwise), so that a link in a frame reads as a fixnum to the
+collector, as Fixpt aligns them.
+- **Calls of stack code** from register code in the machine too: the
+  registers pushed as the frame, a return entry to the point after, the
+  word entered (`resumed!`).
+- **Results.** `fib` 16.1 ms to 12.9, `tak` 7.5 to 6.3 (the rest within a
+  millisecond); `captures`' control routines are still given back.
