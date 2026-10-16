@@ -2778,3 +2778,38 @@ environment and these (their names no program writes).
   (C45: FX-26 may resume one again and again, a Rust future once).
 - Else possible: loads kept apart and datatypes compared structurally,
   which Rust's nominal enums cannot.
+
+## C118. Fixpt's reader types apart; no recursive abbreviations; a local load's types by `select` (2026-10-16, TODO §31 step 1)
+
+Our requests to Fixpt of 2026-10-15/16 (its §98), done there, pinned at
+`7641962`: A, the eager reader's continuation-holding states in a file
+only the reader loads, and the parser loading no reader (`syn.fx`); B,
+`call-with-oneshot-continuation` and `(oneshot T A D R)`; C, the reader's
+working types (`cursor` and its kin) apart too.
+- **No recursive type abbreviations** (talked over with the user): FX-26's
+  are structural `mu` types; KFX keeps recursion to datatypes. Taking
+  them would mean coinductive equality and subtyping in the checker, and
+  in Rust a nominal wrapper folded and unfolded where the program writes
+  nothing (K5). In Fixpt's front end only `cursor` (the reader's own) and
+  `val` (the evaluator's, a union) were such; so request C, not KFX.
+- **One-shot, not yet taken.** Fixpt's capture runs its procedure in
+  place and counts only calls of `k`, so a normal return runs the rest
+  again (`run/oneshot-once.fx` answers 43): two runs, which a Rust future
+  cannot. KFX can take the shape Fixpt's own code writes (`processes.fx`):
+  a procedure that, on every path, ends in an abort to the same tag,
+  which is C45's `abort-with-continuation`. To do.
+- **`(select m t)` of a load bound in a module** (`(hide (define m
+  ((proj (load-module "f") r ...))))`, as `parser-types.fx` names the
+  reader's `syn`): the load is a module including the shared
+  `made--load--K` (C117), so in the items around it `(select m x)` is
+  `(select made--load--K x)`, the same module, one defined at the top
+  level, whose types a `select` names (`shared-names`,
+  `selects-renamed`). Test: `tests/kfx/loaded-select.kfx`, the corpus's
+  first program with files of its own (`tests/kfx/loads/`), which
+  `scripts/corpus.py` now copies beside the text Fixpt runs.
+- **Measured** (`scripts/survey-front-end.py`, 150 files): 11 accepted;
+  59 stop at `check-types-types.fx`'s signature, a `moduleof` whose `val`
+  is polymorphic in a type (C107 takes regions alone); 8 at `import`;
+  about 60 at a `load-input` of a file that is one `lambda`; 4 at a
+  bloblet field holding a procedure; 2 at a nested load's path joined to
+  an absolute one (a kfx bug).

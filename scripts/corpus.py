@@ -24,6 +24,7 @@ And two directories of programs kfx must refuse:
 """
 
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -80,17 +81,39 @@ def stage0(path, then):
     return text + then
 
 
-def fixpt_on(binary, text, args):
-    """Fixpt on `text` as one file, cached (fixptcache.py)."""
+def own_loads(path):
+    """The files a program loads of its own (not Fixpt's `fx26:` ones), and
+    theirs, as paths relative to its directory (C118)."""
+    base = os.path.dirname(path)
+    found, todo = [], list(files_of(path))
+    while todo:
+        p = todo.pop()
+        with open(p) as f:
+            for m in re.finditer(r'\((?:load-module|load-input) "([^"]+)"\)', f.read()):
+                rel = os.path.normpath(os.path.join(os.path.relpath(os.path.dirname(p), base), m.group(1)))
+                if not m.group(1).startswith("fx26:") and rel not in found:
+                    found.append(rel)
+                    todo.append(os.path.join(base, rel))
+    return found
+
+
+def fixpt_on(binary, text, args, path=None):
+    """Fixpt on `text` as one file, cached (fixptcache.py); beside it, the
+    files program `path` loads of its own."""
     with tempfile.TemporaryDirectory() as d:
         tmp = os.path.join(d, "stage0.fx")
         with open(tmp, "w") as f:
             f.write(text)
-        return fixptcache.run(binary, ["--dialect", "fx26"] + args + [tmp], [tmp])
+        copies = []
+        for rel in own_loads(path) if path is not None else []:
+            os.makedirs(os.path.dirname(os.path.join(d, rel)), exist_ok=True)
+            shutil.copyfile(os.path.join(os.path.dirname(path), rel), os.path.join(d, rel))
+            copies.append(os.path.join(d, rel))
+        return fixptcache.run(binary, ["--dialect", "fx26"] + args + [tmp], [tmp] + copies)
 
 
 def answer(binary, path):
-    r = fixpt_on(binary, stage0(path, "\n(main)\n"), ["--step-limit", "none", "eval", "--raw"])
+    r = fixpt_on(binary, stage0(path, "\n(main)\n"), ["--step-limit", "none", "eval", "--raw"], path)
     if r.returncode != 0:
         return None, r.stderr
     return r.stdout, None
@@ -103,7 +126,7 @@ def refused(compiler, interpreter, kind, wrong):
     def both(n):
         src = os.path.join(directory, n + ".kfx")
         mine = run([compiler, src])
-        theirs = fixpt_on(interpreter, stage0(src, ""), ["eval"]) if interpreter is not None else None
+        theirs = fixpt_on(interpreter, stage0(src, ""), ["eval"], src) if interpreter is not None else None
         return mine, theirs
 
     ran = fixptcache.parallel(both, names)

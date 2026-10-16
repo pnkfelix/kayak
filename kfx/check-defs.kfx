@@ -1930,6 +1930,43 @@
     "A load of a module already made: a module that includes it."
     (lst (list (sym "module" f p) (lst (list (sym "include" f p) (sym name f p)) f l p)) f l p)))
 
+(define-rec
+  (shared-names (subr kfx (sexps) keyeds)
+    (lambda (its)
+      "Among a form's items, perhaps hidden, each `(define m L)` whose `L`
+       was a load, now a module including the shared one: `m` and that
+       module's name."
+      (concat (map (lambda ((g sexp))
+                     (cond ((and (head-is? g "define") (i64= (size (items g)) 3) (head-is? (third (items g)) "module")
+                                 (i64= (size (items (third (items g)))) 2) (head-is? (second (items (third (items g)))) "include"))
+                            (tagcase (second (items (second (items (third (items g))))))
+                              (sym (n f p)
+                                (if (has-prefix? n "made--load--")
+                                    (the keyeds (list (keyed (tagcase (second (items g)) (sym (m f2 p2) m) (else other "")) n)))
+                                    nil))
+                              (else other nil)))
+                           ((head-is? g "hide") (shared-names (cdr (items g))))
+                           (else nil)))
+                   its)))))
+
+(define-rec
+  (selects-renamed (subr kfx (sexp keyeds) sexp)
+    (lambda (e shared)
+      "`e`, each `(select m x)` of a shared load's `m` the shared module's:
+       one module, so the same meaning, and one defined at the top level,
+       whose types a `select` may name (C118)."
+      (tagcase e
+        (lst (xs f l p)
+          (let ((to (if (and (head-is? e "select") (i64= (size xs) 3))
+                        (tagcase (second xs)
+                          (sym (n f2 p2) (concat (map (lambda ((k keyed)) (tagcase k (keyed (m made) (if (string=? m n) (the strings (list made)) nil)))) shared)))
+                          (else other nil))
+                        nil)))
+            (if (null? to)
+                (lst (map (lambda ((x sexp)) (selects-renamed x shared)) xs) f l p)
+                (lst (list (car xs) (sym (car to) f p) (third xs)) f l p))))
+        (else other e)))))
+
 (define parameters-given (subr kfx (sexps sexps string) sexps)
   (lambda (forms args path)
     "A loaded file's items: of a file of `module-parameters`, the rest, each
@@ -1986,7 +2023,9 @@
     (lambda (xs dir loaded chain known done defs f l p)
       "Each of `xs` spliced in turn, `done` those so far, reversed."
       (if (null? xs)
-          (spliced-to (lst (reverse done) f l p) defs known)
+          (let* ((its (the sexps (reverse done)))
+                 (shared (shared-names its)))
+            (spliced-to (lst (if (null? shared) its (map (lambda ((x sexp)) (selects-renamed x shared)) its)) f l p) defs known))
           (tagcase (spliced (car xs) dir loaded chain known)
             (spliced-to (x more known2)
               (spliced-each (cdr xs) dir loaded chain known2 (cons x done) (onto defs more) f l p)))))))

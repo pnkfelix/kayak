@@ -1342,3 +1342,10 @@ encoder, run on kayak as on Fixpt.
 Then: Fixpt's `allocated.fx` (the `bloblet` routine, cards marked) and
 `linked.fx` (procedures in a code bloblet's fields, `*` and a program's
 own, called by native code) run on kayak as on Fixpt.
+
+Then (C118): Fixpt pinned at `7641962`, our requests A, B and C done
+there (the reader's states and working types apart from `syn`'s, the
+parser loading no reader, one-shot continuations). KFX names a type of a
+load bound in a module by `select`, as Fixpt's `parser-types.fx` does;
+`tests/kfx/loaded-select.kfx`, with files of its own. The survey: 11 of
+150 files accepted, 59 next at a type-polymorphic `val` in a `moduleof`.

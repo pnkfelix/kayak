@@ -1,0 +1,7 @@
+"A module loaded in a loaded module, its type named by `select` (C118):
+ Fixpt's front end names the reader's types so."
+
+(define areas ((proj (load-module "loads/areas.fx") @globals)))
+
+(define main (subr (read @globals) () string)
+  (lambda () (int->string (with areas (area (square 7))))))

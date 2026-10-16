@@ -571,6 +571,12 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
 1. Module files in KFX; Fixpt's front end's 143 files surveyed again,
    to choose where stage A comes from (A: Fixpt's front end through KFX;
    B: Fixpt's compilers ported onto kayak's checker).
+   **At Fixpt `7641962` (C118)**: 11 of 150 accepted. Next, by files
+   unblocked: a `moduleof` whose `val` is polymorphic in a type (59);
+   `load-input` of a file that is one `lambda` (about 60); `import` (8);
+   a bloblet field holding a procedure (4); a nested load's path joined
+   to an absolute one (2, a bug). And `call-with-oneshot-continuation`
+   whose procedure ends in an abort to its tag, as C45's form (C118).
 2. The layout table for KFX; the heap in Fixpt's format; tier 1.
 3. `kayak-jit`; the arm64 encoder in KFX; tier 2. **Begun (C116,
    2026-10-15)**: Fixpt's §97 operations in KFX, the code area, the

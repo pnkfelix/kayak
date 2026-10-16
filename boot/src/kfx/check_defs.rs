@@ -3640,6 +3640,92 @@ pub fn included_module(name: Str, f: Str, l: i64, p: i64) -> &'static Sexp {
     lst(kayak_rt::heap_cons(sym(str_lit("module"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("include"), f, p), kayak_rt::heap_cons(sym(name, f, p), kayak_rt::nil())), f, l, p), kayak_rt::nil())), f, l, p)
 }
 
+/// Among a form's items, perhaps hidden, each `(define m L)` whose `L`
+/// was a load, now a module including the shared one: `m` and that
+/// module's name.
+pub fn shared_names(its: Sexps) -> Keyeds {
+    concat(map(lambda1s(move |g: &'static Sexp| {
+        if (head_is_p(g, str_lit("define")) && i64_eq(size(items(g)), 3i64) && head_is_p(third(items(g)), str_lit("module")) && i64_eq(size(items(third(items(g)))), 2i64) && head_is_p(second(items(third(items(g)))), str_lit("include"))) {
+            let tagcase_ = second(items(second(items(third(items(g))))));
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    if has_prefix_p(n, str_lit("made--load--")) {
+                        the::<Keyeds>(kayak_rt::heap_cons(keyed({
+                            let tagcase_ = second(items(g));
+                            match *tagcase_ {
+                                Sexp::Sym(m, f2, p2) => {
+                                    m
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    str_lit("")
+                                }
+                            }
+                        }, n), kayak_rt::nil()))
+                    } else {
+                        nil::<&'static Keyed>()
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<&'static Keyed>()
+                }
+            }
+        } else if head_is_p(g, str_lit("hide")) {
+            shared_names(cdr(items(g)))
+        } else {
+            nil::<&'static Keyed>()
+        }
+    }), its))
+}
+
+/// `e`, each `(select m x)` of a shared load's `m` the shared module's:
+/// one module, so the same meaning, and one defined at the top level,
+/// whose types a `select` may name (C118).
+pub fn selects_renamed(e: &'static Sexp, shared: Keyeds) -> &'static Sexp {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            let to = if (head_is_p(e, str_lit("select")) && i64_eq(size(xs), 3i64)) {
+                let tagcase_ = second(xs);
+                match *tagcase_ {
+                    Sexp::Sym(n, f2, p2) => {
+                        concat(map(lambda1s(move |k: &'static Keyed| {
+                            let tagcase_ = k;
+                            match *tagcase_ {
+                                Keyed::Keyed(m, made) => {
+                                    if string_eq_p(m, n) {
+                                        the::<Strings>(kayak_rt::heap_cons(made, kayak_rt::nil()))
+                                    } else {
+                                        nil::<Str>()
+                                    }
+                                }
+                            }
+                        }), shared))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<Str>()
+                    }
+                }
+            } else {
+                nil::<Str>()
+            };
+            if null_p(to) {
+                lst(map(lambda1s(move |x: &'static Sexp| {
+                    selects_renamed(x, shared)
+                }), xs), f, l, p)
+            } else {
+                lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(sym(car(to), f, p), kayak_rt::heap_cons(third(xs), kayak_rt::nil()))), f, l, p)
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            e
+        }
+    }
+}
+
 /// A loaded file's items: of a file of `module-parameters`, the rest, each
 /// of its regions the one given; of any other, all, given nothing.
 pub fn parameters_given(forms: Sexps, args: Sexps, path: Str) -> Sexps {
@@ -3770,7 +3856,15 @@ pub fn spliced(e: &'static Sexp, dir: Str, loaded: Fileds, chain: Strings, known
 pub fn spliced_each(mut xs: Sexps, mut dir: Str, mut loaded: Fileds, mut chain: Strings, mut known: Keyeds, mut done: Sexps, mut defs: Sexps, mut f: Str, mut l: i64, mut p: i64) -> &'static SplicedTo {
     loop {
         if null_p(xs) {
-            return spliced_to(lst(reverse(done), f, l, p), defs, known);
+            let its = the::<Sexps>(reverse(done));
+            let shared = shared_names(its);
+            return spliced_to(lst(if null_p(shared) {
+                its
+            } else {
+                map(lambda1s(move |x: &'static Sexp| {
+                    selects_renamed(x, shared)
+                }), its)
+            }, f, l, p), defs, known);
         } else {
             let tagcase_ = spliced(car(xs), dir, loaded, chain, known);
             match *tagcase_ {
