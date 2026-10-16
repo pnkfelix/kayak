@@ -1358,10 +1358,13 @@
      alone, not the program's globals, types or effects, so that a file
      means the same wherever it is read; the facts so far kept. And the
      modules `sees`, which a `load-input`'s `let` bound, lifted (C116):
-     their binds, types and effects."
+     their binds, types and effects; and the shared loads' modules, whose
+     names no program writes."
     (tagcase v
       (cv (bs ds als es here group file line fs tv at)
-        (let* ((of (lambda ((n string)) (any? (lambda ((m string)) (or (string=? n m) (has-prefix? n (string-append m " ")) (has-prefix? n (string-append m "..")))) sees)))
+        (let* ((of (lambda ((n string))
+                     (or (has-prefix? n "made--load--")
+                         (any? (lambda ((m string)) (or (string=? n m) (has-prefix? n (string-append m " ")) (has-prefix? n (string-append m "..")))) sees))))
                (bare (cv (filter (lambda ((b bind)) (tagcase b (bind (n sc w) (of n)))) bs)
                          (filter (lambda ((d dt)) (tagcase d (dt (n ps vs) (of n)))) ds)
                          (filter (lambda ((a alias)) (tagcase a (alias (n ps b) (of n)))) als)
@@ -1874,27 +1877,119 @@
   (lambda (forms dir) (concat (map (lambda ((f sexp)) (load-paths f dir)) forms))))
 
 (define-rec
-  (spliced (subr kfx (sexp string fileds strings) sexp)
-    (lambda (e dir loaded chain)
-      "`e`, each load in it the module its file is."
+  (renamed (subr kfx (sexp string string) sexp)
+    (lambda (e from to)
+      (tagcase e
+        (sym (n f p) (if (string=? n from) (sym to f p) e))
+        (lst (xs f l p) (lst (map (lambda ((x sexp)) (renamed x from to)) xs) f l p))
+        (else other e)))))
+
+(define-rec
+  (renamed-all (subr kfx (sexps strings strings) sexps)
+    (lambda (es froms tos)
+      (if (null? froms)
+          es
+          (renamed-all (map (lambda ((e sexp)) (renamed e (car froms) (car tos))) es) (cdr froms) (cdr tos))))))
+
+"A load's module, shared (C116): FX-26 makes a path once, one value for
+ all its loads (and a file of `module-parameters` once for each call), so
+ its datatypes are one; KFX's are Rust enums, one for each module, so a
+ path, with what it is given, is one module, `made--load--K`, defined at
+ the top level before the form that first loads it, which each load
+ includes. `keyed`: a path and its arguments, written, and its module's
+ name; `spliced-to`: a form spliced, the modules it defined first, and
+ every path's so far."
+(define-datatype keyed (keyed string string))
+(define-type keyeds (listof keyed acyclic))
+(define-datatype spliced-to (spliced-to sexp sexps keyeds))
+
+(define load-of (subr kfx (sexp) sexps)
+  (lambda (e)
+    "What `e` loads: `(load-module \"p\")`, as a list of its path and no
+     arguments; `((proj (load-module \"p\") r ...))`, of its path and its
+     regions (a file of `module-parameters`); else nothing."
+    (tagcase e
+      (lst (xs f l p)
+        (cond ((and (head-is? e "load-module") (i64= (size xs) 2) (tagcase (second xs) (str (s f2 p2) #t) (else other #f)))
+               (list (second xs)))
+              ((and (i64= (size xs) 1) (head-is? (car xs) "proj") (i64> (size (items (car xs))) 1)
+                    (tagcase (second (items (car xs)))
+                      (lst (ys f2 l2 p2) (and (head-is? (second (items (car xs))) "load-module") (i64= (size ys) 2)
+                                              (tagcase (second ys) (str (s f3 p3) #t) (else other #f))))
+                      (else other #f)))
+               (cons (second (items (second (items (car xs))))) (cdr (cdr (items (car xs))))))
+              (else nil)))
+      (else other nil))))
+
+(define spliced-form (subr kfx (spliced-to) sexp) (lambda (s) (tagcase s (spliced-to (x d k) x))))
+(define spliced-defs (subr kfx (spliced-to) sexps) (lambda (s) (tagcase s (spliced-to (x d k) d))))
+(define spliced-known (subr kfx (spliced-to) keyeds) (lambda (s) (tagcase s (spliced-to (x d k) k))))
+
+(define included-module (subr kfx (string string i64 i64) sexp)
+  (lambda (name f l p)
+    "A load of a module already made: a module that includes it."
+    (lst (list (sym "module" f p) (lst (list (sym "include" f p) (sym name f p)) f l p)) f l p)))
+
+(define parameters-given (subr kfx (sexps sexps string) sexps)
+  (lambda (forms args path)
+    "A loaded file's items: of a file of `module-parameters`, the rest, each
+     of its regions the one given; of any other, all, given nothing."
+    (if (and (not (null? forms)) (head-is? (car forms) "module-parameters"))
+        (let ((params (items (second (items (car forms))))))
+          (if (or (not (i64= (size params) (size args)))
+                  (any? (lambda ((b sexp)) (not (sym-is? (second (items b)) "region"))) params))
+              (error (string-append "kfx: " (string-append path ": module parameters KFX gives regions alone, as many as the file has")))
+              (renamed-all (cdr forms) (map (lambda ((b sexp)) (sym-name (car (items b)))) params)
+                           (map (lambda ((a sexp)) (tagcase a (sym (n f p) n) (else other "?"))) args))))
+        (if (null? args)
+            forms
+            (error (string-append "kfx: " (string-append path ": given regions, and no module-parameters")))))))
+
+(define-rec
+  (spliced (subr kfx (sexp string fileds strings keyeds) spliced-to)
+    (lambda (e dir loaded chain known)
+      "`e`, each load in it the module its file is, shared."
       (tagcase e
         (lst (xs f l p)
-          (if (and (head-is? e "load-module") (i64= (size xs) 2) (tagcase (second xs) (str (s f2 p2) #t) (else other #f)))
-              (let* ((path (tagcase (second xs) (str (s f2 p2) (if (built-in-path? s) s (path-joined dir s))) (else other "")))
-                     (found (if (built-in-path? path)
-                                (if (string=? (built-in-text path) "") nil (the strings (list (built-in-text path))))
-                                (concat (map (lambda ((x filed)) (tagcase x (filed (n text) (if (string=? n path) (the strings (list text)) nil)))) loaded)))))
-                (cond ((string-member? path chain)
-                       (error (string-append "kfx: " (string-append f (string-append ": a load cycle: " (words-of (reverse (the strings (cons path chain)))))))))
-                      ((null? found) (error (string-append "kfx: cannot read " path)))
-                      (else
-                       (lst (cons (sym "module" f p)
-                                  (cons (lst (list (sym "%loaded" f p) (str path f p)) f l p)
-                                        (map (lambda ((g sexp)) (spliced g (directory-of path) loaded (cons path chain)))
-                                             (read-all (string-chars (car found)) path 1))))
-                            f l p))))
-              (lst (map (lambda ((x sexp)) (spliced x dir loaded chain)) xs) f l p)))
-        (else other e)))))
+          (let ((load (load-of e)))
+            (if (null? load)
+                (spliced-each xs dir loaded chain known nil nil f l p)
+                (let* ((path (tagcase (car load) (str (s f2 p2) (if (built-in-path? s) s (path-joined dir s))) (else other "")))
+                       (args (cdr load))
+                       (key (string-append path (string-append " " (show-sexps args))))
+                       (had (concat (map (lambda ((k keyed)) (tagcase k (keyed (kk n) (if (string=? kk key) (the strings (list n)) nil)))) known))))
+                  (if (not (null? had))
+                      (spliced-to (included-module (car had) f l p) nil known)
+                      (let ((found (if (built-in-path? path)
+                                       (if (string=? (built-in-text path) "") nil (the strings (list (built-in-text path))))
+                                       (concat (map (lambda ((x filed)) (tagcase x (filed (n text) (if (string=? n path) (the strings (list text)) nil)))) loaded)))))
+                        (cond ((string-member? path chain)
+                               (error (string-append "kfx: " (string-append f (string-append ": a load cycle: " (words-of (reverse (the strings (cons path chain)))))))))
+                              ((null? found) (error (string-append "kfx: cannot read " path)))
+                              (else
+                               (let* ((forms (read-all (string-chars (car found)) path 1))
+                                      (its (parameters-given forms args path))
+                                      (inner (spliced-each its (directory-of path) loaded (cons path chain) known nil nil f l p))
+                                      (name (string-append "made--load--" (i64->string (size (spliced-known inner)))))
+                                      (sees (map (lambda ((k keyed)) (tagcase k (keyed (kk n) (sym n f p)))) (spliced-known inner)))
+                                      (made (lst (list (sym "define" f p) (sym name f p)
+                                                       (lst (cons (sym "module" f p)
+                                                                  (cons (lst (cons (sym "%loaded" f p) (cons (str path f p) sees)) f l p)
+                                                                        (items (spliced-form inner))))
+                                                            f l p))
+                                                 f l p)))
+                                 (spliced-to (included-module name f l p)
+                                             (onto (spliced-defs inner) (list made))
+                                             (cons (keyed key name) (spliced-known inner))))))))))))
+        (else other (spliced-to e nil known)))))
+  (spliced-each (subr kfx (sexps string fileds strings keyeds sexps sexps string i64 i64) spliced-to)
+    (lambda (xs dir loaded chain known done defs f l p)
+      "Each of `xs` spliced in turn, `done` those so far, reversed."
+      (if (null? xs)
+          (spliced-to (lst (reverse done) f l p) defs known)
+          (tagcase (spliced (car xs) dir loaded chain known)
+            (spliced-to (x more known2)
+              (spliced-each (cdr xs) dir loaded chain known2 (cons x done) (onto defs more) f l p)))))))
 
 "A module made where it is included or extended (C90): FX-26 makes it
  before the module's items, seeing none of them, so it is defined before
@@ -1983,21 +2078,6 @@
         (else other f)))))
 
 (define-rec
-  (renamed (subr kfx (sexp string string) sexp)
-    (lambda (e from to)
-      (tagcase e
-        (sym (n f p) (if (string=? n from) (sym to f p) e))
-        (lst (xs f l p) (lst (map (lambda ((x sexp)) (renamed x from to)) xs) f l p))
-        (else other e)))))
-
-(define-rec
-  (renamed-all (subr kfx (sexps strings strings) sexps)
-    (lambda (es froms tos)
-      (if (null? froms)
-          es
-          (renamed-all (map (lambda ((e sexp)) (renamed e (car froms) (car tos))) es) (cdr froms) (cdr tos))))))
-
-(define-rec
   (loads-from (subr kfx (sexp string) sexp)
     (lambda (e dir)
       "`e`, each `load-module` of a path of a file its path from `dir`, the
@@ -2054,6 +2134,16 @@
             (list f)))
       (else other (list f)))))
 
+(define-rec
+  (spliced-tops (subr kfx (sexps string fileds keyeds) sexps)
+    (lambda (forms dir loaded known)
+      "The program's forms, each load shared, the modules each first makes
+       defined before it."
+      (if (null? forms)
+          nil
+          (tagcase (spliced (car forms) dir loaded nil known)
+            (spliced-to (x defs known2) (onto defs (cons x (spliced-tops (cdr forms) dir loaded known2)))))))))
+
 (define with-loads (subr kfx (sexps string fileds) sexps)
   (lambda (forms file loaded)
     "A program's forms: what it loads spliced in (C88), and what its modules
@@ -2063,4 +2153,6 @@
       (map flat-definition
            (concat (map hoisted (if (and (null? loaded) (not (any? loads? forms)))
                                     forms
-                                    (map (lambda ((f sexp)) (spliced f (directory-of file) loaded nil)) forms))))))))
+                                    (spliced-tops forms (directory-of file) loaded nil))))))))
+
+

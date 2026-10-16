@@ -5,7 +5,7 @@ use kayak_rt::*;
 // Code made by Fixpt's arm64 encoder (`fx26:arm64.fx`, its `load-input`,
 // C116), as Fixpt has it, and run: `sub x0, x1, x2; ret`, and the same with
 // its operands the other way, `#x` literals besides.
-pub mod made__input__213__arm64_types {
+pub mod made__load__0 {
     use super::*;
 
     pub type ArmOp2 = &'static (dyn Fn(Int, Int) -> Int + Send + Sync);
@@ -56,6 +56,12 @@ pub mod made__input__213__arm64_types {
         fn arm_br(a__0: Int) -> Int;
         fn arm_blr(a__0: Int) -> Int;
     }
+}
+
+pub mod made__input__213__arm64_types {
+    use super::*;
+
+    pub use super::made__load__0::{ArmOp2, ArmOp3, ArmOp4, ArmCode, Arm64Sig};
 }
 
 pub mod a64 {

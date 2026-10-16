@@ -84,7 +84,7 @@ pub enum Sum_2ok_7refused<A0, A1> {
 // which main says (C116): frames.fx's code, made from a convention read as
 // data (`fx26:convention.fx`) by Fixpt's encoder (`fx26:arm64.fx`).
 
-pub mod made__input__4006__convention_types {
+pub mod made__load__0 {
     use super::*;
 
     pub enum CvSx {
@@ -150,6 +150,12 @@ pub mod made__input__4006__convention_types {
     pub type CvRead = &'static Sum_2ok_7refused<Convention, Str>;
 }
 
+pub mod made__input__4006__convention_types {
+    use super::*;
+
+    pub use super::made__load__0::{cx_name, cx_int, cx_list, CvSx, CvSxs, CvAt, CvSxsAt, CvNames, CvInts, CvStrs, CvRegs, CvRegisters, CvBits, CvValues, CvClosures, CvCode, CvFrames, CvState, CvRoutine, CvOverflow, CvTrap, CvRoutines, CvFuel, CvBarrier, Convention, CvRead};
+}
+
 pub mod cv {
     use super::*;
 
@@ -205,7 +211,7 @@ pub mod cv {
 
     pub fn cv_read_at(t: Str, i: Int) -> CvAt {
         if _gt_eq(i, string_length(t)) {
-            Product_1x_2at(cx_list(nil::<&'static made__input__4006__convention_types::CvSx>()), i)
+            Product_1x_2at(cx_list(nil::<&'static made__load__0::CvSx>()), i)
         } else if string_eq_p(cv_ch(t, i), str_lit("(")) {
             let r = cv_read_items(t, _plus(i, int_lit(1)));
             Product_1x_2at(cx_list(r.0), r.1)
@@ -218,9 +224,9 @@ pub mod cv {
     pub fn cv_read_items(mut t: Str, mut i: Int) -> CvSxsAt {
         loop {
             if _gt_eq(i, string_length(t)) {
-                return Product_2xs_2at(nil::<&'static made__input__4006__convention_types::CvSx>(), i);
+                return Product_2xs_2at(nil::<&'static made__load__0::CvSx>(), i);
             } else if string_eq_p(cv_ch(t, i), str_lit(")")) {
-                return Product_2xs_2at(nil::<&'static made__input__4006__convention_types::CvSx>(), _plus(i, int_lit(1)));
+                return Product_2xs_2at(nil::<&'static made__load__0::CvSx>(), _plus(i, int_lit(1)));
             } else if string_eq_p(cv_ch(t, i), str_lit(" ")) {
                 i = _plus(i, int_lit(1));
                 continue;
@@ -240,7 +246,7 @@ pub mod cv {
             }
             _ => {
                 let y = tagcase_;
-                nil::<&'static made__input__4006__convention_types::CvSx>()
+                nil::<&'static made__load__0::CvSx>()
             }
         }
     }
@@ -283,7 +289,7 @@ pub mod cv {
     pub fn cx_get(mut xs: CvSxs, mut role: Str) -> CvSxs {
         loop {
             if null_p(xs) {
-                return nil::<&'static made__input__4006__convention_types::CvSx>();
+                return nil::<&'static made__load__0::CvSx>();
             } else if string_eq_p(cx_role(car(xs)), role) {
                 return cdr(cx_items(car(xs)));
             } else {
@@ -309,7 +315,7 @@ pub mod cv {
     pub fn cx_nth(mut xs: CvSxs, mut k: Int) -> &'static CvSx {
         loop {
             if null_p(xs) {
-                return cx_list(nil::<&'static made__input__4006__convention_types::CvSx>());
+                return cx_list(nil::<&'static made__load__0::CvSx>());
             } else if _eq(k, int_lit(0)) {
                 return car(xs);
             } else {
@@ -633,7 +639,7 @@ pub mod cv {
 
     pub fn cv_parse_all(ts: CvStrs) -> CvSxs {
         if null_p(ts) {
-            nil::<&'static made__input__4006__convention_types::CvSx>()
+            nil::<&'static made__load__0::CvSx>()
         } else {
             the::<CvSxs>(kayak_rt::heap_cons(cv_read_at(car(ts), int_lit(0)).0, cv_parse_all(cdr(ts))))
         }
@@ -665,72 +671,12 @@ pub mod cv {
 pub mod cvt {
     use super::*;
 
-    pub enum CvSx {
-        CxName(Str),
-        CxInt(Int),
-        CxList(List<&'static CvSx>),
-    }
-
-    pub fn cx_name(f0: Str) -> &'static CvSx {
-        kayak_rt::heap_alloc(CvSx::CxName(f0))
-    }
-
-    pub fn cx_int(f0: Int) -> &'static CvSx {
-        kayak_rt::heap_alloc(CvSx::CxInt(f0))
-    }
-
-    pub fn cx_list(f0: List<&'static CvSx>) -> &'static CvSx {
-        kayak_rt::heap_alloc(CvSx::CxList(f0))
-    }
-
-    pub type CvSxs = List<&'static CvSx>;
-
-    pub type CvAt = Product_1x_2at<&'static CvSx, Int>;
-
-    pub type CvSxsAt = Product_2xs_2at<CvSxs, Int>;
-
-    pub type CvNames = List<Product_4name_6number<Str, Int>>;
-
-    pub type CvInts = List<Int>;
-
-    pub type CvStrs = List<Str>;
-
-    pub type CvRegs = List<Product_4name_9registers<Str, CvInts>>;
-
-    pub type CvRegisters = Product_9arguments_7rest_in_5count_6result_7closure_4link_5frame_5state_4fuel_11stack_limit_13code_distance<CvInts, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int>;
-
-    pub type CvBits = List<Product_4name_2at_5width<Str, Int, Int>>;
-
-    pub type CvValues = Product_4tags_12fixnum_shift_11fixnum_bits_10immediates_11char_subtag_18char_payload_shift_3car_3cdr_19bloblet_past_suffix_21field_k_before_suffix_6header_5kinds<CvNames, Int, Int, CvNames, Int, Int, Int, Int, Int, Int, CvBits, CvNames>;
-
-    pub type CvClosures = Product_4kind_10code_field_16first_free_field_25native_when_code_at_least<Int, Int, Int, Int>;
-
-    pub type CvCode = Product_19field_k_before_code<Int>;
-
-    pub type CvFrames = Product_5align_6header_4link_6return_3map_11values_from_10live_below_12fields_above_4stub<Int, Int, Int, Int, Int, Int, Int, Int, Int>;
-
-    pub type CvState = Product_4fuel_7reserve_4trap_2pc_4args_5nargs_3aux_7callout_7rust_sp_9native_sp_2fp_3top_5words_11alloc_limit_4code_3clo_5delta_7code_lo_9trap_stub_7foreign_7closure_5cards_11stack_limit_8overflow_4poll_4cons_7bloblet<Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int>;
-
-    pub type CvRoutine = Product_5entry_2in_3out_11may_collect<Int, CvRegs, Int, bool>;
-
-    pub type CvOverflow = Product_5entry_4code_4info_7held_at_10held_width_12closure_read_8variadic_5keeps<Int, Int, Int, Int, Int, Int, Int, CvInts>;
-
-    pub type CvTrap = Product_5entry_4kind_5kinds<Int, Int, CvNames>;
-
-    pub type CvRoutines = Product_7foreign_8overflow_4poll_4cons_7bloblet_4trap<CvRoutine, CvOverflow, CvRoutine, CvRoutine, CvRoutine, CvTrap>;
-
-    pub type CvFuel = Product_8register_8subtract<Int, Int>;
-
-    pub type CvBarrier = Product_5cards_10card_shift_4mark<Int, Int, Int>;
-
-    pub type Convention = Product_6target_9registers_6values_8closures_4code_6frames_5state_8routines_4fuel_7barrier<Str, CvRegisters, CvValues, CvClosures, CvCode, CvFrames, CvState, CvRoutines, CvFuel, CvBarrier>;
-
-    pub type CvRead = &'static Sum_2ok_7refused<Convention, Str>;
+    pub use super::made__load__0::{cx_name, cx_int, cx_list, CvSx, CvSxs, CvAt, CvSxsAt, CvNames, CvInts, CvStrs, CvRegs, CvRegisters, CvBits, CvValues, CvClosures, CvCode, CvFrames, CvState, CvRoutine, CvOverflow, CvTrap, CvRoutines, CvFuel, CvBarrier, Convention, CvRead};
 }
 
 pub type Convention = cvt::Convention;
 
-pub mod made__input__4156__arm64_types {
+pub mod made__load__1 {
     use super::*;
 
     pub type ArmOp2 = &'static (dyn Fn(Int, Int) -> Int + Send + Sync);
@@ -781,6 +727,12 @@ pub mod made__input__4156__arm64_types {
         fn arm_br(a__0: Int) -> Int;
         fn arm_blr(a__0: Int) -> Int;
     }
+}
+
+pub mod made__input__4156__arm64_types {
+    use super::*;
+
+    pub use super::made__load__1::{ArmOp2, ArmOp3, ArmOp4, ArmCode, Arm64Sig};
 }
 
 pub mod a64 {

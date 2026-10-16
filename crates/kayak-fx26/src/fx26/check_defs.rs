@@ -2268,15 +2268,16 @@ pub fn refs_in(e: &'static Sexp, names: &'static Nset, forms: Sexps) -> Strings 
 /// alone, not the program's globals, types or effects, so that a file
 /// means the same wherever it is read; the facts so far kept. And the
 /// modules `sees`, which a `load-input`'s `let` bound, lifted (C116):
-/// their binds, types and effects.
+/// their binds, types and effects; and the shared loads' modules, whose
+/// names no program writes.
 pub fn standard_scope(v: &'static Cv, sees: Strings) -> &'static Cv {
     let tagcase_ = v;
     match *tagcase_ {
         Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
             let of = lambda1s(move |n: Str| {
-                any_p(lambda1s(move |m: Str| {
+                (has_prefix_p(n, str_lit("made--load--")) || any_p(lambda1s(move |m: Str| {
                     (string_eq_p(n, m) || has_prefix_p(n, string_append(m, str_lit(" "))) || has_prefix_p(n, string_append(m, str_lit(".."))))
-                }), sees)
+                }), sees))
             });
             let bare = cv(filter(lambda1s(move |b: &'static Bind| {
                 let tagcase_ = b;
@@ -3491,8 +3492,71 @@ pub fn load_paths_all(forms: Sexps, dir: Str) -> Strings {
     }), forms))
 }
 
-/// `e`, each load in it the module its file is.
-pub fn spliced(e: &'static Sexp, dir: Str, loaded: Fileds, chain: Strings) -> &'static Sexp {
+pub fn renamed(e: &'static Sexp, from: Str, to: Str) -> &'static Sexp {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Sym(n, f, p) => {
+            if string_eq_p(n, from) {
+                sym(to, f, p)
+            } else {
+                e
+            }
+        }
+        Sexp::Lst(xs, f, l, p) => {
+            lst(map(lambda1s(move |x: &'static Sexp| {
+                renamed(x, from, to)
+            }), xs), f, l, p)
+        }
+        _ => {
+            let other = tagcase_;
+            e
+        }
+    }
+}
+
+pub fn renamed_all(mut es: Sexps, mut froms: Strings, mut tos: Strings) -> Sexps {
+    loop {
+        if null_p(froms) {
+            return es;
+        } else {
+            (es, froms, tos) = (map(lambda1s(move |e: &'static Sexp| {
+                renamed(e, car(froms), car(tos))
+            }), es), cdr(froms), cdr(tos));
+            continue;
+        }
+    }
+}
+
+// A load's module, shared (C116): FX-26 makes a path once, one value for
+// all its loads (and a file of `module-parameters` once for each call), so
+// its datatypes are one; KFX's are Rust enums, one for each module, so a
+// path, with what it is given, is one module, `made--load--K`, defined at
+// the top level before the form that first loads it, which each load
+// includes. `keyed`: a path and its arguments, written, and its module's
+// name; `spliced-to`: a form spliced, the modules it defined first, and
+// every path's so far.
+pub enum Keyed {
+    Keyed(Str, Str),
+}
+
+pub fn keyed(f0: Str, f1: Str) -> &'static Keyed {
+    kayak_rt::heap_alloc(Keyed::Keyed(f0, f1))
+}
+
+pub type Keyeds = List<&'static Keyed>;
+
+pub enum SplicedTo {
+    SplicedTo(&'static Sexp, Sexps, Keyeds),
+}
+
+pub fn spliced_to(f0: &'static Sexp, f1: Sexps, f2: Keyeds) -> &'static SplicedTo {
+    kayak_rt::heap_alloc(SplicedTo::SplicedTo(f0, f1, f2))
+}
+
+/// What `e` loads: `(load-module "p")`, as a list of its path and no
+/// arguments; `((proj (load-module "p") r ...))`, of its path and its
+/// regions (a file of `module-parameters`); else nothing.
+pub fn load_of(e: &'static Sexp) -> Sexps {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Lst(xs, f, l, p) => {
@@ -3508,8 +3572,119 @@ pub fn spliced(e: &'static Sexp, dir: Str, loaded: Fileds, chain: Strings) -> &'
                     }
                 }
             }) {
+                kayak_rt::heap_cons(second(xs), kayak_rt::nil())
+            } else if (i64_eq(size(xs), 1i64) && head_is_p(car(xs), str_lit("proj")) && i64_gt(size(items(car(xs))), 1i64) && {
+                let tagcase_ = second(items(car(xs)));
+                match *tagcase_ {
+                    Sexp::Lst(ys, f2, l2, p2) => {
+                        (head_is_p(second(items(car(xs))), str_lit("load-module")) && i64_eq(size(ys), 2i64) && {
+                            let tagcase_ = second(ys);
+                            match *tagcase_ {
+                                Sexp::Str(s, f3, p3) => {
+                                    true
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    false
+                                }
+                            }
+                        })
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                kayak_rt::heap_cons(second(items(second(items(car(xs))))), cdr(cdr(items(car(xs)))))
+            } else {
+                nil::<&'static Sexp>()
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<&'static Sexp>()
+        }
+    }
+}
+
+pub fn spliced_form(s: &'static SplicedTo) -> &'static Sexp {
+    let tagcase_ = s;
+    match *tagcase_ {
+        SplicedTo::SplicedTo(x, d, k) => {
+            x
+        }
+    }
+}
+
+pub fn spliced_defs(s: &'static SplicedTo) -> Sexps {
+    let tagcase_ = s;
+    match *tagcase_ {
+        SplicedTo::SplicedTo(x, d, k) => {
+            d
+        }
+    }
+}
+
+pub fn spliced_known(s: &'static SplicedTo) -> Keyeds {
+    let tagcase_ = s;
+    match *tagcase_ {
+        SplicedTo::SplicedTo(x, d, k) => {
+            k
+        }
+    }
+}
+
+/// A load of a module already made: a module that includes it.
+pub fn included_module(name: Str, f: Str, l: i64, p: i64) -> &'static Sexp {
+    lst(kayak_rt::heap_cons(sym(str_lit("module"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("include"), f, p), kayak_rt::heap_cons(sym(name, f, p), kayak_rt::nil())), f, l, p), kayak_rt::nil())), f, l, p)
+}
+
+/// A loaded file's items: of a file of `module-parameters`, the rest, each
+/// of its regions the one given; of any other, all, given nothing.
+pub fn parameters_given(forms: Sexps, args: Sexps, path: Str) -> Sexps {
+    if (not(null_p(forms)) && head_is_p(car(forms), str_lit("module-parameters"))) {
+        let params = items(second(items(car(forms))));
+        if (not(i64_eq(size(params), size(args))) || any_p(lambda1s(move |b: &'static Sexp| {
+            not(sym_is_p(second(items(b)), str_lit("region")))
+        }), params)) {
+            error(string_append(str_lit("kfx: "), string_append(path, str_lit(": module parameters KFX gives regions alone, as many as the file has"))))
+        } else {
+            renamed_all(cdr(forms), map(lambda1s(move |b: &'static Sexp| {
+                sym_name(car(items(b)))
+            }), params), map(lambda1s(move |a: &'static Sexp| {
+                let tagcase_ = a;
+                match *tagcase_ {
+                    Sexp::Sym(n, f, p) => {
+                        n
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        str_lit("?")
+                    }
+                }
+            }), args))
+        }
+    } else {
+        if null_p(args) {
+            forms
+        } else {
+            error(string_append(str_lit("kfx: "), string_append(path, str_lit(": given regions, and no module-parameters"))))
+        }
+    }
+}
+
+/// `e`, each load in it the module its file is, shared.
+pub fn spliced(e: &'static Sexp, dir: Str, loaded: Fileds, chain: Strings, known: Keyeds) -> &'static SplicedTo {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            let load = load_of(e);
+            if null_p(load) {
+                spliced_each(xs, dir, loaded, chain, known, nil::<&'static Sexp>(), nil::<&'static Sexp>(), f, l, p)
+            } else {
                 let path = {
-                    let tagcase_ = second(xs);
+                    let tagcase_ = car(load);
                     match *tagcase_ {
                         Sexp::Str(s, f2, p2) => {
                             if built_in_path_p(s) {
@@ -3524,44 +3699,86 @@ pub fn spliced(e: &'static Sexp, dir: Str, loaded: Fileds, chain: Strings) -> &'
                         }
                     }
                 };
-                let found = if built_in_path_p(path) {
-                    if string_eq_p(built_in_text(path), str_lit("")) {
-                        nil::<Str>()
-                    } else {
-                        the::<Strings>(kayak_rt::heap_cons(built_in_text(path), kayak_rt::nil()))
-                    }
-                } else {
-                    concat(map(lambda1s(move |x: &'static Filed| {
-                        let tagcase_ = x;
-                        match *tagcase_ {
-                            Filed::Filed(n, text) => {
-                                if string_eq_p(n, path) {
-                                    the::<Strings>(kayak_rt::heap_cons(text, kayak_rt::nil()))
-                                } else {
-                                    nil::<Str>()
-                                }
+                let args = cdr(load);
+                let key = string_append(path, string_append(str_lit(" "), show_sexps(args)));
+                let had = concat(map(lambda1s(move |k: &'static Keyed| {
+                    let tagcase_ = k;
+                    match *tagcase_ {
+                        Keyed::Keyed(kk, n) => {
+                            if string_eq_p(kk, key) {
+                                the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                            } else {
+                                nil::<Str>()
                             }
                         }
-                    }), loaded))
-                };
-                if string_member_p(path, chain) {
-                    error(string_append(str_lit("kfx: "), string_append(f, string_append(str_lit(": a load cycle: "), words_of(reverse(the::<Strings>(kayak_rt::heap_cons(path, chain))))))))
-                } else if null_p(found) {
-                    error(string_append(str_lit("kfx: cannot read "), path))
+                    }
+                }), known));
+                if not(null_p(had)) {
+                    spliced_to(included_module(car(had), f, l, p), nil::<&'static Sexp>(), known)
                 } else {
-                    lst(kayak_rt::heap_cons(sym(str_lit("module"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("%loaded"), f, p), kayak_rt::heap_cons(str(path, f, p), kayak_rt::nil())), f, l, p), map(lambda1s(move |g: &'static Sexp| {
-                        spliced(g, directory_of(path), loaded, kayak_rt::heap_cons(path, chain))
-                    }), read_all(string_chars(car(found)), path, 1i64)))), f, l, p)
+                    let found = if built_in_path_p(path) {
+                        if string_eq_p(built_in_text(path), str_lit("")) {
+                            nil::<Str>()
+                        } else {
+                            the::<Strings>(kayak_rt::heap_cons(built_in_text(path), kayak_rt::nil()))
+                        }
+                    } else {
+                        concat(map(lambda1s(move |x: &'static Filed| {
+                            let tagcase_ = x;
+                            match *tagcase_ {
+                                Filed::Filed(n, text) => {
+                                    if string_eq_p(n, path) {
+                                        the::<Strings>(kayak_rt::heap_cons(text, kayak_rt::nil()))
+                                    } else {
+                                        nil::<Str>()
+                                    }
+                                }
+                            }
+                        }), loaded))
+                    };
+                    if string_member_p(path, chain) {
+                        error(string_append(str_lit("kfx: "), string_append(f, string_append(str_lit(": a load cycle: "), words_of(reverse(the::<Strings>(kayak_rt::heap_cons(path, chain))))))))
+                    } else if null_p(found) {
+                        error(string_append(str_lit("kfx: cannot read "), path))
+                    } else {
+                        let forms = read_all(string_chars(car(found)), path, 1i64);
+                        let its = parameters_given(forms, args, path);
+                        let inner = spliced_each(its, directory_of(path), loaded, kayak_rt::heap_cons(path, chain), known, nil::<&'static Sexp>(), nil::<&'static Sexp>(), f, l, p);
+                        let name = string_append(str_lit("made--load--"), i64_to_string(size(spliced_known(inner))));
+                        let sees = map(lambda1s(move |k: &'static Keyed| {
+                            let tagcase_ = k;
+                            match *tagcase_ {
+                                Keyed::Keyed(kk, n) => {
+                                    sym(n, f, p)
+                                }
+                            }
+                        }), spliced_known(inner));
+                        let made = lst(kayak_rt::heap_cons(sym(str_lit("define"), f, p), kayak_rt::heap_cons(sym(name, f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("module"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("%loaded"), f, p), kayak_rt::heap_cons(str(path, f, p), sees)), f, l, p), items(spliced_form(inner)))), f, l, p), kayak_rt::nil()))), f, l, p);
+                        spliced_to(included_module(name, f, l, p), onto(spliced_defs(inner), kayak_rt::heap_cons(made, kayak_rt::nil())), kayak_rt::heap_cons(keyed(key, name), spliced_known(inner)))
+                    }
                 }
-            } else {
-                lst(map(lambda1s(move |x: &'static Sexp| {
-                    spliced(x, dir, loaded, chain)
-                }), xs), f, l, p)
             }
         }
         _ => {
             let other = tagcase_;
-            e
+            spliced_to(e, nil::<&'static Sexp>(), known)
+        }
+    }
+}
+
+/// Each of `xs` spliced in turn, `done` those so far, reversed.
+pub fn spliced_each(mut xs: Sexps, mut dir: Str, mut loaded: Fileds, mut chain: Strings, mut known: Keyeds, mut done: Sexps, mut defs: Sexps, mut f: Str, mut l: i64, mut p: i64) -> &'static SplicedTo {
+    loop {
+        if null_p(xs) {
+            return spliced_to(lst(reverse(done), f, l, p), defs, known);
+        } else {
+            let tagcase_ = spliced(car(xs), dir, loaded, chain, known);
+            match *tagcase_ {
+                SplicedTo::SplicedTo(x, more, known2) => {
+                    (xs, known, done, defs) = (cdr(xs), known2, kayak_rt::heap_cons(x, done), onto(defs, more));
+                    continue;
+                }
+            }
         }
     }
 }
@@ -3684,41 +3901,6 @@ pub fn flat_definition(f: &'static Sexp) -> &'static Sexp {
         _ => {
             let other = tagcase_;
             f
-        }
-    }
-}
-
-pub fn renamed(e: &'static Sexp, from: Str, to: Str) -> &'static Sexp {
-    let tagcase_ = e;
-    match *tagcase_ {
-        Sexp::Sym(n, f, p) => {
-            if string_eq_p(n, from) {
-                sym(to, f, p)
-            } else {
-                e
-            }
-        }
-        Sexp::Lst(xs, f, l, p) => {
-            lst(map(lambda1s(move |x: &'static Sexp| {
-                renamed(x, from, to)
-            }), xs), f, l, p)
-        }
-        _ => {
-            let other = tagcase_;
-            e
-        }
-    }
-}
-
-pub fn renamed_all(mut es: Sexps, mut froms: Strings, mut tos: Strings) -> Sexps {
-    loop {
-        if null_p(froms) {
-            return es;
-        } else {
-            (es, froms, tos) = (map(lambda1s(move |e: &'static Sexp| {
-                renamed(e, car(froms), car(tos))
-            }), es), cdr(froms), cdr(tos));
-            continue;
         }
     }
 }
@@ -3863,6 +4045,21 @@ pub fn input_expanded(f: &'static Sexp, dir: Str, loaded: Fileds) -> Sexps {
     }
 }
 
+/// The program's forms, each load shared, the modules each first makes
+/// defined before it.
+pub fn spliced_tops(forms: Sexps, dir: Str, loaded: Fileds, known: Keyeds) -> Sexps {
+    if null_p(forms) {
+        nil::<&'static Sexp>()
+    } else {
+        let tagcase_ = spliced(car(forms), dir, loaded, nil::<Str>(), known);
+        match *tagcase_ {
+            SplicedTo::SplicedTo(x, defs, known2) => {
+                onto(defs, kayak_rt::heap_cons(x, spliced_tops(cdr(forms), dir, loaded, known2)))
+            }
+        }
+    }
+}
+
 /// A program's forms: what it loads spliced in (C88), and what its modules
 /// make in place defined before them (C90); a `poly` in a `poly` around a
 /// definition, one (C107); a `load-input` of a module, the module (C116).
@@ -3873,9 +4070,7 @@ pub fn with_loads(forms: Sexps, file: Str, loaded: Fileds) -> Sexps {
     map(&flat_definition, concat(map(&hoisted, if (null_p(loaded) && not(any_p(&loads_p, forms))) {
         forms
     } else {
-        map(lambda1s(move |f: &'static Sexp| {
-            spliced(f, directory_of(file), loaded, nil::<Str>())
-        }), forms)
+        spliced_tops(forms, directory_of(file), loaded, nil::<&'static Keyed>())
     })))
 }
 

@@ -187,6 +187,15 @@ what blocks them:
 Each of these is an extension KFX can take; A's cost is these, in the
 order above.
 
+Then (C117): loads shared and `module-parameters` taken; the next wall
+is the eager reader's (`eager-reader-types.fx`): its state is a
+`dletrec` of a composable continuation, a coroutine that waits for each
+character, and 68 files load it. KFX refuses composable continuations
+(C45), since FX-26 may resume one many times and a Rust future once. For
+A, either KFX takes them where each is resumed at most once (a run-time
+failure where FX-26 resumes one twice: a difference of meaning, not of
+what is accepted), or Fixpt's reader is written without them.
+
 ## Steps
 
 1. Module files in KFX; the front end's files surveyed again (decides A

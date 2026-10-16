@@ -2751,3 +2751,30 @@ code; `tests/kfx/made-code.kfx` (Fixpt's `leaves.fx`'s adder) answers
   `allocated.fx` is in the corpus with `(read @heap)` added to
   `pack-code`'s type: Fixpt masks reading lists a procedure made itself,
   KFX's checker not yet (TODO §30).
+
+## C117. Loads shared, and files of `module-parameters` (2026-10-15, TODO §31 step 1)
+
+FX-26 makes a path once, one value for all its loads, and its datatypes
+are structural (`mu` types), so every load of a file gives the same type;
+KFX's datatypes are Rust enums, one for each module. So a path, with the
+regions it is given, is now one module, `made--load--K`, defined at the
+top level before the form that first loads it, and each load is a module
+that includes it (`(module (include made--load--K))`): one value, one
+Rust enum for each datatype. A loaded module sees the standard
+environment and these (their names no program writes).
+- **`((proj (load-module "f") r ...))`** of a file whose first form is
+  `(module-parameters ((name region) ...))`: the file's items, each
+  parameter the region given, shared for the same regions. Regions alone.
+- **Not quite Fixpt's**: a file of `module-parameters` is a `plambda`
+  around a `lambda` in FX-26, so each call makes the module again, its
+  state new; shared, two calls with the same regions share its state.
+  And two bindings of one path keep their abstract types apart in FX-26,
+  where here they are the shared module's, so KFX might accept a program
+  mixing them that FX-26 refuses; none of Fixpt's programs does (the
+  check runs all 298 it refuses). Both to be made exact when met.
+- **Measured** (`scripts/survey-front-end.py`): the 41 files waiting on
+  module parameters now pass their loads; 68 stop at the eager reader's
+  state type, a `dletrec` of a composable continuation, which KFX refuses
+  (C45: FX-26 may resume one again and again, a Rust future once).
+- Else possible: loads kept apart and datatypes compared structurally,
+  which Rust's nominal enums cannot.
