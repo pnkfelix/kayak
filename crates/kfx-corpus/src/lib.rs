@@ -123,6 +123,11 @@ pub mod imports;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/input-nested.rs"]
+pub mod input_nested;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/lambda-order.rs"]
 pub mod lambda_order;
 
@@ -445,6 +450,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("generative", generative::main),
     ("hashes", hashes::main),
     ("imports", imports::main),
+    ("input-nested", input_nested::main),
     ("lambda-order", lambda_order::main),
     ("layout", layout::main),
     ("letreap", letreap::main),

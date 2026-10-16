@@ -1872,7 +1872,9 @@
 
 (define path-joined (subr kfx (string string) string)
   (lambda (dir name)
-    (if (string=? dir "") name (string-append dir (string-append "/" name)))))
+    "`name` from `dir`; an absolute `name` as it is (C121: a nested load's
+     path, made absolute by `loads-from`, was joined again)."
+    (if (or (string=? dir "") (has-prefix? name "/")) name (string-append dir (string-append "/" name)))))
 
 "A `load-module` of a path (C88, FX-26's M7): a file's forms as a
  module's items, the path from the loading file's directory. The driver

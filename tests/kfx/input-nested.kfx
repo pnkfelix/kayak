@@ -1,0 +1,7 @@
+"A `load-input` of a program's file that loads another file beside it
+ (C121), with kfx given the program by an absolute path."
+
+(define p (load-input "loads/pair-input.fx"))
+
+(define main (subr (read @globals) () string)
+  (lambda () (i64->string (with p (i64+ (extract (made) fst) (extract (made) snd))))))

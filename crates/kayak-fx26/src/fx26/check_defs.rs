@@ -3455,8 +3455,10 @@ pub fn built_in_path_p(path: Str) -> bool {
     has_prefix_p(path, str_lit("fx26:"))
 }
 
+/// `name` from `dir`; an absolute `name` as it is (C121: a nested load's
+/// path, made absolute by `loads-from`, was joined again).
 pub fn path_joined(dir: Str, name: Str) -> Str {
-    if string_eq_p(dir, str_lit("")) {
+    if (string_eq_p(dir, str_lit("")) || has_prefix_p(name, str_lit("/"))) {
         name
     } else {
         string_append(dir, string_append(str_lit("/"), name))

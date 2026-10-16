@@ -594,7 +594,7 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    road for much of it (the user: "strategy B is inevitable in some
    cases"); the eager
    reader's own states (2, expected); a nested load's path joined to an
-   absolute one (2, a bug). (kfx's stack overflow on
+   absolute one (2, fixed: C121, `input-nested`). (kfx's stack overflow on
    `check-holds-types.fx` and `check-modules-types.fx`: fixed, C119; 56
    accepted then.) And `call-with-oneshot-continuation` whose
    procedure ends in an abort to its tag, as C45's form (C118).
