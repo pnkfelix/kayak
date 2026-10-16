@@ -37,6 +37,7 @@
 (define x14 int 14)
 (define x15 int 15)
 (define x16 int 16)
+(define x17 int 17)
 
 "Conditions, as `arm64.fx` numbers them."
 (define c-eq int 0)
@@ -161,6 +162,7 @@
 (define ldp-post! (->* (int int int int) unit) (lambda (t t2 n i) (e! ((with a64 arm-ldp-post) t t2 n i))))
 (define stp! (->* (int int int int) unit) (lambda (t t2 n i) (e! ((with a64 arm-stp) t t2 n i))))
 (define ldp! (->* (int int int int) unit) (lambda (t t2 n i) (e! ((with a64 arm-ldp) t t2 n i))))
+(define ubfx! (->* (int int int int) unit) (lambda (d n lsb w) (e! ((with a64 arm-ubfx) d n lsb w))))
 (define ret! (->* () unit) (lambda () (e! (with a64 arm-ret))))
 
 (define times8! (->* (int) unit)
@@ -206,6 +208,68 @@
   (lambda ()
     "`x13` the one below the top, `x14` the top; both fixnums, else give back."
     (begin (need! 2) (ldur! x13 x-dsp -16) (ldur! x14 x-dsp -8) (orr! x15 x13 x14) (tstl! x15 3) (give-if! c-ne))))
+
+(define closure-in! (->* (int) unit)
+  (lambda (r)
+    "`x11` the heap's address of the value in `r` plus 4; given back unless
+     it is a cellular closure: its trailer says how far back its header is,
+     the header its kind (Fixpt's `is_closure`)."
+    (begin
+      (andl! x13 r 3) (cmpi! x13 4) (give-if! c-ne)
+      (add! x11 x-mem r) (ldur! x15 x11 -12) (andl! x13 x15 3) (cmpi! x13 5) (give-if! c-ne)
+      (sub! x14 x11 x15) (ldur! x14 x14 -7) (ubfx! x14 x14 3 8) (cmpi! x14 (i64->int k-closure)) (give-if! c-ne))))
+
+(define called! (->* (bool) unit)
+  (lambda (tail)
+    "A call of the closure on top with the `count` values below it (tier
+     1's `call!`), in tail position its frame slid down over this one's;
+     the count, times 8, in `x17`, which `closure-in!` keeps."
+    (let ((loop (label!)) (done (label!)))
+      (begin
+        (ldr-post! x17 x-ip -8)
+        (add! x14 x-fp x17) (addi! x14 x14 8) (cmp! x-dsp x14) (give-if! c-lo)
+        (ldur! x10 x-dsp -8)
+        (closure-in! x10)
+        (limits!)
+        (if tail
+            (begin
+              (subi! x14 x-dsp 8) (sub! x15 x14 x17) (mov! x16 x-fp)
+              (bind! loop) (cmp! x15 x14) (bc! c-hs done)
+              (ldr-post! x-w x15 8) (str-post! x-w x16 8) (b! loop)
+              (bind! done) (add! x-dsp x-fp x17))
+            (begin
+              (ldr! x16 x-st (at-st st-rs-end)) (cmp! x-rsp x16) (give-if! c-hs)
+              (add! x14 x-mem x-cur) (subi! x14 x14 4) (sub! x14 x14 x-ip)
+              (sub! x15 x-fp x-dsb)
+              (stp! x-cur x14 x-rsp 0) (stp! x15 x-clo x-rsp 16) (addi! x-rsp x-rsp 32)
+              (subi! x-dsp x-dsp 8) (sub! x-fp x-dsp x17)))
+        (ldur! x-cur x11 (- -4 (* 8 (i64->int f-word))))
+        (mov! x-clo x10)
+        (add! x-ip x-mem x-cur) (subi! x-ip x-ip (+ 4 (* 8 (i64->int f-cell0))))
+        (next!)))))
+
+(define fields-of! (->* (int) unit)
+  (lambda (lowest)
+    "`x15` eight times the fields of the bloblet whose address plus 4 is in
+     `x11`, `x14` eight times the lowest that may be read: past a trailer,
+     its distance, 2; past a header, its count, 1; else given back."
+    (let ((header (label!)) (done (label!)))
+      (begin
+        (ldur! x15 x11 -12) (andl! x14 x15 3) (cmpi! x14 5) (bc! c-ne header)
+        (subi! x15 x15 5) (movz! x14 16) (b! done)
+        (bind! header)
+        (cmpi! x14 6) (give-if! c-ne)
+        (ubfx! x15 x15 14 18) (times8! x15) (movz! x14 8)
+        (bind! done)))))
+
+(define field-read! (->* () unit)
+  (lambda ()
+    "`x16` field `x13 / 8` of the bloblet at `x11`, if it may be read (tier
+     1's `field-ok?`), else given back."
+    (begin
+      (fields-of! 0)
+      (cmp! x13 x14) (give-if! c-lt) (cmp! x13 x15) (give-if! c-hi)
+      (sub! x16 x11 x13) (ldur! x16 x16 -4))))
 
 (define entered! (->* (int) unit)
   (lambda (n)
@@ -260,6 +324,20 @@
            (subi! x-dsp x-dsp 8) (subi! x-ip x-ip 8) (next!)
            (bind! taken)
            (limits!) (subi! x-dsp x-dsp 8) (ldr-post! x13 x-ip -8) (sub! x-ip x-ip x13) (next!))))
+      ((or (= n (i64->int r-call)) (= n (i64->int r-tcall)))
+       (called! #f))
+      ((or (= n (i64->int r-tailcall)) (= n (i64->int r-ttailcall)))
+       (called! #t))
+      ((= n (i64->int r-free))
+       (begin
+         (h-room!) (ldr-post! x13 x-ip -8) (addi! x13 x13 (* 8 (i64->int f-free0)))
+         (andl! x14 x-clo 3) (cmpi! x14 4) (give-if! c-ne) (add! x11 x-mem x-clo)
+         (field-read!) (str-post! x16 x-dsp 8) (next!)))
+      ((= n (i64->int r-field))
+       (begin
+         (need! 1) (ldr-post! x13 x-ip -8) (ldur! x10 x-dsp -8)
+         (andl! x14 x10 3) (cmpi! x14 4) (give-if! c-ne) (add! x11 x-mem x10)
+         (field-read!) (stur! x16 x-dsp -8) (next!)))
       ((= n (i64->int r-exit))
        (begin (ldr! x16 x-st (at-st st-rsb)) (cmp! x-rsp x16) (give-if! c-eq) (b! (get l-pop-return))))
       ((= n (i64->int r-return))

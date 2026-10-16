@@ -3229,3 +3229,15 @@ discrepancy needs them.
   fields as a product). A native procedure's type in a `nil`'s turbofish
   (`(%native …)`) had no Rust: now a procedure's. kfx's "a type KFX-0
   does not have" names the type.
+- **Calls (2026-10-16).** `call`, `tailcall`, `tcall`, `ttailcall` (a
+  cellular closure checked by its trailer and header, Fixpt's
+  `is_closure`), `free`, `field` (a field read as `field-ok?` allows,
+  past a trailer or a header). All 326 agree on tier 2. Fixpt's
+  benchmarks, user seconds, tier 1 then tier 2 (each from Fixpt's
+  listing, nothing compiled): `captures` 0.10, 0.03; `closures` 1.57,
+  0.20; `fib` 0.46, 0.03; `helpers` 2.45, 0.12; `lists-region` 1.31,
+  0.22; `lists` 1.19, 0.17; `loop` 2.50, 0.09; `tak` 0.19, 0.01. (Fixpt's
+  `fx-cells-asminterp`, which checks and compiles the program first, about
+  0.2 s of each: 0.22 to 0.31.) What is given back most now: allocation
+  (`cons`, `closure`) and `prim`: `closures`, `lists` and `lists-region`
+  give back three million cells each.

@@ -450,6 +450,10 @@ pub fn x16() -> Int {
     int_lit(16)
 }
 
+pub fn x17() -> Int {
+    int_lit(17)
+}
+
 // Conditions, as `arm64.fx` numbers them.
 pub fn c_eq() -> Int {
     int_lit(0)
@@ -836,6 +840,10 @@ pub fn ldp_x(t: Int, t2: Int, n: Int, i: Int) -> () {
     e_x((&a64::arm_ldp)(t, t2, n, i))
 }
 
+pub fn ubfx_x(d: Int, n: Int, lsb: Int, w: Int) -> () {
+    e_x((&a64::arm_ubfx)(d, n, lsb, w))
+}
+
 pub fn ret_x() -> () {
     e_x(a64::arm_ret())
 }
@@ -944,6 +952,104 @@ pub fn two_fixnums_x() -> () {
     orr_x(x15(), x13(), x14());
     tstl_x(x15(), int_lit(3));
     give_if_x(c_ne())
+}
+
+/// `x11` the heap's address of the value in `r` plus 4; given back unless
+/// it is a cellular closure: its trailer says how far back its header is,
+/// the header its kind (Fixpt's `is_closure`).
+pub fn closure_in_x(r: Int) -> () {
+    andl_x(x13(), r, int_lit(3));
+    cmpi_x(x13(), int_lit(4));
+    give_if_x(c_ne());
+    add_x(x11(), x_mem(), r);
+    ldur_x(x15(), x11(), int_lit(-12));
+    andl_x(x13(), x15(), int_lit(3));
+    cmpi_x(x13(), int_lit(5));
+    give_if_x(c_ne());
+    sub_x(x14(), x11(), x15());
+    ldur_x(x14(), x14(), int_lit(-7));
+    ubfx_x(x14(), x14(), int_lit(3), int_lit(8));
+    cmpi_x(x14(), i64_to_int(k_closure()));
+    give_if_x(c_ne())
+}
+
+/// A call of the closure on top with the `count` values below it (tier
+/// 1's `call!`), in tail position its frame slid down over this one's;
+/// the count, times 8, in `x17`, which `closure-in!` keeps.
+pub fn called_x(tail: bool) -> () {
+    let (r#loop, done) = (label_x(), label_x());
+    ldr_post_x(x17(), x_ip(), int_lit(-8));
+    add_x(x14(), x_fp(), x17());
+    addi_x(x14(), x14(), int_lit(8));
+    cmp_x(x_dsp(), x14());
+    give_if_x(c_lo());
+    ldur_x(x10(), x_dsp(), int_lit(-8));
+    closure_in_x(x10());
+    limits_x();
+    if tail {
+        subi_x(x14(), x_dsp(), int_lit(8));
+        sub_x(x15(), x14(), x17());
+        mov_x(x16(), x_fp());
+        bind_x(r#loop);
+        cmp_x(x15(), x14());
+        bc_x(c_hs(), done);
+        ldr_post_x(x_w(), x15(), int_lit(8));
+        str_post_x(x_w(), x16(), int_lit(8));
+        b_x(r#loop);
+        bind_x(done);
+        add_x(x_dsp(), x_fp(), x17())
+    } else {
+        ldr_x(x16(), x_st(), at_st(st_rs_end()));
+        cmp_x(x_rsp(), x16());
+        give_if_x(c_hs());
+        add_x(x14(), x_mem(), x_cur());
+        subi_x(x14(), x14(), int_lit(4));
+        sub_x(x14(), x14(), x_ip());
+        sub_x(x15(), x_fp(), x_dsb());
+        stp_x(x_cur(), x14(), x_rsp(), int_lit(0));
+        stp_x(x15(), x_clo(), x_rsp(), int_lit(16));
+        addi_x(x_rsp(), x_rsp(), int_lit(32));
+        subi_x(x_dsp(), x_dsp(), int_lit(8));
+        sub_x(x_fp(), x_dsp(), x17())
+    };
+    ldur_x(x_cur(), x11(), _minus(int_lit(-4), _star(int_lit(8), i64_to_int(f_word()))));
+    mov_x(x_clo(), x10());
+    add_x(x_ip(), x_mem(), x_cur());
+    subi_x(x_ip(), x_ip(), _plus(int_lit(4), _star(int_lit(8), i64_to_int(f_cell0()))));
+    next_x()
+}
+
+/// `x15` eight times the fields of the bloblet whose address plus 4 is in
+/// `x11`, `x14` eight times the lowest that may be read: past a trailer,
+/// its distance, 2; past a header, its count, 1; else given back.
+pub fn fields_of_x(lowest: Int) -> () {
+    let (header, done) = (label_x(), label_x());
+    ldur_x(x15(), x11(), int_lit(-12));
+    andl_x(x14(), x15(), int_lit(3));
+    cmpi_x(x14(), int_lit(5));
+    bc_x(c_ne(), header);
+    subi_x(x15(), x15(), int_lit(5));
+    movz_x(x14(), int_lit(16));
+    b_x(done);
+    bind_x(header);
+    cmpi_x(x14(), int_lit(6));
+    give_if_x(c_ne());
+    ubfx_x(x15(), x15(), int_lit(14), int_lit(18));
+    times8_x(x15());
+    movz_x(x14(), int_lit(8));
+    bind_x(done)
+}
+
+/// `x16` field `x13 / 8` of the bloblet at `x11`, if it may be read (tier
+/// 1's `field-ok?`), else given back.
+pub fn field_read_x() -> () {
+    fields_of_x(int_lit(0));
+    cmp_x(x13(), x14());
+    give_if_x(c_lt());
+    cmp_x(x13(), x15());
+    give_if_x(c_hi());
+    sub_x(x16(), x11(), x13());
+    ldur_x(x16(), x16(), int_lit(-4))
 }
 
 /// Routine number `n`'s code; what it does not do it gives back.
@@ -1067,6 +1173,32 @@ pub fn entered_x(n: Int) -> () {
         subi_x(x_dsp(), x_dsp(), int_lit(8));
         ldr_post_x(x13(), x_ip(), int_lit(-8));
         sub_x(x_ip(), x_ip(), x13());
+        next_x()
+    } else if (_eq(n, i64_to_int(r_call())) || _eq(n, i64_to_int(r_tcall()))) {
+        called_x(false)
+    } else if (_eq(n, i64_to_int(r_tailcall())) || _eq(n, i64_to_int(r_ttailcall()))) {
+        called_x(true)
+    } else if _eq(n, i64_to_int(r_free())) {
+        h_room_x();
+        ldr_post_x(x13(), x_ip(), int_lit(-8));
+        addi_x(x13(), x13(), _star(int_lit(8), i64_to_int(f_free0())));
+        andl_x(x14(), x_clo(), int_lit(3));
+        cmpi_x(x14(), int_lit(4));
+        give_if_x(c_ne());
+        add_x(x11(), x_mem(), x_clo());
+        field_read_x();
+        str_post_x(x16(), x_dsp(), int_lit(8));
+        next_x()
+    } else if _eq(n, i64_to_int(r_field())) {
+        need_x(int_lit(1));
+        ldr_post_x(x13(), x_ip(), int_lit(-8));
+        ldur_x(x10(), x_dsp(), int_lit(-8));
+        andl_x(x14(), x10(), int_lit(3));
+        cmpi_x(x14(), int_lit(4));
+        give_if_x(c_ne());
+        add_x(x11(), x_mem(), x10());
+        field_read_x();
+        stur_x(x16(), x_dsp(), int_lit(-8));
         next_x()
     } else if _eq(n, i64_to_int(r_exit())) {
         ldr_x(x16(), x_st(), at_st(st_rsb()));

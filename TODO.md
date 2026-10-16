@@ -631,8 +631,8 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    `fx26:arm64.fx`, on tier 1's memory shared; steps (1) flat arrays
    shared with native code (**done**), (2) entry, `NEXT`, exit, stack and
    control routines (**done**: 23 routines, 326 agree, `--hand`), (3) the
-   rest, by how often programs give back: calls (`call`, `tailcall`,
-   `tcall`, `ttailcall`), `free`, `field`, `prim` (its arguments
+   rest, by how often programs give back: ~~calls (`call`, `tailcall`,
+   `tcall`, `ttailcall`), `free`, `field`~~ (C126), `prim` (its arguments
    through, the primitive KFX's), allocation (`cons`, `closure`, bump
    allocation in tier 1's heap, collecting given back). **Begun (C116,
    2026-10-15)**: Fixpt's §97 operations in KFX, the code area, the
