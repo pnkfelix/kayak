@@ -605,10 +605,10 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    programs agree, 0 differ). Done for tier 1: Coopt's Cheney baseline;
    prompts, marks and continuations (but routines 51–55). Done: the
    listings Fixpt now writes in full (`--full-literals`, C123), read; three
-   gaps in them worked around, to be raised with Fixpt (C123). Next: more
-   primitives (fixed widths, floats, suffix
-   refs, flat arrays, bytevectors, strings), their failures in Fixpt's
-   words, integers past a fixnum as Fixpt's bignums through KFX's `int`;
+   gaps in them worked around, to be raised with Fixpt (C123). Done: the primitives, Fixpt's
+   runtime's (C124; 292 agree). Next: the scheduler (`%fx26-sched`, 29
+   programs: processes, `par`, monitors), the clock, eqtables,
+   `%fx26-intern-datum`, I/O; native code's primitives with tier 2;
    Coopt's collector's steps past Cheney (generational, regions,
    summaries, marking, pacing, each against the one before); then stage A
    ported (`compile*.fx`, each marked `fixpt-source:`), its words

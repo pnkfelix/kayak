@@ -1387,3 +1387,10 @@ in a module), and the float operations FX-26 has beyond KFX's. Two K1
 breaches found and closed on the way: branches mixing a `cons` with a
 list, and a module value calling its module's `->*` procedure. 194 of
 Fixpt's programs agree on tier 1.
+
+## §31: tier 1's primitives (2026-10-16, C124)
+
+Fixpt's runtime primitives in KFX, about 300, each with Fixpt's checks
+and failure messages: strings, the fixed widths, floats, bignums,
+bloblets, suffix refs, flat arrays, bytevectors. 292 of Fixpt's programs
+agree on tier 1, none differ.

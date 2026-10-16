@@ -263,16 +263,6 @@ pub fn words() -> Ref<List<&'static Named>> {
     })
 }
 
-/// A word of `n` cells, its entry `entry`: its fields frozen, as Fixpt
-/// publishes a word, each cell written by the reader below.
-pub fn make_word_x(name: Str, n: i64, entry: i64) -> i64 {
-    let w = make_bloblet_x(k_code(), i64_plus(n, 3i64), 0i64, true, true);
-    slot_set_x(w, f_entry(), fix(entry));
-    slot_set_x(w, f_name(), symbol_x(name));
-    slot_set_x(w, f_twin(), v_false());
-    w
-}
-
 pub fn word_named(cs: Chars) -> i64 {
     let w = lookup(get(words()), list_to_string(before_char(cs, ' ')));
     if i64_eq(w, 0i64) {

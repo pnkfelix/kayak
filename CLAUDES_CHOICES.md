@@ -3082,3 +3082,29 @@ reading both.
   reads it as before (a closure over nothing, refused if its word reads a
   free value). (3) `#bloblet(…)` says no frozen flags: tier 1 freezes sums
   and products, as Fixpt makes them, and nothing else.
+
+## C124. Tier 1's primitives, Fixpt's runtime's (2026-10-16, TODO §31 step 2)
+
+- **Chosen:** `cells/prims.kfx` anew, after Fixpt's `prim.rs` at the pin:
+  each primitive's checks in its order and its failures in its words, as
+  the cellular machine gives them (an error object's message: `expected
+  …`, `division by zero`, `suffix ref: …`). About 300 primitives: lists,
+  strings (code points, as Fixpt keeps them), characters, the fixed
+  widths (`fixed_op`, through KFX's `int`, wrapped by `Width::wrap`),
+  `f64` and `f32` (`f64_op`, `f32_op`), integers past a fixnum (bignums,
+  `cells/numbers.kfx`), bitwise operations and shifts, bloblets, suffix
+  refs and flat sums, flat arrays, bytevectors and UTF-8 (Rust's
+  `from_utf8`'s valid prefix), i-cells' making and reading, `vlambda`,
+  regions' makers (one heap, C122). The machine's `int-add`, `int-sub`,
+  `int-less`, `int-eq` take bignums, as Fixpt's (`num::int_op`).
+- **A primitive's cell** holds tier 1's own code, its operation above its
+  arities, so that a call is integer comparisons, families by range;
+  Fixpt's numbering waits for the layout's.
+- **Not yet, marked `(C122)`:** a large header (fields past 2^18); a
+  radix outside 2 to 36 (Fixpt's `to_str_radix` would panic); `modulo`
+  of what is no exact integer; `%fx26-convert` to the other convention.
+  Not there yet: the scheduler (`%fx26-sched`), the clock, eqtables,
+  `%fx26-intern-datum`, I/O, native code (`seal-code` and the rest).
+- **Result:** 292 of Fixpt's programs agree on tier 1 (was 194), 0
+  differ, each again under `--gc-stress`. `%fx26-native-code?` is false,
+  as Fixpt's Rust interpreter of cells says.

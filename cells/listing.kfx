@@ -123,17 +123,6 @@
 "The words, by name."
 (define words (ref (listof named @c) @c) (new nil))
 
-(define make-word! (subr cm (string i64 i64) i64)
-  (lambda (name n entry)
-    "A word of `n` cells, its entry `entry`: its fields frozen, as Fixpt
-     publishes a word, each cell written by the reader below."
-    (let ((w (make-bloblet! k-code (i64+ n 3) 0 #t #t)))
-      (begin
-        (slot-set! w f-entry (fix entry))
-        (slot-set! w f-name (symbol! name))
-        (slot-set! w f-twin v-false)
-        w))))
-
 (define word-named (subr cm (chars) i64)
   (lambda (cs)
     (let ((w (lookup (get words) (list->string (before-char cs #\space)))))

@@ -611,24 +611,35 @@ pub fn args_of(mut from: i64, mut i: i64, mut acc: List<i64>) -> List<i64> {
 pub fn int_op_x(n: i64) -> i64 {
     let b = pop_x(n);
     let a = pop_x(n);
-    if (is_fixnum_p(a) && is_fixnum_p(b)) {
+    if (is_fixnum_p(a) && is_fixnum_p(b) && (i64_eq(n, r_int_less()) || i64_eq(n, r_int_eq()) || fits_p(if i64_eq(n, r_int_add()) {
+        i64_plus(fix_val(a), fix_val(b))
+    } else {
+        i64_minus(fix_val(a), fix_val(b))
+    }))) {
         let (x, y) = (fix_val(a), fix_val(b));
         if i64_eq(n, r_int_less()) {
             push_x(boolean(i64_lt(x, y)))
         } else if i64_eq(n, r_int_eq()) {
             push_x(boolean(i64_eq(a, b)))
         } else {
-            let r = if i64_eq(n, r_int_add()) {
+            push_x(fix(if i64_eq(n, r_int_add()) {
                 i64_plus(x, y)
             } else {
                 i64_minus(x, y)
-            };
-            if fits_p(r) {
-                push_x(fix(r))
-            } else {
-                trap_x(str_lit("tier 1 has no bignums yet (C122)"))
-            }
+            }))
         }
+    } else if (is_integer_p(a) && is_integer_p(b)) {
+        // Past a fixnum, a bignum (Fixpt's `num::int_op`).
+        let (x, y) = (int_of(a), int_of(b));
+        push_x(if i64_eq(n, r_int_less()) {
+            boolean(_lt(x, y))
+        } else if i64_eq(n, r_int_eq()) {
+            boolean(_eq(x, y))
+        } else if i64_eq(n, r_int_add()) {
+            int_value_x(_plus(x, y))
+        } else {
+            int_value_x(_minus(x, y))
+        })
     } else {
         type_trap_x(n)
     };

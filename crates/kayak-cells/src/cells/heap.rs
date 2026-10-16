@@ -429,6 +429,17 @@ pub fn symbol_text(s: i64) -> Str {
     string_text(obj_ref(s, 0i64))
 }
 
+// Words.
+/// A word of `n` cells, its entry `entry`: its fields frozen, as Fixpt
+/// publishes a word, each cell written by the reader below.
+pub fn make_word_x(name: Str, n: i64, entry: i64) -> i64 {
+    let w = make_bloblet_x(k_code(), i64_plus(n, 3i64), 0i64, true, true);
+    slot_set_x(w, f_entry(), fix(entry));
+    slot_set_x(w, f_name(), symbol_x(name));
+    slot_set_x(w, f_twin(), v_false());
+    w
+}
+
 // The collector: Coopt's baseline, a Cheney copy of everything live into
 // the other space (`coopt-heap`'s `forward`, `forward_pair`,
 // `forward_bloblet`, `cheney`, at Coopt c366857), the spaces swapped, never

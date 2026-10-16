@@ -223,6 +223,18 @@
 
 (define symbol-text (subr cm (i64) string) (lambda (s) (string-text (obj-ref s 0))))
 
+"Words."
+(define make-word! (subr cm (string i64 i64) i64)
+  (lambda (name n entry)
+    "A word of `n` cells, its entry `entry`: its fields frozen, as Fixpt
+     publishes a word, each cell written by the reader below."
+    (let ((w (make-bloblet! k-code (i64+ n 3) 0 #t #t)))
+      (begin
+        (slot-set! w f-entry (fix entry))
+        (slot-set! w f-name (symbol! name))
+        (slot-set! w f-twin v-false)
+        w))))
+
 "The collector: Coopt's baseline, a Cheney copy of everything live into
  the other space (`coopt-heap`'s `forward`, `forward_pair`,
  `forward_bloblet`, `cheney`, at Coopt c366857), the spaces swapped, never
