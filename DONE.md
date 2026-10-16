@@ -1330,3 +1330,7 @@ lists and fx procedures crossing, `(subr (conv fx) ...)`,
 `native-convention`. Fixpt's `frames.fx` (a frame, a million pairs by
 `cons`, `poll`, a KFX procedure called back, made at every depth of a
 recursion 3000 deep) and `declared.fx` run on kayak as on Fixpt.
+
+Then: `load-input` of a built-in file, `#x` literals, and Fixpt's arm64
+encoder (`fx26:arm64.fx`) through KFX as it is: `made-encoded` encodes
+`sub` by it and runs the code, as on Fixpt.

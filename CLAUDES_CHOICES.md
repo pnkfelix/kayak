@@ -2713,3 +2713,18 @@ code; `tests/kfx/made-code.kfx` (Fixpt's `leaves.fx`'s adder) answers
   `crates/kayak-jit/src/native-arm64.conv`), and kayak-jit's constants are
   tested against it, so a change to Fixpt's convention shows when the pin
   moves.
+- **Fixpt's encoder, as it is** (`tests/kfx/made-encoded.kfx`): `(define
+  x (load-input "fx26:p"))` of a file built in, its one expression a
+  module or a `let` of loaded modules around one. The module is a loaded
+  one (the standard environment alone); the `let`'s modules are defined
+  before it, `made--input--P--n`, and the `%loaded` mark names them, so
+  that it sees them and nothing else of the program. A file of the
+  program's, not yet. Besides: `#x` literals (to an i64); a label named as
+  a function of kayak-rt's (`cons`), which a Rust field is apart from;
+  a procedure's type written as an abbreviation of an included module's
+  is written out by the checker for the emitter (`def-type`).
+- **Left for `generated.fx`**: Fixpt makes a path once, however many
+  times it is loaded (one value), so `convention.fx`'s datatypes and the
+  program's own load of `convention-types.fx` are the same; KFX makes
+  each load its own Rust `mod`, and refuses (stricter, so K1 holds).
+  Loads shared, as Fixpt's, is the next step of the module-file work.

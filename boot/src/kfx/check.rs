@@ -1176,6 +1176,13 @@ pub fn kfx_name_p(n: Str) -> bool {
     }), cs)) && not(string_has_p(n, str_lit("--"))) && not(string_member_p(mangle(n), kayak_rt::heap_cons(str_lit("str_lit"), kayak_rt::heap_cons(str_lit("int_lit"), kayak_rt::heap_cons(str_lit("int_text"), kayak_rt::heap_cons(str_lit("unreachable_unwind"), kayak_rt::heap_cons(str_lit("kfx_toplevel"), kayak_rt::heap_cons(str_lit("once"), kayak_rt::heap_cons(str_lit("alloc"), kayak_rt::heap_cons(str_lit("the"), kayak_rt::heap_cons(str_lit("unwind"), kayak_rt::heap_cons(str_lit("knot"), kayak_rt::heap_cons(str_lit("lambda0"), kayak_rt::heap_cons(str_lit("lambda1"), kayak_rt::heap_cons(str_lit("lambda2"), kayak_rt::heap_cons(str_lit("lambda3"), kayak_rt::heap_cons(str_lit("lambda4"), kayak_rt::heap_cons(str_lit("leak_string"), kayak_rt::heap_cons(str_lit("with_big_stack"), kayak_rt::heap_cons(str_lit("fail"), kayak_rt::heap_cons(str_lit("make_continuation_prompt_tag"), kayak_rt::heap_cons(str_lit("nil"), kayak_rt::heap_cons(str_lit("cons"), kayak_rt::nil()))))))))))))))))))))))))
 }
 
+/// Whether `n` may be a product's or a sum's label: as a KFX name (C27),
+/// but those kayak-rt's functions have, which a Rust field or variant is
+/// apart from (`cons`, C116: Fixpt's `convention-types.fx`).
+pub fn label_name_p(n: Str) -> bool {
+    (kfx_name_p(n) || string_member_p(n, kayak_rt::heap_cons(str_lit("nil"), kayak_rt::heap_cons(str_lit("cons"), kayak_rt::heap_cons(str_lit("once"), kayak_rt::heap_cons(str_lit("alloc"), kayak_rt::heap_cons(str_lit("the"), kayak_rt::heap_cons(str_lit("unwind"), kayak_rt::heap_cons(str_lit("knot"), kayak_rt::heap_cons(str_lit("fail"), kayak_rt::nil()))))))))))
+}
+
 // A knot through the store (FX-26's `no_knot`): a procedure kept in
 // storage at a region, whose latent effect reads that region and does not
 // say `spin`, could be fetched from there by a procedure fetched from
@@ -2235,7 +2242,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                             let tagcase_ = car(f);
                             match *tagcase_ {
                                 Sexp::Sym(n, at_file, at_pos) => {
-                                    not(kfx_name_p(n))
+                                    not(label_name_p(n))
                                 }
                                 _ => {
                                     let other = tagcase_;

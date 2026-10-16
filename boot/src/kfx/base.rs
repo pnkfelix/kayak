@@ -33,6 +33,27 @@ pub fn any_p<A: Copy + 'static>(p: &'static (dyn Fn(A) -> bool + Send + Sync), x
     (not(null_p(xs)) && (p(car(xs)) || any_p(p, cdr(xs))))
 }
 
+pub fn filter<A: Copy + 'static>(mut p: &'static (dyn Fn(A) -> bool + Send + Sync), mut xs: List<A>) -> List<A> {
+    loop {
+        if null_p(xs) {
+            return nil::<A>();
+        } else if p(car(xs)) {
+            return kayak_rt::heap_cons(car(xs), filter(p, cdr(xs)));
+        } else {
+            xs = cdr(xs);
+            continue;
+        }
+    }
+}
+
+pub fn map2<A: Copy + 'static, B: Copy + 'static, C: Copy + 'static>(f: &'static (dyn Fn(A, B) -> C + Send + Sync), xs: List<A>, ys: List<B>) -> List<C> {
+    if (null_p(xs) || null_p(ys)) {
+        nil::<C>()
+    } else {
+        kayak_rt::heap_cons(f(car(xs), car(ys)), map2(f, cdr(xs), cdr(ys)))
+    }
+}
+
 pub fn size_from<A: Copy + 'static>(mut xs: List<A>, mut n: i64) -> i64 {
     loop {
         if null_p(xs) {

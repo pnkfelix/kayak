@@ -172,10 +172,35 @@
   (before-point (subr kfx (chars) chars)
     (lambda (cs) (if (or (null? cs) (char=? (car cs) #\.)) nil (cons (car cs) (before-point (cdr cs)))))))
 
+(define hex-value (subr kfx (chars i64 string i64) i64)
+  (lambda (cs n file line)
+    "Hex digits onto `n`, as `digits-value`'s are, negated; one past an i64
+     refused (C116: Fixpt's arm64 encoder writes its instructions so)."
+    (if (null? cs)
+        n
+        (let* ((c (char-downcase (car cs)))
+               (d (if (char-numeric? c) (i64- (char->i64 c) 48) (i64+ 10 (i64- (char->i64 c) 97)))))
+          (if (i64< n -576460752303423487)
+              (read-error file line "a hex literal past an i64, which KFX reads not yet")
+              (hex-value (cdr cs) (i64- (i64* n 16) d) file line))))))
+
 (define token-atom (subr kfx (string string i64 i64) sexp)
   (lambda (s file line pos)
     (let ((cs (string-chars s)))
-      (cond ((not (numeric? cs)) (sym s file pos))
+      (cond ((and (char=? (car cs) #\#) (not (null? (cdr cs))) (or (char=? (car (cdr cs)) #\x) (char=? (car (cdr cs)) #\X))
+                  (not (null? (cdr (cdr cs)))))
+             "A hex literal, `#x1f`, `#x-1f`, R7RS's, as FX-26 reads it."
+             (let* ((ds (cdr (cdr cs)))
+                    (negative (char=? (car ds) #\-))
+                    (ds (if (or negative (char=? (car ds) #\+)) (cdr ds) ds)))
+               (if (or (null? ds) (not (only-of? ds "0123456789abcdefABCDEF")))
+                   (read-error file line (string-append "no number KFX reads: " s))
+                   (let ((n (hex-value ds 0 file line)))
+                     (if negative (num n file pos)
+                         (if (i64= n -9223372036854775808)
+                             (read-error file line "a hex literal past an i64, which KFX reads not yet")
+                             (num (i64- 0 n) file pos)))))))
+            ((not (numeric? cs)) (sym s file pos))
             ((not (only-of? (if (char=? (car cs) #\-) (cdr cs) cs) "0123456789.eE+-"))
              "Not a number, though a digit begins it (`1x`, `0x10`): a name, as
               FX-26 reads it."

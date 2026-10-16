@@ -624,6 +624,13 @@
                                                  "lambda2" "lambda3" "lambda4" "leak_string" "with_big_stack" "fail"
                                                  "make_continuation_prompt_tag" "nil" "cons")))))))
 
+(define label-name? (subr kfx (string) bool)
+  (lambda (n)
+    "Whether `n` may be a product's or a sum's label: as a KFX name (C27),
+     but those kayak-rt's functions have, which a Rust field or variant is
+     apart from (`cons`, C116: Fixpt's `convention-types.fx`)."
+    (or (kfx-name? n) (string-member? n (list "nil" "cons" "once" "alloc" "the" "unwind" "knot" "fail")))))
+
 "A knot through the store (FX-26's `no_knot`): a procedure kept in
  storage at a region, whose latent effect reads that region and does not
  say `spin`, could be fetched from there by a procedure fetched from
@@ -1109,7 +1116,7 @@
                            (and (sym-is? (car xs) "sumof")
                                 (any? (lambda ((f sexps)) (tagcase (car f) (sym (n at-file at-pos) #f) (else other #t))) fields)))
                        (refuse v (string-append "a type KFX does not have: " (show-sexp t)))
-                       (if (or (any? (lambda ((f sexps)) (tagcase (car f) (sym (n at-file at-pos) (not (kfx-name? n))) (else other #f))) fields)
+                       (if (or (any? (lambda ((f sexps)) (tagcase (car f) (sym (n at-file at-pos) (not (label-name? n))) (else other #f))) fields)
                                (repeated? (map (lambda ((f sexps)) (label-of (car f))) fields))
                                (repeated? (map (lambda ((f sexps)) (variant-name (label-of (car f)))) fields)))
                            (refuse v (string-append "a label appears twice in " (show-sexp t)))

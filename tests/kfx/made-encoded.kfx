@@ -1,0 +1,29 @@
+"Code made by Fixpt's arm64 encoder (`fx26:arm64.fx`, its `load-input`,
+ C116), as Fixpt has it, and run: `sub x0, x1, x2; ret`, and the same with
+ its operands the other way, `#x` literals besides."
+
+(define a64 (load-input "fx26:arm64.fx"))
+
+;; Instruction `w` at byte `at` of `b`'s suffix, little-endian.
+(define* put4 (subr (write @heap) ((bloblet (fields) @heap) int int) unit)
+  (lambda (b at w)
+    (begin (bloblet-set-byte! b at (modulo w 256))
+           (bloblet-set-byte! b (+ at 1) (modulo (quotient w 256) 256))
+           (bloblet-set-byte! b (+ at 2) (modulo (quotient w 65536) 256))
+           (bloblet-set-byte! b (+ at 3) (quotient w 16777216)))))
+
+"`sub xd, xn, xm; ret`, encoded."
+(define* subtracter (subr (maxeff (read @globals) (alloc @heap) (write @heap) (io native) spin) (int int)
+                          (subr (conv native) pure (int int) int))
+  (lambda (n m)
+    (let ((b (the (bloblet (fields) @heap) (make-bloblet 8))))
+      (begin (put4 b 0 ((with a64 arm-sub) 0 n m))
+             (put4 b 4 (with a64 arm-ret))
+             (the (subr (conv native) pure (int int) int) (native-procedure (seal-code b)))))))
+
+(define main (subr (maxeff (read @globals) (alloc @heap) (write @heap) (io native) spin) () string)
+  (lambda ()
+    (string-append
+      (int->string ((with a64 arm-add) 0 1 2))
+      (string-append " " (string-append (int->string (+ (+ #x10 #x-1) #XfF))
+        (string-append " " (int->string (if (native-code?) (+ ((subtracter 1 2) 50 8) ((subtracter 2 1) 50 8)) 0))))))))

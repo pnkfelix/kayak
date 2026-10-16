@@ -168,6 +168,11 @@ pub mod made_declared;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/made-encoded.rs"]
+pub mod made_encoded;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/made-frames.rs"]
 pub mod made_frames;
 
@@ -379,6 +384,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("lists", lists::main),
     ("made-code", made_code::main),
     ("made-declared", made_declared::main),
+    ("made-encoded", made_encoded::main),
     ("made-frames", made_frames::main),
     ("module-letrec", module_letrec::main),
     ("module-params", module_params::main),

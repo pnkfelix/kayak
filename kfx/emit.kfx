@@ -1297,6 +1297,12 @@
           (ctx (ds ts ks ls xs fs ms es mods)
             (any? (lambda ((f fact)) (tagcase f (fact (ff fp fw) (has-prefix? fw "blob-at ")))) fs)))))
 
+    (define fact-said (subr kfx (ctx sexp string) string)
+      (lambda (c e prefix)
+        "What the checker found about `e` that begins `prefix`, the rest; or ``:
+         `fact-with`, given on to the writing of definitions (C116)."
+        (fact-with c e prefix)))
+
     (define family-expanded (subr kfx (ctx sexp) sexp)
       (lambda (c t)
         "A family abbreviation's application, `(builder p r)`, as what it stands

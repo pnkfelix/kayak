@@ -579,9 +579,11 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    - ~~the routines `poll`, `overflow`, `trap`, `cons`, `foreign`;
      lists and fx procedures crossing; `define-convention`,
      `native-convention`~~ (C116: Fixpt's `frames.fx`, `declared.fx`);
-   - `load-input`, and `fx26:arm64.fx`, `fx26:convention.fx` accepted by
-     KFX (built in now, refused: no `load-input`), so that the generators
-     are Fixpt's, and `generated.fx`, `linked.fx`, `allocated.fx` run;
+   - ~~`load-input` of a built-in file; `fx26:arm64.fx` as it is~~
+     (`made-encoded`); `fx26:convention.fx` waits on loads shared as
+     Fixpt's (one module however often a path is loaded: its datatypes the
+     same), then `generated.fx`, `linked.fx`, `allocated.fx`; and
+     `load-input` of a program's file;
    - fields beside code: a sealed bloblet's fields of types that cross,
      kept in the code area, `bloblet-set!` writing through (`linked.fx`
      puts procedures there);

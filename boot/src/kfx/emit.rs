@@ -2413,6 +2413,12 @@ pub mod emitter {
         }
     }
 
+    /// What the checker found about `e` that begins `prefix`, the rest; or ``:
+    /// `fact-with`, given on to the writing of definitions (C116).
+    pub fn fact_said(c: &'static Ctx, e: &'static Sexp, prefix: Str) -> Str {
+        fact_with(c, e, prefix)
+    }
+
     /// A family abbreviation's application, `(builder p r)`, as what it stands
     /// for, its parameters replaced by the arguments: where the emitter must
     /// see a procedure's type whole (a `letrec`'s, a definition's).

@@ -348,9 +348,55 @@ pub fn before_point(cs: Chars) -> Chars {
     }
 }
 
+/// Hex digits onto `n`, as `digits-value`'s are, negated; one past an i64
+/// refused (C116: Fixpt's arm64 encoder writes its instructions so).
+pub fn hex_value(mut cs: Chars, mut n: i64, mut file: Str, mut line: i64) -> i64 {
+    loop {
+        if null_p(cs) {
+            return n;
+        } else {
+            let c = char_downcase(car(cs));
+            let d = if char_numeric_p(c) {
+                i64_minus(char_to_i64(c), 48i64)
+            } else {
+                i64_plus(10i64, i64_minus(char_to_i64(c), 97i64))
+            };
+            if i64_lt(n, -576460752303423487i64) {
+                return match read_error(file, line, str_lit("a hex literal past an i64, which KFX reads not yet")) {};
+            } else {
+                (cs, n) = (cdr(cs), i64_minus(i64_star(n, 16i64), d));
+                continue;
+            }
+        }
+    }
+}
+
 pub fn token_atom(s: Str, file: Str, line: i64, pos: i64) -> &'static Sexp {
     let cs = string_chars(s);
-    if not(numeric_p(cs)) {
+    if (char_eq_p(car(cs), '#') && not(null_p(cdr(cs))) && (char_eq_p(car(cdr(cs)), 'x') || char_eq_p(car(cdr(cs)), 'X')) && not(null_p(cdr(cdr(cs))))) {
+        // A hex literal, `#x1f`, `#x-1f`, R7RS's, as FX-26 reads it.
+        let ds = cdr(cdr(cs));
+        let negative = char_eq_p(car(ds), '-');
+        let ds = if (negative || char_eq_p(car(ds), '+')) {
+            cdr(ds)
+        } else {
+            ds
+        };
+        if (null_p(ds) || not(only_of_p(ds, str_lit("0123456789abcdefABCDEF")))) {
+            match read_error(file, line, string_append(str_lit("no number KFX reads: "), s)) {}
+        } else {
+            let n = hex_value(ds, 0i64, file, line);
+            if negative {
+                num(n, file, pos)
+            } else {
+                if i64_eq(n, -9223372036854775808i64) {
+                    match read_error(file, line, str_lit("a hex literal past an i64, which KFX reads not yet")) {}
+                } else {
+                    num(i64_minus(0i64, n), file, pos)
+                }
+            }
+        }
+    } else if not(numeric_p(cs)) {
         sym(s, file, pos)
     } else if not(only_of_p(if char_eq_p(car(cs), '-') {
         cdr(cs)

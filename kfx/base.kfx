@@ -25,6 +25,13 @@
 (define any? (poly ((a type)) (subr kfx ((subr kfx (a) bool) (listof a acyclic)) bool))
   (lambda (p xs) (and (not (null? xs)) (or (p (car xs)) (any? p (cdr xs))))))
 
+(define filter (poly ((a type)) (subr kfx ((subr kfx (a) bool) (listof a acyclic)) (listof a acyclic)))
+  (lambda (p xs) (cond ((null? xs) nil) ((p (car xs)) (cons (car xs) (filter p (cdr xs)))) (else (filter p (cdr xs))))))
+
+(define map2 (poly ((a type) (b type) (c type))
+               (subr kfx ((subr kfx (a b) c) (listof a acyclic) (listof b acyclic)) (listof c acyclic)))
+  (lambda (f xs ys) (if (or (null? xs) (null? ys)) nil (cons (f (car xs) (car ys)) (map2 f (cdr xs) (cdr ys))))))
+
 (define size-from (poly ((a type)) (subr kfx ((listof a acyclic) i64) i64))
   (lambda (xs n) (if (null? xs) n (size-from (cdr xs) (i64+ n 1)))))
 
