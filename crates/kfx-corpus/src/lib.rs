@@ -193,6 +193,11 @@ pub mod made_linked;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/made-typed-calls.rs"]
+pub mod made_typed_calls;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/module-letrec.rs"]
 pub mod module_letrec;
 
@@ -404,6 +409,7 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("made-frames", made_frames::main),
     ("made-generated", made_generated::main),
     ("made-linked", made_linked::main),
+    ("made-typed-calls", made_typed_calls::main),
     ("module-letrec", module_letrec::main),
     ("module-params", module_params::main),
     ("module-strings", module_strings::main),
