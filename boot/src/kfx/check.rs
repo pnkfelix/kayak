@@ -1163,7 +1163,7 @@ pub fn rust_keyword_clash_p(n: Str) -> bool {
 /// The types Rust or kayak-rt has that the emitter writes: no KFX type and
 /// no type variable is named so, camel-cased, which would hide it.
 pub fn rust_type_names() -> Strings {
-    kayak_rt::heap_cons(str_lit("Str"), kayak_rt::heap_cons(str_lit("List"), kayak_rt::heap_cons(str_lit("Cons"), kayak_rt::heap_cons(str_lit("Int"), kayak_rt::heap_cons(str_lit("Tag"), kayak_rt::heap_cons(str_lit("Unwind"), kayak_rt::heap_cons(str_lit("Ref"), kayak_rt::heap_cons(str_lit("FlatArray"), kayak_rt::heap_cons(str_lit("Knot"), kayak_rt::heap_cons(str_lit("Show"), kayak_rt::heap_cons(str_lit("OnceCell"), kayak_rt::heap_cons(str_lit("Fn"), kayak_rt::heap_cons(str_lit("Result"), kayak_rt::heap_cons(str_lit("Ok"), kayak_rt::heap_cons(str_lit("Err"), kayak_rt::heap_cons(str_lit("String"), kayak_rt::heap_cons(str_lit("Copy"), kayak_rt::heap_cons(str_lit("Clone"), kayak_rt::heap_cons(str_lit("Self"), kayak_rt::heap_cons(str_lit("Module"), kayak_rt::heap_cons(str_lit("Void"), kayak_rt::heap_cons(str_lit("Bloblet"), kayak_rt::heap_cons(str_lit("BlobRef"), kayak_rt::heap_cons(str_lit("Arena"), kayak_rt::heap_cons(str_lit("Holds"), kayak_rt::heap_cons(str_lit("ListAt"), kayak_rt::heap_cons(str_lit("RefAt"), kayak_rt::heap_cons(str_lit("TBloblet"), kayak_rt::heap_cons(str_lit("FlatArr"), kayak_rt::heap_cons(str_lit("Flat"), kayak_rt::heap_cons(str_lit("Owner"), kayak_rt::heap_cons(str_lit("Default"), kayak_rt::heap_cons(str_lit("Procedure"), kayak_rt::nil())))))))))))))))))))))))))))))))))
+    kayak_rt::heap_cons(str_lit("Str"), kayak_rt::heap_cons(str_lit("List"), kayak_rt::heap_cons(str_lit("Cons"), kayak_rt::heap_cons(str_lit("Int"), kayak_rt::heap_cons(str_lit("Tag"), kayak_rt::heap_cons(str_lit("Unwind"), kayak_rt::heap_cons(str_lit("Ref"), kayak_rt::heap_cons(str_lit("FlatArray"), kayak_rt::heap_cons(str_lit("Knot"), kayak_rt::heap_cons(str_lit("Show"), kayak_rt::heap_cons(str_lit("OnceCell"), kayak_rt::heap_cons(str_lit("Fn"), kayak_rt::heap_cons(str_lit("Result"), kayak_rt::heap_cons(str_lit("Ok"), kayak_rt::heap_cons(str_lit("Err"), kayak_rt::heap_cons(str_lit("String"), kayak_rt::heap_cons(str_lit("Copy"), kayak_rt::heap_cons(str_lit("Clone"), kayak_rt::heap_cons(str_lit("Self"), kayak_rt::heap_cons(str_lit("Module"), kayak_rt::heap_cons(str_lit("Void"), kayak_rt::heap_cons(str_lit("Bloblet"), kayak_rt::heap_cons(str_lit("BlobRef"), kayak_rt::heap_cons(str_lit("Arena"), kayak_rt::heap_cons(str_lit("Holds"), kayak_rt::heap_cons(str_lit("ListAt"), kayak_rt::heap_cons(str_lit("RefAt"), kayak_rt::heap_cons(str_lit("TBloblet"), kayak_rt::heap_cons(str_lit("FlatArr"), kayak_rt::heap_cons(str_lit("Flat"), kayak_rt::heap_cons(str_lit("Owner"), kayak_rt::heap_cons(str_lit("Default"), kayak_rt::heap_cons(str_lit("Procedure"), kayak_rt::heap_cons(str_lit("Native"), kayak_rt::heap_cons(str_lit("NativeFields"), kayak_rt::heap_cons(str_lit("Sealed"), kayak_rt::heap_cons(str_lit("Written"), kayak_rt::nil())))))))))))))))))))))))))))))))))))))
 }
 
 /// Whether `n` may be a KFX name (C27): a lower-case letter or an operator's
@@ -1173,7 +1173,7 @@ pub fn kfx_name_p(n: Str) -> bool {
     let cs = string_chars(n);
     (not(null_p(cs)) && not(rust_keyword_clash_p(n)) && (char_lower_p(car(cs)) || has_char_in_p(str_lit("?!<>=+*/%-"), car(cs))) && not(any_p(lambda1s(move |c: char| {
         not((char_lower_p(c) || char_numeric_p(c) || has_char_in_p(str_lit("?!<>=+*/%-"), c)))
-    }), cs)) && not(string_has_p(n, str_lit("--"))) && not(string_member_p(mangle(n), kayak_rt::heap_cons(str_lit("str_lit"), kayak_rt::heap_cons(str_lit("int_lit"), kayak_rt::heap_cons(str_lit("int_text"), kayak_rt::heap_cons(str_lit("unreachable_unwind"), kayak_rt::heap_cons(str_lit("kfx_toplevel"), kayak_rt::heap_cons(str_lit("once"), kayak_rt::heap_cons(str_lit("alloc"), kayak_rt::heap_cons(str_lit("the"), kayak_rt::heap_cons(str_lit("unwind"), kayak_rt::heap_cons(str_lit("knot"), kayak_rt::heap_cons(str_lit("lambda0"), kayak_rt::heap_cons(str_lit("lambda1"), kayak_rt::heap_cons(str_lit("lambda2"), kayak_rt::heap_cons(str_lit("lambda3"), kayak_rt::heap_cons(str_lit("lambda4"), kayak_rt::heap_cons(str_lit("leak_string"), kayak_rt::heap_cons(str_lit("with_big_stack"), kayak_rt::heap_cons(str_lit("fail"), kayak_rt::heap_cons(str_lit("make_continuation_prompt_tag"), kayak_rt::heap_cons(str_lit("nil"), kayak_rt::heap_cons(str_lit("cons"), kayak_rt::nil()))))))))))))))))))))))))
+    }), cs)) && not(string_has_p(n, str_lit("--"))) && not(string_member_p(mangle(n), kayak_rt::heap_cons(str_lit("str_lit"), kayak_rt::heap_cons(str_lit("int_lit"), kayak_rt::heap_cons(str_lit("int_text"), kayak_rt::heap_cons(str_lit("unreachable_unwind"), kayak_rt::heap_cons(str_lit("kfx_toplevel"), kayak_rt::heap_cons(str_lit("once"), kayak_rt::heap_cons(str_lit("alloc"), kayak_rt::heap_cons(str_lit("the"), kayak_rt::heap_cons(str_lit("unwind"), kayak_rt::heap_cons(str_lit("knot"), kayak_rt::heap_cons(str_lit("lambda0"), kayak_rt::heap_cons(str_lit("lambda1"), kayak_rt::heap_cons(str_lit("lambda2"), kayak_rt::heap_cons(str_lit("lambda3"), kayak_rt::heap_cons(str_lit("lambda4"), kayak_rt::heap_cons(str_lit("leak_string"), kayak_rt::heap_cons(str_lit("with_big_stack"), kayak_rt::heap_cons(str_lit("fail"), kayak_rt::heap_cons(str_lit("make_continuation_prompt_tag"), kayak_rt::heap_cons(str_lit("nil"), kayak_rt::heap_cons(str_lit("cons"), kayak_rt::heap_cons(str_lit("bloblet_written"), kayak_rt::heap_cons(str_lit("native_procedure0"), kayak_rt::heap_cons(str_lit("native_procedure1"), kayak_rt::heap_cons(str_lit("native_procedure2"), kayak_rt::heap_cons(str_lit("native_procedure3"), kayak_rt::nil())))))))))))))))))))))))))))))
 }
 
 /// Whether `n` may be a product's or a sum's label: as a KFX name (C27),
@@ -1443,14 +1443,19 @@ pub fn flat_p(t: &'static Ty) -> bool {
     }
 }
 
-/// Whether a type could hold a procedure: is one, a type variable, or
-/// has one inside.
+/// Whether a type could hold a procedure that ties a knot through the
+/// store: is one whose latent effect reads a region and does not say
+/// `spin` (FX-26's `no_knot`, of any region, where FX-26's is of the
+/// one it is kept at: C116, Fixpt's `linked.fx` keeps `*`), a type
+/// variable, or has one inside.
 pub fn field_may_knot_p(mut t: &'static Ty) -> bool {
     loop {
         let tagcase_ = t;
         match *tagcase_ {
             Ty::TyProc(es, ps, r) => {
-                return true;
+                return (any_p(lambda1s(move |a: Str| {
+                    has_prefix_p(a, str_lit("read:"))
+                }), es) && not(string_member_p(str_lit("spin"), es)));
             }
             Ty::TyVar(n) => {
                 return true;
@@ -3192,8 +3197,8 @@ pub fn repeat_ty(t: &'static Ty, n: i64) -> Tys {
 
 /// Whether a value of type `t` crosses between kayak's values and native
 /// code's (C116, kayak-rt's `Native`): as the same word in both, or
-/// copied, which no KFX program can tell, since none tells pairs apart
-/// (`eq?`) nor writes through one (`set-car!`).
+/// copied, which no KFX program can tell of a list or a string, since
+/// none tells pairs apart (`eq?`) nor writes through one (`set-car!`).
 pub fn native_crossing_p(mut s: &'static St, mut t: &'static Ty) -> bool {
     loop {
         let tagcase_ = walk(s, t);
@@ -3216,9 +3221,19 @@ pub fn native_crossing_p(mut s: &'static St, mut t: &'static Ty) -> bool {
             Ty::TyChar() => {
                 return true;
             }
+            Ty::TyString() => {
+                return true;
+            }
             Ty::TyList(x, r) => {
                 t = x;
                 continue;
+            }
+            Ty::TyData(d, args) => {
+                // A bloblet whose fields cross, copied each way (kayak-rt's `Native`,
+                // which says what a copy cannot see).
+                return (string_eq_p(d, str_lit("%bloblet")) && i64_lt(size(args), 6i64) && not(any_p(lambda1s(move |x: &'static Ty| {
+                    not(native_crossing_p(s, x))
+                }), cdr(args))));
             }
             _ => {
                 let other = tagcase_;
@@ -3236,20 +3251,14 @@ pub fn native_given_p(s: &'static St, t: &'static Ty) -> bool {
         let tagcase_ = walk(s, t);
         match *tagcase_ {
             Ty::TyData(d, args) => {
-                (string_eq_p(d, str_lit("%fx")) && {
-                    let tagcase_ = walk(s, car(args));
-                    match *tagcase_ {
-                        Ty::TyProc(es, ps, r) => {
-                            (i64_lt(size(ps), 4i64) && native_crossing_p(s, r) && not(escapes_p(es)) && not(suspends_p(es)) && not(any_p(lambda1s(move |p: &'static Ty| {
-                                not(native_crossing_p(s, p))
-                            }), ps)))
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            false
-                        }
-                    }
-                })
+                (string_eq_p(d, str_lit("%fx")) && native_given_p(s, car(args)))
+            }
+            Ty::TyProc(es, ps, r) => {
+                // A procedure of KFX's own, as one of the fx convention is: in a
+                // code bloblet's field, made code calls it by `foreign`.
+                (i64_lt(size(ps), 4i64) && native_crossing_p(s, r) && not(escapes_p(es)) && not(suspends_p(es)) && not(any_p(lambda1s(move |p: &'static Ty| {
+                    not(native_crossing_p(s, p))
+                }), ps)))
             }
             _ => {
                 let other = tagcase_;

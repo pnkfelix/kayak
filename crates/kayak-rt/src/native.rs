@@ -134,6 +134,58 @@ impl<T: Native + Clone + 'static> Native for crate::List<T> {
     }
 }
 
+/// A string, copied each way as one of Fixpt's layout (its code points two
+/// to a word): FX-26's strings are never written.
+impl Native for crate::Str {
+    fn word(self) -> u64 {
+        kayak_jit::string(self.as_str())
+    }
+    fn of_word(w: u64) -> Self {
+        match kayak_jit::string_of(w) {
+            Some(t) => crate::leak_string(t),
+            None => fail("native code: gave what is not a string where one was wanted"),
+        }
+    }
+}
+
+/// A bloblet, its fields of what crosses: copied each way as a plain
+/// bloblet of Fixpt's layout, its fields after a trailer (C116). A copy
+/// that native code keeps does not see what KFX writes after, nor KFX
+/// what native code writes after; native code's own, made and given back,
+/// is KFX's alone from then on. A sealed copy is given as itself.
+macro_rules! crossing_bloblet {
+    ($n:expr; $($a:ident $i:tt),*) => {
+        impl<$($a: Native + Copy + 'static),*> Native for &'static Bloblet<($(std::cell::Cell<$a>,)*)> {
+            fn word(self) -> u64 {
+                let (bytes, code) = self.native_parts();
+                if let Some(c) = code {
+                    return c.reference();
+                }
+                let fields: Vec<u64> = vec![$(self.fields.$i.get().word()),*];
+                let suffix: Vec<u64> = bytes
+                    .chunks(8)
+                    .map(|w| w.iter().enumerate().fold(0, |x, (k, &b)| x | (b as u64) << (8 * k)))
+                    .collect();
+                kayak_jit::bloblet(&fields, &suffix, bytes.len())
+            }
+            #[allow(unused_variables)]
+            fn of_word(w: u64) -> Self {
+                let (bytes, slots) = match kayak_jit::header_of(w) {
+                    Some((kayak_jit::layout::KIND_BLOBLET, f, b)) if f == $n + 1 || (f == 0 && $n == 0) => (b, f),
+                    _ => fail("native code: gave what is not a bloblet of the fields wanted"),
+                };
+                let suffix: Vec<u8> = (0..bytes).map(|i| (kayak_jit::suffix_word(w, i / 8) >> (8 * (i % 8))) as u8).collect();
+                crate::alloc(Bloblet::of_native(($(std::cell::Cell::new($a::of_word(kayak_jit::slot_of(w, $i + 2))),)*), &suffix))
+            }
+        }
+    };
+}
+crossing_bloblet!(0;);
+crossing_bloblet!(1; A 0);
+crossing_bloblet!(2; A 0, B 1);
+crossing_bloblet!(3; A 0, B 1, C 2);
+crossing_bloblet!(4; A 0, B 1, C 2, D 3);
+
 /// A procedure of KFX's, given to native code, which calls it by the
 /// `foreign` routine: a closure of Fixpt's layout over it. Native code
 /// gives none back to KFX (its checker sees to it).
@@ -190,9 +242,38 @@ pub fn native_code_p() -> bool {
     kayak_jit::native_code()
 }
 
+/// A bloblet's fields as words of Fixpt's layout, beside a sealed copy's
+/// code (C116): each of what crosses.
+pub trait NativeFields {
+    fn field_words(&self) -> Vec<u64>;
+    fn field_word(&self, k: usize) -> u64;
+}
+
+macro_rules! native_fields {
+    ($($a:ident $i:tt),*) => {
+        impl<$($a: Native + Copy),*> NativeFields for ($(std::cell::Cell<$a>,)*) {
+            fn field_words(&self) -> Vec<u64> {
+                vec![$(self.$i.get().word()),*]
+            }
+            #[allow(unused_variables)]
+            fn field_word(&self, k: usize) -> u64 {
+                match k {
+                    $($i => self.$i.get().word(),)*
+                    _ => fail("a bloblet's field: no such field"),
+                }
+            }
+        }
+    };
+}
+native_fields!();
+native_fields!(A 0);
+native_fields!(A 0, B 1);
+native_fields!(A 0, B 1, C 2);
+native_fields!(A 0, B 1, C 2, D 3);
+
 /// `(seal-code b)`: a copy of `b` in the code area, its suffix frozen and
-/// runnable. A bloblet of no fields (KFX's checker sees to it).
-pub fn seal_code<'a>(b: &Bloblet<()>) -> &'a Bloblet<()> {
+/// runnable, its fields beside it (KFX's checker sees they cross).
+pub fn seal_code<'a, Fs: NativeFields + Clone + 'a>(b: &Bloblet<Fs>) -> &'a Bloblet<Fs> {
     if !kayak_jit::native_code() {
         fail("seal-code: this machine runs no native code");
     }
@@ -212,33 +293,45 @@ fn run(clo: u64, entry: usize, args: &[u64]) -> u64 {
             5 => "division by zero",
             _ => "native code trapped, of a kind the convention does not declare",
         }),
+        Err(kayak_jit::Trap::Failed(m)) => fail(&m),
         Err(kayak_jit::Trap::Routine(r)) => fail(&format!(
             "native code called the `{r}` routine, which kayak's runtime does not have yet (C116)"
         )),
     }
 }
 
+/// What `native-procedure` is given: a bloblet, perhaps a sealed copy.
+pub trait Sealed {
+    fn sealed_code(&self) -> Option<kayak_jit::Code>;
+}
+
+impl<Fs> Sealed for Bloblet<Fs> {
+    fn sealed_code(&self) -> Option<kayak_jit::Code> {
+        self.code
+    }
+}
+
 /// What `native-procedure` makes a procedure of: a sealed copy's code,
 /// and its native closure.
-fn sealed(c: &Bloblet<()>) -> (u64, usize) {
+fn sealed(c: &dyn Sealed) -> (u64, usize) {
     if !kayak_jit::native_code() {
         fail("native-procedure: this machine runs no native code");
     }
-    match c.code {
+    match c.sealed_code() {
         Some(code) => (kayak_jit::closure(code), code.entry()),
         None => fail("native-procedure: not code that `seal-code` gave"),
     }
 }
 
 /// `(native-procedure c)` at `(subr (conv native) E () R)`.
-pub fn native_procedure0<'a, R: Native>(c: &Bloblet<()>) -> &'a (dyn Fn() -> R + Send + Sync) {
+pub fn native_procedure0<'a, R: Native>(c: &dyn Sealed) -> &'a (dyn Fn() -> R + Send + Sync) {
     let (clo, entry) = sealed(c);
     crate::lambda0s(move || R::of_word(run(clo, entry, &[])))
 }
 
 /// At `(subr (conv native) E (A) R)`.
 pub fn native_procedure1<'a, A: Native, R: Native>(
-    c: &Bloblet<()>,
+    c: &dyn Sealed,
 ) -> &'a (dyn Fn(A) -> R + Send + Sync) {
     let (clo, entry) = sealed(c);
     crate::lambda1s(move |a: A| R::of_word(run(clo, entry, &[a.word()])))
@@ -246,7 +339,7 @@ pub fn native_procedure1<'a, A: Native, R: Native>(
 
 /// At `(subr (conv native) E (A B) R)`.
 pub fn native_procedure2<'a, A: Native, B: Native, R: Native>(
-    c: &Bloblet<()>,
+    c: &dyn Sealed,
 ) -> &'a (dyn Fn(A, B) -> R + Send + Sync) {
     let (clo, entry) = sealed(c);
     crate::lambda2s(move |a: A, b: B| R::of_word(run(clo, entry, &[a.word(), b.word()])))
@@ -254,7 +347,7 @@ pub fn native_procedure2<'a, A: Native, B: Native, R: Native>(
 
 /// At `(subr (conv native) E (A B C) R)`.
 pub fn native_procedure3<'a, A: Native, B: Native, C: Native, R: Native>(
-    c: &Bloblet<()>,
+    c: &dyn Sealed,
 ) -> &'a (dyn Fn(A, B, C) -> R + Send + Sync) {
     let (clo, entry) = sealed(c);
     crate::lambda3s(move |a: A, b: B, d: C| {

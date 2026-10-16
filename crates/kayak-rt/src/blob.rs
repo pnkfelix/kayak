@@ -19,6 +19,9 @@ pub struct Bloblet<Fs> {
     /// Its copy in the code area, if it is one `seal-code` gave (C116): its
     /// suffix frozen, its code runnable.
     pub(crate) code: Option<kayak_jit::Code>,
+    /// For a sealed copy, how a field written is written beside its code
+    /// too, as Fixpt's code bloblet's fields are its code's (C116).
+    resync: Option<fn(&Bloblet<Fs>, usize)>,
 }
 
 /// An `int` as a size or an index: one past an `i64` is never small
@@ -38,6 +41,7 @@ impl<Fs> Bloblet<Fs> {
             suffix: (0..bytes.div_ceil(8)).map(|_| Cell::new(0)).collect(),
             bytes,
             code: None,
+            resync: None,
         }
     }
 
@@ -91,19 +95,75 @@ impl<Fs> Bloblet<Fs> {
     }
 }
 
-impl Bloblet<()> {
+impl<Fs> Bloblet<Fs> {
+    /// One of fields `fields` and suffix `bytes`, as native code made it
+    /// (C116), copied.
+    pub(crate) fn of_native(fields: Fs, bytes: &[u8]) -> Self {
+        let b = Bloblet::new(i64_to_int(bytes.len() as i64), fields);
+        for (i, &x) in bytes.iter().enumerate() {
+            b.set_byte(i, x as u64);
+        }
+        b
+    }
+
+    /// Its suffix's bytes; and its code, if it is a sealed copy.
+    pub(crate) fn native_parts(&self) -> (Vec<u8>, Option<kayak_jit::Code>) {
+        (
+            (0..self.bytes).map(|i| self.byte(i) as u8).collect(),
+            self.code,
+        )
+    }
+}
+
+impl<Fs: crate::NativeFields + Clone> Bloblet<Fs> {
     /// Its copy sealed into the code area (`seal-code`, C116): its suffix
-    /// the code, frozen.
+    /// the code, frozen; its fields beside it, after a trailer if it has
+    /// any, as Fixpt's; a field written later written there too.
     pub(crate) fn sealed_copy(&self) -> Self {
         let bytes: Vec<u8> = (0..self.bytes).map(|i| self.byte(i) as u8).collect();
-        let code = kayak_jit::seal(kayak_jit::layout::KIND_BLOBLET, &[], false, &bytes);
+        let fields = self.fields.field_words();
+        let mut slots = Vec::new();
+        if !fields.is_empty() {
+            slots.push(kayak_jit::layout::trailer(fields.len() + 1));
+            slots.extend(fields);
+        }
+        let code = kayak_jit::seal(kayak_jit::layout::KIND_BLOBLET, &slots, false, &bytes);
         Bloblet {
-            fields: (),
+            fields: self.fields.clone(),
             suffix: self.suffix.clone(),
             bytes: self.bytes,
             code: Some(code),
+            resync: Some(|b, k| {
+                if let Some(c) = b.code {
+                    c.set_slot(k + 2, b.fields.field_word(k))
+                }
+            }),
         }
     }
+}
+
+/// After `(bloblet-set! b k v)`: a sealed copy's field `k` written beside
+/// its code too (C116); nothing for any other bloblet.
+pub trait Written {
+    fn written(self, k: usize);
+}
+
+impl<Fs> Written for &Bloblet<Fs> {
+    #[inline]
+    fn written(self, k: usize) {
+        if let Some(f) = self.resync {
+            f(self, k)
+        }
+    }
+}
+
+impl<Fs, S> Written for &TBloblet<Fs, S> {
+    #[inline]
+    fn written(self, _: usize) {}
+}
+
+pub fn bloblet_written<W: Written>(b: W, k: usize) {
+    b.written(k)
 }
 
 /// `(make-bloblet bytes e …)`: in the heap, never freed.

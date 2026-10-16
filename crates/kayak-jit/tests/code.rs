@@ -2,8 +2,8 @@
 //! `programs/made-code/leaves.fx` does from FX-26.
 
 use kayak_jit::{
-    Trap, call, closure, closure_code, cons, foreign_procedure, layout, native_code, pair, seal,
-    state,
+    Trap, call, card_marked, closure, closure_code, cons, foreign_procedure, header_of, layout,
+    native_code, pair, seal, slot_of, state, string, string_of, suffix_word,
 };
 
 fn words(code: &[u32]) -> Vec<u8> {
@@ -196,10 +196,6 @@ fn traps_and_routines_kayak_lacks_end_the_call() {
         Err(Trap::Kind(kayak_jit::STACK_OVERFLOW))
     );
     assert_eq!(
-        run(&calling(&[], state::BLOBLET), &[]),
-        Err(Trap::Routine("bloblet"))
-    );
-    assert_eq!(
         run(&calling(&[], state::CLOSURE), &[]),
         Err(Trap::Routine("closure"))
     );
@@ -207,4 +203,67 @@ fn traps_and_routines_kayak_lacks_end_the_call() {
         run(&[0x8b02_0020, 0xd65f_03c0], &[fixnum(1), fixnum(2)]),
         Ok(fixnum(3))
     );
+}
+
+#[test]
+fn bloblet_makes_one_zeroed_or_refuses() {
+    if !native_code() {
+        return;
+    }
+    // x1 bytes, x2 fields, as given.
+    let b = run(&calling(&[], state::BLOBLET), &[fixnum(12), fixnum(2)]).unwrap();
+    assert_eq!(header_of(b), Some((layout::KIND_BLOBLET, 3, 12)));
+    assert_eq!(slot_of(b, 1), layout::trailer(3));
+    assert_eq!(
+        (
+            slot_of(b, 2),
+            slot_of(b, 3),
+            suffix_word(b, 0),
+            suffix_word(b, 1)
+        ),
+        (0, 0, 0, 0)
+    );
+    assert_eq!(
+        run(&calling(&[], state::BLOBLET), &[fixnum(-1), fixnum(2)]),
+        Err(Trap::Failed(
+            "bloblet: no bloblet of -1 bytes and 2 fields".into()
+        ))
+    );
+}
+
+#[test]
+fn a_store_marks_its_card() {
+    if !native_code() {
+        return;
+    }
+    // str x2, [x1, #-16] (field 0 of a bloblet of no suffix, from its
+    // reference less 4); then its card: lsr x16, x1, #9; ldr x17, [x24,
+    // #CARDS]; add x17, x17, x16; movz x16, #1; strb w16, [x17].
+    let b = kayak_jit::bloblet(&[0], &[], 0);
+    assert!(!card_marked(b));
+    let ldr = 0xf940_0000 | ((state::CARDS / 8) as u32) << 10 | 24 << 5 | 17;
+    let code = [
+        0xf81e_c022u32,
+        0xd349_fc30,
+        ldr,
+        0x8b10_0231,
+        0xd280_0030,
+        0x3900_0230,
+        0xd65f_03c0,
+    ];
+    let c = seal(layout::KIND_BLOBLET, &[], false, &words(&code));
+    call(closure(c), c.entry(), &[b, fixnum(9)]).unwrap();
+    assert_eq!(slot_of(b, 2), fixnum(9));
+    assert!(card_marked(b));
+}
+
+#[test]
+fn strings_cross() {
+    if !native_code() {
+        return;
+    }
+    for t in ["", "a", "made", "été 🍁"] {
+        assert_eq!(string_of(string(t)).as_deref(), Some(t));
+    }
+    assert_eq!(string_of(fixnum(3)), None);
 }

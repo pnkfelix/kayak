@@ -1176,7 +1176,7 @@ pub fn build(c: Convention) -> Builder {
     let ws = build_code(c);
     let b = the::<&'static Bloblet<()>>(make_bloblet(_star(int_lit(4), list_length(ws)), ()));
     put_all(b, int_lit(0), ws);
-    native_procedure2::<Int, _, Int>(seal_code(b))
+    kayak_rt::native_procedure2::<Int, _, Int>(seal_code(b))
 }
 
 pub fn total(mut xs: List<Int>, mut acc: Int) -> Int {

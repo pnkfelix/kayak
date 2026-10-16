@@ -2734,3 +2734,20 @@ code; `tests/kfx/made-code.kfx` (Fixpt's `leaves.fx`'s adder) answers
   name and another load of the same file (the program's `cvt`) has the
   same ones. Loads are not merged: Fixpt keeps each binding's abstract
   types apart, which one Rust `mod` would not.
+- **Fixpt's `allocated.fx` and `linked.fx`** (`made-allocated`,
+  `made-linked`). kayak-jit reserves its code area and its objects' memory
+  as one space, the code area its first part, so that one card table
+  covers both (`state.cards`, biased as the convention says); the
+  `bloblet` routine makes a plain bloblet there, or refuses with Fixpt's
+  message. Strings cross (copied: FX-26's are never written), and bloblets
+  of what crosses, copied each way; a copy native code keeps does not see
+  KFX's later writes, nor KFX native code's (kayak-rt's `Native` says so).
+  A bloblet's field may hold a procedure whose latent effect reads no
+  region, or says `spin` (no knot through the store can come of it); a
+  sealed copy keeps its fields beside its code, a field of a procedure a
+  closure native code calls by `foreign`, and `bloblet-set!` on a sealed
+  copy writes the field there too (`bloblet_written`, a branch for every
+  other bloblet). `append` of more than two, as `string-append`.
+  `allocated.fx` is in the corpus with `(read @heap)` added to
+  `pack-code`'s type: Fixpt masks reading lists a procedure made itself,
+  KFX's checker not yet (TODO §30).

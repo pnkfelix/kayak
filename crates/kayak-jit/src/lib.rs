@@ -53,6 +53,7 @@ pub mod layout {
     pub const CHAR_SUBTAG: u64 = 8;
     pub const CHAR_SHIFT: u32 = 8;
     pub const TAG_PAIR: u64 = 1;
+    pub const KIND_STRING: u8 = 1;
     pub const KIND_BLOBLET: u8 = 32;
     pub const KIND_CELLULAR_CLOSURE: u8 = 38;
     pub const KIND_NATIVE_CLOSURE: u8 = 41;
@@ -136,9 +137,38 @@ struct Area {
     top: Mutex<usize>,
 }
 
+/// The code area and the data region after it, one reservation, so that
+/// one card table covers both: a store into a code bloblet's field marks
+/// a card as a store into any object's does.
+struct Space {
+    area: Area,
+    data: Data,
+}
+
+fn space() -> Option<&'static Space> {
+    static SPACE: OnceLock<Option<Space>> = OnceLock::new();
+    SPACE
+        .get_or_init(|| {
+            let (rw, rx) = sys::map_space(AREA_BYTES, DATA_BYTES)?;
+            let cards = sys::reserve((AREA_BYTES + DATA_BYTES) >> CARD_SHIFT)?;
+            Some(Space {
+                area: Area {
+                    rw,
+                    rx,
+                    top: Mutex::new(0),
+                },
+                data: Data {
+                    base: rw + AREA_BYTES,
+                    top: std::sync::atomic::AtomicUsize::new(0),
+                    cards,
+                },
+            })
+        })
+        .as_ref()
+}
+
 fn area() -> Option<&'static Area> {
-    static AREA: OnceLock<Option<Area>> = OnceLock::new();
-    AREA.get_or_init(sys::map_area).as_ref()
+    space().map(|s| &s.area)
 }
 
 /// A code bloblet in the code area: where its suffix, its code, is in the
@@ -238,40 +268,149 @@ impl Code {
 
 // ---------------------------------------------------------------- objects
 
+/// The memory objects of Fixpt's layout are made in: reserved whole,
+/// nothing committed until touched, never freed; and its card table, a
+/// byte for each 512 bytes, which made code marks as the convention's
+/// `barrier` says (`cards + (address >> 9)`).
+struct Data {
+    base: usize,
+    top: std::sync::atomic::AtomicUsize,
+    cards: usize,
+}
+
+const DATA_BYTES: usize = 64 << 30;
+const CARD_SHIFT: u32 = 9;
+
+fn data() -> Option<&'static Data> {
+    space().map(|s| &s.data)
+}
+
+/// The card table's address biased by the space's start, as the
+/// convention's state gives it: `cards + (address >> 9)` is an address's
+/// card.
+fn biased_cards() -> u64 {
+    space().map_or(0, |s| {
+        (s.data.cards as u64).wrapping_sub((s.area.rw >> CARD_SHIFT) as u64)
+    })
+}
+
+/// Whether the card of `address` is marked; a test's.
+pub fn card_marked(address: u64) -> bool {
+    sys::get_byte((biased_cards().wrapping_add(address >> CARD_SHIFT)) as usize) != 0
+}
+
 /// Words of memory for objects, 16-byte aligned, never freed: this
-/// thread's chunk, taken from in turn.
+/// thread's chunk of the data region, taken from in turn.
 fn words(n: usize) -> usize {
     thread_local! {
         static CHUNK: Cell<(usize, usize)> = const { Cell::new((0, 0)) };
     }
+    let d = data().unwrap_or_else(|| panic!("native code: no memory for objects on this machine"));
     CHUNK.with(|c| {
         let (mut at, mut end) = c.get();
         let bytes = (8 * n).next_multiple_of(16);
         if at + bytes > end {
-            let size = (1 << 16).max(bytes + 16);
-            let chunk: &'static [Cell<u64>] =
-                Box::leak((0..size / 8).map(|_| Cell::new(0)).collect());
-            at = (chunk.as_ptr() as usize).next_multiple_of(16);
-            end = chunk.as_ptr() as usize + size;
+            let size = (1 << 16).max(bytes);
+            let off = d.top.fetch_add(size, std::sync::atomic::Ordering::Relaxed);
+            if off + size > DATA_BYTES {
+                panic!("native code: the memory for objects is full");
+            }
+            at = d.base + off;
+            end = at + size;
         }
         c.set((at + bytes, end));
         at
     })
 }
 
-/// An object of Fixpt's layout outside the code area, for code to read: a
-/// header, its slots (`slots[0]` slot 1), no suffix. Never freed.
-fn object(kind: u8, slots: &[u64]) -> u64 {
+/// An object of Fixpt's layout outside the code area: a header, its slots
+/// (`slots[0]` slot 1), and its suffix's words, `bytes` of them used.
+/// Never freed.
+fn object_with(kind: u8, slots: &[u64], suffix: &[u64], bytes: usize) -> u64 {
     let n = slots.len();
-    // The suffix (empty) 16-byte aligned, as references are made to it.
+    // The suffix 16-byte aligned, as references are made to it.
     let pad = (1 + n) % 2;
-    let header = words(pad + 1 + n) + 8 * pad;
-    let suffix = header + 8 * (1 + n);
-    sys::put(header, layout::header(kind, n, 0, true, true));
+    let header = words(pad + 1 + n + suffix.len()) + 8 * pad;
+    let at = header + 8 * (1 + n);
+    sys::put(header, layout::header(kind, n, bytes, false, false));
     for (k, &w) in slots.iter().enumerate() {
-        sys::put(suffix - 8 * (k + 1), w);
+        sys::put(at - 8 * (k + 1), w);
     }
-    suffix as u64 | layout::TAG_BLOBLET
+    for (i, &w) in suffix.iter().enumerate() {
+        sys::put(at + 8 * i, w);
+    }
+    at as u64 | layout::TAG_BLOBLET
+}
+
+/// An object of no suffix.
+fn object(kind: u8, slots: &[u64]) -> u64 {
+    object_with(kind, slots, &[], 0)
+}
+
+/// What an object of Fixpt's layout is: its kind, its count of fields
+/// (the trailer counted), its suffix's bytes; none if `w` is no bloblet.
+pub fn header_of(w: u64) -> Option<(u8, usize, usize)> {
+    (w & layout::TAG_MASK == layout::TAG_BLOBLET).then(|| {
+        let h = slot_of(w, 0);
+        (
+            ((h >> 3) & 0xff) as u8,
+            ((h >> 14) & 0x3_ffff) as usize,
+            (h >> 32) as usize,
+        )
+    })
+}
+
+/// Its slot `k` (0, the header, if it has no fields; 1, the trailer, if it
+/// has some); trusted to be within it.
+pub fn slot_of(w: u64, k: usize) -> u64 {
+    let at = (w & !layout::TAG_MASK) as usize;
+    if k == 0 {
+        // The header: just before the fields, or the suffix if none.
+        let fields = (sys::get(at - 8) & layout::TAG_MASK == layout::TAG_TRAILER)
+            .then(|| (sys::get(at - 8) >> 3) as usize);
+        sys::get(at - 8 * (1 + fields.unwrap_or(0)))
+    } else {
+        sys::get(at - 8 * k)
+    }
+}
+
+/// Its suffix's word `i`.
+pub fn suffix_word(w: u64, i: usize) -> u64 {
+    sys::get((w & !layout::TAG_MASK) as usize + 8 * i)
+}
+
+/// A plain bloblet (kind `bloblet`) of `fields` (a trailer before them,
+/// as the object model has it) and `bytes` suffix bytes, `suffix` its words.
+pub fn bloblet(fields: &[u64], suffix: &[u64], bytes: usize) -> u64 {
+    let mut slots = vec![layout::trailer(fields.len() + 1)];
+    slots.extend_from_slice(fields);
+    object_with(layout::KIND_BLOBLET, &slots, suffix, bytes)
+}
+
+/// A string of Fixpt's layout: its length, then its code points two to a
+/// word, the first in the low half.
+pub fn string(s: &str) -> u64 {
+    let points: Vec<u32> = s.chars().map(|c| c as u32).collect();
+    let mut suffix = vec![points.len() as u64];
+    suffix.extend(
+        points
+            .chunks(2)
+            .map(|p| p[0] as u64 | p.get(1).map_or(0, |&c| (c as u64) << 32)),
+    );
+    object_with(layout::KIND_STRING, &[], &suffix, 8 * suffix.len())
+}
+
+/// A string's text; none if `w` is no string.
+pub fn string_of(w: u64) -> Option<String> {
+    match header_of(w) {
+        Some((layout::KIND_STRING, 0, _)) => {
+            let n = suffix_word(w, 0) as usize;
+            (0..n)
+                .map(|i| char::from_u32((suffix_word(w, 1 + i / 2) >> (32 * (i % 2))) as u32))
+                .collect()
+        }
+        _ => None,
+    }
 }
 
 /// A native closure of `code` over nothing (FX-26's `native-procedure`).
@@ -338,21 +477,25 @@ thread_local! {
     static STATE: &'static [Cell<u64>] = new_state();
     /// A panic a foreign procedure ended in, carried past native frames.
     static UNWOUND: Cell<Option<Box<dyn std::any::Any + Send>>> = const { Cell::new(None) };
+    /// What a routine that refused said, as Fixpt's says it.
+    static REFUSAL: Cell<Option<String>> = const { Cell::new(None) };
 }
 
 /// What ends a call other than its code's returning, as the trap word
 /// says it: the routine's number above bit 8, a trap's kind below.
 const BY_TRAP: u64 = 1;
 const BY_UNWINDING: u64 = 8;
-const NOT_KAYAKS: [(&str, u64); 2] = [("bloblet", 5), ("closure", 7)];
+const NOT_KAYAKS: [(&str, u64); 1] = [("closure", 7)];
 
 /// What made code ended in, when not by returning: one of the
 /// convention's traps (by the `trap` routine, or `overflow`'s, a stack
 /// overflow), or a routine kayak does not have yet.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Trap {
     Kind(u64),
     Routine(&'static str),
+    /// A trap a routine said more of, as Fixpt's says it.
+    Failed(String),
 }
 
 /// The trap kind of a stack overflow (`(trap (kinds (2 stack-overflow)))`).
@@ -372,6 +515,7 @@ fn new_state() -> &'static [Cell<u64>] {
                 .wrapping_sub(layout::TAG_BLOBLET),
         );
         set(state::CODE_LO, a.rw as u64);
+        set(state::CARDS, biased_cards());
         for (field, at) in sys::routines() {
             set(field, at as u64);
         }
@@ -398,7 +542,10 @@ pub fn call(closure: u64, entry: usize, args: &[u64]) -> Result<u64, Trap> {
         let trap = s[state::TRAP / 8].replace(0);
         match trap >> 8 {
             0 => Ok(answer),
-            BY_TRAP => Err(Trap::Kind(trap & 0xff)),
+            BY_TRAP => Err(match REFUSAL.with(|r| r.take()) {
+                Some(m) => Trap::Failed(m),
+                None => Trap::Kind(trap & 0xff),
+            }),
             BY_UNWINDING => match UNWOUND.with(|u| u.take()) {
                 Some(p) => std::panic::resume_unwind(p),
                 None => panic!("native code: unwound, and nothing to resume"),
@@ -442,6 +589,37 @@ extern "C" fn foreign(state: usize, closure: u64, count: u64) -> u64 {
     }
 }
 
+/// The trap kind of a routine's refusal (`(3 a-primitive-failed)`).
+pub const PRIMITIVE_FAILED: u64 = 3;
+
+/// The `bloblet` routine's Rust: a plain bloblet of `bytes` suffix bytes
+/// and `fields` fields, each a fixnum, zeroed (`(makes (kind bloblet)
+/// (trailer 1) zeroed)`); or, for sizes the header cannot say, the trap
+/// word set (`(traps-when-refused 3)`), so that the routine goes back.
+extern "C" fn bloblet_routine(state: usize, bytes: u64, fields: u64) -> u64 {
+    let size = |w: u64, most: u64| {
+        (w & layout::TAG_MASK == layout::TAG_FIXNUM
+            && (w as i64) >= 0
+            && (w >> layout::FIXNUM_SHIFT) < most)
+            .then_some((w >> layout::FIXNUM_SHIFT) as usize)
+    };
+    match (size(bytes, 1 << 32), size(fields, (1 << 18) - 1)) {
+        (Some(b), Some(f)) => bloblet(&vec![0; f], &vec![0; b.div_ceil(8)], b),
+        _ => {
+            let n = |w: u64| (w as i64) >> layout::FIXNUM_SHIFT;
+            REFUSAL.with(|r| {
+                r.set(Some(format!(
+                    "bloblet: no bloblet of {} bytes and {} fields",
+                    n(bytes),
+                    n(fields)
+                )))
+            });
+            sys::put(state + state::TRAP, BY_TRAP << 8 | PRIMITIVE_FAILED);
+            0
+        }
+    }
+}
+
 /// The `cons` routine's Rust.
 extern "C" fn cons_routine(car: u64, cdr: u64) -> u64 {
     cons(car, cdr)
@@ -451,8 +629,7 @@ extern "C" fn cons_routine(car: u64, cdr: u64) -> u64 {
 
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 mod sys {
-    use super::{AREA_BYTES, Area, state};
-    use std::sync::Mutex;
+    use super::state;
 
     type Port = u32;
     unsafe extern "C" {
@@ -497,20 +674,43 @@ mod sys {
     const PROT_WRITE: i32 = 2;
     const PROT_EXEC: i32 = 4;
     const MAP_SHARED: i32 = 1;
+    const MAP_PRIVATE: i32 = 2;
+    const MAP_FIXED: i32 = 0x10;
     const MAP_ANON: i32 = 0x1000;
     const VM_FLAGS_ANYWHERE: i32 = 1;
     const VM_INHERIT_SHARE: u32 = 1;
 
-    /// The area: a shared anonymous mapping, read+write, and a second view
-    /// of the same pages, read+execute (as Fixpt's `exec_view`).
-    pub(super) fn map_area() -> Option<Area> {
+    /// Memory reserved: read+write, private, nothing committed until
+    /// touched; none if the system says no.
+    pub(super) fn reserve(bytes: usize) -> Option<usize> {
         // SAFETY: a fresh mapping the kernel places; nothing refers to it.
-        let rw = unsafe {
+        let at = unsafe {
             mmap(
                 std::ptr::null_mut(),
-                AREA_BYTES,
+                bytes,
                 PROT_READ | PROT_WRITE,
-                MAP_SHARED | MAP_ANON,
+                MAP_PRIVATE | MAP_ANON,
+                -1,
+                0,
+            )
+        };
+        (at as isize != -1).then_some(at as usize)
+    }
+
+    /// The space: `code + data` bytes reserved; the first `code` of them
+    /// replaced by a shared anonymous mapping, read+write, which a second
+    /// view, read+execute, shares (as Fixpt's `exec_view`). The code
+    /// area's two addresses.
+    pub(super) fn map_space(code: usize, data: usize) -> Option<(usize, usize)> {
+        let base = reserve(code + data)?;
+        // SAFETY: the first `code` bytes of the reservation just made,
+        // which nothing refers to, replaced, zero as they were.
+        let rw = unsafe {
+            mmap(
+                base as *mut u8,
+                code,
+                PROT_READ | PROT_WRITE,
+                MAP_FIXED | MAP_SHARED | MAP_ANON,
                 -1,
                 0,
             )
@@ -520,13 +720,13 @@ mod sys {
         }
         let mut rx: u64 = 0;
         let (mut cur, mut max) = (0, 0);
-        // SAFETY: remaps the mapping just made at an address the kernel
-        // chooses, sharing its pages.
+        // SAFETY: remaps the shared mapping just made at an address the
+        // kernel chooses, sharing its pages.
         let kr = unsafe {
             mach_vm_remap(
                 mach_task_self(),
                 &mut rx,
-                AREA_BYTES as u64,
+                code as u64,
                 0,
                 VM_FLAGS_ANYWHERE,
                 mach_task_self(),
@@ -537,22 +737,18 @@ mod sys {
                 VM_INHERIT_SHARE,
             )
         };
-        // SAFETY: `rx` is the view just made, AREA_BYTES long.
-        if kr != 0 || unsafe { mprotect(rx as *mut u8, AREA_BYTES, PROT_READ | PROT_EXEC) } != 0 {
+        // SAFETY: `rx` is the view just made, `code` long.
+        if kr != 0 || unsafe { mprotect(rx as *mut u8, code, PROT_READ | PROT_EXEC) } != 0 {
             // SAFETY: unmapping what was mapped above, which nothing holds.
             unsafe {
                 if kr == 0 {
-                    munmap(rx as *mut u8, AREA_BYTES);
+                    munmap(rx as *mut u8, code);
                 }
-                munmap(rw, AREA_BYTES);
+                munmap(base as *mut u8, code + data);
             }
             return None;
         }
-        Some(Area {
-            rw: rw as usize,
-            rx: rx as usize,
-            top: Mutex::new(0),
-        })
+        Some((rw as usize, rx as usize))
     }
 
     /// The word at `at`: an 8-aligned address of a word `take` or `words`
@@ -566,6 +762,12 @@ mod sys {
     pub(super) fn put(at: usize, w: u64) {
         // SAFETY: as `get`.
         unsafe { std::ptr::write_volatile(at as *mut u64, w) }
+    }
+
+    /// The byte at `at`: of the card table, which is mapped for good.
+    pub(super) fn get_byte(at: usize) -> u8 {
+        // SAFETY: as `get`.
+        unsafe { std::ptr::read_volatile(at as *const u8) }
     }
 
     pub(super) fn flush(rx: usize, len: usize) {
@@ -694,7 +896,15 @@ mod sys {
         ".globl _kayak_jit_bloblet",
         ".p2align 2",
         "_kayak_jit_bloblet:",
-        "movz x16, #1280",
+        "stp x29, x30, [sp, #-16]!",
+        "mov x29, sp",
+        "mov x0, x24",
+        "bl {bloblet}",
+        "ldr x16, [x24, #32]",
+        "cbnz x16, 3f",
+        "ldp x29, x30, [sp], #16",
+        "ret",
+        "3:",
         "b _kayak_jit_leave",
         ".globl _kayak_jit_closure",
         ".p2align 2",
@@ -738,16 +948,21 @@ mod sys {
         "2:",
         "b _kayak_jit_leave",
         cons = sym super::cons_routine,
+        bloblet = sym super::bloblet_routine,
         foreign = sym super::foreign,
     );
 }
 
 #[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
 mod sys {
-    use super::Area;
-
-    pub(super) fn map_area() -> Option<Area> {
+    pub(super) fn map_space(_: usize, _: usize) -> Option<(usize, usize)> {
         None
+    }
+    pub(super) fn reserve(_: usize) -> Option<usize> {
+        None
+    }
+    pub(super) fn get_byte(_: usize) -> u8 {
+        panic!("native code: none on this machine")
     }
     pub(super) fn get(_: usize) -> u64 {
         panic!("native code: none on this machine")

@@ -158,6 +158,11 @@ pub mod lists;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
+#[path = "../../../tests/kfx/made-allocated.rs"]
+pub mod made_allocated;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
 #[path = "../../../tests/kfx/made-code.rs"]
 pub mod made_code;
 
@@ -180,6 +185,11 @@ pub mod made_frames;
 #[rustfmt::skip]
 #[path = "../../../tests/kfx/made-generated.rs"]
 pub mod made_generated;
+
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
+#[path = "../../../tests/kfx/made-linked.rs"]
+pub mod made_linked;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
@@ -387,11 +397,13 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("lets", lets::main),
     ("lifted", lifted::main),
     ("lists", lists::main),
+    ("made-allocated", made_allocated::main),
     ("made-code", made_code::main),
     ("made-declared", made_declared::main),
     ("made-encoded", made_encoded::main),
     ("made-frames", made_frames::main),
     ("made-generated", made_generated::main),
+    ("made-linked", made_linked::main),
     ("module-letrec", module_letrec::main),
     ("module-params", module_params::main),
     ("module-strings", module_strings::main),

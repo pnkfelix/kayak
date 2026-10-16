@@ -2856,11 +2856,13 @@
                    (refuse v (string-append "(" (string-append h " ...) is FX-26's form, which KFX does not have, or a call of a local named by that keyword"))))
                   ((and (null? found) (string=? h "abort-current-continuation")) (abort-call v s args))
                   ((and (null? found) (string=? h "native-procedure")) (native-call v s args expected))
-                  ((and (string=? h "string-append") (i64> (size args) 2) (not (null? found))
+                  ((and (string=? h "seal-code") (not (null? found)) (tagcase (car found) (bind (n sc w) (string=? w "prim"))))
+                   (seal-call v s args))
+                  ((and (or (string=? h "string-append") (string=? h "append")) (i64> (size args) 2) (not (null? found))
                         (tagcase (car found) (bind (n sc w) (string=? w "prim"))))
-                   "FX-26's `string-append` of more than two strings (C116), as KFX's of two,
-                    each onto the rest's."
-                   (synth-call v s h (list (car args) (lst (cons (sym "string-append" "" 0) (cdr args)) "" 0 0)) expected))
+                   "FX-26's `string-append` and `append` of more than two (C116), as KFX's of
+                    two, each onto the rest's."
+                   (synth-call v s h (list (car args) (lst (cons (sym h "" 0) (cdr args)) "" 0 0)) expected))
                   ((and (null? found) (string=? h "apply") (i64= (size args) 2))
                    "`(apply f xs)` (C71): a variadic procedure on a list's elements."
                    (tagcase (synth v s (car args))
@@ -3167,21 +3169,40 @@
                          (ty-proc (es ps r)
                            (cond ((i64> (size ps) 3) (refuse v "a native procedure of more than three parameters, which KFX does not have yet (C116)"))
                                  ((or (not (native-crossing? s r)) (any? (lambda ((t ty)) (not (native-given? s t))) ps))
-                                  (refuse v (string-append "a native procedure KFX cannot call yet: only integers, booleans, unit, characters and lists of them cross between kayak's values and native code, and procedures of the fx convention given it (C116): "
+                                  (refuse v (string-append "a native procedure KFX cannot call yet: only integers, booleans, unit, characters, strings, lists of them and bloblets of them cross between kayak's values and native code, and procedures of the fx convention given it (C116): "
                                                            (show-ty s want))))
                                  ((or (escapes? es) (suspends? es))
                                   (refuse v (string-append "a native procedure that may abort or suspend, which KFX does not have: " (show-ty s want))))
                                  (else
                                   (tagcase (synth v s (car args))
                                     (res (t es0 s0)
-                                      (if (tagcase (walk s0 t) (ty-data (d2 ys) (and (string=? d2 "%bloblet") (i64= (size ys) 1))) (else other #f))
+                                      (if (tagcase (walk s0 t) (ty-data (d2 ys) (string=? d2 "%bloblet")) (else other #f))
                                           (res want (effs-union (list "io:native") es0)
                                                (note-fact s0 (cv-file v) (cv-pos v)
                                                           (string-append "native-types "
                                                             (show-sexp (lst (map (lambda ((p ty)) (ty-sexp v s0 (zonk s0 p))) (onto ps (list r))) "" 0 0)))))
-                                          (refuse v (string-append "native-procedure of what is not a bloblet of no fields, which KFX does not have: " (show-ty s0 t)))))))))
+                                          (refuse v (string-append "native-procedure of what is not a bloblet: " (show-ty s0 t)))))))))
                          (else other (refuse v "native-procedure of a type not of the native convention"))))
                      (else other (refuse v "native-procedure of a type not of the native convention"))))))))
+
+      (seal-call (subr kfx (cv st sexps) res)
+        (lambda (v s args)
+          "`(seal-code b)` (C116, Fixpt's TODO §97): a copy of bloblet `b` in the
+           code area, of its type. Its fields are beside its code, as Fixpt's,
+           so each must be what kayak lays out as Fixpt does (`native-given?`):
+           stricter than FX-26, whose type for it is any `a`."
+          (if (not (i64= (size args) 1))
+              (refuse v "seal-code takes a bloblet")
+              (tagcase (synth v s (car args))
+                (res (t es s0)
+                  (tagcase (walk s0 t)
+                    (ty-data (d ys)
+                      (cond ((not (string=? d "%bloblet"))
+                             (refuse v (string-append "seal-code of what is not a bloblet, which KFX does not have: " (show-ty s0 t))))
+                            ((any? (lambda ((f ty)) (not (native-given? s0 f))) (cdr ys))
+                             (refuse v (string-append "seal-code of a bloblet whose fields native code cannot read in kayak yet (C116): " (show-ty s0 t))))
+                            (else (res t (effs-union (list "io:native") es) s0))))
+                    (else other (refuse v (string-append "seal-code of what is not a bloblet, which KFX does not have: " (show-ty s0 t))))))))))
 
       (abort-call (subr kfx (cv st sexps) res)
         (lambda (v s args)

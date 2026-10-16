@@ -1,0 +1,7 @@
+"A native procedure given a reference: Fixpt passes its own box, which
+ native code may write and the program then read; kayak's is Rust's,
+ and a copy would not be written, so KFX refuses it (C116)."
+(define make (subr (maxeff (alloc @heap) (io native)) () (subr (conv native) pure ((ref int @heap)) int))
+  (lambda ()
+    (the (subr (conv native) pure ((ref int @heap)) int)
+         (native-procedure (seal-code (the (bloblet (fields) @heap) (make-bloblet 8)))))))

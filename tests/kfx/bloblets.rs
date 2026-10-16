@@ -35,7 +35,7 @@ pub fn p() -> &'static Bloblet<(std::cell::Cell<i64>, std::cell::Cell<i64>,)> {
 }
 
 pub fn shift(q: &'static Bloblet<(std::cell::Cell<i64>, std::cell::Cell<i64>,)>, dx: i64) -> () {
-    (q).fields.0.set(i64_plus((q).fields.0.get(), dx))
+    { let blob__ = q; blob__.fields.0.set(i64_plus((q).fields.0.get(), dx)); kayak_rt::bloblet_written(blob__, 0) }
 }
 
 // Fixpt's bloblet/flat-product.fx: one suffix read as three flats, laid

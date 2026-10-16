@@ -606,7 +606,8 @@
      no type variable is named so, camel-cased, which would hide it."
     (list "Str" "List" "Cons" "Int" "Tag" "Unwind" "Ref" "FlatArray" "Knot" "Show" "OnceCell" "Fn"
           "Result" "Ok" "Err" "String" "Copy" "Clone" "Self" "Module" "Void" "Bloblet" "BlobRef" "Arena"
-          "Holds" "ListAt" "RefAt" "TBloblet" "FlatArr" "Flat" "Owner" "Default" "Procedure")))
+          "Holds" "ListAt" "RefAt" "TBloblet" "FlatArr" "Flat" "Owner" "Default" "Procedure"
+          "Native" "NativeFields" "Sealed" "Written")))
 
 (define kfx-name? (subr kfx (string) bool)
   (lambda (n)
@@ -622,7 +623,8 @@
            (not (string-member? (mangle n) (list "str_lit" "int_lit" "int_text" "unreachable_unwind"
                                                  "kfx_toplevel" "once" "alloc" "the" "unwind" "knot" "lambda0" "lambda1"
                                                  "lambda2" "lambda3" "lambda4" "leak_string" "with_big_stack" "fail"
-                                                 "make_continuation_prompt_tag" "nil" "cons")))))))
+                                                 "make_continuation_prompt_tag" "nil" "cons" "bloblet_written"
+                                                 "native_procedure0" "native_procedure1" "native_procedure2" "native_procedure3")))))))
 
 (define label-name? (subr kfx (string) bool)
   (lambda (n)
@@ -758,10 +760,14 @@
 (define-rec
   (field-may-knot? (subr kfx (ty) bool)
     (lambda (t)
-      "Whether a type could hold a procedure: is one, a type variable, or
-       has one inside."
+      "Whether a type could hold a procedure that ties a knot through the
+       store: is one whose latent effect reads a region and does not say
+       `spin` (FX-26's `no_knot`, of any region, where FX-26's is of the
+       one it is kept at: C116, Fixpt's `linked.fx` keeps `*`), a type
+       variable, or has one inside."
       (tagcase t
-        (ty-proc (es ps r) #t)
+        (ty-proc (es ps r)
+          (and (any? (lambda ((a string)) (has-prefix? a "read:")) es) (not (string-member? "spin" es))))
         (ty-var (n) #t)
         (ty-meta (k) #t)
         (ty-list (e r) (field-may-knot? e))
@@ -1537,11 +1543,16 @@
     (lambda (s t)
       "Whether a value of type `t` crosses between kayak's values and native
        code's (C116, kayak-rt's `Native`): as the same word in both, or
-       copied, which no KFX program can tell, since none tells pairs apart
-       (`eq?`) nor writes through one (`set-car!`)."
+       copied, which no KFX program can tell of a list or a string, since
+       none tells pairs apart (`eq?`) nor writes through one (`set-car!`)."
       (tagcase (walk s t)
-        (ty-int () #t) (ty-nat () #t) (ty-i64 () #t) (ty-bool () #t) (ty-unit () #t) (ty-char () #t)
+        (ty-int () #t) (ty-nat () #t) (ty-i64 () #t) (ty-bool () #t) (ty-unit () #t) (ty-char () #t) (ty-string () #t)
         (ty-list (x r) (native-crossing? s x))
+        (ty-data (d args)
+          "A bloblet whose fields cross, copied each way (kayak-rt's `Native`,
+           which says what a copy cannot see)."
+          (and (string=? d "%bloblet") (i64< (size args) 6)
+               (not (any? (lambda ((x ty)) (not (native-crossing? s x))) (cdr args)))))
         (else other #f))))
   (native-given? (subr kfx (st ty) bool)
     (lambda (s t)
@@ -1550,13 +1561,12 @@
        result cross, which native code calls back by `foreign` (C116)."
       (or (native-crossing? s t)
           (tagcase (walk s t)
-            (ty-data (d args)
-              (and (string=? d "%fx")
-                   (tagcase (walk s (car args))
-                     (ty-proc (es ps r)
-                       (and (i64< (size ps) 4) (native-crossing? s r) (not (escapes? es)) (not (suspends? es))
-                            (not (any? (lambda ((p ty)) (not (native-crossing? s p))) ps))))
-                     (else other #f))))
+            (ty-data (d args) (and (string=? d "%fx") (native-given? s (car args))))
+            (ty-proc (es ps r)
+              "A procedure of KFX's own, as one of the fx convention is: in a
+               code bloblet's field, made code calls it by `foreign`."
+              (and (i64< (size ps) 4) (native-crossing? s r) (not (escapes? es)) (not (suspends? es))
+                   (not (any? (lambda ((p ty)) (not (native-crossing? s p))) ps))))
             (else other #f))))))
 
 (define vsubr-as-proc (subr kfx (ty i64) ty)

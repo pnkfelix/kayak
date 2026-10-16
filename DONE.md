@@ -1338,3 +1338,7 @@ encoder (`fx26:arm64.fx`) through KFX as it is: `made-encoded` encodes
 Then: Fixpt's `generated.fx` as it is (`made-generated`): a convention
 read as data by Fixpt's `convention.fx`, code made from it by Fixpt's
 encoder, run on kayak as on Fixpt.
+
+Then: Fixpt's `allocated.fx` (the `bloblet` routine, cards marked) and
+`linked.fx` (procedures in a code bloblet's fields, `*` and a program's
+own, called by native code) run on kayak as on Fixpt.

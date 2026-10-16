@@ -6251,7 +6251,7 @@ pub mod expressions {
                 return abort_call(v, s, args);
             } else if (null_p(found) && string_eq_p(h, str_lit("native-procedure"))) {
                 return native_call(v, s, args, expected);
-            } else if (string_eq_p(h, str_lit("string-append")) && i64_gt(size(args), 2i64) && not(null_p(found)) && {
+            } else if (string_eq_p(h, str_lit("seal-code")) && not(null_p(found)) && {
                 let tagcase_ = car(found);
                 match *tagcase_ {
                     Bind::Bind(n, sc, w) => {
@@ -6259,9 +6259,18 @@ pub mod expressions {
                     }
                 }
             }) {
-                // FX-26's `string-append` of more than two strings (C116), as KFX's of two,
-                // each onto the rest's.
-                args = kayak_rt::heap_cons(car(args), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("string-append"), str_lit(""), 0i64), cdr(args)), str_lit(""), 0i64, 0i64), kayak_rt::nil()));
+                return seal_call(v, s, args);
+            } else if ((string_eq_p(h, str_lit("string-append")) || string_eq_p(h, str_lit("append"))) && i64_gt(size(args), 2i64) && not(null_p(found)) && {
+                let tagcase_ = car(found);
+                match *tagcase_ {
+                    Bind::Bind(n, sc, w) => {
+                        string_eq_p(w, str_lit("prim"))
+                    }
+                }
+            }) {
+                // FX-26's `string-append` and `append` of more than two (C116), as KFX's of
+                // two, each onto the rest's.
+                args = kayak_rt::heap_cons(car(args), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(h, str_lit(""), 0i64), cdr(args)), str_lit(""), 0i64, 0i64), kayak_rt::nil()));
                 continue;
             } else if (null_p(found) && string_eq_p(h, str_lit("apply")) && i64_eq(size(args), 2i64)) {
                 // `(apply f xs)` (C71): a variadic procedure on a list's elements.
@@ -6942,7 +6951,7 @@ pub mod expressions {
                             } else if (not(native_crossing_p(s, r)) || any_p(lambda1s(move |t: &'static Ty| {
                                 not(native_given_p(s, t))
                             }), ps)) {
-                                match refuse(v, string_append(str_lit("a native procedure KFX cannot call yet: only integers, booleans, unit, characters and lists of them cross between kayak's values and native code, and procedures of the fx convention given it (C116): "), show_ty(s, want))) {}
+                                match refuse(v, string_append(str_lit("a native procedure KFX cannot call yet: only integers, booleans, unit, characters, strings, lists of them and bloblets of them cross between kayak's values and native code, and procedures of the fx convention given it (C116): "), show_ty(s, want))) {}
                             } else if (escapes_p(es) || suspends_p(es)) {
                                 match refuse(v, string_append(str_lit("a native procedure that may abort or suspend, which KFX does not have: "), show_ty(s, want))) {}
                             } else {
@@ -6953,7 +6962,7 @@ pub mod expressions {
                                             let tagcase_ = walk(s0, t);
                                             match *tagcase_ {
                                                 Ty::TyData(d2, ys) => {
-                                                    (string_eq_p(d2, str_lit("%bloblet")) && i64_eq(size(ys), 1i64))
+                                                    string_eq_p(d2, str_lit("%bloblet"))
                                                 }
                                                 _ => {
                                                     let other = tagcase_;
@@ -6965,7 +6974,7 @@ pub mod expressions {
                                                 ty_sexp(v, s0, zonk(s0, p))
                                             }), onto(ps, kayak_rt::heap_cons(r, kayak_rt::nil()))), str_lit(""), 0i64, 0i64)))))
                                         } else {
-                                            match refuse(v, string_append(str_lit("native-procedure of what is not a bloblet of no fields, which KFX does not have: "), show_ty(s0, t))) {}
+                                            match refuse(v, string_append(str_lit("native-procedure of what is not a bloblet: "), show_ty(s0, t))) {}
                                         }
                                     }
                                 }
@@ -6980,6 +6989,40 @@ pub mod expressions {
                 _ => {
                     let other = tagcase_;
                     match refuse(v, str_lit("native-procedure of a type not of the native convention")) {}
+                }
+            }
+        }
+    }
+
+    /// `(seal-code b)` (C116, Fixpt's TODO §97): a copy of bloblet `b` in the
+    /// code area, of its type. Its fields are beside its code, as Fixpt's,
+    /// so each must be what kayak lays out as Fixpt does (`native-given?`):
+    /// stricter than FX-26, whose type for it is any `a`.
+    pub fn seal_call(v: &'static Cv, s: &'static St, args: Sexps) -> &'static Res {
+        if not(i64_eq(size(args), 1i64)) {
+            match refuse(v, str_lit("seal-code takes a bloblet")) {}
+        } else {
+            let tagcase_ = synth(v, s, car(args));
+            match *tagcase_ {
+                Res::Res(t, es, s0) => {
+                    let tagcase_ = walk(s0, t);
+                    match *tagcase_ {
+                        Ty::TyData(d, ys) => {
+                            if not(string_eq_p(d, str_lit("%bloblet"))) {
+                                match refuse(v, string_append(str_lit("seal-code of what is not a bloblet, which KFX does not have: "), show_ty(s0, t))) {}
+                            } else if any_p(lambda1s(move |f: &'static Ty| {
+                                not(native_given_p(s0, f))
+                            }), cdr(ys)) {
+                                match refuse(v, string_append(str_lit("seal-code of a bloblet whose fields native code cannot read in kayak yet (C116): "), show_ty(s0, t))) {}
+                            } else {
+                                res(t, effs_union(kayak_rt::heap_cons(str_lit("io:native"), kayak_rt::nil()), es), s0)
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            match refuse(v, string_append(str_lit("seal-code of what is not a bloblet, which KFX does not have: "), show_ty(s0, t))) {}
+                        }
+                    }
                 }
             }
         }

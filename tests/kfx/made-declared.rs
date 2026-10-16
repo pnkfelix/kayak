@@ -16,7 +16,7 @@ pub fn subtracter() -> &'static (dyn Fn(Int, Int) -> Int + Send + Sync) {
     let b = the::<&'static Bloblet<()>>(make_bloblet(int_lit(8), ()));
     put4(b, int_lit(0), int_lit(3405905952));
     put4(b, int_lit(4), int_lit(3596551104));
-    native_procedure2::<Int, Int, Int>(seal_code(b))
+    kayak_rt::native_procedure2::<Int, Int, Int>(seal_code(b))
 }
 
 // The clauses, as a program may read them: the first, `target`'s; and the

@@ -368,7 +368,7 @@ pub fn subtracter(n: Int, m: Int) -> &'static (dyn Fn(Int, Int) -> Int + Send + 
     let b = the::<&'static Bloblet<()>>(make_bloblet(int_lit(8), ()));
     put4(b, int_lit(0), (&a64::arm_sub)(int_lit(0), n, m));
     put4(b, int_lit(4), a64::arm_ret());
-    native_procedure2::<Int, Int, Int>(seal_code(b))
+    kayak_rt::native_procedure2::<Int, Int, Int>(seal_code(b))
 }
 
 pub fn main() -> Str {

@@ -581,16 +581,14 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
      `native-convention`~~ (C116: Fixpt's `frames.fx`, `declared.fx`);
    - ~~`load-input` of a built-in file; `fx26:arm64.fx`,
      `fx26:convention.fx` as they are~~ (`made-encoded`,
-     `made-generated`); `allocated.fx` (variadic `append`, the `bloblet`
-     routine, a card table for the write barrier); `linked.fx`
-     (procedures in a code bloblet's fields); `load-input` of a program's
-     file;
-   - fields beside code: a sealed bloblet's fields of types that cross,
-     kept in the code area, `bloblet-set!` writing through (`linked.fx`
-     puts procedures there);
-   - the `bloblet` routine (`allocated.fx`), the write barrier's cards;
-   - a bytevector laid out as Fixpt's (a header before its bytes), so
-     that one crosses, and native code reaches data through a field;
+     `made-generated`); ~~`allocated.fx`, `linked.fx`~~ (`made-allocated`,
+     `made-linked`); `load-input` of a program's file; Fixpt's masking of
+     reads of what a procedure made itself (`allocated.fx`'s `pack-code`);
+   - ~~fields beside code, written through; the `bloblet` routine; the
+     write barrier's cards~~;
+   - a bytevector, shared rather than copied (a header of Fixpt's before
+     its bytes), so that native code and KFX see one heap's data: the way
+     to the heap a compiled program runs in (`native.md` decision 6);
    - more than three parameters; integers past a fixnum (Fixpt's bignum);
      a procedure native code gives back.
 4. Tiers 4, 5, 6; then 3.

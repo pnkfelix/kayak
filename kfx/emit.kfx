@@ -1887,9 +1887,9 @@
            itself, and awaited (C45)."
           (tagcase (car xs)
             (sym (h at-file at-pos)
-              (cond ((and (string=? h "string-append") (i64> (size xs) 3) (string=? (local-kind h (ctx-locals c)) ""))
-                     "FX-26's `string-append` of more than two strings (C116): each
-                      onto the rest's."
+              (cond ((and (or (string=? h "string-append") (string=? h "append")) (i64> (size xs) 3) (string=? (local-kind h (ctx-locals c)) ""))
+                     "FX-26's `string-append` and `append` of more than two (C116):
+                      each onto the rest's."
                      (put-call c e (list (car xs) (second xs) (lst (cons (car xs) (cdr (cdr xs))) "" 0 0)) n t acc))
                     ((not (string=? (fact-with c e "head-unbox ") ""))
                      "A call of a union narrowed to its procedure (C75)."
@@ -2391,7 +2391,7 @@
                  "`native_procedureN::<T, ..., R>(c)` (C116): made code, a procedure
                   of the type `the` says."
                  (let* ((ts (items (car (read-all (string-chars (fact-with c (second xs) "native-types ")) "" 1))))
-                        (acc (put (string-append "native_procedure" (string-append (i64->string (i64- (size ts) 1)) "::<")) acc))
+                        (acc (put (string-append "kayak_rt::native_procedure" (string-append (i64->string (i64- (size ts) 1)) "::<")) acc))
                         (acc (put-sep (lambda ((p sexp) acc) (if (head-is? p "subr") (put "_" acc) (put-type c p acc))) ", " ts acc))
                         (acc (put ">(" acc))
                         (acc (put-exp c (second (items (second xs))) n (value) acc)))
@@ -2417,12 +2417,18 @@
                         (acc (put ", (" (put-exp c (car rest) n (value) acc)))
                         (acc (put-sep (lambda ((x sexp) acc) (put ")," (put-exp c x n (value) (put "std::cell::Cell::new(" acc)))) " " (cdr rest) acc)))
                    (put "))" acc)))
-                ((and (or (string=? h "bloblet-ref") (string=? h "bloblet-set!")) (string=? (local-kind h (ctx-locals c)) ""))
-                 "A field, a cell: `(b).fields.i.get()`, `.set(e)`."
-                 (let ((acc (put (number-text (second xs)) (put ").fields." (put-exp c (car xs) n (value) (put "(" acc))))))
-                   (if (string=? h "bloblet-ref")
-                       (put ".get()" acc)
-                       (put ")" (put-exp c (third xs) n (value) (put ".set(" acc))))))
+                ((and (string=? h "bloblet-ref") (string=? (local-kind h (ctx-locals c)) ""))
+                 "A field, a cell: `(b).fields.i.get()`."
+                 (put ".get()" (put (number-text (second xs)) (put ").fields." (put-exp c (car xs) n (value) (put "(" acc))))))
+                ((and (string=? h "bloblet-set!") (string=? (local-kind h (ctx-locals c)) ""))
+                 "A field, a cell, written: `.set(e)`; then, of a sealed copy, beside
+                  its code too (C116), which `bloblet_written` sees to."
+                 (let* ((k (number-text (second xs)))
+                        (acc (put "{ let blob__ = " acc))
+                        (acc (put-exp c (car xs) n (value) acc))
+                        (acc (put (string-append "; blob__.fields." (string-append k ".set(")) acc))
+                        (acc (put-exp c (third xs) n (value) acc)))
+                   (put (string-append "); kayak_rt::bloblet_written(blob__, " (string-append k ") }")) acc)))
                 ((and (string=? h "blobref-variant!") (string=? (local-kind h (ctx-locals c)) ""))
                  "Its tag written, the label as it is, and a blobref to the variant (C33)."
                  (put ")" (put (words-of-sep (split-words (fact-with c e "blob-variant ")) ", ") (put ").variant(" (put-exp c (car xs) n (value) (put "(" acc))))))

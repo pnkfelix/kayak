@@ -3480,9 +3480,9 @@ pub mod emitter {
             let tagcase_ = car(xs);
             match *tagcase_ {
                 Sexp::Sym(h, at_file, at_pos) => {
-                    if (string_eq_p(h, str_lit("string-append")) && i64_gt(size(xs), 3i64) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
-                        // FX-26's `string-append` of more than two strings (C116): each
-                        // onto the rest's.
+                    if ((string_eq_p(h, str_lit("string-append")) || string_eq_p(h, str_lit("append"))) && i64_gt(size(xs), 3i64) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+                        // FX-26's `string-append` and `append` of more than two (C116):
+                        // each onto the rest's.
                         xs = kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(car(xs), cdr(cdr(xs))), str_lit(""), 0i64, 0i64), kayak_rt::nil())));
                         continue;
                     } else if not(string_eq_p(fact_with(c, e, str_lit("head-unbox ")), str_lit(""))) {
@@ -4246,7 +4246,7 @@ pub mod emitter {
                 // `native_procedureN::<T, ..., R>(c)` (C116): made code, a procedure
                 // of the type `the` says.
                 let ts = items(car(read_all(string_chars(fact_with(c, second(xs), str_lit("native-types "))), str_lit(""), 1i64)));
-                let acc = put(string_append(str_lit("native_procedure"), string_append(i64_to_string(i64_minus(size(ts), 1i64)), str_lit("::<"))), acc);
+                let acc = put(string_append(str_lit("kayak_rt::native_procedure"), string_append(i64_to_string(i64_minus(size(ts), 1i64)), str_lit("::<"))), acc);
                 let acc = put_sep(lambda2s(move |p: &'static Sexp, acc: List<char>| {
                     if head_is_p(p, str_lit("subr")) {
                         put(str_lit("_"), acc)
@@ -4297,14 +4297,18 @@ pub mod emitter {
                     put(str_lit("),"), put_exp(c, x, n, value(), put(str_lit("std::cell::Cell::new("), acc)))
                 }), str_lit(" "), cdr(rest), acc);
                 return put(str_lit("))"), acc);
-            } else if ((string_eq_p(h, str_lit("bloblet-ref")) || string_eq_p(h, str_lit("bloblet-set!"))) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
-                // A field, a cell: `(b).fields.i.get()`, `.set(e)`.
-                let acc = put(number_text(second(xs)), put(str_lit(").fields."), put_exp(c, car(xs), n, value(), put(str_lit("("), acc))));
-                if string_eq_p(h, str_lit("bloblet-ref")) {
-                    return put(str_lit(".get()"), acc);
-                } else {
-                    return put(str_lit(")"), put_exp(c, third(xs), n, value(), put(str_lit(".set("), acc)));
-                }
+            } else if (string_eq_p(h, str_lit("bloblet-ref")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+                // A field, a cell: `(b).fields.i.get()`.
+                return put(str_lit(".get()"), put(number_text(second(xs)), put(str_lit(").fields."), put_exp(c, car(xs), n, value(), put(str_lit("("), acc)))));
+            } else if (string_eq_p(h, str_lit("bloblet-set!")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
+                // A field, a cell, written: `.set(e)`; then, of a sealed copy, beside
+                // its code too (C116), which `bloblet_written` sees to.
+                let k = number_text(second(xs));
+                let acc = put(str_lit("{ let blob__ = "), acc);
+                let acc = put_exp(c, car(xs), n, value(), acc);
+                let acc = put(string_append(str_lit("; blob__.fields."), string_append(k, str_lit(".set("))), acc);
+                let acc = put_exp(c, third(xs), n, value(), acc);
+                return put(string_append(str_lit("); kayak_rt::bloblet_written(blob__, "), string_append(k, str_lit(") }"))), acc);
             } else if (string_eq_p(h, str_lit("blobref-variant!")) && string_eq_p(local_kind(h, ctx_locals(c)), str_lit(""))) {
                 // Its tag written, the label as it is, and a blobref to the variant (C33).
                 return put(str_lit(")"), put(words_of_sep(split_words(fact_with(c, e, str_lit("blob-variant "))), str_lit(", ")), put(str_lit(").variant("), put_exp(c, car(xs), n, value(), put(str_lit("("), acc)))));
