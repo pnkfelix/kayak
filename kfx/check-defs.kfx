@@ -991,6 +991,10 @@
                      (if (dt-named? name (cv-dts v))
                          (refuse v (string-append "a module's type named as the program's: KFX names them apart, " name))
                          (cons name (module-types v (cdr forms))))))
+                  ((and (head-is? f "define-effect") (i64= (size (items f)) 3) (not (selects? f)))
+                   "Each read with the module's effects before it (C116), one that may
+                    abort too, as Fixpt's checker's `checks` does."
+                   (module-types (with-effdef v (items f)) (cdr forms)))
                   ((and (head-is? f "define-effect") (i64= (size (items f)) 3)
                         (escapes? (parse-effect v nil (third (items f)))))
                    (refuse v "a module's effect that may abort, which KFX's modules do not have yet"))
@@ -1631,6 +1635,15 @@
 (define prep-forms (subr kfx (mprep) sexps)
   (lambda (p) (tagcase p (mprep (outer v inner m made written loaded forms hidden hidden-types names conversions) forms))))
 
+(define-rec
+  (own-effects (subr kfx (cv sexps) cv)
+    (lambda (v forms)
+      "A module's `define-effect`s, each defined in turn, as its items will be."
+      (cond ((null? forms) v)
+            ((and (head-is? (car forms) "define-effect") (not (selects? (car forms))))
+             (own-effects (tagcase (car forms) (lst (xs f l p) (with-effdef (near v f l p) xs)) (else other v)) (cdr forms)))
+            (else (own-effects v (cdr forms)))))))
+
 (define module-prep (subr kfx (cv sexp) mprep)
   (lambda (v form)
     (let* ((xs (items form))
@@ -1674,6 +1687,9 @@
                                   (onto (concat (map (lambda ((n string)) (excepted-aliases v written n als)) includes)) als))
                             (onto (concat (map (lambda ((n string)) (opened-effdefs n es)) includes)) es)
                             here group file line fs tv at))))
+             ;; Its own effects too, in order, before its types are read, which
+             ;; may name them (C116: Fixpt's `check-types-types.fx`'s `kstate`).
+             (typed (own-effects typed forms))
              (datatypes (module-datatypes typed m forms))
              (typed (tagcase typed
                       (cv (bs ds als es here group file line fs tv at)
@@ -1839,7 +1855,7 @@
     (lambda (e dir)
       (tagcase e
         (lst (xs f l p)
-          (if (and (head-is? e "load-module") (i64= (size xs) 2) (tagcase (second xs) (str (s f2 p2) #t) (else other #f)))
+          (if (and (or (head-is? e "load-module") (head-is? e "load-input")) (i64= (size xs) 2) (tagcase (second xs) (str (s f2 p2) #t) (else other #f)))
               ;; A module built in (C107) is read from no file.
               (tagcase (second xs) (str (s f2 p2) (if (built-in-path? s) nil (the strings (list (path-joined dir s))))) (else other nil))
               (concat (map (lambda ((x sexp)) (load-paths x dir)) xs))))
@@ -1851,7 +1867,7 @@
       "Whether `e` has a `load-module` in it: of a module built in, perhaps,
        which no file is read for (C107)."
       (tagcase e
-        (lst (xs f l p) (or (head-is? e "load-module") (any? loads? xs)))
+        (lst (xs f l p) (or (head-is? e "load-module") (head-is? e "load-input") (any? loads? xs)))
         (else other #f)))))
 
 (define load-paths-all (subr kfx (sexps string) strings)
@@ -1981,24 +1997,44 @@
           es
           (renamed-all (map (lambda ((e sexp)) (renamed e (car froms) (car tos))) es) (cdr froms) (cdr tos))))))
 
-(define input-expanded (subr kfx (sexp) sexps)
-  (lambda (f)
+(define-rec
+  (loads-from (subr kfx (sexp string) sexp)
+    (lambda (e dir)
+      "`e`, each `load-module` of a path of a file its path from `dir`, the
+       directory of the file `e` was read from (C116: a `load-input`'s
+       file's, whose forms are read where the program is)."
+      (tagcase e
+        (lst (xs f l p)
+          (if (and (head-is? e "load-module") (i64= (size xs) 2))
+              (tagcase (second xs)
+                (str (t f2 p2) (if (built-in-path? t) e (lst (list (car xs) (str (path-joined dir t) f2 p2)) f l p)))
+                (else other e))
+              (lst (map (lambda ((x sexp)) (loads-from x dir)) xs) f l p)))
+        (else other e)))))
+
+(define input-expanded (subr kfx (sexp string fileds) sexps)
+  (lambda (f dir loaded)
     "`(define x (load-input \"fx26:p\"))` (C116, FX-26's M7): the built-in
      file's one expression, as Fixpt's code generators are written: a
      module, or a `let` of loaded modules around one. The module is a
      loaded one, which sees the standard environment alone; the `let`'s
      modules are defined before it, each `made--input--P--n` (`P` where the
-     load is), which it alone sees, by that name. Of a file of the
-     program's, not yet."
+     load is), which it alone sees, by that name. A file of the program's
+     from the loading file's directory, as `load-module`'s."
     (tagcase f
       (lst (xs fl l p)
         (if (and (head-is? f "define") (i64= (size xs) 3) (head-is? (third xs) "load-input"))
             (let* ((load (items (third xs)))
-                   (path (tagcase (second load) (str (t f2 p2) t) (else other "")))
-                   (text (if (built-in-path? path) (built-in-text path) ""))
+                   (written (tagcase (second load) (str (t f2 p2) t) (else other "")))
+                   (path (if (built-in-path? written) written (path-joined dir written)))
+                   (text (if (built-in-path? path)
+                             (built-in-text path)
+                             (let ((found (concat (map (lambda ((x filed)) (tagcase x (filed (n t) (if (string=? n path) (the strings (list t)) nil)))) loaded))))
+                               (if (null? found) "" (car found)))))
                    (es (if (string=? text "")
-                           (error (string-append "kfx: " (string-append fl (string-append ": cannot read, as a load-input, which KFX reads of a file built in alone: " path))))
-                           (read-all (string-chars text) path 1)))
+                           (error (string-append "kfx: " (string-append fl (string-append ": cannot read " path))))
+                           (map (lambda ((x sexp)) (if (built-in-path? path) x (loads-from x (directory-of path))))
+                                (read-all (string-chars text) path 1))))
                    (e (if (i64= (size es) 1) (car es) (error (string-append "kfx: " (string-append path ": not a file of one expression")))))
                    (bound (if (head-is? e "let") (items (second (items e))) nil))
                    (body (if (head-is? e "let") (third (items e)) e))
@@ -2023,7 +2059,7 @@
     "A program's forms: what it loads spliced in (C88), and what its modules
      make in place defined before them (C90); a `poly` in a `poly` around a
      definition, one (C107); a `load-input` of a module, the module (C116)."
-    (let ((forms (concat (map input-expanded forms))))
+    (let ((forms (concat (map (lambda ((f sexp)) (input-expanded f (directory-of file) loaded)) forms))))
       (map flat-definition
            (concat (map hoisted (if (and (null? loaded) (not (any? loads? forms)))
                                     forms

@@ -5123,7 +5123,9 @@ pub fn names_in_all(es: Sexps) -> Strings {
 }
 
 /// Whether `body` may reach a tag of region `r` but `tag`: whether a
-/// name in it, but `tag`'s if it is one, has a type that mentions `r`.
+/// name in it, but `tag`'s if it is one, has a type that mentions `r`; a
+/// module's name, whether anything it gives has (C116: `(with m f)`, a
+/// K1 breach found by Fixpt's checker's modules, its `goto` masked).
 pub fn reaches_p(v: &'static Cv, s: &'static St, body: &'static Sexp, tag: &'static Sexp, r: Str) -> bool {
     let tag_name = {
         let tagcase_ = tag;
@@ -5144,10 +5146,28 @@ pub fn reaches_p(v: &'static Cv, s: &'static St, body: &'static Sexp, tag: &'sta
                 let tagcase_ = car(found);
                 match *tagcase_ {
                     Bind::Bind(b, sc, wher) => {
-                        let tagcase_ = sc;
-                        match *tagcase_ {
-                            Scheme::Scheme(tvars, t) => {
-                                mentions_p(s, t, r)
+                        if string_eq_p(wher, str_lit("module")) {
+                            any_p(lambda1s(move |x: &'static Bind| {
+                                let tagcase_ = x;
+                                match *tagcase_ {
+                                    Bind::Bind(xn, xsc, xw) => {
+                                        (has_prefix_p(xn, string_append(n, str_lit(" "))) && {
+                                            let tagcase_ = xsc;
+                                            match *tagcase_ {
+                                                Scheme::Scheme(tvars, t) => {
+                                                    mentions_p(s, t, r)
+                                                }
+                                            }
+                                        })
+                                    }
+                                }
+                            }), cv_binds(v))
+                        } else {
+                            let tagcase_ = sc;
+                            match *tagcase_ {
+                                Scheme::Scheme(tvars, t) => {
+                                    mentions_p(s, t, r)
+                                }
                             }
                         }
                     }

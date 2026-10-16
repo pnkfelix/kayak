@@ -1,0 +1,11 @@
+"A prompt around a call of a module's procedure that escapes to a tag at
+ the same region: the procedure may reach another tag there, so the
+ prompt does not remove the `goto` (C116; KFX had looked at the module's
+ name, whose type mentions no region, and removed it)."
+(define m (module
+  (define* positive (subr (maxeff (goto @z) spin) ((escape-tag string string @z) int) int)
+    (lambda (t n) (if (< n 0) (escape t "negative") n)))))
+(define run (subr (maxeff (read @globals) (alloc @z) spin) (int) string)
+  (lambda (a)
+    (let ((t (the (escape-tag string string @z) (make-escape-tag))))
+      (prompt t (int->string ((with m positive) t a)) (lambda ((why string)) why)))))

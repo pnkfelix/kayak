@@ -168,6 +168,25 @@ Either way the first step is the same: the module-file form in KFX (a
 natural extension, Fixpt's front end's first refusal), then the survey of
 the 143 files run again, to see what A would cost.
 
+**The survey again** (2026-10-15, Fixpt `bc3890e`, 148 files,
+`scripts/survey-front-end.py`, each file loaded by a wrapper as its
+clients load it): 9 accepted (of the generators' files, `arm64.fx`,
+`convention.fx` and their types run in the corpus). The refusals, by
+what blocks them:
+- **41: `module-parameters`** (modules over regions): 8 such files, the
+  reader's and parser's, and 33 that load `parser-types.fx`, one of them.
+- **Datatype identity across loads**: FX-26's datatypes are structural
+  (`mu` types), so every load of a file gives the same; KFX's are Rust
+  enums, one each load. Loads shared per path and arguments, each
+  datatype one Rust definition, are needed before the checker's files can
+  meet; abstract types kept apart per binding, as Fixpt keeps them.
+- **The rest, one or a few each**: `import` (3); modules made from items
+  not made before them (8, order); `load-input` of a `lambda` (the
+  evaluator's and register code's files, 10); `(proj f ...)` of a
+  procedure value (8); a few types and effects named across files.
+Each of these is an extension KFX can take; A's cost is these, in the
+order above.
+
 ## Steps
 
 1. Module files in KFX; the front end's files surveyed again (decides A

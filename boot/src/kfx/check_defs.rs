@@ -1539,6 +1539,11 @@ pub fn module_types(mut v: &'static Cv, mut forms: Sexps) -> Strings {
                 } else {
                     return kayak_rt::heap_cons(name, module_types(v, cdr(forms)));
                 }
+            } else if (head_is_p(f, str_lit("define-effect")) && i64_eq(size(items(f)), 3i64) && not(selects_p(f))) {
+                // Each read with the module's effects before it (C116), one that may
+                // abort too, as Fixpt's checker's `checks` does.
+                (v, forms) = (with_effdef(v, items(f)), cdr(forms));
+                continue;
             } else if (head_is_p(f, str_lit("define-effect")) && i64_eq(size(items(f)), 3i64) && escapes_p(parse_effect(v, nil::<Str>(), third(items(f))))) {
                 return match refuse(v, str_lit("a module's effect that may abort, which KFX's modules do not have yet")) {};
             } else if head_is_p(f, str_lit("hide")) {
@@ -2971,6 +2976,32 @@ pub fn prep_forms(p: &'static Mprep) -> Sexps {
     }
 }
 
+/// A module's `define-effect`s, each defined in turn, as its items will be.
+pub fn own_effects(mut v: &'static Cv, mut forms: Sexps) -> &'static Cv {
+    loop {
+        if null_p(forms) {
+            return v;
+        } else if (head_is_p(car(forms), str_lit("define-effect")) && not(selects_p(car(forms)))) {
+            (v, forms) = ({
+                let tagcase_ = car(forms);
+                match *tagcase_ {
+                    Sexp::Lst(xs, f, l, p) => {
+                        with_effdef(near(v, f, l, p), xs)
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        v
+                    }
+                }
+            }, cdr(forms));
+            continue;
+        } else {
+            forms = cdr(forms);
+            continue;
+        }
+    }
+}
+
 pub fn module_prep(v: &'static Cv, form: &'static Sexp) -> &'static Mprep {
     let xs = items(form);
     let m = name_of(v, second(xs));
@@ -3078,6 +3109,7 @@ pub fn module_prep(v: &'static Cv, form: &'static Sexp) -> &'static Mprep {
             }
         }
     };
+    let typed = own_effects(typed, forms);
     let datatypes = module_datatypes(typed, m, forms);
     let typed = {
         let tagcase_ = typed;
@@ -3399,7 +3431,7 @@ pub fn load_paths(e: &'static Sexp, dir: Str) -> Strings {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Lst(xs, f, l, p) => {
-            if (head_is_p(e, str_lit("load-module")) && i64_eq(size(xs), 2i64) && {
+            if ((head_is_p(e, str_lit("load-module")) || head_is_p(e, str_lit("load-input"))) && i64_eq(size(xs), 2i64) && {
                 let tagcase_ = second(xs);
                 match *tagcase_ {
                     Sexp::Str(s, f2, p2) => {
@@ -3444,7 +3476,7 @@ pub fn loads_p(e: &'static Sexp) -> bool {
     let tagcase_ = e;
     match *tagcase_ {
         Sexp::Lst(xs, f, l, p) => {
-            (head_is_p(e, str_lit("load-module")) || any_p(&loads_p, xs))
+            (head_is_p(e, str_lit("load-module")) || head_is_p(e, str_lit("load-input")) || any_p(&loads_p, xs))
         }
         _ => {
             let other = tagcase_;
@@ -3691,20 +3723,55 @@ pub fn renamed_all(mut es: Sexps, mut froms: Strings, mut tos: Strings) -> Sexps
     }
 }
 
+/// `e`, each `load-module` of a path of a file its path from `dir`, the
+/// directory of the file `e` was read from (C116: a `load-input`'s
+/// file's, whose forms are read where the program is).
+pub fn loads_from(e: &'static Sexp, dir: Str) -> &'static Sexp {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Lst(xs, f, l, p) => {
+            if (head_is_p(e, str_lit("load-module")) && i64_eq(size(xs), 2i64)) {
+                let tagcase_ = second(xs);
+                match *tagcase_ {
+                    Sexp::Str(t, f2, p2) => {
+                        if built_in_path_p(t) {
+                            e
+                        } else {
+                            lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(str(path_joined(dir, t), f2, p2), kayak_rt::nil())), f, l, p)
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        e
+                    }
+                }
+            } else {
+                lst(map(lambda1s(move |x: &'static Sexp| {
+                    loads_from(x, dir)
+                }), xs), f, l, p)
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            e
+        }
+    }
+}
+
 /// `(define x (load-input "fx26:p"))` (C116, FX-26's M7): the built-in
 /// file's one expression, as Fixpt's code generators are written: a
 /// module, or a `let` of loaded modules around one. The module is a
 /// loaded one, which sees the standard environment alone; the `let`'s
 /// modules are defined before it, each `made--input--P--n` (`P` where the
-/// load is), which it alone sees, by that name. Of a file of the
-/// program's, not yet.
-pub fn input_expanded(f: &'static Sexp) -> Sexps {
+/// load is), which it alone sees, by that name. A file of the program's
+/// from the loading file's directory, as `load-module`'s.
+pub fn input_expanded(f: &'static Sexp, dir: Str, loaded: Fileds) -> Sexps {
     let tagcase_ = f;
     match *tagcase_ {
         Sexp::Lst(xs, fl, l, p) => {
             if (head_is_p(f, str_lit("define")) && i64_eq(size(xs), 3i64) && head_is_p(third(xs), str_lit("load-input"))) {
                 let load = items(third(xs));
-                let path = {
+                let written = {
                     let tagcase_ = second(load);
                     match *tagcase_ {
                         Sexp::Str(t, f2, p2) => {
@@ -3716,15 +3783,42 @@ pub fn input_expanded(f: &'static Sexp) -> Sexps {
                         }
                     }
                 };
+                let path = if built_in_path_p(written) {
+                    written
+                } else {
+                    path_joined(dir, written)
+                };
                 let text = if built_in_path_p(path) {
                     built_in_text(path)
                 } else {
-                    str_lit("")
+                    let found = concat(map(lambda1s(move |x: &'static Filed| {
+                        let tagcase_ = x;
+                        match *tagcase_ {
+                            Filed::Filed(n, t) => {
+                                if string_eq_p(n, path) {
+                                    the::<Strings>(kayak_rt::heap_cons(t, kayak_rt::nil()))
+                                } else {
+                                    nil::<Str>()
+                                }
+                            }
+                        }
+                    }), loaded));
+                    if null_p(found) {
+                        str_lit("")
+                    } else {
+                        car(found)
+                    }
                 };
                 let es = if string_eq_p(text, str_lit("")) {
-                    error(string_append(str_lit("kfx: "), string_append(fl, string_append(str_lit(": cannot read, as a load-input, which KFX reads of a file built in alone: "), path))))
+                    error(string_append(str_lit("kfx: "), string_append(fl, string_append(str_lit(": cannot read "), path))))
                 } else {
-                    read_all(string_chars(text), path, 1i64)
+                    map(lambda1s(move |x: &'static Sexp| {
+                        if built_in_path_p(path) {
+                            x
+                        } else {
+                            loads_from(x, directory_of(path))
+                        }
+                    }), read_all(string_chars(text), path, 1i64))
                 };
                 let e = if i64_eq(size(es), 1i64) {
                     car(es)
@@ -3773,7 +3867,9 @@ pub fn input_expanded(f: &'static Sexp) -> Sexps {
 /// make in place defined before them (C90); a `poly` in a `poly` around a
 /// definition, one (C107); a `load-input` of a module, the module (C116).
 pub fn with_loads(forms: Sexps, file: Str, loaded: Fileds) -> Sexps {
-    let forms = concat(map(&input_expanded, forms));
+    let forms = concat(map(lambda1s(move |f: &'static Sexp| {
+        input_expanded(f, directory_of(file), loaded)
+    }), forms));
     map(&flat_definition, concat(map(&hoisted, if (null_p(loaded) && not(any_p(&loads_p, forms))) {
         forms
     } else {

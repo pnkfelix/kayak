@@ -2389,13 +2389,22 @@
 (define reaches? (subr kfx (cv st sexp sexp string) bool)
   (lambda (v s body tag r)
     "Whether `body` may reach a tag of region `r` but `tag`: whether a
-     name in it, but `tag`'s if it is one, has a type that mentions `r`."
+     name in it, but `tag`'s if it is one, has a type that mentions `r`; a
+     module's name, whether anything it gives has (C116: `(with m f)`, a
+     K1 breach found by Fixpt's checker's modules, its `goto` masked)."
     (let ((tag-name (tagcase tag (sym (n at-file at-pos) n) (else other ""))))
       (any? (lambda ((n string))
               (and (not (string=? n tag-name))
                    (let ((found (find-bind n (cv-binds v))))
                      (and (not (null? found))
-                          (tagcase (car found) (bind (b sc wher) (tagcase sc (scheme (tvars t) (mentions? s t r)))))))))
+                          (tagcase (car found)
+                            (bind (b sc wher)
+                              (if (string=? wher "module")
+                                  (any? (lambda ((x bind))
+                                          (tagcase x (bind (xn xsc xw) (and (has-prefix? xn (string-append n " "))
+                                                                            (tagcase xsc (scheme (tvars t) (mentions? s t r)))))))
+                                        (cv-binds v))
+                                  (tagcase sc (scheme (tvars t) (mentions? s t r))))))))))
             (names-in body)))))
 
 (define-rec
