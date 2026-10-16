@@ -3358,3 +3358,42 @@ checked against and gives back to; then compiled.
   (At two, `schedules/process-fails.fx` answered 3, Fixpt's per-form
   answer: where preemption falls decides whether its failing process
   fails before the program's last form ends.)
+
+## C130. Tier 5: register code compiled into the hand machine (2026-10-16)
+
+As Fixpt's `assemble_register_word`, of this machine: `RESULT` in `x0`,
+`REGk` in `xk` (as Fixpt's), `REG0` `clo`; the nine kept in the state
+whenever the machine is entered or left (`st-regs`), so that it gives
+back at any instruction, tier 1's interpreter (C129) going on from there.
+- **Each instruction** counts its step and keeps its place in `x12`, as a
+  cell does (Fixpt's polls only at entries and loops: kayak's tiers keep
+  one count of steps). In machine code: the registers and frames
+  (`save`, `pop`, `stack`, `setstk`, `load`, `store`), `const`,
+  `global`, `setglbl`, `lexical`, `field`, `op1` of `car`/`cdr`, `op2` and
+  `op2imm` of the fixnum routines, branches, `global-guard`, `cellular
+  cons 2` and `prim %region-cons 3` (allocated in line), `invoke`,
+  `tailinvoke` and `invokeself` of register code, `lambda` (a closure
+  laid out as `closed!` lays one), `return`. Everything else is given
+  back: other primitives, calls of stack code, `cellular` but `cons`,
+  `setfield`. Every call-like instruction's point after has code in the
+  table's second half, so that the machine goes on there after tier 1
+  ran it.
+- **Calls.** An `invoke` of a closure whose word's twin is register code
+  of as many arguments keeps them in the registers and pushes a return
+  entry to its point after the call (`-kk`, C129); a return of either
+  kind pushes its value on the data stack, and the point after the call
+  pops it (the table of where to resume has a second half for these).
+  No `blr`: Fixpt returns to register code by its link; here every return
+  goes through the return stack, as tier 1's does.
+- **Stack code calling register code**: the adapter, in `called!`, as
+  tier 1's `call!` (the frame's values into `x1`…, the others 0).
+- `kayak-cells --regs --compiled`.
+- **Results.** All 326 agree on tier 5, plain, under `--gc-stress`, and for
+  tasks at a slice of three. Fixpt's benchmarks, best of ten runs, in ms,
+  each from its listing (start-up included), tiers 2, 4 and 5: `fib`
+  29.6, 20.9, 16.1; `tak` 13.3, 9.6, 7.5; `loop` 90.9, 60.5, 29.3;
+  `helpers` 119.5, 99.2, 20.6; `closures` 89.5, 75.3, 52.6; `captures`
+  27.5, 27.1, 28.9; `lists` 70.9, 54.5, 34.7; `lists-region` 69.9, 54.2,
+  36.4. What register code gives back most now: `cellular` (`captures`'
+  control routines, 60,000; `cons` when a collection is due).
+  `--gc-stats` counts register instructions given back by name.

@@ -888,7 +888,8 @@
 (define hand-entries (ref i64 @c) (new 0))
 
 "What the machine gave back, counted for `--gc-stats`: a routine at its
- number, register code at 62, a word at 63, a `prim` at 64 plus its op."
+ number, register code resumed at 62, a word at 63, a `prim` at 64 plus
+ its op, a register instruction at 1600 plus its op."
 (define given-size i64 2048)
 (define hand-given (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 given-size 0)))
 
@@ -896,7 +897,8 @@
   (lambda ()
     (let* ((reg (is-kind? (get cur) k-register-code))
            (cell (if reg (the i64 0) (slot-of (get cur) (get kk))))
-           (i (cond (reg (the i64 62))
+           (i (cond ((and reg (i64< (get kk) 0)) (the i64 62))
+                    (reg (i64+ 1600 (fix-val (slot-of (get cur) (get kk)))))
                     ((not (is-fixnum? cell)) (the i64 63))
                     ((i64= (fix-val cell) r-prim) (i64+ 64 (prim-op (fix-val (slot-of (get cur) (i64+ (get kk) 1))))))
                     (else (fix-val cell)))))
@@ -916,8 +918,18 @@
                   acc
                   (string-append acc
                     (string-append "  "
-                      (string-append (cond ((i64< i 62) (routine-name i)) ((i64= i 62) "register code") ((i64= i 63) "a word") (else (pdef-of prims (i64- i 64))))
+                      (string-append (cond ((i64< i 62) (routine-name i)) ((i64= i 62) "register code, resumed") ((i64= i 63) "a word")
+                                                  ((i64>= i 1600) (string-append "register " (nth-name rop-names (i64- i 1600)))) (else (pdef-of prims (i64- i 64))))
                         (string-append " " (string-append (i64->string n) "\n"))))))))))))
+
+(define-rec
+  (regs-copied! (subr cm ((flatarrayof i64 @c) i64 (flatarrayof i64 @c) i64 i64) unit)
+    (lambda (from i to j n)
+      "Register code's nine registers, `n` left, from `from` at `i` to `to`
+       at `j` (the machine keeps them in `x0`…`x8`, C130)."
+      (if (i64<= n 0)
+          #u
+          (begin (flatarray-set-i64! to j (flatarray-ref-i64 from i)) (regs-copied! from (i64+ i 1) to (i64+ j 1) (i64- n 1)))))))
 
 (define hand! (subr cm (hand-code) bool)
   (lambda (m)
@@ -938,6 +950,7 @@
                             (if (get gc-stress) 0 (i64-quotient (i64* 3 (flatarray-length-i64 (get mem))) 4)))
         (flatarray-set-i64! s (int->i64 st-mem-length) (flatarray-length-i64 (get mem)))
         (set hand-entries (i64+ (get hand-entries) 1))
+        (regs-copied! (get rr) 0 s (int->i64 st-regs) 9)
         (let ((why (int->i64 (m s (get mem) (get ds) (get rs)))))
           (begin
             (set cur (flatarray-ref-i64 s (int->i64 st-cur))) (set kk (flatarray-ref-i64 s (int->i64 st-kk)))
@@ -945,6 +958,7 @@
             (set dsp (flatarray-ref-i64 s (int->i64 st-dsp))) (set rsp (flatarray-ref-i64 s (int->i64 st-rsp)))
             (set fuel (flatarray-ref-i64 s (int->i64 st-fuel)))
             (set top (flatarray-ref-i64 s (int->i64 st-top)))
+            (regs-copied! s (int->i64 st-regs) (get rr) 0 9)
             (if (i64= why gave-back)
                 (begin (given!) #t)
                 (begin (trap! "tier 2: the return stack ran out under its marks (C126)") #f))))))))

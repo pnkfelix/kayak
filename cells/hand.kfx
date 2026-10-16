@@ -75,7 +75,10 @@
 (define st-top int 17)
 (define st-alloc-limit int 18)
 (define st-mem-length int 19)
-(define st-size i64 24)
+"Register code's `RESULT` and `REG1`…`REG8` (C130), in `x0`…`x8` while the
+ machine runs, as Fixpt's tier 5 keeps them."
+(define st-regs int 20)
+(define st-size i64 32)
 (define at-st (->* (int) int) (lambda (i) (* 8 i)))
 
 "Why the machine stopped: to give a cell back; or the return stack ran
@@ -246,6 +249,39 @@
 (define closure-in! (->* (int) unit)
   (lambda (r) "`kind-in!`, of a cellular closure." (kind-in! r k-closure)))
 
+
+(define-rec
+  (regs-zeroed! (->* (int) unit)
+    (lambda (r)
+      "`xr`… to `x8` 0: dead registers harmless when spilled (machine.kfx's
+       `regs-cleared!`)."
+      (if (> r 8) #u (begin (mov! r 31) (regs-zeroed! (+ r 1)))))))
+
+(define-rec
+  (args-loaded! (->* (int int) unit)
+    (lambda (r loaded)
+      "`xr`… from the frame, as many as the count in `x17` (times 8)."
+      (if (> r 8)
+          #u
+          (begin (cmpi! x17 (* 8 r)) (bc! c-lo loaded) (ldr! r x-fp (* 8 (- r 1))) (args-loaded! (+ r 1) loaded))))))
+
+(define h-adapted! (->* () unit)
+  (lambda ()
+    "A call of a word whose twin is register code of as many arguments
+     (`--regs`, C129), entered as tier 1's `call!` enters it: the frame's
+     values into `x1`…, the frame dropped, the register word at its first
+     instruction past `args`. `x17` the count, times 8."
+    (let ((done (label!)) (loaded (label!)))
+      (begin
+        (add! x14 x-mem x-cur) (ldur! x13 x14 (- -4 (* 8 (i64->int f-twin)))) (cmpi! x13 3) (bc! c-eq done)
+        (add! x14 x-mem x13) (ldur! x15 x14 (- -4 (* 8 (+ (i64->int f-cell0) 1)))) (cmp! x15 x17) (bc! c-ne done)
+        (regs-zeroed! 0)
+        (args-loaded! 1 loaded)
+        (bind! loaded)
+        (mov! x-dsp x-fp) (mov! x-cur x13)
+        (add! x-ip x-mem x-cur) (subi! x-ip x-ip (+ 4 (* 8 (+ (i64->int f-cell0) 2))))
+        (bind! done)))))
+
 (define called! (->* (bool) unit)
   (lambda (tail)
     "A call of the closure on top with the `count` values below it (tier
@@ -257,9 +293,6 @@
         (add! x14 x-fp x17) (addi! x14 x14 8) (cmp! x-dsp x14) (give-if! c-lo)
         (ldur! x10 x-dsp -8)
         (closure-in! x10)
-        ;; A word with register code (`--regs`, C129): tier 1's call, its adapter.
-        (ldur! x13 x11 (- -4 (* 8 (i64->int f-word)))) (add! x13 x-mem x13)
-        (ldur! x13 x13 (- -4 (* 8 (i64->int f-twin)))) (cmpi! x13 3) (give-if! c-ne)
         (limits!)
         (if tail
             (begin
@@ -276,7 +309,10 @@
         (ldur! x-cur x11 (- -4 (* 8 (i64->int f-word))))
         (mov! x-clo x10)
         (add! x-ip x-mem x-cur) (subi! x-ip x-ip (+ 4 (* 8 (i64->int f-cell0))))
+        (h-adapted!)
         (resume!)))))
+
+
 
 (define fields-of! (->* (int) unit)
   (lambda (lowest)
@@ -493,6 +529,13 @@
           #u
           (begin (bind! (+ base n)) (entered! n) (routines! (+ n 1) base))))))
 
+(define-rec
+  (regs-loaded! (->* (int) unit)
+    (lambda (r) (if (> r 8) #u (begin (ldr! r x-st (at-st (+ st-regs r))) (regs-loaded! (+ r 1)))))))
+(define-rec
+  (regs-stored! (->* (int) unit)
+    (lambda (r) (if (> r 8) #u (begin (str! r x-st (at-st (+ st-regs r))) (regs-stored! (+ r 1)))))))
+
 (define entry! (->* () unit)
   (lambda ()
     "From the native convention: the state, the heap, the data stack and
@@ -514,6 +557,7 @@
       (ldr! x14 x-st (at-st st-dsp)) (times8! x14) (add! x-dsp x-dsb x14)
       (ldr! x14 x-st (at-st st-rsp)) (times8! x14) (add! x-rsp x13 x14)
       (ldr! x-fuel x-st (at-st st-fuel))
+      (regs-loaded! 0)
       (resume!))))
 
 (define leave! (->* (i64) unit)
@@ -521,6 +565,7 @@
     "The registers back in the state, the cell being run `kk`'s, and out,
      with `why`, a fixnum."
     (begin
+      (regs-stored! 0)
       (str! x-cur x-st (at-st st-cur))
       (add! x13 x-mem x-cur) (subi! x13 x13 4) (sub! x13 x13 x-cell) (asr! x13 x13 3) (str! x13 x-st (at-st st-kk))
       (sub! x13 x-fp x-dsb) (lsr! x13 x13 3) (str! x13 x-st (at-st st-fp))
@@ -557,9 +602,19 @@
       (addi! x16 x16 8) (ldr-reg! x14 x16 x10)
       (adr! x16 (get l-start)) (add! x16 x16 x14)
       (subi! x15 x11 4) (sub! x15 x15 x-ip)
-      (ldr! x14 x16 0) (cmp! x15 x14) (bc! c-hs (get l-next))
-      (add! x16 x16 x15) (ldr! x14 x16 8) (cbz! x14 (get l-next))
-      (adr! x16 (get l-start)) (add! x16 x16 x14) (br! x16))))
+      (ldr! x14 x16 0)
+      (let ((neg (label!)))
+        (begin
+          (cmpi! x15 0) (bc! c-lt neg)
+          (cmp! x15 x14) (bc! c-hs (get l-next))
+          (add! x16 x16 x15) (ldr! x14 x16 8) (cbz! x14 (get l-next))
+          (adr! x16 (get l-start)) (add! x16 x16 x14) (br! x16)
+          ;; Below 0, register code's point to resume at after a call
+          ;; (C129): the table's second half; past it, a poll's, given back.
+          (bind! neg)
+          (sub! x15 31 x15) (cmp! x15 x14) (bc! c-hs (get l-resume-give))
+          (add! x16 x16 x14) (add! x16 x16 x15) (ldr! x14 x16 8) (cbz! x14 (get l-resume-give))
+          (adr! x16 (get l-start)) (add! x16 x16 x14) (br! x16))))))
 
 "A prompt's and a mark's entries begin with these (machine.kfx's
  `prompt-mark`, `mark-mark`)."
@@ -700,6 +755,9 @@
                 (d! (ins 0)))
             (resume-table! at base n (i64+ k 1)))))))
 
+(define-rec
+  (zeros! (->* (i64) unit) (lambda (k) "`k` entries of 0." (if (i64<= k 0) #u (begin (d! (ins 0)) (zeros! (i64- k 1)))))))
+
 (define word-compiled! (->* (i64 int int) unit)
   (lambda (w n-cells rt)
     "Word `w` compiled; `rt` the label of its table of where to resume."
@@ -721,7 +779,258 @@
           (set h-cont -1) (set h-target -1)
           (data-label! rt)
           (d! (ins (* 8 (i64->int (i64+ f-cell0 n)))))
-          (resume-table! at base n 0)))))
+          (resume-table! at base n 0)
+          (zeros! (i64+ f-cell0 n))))))
+
+"Tier 5 (C130): register words compiled, as Fixpt's
+ `assemble_register_word` compiles them (`cellular/regcode.rs`), into
+ this machine: `RESULT` in `x0`, `REGk` in `xk`, `REG0` `clo`. Each
+ instruction counts its step and keeps its place in `x12`, as a cell, so
+ that what it does not do it gives back to tier 1's register code
+ (machine.kfx's `reg-op!`), the registers in the state. A call returns
+ by the data stack, as stack code's do; the table of where to resume has
+ a second half, the points after a call, which pop `RESULT` (`resumed!`)."
+(define sub-const! (->* (int int int) unit)
+  (lambda (d n k) (if (< k 4096) (subi! d n k) (begin (movz! x16 k) (sub! d n x16)))))
+(define add-const! (->* (int int int) unit)
+  (lambda (d n k) (if (< k 4096) (addi! d n k) (begin (movz! x16 k) (add! d n x16)))))
+(define reg-of (->* (int) int) (lambda (k) (if (= k 0) x-clo k)))
+(define opnd! (->* (int int) unit)
+  (lambda (d j) "Operand `j` of the instruction at `x12`." (ldur! d x-cell (* -8 (+ j 1)))))
+(define at-field (->* (i64) int) (lambda (f) (- -4 (* 8 (i64->int f)))))
+
+(define op2-fast! (->* (i64 int) unit)
+  (lambda (r y)
+    "`RESULT` := cellular routine `r` of `RESULT` and `y`, on fixnums; past
+     them, or of another routine, given back."
+    (cond ((i64= r r-eq) (begin (cmp! 0 y) (boolean-of! c-eq) (mov! 0 x13)))
+          ((or (i64= r r-int-add) (i64= r r-add) (i64= r r-int-sub) (i64= r r-sub))
+           (begin
+             (orr! x15 0 y) (tstl! x15 3) (give-if! c-ne)
+             (if (or (i64= r r-int-add) (i64= r r-add)) (adds! x15 0 y) (subs! x15 0 y))
+             (give-if! c-vs) (mov! 0 x15)))
+          ((or (i64= r r-int-less) (i64= r r-less) (i64= r r-int-eq))
+           (begin
+             (orr! x15 0 y) (tstl! x15 3) (give-if! c-ne)
+             (cmp! 0 y) (boolean-of! (if (i64= r r-int-eq) c-eq c-lt)) (mov! 0 x13)))
+          (else (b! (get l-give))))))
+
+(define-rec
+  (fill-false! (->* (int) unit)
+    (lambda (m) (if (<= m 0) #u (begin (str-post! x13 x-dsp 8) (fill-false! (- m 1)))))))
+
+(define return-pushed! (->* (i64) unit)
+  (lambda (nx)
+    "A return entry to this word's point after a call, `-nx`: given back
+     if there is no room for it."
+    (begin
+      (ldr! x16 x-st (at-st st-rs-end)) (cmp! x-rsp x16) (give-if! c-hs)
+      (movz! x13 (* 8 (i64->int nx))) (sub! x13 31 x13) (sub! x14 x-fp x-dsb)
+      (stp! x-cur x13 x-rsp 0) (stp! x14 x-clo x-rsp 16) (addi! x-rsp x-rsp 32))))
+
+(define-rec
+  (frees-stored! (->* (int int) unit)
+    (lambda (r n) (if (> r n) #u (begin (stur! r x11 (- -24 (* 8 (- r 1)))) (frees-stored! (+ r 1) n))))))
+
+(define reg-ins! (->* (i64 i64 i64 int (flatarrayof i64 @c)) unit)
+  (lambda (rw i n base resumes)
+    "Register instruction `i` of `rw`'s `n` cells, at label `base + i`;
+     a point after a call marked in `resumes`."
+    (let* ((kk (i64+ f-cell0 i))
+           (op (fix-val (slot-of rw kk)))
+           (o (lambda ((j int)) (fix-val (slot-of rw (i64+ kk (int->i64 (+ j 1)))))))
+           (nx (i64+ i (i64+ 1 (rop-operands op))))
+           (to (lambda ((ops int) (off i64)) (+ base (i64->int (i64+ i (i64+ (int->i64 (+ ops 1)) off)))))))
+      (begin
+        (bind! (+ base (i64->int i)))
+        (add! x-cell x-mem x-cur) (sub-const! x-cell x-cell (+ 4 (* 8 (i64->int kk))))
+        (cbz! x-fuel (get l-give-pre)) (subi! x-fuel x-fuel 1)
+        (cond
+          ((or (i64= op ro-args) (i64= op ro-vargs)) #u)
+          ((i64= op ro-const) (opnd! 0 0))
+          ((i64= op ro-global) (begin (opnd! x16 0) (add! x16 x-mem x16) (ldur! 0 x16 (at-field f-value))))
+          ((i64= op ro-setglbl)
+           (begin
+             (opnd! x16 0) (add! x16 x-mem x16) (stur! 0 x16 (at-field f-value))
+             (ldur! x13 x16 (at-field f-writes)) (addi! x13 x13 8) (stur! x13 x16 (at-field f-writes))))
+          ((i64= op ro-reg) (mov! 0 (reg-of (i64->int (o 0)))))
+          ((i64= op ro-setreg) (mov! (reg-of (i64->int (o 0))) 0))
+          ((i64= op ro-movereg) (mov! (reg-of (i64->int (o 1))) (reg-of (i64->int (o 0)))))
+          ((i64= op ro-lexical)
+           (begin
+             (andl! x14 x-clo 3) (cmpi! x14 4) (give-if! c-ne) (add! x11 x-mem x-clo)
+             (movz! x13 (* 8 (i64->int (i64+ f-free0 (o 0))))) (field-read!) (mov! 0 x16)))
+          ((i64= op ro-save)
+           (let ((m (i64->int (o 0))))
+             (begin
+               (add-const! x16 x-dsp (* 8 (+ m 1)))
+               (ldr! x13 x-st (at-st st-ds-lim)) (cmp! x16 x13) (give-if! c-hi)
+               (ldr! x13 x-st (at-st st-ds-end)) (cmp! x16 x13) (give-if! c-hi)
+               (ldr! x13 x-st (at-st st-rs-lim)) (cmp! x-rsp x13) (give-if! c-hs)
+               (mov! x-fp x-dsp) (movz! x13 3)
+               (if (<= m 16)
+                   (fill-false! m)
+                   (let ((loop (label!)))
+                     (begin (sub-const! x15 x16 8) (bind! loop) (str-post! x13 x-dsp 8) (cmp! x-dsp x15) (bc! c-lo loop))))
+               (str-post! 31 x-dsp 8))))
+          ((i64= op ro-pop)
+           (begin (sub-const! x16 x-dsp (* 8 (+ (i64->int (o 0)) 1))) (cmp! x16 x-dsb) (give-if! c-lo) (mov! x-dsp x16)))
+          ((or (i64= op ro-stack) (i64= op ro-load) (i64= op ro-setstk) (i64= op ro-store))
+           (let ((slot (i64->int (if (or (i64= op ro-stack) (i64= op ro-setstk)) (o 0) (o 1))))
+                 (r (if (or (i64= op ro-stack) (i64= op ro-setstk)) 0 (reg-of (i64->int (o 0))))))
+             (begin
+               (add-const! x14 x-fp (* 8 slot)) (cmp! x14 x-dsp) (give-if! c-hs)
+               (if (or (i64= op ro-stack) (i64= op ro-load)) (ldr! r x14 0) (str! r x14 0)))))
+          ((i64= op ro-op1)
+           (let ((r (o 0)))
+             (if (or (i64= r r-car) (i64= r r-cdr) (i64= r r-pair-car) (i64= r r-pair-cdr))
+                 (begin
+                   (andl! x14 0 3) (cmpi! x14 1) (give-if! c-ne) (add! x15 x-mem 0)
+                   (ldur! 0 x15 (if (or (i64= r r-car) (i64= r r-pair-car)) -1 7)))
+                 (b! (get l-give)))))
+          ((i64= op ro-op2) (op2-fast! (o 0) (reg-of (i64->int (o 1)))))
+          ((i64= op ro-op2imm) (begin (opnd! x14 1) (op2-fast! (o 0) x14)))
+          ((i64= op ro-field)
+           (begin
+             (andl! x14 0 3) (cmpi! x14 4) (give-if! c-ne) (add! x11 x-mem 0)
+             (movz! x13 (* 8 (i64->int (o 0)))) (field-read!) (mov! 0 x16)))
+          ((and (i64= op ro-cellular) (i64= (o 0) r-cons) (i64= (o 1) 2))
+           (begin
+             (allocating! 2 31) (stp! 1 2 x16 0)
+             (addi! x15 x13 2) (str! x15 x-st (at-st st-top)) (lsl! 0 x13 3) (addi! 0 0 1)))
+          ((and (i64= op ro-prim) (i64= (prim-op (o 0)) o-region-cons) (i64= (o 1) 3))
+           (begin
+             (allocating! 2 31) (stp! 2 3 x16 0)
+             (addi! x15 x13 2) (str! x15 x-st (at-st st-top)) (lsl! 0 x13 3) (addi! 0 0 1)))
+          ((and (i64= op ro-lambda) (i64<= (o 1) register-regs) (i64= (o 2) r-closure))
+           (let ((n (i64->int (o 1))))
+             (begin
+               ;; As `closed!` lays a closure out, its values from the registers.
+               (opnd! x10 0) (movz! x17 (* 8 n))
+               (allocating! 3 x17)
+               (movz! x15 (+ 6 (* 8 (i64->int k-closure)))) (movz! x14 (+ n 2)) (lsl! x14 x14 14) (orr! x15 x15 x14)
+               (str! x15 x16 0)
+               (add-const! x11 x16 (+ (* 8 n) 24))
+               (movz! x14 (+ (* 8 n) 21)) (stur! x14 x11 -8)
+               (stur! x10 x11 -16)
+               (frees-stored! 1 n)
+               (addi! x14 x13 (+ 3 n)) (str! x14 x-st (at-st st-top))
+               (sub! x14 x11 x-mem) (addi! 0 x14 4))))
+          ((or (i64= op ro-invoke) (i64= op ro-tailinvoke))
+           (begin
+             (closure-in! 0)
+             (ldur! x13 x11 (at-field f-word)) (add! x14 x-mem x13)
+             (ldur! x10 x14 (at-field f-twin)) (cmpi! x10 3) (give-if! c-eq)
+             (add! x14 x-mem x10) (ldur! x15 x14 (at-field (i64+ f-cell0 1)))
+             (cmpi! x15 (* 8 (i64->int (o 0)))) (give-if! c-ne)
+             (limits!)
+             (if (i64= op ro-invoke)
+                 (begin (return-pushed! (i64+ f-cell0 nx)) (flatarray-set-i64! resumes nx 1))
+                 #u)
+             (mov! x-clo 0) (mov! x-cur x10)
+             (add! x-ip x-mem x-cur) (subi! x-ip x-ip (+ 4 (* 8 (+ (i64->int f-cell0) 2))))
+             (resume!)))
+          ((i64= op ro-invokeself)
+           (begin
+             (limits!) (return-pushed! (i64+ f-cell0 nx)) (flatarray-set-i64! resumes nx 1)
+             (b! (+ base 2))))
+          ((i64= op ro-return)
+           (begin
+             (ldr! x16 x-st (at-st st-rsb)) (cmp! x-rsp x16) (give-if! c-eq)
+             (h-room!) (str-post! 0 x-dsp 8) (b! (get l-pop-return))))
+          ((i64= op ro-branch) (b! (to 1 (o 0))))
+          ((i64= op ro-branchf) (begin (cmpi! 0 3) (bc! c-eq (to 1 (o 0)))))
+          ((i64= op ro-brancht) (begin (cmpi! 0 3) (bc! c-ne (to 1 (o 0)))))
+          ((i64= op ro-global-guard)
+           (begin
+             (opnd! x16 0) (add! x16 x-mem x16) (ldur! x13 x16 (at-field f-writes))
+             (opnd! x14 1) (cmp! x13 x14) (bc! c-ne (to 3 (fix-val (slot-of rw (i64+ kk 3)))))))
+          (else (b! (get l-give))))
+        ;; Where a call or a call-out comes back to: its value on the data
+        ;; stack, whether it ran here or was given back.
+        (if (or (i64= op ro-prim) (i64= op ro-lambda) (i64= op ro-cellular) (i64= op ro-invoke) (i64= op ro-invokeself))
+            (flatarray-set-i64! resumes nx 1)
+            #u)))))
+
+(define-rec
+  (reg-instructions! (->* (i64 i64 i64 int (flatarrayof i64 @c) (flatarrayof i64 @c)) unit)
+    (lambda (rw i n base starts resumes)
+      (if (i64>= i n)
+          #u
+          (let ((nx (i64+ i (i64+ 1 (rop-operands (fix-val (slot-of rw (i64+ f-cell0 i))))))))
+            (begin
+              (flatarray-set-i64! starts i 1)
+              (reg-ins! rw i n base resumes)
+              (reg-instructions! rw nx n base starts resumes)))))))
+
+(define-rec
+  (resumes-emitted! (->* (i64 i64 int int int (flatarrayof i64 @c)) unit)
+    (lambda (i n base rbase rgive resumes)
+      "For each point after a call: `RESULT` popped, and on."
+      (if (i64>= i n)
+          #u
+          (begin
+            (if (i64= (flatarray-ref-i64 resumes i) 1)
+                (begin
+                  (bind! (+ rbase (i64->int i)))
+                  (cmp! x-dsp x-dsb) (bc! c-ls rgive) (regs-zeroed! 1) (subi! x-dsp x-dsp 8) (ldr! 0 x-dsp 0)
+                  (b! (+ base (i64->int i))))
+                #u)
+            (resumes-emitted! (i64+ i 1) n base rbase rgive resumes))))))
+
+(define-rec
+  (reg-table! (->* (i64 i64 int int (flatarrayof i64 @c)) unit)
+    (lambda (k n base rgive marks)
+      "A half of a register word's table: from field `k`, the code of each
+       instruction `marks` marks, else the way to give back."
+      (if (i64>= k (i64+ f-cell0 n))
+          #u
+          (begin
+            (if (and (i64>= k f-cell0) (i64= (flatarray-ref-i64 marks (i64- k f-cell0)) 1))
+                (d! (offset-of (+ base (i64->int (i64- k f-cell0)))))
+                (d! (offset-of rgive)))
+            (reg-table! (i64+ k 1) n base rgive marks))))))
+
+(define register-compiled! (->* (i64 int int) unit)
+  (lambda (rw n-cells rt)
+    "Register word `rw` compiled; `rt` the label of its table."
+    (let* ((n (int->i64 n-cells))
+           (starts (the (flatarrayof i64 @c) (make-flatarray-i64 (i64+ n 1) 0)))
+           (resumes (the (flatarrayof i64 @c) (make-flatarray-i64 (i64+ n 1) 0)))
+           (base (get hand-labels)) (rbase (+ base (+ n-cells 1)))
+           (give (+ rbase (+ n-cells 1))) (give-pre (+ give 1)) (rgive (+ give 2))
+           (machine-give (get l-give)) (machine-give-pre (get l-give-pre)))
+      (begin
+        (set hand-labels (+ rgive 1))
+        (set l-give give) (set l-give-pre give-pre)
+        (reg-instructions! rw 0 n base starts resumes)
+        (bind! (+ base n-cells)) (b! give)
+        (resumes-emitted! 0 n base rbase rgive resumes)
+        (bind! give) (addi! x-fuel x-fuel 1)
+        (bind! give-pre) (b! machine-give-pre)
+        (bind! rgive) (b! (get l-resume-give))
+        (set l-give machine-give) (set l-give-pre machine-give-pre)
+        (data-label! rt)
+        (d! (ins (* 8 (i64->int (i64+ f-cell0 n)))))
+        (reg-table! 0 n base rgive starts)
+        (reg-table! 0 n rbase rgive resumes)))))
+
+(define-rec
+  (registers-compiled! (->* ((listof named @c) int (listof int @c)) (listof int @c))
+    (lambda (rs s rts)
+      "Each register word that is its word's twin, compiled, word `s` on;
+       its entry made `r-count + s`. Their tables' labels, the last first."
+      (if (null? rs)
+          rts
+          (let ((rw (tagcase (car rs) (named (m v) v))))
+            (if (and (i64= (slot-of (slot-of rw f-twin) f-twin) rw)
+                     (i64<= (cells-in rw f-cell0) compiled-cells-most))
+                (let ((rt (label!)))
+                  (begin
+                    (register-compiled! rw (i64->int (cells-in rw f-cell0)) rt)
+                    (slot-set! rw f-entry (fix (i64+ r-count (int->i64 s))))
+                    (registers-compiled! (cdr rs) (+ s 1) (cons rt rts))))
+                (registers-compiled! (cdr rs) s rts)))))))
 
 (define-rec
   (words-compiled! (->* ((listof named @c) int (listof int @c)) (listof int @c))
@@ -791,7 +1100,8 @@
           (set l-start (label!)) (set l-entry (label!)) (set l-words (label!))
           (set h-cont -1) (set h-target -1)
           (machine!)
-          (let* ((rts (if (get hand-compiled) (words-compiled! (get words) 0 nil) nil))
+          (let* ((cts (if (get hand-compiled) (words-compiled! (get words) 0 nil) nil))
+                 (rts (if (get hand-compiled) (registers-compiled! (get register-words) (count-of cts 0) cts) cts))
                  (u (set words-compiled (count-of rts 0)))
                  (its (the (listof item @c)
                         (cons (label-here (get l-start))

@@ -1710,7 +1710,8 @@ pub fn hand_entries() -> Ref<i64> {
 }
 
 // What the machine gave back, counted for `--gc-stats`: a routine at its
-// number, register code at 62, a word at 63, a `prim` at 64 plus its op.
+// number, register code resumed at 62, a word at 63, a `prim` at 64 plus
+// its op, a register instruction at 1600 plus its op.
 pub fn given_size() -> i64 {
     2048i64
 }
@@ -1729,8 +1730,10 @@ pub fn given_x() -> () {
     } else {
         slot_of(get(cur()), get(kk()))
     };
-    let i = if reg {
+    let i = if (reg && i64_lt(get(kk()), 0i64)) {
         the::<i64>(62i64)
+    } else if reg {
+        i64_plus(1600i64, fix_val(slot_of(get(cur()), get(kk()))))
     } else if not(is_fixnum_p(cell)) {
         the::<i64>(63i64)
     } else if i64_eq(fix_val(cell), r_prim()) {
@@ -1758,13 +1761,29 @@ pub fn given_shown(mut i: i64, mut acc: Str) -> Str {
                 string_append(acc, string_append(str_lit("  "), string_append(if i64_lt(i, 62i64) {
                     routine_name(i)
                 } else if i64_eq(i, 62i64) {
-                    str_lit("register code")
+                    str_lit("register code, resumed")
                 } else if i64_eq(i, 63i64) {
                     str_lit("a word")
+                } else if i64_gt_eq(i, 1600i64) {
+                    string_append(str_lit("register "), nth_name(rop_names(), i64_minus(i, 1600i64)))
                 } else {
                     pdef_of(prims(), i64_minus(i, 64i64))
                 }, string_append(str_lit(" "), string_append(i64_to_string(n), str_lit("\n"))))))
             });
+            continue;
+        }
+    }
+}
+
+/// Register code's nine registers, `n` left, from `from` at `i` to `to`
+/// at `j` (the machine keeps them in `x0`…`x8`, C130).
+pub fn regs_copied_x(mut from: FlatArray<i64>, mut i: i64, mut to: FlatArray<i64>, mut j: i64, mut n: i64) -> () {
+    loop {
+        if i64_lt_eq(n, 0i64) {
+            return ();
+        } else {
+            flatarray_set_i64_x(to, j, flatarray_ref_i64(from, i));
+            (i, j, n) = (i64_plus(i, 1i64), i64_plus(j, 1i64), i64_minus(n, 1i64));
             continue;
         }
     }
@@ -1793,6 +1812,7 @@ pub fn hand_x(m: HandCode) -> bool {
     });
     flatarray_set_i64_x(s, int_to_i64(st_mem_length()), flatarray_length_i64(get(mem())));
     set(hand_entries(), i64_plus(get(hand_entries()), 1i64));
+    regs_copied_x(get(rr()), 0i64, s, int_to_i64(st_regs()), 9i64);
     let why = int_to_i64(m(s, get(mem()), get(ds()), get(rs())));
     set(cur(), flatarray_ref_i64(s, int_to_i64(st_cur())));
     set(kk(), flatarray_ref_i64(s, int_to_i64(st_kk())));
@@ -1802,6 +1822,7 @@ pub fn hand_x(m: HandCode) -> bool {
     set(rsp(), flatarray_ref_i64(s, int_to_i64(st_rsp())));
     set(fuel(), flatarray_ref_i64(s, int_to_i64(st_fuel())));
     set(top(), flatarray_ref_i64(s, int_to_i64(st_top())));
+    regs_copied_x(s, int_to_i64(st_regs()), get(rr()), 0i64, 9i64);
     if i64_eq(why, gave_back()) {
         given_x();
         true

@@ -642,9 +642,12 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    routines (`--compiled`), entered through tables of where to resume;
    326 agree. **Tier 5 begun (C129, 2026-10-16)**: register code, which
    Fixpt's listings already carry, read into register words and
-   interpreted by tier 1 (`--regs`, the reference; 326 agree). Next: it
-   compiled to arm64 in this machine (C130), giving back to tier 1's
-   interpreter; then the instructions it gives back most. Tier 3,
+   interpreted by tier 1 (`--regs`, the reference; 326 agree), and
+   compiled into the hand machine (`--regs --compiled`, C130; 326 agree;
+   `helpers` 99 ms to 21). Next: what register code gives back most
+   (`cellular`'s control routines, calls of stack code, the other
+   primitives); its call and return without the data stack (Fixpt's
+   link, `blr`); then tier 6, native frames. Tier 3,
    stencils, last (`native.md` step 5). **Begun (C116,
    2026-10-15)**: Fixpt's §97 operations in KFX, the code area, the
    trampoline, `tests/kfx/made-code.kfx`. Next, toward Fixpt's

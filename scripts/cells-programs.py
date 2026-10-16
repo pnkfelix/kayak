@@ -179,14 +179,15 @@ def stressed(cells, name, path, text, limit, have, fail):
     # Tier 2, the hand machine (C126), each program, where native code runs.
     # Tier 4, the words compiled (C128), likewise.
     ways = [[t] + (["--step-limit", "none"] if limit else []) for t in ("--hand", "--compiled")] if HAND else []
-    # Register code (C129), interpreted by tier 1; by tier 2, which gives
-    # it back.
+    # Register code (C129), interpreted by tier 1; compiled (tier 5, C130).
     ways.append(["--regs"] + (["--step-limit", "none"] if limit else []))
     if HAND:
         ways.append(["--regs", "--compiled"] + (["--step-limit", "none"] if limit else []))
     if not name.startswith(UNLIMITED):
         ways.append(["--gc-stress"])
         ways.append(["--regs", "--gc-stress"])
+        if HAND:
+            ways.append(["--regs", "--compiled", "--gc-stress"])
         if HAND:
             ways.append(["--hand", "--gc-stress"])
             ways.append(["--compiled", "--gc-stress"])
@@ -195,6 +196,8 @@ def stressed(cells, name, path, text, limit, have, fail):
             # Register code at a slice of two never runs on: the
             # trampoline's way back spends it (C129). Three.
             ways.append(["--regs", "--slice", "3", "--step-limit", "none"])
+            if HAND:
+                ways.append(["--regs", "--compiled", "--slice", "3", "--step-limit", "none"])
             if HAND:
                 ways.append(["--compiled", "--slice", "2", "--step-limit", "none"])
     with tempfile.NamedTemporaryFile("w", suffix=".cells", delete=False) as f:
