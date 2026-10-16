@@ -637,8 +637,13 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    routine Fixpt's hand machine has in arm64 but `halt` (once a run) and
    `execute` (no listing of Fixpt's programs has it). Given back still, as Fixpt's calls out for them: the other
    primitives, prompts, marks, continuations, `rest`, `field!`; each
-   moved when a program gives it back often (`--gc-stats`). Then tier 3,
-   stencils. **Begun (C116,
+   moved when a program gives it back often (`--gc-stats`). **Tier 4
+   (C128, 2026-10-16)**: the listing's words compiled with tier 2's
+   routines (`--compiled`), entered through tables of where to resume;
+   326 agree. Next, tier 5: register code, which Fixpt's listings already
+   carry ("its register code"), read as tier 1 reads cells and compiled
+   to arm64 in this machine's convention, ahead of stage A's port; tier
+   3, stencils, last (`native.md` step 5). **Begun (C116,
    2026-10-15)**: Fixpt's §97 operations in KFX, the code area, the
    trampoline, `tests/kfx/made-code.kfx`. Next, toward Fixpt's
    `made-code/frames.fx` and `generated.fx` on kayak:

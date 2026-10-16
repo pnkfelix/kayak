@@ -17,7 +17,8 @@ program of definitions), or Fixpt refuses it. The programs that agree are
 kept in tests/cells-passing (--bless rewrites it); one that agreed and
 no longer does fails the check. Each but Fixpt's benchmarks is run again
 with a collection at every safepoint (`--gc-stress`), to the same end;
-each, on arm64 macOS, by tier 2's machine (`--hand`, C126), its answer
+each, on arm64 macOS, by tier 2's machine (`--hand`, C126) and with its
+words compiled (`--compiled`, C128), its answer
 the same; and each that runs tasks (processes, `par`, `race`, `pselect`), again
 with a time slice of two polls (`--slice 2`, as Fixpt's `FIXPT_SLICE`,
 C125), preempted at nearly every poll; with no step limit, as Fixpt's
@@ -175,13 +176,17 @@ def stressed(cells, name, path, text, limit, have, fail):
     stress policy), and, for a program that runs tasks, preempted at every
     poll (C125); Fixpt's benchmarks, long, are not run so."""
     # Tier 2, the hand machine (C126), each program, where native code runs.
-    ways = [["--hand"] + (["--step-limit", "none"] if limit else [])] if HAND else []
+    # Tier 4, the words compiled (C128), likewise.
+    ways = [[t] + (["--step-limit", "none"] if limit else []) for t in ("--hand", "--compiled")] if HAND else []
     if not name.startswith(UNLIMITED):
         ways.append(["--gc-stress"])
         if HAND:
             ways.append(["--hand", "--gc-stress"])
+            ways.append(["--compiled", "--gc-stress"])
         if TASKS.search(open(path, encoding="utf-8").read()):
             ways.append(["--slice", "2", "--step-limit", "none"])
+            if HAND:
+                ways.append(["--compiled", "--slice", "2", "--step-limit", "none"])
     with tempfile.NamedTemporaryFile("w", suffix=".cells", delete=False) as f:
         f.write(text)
         listing = f.name

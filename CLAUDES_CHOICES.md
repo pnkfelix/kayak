@@ -3190,25 +3190,6 @@ discrepancy needs them.
   entry, `NEXT` and exit, with the stack and control routines; (3) the
   rest of Fixpt's routines, by how often the programs give back.
 
-## C127. `->` and `->*` in kayak's own KFX (2026-10-16; the user asked)
-
-- **`->`** (`(subr pure …)`) has almost nothing to replace in kayak's own
-  code: KFX's procedures declare named effects, `kfx` (about 1,400) and
-  `cm` (about 300), and `pure` 4 times. The 261 other `(subr pure …)` are
-  FX-26's primitives' types, as text in `check-defs.kfx`, and Fixpt's
-  built-in files.
-- **`->*`** (the effect found from the definition's `lambda`, C123) is
-  where the gain is, with a cost: a named effect is a bound the checker
-  holds a procedure to, which says what it may do (the compiler's `kfx`,
-  tier 1's `cm`); a found effect states nothing and grows with the body,
-  and every caller's with it. So: `->*` for helpers whose effect is
-  incidental, inside a module whose interface keeps named bounds; named
-  effects where they are the contract (entry points, what other modules
-  call, higher-order parameters, which `->*` cannot type anyway).
-- **Begun with `cells/sched.kfx`**: its 63 top-level and `define-rec`
-  procedures `->*`; kfx accepts it and makes the same Rust, byte for byte.
-  The compiler's own files (`kfx/`) next, helper by helper, where a found
-  effect reads as well as the bound, not as a sweep.
 - **First steps done (2026-10-16).** (1) Flat arrays shared:
   `tests/kfx/made-flat.kfx` (`native 42 42`, on kayak and on Fixpt); a
   native procedure of four parameters (`native_procedure4`). (2)
@@ -3251,7 +3232,7 @@ discrepancy needs them.
   0.48, 0.02; `helpers` 2.56, 0.12; `lists-region` 1.38, 0.25; `lists`
   1.22, 0.06; `loop` 2.15, 0.11; `tak` 0.21, 0.01. What is given back
   most now is `prim` (`lists-region`'s region primitives, three million).
-- **`prim`, `global!`, `field@`, `execute` (2026-10-16).** What is
+- **`prim`, `global!`, `field@` (2026-10-16).** What is
   given back, counted (`--gc-stats` now lists it by routine, and a
   `prim` by its primitive), past the slices' ends: `lists-region`'s
   `%region-cons`, three million; `captures`' `prompt`, `abort`,
@@ -3266,3 +3247,58 @@ discrepancy needs them.
   programs has, so it is left given back until one does (untested code
   in the machine would be code that agrees by luck).
   Continuations stay with tier 1 until a program needs them faster.
+
+## C127. `->` and `->*` in kayak's own KFX (2026-10-16; the user asked)
+
+- **`->`** (`(subr pure …)`) has almost nothing to replace in kayak's own
+  code: KFX's procedures declare named effects, `kfx` (about 1,400) and
+  `cm` (about 300), and `pure` 4 times. The 261 other `(subr pure …)` are
+  FX-26's primitives' types, as text in `check-defs.kfx`, and Fixpt's
+  built-in files.
+- **`->*`** (the effect found from the definition's `lambda`, C123) is
+  where the gain is, with a cost: a named effect is a bound the checker
+  holds a procedure to, which says what it may do (the compiler's `kfx`,
+  tier 1's `cm`); a found effect states nothing and grows with the body,
+  and every caller's with it. So: `->*` for helpers whose effect is
+  incidental, inside a module whose interface keeps named bounds; named
+  effects where they are the contract (entry points, what other modules
+  call, higher-order parameters, which `->*` cannot type anyway).
+- **Begun with `cells/sched.kfx`**: its 63 top-level and `define-rec`
+  procedures `->*`; kfx accepts it and makes the same Rust, byte for byte.
+  The compiler's own files (`kfx/`) next, helper by helper, where a found
+  effect reads as well as the bound, not as a sweep.
+
+## C128. Tier 4: the listing's words compiled by the hand machine's routines (2026-10-16)
+
+Fixpt's tier 4 (`fx-cells-fxjit-cellcc`) is `native.fx`, written in
+FX-26, the twin of its Rust `assemble_word`; but it compiles words for
+Fixpt's own hand machine (its registers, its state, its stacks growing
+down, its routines jumped into), given as parameters
+(`native-layout.fx`), and kayak's tier 2 runs on tier 1's stacks, growing
+up, and gives cells back (C126). So kayak's tier 4 does what
+`assemble_word` does, of kayak's machine: each cell of a word compiled to
+its routine's code in `hand.kfx`, the same code the machine runs, the
+dispatch between cells gone (`NEXT`'s step kept: the fuel counted per
+cell, so step limits and preemption fall where tier 1's do), the ip kept
+in step, so that compiled code and cells mix at any cell.
+- **Entering compiled code.** A compiled word's entry is `r-count + s`
+  for its number `s`, Fixpt's convention, which tier 1's `enter!` already
+  takes as `docol`. A call, a return, the machine's entry and a word
+  entered go on through `resumed!`: the word's table of where to resume
+  (by cell, the offset of its code, or 0), as Fixpt's machine's resume
+  tables; no code, the cell is interpreted.
+- **The code**: a jump to the machine's entry, the tables (data, before
+  the code, so that `adr` reaches them), the machine, the words. Each word
+  gives back through its own stubs, near (a conditional branch reaches a
+  megabyte), and words of more than 4,000 cells are not compiled. Labels
+  are placed in a flat array, no longer looked up in a list.
+- `kayak-cells --compiled`; `cells-programs.py` runs every program so,
+  under `--gc-stress`, and for tasks with a slice of two.
+- **Results.** All 326 agree compiled, plain, under `--gc-stress`, and
+  for tasks with a slice of two. Fixpt's benchmarks, user seconds, tier 2
+  then tier 4: `captures` 0.02, 0.02; `closures` 0.09, 0.07; `fib` 0.02,
+  0.01; `helpers` 0.12, 0.09; `lists-region` 0.07, 0.05; `lists` 0.06,
+  0.05; `loop` 0.09, 0.06; `tak` 0.01, 0.00. Fixpt measured its tier 4
+  likewise a little faster than its tier 2 (fib 14 ms, 17): what is left
+  is each cell's work, the operands still read from the word; register
+  code (tier 5) is where the next factor is.

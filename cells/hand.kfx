@@ -84,7 +84,7 @@
 (define ran-out i64 2)
 
 "Code: instructions, and jumps to labels, placed when every label is."
-(define-datatype item (ins int) (jump int int int) (label-here int))
+(define-datatype item (ins int) (jump int int int) (label-here int) (offset-of int))
 (define j-b int 0)
 (define j-cond int 1)
 (define j-cbz int 2)
@@ -92,6 +92,8 @@
 (define j-cbnz int 4)
 
 (define hand-items (ref (listof item @c) @c) (new nil))
+"Data, placed before the code: 8 bytes an entry."
+(define hand-data (ref (listof item @c) @c) (new nil))
 (define hand-labels (ref int @c) (new 0))
 (define e! (->* (int) unit) (lambda (w) (set hand-items (cons (ins w) (get hand-items)))))
 (define label! (->* () int) (lambda () (let ((l (get hand-labels))) (begin (set hand-labels (+ l 1)) l))))
@@ -100,6 +102,8 @@
 (define bc! (->* (int int) unit) (lambda (c l) (set hand-items (cons (jump j-cond c l) (get hand-items)))))
 (define cbz! (->* (int int) unit) (lambda (r l) (set hand-items (cons (jump j-cbz r l) (get hand-items)))))
 (define adr! (->* (int int) unit) (lambda (r l) (set hand-items (cons (jump j-adr r l) (get hand-items)))))
+(define d! (->* (item) unit) (lambda (i) (set hand-data (cons (ins 0) (cons i (get hand-data))))))
+(define data-label! (->* (int) unit) (lambda (l) (set hand-data (cons (label-here l) (get hand-data)))))
 
 "`adr xd, label`, which `arm64.fx` has not: a byte offset of 21 bits."
 (define arm-adr (->* (int int) int)
@@ -108,37 +112,34 @@
       (+ 268435456 (+ (* (modulo v 4) 536870912) (+ (* (quotient v 4) 32) d))))))
 
 (define-rec
-  (hand-placed (->* ((listof item @c) int (listof (pairof int int @c) @c)) (listof (pairof int int @c) @c))
-    (lambda (xs at acc)
-      "Each label with where it is, in instructions."
-      (if (null? xs)
-          acc
-          (tagcase (car xs)
-            (ins (w) (hand-placed (cdr xs) (+ at 1) acc))
-            (jump (k a l) (hand-placed (cdr xs) (+ at 1) acc))
-            (label-here (l) (hand-placed (cdr xs) at (cons (cons l at) acc))))))))
-
-(define-rec
-  (hand-where (->* ((listof (pairof int int @c) @c) int) int)
-    (lambda (ls l) (cond ((null? ls) -1) ((= (car (car ls)) l) (cdr (car ls))) (else (hand-where (cdr ls) l))))))
-
-(define-rec
-  (hand-encoded (->* ((listof item @c) int (listof (pairof int int @c) @c)) (listof int @c))
+  (placed! (->* ((listof item @c) int (flatarrayof i64 @c)) int)
     (lambda (xs at ls)
-      "The instructions, each jump to where its label is."
+      "Each label's place, in instructions, in `ls`; how many there are."
       (if (null? xs)
-          nil
+          at
           (tagcase (car xs)
-            (ins (w) (cons w (hand-encoded (cdr xs) (+ at 1) ls)))
-            (jump (k a l)
-              (let ((d (- (hand-where ls l) at)))
-                (cons (cond ((= k j-b) ((with a64 arm-b) d))
-                            ((= k j-cond) ((with a64 arm-b-cond) a d))
-                            ((= k j-cbz) ((with a64 arm-cbz) a d))
-                            ((= k j-cbnz) ((with a64 arm-cbnz) a d))
-                            (else (arm-adr a (* 4 d))))
-                      (hand-encoded (cdr xs) (+ at 1) ls))))
-            (label-here (l) (hand-encoded (cdr xs) at ls)))))))
+            (ins (w) (placed! (cdr xs) (+ at 1) ls))
+            (jump (k a l) (placed! (cdr xs) (+ at 1) ls))
+            (offset-of (l) (placed! (cdr xs) (+ at 1) ls))
+            (label-here (l) (begin (flatarray-set-i64! ls (int->i64 l) (int->i64 at)) (placed! (cdr xs) at ls))))))))
+
+(define where (->* ((flatarrayof i64 @c) int) int) (lambda (ls l) (i64->int (flatarray-ref-i64 ls (int->i64 l)))))
+
+(define encoded (->* (item int (flatarrayof i64 @c)) int)
+  (lambda (x at ls)
+    "Item `x`, at `at`, encoded; a jump to where its label is, an offset
+     its label's in bytes."
+    (tagcase x
+      (ins (w) w)
+      (jump (k a l)
+        (let ((d (- (where ls l) at)))
+          (cond ((= k j-b) ((with a64 arm-b) d))
+                ((= k j-cond) ((with a64 arm-b-cond) a d))
+                ((= k j-cbz) ((with a64 arm-cbz) a d))
+                ((= k j-cbnz) ((with a64 arm-cbnz) a d))
+                (else (arm-adr a (* 4 d))))))
+      (offset-of (l) (* 4 (where ls l)))
+      (label-here (l) 0))))
 
 "Instructions, by `arm64.fx`'s encoders."
 (define ldr! (->* (int int int) unit) (lambda (t n o) (e! ((with a64 arm-ldr) t n o))))
@@ -173,6 +174,7 @@
   (lambda (d n sh) (+ 3544186880 (+ (* (modulo (- 64 sh) 64) 65536) (+ (* (- 63 sh) 1024) (+ (* n 32) d))))))
 (define lsl! (->* (int int int) unit) (lambda (d n sh) (e! (arm-lsl d n sh))))
 (define ret! (->* () unit) (lambda () (e! (with a64 arm-ret))))
+(define ldr-reg! (->* (int int int) unit) (lambda (t n m) (e! ((with a64 arm-ldr-reg) t n m))))
 
 (define times8! (->* (int) unit)
   (lambda (r) "`r` times 8." (begin (add! r r r) (add! r r r) (add! r r r))))
@@ -183,9 +185,20 @@
 (define l-give-pre (ref int @c) (new 0))
 (define l-ran-out (ref int @c) (new 0))
 (define l-pop-return (ref int @c) (new 0))
+(define l-resume (ref int @c) (new 0))
+
+"Compiling a word (tier 4, C128): the label of the next cell's code, and
+ of a branch's target's; -1 in the machine, or for a target not compiled."
+(define h-cont (ref int @c) (new -1))
+(define h-target (ref int @c) (new -1))
 
 (define give-if! (->* (int) unit) (lambda (c) "Give the cell back if `c`." (bc! c (get l-give))))
-(define next! (->* () unit) (lambda () (b! (get l-next))))
+(define next! (->* () unit)
+  (lambda () "On to the next cell." (b! (if (< (get h-cont) 0) (get l-next) (get h-cont)))))
+(define taken! (->* () unit)
+  (lambda () "On to a branch's target, the ip moved to it." (b! (if (< (get h-target) 0) (get l-next) (get h-target)))))
+(define resume! (->* () unit)
+  (lambda () "On to the cell at the ip, of `cur`: its code if it has some." (b! (get l-resume))))
 
 (define need! (->* (int) unit)
   (lambda (n)
@@ -258,7 +271,7 @@
         (ldur! x-cur x11 (- -4 (* 8 (i64->int f-word))))
         (mov! x-clo x10)
         (add! x-ip x-mem x-cur) (subi! x-ip x-ip (+ 4 (* 8 (i64->int f-cell0))))
-        (next!)))))
+        (resume!)))))
 
 (define fields-of! (->* (int) unit)
   (lambda (lowest)
@@ -351,12 +364,15 @@
 (define word-entered! (->* () unit)
   (lambda ()
     "The word in `x9`, a cell, entered as tier 1's `enter!` does, if its
-     entry is `docol`."
-    (begin
+     entry is `docol` or past the routines (compiled, C128)."
+    (let ((docol (label!)))
+      (begin
       (andl! x13 x-w 3) (cmpi! x13 4) (give-if! c-ne)
       (add! x11 x-mem x-w)
       (ldur! x10 x11 (- -4 (* 8 (i64->int f-entry))))
-      (movz! x13 (* 8 (i64->int r-docol))) (cmp! x10 x13) (give-if! c-ne)
+      (movz! x13 (* 8 (i64->int r-docol))) (cmp! x10 x13) (bc! c-eq docol)
+      (cmpi! x10 (* 8 (i64->int r-count))) (give-if! c-lo)
+      (bind! docol)
       (limits!)
       (andl! x13 x-cur 3) (cmpi! x13 4) (give-if! c-ne)
       (ldr! x16 x-st (at-st st-rs-end)) (cmp! x-rsp x16) (give-if! c-hs)
@@ -365,7 +381,7 @@
       (stp! x-cur x13 x-rsp 0) (stp! x14 x-clo x-rsp 16) (addi! x-rsp x-rsp 32)
       (mov! x-cur x-w)
       (subi! x-ip x11 (+ 4 (* 8 (i64->int f-cell0))))
-      (next!))))
+      (resume!)))))
 
 (define entered! (->* (int) unit)
   (lambda (n)
@@ -411,7 +427,7 @@
          (h-room!) (ldr-post! x13 x-ip -8) (add! x14 x-mem x13)
          (ldur! x15 x14 (- -4 (* 8 (i64->int f-value)))) (str-post! x15 x-dsp 8) (next!)))
       ((= n (i64->int r-branch))
-       (begin (limits!) (ldr-post! x13 x-ip -8) (sub! x-ip x-ip x13) (next!)))
+       (begin (limits!) (ldr-post! x13 x-ip -8) (sub! x-ip x-ip x13) (taken!)))
       ((= n (i64->int r-zbranch))
        (let ((taken (label!)))
          (begin
@@ -419,7 +435,7 @@
            (bc! c-eq taken)
            (subi! x-dsp x-dsp 8) (subi! x-ip x-ip 8) (next!)
            (bind! taken)
-           (limits!) (subi! x-dsp x-dsp 8) (ldr-post! x13 x-ip -8) (sub! x-ip x-ip x13) (next!))))
+           (limits!) (subi! x-dsp x-dsp 8) (ldr-post! x13 x-ip -8) (sub! x-ip x-ip x13) (taken!))))
       ((or (= n (i64->int r-call)) (= n (i64->int r-tcall)))
        (called! #f))
       ((or (= n (i64->int r-tailcall)) (= n (i64->int r-ttailcall)))
@@ -493,7 +509,7 @@
       (ldr! x14 x-st (at-st st-dsp)) (times8! x14) (add! x-dsp x-dsb x14)
       (ldr! x14 x-st (at-st st-rsp)) (times8! x14) (add! x-rsp x13 x14)
       (ldr! x-fuel x-st (at-st st-fuel))
-      (next!))))
+      (resume!))))
 
 (define leave! (->* (i64) unit)
   (lambda (why)
@@ -511,6 +527,32 @@
       (ldp! 27 28 31 80) (ldp! 25 26 31 64) (ldp! 23 24 31 48) (ldp! 21 22 31 32) (ldp! 19 20 31 16) (ldp-post! 29 30 31 96)
       (ret!))))
 
+"Where the code starts, where the machine is entered, and where the
+ table of the compiled words' tables of where to resume is (C128)."
+(define l-start (ref int @c) (new 0))
+(define l-entry (ref int @c) (new 0))
+(define l-words (ref int @c) (new 0))
+
+(define resumed! (->* () unit)
+  (lambda ()
+    "Going on at the ip, a cell of `cur`'s: its code, if `cur` was compiled
+     (its entry `r-count + s`, word `s`) and has code for that cell, else
+     the cell interpreted (`NEXT`). Word `s`'s table of where to resume is
+     at the offset that the table at `l-words` has for `s`: its length,
+     times 8, then for each cell `k` its code's offset, or 0."
+    (begin
+      (bind! (get l-resume))
+      (andl! x13 x-cur 3) (cmpi! x13 4) (bc! c-ne (get l-next))
+      (add! x11 x-mem x-cur) (ldur! x10 x11 (- -4 (* 8 (i64->int f-entry))))
+      (cmpi! x10 (* 8 (i64->int r-count))) (bc! c-lo (get l-next))
+      (subi! x10 x10 (* 8 (i64->int r-count)))
+      (adr! x16 (get l-words)) (ldr-reg! x14 x16 x10)
+      (adr! x16 (get l-start)) (add! x16 x16 x14)
+      (subi! x15 x11 4) (sub! x15 x15 x-ip)
+      (ldr! x14 x16 0) (cmp! x15 x14) (bc! c-hs (get l-next))
+      (add! x16 x16 x15) (ldr! x14 x16 8) (cbz! x14 (get l-next))
+      (adr! x16 (get l-start)) (add! x16 x16 x14) (br! x16))))
+
 "A prompt's and a mark's entries begin with these (machine.kfx's
  `prompt-mark`, `mark-mark`)."
 (define prompt-mark-word i64 51)
@@ -524,7 +566,10 @@
       (begin
         (set hand-labels (+ base (i64->int r-count)))
         (set l-next (label!)) (set l-give (label!)) (set l-give-pre (label!)) (set l-ran-out (label!)) (set l-pop-return (label!))
+        (set l-resume (label!))
+        (bind! (get l-entry))
         (entry!)
+        (resumed!)
         ;; NEXT: the cell, as tier 1's `run!` takes it: none if out of fuel
         ;; (tier 1 then polls or stops), else one step's fuel spent.
         (bind! (get l-next))
@@ -561,12 +606,130 @@
         (ldur! x14 x-rsp -24) (ldur! x15 x-rsp -16) (ldur! x-clo x-rsp -8) (subi! x-rsp x-rsp 32)
         (add! x-ip x-mem x-cur) (subi! x-ip x-ip 4) (sub! x-ip x-ip x14)
         (add! x-fp x-dsb x15)
-        (next!)
+        (resume!)
         (bind! skip)
         (subi! x-rsp x-rsp 32) (b! loop)
         (bind! table)
         (table! 0 base)
         (routines! 0 base)))))
+
+"Tier 4 (C128): each of the listing's words compiled, cell by cell, to
+ its routine's code here, the dispatch between cells gone, the ip kept in
+ step, so that code and cells mix: a call, a return or an entry goes to
+ a cell's code if it has some (`resumed!`), else interprets it. As
+ Fixpt's `assemble_word`, of its hand machine's routines (Fixpt's
+ `native.fx` compiles for Fixpt's own machine, its stacks and registers,
+ not this one's)."
+(define hand-compiled (ref bool @c) (new #f))
+(define words-compiled (ref int @c) (new 0))
+"Longer words are not compiled: their branches' reach (a megabyte)."
+(define compiled-cells-most i64 4000)
+
+(define-rec
+  (cells-in (->* (i64 i64) i64)
+    (lambda (w k) "Word `w`'s cells from `k`: how many." (if (field-ok? w k) (cells-in w (i64+ k 1)) (i64- k f-cell0)))))
+
+(define-rec
+  (starts! (->* (i64 i64 i64 (flatarrayof i64 @c)) unit)
+    (lambda (w i n at)
+      "Which of `w`'s cells from `i` start one (a routine's operands do
+       not): 1 in `at`, by cell."
+      (if (i64>= i n)
+          #u
+          (let ((c (slot-of w (i64+ f-cell0 i))))
+            (begin
+              (flatarray-set-i64! at i 1)
+              (starts! w (if (and (is-fixnum? c) (i64>= (fix-val c) 0) (i64< (fix-val c) r-count))
+                             (i64+ i (i64+ 1 (operand-count (fix-val c))))
+                             (i64+ i 1))
+                       n at)))))))
+
+(define-rec
+  (next-start (->* ((flatarrayof i64 @c) i64 i64) i64)
+    (lambda (at i n) (cond ((i64>= i n) n) ((i64= (flatarray-ref-i64 at i) 1) i) (else (next-start at (i64+ i 1) n))))))
+
+(define-rec
+  (cells-compiled! (->* (i64 i64 i64 (flatarrayof i64 @c) int) unit)
+    (lambda (w i n at base)
+      "Cell `i` on of word `w`, of `n`, each start's code at label `base +
+       i`: `NEXT`'s step, then its routine with the next cell's code and a
+       branch's target's for its `NEXT`; a word, entered."
+      (if (i64>= i n)
+          #u
+          (if (not (i64= (flatarray-ref-i64 at i) 1))
+              (cells-compiled! w (i64+ i 1) n at base)
+              (let ((c (slot-of w (i64+ f-cell0 i))) (nx (next-start at (i64+ i 1) n)))
+                (begin
+                  (bind! (+ base (i64->int i)))
+                  (mov! x-cell x-ip) (cbz! x-fuel (get l-give-pre)) (subi! x-fuel x-fuel 1) (ldr-post! x-w x-ip -8)
+                  (set h-cont (+ base (i64->int nx)))
+                  (set h-target -1)
+                  (cond ((not (is-fixnum? c)) (word-entered!))
+                        ((and (i64>= (fix-val c) 0) (i64< (fix-val c) r-count))
+                         (begin
+                           (if (or (i64= (fix-val c) r-branch) (i64= (fix-val c) r-zbranch))
+                               (let ((t (i64+ i (i64+ 2 (fix-val (slot-of w (i64+ f-cell0 (i64+ i 1))))))))
+                                 (if (and (i64>= t 0) (i64< t n) (i64= (flatarray-ref-i64 at t) 1))
+                                     (set h-target (+ base (i64->int t)))
+                                     #u))
+                               #u)
+                           (entered! (i64->int (fix-val c)))))
+                        (else (b! (get l-give))))
+                  (cells-compiled! w nx n at base))))))))
+
+(define-rec
+  (resume-table! (->* ((flatarrayof i64 @c) int i64 i64) unit)
+    (lambda (at base n k)
+      "A word's table of where to resume, from cell `k`: the offset of its
+       code, if it starts one, else 0."
+      (if (i64>= k (i64+ f-cell0 n))
+          #u
+          (begin
+            (if (and (i64>= k f-cell0) (i64= (flatarray-ref-i64 at (i64- k f-cell0)) 1))
+                (d! (offset-of (+ base (i64->int (i64- k f-cell0)))))
+                (d! (ins 0)))
+            (resume-table! at base n (i64+ k 1)))))))
+
+(define word-compiled! (->* (i64 int int) unit)
+  (lambda (w n-cells rt)
+    "Word `w` compiled; `rt` the label of its table of where to resume."
+    (let* ((n (int->i64 n-cells))
+           (at (the (flatarrayof i64 @c) (make-flatarray-i64 (i64+ n 1) 0)))
+           (base (get hand-labels))
+           (give (+ base (+ n-cells 1))) (give-pre (+ base (+ n-cells 2)))
+           (machine-give (get l-give)) (machine-give-pre (get l-give-pre)))
+      (begin
+          (set hand-labels (+ give-pre 1))
+          (starts! w 0 n at)
+          (set l-give give) (set l-give-pre give-pre)
+          (cells-compiled! w 0 n at base)
+          (bind! (+ base n-cells)) (b! (get l-next))
+          ;; Its own ways to give back, near.
+          (bind! give) (addi! x-fuel x-fuel 1)
+          (bind! give-pre) (b! machine-give-pre)
+          (set l-give machine-give) (set l-give-pre machine-give-pre)
+          (set h-cont -1) (set h-target -1)
+          (data-label! rt)
+          (d! (ins (* 8 (i64->int (i64+ f-cell0 n)))))
+          (resume-table! at base n 0)))))
+
+(define-rec
+  (words-compiled! (->* ((listof named @c) int (listof int @c)) (listof int @c))
+    (lambda (ws s rts)
+      "Each of the listing's words whose entry is `docol`, compiled, word
+       `s` on; its entry made `r-count + s`. Their tables' labels, the last
+       first."
+      (if (null? ws)
+          rts
+          (let ((w (tagcase (car ws) (named (m v) v))))
+            (if (and (is-kind? w k-code) (i64= (fix-val (slot-of w f-entry)) r-docol)
+                     (i64<= (cells-in w f-cell0) compiled-cells-most))
+                (let ((rt (label!)))
+                  (begin
+                    (word-compiled! w (i64->int (cells-in w f-cell0)) rt)
+                    (slot-set! w f-entry (fix (i64+ r-count (int->i64 s))))
+                    (words-compiled! (cdr ws) (+ s 1) (cons rt rts))))
+                (words-compiled! (cdr ws) s rts)))))))
 
 (define-type hand-code
   (subr (conv native) (maxeff (read @c) (write @c))
@@ -581,31 +744,55 @@
            (bloblet-set-byte! b (+ at 3) (quotient w 16777216)))))
 
 (define-rec
-  (all-put! (->* ((bloblet (fields) @heap) (listof int @c) int) int)
-    (lambda (b ws at)
-      "Each instruction placed; the first that did not encode, as its place,
-       or -1."
-      (cond ((null? ws) -1)
-            ((< (car ws) 0) (quotient at 4))
-            (else (begin (put4 b at (car ws)) (all-put! b (cdr ws) (+ at 4))))))))
+  (all-put! (->* ((bloblet (fields) @heap) (listof item @c) int (flatarrayof i64 @c)) int)
+    (lambda (b xs at ls)
+      "Each item placed, at instruction `at` on; the first that did not
+       encode, as its place, or -1."
+      (if (null? xs)
+          -1
+          (tagcase (car xs)
+            (label-here (l) (all-put! b (cdr xs) at ls))
+            (else x
+              (let ((w (encoded x at ls)))
+                (if (< w 0)
+                    at
+                    (begin (put4 b (* 4 at) w) (all-put! b (cdr xs) (+ at 1) ls))))))))))
 
 (define-rec
-  (count-of (->* ((listof int @c) int) int) (lambda (ws n) (if (null? ws) n (count-of (cdr ws) (+ n 1))))))
+  (words-table (->* ((listof int @c) (listof item @c)) (listof item @c))
+    (lambda (rts acc)
+      "The table of the words' tables, word 0's first (`rts` the last first)."
+      (if (null? rts) acc (words-table (cdr rts) (cons (offset-of (car rts)) (cons (ins 0) acc)))))))
+
+(define-rec
+  (count-of (->* ((listof int @c) int) int) (lambda (xs n) (if (null? xs) n (count-of (cdr xs) (+ n 1))))))
 
 (define hand-made (ref (listof hand-code @c) @c) (new nil))
 
 (define hand-code! (->* () (sumof (made hand-code) (failed string)))
   (lambda ()
-    "The machine, made once: emitted, encoded, sealed."
+    "The machine, made once: emitted, with the listing's words compiled
+     (`--compiled`), encoded, sealed. First a jump to its entry, then the
+     data, then the code."
     (if (not (null? (get hand-made)))
         (sum made (car (get hand-made)))
         (begin
-          (set hand-items nil) (set hand-labels 0)
+          (set hand-items nil) (set hand-data nil) (set hand-labels 0)
+          (set l-start (label!)) (set l-entry (label!)) (set l-words (label!))
+          (set h-cont -1) (set h-target -1)
           (machine!)
-          (let* ((its (the (listof item @c) (reverse (get hand-items))))
-                 (ws (hand-encoded its 0 (hand-placed its 0 nil)))
-                 (b (the (bloblet (fields) @heap) (make-bloblet (* 4 (count-of ws 0)))))
-                 (bad (all-put! b ws 0)))
+          (let* ((rts (if (get hand-compiled) (words-compiled! (get words) 0 nil) nil))
+                 (u (set words-compiled (count-of rts 0)))
+                 (its (the (listof item @c)
+                        (cons (label-here (get l-start))
+                          (cons (jump j-b 0 (get l-entry))
+                            (cons (ins 0)
+                              (cons (label-here (get l-words))
+                                (append (words-table rts nil) (append (reverse (get hand-data)) (reverse (get hand-items))))))))))
+                 (ls (the (flatarrayof i64 @c) (make-flatarray-i64 (int->i64 (get hand-labels)) 0)))
+                 (count (placed! its 0 ls))
+                 (b (the (bloblet (fields) @heap) (make-bloblet (* 4 count))))
+                 (bad (all-put! b its 0 ls)))
             (if (>= bad 0)
                 (sum failed (string-append "tier 2: instruction " (string-append (int->string bad) " does not encode")))
                 (let ((p (the hand-code (native-procedure (seal-code b)))))
