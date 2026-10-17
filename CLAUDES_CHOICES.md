@@ -3460,3 +3460,50 @@ to be the reference (PLAN §9), and a retired Fixpt answers nothing.
 - **Not chosen**: the answers in one file (every pin's change one huge
   diff); hashes as names alone (a person could not find a program's);
   only the programs, still asking a live Fixpt (no check without one).
+
+## C133. kayak's own code generator: FX-26 to cellular words (2026-10-17)
+
+The user's (2026-10-17): "move ahead with our own FX-26 to cells
+generator". Until now the tiers ran Fixpt's words, read from its listings;
+kayak made none of its own.
+- **Chosen: Fixpt's compiler written in FX-26, ported to KFX** (K7), in
+  `fx26/cg.kfx`, decision for decision: `compile.fx`, `compile-exps.fx`,
+  `compile-state.fx`, `compile-lift.fx`, `compile-programs.fx`, as far as
+  they go so far. Fixpt keeps two compilers that make the same words, one
+  in Rust and this one; following it means kayak's words can be compared
+  with Fixpt's word for word, not only by the answers they give.
+- **Its input**: our checker's trees, made Fixpt's parser's (`cx`, its
+  `exp`), with its parser's expansions (`let*`, `cond`, `and`, `or`,
+  quotes, integers past a fixnum as arithmetic, datatypes' constructors):
+  each node keeps where it starts, which names a lambda's word
+  (`outer/inner@N`). Not the engine's IR (C58), which drops positions and
+  the names `let` binds, both of which word names show. The checker's
+  facts give what types decide: an `extract`'s field (`extract-index`,
+  noted already).
+- **Its output**: the listing, as `fixpt compile --full-literals` writes
+  one (`disasm.rs`, `literal.rs`), which kayak-cells reads: `kayak-fx26
+  --cells FILE`. FX-26's unit is the interned symbol `#u` on the cellular
+  machine, as Fixpt's compilers make it (`cellular.rs`'s `unit`), so
+  `|#u|`.
+- **Fixpt's `standard.fx`**, its table of each standard operation's
+  runtime primitive, which Fixpt generates, is a built-in module
+  (`scripts/built-in.py`), loaded as it is: KFX accepts it unchanged.
+- **The check**: `cells-programs.py --ours`, Fixpt's programs (C132) with
+  our words, run every way Fixpt's are (tiers 1, 2, 4, 5, the collector
+  stressed, tasks sliced), their answers Fixpt's; those that agree kept
+  in `tests/cellgen-passing`, and how many of them are Fixpt's words
+  exactly counted. A word's register code (its twin) is left out of the
+  comparison: not made yet.
+- **First results**: 77 programs agree, none differ, 68 of them Fixpt's
+  words exactly; `bench/fib.fx` runs on tier 4 from our own words. Most
+  programs not compiled are our checker's refusals (TODO §30); the
+  generator's own gaps, by count: modules, `letrena` and regions,
+  prompts, bloblets, `typecase`, `define-generative`, floats, `vlambda`,
+  `case`, `quasiquote`.
+- **Not yet, and where the words differ**: Fixpt's middle phase
+  (`compile-plan.fx`: inlining, specialization, `map-add@lambda@730`),
+  lambda lifting (`compile-lift.fx`), register code (`regcode*.fx`), the
+  redefinition of a global at a compatible type (Fixpt keeps the global),
+  the checker's conversions (`%fx26-i64->int`, conventions), sharing in
+  literals (`#n=`). A program defining `cons` or `nil` would shadow what a
+  quote's rewrite means (Fixpt writes `(with #%fx cons)`).

@@ -13,7 +13,7 @@
  The checker is the compiler's (kfx/check*.kfx): what it accepts, the
  engine runs, for now."
 
-(define-effect driving (maxeff eng (io args) (io fs-read) (io stdout) (io stderr) (io exit) (alloc @io) (read @io)))
+(define-effect driving (maxeff eng gen (io args) (io fs-read) (io stdout) (io stderr) (io exit) (alloc @io) (read @io)))
 
 (define fail-with (subr (maxeff (io stderr) (io exit)) (string int) void)
   (lambda (message status)
@@ -125,6 +125,8 @@
                                                string written
        kayak-fx26 --run FILE ... [-- ARG ...]  the files, then (main) given the
                                                ARGs, its low byte the status
+       kayak-fx26 --cells FILE ...             the program's cellular words,
+                                               as `fixpt compile` lists its
        kayak-fx26 --keys FILE                  a REPL session from a script of
                                                keys (tests/repl/)
        kayak-fx26 --help                       this
@@ -149,6 +151,11 @@ and where the time went.
          (begin (say usage) 0))
         ((null? paths)
          (begin (write-err usage) (exit 2) 2))
+        ;; The program's cellular words, as Fixpt lists its (C133).
+        ((string=? (car as) "--cells")
+         (let* ((forms (read-files (cdr as))) (checked (check-program forms)))
+           (tagcase checked
+             (verdict (found fs) (begin (compile-cells forms fs) (say (cells-listing)) 0)))))
         (else
           (let* ((forms (read-files paths))
                  (checked (check-program forms))

@@ -1,0 +1,1257 @@
+"cg.kfx: an FX-26 program, checked, compiled to cellular words (C133), as
+ Fixpt's compiler written in FX-26 compiles one (its `compile.fx` and the
+ files after it), decision for decision, so that the words are the ones
+ Fixpt's listing shows: `kayak-fx26 --cells FILE` writes them as
+ `fixpt compile --full-literals` writes its, and kayak-cells runs them.
+
+ The program is first made Fixpt's parser's trees (`cx`, its `exp`), its
+ derived forms expanded as that parser expands them (`parser-exps.fx`),
+ each node with where it starts, which names a lambda's word. The
+ compiler then follows `compile-exps.fx`: a lambda's arguments are its
+ frame on the data stack, a `let`'s values are pushed onto the frame and
+ are slots of it, closures are flat, globals are cells, and a call in tail
+ position is a tail call. Not yet: Fixpt's middle phase (its plans,
+ inlining, specialization), lambda lifting, register code (the words'
+ twins), modules, regions, bloblets, prompts.
+ fixpt-source: crates/fixpt-fx26/src/compile.fx@bb3f570
+ fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@bb3f570
+ fixpt-source: crates/fixpt-fx26/src/compile-state.fx@bb3f570
+ fixpt-source: crates/fixpt-fx26/src/compile-lift.fx@bb3f570
+ fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@bb3f570
+ fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@bb3f570"
+
+"The generator's data lives at `@g`."
+(define-effect gen (maxeff (read @globals) spin (read @g) (write @g) (alloc @g)))
+
+"Fixpt's table of the runtime primitive each standard operation runs as."
+(define standard (load-module "fx26:standard.fx"))
+
+;;; ------------------------------------------------------------ the trees
+
+"Fixpt's `exp`, each node with where it starts (its `a`): a variable, the
+ literals, a lambda of its parameters' names, an application, `if`,
+ `let`, `letrec`, `begin`, a product of its fields, an `extract` of the
+ field the checker found (`extract-index`), a sum, a `tagcase`. Type
+ abstractions and ascriptions compile to nothing, so are not kept."
+(define-datatype cx
+  (x-var string i64)
+  (x-int int i64)
+  (x-bool bool i64)
+  (x-str string i64)
+  (x-char char i64)
+  (x-sym string i64)
+  (x-unit i64)
+  (x-lambda strings cx i64)
+  (x-app cx (listof cx acyclic) i64)
+  (x-if cx cx cx i64)
+  (x-let (listof cbind acyclic) cx i64)
+  (x-letrec (listof cbind acyclic) cx i64)
+  (x-begin (listof cx acyclic) i64)
+  (x-product (listof cbind acyclic) i64)
+  (x-extract cx i64 i64)
+  (x-sum string cx i64)
+  (x-tagcase cx (listof carm acyclic) (listof cbind acyclic) i64))
+
+"A binding: a name and its expression (a `let`'s, a `letrec`'s, a
+ product's field, a `tagcase`'s `else`)."
+(define-datatype cbind (cbind string cx))
+
+"A `tagcase` arm: its tag, whether it takes a product apart, the names it
+ binds, its body."
+(define-datatype carm (carm string bool strings cx))
+
+(define-type cxs (listof cx acyclic))
+(define-type cbinds (listof cbind acyclic))
+
+"A top-level form: a definition, with whether it is written with a type;
+ a `define-rec`; an expression; or a form that makes no code."
+(define-datatype ctop
+  (t-define string bool cx)
+  (t-define-rec cbinds)
+  (t-exp cx)
+  (t-none))
+
+(define cx-start (subr kfx (cx) i64)
+  (lambda (x)
+    (tagcase x
+      (x-var (n a) a) (x-int (n a) a) (x-bool (v a) a) (x-str (s a) a) (x-char (c a) a)
+      (x-sym (s a) a) (x-unit (a) a) (x-lambda (ps b a) a) (x-app (f xs a) a)
+      (x-if (t y n a) a) (x-let (bs b a) a) (x-letrec (bs b a) a) (x-begin (xs a) a)
+      (x-product (fs a) a) (x-extract (p i a) a) (x-sum (t v a) a) (x-tagcase (s arms els a) a))))
+
+"The checker's facts, for the program being compiled."
+(define cg-facts (ref facts @g) (new nil))
+
+(define-rec
+  (fact-text (subr kfx (facts string i64 string) string)
+    (lambda (fs file pos prefix)
+      "The newest fact at `file` and `pos` beginning `prefix`, past it; or
+       the empty string."
+      (cond ((null? fs) "")
+            ((tagcase (car fs)
+               (fact (f p what)
+                 (and (string=? f file) (i64= p pos) (i64>= (string-length-i64 what) (string-length-i64 prefix))
+                      (string=? (substring what 0 (string-length prefix)) prefix))))
+             (tagcase (car fs) (fact (f p what) (substring what (string-length prefix) (string-length what)))))
+            (else (fact-text (cdr fs) file pos prefix))))))
+
+(define cg-fail (subr kfx (string) void)
+  (lambda (why) (error (string-append "kayak-fx26: cells: " why))))
+
+(define-rec
+  (digits-i64 (subr kfx (chars i64) i64)
+    (lambda (cs n) (if (null? cs) n (digits-i64 (cdr cs) (i64+ (i64* n 10) (i64- (char->i64 (car cs)) 48)))))))
+
+;;; ------------------------------------------------- Fixpt's parser's trees
+
+(define cg-fixnum? (subr kfx (int) bool)
+  (lambda (n) (and (<= n 1152921504606846975) (>= n -1152921504606846976))))
+
+(define call2 (subr kfx (string cx cx i64) cx) (lambda (f x y a) (x-app (x-var f a) (list x y) a)))
+
+"An integer literal past a fixnum, as arithmetic on fixnums: `(- 0 x)` for
+ a negative; else, in base 10⁹, `(+ (* rest 1000000000) last)`, `rest`
+ again so until it is a fixnum (Fixpt's `big-literal`)."
+(define-rec
+  (big-peel (subr kfx (int (listof int acyclic) i64) cx)
+    (lambda (n limbs a)
+      (if (cg-fixnum? n)
+          (big-build (x-int n a) limbs a)
+          (big-peel (quotient n 1000000000) (cons (remainder n 1000000000) limbs) a))))
+  (big-build (subr kfx (cx (listof int acyclic) i64) cx)
+    (lambda (acc limbs a)
+      (if (null? limbs)
+          acc
+          (big-build (call2 "+" (call2 "*" acc (x-int 1000000000 a) a) (x-int (car limbs) a) a) (cdr limbs) a)))))
+
+(define big-literal (subr kfx (int i64) cx)
+  (lambda (v a)
+    (cond ((cg-fixnum? v) (x-int v a))
+          ((< v 0) (call2 "-" (x-int 0 a) (big-peel (- 0 v) nil a) a))
+          (else (big-peel v nil a)))))
+
+(define-rec
+  (parse-x (subr gen (sexp) cx)
+    (lambda (e)
+      (tagcase e
+        (num (k f p) (big-literal (i64->int k) p))
+        (big (text f p) (big-literal (big-int text) p))
+        (chr (c f p) (x-char c p))
+        (str (s f p) (x-str s p))
+        (real (x f p) (begin (cg-fail "not yet: a float") (x-unit p)))
+        (sym (n f p)
+          (cond ((string=? n "#t") (x-bool #t p))
+                ((string=? n "#f") (x-bool #f p))
+                ((string=? n "#u") (x-unit p))
+                (else (x-var n p))))
+        (lst (xs f l p)
+          (if (null? xs)
+              (begin (cg-fail "not an expression: ()") (x-unit p))
+              (parse-form (tagcase (car xs) (sym (n f2 p2) n) (else other "")) xs e f p))))))
+
+  (parse-xs (subr gen (sexps) cxs)
+    (lambda (es) (if (null? es) nil (cons (parse-x (car es)) (parse-xs (cdr es))))))
+
+  (parse-body (subr gen (sexps i64) cx)
+    (lambda (forms a)
+      "One or more expressions, an implicit `begin` where the form starts."
+      (if (null? (cdr forms)) (parse-x (car forms)) (x-begin (parse-xs forms) a))))
+
+  (parse-form (subr gen (string sexps sexp string i64) cx)
+    (lambda (h xs e f a)
+      (cond ((string=? h "lambda") (x-lambda (map binder-name (items (second xs))) (parse-body (cdr (cdr xs)) a) a))
+            ((string=? h "if") (x-if (parse-x (second xs)) (parse-x (car (cdr (cdr xs)))) (parse-x (car (cdr (cdr (cdr xs))))) a))
+            ((string=? h "let") (x-let (parse-binds (items (second xs))) (parse-body (cdr (cdr xs)) a) a))
+            ((string=? h "let*") (parse-let* (items (second xs)) (parse-body (cdr (cdr xs)) a)))
+            ((string=? h "letrec") (x-letrec (parse-typed-binds (items (second xs))) (parse-body (cdr (cdr xs)) a) a))
+            ((string=? h "begin") (parse-body (cdr xs) a))
+            ((string=? h "cond") (parse-cond (cdr xs) a))
+            ((string=? h "and") (parse-and (cdr xs) a))
+            ((string=? h "or") (parse-or (cdr xs) a))
+            ((or (string=? h "the") (string=? h "convention")) (parse-x (car (cdr (cdr xs)))))
+            ((string=? h "plambda") (parse-body (cdr (cdr xs)) a))
+            ((string=? h "proj") (parse-x (second xs)))
+            ((string=? h "quote") (parse-quoted (second xs) a))
+            ((string=? h "product") (x-product (parse-fields (cdr xs)) a))
+            ((string=? h "extract")
+             (let ((k (fact-text (get cg-facts) f a "extract-index ")))
+               (if (string=? k "")
+                   (begin (cg-fail "an extract the checker did not see") (x-unit a))
+                   (x-extract (parse-x (second xs)) (digits-i64 (string-chars k) 0) a))))
+            ((string=? h "sum") (x-sum (label-of (second xs)) (parse-x (car (cdr (cdr xs)))) a))
+            ((string=? h "tagcase")
+             (x-tagcase (parse-x (second xs)) (parse-arms (cdr (cdr xs))) (parse-else (cdr (cdr xs))) a))
+            ((or (string=? h "letregion") (string=? h "letrena") (string=? h "letreap") (string=? h "rlambda")
+                 (string=? h "prompt") (string=? h "module") (string=? h "with") (string=? h "case")
+                 (string=? h "typecase") (string=? h "quasiquote") (string=? h "load-module") (string=? h "vlambda"))
+             (begin (cg-fail (string-append "not yet: " h)) (x-unit a)))
+            (else (x-app (parse-x (car xs)) (parse-xs (cdr xs)) a)))))
+
+  (parse-binds (subr gen (sexps) cbinds)
+    (lambda (bs)
+      (if (null? bs) nil
+          (cons (cbind (sym-name (car (items (car bs)))) (parse-x (second (items (car bs))))) (parse-binds (cdr bs))))))
+
+  (parse-typed-binds (subr gen (sexps) cbinds)
+    (lambda (bs)
+      "A `letrec`'s or `define-rec`'s bindings, `(name type expression)`."
+      (if (null? bs) nil
+          (cons (cbind (sym-name (car (items (car bs)))) (parse-x (car (cdr (cdr (items (car bs)))))))
+                (parse-typed-binds (cdr bs))))))
+
+  (parse-fields (subr gen (sexps) cbinds)
+    (lambda (fs)
+      "A product's fields, `(label expression)`, in order."
+      (if (null? fs) nil
+          (cons (cbind (label-of (car (items (car fs)))) (parse-x (second (items (car fs))))) (parse-fields (cdr fs))))))
+
+  (parse-let* (subr gen (sexps cx) cx)
+    (lambda (bs body)
+      "`let*`: nested one-binding `let`s, each where its binding starts."
+      (if (null? bs) body
+          (x-let (list (cbind (sym-name (car (items (car bs)))) (parse-x (second (items (car bs))))))
+                 (parse-let* (cdr bs) body) (datum-pos (car bs))))))
+
+  (parse-cond (subr gen (sexps i64) cx)
+    (lambda (clauses a)
+      "`cond`: nested `if`s, each where its clause starts."
+      (let* ((c (car clauses)) (parts (items c)))
+        (if (null? (cdr clauses))
+            (parse-body (cdr parts) (datum-pos c))
+            (x-if (parse-x (car parts)) (parse-body (cdr parts) (datum-pos c)) (parse-cond (cdr clauses) a) (datum-pos c))))))
+
+  (parse-and (subr gen (sexps i64) cx)
+    (lambda (xs a)
+      (cond ((null? xs) (x-bool #t a))
+            ((null? (cdr xs)) (parse-x (car xs)))
+            (else (let* ((x (parse-x (car xs))) (rest (parse-and (cdr xs) a))) (x-if x rest (x-bool #f a) a))))))
+
+  (parse-or (subr gen (sexps i64) cx)
+    (lambda (xs a)
+      (cond ((null? xs) (x-bool #f a))
+            ((null? (cdr xs)) (parse-x (car xs)))
+            (else (let* ((x (parse-x (car xs))) (rest (parse-or (cdr xs) a))) (x-if x (x-bool #t a) rest a))))))
+
+  (parse-quoted (subr gen (sexp i64) cx)
+    (lambda (d a)
+      "A quoted datum, as Fixpt's quote rewrite writes it: a symbol, an atom
+       as itself, a list of `cons` and `nil`."
+      (tagcase d
+        (sym (n f p) (cond ((string=? n "#t") (x-bool #t a)) ((string=? n "#f") (x-bool #f a)) (else (x-sym n a))))
+        (lst (ys f l p)
+          (if (null? ys) (x-var "nil" a)
+              (x-app (x-var "%quote" a) (list (quoted-list ys a)) a)))
+        (else other (parse-x d)))))
+
+  (quoted-list (subr gen (sexps i64) cx)
+    (lambda (ys a)
+      (if (null? ys) (x-var "nil" a)
+          (x-app (x-var "cons" a) (list (quoted-item (car ys) a) (quoted-list (cdr ys) a)) a))))
+
+  (quoted-item (subr gen (sexp i64) cx)
+    (lambda (d a)
+      (tagcase d
+        (sym (n f p) (cond ((string=? n "#t") (x-bool #t a)) ((string=? n "#f") (x-bool #f a)) (else (x-sym n a))))
+        (lst (ys f l p) (quoted-list ys a))
+        (else other (parse-x d)))))
+
+  (parse-arms (subr gen (sexps) (listof carm acyclic))
+    (lambda (arms)
+      "A `tagcase`'s arms before its `else`: `(tag name body …)` or
+       `(tag (name …) body …)`."
+      (if (or (null? arms) (head-is? (car arms) "else")) nil
+          (let* ((parts (items (car arms))) (b (second parts)))
+            (cons (tagcase b
+                    (lst (ns f l p) (carm (sym-name (car parts)) #t (map sym-name ns) (parse-body (cdr (cdr parts)) (datum-pos (car arms)))))
+                    (else other (carm (sym-name (car parts)) #f (list (sym-name b)) (parse-body (cdr (cdr parts)) (datum-pos (car arms))))))
+                  (parse-arms (cdr arms)))))))
+
+  (parse-else (subr gen (sexps) cbinds)
+    (lambda (arms)
+      (cond ((null? arms) nil)
+            ((head-is? (car arms) "else")
+             (let ((parts (items (car arms))))
+               (list (cbind (sym-name (second parts)) (parse-body (cdr (cdr parts)) (datum-pos (car arms)))))))
+            (else (parse-else (cdr arms)))))))
+
+"A datatype's constructors, as Fixpt's parser expands `define-datatype`:
+ each `(define tag type (lambda (x1 …) (sum tag (product (1 x1) …))))`, the
+ lambda where the form starts, its body where the variant does."
+(define-rec
+  (dt-vars (subr kfx (i64 i64) strings)
+    (lambda (i n) (if (i64> i n) nil (cons (string-append "%x" (i64->string i)) (dt-vars (i64+ i 1) n))))))
+
+(define-rec
+  (dt-fields (subr kfx (strings i64 i64) cbinds)
+    (lambda (xs i a) (if (null? xs) nil (cons (cbind (i64->string i) (x-var (car xs) a)) (dt-fields (cdr xs) (i64+ i 1) a))))))
+
+(define-rec
+  (dt-constructors (subr kfx (sexps i64) (listof ctop acyclic))
+    (lambda (vs a)
+      (if (null? vs) nil
+          (let* ((parts (items (car vs))) (tag (sym-name (car parts))) (at (datum-pos (car vs)))
+                 (xs (dt-vars 1 (size (cdr parts)))))
+            (cons (t-define tag #t (x-lambda xs (x-sum tag (x-product (dt-fields xs 1 at) at) at) a))
+                  (dt-constructors (cdr vs) a)))))))
+
+(define parse-top (subr gen (sexp) (listof ctop acyclic))
+  (lambda (e)
+    (let ((h (tagcase e (lst (xs f l p) (if (null? xs) "" (tagcase (car xs) (sym (n f2 p2) n) (else other2 "")))) (else other ""))))
+      (cond ((or (string=? h "define") (string=? h "define*"))
+             (let ((xs (items e)))
+               (if (i64= (size xs) 3)
+                   (list (t-define (sym-name (second xs)) #f (parse-x (car (cdr (cdr xs))))))
+                   (list (t-define (sym-name (second xs)) #t (parse-x (car (cdr (cdr (cdr xs))))))))))
+            ((string=? h "define-rec") (list (t-define-rec (parse-typed-binds (cdr (items e))))))
+            ((or (string=? h "define-type") (string=? h "define-effect") (string=? h "define-convention")) nil)
+            ((string=? h "define-datatype") (dt-constructors (cdr (cdr (items e))) (datum-pos e)))
+            ((or (string=? h "define-generative") (string=? h "import") (string=? h "include"))
+             (begin (cg-fail (string-append "not yet: " h)) nil))
+            (else (list (t-exp (parse-x e))))))))
+
+;;; ------------------------------------------------------------- the code
+
+"A literal cell's value: as Fixpt's listing writes it (`literal.rs`)."
+(define-datatype lit
+  (l-int int)
+  (l-bool bool)
+  (l-unit)
+  (l-nil)
+  (l-str string)
+  (l-char char)
+  (l-sym string)
+  (l-pair lit lit)
+  (l-word string))
+
+"An instruction's operand: a number, a literal, a word (by its name), a
+ global (by its name), a runtime primitive (by its name)."
+(define-datatype opnd (o-int i64) (o-lit lit) (o-word string) (o-global string) (o-prim string))
+
+"One item of a word being built: an instruction (a routine and its
+ operands), a label, or a branch to one (Fixpt's `item`)."
+(define-datatype item
+  (it-ins string (listof opnd acyclic))
+  (it-label i64)
+  (it-branch i64)
+  (it-zbranch i64))
+
+(define-type citems (listof item acyclic))
+(define-type code (ref citems @g))
+
+"A word: its name and its items, labels resolved when it is written."
+(define-datatype word (word string citems))
+
+"The program's words, the newest first."
+(define cg-words (ref (listof word acyclic) @g) (new nil))
+(define cg-labels (ref i64 @g) (new 0))
+
+(define c-fresh (subr gen () i64)
+  (lambda () (let ((n (get cg-labels))) (begin (set cg-labels (i64+ n 1)) n))))
+
+(define c-emit (subr gen (code item) unit) (lambda (c i) (set c (cons i (get c)))))
+(define c-op (subr gen (code string) unit) (lambda (c r) (c-emit c (it-ins r nil))))
+(define c-op1 (subr gen (code string opnd) unit) (lambda (c r x) (c-emit c (it-ins r (list x)))))
+(define c-lit (subr gen (code lit) unit) (lambda (c x) (c-op1 c "lit" (o-lit x))))
+(define c-int (subr gen (code i64) unit) (lambda (c n) (c-lit c (l-int (i64->int n)))))
+
+"Field `k` of a bloblet whose type says it has one."
+(define c-field (subr gen (code i64) unit) (lambda (c k) (c-op1 c "field" (o-int k))))
+
+"Field `k` of the bloblet on top set to the value under it."
+(define c-field-set (subr gen (code i64) unit) (lambda (c k) (begin (c-int c k) (c-op c "field!"))))
+
+"A runtime primitive with `n` arguments."
+(define c-prim (subr gen (code string i64) unit)
+  (lambda (c name n) (c-emit c (it-ins "prim" (list (o-prim name) (o-int n))))))
+
+"Drop what a mutator left, and leave FX-26's unit value instead."
+(define c-unit-after (subr gen (code) unit) (lambda (c) (begin (c-op c "drop") (c-lit c (l-unit)))))
+
+"What is left when the value is in hand: `return` in tail position."
+(define c-done (subr gen (code bool) unit) (lambda (c tail) (if tail (c-op c "return") #u)))
+
+(define-rec
+  (c-drops (subr gen (code i64) unit)
+    (lambda (c k) (if (i64<= k 0) #u (begin (c-op c "drop") (c-drops c (i64- k 1)))))))
+
+"After a body whose value is on top of `n` values bound from `slot` up:
+ the value into `slot`, the others dropped. Nothing in tail position,
+ where `return` drops the whole frame."
+(define c-unbind (subr gen (code i64 i64 bool) unit)
+  (lambda (c slot n tail)
+    (if (or tail (i64= n 0)) #u (begin (c-op1 c "slot!" (o-int slot)) (c-drops c (i64- n 1))))))
+
+"A word assembled: made one of the program's, under `name`."
+(define c-assemble (subr gen (code string) string)
+  (lambda (c name)
+    (begin (set cg-words (cons (word name (reverse (get c))) (get cg-words))) name)))
+
+;;; ------------------------------------------------------------ the scope
+
+"Where a variable is (Fixpt's `loc`): a slot of the frame, a free value
+ of the closure, a global, a `letrec` sibling not made yet, to be in slot
+ `i`, or the procedure being compiled, only called in tail position, each
+ call a jump to its start."
+(define-datatype loc (at-slot i64) (at-free i64) (at-global string) (at-pending i64) (at-loop))
+
+(define-datatype centry (centry string loc))
+(define-type cenv (listof centry acyclic))
+(define-type found (listof loc acyclic))
+
+(define c-extend (subr kfx (string loc cenv) cenv) (lambda (n l e) (cons (centry n l) e)))
+
+(define-rec
+  (c-find (subr kfx (cenv string) found)
+    (lambda (e n)
+      (cond ((null? e) nil)
+            ((tagcase (car e) (centry (m l) (string=? m n))) (tagcase (car e) (centry (m l) (list l))))
+            (else (c-find (cdr e) n))))))
+
+"The globals defined so far, the newest first."
+(define cg-globals (ref strings @g) (new nil))
+
+"Where `n` is: in the locals, else in the globals; none means standard."
+(define c-where (subr gen (cenv string) found)
+  (lambda (e n)
+    (let ((l (c-find e n)))
+      (cond ((not (null? l)) l)
+            ((string-member? n (get cg-globals)) (list (at-global n)))
+            (else nil)))))
+
+(define c-load (subr gen (code loc) unit)
+  (lambda (c l)
+    (tagcase l
+      (at-slot (i) (c-op1 c "slot" (o-int i)))
+      (at-free (i) (c-op1 c "free" (o-int i)))
+      (at-global (g) (c-op1 c "global" (o-global g)))
+      (at-pending (i) (cg-fail "a letrec sibling not made yet is only captured"))
+      (at-loop () (cg-fail "a loop is only ever called, in tail position")))))
+
+(define c-loop? (subr kfx (loc) bool) (lambda (l) (tagcase l (at-loop () #t) (else y #f))))
+(define c-global? (subr kfx (loc) bool) (lambda (l) (tagcase l (at-global (g) #t) (else y #f))))
+
+;;; --------------------------------------------------------- free names
+
+(define-rec
+  (c-adjoin (subr kfx (strings string) strings)
+    (lambda (xs n) (if (string-member? n xs) xs (cons n xs)))))
+
+(define-rec
+  (c-bound-names (subr kfx (cbinds strings) strings)
+    (lambda (bs bound) (if (null? bs) bound (c-bound-names (cdr bs) (tagcase (car bs) (cbind (n x) (cons n bound))))))))
+
+(define c-bound-exps (subr kfx (cbinds) cxs)
+  (lambda (bs) (map (lambda ((b cbind)) (tagcase b (cbind (n x) x))) bs)))
+
+(define-rec
+  (c-names (subr kfx (strings strings) strings)
+    (lambda (ns bound) (if (null? ns) bound (c-names (cdr ns) (cons (car ns) bound))))))
+
+"The names free in `x`, not `bound`, onto `acc`, the newest first, in
+ Fixpt's order: what an expression's parts are walked in."
+(define-rec
+  (c-free-all (subr kfx (cxs strings strings) strings)
+    (lambda (es bound acc) (if (null? es) acc (c-free-all (cdr es) bound (c-free (car es) bound acc)))))
+  (c-free (subr kfx (cx strings strings) strings)
+    (lambda (x bound acc)
+      (tagcase x
+        (x-var (n a) (if (string-member? n bound) acc (c-adjoin acc n)))
+        (x-lambda (ps body a) (c-free body (c-names ps bound) acc))
+        (x-app (f args a) (c-free f bound (c-free-all args bound acc)))
+        (x-if (t th el a) (c-free t bound (c-free th bound (c-free el bound acc))))
+        (x-letrec (bs body a)
+          (let ((inner (c-bound-names bs bound)))
+            (c-free body inner (c-free-all (c-bound-exps bs) inner acc))))
+        (x-let (bs body a) (c-free body (c-bound-names bs bound) (c-free-all (c-bound-exps bs) bound acc)))
+        (x-begin (es a) (c-free-all es bound acc))
+        (x-product (fs a) (c-free-all (c-bound-exps fs) bound acc))
+        (x-extract (p i a) (c-free p bound acc))
+        (x-sum (t v a) (c-free v bound acc))
+        (x-tagcase (s arms els a) (c-free s bound (c-free-arms arms bound (c-free-else els bound acc))))
+        (else y acc))))
+  (c-free-arms (subr kfx ((listof carm acyclic) strings strings) strings)
+    (lambda (arms bound acc)
+      (if (null? arms) acc
+          (tagcase (car arms) (carm (t p ns body) (c-free-arms (cdr arms) bound (c-free body (c-names ns bound) acc)))))))
+  (c-free-else (subr kfx (cbinds strings strings) strings)
+    (lambda (els bound acc)
+      (if (null? els) acc (tagcase (car els) (cbind (n x) (c-free x (cons n bound) acc)))))))
+
+(define c-mentions? (subr kfx (cx string) bool) (lambda (x n) (string-member? n (c-free x nil nil))))
+
+(define c-count (poly ((a type)) (subr kfx ((listof a acyclic)) i64)) (plambda ((a type)) (lambda ((xs (listof a acyclic))) (size xs))))
+
+"Whether every use of `f` in `x` is a call with `n` arguments: where
+ `loops` asks, in tail position, which the compiler makes a loop; else in
+ any position, and in lambdas inside too, so that `f` is never a value."
+(define-rec
+  (c-calls-only (subr kfx (cx string i64 bool bool) bool)
+    (lambda (x f n tail loops)
+      (tagcase x
+        (x-var (m a) (not (string=? m f)))
+        (x-lambda (ps body a) (or (string-member? f ps) (c-calls-only-inside body f n loops)))
+        (x-app (fun args a)
+          (and (c-calls-only-all args f n loops)
+               (tagcase fun
+                 (x-var (m a2) (if (string=? m f) (and (or tail (not loops)) (i64= (size args) n)) #t))
+                 (else y (c-calls-only fun f n #f loops)))))
+        (x-if (t th el a) (and (c-calls-only t f n #f loops) (c-calls-only th f n tail loops) (c-calls-only el f n tail loops)))
+        (x-letrec (bs body a)
+          (or (string-member? f (c-bound-names bs nil))
+              (and (c-calls-only-all (c-bound-exps bs) f n loops) (c-calls-only body f n tail loops))))
+        (x-let (bs body a)
+          (and (c-calls-only-all (c-bound-exps bs) f n loops)
+               (or (string-member? f (c-bound-names bs nil)) (c-calls-only body f n tail loops))))
+        (x-begin (es a) (c-calls-only-begin es f n tail loops))
+        (x-product (fs a) (c-calls-only-all (c-bound-exps fs) f n loops))
+        (x-extract (p i a) (c-calls-only p f n #f loops))
+        (x-sum (t v a) (c-calls-only v f n #f loops))
+        (x-tagcase (s arms els a)
+          (and (c-calls-only s f n #f loops) (c-calls-only-arms arms f n tail loops) (c-calls-only-else els f n tail loops)))
+        (else y #t))))
+  (c-calls-only-inside (subr kfx (cx string i64 bool) bool)
+    (lambda (x f n loops) (if loops (not (c-mentions? x f)) (c-calls-only x f n #f loops))))
+  (c-calls-only-all (subr kfx (cxs string i64 bool) bool)
+    (lambda (es f n loops) (or (null? es) (and (c-calls-only (car es) f n #f loops) (c-calls-only-all (cdr es) f n loops)))))
+  (c-calls-only-begin (subr kfx (cxs string i64 bool bool) bool)
+    (lambda (es f n tail loops)
+      (cond ((null? es) #t)
+            ((null? (cdr es)) (c-calls-only (car es) f n tail loops))
+            (else (and (c-calls-only (car es) f n #f loops) (c-calls-only-begin (cdr es) f n tail loops))))))
+  (c-calls-only-arms (subr kfx ((listof carm acyclic) string i64 bool bool) bool)
+    (lambda (arms f n tail loops)
+      (or (null? arms)
+          (and (tagcase (car arms) (carm (t p ns body) (or (string-member? f ns) (c-calls-only body f n tail loops))))
+               (c-calls-only-arms (cdr arms) f n tail loops)))))
+  (c-calls-only-else (subr kfx (cbinds string i64 bool bool) bool)
+    (lambda (els f n tail loops)
+      (or (null? els) (tagcase (car els) (cbind (m x) (or (string=? m f) (c-calls-only x f n tail loops))))))))
+
+(define c-loops-only (subr kfx (cx string i64 bool) bool) (lambda (x f n tail) (c-calls-only x f n tail #t)))
+
+;;; ------------------------------------------- the procedure being compiled
+
+"The word being compiled, when it is a `letrec`-bound procedure's: a tail
+ call of `c-this-name`, still bound at `c-this-loc`, is a loop.
+ `c-this-params` is -1 when the word is no such procedure's."
+(define-datatype this (this string loc i64))
+(define c-this-name (ref string @g) (new "none"))
+(define c-this-loc (ref loc @g) (new (at-loop)))
+(define c-this-params (ref i64 @g) (new -1))
+(define c-this-start (ref i64 @g) (new 0))
+
+(define c-this-saved (subr gen () this)
+  (lambda () (this (get c-this-name) (get c-this-loc) (get c-this-params))))
+
+(define c-this-enter! (subr gen (this i64) unit)
+  (lambda (me start)
+    (tagcase me (this (n l k) (begin (set c-this-name n) (set c-this-loc l) (set c-this-params k) (set c-this-start start))))))
+
+"Whether `l` is where the procedure being compiled is bound: its loop, or
+ the free value holding its closure, or a top-level definition's own
+ global."
+(define c-this-loc? (subr kfx (loc loc) bool)
+  (lambda (l me)
+    (tagcase me
+      (at-loop () (c-loop? l))
+      (at-free (i) (tagcase l (at-free (j) (i64= i j)) (else y #f)))
+      (at-global (g) (c-global? l))
+      (else y #f))))
+
+(define c-self-call? (subr gen (cx cxs cenv bool) bool)
+  (lambda (f args e tail)
+    (and tail (i64>= (get c-this-params) 0)
+         (tagcase f
+           (x-var (n a)
+             (and (string=? n (get c-this-name))
+                  (let ((l (c-find e n)))
+                    (and (not (null? l)) (c-this-loc? (car l) (get c-this-loc))
+                         (i64= (size args) (get c-this-params))))))
+           (else y #f)))))
+
+"Into the parameters' slots, from `i` down to 0."
+(define-rec
+  (c-loop-stores (subr gen (code i64) unit)
+    (lambda (c i) (if (i64< i 0) #u (begin (c-op1 c "slot!" (o-int i)) (c-loop-stores c (i64- i 1)))))))
+
+;;; ---------------------------------------------------------- word names
+
+"The name the next lambda's word gets, if not where its body starts (a
+ global's); the name of the lambda whose body is compiled, without where
+ it starts, an inner lambda's word named within it, `outer/inner@N`; and
+ while a `let`'s binding's init is compiled, the binding's name, which
+ the first lambda compiled in it is named for. Each a list of none or one."
+(define c-word-name (ref strings @g) (new nil))
+(define c-scope-name (ref strings @g) (new nil))
+(define c-bind-name (ref strings @g) (new nil))
+
+(define c-take (subr gen ((ref strings @g)) strings)
+  (lambda (r) (let ((v (get r))) (begin (set r nil) v))))
+
+"A lambda's word's name, but for where its body starts: `named`'s, if it
+ has one (a global's); else for the definition it is in, and the name it
+ is bound to there (`own`, a `letrec`'s, or `bound`, a `let`'s), or
+ `lambda`."
+(define c-word-base (subr gen (strings strings strings) string)
+  (lambda (named own bound)
+    (if (null? named)
+        (let ((inner (cond ((not (null? own)) (car own)) ((not (null? bound)) (car bound)) (else "lambda")))
+              (scope (get c-scope-name)))
+          (if (null? scope) inner (string-append (car scope) (string-append "/" inner))))
+        (car named))))
+
+(define c-word-symbol (subr gen (string strings cx) string)
+  (lambda (base named body)
+    (if (null? named) (string-append base (string-append "@" (i64->string (cx-start body)))) (car named))))
+
+;;; ------------------------------------------------- standard operations
+
+"Whether `name` is an equality of the same word, as `eq` does it."
+(define std-eq-name? (subr kfx (string) bool)
+  (lambda (n)
+    (or (string=? n "char=?") (string=? n "symbol=?") (string=? n "wglobal=?") (string=? n "eq?") (string=? n "bool=?"))))
+
+(define std-nil-name? (subr kfx (string) bool) (lambda (n) (or (string=? n "nil") (string=? n "no-pair"))))
+
+(define std-primitive (subr kfx (string) string) (lambda (n) (with standard (standard-primitive n))))
+
+"How many arguments a standard operation takes, as a value, or -1 if it
+ is not known here (Fixpt asks its runtime's table for the rest: not yet)."
+(define c-arity (subr kfx (string) i64)
+  (lambda (n)
+    (cond ((string-member? n (list "make-continuation-prompt-tag" "make-escape-tag" "make-continuation-mark-key")) 0)
+          ((string-member? n (list "car" "cdr" "null?" "not" "new" "get" "char->integer" "integer->char" "string-length"
+                                   "char->string" "symbol->string" "string->symbol" "array-length" "current-marks" "cwcc"))
+           1)
+          ((string-member? n (list "with-mark" "array-set!" "substring")) 3)
+          ((string-member? n (list "+" "-" "*" "<" ">" "<=" ">=" "=" "modulo" "quotient" "cons" "set-car!" "set-cdr!" "char=?"
+                                   "string=?" "array-ref" "string-ref" "make-array" "abort-current-continuation" "escape" "set"
+                                   "marks-of" "call-with-composable-continuation" "call-with-oneshot-continuation" "first-mark"))
+           2)
+          ((std-eq-name? n) 2)
+          (else -1))))
+
+"The boolean on top negated."
+(define c-not (subr gen (code) unit) (lambda (c) (begin (c-lit c (l-bool #f)) (c-op c "eq"))))
+
+"The index on top made the field it is in an array, whose elements are
+ its fields from 2 on."
+(define c-array-index (subr gen (code) unit) (lambda (c) (begin (c-int c 2) (c-op c "int-add"))))
+
+(define c-standard-on (subr gen (string i64 code) unit)
+  (lambda (name n c)
+    (cond ((string=? name "+") (c-op c "int-add"))
+          ((string=? name "-") (c-op c "int-sub"))
+          ((string=? name "<") (c-op c "int-less"))
+          ((string=? name ">") (begin (c-op c "swap") (c-op c "int-less")))
+          ((string=? name "<=") (begin (c-op c "swap") (c-op c "int-less") (c-not c)))
+          ((string=? name ">=") (begin (c-op c "int-less") (c-not c)))
+          ((string=? name "=") (c-op c "int-eq"))
+          ((string=? name "cons") (c-op c "cons"))
+          ((string=? name "car") (c-op c "pair-car"))
+          ((string=? name "cdr") (c-op c "pair-cdr"))
+          ((or (string=? name "set-car!") (string=? name "set-cdr!")) (begin (c-prim c name 2) (c-unit-after c)))
+          ((string=? name "new") (c-prim c "%make-box" 1))
+          ((string=? name "get") (c-field c 2))
+          ((string=? name "set") (begin (c-op c "swap") (c-field-set c 2) (c-lit c (l-unit))))
+          ((string=? name "null?") (begin (c-lit c (l-nil)) (c-op c "eq")))
+          ((string=? name "not") (c-not c))
+          ((string=? name "char->string") (c-prim c "string" 1))
+          ((or (string=? name "make-continuation-prompt-tag") (string=? name "make-escape-tag") (string=? name "make-continuation-mark-key"))
+           (begin (c-lit c (l-unit)) (c-prim c "%make-box" 1)))
+          ((or (string=? name "abort-current-continuation") (string=? name "escape")) (c-op c "abort"))
+          ((string=? name "call-with-composable-continuation") (c-op c "callcomp"))
+          ((string=? name "call-with-oneshot-continuation") (c-op c "callone"))
+          ((string=? name "cwcc") (c-op c "callcc"))
+          ((string=? name "with-mark") (c-op c "withmark"))
+          ((string=? name "first-mark") (c-op c "firstmark"))
+          ((string=? name "current-marks") (c-op c "currentmarks"))
+          ((string=? name "marks-of") (c-op c "marksof"))
+          ((string=? name "array-ref") (begin (c-array-index c) (c-op c "field@")))
+          ((string=? name "array-set!")
+           (begin (c-op c "swap") (c-array-index c) (c-op c "swap") (c-prim c "%bloblet-set!" 3) (c-unit-after c)))
+          ((string=? name "apply") (begin (c-op c "swap") (c-field c 3) (c-op1 c "call" (o-int 1))))
+          ((string=? name "array-length") (begin (c-prim c "%bloblet-fields" 1) (c-int c 1) (c-op c "int-sub")))
+          ((string-member? name (list "modulo" "char->integer" "integer->char" "string-append" "string-length" "string-ref"
+                                      "substring" "string=?" "string->symbol" "symbol->string"))
+           (c-prim c name n))
+          ((std-eq-name? name) (c-op c "eq"))
+          (else
+           (let ((p (std-primitive name)))
+             (cond ((string=? p "%fx26-identity") #u)
+                   ((string=? p "") (cg-fail (string-append "not yet compiled: " name)))
+                   (else (c-prim c p n))))))))
+
+"The standard `vsubr`s, `list`, `append` and `string-append`, each with
+ the operation of one list that its value applies; \"\" for the rest."
+(define c-vsubr-list-op (subr kfx (string) string)
+  (lambda (n)
+    (cond ((string=? n "list") "datum-list") ((string=? n "append") "%append-list")
+          ((string=? n "string-append") "%string-append-list") (else ""))))
+(define c-vsubr? (subr kfx (string) bool) (lambda (n) (not (string=? (c-vsubr-list-op n) ""))))
+
+"The words made of standard operations as values, by name."
+(define cg-standard-words (ref strings @g) (new nil))
+
+(define-rec
+  (c-params-pushed (subr gen (code i64 i64) unit)
+    (lambda (c i n) (if (i64= i n) #u (begin (c-op1 c "slot" (o-int i)) (c-params-pushed c (i64+ i 1) n))))))
+
+"A standard operation's word as a value: a procedure of its arity that
+ applies it to its parameters; a `vsubr`'s, of one list, its operation's
+ on that list."
+(define c-standard-word (subr gen (string) string)
+  (lambda (name)
+    (if (string-member? name (get cg-standard-words))
+        name
+        (let ((n (c-arity name)) (body (the code (new nil))))
+          (begin
+            (cond ((c-vsubr? name)
+                   (begin (c-op1 body "slot" (o-int 0)) (c-standard-on (c-vsubr-list-op name) 1 body)))
+                  ((i64< n 0) (cg-fail (string-append "not yet compiled as a value: " name)))
+                  ((string=? name "make-array")
+                   (begin (c-int body 0) (c-params-pushed body 0 n) (c-prim body "%make-bloblet-filled" 3)))
+                  (else (begin (c-params-pushed body 0 n) (c-standard-on name n body))))
+            (c-op body "return")
+            (set cg-standard-words (cons name (get cg-standard-words)))
+            (c-assemble body name))))))
+
+"A standard operation as a value: a closure of its word over no values; a
+ `vsubr`'s given to `%fx26-vlambda`."
+(define c-standard-value (subr gen (string code) unit)
+  (lambda (name c)
+    (let ((w (c-standard-word name)))
+      (begin (c-emit c (it-ins "closure" (list (o-word w) (o-int 0))))
+             (if (c-vsubr? name) (c-prim c "%fx26-vlambda" 1) #u)))))
+
+"The standard operation `f` names, if it is a name bound nowhere else;
+ else \"\"."
+(define c-standard-name (subr gen (cx cenv) string)
+  (lambda (f e) (tagcase f (x-var (n a) (if (null? (c-where e n)) n "")) (else y ""))))
+
+"The datum a quote builds, as a literal, where it is made of literals and
+ symbols: none, or one."
+(define-rec
+  (c-quoted-cell (subr kfx (cx) (listof lit acyclic))
+    (lambda (x)
+      (tagcase x
+        (x-int (n a) (list (l-int n)))
+        (x-bool (v a) (list (l-bool v)))
+        (x-char (v a) (list (l-char v)))
+        (x-sym (s a) (list (l-sym s)))
+        (x-var (n a) (if (string=? n "nil") (list (l-nil)) nil))
+        (x-app (f args a)
+          (if (and (tagcase f (x-var (n b) (string=? n "cons")) (else y #f)) (i64= (size args) 2))
+              (let ((h (c-quoted-cell (car args))) (t (c-quoted-cell (car (cdr args)))))
+                (if (or (null? h) (null? t)) nil (list (l-pair (car h) (car t)))))
+              nil))
+        (else y nil)))))
+
+;;; --------------------------------------------------------- expressions
+;;; `depth` is how many values are on the frame above its start, so the
+;;; next value pushed is slot `depth`. In tail position, code ends the
+;;; word: with a tail call, or with `return` after the value.
+
+"What a lambda's word captures, as patches for `letrec` siblings: for each
+ sibling it captured before the sibling was made, its free value's index
+ and the slot the sibling will be in."
+(define-datatype patch (patch i64 i64))
+(define-type patches (listof patch acyclic))
+
+"A lambda's word, and the names its closure captures, in order."
+(define-datatype cclosing (cclosing string strings))
+
+(define-rec
+  (c-param-env (subr kfx (strings i64 cenv) cenv)
+    (lambda (ps i acc) (if (null? ps) acc (c-param-env (cdr ps) (i64+ i 1) (c-extend (car ps) (at-slot i) acc))))))
+
+"The free names that are locals here, not globals or standard names, nor
+ a loop, which is not a value."
+(define-rec
+  (c-captured (subr gen (strings cenv) strings)
+    (lambda (xs e)
+      (cond ((null? xs) nil)
+            ((let ((l (c-find e (car xs)))) (or (null? l) (c-loop? (car l)) (c-global? (car l)))) (c-captured (cdr xs) e))
+            (else (cons (car xs) (c-captured (cdr xs) e)))))))
+
+(define-rec
+  (c-inner-env (subr kfx (strings cenv i64) cenv)
+    (lambda (xs acc i) (if (null? xs) acc (c-inner-env (cdr xs) (c-extend (car xs) (at-free i) acc) (i64+ i 1))))))
+
+"A parameter of the same name hides the procedure."
+(define c-own-of (subr kfx (strings strings) strings)
+  (lambda (ps own0) (if (or (null? own0) (string-member? (car own0) ps)) nil own0)))
+
+"The scope a lambda's body starts in: its own name, if it does not capture
+ it, where `e` has it, a global, or else its loop."
+(define c-own-scope (subr gen (strings strings cenv) cenv)
+  (lambda (own fv e)
+    (if (or (null? own) (string-member? (car own) fv))
+        nil
+        (let ((l (c-where e (car own))))
+          (list (centry (car own) (if (and (not (null? l)) (c-global? (car l))) (car l) (at-loop))))))))
+
+(define c-this-of (subr kfx (strings cenv i64) (listof this acyclic))
+  (lambda (own inner n) (if (null? own) nil (list (this (car own) (car (c-find inner (car own))) n)))))
+
+"Each captured name's value, as the closure will hold it, free value `j`
+ on; a sibling not made yet is a placeholder, and one of the patches."
+(define-rec
+  (c-push-all (subr gen (strings cenv i64 code) patches)
+    (lambda (xs e j c)
+      (if (null? xs)
+          nil
+          (let* ((pending (tagcase (car (c-find e (car xs)))
+                            (at-slot (i) (begin (c-op1 c "slot" (o-int i)) (the i64 -1)))
+                            (at-free (i) (begin (c-op1 c "free" (o-int i)) (the i64 -1)))
+                            (at-pending (s) (begin (c-lit c (l-bool #f)) s))
+                            (else y (begin (cg-fail "a global or a loop is not captured") (the i64 -1)))))
+                 (rest (c-push-all (cdr xs) e (i64+ j 1) c)))
+            (if (i64< pending 0) rest (cons (patch j pending) rest)))))))
+
+"A product's members, from the slot after the sum's, each a slot."
+(define-rec
+  (c-members (subr gen (strings cenv i64 i64 i64 code) cenv)
+    (lambda (ns e sum-slot slot j c)
+      (if (null? ns)
+          e
+          (begin (c-op1 c "slot" (o-int (i64+ sum-slot 1)))
+                 (c-field c (i64+ j 2))
+                 (c-members (cdr ns) (c-extend (car ns) (at-slot slot) e) sum-slot (i64+ slot 1) (i64+ j 1) c))))))
+
+"Binding `i`'s scope while it is made: each sibling pending, and itself a
+ loop if it only calls itself in loops."
+(define-rec
+  (c-letrec-own (subr kfx (cbinds cenv i64 i64 i64 cx i64) cenv)
+    (lambda (bs e depth k i body nps)
+      (if (null? bs)
+          e
+          (tagcase (car bs)
+            (cbind (g x)
+              (let ((loops (and (i64= k i) (c-loops-only body g nps #t))))
+                (c-letrec-own (cdr bs) (c-extend g (if loops (at-loop) (at-pending (i64+ depth k))) e) depth (i64+ k 1) i body nps))))))))
+
+(define-rec
+  (c-letrec-slots (subr kfx (cbinds cenv i64) cenv)
+    (lambda (bs e d)
+      (if (null? bs) e (tagcase (car bs) (cbind (n x) (c-letrec-slots (cdr bs) (c-extend n (at-slot d) e) (i64+ d 1))))))))
+
+(define-rec
+  (c-patch-one (subr gen (patches i64 i64 code) unit)
+    (lambda (ps depth i c)
+      (if (null? ps)
+          #u
+          (tagcase (car ps)
+            (patch (j s)
+              (begin (c-op1 c "slot" (o-int s))
+                     (c-op1 c "slot" (o-int (i64+ depth i)))
+                     (c-field-set c (i64+ 3 j))
+                     (c-patch-one (cdr ps) depth i c)))))))
+  (c-letrec-patch (subr gen ((listof patches acyclic) i64 i64 code) unit)
+    (lambda (made depth i c)
+      (if (null? made) #u (begin (c-patch-one (car made) depth i c) (c-letrec-patch (cdr made) depth (i64+ i 1) c))))))
+
+(define-rec
+  (c-exps (subr gen (cxs cenv i64 code) i64)
+    (lambda (es e depth c)
+      (if (null? es) 0 (begin (c-exp (car es) e depth c #f) (i64+ 1 (c-exps (cdr es) e (i64+ depth 1) c))))))
+
+  (c-exp (subr gen (cx cenv i64 code bool) unit)
+    (lambda (x e depth c tail)
+      (tagcase x
+        (x-var (n a)
+          (let ((l (c-where e n)))
+            (begin
+              (if (null? l)
+                  (if (std-nil-name? n) (c-lit c (l-nil)) (c-standard-value n c))
+                  (c-load c (car l)))
+              (c-done c tail))))
+        (x-int (n a) (begin (c-lit c (l-int n)) (c-done c tail)))
+        (x-bool (v a) (begin (c-lit c (l-bool v)) (c-done c tail)))
+        (x-str (s a) (begin (c-lit c (l-str s)) (c-done c tail)))
+        (x-char (ch a) (begin (c-lit c (l-char ch)) (c-done c tail)))
+        (x-sym (s a) (begin (c-lit c (l-sym s)) (c-done c tail)))
+        (x-unit (a) (begin (c-lit c (l-unit)) (c-done c tail)))
+        (x-lambda (ps body a) (begin (c-lambda ps body e depth c nil) (c-done c tail)))
+        (x-app (f args a)
+          (tagcase f
+            ;; A lambda applied at once: a `let`.
+            (x-lambda (ps body b)
+              (if (i64= (size ps) (size args))
+                  (c-let (map2 (lambda ((p string) (y cx)) (cbind p y)) ps args) body e depth c tail)
+                  (c-app f args e depth c tail)))
+            (else y (c-app f args e depth c tail))))
+        (x-if (t th el a)
+          (let ((no (c-fresh)) (end (c-fresh)))
+            (begin
+              (c-exp t e depth c #f)
+              (c-emit c (it-zbranch no))
+              (c-exp th e depth c tail)
+              (if tail #u (c-emit c (it-branch end)))
+              (c-emit c (it-label no))
+              (c-exp el e depth c tail)
+              (c-emit c (it-label end)))))
+        (x-let (bs body a) (c-let bs body e depth c tail))
+        (x-letrec (bs body a) (c-letrec bs body e depth c tail))
+        (x-begin (es a) (c-begin es e depth c tail))
+        (x-product (fs a)
+          (begin (c-int c 37)
+                 (c-prim c "%make-frozen" (i64+ 1 (c-exps (c-bound-exps fs) e (i64+ depth 1) c)))
+                 (c-done c tail)))
+        (x-extract (p i a) (begin (c-exp p e depth c #f) (c-field c (i64+ i 2)) (c-done c tail)))
+        (x-sum (t v a)
+          (begin (c-int c 36) (c-lit c (l-sym t)) (c-exp v e (i64+ depth 2) c #f)
+                 (c-prim c "%make-frozen" 3) (c-done c tail)))
+        (x-tagcase (s arms els a)
+          (let ((end (c-fresh)))
+            (begin (c-exp s e depth c #f) (c-arms arms els e depth c tail end) (c-emit c (it-label end))))))))
+
+  (c-begin (subr gen (cxs cenv i64 code bool) unit)
+    (lambda (es e depth c tail)
+      (cond ((null? es) (begin (c-lit c (l-unit)) (c-done c tail)))
+            ((null? (cdr es)) (c-exp (car es) e depth c tail))
+            (else (begin (c-exp (car es) e depth c #f) (c-op c "drop") (c-begin (cdr es) e depth c tail))))))
+
+  ;; Each value pushed, in the scope outside; the names are the slots.
+  (c-let-bind (subr gen (cbinds cenv cenv i64 code) cenv)
+    (lambda (bs outer inner depth c)
+      (if (null? bs)
+          inner
+          (tagcase (car bs)
+            (cbind (n x)
+              (begin (set c-bind-name (list n))
+                     (c-exp x outer depth c #f)
+                     (set c-bind-name nil)
+                     (c-let-bind (cdr bs) outer (c-extend n (at-slot depth) inner) (i64+ depth 1) c)))))))
+
+  (c-let (subr gen (cbinds cx cenv i64 code bool) unit)
+    (lambda (bs body e depth c tail)
+      (let* ((inner (c-let-bind bs e e depth c)) (n (size bs)))
+        (begin (c-exp body inner (i64+ depth n) c tail) (c-unbind c depth n tail)))))
+
+  (c-letrec (subr gen (cbinds cx cenv i64 code bool) unit)
+    (lambda (bs body e depth c tail)
+      (let* ((made (c-letrec-make bs bs e depth 0 c)) (n (size bs)))
+        (begin
+          (c-letrec-patch made depth 0 c)
+          (c-exp body (c-letrec-slots bs e depth) (i64+ depth n) c tail)
+          (c-unbind c depth n tail)))))
+
+  ;; Each closure made, in order; what each must have patched.
+  (c-letrec-make (subr gen (cbinds cbinds cenv i64 i64 code) (listof patches acyclic))
+    (lambda (all bs e depth i c)
+      (if (null? bs)
+          nil
+          (tagcase (car bs)
+            (cbind (name x)
+              (tagcase x
+                (x-lambda (ps body a)
+                  (let* ((made (c-lambda ps body (c-letrec-own all e depth 0 i body (size ps)) (i64+ depth i) c (list name)))
+                         (rest (c-letrec-make all (cdr bs) e depth (i64+ i 1) c)))
+                    (cons made rest)))
+                (else y (begin (cg-fail "a letrec binds only lambdas") nil))))))))
+
+  ;; A lambda: its free values pushed, then its word closed over them. `own`
+  ;; is the `letrec` name it is bound to, or none: its tail calls in its body
+  ;; are loops.
+  (c-lambda (subr gen (strings cx cenv i64 code strings) patches)
+    (lambda (ps body e depth c own0)
+      (tagcase (c-lambda-word ps body e own0)
+        (cclosing (w fv)
+          (let ((ps2 (c-push-all fv e 0 c)))
+            (begin (c-emit c (it-ins "closure" (list (o-word w) (o-int (size fv))))) ps2))))))
+
+  ;; A lambda's word, and the names its closure captures, in order.
+  (c-lambda-word (subr gen (strings cx cenv strings) cclosing)
+    (lambda (ps body e own0)
+      (let* ((named (c-take c-word-name))
+             (bound (c-take c-bind-name))
+             (fv (c-captured (c-free body ps nil) e))
+             (own (c-own-of ps own0))
+             (inner (c-inner-env fv (c-param-env ps 0 (c-own-scope own fv e)) 0))
+             (n (size ps))
+             (body-code (the code (new nil)))
+             (outer (c-this-saved)) (outer-start (get c-this-start))
+             (me (c-this-of own inner n))
+             (base (c-word-base named own0 bound))
+             (outer-scope (get c-scope-name)))
+        (begin
+          (set c-scope-name (list base))
+          (if (null? me)
+              (set c-this-params -1)
+              (let ((start (c-fresh))) (begin (c-this-enter! (car me) start) (c-emit body-code (it-label start)))))
+          (c-exp body inner n body-code #t)
+          (c-this-enter! outer outer-start)
+          (let ((w (c-assemble body-code (c-word-symbol base named body))))
+            (begin (set c-scope-name outer-scope) (cclosing w fv)))))))
+
+  ;;; applications
+  (c-app (subr gen (cx cxs cenv i64 code bool) unit)
+    (lambda (f args e depth c tail)
+      (if (c-self-call? f args e tail)
+          ;; A loop: the arguments into the parameters' slots, the rest of
+          ;; the frame dropped, and back to the start.
+          (begin (c-exps args e depth c)
+                 (c-loop-stores c (i64- (get c-this-params) 1))
+                 (c-drops c (i64- depth (get c-this-params)))
+                 (c-emit c (it-branch (get c-this-start))))
+          (let ((standard (c-standard-name f e)))
+            (cond ((string=? standard "")
+                   (let ((n (c-exps args e depth c)))
+                     (begin (c-exp f e (i64+ depth n) c #f)
+                            (c-op1 c (if tail "ttailcall" "tcall") (o-int n)))))
+                  ((and (string=? standard "%quote") (i64= (size args) 1) (not (null? (c-quoted-cell (car args)))))
+                   (begin (c-lit c (car (c-quoted-cell (car args)))) (c-done c tail)))
+                  ((string=? standard "%quote") (c-exp (car args) e depth c tail))
+                  ((and tail (string=? standard "with-mark"))
+                   (begin (c-exps args e depth c) (c-op c "withmark-tail")))
+                  ((string=? standard "make-array")
+                   (begin (c-int c 0) (c-exps args e (i64+ depth 1) c) (c-prim c "%make-bloblet-filled" 3) (c-done c tail)))
+                  (else (begin (c-standard-on standard (c-exps args e depth c) c) (c-done c tail))))))))
+
+  ;;; tagcase
+  (c-arms (subr gen ((listof carm acyclic) cbinds cenv i64 code bool i64) unit)
+    (lambda (arms els e depth c tail end)
+      (if (null? arms)
+          (if (null? els)
+              ;; A checked program covers every tag; this is never reached.
+              (begin (c-lit c (l-bool #f)) (c-int c 0) (c-op c "field@") (c-done c tail))
+              (tagcase (car els)
+                (cbind (n x)
+                  (begin (c-exp x (c-extend n (at-slot depth) e) (i64+ depth 1) c tail) (c-unbind c depth 1 tail)))))
+          (tagcase (car arms)
+            (carm (tag whole ns body)
+              (let ((next (c-fresh)))
+                (begin
+                  ;; Is the tag this arm's?
+                  (c-op1 c "slot" (o-int depth))
+                  (c-field c 2)
+                  (c-lit c (l-sym tag))
+                  (c-op c "eq")
+                  (c-emit c (it-zbranch next))
+                  ;; The value, or its product's members, as slots after the sum.
+                  (c-op1 c "slot" (o-int depth))
+                  (c-field c 3)
+                  (let ((bound (if whole (c-members ns e depth (i64+ depth 2) 0 c) (c-extend (car ns) (at-slot (i64+ depth 1)) e)))
+                        (k (if whole (i64+ 1 (size ns)) (the i64 1))))
+                    (begin
+                      (c-exp body bound (i64+ depth (i64+ 1 k)) c tail)
+                      (c-unbind c depth (i64+ k 1) tail)
+                      (if tail #u (c-emit c (it-branch end)))))
+                  (c-emit c (it-label next))
+                  (c-arms (cdr arms) els e depth c tail end)))))))))
+
+;;; ------------------------------------------------------------ programs
+
+(define c-push-global! (subr gen (string) unit) (lambda (n) (set cg-globals (cons n (get cg-globals)))))
+
+"The next lambda's word named for global `n`, when `x`, its definition, is
+ a lambda."
+(define c-name-for! (subr gen (string cx) unit)
+  (lambda (n x) (tagcase x (x-lambda (ps body a) (set c-word-name (list n))) (else y #u))))
+
+(define-rec
+  (c-rec-globals! (subr gen (cbinds) unit)
+    (lambda (bs) (if (null? bs) #u (tagcase (car bs) (cbind (n x) (begin (c-push-global! n) (c-rec-globals! (cdr bs)))))))))
+
+"Each of a `define-rec`'s values made, and its global set."
+(define-rec
+  (c-rec-fill! (subr gen (cbinds code) unit)
+    (lambda (bs c)
+      (if (null? bs) #u
+          (tagcase (car bs)
+            (cbind (n x)
+              (begin (c-name-for! n x) (c-exp x nil 0 c #f) (c-op1 c "global!" (o-global n)) (c-rec-fill! (cdr bs) c))))))))
+
+(define-rec
+  (parse-tops (subr gen (sexps) (listof ctop acyclic))
+    (lambda (fs) (if (null? fs) nil (let ((t (parse-top (car fs)))) (onto t (parse-tops (cdr fs))))))))
+
+"Each form in turn; the last expression's value is left on the stack."
+(define-rec
+  (c-tops (subr gen ((listof ctop acyclic) code bool) bool)
+    (lambda (ts c has-value)
+      (if (null? ts)
+          has-value
+          (tagcase (car ts)
+            (t-define (n typed x)
+              (begin
+                (if has-value (c-op c "drop") #u)
+                (tagcase x
+                  ;; A lambda written with its type: its global first, so
+                  ;; that it can call itself through it.
+                  (x-lambda (ps body a)
+                    (if typed
+                        (begin (c-push-global! n) (set c-word-name (list n))
+                               (c-lambda ps body nil 0 c nil) (c-op1 c "global!" (o-global n)))
+                        (begin (c-exp x nil 0 c #f) (c-push-global! n) (c-op1 c "global!" (o-global n)))))
+                  (else y (begin (c-exp x nil 0 c #f) (c-push-global! n) (c-op1 c "global!" (o-global n)))))
+                (c-tops (cdr ts) c #f)))
+            ;; Every name's global first; then each lambda, which runs nothing.
+            (t-define-rec (bs)
+              (begin
+                (if has-value (c-op c "drop") #u)
+                (c-rec-globals! bs)
+                (c-rec-fill! bs c)
+                (c-tops (cdr ts) c #f)))
+            (t-exp (x) (begin (if has-value (c-op c "drop") #u) (c-exp x nil 0 c #f) (c-tops (cdr ts) c #t)))
+            (t-none () (c-tops (cdr ts) c has-value)))))))
+
+"A program's one word, which runs it and leaves the value of its last
+ expression (unit, if it has none), and the words it makes."
+(define compile-cells (subr gen (sexps facts) unit)
+  (lambda (forms fs)
+    (let ((c (the code (new nil))))
+      (begin
+        (set cg-facts fs)
+        (set cg-words nil)
+        (set cg-globals nil)
+        (set cg-standard-words nil)
+        (set c-this-params -1)
+        (if (c-tops (parse-tops forms) c #f) #u (c-lit c (l-unit)))
+        (c-op c "exit")
+        (c-assemble c "program")
+        #u))))
+
+;;; ------------------------------------------------------------ the listing
+;;; As Fixpt's `disasm.rs` writes it, its literals as `literal.rs` writes
+;;; them in full: the words from `program`, each a header and a line for
+;;; each instruction, `AT: ROUTINE OPERAND …`.
+
+(define-rec
+  (hex-digits (subr kfx (i64 chars) chars)
+    (lambda (n acc)
+      (let* ((d (i64-remainder n 16)) (ch (i64->char (if (i64< d 10) (i64+ 48 d) (i64+ 87 d)))))
+        (if (i64< n 16) (cons ch acc) (hex-digits (i64-quotient n 16) (cons ch acc)))))))
+
+(define hex (subr kfx (i64) string) (lambda (n) (list->string (hex-digits n nil))))
+
+"A string's characters, each not printable ASCII (and `quote` and `\\`) by
+ its code, `\\xHH;`."
+(define lit-escaped (subr kfx (string char) string)
+  (lambda (s quote)
+    (list->string
+      (concat (map (lambda ((ch char))
+                     (let ((k (char->i64 ch)))
+                       (if (or (char=? ch quote) (i64= k 92) (i64< k 32) (i64> k 126))
+                           (string-chars (string-append "\\x" (string-append (hex k) ";")))
+                           (list ch))))
+                   (string-chars s))))))
+
+(define-rec
+  (lit-text (subr kfx (lit) string)
+    (lambda (l)
+      (tagcase l
+        (l-int (n) (int->string n))
+        (l-bool (v) (if v "#t" "#f"))
+        (l-unit () "|#u|")
+        (l-nil () "()")
+        (l-str (s) (string-append "\"" (string-append (lit-escaped s #\") "\"")))
+        (l-char (ch) (string-append "#\\x" (hex (char->i64 ch))))
+        (l-sym (s) (string-append "|" (string-append (lit-escaped s #\|) "|")))
+        (l-pair (a d) (string-append "(" (string-append (lit-text a) (string-append " . " (string-append (lit-text d) ")")))))
+        (l-word (w) (string-append "word " w))))))
+
+(define item-size (subr kfx (item) i64)
+  (lambda (i) (tagcase i (it-ins (r os) (i64+ 1 (size os))) (it-label (n) 0) (it-branch (n) 2) (it-zbranch (n) 2))))
+
+"Where each label is: a list of (label, cell) pairs."
+(define-datatype place (place i64 i64))
+(define-rec
+  (places-of (subr kfx (citems i64 (listof place acyclic)) (listof place acyclic))
+    (lambda (xs at acc)
+      (if (null? xs) acc
+          (places-of (cdr xs) (i64+ at (item-size (car xs)))
+                     (tagcase (car xs) (it-label (n) (cons (place n at) acc)) (else y acc)))))))
+(define-rec
+  (place-at (subr kfx ((listof place acyclic) i64) i64)
+    (lambda (ps n) (cond ((null? ps) -1) ((tagcase (car ps) (place (m at) (i64= m n))) (tagcase (car ps) (place (m at) at))) (else (place-at (cdr ps) n))))))
+
+(define-rec
+  (range-from (subr kfx (i64 i64) (listof i64 acyclic))
+    (lambda (i n) (if (i64>= i n) nil (cons i (range-from (i64+ i 1) n))))))
+(define range-to (subr kfx (i64) (listof i64 acyclic)) (lambda (n) (range-from 0 n)))
+
+(define padded (subr kfx (i64) string)
+  (lambda (n)
+    (let ((s (i64->string n)))
+      (string-append (list->string (map (lambda ((k i64)) #\space) (range-to (i64- 4 (string-length-i64 s))))) s))))
+
+(define second-opnd (subr kfx ((listof opnd acyclic)) opnd) (lambda (os) (car (cdr os))))
+
+(define-rec
+  (put-sep-strings (subr kfx (strings) string)
+    (lambda (ss) (cond ((null? ss) "") ((null? (cdr ss)) (car ss)) (else (string-append (car ss) (string-append " " (put-sep-strings (cdr ss)))))))))
+
+(define line (subr kfx (i64 string) string) (lambda (at text) (string-append "  " (string-append (padded at) (string-append ": " text)))))
+
+(define-rec
+  (put-sep-lines (subr kfx (strings) string)
+    (lambda (ss) (if (null? ss) "" (string-append (car ss) (string-append "\n" (put-sep-lines (cdr ss))))))))
+
+(define opnd-text (subr kfx (opnd) string)
+  (lambda (o)
+    (tagcase o
+      (o-int (n) (i64->string n))
+      (o-lit (l) (lit-text l))
+      (o-word (w) (string-append "word " w))
+      (o-global (g) g)
+      (o-prim (p) p))))
+
+(define-rec
+  (words-said (subr kfx ((listof opnd acyclic)) strings)
+    (lambda (os) (if (null? os) nil (onto (tagcase (car os) (o-word (w) (list w)) (o-lit (l) (tagcase l (l-word (w) (list w)) (else y nil))) (else y nil)) (words-said (cdr os)))))))
+
+(define ins-text (subr kfx (string (listof opnd acyclic)) string)
+  (lambda (r os)
+    (if (string=? r "closure")
+        (string-append "closure " (string-append (opnd-text (car os)) (string-append " over " (opnd-text (second-opnd os)))))
+        (if (null? os) r (string-append r (string-append " " (put-sep-strings (map opnd-text os))))))))
+
+
+
+
+
+"One word's lines, and the words its lines name, in order."
+(define-datatype wsaid (wsaid string strings))
+
+(define-rec
+  (lines-of-items (subr kfx (citems i64 (listof place acyclic) strings strings) wsaid)
+    (lambda (xs at ps out named)
+      (if (null? xs)
+          (wsaid (put-sep-lines (reverse out)) (reverse named))
+          (let* ((x (car xs)) (next (i64+ at (item-size x))))
+            (tagcase x
+              (it-label (n) (lines-of-items (cdr xs) next ps out named))
+              (it-branch (n) (lines-of-items (cdr xs) next ps (cons (line at (string-append "branch → " (i64->string (place-at ps n)))) out) named))
+              (it-zbranch (n) (lines-of-items (cdr xs) next ps (cons (line at (string-append "0branch → " (i64->string (place-at ps n)))) out) named))
+              (it-ins (r os) (lines-of-items (cdr xs) next ps (cons (line at (ins-text r os)) out) (onto (reverse (words-said os)) named)))))))))
+
+
+
+
+
+(define-rec
+  (cells-of (subr kfx (citems i64) i64) (lambda (xs n) (if (null? xs) n (cells-of (cdr xs) (i64+ n (item-size (car xs)))))))
+  (word-named (subr kfx ((listof word acyclic) string) (listof word acyclic))
+    (lambda (ws n) (cond ((null? ws) nil) ((tagcase (car ws) (word (m xs) (string=? m n))) (list (car ws))) (else (word-named (cdr ws) n))))))
+
+"The listing: from `program`, each word reached, as `disasm.rs` walks
+ them: the words a word names pushed in order, the last pushed next."
+(define-rec
+  (listing-from (subr gen (strings strings string) string)
+    (lambda (todo seen out)
+      (cond ((null? todo) out)
+            ((string-member? (car todo) seen) (listing-from (cdr todo) seen out))
+            (else
+             (let ((w (word-named (get cg-words) (car todo))))
+               (if (null? w)
+                   (listing-from (cdr todo) (cons (car todo) seen) out)
+                   (tagcase (car w)
+                     (word (name xs)
+                       (tagcase (lines-of-items xs 0 (places-of xs 0 nil) nil nil)
+                         (wsaid (text named)
+                           (listing-from (onto (reverse named) (cdr todo)) (cons name seen)
+                                         (string-append out (string-append "\nword " (string-append name (string-append " (" (string-append (i64->string (cells-of xs 0)) (string-append " cells, cellular):\n" text))))))))))))))))))
+
+(define cells-listing (subr gen () string) (lambda () (listing-from (list "program") nil "")))

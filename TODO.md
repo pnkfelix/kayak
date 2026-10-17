@@ -668,7 +668,17 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    - more than three parameters; integers past a fixnum (Fixpt's bignum);
      a procedure native code gives back.
 4. Tiers 4, 5, 6; then 3.
-5. Twobit's passes; the compiler compiled into its own heap.
+5. Twobit's passes; the compiler compiled into its own heap. **Begun
+   (C133, 2026-10-17)**: kayak's own code generator, Fixpt's compiler
+   written in FX-26 ported to KFX (`fx26/cg.kfx`, `kayak-fx26 --cells`),
+   its words run every way Fixpt's are (`cells-programs.py --ours`): 77
+   programs agree, 68 of them Fixpt's words exactly. Next, by how many
+   programs wait on each: modules; `letrena` and regions; prompts;
+   bloblets; `typecase`, `case`, `quasiquote`, `vlambda`,
+   `define-generative`, floats; then Fixpt's middle phase (inlining,
+   specialization), lambda lifting, register code (twins), so that the
+   words are Fixpt's; then the REPL's forms through it (§33's
+   `,disassemble`). Most programs not compiled wait on the checker (§30).
 
 ## 32. `wcell`, `tword`, `wglobal` out of FX-26 (the user, 2026-10-16; C120)
 

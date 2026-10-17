@@ -22,6 +22,8 @@ pub mod prims;
 pub use prims::*;
 pub mod lower;
 pub use lower::*;
+pub mod cg;
+pub use cg::*;
 pub mod heap;
 pub use heap::*;
 pub mod words;

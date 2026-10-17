@@ -43,6 +43,12 @@ import fixptcache  # noqa: E402
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 GENERATED = os.path.join(ROOT, "crates", "kayak-cells", "src", "cells")
 PASSING = os.path.join(ROOT, "tests", "cells-passing")
+# With --ours (C133): the words kayak's own code generator makes of each
+# program (`kayak-fx26 --cells`), run the same ways; those that agree kept
+# here, and those whose words are Fixpt's, word for word, counted.
+OURS = "--ours" in sys.argv[1:]
+OURS_PASSING = os.path.join(ROOT, "tests", "cellgen-passing")
+ENGINE = os.path.join(ROOT, "target", "release", "kayak-fx26")
 MACHINE = ["--fx26-machine", "fx-cells-rsinterp"]
 # Fixpt's benchmarks run past FX-26's default step limit: run without one.
 UNLIMITED = ("bench/",)
@@ -107,6 +113,31 @@ def last_defines(path):
     return last.startswith(DEFINING)
 
 
+# Whether each program's words, with --ours, are Fixpt's.
+SAME = {}
+
+
+def stack_words(listing):
+    """A listing's words, by name: each its stack code's lines, its register
+    code (which kayak's generator does not make yet) and comments left out;
+    the words of one name (a global defined again) sorted."""
+    words, name, lines, skipping = {}, None, [], False
+    for l in listing.splitlines():
+        if l.startswith("word "):
+            if name is not None:
+                words.setdefault(name, []).append(lines)
+            name, lines, skipping = l.split(" (", 1)[0][5:], [l.split(", ", 1)[0]], False
+        elif l.startswith("  its register code"):
+            skipping = True
+        elif l.startswith(";") or not l.strip():
+            continue
+        elif not skipping:
+            lines.append(l)
+    if name is not None:
+        words.setdefault(name, []).append(lines)
+    return {n: sorted(ws) for n, ws in words.items()}
+
+
 def one(binary, cells, name, path):
     limit = ["--step-limit", "none"] if name.startswith(UNLIMITED) else []
     ev = fixptcache.run(binary, MACHINE + limit + ["eval", path], [path])
@@ -131,6 +162,14 @@ def one(binary, cells, name, path):
             return "fixpt-refuses", ""
     elif co.returncode != 0:
         return "fixpt-refuses", ""
+    if OURS:
+        theirs = text
+        made = run([ENGINE, "--cells", path], timeout=600)
+        if made.returncode != 0:
+            said = [l for l in made.stderr.splitlines() if "kayak-fx26" in l or "kfx:" in l]
+            return "gen-refuses", (said or made.stderr.strip().splitlines()[-1:] or ["?"])[0]
+        text = made.stdout
+        SAME[name] = stack_words(text) == stack_words(theirs)
     with tempfile.NamedTemporaryFile("w", suffix=".cells", delete=False) as f:
         f.write(text)
         listing = f.name
@@ -219,6 +258,8 @@ def main():
     if r.returncode != 0:
         sys.exit("cells-programs: kayak-cells does not build:\n" + r.stderr[-2000:])
     cells = os.path.join(ROOT, "target", "release", "kayak-cells")
+    if OURS and run(["cargo", "build", "--release", "--quiet", "-p", "kayak-fx26"], cwd=ROOT).returncode != 0:
+        sys.exit("cells-programs: kayak-fx26 does not build")
     binary = fixptcache.binary()
     ps = fixptcache.programs()
     ran = fixptcache.parallel(lambda p: one(binary, cells, p[0], p[1]), ps)
@@ -229,15 +270,16 @@ def main():
         if kind == "differ":
             wrong.append("%s: %s" % (name, why))
     agree = sorted(by.get("agree", []))
-    before = open(PASSING).read().split() if os.path.exists(PASSING) else []
+    passing = OURS_PASSING if OURS else PASSING
+    before = open(passing).read().split() if os.path.exists(passing) else []
     lost = [n for n in before if n not in agree]
     if bless:
-        with open(PASSING, "w") as f:
+        with open(passing, "w") as f:
             f.write("\n".join(agree) + "\n")
     if "--why" in sys.argv[1:]:
         reasons = {}
         for (name, _), (kind, why) in zip(ps, ran):
-            if kind in ("refused", "not-yet"):
+            if kind in ("refused", "not-yet", "gen-refuses"):
                 reasons[(kind, why)] = reasons.get((kind, why), 0) + 1
         for (kind, why), n in sorted(reasons.items(), key=lambda x: -x[1]):
             print("%5d  %s: %s" % (n, kind, why[:150]))
@@ -246,6 +288,13 @@ def main():
     if lost and not bless:
         for n in lost:
             print("NO LONGER AGREES  " + n)
+    if OURS:
+        same = sorted(n for n in agree if SAME.get(n))
+        if "--list" in sys.argv[1:]:
+            for n in agree:
+                print("%s %s" % ("same " if SAME.get(n) else "other", n))
+        print("cells-programs: kayak's own words: %d programs agree, %d differ, %d of them Fixpt's words exactly; "
+              "%d the generator cannot yet" % (len(agree), len(wrong), len(same), len(by.get("gen-refuses", []))))
     print("cells-programs: %d of Fixpt's programs agree on tier 1, %d differ; not run: %d listings not exact, %d need what tier 1 has not yet, %d leave no value, %d Fixpt refuses"
           % (len(agree), len(wrong), len(by.get("refused", [])), len(by.get("not-yet", [])), len(by.get("no-value", [])), len(by.get("fixpt-refuses", []))))
     if wrong or (lost and not bless):

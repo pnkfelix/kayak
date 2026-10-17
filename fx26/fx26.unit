@@ -11,6 +11,7 @@
 ir.kfx
 prims.kfx
 lower.kfx
+cg.kfx
 heap.kfx
 words.kfx
 table.kfx
