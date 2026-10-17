@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"flat-sums-fail.fx"
+],
+"code": 0,
+"out": [
+"define mk : (subr (maxeff (alloc @heap) (read @heap)) (int) (blobref o s)) ! pure",
+"define var : (subr (maxeff (alloc @heap) (read (globals mk)) (read @heap) (write @heap)) (int) int) ! pure",
+"define tag : (subr (maxeff (alloc @heap) (read (globals mk)) (read @heap) (write @heap)) (int) int) ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,37 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"nat-basics.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (32 cells, cellular):",
+"     0: lit 3",
+"     2: global! three",
+"     4: global three",
+"     6: lit 1",
+"     8: int-add",
+"     9: global! four",
+"    11: global four",
+"    13: global! some",
+"    15: global some",
+"    17: global! as-int",
+"    19: global three",
+"    21: global four",
+"    23: int-add",
+"    24: global! seven",
+"    26: global seven",
+"    28: global as-int",
+"    30: int-add",
+"    31: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

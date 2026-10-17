@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"place-is-a-region.fx"
+],
+"code": 0,
+"out": [
+"total : (poly ((p place)) (subr (maxeff (read p) (alloc p)) ((place p) int) int)) ! pure",
+"7 : int ! (read (globals total))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"nil-or-pair.fx"
+],
+"code": 0,
+"out": [
+"value : (subr (read @r) (entry) int) ! pure",
+"4 : int ! (maxeff (read @r) (alloc @r) (read (globals value)))",
+""
+],
+"err": [
+""
+]
+}

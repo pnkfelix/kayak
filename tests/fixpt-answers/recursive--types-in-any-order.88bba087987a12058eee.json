@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"types-in-any-order.fx"
+],
+"code": 0,
+"out": [
+"define leaf : (subr pure (int) tree) ! pure",
+"define node : (subr pure (forest) tree) ! pure",
+"define none : (subr pure () forest) ! pure",
+"define some : (subr pure (tree forest) forest) ! pure",
+"forests ! (read (globals leaf node none some))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

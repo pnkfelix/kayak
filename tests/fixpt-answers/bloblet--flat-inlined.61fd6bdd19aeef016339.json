@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"flat-inlined.fx"
+],
+"code": 0,
+"out": [
+"fill : (subr (maxeff (read @heap) (write @heap) spin (read (globals fill))) (arr int) unit) ! pure",
+"area : (subr (read @heap) ((blobref o shape)) f64) ! pure",
+"total : (subr (maxeff (read @heap) spin (read (globals area total))) (arr int f64) f64) ! pure",
+"50 : int ! (maxeff (read @heap) (write @heap) (alloc @heap) spin (read (globals area fill total)))",
+""
+],
+"err": [
+""
+]
+}

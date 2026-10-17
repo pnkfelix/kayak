@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"inlined-extract.fx"
+],
+"code": 0,
+"out": [
+"define e : (subr pure (pt) int) ! pure",
+"define lp : (subr (maxeff (read (globals e lp)) spin) (pt int int) int) ! pure",
+"define go : (subr (maxeff (read (globals e lp)) spin) (int) int) ! pure",
+"int ! (maxeff (read (globals e go lp)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

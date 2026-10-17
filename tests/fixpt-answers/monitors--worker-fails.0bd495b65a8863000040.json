@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"worker-fails.fx"
+],
+"code": 0,
+"out": [
+"define total : (icell int @c) ! (alloc @c)",
+"define collector : (addr report @p) ! (maxeff (alloc @p) (init @c) (read (globals total)) nondet spin)",
+"define work : (subr spin (int) int) ! pure",
+"define failed : (subr pure (string) report) ! pure",
+"define start : (subr (maxeff (alloc @w) (read (globals collector failed work)) (send @p) nondet spin) () (addr int @w)) ! pure",
+"define w1 : (addr int @w) ! (maxeff (alloc @w) (read (globals collector failed start work)) (send @p) nondet spin)",
+"define w2 : (addr int @w) ! (maxeff (alloc @w) (read (globals collector failed start work)) (send @p) nondet spin)",
+"define w3 : (addr int @w) ! (maxeff (alloc @w) (read (globals collector failed start work)) (send @p) nondet spin)",
+"unit ! (maxeff (read (globals w1)) (send @w))",
+"unit ! (maxeff (read (globals w2)) (send @w))",
+"unit ! (maxeff (read (globals w3)) (send @w))",
+"int ! (maxeff (await @c) (read (globals total)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

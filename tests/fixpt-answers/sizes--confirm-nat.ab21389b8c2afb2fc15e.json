@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"confirm-nat.fx"
+],
+"code": 0,
+"out": [
+"count : (subr pure (nat) int) ! pure",
+"safe : (subr (read (globals count)) (int) int) ! pure",
+"69 : int ! (read (globals count safe))",
+""
+],
+"err": [
+""
+]
+}

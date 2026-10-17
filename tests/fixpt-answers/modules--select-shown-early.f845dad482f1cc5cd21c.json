@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"select-shown-early.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/select-shown-early.fx:9:4: a int is expected here, and this is a cell",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

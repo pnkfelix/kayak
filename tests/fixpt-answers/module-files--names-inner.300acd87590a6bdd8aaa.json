@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"names-inner.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/names-inner.fx:2:2: unbound variable `module-parameters`",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

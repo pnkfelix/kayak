@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"variadic.fx"
+],
+"code": 0,
+"out": [
+"define total : (subr (maxeff (read (globals total)) spin) ((listof int acyclic)) int) ! pure",
+"define add-up : (vsubr (maxeff (read (globals total)) spin) int int) ! pure",
+"define adder : (subr pure (int) (vsubr (maxeff (read (globals total)) spin) int int)) ! pure",
+"define sum-of-calls : (subr (maxeff (read (globals add-up adder sum-of-calls total)) spin) (int int) int) ! pure",
+"define spread : (subr (maxeff (read (globals adder total)) spin) (int (listof int acyclic)) int) ! pure",
+"int ! (maxeff (read (globals add-up total)) spin)",
+"int ! (maxeff (read (globals adder spread total)) spin)",
+"int ! (maxeff (read (globals add-up adder sum-of-calls total)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

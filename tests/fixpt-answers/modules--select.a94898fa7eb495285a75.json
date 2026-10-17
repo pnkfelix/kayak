@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"select.fx"
+],
+"code": 0,
+"out": [
+"define counter : (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int))) ! pure",
+"define two : counter..t ! (read (globals counter))",
+"int ! (read (globals counter two))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

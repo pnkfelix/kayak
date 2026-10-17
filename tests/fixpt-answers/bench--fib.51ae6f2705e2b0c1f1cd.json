@@ -1,0 +1,19 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"--step-limit",
+"none",
+"eval",
+"fib.fx"
+],
+"code": 0,
+"out": [
+"fib : (subr (maxeff spin (read (globals fib))) (int) int) ! pure",
+"832040 : int ! (maxeff spin (read (globals fib)))",
+""
+],
+"err": [
+""
+]
+}

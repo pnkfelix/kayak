@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"acyclic-not-data.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/datum/acyclic-not-data.fx:2:63: `t` is bound as data, and a (listof int @r) is not data",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

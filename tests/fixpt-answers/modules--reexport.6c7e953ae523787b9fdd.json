@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"reexport.fx"
+],
+"code": 0,
+"out": [
+"define n : (moduleof (val m (moduleof (val x int))) (val x int)) ! pure",
+"int ! (read (globals n))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

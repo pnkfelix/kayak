@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"region-escapes.fx"
+],
+"code": 0,
+"out": [
+"define t : (prompt-tag int int (maxeff (read (globals escape rounds t)) spin) @p) ! (alloc @p)",
+"define escape : (subr (maxeff (goto @p) (read (globals t))) (int) int) ! pure",
+"define rounds : (subr (maxeff (goto @p) (read (globals escape rounds t)) spin) (int int) int) ! pure",
+"int ! (maxeff (goto @p) (read (globals escape rounds t)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

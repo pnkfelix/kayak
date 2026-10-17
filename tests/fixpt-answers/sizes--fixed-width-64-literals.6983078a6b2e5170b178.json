@@ -1,0 +1,20 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"fixed-width-64-literals.fx"
+],
+"code": 0,
+"out": [
+"x : i64 ! pure",
+"big : u64 ! pure",
+"neg : i64 ! pure",
+"add : (subr pure (i64 i64) i64) ! pure",
+"(3 9223372036854775805 18446744073709551615 -9223372036854775808) : (listof int @r.1) ! (maxeff (alloc @r.1) (read (globals add big neg x)))",
+""
+],
+"err": [
+""
+]
+}

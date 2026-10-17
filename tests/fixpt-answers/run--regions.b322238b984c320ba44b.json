@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"regions.fx"
+],
+"code": 0,
+"out": [
+"add-to : (subr pure (int) int) ! pure",
+"total : (subr spin (int) int) ! pure",
+"(41 5050) : (listof int @l) ! (maxeff (alloc @l) spin (read (globals add-to total)))",
+""
+],
+"err": [
+""
+]
+}

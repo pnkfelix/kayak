@@ -1,0 +1,49 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"place-is-a-region.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (20 cells, cellular):",
+"     0: closure word total over 0",
+"     3: global! total",
+"     5: prim %region-enter 0",
+"     8: slot 0",
+"    10: lit 7",
+"    12: global total",
+"    14: tcall 2",
+"    16: prim %region-exit 2",
+"    19: exit",
+"",
+"word total (11 cells, cellular):",
+"     0: slot 0",
+"     2: slot 1",
+"     4: lit ()",
+"     6: prim %region-cons 3",
+"     9: pair-car",
+"    10: return",
+"  its register code (28 cells, not compiled):",
+"       0: args 2",
+"       2: save 2",
+"       4: store 1 0",
+"       7: store 2 1",
+"      10: load 1 0",
+"      13: load 2 1",
+"      16: const ()",
+"      18: setreg 3",
+"      20: prim %region-cons 3",
+"      23: op1 pair-car",
+"      25: pop 2",
+"      27: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

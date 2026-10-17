@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"acyclic-lists.fx"
+],
+"code": 0,
+"out": [
+"define len : (subr pure ((listof int acyclic) int) int) ! pure",
+"define first : (subr pure ((listof int const)) int) ! pure",
+"define built : (subr pure (int) (listof int acyclic)) ! pure",
+"define changed : (subr pure (int) (listof int const)) ! pure",
+"int ! (read (globals built changed first len))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

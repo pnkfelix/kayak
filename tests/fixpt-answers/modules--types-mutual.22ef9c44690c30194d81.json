@@ -1,0 +1,31 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"types-mutual.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (26 cells, cellular):",
+"     0: lit 36",
+"     2: lit |stop|",
+"     4: lit 37",
+"     6: prim %make-frozen 1",
+"     9: prim %make-frozen 3",
+"    12: lit 37",
+"    14: slot 0",
+"    16: prim %make-frozen 2",
+"    19: slot! 0",
+"    21: global! m",
+"    23: lit 1",
+"    25: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

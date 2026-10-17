@@ -1,0 +1,16 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"load-parameters-bad.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/load-parameters-bad.fx:3:11: in `../module-files/bad-parameters.fx`, 2:1: `(module-parameters ((name kind) …))`",
+""
+]
+}

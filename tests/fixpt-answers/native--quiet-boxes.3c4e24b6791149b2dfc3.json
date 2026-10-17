@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"quiet-boxes.fx"
+],
+"code": 0,
+"out": [
+"define twice : (subr pure (f64) f64) ! pure",
+"define loop : (subr (maxeff (read (globals loop)) spin) ((subr pure (f64) f64) int f64) f64) ! pure",
+"int ! (maxeff (read (globals loop twice)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

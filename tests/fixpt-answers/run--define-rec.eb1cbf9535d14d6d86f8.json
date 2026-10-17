@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"define-rec.fx"
+],
+"code": 0,
+"out": [
+"define ev : (subr (maxeff (read @globals) spin) (int) bool) ! pure",
+"define od : (subr (maxeff (read @globals) spin) (int) bool) ! pure",
+"define count : (subr (maxeff (read @globals) spin) (int int) int) ! pure",
+"define evens : (subr (maxeff (read (globals count)) (read @globals) spin) (int) int) ! pure",
+"(listof int @r.1) ! (maxeff (alloc @r.1) (read (globals count evens od)) (read @globals) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

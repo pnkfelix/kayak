@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"star-group.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/star-group.fx:4:38: `define*` `ev` is in a recursive group with `od`: use `define`",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

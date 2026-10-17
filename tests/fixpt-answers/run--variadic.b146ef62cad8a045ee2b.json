@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"variadic.fx"
+],
+"code": 0,
+"out": [
+"define total : (subr (maxeff (read (globals total)) spin) ((listof int acyclic)) int) ! pure",
+"define add-up : (vsubr (maxeff (read (globals total)) spin) int int) ! pure",
+"define first-or-none : (vsubr pure string string) ! pure",
+"int ! (maxeff (read (globals add-up total)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

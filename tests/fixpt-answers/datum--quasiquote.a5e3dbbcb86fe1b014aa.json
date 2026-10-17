@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"quasiquote.fx"
+],
+"code": 0,
+"out": [
+"walk : (subr pure (datum) int) ! pure",
+"x : int ! pure",
+"xs : (listof datum acyclic) ! pure",
+"10423 : int ! (read (globals walk x xs))",
+""
+],
+"err": [
+""
+]
+}

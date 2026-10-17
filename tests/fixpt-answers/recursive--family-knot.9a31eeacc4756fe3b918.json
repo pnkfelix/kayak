@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"family-knot.fx"
+],
+"code": 0,
+"out": [
+"define leaf1 : (poly ((r region)) (subr pure (int) (mu %3 (sumof (leaf int) (node (listof %3 r)))))) ! pure",
+"(mu %1 (sumof (leaf int) (node (listof %1 @r.1)))) ! (read (globals leaf1))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

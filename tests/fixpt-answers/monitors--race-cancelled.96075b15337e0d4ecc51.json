@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"race-cancelled.fx"
+],
+"code": 0,
+"out": [
+"define total : (icell int @d) ! (alloc @d)",
+"define never : (icell int @e) ! (alloc @e)",
+"define collector : (addr report @p) ! (maxeff (alloc @p) (init @d) (read (globals total)) nondet)",
+"define failed : (subr pure (string) report) ! pure",
+"define count : (subr (maxeff (read (globals count)) spin) (int int) int) ! pure",
+"define w : (addr int @w) ! (maxeff (alloc @w) (read (globals collector count failed)) (send @p) nondet spin)",
+"unit ! (maxeff (read (globals w)) (send @w))",
+"int ! (maxeff (await @d) (await @e) (read (globals never total)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

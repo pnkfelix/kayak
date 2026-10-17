@@ -1,0 +1,20 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"confirm-length.fx"
+],
+"code": 0,
+"out": [
+"line : (subr pure (int) (listof int const)) ! pure",
+"second : (subr pure ((nlist int 3)) int) ! pure",
+"f : (subr (read (globals second)) ((listof int const)) int) ! pure",
+"g : (subr pure ((listof int const)) int) ! pure",
+"19 : int ! (read (globals f g line second))",
+""
+],
+"err": [
+""
+]
+}

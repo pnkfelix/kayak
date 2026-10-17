@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"acyclic-shadowed.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/datum/acyclic-shadowed.fx:3:52: `certify-acyclic` takes only a variable `acyclic?` has just found acyclic",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

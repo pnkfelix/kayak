@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"include-family.fx"
+],
+"code": 0,
+"out": [
+"boxes : (moduleof (desc box (dlambda ((k type) (r region)) (pairof k k r))) (val mk (subr pure (int) int))) ! pure",
+"m : (moduleof (desc box (dlambda ((k type) (r region)) (pairof k k r))) (desc ib (pairof int int @heap)) (val mk (subr pure (int) int)) (val sum (subr (read @heap) ((pairof int int @heap)) int)) (val first (subr (read @heap) ((pairof int int @heap)) int))) ! (read (globals boxes))",
+"3 : int ! (maxeff (read @heap) (alloc @heap) (read (globals m)))",
+""
+],
+"err": [
+""
+]
+}

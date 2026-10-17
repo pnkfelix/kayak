@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"nat-forget-taken.fx"
+],
+"code": 1,
+"out": [
+"f : (poly ((s size)) (subr pure ((nat s)) (subr pure ((nat s)) (nat 0)))) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/nat-forget-taken.fx:6:11: this is a (subr pure ((nat y)) (nat 0)), which takes something of the size of `y`, and that size is not known outside `y`'s scope",
+""
+]
+}

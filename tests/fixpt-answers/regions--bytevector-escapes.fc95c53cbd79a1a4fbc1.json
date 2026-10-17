@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"bytevector-escapes.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/bytevector-escapes.fx:5:24: the value of `letregion r` would outlive its region: its type is (bytevectorof r)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

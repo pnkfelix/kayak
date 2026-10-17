@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"option.fx"
+],
+"code": 0,
+"out": [
+"define none : (poly ((a type)) (subr pure () (sumof (none (productof)) (some (productof (1 a)))))) ! pure",
+"define some : (poly ((a type)) (subr pure (a) (sumof (none (productof)) (some (productof (1 a)))))) ! pure",
+"define seven : (sumof (none (productof)) (some (productof (1 int)))) ! (read (globals some))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

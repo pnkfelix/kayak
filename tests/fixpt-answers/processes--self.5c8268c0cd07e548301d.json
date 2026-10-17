@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"self.fx"
+],
+"code": 0,
+"out": [
+"define total : (icell int @c) ! (alloc @c)",
+"define counter : (addr int @p) ! (maxeff (alloc @p) (init @c) (read (globals total)) nondet spin)",
+"unit ! (maxeff (read (globals counter)) (send @p))",
+"int ! (maxeff (await @c) (read (globals total)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

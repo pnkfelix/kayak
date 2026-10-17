@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"array-sum.fx"
+],
+"code": 0,
+"out": [
+"define a : (arrayof int @a) ! (alloc @a)",
+"define fill : (subr (maxeff (read (globals a fill)) (write @a) spin) (int) unit) ! pure",
+"define total : (subr (maxeff (read (globals a total)) (read @a) spin) (int int) int) ! pure",
+"int ! (maxeff (read (globals a fill total)) (read @a) (write @a) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

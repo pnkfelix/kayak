@@ -1,0 +1,16 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"blobref-not-flat.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/blobref-not-flat.fx:3:53: a flat is `f64`, `f32`, `i32`, `u32`, `i64`, `u64`, `(productof (label flat) …)`, `(sumof [key] (label flat) …)`, `(arrayof flat n)`, or a variable of kind `flat`",
+""
+]
+}

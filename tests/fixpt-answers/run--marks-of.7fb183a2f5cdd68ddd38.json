@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"marks-of.fx"
+],
+"code": 0,
+"out": [
+"define t : (prompt-tag (listof int @l) int (maxeff (alloc @l) (read (globals key t)) (read @m) (write @m)) @p) ! (alloc @p)",
+"define key : (mark-key int @m) ! (alloc @m)",
+"(listof int @l) ! (maxeff (alloc @l) (read (globals key t)) (read @m) (write @m))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

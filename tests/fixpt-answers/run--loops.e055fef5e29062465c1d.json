@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"loops.fx"
+],
+"code": 0,
+"out": [
+"sum-squares : (subr spin (int) int) ! pure",
+"fact : (subr spin (int) int) ! pure",
+"hidden : (subr pure (int) int) ! pure",
+"twice : (subr (maxeff spin (read (globals twice))) ((subr (maxeff spin (read (globals twice))) (int int) int) int int) int) ! pure",
+"escapes : (subr (maxeff spin (read (globals twice))) (int) int) ! pure",
+"parity : (subr spin (int) int) ! pure",
+"areas : (subr spin (int) int) ! pure",
+"inner-same : (subr spin (int) int) ! pure",
+"(333338333350000 3628800 42 2000000 0 166917000 5) : (listof int @r.1) ! (maxeff (alloc @r.1) spin (read (globals areas escapes fact hidden inner-same parity sum-squares twice)))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"writes-outside.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/processes/writes-outside.fx:6:25: `w` is declared a (addr int @w): a process may share nothing that can be written, and its body holds `bump`: a procedure that has (read @c)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,16 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"fixed-width-literal-u64-too-big.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/fixed-width-literal-u64-too-big.fx:2:15: `z` is declared a u64: 18446744073709551616 is not a u64: its range is 0 to 18446744073709551615",
+""
+]
+}

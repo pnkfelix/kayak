@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"confirm-nat.fx"
+],
+"code": 0,
+"out": [
+"define count : (subr pure (nat) int) ! pure",
+"define safe : (subr (read (globals count)) (int) int) ! pure",
+"int ! (read (globals count safe))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

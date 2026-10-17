@@ -1,0 +1,22 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"deadlock.fx"
+],
+"code": 1,
+"out": [
+"relay : (poly ((p place)) (subr (maxeff (alloc @r) (await @r) (init @r) (send @s) (receive p) spin nondet) ((inbox msg p)) unit)) ! pure",
+"a : (addr msg @s) ! (maxeff (alloc @s) (alloc @r) (await @r) (init @r) (send @s) spin nondet (read (globals relay)))",
+"b : (addr msg @s) ! (maxeff (alloc @s) (alloc @r) (await @r) (init @r) (send @s) spin nondet (read (globals relay)))",
+"#u : unit ! (maxeff (send @s) spin (read (globals a b)))",
+"#u : unit ! (maxeff (send @s) spin (read (globals a b)))",
+" : int ! (maxeff (alloc @r) (await @r) (send @s) spin (read (globals a)))",
+""
+],
+"err": [
+"! evaluation failed: an i-cell read before it was written, and no task is left to write it: a deadlock",
+""
+]
+}

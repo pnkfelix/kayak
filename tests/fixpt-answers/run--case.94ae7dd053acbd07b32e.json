@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"case.fx"
+],
+"code": 0,
+"out": [
+"sym-class : (subr pure (symbol) int) ! pure",
+"int-class : (subr pure (int) int) ! pure",
+"char-class : (subr pure (char) int) ! pure",
+"string-class : (subr pure (string) int) ! pure",
+"bool-class : (subr pure (bool) int) ! pure",
+"score : (subr (read (globals bool-class char-class int-class string-class sym-class)) () int) ! pure",
+"12312342223 : int ! (read (globals bool-class char-class int-class score string-class sym-class))",
+""
+],
+"err": [
+""
+]
+}

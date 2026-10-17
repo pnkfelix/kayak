@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"datatype-param.fx"
+],
+"code": 0,
+"out": [
+"define node : (poly ((f (=> (type) type)) (a type)) (subr pure (a (f (mu %4 (sumof (node (productof (1 a) (2 (f %4)))))))) (mu %3 (sumof (node (productof (1 a) (2 (f %3)))))))) ! pure",
+"define leaf : (subr pure (int (listof (mu %3 (sumof (node (productof (1 int) (2 (listof %3 @heap)))))) @heap)) (mu %2 (sumof (node (productof (1 int) (2 (listof %2 @heap))))))) ! (read (globals node))",
+"define t : (mu %1 (sumof (node (productof (1 int) (2 (listof %1 @heap)))))) ! (maxeff (alloc @heap) (read (globals leaf)))",
+"int ! (maxeff (read (globals t)) (read @heap))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

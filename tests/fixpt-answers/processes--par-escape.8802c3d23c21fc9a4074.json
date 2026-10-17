@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"par-escape.fx"
+],
+"code": 1,
+"out": [
+"t : (escape-tag int int @e) ! (alloc @e)",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/processes/par-escape.fx:5:17: a `par` branch must end where it began, and this one has (goto @e)",
+""
+]
+}

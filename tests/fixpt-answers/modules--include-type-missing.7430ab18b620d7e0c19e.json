@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"include-type-missing.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/include-type-missing.fx:5:11: `nope` is not a type, nor one a module included gives",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

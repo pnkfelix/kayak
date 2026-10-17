@@ -1,0 +1,51 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"thunk-untold.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (13 cells, cellular):",
+"     0: closure word count-of over 0",
+"     3: global! count-of",
+"     5: closure word lambda@247 over 0",
+"     8: global count-of",
+"    10: tcall 1",
+"    12: exit",
+"",
+"word lambda@247 (4 cells, cellular):",
+"     0: closure word lambda/lambda@291 over 0",
+"     3: return",
+"  its register code (7 cells, not compiled):",
+"       0: args 0",
+"       2: lambda word lambda/lambda@291 over 0",
+"       6: return",
+"",
+"word lambda/lambda@291 (6 cells, cellular):",
+"     0: slot 1",
+"     2: slot 0",
+"     4: ttailcall 1",
+"  its register code (10 cells, not compiled):",
+"       0: args 2",
+"       2: reg 1",
+"       4: movereg 2 1",
+"       7: tailinvoke 1 1",
+"",
+"word count-of (3 cells, cellular):",
+"     0: lit 1",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 1",
+"       2: const 1",
+"       4: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

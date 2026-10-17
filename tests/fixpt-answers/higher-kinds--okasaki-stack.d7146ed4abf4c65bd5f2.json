@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"okasaki-stack.fx"
+],
+"code": 0,
+"out": [
+"define list-stack : stack-sig ! pure",
+"define s : (list-stack..stack int) ! (maxeff (alloc @heap) (read (globals list-stack)))",
+"(listof int @r.1) ! (maxeff (alloc @heap) (alloc @r.1) (read (globals list-stack s)) (read @heap))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,21 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"flat-unsized-recur.fx"
+],
+"code": 0,
+"out": [
+"total : (subr (maxeff (read @heap) spin (read (globals total))) (arr nat int) int) ! pure",
+"b : blob ! (alloc @heap)",
+"s : arr ! (read (globals b))",
+"fill : (subr (maxeff (read @heap) (write @heap) spin (read (globals fill))) (arr nat) unit) ! pure",
+"#u : unit ! (maxeff (read @heap) (write @heap) spin (read (globals fill s)))",
+"15 : int ! (maxeff (read @heap) spin (read (globals s total)))",
+""
+],
+"err": [
+""
+]
+}

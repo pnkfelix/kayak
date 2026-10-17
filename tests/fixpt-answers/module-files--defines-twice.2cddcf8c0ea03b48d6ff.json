@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"defines-twice.fx"
+],
+"code": 0,
+"out": [
+"warning: `t` is defined as a type more than once; every value sees the last",
+"define x : t ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,19 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"bytes.fx"
+],
+"code": 0,
+"out": [
+"b : (bloblet (fields) @buf) ! (alloc @buf)",
+"#u : unit ! (maxeff (write @buf) (read (globals b)))",
+"#u : unit ! (maxeff (write @buf) (read (globals b)))",
+"259 : int ! (maxeff (read @buf) (read (globals b)))",
+""
+],
+"err": [
+""
+]
+}

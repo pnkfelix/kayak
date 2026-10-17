@@ -1,0 +1,34 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"proj-await.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (14 cells, cellular):",
+"     0: closure word f over 0",
+"     3: global! f",
+"     5: global f",
+"     7: global! g",
+"     9: global g",
+"    11: tcall 0",
+"    13: exit",
+"",
+"word f (3 cells, cellular):",
+"     0: lit 1",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 0",
+"       2: const 1",
+"       4: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

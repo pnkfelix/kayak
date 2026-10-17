@@ -1,0 +1,16 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"answer.fx"
+],
+"code": 0,
+"out": [
+"#<product of 2> : (moduleof (desc doubles (maxeff (read @globals) spin)) (val twice (subr (maxeff (read @globals) spin) (int) int)) (val half int)) ! (read (globals %shared:/Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/answer-types.fx))",
+""
+],
+"err": [
+""
+]
+}

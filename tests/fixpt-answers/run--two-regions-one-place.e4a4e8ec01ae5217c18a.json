@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"two-regions-one-place.fx"
+],
+"code": 0,
+"out": [
+"define count : (subr spin (int) int) ! pure",
+"int ! (maxeff (read (globals count)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

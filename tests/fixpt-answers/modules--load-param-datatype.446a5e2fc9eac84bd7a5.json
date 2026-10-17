@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"load-param-datatype.fx"
+],
+"code": 0,
+"out": [
+"define o : (moduleof (desc option (dlambda ((a type)) (sumof (none (productof)) (some (productof (1 a)))))) (val none (poly ((a type)) (subr pure () (sumof (none (productof)) (some (productof (1 a))))))) (val some (poly ((a type)) (subr pure (a) (sumof (none (productof)) (some (productof (1 a))))))) (val seven (sumof (none (productof)) (some (productof (1 int)))))) ! (read (globals %shared:/Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/../module-files/option.fx))",
+"int ! (read (globals o))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

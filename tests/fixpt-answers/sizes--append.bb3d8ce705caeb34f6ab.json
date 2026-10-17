@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"append.fx"
+],
+"code": 0,
+"out": [
+"define app : append-type ! pure",
+"define len : (subr pure ((nlist int finite)) int) ! pure",
+"define two : (nlist int 2) ! pure",
+"define three : (nlist int 3) ! pure",
+"define five : (nlist int 5) ! (read (globals app three two))",
+"int ! (read (globals five len))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

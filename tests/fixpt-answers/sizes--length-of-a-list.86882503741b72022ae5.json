@@ -1,0 +1,26 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"length-of-a-list.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (15 cells, cellular):",
+"     0: lit 1",
+"     2: lit 2",
+"     4: prim list 2",
+"     7: global! l",
+"     9: global l",
+"    11: prim length 1",
+"    14: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"resume.fx"
+],
+"code": 1,
+"out": [
+"ks : (ref (listof (subr (goto @k) (int) void) @b) @b) ! (alloc @b)",
+" : void ! (maxeff (read @b) (write @b) (alloc @b) (goto @k) (comefrom @k) spin (read (globals ks)))",
+""
+],
+"err": [
+"! evaluation failed: evaluation step limit exceeded",
+""
+]
+}

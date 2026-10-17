@@ -1,0 +1,32 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"many-values.fx"
+],
+"code": 0,
+"out": [
+"ten : (subr pure (int int int int int int int int int int) int) ! pure",
+"25 : int ! (read (globals ten))",
+"spin10 : (subr (maxeff spin (read (globals spin10))) (int int int int int int int int int int) int) ! pure",
+"1012 : int ! (maxeff spin (read (globals spin10)))",
+"; not in the native convention yet, so `cell10` runs as cellular code: `cell10`: it calls `stay-cellular`",
+"cell10 : (subr (maxeff (read @globals) spin (read (globals cell10 ten))) (int int int int int int int int int int) int) ! pure",
+"to-cell : (subr (maxeff (read @globals) spin (read (globals cell10 ten))) (int) int) ! pure",
+"-154 : int ! (maxeff (read @globals) spin (read (globals cell10 ten to-cell)))",
+"; not in the native convention yet, so `from-cell` runs as cellular code: `from-cell`: it calls `stay-cellular`",
+"from-cell : (subr (maxeff (read @globals) spin (read (globals ten))) (int) int) ! pure",
+"119 : int ! (maxeff (read @globals) spin (read (globals from-cell ten)))",
+"over10 : (subr (alloc @heap) (int int int int int int int int int int) adder) ! pure",
+"1025 : int ! (maxeff (read @globals) (alloc @heap) (read (globals over10)))",
+"fields10 : (subr (maxeff (read @heap) (alloc @heap)) (int) int) ! pure",
+"1001 : int ! (maxeff (read @heap) (alloc @heap) (read (globals fields10)))",
+""
+],
+"err": [
+""
+]
+}

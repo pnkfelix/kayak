@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"race-all-lost.fx"
+],
+"code": 0,
+"out": [
+"define lost : (subr pure () int) ! pure",
+"define fails : (subr (maxeff (read (globals fails lost)) spin) (int) int) ! pure",
+"int ! (maxeff (read (globals fails lost)) nondet spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

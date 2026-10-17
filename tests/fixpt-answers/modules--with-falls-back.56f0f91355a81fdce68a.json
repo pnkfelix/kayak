@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"with-falls-back.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (10 cells, cellular):",
+"     0: lit 37",
+"     2: prim %make-frozen 1",
+"     5: global! a",
+"     7: lit 3",
+"     9: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

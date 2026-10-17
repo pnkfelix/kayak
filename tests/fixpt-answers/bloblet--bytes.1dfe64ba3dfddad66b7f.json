@@ -1,0 +1,47 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"bytes.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (55 cells, cellular):",
+"     0: lit 4",
+"     2: prim %make-bloblet 1",
+"     5: global! b",
+"     7: global b",
+"     9: lit 1",
+"    11: lit 200",
+"    13: prim %bloblet-set-byte! 3",
+"    16: drop",
+"    17: lit |#u|",
+"    19: drop",
+"    20: global b",
+"    22: lit 3",
+"    24: lit 55",
+"    26: prim %bloblet-set-byte! 3",
+"    29: drop",
+"    30: lit |#u|",
+"    32: drop",
+"    33: global b",
+"    35: prim %bloblet-bytes 1",
+"    38: global b",
+"    40: lit 1",
+"    42: prim %bloblet-byte 2",
+"    45: global b",
+"    47: lit 3",
+"    49: prim %bloblet-byte 2",
+"    52: int-add",
+"    53: int-add",
+"    54: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

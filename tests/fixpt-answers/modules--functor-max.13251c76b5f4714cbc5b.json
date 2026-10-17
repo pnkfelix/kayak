@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"functor-max.fx"
+],
+"code": 0,
+"out": [
+"int-order : (moduleof (desc t int) (val less (subr pure (t t) bool))) ! pure",
+"max-of : (subr pure (ordered (select $1 t) (select $1 t)) (select $1 t)) ! pure",
+"5 : int ! (read (globals int-order max-of))",
+""
+],
+"err": [
+""
+]
+}

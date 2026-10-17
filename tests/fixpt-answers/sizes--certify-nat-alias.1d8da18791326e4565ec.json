@@ -1,0 +1,16 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"certify-nat-alias.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/certify-nat-alias.fx:3:53: `certify-nat` is named only to call it: its calls are checked where it is named",
+""
+]
+}

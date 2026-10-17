@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"fails-string-ref.fx"
+],
+"code": 1,
+"out": [
+" : char ! pure",
+""
+],
+"err": [
+"! evaluation failed: string index out of range (length 3)",
+""
+]
+}

@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"nlist-cdr.fx"
+],
+"code": 1,
+"out": [
+"three : (nlist int 3) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/nlist-cdr.fx:4:29: `wrong` is declared a (nlist int 3): a (nlist int 3) is expected here, and this is a (nlist int 2)",
+""
+]
+}

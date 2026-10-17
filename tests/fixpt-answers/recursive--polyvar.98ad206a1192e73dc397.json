@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"polyvar.fx"
+],
+"code": 0,
+"out": [
+"define f : (subr pure (p1) int) ! pure",
+"define g : (subr (read (globals f)) (p1) int) ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

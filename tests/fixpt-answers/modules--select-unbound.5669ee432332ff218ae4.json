@@ -1,0 +1,16 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"select-unbound.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/select-unbound.fx:3:1: `(select nowhere t)`: `nowhere` is not bound here",
+""
+]
+}

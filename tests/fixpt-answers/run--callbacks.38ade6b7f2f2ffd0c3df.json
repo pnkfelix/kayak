@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"callbacks.fx"
+],
+"code": 0,
+"out": [
+"run-callbacks : (subr pure (int) int) ! pure",
+"41 : int ! (read (globals run-callbacks))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"blobref-width.fx"
+],
+"code": 0,
+"out": [
+"define first : (subr (read @b) ((blobref one f64)) int) ! pure",
+"define b : two ! (alloc @b)",
+"int ! (maxeff (read (globals b first)) (read @b))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

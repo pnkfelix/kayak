@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"arrival-order.fx"
+],
+"code": 0,
+"out": [
+"log : (icell (listof int acyclic) @l) ! (alloc @l)",
+"sink : (addr int @s) ! (maxeff (alloc @s) (init @l) nondet (read (globals log)))",
+"one : (addr unit @t) ! (maxeff (alloc @t) (send @s) nondet (read (globals sink)))",
+"two : (addr unit @t) ! (maxeff (alloc @t) (send @s) nondet (read (globals sink)))",
+"starter : (addr unit @u) ! (maxeff (alloc @u) (send @t) nondet (read (globals one two)))",
+"#u : unit ! (maxeff (send @u) (read (globals starter)))",
+"(1 2) : (listof int acyclic) ! (maxeff (await @l) (read (globals log)))",
+""
+],
+"err": [
+""
+]
+}

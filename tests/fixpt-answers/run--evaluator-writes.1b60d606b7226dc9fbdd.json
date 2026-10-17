@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"evaluator-writes.fx"
+],
+"code": 0,
+"out": [
+"define xs : (listof int @heap) ! (alloc @heap)",
+"unit ! (maxeff (read (globals xs)) (read @heap) (write @heap))",
+"int ! (maxeff (read (globals xs)) (read @heap))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

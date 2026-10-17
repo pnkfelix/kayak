@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"flat-unsized-range.fx"
+],
+"code": 1,
+"out": [
+"b : o ! (alloc @b)",
+"arr : (blobref o (flat-arrayof f64 finite)) ! (read (globals b))",
+" : (blobref o f64) ! (read (globals arr))",
+""
+],
+"err": [
+"! evaluation failed: blobref-index: out of range",
+""
+]
+}

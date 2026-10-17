@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"append.fx"
+],
+"code": 0,
+"out": [
+"app : append-type ! pure",
+"len : (subr pure ((nlist int finite)) int) ! pure",
+"two : (nlist int 2) ! pure",
+"three : (nlist int 3) ! pure",
+"five : (nlist int 5) ! (read (globals app three two))",
+"5 : int ! (read (globals five len))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"flat-no-field.fx"
+],
+"code": 1,
+"out": [
+"b : o ! (alloc @b)",
+"p : (blobref o (productof (x f64) (y f64))) ! (read (globals b))",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-no-field.fx:6:1: a (blobref o (productof (x f64) (y f64))) has no `z` laid out",
+""
+]
+}

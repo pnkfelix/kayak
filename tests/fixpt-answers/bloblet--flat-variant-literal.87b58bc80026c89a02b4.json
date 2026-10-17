@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"flat-variant-literal.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-variant-literal.fx:6:21: a variant is named by a literal: `'label`, or a number where the sum has a key",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

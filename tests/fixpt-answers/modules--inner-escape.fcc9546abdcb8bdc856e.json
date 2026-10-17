@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"inner-escape.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/inner-escape.fx:9:15: `z`'s type mentions `m..t`, which is not known outside the module",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

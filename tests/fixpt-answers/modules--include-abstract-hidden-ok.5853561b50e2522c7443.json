@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"include-abstract-hidden-ok.fx"
+],
+"code": 0,
+"out": [
+"m : (moduleof (val w int)) ! pure",
+"6 : int ! (read (globals m))",
+""
+],
+"err": [
+""
+]
+}

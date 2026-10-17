@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"eqtables.fx"
+],
+"code": 0,
+"out": [
+"define fill! : (subr (maxeff (alloc @k) (alloc @t) (read (globals fill!)) (read @k) (read @t) (write @k) (write @t) spin) (counts keys int) unit) ! pure",
+"define total : (subr (maxeff (alloc @k) (alloc @t) (read (globals total)) (read @k) (read @t) (write @k) (write @t) spin) (counts keys int int) int) ! pure",
+"define thin! : (subr (maxeff (alloc @k) (alloc @t) (read (globals thin!)) (read @k) (read @t) (write @k) (write @t) spin) (counts keys int) unit) ! pure",
+"define round : (subr (maxeff (alloc @heap) (alloc @k) (alloc @t) (read (globals fill! thin! total)) (read @k) (read @t) (write @k) (write @t) spin) (int) strings) ! pure",
+"define refs : (subr (maxeff (alloc @r) (alloc @t) (read @t) (write @r) (write @t)) () int) ! pure",
+"define eqtables : (subr (maxeff (alloc @heap) (alloc @k) (alloc @r) (alloc @t) (read (globals fill! refs round thin! total)) (read @k) (read @t) (write @k) (write @r) (write @t) spin) (int) strings) ! pure",
+"strings ! (maxeff (alloc @heap) (alloc @k) (alloc @r) (alloc @t) (read (globals eqtables fill! refs round thin! total)) (read @k) (read @t) (write @k) (write @r) (write @t) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

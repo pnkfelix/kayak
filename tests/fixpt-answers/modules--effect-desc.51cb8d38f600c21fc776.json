@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"effect-desc.fx"
+],
+"code": 0,
+"out": [
+"define m : (moduleof (desc touches (maxeff (read @heap) (write @heap))) (val bump (subr (maxeff (read @heap) (write @heap)) (cell) unit))) ! pure",
+"define twice : (subr (maxeff (read (globals m)) (read @heap) (write @heap)) (cell) unit) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals m twice)) (read @heap) (write @heap))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

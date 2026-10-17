@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"race-stopped.fx"
+],
+"code": 0,
+"out": [
+"define a : (icell int @c) ! (alloc @c)",
+"define b : (icell int @c) ! (alloc @c)",
+"define spin-forever : (subr (maxeff (read (globals spin-forever)) spin) () int) ! pure",
+"define w : (addr int @p) ! (maxeff (alloc @p) (init @c) (read (globals a)) nondet)",
+"unit ! (maxeff (read (globals w)) (send @p))",
+"define v : int ! (maxeff (await @c) (read (globals a b spin-forever)) nondet spin)",
+"unit ! (maxeff (init @c) (read (globals b)))",
+"int ! (read (globals v))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

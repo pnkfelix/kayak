@@ -1,0 +1,20 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"boolean-tests.fx"
+],
+"code": 0,
+"out": [
+"log : (ref int @r) ! (alloc @r)",
+"note : (subr (maxeff (read @r) (write @r) (read (globals log))) (int bool) bool) ! pure",
+"pick : (subr (maxeff (read @r) (write @r) (read (globals log note))) (int int) int) ! pure",
+"run : (subr (maxeff (read @r) (write @r) (read (globals log note pick))) (int int) int) ! pure",
+"1000013860 : int ! (maxeff (read @r) (write @r) (read (globals log note pick run)))",
+""
+],
+"err": [
+""
+]
+}

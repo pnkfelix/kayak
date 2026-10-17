@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"covariant.fx"
+],
+"code": 0,
+"out": [
+"define up-box : (poly ((t type)) (subr pure ((productof (v t))) (box t))) ! pure",
+"define down-box : (poly ((t type)) (subr pure ((box t)) (productof (v t)))) ! pure",
+"define a : (box (sumof (a int))) ! (read (globals up-box))",
+"define b : (box (sumof (a int) (b bool))) ! (read (globals a))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

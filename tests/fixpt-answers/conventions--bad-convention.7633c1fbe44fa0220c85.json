@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"bad-convention.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/conventions/bad-convention.fx:2:23: `c` is not a convention",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

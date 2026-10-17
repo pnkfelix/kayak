@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"width-exact-region.fx"
+],
+"code": 1,
+"out": [
+"r : (ref int @heap) ! (alloc @heap)",
+"b : (bloblet (fields int (ref int @heap)) @b) ! (maxeff (alloc @b) (read (globals r)))",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/width-exact-region.fx:7:15: `c` is declared a one: a one is expected here, and this is a (bloblet (fields int (ref int @heap)) @b)",
+""
+]
+}

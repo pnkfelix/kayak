@@ -1,0 +1,48 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"generative-param.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (28 cells, cellular):",
+"     0: closure word up-wrapped over 0",
+"     3: global! up-wrapped",
+"     5: closure word down-wrapped over 0",
+"     8: global! down-wrapped",
+"    10: lit 1",
+"    12: prim list 1",
+"    15: global up-wrapped",
+"    17: tcall 1",
+"    19: global! w",
+"    21: global w",
+"    23: global down-wrapped",
+"    25: tcall 1",
+"    27: exit",
+"",
+"word down-wrapped (3 cells, cellular):",
+"     0: slot 0",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: return",
+"",
+"word up-wrapped (3 cells, cellular):",
+"     0: slot 0",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

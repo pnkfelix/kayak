@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"pselect-main-deadline.fx"
+],
+"code": 0,
+"out": [
+"define c : (icell int @c) ! (alloc @c)",
+"int ! (maxeff (await @c) (io clock) (read (globals c)) nondet)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

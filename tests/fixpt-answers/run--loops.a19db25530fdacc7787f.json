@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"loops.fx"
+],
+"code": 0,
+"out": [
+"define sum-squares : (subr spin (int) int) ! pure",
+"define fact : (subr spin (int) int) ! pure",
+"define hidden : (subr pure (int) int) ! pure",
+"define twice : (subr (maxeff (read (globals twice)) spin) ((subr (maxeff (read (globals twice)) spin) (int int) int) int int) int) ! pure",
+"define escapes : (subr (maxeff (read (globals twice)) spin) (int) int) ! pure",
+"define parity : (subr spin (int) int) ! pure",
+"define areas : (subr spin (int) int) ! pure",
+"define inner-same : (subr spin (int) int) ! pure",
+"(listof int @r.1) ! (maxeff (alloc @r.1) (read (globals areas escapes fact hidden inner-same parity sum-squares twice)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

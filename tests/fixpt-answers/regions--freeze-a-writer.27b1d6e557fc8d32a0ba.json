@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"freeze-a-writer.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/freeze-a-writer.fx:2:1: the value of `letfreeze r` could still write its region's data: its type is (subr (write r) () unit)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

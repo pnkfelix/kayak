@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"proj-await.fx"
+],
+"code": 0,
+"out": [
+"f : (poly ((e effect)) (subr e () int)) ! pure",
+"g : (subr (await @r) () int) ! (read (globals f))",
+"1 : int ! (maxeff (await @r) (read (globals g)))",
+""
+],
+"err": [
+""
+]
+}

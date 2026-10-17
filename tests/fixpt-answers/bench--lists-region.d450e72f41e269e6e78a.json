@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"lists-region.fx"
+],
+"code": 0,
+"out": [
+"define one-round : (subr spin (int) int) ! pure",
+"define rounds : (subr (maxeff (read (globals one-round rounds)) spin) (int int) int) ! pure",
+"int ! (maxeff (read (globals one-round rounds)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

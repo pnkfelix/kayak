@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"select-shown.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/select-shown.fx:9:4: argument 1 is a int, where a exp is expected",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

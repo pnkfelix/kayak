@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"stack-by-poly.fx"
+],
+"code": 0,
+"out": [
+"define stacks : stack-sig ! pure",
+"(listof int @r.1) ! (maxeff (alloc @heap) (alloc @r.1) (read (globals stacks)) (read @heap))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

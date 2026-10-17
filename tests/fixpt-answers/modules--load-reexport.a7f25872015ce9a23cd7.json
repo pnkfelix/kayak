@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"load-reexport.fx"
+],
+"code": 0,
+"out": [
+"define r : (moduleof (desc num int) (val m (moduleof (desc num int) (val bump (subr pure (num) num)))) (val bump (subr pure (num) num)) (val twice (subr pure (num) num))) ! (read (globals %shared:/Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/../module-files/reexports.fx))",
+"define twice : (subr pure (int) int) ! (read (globals r))",
+"define bump : (subr pure (int) int) ! (read (globals r))",
+"int ! (read (globals bump twice))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

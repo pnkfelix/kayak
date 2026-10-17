@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"forward.fx"
+],
+"code": 0,
+"out": [
+"m : (moduleof (val f (subr pure (int) int)) (val limit int) (val y int) (val g (subr pure () int)) (val h (subr pure () int))) ! pure",
+"52 : int ! (read (globals m))",
+""
+],
+"err": [
+""
+]
+}

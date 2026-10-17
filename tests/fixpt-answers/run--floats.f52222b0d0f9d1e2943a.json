@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"floats.fx"
+],
+"code": 0,
+"out": [
+"define newton : (subr (maxeff (read (globals newton)) spin) (f64 f64 int) f64) ! pure",
+"define floats : (subr (maxeff (read (globals newton)) spin) (int) int) ! pure",
+"int ! (maxeff (read (globals floats newton)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

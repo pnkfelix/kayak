@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"datatype-family.fx"
+],
+"code": 0,
+"out": [
+"trees : (moduleof (desc tree (dlambda ((t type)) (sumof (leaf (productof)) (node (productof (1 t)))))) (val leaf (poly ((t type)) (subr pure () (sumof (leaf (productof)) (node (productof (1 t))))))) (val node (poly ((t type)) (subr pure (t) (sumof (leaf (productof)) (node (productof (1 t))))))) (val size (poly ((t type)) (subr pure ((sumof (leaf (productof)) (node (productof (1 t))))) int)))) ! pure",
+"1 : int ! (read (globals trees))",
+""
+],
+"err": [
+""
+]
+}

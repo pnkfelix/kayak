@@ -1,0 +1,50 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"captures.fx"
+],
+"code": 0,
+"out": [
+"u : (prompt-tag int int (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin) @p) ! (alloc @p)",
+"grab-n : (subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin (read (globals u))) () int) ! pure",
+"; not in the native convention yet, so `grab-c` runs as cellular code: `grab-c`: it calls `stay-cellular`",
+"grab-c : (subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin (read (globals u))) () int) ! pure",
+"climb-n : (subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin (read (globals climb-n))) ((subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin) () int) int) int) ! pure",
+"; not in the native convention yet, so `climb-c` runs as cellular code: `climb-c`: it calls `stay-cellular`",
+"climb-c : (subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin (read (globals climb-c))) ((subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin) () int) int) int) ! pure",
+"mix : (subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin (read (globals climb-n))) ((subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin) () int) int) int) ! pure",
+"; not in the native convention yet, so `tail-c` runs as cellular code: `tail-c`: it calls `stay-cellular`",
+"tail-c : (subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin) ((subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin) () int)) int) ! pure",
+"tail-n : (subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin) ((subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin) () int)) int) ! pure",
+"under-n : (subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin (read (globals u))) ((subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin) () int)) int) ! pure",
+"; not in the native convention yet, so `under-c` runs as cellular code: `under-c`: it calls `stay-cellular`",
+"under-c : (subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin (read (globals u))) ((subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin) () int)) int) ! pure",
+"(10 10 10 10 343 343 343 343 16 16 60001 60001) : (listof int @r.1) ! (maxeff (read @m) (read @globals) (write @m) (alloc @m) (alloc @r.1) (goto @p) (comefrom @p) spin (read (globals u under-c under-n)))",
+"m : (mark-key int @m) ! (alloc @m)",
+"count : (subr (maxeff (read @m) spin (read (globals count))) ((listof int @m) int) int) ! pure",
+"; not in the native convention yet, so `grab-marks` runs as cellular code: `grab-marks`: it calls `stay-cellular`",
+"grab-marks : (subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin (read (globals count m u))) () int) ! pure",
+"; not in the native convention yet, so `mark-c` runs as cellular code: `mark-c`: it calls `stay-cellular`",
+"mark-c : (subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin (read (globals m))) ((subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin) () int) int stepper) int) ! pure",
+"mark-n : (subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin (read (globals m mark-c mark-n))) ((subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin) () int) int) int) ! pure",
+"mark-c0 : (subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin (read (globals m mark-c mark-n))) ((subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin) () int) int) int) ! pure",
+"under-1000 : (subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin (read (globals u))) ((subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin) () int)) int) ! pure",
+"bail : (subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin (read (globals u))) ((subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin) () int)) int) ! pure",
+"(918 1215 1009 1009 1009) : (listof int @r.2) ! (maxeff (read @m) (read @globals) (write @m) (alloc @m) (alloc @r.2) (goto @p) (comefrom @p) spin (read (globals u under-1000)))",
+"; not in the native convention yet, so `look-c` runs as cellular code: `look-c`: it calls `stay-cellular`",
+"look-c : (subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin (read (globals count m))) () int) ! pure",
+"look-n : (subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin (read (globals count m))) () int) ! pure",
+"in-n : (subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin (read (globals m))) ((subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin) () int)) int) ! pure",
+"; not in the native convention yet, so `in-c` runs as cellular code: `in-c`: it calls `stay-cellular`",
+"in-c : (subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin (read (globals m))) ((subr (maxeff (read @m) (read @globals) (write @m) (alloc @m) (goto @p) (comefrom @p) spin) () int)) int) ! pure",
+"(77 88 158 157) : (listof int @r.3) ! (maxeff (read @m) (read @globals) (write @m) (alloc @m) (alloc @r.3) (goto @p) (comefrom @p) spin (read (globals in-c in-n look-c look-n m)))",
+""
+],
+"err": [
+""
+]
+}

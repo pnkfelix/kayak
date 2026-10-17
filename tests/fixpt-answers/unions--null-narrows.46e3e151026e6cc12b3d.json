@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"null-narrows.fx"
+],
+"code": 0,
+"out": [
+"head : (subr (read @r) ((pairof int ints @r)) int) ! pure",
+"first : (subr (maxeff (read @r) (read (globals head))) (ints) int) ! pure",
+"7 : int ! (maxeff (read @r) (alloc @r) (read (globals first head)))",
+""
+],
+"err": [
+""
+]
+}

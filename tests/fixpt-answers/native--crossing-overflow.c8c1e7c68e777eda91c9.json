@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"crossing-overflow.fx"
+],
+"code": 0,
+"out": [
+"define deep-n : (subr (maxeff (read @globals) spin) (int) int) ! pure",
+"define deep-c : (subr (maxeff (read @globals) spin) (int) int) ! pure",
+"int ! (maxeff (read (globals deep-n)) (read @globals) spin)",
+"int ! (maxeff (read (globals deep-n)) (read @globals) spin)",
+"int ! (maxeff (read (globals deep-n)) (read @globals) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

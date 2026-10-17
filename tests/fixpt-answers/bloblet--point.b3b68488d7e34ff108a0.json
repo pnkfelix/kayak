@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"point.fx"
+],
+"code": 0,
+"out": [
+"define p : (bloblet (fields int int) @pts) ! (alloc @pts)",
+"define move : (subr (maxeff (read @pts) (write @pts)) ((bloblet (fields int int) @pts) int) unit) ! pure",
+"unit ! (maxeff (read (globals move p)) (read @pts) (write @pts))",
+"int ! (maxeff (read (globals p)) (read @pts))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

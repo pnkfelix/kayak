@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"cross.fx"
+],
+"code": 0,
+"out": [
+"define up-tree : (poly ((a type)) (subr pure ((sumof (leaf a) (node (productof (l (tree a)) (r (tree a)))))) (tree a))) ! pure",
+"define down-tree : (poly ((a type)) (subr pure ((tree a)) (sumof (leaf a) (node (productof (l (tree a)) (r (tree a))))))) ! pure",
+"define up-tree2 : (poly ((a type)) (subr pure ((sumof (leaf a) (node (productof (l (tree2 a)) (r (tree2 a)))))) (tree2 a))) ! pure",
+"define down-tree2 : (poly ((a type)) (subr pure ((tree2 a)) (sumof (leaf a) (node (productof (l (tree2 a)) (r (tree2 a))))))) ! pure",
+"define t2 : (poly ((a type)) (subr (maxeff (read (globals down-tree t2 up-tree2)) spin) ((tree a)) (tree2 a))) ! pure",
+"define one : (tree int) ! (read (globals up-tree))",
+"define two : (tree2 int) ! (read (globals one))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

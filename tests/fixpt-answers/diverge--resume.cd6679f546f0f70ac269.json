@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"resume.fx"
+],
+"code": 0,
+"out": [
+"define ks : (ref (listof (subr (goto @k) (int) void) @b) @b) ! (alloc @b)",
+"void ! (maxeff (alloc @b) (comefrom @k) (goto @k) (read (globals ks)) (read @b) (write @b) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

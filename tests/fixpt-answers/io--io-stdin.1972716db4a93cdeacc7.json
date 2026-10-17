@@ -1,0 +1,16 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"io-stdin.fx"
+],
+"code": 0,
+"out": [
+"count-lines : (subr (maxeff spin (io stdin) (read (globals count-lines))) (int) int) ! pure",
+""
+],
+"err": [
+""
+]
+}

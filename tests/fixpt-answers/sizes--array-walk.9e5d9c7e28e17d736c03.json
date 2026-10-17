@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"array-walk.fx"
+],
+"code": 0,
+"out": [
+"define total : (subr (read @a) ((arrayof int @a)) int) ! pure",
+"int ! (maxeff (alloc @a) (read (globals total)) (read @a))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

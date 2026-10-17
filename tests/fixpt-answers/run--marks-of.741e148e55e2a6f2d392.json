@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"marks-of.fx"
+],
+"code": 0,
+"out": [
+"t : (prompt-tag (listof int @l) int (maxeff (read @m) (write @m) (alloc @l) (read (globals key t))) @p) ! (alloc @p)",
+"key : (mark-key int @m) ! (alloc @m)",
+"(7) : (listof int @l) ! (maxeff (read @m) (write @m) (alloc @l) (read (globals key t)))",
+""
+],
+"err": [
+""
+]
+}

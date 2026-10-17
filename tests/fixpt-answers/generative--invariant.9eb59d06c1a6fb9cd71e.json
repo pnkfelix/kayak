@@ -1,0 +1,19 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"invariant.fx"
+],
+"code": 1,
+"out": [
+"up-box : (poly ((t type)) (subr pure ((productof (v t))) (box t))) ! pure",
+"down-box : (poly ((t type)) (subr pure ((box t)) (productof (v t)))) ! pure",
+"a : (box (sumof (a int))) ! (read (globals up-box))",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/generative/invariant.fx:4:42: `b` is declared a (box (sumof (a int) (b bool))): a (box (sumof (a int) (b bool))) is expected here, and this is a (box (sumof (a int)))",
+""
+]
+}

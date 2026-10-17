@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"hide-include-types.fx"
+],
+"code": 0,
+"out": [
+"shapes : (moduleof (desc point (productof (1 int) (2 int))) (val origin (productof (1 int) (2 int)))) ! pure",
+"m : (moduleof (desc touches (read @globals)) (val norm (subr pure ((productof (1 int) (2 int))) int)) (val at-origin int)) ! (read (globals shapes))",
+"7 : int ! (read (globals m))",
+""
+],
+"err": [
+""
+]
+}

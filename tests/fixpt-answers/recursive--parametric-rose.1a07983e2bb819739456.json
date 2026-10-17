@@ -1,0 +1,21 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"parametric-rose.fx"
+],
+"code": 0,
+"out": [
+"leaf : (poly ((t type) (r region)) (subr pure (t) (mu %3 (sumof (leaf (productof (1 t))) (node (productof (1 (listof %3 r)))))))) ! pure",
+"node : (poly ((t type) (r region)) (subr pure ((listof (mu %4 (sumof (leaf (productof (1 t))) (node (productof (1 (listof %4 r)))))) r)) (mu %3 (sumof (leaf (productof (1 t))) (node (productof (1 (listof %3 r)))))))) ! pure",
+"total : (subr (read @globals) ((mu %2 (sumof (leaf (productof (1 int))) (node (productof (1 (listof %2 acyclic))))))) int) ! pure",
+"total-all : (subr (read @globals) ((listof (mu %3 (sumof (leaf (productof (1 int))) (node (productof (1 (listof %3 acyclic)))))) acyclic)) int) ! pure",
+"kids : (listof (mu %2 (sumof (leaf (productof (1 int))) (node (productof (1 (listof %2 acyclic)))))) acyclic) ! (read (globals leaf))",
+"3 : int ! (maxeff (read @globals) (read (globals kids node total)))",
+""
+],
+"err": [
+""
+]
+}

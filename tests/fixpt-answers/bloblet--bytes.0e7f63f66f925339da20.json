@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"bytes.fx"
+],
+"code": 0,
+"out": [
+"define b : (bloblet (fields) @buf) ! (alloc @buf)",
+"unit ! (maxeff (read (globals b)) (write @buf))",
+"unit ! (maxeff (read (globals b)) (write @buf))",
+"int ! (maxeff (read (globals b)) (read @buf))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

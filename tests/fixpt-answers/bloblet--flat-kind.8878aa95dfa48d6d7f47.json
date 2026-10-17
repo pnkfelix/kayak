@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"flat-kind.fx"
+],
+"code": 0,
+"out": [
+"define id : (poly ((f flat)) (subr pure ((blobref b2 f)) (blobref b2 f))) ! pure",
+"define h : (poly ((f flat)) (subr pure () int)) ! pure",
+"int ! (read (globals h))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

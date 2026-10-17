@@ -7,8 +7,10 @@ usage: python3 -I scripts/cells-programs.py [--bless] [--why]
 
 kfx compiles cells/cells.unit; its Rust is kept in
 crates/kayak-cells/src/cells (--bless rewrites it; else it must be what
-kfx makes). Then, for each of Fixpt's FX-26 test programs, at the pinned
-Fixpt: `fixpt --fx26-machine fx-cells-rsinterp compile` lists its words,
+kfx makes). Then, for each of Fixpt's FX-26 test programs, as kept in
+tests/fx26/programs/, and Fixpt's answers, as kept in tests/fixpt-answers/
+(C132; asked of the pinned Fixpt when there is a clone and they are another
+pin's): `fixpt --fx26-machine fx-cells-rsinterp compile` lists its words,
 kayak-cells runs them, and `fixpt ... eval` says what the answer is. Each
 program agrees (the same value, or the same failure), differs (the check
 fails), or is not run: its listing is not exact (a literal cut short,
@@ -57,18 +59,6 @@ def generated():
         if r.returncode != 0:
             sys.exit("cells-programs: kfx refuses cells/: " + r.stderr.strip()[-400:])
         return {f: open(os.path.join(out, f), encoding="utf-8").read() for f in sorted(os.listdir(out))}
-
-
-def programs(clone):
-    base = os.path.join(clone, "crates", "fixpt-fx26", "tests", "programs")
-    out = []
-    for d in sorted(os.listdir(base)):
-        full = os.path.join(base, d)
-        if os.path.isdir(full):
-            for f in sorted(os.listdir(full)):
-                if f.endswith(".fx"):
-                    out.append((d + "/" + f, os.path.join(full, f)))
-    return out
 
 
 def failure(text):
@@ -229,13 +219,8 @@ def main():
     if r.returncode != 0:
         sys.exit("cells-programs: kayak-cells does not build:\n" + r.stderr[-2000:])
     cells = os.path.join(ROOT, "target", "release", "kayak-cells")
-    fp = run([os.path.join(ROOT, "scripts", "fixpt.sh")])
-    if fp.returncode != 0:
-        print("cells-programs: kayak-cells built; no Fixpt clone at the pin, so no programs run")
-        return
-    binary = fp.stdout.strip()
-    clone = os.path.dirname(os.path.dirname(os.path.dirname(binary)))
-    ps = programs(clone)
+    binary = fixptcache.binary()
+    ps = fixptcache.programs()
     ran = fixptcache.parallel(lambda p: one(binary, cells, p[0], p[1]), ps)
     by = {}
     wrong = []

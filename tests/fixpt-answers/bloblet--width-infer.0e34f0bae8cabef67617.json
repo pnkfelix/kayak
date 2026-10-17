@@ -1,0 +1,49 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"width-infer.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (41 cells, cellular):",
+"     0: closure word first over 0",
+"     3: global! first",
+"     5: lit 0",
+"     7: lit 7",
+"     9: lit #t",
+"    11: prim %make-bloblet 3",
+"    14: global! b",
+"    16: lit 0",
+"    18: lit #t",
+"    20: lit 1",
+"    22: prim %make-bloblet 3",
+"    25: global! c",
+"    27: global b",
+"    29: global first",
+"    31: tcall 1",
+"    33: global c",
+"    35: global first",
+"    37: tcall 1",
+"    39: cons",
+"    40: exit",
+"",
+"word first (5 cells, cellular):",
+"     0: slot 0",
+"     2: field 2",
+"     4: return",
+"  its register code (7 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: field 2",
+"       6: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

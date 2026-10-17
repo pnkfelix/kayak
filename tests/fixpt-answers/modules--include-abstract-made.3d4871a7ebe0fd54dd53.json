@@ -1,0 +1,19 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"include-abstract-made.fx"
+],
+"code": 0,
+"out": [
+"make : (subr pure (int) (moduleof (abs t type) (val z t) (val get (subr pure (t) int)))) ! pure",
+"a : (moduleof (abs t type) (val z t) (val get (subr pure (t) int))) ! (read (globals make))",
+"b : (moduleof (abs t type) (val z t) (val get (subr pure (t) int))) ! (read (globals make))",
+"3 : int ! (read (globals a b))",
+""
+],
+"err": [
+""
+]
+}

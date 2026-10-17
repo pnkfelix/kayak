@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"flat-ints.fx"
+],
+"code": 0,
+"out": [
+"define reverse! : (poly ((t type) (r region)) (subr (maxeff (read (globals reverse!)) (read r) (write r) spin) ((flatarrayof t r) int int) unit)) ! pure",
+"define words : (subr (alloc @heap) () (flatarrayof u32 @heap)) ! pure",
+"define longs : (subr (alloc @heap) () (flatarrayof i64 @heap)) ! pure",
+"define flat-ints : (subr (maxeff (alloc @heap) (read (globals longs reverse! words)) (read @heap) (write @heap) spin) (int) ints) ! pure",
+"ints ! (maxeff (alloc @heap) (read (globals flat-ints longs reverse! words)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

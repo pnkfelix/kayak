@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"hide.fx"
+],
+"code": 0,
+"out": [
+"define helpers : (moduleof (val twice (subr pure (int) int))) ! pure",
+"define more : (moduleof (val three int)) ! pure",
+"define m : (moduleof (val three int) (val total int)) ! (read (globals helpers more))",
+"int ! (read (globals m))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"reexport.fx"
+],
+"code": 0,
+"out": [
+"n : (moduleof (val m (moduleof (val x int))) (val x int)) ! pure",
+"1 : int ! (read (globals n))",
+""
+],
+"err": [
+""
+]
+}

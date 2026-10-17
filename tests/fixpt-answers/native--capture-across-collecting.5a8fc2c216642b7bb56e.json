@@ -1,0 +1,21 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"capture-across-collecting.fx"
+],
+"code": 0,
+"out": [
+"u : (prompt-tag int int (maxeff (read @globals) (goto @p) (comefrom @p) spin) @p) ! (alloc @p)",
+"grab-c : (subr (maxeff (read @globals) (goto @p) (comefrom @p) spin (read (globals u))) () int) ! pure",
+"under-n : (subr (maxeff (read @globals) (goto @p) (comefrom @p) spin (read (globals u))) ((subr (maxeff (read @globals) (goto @p) (comefrom @p) spin) () int)) int) ! pure",
+"climb-c : (subr (maxeff (read @globals) (goto @p) (comefrom @p) spin (read (globals climb-c))) ((subr (maxeff (read @globals) (goto @p) (comefrom @p) spin) () int) int) int) ! pure",
+"times : (subr (maxeff (read @globals) (goto @p) (comefrom @p) spin (read (globals times u under-n))) (int int) int) ! pure",
+"220 : int ! (maxeff (read @globals) (goto @p) (comefrom @p) spin (read (globals times u under-n)))",
+""
+],
+"err": [
+""
+]
+}

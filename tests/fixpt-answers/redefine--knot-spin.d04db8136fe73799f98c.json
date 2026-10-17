@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"knot-spin.fx"
+],
+"code": 0,
+"out": [
+"f : (subr pure (int) int) ! pure",
+"h : (subr (read (globals f)) (int) int) ! pure",
+"; `f` redefined",
+"; broken until defined again: `h` (`h` is declared a (subr (read @globals) (int) int): a (subr (read @globals) (int) int) is expected here, and this is a (subr (maxeff spin (read (globals f h))) (int) int)",
+"  beyond what is expected, it has spin)",
+"f : (subr (maxeff spin (read (globals f h))) (int) int) ! pure",
+"; `h` redefined; run again, as they use it: `f`",
+"h : (subr (maxeff spin (read (globals f h))) (int) int) ! pure",
+""
+],
+"err": [
+""
+]
+}

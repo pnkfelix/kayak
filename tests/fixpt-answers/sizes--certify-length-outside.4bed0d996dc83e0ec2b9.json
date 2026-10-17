@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"certify-length-outside.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/certify-length-outside.fx:2:71: `certify-length` takes only a variable and a length `length-is?` has just confirmed",
+""
+]
+}

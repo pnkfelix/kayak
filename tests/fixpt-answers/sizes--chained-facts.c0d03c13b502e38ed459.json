@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"chained-facts.fx"
+],
+"code": 0,
+"out": [
+"define f : (subr pure (nat nat nat) nat) ! pure",
+"nat ! (read (globals f))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

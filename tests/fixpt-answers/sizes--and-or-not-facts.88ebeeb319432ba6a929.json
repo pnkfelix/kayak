@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"and-or-not-facts.fx"
+],
+"code": 0,
+"out": [
+"define f : (subr pure (nat (listof int acyclic)) nat) ! pure",
+"define g : (subr pure (nat nat) nat) ! pure",
+"define h : (subr pure (nat) nat) ! pure",
+"(listof nat @r.1) ! (maxeff (alloc @r.1) (read (globals f g h)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

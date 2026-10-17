@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"crossing-overflow.fx"
+],
+"code": 1,
+"out": [
+"; not in the native convention yet, so `deep-c` runs as cellular code: `deep-c`: it calls `stay-cellular`",
+"deep-n : (subr (maxeff (read @globals) spin) (int) int) ! pure",
+"deep-c : (subr (maxeff (read @globals) spin) (int) int) ! pure",
+"1000 : int ! (maxeff (read @globals) spin (read (globals deep-n)))",
+" : int ! (maxeff (read @globals) spin (read (globals deep-n)))",
+""
+],
+"err": [
+"! evaluation failed: stack overflow",
+""
+]
+}

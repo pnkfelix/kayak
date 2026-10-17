@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"redefined.fx"
+],
+"code": 0,
+"out": [
+"define rd-f : (subr (maxeff (read (globals rd-f)) spin) (int) int) ! pure",
+"define rd-old : (subr (maxeff (read (globals rd-f)) spin) (int) int) ! (read (globals rd-f))",
+"int ! (maxeff (read (globals rd-f rd-old)) spin)",
+"define rd-f : (subr (maxeff (read (globals rd-f)) spin) (int) int) ! pure",
+"int ! (maxeff (read (globals rd-f rd-old)) spin)",
+"define rd-app : (subr (maxeff (read (globals rd-app rd-g)) spin) ((subr (maxeff (read (globals rd-app rd-g)) spin) (int) int) int) int) ! pure",
+"define rd-g : (subr (maxeff (read (globals rd-app rd-g)) spin) (int) int) ! pure",
+"define rd-old-g : (subr (maxeff (read (globals rd-app rd-g)) spin) (int) int) ! (read (globals rd-g))",
+"int ! (maxeff (read (globals rd-app rd-g rd-old-g)) spin)",
+"define rd-g : (subr (maxeff (read (globals rd-app rd-g)) spin) (int) int) ! pure",
+"int ! (maxeff (read (globals rd-app rd-g rd-old-g)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

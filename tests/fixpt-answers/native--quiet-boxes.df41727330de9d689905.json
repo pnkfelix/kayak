@@ -1,0 +1,19 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"quiet-boxes.fx"
+],
+"code": 1,
+"out": [
+"twice : (subr pure (f64) f64) ! pure",
+"loop : (subr (maxeff spin (read (globals loop))) ((subr pure (f64) f64) int f64) f64) ! pure",
+" : int ! (maxeff spin (read (globals loop twice)))",
+""
+],
+"err": [
+"! evaluation failed: evaluation step limit exceeded",
+""
+]
+}

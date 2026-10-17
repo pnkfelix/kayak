@@ -1,0 +1,20 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"versions.fx"
+],
+"code": 0,
+"out": [
+"dbl : (subr pure (int) int) ! pure",
+"sum2 : (subr (read (globals dbl)) (int int) int) ! pure",
+"step : (subr (read (globals dbl sum2)) (int int) int) ! pure",
+"run : (subr (maxeff spin (read (globals dbl run step sum2))) (int int int) int) ! pure",
+"4000 : int ! (maxeff spin (read (globals dbl run step sum2)))",
+""
+],
+"err": [
+""
+]
+}

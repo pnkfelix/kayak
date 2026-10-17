@@ -1,0 +1,22 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"arrow-star.fx"
+],
+"code": 0,
+"out": [
+"inc : (subr pure (int) int) ! pure",
+"inc2 : (subr (read (globals inc)) (int) int) ! pure",
+"count : (subr (maxeff spin (read (globals count))) (int) int) ! pure",
+"mk : (subr (alloc @h) (int) (listof int @h)) ! pure",
+"ap : (poly ((t type)) (subr pure ((subr pure (t) t) t) t)) ! pure",
+"go : (subr (maxeff (read @h) (alloc @h) spin (read (globals count inc inc2 mk))) (int) int) ! pure",
+"7 : int ! (maxeff (read @h) (alloc @h) spin (read (globals ap count go inc inc2 mk)))",
+""
+],
+"err": [
+""
+]
+}

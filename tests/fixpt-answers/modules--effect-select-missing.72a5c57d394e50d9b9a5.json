@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"effect-select-missing.fx"
+],
+"code": 1,
+"out": [
+"m : (moduleof (desc t int) (val x t)) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/effect-select-missing.fx:3:11: `(select m t)`: `m` has no effect `t`",
+""
+]
+}

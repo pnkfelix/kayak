@@ -1,0 +1,36 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"flat-step-past-suffix.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (38 cells, cellular):",
+"     0: lit 16",
+"     2: prim %make-bloblet 1",
+"     5: global! b",
+"     7: global b",
+"     9: lit 0",
+"    11: prim %suffix-ref 2",
+"    14: lit 4",
+"    16: prim %fx26-suffix-fits 2",
+"    19: global! at",
+"    21: global at",
+"    23: lit 8",
+"    25: prim %suffix-ref+ 2",
+"    28: lit 16",
+"    30: prim %fx26-suffix-fits 2",
+"    33: global! pair",
+"    35: lit |#u|",
+"    37: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

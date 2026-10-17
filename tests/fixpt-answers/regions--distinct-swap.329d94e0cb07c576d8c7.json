@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"distinct-swap.fx"
+],
+"code": 0,
+"out": [
+"define swap : swap-type ! pure",
+"swap-type ! (read (globals swap))",
+"int ! (read (globals swap))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

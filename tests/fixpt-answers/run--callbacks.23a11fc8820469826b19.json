@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"callbacks.fx"
+],
+"code": 0,
+"out": [
+"define run-callbacks : (subr pure (int) int) ! pure",
+"int ! (read (globals run-callbacks))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

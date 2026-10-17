@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"include.fx"
+],
+"code": 0,
+"out": [
+"define a : (moduleof (val x int) (val double (subr pure (int) int))) ! pure",
+"define b : (moduleof (val y int)) ! pure",
+"define m : (moduleof (val x int) (val double (subr pure (int) int)) (val y int) (val z int) (val ev? (subr spin (int) bool)) (val od? (subr spin (int) bool)) (val quad (subr pure (int) int))) ! (read (globals a b))",
+"int ! (maxeff (read (globals m)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"native-explicit.fx"
+],
+"code": 0,
+"out": [
+"inc : (subr pure (int) int) ! pure",
+"#<native-closure 3 fields 0 bytes> : (subr (conv native) pure (int) int) ! (read (globals inc))",
+""
+],
+"err": [
+""
+]
+}

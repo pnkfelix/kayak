@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"shadow-standard-type.fx"
+],
+"code": 0,
+"out": [
+"define first-byte : (subr (read @heap) (bytevector) int) ! pure",
+"define made : (subr (maxeff (alloc @heap) (read (globals first-byte)) (read @heap)) () int) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals first-byte made)) (read @heap))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

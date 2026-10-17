@@ -1,0 +1,19 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"flat-tagcase-no-arm.fx"
+],
+"code": 1,
+"out": [
+"b : o ! (alloc @b)",
+"r : (blobref o (sumof (a f64) (b i32))) ! (read (globals b))",
+" : int ! (maxeff (read @b) (read (globals r)))",
+""
+],
+"err": [
+"! evaluation failed: tagcase: no arm for this flat sum's tag",
+""
+]
+}

@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"own-name.fx"
+],
+"code": 0,
+"out": [
+"define m : (moduleof (val fact (subr spin (int) int))) ! pure",
+"int ! (maxeff (read (globals m)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

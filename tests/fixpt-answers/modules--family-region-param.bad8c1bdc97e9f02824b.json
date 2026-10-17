@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"family-region-param.fx"
+],
+"code": 0,
+"out": [
+"define m : (moduleof (desc box (dlambda ((k type) (r region)) (pairof k k r))) (val mk (subr pure (int) int))) ! pure",
+"define f : (subr (read @heap) ((pairof int int @heap)) int) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals f)) (read @heap))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

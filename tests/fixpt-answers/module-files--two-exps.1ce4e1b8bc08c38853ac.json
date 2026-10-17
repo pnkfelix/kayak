@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"two-exps.fx"
+],
+"code": 0,
+"out": [
+"int ! pure",
+"int ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

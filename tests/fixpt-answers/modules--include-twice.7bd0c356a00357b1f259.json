@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"include-twice.fx"
+],
+"code": 1,
+"out": [
+"a : (moduleof (val x int)) ! pure",
+"b : (moduleof (val x int)) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/include-twice.fx:5:9: `x` is defined twice in this module",
+""
+]
+}

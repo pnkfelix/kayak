@@ -38,13 +38,6 @@ ENGINE = os.path.join(ROOT, "target", "release", "kayak-fx26")
 KINDS = ["same", "alike", "differ", "refused", "ACCEPTED", "both"]
 
 
-def fixpt_binary():
-    r = subprocess.run([os.path.join(ROOT, "scripts", "fixpt.sh")], capture_output=True, text=True)
-    if r.returncode != 0:
-        sys.exit("compare-checkers: no Fixpt clone (scripts/fixpt.sh)")
-    return r.stdout.strip()
-
-
 def fixpt_says(fixpt, path):
     """Fixpt's lines, or None if it refuses (or fails, or takes too long)."""
     try:
@@ -169,10 +162,9 @@ def main():
     r = subprocess.run(["cargo", "build", "--release", "--quiet", "-p", "kayak-fx26"], cwd=ROOT)
     if r.returncode != 0:
         sys.exit("compare-checkers: the engine does not build")
-    fixpt = fixpt_binary()
-    programs = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(fixpt))),
-                            "crates", "fixpt-fx26", "tests", "programs")
-    files = sorted(os.path.join(d, f) for d, _, fs in os.walk(programs) for f in fs if f.endswith(".fx"))
+    fixpt = fixptcache.binary()
+    programs = fixptcache.PROGRAMS
+    files = [p for _, p in fixptcache.programs()]
     if only:
         files = [p for p in files if os.path.relpath(p, programs).startswith(only.rstrip("/") + "/")]
     results = fixptcache.parallel(lambda p: (p, compare(fixpt, p)), files)

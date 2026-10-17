@@ -1,0 +1,32 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"small-width-ops.fx"
+],
+"code": 0,
+"out": [
+"define edges : (subr (alloc @heap) () ints) ! pure",
+"define mix : (subr pure (int int) int) ! pure",
+"define i8-fold : (subr pure (i8) int) ! pure",
+"define u8-fold : (subr pure (u8) int) ! pure",
+"define i8-op : (subr (read (globals i8-fold)) (int i8 i8) int) ! pure",
+"define i8-values : (subr (maxeff (alloc @heap) (read (globals i8-values)) (read @heap) spin) (ints) i8s) ! pure",
+"define i8-inner : (subr (maxeff (read (globals i8-fold i8-inner i8-op mix)) (read @heap) spin) (int i8 i8s int) int) ! pure",
+"define i8-outer : (subr (maxeff (read (globals i8-fold i8-inner i8-op i8-outer mix)) (read @heap) spin) (int i8s i8s int) int) ! pure",
+"define i8-sums : (subr (maxeff (alloc @heap) (read (globals i8-fold i8-inner i8-op i8-outer i8-sums mix)) (read @heap) spin) (int i8s) ints) ! pure",
+"define u8-op : (subr (read (globals u8-fold)) (int u8 u8) int) ! pure",
+"define u8-values : (subr (maxeff (alloc @heap) (read (globals u8-values)) (read @heap) spin) (ints) u8s) ! pure",
+"define u8-inner : (subr (maxeff (read (globals mix u8-fold u8-inner u8-op)) (read @heap) spin) (int u8 u8s int) int) ! pure",
+"define u8-outer : (subr (maxeff (read (globals mix u8-fold u8-inner u8-op u8-outer)) (read @heap) spin) (int u8s u8s int) int) ! pure",
+"define u8-sums : (subr (maxeff (alloc @heap) (read (globals mix u8-fold u8-inner u8-op u8-outer u8-sums)) (read @heap) spin) (int u8s) ints) ! pure",
+"define small-width-ops : (subr (maxeff (alloc @heap) (read (globals edges i8-fold i8-inner i8-op i8-outer i8-sums i8-values mix u8-fold u8-inner u8-op u8-outer u8-sums u8-values)) (read @heap) spin) (int) (listof ints @heap)) ! pure",
+"(listof ints @heap) ! (maxeff (alloc @heap) (read (globals edges i8-fold i8-inner i8-op i8-outer i8-sums i8-values mix small-width-ops u8-fold u8-inner u8-op u8-outer u8-sums u8-values)) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

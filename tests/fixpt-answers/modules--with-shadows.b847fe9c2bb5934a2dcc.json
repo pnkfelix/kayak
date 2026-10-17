@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"with-shadows.fx"
+],
+"code": 0,
+"out": [
+"define a : (moduleof (desc n int) (desc touches (read @globals))) ! pure",
+"define b : (moduleof (desc n bool)) ! pure",
+"define one : int ! (read (globals a))",
+"define yes : n ! (read (globals a b))",
+"define f : (subr (read @globals) () int) ! (read (globals a))",
+"define g : (moduleof (desc n bool) (val x n)) ! (read (globals a))",
+"int ! (maxeff (read (globals f g one yes)) (read @globals))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

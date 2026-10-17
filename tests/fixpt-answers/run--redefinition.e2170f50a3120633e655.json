@@ -1,0 +1,46 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"redefinition.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (29 cells, cellular):",
+"     0: lit 1",
+"     2: global! x",
+"     4: closure word before over 0",
+"     7: global! before",
+"     9: lit 2",
+"    11: global! x",
+"    13: global before",
+"    15: tcall 0",
+"    17: global before",
+"    19: tcall 0",
+"    21: int-add",
+"    22: global x",
+"    24: global x",
+"    26: int-add",
+"    27: int-add",
+"    28: exit",
+"",
+"word before (3 cells, cellular):",
+"     0: global x",
+"     2: return",
+"  its register code (12 cells, not compiled):",
+"       0: args 0",
+"       2: global-guard x written 1 else → 9",
+"       6: const 1",
+"       8: return",
+"       9: global x",
+"      11: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

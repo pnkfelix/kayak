@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"proj-select.fx"
+],
+"code": 0,
+"out": [
+"m : (moduleof (desc cell (productof (1 int))) (val x int)) ! pure",
+"id : (poly ((t type)) (subr pure (t) t)) ! pure",
+"b : box ! pure",
+"42 : int ! (read (globals b id))",
+""
+],
+"err": [
+""
+]
+}

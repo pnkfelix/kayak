@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"pselect-cell.fx"
+],
+"code": 0,
+"out": [
+"define never : (icell int @c) ! (alloc @c)",
+"define soon : (icell int @c) ! (alloc @c)",
+"define p : (addr int @p) ! (maxeff (alloc @p) (init @c) (read (globals soon)) nondet)",
+"unit ! (maxeff (read (globals p)) (send @p))",
+"int ! (maxeff (await @c) (read (globals never soon)) nondet)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

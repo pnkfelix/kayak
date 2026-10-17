@@ -1,0 +1,50 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"fixed-width-ops.fx"
+],
+"code": 0,
+"out": [
+"define edges : (subr (alloc @heap) () ints) ! pure",
+"define mix : (subr pure (int int) int) ! pure",
+"define i64-fold : (subr pure (i64) int) ! pure",
+"define u64-fold : (subr pure (u64) int) ! pure",
+"define i32-fold : (subr pure (i32) int) ! pure",
+"define u32-fold : (subr pure (u32) int) ! pure",
+"define i64-big : (subr pure () i64) ! pure",
+"define u64-big : (subr pure () u64) ! pure",
+"define i32-op : (subr (read (globals i32-fold)) (int i32 i32) int) ! pure",
+"define i32-values : (subr (maxeff (alloc @heap) (read (globals i32-values)) (read @heap) spin) (ints) i32s) ! pure",
+"define i32-inner : (subr (maxeff (read (globals i32-fold i32-inner i32-op mix)) (read @heap) spin) (int i32 i32s int) int) ! pure",
+"define i32-outer : (subr (maxeff (read (globals i32-fold i32-inner i32-op i32-outer mix)) (read @heap) spin) (int i32s i32s int) int) ! pure",
+"define i32-sums : (subr (maxeff (alloc @heap) (read (globals i32-fold i32-inner i32-op i32-outer i32-sums mix)) (read @heap) spin) (int i32s) ints) ! pure",
+"define u32-op : (subr (read (globals u32-fold)) (int u32 u32) int) ! pure",
+"define u32-values : (subr (maxeff (alloc @heap) (read (globals u32-values)) (read @heap) spin) (ints) u32s) ! pure",
+"define u32-inner : (subr (maxeff (read (globals mix u32-fold u32-inner u32-op)) (read @heap) spin) (int u32 u32s int) int) ! pure",
+"define u32-outer : (subr (maxeff (read (globals mix u32-fold u32-inner u32-op u32-outer)) (read @heap) spin) (int u32s u32s int) int) ! pure",
+"define u32-sums : (subr (maxeff (alloc @heap) (read (globals mix u32-fold u32-inner u32-op u32-outer u32-sums)) (read @heap) spin) (int u32s) ints) ! pure",
+"define i64-op : (subr (read (globals i64-fold)) (int i64 i64) int) ! pure",
+"define i64-values : (subr (maxeff (alloc @heap) (read (globals i64-big i64-values)) (read @heap) spin) (ints) i64s) ! pure",
+"define i64-inner : (subr (maxeff (read (globals i64-fold i64-inner i64-op mix)) (read @heap) spin) (int i64 i64s int) int) ! pure",
+"define i64-outer : (subr (maxeff (read (globals i64-fold i64-inner i64-op i64-outer mix)) (read @heap) spin) (int i64s i64s int) int) ! pure",
+"define i64-sums : (subr (maxeff (alloc @heap) (read (globals i64-fold i64-inner i64-op i64-outer i64-sums mix)) (read @heap) spin) (int i64s) ints) ! pure",
+"define u64-op : (subr (read (globals u64-fold)) (int u64 u64) int) ! pure",
+"define u64-values : (subr (maxeff (alloc @heap) (read (globals u64-big u64-values)) (read @heap) spin) (ints) u64s) ! pure",
+"define u64-inner : (subr (maxeff (read (globals mix u64-fold u64-inner u64-op)) (read @heap) spin) (int u64 u64s int) int) ! pure",
+"define u64-outer : (subr (maxeff (read (globals mix u64-fold u64-inner u64-op u64-outer)) (read @heap) spin) (int u64s u64s int) int) ! pure",
+"define u64-sums : (subr (maxeff (alloc @heap) (read (globals mix u64-fold u64-inner u64-op u64-outer u64-sums)) (read @heap) spin) (int u64s) ints) ! pure",
+"define int-op : (subr pure (int int int) int) ! pure",
+"define int-inner : (subr (maxeff (read (globals int-inner int-op mix)) (read @heap) spin) (int int ints int) int) ! pure",
+"define int-outer : (subr (maxeff (read (globals int-inner int-op int-outer mix)) (read @heap) spin) (int ints ints int) int) ! pure",
+"define int-sums : (subr (maxeff (alloc @heap) (read (globals int-inner int-op int-outer int-sums mix)) (read @heap) spin) (int ints) ints) ! pure",
+"define fixed-width-ops : (subr (maxeff (alloc @heap) (read (globals edges i32-fold i32-inner i32-op i32-outer i32-sums i32-values i64-big i64-fold i64-inner i64-op i64-outer i64-sums i64-values int-inner int-op int-outer int-sums mix u32-fold u32-inner u32-op u32-outer u32-sums u32-values u64-big u64-fold u64-inner u64-op u64-outer u64-sums u64-values)) (read @heap) spin) (int) (listof ints @heap)) ! pure",
+"(listof ints @heap) ! (maxeff (alloc @heap) (read (globals edges fixed-width-ops i32-fold i32-inner i32-op i32-outer i32-sums i32-values i64-big i64-fold i64-inner i64-op i64-outer i64-sums i64-values int-inner int-op int-outer int-sums mix u32-fold u32-inner u32-op u32-outer u32-sums u32-values u64-big u64-fold u64-inner u64-op u64-outer u64-sums u64-values)) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

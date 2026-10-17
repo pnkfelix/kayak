@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"load-layers.fx"
+],
+"code": 0,
+"out": [
+"define top : (moduleof (desc cell (ref int @q)) (desc own (maxeff (read @q) (write @q))) (val p (moduleof (desc own (maxeff (read @q) (write @q))) (val rd (moduleof (desc own (maxeff (read @q) (write @q))) (desc cell (ref int @q)) (val c cell) (val bump (subr (maxeff (read @q) (write @q)) () int)))) (val bump (subr (maxeff (read @q) (write @q)) () int)) (val twice (subr (maxeff (read @q) (write @q)) () int)))) (val rd (moduleof (desc own (maxeff (read @q) (write @q))) (desc cell (ref int @q)) (val c cell) (val bump (subr (maxeff (read @q) (write @q)) () int)))) (val bump (subr (maxeff (read @q) (write @q)) () int)) (val twice (subr (maxeff (read @q) (write @q)) () int)) (val thrice (subr (maxeff (read @q) (write @q)) () int)) (val peek (subr (read @q) (cell) int))) ! (maxeff (alloc @q) (read (globals %shared:/Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/../module-files/layer1.fx %shared:/Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/../module-files/layer2.fx %shared:/Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/../module-files/layer3.fx)))",
+"define p : (moduleof (desc own (maxeff (read @q) (write @q))) (val rd (moduleof (desc own (maxeff (read @q) (write @q))) (desc cell (ref int @q)) (val c cell) (val bump (subr (maxeff (read @q) (write @q)) () int)))) (val bump (subr (maxeff (read @q) (write @q)) () int)) (val twice (subr (maxeff (read @q) (write @q)) () int))) ! (read (globals top))",
+"define rd : (moduleof (desc own (maxeff (read @q) (write @q))) (desc cell (ref int @q)) (val c cell) (val bump (subr (maxeff (read @q) (write @q)) () int))) ! (read (globals p))",
+"define thrice : (subr (maxeff (read @q) (write @q)) () int) ! (read (globals top))",
+"define c : cell ! (read (globals rd))",
+"define peek : (subr (read @q) (cell) int) ! (read (globals top))",
+"int ! (maxeff (read (globals c peek thrice)) (read @q) (write @q))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

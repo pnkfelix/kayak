@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"written.fx"
+],
+"code": 1,
+"out": [
+"limit : int ! pure",
+"below : (subr (read (globals limit)) (int) bool) ! pure",
+"clamp : (subr (read @globals) (int) int) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/globals/written.fx:6:38: `wrong` is declared a (subr pure (int) bool): a (subr pure (int) bool) is expected here, and this is a (subr (read (globals below limit)) (int) bool)",
+"  beyond what is expected, it has (read (globals below limit))",
+""
+]
+}

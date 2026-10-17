@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"leaf-closures.fx"
+],
+"code": 0,
+"out": [
+"define adder : (subr pure (int) (subr pure (int) int)) ! pure",
+"define go : (subr (maxeff (read (globals adder go)) spin) (int int) int) ! pure",
+"int ! (maxeff (read (globals adder go)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

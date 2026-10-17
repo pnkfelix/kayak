@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"transparent.fx"
+],
+"code": 0,
+"out": [
+"define n : (moduleof (desc num int) (val x num)) ! pure",
+"int ! (read (globals n))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,30 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"blobref.fx"
+],
+"code": 0,
+"out": [
+"define b : pt ! (alloc @b)",
+"define x : (blobref pt f64) ! (read (globals b))",
+"define n : (blobref pt i32) ! (read (globals b))",
+"define m : (blobref pt i32) ! (read (globals n))",
+"define u : (blobref pt u32) ! (read (globals b))",
+"define f : (blobref pt f32) ! (read (globals u))",
+"define w : (blobref pt i64) ! (read (globals b))",
+"unit ! (maxeff (read (globals x)) (write @b))",
+"unit ! (maxeff (read (globals n)) (write @b))",
+"unit ! (maxeff (read (globals m)) (write @b))",
+"unit ! (maxeff (read (globals u)) (write @b))",
+"unit ! (maxeff (read (globals f)) (write @b))",
+"unit ! (maxeff (read (globals w)) (write @b))",
+"(listof int @r.1) ! (maxeff (alloc @r.1) (read (globals f m n u w x)) (read @b))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

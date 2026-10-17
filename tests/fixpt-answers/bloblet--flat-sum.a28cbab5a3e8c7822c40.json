@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"flat-sum.fx"
+],
+"code": 0,
+"out": [
+"define b : o ! (alloc @b)",
+"define arr : (blobref o (flat-arrayof shape 2)) ! (read (globals b))",
+"define c : (blobref o f64) ! (maxeff (read (globals arr)) (read @b) (write @b))",
+"unit ! (maxeff (read (globals c)) (write @b))",
+"define sq : (blobref o (productof (w i32) (h i32))) ! (maxeff (read (globals arr)) (read @b) (write @b))",
+"unit ! (maxeff (read (globals sq)) (write @b))",
+"unit ! (maxeff (read (globals sq)) (write @b))",
+"define what : (subr (read @b) ((blobref o shape)) int) ! pure",
+"define kr : (blobref o k) ! (read (globals b))",
+"unit ! (maxeff (read (globals kr)) (read @b) (write @b))",
+"(listof int @r.1) ! (maxeff (alloc @r.1) (read (globals arr b c kr sq what)) (read @b))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

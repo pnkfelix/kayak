@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"more-shapes.fx"
+],
+"code": 0,
+"out": [
+"define circle : (subr pure (int) shape) ! pure",
+"define square : (subr pure (int) shape) ! pure",
+"define size : (subr (read @r) (v) int) ! pure",
+"define tests : (subr pure (v) int) ! pure",
+"define total : (subr (maxeff (read (globals size tests total)) (read @r) spin) (vs) int) ! pure",
+"int ! (maxeff (alloc @r) (read (globals circle size square tests total)) (read @r) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

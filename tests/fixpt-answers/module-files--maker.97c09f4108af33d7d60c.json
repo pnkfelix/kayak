@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"maker.fx"
+],
+"code": 0,
+"out": [
+"(subr pure (int) (moduleof (val twice int))) ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

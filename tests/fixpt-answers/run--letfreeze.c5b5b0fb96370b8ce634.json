@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"letfreeze.fx"
+],
+"code": 0,
+"out": [
+"define frozen-list : (subr pure (int) (listof int const)) ! pure",
+"define add-up : (subr (maxeff (read (globals add-up)) spin) ((listof int const) int) int) ! pure",
+"int ! (maxeff (read (globals add-up frozen-list)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

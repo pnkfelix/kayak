@@ -2,7 +2,7 @@
 
 usage: python3 -I scripts/run-fixpt-programs.py [--list] [--bless]
 
-Each program in Fixpt's crates/fixpt-fx26/tests/programs that kfx accepts
+Each of Fixpt's programs (as kept in tests/fx26/programs, C132) that kfx accepts
 is compiled with `kfx --toplevel`, whose `kfx_toplevel` writes the values
 of its top-level expressions as `fixpt eval` does. All are built into one
 runner, in target/fixpt-programs, and each is run there and by Fixpt,
@@ -300,9 +300,8 @@ def beyond_runs(refused, fixpt, listing):
 def main():
     listing = "--list" in sys.argv[1:]
     bless = "--bless" in sys.argv[1:]
-    fixpt = run([os.path.join(ROOT, "scripts", "fixpt.sh")]).stdout.strip()
-    programs_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(fixpt))),
-                                "crates", "fixpt-fx26", "tests", "programs")
+    fixpt = fixptcache.binary()
+    programs_dir = fixptcache.PROGRAMS
     if run(["cargo", "build", "--release", "--quiet", "-p", "kfx"], cwd=ROOT).returncode != 0:
         sys.exit("run-fixpt-programs: kfx does not build")
     kfx = os.path.join(ROOT, "target", "release", "kfx")

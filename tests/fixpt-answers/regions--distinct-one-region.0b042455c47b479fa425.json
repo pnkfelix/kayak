@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"distinct-one-region.fx"
+],
+"code": 1,
+"out": [
+"swap : swap-type ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/distinct-one-region.fx:10:12: `r1` is distinct, and is given r, as `r2` is",
+""
+]
+}

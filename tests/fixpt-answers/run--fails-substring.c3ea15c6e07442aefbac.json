@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"fails-substring.fx"
+],
+"code": 0,
+"out": [
+"string ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

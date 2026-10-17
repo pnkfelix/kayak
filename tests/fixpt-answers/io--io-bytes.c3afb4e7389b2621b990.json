@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"io-bytes.fx"
+],
+"code": 0,
+"out": [
+"define next : (subr (io stdin) () int) ! pure",
+"define fill : (subr (maxeff (io stdin) (write @b)) ((bytevectorof @b)) int) ! pure",
+"define waiting? : (subr (io stdin) () bool) ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

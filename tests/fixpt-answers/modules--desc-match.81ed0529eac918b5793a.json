@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"desc-match.fx"
+],
+"code": 0,
+"out": [
+"m : (moduleof (desc num int) (val x num)) ! pure",
+"get-x : (subr pure (nums) int) ! pure",
+"10 : int ! (read (globals get-x m))",
+""
+],
+"err": [
+""
+]
+}

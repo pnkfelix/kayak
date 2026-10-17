@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"incompatible.fx"
+],
+"code": 1,
+"out": [
+"n : int ! pure",
+"m : int ! (read (globals n))",
+"p : bool ! (read (globals n))",
+"; `n` redefined; run again, as they use it: `p`",
+"; broken until defined again: `m` (a int is expected here, and this is a string)",
+"n : string ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/redefine/incompatible.fx:5:1: `m` is broken, since `n` was redefined (a int is expected here, and this is a string): define it again to use it",
+""
+]
+}

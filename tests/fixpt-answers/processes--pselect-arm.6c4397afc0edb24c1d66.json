@@ -1,0 +1,16 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"pselect-arm.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: the FX-26 front end: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/processes/pselect-arm.fx:4:30: a `pselect` arm is `((icell-get i-cell) name body …)`, `((receive mailbox) name body …)`, `((sleep-until time) name body …)` or `((read-byte) name body …)`",
+""
+]
+}

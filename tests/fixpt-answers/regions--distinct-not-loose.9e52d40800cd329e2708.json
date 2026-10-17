@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"distinct-not-loose.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/distinct-not-loose.fx:8:21: `outer` is declared a loose: `r1` is distinct, and r1 may be r2, given for `r2`",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"standard-refs.fx"
+],
+"code": 0,
+"out": [
+"define sm : (moduleof (val six (subr pure (int) int))) ! pure",
+"define score : (subr (read (globals sm)) () int) ! pure",
+"int ! (read (globals score sm))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

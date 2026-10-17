@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"region-throws.fx"
+],
+"code": 0,
+"out": [
+"escape : (subr (goto @k) (int (subr (goto @k) (int) void)) int) ! pure",
+"rounds : (subr (maxeff (goto @k) (comefrom @k) spin (read (globals escape rounds))) (int int) int) ! pure",
+"500500 : int ! (maxeff (goto @k) (comefrom @k) spin (read (globals escape rounds)))",
+""
+],
+"err": [
+""
+]
+}

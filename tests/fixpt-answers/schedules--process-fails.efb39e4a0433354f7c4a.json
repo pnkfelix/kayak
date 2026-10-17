@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"process-fails.fx"
+],
+"code": 0,
+"out": [
+"define c : (icell int @c) ! (alloc @c)",
+"define w : (addr int @w) ! (maxeff (alloc @w) (init @c) (read (globals c)) nondet)",
+"unit ! (maxeff (read (globals w)) (send @w))",
+"int ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

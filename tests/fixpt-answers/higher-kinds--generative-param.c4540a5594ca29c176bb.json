@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"generative-param.fx"
+],
+"code": 0,
+"out": [
+"define up-wrapped : (poly ((f (=> (type) type)) (a type)) (subr pure ((f a)) (wrapped f a))) ! pure",
+"define down-wrapped : (poly ((f (=> (type) type)) (a type)) (subr pure ((wrapped f a)) (f a))) ! pure",
+"define w : (wrapped (dlambda ((t type)) (listof t @heap)) int) ! (maxeff (alloc @heap) (read (globals up-wrapped)))",
+"(listof int @heap) ! (read (globals down-wrapped w))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

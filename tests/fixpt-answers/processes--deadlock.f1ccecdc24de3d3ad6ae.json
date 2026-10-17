@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"deadlock.fx"
+],
+"code": 0,
+"out": [
+"define relay : (poly ((p place)) (subr (maxeff (alloc @r) (await @r) (init @r) (receive p) (send @s) nondet spin) ((inbox msg p)) unit)) ! pure",
+"define a : (addr msg @s) ! (maxeff (alloc @r) (alloc @s) (await @r) (init @r) (read (globals relay)) (send @s) nondet spin)",
+"define b : (addr msg @s) ! (maxeff (alloc @r) (alloc @s) (await @r) (init @r) (read (globals relay)) (send @s) nondet spin)",
+"unit ! (maxeff (read (globals a b)) (send @s) spin)",
+"unit ! (maxeff (read (globals a b)) (send @s) spin)",
+"int ! (maxeff (alloc @r) (await @r) (read (globals a)) (send @s) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

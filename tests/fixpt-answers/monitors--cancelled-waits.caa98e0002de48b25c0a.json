@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"cancelled-waits.fx"
+],
+"code": 0,
+"out": [
+"define total : (icell int @d) ! (alloc @d)",
+"define never : (icell int @e) ! (alloc @e)",
+"define collector : (addr report @p) ! (maxeff (alloc @p) (init @d) (read (globals total)) nondet)",
+"define failed : (subr pure (string) report) ! pure",
+"define far : (subr (io clock) () i64) ! pure",
+"define w : (addr int @w) ! (maxeff (alloc @w) (io clock) (read (globals collector failed far)) (send @p) nondet)",
+"unit ! (maxeff (read (globals w)) (send @w))",
+"int ! (maxeff (await @d) (await @e) (read (globals never total)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

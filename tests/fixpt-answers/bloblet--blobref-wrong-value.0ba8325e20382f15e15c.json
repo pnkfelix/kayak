@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"blobref-wrong-value.fx"
+],
+"code": 1,
+"out": [
+"b : pt ! (alloc @b)",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/blobref-wrong-value.fx:5:55: a f64 is expected here, and this is a int",
+""
+]
+}

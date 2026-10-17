@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"state.fx"
+],
+"code": 0,
+"out": [
+"define c : (ref int @c) ! (alloc @c)",
+"unit ! (maxeff (read (globals c)) (write @c))",
+"int ! (maxeff (read (globals c)) (read @c))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

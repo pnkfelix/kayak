@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"expr.fx"
+],
+"code": 0,
+"out": [
+"define num : (subr pure (int) expr) ! pure",
+"define add : (subr pure (expr expr) expr) ! pure",
+"define neg : (subr pure (expr) expr) ! pure",
+"define value : (subr (maxeff (read (globals value)) spin) (expr) int) ! pure",
+"int ! (maxeff (read (globals add neg num value)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

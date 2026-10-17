@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"aborts.fx"
+],
+"code": 0,
+"out": [
+"define t : (prompt-tag int int (maxeff (read @globals) spin) @z) ! (alloc @z)",
+"define raise : (subr (maxeff (goto @z) (read (globals t))) (int) void) ! pure",
+"define in-cellular : (subr (maxeff (goto @z) (read (globals raise t)) (read @globals) spin) (int) int) ! pure",
+"int ! (maxeff (goto @z) (read (globals in-cellular raise t)) (read @globals) spin)",
+"define raise-cellular : (subr (maxeff (goto @z) (read (globals t)) spin) (int) int) ! pure",
+"define mid : (subr (maxeff (goto @z) (read (globals raise-cellular t)) (read @globals) spin) (int) int) ! pure",
+"define in-native : (subr (maxeff (goto @z) (read (globals mid raise-cellular t)) (read @globals) spin) (int) int) ! pure",
+"int ! (maxeff (goto @z) (read (globals in-native mid raise-cellular t)) (read @globals) spin)",
+"define deep : (subr (maxeff (goto @z) (read (globals deep raise t)) (read @globals) spin) (int int) int) ! pure",
+"define many : (subr (maxeff (goto @z) (read (globals deep many raise t)) (read @globals) spin) (int int) int) ! pure",
+"int ! (maxeff (goto @z) (read (globals deep many raise t)) (read @globals) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

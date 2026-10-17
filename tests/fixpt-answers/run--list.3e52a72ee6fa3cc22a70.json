@@ -1,0 +1,20 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"list.fx"
+],
+"code": 0,
+"out": [
+"total : (subr (maxeff spin (read (globals total))) ((listof int acyclic)) int) ! pure",
+"make : (vsubr pure int (listof int acyclic)) ! pure",
+"spread : (subr (read @heap) ((listof int @heap)) (listof int acyclic)) ! pure",
+"words : (listof string acyclic) ! pure",
+"5539 : int ! (maxeff (read @heap) (alloc @heap) spin (read (globals make spread total)))",
+""
+],
+"err": [
+""
+]
+}

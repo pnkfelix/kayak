@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"functor-by-name.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/functor-by-name.fx:12:1: argument 1 is a module the procedure's types depend on: give it by name (bind it with `let` first)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

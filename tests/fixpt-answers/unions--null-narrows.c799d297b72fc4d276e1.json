@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"null-narrows.fx"
+],
+"code": 0,
+"out": [
+"define head : (subr (read @r) ((pairof int ints @r)) int) ! pure",
+"define first : (subr (maxeff (read (globals head)) (read @r)) (ints) int) ! pure",
+"int ! (maxeff (alloc @r) (read (globals first head)) (read @r))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

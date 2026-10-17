@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"mixed.fx"
+],
+"code": 0,
+"out": [
+"define bump : (subr (maxeff (comefrom @k) (goto @k) spin) (int) int) ! pure",
+"define sum-map : (subr (maxeff (alloc @k) (comefrom @k) (goto @k) (read (globals bump sum-map)) (read @k) spin) ((subr (maxeff (comefrom @k) (goto @k) (read (globals bump)) spin) (int) int) (listof int @k) int) int) ! pure",
+"define upto : (subr (maxeff (alloc @k) (read (globals upto)) spin) (int) (listof int @k)) ! pure",
+"define leave : (subr (goto @k) (int (subr (goto @k) (int) void)) int) ! pure",
+"int ! (maxeff (alloc @k) (comefrom @k) (goto @k) (read (globals bump sum-map upto)) (read @k) spin)",
+"int ! (maxeff (comefrom @k) (goto @k) (read (globals leave)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

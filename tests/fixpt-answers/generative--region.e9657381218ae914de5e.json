@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"region.fx"
+],
+"code": 0,
+"out": [
+"define up-stack : (poly ((t type) (r region)) (subr pure ((listof t r)) (stack t r))) ! pure",
+"define down-stack : (poly ((t type) (r region)) (subr pure ((stack t r)) (listof t r))) ! pure",
+"define f : (subr (read (globals up-stack)) () int) ! pure",
+"int ! (read (globals f up-stack))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"oneshot-twice.fx"
+],
+"code": 0,
+"out": [
+"define t : (prompt-tag int int (read @globals) @p) ! (alloc @p)",
+"int ! (maxeff (read (globals t)) (read @globals))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

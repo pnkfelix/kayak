@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"letfreeze-into-place.fx"
+],
+"code": 0,
+"out": [
+"total : (subr pure (int) int) ! pure",
+"8 : int ! (read (globals total))",
+""
+],
+"err": [
+""
+]
+}

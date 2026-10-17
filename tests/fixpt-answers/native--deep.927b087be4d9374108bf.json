@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"deep.fx"
+],
+"code": 0,
+"out": [
+"define tot : (subr (maxeff (read (globals tot)) spin) (int) int) ! pure",
+"int ! (maxeff (read (globals tot)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

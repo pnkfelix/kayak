@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"nlist-basics.fx"
+],
+"code": 0,
+"out": [
+"define three : (nlist int 3) ! pure",
+"define len : (subr pure ((nlist int finite) int) int) ! pure",
+"define two : (nlist int 2) ! (read (globals three))",
+"define as-list : (listof int acyclic) ! (read (globals three))",
+"define back : (nlist int finite) ! (read (globals as-list))",
+"int ! (read (globals len three two))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

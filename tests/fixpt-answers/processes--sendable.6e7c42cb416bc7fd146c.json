@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"sendable.fx"
+],
+"code": 0,
+"out": [
+"define answer : (poly ((m sendable)) (subr (init @r) ((productof (v m) (reply (icell m @r)))) unit)) ! pure",
+"define make-echo : (poly ((m sendable)) (subr (maxeff (alloc @e) (init @r) (read (globals answer)) nondet spin) () (addr (productof (v m) (reply (icell m @r))) @e))) ! pure",
+"define echo : (addr (productof (v int) (reply (icell int @r))) @e) ! (maxeff (alloc @e) (init @r) (read (globals answer make-echo)) nondet spin)",
+"define c : (icell int @r) ! (alloc @r)",
+"unit ! (maxeff (read (globals c echo)) (send @e))",
+"int ! (maxeff (await @r) (read (globals c)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

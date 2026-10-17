@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"union-const-refused.fx"
+],
+"code": 1,
+"out": [
+"ring : (subr pure () (listof int const)) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/datum/union-const-refused.fx:8:17: `d` is declared a datum: a datum is expected here, and this is a (listof int const)",
+""
+]
+}

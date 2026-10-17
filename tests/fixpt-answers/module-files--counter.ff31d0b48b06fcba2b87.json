@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"counter.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/counter.fx:6:31: `inc` is declared a (subr pure (t) t): a (subr pure (t) t) is expected here, and this is a (subr (read (globals down-t up-t)) (t) t)",
+"  beyond what is expected, it has (read (globals down-t up-t))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

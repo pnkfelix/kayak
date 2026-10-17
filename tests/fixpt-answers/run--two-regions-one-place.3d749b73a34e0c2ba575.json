@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"two-regions-one-place.fx"
+],
+"code": 0,
+"out": [
+"count : (subr spin (int) int) ! pure",
+"3 : int ! (maxeff spin (read (globals count)))",
+""
+],
+"err": [
+""
+]
+}

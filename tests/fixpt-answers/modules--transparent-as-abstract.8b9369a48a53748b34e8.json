@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"transparent-as-abstract.fx"
+],
+"code": 0,
+"out": [
+"define n : (moduleof (desc t int) (val x t) (val bump (subr pure (t) t))) ! pure",
+"define get : (subr pure (opaque) int) ! pure",
+"int ! (read (globals get n))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

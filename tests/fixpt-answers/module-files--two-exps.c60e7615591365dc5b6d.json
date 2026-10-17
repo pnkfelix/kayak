@@ -1,0 +1,23 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"two-exps.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (6 cells, cellular):",
+"     0: lit 1",
+"     2: drop",
+"     3: lit 2",
+"     5: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

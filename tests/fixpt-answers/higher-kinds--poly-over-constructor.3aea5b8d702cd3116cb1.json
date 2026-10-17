@@ -1,0 +1,20 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"poly-over-constructor.fx"
+],
+"code": 0,
+"out": [
+"id : (poly ((f (=> (type) type)) (a type)) (subr pure ((f a)) (f a))) ! pure",
+"id2 : (poly ((f (=> (type region) type)) (a type) (r region)) (subr pure ((f a r)) (f a r))) ! pure",
+"b : (productof (v int)) ! (read (globals id))",
+"l : (listof int @heap) ! (maxeff (alloc @heap) (read (globals id)))",
+"(1 2) : (listof int @heap) ! (read (globals id2 l))",
+""
+],
+"err": [
+""
+]
+}

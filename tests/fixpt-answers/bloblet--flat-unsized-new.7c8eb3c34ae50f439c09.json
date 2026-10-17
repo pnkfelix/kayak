@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"flat-unsized-new.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-unsized-new.fx:8:71: a new blobref's array of a length not literal is of length `finite`, not a (flat-arrayof f64 n): the length is named where the blobref is bound",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"io-bytes.fx"
+],
+"code": 0,
+"out": [
+"next : (subr (io stdin) () int) ! pure",
+"fill : (subr (maxeff (write @b) (io stdin)) ((bytevectorof @b)) int) ! pure",
+"waiting? : (subr (io stdin) () bool) ! pure",
+""
+],
+"err": [
+""
+]
+}

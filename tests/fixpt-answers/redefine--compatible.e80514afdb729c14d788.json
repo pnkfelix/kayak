@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"compatible.fx"
+],
+"code": 0,
+"out": [
+"define f : (subr pure (int) int) ! pure",
+"define g : (subr (read (globals f)) (int) int) ! pure",
+"int ! (read (globals f g))",
+"define f : (subr pure (int) int) ! pure",
+"int ! (read (globals f g))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

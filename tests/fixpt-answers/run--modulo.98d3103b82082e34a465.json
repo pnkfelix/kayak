@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"modulo.fx"
+],
+"code": 0,
+"out": [
+"define mods : (subr pure (int int) (listof int acyclic)) ! pure",
+"(listof (listof int acyclic) @r.1) ! (maxeff (alloc @r.1) (read (globals mods)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

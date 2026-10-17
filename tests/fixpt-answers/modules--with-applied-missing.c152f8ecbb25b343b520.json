@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"with-applied-missing.fx"
+],
+"code": 1,
+"out": [
+"m : (moduleof (desc n int)) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/with-applied-missing.fx:5:9: `f` is not a description function, nor one a module opened by `with` gives",
+""
+]
+}

@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"cwcc-captures.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/terminate/cwcc-captures.fx:12:11: the tag allows its delimited computations (maxeff (comefrom @k) (goto @k) (write @d)), and this body also has spin",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

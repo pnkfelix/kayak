@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"paths-narrow.fx"
+],
+"code": 0,
+"out": [
+"define plus : (subr (read @r) (cell) int) ! pure",
+"define otherwise : (subr (read @r) (cell) int) ! pure",
+"define elsewhere : (subr (maxeff (read @r) (write @s)) (cell (ref int @s)) int) ! pure",
+"define through-heap : (subr (write @heap) (frozen (ref int @heap)) int) ! pure",
+"define field : (subr pure ((productof (a v))) int) ! pure",
+"int ! (read (globals field))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

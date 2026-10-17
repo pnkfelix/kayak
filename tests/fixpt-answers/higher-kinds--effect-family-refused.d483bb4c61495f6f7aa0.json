@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"effect-family-refused.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/higher-kinds/effect-family-refused.fx:5:50: a (subr pure ((subr (e r) () int)) int) is expected here, and this is a (subr (e r) ((subr (e r) () int)) int)",
+"  beyond what is expected, it has (e r)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

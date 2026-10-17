@@ -1,0 +1,22 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"fails-car.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (4 cells, cellular):",
+"     0: lit ()",
+"     2: pair-car",
+"     3: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

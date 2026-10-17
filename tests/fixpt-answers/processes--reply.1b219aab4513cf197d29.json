@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"reply.fx"
+],
+"code": 0,
+"out": [
+"define doubler : (addr req @srv) ! (maxeff (alloc @srv) (init @r) nondet spin)",
+"define ask : (subr (maxeff (alloc @r) (await @r) (read (globals doubler)) (send @srv)) (int) int) ! pure",
+"int ! (maxeff (alloc @r) (await @r) (read (globals ask doubler)) (send @srv))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"fails-substring.fx"
+],
+"code": 1,
+"out": [
+" : string ! pure",
+""
+],
+"err": [
+"! evaluation failed: substring range out of bounds",
+""
+]
+}

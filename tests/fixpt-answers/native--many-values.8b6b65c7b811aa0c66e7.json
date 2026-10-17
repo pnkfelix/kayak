@@ -1,0 +1,29 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"many-values.fx"
+],
+"code": 0,
+"out": [
+"define ten : (subr pure (int int int int int int int int int int) int) ! pure",
+"int ! (read (globals ten))",
+"define spin10 : (subr (maxeff (read (globals spin10)) spin) (int int int int int int int int int int) int) ! pure",
+"int ! (maxeff (read (globals spin10)) spin)",
+"define cell10 : (subr (maxeff (read (globals cell10 ten)) (read @globals) spin) (int int int int int int int int int int) int) ! pure",
+"define to-cell : (subr (maxeff (read (globals cell10 ten)) (read @globals) spin) (int) int) ! pure",
+"int ! (maxeff (read (globals cell10 ten to-cell)) (read @globals) spin)",
+"define from-cell : (subr (maxeff (read (globals ten)) (read @globals) spin) (int) int) ! pure",
+"int ! (maxeff (read (globals from-cell ten)) (read @globals) spin)",
+"define over10 : (subr (alloc @heap) (int int int int int int int int int int) adder) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals over10)) (read @globals))",
+"define fields10 : (subr (maxeff (alloc @heap) (read @heap)) (int) int) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals fields10)) (read @heap))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

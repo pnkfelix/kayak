@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"abstract.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/abstract.fx:9:18: a int is expected here, and this is a counter..t",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

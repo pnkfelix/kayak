@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"nat-join.fx"
+],
+"code": 0,
+"out": [
+"define pick : (subr pure (bool nat) nat) ! pure",
+"define gap : (subr pure (nat nat) nat) ! pure",
+"int ! (read (globals gap pick))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

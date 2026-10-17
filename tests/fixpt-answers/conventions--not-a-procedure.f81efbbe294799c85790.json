@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"not-a-procedure.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/conventions/not-a-procedure.fx:2:1: `convention` takes a procedure, and this is a int",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

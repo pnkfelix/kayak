@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"fails-quotient.fx"
+],
+"code": 1,
+"out": [
+" : int ! pure",
+""
+],
+"err": [
+"! evaluation failed: division by zero",
+""
+]
+}

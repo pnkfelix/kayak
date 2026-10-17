@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"star-passed-as-pure.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/arrows/star-passed-as-pure.fx:6:61: `->*` found `f` to be a (subr (maxeff (read (globals f twice)) spin) (int) int): argument 1 is a (subr (maxeff (read (globals f twice)) spin) (int) int), where a (subr pure (int) int) is expected",
+"  beyond what is expected, it has (maxeff (read (globals f twice)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

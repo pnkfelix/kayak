@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"deep.fx"
+],
+"code": 1,
+"out": [
+"tot : (subr (maxeff spin (read (globals tot))) (int) int) ! pure",
+" : int ! (maxeff spin (read (globals tot)))",
+""
+],
+"err": [
+"! evaluation failed: stack overflow",
+""
+]
+}

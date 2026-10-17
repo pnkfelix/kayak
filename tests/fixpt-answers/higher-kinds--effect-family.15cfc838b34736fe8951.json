@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"effect-family.fx"
+],
+"code": 0,
+"out": [
+"bump : (poly ((r region)) (subr (maxeff (read r) (write r)) ((ref int r)) unit)) ! pure",
+"run : (poly ((e (=> (region) effect)) (r region)) (subr (e r) ((subr (e r) () int)) int)) ! pure",
+"4 : int ! (read (globals run))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"flat-not-type.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-not-type.fx:4:42: `f` is a flat, not a type",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

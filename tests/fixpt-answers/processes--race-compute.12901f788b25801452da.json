@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"race-compute.fx"
+],
+"code": 0,
+"out": [
+"fib : (subr (maxeff spin (read (globals fib))) (int) int) ! pure",
+"fib-from : (subr (maxeff spin (read (globals fib-from))) (int int int) int) ! pure",
+"55 : int ! (maxeff spin nondet (read (globals fib fib-from)))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,20 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"nested.fx"
+],
+"code": 0,
+"out": [
+"up-nest : (poly ((a type)) (subr pure ((sumof (none unit) (more (productof (hd a) (tl (nest (productof (l a) (r a)))))))) (nest a))) ! pure",
+"down-nest : (poly ((a type)) (subr pure ((nest a)) (sumof (none unit) (more (productof (hd a) (tl (nest (productof (l a) (r a))))))))) ! pure",
+"n : (nest int) ! (read (globals up-nest))",
+"size : (subr (read @globals) ((nest int)) int) ! pure",
+"1 : int ! (maxeff (read @globals) (read (globals n size)))",
+""
+],
+"err": [
+""
+]
+}

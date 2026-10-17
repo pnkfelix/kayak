@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"lists-region.fx"
+],
+"code": 0,
+"out": [
+"one-round : (subr spin (int) int) ! pure",
+"rounds : (subr (maxeff spin (read (globals one-round rounds))) (int int) int) ! pure",
+"1501500000 : int ! (maxeff spin (read (globals one-round rounds)))",
+""
+],
+"err": [
+""
+]
+}

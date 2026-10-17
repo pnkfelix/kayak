@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"fails-error.fx"
+],
+"code": 0,
+"out": [
+"int ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

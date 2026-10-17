@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"extend.fx"
+],
+"code": 0,
+"out": [
+"define a : (moduleof (val x int) (val y int)) ! pure",
+"define b : (moduleof (val y int) (val z int)) ! pure",
+"define c : (moduleof (val x int) (val y int) (val z int)) ! (read (globals a b))",
+"define f : (subr pure ((moduleof (val z int) (val x int))) int) ! pure",
+"int ! (read (globals a b c f))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

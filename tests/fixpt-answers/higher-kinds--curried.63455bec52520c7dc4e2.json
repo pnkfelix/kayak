@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"curried.fx"
+],
+"code": 0,
+"out": [
+"(listof (listof int @heap) @heap) ! (alloc @heap)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

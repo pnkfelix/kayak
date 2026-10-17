@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"solved-unknown.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/solved-unknown.fx:6:36: the size `n` would be (- m 1), which is not known here to be no less than 0: an argument may be shorter than this procedure's type needs",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

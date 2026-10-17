@@ -1,0 +1,39 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"evaluator-writes.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (31 cells, cellular):",
+"     0: lit 1",
+"     2: lit 2",
+"     4: lit ()",
+"     6: cons",
+"     7: cons",
+"     8: global! xs",
+"    10: global xs",
+"    12: pair-cdr",
+"    13: lit 20",
+"    15: prim set-car! 2",
+"    18: drop",
+"    19: lit |#u|",
+"    21: drop",
+"    22: global xs",
+"    24: pair-car",
+"    25: global xs",
+"    27: pair-cdr",
+"    28: pair-car",
+"    29: int-add",
+"    30: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

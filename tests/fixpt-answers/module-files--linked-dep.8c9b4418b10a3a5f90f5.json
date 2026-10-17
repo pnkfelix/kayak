@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"linked-dep.fx"
+],
+"code": 0,
+"out": [
+"cat3 : (subr pure (string string string) string) ! pure",
+"limit : int ! pure",
+""
+],
+"err": [
+""
+]
+}

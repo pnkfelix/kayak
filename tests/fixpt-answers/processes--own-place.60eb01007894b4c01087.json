@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"own-place.fx"
+],
+"code": 0,
+"out": [
+"define half : (icell int @t) ! (alloc @t)",
+"define total : (icell int @t) ! (alloc @t)",
+"define adder : (poly ((r place)) (subr (maxeff (init @t) (receive r) nondet spin) ((inbox int r) (icell int @t)) unit)) ! pure",
+"define p1 : (addr int @a) ! (maxeff (alloc @a) (init @t) (read (globals adder half)) nondet spin)",
+"define p2 : (addr int @a) ! (maxeff (alloc @a) (init @t) (read (globals adder total)) nondet spin)",
+"unit ! (maxeff (read (globals p1)) (send @a))",
+"unit ! (maxeff (read (globals p2)) (send @a))",
+"unit ! (maxeff (read (globals p1)) (send @a))",
+"unit ! (maxeff (read (globals p2)) (send @a))",
+"int ! (maxeff (await @t) (read (globals half total)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

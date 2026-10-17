@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"include-types-inside.fx"
+],
+"code": 0,
+"out": [
+"define base : (moduleof (desc num int) (val one num)) ! pure",
+"define m : (moduleof (desc num int) (desc pair-of-nums (pairof num num @heap)) (val one num) (val two num) (val p pair-of-nums)) ! (maxeff (alloc @heap) (read (globals base)))",
+"int ! (maxeff (read (globals m)) (read @heap))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

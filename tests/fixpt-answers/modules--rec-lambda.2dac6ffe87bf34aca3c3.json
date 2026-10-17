@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"rec-lambda.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/rec-lambda.fx:3:40: `k`, in a `define-rec`, is a `lambda`",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

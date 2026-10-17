@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"made-native.fx"
+],
+"code": 0,
+"out": [
+"define make-adder : (subr spin (int) (subr pure (int) int)) ! pure",
+"define add5 : (subr pure (int) int) ! (maxeff (read (globals make-adder)) spin)",
+"define even : (subr spin (int) bool) ! pure",
+"define plus : (subr pure (int int) int) ! pure",
+"define in-place : (subr spin (int) int) ! pure",
+"define fns : (listof (subr pure (int) int) @heap) ! (alloc @heap)",
+"int ! (read (globals add5))",
+"bool ! (maxeff (read (globals even)) spin)",
+"int ! (read (globals plus))",
+"int ! (maxeff (read (globals fns)) (read @heap))",
+"int ! (maxeff (read (globals in-place)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

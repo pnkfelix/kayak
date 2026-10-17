@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"nat-count-down.fx"
+],
+"code": 0,
+"out": [
+"define count : (subr pure (nat) int) ! pure",
+"define below : (subr pure (nat nat) nat) ! pure",
+"int ! (read (globals below count))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"own-abort.fx"
+],
+"code": 0,
+"out": [
+"t : (prompt-tag int int (read (globals t)) @p) ! (alloc @p)",
+"5 : int ! (read (globals t))",
+""
+],
+"err": [
+""
+]
+}

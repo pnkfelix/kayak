@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"include-effects.fx"
+],
+"code": 0,
+"out": [
+"effects : (moduleof (desc touches (read @globals)) (desc n int)) ! pure",
+"m : (moduleof (desc touches (read @globals)) (desc n int) (val get (subr (read @globals) () n))) ! (read (globals effects))",
+"42 : int ! (maxeff (read @globals) (read (globals m)))",
+""
+],
+"err": [
+""
+]
+}

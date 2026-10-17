@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"datums.fx"
+],
+"code": 0,
+"out": [
+"size : (subr pure (datum) int) ! pure",
+"3 : int ! (read (globals size))",
+""
+],
+"err": [
+""
+]
+}

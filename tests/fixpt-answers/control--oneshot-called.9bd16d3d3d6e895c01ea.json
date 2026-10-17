@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"oneshot-called.fx"
+],
+"code": 0,
+"out": [
+"define called : (subr (maxeff (comefrom @p) (goto @p)) ((oneshot int int pure @p)) int) ! pure",
+"int ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"knot-constant.fx"
+],
+"code": 1,
+"out": [
+"up-keeper : (poly ((t type)) (subr pure ((ref t @c)) (keeper t))) ! pure",
+"down-keeper : (poly ((t type)) (subr pure ((keeper t)) (ref t @c))) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/generative/knot-constant.fx:3:11: a procedure kept in `@c` reads `@c`, so it could reach itself: it must say `spin`, and it is a (subr (read @c) () int)",
+""
+]
+}

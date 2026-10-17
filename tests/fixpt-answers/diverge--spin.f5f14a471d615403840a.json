@@ -1,0 +1,42 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"spin.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (12 cells, cellular):",
+"     0: closure word spin over 0",
+"     3: global! spin",
+"     5: lit 1",
+"     7: global spin",
+"     9: tcall 1",
+"    11: exit",
+"",
+"word spin (6 cells, cellular):",
+"     0: slot 0",
+"     2: global spin",
+"     4: ttailcall 1",
+"  its register code (29 cells, not compiled):",
+"       0: args 1",
+"       2: global-guard spin written 1 else → 8",
+"       6: branch → 6",
+"       8: save 1",
+"      10: store 1 0",
+"      13: global-guard spin written 1 else → 19",
+"      17: branch → 13",
+"      19: load 1 0",
+"      22: global spin",
+"      24: pop 1",
+"      26: tailinvoke 1 1",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

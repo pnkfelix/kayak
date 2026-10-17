@@ -1,0 +1,19 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"apply-cyclic.fx"
+],
+"code": 1,
+"out": [
+"xs : (listof int @heap) ! (alloc @heap)",
+"#u : unit ! (maxeff (read @heap) (write @heap) (read (globals xs)))",
+" : (listof int acyclic) ! (maxeff (read @heap) (read (globals xs)))",
+""
+],
+"err": [
+"! evaluation failed: expected a list",
+""
+]
+}

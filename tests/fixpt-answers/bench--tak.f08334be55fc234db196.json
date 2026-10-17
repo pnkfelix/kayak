@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"tak.fx"
+],
+"code": 0,
+"out": [
+"define tak : (subr (maxeff (read (globals tak)) spin) (int int int) int) ! pure",
+"int ! (maxeff (read (globals tak)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

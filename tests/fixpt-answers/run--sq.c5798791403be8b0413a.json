@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"sq.fx"
+],
+"code": 0,
+"out": [
+"sq : (subr pure (int) int) ! pure",
+"25 : int ! (read (globals sq))",
+""
+],
+"err": [
+""
+]
+}

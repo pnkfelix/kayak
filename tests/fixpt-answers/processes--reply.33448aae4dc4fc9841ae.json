@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"reply.fx"
+],
+"code": 0,
+"out": [
+"doubler : (addr req @srv) ! (maxeff (alloc @srv) (init @r) spin nondet)",
+"ask : (subr (maxeff (alloc @r) (await @r) (send @srv) (read (globals doubler))) (int) int) ! pure",
+"42 : int ! (maxeff (alloc @r) (await @r) (send @srv) (read (globals ask doubler)))",
+""
+],
+"err": [
+""
+]
+}

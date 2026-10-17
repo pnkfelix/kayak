@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"raw-args-across-forms.fx"
+],
+"code": 0,
+"out": [
+"define scale : (subr pure (f64 f64) f64) ! pure",
+"define sum-scaled : (subr (maxeff (read (globals scale sum-scaled)) spin) (int f64) f64) ! pure",
+"int ! (maxeff (read (globals scale sum-scaled)) spin)",
+"define scale : (subr pure (f64 f64) f64) ! pure",
+"int ! (maxeff (read (globals scale sum-scaled)) spin)",
+"define sum-again : (subr (maxeff (read (globals scale sum-again)) spin) (int f64) f64) ! pure",
+"int ! (maxeff (read (globals scale sum-again)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"write-frozen.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/write-frozen.fx:3:3: this writes frozen data, whose region is `const`",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"invariant.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/generative/invariant.fx:4:42: `b` is declared a (box (sumof (a int) (b bool))): a (box (sumof (a int) (b bool))) is expected here, and this is a (box (sumof (a int)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

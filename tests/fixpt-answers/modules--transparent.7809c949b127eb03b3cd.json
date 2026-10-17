@@ -1,0 +1,32 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"transparent.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (25 cells, cellular):",
+"     0: lit 5",
+"     2: lit 37",
+"     4: slot 0",
+"     6: prim %make-frozen 2",
+"     9: slot! 0",
+"    11: global! n",
+"    13: global n",
+"    15: field 2",
+"    17: slot 0",
+"    19: lit 1",
+"    21: int-add",
+"    22: slot! 0",
+"    24: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

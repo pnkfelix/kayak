@@ -1,0 +1,36 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"cwcc.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (8 cells, cellular):",
+"     0: closure word lambda@241 over 0",
+"     3: callcc",
+"     4: lit 1",
+"     6: int-add",
+"     7: exit",
+"",
+"word lambda@241 (6 cells, cellular):",
+"     0: lit 0",
+"     2: slot 0",
+"     4: ttailcall 1",
+"  its register code (14 cells, not compiled):",
+"       0: args 1",
+"       2: movereg 1 2",
+"       5: const 0",
+"       7: setreg 1",
+"       9: reg 2",
+"      11: tailinvoke 1 1",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

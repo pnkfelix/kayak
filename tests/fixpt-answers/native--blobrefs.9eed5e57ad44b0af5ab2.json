@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"blobrefs.fx"
+],
+"code": 0,
+"out": [
+"define walk : (subr (maxeff (alloc @heap) (read (globals walk)) (read @heap) (write @heap) spin) ((blobref o i64) int int) int) ! pure",
+"define blobrefs : (subr (maxeff (alloc @heap) (read (globals walk)) (read @heap) (write @heap) spin) (int) ints) ! pure",
+"ints ! (maxeff (alloc @heap) (read (globals blobrefs walk)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

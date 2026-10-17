@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"star-self.fx"
+],
+"code": 0,
+"out": [
+"step : int ! pure",
+"m : (moduleof (val count (subr (maxeff spin (read (globals step))) (int) int))) ! pure",
+"5 : int ! (maxeff spin (read (globals m step)))",
+""
+],
+"err": [
+""
+]
+}

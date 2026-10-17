@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"width.fx"
+],
+"code": 0,
+"out": [
+"define first : (subr (read @b) (one) int) ! pure",
+"define two : (bloblet (fields int bool) @b) ! (alloc @b)",
+"define three : (bloblet (fields int (ref int @b) (listof int acyclic)) @b) ! (alloc @b)",
+"int ! (maxeff (read (globals first three two)) (read @b))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

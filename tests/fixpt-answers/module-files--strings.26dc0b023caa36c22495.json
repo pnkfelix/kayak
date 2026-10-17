@@ -1,0 +1,19 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"strings.fx"
+],
+"code": 1,
+"out": [
+"\"A module file whose top-level forms include strings: comments, as in a\\nmodule's items (`docs/fx26.md`, Modules).\" : string ! pure",
+"base : int ! pure",
+"\"Between two definitions.\" : string ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/strings.fx:5:2: unbound variable `hide`",
+""
+]
+}

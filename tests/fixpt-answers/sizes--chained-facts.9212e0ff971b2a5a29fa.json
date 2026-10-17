@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"chained-facts.fx"
+],
+"code": 0,
+"out": [
+"f : (subr pure (nat nat nat) nat) ! pure",
+"4 : nat ! (read (globals f))",
+""
+],
+"err": [
+""
+]
+}

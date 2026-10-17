@@ -1,0 +1,23 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"pselect-stop.fx"
+],
+"code": 0,
+"out": [
+"stop : (icell unit @c) ! (alloc @c)",
+"total : (icell int @c) ! (alloc @c)",
+"summer : (addr int @p) ! (maxeff (alloc @p) (await @c) (init @c) spin nondet (read (globals stop total)))",
+"#u : unit ! (maxeff (send @p) (read (globals summer)))",
+"#u : unit ! (maxeff (send @p) (read (globals summer)))",
+"#u : unit ! (maxeff (send @p) (read (globals summer)))",
+"#u : unit ! (maxeff (init @c) (read (globals stop)))",
+"60 : int ! (maxeff (await @c) (read (globals total)))",
+""
+],
+"err": [
+""
+]
+}

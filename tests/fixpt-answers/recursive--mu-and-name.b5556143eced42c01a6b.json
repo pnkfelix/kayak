@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"mu-and-name.fx"
+],
+"code": 0,
+"out": [
+"f : (subr pure ((mu %2 (sumof (nil unit) (cell (productof (hd int) (tl %2)))))) int) ! pure",
+"g : (subr (read (globals f)) (ilist) int) ! pure",
+"h : (subr (read (globals f g)) ((mu %2 (sumof (nil unit) (cell (productof (hd int) (tl %2)))))) int) ! pure",
+"k : (subr pure ((mu %2 (subr pure (%2) int))) int) ! pure",
+""
+],
+"err": [
+""
+]
+}

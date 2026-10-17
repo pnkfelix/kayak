@@ -1,0 +1,19 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"invariant-bound.fx"
+],
+"code": 0,
+"out": [
+"up : (subr pure (int int) int) ! pure",
+"down : (subr (read @globals) (int int) int) ! pure",
+"down2 : (subr (read @globals) (int int) int) ! pure",
+"10 : int ! (maxeff (read @globals) (read (globals down up)))",
+""
+],
+"err": [
+""
+]
+}

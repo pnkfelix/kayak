@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"allocating.fx"
+],
+"code": 0,
+"out": [
+"define a : (icell int @c) ! (alloc @c)",
+"define b : (icell int @c) ! (alloc @c)",
+"define p : (addr int @p) ! (maxeff (alloc @p) (init @c) (read (globals a)) nondet spin)",
+"define q : (addr int @p) ! (maxeff (alloc @p) (init @c) (read (globals b)) nondet spin)",
+"unit ! (maxeff (read (globals p)) (send @p))",
+"unit ! (maxeff (read (globals q)) (send @p))",
+"int ! (maxeff (await @c) (read (globals a b)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

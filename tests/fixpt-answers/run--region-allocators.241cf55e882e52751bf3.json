@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"region-allocators.fx"
+],
+"code": 0,
+"out": [
+"tally : (subr spin (int) int) ! pure",
+"(35 130) : (listof int @l) ! (maxeff (alloc @l) spin (read (globals tally)))",
+""
+],
+"err": [
+""
+]
+}

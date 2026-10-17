@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"length-of-a-list.fx"
+],
+"code": 0,
+"out": [
+"l : (listof int acyclic) ! pure",
+"2 : nat ! (read (globals l))",
+""
+],
+"err": [
+""
+]
+}

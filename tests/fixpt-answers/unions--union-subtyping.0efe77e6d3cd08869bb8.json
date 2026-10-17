@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"union-subtyping.fx"
+],
+"code": 0,
+"out": [
+"widen : (subr pure (small) wide) ! pure",
+"one : (subr (alloc @r) () wide) ! pure",
+"3 : wide ! (read (globals widen))",
+""
+],
+"err": [
+""
+]
+}

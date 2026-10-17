@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"narrayof-lengths.fx"
+],
+"code": 0,
+"out": [
+"define five : (narrayof int 5 @heap) ! (alloc @heap)",
+"define five-again : (narrayof int 5 @heap) ! (alloc @heap)",
+"define len : (poly ((n size)) (subr pure ((narrayof int n @heap)) (nat n))) ! pure",
+"define fives : (nat 5) ! (read (globals five len))",
+"define any-length : (subr (read (globals len)) ((arrayof int @heap)) nat) ! pure",
+"define total : (subr (maxeff (read @heap) spin) ((arrayof int @heap)) int) ! pure",
+"int ! (maxeff (read (globals five-again total)) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

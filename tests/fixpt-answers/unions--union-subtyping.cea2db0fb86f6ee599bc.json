@@ -1,0 +1,51 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"union-subtyping.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (17 cells, cellular):",
+"     0: closure word widen over 0",
+"     3: global! widen",
+"     5: closure word one over 0",
+"     8: global! one",
+"    10: lit 3",
+"    12: global widen",
+"    14: tcall 1",
+"    16: exit",
+"",
+"word one (6 cells, cellular):",
+"     0: lit 1",
+"     2: lit ()",
+"     4: cons",
+"     5: return",
+"  its register code (18 cells, not compiled):",
+"       0: args 0",
+"       2: save 0",
+"       4: const 1",
+"       6: setreg 1",
+"       8: const ()",
+"      10: setreg 2",
+"      12: cellular cons 2",
+"      15: pop 0",
+"      17: return",
+"",
+"word widen (3 cells, cellular):",
+"     0: slot 0",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

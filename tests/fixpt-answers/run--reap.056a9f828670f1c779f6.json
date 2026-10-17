@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"reap.fx"
+],
+"code": 0,
+"out": [
+"define churn : (subr spin (int) int) ! pure",
+"int ! (maxeff (read (globals churn)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

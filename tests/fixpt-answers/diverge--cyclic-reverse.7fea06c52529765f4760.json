@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"cyclic-reverse.fx"
+],
+"code": 1,
+"out": [
+"f : (subr (maxeff (read @r) (write @r) (alloc @r)) () (listof int @r)) ! pure",
+" : (listof int @r) ! (maxeff (read @r) (write @r) (alloc @r) (read (globals f)))",
+""
+],
+"err": [
+"! evaluation failed: expected a proper list",
+""
+]
+}

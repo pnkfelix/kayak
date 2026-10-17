@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"include-effect-missing.fx"
+],
+"code": 1,
+"out": [
+"a : (moduleof (val x int)) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/include-effect-missing.fx:5:11: `nope` is not an effect, nor one a module included gives",
+""
+]
+}

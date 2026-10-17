@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"fails-string-ref.fx"
+],
+"code": 1,
+"out": [
+" : char ! pure",
+""
+],
+"err": [
+"! evaluation failed: string index out of range (length 3)",
+""
+]
+}

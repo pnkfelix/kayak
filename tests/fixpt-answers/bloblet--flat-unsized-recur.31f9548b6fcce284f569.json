@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"flat-unsized-recur.fx"
+],
+"code": 0,
+"out": [
+"define total : (subr (maxeff (read (globals total)) (read @heap) spin) (arr nat int) int) ! pure",
+"define b : blob ! (alloc @heap)",
+"define s : arr ! (read (globals b))",
+"define fill : (subr (maxeff (read (globals fill)) (read @heap) (write @heap) spin) (arr nat) unit) ! pure",
+"unit ! (maxeff (read (globals fill s)) (read @heap) (write @heap) spin)",
+"int ! (maxeff (read (globals s total)) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

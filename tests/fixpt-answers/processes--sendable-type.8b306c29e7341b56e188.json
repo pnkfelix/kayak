@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"sendable-type.fx"
+],
+"code": 1,
+"out": [
+"answer : (poly ((m type)) (subr (init @r) ((productof (v m) (reply (icell m @r)))) unit)) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/processes/sendable-type.fx:12:7: a process's messages are copied to it, so they must be transmissible, and a (productof (v m) (reply (icell m @r))) is not: a `m`, which could be anything",
+""
+]
+}

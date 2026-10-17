@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"native-make.fx"
+],
+"code": 0,
+"out": [
+"inc : (subr pure (int) int) ! pure",
+"n : (subr (conv native) pure (int) int) ! (read (globals inc))",
+""
+],
+"err": [
+""
+]
+}

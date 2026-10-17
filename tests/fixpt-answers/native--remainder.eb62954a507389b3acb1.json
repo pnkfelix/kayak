@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"remainder.fx"
+],
+"code": 0,
+"out": [
+"define r : (subr pure (int int) int) ! pure",
+"define r7 : (subr pure (int) int) ! pure",
+"define big : (subr pure (int int) int) ! pure",
+"int ! (read (globals r))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"pselect-key.fx"
+],
+"code": 0,
+"out": [
+"define code : (subr pure (byte-result) int) ! pure",
+"define never : (icell int @c) ! (alloc @c)",
+"int ! (maxeff (await @c) (io clock) (io stdin) (read (globals code never)) nondet)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

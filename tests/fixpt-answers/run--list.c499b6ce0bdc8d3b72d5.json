@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"list.fx"
+],
+"code": 0,
+"out": [
+"define total : (subr (maxeff (read (globals total)) spin) ((listof int acyclic)) int) ! pure",
+"define make : (vsubr pure int (listof int acyclic)) ! pure",
+"define spread : (subr (read @heap) ((listof int @heap)) (listof int acyclic)) ! pure",
+"define words : (listof string acyclic) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals make spread total)) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

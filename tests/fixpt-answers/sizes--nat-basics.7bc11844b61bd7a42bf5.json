@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"nat-basics.fx"
+],
+"code": 0,
+"out": [
+"three : (nat 3) ! pure",
+"four : (nat 4) ! (read (globals three))",
+"some : nat ! (read (globals four))",
+"as-int : int ! (read (globals some))",
+"seven : (nat 7) ! (read (globals four three))",
+"11 : int ! (read (globals as-int seven))",
+""
+],
+"err": [
+""
+]
+}

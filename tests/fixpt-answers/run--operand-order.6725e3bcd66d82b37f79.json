@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"operand-order.fx"
+],
+"code": 0,
+"out": [
+"define r : (ref int @r) ! (alloc @r)",
+"define f : (subr (maxeff (read (globals r)) (read @r) (write @r)) () bool) ! pure",
+"define g : (subr (maxeff (read (globals r)) (read @r) (write @r)) () bool) ! pure",
+"int ! (maxeff (read (globals f g r)) (read @r) (write @r))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

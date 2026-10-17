@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"tree-up.fx"
+],
+"code": 0,
+"out": [
+"define up-tree : (poly ((a type)) (subr pure ((sumof (leaf a) (node (productof (l (tree a)) (r (tree a)))))) (tree a))) ! pure",
+"define down-tree : (poly ((a type)) (subr pure ((tree a)) (sumof (leaf a) (node (productof (l (tree a)) (r (tree a))))))) ! pure",
+"define tree-up : (poly ((a type) (b type)) (subr (maxeff (read (globals down-tree tree-up up-tree)) spin) ((subr spin (a) b) (tree a)) (tree b))) ! pure",
+"define small : (tree (sumof (x int))) ! (read (globals up-tree))",
+"define wide : (tree (sumof (x int) (y bool))) ! (read (globals small))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

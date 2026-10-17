@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"flat-to-end-not-another.fx"
+],
+"code": 1,
+"out": [
+"f : (poly ((n size)) (subr pure ((blobref blob (flat-arrayof i64 n)) (blobref blob (flat-arrayof i64 n))) (nat n))) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/flat-to-end-not-another.fx:10:17: the size `n` cannot be `finite` here: `n` is the size of more than one argument, or of something inside one, and `finite` would not keep them the same",
+""
+]
+}

@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"mutual.fx"
+],
+"code": 0,
+"out": [
+"define parity : (moduleof (val even? (subr spin (int) bool)) (val odd? (subr spin (int) bool)) (val ten-even bool)) ! spin",
+"bool ! (read (globals parity))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

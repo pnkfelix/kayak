@@ -1,0 +1,19 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"closures.fx"
+],
+"code": 0,
+"out": [
+"worker : (addr job @w) ! (maxeff (alloc @w) (init @o) spin nondet)",
+"c : (icell int @o) ! (alloc @o)",
+"#u : unit ! (maxeff (send @w) (read (globals c worker)))",
+"49 : int ! (maxeff (await @o) (read (globals c)))",
+""
+],
+"err": [
+""
+]
+}

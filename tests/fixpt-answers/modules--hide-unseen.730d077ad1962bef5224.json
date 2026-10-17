@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"hide-unseen.fx"
+],
+"code": 1,
+"out": [
+"m : (moduleof (val shown int)) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/hide-unseen.fx:4:9: unbound variable `secret`",
+""
+]
+}

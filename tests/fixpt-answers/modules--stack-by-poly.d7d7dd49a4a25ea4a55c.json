@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"stack-by-poly.fx"
+],
+"code": 0,
+"out": [
+"stacks : stack-sig ! pure",
+"(3 2 1) : (listof int @r.1) ! (maxeff (read @heap) (alloc @heap) (alloc @r.1) (read (globals stacks)))",
+""
+],
+"err": [
+""
+]
+}

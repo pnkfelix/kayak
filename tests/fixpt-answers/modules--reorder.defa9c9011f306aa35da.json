@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"reorder.fx"
+],
+"code": 0,
+"out": [
+"counter : (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int))) ! pure",
+"one : (subr pure (reordered) int) ! pure",
+"1 : int ! (read (globals counter one))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"container-functor.fx"
+],
+"code": 0,
+"out": [
+"lists : container ! pure",
+"pair-up : (subr (maxeff (read @heap) (alloc @heap) spin) (container ((select $1 f) int)) ((select $1 f) (productof (l int) (r int)))) ! pure",
+"2 : int ! (maxeff (read @heap) (alloc @heap) spin (read (globals lists pair-up)))",
+""
+],
+"err": [
+""
+]
+}

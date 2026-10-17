@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"big-literals.fx"
+],
+"code": 0,
+"out": [
+"big-sum : (subr pure () int) ! pure",
+"101001152921504606846975 : int ! (read (globals big-sum))",
+""
+],
+"err": [
+""
+]
+}

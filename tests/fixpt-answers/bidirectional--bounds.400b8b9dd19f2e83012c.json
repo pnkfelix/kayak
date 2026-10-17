@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"bounds.fx"
+],
+"code": 0,
+"out": [
+"define a : (arrayof int @r) ! (alloc @r)",
+"define c : (ref int @r) ! (alloc @r)",
+"define p : (pairof int nil @r) ! (alloc @r)",
+"define from-array : (subr (maxeff (read (globals a)) (read @r)) (int) v) ! pure",
+"define from-ref : (subr (maxeff (read (globals c)) (read @r)) () v) ! pure",
+"define from-pair : (subr (maxeff (read (globals p)) (read @r)) () v) ! pure",
+"define as-int : (subr pure (v) int) ! pure",
+"int ! (maxeff (read (globals a as-int c from-array from-pair from-ref p)) (read @r))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

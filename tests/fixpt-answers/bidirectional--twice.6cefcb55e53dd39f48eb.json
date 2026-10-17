@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"twice.fx"
+],
+"code": 0,
+"out": [
+"twice : (poly ((t type)) (poly ((e effect)) (subr pure ((subr e (t) t)) (subr e (t) t)))) ! pure",
+"7 : int ! (read (globals twice))",
+""
+],
+"err": [
+""
+]
+}

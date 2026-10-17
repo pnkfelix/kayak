@@ -1,0 +1,50 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"fixed-width-literals.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (37 cells, cellular):",
+"     0: lit 7",
+"     2: global! x",
+"     4: lit -5",
+"     6: global! y",
+"     8: closure word bump over 0",
+"    11: global! bump",
+"    13: global y",
+"    15: lit 0",
+"    17: int-less",
+"    18: 0branch → 34",
+"    20: lit 4294967295",
+"    22: global bump",
+"    24: tcall 1",
+"    26: global x",
+"    28: lit 1",
+"    30: int-add",
+"    31: int-add",
+"    32: branch → 36",
+"    34: lit 0",
+"    36: exit",
+"",
+"word bump (8 cells, cellular):",
+"     0: slot 0",
+"     2: lit 1",
+"     4: prim %fx26-u32+ 2",
+"     7: return",
+"  its register code (8 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: prim2imm %fx26-u32+ 1",
+"       7: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

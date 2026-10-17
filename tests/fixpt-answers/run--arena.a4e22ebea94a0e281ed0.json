@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"arena.fx"
+],
+"code": 0,
+"out": [
+"sum-to : (subr spin (int) int) ! pure",
+"total : (subr (maxeff spin (read (globals sum-to total))) (int int) int) ! pure",
+"55000 : int ! (maxeff spin (read (globals sum-to total)))",
+""
+],
+"err": [
+""
+]
+}

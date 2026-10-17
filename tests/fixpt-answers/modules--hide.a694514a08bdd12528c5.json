@@ -1,0 +1,19 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"hide.fx"
+],
+"code": 0,
+"out": [
+"helpers : (moduleof (val twice (subr pure (int) int))) ! pure",
+"more : (moduleof (val three int)) ! pure",
+"m : (moduleof (val three int) (val total int)) ! (read (globals helpers more))",
+"32 : int ! (read (globals m))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"flat-sums.fx"
+],
+"code": 0,
+"out": [
+"define fill : (subr (maxeff (alloc @heap) (read (globals fill)) (read @heap) (write @heap) spin) (shapes int) int) ! pure",
+"define area : (subr (read @heap) ((blobref o shape)) int) ! pure",
+"define total : (subr (maxeff (alloc @heap) (read (globals area total)) (read @heap) spin) (shapes int int) int) ! pure",
+"define keyed : (subr (read @heap) ((blobref o k)) int) ! pure",
+"define flat-sums : (subr (maxeff (alloc @heap) (read (globals area fill keyed total)) (read @heap) (write @heap) spin) (int) ints) ! pure",
+"ints ! (maxeff (alloc @heap) (read (globals area fill flat-sums keyed total)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

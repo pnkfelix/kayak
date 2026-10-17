@@ -1,0 +1,44 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"answer.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (29 cells, cellular):",
+"     0: lit 37",
+"     2: prim %make-frozen 1",
+"     5: global! %shared:/Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/answer-types.fx",
+"     7: global %shared:/Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/answer-types.fx",
+"     9: closure word lambda@290 over 0",
+"    12: lit 21",
+"    14: lit 37",
+"    16: slot 1",
+"    18: slot 2",
+"    20: prim %make-frozen 3",
+"    23: slot! 1",
+"    25: drop",
+"    26: slot! 0",
+"    28: exit",
+"",
+"word lambda@290 (8 cells, cellular):",
+"     0: lit 2",
+"     2: slot 0",
+"     4: prim %fx26-mul 2",
+"     7: return",
+"  its register code (8 cells, not compiled):",
+"       0: args 1",
+"       2: const 2",
+"       4: prim2 %fx26-mul 1",
+"       7: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

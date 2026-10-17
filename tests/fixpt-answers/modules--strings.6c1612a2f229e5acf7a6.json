@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"strings.fx"
+],
+"code": 0,
+"out": [
+"define m : (moduleof (val a int) (val c int)) ! pure",
+"define f : (moduleof (val base int) (val answer int)) ! (read (globals %shared:/Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/../module-files/strings.fx))",
+"int ! (read (globals f m))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"car-of-union.fx"
+],
+"code": 0,
+"out": [
+"define d : datum ! pure",
+"define num : (subr pure (datum) int) ! pure",
+"int ! (read (globals d num))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

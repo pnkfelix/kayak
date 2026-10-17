@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"deep-self-application.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/terminate/deep-self-application.fx:6:30: a T is expected here, and this is a (subr spin ((productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a (productof (a T))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))))) int)",
+"  beyond what is expected, it has spin",
+""
+]
+}

@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"with-effect-missing.fx"
+],
+"code": 1,
+"out": [
+"a : (moduleof (desc n int)) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/with-effect-missing.fx:4:9: `nope` is not an effect, nor one a module opened by `with` gives",
+""
+]
+}

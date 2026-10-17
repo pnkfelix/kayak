@@ -1,0 +1,33 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"data-kind.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (12 cells, cellular):",
+"     0: closure word same over 0",
+"     3: global! same",
+"     5: lit ()",
+"     7: global same",
+"     9: tcall 1",
+"    11: exit",
+"",
+"word same (3 cells, cellular):",
+"     0: slot 0",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"star-shape.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/arrows/star-shape.fx:2:11: `(->* (param …) result)`",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

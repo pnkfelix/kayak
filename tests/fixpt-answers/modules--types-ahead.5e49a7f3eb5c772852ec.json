@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"types-ahead.fx"
+],
+"code": 0,
+"out": [
+"define m : (moduleof (desc tree (mu %2 (sumof (leaf (productof)) (node (productof (1 %2) (2 %2)))))) (desc forest (listof tree acyclic)) (desc pair-of (productof (1 tree) (2 forest))) (val size (subr pure (tree) int)) (val leaf (subr pure () tree)) (val node (subr pure (tree tree) tree))) ! pure",
+"int ! (read (globals m))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

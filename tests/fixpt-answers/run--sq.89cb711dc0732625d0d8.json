@@ -1,0 +1,36 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"sq.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (12 cells, cellular):",
+"     0: closure word sq over 0",
+"     3: global! sq",
+"     5: lit 5",
+"     7: global sq",
+"     9: tcall 1",
+"    11: exit",
+"",
+"word sq (8 cells, cellular):",
+"     0: slot 0",
+"     2: slot 0",
+"     4: prim %fx26-mul 2",
+"     7: return",
+"  its register code (8 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: prim2 %fx26-mul 1",
+"       7: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

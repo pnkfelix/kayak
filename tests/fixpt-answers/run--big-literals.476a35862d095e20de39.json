@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"big-literals.fx"
+],
+"code": 0,
+"out": [
+"define big-sum : (subr pure () int) ! pure",
+"int ! (read (globals big-sum))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

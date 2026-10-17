@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"fresh-temporaries.fx"
+],
+"code": 0,
+"out": [
+"probe : (subr pure ((listof int acyclic) int) int) ! pure",
+"15 : int ! (read (globals probe))",
+""
+],
+"err": [
+""
+]
+}

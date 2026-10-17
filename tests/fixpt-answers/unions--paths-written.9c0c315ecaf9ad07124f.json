@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"paths-written.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/unions/paths-written.fx:5:61: a int is expected here, and this is a (union int string)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

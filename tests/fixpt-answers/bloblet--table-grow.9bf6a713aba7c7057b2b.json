@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"table-grow.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/table-grow.fx:2:11: `table` is not a description function",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"fixed-width-literals.fx"
+],
+"code": 0,
+"out": [
+"define x : u32 ! pure",
+"define y : i32 ! pure",
+"define bump : (subr pure (u32) u32) ! pure",
+"int ! (read (globals bump x y))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

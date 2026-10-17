@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"type-and-value.fx"
+],
+"code": 0,
+"out": [
+"m : (moduleof (desc cell (productof (1 int))) (val cell (subr pure (int) cell))) ! pure",
+"cell : (subr pure (int) cell) ! (read (globals m))",
+"k : (subr pure ((moduleof (desc box int) (val box box))) int) ! pure",
+"7 : int ! (read (globals cell k))",
+""
+],
+"err": [
+""
+]
+}

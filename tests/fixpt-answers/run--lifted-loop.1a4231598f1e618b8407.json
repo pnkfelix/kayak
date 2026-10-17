@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"lifted-loop.fx"
+],
+"code": 0,
+"out": [
+"f : (subr spin (int int) int) ! pure",
+"61 : int ! (maxeff spin (read (globals f)))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"nlist-listof.fx"
+],
+"code": 0,
+"out": [
+"define v : (nlist int finite) ! pure",
+"define p : (listof int acyclic) ! (read (globals v))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

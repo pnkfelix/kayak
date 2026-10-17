@@ -1,0 +1,16 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"private-mark.fx"
+],
+"code": 0,
+"out": [
+"1 : int ! pure",
+""
+],
+"err": [
+""
+]
+}

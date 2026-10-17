@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"one-message.fx"
+],
+"code": 0,
+"out": [
+"define total : (icell int @c) ! (alloc @c)",
+"define collector : (addr report @p) ! (maxeff (alloc @p) (init @c) (io clock) (read (globals total)) nondet)",
+"define failed : (subr pure (string) report) ! pure",
+"define w : (addr int @w) ! (maxeff (alloc @w) (read (globals collector failed)) (send @p) nondet)",
+"unit ! (maxeff (read (globals w)) (send @w))",
+"int ! (maxeff (await @c) (read (globals total)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,16 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"import-not-name.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: the FX-26 front end: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/import-not-name.fx:4:17: `(import module name … (type name …) (effect name …))`: a name",
+""
+]
+}

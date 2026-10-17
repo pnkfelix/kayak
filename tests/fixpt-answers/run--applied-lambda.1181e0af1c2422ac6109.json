@@ -1,0 +1,19 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"applied-lambda.fx"
+],
+"code": 0,
+"out": [
+"log : (ref int @r) ! (alloc @r)",
+"note : (subr (maxeff (read @r) (write @r) (read (globals log))) (int) int) ! pure",
+"f : (subr (maxeff (read @r) (write @r) (read (globals log note))) (int) int) ! pure",
+"303123 : int ! (maxeff (read @r) (write @r) (read (globals f log note)))",
+""
+],
+"err": [
+""
+]
+}

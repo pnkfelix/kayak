@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"without.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/lemmas/without.fx:4:46: `wide` is declared a (tree (sumof (x int) (y bool))): a (tree (sumof (x int) (y bool))) is expected here, and this is a (tree (sumof (x int)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

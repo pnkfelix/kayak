@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"nlist-pair.fx"
+],
+"code": 0,
+"out": [
+"v : (nlist int finite) ! pure",
+"p : (pairof int (nlist int finite) acyclic) ! (read (globals v))",
+""
+],
+"err": [
+""
+]
+}

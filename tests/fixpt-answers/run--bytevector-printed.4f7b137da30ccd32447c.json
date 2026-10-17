@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"bytevector-printed.fx"
+],
+"code": 0,
+"out": [
+"define made : (subr (alloc @heap) () (bytevectorof @heap)) ! pure",
+"(bytevectorof @heap) ! (maxeff (alloc @heap) (read (globals made)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"standard-ops.fx"
+],
+"code": 0,
+"out": [
+"define yes-no : (subr pure (bool) string) ! pure",
+"define ints : (subr (maxeff (alloc @heap) (read (globals yes-no))) (int) strings) ! pure",
+"define chars : (subr (maxeff (alloc @heap) (read (globals yes-no))) () strings) ! pure",
+"define lists : (subr (maxeff (alloc @heap) (alloc @l) (read @l) (write @l)) (int) strings) ! pure",
+"define standard-ops : (subr (maxeff (alloc @heap) (alloc @l) (read (globals chars ints lists yes-no)) (read @heap) (read @l) (write @l)) (int) strings) ! pure",
+"strings ! (maxeff (alloc @heap) (alloc @l) (read (globals chars ints lists standard-ops yes-no)) (read @heap) (read @l) (write @l))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

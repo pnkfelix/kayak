@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"fails-error.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (9 cells, cellular):",
+"     0: lit \"boom\"",
+"     2: prim %fx26-error 1",
+"     5: drop",
+"     6: lit 1",
+"     8: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

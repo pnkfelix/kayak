@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"apply-fresh.fx"
+],
+"code": 0,
+"out": [
+"define len : (subr pure ((listof int acyclic)) int) ! pure",
+"define xs : (listof int @heap) ! (alloc @heap)",
+"define ys : (listof int acyclic) ! (maxeff (read (globals xs)) (read @heap))",
+"unit ! (maxeff (read (globals xs)) (read @heap) (write @heap))",
+"define zs : (listof int acyclic) ! (read (globals ys))",
+"int ! (read (globals len ys zs))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

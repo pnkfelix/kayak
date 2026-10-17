@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"operand-order.fx"
+],
+"code": 0,
+"out": [
+"r : (ref int @r) ! (alloc @r)",
+"f : (subr (maxeff (read @r) (write @r) (read (globals r))) () bool) ! pure",
+"g : (subr (maxeff (read @r) (write @r) (read (globals r))) () bool) ! pure",
+"3 : int ! (maxeff (read @r) (write @r) (read (globals f g r)))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"include-effects.fx"
+],
+"code": 0,
+"out": [
+"define effects : (moduleof (desc touches (read @globals)) (desc n int)) ! pure",
+"define m : (moduleof (desc touches (read @globals)) (desc n int) (val get (subr (read @globals) () n))) ! (read (globals effects))",
+"int ! (maxeff (read (globals m)) (read @globals))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

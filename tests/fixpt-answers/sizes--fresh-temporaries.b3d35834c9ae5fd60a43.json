@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"fresh-temporaries.fx"
+],
+"code": 0,
+"out": [
+"define probe : (subr pure ((listof int acyclic) int) int) ! pure",
+"int ! (read (globals probe))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

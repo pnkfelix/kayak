@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"escape-tag-not-captured.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/control/escape-tag-not-captured.fx:7:57: argument 2 is a (escape-tag int int @r), where a (prompt-tag ? ? d r) is expected",
+""
+]
+}

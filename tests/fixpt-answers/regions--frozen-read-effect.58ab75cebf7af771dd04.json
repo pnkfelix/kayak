@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"frozen-read-effect.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/frozen-read-effect.fx:9:42: a (subr pure () int) is expected here, and this is a (subr (read (acyclic a)) () int)",
+"  beyond what is expected, it has (read (acyclic a))",
+""
+]
+}

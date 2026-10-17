@@ -1,0 +1,19 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"map.fx"
+],
+"code": 0,
+"out": [
+"map : map-type ! pure",
+"three : (nlist int 3) ! pure",
+"doubled : (nlist int 3) ! (read (globals map three))",
+"some : (nlist int finite) ! (read (globals map three))",
+""
+],
+"err": [
+""
+]
+}

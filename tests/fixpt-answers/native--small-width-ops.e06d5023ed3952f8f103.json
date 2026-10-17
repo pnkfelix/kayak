@@ -1,0 +1,33 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"small-width-ops.fx"
+],
+"code": 0,
+"out": [
+"edges : (subr (alloc @heap) () ints) ! pure",
+"mix : (subr pure (int int) int) ! pure",
+"i8-fold : (subr pure (i8) int) ! pure",
+"u8-fold : (subr pure (u8) int) ! pure",
+"i8-op : (subr (read (globals i8-fold)) (int i8 i8) int) ! pure",
+"i8-values : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals i8-values))) (ints) i8s) ! pure",
+"i8-inner : (subr (maxeff (read @heap) spin (read (globals i8-fold i8-inner i8-op mix))) (int i8 i8s int) int) ! pure",
+"i8-outer : (subr (maxeff (read @heap) spin (read (globals i8-fold i8-inner i8-op i8-outer mix))) (int i8s i8s int) int) ! pure",
+"i8-sums : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals i8-fold i8-inner i8-op i8-outer i8-sums mix))) (int i8s) ints) ! pure",
+"u8-op : (subr (read (globals u8-fold)) (int u8 u8) int) ! pure",
+"u8-values : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals u8-values))) (ints) u8s) ! pure",
+"u8-inner : (subr (maxeff (read @heap) spin (read (globals mix u8-fold u8-inner u8-op))) (int u8 u8s int) int) ! pure",
+"u8-outer : (subr (maxeff (read @heap) spin (read (globals mix u8-fold u8-inner u8-op u8-outer))) (int u8s u8s int) int) ! pure",
+"u8-sums : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals mix u8-fold u8-inner u8-op u8-outer u8-sums))) (int u8s) ints) ! pure",
+"small-width-ops : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals edges i8-fold i8-inner i8-op i8-outer i8-sums i8-values mix u8-fold u8-inner u8-op u8-outer u8-sums u8-values))) (int) (listof ints @heap)) ! pure",
+"((720901 147377 365992 819997 630928 495832 327410 831581 736957 723242 456574 873224 419186 782459 328421 545965 61404 25247 776352 140033 714615 697579) (496052 844244 98936 250707 778296 268914 859520 590606 202241 562679 723730 904456 450418 751227 297189 545965 216316 42698 795716 219407 299294 798791)) : (listof ints @heap) ! (maxeff (read @heap) (alloc @heap) spin (read (globals edges i8-fold i8-inner i8-op i8-outer i8-sums i8-values mix small-width-ops u8-fold u8-inner u8-op u8-outer u8-sums u8-values)))",
+""
+],
+"err": [
+""
+]
+}

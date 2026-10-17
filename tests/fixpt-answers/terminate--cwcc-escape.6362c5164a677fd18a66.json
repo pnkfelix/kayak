@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"cwcc-escape.fx"
+],
+"code": 0,
+"out": [
+"early : (subr pure (int) int) ! pure",
+"7 : int ! (read (globals early))",
+""
+],
+"err": [
+""
+]
+}

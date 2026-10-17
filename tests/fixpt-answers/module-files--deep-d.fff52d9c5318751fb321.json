@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"deep-d.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/deep-d.fx:2:11: cannot read `nowhere.fx`: No such file or directory (os error 2)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

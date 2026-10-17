@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"solved-by-test.fx"
+],
+"code": 0,
+"out": [
+"head : (poly ((t type) (n size)) (subr pure ((nlist t (+ n 1))) t)) ! pure",
+"g : (poly ((m size)) (subr (read (globals head)) ((nlist int m)) int)) ! pure",
+"5 : int ! (read (globals g head))",
+""
+],
+"err": [
+""
+]
+}

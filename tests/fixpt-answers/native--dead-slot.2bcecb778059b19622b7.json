@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"dead-slot.fx"
+],
+"code": 0,
+"out": [
+"define h : (subr (maxeff (read (globals h)) (read @heap) spin) ((arrayof int @heap) int) int) ! pure",
+"define g : (subr (maxeff (alloc @heap) (read (globals g)) spin) (int) int) ! pure",
+"define drop : (subr (maxeff (alloc @heap) (read @globals) (read @heap) spin) () int) ! pure",
+"define keep : (subr (maxeff (alloc @heap) (read @globals) (read @heap) spin) () int) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals drop)) (read @globals) (read @heap) spin)",
+"int ! (maxeff (alloc @heap) (read (globals keep)) (read @globals) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

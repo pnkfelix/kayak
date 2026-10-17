@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"generative.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/conventions/generative.fx:6:30: `k` is declared a (handler cellular): a (handler cellular) is expected here, and this is a (handler fx)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

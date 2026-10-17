@@ -1,0 +1,16 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"answer-types.fx"
+],
+"code": 0,
+"out": [
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

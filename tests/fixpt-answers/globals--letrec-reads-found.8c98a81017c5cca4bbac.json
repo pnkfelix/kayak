@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"letrec-reads-found.fx"
+],
+"code": 0,
+"out": [
+"twice : (subr pure (int) int) ! pure",
+"f : (subr (read (globals twice)) (nat) int) ! pure",
+"32 : int ! (read (globals f twice))",
+""
+],
+"err": [
+""
+]
+}

@@ -16,9 +16,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def main():
-    fixpt = subprocess.run([os.path.join(ROOT, "scripts", "fixpt.sh")], capture_output=True, text=True).stdout.strip()
-    progs = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(fixpt))), "crates", "fixpt-fx26", "tests", "programs")
-    files = sorted(os.path.join(d, f) for d, _, fs in os.walk(progs) for f in fs if f.endswith(".fx"))
+    fixpt = fixptcache.binary()
+    progs = fixptcache.PROGRAMS
+    files = [p for _, p in fixptcache.programs()]
     kfx = os.path.join(ROOT, "target", "release", "kfx")
 
     def refused_by_fixpt(p):

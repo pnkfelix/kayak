@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"constcov.fx"
+],
+"code": 0,
+"out": [
+"define f : (subr pure ((listof n2 const)) int) ! pure",
+"define g : (subr (read (globals f)) ((listof n1 const)) int) ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

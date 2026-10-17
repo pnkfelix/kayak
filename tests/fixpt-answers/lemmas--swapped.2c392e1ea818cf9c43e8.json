@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"swapped.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/lemmas/swapped.fx:4:3: `bad` is declared a (poly ((a type) (b type)) (subr spin ((subr spin (a) b) (tree a)) (tree b))): a (subr spin ((subr spin (a) b) (tree a)) (tree b)) is expected here, and this is a (subr (maxeff (read (globals bad down-tree up-tree)) spin) ((subr spin (a) b) (tree a)) (tree b))",
+"  beyond what is expected, it has (read (globals bad down-tree up-tree))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

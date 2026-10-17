@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"versions.fx"
+],
+"code": 0,
+"out": [
+"define dbl : (subr pure (int) int) ! pure",
+"define sum2 : (subr (read (globals dbl)) (int int) int) ! pure",
+"define step : (subr (read (globals dbl sum2)) (int int) int) ! pure",
+"define run : (subr (maxeff (read (globals dbl run step sum2)) spin) (int int int) int) ! pure",
+"int ! (maxeff (read (globals dbl run step sum2)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

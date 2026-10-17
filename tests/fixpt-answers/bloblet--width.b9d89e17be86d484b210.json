@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"width.fx"
+],
+"code": 0,
+"out": [
+"first : (subr (read @b) (one) int) ! pure",
+"two : (bloblet (fields int bool) @b) ! (alloc @b)",
+"three : (bloblet (fields int (ref int @b) (listof int acyclic)) @b) ! (alloc @b)",
+"46 : int ! (maxeff (read @b) (read (globals first three two)))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"select-not-module.fx"
+],
+"code": 1,
+"out": [
+"k : int ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/select-not-module.fx:4:1: `(select k t)`: `k` is a int, not a module",
+""
+]
+}

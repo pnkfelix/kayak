@@ -1,0 +1,44 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"maker.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (4 cells, cellular):",
+"     0: closure word lambda@133 over 0",
+"     3: exit",
+"",
+"word lambda@133 (15 cells, cellular):",
+"     0: lit 2",
+"     2: slot 0",
+"     4: prim %fx26-mul 2",
+"     7: lit 37",
+"     9: slot 1",
+"    11: prim %make-frozen 2",
+"    14: return",
+"  its register code (30 cells, not compiled):",
+"       0: args 1",
+"       2: save 2",
+"       4: store 1 0",
+"       7: load 1 0",
+"      10: const 2",
+"      12: prim2 %fx26-mul 1",
+"      15: setstk 1",
+"      17: const 37",
+"      19: setreg 1",
+"      21: load 2 1",
+"      24: prim %make-frozen 2",
+"      27: pop 2",
+"      29: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

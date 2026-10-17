@@ -1,0 +1,19 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"without.fx"
+],
+"code": 1,
+"out": [
+"up-tree : (poly ((a type)) (subr pure ((sumof (leaf a) (node (productof (l (tree a)) (r (tree a)))))) (tree a))) ! pure",
+"down-tree : (poly ((a type)) (subr pure ((tree a)) (sumof (leaf a) (node (productof (l (tree a)) (r (tree a))))))) ! pure",
+"small : (tree (sumof (x int))) ! (read (globals up-tree))",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/lemmas/without.fx:4:46: `wide` is declared a (tree (sumof (x int) (y bool))): a (tree (sumof (x int) (y bool))) is expected here, and this is a (tree (sumof (x int)))",
+""
+]
+}

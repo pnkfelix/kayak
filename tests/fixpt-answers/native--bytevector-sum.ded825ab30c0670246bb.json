@@ -1,0 +1,19 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"bytevector-sum.fx"
+],
+"code": 0,
+"out": [
+"fill! : (subr (maxeff (read @b) (write @b) spin (read (globals fill!))) ((bytevectorof @b) int) unit) ! pure",
+"total : (subr (maxeff (read @b) spin (read (globals total))) ((bytevectorof @b) int int) int) ! pure",
+"bytevector-sum : (subr (maxeff (read @b) (write @b) (alloc @b) spin (read (globals fill! total))) (int) int) ! pure",
+"126517000 : int ! (maxeff (read @b) (write @b) (alloc @b) spin (read (globals bytevector-sum fill! total)))",
+""
+],
+"err": [
+""
+]
+}

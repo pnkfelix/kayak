@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"string-walk.fx"
+],
+"code": 0,
+"out": [
+"count-a : (subr pure (string int int) int) ! pure",
+"3 : int ! (read (globals count-a))",
+""
+],
+"err": [
+""
+]
+}

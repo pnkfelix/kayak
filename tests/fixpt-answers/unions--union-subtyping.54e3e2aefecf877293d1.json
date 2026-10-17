@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"union-subtyping.fx"
+],
+"code": 0,
+"out": [
+"widen : (subr pure (small) wide) ! pure",
+"one : (subr (alloc @r) () wide) ! pure",
+"3 : wide ! (read (globals widen))",
+""
+],
+"err": [
+""
+]
+}

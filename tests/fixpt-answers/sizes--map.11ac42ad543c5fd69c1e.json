@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"map.fx"
+],
+"code": 0,
+"out": [
+"define map : map-type ! pure",
+"define three : (nlist int 3) ! pure",
+"define doubled : (nlist int 3) ! (read (globals map three))",
+"define some : (nlist int finite) ! (read (globals map three))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

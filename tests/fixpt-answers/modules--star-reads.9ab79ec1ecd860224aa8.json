@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"star-reads.fx"
+],
+"code": 0,
+"out": [
+"define limit : int ! pure",
+"define m : (moduleof (val small? (subr pure (int) bool)) (val under? (subr (read (globals limit)) (int) bool)) (val both (subr (read (globals limit)) (int) bool))) ! pure",
+"bool ! (read (globals limit m))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

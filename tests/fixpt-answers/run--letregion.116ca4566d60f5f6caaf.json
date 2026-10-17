@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"letregion.fx"
+],
+"code": 0,
+"out": [
+"define total : (subr spin (int) int) ! pure",
+"int ! (maxeff (read (globals total)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

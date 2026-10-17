@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"pselect-stop.fx"
+],
+"code": 0,
+"out": [
+"define stop : (icell unit @c) ! (alloc @c)",
+"define total : (icell int @c) ! (alloc @c)",
+"define summer : (addr int @p) ! (maxeff (alloc @p) (await @c) (init @c) (read (globals stop total)) nondet spin)",
+"unit ! (maxeff (read (globals summer)) (send @p))",
+"unit ! (maxeff (read (globals summer)) (send @p))",
+"unit ! (maxeff (read (globals summer)) (send @p))",
+"unit ! (maxeff (init @c) (read (globals stop)))",
+"int ! (maxeff (await @c) (read (globals total)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

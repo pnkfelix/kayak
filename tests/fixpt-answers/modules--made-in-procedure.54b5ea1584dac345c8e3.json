@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"made-in-procedure.fx"
+],
+"code": 0,
+"out": [
+"define make : (subr pure (int) counters) ! pure",
+"define use : (subr pure (counters) int) ! pure",
+"int ! (read (globals make use))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

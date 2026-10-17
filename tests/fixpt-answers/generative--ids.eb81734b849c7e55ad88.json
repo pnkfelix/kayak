@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"ids.fx"
+],
+"code": 0,
+"out": [
+"define up-ty-id : (subr pure (int) ty-id) ! pure",
+"define down-ty-id : (subr pure (ty-id) int) ! pure",
+"define up-dvar : (subr pure (int) dvar) ! pure",
+"define down-dvar : (subr pure (dvar) int) ! pure",
+"define t : ty-id ! (read (globals up-ty-id))",
+"define f : (subr (read (globals down-ty-id)) (ty-id) int) ! pure",
+"int ! (read (globals down-ty-id f t))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

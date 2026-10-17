@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"unknown-applied.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/higher-kinds/unknown-applied.fx:6:41: `queueuof` is not a description function",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

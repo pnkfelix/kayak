@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"bump.fx"
+],
+"code": 0,
+"out": [
+"bump : (subr pure (num) num) ! pure",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"oneshot-once.fx"
+],
+"code": 0,
+"out": [
+"t : (prompt-tag int int (read @globals) @p) ! (alloc @p)",
+"43 : int ! (maxeff (read @globals) (read (globals t)))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"letfreeze.fx"
+],
+"code": 0,
+"out": [
+"frozen-list : (subr pure (int) (listof int const)) ! pure",
+"add-up : (subr (maxeff spin (read (globals add-up))) ((listof int const) int) int) ! pure",
+"15 : int ! (maxeff spin (read (globals add-up frozen-list)))",
+""
+],
+"err": [
+""
+]
+}

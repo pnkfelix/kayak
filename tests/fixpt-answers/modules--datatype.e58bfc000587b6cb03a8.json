@@ -1,0 +1,20 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"datatype.fx"
+],
+"code": 0,
+"out": [
+"geometry : (moduleof (desc shape (sumof (circle (productof (1 int))) (rect (productof (1 int) (2 int))))) (val circle (subr pure (int) shape)) (val rect (subr pure (int int) shape)) (val area (subr pure (shape) int))) ! pure",
+"rect : (subr pure (int int) shape) ! (read (globals geometry))",
+"area : (subr pure (shape) int) ! (read (globals geometry))",
+"big : (subr pure (shape) bool) ! pure",
+"13 : int ! (read (globals area big geometry rect))",
+""
+],
+"err": [
+""
+]
+}

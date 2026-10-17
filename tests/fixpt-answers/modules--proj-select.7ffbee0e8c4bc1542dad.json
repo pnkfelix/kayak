@@ -1,0 +1,53 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"proj-select.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (54 cells, cellular):",
+"     0: lit 1",
+"     2: lit 37",
+"     4: slot 0",
+"     6: prim %make-frozen 2",
+"     9: slot! 0",
+"    11: global! m",
+"    13: closure word id over 0",
+"    16: global! id",
+"    18: lit 37",
+"    20: lit 37",
+"    22: lit 41",
+"    24: prim %make-frozen 2",
+"    27: lit 1",
+"    29: prim %make-frozen 3",
+"    32: global! b",
+"    34: global b",
+"    36: global id",
+"    38: tcall 1",
+"    40: slot 0",
+"    42: field 2",
+"    44: field 2",
+"    46: slot 0",
+"    48: field 3",
+"    50: int-add",
+"    51: slot! 0",
+"    53: exit",
+"",
+"word id (3 cells, cellular):",
+"     0: slot 0",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

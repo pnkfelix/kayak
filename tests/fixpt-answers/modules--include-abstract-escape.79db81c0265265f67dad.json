@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"include-abstract-escape.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/include-abstract-escape.fx:10:11: this is a (moduleof (desc t c..t) (val zero c..t) (val next (subr pure (c..t) c..t)) (val value (subr pure (c..t) int))), and `c..t` is a module's abstract type, not known outside the scope where the module is named",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"conversions-inside.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/conversions-inside.fx:9:2: unbound variable `up-t`",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

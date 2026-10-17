@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"letfreeze-into-place.fx"
+],
+"code": 0,
+"out": [
+"define total : (subr pure (int) int) ! pure",
+"int ! (read (globals total))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

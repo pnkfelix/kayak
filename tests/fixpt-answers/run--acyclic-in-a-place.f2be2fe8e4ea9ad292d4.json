@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"acyclic-in-a-place.fx"
+],
+"code": 0,
+"out": [
+"define len : (poly ((p place)) (subr (read (acyclic p)) ((listof int (acyclic p)) int) int)) ! pure",
+"int ! (read (globals len))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

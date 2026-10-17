@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"false.fx"
+],
+"code": 0,
+"out": [
+"define next : (subr pure (maybe-int) int) ! pure",
+"define none : (subr pure () maybe-int) ! pure",
+"define as-bool : (subr pure () bool) ! pure",
+"int ! (read (globals next none))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

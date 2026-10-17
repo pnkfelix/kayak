@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"up-to-free.fx"
+],
+"code": 0,
+"out": [
+"define sum-to : (subr pure (int) int) ! pure",
+"int ! (read (globals sum-to))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

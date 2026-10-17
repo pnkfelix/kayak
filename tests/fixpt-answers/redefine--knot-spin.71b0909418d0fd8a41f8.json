@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"knot-spin.fx"
+],
+"code": 0,
+"out": [
+"define f : (subr pure (int) int) ! pure",
+"define h : (subr (read (globals f)) (int) int) ! pure",
+"define f : (subr (maxeff (read (globals f h)) spin) (int) int) ! pure",
+"define h : (subr (maxeff (read (globals f h)) spin) (int) int) ! pure",
+"define f : (subr (maxeff (read (globals f h)) spin) (int) int) ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

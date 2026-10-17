@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"no-bound.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/terminate/no-bound.fx:2:33: `f` is declared a (subr pure (int) int): a (subr pure (int) int) is expected here, and this is a (subr (maxeff spin (read (globals f))) (int) int)",
+"  beyond what is expected, it has (maxeff spin (read (globals f))); it may not end: nothing smaller, or related, is passed by the call of `f` in `f` (it counts down, but nothing fixed bounds the count below)",
+""
+]
+}

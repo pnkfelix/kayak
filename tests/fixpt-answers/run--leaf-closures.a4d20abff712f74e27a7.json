@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"leaf-closures.fx"
+],
+"code": 0,
+"out": [
+"adder : (subr pure (int) (subr pure (int) int)) ! pure",
+"go : (subr (maxeff spin (read (globals adder go))) (int int) int) ! pure",
+"4504500 : int ! (maxeff spin (read (globals adder go)))",
+""
+],
+"err": [
+""
+]
+}

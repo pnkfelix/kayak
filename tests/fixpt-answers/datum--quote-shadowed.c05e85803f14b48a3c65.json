@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"quote-shadowed.fx"
+],
+"code": 0,
+"out": [
+"xs : (listof datum acyclic) ! pure",
+"walk : (subr pure (datum) int) ! pure",
+"36 : int ! (read (globals walk xs))",
+""
+],
+"err": [
+""
+]
+}

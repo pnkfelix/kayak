@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"constructors-in-lambda.fx"
+],
+"code": 0,
+"out": [
+"define make : (subr pure () (moduleof (desc shape (sumof (circle (productof (1 int))) (square (productof (1 int))))) (val circle (subr pure (int) shape)) (val square (subr pure (int) shape)) (val area (subr pure (shape) int)))) ! pure",
+"define m : (moduleof (desc shape (sumof (circle (productof (1 int))) (square (productof (1 int))))) (val circle (subr pure (int) shape)) (val square (subr pure (int) shape)) (val area (subr pure (shape) int))) ! (read (globals make))",
+"define circle : (subr pure (int) (sumof (circle (productof (1 int))) (square (productof (1 int))))) ! (read (globals m))",
+"define square : (subr pure (int) (sumof (circle (productof (1 int))) (square (productof (1 int))))) ! (read (globals m))",
+"define area : (subr pure ((sumof (circle (productof (1 int))) (square (productof (1 int))))) int) ! (read (globals m))",
+"int ! (read (globals area circle square))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

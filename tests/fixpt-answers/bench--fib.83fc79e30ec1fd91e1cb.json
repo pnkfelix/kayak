@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"fib.fx"
+],
+"code": 0,
+"out": [
+"define fib : (subr (maxeff (read (globals fib)) spin) (int) int) ! pure",
+"int ! (maxeff (read (globals fib)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

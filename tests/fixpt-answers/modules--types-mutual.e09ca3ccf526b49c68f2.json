@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"types-mutual.fx"
+],
+"code": 0,
+"out": [
+"define m : (moduleof (desc a (mu %2 (sumof (stop (productof)) (more (productof (1 (sumof (end (productof)) (again (productof (1 %2)))))))))) (desc b (sumof (end (productof)) (again (productof (1 a))))) (val x a)) ! pure",
+"int ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

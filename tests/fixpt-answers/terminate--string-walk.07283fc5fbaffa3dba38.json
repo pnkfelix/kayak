@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"string-walk.fx"
+],
+"code": 0,
+"out": [
+"define count-a : (subr pure (string int int) int) ! pure",
+"int ! (read (globals count-a))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

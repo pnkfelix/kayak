@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"spin.fx"
+],
+"code": 1,
+"out": [
+"spin : (subr (maxeff spin (read (globals spin))) (int) int) ! pure",
+" : int ! (maxeff spin (read (globals spin)))",
+""
+],
+"err": [
+"! evaluation failed: evaluation step limit exceeded",
+""
+]
+}

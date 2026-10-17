@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"bytevectors.fx"
+],
+"code": 0,
+"out": [
+"sum-bytes : (subr (maxeff (read @b) spin (read (globals sum-bytes))) ((bytevectorof @b) int int) int) ! pure",
+"fnv : (subr (maxeff (read @b) spin (read (globals fnv))) ((bytevectorof @b) int u32) u32) ! pure",
+"doubled! : (subr (maxeff (read @b) (write @b) spin (read (globals doubled!))) ((bytevectorof @b) int) unit) ! pure",
+"text-length : (subr (read @b) ((bytevectorof @b)) int) ! pure",
+"bytes : (subr (maxeff (read @b) (write @b) (alloc @heap) (alloc @b) spin (read (globals doubled! fnv sum-bytes text-length))) () ints) ! pure",
+"(556 600 14 0 1 0 12 -1 10 0 2951792942) : ints ! (maxeff (read @b) (write @b) (alloc @heap) (alloc @b) spin (read (globals bytes doubled! fnv sum-bytes text-length)))",
+""
+],
+"err": [
+""
+]
+}

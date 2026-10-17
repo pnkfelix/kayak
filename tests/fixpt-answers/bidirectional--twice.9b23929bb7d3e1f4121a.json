@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"twice.fx"
+],
+"code": 0,
+"out": [
+"define twice : (poly ((t type)) (poly ((e effect)) (subr pure ((subr e (t) t)) (subr e (t) t)))) ! pure",
+"int ! (read (globals twice))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

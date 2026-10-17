@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"nlist-cons.fx"
+],
+"code": 1,
+"out": [
+"xs : (nlist int 2) ! pure",
+"ys : (nlist int 3) ! (read (globals xs))",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/nlist-cons.fx:5:34: a (nlist int 3) is expected here, and this is a (nlist int 2)",
+""
+]
+}

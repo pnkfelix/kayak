@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"well-founded.fx"
+],
+"code": 0,
+"out": [
+"define len : (subr pure ((listof int acyclic) int) int) ! pure",
+"define count : (subr pure (int) int) ! pure",
+"define up : (subr pure (int int) int) ! pure",
+"define total : (subr pure (tree) int) ! pure",
+"define ev : (subr (read @globals) (int) bool) ! pure",
+"define od : (subr (read @globals) (int) bool) ! pure",
+"define ack : (subr pure (int int) int) ! pure",
+"define built : (subr pure (int) (listof int acyclic)) ! pure",
+"int ! (maxeff (read (globals ack built count ev len total up)) (read @globals))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,29 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"raw-args.fx"
+],
+"code": 0,
+"out": [
+"scale : (subr pure (f64 int) f64) ! pure",
+"keep : (subr (alloc @heap) (f64) (listof f64 @heap)) ! pure",
+"orbit : (subr (maxeff spin (read (globals orbit scale))) (int f64 f64) f64) ! pure",
+"deepr : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals deepr))) (int f64) f64) ! pure",
+"kept : (subr (maxeff (read @heap) (alloc @heap) (read (globals keep scale))) (f64) f64) ! pure",
+"keepn : (subr (maxeff (alloc @heap) spin (read (globals keepn))) (int f64) (listof f64 @heap)) ! pure",
+"sqsum : (subr (maxeff spin (read (globals sqsum))) (int f64) f64) ! pure",
+"dot2 : (subr (maxeff spin (read (globals dot2))) (int f64 f64) f64) ! pure",
+"shown : (subr (alloc @heap) (f64) int) ! pure",
+"mixed : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals dot2 keepn shown sqsum))) (f64) f64) ! pure",
+"u : (prompt-tag f64 f64 (maxeff (goto @p) (comefrom @p) (read (globals u))) @p) ! (alloc @p)",
+"given : (subr (maxeff (goto @p) (comefrom @p) (read (globals u))) (f64) f64) ! pure",
+"raw-args : (subr (maxeff (read @heap) (alloc @heap) (goto @p) (comefrom @p) spin (read (globals deepr dot2 given keep keepn kept mixed orbit scale shown sqsum u))) (int) int) ! pure",
+"8315 : int ! (maxeff (read @heap) (alloc @heap) (goto @p) (comefrom @p) spin (read (globals deepr dot2 given keep keepn kept mixed orbit raw-args scale shown sqsum u)))",
+""
+],
+"err": [
+""
+]
+}

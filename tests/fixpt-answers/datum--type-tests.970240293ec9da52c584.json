@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"type-tests.fx"
+],
+"code": 0,
+"out": [
+"doubled : (subr (maxeff spin (read (globals doubled))) (string int) string) ! pure",
+"bit : (subr pure (bool int) int) ! pure",
+"kinds : (subr (read (globals bit)) (datum) int) ! pure",
+"all : (subr (maxeff spin (read (globals all bit kinds))) (datum int) int) ! pure",
+"none : datum ! pure",
+"some : (subr (maxeff spin (read (globals doubled none))) () datum) ! pure",
+"same-hash : (subr pure () bool) ! pure",
+"37525406613504 : int ! (maxeff spin (read (globals all bit doubled kinds none same-hash some)))",
+""
+],
+"err": [
+""
+]
+}

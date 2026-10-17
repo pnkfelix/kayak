@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"spinner-cellular.fx"
+],
+"code": 0,
+"out": [
+"answer : (icell int @c) ! (alloc @c)",
+"; not in the native convention yet, so `spin-forever` runs as cellular code: `spin-forever`: it calls `stay-cellular`",
+"spin-forever : (subr (maxeff spin (read (globals spin-forever))) (int) int) ! pure",
+"spinner : (addr int @p) ! (maxeff (alloc @p) spin nondet (read (globals spin-forever)))",
+"doubler : (addr int @p) ! (maxeff (alloc @p) (init @c) nondet (read (globals answer)))",
+"#u : unit ! (maxeff (send @p) (read (globals spinner)))",
+"#u : unit ! (maxeff (send @p) (read (globals doubler)))",
+"42 : int ! (maxeff (await @c) (read (globals answer)))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"fails-error.fx"
+],
+"code": 1,
+"out": [
+" : int ! pure",
+""
+],
+"err": [
+"! evaluation failed: boom",
+""
+]
+}

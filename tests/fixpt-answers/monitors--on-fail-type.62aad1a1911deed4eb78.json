@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"on-fail-type.fx"
+],
+"code": 1,
+"out": [
+"collector : (addr report @p) ! (maxeff (alloc @p) nondet)",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/monitors/on-fail-type.fx:6:3: `w` is declared a (addr int @w): a monitor's `on-failure` makes the watcher's message of a failure's, a (subr pure (string) report), and this is a (subr pure (string) int)",
+""
+]
+}

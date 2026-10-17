@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"covariant.fx"
+],
+"code": 0,
+"out": [
+"up-box : (poly ((t type)) (subr pure ((productof (v t))) (box t))) ! pure",
+"down-box : (poly ((t type)) (subr pure ((box t)) (productof (v t)))) ! pure",
+"a : (box (sumof (a int))) ! (read (globals up-box))",
+"b : (box (sumof (a int) (b bool))) ! (read (globals a))",
+""
+],
+"err": [
+""
+]
+}

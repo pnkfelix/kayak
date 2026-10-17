@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"quote-identity.fx"
+],
+"code": 0,
+"out": [
+"define f : (subr pure () datum) ! pure",
+"define x : int ! pure",
+"define g : (subr (read (globals x)) () datum) ! pure",
+"define tl : (subr pure (datum) datum) ! pure",
+"define bit : (subr pure (bool int) int) ! pure",
+"int ! (read (globals bit f g tl x))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

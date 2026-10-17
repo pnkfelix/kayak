@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"up-to-free.fx"
+],
+"code": 0,
+"out": [
+"sum-to : (subr pure (int) int) ! pure",
+"45 : int ! (read (globals sum-to))",
+""
+],
+"err": [
+""
+]
+}

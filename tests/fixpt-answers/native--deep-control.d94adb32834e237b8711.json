@@ -1,0 +1,37 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"deep-control.fx"
+],
+"code": 0,
+"out": [
+"sum-cons : (subr (maxeff (read @l) (alloc @l) spin (read (globals sum-cons))) (int (listof int @l)) int) ! pure",
+"5000049999 : int ! (maxeff (read @l) (alloc @l) spin (read (globals sum-cons)))",
+"t : (prompt-tag int int (maxeff spin (read (globals down raise t))) @z) ! (alloc @z)",
+"raise : (subr (maxeff (goto @z) (read (globals t))) (int) void) ! pure",
+"down : (subr (maxeff (goto @z) spin (read (globals down raise t))) (int int) int) ! pure",
+"under : (subr (maxeff (goto @z) spin (read (globals down raise t))) (int) int) ! pure",
+"1007 : int ! (maxeff (goto @z) spin (read (globals down raise t under)))",
+"key : (mark-key int @m) ! (alloc @m)",
+"deep-mark : (subr (maxeff (read @m) spin (read (globals deep-mark key))) (int) int) ! pure",
+"marked : (subr (maxeff (read @m) (write @m) spin (read (globals deep-mark key))) (int) int) ! pure",
+"50005 : int ! (maxeff (read @m) (write @m) spin (read (globals deep-mark key marked)))",
+"u : (prompt-tag int int (maxeff (goto @p) (comefrom @p) spin (read (globals climb grab u))) @p) ! (alloc @p)",
+"grab : (subr (maxeff (goto @p) (comefrom @p) spin (read (globals climb grab u))) () int) ! pure",
+"climb : (subr (maxeff (goto @p) (comefrom @p) spin (read (globals climb grab u))) (int) int) ! pure",
+"twice : (subr (maxeff (goto @p) (comefrom @p) spin (read (globals climb grab u))) (int) int) ! pure",
+"60001 : int ! (maxeff (goto @p) (comefrom @p) spin (read (globals climb grab twice u)))",
+"count : (subr (maxeff (read @m) spin (read (globals count))) ((listof int @m) int) int) ! pure",
+"spin-down : (subr (maxeff spin (read (globals spin-down))) (int) int) ! pure",
+"level : (subr (maxeff (read @m) (write @m) (alloc @m) spin (read (globals count key level spin-down))) (int) int) ! pure",
+"60000 : int ! (maxeff (read @m) (write @m) (alloc @m) spin (read (globals count key level spin-down)))",
+""
+],
+"err": [
+""
+]
+}

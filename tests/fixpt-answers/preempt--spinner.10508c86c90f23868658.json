@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"spinner.fx"
+],
+"code": 0,
+"out": [
+"define answer : (icell int @c) ! (alloc @c)",
+"define spin-forever : (subr (maxeff (read (globals spin-forever)) spin) (int) int) ! pure",
+"define spinner : (addr int @p) ! (maxeff (alloc @p) (read (globals spin-forever)) nondet spin)",
+"define doubler : (addr int @p) ! (maxeff (alloc @p) (init @c) (read (globals answer)) nondet)",
+"unit ! (maxeff (read (globals spinner)) (send @p))",
+"unit ! (maxeff (read (globals doubler)) (send @p))",
+"int ! (maxeff (await @c) (read (globals answer)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

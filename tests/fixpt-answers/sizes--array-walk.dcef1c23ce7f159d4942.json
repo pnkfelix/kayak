@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"array-walk.fx"
+],
+"code": 0,
+"out": [
+"total : (subr (read @a) ((arrayof int @a)) int) ! pure",
+"20 : int ! (maxeff (read @a) (alloc @a) (read (globals total)))",
+""
+],
+"err": [
+""
+]
+}

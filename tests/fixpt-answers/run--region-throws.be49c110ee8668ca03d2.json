@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"region-throws.fx"
+],
+"code": 0,
+"out": [
+"define escape : (subr (goto @k) (int (subr (goto @k) (int) void)) int) ! pure",
+"define rounds : (subr (maxeff (comefrom @k) (goto @k) (read (globals escape rounds)) spin) (int int) int) ! pure",
+"int ! (maxeff (comefrom @k) (goto @k) (read (globals escape rounds)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

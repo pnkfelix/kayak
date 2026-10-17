@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"knot-kept.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/redefine/knot-kept.fx:8:1: calling `f` reads `f`, so `f` may reach itself through a global: its type must say `spin` (or, to call itself directly, it binds itself with a local `letrec`)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

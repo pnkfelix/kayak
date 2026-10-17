@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"not-and-or-narrow.fx"
+],
+"code": 0,
+"out": [
+"head : (subr (read @r) ((pairof int ints @r)) int) ! pure",
+"by-not : (subr (maxeff (read @r) (read (globals head))) (ints) int) ! pure",
+"by-and : (subr (maxeff (read @r) (read (globals head))) (ints) int) ! pure",
+"by-or : (subr (maxeff (read @r) (read (globals head))) (ints) int) ! pure",
+"6 : int ! (maxeff (read @r) (alloc @r) (read (globals by-and by-not by-or head)))",
+""
+],
+"err": [
+""
+]
+}

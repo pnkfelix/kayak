@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"include-same-type.fx"
+],
+"code": 0,
+"out": [
+"define a : (moduleof (desc num int) (val one num)) ! pure",
+"define b : (moduleof (desc num int) (val two num)) ! pure",
+"define m : (moduleof (val three int)) ! (read (globals a b))",
+"int ! (read (globals m))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"curried.fx"
+],
+"code": 0,
+"out": [
+"((1)) : (listof (listof int @heap) @heap) ! (alloc @heap)",
+""
+],
+"err": [
+""
+]
+}

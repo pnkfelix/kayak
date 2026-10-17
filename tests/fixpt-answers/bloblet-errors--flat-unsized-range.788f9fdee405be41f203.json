@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"flat-unsized-range.fx"
+],
+"code": 0,
+"out": [
+"define b : o ! (alloc @b)",
+"define arr : (blobref o (flat-arrayof f64 finite)) ! (read (globals b))",
+"(blobref o f64) ! (read (globals arr))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,51 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"fixed-width-ops.fx"
+],
+"code": 0,
+"out": [
+"edges : (subr (alloc @heap) () ints) ! pure",
+"mix : (subr pure (int int) int) ! pure",
+"i64-fold : (subr pure (i64) int) ! pure",
+"u64-fold : (subr pure (u64) int) ! pure",
+"i32-fold : (subr pure (i32) int) ! pure",
+"u32-fold : (subr pure (u32) int) ! pure",
+"i64-big : (subr pure () i64) ! pure",
+"u64-big : (subr pure () u64) ! pure",
+"i32-op : (subr (read (globals i32-fold)) (int i32 i32) int) ! pure",
+"i32-values : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals i32-values))) (ints) i32s) ! pure",
+"i32-inner : (subr (maxeff (read @heap) spin (read (globals i32-fold i32-inner i32-op mix))) (int i32 i32s int) int) ! pure",
+"i32-outer : (subr (maxeff (read @heap) spin (read (globals i32-fold i32-inner i32-op i32-outer mix))) (int i32s i32s int) int) ! pure",
+"i32-sums : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals i32-fold i32-inner i32-op i32-outer i32-sums mix))) (int i32s) ints) ! pure",
+"u32-op : (subr (read (globals u32-fold)) (int u32 u32) int) ! pure",
+"u32-values : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals u32-values))) (ints) u32s) ! pure",
+"u32-inner : (subr (maxeff (read @heap) spin (read (globals mix u32-fold u32-inner u32-op))) (int u32 u32s int) int) ! pure",
+"u32-outer : (subr (maxeff (read @heap) spin (read (globals mix u32-fold u32-inner u32-op u32-outer))) (int u32s u32s int) int) ! pure",
+"u32-sums : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals mix u32-fold u32-inner u32-op u32-outer u32-sums))) (int u32s) ints) ! pure",
+"i64-op : (subr (read (globals i64-fold)) (int i64 i64) int) ! pure",
+"i64-values : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals i64-big i64-values))) (ints) i64s) ! pure",
+"i64-inner : (subr (maxeff (read @heap) spin (read (globals i64-fold i64-inner i64-op mix))) (int i64 i64s int) int) ! pure",
+"i64-outer : (subr (maxeff (read @heap) spin (read (globals i64-fold i64-inner i64-op i64-outer mix))) (int i64s i64s int) int) ! pure",
+"i64-sums : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals i64-fold i64-inner i64-op i64-outer i64-sums mix))) (int i64s) ints) ! pure",
+"u64-op : (subr (read (globals u64-fold)) (int u64 u64) int) ! pure",
+"u64-values : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals u64-big u64-values))) (ints) u64s) ! pure",
+"u64-inner : (subr (maxeff (read @heap) spin (read (globals mix u64-fold u64-inner u64-op))) (int u64 u64s int) int) ! pure",
+"u64-outer : (subr (maxeff (read @heap) spin (read (globals mix u64-fold u64-inner u64-op u64-outer))) (int u64s u64s int) int) ! pure",
+"u64-sums : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals mix u64-fold u64-inner u64-op u64-outer u64-sums))) (int u64s) ints) ! pure",
+"int-op : (subr pure (int int int) int) ! pure",
+"int-inner : (subr (maxeff (read @heap) spin (read (globals int-inner int-op mix))) (int int ints int) int) ! pure",
+"int-outer : (subr (maxeff (read @heap) spin (read (globals int-inner int-op int-outer mix))) (int ints ints int) int) ! pure",
+"int-sums : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals int-inner int-op int-outer int-sums mix))) (int ints) ints) ! pure",
+"fixed-width-ops : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals edges i32-fold i32-inner i32-op i32-outer i32-sums i32-values i64-big i64-fold i64-inner i64-op i64-outer i64-sums i64-values int-inner int-op int-outer int-sums mix u32-fold u32-inner u32-op u32-outer u32-sums u32-values u64-big u64-fold u64-inner u64-op u64-outer u64-sums u64-values))) (int) (listof ints @heap)) ! pure",
+"((885890 687049 592532 1532 391164 526863) (883928 291660 462332 751113 280663 698358 535270 836915 791842 864126 699832 331355 628415 372171 669231 297060 876165 164486 720878 291409 849584 518412) (837839 83754 934122 374635 222171 823697 763722 940028 924795 506998 742281 856203 153260 847326 144383 297060 162447 217674 881971 981029 677295 469434) (799441 208832 569250 414328 429810 367947 648107 280160 936000 965275 453652 510016 749194 116530 355708 239178 425418 738714 36460 0 568755 320967) (753210 531866 57832 445157 214541 119239 679908 560669 586591 869500 277196 178097 582597 283127 687627 404500 543939 31544 35715 0 553034 105320)) : (listof ints @heap) ! (maxeff (read @heap) (alloc @heap) spin (read (globals edges fixed-width-ops i32-fold i32-inner i32-op i32-outer i32-sums i32-values i64-big i64-fold i64-inner i64-op i64-outer i64-sums i64-values int-inner int-op int-outer int-sums mix u32-fold u32-inner u32-op u32-outer u32-sums u32-values u64-big u64-fold u64-inner u64-op u64-outer u64-sums u64-values)))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"raw-returns.fx"
+],
+"code": 0,
+"out": [
+"define half : (subr pure (int) f64) ! pure",
+"define pick : (poly ((t type)) (subr pure (bool t t) t)) ! pure",
+"define felem : (subr (read @heap) (fvec int) f64) ! pure",
+"define ielem : (subr (read @heap) (ivec int) i64) ! pure",
+"define term : (subr (read (globals half pick)) (int) f64) ! pure",
+"define total : (subr (maxeff (read (globals half pick term total)) spin) (int f64) f64) ! pure",
+"define halves : (subr (maxeff (alloc @heap) (read (globals half halves)) spin) (int) (listof f64 @heap)) ! pure",
+"define deep : (subr (maxeff (alloc @heap) (read (globals deep half)) (read @heap) spin) (int) f64) ! pure",
+"define flats : (subr (maxeff (alloc @heap) (read (globals felem ielem)) (read @heap)) () int) ! pure",
+"define raw-returns : (subr (maxeff (alloc @heap) (read (globals deep felem flats half halves ielem pick term total)) (read @heap) spin) (int) int) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals deep felem flats half halves ielem pick raw-returns term total)) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"thunk-untold.fx"
+],
+"code": 0,
+"out": [
+"define count-of : (poly ((t type)) (subr pure (t) int)) ! pure",
+"int ! (read (globals count-of))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

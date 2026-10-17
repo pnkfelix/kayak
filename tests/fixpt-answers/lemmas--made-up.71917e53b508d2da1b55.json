@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"made-up.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/lemmas/made-up.fx:7:50: a (tree b) is expected here, and this is a (tree a)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

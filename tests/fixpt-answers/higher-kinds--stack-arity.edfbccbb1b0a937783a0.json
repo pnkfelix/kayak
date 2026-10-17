@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"stack-arity.fx"
+],
+"code": 1,
+"out": [
+"list-stack : stack-sig ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/higher-kinds/stack-arity.fx:23:1: `list-stack..stack` takes 1 description(s), and has 2",
+""
+]
+}

@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"opaque.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/generative/opaque.fx:3:50: a int is expected here, and this is a ty-id",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

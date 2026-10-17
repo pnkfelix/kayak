@@ -97,7 +97,7 @@ def own_loads(path):
     return found
 
 
-def fixpt_on(binary, text, args, path=None):
+def fixpt_on(binary, text, args, path=None, keep=False):
     """Fixpt on `text` as one file, cached (fixptcache.py); beside it, the
     files program `path` loads of its own."""
     with tempfile.TemporaryDirectory() as d:
@@ -109,7 +109,10 @@ def fixpt_on(binary, text, args, path=None):
             os.makedirs(os.path.dirname(os.path.join(d, rel)), exist_ok=True)
             shutil.copyfile(os.path.join(os.path.dirname(path), rel), os.path.join(d, rel))
             copies.append(os.path.join(d, rel))
-        return fixptcache.run(binary, ["--dialect", "fx26"] + args + [tmp], [tmp] + copies)
+        # An answer is kept as NAME.out, not in tests/fixpt-answers; a
+        # refusal there (C132).
+        name = os.path.splitext(os.path.relpath(path, ROOT))[0].replace(os.sep, "--") if path else None
+        return fixptcache.run(binary, ["--dialect", "fx26"] + args + [tmp], [tmp] + copies, name=name, keep=keep)
 
 
 def answer(binary, path):
@@ -126,7 +129,7 @@ def refused(compiler, interpreter, kind, wrong):
     def both(n):
         src = os.path.join(directory, n + ".kfx")
         mine = run([compiler, src])
-        theirs = fixpt_on(interpreter, stage0(src, ""), ["eval"], src) if interpreter is not None else None
+        theirs = fixpt_on(interpreter, stage0(src, ""), ["eval"], src, keep=True)
         return mine, theirs
 
     ran = fixptcache.parallel(both, names)

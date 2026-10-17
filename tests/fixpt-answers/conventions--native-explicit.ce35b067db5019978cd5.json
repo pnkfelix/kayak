@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"native-explicit.fx"
+],
+"code": 0,
+"out": [
+"inc : (subr pure (int) int) ! pure",
+"#<native-closure 2 fields 0 bytes> : (subr pure (int) int) ! (read (globals inc))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"map-specialized.fx"
+],
+"code": 0,
+"out": [
+"define map1 : (subr (maxeff (alloc @l) (read (globals map1)) (read @l) spin) ((subr pure (int) int) (listof int @l)) (listof int @l)) ! pure",
+"define total : (subr (maxeff (read (globals total)) (read @l) spin) ((listof int @l) int) int) ! pure",
+"define test : (subr (maxeff (alloc @l) (read (globals map1 total)) (read @l) spin) (int) int) ! pure",
+"int ! (maxeff (alloc @l) (read (globals map1 test total)) (read @l) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

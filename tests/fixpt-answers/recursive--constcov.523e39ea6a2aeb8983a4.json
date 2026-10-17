@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"constcov.fx"
+],
+"code": 0,
+"out": [
+"f : (subr pure ((listof n2 const)) int) ! pure",
+"g : (subr (read (globals f)) ((listof n1 const)) int) ! pure",
+""
+],
+"err": [
+""
+]
+}

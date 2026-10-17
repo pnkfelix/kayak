@@ -1,0 +1,41 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"adapters.fx"
+],
+"code": 0,
+"out": [
+"define inc : (subr pure (int) int) ! pure",
+"define n : (subr pure (int) int) ! (read (globals inc))",
+"define c : (subr (conv cellular) pure (int) int) ! (read (globals inc))",
+"define call-n : (subr pure ((subr pure (int) int)) int) ! pure",
+"define call-c : (subr pure ((subr (conv cellular) pure (int) int)) int) ! pure",
+"int ! (read (globals call-n n))",
+"int ! (read (globals call-n inc))",
+"int ! (read (globals c call-c))",
+"int ! (read (globals call-c inc))",
+"int ! (read (globals inc))",
+"int ! (read (globals n))",
+"define twice : (subr pure ((subr (conv fx) pure (int) int) int) int) ! pure",
+"int ! (read (globals n twice))",
+"int ! (read (globals c twice))",
+"define m : (subr pure ((subr pure (int int) int) int) int) ! pure",
+"int ! (read (globals m))",
+"define app2 : (subr (alloc @heap) ((subr (alloc @heap) (int ints) int-and-ints) int) int-and-ints) ! pure",
+"int-and-ints ! (maxeff (alloc @heap) (read (globals app2)))",
+"define down : (subr (maxeff (alloc @heap) (read @globals) spin) (int) ints) ! pure",
+"define down-n : (subr (maxeff (alloc @heap) (read @globals) spin) (int) ints) ! pure",
+"define down-c : (subr (conv cellular) (maxeff (alloc @heap) (read @globals) spin) (int) ints) ! pure",
+"define down : (subr (maxeff (alloc @heap) (read (globals down-c)) (read @globals) spin) (int) ints) ! pure",
+"ints ! (maxeff (alloc @heap) (read (globals down down-c)) (read @globals) spin)",
+"define len : (subr (maxeff (read @globals) (read @heap) spin) (ints) int) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals down down-c len)) (read @globals) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

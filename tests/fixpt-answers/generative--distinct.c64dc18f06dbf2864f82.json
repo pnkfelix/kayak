@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"distinct.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/generative/distinct.fx:5:4: argument 1 is a dvar, where a ty-id is expected",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

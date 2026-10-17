@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"allocating-cellular.fx"
+],
+"code": 0,
+"out": [
+"a : (icell int @c) ! (alloc @c)",
+"b : (icell int @c) ! (alloc @c)",
+"add-n : (subr pure (int int) int) ! pure",
+"go-c : (poly ((r region)) (subr (maxeff (alloc r) spin (read (globals add-n go-c))) (int int int (listof int r)) int)) ! pure",
+"p : (addr int @p) ! (maxeff (alloc @p) (init @c) spin nondet (read (globals a add-n go-c)))",
+"q : (addr int @p) ! (maxeff (alloc @p) (init @c) spin nondet (read (globals b)))",
+"#u : unit ! (maxeff (send @p) (read (globals p)))",
+"#u : unit ! (maxeff (send @p) (read (globals q)))",
+"8997014 : int ! (maxeff (await @c) (read (globals a b)))",
+""
+],
+"err": [
+""
+]
+}

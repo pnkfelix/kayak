@@ -1,0 +1,19 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"point.fx"
+],
+"code": 0,
+"out": [
+"p : (bloblet (fields int int) @pts) ! (alloc @pts)",
+"move : (subr (maxeff (read @pts) (write @pts)) ((bloblet (fields int int) @pts) int) unit) ! pure",
+"#u : unit ! (maxeff (read @pts) (write @pts) (read (globals move p)))",
+"17 : int ! (maxeff (read @pts) (read (globals p)))",
+""
+],
+"err": [
+""
+]
+}

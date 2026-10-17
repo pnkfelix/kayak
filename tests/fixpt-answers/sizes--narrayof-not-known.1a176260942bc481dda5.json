@@ -1,0 +1,16 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"narrayof-not-known.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/narrayof-not-known.fx:3:80: a (narrayof int 5 @heap) is expected here, and this is a (narrayof int a @heap)",
+""
+]
+}

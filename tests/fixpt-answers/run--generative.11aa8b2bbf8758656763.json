@@ -1,0 +1,22 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"generative.fx"
+],
+"code": 0,
+"out": [
+"up-ty-id : (subr pure (int) ty-id) ! pure",
+"down-ty-id : (subr pure (ty-id) int) ! pure",
+"up-tree : (poly ((a type)) (subr pure ((sumof (leaf a) (node (productof (l (tree a)) (r (tree a)))))) (tree a))) ! pure",
+"down-tree : (poly ((a type)) (subr pure ((tree a)) (sumof (leaf a) (node (productof (l (tree a)) (r (tree a))))))) ! pure",
+"total : (subr (read (globals down-tree)) ((tree int)) int) ! pure",
+"leaf : (subr (read (globals up-tree)) (int) (tree int)) ! pure",
+"42 : int ! (read (globals down-tree down-ty-id leaf total up-tree up-ty-id))",
+""
+],
+"err": [
+""
+]
+}

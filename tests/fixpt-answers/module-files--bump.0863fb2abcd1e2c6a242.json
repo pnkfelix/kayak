@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"bump.fx"
+],
+"code": 0,
+"out": [
+"define bump : (subr pure (num) num) ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

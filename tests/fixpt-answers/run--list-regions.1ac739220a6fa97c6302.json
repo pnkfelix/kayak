@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"list-regions.fx"
+],
+"code": 0,
+"out": [
+"define h : (listof int @heap) ! (alloc @heap)",
+"unit ! (maxeff (read (globals h)) (write @heap))",
+"define a : (listof int acyclic) ! pure",
+"define hs : (listof int @heap) ! (maxeff (alloc @heap) (read (globals a)))",
+"unit ! (maxeff (read (globals hs)) (write @heap))",
+"int ! (maxeff (read (globals a h hs)) (read @heap))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

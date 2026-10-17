@@ -1,0 +1,16 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"message-ref.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/processes/message-ref.fx:3:34: `w` is declared a (addr (ref int @c) @w): a process's messages are copied to it, so they must be transmissible, and a (ref int @c) is not: a reference at @c, which can be written",
+""
+]
+}

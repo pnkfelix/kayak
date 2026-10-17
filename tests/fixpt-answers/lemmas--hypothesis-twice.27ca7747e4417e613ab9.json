@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"hypothesis-twice.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/lemmas/hypothesis-twice.fx:7:37: argument 1 is a b, where a a is expected",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

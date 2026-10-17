@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"poly-self-application-spin.fx"
+],
+"code": 0,
+"out": [
+"define omega : (subr spin () int) ! pure",
+"define kept : (subr pure (T) (listof T acyclic)) ! pure",
+"define app-s : (poly ((t type)) (subr pure ((subr pure (t) int) t S) S)) ! pure",
+"define app-s-at-T : (subr (read (globals app-s)) () (subr spin ((subr pure (T) int) T S) S-spin)) ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

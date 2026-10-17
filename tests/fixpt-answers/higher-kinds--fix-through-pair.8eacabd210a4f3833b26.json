@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"fix-through-pair.fx"
+],
+"code": 0,
+"out": [
+"(1) : (listof int @heap) ! (alloc @heap)",
+""
+],
+"err": [
+""
+]
+}

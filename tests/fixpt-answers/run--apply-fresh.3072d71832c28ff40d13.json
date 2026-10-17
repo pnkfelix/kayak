@@ -1,0 +1,21 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"apply-fresh.fx"
+],
+"code": 0,
+"out": [
+"len : (subr pure ((listof int acyclic)) int) ! pure",
+"xs : (listof int @heap) ! (alloc @heap)",
+"ys : (listof int acyclic) ! (maxeff (read @heap) (read (globals xs)))",
+"#u : unit ! (maxeff (read @heap) (write @heap) (read (globals xs)))",
+"zs : (listof int acyclic) ! (read (globals ys))",
+"22 : int ! (read (globals len ys zs))",
+""
+],
+"err": [
+""
+]
+}

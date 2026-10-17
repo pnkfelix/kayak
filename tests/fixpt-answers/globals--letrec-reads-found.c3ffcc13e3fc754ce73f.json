@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"letrec-reads-found.fx"
+],
+"code": 0,
+"out": [
+"define twice : (subr pure (int) int) ! pure",
+"define f : (subr (read (globals twice)) (nat) int) ! pure",
+"int ! (read (globals f twice))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

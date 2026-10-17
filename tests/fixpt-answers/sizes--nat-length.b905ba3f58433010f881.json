@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"nat-length.fx"
+],
+"code": 0,
+"out": [
+"define three : (nlist int 3) ! pure",
+"define n : (nat 3) ! (read (globals three))",
+"define as-long : (poly ((n size)) (subr pure ((nlist int n) (listof int const) (nlist int n)) (nlist int n))) ! pure",
+"define line : (subr pure (int) (listof int const)) ! pure",
+"define total : (poly ((n size)) (subr pure ((nlist int n)) int)) ! pure",
+"int ! (read (globals as-long line three total))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"polyvar.fx"
+],
+"code": 0,
+"out": [
+"f : (subr pure (p1) int) ! pure",
+"g : (subr (read (globals f)) (p1) int) ! pure",
+""
+],
+"err": [
+""
+]
+}

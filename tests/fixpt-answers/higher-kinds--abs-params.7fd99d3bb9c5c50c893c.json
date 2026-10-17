@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"abs-params.fx"
+],
+"code": 0,
+"out": [
+"lazy : sig-lazy ! pure",
+"same : sig-lazy-arrow ! (read (globals lazy))",
+"8 : int ! (maxeff (read @heap) (alloc @heap) (read (globals same)))",
+""
+],
+"err": [
+""
+]
+}

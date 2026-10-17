@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"io-effects.fx"
+],
+"code": 0,
+"out": [
+"define greet : (subr (io stdout) (string) bool) ! pure",
+"define warn : (subr (maxeff (io stderr) (read @r)) ((ref string @r)) unit) ! pure",
+"define both : (subr (maxeff (io stderr) (io stdout) (read (globals greet warn)) (read @r)) ((ref string @r)) bool) ! pure",
+"define twice : (subr pure (int) int) ! pure",
+"define quit : (subr (io exit) () int) ! pure",
+"define detail : (subr pure (io-error) string) ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

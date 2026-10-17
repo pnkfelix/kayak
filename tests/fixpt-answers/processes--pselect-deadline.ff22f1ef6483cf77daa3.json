@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"pselect-deadline.fx"
+],
+"code": 0,
+"out": [
+"answer : (icell int @c) ! (alloc @c)",
+"waiter : (addr int @p) ! (maxeff (alloc @p) (init @c) (io clock) nondet (read (globals answer)))",
+"-1 : int ! (maxeff (await @c) (read (globals answer)))",
+""
+],
+"err": [
+""
+]
+}

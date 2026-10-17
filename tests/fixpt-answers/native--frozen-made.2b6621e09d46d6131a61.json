@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"frozen-made.fx"
+],
+"code": 0,
+"out": [
+"define dot : (subr pure (int) shape) ! pure",
+"define box : (subr pure (int int) shape) ! pure",
+"define wide : (subr pure (int int int int int int int) shape) ! pure",
+"define make : (subr (maxeff (alloc @heap) (read (globals box dot make wide)) spin) (int shapes) shapes) ! pure",
+"define case-shape : (subr pure (shape) int) ! pure",
+"define weigh : (subr (maxeff (read (globals case-shape weigh)) (read @heap) spin) (shapes int) int) ! pure",
+"define frozen-made : (subr (maxeff (alloc @heap) (read (globals box case-shape dot make weigh wide)) (read @heap) spin) (int) int) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals box case-shape dot frozen-made make weigh wide)) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

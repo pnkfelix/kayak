@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"flat-bounds.fx"
+],
+"code": 0,
+"out": [
+"define total : (poly ((n size)) (subr (maxeff (read (globals total)) (read @heap) spin) ((blobref blob (flat-arrayof f64 n)) nat f64) f64)) ! pure",
+"define main : (subr (maxeff (alloc @heap) (read (globals total)) (read @heap) (write @heap) spin) () (listof int acyclic)) ! pure",
+"(listof int acyclic) ! (maxeff (alloc @heap) (read (globals main total)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

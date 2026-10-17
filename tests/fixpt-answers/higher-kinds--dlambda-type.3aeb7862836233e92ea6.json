@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"dlambda-type.fx"
+],
+"code": 0,
+"out": [
+"b : (productof (v (productof (v int)))) ! pure",
+"(4) : (listof int @r.1) ! (maxeff (alloc @r.1) (read (globals b)))",
+""
+],
+"err": [
+""
+]
+}

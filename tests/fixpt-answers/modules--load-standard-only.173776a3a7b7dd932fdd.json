@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"load-standard-only.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/load-standard-only.fx:5:1: in `../module-files/uses-global.fx`, 3:18: unbound variable `secret`",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"flat-no-copy.fx"
+],
+"code": 1,
+"out": [
+"b : o ! (alloc @b)",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-no-copy.fx:6:1: only a scalar's bytes are read or written, and this points to a (productof (x f64) (y f64))",
+""
+]
+}

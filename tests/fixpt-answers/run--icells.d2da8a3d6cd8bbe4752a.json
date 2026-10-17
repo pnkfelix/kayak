@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"icells.fx"
+],
+"code": 0,
+"out": [
+"define even-cell : (icell parity-test @k) ! (alloc @k)",
+"define odd-cell : (icell parity-test @k) ! (alloc @k)",
+"unit ! (maxeff (init @k) (read (globals even-cell)))",
+"unit ! (maxeff (init @k) (read (globals odd-cell)))",
+"define parity : (subr spin (int) bool) ! pure",
+"(listof bool @r.1) ! (maxeff (alloc @r.1) (await @k) (read (globals even-cell odd-cell parity)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

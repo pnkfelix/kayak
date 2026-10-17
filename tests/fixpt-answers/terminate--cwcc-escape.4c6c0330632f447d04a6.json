@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"cwcc-escape.fx"
+],
+"code": 0,
+"out": [
+"define early : (subr pure (int) int) ! pure",
+"int ! (read (globals early))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

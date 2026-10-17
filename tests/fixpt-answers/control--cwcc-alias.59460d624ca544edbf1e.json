@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"cwcc-alias.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/control/cwcc-alias.fx:6:19: `cwcc` is named only to call it: its calls are checked where it is named",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

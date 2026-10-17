@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"nlist-pair.fx"
+],
+"code": 0,
+"out": [
+"define v : (nlist int finite) ! pure",
+"define p : (pairof int (nlist int finite) acyclic) ! (read (globals v))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

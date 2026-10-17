@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"union.fx"
+],
+"code": 0,
+"out": [
+"define d : datum ! pure",
+"define size : (subr pure (datum) int) ! pure",
+"define v : datum ! (read (globals d))",
+"int ! (read (globals d size v))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"case-tree.fx"
+],
+"code": 0,
+"out": [
+"define ci1 : (subr pure (int) int) ! pure",
+"define ci2 : (subr pure (int) int) ! pure",
+"define cs1 : (subr pure (symbol) int) ! pure",
+"define cs2 : (subr pure (symbol) int) ! pure",
+"define ct1 : (subr pure (string) int) ! pure",
+"define ct2 : (subr pure (string) int) ! pure",
+"define sum-i : (subr (maxeff (read (globals sum-i)) (read @globals) spin) ((subr pure (int) int) (listof int acyclic) int) int) ! pure",
+"define sum-s : (subr (maxeff (read (globals sum-s)) (read @globals) spin) ((subr pure (symbol) int) (listof symbol acyclic) int) int) ! pure",
+"define sum-t : (subr (maxeff (read (globals sum-t)) (read @globals) spin) ((subr pure (string) int) (listof string acyclic) int) int) ! pure",
+"define score : (subr (maxeff (read (globals ci1 ci2 cs1 cs2 ct1 ct2 sum-i sum-s sum-t)) (read @globals) spin) () (listof int acyclic)) ! pure",
+"(listof int acyclic) ! (maxeff (read (globals ci1 ci2 cs1 cs2 ct1 ct2 score sum-i sum-s sum-t)) (read @globals) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

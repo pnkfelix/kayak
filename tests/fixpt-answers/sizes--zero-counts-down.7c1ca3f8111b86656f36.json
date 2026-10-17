@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"zero-counts-down.fx"
+],
+"code": 0,
+"out": [
+"count : (subr pure (nat) int) ! pure",
+"7 : int ! (read (globals count))",
+""
+],
+"err": [
+""
+]
+}

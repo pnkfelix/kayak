@@ -1,0 +1,41 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"captures.fx"
+],
+"code": 0,
+"out": [
+"define u : (prompt-tag int int (maxeff (alloc @m) (comefrom @p) (goto @p) (read @globals) (read @m) (write @m) spin) @p) ! (alloc @p)",
+"define grab-n : (subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read (globals u)) (read @globals) (read @m) (write @m) spin) () int) ! pure",
+"define grab-c : (subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read (globals u)) (read @globals) (read @m) (write @m) spin) () int) ! pure",
+"define climb-n : (subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read (globals climb-n)) (read @globals) (read @m) (write @m) spin) ((subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read @globals) (read @m) (write @m) spin) () int) int) int) ! pure",
+"define climb-c : (subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read (globals climb-c)) (read @globals) (read @m) (write @m) spin) ((subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read @globals) (read @m) (write @m) spin) () int) int) int) ! pure",
+"define mix : (subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read (globals climb-n)) (read @globals) (read @m) (write @m) spin) ((subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read @globals) (read @m) (write @m) spin) () int) int) int) ! pure",
+"define tail-c : (subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read @globals) (read @m) (write @m) spin) ((subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read @globals) (read @m) (write @m) spin) () int)) int) ! pure",
+"define tail-n : (subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read @globals) (read @m) (write @m) spin) ((subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read @globals) (read @m) (write @m) spin) () int)) int) ! pure",
+"define under-n : (subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read (globals u)) (read @globals) (read @m) (write @m) spin) ((subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read @globals) (read @m) (write @m) spin) () int)) int) ! pure",
+"define under-c : (subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read (globals u)) (read @globals) (read @m) (write @m) spin) ((subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read @globals) (read @m) (write @m) spin) () int)) int) ! pure",
+"(listof int @r.1) ! (maxeff (alloc @m) (alloc @r.1) (comefrom @p) (goto @p) (read (globals u under-c under-n)) (read @globals) (read @m) (write @m) spin)",
+"define m : (mark-key int @m) ! (alloc @m)",
+"define count : (subr (maxeff (read (globals count)) (read @m) spin) ((listof int @m) int) int) ! pure",
+"define grab-marks : (subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read (globals count m u)) (read @globals) (read @m) (write @m) spin) () int) ! pure",
+"define mark-c : (subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read (globals m)) (read @globals) (read @m) (write @m) spin) ((subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read @globals) (read @m) (write @m) spin) () int) int stepper) int) ! pure",
+"define mark-n : (subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read (globals m mark-c mark-n)) (read @globals) (read @m) (write @m) spin) ((subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read @globals) (read @m) (write @m) spin) () int) int) int) ! pure",
+"define mark-c0 : (subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read (globals m mark-c mark-n)) (read @globals) (read @m) (write @m) spin) ((subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read @globals) (read @m) (write @m) spin) () int) int) int) ! pure",
+"define under-1000 : (subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read (globals u)) (read @globals) (read @m) (write @m) spin) ((subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read @globals) (read @m) (write @m) spin) () int)) int) ! pure",
+"define bail : (subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read (globals u)) (read @globals) (read @m) (write @m) spin) ((subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read @globals) (read @m) (write @m) spin) () int)) int) ! pure",
+"(listof int @r.2) ! (maxeff (alloc @m) (alloc @r.2) (comefrom @p) (goto @p) (read (globals u under-1000)) (read @globals) (read @m) (write @m) spin)",
+"define look-c : (subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read (globals count m)) (read @globals) (read @m) (write @m) spin) () int) ! pure",
+"define look-n : (subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read (globals count m)) (read @globals) (read @m) (write @m) spin) () int) ! pure",
+"define in-n : (subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read (globals m)) (read @globals) (read @m) (write @m) spin) ((subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read @globals) (read @m) (write @m) spin) () int)) int) ! pure",
+"define in-c : (subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read (globals m)) (read @globals) (read @m) (write @m) spin) ((subr (maxeff (alloc @m) (comefrom @p) (goto @p) (read @globals) (read @m) (write @m) spin) () int)) int) ! pure",
+"(listof int @r.3) ! (maxeff (alloc @m) (alloc @r.3) (comefrom @p) (goto @p) (read (globals in-c in-n look-c look-n m)) (read @globals) (read @m) (write @m) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

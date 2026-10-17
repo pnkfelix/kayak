@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"race-types.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/processes/race-types.fx:3:1: `race`'s branches give values of two types, int and string",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

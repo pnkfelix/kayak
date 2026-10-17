@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"container-functor.fx"
+],
+"code": 0,
+"out": [
+"define lists : container ! pure",
+"define pair-up : (subr (maxeff (alloc @heap) (read @heap) spin) (container ((select $1 f) int)) ((select $1 f) (productof (l int) (r int)))) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals lists pair-up)) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

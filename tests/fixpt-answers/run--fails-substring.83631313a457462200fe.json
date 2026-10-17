@@ -1,0 +1,26 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"fails-substring.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (13 cells, cellular):",
+"     0: lit \"abc\"",
+"     2: lit 1",
+"     4: lit 3",
+"     6: lit 2",
+"     8: int-add",
+"     9: prim substring 3",
+"    12: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

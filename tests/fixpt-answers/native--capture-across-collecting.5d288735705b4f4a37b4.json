@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"capture-across-collecting.fx"
+],
+"code": 0,
+"out": [
+"define u : (prompt-tag int int (maxeff (comefrom @p) (goto @p) (read @globals) spin) @p) ! (alloc @p)",
+"define grab-c : (subr (maxeff (comefrom @p) (goto @p) (read (globals u)) (read @globals) spin) () int) ! pure",
+"define under-n : (subr (maxeff (comefrom @p) (goto @p) (read (globals u)) (read @globals) spin) ((subr (maxeff (comefrom @p) (goto @p) (read @globals) spin) () int)) int) ! pure",
+"define climb-c : (subr (maxeff (comefrom @p) (goto @p) (read (globals climb-c)) (read @globals) spin) ((subr (maxeff (comefrom @p) (goto @p) (read @globals) spin) () int) int) int) ! pure",
+"define times : (subr (maxeff (comefrom @p) (goto @p) (read (globals times u under-n)) (read @globals) spin) (int int) int) ! pure",
+"int ! (maxeff (comefrom @p) (goto @p) (read (globals times u under-n)) (read @globals) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

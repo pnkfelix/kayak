@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"recursion.fx"
+],
+"code": 0,
+"out": [
+"define sum-to : (subr (maxeff (read (globals sum-to)) spin) (int) int) ! pure",
+"define count : (subr spin (int) int) ! pure",
+"(pairof int int @r.1) ! (maxeff (alloc @r.1) (read (globals count sum-to)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

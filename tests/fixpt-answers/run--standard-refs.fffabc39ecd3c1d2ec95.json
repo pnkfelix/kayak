@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"standard-refs.fx"
+],
+"code": 0,
+"out": [
+"sm : (moduleof (val six (subr pure (int) int))) ! pure",
+"score : (subr (read (globals sm)) () int) ! pure",
+"123456 : int ! (read (globals score sm))",
+""
+],
+"err": [
+""
+]
+}

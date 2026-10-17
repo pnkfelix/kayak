@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"load-deep.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/load-deep.fx:5:11: in `../module-files/deep-a.fx`, 2:11: in `deep-b.fx`, 2:15: a int is expected here, and this is a string",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

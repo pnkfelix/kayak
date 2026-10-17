@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"fixed-width-64-literals.fx"
+],
+"code": 0,
+"out": [
+"define x : i64 ! pure",
+"define big : u64 ! pure",
+"define neg : i64 ! pure",
+"define add : (subr pure (i64 i64) i64) ! pure",
+"(listof int @r.1) ! (maxeff (alloc @r.1) (read (globals add big neg x)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

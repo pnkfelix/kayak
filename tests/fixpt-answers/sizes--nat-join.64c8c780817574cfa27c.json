@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"nat-join.fx"
+],
+"code": 0,
+"out": [
+"pick : (subr pure (bool nat) nat) ! pure",
+"gap : (subr pure (nat nat) nat) ! pure",
+"11 : int ! (read (globals gap pick))",
+""
+],
+"err": [
+""
+]
+}

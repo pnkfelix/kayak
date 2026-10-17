@@ -1,0 +1,23 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"typed-calls.fx"
+],
+"code": 0,
+"out": [
+"put4 : (subr (write @heap) ((bloblet (fields) @heap) int int) unit) ! pure",
+"adder : (subr (maxeff (write @heap) (alloc @heap) (io native) (read (globals put4))) () (subr (conv native) pure (int int) int)) ! pure",
+"via : (subr (maxeff (write @heap) (alloc @heap) (io native) (read (globals adder put4))) () int) ! pure",
+"via2 : (subr pure ((subr (conv native) pure (int int) int)) int) ! pure",
+"via3 : (subr pure ((subr (conv native) pure (int int) int)) int) ! pure",
+"42 : int ! (maxeff (write @heap) (alloc @heap) (io native) (read (globals adder put4 via)))",
+"42 : int ! (maxeff (write @heap) (alloc @heap) (io native) (read (globals adder put4 via2)))",
+"42 : int ! (maxeff (write @heap) (alloc @heap) (io native) (read (globals adder put4 via3)))",
+""
+],
+"err": [
+""
+]
+}

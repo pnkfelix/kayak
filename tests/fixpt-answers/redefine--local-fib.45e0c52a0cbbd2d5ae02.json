@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"local-fib.fx"
+],
+"code": 0,
+"out": [
+"fib : (subr spin (int) int) ! pure",
+"6765 : int ! (maxeff spin (read (globals fib)))",
+""
+],
+"err": [
+""
+]
+}

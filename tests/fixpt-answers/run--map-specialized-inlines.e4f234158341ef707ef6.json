@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"map-specialized-inlines.fx"
+],
+"code": 0,
+"out": [
+"define dbl : (subr pure (int) int) ! pure",
+"define inc2 : (subr (read (globals dbl)) (int) int) ! pure",
+"define map2 : (subr (maxeff (alloc @l) (read (globals dbl inc2 map2)) (read @l) spin) (step (listof int @l)) (listof int @l)) ! pure",
+"define total : (subr (maxeff (read (globals total)) (read @l) spin) ((listof int @l) int) int) ! pure",
+"define test : (subr (maxeff (alloc @l) (read (globals dbl inc2 map2 total)) (read @l) spin) (int) int) ! pure",
+"int ! (maxeff (alloc @l) (read (globals dbl inc2 map2 test total)) (read @l) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

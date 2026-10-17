@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"io-terminal.fx"
+],
+"code": 0,
+"out": [
+"define raw? : (subr (io terminal) () bool) ! pure",
+"define restored : (subr (io terminal) () unit) ! pure",
+"define columns : (subr (io terminal) () int) ! pure",
+"define keys : (subr (maxeff (io stdin) (io terminal) (read (globals raw? restored))) () int) ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

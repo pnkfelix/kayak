@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"desc-match.fx"
+],
+"code": 0,
+"out": [
+"define m : (moduleof (desc num int) (val x num)) ! pure",
+"define get-x : (subr pure (nums) int) ! pure",
+"int ! (read (globals get-x m))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

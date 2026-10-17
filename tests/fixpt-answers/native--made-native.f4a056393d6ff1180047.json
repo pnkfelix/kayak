@@ -1,0 +1,26 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"made-native.fx"
+],
+"code": 0,
+"out": [
+"make-adder : (subr spin (int) (subr pure (int) int)) ! pure",
+"add5 : (subr pure (int) int) ! (maxeff spin (read (globals make-adder)))",
+"even : (subr spin (int) bool) ! pure",
+"plus : (subr pure (int int) int) ! pure",
+"in-place : (subr spin (int) int) ! pure",
+"fns : (listof (subr pure (int) int) @heap) ! (alloc @heap)",
+"15 : int ! (read (globals add5))",
+"#t : bool ! (maxeff spin (read (globals even)))",
+"5 : int ! (read (globals plus))",
+"42 : int ! (maxeff (read @heap) (read (globals fns)))",
+"500500 : int ! (maxeff spin (read (globals in-place)))",
+""
+],
+"err": [
+""
+]
+}

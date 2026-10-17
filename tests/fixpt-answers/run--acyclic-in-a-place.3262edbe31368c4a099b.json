@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"acyclic-in-a-place.fx"
+],
+"code": 0,
+"out": [
+"len : (poly ((p place)) (subr (read (acyclic p)) ((listof int (acyclic p)) int) int)) ! pure",
+"3 : int ! (read (globals len))",
+""
+],
+"err": [
+""
+]
+}

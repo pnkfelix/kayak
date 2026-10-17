@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"transparent.fx"
+],
+"code": 0,
+"out": [
+"n : (moduleof (desc num int) (val x num)) ! pure",
+"6 : int ! (read (globals n))",
+""
+],
+"err": [
+""
+]
+}

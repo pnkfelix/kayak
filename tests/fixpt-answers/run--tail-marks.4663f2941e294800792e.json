@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"tail-marks.fx"
+],
+"code": 0,
+"out": [
+"key : (mark-key int @m) ! (alloc @m)",
+"loop : (subr (maxeff (read @m) (write @m) (alloc @m) spin (read (globals key loop))) (int) (listof int @m)) ! pure",
+"nested : (subr (maxeff (read @m) (write @m) (alloc @m) spin (read (globals key))) () (listof int @m)) ! pure",
+"(1 2) : (listof int @m) ! (maxeff (read @m) (write @m) (alloc @m) spin (read (globals key loop nested)))",
+""
+],
+"err": [
+""
+]
+}

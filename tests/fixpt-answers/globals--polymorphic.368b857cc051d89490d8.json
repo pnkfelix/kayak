@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"polymorphic.fx"
+],
+"code": 0,
+"out": [
+"define limit : int ! pure",
+"define below : (subr (read (globals limit)) (int) bool) ! pure",
+"define twice : (poly ((e effect)) (subr e ((subr e (int) bool) int) bool)) ! pure",
+"bool ! (read (globals below limit twice))",
+"bool ! (read (globals twice))",
+"define twice-below : (subr (read (globals below limit twice)) (int) bool) ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

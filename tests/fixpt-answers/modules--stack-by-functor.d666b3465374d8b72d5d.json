@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"stack-by-functor.fx"
+],
+"code": 0,
+"out": [
+"define make-stack : (subr pure (elt-sig) (moduleof (abs stack type) (val empty stack) (val is-empty (subr (read @heap) (stack) bool)) (val push (subr (alloc @heap) ((select $1 t) stack) stack)) (val top (subr (read @heap) (stack) (select $1 t))) (val pop (subr (read @heap) (stack) stack)))) ! pure",
+"define int-elt : (moduleof (desc t int)) ! pure",
+"define bool-elt : (moduleof (desc t bool)) ! pure",
+"(listof int @r.1) ! (maxeff (alloc @heap) (alloc @r.1) (read (globals bool-elt int-elt make-stack)) (read @heap))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

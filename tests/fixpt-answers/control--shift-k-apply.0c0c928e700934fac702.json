@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"shift-k-apply.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/control/shift-k-apply.fx:4:9: unbound variable `s`",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

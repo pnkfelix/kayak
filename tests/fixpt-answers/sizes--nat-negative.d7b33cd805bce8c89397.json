@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"nat-negative.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/nat-negative.fx:2:15: `n` is declared a nat: a nat is expected here, and this is a int",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"quasiquote.fx"
+],
+"code": 0,
+"out": [
+"define walk : (subr pure (datum) int) ! pure",
+"define x : int ! pure",
+"define xs : (listof datum acyclic) ! pure",
+"int ! (read (globals walk x xs))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

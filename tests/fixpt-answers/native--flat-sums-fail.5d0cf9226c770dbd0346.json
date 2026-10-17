@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"flat-sums-fail.fx"
+],
+"code": 0,
+"out": [
+"mk : (subr (maxeff (read @heap) (alloc @heap)) (int) (blobref o s)) ! pure",
+"var : (subr (maxeff (read @heap) (write @heap) (alloc @heap) (read (globals mk))) (int) int) ! pure",
+"tag : (subr (maxeff (read @heap) (write @heap) (alloc @heap) (read (globals mk))) (int) int) ! pure",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"shift-counts.fx"
+],
+"code": 0,
+"out": [
+"define counts : (subr (alloc @heap) (int int int) ints) ! pure",
+"define shift-counts : (subr (maxeff (alloc @heap) (read (globals counts))) (int) ints) ! pure",
+"ints ! (maxeff (alloc @heap) (read (globals counts shift-counts)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,19 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"data-generative.fx"
+],
+"code": 1,
+"out": [
+"up-ty-id : (subr pure (int) ty-id) ! pure",
+"down-ty-id : (subr pure (ty-id) int) ! pure",
+"same : (poly ((t data)) (subr pure (t) t)) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/datum/data-generative.fx:4:1: `t` is bound as data, and a ty-id is not data",
+""
+]
+}

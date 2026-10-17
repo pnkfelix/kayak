@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"made-in-procedure.fx"
+],
+"code": 0,
+"out": [
+"make : (subr pure (int) counters) ! pure",
+"use : (subr pure (counters) int) ! pure",
+"42 : int ! (read (globals make use))",
+""
+],
+"err": [
+""
+]
+}

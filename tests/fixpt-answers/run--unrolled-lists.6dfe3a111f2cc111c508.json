@@ -1,0 +1,27 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"unrolled-lists.fx"
+],
+"code": 0,
+"out": [
+"syms3 : (subr (alloc acyclic) (symbol symbol symbol) syms) ! pure",
+"one-of? : (subr (maxeff spin (read (globals one-of?))) (symbol syms) bool) ! pure",
+"k : syms ! pure",
+"k-helper : syms ! (read (globals syms3))",
+"k-cons : syms ! (read (globals k))",
+"k-none : syms ! pure",
+"in-k : (subr (maxeff spin (read (globals k one-of?))) (symbol) bool) ! pure",
+"in-helper : (subr (maxeff spin (read (globals k-helper one-of?))) (symbol) bool) ! pure",
+"in-cons : (subr (maxeff spin (read (globals k-cons one-of?))) (symbol) int) ! pure",
+"in-none : (subr (maxeff spin (read (globals k-none one-of?))) (symbol) bool) ! pure",
+"score : (subr (maxeff spin (read (globals in-cons in-helper in-k in-none k k-cons k-helper k-none one-of?))) () int) ! pure",
+"211 : int ! (maxeff spin (read (globals in-cons in-helper in-k in-none k k-cons k-helper k-none one-of? score)))",
+""
+],
+"err": [
+""
+]
+}

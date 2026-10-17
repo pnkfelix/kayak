@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"blobref-sees-bytes.fx"
+],
+"code": 0,
+"out": [
+"define b : pt ! (alloc @b)",
+"unit ! (maxeff (read (globals b)) (write @b))",
+"unit ! (maxeff (read (globals b)) (write @b))",
+"(listof int @r.1) ! (maxeff (alloc @r.1) (read (globals b)) (read @b))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

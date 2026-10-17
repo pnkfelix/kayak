@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"narrowed-only-where-it-holds.fx"
+],
+"code": 1,
+"out": [
+"head : (subr (read @r) ((pairof int ints @r)) int) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/unions/narrowed-only-where-it-holds.fx:6:37: argument 1 is a ints, where a (pairof int ints @r) is expected",
+""
+]
+}

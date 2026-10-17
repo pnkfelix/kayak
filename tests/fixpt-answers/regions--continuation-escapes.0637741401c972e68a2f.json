@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"continuation-escapes.fx"
+],
+"code": 1,
+"out": [
+"t : (prompt-tag int int pure @p) ! (alloc @p)",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/continuation-escapes.fx:6:5: a continuation captured in `letreap r` could outlive its region: its effect is (maxeff (goto @p) (comefrom @p) (read (globals t)))",
+""
+]
+}

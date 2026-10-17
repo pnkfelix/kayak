@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"unfold.fx"
+],
+"code": 0,
+"out": [
+"define f : (subr pure (s2) int) ! pure",
+"define g : (subr (read (globals f)) (s1) int) ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

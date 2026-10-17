@@ -1,0 +1,20 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"flat-tagcase-no-field.fx"
+],
+"code": 1,
+"out": [
+"b : o ! (alloc @b)",
+"#u : unit ! (maxeff (write @b) (read (globals b)))",
+"r : (blobref o (sumof (a f64) (b i32))) ! (read (globals b))",
+" : int ! (maxeff (read @b) (read (globals r)))",
+""
+],
+"err": [
+"! evaluation failed: flat sum: its tag names no field of its owner",
+""
+]
+}

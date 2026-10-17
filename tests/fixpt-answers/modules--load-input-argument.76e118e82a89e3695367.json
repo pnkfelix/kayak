@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"load-input-argument.fx"
+],
+"code": 0,
+"out": [
+"define half-of : (subr pure ((moduleof (val half int))) int) ! pure",
+"define r : int ! (read (globals %shared:input:/Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/../module-files/answer.fx half-of))",
+"int ! (read (globals r))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

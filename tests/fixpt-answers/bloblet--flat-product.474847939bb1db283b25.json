@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"flat-product.fx"
+],
+"code": 0,
+"out": [
+"b : o ! (alloc @b)",
+"arr : (blobref o pts) ! (read (globals b))",
+"p1 : (blobref o pt) ! (read (globals arr))",
+"#u : unit ! (maxeff (write @b) (read (globals p1)))",
+"#u : unit ! (maxeff (write @b) (read (globals p1)))",
+"q0 : (blobref o q) ! (read (globals b))",
+"(24 32 40 7 4 8 16) : (listof int @r.1) ! (maxeff (read @b) (alloc @r.1) (read (globals arr b p1 q0)))",
+""
+],
+"err": [
+""
+]
+}

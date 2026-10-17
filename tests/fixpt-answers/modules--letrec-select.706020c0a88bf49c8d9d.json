@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"letrec-select.fx"
+],
+"code": 0,
+"out": [
+"define counter : (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int))) ! pure",
+"int ! (read (globals counter))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

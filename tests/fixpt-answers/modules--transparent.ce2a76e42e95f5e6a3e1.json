@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"transparent.fx"
+],
+"code": 0,
+"out": [
+"n : (moduleof (desc num int) (val x num)) ! pure",
+"6 : int ! (read (globals n))",
+""
+],
+"err": [
+""
+]
+}

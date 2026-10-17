@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"share-ref.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/processes/share-ref.fx:4:25: `w` is declared a (addr int @w): a process may share nothing that can be written, and its body holds `counter`: a reference at @c, which can be written",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

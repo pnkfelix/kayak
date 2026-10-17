@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"race-compute.fx"
+],
+"code": 0,
+"out": [
+"define fib : (subr (maxeff (read (globals fib)) spin) (int) int) ! pure",
+"define fib-from : (subr (maxeff (read (globals fib-from)) spin) (int int int) int) ! pure",
+"int ! (maxeff (read (globals fib fib-from)) nondet spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

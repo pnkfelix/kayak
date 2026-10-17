@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"types-mutual.fx"
+],
+"code": 0,
+"out": [
+"m : (moduleof (desc a (mu %2 (sumof (stop (productof)) (more (productof (1 (sumof (end (productof)) (again (productof (1 %2)))))))))) (desc b (sumof (end (productof)) (again (productof (1 a))))) (val x a)) ! pure",
+"1 : int ! pure",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"flat-variant-not-sum.fx"
+],
+"code": 1,
+"out": [
+"b : o ! (alloc @b)",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-variant-not-sum.fx:5:19: a blobref to a flat sum is expected here, and this is a (blobref o f64)",
+""
+]
+}

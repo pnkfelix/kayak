@@ -1,0 +1,16 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"fix-through-pair.fx"
+],
+"code": 0,
+"out": [
+"(1) : (listof int @heap) ! (alloc @heap)",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,20 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"race.fx"
+],
+"code": 0,
+"out": [
+"a : (icell int @c) ! (alloc @c)",
+"b : (icell int @c) ! (alloc @c)",
+"w : (addr int @p) ! (maxeff (alloc @p) (init @c) nondet (read (globals a)))",
+"#u : unit ! (maxeff (send @p) (read (globals w)))",
+"7 : int ! (maxeff (await @c) nondet (read (globals a b)))",
+""
+],
+"err": [
+""
+]
+}

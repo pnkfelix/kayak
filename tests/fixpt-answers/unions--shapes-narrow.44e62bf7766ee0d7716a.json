@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"shapes-narrow.fx"
+],
+"code": 0,
+"out": [
+"define f : (subr (read @r) (v) int) ! pure",
+"int ! (maxeff (read (globals f)) (read @r))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"abs-params-kind.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/higher-kinds/abs-params-kind.fx:3:33: an abstract type constructor is `(abs (f (name kind) …) type)`",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

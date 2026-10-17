@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"length-of-a-list.fx"
+],
+"code": 0,
+"out": [
+"define l : (listof int acyclic) ! pure",
+"nat ! (read (globals l))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"fails-car.fx"
+],
+"code": 1,
+"out": [
+" : int ! pure",
+""
+],
+"err": [
+"! evaluation failed: car or cdr of a non-pair",
+""
+]
+}

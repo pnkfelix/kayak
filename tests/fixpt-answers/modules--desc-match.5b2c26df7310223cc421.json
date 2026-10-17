@@ -1,0 +1,44 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"desc-match.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (25 cells, cellular):",
+"     0: lit 10",
+"     2: lit 37",
+"     4: slot 0",
+"     6: prim %make-frozen 2",
+"     9: slot! 0",
+"    11: global! m",
+"    13: closure word get-x over 0",
+"    16: global! get-x",
+"    18: global m",
+"    20: global get-x",
+"    22: tcall 1",
+"    24: exit",
+"",
+"word get-x (7 cells, cellular):",
+"     0: slot 0",
+"     2: field 2",
+"     4: slot 1",
+"     6: return",
+"  its register code (11 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: field 2",
+"       6: setreg 2",
+"       8: reg 2",
+"      10: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

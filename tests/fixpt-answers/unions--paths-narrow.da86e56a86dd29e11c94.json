@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"paths-narrow.fx"
+],
+"code": 0,
+"out": [
+"plus : (subr (read @r) (cell) int) ! pure",
+"otherwise : (subr (read @r) (cell) int) ! pure",
+"elsewhere : (subr (maxeff (read @r) (write @s)) (cell (ref int @s)) int) ! pure",
+"through-heap : (subr (write @heap) (frozen (ref int @heap)) int) ! pure",
+"field : (subr pure ((productof (a v))) int) ! pure",
+"42 : int ! (read (globals field))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"proj-select.fx"
+],
+"code": 0,
+"out": [
+"define m : (moduleof (desc cell (productof (1 int))) (val x int)) ! pure",
+"define id : (poly ((t type)) (subr pure (t) t)) ! pure",
+"define b : box ! pure",
+"int ! (read (globals b id))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

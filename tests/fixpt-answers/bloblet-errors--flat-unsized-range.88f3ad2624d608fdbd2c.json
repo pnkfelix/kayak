@@ -1,0 +1,31 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"flat-unsized-range.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (26 cells, cellular):",
+"     0: lit 40",
+"     2: prim %make-bloblet 1",
+"     5: global! b",
+"     7: global b",
+"     9: lit 0",
+"    11: prim %suffix-ref 2",
+"    14: global! arr",
+"    16: global arr",
+"    18: lit 5",
+"    20: lit 1152921500311879688",
+"    22: prim %fx26-suffix-ref-index 3",
+"    25: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

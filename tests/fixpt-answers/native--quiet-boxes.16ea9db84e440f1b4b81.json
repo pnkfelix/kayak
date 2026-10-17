@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"quiet-boxes.fx"
+],
+"code": 0,
+"out": [
+"twice : (subr pure (f64) f64) ! pure",
+"loop : (subr (maxeff spin (read (globals loop))) ((subr pure (f64) f64) int f64) f64) ! pure",
+"4000002000000 : int ! (maxeff spin (read (globals loop twice)))",
+""
+],
+"err": [
+""
+]
+}

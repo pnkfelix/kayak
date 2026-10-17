@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"boolean-tests.fx"
+],
+"code": 0,
+"out": [
+"define log : (ref int @r) ! (alloc @r)",
+"define note : (subr (maxeff (read (globals log)) (read @r) (write @r)) (int bool) bool) ! pure",
+"define pick : (subr (maxeff (read (globals log note)) (read @r) (write @r)) (int int) int) ! pure",
+"define run : (subr (maxeff (read (globals log note pick)) (read @r) (write @r)) (int int) int) ! pure",
+"int ! (maxeff (read (globals log note pick run)) (read @r) (write @r))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

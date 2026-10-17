@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"variadic-standard.fx"
+],
+"code": 0,
+"out": [
+"define total : (subr (maxeff (read (globals total)) (read @heap) spin) (ints) int) ! pure",
+"define tail : ints ! (alloc @heap)",
+"define joined : ints ! (maxeff (alloc @heap) (read (globals tail)) (read @heap))",
+"int ! (maxeff (alloc @heap) (read (globals joined tail total)) (read @heap) spin)",
+"string ! pure",
+"define join-all : (subr (maxeff (alloc @heap) (read @heap) spin) ((listof ints @heap)) ints) ! pure",
+"define say : (subr (read @heap) (strings) string) ! pure",
+"define twice : (subr pure ((vsubr pure string string) string) string) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals join-all tail total)) (read @heap) spin)",
+"string ! (maxeff (alloc @heap) (read (globals say)) (read @heap))",
+"string ! (read (globals twice))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

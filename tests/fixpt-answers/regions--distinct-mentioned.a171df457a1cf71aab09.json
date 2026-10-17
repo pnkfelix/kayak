@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"distinct-mentioned.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/distinct-mentioned.fx:8:1: `r` is distinct, and @heap may be a region the procedure's type mentions",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"frozenblob.fx"
+],
+"code": 0,
+"out": [
+"define f : (subr pure (b2) int) ! pure",
+"define g : (subr (read (globals f)) (b1) int) ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

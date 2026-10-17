@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"cdr-not-same.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/cdr-not-same.fx:3:35: a (nlist t n) is expected here, and this is a (nlist t (- n 1))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

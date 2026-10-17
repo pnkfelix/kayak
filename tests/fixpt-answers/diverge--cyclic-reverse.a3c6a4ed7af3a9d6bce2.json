@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"cyclic-reverse.fx"
+],
+"code": 0,
+"out": [
+"define f : (subr (maxeff (alloc @r) (read @r) (write @r)) () (listof int @r)) ! pure",
+"(listof int @r) ! (maxeff (alloc @r) (read (globals f)) (read @r) (write @r))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

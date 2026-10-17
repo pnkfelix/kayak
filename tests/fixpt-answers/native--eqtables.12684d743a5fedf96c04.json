@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"eqtables.fx"
+],
+"code": 0,
+"out": [
+"fill! : (subr (maxeff (read @k) (read @t) (write @k) (write @t) (alloc @k) (alloc @t) spin (read (globals fill!))) (counts keys int) unit) ! pure",
+"total : (subr (maxeff (read @k) (read @t) (write @k) (write @t) (alloc @k) (alloc @t) spin (read (globals total))) (counts keys int int) int) ! pure",
+"thin! : (subr (maxeff (read @k) (read @t) (write @k) (write @t) (alloc @k) (alloc @t) spin (read (globals thin!))) (counts keys int) unit) ! pure",
+"round : (subr (maxeff (read @k) (read @t) (write @k) (write @t) (alloc @heap) (alloc @k) (alloc @t) spin (read (globals fill! thin! total))) (int) strings) ! pure",
+"refs : (subr (maxeff (read @t) (write @t) (write @r) (alloc @t) (alloc @r)) () int) ! pure",
+"eqtables : (subr (maxeff (read @k) (read @t) (write @k) (write @t) (write @r) (alloc @heap) (alloc @k) (alloc @t) (alloc @r) spin (read (globals fill! refs round thin! total))) (int) strings) ! pure",
+"(\"50\" \"10000\" \"199990000\" \"100000000\" \"not a copy\" \"has 1\" \"deleted 0\") : strings ! (maxeff (read @k) (read @t) (write @k) (write @t) (write @r) (alloc @heap) (alloc @k) (alloc @t) (alloc @r) spin (read (globals eqtables fill! refs round thin! total)))",
+""
+],
+"err": [
+""
+]
+}

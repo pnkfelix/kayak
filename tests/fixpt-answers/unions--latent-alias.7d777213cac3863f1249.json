@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"latent-alias.fx"
+],
+"code": 0,
+"out": [
+"define is-int : (subr pure ((union int string)) (bool (then (shape 0 int)) (else))) ! pure",
+"define f : (subr (read (globals is-int)) ((union int string)) int) ! pure",
+"int ! (read (globals f is-int))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

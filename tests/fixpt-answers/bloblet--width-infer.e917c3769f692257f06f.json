@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"width-infer.fx"
+],
+"code": 0,
+"out": [
+"define first : (poly ((a type)) (subr (read @b) ((bloblet (fields a) @b)) a)) ! pure",
+"define b : (bloblet (fields int bool) @b) ! (alloc @b)",
+"define c : (bloblet (fields bool int) @b) ! (alloc @b)",
+"(pairof int bool @r.1) ! (maxeff (alloc @r.1) (read (globals b c first)) (read @b))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

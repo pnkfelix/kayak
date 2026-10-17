@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"pselect-deadline.fx"
+],
+"code": 0,
+"out": [
+"define answer : (icell int @c) ! (alloc @c)",
+"define waiter : (addr int @p) ! (maxeff (alloc @p) (init @c) (io clock) (read (globals answer)) nondet)",
+"int ! (maxeff (await @c) (read (globals answer)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

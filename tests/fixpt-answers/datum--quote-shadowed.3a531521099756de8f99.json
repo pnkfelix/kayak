@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"quote-shadowed.fx"
+],
+"code": 0,
+"out": [
+"define xs : (listof datum acyclic) ! pure",
+"define walk : (subr pure (datum) int) ! pure",
+"int ! (read (globals walk xs))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

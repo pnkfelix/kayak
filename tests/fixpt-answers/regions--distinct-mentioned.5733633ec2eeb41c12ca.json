@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"distinct-mentioned.fx"
+],
+"code": 1,
+"out": [
+"copy-in : (poly ((r region distinct)) (subr (maxeff (read @heap) (read r) (write r)) ((ref int r) (ref int @heap)) unit)) ! pure",
+"h : (ref int @heap) ! (alloc @heap)",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/distinct-mentioned.fx:8:1: `r` is distinct, and @heap may be a region the procedure's type mentions",
+""
+]
+}

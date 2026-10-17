@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"extend-abstract.fx"
+],
+"code": 0,
+"out": [
+"define b : (moduleof (abs t type) (abs u type) (val zero t) (val value (subr pure (t) int)) (val next (subr pure (t) u)) (val get (subr pure (u) int))) ! pure",
+"int ! (read (globals b))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"layer2.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/layer2.fx:2:2: unbound variable `module-parameters`",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

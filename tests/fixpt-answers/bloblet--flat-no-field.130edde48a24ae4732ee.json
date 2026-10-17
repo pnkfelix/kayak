@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"flat-no-field.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-no-field.fx:6:1: a (blobref o (productof (x f64) (y f64))) has no `z` laid out",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

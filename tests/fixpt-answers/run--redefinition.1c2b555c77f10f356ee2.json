@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"redefinition.fx"
+],
+"code": 0,
+"out": [
+"define x : int ! pure",
+"define before : (subr (read (globals x)) () int) ! pure",
+"define x : int ! pure",
+"int ! (read (globals before x))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

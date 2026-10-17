@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"not-and-or-narrow.fx"
+],
+"code": 0,
+"out": [
+"define head : (subr (read @r) ((pairof int ints @r)) int) ! pure",
+"define by-not : (subr (maxeff (read (globals head)) (read @r)) (ints) int) ! pure",
+"define by-and : (subr (maxeff (read (globals head)) (read @r)) (ints) int) ! pure",
+"define by-or : (subr (maxeff (read (globals head)) (read @r)) (ints) int) ! pure",
+"int ! (maxeff (alloc @r) (read (globals by-and by-not by-or head)) (read @r))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

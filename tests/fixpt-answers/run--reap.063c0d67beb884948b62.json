@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"reap.fx"
+],
+"code": 0,
+"out": [
+"churn : (subr spin (int) int) ! pure",
+"500500 : int ! (maxeff spin (read (globals churn)))",
+""
+],
+"err": [
+""
+]
+}

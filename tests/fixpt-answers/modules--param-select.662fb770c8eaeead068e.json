@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"param-select.fx"
+],
+"code": 0,
+"out": [
+"define counter : (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int))) ! pure",
+"define bump : (subr (read (globals counter)) (counter..t) counter..t) ! pure",
+"int ! (read (globals bump counter))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,51 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"effect-moduleof.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (21 cells, cellular):",
+"     0: closure word lambda@214 over 0",
+"     3: lit 37",
+"     5: slot 0",
+"     7: prim %make-frozen 2",
+"    10: slot! 0",
+"    12: global! m",
+"    14: global m",
+"    16: global! n",
+"    18: lit 1",
+"    20: exit",
+"",
+"word lambda@214 (16 cells, cellular):",
+"     0: slot 0",
+"     2: slot 0",
+"     4: field 2",
+"     6: lit 1",
+"     8: int-add",
+"     9: swap",
+"    10: lit 2",
+"    12: field!",
+"    13: lit |#u|",
+"    15: return",
+"  its register code (19 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: field 2",
+"       6: op2imm int-add 1",
+"       9: setreg 2",
+"      11: reg 1",
+"      13: setfield 2 2",
+"      16: const |#u|",
+"      18: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

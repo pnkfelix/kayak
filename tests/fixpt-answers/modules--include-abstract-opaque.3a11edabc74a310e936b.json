@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"include-abstract-opaque.fx"
+],
+"code": 1,
+"out": [
+"m : (moduleof (abs t type) (val z t)) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/include-abstract-opaque.fx:5:12: a int is expected here, and this is a m..t",
+""
+]
+}

@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"thunk-untold.fx"
+],
+"code": 0,
+"out": [
+"count-of : (poly ((t type)) (subr pure (t) int)) ! pure",
+"1 : int ! (read (globals count-of))",
+""
+],
+"err": [
+""
+]
+}

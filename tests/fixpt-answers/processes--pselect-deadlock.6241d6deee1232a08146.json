@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"pselect-deadlock.fx"
+],
+"code": 0,
+"out": [
+"define a : (icell int @c) ! (alloc @c)",
+"define b : (icell int @c) ! (alloc @c)",
+"int ! (maxeff (await @c) (read (globals a b)) nondet)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

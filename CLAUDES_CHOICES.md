@@ -3422,3 +3422,41 @@ collector, as Fixpt aligns them.
   word entered (`resumed!`).
 - **Results.** `fib` 16.1 ms to 12.9, `tak` 7.5 to 6.3 (the rest within a
   millisecond); `captures`' control routines are still given back.
+
+## C132. Fixpt's programs and answers, kept in kayak (2026-10-17)
+
+The user's (2026-10-17): store Fixpt's tests locally. Until now the scripts
+that check kayak against Fixpt's FX-26 programs read them from the clone,
+and asked the pinned Fixpt for every answer: no clone, no check. Kayak is
+to be the reference (PLAN §9), and a retired Fixpt answers nothing.
+- **The programs**: `tests/fx26/programs/`, Fixpt's
+  `crates/fixpt-fx26/tests/programs/` at the pin, every file (710, 2.8
+  MB, their relative loads intact), written by `scripts/fx26-tests.py`
+  from the clone's index at `FIXPT_REV`; `--check` in `check.sh` holds it
+  to the pin when there is a clone. Copied whole, not only what passes,
+  so that what kayak does not do yet is in its own tree too.
+- **The answers**: `tests/fixpt-answers/`, what Fixpt said of each run a
+  script asked for (`eval`, `check`, `compile --full-literals`, with their
+  options), kept by `scripts/fixptcache.py`, the one door every script
+  already asked Fixpt through. Each is `NAME.HASH.json`, the hash of the
+  arguments and the files' texts (not the pin), its output a line to an
+  array element so that a pin's changes read as a diff; a run past its
+  time limit is kept as one, and replays as it ended. `REV` says which
+  pin they are. With no clone, the answers kept are used, and an answer
+  not kept is an error that says so. With a clone and answers of another
+  pin, each is asked again and rewritten where it changed;
+  `target/fixpt-cache/` (every pin's runs) still sits under it, keyed as
+  before, so that is quick. `check.sh` notes which answers it asked for
+  and, with a clone, ends by dropping the rest and stamping `REV`: moving
+  the pin is editing `FIXPT_REV` and running the check, and the commit
+  shows how Fixpt's answers moved.
+- **Not kept here**: the corpus's answers, which are kept already as
+  `tests/kfx/NAME.out` (`corpus.py` asks with `keep=False`; Fixpt's
+  refusals of `tests/kfx-refused` and `kfx-stricter` are kept);
+  `io-programs.py`'s, whose programs read the world; and stage 0
+  (`fixpoint.sh`), Fixpt running the compiler, which is a check of
+  Fixpt as an implementation rather than an answer to keep, and which
+  kayak's own engine is to take over (PLAN §6, the second self-hosting).
+- **Not chosen**: the answers in one file (every pin's change one huge
+  diff); hashes as names alone (a person could not find a program's);
+  only the programs, still asking a live Fixpt (no check without one).

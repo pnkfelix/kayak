@@ -1,0 +1,19 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"poly-self-application-spin.fx"
+],
+"code": 0,
+"out": [
+"omega : (subr spin () int) ! pure",
+"kept : (subr pure (T) (listof T acyclic)) ! pure",
+"app-s : (poly ((t type)) (subr pure ((subr pure (t) int) t S) S)) ! pure",
+"app-s-at-T : (subr (read (globals app-s)) () (subr spin ((subr pure (T) int) T S) S-spin)) ! pure",
+""
+],
+"err": [
+""
+]
+}

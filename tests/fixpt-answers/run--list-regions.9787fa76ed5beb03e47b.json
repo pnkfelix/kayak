@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"list-regions.fx"
+],
+"code": 0,
+"out": [
+"h : (listof int @heap) ! (alloc @heap)",
+"#u : unit ! (maxeff (write @heap) (read (globals h)))",
+"a : (listof int acyclic) ! pure",
+"hs : (listof int @heap) ! (maxeff (alloc @heap) (read (globals a)))",
+"#u : unit ! (maxeff (write @heap) (read (globals hs)))",
+"54 : int ! (maxeff (read @heap) (read (globals a h hs)))",
+""
+],
+"err": [
+""
+]
+}

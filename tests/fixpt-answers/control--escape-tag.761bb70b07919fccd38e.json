@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"escape-tag.fx"
+],
+"code": 0,
+"out": [
+"digit : (poly ((r region)) (subr (goto r) ((escape-tag int string r) char) int)) ! pure",
+"sum-over : (poly ((e effect)) (subr (maxeff spin e (read (globals sum-over))) ((subr e (char) int) string int) int)) ! pure",
+"digit-sum : (subr (maxeff spin (read (globals digit sum-over))) (string) int) ! pure",
+"main : (subr (maxeff spin (read (globals digit digit-sum sum-over))) () (listof int acyclic)) ! pure",
+"(6 -1 0) : (listof int acyclic) ! (maxeff spin (read (globals digit digit-sum main sum-over)))",
+""
+],
+"err": [
+""
+]
+}

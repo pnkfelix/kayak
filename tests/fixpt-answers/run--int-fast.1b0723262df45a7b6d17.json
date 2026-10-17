@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"int-fast.fx"
+],
+"code": 0,
+"out": [
+"define md : (subr pure (int int) int) ! pure",
+"define qu : (subr pure (int int) int) ! pure",
+"define mu : (subr pure (int int) int) ! pure",
+"define sh : (subr pure (int int) int) ! pure",
+"define big : int ! pure",
+"(listof int @r.1) ! (maxeff (alloc @r.1) (read (globals big md mu qu sh)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

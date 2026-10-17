@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"star-not-lambda.fx"
+],
+"code": 1,
+"out": [
+"inc : (subr pure (int) int) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/arrows/star-not-lambda.fx:3:30: `->*` finds a procedure's effect from its `lambda`: define it as one",
+""
+]
+}

@@ -1,0 +1,19 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"declared.fx"
+],
+"code": 0,
+"out": [
+"put4 : (subr (write @heap) ((bloblet (fields) @heap) int int) unit) ! pure",
+"subtracter : (subr (maxeff (write @heap) (alloc @heap) (io native) (read (globals put4))) () (subr (conv native) pure (int int) int)) ! pure",
+"\"(target arm64)\" : string ! pure",
+"42 : int ! (maxeff (write @heap) (alloc @heap) (io native) (read (globals put4 subtracter)))",
+""
+],
+"err": [
+""
+]
+}

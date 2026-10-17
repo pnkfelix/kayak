@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"include-abstract-alias.fx"
+],
+"code": 0,
+"out": [
+"define counter : (moduleof (abs t type) (val zero t) (val next (subr pure (t) t)) (val value (subr pure (t) int))) ! pure",
+"define more : (moduleof (desc t counter..t) (val zero counter..t) (val next (subr pure (counter..t) counter..t)) (val value (subr pure (counter..t) int)) (val two t)) ! (read (globals counter))",
+"define to-counter : (subr pure (counter..t) counter..t) ! pure",
+"define to-more : (subr pure (counter..t) counter..t) ! pure",
+"int ! (read (globals counter more to-counter to-more))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

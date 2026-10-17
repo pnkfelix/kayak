@@ -1,0 +1,51 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"family-alias.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (29 cells, cellular):",
+"     0: closure word lambda@291 over 0",
+"     3: lit 37",
+"     5: slot 0",
+"     7: prim %make-frozen 2",
+"    10: slot! 0",
+"    12: global! m",
+"    14: closure word f over 0",
+"    17: global! f",
+"    19: lit 1",
+"    21: lit 2",
+"    23: cons",
+"    24: global f",
+"    26: tcall 1",
+"    28: exit",
+"",
+"word f (4 cells, cellular):",
+"     0: slot 0",
+"     2: pair-car",
+"     3: return",
+"  its register code (7 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: op1 pair-car",
+"       6: return",
+"",
+"word lambda@291 (3 cells, cellular):",
+"     0: slot 0",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

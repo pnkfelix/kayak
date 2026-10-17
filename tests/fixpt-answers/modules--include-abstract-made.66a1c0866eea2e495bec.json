@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"include-abstract-made.fx"
+],
+"code": 0,
+"out": [
+"define make : (subr pure (int) (moduleof (abs t type) (val z t) (val get (subr pure (t) int)))) ! pure",
+"define a : (moduleof (abs t type) (val z t) (val get (subr pure (t) int))) ! (read (globals make))",
+"define b : (moduleof (abs t type) (val z t) (val get (subr pure (t) int))) ! (read (globals make))",
+"int ! (read (globals a b))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

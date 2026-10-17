@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"cannot-infer.fx"
+],
+"code": 1,
+"out": [
+"id : (poly ((f (=> (type) type)) (a type)) (subr pure ((f a)) (f a))) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/higher-kinds/cannot-infer.fx:6:1: `f` cannot be inferred for (poly ((f (=> (type) type)) (a type)) (subr pure ((f a)) (f a))): nothing here says what it is. Use `proj`, or `the`",
+""
+]
+}

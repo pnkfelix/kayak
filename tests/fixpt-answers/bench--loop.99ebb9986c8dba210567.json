@@ -1,0 +1,19 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"--step-limit",
+"none",
+"eval",
+"loop.fx"
+],
+"code": 0,
+"out": [
+"count : (subr spin (int) int) ! pure",
+"49999995000000 : int ! (maxeff spin (read (globals count)))",
+""
+],
+"err": [
+""
+]
+}

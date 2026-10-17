@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"else-narrows.fx"
+],
+"code": 0,
+"out": [
+"f : (subr pure (abc) int) ! pure",
+"42 : int ! (read (globals f))",
+""
+],
+"err": [
+""
+]
+}

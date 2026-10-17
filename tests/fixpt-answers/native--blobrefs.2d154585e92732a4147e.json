@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"blobrefs.fx"
+],
+"code": 0,
+"out": [
+"walk : (subr (maxeff (read @heap) (write @heap) (alloc @heap) spin (read (globals walk))) ((blobref o i64) int int) int) ! pure",
+"blobrefs : (subr (maxeff (read @heap) (write @heap) (alloc @heap) spin (read (globals walk))) (int) ints) ! pure",
+"(8 7 -5 4000000000 9223372030926249001 12345678901234567 -7 12 5 5050) : ints ! (maxeff (read @heap) (write @heap) (alloc @heap) spin (read (globals blobrefs walk)))",
+""
+],
+"err": [
+""
+]
+}

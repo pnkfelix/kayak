@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"well-founded.fx"
+],
+"code": 0,
+"out": [
+"len : (subr pure ((listof int acyclic) int) int) ! pure",
+"count : (subr pure (int) int) ! pure",
+"up : (subr pure (int int) int) ! pure",
+"total : (subr pure (tree) int) ! pure",
+"ev : (subr (read @globals) (int) bool) ! pure",
+"od : (subr (read @globals) (int) bool) ! pure",
+"ack : (subr pure (int int) int) ! pure",
+"built : (subr pure (int) (listof int acyclic)) ! pure",
+"63 : int ! (maxeff (read @globals) (read (globals ack built count ev len total up)))",
+""
+],
+"err": [
+""
+]
+}

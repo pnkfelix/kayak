@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"poly-over-constructor.fx"
+],
+"code": 0,
+"out": [
+"define id : (poly ((f (=> (type) type)) (a type)) (subr pure ((f a)) (f a))) ! pure",
+"define id2 : (poly ((f (=> (type region) type)) (a type) (r region)) (subr pure ((f a r)) (f a r))) ! pure",
+"define b : (productof (v int)) ! (read (globals id))",
+"define l : (listof int @heap) ! (maxeff (alloc @heap) (read (globals id)))",
+"(listof int @heap) ! (read (globals id2 l))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

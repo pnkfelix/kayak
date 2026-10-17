@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"race-all-lost.fx"
+],
+"code": 1,
+"out": [
+"lost : (subr pure () int) ! pure",
+"fails : (subr (maxeff spin (read (globals fails lost))) (int) int) ! pure",
+" : int ! (maxeff spin nondet (read (globals fails lost)))",
+""
+],
+"err": [
+"! evaluation failed: every branch failed",
+""
+]
+}

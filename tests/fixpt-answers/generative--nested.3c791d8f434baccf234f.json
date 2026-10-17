@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"nested.fx"
+],
+"code": 0,
+"out": [
+"define up-nest : (poly ((a type)) (subr pure ((sumof (none unit) (more (productof (hd a) (tl (nest (productof (l a) (r a)))))))) (nest a))) ! pure",
+"define down-nest : (poly ((a type)) (subr pure ((nest a)) (sumof (none unit) (more (productof (hd a) (tl (nest (productof (l a) (r a))))))))) ! pure",
+"define n : (nest int) ! (read (globals up-nest))",
+"define size : (subr (read @globals) ((nest int)) int) ! pure",
+"int ! (maxeff (read (globals n size)) (read @globals))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

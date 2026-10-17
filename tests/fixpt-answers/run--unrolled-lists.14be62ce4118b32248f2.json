@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"unrolled-lists.fx"
+],
+"code": 0,
+"out": [
+"define syms3 : (subr (alloc acyclic) (symbol symbol symbol) syms) ! pure",
+"define one-of? : (subr (maxeff (read (globals one-of?)) spin) (symbol syms) bool) ! pure",
+"define k : syms ! pure",
+"define k-helper : syms ! (read (globals syms3))",
+"define k-cons : syms ! (read (globals k))",
+"define k-none : syms ! pure",
+"define in-k : (subr (maxeff (read (globals k one-of?)) spin) (symbol) bool) ! pure",
+"define in-helper : (subr (maxeff (read (globals k-helper one-of?)) spin) (symbol) bool) ! pure",
+"define in-cons : (subr (maxeff (read (globals k-cons one-of?)) spin) (symbol) int) ! pure",
+"define in-none : (subr (maxeff (read (globals k-none one-of?)) spin) (symbol) bool) ! pure",
+"define score : (subr (maxeff (read (globals in-cons in-helper in-k in-none k k-cons k-helper k-none one-of?)) spin) () int) ! pure",
+"int ! (maxeff (read (globals in-cons in-helper in-k in-none k k-cons k-helper k-none one-of? score)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

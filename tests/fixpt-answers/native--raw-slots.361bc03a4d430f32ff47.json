@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"raw-slots.fx"
+],
+"code": 0,
+"out": [
+"define deepf : (subr (maxeff (alloc @heap) (read (globals deepf)) spin) (int f64) f64) ! pure",
+"define reuse : (subr (maxeff (alloc @heap) (read (globals deepf reuse)) spin) (int f64) int) ! pure",
+"define raw-slots : (subr (maxeff (alloc @heap) (read (globals deepf reuse)) spin) (int) int) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals deepf raw-slots reuse)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

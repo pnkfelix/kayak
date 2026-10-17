@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"array-length.fx"
+],
+"code": 0,
+"out": [
+"define al : (subr (alloc @heap) (int) ints) ! pure",
+"ints ! (maxeff (alloc @heap) (read (globals al)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

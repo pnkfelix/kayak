@@ -1,0 +1,20 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"extend-abstract-alias.fx"
+],
+"code": 0,
+"out": [
+"counter : (moduleof (abs t type) (val zero t) (val next (subr pure (t) t)) (val value (subr pure (t) int))) ! pure",
+"other : (moduleof (abs t type) (val yes t)) ! pure",
+"both : (moduleof (desc t other..t) (val zero counter..t) (val next (subr pure (counter..t) counter..t)) (val value (subr pure (counter..t) int)) (val yes other..t)) ! (read (globals counter other))",
+"plus : (moduleof (desc t counter..t) (val zero counter..t) (val next (subr pure (counter..t) counter..t)) (val value (subr pure (counter..t) int)) (val two counter..t)) ! (read (globals counter))",
+"2 : int ! (read (globals both counter plus))",
+""
+],
+"err": [
+""
+]
+}

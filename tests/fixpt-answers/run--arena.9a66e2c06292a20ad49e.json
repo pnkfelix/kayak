@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"arena.fx"
+],
+"code": 0,
+"out": [
+"define sum-to : (subr spin (int) int) ! pure",
+"define total : (subr (maxeff (read (globals sum-to total)) spin) (int int) int) ! pure",
+"int ! (maxeff (read (globals sum-to total)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

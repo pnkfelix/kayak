@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"tree-walk.fx"
+],
+"code": 0,
+"out": [
+"define up-nest : (poly ((a type)) (subr pure ((sumof (none unit) (more (productof (hd a) (tl (nest (productof (l a) (r a)))))))) (nest a))) ! pure",
+"define down-nest : (poly ((a type)) (subr pure ((nest a)) (sumof (none unit) (more (productof (hd a) (tl (nest (productof (l a) (r a))))))))) ! pure",
+"define up-tree : (poly ((a type)) (subr pure ((sumof (leaf a) (node (productof (l (tree a)) (r (tree a)))))) (tree a))) ! pure",
+"define down-tree : (poly ((a type)) (subr pure ((tree a)) (sumof (leaf a) (node (productof (l (tree a)) (r (tree a))))))) ! pure",
+"define total : (subr (read (globals down-tree)) ((tree int)) int) ! pure",
+"int ! (read (globals down-tree total up-tree))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

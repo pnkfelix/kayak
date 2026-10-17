@@ -1,0 +1,34 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"flat-variant-no-field.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (33 cells, cellular):",
+"     0: lit 16",
+"     2: lit |a|",
+"     4: prim %make-bloblet 2",
+"     7: global! b",
+"     9: global b",
+"    11: lit 0",
+"    13: prim %suffix-ref 2",
+"    16: lit 16",
+"    18: prim %fx26-suffix-fits 2",
+"    21: global! r",
+"    23: global r",
+"    25: lit 2049",
+"    27: lit |b|",
+"    29: prim %fx26-flat-variant! 3",
+"    32: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

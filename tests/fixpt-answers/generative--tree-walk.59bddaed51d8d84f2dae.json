@@ -1,0 +1,21 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"tree-walk.fx"
+],
+"code": 0,
+"out": [
+"up-nest : (poly ((a type)) (subr pure ((sumof (none unit) (more (productof (hd a) (tl (nest (productof (l a) (r a)))))))) (nest a))) ! pure",
+"down-nest : (poly ((a type)) (subr pure ((nest a)) (sumof (none unit) (more (productof (hd a) (tl (nest (productof (l a) (r a))))))))) ! pure",
+"up-tree : (poly ((a type)) (subr pure ((sumof (leaf a) (node (productof (l (tree a)) (r (tree a)))))) (tree a))) ! pure",
+"down-tree : (poly ((a type)) (subr pure ((tree a)) (sumof (leaf a) (node (productof (l (tree a)) (r (tree a))))))) ! pure",
+"total : (subr (read (globals down-tree)) ((tree int)) int) ! pure",
+"3 : int ! (read (globals down-tree total up-tree))",
+""
+],
+"err": [
+""
+]
+}

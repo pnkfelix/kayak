@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"io-stdin.fx"
+],
+"code": 0,
+"out": [
+"define count-lines : (subr (maxeff (io stdin) (read (globals count-lines)) spin) (int) int) ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

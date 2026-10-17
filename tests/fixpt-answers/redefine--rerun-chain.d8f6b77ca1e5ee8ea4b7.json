@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"rerun-chain.fx"
+],
+"code": 0,
+"out": [
+"define f : int ! pure",
+"define g : int ! (read (globals f))",
+"define h : int ! (read (globals g))",
+"define f : string ! pure",
+"define g : int ! (read (globals f))",
+"define h : int ! (read (globals g))",
+"int ! (read (globals h))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

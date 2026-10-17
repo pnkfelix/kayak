@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"select-unbound.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/select-unbound.fx:3:1: `(select nowhere t)`: `nowhere` is not bound here",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

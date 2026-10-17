@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"floats.fx"
+],
+"code": 0,
+"out": [
+"define zeta2 : (subr spin (int) f64) ! pure",
+"define half : (subr pure (f64) f64) ! pure",
+"define halves : (subr (maxeff (read (globals half halves)) spin) (int f64) f64) ! pure",
+"define pick : (subr pure (f64 bool) f64) ! pure",
+"define show : (subr pure (f64) string) ! pure",
+"define floats : (subr (maxeff (alloc @heap) (read (globals half halves pick show zeta2)) spin) (int) strings) ! pure",
+"strings ! (maxeff (alloc @heap) (read (globals floats half halves pick show zeta2)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

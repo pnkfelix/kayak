@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"include-family.fx"
+],
+"code": 0,
+"out": [
+"define boxes : (moduleof (desc box (dlambda ((k type) (r region)) (pairof k k r))) (val mk (subr pure (int) int))) ! pure",
+"define m : (moduleof (desc box (dlambda ((k type) (r region)) (pairof k k r))) (desc ib (pairof int int @heap)) (val mk (subr pure (int) int)) (val sum (subr (read @heap) ((pairof int int @heap)) int)) (val first (subr (read @heap) ((pairof int int @heap)) int))) ! (read (globals boxes))",
+"int ! (maxeff (alloc @heap) (read (globals m)) (read @heap))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"effect-reexport.fx"
+],
+"code": 0,
+"out": [
+"m : (moduleof (desc touches (maxeff (read @heap) (write @heap))) (val bump (subr (maxeff (read @heap) (write @heap)) ((ref int @heap)) unit))) ! pure",
+"b : (subr (maxeff (read @heap) (write @heap)) ((ref int @heap)) unit) ! (read (globals m))",
+"42 : int ! (maxeff (read @heap) (write @heap) (alloc @heap) (read (globals b)))",
+""
+],
+"err": [
+""
+]
+}

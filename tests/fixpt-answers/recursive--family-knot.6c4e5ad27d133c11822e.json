@@ -1,0 +1,44 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"family-knot.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (12 cells, cellular):",
+"     0: closure word leaf1 over 0",
+"     3: global! leaf1",
+"     5: lit 3",
+"     7: global leaf1",
+"     9: tcall 1",
+"    11: exit",
+"",
+"word leaf1 (10 cells, cellular):",
+"     0: lit 36",
+"     2: lit |leaf|",
+"     4: slot 0",
+"     6: prim %make-frozen 3",
+"     9: return",
+"  its register code (24 cells, not compiled):",
+"       0: args 1",
+"       2: save 1",
+"       4: store 1 0",
+"       7: const 36",
+"       9: setreg 1",
+"      11: const |leaf|",
+"      13: setreg 2",
+"      15: load 3 0",
+"      18: prim %make-frozen 3",
+"      21: pop 1",
+"      23: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

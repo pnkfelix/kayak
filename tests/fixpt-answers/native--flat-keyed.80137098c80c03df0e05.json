@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"flat-keyed.fx"
+],
+"code": 0,
+"out": [
+"define fill1 : (subr (maxeff (alloc @heap) (read (globals fill1)) (read @heap) (write @heap) spin) (a1 int) unit) ! pure",
+"define sum1 : (subr (maxeff (alloc @heap) (read (globals sum1)) (read @heap) spin) (a1 int f64) f64) ! pure",
+"define fill2 : (subr (maxeff (read (globals fill2)) (read @heap) (write @heap) spin) (a2 int) unit) ! pure",
+"define sum2 : (subr (maxeff (read (globals sum2)) (read @heap) spin) (a2 int f64) f64) ! pure",
+"define fill4 : (subr (maxeff (read (globals fill4)) (read @heap) (write @heap) spin) (a4 int) unit) ! pure",
+"define tags4 : (subr (maxeff (read (globals tags4)) (read @heap) spin) (a4 int int) int) ! pure",
+"define flat-keyed : (subr (maxeff (alloc @heap) (read (globals fill1 fill2 fill4 sum1 sum2 tags4)) (read @heap) (write @heap) spin) (int) ints) ! pure",
+"ints ! (maxeff (alloc @heap) (read (globals fill1 fill2 fill4 flat-keyed sum1 sum2 tags4)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

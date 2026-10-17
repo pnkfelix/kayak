@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"stateful.fx"
+],
+"code": 0,
+"out": [
+"define c : (ref int @c) ! (alloc @c)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"with-not-module.fx"
+],
+"code": 1,
+"out": [
+"k : int ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/with-not-module.fx:4:1: `with` opens a module, and `k` is a int",
+""
+]
+}

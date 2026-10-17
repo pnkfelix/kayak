@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"flat-tagcase-no-field.fx"
+],
+"code": 0,
+"out": [
+"define b : o ! (alloc @b)",
+"unit ! (maxeff (read (globals b)) (write @b))",
+"define r : (blobref o (sumof (a f64) (b i32))) ! (read (globals b))",
+"int ! (maxeff (read (globals r)) (read @b))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"data-kind.fx"
+],
+"code": 0,
+"out": [
+"define same : (poly ((t data)) (subr pure (t) t)) ! pure",
+"(listof (productof (a int) (b bool)) acyclic) ! (read (globals same))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

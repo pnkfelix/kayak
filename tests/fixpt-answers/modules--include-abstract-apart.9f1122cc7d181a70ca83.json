@@ -1,0 +1,19 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"include-abstract-apart.fx"
+],
+"code": 1,
+"out": [
+"make : (subr pure (int) (moduleof (abs t type) (val z t) (val get (subr pure (t) int)))) ! pure",
+"a : (moduleof (abs t type) (val z t) (val get (subr pure (t) int))) ! (read (globals make))",
+"b : (moduleof (abs t type) (val z t) (val get (subr pure (t) int))) ! (read (globals make))",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/include-abstract-apart.fx:12:14: argument 1 is a b..t, where a a..t is expected",
+""
+]
+}

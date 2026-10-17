@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"cwcc.fx"
+],
+"code": 0,
+"out": [
+"1 : int ! pure",
+""
+],
+"err": [
+""
+]
+}

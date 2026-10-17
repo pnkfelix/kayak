@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"unterminated.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: read error: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/unterminated.fx:3:1: unterminated list, expected `)`",
+""
+]
+}

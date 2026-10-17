@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"finite-one-arg.fx"
+],
+"code": 0,
+"out": [
+"copy : (poly ((n size)) (subr pure ((nlist int n)) (nlist int n))) ! pure",
+"some : (nlist int finite) ! pure",
+"2 : nat ! (read (globals copy some))",
+""
+],
+"err": [
+""
+]
+}

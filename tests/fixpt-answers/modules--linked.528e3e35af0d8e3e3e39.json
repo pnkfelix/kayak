@@ -1,0 +1,19 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"linked.fx"
+],
+"code": 0,
+"out": [
+"dep : (moduleof (val cat3 (subr pure (string string string) string)) (val limit int)) ! (read (globals %shared:/Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/../module-files/linked-dep.fx))",
+"user-file : (moduleof (desc dep-sig (moduleof (val cat3 (subr pure (string string string) string)) (val limit int))) (val sigs (moduleof (desc dep-sig (moduleof (val cat3 (subr pure (string string string) string)) (val limit int))))) (val make (subr (maxeff (read @globals) spin) (dep-sig) (moduleof (val cat3 (subr pure (string string string) string)) (val twice (subr spin (int) int)) (val shout (subr pure (string) string)) (val v int))))) ! (read (globals %shared:/Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/../module-files/linked-user.fx))",
+"user : (moduleof (val cat3 (subr pure (string string string) string)) (val twice (subr spin (int) int)) (val shout (subr pure (string) string)) (val v int)) ! (maxeff (read @globals) spin (read (globals dep user-file)))",
+"17 : int ! (read (globals user))",
+""
+],
+"err": [
+""
+]
+}

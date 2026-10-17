@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"region-allocators.fx"
+],
+"code": 0,
+"out": [
+"define tally : (subr spin (int) int) ! pure",
+"(listof int @l) ! (maxeff (alloc @l) (read (globals tally)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

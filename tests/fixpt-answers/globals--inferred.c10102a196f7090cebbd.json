@@ -1,0 +1,20 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"inferred.fx"
+],
+"code": 0,
+"out": [
+"limit : int ! pure",
+"below : (subr (read (globals limit)) (int) bool) ! pure",
+"clamp : (subr (read (globals below limit)) (int) int) ! pure",
+"count : (subr (maxeff spin (read (globals below count limit))) (int) int) ! pure",
+"10 : int ! (read (globals below clamp limit))",
+""
+],
+"err": [
+""
+]
+}

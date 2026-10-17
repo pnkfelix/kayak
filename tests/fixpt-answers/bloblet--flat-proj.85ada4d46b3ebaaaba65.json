@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"flat-proj.fx"
+],
+"code": 1,
+"out": [
+"h : (poly ((f flat)) (subr pure () int)) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-proj.fx:4:2: `f` is bound as a Flat, and the description given is not one",
+""
+]
+}

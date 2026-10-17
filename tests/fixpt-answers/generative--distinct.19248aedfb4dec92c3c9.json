@@ -1,0 +1,21 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"distinct.fx"
+],
+"code": 1,
+"out": [
+"up-ty-id : (subr pure (int) ty-id) ! pure",
+"down-ty-id : (subr pure (ty-id) int) ! pure",
+"up-dvar : (subr pure (int) dvar) ! pure",
+"down-dvar : (subr pure (dvar) int) ! pure",
+"f : (subr (read (globals down-ty-id)) (ty-id) int) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/generative/distinct.fx:5:4: argument 1 is a dvar, where a ty-id is expected",
+""
+]
+}

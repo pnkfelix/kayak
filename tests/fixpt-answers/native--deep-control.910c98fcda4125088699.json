@@ -1,0 +1,36 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"deep-control.fx"
+],
+"code": 0,
+"out": [
+"define sum-cons : (subr (maxeff (alloc @l) (read (globals sum-cons)) (read @l) spin) (int (listof int @l)) int) ! pure",
+"int ! (maxeff (alloc @l) (read (globals sum-cons)) (read @l) spin)",
+"define t : (prompt-tag int int (maxeff (read (globals down raise t)) spin) @z) ! (alloc @z)",
+"define raise : (subr (maxeff (goto @z) (read (globals t))) (int) void) ! pure",
+"define down : (subr (maxeff (goto @z) (read (globals down raise t)) spin) (int int) int) ! pure",
+"define under : (subr (maxeff (goto @z) (read (globals down raise t)) spin) (int) int) ! pure",
+"int ! (maxeff (goto @z) (read (globals down raise t under)) spin)",
+"define key : (mark-key int @m) ! (alloc @m)",
+"define deep-mark : (subr (maxeff (read (globals deep-mark key)) (read @m) spin) (int) int) ! pure",
+"define marked : (subr (maxeff (read (globals deep-mark key)) (read @m) (write @m) spin) (int) int) ! pure",
+"int ! (maxeff (read (globals deep-mark key marked)) (read @m) (write @m) spin)",
+"define u : (prompt-tag int int (maxeff (comefrom @p) (goto @p) (read (globals climb grab u)) spin) @p) ! (alloc @p)",
+"define grab : (subr (maxeff (comefrom @p) (goto @p) (read (globals climb grab u)) spin) () int) ! pure",
+"define climb : (subr (maxeff (comefrom @p) (goto @p) (read (globals climb grab u)) spin) (int) int) ! pure",
+"define twice : (subr (maxeff (comefrom @p) (goto @p) (read (globals climb grab u)) spin) (int) int) ! pure",
+"int ! (maxeff (comefrom @p) (goto @p) (read (globals climb grab twice u)) spin)",
+"define count : (subr (maxeff (read (globals count)) (read @m) spin) ((listof int @m) int) int) ! pure",
+"define spin-down : (subr (maxeff (read (globals spin-down)) spin) (int) int) ! pure",
+"define level : (subr (maxeff (alloc @m) (read (globals count key level spin-down)) (read @m) (write @m) spin) (int) int) ! pure",
+"int ! (maxeff (alloc @m) (read (globals count key level spin-down)) (read @m) (write @m) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

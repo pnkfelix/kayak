@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"with-effect-missing.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/with-effect-missing.fx:4:9: `nope` is not an effect, nor one a module opened by `with` gives",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,19 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"union.fx"
+],
+"code": 0,
+"out": [
+"d : datum ! pure",
+"size : (subr pure (datum) int) ! pure",
+"v : datum ! (read (globals d))",
+"11104 : int ! (read (globals d size v))",
+""
+],
+"err": [
+""
+]
+}

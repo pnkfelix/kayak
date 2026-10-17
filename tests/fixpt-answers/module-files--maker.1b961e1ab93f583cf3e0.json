@@ -1,0 +1,16 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"maker.fx"
+],
+"code": 0,
+"out": [
+"#<cellular-closure 2 fields 0 bytes> : (subr pure (int) (moduleof (val twice int))) ! pure",
+""
+],
+"err": [
+""
+]
+}

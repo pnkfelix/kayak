@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"nil-or-pair.fx"
+],
+"code": 0,
+"out": [
+"define value : (subr (read @r) (entry) int) ! pure",
+"int ! (maxeff (alloc @r) (read (globals value)) (read @r))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

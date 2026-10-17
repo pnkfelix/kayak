@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"arrow-star.fx"
+],
+"code": 0,
+"out": [
+"define inc : (subr pure (int) int) ! pure",
+"define inc2 : (subr (read (globals inc)) (int) int) ! pure",
+"define count : (subr (maxeff (read (globals count)) spin) (int) int) ! pure",
+"define mk : (subr (alloc @h) (int) (listof int @h)) ! pure",
+"define ap : (poly ((t type)) (subr pure ((subr pure (t) t) t) t)) ! pure",
+"define go : (subr (maxeff (alloc @h) (read (globals count inc inc2 mk)) (read @h) spin) (int) int) ! pure",
+"int ! (maxeff (alloc @h) (read (globals ap count go inc inc2 mk)) (read @h) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

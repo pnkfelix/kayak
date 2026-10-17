@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"escape-tag.fx"
+],
+"code": 0,
+"out": [
+"define digit : (poly ((r region)) (subr (goto r) ((escape-tag int string r) char) int)) ! pure",
+"define sum-over : (poly ((e effect)) (subr (maxeff (read (globals sum-over)) e spin) ((subr e (char) int) string int) int)) ! pure",
+"define digit-sum : (subr (maxeff (read (globals digit sum-over)) spin) (string) int) ! pure",
+"define main : (subr (maxeff (read (globals digit digit-sum sum-over)) spin) () (listof int acyclic)) ! pure",
+"(listof int acyclic) ! (maxeff (read (globals digit digit-sum main sum-over)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

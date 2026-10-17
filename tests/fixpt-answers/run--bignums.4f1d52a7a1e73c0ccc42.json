@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"bignums.fx"
+],
+"code": 0,
+"out": [
+"define fact : (subr (maxeff (read (globals fact)) spin) (int) int) ! pure",
+"define fib : (subr (maxeff (read (globals fib)) spin) (int int int) int) ! pure",
+"define bignums : (subr (maxeff (alloc @heap) (read (globals fact fib)) spin) (int) ints) ! pure",
+"ints ! (maxeff (alloc @heap) (read (globals bignums fact fib)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

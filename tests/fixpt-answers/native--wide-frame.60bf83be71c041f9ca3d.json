@@ -1,0 +1,20 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"wide-frame.fx"
+],
+"code": 0,
+"out": [
+"id : (subr (maxeff (read @heap) (alloc @heap)) (int) int) ! pure",
+"wide : (subr (maxeff (read @heap) (alloc @heap) (read (globals id))) (int) int) ! pure",
+"2485 : int ! (maxeff (read @heap) (alloc @heap) (read (globals id wide)))",
+"run : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals id run wide))) (int int) int) ! pure",
+"37450000 : int ! (maxeff (read @heap) (alloc @heap) spin (read (globals id run wide)))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"dlambda-type.fx"
+],
+"code": 0,
+"out": [
+"define b : (productof (v (productof (v int)))) ! pure",
+"(listof int @r.1) ! (maxeff (alloc @r.1) (read (globals b)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

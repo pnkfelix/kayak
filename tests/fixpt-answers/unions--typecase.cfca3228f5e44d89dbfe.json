@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"typecase.fx"
+],
+"code": 0,
+"out": [
+"f : (subr (read @r) (v) int) ! pure",
+"4 : int ! (maxeff (read @r) (read (globals f)))",
+""
+],
+"err": [
+""
+]
+}

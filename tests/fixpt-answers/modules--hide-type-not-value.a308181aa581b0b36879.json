@@ -1,0 +1,38 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"hide-type-not-value.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (38 cells, cellular):",
+"     0: lit 7",
+"     2: lit 1",
+"     4: lit 37",
+"     6: slot 0",
+"     8: slot 1",
+"    10: prim %make-frozen 3",
+"    13: slot! 0",
+"    15: drop",
+"    16: lit 37",
+"    18: slot 0",
+"    20: field 2",
+"    22: prim %make-frozen 2",
+"    25: slot! 0",
+"    27: global! m",
+"    29: global m",
+"    31: field 2",
+"    33: slot 0",
+"    35: slot! 0",
+"    37: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

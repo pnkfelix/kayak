@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"kind-mismatch.fx"
+],
+"code": 1,
+"out": [
+"g : (poly ((f (=> (type) type))) (subr pure () int)) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/higher-kinds/kind-mismatch.fx:5:1: `f` is bound as a (=> (type) type), and the description given is not one",
+""
+]
+}

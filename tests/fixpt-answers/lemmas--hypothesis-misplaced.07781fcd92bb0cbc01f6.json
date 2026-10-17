@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"hypothesis-misplaced.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/lemmas/hypothesis-misplaced.fx:5:3: `bad` is declared a (poly ((a type) (b type)) (subr spin ((subr spin (a) b) (two a)) (two b))): a (subr spin ((subr spin (a) b) (two a)) (two b)) is expected here, and this is a (subr (maxeff (read (globals down-two up-two)) spin) ((subr spin (a) b) (two a)) (two b))",
+"  beyond what is expected, it has (read (globals down-two up-two))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

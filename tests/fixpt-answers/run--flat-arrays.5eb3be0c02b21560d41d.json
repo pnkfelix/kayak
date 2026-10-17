@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"flat-arrays.fx"
+],
+"code": 0,
+"out": [
+"define reverse! : (poly ((t type) (r region)) (subr (maxeff (read (globals reverse!)) (read r) (write r) spin) ((flatarrayof t r) int int) unit)) ! pure",
+"define f64-sum : (subr (maxeff (read (globals f64-sum)) (read @heap) spin) (f64s int f64) f64) ! pure",
+"define fill : (subr (maxeff (read (globals fill)) (read @heap) (write @heap) spin) (f64s int) unit) ! pure",
+"define doubles : (subr (alloc @heap) (int) f64s) ! pure",
+"define singles : (subr (alloc @heap) () (flatarrayof f32 @heap)) ! pure",
+"define flat : (subr (maxeff (alloc @heap) (read (globals doubles f64-sum fill reverse! singles)) (read @heap) (write @heap) spin) (int) strings) ! pure",
+"strings ! (maxeff (alloc @heap) (read (globals doubles f64-sum fill flat reverse! singles)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

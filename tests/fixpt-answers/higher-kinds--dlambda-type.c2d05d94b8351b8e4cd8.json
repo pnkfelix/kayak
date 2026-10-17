@@ -1,0 +1,30 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"dlambda-type.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (24 cells, cellular):",
+"     0: lit 37",
+"     2: lit 37",
+"     4: lit 4",
+"     6: prim %make-frozen 2",
+"     9: prim %make-frozen 2",
+"    12: global! b",
+"    14: global b",
+"    16: field 2",
+"    18: field 2",
+"    20: prim list 1",
+"    23: exit",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

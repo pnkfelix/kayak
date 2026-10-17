@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"par.fx"
+],
+"code": 0,
+"out": [
+"define xs : (arrayof int @x) ! (alloc @x)",
+"define ys : (arrayof int @y) ! (alloc @y)",
+"define shared : (arrayof int @s) ! (alloc @s)",
+"define fill : (poly ((r region)) (subr (maxeff (read (globals shared)) (read @s) (write r) spin) ((arrayof int r) int) int)) ! pure",
+"define c : (icell int @c) ! (alloc @c)",
+"int ! (maxeff (await @c) (init @c) (read (globals c fill shared xs ys)) (read @s) (read @x) (read @y) (write @x) (write @y) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

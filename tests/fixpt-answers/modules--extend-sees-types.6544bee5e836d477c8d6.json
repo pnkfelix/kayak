@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"extend-sees-types.fx"
+],
+"code": 0,
+"out": [
+"define a : (moduleof (desc touches (read @globals)) (desc n int) (val x n)) ! pure",
+"define b : (moduleof (desc touches (read @globals)) (desc n int) (val x n) (val f (subr (read @globals) () n))) ! (read (globals a))",
+"int ! (maxeff (read (globals b)) (read @globals))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

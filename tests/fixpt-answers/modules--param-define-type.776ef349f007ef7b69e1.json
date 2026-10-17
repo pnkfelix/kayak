@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"param-define-type.fx"
+],
+"code": 0,
+"out": [
+"define m : (moduleof (desc pair2 (dlambda ((a type)) (productof (1 a) (2 a)))) (val x (productof (1 int) (2 int)))) ! pure",
+"int ! (read (globals m))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

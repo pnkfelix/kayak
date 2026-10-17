@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"abs-params.fx"
+],
+"code": 0,
+"out": [
+"define lazy : sig-lazy ! pure",
+"define same : sig-lazy-arrow ! (read (globals lazy))",
+"int ! (maxeff (alloc @heap) (read (globals same)) (read @heap))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

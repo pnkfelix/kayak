@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"bounds-apart.fx"
+],
+"code": 1,
+"out": [
+"a : (arrayof int @r) ! (alloc @r)",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/unions/bounds-apart.fx:5:54: a string is expected here, and this is a int",
+""
+]
+}

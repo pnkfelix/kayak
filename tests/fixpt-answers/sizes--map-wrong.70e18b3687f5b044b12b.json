@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"map-wrong.fx"
+],
+"code": 1,
+"out": [
+"map : map-type ! pure",
+"three : (nlist int 3) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/map-wrong.fx:12:63: argument 2 is a (nlist int 3), where a (nlist int 2) is expected",
+""
+]
+}

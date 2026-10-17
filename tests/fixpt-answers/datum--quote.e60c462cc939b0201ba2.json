@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"quote.fx"
+],
+"code": 0,
+"out": [
+"define walk : (subr pure (datum) int) ! pure",
+"int ! (read (globals walk))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

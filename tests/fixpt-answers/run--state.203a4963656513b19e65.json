@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"state.fx"
+],
+"code": 0,
+"out": [
+"c : (ref int @c) ! (alloc @c)",
+"#u : unit ! (maxeff (write @c) (read (globals c)))",
+"42 : int ! (maxeff (read @c) (read (globals c)))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"shadow-standard-type.fx"
+],
+"code": 0,
+"out": [
+"first-byte : (subr (read @heap) (bytevector) int) ! pure",
+"made : (subr (maxeff (read @heap) (alloc @heap) (read (globals first-byte))) () int) ! pure",
+"0 : int ! (maxeff (read @heap) (alloc @heap) (read (globals first-byte made)))",
+""
+],
+"err": [
+""
+]
+}

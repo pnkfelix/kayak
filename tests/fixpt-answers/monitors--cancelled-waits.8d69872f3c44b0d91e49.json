@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"cancelled-waits.fx"
+],
+"code": 1,
+"out": [
+"total : (icell int @d) ! (alloc @d)",
+"never : (icell int @e) ! (alloc @e)",
+"collector : (addr report @p) ! (maxeff (alloc @p) (init @d) nondet (read (globals total)))",
+"failed : (subr pure (string) report) ! pure",
+"far : (subr (io clock) () i64) ! pure",
+"w : (addr int @w) ! (maxeff (alloc @w) (send @p) (io clock) nondet (read (globals collector failed far)))",
+"#u : unit ! (maxeff (send @w) (read (globals w)))",
+" : int ! (maxeff (await @d) (await @e) (read (globals never total)))",
+""
+],
+"err": [
+"! evaluation failed: an i-cell read before it was written, and no task is left to write it: a deadlock",
+""
+]
+}

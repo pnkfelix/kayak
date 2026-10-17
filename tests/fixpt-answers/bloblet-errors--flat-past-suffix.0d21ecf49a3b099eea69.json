@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"flat-past-suffix.fx"
+],
+"code": 0,
+"out": [
+"define b : o ! (alloc @b)",
+"define arr : (blobref o (flat-arrayof f64 10)) ! (read (globals b))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,21 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"icells.fx"
+],
+"code": 0,
+"out": [
+"even-cell : (icell parity-test @k) ! (alloc @k)",
+"odd-cell : (icell parity-test @k) ! (alloc @k)",
+"#u : unit ! (maxeff (init @k) (read (globals even-cell)))",
+"#u : unit ! (maxeff (init @k) (read (globals odd-cell)))",
+"parity : (subr spin (int) bool) ! pure",
+"(#t #f #f #t) : (listof bool @r.1) ! (maxeff (alloc @r.1) (await @k) spin (read (globals even-cell odd-cell parity)))",
+""
+],
+"err": [
+""
+]
+}

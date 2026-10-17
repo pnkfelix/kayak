@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"finite-inside.fx"
+],
+"code": 1,
+"out": [
+"firsts : (poly ((n size)) (subr pure ((listof (nlist int n) acyclic)) int)) ! pure",
+"two : (nlist int finite) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/finite-inside.fx:6:1: the size `n` cannot be `finite` here: `n` is the size of more than one argument, or of something inside one, and `finite` would not keep them the same",
+""
+]
+}

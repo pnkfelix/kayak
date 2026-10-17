@@ -1,0 +1,40 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"oneshot-called.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (8 cells, cellular):",
+"     0: closure word lambda@303 over 0",
+"     3: global! called",
+"     5: lit 0",
+"     7: exit",
+"",
+"word lambda@303 (8 cells, cellular):",
+"     0: slot 0",
+"     2: lit 1",
+"     4: slot 1",
+"     6: ttailcall 1",
+"  its register code (22 cells, not compiled):",
+"       0: args 1",
+"       2: save 2",
+"       4: store 1 0",
+"       7: stack 0",
+"       9: setstk 1",
+"      11: const 1",
+"      13: setreg 1",
+"      15: stack 1",
+"      17: pop 2",
+"      19: tailinvoke 1 1",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

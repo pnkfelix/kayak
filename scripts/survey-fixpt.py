@@ -6,8 +6,11 @@ usage: python3 -I scripts/survey-fixpt.py [ROWS.tsv]
 """
 import os, re, subprocess, sys, collections
 ROOT=os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-fixpt=subprocess.run([ROOT+'/scripts/fixpt.sh'],capture_output=True,text=True).stdout.strip()
-PROGS=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(fixpt))),'crates','fixpt-fx26','tests','programs')
+sys.path.insert(0, os.path.join(ROOT, 'scripts'))
+import fixptcache
+# Fixpt's programs and its answers, as kept (C132).
+fixpt=fixptcache.binary()
+PROGS=fixptcache.PROGRAMS
 kfx=ROOT+'/target/release/kfx'
 rows=[]
 for d,_,fs in sorted(os.walk(PROGS)):
@@ -15,7 +18,7 @@ for d,_,fs in sorted(os.walk(PROGS)):
         if not f.endswith('.fx'): continue
         p=os.path.join(d,f); rel=os.path.relpath(p,PROGS)
         try:
-            fx=subprocess.run([fixpt,'--dialect','fx26','check',p],capture_output=True,text=True,timeout=30)
+            fx=fixptcache.run(fixpt,['--dialect','fx26','check',p],[p],timeout=60)
         except subprocess.TimeoutExpired:
             continue
         if fx.returncode!=0 or 'error' in fx.stdout.lower() and 'agree' not in fx.stdout: continue

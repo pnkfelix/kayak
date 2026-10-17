@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"const-list.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/terminate/const-list.fx:2:48: `f` is declared a (subr pure ((listof int const)) int): a (subr pure ((listof int const)) int) is expected here, and this is a (subr (maxeff (read (globals f)) spin) ((listof int const)) int)",
+"  beyond what is expected, it has (maxeff (read (globals f)) spin); it may not end: nothing smaller, or related, is passed by the call of `f` in `f` (a part of a list that may be written is no smaller: it may be cyclic)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

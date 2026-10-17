@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"cycle-b.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/cycle-b.fx:2:11: in `cycle-a.fx`, 2:11: in `cycle-b.fx`, 2:11: a load cycle: `cycle-a.fx` loads `cycle-b.fx` loads `cycle-a.fx`",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

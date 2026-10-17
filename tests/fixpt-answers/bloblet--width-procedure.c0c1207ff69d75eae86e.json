@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"width-procedure.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/width-procedure.fx:6:15: `c` is declared a one: a one is expected here, and this is a (bloblet (fields int (subr pure () int)) @b)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

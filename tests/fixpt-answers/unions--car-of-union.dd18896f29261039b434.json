@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"car-of-union.fx"
+],
+"code": 0,
+"out": [
+"d : datum ! pure",
+"num : (subr pure (datum) int) ! pure",
+"3 : int ! (read (globals d num))",
+""
+],
+"err": [
+""
+]
+}

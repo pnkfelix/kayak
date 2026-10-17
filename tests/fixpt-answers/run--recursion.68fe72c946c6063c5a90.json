@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"recursion.fx"
+],
+"code": 0,
+"out": [
+"sum-to : (subr (maxeff spin (read (globals sum-to))) (int) int) ! pure",
+"count : (subr spin (int) int) ! pure",
+"(55 . 1000) : (pairof int int @r.1) ! (maxeff (alloc @r.1) spin (read (globals count sum-to)))",
+""
+],
+"err": [
+""
+]
+}

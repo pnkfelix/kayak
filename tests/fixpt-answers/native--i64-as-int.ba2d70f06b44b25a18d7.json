@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"i64-as-int.fx"
+],
+"code": 0,
+"out": [
+"define up : (subr pure (int) int) ! pure",
+"define wide : (subr (maxeff (alloc @heap) (read (globals up))) (i64 u64) ints) ! pure",
+"define run : (subr (maxeff (alloc @heap) (read (globals up wide))) (int) ints) ! pure",
+"ints ! (maxeff (alloc @heap) (read (globals run up wide)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

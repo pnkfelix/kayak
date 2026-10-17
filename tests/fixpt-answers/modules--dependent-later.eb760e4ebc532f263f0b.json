@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"dependent-later.fx"
+],
+"code": 0,
+"out": [
+"define c : (moduleof (abs t type) (val seven t) (val value (subr pure (t) int))) ! pure",
+"int ! (read (globals c))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

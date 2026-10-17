@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"acyclic.fx"
+],
+"code": 0,
+"out": [
+"len : (subr pure ((listof int acyclic) int) int) ! pure",
+"ring : (subr pure (int) (listof int const)) ! pure",
+"line : (subr pure (int) (listof int const)) ! pure",
+"count : (subr (read (globals len)) ((listof int const)) int) ! pure",
+"199 : int ! (read (globals count len line ring))",
+""
+],
+"err": [
+""
+]
+}

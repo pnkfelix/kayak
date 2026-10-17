@@ -1,0 +1,19 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"false.fx"
+],
+"code": 0,
+"out": [
+"next : (subr pure (maybe-int) int) ! pure",
+"none : (subr pure () maybe-int) ! pure",
+"as-bool : (subr pure () bool) ! pure",
+"0 : int ! (read (globals next none))",
+""
+],
+"err": [
+""
+]
+}

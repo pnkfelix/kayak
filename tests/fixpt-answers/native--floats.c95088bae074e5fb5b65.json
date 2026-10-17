@@ -1,0 +1,22 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"floats.fx"
+],
+"code": 0,
+"out": [
+"zeta2 : (subr spin (int) f64) ! pure",
+"half : (subr pure (f64) f64) ! pure",
+"halves : (subr (maxeff spin (read (globals half halves))) (int f64) f64) ! pure",
+"pick : (subr pure (f64 bool) f64) ! pure",
+"show : (subr pure (f64) string) ! pure",
+"floats : (subr (maxeff (alloc @heap) spin (read (globals half halves pick show zeta2))) (int) strings) ! pure",
+"(\"1.6439345666815615\" \"2.0\" \"3.0\" \"3.0\" \"-0.0\" \"2.0\" \"-4.0\" \"-2.0\" \"-1.0\" \"-1.0\" \"+inf.0\" \"+nan.0\" \"not lt\" \"ne\" \"le\" \"ge\" \"ng\" \"1.0\" \"2.0\" \"2.718281828459045\" \"0.7853981633974483\" \"1000000000000000000000\" \"9999999999800000000000.0\" \"2.25\" \"-0.19999999999999998\") : strings ! (maxeff (alloc @heap) spin (read (globals floats half halves pick show zeta2)))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"import.fx"
+],
+"code": 0,
+"out": [
+"define shapes : (moduleof (desc point (productof (1 int) (2 int))) (desc touches (maxeff (read @heap) (write @heap))) (val origin point) (val bump (subr (maxeff (read @heap) (write @heap)) ((ref int @heap)) unit)) (val x-of (subr pure (point) int))) ! pure",
+"define origin : point ! (read (globals shapes))",
+"define bump : (subr (maxeff (read @heap) (write @heap)) ((ref int @heap)) unit) ! (read (globals shapes))",
+"define m : (moduleof (val far point) (val reach (subr pure (point) int))) ! (read (globals shapes))",
+"define b : (subr (maxeff (read @heap) (write @heap)) ((ref int @heap)) unit) ! (read (globals bump))",
+"int ! (maxeff (alloc @heap) (read (globals b m origin)) (read @heap) (write @heap))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

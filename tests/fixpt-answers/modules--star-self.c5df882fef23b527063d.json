@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"star-self.fx"
+],
+"code": 0,
+"out": [
+"define step : int ! pure",
+"define m : (moduleof (val count (subr (maxeff (read (globals step)) spin) (int) int))) ! pure",
+"int ! (maxeff (read (globals m step)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

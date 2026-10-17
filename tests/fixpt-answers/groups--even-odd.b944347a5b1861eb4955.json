@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"even-odd.fx"
+],
+"code": 0,
+"out": [
+"define ev : (subr (maxeff (read (globals ev od)) spin) (int) bool) ! pure",
+"define od : (subr (maxeff (read (globals ev od)) spin) (int) bool) ! pure",
+"bool ! (maxeff (read (globals ev od)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

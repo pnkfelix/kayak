@@ -1,0 +1,22 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"with-shadows-applied.fx"
+],
+"code": 0,
+"out": [
+"m : (moduleof (desc two (dlambda ((a type)) (productof (1 a) (2 a) (3 a)))) (desc one (dlambda ((a type)) (productof (1 a))))) ! pure",
+"k : (moduleof (desc two (dlambda ((a type)) (productof (1 bool) (2 a))))) ! pure",
+"p : (productof (1 int) (2 int) (3 int)) ! (read (globals m))",
+"q : (pairof (productof (1 int)) (productof (1 bool)) heap) ! (maxeff (alloc heap) (read (globals m)))",
+"r : (productof (1 bool) (2 int)) ! (read (globals k m))",
+"s : (productof (1 int)) ! (read (globals m))",
+"15 : int ! (maxeff (read heap) (read (globals p q r s)))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"confirm-length.fx"
+],
+"code": 0,
+"out": [
+"define line : (subr pure (int) (listof int const)) ! pure",
+"define second : (subr pure ((nlist int 3)) int) ! pure",
+"define f : (subr (read (globals second)) ((listof int const)) int) ! pure",
+"define g : (subr pure ((listof int const)) int) ! pure",
+"int ! (read (globals f g line second))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

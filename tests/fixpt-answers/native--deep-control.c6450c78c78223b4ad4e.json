@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"deep-control.fx"
+],
+"code": 1,
+"out": [
+"sum-cons : (subr (maxeff (read @l) (alloc @l) spin (read (globals sum-cons))) (int (listof int @l)) int) ! pure",
+" : int ! (maxeff (read @l) (alloc @l) spin (read (globals sum-cons)))",
+""
+],
+"err": [
+"! evaluation failed: stack overflow",
+""
+]
+}

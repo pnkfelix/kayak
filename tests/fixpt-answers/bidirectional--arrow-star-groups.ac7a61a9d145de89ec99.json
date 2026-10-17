@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"arrow-star-groups.fx"
+],
+"code": 0,
+"out": [
+"define inc : (subr pure (int) int) ! pure",
+"define ev? : (subr (maxeff (read (globals ev? od?)) spin) (nat) bool) ! pure",
+"define od? : (subr (maxeff (read (globals ev? od?)) spin) (nat) bool) ! pure",
+"define noisy : (subr (read (globals inc)) (int) int) ! pure",
+"define get-noisy : (subr (maxeff (read (globals noisy)) spin) () (subr (read (globals inc)) (int) int)) ! pure",
+"define total : (subr pure (nat) int) ! pure",
+"define twice : (subr pure ((subr pure (int) int) int) int) ! pure",
+"define parts : (subr (read (globals inc twice)) (nat) int) ! pure",
+"define loops : (subr spin (int) int) ! pure",
+"int ! (maxeff (read (globals ev? get-noisy inc noisy od? parts total twice)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

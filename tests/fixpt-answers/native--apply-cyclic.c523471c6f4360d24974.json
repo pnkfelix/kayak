@@ -1,0 +1,49 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"apply-cyclic.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (38 cells, cellular):",
+"     0: lit 1",
+"     2: lit 2",
+"     4: prim list 2",
+"     7: global! xs",
+"     9: global xs",
+"    11: pair-cdr",
+"    12: global xs",
+"    14: prim set-cdr! 2",
+"    17: drop",
+"    18: lit |#u|",
+"    20: drop",
+"    21: closure word list over 0",
+"    24: prim %fx26-vlambda 1",
+"    27: global xs",
+"    29: prim %fx26-list-copy 1",
+"    32: swap",
+"    33: field 3",
+"    35: call 1",
+"    37: exit",
+"",
+"word list (6 cells, cellular):",
+"     0: slot 0",
+"     2: prim %fx26-list-copy 1",
+"     5: return",
+"  its register code (10 cells, not compiled):",
+"       0: args 1",
+"       2: save 0",
+"       4: prim %fx26-list-copy 1",
+"       7: pop 0",
+"       9: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

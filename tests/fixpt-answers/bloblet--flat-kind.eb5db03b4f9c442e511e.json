@@ -1,0 +1,42 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"flat-kind.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (15 cells, cellular):",
+"     0: closure word id over 0",
+"     3: global! id",
+"     5: closure word h over 0",
+"     8: global! h",
+"    10: global h",
+"    12: tcall 0",
+"    14: exit",
+"",
+"word h (3 cells, cellular):",
+"     0: lit 42",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 0",
+"       2: const 42",
+"       4: return",
+"",
+"word id (3 cells, cellular):",
+"     0: slot 0",
+"     2: return",
+"  its register code (5 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

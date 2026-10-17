@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"io-files-clock.fx"
+],
+"code": 0,
+"out": [
+"define size : (subr (maxeff (alloc @b) (io fs-read)) (string) int) ! pure",
+"define names : (subr (maxeff (alloc @l) (io fs-read)) (string) strs) ! pure",
+"define save : (subr (maxeff (alloc @b) (io fs-write) (read @b)) (string) bool) ! pure",
+"define later : (subr (io clock) (int) unit) ! pure",
+"define first-arg : (subr (maxeff (alloc @l) (io args) (read @l)) () string) ! pure",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

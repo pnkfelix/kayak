@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"specialized.fx"
+],
+"code": 0,
+"out": [
+"map1 : (subr (maxeff (read @l) (alloc @l) spin (read (globals map1))) ((subr pure (int) int) (listof int @l)) (listof int @l)) ! pure",
+"total : (subr (maxeff (read @l) spin (read (globals total))) ((listof int @l) int) int) ! pure",
+"test : (subr (maxeff (read @l) (alloc @l) spin (read (globals map1 total))) (int) int) ! pure",
+"36 : int ! (maxeff (read @l) (alloc @l) spin (read (globals map1 test total)))",
+"; `map1` redefined: every use sees the new one",
+"map1 : (subr (maxeff (read @l) (alloc @l) spin (read (globals map1))) ((subr pure (int) int) (listof int @l)) (listof int @l)) ! pure",
+"3036 : int ! (maxeff (read @l) (alloc @l) spin (read (globals map1 test total)))",
+""
+],
+"err": [
+""
+]
+}

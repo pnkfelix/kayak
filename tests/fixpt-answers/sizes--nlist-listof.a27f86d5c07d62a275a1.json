@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"nlist-listof.fx"
+],
+"code": 0,
+"out": [
+"v : (nlist int finite) ! pure",
+"p : (listof int acyclic) ! (read (globals v))",
+""
+],
+"err": [
+""
+]
+}

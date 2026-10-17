@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"composable-not-oneshot.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/control/composable-not-oneshot.fx:5:47: argument 1 is a (composable int int pure @p), where a (oneshot int int pure @p) is expected",
+""
+]
+}

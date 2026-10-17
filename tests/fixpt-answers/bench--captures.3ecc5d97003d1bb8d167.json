@@ -1,0 +1,21 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"--step-limit",
+"none",
+"eval",
+"captures.fx"
+],
+"code": 0,
+"out": [
+"t : (prompt-tag int resume (maxeff spin (read (globals deep t))) @p) ! (alloc @p)",
+"deep : (subr (maxeff (goto @p) (comefrom @p) spin (read (globals deep t))) (int) int) ! pure",
+"rounds : (subr (maxeff (goto @p) (comefrom @p) spin (read (globals deep rounds t))) (int int) int) ! pure",
+"420000 : int ! (maxeff (goto @p) (comefrom @p) spin (read (globals deep rounds t)))",
+""
+],
+"err": [
+""
+]
+}

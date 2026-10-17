@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"acyclic.fx"
+],
+"code": 0,
+"out": [
+"define len : (subr pure ((listof int acyclic) int) int) ! pure",
+"define ring : (subr pure (int) (listof int const)) ! pure",
+"define line : (subr pure (int) (listof int const)) ! pure",
+"define count : (subr (read (globals len)) ((listof int const)) int) ! pure",
+"int ! (read (globals count len line ring))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

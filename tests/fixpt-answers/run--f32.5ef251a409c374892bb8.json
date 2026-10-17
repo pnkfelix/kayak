@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"f32.fx"
+],
+"code": 0,
+"out": [
+"define f32-sum : (subr (maxeff (read (globals f32-sum)) spin) (int f32) f32) ! pure",
+"define f32s : (subr (maxeff (alloc @heap) (read (globals f32-sum)) spin) (int) (listof string @heap)) ! pure",
+"(listof string @heap) ! (maxeff (alloc @heap) (read (globals f32-sum f32s)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

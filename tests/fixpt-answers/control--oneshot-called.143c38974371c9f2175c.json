@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"oneshot-called.fx"
+],
+"code": 0,
+"out": [
+"called : (subr (maxeff (goto @p) (comefrom @p)) ((oneshot int int pure @p)) int) ! pure",
+"0 : int ! pure",
+""
+],
+"err": [
+""
+]
+}

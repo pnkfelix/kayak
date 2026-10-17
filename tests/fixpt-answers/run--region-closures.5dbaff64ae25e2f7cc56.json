@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"region-closures.fx"
+],
+"code": 0,
+"out": [
+"define adders : (subr spin (int) int) ! pure",
+"define twice : (subr pure (int) int) ! pure",
+"(listof int @l) ! (maxeff (alloc @l) (read (globals adders twice)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

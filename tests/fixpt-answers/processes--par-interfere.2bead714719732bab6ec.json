@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"par-interfere.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/processes/par-interfere.fx:5:1: `par`'s branches interfere: one has (write @x) and another (read @x), so the answer could depend on which runs first",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"caller-place.fx"
+],
+"code": 0,
+"out": [
+"define build : (poly ((p place) (r region p)) (subr (maxeff (alloc p) (alloc r)) ((place p) int) (listof int r))) ! pure",
+"define use : (subr (read (globals build)) (int) int) ! pure",
+"int ! (read (globals build use))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

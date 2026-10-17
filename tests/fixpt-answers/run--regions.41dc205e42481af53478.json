@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"regions.fx"
+],
+"code": 0,
+"out": [
+"define add-to : (subr pure (int) int) ! pure",
+"define total : (subr spin (int) int) ! pure",
+"(listof int @l) ! (maxeff (alloc @l) (read (globals add-to total)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

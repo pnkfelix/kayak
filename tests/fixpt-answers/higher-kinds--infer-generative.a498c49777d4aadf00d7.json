@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"infer-generative.fx"
+],
+"code": 0,
+"out": [
+"define id : (poly ((f (=> (type) type)) (a type)) (subr pure ((f a)) (f a))) ! pure",
+"define up-gbox : (poly ((t type)) (subr pure ((productof (v t))) (gbox t))) ! pure",
+"define down-gbox : (poly ((t type)) (subr pure ((gbox t)) (productof (v t)))) ! pure",
+"int ! (read (globals down-gbox id up-gbox))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

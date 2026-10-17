@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"union-subtyping.fx"
+],
+"code": 0,
+"out": [
+"define widen : (subr pure (small) wide) ! pure",
+"define one : (subr (alloc @r) () wide) ! pure",
+"wide ! (read (globals widen))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

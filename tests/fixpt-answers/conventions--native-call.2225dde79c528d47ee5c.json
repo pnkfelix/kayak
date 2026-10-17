@@ -1,0 +1,16 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"native-call.fx"
+],
+"code": 0,
+"out": [
+"call : (subr pure ((subr (conv native) pure (int) int)) int) ! pure",
+""
+],
+"err": [
+""
+]
+}

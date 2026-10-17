@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"flat-kind.fx"
+],
+"code": 0,
+"out": [
+"id : (poly ((f flat)) (subr pure ((blobref b2 f)) (blobref b2 f))) ! pure",
+"h : (poly ((f flat)) (subr pure () int)) ! pure",
+"42 : int ! (read (globals h))",
+""
+],
+"err": [
+""
+]
+}

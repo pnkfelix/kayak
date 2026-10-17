@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"c7.fx"
+],
+"code": 0,
+"out": [
+"(pairof (mu %2 (subr (goto @k) ((pairof %2 %2 @p)) void)) (mu %2 (subr (goto @k) ((pairof %2 %2 @p)) void)) @p) ! (maxeff (alloc @p) (comefrom @k) (goto @k) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

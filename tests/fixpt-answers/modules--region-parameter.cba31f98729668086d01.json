@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"region-parameter.fx"
+],
+"code": 0,
+"out": [
+"make-cell : cells ! pure",
+"2 : int ! (read (globals make-cell))",
+""
+],
+"err": [
+""
+]
+}

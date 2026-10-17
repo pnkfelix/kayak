@@ -1,0 +1,30 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"raw-args.fx"
+],
+"code": 0,
+"out": [
+"define scale : (subr pure (f64 int) f64) ! pure",
+"define keep : (subr (alloc @heap) (f64) (listof f64 @heap)) ! pure",
+"define orbit : (subr (maxeff (read (globals orbit scale)) spin) (int f64 f64) f64) ! pure",
+"define deepr : (subr (maxeff (alloc @heap) (read (globals deepr)) (read @heap) spin) (int f64) f64) ! pure",
+"define kept : (subr (maxeff (alloc @heap) (read (globals keep scale)) (read @heap)) (f64) f64) ! pure",
+"define keepn : (subr (maxeff (alloc @heap) (read (globals keepn)) spin) (int f64) (listof f64 @heap)) ! pure",
+"define sqsum : (subr (maxeff (read (globals sqsum)) spin) (int f64) f64) ! pure",
+"define dot2 : (subr (maxeff (read (globals dot2)) spin) (int f64 f64) f64) ! pure",
+"define shown : (subr (alloc @heap) (f64) int) ! pure",
+"define mixed : (subr (maxeff (alloc @heap) (read (globals dot2 keepn shown sqsum)) (read @heap) spin) (f64) f64) ! pure",
+"define u : (prompt-tag f64 f64 (maxeff (comefrom @p) (goto @p) (read (globals u))) @p) ! (alloc @p)",
+"define given : (subr (maxeff (comefrom @p) (goto @p) (read (globals u))) (f64) f64) ! pure",
+"define raw-args : (subr (maxeff (alloc @heap) (comefrom @p) (goto @p) (read (globals deepr dot2 given keep keepn kept mixed orbit scale shown sqsum u)) (read @heap) spin) (int) int) ! pure",
+"int ! (maxeff (alloc @heap) (comefrom @p) (goto @p) (read (globals deepr dot2 given keep keepn kept mixed orbit raw-args scale shown sqsum u)) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"place-is-a-region.fx"
+],
+"code": 0,
+"out": [
+"define total : (poly ((p place)) (subr (maxeff (alloc p) (read p)) ((place p) int) int)) ! pure",
+"int ! (read (globals total))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

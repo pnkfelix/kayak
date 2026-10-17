@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"nlist-const.fx"
+],
+"code": 1,
+"out": [
+"l : (listof int const) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/nlist-const.fx:3:30: `v` is declared a (nlist int finite): a (nlist int finite) is expected here, and this is a (listof int const)",
+""
+]
+}

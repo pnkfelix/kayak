@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"counter.fx"
+],
+"code": 1,
+"out": [
+"up-t : (subr pure (int) t) ! pure",
+"down-t : (subr pure (t) int) ! pure",
+"zero : t ! (read (globals up-t))",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/counter.fx:6:31: `inc` is declared a (subr pure (t) t): a (subr pure (t) t) is expected here, and this is a (subr (read (globals down-t up-t)) (t) t)",
+"  beyond what is expected, it has (read (globals down-t up-t))",
+""
+]
+}

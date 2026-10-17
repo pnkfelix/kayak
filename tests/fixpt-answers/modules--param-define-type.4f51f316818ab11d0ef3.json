@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"param-define-type.fx"
+],
+"code": 0,
+"out": [
+"m : (moduleof (desc pair2 (dlambda ((a type)) (productof (1 a) (2 a)))) (val x (productof (1 int) (2 int)))) ! pure",
+"3 : int ! (read (globals m))",
+""
+],
+"err": [
+""
+]
+}

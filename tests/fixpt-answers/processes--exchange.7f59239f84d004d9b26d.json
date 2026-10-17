@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"exchange.fx"
+],
+"code": 0,
+"out": [
+"define done : (icell int @d) ! (alloc @d)",
+"define play : (poly ((r place)) (subr (maxeff (init @d) (read (globals done)) (receive r) (send @p) nondet spin) ((inbox msg r)) unit)) ! pure",
+"define a : (addr msg @p) ! (maxeff (alloc @p) (init @d) (read (globals done play)) (send @p) nondet spin)",
+"define b : (addr msg @p) ! (maxeff (alloc @p) (init @d) (read (globals done play)) (send @p) nondet spin)",
+"unit ! (maxeff (read (globals a b)) (send @p) spin)",
+"unit ! (maxeff (read (globals a b)) (send @p) spin)",
+"unit ! (maxeff (read (globals a)) (send @p) spin)",
+"int ! (maxeff (await @d) (read (globals done)))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

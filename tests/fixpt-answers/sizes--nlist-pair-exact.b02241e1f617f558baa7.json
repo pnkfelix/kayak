@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"nlist-pair-exact.fx"
+],
+"code": 1,
+"out": [
+"v : (nlist int 2) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/nlist-pair-exact.fx:4:46: `p` is declared a (pairof int (nlist int 1) acyclic): a (pairof int (nlist int 1) acyclic) is expected here, and this is a (nlist int 2)",
+""
+]
+}

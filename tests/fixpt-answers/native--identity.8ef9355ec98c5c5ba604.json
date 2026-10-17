@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"identity.fx"
+],
+"code": 0,
+"out": [
+"define yes-no : (subr pure (bool) string) ! pure",
+"define parent : (ref nodes @heap) ! (maxeff (alloc @heap) (alloc @uf))",
+"define root : (subr (maxeff (read (globals parent root)) (read @heap) (read @uf) (write @uf) spin) (node) node) ! pure",
+"define join! : (subr (maxeff (read (globals parent root)) (read @heap) (read @uf) (write @uf) spin) (node node) unit) ! pure",
+"define own-parents! : (subr (maxeff (read (globals own-parents! parent)) (read @heap) (read @uf) (write @uf) spin) (nodes int) unit) ! pure",
+"define link! : (subr (maxeff (read (globals join! link! parent root)) (read @heap) (read @uf) (write @uf) spin) (nodes int int) unit) ! pure",
+"define count-roots : (subr (maxeff (read (globals count-roots parent root)) (read @heap) (read @uf) (write @uf) spin) (nodes int int) int) ! pure",
+"define fill! : (subr (maxeff (alloc @uf) (read (globals fill!)) (write @uf) spin) (nodes int) unit) ! pure",
+"define roots : (subr (maxeff (alloc @uf) (read (globals count-roots fill! join! link! own-parents! parent root)) (read @heap) (read @uf) (write @heap) (write @uf) spin) (int int) int) ! pure",
+"define records : (subr (maxeff (alloc @heap) (read (globals yes-no))) () string) ! pure",
+"define identity : (subr (maxeff (alloc @heap) (alloc @uf) (read (globals count-roots fill! join! link! own-parents! parent records root roots yes-no)) (read @heap) (read @uf) (write @heap) (write @uf) spin) (int) strings) ! pure",
+"strings ! (maxeff (alloc @heap) (alloc @uf) (read (globals count-roots fill! identity join! link! own-parents! parent records root roots yes-no)) (read @heap) (read @uf) (write @heap) (write @uf) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

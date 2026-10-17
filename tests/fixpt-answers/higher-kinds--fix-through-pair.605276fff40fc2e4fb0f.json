@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"fix-through-pair.fx"
+],
+"code": 0,
+"out": [
+"(listof int @heap) ! (alloc @heap)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"polycycle2.fx"
+],
+"code": 0,
+"out": [
+"f : (subr pure ((productof (x p2))) int) ! pure",
+"g : (subr (read (globals f)) ((productof (x p1))) int) ! pure",
+""
+],
+"err": [
+""
+]
+}

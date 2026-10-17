@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"datatype.fx"
+],
+"code": 0,
+"out": [
+"define geometry : (moduleof (desc shape (sumof (circle (productof (1 int))) (rect (productof (1 int) (2 int))))) (val circle (subr pure (int) shape)) (val rect (subr pure (int int) shape)) (val area (subr pure (shape) int))) ! pure",
+"define rect : (subr pure (int int) shape) ! (read (globals geometry))",
+"define area : (subr pure (shape) int) ! (read (globals geometry))",
+"define big : (subr pure (shape) bool) ! pure",
+"int ! (read (globals area big geometry rect))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

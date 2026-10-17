@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"from-fx.fx"
+],
+"code": 0,
+"out": [
+"define inc-fx : (subr (conv fx) pure (int) int) ! pure",
+"define inc : (subr pure (int) int) ! (read (globals inc-fx))",
+"define apply1 : (subr pure ((subr pure (int) int) int) int) ! pure",
+"int ! (read (globals apply1 inc-fx))",
+"(subr (conv cellular) pure (int) int) ! (read (globals inc-fx))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

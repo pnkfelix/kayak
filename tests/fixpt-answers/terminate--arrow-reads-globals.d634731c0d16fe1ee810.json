@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"arrow-reads-globals.fx"
+],
+"code": 1,
+"out": [
+"inc : (subr pure (int) int) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/terminate/arrow-reads-globals.fx:4:29: `inc2` is declared a (subr pure (int) int): a (subr pure (int) int) is expected here, and this is a (subr (read (globals inc)) (int) int)",
+"  beyond what is expected, it has (read (globals inc))",
+""
+]
+}

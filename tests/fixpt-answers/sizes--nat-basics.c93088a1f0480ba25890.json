@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"nat-basics.fx"
+],
+"code": 0,
+"out": [
+"define three : (nat 3) ! pure",
+"define four : (nat 4) ! (read (globals three))",
+"define some : nat ! (read (globals four))",
+"define as-int : int ! (read (globals some))",
+"define seven : (nat 7) ! (read (globals four three))",
+"int ! (read (globals as-int seven))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

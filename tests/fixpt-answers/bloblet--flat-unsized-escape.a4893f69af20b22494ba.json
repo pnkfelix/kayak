@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"flat-unsized-escape.fx"
+],
+"code": 1,
+"out": [
+"reader-for : (poly ((n size)) (subr pure ((blobref blob (flat-arrayof f64 n))) (subr (read @heap) ((blobref blob (flat-arrayof f64 n))) f64))) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-unsized-escape.fx:13:5: this is a (subr (read @heap) ((blobref (bloblet (fields) @heap) (flat-arrayof f64 s))) f64), which takes something of the size of `s`, and that size is not known outside `s`'s scope",
+""
+]
+}

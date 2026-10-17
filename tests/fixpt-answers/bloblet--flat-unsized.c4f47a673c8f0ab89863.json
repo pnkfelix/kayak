@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"flat-unsized.fx"
+],
+"code": 0,
+"out": [
+"define fill! : (poly ((n size)) (subr (maxeff (read (globals fill!)) (read @heap) (write @heap) spin) ((blobref blob (flat-arrayof f64 n)) int int) unit)) ! pure",
+"define total : (poly ((n size)) (subr (maxeff (read (globals total)) (read @heap) spin) ((blobref blob (flat-arrayof f64 n)) int int f64) f64)) ! pure",
+"define main : (subr (maxeff (alloc @heap) (read (globals fill! total)) (read @heap) (write @heap) spin) () f64) ! pure",
+"f64 ! (maxeff (alloc @heap) (read (globals fill! main total)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

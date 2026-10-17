@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"flat-sum-name-label.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-sum-name-label.fx:3:36: a label of a sum keyed by `u16` is a number below 2^16",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

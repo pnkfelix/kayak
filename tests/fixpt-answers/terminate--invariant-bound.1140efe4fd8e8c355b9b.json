@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"invariant-bound.fx"
+],
+"code": 0,
+"out": [
+"define up : (subr pure (int int) int) ! pure",
+"define down : (subr (read @globals) (int int) int) ! pure",
+"define down2 : (subr (read @globals) (int int) int) ! pure",
+"int ! (maxeff (read (globals down up)) (read @globals))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"array-sum.fx"
+],
+"code": 0,
+"out": [
+"a : (arrayof int @a) ! (alloc @a)",
+"fill : (subr (maxeff (write @a) spin (read (globals a fill))) (int) unit) ! pure",
+"total : (subr (maxeff (read @a) spin (read (globals a total))) (int int) int) ! pure",
+"285 : int ! (maxeff (read @a) (write @a) spin (read (globals a fill total)))",
+""
+],
+"err": [
+""
+]
+}

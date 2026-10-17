@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"data-generative.fx"
+],
+"code": 1,
+"out": [
+"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/datum/data-generative.fx:4:1: `t` is bound as data, and a ty-id is not data",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

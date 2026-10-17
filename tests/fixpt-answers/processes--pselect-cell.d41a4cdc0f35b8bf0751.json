@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"pselect-cell.fx"
+],
+"code": 0,
+"out": [
+"never : (icell int @c) ! (alloc @c)",
+"soon : (icell int @c) ! (alloc @c)",
+"p : (addr int @p) ! (maxeff (alloc @p) (init @c) nondet (read (globals soon)))",
+"#u : unit ! (maxeff (send @p) (read (globals p)))",
+"7 : int ! (maxeff (await @c) nondet (read (globals never soon)))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"io-terminal.fx"
+],
+"code": 0,
+"out": [
+"raw? : (subr (io terminal) () bool) ! pure",
+"restored : (subr (io terminal) () unit) ! pure",
+"columns : (subr (io terminal) () int) ! pure",
+"keys : (subr (maxeff (io stdin) (io terminal) (read (globals raw? restored))) () int) ! pure",
+""
+],
+"err": [
+""
+]
+}

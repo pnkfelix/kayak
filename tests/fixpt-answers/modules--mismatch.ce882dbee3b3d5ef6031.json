@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"mismatch.fx"
+],
+"code": 0,
+"out": [
+"counter : (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int))) ! pure",
+"use : (subr pure (zeros) int) ! pure",
+"0 : int ! (read (globals counter use))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"forward.fx"
+],
+"code": 0,
+"out": [
+"define m : (moduleof (val f (subr pure (int) int)) (val limit int) (val y int) (val g (subr pure () int)) (val h (subr pure () int))) ! pure",
+"int ! (read (globals m))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

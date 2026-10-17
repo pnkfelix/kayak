@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"race-lost.fx"
+],
+"code": 0,
+"out": [
+"define a : (icell int @c) ! (alloc @c)",
+"define w : (addr int @p) ! (maxeff (alloc @p) (init @c) (read (globals a)) nondet)",
+"unit ! (maxeff (read (globals w)) (send @p))",
+"int ! (maxeff (await @c) (read (globals a)) nondet)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

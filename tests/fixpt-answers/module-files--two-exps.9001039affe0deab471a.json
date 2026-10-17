@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"two-exps.fx"
+],
+"code": 0,
+"out": [
+"1 : int ! pure",
+"2 : int ! pure",
+""
+],
+"err": [
+""
+]
+}

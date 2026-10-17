@@ -1,0 +1,25 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"own-place.fx"
+],
+"code": 0,
+"out": [
+"half : (icell int @t) ! (alloc @t)",
+"total : (icell int @t) ! (alloc @t)",
+"adder : (poly ((r place)) (subr (maxeff (init @t) (receive r) spin nondet) ((inbox int r) (icell int @t)) unit)) ! pure",
+"p1 : (addr int @a) ! (maxeff (alloc @a) (init @t) spin nondet (read (globals adder half)))",
+"p2 : (addr int @a) ! (maxeff (alloc @a) (init @t) spin nondet (read (globals adder total)))",
+"#u : unit ! (maxeff (send @a) (read (globals p1)))",
+"#u : unit ! (maxeff (send @a) (read (globals p2)))",
+"#u : unit ! (maxeff (send @a) (read (globals p1)))",
+"#u : unit ! (maxeff (send @a) (read (globals p2)))",
+"30 : int ! (maxeff (await @t) (read (globals half total)))",
+""
+],
+"err": [
+""
+]
+}

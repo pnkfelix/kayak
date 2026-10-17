@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"lists.fx"
+],
+"code": 0,
+"out": [
+"define iota : (subr (maxeff (alloc @l) (read (globals iota)) spin) (int (listof int @l)) (listof int @l)) ! pure",
+"define add-up : (subr (maxeff (read (globals add-up)) (read @l) spin) ((listof int @l) int) int) ! pure",
+"define rounds : (subr (maxeff (alloc @l) (read (globals add-up iota rounds)) (read @l) spin) (int int) int) ! pure",
+"int ! (maxeff (alloc @l) (read (globals add-up iota rounds)) (read @l) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,52 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"nil-or-pair.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (22 cells, cellular):",
+"     0: closure word value over 0",
+"     3: global! value",
+"     5: lit ()",
+"     7: global value",
+"     9: tcall 1",
+"    11: lit |a|",
+"    13: lit 4",
+"    15: cons",
+"    16: global value",
+"    18: tcall 1",
+"    20: int-add",
+"    21: exit",
+"",
+"word value (14 cells, cellular):",
+"     0: slot 0",
+"     2: lit ()",
+"     4: eq",
+"     5: 0branch → 10",
+"     7: lit 0",
+"     9: return",
+"    10: slot 0",
+"    12: pair-cdr",
+"    13: return",
+"  its register code (17 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: op2imm eq ()",
+"       7: branchf → 12",
+"       9: const 0",
+"      11: return",
+"      12: reg 1",
+"      14: op1 pair-cdr",
+"      16: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"strings.fx"
+],
+"code": 0,
+"out": [
+"m : (moduleof (val a int) (val c int)) ! pure",
+"f : (moduleof (val base int) (val answer int)) ! (read (globals %shared:/Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/../module-files/strings.fx))",
+"45 : int ! (read (globals f m))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"include-family-missing.fx"
+],
+"code": 1,
+"out": [
+"boxes : (moduleof (desc box (dlambda ((k type) (r region)) (pairof k k r)))) ! pure",
+""
+],
+"err": [
+"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/include-family-missing.fx:5:3: `crate` is not a type, nor one a module included gives",
+""
+]
+}

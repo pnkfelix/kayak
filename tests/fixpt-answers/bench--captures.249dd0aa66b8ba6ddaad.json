@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"captures.fx"
+],
+"code": 0,
+"out": [
+"define t : (prompt-tag int resume (maxeff (read (globals deep t)) spin) @p) ! (alloc @p)",
+"define deep : (subr (maxeff (comefrom @p) (goto @p) (read (globals deep t)) spin) (int) int) ! pure",
+"define rounds : (subr (maxeff (comefrom @p) (goto @p) (read (globals deep rounds t)) spin) (int int) int) ! pure",
+"int ! (maxeff (comefrom @p) (goto @p) (read (globals deep rounds t)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

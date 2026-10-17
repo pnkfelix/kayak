@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"with-falls-back.fx"
+],
+"code": 0,
+"out": [
+"a : (moduleof (desc n bool)) ! pure",
+"3 : k ! (read (globals a))",
+""
+],
+"err": [
+""
+]
+}

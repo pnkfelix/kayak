@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"include-types.fx"
+],
+"code": 0,
+"out": [
+"shapes : (moduleof (desc point (productof (1 int) (2 int))) (val origin (productof (1 int) (2 int)))) ! pure",
+"m : (moduleof (desc point (productof (1 int) (2 int))) (desc pair point) (val origin (productof (1 int) (2 int))) (val flip (subr pure (pair) pair)) (val one pair)) ! (read (globals shapes))",
+"2 : int ! (read (globals m))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"capture-and-resume.fx"
+],
+"code": 0,
+"out": [
+"define t : (prompt-tag int int (read (globals t)) @p) ! (alloc @p)",
+"int ! (read (globals t))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

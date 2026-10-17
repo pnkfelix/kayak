@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"frames-hold-private-state.fx"
+],
+"code": 0,
+"out": [
+"define t : (prompt-tag int int (maxeff (alloc @s) (write @s)) @p) ! (alloc @p)",
+"define saved : (ref (listof kont @s) @s) ! (alloc @s)",
+"define grab : (subr (maxeff (alloc @s) (comefrom @p) (goto @p) (read (globals saved t)) (write @s)) () int) ! pure",
+"int ! (maxeff (alloc @s) (comefrom @p) (goto @p) (read (globals grab saved t)) (write @s))",
+"define again : (subr (maxeff (alloc @s) (comefrom @p) (goto @p) (read (globals saved t)) (read @s) (write @s)) (int) int) ! pure",
+"int ! (maxeff (alloc @s) (comefrom @p) (goto @p) (read (globals again saved t)) (read @s) (write @s))",
+"int ! (maxeff (alloc @s) (comefrom @p) (goto @p) (read (globals again saved t)) (read @s) (write @s))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

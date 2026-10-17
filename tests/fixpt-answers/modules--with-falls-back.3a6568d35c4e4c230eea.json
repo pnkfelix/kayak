@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"with-falls-back.fx"
+],
+"code": 0,
+"out": [
+"define a : (moduleof (desc n bool)) ! pure",
+"k ! (read (globals a))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"reexport-inlined.fx"
+],
+"code": 0,
+"out": [
+"define m : (moduleof (val inc (subr pure (int) int))) ! pure",
+"define inc : (subr pure (int) int) ! (read (globals m))",
+"define loop : (subr (maxeff (read (globals inc)) spin) (int int) int) ! pure",
+"int ! (maxeff (read (globals inc loop)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"expr.fx"
+],
+"code": 0,
+"out": [
+"num : (subr pure (int) expr) ! pure",
+"add : (subr pure (expr expr) expr) ! pure",
+"neg : (subr pure (expr) expr) ! pure",
+"value : (subr (maxeff spin (read (globals value))) (expr) int) ! pure",
+"42 : int ! (maxeff spin (read (globals add neg num value)))",
+""
+],
+"err": [
+""
+]
+}

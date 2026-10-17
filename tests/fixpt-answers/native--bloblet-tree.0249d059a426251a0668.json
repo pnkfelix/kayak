@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"bloblet-tree.fx"
+],
+"code": 0,
+"out": [
+"define build : (subr (maxeff (alloc @heap) (read (globals build)) spin) (int) node) ! pure",
+"define grow : (subr (maxeff (alloc @heap) (read (globals grow)) (read @heap) (write @heap) spin) (node int) unit) ! pure",
+"define total : (subr (maxeff (read (globals total)) (read @heap) spin) ((union int node)) int) ! pure",
+"define tree : (subr (maxeff (alloc @heap) (read (globals build grow total)) (read @heap) (write @heap) spin) (int) int) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals build grow total tree)) (read @heap) (write @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

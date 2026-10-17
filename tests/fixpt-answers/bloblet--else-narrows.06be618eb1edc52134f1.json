@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"else-narrows.fx"
+],
+"code": 0,
+"out": [
+"define f : (subr pure (abc) int) ! pure",
+"int ! (read (globals f))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

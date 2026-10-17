@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"nlist-listof.fx"
+],
+"code": 0,
+"out": [
+"v : (nlist int finite) ! pure",
+"p : (listof int acyclic) ! (read (globals v))",
+""
+],
+"err": [
+""
+]
+}

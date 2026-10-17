@@ -1404,3 +1404,18 @@ monitored groups; the machine's poll at a time slice's end, and a
 monitored task's failure caught. The scheduler itself is Fixpt's FX-26,
 in the words its compiler makes. 326 of Fixpt's programs agree on tier 1,
 none differ.
+
+## The pin at Fixpt bb3f570 (2026-10-17)
+
+Seventeen commits: one wording for each failure on every machine, calls
+between the machines too deep an overflow, included names bound once at
+the module, raw scalars written up for the user. Nothing kayak ported
+needed carrying over. 338 of Fixpt's programs agree on tier 1, 12 new.
+
+## Fixpt's programs and answers kept in kayak (2026-10-17, C132)
+
+The user's: Fixpt's FX-26 test programs, 710 files, in
+`tests/fx26/programs/`, and Fixpt's answers to every run the checks ask
+for in `tests/fixpt-answers/`, so that the checks against Fixpt's
+programs run without a clone of Fixpt, and moving the pin shows, as a
+diff, how its answers moved.

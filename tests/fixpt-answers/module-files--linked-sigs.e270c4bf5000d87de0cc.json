@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--step-limit",
+"none",
+"eval",
+"linked-sigs.fx"
+],
+"code": 0,
+"out": [
+""
+],
+"err": [
+""
+]
+}

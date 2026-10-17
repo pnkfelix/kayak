@@ -1,0 +1,19 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"fixed-width-literals.fx"
+],
+"code": 0,
+"out": [
+"x : u32 ! pure",
+"y : i32 ! pure",
+"bump : (subr pure (u32) u32) ! pure",
+"8 : int ! (read (globals bump x y))",
+""
+],
+"err": [
+""
+]
+}

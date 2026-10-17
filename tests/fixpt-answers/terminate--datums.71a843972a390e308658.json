@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"datums.fx"
+],
+"code": 0,
+"out": [
+"define size : (subr pure (datum) int) ! pure",
+"int ! (read (globals size))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}
