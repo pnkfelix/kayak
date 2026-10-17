@@ -682,3 +682,32 @@ a built-in module, say, as native code's operations came with `(io
 native)`. **Not raised with Fixpt yet** (the user: not to bother them
 about it for now). Until then KFX refuses them, which K1 allows.
 
+
+## 33. The REPL's commands, as Fixpt's has them (the user, 2026-10-16)
+
+Fixpt's FX-26 REPL (`fixpt-cli/src/fx26.rs`, `help.rs`) has commands ours
+(`fx26/live-repl.kfx`'s `command!`, and `repl-tasks.kfx`'s) lacks; fill the
+gap where it makes sense. Ours already has `,help`, `,type`, `,time`,
+`,load`, `,pending`, `,cancel`, `,step-limit`, `,apropos`, `,quit`.
+- Now, on what we have:
+  - `,fits TYPE`, `,returns TYPE`: what accepts, and what produces, a
+    value of a type, by subtyping over the environment's types;
+  - `,help` inside a form: a hole, answered from the types (what fits
+    there) and by running the form up to it. In FX-26 Fixpt checks the
+    hole and does not hold it, so no `,resume` or `,where`;
+  - `,list-outdated`, `,rerun-outdated`, `,redefine b|r`: definitions
+    using a global since defined again at another type;
+  - `,code`: each form's generated code shown, on or off;
+  - `,at FILE LINE COL` under an `--emacs` option: where the next form
+    came from;
+  - `,apropos KIND TEXT`, narrowed to one namespace (value, type, family,
+    generative, effect, region, base);
+  - the short forms `,h`, `,?`, `,a`, `,f`, `,r`.
+- Once the REPL's forms reach the cells machine (our FX-26 to cells code
+  generator, §31 item 5; kayak-fx26 linking kayak-cells):
+  `,disassemble E`, `,disassemble-asm E` (`cells/show.kfx`, `hand.kfx`);
+  `,native NAME [ARG…]` with tier 6's convention; `,inliners NAME` once
+  register code inlines.
+- Not to copy as is: Fixpt's `,pending [clear]` is about entries waiting
+  on types not defined yet, while ours lists the entries not ended; if
+  we come to have the former, it wants another name.
