@@ -109,8 +109,10 @@ modules/include-abstract-alias.fx
 modules/include-abstract-hidden-ok.fx
 modules/include-abstract-made.fx
 modules/include-abstract.fx
+modules/include-bound-once.fx
 modules/include-effects.fx
 modules/include-family.fx
+modules/include-param-shadows.fx
 modules/include-same-type.fx
 modules/include-types-inside.fx
 modules/include-types.fx
@@ -169,7 +171,9 @@ native/apply-cyclic.fx
 native/bloblet-tree.fx
 native/blobrefs.fx
 native/bytevector-sum.fx
+native/capture-across-collecting.fx
 native/captures.fx
+native/crossing-overflow.fx
 native/dead-slot.fx
 native/deep-control.fx
 native/deep.fx
@@ -185,11 +189,13 @@ native/inlined-extract.fx
 native/made-native.fx
 native/many-values.fx
 native/mixed.fx
+native/quiet-boxes.fx
 native/raw-64.fx
 native/raw-args.fx
 native/raw-returns.fx
 native/raw-slots.fx
 native/region-cons.fx
+native/remainder.fx
 native/shift-counts.fx
 native/shifts.fx
 native/small-width-ops.fx
@@ -246,6 +252,12 @@ run/conditions.fx
 run/define-rec.fx
 run/evaluator-writes.fx
 run/f32.fx
+run/fails-car.fx
+run/fails-error.fx
+run/fails-integer-char.fx
+run/fails-quotient.fx
+run/fails-string-ref.fx
+run/fails-substring.fx
 run/flat-arrays.fx
 run/floats.fx
 run/generative.fx
