@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/terminate/const-list.fx:2:48: `f` is declared a (subr pure ((listof int const)) int): a (subr pure ((listof int const)) int) is expected here, and this is a (subr (maxeff spin (read (globals f))) ((listof int const)) int)",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/terminate/const-list.fx:2:48: `f` is declared a (subr pure ((listof int const)) int): a (subr pure ((listof int const)) int) is expected here, and this is a (subr (maxeff spin (read (globals f))) ((listof int const)) int)",
 "  beyond what is expected, it has (maxeff spin (read (globals f))); it may not end: nothing smaller, or related, is passed by the call of `f` in `f` (a part of a list that may be written is no smaller: it may be cyclic)",
 ""
 ]

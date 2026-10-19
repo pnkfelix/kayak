@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"strings.fx"
+],
+"code": 0,
+"out": [
+"m : (moduleof (val a int) (val c int)) ! pure",
+"f : (moduleof (val base int) (val answer int)) ! (read (globals %shared:<kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/../module-files/strings.fx))",
+"45 : int ! (read (globals f m))",
+""
+],
+"err": [
+""
+]
+}

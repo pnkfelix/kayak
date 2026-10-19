@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"not-a-place.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/not-a-place.fx:2:33: `r` is not a place",
+""
+]
+}

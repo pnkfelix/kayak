@@ -5,6 +5,10 @@ use kayak_rt::*;
 // Fixpt's programs/made-code/typed-calls.fx, as it is but its last three
 // forms, which main says (C116): a native procedure called in tail
 // position and not, given and called.
+pub fn here_p() -> bool {
+    (native_code_p() && string_eq_p(car(the::<List<Str>>(native_convention())), str_lit("(target arm64)")))
+}
+
 pub fn put4(b: &'static Bloblet<()>, at: Int, w: Int) -> () {
     bloblet_set_byte_x(b, at, modulo(w, int_lit(256)));
     bloblet_set_byte_x(b, _plus(at, int_lit(1)), modulo(quotient(w, int_lit(256)), int_lit(256)));
@@ -33,15 +37,15 @@ pub fn via3(g: &'static (dyn Fn(Int, Int) -> Int + Send + Sync)) -> Int {
 }
 
 pub fn main() -> Str {
-    string_append(int_to_string(if native_code_p() {
+    string_append(int_to_string(if here_p() {
         via()
     } else {
         int_lit(42)
-    }), string_append(str_lit(" "), string_append(int_to_string(if native_code_p() {
+    }), string_append(str_lit(" "), string_append(int_to_string(if here_p() {
         via2(adder())
     } else {
         int_lit(42)
-    }), string_append(str_lit(" "), int_to_string(if native_code_p() {
+    }), string_append(str_lit(" "), int_to_string(if here_p() {
         via3(adder())
     } else {
         int_lit(42)

@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"oneshot-once.fx"
+],
+"code": 0,
+"out": [
+"t : (prompt-tag int int (read @globals) @p) ! (alloc @p)",
+"43 : int ! (maxeff (read @globals) (read (globals t)))",
+""
+],
+"err": [
+""
+]
+}

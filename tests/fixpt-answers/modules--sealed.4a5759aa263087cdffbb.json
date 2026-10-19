@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"sealed.fx"
+],
+"code": 1,
+"out": [
+"counter : (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int))) ! pure",
+"sealed : (moduleof (abs t type) (val zero t) (val value (subr pure (t) int))) ! (read (globals counter))",
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/sealed.fx:10:15: unbound variable `inc`",
+""
+]
+}

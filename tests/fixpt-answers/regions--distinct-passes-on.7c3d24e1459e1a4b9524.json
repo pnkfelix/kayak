@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"distinct-passes-on.fx"
+],
+"code": 1,
+"out": [
+"swap : swap-type ! pure",
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/distinct-passes-on.fx:13:39: `r1` is distinct, and r2 may be r3, given for `r2`",
+""
+]
+}

@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"load-param-datatype.fx"
+],
+"code": 0,
+"out": [
+"o : (moduleof (desc option (dlambda ((a type)) (sumof (none (productof)) (some (productof (1 a)))))) (val none (poly ((a type)) (subr pure () (sumof (none (productof)) (some (productof (1 a))))))) (val some (poly ((a type)) (subr pure (a) (sumof (none (productof)) (some (productof (1 a))))))) (val seven (sumof (none (productof)) (some (productof (1 int)))))) ! (read (globals %shared:<kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/../module-files/option.fx))",
+"7 : int ! (read (globals o))",
+""
+],
+"err": [
+""
+]
+}

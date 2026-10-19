@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"nat-length-wrong.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/nat-length-wrong.fx:7:32: a (nlist int m) is expected here, and this is a (nlist int n)",
+""
+]
+}

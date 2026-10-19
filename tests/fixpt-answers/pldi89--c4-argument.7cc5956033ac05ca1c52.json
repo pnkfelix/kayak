@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"c4-argument.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/pldi89/c4-argument.fx:9:4: unbound variable `h`",
+""
+]
+}

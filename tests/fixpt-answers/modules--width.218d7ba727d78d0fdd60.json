@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"width.fx"
+],
+"code": 0,
+"out": [
+"counter : (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int))) ! pure",
+"read-zero : (subr pure (zeros) int) ! pure",
+"0 : int ! (read (globals counter read-zero))",
+""
+],
+"err": [
+""
+]
+}

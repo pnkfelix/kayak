@@ -11,7 +11,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/nlist-pair-exact.fx:4:46: `p` is declared a (pairof int (nlist int 1) acyclic): a (pairof int (nlist int 1) acyclic) is expected here, and this is a (nlist int 2)",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/nlist-pair-exact.fx:4:46: `p` is declared a (pairof int (nlist int 1) acyclic): a (pairof int (nlist int 1) acyclic) is expected here, and this is a (nlist int 2)",
 ""
 ]
 }

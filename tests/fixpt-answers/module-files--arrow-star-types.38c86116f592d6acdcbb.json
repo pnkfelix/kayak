@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/arrow-star-types.fx:4:32: `r` is not a region",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/arrow-star-types.fx:4:32: `r` is not a region",
 ""
 ]
 }

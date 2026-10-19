@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/include-different-type.fx:5:21: `num` is defined twice in this module",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/include-different-type.fx:5:21: `num` is defined twice in this module",
 "; both checkers agree",
 ""
 ],

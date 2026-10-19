@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"or-then-refused.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/or-then-refused.fx:5:44: a nat is expected here, and this is a int",
+""
+]
+}

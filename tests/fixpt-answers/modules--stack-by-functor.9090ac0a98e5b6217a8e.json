@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"stack-by-functor.fx"
+],
+"code": 0,
+"out": [
+"make-stack : (subr pure (elt-sig) (moduleof (abs stack type) (val empty stack) (val is-empty (subr (read @heap) (stack) bool)) (val push (subr (alloc @heap) ((select $1 t) stack) stack)) (val top (subr (read @heap) (stack) (select $1 t))) (val pop (subr (read @heap) (stack) stack)))) ! pure",
+"int-elt : (moduleof (desc t int)) ! pure",
+"bool-elt : (moduleof (desc t bool)) ! pure",
+"(3 2 1) : (listof int @r.1) ! (maxeff (read @heap) (alloc @heap) (alloc @r.1) (read (globals bool-elt int-elt make-stack)))",
+""
+],
+"err": [
+""
+]
+}

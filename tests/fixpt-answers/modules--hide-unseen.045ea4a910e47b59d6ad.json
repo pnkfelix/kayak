@@ -11,7 +11,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/hide-unseen.fx:4:9: unbound variable `secret`",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/hide-unseen.fx:4:9: unbound variable `secret`",
 ""
 ]
 }

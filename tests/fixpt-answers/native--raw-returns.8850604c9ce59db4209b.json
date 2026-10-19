@@ -1,0 +1,30 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"raw-returns.fx"
+],
+"code": 0,
+"out": [
+"half : (subr pure (int) f64) ! pure",
+"pick : (poly ((t type)) (subr pure (bool t t) t)) ! pure",
+"felem : (subr (read @heap) (fvec int) f64) ! pure",
+"ielem : (subr (read @heap) (ivec int) i64) ! pure",
+"term : (subr (read (globals half pick)) (int) f64) ! pure",
+"total : (subr (maxeff spin (read (globals half pick term total))) (int f64) f64) ! pure",
+"halves : (subr (maxeff (alloc @heap) spin (read (globals half halves))) (int) (listof f64 @heap)) ! pure",
+"deep : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals deep half))) (int) f64) ! pure",
+"flats : (subr (maxeff (read @heap) (alloc @heap) (read (globals felem ielem))) () int) ! pure",
+"raw-returns : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals deep felem flats half halves ielem pick term total))) (int) int) ! pure",
+"4506016 : int ! (maxeff (read @heap) (alloc @heap) spin (read (globals deep felem flats half halves ielem pick raw-returns term total)))",
+""
+],
+"err": [
+""
+]
+}

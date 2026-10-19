@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/write-frozen-projected.fx:2:1: this writes frozen data, whose region is `const`",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/write-frozen-projected.fx:2:1: this writes frozen data, whose region is `const`",
 "; both checkers agree",
 ""
 ],

@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"eval",
+"stage0.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: /tmp/tmp244nbetm/stage0.fx:65:1: `define-convention`: no `barrier` clause, which this implementation's convention has",
+""
+]
+}

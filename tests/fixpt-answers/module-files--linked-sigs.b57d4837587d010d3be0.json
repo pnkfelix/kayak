@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"linked-sigs.fx"
+],
+"code": 0,
+"out": [
+""
+],
+"err": [
+""
+]
+}

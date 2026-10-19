@@ -13,7 +13,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/processes/sendable-ref.fx:4:2: `m` is bound as sendable, and a (ref int @c) is not: a reference at @c, which can be written",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/processes/sendable-ref.fx:4:2: `m` is bound as sendable, and a (ref int @c) is not: a reference at @c, which can be written",
 ""
 ]
 }

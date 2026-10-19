@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/flat-literal-not-to-end.fx:6:15: a (blobref blob (flat-arrayof i64 finite)) is expected here, and this is a (blobref blob (flat-arrayof i64 3))",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/flat-literal-not-to-end.fx:6:15: a (blobref blob (flat-arrayof i64 finite)) is expected here, and this is a (blobref blob (flat-arrayof i64 3))",
 "; both checkers agree",
 ""
 ],

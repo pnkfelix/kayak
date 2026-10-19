@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"extend-sees.fx"
+],
+"code": 0,
+"out": [
+"a : (moduleof (val x int) (val z int) (val f (subr pure () int))) ! pure",
+"b : (moduleof (val x int) (val z int) (val f (subr pure () int)) (val y int) (val g (subr pure () int))) ! (read (globals a))",
+"1616 : int ! (read (globals b))",
+""
+],
+"err": [
+""
+]
+}

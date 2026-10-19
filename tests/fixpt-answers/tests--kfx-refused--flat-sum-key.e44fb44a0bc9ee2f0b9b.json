@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"eval",
+"stage0.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: /tmp/tmp7m_wg2tt/stage0.fx:65:54: a flat sum's key is `u8`, `u16` or `u32`",
+""
+]
+}

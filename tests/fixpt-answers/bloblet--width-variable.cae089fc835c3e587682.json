@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/width-variable.fx:6:35: a (bloblet (fields int) @b) is expected here, and this is a (bloblet (fields int a) @b)",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/width-variable.fx:6:35: a (bloblet (fields int) @b) is expected here, and this is a (bloblet (fields int a) @b)",
 "; both checkers agree",
 ""
 ],

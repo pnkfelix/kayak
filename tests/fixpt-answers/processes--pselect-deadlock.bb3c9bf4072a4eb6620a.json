@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"pselect-deadlock.fx"
+],
+"code": 1,
+"out": [
+"a : (icell int @c) ! (alloc @c)",
+"b : (icell int @c) ! (alloc @c)",
+" : int ! (maxeff (await @c) nondet (read (globals a b)))",
+""
+],
+"err": [
+"! evaluation failed: a `pselect` whose events no task is left to make ready: a deadlock",
+""
+]
+}

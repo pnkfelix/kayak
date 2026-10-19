@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/terminate/rose-tree.fx:11:20: `each` is declared a (subr pure ((listof rose acyclic) int) int): a (subr pure ((listof rose acyclic) int) int) is expected here, and this is a (subr (maxeff spin (read (globals total))) ((listof rose acyclic) int) int)",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/terminate/rose-tree.fx:11:20: `each` is declared a (subr pure ((listof rose acyclic) int) int): a (subr pure ((listof rose acyclic) int) int) is expected here, and this is a (subr (maxeff spin (read (globals total))) ((listof rose acyclic) int) int)",
 "  beyond what is expected, it has (maxeff spin (read (globals total)))",
 ""
 ]

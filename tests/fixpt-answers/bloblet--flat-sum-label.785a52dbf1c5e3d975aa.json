@@ -12,7 +12,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-sum-label.fx:3:35: a label of a sum keyed by `u8` is a number below 2^8",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-sum-label.fx:3:35: a label of a sum keyed by `u8` is a number below 2^8",
 ""
 ]
 }

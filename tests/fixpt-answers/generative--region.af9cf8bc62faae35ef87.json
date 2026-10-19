@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"region.fx"
+],
+"code": 0,
+"out": [
+"up-stack : (poly ((t type) (r region)) (subr pure ((listof t r)) (stack t r))) ! pure",
+"down-stack : (poly ((t type) (r region)) (subr pure ((stack t r)) (listof t r))) ! pure",
+"f : (subr (read (globals up-stack)) () int) ! pure",
+"3 : int ! (read (globals f up-stack))",
+""
+],
+"err": [
+""
+]
+}

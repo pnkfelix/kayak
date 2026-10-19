@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"blobref-width.fx"
+],
+"code": 0,
+"out": [
+"first : (subr (read @b) ((blobref one f64)) int) ! pure",
+"b : two ! (alloc @b)",
+"9 : int ! (maxeff (read @b) (read (globals b first)))",
+""
+],
+"err": [
+""
+]
+}

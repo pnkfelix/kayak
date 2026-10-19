@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"self.fx"
+],
+"code": 0,
+"out": [
+"total : (icell int @c) ! (alloc @c)",
+"counter : (addr int @p) ! (maxeff (alloc @p) (init @c) spin nondet (read (globals total)))",
+"#u : unit ! (maxeff (send @p) (read (globals counter)))",
+"6 : int ! (maxeff (await @c) (read (globals total)))",
+""
+],
+"err": [
+""
+]
+}

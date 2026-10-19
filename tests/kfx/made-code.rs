@@ -2,6 +2,10 @@
 
 use kayak_rt::*;
 
+pub fn here_p() -> bool {
+    (native_code_p() && string_eq_p(car(the::<List<Str>>(native_convention())), str_lit("(target arm64)")))
+}
+
 pub fn put4(b: &'static Bloblet<()>, at: Int, w: Int) -> () {
     bloblet_set_byte_x(b, at, modulo(w, int_lit(256)));
     bloblet_set_byte_x(b, _plus(at, int_lit(1)), modulo(quotient(w, int_lit(256)), int_lit(256)));
@@ -19,11 +23,11 @@ pub fn adder() -> &'static (dyn Fn(Int, Int) -> Int + Send + Sync) {
 // Whether this machine runs made code, and the leaf's sum, or the answer
 // it would give.
 pub fn main() -> Str {
-    string_append(if native_code_p() {
+    string_append(if here_p() {
         str_lit("native ")
     } else {
         str_lit("interpreted ")
-    }, int_to_string(if native_code_p() {
+    }, int_to_string(if here_p() {
         (adder())(int_lit(20), int_lit(22))
     } else {
         int_lit(42)

@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"state.fx"
+],
+"code": 0,
+"out": [
+"c : (ref int @c) ! (alloc @c)",
+"#u : unit ! (maxeff (write @c) (read (globals c)))",
+"42 : int ! (maxeff (read @c) (read (globals c)))",
+""
+],
+"err": [
+""
+]
+}

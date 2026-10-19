@@ -6,6 +6,10 @@ use kayak_rt::*;
 // its elements and writes their sum into a third, which KFX then reads;
 // and gives the sum, as a fixnum, back. Where this machine runs no native
 // code, the answer it would give.
+pub fn here_p() -> bool {
+    (native_code_p() && string_eq_p(car(the::<List<Str>>(native_convention())), str_lit("(target arm64)")))
+}
+
 pub mod made__load__0__fx26_arm64 {
     use super::*;
 
@@ -59,7 +63,7 @@ pub mod made__load__0__fx26_arm64 {
     }
 }
 
-pub mod made__input__262__arm64_types {
+pub mod made__input__680__arm64_types {
     use super::*;
 
     pub use super::made__load__0__fx26_arm64::{ArmOp2, ArmOp3, ArmOp4, ArmCode, Arm64Sig};
@@ -68,7 +72,7 @@ pub mod made__input__262__arm64_types {
 pub mod a64 {
     use super::*;
 
-    use super::made__input__262__arm64_types::{ArmOp2, ArmOp3, ArmOp4, ArmCode, Arm64Sig};
+    use super::made__input__680__arm64_types::{ArmOp2, ArmOp3, ArmOp4, ArmCode, Arm64Sig};
 
     pub fn arm_pow2(n: Int) -> Int {
         arithmetic_shift(int_lit(1), n)
@@ -392,13 +396,13 @@ pub fn main() -> Str {
     let a = the::<FlatArray<i64>>(make_flatarray_i64(3i64, 0i64));
     flatarray_set_i64_x(a, 0i64, 20i64);
     flatarray_set_i64_x(a, 1i64, 22i64);
-    let r = if native_code_p() {
+    let r = if here_p() {
         (summing())(a)
     } else {
         flatarray_set_i64_x(a, 2i64, 42i64);
         int_lit(42)
     };
-    string_append(if native_code_p() {
+    string_append(if here_p() {
         str_lit("native ")
     } else {
         str_lit("interpreted ")

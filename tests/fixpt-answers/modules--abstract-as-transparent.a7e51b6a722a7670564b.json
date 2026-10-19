@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/abstract-as-transparent.fx:11:12: a known is expected here, and this is a (moduleof (abs t type) (val zero counter..t) (val inc (subr pure (counter..t) counter..t)) (val value (subr pure (counter..t) int)))",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/abstract-as-transparent.fx:11:12: a known is expected here, and this is a (moduleof (abs t type) (val zero counter..t) (val inc (subr pure (counter..t) counter..t)) (val value (subr pure (counter..t) int)))",
 "; both checkers agree",
 ""
 ],

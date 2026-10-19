@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"standard-ops.fx"
+],
+"code": 0,
+"out": [
+"yes-no : (subr pure (bool) string) ! pure",
+"ints : (subr (maxeff (alloc @heap) (read (globals yes-no))) (int) strings) ! pure",
+"chars : (subr (maxeff (alloc @heap) (read (globals yes-no))) () strings) ! pure",
+"lists : (subr (maxeff (read @l) (write @l) (alloc @heap) (alloc @l)) (int) strings) ! pure",
+"standard-ops : (subr (maxeff (read @heap) (read @l) (write @l) (alloc @heap) (alloc @l) (read (globals chars ints lists yes-no))) (int) strings) ! pure",
+"(\"-1\" \"5\" \"yes\" \"5\" \"5\" \"yes\" \"yes\" \"no\" \"yes\" \"yes\" \"Q\" \"yes\" \"no\" \"yes\" \"yes\" \"4\" \"4\" \"1\" \"9\" \"5\") : strings ! (maxeff (read @heap) (read @l) (write @l) (alloc @heap) (alloc @l) (read (globals chars ints lists standard-ops yes-no)))",
+""
+],
+"err": [
+""
+]
+}

@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/generative/region-escape.fx:4:14: the value of `letregion l` would outlive its region: its type is (stack int l)",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/generative/region-escape.fx:4:14: the value of `letregion l` would outlive its region: its type is (stack int l)",
 "; both checkers agree",
 ""
 ],

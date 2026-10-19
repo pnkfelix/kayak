@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/nat-negative.fx:2:15: `n` is declared a nat: a nat is expected here, and this is a int",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/nat-negative.fx:2:15: `n` is declared a nat: a nat is expected here, and this is a int",
 ""
 ]
 }

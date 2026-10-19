@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"flat-unsized-not-last.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-unsized-not-last.fx:5:47: only a flat product's last part may be of a length not known: it runs to the end of the suffix",
+""
+]
+}

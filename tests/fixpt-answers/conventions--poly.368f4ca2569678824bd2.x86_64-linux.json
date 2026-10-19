@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"poly.fx"
+],
+"code": 0,
+"out": [
+"define app : (poly ((c conv) (e effect)) (subr e ((subr (conv c) e (int) int) int) int)) ! pure",
+"define inc : (subr pure (int) int) ! pure",
+"define inc-fx : (subr (conv fx) pure (int) int) ! (read (globals inc))",
+"int ! (read (globals app inc))",
+"int ! (read (globals app inc-fx))",
+"int ! (read (globals app inc))",
+"(subr pure ((subr pure (int) int) int) int) ! (read (globals app))",
+"(subr pure ((subr (conv fx) pure (int) int) int) int) ! (read (globals app))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

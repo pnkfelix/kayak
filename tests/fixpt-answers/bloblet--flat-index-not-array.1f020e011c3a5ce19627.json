@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-index-not-array.fx:5:16: a blobref to a flat array is expected here, and this is a (blobref o f64)",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-index-not-array.fx:5:16: a blobref to a flat array is expected here, and this is a (blobref o f64)",
 "; both checkers agree",
 ""
 ],

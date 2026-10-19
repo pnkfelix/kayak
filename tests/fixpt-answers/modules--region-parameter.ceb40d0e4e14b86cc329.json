@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"region-parameter.fx"
+],
+"code": 0,
+"out": [
+"make-cell : cells ! pure",
+"2 : int ! (read (globals make-cell))",
+""
+],
+"err": [
+""
+]
+}

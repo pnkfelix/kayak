@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"mutual.fx"
+],
+"code": 0,
+"out": [
+"parity : (moduleof (val even? (subr spin (int) bool)) (val odd? (subr spin (int) bool)) (val ten-even bool)) ! spin",
+"#t : bool ! (read (globals parity))",
+""
+],
+"err": [
+""
+]
+}

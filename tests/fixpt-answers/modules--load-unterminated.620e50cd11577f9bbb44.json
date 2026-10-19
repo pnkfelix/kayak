@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/load-unterminated.fx:5:11: in `../module-files/unterminated.fx`, 3:1: unterminated list, expected `)`",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/load-unterminated.fx:5:11: in `../module-files/unterminated.fx`, 3:1: unterminated list, expected `)`",
 "; both checkers agree",
 ""
 ],

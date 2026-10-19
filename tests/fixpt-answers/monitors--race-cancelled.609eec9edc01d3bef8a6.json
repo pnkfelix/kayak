@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"race-cancelled.fx"
+],
+"code": 1,
+"out": [
+"total : (icell int @d) ! (alloc @d)",
+"never : (icell int @e) ! (alloc @e)",
+"collector : (addr report @p) ! (maxeff (alloc @p) (init @d) nondet (read (globals total)))",
+"failed : (subr pure (string) report) ! pure",
+"count : (subr (maxeff spin (read (globals count))) (int int) int) ! pure",
+"w : (addr int @w) ! (maxeff (alloc @w) (send @p) spin nondet (read (globals collector count failed)))",
+"#u : unit ! (maxeff (send @w) (read (globals w)))",
+" : int ! (maxeff (await @d) (await @e) (read (globals never total)))",
+""
+],
+"err": [
+"! evaluation failed: an i-cell read before it was written, and no task is left to write it: a deadlock",
+""
+]
+}

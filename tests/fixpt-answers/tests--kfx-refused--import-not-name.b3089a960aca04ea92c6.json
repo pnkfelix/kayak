@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"eval",
+"stage0.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: read error: /tmp/tmpupz0snj5/stage0.fx:66:17: `(import module name … (type name …) (effect name …))`: a name",
+""
+]
+}

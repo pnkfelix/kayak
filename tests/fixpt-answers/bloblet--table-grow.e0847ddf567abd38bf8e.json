@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/table-grow.fx:2:11: `table` is not a description function",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/table-grow.fx:2:11: `table` is not a description function",
 ""
 ]
 }

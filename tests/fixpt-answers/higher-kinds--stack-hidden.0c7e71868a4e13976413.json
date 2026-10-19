@@ -11,7 +11,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/higher-kinds/stack-hidden.fx:23:47: a (listof int @heap) is expected here, and this is a (list-stack..stack int)",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/higher-kinds/stack-hidden.fx:23:47: a (listof int @heap) is expected here, and this is a (list-stack..stack int)",
 ""
 ]
 }

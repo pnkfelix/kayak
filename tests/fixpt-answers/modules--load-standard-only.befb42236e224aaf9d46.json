@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"load-standard-only.fx"
+],
+"code": 1,
+"out": [
+"secret : int ! pure",
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/load-standard-only.fx:5:1: in `../module-files/uses-global.fx`, 3:18: unbound variable `secret`",
+""
+]
+}

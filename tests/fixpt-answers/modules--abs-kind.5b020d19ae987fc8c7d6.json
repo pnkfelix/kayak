@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/abs-kind.fx:4:35: an abstract component is a `type`, or a type constructor `(=> (kind …) type)`, for now",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/abs-kind.fx:4:35: an abstract component is a `type`, or a type constructor `(=> (kind …) type)`, for now",
 "; both checkers agree",
 ""
 ],

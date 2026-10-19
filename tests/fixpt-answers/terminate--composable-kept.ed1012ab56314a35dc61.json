@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/terminate/composable-kept.fx:5:19: a procedure kept in `@c` reads `@c`, so it could reach itself: it must say `spin`, and it is a (composable int int (read @c) @p)",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/terminate/composable-kept.fx:5:19: a procedure kept in `@c` reads `@c`, so it could reach itself: it must say `spin`, and it is a (composable int int (read @c) @p)",
 "; both checkers agree",
 ""
 ],

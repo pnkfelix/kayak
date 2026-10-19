@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"define-rec-global.fx"
+],
+"code": 0,
+"out": [
+"counter : (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int))) ! pure",
+"count : (subr (maxeff spin (read (globals count counter))) (counter..t int) counter..t) ! pure",
+"5 : int ! (maxeff spin (read (globals count counter)))",
+""
+],
+"err": [
+""
+]
+}

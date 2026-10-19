@@ -11,7 +11,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/conventions/poly-wrong-kind.fx:4:1: `c` is bound as a Conv, and the description given is not one",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/conventions/poly-wrong-kind.fx:4:1: `c` is bound as a Conv, and the description given is not one",
 ""
 ]
 }

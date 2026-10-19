@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/load-stateful.fx:4:11: a loaded file is one value for all its loads, made once, so making it must be pure, and this one has (alloc @c): make its state in a `lambda` it gives, which each caller applies",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/load-stateful.fx:4:11: a loaded file is one value for all its loads, made once, so making it must be pure, and this one has (alloc @c): make its state in a `lambda` it gives, which each caller applies",
 ""
 ]
 }

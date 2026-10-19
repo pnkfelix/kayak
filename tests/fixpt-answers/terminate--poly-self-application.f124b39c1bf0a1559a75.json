@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/terminate/poly-self-application.fx:9:23: a T is expected here, and this is a (subr spin (T) int)",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/terminate/poly-self-application.fx:9:23: a T is expected here, and this is a (subr spin (T) int)",
 "  beyond what is expected, it has spin",
 ""
 ]

@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"nested.fx"
+],
+"code": 0,
+"out": [
+"counter : (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int))) ! pure",
+"outer : (moduleof (val c (moduleof (abs t type) (val zero counter..t) (val inc (subr pure (counter..t) counter..t)) (val value (subr pure (counter..t) int)))) (val get (subr pure () int))) ! (read (globals counter))",
+"2 : int ! (read (globals outer))",
+""
+],
+"err": [
+""
+]
+}

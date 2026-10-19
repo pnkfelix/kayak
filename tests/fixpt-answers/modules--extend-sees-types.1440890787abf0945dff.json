@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"extend-sees-types.fx"
+],
+"code": 0,
+"out": [
+"a : (moduleof (desc touches (read @globals)) (desc n int) (val x n)) ! pure",
+"b : (moduleof (desc touches (read @globals)) (desc n int) (val x n) (val f (subr (read @globals) () n))) ! (read (globals a))",
+"2 : int ! (maxeff (read @globals) (read (globals b)))",
+""
+],
+"err": [
+""
+]
+}

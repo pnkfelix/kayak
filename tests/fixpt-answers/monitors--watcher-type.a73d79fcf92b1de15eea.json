@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/monitors/watcher-type.fx:4:3: `w` is declared a (addr int @w): a watcher is a process's address, `(addr M R)`, and this is a int",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/monitors/watcher-type.fx:4:3: `w` is declared a (addr int @w): a watcher is a process's address, `(addr M R)`, and this is a int",
 ""
 ]
 }

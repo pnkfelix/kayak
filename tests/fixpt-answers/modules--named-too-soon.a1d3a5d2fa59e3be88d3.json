@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/named-too-soon.fx:5:18: `fs` uses `g`, defined after it",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/named-too-soon.fx:5:18: `fs` uses `g`, defined after it",
 "; both checkers agree",
 ""
 ],

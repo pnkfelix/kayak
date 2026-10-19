@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/select-no-type.fx:9:11: `(select counter u)`: `counter` has no type `u`",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/select-no-type.fx:9:11: `(select counter u)`: `counter` has no type `u`",
 "; both checkers agree",
 ""
 ],

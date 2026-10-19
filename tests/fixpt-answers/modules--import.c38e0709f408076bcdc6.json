@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"import.fx"
+],
+"code": 0,
+"out": [
+"shapes : (moduleof (desc point (productof (1 int) (2 int))) (desc touches (maxeff (read @heap) (write @heap))) (val origin point) (val bump (subr (maxeff (read @heap) (write @heap)) ((ref int @heap)) unit)) (val x-of (subr pure (point) int))) ! pure",
+"origin : point ! (read (globals shapes))",
+"bump : (subr (maxeff (read @heap) (write @heap)) ((ref int @heap)) unit) ! (read (globals shapes))",
+"m : (moduleof (val far point) (val reach (subr pure (point) int))) ! (read (globals shapes))",
+"b : (subr (maxeff (read @heap) (write @heap)) ((ref int @heap)) unit) ! (read (globals bump))",
+"45 : int ! (maxeff (read @heap) (write @heap) (alloc @heap) (read (globals b m origin)))",
+""
+],
+"err": [
+""
+]
+}

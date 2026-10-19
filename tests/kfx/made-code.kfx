@@ -3,6 +3,14 @@
 ;;; code, sealed into the code area, made a native procedure at a stated
 ;;; type. Where this machine runs no native code, the answer it would give.
 
+;; Whether the code this makes runs here: native code, arm64's (as
+;; Fixpt's own programs say it, its programs/made-code-x86_64 their twins;
+;; a procedure, as KFX makes no constant that reads).
+(define here? (subr (maxeff (alloc @heap) (read @heap)) () bool)
+  (lambda ()
+    (and (native-code?) (string=? (car (the (listof string @heap) (native-convention)))
+                                  "(target arm64)"))))
+
 ;; Instruction `w` at byte `at` of `b`'s suffix, little-endian.
 (define* put4 (subr (write @heap) ((bloblet (fields) @heap) int int) unit)
   (lambda (b at w)
@@ -22,7 +30,7 @@
 
 "Whether this machine runs made code, and the leaf's sum, or the answer
  it would give."
-(define main (subr (maxeff (read @globals) (alloc @heap) (write @heap) (io native)) () string)
+(define main (subr (maxeff (read @globals) (read @heap) (alloc @heap) (write @heap) (io native)) () string)
   (lambda ()
-    (string-append (if (native-code?) "native " "interpreted ")
-                   (int->string (if (native-code?) ((adder) 20 22) 42)))))
+    (string-append (if (here?) "native " "interpreted ")
+                   (int->string (if (here?) ((adder) 20 22) 42)))))

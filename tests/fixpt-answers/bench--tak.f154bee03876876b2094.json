@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"tak.fx"
+],
+"code": 0,
+"out": [
+"tak : (subr (maxeff spin (read (globals tak))) (int int int) int) ! pure",
+"9 : int ! (maxeff spin (read (globals tak)))",
+""
+],
+"err": [
+""
+]
+}

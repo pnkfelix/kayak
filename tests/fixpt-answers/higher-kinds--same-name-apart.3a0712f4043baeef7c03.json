@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"same-name-apart.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/higher-kinds/same-name-apart.fx:6:41: a (subr pure (a) a) is expected here, and this is a (subr pure (a') a')",
+"  `a` and `a'` are different variables, each named `a`",
+""
+]
+}

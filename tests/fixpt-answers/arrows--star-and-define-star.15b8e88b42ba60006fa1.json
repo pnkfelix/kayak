@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/arrows/star-and-define-star.fx:2:14: `define*` and `->*` each find what a procedure does: write one",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/arrows/star-and-define-star.fx:2:14: `define*` and `->*` each find what a procedure does: write one",
 ""
 ]
 }

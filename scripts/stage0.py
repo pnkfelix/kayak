@@ -15,6 +15,9 @@ import subprocess
 import sys
 import tempfile
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import fixptcache  # noqa: E402
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
@@ -58,7 +61,7 @@ def main():
             for path in compiler():
                 with open(path) as g:
                     f.write(g.read() + "\n")
-        result = subprocess.run([binary, "--dialect", "fx26", "run", whole, "--"] + args, capture_output=True, text=True)
+        result = subprocess.run([binary, "--dialect", "fx26"] + fixptcache.ANSWERING + ["run", whole, "--"] + args, capture_output=True, text=True)
     # Fixpt 17ac0c5 writes its notes on how it runs a procedure ("; not in
     # the native convention yet, ...") on the standard output, among the
     # program's own: left out here. No line of generated Rust starts `; `.

@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/acyclic-walk-escapes.fx:7:5: the value of `letrena p` would outlive its region: its type is (subr (read (const p)) () bool)",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/acyclic-walk-escapes.fx:7:5: the value of `letrena p` would outlive its region: its type is (subr (read (const p)) () bool)",
 "; both checkers agree",
 ""
 ],

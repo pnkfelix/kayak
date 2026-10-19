@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"flat-tagcase-no-tag.fx"
+],
+"code": 1,
+"out": [
+"b : o ! (alloc @b)",
+"r : (blobref o (sumof (a f64) (b i32))) ! (read (globals b))",
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-tagcase-no-tag.fx:7:17: a (sumof (a (blobref o f64)) (b (blobref o i32))) has no tag `c`",
+""
+]
+}

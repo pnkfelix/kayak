@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"distinct-not-loose.fx"
+],
+"code": 1,
+"out": [
+"inner : tight ! pure",
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/distinct-not-loose.fx:8:21: `outer` is declared a loose: `r1` is distinct, and r1 may be r2, given for `r2`",
+""
+]
+}

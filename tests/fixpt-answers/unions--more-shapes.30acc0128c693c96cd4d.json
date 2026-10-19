@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"more-shapes.fx"
+],
+"code": 0,
+"out": [
+"circle : (subr pure (int) shape) ! pure",
+"square : (subr pure (int) shape) ! pure",
+"size : (subr (read @r) (v) int) ! pure",
+"tests : (subr pure (v) int) ! pure",
+"total : (subr (maxeff (read @r) spin (read (globals size tests total))) (vs) int) ! pure",
+"1325 : int ! (maxeff (read @r) (alloc @r) spin (read (globals circle size square tests total)))",
+""
+],
+"err": [
+""
+]
+}

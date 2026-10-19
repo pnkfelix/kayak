@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"abs-kind-mismatch.fx"
+],
+"code": 1,
+"out": [
+"m : one ! pure",
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/higher-kinds/abs-kind-mismatch.fx:7:15: `n` is declared a two: a two is expected here, and this is a (moduleof (abs f (=> (type) type)) (val x int))",
+""
+]
+}

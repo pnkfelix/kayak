@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/lemmas/cross-back.fx:10:24: `two` is declared a (tree int): a (tree int) is expected here, and this is a (tree2 int)",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/lemmas/cross-back.fx:10:24: `two` is declared a (tree int): a (tree int) is expected here, and this is a (tree2 int)",
 "; both checkers agree",
 ""
 ],

@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"load-cycle-self.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/load-cycle-self.fx:2:12: in `load-cycle-self.fx`, 2:12: a load cycle: `load-cycle-self.fx` loads `load-cycle-self.fx`",
+""
+]
+}

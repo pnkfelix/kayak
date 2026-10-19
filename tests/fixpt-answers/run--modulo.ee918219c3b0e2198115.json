@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"modulo.fx"
+],
+"code": 0,
+"out": [
+"mods : (subr pure (int int) (listof int acyclic)) ! pure",
+"((1 2 -2 -1) (0 0 0 0) (1 4 -4 -1) (0 0 0 0)) : (listof (listof int acyclic) @r.1) ! (maxeff (alloc @r.1) (read (globals mods)))",
+""
+],
+"err": [
+""
+]
+}

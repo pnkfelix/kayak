@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/control/own-abort.fx:4:9: unbound variable `t`",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/control/own-abort.fx:4:9: unbound variable `t`",
 "; both checkers agree",
 ""
 ],

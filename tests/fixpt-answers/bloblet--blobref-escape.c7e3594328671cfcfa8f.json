@@ -12,7 +12,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/blobref-escape.fx:4:1: the value of `letrena r` would outlive its region: its type is (blobref (bloblet (fields) r) f64)",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/blobref-escape.fx:4:1: the value of `letrena r` would outlive its region: its type is (blobref (bloblet (fields) r) f64)",
 ""
 ]
 }

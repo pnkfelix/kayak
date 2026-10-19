@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"select-shown.fx"
+],
+"code": 1,
+"out": [
+"m : (moduleof (desc syn (listof int acyclic)) (val one int)) ! pure",
+"f : (subr pure (exp) int) ! pure",
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/select-shown.fx:9:4: argument 1 is a int, where a exp is expected",
+""
+]
+}

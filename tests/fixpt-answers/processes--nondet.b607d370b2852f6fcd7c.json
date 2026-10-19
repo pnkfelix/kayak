@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/processes/nondet.fx:5:3: `start` is declared a (subr (maxeff (read @globals) (alloc @w)) () (addr int @w)): a (subr (maxeff (read @globals) (alloc @w)) () (addr int @w)) is expected here, and this is a (subr (maxeff (alloc @w) nondet) () (addr int @w))",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/processes/nondet.fx:5:3: `start` is declared a (subr (maxeff (read @globals) (alloc @w)) () (addr int @w)): a (subr (maxeff (read @globals) (alloc @w)) () (addr int @w)) is expected here, and this is a (subr (maxeff (alloc @w) nondet) () (addr int @w))",
 "  beyond what is expected, it has nondet",
 ""
 ]

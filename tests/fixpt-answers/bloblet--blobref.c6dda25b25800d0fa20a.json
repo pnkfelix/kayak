@@ -1,0 +1,33 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"blobref.fx"
+],
+"code": 0,
+"out": [
+"b : pt ! (alloc @b)",
+"x : (blobref pt f64) ! (read (globals b))",
+"n : (blobref pt i32) ! (read (globals b))",
+"m : (blobref pt i32) ! (read (globals n))",
+"u : (blobref pt u32) ! (read (globals b))",
+"f : (blobref pt f32) ! (read (globals u))",
+"w : (blobref pt i64) ! (read (globals b))",
+"#u : unit ! (maxeff (write @b) (read (globals x)))",
+"#u : unit ! (maxeff (write @b) (read (globals n)))",
+"#u : unit ! (maxeff (write @b) (read (globals m)))",
+"#u : unit ! (maxeff (write @b) (read (globals u)))",
+"#u : unit ! (maxeff (write @b) (read (globals f)))",
+"#u : unit ! (maxeff (write @b) (read (globals w)))",
+"(5 37 12 7 4000000000 -2 4) : (listof int @r.1) ! (maxeff (read @b) (alloc @r.1) (read (globals f m n u w x)))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"width-procedure.fx"
+],
+"code": 1,
+"out": [
+"b : (bloblet (fields int (subr pure () int)) @b) ! (alloc @b)",
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/width-procedure.fx:6:15: `c` is declared a one: a one is expected here, and this is a (bloblet (fields int (subr pure () int)) @b)",
+""
+]
+}

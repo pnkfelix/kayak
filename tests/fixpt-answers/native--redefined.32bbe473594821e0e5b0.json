@@ -1,0 +1,32 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"redefined.fx"
+],
+"code": 0,
+"out": [
+"rd-f : (subr (maxeff spin (read (globals rd-f))) (int) int) ! pure",
+"rd-old : (subr (maxeff spin (read (globals rd-f))) (int) int) ! (read (globals rd-f))",
+"3 : int ! (maxeff spin (read (globals rd-f rd-old)))",
+"; `rd-f` redefined: every use sees the new one",
+"rd-f : (subr (maxeff spin (read (globals rd-f))) (int) int) ! pure",
+"201 : int ! (maxeff spin (read (globals rd-f rd-old)))",
+"rd-app : (subr (maxeff spin (read (globals rd-app rd-g))) ((subr (maxeff spin (read (globals rd-app rd-g))) (int) int) int) int) ! pure",
+"rd-g : (subr (maxeff spin (read (globals rd-app rd-g))) (int) int) ! pure",
+"rd-old-g : (subr (maxeff spin (read (globals rd-app rd-g))) (int) int) ! (read (globals rd-g))",
+"3 : int ! (maxeff spin (read (globals rd-app rd-g rd-old-g)))",
+"; `rd-g` redefined: every use sees the new one",
+"rd-g : (subr (maxeff spin (read (globals rd-app rd-g))) (int) int) ! pure",
+"201 : int ! (maxeff spin (read (globals rd-app rd-g rd-old-g)))",
+""
+],
+"err": [
+""
+]
+}

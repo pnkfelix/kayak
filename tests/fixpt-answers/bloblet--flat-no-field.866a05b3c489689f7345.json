@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-no-field.fx:6:1: a (blobref o (productof (x f64) (y f64))) has no `z` laid out",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-no-field.fx:6:1: a (blobref o (productof (x f64) (y f64))) has no `z` laid out",
 ""
 ]
 }

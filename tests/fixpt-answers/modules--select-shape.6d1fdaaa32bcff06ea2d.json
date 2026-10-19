@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/select-shape.fx:3:6: `(select module name)`: a module's name, and a component's",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/select-shape.fx:3:6: `(select module name)`: a module's name, and a component's",
 "; both checkers agree",
 ""
 ],

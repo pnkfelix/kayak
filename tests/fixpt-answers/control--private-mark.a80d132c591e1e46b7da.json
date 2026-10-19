@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"private-mark.fx"
+],
+"code": 0,
+"out": [
+"1 : int ! pure",
+""
+],
+"err": [
+""
+]
+}

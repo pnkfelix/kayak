@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/generative/bad-variance.fx:2:38: `t` is declared covariant (+) in `cell`, but occurs where it may not",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/generative/bad-variance.fx:2:38: `t` is declared covariant (+) in `cell`, but occurs where it may not",
 "; both checkers agree",
 ""
 ],

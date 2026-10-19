@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"raw-slots.fx"
+],
+"code": 0,
+"out": [
+"deepf : (subr (maxeff (alloc @heap) spin (read (globals deepf))) (int f64) f64) ! pure",
+"reuse : (subr (maxeff (alloc @heap) spin (read (globals deepf reuse))) (int f64) int) ! pure",
+"raw-slots : (subr (maxeff (alloc @heap) spin (read (globals deepf reuse))) (int) int) ! pure",
+"4277 : int ! (maxeff (alloc @heap) spin (read (globals deepf raw-slots reuse)))",
+""
+],
+"err": [
+""
+]
+}

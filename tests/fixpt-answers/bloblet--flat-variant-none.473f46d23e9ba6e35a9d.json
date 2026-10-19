@@ -12,7 +12,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-variant-none.fx:6:21: a (sumof (a f64) (b i32)) has no variant `c`",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-variant-none.fx:6:21: a (sumof (a f64) (b i32)) has no variant `c`",
 ""
 ]
 }

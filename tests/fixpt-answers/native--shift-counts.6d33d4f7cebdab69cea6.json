@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"shift-counts.fx"
+],
+"code": 0,
+"out": [
+"counts : (subr (alloc @heap) (int int int) ints) ! pure",
+"shift-counts : (subr (maxeff (alloc @heap) (read (globals counts))) (int) ints) ! pure",
+"(1 2 2147483648 1 2 9223372036854775808 -4 -1 6 512 0 -1 0) : ints ! (maxeff (alloc @heap) (read (globals counts shift-counts)))",
+""
+],
+"err": [
+""
+]
+}

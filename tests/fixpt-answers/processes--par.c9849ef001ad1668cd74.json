@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"par.fx"
+],
+"code": 0,
+"out": [
+"xs : (arrayof int @x) ! (alloc @x)",
+"ys : (arrayof int @y) ! (alloc @y)",
+"shared : (arrayof int @s) ! (alloc @s)",
+"fill : (poly ((r region)) (subr (maxeff (read @s) (write r) spin (read (globals shared))) ((arrayof int r) int) int)) ! pure",
+"c : (icell int @c) ! (alloc @c)",
+"1217 : int ! (maxeff (read @x) (read @y) (read @s) (write @x) (write @y) (await @c) (init @c) spin (read (globals c fill shared xs ys)))",
+""
+],
+"err": [
+""
+]
+}

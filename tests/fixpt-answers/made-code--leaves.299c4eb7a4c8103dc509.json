@@ -1,0 +1,23 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"leaves.fx"
+],
+"code": 0,
+"out": [
+"here : bool ! pure",
+"put4 : (subr (write @heap) ((bloblet (fields) @heap) int int) unit) ! pure",
+"adder : (subr (maxeff (write @heap) (alloc @heap) (io native) (read (globals put4))) () (subr (conv native) pure (int int) int)) ! pure",
+"holder : (subr (maxeff (write @heap) (alloc @heap) (io native) (read (globals put4))) ((pairof int int @heap)) held) ! pure",
+"churn : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals churn))) (int (listof int @heap)) int) ! pure",
+"#t : bool ! pure",
+"42 : int ! (maxeff (write @heap) (alloc @heap) (io native) (read (globals adder here put4)))",
+"41 : int ! (maxeff (read @heap) (write @heap) (alloc @heap) spin (io native) (read (globals churn here holder put4)))",
+""
+],
+"err": [
+""
+]
+}

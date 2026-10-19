@@ -13,7 +13,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/conversions-inside.fx:9:2: unbound variable `up-t`",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/conversions-inside.fx:9:2: unbound variable `up-t`",
 ""
 ]
 }

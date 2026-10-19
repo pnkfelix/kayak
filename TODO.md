@@ -721,3 +721,33 @@ gap where it makes sense. Ours already has `,help`, `,type`, `,time`,
 - Not to copy as is: Fixpt's `,pending [clear]` is about entries waiting
   on types not defined yet, while ours lists the entries not ended; if
   we come to have the former, it wants another name.
+
+## 34. Tiers 2 and up on x86_64 Linux (the user, 2026-10-18; C134)
+
+Fixpt has the whole ladder on x86_64 already (`cellular/x64.rs`, its
+stencils, `x86_64.fx`, `native-x64.fx`, `native-x64-regs.fx`,
+`direct/x64.rs`), on its branch `x86_64-fxjit-nativecc`, which the pin
+now is (`5ef9fe8`). Done: the pin there; kayak's checks pass on
+Linux, stage 0 included (C134). ~~1. An x86_64 convention for §97 in
+Fixpt first~~ (done by Fixpt, `native-x86_64.conv`, and the pin on it:
+C135). ~~2. `kayak-jit` on Linux x86_64~~ (done, C135: the code area's
+two views, the trampoline and routines, the stack's limit; the corpus's
+made-code programs twinned for x86_64 and run there). Left, in order:
+3. Tier 2: `hand.kfx`'s routines for x86_64 over `fx26:x86_64.fx`, after
+   Fixpt's `cellular/x64.rs` (no base register, the fuel in the state,
+   `#t`/`#f` from it, 32-bit branches); a file beside `hand.kfx`, as
+   Fixpt keeps the two side by side.
+4. Tier 4 (`native-x64.fx`'s way), tier 5 (`native-x64-regs.fx`: REG1–3
+   in registers, the rest in the state), each against tier 1 on every
+   program, as on arm64; then tier 6 with Fixpt's `direct/x64.rs`.
+- Noticed on the way: Fixpt's `native/crossing-overflow.fx` (its §93, new
+  at this pin) fails on Fixpt, a Rust stack too deep for calls between
+  machines, and runs on the engine, which has no such calls:
+  `run-fixpt-programs.py`'s one "beyond KFX" difference.
+- `kayak-cells --hand` on x86_64 would run tier 2's arm64 bytes: only
+  `cells-programs.py`'s arm64-macOS test keeps it from it. Until step 3,
+  `hand.kfx` might refuse there, by the convention's `target`.
+- The corpus's answers now differ by machine (C134): libm's last bit in
+  `floats`, and `made-code`/`made-flat` say whether made code ran
+  natively. If FX-26 is to say what `f64-tan` gives, as a reference
+  must, that is for its definition (§9 of PLAN).

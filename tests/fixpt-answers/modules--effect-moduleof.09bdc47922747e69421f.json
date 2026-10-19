@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"effect-moduleof.fx"
+],
+"code": 0,
+"out": [
+"m : (moduleof (desc touches (maxeff (read @heap) (write @heap))) (val bump (subr (maxeff (read @heap) (write @heap)) ((ref int @heap)) unit))) ! pure",
+"n : (moduleof (desc touches (maxeff (read @heap) (write @heap))) (val bump (subr (maxeff (read @heap) (write @heap)) ((ref int @heap)) unit))) ! (read (globals m))",
+"1 : int ! pure",
+""
+],
+"err": [
+""
+]
+}

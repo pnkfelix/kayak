@@ -12,7 +12,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/io/io-write-not-read.fx:4:3: `save` is declared a (subr (maxeff (read @b) (alloc @b) (io fs-read)) (string) bool): a (subr (maxeff (read @b) (alloc @b) (io fs-read)) (string) bool) is expected here, and this is a (subr (io fs-write) (string) bool)",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/io/io-write-not-read.fx:4:3: `save` is declared a (subr (maxeff (read @b) (alloc @b) (io fs-read)) (string) bool): a (subr (maxeff (read @b) (alloc @b) (io fs-read)) (string) bool) is expected here, and this is a (subr (io fs-write) (string) bool)",
 "  beyond what is expected, it has (io fs-write)",
 ""
 ]

@@ -11,7 +11,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/nlist-cdr.fx:4:29: `wrong` is declared a (nlist int 3): a (nlist int 3) is expected here, and this is a (nlist int 2)",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/nlist-cdr.fx:4:29: `wrong` is declared a (nlist int 3): a (nlist int 3) is expected here, and this is a (nlist int 2)",
 ""
 ]
 }

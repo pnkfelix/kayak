@@ -1419,3 +1419,23 @@ The user's: Fixpt's FX-26 test programs, 710 files, in
 for in `tests/fixpt-answers/`, so that the checks against Fixpt's
 programs run without a clone of Fixpt, and moving the pin shows, as a
 diff, how its answers moved.
+
+## §34: the pin on Fixpt's x86_64 branch; kayak's checks on Linux (2026-10-18, C134)
+
+The pin moved to `35c59a3`, the tip of Fixpt's `x86_64-fxjit-nativecc`,
+where Fixpt builds on Linux; its drift decided (nothing carried: C134).
+`scripts/check.sh` passes on Linux x86_64 for the first time, stage 0
+included: Fixpt's answering machine named, answers kept by machine where
+Fixpt's differ, `kayak-jit`'s arm64-only routines allowed as dead
+elsewhere. Tier 1 agrees on 338 of Fixpt's programs.
+
+## §34: made code on x86_64 Linux, the pin on Fixpt's §97 there (2026-10-19, C135)
+
+The pin moved to `5ef9fe8`, where Fixpt's §97 runs on x86_64 (kayak's
+request). `kayak-jit` runs made code on Linux x86_64 to Fixpt's
+`native-x86_64.conv`: its code area, trampoline and routines, all its
+tests on both machines' code. kfx's checker compares a declared
+convention with the running machine's, as Fixpt's do; the corpus keeps
+programs of one machine, and the five that declare arm64's convention
+have x86_64 twins, which run their x86_64 code here and agree with
+Fixpt.

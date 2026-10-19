@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"native-call.fx"
+],
+"code": 0,
+"out": [
+"call : (subr pure ((subr pure (int) int)) int) ! pure",
+""
+],
+"err": [
+""
+]
+}

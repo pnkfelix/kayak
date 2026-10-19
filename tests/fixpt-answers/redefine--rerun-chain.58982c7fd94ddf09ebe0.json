@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"rerun-chain.fx"
+],
+"code": 0,
+"out": [
+"f : int ! pure",
+"g : int ! (read (globals f))",
+"h : int ! (read (globals g))",
+"; `f` redefined; run again, as they use it: `g`, `h`",
+"f : string ! pure",
+"20 : int ! (read (globals h))",
+""
+],
+"err": [
+""
+]
+}

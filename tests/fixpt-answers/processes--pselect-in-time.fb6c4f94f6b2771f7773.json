@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"pselect-in-time.fx"
+],
+"code": 0,
+"out": [
+"answer : (icell int @c) ! (alloc @c)",
+"waiter : (addr int @p) ! (maxeff (alloc @p) (init @c) (io clock) nondet (read (globals answer)))",
+"#u : unit ! (maxeff (send @p) (read (globals waiter)))",
+"42 : int ! (maxeff (await @c) (read (globals answer)))",
+""
+],
+"err": [
+""
+]
+}

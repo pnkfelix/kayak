@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"from-fx.fx"
+],
+"code": 0,
+"out": [
+"inc-fx : (subr (conv fx) pure (int) int) ! pure",
+"inc : (subr pure (int) int) ! (read (globals inc-fx))",
+"apply1 : (subr pure ((subr pure (int) int) int) int) ! pure",
+"3 : int ! (read (globals apply1 inc-fx))",
+"#<cellular-closure 3 fields 0 bytes> : (subr (conv cellular) pure (int) int) ! (read (globals inc-fx))",
+""
+],
+"err": [
+""
+]
+}

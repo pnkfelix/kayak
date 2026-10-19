@@ -2,6 +2,14 @@
  C116), as Fixpt has it, and run: `sub x0, x1, x2; ret`, and the same with
  its operands the other way, `#x` literals besides."
 
+;; Whether the code this makes runs here: native code, arm64's (as
+;; Fixpt's own programs say it, its programs/made-code-x86_64 their twins;
+;; a procedure, as KFX makes no constant that reads).
+(define here? (subr (maxeff (alloc @heap) (read @heap)) () bool)
+  (lambda ()
+    (and (native-code?) (string=? (car (the (listof string @heap) (native-convention)))
+                                  "(target arm64)"))))
+
 (define a64 (load-input "fx26:arm64.fx"))
 
 ;; Instruction `w` at byte `at` of `b`'s suffix, little-endian.
@@ -21,9 +29,9 @@
              (put4 b 4 (with a64 arm-ret))
              (the (subr (conv native) pure (int int) int) (native-procedure (seal-code b)))))))
 
-(define main (subr (maxeff (read @globals) (alloc @heap) (write @heap) (io native) spin) () string)
+(define main (subr (maxeff (read @globals) (read @heap) (alloc @heap) (write @heap) (io native) spin) () string)
   (lambda ()
     (string-append
       (int->string ((with a64 arm-add) 0 1 2))
       (string-append " " (string-append (int->string (+ (+ #x10 #x-1) #XfF))
-        (string-append " " (int->string (if (native-code?) (+ ((subtracter 1 2) 50 8) ((subtracter 2 1) 50 8)) 0))))))))
+        (string-append " " (int->string (if (here?) (+ ((subtracter 1 2) 50 8) ((subtracter 2 1) 50 8)) 0))))))))

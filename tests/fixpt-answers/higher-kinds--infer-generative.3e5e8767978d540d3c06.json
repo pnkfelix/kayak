@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"infer-generative.fx"
+],
+"code": 0,
+"out": [
+"id : (poly ((f (=> (type) type)) (a type)) (subr pure ((f a)) (f a))) ! pure",
+"up-gbox : (poly ((t type)) (subr pure ((productof (v t))) (gbox t))) ! pure",
+"down-gbox : (poly ((t type)) (subr pure ((gbox t)) (productof (v t)))) ! pure",
+"3 : int ! (read (globals down-gbox id up-gbox))",
+""
+],
+"err": [
+""
+]
+}

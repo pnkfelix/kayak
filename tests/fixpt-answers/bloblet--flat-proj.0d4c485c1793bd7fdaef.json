@@ -11,7 +11,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-proj.fx:4:2: `f` is bound as a Flat, and the description given is not one",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-proj.fx:4:2: `f` is bound as a Flat, and the description given is not one",
 ""
 ]
 }

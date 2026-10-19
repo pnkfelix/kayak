@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"pselect-key-arm.fx"
+],
+"code": 1,
+"out": [
+"a : (icell int @c) ! (alloc @c)",
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/processes/pselect-key-arm.fx:4:30: a `pselect` arm is `((icell-get i-cell) name body …)`, `((receive mailbox) name body …)`, `((sleep-until time) name body …)` or `((read-byte) name body …)`",
+""
+]
+}

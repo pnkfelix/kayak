@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/control/shift-k-k.fx:5:9: unbound variable `s`",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/control/shift-k-k.fx:5:9: unbound variable `s`",
 "; both checkers agree",
 ""
 ],

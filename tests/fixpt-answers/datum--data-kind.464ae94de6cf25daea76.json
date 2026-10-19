@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"data-kind.fx"
+],
+"code": 0,
+"out": [
+"same : (poly ((t data)) (subr pure (t) t)) ! pure",
+"() : (listof (productof (a int) (b bool)) acyclic) ! (read (globals same))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"quote-shadowed.fx"
+],
+"code": 0,
+"out": [
+"xs : (listof datum acyclic) ! pure",
+"walk : (subr pure (datum) int) ! pure",
+"36 : int ! (read (globals walk xs))",
+""
+],
+"err": [
+""
+]
+}

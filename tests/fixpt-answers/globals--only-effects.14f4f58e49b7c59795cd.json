@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/globals/only-effects.fx:3:24: globals are a region only in effects: `(read @globals)`, `(write (globals g))`",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/globals/only-effects.fx:3:24: globals are a region only in effects: `(read @globals)`, `(write (globals g))`",
 "; both checkers agree",
 ""
 ],

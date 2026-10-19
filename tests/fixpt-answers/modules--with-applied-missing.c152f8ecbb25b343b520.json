@@ -11,7 +11,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/with-applied-missing.fx:5:9: `f` is not a description function, nor one a module opened by `with` gives",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/with-applied-missing.fx:5:9: `f` is not a description function, nor one a module opened by `with` gives",
 ""
 ]
 }

@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"opaque.fx"
+],
+"code": 1,
+"out": [
+"up-ty-id : (subr pure (int) ty-id) ! pure",
+"down-ty-id : (subr pure (ty-id) int) ! pure",
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/generative/opaque.fx:3:50: a int is expected here, and this is a ty-id",
+""
+]
+}

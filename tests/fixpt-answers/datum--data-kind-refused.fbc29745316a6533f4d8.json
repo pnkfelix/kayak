@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/datum/data-kind-refused.fx:3:1: `t` is bound as data, and a (subr pure (int) int) is not data",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/datum/data-kind-refused.fx:3:1: `t` is bound as data, and a (subr pure (int) int) is not data",
 "; both checkers agree",
 ""
 ],

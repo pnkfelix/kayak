@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/processes/race-receives.fx:4:51: `race`'s branches interfere: one has (receive r) and another (receive r)",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/processes/race-receives.fx:4:51: `race`'s branches interfere: one has (receive r) and another (receive r)",
 ""
 ]
 }

@@ -9,12 +9,12 @@
 ],
 "code": 1,
 "out": [
-"m : (moduleof (desc num int) (val bump (subr pure (num) num))) ! (read (globals %shared:/Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/bump.fx))",
+"m : (moduleof (desc num int) (val bump (subr pure (num) num))) ! (read (globals %shared:<kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/bump.fx))",
 "bump : (subr pure (num) num) ! (read (globals m))",
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/reexports.fx:6:37: `twice` is declared a (subr pure (num) num): a (subr pure (num) num) is expected here, and this is a (subr (read (globals bump)) (num) num)",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/reexports.fx:6:37: `twice` is declared a (subr pure (num) num): a (subr pure (num) num) is expected here, and this is a (subr (read (globals bump)) (num) num)",
 "  beyond what is expected, it has (read (globals bump))",
 ""
 ]

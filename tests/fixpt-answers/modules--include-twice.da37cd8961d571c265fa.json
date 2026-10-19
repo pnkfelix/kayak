@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"include-twice.fx"
+],
+"code": 1,
+"out": [
+"a : (moduleof (val x int)) ! pure",
+"b : (moduleof (val x int)) ! pure",
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/include-twice.fx:5:9: `x` is defined twice in this module",
+""
+]
+}

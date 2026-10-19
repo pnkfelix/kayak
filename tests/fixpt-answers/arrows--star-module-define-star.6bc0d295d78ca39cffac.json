@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/arrows/star-module-define-star.fx:3:30: `define*` and `->*` each find what a procedure does: write one",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/arrows/star-module-define-star.fx:3:30: `define*` and `->*` each find what a procedure does: write one",
 "; both checkers agree",
 ""
 ],

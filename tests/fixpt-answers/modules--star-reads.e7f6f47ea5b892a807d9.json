@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"star-reads.fx"
+],
+"code": 0,
+"out": [
+"limit : int ! pure",
+"m : (moduleof (val small? (subr pure (int) bool)) (val under? (subr (read (globals limit)) (int) bool)) (val both (subr (read (globals limit)) (int) bool))) ! pure",
+"#t : bool ! (read (globals limit m))",
+""
+],
+"err": [
+""
+]
+}

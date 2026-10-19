@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"load-parameters.fx"
+],
+"code": 0,
+"out": [
+"make : (subr (maxeff (alloc @q) (read (globals %shared:<kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/../module-files/tally.fx))) () (moduleof (val t (moduleof (val count (ref int @q)) (val tick (subr (maxeff (read @q) (write @q)) () int)))) (val tick (subr (maxeff (read @q) (write @q)) () int)) (val tick-twice (subr (maxeff (read @q) (write @q)) () int)))) ! (read (globals %shared:<kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/../module-files/tally-twice.fx))",
+"a : (moduleof (val t (moduleof (val count (ref int @q)) (val tick (subr (maxeff (read @q) (write @q)) () int)))) (val tick (subr (maxeff (read @q) (write @q)) () int)) (val tick-twice (subr (maxeff (read @q) (write @q)) () int))) ! (maxeff (alloc @q) (read (globals %shared:<kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/../module-files/tally.fx make)))",
+"b : (moduleof (val t (moduleof (val count (ref int @q)) (val tick (subr (maxeff (read @q) (write @q)) () int)))) (val tick (subr (maxeff (read @q) (write @q)) () int)) (val tick-twice (subr (maxeff (read @q) (write @q)) () int))) ! (maxeff (alloc @q) (read (globals %shared:<kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/../module-files/tally.fx make)))",
+"a-twice : (subr (maxeff (read @q) (write @q)) () int) ! (read (globals a))",
+"b-tick : (subr (maxeff (read @q) (write @q)) () int) ! (read (globals b))",
+"15 : int ! (maxeff (read @q) (write @q) (read (globals a a-twice b-tick)))",
+""
+],
+"err": [
+""
+]
+}

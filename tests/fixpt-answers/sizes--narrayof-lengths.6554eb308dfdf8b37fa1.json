@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"narrayof-lengths.fx"
+],
+"code": 0,
+"out": [
+"five : (narrayof int 5 @heap) ! (alloc @heap)",
+"five-again : (narrayof int 5 @heap) ! (alloc @heap)",
+"len : (poly ((n size)) (subr pure ((narrayof int n @heap)) (nat n))) ! pure",
+"fives : (nat 5) ! (read (globals five len))",
+"any-length : (subr (read (globals len)) ((arrayof int @heap)) nat) ! pure",
+"total : (subr (maxeff (read @heap) spin) ((arrayof int @heap)) int) ! pure",
+"5 : int ! (maxeff (read @heap) spin (read (globals five-again total)))",
+""
+],
+"err": [
+""
+]
+}

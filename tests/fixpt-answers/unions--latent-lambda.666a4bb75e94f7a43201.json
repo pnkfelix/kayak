@@ -12,7 +12,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/unions/latent-lambda.fx:5:15: a (bool (then (shape 0 int)) (else)) is expected here, and this is a bool",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/unions/latent-lambda.fx:5:15: a (bool (then (shape 0 int)) (else)) is expected here, and this is a bool",
 ""
 ]
 }

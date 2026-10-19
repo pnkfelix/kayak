@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"width-infer.fx"
+],
+"code": 0,
+"out": [
+"first : (poly ((a type)) (subr (read @b) ((bloblet (fields a) @b)) a)) ! pure",
+"b : (bloblet (fields int bool) @b) ! (alloc @b)",
+"c : (bloblet (fields bool int) @b) ! (alloc @b)",
+"(7 . #t) : (pairof int bool @r.1) ! (maxeff (read @b) (alloc @r.1) (read (globals b c first)))",
+""
+],
+"err": [
+""
+]
+}

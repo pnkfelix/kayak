@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"nat-length.fx"
+],
+"code": 0,
+"out": [
+"three : (nlist int 3) ! pure",
+"n : (nat 3) ! (read (globals three))",
+"as-long : (poly ((n size)) (subr pure ((nlist int n) (listof int const) (nlist int n)) (nlist int n))) ! pure",
+"line : (subr pure (int) (listof int const)) ! pure",
+"total : (poly ((n size)) (subr pure ((nlist int n)) int)) ! pure",
+"1002 : int ! (read (globals as-long line three total))",
+""
+],
+"err": [
+""
+]
+}

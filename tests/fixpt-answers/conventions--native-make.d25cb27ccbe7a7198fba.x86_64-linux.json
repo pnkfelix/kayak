@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"native-make.fx"
+],
+"code": 0,
+"out": [
+"define inc : (subr pure (int) int) ! pure",
+"define n : (subr (conv native) pure (int) int) ! (read (globals inc))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

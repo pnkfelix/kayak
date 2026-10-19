@@ -11,7 +11,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/processes/par-escape.fx:5:17: a `par` branch must end where it began, and this one has (goto @e)",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/processes/par-escape.fx:5:17: a `par` branch must end where it began, and this one has (goto @e)",
 ""
 ]
 }

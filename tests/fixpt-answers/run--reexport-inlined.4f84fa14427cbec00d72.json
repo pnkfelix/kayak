@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"reexport-inlined.fx"
+],
+"code": 0,
+"out": [
+"m : (moduleof (val inc (subr pure (int) int))) ! pure",
+"inc : (subr pure (int) int) ! (read (globals m))",
+"loop : (subr (maxeff spin (read (globals inc))) (int int) int) ! pure",
+"1000 : int ! (maxeff spin (read (globals inc loop)))",
+""
+],
+"err": [
+""
+]
+}

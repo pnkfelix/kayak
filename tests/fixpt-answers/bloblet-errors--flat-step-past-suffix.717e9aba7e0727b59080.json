@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"flat-step-past-suffix.fx"
+],
+"code": 1,
+"out": [
+"b : o ! (alloc @b)",
+"at : (blobref o u32) ! (read (globals b))",
+"pair : (blobref o (productof (x f64) (y f64))) ! (read (globals at))",
+""
+],
+"err": [
+"! evaluation failed: suffix ref: a flat of 16 bytes at byte 8 runs past the end of the suffix",
+""
+]
+}

@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/include-effect-missing.fx:5:11: `nope` is not an effect, nor one a module included gives",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/include-effect-missing.fx:5:11: `nope` is not an effect, nor one a module included gives",
 "; both checkers agree",
 ""
 ],

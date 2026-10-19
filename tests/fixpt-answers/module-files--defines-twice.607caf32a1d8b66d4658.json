@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"defines-twice.fx"
+],
+"code": 0,
+"out": [
+"x : t ! pure",
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/defines-twice.fx:3:1: warning: `t` is defined as a type more than once; every value sees the last",
+""
+]
+}

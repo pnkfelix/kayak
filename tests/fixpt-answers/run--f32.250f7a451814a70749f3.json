@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"f32.fx"
+],
+"code": 0,
+"out": [
+"f32-sum : (subr (maxeff spin (read (globals f32-sum))) (int f32) f32) ! pure",
+"f32s : (subr (maxeff (alloc @heap) spin (read (globals f32-sum))) (int) (listof string @heap)) ! pure",
+"(\"99.99905\" \"0.33333334\" \"0.3333333432674408\" \"16777216.0\" \"16777216\" \"1.4142135\" \"2.0\" \"not lt\" \"+inf.0\" \"-0.0\") : (listof string @heap) ! (maxeff (alloc @heap) spin (read (globals f32-sum f32s)))",
+""
+],
+"err": [
+""
+]
+}

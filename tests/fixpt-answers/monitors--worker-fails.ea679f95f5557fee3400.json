@@ -1,0 +1,31 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"worker-fails.fx"
+],
+"code": 0,
+"out": [
+"total : (icell int @c) ! (alloc @c)",
+"collector : (addr report @p) ! (maxeff (alloc @p) (init @c) spin nondet (read (globals total)))",
+"work : (subr spin (int) int) ! pure",
+"failed : (subr pure (string) report) ! pure",
+"start : (subr (maxeff (alloc @w) (send @p) spin nondet (read (globals collector failed work))) () (addr int @w)) ! pure",
+"w1 : (addr int @w) ! (maxeff (alloc @w) (send @p) spin nondet (read (globals collector failed start work)))",
+"w2 : (addr int @w) ! (maxeff (alloc @w) (send @p) spin nondet (read (globals collector failed start work)))",
+"w3 : (addr int @w) ! (maxeff (alloc @w) (send @p) spin nondet (read (globals collector failed start work)))",
+"#u : unit ! (maxeff (send @w) (read (globals w1)))",
+"#u : unit ! (maxeff (send @w) (read (globals w2)))",
+"#u : unit ! (maxeff (send @w) (read (globals w3)))",
+"102 : int ! (maxeff (await @c) (read (globals total)))",
+""
+],
+"err": [
+""
+]
+}

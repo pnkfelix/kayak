@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"polyvar.fx"
+],
+"code": 0,
+"out": [
+"f : (subr pure (p1) int) ! pure",
+"g : (subr (read (globals f)) (p1) int) ! pure",
+""
+],
+"err": [
+""
+]
+}

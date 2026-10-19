@@ -23,6 +23,9 @@ import subprocess
 import sys
 import tempfile
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import fixptcache  # noqa: E402
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROGRAMS = os.path.join(ROOT, "tests", "kfx-io")
 CRATE = os.path.join(ROOT, "crates", "kfx-io")
@@ -151,7 +154,7 @@ def main():
         unit = os.path.join(PROGRAMS, name + ".unit")
         files = manifest(unit) if os.path.exists(unit) else [os.path.join(PROGRAMS, name + ".kfx")]
         theirs = outcome(
-            [binary, "--dialect", "fx26", "run", os.path.join(ROOT, "kfx", "prelude.fx")] + files + ["--"] + args,
+            [binary, "--dialect", "fx26"] + fixptcache.ANSWERING + ["run", os.path.join(ROOT, "kfx", "prelude.fx")] + files + ["--"] + args,
             stdin,
         )
         if rust != theirs:

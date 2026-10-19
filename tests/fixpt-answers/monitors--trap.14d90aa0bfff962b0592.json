@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"trap.fx"
+],
+"code": 0,
+"out": [
+"total : (icell int @c) ! (alloc @c)",
+"collector : (addr report @p) ! (maxeff (alloc @p) (init @c) nondet (read (globals total)))",
+"failed : (subr pure (string) report) ! pure",
+"answer : (subr pure (int) report) ! pure",
+"w : (addr int @w) ! (maxeff (alloc @w) (send @p) nondet (read (globals answer collector failed)))",
+"#u : unit ! (maxeff (send @w) (read (globals w)))",
+"100 : int ! (maxeff (await @c) (read (globals total)))",
+""
+],
+"err": [
+""
+]
+}

@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/load-cycle-self.fx:2:12: in `load-cycle-self.fx`, 2:12: a load cycle: `load-cycle-self.fx` loads `load-cycle-self.fx`",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/load-cycle-self.fx:2:12: in `load-cycle-self.fx`, 2:12: a load cycle: `load-cycle-self.fx` loads `load-cycle-self.fx`",
 ""
 ]
 }

@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"pselect-main-deadline.fx"
+],
+"code": 0,
+"out": [
+"c : (icell int @c) ! (alloc @c)",
+"7 : int ! (maxeff (await @c) (io clock) nondet (read (globals c)))",
+""
+],
+"err": [
+""
+]
+}

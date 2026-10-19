@@ -1,7 +1,8 @@
 //! Machine code a program made, placed and run (`docs/research/native.md`,
 //! decision 4; `CLAUDES_CHOICES.md` C116): FX-26's `seal-code` and
 //! `native-procedure` (Fixpt's TODO §97), under Fixpt's native convention
-//! (`(native-convention)`, Fixpt's `native-arm64.conv`).
+//! (`(native-convention)`, Fixpt's `native-arm64.conv`, or on x86_64 its
+//! `native-x86_64.conv`).
 //!
 //! - **The code area**: code bloblets, laid out as Fixpt's (a header, the
 //!   fields, a trailer, the suffix), mapped twice, as Fixpt's is
@@ -11,11 +12,14 @@
 //!   Nothing in it is ever freed, as nothing of kayak's heap is (C116).
 //! - **Objects in Fixpt's layout** that code reads and makes (closures,
 //!   pairs), in memory of their own, never freed either.
-//! - **The trampoline**: from Rust into the convention (the state in `x24`,
-//!   fuel `x28`, the stack's limit `x27`, the code's distance `x26`, the
-//!   closure `x10`, the arguments `x1`–`x8`, their count `x9`) and back,
-//!   every register Rust keeps kept; nested, as native code calls Rust
-//!   that calls native code.
+//! - **The trampoline**: from Rust into the convention (on arm64 the
+//!   state in `x24`, fuel `x28`, the stack's limit `x27`, the code's
+//!   distance `x26`, the closure `x10`, the arguments `x1`–`x8`, their
+//!   count `x9`; on x86_64 the state in `r15`, and fuel, the limit and the
+//!   distance in it, the closure `rbx`, the arguments `rdi`, `rsi`, `r8`
+//!   and the state's `reg4`–`reg8`, their count `r10`) and back, every
+//!   register Rust keeps kept; nested, as native code calls Rust that
+//!   calls native code.
 //! - **The routines** the convention declares (`routines`), at the state's
 //!   fields: `poll` gives the next slice of fuel; `overflow` and `trap` end
 //!   the call in a failure; `cons` makes a pair; `foreign` calls what is
@@ -24,8 +28,8 @@
 //!   left and is resumed beyond. `bloblet` and `closure` are not kayak's
 //!   yet: they end the call, naming themselves.
 //!
-//! Only on arm64 macOS; elsewhere [`native_code`] is false, and FX-26's
-//! `native-code?` with it.
+//! Only on arm64 macOS and x86_64 Linux; elsewhere [`native_code`] is
+//! false, and FX-26's `native-code?` with it.
 //!
 //! Ported from Fixpt's object model (C121; `scripts/fixpt-drift.py`); its
 //! constants are tested against Fixpt's own (`tests/layout.rs`,
@@ -35,9 +39,13 @@
 use std::cell::Cell;
 use std::sync::{Mutex, OnceLock};
 
-/// The native convention kayak keeps, declared: one clause a line, Fixpt's
-/// at the pin (`scripts/built-in.py` copies it), which the constants below
-/// are tested against (`tests/declaration.rs`).
+/// The native convention kayak keeps on this machine, declared: one clause
+/// a line, Fixpt's at the pin (`scripts/built-in.py` copies both), which
+/// the constants below are tested against (`tests/declaration.rs`):
+/// x86_64's on x86_64, arm64's everywhere else, as Fixpt chooses.
+#[cfg(target_arch = "x86_64")]
+pub const DECLARATION: &str = include_str!("native-x86_64.conv");
+#[cfg(not(target_arch = "x86_64"))]
 pub const DECLARATION: &str = include_str!("native-arm64.conv");
 
 /// Fixpt's value layout, as its native convention declares it (`values`).
@@ -123,13 +131,16 @@ pub mod state {
     pub const POLL: usize = 560;
     pub const CONS: usize = 568;
     pub const BLOBLET: usize = 576;
-    /// kayak's own, past what the convention declares: where a routine
-    /// that ends the call goes back to the trampoline.
-    pub const LEAVE: usize = 584;
-    pub const WORDS_IN_STATE: usize = 80;
+    /// x86_64's arguments past the third (`(state reg4)` … `(state reg8)`).
+    pub const REG4: usize = 616;
+    /// kayak's own, past what either machine's convention declares: where
+    /// a routine that ends the call goes back to the trampoline.
+    pub const LEAVE: usize = 656;
+    pub const WORDS_IN_STATE: usize = 83;
 }
 
-/// Whether this machine runs native code: arm64 macOS, its code area made.
+/// Whether this machine runs native code: arm64 macOS or x86_64 Linux, its
+/// code area made.
 pub fn native_code() -> bool {
     area().is_some()
 }
@@ -573,6 +584,14 @@ pub fn call(closure: u64, entry: usize, args: &[u64]) -> Result<u64, Trap> {
 /// The `foreign` routine's Rust: the procedure closure `closure` is over,
 /// called with `count` arguments from the state; a panic kept, and the
 /// trap word set so that the routine goes back to the trampoline.
+// Called only from the trampoline: arm64 macOS's and x86_64 Linux's.
+#[cfg_attr(
+    not(any(
+        all(target_os = "macos", target_arch = "aarch64"),
+        all(target_os = "linux", target_arch = "x86_64")
+    )),
+    allow(dead_code)
+)]
 extern "C" fn foreign(state: usize, closure: u64, count: u64) -> u64 {
     let s = |off: usize| sys::get(state + off);
     let run = || {
@@ -608,6 +627,14 @@ pub const PRIMITIVE_FAILED: u64 = 3;
 /// and `fields` fields, each a fixnum, zeroed (`(makes (kind bloblet)
 /// (trailer 1) zeroed)`); or, for sizes the header cannot say, the trap
 /// word set (`(traps-when-refused 3)`), so that the routine goes back.
+// Called only from the trampoline: arm64 macOS's and x86_64 Linux's.
+#[cfg_attr(
+    not(any(
+        all(target_os = "macos", target_arch = "aarch64"),
+        all(target_os = "linux", target_arch = "x86_64")
+    )),
+    allow(dead_code)
+)]
 extern "C" fn bloblet_routine(state: usize, bytes: u64, fields: u64) -> u64 {
     let size = |w: u64, most: u64| {
         (w & layout::TAG_MASK == layout::TAG_FIXNUM
@@ -633,11 +660,45 @@ extern "C" fn bloblet_routine(state: usize, bytes: u64, fields: u64) -> u64 {
 }
 
 /// The `cons` routine's Rust.
+// Called only from the trampoline: arm64 macOS's and x86_64 Linux's.
+#[cfg_attr(
+    not(any(
+        all(target_os = "macos", target_arch = "aarch64"),
+        all(target_os = "linux", target_arch = "x86_64")
+    )),
+    allow(dead_code)
+)]
 extern "C" fn cons_routine(car: u64, cdr: u64) -> u64 {
     cons(car, cdr)
 }
 
 // ---------------------------------------------------------------- the system
+
+/// Words of memory read and written, on the machines that run native code.
+#[cfg(any(
+    all(target_os = "macos", target_arch = "aarch64"),
+    all(target_os = "linux", target_arch = "x86_64")
+))]
+mod memory {
+    /// The word at `at`: an 8-aligned address of a word `take` or `words`
+    /// handed out, or of the state, or one native code gave as a pair's or
+    /// a closure's (trusted, as the code is, by `(io native)`).
+    pub(crate) fn get(at: usize) -> u64 {
+        // SAFETY: as said; all such words are mapped and never freed.
+        unsafe { std::ptr::read_volatile(at as *const u64) }
+    }
+
+    pub(crate) fn put(at: usize, w: u64) {
+        // SAFETY: as `get`.
+        unsafe { std::ptr::write_volatile(at as *mut u64, w) }
+    }
+
+    /// The byte at `at`: of the card table, which is mapped for good.
+    pub(crate) fn get_byte(at: usize) -> u8 {
+        // SAFETY: as `get`.
+        unsafe { std::ptr::read_volatile(at as *const u8) }
+    }
+}
 
 #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
 mod sys {
@@ -763,24 +824,7 @@ mod sys {
         Some((rw as usize, rx as usize))
     }
 
-    /// The word at `at`: an 8-aligned address of a word `take` or `words`
-    /// handed out, or of the state, or one native code gave as a pair's or
-    /// a closure's (trusted, as the code is, by `(io native)`).
-    pub(super) fn get(at: usize) -> u64 {
-        // SAFETY: as said; all such words are mapped and never freed.
-        unsafe { std::ptr::read_volatile(at as *const u64) }
-    }
-
-    pub(super) fn put(at: usize, w: u64) {
-        // SAFETY: as `get`.
-        unsafe { std::ptr::write_volatile(at as *mut u64, w) }
-    }
-
-    /// The byte at `at`: of the card table, which is mapped for good.
-    pub(super) fn get_byte(at: usize) -> u8 {
-        // SAFETY: as `get`.
-        unsafe { std::ptr::read_volatile(at as *const u8) }
-    }
+    pub(super) use super::memory::{get, get_byte, put};
 
     pub(super) fn flush(rx: usize, len: usize) {
         // SAFETY: a range of the execute view, mapped for good.
@@ -965,7 +1009,304 @@ mod sys {
     );
 }
 
-#[cfg(not(all(target_os = "macos", target_arch = "aarch64")))]
+#[cfg(all(target_os = "linux", target_arch = "x86_64"))]
+mod sys {
+    use super::state;
+
+    unsafe extern "C" {
+        fn mmap(addr: *mut u8, len: usize, prot: i32, flags: i32, fd: i32, off: i64) -> *mut u8;
+        fn mremap(old: *mut u8, old_len: usize, new_len: usize, flags: i32, ...) -> *mut u8;
+        fn mprotect(addr: *mut u8, len: usize, prot: i32) -> i32;
+        fn munmap(addr: *mut u8, len: usize) -> i32;
+        fn pthread_self() -> usize;
+        fn pthread_getattr_np(t: usize, attr: *mut u64) -> i32;
+        fn pthread_attr_getstack(attr: *const u64, addr: *mut *mut u8, size: *mut usize) -> i32;
+        fn pthread_attr_destroy(attr: *mut u64) -> i32;
+        fn kayak_jit_enter(
+            state: usize,
+            entry: usize,
+            closure: u64,
+            args: *const u64,
+            count: u64,
+        ) -> u64;
+        fn kayak_jit_leave();
+        fn kayak_jit_trap();
+        fn kayak_jit_overflow();
+        fn kayak_jit_poll();
+        fn kayak_jit_cons();
+        fn kayak_jit_foreign();
+        fn kayak_jit_bloblet();
+        fn kayak_jit_closure();
+    }
+    const PROT_READ: i32 = 1;
+    const PROT_WRITE: i32 = 2;
+    const PROT_EXEC: i32 = 4;
+    const MAP_SHARED: i32 = 1;
+    const MAP_PRIVATE: i32 = 2;
+    const MAP_FIXED: i32 = 0x10;
+    const MAP_ANON: i32 = 0x20;
+    const MAP_NORESERVE: i32 = 0x4000;
+    const MREMAP_MAYMOVE: i32 = 1;
+
+    pub(super) use super::memory::{get, get_byte, put};
+
+    /// Memory reserved: read+write, private, nothing committed until
+    /// touched, nor counted against the system's commit; none if the
+    /// system says no.
+    pub(super) fn reserve(bytes: usize) -> Option<usize> {
+        // SAFETY: a fresh mapping the kernel places; nothing refers to it.
+        let at = unsafe {
+            mmap(
+                std::ptr::null_mut(),
+                bytes,
+                PROT_READ | PROT_WRITE,
+                MAP_PRIVATE | MAP_ANON | MAP_NORESERVE,
+                -1,
+                0,
+            )
+        };
+        (at as isize != -1).then_some(at as usize)
+    }
+
+    /// The space, as arm64 macOS's: `code + data` bytes reserved, the first
+    /// `code` of them a shared anonymous mapping, read+write, and a second
+    /// view of the same pages, read+execute, made by `mremap` of size 0
+    /// (as Fixpt's `fixpt-memmgmt` makes its own).
+    pub(super) fn map_space(code: usize, data: usize) -> Option<(usize, usize)> {
+        let base = reserve(code + data)?;
+        // SAFETY: the first `code` bytes of the reservation just made,
+        // which nothing refers to, replaced, zero as they were.
+        let rw = unsafe {
+            mmap(
+                base as *mut u8,
+                code,
+                PROT_READ | PROT_WRITE,
+                MAP_FIXED | MAP_SHARED | MAP_ANON,
+                -1,
+                0,
+            )
+        };
+        if rw as isize == -1 {
+            return None;
+        }
+        // SAFETY: a second mapping of the shared one just made, where the
+        // kernel chooses; then that one made read+execute.
+        let rx = unsafe { mremap(rw, 0, code, MREMAP_MAYMOVE) };
+        // SAFETY: `rx` is the view just made, `code` long.
+        if rx as isize == -1 || unsafe { mprotect(rx, code, PROT_READ | PROT_EXEC) } != 0 {
+            // SAFETY: unmapping what was mapped above, which nothing holds.
+            unsafe {
+                if rx as isize != -1 {
+                    munmap(rx, code);
+                }
+                munmap(base as *mut u8, code + data);
+            }
+            return None;
+        }
+        Some((rw as usize, rx as usize))
+    }
+
+    /// x86_64's instruction fetch sees what was written to the same pages
+    /// by another view: nothing to flush.
+    pub(super) fn flush(_: usize, _: usize) {}
+
+    /// The lowest address this thread's stack may reach, less room for
+    /// Rust's own frames below native code's (a call-out's).
+    pub(super) fn stack_limit() -> usize {
+        // glibc's `pthread_attr_t`, 56 bytes on x86_64, here in 64.
+        let mut attr = [0u64; 8];
+        let (mut low, mut size) = (std::ptr::null_mut(), 0usize);
+        // SAFETY: asks of this thread, which is running, into `attr`,
+        // which is big enough, and frees what it filled.
+        let ok = unsafe {
+            pthread_getattr_np(pthread_self(), attr.as_mut_ptr()) == 0 && {
+                let r = pthread_attr_getstack(attr.as_ptr(), &mut low, &mut size);
+                pthread_attr_destroy(attr.as_mut_ptr());
+                r == 0
+            }
+        };
+        if !ok {
+            panic!("native code: this thread's stack cannot be found");
+        }
+        low as usize + (1 << 20)
+    }
+
+    /// Each routine's state field and where it runs; and the way back.
+    pub(super) fn routines() -> [(usize, usize); 8] {
+        let at = |f: unsafe extern "C" fn()| f as *const () as usize;
+        [
+            (state::TRAP_STUB, at(kayak_jit_trap)),
+            (state::OVERFLOW, at(kayak_jit_overflow)),
+            (state::POLL, at(kayak_jit_poll)),
+            (state::CONS, at(kayak_jit_cons)),
+            (state::FOREIGN, at(kayak_jit_foreign)),
+            (state::BLOBLET, at(kayak_jit_bloblet)),
+            (state::CLOSURE, at(kayak_jit_closure)),
+            (state::LEAVE, at(kayak_jit_leave)),
+        ]
+    }
+
+    pub(super) fn enter(
+        state: usize,
+        entry: usize,
+        closure: u64,
+        args: &[u64; 8],
+        count: usize,
+    ) -> u64 {
+        // SAFETY: `entry` is a sealed code bloblet's code, which keeps the
+        // native convention by the program's word (`(io native)`, the one
+        // trusted step); the trampoline keeps every register Rust keeps.
+        unsafe { kayak_jit_enter(state, entry, closure, args.as_ptr(), count as u64) }
+    }
+
+    // The trampoline. In (C's convention): rdi the state, rsi the entry,
+    // rdx the closure, rcx the arguments, r8 their count. Rust's
+    // callee-saved registers (rbx, rbp, r12–r15) pushed, and the state's
+    // `rust-sp` of a trampoline outside this one; the state in r15, the
+    // arguments past the third in its `reg4`–`reg8`. Fuel, the stack's
+    // limit and the code's distance are the state's already.
+    //
+    // The routines, each entered by `call [r15 + field]`. `leave`: the trap
+    // word in r11 kept, Rust's stack as the innermost trampoline left it,
+    // and back as from code. `foreign`, `cons` and `bloblet` call Rust on
+    // a stack 16-byte aligned (C's convention keeps r15); `foreign` with
+    // its arguments in the state's `args`.
+    std::arch::global_asm!(
+        ".globl kayak_jit_enter",
+        ".p2align 4",
+        "kayak_jit_enter:",
+        "push rbp",
+        "mov rbp, rsp",
+        "push rbx",
+        "push r12",
+        "push r13",
+        "push r14",
+        "push r15",
+        "push qword ptr [rdi]",
+        "mov r15, rdi",
+        "mov [r15], rsp",
+        "mov rbx, rdx",
+        "mov r10, r8",
+        "mov r11, rsi",
+        "mov r9, rcx",
+        "mov rax, [r9 + 24]",
+        "mov [r15 + 616], rax",
+        "mov rax, [r9 + 32]",
+        "mov [r15 + 624], rax",
+        "mov rax, [r9 + 40]",
+        "mov [r15 + 632], rax",
+        "mov rax, [r9 + 48]",
+        "mov [r15 + 640], rax",
+        "mov rax, [r9 + 56]",
+        "mov [r15 + 648], rax",
+        "mov rdi, [r9]",
+        "mov rsi, [r9 + 8]",
+        "mov r8, [r9 + 16]",
+        "call r11",
+        ".Lkayak_jit_back:",
+        "pop qword ptr [r15]",
+        "pop r15",
+        "pop r14",
+        "pop r13",
+        "pop r12",
+        "pop rbx",
+        "pop rbp",
+        "ret",
+        ".globl kayak_jit_leave",
+        ".p2align 4",
+        "kayak_jit_leave:",
+        "mov [r15 + 32], r11",
+        "mov rsp, [r15]",
+        "xor eax, eax",
+        "jmp .Lkayak_jit_back",
+        ".globl kayak_jit_trap",
+        ".p2align 4",
+        "kayak_jit_trap:",
+        "lea r11, [r10 + 256]",
+        "jmp kayak_jit_leave",
+        ".globl kayak_jit_overflow",
+        ".p2align 4",
+        "kayak_jit_overflow:",
+        "mov r11d, 258",
+        "jmp kayak_jit_leave",
+        ".globl kayak_jit_closure",
+        ".p2align 4",
+        "kayak_jit_closure:",
+        "mov r11d, 1792",
+        "jmp kayak_jit_leave",
+        ".globl kayak_jit_poll",
+        ".p2align 4",
+        "kayak_jit_poll:",
+        "push rax",
+        "mov rax, [r15 + 552]",
+        "mov [r15 + 24], rax",
+        "pop rax",
+        "ret",
+        ".globl kayak_jit_cons",
+        ".p2align 4",
+        "kayak_jit_cons:",
+        "push rbp",
+        "mov rbp, rsp",
+        "and rsp, -16",
+        "call {cons}",
+        "mov rsp, rbp",
+        "pop rbp",
+        "ret",
+        ".globl kayak_jit_bloblet",
+        ".p2align 4",
+        "kayak_jit_bloblet:",
+        "push rbp",
+        "mov rbp, rsp",
+        "and rsp, -16",
+        "mov rdx, rsi",
+        "mov rsi, rdi",
+        "mov rdi, r15",
+        "call {bloblet}",
+        "mov rsp, rbp",
+        "pop rbp",
+        "mov r11, [r15 + 32]",
+        "test r11, r11",
+        "jnz kayak_jit_leave",
+        "ret",
+        ".globl kayak_jit_foreign",
+        ".p2align 4",
+        "kayak_jit_foreign:",
+        "push rbp",
+        "mov rbp, rsp",
+        "and rsp, -16",
+        "mov [r15 + 48], rdi",
+        "mov [r15 + 56], rsi",
+        "mov [r15 + 64], r8",
+        "mov rax, [r15 + 616]",
+        "mov [r15 + 72], rax",
+        "mov rax, [r15 + 624]",
+        "mov [r15 + 80], rax",
+        "mov rax, [r15 + 632]",
+        "mov [r15 + 88], rax",
+        "mov rax, [r15 + 640]",
+        "mov [r15 + 96], rax",
+        "mov rax, [r15 + 648]",
+        "mov [r15 + 104], rax",
+        "mov rdi, r15",
+        "mov rsi, rbx",
+        "mov rdx, r10",
+        "call {foreign}",
+        "mov rsp, rbp",
+        "pop rbp",
+        "mov r11, [r15 + 32]",
+        "test r11, r11",
+        "jnz kayak_jit_leave",
+        "ret",
+        cons = sym super::cons_routine,
+        bloblet = sym super::bloblet_routine,
+        foreign = sym super::foreign,
+    );
+}
+
+#[cfg(not(any(
+    all(target_os = "macos", target_arch = "aarch64"),
+    all(target_os = "linux", target_arch = "x86_64")
+)))]
 mod sys {
     pub(super) fn map_space(_: usize, _: usize) -> Option<(usize, usize)> {
         None

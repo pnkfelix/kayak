@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"caller-place.fx"
+],
+"code": 0,
+"out": [
+"build : (poly ((p place) (r region p)) (subr (maxeff (alloc p) (alloc r)) ((place p) int) (listof int r))) ! pure",
+"use : (subr (read (globals build)) (int) int) ! pure",
+"41 : int ! (read (globals build use))",
+""
+],
+"err": [
+""
+]
+}

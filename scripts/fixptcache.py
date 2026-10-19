@@ -11,7 +11,10 @@ target/fixpt-cache/ keeps every run of every pin (the feedback loop's time,
 
 An answer kept is used as it is, unless there is a clone at the pin and the
 answers are another pin's: then Fixpt is asked again, and the answer kept
-rewritten where it differs (git says which). Each answer asked for is noted
+rewritten where it differs (git says which). The answers are arm64 macOS's
+(HOME_PLATFORM), stamped REV; another machine's, where Fixpt answers
+otherwise there, are NAME.HASH.PLATFORM.json beside them, and its stamp
+REV.PLATFORM (C134). Each answer asked for is noted
 (target/fixpt-answers-used/), so that after a full check `fx26-tests.py
 --prune` drops those no longer asked for and stamps the pin.
 
@@ -23,7 +26,10 @@ import atexit
 import hashlib
 import json
 import os
+import platform
+import re
 import subprocess
+import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
 
@@ -54,6 +60,45 @@ def programs():
                 out.append((os.path.relpath(p, PROGRAMS), p))
     return sorted(out)
 
+# The machine whose answers kayak's are compared with, named: Fixpt's
+# default on arm64 (register code on native frames), which on x86_64 is
+# not its default (C134): there the default's fixed stacks overflow where
+# native frames do not.
+ANSWERING = ["--fx26-machine", "fx-regs-rsjit-nativecc"]
+
+# This machine, as Rust's `std::env::consts` names it: `ARCH-OS`.
+PLATFORM = "%s-%s" % ({"arm64": "aarch64", "amd64": "x86_64"}.get(platform.machine().lower(), platform.machine().lower()),
+                      {"darwin": "macos"}.get(sys.platform, sys.platform))
+
+# Where Fixpt's answers were first kept (C134): NAME.out is its answer on
+# arm64 macOS; on another machine, where Fixpt answers otherwise (libm's
+# last bit, code a program makes run or not), NAME.PLATFORM.out beside it.
+HOME_PLATFORM = "aarch64-macos"
+
+
+# This machine's architecture, as Rust's `target_arch` names it.
+ARCH = PLATFORM.split("-")[0]
+
+
+def machine_of(paths):
+    """The machine a program is of, as Rust's `target_arch` names it, if it
+    declares a native convention (`define-convention`), whose `target`
+    says which: Fixpt refuses another machine's (C135), so the program is
+    compiled, run and checked only on its own. None for any machine."""
+    for p in paths:
+        with open(p) as f:
+            m = re.search(r"\(define-convention\s+\S+\s*\(target\s+([a-z0-9_]+)\)", f.read())
+        if m:
+            return {"arm64": "aarch64"}.get(m.group(1), m.group(1))
+    return None
+
+
+def answer_path(directory, name):
+    """Where program `name`'s answer on this machine is kept: its own file
+    if this machine has one, else the shared one."""
+    mine = os.path.join(directory, "%s.%s.out" % (name, PLATFORM))
+    return mine if os.path.exists(mine) else os.path.join(directory, name + ".out")
+
 
 class Ran:
     def __init__(self, returncode, stdout, stderr):
@@ -63,22 +108,32 @@ class Ran:
 _lock = threading.Lock()
 _used = set()
 _kept = None
+_mine = None
+HOME = PLATFORM == HOME_PLATFORM
+# This machine's stamp: whose its answers are (C134).
+MY_STAMP = STAMP if HOME else STAMP + "." + PLATFORM
+KEY = re.compile(r"[0-9a-f]{20}")
 
 
 def _stamp():
-    return open(STAMP).read().strip() if os.path.exists(STAMP) else None
+    return open(MY_STAMP).read().strip() if os.path.exists(MY_STAMP) else None
 
 
 def _index():
     """The answers kept, by hash: each file is NAME.HASH.json, NAME only
-    to be read by people."""
-    global _kept
+    to be read by people; this machine's own NAME.HASH.PLATFORM.json in
+    `_mine`. Other machines' own are not read."""
+    global _kept, _mine
     if _kept is None:
-        _kept = {}
+        _kept, _mine = {}, {}
         if os.path.isdir(ANSWERS):
             for f in os.listdir(ANSWERS):
                 if f.endswith(".json"):
-                    _kept[f.rsplit(".", 2)[1]] = os.path.join(ANSWERS, f)
+                    parts = f[:-len(".json")].split(".")
+                    if KEY.fullmatch(parts[-1]):
+                        _kept[parts[-1]] = os.path.join(ANSWERS, f)
+                    elif len(parts) > 2 and KEY.fullmatch(parts[-2]) and parts[-1] == PLATFORM:
+                        _mine[parts[-2]] = os.path.join(ANSWERS, f)
     return _kept
 
 
@@ -96,11 +151,16 @@ class Unanswered(Exception):
     pass
 
 
+# Where kayak is, as an answer kept writes it: Fixpt's messages name its
+# files by their paths, which are not the same in every checkout (C134).
+HERE = "<kayak>"
+
+
 def _read(path):
     """An answer kept; a run that took too long is kept as one, and read
     back as it ended, by raising."""
     with open(path) as g:
-        d = json.load(g)
+        d = json.loads(g.read().replace(HERE, ROOT))
     if d["code"] == "timeout":
         raise subprocess.TimeoutExpired(d["args"], d["out"][0])
     return Ran(d["code"], "\n".join(d["out"]), "\n".join(d["err"]))
@@ -108,7 +168,7 @@ def _read(path):
 
 def _write(path, args, ran):
     d = {"args": args, "code": ran.returncode, "out": ran.stdout.split("\n"), "err": ran.stderr.split("\n")}
-    text = json.dumps(d, indent=0, ensure_ascii=False) + "\n"
+    text = json.dumps(d, indent=0, ensure_ascii=False).replace(ROOT, HERE) + "\n"
     if os.path.exists(path) and open(path).read() == text:
         return
     os.makedirs(ANSWERS, exist_ok=True)
@@ -164,7 +224,8 @@ def run(binary, args, files, timeout=None, name=None, keep=True):
         return ran
     with _lock:
         _used.add(key)
-        kept = _index().get(key)
+        shared = _index().get(key)
+        kept = _mine.get(key, shared)
     if kept is not None and (binary is None or _stamp() == REV):
         return _read(kept)
     shown = [os.path.basename(a) if a in files else a for a in args]
@@ -177,28 +238,43 @@ def run(binary, args, files, timeout=None, name=None, keep=True):
     if name is None and files and os.path.abspath(files[0]).startswith(PROGRAMS + os.sep):
         name = os.path.splitext(os.path.relpath(os.path.abspath(files[0]), PROGRAMS))[0].replace(os.sep, "--")
     stem = name or (os.path.splitext(os.path.basename(files[0]))[0] if files else "run")
-    path = kept or os.path.join(ANSWERS, "%s.%s.json" % (stem, key))
-    _write(path, shown, ran)
+    path = shared or os.path.join(ANSWERS, "%s.%s.json" % (stem, key))
+    if HOME or shared is None:
+        _write(path, shown, ran)
+        with _lock:
+            _index()[key] = path
+        return _read(path)
+    # Another machine: its own answer only where the shared one is not it.
+    mine = os.path.join(ANSWERS, "%s.%s.%s.json" % (stem, key, PLATFORM))
+    _write(mine, shown, ran)
+    same = open(mine).read() == open(shared).read()
     with _lock:
-        _index()[key] = path
-    return _read(path)
+        if same:
+            os.remove(mine)
+            _mine.pop(key, None)
+        else:
+            _mine[key] = mine
+    return _read(shared if same else mine)
 
 
 def prune():
     """Drop the answers kept that nothing asked for since `reset_used`,
-    and stamp the rest as the pin's: how many were dropped."""
+    and stamp the rest as the pin's: how many were dropped. On another
+    machine than HOME_PLATFORM, only its own answers are dropped, and
+    only its stamp written: the shared ones are home's to say (C134)."""
     used = set()
     if os.path.isdir(USED):
         for f in os.listdir(USED):
             with open(os.path.join(USED, f)) as g:
                 used.update(line.strip() for line in g if line.strip())
     dropped = 0
-    for key, path in list(_index().items()):
+    _index()
+    for key, path in list((_kept if HOME else {}).items()) + list(_mine.items()):
         if key not in used:
             os.remove(path)
             dropped += 1
     os.makedirs(ANSWERS, exist_ok=True)
-    with open(STAMP, "w") as g:
+    with open(MY_STAMP, "w") as g:
         g.write(REV + "\n")
     return dropped
 

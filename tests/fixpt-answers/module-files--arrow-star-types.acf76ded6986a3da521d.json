@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/arrow-star-types.fx:4:32: `r` is not a region",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/arrow-star-types.fx:4:32: `r` is not a region",
 "; both checkers agree",
 ""
 ],

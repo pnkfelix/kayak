@@ -16,7 +16,10 @@ import subprocess
 import sys
 import tempfile
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import fixptcache  # noqa: E402
+
+ROOT =os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CORPUS = os.path.join(ROOT, "tests", "kfx")
 GENERATED = os.path.join(ROOT, "crates", "kayak-fx26", "src", "fx26")
 PASSING = os.path.join(ROOT, "tests", "engine-passing")
@@ -66,11 +69,15 @@ def main():
         sys.exit("engine-programs: the engine does not build")
     engine = os.path.join(ROOT, "target", "release", "kayak-fx26")
     names = sorted(n.rsplit(".", 1)[0] for n in os.listdir(CORPUS) if n.endswith(".kfx") or n.endswith(".unit"))
-    agree, differ, cannot = [], [], []
+    agree, differ, cannot, elsewhere = [], [], [], set()
     for name in names:
         unit = os.path.join(CORPUS, name + ".unit")
         files = manifest(unit) if os.path.exists(unit) else [os.path.join(CORPUS, name + ".kfx")]
-        expected = os.path.join(CORPUS, name + ".out")
+        if fixptcache.machine_of(files) not in (None, fixptcache.ARCH):
+            # Another machine's (C135): what it was there, kept.
+            elsewhere.add(name)
+            continue
+        expected = fixptcache.answer_path(CORPUS, name)
         if not os.path.exists(expected):
             continue
         try:
@@ -90,10 +97,10 @@ def main():
     for name, got in differ:
         print(f"engine-programs: {name}: DIFFERS: {got!r}")
     was = set(open(PASSING).read().split()) if os.path.exists(PASSING) else set()
-    lost = sorted(was - set(agree))
+    lost = sorted(was - set(agree) - elsewhere)
     if bless:
         with open(PASSING, "w") as f:
-            f.write("".join(n + "\n" for n in agree))
+            f.write("".join(n + "\n" for n in sorted(set(agree) | (was & elsewhere))))
     print(f"engine-programs: {len(agree)} of {len(names)} corpus programs agree with Fixpt; {len(differ)} differ, {len(cannot)} not run yet")
     if differ or (lost and not bless):
         sys.exit("engine-programs: " + ("differ: " + ", ".join(n for n, _ in differ) if differ else "no longer agree: " + ", ".join(lost)))

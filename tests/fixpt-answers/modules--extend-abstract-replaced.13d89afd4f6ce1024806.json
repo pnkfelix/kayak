@@ -12,7 +12,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/extend-abstract-replaced.fx:5:1: `zero`'s type mentions the first module's `t`, which the second's `t` replaces",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/extend-abstract-replaced.fx:5:1: `zero`'s type mentions the first module's `t`, which the second's `t` replaces",
 ""
 ]
 }

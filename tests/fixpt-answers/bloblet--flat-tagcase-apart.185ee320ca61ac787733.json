@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"flat-tagcase-apart.fx"
+],
+"code": 1,
+"out": [
+"b : o ! (alloc @b)",
+"r : (blobref o (sumof (p (productof (x i32) (y i32))))) ! (read (globals b))",
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-tagcase-apart.fx:7:21: `p` carries a (blobref o (productof (x i32) (y i32))), which cannot be taken apart into 2 name(s)",
+""
+]
+}

@@ -828,6 +828,9 @@ pub mod made__load__0__cg {
                     case_ if kayak_rt::string_eq_p(case_, str_lit("tword-int?")) => {
                         str_lit("%tword-fixnum?")
                     }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("tword-bits")) => {
+                        str_lit("%tword-bits")
+                    }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("wcell-bool")) => {
                         str_lit("%fx26-identity")
                     }

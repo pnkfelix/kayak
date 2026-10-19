@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"io-stdin.fx"
+],
+"code": 0,
+"out": [
+"count-lines : (subr (maxeff spin (io stdin) (read (globals count-lines))) (int) int) ! pure",
+""
+],
+"err": [
+""
+]
+}

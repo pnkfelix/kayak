@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"select-shown-early.fx"
+],
+"code": 1,
+"out": [
+"m : (moduleof (desc cell (productof (1 int))) (val mk (subr pure (int) cell))) ! pure",
+"mk : (subr pure (int) cell) ! (read (globals m))",
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/select-shown-early.fx:9:4: a int is expected here, and this is a cell",
+""
+]
+}

@@ -135,34 +135,12 @@ pub fn type_params(v: &'static Cv, form: &'static Sexp) -> Strings {
     }
 }
 
-/// Text's lines, those not empty, as `cs` and the line so far, reversed.
-pub fn lines_of(mut cs: List<char>, mut line: List<char>) -> Strings {
-    loop {
-        if null_p(cs) {
-            if null_p(line) {
-                return nil::<Str>();
-            } else {
-                return kayak_rt::heap_cons(rev_to_string(line), kayak_rt::nil());
-            }
-        } else if char_eq_p(car(cs), '\n') {
-            if null_p(line) {
-                (cs, line) = (cdr(cs), nil::<char>());
-                continue;
-            } else {
-                return kayak_rt::heap_cons(rev_to_string(line), lines_of(cdr(cs), nil::<char>()));
-            }
-        } else {
-            (cs, line) = (cdr(cs), kayak_rt::heap_cons(car(cs), line));
-            continue;
-        }
-    }
-}
-
 /// `(define-convention name clause ...)` (C116, Fixpt's TODO §97): its
 /// name, if its clauses, each printed as Fixpt prints it, are in any
-/// order those of the native convention (`native-convention-text`,
-/// Fixpt's, which kayak-jit keeps); else refused. The convention it names
-/// is then `native`.
+/// order those of the native convention of the machine this runs on
+/// (`(native-convention)`: Fixpt's for that machine, which kayak-jit
+/// keeps, as Fixpt's checkers compare with its own machine's); else
+/// refused. The convention it names is then `native`.
 pub fn declared_convention(v: &'static Cv, xs: Sexps) -> Str {
     if (i64_lt(size(xs), 3i64) || not({
         let tagcase_ = second(xs);
@@ -177,7 +155,7 @@ pub fn declared_convention(v: &'static Cv, xs: Sexps) -> Str {
         }
     })) {
         match refuse(v, str_lit("(define-convention name clause ...)")) {}
-    } else if not(strings_eq_p(sorted_strings(map(&show_sexp, cdr(cdr(xs)))), sorted_strings(lines_of(string_to_list(native_convention_text()), nil::<char>())))) {
+    } else if not(strings_eq_p(sorted_strings(map(&show_sexp, cdr(cdr(xs)))), sorted_strings(the::<Strings>(native_convention())))) {
         match refuse(v, string_append(str_lit("a convention not the native one, which alone this implementation supports: "), sym_name(second(xs)))) {}
     } else {
         sym_name(second(xs))

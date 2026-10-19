@@ -164,7 +164,7 @@ def prefetch(binary, paths):
 
 def fixpt_values_run(binary, path, text):
     try:
-        r = fixptcache.run(binary, ["--dialect", "fx26", "--step-limit", "none", "eval", path], [path], timeout=LIMIT)
+        r = fixptcache.run(binary, ["--dialect", "fx26"] + fixptcache.ANSWERING + ["--step-limit", "none", "eval", path], [path], timeout=LIMIT)
     except subprocess.TimeoutExpired:
         return None, "Fixpt runs past %ds" % LIMIT
     if r.returncode != 0:

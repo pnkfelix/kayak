@@ -13,7 +13,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/arrows/star-passed-as-pure.fx:6:61: `->*` found `f` to be a (subr (maxeff spin (read (globals f twice))) (int) int): argument 1 is a (subr (maxeff spin (read (globals f twice))) (int) int), where a (subr pure (int) int) is expected",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/arrows/star-passed-as-pure.fx:6:61: `->*` found `f` to be a (subr (maxeff spin (read (globals f twice))) (int) int): argument 1 is a (subr (maxeff spin (read (globals f twice))) (int) int), where a (subr pure (int) int) is expected",
 "  beyond what is expected, it has (maxeff spin (read (globals f twice)))",
 ""
 ]

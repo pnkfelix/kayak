@@ -3507,3 +3507,118 @@ kayak made none of its own.
   the checker's conversions (`%fx26-i64->int`, conventions), sharing in
   literals (`#n=`). A program defining `cons` or `nil` would shadow what a
   quote's rewrite means (Fixpt writes `(with #%fx cons)`).
+
+## C134. The pin on Fixpt's x86_64 branch, and kayak's checks on Linux (2026-10-18)
+
+The user asked for tiers 2 and up on x86_64, and chose, asked: the
+x86_64 convention for §97 goes into Fixpt first, not drafted in kayak;
+then, Fixpt's `main` building on macOS alone, "start your work now by
+using the Fixpt branch at x86_64-fxjit-nativecc". The pin is that
+branch's committed tip, `35c59a3` (the user's checkout there had changes
+of its own, not taken); the clone is a fresh one at
+`../kayak-refs/fixpt`.
+- **The drift, decided:** of 24 ported sources, 6 behind, three of
+  Fixpt's files. `fixpt-engine`'s `cellular.rs`: a prompt's tag kept
+  across a collection, and a stack check, both in calls between
+  machines, which tier 1 has none of: not carried over.
+  `fixpt-runtime`'s `prim.rs`: `%fx26-remainder` never collects (kayak's
+  tier 1 keeps no such list: Fixpt's safepoints come with the listing),
+  `native-code?` false off arm64 (tier 1's is false), `%tword-*` of
+  register words and `%tword-bits` (tier 1 has no `%tword-*`): nothing
+  to carry. `fixpt-native`'s `cellular.rs`: code counted in bytes, the
+  x86_64 machine chosen beside the arm64 one, whose routines did not
+  change: nothing for `hand.kfx` now; its x86_64 twin will follow
+  `cellular/x64.rs` (TODO §34).
+- **Fixpt's answering machine named** (`fixptcache.ANSWERING`,
+  `--fx26-machine fx-regs-rsjit-nativecc`, in `corpus.py`, `stage0.py`,
+  `io-programs.py`, `run-fixpt-programs.py`): Fixpt's default on arm64,
+  so nothing changes there; on x86_64 its default is register code on
+  the cellular machine, whose fixed stacks overflow on `recursion` and
+  `lists` where native frames do not. Not chosen: leaving each machine
+  its default, which made the answers depend on which one ran.
+- **Answers by machine:** `NAME.out` is Fixpt's answer on arm64 macOS,
+  where the corpus was made; on another machine, where Fixpt's differs,
+  `NAME.ARCH-OS.out` beside it (`fixptcache.answer_path`, and the Rust
+  test by `std::env::consts`), which `--bless` writes there, and removes
+  once `NAME.out` would do. Three today on `x86_64-linux`: `floats`
+  (glibc's `tan`, `asin`, `acos` differ from macOS's in the last bit;
+  Fixpt and the Rust agree on each machine), `made-code` and `made-flat`
+  ("interpreted": no made code runs here yet). Not chosen: dropping the
+  programs' machine-dependent parts, which would lose what they check.
+  And so in `tests/fixpt-answers/` (C132's, met when this work was
+  rebased onto it): its answers and their stamp `REV` are arm64
+  macOS's; another machine's answer, where Fixpt's differs there, is
+  `NAME.HASH.ARCH-OS.json` beside the shared one, written only where it
+  differs, and that machine's stamp `REV.ARCH-OS`. A check elsewhere
+  writes a shared answer only where there is none, prunes only its own,
+  and stamps only its own, so that it never vouches for macOS's answers
+  at a pin macOS has not run. Fixpt's messages name its files by path,
+  so an answer is kept with the checkout's path written `<kayak>`
+  (`fixptcache.HERE`) and read back with this checkout's: without it,
+  691 answers differed from macOS's in the path alone; with it, 17 do,
+  each the machine's (arm64's declared conventions, the default
+  convention printed). Not chosen: one store for every machine,
+  in which a Linux check rewrote macOS's answers and stamped them as the
+  pin's.
+- **`kayak-jit`'s routines** `foreign`, `bloblet_routine`,
+  `cons_routine` are called only by arm64 macOS's trampoline, so clippy
+  refused them elsewhere as dead: allowed so, until x86_64's trampoline
+  calls them (TODO §34).
+- **Results on Linux x86_64**, the first full check there: stage 0 runs;
+  181 of Fixpt's programs kfx accepts agree; tier 1 agrees on 338 (new
+  programs upstream); the engine differs on one beyond KFX
+  (`native/crossing-overflow.fx`, TODO §34). Tiers 2, 4, 5 do not run
+  here: `kayak-jit` makes no code area off arm64 macOS.
+
+## C135. Made code on x86_64 Linux: the pin on Fixpt's §97 there (2026-10-19)
+
+Fixpt did kayak's request (its "Code a program makes, on x86_64",
+`5ef9fe8` on `x86_64-fxjit-nativecc`): `native-x86_64.conv`, which
+`native-convention` gives on x86_64 and both its checkers compare a
+`define-convention` with, `runs_made_code` true there, and its made-code
+programs twinned in `programs/made-code-x86_64/`. The pin is there.
+- **`kayak-jit` on Linux x86_64**, to that declaration: the code area's
+  two views by `mremap` of a shared mapping (as Fixpt's
+  `fixpt-memmgmt`), no cache to flush; the stack's limit by
+  `pthread_getattr_np`; the trampoline with the state in `r15`, the
+  arguments in `rdi`, `rsi`, `r8` and the state's `reg4`–`reg8`, the
+  count in `r10`, the closure in `rbx`, fuel, limit and distance read by
+  code from the state, so nothing to load or give back; Rust's
+  callee-saved registers pushed, and the stack the way back from any
+  depth (`rust-sp`), as on arm64. The routines, each entered by `call`,
+  align the stack for Rust themselves (`and rsp, -16`), since nothing
+  declares its alignment at the call. kayak's own `leave` field moved
+  past `reg8` (656), out of either declaration. `DECLARATION` is the
+  machine's, chosen as Fixpt's `NATIVE_CONVENTION` is. `tests/code.rs`
+  is one set of tests over a `machine` module of each machine's
+  instructions; `tests/declaration.rs` reads each machine's clauses.
+- **kfx's checker compares a `define-convention` with the machine's it
+  runs on**, `(native-convention)`, not a text built in: Fixpt's
+  checkers do so, and stage 0 (Fixpt running the compiler) then agrees
+  with stage 1 on every machine. `native-convention-text` and its
+  `lines-of` went. Not chosen: both texts built in and the target named
+  to kfx, a cross-compiler's question no one has asked.
+- **Programs of one machine in the corpus**: a program that declares a
+  convention is of the machine its `target` names
+  (`fixptcache.machine_of`), since Fixpt refuses another's. Elsewhere its
+  files are kept as they are, unchecked, and its module and entry in
+  `kfx-corpus` are built only for its `target_arch`; `engine-programs`
+  keeps its line in `engine-passing`. The five arm64 programs that
+  declare (`made-allocated`, `-declared`, `-frames`, `-generated`,
+  `-linked`) have twins, `made-NAME-x86_64.kfx`, from Fixpt's twins as
+  the arm64 ones are from its originals (the last forms in `main`), with
+  `(read @k) (alloc @k)` in `main`'s effect for the region Fixpt's code
+  uses, and `spin` in `-declared`'s. Their answers are the arm64 ones'
+  but `target`'s. Not chosen: one program per test choosing its encoder
+  by `target`, which a declaration checked before the program runs
+  forbids, as Fixpt found.
+- **The programs that declare nothing** (`made-code`, `-encoded`,
+  `-flat`, `-typed-calls`) run their arm64 bytes only where the
+  convention's `target` is arm64 (`here?`, a procedure, since KFX makes
+  no constant that reads), as Fixpt's `leaves.fx` and `typed-calls.fx`
+  do now; else the answers they would give, so on x86_64
+  `made-code`/`made-flat` keep their own answers ("interpreted").
+- **Fixpt's x86_64 encoder built in** (`fx26:x86_64.fx`,
+  `fx26:x86_64-types.fx`), which the twins load; KFX accepts it as it is.
+- **The drift**: `prim.rs` changed only `runs_made_code`; tier 1's
+  `native-code?` is false on every machine: nothing carried.

@@ -1,5 +1,6 @@
 //! kayak-jit's constants are the native convention's it declares, Fixpt's
-//! at the pin (`src/native-arm64.conv`, which `scripts/built-in.py` copies):
+//! at the pin (`src/native-arm64.conv`, or on x86_64 `src/native-x86_64.conv`,
+//! which `scripts/built-in.py` copies):
 //! a change to either shows here, as Fixpt's own `tests/convention.rs`
 //! compares its declaration with its tables.
 
@@ -54,6 +55,12 @@ fn the_state_fields_are_at_the_offsets_declared() {
     ] {
         has("state", &format!("({name} {at})"));
     }
+    // x86_64's arguments past the third.
+    if cfg!(target_arch = "x86_64") {
+        for k in 0..5 {
+            has("state", &format!("(reg{} {})", k + 4, state::REG4 + 8 * k));
+        }
+    }
     // kayak's own field is past every one declared.
     assert!(
         clause("state")
@@ -64,6 +71,7 @@ fn the_state_fields_are_at_the_offsets_declared() {
 }
 
 #[test]
+#[cfg(not(target_arch = "x86_64"))]
 fn the_registers_are_the_trampolines() {
     has("registers", "(arguments x1 x2 x3 x4 x5 x6 x7 x8)");
     has("registers", "(count x9) (result x0) (closure x10)");
@@ -72,6 +80,22 @@ fn the_registers_are_the_trampolines() {
         "(pinned (state x24) (fuel x28) (stack-limit x27) (code-distance x26))",
     );
     has("code", "(runs-at reference plus x26)");
+}
+
+#[test]
+#[cfg(target_arch = "x86_64")]
+fn the_registers_are_the_trampolines() {
+    has(
+        "registers",
+        "(arguments rdi rsi r8 (state reg4) (state reg5) (state reg6) (state reg7) (state reg8))",
+    );
+    has("registers", "(count r10) (result rax) (closure rbx)");
+    has("registers", "(link pushed)");
+    has(
+        "registers",
+        "(pinned (state r15) (fuel (state fuel)) (stack-limit (state stack-limit)) (code-distance (state delta)))",
+    );
+    has("code", "(runs-at reference plus (state delta))");
 }
 
 #[test]
@@ -160,11 +184,32 @@ fn the_routines_are_the_ones_kayak_jit_answers() {
     ] {
         has("routines", &format!("({name} (entry state {field})"));
     }
-    has(
-        "routines",
-        "(overflow (when sp below x27 after-frame-made) (entry state overflow by x30)",
-    );
+    if cfg!(target_arch = "x86_64") {
+        has(
+            "routines",
+            "(overflow (when rsp below (state stack-limit) after-frame-made) (entry state overflow by call)",
+        );
+        has(
+            "routines",
+            "(foreign (entry state foreign) (in (closure rbx) (count r10)",
+        );
+        has(
+            "routines",
+            "(cons (entry state cons) (in (car rdi) (cdr rsi)) (out rax)",
+        );
+        has(
+            "routines",
+            "(bloblet (entry state bloblet) (in (bytes rdi) (fields rsi)) (out rax)",
+        );
+        has("routines", "(trap (entry state trap-stub) (in (kind r10))");
+        has("fuel", "(fuel (state fuel)");
+    } else {
+        has(
+            "routines",
+            "(overflow (when sp below x27 after-frame-made) (entry state overflow by x30)",
+        );
+        has("fuel", "(register x28)");
+    }
     has("routines", "(2 stack-overflow)");
     assert_eq!(kayak_jit::STACK_OVERFLOW, 2);
-    has("fuel", "(register x28)");
 }

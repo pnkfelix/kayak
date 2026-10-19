@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"closures.fx"
+],
+"code": 0,
+"out": [
+"map-add : (subr (maxeff (read @l) (alloc @l) spin (read (globals map-add))) ((subr pure (int) int) (listof int @l)) (listof int @l)) ! pure",
+"total : (subr (maxeff (read @l) spin (read (globals total))) ((listof int @l) int) int) ! pure",
+"upto : (subr (maxeff (alloc @l) spin (read (globals upto))) (int (listof int @l)) (listof int @l)) ! pure",
+"go : (subr (maxeff (read @l) (alloc @l) spin (read (globals go map-add total))) (int int (listof int @l)) int) ! pure",
+"main : (subr (maxeff (read @l) (alloc @l) spin (read (globals go map-add total upto))) (int) int) ! pure",
+"6003000000 : int ! (maxeff (read @l) (alloc @l) spin (read (globals go main map-add total upto)))",
+""
+],
+"err": [
+""
+]
+}

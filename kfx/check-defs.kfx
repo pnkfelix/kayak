@@ -259,25 +259,18 @@
       (lst (xs src-file src-line src-pos) (family-params (near v src-file src-line src-pos) (second xs)))
       (else other nil))))
 
-(define-rec
-  (lines-of (subr kfx ((listof char acyclic) (listof char acyclic)) strings)
-    (lambda (cs line)
-      "Text's lines, those not empty, as `cs` and the line so far, reversed."
-      (cond ((null? cs) (if (null? line) nil (list (rev->string line))))
-            ((char=? (car cs) #\newline) (if (null? line) (lines-of (cdr cs) nil) (cons (rev->string line) (lines-of (cdr cs) nil))))
-            (else (lines-of (cdr cs) (cons (car cs) line)))))))
-
 (define declared-convention (subr kfx (cv sexps) string)
   (lambda (v xs)
     "`(define-convention name clause ...)` (C116, Fixpt's TODO §97): its
      name, if its clauses, each printed as Fixpt prints it, are in any
-     order those of the native convention (`native-convention-text`,
-     Fixpt's, which kayak-jit keeps); else refused. The convention it names
-     is then `native`."
+     order those of the native convention of the machine this runs on
+     (`(native-convention)`: Fixpt's for that machine, which kayak-jit
+     keeps, as Fixpt's checkers compare with its own machine's); else
+     refused. The convention it names is then `native`."
     (cond ((or (i64< (size xs) 3) (not (tagcase (second xs) (sym (n f p) #t) (else other #f))))
            (refuse v "(define-convention name clause ...)"))
           ((not (strings=? (sorted-strings (map show-sexp (cdr (cdr xs))))
-                           (sorted-strings (lines-of (string->list native-convention-text) nil))))
+                           (sorted-strings (the strings (native-convention)))))
            (refuse v (string-append "a convention not the native one, which alone this implementation supports: "
                                     (sym-name (second xs)))))
           (else (sym-name (second xs))))))

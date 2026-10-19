@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/finite-two-args.fx:7:1: the size `n` cannot be `finite` here: `n` is the size of more than one argument, or of something inside one, and `finite` would not keep them the same",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/finite-two-args.fx:7:1: the size `n` cannot be `finite` here: `n` is the size of more than one argument, or of something inside one, and `finite` would not keep them the same",
 "; both checkers agree",
 ""
 ],

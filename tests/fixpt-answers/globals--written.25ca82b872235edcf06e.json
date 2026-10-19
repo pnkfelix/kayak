@@ -15,7 +15,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/globals/written.fx:6:38: `wrong` is declared a (subr pure (int) bool): a (subr pure (int) bool) is expected here, and this is a (subr (read (globals below limit)) (int) bool)",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/globals/written.fx:6:38: `wrong` is declared a (subr pure (int) bool): a (subr pure (int) bool) is expected here, and this is a (subr (read (globals below limit)) (int) bool)",
 "  beyond what is expected, it has (read (globals below limit))",
 ""
 ]

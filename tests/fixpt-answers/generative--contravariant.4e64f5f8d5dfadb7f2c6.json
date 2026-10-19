@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"contravariant.fx"
+],
+"code": 1,
+"out": [
+"up-sink : (poly ((t type)) (subr pure ((subr pure (t) int)) (sink t))) ! pure",
+"down-sink : (poly ((t type)) (subr pure ((sink t)) (subr pure (t) int))) ! pure",
+"a : (sink (sumof (a int) (b bool))) ! (read (globals up-sink))",
+"b : (sink (sumof (a int))) ! (read (globals a))",
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/generative/contravariant.fx:5:52: `c` is declared a (sink (sumof (a int) (b bool) (c char))): a (sink (sumof (a int) (b bool) (c char))) is expected here, and this is a (sink (sumof (a int) (b bool)))",
+""
+]
+}

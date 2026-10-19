@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"cycle-a.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/cycle-a.fx:2:11: in `cycle-b.fx`, 2:11: in `cycle-a.fx`, 2:11: a load cycle: `cycle-b.fx` loads `cycle-a.fx` loads `cycle-b.fx`",
+""
+]
+}

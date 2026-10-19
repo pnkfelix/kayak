@@ -11,7 +11,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/select-not-module.fx:4:1: `(select k t)`: `k` is a int, not a module",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/select-not-module.fx:4:1: `(select k t)`: `k` is a int, not a module",
 ""
 ]
 }

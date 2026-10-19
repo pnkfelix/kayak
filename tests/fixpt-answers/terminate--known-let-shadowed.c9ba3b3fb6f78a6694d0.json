@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"known-let-shadowed.fx"
+],
+"code": 1,
+"out": [
+"zero : int ! pure",
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/terminate/known-let-shadowed.fx:5:17: `omega` is declared a T: a T is expected here, and this is a (subr spin (T) int)",
+"  beyond what is expected, it has spin",
+""
+]
+}

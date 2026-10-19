@@ -12,7 +12,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/include-abstract-hidden.fx:5:11: `w`'s type mentions `t`, which is hidden in this module",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/include-abstract-hidden.fx:5:11: `w`'s type mentions `t`, which is hidden in this module",
 ""
 ]
 }

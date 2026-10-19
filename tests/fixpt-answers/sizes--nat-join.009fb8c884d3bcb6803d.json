@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"nat-join.fx"
+],
+"code": 0,
+"out": [
+"pick : (subr pure (bool nat) nat) ! pure",
+"gap : (subr pure (nat nat) nat) ! pure",
+"11 : int ! (read (globals gap pick))",
+""
+],
+"err": [
+""
+]
+}

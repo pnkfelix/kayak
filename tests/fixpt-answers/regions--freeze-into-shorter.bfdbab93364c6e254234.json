@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/freeze-into-shorter.fx:5:47: `r` must not outlive `p`, and r could outlive b",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/freeze-into-shorter.fx:5:47: `r` must not outlive `p`, and r could outlive b",
 "; both checkers agree",
 ""
 ],

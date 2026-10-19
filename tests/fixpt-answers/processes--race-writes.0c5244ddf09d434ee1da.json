@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"race-writes.fx"
+],
+"code": 1,
+"out": [
+"x : (ref int @x) ! (alloc @x)",
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/processes/race-writes.fx:5:7: a `race` branch may be stopped half way, so it must do nothing another could see, and this one has (write @x)",
+""
+]
+}

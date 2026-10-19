@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/terminate/else-arm.fx:3:31: `f` is declared a (subr pure (t) int): a (subr pure (t) int) is expected here, and this is a (subr (maxeff spin (read (globals f))) (t) int)",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/terminate/else-arm.fx:3:31: `f` is declared a (subr pure (t) int): a (subr pure (t) int) is expected here, and this is a (subr (maxeff spin (read (globals f))) (t) int)",
 "  beyond what is expected, it has (maxeff spin (read (globals f))); it may not end: no argument keeps shrinking around every loop of calls",
 ""
 ]

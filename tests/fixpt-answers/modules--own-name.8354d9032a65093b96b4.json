@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"own-name.fx"
+],
+"code": 0,
+"out": [
+"m : (moduleof (val fact (subr spin (int) int))) ! pure",
+"120 : int ! (maxeff spin (read (globals m)))",
+""
+],
+"err": [
+""
+]
+}

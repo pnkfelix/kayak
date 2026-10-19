@@ -9,8 +9,8 @@
 ],
 "code": 0,
 "out": [
-"make : (subr pure (int) (moduleof (val twice int))) ! (read (globals %shared:input:/Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/../module-files/maker.fx))",
-"again : (subr pure (int) (moduleof (val twice int))) ! (read (globals %shared:input:/Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/../module-files/maker.fx))",
+"make : (subr pure (int) (moduleof (val twice int))) ! (read (globals %shared:input:<kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/../module-files/maker.fx))",
+"again : (subr pure (int) (moduleof (val twice int))) ! (read (globals %shared:input:<kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/../module-files/maker.fx))",
 "42 : int ! (read (globals again make))",
 ""
 ],

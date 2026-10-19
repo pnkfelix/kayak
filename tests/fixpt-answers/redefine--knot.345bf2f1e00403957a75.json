@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"knot.fx"
+],
+"code": 1,
+"out": [
+"f : (subr pure (int) int) ! pure",
+"h : (subr (read (globals f)) (int) int) ! pure",
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/redefine/knot.fx:6:1: calling `f` reads `f`, so `f` may reach itself through a global: its type must say `spin` (or, to call itself directly, it binds itself with a local `letrec`)",
+""
+]
+}

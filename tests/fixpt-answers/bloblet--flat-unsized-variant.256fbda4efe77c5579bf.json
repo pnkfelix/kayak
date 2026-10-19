@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-unsized-variant.fx:4:65: a flat sum's variant has a length of its own",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-unsized-variant.fx:4:65: a flat sum's variant has a length of its own",
 "; both checkers agree",
 ""
 ],

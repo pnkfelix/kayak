@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"redefinition.fx"
+],
+"code": 0,
+"out": [
+"x : int ! pure",
+"before : (subr (read (globals x)) () int) ! pure",
+"; `x` redefined: every use sees the new one",
+"x : int ! pure",
+"8 : int ! (read (globals before x))",
+""
+],
+"err": [
+""
+]
+}

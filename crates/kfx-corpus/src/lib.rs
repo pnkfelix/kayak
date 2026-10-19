@@ -201,20 +201,34 @@ pub mod loaded_family;
 #[path = "../../../tests/kfx/loaded-select.rs"]
 pub mod loaded_select;
 
+#[cfg(target_arch = "aarch64")]
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
 #[path = "../../../tests/kfx/made-allocated.rs"]
 pub mod made_allocated;
+
+#[cfg(target_arch = "x86_64")]
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
+#[path = "../../../tests/kfx/made-allocated-x86_64.rs"]
+pub mod made_allocated_x86_64;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
 #[path = "../../../tests/kfx/made-code.rs"]
 pub mod made_code;
 
+#[cfg(target_arch = "aarch64")]
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
 #[path = "../../../tests/kfx/made-declared.rs"]
 pub mod made_declared;
+
+#[cfg(target_arch = "x86_64")]
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
+#[path = "../../../tests/kfx/made-declared-x86_64.rs"]
+pub mod made_declared_x86_64;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
@@ -226,20 +240,41 @@ pub mod made_encoded;
 #[path = "../../../tests/kfx/made-flat.rs"]
 pub mod made_flat;
 
+#[cfg(target_arch = "aarch64")]
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
 #[path = "../../../tests/kfx/made-frames.rs"]
 pub mod made_frames;
 
+#[cfg(target_arch = "x86_64")]
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
+#[path = "../../../tests/kfx/made-frames-x86_64.rs"]
+pub mod made_frames_x86_64;
+
+#[cfg(target_arch = "aarch64")]
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
 #[path = "../../../tests/kfx/made-generated.rs"]
 pub mod made_generated;
 
+#[cfg(target_arch = "x86_64")]
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
+#[path = "../../../tests/kfx/made-generated-x86_64.rs"]
+pub mod made_generated_x86_64;
+
+#[cfg(target_arch = "aarch64")]
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
 #[path = "../../../tests/kfx/made-linked.rs"]
 pub mod made_linked;
+
+#[cfg(target_arch = "x86_64")]
+#[allow(warnings, clippy::all)]
+#[rustfmt::skip]
+#[path = "../../../tests/kfx/made-linked-x86_64.rs"]
+pub mod made_linked_x86_64;
 
 #[allow(warnings, clippy::all)]
 #[rustfmt::skip]
@@ -476,14 +511,29 @@ pub const PROGRAMS: &[(&str, Main)] = &[
     ("loaded-bloblet-family", loaded_bloblet_family::main),
     ("loaded-family", loaded_family::main),
     ("loaded-select", loaded_select::main),
+    #[cfg(target_arch = "aarch64")]
     ("made-allocated", made_allocated::main),
+    #[cfg(target_arch = "x86_64")]
+    ("made-allocated-x86_64", made_allocated_x86_64::main),
     ("made-code", made_code::main),
+    #[cfg(target_arch = "aarch64")]
     ("made-declared", made_declared::main),
+    #[cfg(target_arch = "x86_64")]
+    ("made-declared-x86_64", made_declared_x86_64::main),
     ("made-encoded", made_encoded::main),
     ("made-flat", made_flat::main),
+    #[cfg(target_arch = "aarch64")]
     ("made-frames", made_frames::main),
+    #[cfg(target_arch = "x86_64")]
+    ("made-frames-x86_64", made_frames_x86_64::main),
+    #[cfg(target_arch = "aarch64")]
     ("made-generated", made_generated::main),
+    #[cfg(target_arch = "x86_64")]
+    ("made-generated-x86_64", made_generated_x86_64::main),
+    #[cfg(target_arch = "aarch64")]
     ("made-linked", made_linked::main),
+    #[cfg(target_arch = "x86_64")]
+    ("made-linked-x86_64", made_linked_x86_64::main),
     ("made-typed-calls", made_typed_calls::main),
     ("module-aborting-val", module_aborting_val::main),
     ("module-letrec", module_letrec::main),

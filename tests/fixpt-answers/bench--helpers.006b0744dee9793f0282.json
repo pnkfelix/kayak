@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"helpers.fx"
+],
+"code": 0,
+"out": [
+"dbl : (subr pure (int) int) ! pure",
+"sum2 : (subr (read (globals dbl)) (int int) int) ! pure",
+"step : (subr (read (globals dbl sum2)) (int int) int) ! pure",
+"run : (subr (maxeff spin (read (globals dbl run step sum2))) (int int int) int) ! pure",
+"12000000 : int ! (maxeff spin (read (globals dbl run step sum2)))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"dead-slot.fx"
+],
+"code": 0,
+"out": [
+"h : (subr (maxeff (read @heap) spin (read (globals h))) ((arrayof int @heap) int) int) ! pure",
+"g : (subr (maxeff (alloc @heap) spin (read (globals g))) (int) int) ! pure",
+"drop : (subr (maxeff (read @heap) (read @globals) (alloc @heap) spin) () int) ! pure",
+"keep : (subr (maxeff (read @heap) (read @globals) (alloc @heap) spin) () int) ! pure",
+"100000 : int ! (maxeff (read @heap) (read @globals) (alloc @heap) spin (read (globals drop)))",
+"200000 : int ! (maxeff (read @heap) (read @globals) (alloc @heap) spin (read (globals keep)))",
+""
+],
+"err": [
+""
+]
+}

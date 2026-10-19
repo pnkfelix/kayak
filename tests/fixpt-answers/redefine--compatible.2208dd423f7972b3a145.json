@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"compatible.fx"
+],
+"code": 0,
+"out": [
+"f : (subr pure (int) int) ! pure",
+"g : (subr (read (globals f)) (int) int) ! pure",
+"4 : int ! (read (globals f g))",
+"; `f` redefined: every use sees the new one",
+"f : (subr pure (int) int) ! pure",
+"202 : int ! (read (globals f g))",
+""
+],
+"err": [
+""
+]
+}

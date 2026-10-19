@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/higher-kinds/self-through-app.fx:6:35: a (subr pure ((mu %2 (subr pure ((f %2)) int)) (f (mu %3 (subr pure ((f %3)) int)))) int) is expected here, and this is a (subr spin ((mu %2 (subr pure ((f %2)) int)) (f (mu %3 (subr pure ((f %3)) int)))) int)",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/higher-kinds/self-through-app.fx:6:35: a (subr pure ((mu %2 (subr pure ((f %2)) int)) (f (mu %3 (subr pure ((f %3)) int)))) int) is expected here, and this is a (subr spin ((mu %2 (subr pure ((f %2)) int)) (f (mu %3 (subr pure ((f %3)) int)))) int)",
 "  beyond what is expected, it has spin",
 "; both checkers agree",
 ""

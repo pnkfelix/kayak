@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"finite-proj.fx"
+],
+"code": 1,
+"out": [
+"g : (poly ((n size)) (subr pure ((nlist int n) (nat n)) nat)) ! pure",
+"one : (nlist int finite) ! pure",
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/finite-proj.fx:5:2: `n` is bound as a Size, and the description given is not one",
+""
+]
+}

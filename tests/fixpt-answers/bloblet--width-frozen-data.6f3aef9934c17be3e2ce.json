@@ -11,7 +11,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/width-frozen-data.fx:7:15: `c` is declared a one: a one is expected here, and this is a (bloblet (frozen int (ref int @b)) @b)",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/width-frozen-data.fx:7:15: `c` is declared a one: a one is expected here, and this is a (bloblet (frozen int (ref int @b)) @b)",
 ""
 ]
 }

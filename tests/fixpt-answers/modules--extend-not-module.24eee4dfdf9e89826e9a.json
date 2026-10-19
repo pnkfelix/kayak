@@ -13,7 +13,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/extend-not-module.fx:4:1: `extend` extends a module by a module, and its second is a int",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/extend-not-module.fx:4:1: `extend` extends a module by a module, and its second is a int",
 ""
 ]
 }

@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/include-abstract-twice.fx:3:1: `t` is defined twice in this module",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/include-abstract-twice.fx:3:1: `t` is defined twice in this module",
 "; both checkers agree",
 ""
 ],

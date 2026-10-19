@@ -1,0 +1,27 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"mixed.fx"
+],
+"code": 0,
+"out": [
+"; not in the native convention yet, so `bump` runs as cellular code: `bump`: it calls `stay-cellular`",
+"bump : (subr (maxeff (goto @k) (comefrom @k) spin) (int) int) ! pure",
+"sum-map : (subr (maxeff (read @k) (alloc @k) (goto @k) (comefrom @k) spin (read (globals bump sum-map))) ((subr (maxeff (goto @k) (comefrom @k) spin (read (globals bump))) (int) int) (listof int @k) int) int) ! pure",
+"upto : (subr (maxeff (alloc @k) spin (read (globals upto))) (int) (listof int @k)) ! pure",
+"leave : (subr (goto @k) (int (subr (goto @k) (int) void)) int) ! pure",
+"5150 : int ! (maxeff (read @k) (alloc @k) (goto @k) (comefrom @k) spin (read (globals bump sum-map upto)))",
+"; not in the native convention yet, so run as cellular code: `lambda@11`: it calls `stay-cellular`",
+"#<continuation> : int ! (maxeff (goto @k) (comefrom @k) spin (read (globals leave)))",
+""
+],
+"err": [
+""
+]
+}

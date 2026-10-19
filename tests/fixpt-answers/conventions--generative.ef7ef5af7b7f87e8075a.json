@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"generative.fx"
+],
+"code": 1,
+"out": [
+"up-handler : (poly ((c conv)) (subr pure ((subr (conv c) pure (int) int)) (handler c))) ! pure",
+"down-handler : (poly ((c conv)) (subr pure ((handler c)) (subr (conv c) pure (int) int))) ! pure",
+"h : (handler fx) ! (read (globals up-handler))",
+"4 : int ! (read (globals down-handler h))",
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/conventions/generative.fx:6:30: `k` is declared a (handler cellular): a (handler cellular) is expected here, and this is a (handler fx)",
+""
+]
+}

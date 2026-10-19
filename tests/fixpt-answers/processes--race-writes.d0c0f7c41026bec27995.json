@@ -11,7 +11,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/processes/race-writes.fx:5:7: a `race` branch may be stopped half way, so it must do nothing another could see, and this one has (write @x)",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/processes/race-writes.fx:5:7: a `race` branch may be stopped half way, so it must do nothing another could see, and this one has (write @x)",
 ""
 ]
 }

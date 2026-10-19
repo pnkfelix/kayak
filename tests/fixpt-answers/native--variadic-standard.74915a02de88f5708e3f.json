@@ -1,0 +1,30 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"variadic-standard.fx"
+],
+"code": 0,
+"out": [
+"total : (subr (maxeff (read @heap) spin (read (globals total))) (ints) int) ! pure",
+"tail : ints ! (alloc @heap)",
+"joined : ints ! (maxeff (read @heap) (alloc @heap) (read (globals tail)))",
+"36125 : int ! (maxeff (read @heap) (alloc @heap) spin (read (globals joined tail total)))",
+"\"<a|abcdef>\" : string ! pure",
+"join-all : (subr (maxeff (read @heap) (alloc @heap) spin) ((listof ints @heap)) ints) ! pure",
+"say : (subr (read @heap) (strings) string) ! pure",
+"twice : (subr pure ((vsubr pure string string) string) string) ! pure",
+"21 : int ! (maxeff (read @heap) (alloc @heap) spin (read (globals join-all tail total)))",
+"\"xyz\" : string ! (maxeff (read @heap) (alloc @heap) (read (globals say)))",
+"\"abab\" : string ! (read (globals twice))",
+""
+],
+"err": [
+""
+]
+}

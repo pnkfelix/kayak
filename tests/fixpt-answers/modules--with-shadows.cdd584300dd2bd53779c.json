@@ -1,0 +1,26 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"with-shadows.fx"
+],
+"code": 0,
+"out": [
+"a : (moduleof (desc n int) (desc touches (read @globals))) ! pure",
+"b : (moduleof (desc n bool)) ! pure",
+"one : int ! (read (globals a))",
+"yes : n ! (read (globals a b))",
+"f : (subr (read @globals) () int) ! (read (globals a))",
+"g : (moduleof (desc n bool) (val x n)) ! (read (globals a))",
+"3 : int ! (maxeff (read @globals) (read (globals f g one yes)))",
+""
+],
+"err": [
+""
+]
+}

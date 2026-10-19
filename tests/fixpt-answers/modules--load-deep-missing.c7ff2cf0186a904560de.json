@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"load-deep-missing.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/load-deep-missing.fx:4:11: in `../module-files/deep-c.fx`, 3:11: in `deep-d.fx`, 2:11: cannot read `nowhere.fx`: No such file or directory (os error 2)",
+""
+]
+}

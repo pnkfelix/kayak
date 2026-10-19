@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/made-too-soon-through.fx:6:17: `y` uses `get-x`, which uses `x`, defined after `y`",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/made-too-soon-through.fx:6:17: `y` uses `get-x`, which uses `x`, defined after `y`",
 "; both checkers agree",
 ""
 ],

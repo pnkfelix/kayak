@@ -12,7 +12,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/unions/paths-region-variable.fx:6:58: a int is expected here, and this is a (union int string)",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/unions/paths-region-variable.fx:6:58: a int is expected here, and this is a (union int string)",
 ""
 ]
 }

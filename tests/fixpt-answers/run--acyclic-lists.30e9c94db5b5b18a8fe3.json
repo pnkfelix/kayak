@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"acyclic-lists.fx"
+],
+"code": 0,
+"out": [
+"len : (subr pure ((listof int acyclic) int) int) ! pure",
+"first : (subr pure ((listof int const)) int) ! pure",
+"built : (subr pure (int) (listof int acyclic)) ! pure",
+"changed : (subr pure (int) (listof int const)) ! pure",
+"18 : int ! (read (globals built changed first len))",
+""
+],
+"err": [
+""
+]
+}

@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/types-ungrounded.fx:3:18: a recursive type must be built from a constructor, not only from names",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/types-ungrounded.fx:3:18: a recursive type must be built from a constructor, not only from names",
 ""
 ]
 }

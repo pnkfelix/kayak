@@ -1,0 +1,44 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"whole-captures.fx"
+],
+"code": 0,
+"out": [
+"saved : (ref (listof k-int @g) @g) ! (alloc @g)",
+"count : (ref int @g) ! (alloc @g)",
+"throw-n : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) (k-int int) int) ! pure",
+"; not in the native convention yet, so `throw-c` runs as cellular code: `throw-c`: it calls `stay-cellular`",
+"throw-c : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) (k-int int) int) ! pure",
+"via-n : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) ((subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) () int)) int) ! pure",
+"; not in the native convention yet, so `via-c` runs as cellular code: `via-c`: it calls `stay-cellular`",
+"via-c : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) ((subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) () int)) int) ! pure",
+"cap-n : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) ((subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) (k-int) int)) int) ! pure",
+"; not in the native convention yet, so `cap-c` runs as cellular code: `cap-c`: it calls `stay-cellular`",
+"cap-c : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) ((subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) (k-int) int)) int) ! pure",
+"; not in the native convention yet, so `deep-c` runs as cellular code: `deep-c`: it calls `stay-cellular`",
+"deep-n : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) (k-int int) int) ! pure",
+"deep-c : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) (k-int int) int) ! pure",
+"(6 6 6 6 6 6 8 8) : (listof int @r.1) ! (maxeff (read @g) (read @globals) (write @g) (alloc @g) (alloc @r.1) (goto @k) (comefrom @k) spin (read (globals cap-c cap-n)))",
+"again-n : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin (read (globals saved))) (int) int) ! pure",
+"; not in the native convention yet, so `again-c` runs as cellular code: `again-c`: it calls `stay-cellular`",
+"again-c : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin (read (globals saved))) (int) int) ! pure",
+"keeper : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin (read (globals saved))) (k-int) int) ! pure",
+"keep-n : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin (read (globals keeper saved))) () int) ! pure",
+"; not in the native convention yet, so `keep-c` runs as cellular code: `keep-c`: it calls `stay-cellular`",
+"keep-c : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin (read (globals keeper saved))) () int) ! pure",
+"loop : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin (read (globals count))) ((subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) () int) (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) (int) int)) int) ! pure",
+"run : (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin (read (globals count loop))) ((subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) () int) (subr (maxeff (read @g) (read @globals) (write @g) (alloc @g) (goto @k) (comefrom @k) spin) (int) int)) int) ! pure",
+"(413 413 413 413) : (listof int @r.2) ! (maxeff (read @g) (read @globals) (write @g) (alloc @g) (alloc @r.2) (goto @k) (comefrom @k) spin (read (globals again-c again-n count keep-c keep-n loop run)))",
+""
+],
+"err": [
+""
+]
+}

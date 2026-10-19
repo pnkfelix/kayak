@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/generative/knot-constant.fx:3:11: a procedure kept in `@c` reads `@c`, so it could reach itself: it must say `spin`, and it is a (subr (read @c) () int)",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/generative/knot-constant.fx:3:11: a procedure kept in `@c` reads `@c`, so it could reach itself: it must say `spin`, and it is a (subr (read @c) () int)",
 ""
 ]
 }

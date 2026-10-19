@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"datatype-param.fx"
+],
+"code": 0,
+"out": [
+"node : (poly ((f (=> (type) type)) (a type)) (subr pure (a (f (mu %4 (sumof (node (productof (1 a) (2 (f %4)))))))) (mu %3 (sumof (node (productof (1 a) (2 (f %3)))))))) ! pure",
+"leaf : (subr pure (int (listof (mu %3 (sumof (node (productof (1 int) (2 (listof %3 @heap)))))) @heap)) (mu %2 (sumof (node (productof (1 int) (2 (listof %2 @heap))))))) ! (read (globals node))",
+"t : (mu %1 (sumof (node (productof (1 int) (2 (listof %1 @heap)))))) ! (maxeff (alloc @heap) (read (globals leaf)))",
+"3 : int ! (maxeff (read @heap) (read (globals t)))",
+""
+],
+"err": [
+""
+]
+}

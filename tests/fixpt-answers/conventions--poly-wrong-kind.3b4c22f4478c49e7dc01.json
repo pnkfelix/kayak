@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"poly-wrong-kind.fx"
+],
+"code": 1,
+"out": [
+"app : (poly ((c conv)) (subr pure ((subr (conv c) pure (int) int) int) int)) ! pure",
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/conventions/poly-wrong-kind.fx:4:1: `c` is bound as a Conv, and the description given is not one",
+""
+]
+}

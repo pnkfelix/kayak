@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"fib.fx"
+],
+"code": 0,
+"out": [
+"fib : (subr (maxeff spin (read (globals fib))) (int) int) ! pure",
+"832040 : int ! (maxeff spin (read (globals fib)))",
+""
+],
+"err": [
+""
+]
+}

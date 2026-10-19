@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"bignums.fx"
+],
+"code": 0,
+"out": [
+"fact : (subr (maxeff spin (read (globals fact))) (int) int) ! pure",
+"fib : (subr (maxeff spin (read (globals fib))) (int int int) int) ! pure",
+"bignums : (subr (maxeff (alloc @heap) spin (read (globals fact fib))) (int) ints) ! pure",
+"(265252859812191058636308480000000 354224848179261915075 1 1 0 5 30 109361473 -37893265687455865519472640000000 890638534 -748826236148 -1152921504606846977 1152921504606846976) : ints ! (maxeff (alloc @heap) spin (read (globals bignums fact fib)))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"hide-include.fx"
+],
+"code": 0,
+"out": [
+"helpers : (moduleof (val twice (subr pure (int) int))) ! pure",
+"m : (moduleof (val shown int) (val get (subr pure () int))) ! (read (globals helpers))",
+"35 : int ! (read (globals m))",
+""
+],
+"err": [
+""
+]
+}

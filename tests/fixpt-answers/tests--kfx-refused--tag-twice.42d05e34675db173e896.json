@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"eval",
+"stage0.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: /tmp/tmpwdkc2tuq/stage0.fx:65:31: `a` appears twice",
+""
+]
+}

@@ -12,7 +12,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/arrows/star-as-parameter.fx:3:17: `(->* (param …) result)` is only the type a definition declares (`define`, `define-rec`, `letrec`), its effect found from its `lambda`: here, write `->` or `subr`",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/arrows/star-as-parameter.fx:3:17: `(->* (param …) result)` is only the type a definition declares (`define`, `define-rec`, `letrec`), its effect found from its `lambda`: here, write `->` or `subr`",
 ""
 ]
 }

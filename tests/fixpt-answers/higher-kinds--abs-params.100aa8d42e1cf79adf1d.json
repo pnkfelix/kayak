@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"abs-params.fx"
+],
+"code": 0,
+"out": [
+"lazy : sig-lazy ! pure",
+"same : sig-lazy-arrow ! (read (globals lazy))",
+"8 : int ! (maxeff (read @heap) (alloc @heap) (read (globals same)))",
+""
+],
+"err": [
+""
+]
+}

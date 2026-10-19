@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"remainder.fx"
+],
+"code": 0,
+"out": [
+"r : (subr pure (int int) int) ! pure",
+"r7 : (subr pure (int) int) ! pure",
+"big : (subr pure (int int) int) ! pure",
+"2 : int ! (read (globals r))",
+""
+],
+"err": [
+""
+]
+}

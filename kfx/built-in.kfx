@@ -1,6 +1,6 @@
 "built-in.kfx: the modules Fixpt builds in that KFX has (C107), each
  loaded by its name, `(load-module \"fx26:NAME\")`, its text Fixpt's at
- bb3f570. Written by scripts/built-in.py: edit that, not this."
+ 5ef9fe8. Written by scripts/built-in.py: edit that, not this."
 
 (define built-in-0 string
   ";; Conditions, design B (`docs/research/conditions.md`, `TODO.md` §89): a
@@ -291,12 +291,376 @@
 ")
 
 (define built-in-3 string
+  ";;; The types of `x86_64.fx`, and the signature of its module as its
+;;; clients use it: a module file of no state, which it loads, and so may
+;;; its clients (`TODO.md` §68).
+
+;; What the encoders do: read the encoders, make their bytes (reading the
+;; ones they join), and count down.
+(define-effect x86-encodes (maxeff (alloc @k) (read @k) (read @globals) spin))
+;; An instruction's bytes, in order.
+(define-type x86-bytes (listof int @k))
+;; The encoders of none to six operands.
+(define-type x86-op0 (subr x86-encodes () x86-bytes))
+(define-type x86-op1 (subr x86-encodes (int) x86-bytes))
+(define-type x86-op2 (subr x86-encodes (int int) x86-bytes))
+(define-type x86-op3 (subr x86-encodes (int int int) x86-bytes))
+(define-type x86-op4 (subr x86-encodes (int int int int) x86-bytes))
+(define-type x86-op5 (subr x86-encodes (int int int int int) x86-bytes))
+(define-type x86-op6 (subr x86-encodes (int int int int int int) x86-bytes))
+
+;;; ------------------------------------------------------------ signatures
+
+;; What `native-x64.fx` and `native-x64-regs.fx` use of the encoders
+;; (`TODO.md` §68).
+(define-type x86-64-sig
+  (moduleof (val x86-mov x86-op2)
+            (val x86-load x86-op3)
+            (val x86-load-ix x86-op5)
+            (val x86-store x86-op3)
+            (val x86-lea x86-op3)
+            (val x86-lea-ix x86-op5)
+            (val x86-mov-imm x86-op2)
+            (val x86-alu x86-op3)
+            (val x86-alu-imm x86-op3)
+            (val x86-alu-rm x86-op4)
+            (val x86-alu-mi x86-op4)
+            (val x86-test x86-op2)
+            (val x86-test-imm x86-op2)
+            (val x86-cmov x86-op3)
+            (val x86-cmov-m x86-op4)
+            (val x86-shift-imm x86-op3)
+            (val x86-jmp x86-op1)
+            (val x86-jcc x86-op2)
+            (val x86-jmp-r x86-op1)
+            (val x86-jmp-m x86-op4)
+            (val x86-call-m x86-op2)
+            (val x86-store8-imm x86-op5)
+            (val x86-call-m-ix x86-op4)
+            (val x86-call x86-op1)
+            (val x86-ret x86-op0)
+            (val x86-push x86-op1)
+            (val x86-pop x86-op1)
+            (val x86-push-m x86-op2)
+            (val x86-pop-m x86-op2)
+            (val x86-neg x86-op1)
+            (val x86-neg-m x86-op2)
+            (val x86-imul x86-op2)
+            (val x86-idiv x86-op1)
+            (val x86-cqo x86-op0)
+            (val x86-movzx8 x86-op2)
+            (val x86-load32-ix x86-op5)
+            (val x86-shift-cl x86-op2)
+            (val x86-nops x86-op1)
+            (val x86-load-rip x86-op2)
+            (val x86-lea-rip x86-op2)
+            (val x86-store-ix x86-op5)
+            (val x86-store-imm x86-op5)
+            (val x86-store32-ix x86-op5)
+            (val x86-load32s-ix x86-op5)
+            (val x86-load8-ix x86-op5)
+            (val x86-load16-ix x86-op5)
+            (val x86-store8-ix x86-op5)
+            (val x86-store16-ix x86-op5)
+            (val x86-div x86-op1)
+            (val x86-not x86-op1)
+            (val x86-call-r x86-op1)
+            (val x86-movq-to-xmm x86-op2)
+            (val x86-movq-from-xmm x86-op2)
+            (val x86-movd-to-xmm x86-op2)
+            (val x86-movd-from-xmm x86-op2)
+            (val x86-fop x86-op4)
+            (val x86-ucomis x86-op3)
+            (val x86-cvtsi2sd x86-op2)
+            (val x86-cvttsd2si x86-op2)
+            (val x86-round x86-op4)))
+")
+
+(define built-in-4 string
+  ";;; An x86_64 encoder, in FX-26: the instructions the x86_64 machine's
+;;; compiled words use, each a function to its bytes, exactly as
+;;; `fixpt-native/src/x86_64.rs` encodes them. That encoder is this one's
+;;; oracle (`tests/x86_64.rs` in this crate), as the system assembler is
+;;; that one's; `arm64.fx` is the same for arm64.
+;;;
+;;; As there, no bitwise operations: a byte of fields is their sum, each
+;;; multiplied to its place, and a register's high bit, which goes in a
+;;; REX prefix, is its quotient by 8. Every operation is on 64 bits unless
+;;; its name says otherwise. A memory operand is a base, an index (-1 for
+;;; none), a scale and a displacement.
+
+;; Registers are 0–15 as the hardware numbers them: rax 0, rcx 1, rdx 2,
+;; rbx 3, rsp 4, rbp 5, rsi 6, rdi 7, r8 to r15 8 to 15.
+;; Conditions: o 0, no 1, b 2, ae 3, e 4, ne 5, be 6, a 7, s 8, ns 9,
+;; l 12, ge 13, le 14, g 15.
+;; Arithmetic, as `x86-alu` takes it: add 0, or 1, and 4, sub 5, xor 6,
+;; cmp 7. Shifts: shl 4, shr 5, sar 7.
+
+;; A file of one expression (`load-input`, `TODO.md` §68): the module, of no
+;; state and given nothing, which the conductor gives `native-x64.fx`.
+(let ((x86-64-types (load-module \"fx26:x86_64-types.fx\")))
+  (module
+(hide (include x86-64-types))
+
+;; Bytes of one and two, as lists of the encoders' region.
+(define x86-b1 (subr x86-encodes (int) x86-bytes) (lambda (a) (cons a nil)))
+(define x86-b2 (subr x86-encodes (int int) x86-bytes)
+  ;; cons-chain: in `@k`, the encoders' region, which `list` would not be
+  (lambda (a b) (cons a (cons b nil))))
+
+;; A register's high bit, for a REX prefix, and its low three, for the rest.
+(define x86-hi (subr pure (int) int) (lambda (r) (quotient r 8)))
+(define x86-lo (subr pure (int) int) (lambda (r) (modulo r 8)))
+
+;; The `n` bytes of `v` modulo 256^n, lowest first.
+(define x86-le (subr x86-encodes (int int) x86-bytes)
+  (lambda (n v)
+    (if (= n 0) nil (cons (modulo v 256) (x86-le (- n 1) (quotient (modulo v 4294967296) 256))))))
+;; Eight of them: two halves of four, as `x86-le` keeps four at most.
+(define x86-le8 (subr x86-encodes (int) x86-bytes)
+  (lambda (v)
+    (let ((u (modulo v 18446744073709551616)))
+      (append (x86-le 4 (modulo u 4294967296)) (x86-le 4 (quotient u 4294967296))))))
+
+;; Whether `v` fits a signed byte.
+(define x86-i8? (subr pure (int) bool) (lambda (v) (and (>= v -128) (< v 128))))
+
+;; A REX prefix: `w` 1 for 64 bits, and the high bits of ModRM's `reg`
+;; field, the SIB index and ModRM's `rm` (or SIB base); none when nothing
+;; needs one.
+(define x86-rex (subr x86-encodes (int int int int) x86-bytes)
+  (lambda (w r x b)
+    (let ((v (+ (+ 64 (* 8 w)) (+ (* 4 (x86-hi r)) (+ (* 2 (x86-hi x)) (x86-hi b))))))
+      (if (= v 64) nil (x86-b1 v)))))
+
+;; A SIB byte's scale field: 1, 2, 4 or 8 as 0 to 3.
+(define x86-scale-bits (subr pure (int) int)
+  (lambda (scale) (cond ((= scale 8) 3) ((= scale 4) 2) ((= scale 2) 1) (else 0))))
+
+;; ModRM, SIB and displacement for `[base + index * scale + disp]`, with
+;; `field` in ModRM's `reg`. rbp and r13 as a base with no displacement
+;; mean something else, so they take a zero byte of one; rsp and r12 as a
+;; base need a SIB byte, as does an index.
+(define x86-modrm-mem (subr x86-encodes (int int int int int) x86-bytes)
+  (lambda (field base index scale disp)
+    (let* ((b3 (x86-lo base))
+           (md (cond ((and (= disp 0) (not (= b3 5))) 0) ((x86-i8? disp) 1) (else 2)))
+           (head (if (and (< index 0) (not (= b3 4)))
+                     (x86-b1 (+ (+ (* 64 md) (* 8 (x86-lo field))) b3))
+                     (x86-b2 (+ (+ (* 64 md) (* 8 (x86-lo field))) 4)
+                           (+ (+ (* 64 (x86-scale-bits scale))
+                                 (* 8 (if (< index 0) 4 (x86-lo index))))
+                              b3)))))
+      (append head (cond ((= md 1) (x86-le 1 disp)) ((= md 2) (x86-le 4 disp)) (else nil))))))
+
+;; An instruction on two registers: REX, opcode, ModRM with `field` in its
+;; `reg` and `rm` in its `rm`.
+(define x86-op-rr (subr x86-encodes (int x86-bytes int int) x86-bytes)
+  (lambda (w op field rm)
+    (append (x86-rex w field 0 rm)
+            (append op (x86-b1 (+ (+ 192 (* 8 (x86-lo field))) (x86-lo rm)))))))
+;; The same with a memory operand in `rm`.
+(define x86-op-rm (subr x86-encodes (int x86-bytes int int int int int) x86-bytes)
+  (lambda (w op field base index scale disp)
+    (append (x86-rex w field (if (< index 0) 0 index) base)
+            (append op (x86-modrm-mem field base index scale disp)))))
+
+;;; ------------------------------------------------------------ moves
+
+(define x86-mov x86-op2 (lambda (d s) (x86-op-rr 1 (x86-b1 137) s d)))
+(define x86-load x86-op3 (lambda (d base disp) (x86-op-rm 1 (x86-b1 139) d base -1 1 disp)))
+(define x86-load-ix x86-op5
+  (lambda (d base index scale disp) (x86-op-rm 1 (x86-b1 139) d base index scale disp)))
+(define x86-store x86-op3 (lambda (base disp s) (x86-op-rm 1 (x86-b1 137) s base -1 1 disp)))
+(define x86-lea x86-op3 (lambda (d base disp) (x86-op-rm 1 (x86-b1 141) d base -1 1 disp)))
+(define x86-lea-ix x86-op5
+  (lambda (d base index scale disp) (x86-op-rm 1 (x86-b1 141) d base index scale disp)))
+;; `mov d, imm` in as few bytes as do it: 32 bits zero-extended, 32 bits
+;; sign-extended, or all 64 (`movabs`). `imm` is the value as a signed or
+;; an unsigned integer, either.
+(define x86-mov-imm x86-op2
+  (lambda (d imm)
+    (cond ((and (>= imm 0) (< imm 4294967296))
+           (append (x86-rex 0 0 0 d) (cons (+ 184 (x86-lo d)) (x86-le 4 imm))))
+          ((and (>= imm -2147483648) (< imm 2147483648))
+           (append (x86-op-rr 1 (x86-b1 199) 0 d) (x86-le 4 imm)))
+          (else (append (x86-rex 1 0 0 d) (cons (+ 184 (x86-lo d)) (x86-le8 imm)))))))
+(define x86-cmov x86-op3 (lambda (c d s) (x86-op-rr 1 (x86-b2 15 (+ 64 c)) d s)))
+(define x86-cmov-m x86-op4
+  (lambda (c d base disp) (x86-op-rm 1 (x86-b2 15 (+ 64 c)) d base -1 1 disp)))
+
+;;; ------------------------------------------------------------ arithmetic
+
+(define x86-alu x86-op3 (lambda (op d s) (x86-op-rr 1 (x86-b1 (+ (* 8 op) 1)) s d)))
+;; `op d, imm`, sign-extended: a byte of it when it fits one, and the short
+;; form for rax otherwise, as the assembler chooses.
+(define x86-alu-imm x86-op3
+  (lambda (op d imm)
+    (cond ((x86-i8? imm) (append (x86-op-rr 1 (x86-b1 131) op d) (x86-le 1 imm)))
+          ((= d 0) (cons 72 (cons (+ (* 8 op) 5) (x86-le 4 imm))))
+          (else (append (x86-op-rr 1 (x86-b1 129) op d) (x86-le 4 imm))))))
+(define x86-alu-rm x86-op4
+  (lambda (op d base disp) (x86-op-rm 1 (x86-b1 (+ (* 8 op) 3)) d base -1 1 disp)))
+(define x86-alu-mi x86-op4
+  (lambda (op base disp imm)
+    (if (x86-i8? imm)
+        (append (x86-op-rm 1 (x86-b1 131) op base -1 1 disp) (x86-le 1 imm))
+        (append (x86-op-rm 1 (x86-b1 129) op base -1 1 disp) (x86-le 4 imm)))))
+(define x86-test x86-op2 (lambda (a b) (x86-op-rr 1 (x86-b1 133) b a)))
+;; `test a32, imm`: the low 32 bits.
+(define x86-test-imm x86-op2
+  (lambda (a imm)
+    (if (= a 0)
+        (cons 169 (x86-le 4 imm))
+        (append (x86-op-rr 0 (x86-b1 247) 0 a) (x86-le 4 imm)))))
+(define x86-shift-imm x86-op3
+  (lambda (op d imm)
+    (if (= imm 1)
+        (x86-op-rr 1 (x86-b1 209) op d)
+        (append (x86-op-rr 1 (x86-b1 193) op d) (x86-b1 imm)))))
+
+;;; ------------------------------------------------------------ control
+
+;; Jumps by `rel` from the end of the instruction.
+(define x86-jmp x86-op1 (lambda (rel) (cons 233 (x86-le 4 rel))))
+(define x86-jcc x86-op2 (lambda (c rel) (cons 15 (cons (+ 128 c) (x86-le 4 rel)))))
+(define x86-jmp-r x86-op1 (lambda (s) (x86-op-rr 0 (x86-b1 255) 4 s)))
+(define x86-jmp-m x86-op4
+  (lambda (base index scale disp) (x86-op-rm 0 (x86-b1 255) 4 base index scale disp)))
+(define x86-call-m x86-op2 (lambda (base disp) (x86-op-rm 0 (x86-b1 255) 2 base -1 1 disp)))
+;; `mov byte [mem], imm`.
+(define x86-store8-imm x86-op5
+  (lambda (base index scale disp imm)
+    (append (x86-op-rm 0 (x86-b1 198) 0 base index scale disp) (x86-b1 imm))))
+(define x86-call-m-ix x86-op4
+  (lambda (base index scale disp) (x86-op-rm 0 (x86-b1 255) 2 base index scale disp)))
+(define x86-call x86-op1 (lambda (rel) (cons 232 (x86-le 4 rel))))
+(define x86-ret x86-op0 (lambda () (x86-b1 195)))
+
+;;; ------------------------------------------------------------ register code's
+;;; What register code (`native-x64-regs.fx`) uses besides: the machine
+;;; stack, multiplying and dividing, narrow loads, shifts by `cl`, no-ops.
+
+(define x86-push x86-op1
+  (lambda (s) (append (x86-rex 0 0 0 s) (x86-b1 (+ 80 (x86-lo s))))))
+(define x86-pop x86-op1
+  (lambda (d) (append (x86-rex 0 0 0 d) (x86-b1 (+ 88 (x86-lo d))))))
+(define x86-push-m x86-op2 (lambda (base disp) (x86-op-rm 0 (x86-b1 255) 6 base -1 1 disp)))
+(define x86-pop-m x86-op2 (lambda (base disp) (x86-op-rm 0 (x86-b1 143) 0 base -1 1 disp)))
+(define x86-neg x86-op1 (lambda (d) (x86-op-rr 1 (x86-b1 247) 3 d)))
+(define x86-neg-m x86-op2 (lambda (base disp) (x86-op-rm 1 (x86-b1 247) 3 base -1 1 disp)))
+(define x86-imul x86-op2 (lambda (d s) (x86-op-rr 1 (x86-b2 15 175) d s)))
+(define x86-idiv x86-op1 (lambda (s) (x86-op-rr 1 (x86-b1 247) 7 s)))
+(define x86-cqo x86-op0 (lambda () (x86-b2 72 153)))
+;; `movzx d32, s8`: a REX prefix for s of 4 to 7 too, so that it names
+;; `spl` … `dil`, not `ah` … `bh`.
+(define x86-movzx8 x86-op2
+  (lambda (d s)
+    (append (if (or (>= d 8) (>= s 4)) (x86-b1 (+ 64 (+ (* 4 (x86-hi d)) (x86-hi s)))) nil)
+            (cons 15 (cons 182 (x86-b1 (+ (+ 192 (* 8 (x86-lo d))) (x86-lo s))))))))
+;; `mov d32, [mem]`: 32 bits, zero-extended.
+(define x86-load32-ix x86-op5
+  (lambda (d base index scale disp) (x86-op-rm 0 (x86-b1 139) d base index scale disp)))
+(define x86-shift-cl x86-op2 (lambda (op d) (x86-op-rr 1 (x86-b1 211) op d)))
+;; The no-op of `n` bytes, 1 to 9, as the manuals recommend them.
+(define x86-nop x86-op1
+  (lambda (n)
+    (case n
+      ((1) (x86-b1 144))
+      ((2) (x86-b2 102 144))
+      ((3) (cons 15 (x86-b2 31 0)))
+      ((4) (cons 15 (cons 31 (x86-b2 64 0))))
+      ((5) (cons 15 (cons 31 (cons 68 (x86-b2 0 0)))))
+      ((6) (cons 102 (cons 15 (cons 31 (cons 68 (x86-b2 0 0))))))
+      ((7) (cons 15 (cons 31 (cons 128 (x86-le 4 0)))))
+      ((8) (cons 15 (cons 31 (cons 132 (cons 0 (x86-le 4 0))))))
+      (else (cons 102 (cons 15 (cons 31 (cons 132 (cons 0 (x86-le 4 0))))))))))
+;; No-ops of `n` bytes more after `acc`, nine at most each.
+(define x86-nops-after (subr x86-encodes (int x86-bytes) x86-bytes)
+  (lambda (n acc)
+    (cond ((= n 0) acc)
+          ((> n 9) (x86-nops-after (- n 9) (append acc (x86-nop 9))))
+          (else (append acc (x86-nop n))))))
+(define x86-nops x86-op1 (lambda (n) (x86-nops-after n nil)))
+;;; ------------------------------------------------------------ the native convention's
+;;; What the native convention's compiler (`native-direct-x64.fx`) uses
+;;; besides: `rip`-relative operands, narrower and indexed memory, `div`,
+;;; `not`, `call` of a register, and scalar floating point (SSE). Flags of
+;;; one bit (`double`) are 1 or 0.
+
+;; `[rip + disp]` in ModRM's `rm`, `disp` from the instruction's end.
+(define x86-op-rip (subr x86-encodes (int x86-bytes int int) x86-bytes)
+  (lambda (w op field disp)
+    (append (x86-rex w field 0 0)
+            (append op (cons (+ (* 8 (x86-lo field)) 5) (x86-le 4 disp))))))
+(define x86-load-rip x86-op2 (lambda (d disp) (x86-op-rip 1 (x86-b1 139) d disp)))
+(define x86-lea-rip x86-op2 (lambda (d disp) (x86-op-rip 1 (x86-b1 141) d disp)))
+(define x86-store-ix x86-op5
+  (lambda (base index scale disp s) (x86-op-rm 1 (x86-b1 137) s base index scale disp)))
+;; `mov qword [mem], imm`, sign-extended.
+(define x86-store-imm x86-op5
+  (lambda (base index scale disp imm)
+    (append (x86-op-rm 1 (x86-b1 199) 0 base index scale disp) (x86-le 4 imm))))
+(define x86-store32-ix x86-op5
+  (lambda (base index scale disp s) (x86-op-rm 0 (x86-b1 137) s base index scale disp)))
+;; `movsxd d, dword [mem]`.
+(define x86-load32s-ix x86-op5
+  (lambda (d base index scale disp) (x86-op-rm 1 (x86-b1 99) d base index scale disp)))
+;; `movzx d, byte [mem]`, and of a word.
+(define x86-load8-ix x86-op5
+  (lambda (d base index scale disp) (x86-op-rm 0 (x86-b2 15 182) d base index scale disp)))
+(define x86-load16-ix x86-op5
+  (lambda (d base index scale disp) (x86-op-rm 0 (x86-b2 15 183) d base index scale disp)))
+;; `mov byte [mem], s8`: a REX prefix for `spl` … `dil` too.
+(define x86-store8-ix x86-op5
+  (lambda (base index scale disp s)
+    (let ((v (+ 64 (+ (* 4 (x86-hi s))
+                      (+ (* 2 (x86-hi (if (< index 0) 0 index))) (x86-hi base))))))
+      (append (if (or (not (= v 64)) (and (>= s 4) (< s 8))) (x86-b1 v) nil)
+              (cons 136 (x86-modrm-mem s base index scale disp))))))
+(define x86-store16-ix x86-op5
+  (lambda (base index scale disp s)
+    (cons 102 (x86-op-rm 0 (x86-b1 137) s base index scale disp))))
+(define x86-div x86-op1 (lambda (s) (x86-op-rr 1 (x86-b1 247) 6 s)))
+(define x86-not x86-op1 (lambda (d) (x86-op-rr 1 (x86-b1 247) 2 d)))
+(define x86-call-r x86-op1 (lambda (s) (x86-op-rr 0 (x86-b1 255) 2 s)))
+;; An SSE instruction on two registers: `prefix` (0 for none), REX, 0F and
+;; `op`, `field` in ModRM's `reg`, `rm` in its `rm`.
+(define x86-sse (subr x86-encodes (int int x86-bytes int int) x86-bytes)
+  (lambda (prefix w op field rm)
+    (append (if (= prefix 0) nil (x86-b1 prefix))
+            (append (x86-rex w field 0 rm)
+                    (cons 15 (append op (x86-b1 (+ (+ 192 (* 8 (x86-lo field))) (x86-lo rm)))))))))
+(define x86-movq-to-xmm x86-op2 (lambda (x r) (x86-sse 102 1 (x86-b1 110) x r)))
+(define x86-movq-from-xmm x86-op2 (lambda (r x) (x86-sse 102 1 (x86-b1 126) x r)))
+(define x86-movd-to-xmm x86-op2 (lambda (x r) (x86-sse 102 0 (x86-b1 110) x r)))
+(define x86-movd-from-xmm x86-op2 (lambda (r x) (x86-sse 102 0 (x86-b1 126) x r)))
+;; `{op}sd d, s` (`double`) or `{op}ss`; `op` sqrt 81, add 88, mul 89,
+;; sub 92, div 94.
+(define x86-fop x86-op4
+  (lambda (double op d s) (x86-sse (if (= double 1) 242 243) 0 (x86-b1 op) d s)))
+(define x86-ucomis x86-op3
+  (lambda (double a b) (x86-sse (if (= double 1) 102 0) 0 (x86-b1 46) a b)))
+(define x86-cvtsi2sd x86-op2 (lambda (x r) (x86-sse 242 1 (x86-b1 42) x r)))
+(define x86-cvttsd2si x86-op2 (lambda (r x) (x86-sse 242 1 (x86-b1 44) r x)))
+;; `roundsd d, s, mode` (`double`) or `roundss` (SSE4.1).
+(define x86-round x86-op4
+  (lambda (double d s mode)
+    (append (x86-sse 102 0 (x86-b2 58 (if (= double 1) 11 10)) d s) (x86-b1 mode))))
+))
+")
+
+(define built-in-5 string
   ";;; The types of `convention.fx`: a native convention as data a generator
 ;;; reads (`TODO.md` §97, `docs/research/declared-conventions.md`, step 6).
-;;; A register is its number, `x0` 0 to `x30` 30, `sp` 31; an offset in the
-;;; state is in bytes from the state's register; a frame's are from the
-;;; frame's register. A module file of no state, which `convention.fx`
-;;; loads, and so may its clients, to name the types.
+;;; A place is a register's number: arm64's `x0` 0 to `x30` 30, `sp` 31;
+;;; x86_64's as the hardware numbers them, `rax` 0 to `r15` 15 (`rsp` 4);
+;;; or, where a machine keeps it in the state, `cv-in-state` (4096) plus
+;;; the offset of the state's field; or -2, `pushed`, a return address on
+;;; the stack's top. An offset in the state is in bytes from the state's
+;;; register; a frame's are from the frame's register. A module file of no
+;;; state, which `convention.fx` loads, and so may its clients, to name the
+;;; types.
 
 ;; A text read: a name, an integer, or a list of them.
 (define-datatype cv-sx (cx-name string) (cx-int int) (cx-list (listof cv-sx acyclic)))
@@ -312,13 +676,14 @@
 (define-type cv-names (listof (productof (name string) (number int)) acyclic))
 (define-type cv-ints (listof int acyclic))
 (define-type cv-strs (listof string acyclic))
-;; Roles and their registers: a routine's inputs.
+;; Roles and their places: a routine's inputs.
 (define-type cv-regs (listof (productof (name string) (registers cv-ints)) acyclic))
 
 (define-type cv-registers
   (productof (arguments cv-ints) (rest-in int) (count int) (result int) (closure int)
              (link int) (frame int)
-             ;; Pinned: never changed by code, but fuel as `cv-fuel` says.
+             ;; Pinned (or in the state, x86_64's but `state`): never
+             ;; changed by code, but fuel as `cv-fuel` says.
              (state int) (fuel int) (stack-limit int) (code-distance int)))
 
 ;; A header's field: its first bit and its width.
@@ -350,21 +715,24 @@
   (productof (align int) (header int) (link int) (return int) (map int) (values-from int)
              (live-below int) (fields-above int) (stub int)))
 
-;; The state's fields that code reads or writes, by offset.
+;; The state's fields that code reads or writes, by offset; `reg4` is
+;; x86_64's REG4, REG5 … REG8 the four words after it, 0 where a machine
+;; has none (arm64, whose are registers).
 (define-type cv-state
   (productof (fuel int) (reserve int) (trap int) (pc int) (args int) (nargs int) (aux int)
              (callout int) (rust-sp int) (native-sp int) (fp int) (top int) (words int)
              (alloc-limit int) (code int) (clo int) (delta int) (code-lo int) (trap-stub int)
              (foreign int) (closure int) (cards int) (stack-limit int) (overflow int) (poll int)
-             (cons int) (bloblet int)))
+             (cons int) (bloblet int) (reg4 int)))
 
-;; A routine: its entry's offset in the state, called by `blr`; its inputs,
-;; each a role and its registers; its output's register, -1 for none; whether
-;; it may collect.
+;; A routine: its entry's offset in the state, called by `blr` (by `call`
+;; on x86_64); its inputs, each a role and its places; its output's place,
+;; -1 for none; whether it may collect.
 (define-type cv-routine
   (productof (entry int) (in cv-regs) (out int) (may-collect bool)))
-;; `overflow`, when `sp` is below the stack limit's register once a frame is
-;; made: its entry called with the return in `x30`, the code bloblet in
+;; `overflow`, when `sp` is below the stack's limit once a frame is made:
+;; its entry called with the return in `x30` (pushed, on x86_64), the code
+;; bloblet in
 ;; `code`, in `info` the arguments held (`held-width` bits from `held-at`),
 ;; whether the closure was read and whether the procedure is variadic (bits
 ;; `closure-read`, `variadic`). It keeps the registers in `keeps`.
@@ -377,8 +745,8 @@
   (productof (foreign cv-routine) (overflow cv-overflow) (poll cv-routine) (cons cv-routine)
              (bloblet cv-routine) (trap cv-trap)))
 
-;; Fuel: in `register`, less `subtract` on entry and on a back edge; at
-;; zero, a call of `poll`.
+;; Fuel: in the place `register`, less `subtract` on entry and on a back
+;; edge; below zero, a call of `poll`.
 (define-type cv-fuel (productof (register int) (subtract int)))
 ;; A store of a value marks `mark` at the card table (at `cards` in the
 ;; state) plus the address shifted right by `card-shift`.
@@ -389,11 +757,15 @@
              (closures cv-closures) (code cv-code) (frames cv-frames) (state cv-state)
              (routines cv-routines) (fuel cv-fuel) (barrier cv-barrier)))
 
+;; How a convention names its places, as printed: x86_64's or arm64's
+;; registers, and the state's fields, each its name and offset.
+(define-type cv-nm (productof (x86 bool) (sn cv-names)))
+
 ;; A declaration read: the convention, or why not.
 (define-type cv-read (sumof (ok convention) (refused string)))
 ")
 
-(define built-in-4 string
+(define built-in-6 string
   ";;; A native convention as data a generator reads (`TODO.md` §97,
 ;;; `docs/research/declared-conventions.md`, step 6): a declaration's
 ;;; clauses, as `native-convention` gives them (canonical: atoms apart by one
@@ -496,17 +868,34 @@
   (lambda (xs role) (cx-int-of (cx-nth (cx-get xs role) 0))))
 (define cx-int2-at (->* (cv-sxs string) int)
   (lambda (xs role) (cx-int-of (cx-nth (cx-get xs role) 1))))
-;; A register's number: `xN` N, `sp` 31; -1 for anything else.
-(define cx-reg (->* (cv-sx) int)
-  (lambda (x)
+;; Where a place in the state starts (`convention-types.fx`).
+(define cv-in-state int 4096)
+;; x86_64's registers, as the hardware numbers them.
+(define cv-x86-regs (->* () cv-strs)
+  (lambda ()
+    (list \"rax\" \"rcx\" \"rdx\" \"rbx\" \"rsp\" \"rbp\" \"rsi\" \"rdi\" \"r8\" \"r9\" \"r10\" \"r11\" \"r12\" \"r13\"
+          \"r14\" \"r15\")))
+;; Where `n` is in `ns`, from `k`; -1 if it is not.
+(define cv-index (->* (cv-strs string int) int)
+  (lambda (ns n k)
+    (cond ((null? ns) -1) ((string=? (car ns) n) k) (else (cv-index (cdr ns) n (+ k 1))))))
+;; A place (`convention-types.fx`): `xN` N, `sp` 31, x86_64's by number,
+;; `(state field)` past `cv-in-state` by the field's offset in `st`,
+;; `pushed` -2; -1 for anything else.
+(define cx-reg (->* (cv-sxs cv-sx) int)
+  (lambda (st x)
     (let ((n (cx-name-of x)))
-      (cond ((string=? n \"sp\") 31)
+      (cond ((string=? (cx-role x) \"state\")
+             (+ cv-in-state (cx-int-at st (cx-name-of (cx-nth (cx-items x) 1)))))
+            ((string=? n \"sp\") 31)
+            ((string=? n \"pushed\") -2)
             ((and (> (string-length n) 1) (string=? (substring n 0 1) \"x\")) (cv-digits n 1 0))
-            (else -1)))))
-(define cx-reg-at (->* (cv-sxs string) int)
-  (lambda (xs role) (cx-reg (cx-nth (cx-get xs role) 0))))
-(define cx-regs (->* (cv-sxs) cv-ints)
-  (lambda (xs) (if (null? xs) nil (the cv-ints (cons (cx-reg (car xs)) (cx-regs (cdr xs)))))))
+            (else (cv-index (cv-x86-regs) n 0))))))
+(define cx-reg-at (->* (cv-sxs cv-sxs string) int)
+  (lambda (st xs role) (cx-reg st (cx-nth (cx-get xs role) 0))))
+(define cx-regs (->* (cv-sxs cv-sxs) cv-ints)
+  (lambda (st xs)
+    (if (null? xs) nil (the cv-ints (cons (cx-reg st (car xs)) (cx-regs st (cdr xs)))))))
 ;; `((name n) …)`, each name and its number; `((n name) …)`, a trap's kinds.
 (define cx-names (->* (cv-sxs) cv-names)
   (lambda (xs)
@@ -533,29 +922,36 @@
           (the cv-bits (cons (product (name (cx-name-of (cx-nth i 0))) (at (cx-int-of (cx-nth i 1)))
                                       (width (cx-int-of (cx-nth i 2))))
                              (cx-bits (cdr xs))))))))
-;; `((role register …) …)`: a routine's inputs.
-(define cx-in (->* (cv-sxs) cv-regs)
-  (lambda (xs)
+;; `((role place …) …)`: a routine's inputs.
+(define cx-in (->* (cv-sxs cv-sxs) cv-regs)
+  (lambda (st xs)
     (if (null? xs)
         nil
         (let ((i (cx-items (car xs))))
-          (the cv-regs (cons (product (name (cx-name-of (car i))) (registers (cx-regs (cdr i))))
-                             (cx-in (cdr xs))))))))
+          (the cv-regs (cons (product (name (cx-name-of (car i))) (registers (cx-regs st (cdr i))))
+                             (cx-in st (cdr xs))))))))
+;; The first of `xs` that is `(role …)`; an empty list if none is.
+(define cx-find (->* (cv-sxs string) cv-sx)
+  (lambda (xs role)
+    (cond ((null? xs) (cx-list nil))
+          ((string=? (cx-role (car xs)) role) (car xs))
+          (else (cx-find (cdr xs) role)))))
 ;; The offset of the state's field that `(role state field …)` in `xs` names.
 (define cx-state-at (->* (cv-sxs string cv-sxs) int)
   (lambda (xs role st) (cx-int-at st (cx-name-of (cx-nth (cx-get xs role) 1)))))
 
 ;;; ------------------------------------------------------------ the clauses
 
-(define cv-registers-of (->* (cv-sxs) cv-registers)
-  (lambda (rg)
-    (let ((pin (cx-get rg \"pinned\")))
-      (product (arguments (cx-regs (cx-get rg \"arguments\"))) (rest-in (cx-reg-at rg \"rest-in\"))
-               (count (cx-reg-at rg \"count\")) (result (cx-reg-at rg \"result\"))
-               (closure (cx-reg-at rg \"closure\")) (link (cx-reg-at rg \"link\"))
-               (frame (cx-reg-at rg \"frame\")) (state (cx-reg-at pin \"state\"))
-               (fuel (cx-reg-at pin \"fuel\")) (stack-limit (cx-reg-at pin \"stack-limit\"))
-               (code-distance (cx-reg-at pin \"code-distance\"))))))
+(define cv-registers-of (->* (cv-sxs cv-sxs) cv-registers)
+  (lambda (rg st)
+    (let ((pin (cx-get rg \"pinned\"))
+          (at (lambda ((xs cv-sxs) (role string)) (cx-reg-at st xs role))))
+      (product (arguments (cx-regs st (cx-get rg \"arguments\"))) (rest-in (at rg \"rest-in\"))
+               (count (at rg \"count\")) (result (at rg \"result\"))
+               (closure (at rg \"closure\")) (link (at rg \"link\"))
+               (frame (at rg \"frame\")) (state (at pin \"state\"))
+               (fuel (at pin \"fuel\")) (stack-limit (at pin \"stack-limit\"))
+               (code-distance (at pin \"code-distance\"))))))
 (define cv-values-of (->* (cv-sxs) cv-values)
   (lambda (vs)
     (let ((fx (cx-get vs \"fixnum\")) (ch (cx-get vs \"character\")) (pr (cx-get vs \"pair\"))
@@ -594,20 +990,20 @@
                (delta (at \"delta\")) (code-lo (at \"code-lo\")) (trap-stub (at \"trap-stub\"))
                (foreign (at \"foreign\")) (closure (at \"closure\")) (cards (at \"cards\"))
                (stack-limit (at \"stack-limit\")) (overflow (at \"overflow\")) (poll (at \"poll\"))
-               (cons (at \"cons\")) (bloblet (at \"bloblet\"))))))
+               (cons (at \"cons\")) (bloblet (at \"bloblet\")) (reg4 (at \"reg4\"))))))
 (define cv-routine-of (->* (cv-sxs cv-sxs) cv-routine)
   (lambda (r st)
-    (product (entry (cx-state-at r \"entry\" st)) (in (cx-in (cx-get r \"in\")))
-             (out (if (cx-has? r \"out\") (cx-reg-at r \"out\") -1))
+    (product (entry (cx-state-at r \"entry\" st)) (in (cx-in st (cx-get r \"in\")))
+             (out (if (cx-has? r \"out\") (cx-reg-at st r \"out\") -1))
              (may-collect (cx-has? r \"may-collect\")))))
 (define cv-overflow-of (->* (cv-sxs cv-sxs) cv-overflow)
   (lambda (o st)
     (let* ((in (cx-get o \"in\")) (info (cx-get in \"info\")) (held (cx-get info \"arguments-held\")))
-      (product (entry (cx-state-at o \"entry\" st)) (code (cx-reg-at in \"code\"))
-               (info (cx-reg (cx-nth info 0))) (held-at (cx-int-of (cx-nth held 0)))
+      (product (entry (cx-state-at o \"entry\" st)) (code (cx-reg-at st in \"code\"))
+               (info (cx-reg st (cx-nth info 0))) (held-at (cx-int-of (cx-nth held 0)))
                (held-width (cx-int-of (cx-nth held 1)))
                (closure-read (cx-int-at info \"closure-read\"))
-               (variadic (cx-int-at info \"variadic\")) (keeps (cx-regs (cx-get o \"keeps\")))))))
+               (variadic (cx-int-at info \"variadic\")) (keeps (cx-regs st (cx-get o \"keeps\")))))))
 (define cv-routines-of (->* (cv-sxs cv-sxs) cv-routines)
   (lambda (rt st)
     (let ((t (cx-get rt \"trap\")))
@@ -617,21 +1013,24 @@
                (cons (cv-routine-of (cx-get rt \"cons\") st))
                (bloblet (cv-routine-of (cx-get rt \"bloblet\") st))
                (trap (product (entry (cx-state-at t \"entry\" st))
-                              (kind (cx-reg-at (cx-get t \"in\") \"kind\"))
+                              (kind (cx-reg-at st (cx-get t \"in\") \"kind\"))
                               (kinds (cx-numbered (cx-get t \"kinds\")))))))))
 ;; A declaration's clauses, read.
 (define cv-of (->* (cv-sxs) convention)
   (lambda (cs)
     (let ((st (cx-get cs \"state\")) (fu (cx-get cs \"fuel\")) (ba (cx-get cs \"barrier\")))
       (product (target (cx-name-of (cx-nth (cx-get cs \"target\") 0)))
-               (registers (cv-registers-of (cx-get cs \"registers\")))
+               (registers (cv-registers-of (cx-get cs \"registers\") st))
                (values (cv-values-of (cx-get cs \"values\")))
                (closures (cv-closures-of (cx-get cs \"closures\") st))
                (code (product (field-k-before-code (cx-int-at (cx-get cs \"code\")
                                                               \"field-k-before-code\"))))
                (frames (cv-frames-of (cx-get cs \"frames\"))) (state (cv-state-of st))
                (routines (cv-routines-of (cx-get cs \"routines\") st))
-               (fuel (product (register (cx-reg-at fu \"register\"))
+               ;; In a register, or, x86_64's, in the state.
+               (fuel (product (register (if (cx-has? fu \"register\")
+                                            (cx-reg-at st fu \"register\")
+                                            (cx-reg st (cx-find fu \"state\"))))
                               (subtract (cx-int-at fu \"subtract\"))))
                (barrier (product (cards (cx-state-at ba \"cards\" st))
                                  (card-shift (cx-int-at ba \"card-shift\"))
@@ -650,10 +1049,29 @@
   (lambda (role parts) (string-append \"(\" (cv-cat (the cv-strs (cons role parts))) \")\")))
 (define cv-kv (->* (string int) string)
   (lambda (role n) (cv-par role (list (int->string n)))))
-(define cv-reg (->* (int) string)
-  (lambda (r) (if (= r 31) \"sp\" (string-append \"x\" (int->string r)))))
-(define cv-pr-regs (->* (cv-ints) cv-strs)
-  (lambda (rs) (if (null? rs) nil (the cv-strs (cons (cv-reg (car rs)) (cv-pr-regs (cdr rs)))))))
+;; The `k`th of `ns`, from 0; \"\" past the end.
+(define cv-str-at (->* (cv-strs int) string)
+  (lambda (ns k) (cond ((null? ns) \"\") ((= k 0) (car ns)) (else (cv-str-at (cdr ns) (- k 1))))))
+;; The name of the field at `k` in `ns`; \"\" if none is.
+(define cv-name-at (->* (cv-names int) string)
+  (lambda (ns k)
+    (cond ((null? ns) \"\")
+          ((= (extract (car ns) number) k) (extract (car ns) name))
+          (else (cv-name-at (cdr ns) k)))))
+;; A place, as `nm` names it.
+(define cv-reg (->* (cv-nm int) string)
+  (lambda (nm r)
+    (cond ((>= r cv-in-state)
+           (cv-par \"state\" (list (cv-name-at (extract nm sn) (- r cv-in-state)))))
+          ((= r -2) \"pushed\")
+          ((extract nm x86) (cv-str-at (cv-x86-regs) r))
+          ((= r 31) \"sp\")
+          (else (string-append \"x\" (int->string r))))))
+;; The stack's register.
+(define cv-sp (->* (cv-nm) string) (lambda (nm) (cv-reg nm (if (extract nm x86) 4 31))))
+(define cv-pr-regs (->* (cv-nm cv-ints) cv-strs)
+  (lambda (nm rs)
+    (if (null? rs) nil (the cv-strs (cons (cv-reg nm (car rs)) (cv-pr-regs nm (cdr rs)))))))
 (define cv-pr-names (->* (cv-names) cv-strs)
   (lambda (ns)
     (if (null? ns)
@@ -668,35 +1086,42 @@
         (the cv-strs
              (cons (cv-par (int->string (extract (car ns) number)) (list (extract (car ns) name)))
                            (cv-pr-numbered (cdr ns)))))))
+;; x86_64's REG4 … REG`k`, REG4 at `at`, before `acc`; none if `at` is 0.
+(define cv-reg-names (->* (int int cv-names) cv-names)
+  (lambda (at k acc)
+    (if (or (= at 0) (< k 4))
+        acc
+        (cv-reg-names at (- k 1)
+                      (the cv-names
+                           (cons (product (name (string-append \"reg\" (int->string k)))
+                                          (number (+ at (* 8 (- k 4)))))
+                                 acc))))))
 ;; The state's fields, each its name and offset, in the declaration's order.
 (define cv-state-names (->* (cv-state) cv-names)
   (lambda (s)
     (let ((f (lambda ((n string) (k int)) (product (name n) (number k)))))
-      (list (f \"fuel\" (extract s fuel)) (f \"reserve\" (extract s reserve))
-            (f \"trap\" (extract s trap))
-            (f \"pc\" (extract s pc)) (f \"args\" (extract s args)) (f \"nargs\" (extract s nargs))
-            (f \"aux\" (extract s aux)) (f \"callout\" (extract s callout))
-            (f \"rust-sp\" (extract s rust-sp))
-            (f \"native-sp\" (extract s native-sp)) (f \"fp\" (extract s fp)) (f \"top\" (extract s top))
-            (f \"words\" (extract s words)) (f \"alloc-limit\" (extract s alloc-limit))
-            (f \"code\" (extract s code)) (f \"clo\" (extract s clo)) (f \"delta\" (extract s delta))
-            (f \"code-lo\" (extract s code-lo)) (f \"trap-stub\" (extract s trap-stub))
-            (f \"foreign\" (extract s foreign)) (f \"closure\" (extract s closure))
-            (f \"cards\" (extract s cards)) (f \"stack-limit\" (extract s stack-limit))
-            (f \"overflow\" (extract s overflow)) (f \"poll\" (extract s poll))
-            (f \"cons\" (extract s cons)) (f \"bloblet\" (extract s bloblet))))))
-;; The name of the field at `k` in `ns`; \"\" if none is.
-(define cv-name-at (->* (cv-names int) string)
-  (lambda (ns k)
-    (cond ((null? ns) \"\")
-          ((= (extract (car ns) number) k) (extract (car ns) name))
-          (else (cv-name-at (cdr ns) k)))))
+      (append
+       (list (f \"fuel\" (extract s fuel)) (f \"reserve\" (extract s reserve))
+             (f \"trap\" (extract s trap))
+             (f \"pc\" (extract s pc)) (f \"args\" (extract s args)) (f \"nargs\" (extract s nargs))
+             (f \"aux\" (extract s aux)) (f \"callout\" (extract s callout))
+             (f \"rust-sp\" (extract s rust-sp))
+             (f \"native-sp\" (extract s native-sp)) (f \"fp\" (extract s fp))
+             (f \"top\" (extract s top))
+             (f \"words\" (extract s words)) (f \"alloc-limit\" (extract s alloc-limit))
+             (f \"code\" (extract s code)) (f \"clo\" (extract s clo)) (f \"delta\" (extract s delta))
+             (f \"code-lo\" (extract s code-lo)) (f \"trap-stub\" (extract s trap-stub))
+             (f \"foreign\" (extract s foreign)) (f \"closure\" (extract s closure))
+             (f \"cards\" (extract s cards)) (f \"stack-limit\" (extract s stack-limit))
+             (f \"overflow\" (extract s overflow)) (f \"poll\" (extract s poll))
+             (f \"cons\" (extract s cons)) (f \"bloblet\" (extract s bloblet)))
+       (cv-reg-names (extract s reg4) 8 nil)))))
 
-(define cv-pr-registers (->* (cv-registers) string)
-  (lambda (r)
-    (let ((one (lambda ((role string) (n int)) (cv-par role (list (cv-reg n))))))
+(define cv-pr-registers (->* (cv-nm cv-registers) string)
+  (lambda (nm r)
+    (let ((one (lambda ((role string) (n int)) (cv-par role (list (cv-reg nm n))))))
       (cv-par \"registers\"
-              (list (cv-par \"arguments\" (cv-pr-regs (extract r arguments)))
+              (list (cv-par \"arguments\" (cv-pr-regs nm (extract r arguments)))
                     (one \"rest-in\" (extract r rest-in))
                     (one \"count\" (extract r count)) (one \"result\" (extract r result))
                     (one \"closure\" (extract r closure)) (one \"link\" (extract r link))
@@ -731,13 +1156,25 @@
                                 (cv-kv \"field-k-before-suffix\" (extract v field-k-before-suffix))))
                   (cv-par \"header\" (cv-pr-bits (extract v header)))
                   (cv-par \"kinds\" (cv-pr-names (extract v kinds)))))))
-(define cv-pr-frames (->* (cv-frames int int) string)
-  (lambda (f fp lr)
-    (let ((at (lambda ((role string) (k int)) (cv-par role (list (cv-reg fp) (int->string k))))))
+;; How a frame is made: arm64's `sub`, `stp` and `add`; x86_64's return
+;; address popped, the link and it stored, and the frame's register set.
+(define cv-pr-made (->* (cv-nm cv-frames int int) string)
+  (lambda (nm f fp lr)
+    (let ((sp (cv-sp nm)) (above (lambda ((k int)) (int->string (- k (extract f header))))))
+      (cv-par \"made\"
+              (if (extract nm x86)
+                  (list \"pop\" \"return\" \"sub\" sp \"store\" (cv-reg nm fp) sp (above (extract f link))
+                        \"store\" \"return\" sp (above (extract f return)) \"lea\" (cv-reg nm fp) sp
+                        (above 0))
+                  (list \"sub\" sp \"stp\" (cv-reg nm fp) (cv-reg nm lr) \"add\" (cv-reg nm fp) sp
+                        (above 0)))))))
+(define cv-pr-frames (->* (cv-nm cv-frames int int) string)
+  (lambda (nm f fp lr)
+    (let ((at (lambda ((role string) (k int)) (cv-par role (list (cv-reg nm fp) (int->string k))))))
       (cv-par \"frames\"
               (list (cv-kv \"align\" (extract f align)) (at \"header\" (extract f header))
                     (at \"link\" (extract f link)) (at \"return\" (extract f return))
-                    (cv-par \"map\" (list (cv-reg fp) (int->string (extract f map))
+                    (cv-par \"map\" (list (cv-reg nm fp) (int->string (extract f map))
                                         (cv-kv \"live-slots-below\" (extract f live-below))
                                         (cv-par \"fields-above\"
                                                 (list (int->string (extract f fields-above))
@@ -745,69 +1182,74 @@
                                         \"(all-live negative)\"))
                     (at \"values-from\" (extract f values-from)) \"(raw-after-values)\"
                     \"(keeps-its-code)\" \"(map-stored-before calls routines-that-collect)\"
-                    (cv-par \"made\" (list \"sub\" \"sp\" \"stp\" (cv-reg fp) (cv-reg lr) \"add\" (cv-reg fp)
-                                         \"sp\" (int->string (- 0 (extract f header)))))
+                    (cv-pr-made nm f fp lr)
                     (cv-kv \"stub\" (extract f stub)))))))
 ;; `(entry state field)`, the field's name from its offset.
 (define cv-pr-entry (->* (cv-names int) string)
   (lambda (sn k) (cv-par \"entry\" (list \"state\" (cv-name-at sn k)))))
-(define cv-pr-in (->* (cv-regs) cv-strs)
-  (lambda (rs)
+(define cv-pr-in (->* (cv-nm cv-regs) cv-strs)
+  (lambda (nm rs)
     (if (null? rs)
         nil
         (the cv-strs
-             (cons (cv-par (extract (car rs) name) (cv-pr-regs (extract (car rs) registers)))
-                           (cv-pr-in (cdr rs)))))))
+             (cons (cv-par (extract (car rs) name) (cv-pr-regs nm (extract (car rs) registers)))
+                           (cv-pr-in nm (cdr rs)))))))
 ;; A routine, `more` after what every routine says.
-(define cv-pr-routine (->* (string cv-routine cv-names cv-strs) string)
-  (lambda (name r sn more)
+(define cv-pr-routine (->* (string cv-routine cv-nm cv-strs) string)
+  (lambda (name r nm more)
     (let* ((tail (if (extract r may-collect) (the cv-strs (cons \"(may-collect)\" more)) more))
-           (tail (if (< (extract r out) 0)
+           (tail (if (= (extract r out) -1)
                      tail
-                     (the cv-strs (cons (cv-par \"out\" (list (cv-reg (extract r out)))) tail)))))
-      (cv-par name (the cv-strs (cons (cv-pr-entry sn (extract r entry))
-                                      (cons (cv-par \"in\" (cv-pr-in (extract r in))) tail)))))))
-(define cv-pr-overflow (->* (cv-overflow cv-names int int) string)
-  (lambda (o sn limit lr)
+                     (the cv-strs (cons (cv-par \"out\" (list (cv-reg nm (extract r out)))) tail)))))
+      (cv-par name (the cv-strs (cons (cv-pr-entry (extract nm sn) (extract r entry))
+                                      (cons (cv-par \"in\" (cv-pr-in nm (extract r in))) tail)))))))
+(define cv-pr-overflow (->* (cv-overflow cv-nm int int) string)
+  (lambda (o nm limit lr)
     (cv-par \"overflow\"
-            (list (cv-par \"when\" (list \"sp\" \"below\" (cv-reg limit) \"after-frame-made\"))
-                  (cv-par \"entry\" (list \"state\" (cv-name-at sn (extract o entry)) \"by\" (cv-reg lr)))
+            (list (cv-par \"when\" (list (cv-sp nm) \"below\" (cv-reg nm limit) \"after-frame-made\"))
+                  (cv-par \"entry\" (list \"state\" (cv-name-at (extract nm sn) (extract o entry)) \"by\"
+                                        (if (= lr -2) \"call\" (cv-reg nm lr))))
                   (cv-par \"in\"
-                          (list (cv-par \"code\" (list (cv-reg (extract o code))))
+                          (list (cv-par \"code\" (list (cv-reg nm (extract o code))))
                                 (cv-par \"info\"
-                                        (list (cv-reg (extract o info))
+                                        (list (cv-reg nm (extract o info))
                                               (cv-par \"arguments-held\"
                                                       (list (int->string (extract o held-at))
                                                             (int->string (extract o held-width))))
                                               (cv-kv \"closure-read\" (extract o closure-read))
                                               (cv-kv \"variadic\" (extract o variadic))))))
-                  (cv-par \"keeps\" (cv-pr-regs (extract o keeps)))))))
-(define cv-pr-routines (->* (convention) string)
-  (lambda (c)
-    (let ((rs (extract c routines)) (sn (cv-state-names (extract c state)))
-          (rg (extract c registers)))
+                  (cv-par \"keeps\" (cv-pr-regs nm (extract o keeps)))))))
+(define cv-pr-routines (->* (convention cv-nm) string)
+  (lambda (c nm)
+    (let ((rs (extract c routines)) (sn (extract nm sn)) (rg (extract c registers)))
       (cv-par \"routines\"
-              (list (cv-pr-routine \"foreign\" (extract rs foreign) sn nil)
-                    (cv-pr-overflow (extract rs overflow) sn (extract rg stack-limit)
+              (list (cv-pr-routine \"foreign\" (extract rs foreign) nm nil)
+                    (cv-pr-overflow (extract rs overflow) nm (extract rg stack-limit)
                                     (extract rg link))
-                    (cv-pr-routine \"poll\" (extract rs poll) sn (list \"(traps-when-spent 1)\"))
-                    (cv-pr-routine \"cons\" (extract rs cons) sn nil)
-                    (cv-pr-routine \"bloblet\" (extract rs bloblet) sn
+                    (cv-pr-routine \"poll\" (extract rs poll) nm (list \"(traps-when-spent 1)\"))
+                    (cv-pr-routine \"cons\" (extract rs cons) nm nil)
+                    (cv-pr-routine \"bloblet\" (extract rs bloblet) nm
                                    (list \"(makes (kind bloblet) (trailer 1) zeroed)\"
                                          \"(traps-when-refused 3)\"))
                     (let ((t (extract rs trap)))
                       (cv-par \"trap\"
                               (list (cv-pr-entry sn (extract t entry))
                                     (cv-par \"in\"
-                                            (list (cv-par \"kind\" (list (cv-reg (extract t kind))))))
+                                            (list (cv-par \"kind\"
+                                                          (list (cv-reg nm (extract t kind))))))
                                     (cv-par \"kinds\" (cv-pr-numbered (extract t kinds)))))))))))
+;; How `c` names its places.
+(define cv-naming (->* (convention) cv-nm)
+  (lambda (c)
+    (product (x86 (string=? (extract c target) \"x86_64\"))
+             (sn (cv-state-names (extract c state))))))
 ;; A convention's clauses, as a declaration says them, in fixpt's order.
 (define cv-print (->* (convention) cv-strs)
   (lambda (c)
-    (let ((rg (extract c registers)) (cl (extract c closures))
-          (sn (cv-state-names (extract c state))) (fu (extract c fuel)) (ba (extract c barrier)))
+    (let* ((rg (extract c registers)) (cl (extract c closures)) (nm (cv-naming c))
+           (sn (extract nm sn)) (fu (extract c fuel)) (ba (extract c barrier)))
       (list (cv-par \"target\" (list (extract c target)))
-            (cv-pr-registers rg)
+            (cv-pr-registers nm rg)
             (cv-pr-values (extract c values))
             (cv-par \"closures\"
                     (list (cv-kv \"kind\" (extract cl kind))
@@ -817,13 +1259,15 @@
                                   (list (cv-name-at sn (extract cl native-when-code-at-least))))))
             (cv-par \"code\"
                     (list (cv-par \"runs-at\"
-                                  (list \"reference\" \"plus\" (cv-reg (extract rg code-distance))))
+                                  (list \"reference\" \"plus\" (cv-reg nm (extract rg code-distance))))
                           (cv-kv \"field-k-before-code\"
                                  (extract (extract c code) field-k-before-code))))
-            (cv-pr-frames (extract c frames) (extract rg frame) (extract rg link))
+            (cv-pr-frames nm (extract c frames) (extract rg frame) (extract rg link))
             (cv-par \"state\" (cv-pr-names sn))
-            (cv-pr-routines c)
-            (cv-par \"fuel\" (list (cv-par \"register\" (list (cv-reg (extract fu register))))
+            (cv-pr-routines c nm)
+            (cv-par \"fuel\" (list (if (>= (extract fu register) cv-in-state)
+                                     (cv-reg nm (extract fu register))
+                                     (cv-par \"register\" (list (cv-reg nm (extract fu register)))))
                                  (cv-kv \"subtract\" (extract fu subtract)) \"(on entry back-edge)\"
                                  \"(borrow poll)\"))
             (cv-par \"barrier\"
@@ -876,7 +1320,7 @@
   (lambda () (cv-read-clauses (the cv-strs (native-convention)))))))
 ")
 
-(define built-in-5 string
+(define built-in-7 string
   ";;; The object layout, generated from `crates/fixpt-heap/src/layout.rs`.
 ;;; Do not edit: change the table there and regenerate, with
 ;;;   FIXPT_BLESS=1 cargo test -p fixpt-fx26 --test layout
@@ -1106,7 +1550,7 @@
 (define rconv-native int 2)
 ")
 
-(define built-in-6 string
+(define built-in-8 string
   ";;; The signature of `layout.fx`, its `layout-module`, as its clients use it
 ;;; (`TODO.md` §68): a module file of no state. That file is generated; this
 ;;; one is not.
@@ -1204,10 +1648,22 @@
             (val routine-closure int)
             (val routine-nclosure int)
             (val routine-field-set int)
-            (val routine-prim int)))
+            (val routine-prim int)
+            ;; What register code's compiler for x86_64 (`native-x64-regs.fx`)
+            ;; uses besides.
+            (val word-twin int)
+            (val rop-setglbl int)
+            (val rop-vargs int)
+            (val kind-bloblet int)
+            (val kind-box int)
+            (val header-kind-lo int)
+            (val header-kind-width int)
+            (val header-fields-lo int)
+            (val header-fields-frozen-lo int)
+            (val header-suffix-frozen-lo int)))
 ")
 
-(define built-in-7 string
+(define built-in-9 string
   ";;; Generated by `fixpt_native::cellular::fx26_module` from the hand-encoded
 ;;; machine; `FIXPT_BLESS=1 cargo test -p fixpt-fx26 --test layout` rewrites it.
 ;;; A module file, which the conductor loads (`TODO.md` §68).
@@ -1318,7 +1774,7 @@
       (else #f))))
 ")
 
-(define built-in-8 string
+(define built-in-10 string
   ";;; Generated by `fixpt_fx26::lower::standard_fx26_module` from the lowering's
 ;;; table of standard names; `FIXPT_BLESS=1 cargo test -p fixpt-fx26 --test layout`
 ;;; rewrites it. A module file, which the conductor loads (`TODO.md` §68).
@@ -1602,6 +2058,7 @@
          ((\"make-icell\") \"%fx26-make-icell\")
          ((\"icell-put!\") \"%fx26-icell-put!\")
          ((\"tword-int?\") \"%tword-fixnum?\")
+         ((\"tword-bits\") \"%tword-bits\")
          ((\"wcell-bool\") \"%fx26-identity\")
          ((\"wcell-char\") \"%fx26-identity\")
          ((\"wcell-unit\") \"%fx26-unit-cell\")
@@ -1760,30 +2217,18 @@
       (else \"\")))))
 ")
 
-"Fixpt's native convention, declared (C116): one clause a line."
-(define native-convention-text string
-  "(target arm64)
-(registers (arguments x1 x2 x3 x4 x5 x6 x7 x8) (rest-in x8) (count x9) (result x0) (closure x10) (link x30) (frame x29) (pinned (state x24) (fuel x28) (stack-limit x27) (code-distance x26)) (lost-across-calls all-but-pinned))
-(values (tags (fixnum 0) (pair 1) (suffix-ref 2) (immediate 3) (bloblet 4) (trailer 5) (header 6) (forward 7)) (fixnum (shift 3) (bits 61)) (immediates (false 3) (true 11) (null 19) (unit 27) (eof 35) (unspecified 43) (default 51) (unbound 59)) (character (subtag 8) (payload-shift 8)) (pair (car -1) (cdr 7)) (bloblet (reference suffix 4) (field-k-before-suffix 8)) (header (tag 0 3) (kind 3 8) (large 11 1) (fields-frozen 12 1) (suffix-frozen 13 1) (fields 14 18) (bytes 32 32)) (kinds (string 1) (symbol 2) (vector 3) (bytevector 4) (flonum 5) (bignum 6) (ratnum 7) (closure 8) (code 9) (box 10) (record 11) (record-type 12) (port 13) (continuation 14) (values 15) (promise 16) (hash-table 17) (environment 18) (primitive 19) (bloblet 32) (cellular-code 33) (compiled-code 34) (env-frame 35) (sum 36) (product 37) (cellular-closure 38) (cellular-continuation 39) (register-code 40) (native-closure 41) (flat-array 42) (eqtable 43) (weak-pair 44) (native-frame 45) (icell 46) (mailbox 47)))
-(closures (kind 41) (code-field 2) (first-free-field 3) (native-when-code-at-least code-lo))
-(code (runs-at reference plus x26) (field-k-before-code 8))
-(frames (align 16) (header x29 -8) (link x29 0) (return x29 8) (map x29 16 (live-slots-below 48) (fields-above 48 link return map values) (all-live negative)) (values-from x29 24) (raw-after-values) (keeps-its-code) (map-stored-before calls routines-that-collect) (made sub sp stp x29 x30 add x29 sp 8) (stub 32))
-(state (fuel 24) (reserve 552) (trap 32) (pc 40) (args 48) (nargs 192) (aux 184) (callout 112) (rust-sp 0) (native-sp 136) (fp 144) (top 152) (words 160) (alloc-limit 168) (code 176) (clo 200) (delta 208) (code-lo 216) (trap-stub 280) (foreign 288) (closure 296) (cards 304) (stack-limit 16) (overflow 480) (poll 560) (cons 568) (bloblet 576))
-(routines (foreign (entry state foreign) (in (closure x10) (count x9) (arguments x1 x2 x3 x4 x5 x6 x7 x8)) (out x0) (may-collect)) (overflow (when sp below x27 after-frame-made) (entry state overflow by x30) (in (code x16) (info x17 (arguments-held 0 8) (closure-read 8) (variadic 9))) (keeps x0 x1 x2 x3 x4 x5 x6 x7 x8 x9 x10)) (poll (entry state poll) (in) (may-collect) (traps-when-spent 1)) (cons (entry state cons) (in (car x1) (cdr x2)) (out x0) (may-collect)) (bloblet (entry state bloblet) (in (bytes x1) (fields x2)) (out x0) (may-collect) (makes (kind bloblet) (trailer 1) zeroed) (traps-when-refused 3)) (trap (entry state trap-stub) (in (kind x9)) (kinds (1 evaluation-step-limit-exceeded) (2 stack-overflow) (3 a-primitive-failed) (4 car-or-cdr-of-a-non-pair) (5 division-by-zero))))
-(fuel (register x28) (subtract 1) (on entry back-edge) (borrow poll))
-(barrier (cards state cards) (card-shift 9) (mark 1))
-")
-
 (define built-in-text (subr kfx (string) string)
   (lambda (path)
     "A built-in module's text, by its name; `` for none."
     (cond ((string=? path "fx26:conditions.fx") built-in-0)
           ((string=? path "fx26:arm64-types.fx") built-in-1)
           ((string=? path "fx26:arm64.fx") built-in-2)
-          ((string=? path "fx26:convention-types.fx") built-in-3)
-          ((string=? path "fx26:convention.fx") built-in-4)
-          ((string=? path "fx26:layout.fx") built-in-5)
-          ((string=? path "fx26:layout-types.fx") built-in-6)
-          ((string=? path "fx26:native-layout.fx") built-in-7)
-          ((string=? path "fx26:standard.fx") built-in-8)
+          ((string=? path "fx26:x86_64-types.fx") built-in-3)
+          ((string=? path "fx26:x86_64.fx") built-in-4)
+          ((string=? path "fx26:convention-types.fx") built-in-5)
+          ((string=? path "fx26:convention.fx") built-in-6)
+          ((string=? path "fx26:layout.fx") built-in-7)
+          ((string=? path "fx26:layout-types.fx") built-in-8)
+          ((string=? path "fx26:native-layout.fx") built-in-9)
+          ((string=? path "fx26:standard.fx") built-in-10)
           (else ""))))

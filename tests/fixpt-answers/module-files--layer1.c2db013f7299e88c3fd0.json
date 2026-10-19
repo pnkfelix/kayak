@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/layer1.fx:3:34: `s` is not a region",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/layer1.fx:3:34: `s` is not a region",
 "; both checkers agree",
 ""
 ],

@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"star-module-value.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/arrows/star-module-value.fx:5:33: `y` names `f` as it is made, and `->*` finds `f`'s effect only after the module's values are made: write `f`'s effect, with `->` or `subr`",
+""
+]
+}

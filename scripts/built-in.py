@@ -1,11 +1,12 @@
 """The modules Fixpt builds in, which a program loads by name, as
 `(load-module "fx26:conditions.fx")` (C107): kfx/built-in.kfx, written from
 Fixpt's own files at the pinned commit (FIXPT_REV), each a KFX string. And
-Fixpt's native convention's declaration (C116), the one a program's
-`define-convention` is compared with: in kfx/built-in.kfx too, and as
-crates/kayak-jit/src/native-arm64.conv; and Fixpt's object layout,
-layout.fx, as crates/kayak-jit/src/layout.fx (C121): kayak-jit's constants
-are tested against both.
+Fixpt's native conventions' declarations (C116), as
+crates/kayak-jit/src/native-arm64.conv and native-x86_64.conv: a program's
+`define-convention` is compared with the one of the machine it runs on
+(C135); and Fixpt's object layout, layout.fx, as
+crates/kayak-jit/src/layout.fx (C121): kayak-jit's constants are tested
+against both.
 
 usage: python3 -I scripts/built-in.py [--check]
 
@@ -26,6 +27,9 @@ MODULES = [
     # convention's declaration read as data.
     ("fx26:arm64-types.fx", "crates/fixpt-fx26/src/arm64-types.fx"),
     ("fx26:arm64.fx", "crates/fixpt-fx26/src/arm64.fx"),
+    # And x86_64's (C135), for the programs that make x86_64 code.
+    ("fx26:x86_64-types.fx", "crates/fixpt-fx26/src/x86_64-types.fx"),
+    ("fx26:x86_64.fx", "crates/fixpt-fx26/src/x86_64.fx"),
     ("fx26:convention-types.fx", "crates/fixpt-fx26/src/convention-types.fx"),
     ("fx26:convention.fx", "crates/fixpt-fx26/src/convention.fx"),
     # Fixpt's formats, taken whole (docs/research/native.md, decision 1;
@@ -44,6 +48,7 @@ CONVENTION_OUT = os.path.join(ROOT, "crates", "kayak-jit", "src", "native-arm64.
 # constants with them (C116, C121).
 COPIES = [
     (CONVENTION, CONVENTION_OUT),
+    ("crates/fixpt-runtime/src/native-x86_64.conv", os.path.join(ROOT, "crates", "kayak-jit", "src", "native-x86_64.conv")),
     ("crates/fixpt-fx26/src/layout.fx", os.path.join(ROOT, "crates", "kayak-jit", "src", "layout.fx")),
 ]
 
@@ -65,9 +70,6 @@ def made(clone):
             text = f.read()
         names.append((name, "built-in-" + str(i)))
         out.append("(define built-in-%d string\n  %s)\n" % (i, kfx_string(text)))
-    with open(os.path.join(clone, CONVENTION), encoding="utf-8") as f:
-        out.append('"Fixpt\'s native convention, declared (C116): one clause a line."\n'
-                   "(define native-convention-text string\n  %s)\n" % kfx_string(f.read()))
     out.append('(define built-in-text (subr kfx (string) string)\n'
                '  (lambda (path)\n'
                '    "A built-in module\'s text, by its name; `` for none."\n'

@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/io/io-terminal-unsaid.fx:4:3: `raw` is declared a (subr (maxeff (read @globals) (io stdin)) () unit): a (subr (maxeff (read @globals) (io stdin)) () unit) is expected here, and this is a (subr (io terminal) () unit)",
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/io/io-terminal-unsaid.fx:4:3: `raw` is declared a (subr (maxeff (read @globals) (io stdin)) () unit): a (subr (maxeff (read @globals) (io stdin)) () unit) is expected here, and this is a (subr (io terminal) () unit)",
 "  beyond what is expected, it has (io terminal)",
 ""
 ]

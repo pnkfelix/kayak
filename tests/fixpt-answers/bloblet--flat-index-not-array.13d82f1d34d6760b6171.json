@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"flat-index-not-array.fx"
+],
+"code": 1,
+"out": [
+"b : o ! (alloc @b)",
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-index-not-array.fx:5:16: a blobref to a flat array is expected here, and this is a (blobref o f64)",
+""
+]
+}

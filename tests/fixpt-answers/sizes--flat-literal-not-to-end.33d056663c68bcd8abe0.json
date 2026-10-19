@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"flat-literal-not-to-end.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/flat-literal-not-to-end.fx:6:15: a (blobref blob (flat-arrayof i64 finite)) is expected here, and this is a (blobref blob (flat-arrayof i64 3))",
+""
+]
+}

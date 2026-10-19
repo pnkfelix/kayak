@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"dependent-later.fx"
+],
+"code": 0,
+"out": [
+"c : (moduleof (abs t type) (val seven t) (val value (subr pure (t) int))) ! pure",
+"7 : int ! (read (globals c))",
+""
+],
+"err": [
+""
+]
+}

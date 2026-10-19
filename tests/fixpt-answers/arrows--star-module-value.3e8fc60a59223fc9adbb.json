@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/arrows/star-module-value.fx:5:33: `y` names `f` as it is made, and `->*` finds `f`'s effect only after the module's values are made: write `f`'s effect, with `->` or `subr`",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/arrows/star-module-value.fx:5:33: `y` names `f` as it is made, and `->*` finds `f`'s effect only after the module's values are made: write `f`'s effect, with `->` or `subr`",
 "; both checkers agree",
 ""
 ],

@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! /Users/pnkfelix/Dev/Rust/kayak/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/include-abstract-opaque.fx:5:12: a int is expected here, and this is a m..t",
+"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/include-abstract-opaque.fx:5:12: a int is expected here, and this is a m..t",
 "; both checkers agree",
 ""
 ],

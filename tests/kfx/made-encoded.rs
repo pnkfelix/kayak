@@ -5,6 +5,10 @@ use kayak_rt::*;
 // Code made by Fixpt's arm64 encoder (`fx26:arm64.fx`, its `load-input`,
 // C116), as Fixpt has it, and run: `sub x0, x1, x2; ret`, and the same with
 // its operands the other way, `#x` literals besides.
+pub fn here_p() -> bool {
+    (native_code_p() && string_eq_p(car(the::<List<Str>>(native_convention())), str_lit("(target arm64)")))
+}
+
 pub mod made__load__0__fx26_arm64 {
     use super::*;
 
@@ -58,7 +62,7 @@ pub mod made__load__0__fx26_arm64 {
     }
 }
 
-pub mod made__input__213__arm64_types {
+pub mod made__input__631__arm64_types {
     use super::*;
 
     pub use super::made__load__0__fx26_arm64::{ArmOp2, ArmOp3, ArmOp4, ArmCode, Arm64Sig};
@@ -67,7 +71,7 @@ pub mod made__input__213__arm64_types {
 pub mod a64 {
     use super::*;
 
-    use super::made__input__213__arm64_types::{ArmOp2, ArmOp3, ArmOp4, ArmCode, Arm64Sig};
+    use super::made__input__631__arm64_types::{ArmOp2, ArmOp3, ArmOp4, ArmCode, Arm64Sig};
 
     pub fn arm_pow2(n: Int) -> Int {
         arithmetic_shift(int_lit(1), n)
@@ -378,7 +382,7 @@ pub fn subtracter(n: Int, m: Int) -> &'static (dyn Fn(Int, Int) -> Int + Send + 
 }
 
 pub fn main() -> Str {
-    string_append(int_to_string((&a64::arm_add)(int_lit(0), int_lit(1), int_lit(2))), string_append(str_lit(" "), string_append(int_to_string(_plus(_plus(int_lit(16), int_lit(-1)), int_lit(255))), string_append(str_lit(" "), int_to_string(if native_code_p() {
+    string_append(int_to_string((&a64::arm_add)(int_lit(0), int_lit(1), int_lit(2))), string_append(str_lit(" "), string_append(int_to_string(_plus(_plus(int_lit(16), int_lit(-1)), int_lit(255))), string_append(str_lit(" "), int_to_string(if here_p() {
         _plus((subtracter(int_lit(1), int_lit(2)))(int_lit(50), int_lit(8)), (subtracter(int_lit(2), int_lit(1)))(int_lit(50), int_lit(8)))
     } else {
         int_lit(0)

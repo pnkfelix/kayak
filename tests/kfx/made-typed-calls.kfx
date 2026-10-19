@@ -9,6 +9,14 @@
 ;;; to the Rust machine. Where this machine runs no native code, the answers
 ;;; it would give.
 
+;; Whether the code this makes runs here: native code, arm64's (as
+;; Fixpt's own programs say it, its programs/made-code-x86_64 their twins;
+;; a procedure, as KFX makes no constant that reads).
+(define here? (subr (maxeff (alloc @heap) (read @heap)) () bool)
+  (lambda ()
+    (and (native-code?) (string=? (car (the (listof string @heap) (native-convention)))
+                                  "(target arm64)"))))
+
 ;; Instruction `w` at byte `at` of `b`'s suffix, little-endian.
 (define* put4 (subr (write @heap) ((bloblet (fields) @heap) int int) unit)
   (lambda (b at w)
@@ -32,8 +40,8 @@
 (define* via3 (subr pure ((subr (conv native) pure (int int) int)) int)
   (lambda (g) (+ 1 (g 20 21))))
 
-(define main (subr (maxeff (read @globals) (alloc @heap) (write @heap) (io native) spin) () string)
+(define main (subr (maxeff (read @globals) (read @heap) (alloc @heap) (write @heap) (io native) spin) () string)
   (lambda ()
-    (string-append (int->string (if (native-code?) (via) 42))
-      (string-append " " (string-append (int->string (if (native-code?) (via2 (adder)) 42))
-        (string-append " " (int->string (if (native-code?) (via3 (adder)) 42))))))))
+    (string-append (int->string (if (here?) (via) 42))
+      (string-append " " (string-append (int->string (if (here?) (via2 (adder)) 42))
+        (string-append " " (int->string (if (here?) (via3 (adder)) 42))))))))

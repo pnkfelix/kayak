@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"import-not-name.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: read error: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/import-not-name.fx:4:17: `(import module name … (type name …) (effect name …))`: a name",
+""
+]
+}
