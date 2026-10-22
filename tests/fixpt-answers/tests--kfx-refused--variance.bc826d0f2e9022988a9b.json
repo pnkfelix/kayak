@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmppqrekq9h/stage0.fx:64:40: `t` is declared covariant (+) in `box-of`, but occurs where it may not",
+"fixpt: <tmp>/stage0.fx:64:40: `t` is declared covariant (+) in `box-of`, but occurs where it may not",
 ""
 ]
 }

@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/made-too-soon.fx:5:17: `y` uses `x`, defined after it",
+"fixpt: <programs>/modules/made-too-soon.fx:5:17: `y` uses `x`, defined after it",
 ""
 ]
 }

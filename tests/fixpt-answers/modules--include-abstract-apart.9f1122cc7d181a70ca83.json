@@ -13,7 +13,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/include-abstract-apart.fx:12:14: argument 1 is a b..t, where a a..t is expected",
+"fixpt: <programs>/modules/include-abstract-apart.fx:12:14: argument 1 is a b..t, where a a..t is expected",
 ""
 ]
 }

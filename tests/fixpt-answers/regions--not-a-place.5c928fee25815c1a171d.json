@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/not-a-place.fx:2:33: `r` is not a place",
+"fixpt: <programs>/regions/not-a-place.fx:2:33: `r` is not a place",
 ""
 ]
 }

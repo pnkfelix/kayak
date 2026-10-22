@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/terminate/cwcc-kept.fx:5:3: `loop` is declared a (subr pure () int): a (subr pure () int) is expected here, and this is a (subr spin () int)",
+"fixpt: <programs>/terminate/cwcc-kept.fx:5:3: `loop` is declared a (subr pure () int): a (subr pure () int) is expected here, and this is a (subr spin () int)",
 "  beyond what is expected, it has spin",
 ""
 ]

@@ -15,7 +15,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/higher-kinds/finite-through-app.fx:7:2: the size `s` cannot be `finite` here: `s` is the size of more than one argument, or of something inside one, and `finite` would not keep them the same",
+"fixpt: <programs>/higher-kinds/finite-through-app.fx:7:2: the size `s` cannot be `finite` here: `s` is the size of more than one argument, or of something inside one, and `finite` would not keep them the same",
 ""
 ]
 }

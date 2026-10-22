@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/certify-nat-alias.fx:3:53: `certify-nat` is named only to call it: its calls are checked where it is named",
+"fixpt: <programs>/sizes/certify-nat-alias.fx:3:53: `certify-nat` is named only to call it: its calls are checked where it is named",
 ""
 ]
 }

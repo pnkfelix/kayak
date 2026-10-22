@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/arrows/star-shape.fx:2:11: `(->* (param …) result)`",
+"! <programs>/arrows/star-shape.fx:2:11: `(->* (param …) result)`",
 "; both checkers agree",
 ""
 ],

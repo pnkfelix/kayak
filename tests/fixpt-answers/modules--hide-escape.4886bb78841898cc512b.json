@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/hide-escape.fx:4:11: `v`'s type mentions `t`, which is hidden in this module",
+"! <programs>/modules/hide-escape.fx:4:11: `v`'s type mentions `t`, which is hidden in this module",
 "; both checkers agree",
 ""
 ],

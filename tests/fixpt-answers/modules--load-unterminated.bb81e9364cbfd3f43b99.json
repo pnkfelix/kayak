@@ -12,7 +12,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/load-unterminated.fx:5:11: in `../module-files/unterminated.fx`, 3:1: unterminated list, expected `)`",
+"fixpt: <programs>/modules/load-unterminated.fx:5:11: in `../module-files/unterminated.fx`, 3:1: unterminated list, expected `)`",
 ""
 ]
 }

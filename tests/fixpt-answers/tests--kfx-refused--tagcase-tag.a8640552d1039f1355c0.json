@@ -29,7 +29,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmp15dqo5ux/stage0.fx:67:68: a t has no tag `c`",
+"fixpt: <tmp>/stage0.fx:67:68: a t has no tag `c`",
 ""
 ]
 }

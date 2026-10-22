@@ -24,7 +24,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmp1ogukf1y/stage0.fx:1:1: the checkers disagree: the Rust checker takes `x`'s definition, and the one written in FX-26 refuses it: `x` is declared a f64: a f64 is expected here, and this is a int",
+"fixpt: <tmp>/stage0.fx:1:1: the checkers disagree: the Rust checker takes `x`'s definition, and the one written in FX-26 refuses it: `x` is declared a f64: a f64 is expected here, and this is a int",
 ""
 ]
 }

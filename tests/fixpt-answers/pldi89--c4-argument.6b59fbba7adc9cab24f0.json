@@ -12,7 +12,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/pldi89/c4-argument.fx:9:4: unbound variable `h`",
+"fixpt: <programs>/pldi89/c4-argument.fx:9:4: unbound variable `h`",
 ""
 ]
 }

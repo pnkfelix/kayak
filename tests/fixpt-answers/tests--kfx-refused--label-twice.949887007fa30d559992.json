@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmp1e134adm/stage0.fx:65:30: `x` appears twice",
+"fixpt: <tmp>/stage0.fx:65:30: `x` appears twice",
 ""
 ]
 }

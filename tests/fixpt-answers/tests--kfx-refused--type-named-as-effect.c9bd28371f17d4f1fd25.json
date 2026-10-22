@@ -24,7 +24,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmp92u14pnx/stage0.fx:68:11: `pts` is not a type",
+"fixpt: <tmp>/stage0.fx:68:11: `pts` is not a type",
 ""
 ]
 }

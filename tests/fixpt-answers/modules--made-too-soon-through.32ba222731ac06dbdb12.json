@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/made-too-soon-through.fx:6:17: `y` uses `get-x`, which uses `x`, defined after `y`",
+"fixpt: <programs>/modules/made-too-soon-through.fx:6:17: `y` uses `get-x`, which uses `x`, defined after `y`",
 ""
 ]
 }

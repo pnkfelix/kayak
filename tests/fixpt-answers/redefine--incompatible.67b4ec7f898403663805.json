@@ -16,7 +16,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/redefine/incompatible.fx:5:1: `m` is broken, since `n` was redefined (a int is expected here, and this is a string): define it again to use it",
+"fixpt: <programs>/redefine/incompatible.fx:5:1: `m` is broken, since `n` was redefined (a int is expected here, and this is a string): define it again to use it",
 ""
 ]
 }

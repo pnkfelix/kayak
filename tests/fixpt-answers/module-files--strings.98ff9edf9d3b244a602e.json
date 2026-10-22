@@ -15,7 +15,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/strings.fx:5:2: unbound variable `hide`",
+"fixpt: <programs>/module-files/strings.fx:5:2: unbound variable `hide`",
 ""
 ]
 }

@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/include-uses-own.fx:4:19: an `include` uses `k`, which the module defines: an included module is made before its items",
+"fixpt: <programs>/modules/include-uses-own.fx:4:19: an `include` uses `k`, which the module defines: an included module is made before its items",
 ""
 ]
 }

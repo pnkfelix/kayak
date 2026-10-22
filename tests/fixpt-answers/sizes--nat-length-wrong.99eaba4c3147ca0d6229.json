@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/nat-length-wrong.fx:7:32: a (nlist int m) is expected here, and this is a (nlist int n)",
+"fixpt: <programs>/sizes/nat-length-wrong.fx:7:32: a (nlist int m) is expected here, and this is a (nlist int n)",
 ""
 ]
 }

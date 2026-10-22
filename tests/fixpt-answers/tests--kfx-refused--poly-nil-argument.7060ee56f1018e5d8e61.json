@@ -25,7 +25,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmp_wskogtp/stage0.fx:67:4: argument 1 must be a (listof a acyclic), which is not yet known here; give the other arguments first, or `proj` the operator",
+"fixpt: <tmp>/stage0.fx:67:4: argument 1 must be a (listof a acyclic), which is not yet known here; give the other arguments first, or `proj` the operator",
 ""
 ]
 }

@@ -8,7 +8,7 @@
 "code": 0,
 "out": [
 "define half-of : (subr pure ((moduleof (val half int))) int) ! pure",
-"define r : int ! (read (globals %shared:input:<kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/../module-files/answer.fx half-of))",
+"define r : int ! (read (globals %shared:input:<programs>/modules/../module-files/answer.fx half-of))",
 "int ! (read (globals r))",
 "; both checkers agree",
 ""

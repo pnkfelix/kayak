@@ -16,7 +16,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-tagcase-no-tag.fx:7:17: a (sumof (a (blobref o f64)) (b (blobref o i32))) has no tag `c`",
+"fixpt: <programs>/bloblet/flat-tagcase-no-tag.fx:7:17: a (sumof (a (blobref o f64)) (b (blobref o i32))) has no tag `c`",
 ""
 ]
 }

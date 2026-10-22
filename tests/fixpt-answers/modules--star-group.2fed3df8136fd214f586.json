@@ -12,7 +12,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/star-group.fx:4:38: `define*` `ev` is in a recursive group with `od`: use `define`",
+"fixpt: <programs>/modules/star-group.fx:4:38: `define*` `ev` is in a recursive group with `od`: use `define`",
 ""
 ]
 }

@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmpgyo0dqox/stage0.fx:66:47: this `tagcase` has no arm for rect",
+"fixpt: <tmp>/stage0.fx:66:47: this `tagcase` has no arm for rect",
 ""
 ]
 }

@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/recursive/type-cycle-of-names.fx:3:1: a recursive type must be built from a constructor, not only from names",
+"fixpt: <programs>/recursive/type-cycle-of-names.fx:3:1: a recursive type must be built from a constructor, not only from names",
 ""
 ]
 }

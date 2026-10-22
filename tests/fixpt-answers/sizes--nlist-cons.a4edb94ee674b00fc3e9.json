@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/nlist-cons.fx:5:34: a (nlist int 3) is expected here, and this is a (nlist int 2)",
+"! <programs>/sizes/nlist-cons.fx:5:34: a (nlist int 3) is expected here, and this is a (nlist int 2)",
 "; both checkers agree",
 ""
 ],

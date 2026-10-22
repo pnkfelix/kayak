@@ -27,7 +27,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmpf5m1bix8/stage0.fx:69:47: `slf` is declared a (subr (read @globals) (wrap) i64): a (subr (read @globals) (wrap) i64) is expected here, and this is a (subr (maxeff (read @globals) spin (read (globals app))) (wrap) i64)",
+"fixpt: <tmp>/stage0.fx:69:47: `slf` is declared a (subr (read @globals) (wrap) i64): a (subr (read @globals) (wrap) i64) is expected here, and this is a (subr (maxeff (read @globals) spin (read (globals app))) (wrap) i64)",
 "  beyond what is expected, it has spin",
 ""
 ]

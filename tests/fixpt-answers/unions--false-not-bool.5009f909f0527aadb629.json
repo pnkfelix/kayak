@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/unions/false-not-bool.fx:3:16: a union's members must differ in shape at run time: a false and a bool do not",
+"! <programs>/unions/false-not-bool.fx:3:16: a union's members must differ in shape at run time: a false and a bool do not",
 "; both checkers agree",
 ""
 ],

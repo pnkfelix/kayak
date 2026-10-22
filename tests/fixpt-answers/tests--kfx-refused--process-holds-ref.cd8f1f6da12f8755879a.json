@@ -27,7 +27,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmpz_n90zxh/stage0.fx:67:14: a process may share nothing that can be written, and its body holds `counter`: a reference at @c, which can be written",
+"fixpt: <tmp>/stage0.fx:67:14: a process may share nothing that can be written, and its body holds `counter`: a reference at @c, which can be written",
 ""
 ]
 }

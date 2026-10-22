@@ -15,7 +15,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/capture-self.fx:4:35: `checker` here is the module's own item, this one, not the `checker` bound outside it",
+"fixpt: <programs>/modules/capture-self.fx:4:35: `checker` here is the module's own item, this one, not the `checker` bound outside it",
 ""
 ]
 }

@@ -24,7 +24,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmpjw9i5cvy/stage0.fx:64:49: the value of `letregion r` would outlive its region: its type is (ref i64 r)",
+"fixpt: <tmp>/stage0.fx:64:49: the value of `letregion r` would outlive its region: its type is (ref i64 r)",
 ""
 ]
 }

@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/include-abstract-twice.fx:3:1: `t` is defined twice in this module",
+"fixpt: <programs>/modules/include-abstract-twice.fx:3:1: `t` is defined twice in this module",
 ""
 ]
 }

@@ -24,7 +24,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmpk0extja9/stage0.fx:66:21: the value of `letrena r` would outlive its region: its type is (place r)",
+"fixpt: <tmp>/stage0.fx:66:21: the value of `letrena r` would outlive its region: its type is (place r)",
 ""
 ]
 }

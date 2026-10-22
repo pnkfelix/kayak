@@ -24,7 +24,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmpprhs9xng/stage0.fx:65:63: a datum appears twice in this `case`",
+"fixpt: <tmp>/stage0.fx:65:63: a datum appears twice in this `case`",
 ""
 ]
 }

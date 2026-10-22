@@ -25,7 +25,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmpurrcvi45/stage0.fx:66:15: `z` is declared a i64: a (productof (x i64) (y i64)) has no `z`",
+"fixpt: <tmp>/stage0.fx:66:15: `z` is declared a i64: a (productof (x i64) (y i64)) has no `z`",
 ""
 ]
 }

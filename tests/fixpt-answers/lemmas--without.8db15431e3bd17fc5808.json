@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/lemmas/without.fx:4:46: `wide` is declared a (tree (sumof (x int) (y bool))): a (tree (sumof (x int) (y bool))) is expected here, and this is a (tree (sumof (x int)))",
+"! <programs>/lemmas/without.fx:4:46: `wide` is declared a (tree (sumof (x int) (y bool))): a (tree (sumof (x int) (y bool))) is expected here, and this is a (tree (sumof (x int)))",
 "; both checkers agree",
 ""
 ],

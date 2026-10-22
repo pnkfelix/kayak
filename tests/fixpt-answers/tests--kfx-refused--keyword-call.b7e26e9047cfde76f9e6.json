@@ -24,7 +24,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmp9pjny82x/stage0.fx:65:67: a i64 is expected here, and this is a (sumof (1 int))",
+"fixpt: <tmp>/stage0.fx:65:67: a i64 is expected here, and this is a (sumof (1 int))",
 ""
 ]
 }

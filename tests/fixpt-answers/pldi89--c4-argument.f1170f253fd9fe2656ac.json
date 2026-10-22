@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/pldi89/c4-argument.fx:9:4: unbound variable `h`",
+"! <programs>/pldi89/c4-argument.fx:9:4: unbound variable `h`",
 "; both checkers agree",
 ""
 ],

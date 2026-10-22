@@ -12,7 +12,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/load-parameters-bad.fx:3:11: in `../module-files/bad-parameters.fx`, 2:1: `(module-parameters ((name kind) …))`",
+"fixpt: <programs>/modules/load-parameters-bad.fx:3:11: in `../module-files/bad-parameters.fx`, 2:1: `(module-parameters ((name kind) …))`",
 ""
 ]
 }

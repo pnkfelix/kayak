@@ -15,7 +15,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/include-family-missing.fx:5:3: `crate` is not a type, nor one a module included gives",
+"fixpt: <programs>/modules/include-family-missing.fx:5:3: `crate` is not a type, nor one a module included gives",
 ""
 ]
 }

@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/lemmas/unannotated.fx:6:3: `nest-up` is declared a (poly ((a type) (b type)) (subr spin ((subr spin (a) b) (nest a)) (nest b))): a (subr spin ((subr spin (a) b) (nest a)) (nest b)) is expected here, and this is a (subr (maxeff (read (globals down-nest nest-up up-nest)) spin) ((subr spin (a) b) (nest a)) (nest b))",
+"! <programs>/lemmas/unannotated.fx:6:3: `nest-up` is declared a (poly ((a type) (b type)) (subr spin ((subr spin (a) b) (nest a)) (nest b))): a (subr spin ((subr spin (a) b) (nest a)) (nest b)) is expected here, and this is a (subr (maxeff (read (globals down-nest nest-up up-nest)) spin) ((subr spin (a) b) (nest a)) (nest b))",
 "  beyond what is expected, it has (read (globals down-nest nest-up up-nest))",
 "; both checkers agree",
 ""

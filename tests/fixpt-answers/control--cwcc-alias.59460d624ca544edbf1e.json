@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/control/cwcc-alias.fx:6:19: `cwcc` is named only to call it: its calls are checked where it is named",
+"! <programs>/control/cwcc-alias.fx:6:19: `cwcc` is named only to call it: its calls are checked where it is named",
 "; both checkers agree",
 ""
 ],

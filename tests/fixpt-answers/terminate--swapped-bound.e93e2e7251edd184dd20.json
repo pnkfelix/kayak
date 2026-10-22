@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/terminate/swapped-bound.fx:3:37: `f` is declared a (subr pure (int int) int): a (subr pure (int int) int) is expected here, and this is a (subr (maxeff spin (read (globals f))) (int int) int)",
+"fixpt: <programs>/terminate/swapped-bound.fx:3:37: `f` is declared a (subr pure (int int) int): a (subr pure (int int) int) is expected here, and this is a (subr (maxeff spin (read (globals f))) (int int) int)",
 "  beyond what is expected, it has (maxeff spin (read (globals f))); it may not end: nothing smaller, or related, is passed by the call of `f` in `f` (it counts up, but nothing fixed bounds the count above)",
 ""
 ]

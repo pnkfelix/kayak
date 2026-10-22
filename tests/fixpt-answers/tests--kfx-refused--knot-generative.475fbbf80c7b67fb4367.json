@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmpu72xvvzf/stage0.fx:67:11: a procedure kept in `@r` reads `@r`, so it could reach itself: it must say `spin`, and it is a (subr (read @r) () i64)",
+"fixpt: <tmp>/stage0.fx:67:11: a procedure kept in `@r` reads `@r`, so it could reach itself: it must say `spin`, and it is a (subr (read @r) () i64)",
 ""
 ]
 }

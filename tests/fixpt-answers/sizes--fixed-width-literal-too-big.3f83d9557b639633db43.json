@@ -12,7 +12,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/fixed-width-literal-too-big.fx:2:17: `big` is declared a u32: 4294967296 is not a u32: its range is 0 to 4294967295",
+"fixpt: <programs>/sizes/fixed-width-literal-too-big.fx:2:17: `big` is declared a u32: 4294967296 is not a u32: its range is 0 to 4294967295",
 ""
 ]
 }

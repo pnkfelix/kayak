@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/include-twice.fx:5:9: `x` is defined twice in this module",
+"fixpt: <programs>/modules/include-twice.fx:5:9: `x` is defined twice in this module",
 ""
 ]
 }

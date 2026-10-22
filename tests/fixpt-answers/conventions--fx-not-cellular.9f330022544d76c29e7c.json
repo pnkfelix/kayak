@@ -11,7 +11,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/conventions/fx-not-cellular.fx:4:49: `gs` is declared a (listof (subr pure (int) int) const): a (listof (subr pure (int) int) const) is expected here, and this is a (listof (subr (conv fx) pure (int) int) const)",
+"fixpt: <programs>/conventions/fx-not-cellular.fx:4:49: `gs` is declared a (listof (subr pure (int) int) const): a (listof (subr pure (int) int) const) is expected here, and this is a (listof (subr (conv fx) pure (int) int) const)",
 ""
 ]
 }

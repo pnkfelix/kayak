@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/terminate/not-smaller.fx:4:3: `f` is declared a (subr pure (tree tree) int): a (subr pure (tree tree) int) is expected here, and this is a (subr (maxeff (read (globals f)) spin) (tree tree) int)",
+"! <programs>/terminate/not-smaller.fx:4:3: `f` is declared a (subr pure (tree tree) int): a (subr pure (tree tree) int) is expected here, and this is a (subr (maxeff (read (globals f)) spin) (tree tree) int)",
 "  beyond what is expected, it has (maxeff (read (globals f)) spin); it may not end: no argument keeps shrinking around every loop of calls",
 "; both checkers agree",
 ""

@@ -25,7 +25,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmpqnigrsqw/stage0.fx:67:59: argument 1 is a x..t, where a i64 is expected",
+"fixpt: <tmp>/stage0.fx:67:59: argument 1 is a x..t, where a i64 is expected",
 ""
 ]
 }

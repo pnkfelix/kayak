@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/knot-through-a-ref.fx:4:16: a procedure kept in `@b` reads `@b`, so it could reach itself: it must say `spin`, and it is a (subr (read @b) () int)",
+"fixpt: <programs>/regions/knot-through-a-ref.fx:4:16: a procedure kept in `@b` reads `@b`, so it could reach itself: it must say `spin`, and it is a (subr (read @b) () int)",
 ""
 ]
 }

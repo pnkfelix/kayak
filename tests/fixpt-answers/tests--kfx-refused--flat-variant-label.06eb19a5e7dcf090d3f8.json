@@ -27,7 +27,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmphd14aokz/stage0.fx:67:105: a (flat-keyed 1 (sumof (1 f64) (7 i32))) has no variant `3`",
+"fixpt: <tmp>/stage0.fx:67:105: a (flat-keyed 1 (sumof (1 f64) (7 i32))) has no variant `3`",
 ""
 ]
 }

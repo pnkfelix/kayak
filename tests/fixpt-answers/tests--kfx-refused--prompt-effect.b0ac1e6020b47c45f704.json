@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmp3r1os_81/stage0.fx:73:32: the tag allows its delimited computations (maxeff (read @globals) spin), and this body also has (goto a)",
+"fixpt: <tmp>/stage0.fx:73:32: the tag allows its delimited computations (maxeff (read @globals) spin), and this body also has (goto a)",
 ""
 ]
 }

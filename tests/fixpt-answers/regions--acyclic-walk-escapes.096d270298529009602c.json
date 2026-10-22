@@ -12,7 +12,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/acyclic-walk-escapes.fx:7:5: the value of `letrena p` would outlive its region: its type is (subr (read (const p)) () bool)",
+"fixpt: <programs>/regions/acyclic-walk-escapes.fx:7:5: the value of `letrena p` would outlive its region: its type is (subr (read (const p)) () bool)",
 ""
 ]
 }

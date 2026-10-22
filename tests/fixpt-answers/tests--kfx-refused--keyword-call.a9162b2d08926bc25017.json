@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmpt1wak1lh/stage0.fx:65:67: a i64 is expected here, and this is a (sumof (1 int))",
+"fixpt: <tmp>/stage0.fx:65:67: a i64 is expected here, and this is a (sumof (1 int))",
 ""
 ]
 }

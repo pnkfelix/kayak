@@ -11,7 +11,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/load-standard-only.fx:5:1: in `../module-files/uses-global.fx`, 3:18: unbound variable `secret`",
+"fixpt: <programs>/modules/load-standard-only.fx:5:1: in `../module-files/uses-global.fx`, 3:18: unbound variable `secret`",
 ""
 ]
 }

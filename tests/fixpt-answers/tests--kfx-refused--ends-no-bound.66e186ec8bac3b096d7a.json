@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmpcb28tz3_/stage0.fx:66:49: `f` is declared a (subr pure (int) int): a (subr pure (int) int) is expected here, and this is a (subr spin (int) int)",
+"fixpt: <tmp>/stage0.fx:66:49: `f` is declared a (subr pure (int) int): a (subr pure (int) int) is expected here, and this is a (subr spin (int) int)",
 "  beyond what is expected, it has spin; it may not end: nothing smaller, or related, is passed by the call of `f` in `f` (it counts down, but nothing fixed bounds the count below)",
 ""
 ]

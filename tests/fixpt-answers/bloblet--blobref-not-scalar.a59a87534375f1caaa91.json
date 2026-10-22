@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/blobref-not-scalar.fx:6:35: only a scalar's bytes are read or written, and this points to a f",
+"! <programs>/bloblet/blobref-not-scalar.fx:6:35: only a scalar's bytes are read or written, and this points to a f",
 "; both checkers agree",
 ""
 ],

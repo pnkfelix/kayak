@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmpl_ijhsb2/stage0.fx:70:32: the type of parameter `m` cannot be known here: write `(m type)`, or check the `lambda` against a type",
+"fixpt: <tmp>/stage0.fx:70:32: the type of parameter `m` cannot be known here: write `(m type)`, or check the `lambda` against a type",
 ""
 ]
 }

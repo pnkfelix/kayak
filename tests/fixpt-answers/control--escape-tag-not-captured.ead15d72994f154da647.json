@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/control/escape-tag-not-captured.fx:7:57: argument 2 is a (escape-tag int int @r), where a (prompt-tag ? ? d r) is expected",
+"fixpt: <programs>/control/escape-tag-not-captured.fx:7:57: argument 2 is a (escape-tag int int @r), where a (prompt-tag ? ? d r) is expected",
 ""
 ]
 }

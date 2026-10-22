@@ -12,7 +12,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/functor-by-name.fx:12:1: argument 1 is a module the procedure's types depend on: give it by name (bind it with `let` first)",
+"fixpt: <programs>/modules/functor-by-name.fx:12:1: argument 1 is a module the procedure's types depend on: give it by name (bind it with `let` first)",
 ""
 ]
 }

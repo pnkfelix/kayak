@@ -28,7 +28,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmpzamynnrw/stage0.fx:66:11: a procedure kept in `@b` reads `@b`, so it could reach itself: it must say `spin`, and it is a (subr (read @b) () i64)",
+"fixpt: <tmp>/stage0.fx:66:11: a procedure kept in `@b` reads `@b`, so it could reach itself: it must say `spin`, and it is a (subr (read @b) () i64)",
 ""
 ]
 }

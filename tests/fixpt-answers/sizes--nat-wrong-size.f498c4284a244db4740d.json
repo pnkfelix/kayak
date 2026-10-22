@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/nat-wrong-size.fx:2:22: `five` is declared a (nat 5): a (nat 5) is expected here, and this is a (nat 4)",
+"fixpt: <programs>/sizes/nat-wrong-size.fx:2:22: `five` is declared a (nat 5): a (nat 5) is expected here, and this is a (nat 4)",
 ""
 ]
 }

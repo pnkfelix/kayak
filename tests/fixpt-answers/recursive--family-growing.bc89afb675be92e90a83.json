@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/recursive/family-growing.fx:4:51: `grow` expands without end: a type family may mention itself only with the same descriptions",
+"fixpt: <programs>/recursive/family-growing.fx:4:51: `grow` expands without end: a type family may mention itself only with the same descriptions",
 ""
 ]
 }

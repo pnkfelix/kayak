@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/higher-kinds/stack-arity.fx:23:1: `list-stack..stack` takes 1 description(s), and has 2",
+"! <programs>/higher-kinds/stack-arity.fx:23:1: `list-stack..stack` takes 1 description(s), and has 2",
 "; both checkers agree",
 ""
 ],

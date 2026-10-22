@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmpnvsn0bb4/stage0.fx:66:25: `(->* (param …) result)` is only the type a definition declares (`define`, `define-rec`, `letrec`), its effect found from its `lambda`: here, write `->` or `subr`",
+"fixpt: <tmp>/stage0.fx:66:25: `(->* (param …) result)` is only the type a definition declares (`define`, `define-rec`, `letrec`), its effect found from its `lambda`: here, write `->` or `subr`",
 ""
 ]
 }

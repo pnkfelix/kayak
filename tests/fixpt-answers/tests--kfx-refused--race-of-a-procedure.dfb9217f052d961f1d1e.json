@@ -27,7 +27,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmp0jv2d394/stage0.fx:68:50: `main` is declared a (subr (read (globals race)) () int): a (subr (read (globals race)) () int) is expected here, and this is a (subr nondet () int)",
+"fixpt: <tmp>/stage0.fx:68:50: `main` is declared a (subr (read (globals race)) () int): a (subr (read (globals race)) () int) is expected here, and this is a (subr nondet () int)",
 "  beyond what is expected, it has nondet",
 ""
 ]

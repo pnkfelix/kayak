@@ -24,7 +24,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmp9cq5y1xj/stage0.fx:64:57: `x` is bound recursively, so it must be a lambda: nothing may run before every binding exists",
+"fixpt: <tmp>/stage0.fx:64:57: `x` is bound recursively, so it must be a lambda: nothing may run before every binding exists",
 ""
 ]
 }

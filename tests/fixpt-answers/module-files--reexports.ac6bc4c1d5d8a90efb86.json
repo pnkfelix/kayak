@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/reexports.fx:6:37: `twice` is declared a (subr pure (num) num): a (subr pure (num) num) is expected here, and this is a (subr (read (globals bump)) (num) num)",
+"! <programs>/module-files/reexports.fx:6:37: `twice` is declared a (subr pure (num) num): a (subr pure (num) num) is expected here, and this is a (subr (read (globals bump)) (num) num)",
 "  beyond what is expected, it has (read (globals bump))",
 "; both checkers agree",
 ""

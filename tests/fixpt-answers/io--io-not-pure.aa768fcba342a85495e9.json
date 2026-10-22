@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/io/io-not-pure.fx:4:3: `shout` is declared a (subr pure (string) unit): a (subr pure (string) unit) is expected here, and this is a (subr (io stdout) (string) unit)",
+"fixpt: <programs>/io/io-not-pure.fx:4:3: `shout` is declared a (subr pure (string) unit): a (subr pure (string) unit) is expected here, and this is a (subr (io stdout) (string) unit)",
 "  beyond what is expected, it has (io stdout)",
 ""
 ]

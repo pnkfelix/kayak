@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/table-use.fx:2:16: `table` is not a description function",
+"fixpt: <programs>/bloblet/table-use.fx:2:16: `table` is not a description function",
 ""
 ]
 }

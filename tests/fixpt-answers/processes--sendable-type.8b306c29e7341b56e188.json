@@ -13,7 +13,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/processes/sendable-type.fx:12:7: a process's messages are copied to it, so they must be transmissible, and a (productof (v m) (reply (icell m @r))) is not: a `m`, which could be anything",
+"fixpt: <programs>/processes/sendable-type.fx:12:7: a process's messages are copied to it, so they must be transmissible, and a (productof (v m) (reply (icell m @r))) is not: a `m`, which could be anything",
 ""
 ]
 }

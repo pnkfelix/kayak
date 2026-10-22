@@ -25,7 +25,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmp4m8k481q/stage0.fx:66:40: expected 2 argument(s), got 1",
+"fixpt: <tmp>/stage0.fx:66:40: expected 2 argument(s), got 1",
 ""
 ]
 }

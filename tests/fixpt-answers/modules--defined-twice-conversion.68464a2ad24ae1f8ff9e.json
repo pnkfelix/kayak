@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/defined-twice-conversion.fx:3:11: `up-t` is defined twice in this module",
+"fixpt: <programs>/modules/defined-twice-conversion.fx:3:11: `up-t` is defined twice in this module",
 ""
 ]
 }

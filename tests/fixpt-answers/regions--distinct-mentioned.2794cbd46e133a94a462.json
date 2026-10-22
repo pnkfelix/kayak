@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/distinct-mentioned.fx:8:1: `r` is distinct, and @heap may be a region the procedure's type mentions",
+"fixpt: <programs>/regions/distinct-mentioned.fx:8:1: `r` is distinct, and @heap may be a region the procedure's type mentions",
 ""
 ]
 }

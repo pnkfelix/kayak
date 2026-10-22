@@ -12,7 +12,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/higher-kinds/variance.fx:3:29: a description function parameter is invariant",
+"fixpt: <programs>/higher-kinds/variance.fx:3:29: a description function parameter is invariant",
 ""
 ]
 }

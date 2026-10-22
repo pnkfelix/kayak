@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/effect-select-missing.fx:3:11: `(select m t)`: `m` has no effect `t`",
+"! <programs>/modules/effect-select-missing.fx:3:11: `(select m t)`: `m` has no effect `t`",
 "; both checkers agree",
 ""
 ],

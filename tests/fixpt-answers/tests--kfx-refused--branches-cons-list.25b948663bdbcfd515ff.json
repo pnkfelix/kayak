@@ -24,7 +24,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmp8b6f8esv/stage0.fx:66:28: the branches are a (listof int acyclic) and a (pairof int (listof int acyclic) @r.1)",
+"fixpt: <tmp>/stage0.fx:66:28: the branches are a (listof int acyclic) and a (pairof int (listof int acyclic) @r.1)",
 ""
 ]
 }

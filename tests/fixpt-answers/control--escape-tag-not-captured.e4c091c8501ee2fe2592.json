@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/control/escape-tag-not-captured.fx:7:57: argument 2 is a (escape-tag int int @r), where a (prompt-tag ? ? d r) is expected",
+"! <programs>/control/escape-tag-not-captured.fx:7:57: argument 2 is a (escape-tag int int @r), where a (prompt-tag ? ? d r) is expected",
 "; both checkers agree",
 ""
 ],

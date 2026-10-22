@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/nlist-short.fx:3:45: a (nlist int 1) is expected here, and this is a (listof int acyclic)",
+"fixpt: <programs>/sizes/nlist-short.fx:3:45: a (nlist int 1) is expected here, and this is a (listof int acyclic)",
 ""
 ]
 }

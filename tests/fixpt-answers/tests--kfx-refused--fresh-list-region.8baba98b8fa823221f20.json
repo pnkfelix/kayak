@@ -25,7 +25,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmptygcpvfb/stage0.fx:67:4: argument 1 is a (pairof string (listof string @r.1) @r.1), where a (listof string acyclic) is expected",
+"fixpt: <tmp>/stage0.fx:67:4: argument 1 is a (pairof string (listof string @r.1) @r.1), where a (listof string acyclic) is expected",
 ""
 ]
 }

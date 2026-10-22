@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/higher-kinds/abs-params-kind.fx:3:33: an abstract type constructor is `(abs (f (name kind) …) type)`",
+"fixpt: <programs>/higher-kinds/abs-params-kind.fx:3:33: an abstract type constructor is `(abs (f (name kind) …) type)`",
 ""
 ]
 }

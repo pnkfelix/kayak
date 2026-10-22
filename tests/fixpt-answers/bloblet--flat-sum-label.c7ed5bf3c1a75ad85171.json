@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-sum-label.fx:3:35: a label of a sum keyed by `u8` is a number below 2^8",
+"! <programs>/bloblet/flat-sum-label.fx:3:35: a label of a sum keyed by `u8` is a number below 2^8",
 "; both checkers agree",
 ""
 ],

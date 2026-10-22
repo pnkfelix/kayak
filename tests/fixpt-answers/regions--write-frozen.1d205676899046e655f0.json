@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/write-frozen.fx:3:3: this writes frozen data, whose region is `const`",
+"fixpt: <programs>/regions/write-frozen.fx:3:3: this writes frozen data, whose region is `const`",
 ""
 ]
 }

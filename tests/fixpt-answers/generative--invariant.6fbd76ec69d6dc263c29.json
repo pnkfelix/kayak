@@ -15,7 +15,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/generative/invariant.fx:4:42: `b` is declared a (box (sumof (a int) (b bool))): a (box (sumof (a int) (b bool))) is expected here, and this is a (box (sumof (a int)))",
+"fixpt: <programs>/generative/invariant.fx:4:42: `b` is declared a (box (sumof (a int) (b bool))): a (box (sumof (a int) (b bool))) is expected here, and this is a (box (sumof (a int)))",
 ""
 ]
 }

@@ -28,7 +28,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmpiz25o3u9/stage0.fx:73:23: the branches are a (subr pure (i64) i64) and a (subr (goto e) (i64) void)",
+"fixpt: <tmp>/stage0.fx:73:23: the branches are a (subr pure (i64) i64) and a (subr (goto e) (i64) void)",
 ""
 ]
 }

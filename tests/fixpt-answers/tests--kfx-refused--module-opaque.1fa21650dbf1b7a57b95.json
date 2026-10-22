@@ -27,7 +27,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmpxl_9a64i/stage0.fx:70:48: argument 2 is a counter..t, where a i64 is expected",
+"fixpt: <tmp>/stage0.fx:70:48: argument 2 is a counter..t, where a i64 is expected",
 ""
 ]
 }

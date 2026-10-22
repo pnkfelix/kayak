@@ -11,7 +11,7 @@
 ],
 "code": 0,
 "out": [
-"c : (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int))) ! (read (globals %shared:<kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/../module-files/counter.fx))",
+"c : (moduleof (abs t type) (val zero t) (val inc (subr pure (t) t)) (val value (subr pure (t) int))) ! (read (globals %shared:<programs>/modules/../module-files/counter.fx))",
 "2 : int ! (read (globals c))",
 ""
 ],

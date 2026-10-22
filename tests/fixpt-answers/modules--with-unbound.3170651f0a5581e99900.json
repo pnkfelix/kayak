@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/with-unbound.fx:3:1: `nowhere` is not bound",
+"fixpt: <programs>/modules/with-unbound.fx:3:1: `nowhere` is not bound",
 ""
 ]
 }

@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/datum/acyclic-shadowed.fx:3:52: `certify-acyclic` takes only a variable `acyclic?` has just found acyclic",
+"fixpt: <programs>/datum/acyclic-shadowed.fx:3:52: `certify-acyclic` takes only a variable `acyclic?` has just found acyclic",
 ""
 ]
 }

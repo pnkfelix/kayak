@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmp_y2l0src/stage0.fx:67:43: argument 1 is a int, where a (inbox ? r) is expected",
+"fixpt: <tmp>/stage0.fx:67:43: argument 1 is a int, where a (inbox ? r) is expected",
 ""
 ]
 }

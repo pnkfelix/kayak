@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/solved-negative.fx:6:1: the size `n` would be -1, which is not known here to be no less than 0: an argument may be shorter than this procedure's type needs",
+"! <programs>/sizes/solved-negative.fx:6:1: the size `n` would be -1, which is not known here to be no less than 0: an argument may be shorter than this procedure's type needs",
 "; both checkers agree",
 ""
 ],

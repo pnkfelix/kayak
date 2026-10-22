@@ -27,7 +27,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmp57w7hu5n/stage0.fx:67:41: a procedure kept in `r` reads `r`, so it could reach itself: it must say `spin`, and it is a k",
+"fixpt: <tmp>/stage0.fx:67:41: a procedure kept in `r` reads `r`, so it could reach itself: it must say `spin`, and it is a k",
 ""
 ]
 }

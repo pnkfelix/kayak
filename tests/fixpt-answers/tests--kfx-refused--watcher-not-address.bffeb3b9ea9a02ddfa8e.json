@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmp5ylvc8uc/stage0.fx:67:5: a watcher is a process's address, `(addr M R)`, and this is a int",
+"fixpt: <tmp>/stage0.fx:67:5: a watcher is a process's address, `(addr M R)`, and this is a int",
 ""
 ]
 }

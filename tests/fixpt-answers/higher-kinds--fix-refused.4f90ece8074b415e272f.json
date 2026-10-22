@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/higher-kinds/fix-refused.fx:5:52: a recursive type must be built from a constructor, not only from names",
+"fixpt: <programs>/higher-kinds/fix-refused.fx:5:52: a recursive type must be built from a constructor, not only from names",
 ""
 ]
 }

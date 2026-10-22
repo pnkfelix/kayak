@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/control/capture-and-resume.fx:4:9: unbound variable `t`",
+"fixpt: <programs>/control/capture-and-resume.fx:4:9: unbound variable `t`",
 ""
 ]
 }

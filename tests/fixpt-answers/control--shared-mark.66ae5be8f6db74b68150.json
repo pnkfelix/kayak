@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/control/shared-mark.fx:4:2: unbound variable `key`",
+"fixpt: <programs>/control/shared-mark.fx:4:2: unbound variable `key`",
 ""
 ]
 }

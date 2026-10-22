@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/unions/nil-is-not-a-pair.fx:2:29: a (pairof symbol int @r) is expected here, and this is a (union nil (pairof symbol int @r))",
+"fixpt: <programs>/unions/nil-is-not-a-pair.fx:2:29: a (pairof symbol int @r) is expected here, and this is a (union nil (pairof symbol int @r))",
 ""
 ]
 }

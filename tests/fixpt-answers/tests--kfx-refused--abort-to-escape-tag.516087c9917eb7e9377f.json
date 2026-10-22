@@ -24,7 +24,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmpli9s1yx3/stage0.fx:69:35: argument 1 is a (escape-tag int int @p), where a (prompt-tag ? int d r) is expected",
+"fixpt: <tmp>/stage0.fx:69:35: argument 1 is a (escape-tag int int @p), where a (prompt-tag ? int d r) is expected",
 ""
 ]
 }

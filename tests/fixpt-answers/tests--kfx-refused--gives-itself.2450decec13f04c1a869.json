@@ -24,7 +24,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmphbh_95k4/stage0.fx:67:39: `f` is declared a (subr (read @globals) (i64) i64): a (subr (read @globals) (i64) i64) is expected here, and this is a (subr (maxeff (read @globals) spin (read (globals f g))) (i64) i64)",
+"fixpt: <tmp>/stage0.fx:67:39: `f` is declared a (subr (read @globals) (i64) i64): a (subr (read @globals) (i64) i64) is expected here, and this is a (subr (maxeff (read @globals) spin (read (globals f g))) (i64) i64)",
 "  beyond what is expected, it has spin; it may not end: `f` is named in `f` other than as a call's operator: whoever is given it may call it again, with anything",
 ""
 ]

@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/terminate/cwcc-captures.fx:12:11: the tag allows its delimited computations (maxeff (write @d) (goto @k) (comefrom @k)), and this body also has spin",
+"fixpt: <programs>/terminate/cwcc-captures.fx:12:11: the tag allows its delimited computations (maxeff (write @d) (goto @k) (comefrom @k)), and this body also has spin",
 ""
 ]
 }

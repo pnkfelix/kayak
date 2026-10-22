@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/recursive/polyonly.fx:3:1: a recursive type must be built from a constructor, not only from names",
+"! <programs>/recursive/polyonly.fx:3:1: a recursive type must be built from a constructor, not only from names",
 "; both checkers agree",
 ""
 ],

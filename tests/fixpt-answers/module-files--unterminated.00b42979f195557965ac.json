@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: the FX-26 front end: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/unterminated.fx:3:1: unterminated list, expected `)`",
+"fixpt: the FX-26 front end: <programs>/module-files/unterminated.fx:3:1: unterminated list, expected `)`",
 ""
 ]
 }

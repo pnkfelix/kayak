@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/layer1.fx:3:34: `s` is not a region",
+"fixpt: <programs>/module-files/layer1.fx:3:34: `s` is not a region",
 ""
 ]
 }

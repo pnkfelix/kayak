@@ -12,7 +12,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/freeze-into-shorter.fx:5:47: `r` must not outlive `p`, and r could outlive b",
+"fixpt: <programs>/regions/freeze-into-shorter.fx:5:47: `r` must not outlive `p`, and r could outlive b",
 ""
 ]
 }

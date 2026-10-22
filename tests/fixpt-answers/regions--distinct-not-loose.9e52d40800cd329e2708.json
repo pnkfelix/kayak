@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/distinct-not-loose.fx:8:21: `outer` is declared a loose: `r1` is distinct, and r1 may be r2, given for `r2`",
+"! <programs>/regions/distinct-not-loose.fx:8:21: `outer` is declared a loose: `r1` is distinct, and r1 may be r2, given for `r2`",
 "; both checkers agree",
 ""
 ],

@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/control/shift-k-k.fx:5:9: unbound variable `s`",
+"fixpt: <programs>/control/shift-k-k.fx:5:9: unbound variable `s`",
 ""
 ]
 }

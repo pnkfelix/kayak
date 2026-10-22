@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/layer3.fx:3:2: unbound variable `module-parameters`",
+"fixpt: <programs>/module-files/layer3.fx:3:2: unbound variable `module-parameters`",
 ""
 ]
 }

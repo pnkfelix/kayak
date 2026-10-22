@@ -12,7 +12,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/uses-global.fx:3:18: unbound variable `secret`",
+"fixpt: <programs>/module-files/uses-global.fx:3:18: unbound variable `secret`",
 ""
 ]
 }

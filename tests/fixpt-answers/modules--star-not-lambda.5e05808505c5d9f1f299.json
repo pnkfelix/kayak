@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/star-not-lambda.fx:3:18: `define*` defines a procedure: a `lambda`",
+"fixpt: <programs>/modules/star-not-lambda.fx:3:18: `define*` defines a procedure: a `lambda`",
 ""
 ]
 }

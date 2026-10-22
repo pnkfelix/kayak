@@ -24,7 +24,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmpe3d5uauj/stage0.fx:67:39: `f` is declared a (subr pure (int) int): a (subr pure (int) int) is expected here, and this is a (subr spin (int) int)",
+"fixpt: <tmp>/stage0.fx:67:39: `f` is declared a (subr pure (int) int): a (subr pure (int) int) is expected here, and this is a (subr spin (int) int)",
 "  beyond what is expected, it has spin; it may not end: `f` is named in `f` other than as a call's operator: whoever is given it may call it again, with anything",
 ""
 ]

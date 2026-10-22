@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmp7ccqgpnw/stage0.fx:64:30: unbound variable `f`",
+"fixpt: <tmp>/stage0.fx:64:30: unbound variable `f`",
 ""
 ]
 }

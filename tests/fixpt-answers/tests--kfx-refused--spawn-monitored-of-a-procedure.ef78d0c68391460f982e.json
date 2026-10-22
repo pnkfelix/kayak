@@ -27,7 +27,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmp6zatqlfh/stage0.fx:67:72: `(spawn-monitored watcher on-failure (mailbox message-type place) body …)`",
+"fixpt: <tmp>/stage0.fx:67:72: `(spawn-monitored watcher on-failure (mailbox message-type place) body …)`",
 ""
 ]
 }

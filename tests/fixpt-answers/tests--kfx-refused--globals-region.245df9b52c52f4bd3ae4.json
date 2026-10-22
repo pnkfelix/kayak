@@ -24,7 +24,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmpa13q4v6f/stage0.fx:64:24: globals are a region only in effects: `(read @globals)`, `(write (globals g))`",
+"fixpt: <tmp>/stage0.fx:64:24: globals are a region only in effects: `(read @globals)`, `(write (globals g))`",
 ""
 ]
 }

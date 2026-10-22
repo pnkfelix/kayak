@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/abs-kind.fx:4:35: an abstract component is a `type`, or a type constructor `(=> (kind …) type)`, for now",
+"fixpt: <programs>/modules/abs-kind.fx:4:35: an abstract component is a `type`, or a type constructor `(=> (kind …) type)`, for now",
 ""
 ]
 }

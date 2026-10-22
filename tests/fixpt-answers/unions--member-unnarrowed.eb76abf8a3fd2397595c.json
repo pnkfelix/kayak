@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/unions/member-unnarrowed.fx:3:64: a int is expected here, and this is a (union int string)",
+"! <programs>/unions/member-unnarrowed.fx:3:64: a int is expected here, and this is a (union int string)",
 "; both checkers agree",
 ""
 ],

@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/unions/type-variable.fx:3:41: a t cannot be in a union: its shape at run time is not known",
+"! <programs>/unions/type-variable.fx:3:41: a t cannot be in a union: its shape at run time is not known",
 "; both checkers agree",
 ""
 ],

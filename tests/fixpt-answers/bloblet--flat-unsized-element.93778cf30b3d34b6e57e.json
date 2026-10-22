@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-unsized-element.fx:3:56: a flat array's element has a length of its own",
+"fixpt: <programs>/bloblet/flat-unsized-element.fx:3:56: a flat array's element has a length of its own",
 ""
 ]
 }

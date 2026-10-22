@@ -13,7 +13,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/abstract-as-transparent.fx:11:12: a known is expected here, and this is a (moduleof (abs t type) (val zero counter..t) (val inc (subr pure (counter..t) counter..t)) (val value (subr pure (counter..t) int)))",
+"fixpt: <programs>/modules/abstract-as-transparent.fx:11:12: a known is expected here, and this is a (moduleof (abs t type) (val zero counter..t) (val inc (subr pure (counter..t) counter..t)) (val value (subr pure (counter..t) int)))",
 ""
 ]
 }

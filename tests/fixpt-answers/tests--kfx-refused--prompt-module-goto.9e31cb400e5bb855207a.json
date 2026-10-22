@@ -25,7 +25,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmpqk_bdcl4/stage0.fx:71:3: `run` is declared a (subr (maxeff (read @globals) (alloc @z) spin) (int) string): a (subr (maxeff (read @globals) (alloc @z) spin) (int) string) is expected here, and this is a (subr (maxeff (alloc @z) (goto @z) spin (read (globals m))) (int) string)",
+"fixpt: <tmp>/stage0.fx:71:3: `run` is declared a (subr (maxeff (read @globals) (alloc @z) spin) (int) string): a (subr (maxeff (read @globals) (alloc @z) spin) (int) string) is expected here, and this is a (subr (maxeff (alloc @z) (goto @z) spin (read (globals m))) (int) string)",
 "  beyond what is expected, it has (goto @z)",
 ""
 ]

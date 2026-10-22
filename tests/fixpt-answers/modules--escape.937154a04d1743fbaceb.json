@@ -13,7 +13,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/escape.fx:9:1: this is a m..t, and `m..t` is a module's abstract type, not known outside the scope where the module is named",
+"fixpt: <programs>/modules/escape.fx:9:1: this is a m..t, and `m..t` is a module's abstract type, not known outside the scope where the module is named",
 ""
 ]
 }

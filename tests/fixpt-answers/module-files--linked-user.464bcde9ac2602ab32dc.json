@@ -7,7 +7,7 @@
 ],
 "code": 0,
 "out": [
-"define sigs : (moduleof (desc dep-sig (moduleof (val cat3 (subr pure (string string string) string)) (val limit int)))) ! (read (globals %shared:<kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/linked-sigs.fx))",
+"define sigs : (moduleof (desc dep-sig (moduleof (val cat3 (subr pure (string string string) string)) (val limit int)))) ! (read (globals %shared:<programs>/module-files/linked-sigs.fx))",
 "define make : (subr (maxeff (read @globals) spin) (dep-sig) (moduleof (val cat3 (subr pure (string string string) string)) (val twice (subr spin (int) int)) (val shout (subr pure (string) string)) (val v int))) ! pure",
 "; both checkers agree",
 ""

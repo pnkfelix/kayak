@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/reexport-too-soon.fx:3:29: `x` uses `m`, defined after it",
+"fixpt: <programs>/modules/reexport-too-soon.fx:3:29: `x` uses `m`, defined after it",
 ""
 ]
 }

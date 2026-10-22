@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/nat-facts-wrong.fx:2:65: a nat is expected here, and this is a int",
+"! <programs>/sizes/nat-facts-wrong.fx:2:65: a nat is expected here, and this is a int",
 "; both checkers agree",
 ""
 ],

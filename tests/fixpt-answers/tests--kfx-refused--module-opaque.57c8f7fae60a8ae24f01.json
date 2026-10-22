@@ -25,7 +25,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmpocbzmkhs/stage0.fx:70:48: argument 2 is a counter..t, where a i64 is expected",
+"fixpt: <tmp>/stage0.fx:70:48: argument 2 is a counter..t, where a i64 is expected",
 ""
 ]
 }

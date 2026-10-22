@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/control/oneshot-not-composable.fx:5:50: argument 1 is a (oneshot int int pure @p), where a (composable int int pure @p) is expected",
+"fixpt: <programs>/control/oneshot-not-composable.fx:5:50: argument 1 is a (oneshot int int pure @p), where a (composable int int pure @p) is expected",
 ""
 ]
 }

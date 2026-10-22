@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/higher-kinds/abs-params-wrong.fx:4:33: an abstract type constructor is `(abs (f (name kind) …) type)`",
+"! <programs>/higher-kinds/abs-params-wrong.fx:4:33: an abstract type constructor is `(abs (f (name kind) …) type)`",
 "; both checkers agree",
 ""
 ],

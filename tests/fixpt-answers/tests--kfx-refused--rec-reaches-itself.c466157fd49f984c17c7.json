@@ -27,7 +27,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmpbp_qixjr/stage0.fx:66:1: calling `f` reads `f`, so `f` may reach itself through a global: its type must say `spin` (or, to call itself directly, it binds itself with a local `letrec`)",
+"fixpt: <tmp>/stage0.fx:66:1: calling `f` reads `f`, so `f` may reach itself through a global: its type must say `spin` (or, to call itself directly, it binds itself with a local `letrec`)",
 ""
 ]
 }

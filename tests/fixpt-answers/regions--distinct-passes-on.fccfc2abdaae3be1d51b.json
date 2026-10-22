@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/distinct-passes-on.fx:13:39: `r1` is distinct, and r2 may be r3, given for `r2`",
+"! <programs>/regions/distinct-passes-on.fx:13:39: `r1` is distinct, and r2 may be r3, given for `r2`",
 "; both checkers agree",
 ""
 ],

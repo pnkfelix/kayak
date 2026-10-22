@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/load-cycle-two.fx:5:11: in `../module-files/cycle-a.fx`, 2:11: in `cycle-b.fx`, 2:11: a load cycle: `../module-files/cycle-a.fx` loads `cycle-b.fx` loads `cycle-a.fx`",
+"fixpt: <programs>/modules/load-cycle-two.fx:5:11: in `../module-files/cycle-a.fx`, 2:11: in `cycle-b.fx`, 2:11: a load cycle: `../module-files/cycle-a.fx` loads `cycle-b.fx` loads `cycle-a.fx`",
 ""
 ]
 }

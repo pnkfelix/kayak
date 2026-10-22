@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmp109wpi3c/stage0.fx:67:71: `r` must not outlive `p`, and outer could outlive p",
+"fixpt: <tmp>/stage0.fx:67:71: `r` must not outlive `p`, and outer could outlive p",
 ""
 ]
 }

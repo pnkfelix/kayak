@@ -24,7 +24,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmpfevtv6us/stage0.fx:65:30: `x` appears twice",
+"fixpt: <tmp>/stage0.fx:65:30: `x` appears twice",
 ""
 ]
 }

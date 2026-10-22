@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmppf85shyr/stage0.fx:69:5: a monitor's `on-failure` makes the watcher's message of a failure's, a (subr pure (string) report), and this is a (subr (send @p) (string) report)",
+"fixpt: <tmp>/stage0.fx:69:5: a monitor's `on-failure` makes the watcher's message of a failure's, a (subr pure (string) report), and this is a (subr (send @p) (string) report)",
 ""
 ]
 }

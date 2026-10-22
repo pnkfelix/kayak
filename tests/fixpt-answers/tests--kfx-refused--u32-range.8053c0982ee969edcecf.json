@@ -24,7 +24,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmp0cmvg6xr/stage0.fx:65:15: `y` is declared a u32: -1 is not a u32: its range is 0 to 4294967295",
+"fixpt: <tmp>/stage0.fx:65:15: `y` is declared a u32: -1 is not a u32: its range is 0 to 4294967295",
 ""
 ]
 }

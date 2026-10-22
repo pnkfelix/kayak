@@ -24,7 +24,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmp3ni__a_t/stage0.fx:65:53: `poke` is declared a (subr (maxeff (read @globals) spin) ((flatarrayof i64 @a)) unit): a (subr (maxeff (read @globals) spin) ((flatarrayof i64 @a)) unit) is expected here, and this is a (subr (maxeff (write @a) (read (globals flatarray-set-i64!))) ((flatarrayof i64 @a)) unit)",
+"fixpt: <tmp>/stage0.fx:65:53: `poke` is declared a (subr (maxeff (read @globals) spin) ((flatarrayof i64 @a)) unit): a (subr (maxeff (read @globals) spin) ((flatarrayof i64 @a)) unit) is expected here, and this is a (subr (maxeff (write @a) (read (globals flatarray-set-i64!))) ((flatarrayof i64 @a)) unit)",
 "  beyond what is expected, it has (write @a)",
 ""
 ]

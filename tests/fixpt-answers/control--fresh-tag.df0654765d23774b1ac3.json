@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/control/fresh-tag.fx:4:61: unbound variable `u`",
+"! <programs>/control/fresh-tag.fx:4:61: unbound variable `u`",
 "; both checkers agree",
 ""
 ],

@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/generative/contravariant.fx:5:52: `c` is declared a (sink (sumof (a int) (b bool) (c char))): a (sink (sumof (a int) (b bool) (c char))) is expected here, and this is a (sink (sumof (a int) (b bool)))",
+"! <programs>/generative/contravariant.fx:5:52: `c` is declared a (sink (sumof (a int) (b bool) (c char))): a (sink (sumof (a int) (b bool) (c char))) is expected here, and this is a (sink (sumof (a int) (b bool)))",
 "; both checkers agree",
 ""
 ],

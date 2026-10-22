@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/include-not-module.fx:2:9: `include` includes a module, and this is a int",
+"fixpt: <programs>/modules/include-not-module.fx:2:9: `include` includes a module, and this is a int",
 ""
 ]
 }

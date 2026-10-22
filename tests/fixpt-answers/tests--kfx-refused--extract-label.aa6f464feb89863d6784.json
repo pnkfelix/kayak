@@ -27,7 +27,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmp0p3am_fw/stage0.fx:66:15: `z` is declared a i64: a (productof (x i64) (y i64)) has no `z`",
+"fixpt: <tmp>/stage0.fx:66:15: `z` is declared a i64: a (productof (x i64) (y i64)) has no `z`",
 ""
 ]
 }

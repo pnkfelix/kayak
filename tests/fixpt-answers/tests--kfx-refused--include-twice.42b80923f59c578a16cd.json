@@ -27,7 +27,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmprr8kna37/stage0.fx:66:19: `one` is defined twice in this module",
+"fixpt: <tmp>/stage0.fx:66:19: `one` is defined twice in this module",
 ""
 ]
 }

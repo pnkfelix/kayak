@@ -12,7 +12,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/unions/overlap.fx:3:16: a union's members must differ in shape at run time: a (subr pure (int) int) and a (subr pure (bool) int) do not",
+"fixpt: <programs>/unions/overlap.fx:3:16: a union's members must differ in shape at run time: a (subr pure (int) int) and a (subr pure (bool) int) do not",
 ""
 ]
 }

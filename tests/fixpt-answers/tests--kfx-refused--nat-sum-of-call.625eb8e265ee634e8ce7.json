@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmpbjgxamir/stage0.fx:68:88: a nat is expected here, and this is a int",
+"fixpt: <tmp>/stage0.fx:68:88: a nat is expected here, and this is a int",
 ""
 ]
 }

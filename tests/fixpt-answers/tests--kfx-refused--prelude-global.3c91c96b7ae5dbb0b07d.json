@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmp9hctsjv6/stage0.fx:64:38: `len` is declared a (subr pure (string) i64): a (subr pure (string) i64) is expected here, and this is a (subr (read (globals string-length-i64)) (string) i64)",
+"fixpt: <tmp>/stage0.fx:64:38: `len` is declared a (subr pure (string) i64): a (subr pure (string) i64) is expected here, and this is a (subr (read (globals string-length-i64)) (string) i64)",
 "  beyond what is expected, it has (read (globals string-length-i64))",
 ""
 ]

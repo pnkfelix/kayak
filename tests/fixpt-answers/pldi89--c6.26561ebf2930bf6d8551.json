@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/pldi89/c6.fx:5:12: unbound variable `x`",
+"! <programs>/pldi89/c6.fx:5:12: unbound variable `x`",
 "; both checkers agree",
 ""
 ],

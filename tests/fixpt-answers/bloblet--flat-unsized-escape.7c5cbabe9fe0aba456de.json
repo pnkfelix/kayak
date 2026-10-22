@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-unsized-escape.fx:13:5: this is a (subr (read @heap) ((blobref (bloblet (fields) @heap) (flat-arrayof f64 s))) f64), which takes something of the size of `s`, and that size is not known outside `s`'s scope",
+"! <programs>/bloblet/flat-unsized-escape.fx:13:5: this is a (subr (read @heap) ((blobref (bloblet (fields) @heap) (flat-arrayof f64 s))) f64), which takes something of the size of `s`, and that size is not known outside `s`'s scope",
 "; both checkers agree",
 ""
 ],

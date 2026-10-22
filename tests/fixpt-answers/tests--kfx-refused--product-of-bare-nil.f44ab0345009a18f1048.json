@@ -24,7 +24,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmpjw3zwcsv/stage0.fx:65:55: the branches are a (productof (a (poly ((r region) (t type)) (listof t r)))) and a (productof (a (listof i64 @r.1)))",
+"fixpt: <tmp>/stage0.fx:65:55: the branches are a (productof (a (poly ((r region) (t type)) (listof t r)))) and a (productof (a (listof i64 @r.1)))",
 ""
 ]
 }

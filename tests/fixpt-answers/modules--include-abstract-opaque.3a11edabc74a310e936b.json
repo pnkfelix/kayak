@@ -11,7 +11,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/include-abstract-opaque.fx:5:12: a int is expected here, and this is a m..t",
+"fixpt: <programs>/modules/include-abstract-opaque.fx:5:12: a int is expected here, and this is a m..t",
 ""
 ]
 }

@@ -25,7 +25,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmpu_xts1ot/stage0.fx:68:21: `1` carries a (blobref o (productof (x i32) (y i32))), which cannot be taken apart into 2 name(s)",
+"fixpt: <tmp>/stage0.fx:68:21: `1` carries a (blobref o (productof (x i32) (y i32))), which cannot be taken apart into 2 name(s)",
 ""
 ]
 }

@@ -25,7 +25,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmpsqtyuat7/stage0.fx:67:1: this `tagcase` has no arm for 7",
+"fixpt: <tmp>/stage0.fx:67:1: this `tagcase` has no arm for 7",
 ""
 ]
 }

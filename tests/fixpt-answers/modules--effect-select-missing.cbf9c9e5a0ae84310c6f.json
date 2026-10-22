@@ -15,7 +15,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/effect-select-missing.fx:3:11: `(select m t)`: `m` has no effect `t`",
+"fixpt: <programs>/modules/effect-select-missing.fx:3:11: `(select m t)`: `m` has no effect `t`",
 ""
 ]
 }

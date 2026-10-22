@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/region-outlives-place.fx:5:34: `r` must not outlive `p`, and outer could outlive p",
+"fixpt: <programs>/regions/region-outlives-place.fx:5:34: `r` must not outlive `p`, and outer could outlive p",
 ""
 ]
 }

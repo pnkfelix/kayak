@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/conventions/bad-convention.fx:2:23: `c` is not a convention",
+"fixpt: <programs>/conventions/bad-convention.fx:2:23: `c` is not a convention",
 ""
 ]
 }

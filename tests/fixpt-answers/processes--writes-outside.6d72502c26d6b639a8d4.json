@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/processes/writes-outside.fx:6:25: `w` is declared a (addr int @w): a process may share nothing that can be written, and its body holds `bump`: a procedure that has (read @c)",
+"! <programs>/processes/writes-outside.fx:6:25: `w` is declared a (addr int @w): a process may share nothing that can be written, and its body holds `bump`: a procedure that has (read @c)",
 "; both checkers agree",
 ""
 ],

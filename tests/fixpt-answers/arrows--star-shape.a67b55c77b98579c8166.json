@@ -12,7 +12,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/arrows/star-shape.fx:2:11: `(->* (param …) result)`",
+"fixpt: <programs>/arrows/star-shape.fx:2:11: `(->* (param …) result)`",
 ""
 ]
 }

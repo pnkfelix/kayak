@@ -24,7 +24,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmpnpo4wh9v/stage0.fx:65:51: an empty body",
+"fixpt: <tmp>/stage0.fx:65:51: an empty body",
 ""
 ]
 }

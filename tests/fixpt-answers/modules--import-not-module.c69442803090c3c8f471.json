@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: the FX-26 front end: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/import-not-module.fx:3:9: `(import module name … (type name …) (effect name …))`: the module, named by a variable",
+"fixpt: the FX-26 front end: <programs>/modules/import-not-module.fx:3:9: `(import module name … (type name …) (effect name …))`: the module, named by a variable",
 ""
 ]
 }

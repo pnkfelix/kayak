@@ -11,7 +11,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/continuation-escapes.fx:6:5: a continuation captured in `letreap r` could outlive its region: its effect is (maxeff (goto @p) (comefrom @p) (read (globals t)))",
+"fixpt: <programs>/regions/continuation-escapes.fx:6:5: a continuation captured in `letreap r` could outlive its region: its effect is (maxeff (goto @p) (comefrom @p) (read (globals t)))",
 ""
 ]
 }

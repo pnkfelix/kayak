@@ -12,7 +12,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/same-name-apart.fx:15:7: a (moduleof (abs susp type) (val delay (subr (maxeff (alloc @heap) f) ((subr f () int)) susp)) (val force (subr (maxeff (read @heap) f) (susp) int))) is expected here, and this is a (moduleof (abs susp type) (val delay (subr (maxeff (alloc @heap) f') ((subr f' () int)) susp)) (val force (subr (maxeff (read @heap) f') (susp) int)))",
+"fixpt: <programs>/modules/same-name-apart.fx:15:7: a (moduleof (abs susp type) (val delay (subr (maxeff (alloc @heap) f) ((subr f () int)) susp)) (val force (subr (maxeff (read @heap) f) (susp) int))) is expected here, and this is a (moduleof (abs susp type) (val delay (subr (maxeff (alloc @heap) f') ((subr f' () int)) susp)) (val force (subr (maxeff (read @heap) f') (susp) int)))",
 "  `f` and `f'` are different variables, each named `f`",
 ""
 ]

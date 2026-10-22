@@ -25,7 +25,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmpm5sj5yfk/stage0.fx:72:5: a continuation captured in `letrena r` could outlive its region: its effect is (maxeff (alloc @p) (goto @p) (comefrom @p) (read (globals abort-with-continuation sched)))",
+"fixpt: <tmp>/stage0.fx:72:5: a continuation captured in `letrena r` could outlive its region: its effect is (maxeff (alloc @p) (goto @p) (comefrom @p) (read (globals abort-with-continuation sched)))",
 ""
 ]
 }

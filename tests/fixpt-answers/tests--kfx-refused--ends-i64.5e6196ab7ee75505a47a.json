@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmpfrzbnm9m/stage0.fx:66:49: `f` is declared a (subr pure (i64) i64): a (subr pure (i64) i64) is expected here, and this is a (subr spin (i64) i64)",
+"fixpt: <tmp>/stage0.fx:66:49: `f` is declared a (subr pure (i64) i64): a (subr pure (i64) i64) is expected here, and this is a (subr spin (i64) i64)",
 "  beyond what is expected, it has spin; it may not end: nothing smaller, or related, is passed by the call of `f` in `f`",
 ""
 ]

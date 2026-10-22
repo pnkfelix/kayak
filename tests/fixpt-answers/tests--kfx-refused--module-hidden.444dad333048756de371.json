@@ -25,7 +25,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmp2zuoxxrz/stage0.fx:66:15: `f` is declared a i64: unbound variable `secret`",
+"fixpt: <tmp>/stage0.fx:66:15: `f` is declared a i64: unbound variable `secret`",
 ""
 ]
 }

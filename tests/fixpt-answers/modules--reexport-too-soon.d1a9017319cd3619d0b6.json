@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/reexport-too-soon.fx:3:29: `x` uses `m`, defined after it",
+"! <programs>/modules/reexport-too-soon.fx:3:29: `x` uses `m`, defined after it",
 "; both checkers agree",
 ""
 ],

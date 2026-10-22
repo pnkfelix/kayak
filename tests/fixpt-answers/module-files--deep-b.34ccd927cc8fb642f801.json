@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/deep-b.fx:2:15: `x` is declared a int: a int is expected here, and this is a string",
+"! <programs>/module-files/deep-b.fx:2:15: `x` is declared a int: a int is expected here, and this is a string",
 "; both checkers agree",
 ""
 ],

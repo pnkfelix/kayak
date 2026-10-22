@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/conventions/poly-wrong-kind.fx:4:1: `c` is bound as a Conv, and the description given is not one",
+"! <programs>/conventions/poly-wrong-kind.fx:4:1: `c` is bound as a Conv, and the description given is not one",
 "; both checkers agree",
 ""
 ],

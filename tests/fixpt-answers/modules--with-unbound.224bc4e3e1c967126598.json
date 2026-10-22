@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/with-unbound.fx:3:1: `nowhere` is not bound",
+"! <programs>/modules/with-unbound.fx:3:1: `nowhere` is not bound",
 "; both checkers agree",
 ""
 ],

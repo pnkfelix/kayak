@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/pldi89/c6.fx:5:12: unbound variable `x`",
+"fixpt: <programs>/pldi89/c6.fx:5:12: unbound variable `x`",
 ""
 ]
 }

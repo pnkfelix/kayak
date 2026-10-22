@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/lemmas/hypothesis-misplaced.fx:5:3: `bad` is declared a (poly ((a type) (b type)) (subr spin ((subr spin (a) b) (two a)) (two b))): a (subr spin ((subr spin (a) b) (two a)) (two b)) is expected here, and this is a (subr (maxeff spin (read (globals down-two up-two))) ((subr spin (a) b) (two a)) (two b))",
+"fixpt: <programs>/lemmas/hypothesis-misplaced.fx:5:3: `bad` is declared a (poly ((a type) (b type)) (subr spin ((subr spin (a) b) (two a)) (two b))): a (subr spin ((subr spin (a) b) (two a)) (two b)) is expected here, and this is a (subr (maxeff spin (read (globals down-two up-two))) ((subr spin (a) b) (two a)) (two b))",
 "  beyond what is expected, it has (read (globals down-two up-two))",
 ""
 ]

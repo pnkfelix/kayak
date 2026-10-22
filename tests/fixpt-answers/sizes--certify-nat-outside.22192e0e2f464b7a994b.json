@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/certify-nat-outside.fx:2:47: `certify-nat` takes only a variable `nat?` has just found no less than 0",
+"fixpt: <programs>/sizes/certify-nat-outside.fx:2:47: `certify-nat` takes only a variable `nat?` has just found no less than 0",
 ""
 ]
 }

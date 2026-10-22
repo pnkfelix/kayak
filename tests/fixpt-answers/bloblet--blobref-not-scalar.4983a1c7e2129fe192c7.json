@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/blobref-not-scalar.fx:6:35: only a scalar's bytes are read or written, and this points to a f",
+"fixpt: <programs>/bloblet/blobref-not-scalar.fx:6:35: only a scalar's bytes are read or written, and this points to a f",
 ""
 ]
 }

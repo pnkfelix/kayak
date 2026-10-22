@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmp3ztmae5c/stage0.fx:65:15: `y` is declared a i32: 2147483648 is not a i32: its range is -2147483648 to 2147483647",
+"fixpt: <tmp>/stage0.fx:65:15: `y` is declared a i32: 2147483648 is not a i32: its range is -2147483648 to 2147483647",
 ""
 ]
 }

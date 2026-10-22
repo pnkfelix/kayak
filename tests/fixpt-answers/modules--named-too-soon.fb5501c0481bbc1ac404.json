@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/named-too-soon.fx:5:18: `fs` uses `g`, defined after it",
+"fixpt: <programs>/modules/named-too-soon.fx:5:18: `fs` uses `g`, defined after it",
 ""
 ]
 }

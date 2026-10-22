@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/region-outlives-place.fx:5:34: `r` must not outlive `p`, and outer could outlive p",
+"! <programs>/regions/region-outlives-place.fx:5:34: `r` must not outlive `p`, and outer could outlive p",
 "; both checkers agree",
 ""
 ],

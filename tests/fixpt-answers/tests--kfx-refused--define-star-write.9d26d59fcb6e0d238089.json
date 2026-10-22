@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmpcbj88yyg/stage0.fx:64:47: `poke` is declared a (subr (read @globals) ((ref i64 @c)) unit): a (subr (read @globals) ((ref i64 @c)) unit) is expected here, and this is a (subr (write @c) ((ref i64 @c)) unit)",
+"fixpt: <tmp>/stage0.fx:64:47: `poke` is declared a (subr (read @globals) ((ref i64 @c)) unit): a (subr (read @globals) ((ref i64 @c)) unit) is expected here, and this is a (subr (write @c) ((ref i64 @c)) unit)",
 "  beyond what is expected, it has (write @c)",
 ""
 ]

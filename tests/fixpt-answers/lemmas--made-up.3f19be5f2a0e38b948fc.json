@@ -16,7 +16,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/lemmas/made-up.fx:7:50: a (tree b) is expected here, and this is a (tree a)",
+"fixpt: <programs>/lemmas/made-up.fx:7:50: a (tree b) is expected here, and this is a (tree a)",
 ""
 ]
 }

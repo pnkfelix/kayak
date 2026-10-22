@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmptc5hbv9g/stage0.fx:68:11: `pts` is not a type",
+"fixpt: <tmp>/stage0.fx:68:11: `pts` is not a type",
 ""
 ]
 }

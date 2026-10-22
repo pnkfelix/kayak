@@ -12,7 +12,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/capture.fx:8:27: `checker` here is the module's own item, made after `lines`, not the `checker` bound outside it",
+"fixpt: <programs>/modules/capture.fx:8:27: `checker` here is the module's own item, made after `lines`, not the `checker` bound outside it",
 ""
 ]
 }

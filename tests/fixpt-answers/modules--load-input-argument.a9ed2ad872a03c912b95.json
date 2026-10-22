@@ -10,7 +10,7 @@
 "code": 0,
 "out": [
 "half-of : (subr pure ((moduleof (val half int))) int) ! pure",
-"r : int ! (read (globals %shared:input:<kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/../module-files/answer.fx half-of))",
+"r : int ! (read (globals %shared:input:<programs>/modules/../module-files/answer.fx half-of))",
 "42 : int ! (read (globals r))",
 ""
 ],

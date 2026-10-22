@@ -17,7 +17,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/datum/data-generative.fx:4:1: `t` is bound as data, and a ty-id is not data",
+"fixpt: <programs>/datum/data-generative.fx:4:1: `t` is bound as data, and a ty-id is not data",
 ""
 ]
 }

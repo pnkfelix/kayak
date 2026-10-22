@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/higher-kinds/kind-mismatch.fx:5:1: `f` is bound as a (=> (type) type), and the description given is not one",
+"! <programs>/higher-kinds/kind-mismatch.fx:5:1: `f` is bound as a (=> (type) type), and the description given is not one",
 "; both checkers agree",
 ""
 ],

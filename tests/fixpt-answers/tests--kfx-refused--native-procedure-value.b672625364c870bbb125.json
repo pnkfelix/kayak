@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmps8ludp06/stage0.fx:65:14: `native-procedure` is named only to call it: its calls are checked where it is named",
+"fixpt: <tmp>/stage0.fx:65:14: `native-procedure` is named only to call it: its calls are checked where it is named",
 ""
 ]
 }

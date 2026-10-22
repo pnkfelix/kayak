@@ -29,7 +29,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmpwiac2vd1/stage0.fx:69:47: `slf` is declared a (subr (read @globals) (wrap) i64): a (subr (read @globals) (wrap) i64) is expected here, and this is a (subr (maxeff (read @globals) spin (read (globals app))) (wrap) i64)",
+"fixpt: <tmp>/stage0.fx:69:47: `slf` is declared a (subr (read @globals) (wrap) i64): a (subr (read @globals) (wrap) i64) is expected here, and this is a (subr (maxeff (read @globals) spin (read (globals app))) (wrap) i64)",
 "  beyond what is expected, it has spin",
 ""
 ]

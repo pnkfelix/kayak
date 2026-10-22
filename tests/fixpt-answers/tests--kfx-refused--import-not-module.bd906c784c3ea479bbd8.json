@@ -12,7 +12,7 @@
 ""
 ],
 "err": [
-"fixpt: read error: /tmp/tmpkmrhuccs/stage0.fx:65:9: `(import module name … (type name …) (effect name …))`: the module, named by a variable",
+"fixpt: read error: <tmp>/stage0.fx:65:9: `(import module name … (type name …) (effect name …))`: the module, named by a variable",
 ""
 ]
 }

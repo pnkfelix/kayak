@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/width-exact-region.fx:7:15: `c` is declared a one: a one is expected here, and this is a (bloblet (fields int (ref int @heap)) @b)",
+"fixpt: <programs>/bloblet/width-exact-region.fx:7:15: `c` is declared a one: a one is expected here, and this is a (bloblet (fields int (ref int @heap)) @b)",
 ""
 ]
 }

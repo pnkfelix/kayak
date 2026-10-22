@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/terminate/arrow-spins.fx:4:3: `forever` is declared a (subr pure (int) int): a (subr pure (int) int) is expected here, and this is a (subr (maxeff (read (globals forever)) spin) (int) int)",
+"! <programs>/terminate/arrow-spins.fx:4:3: `forever` is declared a (subr pure (int) int): a (subr pure (int) int) is expected here, and this is a (subr (maxeff (read (globals forever)) spin) (int) int)",
 "  beyond what is expected, it has (maxeff (read (globals forever)) spin); it may not end: no argument keeps shrinking around every loop of calls",
 "; both checkers agree",
 ""

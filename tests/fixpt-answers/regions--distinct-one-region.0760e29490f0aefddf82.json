@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/distinct-one-region.fx:10:12: `r1` is distinct, and is given r, as `r2` is",
+"! <programs>/regions/distinct-one-region.fx:10:12: `r1` is distinct, and is given r, as `r2` is",
 "; both checkers agree",
 ""
 ],

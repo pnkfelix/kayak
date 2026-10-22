@@ -27,7 +27,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmpp36mlh2j/stage0.fx:67:47: `a` cannot be inferred for (poly ((a type)) (subr pure () (listof a acyclic))): nothing here says what it is. Use `proj`, or `the`",
+"fixpt: <tmp>/stage0.fx:67:47: `a` cannot be inferred for (poly ((a type)) (subr pure () (listof a acyclic))): nothing here says what it is. Use `proj`, or `the`",
 ""
 ]
 }

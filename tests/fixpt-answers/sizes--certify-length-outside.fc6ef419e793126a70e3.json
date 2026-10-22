@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/certify-length-outside.fx:2:71: `certify-length` takes only a variable and a length `length-is?` has just confirmed",
+"fixpt: <programs>/sizes/certify-length-outside.fx:2:71: `certify-length` takes only a variable and a length `length-is?` has just confirmed",
 ""
 ]
 }

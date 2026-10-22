@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmpn4evcdt1/stage0.fx:65:49: `t` cannot be inferred for (poly ((t type) (r region)) (vsubr (alloc r) t (listof t r))): nothing here says what it is. Use `proj`, or `the`",
+"fixpt: <tmp>/stage0.fx:65:49: `t` cannot be inferred for (poly ((t type) (r region)) (vsubr (alloc r) t (listof t r))): nothing here says what it is. Use `proj`, or `the`",
 ""
 ]
 }

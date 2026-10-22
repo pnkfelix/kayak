@@ -24,7 +24,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmplli5lpty/stage0.fx:65:50: a `cond` must end with an `else` clause: FX has no unspecified value",
+"fixpt: <tmp>/stage0.fx:65:50: a `cond` must end with an `else` clause: FX has no unspecified value",
 ""
 ]
 }

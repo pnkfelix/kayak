@@ -24,7 +24,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmpio4r5_a3/stage0.fx:66:17: `s` is declared a shape: a shape is expected here, and this is a (sumof (square int))",
+"fixpt: <tmp>/stage0.fx:66:17: `s` is declared a shape: a shape is expected here, and this is a (sumof (square int))",
 ""
 ]
 }

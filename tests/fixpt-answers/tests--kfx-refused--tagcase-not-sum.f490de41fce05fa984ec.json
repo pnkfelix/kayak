@@ -28,7 +28,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmpb4gxyp1w/stage0.fx:67:52: a sum is expected here, and this is a g",
+"fixpt: <tmp>/stage0.fx:67:52: a sum is expected here, and this is a g",
 ""
 ]
 }

@@ -24,7 +24,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmpvwlftyro/stage0.fx:66:3: `start` is declared a (subr (maxeff (read @globals) (alloc @w)) () (addr int @w)): a (subr (maxeff (read @globals) (alloc @w)) () (addr int @w)) is expected here, and this is a (subr (maxeff (alloc @w) nondet) () (addr int @w))",
+"fixpt: <tmp>/stage0.fx:66:3: `start` is declared a (subr (maxeff (read @globals) (alloc @w)) () (addr int @w)): a (subr (maxeff (read @globals) (alloc @w)) () (addr int @w)) is expected here, and this is a (subr (maxeff (alloc @w) nondet) () (addr int @w))",
 "  beyond what is expected, it has nondet",
 ""
 ]

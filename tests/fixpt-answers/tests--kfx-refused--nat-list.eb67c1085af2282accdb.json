@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmpxl7hom4t/stage0.fx:65:64: argument 2 is a (nat w), where a (nat v) is expected",
+"fixpt: <tmp>/stage0.fx:65:64: argument 2 is a (nat w), where a (nat v) is expected",
 ""
 ]
 }

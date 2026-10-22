@@ -25,7 +25,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmpoptwskr9/stage0.fx:67:27: `bump` is declared a (subr pure () unit): a (subr pure () unit) is expected here, and this is a (subr (maxeff (write @c) (read (globals counter))) () unit)",
+"fixpt: <tmp>/stage0.fx:67:27: `bump` is declared a (subr pure () unit): a (subr pure () unit) is expected here, and this is a (subr (maxeff (write @c) (read (globals counter))) () unit)",
 "  beyond what is expected, it has (maxeff (write @c) (read (globals counter)))",
 ""
 ]

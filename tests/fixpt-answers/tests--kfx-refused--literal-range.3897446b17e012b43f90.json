@@ -24,7 +24,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmp18u3yy6t/stage0.fx:65:17: `big` is declared a i64: 9223372036854775808 is not a i64: its range is -9223372036854775808 to 9223372036854775807",
+"fixpt: <tmp>/stage0.fx:65:17: `big` is declared a i64: 9223372036854775808 is not a i64: its range is -9223372036854775808 to 9223372036854775807",
 ""
 ]
 }

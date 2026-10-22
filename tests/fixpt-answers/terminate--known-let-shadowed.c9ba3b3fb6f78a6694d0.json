@@ -15,7 +15,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/terminate/known-let-shadowed.fx:5:17: `omega` is declared a T: a T is expected here, and this is a (subr spin (T) int)",
+"fixpt: <programs>/terminate/known-let-shadowed.fx:5:17: `omega` is declared a T: a T is expected here, and this is a (subr spin (T) int)",
 "  beyond what is expected, it has spin",
 ""
 ]

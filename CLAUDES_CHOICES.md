@@ -3557,7 +3557,10 @@ of its own, not taken); the clone is a fresh one at
   (`fixptcache.HERE`) and read back with this checkout's: without it,
   691 answers differed from macOS's in the path alone; with it, 17 do,
   each the machine's (arm64's declared conventions, the default
-  convention printed). Not chosen: one store for every machine,
+  convention printed). So too a Fixpt program's path, the clone's copy
+  or kayak's (the same files), as `<programs>`, read back as kayak's;
+  and a script's temporary directory, macOS's or Linux's, as `<tmp>`,
+  which differs at every run. Not chosen: one store for every machine,
   in which a Linux check rewrote macOS's answers and stamped them as the
   pin's.
 - **`kayak-jit`'s routines** `foreign`, `bloblet_routine`,

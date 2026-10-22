@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/control/composable-not-oneshot.fx:5:47: argument 1 is a (composable int int pure @p), where a (oneshot int int pure @p) is expected",
+"! <programs>/control/composable-not-oneshot.fx:5:47: argument 1 is a (composable int int pure @p), where a (oneshot int int pure @p) is expected",
 "; both checkers agree",
 ""
 ],

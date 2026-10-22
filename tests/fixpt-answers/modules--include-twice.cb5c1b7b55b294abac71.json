@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/include-twice.fx:5:9: `x` is defined twice in this module",
+"! <programs>/modules/include-twice.fx:5:9: `x` is defined twice in this module",
 "; both checkers agree",
 ""
 ],

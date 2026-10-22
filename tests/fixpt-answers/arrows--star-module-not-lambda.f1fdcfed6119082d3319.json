@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/arrows/star-module-not-lambda.fx:4:48: `->*` finds a procedure's effect from its `lambda`: define it as one",
+"fixpt: <programs>/arrows/star-module-not-lambda.fx:4:48: `->*` finds a procedure's effect from its `lambda`: define it as one",
 ""
 ]
 }

@@ -13,7 +13,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/include-type-missing.fx:5:11: `nope` is not a type, nor one a module included gives",
+"fixpt: <programs>/modules/include-type-missing.fx:5:11: `nope` is not a type, nor one a module included gives",
 ""
 ]
 }

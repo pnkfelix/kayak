@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/datum/acyclic-uncertified.fx:2:78: `certify-acyclic` takes only a variable `acyclic?` has just found acyclic",
+"fixpt: <programs>/datum/acyclic-uncertified.fx:2:78: `certify-acyclic` takes only a variable `acyclic?` has just found acyclic",
 ""
 ]
 }

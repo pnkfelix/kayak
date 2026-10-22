@@ -12,7 +12,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-family-not-type.fx:3:38: `f` is a flat, not a type",
+"fixpt: <programs>/bloblet/flat-family-not-type.fx:3:38: `f` is a flat, not a type",
 ""
 ]
 }

@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/nlist-const.fx:3:30: `v` is declared a (nlist int finite): a (nlist int finite) is expected here, and this is a (listof int const)",
+"! <programs>/sizes/nlist-const.fx:3:30: `v` is declared a (nlist int finite): a (nlist int finite) is expected here, and this is a (listof int const)",
 "; both checkers agree",
 ""
 ],

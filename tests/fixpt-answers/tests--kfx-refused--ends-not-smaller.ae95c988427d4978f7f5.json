@@ -28,7 +28,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmplnq_oxx_/stage0.fx:68:45: `f` is declared a (subr pure (tree tree) int): a (subr pure (tree tree) int) is expected here, and this is a (subr spin (tree tree) int)",
+"fixpt: <tmp>/stage0.fx:68:45: `f` is declared a (subr pure (tree tree) int): a (subr pure (tree tree) int) is expected here, and this is a (subr spin (tree tree) int)",
 "  beyond what is expected, it has spin; it may not end: no argument keeps shrinking around every loop of calls",
 ""
 ]

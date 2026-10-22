@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: the FX-26 front end: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/processes/pselect-arm.fx:4:30: a `pselect` arm is `((icell-get i-cell) name body …)`, `((receive mailbox) name body …)`, `((sleep-until time) name body …)` or `((read-byte) name body …)`",
+"fixpt: the FX-26 front end: <programs>/processes/pselect-arm.fx:4:30: a `pselect` arm is `((icell-get i-cell) name body …)`, `((receive mailbox) name body …)`, `((sleep-until time) name body …)` or `((read-byte) name body …)`",
 ""
 ]
 }

@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/load-missing.fx:3:1: cannot read `../module-files/no-such-file.fx`: No such file or directory (os error 2)",
+"! <programs>/modules/load-missing.fx:3:1: cannot read `../module-files/no-such-file.fx`: No such file or directory (os error 2)",
 "; both checkers agree",
 ""
 ],

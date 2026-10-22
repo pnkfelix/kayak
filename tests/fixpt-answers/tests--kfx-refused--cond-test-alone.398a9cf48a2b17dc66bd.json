@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmpt5mf3qqa/stage0.fx:65:51: an empty body",
+"fixpt: <tmp>/stage0.fx:65:51: an empty body",
 ""
 ]
 }

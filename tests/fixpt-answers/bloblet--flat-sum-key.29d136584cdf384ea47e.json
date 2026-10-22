@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-sum-key.fx:3:54: a flat sum's key is `u8`, `u16` or `u32`",
+"fixpt: <programs>/bloblet/flat-sum-key.fx:3:54: a flat sum's key is `u8`, `u16` or `u32`",
 ""
 ]
 }

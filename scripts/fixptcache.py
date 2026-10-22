@@ -154,13 +154,29 @@ class Unanswered(Exception):
 # Where kayak is, as an answer kept writes it: Fixpt's messages name its
 # files by their paths, which are not the same in every checkout (C134).
 HERE = "<kayak>"
+# And Fixpt's programs, the clone's or kayak's copy of them, the same files
+# (fx26-tests.py): as `<programs>`, read back as kayak's copy.
+THERE = "<programs>"
+COPIES = [HERE + "/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs", HERE + "/tests/fx26/programs"]
+
+
+# And a temporary directory a script made for the run (corpus.py's), on
+# macOS or Linux: `<tmp>`.
+TEMPORARY = re.compile(r"(/private)?(/var/folders/[A-Za-z0-9_+-]+/[A-Za-z0-9_+-]+/T|/tmp)/tmp[a-z0-9_]{8}")
+
+
+def _placeless(text):
+    text = TEMPORARY.sub("<tmp>", text.replace(ROOT, HERE))
+    for c in COPIES:
+        text = text.replace(c, THERE)
+    return text
 
 
 def _read(path):
     """An answer kept; a run that took too long is kept as one, and read
     back as it ended, by raising."""
     with open(path) as g:
-        d = json.loads(g.read().replace(HERE, ROOT))
+        d = json.loads(g.read().replace(THERE, PROGRAMS).replace(HERE, ROOT))
     if d["code"] == "timeout":
         raise subprocess.TimeoutExpired(d["args"], d["out"][0])
     return Ran(d["code"], "\n".join(d["out"]), "\n".join(d["err"]))
@@ -168,7 +184,7 @@ def _read(path):
 
 def _write(path, args, ran):
     d = {"args": args, "code": ran.returncode, "out": ran.stdout.split("\n"), "err": ran.stderr.split("\n")}
-    text = json.dumps(d, indent=0, ensure_ascii=False).replace(ROOT, HERE) + "\n"
+    text = _placeless(json.dumps(d, indent=0, ensure_ascii=False)) + "\n"
     if os.path.exists(path) and open(path).read() == text:
         return
     os.makedirs(ANSWERS, exist_ok=True)

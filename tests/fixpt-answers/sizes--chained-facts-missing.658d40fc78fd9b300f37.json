@@ -12,7 +12,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/chained-facts-missing.fx:4:32: a nat is expected here, and this is a int",
+"fixpt: <programs>/sizes/chained-facts-missing.fx:4:32: a nat is expected here, and this is a int",
 ""
 ]
 }

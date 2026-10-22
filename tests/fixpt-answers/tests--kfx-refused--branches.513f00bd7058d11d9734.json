@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmp6y70444l/stage0.fx:65:53: a i64 is expected here, and this is a string",
+"fixpt: <tmp>/stage0.fx:65:53: a i64 is expected here, and this is a string",
 ""
 ]
 }

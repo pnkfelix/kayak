@@ -25,7 +25,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmpfetn0dty/stage0.fx:67:3: `apply-self` is declared a (subr pure (wrap) i64): a (subr pure (wrap) i64) is expected here, and this is a (subr spin (wrap) i64)",
+"fixpt: <tmp>/stage0.fx:67:3: `apply-self` is declared a (subr pure (wrap) i64): a (subr pure (wrap) i64) is expected here, and this is a (subr spin (wrap) i64)",
 "  beyond what is expected, it has spin",
 ""
 ]

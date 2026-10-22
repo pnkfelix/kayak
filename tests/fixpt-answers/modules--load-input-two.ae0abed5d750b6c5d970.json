@@ -10,7 +10,7 @@
 ""
 ],
 "err": [
-"fixpt: the FX-26 front end: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/load-input-two.fx:3:11: a `load-input` file is one expression",
+"fixpt: the FX-26 front end: <programs>/modules/load-input-two.fx:3:11: a `load-input` file is one expression",
 ""
 ]
 }

@@ -16,7 +16,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-tagcase-cover.fx:6:1: this `tagcase` has no arm for b",
+"fixpt: <programs>/bloblet/flat-tagcase-cover.fx:6:1: this `tagcase` has no arm for b",
 ""
 ]
 }

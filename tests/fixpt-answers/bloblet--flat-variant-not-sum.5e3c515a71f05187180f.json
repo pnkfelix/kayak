@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-variant-not-sum.fx:5:19: a blobref to a flat sum is expected here, and this is a (blobref o f64)",
+"! <programs>/bloblet/flat-variant-not-sum.fx:5:19: a blobref to a flat sum is expected here, and this is a (blobref o f64)",
 "; both checkers agree",
 ""
 ],

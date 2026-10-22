@@ -25,7 +25,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmpdy5qh4ag/stage0.fx:66:19: `one` is defined twice in this module",
+"fixpt: <tmp>/stage0.fx:66:19: `one` is defined twice in this module",
 ""
 ]
 }

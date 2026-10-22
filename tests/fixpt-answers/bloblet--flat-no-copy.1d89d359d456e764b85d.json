@@ -13,7 +13,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-no-copy.fx:6:1: only a scalar's bytes are read or written, and this points to a (productof (x f64) (y f64))",
+"fixpt: <programs>/bloblet/flat-no-copy.fx:6:1: only a scalar's bytes are read or written, and this points to a (productof (x f64) (y f64))",
 ""
 ]
 }

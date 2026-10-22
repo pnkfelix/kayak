@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/processes/nondet.fx:5:3: `start` is declared a (subr (maxeff (alloc @w) (read @globals)) () (addr int @w)): a (subr (maxeff (alloc @w) (read @globals)) () (addr int @w)) is expected here, and this is a (subr (maxeff (alloc @w) nondet) () (addr int @w))",
+"! <programs>/processes/nondet.fx:5:3: `start` is declared a (subr (maxeff (alloc @w) (read @globals)) () (addr int @w)): a (subr (maxeff (alloc @w) (read @globals)) () (addr int @w)) is expected here, and this is a (subr (maxeff (alloc @w) nondet) () (addr int @w))",
 "  beyond what is expected, it has nondet",
 "; both checkers agree",
 ""

@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/frozen-outlives-place.fx:3:1: the value of `letrena a` would outlive its region: its type is (listof int (acyclic a))",
+"! <programs>/regions/frozen-outlives-place.fx:3:1: the value of `letrena a` would outlive its region: its type is (listof int (acyclic a))",
 "; both checkers agree",
 ""
 ],

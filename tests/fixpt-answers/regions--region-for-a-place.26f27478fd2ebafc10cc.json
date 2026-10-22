@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/region-for-a-place.fx:3:26: this `poly` binds 2 description(s); `proj` gave 1",
+"fixpt: <programs>/regions/region-for-a-place.fx:3:26: this `poly` binds 2 description(s); `proj` gave 1",
 ""
 ]
 }

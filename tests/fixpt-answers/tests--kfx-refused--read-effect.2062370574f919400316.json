@@ -24,7 +24,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmpol4yuk6q/stage0.fx:65:71: `peek` is declared a (poly ((r region)) (subr (maxeff (read @globals) spin) ((flatarrayof i64 r)) i64)): a (subr (maxeff (read @globals) spin) ((flatarrayof i64 r)) i64) is expected here, and this is a (subr (maxeff (read r) (read (globals flatarray-ref-i64))) ((flatarrayof i64 r)) i64)",
+"fixpt: <tmp>/stage0.fx:65:71: `peek` is declared a (poly ((r region)) (subr (maxeff (read @globals) spin) ((flatarrayof i64 r)) i64)): a (subr (maxeff (read @globals) spin) ((flatarrayof i64 r)) i64) is expected here, and this is a (subr (maxeff (read r) (read (globals flatarray-ref-i64))) ((flatarrayof i64 r)) i64)",
 "  beyond what is expected, it has (read r)",
 ""
 ]

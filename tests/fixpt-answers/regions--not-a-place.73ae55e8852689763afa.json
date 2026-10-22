@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/regions/not-a-place.fx:2:33: `r` is not a place",
+"! <programs>/regions/not-a-place.fx:2:33: `r` is not a place",
 "; both checkers agree",
 ""
 ],

@@ -28,7 +28,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmpp1x10bxs/stage0.fx:66:71: `b` carries a (productof (1 i64)), which cannot be taken apart into 2 name(s)",
+"fixpt: <tmp>/stage0.fx:66:71: `b` carries a (productof (1 i64)), which cannot be taken apart into 2 name(s)",
 ""
 ]
 }

@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmp0a1uj2or/stage0.fx:68:7: `par`'s branches interfere: one has (write @x) and another (read @x), so the answer could depend on which runs first",
+"fixpt: <tmp>/stage0.fx:68:7: `par`'s branches interfere: one has (write @x) and another (read @x), so the answer could depend on which runs first",
 ""
 ]
 }

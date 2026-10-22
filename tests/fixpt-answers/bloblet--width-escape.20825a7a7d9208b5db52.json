@@ -13,7 +13,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/width-escape.fx:9:15: a one is expected here, and this is a (bloblet (fields int (ref int r)) @b)",
+"fixpt: <programs>/bloblet/width-escape.fx:9:15: a one is expected here, and this is a (bloblet (fields int (ref int r)) @b)",
 ""
 ]
 }

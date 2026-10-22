@@ -15,7 +15,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/modules/select-no-type.fx:9:11: `(select counter u)`: `counter` has no type `u`",
+"fixpt: <programs>/modules/select-no-type.fx:9:11: `(select counter u)`: `counter` has no type `u`",
 ""
 ]
 }

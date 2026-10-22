@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/module-files/deep-a.fx:2:11: in `deep-b.fx`, 2:15: a int is expected here, and this is a string",
+"fixpt: <programs>/module-files/deep-a.fx:2:11: in `deep-b.fx`, 2:15: a int is expected here, and this is a string",
 ""
 ]
 }

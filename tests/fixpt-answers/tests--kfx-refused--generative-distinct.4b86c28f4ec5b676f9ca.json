@@ -28,7 +28,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmpdov6011q/stage0.fx:65:15: `x` is declared a i64: a i64 is expected here, and this is a meters",
+"fixpt: <tmp>/stage0.fx:65:15: `x` is declared a i64: a i64 is expected here, and this is a meters",
 ""
 ]
 }

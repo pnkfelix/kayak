@@ -14,7 +14,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/sizes/finite-proj.fx:5:2: `n` is bound as a Size, and the description given is not one",
+"fixpt: <programs>/sizes/finite-proj.fx:5:2: `n` is bound as a Size, and the description given is not one",
 ""
 ]
 }

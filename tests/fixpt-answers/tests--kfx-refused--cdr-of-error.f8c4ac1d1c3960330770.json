@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmp0oxyszyy/stage0.fx:65:47: `t1` cannot be inferred for (poly ((r region)) (poly ((t1 type) (t2 type)) (subr (read r) ((union nil (pairof t1 t2 r))) t2))): nothing here says what it is. Use `proj`, or `the`",
+"fixpt: <tmp>/stage0.fx:65:47: `t1` cannot be inferred for (poly ((r region)) (poly ((t1 type) (t2 type)) (subr (read r) ((union nil (pairof t1 t2 r))) t2))): nothing here says what it is. Use `proj`, or `the`",
 ""
 ]
 }

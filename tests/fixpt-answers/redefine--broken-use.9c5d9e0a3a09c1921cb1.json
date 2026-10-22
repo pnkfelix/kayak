@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/redefine/broken-use.fx:6:2: `g` is broken, since `f` was redefined (argument 1 is a int, where a string is expected): define it again to use it",
+"! <programs>/redefine/broken-use.fx:6:2: `g` is broken, since `f` was redefined (argument 1 is a int, where a string is expected): define it again to use it",
 "; both checkers agree",
 ""
 ],

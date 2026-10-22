@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmp5iaeadi_/stage0.fx:65:49: `r` is not a place",
+"fixpt: <tmp>/stage0.fx:65:49: `r` is not a place",
 ""
 ]
 }

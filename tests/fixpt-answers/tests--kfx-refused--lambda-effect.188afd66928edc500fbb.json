@@ -26,7 +26,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmp90y22jfj/stage0.fx:67:46: argument 1 is a (subr (maxeff (read @globals) spin (read (globals spin!))) (i64) i64), where a (subr pure (i64) i64) is expected",
+"fixpt: <tmp>/stage0.fx:67:46: argument 1 is a (subr (maxeff (read @globals) spin (read (globals spin!))) (i64) i64), where a (subr pure (i64) i64) is expected",
 "  beyond what is expected, it has (maxeff (read @globals) spin (read (globals spin!)))",
 ""
 ]

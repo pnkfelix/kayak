@@ -24,7 +24,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmpqjv9ctsc/stage0.fx:66:74: a i64 is expected here, and this is a int",
+"fixpt: <tmp>/stage0.fx:66:74: a i64 is expected here, and this is a int",
 ""
 ]
 }

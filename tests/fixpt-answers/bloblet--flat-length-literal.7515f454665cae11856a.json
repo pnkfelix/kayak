@@ -7,7 +7,7 @@
 ],
 "code": 1,
 "out": [
-"! <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/bloblet/flat-length-literal.fx:4:60: a flat array's literal length is 0 to 268435454",
+"! <programs>/bloblet/flat-length-literal.fx:4:60: a flat array's literal length is 0 to 268435454",
 "; both checkers agree",
 ""
 ],

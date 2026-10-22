@@ -16,7 +16,7 @@
 ""
 ],
 "err": [
-"fixpt: <kayak>/../kayak-refs/fixpt/crates/fixpt-fx26/tests/programs/lemmas/cross-back.fx:10:24: `two` is declared a (tree int): a (tree int) is expected here, and this is a (tree2 int)",
+"fixpt: <programs>/lemmas/cross-back.fx:10:24: `two` is declared a (tree int): a (tree int) is expected here, and this is a (tree2 int)",
 ""
 ]
 }

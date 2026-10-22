@@ -24,7 +24,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmpgfaexf26/stage0.fx:70:32: the type of parameter `m` cannot be known here: write `(m type)`, or check the `lambda` against a type",
+"fixpt: <tmp>/stage0.fx:70:32: the type of parameter `m` cannot be known here: write `(m type)`, or check the `lambda` against a type",
 ""
 ]
 }

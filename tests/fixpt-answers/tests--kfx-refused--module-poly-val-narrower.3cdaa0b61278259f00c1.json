@@ -28,7 +28,7 @@
 ""
 ],
 "err": [
-"fixpt: /tmp/tmp_ffri8gt/stage0.fx:78:49: argument 1 is a (moduleof (val first-or (subr pure ((listof i64 acyclic) i64) i64))), where a firsts is expected",
+"fixpt: <tmp>/stage0.fx:78:49: argument 1 is a (moduleof (val first-or (subr pure ((listof i64 acyclic) i64) i64))), where a firsts is expected",
 ""
 ]
 }

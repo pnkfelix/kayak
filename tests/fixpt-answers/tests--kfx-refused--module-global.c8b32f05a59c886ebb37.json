@@ -25,7 +25,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmphtak_ttx/stage0.fx:66:48: a (subr pure () i64) is expected here, and this is a (subr (read (globals g)) () i64)",
+"fixpt: <tmp>/stage0.fx:66:48: a (subr pure () i64) is expected here, and this is a (subr (read (globals g)) () i64)",
 "  beyond what is expected, it has (read (globals g))",
 ""
 ]

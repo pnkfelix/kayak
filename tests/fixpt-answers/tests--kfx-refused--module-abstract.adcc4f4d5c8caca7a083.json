@@ -25,7 +25,7 @@
 ""
 ],
 "err": [
-"fixpt: /var/folders/_t/5k1klqh11_51jf5n6s4n1dk80000gn/T/tmp3pepyf0j/stage0.fx:71:55: unbound variable `down-t`",
+"fixpt: <tmp>/stage0.fx:71:55: unbound variable `down-t`",
 ""
 ]
 }
