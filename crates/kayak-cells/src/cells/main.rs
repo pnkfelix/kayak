@@ -59,6 +59,10 @@ pub fn default_steps() -> i64 {
     20000000i64
 }
 
+pub fn usage() -> Str {
+    str_lit("usage: kayak-cells LISTING [OPTION ...]   the listing's `program` run, its\n                                          value written as Fixpt writes it\n       kayak-cells --help                 this\n\nLISTING is the words of `fixpt compile --full-literals`, or of\n`kayak-fx26 --cells`. The tier:\n  (none)               tier 1: the cells interpreted\n  --hand               tier 2: by the hand machine\n  --compiled           tier 4: the words compiled\n  --regs               with their register code, where they have it\n                       (tier 5, with --compiled)\n  --direct             register code as native procedures too (tier 6,\n                       x86_64; implies --compiled)\nAnd:\n  --fixpt-calls        register code calling as Fixpt's does (x86_64)\n  --indexes            values as indices into the heap, not tagged\n                       addresses where native code runs\n  --step-limit N|none  at most N instructions (20000000; none, no limit)\n  --slice N            a task's time slice, N polls (65536)\n  --gc-stress          collect at every safepoint\n  --gc-stats           how values are kept, collections, words copied,\n                       the machine's entries, words compiled and those\n                       of tier 6, on the standard error\nIf the program fails: `evaluation failed: MESSAGE` on the standard error,\nand status 1.\n")
+}
+
 /// Option `name`'s number, `none` the most there is; else `otherwise`.
 pub fn option_of(mut r#as: List<Str>, mut name: Str, mut otherwise: i64) -> i64 {
     loop {
@@ -94,8 +98,12 @@ pub fn option_of(mut r#as: List<Str>, mut name: Str, mut otherwise: i64) -> i64 
 pub fn cells_main() -> Int {
     let r#as = the::<Strings>(args());
     if null_p(r#as) {
-        match fail_with(str_lit("usage: kayak-cells LISTING [--step-limit N|none]"), int_lit(2)) {};
+        write_err(usage());
+        match exit(int_lit(2)) {};
         int_lit(2)
+    } else if (string_eq_p(car(r#as), str_lit("--help")) || string_eq_p(car(r#as), str_lit("-h"))) {
+        say(usage());
+        int_lit(0)
     } else {
         let u00 = if string_member_p(str_lit("--indexes"), r#as) {
             ()

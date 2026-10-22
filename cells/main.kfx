@@ -30,6 +30,34 @@
 
 (define default-steps i64 20000000)
 
+(define usage string
+  "usage: kayak-cells LISTING [OPTION ...]   the listing's `program` run, its
+                                          value written as Fixpt writes it
+       kayak-cells --help                 this
+
+LISTING is the words of `fixpt compile --full-literals`, or of
+`kayak-fx26 --cells`. The tier:
+  (none)               tier 1: the cells interpreted
+  --hand               tier 2: by the hand machine
+  --compiled           tier 4: the words compiled
+  --regs               with their register code, where they have it
+                       (tier 5, with --compiled)
+  --direct             register code as native procedures too (tier 6,
+                       x86_64; implies --compiled)
+And:
+  --fixpt-calls        register code calling as Fixpt's does (x86_64)
+  --indexes            values as indices into the heap, not tagged
+                       addresses where native code runs
+  --step-limit N|none  at most N instructions (20000000; none, no limit)
+  --slice N            a task's time slice, N polls (65536)
+  --gc-stress          collect at every safepoint
+  --gc-stats           how values are kept, collections, words copied,
+                       the machine's entries, words compiled and those
+                       of tier 6, on the standard error
+If the program fails: `evaluation failed: MESSAGE` on the standard error,
+and status 1.
+")
+
 (define-rec
   (option-of (subr kfx ((listof string acyclic) string i64) i64)
     (lambda (as name otherwise)
@@ -45,8 +73,10 @@
 (define cells-main (subr driving () int)
   (lambda ()
     (let ((as (the strings (args))))
-      (if (null? as)
-          (begin (fail-with "usage: kayak-cells LISTING [--step-limit N|none]" 2) 2)
+      (cond
+        ((null? as) (begin (write-err usage) (exit 2) 2))
+        ((or (string=? (car as) "--help") (string=? (car as) "-h")) (begin (say usage) 0))
+        (else
           (let* ((u00 (if (string-member? "--indexes" as) #u (begin (heap-addressed!) #u)))
                  (u0 (set regs-on (string-member? "--regs" as)))
                  (w (listing-words! (read-text (car as))))
@@ -66,4 +96,4 @@
                          #u)))
             (tagcase r
               (ran-answer (v) (begin (say (string-append (written v) "\n")) 0))
-              (ran-failed (m) (begin (write-err (string-append "evaluation failed: " (string-append m "\n"))) 1))))))))
+              (ran-failed (m) (begin (write-err (string-append "evaluation failed: " (string-append m "\n"))) 1)))))))))
