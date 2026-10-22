@@ -2737,7 +2737,7 @@ pub fn hand_made() -> Ref<List<HandCode>> {
 /// The machine, made once: emitted, with the listing's words compiled
 /// (`--compiled`), encoded, sealed. First a jump to its entry, then the
 /// data, then the code.
-pub fn hand_code_x() -> &'static Sum_4made_6failed<HandCode, Str> {
+pub fn hand_code_arm64_x() -> &'static Sum_4made_6failed<HandCode, Str> {
     if not(null_p(get(hand_made()))) {
         kayak_rt::heap_alloc(Sum_4made_6failed::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int, Str>::Made(car(get(hand_made()))))
     } else {

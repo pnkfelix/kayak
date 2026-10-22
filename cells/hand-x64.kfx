@@ -1,0 +1,624 @@
+"hand-x64.kfx: tier 2's machine on x86_64 (C136): hand.kfx's, routine for
+ routine, emitted with FX-26's own x86_64 encoder (`fx26:x86_64.fx`), as
+ Fixpt keeps its x86_64 machine beside its arm64 one (`cellular/x64.rs`).
+ The same state, the same stacks, the same giving back; only the code
+ differs, kept as close to hand.kfx's as the two instruction sets allow:
+ the same routines in the same order, the same steps.
+
+ What x86_64 changes, as Fixpt's does:
+ - Fewer registers. As Fixpt's table: `r14` the ip, `r13` `cur`, `r12`
+   the data stack's top, `rbx` the return stack's, `r15` the state,
+   `rbp` the frame, `r9` `clo`; and `r10` the heap's base, which Fixpt's
+   machine has not (its values are addresses) and this one has (tier 1's
+   are offsets). Scratch: `rax` for hand.kfx's `x9`, `rdi`, `rsi`, `rcx`,
+   `rdx`, `r8`, `r11` for `x10`, `x11`, `x13` … `x16`. The fuel lives in
+   the state, counted down there, as Fixpt's; so do the data stack's
+   base and the cell being run, which hand.kfx keeps in registers.
+ - Variable-length instructions: code is placed in bytes, and every
+   branch to a label is a 32-bit one, never out of reach.
+ - `r15` is the native convention's pinned state: kept on the machine
+   stack, with every other register the machine uses, and given back.
+ Tiers 4 and 5 (`--compiled`) are not yet here (TODO §34).
+ fixpt-source: crates/fixpt-native/src/cellular/x64.rs@4caffc2"
+
+(define x86 (load-input "fx26:x86_64.fx"))
+
+"Registers, as the hardware numbers them."
+(define y-mem int 10)
+(define y-ip int 14)
+(define y-cur int 13)
+(define y-dsp int 12)
+(define y-rsp int 3)
+(define y-st int 15)
+(define y-fp int 5)
+(define y-clo int 9)
+(define y-w int 0)
+(define y10 int 7)
+(define y11 int 6)
+(define y13 int 1)
+(define y14 int 2)
+(define y15 int 8)
+(define y16 int 11)
+"The native convention's: its arguments, and its fourth's place in its
+ state."
+(define y-rdi int 7)
+(define y-rsi int 6)
+(define y-r8 int 8)
+(define y-reg4 int 616)
+
+"Conditions, as `x86_64.fx` numbers them."
+(define q-o int 0)
+(define q-b int 2)
+(define q-ae int 3)
+(define q-e int 4)
+(define q-ne int 5)
+(define q-be int 6)
+(define q-a int 7)
+(define q-l int 12)
+
+"Arithmetic and shifts, as `x86-alu` and `x86-shift-imm` take them."
+(define a-add int 0)
+(define a-or int 1)
+(define a-and int 4)
+(define a-sub int 5)
+(define a-cmp int 7)
+(define s-shl int 4)
+(define s-shr int 5)
+(define s-sar int 7)
+
+"The state's elements this machine keeps that hand.kfx keeps in
+ registers: the data stack's base, and the cell being run."
+(define st-dsb int 30)
+(define st-cell int 31)
+
+"Code: bytes, and jumps to labels (`jmp`, `jcc`, `lea` of `rip`), each
+ 32-bit, placed when every label is."
+(define-datatype x-item (xb (listof int @k)) (xj int int int) (xl int))
+(define y-jmp int 0)
+(define y-jcc int 1)
+(define y-lea int 2)
+
+(define y-items (ref (listof x-item @c) @c) (new nil))
+(define ye! (->* ((listof int @k)) unit) (lambda (bs) (set y-items (cons (xb bs) (get y-items)))))
+(define ybind! (->* (int) unit) (lambda (l) (set y-items (cons (xl l) (get y-items)))))
+(define yb! (->* (int) unit) (lambda (l) (set y-items (cons (xj y-jmp 0 l) (get y-items)))))
+(define ybc! (->* (int int) unit) (lambda (c l) (set y-items (cons (xj y-jcc c l) (get y-items)))))
+(define yadr! (->* (int int) unit) (lambda (r l) (set y-items (cons (xj y-lea r l) (get y-items)))))
+
+(define-rec
+  (y-length (->* ((listof int @k) int) int) (lambda (bs n) (if (null? bs) n (y-length (cdr bs) (+ n 1))))))
+
+(define y-size (->* (x-item) int)
+  (lambda (x)
+    (tagcase x
+      (xb (bs) (y-length bs 0))
+      (xj (k a l) (cond ((= k y-jmp) 5) ((= k y-jcc) 6) (else 7)))
+      (xl (l) 0))))
+
+(define-rec
+  (y-placed! (->* ((listof x-item @c) int (flatarrayof i64 @c)) int)
+    (lambda (xs at ls)
+      "Each label's place, in bytes, in `ls`; how many bytes there are."
+      (if (null? xs)
+          at
+          (tagcase (car xs)
+            (xl (l) (begin (flatarray-set-i64! ls (int->i64 l) (int->i64 at)) (y-placed! (cdr xs) at ls)))
+            (else x (y-placed! (cdr xs) (+ at (y-size x)) ls)))))))
+
+(define y-encoded (->* (x-item int (flatarrayof i64 @c)) (listof int @k))
+  (lambda (x at ls)
+    "Item `x`, at byte `at`: a jump by its label's distance from its end."
+    (tagcase x
+      (xb (bs) bs)
+      (xj (k a l)
+        (let ((d (- (where ls l) (+ at (y-size x)))))
+          (cond ((= k y-jmp) ((with x86 x86-jmp) d))
+                ((= k y-jcc) ((with x86 x86-jcc) a d))
+                (else ((with x86 x86-lea-rip) a d)))))
+      (xl (l) nil))))
+
+"Instructions, by `x86_64.fx`'s encoders."
+(define ymov! (->* (int int) unit) (lambda (d s) (ye! ((with x86 x86-mov) d s))))
+(define yld! (->* (int int int) unit) (lambda (d b o) (ye! ((with x86 x86-load) d b o))))
+(define yst! (->* (int int int) unit) (lambda (b o s) (ye! ((with x86 x86-store) b o s))))
+(define yld-ix! (->* (int int int int) unit) (lambda (d b i o) (ye! ((with x86 x86-load-ix) d b i 1 o))))
+(define ylea! (->* (int int int) unit) (lambda (d b o) (ye! ((with x86 x86-lea) d b o))))
+(define ylea-ix! (->* (int int int int int) unit) (lambda (d b i s o) (ye! ((with x86 x86-lea-ix) d b i s o))))
+(define yimm! (->* (int int) unit) (lambda (d i) (ye! ((with x86 x86-mov-imm) d i))))
+(define yalu! (->* (int int int) unit) (lambda (op d s) (ye! ((with x86 x86-alu) op d s))))
+(define yalui! (->* (int int int) unit) (lambda (op d i) (ye! ((with x86 x86-alu-imm) op d i))))
+(define yalurm! (->* (int int int int) unit) (lambda (op d b o) (ye! ((with x86 x86-alu-rm) op d b o))))
+(define yalumi! (->* (int int int int) unit) (lambda (op b o i) (ye! ((with x86 x86-alu-mi) op b o i))))
+(define ytesti! (->* (int int) unit) (lambda (r i) (ye! ((with x86 x86-test-imm) r i))))
+(define yshift! (->* (int int int) unit) (lambda (op d i) (ye! ((with x86 x86-shift-imm) op d i))))
+(define ycmov! (->* (int int int) unit) (lambda (c d s) (ye! ((with x86 x86-cmov) c d s))))
+(define yjmp-r! (->* (int) unit) (lambda (r) (ye! ((with x86 x86-jmp-r) r))))
+(define ypush! (->* (int) unit) (lambda (r) (ye! ((with x86 x86-push) r))))
+(define ypop! (->* (int) unit) (lambda (r) (ye! ((with x86 x86-pop) r))))
+(define yret! (->* () unit) (lambda () (ye! ((with x86 x86-ret)))))
+
+"Shorthands: the state's element `i`; a register, its tag checked; a
+ field extracted."
+(define yst-ld! (->* (int int) unit) (lambda (d i) (yld! d y-st (at-st i))))
+(define yst-st! (->* (int int) unit) (lambda (i s) (yst! y-st (at-st i) s)))
+(define ycmp-st! (->* (int int) unit) (lambda (r i) (yalurm! a-cmp r y-st (at-st i))))
+(define ypushed! (->* (int) unit)
+  (lambda (r) "`r` pushed on the data stack." (begin (yst! y-dsp 0 r) (yalui! a-add y-dsp 8))))
+(define yubfx! (->* (int int int int) unit)
+  (lambda (d n lsb mask)
+    "`d` := `n`'s bits from `lsb`, `mask` of them."
+    (begin (if (= d n) #u (ymov! d n)) (yshift! s-shr d lsb) (yalui! a-and d mask))))
+
+(define ygive-if! (->* (int) unit) (lambda (c) "Give the cell back if `c`." (ybc! c (get l-give))))
+(define ynext! (->* () unit) (lambda () "On to the next cell." (yb! (get l-next))))
+(define yresume! (->* () unit) (lambda () "On to the cell at the ip, of `cur`." (yb! (get l-resume))))
+
+(define ytag-in! (->* (int int) unit)
+  (lambda (r tag) "Given back unless `r`'s tag is `tag`." (begin (ymov! y13 r) (yalui! a-and y13 7) (yalui! a-cmp y13 tag) (ygive-if! q-ne))))
+
+(define yneed! (->* (int) unit)
+  (lambda (n)
+    "At least `n` values on the data stack (1 or 2), else give back."
+    (if (= n 1)
+        (begin (ycmp-st! y-dsp st-dsb) (ygive-if! q-be))
+        (begin (yst-ld! y13 st-dsb) (yalui! a-add y13 8) (yalu! a-cmp y-dsp y13) (ygive-if! q-be)))))
+
+(define yroom! (->* () unit)
+  (lambda () "Room to push one, else give back." (begin (ycmp-st! y-dsp st-ds-end) (ygive-if! q-ae))))
+
+(define ylimits! (->* () unit)
+  (lambda ()
+    "Within the limits tier 1's `check-limits!` holds to, else give back."
+    (begin (ycmp-st! y-dsp st-ds-lim) (ygive-if! q-a) (ycmp-st! y-rsp st-rs-lim) (ygive-if! q-ae))))
+
+(define yput-top! (->* (int) unit)
+  (lambda (r) "Two values replaced by `r`." (begin (yalui! a-sub y-dsp 8) (yst! y-dsp -8 r) (ynext!))))
+
+(define yboolean-of! (->* (int) unit)
+  (lambda (c) "`rcx` := `#t` if `c`, else `#f`." (begin (yimm! y13 3) (yimm! y14 11) (ycmov! c y13 y14))))
+
+(define ytwo-fixnums! (->* () unit)
+  (lambda ()
+    "`rcx` the one below the top, `rdx` the top; both fixnums, else give back."
+    (begin
+      (yneed! 2) (yld! y13 y-dsp -16) (yld! y14 y-dsp -8)
+      (ymov! y15 y13) (yalu! a-or y15 y14) (ytesti! y15 7) (ygive-if! q-ne))))
+
+(define yip-op! (->* (int) unit)
+  (lambda (d) "`d` the operand at the ip, the ip past it." (begin (yld! d y-ip 0) (yalui! a-sub y-ip 8))))
+
+(define ykind-in! (->* (int i64) unit)
+  (lambda (r kind)
+    "`rsi` the heap's address of the value in `r` plus 4; given back unless
+     it is a bloblet with a trailer whose header says `kind`."
+    (begin
+      (ytag-in! r 4)
+      (ylea-ix! y11 y-mem r 1 0) (yld! y15 y11 -12)
+      (ymov! y13 y15) (yalui! a-and y13 7) (yalui! a-cmp y13 5) (ygive-if! q-ne)
+      (ymov! y14 y11) (yalu! a-sub y14 y15) (yld! y14 y14 -7) (yubfx! y14 y14 3 255)
+      (yalui! a-cmp y14 (i64->int kind)) (ygive-if! q-ne))))
+
+(define yframe-pushed! (->* (int int) unit)
+  (lambda (t u)
+    "A return entry for `cur` at the ip, as tier 1's: `cur`, the ip's
+     distance back from the word's address, the frame's from the data
+     stack's base, `clo`; `t` and `u` scratch. Given back if there is no
+     room for it."
+    (begin
+      (ycmp-st! y-rsp st-rs-end) (ygive-if! q-ae)
+      (ylea-ix! t y-mem y-cur 1 -4) (yalu! a-sub t y-ip)
+      (ymov! u y-fp) (yalurm! a-sub u y-st (at-st st-dsb))
+      (yst! y-rsp 0 y-cur) (yst! y-rsp 8 t) (yst! y-rsp 16 u) (yst! y-rsp 24 y-clo) (yalui! a-add y-rsp 32))))
+
+(define ycalled! (->* (bool) unit)
+  (lambda (tail)
+    "A call of the closure on top with the `count` values below it (tier
+     1's `call!`), in tail position its frame slid down over this one's;
+     the count, times 8, in `rax`. A word with a register twin (`--regs`)
+     is given back, for tier 1 to enter as it enters it."
+    (let ((loop (label!)) (done (label!)))
+      (begin
+        (yip-op! y-w)
+        (ylea-ix! y14 y-fp y-w 1 8) (yalu! a-cmp y-dsp y14) (ygive-if! q-b)
+        (yld! y10 y-dsp -8)
+        (ykind-in! y10 k-closure)
+        (yld! y13 y11 (at-field f-word)) (yld-ix! y14 y-mem y13 (at-field f-twin)) (yalui! a-cmp y14 3) (ygive-if! q-ne)
+        (ylimits!)
+        (if tail
+            (begin
+              (ylea! y14 y-dsp -8) (ymov! y15 y14) (yalu! a-sub y15 y-w) (ymov! y16 y-fp)
+              (ybind! loop) (yalu! a-cmp y15 y14) (ybc! q-ae done)
+              (yld! y13 y15 0) (yalui! a-add y15 8) (yst! y16 0 y13) (yalui! a-add y16 8) (yb! loop)
+              (ybind! done) (ylea-ix! y-dsp y-fp y-w 1 0))
+            (begin
+              (yframe-pushed! y14 y15)
+              (yalui! a-sub y-dsp 8) (ymov! y-fp y-dsp) (yalu! a-sub y-fp y-w)))
+        (yld! y-cur y11 (at-field f-word))
+        (ymov! y-clo y10)
+        (ylea-ix! y-ip y-mem y-cur 1 (- -4 (* 8 (i64->int f-cell0))))
+        (yresume!)))))
+
+(define yfields-of! (->* () unit)
+  (lambda ()
+    "`r8` eight times the fields of the bloblet whose address plus 4 is in
+     `rsi`, `rdx` eight times the lowest that may be read: past a trailer,
+     its distance, 2; past a header, its count, 1; else given back."
+    (let ((header (label!)) (done (label!)))
+      (begin
+        (yld! y15 y11 -12) (ymov! y14 y15) (yalui! a-and y14 7) (yalui! a-cmp y14 5) (ybc! q-ne header)
+        (yalui! a-sub y15 5) (yimm! y14 16) (yb! done)
+        (ybind! header)
+        (yalui! a-cmp y14 6) (ygive-if! q-ne)
+        (yubfx! y15 y15 14 262143) (yshift! s-shl y15 3) (yimm! y14 8)
+        (ybind! done)))))
+
+(define yfield-read! (->* () unit)
+  (lambda ()
+    "`r11` field `rcx / 8` of the bloblet at `rsi`, if it may be read (tier
+     1's `field-ok?`), else given back."
+    (begin
+      (yfields-of!)
+      (yalu! a-cmp y13 y14) (ygive-if! q-l) (yalu! a-cmp y13 y15) (ygive-if! q-a)
+      (ymov! y16 y11) (yalu! a-sub y16 y13) (yld! y16 y16 -4))))
+
+(define yallocating! (->* (int int) unit)
+  (lambda (words count8)
+    "Room for an object of `words` words more than `count8 / 8` (`count8`
+     a register, or -1 for none): `rcx` the heap's `top`, `r11` its
+     address. Given back if tier 1's `safepoint!` would collect first, or
+     `room!` grow the heap."
+    (begin
+      (yst-ld! y13 st-top) (ycmp-st! y13 st-alloc-limit) (ygive-if! q-a)
+      (ylea! y15 y13 words)
+      (if (< count8 0) #u (begin (ymov! y14 count8) (yshift! s-shr y14 3) (yalu! a-add y15 y14)))
+      (ycmp-st! y15 st-mem-length) (ygive-if! q-a)
+      (ylea-ix! y16 y-mem y13 8 0))))
+
+(define yconsed! (->* (bool) unit)
+  (lambda (region)
+    "`cons`, or `%region-cons` (its region below the two, and dropped):
+     the pair at the heap's top, as tier 1's `cons!` makes it."
+    (begin
+      (if region
+          (begin (yst-ld! y13 st-dsb) (yalui! a-add y13 24) (yalu! a-cmp y-dsp y13) (ygive-if! q-b))
+          (yneed! 2))
+      (yallocating! 2 -1)
+      (yld! y14 y-dsp -16) (yld! y15 y-dsp -8) (yst! y16 0 y14) (yst! y16 8 y15)
+      (ylea! y15 y13 2) (yst-st! st-top y15)
+      (if region (yalui! a-sub y-dsp 8) #u)
+      (ylea-ix! y14 y13 y13 1 0) (ylea-ix! y14 y14 y14 1 0) (ylea-ix! y14 y14 y14 1 1)
+      (yput-top! y14))))
+
+(define yprimed! (->* () unit)
+  (lambda ()
+    "`prim P COUNT`: those primitives the machine has, else given back."
+    (let ((region-cons (label!)))
+      (begin
+        (yip-op! y13) (yip-op! y-w)
+        (ymov! y14 y13) (yshift! s-shr y14 19)
+        (yalui! a-cmp y14 (i64->int o-region-cons)) (ybc! q-e region-cons)
+        (yb! (get l-give))
+        (ybind! region-cons)
+        (yalui! a-cmp y-w 24) (ygive-if! q-ne)
+        (yconsed! #t)))))
+
+(define yclosed! (->* () unit)
+  (lambda ()
+    "`closure W COUNT`: a cellular closure of word `W` over the `COUNT`
+     values on top, as tier 1's `make-bloblet!` lays it out: its header,
+     its fields (`count + 2`, the trailer one), its trailer."
+    (let ((loop (label!)) (done (label!)))
+      (begin
+        (yroom!)
+        (yip-op! y10) (yip-op! y-w)
+        (ylea-ix! y14 y-fp y-w 1 0) (yalu! a-cmp y-dsp y14) (ygive-if! q-b)
+        (yallocating! 3 y-w)
+        (yimm! y15 (+ 6 (* 8 (i64->int k-closure))))
+        (ymov! y14 y-w) (yshift! s-shr y14 3) (yalui! a-add y14 2) (yshift! s-shl y14 14) (yalu! a-or y15 y14)
+        (yst! y16 0 y15)
+        (ylea-ix! y11 y16 y-w 1 24)
+        (ylea! y14 y-w 21) (yst! y11 -8 y14)
+        (yst! y11 -16 y10)
+        (ymov! y15 y-dsp) (yalu! a-sub y15 y-w) (ylea! y16 y11 -24)
+        (ybind! loop) (yalu! a-cmp y15 y-dsp) (ybc! q-ae done)
+        (yld! y14 y15 0) (yalui! a-add y15 8) (yst! y16 0 y14) (yalui! a-sub y16 8) (yb! loop)
+        (ybind! done)
+        (yalu! a-sub y-dsp y-w)
+        (ymov! y14 y-w) (yshift! s-shr y14 3) (yalu! a-add y14 y13) (yalui! a-add y14 3) (yst-st! st-top y14)
+        (ymov! y14 y11) (yalu! a-sub y14 y-mem) (yalui! a-add y14 4) (ypushed! y14)
+        (ynext!)))))
+
+(define yword-entered! (->* () unit)
+  (lambda ()
+    "The word in `rax`, a cell, entered as tier 1's `enter!` does, if its
+     entry is `docol`."
+    (begin
+      (ytag-in! y-w 4)
+      (ylea-ix! y11 y-mem y-w 1 0)
+      (yld! y10 y11 (at-field f-entry))
+      (yalui! a-cmp y10 (* 8 (i64->int r-docol))) (ygive-if! q-ne)
+      (ylimits!)
+      (ytag-in! y-cur 4)
+      (yframe-pushed! y13 y14)
+      (ymov! y-cur y-w)
+      (ylea! y-ip y11 (- -4 (* 8 (i64->int f-cell0))))
+      (yresume!))))
+
+(define ycar-cdr! (->* (bool) unit)
+  (lambda (first)
+    "`car` if `first`, else `cdr`."
+    (begin
+      (yneed! 1) (yld! y13 y-dsp -8) (ymov! y14 y13) (yalui! a-and y14 7) (yalui! a-cmp y14 1) (ygive-if! q-ne)
+      (yld-ix! y16 y-mem y13 (if first -1 7))
+      (yst! y-dsp -8 y16) (ynext!))))
+
+(define yentered! (->* (int) unit)
+  (lambda (n)
+    "Routine number `n`'s code; what it does not do it gives back."
+    (cond
+      ((= n (i64->int r-lit))
+       (begin (yroom!) (yip-op! y13) (ypushed! y13) (ynext!)))
+      ((= n (i64->int r-dup))
+       (begin (yneed! 1) (yroom!) (yld! y13 y-dsp -8) (ypushed! y13) (ynext!)))
+      ((= n (i64->int r-drop)) (begin (yneed! 1) (yalui! a-sub y-dsp 8) (ynext!)))
+      ((= n (i64->int r-swap))
+       (begin (yneed! 2) (yld! y13 y-dsp -8) (yld! y14 y-dsp -16) (yst! y-dsp -16 y13) (yst! y-dsp -8 y14) (ynext!)))
+      ((= n (i64->int r-over))
+       (begin (yneed! 2) (yroom!) (yld! y13 y-dsp -16) (ypushed! y13) (ynext!)))
+      ((= n (i64->int r-eq))
+       (begin (yneed! 2) (yld! y13 y-dsp -16) (yld! y14 y-dsp -8) (yalu! a-cmp y13 y14) (yboolean-of! q-e) (yput-top! y13)))
+      ((or (= n (i64->int r-add)) (= n (i64->int r-int-add)))
+       (begin (ytwo-fixnums!) (yalu! a-add y13 y14) (ygive-if! q-o) (yput-top! y13)))
+      ((or (= n (i64->int r-sub)) (= n (i64->int r-int-sub)))
+       (begin (ytwo-fixnums!) (yalu! a-sub y13 y14) (ygive-if! q-o) (yput-top! y13)))
+      ((or (= n (i64->int r-less)) (= n (i64->int r-int-less)))
+       (begin (ytwo-fixnums!) (yalu! a-cmp y13 y14) (yboolean-of! q-l) (yput-top! y13)))
+      ((= n (i64->int r-int-eq))
+       (begin (ytwo-fixnums!) (yalu! a-cmp y13 y14) (yboolean-of! q-e) (yput-top! y13)))
+      ((or (= n (i64->int r-car)) (= n (i64->int r-pair-car))) (ycar-cdr! #t))
+      ((or (= n (i64->int r-cdr)) (= n (i64->int r-pair-cdr))) (ycar-cdr! #f))
+      ((= n (i64->int r-slot))
+       (begin
+         (yip-op! y13) (ylea-ix! y14 y-fp y13 1 0)
+         (ycmp-st! y14 st-dsb) (ygive-if! q-b) (yalu! a-cmp y14 y-dsp) (ygive-if! q-ae)
+         (yroom!) (yld! y15 y14 0) (ypushed! y15) (ynext!)))
+      ((= n (i64->int r-slot-set))
+       (begin
+         (yneed! 1) (yip-op! y13) (ylea-ix! y14 y-fp y13 1 0) (ylea! y15 y-dsp -8)
+         (ycmp-st! y14 st-dsb) (ygive-if! q-b) (yalu! a-cmp y14 y15) (ygive-if! q-ae)
+         (yld! y16 y-dsp -8) (yst! y14 0 y16) (ymov! y-dsp y15) (ynext!)))
+      ((= n (i64->int r-global))
+       (begin
+         (yroom!) (yip-op! y13)
+         (yld-ix! y15 y-mem y13 (at-field f-value)) (ypushed! y15) (ynext!)))
+      ((= n (i64->int r-branch))
+       (begin (ylimits!) (yip-op! y13) (yalu! a-sub y-ip y13) (ynext!)))
+      ((= n (i64->int r-zbranch))
+       (let ((taken (label!)))
+         (begin
+           (yneed! 1) (yld! y14 y-dsp -8) (yalui! a-cmp y14 3)
+           (ybc! q-e taken)
+           (yalui! a-sub y-dsp 8) (yalui! a-sub y-ip 8) (ynext!)
+           (ybind! taken)
+           (ylimits!) (yalui! a-sub y-dsp 8) (yip-op! y13) (yalu! a-sub y-ip y13) (ynext!))))
+      ((or (= n (i64->int r-call)) (= n (i64->int r-tcall)))
+       (ycalled! #f))
+      ((or (= n (i64->int r-tailcall)) (= n (i64->int r-ttailcall)))
+       (ycalled! #t))
+      ((= n (i64->int r-free))
+       (begin
+         (yroom!) (ytag-in! y-clo 4)
+         (yip-op! y13) (yalui! a-add y13 (* 8 (i64->int f-free0)))
+         (ylea-ix! y11 y-mem y-clo 1 0)
+         (yfield-read!) (ypushed! y16) (ynext!)))
+      ((= n (i64->int r-field))
+       (begin
+         (yneed! 1) (yip-op! y10) (yld! y16 y-dsp -8)
+         (ytag-in! y16 4) (ylea-ix! y11 y-mem y16 1 0) (ymov! y13 y10)
+         (yfield-read!) (yst! y-dsp -8 y16) (ynext!)))
+      ((= n (i64->int r-global-set))
+       (begin
+         (yneed! 1) (yip-op! y13) (ylea-ix! y14 y-mem y13 1 0)
+         (yld! y15 y-dsp -8) (yst! y14 (at-field f-value) y15)
+         (yalumi! a-add y14 (at-field f-writes) 8)
+         (yalui! a-sub y-dsp 8) (ynext!)))
+      ((= n (i64->int r-field-ref))
+       (begin
+         (yneed! 2) (yld! y10 y-dsp -8) (ytesti! y10 7) (ygive-if! q-ne)
+         (yld! y16 y-dsp -16) (ytag-in! y16 4) (ylea-ix! y11 y-mem y16 1 0) (ymov! y13 y10)
+         (yfield-read!) (yput-top! y16)))
+      ((= n (i64->int r-cons)) (yconsed! #f))
+      ((= n (i64->int r-prim)) (yprimed!))
+      ((= n (i64->int r-closure)) (yclosed!))
+      ((= n (i64->int r-exit))
+       (begin (ycmp-st! y-rsp st-rsb) (ygive-if! q-e) (yb! (get l-pop-return))))
+      ((= n (i64->int r-return))
+       (begin
+         (yneed! 1) (ylea! y15 y-dsp -8) (yalu! a-cmp y15 y-fp) (ygive-if! q-b)
+         (ycmp-st! y-rsp st-rsb) (ygive-if! q-e)
+         (yld! y13 y-dsp -8) (ymov! y-dsp y-fp) (ypushed! y13)
+         (yb! (get l-pop-return))))
+      (else (yb! (get l-give))))))
+
+(define-rec
+  (ytable! (->* (int int) unit)
+    (lambda (n base)
+      "A jump to each routine's code, by number, 5 bytes each: routine
+       `n`'s label is `base + n`."
+      (if (>= n (i64->int r-count)) #u (begin (yb! (+ base n)) (ytable! (+ n 1) base))))))
+
+(define-rec
+  (yroutines! (->* (int int) unit)
+    (lambda (n base)
+      (if (>= n (i64->int r-count))
+          #u
+          (begin (ybind! (+ base n)) (yentered! n) (yroutines! (+ n 1) base))))))
+
+"The registers the machine uses that the native convention's caller may
+ need, `r15` its state: kept on the machine stack."
+(define ykept! (->* () unit)
+  (lambda () (begin (ypush! y-fp) (ypush! y-rsp) (ypush! y-dsp) (ypush! y-cur) (ypush! y-ip) (ypush! y-st))))
+(define yrestored! (->* () unit)
+  (lambda () (begin (ypop! y-st) (ypop! y-ip) (ypop! y-cur) (ypop! y-dsp) (ypop! y-rsp) (ypop! y-fp))))
+
+(define yat-entry! (->* (int int int) unit)
+  (lambda (length base at)
+    "The state's `at` its `length` element as an address past `base`."
+    (begin (yst-ld! y14 length) (yshift! s-shl y14 3) (yalu! a-add y14 base) (yst-st! at y14))))
+
+(define yentry! (->* () unit)
+  (lambda ()
+    "From the native convention: the state, the heap and the data stack
+     in `rdi`, `rsi`, `r8`, the return stack in its state's `reg4`, each a
+     flat array's suffix (tag 4)."
+    (begin
+      (ykept!)
+      (yld! y13 y-st y-reg4)
+      (ylea! y-st y-rdi -4) (ylea! y-mem y-rsi -4) (ylea! y15 y-r8 -4) (yst-st! st-dsb y15)
+      (ylea! y13 y13 -4) (yst-st! st-rsb y13)
+      ;; The limits, as addresses.
+      (yat-entry! st-ds-limit y15 st-ds-lim)
+      (yat-entry! st-rs-limit y13 st-rs-lim)
+      (yat-entry! st-ds-length y15 st-ds-end)
+      (yat-entry! st-rs-push y13 st-rs-end)
+      ;; The registers.
+      (yst-ld! y-cur st-cur)
+      (yst-ld! y14 st-kk) (yshift! s-shl y14 3) (ylea-ix! y-ip y-mem y-cur 1 -4) (yalu! a-sub y-ip y14)
+      (yst-ld! y14 st-fp) (yshift! s-shl y14 3) (ylea-ix! y-fp y15 y14 1 0)
+      (yst-ld! y-clo st-clo)
+      (yst-ld! y14 st-dsp) (yshift! s-shl y14 3) (ylea-ix! y-dsp y15 y14 1 0)
+      (yst-ld! y14 st-rsp) (yshift! s-shl y14 3) (ylea-ix! y-rsp y13 y14 1 0)
+      ;; The code 16-byte aligned, as kayak-jit seals it, else out at once.
+      (yadr! y16 (get l-start)) (yst-st! st-start y16)
+      (ytesti! y16 15) (ybc! q-ne (get l-misaligned))
+      (yresume!))))
+
+(define yleave! (->* (i64) unit)
+  (lambda (why)
+    "The registers back in the state, the cell being run `kk`'s, and out,
+     with `why`, a fixnum."
+    (begin
+      (yst-st! st-cur y-cur)
+      (yst-ld! y16 st-cell) (ylea-ix! y13 y-mem y-cur 1 -4) (yalu! a-sub y13 y16) (yshift! s-sar y13 3) (yst-st! st-kk y13)
+      (ymov! y13 y-fp) (yalurm! a-sub y13 y-st (at-st st-dsb)) (yshift! s-shr y13 3) (yst-st! st-fp y13)
+      (yst-st! st-clo y-clo)
+      (ymov! y13 y-dsp) (yalurm! a-sub y13 y-st (at-st st-dsb)) (yshift! s-shr y13 3) (yst-st! st-dsp y13)
+      (ymov! y13 y-rsp) (yalurm! a-sub y13 y-st (at-st st-rsb)) (yshift! s-shr y13 3) (yst-st! st-rsp y13)
+      (yimm! 0 (i64->int (fix why)))
+      (yrestored!)
+      (yret!))))
+
+(define yresumed! (->* () unit)
+  (lambda ()
+    "Going on at the ip, a cell of `cur`'s: interpreted (`NEXT`), unless
+     `cur` was compiled, which this machine does not yet do: then given
+     back, at the cell the ip is at."
+    (begin
+      (ybind! (get l-resume))
+      (ymov! y13 y-cur) (yalui! a-and y13 7) (yalui! a-cmp y13 4) (ybc! q-ne (get l-next))
+      (yld-ix! y10 y-mem y-cur (at-field f-entry))
+      (yalui! a-cmp y10 (* 8 (i64->int r-count))) (ybc! q-b (get l-next))
+      (yb! (get l-resume-give)))))
+
+(define ymachine! (->* () unit)
+  (lambda ()
+    "The whole machine: its entry, `NEXT`, the ways out, the table, and a
+     routine for each number."
+    (let ((word (label!)) (table (label!)) (skip (label!)) (loop (label!)) (base (get hand-labels)))
+      (begin
+        (set hand-labels (+ base (i64->int r-count)))
+        (set l-next (label!)) (set l-give (label!)) (set l-give-pre (label!)) (set l-ran-out (label!)) (set l-pop-return (label!))
+        (set l-resume (label!)) (set l-resume-give (label!)) (set l-misaligned (label!))
+        (ybind! (get l-entry))
+        (yentry!)
+        (yresumed!)
+        ;; NEXT: the cell, as tier 1's `run!` takes it: none if out of fuel
+        ;; (tier 1 then polls or stops), else one step's fuel spent; the
+        ;; fuel in the state, as Fixpt's x86_64 machine keeps it.
+        (ybind! (get l-next))
+        (yst-st! st-cell y-ip)
+        (yalumi! a-sub y-st (at-st st-fuel) 1)
+        (ygive-if! q-b)
+        (yip-op! y-w)
+        (ytesti! y-w 7)
+        (ybc! q-ne word)
+        (yalui! a-cmp y-w (* 8 (i64->int r-count)))
+        (ygive-if! q-ae)
+        (ymov! y10 y-w) (yshift! s-shr y10 3) (ylea-ix! y10 y10 y10 4 0)
+        (yadr! y16 table)
+        (yalu! a-add y16 y10)
+        (yjmp-r! y16)
+        (ybind! word)
+        (yword-entered!)
+        ;; Giving back: the step's fuel returned, if it was spent.
+        (ybind! (get l-give))
+        (yalumi! a-add y-st (at-st st-fuel) 1)
+        (ybind! (get l-give-pre))
+        (yleave! gave-back)
+        (ybind! (get l-ran-out))
+        (yleave! ran-out)
+        (ybind! (get l-misaligned))
+        (yst-st! st-cell y-ip) (yleave! misaligned)
+        (ybind! (get l-resume-give))
+        (yst-st! st-cell y-ip) (yb! (get l-give-pre))
+        ;; A return, as tier 1's `pop-return!`: a prompt's or a mark's entry
+        ;; passed by.
+        (ybind! (get l-pop-return))
+        (ybind! loop)
+        (ycmp-st! y-rsp st-rsb) (ybc! q-be (get l-ran-out))
+        (yld! y13 y-rsp -32)
+        (yalui! a-cmp y13 (i64->int prompt-mark-word)) (ybc! q-e skip)
+        (yalui! a-cmp y13 (i64->int mark-mark-word)) (ybc! q-e skip)
+        (ymov! y-cur y13)
+        (yld! y14 y-rsp -24) (yld! y15 y-rsp -16) (yld! y-clo y-rsp -8) (yalui! a-sub y-rsp 32)
+        (ylea-ix! y-ip y-mem y-cur 1 -4) (yalu! a-sub y-ip y14)
+        (ymov! y-fp y15) (yalurm! a-add y-fp y-st (at-st st-dsb))
+        (yresume!)
+        (ybind! skip)
+        (yalui! a-sub y-rsp 32) (yb! loop)
+        (ybind! table)
+        (ytable! 0 base)
+        (yroutines! 0 base)))))
+
+(define-rec
+  (y-bytes! (->* ((bloblet (fields) @heap) (listof int @k) int) int)
+    (lambda (b bs at)
+      (if (null? bs) at (begin (bloblet-set-byte! b at (car bs)) (y-bytes! b (cdr bs) (+ at 1)))))))
+
+(define-rec
+  (y-all-put! (->* ((bloblet (fields) @heap) (listof x-item @c) int (flatarrayof i64 @c)) unit)
+    (lambda (b xs at ls)
+      "Each item placed, at byte `at` on."
+      (if (null? xs)
+          #u
+          (y-all-put! b (cdr xs) (y-bytes! b (y-encoded (car xs) at ls) at) ls)))))
+
+(define hand-code-x64! (->* () (sumof (made hand-code) (failed string)))
+  (lambda ()
+    "The machine, made once: emitted, encoded, sealed. First a jump to
+     its entry, then the code."
+    (if (not (null? (get hand-made)))
+        (sum made (car (get hand-made)))
+        (if (get hand-compiled)
+            (sum failed "tier 2: words compiled (tiers 4 and 5) are not yet on x86_64 (TODO §34)")
+            (begin
+              (set y-items nil) (set hand-labels 0)
+              (set l-start (label!)) (set l-entry (label!))
+              (ymachine!)
+              (let* ((its (the (listof x-item @c)
+                            (cons (xl (get l-start)) (cons (xj y-jmp 0 (get l-entry)) (reverse (get y-items))))))
+                     (ls (the (flatarrayof i64 @c) (make-flatarray-i64 (int->i64 (get hand-labels)) 0)))
+                     (count (y-placed! its 0 ls))
+                     (b (the (bloblet (fields) @heap) (make-bloblet count)))
+                     (u (y-all-put! b its 0 ls))
+                     (p (the hand-code (native-procedure (seal-code b)))))
+                (begin (set hand-made (list p)) (sum made p))))))))
+
+(define hand-code! (->* () (sumof (made hand-code) (failed string)))
+  (lambda ()
+    "Tier 2's machine for the machine this runs on: arm64's (hand.kfx) or
+     x86_64's; elsewhere none."
+    (let ((target (car (the (listof string @heap) (native-convention)))))
+      (cond ((string=? target "(target arm64)") (hand-code-arm64!))
+            ((string=? target "(target x86_64)") (hand-code-x64!))
+            (else (sum failed (string-append "tier 2: no machine for " target)))))))

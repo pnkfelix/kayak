@@ -725,7 +725,8 @@ pub mod lay {
 
 // What tier 1 does: reads and writes its heap and stacks, at region `@c`;
 // reads the clock, for FX-26's deadlines (C125); makes and runs tier 2's
-// machine code (C126).
+// machine code (C126), x86_64's of bytes at `@k`, `fx26:x86_64.fx`'s
+// region (C136).
 
 // Tags.
 pub fn t_fixnum() -> i64 {

@@ -3625,3 +3625,36 @@ programs twinned in `programs/made-code-x86_64/`. The pin is there.
   `fx26:x86_64-types.fx`), which the twins load; KFX accepts it as it is.
 - **The drift**: `prim.rs` changed only `runs_made_code`; tier 1's
   `native-code?` is false on every machine: nothing carried.
+
+## C136. Tier 2 on x86_64: hand.kfx's machine, routine for routine (2026-10-22)
+
+The user: "move the pin, then start tier 2" (TODO §34, step 3).
+`cells/hand-x64.kfx` is tier 2's machine on x86_64: `hand.kfx`'s entry,
+`NEXT`, ways out, return and every routine, in the same order, emitted
+by Fixpt's FX-26 encoder (`fx26:x86_64.fx`) and run by `kayak-jit`, as
+Fixpt keeps `cellular/x64.rs` beside its arm64 machine.
+- **Registers, as Fixpt's table** (`r14` ip, `r13` `cur`, `r12` the data
+  stack, `rbx` the return stack, `r15` the state, `rbp` the frame, `r9`
+  `clo`, scratch `rax rdi rsi rcx rdx r8 r11`), and `r10` the heap's base,
+  which kayak's machine needs (tier 1's values are offsets into its
+  heap) and Fixpt's has not. What hand.kfx keeps in registers and x86_64
+  has none left for is in the state: the fuel (as Fixpt's), the data
+  stack's base and the cell being run (elements 30 and 31). The native
+  convention's pinned `r15`, and every register the machine uses, kept on
+  the machine stack and given back.
+- **Code in bytes**, each jump to a label a 32-bit one (`jmp`, `jcc`, `lea`
+  of `rip`), placed once every label is: none out of reach, so no long
+  branches; the routines' table is a `jmp` of 5 bytes each.
+- **What it gives back that hand.kfx does not**: a call of a word with a
+  register twin (`--regs`), before changing anything, for tier 1 to
+  enter as it enters it (hand.kfx adapts it, `h-adapted!`, register code
+  being its tier 5); a word whose entry is not `docol` (no word is
+  compiled here). Same answers, by tier 1.
+- **Chosen by the machine**: `hand-code!` makes arm64's machine
+  (`hand-code-arm64!`) or x86_64's by the running convention's `target`,
+  and refuses elsewhere, so `--hand` never runs another machine's bytes.
+  `--compiled` (tiers 4, 5) on x86_64 refuses, saying so, until §34's
+  step 4. The machine's effect `cm` allows the encoder's region `@k`.
+- **Checked**: `cells-programs.py` runs `--hand` and `--hand --gc-stress`
+  on x86_64 Linux too: the 338 programs agree. `bench/fib.fx`: tier 1
+  0.83 s, tier 2 0.09 s, the machine entered 452 times.

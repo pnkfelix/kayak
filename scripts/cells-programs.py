@@ -19,8 +19,9 @@ program of definitions), or Fixpt refuses it. The programs that agree are
 kept in tests/cells-passing (--bless rewrites it); one that agreed and
 no longer does fails the check. Each but Fixpt's benchmarks is run again
 with a collection at every safepoint (`--gc-stress`), to the same end;
-each, on arm64 macOS, by tier 2's machine (`--hand`, C126) and with its
-words compiled (`--compiled`, C128), and with register code
+each by tier 2's machine (`--hand`, C126; on arm64 macOS and x86_64
+Linux, C136), on arm64 macOS with its words compiled (`--compiled`,
+C128), and with register code
 (`--regs`, C129), its answer
 the same; and each that runs tasks (processes, `par`, `race`, `pselect`), again
 with a time slice of two polls (`--slice 2`, as Fixpt's `FIXPT_SLICE`,
@@ -196,8 +197,10 @@ def one(binary, cells, name, path):
     return stressed(cells, name, path, text, limit, have, None)
 
 
-# Tier 2 runs where native code does: arm64 macOS (kayak-jit's).
-HAND = sys.platform == "darwin" and os.uname().machine == "arm64"
+# Tier 2 runs where native code does (kayak-jit's): arm64 macOS, and
+# x86_64 Linux (C136); tiers 4 and 5, words compiled, on arm64 alone yet.
+COMPILED = sys.platform == "darwin" and os.uname().machine == "arm64"
+HAND = COMPILED or (sys.platform == "linux" and os.uname().machine == "x86_64")
 TASKS = re.compile(r"\((spawn|spawn-monitored|par|race|pselect|send|receive|icell-get|icell-put!)\b")
 
 
@@ -207,27 +210,28 @@ def stressed(cells, name, path, text, limit, have, fail):
     poll (C125); Fixpt's benchmarks, long, are not run so."""
     # Tier 2, the hand machine (C126), each program, where native code runs.
     # Tier 4, the words compiled (C128), likewise.
-    ways = [[t] + (["--step-limit", "none"] if limit else []) for t in ("--hand", "--compiled")] if HAND else []
+    ways = [[t] + (["--step-limit", "none"] if limit else []) for t in ("--hand", "--compiled") if t == "--hand" or COMPILED] if HAND else []
     # Register code (C129), interpreted by tier 1; compiled (tier 5, C130).
     ways.append(["--regs"] + (["--step-limit", "none"] if limit else []))
-    if HAND:
+    if COMPILED:
         ways.append(["--regs", "--compiled"] + (["--step-limit", "none"] if limit else []))
     if not name.startswith(UNLIMITED):
         ways.append(["--gc-stress"])
         ways.append(["--regs", "--gc-stress"])
-        if HAND:
+        if COMPILED:
             ways.append(["--regs", "--compiled", "--gc-stress"])
         if HAND:
             ways.append(["--hand", "--gc-stress"])
+        if COMPILED:
             ways.append(["--compiled", "--gc-stress"])
         if TASKS.search(open(path, encoding="utf-8").read()):
             ways.append(["--slice", "2", "--step-limit", "none"])
             # Register code at a slice of two never runs on: the
             # trampoline's way back spends it (C129). Three.
             ways.append(["--regs", "--slice", "3", "--step-limit", "none"])
-            if HAND:
+            if COMPILED:
                 ways.append(["--regs", "--compiled", "--slice", "3", "--step-limit", "none"])
-            if HAND:
+            if COMPILED:
                 ways.append(["--compiled", "--slice", "2", "--step-limit", "none"])
     with tempfile.NamedTemporaryFile("w", suffix=".cells", delete=False) as f:
         f.write(text)

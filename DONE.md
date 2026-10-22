@@ -1439,3 +1439,10 @@ convention with the running machine's, as Fixpt's do; the corpus keeps
 programs of one machine, and the five that declare arm64's convention
 have x86_64 twins, which run their x86_64 code here and agree with
 Fixpt.
+
+## §34: tier 2 on x86_64 Linux (2026-10-22, C136)
+
+The pin moved to `4caffc2`, Fixpt's `main`, where its x86_64 work now is.
+`cells/hand-x64.kfx`: tier 2's machine for x86_64, `hand.kfx`'s routine
+for routine, by Fixpt's FX-26 x86_64 encoder; `--hand` chooses the
+machine's own. The 338 of Fixpt's programs tier 1 runs agree under it.

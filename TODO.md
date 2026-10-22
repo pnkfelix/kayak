@@ -732,11 +732,10 @@ Linux, stage 0 included (C134). ~~1. An x86_64 convention for §97 in
 Fixpt first~~ (done by Fixpt, `native-x86_64.conv`, and the pin on it:
 C135). ~~2. `kayak-jit` on Linux x86_64~~ (done, C135: the code area's
 two views, the trampoline and routines, the stack's limit; the corpus's
-made-code programs twinned for x86_64 and run there). Left, in order:
-3. Tier 2: `hand.kfx`'s routines for x86_64 over `fx26:x86_64.fx`, after
-   Fixpt's `cellular/x64.rs` (no base register, the fuel in the state,
-   `#t`/`#f` from it, 32-bit branches); a file beside `hand.kfx`, as
-   Fixpt keeps the two side by side.
+made-code programs twinned for x86_64 and run there). ~~3. Tier 2~~
+(done, C136: `cells/hand-x64.kfx`, every routine of `hand.kfx`'s machine
+over `fx26:x86_64.fx`; the 338 programs agree under `--hand` on Linux).
+Left, in order:
 4. Tier 4 (`native-x64.fx`'s way), tier 5 (`native-x64-regs.fx`: REG1–3
    in registers, the rest in the state), each against tier 1 on every
    program, as on arm64; then tier 6 with Fixpt's `direct/x64.rs`.
@@ -744,9 +743,10 @@ made-code programs twinned for x86_64 and run there). Left, in order:
   at this pin) fails on Fixpt, a Rust stack too deep for calls between
   machines, and runs on the engine, which has no such calls:
   `run-fixpt-programs.py`'s one "beyond KFX" difference.
-- `kayak-cells --hand` on x86_64 would run tier 2's arm64 bytes: only
-  `cells-programs.py`'s arm64-macOS test keeps it from it. Until step 3,
-  `hand.kfx` might refuse there, by the convention's `target`.
+- ~~`kayak-cells --hand` on x86_64 would run tier 2's arm64 bytes~~:
+  `hand-code!` now chooses by the convention's `target`, and refuses on
+  another machine (C136). `--compiled` on x86_64 refuses, saying so,
+  until step 4.
 - The corpus's answers now differ by machine (C134): libm's last bit in
   `floats`, and `made-code`/`made-flat` say whether made code ran
   natively. If FX-26 is to say what `f64-tan` gives, as a reference

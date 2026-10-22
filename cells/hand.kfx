@@ -1169,7 +1169,7 @@
 
 (define hand-made (ref (listof hand-code @c) @c) (new nil))
 
-(define hand-code! (->* () (sumof (made hand-code) (failed string)))
+(define hand-code-arm64! (->* () (sumof (made hand-code) (failed string)))
   (lambda ()
     "The machine, made once: emitted, with the listing's words compiled
      (`--compiled`), encoded, sealed. First a jump to its entry, then the
