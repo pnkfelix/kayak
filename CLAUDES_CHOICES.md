@@ -3684,13 +3684,28 @@ machine (C136).
   (the ip's register, unused by register code), stored as the cell being
   run only when it gives back.
 - **No link register**: hand.kfx's `x30` is the state's element 32
-  (`st-link`, the state one longer). A call stores the point after it
-  there and jumps; a return jumps through it; `save` keeps it in the
-  frame, a call's return reloads it, as on arm64. Not `call`/`ret` (as
-  Fixpt's, which pushes the link and pops it into the frame): the machine
-  stack is never touched, and the code keeps hand.kfx's shape. Points
-  returned to are 8-aligned (`xa`, no-ops), so a link in a frame reads as
-  a fixnum.
+  (`st-link`, the state one longer) while a word runs; `save` keeps it in
+  the frame, a call's return reloads it, as on arm64. A call is a `call`;
+  the callee's entry for a call (just before its first instruction past
+  `args`, a fixed 7 bytes, so found from the tables) pops the link at
+  once; a return pushes it back and `ret`s; a call in tail position
+  pushes its own link and jumps to the callee's entry, which pops it. So
+  the machine stack holds one link at most, and only between a `call` and
+  its pop; each `ret` pairs with its `call`, which the processor predicts
+  returns by. Points returned to are 8-aligned (`xa`, no-ops), so a link
+  in a frame reads as a fixnum.
+- **Why `call`/`ret`** (the user's question, measured on a Zen 2): at
+  first a call stored its return point and jumped, and a return jumped
+  through the link, an indirect jump. Under `--regs --compiled`,
+  `bench/fib.fx`'s mispredicted branches went from 324k to 30k with
+  `call`/`ret`, its cycles down 6%; `tak` 81k to 32k (−2%); `closures`,
+  `helpers`, `loop`, `lists` the same within 0.5%. `captures` is worse,
+  191k to 478k (+3% cycles): it aborts a continuation 20 calls deep, so
+  those calls never `ret`, and the 20 frames' returns after it resumes
+  match nothing the processor kept. A resumed activation could return by
+  a jump instead, but it would have to know it was resumed after its own
+  later calls, which the frame's link (a fixnum) cannot say: not worth it
+  for one benchmark yet.
 - **A call of a word with a register twin** is now adapted, as hand.kfx's
   `h-adapted!` (`yadapted!`), not given back (C136's difference gone).
 - **Checked**: `cells-programs.py` runs every `--compiled` way on x86_64

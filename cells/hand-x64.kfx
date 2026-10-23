@@ -20,7 +20,8 @@
    stack, with every other register the machine uses, and given back.
  - Tiers 4 and 5 (`--compiled`): hand.kfx's, at the same places, by the
    same tables; register code's `RESULT` in `rax` and its `REGk` in the
-   state, its link there too (C137).
+   state, its link there too while a word runs, calls by `call` and
+   `ret` (C137).
  fixpt-source: crates/fixpt-native/src/cellular/x64.rs@4caffc2"
 
 (define x86 (load-input "fx26:x86_64.fx"))
@@ -83,6 +84,7 @@
 (define y-jmp int 0)
 (define y-jcc int 1)
 (define y-lea int 2)
+(define y-call int 3)
 
 (define y-items (ref (listof x-item @c) @c) (new nil))
 (define ye! (->* ((listof int @k)) unit) (lambda (bs) (set y-items (cons (xb bs) (get y-items)))))
@@ -90,7 +92,9 @@
 (define yb! (->* (int) unit) (lambda (l) (set y-items (cons (xj y-jmp 0 l) (get y-items)))))
 (define ybc! (->* (int int) unit) (lambda (c l) (set y-items (cons (xj y-jcc c l) (get y-items)))))
 (define yadr! (->* (int int) unit) (lambda (r l) (set y-items (cons (xj y-lea r l) (get y-items)))))
-(define yalign! (->* () unit) (lambda () (set y-items (cons (xa 0) (get y-items)))))
+(define yalign! (->* (int) unit)
+  (lambda (n) "No-ops, so that the `n` bytes next end 8-aligned." (set y-items (cons (xa n) (get y-items)))))
+(define ycall! (->* (int) unit) (lambda (l) (set y-items (cons (xj y-call 0 l) (get y-items)))))
 "Data, placed before the code: 8 bytes an entry."
 (define y-data (ref (listof x-item @c) @c) (new nil))
 (define yd! (->* (int) unit) (lambda (v) (set y-data (cons (xb ((with x86 x86-le8) v)) (get y-data)))))
@@ -104,9 +108,9 @@
   (lambda (x at)
     (tagcase x
       (xb (bs) (y-length bs 0))
-      (xj (k a l) (cond ((= k y-jmp) 5) ((= k y-jcc) 6) (else 7)))
+      (xj (k a l) (cond ((or (= k y-jmp) (= k y-call)) 5) ((= k y-jcc) 6) (else 7)))
       (xo (l) 8)
-      (xa (z) (modulo (- 8 (modulo at 8)) 8))
+      (xa (z) (modulo (- 8 (modulo (+ at z) 8)) 8))
       (xl (l) 0))))
 
 (define-rec
@@ -128,6 +132,7 @@
         (let ((d (- (where ls l) (+ at (y-size x at)))))
           (cond ((= k y-jmp) ((with x86 x86-jmp) d))
                 ((= k y-jcc) ((with x86 x86-jcc) a d))
+                ((= k y-call) ((with x86 x86-call) d))
                 (else ((with x86 x86-lea-rip) a d)))))
       (xo (l) ((with x86 x86-le8) (where ls l)))
       (xa (z) ((with x86 x86-nops) (y-size x at)))
@@ -153,6 +158,9 @@
 (define ypop! (->* (int) unit) (lambda (r) (ye! ((with x86 x86-pop) r))))
 (define yret! (->* () unit) (lambda () (ye! ((with x86 x86-ret)))))
 (define yneg! (->* (int) unit) (lambda (r) (ye! ((with x86 x86-neg) r))))
+(define ycall-r! (->* (int) unit) (lambda (r) (ye! ((with x86 x86-call-r) r))))
+(define ypush-st! (->* (int) unit) (lambda (i) (ye! ((with x86 x86-push-m) y-st (at-st i)))))
+(define ypop-st! (->* (int) unit) (lambda (i) (ye! ((with x86 x86-pop-m) y-st (at-st i)))))
 (define yzero! (->* (int) unit)
   (lambda (i) "The state's element `i` 0." (ye! ((with x86 x86-store-imm) y-st -1 1 (at-st i) 0))))
 
@@ -730,8 +738,11 @@
  registers left over (its values are offsets, its heap's base pinned);
  the instruction's place is in `r14`, the ip's register, which register
  code does not use, and goes to the state only when it is given back; the
- link is the state's `st-link`, a call a jump with its return point
- there, as hand.kfx's `x30`."
+ link is the state's `st-link`, as hand.kfx's `x30`, while the word runs.
+ A call is a `call`, the callee popping the link from the machine stack
+ at once; a return pushes it back and `ret`s; a call in tail position
+ pushes its own link and jumps, for the callee to pop. So each `ret`
+ pairs with its `call`, as the processor predicts returns (C137)."
 (define yreg-ld! (->* (int int) unit)
   (lambda (d k) "`d` := `REGk`." (if (= k 0) (ymov! d y-clo) (yst-ld! d (+ st-regs k)))))
 (define yreg-st! (->* (int int) unit)
@@ -777,16 +788,27 @@
 (define ylink-reloaded! (->* (int) unit)
   (lambda (m) "The link again, after a call." (if (>= m 0) (begin (yld! y13 y-fp (* 8 m)) (yst-st! st-link y13)) (yzero! st-link))))
 
+"A register word's entry for a call: the link popped, then its first
+ instruction past `args`. Placed just before that instruction's code, so
+ found from it (`yentry-address!`); the tables' way in to that instruction,
+ by a jump, is past it."
+(define y-link-popped (->* () (listof int @k)) (lambda () ((with x86 x86-pop-m) y-st (at-st st-link))))
+(define h-call-entry (ref int @c) (new -1))
+
 (define ycalled-to! (->* (int int) unit)
   (lambda (l r)
-    "A call: the point after it the link, then on to label `l`, or to the
-     address in `r` if `l` is -1. The point after it 8-aligned."
-    (let ((back (label!)))
-      (begin
-        (yadr! y13 back) (yst-st! st-link y13)
-        (if (< l 0) (yjmp-r! r) (yb! l))
-        (yalign!) (ybind! back)
-        (ylink-reloaded! (get h-link))))))
+    "A call, by `call`, to label `l`, or to the address in `r` if `l` is
+     -1: a callee's entry for a call, which pops the point after it into
+     the link. That point 8-aligned, a link in a frame read as a fixnum."
+    (begin
+      (if (< l 0) (begin (yalign! (y-length ((with x86 x86-call-r) r) 0)) (ycall-r! r)) (begin (yalign! 5) (ycall! l)))
+      (ylink-reloaded! (get h-link)))))
+
+(define ytail-called! (->* (int) unit)
+  (lambda (r)
+    "A call in tail position to the address in `r`, a callee's entry for a
+     call: this word's link pushed for it to pop."
+    (begin (ypush-st! st-link) (yjmp-r! r))))
 
 (define yentry-address! (->* (int int) unit)
   (lambda (r none)
@@ -800,7 +822,7 @@
       (yalurm! a-cmp y15 y13 8) (ybc! q-ae none)
       (yld-ix! y14 y13 y15 16)
       (ylea-ix! y16 y13 y14 1 0) (yld! y14 y16 (* 8 (+ 1 (+ (i64->int f-cell0) 2))))
-      (ylea-ix! y16 y13 y14 1 0))))
+      (ylea-ix! y16 y13 y14 1 (- 0 (y-length (y-link-popped) 0))))))
 
 (define-rec
   (yargs-pushed! (->* (int int) unit)
@@ -816,6 +838,9 @@
            (nx (i64+ i (i64+ 1 (rop-operands op))))
            (to (lambda ((ops int) (off i64)) (+ base (i64->int (i64+ i (i64+ (int->i64 (+ ops 1)) off)))))))
       (begin
+        (if (i64= i 2)
+            (begin (yb! (+ base 2)) (ybind! (get h-call-entry)) (ye! (y-link-popped)))
+            #u)
         (ybind! (+ base (i64->int i)))
         (ylea-ix! y-ip y-mem y-cur 1 (- -4 (* 8 (i64->int kk))))
         (yalumi! a-sub y-st (at-st st-fuel) 1) (ygive-if! q-b)
@@ -910,7 +935,7 @@
                ;; link this one's), its value in `rax`.
                (yentry-address! y10 stack-way)
                (if tail
-                   (yjmp-r! y16)
+                   (ytail-called! y16)
                    (begin (ycalled-to! -1 y16) (yb! (+ base (i64->int nx)))))
                (ybind! stack-way)
                (yst-st! st-regs y-w)
@@ -930,7 +955,7 @@
                      (ylea-ix! y-ip y-mem y-cur 1 (- -4 (* 8 (i64->int f-cell0))))
                      (yresume!))))))
           ((i64= op ro-invokeself)
-           (begin (ylimits!) (yreturn-pushed! (i64+ f-cell0 nx)) (ycalled-to! (+ base 2) -1)))
+           (begin (ylimits!) (yreturn-pushed! (i64+ f-cell0 nx)) (ycalled-to! (get h-call-entry) -1)))
           ((i64= op ro-return)
            (let ((stack-way (label!)))
              (begin
@@ -943,7 +968,7 @@
                (yalui! a-cmp y13 (i64->int mark-mark-word)) (ybc! q-e stack-way)
                (ymov! y-cur y13) (yld! y14 y-rsp -16) (yld! y-clo y-rsp -8) (yalui! a-sub y-rsp 32)
                (ymov! y-fp y14) (yalurm! a-add y-fp y-st (at-st st-dsb))
-               (yst-ld! y16 st-link) (yjmp-r! y16)
+               (ypush-st! st-link) (yret!)
                (ybind! stack-way)
                (yroom!) (ypushed! y-w) (yst-st! st-regs y-w) (yb! (get l-pop-return)))))
           ((i64= op ro-branch) (yb! (to 1 (o 0))))
@@ -1012,6 +1037,7 @@
            (machine-give (get l-give)) (machine-give-pre (get l-give-pre)))
       (begin
         (set hand-labels (+ rgive 1))
+        (set h-call-entry (label!))
         (set h-link -1)
         (set l-give give) (set l-give-pre give-pre)
         (yreg-instructions! rw 0 n base starts resumes)

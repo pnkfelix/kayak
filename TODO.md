@@ -742,6 +742,9 @@ the link there too). Left:
 5. Tier 6 with Fixpt's `direct/x64.rs`.
 - Perhaps: `REG1`… in registers, as Fixpt's x86_64 register code keeps
   three, if the routines' scratch can be made to leave some (C137).
+- On arm64, measured on macOS: register code's return by `ret` (x30), not
+  `br x30`, so that the processor predicts it, as x86_64's `ret` (C137);
+  `bl`/`blr` already push to its predictor.
 - Noticed on the way: Fixpt's `native/crossing-overflow.fx` (its §93, new
   at this pin) fails on Fixpt, a Rust stack too deep for calls between
   machines, and runs on the engine, which has no such calls:

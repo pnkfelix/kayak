@@ -25,7 +25,8 @@ use super::*;
 // stack, with every other register the machine uses, and given back.
 // - Tiers 4 and 5 (`--compiled`): hand.kfx's, at the same places, by the
 // same tables; register code's `RESULT` in `rax` and its `REGk` in the
-// state, its link there too (C137).
+// state, its link there too while a word runs, calls by `call` and
+// `ret` (C137).
 // fixpt-source: crates/fixpt-native/src/cellular/x64.rs@4caffc2
 pub mod made__load__0__fx26_x86_64 {
     use super::*;
@@ -110,7 +111,7 @@ pub mod made__load__0__fx26_x86_64 {
     }
 }
 
-pub mod made__input__1550__x86_64_types {
+pub mod made__input__1598__x86_64_types {
     use super::*;
 
     pub use super::made__load__0__fx26_x86_64::{X86Bytes, X86Op0, X86Op1, X86Op2, X86Op3, X86Op4, X86Op5, X86Op6, X8664Sig};
@@ -119,7 +120,7 @@ pub mod made__input__1550__x86_64_types {
 pub mod x86 {
     use super::*;
 
-    use super::made__input__1550__x86_64_types::{X86Bytes, X86Op0, X86Op1, X86Op2, X86Op3, X86Op4, X86Op5, X86Op6, X8664Sig};
+    use super::made__input__1598__x86_64_types::{X86Bytes, X86Op0, X86Op1, X86Op2, X86Op3, X86Op4, X86Op5, X86Op6, X8664Sig};
 
     pub fn x86_b1(a: Int) -> X86Bytes {
         kayak_rt::heap_cons(a, nil::<Int>())
@@ -765,6 +766,10 @@ pub fn y_lea() -> Int {
     int_lit(2)
 }
 
+pub fn y_call() -> Int {
+    int_lit(3)
+}
+
 pub fn y_items() -> Ref<List<&'static XItem>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static XItem>>);
     once(&ONCE, || {
@@ -792,8 +797,13 @@ pub fn yadr_x(r: Int, l: Int) -> () {
     set(y_items(), kayak_rt::heap_cons(xj(y_lea(), r, l), get(y_items())))
 }
 
-pub fn yalign_x() -> () {
-    set(y_items(), kayak_rt::heap_cons(xa(int_lit(0)), get(y_items())))
+/// No-ops, so that the `n` bytes next end 8-aligned.
+pub fn yalign_x(n: Int) -> () {
+    set(y_items(), kayak_rt::heap_cons(xa(n), get(y_items())))
+}
+
+pub fn ycall_x(l: Int) -> () {
+    set(y_items(), kayak_rt::heap_cons(xj(y_call(), int_lit(0), l), get(y_items())))
 }
 
 // Data, placed before the code: 8 bytes an entry.
@@ -834,7 +844,7 @@ pub fn y_size(x: &'static XItem, at: Int) -> Int {
             y_length(bs, int_lit(0))
         }
         XItem::Xj(k, a, l) => {
-            if _eq(k, y_jmp()) {
+            if (_eq(k, y_jmp()) || _eq(k, y_call())) {
                 int_lit(5)
             } else if _eq(k, y_jcc()) {
                 int_lit(6)
@@ -846,7 +856,7 @@ pub fn y_size(x: &'static XItem, at: Int) -> Int {
             int_lit(8)
         }
         XItem::Xa(z) => {
-            modulo(_minus(int_lit(8), modulo(at, int_lit(8))), int_lit(8))
+            modulo(_minus(int_lit(8), modulo(_plus(at, z), int_lit(8))), int_lit(8))
         }
         XItem::Xl(l) => {
             int_lit(0)
@@ -890,6 +900,8 @@ pub fn y_encoded(x: &'static XItem, at: Int, ls: FlatArray<i64>) -> List<Int> {
                 (&x86::x86_jmp)(d)
             } else if _eq(k, y_jcc()) {
                 (&x86::x86_jcc)(a, d)
+            } else if _eq(k, y_call()) {
+                (&x86::x86_call)(d)
             } else {
                 (&x86::x86_lea_rip)(a, d)
             }
@@ -981,6 +993,18 @@ pub fn yret_x() -> () {
 
 pub fn yneg_x(r: Int) -> () {
     ye_x((&x86::x86_neg)(r))
+}
+
+pub fn ycall_r_x(r: Int) -> () {
+    ye_x((&x86::x86_call_r)(r))
+}
+
+pub fn ypush_st_x(i: Int) -> () {
+    ye_x((&x86::x86_push_m)(y_st(), at_st(i)))
+}
+
+pub fn ypop_st_x(i: Int) -> () {
+    ye_x((&x86::x86_pop_m)(y_st(), at_st(i)))
 }
 
 /// The state's element `i` 0.
@@ -1949,8 +1973,11 @@ pub fn yword_compiled_x(w: i64, n_cells: Int, rt: Int) -> () {
 // registers left over (its values are offsets, its heap's base pinned);
 // the instruction's place is in `r14`, the ip's register, which register
 // code does not use, and goes to the state only when it is given back; the
-// link is the state's `st-link`, a call a jump with its return point
-// there, as hand.kfx's `x30`.
+// link is the state's `st-link`, as hand.kfx's `x30`, while the word runs.
+// A call is a `call`, the callee popping the link from the machine stack
+// at once; a return pushes it back and `ret`s; a call in tail position
+// pushes its own link and jumps, for the callee to pop. So each `ret`
+// pairs with its `call`, as the processor predicts returns (C137).
 /// `d` := `REGk`.
 pub fn yreg_ld_x(d: Int, k: Int) -> () {
     if _eq(k, int_lit(0)) {
@@ -2061,20 +2088,40 @@ pub fn ylink_reloaded_x(m: Int) -> () {
     }
 }
 
-/// A call: the point after it the link, then on to label `l`, or to the
-/// address in `r` if `l` is -1. The point after it 8-aligned.
+// A register word's entry for a call: the link popped, then its first
+// instruction past `args`. Placed just before that instruction's code, so
+// found from it (`yentry-address!`); the tables' way in to that instruction,
+// by a jump, is past it.
+pub fn y_link_popped() -> List<Int> {
+    (&x86::x86_pop_m)(y_st(), at_st(st_link()))
+}
+
+pub fn h_call_entry() -> Ref<Int> {
+    kayak_rt::kept_constant!(ONCE: Ref<Int>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(int_lit(-1))
+    })
+}
+
+/// A call, by `call`, to label `l`, or to the address in `r` if `l` is
+/// -1: a callee's entry for a call, which pops the point after it into
+/// the link. That point 8-aligned, a link in a frame read as a fixnum.
 pub fn ycalled_to_x(l: Int, r: Int) -> () {
-    let back = label_x();
-    yadr_x(y13(), back);
-    yst_st_x(st_link(), y13());
     if _lt(l, int_lit(0)) {
-        yjmp_r_x(r)
+        yalign_x(y_length((&x86::x86_call_r)(r), int_lit(0)));
+        ycall_r_x(r)
     } else {
-        yb_x(l)
+        yalign_x(int_lit(5));
+        ycall_x(l)
     };
-    yalign_x();
-    ybind_x(back);
     ylink_reloaded_x(get(h_link()))
+}
+
+/// A call in tail position to the address in `r`, a callee's entry for a
+/// call: this word's link pushed for it to pop.
+pub fn ytail_called_x(r: Int) -> () {
+    ypush_st_x(st_link());
+    yjmp_r_x(r)
 }
 
 /// `r11` the code of register word `r`'s first instruction past `args`,
@@ -2090,7 +2137,7 @@ pub fn yentry_address_x(r: Int, none: Int) -> () {
     yld_ix_x(y14(), y13(), y15(), int_lit(16));
     ylea_ix_x(y16(), y13(), y14(), int_lit(1), int_lit(0));
     yld_x(y14(), y16(), _star(int_lit(8), _plus(int_lit(1), _plus(i64_to_int(f_cell0()), int_lit(2)))));
-    ylea_ix_x(y16(), y13(), y14(), int_lit(1), int_lit(0))
+    ylea_ix_x(y16(), y13(), y14(), int_lit(1), _minus(int_lit(0), y_length(y_link_popped(), int_lit(0))))
 }
 
 pub fn yargs_pushed_x(mut r: Int, mut n: Int) -> () {
@@ -2118,6 +2165,13 @@ pub fn yreg_ins_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
     let to = lambda2s(move |ops: Int, off: i64| {
         _plus(base, i64_to_int(i64_plus(i, i64_plus(int_to_i64(_plus(ops, int_lit(1))), off))))
     });
+    if i64_eq(i, 2i64) {
+        yb_x(_plus(base, int_lit(2)));
+        ybind_x(get(h_call_entry()));
+        ye_x(y_link_popped())
+    } else {
+        ()
+    };
     ybind_x(_plus(base, i64_to_int(i)));
     ylea_ix_x(y_ip(), y_mem(), y_cur(), int_lit(1), _minus(int_lit(-4), _star(int_lit(8), i64_to_int(kk))));
     yalumi_x(a_sub(), y_st(), at_st(st_fuel()), int_lit(1));
@@ -2275,7 +2329,7 @@ pub fn yreg_ins_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
         ymov_x(y_cur(), y10());
         yentry_address_x(y10(), stack_way);
         if tail {
-            yjmp_r_x(y16())
+            ytail_called_x(y16())
         } else {
             ycalled_to_x(int_lit(-1), y16());
             yb_x(_plus(base, i64_to_int(nx)))
@@ -2309,7 +2363,7 @@ pub fn yreg_ins_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
     } else if i64_eq(op, ro_invokeself()) {
         ylimits_x();
         yreturn_pushed_x(i64_plus(f_cell0(), nx));
-        ycalled_to_x(_plus(base, int_lit(2)), int_lit(-1))
+        ycalled_to_x(get(h_call_entry()), int_lit(-1))
     } else if i64_eq(op, ro_return()) {
         let stack_way = label_x();
         ycmp_st_x(y_rsp(), st_rsb());
@@ -2327,8 +2381,8 @@ pub fn yreg_ins_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
         yalui_x(a_sub(), y_rsp(), int_lit(32));
         ymov_x(y_fp(), y14());
         yalurm_x(a_add(), y_fp(), y_st(), at_st(st_dsb()));
-        yst_ld_x(y16(), st_link());
-        yjmp_r_x(y16());
+        ypush_st_x(st_link());
+        yret_x();
         ybind_x(stack_way);
         yroom_x();
         ypushed_x(y_w());
@@ -2428,6 +2482,7 @@ pub fn yregister_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
     let machine_give = get(l_give());
     let machine_give_pre = get(l_give_pre());
     set(hand_labels(), _plus(rgive, int_lit(1)));
+    set(h_call_entry(), label_x());
     set(h_link(), int_lit(-1));
     set(l_give(), give);
     set(l_give_pre(), give_pre);
