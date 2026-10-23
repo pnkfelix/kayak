@@ -28,8 +28,18 @@ python3 -I scripts/repl-sessions.py
 # C103's REPL, kept to compare with C111's: the same sessions, the same bytes.
 python3 -I scripts/repl-sessions.py --rust-repl
 cargo clippy --release -p kayak-fx26 --features rust-repl --target-dir target/rust-repl --quiet -- -D warnings
-scripts/fixpoint.sh $quick
-python3 -I scripts/incremental.py $quick
+# The bootstrap's fixed point (stage 0, Fixpt's runs, about 10 minutes) and
+# the incremental compiles use a few processors, each in a directory of its
+# own: beside the rest, which uses them all, their output kept and said when
+# they end. kfx built first, so that no stage builds it under another.
+cargo build --release --quiet -p kfx
+logs=$(mktemp -d)
+fixpoint=; incremental=
+# Should a stage fail first, the two and everything they started stopped.
+killed() { for c in $(pgrep -P "$1" 2>/dev/null); do killed "$c"; done; kill "$1" 2>/dev/null || true; }
+trap 'for p in $fixpoint $incremental; do killed "$p"; done; rm -rf "$logs"' EXIT
+scripts/fixpoint.sh $quick > "$logs/fixpoint" 2>&1 & fixpoint=$!
+python3 -I scripts/incremental.py $quick > "$logs/incremental" 2>&1 & incremental=$!
 # Fixpt's own programs (tests/fx26/programs) and its answers to them
 # (tests/fixpt-answers), kept in kayak (C132): with a clone at the pin, each
 # is checked to be the pin's, and an answer of another pin's asked again.
@@ -51,6 +61,15 @@ python3 -I scripts/refused-fixpt-programs.py
 # The checkers compared, form by form (TODO §30): fails only if kayak's
 # accepts a program Fixpt's refuses; the rest is the measure of §30.
 python3 -I scripts/compare-checkers.py --summary
+# The two beside the rest, in order.
+for job in fixpoint incremental; do
+    eval pid=\$$job
+    status=0
+    wait "$pid" || status=$?
+    cat "$logs/$job"
+    [ $status = 0 ] || { echo "check: $job failed" >&2; exit 1; }
+done
+fixpoint=; incremental=
 # Every answer kept was asked for in this check: the rest dropped, and the
 # answers stamped as the pin's.
 if [ -n "$clone" ]; then
