@@ -27,6 +27,8 @@ use super::*;
 // same tables; register code's `RESULT` in `rax`, `REG1` in `rdi`,
 // `REG2` in `r14`, the rest in the state, its link there too while a
 // word runs, calls by `call` and `ret` (C137).
+// - Tier 6 (`--direct`): register code as native procedures beside tier
+// 5's, leaving for it where it would give back (C138).
 // fixpt-source: crates/fixpt-native/src/cellular/x64.rs@4caffc2
 pub mod made__load__0__fx26_x86_64 {
     use super::*;
@@ -111,7 +113,7 @@ pub mod made__load__0__fx26_x86_64 {
     }
 }
 
-pub mod made__input__1627__x86_64_types {
+pub mod made__input__1754__x86_64_types {
     use super::*;
 
     pub use super::made__load__0__fx26_x86_64::{X86Bytes, X86Op0, X86Op1, X86Op2, X86Op3, X86Op4, X86Op5, X86Op6, X8664Sig};
@@ -120,7 +122,7 @@ pub mod made__input__1627__x86_64_types {
 pub mod x86 {
     use super::*;
 
-    use super::made__input__1627__x86_64_types::{X86Bytes, X86Op0, X86Op1, X86Op2, X86Op3, X86Op4, X86Op5, X86Op6, X8664Sig};
+    use super::made__input__1754__x86_64_types::{X86Bytes, X86Op0, X86Op1, X86Op2, X86Op3, X86Op4, X86Op5, X86Op6, X8664Sig};
 
     pub fn x86_b1(a: Int) -> X86Bytes {
         kayak_rt::heap_cons(a, nil::<Int>())
@@ -2233,8 +2235,8 @@ pub fn ytail_called_x(r: Int) -> () {
     yjmp_r_x(r)
 }
 
-/// `r11` the code of register word `r`'s first instruction past `args`,
-/// by the tables past the code's start; to `none` if it has none.
+/// `r11` register word `r`'s entry for a call, by the tables past the
+/// code's start (field 2 of its own); to `none` if it has none.
 pub fn yentry_address_x(r: Int, none: Int) -> () {
     yst_ld_x(y13(), st_start());
     yld_ix_x(y15(), y_mem(), r, at_field(f_entry()));
@@ -2245,8 +2247,8 @@ pub fn yentry_address_x(r: Int, none: Int) -> () {
     ybc_x(q_ae(), none);
     yld_ix_x(y14(), y13(), y15(), int_lit(16));
     ylea_ix_x(y16(), y13(), y14(), int_lit(1), int_lit(0));
-    yld_x(y14(), y16(), _star(int_lit(8), _plus(int_lit(1), _plus(i64_to_int(f_cell0()), int_lit(2)))));
-    ylea_ix_x(y16(), y13(), y14(), int_lit(1), _minus(int_lit(0), y_length(y_link_popped(), int_lit(0))))
+    yld_x(y14(), y16(), int_lit(24));
+    ylea_ix_x(y16(), y13(), y14(), int_lit(1), int_lit(0))
 }
 
 pub fn yargs_pushed_x(mut r: Int, mut n: Int) -> () {
@@ -2293,30 +2295,386 @@ pub fn ygive_stubs_x(mut i: i64, mut n: i64, mut starts: FlatArray<i64>, mut giv
     }
 }
 
-/// Register instruction `i` of `rw`'s `n` cells, at label `base + i`;
-/// a point after a call marked in `resumes`.
-pub fn yreg_ins_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -> () {
+// Tier 6 (C138): register words compiled a second time, as native
+// procedures, beside their tier 5 code: the same registers (`RESULT` in
+// `rax`, `REG1` in `rdi`, `REG2` in `r14`, the rest in the state), the same
+// frames on the data stack, but none of what keeps tier 1's state exact at
+// every instruction. Fuel is spent a block at a time (exactly as many
+// steps as tier 1's); a call is a `call` with a record on the machine
+// stack, `(ret nx fp clo cur)` from its top, of what the caller would have
+// pushed on the return stack, whose place there is kept (`rbx` moved past
+// it) but not written; and nothing is given back. What tier 6 would give
+// back, it leaves instead: the records written to the return stack as the
+// entries they stand for (`l-materialize`), the fuel not spent given back,
+// then on in tier 5 at the same instruction, whose code says what tier 1
+// would do. So only what never allocates is here, and the collector never
+// sees a record. Entered by a call from tier 5 (its entry for a call
+// diverted to `adapter`), over a bottom record, `(1 1)`, that says so.
+pub fn hand_direct() -> Ref<bool> {
+    kayak_rt::kept_constant!(ONCE: Ref<bool>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(false)
+    })
+}
+
+pub fn st_t6link() -> Int {
+    int_lit(33)
+}
+
+pub fn y_machine_sp() -> Int {
+    int_lit(4)
+}
+
+pub fn l_materialize() -> Ref<Int> {
+    kayak_rt::kept_constant!(ONCE: Ref<Int>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(int_lit(0))
+    })
+}
+
+/// Whether tier 6 has register operation `op`, of operands `a`, `b`.
+pub fn y_direct_op_p(op: i64, a: i64, b: i64) -> bool {
+    if (i64_eq(op, ro_op2()) || i64_eq(op, ro_op2imm())) {
+        (i64_eq(a, r_eq()) || i64_eq(a, r_int_add()) || i64_eq(a, r_add()) || i64_eq(a, r_int_sub()) || i64_eq(a, r_sub()) || i64_eq(a, r_int_less()) || i64_eq(a, r_less()) || i64_eq(a, r_int_eq()))
+    } else if i64_eq(op, ro_op1()) {
+        (i64_eq(a, r_car()) || i64_eq(a, r_cdr()) || i64_eq(a, r_pair_car()) || i64_eq(a, r_pair_cdr()))
+    } else {
+        (i64_eq(op, ro_args()) || i64_eq(op, ro_const()) || i64_eq(op, ro_global()) || i64_eq(op, ro_setglbl()) || i64_eq(op, ro_reg()) || i64_eq(op, ro_setreg()) || i64_eq(op, ro_movereg()) || i64_eq(op, ro_lexical()) || i64_eq(op, ro_save()) || i64_eq(op, ro_pop()) || i64_eq(op, ro_stack()) || i64_eq(op, ro_load()) || i64_eq(op, ro_setstk()) || i64_eq(op, ro_store()) || i64_eq(op, ro_field()) || i64_eq(op, ro_invoke()) || i64_eq(op, ro_tailinvoke()) || i64_eq(op, ro_invokeself()) || i64_eq(op, ro_return()) || i64_eq(op, ro_branch()) || i64_eq(op, ro_branchf()) || i64_eq(op, ro_brancht()) || i64_eq(op, ro_global_guard()))
+    }
+}
+
+/// Whether every instruction of `rw` from `i`, of `n` cells, is tier 6's.
+pub fn y_direct_able_p(rw: i64, i: i64, n: i64) -> bool {
+    if i64_gt_eq(i, n) {
+        true
+    } else {
+        let kk = i64_plus(f_cell0(), i);
+        let op = fix_val(slot_of(rw, kk));
+        let ops = rop_operands(op);
+        let a = if i64_gt_eq(ops, 1i64) {
+            fix_val(slot_of(rw, i64_plus(kk, 1i64)))
+        } else {
+            the::<i64>(0i64)
+        };
+        let b = if i64_gt_eq(ops, 2i64) {
+            fix_val(slot_of(rw, i64_plus(kk, 2i64)))
+        } else {
+            the::<i64>(0i64)
+        };
+        (y_direct_op_p(op, a, b) && y_direct_able_p(rw, i64_plus(i, i64_plus(1i64, ops)), n))
+    }
+}
+
+// Compiling a word for tier 6: whether, its instructions' labels, their
+// ways out, its tier 5 code's labels, and its blocks.
+pub fn h_6() -> Ref<bool> {
+    kayak_rt::kept_constant!(ONCE: Ref<bool>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(false)
+    })
+}
+
+pub fn h_6_base() -> Ref<Int> {
+    kayak_rt::kept_constant!(ONCE: Ref<Int>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(int_lit(0))
+    })
+}
+
+pub fn h_6_exits() -> Ref<Int> {
+    kayak_rt::kept_constant!(ONCE: Ref<Int>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(int_lit(0))
+    })
+}
+
+pub fn h_6_tier5() -> Ref<Int> {
+    kayak_rt::kept_constant!(ONCE: Ref<Int>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(int_lit(0))
+    })
+}
+
+pub fn h_6_adapter() -> Ref<Int> {
+    kayak_rt::kept_constant!(ONCE: Ref<Int>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(int_lit(-1))
+    })
+}
+
+// While a word with tier 6 code is compiled: each block's first's way in
+// to it, and where in its block each instruction is.
+pub fn h_6_on() -> Ref<bool> {
+    kayak_rt::kept_constant!(ONCE: Ref<bool>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(false)
+    })
+}
+
+pub fn h_6_ins() -> Ref<Int> {
+    kayak_rt::kept_constant!(ONCE: Ref<Int>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(int_lit(0))
+    })
+}
+
+pub fn h_6_at() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(1i64, 0i64))
+    })
+}
+
+pub fn h_6_of() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(1i64, 0i64))
+    })
+}
+
+/// Where register instruction `i` of `rw` may branch to, or -1.
+pub fn y_branch_target(rw: i64, i: i64) -> i64 {
+    let kk = i64_plus(f_cell0(), i);
+    let op = fix_val(slot_of(rw, kk));
+    if (i64_eq(op, ro_branch()) || i64_eq(op, ro_branchf()) || i64_eq(op, ro_brancht())) {
+        i64_plus(i, i64_plus(2i64, fix_val(slot_of(rw, i64_plus(kk, 1i64)))))
+    } else if i64_eq(op, ro_global_guard()) {
+        i64_plus(i, i64_plus(4i64, fix_val(slot_of(rw, i64_plus(kk, 3i64)))))
+    } else {
+        -1i64
+    }
+}
+
+/// Which instructions from `i` begin a block, 1 in `lead`: a branch's
+/// target, what follows a branch, a call or a return.
+pub fn y6_leaders_x(mut rw: i64, mut i: i64, mut n: i64, mut lead: FlatArray<i64>) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            let kk = i64_plus(f_cell0(), i);
+            let op = fix_val(slot_of(rw, kk));
+            let nx = i64_plus(i, i64_plus(1i64, rop_operands(op)));
+            let t = y_branch_target(rw, i);
+            if (i64_gt_eq(t, 0i64) && i64_lt_eq(t, n)) {
+                flatarray_set_i64_x(lead, t, 1i64)
+            } else {
+                ()
+            };
+            if (i64_gt_eq(t, 0i64) || i64_eq(op, ro_invoke()) || i64_eq(op, ro_tailinvoke()) || i64_eq(op, ro_invokeself()) || i64_eq(op, ro_return())) {
+                flatarray_set_i64_x(lead, nx, 1i64)
+            } else {
+                ()
+            };
+            i = nx;
+            continue;
+        }
+    }
+}
+
+/// For each instruction from `i`, the block it is in begun at `l`: its
+/// place in it in `at`, the block's first in `of`; each block's length
+/// in `len`, by its first.
+pub fn y6_blocks_x(mut rw: i64, mut i: i64, mut n: i64, mut lead: FlatArray<i64>, mut l: i64, mut at: FlatArray<i64>, mut of: FlatArray<i64>, mut len: FlatArray<i64>) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            let nx = i64_plus(i, i64_plus(1i64, rop_operands(fix_val(slot_of(rw, i64_plus(f_cell0(), i))))));
+            let b = if i64_eq(flatarray_ref_i64(lead, i), 1i64) {
+                i
+            } else {
+                l
+            };
+            flatarray_set_i64_x(at, i, flatarray_ref_i64(len, b));
+            flatarray_set_i64_x(of, i, b);
+            flatarray_set_i64_x(len, b, i64_plus(flatarray_ref_i64(len, b), 1i64));
+            (i, l) = (nx, b);
+            continue;
+        }
+    }
+}
+
+// A block's fuel, spent at its start: given back by its first's way out
+// if there is not as much.
+pub fn h_6_lead() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(1i64, 0i64))
+    })
+}
+
+pub fn h_6_len() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(1i64, 0i64))
+    })
+}
+
+/// The label instruction `t` is branched to at, its code's at `base`:
+/// for tier 5's code of a word with tier 6 code, a block's first's way
+/// in to tier 6, so that a loop left goes back in.
+pub fn y_to(base: Int, t: i64) -> Int {
+    if (not(get(h_6())) && get(h_6_on()) && i64_eq(flatarray_ref_i64(get(h_6_lead()), t), 1i64)) {
+        _plus(get(h_6_ins()), i64_to_int(t))
+    } else {
+        _plus(base, i64_to_int(t))
+    }
+}
+
+/// A call of tier 6 code at label `l`, or if it is -1 at the address in
+/// `r`, `cur` then `new-cur`
+/// (a register, or -1 for this one), the closure in `rax` (none for
+/// `invokeself`): the caller's record pushed, its place on the return
+/// stack kept, and after it, all popped.
+pub fn y6_called_x(l: Int, r: Int, new_cur: Int, nx: i64) -> () {
+    ylimits_x();
+    ycmp_st_x(y_rsp(), st_rs_end());
+    ygive_if_x(q_ae());
+    ypush_x(y_cur());
+    ypush_x(y_clo());
+    ypush_x(y_fp());
+    yimm_x(y13(), _minus(int_lit(0), _star(int_lit(8), i64_to_int(i64_plus(f_cell0(), nx)))));
+    ypush_x(y13());
+    yalui_x(a_add(), y_rsp(), int_lit(32));
+    if _lt(new_cur, int_lit(0)) {
+        ()
+    } else {
+        ymov_x(y_clo(), y_w());
+        ymov_x(y_cur(), new_cur)
+    };
+    if _lt(l, int_lit(0)) {
+        ycall_r_x(r)
+    } else {
+        ycall_x(l)
+    };
+    yalui_x(a_add(), y_machine_sp(), int_lit(8));
+    ypop_x(y_fp());
+    ypop_x(y_clo());
+    ypop_x(y_cur());
+    yalui_x(a_sub(), y_rsp(), int_lit(32))
+}
+
+/// `invoke n` (or `tailinvoke`) of the closure in `rax`, if its word's
+/// twin has tier 6 code of `n` arguments; else out, to tier 5.
+pub fn y6_invoked_x(tail: bool, n: Int, nx: i64) -> () {
+    ykind_in_x(y_w(), k_closure());
+    yld_x(y13(), y11(), at_field(f_word()));
+    yld_ix_x(y16(), y_mem(), y13(), at_field(f_twin()));
+    yalui_x(a_cmp(), y16(), int_lit(3));
+    ygive_if_x(q_e());
+    yld_ix_x(y15(), y_mem(), y16(), at_field(i64_plus(f_cell0(), 1i64)));
+    yalui_x(a_cmp(), y15(), _star(int_lit(8), n));
+    ygive_if_x(q_ne());
+    yld_ix_x(y15(), y_mem(), y16(), at_field(f_entry()));
+    yalui_x(a_cmp(), y15(), _star(int_lit(8), i64_to_int(r_count())));
+    ygive_if_x(q_b());
+    yalui_x(a_sub(), y15(), _star(int_lit(8), i64_to_int(r_count())));
+    yadr_x(y13(), get(l_words()));
+    yalurm_x(a_cmp(), y15(), y13(), int_lit(0));
+    ygive_if_x(q_ae());
+    yld_ix_x(y14(), y13(), y15(), int_lit(8));
+    yadr_x(y13(), get(l_start()));
+    yalu_x(a_add(), y14(), y13());
+    yld_x(y14(), y14(), int_lit(16));
+    yalui_x(a_cmp(), y14(), int_lit(0));
+    ygive_if_x(q_e());
+    yalu_x(a_add(), y14(), y13());
+    if tail {
+        ylimits_x();
+        ymov_x(y_clo(), y_w());
+        ymov_x(y_cur(), y16());
+        yjmp_r_x(y14())
+    } else {
+        y6_called_x(int_lit(-1), y14(), y16(), nx)
+    }
+}
+
+/// `return`: to the caller's code; over the bottom record, out, to tier
+/// 5's, which returns to tier 5's caller.
+pub fn y6_returned_x() -> () {
+    yalumi_x(a_cmp(), y_machine_sp(), int_lit(8), int_lit(1));
+    ygive_if_x(q_e());
+    yret_x()
+}
+
+/// Each instruction's way out: the fuel of its block not spent given
+/// back (it, and those after it), the records written, on in tier 5
+/// at it.
+pub fn y6_exits_x(mut i: i64, mut n: i64, mut starts: FlatArray<i64>, mut at: FlatArray<i64>, mut of: FlatArray<i64>, mut len: FlatArray<i64>) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            if (i64_gt_eq(i, 2i64) && i64_eq(flatarray_ref_i64(starts, i), 1i64)) {
+                let back = i64_minus(flatarray_ref_i64(len, flatarray_ref_i64(of, i)), flatarray_ref_i64(at, i));
+                ybind_x(_plus(get(h_6_exits()), i64_to_int(i)));
+                if i64_gt(back, 0i64) {
+                    yalumi_x(a_add(), y_st(), at_st(st_fuel()), i64_to_int(back))
+                } else {
+                    ()
+                };
+                yadr_x(y16(), _plus(get(h_6_tier5()), i64_to_int(i)));
+                yb_x(get(l_materialize()))
+            } else {
+                ()
+            };
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+/// Tier 6 left, for tier 5's code at `r11`: each record, from the
+/// innermost, written in the place it kept on the return stack, as the
+/// entry it stands for; all popped, the bottom record too; the link
+/// tier 5's caller gave, if the code left is that call's, else none.
+pub fn y_materialize_x() -> () {
+    let (r#loop, done, inner, out) = (label_x(), label_x(), label_x(), label_x());
+    ybind_x(get(l_materialize()));
+    ymov_x(y11(), y_machine_sp());
+    ymov_x(y14(), y_rsp());
+    ybind_x(r#loop);
+    yalumi_x(a_cmp(), y11(), int_lit(8), int_lit(1));
+    ybc_x(q_e(), done);
+    yalui_x(a_sub(), y14(), int_lit(32));
+    yld_x(y13(), y11(), int_lit(32));
+    yst_x(y14(), int_lit(0), y13());
+    yld_x(y13(), y11(), int_lit(8));
+    yst_x(y14(), int_lit(8), y13());
+    yld_x(y13(), y11(), int_lit(16));
+    yalurm_x(a_sub(), y13(), y_st(), at_st(st_dsb()));
+    yst_x(y14(), int_lit(16), y13());
+    yld_x(y13(), y11(), int_lit(24));
+    yst_x(y14(), int_lit(24), y13());
+    yalui_x(a_add(), y11(), int_lit(40));
+    yb_x(r#loop);
+    ybind_x(done);
+    yalu_x(a_cmp(), y11(), y_machine_sp());
+    ybc_x(q_ne(), inner);
+    yst_ld_x(y13(), st_t6link());
+    yst_st_x(st_link(), y13());
+    yb_x(out);
+    ybind_x(inner);
+    yzero_x(st_link());
+    ybind_x(out);
+    ylea_x(y_machine_sp(), y11(), int_lit(16));
+    yjmp_r_x(y16())
+}
+
+/// What register instruction `i` of `rw`'s `n` cells does, its
+/// instructions at labels from `base`, for tier 5, or for tier 6 if
+/// `h-6`; for tier 5, a point after a call marked in `resumes`.
+pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -> () {
     let kk = i64_plus(f_cell0(), i);
     let op = fix_val(slot_of(rw, kk));
     let o = lambda1(move |j: Int| {
         fix_val(slot_of(rw, i64_plus(kk, int_to_i64(_plus(j, int_lit(1))))))
     });
     let nx = i64_plus(i, i64_plus(1i64, rop_operands(op)));
-    let to = lambda2s(move |ops: Int, off: i64| {
-        _plus(base, i64_to_int(i64_plus(i, i64_plus(int_to_i64(_plus(ops, int_lit(1))), off))))
+    let to = lambda2(move |ops: Int, off: i64| {
+        y_to(base, i64_plus(i, i64_plus(int_to_i64(_plus(ops, int_lit(1))), off)))
     });
-    if i64_eq(i, 2i64) {
-        yb_x(_plus(base, int_lit(2)));
-        ybind_x(get(h_call_entry()));
-        ye_x(y_link_popped())
-    } else {
-        ()
-    };
-    ybind_x(_plus(base, i64_to_int(i)));
-    set(l_give(), _plus(get(h_gbase()), _star(int_lit(2), i64_to_int(i))));
-    set(l_give_pre(), _plus(get(h_gbase()), _plus(int_lit(1), _star(int_lit(2), i64_to_int(i)))));
-    yalumi_x(a_sub(), y_st(), at_st(st_fuel()), int_lit(1));
-    ygive_if_x(q_b());
     if (i64_eq(op, ro_args()) || i64_eq(op, ro_vargs())) {
         ()
     } else if i64_eq(op, ro_const()) {
@@ -2363,7 +2721,11 @@ pub fn yreg_ins_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
             yalu_x(a_cmp(), y_dsp(), y15());
             ybc_x(q_b(), r#loop)
         };
-        yst_ld_x(y13(), st_link());
+        if get(h_6()) {
+            yimm_x(y13(), int_lit(0))
+        } else {
+            yst_ld_x(y13(), st_link())
+        };
         ypushed_x(y13());
         set(h_link(), m)
     } else if i64_eq(op, ro_pop()) {
@@ -2449,6 +2811,12 @@ pub fn yreg_ins_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
         ymov_x(y_w(), y11());
         yalu_x(a_sub(), y_w(), y_mem());
         yalui_x(a_add(), y_w(), int_lit(4))
+    } else if (get(h_6()) && (i64_eq(op, ro_invoke()) || i64_eq(op, ro_tailinvoke()))) {
+        y6_invoked_x(i64_eq(op, ro_tailinvoke()), i64_to_int(o(int_lit(0))), nx)
+    } else if (get(h_6()) && i64_eq(op, ro_invokeself())) {
+        y6_called_x(_plus(base, int_lit(2)), int_lit(-1), int_lit(-1), nx)
+    } else if (get(h_6()) && i64_eq(op, ro_return())) {
+        y6_returned_x()
     } else if (i64_eq(op, ro_invoke()) || i64_eq(op, ro_tailinvoke())) {
         let (tail, stack_code, stack_way, n) = (i64_eq(op, ro_tailinvoke()), label_x(), label_x(), i64_to_int(o(int_lit(0))));
         ykind_in_x(y_w(), k_closure());
@@ -2545,10 +2913,61 @@ pub fn yreg_ins_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
     } else {
         yb_x(get(l_give()))
     };
-    if (i64_eq(op, ro_prim()) || i64_eq(op, ro_lambda()) || i64_eq(op, ro_cellular()) || i64_eq(op, ro_invoke()) || i64_eq(op, ro_invokeself())) {
+    if (not(get(h_6())) && (i64_eq(op, ro_prim()) || i64_eq(op, ro_lambda()) || i64_eq(op, ro_cellular()) || i64_eq(op, ro_invoke()) || i64_eq(op, ro_invokeself()))) {
         flatarray_set_i64_x(resumes, nx, int_to_i64(_plus(get(h_link()), int_lit(2))))
     } else {
         ()
+    }
+}
+
+/// Register instruction `i` of `rw`'s `n` cells for tier 5, at label
+/// `base + i`, its step counted; before the first past `args`, the
+/// word's entry for a call (to tier 6's adapter, if it has tier 6 code).
+pub fn yreg_ins_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -> () {
+    if i64_eq(i, 2i64) {
+        yb_x(_plus(base, int_lit(2)));
+        ybind_x(get(h_call_entry()));
+        ye_x(y_link_popped());
+        yb_x(if _lt(get(h_6_adapter()), int_lit(0)) {
+            _plus(base, int_lit(2))
+        } else {
+            get(h_6_adapter())
+        })
+    } else {
+        ()
+    };
+    ybind_x(_plus(base, i64_to_int(i)));
+    set(l_give(), _plus(get(h_gbase()), _star(int_lit(2), i64_to_int(i))));
+    set(l_give_pre(), _plus(get(h_gbase()), _plus(int_lit(1), _star(int_lit(2), i64_to_int(i)))));
+    yalumi_x(a_sub(), y_st(), at_st(st_fuel()), int_lit(1));
+    ygive_if_x(q_b());
+    yreg_body_x(rw, i, n, base, resumes)
+}
+
+/// Register instruction `i` of `rw`'s `n` cells for tier 6: at a block's
+/// first, the block's steps counted; its way out its own.
+pub fn y6_ins_x(rw: i64, i: i64, n: i64, none: FlatArray<i64>) -> () {
+    ybind_x(_plus(get(h_6_base()), i64_to_int(i)));
+    set(l_give(), _plus(get(h_6_exits()), i64_to_int(i)));
+    set(l_give_pre(), get(l_give()));
+    if i64_eq(flatarray_ref_i64(get(h_6_lead()), i), 1i64) {
+        yalumi_x(a_sub(), y_st(), at_st(st_fuel()), i64_to_int(flatarray_ref_i64(get(h_6_len()), i)));
+        ygive_if_x(q_b())
+    } else {
+        ()
+    };
+    yreg_body_x(rw, i, n, get(h_6_base()), none)
+}
+
+pub fn y6_instructions_x(mut rw: i64, mut i: i64, mut n: i64, mut none: FlatArray<i64>) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            y6_ins_x(rw, i, n, none);
+            i = i64_plus(i, i64_plus(1i64, rop_operands(fix_val(slot_of(rw, i64_plus(f_cell0(), i))))));
+            continue;
+        }
     }
 }
 
@@ -2591,14 +3010,19 @@ pub fn yresumes_emitted_x(mut i: i64, mut n: i64, mut base: Int, mut rbase: Int,
 }
 
 /// A half of a register word's table: from field `k`, the code of each
-/// instruction `marks` marks, else the way to give back.
-pub fn yreg_table_x(mut k: i64, mut n: i64, mut base: Int, mut rgive: Int, mut marks: FlatArray<i64>) -> () {
+/// instruction `marks` marks, else the way to give back; if `six`, a
+/// block's first's way in to tier 6 (`y-to`).
+pub fn yreg_table_x(mut k: i64, mut n: i64, mut base: Int, mut rgive: Int, mut marks: FlatArray<i64>, mut six: bool) -> () {
     loop {
         if i64_gt_eq(k, i64_plus(f_cell0(), n)) {
             return ();
         } else {
             if (i64_gt_eq(k, f_cell0()) && i64_gt_eq(flatarray_ref_i64(marks, i64_minus(k, f_cell0())), 1i64)) {
-                ydo_x(_plus(base, i64_to_int(i64_minus(k, f_cell0()))))
+                ydo_x(if six {
+                    y_to(base, i64_minus(k, f_cell0()))
+                } else {
+                    _plus(base, i64_to_int(i64_minus(k, f_cell0())))
+                })
             } else {
                 ydo_x(rgive)
             };
@@ -2606,6 +3030,74 @@ pub fn yreg_table_x(mut k: i64, mut n: i64, mut base: Int, mut rgive: Int, mut m
             continue;
         }
     }
+}
+
+pub fn words_direct() -> Ref<Int> {
+    kayak_rt::kept_constant!(ONCE: Ref<Int>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(int_lit(0))
+    })
+}
+
+/// For each block's first from `i`, its way in to tier 6 from tier 5,
+/// or from the tables: the link tier 5's code had kept, the bottom
+/// record pushed, on at it.
+pub fn y6_ways_in_x(mut i: i64, mut n: i64) -> () {
+    loop {
+        if i64_gt(i, n) {
+            return ();
+        } else {
+            if (i64_gt_eq(i, 2i64) && i64_lt(i, n) && i64_eq(flatarray_ref_i64(get(h_6_lead()), i), 1i64)) {
+                ybind_x(_plus(get(h_6_ins()), i64_to_int(i)));
+                yst_ld_x(y13(), st_link());
+                yst_st_x(st_t6link(), y13());
+                yimm_x(y13(), int_lit(1));
+                ypush_x(y13());
+                ypush_x(y13());
+                yb_x(_plus(get(h_6_base()), i64_to_int(i)))
+            } else {
+                ()
+            };
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+/// Register word `rw`'s tier 6 labels and blocks, before its tier 5
+/// code, whose branches and tables go to them.
+pub fn y6_prepared_x(rw: i64, n: i64) -> () {
+    let (lead, at, of, len, n_cells) = (the::<FlatArray<i64>>(make_flatarray_i64(i64_plus(n, 1i64), 0i64)), the::<FlatArray<i64>>(make_flatarray_i64(i64_plus(n, 1i64), 0i64)), the::<FlatArray<i64>>(make_flatarray_i64(i64_plus(n, 1i64), 0i64)), the::<FlatArray<i64>>(make_flatarray_i64(i64_plus(n, 1i64), 0i64)), i64_to_int(n));
+    set(h_6_base(), get(hand_labels()));
+    set(hand_labels(), _plus(get(hand_labels()), _plus(n_cells, int_lit(1))));
+    set(h_6_exits(), get(hand_labels()));
+    set(hand_labels(), _plus(get(hand_labels()), _plus(n_cells, int_lit(1))));
+    set(h_6_ins(), get(hand_labels()));
+    set(hand_labels(), _plus(get(hand_labels()), _plus(n_cells, int_lit(1))));
+    flatarray_set_i64_x(lead, 2i64, 1i64);
+    y6_leaders_x(rw, 0i64, n, lead);
+    y6_blocks_x(rw, 2i64, n, lead, 2i64, at, of, len);
+    set(h_6_lead(), lead);
+    set(h_6_at(), at);
+    set(h_6_of(), of);
+    set(h_6_len(), len);
+    set(h_6_adapter(), _plus(get(h_6_ins()), int_lit(2)));
+    set(h_6_on(), true)
+}
+
+/// Register word `rw`'s tier 6 code, its tier 5 code at labels from
+/// `base`, and its ways in.
+pub fn y6_compiled_x(rw: i64, n: i64, base: Int, starts: FlatArray<i64>) -> () {
+    let n_cells = i64_to_int(n);
+    set(h_6_tier5(), base);
+    set(h_6(), true);
+    y6_instructions_x(rw, 2i64, n, get(h_6_lead()));
+    set(h_6(), false);
+    ybind_x(_plus(get(h_6_base()), n_cells));
+    yadr_x(y16(), _plus(base, n_cells));
+    yb_x(get(l_materialize()));
+    y6_exits_x(0i64, n, starts, get(h_6_at()), get(h_6_of()), get(h_6_len()));
+    y6_ways_in_x(2i64, n)
 }
 
 /// Register word `rw` compiled; `rt` the label of its table. Its own ways
@@ -2622,11 +3114,22 @@ pub fn yregister_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
     let rgive = _plus(way_in, int_lit(2));
     let machine_give = get(l_give());
     let machine_give_pre = get(l_give_pre());
+    let direct = (get(hand_direct()) && y_direct_able_p(rw, 0i64, n));
     set(hand_labels(), _plus(rgive, int_lit(1)));
+    if direct {
+        set(words_direct(), _plus(get(words_direct()), int_lit(1)))
+    } else {
+        ()
+    };
     set(h_call_entry(), label_x());
     set(h_gbase(), get(hand_labels()));
     set(hand_labels(), _plus(get(hand_labels()), _star(int_lit(2), _plus(n_cells, int_lit(1)))));
     set(h_link(), int_lit(-1));
+    if direct {
+        y6_prepared_x(rw, n)
+    } else {
+        ()
+    };
     yreg_instructions_x(rw, 0i64, n, base, starts, resumes);
     ybind_x(_plus(base, n_cells));
     yb_x(_plus(get(h_gbase()), _star(int_lit(2), n_cells)));
@@ -2641,13 +3144,26 @@ pub fn yregister_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
     yjmp_r_x(y16());
     ybind_x(rgive);
     yb_x(get(l_resume_give()));
+    if direct {
+        y6_compiled_x(rw, n, base, starts)
+    } else {
+        ()
+    };
+    set(h_6_adapter(), int_lit(-1));
+    set(h_6_on(), false);
     set(l_give(), machine_give);
     set(l_give_pre(), machine_give_pre);
     ydata_label_x(rt);
     yd_x(_star(int_lit(8), i64_to_int(i64_plus(f_cell0(), n))));
     ydo_x(way_in);
-    yreg_table_x(1i64, n, base, rgive, starts);
-    yreg_table_x(0i64, n, rbase, rgive, resumes)
+    if direct {
+        ydo_x(_plus(get(h_6_base()), int_lit(2)))
+    } else {
+        yd_x(int_lit(0))
+    };
+    ydo_x(get(h_call_entry()));
+    yreg_table_x(3i64, n, base, rgive, starts, direct);
+    yreg_table_x(0i64, n, rbase, rgive, resumes, false)
 }
 
 pub fn y_bytes_x(mut b: &'static Bloblet<()>, mut bs: List<Int>, mut at: Int) -> Int {
@@ -2759,6 +3275,8 @@ pub fn hand_code_x64_x() -> &'static Sum_4made_6failed<HandCode, Str> {
         set(h_cont(), int_lit(-1));
         set(h_target(), int_lit(-1));
         ymachine_x();
+        set(l_materialize(), label_x());
+        y_materialize_x();
         let cts = if get(hand_compiled()) {
             ywords_compiled_x(get(words()), int_lit(0), nil::<Int>())
         } else {
@@ -2782,10 +3300,12 @@ pub fn hand_code_x64_x() -> &'static Sum_4made_6failed<HandCode, Str> {
 }
 
 /// Tier 2's machine for the machine this runs on: arm64's (hand.kfx) or
-/// x86_64's; elsewhere none.
+/// x86_64's; elsewhere none. Tier 6 (`--direct`) on x86_64 alone.
 pub fn hand_code_x() -> &'static Sum_4made_6failed<HandCode, Str> {
     let target = car(the::<List<Str>>(native_convention()));
-    if string_eq_p(target, str_lit("(target arm64)")) {
+    if (get(hand_direct()) && string_eq_p(target, str_lit("(target arm64)"))) {
+        kayak_rt::heap_alloc(Sum_4made_6failed::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int, Str>::Failed(str_lit("tier 6: on x86_64 alone yet (TODO §34)")))
+    } else if string_eq_p(target, str_lit("(target arm64)")) {
         hand_code_arm64_x()
     } else if string_eq_p(target, str_lit("(target x86_64)")) {
         hand_code_x64_x()

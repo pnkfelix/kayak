@@ -4,13 +4,14 @@ use kayak_rt::*;
 use super::*;
 
 // main.kfx: `kayak-cells LISTING [--step-limit N|none] [--slice N]
-// [--hand|--compiled] [--regs] [--gc-stress] [--gc-stats]` (C122, C125,
-// C126, C128, C129): the words of a listing Fixpt's compiler wrote, its
+// [--hand|--compiled|--direct] [--regs] [--gc-stress] [--gc-stats]` (C122,
+// C125, C126, C128, C129, C138): the words of a listing Fixpt's compiler wrote, its
 // `program` run, at most N instructions (Fixpt's FX-26 default,
 // 20,000,000; `none`, no limit), a task's time slice N polls (Fixpt's
 // 65,536, or its `FIXPT_SLICE`), by tier 2's machine if `--hand`, with
 // the words compiled (tier 4) if `--compiled`, with their register code
-// where they have it if `--regs`, its
+// where they have it if `--regs`, and register code as native procedures
+// too (tier 6, x86_64) if `--direct`, its
 // value written as Fixpt writes it; or, if it fails, `evaluation failed:
 // MESSAGE` on the standard error and status 1.
 
@@ -97,11 +98,12 @@ pub fn cells_main() -> Int {
         let w = listing_words_x(read_text(car(r#as)));
         let u = set(gc_stress(), string_member_p(str_lit("--gc-stress"), r#as));
         let u1 = set(slice(), option_of(cdr(r#as), str_lit("--slice"), 65536i64));
-        let u3 = set(hand_on(), (string_member_p(str_lit("--hand"), r#as) || string_member_p(str_lit("--compiled"), r#as)));
-        let u4 = set(hand_compiled(), string_member_p(str_lit("--compiled"), r#as));
+        let u5 = set(hand_direct(), string_member_p(str_lit("--direct"), r#as));
+        let u3 = set(hand_on(), (string_member_p(str_lit("--hand"), r#as) || string_member_p(str_lit("--compiled"), r#as) || get(hand_direct())));
+        let u4 = set(hand_compiled(), (string_member_p(str_lit("--compiled"), r#as) || get(hand_direct())));
         let r = run_word_x(w, option_of(cdr(r#as), str_lit("--step-limit"), default_steps()));
         let u2 = if string_member_p(str_lit("--gc-stats"), r#as) {
-            write_err(string_append(str_lit("collections: "), string_append(i64_to_string(get(collections())), string_append(str_lit(", words copied: "), string_append(i64_to_string(get(words_copied())), string_append(str_lit(", machine entries: "), string_append(i64_to_string(get(hand_entries())), string_append(str_lit(", words compiled: "), string_append(int_to_string(get(words_compiled())), string_append(str_lit("\n"), given_shown(0i64, str_lit(""))))))))))));
+            write_err(string_append(str_lit("collections: "), string_append(i64_to_string(get(collections())), string_append(str_lit(", words copied: "), string_append(i64_to_string(get(words_copied())), string_append(str_lit(", machine entries: "), string_append(i64_to_string(get(hand_entries())), string_append(str_lit(", words compiled: "), string_append(int_to_string(get(words_compiled())), string_append(str_lit(", tier 6: "), string_append(int_to_string(get(words_direct())), string_append(str_lit("\n"), given_shown(0i64, str_lit(""))))))))))))));
             ()
         } else {
             ()

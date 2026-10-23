@@ -21,7 +21,8 @@ no longer does fails the check. Each but Fixpt's benchmarks is run again
 with a collection at every safepoint (`--gc-stress`), to the same end;
 each by tier 2's machine (`--hand`, C126), with its words compiled
 (`--compiled`, C128), these on arm64 macOS and x86_64 Linux (C136,
-C137), and with register code
+C137), with register code as native procedures too (`--direct`, tier 6,
+C138, x86_64 Linux), and with register code
 (`--regs`, C129), its answer
 the same; and each that runs tasks (processes, `par`, `race`, `pselect`), again
 with a time slice of two polls (`--slice 2`, as Fixpt's `FIXPT_SLICE`,
@@ -201,6 +202,8 @@ def one(binary, cells, name, path):
 # and x86_64 Linux (C136, C137).
 HAND = (sys.platform == "darwin" and os.uname().machine == "arm64") or (sys.platform == "linux" and os.uname().machine == "x86_64")
 COMPILED = HAND
+# Tier 6, register code as native procedures (C138): x86_64 Linux alone.
+DIRECT = sys.platform == "linux" and os.uname().machine == "x86_64"
 TASKS = re.compile(r"\((spawn|spawn-monitored|par|race|pselect|send|receive|icell-get|icell-put!)\b")
 
 
@@ -215,11 +218,15 @@ def stressed(cells, name, path, text, limit, have, fail):
     ways.append(["--regs"] + (["--step-limit", "none"] if limit else []))
     if COMPILED:
         ways.append(["--regs", "--compiled"] + (["--step-limit", "none"] if limit else []))
+    if DIRECT:
+        ways.append(["--regs", "--direct"] + (["--step-limit", "none"] if limit else []))
     if not name.startswith(UNLIMITED):
         ways.append(["--gc-stress"])
         ways.append(["--regs", "--gc-stress"])
         if COMPILED:
             ways.append(["--regs", "--compiled", "--gc-stress"])
+        if DIRECT:
+            ways.append(["--regs", "--direct", "--gc-stress"])
         if HAND:
             ways.append(["--hand", "--gc-stress"])
         if COMPILED:
@@ -231,6 +238,8 @@ def stressed(cells, name, path, text, limit, have, fail):
             ways.append(["--regs", "--slice", "3", "--step-limit", "none"])
             if COMPILED:
                 ways.append(["--regs", "--compiled", "--slice", "3", "--step-limit", "none"])
+            if DIRECT:
+                ways.append(["--regs", "--direct", "--slice", "3", "--step-limit", "none"])
             if COMPILED:
                 ways.append(["--compiled", "--slice", "2", "--step-limit", "none"])
     with tempfile.NamedTemporaryFile("w", suffix=".cells", delete=False) as f:

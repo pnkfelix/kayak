@@ -3720,3 +3720,64 @@ machine (C136).
 - **Checked**: `cells-programs.py` runs every `--compiled` way on x86_64
   Linux too. `bench/fib.fx`: tier 1 0.85 s, tier 2 0.09 s, tier 4 0.05 s,
   tier 5 (`--regs --compiled`) 0.03 s.
+
+## C138. Tier 6 on x86_64: register code as native procedures, left for tier 5 (2026-10-23)
+
+The user: "Do tier 6" (TODO §34 step 5), "port away", on x86_64. Fixpt's
+tier 6 (`direct.rs`, `direct/x64.rs`, `native-direct-x64*.fx`) cannot be
+taken as it is: kfx reads none of its FX-26 files (they are functors over
+signatures, with state in module-level refs), and they are Fixpt's heap
+throughout (values are addresses, its `DState`'s offsets baked in), while
+kayak's values are offsets from a pinned base and its tier 1 is a KFX
+interpreter that calls the machine and must be returned to. Nor can tier
+6 keep native frames while tier 1 runs, as Fixpt's keeps them while its
+Rust runs. So this is kayak's own, in `cells/hand-x64.kfx`, on Fixpt's
+idea: register code compiled to native procedures that call by `call`
+and return by `ret`, with none of the cellular machine's bookkeeping.
+- **Beside tier 5, the same state**: a register word all of whose
+  instructions tier 6 has (`y-direct-able?`) is compiled twice, tier 5's
+  code and tier 6's, which share each instruction's body (`yreg-body!`),
+  its registers (`RESULT` `rax`, `REG1` `rdi`, `REG2` `r14`, the rest in
+  the state, C137), and its frames, on the data stack as tier 1's.
+- **What it drops**: the step counted at each instruction (fuel is spent
+  a block at a time, at its first: exactly as many steps as tier 1's,
+  since a block is run whole or not begun); the return entry each call
+  pushes (a call pushes a record on the machine stack, `(ret nx fp clo
+  cur)` from its top, what the entry would hold, and moves `rbx` past the
+  entry's place without writing it); the tables a call of itself looks
+  up; giving back.
+- **Leaving instead of giving back**: what tier 5 would give back, tier
+  6 leaves (`y6-exits!`, `l-materialize`): each record written in the
+  place it kept on the return stack, as the entry it stands for, the
+  records popped, the fuel of the block not spent given back, and on at
+  tier 5's code of the same instruction, which then does as tier 1 would
+  (gives back, or calls stack code, or runs on). Its frames' links are 0,
+  so they return the stack's way once left. So tier 6 needs nothing of
+  tier 1, and the collector never sees a record: the instructions tier 6
+  has never allocate (no `prim`, `lambda`, `cellular`, `setfield`; `op2`
+  only of the fixnum routines and `eq`); 61% of the corpus's register
+  words, 2026-10-22, and `lexical`, which reads, brings most of the rest.
+- **Ways in**: tier 5's entry for a call of such a word goes to its
+  tier 6 code; so do the tables' entries for each block's first, and
+  tier 5's branches to one, so that a word entered from stack code, or a
+  loop that left tier 6 to poll, goes back in at its next block. Each
+  pushes a bottom record, `(1 1)`, and keeps the link tier 5's code had
+  (`st-t6link`, the state's element 33): a `return` over it leaves, for
+  tier 5's `return` to return by that link.
+- **Calls**: `invokeself` is a direct `call`; `invoke` finds the callee's
+  tier 6 code by field 1 of its word's table (0 for none: then it
+  leaves, for tier 5's call). A register word's entry for a call is now
+  field 2 (no longer found 7 bytes before its code). Records are at most
+  as many as the return stack's entries (65,536), 2.6 MB of the 1 GiB
+  stack kayak runs on.
+- **`--direct`**, implying `--compiled`: tier 6 where it can be, beside
+  tiers 4 and 5; refused on arm64. `cells-programs.py` runs `--regs
+  --direct`, under `--gc-stress`, and at a slice of 3, on x86_64 Linux.
+- **Measured** on a Zen 2, cycles less the run's start (about 7M), tier 6
+  against tier 5: `helpers` −54%, `loop` −46%, `fib` −32%, `tak` −22%,
+  `lists` −13%, `closures` −10%, `captures` the same.
+- **Not Fixpt's**: Fixpt's tier 6 frames hold their own slots on a
+  native stack, with stack maps, flushed to heap frames for its
+  collector; it allocates and calls out. Here the slots stay where tier 1
+  keeps them, and leaving is the flushing. Fixpt is no oracle for these
+  bytes.

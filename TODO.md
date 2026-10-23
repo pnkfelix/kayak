@@ -739,7 +739,12 @@ over `fx26:x86_64.fx`; the 338 programs agree under `--hand` on Linux).
 compilers, on x86_64, at the same places; every `--compiled` way of
 `cells-programs.py` on Linux; `RESULT` in `rax`, `REGk` in the state,
 the link there too). Left:
-5. Tier 6 with Fixpt's `direct/x64.rs`.
+~~5. Tier 6~~ (begun, C138: register code as native procedures, which
+leave for tier 5 rather than give back; `--direct`). Next, by what keeps
+words out or makes them leave: allocation (`cons`, `lambda`, `prim`) by
+the heap's top as tier 5 allocates, which a collection may not follow
+while records live (a call-out that collects leaves first); the same on
+arm64, measured on macOS.
 - ~~`REG1`… in registers~~ (`REG1`, `REG2`, C137); perhaps `REG3`, if
   the routines' scratch can be made to leave one.
 - On arm64, measured on macOS: register code's return by `ret` (x30), not

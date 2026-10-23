@@ -581,9 +581,9 @@ pub fn st_start() -> Int {
     int_lit(29)
 }
 
-// Its length: 30 to 32 are hand-x64.kfx's own.
+// Its length: 30 to 33 are hand-x64.kfx's own.
 pub fn st_size() -> i64 {
-    33i64
+    34i64
 }
 
 pub fn at_st(i: Int) -> Int {

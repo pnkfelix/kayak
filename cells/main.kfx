@@ -1,11 +1,12 @@
 "main.kfx: `kayak-cells LISTING [--step-limit N|none] [--slice N]
- [--hand|--compiled] [--regs] [--gc-stress] [--gc-stats]` (C122, C125,
- C126, C128, C129): the words of a listing Fixpt's compiler wrote, its
+ [--hand|--compiled|--direct] [--regs] [--gc-stress] [--gc-stats]` (C122,
+ C125, C126, C128, C129, C138): the words of a listing Fixpt's compiler wrote, its
  `program` run, at most N instructions (Fixpt's FX-26 default,
  20,000,000; `none`, no limit), a task's time slice N polls (Fixpt's
  65,536, or its `FIXPT_SLICE`), by tier 2's machine if `--hand`, with
  the words compiled (tier 4) if `--compiled`, with their register code
- where they have it if `--regs`, its
+ where they have it if `--regs`, and register code as native procedures
+ too (tier 6, x86_64) if `--direct`, its
  value written as Fixpt writes it; or, if it fails, `evaluation failed:
  MESSAGE` on the standard error and status 1."
 
@@ -47,14 +48,15 @@
                  (w (listing-words! (read-text (car as))))
                  (u (set gc-stress (string-member? "--gc-stress" as)))
                  (u1 (set slice (option-of (cdr as) "--slice" 65536)))
-                 (u3 (set hand-on (or (string-member? "--hand" as) (string-member? "--compiled" as))))
-                 (u4 (set hand-compiled (string-member? "--compiled" as)))
+                 (u5 (set hand-direct (string-member? "--direct" as)))
+                 (u3 (set hand-on (or (string-member? "--hand" as) (string-member? "--compiled" as) (get hand-direct))))
+                 (u4 (set hand-compiled (or (string-member? "--compiled" as) (get hand-direct))))
                  (r (run-word! w (option-of (cdr as) "--step-limit" default-steps)))
                  (u2 (if (string-member? "--gc-stats" as)
                          (begin
                            (write-err (string-append "collections: " (string-append (i64->string (get collections))
                                         (string-append ", words copied: " (string-append (i64->string (get words-copied))
-                                          (string-append ", machine entries: " (string-append (i64->string (get hand-entries)) (string-append ", words compiled: " (string-append (int->string (get words-compiled)) (string-append "\n" (given-shown 0 "")))))))))))
+                                          (string-append ", machine entries: " (string-append (i64->string (get hand-entries)) (string-append ", words compiled: " (string-append (int->string (get words-compiled)) (string-append ", tier 6: " (string-append (int->string (get words-direct)) (string-append "\n" (given-shown 0 "")))))))))))))
                            #u)
                          #u)))
             (tagcase r

@@ -1454,3 +1454,10 @@ into tier 2's x86_64 machine, as hand.kfx compiles them on arm64, by the
 same tables at the same places. Every `--compiled` way of
 `cells-programs.py` now runs on Linux too. `bench/fib.fx`: 0.85 s on
 tier 1, 0.05 s on tier 4, 0.03 s on tier 5.
+
+## §34: tier 6 begun on x86_64 Linux (2026-10-23, C138)
+
+Register code as native procedures (`--direct`): no step counted at each
+instruction, no return entry pushed by each call, leaving for tier 5
+where tier 5 would give back. The 338 programs agree under it.
+`helpers` −54%, `loop` −46%, `fib` −32% against tier 5.

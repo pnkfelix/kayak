@@ -22,6 +22,8 @@
    same tables; register code's `RESULT` in `rax`, `REG1` in `rdi`,
    `REG2` in `r14`, the rest in the state, its link there too while a
    word runs, calls by `call` and `ret` (C137).
+ - Tier 6 (`--direct`): register code as native procedures beside tier
+   5's, leaving for it where it would give back (C138).
  fixpt-source: crates/fixpt-native/src/cellular/x64.rs@4caffc2"
 
 (define x86 (load-input "fx26:x86_64.fx"))
@@ -859,8 +861,8 @@
 
 (define yentry-address! (->* (int int) unit)
   (lambda (r none)
-    "`r11` the code of register word `r`'s first instruction past `args`,
-     by the tables past the code's start; to `none` if it has none."
+    "`r11` register word `r`'s entry for a call, by the tables past the
+     code's start (field 2 of its own); to `none` if it has none."
     (begin
       (yst-ld! y13 st-start)
       (yld-ix! y15 y-mem r (at-field f-entry))
@@ -868,8 +870,8 @@
       (yalui! a-sub y15 (* 8 (i64->int r-count)))
       (yalurm! a-cmp y15 y13 8) (ybc! q-ae none)
       (yld-ix! y14 y13 y15 16)
-      (ylea-ix! y16 y13 y14 1 0) (yld! y14 y16 (* 8 (+ 1 (+ (i64->int f-cell0) 2))))
-      (ylea-ix! y16 y13 y14 1 (- 0 (y-length (y-link-popped) 0))))))
+      (ylea-ix! y16 y13 y14 1 0) (yld! y14 y16 24)
+      (ylea-ix! y16 y13 y14 1 0))))
 
 (define-rec
   (yargs-pushed! (->* (int int) unit)
@@ -895,23 +897,221 @@
                 #u)
             (ygive-stubs! (i64+ i 1) n starts give-pre))))))
 
-(define yreg-ins! (->* (i64 i64 i64 int (flatarrayof i64 @c)) unit)
+"Tier 6 (C138): register words compiled a second time, as native
+ procedures, beside their tier 5 code: the same registers (`RESULT` in
+ `rax`, `REG1` in `rdi`, `REG2` in `r14`, the rest in the state), the same
+ frames on the data stack, but none of what keeps tier 1's state exact at
+ every instruction. Fuel is spent a block at a time (exactly as many
+ steps as tier 1's); a call is a `call` with a record on the machine
+ stack, `(ret nx fp clo cur)` from its top, of what the caller would have
+ pushed on the return stack, whose place there is kept (`rbx` moved past
+ it) but not written; and nothing is given back. What tier 6 would give
+ back, it leaves instead: the records written to the return stack as the
+ entries they stand for (`l-materialize`), the fuel not spent given back,
+ then on in tier 5 at the same instruction, whose code says what tier 1
+ would do. So only what never allocates is here, and the collector never
+ sees a record. Entered by a call from tier 5 (its entry for a call
+ diverted to `adapter`), over a bottom record, `(1 1)`, that says so."
+(define hand-direct (ref bool @c) (new #f))
+(define st-t6link int 33)
+(define y-machine-sp int 4)
+(define l-materialize (ref int @c) (new 0))
+
+(define y-direct-op? (->* (i64 i64 i64) bool)
+  (lambda (op a b)
+    "Whether tier 6 has register operation `op`, of operands `a`, `b`."
+    (cond ((or (i64= op ro-op2) (i64= op ro-op2imm))
+           (or (i64= a r-eq) (i64= a r-int-add) (i64= a r-add) (i64= a r-int-sub) (i64= a r-sub)
+               (i64= a r-int-less) (i64= a r-less) (i64= a r-int-eq)))
+          ((i64= op ro-op1) (or (i64= a r-car) (i64= a r-cdr) (i64= a r-pair-car) (i64= a r-pair-cdr)))
+          (else
+            (or (i64= op ro-args) (i64= op ro-const) (i64= op ro-global) (i64= op ro-setglbl) (i64= op ro-reg)
+                (i64= op ro-setreg) (i64= op ro-movereg) (i64= op ro-lexical) (i64= op ro-save) (i64= op ro-pop)
+                (i64= op ro-stack) (i64= op ro-load) (i64= op ro-setstk) (i64= op ro-store) (i64= op ro-field)
+                (i64= op ro-invoke) (i64= op ro-tailinvoke) (i64= op ro-invokeself) (i64= op ro-return)
+                (i64= op ro-branch) (i64= op ro-branchf) (i64= op ro-brancht) (i64= op ro-global-guard))))))
+
+(define-rec
+  (y-direct-able? (->* (i64 i64 i64) bool)
+    (lambda (rw i n)
+      "Whether every instruction of `rw` from `i`, of `n` cells, is tier 6's."
+      (if (i64>= i n)
+          #t
+          (let* ((kk (i64+ f-cell0 i)) (op (fix-val (slot-of rw kk)))
+                 (ops (rop-operands op))
+                 (a (if (i64>= ops 1) (fix-val (slot-of rw (i64+ kk 1))) (the i64 0)))
+                 (b (if (i64>= ops 2) (fix-val (slot-of rw (i64+ kk 2))) (the i64 0))))
+            (and (y-direct-op? op a b) (y-direct-able? rw (i64+ i (i64+ 1 ops)) n)))))))
+
+"Compiling a word for tier 6: whether, its instructions' labels, their
+ ways out, its tier 5 code's labels, and its blocks."
+(define h-6 (ref bool @c) (new #f))
+(define h-6-base (ref int @c) (new 0))
+(define h-6-exits (ref int @c) (new 0))
+(define h-6-tier5 (ref int @c) (new 0))
+(define h-6-adapter (ref int @c) (new -1))
+"While a word with tier 6 code is compiled: each block's first's way in
+ to it, and where in its block each instruction is."
+(define h-6-on (ref bool @c) (new #f))
+(define h-6-ins (ref int @c) (new 0))
+(define h-6-at (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 1 0)))
+(define h-6-of (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 1 0)))
+
+(define y-branch-target (->* (i64 i64) i64)
+  (lambda (rw i)
+    "Where register instruction `i` of `rw` may branch to, or -1."
+    (let* ((kk (i64+ f-cell0 i)) (op (fix-val (slot-of rw kk))))
+      (cond ((or (i64= op ro-branch) (i64= op ro-branchf) (i64= op ro-brancht))
+             (i64+ i (i64+ 2 (fix-val (slot-of rw (i64+ kk 1))))))
+            ((i64= op ro-global-guard) (i64+ i (i64+ 4 (fix-val (slot-of rw (i64+ kk 3))))))
+            (else -1)))))
+
+(define-rec
+  (y6-leaders! (->* (i64 i64 i64 (flatarrayof i64 @c)) unit)
+    (lambda (rw i n lead)
+      "Which instructions from `i` begin a block, 1 in `lead`: a branch's
+       target, what follows a branch, a call or a return."
+      (if (i64>= i n)
+          #u
+          (let* ((kk (i64+ f-cell0 i)) (op (fix-val (slot-of rw kk)))
+                 (nx (i64+ i (i64+ 1 (rop-operands op))))
+                 (t (y-branch-target rw i)))
+            (begin
+              (if (and (i64>= t 0) (i64<= t n)) (flatarray-set-i64! lead t 1) #u)
+              (if (or (i64>= t 0) (i64= op ro-invoke) (i64= op ro-tailinvoke) (i64= op ro-invokeself) (i64= op ro-return))
+                  (flatarray-set-i64! lead nx 1)
+                  #u)
+              (y6-leaders! rw nx n lead)))))))
+
+(define-rec
+  (y6-blocks! (->* (i64 i64 i64 (flatarrayof i64 @c) i64 (flatarrayof i64 @c) (flatarrayof i64 @c) (flatarrayof i64 @c)) unit)
+    (lambda (rw i n lead l at of len)
+      "For each instruction from `i`, the block it is in begun at `l`: its
+       place in it in `at`, the block's first in `of`; each block's length
+       in `len`, by its first."
+      (if (i64>= i n)
+          #u
+          (let* ((nx (i64+ i (i64+ 1 (rop-operands (fix-val (slot-of rw (i64+ f-cell0 i)))))))
+                 (b (if (i64= (flatarray-ref-i64 lead i) 1) i l)))
+            (begin
+              (flatarray-set-i64! at i (flatarray-ref-i64 len b))
+              (flatarray-set-i64! of i b)
+              (flatarray-set-i64! len b (i64+ (flatarray-ref-i64 len b) 1))
+              (y6-blocks! rw nx n lead b at of len)))))))
+
+"A block's fuel, spent at its start: given back by its first's way out
+ if there is not as much."
+(define h-6-lead (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 1 0)))
+(define h-6-len (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 1 0)))
+
+(define y-to (->* (int i64) int)
+  (lambda (base t)
+    "The label instruction `t` is branched to at, its code's at `base`:
+     for tier 5's code of a word with tier 6 code, a block's first's way
+     in to tier 6, so that a loop left goes back in."
+    (if (and (not (get h-6)) (get h-6-on) (i64= (flatarray-ref-i64 (get h-6-lead) t) 1))
+        (+ (get h-6-ins) (i64->int t))
+        (+ base (i64->int t)))))
+
+(define y6-called! (->* (int int int i64) unit)
+  (lambda (l r new-cur nx)
+    "A call of tier 6 code at label `l`, or if it is -1 at the address in
+     `r`, `cur` then `new-cur`
+     (a register, or -1 for this one), the closure in `rax` (none for
+     `invokeself`): the caller's record pushed, its place on the return
+     stack kept, and after it, all popped."
+    (begin
+      (ylimits!) (ycmp-st! y-rsp st-rs-end) (ygive-if! q-ae)
+      (ypush! y-cur) (ypush! y-clo) (ypush! y-fp)
+      (yimm! y13 (- 0 (* 8 (i64->int (i64+ f-cell0 nx))))) (ypush! y13)
+      (yalui! a-add y-rsp 32)
+      (if (< new-cur 0) #u (begin (ymov! y-clo y-w) (ymov! y-cur new-cur)))
+      (if (< l 0) (ycall-r! r) (ycall! l))
+      (yalui! a-add y-machine-sp 8) (ypop! y-fp) (ypop! y-clo) (ypop! y-cur)
+      (yalui! a-sub y-rsp 32))))
+
+(define y6-invoked! (->* (bool int i64) unit)
+  (lambda (tail n nx)
+    "`invoke n` (or `tailinvoke`) of the closure in `rax`, if its word's
+     twin has tier 6 code of `n` arguments; else out, to tier 5."
+    (begin
+      (ykind-in! y-w k-closure)
+      (yld! y13 y11 (at-field f-word)) (yld-ix! y16 y-mem y13 (at-field f-twin))
+      (yalui! a-cmp y16 3) (ygive-if! q-e)
+      (yld-ix! y15 y-mem y16 (at-field (i64+ f-cell0 1))) (yalui! a-cmp y15 (* 8 n)) (ygive-if! q-ne)
+      ;; Its tier 6 code: field 1 of its table, by the tables past the
+      ;; code's start.
+      (yld-ix! y15 y-mem y16 (at-field f-entry))
+      (yalui! a-cmp y15 (* 8 (i64->int r-count))) (ygive-if! q-b)
+      (yalui! a-sub y15 (* 8 (i64->int r-count)))
+      (yadr! y13 (get l-words)) (yalurm! a-cmp y15 y13 0) (ygive-if! q-ae)
+      (yld-ix! y14 y13 y15 8)
+      (yadr! y13 (get l-start)) (yalu! a-add y14 y13) (yld! y14 y14 16)
+      (yalui! a-cmp y14 0) (ygive-if! q-e)
+      (yalu! a-add y14 y13)
+      (if tail
+          (begin (ylimits!) (ymov! y-clo y-w) (ymov! y-cur y16) (yjmp-r! y14))
+          (y6-called! -1 y14 y16 nx)))))
+
+(define y6-returned! (->* () unit)
+  (lambda ()
+    "`return`: to the caller's code; over the bottom record, out, to tier
+     5's, which returns to tier 5's caller."
+    (begin (yalumi! a-cmp y-machine-sp 8 1) (ygive-if! q-e) (yret!))))
+
+(define-rec
+  (y6-exits! (->* (i64 i64 (flatarrayof i64 @c) (flatarrayof i64 @c) (flatarrayof i64 @c) (flatarrayof i64 @c)) unit)
+    (lambda (i n starts at of len)
+      "Each instruction's way out: the fuel of its block not spent given
+       back (it, and those after it), the records written, on in tier 5
+       at it."
+      (if (i64>= i n)
+          #u
+          (begin
+            (if (and (i64>= i 2) (i64= (flatarray-ref-i64 starts i) 1))
+                (let ((back (i64- (flatarray-ref-i64 len (flatarray-ref-i64 of i)) (flatarray-ref-i64 at i))))
+                  (begin
+                    (ybind! (+ (get h-6-exits) (i64->int i)))
+                    (if (i64> back 0) (yalumi! a-add y-st (at-st st-fuel) (i64->int back)) #u)
+                    (yadr! y16 (+ (get h-6-tier5) (i64->int i))) (yb! (get l-materialize))))
+                #u)
+            (y6-exits! (i64+ i 1) n starts at of len))))))
+
+(define y-materialize! (->* () unit)
+  (lambda ()
+    "Tier 6 left, for tier 5's code at `r11`: each record, from the
+     innermost, written in the place it kept on the return stack, as the
+     entry it stands for; all popped, the bottom record too; the link
+     tier 5's caller gave, if the code left is that call's, else none."
+    (let ((loop (label!)) (done (label!)) (inner (label!)) (out (label!)))
+      (begin
+        (ybind! (get l-materialize))
+        (ymov! y11 y-machine-sp) (ymov! y14 y-rsp)
+        (ybind! loop)
+        (yalumi! a-cmp y11 8 1) (ybc! q-e done)
+        (yalui! a-sub y14 32)
+        (yld! y13 y11 32) (yst! y14 0 y13)
+        (yld! y13 y11 8) (yst! y14 8 y13)
+        (yld! y13 y11 16) (yalurm! a-sub y13 y-st (at-st st-dsb)) (yst! y14 16 y13)
+        (yld! y13 y11 24) (yst! y14 24 y13)
+        (yalui! a-add y11 40) (yb! loop)
+        (ybind! done)
+        (yalu! a-cmp y11 y-machine-sp) (ybc! q-ne inner)
+        (yst-ld! y13 st-t6link) (yst-st! st-link y13) (yb! out)
+        (ybind! inner) (yzero! st-link)
+        (ybind! out) (ylea! y-machine-sp y11 16) (yjmp-r! y16)))))
+
+(define yreg-body! (->* (i64 i64 i64 int (flatarrayof i64 @c)) unit)
   (lambda (rw i n base resumes)
-    "Register instruction `i` of `rw`'s `n` cells, at label `base + i`;
-     a point after a call marked in `resumes`."
+    "What register instruction `i` of `rw`'s `n` cells does, its
+     instructions at labels from `base`, for tier 5, or for tier 6 if
+     `h-6`; for tier 5, a point after a call marked in `resumes`."
     (let* ((kk (i64+ f-cell0 i))
            (op (fix-val (slot-of rw kk)))
            (o (lambda ((j int)) (fix-val (slot-of rw (i64+ kk (int->i64 (+ j 1)))))))
            (nx (i64+ i (i64+ 1 (rop-operands op))))
-           (to (lambda ((ops int) (off i64)) (+ base (i64->int (i64+ i (i64+ (int->i64 (+ ops 1)) off)))))))
+           (to (lambda ((ops int) (off i64)) (y-to base (i64+ i (i64+ (int->i64 (+ ops 1)) off))))))
       (begin
-        (if (i64= i 2)
-            (begin (yb! (+ base 2)) (ybind! (get h-call-entry)) (ye! (y-link-popped)))
-            #u)
-        (ybind! (+ base (i64->int i)))
-        ;; Its own ways to give back, which know its place.
-        (set l-give (+ (get h-gbase) (* 2 (i64->int i)))) (set l-give-pre (+ (get h-gbase) (+ 1 (* 2 (i64->int i)))))
-        (yalumi! a-sub y-st (at-st st-fuel) 1) (ygive-if! q-b)
         (cond
           ((or (i64= op ro-args) (i64= op ro-vargs)) #u)
           ((i64= op ro-const) (yopnd! y-w kk 0))
@@ -939,8 +1139,9 @@
                    (yfill-false! m)
                    (let ((loop (label!)))
                      (begin (ylea! y15 y16 -8) (ybind! loop) (ypushed! y13) (yalu! a-cmp y-dsp y15) (ybc! q-b loop))))
-               ;; The link: 8-aligned, a fixnum to the collector.
-               (yst-ld! y13 st-link) (ypushed! y13)
+               ;; The link: 8-aligned, a fixnum to the collector; tier 6's
+               ;; none, its frames returning the stack's way once left.
+               (if (get h-6) (yimm! y13 0) (yst-ld! y13 st-link)) (ypushed! y13)
                (set h-link m))))
           ((i64= op ro-pop)
            (begin (ylea! y16 y-dsp (* -8 (+ (i64->int (o 0)) 1))) (ycmp-st! y16 st-dsb) (ygive-if! q-b) (ymov! y-dsp y16)))
@@ -987,6 +1188,10 @@
                (yfrees-stored! 1 n)
                (ylea! y14 y13 (+ 3 n)) (yst-st! st-top y14)
                (ymov! y-w y11) (yalu! a-sub y-w y-mem) (yalui! a-add y-w 4))))
+          ((and (get h-6) (or (i64= op ro-invoke) (i64= op ro-tailinvoke)))
+           (y6-invoked! (i64= op ro-tailinvoke) (i64->int (o 0)) nx))
+          ((and (get h-6) (i64= op ro-invokeself)) (y6-called! (+ base 2) -1 -1 nx))
+          ((and (get h-6) (i64= op ro-return)) (y6-returned!))
           ((or (i64= op ro-invoke) (i64= op ro-tailinvoke))
            (let ((tail (i64= op ro-tailinvoke)) (stack-code (label!)) (stack-way (label!)) (n (i64->int (o 0))))
              (begin
@@ -1048,9 +1253,47 @@
           (else (yb! (get l-give))))
         ;; Where a call or a call-out comes back to: its value on the data
         ;; stack, whether it ran here or was given back.
-        (if (or (i64= op ro-prim) (i64= op ro-lambda) (i64= op ro-cellular) (i64= op ro-invoke) (i64= op ro-invokeself))
+        (if (and (not (get h-6)) (or (i64= op ro-prim) (i64= op ro-lambda) (i64= op ro-cellular) (i64= op ro-invoke) (i64= op ro-invokeself)))
             (flatarray-set-i64! resumes nx (int->i64 (+ (get h-link) 2)))
             #u)))))
+
+(define yreg-ins! (->* (i64 i64 i64 int (flatarrayof i64 @c)) unit)
+  (lambda (rw i n base resumes)
+    "Register instruction `i` of `rw`'s `n` cells for tier 5, at label
+     `base + i`, its step counted; before the first past `args`, the
+     word's entry for a call (to tier 6's adapter, if it has tier 6 code)."
+    (begin
+      (if (i64= i 2)
+          (begin
+            (yb! (+ base 2)) (ybind! (get h-call-entry)) (ye! (y-link-popped))
+            (yb! (if (< (get h-6-adapter) 0) (+ base 2) (get h-6-adapter))))
+          #u)
+      (ybind! (+ base (i64->int i)))
+      ;; Its own ways to give back, which know its place.
+      (set l-give (+ (get h-gbase) (* 2 (i64->int i)))) (set l-give-pre (+ (get h-gbase) (+ 1 (* 2 (i64->int i)))))
+      (yalumi! a-sub y-st (at-st st-fuel) 1) (ygive-if! q-b)
+      (yreg-body! rw i n base resumes))))
+
+(define y6-ins! (->* (i64 i64 i64 (flatarrayof i64 @c)) unit)
+  (lambda (rw i n none)
+    "Register instruction `i` of `rw`'s `n` cells for tier 6: at a block's
+     first, the block's steps counted; its way out its own."
+    (begin
+      (ybind! (+ (get h-6-base) (i64->int i)))
+      (set l-give (+ (get h-6-exits) (i64->int i))) (set l-give-pre (get l-give))
+      (if (i64= (flatarray-ref-i64 (get h-6-lead) i) 1)
+          (begin (yalumi! a-sub y-st (at-st st-fuel) (i64->int (flatarray-ref-i64 (get h-6-len) i))) (ygive-if! q-b))
+          #u)
+      (yreg-body! rw i n (get h-6-base) none))))
+
+(define-rec
+  (y6-instructions! (->* (i64 i64 i64 (flatarrayof i64 @c)) unit)
+    (lambda (rw i n none)
+      (if (i64>= i n)
+          #u
+          (begin
+            (y6-ins! rw i n none)
+            (y6-instructions! rw (i64+ i (i64+ 1 (rop-operands (fix-val (slot-of rw (i64+ f-cell0 i)))))) n none))))))
 
 (define-rec
   (yreg-instructions! (->* (i64 i64 i64 int (flatarrayof i64 @c) (flatarrayof i64 @c)) unit)
@@ -1080,17 +1323,72 @@
             (yresumes-emitted! (i64+ i 1) n base rbase rgive resumes))))))
 
 (define-rec
-  (yreg-table! (->* (i64 i64 int int (flatarrayof i64 @c)) unit)
-    (lambda (k n base rgive marks)
+  (yreg-table! (->* (i64 i64 int int (flatarrayof i64 @c) bool) unit)
+    (lambda (k n base rgive marks six)
       "A half of a register word's table: from field `k`, the code of each
-       instruction `marks` marks, else the way to give back."
+       instruction `marks` marks, else the way to give back; if `six`, a
+       block's first's way in to tier 6 (`y-to`)."
       (if (i64>= k (i64+ f-cell0 n))
           #u
           (begin
             (if (and (i64>= k f-cell0) (i64>= (flatarray-ref-i64 marks (i64- k f-cell0)) 1))
-                (ydo! (+ base (i64->int (i64- k f-cell0))))
+                (ydo! (if six (y-to base (i64- k f-cell0)) (+ base (i64->int (i64- k f-cell0)))))
                 (ydo! rgive))
-            (yreg-table! (i64+ k 1) n base rgive marks))))))
+            (yreg-table! (i64+ k 1) n base rgive marks six))))))
+
+(define words-direct (ref int @c) (new 0))
+
+(define-rec
+  (y6-ways-in! (->* (i64 i64) unit)
+    (lambda (i n)
+      "For each block's first from `i`, its way in to tier 6 from tier 5,
+       or from the tables: the link tier 5's code had kept, the bottom
+       record pushed, on at it."
+      (if (i64> i n)
+          #u
+          (begin
+            (if (and (i64>= i 2) (i64< i n) (i64= (flatarray-ref-i64 (get h-6-lead) i) 1))
+                (begin
+                  (ybind! (+ (get h-6-ins) (i64->int i)))
+                  (yst-ld! y13 st-link) (yst-st! st-t6link y13)
+                  (yimm! y13 1) (ypush! y13) (ypush! y13)
+                  (yb! (+ (get h-6-base) (i64->int i))))
+                #u)
+            (y6-ways-in! (i64+ i 1) n))))))
+
+(define y6-prepared! (->* (i64 i64) unit)
+  (lambda (rw n)
+    "Register word `rw`'s tier 6 labels and blocks, before its tier 5
+     code, whose branches and tables go to them."
+    (let ((lead (the (flatarrayof i64 @c) (make-flatarray-i64 (i64+ n 1) 0)))
+          (at (the (flatarrayof i64 @c) (make-flatarray-i64 (i64+ n 1) 0)))
+          (of (the (flatarrayof i64 @c) (make-flatarray-i64 (i64+ n 1) 0)))
+          (len (the (flatarrayof i64 @c) (make-flatarray-i64 (i64+ n 1) 0)))
+          (n-cells (i64->int n)))
+      (begin
+        (set h-6-base (get hand-labels)) (set hand-labels (+ (get hand-labels) (+ n-cells 1)))
+        (set h-6-exits (get hand-labels)) (set hand-labels (+ (get hand-labels) (+ n-cells 1)))
+        (set h-6-ins (get hand-labels)) (set hand-labels (+ (get hand-labels) (+ n-cells 1)))
+        (flatarray-set-i64! lead 2 1) (y6-leaders! rw 0 n lead)
+        (y6-blocks! rw 2 n lead 2 at of len)
+        (set h-6-lead lead) (set h-6-at at) (set h-6-of of) (set h-6-len len)
+        (set h-6-adapter (+ (get h-6-ins) 2))
+        (set h-6-on #t)))))
+
+(define y6-compiled! (->* (i64 i64 int (flatarrayof i64 @c)) unit)
+  (lambda (rw n base starts)
+    "Register word `rw`'s tier 6 code, its tier 5 code at labels from
+     `base`, and its ways in."
+    (let ((n-cells (i64->int n)))
+      (begin
+        (set h-6-tier5 base)
+        (set h-6 #t)
+        (y6-instructions! rw 2 n (get h-6-lead))
+        (set h-6 #f)
+        ;; Past the last, as tier 5's.
+        (ybind! (+ (get h-6-base) n-cells)) (yadr! y16 (+ base n-cells)) (yb! (get l-materialize))
+        (y6-exits! 0 n starts (get h-6-at) (get h-6-of) (get h-6-len))
+        (y6-ways-in! 2 n)))))
 
 (define yregister-compiled! (->* (i64 int int) unit)
   (lambda (rw n-cells rt)
@@ -1102,12 +1400,15 @@
            (resumes (the (flatarrayof i64 @c) (make-flatarray-i64 (i64+ n 1) 0)))
            (base (get hand-labels)) (rbase (+ base (+ n-cells 1)))
            (way-in (+ rbase (+ n-cells 1))) (give-pre (+ way-in 1)) (rgive (+ way-in 2))
-           (machine-give (get l-give)) (machine-give-pre (get l-give-pre)))
+           (machine-give (get l-give)) (machine-give-pre (get l-give-pre))
+           (direct (and (get hand-direct) (y-direct-able? rw 0 n))))
       (begin
         (set hand-labels (+ rgive 1))
+        (if direct (set words-direct (+ (get words-direct) 1)) #u)
         (set h-call-entry (label!))
         (set h-gbase (get hand-labels)) (set hand-labels (+ (get hand-labels) (* 2 (+ n-cells 1))))
         (set h-link -1)
+        (if direct (y6-prepared! rw n) #u)
         (yreg-instructions! rw 0 n base starts resumes)
         (ybind! (+ base n-cells)) (yb! (+ (get h-gbase) (* 2 n-cells)))
         (yresumes-emitted! 0 n base rbase rgive resumes)
@@ -1116,11 +1417,14 @@
         ;; Its way in from the machine, to the code in `r11`.
         (ybind! way-in) (yentered-reg!) (yjmp-r! y16)
         (ybind! rgive) (yb! (get l-resume-give))
+        (if direct (y6-compiled! rw n base starts) #u)
+        (set h-6-adapter -1) (set h-6-on #f)
         (set l-give machine-give) (set l-give-pre machine-give-pre)
         (ydata-label! rt)
         (yd! (* 8 (i64->int (i64+ f-cell0 n))))
-        (ydo! way-in) (yreg-table! 1 n base rgive starts)
-        (yreg-table! 0 n rbase rgive resumes)))))
+        (ydo! way-in) (if direct (ydo! (+ (get h-6-base) 2)) (yd! 0)) (ydo! (get h-call-entry))
+        (yreg-table! 3 n base rgive starts direct)
+        (yreg-table! 0 n rbase rgive resumes #f)))))
 
 (define-rec
   (y-bytes! (->* ((bloblet (fields) @heap) (listof int @k) int) int)
@@ -1186,6 +1490,7 @@
           (set l-start (label!)) (set l-entry (label!)) (set l-words (label!))
           (set h-cont -1) (set h-target -1)
           (ymachine!)
+          (set l-materialize (label!)) (y-materialize!)
           (let* ((cts (if (get hand-compiled) (ywords-compiled! (get words) 0 nil) nil))
                  (rts (if (get hand-compiled) (yregisters-compiled! (get register-words) (count-of cts 0) cts) cts))
                  (u (set words-compiled (count-of rts 0)))
@@ -1206,8 +1511,9 @@
 (define hand-code! (->* () (sumof (made hand-code) (failed string)))
   (lambda ()
     "Tier 2's machine for the machine this runs on: arm64's (hand.kfx) or
-     x86_64's; elsewhere none."
+     x86_64's; elsewhere none. Tier 6 (`--direct`) on x86_64 alone."
     (let ((target (car (the (listof string @heap) (native-convention)))))
-      (cond ((string=? target "(target arm64)") (hand-code-arm64!))
+      (cond ((and (get hand-direct) (string=? target "(target arm64)")) (sum failed "tier 6: on x86_64 alone yet (TODO §34)"))
+            ((string=? target "(target arm64)") (hand-code-arm64!))
             ((string=? target "(target x86_64)") (hand-code-x64!))
             (else (sum failed (string-append "tier 2: no machine for " target)))))))
