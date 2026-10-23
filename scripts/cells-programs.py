@@ -209,9 +209,10 @@ TASKS = re.compile(r"\((spawn|spawn-monitored|par|race|pselect|send|receive|icel
 
 
 def stressed(cells, name, path, text, limit, have, fail):
-    """The same answer with a collection at every safepoint (C122, Coopt's
-    stress policy), and, for a program that runs tasks, preempted at every
-    poll (C125); Fixpt's benchmarks, long, are not run so."""
+    """The ways a program's answer must be the same: by each tier, with a
+    collection at every safepoint (C122, Coopt's stress policy), and, for a
+    program that runs tasks, preempted at every poll (C125); Fixpt's
+    benchmarks, long, are not run so. Run by `ways_run`, all at once."""
     # Tier 2, the hand machine (C126), each program, where native code runs.
     # Tier 4, the words compiled (C128), likewise.
     ways = [[t] + (["--step-limit", "none"] if limit else []) for t in ("--hand", "--compiled") if t == "--hand" or COMPILED] if HAND else []
@@ -253,17 +254,44 @@ def stressed(cells, name, path, text, limit, have, fail):
                 ways.append(["--regs", "--direct", "--fixpt-calls", "--slice", "3", "--step-limit", "none"])
             if COMPILED:
                 ways.append(["--compiled", "--slice", "2", "--step-limit", "none"])
-    with tempfile.NamedTemporaryFile("w", suffix=".cells", delete=False) as f:
-        f.write(text)
-        listing = f.name
+    return "ways", (ways, text, have, fail)
+
+
+def ways_run(cells, ps, ran):
+    """Each program's ways (`stressed`'s), every program's and way's run a
+    job of its own, the benchmarks' first, being the longest: so as many
+    run at once as there are processors to the last, where by program a few
+    benchmarks' ways ran one after another while the rest stood idle. A
+    program agrees if every way gives its answer, else differs at the first
+    that does not."""
+    listings, jobs = {}, []
+    for i, ((name, _), (kind, why)) in enumerate(zip(ps, ran)):
+        if kind != "ways":
+            continue
+        ways, text, have, fail = why
+        with tempfile.NamedTemporaryFile("w", suffix=".cells", delete=False) as f:
+            f.write(text)
+            listings[i] = f.name
+        jobs += [(not name.startswith(UNLIMITED), i, j, way, have, fail) for j, way in enumerate(ways)]
+    jobs.sort(key=lambda job: job[0])
+
+    def way_one(job):
+        _, i, _, way, have, fail = job
+        again = run([cells, listings[i]] + way, timeout=600)
+        if failure(again.stderr) != fail or (fail is None and again.stdout.strip() != have):
+            return "under %s: %r %r" % (" ".join(way), again.stdout.strip(), failure(again.stderr))
+        return None
+
     try:
-        for way in ways:
-            again = run([cells, listing] + way, timeout=600)
-            if failure(again.stderr) != fail or (fail is None and again.stdout.strip() != have):
-                return "differ", "under %s: %r %r" % (" ".join(way), again.stdout.strip(), failure(again.stderr))
+        said = fixptcache.parallel(way_one, jobs)
     finally:
-        os.unlink(listing)
-    return "agree", ""
+        for listing in listings.values():
+            os.unlink(listing)
+    first = {}
+    for (_, i, j, _, _, _), why in zip(jobs, said):
+        if why is not None and (i not in first or j < first[i][0]):
+            first[i] = (j, why)
+    return [(("differ", first[i][1]) if i in first else ("agree", "")) if kind == "ways" else (kind, why) for i, (kind, why) in enumerate(ran)]
 
 
 def main():
@@ -286,7 +314,7 @@ def main():
         sys.exit("cells-programs: kayak-fx26 does not build")
     binary = fixptcache.binary()
     ps = fixptcache.programs()
-    ran = fixptcache.parallel(lambda p: one(binary, cells, p[0], p[1]), ps)
+    ran = ways_run(cells, ps, fixptcache.parallel(lambda p: one(binary, cells, p[0], p[1]), ps))
     by = {}
     wrong = []
     for (name, _), (kind, why) in zip(ps, ran):
