@@ -2231,11 +2231,68 @@ pub fn yfill_false_x(mut m: Int) -> () {
     }
 }
 
-/// The link again, after a call.
+// Fixpt's convention for tier 5 (`--fixpt-calls`, C140): a callee leaves
+// the point to return to where its `call` put it, on the machine stack,
+// until `save` moves it to the frame (and to `st-link`, as ever, from
+// there), and a leaf returns by it there; the machine stack is never more
+// than that link deep. Where it was lost (a call before `save`, or a way
+// in from the machine), a 0 there stands for it, a return then the
+// stack's way. Whether it is there as an instruction is compiled; and by
+// instruction, for the ways in made after.
+pub fn hand_fixpt_calls() -> Ref<bool> {
+    kayak_rt::kept_constant!(ONCE: Ref<bool>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(false)
+    })
+}
+
+pub fn y_machine_sp() -> Int {
+    int_lit(4)
+}
+
+pub fn h_5_pushed() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(1i64, 0i64))
+    })
+}
+
+pub fn h_stubs() -> Ref<Int> {
+    kayak_rt::kept_constant!(ONCE: Ref<Int>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(int_lit(-1))
+    })
+}
+
+pub fn y_pushed_p() -> bool {
+    (get(hand_fixpt_calls()) && _lt(get(h_link()), int_lit(0)))
+}
+
+pub fn y_pushed_at_p(i: i64) -> bool {
+    (get(hand_fixpt_calls()) && i64_eq(flatarray_ref_i64(get(h_5_pushed()), i), 1i64))
+}
+
+/// Leaving for the machine: the link, if it is on the machine stack, dropped.
+pub fn ylink_dropped_x() -> () {
+    if y_pushed_p() {
+        yalui_x(a_add(), y_machine_sp(), int_lit(8))
+    } else {
+        ()
+    }
+}
+
+pub fn yno_link_pushed_x() -> () {
+    yimm_x(y13(), int_lit(0));
+    ypush_x(y13())
+}
+
+/// The link again, after a call: from the frame; before `save`, none.
 pub fn ylink_reloaded_x(m: Int) -> () {
     if _gt_eq(m, int_lit(0)) {
         yld_x(y13(), y_fp(), _star(int_lit(8), m));
         yst_st_x(st_link(), y13())
+    } else if get(hand_fixpt_calls()) {
+        yno_link_pushed_x()
     } else {
         yzero_x(st_link())
     }
@@ -2260,6 +2317,7 @@ pub fn h_call_entry() -> Ref<Int> {
 /// -1: a callee's entry for a call, which pops the point after it into
 /// the link. That point 8-aligned, a link in a frame read as a fixnum.
 pub fn ycalled_to_x(l: Int, r: Int) -> () {
+    ylink_dropped_x();
     if _lt(l, int_lit(0)) {
         yalign_x(y_length((&x86::x86_call_r)(r), int_lit(0)));
         ycall_r_x(r)
@@ -2273,7 +2331,11 @@ pub fn ycalled_to_x(l: Int, r: Int) -> () {
 /// A call in tail position to the address in `r`, a callee's entry for a
 /// call: this word's link pushed for it to pop.
 pub fn ytail_called_x(r: Int) -> () {
-    ypush_st_x(st_link());
+    if y_pushed_p() {
+        ()
+    } else {
+        ypush_st_x(st_link())
+    };
     yjmp_r_x(r)
 }
 
@@ -2327,6 +2389,11 @@ pub fn ygive_stubs_x(mut i: i64, mut n: i64, mut starts: FlatArray<i64>, mut giv
                 yalumi_x(a_add(), y_st(), at_st(st_fuel()), int_lit(1));
                 ybind_x(_plus(get(h_gbase()), _plus(int_lit(1), _star(int_lit(2), i64_to_int(i)))));
                 ylea_v_x(y16(), y_cur(), _minus(int_lit(-4), _star(int_lit(8), i64_to_int(i64_plus(f_cell0(), i)))));
+                if y_pushed_at_p(i) {
+                    yalui_x(a_add(), y_machine_sp(), int_lit(8))
+                } else {
+                    ()
+                };
                 yb_x(give_pre)
             } else {
                 ()
@@ -2363,11 +2430,14 @@ pub fn st_t6link() -> Int {
     int_lit(33)
 }
 
-pub fn y_machine_sp() -> Int {
-    int_lit(4)
+pub fn l_materialize() -> Ref<Int> {
+    kayak_rt::kept_constant!(ONCE: Ref<Int>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(int_lit(0))
+    })
 }
 
-pub fn l_materialize() -> Ref<Int> {
+pub fn l_materialize_pushed() -> Ref<Int> {
     kayak_rt::kept_constant!(ONCE: Ref<Int>);
     once(&ONCE, || {
         kayak_rt::heap_new(int_lit(0))
@@ -2657,7 +2727,11 @@ pub fn y6_exits_x(mut i: i64, mut n: i64, mut starts: FlatArray<i64>, mut at: Fl
                     ()
                 };
                 yadr_x(y16(), _plus(get(h_6_tier5()), i64_to_int(i)));
-                yb_x(get(l_materialize()))
+                yb_x(if y_pushed_at_p(i) {
+                    get(l_materialize_pushed())
+                } else {
+                    get(l_materialize())
+                })
             } else {
                 ()
             };
@@ -2670,10 +2744,12 @@ pub fn y6_exits_x(mut i: i64, mut n: i64, mut starts: FlatArray<i64>, mut at: Fl
 /// Tier 6 left, for tier 5's code at `r11`: each record, from the
 /// innermost, written in the place it kept on the return stack, as the
 /// entry it stands for; all popped, the bottom record too; the link
-/// tier 5's caller gave, if the code left is that call's, else none.
-pub fn y_materialize_x() -> () {
+/// tier 5's caller gave, if the code left is that call's, else none;
+/// with `pushed`, that link on the machine stack too (`--fixpt-calls`,
+/// code before `save`).
+pub fn y_materialize_x(l: Int, pushed: bool) -> () {
     let (r#loop, done, inner, out) = (label_x(), label_x(), label_x(), label_x());
-    ybind_x(get(l_materialize()));
+    ybind_x(l);
     ymov_x(y11(), y_machine_sp());
     ymov_x(y14(), y_rsp());
     ybind_x(r#loop);
@@ -2701,6 +2777,11 @@ pub fn y_materialize_x() -> () {
     yzero_x(st_link());
     ybind_x(out);
     ylea_x(y_machine_sp(), y11(), int_lit(16));
+    if pushed {
+        ypush_st_x(st_link())
+    } else {
+        ()
+    };
     yjmp_r_x(y16())
 }
 
@@ -2765,6 +2846,9 @@ pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) 
         };
         if get(h_6()) {
             yimm_x(y13(), int_lit(0))
+        } else if y_pushed_p() {
+            ypop_x(y13());
+            yst_st_x(st_link(), y13())
         } else {
             yst_ld_x(y13(), st_link())
         };
@@ -2885,6 +2969,7 @@ pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) 
             yb_x(_plus(base, i64_to_int(nx)))
         };
         ybind_x(stack_way);
+        ylink_dropped_x();
         yleft_x();
         ylea_v_x(y_ip(), y_cur(), _minus(int_lit(-4), _star(int_lit(8), _plus(i64_to_int(f_cell0()), int_lit(2)))));
         yresume_x();
@@ -2905,6 +2990,7 @@ pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) 
             ymov_x(y_fp(), y_dsp());
             yargs_pushed_x(int_lit(1), n);
             ymov_x(y_clo(), y_w());
+            ylink_dropped_x();
             yleft_x();
             ymov_x(y_cur(), y15());
             ylea_v_x(y_ip(), y_cur(), _minus(int_lit(-4), _star(int_lit(8), i64_to_int(f_cell0()))));
@@ -2918,7 +3004,11 @@ pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) 
         let stack_way = label_x();
         ycmp_st_x(y_rsp(), st_rsb());
         ygive_if_x(q_e());
-        yalumi_x(a_cmp(), y_st(), at_st(st_link()), int_lit(0));
+        if y_pushed_p() {
+            yalumi_x(a_cmp(), y_machine_sp(), int_lit(0), int_lit(0))
+        } else {
+            yalumi_x(a_cmp(), y_st(), at_st(st_link()), int_lit(0))
+        };
         ybc_x(q_e(), stack_way);
         yld_x(y13(), y_rsp(), int_lit(-32));
         yalui_x(a_cmp(), y13(), i64_to_int(prompt_mark_word()));
@@ -2931,11 +3021,16 @@ pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) 
         yalui_x(a_sub(), y_rsp(), int_lit(32));
         ymov_x(y_fp(), y14());
         yalurm_x(a_add(), y_fp(), y_st(), at_st(st_dsb()));
-        ypush_st_x(st_link());
+        if y_pushed_p() {
+            ()
+        } else {
+            ypush_st_x(st_link())
+        };
         yret_x();
         ybind_x(stack_way);
         yroom_x();
         ypushed_x(y_w());
+        ylink_dropped_x();
         yleft_x();
         yb_x(get(l_pop_return()))
     } else if i64_eq(op, ro_branch()) {
@@ -2966,7 +3061,20 @@ pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) 
 /// `base + i`, its step counted; before the first past `args`, the
 /// word's entry for a call (to tier 6's adapter, if it has tier 6 code).
 pub fn yreg_ins_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -> () {
-    if i64_eq(i, 2i64) {
+    flatarray_set_i64_x(get(h_5_pushed()), i, if y_pushed_p() {
+        1i64
+    } else {
+        0i64
+    });
+    if not(i64_eq(i, 2i64)) {
+        ()
+    } else if (get(hand_fixpt_calls()) && _lt(get(h_6_adapter()), int_lit(0))) {
+        ybind_x(get(h_call_entry()))
+    } else if get(hand_fixpt_calls()) {
+        yb_x(_plus(base, int_lit(2)));
+        ybind_x(get(h_call_entry()));
+        yb_x(get(h_6_adapter()))
+    } else {
         yb_x(_plus(base, int_lit(2)));
         ybind_x(get(h_call_entry()));
         ye_x(y_link_popped());
@@ -2975,8 +3083,6 @@ pub fn yreg_ins_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) -
         } else {
             get(h_6_adapter())
         })
-    } else {
-        ()
     };
     ybind_x(_plus(base, i64_to_int(i)));
     set(l_give(), _plus(get(h_gbase()), _star(int_lit(2), i64_to_int(i))));
@@ -3053,22 +3159,52 @@ pub fn yresumes_emitted_x(mut i: i64, mut n: i64, mut base: Int, mut rbase: Int,
 
 /// A half of a register word's table: from field `k`, the code of each
 /// instruction `marks` marks, else the way to give back; if `six`, a
-/// block's first's way in to tier 6 (`y-to`).
-pub fn yreg_table_x(mut k: i64, mut n: i64, mut base: Int, mut rgive: Int, mut marks: FlatArray<i64>, mut six: bool) -> () {
+/// block's first's way in to tier 6 (`y-to`); before `save`, with
+/// `--fixpt-calls`, its way in from `stubs` (-1 for none), which
+/// pushes a link of none first.
+pub fn yreg_table_x(mut k: i64, mut n: i64, mut base: Int, mut rgive: Int, mut marks: FlatArray<i64>, mut six: bool, mut stubs: Int) -> () {
     loop {
         if i64_gt_eq(k, i64_plus(f_cell0(), n)) {
             return ();
         } else {
             if (i64_gt_eq(k, f_cell0()) && i64_gt_eq(flatarray_ref_i64(marks, i64_minus(k, f_cell0())), 1i64)) {
-                ydo_x(if six {
-                    y_to(base, i64_minus(k, f_cell0()))
+                ydo_x(if (_gt_eq(stubs, int_lit(0)) && y_pushed_at_p(i64_minus(k, f_cell0()))) {
+                    _plus(stubs, i64_to_int(i64_minus(k, f_cell0())))
                 } else {
-                    _plus(base, i64_to_int(i64_minus(k, f_cell0())))
+                    if six {
+                        y_to(base, i64_minus(k, f_cell0()))
+                    } else {
+                        _plus(base, i64_to_int(i64_minus(k, f_cell0())))
+                    }
                 })
             } else {
                 ydo_x(rgive)
             };
             k = i64_plus(k, 1i64);
+            continue;
+        }
+    }
+}
+
+/// For each instruction from `i` before `save` (`--fixpt-calls`), its
+/// way in from the machine at `stubs + i`: no link pushed, then on.
+pub fn ylink_stubs_x(mut i: i64, mut n: i64, mut base: Int, mut starts: FlatArray<i64>, mut stubs: Int, mut six: bool) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            if (i64_eq(flatarray_ref_i64(starts, i), 1i64) && y_pushed_at_p(i)) {
+                ybind_x(_plus(stubs, i64_to_int(i)));
+                yno_link_pushed_x();
+                yb_x(if six {
+                    y_to(base, i)
+                } else {
+                    _plus(base, i64_to_int(i))
+                })
+            } else {
+                ()
+            };
+            i = i64_plus(i, 1i64);
             continue;
         }
     }
@@ -3091,8 +3227,12 @@ pub fn y6_ways_in_x(mut i: i64, mut n: i64) -> () {
         } else {
             if (i64_gt_eq(i, 2i64) && i64_lt(i, n) && i64_eq(flatarray_ref_i64(get(h_6_lead()), i), 1i64)) {
                 ybind_x(_plus(get(h_6_ins()), i64_to_int(i)));
-                yst_ld_x(y13(), st_link());
-                yst_st_x(st_t6link(), y13());
+                if y_pushed_at_p(i) {
+                    ypop_st_x(st_t6link())
+                } else {
+                    yst_ld_x(y13(), st_link());
+                    yst_st_x(st_t6link(), y13())
+                };
                 yimm_x(y13(), int_lit(1));
                 ypush_x(y13());
                 ypush_x(y13());
@@ -3137,7 +3277,11 @@ pub fn y6_compiled_x(rw: i64, n: i64, base: Int, starts: FlatArray<i64>) -> () {
     set(h_6(), false);
     ybind_x(_plus(get(h_6_base()), n_cells));
     yadr_x(y16(), _plus(base, n_cells));
-    yb_x(get(l_materialize()));
+    yb_x(if y_pushed_at_p(n) {
+        get(l_materialize_pushed())
+    } else {
+        get(l_materialize())
+    });
     y6_exits_x(0i64, n, starts, get(h_6_at()), get(h_6_of()), get(h_6_len()));
     y6_ways_in_x(2i64, n)
 }
@@ -3167,6 +3311,9 @@ pub fn yregister_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
     set(h_gbase(), get(hand_labels()));
     set(hand_labels(), _plus(get(hand_labels()), _star(int_lit(2), _plus(n_cells, int_lit(1)))));
     set(h_link(), int_lit(-1));
+    set(h_5_pushed(), make_flatarray_i64(i64_plus(n, 1i64), 0i64));
+    set(h_stubs(), get(hand_labels()));
+    set(hand_labels(), _plus(get(hand_labels()), _plus(n_cells, int_lit(1))));
     if direct {
         y6_prepared_x(rw, n)
     } else {
@@ -3176,6 +3323,11 @@ pub fn yregister_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
     ybind_x(_plus(base, n_cells));
     yb_x(_plus(get(h_gbase()), _star(int_lit(2), n_cells)));
     yresumes_emitted_x(0i64, n, base, rbase, rgive, resumes);
+    flatarray_set_i64_x(get(h_5_pushed()), n, if y_pushed_p() {
+        1i64
+    } else {
+        0i64
+    });
     ygive_stubs_x(0i64, n, starts, give_pre);
     ybind_x(give_pre);
     yst_st_x(st_cell(), y16());
@@ -3193,6 +3345,7 @@ pub fn yregister_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
     };
     set(h_6_adapter(), int_lit(-1));
     set(h_6_on(), false);
+    ylink_stubs_x(0i64, n, base, starts, get(h_stubs()), direct);
     set(l_give(), machine_give);
     set(l_give_pre(), machine_give_pre);
     ydata_label_x(rt);
@@ -3204,8 +3357,8 @@ pub fn yregister_compiled_x(rw: i64, n_cells: Int, rt: Int) -> () {
         yd_x(int_lit(0))
     };
     ydo_x(get(h_call_entry()));
-    yreg_table_x(3i64, n, base, rgive, starts, direct);
-    yreg_table_x(0i64, n, rbase, rgive, resumes, false)
+    yreg_table_x(3i64, n, base, rgive, starts, direct, get(h_stubs()));
+    yreg_table_x(0i64, n, rbase, rgive, resumes, false, int_lit(-1))
 }
 
 pub fn y_bytes_x(mut b: &'static Bloblet<()>, mut bs: List<Int>, mut at: Int) -> Int {
@@ -3318,7 +3471,13 @@ pub fn hand_code_x64_x() -> &'static Sum_4made_6failed<HandCode, Str> {
         set(h_target(), int_lit(-1));
         ymachine_x();
         set(l_materialize(), label_x());
-        y_materialize_x();
+        y_materialize_x(get(l_materialize()), false);
+        set(l_materialize_pushed(), label_x());
+        if get(hand_fixpt_calls()) {
+            y_materialize_x(get(l_materialize_pushed()), true)
+        } else {
+            ()
+        };
         let cts = if get(hand_compiled()) {
             ywords_compiled_x(get(words()), int_lit(0), nil::<Int>())
         } else {
@@ -3347,6 +3506,8 @@ pub fn hand_code_x() -> &'static Sum_4made_6failed<HandCode, Str> {
     let target = car(the::<List<Str>>(native_convention()));
     if (get(hand_direct()) && string_eq_p(target, str_lit("(target arm64)"))) {
         kayak_rt::heap_alloc(Sum_4made_6failed::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int, Str>::Failed(str_lit("tier 6: on x86_64 alone yet (TODO §34)")))
+    } else if (get(hand_fixpt_calls()) && string_eq_p(target, str_lit("(target arm64)"))) {
+        kayak_rt::heap_alloc(Sum_4made_6failed::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int, Str>::Failed(str_lit("--fixpt-calls: x86_64's alone (C140)")))
     } else if string_eq_p(target, str_lit("(target arm64)")) {
         hand_code_arm64_x()
     } else if string_eq_p(target, str_lit("(target x86_64)")) {

@@ -4,14 +4,16 @@ use kayak_rt::*;
 use super::*;
 
 // main.kfx: `kayak-cells LISTING [--step-limit N|none] [--slice N]
-// [--hand|--compiled|--direct] [--regs] [--indexes] [--gc-stress]
-// [--gc-stats]` (C122, C125, C126, C128, C129, C138, C139): the words of a listing Fixpt's compiler wrote, its
+// [--hand|--compiled|--direct] [--regs] [--fixpt-calls] [--indexes]
+// [--gc-stress] [--gc-stats]` (C122, C125, C126, C128, C129, C138, C139,
+// C140): the words of a listing Fixpt's compiler wrote, its
 // `program` run, at most N instructions (Fixpt's FX-26 default,
 // 20,000,000; `none`, no limit), a task's time slice N polls (Fixpt's
 // 65,536, or its `FIXPT_SLICE`), by tier 2's machine if `--hand`, with
 // the words compiled (tier 4) if `--compiled`, with their register code
 // where they have it if `--regs`, and register code as native procedures
-// too (tier 6, x86_64) if `--direct`, its values tagged addresses where
+// too (tier 6, x86_64) if `--direct`, register code calling as Fixpt's
+// does (x86_64) if `--fixpt-calls`, its values tagged addresses where
 // native code runs, else, or with `--indexes`, indices into the heap, its
 // value written as Fixpt writes it; or, if it fails, `evaluation failed:
 // MESSAGE` on the standard error and status 1.
@@ -106,6 +108,7 @@ pub fn cells_main() -> Int {
         let u = set(gc_stress(), string_member_p(str_lit("--gc-stress"), r#as));
         let u1 = set(slice(), option_of(cdr(r#as), str_lit("--slice"), 65536i64));
         let u5 = set(hand_direct(), string_member_p(str_lit("--direct"), r#as));
+        let u6 = set(hand_fixpt_calls(), string_member_p(str_lit("--fixpt-calls"), r#as));
         let u3 = set(hand_on(), (string_member_p(str_lit("--hand"), r#as) || string_member_p(str_lit("--compiled"), r#as) || get(hand_direct())));
         let u4 = set(hand_compiled(), (string_member_p(str_lit("--compiled"), r#as) || get(hand_direct())));
         let r = run_word_x(w, option_of(cdr(r#as), str_lit("--step-limit"), default_steps()));

@@ -750,6 +750,8 @@ arm64, measured on macOS.
 - Values as tagged addresses (C139): done, and on x86_64 without the
   base register; on arm64, `x19` to go the same way, and the arm64 side
   tried on macOS.
+- `--fixpt-calls` (C140): Fixpt's tier 5 convention on x86_64, a toggle;
+  the default if it ever measures better, or dropped if it never does.
 - On arm64, measured on macOS: register code's return by `ret` (x30), not
   `br x30`, so that the processor predicts it, as x86_64's `ret` (C137);
   `bl`/`blr` already push to its predictor.

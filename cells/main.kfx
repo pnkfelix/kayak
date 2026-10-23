@@ -1,12 +1,14 @@
 "main.kfx: `kayak-cells LISTING [--step-limit N|none] [--slice N]
- [--hand|--compiled|--direct] [--regs] [--indexes] [--gc-stress]
- [--gc-stats]` (C122, C125, C126, C128, C129, C138, C139): the words of a listing Fixpt's compiler wrote, its
+ [--hand|--compiled|--direct] [--regs] [--fixpt-calls] [--indexes]
+ [--gc-stress] [--gc-stats]` (C122, C125, C126, C128, C129, C138, C139,
+ C140): the words of a listing Fixpt's compiler wrote, its
  `program` run, at most N instructions (Fixpt's FX-26 default,
  20,000,000; `none`, no limit), a task's time slice N polls (Fixpt's
  65,536, or its `FIXPT_SLICE`), by tier 2's machine if `--hand`, with
  the words compiled (tier 4) if `--compiled`, with their register code
  where they have it if `--regs`, and register code as native procedures
- too (tier 6, x86_64) if `--direct`, its values tagged addresses where
+ too (tier 6, x86_64) if `--direct`, register code calling as Fixpt's
+ does (x86_64) if `--fixpt-calls`, its values tagged addresses where
  native code runs, else, or with `--indexes`, indices into the heap, its
  value written as Fixpt writes it; or, if it fails, `evaluation failed:
  MESSAGE` on the standard error and status 1."
@@ -51,6 +53,7 @@
                  (u (set gc-stress (string-member? "--gc-stress" as)))
                  (u1 (set slice (option-of (cdr as) "--slice" 65536)))
                  (u5 (set hand-direct (string-member? "--direct" as)))
+                 (u6 (set hand-fixpt-calls (string-member? "--fixpt-calls" as)))
                  (u3 (set hand-on (or (string-member? "--hand" as) (string-member? "--compiled" as) (get hand-direct))))
                  (u4 (set hand-compiled (or (string-member? "--compiled" as) (get hand-direct))))
                  (r (run-word! w (option-of (cdr as) "--step-limit" default-steps)))

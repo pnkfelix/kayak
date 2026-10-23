@@ -3826,3 +3826,35 @@ addresses". So a value is `vbase + 8·index + tag`:
 - **Checked**: `cells-programs.py` runs every way with addresses, and
   `--indexes` by tier 1 (with `--gc-stress`) and tier 2. The arm64 side
   (`hand.kfx`'s entry and allocations) is untried: macOS must run it.
+
+## C140. Fixpt's calling convention for tier 5, as a toggle (2026-10-23)
+
+The user, on hearing how kayak's tier 5 calls differ from Fixpt's register
+code on x86_64: "add a toggle to opt into fixpt tier5 convention". They are
+fine with the registers differing (C137's), so this is the convention
+alone. `--fixpt-calls`, x86_64 only (refused on arm64, whose `x30` is
+already where both keep the link), off by default:
+- **The link where the `call` put it**: a register word's entry for a
+  call pops nothing; until `save`, the point to return to stays on the
+  machine stack, and a leaf returns by `ret` from there, as Fixpt's
+  `regcode.rs` does. `save` pops it into the frame, and into `st-link`.
+  From there on, everything is C137's: `st-link` a copy of the frame's,
+  reloaded after each call. Fixpt reads it from the frame at `pop`;
+  that is the same link, kept in two places here.
+- **A link of none**: where it would be lost before `save` (a call there,
+  or a way in from the machine), a 0 is pushed instead, and a return
+  that finds 0 goes the stack's way. So the machine stack holds that one
+  link at most, as in Fixpt. Every way to the machine drops it: each
+  instruction's give stub, the stack-way paths of `invoke` and `return`.
+- **Ways in**: the tables' ways in to an instruction before `save` go by
+  a stub that pushes the 0 (`ylink-stubs!`); points after a call push
+  it themselves; tier 6's ways in take the link from the machine stack
+  into `st-t6link`; and tier 6, leaving for code before `save`, pushes
+  it back (`l-materialize-pushed`). Which instructions are before `save`
+  is known as each is compiled (`h-5-pushed`), the same order assumption
+  as `h-link`'s.
+- **Measured** (Zen 2, `--regs --compiled`): cycles within noise of C137's
+  on fib, tak, lists, helpers, closures and captures; instructions −0.6%
+  on fib, +0.2% on helpers and loop; return mispredicts the same.
+- **Checked**: `cells-programs.py` runs it with tier 5 and with tier 6,
+  under `--gc-stress`, and at a slice of 3.

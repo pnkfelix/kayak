@@ -225,6 +225,9 @@ def stressed(cells, name, path, text, limit, have, fail):
         ways.append(["--regs", "--compiled"] + (["--step-limit", "none"] if limit else []))
     if DIRECT:
         ways.append(["--regs", "--direct"] + (["--step-limit", "none"] if limit else []))
+        # Fixpt's calling convention for tier 5 (C140), with tier 6 too.
+        ways.append(["--regs", "--compiled", "--fixpt-calls"] + (["--step-limit", "none"] if limit else []))
+        ways.append(["--regs", "--direct", "--fixpt-calls"] + (["--step-limit", "none"] if limit else []))
     if not name.startswith(UNLIMITED):
         ways.append(["--gc-stress"])
         ways.append(["--indexes", "--gc-stress"])
@@ -233,6 +236,7 @@ def stressed(cells, name, path, text, limit, have, fail):
             ways.append(["--regs", "--compiled", "--gc-stress"])
         if DIRECT:
             ways.append(["--regs", "--direct", "--gc-stress"])
+            ways.append(["--regs", "--compiled", "--fixpt-calls", "--gc-stress"])
         if HAND:
             ways.append(["--hand", "--gc-stress"])
         if COMPILED:
@@ -246,6 +250,7 @@ def stressed(cells, name, path, text, limit, have, fail):
                 ways.append(["--regs", "--compiled", "--slice", "3", "--step-limit", "none"])
             if DIRECT:
                 ways.append(["--regs", "--direct", "--slice", "3", "--step-limit", "none"])
+                ways.append(["--regs", "--direct", "--fixpt-calls", "--slice", "3", "--step-limit", "none"])
             if COMPILED:
                 ways.append(["--compiled", "--slice", "2", "--step-limit", "none"])
     with tempfile.NamedTemporaryFile("w", suffix=".cells", delete=False) as f:
