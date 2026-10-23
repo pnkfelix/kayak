@@ -3658,3 +3658,41 @@ Fixpt keeps `cellular/x64.rs` beside its arm64 machine.
 - **Checked**: `cells-programs.py` runs `--hand` and `--hand --gc-stress`
   on x86_64 Linux too: the 338 programs agree. `bench/fib.fx`: tier 1
   0.83 s, tier 2 0.09 s, the machine entered 452 times.
+
+## C137. Tiers 4 and 5 on x86_64: hand.kfx's, at the same places (2026-10-22)
+
+The user: "Go for it" (TODO §34, step 4). `cells/hand-x64.kfx` now
+compiles the listing's words (tier 4) and register words (tier 5) under
+`--compiled`, as hand.kfx's `word-compiled!` and `register-compiled!` do,
+cell for cell and instruction for instruction, into tier 2's x86_64
+machine (C136).
+- **The same tables at the same places**: 8 bytes past the code's start
+  the count of the words compiled and the table of their tables, each
+  word's table of where to resume (and, for register code, its second
+  half, the points after a call), offsets from the start. So `resumed!`,
+  a return entry and `entry-address!` mean on x86_64 what they mean on
+  arm64; only the bytes differ. The words' list walks are hand.kfx's,
+  copied (`ywords-compiled!`, `yregisters-compiled!`): KFX takes no
+  function as a parameter.
+- **Register code's registers, not Fixpt's**: Fixpt's x86_64 register
+  code keeps `REG1`…`REG3` in `rdi`, `rsi`, `r8`. Here they are this
+  machine's scratch, which its routines (field reads, allocation, closure
+  checks) need, and it has no registers left over: `r10` is the heap's
+  base, values being offsets. So `RESULT` is `rax` and `REG1`…`REG8` stay
+  in the state, where tier 1 keeps them (`REG0` is `clo`, as on arm64):
+  a giving back stores `rax` alone. An instruction's place is in `r14`
+  (the ip's register, unused by register code), stored as the cell being
+  run only when it gives back.
+- **No link register**: hand.kfx's `x30` is the state's element 32
+  (`st-link`, the state one longer). A call stores the point after it
+  there and jumps; a return jumps through it; `save` keeps it in the
+  frame, a call's return reloads it, as on arm64. Not `call`/`ret` (as
+  Fixpt's, which pushes the link and pops it into the frame): the machine
+  stack is never touched, and the code keeps hand.kfx's shape. Points
+  returned to are 8-aligned (`xa`, no-ops), so a link in a frame reads as
+  a fixnum.
+- **A call of a word with a register twin** is now adapted, as hand.kfx's
+  `h-adapted!` (`yadapted!`), not given back (C136's difference gone).
+- **Checked**: `cells-programs.py` runs every `--compiled` way on x86_64
+  Linux too. `bench/fib.fx`: tier 1 0.85 s, tier 2 0.09 s, tier 4 0.05 s,
+  tier 5 (`--regs --compiled`) 0.03 s.

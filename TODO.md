@@ -735,18 +735,20 @@ two views, the trampoline and routines, the stack's limit; the corpus's
 made-code programs twinned for x86_64 and run there). ~~3. Tier 2~~
 (done, C136: `cells/hand-x64.kfx`, every routine of `hand.kfx`'s machine
 over `fx26:x86_64.fx`; the 338 programs agree under `--hand` on Linux).
-Left, in order:
-4. Tier 4 (`native-x64.fx`'s way), tier 5 (`native-x64-regs.fx`: REG1–3
-   in registers, the rest in the state), each against tier 1 on every
-   program, as on arm64; then tier 6 with Fixpt's `direct/x64.rs`.
+~~4. Tiers 4 and 5~~ (done, C137: hand.kfx's word and register
+compilers, on x86_64, at the same places; every `--compiled` way of
+`cells-programs.py` on Linux; `RESULT` in `rax`, `REGk` in the state,
+the link there too). Left:
+5. Tier 6 with Fixpt's `direct/x64.rs`.
+- Perhaps: `REG1`… in registers, as Fixpt's x86_64 register code keeps
+  three, if the routines' scratch can be made to leave some (C137).
 - Noticed on the way: Fixpt's `native/crossing-overflow.fx` (its §93, new
   at this pin) fails on Fixpt, a Rust stack too deep for calls between
   machines, and runs on the engine, which has no such calls:
   `run-fixpt-programs.py`'s one "beyond KFX" difference.
 - ~~`kayak-cells --hand` on x86_64 would run tier 2's arm64 bytes~~:
   `hand-code!` now chooses by the convention's `target`, and refuses on
-  another machine (C136). `--compiled` on x86_64 refuses, saying so,
-  until step 4.
+  another machine (C136).
 - The corpus's answers now differ by machine (C134): libm's last bit in
   `floats`, and `made-code`/`made-flat` say whether made code ran
   natively. If FX-26 is to say what `f64-tan` gives, as a reference

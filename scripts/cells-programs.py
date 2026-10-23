@@ -19,9 +19,9 @@ program of definitions), or Fixpt refuses it. The programs that agree are
 kept in tests/cells-passing (--bless rewrites it); one that agreed and
 no longer does fails the check. Each but Fixpt's benchmarks is run again
 with a collection at every safepoint (`--gc-stress`), to the same end;
-each by tier 2's machine (`--hand`, C126; on arm64 macOS and x86_64
-Linux, C136), on arm64 macOS with its words compiled (`--compiled`,
-C128), and with register code
+each by tier 2's machine (`--hand`, C126), with its words compiled
+(`--compiled`, C128), these on arm64 macOS and x86_64 Linux (C136,
+C137), and with register code
 (`--regs`, C129), its answer
 the same; and each that runs tasks (processes, `par`, `race`, `pselect`), again
 with a time slice of two polls (`--slice 2`, as Fixpt's `FIXPT_SLICE`,
@@ -197,10 +197,10 @@ def one(binary, cells, name, path):
     return stressed(cells, name, path, text, limit, have, None)
 
 
-# Tier 2 runs where native code does (kayak-jit's): arm64 macOS, and
-# x86_64 Linux (C136); tiers 4 and 5, words compiled, on arm64 alone yet.
-COMPILED = sys.platform == "darwin" and os.uname().machine == "arm64"
-HAND = COMPILED or (sys.platform == "linux" and os.uname().machine == "x86_64")
+# Tiers 2, 4 and 5 run where native code does (kayak-jit's): arm64 macOS,
+# and x86_64 Linux (C136, C137).
+HAND = (sys.platform == "darwin" and os.uname().machine == "arm64") or (sys.platform == "linux" and os.uname().machine == "x86_64")
+COMPILED = HAND
 TASKS = re.compile(r"\((spawn|spawn-monitored|par|race|pselect|send|receive|icell-get|icell-put!)\b")
 
 

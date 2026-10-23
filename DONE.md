@@ -1446,3 +1446,11 @@ The pin moved to `4caffc2`, Fixpt's `main`, where its x86_64 work now is.
 `cells/hand-x64.kfx`: tier 2's machine for x86_64, `hand.kfx`'s routine
 for routine, by Fixpt's FX-26 x86_64 encoder; `--hand` chooses the
 machine's own. The 338 of Fixpt's programs tier 1 runs agree under it.
+
+## §34: tiers 4 and 5 on x86_64 Linux (2026-10-22, C137)
+
+`--compiled` on x86_64: the listing's words and register words compiled
+into tier 2's x86_64 machine, as hand.kfx compiles them on arm64, by the
+same tables at the same places. Every `--compiled` way of
+`cells-programs.py` now runs on Linux too. `bench/fib.fx`: 0.85 s on
+tier 1, 0.05 s on tier 4, 0.03 s on tier 5.

@@ -80,7 +80,8 @@
 (define st-regs int 20)
 "Where the code starts (C131): its tables are at fixed places past it."
 (define st-start int 29)
-(define st-size i64 32)
+"Its length: 30 to 32 are hand-x64.kfx's own."
+(define st-size i64 33)
 (define at-st (->* (int) int) (lambda (i) (* 8 i)))
 
 "Why the machine stopped: to give a cell back; or the return stack ran
