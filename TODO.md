@@ -745,11 +745,11 @@ words out or makes them leave: allocation (`cons`, `lambda`, `prim`) by
 the heap's top as tier 5 allocates, which a collection may not follow
 while records live (a call-out that collects leaves first); the same on
 arm64, measured on macOS.
-- ~~`REG1`… in registers~~ (`REG1`, `REG2`, C137); perhaps `REG3`, if
-  the routines' scratch can be made to leave one.
-- Values as tagged addresses (C139): done but for the base register,
-  which then goes from each machine, with addresses (x86_64's for
-  `REG3`); the arm64 side tried on macOS.
+- ~~`REG1`… in registers~~ (`REG1`, `REG2`, C137; `REG3` in `r10` with
+  addresses, C139).
+- Values as tagged addresses (C139): done, and on x86_64 without the
+  base register; on arm64, `x19` to go the same way, and the arm64 side
+  tried on macOS.
 - On arm64, measured on macOS: register code's return by `ret` (x30), not
   `br x30`, so that the processor predicts it, as x86_64's `ret` (C137);
   `bl`/`blr` already push to its predictor.

@@ -153,6 +153,17 @@
 (define yalurm! (->* (int int int int) unit) (lambda (op d b o) (ye! ((with x86 x86-alu-rm) op d b o))))
 (define yalumi! (->* (int int int int) unit) (lambda (op b o i) (ye! ((with x86 x86-alu-mi) op b o i))))
 (define ytesti! (->* (int int) unit) (lambda (r i) (ye! ((with x86 x86-test-imm) r i))))
+
+"The heap by values (C139): with addresses, a value is its object's
+ address and its tag; with indices, its offset from `r10`, the heap's
+ base."
+(define yld-v! (->* (int int int) unit)
+  (lambda (d v o) (if (get addressed) (yld! d v o) (yld-ix! d y-mem v o))))
+(define ylea-v! (->* (int int int) unit)
+  (lambda (d v o) (if (get addressed) (ylea! d v o) (ylea-ix! d y-mem v 1 o))))
+(define yvalued! (->* (int) unit)
+  (lambda (d) "The address in `d` as a value, less its tag." (if (get addressed) #u (yalu! a-sub d y-mem))))
+
 (define yshift! (->* (int int int) unit) (lambda (op d i) (ye! ((with x86 x86-shift-imm) op d i))))
 (define ycmov! (->* (int int int) unit) (lambda (c d s) (ye! ((with x86 x86-cmov) c d s))))
 (define yjmp-r! (->* (int) unit) (lambda (r) (ye! ((with x86 x86-jmp-r) r))))
@@ -225,7 +236,7 @@
      it is a bloblet with a trailer whose header says `kind`."
     (begin
       (ytag-in! r 4)
-      (ylea-ix! y11 y-mem r 1 0) (yld! y15 y11 -12)
+      (ylea-v! y11 r 0) (yld! y15 y11 -12)
       (ymov! y13 y15) (yalui! a-and y13 7) (yalui! a-cmp y13 5) (ygive-if! q-ne)
       (ymov! y14 y11) (yalu! a-sub y14 y15) (yld! y14 y14 -7) (yubfx! y14 y14 3 255)
       (yalui! a-cmp y14 (i64->int kind)) (ygive-if! q-ne))))
@@ -238,7 +249,7 @@
      room for it."
     (begin
       (ycmp-st! y-rsp st-rs-end) (ygive-if! q-ae)
-      (ylea-ix! t y-mem y-cur 1 -4) (yalu! a-sub t y-ip)
+      (ylea-v! t y-cur -4) (yalu! a-sub t y-ip)
       (ymov! u y-fp) (yalurm! a-sub u y-st (at-st st-dsb))
       (yst! y-rsp 0 y-cur) (yst! y-rsp 8 t) (yst! y-rsp 16 u) (yst! y-rsp 24 y-clo) (yalui! a-add y-rsp 32))))
 
@@ -264,14 +275,14 @@
      enters it; `RESULT` and `REG1`… in the state, `RESULT` in `rax` too."
     (let ((done (label!)) (loaded (label!)))
       (begin
-        (yld-ix! y13 y-mem y-cur (at-field f-twin)) (yalui! a-cmp y13 3) (ybc! q-e done)
-        (yld-ix! y15 y-mem y13 (at-field (i64+ f-cell0 1))) (yalu! a-cmp y15 y-w) (ybc! q-ne done)
+        (yld-v! y13 y-cur (at-field f-twin)) (yalui! a-cmp y13 3) (ybc! q-e done)
+        (yld-v! y15 y13 (at-field (i64+ f-cell0 1))) (yalu! a-cmp y15 y-w) (ybc! q-ne done)
         (ystate-regs-zeroed! 0)
         (yargs-loaded! 1 loaded)
         (ybind! loaded)
         (yimm! y-w 0)
         (ymov! y-dsp y-fp) (ymov! y-cur y13)
-        (ylea-ix! y-ip y-mem y-cur 1 (- -4 (* 8 (+ (i64->int f-cell0) 2))))
+        (ylea-v! y-ip y-cur (- -4 (* 8 (+ (i64->int f-cell0) 2))))
         (ybind! done)))))
 
 (define ycalled! (->* (bool) unit)
@@ -297,7 +308,7 @@
               (yalui! a-sub y-dsp 8) (ymov! y-fp y-dsp) (yalu! a-sub y-fp y-w)))
         (yld! y-cur y11 (at-field f-word))
         (ymov! y-clo y10)
-        (ylea-ix! y-ip y-mem y-cur 1 (- -4 (* 8 (i64->int f-cell0))))
+        (ylea-v! y-ip y-cur (- -4 (* 8 (i64->int f-cell0))))
         (yadapted!)
         (yresume!)))))
 
@@ -335,7 +346,8 @@
       (ylea! y15 y13 words)
       (if (< count8 0) #u (begin (ymov! y14 count8) (yshift! s-shr y14 3) (yalu! a-add y15 y14)))
       (ycmp-st! y15 st-mem-length) (ygive-if! q-a)
-      (ylea-ix! y16 y-mem y13 8 0) (yalurm! a-add y16 y-st (at-st st-vbase)))))
+      (if (get addressed) (begin (ymov! y16 y13) (yshift! s-shl y16 3)) (ylea-ix! y16 y-mem y13 8 0))
+      (yalurm! a-add y16 y-st (at-st st-vbase)))))
 
 (define yconsed! (->* (bool) unit)
   (lambda (region)
@@ -349,7 +361,7 @@
       (yld! y14 y-dsp -16) (yld! y15 y-dsp -8) (yst! y16 0 y14) (yst! y16 8 y15)
       (ylea! y15 y13 2) (yst-st! st-top y15)
       (if region (yalui! a-sub y-dsp 8) #u)
-      (ymov! y14 y16) (yalu! a-sub y14 y-mem) (yalui! a-add y14 1)
+      (ymov! y14 y16) (yvalued! y14) (yalui! a-add y14 1)
       (yput-top! y14))))
 
 (define yprimed! (->* () unit)
@@ -388,7 +400,7 @@
         (ybind! done)
         (yalu! a-sub y-dsp y-w)
         (ymov! y14 y-w) (yshift! s-shr y14 3) (yalu! a-add y14 y13) (yalui! a-add y14 3) (yst-st! st-top y14)
-        (ymov! y14 y11) (yalu! a-sub y14 y-mem) (yalui! a-add y14 4) (ypushed! y14)
+        (ymov! y14 y11) (yvalued! y14) (yalui! a-add y14 4) (ypushed! y14)
         (ynext!)))))
 
 (define yword-entered! (->* () unit)
@@ -398,7 +410,7 @@
     (let ((docol (label!)))
      (begin
       (ytag-in! y-w 4)
-      (ylea-ix! y11 y-mem y-w 1 0)
+      (ylea-v! y11 y-w 0)
       (yld! y10 y11 (at-field f-entry))
       (yalui! a-cmp y10 (* 8 (i64->int r-docol))) (ybc! q-e docol)
       (yalui! a-cmp y10 (* 8 (i64->int r-count))) (ygive-if! q-b)
@@ -415,7 +427,7 @@
     "`car` if `first`, else `cdr`."
     (begin
       (yneed! 1) (yld! y13 y-dsp -8) (ymov! y14 y13) (yalui! a-and y14 7) (yalui! a-cmp y14 1) (ygive-if! q-ne)
-      (yld-ix! y16 y-mem y13 (if first -1 7))
+      (yld-v! y16 y13 (if first -1 7))
       (yst! y-dsp -8 y16) (ynext!))))
 
 (define yentered! (->* (int) unit)
@@ -456,7 +468,7 @@
       ((= n (i64->int r-global))
        (begin
          (yroom!) (yip-op! y13)
-         (yld-ix! y15 y-mem y13 (at-field f-value)) (ypushed! y15) (ynext!)))
+         (yld-v! y15 y13 (at-field f-value)) (ypushed! y15) (ynext!)))
       ((= n (i64->int r-branch))
        (begin (ylimits!) (yip-op! y13) (yalu! a-sub y-ip y13) (ytaken!)))
       ((= n (i64->int r-zbranch))
@@ -475,23 +487,23 @@
        (begin
          (yroom!) (ytag-in! y-clo 4)
          (yip-op! y13) (yalui! a-add y13 (* 8 (i64->int f-free0)))
-         (ylea-ix! y11 y-mem y-clo 1 0)
+         (ylea-v! y11 y-clo 0)
          (yfield-read!) (ypushed! y16) (ynext!)))
       ((= n (i64->int r-field))
        (begin
          (yneed! 1) (yip-op! y10) (yld! y16 y-dsp -8)
-         (ytag-in! y16 4) (ylea-ix! y11 y-mem y16 1 0) (ymov! y13 y10)
+         (ytag-in! y16 4) (ylea-v! y11 y16 0) (ymov! y13 y10)
          (yfield-read!) (yst! y-dsp -8 y16) (ynext!)))
       ((= n (i64->int r-global-set))
        (begin
-         (yneed! 1) (yip-op! y13) (ylea-ix! y14 y-mem y13 1 0)
+         (yneed! 1) (yip-op! y13) (ylea-v! y14 y13 0)
          (yld! y15 y-dsp -8) (yst! y14 (at-field f-value) y15)
          (yalumi! a-add y14 (at-field f-writes) 8)
          (yalui! a-sub y-dsp 8) (ynext!)))
       ((= n (i64->int r-field-ref))
        (begin
          (yneed! 2) (yld! y10 y-dsp -8) (ytesti! y10 7) (ygive-if! q-ne)
-         (yld! y16 y-dsp -16) (ytag-in! y16 4) (ylea-ix! y11 y-mem y16 1 0) (ymov! y13 y10)
+         (yld! y16 y-dsp -16) (ytag-in! y16 4) (ylea-v! y11 y16 0) (ymov! y13 y10)
          (yfield-read!) (yput-top! y16)))
       ((= n (i64->int r-cons)) (yconsed! #f))
       ((= n (i64->int r-prim)) (yprimed!))
@@ -540,7 +552,8 @@
     (begin
       (ykept!)
       (yld! y13 y-st y-reg4)
-      (ylea! y-st y-rdi -4) (ylea! y-mem y-rsi -4) (yalurm! a-sub y-mem y-st (at-st st-vbase))
+      (ylea! y-st y-rdi -4) 
+      (if (get addressed) #u (begin (ylea! y-mem y-rsi -4) (yalurm! a-sub y-mem y-st (at-st st-vbase))))
       (ylea! y15 y-r8 -4) (yst-st! st-dsb y15)
       (ylea! y13 y13 -4) (yst-st! st-rsb y13)
       ;; The limits, as addresses.
@@ -550,7 +563,7 @@
       (yat-entry! st-rs-push y13 st-rs-end)
       ;; The registers.
       (yst-ld! y-cur st-cur)
-      (yst-ld! y14 st-kk) (yshift! s-shl y14 3) (ylea-ix! y-ip y-mem y-cur 1 -4) (yalu! a-sub y-ip y14)
+      (yst-ld! y14 st-kk) (yshift! s-shl y14 3) (ylea-v! y-ip y-cur -4) (yalu! a-sub y-ip y14)
       (yst-ld! y14 st-fp) (yshift! s-shl y14 3) (ylea-ix! y-fp y15 y14 1 0)
       (yst-ld! y-clo st-clo)
       (yst-ld! y14 st-dsp) (yshift! s-shl y14 3) (ylea-ix! y-dsp y15 y14 1 0)
@@ -566,7 +579,7 @@
      with `why`, a fixnum."
     (begin
       (yst-st! st-cur y-cur)
-      (yst-ld! y16 st-cell) (ylea-ix! y13 y-mem y-cur 1 -4) (yalu! a-sub y13 y16) (yshift! s-sar y13 3) (yst-st! st-kk y13)
+      (yst-ld! y16 st-cell) (ylea-v! y13 y-cur -4) (yalu! a-sub y13 y16) (yshift! s-sar y13 3) (yst-st! st-kk y13)
       (ymov! y13 y-fp) (yalurm! a-sub y13 y-st (at-st st-dsb)) (yshift! s-shr y13 3) (yst-st! st-fp y13)
       (yst-st! st-clo y-clo)
       (ymov! y13 y-dsp) (yalurm! a-sub y13 y-st (at-st st-dsb)) (yshift! s-shr y13 3) (yst-st! st-dsp y13)
@@ -581,8 +594,9 @@
     "The machine register `REGk` is in while register code runs, or -1
      for one in the state: `REG0` in `clo`, `REG1` in `rdi`, which
      register code does not use as scratch, `REG2` in `r14`, the ip's
-     register, which it does not use either."
-    (cond ((= k 0) y-clo) ((= k 1) y10) ((= k 2) y-ip) (else -1))))
+     register, which it does not use either; with addresses (C139),
+     `REG3` in `r10`, the heap's base with indices."
+    (cond ((= k 0) y-clo) ((= k 1) y10) ((= k 2) y-ip) ((and (= k 3) (get addressed)) y-mem) (else -1))))
 (define yreg-ld! (->* (int int) unit)
   (lambda (d k)
     "`d` := `REGk`."
@@ -631,7 +645,7 @@
         ;; Entered so, register code has no link: it returns the stack's way.
         (yzero! st-link)
         (ymov! y13 y-cur) (yalui! a-and y13 7) (yalui! a-cmp y13 4) (ybc! q-ne (get l-next))
-        (ylea-ix! y11 y-mem y-cur 1 0) (yld! y10 y11 (at-field f-entry))
+        (ylea-v! y11 y-cur 0) (yld! y10 y11 (at-field f-entry))
         (yalui! a-cmp y10 (* 8 (i64->int r-count))) (ybc! q-b (get l-next))
         (yalui! a-sub y10 (* 8 (i64->int r-count)))
         ;; Past the words compiled (a register word's entry is -1): given
@@ -709,7 +723,7 @@
         (yalui! a-cmp y13 (i64->int mark-mark-word)) (ybc! q-e skip)
         (ymov! y-cur y13)
         (yld! y14 y-rsp -24) (yld! y15 y-rsp -16) (yld! y-clo y-rsp -8) (yalui! a-sub y-rsp 32)
-        (ylea-ix! y-ip y-mem y-cur 1 -4) (yalu! a-sub y-ip y14)
+        (ylea-v! y-ip y-cur -4) (yalu! a-sub y-ip y14)
         (ymov! y-fp y15) (yalurm! a-add y-fp y-st (at-st st-dsb))
         (yresume!)
         (ybind! skip)
@@ -798,7 +812,7 @@
 (define yopnd! (->* (int i64 int) unit)
   (lambda (d kk j)
     "Operand `j` of the instruction at field `kk` of the running word."
-    (yld-ix! d y-mem y-cur (- (- -4 (* 8 (i64->int kk))) (* 8 (+ j 1))))))
+    (yld-v! d y-cur (- (- -4 (* 8 (i64->int kk))) (* 8 (+ j 1))))))
 
 (define yop2-fast! (->* (i64 int) unit)
   (lambda (r y)
@@ -866,7 +880,7 @@
      code's start (field 2 of its own); to `none` if it has none."
     (begin
       (yst-ld! y13 st-start)
-      (yld-ix! y15 y-mem r (at-field f-entry))
+      (yld-v! y15 r (at-field f-entry))
       (yalui! a-cmp y15 (* 8 (i64->int r-count))) (ybc! q-b none)
       (yalui! a-sub y15 (* 8 (i64->int r-count)))
       (yalurm! a-cmp y15 y13 8) (ybc! q-ae none)
@@ -894,7 +908,7 @@
                 (begin
                   (ybind! (+ (get h-gbase) (* 2 (i64->int i)))) (yalumi! a-add y-st (at-st st-fuel) 1)
                   (ybind! (+ (get h-gbase) (+ 1 (* 2 (i64->int i)))))
-                  (ylea-ix! y16 y-mem y-cur 1 (- -4 (* 8 (i64->int (i64+ f-cell0 i))))) (yb! give-pre))
+                  (ylea-v! y16 y-cur (- -4 (* 8 (i64->int (i64+ f-cell0 i))))) (yb! give-pre))
                 #u)
             (ygive-stubs! (i64+ i 1) n starts give-pre))))))
 
@@ -1037,12 +1051,12 @@
      twin has tier 6 code of `n` arguments; else out, to tier 5."
     (begin
       (ykind-in! y-w k-closure)
-      (yld! y13 y11 (at-field f-word)) (yld-ix! y16 y-mem y13 (at-field f-twin))
+      (yld! y13 y11 (at-field f-word)) (yld-v! y16 y13 (at-field f-twin))
       (yalui! a-cmp y16 3) (ygive-if! q-e)
-      (yld-ix! y15 y-mem y16 (at-field (i64+ f-cell0 1))) (yalui! a-cmp y15 (* 8 n)) (ygive-if! q-ne)
+      (yld-v! y15 y16 (at-field (i64+ f-cell0 1))) (yalui! a-cmp y15 (* 8 n)) (ygive-if! q-ne)
       ;; Its tier 6 code: field 1 of its table, by the tables past the
       ;; code's start.
-      (yld-ix! y15 y-mem y16 (at-field f-entry))
+      (yld-v! y15 y16 (at-field f-entry))
       (yalui! a-cmp y15 (* 8 (i64->int r-count))) (ygive-if! q-b)
       (yalui! a-sub y15 (* 8 (i64->int r-count)))
       (yadr! y13 (get l-words)) (yalurm! a-cmp y15 y13 0) (ygive-if! q-ae)
@@ -1116,17 +1130,17 @@
         (cond
           ((or (i64= op ro-args) (i64= op ro-vargs)) #u)
           ((i64= op ro-const) (yopnd! y-w kk 0))
-          ((i64= op ro-global) (begin (yopnd! y16 kk 0) (yld-ix! y-w y-mem y16 (at-field f-value))))
+          ((i64= op ro-global) (begin (yopnd! y16 kk 0) (yld-v! y-w y16 (at-field f-value))))
           ((i64= op ro-setglbl)
            (begin
-             (yopnd! y16 kk 0) (ylea-ix! y16 y-mem y16 1 0) (yst! y16 (at-field f-value) y-w)
+             (yopnd! y16 kk 0) (ylea-v! y16 y16 0) (yst! y16 (at-field f-value) y-w)
              (yalumi! a-add y16 (at-field f-writes) 8)))
           ((i64= op ro-reg) (yreg-ld! y-w (i64->int (o 0))))
           ((i64= op ro-setreg) (yreg-st! (i64->int (o 0)) y-w))
           ((i64= op ro-movereg) (begin (yreg-ld! y16 (i64->int (o 0))) (yreg-st! (i64->int (o 1)) y16)))
           ((i64= op ro-lexical)
            (begin
-             (ytag-in! y-clo 4) (ylea-ix! y11 y-mem y-clo 1 0)
+             (ytag-in! y-clo 4) (ylea-v! y11 y-clo 0)
              (yimm! y13 (* 8 (i64->int (i64+ f-free0 (o 0))))) (yfield-read!) (ymov! y-w y16)))
           ((i64= op ro-save)
            (let ((m (i64->int (o 0))))
@@ -1160,13 +1174,13 @@
              (if (or (i64= r r-car) (i64= r r-cdr) (i64= r r-pair-car) (i64= r r-pair-cdr))
                  (begin
                    (ymov! y14 y-w) (yalui! a-and y14 7) (yalui! a-cmp y14 1) (ygive-if! q-ne)
-                   (yld-ix! y-w y-mem y-w (if (or (i64= r r-car) (i64= r r-pair-car)) -1 7)))
+                   (yld-v! y-w y-w (if (or (i64= r r-car) (i64= r r-pair-car)) -1 7)))
                  (yb! (get l-give)))))
           ((i64= op ro-op2) (yop2-fast! (o 0) (yreg-of! (i64->int (o 1)) y16)))
           ((i64= op ro-op2imm) (begin (yopnd! y16 kk 1) (yop2-fast! (o 0) y16)))
           ((i64= op ro-field)
            (begin
-             (ytag-in! y-w 4) (ylea-ix! y11 y-mem y-w 1 0)
+             (ytag-in! y-w 4) (ylea-v! y11 y-w 0)
              (yimm! y13 (* 8 (i64->int (o 0)))) (yfield-read!) (ymov! y-w y16)))
           ((or (and (i64= op ro-cellular) (i64= (o 0) r-cons) (i64= (o 1) 2))
                (and (i64= op ro-prim) (i64= (prim-op (o 0)) o-region-cons) (i64= (o 1) 3)))
@@ -1175,7 +1189,7 @@
                (yallocating! 2 -1)
                (yreg-ld! y14 first) (yst! y16 0 y14) (yreg-ld! y14 (+ first 1)) (yst! y16 8 y14)
                (ylea! y15 y13 2) (yst-st! st-top y15)
-               (ymov! y-w y16) (yalu! a-sub y-w y-mem) (yalui! a-add y-w 1))))
+               (ymov! y-w y16) (yvalued! y-w) (yalui! a-add y-w 1))))
           ((and (i64= op ro-lambda) (i64<= (o 1) register-regs) (i64= (o 2) r-closure))
            (let ((n (i64->int (o 1))))
              (begin
@@ -1188,7 +1202,7 @@
                (yopnd! y14 kk 0) (yst! y11 -16 y14)
                (yfrees-stored! 1 n)
                (ylea! y14 y13 (+ 3 n)) (yst-st! st-top y14)
-               (ymov! y-w y11) (yalu! a-sub y-w y-mem) (yalui! a-add y-w 4))))
+               (ymov! y-w y11) (yvalued! y-w) (yalui! a-add y-w 4))))
           ((and (get h-6) (or (i64= op ro-invoke) (i64= op ro-tailinvoke)))
            (y6-invoked! (i64= op ro-tailinvoke) (i64->int (o 0)) nx))
           ((and (get h-6) (i64= op ro-invokeself)) (y6-called! (+ base 2) -1 -1 nx))
@@ -1197,9 +1211,9 @@
            (let ((tail (i64= op ro-tailinvoke)) (stack-code (label!)) (stack-way (label!)) (n (i64->int (o 0))))
              (begin
                (ykind-in! y-w k-closure)
-               (yld! y13 y11 (at-field f-word)) (yld-ix! y16 y-mem y13 (at-field f-twin))
+               (yld! y13 y11 (at-field f-word)) (yld-v! y16 y13 (at-field f-twin))
                (yalui! a-cmp y16 3) (ybc! q-e stack-code)
-               (yld-ix! y15 y-mem y16 (at-field (i64+ f-cell0 1)))
+               (yld-v! y15 y16 (at-field (i64+ f-cell0 1)))
                (yalui! a-cmp y15 (* 8 n)) (ygive-if! q-ne)
                (ylimits!)
                (if tail #u (yreturn-pushed! (i64+ f-cell0 nx)))
@@ -1212,7 +1226,7 @@
                    (begin (ycalled-to! -1 y16) (yb! (+ base (i64->int nx)))))
                (ybind! stack-way)
                (yleft!)
-               (ylea-ix! y-ip y-mem y-cur 1 (- -4 (* 8 (+ (i64->int f-cell0) 2))))
+               (ylea-v! y-ip y-cur (- -4 (* 8 (+ (i64->int f-cell0) 2))))
                (yresume!)
                ;; Stack code: the arguments its frame, as tier 1's `call!`.
                (ybind! stack-code)
@@ -1225,7 +1239,7 @@
                      (if tail #u (yreturn-pushed! (i64+ f-cell0 nx)))
                      (ymov! y-fp y-dsp) (yargs-pushed! 1 n)
                      (ymov! y-clo y-w) (yleft!) (ymov! y-cur y15)
-                     (ylea-ix! y-ip y-mem y-cur 1 (- -4 (* 8 (i64->int f-cell0))))
+                     (ylea-v! y-ip y-cur (- -4 (* 8 (i64->int f-cell0))))
                      (yresume!))))))
           ((i64= op ro-invokeself)
            (begin (ylimits!) (yreturn-pushed! (i64+ f-cell0 nx)) (ycalled-to! (get h-call-entry) -1)))
@@ -1249,7 +1263,7 @@
           ((i64= op ro-brancht) (begin (yalui! a-cmp y-w 3) (ybc! q-ne (to 1 (o 0)))))
           ((i64= op ro-global-guard)
            (begin
-             (yopnd! y16 kk 0) (yld-ix! y13 y-mem y16 (at-field f-writes))
+             (yopnd! y16 kk 0) (yld-v! y13 y16 (at-field f-writes))
              (yopnd! y14 kk 1) (yalu! a-cmp y13 y14) (ybc! q-ne (to 3 (fix-val (slot-of rw (i64+ kk 3)))))))
           (else (yb! (get l-give))))
         ;; Where a call or a call-out comes back to: its value on the data

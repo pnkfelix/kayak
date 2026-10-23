@@ -3815,9 +3815,14 @@ addresses". So a value is `vbase + 8·index + tag`:
   `vbase`; the base register (`r10`, `x19`) is the heap's address less
   it, 0 with addresses, so `[base + value]` is a value's word either way;
   an allocation's address adds `vbase` to the top's, and its value is that
-  address less the base register. Every tier runs in both modes. Next,
-  with addresses, the base register goes (x86_64's for `REG3`), each
-  machine then for addresses alone.
+  address less the base register. Every tier runs in both modes.
+  *Amended*: on x86_64, with addresses, there is no base register. The
+  machine is made after the run knows its mode, so each access to the
+  heap is emitted for it (`yld-v!`, `ylea-v!`, `yvalued!`): `[value +
+  off]` with addresses, `[r10 + value + off]` with indices. Register code
+  then keeps `REG3` in `r10`. Cycles fell by 1–3% at tier 5 and under 1%
+  at tier 6 (fib, tak, lists, helpers, closures, loop). arm64 keeps its
+  base register (`x19`, 0 with addresses) until macOS can try the change.
 - **Checked**: `cells-programs.py` runs every way with addresses, and
   `--indexes` by tier 1 (with `--gc-stress`) and tier 2. The arm64 side
   (`hand.kfx`'s entry and allocations) is untried: macOS must run it.

@@ -969,6 +969,34 @@ pub fn ytesti_x(r: Int, i: Int) -> () {
     ye_x((&x86::x86_test_imm)(r, i))
 }
 
+// The heap by values (C139): with addresses, a value is its object's
+// address and its tag; with indices, its offset from `r10`, the heap's
+// base.
+pub fn yld_v_x(d: Int, v: Int, o: Int) -> () {
+    if get(addressed()) {
+        yld_x(d, v, o)
+    } else {
+        yld_ix_x(d, y_mem(), v, o)
+    }
+}
+
+pub fn ylea_v_x(d: Int, v: Int, o: Int) -> () {
+    if get(addressed()) {
+        ylea_x(d, v, o)
+    } else {
+        ylea_ix_x(d, y_mem(), v, int_lit(1), o)
+    }
+}
+
+/// The address in `d` as a value, less its tag.
+pub fn yvalued_x(d: Int) -> () {
+    if get(addressed()) {
+        ()
+    } else {
+        yalu_x(a_sub(), d, y_mem())
+    }
+}
+
 pub fn yshift_x(op: Int, d: Int, i: Int) -> () {
     ye_x((&x86::x86_shift_imm)(op, d, i))
 }
@@ -1143,7 +1171,7 @@ pub fn yip_op_x(d: Int) -> () {
 /// it is a bloblet with a trailer whose header says `kind`.
 pub fn ykind_in_x(r: Int, kind: i64) -> () {
     ytag_in_x(r, int_lit(4));
-    ylea_ix_x(y11(), y_mem(), r, int_lit(1), int_lit(0));
+    ylea_v_x(y11(), r, int_lit(0));
     yld_x(y15(), y11(), int_lit(-12));
     ymov_x(y13(), y15());
     yalui_x(a_and(), y13(), int_lit(7));
@@ -1164,7 +1192,7 @@ pub fn ykind_in_x(r: Int, kind: i64) -> () {
 pub fn yframe_pushed_x(t: Int, u: Int) -> () {
     ycmp_st_x(y_rsp(), st_rs_end());
     ygive_if_x(q_ae());
-    ylea_ix_x(t, y_mem(), y_cur(), int_lit(1), int_lit(-4));
+    ylea_v_x(t, y_cur(), int_lit(-4));
     yalu_x(a_sub(), t, y_ip());
     ymov_x(u, y_fp());
     yalurm_x(a_sub(), u, y_st(), at_st(st_dsb()));
@@ -1209,10 +1237,10 @@ pub fn ystate_regs_zeroed_x(mut r: Int) -> () {
 /// enters it; `RESULT` and `REG1`… in the state, `RESULT` in `rax` too.
 pub fn yadapted_x() -> () {
     let (done, loaded) = (label_x(), label_x());
-    yld_ix_x(y13(), y_mem(), y_cur(), at_field(f_twin()));
+    yld_v_x(y13(), y_cur(), at_field(f_twin()));
     yalui_x(a_cmp(), y13(), int_lit(3));
     ybc_x(q_e(), done);
-    yld_ix_x(y15(), y_mem(), y13(), at_field(i64_plus(f_cell0(), 1i64)));
+    yld_v_x(y15(), y13(), at_field(i64_plus(f_cell0(), 1i64)));
     yalu_x(a_cmp(), y15(), y_w());
     ybc_x(q_ne(), done);
     ystate_regs_zeroed_x(int_lit(0));
@@ -1221,7 +1249,7 @@ pub fn yadapted_x() -> () {
     yimm_x(y_w(), int_lit(0));
     ymov_x(y_dsp(), y_fp());
     ymov_x(y_cur(), y13());
-    ylea_ix_x(y_ip(), y_mem(), y_cur(), int_lit(1), _minus(int_lit(-4), _star(int_lit(8), _plus(i64_to_int(f_cell0()), int_lit(2)))));
+    ylea_v_x(y_ip(), y_cur(), _minus(int_lit(-4), _star(int_lit(8), _plus(i64_to_int(f_cell0()), int_lit(2)))));
     ybind_x(done)
 }
 
@@ -1260,7 +1288,7 @@ pub fn ycalled_x(tail: bool) -> () {
     };
     yld_x(y_cur(), y11(), at_field(f_word()));
     ymov_x(y_clo(), y10());
-    ylea_ix_x(y_ip(), y_mem(), y_cur(), int_lit(1), _minus(int_lit(-4), _star(int_lit(8), i64_to_int(f_cell0()))));
+    ylea_v_x(y_ip(), y_cur(), _minus(int_lit(-4), _star(int_lit(8), i64_to_int(f_cell0()))));
     yadapted_x();
     yresume_x()
 }
@@ -1318,7 +1346,12 @@ pub fn yallocating_x(words: Int, count8: Int) -> () {
     };
     ycmp_st_x(y15(), st_mem_length());
     ygive_if_x(q_a());
-    ylea_ix_x(y16(), y_mem(), y13(), int_lit(8), int_lit(0));
+    if get(addressed()) {
+        ymov_x(y16(), y13());
+        yshift_x(s_shl(), y16(), int_lit(3))
+    } else {
+        ylea_ix_x(y16(), y_mem(), y13(), int_lit(8), int_lit(0))
+    };
     yalurm_x(a_add(), y16(), y_st(), at_st(st_vbase()))
 }
 
@@ -1346,7 +1379,7 @@ pub fn yconsed_x(region: bool) -> () {
         ()
     };
     ymov_x(y14(), y16());
-    yalu_x(a_sub(), y14(), y_mem());
+    yvalued_x(y14());
     yalui_x(a_add(), y14(), int_lit(1));
     yput_top_x(y14())
 }
@@ -1409,7 +1442,7 @@ pub fn yclosed_x() -> () {
     yalui_x(a_add(), y14(), int_lit(3));
     yst_st_x(st_top(), y14());
     ymov_x(y14(), y11());
-    yalu_x(a_sub(), y14(), y_mem());
+    yvalued_x(y14());
     yalui_x(a_add(), y14(), int_lit(4));
     ypushed_x(y14());
     ynext_x()
@@ -1420,7 +1453,7 @@ pub fn yclosed_x() -> () {
 pub fn yword_entered_x() -> () {
     let docol = label_x();
     ytag_in_x(y_w(), int_lit(4));
-    ylea_ix_x(y11(), y_mem(), y_w(), int_lit(1), int_lit(0));
+    ylea_v_x(y11(), y_w(), int_lit(0));
     yld_x(y10(), y11(), at_field(f_entry()));
     yalui_x(a_cmp(), y10(), _star(int_lit(8), i64_to_int(r_docol())));
     ybc_x(q_e(), docol);
@@ -1443,7 +1476,7 @@ pub fn ycar_cdr_x(first: bool) -> () {
     yalui_x(a_and(), y14(), int_lit(7));
     yalui_x(a_cmp(), y14(), int_lit(1));
     ygive_if_x(q_ne());
-    yld_ix_x(y16(), y_mem(), y13(), if first {
+    yld_v_x(y16(), y13(), if first {
         int_lit(-1)
     } else {
         int_lit(7)
@@ -1540,7 +1573,7 @@ pub fn yentered_x(n: Int) -> () {
     } else if _eq(n, i64_to_int(r_global())) {
         yroom_x();
         yip_op_x(y13());
-        yld_ix_x(y15(), y_mem(), y13(), at_field(f_value()));
+        yld_v_x(y15(), y13(), at_field(f_value()));
         ypushed_x(y15());
         ynext_x()
     } else if _eq(n, i64_to_int(r_branch())) {
@@ -1572,7 +1605,7 @@ pub fn yentered_x(n: Int) -> () {
         ytag_in_x(y_clo(), int_lit(4));
         yip_op_x(y13());
         yalui_x(a_add(), y13(), _star(int_lit(8), i64_to_int(f_free0())));
-        ylea_ix_x(y11(), y_mem(), y_clo(), int_lit(1), int_lit(0));
+        ylea_v_x(y11(), y_clo(), int_lit(0));
         yfield_read_x();
         ypushed_x(y16());
         ynext_x()
@@ -1581,7 +1614,7 @@ pub fn yentered_x(n: Int) -> () {
         yip_op_x(y10());
         yld_x(y16(), y_dsp(), int_lit(-8));
         ytag_in_x(y16(), int_lit(4));
-        ylea_ix_x(y11(), y_mem(), y16(), int_lit(1), int_lit(0));
+        ylea_v_x(y11(), y16(), int_lit(0));
         ymov_x(y13(), y10());
         yfield_read_x();
         yst_x(y_dsp(), int_lit(-8), y16());
@@ -1589,7 +1622,7 @@ pub fn yentered_x(n: Int) -> () {
     } else if _eq(n, i64_to_int(r_global_set())) {
         yneed_x(int_lit(1));
         yip_op_x(y13());
-        ylea_ix_x(y14(), y_mem(), y13(), int_lit(1), int_lit(0));
+        ylea_v_x(y14(), y13(), int_lit(0));
         yld_x(y15(), y_dsp(), int_lit(-8));
         yst_x(y14(), at_field(f_value()), y15());
         yalumi_x(a_add(), y14(), at_field(f_writes()), int_lit(8));
@@ -1602,7 +1635,7 @@ pub fn yentered_x(n: Int) -> () {
         ygive_if_x(q_ne());
         yld_x(y16(), y_dsp(), int_lit(-16));
         ytag_in_x(y16(), int_lit(4));
-        ylea_ix_x(y11(), y_mem(), y16(), int_lit(1), int_lit(0));
+        ylea_v_x(y11(), y16(), int_lit(0));
         ymov_x(y13(), y10());
         yfield_read_x();
         yput_top_x(y16())
@@ -1694,8 +1727,12 @@ pub fn yentry_x() -> () {
     ykept_x();
     yld_x(y13(), y_st(), y_reg4());
     ylea_x(y_st(), y_rdi(), int_lit(-4));
-    ylea_x(y_mem(), y_rsi(), int_lit(-4));
-    yalurm_x(a_sub(), y_mem(), y_st(), at_st(st_vbase()));
+    if get(addressed()) {
+        ()
+    } else {
+        ylea_x(y_mem(), y_rsi(), int_lit(-4));
+        yalurm_x(a_sub(), y_mem(), y_st(), at_st(st_vbase()))
+    };
     ylea_x(y15(), y_r8(), int_lit(-4));
     yst_st_x(st_dsb(), y15());
     ylea_x(y13(), y13(), int_lit(-4));
@@ -1707,7 +1744,7 @@ pub fn yentry_x() -> () {
     yst_ld_x(y_cur(), st_cur());
     yst_ld_x(y14(), st_kk());
     yshift_x(s_shl(), y14(), int_lit(3));
-    ylea_ix_x(y_ip(), y_mem(), y_cur(), int_lit(1), int_lit(-4));
+    ylea_v_x(y_ip(), y_cur(), int_lit(-4));
     yalu_x(a_sub(), y_ip(), y14());
     yst_ld_x(y14(), st_fp());
     yshift_x(s_shl(), y14(), int_lit(3));
@@ -1731,7 +1768,7 @@ pub fn yentry_x() -> () {
 pub fn yleave_x(why: i64) -> () {
     yst_st_x(st_cur(), y_cur());
     yst_ld_x(y16(), st_cell());
-    ylea_ix_x(y13(), y_mem(), y_cur(), int_lit(1), int_lit(-4));
+    ylea_v_x(y13(), y_cur(), int_lit(-4));
     yalu_x(a_sub(), y13(), y16());
     yshift_x(s_sar(), y13(), int_lit(3));
     yst_st_x(st_kk(), y13());
@@ -1757,7 +1794,8 @@ pub fn yleave_x(why: i64) -> () {
 /// The machine register `REGk` is in while register code runs, or -1
 /// for one in the state: `REG0` in `clo`, `REG1` in `rdi`, which
 /// register code does not use as scratch, `REG2` in `r14`, the ip's
-/// register, which it does not use either.
+/// register, which it does not use either; with addresses (C139),
+/// `REG3` in `r10`, the heap's base with indices.
 pub fn y_reg_in(k: Int) -> Int {
     if _eq(k, int_lit(0)) {
         y_clo()
@@ -1765,6 +1803,8 @@ pub fn y_reg_in(k: Int) -> Int {
         y10()
     } else if _eq(k, int_lit(2)) {
         y_ip()
+    } else if (_eq(k, int_lit(3)) && get(addressed())) {
+        y_mem()
     } else {
         int_lit(-1)
     }
@@ -1885,7 +1925,7 @@ pub fn yresumed_x() -> () {
     yalui_x(a_and(), y13(), int_lit(7));
     yalui_x(a_cmp(), y13(), int_lit(4));
     ybc_x(q_ne(), get(l_next()));
-    ylea_ix_x(y11(), y_mem(), y_cur(), int_lit(1), int_lit(0));
+    ylea_v_x(y11(), y_cur(), int_lit(0));
     yld_x(y10(), y11(), at_field(f_entry()));
     yalui_x(a_cmp(), y10(), _star(int_lit(8), i64_to_int(r_count())));
     ybc_x(q_b(), get(l_next()));
@@ -1988,7 +2028,7 @@ pub fn ymachine_x() -> () {
     yld_x(y15(), y_rsp(), int_lit(-16));
     yld_x(y_clo(), y_rsp(), int_lit(-8));
     yalui_x(a_sub(), y_rsp(), int_lit(32));
-    ylea_ix_x(y_ip(), y_mem(), y_cur(), int_lit(1), int_lit(-4));
+    ylea_v_x(y_ip(), y_cur(), int_lit(-4));
     yalu_x(a_sub(), y_ip(), y14());
     ymov_x(y_fp(), y15());
     yalurm_x(a_add(), y_fp(), y_st(), at_st(st_dsb()));
@@ -2111,7 +2151,7 @@ pub fn yword_compiled_x(w: i64, n_cells: Int, rt: Int) -> () {
 // pairs with its `call`, as the processor predicts returns (C137).
 /// Operand `j` of the instruction at field `kk` of the running word.
 pub fn yopnd_x(d: Int, kk: i64, j: Int) -> () {
-    yld_ix_x(d, y_mem(), y_cur(), _minus(_minus(int_lit(-4), _star(int_lit(8), i64_to_int(kk))), _star(int_lit(8), _plus(j, int_lit(1)))))
+    yld_v_x(d, y_cur(), _minus(_minus(int_lit(-4), _star(int_lit(8), i64_to_int(kk))), _star(int_lit(8), _plus(j, int_lit(1)))))
 }
 
 /// `RESULT` := cellular routine `r` of `RESULT` and `y`, on fixnums; past
@@ -2241,7 +2281,7 @@ pub fn ytail_called_x(r: Int) -> () {
 /// code's start (field 2 of its own); to `none` if it has none.
 pub fn yentry_address_x(r: Int, none: Int) -> () {
     yst_ld_x(y13(), st_start());
-    yld_ix_x(y15(), y_mem(), r, at_field(f_entry()));
+    yld_v_x(y15(), r, at_field(f_entry()));
     yalui_x(a_cmp(), y15(), _star(int_lit(8), i64_to_int(r_count())));
     ybc_x(q_b(), none);
     yalui_x(a_sub(), y15(), _star(int_lit(8), i64_to_int(r_count())));
@@ -2286,7 +2326,7 @@ pub fn ygive_stubs_x(mut i: i64, mut n: i64, mut starts: FlatArray<i64>, mut giv
                 ybind_x(_plus(get(h_gbase()), _star(int_lit(2), i64_to_int(i))));
                 yalumi_x(a_add(), y_st(), at_st(st_fuel()), int_lit(1));
                 ybind_x(_plus(get(h_gbase()), _plus(int_lit(1), _star(int_lit(2), i64_to_int(i)))));
-                ylea_ix_x(y16(), y_mem(), y_cur(), int_lit(1), _minus(int_lit(-4), _star(int_lit(8), i64_to_int(i64_plus(f_cell0(), i)))));
+                ylea_v_x(y16(), y_cur(), _minus(int_lit(-4), _star(int_lit(8), i64_to_int(i64_plus(f_cell0(), i)))));
                 yb_x(give_pre)
             } else {
                 ()
@@ -2562,13 +2602,13 @@ pub fn y6_called_x(l: Int, r: Int, new_cur: Int, nx: i64) -> () {
 pub fn y6_invoked_x(tail: bool, n: Int, nx: i64) -> () {
     ykind_in_x(y_w(), k_closure());
     yld_x(y13(), y11(), at_field(f_word()));
-    yld_ix_x(y16(), y_mem(), y13(), at_field(f_twin()));
+    yld_v_x(y16(), y13(), at_field(f_twin()));
     yalui_x(a_cmp(), y16(), int_lit(3));
     ygive_if_x(q_e());
-    yld_ix_x(y15(), y_mem(), y16(), at_field(i64_plus(f_cell0(), 1i64)));
+    yld_v_x(y15(), y16(), at_field(i64_plus(f_cell0(), 1i64)));
     yalui_x(a_cmp(), y15(), _star(int_lit(8), n));
     ygive_if_x(q_ne());
-    yld_ix_x(y15(), y_mem(), y16(), at_field(f_entry()));
+    yld_v_x(y15(), y16(), at_field(f_entry()));
     yalui_x(a_cmp(), y15(), _star(int_lit(8), i64_to_int(r_count())));
     ygive_if_x(q_b());
     yalui_x(a_sub(), y15(), _star(int_lit(8), i64_to_int(r_count())));
@@ -2683,10 +2723,10 @@ pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) 
         yopnd_x(y_w(), kk, int_lit(0))
     } else if i64_eq(op, ro_global()) {
         yopnd_x(y16(), kk, int_lit(0));
-        yld_ix_x(y_w(), y_mem(), y16(), at_field(f_value()))
+        yld_v_x(y_w(), y16(), at_field(f_value()))
     } else if i64_eq(op, ro_setglbl()) {
         yopnd_x(y16(), kk, int_lit(0));
-        ylea_ix_x(y16(), y_mem(), y16(), int_lit(1), int_lit(0));
+        ylea_v_x(y16(), y16(), int_lit(0));
         yst_x(y16(), at_field(f_value()), y_w());
         yalumi_x(a_add(), y16(), at_field(f_writes()), int_lit(8))
     } else if i64_eq(op, ro_reg()) {
@@ -2698,7 +2738,7 @@ pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) 
         yreg_st_x(i64_to_int(o(int_lit(1))), y16())
     } else if i64_eq(op, ro_lexical()) {
         ytag_in_x(y_clo(), int_lit(4));
-        ylea_ix_x(y11(), y_mem(), y_clo(), int_lit(1), int_lit(0));
+        ylea_v_x(y11(), y_clo(), int_lit(0));
         yimm_x(y13(), _star(int_lit(8), i64_to_int(i64_plus(f_free0(), o(int_lit(0))))));
         yfield_read_x();
         ymov_x(y_w(), y16())
@@ -2762,7 +2802,7 @@ pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) 
             yalui_x(a_and(), y14(), int_lit(7));
             yalui_x(a_cmp(), y14(), int_lit(1));
             ygive_if_x(q_ne());
-            yld_ix_x(y_w(), y_mem(), y_w(), if (i64_eq(r, r_car()) || i64_eq(r, r_pair_car())) {
+            yld_v_x(y_w(), y_w(), if (i64_eq(r, r_car()) || i64_eq(r, r_pair_car())) {
                 int_lit(-1)
             } else {
                 int_lit(7)
@@ -2777,7 +2817,7 @@ pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) 
         yop2_fast_x(o(int_lit(0)), y16())
     } else if i64_eq(op, ro_field()) {
         ytag_in_x(y_w(), int_lit(4));
-        ylea_ix_x(y11(), y_mem(), y_w(), int_lit(1), int_lit(0));
+        ylea_v_x(y11(), y_w(), int_lit(0));
         yimm_x(y13(), _star(int_lit(8), i64_to_int(o(int_lit(0)))));
         yfield_read_x();
         ymov_x(y_w(), y16())
@@ -2795,7 +2835,7 @@ pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) 
         ylea_x(y15(), y13(), int_lit(2));
         yst_st_x(st_top(), y15());
         ymov_x(y_w(), y16());
-        yalu_x(a_sub(), y_w(), y_mem());
+        yvalued_x(y_w());
         yalui_x(a_add(), y_w(), int_lit(1))
     } else if (i64_eq(op, ro_lambda()) && i64_lt_eq(o(int_lit(1)), register_regs()) && i64_eq(o(int_lit(2)), r_closure())) {
         let n = i64_to_int(o(int_lit(1)));
@@ -2811,7 +2851,7 @@ pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) 
         ylea_x(y14(), y13(), _plus(int_lit(3), n));
         yst_st_x(st_top(), y14());
         ymov_x(y_w(), y11());
-        yalu_x(a_sub(), y_w(), y_mem());
+        yvalued_x(y_w());
         yalui_x(a_add(), y_w(), int_lit(4))
     } else if (get(h_6()) && (i64_eq(op, ro_invoke()) || i64_eq(op, ro_tailinvoke()))) {
         y6_invoked_x(i64_eq(op, ro_tailinvoke()), i64_to_int(o(int_lit(0))), nx)
@@ -2823,10 +2863,10 @@ pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) 
         let (tail, stack_code, stack_way, n) = (i64_eq(op, ro_tailinvoke()), label_x(), label_x(), i64_to_int(o(int_lit(0))));
         ykind_in_x(y_w(), k_closure());
         yld_x(y13(), y11(), at_field(f_word()));
-        yld_ix_x(y16(), y_mem(), y13(), at_field(f_twin()));
+        yld_v_x(y16(), y13(), at_field(f_twin()));
         yalui_x(a_cmp(), y16(), int_lit(3));
         ybc_x(q_e(), stack_code);
-        yld_ix_x(y15(), y_mem(), y16(), at_field(i64_plus(f_cell0(), 1i64)));
+        yld_v_x(y15(), y16(), at_field(i64_plus(f_cell0(), 1i64)));
         yalui_x(a_cmp(), y15(), _star(int_lit(8), n));
         ygive_if_x(q_ne());
         ylimits_x();
@@ -2846,7 +2886,7 @@ pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) 
         };
         ybind_x(stack_way);
         yleft_x();
-        ylea_ix_x(y_ip(), y_mem(), y_cur(), int_lit(1), _minus(int_lit(-4), _star(int_lit(8), _plus(i64_to_int(f_cell0()), int_lit(2)))));
+        ylea_v_x(y_ip(), y_cur(), _minus(int_lit(-4), _star(int_lit(8), _plus(i64_to_int(f_cell0()), int_lit(2)))));
         yresume_x();
         ybind_x(stack_code);
         if _gt(n, int_lit(8)) {
@@ -2867,7 +2907,7 @@ pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) 
             ymov_x(y_clo(), y_w());
             yleft_x();
             ymov_x(y_cur(), y15());
-            ylea_ix_x(y_ip(), y_mem(), y_cur(), int_lit(1), _minus(int_lit(-4), _star(int_lit(8), i64_to_int(f_cell0()))));
+            ylea_v_x(y_ip(), y_cur(), _minus(int_lit(-4), _star(int_lit(8), i64_to_int(f_cell0()))));
             yresume_x()
         }
     } else if i64_eq(op, ro_invokeself()) {
@@ -2908,7 +2948,7 @@ pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) 
         ybc_x(q_ne(), to(int_lit(1), o(int_lit(0))))
     } else if i64_eq(op, ro_global_guard()) {
         yopnd_x(y16(), kk, int_lit(0));
-        yld_ix_x(y13(), y_mem(), y16(), at_field(f_writes()));
+        yld_v_x(y13(), y16(), at_field(f_writes()));
         yopnd_x(y14(), kk, int_lit(1));
         yalu_x(a_cmp(), y13(), y14());
         ybc_x(q_ne(), to(int_lit(3), fix_val(slot_of(rw, i64_plus(kk, 3i64)))))
