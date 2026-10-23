@@ -416,6 +416,9 @@ pub fn set<T: Copy>(r: RefAt<'_, T>, v: T) {
     r.set(v)
 }
 
+/// Elements from which a flat array of 0s is reserved rather than written.
+const BIG_FLATARRAY: usize = 1 << 20;
+
 #[inline]
 pub fn make_flatarray_i64(n: i64, v: i64) -> FlatArray<i64> {
     use kayak_jit::layout as l;
@@ -426,6 +429,13 @@ pub fn make_flatarray_i64(n: i64, v: i64) -> FlatArray<i64> {
                 l::FLAT_I64 << l::FIXNUM_SHIFT,
                 2 << 3 | l::TAG_TRAILER,
             ];
+            // A big one of 0s reserved, committed as it is touched (C139).
+            if v == 0 && n >= BIG_FLATARRAY {
+                let prefix = prefix.map(|w| w as i64);
+                if let Some(all) = kayak_jit::zeroed_cells(&prefix, n) {
+                    return &all[prefix.len()..];
+                }
+            }
             let all: &'static [Cell<i64>] = Box::leak(
                 prefix
                     .iter()

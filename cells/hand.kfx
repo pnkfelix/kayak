@@ -80,8 +80,12 @@
 (define st-regs int 20)
 "Where the code starts (C131): its tables are at fixed places past it."
 (define st-start int 29)
+"The values' base (C139): the heap's address, the values being
+ addresses, or 0 (`--indexes`); the machine's base register is the heap's
+ address less it, so that a value plus it is the value's word."
+(define st-vbase int 34)
 "Its length: 30 to 33 are hand-x64.kfx's own."
-(define st-size i64 34)
+(define st-size i64 35)
 (define at-st (->* (int) int) (lambda (i) (* 8 i)))
 
 "Why the machine stopped: to give a cell back; or the return stack ran
@@ -368,7 +372,7 @@
       (addi! x15 x13 words)
       (if (= count8 31) #u (begin (lsr! x14 count8 3) (add! x15 x15 x14)))
       (ldr! x14 x-st (at-st st-mem-length)) (cmp! x15 x14) (give-if! c-hi)
-      (lsl! x16 x13 3) (add! x16 x-mem x16))))
+      (lsl! x16 x13 3) (add! x16 x-mem x16) (ldr! x14 x-st (at-st st-vbase)) (add! x16 x16 x14))))
 
 (define consed! (->* (bool) unit)
   (lambda (region)
@@ -380,7 +384,7 @@
       (ldur! x14 x-dsp -16) (ldur! x15 x-dsp -8) (stp! x14 x15 x16 0)
       (addi! x15 x13 2) (str! x15 x-st (at-st st-top))
       (if region (subi! x-dsp x-dsp 8) #u)
-      (lsl! x14 x13 3) (addi! x14 x14 1) (put-top! x14))))
+      (sub! x14 x16 x-mem) (addi! x14 x14 1) (put-top! x14))))
 
 (define primed! (->* () unit)
   (lambda ()
@@ -563,7 +567,8 @@
      Every register the machine uses kept, as Fixpt's machine keeps them."
     (begin
       (stp-pre! 29 30 31 -96) (stp! 19 20 31 16) (stp! 21 22 31 32) (stp! 23 24 31 48) (stp! 25 26 31 64) (stp! 27 28 31 80)
-      (subi! x-st 1 4) (subi! x-mem 2 4) (subi! x-dsb 3 4) (subi! x13 4 4) (str! x13 x-st (at-st st-rsb))
+      (subi! x-st 1 4) (subi! x-mem 2 4) (ldr! x14 x-st (at-st st-vbase)) (sub! x-mem x-mem x14)
+      (subi! x-dsb 3 4) (subi! x13 4 4) (str! x13 x-st (at-st st-rsb))
       ;; The limits, as addresses.
       (ldr! x14 x-st (at-st st-ds-limit)) (times8! x14) (add! x14 x-dsb x14) (str! x14 x-st (at-st st-ds-lim))
       (ldr! x14 x-st (at-st st-rs-limit)) (times8! x14) (add! x14 x13 x14) (str! x14 x-st (at-st st-rs-lim))
@@ -947,11 +952,11 @@
           ((and (i64= op ro-cellular) (i64= (o 0) r-cons) (i64= (o 1) 2))
            (begin
              (allocating! 2 31) (stp! 1 2 x16 0)
-             (addi! x15 x13 2) (str! x15 x-st (at-st st-top)) (lsl! 0 x13 3) (addi! 0 0 1)))
+             (addi! x15 x13 2) (str! x15 x-st (at-st st-top)) (sub! 0 x16 x-mem) (addi! 0 0 1)))
           ((and (i64= op ro-prim) (i64= (prim-op (o 0)) o-region-cons) (i64= (o 1) 3))
            (begin
              (allocating! 2 31) (stp! 2 3 x16 0)
-             (addi! x15 x13 2) (str! x15 x-st (at-st st-top)) (lsl! 0 x13 3) (addi! 0 0 1)))
+             (addi! x15 x13 2) (str! x15 x-st (at-st st-top)) (sub! 0 x16 x-mem) (addi! 0 0 1)))
           ((and (i64= op ro-lambda) (i64<= (o 1) register-regs) (i64= (o 2) r-closure))
            (let ((n (i64->int (o 1))))
              (begin

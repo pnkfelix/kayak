@@ -22,7 +22,8 @@ with a collection at every safepoint (`--gc-stress`), to the same end;
 each by tier 2's machine (`--hand`, C126), with its words compiled
 (`--compiled`, C128), these on arm64 macOS and x86_64 Linux (C136,
 C137), with register code as native procedures too (`--direct`, tier 6,
-C138, x86_64 Linux), and with register code
+C138, x86_64 Linux), with values as indices into the heap rather than
+addresses (`--indexes`, C139, by tiers 1 and 2), and with register code
 (`--regs`, C129), its answer
 the same; and each that runs tasks (processes, `par`, `race`, `pselect`), again
 with a time slice of two polls (`--slice 2`, as Fixpt's `FIXPT_SLICE`,
@@ -214,6 +215,10 @@ def stressed(cells, name, path, text, limit, have, fail):
     # Tier 2, the hand machine (C126), each program, where native code runs.
     # Tier 4, the words compiled (C128), likewise.
     ways = [[t] + (["--step-limit", "none"] if limit else []) for t in ("--hand", "--compiled") if t == "--hand" or COMPILED] if HAND else []
+    # Values as indices (C139), as they were: tier 1, and tier 2.
+    ways.append(["--indexes"] + (["--step-limit", "none"] if limit else []))
+    if HAND:
+        ways.append(["--hand", "--indexes"] + (["--step-limit", "none"] if limit else []))
     # Register code (C129), interpreted by tier 1; compiled (tier 5, C130).
     ways.append(["--regs"] + (["--step-limit", "none"] if limit else []))
     if COMPILED:
@@ -222,6 +227,7 @@ def stressed(cells, name, path, text, limit, have, fail):
         ways.append(["--regs", "--direct"] + (["--step-limit", "none"] if limit else []))
     if not name.startswith(UNLIMITED):
         ways.append(["--gc-stress"])
+        ways.append(["--indexes", "--gc-stress"])
         ways.append(["--regs", "--gc-stress"])
         if COMPILED:
             ways.append(["--regs", "--compiled", "--gc-stress"])

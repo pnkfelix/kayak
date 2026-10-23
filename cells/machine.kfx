@@ -159,7 +159,7 @@
 
 (define safepoint! (subr cm () unit)
   (lambda ()
-    (if (or (get gc-stress) (i64> (i64* 4 (get top)) (i64* 3 (flatarray-length-i64 (get mem)))))
+    (if (or (get gc-stress) (i64> (i64* 4 (get top)) (i64* 3 (get limit))))
         (collect!)
         #u)))
 
@@ -947,8 +947,9 @@
         (flatarray-set-i64! s (int->i64 st-rs-push) (i64- (flatarray-length-i64 (get rs)) 4))
         (flatarray-set-i64! s (int->i64 st-top) (get top))
         (flatarray-set-i64! s (int->i64 st-alloc-limit)
-                            (if (get gc-stress) 0 (i64-quotient (i64* 3 (flatarray-length-i64 (get mem))) 4)))
-        (flatarray-set-i64! s (int->i64 st-mem-length) (flatarray-length-i64 (get mem)))
+                            (if (get gc-stress) 0 (i64-quotient (i64* 3 (get limit)) 4)))
+        (flatarray-set-i64! s (int->i64 st-mem-length) (get limit))
+        (flatarray-set-i64! s (int->i64 st-vbase) (get vbase))
         (set hand-entries (i64+ (get hand-entries) 1))
         (regs-copied! (get rr) 0 s (int->i64 st-regs) 9)
         (let ((why (int->i64 (m s (get mem) (get ds) (get rs)))))

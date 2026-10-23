@@ -340,7 +340,7 @@ pub fn collect_x() -> () {
 }
 
 pub fn safepoint_x() -> () {
-    if (get(gc_stress()) || i64_gt(i64_star(4i64, get(top())), i64_star(3i64, flatarray_length_i64(get(mem()))))) {
+    if (get(gc_stress()) || i64_gt(i64_star(4i64, get(top())), i64_star(3i64, get(limit())))) {
         collect_x()
     } else {
         ()
@@ -1808,9 +1808,10 @@ pub fn hand_x(m: HandCode) -> bool {
     flatarray_set_i64_x(s, int_to_i64(st_alloc_limit()), if get(gc_stress()) {
         0i64
     } else {
-        i64_quotient(i64_star(3i64, flatarray_length_i64(get(mem()))), 4i64)
+        i64_quotient(i64_star(3i64, get(limit())), 4i64)
     });
-    flatarray_set_i64_x(s, int_to_i64(st_mem_length()), flatarray_length_i64(get(mem())));
+    flatarray_set_i64_x(s, int_to_i64(st_mem_length()), get(limit()));
+    flatarray_set_i64_x(s, int_to_i64(st_vbase()), get(vbase()));
     set(hand_entries(), i64_plus(get(hand_entries()), 1i64));
     regs_copied_x(get(rr()), 0i64, s, int_to_i64(st_regs()), 9i64);
     let why = int_to_i64(m(s, get(mem()), get(ds()), get(rs())));

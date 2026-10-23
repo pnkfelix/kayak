@@ -145,6 +145,23 @@ pub fn native_code() -> bool {
     area().is_some()
 }
 
+/// `prefix`, then `n` cells of 0, in memory reserved and committed only as
+/// it is touched (C139): a flat array too big to write out whole, as
+/// tier 1's heap, reserved once at its most so that it never moves. None
+/// where nothing can be reserved.
+pub fn zeroed_cells(prefix: &[i64], n: usize) -> Option<&'static [Cell<i64>]> {
+    let words = prefix.len().checked_add(n)?;
+    let at = sys::reserve(words.checked_mul(8)?)?;
+    // SAFETY: a fresh private mapping of `words` words, zero and never
+    // unmapped, so `'static`; `Cell<i64>` has `i64`'s layout.
+    let all: &'static [Cell<i64>] =
+        unsafe { std::slice::from_raw_parts(at as *const Cell<i64>, words) };
+    for (c, &w) in all.iter().zip(prefix) {
+        c.set(w);
+    }
+    Some(all)
+}
+
 // ---------------------------------------------------------------- the area
 
 /// The code area's size: reserved whole, nothing committed until touched.

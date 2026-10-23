@@ -92,7 +92,9 @@ both, written once.
    KFX reads and writes them safely; kayak-rt allocates a large one from
    reserved memory, at an address that never changes, which native code
    is given. Values are indices into it for KFX, and addresses for native
-   code with a base register, until measured otherwise.
+   code with a base register, until measured otherwise. **Revised
+   (C139, the user, 2026-10-23)**: values are tagged machine addresses,
+   for KFX too; indices are a mode (`--indexes`).
 3. **Code bloblets, as Fixpt's** (its `docs/object-model.md`, "Code"
    and "A collected code area"): a procedure's code is the suffix of a
    bloblet whose fields (its constants, callees, globals, name, frame

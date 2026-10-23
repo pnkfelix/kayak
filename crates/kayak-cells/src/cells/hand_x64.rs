@@ -1318,7 +1318,8 @@ pub fn yallocating_x(words: Int, count8: Int) -> () {
     };
     ycmp_st_x(y15(), st_mem_length());
     ygive_if_x(q_a());
-    ylea_ix_x(y16(), y_mem(), y13(), int_lit(8), int_lit(0))
+    ylea_ix_x(y16(), y_mem(), y13(), int_lit(8), int_lit(0));
+    yalurm_x(a_add(), y16(), y_st(), at_st(st_vbase()))
 }
 
 /// `cons`, or `%region-cons` (its region below the two, and dropped):
@@ -1344,9 +1345,9 @@ pub fn yconsed_x(region: bool) -> () {
     } else {
         ()
     };
-    ylea_ix_x(y14(), y13(), y13(), int_lit(1), int_lit(0));
-    ylea_ix_x(y14(), y14(), y14(), int_lit(1), int_lit(0));
-    ylea_ix_x(y14(), y14(), y14(), int_lit(1), int_lit(1));
+    ymov_x(y14(), y16());
+    yalu_x(a_sub(), y14(), y_mem());
+    yalui_x(a_add(), y14(), int_lit(1));
     yput_top_x(y14())
 }
 
@@ -1694,6 +1695,7 @@ pub fn yentry_x() -> () {
     yld_x(y13(), y_st(), y_reg4());
     ylea_x(y_st(), y_rdi(), int_lit(-4));
     ylea_x(y_mem(), y_rsi(), int_lit(-4));
+    yalurm_x(a_sub(), y_mem(), y_st(), at_st(st_vbase()));
     ylea_x(y15(), y_r8(), int_lit(-4));
     yst_st_x(st_dsb(), y15());
     ylea_x(y13(), y13(), int_lit(-4));
@@ -2792,8 +2794,8 @@ pub fn yreg_body_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) 
         yst_x(y16(), int_lit(8), y14());
         ylea_x(y15(), y13(), int_lit(2));
         yst_st_x(st_top(), y15());
-        ymov_x(y_w(), y13());
-        yshift_x(s_shl(), y_w(), int_lit(3));
+        ymov_x(y_w(), y16());
+        yalu_x(a_sub(), y_w(), y_mem());
         yalui_x(a_add(), y_w(), int_lit(1))
     } else if (i64_eq(op, ro_lambda()) && i64_lt_eq(o(int_lit(1)), register_regs()) && i64_eq(o(int_lit(2)), r_closure())) {
         let n = i64_to_int(o(int_lit(1)));
@@ -3311,6 +3313,70 @@ pub fn hand_code_x() -> &'static Sum_4made_6failed<HandCode, Str> {
         hand_code_x64_x()
     } else {
         kayak_rt::heap_alloc(Sum_4made_6failed::<&'static dyn Fn(FlatArray<i64>, FlatArray<i64>, FlatArray<i64>, FlatArray<i64>) -> Int, Str>::Failed(string_append(str_lit("tier 2: no machine for "), target)))
+    }
+}
+
+// An array's address (C139), for values that are addresses: FX-26 has no
+// operation that says it, so a native procedure of two instructions, made
+// once for the machine this runs on, returns its argument, a flat array's
+// suffix (tag 4), less its tag, as an `int` (a fixnum).
+pub type AddressCode = &'static dyn Fn(FlatArray<i64>) -> Int;
+
+pub fn address_made() -> Ref<List<AddressCode>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<AddressCode>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static dyn Fn(FlatArray<i64>) -> Int>())
+    })
+}
+
+pub fn address_code_x() -> &'static Sum_12made_address_10no_address<AddressCode, Str> {
+    let target = car(the::<List<Str>>(native_convention()));
+    if not(null_p(get(address_made()))) {
+        kayak_rt::heap_alloc(Sum_12made_address_10no_address::<&'static dyn Fn(FlatArray<i64>) -> Int, Str>::MadeAddress(car(get(address_made()))))
+    } else if string_eq_p(target, str_lit("(target x86_64)")) {
+        let bs = the::<List<Int>>(append((&x86::x86_lea)(int_lit(0), y_rdi(), int_lit(-4)), append((&x86::x86_shift_imm)(s_shl(), int_lit(0), int_lit(3)), (&x86::x86_ret)())));
+        let b = the::<&'static Bloblet<()>>(make_bloblet(y_length(bs, int_lit(0)), ()));
+        let u = y_bytes_x(b, bs, int_lit(0));
+        let p = kayak_rt::native_procedure1::<FlatArray<i64>, Int>(seal_code(b));
+        set(address_made(), kayak_rt::heap_cons(p, kayak_rt::nil()));
+        kayak_rt::heap_alloc(Sum_12made_address_10no_address::<&'static dyn Fn(FlatArray<i64>) -> Int, Str>::MadeAddress(p))
+    } else if string_eq_p(target, str_lit("(target arm64)")) {
+        let b = the::<&'static Bloblet<()>>(make_bloblet(int_lit(12), ()));
+        let u = {
+            put4(b, int_lit(0), (&a64::arm_sub_imm)(int_lit(0), int_lit(1), int_lit(4)));
+            put4(b, int_lit(4), arm_lsl(int_lit(0), int_lit(0), int_lit(3)));
+            put4(b, int_lit(8), a64::arm_ret())
+        };
+        let p = kayak_rt::native_procedure1::<FlatArray<i64>, Int>(seal_code(b));
+        set(address_made(), kayak_rt::heap_cons(p, kayak_rt::nil()));
+        kayak_rt::heap_alloc(Sum_12made_address_10no_address::<&'static dyn Fn(FlatArray<i64>) -> Int, Str>::MadeAddress(p))
+    } else {
+        kayak_rt::heap_alloc(Sum_12made_address_10no_address::<&'static dyn Fn(FlatArray<i64>) -> Int, Str>::NoAddress(string_append(str_lit("no native code for "), target)))
+    }
+}
+
+/// Values made addresses from now on (C139), before any is made: both
+/// spaces reserved whole, their addresses the values' bases. Whether
+/// they could be; else values stay indices.
+pub fn heap_addressed_x() -> bool {
+    if not(i64_eq(get(top()), 8i64)) {
+        false
+    } else {
+        let tagcase_ = address_code_x();
+        match *tagcase_ {
+            Sum_12made_address_10no_address::MadeAddress(p) => {
+                let (m, o) = (the::<FlatArray<i64>>(make_flatarray_i64(heap_capacity(), 0i64)), the::<FlatArray<i64>>(make_flatarray_i64(heap_capacity(), 0i64)));
+                set(mem(), m);
+                set(other(), o);
+                set(vbase(), int_to_i64(p(m)));
+                set(to_vbase(), int_to_i64(p(o)));
+                set(addressed(), true);
+                true
+            }
+            Sum_12made_address_10no_address::NoAddress(why) => {
+                false
+            }
+        }
     }
 }
 

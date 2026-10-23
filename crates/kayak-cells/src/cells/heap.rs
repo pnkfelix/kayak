@@ -4,7 +4,9 @@ use kayak_rt::*;
 use super::*;
 
 // heap.kfx: tier 1's heap, in Fixpt's format (C122): one flat array of
-// `i64`, a value's address its index, `address << 3 | tag`, as Fixpt's
+// `i64`, a value `vbase + 8 index + tag` (C139): the word's machine
+// address and its tag, as Fixpt's values are, `vbase` the array's address;
+// or, with `--indexes`, its index and its tag, `vbase` 0, as Fixpt's
 // images have it. Pairs are two words; every other object a bloblet: a
 // header, its fields below its suffix (field `k` at `p - k`, the trailer
 // field 1, its payload the distance back to the header), its suffix's
@@ -25,6 +27,64 @@ pub fn top() -> Ref<i64> {
     })
 }
 
+// How far the heap may be used: the array's length with `--indexes`, which
+// is copied to a bigger one to grow; else less than `heap-capacity`, to
+// which each space is reserved once (committed as it is touched), so that
+// nothing moves but by a collection, which moves every value (C139).
+pub fn limit() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(4096i64)
+    })
+}
+
+pub fn heap_capacity() -> i64 {
+    268435456i64
+}
+
+pub fn addressed() -> Ref<bool> {
+    kayak_rt::kept_constant!(ONCE: Ref<bool>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(false)
+    })
+}
+
+// The values' base, this space's and the other's: the arrays' addresses,
+// or 0 with `--indexes`.
+pub fn vbase() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn to_vbase() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+// A trap's message, or ``: the first one stops the machine.
+pub fn trap_message() -> Ref<Str> {
+    kayak_rt::kept_constant!(ONCE: Ref<Str>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(str_lit(""))
+    })
+}
+
+pub fn trap_x(m: Str) -> () {
+    if string_eq_p(get(trap_message()), str_lit("")) {
+        set(trap_message(), m)
+    } else {
+        ()
+    }
+}
+
+pub fn trapped_p() -> bool {
+    not(string_eq_p(get(trap_message()), str_lit("")))
+}
+
 pub fn copied_into_x(mut from: FlatArray<i64>, mut to: FlatArray<i64>, mut i: i64, mut n: i64) -> () {
     loop {
         if i64_gt_eq(i, n) {
@@ -37,15 +97,28 @@ pub fn copied_into_x(mut from: FlatArray<i64>, mut to: FlatArray<i64>, mut i: i6
     }
 }
 
-/// Room for `n` more words: the array twice as big, if need be.
+/// Room for `n` more words: the heap twice as big, if need be; with
+/// addresses, within the space reserved, else a trap.
 pub fn room_x(n: i64) -> () {
     let m = get(mem());
-    if i64_lt_eq(i64_plus(get(top()), n), flatarray_length_i64(m)) {
+    if i64_lt_eq(i64_plus(get(top()), n), get(limit())) {
         ()
+    } else if get(addressed()) {
+        let more = i64_star(2i64, i64_plus(get(limit()), n));
+        if i64_gt(i64_plus(get(top()), n), heap_capacity()) {
+            trap_x(str_lit("out of heap"))
+        } else {
+            set(limit(), if i64_gt(more, heap_capacity()) {
+                heap_capacity()
+            } else {
+                more
+            })
+        }
     } else {
         let bigger = the::<FlatArray<i64>>(make_flatarray_i64(i64_star(2i64, i64_plus(flatarray_length_i64(m), n)), 0i64));
         copied_into_x(m, bigger, 0i64, get(top()));
-        set(mem(), bigger)
+        set(mem(), bigger);
+        set(limit(), flatarray_length_i64(bigger))
     }
 }
 
@@ -79,26 +152,6 @@ pub fn word_set_x(i: i64, w: i64) -> () {
     flatarray_set_i64_x(get(mem()), i, w)
 }
 
-// A trap's message, or ``: the first one stops the machine.
-pub fn trap_message() -> Ref<Str> {
-    kayak_rt::kept_constant!(ONCE: Ref<Str>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(str_lit(""))
-    })
-}
-
-pub fn trap_x(m: Str) -> () {
-    if string_eq_p(get(trap_message()), str_lit("")) {
-        set(trap_message(), m)
-    } else {
-        ()
-    }
-}
-
-pub fn trapped_p() -> bool {
-    not(string_eq_p(get(trap_message()), str_lit("")))
-}
-
 // Values.
 pub fn tag_of(w: i64) -> i64 {
     i64_and(w, 7i64)
@@ -124,8 +177,14 @@ pub fn fix_val(w: i64) -> i64 {
     i64_shr(w, int_lit(3))
 }
 
+/// A value's index.
 pub fn address(w: i64) -> i64 {
-    i64_shr(w, int_lit(3))
+    i64_shr(i64_minus(w, get(vbase())), int_lit(3))
+}
+
+/// The value of index `i`, with `tag`.
+pub fn heap_ref(i: i64, tag: i64) -> i64 {
+    i64_or(i64_plus(i64_shl(i, int_lit(3)), get(vbase())), tag)
 }
 
 // A fixnum's range: 61 bits, signed.
@@ -169,7 +228,7 @@ pub fn make_sref(owner: i64, offset: i64) -> i64 {
 
 /// Its owner, a bloblet.
 pub fn sref_owner(r: i64) -> i64 {
-    i64_or(i64_shl(i64_and(i64_shr(r, int_lit(3)), sref_owner_mask()), int_lit(3)), t_bloblet())
+    heap_ref(i64_and(i64_shr(r, int_lit(3)), sref_owner_mask()), t_bloblet())
 }
 
 pub fn sref_offset(r: i64) -> i64 {
@@ -181,7 +240,7 @@ pub fn cons_x(a: i64, d: i64) -> i64 {
     let at = alloc_x(2i64);
     word_set_x(at, a);
     word_set_x(i64_plus(at, 1i64), d);
-    i64_or(i64_shl(at, int_lit(3)), t_pair())
+    heap_ref(at, t_pair())
 }
 
 pub fn pair_car(p: i64) -> i64 {
@@ -230,7 +289,7 @@ pub fn make_bloblet_x(kind: i64, n: i64, bytes: i64, trailer: bool, frozen: bool
     } else {
         ()
     };
-    i64_or(i64_shl(p, int_lit(3)), t_bloblet())
+    heap_ref(p, t_bloblet())
 }
 
 /// A bloblet's header word: just below its suffix, or as far below as its
@@ -508,6 +567,15 @@ pub fn to_at(i: i64) -> i64 {
     flatarray_ref_i64(get(other()), i)
 }
 
+/// The value of index `i` of the other space, with `tag`.
+pub fn to_ref(i: i64, tag: i64) -> i64 {
+    i64_or(i64_plus(i64_shl(i, int_lit(3)), get(to_vbase())), tag)
+}
+
+pub fn to_address(w: i64) -> i64 {
+    i64_shr(i64_minus(w, get(to_vbase())), int_lit(3))
+}
+
 pub fn to_set_x(i: i64, w: i64) -> () {
     flatarray_set_i64_x(get(other()), i, w)
 }
@@ -543,19 +611,19 @@ pub fn forward_object_x(w: i64) -> i64 {
         let o = address(w);
         let first = word_at(o);
         if i64_eq(tag_of(first), t_forward()) {
-            i64_or(i64_and(first, -8i64), t_pair())
+            to_ref(i64_shr(first, int_lit(3)), t_pair())
         } else {
             let at = to_alloc_x(2i64);
             to_set_x(at, first);
             to_set_x(i64_plus(at, 1i64), word_at(i64_plus(o, 1i64)));
             word_set_x(o, i64_or(i64_shl(at, int_lit(3)), t_forward()));
-            i64_or(i64_shl(at, int_lit(3)), t_pair())
+            to_ref(at, t_pair())
         }
     } else if is_bloblet_p(w) {
         let p = address(w);
         let before = word_at(i64_minus(p, 1i64));
         if i64_eq(tag_of(before), t_forward()) {
-            i64_or(i64_shl(i64_plus(i64_shr(before, int_lit(3)), 1i64), int_lit(3)), t_bloblet())
+            to_ref(i64_plus(i64_shr(before, int_lit(3)), 1i64), t_bloblet())
         } else {
             let h = if i64_eq(tag_of(before), t_trailer()) {
                 i64_minus(i64_minus(p, 1i64), i64_shr(before, int_lit(3)))
@@ -564,7 +632,7 @@ pub fn forward_object_x(w: i64) -> i64 {
             };
             let head = word_at(h);
             if i64_eq(tag_of(head), t_forward()) {
-                i64_or(i64_shl(i64_plus(i64_shr(head, int_lit(3)), i64_minus(p, h)), int_lit(3)), t_bloblet())
+                to_ref(i64_plus(i64_shr(head, int_lit(3)), i64_minus(p, h)), t_bloblet())
             } else {
                 let n = words_of(head);
                 let f = bits(head, lay::header_fields_lo(), lay::header_fields_width());
@@ -576,7 +644,7 @@ pub fn forward_object_x(w: i64) -> i64 {
                 } else {
                     ()
                 };
-                i64_or(i64_shl(i64_plus(at, i64_minus(p, h)), int_lit(3)), t_bloblet())
+                to_ref(i64_plus(at, i64_minus(p, h)), t_bloblet())
             }
         }
     } else {
@@ -588,7 +656,7 @@ pub fn forward_object_x(w: i64) -> i64 {
 /// heap has none, Fixpt's collector keeps the owner (`object_of`).
 pub fn forward_x(w: i64) -> i64 {
     if is_sref_p(w) {
-        make_sref(address(forward_object_x(sref_owner(w))), sref_offset(w))
+        make_sref(to_address(forward_object_x(sref_owner(w))), sref_offset(w))
     } else {
         forward_object_x(w)
     }
@@ -646,7 +714,7 @@ pub fn named_forwarded(xs: List<&'static Named>) -> List<&'static Named> {
 /// The other space made ready, as big as this one: the roots are then
 /// forwarded (`forward!`), then `collect-end!`.
 pub fn collect_begin_x() -> () {
-    if i64_lt(flatarray_length_i64(get(other())), flatarray_length_i64(get(mem()))) {
+    if (not(get(addressed())) && i64_lt(flatarray_length_i64(get(other())), flatarray_length_i64(get(mem())))) {
         set(other(), the::<FlatArray<i64>>(make_flatarray_i64(flatarray_length_i64(get(mem())), 0i64)))
     } else {
         ()
@@ -663,10 +731,20 @@ pub fn collect_end_x() -> () {
     let old = get(mem());
     set(mem(), get(other()));
     set(other(), old);
+    {
+        let b = get(vbase());
+        set(vbase(), get(to_vbase()));
+        set(to_vbase(), b)
+    };
+    if get(addressed()) {
+        ()
+    } else {
+        set(limit(), flatarray_length_i64(get(mem())))
+    };
     set(top(), get(to_top()));
     set(collections(), i64_plus(get(collections()), 1i64));
-    if i64_gt(i64_star(2i64, get(top())), flatarray_length_i64(get(mem()))) {
-        room_x(flatarray_length_i64(get(mem())))
+    if i64_gt(i64_star(2i64, get(top())), get(limit())) {
+        room_x(get(limit()))
     } else {
         ()
     }

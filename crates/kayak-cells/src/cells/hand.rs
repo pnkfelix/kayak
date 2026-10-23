@@ -581,9 +581,16 @@ pub fn st_start() -> Int {
     int_lit(29)
 }
 
+// The values' base (C139): the heap's address, the values being
+// addresses, or 0 (`--indexes`); the machine's base register is the heap's
+// address less it, so that a value plus it is the value's word.
+pub fn st_vbase() -> Int {
+    int_lit(34)
+}
+
 // Its length: 30 to 33 are hand-x64.kfx's own.
 pub fn st_size() -> i64 {
-    34i64
+    35i64
 }
 
 pub fn at_st(i: Int) -> Int {
@@ -1311,7 +1318,9 @@ pub fn allocating_x(words: Int, count8: Int) -> () {
     cmp_x(x15(), x14());
     give_if_x(c_hi());
     lsl_x(x16(), x13(), int_lit(3));
-    add_x(x16(), x_mem(), x16())
+    add_x(x16(), x_mem(), x16());
+    ldr_x(x14(), x_st(), at_st(st_vbase()));
+    add_x(x16(), x16(), x14())
 }
 
 /// `cons`, or `%region-cons` (its region below the two, and dropped):
@@ -1335,7 +1344,7 @@ pub fn consed_x(region: bool) -> () {
     } else {
         ()
     };
-    lsl_x(x14(), x13(), int_lit(3));
+    sub_x(x14(), x16(), x_mem());
     addi_x(x14(), x14(), int_lit(1));
     put_top_x(x14())
 }
@@ -1696,6 +1705,8 @@ pub fn entry_x() -> () {
     stp_x(int_lit(27), int_lit(28), int_lit(31), int_lit(80));
     subi_x(x_st(), int_lit(1), int_lit(4));
     subi_x(x_mem(), int_lit(2), int_lit(4));
+    ldr_x(x14(), x_st(), at_st(st_vbase()));
+    sub_x(x_mem(), x_mem(), x14());
     subi_x(x_dsb(), int_lit(3), int_lit(4));
     subi_x(x13(), int_lit(4), int_lit(4));
     str_x(x13(), x_st(), at_st(st_rsb()));
@@ -2372,14 +2383,14 @@ pub fn reg_ins_x(rw: i64, i: i64, n: i64, base: Int, resumes: FlatArray<i64>) ->
         stp_x(int_lit(1), int_lit(2), x16(), int_lit(0));
         addi_x(x15(), x13(), int_lit(2));
         str_x(x15(), x_st(), at_st(st_top()));
-        lsl_x(int_lit(0), x13(), int_lit(3));
+        sub_x(int_lit(0), x16(), x_mem());
         addi_x(int_lit(0), int_lit(0), int_lit(1))
     } else if (i64_eq(op, ro_prim()) && i64_eq(prim_op(o(int_lit(0))), o_region_cons()) && i64_eq(o(int_lit(1)), 3i64)) {
         allocating_x(int_lit(2), int_lit(31));
         stp_x(int_lit(2), int_lit(3), x16(), int_lit(0));
         addi_x(x15(), x13(), int_lit(2));
         str_x(x15(), x_st(), at_st(st_top()));
-        lsl_x(int_lit(0), x13(), int_lit(3));
+        sub_x(int_lit(0), x16(), x_mem());
         addi_x(int_lit(0), int_lit(0), int_lit(1))
     } else if (i64_eq(op, ro_lambda()) && i64_lt_eq(o(int_lit(1)), register_regs()) && i64_eq(o(int_lit(2)), r_closure())) {
         let n = i64_to_int(o(int_lit(1)));

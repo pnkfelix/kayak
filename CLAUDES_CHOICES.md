@@ -3781,3 +3781,43 @@ and return by `ret`, with none of the cellular machine's bookkeeping.
   collector; it allocates and calls out. Here the slots stay where tier 1
   keeps them, and leaving is the flushing. Fixpt is no oracle for these
   bytes.
+
+## C139. Values are tagged machine addresses; indices a mode (2026-10-23)
+
+The user, on hearing that kayak's values were indices into tier 1's heap
+(`docs/research/native.md`'s decision 2, an earlier session's, never put
+to the user): "I wanted it to carry tagged memory address", "the former"
+(addresses everywhere, tier 1 too), "it will be useful for some of the
+earliest tiers to have a mode where they use indexes instead of
+addresses". So a value is `vbase + 8·index + tag`:
+- **By default**, `vbase` is the heap array's machine address, so a
+  pointer value is its word's address and its tag, as Fixpt's are. With
+  `--indexes`, and where no native code runs (KFX cannot learn an
+  address there), `vbase` is 0: the indices of before, Fixpt's images'.
+- **Tier 1** converts at its few places: `address` subtracts `vbase`,
+  `heap-ref` and the collector's `to-ref` add it (the other space's);
+  forwarding words keep indices. Suffix refs keep their owner as an
+  index relative to the space's base, as Fixpt's do (34 bits, relative to
+  its heap's).
+- **Nothing moves but by a collection**: with addresses, each space is
+  reserved once at `heap-capacity` (2²⁸ words, 2 GiB of address space),
+  committed only as it is touched (kayak-rt makes a flat array of 0s of
+  2²⁰ elements or more by kayak-jit's `zeroed_cells`, `mmap`), and the
+  heap grows by raising `limit` within it, where `--indexes` still copies
+  to a bigger array. Both collect at the same points: the same
+  collections and words copied, `bench/closures.fx` under stress.
+- **Its address**: FX-26 has no operation that says where an array is
+  (`array-identity` is an identity for eq-tables), so a native procedure
+  of two instructions, made at the start, returns its argument, a flat
+  array's suffix, less its tag (`address-code!`). Made code, §97: no
+  extension.
+- **The machines (tiers 2–6, both)**: the state's element 34 is
+  `vbase`; the base register (`r10`, `x19`) is the heap's address less
+  it, 0 with addresses, so `[base + value]` is a value's word either way;
+  an allocation's address adds `vbase` to the top's, and its value is that
+  address less the base register. Every tier runs in both modes. Next,
+  with addresses, the base register goes (x86_64's for `REG3`), each
+  machine then for addresses alone.
+- **Checked**: `cells-programs.py` runs every way with addresses, and
+  `--indexes` by tier 1 (with `--gc-stress`) and tier 2. The arm64 side
+  (`hand.kfx`'s entry and allocations) is untried: macOS must run it.
