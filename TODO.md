@@ -740,8 +740,8 @@ compilers, on x86_64, at the same places; every `--compiled` way of
 `cells-programs.py` on Linux; `RESULT` in `rax`, `REGk` in the state,
 the link there too). Left:
 5. Tier 6 with Fixpt's `direct/x64.rs`.
-- Perhaps: `REG1`… in registers, as Fixpt's x86_64 register code keeps
-  three, if the routines' scratch can be made to leave some (C137).
+- ~~`REG1`… in registers~~ (`REG1`, `REG2`, C137); perhaps `REG3`, if
+  the routines' scratch can be made to leave one.
 - On arm64, measured on macOS: register code's return by `ret` (x30), not
   `br x30`, so that the processor predicts it, as x86_64's `ret` (C137);
   `bl`/`blr` already push to its predictor.

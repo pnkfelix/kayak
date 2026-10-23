@@ -3675,14 +3675,23 @@ machine (C136).
   copied (`ywords-compiled!`, `yregisters-compiled!`): KFX takes no
   function as a parameter.
 - **Register code's registers, not Fixpt's**: Fixpt's x86_64 register
-  code keeps `REG1`…`REG3` in `rdi`, `rsi`, `r8`. Here they are this
-  machine's scratch, which its routines (field reads, allocation, closure
-  checks) need, and it has no registers left over: `r10` is the heap's
-  base, values being offsets. So `RESULT` is `rax` and `REG1`…`REG8` stay
-  in the state, where tier 1 keeps them (`REG0` is `clo`, as on arm64):
-  a giving back stores `rax` alone. An instruction's place is in `r14`
-  (the ip's register, unused by register code), stored as the cell being
-  run only when it gives back.
+  code keeps `REG1`…`REG3` in `rdi`, `rsi`, `r8`. This machine has fewer
+  to spare: `r10` is the heap's base, values being offsets, and its
+  routines (field reads, allocation, closure checks) need `rsi`, `rcx`,
+  `rdx`, `r8`, `r11` as scratch. So `RESULT` is `rax`, `REG1` `rdi` (the
+  few places register code used it as scratch use others), `REG2` `r14`
+  (the ip's register: an operand is read from `cur` and the heap's base,
+  and an instruction's place is made only when it gives back, by a stub
+  of its own after the word's code), `REG0` `clo` as on arm64, and
+  `REG3`…`REG8` stay in the state, where tier 1 keeps them. Leaving
+  register code for the machine stores `rax`, `rdi` and `r14` there;
+  resuming in it loads them, by a way in each register word's table has
+  at field 0 (never a cell's), so that stack code's `r14`, its ip, is
+  never touched. Under `--regs --compiled` on a Zen 2, against all in the
+  state: `fib` −11% cycles, `loop` −14.5%, `closures` −9%, `lists`
+  −9.5%, `tak` −6.5%, `helpers` −6.5%, `captures` −1% (`REG1` alone: −2%
+  to −7%). A third would take one of those five scratch registers from
+  every sequence that uses it: not yet.
 - **No link register**: hand.kfx's `x30` is the state's element 32
   (`st-link`, the state one longer) while a word runs; `save` keeps it in
   the frame, a call's return reloads it, as on arm64. A call is a `call`;
