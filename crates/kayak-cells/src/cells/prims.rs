@@ -917,6 +917,77 @@ pub fn proper_length(v: i64) -> i64 {
     walked_length(v, v, 0i64)
 }
 
+// A primitive's arguments, deepest first, where its caller copies them
+// (`pargs1!`, ...), for `prim-apply!` to read: no list is made of them,
+// as the runtime's own memory is never let go (C43) and a long run calls
+// primitives without end. Only a primitive of any number of them makes the
+// list it takes (`pargs-list`).
+pub fn pargs() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(16i64, 0i64))
+    })
+}
+
+pub fn pargc() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn pargs_room_x(n: i64) -> () {
+    if i64_lt_eq(n, flatarray_length_i64(get(pargs()))) {
+        set(pargc(), n)
+    } else {
+        set(pargs(), the::<FlatArray<i64>>(make_flatarray_i64(i64_star(2i64, n), 0i64)));
+        set(pargc(), n)
+    }
+}
+
+pub fn parg_set_x(i: i64, v: i64) -> () {
+    flatarray_set_i64_x(get(pargs()), i, v)
+}
+
+/// Argument `i`, or 0 past the last.
+pub fn parg(i: i64) -> i64 {
+    if i64_lt(i, get(pargc())) {
+        flatarray_ref_i64(get(pargs()), i)
+    } else {
+        0i64
+    }
+}
+
+pub fn pargs1_x(a: i64) -> () {
+    pargs_room_x(1i64);
+    parg_set_x(0i64, a)
+}
+
+pub fn pargs2_x(a: i64, b: i64) -> () {
+    pargs_room_x(2i64);
+    parg_set_x(0i64, a);
+    parg_set_x(1i64, b)
+}
+
+pub fn pargs3_x(a: i64, b: i64, c: i64) -> () {
+    pargs_room_x(3i64);
+    parg_set_x(0i64, a);
+    parg_set_x(1i64, b);
+    parg_set_x(2i64, c)
+}
+
+/// The arguments up to `i`, consed onto `acc`, a list of the heap's.
+pub fn pargs_heap_list(mut i: i64, mut acc: i64) -> i64 {
+    loop {
+        if i64_lt_eq(i, 0i64) {
+            return acc;
+        } else {
+            (i, acc) = (i64_minus(i, 1i64), cons_x(flatarray_ref_i64(get(pargs()), i64_minus(i, 1i64)), acc));
+            continue;
+        }
+    }
+}
+
 pub fn list_items(v: i64) -> List<i64> {
     if is_pair_p(v) {
         kayak_rt::heap_cons(pair_car(v), list_items(pair_cdr(v)))
@@ -933,59 +1004,86 @@ pub fn onto_list(xs: List<i64>, tail: i64) -> i64 {
     }
 }
 
-/// The first of `xs` that is no proper list, or 0.
-pub fn all_proper_p(mut xs: List<i64>) -> i64 {
-    loop {
-        if null_p(xs) {
-            return 0i64;
-        } else if i64_lt(proper_length(car(xs)), 0i64) {
-            return car(xs);
-        } else {
-            xs = cdr(xs);
-            continue;
-        }
-    }
-}
-
-pub fn fronts(xs: List<i64>) -> List<i64> {
-    if (null_p(xs) || null_p(cdr(xs))) {
-        nil::<i64>()
+// Lists of the heap's, and the primitives' arguments, taken where they are,
+// with no list of the runtime's made of them (C150): what tier 1 makes of
+// its own is never let go (C43), and a program makes a product, appends,
+// or joins strings without end.
+/// List `v`'s items, before `tail`.
+pub fn copied_onto_x(v: i64, tail: i64) -> i64 {
+    if is_pair_p(v) {
+        cons_x(pair_car(v), copied_onto_x(pair_cdr(v), tail))
     } else {
-        kayak_rt::heap_cons(car(xs), fronts(cdr(xs)))
-    }
-}
-
-pub fn last_of(mut xs: List<i64>) -> i64 {
-    loop {
-        if null_p(cdr(xs)) {
-            return car(xs);
-        } else {
-            xs = cdr(xs);
-            continue;
-        }
-    }
-}
-
-/// Each of `lists`, each proper, its items, before `tail`.
-pub fn appended(lists: List<i64>, tail: i64) -> i64 {
-    if null_p(lists) {
         tail
-    } else {
-        onto_list(list_items(car(lists)), appended(cdr(lists), tail))
     }
 }
 
-/// Fixpt's `append`: nothing, `()`; else every list but the last copied,
-/// each checked proper, before the last.
-pub fn append_of(xs: List<i64>) -> i64 {
-    if null_p(xs) {
-        v_null()
-    } else {
-        let bad = all_proper_p(fronts(xs));
-        if not(i64_eq(bad, 0i64)) {
-            expected_x(str_lit("a proper list"))
+/// The first argument from `i` before the `n`th (or of list `heap`'s
+/// items, but its last, if `heap` is a list) that is no proper list, or
+/// 0.
+pub fn improper_before(mut i: i64, mut n: i64, mut heap: i64) -> i64 {
+    loop {
+        if is_pair_p(heap) {
+            if not(is_pair_p(pair_cdr(heap))) {
+                return 0i64;
+            } else if i64_lt(proper_length(pair_car(heap)), 0i64) {
+                return pair_car(heap);
+            } else {
+                (i, n, heap) = (0i64, 0i64, pair_cdr(heap));
+                continue;
+            }
         } else {
-            appended(fronts(xs), last_of(xs))
+            if i64_gt_eq(i, n) {
+                return 0i64;
+            } else if i64_lt(proper_length(parg(i)), 0i64) {
+                return parg(i);
+            } else {
+                i = i64_plus(i, 1i64);
+                continue;
+            }
+        }
+    }
+}
+
+/// The arguments from `i` appended, the last as it is.
+pub fn appended_args_x(i: i64) -> i64 {
+    if i64_gt_eq(i, i64_minus(get(pargc()), 1i64)) {
+        parg(i)
+    } else {
+        copied_onto_x(parg(i), appended_args_x(i64_plus(i, 1i64)))
+    }
+}
+
+/// The lists list `l` holds appended, the last as it is.
+pub fn appended_lists_x(l: i64) -> i64 {
+    if is_pair_p(pair_cdr(l)) {
+        copied_onto_x(pair_car(l), appended_lists_x(pair_cdr(l)))
+    } else {
+        pair_car(l)
+    }
+}
+
+/// Fields `k` on of `b`, the arguments from `i`.
+pub fn fields_of_args_x(mut b: i64, mut k: i64, mut i: i64) -> () {
+    loop {
+        if i64_gt_eq(i, get(pargc())) {
+            return ();
+        } else {
+            slot_set_x(b, k, parg(i));
+            (k, i) = (i64_plus(k, 1i64), i64_plus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+/// Fields `k` on of `b`, list `l`'s items.
+pub fn fields_of_list_x(mut b: i64, mut k: i64, mut l: i64) -> () {
+    loop {
+        if is_pair_p(l) {
+            slot_set_x(b, k, pair_car(l));
+            (k, l) = (i64_plus(k, 1i64), pair_cdr(l));
+            continue;
+        } else {
+            return ();
         }
     }
 }
@@ -1046,57 +1144,132 @@ pub fn string_of_points_x(xs: List<i64>) -> i64 {
     v
 }
 
-pub fn onto_points(xs: List<i64>, ys: List<i64>) -> List<i64> {
-    if null_p(xs) {
-        ys
-    } else {
-        kayak_rt::heap_cons(car(xs), onto_points(cdr(xs), ys))
-    }
+/// A string of `n` code points, each 0, to be written (`point-set!`).
+pub fn string_made_x(n: i64) -> i64 {
+    let v = make_bloblet_x(k_string(), 0i64, i64_star(8i64, i64_plus(1i64, i64_quotient(i64_plus(n, 1i64), 2i64))), false, false);
+    word_set_x(address(v), n);
+    v
 }
 
-pub fn strings_points(ss: List<i64>) -> List<i64> {
-    if null_p(ss) {
-        nil::<i64>()
+/// Code point `i` of string `v`, made by `string-made!`, `x`.
+pub fn point_set_x(v: i64, i: i64, x: i64) -> () {
+    let at = i64_plus(address(v), i64_plus(1i64, i64_quotient(i, 2i64)));
+    word_set_x(at, i64_or(word_at(at), if i64_eq(i64_remainder(i, 2i64), 0i64) {
+        x
     } else {
-        onto_points(points_of(car(ss)), strings_points(cdr(ss)))
-    }
+        i64_shl(x, int_lit(32))
+    }))
 }
 
-pub fn first_not_string(mut xs: List<i64>) -> i64 {
+/// Code points `i` to `n` of string `s` written in `v` from `at`; where
+/// the next goes.
+pub fn points_copied_x(mut v: i64, mut at: i64, mut s: i64, mut i: i64, mut n: i64) -> i64 {
     loop {
-        if null_p(xs) {
-            return 0i64;
-        } else if not(str_p(car(xs))) {
-            return car(xs);
+        if i64_gt_eq(i, n) {
+            return at;
         } else {
-            xs = cdr(xs);
+            point_set_x(v, at, str_ref(s, i));
+            (at, i) = (i64_plus(at, 1i64), i64_plus(i, 1i64));
             continue;
         }
     }
 }
 
-/// -1, 0 or 1, code point by code point (Fixpt's `string_cmp`).
-pub fn points_compare(mut a: List<i64>, mut b: List<i64>) -> i64 {
+/// The first argument from `i` that is no string, or 0.
+pub fn args_not_string(mut i: i64) -> i64 {
     loop {
-        if (null_p(a) && null_p(b)) {
+        if i64_gt_eq(i, get(pargc())) {
             return 0i64;
-        } else if null_p(a) {
+        } else if not(str_p(parg(i))) {
+            return parg(i);
+        } else {
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+/// The first of list `l`'s items that is no string, or 0.
+pub fn list_not_string(mut l: i64) -> i64 {
+    loop {
+        if not(is_pair_p(l)) {
+            return 0i64;
+        } else if not(str_p(pair_car(l))) {
+            return pair_car(l);
+        } else {
+            l = pair_cdr(l);
+            continue;
+        }
+    }
+}
+
+pub fn args_points(mut i: i64, mut n: i64) -> i64 {
+    loop {
+        if i64_gt_eq(i, get(pargc())) {
+            return n;
+        } else {
+            (i, n) = (i64_plus(i, 1i64), i64_plus(n, str_length(parg(i))));
+            continue;
+        }
+    }
+}
+
+pub fn list_points(mut l: i64, mut n: i64) -> i64 {
+    loop {
+        if is_pair_p(l) {
+            (l, n) = (pair_cdr(l), i64_plus(n, str_length(pair_car(l))));
+            continue;
+        } else {
+            return n;
+        }
+    }
+}
+
+pub fn args_joined_x(mut v: i64, mut at: i64, mut i: i64) -> i64 {
+    loop {
+        if i64_gt_eq(i, get(pargc())) {
+            return v;
+        } else {
+            (at, i) = (points_copied_x(v, at, parg(i), 0i64, str_length(parg(i))), i64_plus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn list_joined_x(mut v: i64, mut at: i64, mut l: i64) -> i64 {
+    loop {
+        if is_pair_p(l) {
+            (at, l) = (points_copied_x(v, at, pair_car(l), 0i64, str_length(pair_car(l))), pair_cdr(l));
+            continue;
+        } else {
+            return v;
+        }
+    }
+}
+
+/// -1, 0 or 1, code point by code point from `i` (Fixpt's `string_cmp`).
+pub fn compared_from(mut a: i64, mut b: i64, mut i: i64) -> i64 {
+    loop {
+        let (na, nb) = (str_length(a), str_length(b));
+        if (i64_gt_eq(i, na) && i64_gt_eq(i, nb)) {
+            return 0i64;
+        } else if i64_gt_eq(i, na) {
             return -1i64;
-        } else if null_p(b) {
+        } else if i64_gt_eq(i, nb) {
             return 1i64;
-        } else if i64_lt(car(a), car(b)) {
+        } else if i64_lt(str_ref(a, i), str_ref(b, i)) {
             return -1i64;
-        } else if i64_gt(car(a), car(b)) {
+        } else if i64_gt(str_ref(a, i), str_ref(b, i)) {
             return 1i64;
         } else {
-            (a, b) = (cdr(a), cdr(b));
+            i = i64_plus(i, 1i64);
             continue;
         }
     }
 }
 
 pub fn strings_compare(a: i64, b: i64) -> i64 {
-    points_compare(points_of(a), points_of(b))
+    compared_from(a, b, 0i64)
 }
 
 pub fn fnv(mut xs: List<i64>, mut h: i64) -> i64 {
@@ -1110,20 +1283,32 @@ pub fn fnv(mut xs: List<i64>, mut h: i64) -> i64 {
     }
 }
 
-/// `string=?` of two and more (Fixpt's `string_chain`): each pair, its
-/// strings checked, in turn.
-pub fn string_chain(mut xs: List<i64>, mut op: i64) -> i64 {
+/// `fnv` of string `s`'s code points from `i`.
+pub fn string_fnv(mut s: i64, mut i: i64, mut h: i64) -> i64 {
     loop {
-        if (null_p(xs) || null_p(cdr(xs))) {
+        if i64_gt_eq(i, str_length(s)) {
+            return h;
+        } else {
+            (i, h) = (i64_plus(i, 1i64), i64_star(i64_xor(h, str_ref(s, i)), 1099511628211i64));
+            continue;
+        }
+    }
+}
+
+/// `string=?` of two and more, the arguments from `i` (Fixpt's
+/// `string_chain`): each pair, its strings checked, in turn.
+pub fn string_chain(mut i: i64) -> i64 {
+    loop {
+        if i64_gt_eq(i64_plus(i, 1i64), get(pargc())) {
             return v_true();
-        } else if not(str_p(car(xs))) {
+        } else if not(str_p(parg(i))) {
             return expected_x(str_lit("a string"));
-        } else if not(str_p(car(cdr(xs)))) {
+        } else if not(str_p(parg(i64_plus(i, 1i64)))) {
             return expected_x(str_lit("a string"));
-        } else if not(i64_eq(strings_compare(car(xs), car(cdr(xs))), 0i64)) {
+        } else if not(i64_eq(strings_compare(parg(i), parg(i64_plus(i, 1i64))), 0i64)) {
             return v_false();
         } else {
-            xs = cdr(xs);
+            i = i64_plus(i, 1i64);
             continue;
         }
     }
@@ -1138,24 +1323,20 @@ pub fn scalar_p(n: i64) -> bool {
     (i64_gt_eq(n, 0i64) && i64_lt_eq(n, 1114111i64) && not((i64_gt_eq(n, 55296i64) && i64_lt_eq(n, 57343i64))))
 }
 
-pub fn all_chars_p(mut xs: List<i64>) -> bool {
-    loop {
-        if null_p(xs) {
-            return true;
-        } else if not(is_char_p(car(xs))) {
-            return false;
-        } else {
-            xs = cdr(xs);
-            continue;
-        }
-    }
+pub fn args_chars_p(i: i64) -> bool {
+    (i64_gt_eq(i, get(pargc())) || (is_char_p(parg(i)) && args_chars_p(i64_plus(i, 1i64))))
 }
 
-pub fn codes_of(xs: List<i64>) -> List<i64> {
-    if null_p(xs) {
-        nil::<i64>()
-    } else {
-        kayak_rt::heap_cons(char_code(car(xs)), codes_of(cdr(xs)))
+/// Each argument from `i`, a character, code point `i` of `v`.
+pub fn chars_written_x(mut v: i64, mut i: i64) -> () {
+    loop {
+        if i64_gt_eq(i, get(pargc())) {
+            return ();
+        } else {
+            point_set_x(v, i, char_code(parg(i)));
+            i = i64_plus(i, 1i64);
+            continue;
+        }
     }
 }
 
@@ -1198,17 +1379,19 @@ pub fn fields_filled_x(mut b: i64, mut k: i64, mut last: i64, mut x: i64) -> () 
     }
 }
 
-/// `%make-bloblet`'s: a plain bloblet of `bytes` and fields `xs` from 2.
-pub fn plain_of_x(p: i64, bytes: i64, xs: List<i64>) -> i64 {
+/// `%make-bloblet`'s: a plain bloblet of `bytes` and its fields the
+/// arguments from `from`.
+pub fn plain_of_x(p: i64, bytes: i64, from: i64) -> i64 {
+    let n = i64_minus(get(pargc()), from);
     if not(is_fixnum_p(bytes)) {
         expected_x(machine_word())
     } else if (i64_lt(fix_val(bytes), 0i64) || i64_gt(fix_val(bytes), bytes_max())) {
         fail_x(str_lit("a bloblet's suffix is 0 to 4 GiB"))
-    } else if i64_gt_eq(args_count(xs, 0i64), fields_max()) {
+    } else if i64_gt_eq(n, fields_max()) {
         prim_failed(p, str_lit("of a large header"))
     } else {
-        let b = make_bloblet_x(k_bloblet(), args_count(xs, 0i64), fix_val(bytes), true, false);
-        fields_from_x(b, 2i64, xs);
+        let b = make_bloblet_x(k_bloblet(), n, fix_val(bytes), true, false);
+        fields_of_args_x(b, 2i64, from);
         b
     }
 }
@@ -1444,93 +1627,6 @@ pub fn wrapped(w: i64, x: Int) -> Int {
     } else {
         low
     }
-}
-
-// A primitive's arguments, deepest first, where its caller copies them
-// (`pargs1!`, ...), for `prim-apply!` to read: no list is made of them,
-// as the runtime's own memory is never let go (C43) and a long run calls
-// primitives without end. Only a primitive of any number of them makes the
-// list it takes (`pargs-list`).
-pub fn pargs() -> Ref<FlatArray<i64>> {
-    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(make_flatarray_i64(16i64, 0i64))
-    })
-}
-
-pub fn pargc() -> Ref<i64> {
-    kayak_rt::kept_constant!(ONCE: Ref<i64>);
-    once(&ONCE, || {
-        kayak_rt::heap_new(0i64)
-    })
-}
-
-pub fn pargs_room_x(n: i64) -> () {
-    if i64_lt_eq(n, flatarray_length_i64(get(pargs()))) {
-        set(pargc(), n)
-    } else {
-        set(pargs(), the::<FlatArray<i64>>(make_flatarray_i64(i64_star(2i64, n), 0i64)));
-        set(pargc(), n)
-    }
-}
-
-pub fn parg_set_x(i: i64, v: i64) -> () {
-    flatarray_set_i64_x(get(pargs()), i, v)
-}
-
-/// Argument `i`, or 0 past the last.
-pub fn parg(i: i64) -> i64 {
-    if i64_lt(i, get(pargc())) {
-        flatarray_ref_i64(get(pargs()), i)
-    } else {
-        0i64
-    }
-}
-
-pub fn pargs1_x(a: i64) -> () {
-    pargs_room_x(1i64);
-    parg_set_x(0i64, a)
-}
-
-pub fn pargs2_x(a: i64, b: i64) -> () {
-    pargs_room_x(2i64);
-    parg_set_x(0i64, a);
-    parg_set_x(1i64, b)
-}
-
-pub fn pargs3_x(a: i64, b: i64, c: i64) -> () {
-    pargs_room_x(3i64);
-    parg_set_x(0i64, a);
-    parg_set_x(1i64, b);
-    parg_set_x(2i64, c)
-}
-
-pub fn pargs_between(mut from: i64, mut to: i64, mut acc: List<i64>) -> List<i64> {
-    loop {
-        if i64_lt_eq(to, from) {
-            return acc;
-        } else {
-            (to, acc) = (i64_minus(to, 1i64), kayak_rt::heap_cons(flatarray_ref_i64(get(pargs()), i64_minus(to, 1i64)), acc));
-            continue;
-        }
-    }
-}
-
-/// The arguments up to `i`, consed onto `acc`, a list of the heap's.
-pub fn pargs_heap_list(mut i: i64, mut acc: i64) -> i64 {
-    loop {
-        if i64_lt_eq(i, 0i64) {
-            return acc;
-        } else {
-            (i, acc) = (i64_minus(i, 1i64), cons_x(flatarray_ref_i64(get(pargs()), i64_minus(i, 1i64)), acc));
-            continue;
-        }
-    }
-}
-
-/// The arguments from `from` on, as a list.
-pub fn pargs_list(from: i64) -> List<i64> {
-    pargs_between(from, get(pargc()), nil::<i64>())
 }
 
 /// Whether `v` is a value of width `w` (`fixed_in`).
@@ -2183,14 +2279,6 @@ pub fn fx26_sum_x(tag: Str, v: i64) -> i64 {
     b
 }
 
-/// Fixpt's `make_frozen`: a bloblet of kind `k`, fields `xs`, frozen.
-pub fn frozen_of_x(k: i64, xs: List<i64>) -> i64 {
-    let b = make_bloblet_x(k, args_count(xs, 0i64), 0i64, true, false);
-    fields_from_x(b, 2i64, xs);
-    frozen_whole_x(b);
-    b
-}
-
 /// `frozen-of!` of two fields, `x` and `y`, with no list made of them (C148).
 pub fn frozen2_x(k: i64, x: i64, y: i64) -> i64 {
     let b = make_bloblet_x(k, 2i64, 0i64, true, false);
@@ -2200,11 +2288,24 @@ pub fn frozen2_x(k: i64, x: i64, y: i64) -> i64 {
     b
 }
 
-/// A cellular closure of word `w` over `free` (Fixpt's `region_closure`).
-pub fn closure_of_x(w: i64, free: List<i64>) -> i64 {
-    let c = make_bloblet_x(k_closure(), i64_plus(args_count(free, 0i64), 1i64), 0i64, true, false);
+pub fn args_free_x(mut c: i64, mut k: i64, mut i: i64, mut n: i64) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            slot_set_x(c, k, parg(i));
+            (k, i) = (i64_plus(k, 1i64), i64_plus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+/// A cellular closure of word `w` over the arguments from `from` before
+/// the `n`th (Fixpt's `region_closure`).
+pub fn closure_of_x(w: i64, from: i64, n: i64) -> i64 {
+    let c = make_bloblet_x(k_closure(), i64_plus(i64_minus(n, from), 1i64), 0i64, true, false);
     slot_set_x(c, f_word(), w);
-    fields_from_x(c, f_free0(), free);
+    args_free_x(c, f_free0(), from, n);
     c
 }
 
@@ -2226,19 +2327,10 @@ pub fn vlambda_x(f: i64) -> i64 {
     slot_set_x(w, i64_plus(f_cell0(), 2i64), fix(0i64));
     slot_set_x(w, i64_plus(f_cell0(), 3i64), fix(r_tailcall()));
     slot_set_x(w, i64_plus(f_cell0(), 4i64), fix(1i64));
-    closure_of_x(w, kayak_rt::heap_cons(f, kayak_rt::nil()))
-}
-
-pub fn list_of_vector_x(mut v: i64, mut xs: List<i64>, mut i: i64) -> i64 {
-    loop {
-        if null_p(xs) {
-            return v;
-        } else {
-            obj_set_x(v, i, car(xs));
-            (xs, i) = (cdr(xs), i64_plus(i, 1i64));
-            continue;
-        }
-    }
+    let c = make_bloblet_x(k_closure(), 2i64, 0i64, true, false);
+    slot_set_x(c, f_word(), w);
+    slot_set_x(c, f_free0(), f);
+    c
 }
 
 pub fn fields_list(b: i64, k: i64, last: i64) -> i64 {
@@ -2550,7 +2642,10 @@ pub fn prim_apply_x(p: i64) -> i64 {
         } else if not((i64_eq(fix_val(a), k_sum()) || i64_eq(fix_val(a), k_product()))) {
             fail_x(str_lit("%make-frozen makes sums and products"))
         } else {
-            frozen_of_x(fix_val(a), pargs_list(1i64))
+            let b = make_bloblet_x(fix_val(a), i64_minus(get(pargc()), 1i64), 0i64, true, false);
+            fields_of_args_x(b, 2i64, 1i64);
+            frozen_whole_x(b);
+            b
         }
     } else if ((i64_eq(op, o_mul()) || i64_eq(op, o_add()) || i64_eq(op, o_sub())) && is_fixnum_p(a) && is_fixnum_p(b)) {
         int_arith(op, a, b)
@@ -2667,7 +2762,7 @@ pub fn prim_apply_x(p: i64) -> i64 {
         if i64_lt(proper_length(a), 0i64) {
             expected_x(str_lit("a list"))
         } else {
-            list_of(list_items(a))
+            copied_onto_x(a, v_null())
         }
     } else if i64_eq(op, o_list_p()) {
         boolean(i64_gt_eq(proper_length(a), 0i64))
@@ -2714,7 +2809,13 @@ pub fn prim_apply_x(p: i64) -> i64 {
             expected_x(str_lit("a u32"))
         }
     } else if i64_eq(op, o_append()) {
-        append_of(pargs_list(0i64))
+        if i64_eq(get(pargc()), 0i64) {
+            v_null()
+        } else if not(i64_eq(improper_before(0i64, i64_minus(get(pargc()), 1i64), v_null()), 0i64)) {
+            expected_x(str_lit("a proper list"))
+        } else {
+            appended_args_x(0i64)
+        }
     } else if i64_eq(op, o_reverse()) {
         if i64_lt(proper_length(a), 0i64) {
             expected_x(str_lit("a proper list"))
@@ -2725,13 +2826,19 @@ pub fn prim_apply_x(p: i64) -> i64 {
         if i64_lt(proper_length(a), 0i64) {
             expected_x(str_lit("a proper list"))
         } else {
-            list_of_vector_x(make_bloblet_x(k_vector(), proper_length(a), 0i64, true, false), list_items(a), 0i64)
+            let v = make_bloblet_x(k_vector(), proper_length(a), 0i64, true, false);
+            fields_of_list_x(v, 2i64, a);
+            v
         }
     } else if i64_eq(op, o_append_list()) {
         if i64_lt(proper_length(a), 0i64) {
             expected_x(str_lit("a proper list"))
+        } else if not(is_pair_p(a)) {
+            v_null()
+        } else if not(i64_eq(improper_before(0i64, 0i64, a), 0i64)) {
+            expected_x(str_lit("a proper list"))
         } else {
-            append_of(list_items(a))
+            appended_lists_x(a)
         }
     } else if i64_eq(op, o_length_is()) {
         if not(is_fixnum_p(b)) {
@@ -2786,18 +2893,18 @@ pub fn prim_apply_x(p: i64) -> i64 {
             char_value(str_ref(a, fix_val(b)))
         }
     } else if i64_eq(op, o_string_append()) {
-        if not(i64_eq(first_not_string(pargs_list(0i64)), 0i64)) {
+        if not(i64_eq(args_not_string(0i64), 0i64)) {
             expected_x(str_lit("a string"))
         } else {
-            string_of_points_x(strings_points(pargs_list(0i64)))
+            args_joined_x(string_made_x(args_points(0i64, 0i64)), 0i64, 0i64)
         }
     } else if i64_eq(op, o_string_append_list()) {
         if i64_lt(proper_length(a), 0i64) {
             expected_x(str_lit("a proper list"))
-        } else if not(i64_eq(first_not_string(list_items(a)), 0i64)) {
+        } else if not(i64_eq(list_not_string(a), 0i64)) {
             expected_x(str_lit("a string"))
         } else {
-            string_of_points_x(strings_points(list_items(a)))
+            list_joined_x(string_made_x(list_points(a, 0i64)), 0i64, a)
         }
     } else if i64_eq(op, o_substring()) {
         if not(str_p(a)) {
@@ -2809,16 +2916,20 @@ pub fn prim_apply_x(p: i64) -> i64 {
         } else if (i64_lt(fix_val(b), 0i64) || i64_lt(fix_val(c), fix_val(b)) || i64_gt(fix_val(c), str_length(a))) {
             fail_x(str_lit("substring range out of bounds"))
         } else {
-            string_of_points_x(points_from(a, fix_val(b), fix_val(c)))
+            let v = string_made_x(i64_minus(fix_val(c), fix_val(b)));
+            points_copied_x(v, 0i64, a, fix_val(b), fix_val(c));
+            v
         }
     } else if i64_eq(op, o_make_string_of()) {
-        if all_chars_p(pargs_list(0i64)) {
-            string_of_points_x(codes_of(pargs_list(0i64)))
+        if args_chars_p(0i64) {
+            let v = string_made_x(get(pargc()));
+            chars_written_x(v, 0i64);
+            v
         } else {
             expected_x(str_lit("a character"))
         }
     } else if i64_eq(op, o_string_eq()) {
-        string_chain(pargs_list(0i64), op)
+        string_chain(0i64)
     } else if (i64_eq(op, o_string_lt()) || i64_eq(op, o_string_le()) || i64_eq(op, o_string_gt()) || i64_eq(op, o_string_ge()) || i64_eq(op, o_string_compare())) {
         if not(str_p(a)) {
             expected_x(str_lit("a string"))
@@ -2840,7 +2951,7 @@ pub fn prim_apply_x(p: i64) -> i64 {
         }
     } else if i64_eq(op, o_string_hash()) {
         if str_p(a) {
-            fix(i64_and(i64_shr(fnv(points_of(a), -3750763034362895579i64), int_lit(4)), 1152921504606846975i64))
+            fix(i64_and(i64_shr(string_fnv(a, 0i64, -3750763034362895579i64), int_lit(4)), 1152921504606846975i64))
         } else {
             expected_x(str_lit("a string"))
         }
@@ -2898,13 +3009,13 @@ pub fn prim_apply_x(p: i64) -> i64 {
             expected_x(str_lit("a string"))
         }
     } else if i64_eq(op, o_make_bloblet()) {
-        plain_of_x(p, a, pargs_list(1i64))
+        plain_of_x(p, a, 1i64)
     } else if i64_eq(op, o_make_bloblet_filled()) {
         filled_of_x(p, a, b, c, true)
     } else if i64_eq(op, o_region_make_array()) {
         filled_of_x(p, 0i64, b, c, false)
     } else if i64_eq(op, o_region_make_bloblet()) {
-        plain_of_x(p, b, pargs_list(2i64))
+        plain_of_x(p, b, 2i64)
     } else if i64_eq(op, o_bloblet()) {
         boolean(is_bloblet_p(a))
     } else if (i64_eq(op, o_bloblet_kind()) || i64_eq(op, o_bloblet_fields()) || i64_eq(op, o_bloblet_bytes()) || i64_eq(op, o_bloblet_frozen())) {
@@ -2997,7 +3108,7 @@ pub fn prim_apply_x(p: i64) -> i64 {
             prim_failed(p, str_lit("of a large header"))
         } else {
             let x = make_bloblet_x(k_bloblet(), proper_length(a), 0i64, true, false);
-            fields_from_x(x, 2i64, list_items(a));
+            fields_of_list_x(x, 2i64, a);
             x
         }
     } else if i64_eq(op, o_stay_cellular()) {
@@ -3009,7 +3120,7 @@ pub fn prim_apply_x(p: i64) -> i64 {
         slot_set_x(x, 2i64, b);
         x
     } else if i64_eq(op, o_region_closure()) {
-        closure_of_x(parg(i64_minus(get(pargc()), 1i64)), pargs_between(1i64, i64_minus(get(pargc()), 1i64), nil::<i64>()))
+        closure_of_x(parg(i64_minus(get(pargc()), 1i64)), 1i64, i64_minus(get(pargc()), 1i64))
     } else if i64_eq(op, o_vlambda()) {
         vlambda_x(a)
     } else if (i64_eq(op, o_make_icell()) || i64_eq(op, o_region_make_icell())) {
@@ -3390,7 +3501,10 @@ pub fn prim_apply_x(p: i64) -> i64 {
         if i64_lt(proper_length(a), 0i64) {
             expected_x(str_lit("a list"))
         } else {
-            frozen_of_x(k_product(), list_items(a))
+            let b = make_bloblet_x(k_product(), proper_length(a), 0i64, true, false);
+            fields_of_list_x(b, 2i64, a);
+            frozen_whole_x(b);
+            b
         }
     } else if i64_eq(op, o_sched()) {
         if is_fixnum_p(a) {

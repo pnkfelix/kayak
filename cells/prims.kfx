@@ -347,6 +347,29 @@
             (else -1)))))
 (define proper-length (subr cm (i64) i64) (lambda (v) (walked-length v v 0)))
 
+"A primitive's arguments, deepest first, where its caller copies them
+ (`pargs1!`, ...), for `prim-apply!` to read: no list is made of them,
+ as the runtime's own memory is never let go (C43) and a long run calls
+ primitives without end. Only a primitive of any number of them makes the
+ list it takes (`pargs-list`)."
+(define pargs (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 16 0)))
+(define pargc (ref i64 @c) (new 0))
+(define pargs-room! (subr cm (i64) unit)
+  (lambda (n)
+    (if (i64<= n (flatarray-length-i64 (get pargs)))
+        (set pargc n)
+        (begin (set pargs (the (flatarrayof i64 @c) (make-flatarray-i64 (i64* 2 n) 0))) (set pargc n)))))
+(define parg-set! (subr cm (i64 i64) unit) (lambda (i v) (flatarray-set-i64! (get pargs) i v)))
+(define parg (subr cm (i64) i64)
+  (lambda (i) "Argument `i`, or 0 past the last." (if (i64< i (get pargc)) (flatarray-ref-i64 (get pargs) i) 0)))
+(define pargs1! (subr cm (i64) unit) (lambda (a) (begin (pargs-room! 1) (parg-set! 0 a))))
+(define pargs2! (subr cm (i64 i64) unit) (lambda (a b) (begin (pargs-room! 2) (parg-set! 0 a) (parg-set! 1 b))))
+(define pargs3! (subr cm (i64 i64 i64) unit) (lambda (a b c) (begin (pargs-room! 3) (parg-set! 0 a) (parg-set! 1 b) (parg-set! 2 c))))
+(define-rec
+  (pargs-heap-list (subr cm (i64 i64) i64)
+    (lambda (i acc)
+      "The arguments up to `i`, consed onto `acc`, a list of the heap's."
+      (if (i64<= i 0) acc (pargs-heap-list (i64- i 1) (cons! (flatarray-ref-i64 (get pargs) (i64- i 1)) acc))))))
 (define-rec
   (list-items (subr cm (i64) (listof i64 @c))
     (lambda (v) (if (is-pair? v) (cons (pair-car v) (list-items (pair-cdr v))) nil))))
@@ -355,36 +378,47 @@
   (onto-list (subr cm ((listof i64 @c) i64) i64)
     (lambda (xs tail) (if (null? xs) tail (cons! (car xs) (onto-list (cdr xs) tail))))))
 
+"Lists of the heap's, and the primitives' arguments, taken where they are,
+ with no list of the runtime's made of them (C150): what tier 1 makes of
+ its own is never let go (C43), and a program makes a product, appends,
+ or joins strings without end."
 (define-rec
-  (all-proper? (subr cm ((listof i64 @c)) i64)
-    (lambda (xs)
-      "The first of `xs` that is no proper list, or 0."
-      (cond ((null? xs) 0) ((i64< (proper-length (car xs)) 0) (car xs)) (else (all-proper? (cdr xs)))))))
+  (copied-onto! (subr cm (i64 i64) i64)
+    (lambda (v tail) "List `v`'s items, before `tail`." (if (is-pair? v) (cons! (pair-car v) (copied-onto! (pair-cdr v) tail)) tail))))
 
 (define-rec
-  (fronts (subr cm ((listof i64 @c)) (listof i64 @c))
-    (lambda (xs) (if (or (null? xs) (null? (cdr xs))) nil (cons (car xs) (fronts (cdr xs)))))))
+  (improper-before (subr cm (i64 i64 i64) i64)
+    (lambda (i n heap)
+      "The first argument from `i` before the `n`th (or of list `heap`'s
+       items, but its last, if `heap` is a list) that is no proper list, or
+       0."
+      (if (is-pair? heap)
+          (cond ((not (is-pair? (pair-cdr heap))) 0)
+                ((i64< (proper-length (pair-car heap)) 0) (pair-car heap))
+                (else (improper-before 0 0 (pair-cdr heap))))
+          (cond ((i64>= i n) 0)
+                ((i64< (proper-length (parg i)) 0) (parg i))
+                (else (improper-before (i64+ i 1) n heap)))))))
 
 (define-rec
-  (last-of (subr cm ((listof i64 @c)) i64)
-    (lambda (xs) (if (null? (cdr xs)) (car xs) (last-of (cdr xs))))))
+  (appended-args! (subr cm (i64) i64)
+    (lambda (i)
+      "The arguments from `i` appended, the last as it is."
+      (if (i64>= i (i64- (get pargc) 1)) (parg i) (copied-onto! (parg i) (appended-args! (i64+ i 1)))))))
 
 (define-rec
-  (appended (subr cm ((listof i64 @c) i64) i64)
-    (lambda (lists tail)
-      "Each of `lists`, each proper, its items, before `tail`."
-      (if (null? lists) tail (onto-list (list-items (car lists)) (appended (cdr lists) tail))))))
+  (appended-lists! (subr cm (i64) i64)
+    (lambda (l)
+      "The lists list `l` holds appended, the last as it is."
+      (if (is-pair? (pair-cdr l)) (copied-onto! (pair-car l) (appended-lists! (pair-cdr l))) (pair-car l)))))
 
-(define append-of (subr cm ((listof i64 @c)) i64)
-  (lambda (xs)
-    "Fixpt's `append`: nothing, `()`; else every list but the last copied,
-     each checked proper, before the last."
-    (if (null? xs)
-        v-null
-        (let ((bad (all-proper? (fronts xs))))
-          (if (not (i64= bad 0))
-              (expected! "a proper list")
-              (appended (fronts xs) (last-of xs)))))))
+(define-rec
+  (fields-of-args! (subr cm (i64 i64 i64) unit)
+    (lambda (b k i) "Fields `k` on of `b`, the arguments from `i`." (if (i64>= i (get pargc)) #u (begin (slot-set! b k (parg i)) (fields-of-args! b (i64+ k 1) (i64+ i 1)))))))
+
+(define-rec
+  (fields-of-list! (subr cm (i64 i64 i64) unit)
+    (lambda (b k l) "Fields `k` on of `b`, list `l`'s items." (if (is-pair? l) (begin (slot-set! b k (pair-car l)) (fields-of-list! b (i64+ k 1) (pair-cdr l))) #u))))
 
 "Strings: code points, two to a word, after the length's word."
 (define str? (subr cm (i64) bool) (lambda (v) (is-kind? v k-string)))
@@ -416,44 +450,80 @@
            (v (make-bloblet! k-string 0 (i64* 8 (i64+ 1 (i64-quotient (i64+ n 1) 2))) #f #f)))
       (begin (word-set! (address v) n) (points-written! (address v) 0 xs) v))))
 
-(define-rec
-  (onto-points (subr cm ((listof i64 @c) (listof i64 @c)) (listof i64 @c))
-    (lambda (xs ys) (if (null? xs) ys (cons (car xs) (onto-points (cdr xs) ys))))))
+(define string-made! (subr cm (i64) i64)
+  (lambda (n)
+    "A string of `n` code points, each 0, to be written (`point-set!`)."
+    (let ((v (make-bloblet! k-string 0 (i64* 8 (i64+ 1 (i64-quotient (i64+ n 1) 2))) #f #f)))
+      (begin (word-set! (address v) n) v))))
+
+(define point-set! (subr cm (i64 i64 i64) unit)
+  (lambda (v i x)
+    "Code point `i` of string `v`, made by `string-made!`, `x`."
+    (let ((at (i64+ (address v) (i64+ 1 (i64-quotient i 2)))))
+      (word-set! at (i64-or (word-at at) (if (i64= (i64-remainder i 2) 0) x (i64-shl x 32)))))))
 
 (define-rec
-  (strings-points (subr cm ((listof i64 @c)) (listof i64 @c))
-    (lambda (ss) (if (null? ss) nil (onto-points (points-of (car ss)) (strings-points (cdr ss)))))))
+  (points-copied! (subr cm (i64 i64 i64 i64 i64) i64)
+    (lambda (v at s i n)
+      "Code points `i` to `n` of string `s` written in `v` from `at`; where
+       the next goes."
+      (if (i64>= i n) at (begin (point-set! v at (str-ref s i)) (points-copied! v (i64+ at 1) s (i64+ i 1) n))))))
 
 (define-rec
-  (first-not-string (subr cm ((listof i64 @c)) i64)
-    (lambda (xs) (cond ((null? xs) 0) ((not (str? (car xs))) (car xs)) (else (first-not-string (cdr xs)))))))
+  (args-not-string (subr cm (i64) i64)
+    (lambda (i) "The first argument from `i` that is no string, or 0." (cond ((i64>= i (get pargc)) 0) ((not (str? (parg i))) (parg i)) (else (args-not-string (i64+ i 1)))))))
 
 (define-rec
-  (points-compare (subr cm ((listof i64 @c) (listof i64 @c)) i64)
-    (lambda (a b)
-      "-1, 0 or 1, code point by code point (Fixpt's `string_cmp`)."
-      (cond ((and (null? a) (null? b)) 0)
-            ((null? a) -1)
-            ((null? b) 1)
-            ((i64< (car a) (car b)) -1)
-            ((i64> (car a) (car b)) 1)
-            (else (points-compare (cdr a) (cdr b)))))))
-(define strings-compare (subr cm (i64 i64) i64) (lambda (a b) (points-compare (points-of a) (points-of b))))
+  (list-not-string (subr cm (i64) i64)
+    (lambda (l) "The first of list `l`'s items that is no string, or 0." (cond ((not (is-pair? l)) 0) ((not (str? (pair-car l))) (pair-car l)) (else (list-not-string (pair-cdr l)))))))
+
+(define-rec
+  (args-points (subr cm (i64 i64) i64)
+    (lambda (i n) (if (i64>= i (get pargc)) n (args-points (i64+ i 1) (i64+ n (str-length (parg i))))))))
+
+(define-rec
+  (list-points (subr cm (i64 i64) i64)
+    (lambda (l n) (if (is-pair? l) (list-points (pair-cdr l) (i64+ n (str-length (pair-car l)))) n))))
+
+(define-rec
+  (args-joined! (subr cm (i64 i64 i64) i64)
+    (lambda (v at i) (if (i64>= i (get pargc)) v (args-joined! v (points-copied! v at (parg i) 0 (str-length (parg i))) (i64+ i 1))))))
+
+(define-rec
+  (list-joined! (subr cm (i64 i64 i64) i64)
+    (lambda (v at l) (if (is-pair? l) (list-joined! v (points-copied! v at (pair-car l) 0 (str-length (pair-car l))) (pair-cdr l)) v))))
+
+(define-rec
+  (compared-from (subr cm (i64 i64 i64) i64)
+    (lambda (a b i)
+      "-1, 0 or 1, code point by code point from `i` (Fixpt's `string_cmp`)."
+      (let ((na (str-length a)) (nb (str-length b)))
+        (cond ((and (i64>= i na) (i64>= i nb)) 0)
+              ((i64>= i na) -1)
+              ((i64>= i nb) 1)
+              ((i64< (str-ref a i) (str-ref b i)) -1)
+              ((i64> (str-ref a i) (str-ref b i)) 1)
+              (else (compared-from a b (i64+ i 1))))))))
+(define strings-compare (subr cm (i64 i64) i64) (lambda (a b) (compared-from a b 0)))
 
 (define-rec
   (fnv (subr cm ((listof i64 @c) i64) i64)
     (lambda (xs h) (if (null? xs) h (fnv (cdr xs) (i64* (i64-xor h (car xs)) 1099511628211))))))
 
 (define-rec
-  (string-chain (subr cm ((listof i64 @c) i64) i64)
-    (lambda (xs op)
-      "`string=?` of two and more (Fixpt's `string_chain`): each pair, its
-       strings checked, in turn."
-      (cond ((or (null? xs) (null? (cdr xs))) v-true)
-            ((not (str? (car xs))) (expected! "a string"))
-            ((not (str? (car (cdr xs)))) (expected! "a string"))
-            ((not (i64= (strings-compare (car xs) (car (cdr xs))) 0)) v-false)
-            (else (string-chain (cdr xs) op))))))
+  (string-fnv (subr cm (i64 i64 i64) i64)
+    (lambda (s i h) "`fnv` of string `s`'s code points from `i`." (if (i64>= i (str-length s)) h (string-fnv s (i64+ i 1) (i64* (i64-xor h (str-ref s i)) 1099511628211))))))
+
+(define-rec
+  (string-chain (subr cm (i64) i64)
+    (lambda (i)
+      "`string=?` of two and more, the arguments from `i` (Fixpt's
+       `string_chain`): each pair, its strings checked, in turn."
+      (cond ((i64>= (i64+ i 1) (get pargc)) v-true)
+            ((not (str? (parg i))) (expected! "a string"))
+            ((not (str? (parg (i64+ i 1)))) (expected! "a string"))
+            ((not (i64= (strings-compare (parg i) (parg (i64+ i 1))) 0)) v-false)
+            (else (string-chain (i64+ i 1)))))))
 
 "Characters."
 (define char-code (subr kfx (i64) i64) (lambda (v) (i64-shr v 8)))
@@ -461,12 +531,12 @@
   (lambda (n) (and (i64>= n 0) (i64<= n 1114111) (not (and (i64>= n 55296) (i64<= n 57343))))))
 
 (define-rec
-  (all-chars? (subr cm ((listof i64 @c)) bool)
-    (lambda (xs) (cond ((null? xs) #t) ((not (is-char? (car xs))) #f) (else (all-chars? (cdr xs)))))))
+  (args-chars? (subr cm (i64) bool)
+    (lambda (i) (or (i64>= i (get pargc)) (and (is-char? (parg i)) (args-chars? (i64+ i 1)))))))
 
 (define-rec
-  (codes-of (subr cm ((listof i64 @c)) (listof i64 @c))
-    (lambda (xs) (if (null? xs) nil (cons (char-code (car xs)) (codes-of (cdr xs)))))))
+  (chars-written! (subr cm (i64 i64) unit)
+    (lambda (v i) "Each argument from `i`, a character, code point `i` of `v`." (if (i64>= i (get pargc)) #u (begin (point-set! v i (char-code (parg i))) (chars-written! v (i64+ i 1)))))))
 
 "Bloblets."
 (define plain? (subr cm (i64) bool) (lambda (v) (is-kind? v k-bloblet)))
@@ -484,14 +554,16 @@
   (fields-filled! (subr cm (i64 i64 i64 i64) unit)
     (lambda (b k last x) (if (i64> k last) #u (begin (slot-set! b k x) (fields-filled! b (i64+ k 1) last x))))))
 
-(define plain-of! (subr cm (i64 i64 (listof i64 @c)) i64)
-  (lambda (p bytes xs)
-    "`%make-bloblet`'s: a plain bloblet of `bytes` and fields `xs` from 2."
-    (cond ((not (is-fixnum? bytes)) (expected! machine-word))
-          ((or (i64< (fix-val bytes) 0) (i64> (fix-val bytes) bytes-max)) (fail! "a bloblet's suffix is 0 to 4 GiB"))
-          ((i64>= (args-count xs 0) fields-max) (prim-failed p "of a large header"))
-          (else (let ((b (make-bloblet! k-bloblet (args-count xs 0) (fix-val bytes) #t #f)))
-                  (begin (fields-from! b 2 xs) b))))))
+(define plain-of! (subr cm (i64 i64 i64) i64)
+  (lambda (p bytes from)
+    "`%make-bloblet`'s: a plain bloblet of `bytes` and its fields the
+     arguments from `from`."
+    (let ((n (i64- (get pargc) from)))
+      (cond ((not (is-fixnum? bytes)) (expected! machine-word))
+            ((or (i64< (fix-val bytes) 0) (i64> (fix-val bytes) bytes-max)) (fail! "a bloblet's suffix is 0 to 4 GiB"))
+            ((i64>= n fields-max) (prim-failed p "of a large header"))
+            (else (let ((b (make-bloblet! k-bloblet n (fix-val bytes) #t #f)))
+                    (begin (fields-of-args! b 2 from) b)))))))
 
 (define filled-of! (subr cm (i64 i64 i64 i64 bool) i64)
   (lambda (p bytes n x check-bytes)
@@ -613,36 +685,6 @@
            (m (arithmetic-shift 1 b))
            (low (modulo x m)))
       (if (and (width-signed? w) (>= low (arithmetic-shift 1 (- b 1)))) (- low m) low))))
-"A primitive's arguments, deepest first, where its caller copies them
- (`pargs1!`, ...), for `prim-apply!` to read: no list is made of them,
- as the runtime's own memory is never let go (C43) and a long run calls
- primitives without end. Only a primitive of any number of them makes the
- list it takes (`pargs-list`)."
-(define pargs (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 16 0)))
-(define pargc (ref i64 @c) (new 0))
-(define pargs-room! (subr cm (i64) unit)
-  (lambda (n)
-    (if (i64<= n (flatarray-length-i64 (get pargs)))
-        (set pargc n)
-        (begin (set pargs (the (flatarrayof i64 @c) (make-flatarray-i64 (i64* 2 n) 0))) (set pargc n)))))
-(define parg-set! (subr cm (i64 i64) unit) (lambda (i v) (flatarray-set-i64! (get pargs) i v)))
-(define parg (subr cm (i64) i64)
-  (lambda (i) "Argument `i`, or 0 past the last." (if (i64< i (get pargc)) (flatarray-ref-i64 (get pargs) i) 0)))
-(define pargs1! (subr cm (i64) unit) (lambda (a) (begin (pargs-room! 1) (parg-set! 0 a))))
-(define pargs2! (subr cm (i64 i64) unit) (lambda (a b) (begin (pargs-room! 2) (parg-set! 0 a) (parg-set! 1 b))))
-(define pargs3! (subr cm (i64 i64 i64) unit) (lambda (a b c) (begin (pargs-room! 3) (parg-set! 0 a) (parg-set! 1 b) (parg-set! 2 c))))
-(define-rec
-  (pargs-between (subr cm (i64 i64 (listof i64 @c)) (listof i64 @c))
-    (lambda (from to acc)
-      (if (i64<= to from) acc (pargs-between from (i64- to 1) (cons (flatarray-ref-i64 (get pargs) (i64- to 1)) acc))))))
-(define-rec
-  (pargs-heap-list (subr cm (i64 i64) i64)
-    (lambda (i acc)
-      "The arguments up to `i`, consed onto `acc`, a list of the heap's."
-      (if (i64<= i 0) acc (pargs-heap-list (i64- i 1) (cons! (flatarray-ref-i64 (get pargs) (i64- i 1)) acc))))))
-(define pargs-list (subr cm (i64) (listof i64 @c))
-  (lambda (from) "The arguments from `from` on, as a list." (pargs-between from (get pargc) nil)))
-
 (define fixed-in? (subr cm (i64 i64) bool)
   (lambda (w v) "Whether `v` is a value of width `w` (`fixed_in`)." (and (is-integer? v) (= (wrapped w (int-of v)) (int-of v)))))
 
@@ -965,23 +1007,22 @@
     (let ((b (make-bloblet! k-sum 2 0 #t #f)))
       (begin (slot-set! b 2 (symbol! tag)) (slot-set! b 3 v) (frozen-whole! b) b))))
 
-(define frozen-of! (subr cm (i64 (listof i64 @c)) i64)
-  (lambda (k xs)
-    "Fixpt's `make_frozen`: a bloblet of kind `k`, fields `xs`, frozen."
-    (let ((b (make-bloblet! k (args-count xs 0) 0 #t #f)))
-      (begin (fields-from! b 2 xs) (frozen-whole! b) b))))
-
 (define frozen2! (subr cm (i64 i64 i64) i64)
   (lambda (k x y)
     "`frozen-of!` of two fields, `x` and `y`, with no list made of them (C148)."
     (let ((b (make-bloblet! k 2 0 #t #f)))
       (begin (slot-set! b 2 x) (slot-set! b 3 y) (frozen-whole! b) b))))
 
-(define closure-of! (subr cm (i64 (listof i64 @c)) i64)
-  (lambda (w free)
-    "A cellular closure of word `w` over `free` (Fixpt's `region_closure`)."
-    (let ((c (make-bloblet! k-closure (i64+ (args-count free 0) 1) 0 #t #f)))
-      (begin (slot-set! c f-word w) (fields-from! c f-free0 free) c))))
+(define-rec
+  (args-free! (subr cm (i64 i64 i64 i64) unit)
+    (lambda (c k i n) (if (i64>= i n) #u (begin (slot-set! c k (parg i)) (args-free! c (i64+ k 1) (i64+ i 1) n))))))
+
+(define closure-of! (subr cm (i64 i64 i64) i64)
+  (lambda (w from n)
+    "A cellular closure of word `w` over the arguments from `from` before
+     the `n`th (Fixpt's `region_closure`)."
+    (let ((c (make-bloblet! k-closure (i64+ (i64- n from) 1) 0 #t #f)))
+      (begin (slot-set! c f-word w) (args-free! c f-free0 from n) c))))
 
 (define-rec
   (butlast (subr cm ((listof i64 @c)) (listof i64 @c))
@@ -999,11 +1040,7 @@
         (slot-set! w (i64+ f-cell0 2) (fix 0))
         (slot-set! w (i64+ f-cell0 3) (fix r-tailcall))
         (slot-set! w (i64+ f-cell0 4) (fix 1))
-        (closure-of! w (list f))))))
-
-(define-rec
-  (list-of-vector! (subr cm (i64 (listof i64 @c) i64) i64)
-    (lambda (v xs i) (if (null? xs) v (begin (obj-set! v i (car xs)) (list-of-vector! v (cdr xs) (i64+ i 1)))))))
+        (let ((c (make-bloblet! k-closure 2 0 #t #f))) (begin (slot-set! c f-word w) (slot-set! c f-free0 f) c))))))
 
 (define-rec
   (fields-list (subr cm (i64 i64 i64) i64)
@@ -1151,7 +1188,8 @@
         ((i64= op o-make-frozen)
          (cond ((not (is-fixnum? a)) (expected! machine-word))
                ((not (or (i64= (fix-val a) k-sum) (i64= (fix-val a) k-product))) (fail! "%make-frozen makes sums and products"))
-               (else (frozen-of! (fix-val a) (pargs-list 1)))))
+               (else (let ((b (make-bloblet! (fix-val a) (i64- (get pargc) 1) 0 #t #f)))
+                       (begin (fields-of-args! b 2 1) (frozen-whole! b) b)))))
         ((and (or (i64= op o-mul) (i64= op o-add) (i64= op o-sub)) (is-fixnum? a) (is-fixnum? b))
          (int-arith op a b))
         ((or (i64= op o-mul) (i64= op o-add) (i64= op o-sub) (i64= op o-quotient) (i64= op o-remainder)
@@ -1200,7 +1238,7 @@
         ((i64= op o-fixnum) (boolean (is-fixnum? a)))
         ((i64= op o-byte) (boolean (and (is-fixnum? a) (i64>= (fix-val a) 0) (i64<= (fix-val a) 255))))
         ((i64= op o-list-copy)
-         (if (i64< (proper-length a) 0) (expected! "a list") (list-of (list-items a))))
+         (if (i64< (proper-length a) 0) (expected! "a list") (copied-onto! a v-null)))
         ((i64= op o-list-p) (boolean (i64>= (proper-length a) 0)))
         ((i64= op o-int-f64) (if (is-integer? a) (make-flonum! (int->f64 (int-of a))) (expected! "an exact integer")))
         ((i64= op o-int-f32) (if (is-integer? a) (f32-value (int->f32 (int-of a))) (expected! "an exact integer")))
@@ -1209,7 +1247,12 @@
         ((i64= op o-bits-f64) (if (fixed-in? 5 a) (flonum-bits! (int->i64 (int-of a))) (expected! "a u64")))
         ((i64= op o-f32-bits) (if (is-f32? a) (fix (i64-and (i64-shr a 32) 4294967295)) (expected! "an f32")))
         ((i64= op o-bits-f32) (if (fixed-in? 3 a) (f32-bits (fix-val a)) (expected! "a u32")))
-        ((i64= op o-append) (append-of (pargs-list 0)))
+        ((i64= op o-append)
+         ;; Fixpt's `append`: nothing, `()`; else every list but the last
+         ;; copied, each checked proper, before the last.
+         (cond ((i64= (get pargc) 0) v-null)
+               ((not (i64= (improper-before 0 (i64- (get pargc) 1) v-null) 0)) (expected! "a proper list"))
+               (else (appended-args! 0))))
         ((i64= op o-reverse)
          (if (i64< (proper-length a) 0)
              (expected! "a proper list")
@@ -1217,9 +1260,12 @@
         ((i64= op o-list-vector)
          (if (i64< (proper-length a) 0)
              (expected! "a proper list")
-             (list-of-vector! (make-bloblet! k-vector (proper-length a) 0 #t #f) (list-items a) 0)))
+             (let ((v (make-bloblet! k-vector (proper-length a) 0 #t #f))) (begin (fields-of-list! v 2 a) v))))
         ((i64= op o-append-list)
-         (if (i64< (proper-length a) 0) (expected! "a proper list") (append-of (list-items a))))
+         (cond ((i64< (proper-length a) 0) (expected! "a proper list"))
+               ((not (is-pair? a)) v-null)
+               ((not (i64= (improper-before 0 0 a) 0)) (expected! "a proper list"))
+               (else (appended-lists! a))))
         ((i64= op o-length-is)
          (if (not (is-fixnum? b)) (expected! "a fixnum") (boolean (i64= (proper-length a) (fix-val b)))))
         ((i64= op o-first) a)
@@ -1245,21 +1291,21 @@
                ((not (string=? (index-trouble b (str-length a) "string") "")) (fail! (index-trouble b (str-length a) "string")))
                (else (char-value (str-ref a (fix-val b))))))
         ((i64= op o-string-append)
-         (if (not (i64= (first-not-string (pargs-list 0)) 0)) (expected! "a string") (string-of-points! (strings-points (pargs-list 0)))))
+         (if (not (i64= (args-not-string 0) 0)) (expected! "a string") (args-joined! (string-made! (args-points 0 0)) 0 0)))
         ((i64= op o-string-append-list)
          (cond ((i64< (proper-length a) 0) (expected! "a proper list"))
-               ((not (i64= (first-not-string (list-items a)) 0)) (expected! "a string"))
-               (else (string-of-points! (strings-points (list-items a))))))
+               ((not (i64= (list-not-string a) 0)) (expected! "a string"))
+               (else (list-joined! (string-made! (list-points a 0)) 0 a))))
         ((i64= op o-substring)
          (cond ((not (str? a)) (expected! "a string"))
                ((not (is-fixnum? b)) (expected! machine-word))
                ((not (is-fixnum? c)) (expected! machine-word))
                ((or (i64< (fix-val b) 0) (i64< (fix-val c) (fix-val b)) (i64> (fix-val c) (str-length a)))
                 (fail! "substring range out of bounds"))
-               (else (string-of-points! (points-from a (fix-val b) (fix-val c))))))
+               (else (let ((v (string-made! (i64- (fix-val c) (fix-val b))))) (begin (points-copied! v 0 a (fix-val b) (fix-val c)) v)))))
         ((i64= op o-make-string-of)
-         (if (all-chars? (pargs-list 0)) (string-of-points! (codes-of (pargs-list 0))) (expected! "a character")))
-        ((i64= op o-string-eq) (string-chain (pargs-list 0) op))
+         (if (args-chars? 0) (let ((v (string-made! (get pargc)))) (begin (chars-written! v 0) v)) (expected! "a character")))
+        ((i64= op o-string-eq) (string-chain 0))
         ((or (i64= op o-string-lt) (i64= op o-string-le) (i64= op o-string-gt) (i64= op o-string-ge) (i64= op o-string-compare))
          (cond ((not (str? a)) (expected! "a string"))
                ((not (str? b)) (expected! "a string"))
@@ -1271,7 +1317,7 @@
                              (else (boolean (i64>= o 0))))))))
         ((i64= op o-string-hash)
          (if (str? a)
-             (fix (i64-and (i64-shr (fnv (points-of a) -3750763034362895579) 4) 1152921504606846975))
+             (fix (i64-and (i64-shr (string-fnv a 0 -3750763034362895579) 4) 1152921504606846975))
              (expected! "a string")))
         ((i64= op o-symbol-hash) (if (is-kind? a k-symbol) (obj-ref a 1) (expected! "a symbol")))
         ((or (i64= op o-char-integer) (i64= op o-char-upcase) (i64= op o-char-downcase) (i64= op o-char-numeric)
@@ -1297,10 +1343,10 @@
                ((i64= op o-char-gt) (boolean (i64> (char-code a) (char-code b))))
                (else (boolean (i64>= (char-code a) (char-code b))))))
         ((i64= op o-error) (if (str? a) (fail! (string-text a)) (expected! "a string")))
-        ((i64= op o-make-bloblet) (plain-of! p a (pargs-list 1)))
+        ((i64= op o-make-bloblet) (plain-of! p a 1))
         ((i64= op o-make-bloblet-filled) (filled-of! p a b c #t))
         ((i64= op o-region-make-array) (filled-of! p 0 b c #f))
-        ((i64= op o-region-make-bloblet) (plain-of! p b (pargs-list 2)))
+        ((i64= op o-region-make-bloblet) (plain-of! p b 2))
         ((i64= op o-bloblet) (boolean (is-bloblet? a)))
         ((or (i64= op o-bloblet-kind) (i64= op o-bloblet-fields) (i64= op o-bloblet-bytes) (i64= op o-bloblet-frozen))
          (cond ((not (is-bloblet? a)) (expected! "a bloblet"))
@@ -1344,11 +1390,11 @@
         ((i64= op o-list-array)
          (cond ((i64< (proper-length a) 0) (expected! "a proper list"))
                ((i64>= (proper-length a) fields-max) (prim-failed p "of a large header"))
-               (else (let ((x (make-bloblet! k-bloblet (proper-length a) 0 #t #f))) (begin (fields-from! x 2 (list-items a)) x)))))
+               (else (let ((x (make-bloblet! k-bloblet (proper-length a) 0 #t #f))) (begin (fields-of-list! x 2 a) x)))))
         ((i64= op o-stay-cellular) a)
         ((i64= op o-native-code) v-false)
         ((i64= op o-region-new) (let ((x (make-bloblet! k-box 1 0 #t #f))) (begin (slot-set! x 2 b) x)))
-        ((i64= op o-region-closure) (closure-of! (parg (i64- (get pargc) 1)) (pargs-between 1 (i64- (get pargc) 1) nil)))
+        ((i64= op o-region-closure) (closure-of! (parg (i64- (get pargc) 1)) 1 (i64- (get pargc) 1)))
         ((i64= op o-vlambda) (vlambda! a))
         ((or (i64= op o-make-icell) (i64= op o-region-make-icell)) (make-icell!))
         ((i64= op o-icell-get)
@@ -1512,7 +1558,9 @@
         ((i64= op o-sum-cell) (frozen2! k-sum a b))
         ((i64= op o-pair-cell) (cons! a b))
         ((i64= op o-product-cell)
-         (if (i64< (proper-length a) 0) (expected! "a list") (frozen-of! k-product (list-items a))))
+         (if (i64< (proper-length a) 0)
+             (expected! "a list")
+             (let ((b (make-bloblet! k-product (proper-length a) 0 #t #f))) (begin (fields-of-list! b 2 a) (frozen-whole! b) b))))
         ((i64= op o-sched) (if (is-fixnum? a) (sched-op! (fix-val a) b c) (expected! "an operation's number")))
         ((i64= op o-icell-put) (cell-put! a b))
         ((i64= op o-preempt-done) (begin (quiet-leave!) v-unit))

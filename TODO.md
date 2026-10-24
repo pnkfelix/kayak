@@ -683,10 +683,11 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
   programs/services"): what it still makes of the runtime's, never let
   go (C43). ~~The scheduler's lists and closures, at each scheduling~~
   (C148: at a slice of 2, as without one). ~~A message's copy~~ (C149: a table, kept
-  from copy to copy). The
-  primitives of any number of arguments (`append`, `string`,
-  `string=?`, `make-bloblet`, ...), which still take a list.
-  `string-text`, a `string-append` for each character.
+  from copy to copy). ~~The
+  primitives of any number of arguments~~ (C150, and the string
+  primitives' code points). Left: `list->bytevector`, `string->utf8`, of
+  lists; `string-text`, a `string-append` for each character (a
+  failure's message, the value shown).
 - Tier 1 at `--slice 2` (C143): a resumed task has a step or two
   before its next preemption, so each turn of a loop costs some 6,700
   steps (C142 put that at each preemption; one is some 160). Fixpt's

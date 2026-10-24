@@ -4146,3 +4146,29 @@ runtime's own, never let go (C43), a message's size each time; its
   of 200 integers, answered by their sum: 53.3 MB of the runtime's own
   never let go, now 14.5 MB, of which the listing read is 8.4 MB and
   most of the rest the string primitives' code points (next).
+
+## C150. Tier 1's primitives of any number of arguments take no list (2026-10-24)
+
+Next of tier 1's long-run leaks (TODO §31): C142 copied a primitive's
+arguments into a flat array (`pargs`), but those of any number of them
+still made a list of the runtime's own of them (`pargs-list`), never let
+go (C43): `%make-frozen`, which makes every product and sum, as well as
+`%make-bloblet`, `%region-closure`, `append`, `string-append`,
+`string=?`, `string`; and the string primitives went through lists of
+code points (`string-append`, `substring`, the comparisons, `string-hash`),
+as did those of a list the heap's (`list-copy`, `list->vector`,
+`list->array`, `apply append`, `%product-cell`), and `vlambda`'s closure.
+- **Now** each reads its arguments where they are (`fields-of-args!`,
+  `appended-args!`, `args-joined!`, `string-chain` by index), or walks
+  the heap's list (`fields-of-list!`, `copied-onto!`, `list-joined!`); a
+  string is made of its length first (`string-made!`), then written,
+  code point by code point (`point-set!`, `points-copied!`), and compared
+  and hashed by index. Fifteen list helpers no longer used, gone.
+- **Measured** (`heap-stats`), a loop making a product, a datatype's
+  value and three strings each turn: 20,000 turns 8.9 MB of the
+  runtime's own, 200,000 turns 80.9 MB; now 0.9 MB both, the listing
+  read. The program of 2,000 messages (C149): 14.5 MB to 9.1 MB, its
+  listing read.
+- **Left**: `list->bytevector` and `string->utf8`, of lists still;
+  `string-text`, a string of the heap's as KFX's, which only a failure's
+  message and the value shown use.
