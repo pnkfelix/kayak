@@ -2416,8 +2416,10 @@ pub fn ygive_stubs_x(mut i: i64, mut n: i64, mut starts: FlatArray<i64>, mut giv
 // back, it leaves instead: the records written to the return stack as the
 // entries they stand for (`l-materialize`), the fuel not spent given back,
 // then on in tier 5 at the same instruction, whose code says what tier 1
-// would do. So only what never allocates is here, and the collector never
-// sees a record. Entered by a call from tier 5 (its entry for a call
+// would do. What allocates is here only as tier 5 makes it, at the heap's
+// top (`cons`, `%region-cons`, a closure of its registers, C147): where
+// tier 5 would give back to collect first, tier 6 leaves, so the collector
+// never sees a record. Entered by a call from tier 5 (its entry for a call
 // diverted to `adapter`), over a bottom record, `(1 1)`, that says so.
 pub fn hand_direct() -> Ref<bool> {
     kayak_rt::kept_constant!(ONCE: Ref<bool>);
@@ -2444,12 +2446,19 @@ pub fn l_materialize_pushed() -> Ref<Int> {
     })
 }
 
-/// Whether tier 6 has register operation `op`, of operands `a`, `b`.
-pub fn y_direct_op_p(op: i64, a: i64, b: i64) -> bool {
+/// Whether tier 6 has register operation `op`, of operands `a`, `b`, `c`:
+/// of those that allocate, those tier 5 makes at the heap's top (C147).
+pub fn y_direct_op_p(op: i64, a: i64, b: i64, c: i64) -> bool {
     if (i64_eq(op, ro_op2()) || i64_eq(op, ro_op2imm())) {
         (i64_eq(a, r_eq()) || i64_eq(a, r_int_add()) || i64_eq(a, r_add()) || i64_eq(a, r_int_sub()) || i64_eq(a, r_sub()) || i64_eq(a, r_int_less()) || i64_eq(a, r_less()) || i64_eq(a, r_int_eq()))
     } else if i64_eq(op, ro_op1()) {
         (i64_eq(a, r_car()) || i64_eq(a, r_cdr()) || i64_eq(a, r_pair_car()) || i64_eq(a, r_pair_cdr()))
+    } else if i64_eq(op, ro_cellular()) {
+        (i64_eq(a, r_cons()) && i64_eq(b, 2i64))
+    } else if i64_eq(op, ro_prim()) {
+        (i64_eq(prim_op(a), o_region_cons()) && i64_eq(b, 3i64))
+    } else if i64_eq(op, ro_lambda()) {
+        (i64_lt_eq(b, register_regs()) && i64_eq(c, r_closure()))
     } else {
         (i64_eq(op, ro_args()) || i64_eq(op, ro_const()) || i64_eq(op, ro_global()) || i64_eq(op, ro_setglbl()) || i64_eq(op, ro_reg()) || i64_eq(op, ro_setreg()) || i64_eq(op, ro_movereg()) || i64_eq(op, ro_lexical()) || i64_eq(op, ro_save()) || i64_eq(op, ro_pop()) || i64_eq(op, ro_stack()) || i64_eq(op, ro_load()) || i64_eq(op, ro_setstk()) || i64_eq(op, ro_store()) || i64_eq(op, ro_field()) || i64_eq(op, ro_invoke()) || i64_eq(op, ro_tailinvoke()) || i64_eq(op, ro_invokeself()) || i64_eq(op, ro_return()) || i64_eq(op, ro_branch()) || i64_eq(op, ro_branchf()) || i64_eq(op, ro_brancht()) || i64_eq(op, ro_global_guard()))
     }
@@ -2473,7 +2482,12 @@ pub fn y_direct_able_p(rw: i64, i: i64, n: i64) -> bool {
         } else {
             the::<i64>(0i64)
         };
-        (y_direct_op_p(op, a, b) && y_direct_able_p(rw, i64_plus(i, i64_plus(1i64, ops)), n))
+        let c = if i64_gt_eq(ops, 3i64) {
+            fix_val(slot_of(rw, i64_plus(kk, 3i64)))
+        } else {
+            the::<i64>(0i64)
+        };
+        (y_direct_op_p(op, a, b, c) && y_direct_able_p(rw, i64_plus(i, i64_plus(1i64, ops)), n))
     }
 }
 

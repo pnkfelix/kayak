@@ -950,21 +950,27 @@
  back, it leaves instead: the records written to the return stack as the
  entries they stand for (`l-materialize`), the fuel not spent given back,
  then on in tier 5 at the same instruction, whose code says what tier 1
- would do. So only what never allocates is here, and the collector never
- sees a record. Entered by a call from tier 5 (its entry for a call
+ would do. What allocates is here only as tier 5 makes it, at the heap's
+ top (`cons`, `%region-cons`, a closure of its registers, C147): where
+ tier 5 would give back to collect first, tier 6 leaves, so the collector
+ never sees a record. Entered by a call from tier 5 (its entry for a call
  diverted to `adapter`), over a bottom record, `(1 1)`, that says so."
 (define hand-direct (ref bool @c) (new #f))
 (define st-t6link int 33)
 (define l-materialize (ref int @c) (new 0))
 (define l-materialize-pushed (ref int @c) (new 0))
 
-(define y-direct-op? (->* (i64 i64 i64) bool)
-  (lambda (op a b)
-    "Whether tier 6 has register operation `op`, of operands `a`, `b`."
+(define y-direct-op? (->* (i64 i64 i64 i64) bool)
+  (lambda (op a b c)
+    "Whether tier 6 has register operation `op`, of operands `a`, `b`, `c`:
+     of those that allocate, those tier 5 makes at the heap's top (C147)."
     (cond ((or (i64= op ro-op2) (i64= op ro-op2imm))
            (or (i64= a r-eq) (i64= a r-int-add) (i64= a r-add) (i64= a r-int-sub) (i64= a r-sub)
                (i64= a r-int-less) (i64= a r-less) (i64= a r-int-eq)))
           ((i64= op ro-op1) (or (i64= a r-car) (i64= a r-cdr) (i64= a r-pair-car) (i64= a r-pair-cdr)))
+          ((i64= op ro-cellular) (and (i64= a r-cons) (i64= b 2)))
+          ((i64= op ro-prim) (and (i64= (prim-op a) o-region-cons) (i64= b 3)))
+          ((i64= op ro-lambda) (and (i64<= b register-regs) (i64= c r-closure)))
           (else
             (or (i64= op ro-args) (i64= op ro-const) (i64= op ro-global) (i64= op ro-setglbl) (i64= op ro-reg)
                 (i64= op ro-setreg) (i64= op ro-movereg) (i64= op ro-lexical) (i64= op ro-save) (i64= op ro-pop)
@@ -981,8 +987,9 @@
           (let* ((kk (i64+ f-cell0 i)) (op (fix-val (slot-of rw kk)))
                  (ops (rop-operands op))
                  (a (if (i64>= ops 1) (fix-val (slot-of rw (i64+ kk 1))) (the i64 0)))
-                 (b (if (i64>= ops 2) (fix-val (slot-of rw (i64+ kk 2))) (the i64 0))))
-            (and (y-direct-op? op a b) (y-direct-able? rw (i64+ i (i64+ 1 ops)) n)))))))
+                 (b (if (i64>= ops 2) (fix-val (slot-of rw (i64+ kk 2))) (the i64 0)))
+                 (c (if (i64>= ops 3) (fix-val (slot-of rw (i64+ kk 3))) (the i64 0))))
+            (and (y-direct-op? op a b c) (y-direct-able? rw (i64+ i (i64+ 1 ops)) n)))))))
 
 "Compiling a word for tier 6: whether, its instructions' labels, their
  ways out, its tier 5 code's labels, and its blocks."

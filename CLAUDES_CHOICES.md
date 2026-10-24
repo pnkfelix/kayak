@@ -4076,3 +4076,29 @@ of a lambda's (`c-calls-only-inside`), as Fixpt says it. 153 programs
 agree (142), 124 of them Fixpt's words exactly (120); the prompt programs
 that are not differ by Fixpt's specialization (`climb-n@lambda@1466`), its
 middle phase, not ported yet.
+
+## C147. Tier 6 allocates as tier 5 does (2026-10-24)
+
+The user: "then 2" (TODO §34, tier 6's next: allocation). Tier 6 (C138)
+took only what never allocates, so that the collector never saw one of
+its records. Tier 5 already makes some objects at the heap's top, in
+place (`yallocating!`): `cons`, `%region-cons`, a closure of at most
+`REGS` values from the registers; where tier 1's `safepoint!` would
+collect first or the heap would grow, it gives back. In tier 6 the same
+code's way to give back is its way out (C138): the records written,
+then on in tier 5 at the same instruction, which then gives back, and
+the collector runs with no record live. So tier 6 now has those three
+(`y-direct-op?`, its third operand now asked, a closure's kind), and
+nothing else changed.
+- **Measured** on a Zen 2, cycles, tier 6 before and after (`--regs
+  --direct`, five runs each): `lists-region` 209M to 190M, `lists` 201M
+  to 190M, `closures` 327M to 315M; `captures`, `fib`, `helpers`,
+  `loop`, `tak` the same. The answers are the same.
+- **What keeps the rest out**: a register word is tier 6's only if all
+  its instructions are, and in the corpus's register code the most
+  common that are not are runtime primitives (`%fx26-sched` alone 5,916
+  times, then `prim1`, `prim2imm`, `prim2`, `%make-box`, `setfield`,
+  `%make-frozen`). **Tried, not taken**: every word tier 6's, leaving at
+  each instruction it does not have (its way out is there for each):
+  `closures` 2% faster, `captures` 2% slower, the rest the same. What
+  would pay is those primitives made in place, as tier 5 makes `cons`.

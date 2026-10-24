@@ -761,10 +761,12 @@ compilers, on x86_64, at the same places; every `--compiled` way of
 the link there too). Left:
 ~~5. Tier 6~~ (begun, C138: register code as native procedures, which
 leave for tier 5 rather than give back; `--direct`). Next, by what keeps
-words out or makes them leave: allocation (`cons`, `lambda`, `prim`) by
-the heap's top as tier 5 allocates, which a collection may not follow
-while records live (a call-out that collects leaves first); the same on
-arm64, measured on macOS.
+words out or makes them leave: ~~allocation (`cons`, `lambda`, `prim`)
+by the heap's top as tier 5 allocates~~ (C147: tier 5's in-place
+allocations; where it would collect, tier 6 leaves first); next the
+runtime primitives register code calls most (`%fx26-sched`, `%make-box`,
+`%make-frozen`, `setfield`), made in place; the same on arm64, measured
+on macOS.
 - ~~`REG1`… in registers~~ (`REG1`, `REG2`, C137; `REG3` in `r10` with
   addresses, C139).
 - Values as tagged addresses (C139): done, and on x86_64 without the
