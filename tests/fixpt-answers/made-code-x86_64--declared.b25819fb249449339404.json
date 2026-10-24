@@ -5,12 +5,9 @@
 "check",
 "declared.fx"
 ],
-"code": 0,
+"code": 1,
 "out": [
-"define put-all : (subr (maxeff (read (globals put-all)) (read @heap) (write @heap) spin) ((bloblet (fields) @heap) int (listof int @heap)) unit) ! pure",
-"define subtracter : (subr (maxeff (alloc @heap) (io native) (read (globals put-all)) (read @heap) (write @heap) spin) () (subr (conv native) pure (int int) int)) ! pure",
-"string ! pure",
-"int ! (maxeff (alloc @heap) (io native) (read (globals put-all subtracter)) (read @heap) (write @heap) spin)",
+"! <programs>/made-code-x86_64/declared.fx:35:3: `define-convention`: the `code` clause is not this implementation's: (code (runs-at reference plus x26) (field-k-before-code 8))",
 "; both checkers agree",
 ""
 ],

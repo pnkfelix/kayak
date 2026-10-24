@@ -44,7 +44,7 @@ pub struct Product_5align_6header_4link_6return_3map_11values_from_10live_below_
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
-pub struct Product_4fuel_7reserve_4trap_2pc_4args_5nargs_3aux_7callout_7rust_sp_9native_sp_2fp_3top_5words_11alloc_limit_4code_3clo_5delta_7code_lo_9trap_stub_7foreign_7closure_5cards_11stack_limit_8overflow_4poll_4cons_7bloblet<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A22, A23, A24, A25, A26>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5, pub A6, pub A7, pub A8, pub A9, pub A10, pub A11, pub A12, pub A13, pub A14, pub A15, pub A16, pub A17, pub A18, pub A19, pub A20, pub A21, pub A22, pub A23, pub A24, pub A25, pub A26);
+pub struct Product_4fuel_7reserve_4trap_2pc_4args_5nargs_3aux_7callout_7rust_sp_9native_sp_2fp_3top_5words_11alloc_limit_4code_3clo_5delta_7code_lo_9trap_stub_7foreign_7closure_5cards_11stack_limit_8overflow_4poll_4cons_7bloblet_4reg4<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9, A10, A11, A12, A13, A14, A15, A16, A17, A18, A19, A20, A21, A22, A23, A24, A25, A26, A27>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5, pub A6, pub A7, pub A8, pub A9, pub A10, pub A11, pub A12, pub A13, pub A14, pub A15, pub A16, pub A17, pub A18, pub A19, pub A20, pub A21, pub A22, pub A23, pub A24, pub A25, pub A26, pub A27);
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
@@ -73,6 +73,10 @@ pub struct Product_5cards_10card_shift_4mark<A0, A1, A2>(pub A0, pub A1, pub A2)
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 pub struct Product_6target_9registers_6values_8closures_4code_6frames_5state_8routines_4fuel_7barrier<A0, A1, A2, A3, A4, A5, A6, A7, A8, A9>(pub A0, pub A1, pub A2, pub A3, pub A4, pub A5, pub A6, pub A7, pub A8, pub A9);
+
+#[allow(non_camel_case_types)]
+#[derive(Clone, Copy)]
+pub struct Product_3x86_2sn<A0, A1>(pub A0, pub A1);
 
 #[allow(non_camel_case_types)]
 pub enum Sum_2ok_7refused<A0, A1> {
@@ -131,7 +135,7 @@ pub mod made__load__0__fx26_convention {
 
     pub type CvFrames = Product_5align_6header_4link_6return_3map_11values_from_10live_below_12fields_above_4stub<Int, Int, Int, Int, Int, Int, Int, Int, Int>;
 
-    pub type CvState = Product_4fuel_7reserve_4trap_2pc_4args_5nargs_3aux_7callout_7rust_sp_9native_sp_2fp_3top_5words_11alloc_limit_4code_3clo_5delta_7code_lo_9trap_stub_7foreign_7closure_5cards_11stack_limit_8overflow_4poll_4cons_7bloblet<Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int>;
+    pub type CvState = Product_4fuel_7reserve_4trap_2pc_4args_5nargs_3aux_7callout_7rust_sp_9native_sp_2fp_3top_5words_11alloc_limit_4code_3clo_5delta_7code_lo_9trap_stub_7foreign_7closure_5cards_11stack_limit_8overflow_4poll_4cons_7bloblet_4reg4<Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int>;
 
     pub type CvRoutine = Product_5entry_2in_3out_11may_collect<Int, CvRegs, Int, bool>;
 
@@ -147,19 +151,21 @@ pub mod made__load__0__fx26_convention {
 
     pub type Convention = Product_6target_9registers_6values_8closures_4code_6frames_5state_8routines_4fuel_7barrier<Str, CvRegisters, CvValues, CvClosures, CvCode, CvFrames, CvState, CvRoutines, CvFuel, CvBarrier>;
 
+    pub type CvNm = Product_3x86_2sn<bool, CvNames>;
+
     pub type CvRead = &'static Sum_2ok_7refused<Convention, Str>;
 }
 
 pub mod made__input__4006__convention_types {
     use super::*;
 
-    pub use super::made__load__0__fx26_convention::{cx_name, cx_int, cx_list, CvSx, CvSxs, CvAt, CvSxsAt, CvNames, CvInts, CvStrs, CvRegs, CvRegisters, CvBits, CvValues, CvClosures, CvCode, CvFrames, CvState, CvRoutine, CvOverflow, CvTrap, CvRoutines, CvFuel, CvBarrier, Convention, CvRead};
+    pub use super::made__load__0__fx26_convention::{cx_name, cx_int, cx_list, CvSx, CvSxs, CvAt, CvSxsAt, CvNames, CvInts, CvStrs, CvRegs, CvRegisters, CvBits, CvValues, CvClosures, CvCode, CvFrames, CvState, CvRoutine, CvOverflow, CvTrap, CvRoutines, CvFuel, CvBarrier, Convention, CvNm, CvRead};
 }
 
 pub mod cv {
     use super::*;
 
-    use super::made__input__4006__convention_types::{cx_name, cx_int, cx_list, CvSx, CvSxs, CvAt, CvSxsAt, CvNames, CvInts, CvStrs, CvRegs, CvRegisters, CvBits, CvValues, CvClosures, CvCode, CvFrames, CvState, CvRoutine, CvOverflow, CvTrap, CvRoutines, CvFuel, CvBarrier, Convention, CvRead};
+    use super::made__input__4006__convention_types::{cx_name, cx_int, cx_list, CvSx, CvSxs, CvAt, CvSxsAt, CvNames, CvInts, CvStrs, CvRegs, CvRegisters, CvBits, CvValues, CvClosures, CvCode, CvFrames, CvState, CvRoutine, CvOverflow, CvTrap, CvRoutines, CvFuel, CvBarrier, Convention, CvNm, CvRead};
 
     pub fn cv_ch(t: Str, i: Int) -> Str {
         substring(t, i, _plus(i, int_lit(1)))
@@ -333,26 +339,51 @@ pub mod cv {
         cx_int_of(cx_nth(cx_get(xs, role), int_lit(1)))
     }
 
-    pub fn cx_reg(x: &'static CvSx) -> Int {
-        let n = cx_name_of(x);
-        if string_eq_p(n, str_lit("sp")) {
-            int_lit(31)
-        } else if (_gt(string_length(n), int_lit(1)) && string_eq_p(substring(n, int_lit(0), int_lit(1)), str_lit("x"))) {
-            cv_digits(n, int_lit(1), int_lit(0))
-        } else {
-            int_lit(-1)
+    pub fn cv_in_state() -> Int {
+        int_lit(4096)
+    }
+
+    pub fn cv_x86_regs() -> CvStrs {
+        kayak_rt::heap_cons(str_lit("rax"), kayak_rt::heap_cons(str_lit("rcx"), kayak_rt::heap_cons(str_lit("rdx"), kayak_rt::heap_cons(str_lit("rbx"), kayak_rt::heap_cons(str_lit("rsp"), kayak_rt::heap_cons(str_lit("rbp"), kayak_rt::heap_cons(str_lit("rsi"), kayak_rt::heap_cons(str_lit("rdi"), kayak_rt::heap_cons(str_lit("r8"), kayak_rt::heap_cons(str_lit("r9"), kayak_rt::heap_cons(str_lit("r10"), kayak_rt::heap_cons(str_lit("r11"), kayak_rt::heap_cons(str_lit("r12"), kayak_rt::heap_cons(str_lit("r13"), kayak_rt::heap_cons(str_lit("r14"), kayak_rt::heap_cons(str_lit("r15"), kayak_rt::nil()))))))))))))))))
+    }
+
+    pub fn cv_index(mut ns: CvStrs, mut n: Str, mut k: Int) -> Int {
+        loop {
+            if null_p(ns) {
+                return int_lit(-1);
+            } else if string_eq_p(car(ns), n) {
+                return k;
+            } else {
+                (ns, k) = (cdr(ns), _plus(k, int_lit(1)));
+                continue;
+            }
         }
     }
 
-    pub fn cx_reg_at(xs: CvSxs, role: Str) -> Int {
-        cx_reg(cx_nth(cx_get(xs, role), int_lit(0)))
+    pub fn cx_reg(st: CvSxs, x: &'static CvSx) -> Int {
+        let n = cx_name_of(x);
+        if string_eq_p(cx_role(x), str_lit("state")) {
+            _plus(cv_in_state(), cx_int_at(st, cx_name_of(cx_nth(cx_items(x), int_lit(1)))))
+        } else if string_eq_p(n, str_lit("sp")) {
+            int_lit(31)
+        } else if string_eq_p(n, str_lit("pushed")) {
+            int_lit(-2)
+        } else if (_gt(string_length(n), int_lit(1)) && string_eq_p(substring(n, int_lit(0), int_lit(1)), str_lit("x"))) {
+            cv_digits(n, int_lit(1), int_lit(0))
+        } else {
+            cv_index(cv_x86_regs(), n, int_lit(0))
+        }
     }
 
-    pub fn cx_regs(xs: CvSxs) -> CvInts {
+    pub fn cx_reg_at(st: CvSxs, xs: CvSxs, role: Str) -> Int {
+        cx_reg(st, cx_nth(cx_get(xs, role), int_lit(0)))
+    }
+
+    pub fn cx_regs(st: CvSxs, xs: CvSxs) -> CvInts {
         if null_p(xs) {
             nil::<Int>()
         } else {
-            the::<CvInts>(kayak_rt::heap_cons(cx_reg(car(xs)), cx_regs(cdr(xs))))
+            the::<CvInts>(kayak_rt::heap_cons(cx_reg(st, car(xs)), cx_regs(st, cdr(xs))))
         }
     }
 
@@ -383,12 +414,25 @@ pub mod cv {
         }
     }
 
-    pub fn cx_in(xs: CvSxs) -> CvRegs {
+    pub fn cx_in(st: CvSxs, xs: CvSxs) -> CvRegs {
         if null_p(xs) {
             nil::<Product_4name_9registers<Str, List<Int>>>()
         } else {
             let i = cx_items(car(xs));
-            the::<CvRegs>(kayak_rt::heap_cons(Product_4name_9registers(cx_name_of(car(i)), cx_regs(cdr(i))), cx_in(cdr(xs))))
+            the::<CvRegs>(kayak_rt::heap_cons(Product_4name_9registers(cx_name_of(car(i)), cx_regs(st, cdr(i))), cx_in(st, cdr(xs))))
+        }
+    }
+
+    pub fn cx_find(mut xs: CvSxs, mut role: Str) -> &'static CvSx {
+        loop {
+            if null_p(xs) {
+                return cx_list(nil::<&'static made__load__0__fx26_convention::CvSx>());
+            } else if string_eq_p(cx_role(car(xs)), role) {
+                return car(xs);
+            } else {
+                xs = cdr(xs);
+                continue;
+            }
         }
     }
 
@@ -396,9 +440,11 @@ pub mod cv {
         cx_int_at(st, cx_name_of(cx_nth(cx_get(xs, role), int_lit(1))))
     }
 
-    pub fn cv_registers_of(rg: CvSxs) -> CvRegisters {
-        let pin = cx_get(rg, str_lit("pinned"));
-        Product_9arguments_7rest_in_5count_6result_7closure_4link_5frame_5state_4fuel_11stack_limit_13code_distance(cx_regs(cx_get(rg, str_lit("arguments"))), cx_reg_at(rg, str_lit("rest-in")), cx_reg_at(rg, str_lit("count")), cx_reg_at(rg, str_lit("result")), cx_reg_at(rg, str_lit("closure")), cx_reg_at(rg, str_lit("link")), cx_reg_at(rg, str_lit("frame")), cx_reg_at(pin, str_lit("state")), cx_reg_at(pin, str_lit("fuel")), cx_reg_at(pin, str_lit("stack-limit")), cx_reg_at(pin, str_lit("code-distance")))
+    pub fn cv_registers_of(rg: CvSxs, st: CvSxs) -> CvRegisters {
+        let (pin, at) = (cx_get(rg, str_lit("pinned")), lambda2s(move |xs: CvSxs, role: Str| {
+            cx_reg_at(st, xs, role)
+        }));
+        Product_9arguments_7rest_in_5count_6result_7closure_4link_5frame_5state_4fuel_11stack_limit_13code_distance(cx_regs(st, cx_get(rg, str_lit("arguments"))), at(rg, str_lit("rest-in")), at(rg, str_lit("count")), at(rg, str_lit("result")), at(rg, str_lit("closure")), at(rg, str_lit("link")), at(rg, str_lit("frame")), at(pin, str_lit("state")), at(pin, str_lit("fuel")), at(pin, str_lit("stack-limit")), at(pin, str_lit("code-distance")))
     }
 
     pub fn cv_values_of(vs: CvSxs) -> CvValues {
@@ -419,12 +465,12 @@ pub mod cv {
         let at = lambda1s(move |n: Str| {
             cx_int_at(st, n)
         });
-        Product_4fuel_7reserve_4trap_2pc_4args_5nargs_3aux_7callout_7rust_sp_9native_sp_2fp_3top_5words_11alloc_limit_4code_3clo_5delta_7code_lo_9trap_stub_7foreign_7closure_5cards_11stack_limit_8overflow_4poll_4cons_7bloblet(at(str_lit("fuel")), at(str_lit("reserve")), at(str_lit("trap")), at(str_lit("pc")), at(str_lit("args")), at(str_lit("nargs")), at(str_lit("aux")), at(str_lit("callout")), at(str_lit("rust-sp")), at(str_lit("native-sp")), at(str_lit("fp")), at(str_lit("top")), at(str_lit("words")), at(str_lit("alloc-limit")), at(str_lit("code")), at(str_lit("clo")), at(str_lit("delta")), at(str_lit("code-lo")), at(str_lit("trap-stub")), at(str_lit("foreign")), at(str_lit("closure")), at(str_lit("cards")), at(str_lit("stack-limit")), at(str_lit("overflow")), at(str_lit("poll")), at(str_lit("cons")), at(str_lit("bloblet")))
+        Product_4fuel_7reserve_4trap_2pc_4args_5nargs_3aux_7callout_7rust_sp_9native_sp_2fp_3top_5words_11alloc_limit_4code_3clo_5delta_7code_lo_9trap_stub_7foreign_7closure_5cards_11stack_limit_8overflow_4poll_4cons_7bloblet_4reg4(at(str_lit("fuel")), at(str_lit("reserve")), at(str_lit("trap")), at(str_lit("pc")), at(str_lit("args")), at(str_lit("nargs")), at(str_lit("aux")), at(str_lit("callout")), at(str_lit("rust-sp")), at(str_lit("native-sp")), at(str_lit("fp")), at(str_lit("top")), at(str_lit("words")), at(str_lit("alloc-limit")), at(str_lit("code")), at(str_lit("clo")), at(str_lit("delta")), at(str_lit("code-lo")), at(str_lit("trap-stub")), at(str_lit("foreign")), at(str_lit("closure")), at(str_lit("cards")), at(str_lit("stack-limit")), at(str_lit("overflow")), at(str_lit("poll")), at(str_lit("cons")), at(str_lit("bloblet")), at(str_lit("reg4")))
     }
 
     pub fn cv_routine_of(r: CvSxs, st: CvSxs) -> CvRoutine {
-        Product_5entry_2in_3out_11may_collect(cx_state_at(r, str_lit("entry"), st), cx_in(cx_get(r, str_lit("in"))), if cx_has_p(r, str_lit("out")) {
-            cx_reg_at(r, str_lit("out"))
+        Product_5entry_2in_3out_11may_collect(cx_state_at(r, str_lit("entry"), st), cx_in(st, cx_get(r, str_lit("in"))), if cx_has_p(r, str_lit("out")) {
+            cx_reg_at(st, r, str_lit("out"))
         } else {
             int_lit(-1)
         }, cx_has_p(r, str_lit("may-collect")))
@@ -434,17 +480,21 @@ pub mod cv {
         let r#in = cx_get(o, str_lit("in"));
         let info = cx_get(r#in, str_lit("info"));
         let held = cx_get(info, str_lit("arguments-held"));
-        Product_5entry_4code_4info_7held_at_10held_width_12closure_read_8variadic_5keeps(cx_state_at(o, str_lit("entry"), st), cx_reg_at(r#in, str_lit("code")), cx_reg(cx_nth(info, int_lit(0))), cx_int_of(cx_nth(held, int_lit(0))), cx_int_of(cx_nth(held, int_lit(1))), cx_int_at(info, str_lit("closure-read")), cx_int_at(info, str_lit("variadic")), cx_regs(cx_get(o, str_lit("keeps"))))
+        Product_5entry_4code_4info_7held_at_10held_width_12closure_read_8variadic_5keeps(cx_state_at(o, str_lit("entry"), st), cx_reg_at(st, r#in, str_lit("code")), cx_reg(st, cx_nth(info, int_lit(0))), cx_int_of(cx_nth(held, int_lit(0))), cx_int_of(cx_nth(held, int_lit(1))), cx_int_at(info, str_lit("closure-read")), cx_int_at(info, str_lit("variadic")), cx_regs(st, cx_get(o, str_lit("keeps"))))
     }
 
     pub fn cv_routines_of(rt: CvSxs, st: CvSxs) -> CvRoutines {
         let t = cx_get(rt, str_lit("trap"));
-        Product_7foreign_8overflow_4poll_4cons_7bloblet_4trap(cv_routine_of(cx_get(rt, str_lit("foreign")), st), cv_overflow_of(cx_get(rt, str_lit("overflow")), st), cv_routine_of(cx_get(rt, str_lit("poll")), st), cv_routine_of(cx_get(rt, str_lit("cons")), st), cv_routine_of(cx_get(rt, str_lit("bloblet")), st), Product_5entry_4kind_5kinds(cx_state_at(t, str_lit("entry"), st), cx_reg_at(cx_get(t, str_lit("in")), str_lit("kind")), cx_numbered(cx_get(t, str_lit("kinds")))))
+        Product_7foreign_8overflow_4poll_4cons_7bloblet_4trap(cv_routine_of(cx_get(rt, str_lit("foreign")), st), cv_overflow_of(cx_get(rt, str_lit("overflow")), st), cv_routine_of(cx_get(rt, str_lit("poll")), st), cv_routine_of(cx_get(rt, str_lit("cons")), st), cv_routine_of(cx_get(rt, str_lit("bloblet")), st), Product_5entry_4kind_5kinds(cx_state_at(t, str_lit("entry"), st), cx_reg_at(st, cx_get(t, str_lit("in")), str_lit("kind")), cx_numbered(cx_get(t, str_lit("kinds")))))
     }
 
     pub fn cv_of(cs: CvSxs) -> Convention {
         let (st, fu, ba) = (cx_get(cs, str_lit("state")), cx_get(cs, str_lit("fuel")), cx_get(cs, str_lit("barrier")));
-        Product_6target_9registers_6values_8closures_4code_6frames_5state_8routines_4fuel_7barrier(cx_name_of(cx_nth(cx_get(cs, str_lit("target")), int_lit(0))), cv_registers_of(cx_get(cs, str_lit("registers"))), cv_values_of(cx_get(cs, str_lit("values"))), cv_closures_of(cx_get(cs, str_lit("closures")), st), Product_19field_k_before_code(cx_int_at(cx_get(cs, str_lit("code")), str_lit("field-k-before-code"))), cv_frames_of(cx_get(cs, str_lit("frames"))), cv_state_of(st), cv_routines_of(cx_get(cs, str_lit("routines")), st), Product_8register_8subtract(cx_reg_at(fu, str_lit("register")), cx_int_at(fu, str_lit("subtract"))), Product_5cards_10card_shift_4mark(cx_state_at(ba, str_lit("cards"), st), cx_int_at(ba, str_lit("card-shift")), cx_int_at(ba, str_lit("mark"))))
+        Product_6target_9registers_6values_8closures_4code_6frames_5state_8routines_4fuel_7barrier(cx_name_of(cx_nth(cx_get(cs, str_lit("target")), int_lit(0))), cv_registers_of(cx_get(cs, str_lit("registers")), st), cv_values_of(cx_get(cs, str_lit("values"))), cv_closures_of(cx_get(cs, str_lit("closures")), st), Product_19field_k_before_code(cx_int_at(cx_get(cs, str_lit("code")), str_lit("field-k-before-code"))), cv_frames_of(cx_get(cs, str_lit("frames"))), cv_state_of(st), cv_routines_of(cx_get(cs, str_lit("routines")), st), Product_8register_8subtract(if cx_has_p(fu, str_lit("register")) {
+            cx_reg_at(st, fu, str_lit("register"))
+        } else {
+            cx_reg(st, cx_find(fu, str_lit("state")))
+        }, cx_int_at(fu, str_lit("subtract"))), Product_5cards_10card_shift_4mark(cx_state_at(ba, str_lit("cards"), st), cx_int_at(ba, str_lit("card-shift")), cx_int_at(ba, str_lit("mark"))))
     }
 
     pub fn cv_cat(xs: CvStrs) -> Str {
@@ -465,19 +515,59 @@ pub mod cv {
         cv_par(role, kayak_rt::heap_cons(int_to_string(n), kayak_rt::nil()))
     }
 
-    pub fn cv_reg(r: Int) -> Str {
-        if _eq(r, int_lit(31)) {
+    pub fn cv_str_at(mut ns: CvStrs, mut k: Int) -> Str {
+        loop {
+            if null_p(ns) {
+                return str_lit("");
+            } else if _eq(k, int_lit(0)) {
+                return car(ns);
+            } else {
+                (ns, k) = (cdr(ns), _minus(k, int_lit(1)));
+                continue;
+            }
+        }
+    }
+
+    pub fn cv_name_at(mut ns: CvNames, mut k: Int) -> Str {
+        loop {
+            if null_p(ns) {
+                return str_lit("");
+            } else if _eq(car(ns).1, k) {
+                return car(ns).0;
+            } else {
+                ns = cdr(ns);
+                continue;
+            }
+        }
+    }
+
+    pub fn cv_reg(nm: CvNm, r: Int) -> Str {
+        if _gt_eq(r, cv_in_state()) {
+            cv_par(str_lit("state"), kayak_rt::heap_cons(cv_name_at(nm.1, _minus(r, cv_in_state())), kayak_rt::nil()))
+        } else if _eq(r, int_lit(-2)) {
+            str_lit("pushed")
+        } else if nm.0 {
+            cv_str_at(cv_x86_regs(), r)
+        } else if _eq(r, int_lit(31)) {
             str_lit("sp")
         } else {
             string_append(str_lit("x"), int_to_string(r))
         }
     }
 
-    pub fn cv_pr_regs(rs: CvInts) -> CvStrs {
+    pub fn cv_sp(nm: CvNm) -> Str {
+        cv_reg(nm, if nm.0 {
+            int_lit(4)
+        } else {
+            int_lit(31)
+        })
+    }
+
+    pub fn cv_pr_regs(nm: CvNm, rs: CvInts) -> CvStrs {
         if null_p(rs) {
             nil::<Str>()
         } else {
-            the::<CvStrs>(kayak_rt::heap_cons(cv_reg(car(rs)), cv_pr_regs(cdr(rs))))
+            the::<CvStrs>(kayak_rt::heap_cons(cv_reg(nm, car(rs)), cv_pr_regs(nm, cdr(rs))))
         }
     }
 
@@ -497,31 +587,29 @@ pub mod cv {
         }
     }
 
-    pub fn cv_state_names(s: CvState) -> CvNames {
-        let f = lambda2s(move |n: Str, k: Int| {
-            Product_4name_6number(n, k)
-        });
-        kayak_rt::heap_cons(f(str_lit("fuel"), s.0), kayak_rt::heap_cons(f(str_lit("reserve"), s.1), kayak_rt::heap_cons(f(str_lit("trap"), s.2), kayak_rt::heap_cons(f(str_lit("pc"), s.3), kayak_rt::heap_cons(f(str_lit("args"), s.4), kayak_rt::heap_cons(f(str_lit("nargs"), s.5), kayak_rt::heap_cons(f(str_lit("aux"), s.6), kayak_rt::heap_cons(f(str_lit("callout"), s.7), kayak_rt::heap_cons(f(str_lit("rust-sp"), s.8), kayak_rt::heap_cons(f(str_lit("native-sp"), s.9), kayak_rt::heap_cons(f(str_lit("fp"), s.10), kayak_rt::heap_cons(f(str_lit("top"), s.11), kayak_rt::heap_cons(f(str_lit("words"), s.12), kayak_rt::heap_cons(f(str_lit("alloc-limit"), s.13), kayak_rt::heap_cons(f(str_lit("code"), s.14), kayak_rt::heap_cons(f(str_lit("clo"), s.15), kayak_rt::heap_cons(f(str_lit("delta"), s.16), kayak_rt::heap_cons(f(str_lit("code-lo"), s.17), kayak_rt::heap_cons(f(str_lit("trap-stub"), s.18), kayak_rt::heap_cons(f(str_lit("foreign"), s.19), kayak_rt::heap_cons(f(str_lit("closure"), s.20), kayak_rt::heap_cons(f(str_lit("cards"), s.21), kayak_rt::heap_cons(f(str_lit("stack-limit"), s.22), kayak_rt::heap_cons(f(str_lit("overflow"), s.23), kayak_rt::heap_cons(f(str_lit("poll"), s.24), kayak_rt::heap_cons(f(str_lit("cons"), s.25), kayak_rt::heap_cons(f(str_lit("bloblet"), s.26), kayak_rt::nil())))))))))))))))))))))))))))
-    }
-
-    pub fn cv_name_at(mut ns: CvNames, mut k: Int) -> Str {
+    pub fn cv_reg_names(mut at: Int, mut k: Int, mut acc: CvNames) -> CvNames {
         loop {
-            if null_p(ns) {
-                return str_lit("");
-            } else if _eq(car(ns).1, k) {
-                return car(ns).0;
+            if (_eq(at, int_lit(0)) || _lt(k, int_lit(4))) {
+                return acc;
             } else {
-                ns = cdr(ns);
+                (k, acc) = (_minus(k, int_lit(1)), the::<CvNames>(kayak_rt::heap_cons(Product_4name_6number(string_append(str_lit("reg"), int_to_string(k)), _plus(at, _star(int_lit(8), _minus(k, int_lit(4))))), acc)));
                 continue;
             }
         }
     }
 
-    pub fn cv_pr_registers(r: CvRegisters) -> Str {
-        let one = lambda2s(move |role: Str, n: Int| {
-            cv_par(role, kayak_rt::heap_cons(cv_reg(n), kayak_rt::nil()))
+    pub fn cv_state_names(s: CvState) -> CvNames {
+        let f = lambda2s(move |n: Str, k: Int| {
+            Product_4name_6number(n, k)
         });
-        cv_par(str_lit("registers"), kayak_rt::heap_cons(cv_par(str_lit("arguments"), cv_pr_regs(r.0)), kayak_rt::heap_cons(one(str_lit("rest-in"), r.1), kayak_rt::heap_cons(one(str_lit("count"), r.2), kayak_rt::heap_cons(one(str_lit("result"), r.3), kayak_rt::heap_cons(one(str_lit("closure"), r.4), kayak_rt::heap_cons(one(str_lit("link"), r.5), kayak_rt::heap_cons(one(str_lit("frame"), r.6), kayak_rt::heap_cons(cv_par(str_lit("pinned"), kayak_rt::heap_cons(one(str_lit("state"), r.7), kayak_rt::heap_cons(one(str_lit("fuel"), r.8), kayak_rt::heap_cons(one(str_lit("stack-limit"), r.9), kayak_rt::heap_cons(one(str_lit("code-distance"), r.10), kayak_rt::nil()))))), kayak_rt::heap_cons(str_lit("(lost-across-calls all-but-pinned)"), kayak_rt::nil()))))))))))
+        append(kayak_rt::heap_cons(f(str_lit("fuel"), s.0), kayak_rt::heap_cons(f(str_lit("reserve"), s.1), kayak_rt::heap_cons(f(str_lit("trap"), s.2), kayak_rt::heap_cons(f(str_lit("pc"), s.3), kayak_rt::heap_cons(f(str_lit("args"), s.4), kayak_rt::heap_cons(f(str_lit("nargs"), s.5), kayak_rt::heap_cons(f(str_lit("aux"), s.6), kayak_rt::heap_cons(f(str_lit("callout"), s.7), kayak_rt::heap_cons(f(str_lit("rust-sp"), s.8), kayak_rt::heap_cons(f(str_lit("native-sp"), s.9), kayak_rt::heap_cons(f(str_lit("fp"), s.10), kayak_rt::heap_cons(f(str_lit("top"), s.11), kayak_rt::heap_cons(f(str_lit("words"), s.12), kayak_rt::heap_cons(f(str_lit("alloc-limit"), s.13), kayak_rt::heap_cons(f(str_lit("code"), s.14), kayak_rt::heap_cons(f(str_lit("clo"), s.15), kayak_rt::heap_cons(f(str_lit("delta"), s.16), kayak_rt::heap_cons(f(str_lit("code-lo"), s.17), kayak_rt::heap_cons(f(str_lit("trap-stub"), s.18), kayak_rt::heap_cons(f(str_lit("foreign"), s.19), kayak_rt::heap_cons(f(str_lit("closure"), s.20), kayak_rt::heap_cons(f(str_lit("cards"), s.21), kayak_rt::heap_cons(f(str_lit("stack-limit"), s.22), kayak_rt::heap_cons(f(str_lit("overflow"), s.23), kayak_rt::heap_cons(f(str_lit("poll"), s.24), kayak_rt::heap_cons(f(str_lit("cons"), s.25), kayak_rt::heap_cons(f(str_lit("bloblet"), s.26), kayak_rt::nil()))))))))))))))))))))))))))), cv_reg_names(s.27, int_lit(8), nil::<Product_4name_6number<Str, Int>>()))
+    }
+
+    pub fn cv_pr_registers(nm: CvNm, r: CvRegisters) -> Str {
+        let one = lambda2s(move |role: Str, n: Int| {
+            cv_par(role, kayak_rt::heap_cons(cv_reg(nm, n), kayak_rt::nil()))
+        });
+        cv_par(str_lit("registers"), kayak_rt::heap_cons(cv_par(str_lit("arguments"), cv_pr_regs(nm, r.0)), kayak_rt::heap_cons(one(str_lit("rest-in"), r.1), kayak_rt::heap_cons(one(str_lit("count"), r.2), kayak_rt::heap_cons(one(str_lit("result"), r.3), kayak_rt::heap_cons(one(str_lit("closure"), r.4), kayak_rt::heap_cons(one(str_lit("link"), r.5), kayak_rt::heap_cons(one(str_lit("frame"), r.6), kayak_rt::heap_cons(cv_par(str_lit("pinned"), kayak_rt::heap_cons(one(str_lit("state"), r.7), kayak_rt::heap_cons(one(str_lit("fuel"), r.8), kayak_rt::heap_cons(one(str_lit("stack-limit"), r.9), kayak_rt::heap_cons(one(str_lit("code-distance"), r.10), kayak_rt::nil()))))), kayak_rt::heap_cons(str_lit("(lost-across-calls all-but-pinned)"), kayak_rt::nil()))))))))))
     }
 
     pub fn cv_pr_bits(bs: CvBits) -> CvStrs {
@@ -537,54 +625,82 @@ pub mod cv {
         cv_par(str_lit("values"), kayak_rt::heap_cons(cv_par(str_lit("tags"), cv_pr_names(v.0)), kayak_rt::heap_cons(cv_par(str_lit("fixnum"), kayak_rt::heap_cons(cv_kv(str_lit("shift"), v.1), kayak_rt::heap_cons(cv_kv(str_lit("bits"), v.2), kayak_rt::nil()))), kayak_rt::heap_cons(cv_par(str_lit("immediates"), cv_pr_names(v.3)), kayak_rt::heap_cons(cv_par(str_lit("character"), kayak_rt::heap_cons(cv_kv(str_lit("subtag"), v.4), kayak_rt::heap_cons(cv_kv(str_lit("payload-shift"), v.5), kayak_rt::nil()))), kayak_rt::heap_cons(cv_par(str_lit("pair"), kayak_rt::heap_cons(cv_kv(str_lit("car"), v.6), kayak_rt::heap_cons(cv_kv(str_lit("cdr"), v.7), kayak_rt::nil()))), kayak_rt::heap_cons(cv_par(str_lit("bloblet"), kayak_rt::heap_cons(cv_par(str_lit("reference"), kayak_rt::heap_cons(str_lit("suffix"), kayak_rt::heap_cons(int_to_string(v.8), kayak_rt::nil()))), kayak_rt::heap_cons(cv_kv(str_lit("field-k-before-suffix"), v.9), kayak_rt::nil()))), kayak_rt::heap_cons(cv_par(str_lit("header"), cv_pr_bits(v.10)), kayak_rt::heap_cons(cv_par(str_lit("kinds"), cv_pr_names(v.11)), kayak_rt::nil())))))))))
     }
 
-    pub fn cv_pr_frames(f: CvFrames, fp: Int, lr: Int) -> Str {
+    pub fn cv_pr_made(nm: CvNm, f: CvFrames, fp: Int, lr: Int) -> Str {
+        let (sp, above) = (cv_sp(nm), lambda1s(move |k: Int| {
+            int_to_string(_minus(k, f.1))
+        }));
+        cv_par(str_lit("made"), if nm.0 {
+            kayak_rt::heap_cons(str_lit("pop"), kayak_rt::heap_cons(str_lit("return"), kayak_rt::heap_cons(str_lit("sub"), kayak_rt::heap_cons(sp, kayak_rt::heap_cons(str_lit("store"), kayak_rt::heap_cons(cv_reg(nm, fp), kayak_rt::heap_cons(sp, kayak_rt::heap_cons(above(f.2), kayak_rt::heap_cons(str_lit("store"), kayak_rt::heap_cons(str_lit("return"), kayak_rt::heap_cons(sp, kayak_rt::heap_cons(above(f.3), kayak_rt::heap_cons(str_lit("lea"), kayak_rt::heap_cons(cv_reg(nm, fp), kayak_rt::heap_cons(sp, kayak_rt::heap_cons(above(int_lit(0)), kayak_rt::nil()))))))))))))))))
+        } else {
+            kayak_rt::heap_cons(str_lit("sub"), kayak_rt::heap_cons(sp, kayak_rt::heap_cons(str_lit("stp"), kayak_rt::heap_cons(cv_reg(nm, fp), kayak_rt::heap_cons(cv_reg(nm, lr), kayak_rt::heap_cons(str_lit("add"), kayak_rt::heap_cons(cv_reg(nm, fp), kayak_rt::heap_cons(sp, kayak_rt::heap_cons(above(int_lit(0)), kayak_rt::nil())))))))))
+        })
+    }
+
+    pub fn cv_pr_frames(nm: CvNm, f: CvFrames, fp: Int, lr: Int) -> Str {
         let at = lambda2s(move |role: Str, k: Int| {
-            cv_par(role, kayak_rt::heap_cons(cv_reg(fp), kayak_rt::heap_cons(int_to_string(k), kayak_rt::nil())))
+            cv_par(role, kayak_rt::heap_cons(cv_reg(nm, fp), kayak_rt::heap_cons(int_to_string(k), kayak_rt::nil())))
         });
-        cv_par(str_lit("frames"), kayak_rt::heap_cons(cv_kv(str_lit("align"), f.0), kayak_rt::heap_cons(at(str_lit("header"), f.1), kayak_rt::heap_cons(at(str_lit("link"), f.2), kayak_rt::heap_cons(at(str_lit("return"), f.3), kayak_rt::heap_cons(cv_par(str_lit("map"), kayak_rt::heap_cons(cv_reg(fp), kayak_rt::heap_cons(int_to_string(f.4), kayak_rt::heap_cons(cv_kv(str_lit("live-slots-below"), f.6), kayak_rt::heap_cons(cv_par(str_lit("fields-above"), kayak_rt::heap_cons(int_to_string(f.7), kayak_rt::heap_cons(str_lit("link"), kayak_rt::heap_cons(str_lit("return"), kayak_rt::heap_cons(str_lit("map"), kayak_rt::heap_cons(str_lit("values"), kayak_rt::nil())))))), kayak_rt::heap_cons(str_lit("(all-live negative)"), kayak_rt::nil())))))), kayak_rt::heap_cons(at(str_lit("values-from"), f.5), kayak_rt::heap_cons(str_lit("(raw-after-values)"), kayak_rt::heap_cons(str_lit("(keeps-its-code)"), kayak_rt::heap_cons(str_lit("(map-stored-before calls routines-that-collect)"), kayak_rt::heap_cons(cv_par(str_lit("made"), kayak_rt::heap_cons(str_lit("sub"), kayak_rt::heap_cons(str_lit("sp"), kayak_rt::heap_cons(str_lit("stp"), kayak_rt::heap_cons(cv_reg(fp), kayak_rt::heap_cons(cv_reg(lr), kayak_rt::heap_cons(str_lit("add"), kayak_rt::heap_cons(cv_reg(fp), kayak_rt::heap_cons(str_lit("sp"), kayak_rt::heap_cons(int_to_string(_minus(int_lit(0), f.1)), kayak_rt::nil())))))))))), kayak_rt::heap_cons(cv_kv(str_lit("stub"), f.8), kayak_rt::nil()))))))))))))
+        cv_par(str_lit("frames"), kayak_rt::heap_cons(cv_kv(str_lit("align"), f.0), kayak_rt::heap_cons(at(str_lit("header"), f.1), kayak_rt::heap_cons(at(str_lit("link"), f.2), kayak_rt::heap_cons(at(str_lit("return"), f.3), kayak_rt::heap_cons(cv_par(str_lit("map"), kayak_rt::heap_cons(cv_reg(nm, fp), kayak_rt::heap_cons(int_to_string(f.4), kayak_rt::heap_cons(cv_kv(str_lit("live-slots-below"), f.6), kayak_rt::heap_cons(cv_par(str_lit("fields-above"), kayak_rt::heap_cons(int_to_string(f.7), kayak_rt::heap_cons(str_lit("link"), kayak_rt::heap_cons(str_lit("return"), kayak_rt::heap_cons(str_lit("map"), kayak_rt::heap_cons(str_lit("values"), kayak_rt::nil())))))), kayak_rt::heap_cons(str_lit("(all-live negative)"), kayak_rt::nil())))))), kayak_rt::heap_cons(at(str_lit("values-from"), f.5), kayak_rt::heap_cons(str_lit("(raw-after-values)"), kayak_rt::heap_cons(str_lit("(keeps-its-code)"), kayak_rt::heap_cons(str_lit("(map-stored-before calls routines-that-collect)"), kayak_rt::heap_cons(cv_pr_made(nm, f, fp, lr), kayak_rt::heap_cons(cv_kv(str_lit("stub"), f.8), kayak_rt::nil()))))))))))))
     }
 
     pub fn cv_pr_entry(sn: CvNames, k: Int) -> Str {
         cv_par(str_lit("entry"), kayak_rt::heap_cons(str_lit("state"), kayak_rt::heap_cons(cv_name_at(sn, k), kayak_rt::nil())))
     }
 
-    pub fn cv_pr_in(rs: CvRegs) -> CvStrs {
+    pub fn cv_pr_in(nm: CvNm, rs: CvRegs) -> CvStrs {
         if null_p(rs) {
             nil::<Str>()
         } else {
-            the::<CvStrs>(kayak_rt::heap_cons(cv_par(car(rs).0, cv_pr_regs(car(rs).1)), cv_pr_in(cdr(rs))))
+            the::<CvStrs>(kayak_rt::heap_cons(cv_par(car(rs).0, cv_pr_regs(nm, car(rs).1)), cv_pr_in(nm, cdr(rs))))
         }
     }
 
-    pub fn cv_pr_routine(name: Str, r: CvRoutine, sn: CvNames, more: CvStrs) -> Str {
+    pub fn cv_pr_routine(name: Str, r: CvRoutine, nm: CvNm, more: CvStrs) -> Str {
         let tail = if r.3 {
             the::<CvStrs>(kayak_rt::heap_cons(str_lit("(may-collect)"), more))
         } else {
             more
         };
-        let tail = if _lt(r.2, int_lit(0)) {
+        let tail = if _eq(r.2, int_lit(-1)) {
             tail
         } else {
-            the::<CvStrs>(kayak_rt::heap_cons(cv_par(str_lit("out"), kayak_rt::heap_cons(cv_reg(r.2), kayak_rt::nil())), tail))
+            the::<CvStrs>(kayak_rt::heap_cons(cv_par(str_lit("out"), kayak_rt::heap_cons(cv_reg(nm, r.2), kayak_rt::nil())), tail))
         };
-        cv_par(name, the::<CvStrs>(kayak_rt::heap_cons(cv_pr_entry(sn, r.0), kayak_rt::heap_cons(cv_par(str_lit("in"), cv_pr_in(r.1)), tail))))
+        cv_par(name, the::<CvStrs>(kayak_rt::heap_cons(cv_pr_entry(nm.1, r.0), kayak_rt::heap_cons(cv_par(str_lit("in"), cv_pr_in(nm, r.1)), tail))))
     }
 
-    pub fn cv_pr_overflow(o: CvOverflow, sn: CvNames, limit: Int, lr: Int) -> Str {
-        cv_par(str_lit("overflow"), kayak_rt::heap_cons(cv_par(str_lit("when"), kayak_rt::heap_cons(str_lit("sp"), kayak_rt::heap_cons(str_lit("below"), kayak_rt::heap_cons(cv_reg(limit), kayak_rt::heap_cons(str_lit("after-frame-made"), kayak_rt::nil()))))), kayak_rt::heap_cons(cv_par(str_lit("entry"), kayak_rt::heap_cons(str_lit("state"), kayak_rt::heap_cons(cv_name_at(sn, o.0), kayak_rt::heap_cons(str_lit("by"), kayak_rt::heap_cons(cv_reg(lr), kayak_rt::nil()))))), kayak_rt::heap_cons(cv_par(str_lit("in"), kayak_rt::heap_cons(cv_par(str_lit("code"), kayak_rt::heap_cons(cv_reg(o.1), kayak_rt::nil())), kayak_rt::heap_cons(cv_par(str_lit("info"), kayak_rt::heap_cons(cv_reg(o.2), kayak_rt::heap_cons(cv_par(str_lit("arguments-held"), kayak_rt::heap_cons(int_to_string(o.3), kayak_rt::heap_cons(int_to_string(o.4), kayak_rt::nil()))), kayak_rt::heap_cons(cv_kv(str_lit("closure-read"), o.5), kayak_rt::heap_cons(cv_kv(str_lit("variadic"), o.6), kayak_rt::nil()))))), kayak_rt::nil()))), kayak_rt::heap_cons(cv_par(str_lit("keeps"), cv_pr_regs(o.7)), kayak_rt::nil())))))
+    pub fn cv_pr_overflow(o: CvOverflow, nm: CvNm, limit: Int, lr: Int) -> Str {
+        cv_par(str_lit("overflow"), kayak_rt::heap_cons(cv_par(str_lit("when"), kayak_rt::heap_cons(cv_sp(nm), kayak_rt::heap_cons(str_lit("below"), kayak_rt::heap_cons(cv_reg(nm, limit), kayak_rt::heap_cons(str_lit("after-frame-made"), kayak_rt::nil()))))), kayak_rt::heap_cons(cv_par(str_lit("entry"), kayak_rt::heap_cons(str_lit("state"), kayak_rt::heap_cons(cv_name_at(nm.1, o.0), kayak_rt::heap_cons(str_lit("by"), kayak_rt::heap_cons(if _eq(lr, int_lit(-2)) {
+            str_lit("call")
+        } else {
+            cv_reg(nm, lr)
+        }, kayak_rt::nil()))))), kayak_rt::heap_cons(cv_par(str_lit("in"), kayak_rt::heap_cons(cv_par(str_lit("code"), kayak_rt::heap_cons(cv_reg(nm, o.1), kayak_rt::nil())), kayak_rt::heap_cons(cv_par(str_lit("info"), kayak_rt::heap_cons(cv_reg(nm, o.2), kayak_rt::heap_cons(cv_par(str_lit("arguments-held"), kayak_rt::heap_cons(int_to_string(o.3), kayak_rt::heap_cons(int_to_string(o.4), kayak_rt::nil()))), kayak_rt::heap_cons(cv_kv(str_lit("closure-read"), o.5), kayak_rt::heap_cons(cv_kv(str_lit("variadic"), o.6), kayak_rt::nil()))))), kayak_rt::nil()))), kayak_rt::heap_cons(cv_par(str_lit("keeps"), cv_pr_regs(nm, o.7)), kayak_rt::nil())))))
     }
 
-    pub fn cv_pr_routines(c: Convention) -> Str {
-        let (rs, sn, rg) = (c.7, cv_state_names(c.6), c.1);
-        cv_par(str_lit("routines"), kayak_rt::heap_cons(cv_pr_routine(str_lit("foreign"), rs.0, sn, nil::<Str>()), kayak_rt::heap_cons(cv_pr_overflow(rs.1, sn, rg.9, rg.5), kayak_rt::heap_cons(cv_pr_routine(str_lit("poll"), rs.2, sn, kayak_rt::heap_cons(str_lit("(traps-when-spent 1)"), kayak_rt::nil())), kayak_rt::heap_cons(cv_pr_routine(str_lit("cons"), rs.3, sn, nil::<Str>()), kayak_rt::heap_cons(cv_pr_routine(str_lit("bloblet"), rs.4, sn, kayak_rt::heap_cons(str_lit("(makes (kind bloblet) (trailer 1) zeroed)"), kayak_rt::heap_cons(str_lit("(traps-when-refused 3)"), kayak_rt::nil()))), kayak_rt::heap_cons({
+    pub fn cv_pr_routines(c: Convention, nm: CvNm) -> Str {
+        let (rs, sn, rg) = (c.7, nm.1, c.1);
+        cv_par(str_lit("routines"), kayak_rt::heap_cons(cv_pr_routine(str_lit("foreign"), rs.0, nm, nil::<Str>()), kayak_rt::heap_cons(cv_pr_overflow(rs.1, nm, rg.9, rg.5), kayak_rt::heap_cons(cv_pr_routine(str_lit("poll"), rs.2, nm, kayak_rt::heap_cons(str_lit("(traps-when-spent 1)"), kayak_rt::nil())), kayak_rt::heap_cons(cv_pr_routine(str_lit("cons"), rs.3, nm, nil::<Str>()), kayak_rt::heap_cons(cv_pr_routine(str_lit("bloblet"), rs.4, nm, kayak_rt::heap_cons(str_lit("(makes (kind bloblet) (trailer 1) zeroed)"), kayak_rt::heap_cons(str_lit("(traps-when-refused 3)"), kayak_rt::nil()))), kayak_rt::heap_cons({
             let t = rs.5;
-            cv_par(str_lit("trap"), kayak_rt::heap_cons(cv_pr_entry(sn, t.0), kayak_rt::heap_cons(cv_par(str_lit("in"), kayak_rt::heap_cons(cv_par(str_lit("kind"), kayak_rt::heap_cons(cv_reg(t.1), kayak_rt::nil())), kayak_rt::nil())), kayak_rt::heap_cons(cv_par(str_lit("kinds"), cv_pr_numbered(t.2)), kayak_rt::nil()))))
+            cv_par(str_lit("trap"), kayak_rt::heap_cons(cv_pr_entry(sn, t.0), kayak_rt::heap_cons(cv_par(str_lit("in"), kayak_rt::heap_cons(cv_par(str_lit("kind"), kayak_rt::heap_cons(cv_reg(nm, t.1), kayak_rt::nil())), kayak_rt::nil())), kayak_rt::heap_cons(cv_par(str_lit("kinds"), cv_pr_numbered(t.2)), kayak_rt::nil()))))
         }, kayak_rt::nil())))))))
     }
 
+    pub fn cv_naming(c: Convention) -> CvNm {
+        Product_3x86_2sn(string_eq_p(c.0, str_lit("x86_64")), cv_state_names(c.6))
+    }
+
     pub fn cv_print(c: Convention) -> CvStrs {
-        let (rg, cl, sn, fu, ba) = (c.1, c.3, cv_state_names(c.6), c.8, c.9);
-        kayak_rt::heap_cons(cv_par(str_lit("target"), kayak_rt::heap_cons(c.0, kayak_rt::nil())), kayak_rt::heap_cons(cv_pr_registers(rg), kayak_rt::heap_cons(cv_pr_values(c.2), kayak_rt::heap_cons(cv_par(str_lit("closures"), kayak_rt::heap_cons(cv_kv(str_lit("kind"), cl.0), kayak_rt::heap_cons(cv_kv(str_lit("code-field"), cl.1), kayak_rt::heap_cons(cv_kv(str_lit("first-free-field"), cl.2), kayak_rt::heap_cons(cv_par(str_lit("native-when-code-at-least"), kayak_rt::heap_cons(cv_name_at(sn, cl.3), kayak_rt::nil())), kayak_rt::nil()))))), kayak_rt::heap_cons(cv_par(str_lit("code"), kayak_rt::heap_cons(cv_par(str_lit("runs-at"), kayak_rt::heap_cons(str_lit("reference"), kayak_rt::heap_cons(str_lit("plus"), kayak_rt::heap_cons(cv_reg(rg.10), kayak_rt::nil())))), kayak_rt::heap_cons(cv_kv(str_lit("field-k-before-code"), c.4.0), kayak_rt::nil()))), kayak_rt::heap_cons(cv_pr_frames(c.5, rg.6, rg.5), kayak_rt::heap_cons(cv_par(str_lit("state"), cv_pr_names(sn)), kayak_rt::heap_cons(cv_pr_routines(c), kayak_rt::heap_cons(cv_par(str_lit("fuel"), kayak_rt::heap_cons(cv_par(str_lit("register"), kayak_rt::heap_cons(cv_reg(fu.0), kayak_rt::nil())), kayak_rt::heap_cons(cv_kv(str_lit("subtract"), fu.1), kayak_rt::heap_cons(str_lit("(on entry back-edge)"), kayak_rt::heap_cons(str_lit("(borrow poll)"), kayak_rt::nil()))))), kayak_rt::heap_cons(cv_par(str_lit("barrier"), kayak_rt::heap_cons(cv_par(str_lit("cards"), kayak_rt::heap_cons(str_lit("state"), kayak_rt::heap_cons(cv_name_at(sn, ba.0), kayak_rt::nil()))), kayak_rt::heap_cons(cv_kv(str_lit("card-shift"), ba.1), kayak_rt::heap_cons(cv_kv(str_lit("mark"), ba.2), kayak_rt::nil())))), kayak_rt::nil()))))))))))
+        let rg = c.1;
+        let cl = c.3;
+        let nm = cv_naming(c);
+        let sn = nm.1;
+        let fu = c.8;
+        let ba = c.9;
+        kayak_rt::heap_cons(cv_par(str_lit("target"), kayak_rt::heap_cons(c.0, kayak_rt::nil())), kayak_rt::heap_cons(cv_pr_registers(nm, rg), kayak_rt::heap_cons(cv_pr_values(c.2), kayak_rt::heap_cons(cv_par(str_lit("closures"), kayak_rt::heap_cons(cv_kv(str_lit("kind"), cl.0), kayak_rt::heap_cons(cv_kv(str_lit("code-field"), cl.1), kayak_rt::heap_cons(cv_kv(str_lit("first-free-field"), cl.2), kayak_rt::heap_cons(cv_par(str_lit("native-when-code-at-least"), kayak_rt::heap_cons(cv_name_at(sn, cl.3), kayak_rt::nil())), kayak_rt::nil()))))), kayak_rt::heap_cons(cv_par(str_lit("code"), kayak_rt::heap_cons(cv_par(str_lit("runs-at"), kayak_rt::heap_cons(str_lit("reference"), kayak_rt::heap_cons(str_lit("plus"), kayak_rt::heap_cons(cv_reg(nm, rg.10), kayak_rt::nil())))), kayak_rt::heap_cons(cv_kv(str_lit("field-k-before-code"), c.4.0), kayak_rt::nil()))), kayak_rt::heap_cons(cv_pr_frames(nm, c.5, rg.6, rg.5), kayak_rt::heap_cons(cv_par(str_lit("state"), cv_pr_names(sn)), kayak_rt::heap_cons(cv_pr_routines(c, nm), kayak_rt::heap_cons(cv_par(str_lit("fuel"), kayak_rt::heap_cons(if _gt_eq(fu.0, cv_in_state()) {
+            cv_reg(nm, fu.0)
+        } else {
+            cv_par(str_lit("register"), kayak_rt::heap_cons(cv_reg(nm, fu.0), kayak_rt::nil()))
+        }, kayak_rt::heap_cons(cv_kv(str_lit("subtract"), fu.1), kayak_rt::heap_cons(str_lit("(on entry back-edge)"), kayak_rt::heap_cons(str_lit("(borrow poll)"), kayak_rt::nil()))))), kayak_rt::heap_cons(cv_par(str_lit("barrier"), kayak_rt::heap_cons(cv_par(str_lit("cards"), kayak_rt::heap_cons(str_lit("state"), kayak_rt::heap_cons(cv_name_at(sn, ba.0), kayak_rt::nil()))), kayak_rt::heap_cons(cv_kv(str_lit("card-shift"), ba.1), kayak_rt::heap_cons(cv_kv(str_lit("mark"), ba.2), kayak_rt::nil())))), kayak_rt::nil()))))))))))
     }
 
     pub fn cv_role_of(t: Str) -> Str {
@@ -657,9 +773,9 @@ pub mod cv {
             }
         };
         if string_eq_p(why, str_lit("")) {
-            kayak_rt::heap_alloc(Sum_2ok_7refused::<Product_6target_9registers_6values_8closures_4code_6frames_5state_8routines_4fuel_7barrier<Str, Product_9arguments_7rest_in_5count_6result_7closure_4link_5frame_5state_4fuel_11stack_limit_13code_distance<List<Int>, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int>, Product_4tags_12fixnum_shift_11fixnum_bits_10immediates_11char_subtag_18char_payload_shift_3car_3cdr_19bloblet_past_suffix_21field_k_before_suffix_6header_5kinds<List<Product_4name_6number<Str, Int>>, Int, Int, List<Product_4name_6number<Str, Int>>, Int, Int, Int, Int, Int, Int, List<Product_4name_2at_5width<Str, Int, Int>>, List<Product_4name_6number<Str, Int>>>, Product_4kind_10code_field_16first_free_field_25native_when_code_at_least<Int, Int, Int, Int>, Product_19field_k_before_code<Int>, Product_5align_6header_4link_6return_3map_11values_from_10live_below_12fields_above_4stub<Int, Int, Int, Int, Int, Int, Int, Int, Int>, Product_4fuel_7reserve_4trap_2pc_4args_5nargs_3aux_7callout_7rust_sp_9native_sp_2fp_3top_5words_11alloc_limit_4code_3clo_5delta_7code_lo_9trap_stub_7foreign_7closure_5cards_11stack_limit_8overflow_4poll_4cons_7bloblet<Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int>, Product_7foreign_8overflow_4poll_4cons_7bloblet_4trap<Product_5entry_2in_3out_11may_collect<Int, List<Product_4name_9registers<Str, List<Int>>>, Int, bool>, Product_5entry_4code_4info_7held_at_10held_width_12closure_read_8variadic_5keeps<Int, Int, Int, Int, Int, Int, Int, List<Int>>, Product_5entry_2in_3out_11may_collect<Int, List<Product_4name_9registers<Str, List<Int>>>, Int, bool>, Product_5entry_2in_3out_11may_collect<Int, List<Product_4name_9registers<Str, List<Int>>>, Int, bool>, Product_5entry_2in_3out_11may_collect<Int, List<Product_4name_9registers<Str, List<Int>>>, Int, bool>, Product_5entry_4kind_5kinds<Int, Int, List<Product_4name_6number<Str, Int>>>>, Product_8register_8subtract<Int, Int>, Product_5cards_10card_shift_4mark<Int, Int, Int>>, Str>::Ok(c))
+            kayak_rt::heap_alloc(Sum_2ok_7refused::<Product_6target_9registers_6values_8closures_4code_6frames_5state_8routines_4fuel_7barrier<Str, Product_9arguments_7rest_in_5count_6result_7closure_4link_5frame_5state_4fuel_11stack_limit_13code_distance<List<Int>, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int>, Product_4tags_12fixnum_shift_11fixnum_bits_10immediates_11char_subtag_18char_payload_shift_3car_3cdr_19bloblet_past_suffix_21field_k_before_suffix_6header_5kinds<List<Product_4name_6number<Str, Int>>, Int, Int, List<Product_4name_6number<Str, Int>>, Int, Int, Int, Int, Int, Int, List<Product_4name_2at_5width<Str, Int, Int>>, List<Product_4name_6number<Str, Int>>>, Product_4kind_10code_field_16first_free_field_25native_when_code_at_least<Int, Int, Int, Int>, Product_19field_k_before_code<Int>, Product_5align_6header_4link_6return_3map_11values_from_10live_below_12fields_above_4stub<Int, Int, Int, Int, Int, Int, Int, Int, Int>, Product_4fuel_7reserve_4trap_2pc_4args_5nargs_3aux_7callout_7rust_sp_9native_sp_2fp_3top_5words_11alloc_limit_4code_3clo_5delta_7code_lo_9trap_stub_7foreign_7closure_5cards_11stack_limit_8overflow_4poll_4cons_7bloblet_4reg4<Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int>, Product_7foreign_8overflow_4poll_4cons_7bloblet_4trap<Product_5entry_2in_3out_11may_collect<Int, List<Product_4name_9registers<Str, List<Int>>>, Int, bool>, Product_5entry_4code_4info_7held_at_10held_width_12closure_read_8variadic_5keeps<Int, Int, Int, Int, Int, Int, Int, List<Int>>, Product_5entry_2in_3out_11may_collect<Int, List<Product_4name_9registers<Str, List<Int>>>, Int, bool>, Product_5entry_2in_3out_11may_collect<Int, List<Product_4name_9registers<Str, List<Int>>>, Int, bool>, Product_5entry_2in_3out_11may_collect<Int, List<Product_4name_9registers<Str, List<Int>>>, Int, bool>, Product_5entry_4kind_5kinds<Int, Int, List<Product_4name_6number<Str, Int>>>>, Product_8register_8subtract<Int, Int>, Product_5cards_10card_shift_4mark<Int, Int, Int>>, Str>::Ok(c))
         } else {
-            kayak_rt::heap_alloc(Sum_2ok_7refused::<Product_6target_9registers_6values_8closures_4code_6frames_5state_8routines_4fuel_7barrier<Str, Product_9arguments_7rest_in_5count_6result_7closure_4link_5frame_5state_4fuel_11stack_limit_13code_distance<List<Int>, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int>, Product_4tags_12fixnum_shift_11fixnum_bits_10immediates_11char_subtag_18char_payload_shift_3car_3cdr_19bloblet_past_suffix_21field_k_before_suffix_6header_5kinds<List<Product_4name_6number<Str, Int>>, Int, Int, List<Product_4name_6number<Str, Int>>, Int, Int, Int, Int, Int, Int, List<Product_4name_2at_5width<Str, Int, Int>>, List<Product_4name_6number<Str, Int>>>, Product_4kind_10code_field_16first_free_field_25native_when_code_at_least<Int, Int, Int, Int>, Product_19field_k_before_code<Int>, Product_5align_6header_4link_6return_3map_11values_from_10live_below_12fields_above_4stub<Int, Int, Int, Int, Int, Int, Int, Int, Int>, Product_4fuel_7reserve_4trap_2pc_4args_5nargs_3aux_7callout_7rust_sp_9native_sp_2fp_3top_5words_11alloc_limit_4code_3clo_5delta_7code_lo_9trap_stub_7foreign_7closure_5cards_11stack_limit_8overflow_4poll_4cons_7bloblet<Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int>, Product_7foreign_8overflow_4poll_4cons_7bloblet_4trap<Product_5entry_2in_3out_11may_collect<Int, List<Product_4name_9registers<Str, List<Int>>>, Int, bool>, Product_5entry_4code_4info_7held_at_10held_width_12closure_read_8variadic_5keeps<Int, Int, Int, Int, Int, Int, Int, List<Int>>, Product_5entry_2in_3out_11may_collect<Int, List<Product_4name_9registers<Str, List<Int>>>, Int, bool>, Product_5entry_2in_3out_11may_collect<Int, List<Product_4name_9registers<Str, List<Int>>>, Int, bool>, Product_5entry_2in_3out_11may_collect<Int, List<Product_4name_9registers<Str, List<Int>>>, Int, bool>, Product_5entry_4kind_5kinds<Int, Int, List<Product_4name_6number<Str, Int>>>>, Product_8register_8subtract<Int, Int>, Product_5cards_10card_shift_4mark<Int, Int, Int>>, Str>::Refused(why))
+            kayak_rt::heap_alloc(Sum_2ok_7refused::<Product_6target_9registers_6values_8closures_4code_6frames_5state_8routines_4fuel_7barrier<Str, Product_9arguments_7rest_in_5count_6result_7closure_4link_5frame_5state_4fuel_11stack_limit_13code_distance<List<Int>, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int>, Product_4tags_12fixnum_shift_11fixnum_bits_10immediates_11char_subtag_18char_payload_shift_3car_3cdr_19bloblet_past_suffix_21field_k_before_suffix_6header_5kinds<List<Product_4name_6number<Str, Int>>, Int, Int, List<Product_4name_6number<Str, Int>>, Int, Int, Int, Int, Int, Int, List<Product_4name_2at_5width<Str, Int, Int>>, List<Product_4name_6number<Str, Int>>>, Product_4kind_10code_field_16first_free_field_25native_when_code_at_least<Int, Int, Int, Int>, Product_19field_k_before_code<Int>, Product_5align_6header_4link_6return_3map_11values_from_10live_below_12fields_above_4stub<Int, Int, Int, Int, Int, Int, Int, Int, Int>, Product_4fuel_7reserve_4trap_2pc_4args_5nargs_3aux_7callout_7rust_sp_9native_sp_2fp_3top_5words_11alloc_limit_4code_3clo_5delta_7code_lo_9trap_stub_7foreign_7closure_5cards_11stack_limit_8overflow_4poll_4cons_7bloblet_4reg4<Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int, Int>, Product_7foreign_8overflow_4poll_4cons_7bloblet_4trap<Product_5entry_2in_3out_11may_collect<Int, List<Product_4name_9registers<Str, List<Int>>>, Int, bool>, Product_5entry_4code_4info_7held_at_10held_width_12closure_read_8variadic_5keeps<Int, Int, Int, Int, Int, Int, Int, List<Int>>, Product_5entry_2in_3out_11may_collect<Int, List<Product_4name_9registers<Str, List<Int>>>, Int, bool>, Product_5entry_2in_3out_11may_collect<Int, List<Product_4name_9registers<Str, List<Int>>>, Int, bool>, Product_5entry_2in_3out_11may_collect<Int, List<Product_4name_9registers<Str, List<Int>>>, Int, bool>, Product_5entry_4kind_5kinds<Int, Int, List<Product_4name_6number<Str, Int>>>>, Product_8register_8subtract<Int, Int>, Product_5cards_10card_shift_4mark<Int, Int, Int>>, Str>::Refused(why))
         }
     }
 
@@ -671,7 +787,7 @@ pub mod cv {
 pub mod cvt {
     use super::*;
 
-    pub use super::made__load__0__fx26_convention::{cx_name, cx_int, cx_list, CvSx, CvSxs, CvAt, CvSxsAt, CvNames, CvInts, CvStrs, CvRegs, CvRegisters, CvBits, CvValues, CvClosures, CvCode, CvFrames, CvState, CvRoutine, CvOverflow, CvTrap, CvRoutines, CvFuel, CvBarrier, Convention, CvRead};
+    pub use super::made__load__0__fx26_convention::{cx_name, cx_int, cx_list, CvSx, CvSxs, CvAt, CvSxsAt, CvNames, CvInts, CvStrs, CvRegs, CvRegisters, CvBits, CvValues, CvClosures, CvCode, CvFrames, CvState, CvRoutine, CvOverflow, CvTrap, CvRoutines, CvFuel, CvBarrier, Convention, CvNm, CvRead};
 }
 
 pub type Convention = cvt::Convention;

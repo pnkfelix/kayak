@@ -9,10 +9,10 @@
 "out": [
 "define here : bool ! pure",
 "define put-all : (subr (maxeff (read (globals put-all)) (read @heap) (write @heap) spin) ((bloblet (fields) @heap) int (listof int @heap)) unit) ! pure",
-"define adder : (subr (maxeff (alloc @heap) (io native) (read (globals put-all)) (read @heap) (write @heap) spin) () (subr (conv native) pure (int int) int)) ! pure",
+"define adder : (subr (maxeff (alloc @heap) (io native) (read (globals put-all)) (read @heap) (write @heap) spin) () (subr pure (int int) int)) ! pure",
 "define via : (subr (maxeff (alloc @heap) (io native) (read (globals adder put-all)) (read @heap) (write @heap) spin) () int) ! pure",
-"define via2 : (subr pure ((subr (conv native) pure (int int) int)) int) ! pure",
-"define via3 : (subr pure ((subr (conv native) pure (int int) int)) int) ! pure",
+"define via2 : (subr pure ((subr pure (int int) int)) int) ! pure",
+"define via3 : (subr pure ((subr pure (int int) int)) int) ! pure",
 "int ! (maxeff (alloc @heap) (io native) (read (globals adder here put-all via)) (read @heap) (write @heap) spin)",
 "int ! (maxeff (alloc @heap) (io native) (read (globals adder here put-all via2)) (read @heap) (write @heap) spin)",
 "int ! (maxeff (alloc @heap) (io native) (read (globals adder here put-all via3)) (read @heap) (write @heap) spin)",

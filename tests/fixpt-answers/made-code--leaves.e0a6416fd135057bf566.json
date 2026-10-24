@@ -9,7 +9,7 @@
 "out": [
 "define here : bool ! pure",
 "define put4 : (subr (write @heap) ((bloblet (fields) @heap) int int) unit) ! pure",
-"define adder : (subr (maxeff (alloc @heap) (io native) (read (globals put4)) (write @heap)) () (subr (conv native) pure (int int) int)) ! pure",
+"define adder : (subr (maxeff (alloc @heap) (io native) (read (globals put4)) (write @heap)) () (subr pure (int int) int)) ! pure",
 "define holder : (subr (maxeff (alloc @heap) (io native) (read (globals put4)) (write @heap)) ((pairof int int @heap)) held) ! pure",
 "define churn : (subr (maxeff (alloc @heap) (read (globals churn)) (read @heap) spin) (int (listof int @heap)) int) ! pure",
 "bool ! pure",

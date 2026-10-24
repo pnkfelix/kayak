@@ -9,7 +9,7 @@
 "out": [
 "define here : bool ! pure",
 "define put-all : (subr (maxeff (read (globals put-all)) (read @heap) (write @heap) spin) ((bloblet (fields) @heap) int (listof int @heap)) unit) ! pure",
-"define adder : (subr (maxeff (alloc @heap) (io native) (read (globals put-all)) (read @heap) (write @heap) spin) () (subr (conv native) pure (int int) int)) ! pure",
+"define adder : (subr (maxeff (alloc @heap) (io native) (read (globals put-all)) (read @heap) (write @heap) spin) () (subr pure (int int) int)) ! pure",
 "define holder : (subr (maxeff (alloc @heap) (io native) (read (globals put-all)) (read @heap) (write @heap) spin) ((pairof int int @heap)) held) ! pure",
 "define churn : (subr (maxeff (alloc @heap) (read (globals churn)) (read @heap) spin) (int (listof int @heap)) int) ! pure",
 "bool ! pure",

@@ -5,15 +5,12 @@
 "eval",
 "declared.fx"
 ],
-"code": 0,
+"code": 1,
 "out": [
-"put-all : (subr (maxeff (read @heap) (write @heap) spin (read (globals put-all))) ((bloblet (fields) @heap) int (listof int @heap)) unit) ! pure",
-"subtracter : (subr (maxeff (read @heap) (write @heap) (alloc @heap) spin (io native) (read (globals put-all))) () (subr (conv native) pure (int int) int)) ! pure",
-"\"(target x86_64)\" : string ! pure",
-"42 : int ! (maxeff (read @heap) (write @heap) (alloc @heap) spin (io native) (read (globals put-all subtracter)))",
 ""
 ],
 "err": [
+"fixpt: <programs>/made-code-x86_64/declared.fx:35:3: `define-convention`: the `code` clause is not this implementation's: (code (runs-at reference plus x26) (field-k-before-code 8))",
 ""
 ]
 }
