@@ -19,7 +19,7 @@ use super::*;
 // region an arena or a reap entered and left (C145); a prompt the routine
 // that runs its body, a procedure of nothing, under its tag (C146). Not
 // yet: Fixpt's middle phase (its plans, inlining, specialization), lambda
-// lifting, register code (the words' twins), bloblets.
+// lifting, register code (the words' twins). Bloblets and floats: C152.
 // fixpt-source: crates/fixpt-fx26/src/compile.fx@bb3f570
 // fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@8f76d65
 // fixpt-source: crates/fixpt-fx26/src/compile-state.fx@8f76d65
@@ -1309,6 +1309,7 @@ pub enum Cx {
     XBool(bool, i64),
     XStr(Str, i64),
     XChar(char, i64),
+    XFloat(Int, i64),
     XSym(Str, i64),
     XUnit(i64),
     XLambda(Strings, &'static Cx, i64),
@@ -1322,6 +1323,7 @@ pub enum Cx {
     XSum(Str, &'static Cx, i64),
     XTagcase(&'static Cx, List<&'static Carm>, List<&'static Cbind>, i64),
     XPrompt(&'static Cx, &'static Cx, &'static Cx, i64),
+    XBloblet(Str, i64, List<&'static Cx>, i64),
     XRegion(i64, Str, &'static Cx, i64),
     XRlambda(&'static Cx, &'static Cx, i64),
     XModule(List<&'static Cmem>, i64),
@@ -1347,6 +1349,10 @@ pub fn x_str(f0: Str, f1: i64) -> &'static Cx {
 
 pub fn x_char(f0: char, f1: i64) -> &'static Cx {
     kayak_rt::heap_alloc(Cx::XChar(f0, f1))
+}
+
+pub fn x_float(f0: Int, f1: i64) -> &'static Cx {
+    kayak_rt::heap_alloc(Cx::XFloat(f0, f1))
 }
 
 pub fn x_sym(f0: Str, f1: i64) -> &'static Cx {
@@ -1399,6 +1405,10 @@ pub fn x_tagcase(f0: &'static Cx, f1: List<&'static Carm>, f2: List<&'static Cbi
 
 pub fn x_prompt(f0: &'static Cx, f1: &'static Cx, f2: &'static Cx, f3: i64) -> &'static Cx {
     kayak_rt::heap_alloc(Cx::XPrompt(f0, f1, f2, f3))
+}
+
+pub fn x_bloblet(f0: Str, f1: i64, f2: List<&'static Cx>, f3: i64) -> &'static Cx {
+    kayak_rt::heap_alloc(Cx::XBloblet(f0, f1, f2, f3))
 }
 
 pub fn x_region(f0: i64, f1: Str, f2: &'static Cx, f3: i64) -> &'static Cx {
@@ -1532,6 +1542,9 @@ pub fn cx_start(x: &'static Cx) -> i64 {
         Cx::XChar(c, a) => {
             a
         }
+        Cx::XFloat(b, a) => {
+            a
+        }
         Cx::XSym(s, a) => {
             a
         }
@@ -1569,6 +1582,9 @@ pub fn cx_start(x: &'static Cx) -> i64 {
             a
         }
         Cx::XPrompt(t, body, h, a) => {
+            a
+        }
+        Cx::XBloblet(op, i, xs, a) => {
             a
         }
         Cx::XRegion(k, r, body, a) => {
@@ -1738,6 +1754,9 @@ pub fn c_free(mut x: &'static Cx, mut bound: Strings, mut acc: Strings) -> Strin
             Cx::XPrompt(t, body, h, a) => {
                 (x, acc) = (t, c_free(body, bound, c_free(h, bound, acc)));
                 continue;
+            }
+            Cx::XBloblet(op, i, xs, a) => {
+                return c_free_all(xs, bound, acc);
             }
             Cx::XRegion(k, r, body, a) => {
                 (x, bound) = (body, kayak_rt::heap_cons(r, bound));
@@ -2074,6 +2093,80 @@ pub fn dt_constructors(vs: Sexps, a: i64) -> List<&'static Ctop> {
     }
 }
 
+pub fn bloblet_form_p(h: Str) -> bool {
+    string_member_p(h, kayak_rt::heap_cons(str_lit("make-bloblet"), kayak_rt::heap_cons(str_lit("rmake-bloblet"), kayak_rt::heap_cons(str_lit("bloblet-ref"), kayak_rt::heap_cons(str_lit("bloblet-set!"), kayak_rt::heap_cons(str_lit("bloblet-freeze"), kayak_rt::heap_cons(str_lit("bloblet-byte"), kayak_rt::heap_cons(str_lit("bloblet-set-byte!"), kayak_rt::heap_cons(str_lit("bloblet-bytes"), kayak_rt::heap_cons(str_lit("blobref-at"), kayak_rt::heap_cons(str_lit("blobref+"), kayak_rt::heap_cons(str_lit("blobref-owner"), kayak_rt::heap_cons(str_lit("blobref-offset"), kayak_rt::heap_cons(str_lit("blobref-get"), kayak_rt::heap_cons(str_lit("blobref-set!"), kayak_rt::heap_cons(str_lit("blobref-index"), kayak_rt::heap_cons(str_lit("blobref-variant!"), kayak_rt::nil())))))))))))))))))
+}
+
+// The scalar flat's layout code (`fixpt_heap::layout::FLAT_*`), or -1.
+pub fn flat_code(s: Str) -> i64 {
+    if string_eq_p(s, str_lit("i32")) {
+        0i64
+    } else if string_eq_p(s, str_lit("u32")) {
+        1i64
+    } else if string_eq_p(s, str_lit("i64")) {
+        2i64
+    } else if string_eq_p(s, str_lit("u64")) {
+        3i64
+    } else if string_eq_p(s, str_lit("f32")) {
+        4i64
+    } else if string_eq_p(s, str_lit("f64")) {
+        5i64
+    } else {
+        -1i64
+    }
+}
+
+pub fn words_i64(w: Str) -> List<i64> {
+    map(lambda1s(move |x: Str| {
+        digits_i64(string_chars(x), 0i64)
+    }), split_words(w))
+}
+
+pub fn second_i64(xs: List<i64>) -> i64 {
+    if null_p(cdr(xs)) {
+        0i64
+    } else {
+        car(cdr(xs))
+    }
+}
+
+// What blobref operation `op` at `a` takes for what the checker found of
+// it, as Fixpt's `k-datum-operand` gives it: a new blobref's size, a
+// scalar's code, an array's length and element size (`n << 32 | size`), a
+// keyed flat sum's code (its key's width, 8, its variants' offset times
+// 256); -1 for none.
+pub fn blob_operand(op: Str, f: Str, a: i64) -> i64 {
+    let at = lambda1(move |prefix: Str| {
+        fact_text(get(cg_facts()), f, a, prefix)
+    });
+    if (string_eq_p(op, str_lit("blobref-at")) || string_eq_p(op, str_lit("blobref+"))) {
+        let n = at(str_lit("blob-size "));
+        if string_eq_p(n, str_lit("")) {
+            -1i64
+        } else {
+            digits_i64(string_chars(n), 0i64)
+        }
+    } else if (string_eq_p(op, str_lit("blobref-get")) || string_eq_p(op, str_lit("blobref-set!"))) {
+        flat_code(at(str_lit("blob-scalar ")))
+    } else if string_eq_p(op, str_lit("blobref-index")) {
+        let ns = words_i64(at(str_lit("blob-element ")));
+        if null_p(ns) {
+            -1i64
+        } else {
+            i64_plus(i64_star(second_i64(ns), 4294967296i64), car(ns))
+        }
+    } else if string_eq_p(op, str_lit("blobref-variant!")) {
+        let ws = split_words(at(str_lit("blob-variant ")));
+        if null_p(ws) {
+            -1i64
+        } else {
+            i64_plus(i64_plus(digits_i64(string_chars(car(ws)), 0i64), 8i64), i64_star(256i64, digits_i64(string_chars(car(cdr(cdr(ws)))), 0i64)))
+        }
+    } else {
+        -1i64
+    }
+}
+
 // A generative type's conversions, `up-t` and `down-t`, each `(lambda (x)
 // x)` where the form is, as Fixpt's parser's `identity-at` makes them.
 pub fn generative_conversions(t: Str, a: i64) -> List<&'static Ctop> {
@@ -2219,8 +2312,7 @@ pub fn parse_x(e: &'static Sexp) -> &'static Cx {
             x_str(s, p)
         }
         Sexp::Real(x, f, p) => {
-            match cg_fail(str_lit("not yet: a float")) {};
-            x_unit(p)
+            x_float(u64_to_int(f64_to_bits(real_value(x))), p)
         }
         Sexp::Sym(n, f, p) => {
             if string_eq_p(n, str_lit("#t")) {
@@ -2304,13 +2396,17 @@ pub fn parse_form(h: Str, xs: Sexps, e: &'static Sexp, f: Str, a: i64) -> &'stat
     } else if string_eq_p(h, str_lit("product")) {
         x_product(parse_fields(cdr(xs)), a)
     } else if string_eq_p(h, str_lit("extract")) {
-        let k = fact_text(get(cg_facts()), f, a, str_lit("extract-index "));
-        if string_eq_p(k, str_lit("")) {
+        let (k, o) = (fact_text(get(cg_facts()), f, a, str_lit("extract-index ")), fact_text(get(cg_facts()), f, a, str_lit("blob-offset ")));
+        if not(string_eq_p(k, str_lit(""))) {
+            x_extract(parse_x(second(xs)), digits_i64(string_chars(k), 0i64), a)
+        } else if not(string_eq_p(o, str_lit(""))) {
+            x_bloblet(str_lit("%blobref-field"), digits_i64(string_chars(o), 0i64), kayak_rt::heap_cons(parse_x(second(xs)), kayak_rt::nil()), a)
+        } else {
             match cg_fail(str_lit("an extract the checker did not see")) {};
             x_unit(a)
-        } else {
-            x_extract(parse_x(second(xs)), digits_i64(string_chars(k), 0i64), a)
         }
+    } else if bloblet_form_p(h) {
+        parse_bloblet(h, cdr(xs), f, a)
     } else if string_eq_p(h, str_lit("sum")) {
         x_sum(label_of(second(xs)), parse_x(car(cdr(cdr(xs)))), a)
     } else if string_eq_p(h, str_lit("tagcase")) {
@@ -2351,6 +2447,32 @@ pub fn parse_form(h: Str, xs: Sexps, e: &'static Sexp, f: Str, a: i64) -> &'stat
         x_unit(a)
     } else {
         x_app(parse_x(car(xs)), parse_args(cdr(xs)), a)
+    }
+}
+
+/// A bloblet's or a blobref's operation (Fixpt's `e-bloblet`), and what
+/// the checker found it takes (C152): a field's index, written; a new
+/// blobref's size; a scalar's layout, an array's, a flat sum's.
+pub fn parse_bloblet(op: Str, args: Sexps, f: Str, a: i64) -> &'static Cx {
+    if (string_eq_p(op, str_lit("bloblet-ref")) || string_eq_p(op, str_lit("bloblet-set!"))) {
+        x_bloblet(op, {
+            let tagcase_ = second(args);
+            match *tagcase_ {
+                Sexp::Num(k, f2, p2) => {
+                    k
+                }
+                _ => {
+                    let other = tagcase_;
+                    the::<i64>(-1i64)
+                }
+            }
+        }, kayak_rt::heap_cons(parse_x(car(args)), if string_eq_p(op, str_lit("bloblet-set!")) {
+            kayak_rt::heap_cons(parse_x(third(args)), kayak_rt::nil())
+        } else {
+            nil::<&'static Cx>()
+        }), a)
+    } else {
+        x_bloblet(op, blob_operand(op, f, a), parse_xs(args), a)
     }
 }
 
@@ -3036,6 +3158,7 @@ pub enum Lit {
     LNil(),
     LStr(Str),
     LChar(char),
+    LF64(Int),
     LSym(Str),
     LPair(&'static Lit, &'static Lit),
     LWord(Str),
@@ -3063,6 +3186,10 @@ pub fn l_str(f0: Str) -> &'static Lit {
 
 pub fn l_char(f0: char) -> &'static Lit {
     kayak_rt::heap_alloc(Lit::LChar(f0))
+}
+
+pub fn l_f64(f0: Int) -> &'static Lit {
+    kayak_rt::heap_alloc(Lit::LF64(f0))
 }
 
 pub fn l_sym(f0: Str) -> &'static Lit {
@@ -3220,6 +3347,20 @@ pub fn c_prim(c: Code, name: Str, n: i64) -> () {
     c_emit(c, it_ins(str_lit("prim"), kayak_rt::heap_cons(o_prim(name), kayak_rt::heap_cons(o_int(n), kayak_rt::nil()))))
 }
 
+// That the blobref on top has room for a flat of `size` bytes.
+pub fn c_fits(c: Code, size: i64) -> () {
+    if i64_gt(size, 1i64) {
+        c_int(c, size);
+        c_prim(c, str_lit("%fx26-suffix-fits"), 2i64)
+    } else {
+        ()
+    }
+}
+
+pub fn second_cx(xs: Cxs) -> &'static Cx {
+    car(cdr(xs))
+}
+
 // Drop what a mutator left, and leave FX-26's unit value instead.
 pub fn c_unit_after(c: Code) -> () {
     c_op(c, str_lit("drop"));
@@ -3280,6 +3421,23 @@ pub fn hex(n: i64) -> Str {
     list_to_string(hex_digits(n, nil::<char>()))
 }
 
+// A float's 64 bits, `k` hex digits of them, as Fixpt's listing writes them.
+pub fn hex_bits(mut b: Int, mut k: i64, mut acc: Chars) -> Str {
+    loop {
+        if i64_eq(k, 0i64) {
+            return list_to_string(acc);
+        } else {
+            let d = int_to_i64(remainder(b, int_lit(16)));
+            (b, k, acc) = (quotient(b, int_lit(16)), i64_minus(k, 1i64), kayak_rt::heap_cons(i64_to_char(if i64_lt(d, 10i64) {
+                i64_plus(48i64, d)
+            } else {
+                i64_plus(87i64, d)
+            }), acc));
+            continue;
+        }
+    }
+}
+
 // A string's characters, each not printable ASCII (and `quote` and `\`) by
 // its code, `\xHH;`.
 pub fn lit_escaped(s: Str, quote: char) -> Str {
@@ -3317,6 +3475,9 @@ pub fn lit_text(l: &'static Lit) -> Str {
         }
         Lit::LChar(ch) => {
             string_append(str_lit("#\\x"), hex(char_to_i64(ch)))
+        }
+        Lit::LF64(b) => {
+            string_append(str_lit("#f64x"), hex_bits(b, 16i64, nil::<char>()))
         }
         Lit::LSym(s) => {
             string_append(str_lit("|"), string_append(lit_escaped(s, '|'), str_lit("|")))
@@ -3808,6 +3969,9 @@ pub fn c_calls_only(mut x: &'static Cx, mut f: Str, mut n: i64, mut tail: bool, 
             }
             Cx::XTagcase(s, arms, els, a) => {
                 return (c_calls_only(s, f, n, false, loops) && c_calls_only_arms(arms, f, n, tail, loops) && c_calls_only_else(els, f, n, tail, loops));
+            }
+            Cx::XBloblet(op, i, xs, a) => {
+                return c_calls_only_all(xs, f, n, loops);
             }
             Cx::XPrompt(t, body, h, a) => {
                 return (c_calls_only(t, f, n, false, loops) && c_calls_only(h, f, n, false, loops) && c_calls_only_inside(body, f, n, loops));
@@ -4730,6 +4894,10 @@ pub fn c_exp(mut x: &'static Cx, mut e: Cenv, mut depth: i64, mut c: Code, mut t
                 c_lit(c, l_char(ch));
                 return c_done(c, tail);
             }
+            Cx::XFloat(b, a) => {
+                c_lit(c, l_f64(b));
+                return c_done(c, tail);
+            }
             Cx::XSym(s, a) => {
                 c_lit(c, l_sym(s));
                 return c_done(c, tail);
@@ -4754,6 +4922,10 @@ pub fn c_exp(mut x: &'static Cx, mut e: Cenv, mut depth: i64, mut c: Code, mut t
                         return match cg_fail(str_lit("an rlambda's lambda")) {};
                     }
                 }
+            }
+            Cx::XBloblet(op, i, xs, a) => {
+                c_bloblet(op, i, xs, e, depth, c);
+                return c_done(c, tail);
             }
             Cx::XPrompt(t, body, h, a) => {
                 c_exp(t, e, depth, c, false);
@@ -4862,6 +5034,68 @@ pub fn c_exp(mut x: &'static Cx, mut e: Cenv, mut depth: i64, mut c: Code, mut t
                 return c_done(c, tail);
             }
         }
+    }
+}
+
+pub fn c_bloblet(op: Str, i: i64, xs: Cxs, e: Cenv, depth: i64, c: Code) -> () {
+    if string_eq_p(op, str_lit("make-bloblet")) {
+        c_prim(c, str_lit("%make-bloblet"), c_exps(xs, e, depth, c))
+    } else if string_eq_p(op, str_lit("rmake-bloblet")) {
+        c_prim(c, str_lit("%region-make-bloblet"), c_exps(xs, e, depth, c))
+    } else if string_eq_p(op, str_lit("bloblet-ref")) {
+        c_exps(xs, e, depth, c);
+        c_field(c, i64_plus(i, 2i64))
+    } else if string_eq_p(op, str_lit("bloblet-set!")) {
+        c_exp(car(xs), e, depth, c, false);
+        c_int(c, i64_plus(i, 2i64));
+        c_exp(second_cx(xs), e, i64_plus(depth, 2i64), c, false);
+        c_prim(c, str_lit("%bloblet-set!"), 3i64);
+        c_unit_after(c)
+    } else if string_eq_p(op, str_lit("bloblet-freeze")) {
+        c_exps(xs, e, depth, c);
+        c_op(c, str_lit("dup"));
+        c_lit(c, l_bool(true));
+        c_lit(c, l_bool(false));
+        c_prim(c, str_lit("%bloblet-freeze!"), 3i64);
+        c_op(c, str_lit("drop"))
+    } else if string_eq_p(op, str_lit("bloblet-byte")) {
+        c_prim(c, str_lit("%bloblet-byte"), c_exps(xs, e, depth, c))
+    } else if string_eq_p(op, str_lit("bloblet-set-byte!")) {
+        c_prim(c, str_lit("%bloblet-set-byte!"), c_exps(xs, e, depth, c));
+        c_unit_after(c)
+    } else if string_eq_p(op, str_lit("bloblet-bytes")) {
+        c_prim(c, str_lit("%bloblet-bytes"), c_exps(xs, e, depth, c))
+    } else if string_eq_p(op, str_lit("blobref-at")) {
+        c_prim(c, str_lit("%suffix-ref"), c_exps(xs, e, depth, c));
+        c_fits(c, i)
+    } else if string_eq_p(op, str_lit("blobref+")) {
+        c_prim(c, str_lit("%suffix-ref+"), c_exps(xs, e, depth, c));
+        c_fits(c, i)
+    } else if string_eq_p(op, str_lit("%blobref-field")) {
+        c_exp(car(xs), e, depth, c, false);
+        c_int(c, i);
+        c_prim(c, str_lit("%suffix-ref+"), 2i64)
+    } else if string_eq_p(op, str_lit("blobref-owner")) {
+        c_prim(c, str_lit("%suffix-ref-owner"), c_exps(xs, e, depth, c))
+    } else if string_eq_p(op, str_lit("blobref-offset")) {
+        c_prim(c, str_lit("%suffix-ref-offset"), c_exps(xs, e, depth, c))
+    } else if string_eq_p(op, str_lit("blobref-get")) {
+        c_exp(car(xs), e, depth, c, false);
+        c_int(c, i);
+        c_prim(c, str_lit("%fx26-suffix-ref-get"), 2i64)
+    } else if string_eq_p(op, str_lit("blobref-index")) {
+        c_exps(xs, e, depth, c);
+        c_int(c, i);
+        c_prim(c, str_lit("%fx26-suffix-ref-index"), 3i64)
+    } else {
+        c_exp(car(xs), e, depth, c, false);
+        c_int(c, i);
+        c_exp(second_cx(xs), e, i64_plus(depth, 2i64), c, false);
+        c_prim(c, if string_eq_p(op, str_lit("blobref-set!")) {
+            str_lit("%fx26-suffix-ref-set!")
+        } else {
+            str_lit("%fx26-flat-variant!")
+        }, 3i64)
     }
 }
 

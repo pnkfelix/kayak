@@ -4186,3 +4186,20 @@ walks the heap's list; `string-text` makes its string once, of a list of
 its characters. Six list helpers no longer used, gone. A string of one,
 two, three and four byte code points, to UTF-8 and back: 11051, as
 Fixpt.
+
+## C152. kayak's code generator: bloblets, blobrefs, floats (2026-10-24)
+
+The user: "3 and 4" (the generator's small gaps, then tier 6's
+primitives). Fixpt's `e-bloblet` arm (`compile-exps.fx`'s `c-bloblet`):
+each bloblet and blobref operation its runtime primitive, with what the
+checker found it takes, as Fixpt's `k-datum-operand` gives it, made of
+the facts kayak's checker notes already: a field's index (written); a
+new blobref's size (`blob-size`, then `%fx26-suffix-fits`); a scalar's
+layout code (`blob-scalar`, `i32` 0 to `f64` 5); a flat array's length
+and element size, `n << 32 | size` (`blob-element`); a keyed flat sum's
+code, its key's width, 8, its variants' offset times 256
+(`blob-variant`: kayak's checker names a variant by a number alone, so
+the sum is keyed). An `extract` of a blobref's field, a blobref at its
+offset (`blob-offset`). A float literal, `#f64x` and its bits, as
+Fixpt's listing writes it. Not yet: a `tagcase` of a blobref to a flat
+sum. 165 programs agree (153), 134 of them Fixpt's words exactly (124).

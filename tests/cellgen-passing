@@ -9,10 +9,19 @@ bench/tak.fx
 bidirectional/arrow-star.fx
 bidirectional/capture-and-resume.fx
 bidirectional/own-abort.fx
+bidirectional/shadow-standard-type.fx
 bidirectional/thunk-untold.fx
 bidirectional/twice.fx
+bloblet-errors/flat-index-range.fx
+bloblet-errors/flat-past-suffix.fx
+bloblet-errors/flat-step-past-suffix.fx
 bloblet/array-sum.fx
+bloblet/blobref-sees-bytes.fx
+bloblet/blobref.fx
+bloblet/bytes.fx
 bloblet/expr.fx
+bloblet/flat-product.fx
+bloblet/point.fx
 control/escape-tag.fx
 control/private-mark.fx
 diverge/cyclic-reverse.fx
@@ -76,6 +85,7 @@ modules/types-ahead.fx
 modules/width.fx
 modules/with-falls-back.fx
 native/aborts.fx
+native/blobrefs.fx
 native/capture-across-collecting.fx
 native/captures.fx
 native/crossing-overflow.fx
@@ -84,7 +94,9 @@ native/deep-control.fx
 native/deep.fx
 native/fixed-width-ops.fx
 native/frozen-made.fx
+native/identity.fx
 native/inlined-extract.fx
+native/quiet-boxes.fx
 native/raw-64.fx
 native/region-cons.fx
 native/remainder.fx

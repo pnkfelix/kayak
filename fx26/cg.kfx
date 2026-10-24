@@ -14,7 +14,7 @@
  region an arena or a reap entered and left (C145); a prompt the routine
  that runs its body, a procedure of nothing, under its tag (C146). Not
  yet: Fixpt's middle phase (its plans, inlining, specialization), lambda
- lifting, register code (the words' twins), bloblets.
+ lifting, register code (the words' twins). Bloblets and floats: C152.
  fixpt-source: crates/fixpt-fx26/src/compile.fx@bb3f570
  fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@8f76d65
  fixpt-source: crates/fixpt-fx26/src/compile-state.fx@8f76d65
@@ -42,6 +42,7 @@
   (x-bool bool i64)
   (x-str string i64)
   (x-char char i64)
+  (x-float int i64)
   (x-sym string i64)
   (x-unit i64)
   (x-lambda strings cx i64)
@@ -55,6 +56,7 @@
   (x-sum string cx i64)
   (x-tagcase cx (listof carm acyclic) (listof cbind acyclic) i64)
   (x-prompt cx cx cx i64)
+  (x-bloblet string i64 (listof cx acyclic) i64)
   (x-region i64 string cx i64)
   (x-rlambda cx cx i64)
   (x-module (listof cmem acyclic) i64)
@@ -97,11 +99,11 @@
 (define cx-start (subr kfx (cx) i64)
   (lambda (x)
     (tagcase x
-      (x-var (n a) a) (x-int (n a) a) (x-bool (v a) a) (x-str (s a) a) (x-char (c a) a)
+      (x-var (n a) a) (x-int (n a) a) (x-bool (v a) a) (x-str (s a) a) (x-char (c a) a) (x-float (b a) a)
       (x-sym (s a) a) (x-unit (a) a) (x-lambda (ps b a) a) (x-app (f xs a) a)
       (x-if (t y n a) a) (x-let (bs b a) a) (x-letrec (bs b a) a) (x-begin (xs a) a)
       (x-product (fs a) a) (x-extract (p i a) a) (x-sum (t v a) a) (x-tagcase (s arms els a) a)
-      (x-prompt (t body h a) a) (x-region (k r body a) a) (x-rlambda (r l a) a)
+      (x-prompt (t body h a) a) (x-bloblet (op i xs a) a) (x-region (k r body a) a) (x-rlambda (r l a) a)
       (x-module (its a) a) (x-with (m ns ks body a) a) (x-reshape (y ps a) a))))
 
 "A lambda's parameters, body, and region (an `rlambda`'s, one or none), if
@@ -153,6 +155,7 @@
         (x-sum (t v a) (c-free v bound acc))
         (x-tagcase (s arms els a) (c-free s bound (c-free-arms arms bound (c-free-else els bound acc))))
         (x-prompt (t body h a) (c-free t bound (c-free body bound (c-free h bound acc))))
+        (x-bloblet (op i xs a) (c-free-all xs bound acc))
         (x-region (k r body a) (c-free body (cons r bound) acc))
         (x-rlambda (r l a) (c-free r bound (c-free l bound acc)))
         ;; A module's items see all of them, as a `letrec*`'s.
@@ -299,6 +302,42 @@
             (cons (t-define tag #t (x-lambda xs (x-sum tag (x-product (dt-fields xs 1 at) at) at) a))
                   (dt-constructors (cdr vs) a)))))))
 
+(define bloblet-form? (subr kfx (string) bool)
+  (lambda (h)
+    (string-member? h (list "make-bloblet" "rmake-bloblet" "bloblet-ref" "bloblet-set!" "bloblet-freeze" "bloblet-byte"
+                            "bloblet-set-byte!" "bloblet-bytes" "blobref-at" "blobref+" "blobref-owner" "blobref-offset"
+                            "blobref-get" "blobref-set!" "blobref-index" "blobref-variant!"))))
+
+"The scalar flat's layout code (`fixpt_heap::layout::FLAT_*`), or -1."
+(define flat-code (subr kfx (string) i64)
+  (lambda (s)
+    (cond ((string=? s "i32") 0) ((string=? s "u32") 1) ((string=? s "i64") 2) ((string=? s "u64") 3)
+          ((string=? s "f32") 4) ((string=? s "f64") 5) (else -1))))
+
+(define words-i64 (subr kfx (string) (listof i64 acyclic))
+  (lambda (w) (map (lambda ((x string)) (digits-i64 (string-chars x) 0)) (split-words w))))
+
+(define second-i64 (subr kfx ((listof i64 acyclic)) i64) (lambda (xs) (if (null? (cdr xs)) 0 (car (cdr xs)))))
+
+"What blobref operation `op` at `a` takes for what the checker found of
+ it, as Fixpt's `k-datum-operand` gives it: a new blobref's size, a
+ scalar's code, an array's length and element size (`n << 32 | size`), a
+ keyed flat sum's code (its key's width, 8, its variants' offset times
+ 256); -1 for none."
+(define blob-operand (subr gen (string string i64) i64)
+  (lambda (op f a)
+    (let ((at (lambda ((prefix string)) (fact-text (get cg-facts) f a prefix))))
+      (cond ((or (string=? op "blobref-at") (string=? op "blobref+"))
+             (let ((n (at "blob-size "))) (if (string=? n "") -1 (digits-i64 (string-chars n) 0))))
+            ((or (string=? op "blobref-get") (string=? op "blobref-set!")) (flat-code (at "blob-scalar ")))
+            ((string=? op "blobref-index")
+             (let ((ns (words-i64 (at "blob-element ")))) (if (null? ns) -1 (i64+ (i64* (second-i64 ns) 4294967296) (car ns)))))
+            ((string=? op "blobref-variant!")
+             (let ((ws (split-words (at "blob-variant "))))
+               (if (null? ws) -1
+                   (i64+ (i64+ (digits-i64 (string-chars (car ws)) 0) 8) (i64* 256 (digits-i64 (string-chars (car (cdr (cdr ws)))) 0))))))
+            (else -1)))))
+
 "A generative type's conversions, `up-t` and `down-t`, each `(lambda (x)
  x)` where the form is, as Fixpt's parser's `identity-at` makes them."
 (define generative-conversions (subr kfx (string i64) (listof ctop acyclic))
@@ -361,7 +400,7 @@
         (big (text f p) (big-literal (big-int text) p))
         (chr (c f p) (x-char c p))
         (str (s f p) (x-str s p))
-        (real (x f p) (begin (cg-fail "not yet: a float") (x-unit p)))
+        (real (x f p) (x-float (u64->int (f64->bits (real-value x))) p))
         (sym (n f p)
           (cond ((string=? n "#t") (x-bool #t p))
                 ((string=? n "#f") (x-bool #f p))
@@ -399,10 +438,12 @@
             ((string=? h "quote") (parse-quoted (second xs) a))
             ((string=? h "product") (x-product (parse-fields (cdr xs)) a))
             ((string=? h "extract")
-             (let ((k (fact-text (get cg-facts) f a "extract-index ")))
-               (if (string=? k "")
-                   (begin (cg-fail "an extract the checker did not see") (x-unit a))
-                   (x-extract (parse-x (second xs)) (digits-i64 (string-chars k) 0) a))))
+             (let ((k (fact-text (get cg-facts) f a "extract-index ")) (o (fact-text (get cg-facts) f a "blob-offset ")))
+               (cond ((not (string=? k "")) (x-extract (parse-x (second xs)) (digits-i64 (string-chars k) 0) a))
+                     ;; A blobref's field: a blobref at its offset.
+                     ((not (string=? o "")) (x-bloblet "%blobref-field" (digits-i64 (string-chars o) 0) (list (parse-x (second xs))) a))
+                     (else (begin (cg-fail "an extract the checker did not see") (x-unit a))))))
+            ((bloblet-form? h) (parse-bloblet h (cdr xs) f a))
             ((string=? h "sum") (x-sum (label-of (second xs)) (parse-x (car (cdr (cdr xs)))) a))
             ((string=? h "tagcase")
              (x-tagcase (parse-x (second xs)) (parse-arms (cdr (cdr xs))) (parse-else (cdr (cdr xs))) a))
@@ -424,6 +465,16 @@
                  (string=? h "typecase") (string=? h "quasiquote") (string=? h "load-module") (string=? h "vlambda"))
              (begin (cg-fail (string-append "not yet: " h)) (x-unit a)))
             (else (x-app (parse-x (car xs)) (parse-args (cdr xs)) a)))))
+
+  (parse-bloblet (subr gen (string sexps string i64) cx)
+    (lambda (op args f a)
+      "A bloblet's or a blobref's operation (Fixpt's `e-bloblet`), and what
+       the checker found it takes (C152): a field's index, written; a new
+       blobref's size; a scalar's layout, an array's, a flat sum's."
+      (cond ((or (string=? op "bloblet-ref") (string=? op "bloblet-set!"))
+             (x-bloblet op (tagcase (second args) (num (k f2 p2) k) (else other (the i64 -1)))
+                        (cons (parse-x (car args)) (if (string=? op "bloblet-set!") (list (parse-x (third args))) nil)) a))
+            (else (x-bloblet op (blob-operand op f a) (parse-xs args) a)))))
 
   (parse-args (subr gen (sexps) cxs)
     (lambda (es) (if (null? es) nil (cons (parse-arg (car es)) (parse-args (cdr es))))))
@@ -740,6 +791,7 @@
   (l-nil)
   (l-str string)
   (l-char char)
+  (l-f64 int)
   (l-sym string)
   (l-pair lit lit)
   (l-word string))
@@ -794,6 +846,12 @@
 (define c-prim (subr gen (code string i64) unit)
   (lambda (c name n) (c-emit c (it-ins "prim" (list (o-prim name) (o-int n))))))
 
+"That the blobref on top has room for a flat of `size` bytes."
+(define c-fits (subr gen (code i64) unit)
+  (lambda (c size) (if (i64> size 1) (begin (c-int c size) (c-prim c "%fx26-suffix-fits" 2)) #u)))
+
+(define second-cx (subr kfx (cxs) cx) (lambda (xs) (car (cdr xs))))
+
 "Drop what a mutator left, and leave FX-26's unit value instead."
 (define c-unit-after (subr gen (code) unit) (lambda (c) (begin (c-op c "drop") (c-lit c (l-unit)))))
 
@@ -824,6 +882,15 @@
 
 (define hex (subr kfx (i64) string) (lambda (n) (list->string (hex-digits n nil))))
 
+"A float's 64 bits, `k` hex digits of them, as Fixpt's listing writes them."
+(define-rec
+  (hex-bits (subr kfx (int i64 chars) string)
+    (lambda (b k acc)
+      (if (i64= k 0)
+          (list->string acc)
+          (let ((d (int->i64 (remainder b 16))))
+            (hex-bits (quotient b 16) (i64- k 1) (cons (i64->char (if (i64< d 10) (i64+ 48 d) (i64+ 87 d))) acc)))))))
+
 "A string's characters, each not printable ASCII (and `quote` and `\\`) by
  its code, `\\xHH;`."
 (define lit-escaped (subr kfx (string char) string)
@@ -846,6 +913,7 @@
         (l-nil () "()")
         (l-str (s) (string-append "\"" (string-append (lit-escaped s #\") "\"")))
         (l-char (ch) (string-append "#\\x" (hex (char->i64 ch))))
+        (l-f64 (b) (string-append "#f64x" (hex-bits b 16 nil)))
         (l-sym (s) (string-append "|" (string-append (lit-escaped s #\|) "|")))
         (l-pair (a d) (string-append "(" (string-append (lit-text a) (string-append " . " (string-append (lit-text d) ")")))))
         (l-word (w) (string-append "word " (shown-name w)))))))
@@ -1030,6 +1098,7 @@
         (x-sum (t v a) (c-calls-only v f n #f loops))
         (x-tagcase (s arms els a)
           (and (c-calls-only s f n #f loops) (c-calls-only-arms arms f n tail loops) (c-calls-only-else els f n tail loops)))
+        (x-bloblet (op i xs a) (c-calls-only-all xs f n loops))
         (x-prompt (t body h a)
           (and (c-calls-only t f n #f loops) (c-calls-only h f n #f loops) (c-calls-only-inside body f n loops)))
         (x-region (k r body a) (or (string=? r f) (c-calls-only body f n #f loops)))
@@ -1459,6 +1528,7 @@
         (x-bool (v a) (begin (c-lit c (l-bool v)) (c-done c tail)))
         (x-str (s a) (begin (c-lit c (l-str s)) (c-done c tail)))
         (x-char (ch a) (begin (c-lit c (l-char ch)) (c-done c tail)))
+        (x-float (b a) (begin (c-lit c (l-f64 b)) (c-done c tail)))
         (x-sym (s a) (begin (c-lit c (l-sym s)) (c-done c tail)))
         (x-unit (a) (begin (c-lit c (l-unit)) (c-done c tail)))
         (x-lambda (ps body a) (begin (c-lambda ps body e depth c nil nil) (c-done c tail)))
@@ -1466,6 +1536,7 @@
           (tagcase l
             (x-lambda (ps body b) (begin (c-lambda ps body e depth c nil (list r)) (c-done c tail)))
             (else y (cg-fail "an rlambda's lambda"))))
+        (x-bloblet (op i xs a) (begin (c-bloblet op i xs e depth c) (c-done c tail)))
         ;; The tag, the handler, and the body as a procedure of nothing; then
         ;; the routine that runs it under the prompt.
         (x-prompt (t body h a)
@@ -1533,6 +1604,33 @@
                  (c-prim c "%make-frozen" (i64+ 1 (size ps)))
                  (c-op1 c "slot!" (o-int depth))
                  (c-done c tail))))))
+
+  ;; A bloblet's or a blobref's operation (Fixpt's `c-bloblet`): its
+  ;; runtime primitive, with what the checker found it takes.
+  (c-bloblet (subr gen (string i64 cxs cenv i64 code) unit)
+    (lambda (op i xs e depth c)
+      (cond ((string=? op "make-bloblet") (c-prim c "%make-bloblet" (c-exps xs e depth c)))
+            ((string=? op "rmake-bloblet") (c-prim c "%region-make-bloblet" (c-exps xs e depth c)))
+            ((string=? op "bloblet-ref") (begin (c-exps xs e depth c) (c-field c (i64+ i 2))))
+            ((string=? op "bloblet-set!")
+             (begin (c-exp (car xs) e depth c #f) (c-int c (i64+ i 2)) (c-exp (second-cx xs) e (i64+ depth 2) c #f)
+                    (c-prim c "%bloblet-set!" 3) (c-unit-after c)))
+            ((string=? op "bloblet-freeze")
+             (begin (c-exps xs e depth c) (c-op c "dup") (c-lit c (l-bool #t)) (c-lit c (l-bool #f))
+                    (c-prim c "%bloblet-freeze!" 3) (c-op c "drop")))
+            ((string=? op "bloblet-byte") (c-prim c "%bloblet-byte" (c-exps xs e depth c)))
+            ((string=? op "bloblet-set-byte!") (begin (c-prim c "%bloblet-set-byte!" (c-exps xs e depth c)) (c-unit-after c)))
+            ((string=? op "bloblet-bytes") (c-prim c "%bloblet-bytes" (c-exps xs e depth c)))
+            ((string=? op "blobref-at") (begin (c-prim c "%suffix-ref" (c-exps xs e depth c)) (c-fits c i)))
+            ((string=? op "blobref+") (begin (c-prim c "%suffix-ref+" (c-exps xs e depth c)) (c-fits c i)))
+            ((string=? op "%blobref-field") (begin (c-exp (car xs) e depth c #f) (c-int c i) (c-prim c "%suffix-ref+" 2)))
+            ((string=? op "blobref-owner") (c-prim c "%suffix-ref-owner" (c-exps xs e depth c)))
+            ((string=? op "blobref-offset") (c-prim c "%suffix-ref-offset" (c-exps xs e depth c)))
+            ((string=? op "blobref-get") (begin (c-exp (car xs) e depth c #f) (c-int c i) (c-prim c "%fx26-suffix-ref-get" 2)))
+            ((string=? op "blobref-index") (begin (c-exps xs e depth c) (c-int c i) (c-prim c "%fx26-suffix-ref-index" 3)))
+            (else
+             (begin (c-exp (car xs) e depth c #f) (c-int c i) (c-exp (second-cx xs) e (i64+ depth 2) c #f)
+                    (c-prim c (if (string=? op "blobref-set!") "%fx26-suffix-ref-set!" "%fx26-flat-variant!") 3))))))
 
   ;; `with`'s values in slots from `depth`: each of `ns` the body names, in
   ;; order, field `k` of the module `m`, which is loaded again for each.

@@ -672,10 +672,10 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    written in FX-26 ported to KFX (`fx26/cg.kfx`, `kayak-fx26 --cells`),
    its words run every way Fixpt's are (`cells-programs.py --ours`): 77
    programs agree, 68 of them Fixpt's words exactly. Done since:
-   modules (C144), regions (C145), prompts (C146): 153 agree, 124 of
-   them Fixpt's words exactly. Next, by how many programs wait on each:
-   bloblets (12); `case` and `typecase` (10); floats; `vlambda`;
-   `quasiquote`. Then Fixpt's middle phase (inlining, specialization),
+   modules (C144), regions (C145), prompts (C146), bloblets and floats
+   (C152): 165 agree, 134 of them Fixpt's words exactly. Next, by how
+   many programs wait on each: `case` and `typecase` (11); `vlambda`;
+   `quasiquote`; a `tagcase` of a blobref to a flat sum. Then Fixpt's middle phase (inlining, specialization),
    lambda lifting, register code (twins), so that the words are
    Fixpt's; then the REPL's forms through it (§33's `,disassemble`).
    Most programs not compiled wait on the checker (§30).
