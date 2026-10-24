@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"predicate.fx"
+],
+"code": 0,
+"out": [
+"define pos? : (subr pure ((x int)) bool (ensures r (or (not r) (< 0 x)))) ! pure",
+"define at-least-one : (subr (read (globals pos?)) ((x int)) int (ensures r (<= 1 r))) ! pure",
+"int ! (read (globals at-least-one pos?))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

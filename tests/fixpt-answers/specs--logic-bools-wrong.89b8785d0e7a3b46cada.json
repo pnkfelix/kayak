@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"logic-bools-wrong.fx"
+],
+"code": 0,
+"out": [
+"define all? : (subr pure (bools) bool) ! pure",
+"define flip : (subr pure ((xs bools)) bools (ensures r (implies (all? xs) (all? r)))) ! pure",
+"bools ! (read (globals flip))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

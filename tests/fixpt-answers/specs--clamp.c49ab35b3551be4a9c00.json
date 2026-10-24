@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"clamp.fx"
+],
+"code": 0,
+"out": [
+"clamp : (subr pure ((lo int) (hi int) (x int)) int (requires (<= lo hi)) (ensures r (and (<= lo r) (<= r hi)))) ! pure",
+"10 : int ! (read (globals clamp))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"nats.fx"
+],
+"code": 0,
+"out": [
+"define plus : (subr pure ((m nat) (n int)) int (ensures r (<= n r))) ! pure",
+"int ! (read (globals plus))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

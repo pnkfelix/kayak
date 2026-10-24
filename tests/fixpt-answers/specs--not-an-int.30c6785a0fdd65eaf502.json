@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"not-an-int.fx"
+],
+"code": 1,
+"out": [
+"! <programs>/specs/not-an-int.fx:3:53: `s` is not an `int`",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

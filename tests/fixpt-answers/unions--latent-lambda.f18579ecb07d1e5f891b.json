@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"latent-lambda.fx"
+],
+"code": 1,
+"out": [
+"! <programs>/unions/latent-lambda.fx:5:15: what a test proves, (then (shape 0 int)) (else), a `lambda` is not checked to prove",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

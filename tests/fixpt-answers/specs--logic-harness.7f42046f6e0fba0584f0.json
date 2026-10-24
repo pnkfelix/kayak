@@ -1,0 +1,19 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"logic-harness.fx"
+],
+"code": 0,
+"out": [
+"sorted? : (subr pure (ints) bool) ! pure",
+"insert : (subr (maxeff spin (read (globals insert))) ((e int) (xs ints)) ints (ensures r (implies (sorted? xs) (sorted? r)))) ! pure",
+"insert-keeps-sorted : (subr (maxeff spin (read (globals insert sorted?))) (int ints) unit) ! pure",
+"#u : unit ! (maxeff spin (read (globals insert insert-keeps-sorted sorted?)))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"convention.fx"
+],
+"code": 0,
+"out": [
+"define f : (subr (conv fx) pure ((x int)) int (ensures r (= r x))) ! pure",
+"int ! (read (globals f))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"logic-measure.fx"
+],
+"code": 0,
+"out": [
+"len : (subr pure (ints) int) ! pure",
+"twice-len : (subr (read (globals len)) ((xs ints)) int (ensures r (= r (* 2 (len xs))))) ! pure",
+"6 : int ! (read (globals len twice-len))",
+""
+],
+"err": [
+""
+]
+}

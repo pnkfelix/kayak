@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"convention.fx"
+],
+"code": 0,
+"out": [
+"f : (subr (conv fx) pure ((x int)) int (ensures r (= r x))) ! pure",
+"1 : int ! (read (globals f))",
+""
+],
+"err": [
+""
+]
+}

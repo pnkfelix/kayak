@@ -1,0 +1,21 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"calls.fx"
+],
+"code": 0,
+"out": [
+"abs : (subr pure ((x int)) int (ensures r (<= 0 r))) ! pure",
+"clamp : (subr pure ((lo int) (hi int) (x int)) int (requires (<= lo hi)) (ensures r (and (<= lo r) (<= r hi)))) ! pure",
+"both : (subr (read (globals abs)) ((x int) (y int)) int (ensures r (<= 0 r))) ! pure",
+"bounded : (subr (read (globals clamp)) ((x int)) int (ensures r (and (<= 0 r) (<= r 100)))) ! pure",
+"above : (subr (read (globals clamp)) ((x int)) int (ensures r (and (<= 1 r) (<= r 101)))) ! pure",
+"15 : int ! (read (globals above abs both bounded clamp))",
+""
+],
+"err": [
+""
+]
+}

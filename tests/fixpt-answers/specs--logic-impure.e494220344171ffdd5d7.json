@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"logic-impure.fx"
+],
+"code": 1,
+"out": [
+"! <programs>/specs/logic-impure.fx:6:50: `first-pos?` is called in a specification, so must be `pure`",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

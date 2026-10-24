@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"nats.fx"
+],
+"code": 0,
+"out": [
+"plus : (subr pure ((m nat) (n int)) int (ensures r (<= n r))) ! pure",
+"7 : int ! (read (globals plus))",
+""
+],
+"err": [
+""
+]
+}

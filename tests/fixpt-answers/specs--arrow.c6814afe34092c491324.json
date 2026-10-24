@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"arrow.fx"
+],
+"code": 0,
+"out": [
+"f : (subr pure ((x int)) int (requires (< 0 x)) (ensures r (< x r))) ! pure",
+"4 : int ! (read (globals f))",
+""
+],
+"err": [
+""
+]
+}

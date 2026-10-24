@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"square.fx"
+],
+"code": 0,
+"out": [
+"define square : (subr pure ((x int)) int (ensures r (<= 0 r))) ! pure",
+"int ! (read (globals square))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

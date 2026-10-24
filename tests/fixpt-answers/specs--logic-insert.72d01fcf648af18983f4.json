@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"logic-insert.fx"
+],
+"code": 0,
+"out": [
+"define sorted? : (subr pure (ints) bool) ! pure",
+"define first : (subr pure (ints) int) ! pure",
+"define nonempty? : (subr pure (ints) bool) ! pure",
+"define insert : (subr (maxeff (read (globals insert)) spin) ((e int) (xs ints)) ints (ensures r (and (implies (sorted? xs) (sorted? r)) (or (= (first r) e) (and (nonempty? xs) (= (first r) (first xs))))))) ! pure",
+"ints ! (maxeff (read (globals insert)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

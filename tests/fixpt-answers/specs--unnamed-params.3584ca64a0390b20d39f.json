@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"unnamed-params.fx"
+],
+"code": 0,
+"out": [
+"plus3 : (subr pure ((nat 3) (d int)) int (ensures r (= r (+ d 3)))) ! pure",
+"7 : int ! (read (globals plus3))",
+""
+],
+"err": [
+""
+]
+}

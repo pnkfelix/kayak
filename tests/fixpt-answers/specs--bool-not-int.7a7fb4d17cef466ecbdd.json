@@ -1,0 +1,16 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"bool-not-int.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/specs/bool-not-int.fx:3:52: `b` is not an `int`",
+""
+]
+}

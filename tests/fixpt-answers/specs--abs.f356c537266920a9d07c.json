@@ -1,0 +1,47 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"compile",
+"--full-literals",
+"abs.fx"
+],
+"code": 0,
+"out": [
+"",
+"word program (12 cells, cellular):",
+"     0: closure word abs over 0",
+"     3: global! abs",
+"     5: lit -5",
+"     7: global abs",
+"     9: tcall 1",
+"    11: exit",
+"",
+"word abs (16 cells, cellular):",
+"     0: slot 0",
+"     2: lit 0",
+"     4: int-less",
+"     5: 0branch → 13",
+"     7: lit 0",
+"     9: slot 0",
+"    11: int-sub",
+"    12: return",
+"    13: slot 0",
+"    15: return",
+"  its register code (18 cells, not compiled):",
+"       0: args 1",
+"       2: reg 1",
+"       4: op2imm int-less 0",
+"       7: branchf → 15",
+"       9: const 0",
+"      11: op2 int-sub 1",
+"      14: return",
+"      15: reg 1",
+"      17: return",
+"; both compilers made this",
+""
+],
+"err": [
+""
+]
+}

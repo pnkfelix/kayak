@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"latent-stronger.fx"
+],
+"code": 1,
+"out": [
+"! <programs>/specs/latent-stronger.fx:5:65: `less` is declared a (subr pure (int int) (bool (then (< 0 1)) (else))): a (subr pure (int int) (bool (then (< 0 1)) (else))) is expected here, and this is a (subr pure ((i int) (n int)) bool (ensures r (implies r (<= i n))))",
+"  it requires more, or ensures less, than is expected, as far as the prover can tell",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

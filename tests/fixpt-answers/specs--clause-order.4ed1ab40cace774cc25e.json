@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"clause-order.fx"
+],
+"code": 1,
+"out": [
+"! <programs>/specs/clause-order.fx:3:56: a specification is `(requires proposition)`, then `(ensures name proposition)`, each at most once",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

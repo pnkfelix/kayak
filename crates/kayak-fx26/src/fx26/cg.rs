@@ -19,10 +19,10 @@ use super::*;
 // inlining, specialization), lambda lifting, register code (the words'
 // twins), modules, regions, bloblets, prompts.
 // fixpt-source: crates/fixpt-fx26/src/compile.fx@bb3f570
-// fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@bb3f570
-// fixpt-source: crates/fixpt-fx26/src/compile-state.fx@bb3f570
+// fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@8f76d65
+// fixpt-source: crates/fixpt-fx26/src/compile-state.fx@8f76d65
 // fixpt-source: crates/fixpt-fx26/src/compile-lift.fx@bb3f570
-// fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@bb3f570
+// fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@8f76d65
 // fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@bb3f570
 
 // The generator's data lives at `@g`.
@@ -436,6 +436,12 @@ pub mod made__load__0__cg {
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("char>?")) => {
                         str_lit("%fx26-char>?")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("assert")) => {
+                        str_lit("%fx26-assert")
+                    }
+                    case_ if kayak_rt::string_eq_p(case_, str_lit("assume")) => {
+                        str_lit("%fx26-assume")
                     }
                     case_ if kayak_rt::string_eq_p(case_, str_lit("append")) => {
                         str_lit("append")

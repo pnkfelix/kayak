@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"letrec-loop.fx"
+],
+"code": 0,
+"out": [
+"define double : (subr spin ((n int)) int (requires (<= 0 n)) (ensures r (= r (* 2 n)))) ! pure",
+"int ! (maxeff (read (globals double)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

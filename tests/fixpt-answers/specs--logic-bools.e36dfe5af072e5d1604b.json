@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"logic-bools.fx"
+],
+"code": 0,
+"out": [
+"define all? : (subr pure (bools) bool) ! pure",
+"define trues : (subr (maxeff (read (globals trues)) spin) ((n nat)) bools (ensures r (all? r))) ! pure",
+"bools ! (maxeff (read (globals trues)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

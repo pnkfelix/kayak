@@ -1,0 +1,24 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"logic-insert.fx"
+],
+"code": 0,
+"out": [
+"sorted? : (subr pure (ints) bool) ! pure",
+"first : (subr pure (ints) int) ! pure",
+"nonempty? : (subr pure (ints) bool) ! pure",
+"insert : (subr (maxeff spin (read (globals insert))) ((e int) (xs ints)) ints (ensures r (and (implies (sorted? xs) (sorted? r)) (or (= (first r) e) (and (nonempty? xs) (= (first r) (first xs))))))) ! pure",
+"(1 2 3 4) : ints ! (maxeff spin (read (globals insert)))",
+""
+],
+"err": [
+""
+]
+}

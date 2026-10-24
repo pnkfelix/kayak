@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"logic-not-bool.fx"
+],
+"code": 1,
+"out": [
+"! <programs>/specs/logic-not-bool.fx:6:50: `len` gives no `bool`, so is no proposition",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

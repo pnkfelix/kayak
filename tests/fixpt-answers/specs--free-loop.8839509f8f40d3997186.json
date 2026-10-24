@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"free-loop.fx"
+],
+"code": 0,
+"out": [
+"count-past : (subr spin ((k int) (n int)) int (requires (<= 0 n)) (ensures r (= r (+ n k)))) ! pure",
+"7 : int ! (maxeff spin (read (globals count-past)))",
+""
+],
+"err": [
+""
+]
+}

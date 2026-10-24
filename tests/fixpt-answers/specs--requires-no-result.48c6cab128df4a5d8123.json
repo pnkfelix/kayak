@@ -1,0 +1,16 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"requires-no-result.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/specs/requires-no-result.fx:3:51: `r` names no parameter or result here",
+""
+]
+}

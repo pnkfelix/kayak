@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"logic-impure.fx"
+],
+"code": 1,
+"out": [
+"first-pos? : (subr (read @heap) (ints) bool) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/specs/logic-impure.fx:6:50: `first-pos?` is called in a specification, so must be `pure`",
+""
+]
+}

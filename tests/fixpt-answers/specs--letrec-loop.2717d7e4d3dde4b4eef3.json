@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"letrec-loop.fx"
+],
+"code": 0,
+"out": [
+"double : (subr spin ((n int)) int (requires (<= 0 n)) (ensures r (= r (* 2 n)))) ! pure",
+"8 : int ! (maxeff spin (read (globals double)))",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"wrong-ensures.fx"
+],
+"code": 0,
+"out": [
+"define abs : (subr pure ((x int)) int (ensures r (<= 0 r))) ! pure",
+"int ! (read (globals abs))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,21 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"square.fx"
+],
+"code": 0,
+"out": [
+"square : (subr pure ((x int)) int (ensures r (<= 0 r))) ! pure",
+"9 : int ! (read (globals square))",
+""
+],
+"err": [
+""
+]
+}

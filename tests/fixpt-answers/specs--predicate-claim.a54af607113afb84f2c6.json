@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"predicate-claim.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/specs/predicate-claim.fx:7:15: what a test proves, (then (< (lit 0) 0)) (else), a `lambda` is not checked to prove",
+""
+]
+}

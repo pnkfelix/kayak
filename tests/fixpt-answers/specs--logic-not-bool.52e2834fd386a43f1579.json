@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"logic-not-bool.fx"
+],
+"code": 1,
+"out": [
+"len : (subr pure (ints) int) ! pure",
+""
+],
+"err": [
+"fixpt: <programs>/specs/logic-not-bool.fx:6:50: `len` gives no `bool`, so is no proposition",
+""
+]
+}

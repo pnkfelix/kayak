@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"typed-calls.fx"
+],
+"code": 0,
+"out": [
+"define here : bool ! pure",
+"define put4 : (subr (write @heap) ((bloblet (fields) @heap) int int) unit) ! pure",
+"define adder : (subr (maxeff (alloc @heap) (io native) (read (globals put4)) (write @heap)) () (subr pure (int int) int)) ! pure",
+"define via : (subr (maxeff (alloc @heap) (io native) (read (globals adder put4)) (write @heap)) () int) ! pure",
+"define via2 : (subr pure ((subr pure (int int) int)) int) ! pure",
+"define via3 : (subr pure ((subr pure (int int) int)) int) ! pure",
+"int ! (maxeff (alloc @heap) (io native) (read (globals adder here put4 via)) (write @heap))",
+"int ! (maxeff (alloc @heap) (io native) (read (globals adder here put4 via2)) (write @heap))",
+"int ! (maxeff (alloc @heap) (io native) (read (globals adder here put4 via3)) (write @heap))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"latent-and-ensures.fx"
+],
+"code": 0,
+"out": [
+"less : (subr pure ((i int) (n int)) (bool (then (< 0 1)) (else (<= 1 0))) (ensures r (implies r (<= i n)))) ! pure",
+"below : (subr (read (globals less)) (nat nat) nat) ! pure",
+"7 : nat ! (read (globals below less))",
+""
+],
+"err": [
+""
+]
+}

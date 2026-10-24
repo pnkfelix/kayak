@@ -3858,3 +3858,37 @@ already where both keep the link), off by default:
   on fib, +0.2% on helpers and loop; return mispredicts the same.
 - **Checked**: `cells-programs.py` runs it with tier 5 and with tier 6,
   under `--gc-stress`, and at a slice of 3.
+
+## C141. The pin at Fixpt 8f76d65: stage 0 in 25 s (2026-10-24)
+
+The user handed Fixpt a note on stage 0's workload (about 610 s a run,
+the check's longest wait), then: "Try updating Fixpt to latest". Fixpt's
+`main` in the user's checkout, 45 commits past `4caffc2`, nine of them
+not yet pushed: the pin is its tip, `8f76d65`, fetched from that
+checkout into `../kayak-refs/fixpt` (read only there). Until Fixpt
+pushes it, a clone of GitHub's alone has no such commit.
+- **Stage 0**: Fixpt's `4ab77e92` makes kayak's emitter and checker
+  native (a record accessor with no registers left, a closure size
+  limit copied from arm64), so no procedure of the compiler runs as
+  cellular code: one run in 25 s, against about 610 s, its output
+  byte for byte `boot/src/kfx/`. `fixpoint.sh` beside the rest of the
+  check, 40 s (was 616): the check 566 s (was 642), the cells programs
+  now its longest wait (465 s, 368 programs).
+- **The drift, decided:** 13 marks behind, six of Fixpt's files, none
+  carried over. `fixpt-heap`'s `heap.rs`: the live heaps' serials, and
+  weak references into the code area: kayak's heap has neither (one
+  heap, no weak references). `fixpt-native`'s `cellular.rs`: native
+  slots reused across machines, 2^18 of them: tier 1 has no slot table.
+  `fixpt-runtime`'s `prim.rs`: `%fx26-assert`, `%fx26-assume`, for
+  FX-26's specifications, which kayak's checker does not take yet: tier 1
+  without them until it does. `compile-exps.fx`, `compile-state.fx`,
+  `compile-programs.fx`: the next words' names a list taken one at a
+  time, for the Rust side's `native_define`; kayak's names one word at a
+  time, for which the two are the same.
+- **Taken whole**: `built-in.kfx` (`assert`, `assume` named as Fixpt's
+  primitives), and the boot and engine Rust from it; Fixpt's programs,
+  48 new in `specs/` (`requires`, `ensures`), each refused by kfx as by
+  Fixpt or, where Fixpt accepts, by kayak's checker. The checkers'
+  comparison (§30): the same on 84 of the programs Fixpt accepts, one
+  fewer than at `4caffc2` (which one, not yet found: no program of the
+  old set changed but a comment, so it is Fixpt's answer that did).

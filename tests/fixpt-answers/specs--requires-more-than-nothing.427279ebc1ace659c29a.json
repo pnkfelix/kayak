@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"requires-more-than-nothing.fx"
+],
+"code": 1,
+"out": [
+"! <programs>/specs/requires-more-than-nothing.fx:4:63: a (subr pure (int) int) is expected here, and this is a (subr pure ((x int)) int (requires (< 0 x)))",
+"  it requires more, or ensures less, than is expected, as far as the prover can tell",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

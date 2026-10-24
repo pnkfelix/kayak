@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"harness-insert-wrong.fx"
+],
+"code": 0,
+"out": [
+"define sorted? : (subr (maxeff (read (globals sorted?)) (read @heap) spin) (ints) bool) ! pure",
+"define insert : (subr (maxeff (alloc @heap) (read (globals insert)) (read @heap) spin) (int ints) ints) ! pure",
+"define insert-keeps-sorted : (subr (maxeff (alloc @heap) (read (globals insert sorted?)) (read @heap) spin) (int ints) unit) ! pure",
+"unit ! (maxeff (alloc @heap) (read (globals insert insert-keeps-sorted sorted?)) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

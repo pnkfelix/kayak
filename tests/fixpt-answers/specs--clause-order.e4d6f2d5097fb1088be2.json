@@ -1,0 +1,16 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"clause-order.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/specs/clause-order.fx:3:56: a specification is `(requires proposition)`, then `(ensures name proposition)`, each at most once",
+""
+]
+}

@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"wrong-ensures.fx"
+],
+"code": 0,
+"out": [
+"abs : (subr pure ((x int)) int (ensures r (<= 0 r))) ! pure",
+"-5 : int ! (read (globals abs))",
+""
+],
+"err": [
+""
+]
+}

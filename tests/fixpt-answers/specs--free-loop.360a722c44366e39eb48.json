@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"free-loop.fx"
+],
+"code": 0,
+"out": [
+"define count-past : (subr spin ((k int) (n int)) int (requires (<= 0 n)) (ensures r (= r (+ n k)))) ! pure",
+"int ! (maxeff (read (globals count-past)) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

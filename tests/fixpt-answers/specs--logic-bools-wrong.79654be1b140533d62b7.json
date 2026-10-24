@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"logic-bools-wrong.fx"
+],
+"code": 0,
+"out": [
+"all? : (subr pure (bools) bool) ! pure",
+"flip : (subr pure ((xs bools)) bools (ensures r (implies (all? xs) (all? r)))) ! pure",
+"(#t #t) : bools ! (read (globals flip))",
+""
+],
+"err": [
+""
+]
+}

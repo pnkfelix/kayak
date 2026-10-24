@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"count.fx"
+],
+"code": 0,
+"out": [
+"count : (subr (maxeff spin (read (globals count))) ((n int) (acc int)) int (requires (<= 0 n)) (ensures r (= r (+ acc n)))) ! pure",
+"15 : int ! (maxeff spin (read (globals count)))",
+""
+],
+"err": [
+""
+]
+}

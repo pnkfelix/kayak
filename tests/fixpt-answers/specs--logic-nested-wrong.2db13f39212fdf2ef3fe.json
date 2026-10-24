@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"logic-nested-wrong.fx"
+],
+"code": 0,
+"out": [
+"empties : (subr pure (intss) int) ! pure",
+"strip : (subr (maxeff spin (read (globals strip))) ((xss intss)) intss (ensures r (= (empties r) 0))) ! pure",
+"((1 2) () (3)) : intss ! (maxeff spin (read (globals strip)))",
+""
+],
+"err": [
+""
+]
+}

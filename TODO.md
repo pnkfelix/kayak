@@ -532,9 +532,8 @@ Stages 2 and 3 done (C95): editing, history, Tab; Fixpt's commands.
 Done (C112): `scripts/check.sh --quick`, 49 s. Left:
 - A cheaper K1 for the compiler (`fixpt check` of its source rather than
   running it on Fixpt), timed against stage 0.
-- Why stage 0 is so slow on Fixpt's fastest machine (200 s, against 1 to
-  1.6 s as kfx's Rust; its output says many procedures are "not in the
-  native convention yet"): worth a note to Fixpt, if it is theirs.
+- ~~Why stage 0 is so slow on Fixpt's fastest machine~~ Done in Fixpt
+  (`4ab77e92`, C141): about 610 s to 25 s a run.
 
 ## 29. KFX-level backtraces on the engine (the user, 2026-10-14: second)
 

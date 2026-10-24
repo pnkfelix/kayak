@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"poly.fx"
+],
+"code": 0,
+"out": [
+"first : (poly ((t type)) (subr pure ((x int) (y t)) int (requires (< 0 x)) (ensures r (= r x)))) ! pure",
+"3 : int ! (read (globals first))",
+""
+],
+"err": [
+""
+]
+}

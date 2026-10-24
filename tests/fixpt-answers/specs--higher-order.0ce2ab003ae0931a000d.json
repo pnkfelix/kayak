@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"higher-order.fx"
+],
+"code": 0,
+"out": [
+"twice : (subr pure ((f (subr pure ((x int)) int (requires (< 0 x)) (ensures r (< x r)))) (y int)) int (requires (< 0 y)) (ensures r (< (+ y 1) r))) ! pure",
+"inc : (subr pure ((x int)) int (requires (< 0 x)) (ensures r (< x r))) ! pure",
+"7 : int ! (read (globals inc twice))",
+""
+],
+"err": [
+""
+]
+}

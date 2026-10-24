@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"unknown-name.fx"
+],
+"code": 1,
+"out": [
+"! <programs>/specs/unknown-name.fx:3:51: `y` names no parameter or result here",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"result-name.fx"
+],
+"code": 1,
+"out": [
+"! <programs>/specs/result-name.fx:3:45: the result's name: `(ensures name proposition)`",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"abs.fx"
+],
+"code": 0,
+"out": [
+"define abs : (subr pure ((x int)) int (ensures r (and (<= 0 r) (or (= r x) (= r (- 0 x)))))) ! pure",
+"int ! (read (globals abs))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

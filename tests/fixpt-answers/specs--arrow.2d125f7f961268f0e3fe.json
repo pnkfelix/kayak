@@ -1,0 +1,18 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"arrow.fx"
+],
+"code": 0,
+"out": [
+"define f : (subr pure ((x int)) int (requires (< 0 x)) (ensures r (< x r))) ! pure",
+"int ! (read (globals f))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

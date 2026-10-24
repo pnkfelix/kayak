@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"predicate.fx"
+],
+"code": 0,
+"out": [
+"pos? : (subr pure ((x int)) bool (ensures r (or (not r) (< 0 x)))) ! pure",
+"at-least-one : (subr (read (globals pos?)) ((x int)) int (ensures r (<= 1 r))) ! pure",
+"1 : int ! (read (globals at-least-one pos?))",
+""
+],
+"err": [
+""
+]
+}

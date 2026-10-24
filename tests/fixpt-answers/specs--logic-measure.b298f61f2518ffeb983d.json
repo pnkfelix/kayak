@@ -1,0 +1,19 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"logic-measure.fx"
+],
+"code": 0,
+"out": [
+"define len : (subr pure (ints) int) ! pure",
+"define twice-len : (subr (read (globals len)) ((xs ints)) int (ensures r (= r (* 2 (len xs))))) ! pure",
+"int ! (read (globals len twice-len))",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

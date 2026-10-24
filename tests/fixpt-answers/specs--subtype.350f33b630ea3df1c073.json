@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"subtype.fx"
+],
+"code": 0,
+"out": [
+"inc : (subr pure ((x int)) int (requires (< 0 x)) (ensures r (< x r))) ! pure",
+"use : (subr pure ((f (subr pure ((x int)) int (requires (< 5 x)) (ensures r (< 0 r))))) int (ensures r (< 0 r))) ! pure",
+"11 : int ! (read (globals inc use))",
+""
+],
+"err": [
+""
+]
+}

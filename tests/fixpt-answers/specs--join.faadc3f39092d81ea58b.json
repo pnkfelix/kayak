@@ -1,0 +1,17 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"join.fx"
+],
+"code": 0,
+"out": [
+"above-abs : (subr pure ((x int)) int (ensures r (and (<= 1 r) (<= x (- r 1))))) ! pure",
+"4 : int ! (read (globals above-abs))",
+""
+],
+"err": [
+""
+]
+}

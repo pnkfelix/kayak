@@ -1,0 +1,16 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"latent-lambda.fx"
+],
+"code": 1,
+"out": [
+""
+],
+"err": [
+"fixpt: <programs>/unions/latent-lambda.fx:5:15: what a test proves, (then (shape 0 int)) (else), a `lambda` is not checked to prove",
+""
+]
+}

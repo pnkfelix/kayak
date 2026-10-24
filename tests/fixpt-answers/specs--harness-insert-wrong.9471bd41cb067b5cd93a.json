@@ -1,0 +1,20 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"harness-insert-wrong.fx"
+],
+"code": 1,
+"out": [
+"sorted? : (subr (maxeff (read @heap) spin (read (globals sorted?))) (ints) bool) ! pure",
+"insert : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals insert))) (int ints) ints) ! pure",
+"insert-keeps-sorted : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals insert sorted?))) (int ints) unit) ! pure",
+" : unit ! (maxeff (read @heap) (alloc @heap) spin (read (globals insert insert-keeps-sorted sorted?)))",
+""
+],
+"err": [
+"! evaluation failed: assertion failed",
+""
+]
+}

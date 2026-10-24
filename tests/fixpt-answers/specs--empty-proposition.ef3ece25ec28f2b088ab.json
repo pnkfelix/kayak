@@ -1,0 +1,17 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"empty-proposition.fx"
+],
+"code": 1,
+"out": [
+"! <programs>/specs/empty-proposition.fx:3:46: a proposition: `(< a b)`, `(<= a b)`, `(= a b)`, `(> a b)`, `(>= a b)`, `(not p)`, `(and p …)`, `(or p …)`, `(implies p q)`, `#t`, `#f`, or a `bool` named",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}
