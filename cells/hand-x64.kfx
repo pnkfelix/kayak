@@ -1523,7 +1523,7 @@
       "hand.kfx's `registers-compiled!`, by `yregister-compiled!`."
       (if (null? rs)
           rts
-          (let ((rw (tagcase (car rs) (named (m v) v))))
+          (let ((rw (named-value (car rs))))
             (if (and (i64= (slot-of (slot-of rw f-twin) f-twin) rw)
                      (i64<= (cells-in rw f-cell0) compiled-cells-most))
                 (let ((rt (label!)))
@@ -1539,7 +1539,7 @@
       "hand.kfx's `words-compiled!`, by `yword-compiled!`."
       (if (null? ws)
           rts
-          (let ((w (tagcase (car ws) (named (m v) v))))
+          (let ((w (named-value (car ws))))
             (if (and (is-kind? w k-code) (i64= (fix-val (slot-of w f-entry)) r-docol)
                      (i64<= (cells-in w f-cell0) compiled-cells-most))
                 (let ((rt (label!)))

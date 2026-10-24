@@ -396,30 +396,32 @@ pub fn field_ok_p(v: i64, k: i64) -> bool {
 
 // Strings: a bloblet of no fields, its suffix a word of the length, then
 // the code points two to a word, the first in the low half.
+/// The code points of `s` from `i` on, into the string at `p`: a
+/// procedure of its own, as a `letrec`'s closure would be made at each
+/// call, and never let go (C43).
+pub fn points_filled_x(mut s: Str, mut p: i64, mut i: i64, mut n: i64) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            let (at, cp) = (i64_plus(p, i64_plus(1i64, i64_quotient(i, 2i64))), char_to_i64(string_ref_i64(s, i)));
+            word_set_x(at, i64_or(word_at(at), if i64_eq(i64_remainder(i, 2i64), 0i64) {
+                cp
+            } else {
+                i64_shl(cp, int_lit(32))
+            }));
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
 pub fn make_string_x(s: Str) -> i64 {
     let n = string_length_i64(s);
     let v = make_bloblet_x(k_string(), 0i64, i64_star(8i64, i64_plus(1i64, i64_quotient(i64_plus(n, 1i64), 2i64))), false, false);
     let p = address(v);
-    let fill__knot = knot::<&'static dyn Fn(i64) -> ()>();
-    let fill = lambda1(move |mut i: i64| {
-        loop {
-            if i64_gt_eq(i, n) {
-                return ();
-            } else {
-                let (at, cp) = (i64_plus(p, i64_plus(1i64, i64_quotient(i, 2i64))), char_to_i64(string_ref_i64(s, i)));
-                word_set_x(at, i64_or(word_at(at), if i64_eq(i64_remainder(i, 2i64), 0i64) {
-                    cp
-                } else {
-                    i64_shl(cp, int_lit(32))
-                }));
-                i = i64_plus(i, 1i64);
-                continue;
-            }
-        }
-    });
-    fill__knot.set(fill);
     word_set_x(p, n);
-    fill(0i64);
+    points_filled_x(s, p, 0i64, n);
     v
 }
 
@@ -473,6 +475,47 @@ pub fn globals() -> Ref<List<&'static Named>> {
     })
 }
 
+// A name's value is not in its `named`, which holds where it is: in
+// `named-values`, which a collection forwards in place. So a collection
+// makes nothing of the runtime's own, which is never let go: a program
+// that runs long would otherwise grow by every name at each one.
+pub fn named_values() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(64i64, 0i64))
+    })
+}
+
+pub fn named_count() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn named_x(n: Str, v: i64) -> &'static Named {
+    let (i, m) = (get(named_count()), get(named_values()));
+    if i64_lt(i, flatarray_length_i64(m)) {
+        ()
+    } else {
+        let bigger = the::<FlatArray<i64>>(make_flatarray_i64(i64_star(2i64, i), 0i64));
+        copied_into_x(m, bigger, 0i64, i);
+        set(named_values(), bigger)
+    };
+    flatarray_set_i64_x(get(named_values()), i, v);
+    set(named_count(), i64_plus(i, 1i64));
+    named(n, i)
+}
+
+pub fn named_value(x: &'static Named) -> i64 {
+    let tagcase_ = x;
+    match *tagcase_ {
+        Named::Named(m, i) => {
+            flatarray_ref_i64(get(named_values()), i)
+        }
+    }
+}
+
 pub fn lookup(mut xs: List<&'static Named>, mut n: Str) -> i64 {
     loop {
         if null_p(xs) {
@@ -480,17 +523,12 @@ pub fn lookup(mut xs: List<&'static Named>, mut n: Str) -> i64 {
         } else if {
             let tagcase_ = car(xs);
             match *tagcase_ {
-                Named::Named(m, v) => {
+                Named::Named(m, i) => {
                     string_eq_p(m, n)
                 }
             }
         } {
-            let tagcase_ = car(xs);
-            match *tagcase_ {
-                Named::Named(m, v) => {
-                    return v;
-                }
-            }
+            return named_value(car(xs));
         } else {
             xs = cdr(xs);
             continue;
@@ -507,7 +545,7 @@ pub fn symbol_x(name: Str) -> i64 {
         obj_set_x(s, 0i64, make_string_x(name));
         obj_set_x(s, 1i64, fix(int_to_i64(symbol_name_hash(string_to_symbol(name)))));
         obj_set_x(s, 2i64, fix(0i64));
-        set(symbols(), kayak_rt::heap_cons(named(name, s), get(symbols())));
+        set(symbols(), kayak_rt::heap_cons(named_x(name, s), get(symbols())));
         s
     }
 }
@@ -696,18 +734,17 @@ pub fn scanned_x(mut i: i64) -> () {
     }
 }
 
-pub fn named_forwarded(xs: List<&'static Named>) -> List<&'static Named> {
-    if null_p(xs) {
-        nil::<&'static Named>()
-    } else {
-        kayak_rt::heap_cons({
-            let tagcase_ = car(xs);
-            match *tagcase_ {
-                Named::Named(n, v) => {
-                    named(n, forward_x(v))
-                }
-            }
-        }, named_forwarded(cdr(xs)))
+/// Every name's value from `i` on, forwarded in place.
+pub fn named_forwarded_x(mut i: i64) -> () {
+    loop {
+        if i64_gt_eq(i, get(named_count())) {
+            return ();
+        } else {
+            let m = get(named_values());
+            flatarray_set_i64_x(m, i, forward_x(flatarray_ref_i64(m, i)));
+            i = i64_plus(i, 1i64);
+            continue;
+        }
     }
 }
 
@@ -720,8 +757,7 @@ pub fn collect_begin_x() -> () {
         ()
     };
     set(to_top(), 8i64);
-    set(symbols(), named_forwarded(get(symbols())));
-    set(globals(), named_forwarded(get(globals())))
+    named_forwarded_x(0i64)
 }
 
 /// Everything the roots reach, copied; the spaces swapped; the space grown,

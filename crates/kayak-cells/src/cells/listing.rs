@@ -303,7 +303,7 @@ pub fn global_named(name: Str) -> i64 {
         slot_set_x(g, f_value(), the_undefined());
         slot_set_x(g, 3i64, symbol_x(name));
         slot_set_x(g, f_writes(), fix(0i64));
-        set(globals(), kayak_rt::heap_cons(named(name, g), get(globals())));
+        set(globals(), kayak_rt::heap_cons(named_x(name, g), get(globals())));
         g
     }
 }
@@ -850,7 +850,7 @@ pub fn closure_literal(w: i64) -> i64 {
     } else {
         let c = make_bloblet_x(k_closure(), 1i64, 0i64, true, false);
         slot_set_x(c, f_word(), w);
-        set(literals(), kayak_rt::heap_cons(named(name, c), get(literals())));
+        set(literals(), kayak_rt::heap_cons(named_x(name, c), get(literals())));
         c
     }
 }
@@ -883,8 +883,8 @@ pub fn literals_checked_x(mut ls: List<&'static Named>) -> () {
         } else {
             let tagcase_ = car(ls);
             match *tagcase_ {
-                Named::Named(n, c) => {
-                    if free_read_p(slot_of(c, f_word()), f_cell0()) {
+                Named::Named(n, i) => {
+                    if free_read_p(slot_of(named_value(car(ls)), f_word()), f_cell0()) {
                         return match listing_error(string_append(str_lit("a closure as a literal, whose word reads a free value: "), n)) {};
                     } else {
                         ls = cdr(ls);
@@ -1250,15 +1250,11 @@ pub fn twins_linked_x(mut rs: List<&'static Named>) -> () {
             return ();
         } else {
             {
-                let tagcase_ = car(rs);
-                match *tagcase_ {
-                    Named::Named(n, rw) => {
-                        if (i64_eq(slot_of(rw, f_cell0()), fix(ro_args())) && i64_lt_eq(fix_val(slot_of(rw, i64_plus(f_cell0(), 1i64))), register_regs())) {
-                            slot_set_x(slot_of(rw, f_twin()), f_twin(), rw)
-                        } else {
-                            ()
-                        }
-                    }
+                let rw = named_value(car(rs));
+                if (i64_eq(slot_of(rw, f_cell0()), fix(ro_args())) && i64_lt_eq(fix_val(slot_of(rw, i64_plus(f_cell0(), 1i64))), register_regs())) {
+                    slot_set_x(slot_of(rw, f_twin()), f_twin(), rw)
+                } else {
+                    ()
                 }
             };
             rs = cdr(rs);
@@ -1281,9 +1277,9 @@ pub fn words_made_x(mut bs: List<&'static Block>) -> () {
                             match listing_error(string_append(str_lit("two words are named "), n)) {}
                         } else {
                             let (w, rc) = (make_word_x(n, c, e), register_cells(is, 0i64));
-                            set(words(), kayak_rt::heap_cons(named(n, w), get(words())));
+                            set(words(), kayak_rt::heap_cons(named_x(n, w), get(words())));
                             if i64_gt(rc, 0i64) {
-                                set(register_words(), kayak_rt::heap_cons(named(n, make_register_word_x(n, w, rc)), get(register_words())))
+                                set(register_words(), kayak_rt::heap_cons(named_x(n, make_register_word_x(n, w, rc)), get(register_words())))
                             } else {
                                 ()
                             }

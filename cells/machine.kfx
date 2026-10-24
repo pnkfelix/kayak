@@ -135,8 +135,32 @@
 "Collection (C122), at a safepoint only, as Fixpt's machine collects:
  everything live is then on the stacks, in `cur` and `clo`, or in the
  tables of what was read. When the space is three quarters full; or at
- every safepoint, under stress (`--gc-stress`, Coopt's policy for tests)."
+ every safepoint, under stress (`--gc-stress`, Coopt's policy for tests),
+ but where much lives (C142, `stress-wait`)."
 (define gc-stress (ref bool @c) (new #f))
+
+"Under stress, how many safepoints pass before the next collection: after
+ each, about one for every `stress-span` words it found live, the heap's
+ and the stacks', so that a program of much live data is not collected at
+ each of its many safepoints, the cost growing as their product (one of
+ Fixpt's, 100,000 conses in each of two tasks, took 389 s so); a program
+ of less is collected at every one, as before. The count jittered, from
+ half of it to half again, deterministically (a linear congruential
+ generator, its seed fixed), so that the collections do not fall into
+ step with a program's loop, and a run is the same each time."
+(define stress-span i64 4096)
+(define stress-wait (ref i64 @c) (new 0))
+(define stress-seed (ref i64 @c) (new 2463534242))
+
+(define stress-waited! (subr cm () unit)
+  (lambda ()
+    (let ((s (i64-quotient (i64+ (get top) (i64+ (get dsp) (get rsp))) stress-span)))
+      (if (i64= s 0)
+          (set stress-wait 0)
+          (let ((x (i64+ (i64* (get stress-seed) 6364136223846793005) 1442695040888963407)))
+            (begin
+              (set stress-seed x)
+              (set stress-wait (i64+ (i64-quotient s 2) (i64-remainder (i64-and (i64-shr x 33) 2147483647) (i64+ s 1))))))))))
 
 (define-rec
   (stack-forwarded! (subr cm ((flatarrayof i64 @c) i64 i64) unit)
@@ -147,21 +171,21 @@
   (lambda ()
     (begin
       (collect-begin!)
-      (set words (named-forwarded (get words)))
-      (set literals (named-forwarded (get literals)))
       (set undefined-closure (forward! (get undefined-closure)))
       (stack-forwarded! (get ds) 0 (get dsp))
       (stack-forwarded! (get rs) 0 (get rsp))
       (set cur (forward! (get cur)))
       (set clo (forward! (get clo)))
       (set sched-state (forward! (get sched-state)))
-      (collect-end!))))
+      (collect-end!)
+      (if (get gc-stress) (stress-waited!) #u))))
 
 (define safepoint! (subr cm () unit)
   (lambda ()
-    (if (or (get gc-stress) (i64> (i64* 4 (get top)) (i64* 3 (get limit))))
-        (collect!)
-        #u)))
+    (cond ((i64> (i64* 4 (get top)) (i64* 3 (get limit))) (collect!))
+          ((not (get gc-stress)) #u)
+          ((i64> (get stress-wait) 0) (set stress-wait (i64- (get stress-wait) 1)))
+          (else (collect!)))))
 
 "Flows: what a routine leaves the loop to do."
 (define next i64 0)
@@ -190,14 +214,25 @@
 (define shots-once i64 1)
 (define shots-spent i64 2)
 
+(define-rec
+  (slid! (subr cm (i64 i64) unit)
+    (lambda (from to)
+      "The data stack's values from `from` up, moved down to `to`."
+      (if (i64>= from (get dsp)) #u (begin (ds-set! to (ds-at from)) (slid! (i64+ from 1) (i64+ to 1)))))))
+
+(define-rec
+  (vector-filled! (subr cm (i64 (flatarrayof i64 @c) i64 i64 i64) unit)
+    (lambda (v a from i to)
+      (if (i64>= i to) #u (begin (obj-set! v (i64- i from) (flatarray-ref-i64 a i)) (vector-filled! v a from (i64+ i 1) to))))))
+
 (define vector-from! (subr cm ((flatarrayof i64 @c) i64 i64) i64)
   (lambda (a from to)
     "A vector of `a`'s words from `from` up to `to`, as Fixpt's
-     `vector_from` lays one out (`obj-set!`)."
+     `vector_from` lays one out (`obj-set!`). Its helpers here and below
+     are procedures of their own, not a `letrec`'s, whose closure the
+     runtime would make at each call and never let go (C43)."
     (let ((v (make-bloblet! k-vector (i64- to from) 0 #t #f)))
-      (letrec ((fill (subr cm (i64) unit)
-                 (lambda (i) (if (i64>= i to) #u (begin (obj-set! v (i64- i from) (flatarray-ref-i64 a i)) (fill (i64+ i 1)))))))
-        (begin (fill from) v)))))
+      (begin (vector-filled! v a from from to) v))))
 
 (define vector-length (subr cm (i64) i64) (lambda (v) (obj-length v)))
 (define vector-ref (subr cm (i64 i64) i64) (lambda (v i) (obj-ref v i)))
@@ -338,13 +373,8 @@
               (begin
                 (check-limits!)
                 (if tail
-                    (letrec ((slide (subr cm (i64 i64) unit)
-                               (lambda (from to)
-                                 (if (i64>= from (get dsp))
-                                     #u
-                                     (begin (ds-set! to (ds-at from)) (slide (i64+ from 1) (i64+ to 1)))))))
-                      (let ((from (i64- (get dsp) count)))
-                        (begin (slide from (get fp)) (set dsp (i64+ (get fp) count)))))
+                    (let ((from (i64- (get dsp) count)))
+                      (begin (slid! from (get fp)) (set dsp (i64+ (get fp) count))))
                     (begin (push-return!) (set fp (i64- (get dsp) count))))
                 (set cur (slot-of c f-word))
                 (set kk f-cell0)
@@ -354,12 +384,6 @@
                       (adapted! rw 0 count)
                       #u))
                 next)))))))
-
-(define-rec
-  (args-of (subr cm (i64 i64 (listof i64 @c)) (listof i64 @c))
-    (lambda (from i acc)
-      "The values from `from` up to `i`, deepest first."
-      (if (i64<= i from) acc (args-of from (i64- i 1) (cons (ds-at (i64- i 1)) acc))))))
 
 (define int-op! (subr cm (i64) i64)
   (lambda (n)
@@ -418,6 +442,11 @@
               (push! handler)
               (call! n 1 #f)))))))
 
+(define-rec
+  (frees-filled! (subr cm (i64 i64 i64 i64) unit)
+    (lambda (c base i count)
+      (if (i64>= i count) #u (begin (slot-set! c (i64+ f-free0 i) (ds-at (i64+ base i))) (frees-filled! c base (i64+ i 1) count))))))
+
 (define closure-made! (subr cm (i64 i64) i64)
   (lambda (n at)
     "`closure W COUNT`, its operands at field `at` of `cur` (read past the
@@ -428,17 +457,18 @@
           (begin (underflow-trap! n) next)
           (let ((c (make-bloblet! k-closure (i64+ count 1) 0 #t #f))
                 (base (i64- (get dsp) count)))
-            (letrec ((fill (subr cm (i64) unit)
-                       (lambda (i)
-                         (if (i64>= i count)
-                             #u
-                             (begin (slot-set! c (i64+ f-free0 i) (ds-at (i64+ base i))) (fill (i64+ i 1)))))))
-              (begin
-                (slot-set! c f-word w)
-                (fill 0)
-                (set dsp base)
-                (push! c)
-                next)))))))
+            (begin
+              (slot-set! c f-word w)
+              (frees-filled! c base 0 count)
+              (set dsp base)
+              (push! c)
+              next))))))
+
+(define-rec
+  (pargs-copied! (subr cm (i64 i64 i64) unit)
+    (lambda (from i n)
+      "The `n` values from `from` on the data stack, as a primitive's arguments."
+      (if (i64>= i n) #u (begin (parg-set! i (ds-at (i64+ from i))) (pargs-copied! from (i64+ i 1) n))))))
 
 (define prim-run! (subr cm (i64 i64 i64) i64)
   (lambda (n p count)
@@ -449,9 +479,19 @@
            (begin (trap! (string-append "`" (string-append (prim-name p) (string-append "` given " (string-append (i64->string count) " argument(s)"))))) next))
           (else
            (let* ((u (safepoint!))
-                  (from (i64- (get dsp) count))
-                  (args (args-of from (get dsp) nil)))
-             (begin (set dsp from) (push! (prim-apply! p args)) next))))))
+                  (from (i64- (get dsp) count)))
+             (begin (pargs-room! count) (pargs-copied! from 0 count) (set dsp from) (push! (prim-apply! p)) next))))))
+
+(define-rec
+  (falses-pushed! (subr cm (i64) unit)
+    (lambda (i) (if (i64<= i 0) #u (begin (push! v-false) (falses-pushed! (i64- i 1)))))))
+
+(define-rec
+  (ds-list (subr cm (i64 i64 i64) i64)
+    (lambda (from i acc)
+      "The data stack's values from `from` up to `i`, consed onto `acc`, a
+       list of the heap's (no list of the runtime's made first: C43)."
+      (if (i64<= i from) acc (ds-list from (i64- i 1) (cons! (ds-at (i64- i 1)) acc))))))
 
 (define-rec
   (routine! (subr cm (i64) i64)
@@ -543,7 +583,7 @@
         ((i64= n r-rest)
          (if (i64> (get fp) (get dsp))
              (begin (underflow-trap! n) next)
-             (begin (push! (list-of (args-of (get fp) (get dsp) nil))) next)))
+             (begin (push! (ds-list (get fp) (get dsp) v-null)) next)))
         ((i64= n r-execute)
          (let ((w (pop! n)))
            (cond ((is-fixnum? w) (routine! (fix-val w)))
@@ -751,8 +791,7 @@
              (begin (field-trap! r-free) next)))
         ((i64= op ro-save)
          (let ((base (get dsp)))
-           (letrec ((slots (subr cm (i64) unit) (lambda (i) (if (i64<= i 0) #u (begin (push! v-false) (slots (i64- i 1)))))))
-             (begin (slots (fix-val o0)) (push! (fix 0)) (set fp base) (check-limits!) (set kk nx) next))))
+           (begin (falses-pushed! (fix-val o0)) (push! (fix 0)) (set fp base) (check-limits!) (set kk nx) next)))
         ((i64= op ro-pop)
          (if (i64< (get dsp) (i64+ (fix-val o0) 1))
              (begin (underflow-trap! r-return) next)
@@ -784,11 +823,11 @@
            (cond ((not (is-bloblet? x)) (begin (type-trap! r-field-set) next))
                  ((field-ok? x (fix-val o0)) (begin (slot-set! x (fix-val o0) (reg-at (fix-val o1))) (set kk nx) next))
                  (else (begin (field-trap! r-field-set) next)))))
-        ((i64= op ro-prim1) (val (prim-apply! (fix-val o0) (list (result)))))
-        ((i64= op ro-prim2) (val (prim-apply! (fix-val o0) (list (result) (reg-at (fix-val o1))))))
-        ((i64= op ro-prim2imm) (val (prim-apply! (fix-val o0) (list (result) o1))))
+        ((i64= op ro-prim1) (val (begin (pargs1! (result)) (prim-apply! (fix-val o0)))))
+        ((i64= op ro-prim2) (val (begin (pargs2! (result) (reg-at (fix-val o1))) (prim-apply! (fix-val o0)))))
+        ((i64= op ro-prim2imm) (val (begin (pargs2! (result) o1) (prim-apply! (fix-val o0)))))
         ((i64= op ro-prim3imm)
-         (val (prim-apply! (fix-val o0) (list (result) o1 (reg-at (fix-val (slot-of w (i64+ k 3))))))))
+         (val (begin (pargs3! (result) o1 (reg-at (fix-val (slot-of w (i64+ k 3))))) (prim-apply! (fix-val o0)))))
         ;; What may collect, or run elsewhere first: its value comes back on
         ;; the data stack, to the point after it.
         ((i64= op ro-prim)

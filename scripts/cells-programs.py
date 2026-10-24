@@ -18,7 +18,8 @@ fails), or is not run: its listing is not exact (a literal cut short,
 program of definitions), or Fixpt refuses it. The programs that agree are
 kept in tests/cells-passing (--bless rewrites it); one that agreed and
 no longer does fails the check. Each but Fixpt's benchmarks is run again
-with a collection at every safepoint (`--gc-stress`), to the same end;
+with a collection at every safepoint, or, once much is live, at about
+one in every so many, jittered (`--gc-stress`, C142), to the same end;
 each by tier 2's machine (`--hand`, C126), with its words compiled
 (`--compiled`, C128), these on arm64 macOS and x86_64 Linux (C136,
 C137), with register code as native procedures too (`--direct`, tier 6,
@@ -210,7 +211,8 @@ TASKS = re.compile(r"\((spawn|spawn-monitored|par|race|pselect|send|receive|icel
 
 def stressed(cells, name, path, text, limit, have, fail):
     """The ways a program's answer must be the same: by each tier, with a
-    collection at every safepoint (C122, Coopt's stress policy), and, for a
+    collection at every safepoint (C122, Coopt's stress policy; spaced out
+    as more lives, C142), and, for a
     program that runs tasks, preempted at every poll (C125); Fixpt's
     benchmarks, long, are not run so. Run by `ways_run`, all at once."""
     # Tier 2, the hand machine (C126), each program, where native code runs.

@@ -306,12 +306,51 @@ pub fn word_p(v: i64) -> bool {
 // Collection (C122), at a safepoint only, as Fixpt's machine collects:
 // everything live is then on the stacks, in `cur` and `clo`, or in the
 // tables of what was read. When the space is three quarters full; or at
-// every safepoint, under stress (`--gc-stress`, Coopt's policy for tests).
+// every safepoint, under stress (`--gc-stress`, Coopt's policy for tests),
+// but where much lives (C142, `stress-wait`).
 pub fn gc_stress() -> Ref<bool> {
     kayak_rt::kept_constant!(ONCE: Ref<bool>);
     once(&ONCE, || {
         kayak_rt::heap_new(false)
     })
+}
+
+// Under stress, how many safepoints pass before the next collection: after
+// each, about one for every `stress-span` words it found live, the heap's
+// and the stacks', so that a program of much live data is not collected at
+// each of its many safepoints, the cost growing as their product (one of
+// Fixpt's, 100,000 conses in each of two tasks, took 389 s so); a program
+// of less is collected at every one, as before. The count jittered, from
+// half of it to half again, deterministically (a linear congruential
+// generator, its seed fixed), so that the collections do not fall into
+// step with a program's loop, and a run is the same each time.
+pub fn stress_span() -> i64 {
+    4096i64
+}
+
+pub fn stress_wait() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn stress_seed() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(2463534242i64)
+    })
+}
+
+pub fn stress_waited_x() -> () {
+    let s = i64_quotient(i64_plus(get(top()), i64_plus(get(dsp()), get(rsp()))), stress_span());
+    if i64_eq(s, 0i64) {
+        set(stress_wait(), 0i64)
+    } else {
+        let x = i64_plus(i64_star(get(stress_seed()), 6364136223846793005i64), 1442695040888963407i64);
+        set(stress_seed(), x);
+        set(stress_wait(), i64_plus(i64_quotient(s, 2i64), i64_remainder(i64_and(i64_shr(x, int_lit(33)), 2147483647i64), i64_plus(s, 1i64))))
+    }
 }
 
 pub fn stack_forwarded_x(mut a: FlatArray<i64>, mut i: i64, mut n: i64) -> () {
@@ -328,22 +367,29 @@ pub fn stack_forwarded_x(mut a: FlatArray<i64>, mut i: i64, mut n: i64) -> () {
 
 pub fn collect_x() -> () {
     collect_begin_x();
-    set(words(), named_forwarded(get(words())));
-    set(literals(), named_forwarded(get(literals())));
     set(undefined_closure(), forward_x(get(undefined_closure())));
     stack_forwarded_x(get(ds()), 0i64, get(dsp()));
     stack_forwarded_x(get(rs()), 0i64, get(rsp()));
     set(cur(), forward_x(get(cur())));
     set(clo(), forward_x(get(clo())));
     set(sched_state(), forward_x(get(sched_state())));
-    collect_end_x()
+    collect_end_x();
+    if get(gc_stress()) {
+        stress_waited_x()
+    } else {
+        ()
+    }
 }
 
 pub fn safepoint_x() -> () {
-    if (get(gc_stress()) || i64_gt(i64_star(4i64, get(top())), i64_star(3i64, get(limit())))) {
+    if i64_gt(i64_star(4i64, get(top())), i64_star(3i64, get(limit()))) {
         collect_x()
-    } else {
+    } else if not(get(gc_stress())) {
         ()
+    } else if i64_gt(get(stress_wait()), 0i64) {
+        set(stress_wait(), i64_minus(get(stress_wait()), 1i64))
+    } else {
+        collect_x()
     }
 }
 
@@ -426,24 +472,38 @@ pub fn shots_spent() -> i64 {
     2i64
 }
 
+/// The data stack's values from `from` up, moved down to `to`.
+pub fn slid_x(mut from: i64, mut to: i64) -> () {
+    loop {
+        if i64_gt_eq(from, get(dsp())) {
+            return ();
+        } else {
+            ds_set_x(to, ds_at(from));
+            (from, to) = (i64_plus(from, 1i64), i64_plus(to, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn vector_filled_x(mut v: i64, mut a: FlatArray<i64>, mut from: i64, mut i: i64, mut to: i64) -> () {
+    loop {
+        if i64_gt_eq(i, to) {
+            return ();
+        } else {
+            obj_set_x(v, i64_minus(i, from), flatarray_ref_i64(a, i));
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
 /// A vector of `a`'s words from `from` up to `to`, as Fixpt's
-/// `vector_from` lays one out (`obj-set!`).
+/// `vector_from` lays one out (`obj-set!`). Its helpers here and below
+/// are procedures of their own, not a `letrec`'s, whose closure the
+/// runtime would make at each call and never let go (C43).
 pub fn vector_from_x(a: FlatArray<i64>, from: i64, to: i64) -> i64 {
     let v = make_bloblet_x(k_vector(), i64_minus(to, from), 0i64, true, false);
-    let fill__knot = knot::<&'static dyn Fn(i64) -> ()>();
-    let fill = lambda1(move |mut i: i64| {
-        loop {
-            if i64_gt_eq(i, to) {
-                return ();
-            } else {
-                obj_set_x(v, i64_minus(i, from), flatarray_ref_i64(a, i));
-                i = i64_plus(i, 1i64);
-                continue;
-            }
-        }
-    });
-    fill__knot.set(fill);
-    fill(from);
+    vector_filled_x(v, a, from, from, to);
     v
 }
 
@@ -654,21 +714,8 @@ pub fn call_x(n: i64, count: i64, tail: bool) -> i64 {
         } else {
             check_limits_x();
             if tail {
-                let slide__knot = knot::<&'static dyn Fn(i64, i64) -> ()>();
-                let slide = lambda2(move |mut from: i64, mut to: i64| {
-                    loop {
-                        if i64_gt_eq(from, get(dsp())) {
-                            return ();
-                        } else {
-                            ds_set_x(to, ds_at(from));
-                            (from, to) = (i64_plus(from, 1i64), i64_plus(to, 1i64));
-                            continue;
-                        }
-                    }
-                });
-                slide__knot.set(slide);
                 let from = i64_minus(get(dsp()), count);
-                slide(from, get(fp()));
+                slid_x(from, get(fp()));
                 set(dsp(), i64_plus(get(fp()), count))
             } else {
                 push_return_x();
@@ -686,18 +733,6 @@ pub fn call_x(n: i64, count: i64, tail: bool) -> i64 {
                 }
             };
             next()
-        }
-    }
-}
-
-/// The values from `from` up to `i`, deepest first.
-pub fn args_of(mut from: i64, mut i: i64, mut acc: List<i64>) -> List<i64> {
-    loop {
-        if i64_lt_eq(i, from) {
-            return acc;
-        } else {
-            (i, acc) = (i64_minus(i, 1i64), kayak_rt::heap_cons(ds_at(i64_minus(i, 1i64)), acc));
-            continue;
         }
     }
 }
@@ -796,6 +831,18 @@ pub fn abort_to_x(n: i64, tag: i64, v: i64) -> i64 {
     }
 }
 
+pub fn frees_filled_x(mut c: i64, mut base: i64, mut i: i64, mut count: i64) -> () {
+    loop {
+        if i64_gt_eq(i, count) {
+            return ();
+        } else {
+            slot_set_x(c, i64_plus(f_free0(), i), ds_at(i64_plus(base, i)));
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
 /// `closure W COUNT`, its operands at field `at` of `cur` (read past the
 /// safepoint, which may move them): a closure of `W` over the `COUNT`
 /// values on top. Register code's `lambda` too (C129).
@@ -808,24 +855,24 @@ pub fn closure_made_x(n: i64, at: i64) -> i64 {
         next()
     } else {
         let (c, base) = (make_bloblet_x(k_closure(), i64_plus(count, 1i64), 0i64, true, false), i64_minus(get(dsp()), count));
-        let fill__knot = knot::<&'static dyn Fn(i64) -> ()>();
-        let fill = lambda1(move |mut i: i64| {
-            loop {
-                if i64_gt_eq(i, count) {
-                    return ();
-                } else {
-                    slot_set_x(c, i64_plus(f_free0(), i), ds_at(i64_plus(base, i)));
-                    i = i64_plus(i, 1i64);
-                    continue;
-                }
-            }
-        });
-        fill__knot.set(fill);
         slot_set_x(c, f_word(), w);
-        fill(0i64);
+        frees_filled_x(c, base, 0i64, count);
         set(dsp(), base);
         push_x(c);
         next()
+    }
+}
+
+/// The `n` values from `from` on the data stack, as a primitive's arguments.
+pub fn pargs_copied_x(mut from: i64, mut i: i64, mut n: i64) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            parg_set_x(i, ds_at(i64_plus(from, i)));
+            i = i64_plus(i, 1i64);
+            continue;
+        }
     }
 }
 
@@ -841,10 +888,36 @@ pub fn prim_run_x(n: i64, p: i64, count: i64) -> i64 {
     } else {
         let u = safepoint_x();
         let from = i64_minus(get(dsp()), count);
-        let args = args_of(from, get(dsp()), nil::<i64>());
+        pargs_room_x(count);
+        pargs_copied_x(from, 0i64, count);
         set(dsp(), from);
-        push_x(prim_apply_x(p, args));
+        push_x(prim_apply_x(p));
         next()
+    }
+}
+
+pub fn falses_pushed_x(mut i: i64) -> () {
+    loop {
+        if i64_lt_eq(i, 0i64) {
+            return ();
+        } else {
+            push_x(v_false());
+            i = i64_minus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+/// The data stack's values from `from` up to `i`, consed onto `acc`, a
+/// list of the heap's (no list of the runtime's made first: C43).
+pub fn ds_list(mut from: i64, mut i: i64, mut acc: i64) -> i64 {
+    loop {
+        if i64_lt_eq(i, from) {
+            return acc;
+        } else {
+            (i, acc) = (i64_minus(i, 1i64), cons_x(ds_at(i64_minus(i, 1i64)), acc));
+            continue;
+        }
     }
 }
 
@@ -1004,7 +1077,7 @@ pub fn routine_x(mut n: i64) -> i64 {
                 underflow_trap_x(n);
                 return next();
             } else {
-                push_x(list_of(args_of(get(fp()), get(dsp()), nil::<i64>())));
+                push_x(ds_list(get(fp()), get(dsp()), v_null()));
                 return next();
             }
         } else if i64_eq(n, r_execute()) {
@@ -1402,20 +1475,7 @@ pub fn reg_op_x() -> i64 {
         }
     } else if i64_eq(op, ro_save()) {
         let base = get(dsp());
-        let slots__knot = knot::<&'static dyn Fn(i64) -> ()>();
-        let slots = lambda1(move |mut i: i64| {
-            loop {
-                if i64_lt_eq(i, 0i64) {
-                    return ();
-                } else {
-                    push_x(v_false());
-                    i = i64_minus(i, 1i64);
-                    continue;
-                }
-            }
-        });
-        slots__knot.set(slots);
-        slots(fix_val(o0));
+        falses_pushed_x(fix_val(o0));
         push_x(fix(0i64));
         set(fp(), base);
         check_limits_x();
@@ -1508,13 +1568,25 @@ pub fn reg_op_x() -> i64 {
             next()
         }
     } else if i64_eq(op, ro_prim1()) {
-        val(prim_apply_x(fix_val(o0), kayak_rt::heap_cons(result(), kayak_rt::nil())))
+        val({
+            pargs1_x(result());
+            prim_apply_x(fix_val(o0))
+        })
     } else if i64_eq(op, ro_prim2()) {
-        val(prim_apply_x(fix_val(o0), kayak_rt::heap_cons(result(), kayak_rt::heap_cons(reg_at(fix_val(o1)), kayak_rt::nil()))))
+        val({
+            pargs2_x(result(), reg_at(fix_val(o1)));
+            prim_apply_x(fix_val(o0))
+        })
     } else if i64_eq(op, ro_prim2imm()) {
-        val(prim_apply_x(fix_val(o0), kayak_rt::heap_cons(result(), kayak_rt::heap_cons(o1, kayak_rt::nil()))))
+        val({
+            pargs2_x(result(), o1);
+            prim_apply_x(fix_val(o0))
+        })
     } else if i64_eq(op, ro_prim3imm()) {
-        val(prim_apply_x(fix_val(o0), kayak_rt::heap_cons(result(), kayak_rt::heap_cons(o1, kayak_rt::heap_cons(reg_at(fix_val(slot_of(w, i64_plus(k, 3i64)))), kayak_rt::nil())))))
+        val({
+            pargs3_x(result(), o1, reg_at(fix_val(slot_of(w, i64_plus(k, 3i64)))));
+            prim_apply_x(fix_val(o0))
+        })
     } else if i64_eq(op, ro_prim()) {
         set(kk(), i64_minus(0i64, nx));
         regs_pushed_x(1i64, fix_val(o1));

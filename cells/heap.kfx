@@ -203,21 +203,26 @@
 
 "Strings: a bloblet of no fields, its suffix a word of the length, then
  the code points two to a word, the first in the low half."
+(define-rec
+  (points-filled! (subr cm (string i64 i64 i64) unit)
+    (lambda (s p i n)
+      "The code points of `s` from `i` on, into the string at `p`: a
+       procedure of its own, as a `letrec`'s closure would be made at each
+       call, and never let go (C43)."
+      (if (i64>= i n)
+          #u
+          (let ((at (i64+ p (i64+ 1 (i64-quotient i 2))))
+                (cp (char->i64 (string-ref-i64 s i))))
+            (begin
+              (word-set! at (i64-or (word-at at) (if (i64= (i64-remainder i 2) 0) cp (i64-shl cp 32))))
+              (points-filled! s p (i64+ i 1) n)))))))
+
 (define make-string! (subr cm (string) i64)
   (lambda (s)
     (let* ((n (string-length-i64 s))
            (v (make-bloblet! k-string 0 (i64* 8 (i64+ 1 (i64-quotient (i64+ n 1) 2))) #f #f))
            (p (address v)))
-      (letrec ((fill (subr cm (i64) unit)
-                 (lambda (i)
-                   (if (i64>= i n)
-                       #u
-                       (let ((at (i64+ p (i64+ 1 (i64-quotient i 2))))
-                             (cp (char->i64 (string-ref-i64 s i))))
-                         (begin
-                           (word-set! at (i64-or (word-at at) (if (i64= (i64-remainder i 2) 0) cp (i64-shl cp 32))))
-                           (fill (i64+ i 1))))))))
-        (begin (word-set! p n) (fill 0) v)))))
+      (begin (word-set! p n) (points-filled! s p 0 n) v))))
 
 (define string-text (subr cm (i64) string)
   (lambda (v)
@@ -239,11 +244,31 @@
 (define symbols (ref (listof named @c) @c) (new nil))
 (define globals (ref (listof named @c) @c) (new nil))
 
+"A name's value is not in its `named`, which holds where it is: in
+ `named-values`, which a collection forwards in place. So a collection
+ makes nothing of the runtime's own, which is never let go: a program
+ that runs long would otherwise grow by every name at each one."
+(define named-values (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 64 0)))
+(define named-count (ref i64 @c) (new 0))
+(define named! (subr cm (string i64) named)
+  (lambda (n v)
+    (let ((i (get named-count)) (m (get named-values)))
+      (begin
+        (if (i64< i (flatarray-length-i64 m))
+            #u
+            (let ((bigger (the (flatarrayof i64 @c) (make-flatarray-i64 (i64* 2 i) 0))))
+              (begin (copied-into! m bigger 0 i) (set named-values bigger))))
+        (flatarray-set-i64! (get named-values) i v)
+        (set named-count (i64+ i 1))
+        (named n i)))))
+(define named-value (subr cm (named) i64)
+  (lambda (x) (tagcase x (named (m i) (flatarray-ref-i64 (get named-values) i)))))
+
 (define-rec
   (lookup (subr cm ((listof named @c) string) i64)
     (lambda (xs n)
       (cond ((null? xs) 0)
-            ((tagcase (car xs) (named (m v) (string=? m n))) (tagcase (car xs) (named (m v) v)))
+            ((tagcase (car xs) (named (m i) (string=? m n))) (named-value (car xs)))
             (else (lookup (cdr xs) n))))))
 
 (define symbol! (subr cm (string) i64)
@@ -256,7 +281,7 @@
               (obj-set! s 0 (make-string! name))
               (obj-set! s 1 (fix (int->i64 (symbol-name-hash (string->symbol name)))))
               (obj-set! s 2 (fix 0))
-              (set symbols (cons (named name s) (get symbols)))
+              (set symbols (cons (named! name s) (get symbols)))
               s))))))
 
 (define symbol-text (subr cm (i64) string) (lambda (s) (string-text (obj-ref s 0))))
@@ -365,11 +390,13 @@
                 (begin (fields-forwarded! i (i64+ i 1)) (scanned! (i64+ i 2)))))))))
 
 (define-rec
-  (named-forwarded (subr cm ((listof named @c)) (listof named @c))
-    (lambda (xs)
-      (if (null? xs)
-          nil
-          (cons (tagcase (car xs) (named (n v) (named n (forward! v)))) (named-forwarded (cdr xs)))))))
+  (named-forwarded! (subr cm (i64) unit)
+    (lambda (i)
+      "Every name's value from `i` on, forwarded in place."
+      (if (i64>= i (get named-count))
+          #u
+          (let ((m (get named-values)))
+            (begin (flatarray-set-i64! m i (forward! (flatarray-ref-i64 m i))) (named-forwarded! (i64+ i 1))))))))
 
 (define collect-begin! (subr cm () unit)
   (lambda ()
@@ -380,8 +407,7 @@
           (set other (the (flatarrayof i64 @c) (make-flatarray-i64 (flatarray-length-i64 (get mem)) 0)))
           #u)
       (set to-top 8)
-      (set symbols (named-forwarded (get symbols)))
-      (set globals (named-forwarded (get globals))))))
+      (named-forwarded! 0))))
 
 (define collect-end! (subr cm () unit)
   (lambda ()

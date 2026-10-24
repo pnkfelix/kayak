@@ -3391,14 +3391,7 @@ pub fn yregisters_compiled_x(mut rs: List<&'static Named>, mut s: Int, mut rts: 
         if null_p(rs) {
             return rts;
         } else {
-            let rw = {
-                let tagcase_ = car(rs);
-                match *tagcase_ {
-                    Named::Named(m, v) => {
-                        v
-                    }
-                }
-            };
+            let rw = named_value(car(rs));
             if (i64_eq(slot_of(slot_of(rw, f_twin()), f_twin()), rw) && i64_lt_eq(cells_in(rw, f_cell0()), compiled_cells_most())) {
                 let rt = label_x();
                 yregister_compiled_x(rw, i64_to_int(cells_in(rw, f_cell0())), rt);
@@ -3419,14 +3412,7 @@ pub fn ywords_compiled_x(mut ws: List<&'static Named>, mut s: Int, mut rts: List
         if null_p(ws) {
             return rts;
         } else {
-            let w = {
-                let tagcase_ = car(ws);
-                match *tagcase_ {
-                    Named::Named(m, v) => {
-                        v
-                    }
-                }
-            };
+            let w = named_value(car(ws));
             if (is_kind_p(w, k_code()) && i64_eq(fix_val(slot_of(w, f_entry())), r_docol()) && i64_lt_eq(cells_in(w, f_cell0()), compiled_cells_most())) {
                 let rt = label_x();
                 yword_compiled_x(w, i64_to_int(cells_in(w, f_cell0())), rt);

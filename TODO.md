@@ -678,6 +678,20 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    specialization), lambda lifting, register code (twins), so that the
    words are Fixpt's; then the REPL's forms through it (§33's
    `,disassemble`). Most programs not compiled wait on the checker (§30).
+- Tier 1 on a long run (C142, the user: "support long running
+  programs/services"): what it still makes of the runtime's, never let
+  go (C43). The scheduler's lists (`sched-op!`, `pop-any!`, `without`,
+  `heap-items`) and closures (`cancelled?`, `timer-due?`), at each
+  scheduling: 1.25 million conses at a slice of 2 in
+  `preempt/allocating-short.fx`. A message's copy (`copy-within!`: lists
+  of what was copied, found by a walk, so quadratic too). The
+  primitives of any number of arguments (`append`, `string`,
+  `string=?`, `make-bloblet`, ...), which still take a list.
+  `string-text`, a `string-append` for each character.
+- Tier 1's preemption: some 6,500 steps of the scheduler at each, so
+  `--slice 2` of `preempt/allocating.fx` takes 126 s, now
+  `cells-programs.py`'s wait (C142); Fixpt's machine on the same
+  program, twice its time at no slice.
 
 ## 32. `wcell`, `tword`, `wglobal` out of FX-26 (the user, 2026-10-16; C120)
 

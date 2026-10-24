@@ -1,7 +1,7 @@
 "main.kfx: `kayak-cells LISTING [--step-limit N|none] [--slice N]
  [--hand|--compiled|--direct] [--regs] [--fixpt-calls] [--indexes]
  [--gc-stress] [--gc-stats]` (C122, C125, C126, C128, C129, C138, C139,
- C140): the words of a listing Fixpt's compiler wrote, its
+ C140, C142): the words of a listing Fixpt's compiler wrote, its
  `program` run, at most N instructions (Fixpt's FX-26 default,
  20,000,000; `none`, no limit), a task's time slice N polls (Fixpt's
  65,536, or its `FIXPT_SLICE`), by tier 2's machine if `--hand`, with

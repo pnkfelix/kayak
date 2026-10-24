@@ -157,7 +157,7 @@
               (slot-set! g f-value (the-undefined))
               (slot-set! g 3 (symbol! name))
               (slot-set! g f-writes (fix 0))
-              (set globals (cons (named name g) (get globals)))
+              (set globals (cons (named! name g) (get globals)))
               g))))))
 
 "Literals as `fixpt compile --full-literals` writes them (C123): every one
@@ -401,7 +401,7 @@
           (let ((c (make-bloblet! k-closure 1 0 #t #f)))
             (begin
               (slot-set! c f-word w)
-              (set literals (cons (named name c) (get literals)))
+              (set literals (cons (named! name c) (get literals)))
               c))))))
 
 (define-rec
@@ -420,8 +420,8 @@
       (if (null? ls)
           #u
           (tagcase (car ls)
-            (named (n c)
-              (if (free-read? (slot-of c f-word) f-cell0)
+            (named (n i)
+              (if (free-read? (slot-of (named-value (car ls)) f-word) f-cell0)
                   (listing-error (string-append "a closure as a literal, whose word reads a free value: " n))
                   (literals-checked! (cdr ls)))))))))
 
@@ -626,12 +626,11 @@
       (if (null? rs)
           #u
           (begin
-            (tagcase (car rs)
-              (named (n rw)
-                (if (and (i64= (slot-of rw f-cell0) (fix ro-args))
-                         (i64<= (fix-val (slot-of rw (i64+ f-cell0 1))) register-regs))
-                    (slot-set! (slot-of rw f-twin) f-twin rw)
-                    #u)))
+            (let ((rw (named-value (car rs))))
+              (if (and (i64= (slot-of rw f-cell0) (fix ro-args))
+                       (i64<= (fix-val (slot-of rw (i64+ f-cell0 1))) register-regs))
+                  (slot-set! (slot-of rw f-twin) f-twin rw)
+                  #u))
             (twins-linked! (cdr rs)))))))
 
 (define-rec
@@ -647,8 +646,8 @@
                     (listing-error (string-append "two words are named " n))
                     (let ((w (make-word! n c e)) (rc (register-cells is 0)))
                       (begin
-                        (set words (cons (named n w) (get words)))
-                        (if (i64> rc 0) (set register-words (cons (named n (make-register-word! n w rc)) (get register-words))) #u))))))
+                        (set words (cons (named! n w) (get words)))
+                        (if (i64> rc 0) (set register-words (cons (named! n (make-register-word! n w rc)) (get register-words))) #u))))))
             (words-made! (cdr bs))))))
   (cells-written! (subr cm (i64 i64 (listof iline acyclic)) unit)
     (lambda (w rw is) (if (null? is) #u (begin (instruction! w rw (car is)) (cells-written! w rw (cdr is))))))

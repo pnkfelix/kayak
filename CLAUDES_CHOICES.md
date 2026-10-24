@@ -3892,3 +3892,50 @@ pushes it, a clone of GitHub's alone has no such commit.
   comparison (§30): the same on 84 of the programs Fixpt accepts, one
   fewer than at `4caffc2` (which one, not yet found: no program of the
   old set changed but a comment, so it is Fixpt's answer that did).
+
+## C142. Stress spaced out where much lives; tier 1's leaks on its hot paths (2026-10-24)
+
+With stage 0 at 25 s (C141), `cells-programs.py` was the check's wait,
+and within it three of Fixpt's programs under `--gc-stress`: a
+collection at every safepoint, each copying all that lives and
+scanning both stacks, so a cost of their product.
+`preempt/allocating.fx` (two tasks of 100,000 conses) took 389 s so,
+0.17 s without; `native/deep-control.fx` 44 s and
+`native/crossing-overflow.fx` 26 s, their stacks some 65,000 frames.
+- **Chosen** (the user: "the periodicity k grows in proportion to the
+  heap size, and ... a deterministic-but-randomized amount of jitter"):
+  after a collection under stress, `stress-wait` safepoints pass before
+  the next, one for every `stress-span` (4,096) words found live, heap
+  and stacks both (the stacks being what made two of the three slow),
+  jittered from half of that to half again by a linear congruential
+  generator of a fixed seed: a run collects at the same safepoints each
+  time. Below a span, every safepoint, as before; the collection when
+  three quarters full is kept. The three: 7.5 s, 0.9 s, 0.6 s.
+  Fixpt's own stress tests shrink their workloads instead ("the shapes
+  ... are what matter, not the counts"); kayak takes Fixpt's programs as
+  they are.
+- **Leaks** (the user: "we should definitely fix that memory leak. I
+  want us to aim to support long running programs/services"): the
+  runtime's memory is never let go (C43), so whatever tier 1 makes of
+  its own on a path a program takes again and again grows without end.
+  Found by `kayak-rt`'s `heap-stats`, and taken out:
+  - each collection's lists of the names (symbols, globals, words,
+    literals): now one flat array of their values, forwarded in place
+    (`named-values`); a run of 32,000 frames' stress, 17 MB to 5;
+  - a primitive's arguments as a list: now copied into a flat array
+    (`pargs`), read by `prim-apply!`; `list` and a procedure's rest
+    arguments made on the heap straight from where they are;
+  - the closure of a `letrec` within a procedure, made at each call:
+    `closure-made!`'s, `vector-from!`'s (each continuation taken),
+    `call!`'s tail call, register code's `save`, `make-string!`'s,
+    `reverse`'s, `make-flatarray`'s, each a procedure of its own.
+  At a slice of 2, `preempt/allocating-short.fx` made 345 MB of the
+  runtime's, now 31 MB; what is left is in TODO §31.
+- **Not chosen**: leaving the three out of `--gc-stress`, as Fixpt's
+  benchmarks are (the user chose the spacing); starting each program's
+  other ways as soon as its tier 1 answer is in (that phase takes 5 s).
+- **Measured**: `cells-programs.py` 424 s to about 200, the full check
+  566 s to 339; the stage's wait now the
+  `--slice 2` ways of `preempt/allocating.fx` (126 s and more): some
+  6,500 steps of the scheduler's at each preemption, against 20 a loop's
+  turn without.
