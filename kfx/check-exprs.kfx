@@ -5363,8 +5363,18 @@
                                   ;; A procedure that writes, at frozen data (C161): Fixpt's rule.
                                   (refuse v "this writes frozen data, whose region is const")
                               (res r (effs-union (close-effs s named) (effs-union more (effs-union es0 es1)))
-                                   (lift-noted v (noted-call v s named) r expected)))))))))))
+                                   (fx-noted v t (lift-noted v (noted-call v s named) r expected))))))))))))
                 (else other (refuse v (string-append "a call of a " (string-append (show-ty s t) ", no procedure"))))))))))
+
+      (fx-noted (subr kfx (cv ty st) st)
+        (lambda (v t s)
+          "A call of a composable continuation, a procedure of the fx convention
+           (the standard's, as Fixpt has it): noted `call-fx`, so that the
+           cellular generator makes it a call that looks at its callee's kind,
+           not a typed one (fx26/cg.kfx)."
+          (tagcase (walk s t)
+            (ty-data (d args) (if (string=? d "%composable") (note-fact s (cv-file v) (cv-pos v) "call-fx") s))
+            (else other s))))
 
       (lambda-given-result? (subr kfx (st ty tys sexps) bool)
         (lambda (s r ps args)

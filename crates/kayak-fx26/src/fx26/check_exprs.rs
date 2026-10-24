@@ -11938,7 +11938,7 @@ pub mod expressions {
                                             }), named) {
                                                 match refuse(v, str_lit("this writes frozen data, whose region is const")) {}
                                             } else {
-                                                res(r, effs_union(close_effs(s, named), effs_union(more, effs_union(es0, es1))), lift_noted(v, noted_call(v, s, named), r, expected))
+                                                res(r, effs_union(close_effs(s, named), effs_union(more, effs_union(es0, es1))), fx_noted(v, t, lift_noted(v, noted_call(v, s, named), r, expected)))
                                             }
                                         }
                                     }
@@ -11951,6 +11951,27 @@ pub mod expressions {
                         match refuse(v, string_append(str_lit("a call of a "), string_append(show_ty(s, t), str_lit(", no procedure")))) {}
                     }
                 }
+            }
+        }
+    }
+
+    /// A call of a composable continuation, a procedure of the fx convention
+    /// (the standard's, as Fixpt has it): noted `call-fx`, so that the
+    /// cellular generator makes it a call that looks at its callee's kind,
+    /// not a typed one (fx26/cg.kfx).
+    pub fn fx_noted(v: &'static Cv, t: &'static Ty, s: &'static St) -> &'static St {
+        let tagcase_ = walk(s, t);
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                if string_eq_p(d, str_lit("%composable")) {
+                    note_fact(s, cv_file(v), cv_pos(v), str_lit("call-fx"))
+                } else {
+                    s
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                s
             }
         }
     }

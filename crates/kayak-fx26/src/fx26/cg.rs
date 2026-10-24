@@ -1318,6 +1318,7 @@ pub enum Cx {
     XLet(List<&'static Cbind>, &'static Cx, i64),
     XLetrec(List<&'static Cbind>, &'static Cx, i64),
     XBegin(List<&'static Cx>, i64),
+    XProj(&'static Cx, i64),
     XProduct(List<&'static Cbind>, i64),
     XExtract(&'static Cx, i64, i64),
     XSum(Str, &'static Cx, i64),
@@ -1385,6 +1386,10 @@ pub fn x_letrec(f0: List<&'static Cbind>, f1: &'static Cx, f2: i64) -> &'static 
 
 pub fn x_begin(f0: List<&'static Cx>, f1: i64) -> &'static Cx {
     kayak_rt::heap_alloc(Cx::XBegin(f0, f1))
+}
+
+pub fn x_proj(f0: &'static Cx, f1: i64) -> &'static Cx {
+    kayak_rt::heap_alloc(Cx::XProj(f0, f1))
 }
 
 pub fn x_product(f0: List<&'static Cbind>, f1: i64) -> &'static Cx {
@@ -1569,6 +1574,9 @@ pub fn cx_start(x: &'static Cx) -> i64 {
         Cx::XBegin(xs, a) => {
             a
         }
+        Cx::XProj(x, a) => {
+            a
+        }
         Cx::XProduct(fs, a) => {
             a
         }
@@ -1736,6 +1744,9 @@ pub fn c_free(mut x: &'static Cx, mut bound: Strings, mut acc: Strings) -> Strin
             Cx::XBegin(es, a) => {
                 return c_free_all(es, bound, acc);
             }
+            Cx::XProj(x, a) => {
+                return c_free(x, bound, acc);
+            }
             Cx::XProduct(fs, a) => {
                 return c_free_all(c_bound_exps(fs), bound, acc);
             }
@@ -1839,6 +1850,29 @@ pub fn cg_module_facts() -> Ref<Facts> {
     once(&ONCE, || {
         kayak_rt::heap_new(nil::<&'static Fact>())
     })
+}
+
+// Where each call of a procedure of the fx convention starts (the checker's
+// `call-fx`): made a call that looks at its callee's kind, not a typed one,
+// as Fixpt's `c-call-in` makes it.
+pub fn cg_fx_calls() -> Ref<List<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<i64>())
+    })
+}
+
+pub fn cg_fx_call_p(mut a: i64, mut xs: List<i64>) -> bool {
+    loop {
+        if null_p(xs) {
+            return false;
+        } else if i64_eq(a, car(xs)) {
+            return true;
+        } else {
+            xs = cdr(xs);
+            continue;
+        }
+    }
 }
 
 // Each module's values' names, in the order its product holds them, by the
@@ -1997,6 +2031,27 @@ pub fn fact_text(mut fs: Facts, mut file: Str, mut pos: i64, mut prefix: Str) ->
                     return substring(what, string_length(prefix), string_length(what));
                 }
             }
+        } else {
+            fs = cdr(fs);
+            continue;
+        }
+    }
+}
+
+/// Whether the fact `what` is noted at `file` and `pos`.
+pub fn fact_noted_p(mut fs: Facts, mut file: Str, mut pos: i64, mut what: Str) -> bool {
+    loop {
+        if null_p(fs) {
+            return false;
+        } else if {
+            let tagcase_ = car(fs);
+            match *tagcase_ {
+                Fact::Fact(f, p, w) => {
+                    (string_eq_p(f, file) && i64_eq(p, pos) && string_eq_p(w, what))
+                }
+            }
+        } {
+            return true;
         } else {
             fs = cdr(fs);
             continue;
@@ -2516,7 +2571,7 @@ pub fn parse_form(h: Str, xs: Sexps, e: &'static Sexp, f: Str, a: i64) -> &'stat
     } else if string_eq_p(h, str_lit("plambda")) {
         parse_body(cdr(cdr(xs)), a)
     } else if string_eq_p(h, str_lit("proj")) {
-        parse_x(second(xs))
+        x_proj(parse_x(second(xs)), a)
     } else if string_eq_p(h, str_lit("quote")) {
         parse_quoted(second(xs), a)
     } else if string_eq_p(h, str_lit("product")) {
@@ -2585,6 +2640,11 @@ pub fn parse_form(h: Str, xs: Sexps, e: &'static Sexp, f: Str, a: i64) -> &'stat
         match cg_fail(string_append(str_lit("not yet: "), h)) {};
         x_unit(a)
     } else {
+        if fact_noted_p(get(cg_facts()), f, a, str_lit("call-fx")) {
+            set(cg_fx_calls(), kayak_rt::heap_cons(a, get(cg_fx_calls())))
+        } else {
+            ()
+        };
         x_app(parse_x(car(xs)), parse_args(cdr(xs)), a)
     }
 }
@@ -4232,6 +4292,9 @@ pub fn c_calls_only(mut x: &'static Cx, mut f: Str, mut n: i64, mut tail: bool, 
             Cx::XBegin(es, a) => {
                 return c_calls_only_begin(es, f, n, tail, loops);
             }
+            Cx::XProj(x, a) => {
+                return c_calls_only(x, f, n, tail, loops);
+            }
             Cx::XProduct(fs, a) => {
                 return c_calls_only_all(c_bound_exps(fs), f, n, loops);
             }
@@ -5234,12 +5297,12 @@ pub fn c_exp(mut x: &'static Cx, mut e: Cenv, mut depth: i64, mut c: Code, mut t
                                 cbind(p, y)
                             }), ps, args), body, e, depth, c, tail);
                         } else {
-                            return c_app(f, args, e, depth, c, tail);
+                            return c_app(f, args, e, depth, c, tail, a);
                         }
                     }
                     _ => {
                         let y = tagcase_;
-                        return c_app(f, args, e, depth, c, tail);
+                        return c_app(f, args, e, depth, c, tail, a);
                     }
                 }
             }
@@ -5265,6 +5328,9 @@ pub fn c_exp(mut x: &'static Cx, mut e: Cenv, mut depth: i64, mut c: Code, mut t
             }
             Cx::XBegin(es, a) => {
                 return c_begin(es, e, depth, c, tail);
+            }
+            Cx::XProj(x, a) => {
+                return c_exp(x, e, depth, c, tail);
             }
             Cx::XProduct(fs, a) => {
                 c_int(c, 37i64);
@@ -5569,7 +5635,7 @@ pub fn c_lambda_word(ps: Strings, body: &'static Cx, e: Cenv, own0: Strings) -> 
     cclosing(w, fv)
 }
 
-pub fn c_app(f: &'static Cx, args: Cxs, e: Cenv, depth: i64, c: Code, tail: bool) -> () {
+pub fn c_app(f: &'static Cx, args: Cxs, e: Cenv, depth: i64, c: Code, tail: bool, a: i64) -> () {
     if c_self_call_p(f, args, e, tail) {
         c_exps(args, e, depth, c);
         c_loop_stores(c, i64_minus(get(c_this_params()), 1i64));
@@ -5580,7 +5646,13 @@ pub fn c_app(f: &'static Cx, args: Cxs, e: Cenv, depth: i64, c: Code, tail: bool
         if string_eq_p(standard, str_lit("")) {
             let n = c_exps(args, e, depth, c);
             c_exp(f, e, i64_plus(depth, n), c, false);
-            c_op1(c, if tail {
+            c_op1(c, if cg_fx_call_p(a, get(cg_fx_calls())) {
+                if tail {
+                    str_lit("tailcall")
+                } else {
+                    str_lit("call")
+                }
+            } else if tail {
                 str_lit("ttailcall")
             } else {
                 str_lit("tcall")
@@ -5803,6 +5875,7 @@ pub fn c_tops(mut ts: List<&'static Ctop>, mut c: Code, mut has_value: bool) -> 
 pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
     let c = the::<Code>(kayak_rt::heap_new(nil::<&'static Item>()));
     set(cg_facts(), fs);
+    set(cg_fx_calls(), nil::<i64>());
     set(cg_module_facts(), filter(lambda1s(move |x: &'static Fact| {
         let tagcase_ = x;
         match *tagcase_ {

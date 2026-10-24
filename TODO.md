@@ -719,7 +719,8 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    its words run every way Fixpt's are (`cells-programs.py --ours`): 77
    programs agree, 68 of them Fixpt's words exactly. Done since:
    modules (C144), regions (C145), prompts (C146), bloblets and floats
-   (C152), `case` and `typecase` (C153). Next: a standard operation
+   (C152), `case` and `typecase` (C153), calls in the fx convention
+   and `proj` (C209). Next: a standard operation
    whose arity the generator does not know, as a value (3); `vlambda`
    (2); `quasiquote`; a `case` of many data, a search tree; a `tagcase`
    of a blobref to a flat sum; literals shared (`#0=`). Then Fixpt's middle phase (inlining, specialization),

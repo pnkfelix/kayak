@@ -5705,3 +5705,23 @@ programs Fixpt accepts that kayak's checker refused. Now none is.
 - The checkers' comparison: of the 433 programs Fixpt accepts, refused 2
   to 0, the same 367 to 369, 64 differing in printing; of the 336 it
   refuses, all refused; K1 0.
+
+## C209. The generator's calls in the fx convention, and `proj` (2026-10-24)
+
+The next round of C133's generator (its prompts are C146's).
+- **Calls of a composable continuation are untyped** (`call`,
+  `tailcall`), as Fixpt makes them: a continuation's type comes from the
+  standard's declarations, in the `fx` convention, and Fixpt types a call
+  only where the checker noted its callee `cellular` (`c-call-in`,
+  `NodeFacts::call_conv`). Our checker keeps no conventions on procedure
+  types, but does keep a composable continuation's (`%composable`, C60);
+  so it notes **`call-fx`** at a call of one (`fx-noted`,
+  `kfx/check-exprs.kfx`), and the generator reads that. Rejected: giving
+  procedure types a convention field throughout the checker for this one
+  case; no other standard operation gives a program a procedure.
+- **`proj` is its own node** (`x-proj`), as Fixpt's `e-proj` is, not
+  dropped by the parser: a standard name under a `proj` is not called as
+  its operation, open-coded, but as its value, its own word, as Fixpt's
+  `c-standard-name` decides (`bench/captures.fx`).
+- **Results**, on arm64 macOS at its answers of 4caffc2: 284 programs
+  agree, as before, 228 of them Fixpt's words exactly (from 218).

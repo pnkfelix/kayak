@@ -51,6 +51,7 @@
   (x-let (listof cbind acyclic) cx i64)
   (x-letrec (listof cbind acyclic) cx i64)
   (x-begin (listof cx acyclic) i64)
+  (x-proj cx i64)
   (x-product (listof cbind acyclic) i64)
   (x-extract cx i64 i64)
   (x-sum string cx i64)
@@ -101,7 +102,7 @@
     (tagcase x
       (x-var (n a) a) (x-int (n a) a) (x-bool (v a) a) (x-str (s a) a) (x-char (c a) a) (x-float (b a) a)
       (x-sym (s a) a) (x-unit (a) a) (x-lambda (ps b a) a) (x-app (f xs a) a)
-      (x-if (t y n a) a) (x-let (bs b a) a) (x-letrec (bs b a) a) (x-begin (xs a) a)
+      (x-if (t y n a) a) (x-let (bs b a) a) (x-letrec (bs b a) a) (x-begin (xs a) a) (x-proj (x a) a)
       (x-product (fs a) a) (x-extract (p i a) a) (x-sum (t v a) a) (x-tagcase (s arms els a) a)
       (x-prompt (t body h a) a) (x-bloblet (op i xs a) a) (x-region (k r body a) a) (x-rlambda (r l a) a)
       (x-module (its a) a) (x-with (m ns ks body a) a) (x-reshape (y ps a) a))))
@@ -150,6 +151,7 @@
             (c-free body inner (c-free-all (c-bound-exps bs) inner acc))))
         (x-let (bs body a) (c-free body (c-bound-names bs bound) (c-free-all (c-bound-exps bs) bound acc)))
         (x-begin (es a) (c-free-all es bound acc))
+        (x-proj (x a) (c-free x bound acc))
         (x-product (fs a) (c-free-all (c-bound-exps fs) bound acc))
         (x-extract (p i a) (c-free p bound acc))
         (x-sum (t v a) (c-free v bound acc))
@@ -185,6 +187,14 @@
  at each `with` of it (`with-spec`), and at each module given for one
  (`module-arg`), its values' names in order. Few, so asked of often."
 (define cg-module-facts (ref facts @g) (new nil))
+
+"Where each call of a procedure of the fx convention starts (the checker's
+ `call-fx`): made a call that looks at its callee's kind, not a typed one,
+ as Fixpt's `c-call-in` makes it."
+(define cg-fx-calls (ref (listof i64 @g) @g) (new nil))
+(define-rec
+  (cg-fx-call? (subr gen (i64 (listof i64 @g)) bool)
+    (lambda (a xs) (cond ((null? xs) #f) ((i64= a (car xs)) #t) (else (cg-fx-call? a (cdr xs)))))))
 
 "Each module's values' names, in the order its product holds them, by the
  name it is bound to: the newest first, a module's items' own while its
@@ -246,6 +256,14 @@
                       (string=? (substring what 0 (string-length prefix)) prefix))))
              (tagcase (car fs) (fact (f p what) (substring what (string-length prefix) (string-length what)))))
             (else (fact-text (cdr fs) file pos prefix))))))
+
+(define-rec
+  (fact-noted? (subr kfx (facts string i64 string) bool)
+    (lambda (fs file pos what)
+      "Whether the fact `what` is noted at `file` and `pos`."
+      (cond ((null? fs) #f)
+            ((tagcase (car fs) (fact (f p w) (and (string=? f file) (i64= p pos) (string=? w what)))) #t)
+            (else (fact-noted? (cdr fs) file pos what))))))
 
 (define cg-fail (subr kfx (string) void)
   (lambda (why) (error (string-append "kayak-fx26: cells: " why))))
@@ -476,7 +494,9 @@
              (begin (cg-fail "not yet: a conversion to native code") (x-var "%none" a)))
             ((or (string=? h "the") (string=? h "convention")) (parse-x (car (cdr (cdr xs)))))
             ((string=? h "plambda") (parse-body (cdr (cdr xs)) a))
-            ((string=? h "proj") (parse-x (second xs)))
+            ;; Its own node, as Fixpt's `e-proj`: a standard name under it is
+            ;; not called as the standard operation, but as its value.
+            ((string=? h "proj") (x-proj (parse-x (second xs)) a))
             ((string=? h "quote") (parse-quoted (second xs) a))
             ((string=? h "product") (x-product (parse-fields (cdr xs)) a))
             ((string=? h "extract")
@@ -514,7 +534,10 @@
             ((string=? h "typecase") (parse-typecase (cdr xs) a))
             ((or (string=? h "quasiquote") (string=? h "load-module") (string=? h "vlambda"))
              (begin (cg-fail (string-append "not yet: " h)) (x-unit a)))
-            (else (x-app (parse-x (car xs)) (parse-args (cdr xs)) a)))))
+            (else
+             (begin
+               (if (fact-noted? (get cg-facts) f a "call-fx") (set cg-fx-calls (cons a (get cg-fx-calls))) #u)
+               (x-app (parse-x (car xs)) (parse-args (cdr xs)) a))))))
 
   (parse-bloblet (subr gen (string sexps string i64) cx)
     (lambda (op args f a)
@@ -1212,6 +1235,7 @@
           (and (c-calls-only-all (c-bound-exps bs) f n loops)
                (or (string-member? f (c-bound-names bs nil)) (c-calls-only body f n tail loops))))
         (x-begin (es a) (c-calls-only-begin es f n tail loops))
+        (x-proj (x a) (c-calls-only x f n tail loops))
         (x-product (fs a) (c-calls-only-all (c-bound-exps fs) f n loops))
         (x-extract (p i a) (c-calls-only p f n #f loops))
         (x-sum (t v a) (c-calls-only v f n #f loops))
@@ -1682,8 +1706,8 @@
             (x-lambda (ps body b)
               (if (i64= (size ps) (size args))
                   (c-let (map2 (lambda ((p string) (y cx)) (cbind p y)) ps args) body e depth c tail)
-                  (c-app f args e depth c tail)))
-            (else y (c-app f args e depth c tail))))
+                  (c-app f args e depth c tail a)))
+            (else y (c-app f args e depth c tail a))))
         (x-if (t th el a)
           (let ((no (c-fresh)) (end (c-fresh)))
             (begin
@@ -1697,6 +1721,7 @@
         (x-let (bs body a) (c-let bs body e depth c tail))
         (x-letrec (bs body a) (c-letrec bs body e depth c tail))
         (x-begin (es a) (c-begin es e depth c tail))
+        (x-proj (x a) (c-exp x e depth c tail))
         (x-product (fs a)
           (begin (c-int c 37)
                  (c-prim c "%make-frozen" (i64+ 1 (c-exps (c-bound-exps fs) e (i64+ depth 1) c)))
@@ -1883,8 +1908,8 @@
             (begin (set c-scope-name outer-scope) (cclosing w fv)))))))
 
   ;;; applications
-  (c-app (subr gen (cx cxs cenv i64 code bool) unit)
-    (lambda (f args e depth c tail)
+  (c-app (subr gen (cx cxs cenv i64 code bool i64) unit)
+    (lambda (f args e depth c tail a)
       (if (c-self-call? f args e tail)
           ;; A loop: the arguments into the parameters' slots, the rest of
           ;; the frame dropped, and back to the start.
@@ -1896,7 +1921,10 @@
             (cond ((string=? standard "")
                    (let ((n (c-exps args e depth c)))
                      (begin (c-exp f e (i64+ depth n) c #f)
-                            (c-op1 c (if tail "ttailcall" "tcall") (o-int n)))))
+                            (c-op1 c (cond ((cg-fx-call? a (get cg-fx-calls)) (if tail "tailcall" "call"))
+                                           (tail "ttailcall")
+                                           (else "tcall"))
+                                   (o-int n)))))
                   ((and (string=? standard "%quote") (i64= (size args) 1) (not (null? (c-quoted-cell (car args)))))
                    (begin (c-lit c (car (c-quoted-cell (car args)))) (c-done c tail)))
                   ;; Else built as written, then interned (TODO §51).
@@ -2003,6 +2031,7 @@
     (let ((c (the code (new nil))))
       (begin
         (set cg-facts fs)
+        (set cg-fx-calls nil)
         (set cg-module-facts
              (filter (lambda ((x fact)) (tagcase x (fact (f p what) (or (has-prefix? what "with-spec ") (has-prefix? what "module-arg ") (string=? what "module-value") (string=? what "with-value"))))) fs))
         (set cg-layouts nil)
