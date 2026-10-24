@@ -302,6 +302,41 @@
             (cons (t-define tag #t (x-lambda xs (x-sum tag (x-product (dt-fields xs 1 at) at) at) a))
                   (dt-constructors (cdr vs) a)))))))
 
+"A `case` datum's kind (Fixpt's `case-kind`): 0 an integer, 1 a
+ character, 2 a string, 3 a symbol, 4 a boolean, -1 none of these."
+(define case-kind (subr kfx (sexp) i64)
+  (lambda (d)
+    (tagcase d
+      (num (k f p) 0) (big (t f p) 0) (chr (c f p) 1) (str (t f p) 2)
+      (sym (n f p) (cond ((or (string=? n "#t") (string=? n "#f")) 4) ((string=? n "#u") -1) (else 3)))
+      (else other -1))))
+
+(define-rec
+  (case-data-count (subr kfx (sexps) i64)
+    (lambda (clauses) (if (null? (cdr clauses)) 0 (i64+ (size (items (car (items (car clauses))))) (case-data-count (cdr clauses)))))))
+
+"How many data of kind `k` make a `case` a search tree (Fixpt's
+ `case-tree-from`)."
+(define case-tree-from (subr kfx (i64 bool) i64)
+  (lambda (k direct)
+    (cond ((i64= k 0) (if direct 8 32)) ((i64= k 2) 16) ((i64= k 3) (if direct 32 64)) (else 1000000000))))
+
+"Whether a `case`'s or `typecase`'s key is a variable, tested as it is."
+(define case-direct? (subr kfx (sexps) bool)
+  (lambda (xs)
+    (and (not (null? (cdr (cdr xs))))
+         (tagcase (car xs) (sym (n f p) (not (or (string=? n "#t") (string=? n "#f") (string=? n "#u")))) (else other #f)))))
+
+"The standard predicate of each shape `typecase` tests (Fixpt's
+ `typecase-predicate`)."
+(define typecase-predicate (subr kfx (string) string)
+  (lambda (s)
+    (cond ((string=? s "int") "int?") ((string=? s "char") "char?") ((string=? s "bool") "bool?") ((string=? s "nil") "null?")
+          ((string=? s "pair") "pair?") ((string=? s "string") "string?") ((string=? s "symbol") "symbol?")
+          ((string=? s "procedure") "procedure?") ((string=? s "bloblet") "array?") ((string=? s "f64") "f64?")
+          ((string=? s "f32") "f32?") ((string=? s "box") "ref?") ((string=? s "sum") "sum?") ((string=? s "product") "product?")
+          ((string=? s "vector") "vector?") (else "bytevector?"))))
+
 (define bloblet-form? (subr kfx (string) bool)
   (lambda (h)
     (string-member? h (list "make-bloblet" "rmake-bloblet" "bloblet-ref" "bloblet-set!" "bloblet-freeze" "bloblet-byte"
@@ -461,8 +496,9 @@
              (x-rlambda (parse-x (second xs)) (x-lambda (map binder-name (items (third xs))) (parse-body (cdr (cdr (cdr xs))) a) a) a))
             ;; `(prompt tag body handler)`.
             ((string=? h "prompt") (x-prompt (parse-x (second xs)) (parse-x (third xs)) (parse-x (fourth xs)) a))
-            ((or (string=? h "case")
-                 (string=? h "typecase") (string=? h "quasiquote") (string=? h "load-module") (string=? h "vlambda"))
+            ((string=? h "case") (parse-case (cdr xs) a))
+            ((string=? h "typecase") (parse-typecase (cdr xs) a))
+            ((or (string=? h "quasiquote") (string=? h "load-module") (string=? h "vlambda"))
              (begin (cg-fail (string-append "not yet: " h)) (x-unit a)))
             (else (x-app (parse-x (car xs)) (parse-args (cdr xs)) a)))))
 
@@ -475,6 +511,64 @@
              (x-bloblet op (tagcase (second args) (num (k f2 p2) k) (else other (the i64 -1)))
                         (cons (parse-x (car args)) (if (string=? op "bloblet-set!") (list (parse-x (third args))) nil)) a))
             (else (x-bloblet op (blob-operand op f a) (parse-xs args) a)))))
+
+  ;; `(case key ((datum …) e …) … (else e …))` on atoms, as Fixpt's parser
+  ;; expands it (C153): a variable as it is, else bound by a `let` to
+  ;; `%case-key`, and nested `if`s, each datum compared by its kind's
+  ;; equality. Many data (Fixpt's `case-tree-from`) make a search tree of
+  ;; their sort values there: not yet.
+  (parse-case (subr gen (sexps i64) cx)
+    (lambda (xs a)
+      (let* ((clauses (cdr xs))
+             (k (if (null? (cdr clauses)) (the i64 -1) (case-kind (car (items (car (items (car clauses))))))))
+             (n (case-data-count clauses))
+             (els (items (last clauses)))
+             (direct (and (i64= (size els) 2) (not (tagcase (second els) (lst (ys f l p) #t) (else other #f)))
+                          (i64= n (i64- (size clauses) 1)))))
+        (cond ((i64>= n (case-tree-from k direct)) (begin (cg-fail "not yet: a case of many data") (x-unit a)))
+              ((case-direct? xs) (parse-case-arms (parse-x (car xs)) clauses))
+              (else (x-let (list (cbind "%case-key" (parse-x (car xs))))
+                           (parse-case-arms (x-var "%case-key" (datum-pos (car xs))) clauses) a))))))
+
+  (parse-case-arms (subr gen (cx sexps) cx)
+    (lambda (kv clauses)
+      (let* ((c (car clauses)) (parts (items c)) (ca (datum-pos c)))
+        (if (null? (cdr clauses))
+            (parse-body (cdr parts) ca)
+            (x-if (parse-case-tests kv (items (car parts)) ca) (parse-body (cdr parts) ca) (parse-case-arms kv (cdr clauses)) ca)))))
+
+  (parse-case-tests (subr gen (cx sexps i64) cx)
+    (lambda (kv data ca)
+      (let ((t (parse-case-test kv (car data))))
+        (if (null? (cdr data)) t (x-if t (x-bool #t ca) (parse-case-tests kv (cdr data) ca) ca)))))
+
+  (parse-case-test (subr gen (cx sexp) cx)
+    (lambda (kv d)
+      (let* ((at (datum-pos d)) (k (case-kind d))
+             (eq (cond ((i64= k 0) "=") ((i64= k 1) "char=?") ((i64= k 2) "string=?") ((i64= k 3) "symbol=?") (else "bool=?")))
+             (lit (if (i64= k 3) (x-sym (sym-name d) at) (parse-x d))))
+        (x-app (x-var eq at) (list kv lit) at))))
+
+  ;; `(typecase e (shape name body) … (else [name] body))`, as Fixpt's
+  ;; parser expands it: a variable as it is, else bound to
+  ;; `%typecase-value`; each arm its shape's predicate, then its name bound.
+  (parse-typecase (subr gen (sexps i64) cx)
+    (lambda (xs a)
+      (if (case-direct? xs)
+          (parse-typecase-arms (cdr xs) (sym-name (car xs)) a)
+          (x-let (list (cbind "%typecase-value" (parse-x (car xs)))) (parse-typecase-arms (cdr xs) "%typecase-value" a) a))))
+
+  (parse-typecase-arms (subr gen (sexps string i64) cx)
+    (lambda (arms tmp a)
+      (let ((parts (items (car arms))))
+        (if (null? (cdr arms))
+            (if (i64= (size parts) 3)
+                (x-let (list (cbind (sym-name (second parts)) (x-var tmp a))) (parse-x (third parts)) a)
+                (parse-x (second parts)))
+            (x-if (x-app (x-var (typecase-predicate (sym-name (car parts))) a) (list (x-var tmp a)) a)
+                  (x-let (list (cbind (sym-name (second parts)) (x-var tmp a))) (parse-x (third parts)) a)
+                  (parse-typecase-arms (cdr arms) tmp a)
+                  a)))))
 
   (parse-args (subr gen (sexps) cxs)
     (lambda (es) (if (null? es) nil (cons (parse-arg (car es)) (parse-args (cdr es))))))
@@ -724,24 +818,30 @@
   (parse-quoted (subr gen (sexp i64) cx)
     (lambda (d a)
       "A quoted datum, as Fixpt's quote rewrite writes it: a symbol, an atom
-       as itself, a list of `cons` and `nil`."
+       as itself; a list of `cons` and `nil`, a dotted one's tail its last,
+       a vector `list->vector` of its items' list, interned whole."
       (tagcase d
         (sym (n f p) (cond ((string=? n "#t") (x-bool #t a)) ((string=? n "#f") (x-bool #f a)) (else (x-sym n a))))
         (lst (ys f l p)
           (if (null? ys) (x-var "nil" a)
-              (x-app (x-var "%quote" a) (list (quoted-list ys a)) a)))
+              (x-app (x-var "%quote" a) (list (quoted-item d a)) a)))
         (else other (parse-x d)))))
 
   (quoted-list (subr gen (sexps i64) cx)
     (lambda (ys a)
-      (if (null? ys) (x-var "nil" a)
-          (x-app (x-var "cons" a) (list (quoted-item (car ys) a) (quoted-list (cdr ys) a)) a))))
+      (cond ((null? ys) (x-var "nil" a))
+            ((and (tagcase (car ys) (sym (n f p) (string=? n ".")) (else other #f)) (not (null? (cdr ys))) (null? (cdr (cdr ys))))
+             (quoted-item (second ys) a))
+            (else (x-app (x-var "cons" a) (list (quoted-item (car ys) a) (quoted-list (cdr ys) a)) a)))))
 
   (quoted-item (subr gen (sexp i64) cx)
     (lambda (d a)
       (tagcase d
         (sym (n f p) (cond ((string=? n "#t") (x-bool #t a)) ((string=? n "#f") (x-bool #f a)) (else (x-sym n a))))
-        (lst (ys f l p) (quoted-list ys a))
+        (lst (ys f l p)
+          (if (and (not (null? ys)) (tagcase (car ys) (sym (n f2 p2) (string=? n "#vector")) (else other #f)))
+              (x-app (x-var "list->vector" a) (list (quoted-list (cdr ys) a)) a)
+              (quoted-list ys a)))
         (else other (parse-x d)))))
 
   (parse-arms (subr gen (sexps) (listof carm acyclic))
@@ -1271,7 +1371,7 @@
            (begin (c-op c "swap") (c-array-index c) (c-op c "swap") (c-prim c "%bloblet-set!" 3) (c-unit-after c)))
           ((string=? name "apply") (begin (c-op c "swap") (c-field c 3) (c-op1 c "call" (o-int 1))))
           ((string=? name "array-length") (begin (c-prim c "%bloblet-fields" 1) (c-int c 1) (c-op c "int-sub")))
-          ((string-member? name (list "modulo" "char->integer" "integer->char" "string-append" "string-length" "string-ref"
+          ((string-member? name (list "modulo" "char->integer" "integer->char" "string-append" "string-length" "string-ref" "list->vector"
                                       "substring" "string=?" "string->symbol" "symbol->string"))
            (c-prim c name n))
           ((std-eq-name? name) (c-op c "eq"))
@@ -1779,7 +1879,9 @@
                             (c-op1 c (if tail "ttailcall" "tcall") (o-int n)))))
                   ((and (string=? standard "%quote") (i64= (size args) 1) (not (null? (c-quoted-cell (car args)))))
                    (begin (c-lit c (car (c-quoted-cell (car args)))) (c-done c tail)))
-                  ((string=? standard "%quote") (c-exp (car args) e depth c tail))
+                  ;; Else built as written, then interned (TODO §51).
+                  ((string=? standard "%quote")
+                   (begin (c-exp (car args) e depth c #f) (c-prim c "%fx26-intern-datum" 1) (c-done c tail)))
                   ((and tail (string=? standard "with-mark"))
                    (begin (c-exps args e depth c) (c-op c "withmark-tail")))
                   ((string=? standard "make-array")

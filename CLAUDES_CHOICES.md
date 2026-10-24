@@ -4203,3 +4203,25 @@ the sum is keyed). An `extract` of a blobref's field, a blobref at its
 offset (`blob-offset`). A float literal, `#f64x` and its bits, as
 Fixpt's listing writes it. Not yet: a `tagcase` of a blobref to a flat
 sum. 165 programs agree (153), 134 of them Fixpt's words exactly (124).
+
+## C153. kayak's code generator: `case` and `typecase` (2026-10-24)
+
+As Fixpt's parser expands them (`parser-exps.fx`'s `parse-case`,
+`parse-typecase`). `case`: a variable key as it is, else bound to
+`%case-key` by a `let` where the form is; then nested `if`s, a
+clause's data each compared by its kind's equality (`=`, `char=?`,
+`string=?`, `symbol=?`, `bool=?`), joined as `or` is. `typecase`: a
+variable as it is, else bound to `%typecase-value`; each arm its shape's
+standard predicate, then its name bound by a `let`; the `else`, its name
+if it has one. Not yet: a `case` of many data (Fixpt's `case-tree-from`:
+8 integers or more where each clause has one, ...), which Fixpt makes a
+search tree of their sort values (`run/case-tree.fx`). The `case`
+programs' words differ from Fixpt's only in literals shared (`#0="z"`),
+not made yet (C133).
+- **And `quote`**, which `typecase` let `datum/quote.fx` reach: a dotted
+  list's tail is its last item, a vector `list->vector` of its items'
+  list, and a datum not all literals is built, then interned
+  (`%fx26-intern-datum`), as Fixpt's words do; before, it agreed only by
+  stopping at its `typecase`. Its words are now Fixpt's; tier 1 has no
+  `%fx26-intern-datum` yet (TODO §31), so it runs Fixpt's listing as
+  little as ours. 170 programs agree (165), 138 Fixpt's words exactly.

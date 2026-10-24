@@ -24,6 +24,7 @@ bloblet/flat-product.fx
 bloblet/point.fx
 control/escape-tag.fx
 control/private-mark.fx
+datum/union.fx
 diverge/cyclic-reverse.fx
 diverge/spin.fx
 generative/ids.fx
@@ -119,6 +120,7 @@ run/boolean-tests.fx
 run/bytevector-printed.fx
 run/callbacks.fx
 run/caller-place.fx
+run/case.fx
 run/conditions.fx
 run/define-rec.fx
 run/evaluator-writes.fx
@@ -157,9 +159,12 @@ terminate/invariant-bound.fx
 terminate/string-walk.fx
 terminate/swapped.fx
 terminate/up-to-free.fx
+unions/car-of-union.fx
 unions/false.fx
+unions/more-shapes.fx
 unions/nil-or-pair.fx
 unions/not-and-or-narrow.fx
 unions/null-narrows.fx
 unions/shapes-narrow.fx
+unions/typecase.fx
 unions/union-subtyping.fx

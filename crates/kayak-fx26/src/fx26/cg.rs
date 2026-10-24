@@ -2093,6 +2093,123 @@ pub fn dt_constructors(vs: Sexps, a: i64) -> List<&'static Ctop> {
     }
 }
 
+// A `case` datum's kind (Fixpt's `case-kind`): 0 an integer, 1 a
+// character, 2 a string, 3 a symbol, 4 a boolean, -1 none of these.
+pub fn case_kind(d: &'static Sexp) -> i64 {
+    let tagcase_ = d;
+    match *tagcase_ {
+        Sexp::Num(k, f, p) => {
+            0i64
+        }
+        Sexp::Big(t, f, p) => {
+            0i64
+        }
+        Sexp::Chr(c, f, p) => {
+            1i64
+        }
+        Sexp::Str(t, f, p) => {
+            2i64
+        }
+        Sexp::Sym(n, f, p) => {
+            if (string_eq_p(n, str_lit("#t")) || string_eq_p(n, str_lit("#f"))) {
+                4i64
+            } else if string_eq_p(n, str_lit("#u")) {
+                -1i64
+            } else {
+                3i64
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            -1i64
+        }
+    }
+}
+
+pub fn case_data_count(clauses: Sexps) -> i64 {
+    if null_p(cdr(clauses)) {
+        0i64
+    } else {
+        i64_plus(size(items(car(items(car(clauses))))), case_data_count(cdr(clauses)))
+    }
+}
+
+// How many data of kind `k` make a `case` a search tree (Fixpt's
+// `case-tree-from`).
+pub fn case_tree_from(k: i64, direct: bool) -> i64 {
+    if i64_eq(k, 0i64) {
+        if direct {
+            8i64
+        } else {
+            32i64
+        }
+    } else if i64_eq(k, 2i64) {
+        16i64
+    } else if i64_eq(k, 3i64) {
+        if direct {
+            32i64
+        } else {
+            64i64
+        }
+    } else {
+        1000000000i64
+    }
+}
+
+// Whether a `case`'s or `typecase`'s key is a variable, tested as it is.
+pub fn case_direct_p(xs: Sexps) -> bool {
+    (not(null_p(cdr(cdr(xs)))) && {
+        let tagcase_ = car(xs);
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                not((string_eq_p(n, str_lit("#t")) || string_eq_p(n, str_lit("#f")) || string_eq_p(n, str_lit("#u"))))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    })
+}
+
+// The standard predicate of each shape `typecase` tests (Fixpt's
+// `typecase-predicate`).
+pub fn typecase_predicate(s: Str) -> Str {
+    if string_eq_p(s, str_lit("int")) {
+        str_lit("int?")
+    } else if string_eq_p(s, str_lit("char")) {
+        str_lit("char?")
+    } else if string_eq_p(s, str_lit("bool")) {
+        str_lit("bool?")
+    } else if string_eq_p(s, str_lit("nil")) {
+        str_lit("null?")
+    } else if string_eq_p(s, str_lit("pair")) {
+        str_lit("pair?")
+    } else if string_eq_p(s, str_lit("string")) {
+        str_lit("string?")
+    } else if string_eq_p(s, str_lit("symbol")) {
+        str_lit("symbol?")
+    } else if string_eq_p(s, str_lit("procedure")) {
+        str_lit("procedure?")
+    } else if string_eq_p(s, str_lit("bloblet")) {
+        str_lit("array?")
+    } else if string_eq_p(s, str_lit("f64")) {
+        str_lit("f64?")
+    } else if string_eq_p(s, str_lit("f32")) {
+        str_lit("f32?")
+    } else if string_eq_p(s, str_lit("box")) {
+        str_lit("ref?")
+    } else if string_eq_p(s, str_lit("sum")) {
+        str_lit("sum?")
+    } else if string_eq_p(s, str_lit("product")) {
+        str_lit("product?")
+    } else if string_eq_p(s, str_lit("vector")) {
+        str_lit("vector?")
+    } else {
+        str_lit("bytevector?")
+    }
+}
+
 pub fn bloblet_form_p(h: Str) -> bool {
     string_member_p(h, kayak_rt::heap_cons(str_lit("make-bloblet"), kayak_rt::heap_cons(str_lit("rmake-bloblet"), kayak_rt::heap_cons(str_lit("bloblet-ref"), kayak_rt::heap_cons(str_lit("bloblet-set!"), kayak_rt::heap_cons(str_lit("bloblet-freeze"), kayak_rt::heap_cons(str_lit("bloblet-byte"), kayak_rt::heap_cons(str_lit("bloblet-set-byte!"), kayak_rt::heap_cons(str_lit("bloblet-bytes"), kayak_rt::heap_cons(str_lit("blobref-at"), kayak_rt::heap_cons(str_lit("blobref+"), kayak_rt::heap_cons(str_lit("blobref-owner"), kayak_rt::heap_cons(str_lit("blobref-offset"), kayak_rt::heap_cons(str_lit("blobref-get"), kayak_rt::heap_cons(str_lit("blobref-set!"), kayak_rt::heap_cons(str_lit("blobref-index"), kayak_rt::heap_cons(str_lit("blobref-variant!"), kayak_rt::nil())))))))))))))))))
 }
@@ -2442,7 +2559,11 @@ pub fn parse_form(h: Str, xs: Sexps, e: &'static Sexp, f: Str, a: i64) -> &'stat
         x_rlambda(parse_x(second(xs)), x_lambda(map(&binder_name, items(third(xs))), parse_body(cdr(cdr(cdr(xs))), a), a), a)
     } else if string_eq_p(h, str_lit("prompt")) {
         x_prompt(parse_x(second(xs)), parse_x(third(xs)), parse_x(fourth(xs)), a)
-    } else if (string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("typecase")) || string_eq_p(h, str_lit("quasiquote")) || string_eq_p(h, str_lit("load-module")) || string_eq_p(h, str_lit("vlambda"))) {
+    } else if string_eq_p(h, str_lit("case")) {
+        parse_case(cdr(xs), a)
+    } else if string_eq_p(h, str_lit("typecase")) {
+        parse_typecase(cdr(xs), a)
+    } else if (string_eq_p(h, str_lit("quasiquote")) || string_eq_p(h, str_lit("load-module")) || string_eq_p(h, str_lit("vlambda"))) {
         match cg_fail(string_append(str_lit("not yet: "), h)) {};
         x_unit(a)
     } else {
@@ -2473,6 +2594,100 @@ pub fn parse_bloblet(op: Str, args: Sexps, f: Str, a: i64) -> &'static Cx {
         }), a)
     } else {
         x_bloblet(op, blob_operand(op, f, a), parse_xs(args), a)
+    }
+}
+
+pub fn parse_case(xs: Sexps, a: i64) -> &'static Cx {
+    let clauses = cdr(xs);
+    let k = if null_p(cdr(clauses)) {
+        the::<i64>(-1i64)
+    } else {
+        case_kind(car(items(car(items(car(clauses))))))
+    };
+    let n = case_data_count(clauses);
+    let els = items(last(clauses));
+    let direct = (i64_eq(size(els), 2i64) && not({
+        let tagcase_ = second(els);
+        match *tagcase_ {
+            Sexp::Lst(ys, f, l, p) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) && i64_eq(n, i64_minus(size(clauses), 1i64)));
+    if i64_gt_eq(n, case_tree_from(k, direct)) {
+        match cg_fail(str_lit("not yet: a case of many data")) {};
+        x_unit(a)
+    } else if case_direct_p(xs) {
+        parse_case_arms(parse_x(car(xs)), clauses)
+    } else {
+        x_let(kayak_rt::heap_cons(cbind(str_lit("%case-key"), parse_x(car(xs))), kayak_rt::nil()), parse_case_arms(x_var(str_lit("%case-key"), datum_pos(car(xs))), clauses), a)
+    }
+}
+
+pub fn parse_case_arms(kv: &'static Cx, clauses: Sexps) -> &'static Cx {
+    let c = car(clauses);
+    let parts = items(c);
+    let ca = datum_pos(c);
+    if null_p(cdr(clauses)) {
+        parse_body(cdr(parts), ca)
+    } else {
+        x_if(parse_case_tests(kv, items(car(parts)), ca), parse_body(cdr(parts), ca), parse_case_arms(kv, cdr(clauses)), ca)
+    }
+}
+
+pub fn parse_case_tests(kv: &'static Cx, data: Sexps, ca: i64) -> &'static Cx {
+    let t = parse_case_test(kv, car(data));
+    if null_p(cdr(data)) {
+        t
+    } else {
+        x_if(t, x_bool(true, ca), parse_case_tests(kv, cdr(data), ca), ca)
+    }
+}
+
+pub fn parse_case_test(kv: &'static Cx, d: &'static Sexp) -> &'static Cx {
+    let at = datum_pos(d);
+    let k = case_kind(d);
+    let eq = if i64_eq(k, 0i64) {
+        str_lit("=")
+    } else if i64_eq(k, 1i64) {
+        str_lit("char=?")
+    } else if i64_eq(k, 2i64) {
+        str_lit("string=?")
+    } else if i64_eq(k, 3i64) {
+        str_lit("symbol=?")
+    } else {
+        str_lit("bool=?")
+    };
+    let lit = if i64_eq(k, 3i64) {
+        x_sym(sym_name(d), at)
+    } else {
+        parse_x(d)
+    };
+    x_app(x_var(eq, at), kayak_rt::heap_cons(kv, kayak_rt::heap_cons(lit, kayak_rt::nil())), at)
+}
+
+pub fn parse_typecase(xs: Sexps, a: i64) -> &'static Cx {
+    if case_direct_p(xs) {
+        parse_typecase_arms(cdr(xs), sym_name(car(xs)), a)
+    } else {
+        x_let(kayak_rt::heap_cons(cbind(str_lit("%typecase-value"), parse_x(car(xs))), kayak_rt::nil()), parse_typecase_arms(cdr(xs), str_lit("%typecase-value"), a), a)
+    }
+}
+
+pub fn parse_typecase_arms(arms: Sexps, tmp: Str, a: i64) -> &'static Cx {
+    let parts = items(car(arms));
+    if null_p(cdr(arms)) {
+        if i64_eq(size(parts), 3i64) {
+            x_let(kayak_rt::heap_cons(cbind(sym_name(second(parts)), x_var(tmp, a)), kayak_rt::nil()), parse_x(third(parts)), a)
+        } else {
+            parse_x(second(parts))
+        }
+    } else {
+        x_if(x_app(x_var(typecase_predicate(sym_name(car(parts))), a), kayak_rt::heap_cons(x_var(tmp, a), kayak_rt::nil()), a), x_let(kayak_rt::heap_cons(cbind(sym_name(second(parts)), x_var(tmp, a)), kayak_rt::nil()), parse_x(third(parts)), a), parse_typecase_arms(cdr(arms), tmp, a), a)
     }
 }
 
@@ -2996,7 +3211,8 @@ pub fn parse_or(xs: Sexps, a: i64) -> &'static Cx {
 }
 
 /// A quoted datum, as Fixpt's quote rewrite writes it: a symbol, an atom
-/// as itself, a list of `cons` and `nil`.
+/// as itself; a list of `cons` and `nil`, a dotted one's tail its last,
+/// a vector `list->vector` of its items' list, interned whole.
 pub fn parse_quoted(d: &'static Sexp, a: i64) -> &'static Cx {
     let tagcase_ = d;
     match *tagcase_ {
@@ -3013,7 +3229,7 @@ pub fn parse_quoted(d: &'static Sexp, a: i64) -> &'static Cx {
             if null_p(ys) {
                 x_var(str_lit("nil"), a)
             } else {
-                x_app(x_var(str_lit("%quote"), a), kayak_rt::heap_cons(quoted_list(ys, a), kayak_rt::nil()), a)
+                x_app(x_var(str_lit("%quote"), a), kayak_rt::heap_cons(quoted_item(d, a), kayak_rt::nil()), a)
             }
         }
         _ => {
@@ -3026,6 +3242,19 @@ pub fn parse_quoted(d: &'static Sexp, a: i64) -> &'static Cx {
 pub fn quoted_list(ys: Sexps, a: i64) -> &'static Cx {
     if null_p(ys) {
         x_var(str_lit("nil"), a)
+    } else if ({
+        let tagcase_ = car(ys);
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                string_eq_p(n, str_lit("."))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } && not(null_p(cdr(ys))) && null_p(cdr(cdr(ys)))) {
+        quoted_item(second(ys), a)
     } else {
         x_app(x_var(str_lit("cons"), a), kayak_rt::heap_cons(quoted_item(car(ys), a), kayak_rt::heap_cons(quoted_list(cdr(ys), a), kayak_rt::nil())), a)
     }
@@ -3044,7 +3273,22 @@ pub fn quoted_item(d: &'static Sexp, a: i64) -> &'static Cx {
             }
         }
         Sexp::Lst(ys, f, l, p) => {
-            quoted_list(ys, a)
+            if (not(null_p(ys)) && {
+                let tagcase_ = car(ys);
+                match *tagcase_ {
+                    Sexp::Sym(n, f2, p2) => {
+                        string_eq_p(n, str_lit("#vector"))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                x_app(x_var(str_lit("list->vector"), a), kayak_rt::heap_cons(quoted_list(cdr(ys), a), kayak_rt::nil()), a)
+            } else {
+                quoted_list(ys, a)
+            }
         }
         _ => {
             let other = tagcase_;
@@ -4351,7 +4595,7 @@ pub fn c_standard_on(name: Str, n: i64, c: Code) -> () {
         c_prim(c, str_lit("%bloblet-fields"), 1i64);
         c_int(c, 1i64);
         c_op(c, str_lit("int-sub"))
-    } else if string_member_p(name, kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("string-append"), kayak_rt::heap_cons(str_lit("string-length"), kayak_rt::heap_cons(str_lit("string-ref"), kayak_rt::heap_cons(str_lit("substring"), kayak_rt::heap_cons(str_lit("string=?"), kayak_rt::heap_cons(str_lit("string->symbol"), kayak_rt::heap_cons(str_lit("symbol->string"), kayak_rt::nil()))))))))))) {
+    } else if string_member_p(name, kayak_rt::heap_cons(str_lit("modulo"), kayak_rt::heap_cons(str_lit("char->integer"), kayak_rt::heap_cons(str_lit("integer->char"), kayak_rt::heap_cons(str_lit("string-append"), kayak_rt::heap_cons(str_lit("string-length"), kayak_rt::heap_cons(str_lit("string-ref"), kayak_rt::heap_cons(str_lit("list->vector"), kayak_rt::heap_cons(str_lit("substring"), kayak_rt::heap_cons(str_lit("string=?"), kayak_rt::heap_cons(str_lit("string->symbol"), kayak_rt::heap_cons(str_lit("symbol->string"), kayak_rt::nil())))))))))))) {
         c_prim(c, name, n)
     } else if std_eq_name_p(name) {
         c_op(c, str_lit("eq"))
@@ -5309,7 +5553,9 @@ pub fn c_app(f: &'static Cx, args: Cxs, e: Cenv, depth: i64, c: Code, tail: bool
             c_lit(c, car(c_quoted_cell(car(args))));
             c_done(c, tail)
         } else if string_eq_p(standard, str_lit("%quote")) {
-            c_exp(car(args), e, depth, c, tail)
+            c_exp(car(args), e, depth, c, false);
+            c_prim(c, str_lit("%fx26-intern-datum"), 1i64);
+            c_done(c, tail)
         } else if (tail && string_eq_p(standard, str_lit("with-mark"))) {
             c_exps(args, e, depth, c);
             c_op(c, str_lit("withmark-tail"))
