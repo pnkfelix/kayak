@@ -15,15 +15,17 @@ use super::*;
 // compiler then follows `compile-exps.fx`: a lambda's arguments are its
 // frame on the data stack, a `let`'s values are pushed onto the frame and
 // are slots of it, closures are flat, globals are cells, and a call in tail
-// position is a tail call. Not yet: Fixpt's middle phase (its plans,
-// inlining, specialization), lambda lifting, register code (the words'
-// twins), modules, regions, bloblets, prompts.
+// position is a tail call; a module is a product of its values (C144).
+// Not yet: Fixpt's middle phase (its plans, inlining, specialization),
+// lambda lifting, register code (the words' twins), regions, bloblets,
+// prompts.
 // fixpt-source: crates/fixpt-fx26/src/compile.fx@bb3f570
 // fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@8f76d65
 // fixpt-source: crates/fixpt-fx26/src/compile-state.fx@8f76d65
 // fixpt-source: crates/fixpt-fx26/src/compile-lift.fx@bb3f570
 // fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@8f76d65
 // fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@bb3f570
+// fixpt-source: crates/fixpt-fx26/src/parser.fx@8f76d65
 
 // The generator's data lives at `@g`.
 
@@ -1318,6 +1320,9 @@ pub enum Cx {
     XExtract(&'static Cx, i64, i64),
     XSum(Str, &'static Cx, i64),
     XTagcase(&'static Cx, List<&'static Carm>, List<&'static Cbind>, i64),
+    XModule(List<&'static Cmem>, i64),
+    XWith(&'static Cx, Strings, List<i64>, &'static Cx, i64),
+    XReshape(&'static Cx, Paths, i64),
 }
 
 pub fn x_var(f0: Str, f1: i64) -> &'static Cx {
@@ -1387,6 +1392,62 @@ pub fn x_sum(f0: Str, f1: &'static Cx, f2: i64) -> &'static Cx {
 pub fn x_tagcase(f0: &'static Cx, f1: List<&'static Carm>, f2: List<&'static Cbind>, f3: i64) -> &'static Cx {
     kayak_rt::heap_alloc(Cx::XTagcase(f0, f1, f2, f3))
 }
+
+pub fn x_module(f0: List<&'static Cmem>, f1: i64) -> &'static Cx {
+    kayak_rt::heap_alloc(Cx::XModule(f0, f1))
+}
+
+pub fn x_with(f0: &'static Cx, f1: Strings, f2: List<i64>, f3: &'static Cx, f4: i64) -> &'static Cx {
+    kayak_rt::heap_alloc(Cx::XWith(f0, f1, f2, f3, f4))
+}
+
+pub fn x_reshape(f0: &'static Cx, f1: Paths, f2: i64) -> &'static Cx {
+    kayak_rt::heap_alloc(Cx::XReshape(f0, f1, f2))
+}
+
+// A module's member (Fixpt's `mod-item`, each value one, C144): its name,
+// its value, its kind, whether it is a lambda written with its type, which
+// may name the members after it, and where its item is. Kind 2 the module
+// gives; 1 is hidden, in the module's own product but not its type; 0 in
+// neither, an abstract type's conversion, or a name an `include` gives.
+pub enum Cmem {
+    Cmem(Str, &'static Cx, i64, bool, i64),
+}
+
+pub fn cmem(f0: Str, f1: &'static Cx, f2: i64, f3: bool, f4: i64) -> &'static Cmem {
+    kayak_rt::heap_alloc(Cmem::Cmem(f0, f1, f2, f3, f4))
+}
+
+pub fn cmem_name(i: &'static Cmem) -> Str {
+    let tagcase_ = i;
+    match *tagcase_ {
+        Cmem::Cmem(n, x, k, l, a) => {
+            n
+        }
+    }
+}
+
+pub fn cmem_value(i: &'static Cmem) -> &'static Cx {
+    let tagcase_ = i;
+    match *tagcase_ {
+        Cmem::Cmem(n, x, k, l, a) => {
+            x
+        }
+    }
+}
+
+pub fn cmem_kind(i: &'static Cmem) -> i64 {
+    let tagcase_ = i;
+    match *tagcase_ {
+        Cmem::Cmem(n, x, k, l, a) => {
+            k
+        }
+    }
+}
+
+// Where a module keeps each value a module type wants: a field of it, or a
+// field of a module in a field of it, ...
+pub type Paths = List<List<i64>>;
 
 // A binding: a name and its expression (a `let`'s, a `letrec`'s, a
 // product's field, a `tagcase`'s `else`).
@@ -1491,7 +1552,184 @@ pub fn cx_start(x: &'static Cx) -> i64 {
         Cx::XTagcase(s, arms, els, a) => {
             a
         }
+        Cx::XModule(its, a) => {
+            a
+        }
+        Cx::XWith(m, ns, ks, body, a) => {
+            a
+        }
+        Cx::XReshape(y, ps, a) => {
+            a
+        }
     }
+}
+
+pub fn c_adjoin(xs: Strings, n: Str) -> Strings {
+    if string_member_p(n, xs) {
+        xs
+    } else {
+        kayak_rt::heap_cons(n, xs)
+    }
+}
+
+pub fn c_bound_names(mut bs: Cbinds, mut bound: Strings) -> Strings {
+    loop {
+        if null_p(bs) {
+            return bound;
+        } else {
+            (bs, bound) = (cdr(bs), {
+                let tagcase_ = car(bs);
+                match *tagcase_ {
+                    Cbind::Cbind(n, x) => {
+                        kayak_rt::heap_cons(n, bound)
+                    }
+                }
+            });
+            continue;
+        }
+    }
+}
+
+pub fn c_bound_exps(bs: Cbinds) -> Cxs {
+    map(lambda1s(move |b: &'static Cbind| {
+        let tagcase_ = b;
+        match *tagcase_ {
+            Cbind::Cbind(n, x) => {
+                x
+            }
+        }
+    }), bs)
+}
+
+pub fn c_names(mut ns: Strings, mut bound: Strings) -> Strings {
+    loop {
+        if null_p(ns) {
+            return bound;
+        } else {
+            (ns, bound) = (cdr(ns), kayak_rt::heap_cons(car(ns), bound));
+            continue;
+        }
+    }
+}
+
+// The names free in `x`, not `bound`, onto `acc`, the newest first, in
+// Fixpt's order: what an expression's parts are walked in.
+pub fn c_free_all(mut es: Cxs, mut bound: Strings, mut acc: Strings) -> Strings {
+    loop {
+        if null_p(es) {
+            return acc;
+        } else {
+            (es, acc) = (cdr(es), c_free(car(es), bound, acc));
+            continue;
+        }
+    }
+}
+
+pub fn c_free(mut x: &'static Cx, mut bound: Strings, mut acc: Strings) -> Strings {
+    loop {
+        let tagcase_ = x;
+        match *tagcase_ {
+            Cx::XVar(n, a) => {
+                if string_member_p(n, bound) {
+                    return acc;
+                } else {
+                    return c_adjoin(acc, n);
+                }
+            }
+            Cx::XLambda(ps, body, a) => {
+                (x, bound) = (body, c_names(ps, bound));
+                continue;
+            }
+            Cx::XApp(f, args, a) => {
+                (x, acc) = (f, c_free_all(args, bound, acc));
+                continue;
+            }
+            Cx::XIf(t, th, el, a) => {
+                (x, acc) = (t, c_free(th, bound, c_free(el, bound, acc)));
+                continue;
+            }
+            Cx::XLetrec(bs, body, a) => {
+                let inner = c_bound_names(bs, bound);
+                (x, bound, acc) = (body, inner, c_free_all(c_bound_exps(bs), inner, acc));
+                continue;
+            }
+            Cx::XLet(bs, body, a) => {
+                (x, bound, acc) = (body, c_bound_names(bs, bound), c_free_all(c_bound_exps(bs), bound, acc));
+                continue;
+            }
+            Cx::XBegin(es, a) => {
+                return c_free_all(es, bound, acc);
+            }
+            Cx::XProduct(fs, a) => {
+                return c_free_all(c_bound_exps(fs), bound, acc);
+            }
+            Cx::XExtract(p, i, a) => {
+                x = p;
+                continue;
+            }
+            Cx::XSum(t, v, a) => {
+                x = v;
+                continue;
+            }
+            Cx::XTagcase(s, arms, els, a) => {
+                (x, acc) = (s, c_free_arms(arms, bound, c_free_else(els, bound, acc)));
+                continue;
+            }
+            Cx::XModule(its, a) => {
+                let inner = c_names(map(&cmem_name, its), bound);
+                return c_free_all(map(&cmem_value, its), inner, acc);
+            }
+            Cx::XWith(m, ns, ks, body, a) => {
+                (x, bound, acc) = (body, c_names(ns, bound), c_free(m, bound, acc));
+                continue;
+            }
+            Cx::XReshape(y, ps, a) => {
+                x = y;
+                continue;
+            }
+            _ => {
+                let y = tagcase_;
+                return acc;
+            }
+        }
+    }
+}
+
+pub fn c_free_arms(mut arms: List<&'static Carm>, mut bound: Strings, mut acc: Strings) -> Strings {
+    loop {
+        if null_p(arms) {
+            return acc;
+        } else {
+            let tagcase_ = car(arms);
+            match *tagcase_ {
+                Carm::Carm(t, p, ns, body) => {
+                    (arms, acc) = (cdr(arms), c_free(body, c_names(ns, bound), acc));
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+pub fn c_free_else(els: Cbinds, bound: Strings, acc: Strings) -> Strings {
+    if null_p(els) {
+        acc
+    } else {
+        let tagcase_ = car(els);
+        match *tagcase_ {
+            Cbind::Cbind(n, x) => {
+                c_free(x, kayak_rt::heap_cons(n, bound), acc)
+            }
+        }
+    }
+}
+
+pub fn c_mentions_p(x: &'static Cx, n: Str) -> bool {
+    string_member_p(n, c_free(x, nil::<Str>(), nil::<Str>()))
+}
+
+pub fn c_free_names(x: &'static Cx) -> Strings {
+    c_free(x, nil::<Str>(), nil::<Str>())
 }
 
 // The checker's facts, for the program being compiled.
@@ -1500,6 +1738,152 @@ pub fn cg_facts() -> Ref<Facts> {
     once(&ONCE, || {
         kayak_rt::heap_new(nil::<&'static Fact>())
     })
+}
+
+// Of those, what a module's place is told (C144): a module parameter's type,
+// at each `with` of it (`with-spec`), and at each module given for one
+// (`module-arg`), its values' names in order. Few, so asked of often.
+pub fn cg_module_facts() -> Ref<Facts> {
+    kayak_rt::kept_constant!(ONCE: Ref<Facts>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Fact>())
+    })
+}
+
+// Each module's values' names, in the order its product holds them, by the
+// name it is bound to: the newest first, a module's items' own while its
+// items are read.
+pub enum Clayout {
+    Clayout(Str, Strings),
+}
+
+pub fn clayout(f0: Str, f1: Strings) -> &'static Clayout {
+    kayak_rt::heap_alloc(Clayout::Clayout(f0, f1))
+}
+
+// A module's `include` of the module named: whether it is hidden, and where.
+pub enum Cinc {
+    Cinc(Str, bool, i64),
+}
+
+pub fn cinc(f0: Str, f1: bool, f2: i64) -> &'static Cinc {
+    kayak_rt::heap_alloc(Cinc::Cinc(f0, f1, f2))
+}
+
+// The modules made where they are included (kfx's reader names each,
+// `made--P`, and defines it before the module, C90), by name: each is made
+// in place again, as Fixpt makes it.
+pub enum Cmade {
+    Cmade(Str, &'static Cx),
+}
+
+pub fn cmade(f0: Str, f1: &'static Cx) -> &'static Cmade {
+    kayak_rt::heap_alloc(Cmade::Cmade(f0, f1))
+}
+
+pub fn cg_made() -> Ref<List<&'static Cmade>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Cmade>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Cmade>())
+    })
+}
+
+pub fn made_module(mut ms: List<&'static Cmade>, mut n: Str) -> Cxs {
+    loop {
+        if null_p(ms) {
+            return nil::<&'static Cx>();
+        } else if {
+            let tagcase_ = car(ms);
+            match *tagcase_ {
+                Cmade::Cmade(m, x) => {
+                    string_eq_p(m, n)
+                }
+            }
+        } {
+            let tagcase_ = car(ms);
+            match *tagcase_ {
+                Cmade::Cmade(m, x) => {
+                    return kayak_rt::heap_cons(x, kayak_rt::nil());
+                }
+            }
+        } else {
+            ms = cdr(ms);
+            continue;
+        }
+    }
+}
+
+// Whether `n` is a module made in place (C90), not a file's (`made--load--`)
+// nor an input's.
+pub fn made_here_name_p(n: Str) -> bool {
+    (has_prefix_p(n, str_lit("made--")) && not(has_prefix_p(n, str_lit("made--load--"))) && not(has_prefix_p(n, str_lit("made--input--"))))
+}
+
+pub fn cg_layouts() -> Ref<List<&'static Clayout>> {
+    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Clayout>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<&'static Clayout>())
+    })
+}
+
+pub fn layout_in(mut ls: List<&'static Clayout>, mut n: Str) -> List<Strings> {
+    loop {
+        if null_p(ls) {
+            return nil::<List<Str>>();
+        } else if {
+            let tagcase_ = car(ls);
+            match *tagcase_ {
+                Clayout::Clayout(m, ns) => {
+                    string_eq_p(m, n)
+                }
+            }
+        } {
+            let tagcase_ = car(ls);
+            match *tagcase_ {
+                Clayout::Clayout(m, ns) => {
+                    return kayak_rt::heap_cons(ns, kayak_rt::nil());
+                }
+            }
+        } else {
+            ls = cdr(ls);
+            continue;
+        }
+    }
+}
+
+/// The words of `cs`, between spaces, onto `acc`, the last first.
+pub fn words_in(mut cs: Chars, mut word: Chars, mut acc: Strings) -> Strings {
+    loop {
+        if null_p(cs) {
+            if null_p(word) {
+                return acc;
+            } else {
+                return kayak_rt::heap_cons(list_to_string(reverse(word)), acc);
+            }
+        } else if char_eq_p(car(cs), ' ') {
+            (cs, word, acc) = (cdr(cs), nil::<char>(), if null_p(word) {
+                acc
+            } else {
+                kayak_rt::heap_cons(list_to_string(reverse(word)), acc)
+            });
+            continue;
+        } else {
+            (cs, word) = (cdr(cs), kayak_rt::heap_cons(car(cs), word));
+            continue;
+        }
+    }
+}
+
+pub fn split_words(s: Str) -> Strings {
+    reverse(words_in(string_chars(s), nil::<char>(), nil::<Str>()))
+}
+
+pub fn indices_from(i: i64, n: i64) -> List<i64> {
+    if i64_gt_eq(i, n) {
+        nil::<i64>()
+    } else {
+        kayak_rt::heap_cons(i, indices_from(i64_plus(i, 1i64), n))
+    }
 }
 
 /// The newest fact at `file` and `pos` beginning `prefix`, past it; or
@@ -1587,6 +1971,166 @@ pub fn big_literal(v: Int, a: i64) -> &'static Cx {
     }
 }
 
+// A datatype's constructors, as Fixpt's parser expands `define-datatype`:
+// each `(define tag type (lambda (x1 …) (sum tag (product (1 x1) …))))`, the
+// lambda where the form starts, its body where the variant does.
+pub fn dt_vars(i: i64, n: i64) -> Strings {
+    if i64_gt(i, n) {
+        nil::<Str>()
+    } else {
+        kayak_rt::heap_cons(string_append(str_lit("%x"), i64_to_string(i)), dt_vars(i64_plus(i, 1i64), n))
+    }
+}
+
+pub fn dt_fields(xs: Strings, i: i64, a: i64) -> Cbinds {
+    if null_p(xs) {
+        nil::<&'static Cbind>()
+    } else {
+        kayak_rt::heap_cons(cbind(i64_to_string(i), x_var(car(xs), a)), dt_fields(cdr(xs), i64_plus(i, 1i64), a))
+    }
+}
+
+pub fn dt_constructors(vs: Sexps, a: i64) -> List<&'static Ctop> {
+    if null_p(vs) {
+        nil::<&'static Ctop>()
+    } else {
+        let parts = items(car(vs));
+        let tag = sym_name(car(parts));
+        let at = datum_pos(car(vs));
+        let xs = dt_vars(1i64, size(cdr(parts)));
+        kayak_rt::heap_cons(t_define(tag, true, x_lambda(xs, x_sum(tag, x_product(dt_fields(xs, 1i64, at), at), at), a)), dt_constructors(cdr(vs), a))
+    }
+}
+
+// A generative type's conversions, `up-t` and `down-t`, each `(lambda (x)
+// x)` where the form is, as Fixpt's parser's `identity-at` makes them.
+pub fn generative_conversions(t: Str, a: i64) -> List<&'static Ctop> {
+    kayak_rt::heap_cons(t_define(string_append(str_lit("up-"), t), true, x_lambda(kayak_rt::heap_cons(str_lit("x"), kayak_rt::nil()), x_var(str_lit("x"), a), a)), kayak_rt::heap_cons(t_define(string_append(str_lit("down-"), t), true, x_lambda(kayak_rt::heap_cons(str_lit("x"), kayak_rt::nil()), x_var(str_lit("x"), a), a)), kayak_rt::nil()))
+}
+
+// The type of the module read last: its values' names, in order.
+pub fn cg_module_type() -> Ref<Strings> {
+    kayak_rt::kept_constant!(ONCE: Ref<Strings>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(nil::<Str>())
+    })
+}
+
+// Whether `x` is a module made where it is written.
+pub fn module_made_p(x: &'static Cx) -> bool {
+    let tagcase_ = x;
+    match *tagcase_ {
+        Cx::XModule(its, a) => {
+            true
+        }
+        Cx::XReshape(y, ps, a) => {
+            let tagcase_ = y;
+            match *tagcase_ {
+                Cx::XModule(its, b) => {
+                    true
+                }
+                _ => {
+                    let z = tagcase_;
+                    false
+                }
+            }
+        }
+        _ => {
+            let y = tagcase_;
+            false
+        }
+    }
+}
+
+// `n`, if `x` is a module made here, or one named (a load's), its values'
+// names noted, for a `with` of it.
+pub fn note_layout_x(n: Str, x: &'static Cx) -> () {
+    if module_made_p(x) {
+        set(cg_layouts(), kayak_rt::heap_cons(clayout(n, get(cg_module_type())), get(cg_layouts())))
+    } else if {
+        let tagcase_ = x;
+        match *tagcase_ {
+            Cx::XVar(m, a) => {
+                not(null_p(layout_in(get(cg_layouts()), m)))
+            }
+            _ => {
+                let y = tagcase_;
+                false
+            }
+        }
+    } {
+        let tagcase_ = x;
+        match *tagcase_ {
+            Cx::XVar(m, a) => {
+                set(cg_layouts(), kayak_rt::heap_cons(clayout(n, car(layout_in(get(cg_layouts()), m))), get(cg_layouts())))
+            }
+            _ => {
+                let y = tagcase_;
+                ()
+            }
+        }
+    } else {
+        ()
+    }
+}
+
+// `x` in an `include`'s `(with %include …)` where item `a` is (Fixpt's
+// `in-includes`), which binds nothing here, its names bound once already:
+// a lambda's body, so that its word is named for the item's place.
+pub fn in_includes(x: &'static Cx, a: i64) -> &'static Cx {
+    let tagcase_ = x;
+    match *tagcase_ {
+        Cx::XLambda(ps, body, b) => {
+            x_lambda(ps, x_with(x_unit(a), nil::<Str>(), nil::<i64>(), body, a), b)
+        }
+        _ => {
+            let y = tagcase_;
+            x_with(x_unit(a), nil::<Str>(), nil::<i64>(), x, a)
+        }
+    }
+}
+
+// Member `i` so, if it is a value of an item.
+pub fn member_in_includes(i: &'static Cmem) -> &'static Cmem {
+    let tagcase_ = i;
+    match *tagcase_ {
+        Cmem::Cmem(n, x, k, l, a) => {
+            if i64_eq(k, 0i64) {
+                i
+            } else {
+                cmem(n, in_includes(x, a), k, l, a)
+            }
+        }
+    }
+}
+
+// The names `xs` (the included values, in order) members `its` use, each
+// once, in order: for each member, those it uses in `xs`'s order (Fixpt's
+// `c-included-names`).
+pub fn included_used(mut its: List<&'static Cmem>, mut xs: Strings, mut acc: Strings) -> Strings {
+    loop {
+        if null_p(its) {
+            return reverse(acc);
+        } else {
+            let fv = c_free_names(cmem_value(car(its)));
+            (its, acc) = (cdr(its), onto(reverse(filter(lambda1s(move |n: Str| {
+                (string_member_p(n, fv) && not(string_member_p(n, acc)))
+            }), xs)), acc));
+            continue;
+        }
+    }
+}
+
+pub fn put_sep_words(ss: Strings) -> Str {
+    if null_p(ss) {
+        str_lit("")
+    } else if null_p(cdr(ss)) {
+        car(ss)
+    } else {
+        string_append(car(ss), string_append(str_lit(" "), put_sep_words(cdr(ss))))
+    }
+}
+
 pub fn parse_x(e: &'static Sexp) -> &'static Cx {
     let tagcase_ = e;
     match *tagcase_ {
@@ -1613,6 +2157,8 @@ pub fn parse_x(e: &'static Sexp) -> &'static Cx {
                 x_bool(false, p)
             } else if string_eq_p(n, str_lit("#u")) {
                 x_unit(p)
+            } else if (made_here_name_p(n) && not(null_p(made_module(get(cg_made()), n)))) {
+                car(made_module(get(cg_made()), n))
             } else {
                 x_var(n, p)
             }
@@ -1697,11 +2243,488 @@ pub fn parse_form(h: Str, xs: Sexps, e: &'static Sexp, f: Str, a: i64) -> &'stat
         x_sum(label_of(second(xs)), parse_x(car(cdr(cdr(xs)))), a)
     } else if string_eq_p(h, str_lit("tagcase")) {
         x_tagcase(parse_x(second(xs)), parse_arms(cdr(cdr(xs))), parse_else(cdr(cdr(xs))), a)
-    } else if (string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("letrena")) || string_eq_p(h, str_lit("letreap")) || string_eq_p(h, str_lit("rlambda")) || string_eq_p(h, str_lit("prompt")) || string_eq_p(h, str_lit("module")) || string_eq_p(h, str_lit("with")) || string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("typecase")) || string_eq_p(h, str_lit("quasiquote")) || string_eq_p(h, str_lit("load-module")) || string_eq_p(h, str_lit("vlambda"))) {
+    } else if string_eq_p(h, str_lit("module")) {
+        parse_module(cdr(xs), a)
+    } else if string_eq_p(h, str_lit("extend")) {
+        parse_extend(second(xs), third(xs), a)
+    } else if string_eq_p(h, str_lit("with")) {
+        parse_with(second(xs), parse_body(cdr(cdr(xs)), a), f, a)
+    } else if (string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("letrena")) || string_eq_p(h, str_lit("letreap")) || string_eq_p(h, str_lit("rlambda")) || string_eq_p(h, str_lit("prompt")) || string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("typecase")) || string_eq_p(h, str_lit("quasiquote")) || string_eq_p(h, str_lit("load-module")) || string_eq_p(h, str_lit("vlambda"))) {
         match cg_fail(string_append(str_lit("not yet: "), h)) {};
         x_unit(a)
     } else {
-        x_app(parse_x(car(xs)), parse_xs(cdr(xs)), a)
+        x_app(parse_x(car(xs)), parse_args(cdr(xs)), a)
+    }
+}
+
+pub fn parse_args(es: Sexps) -> Cxs {
+    if null_p(es) {
+        nil::<&'static Cx>()
+    } else {
+        kayak_rt::heap_cons(parse_arg(car(es)), parse_args(cdr(es)))
+    }
+}
+
+/// An argument; a module given where a module type is wanted made one of
+/// that type, its values those the type names, in its order (Fixpt's
+/// `k-reshapes`), unless it is so already.
+pub fn parse_arg(e: &'static Sexp) -> &'static Cx {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Sym(n, f, p) => {
+            let (want, have) = (fact_text(get(cg_module_facts()), f, p, str_lit("module-arg ")), layout_in(get(cg_layouts()), n));
+            if (string_eq_p(want, str_lit("")) || null_p(have)) {
+                parse_x(e)
+            } else if string_eq_p(want, put_sep_words(car(have))) {
+                parse_x(e)
+            } else {
+                x_reshape(parse_x(e), map(lambda1s(move |w: Str| {
+                    kayak_rt::heap_cons(index_in(w, car(have), 0i64), kayak_rt::nil())
+                }), split_words(want)), p)
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            parse_x(e)
+        }
+    }
+}
+
+/// `(with m body …)`: `m`'s values bound in the body, those it names. A
+/// module parameter's are its type's, as the checker said; else `m` is
+/// a module whose items were read.
+pub fn parse_with(m: &'static Sexp, body: &'static Cx, f: Str, a: i64) -> &'static Cx {
+    let (spec, known) = (fact_text(get(cg_module_facts()), f, a, str_lit("with-spec ")), {
+        let tagcase_ = m;
+        match *tagcase_ {
+            Sexp::Sym(n, f2, p2) => {
+                layout_in(get(cg_layouts()), n)
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<List<Str>>()
+            }
+        }
+    });
+    if not(string_eq_p(spec, str_lit(""))) {
+        with_layout(m, split_words(spec), body, a)
+    } else if not(null_p(known)) {
+        with_layout(m, car(known), body, a)
+    } else {
+        match cg_fail(str_lit("not yet: a with of a module not named")) {};
+        body
+    }
+}
+
+pub fn with_layout(m: &'static Sexp, ns: Strings, body: &'static Cx, a: i64) -> &'static Cx {
+    x_with(parse_x(m), ns, indices_from(0i64, size(ns)), body, a)
+}
+
+/// A module: its own members, in order; then, if it includes modules, a
+/// first member `%include`, the module of the modules included, made
+/// first, and the names of theirs its members use bound once after it
+/// (Fixpt's `with-includes`, `c-note-included!`). The module made is of
+/// its own members; then, if its type is not that, one of its type:
+/// the values of the modules it includes but hides, then its own that
+/// it gives.
+pub fn parse_module(forms: Sexps, a: i64) -> &'static Cx {
+    let outer = get(cg_layouts());
+    let own = parse_items(forms, 2i64);
+    let incs = includes_of(forms, false);
+    let own_names = map(&cmem_name, filter(lambda1s(move |i: &'static Cmem| {
+        i64_gt(cmem_kind(i), 0i64)
+    }), own));
+    let given = map(&cmem_name, filter(lambda1s(move |i: &'static Cmem| {
+        i64_eq(cmem_kind(i), 2i64)
+    }), own));
+    set(cg_layouts(), outer);
+    if (null_p(own) && i64_eq(size(incs), 1i64) && i64_eq(size(forms), 1i64) && {
+        let tagcase_ = car(incs);
+        match *tagcase_ {
+            Cinc::Cinc(m, h, p) => {
+                has_prefix_p(m, str_lit("made--load--"))
+            }
+        }
+    }) {
+        let tagcase_ = car(incs);
+        match *tagcase_ {
+            Cinc::Cinc(m, h, p) => {
+                set(cg_module_type(), included_layout(m));
+                x_var(m, p)
+            }
+        }
+    } else if null_p(incs) {
+        set(cg_module_type(), given);
+        if string_eq_p(put_sep_words(own_names), put_sep_words(given)) {
+            x_module(own, a)
+        } else {
+            x_reshape(x_module(own, a), map(lambda1s(move |n: Str| {
+                kayak_rt::heap_cons(index_in(n, own_names, 0i64), kayak_rt::nil())
+            }), given), a)
+        }
+    } else {
+        let at = {
+            let tagcase_ = car(incs);
+            match *tagcase_ {
+                Cinc::Cinc(m, h, p) => {
+                    p
+                }
+            }
+        };
+        let inc_type = included_values(incs, true);
+        let shown = included_values(incs, false);
+        let inside = map(&member_in_includes, own);
+        let used = included_used(inside, inc_type, nil::<Str>());
+        let its = kayak_rt::heap_cons(cmem(str_lit("%include"), include_module(incs, at), 1i64, false, at), onto(map(lambda1s(move |n: Str| {
+            cmem(n, x_extract(x_var(str_lit("%include"), at), index_in(n, inc_type, 0i64), at), 0i64, false, at)
+        }), used), inside));
+        let mine = kayak_rt::heap_cons(str_lit("%include"), own_names);
+        set(cg_module_type(), onto(shown, given));
+        x_reshape(x_module(its, a), onto(map(lambda1s(move |n: Str| {
+            kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(index_in(n, inc_type, 0i64), kayak_rt::nil()))
+        }), shown), map(lambda1s(move |n: Str| {
+            kayak_rt::heap_cons(index_in(n, mine, 0i64), kayak_rt::nil())
+        }), given)), a)
+    }
+}
+
+/// `(extend e0 e1)` (FX-91's): a module of `e0`, then `e1`, which sees
+/// `e0`'s values, in a `with` of it; then, of its type, `e0`'s values,
+/// `e1`'s in their place where both give one, then `e1`'s others.
+pub fn parse_extend(e0: &'static Sexp, e1: &'static Sexp, a: i64) -> &'static Cx {
+    let l0 = included_layout(sym_name(e0));
+    let x1 = {
+        let tagcase_ = e1;
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                x_var(n, p)
+            }
+            _ => {
+                let other = tagcase_;
+                parse_x(e1)
+            }
+        }
+    };
+    let l1 = {
+        let tagcase_ = e1;
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                included_layout(n)
+            }
+            _ => {
+                let other = tagcase_;
+                get(cg_module_type())
+            }
+        }
+    };
+    let seen = {
+        let tagcase_ = e1;
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                x1
+            }
+            _ => {
+                let other = tagcase_;
+                x_with(x_var(str_lit("%extend"), a), l0, indices_from(0i64, size(l0)), x1, a)
+            }
+        }
+    };
+    let more = filter(lambda1s(move |n: Str| {
+        not(string_member_p(n, l0))
+    }), l1);
+    set(cg_module_type(), onto(l0, more));
+    x_reshape(x_module(kayak_rt::heap_cons(cmem(str_lit("%extend"), parse_x(e0), 1i64, false, a), kayak_rt::heap_cons(cmem(str_lit("%extended"), seen, 1i64, false, a), kayak_rt::nil())), a), onto(map(lambda1s(move |n: Str| {
+        if string_member_p(n, l1) {
+            kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(index_in(n, l1, 0i64), kayak_rt::nil()))
+        } else {
+            kayak_rt::heap_cons(0i64, kayak_rt::heap_cons(index_in(n, l0, 0i64), kayak_rt::nil()))
+        }
+    }), l0), map(lambda1s(move |n: Str| {
+        kayak_rt::heap_cons(1i64, kayak_rt::heap_cons(index_in(n, l1, 0i64), kayak_rt::nil()))
+    }), more)), a)
+}
+
+/// `%include`: the modules included, each a member of it; then, of its
+/// type, each of their values in turn.
+pub fn include_module(incs: List<&'static Cinc>, at: i64) -> &'static Cx {
+    x_reshape(x_module(include_members(incs, 0i64), at), include_paths(incs, 0i64), at)
+}
+
+pub fn include_members(incs: List<&'static Cinc>, k: i64) -> List<&'static Cmem> {
+    if null_p(incs) {
+        nil::<&'static Cmem>()
+    } else {
+        let tagcase_ = car(incs);
+        match *tagcase_ {
+            Cinc::Cinc(m, h, p) => {
+                kayak_rt::heap_cons(cmem(string_append(if h {
+                    str_lit("%hinclude-")
+                } else {
+                    str_lit("%include-")
+                }, i64_to_string(k)), {
+                    let made = made_module(get(cg_made()), m);
+                    if null_p(made) {
+                        x_var(m, p)
+                    } else {
+                        car(made)
+                    }
+                }, 2i64, false, p), include_members(cdr(incs), i64_plus(k, 1i64)))
+            }
+        }
+    }
+}
+
+pub fn include_paths(incs: List<&'static Cinc>, k: i64) -> Paths {
+    if null_p(incs) {
+        nil::<List<i64>>()
+    } else {
+        let tagcase_ = car(incs);
+        match *tagcase_ {
+            Cinc::Cinc(m, h, p) => {
+                onto({
+                    let n = size(included_layout(m));
+                    map(lambda1s(move |i: i64| {
+                        kayak_rt::heap_cons(k, kayak_rt::heap_cons(i, kayak_rt::nil()))
+                    }), indices_from(0i64, n))
+                }, include_paths(cdr(incs), i64_plus(k, 1i64)))
+            }
+        }
+    }
+}
+
+/// The values of the modules included, in order, of those hidden too if
+/// `hidden`.
+pub fn included_values(incs: List<&'static Cinc>, hidden: bool) -> Strings {
+    if null_p(incs) {
+        nil::<Str>()
+    } else {
+        let tagcase_ = car(incs);
+        match *tagcase_ {
+            Cinc::Cinc(m, h, p) => {
+                onto(if (h && not(hidden)) {
+                    nil::<Str>()
+                } else {
+                    included_layout(m)
+                }, included_values(cdr(incs), hidden))
+            }
+        }
+    }
+}
+
+pub fn included_layout(m: Str) -> Strings {
+    let l = layout_in(get(cg_layouts()), m);
+    if null_p(l) {
+        match cg_fail(string_append(str_lit("not yet: an include of a module not named: "), m)) {};
+        nil::<Str>()
+    } else {
+        car(l)
+    }
+}
+
+/// A module's `include`s, in order, those in a `hide` hidden.
+pub fn includes_of(mut forms: Sexps, mut hidden: bool) -> List<&'static Cinc> {
+    loop {
+        if null_p(forms) {
+            return nil::<&'static Cinc>();
+        } else {
+            let f = car(forms);
+            if head_is_p(f, str_lit("include")) {
+                if i64_eq(size(items(f)), 2i64) {
+                    return kayak_rt::heap_cons(cinc(sym_name(second(items(f))), hidden, datum_pos(f)), includes_of(cdr(forms), hidden));
+                } else {
+                    match cg_fail(str_lit("not yet: an include with exceptions")) {};
+                    return nil::<&'static Cinc>();
+                }
+            } else if head_is_p(f, str_lit("hide")) {
+                return onto(includes_of(cdr(items(f)), true), includes_of(cdr(forms), hidden));
+            } else {
+                forms = cdr(forms);
+                continue;
+            }
+        }
+    }
+}
+
+/// A module's members, in order, each a value; those of a `hide` of kind
+/// 1, hidden.
+pub fn parse_items(forms: Sexps, kind: i64) -> List<&'static Cmem> {
+    if null_p(forms) {
+        nil::<&'static Cmem>()
+    } else {
+        onto(parse_item(car(forms), kind), parse_items(cdr(forms), kind))
+    }
+}
+
+pub fn parse_item(e: &'static Sexp, kind: i64) -> List<&'static Cmem> {
+    let h = {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                if null_p(xs) {
+                    str_lit("")
+                } else {
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f2, p2) => {
+                            n
+                        }
+                        _ => {
+                            let other2 = tagcase_;
+                            str_lit("")
+                        }
+                    }
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                str_lit("")
+            }
+        }
+    };
+    if (string_eq_p(h, str_lit("define")) || string_eq_p(h, str_lit("define*"))) {
+        let xs = items(e);
+        let typed = i64_eq(size(xs), 4i64);
+        let n = sym_name(second(xs));
+        let x = parse_x(if typed {
+            fourth(xs)
+        } else {
+            third(xs)
+        });
+        note_layout_x(n, x);
+        kayak_rt::heap_cons(cmem(n, x, kind, (typed && {
+            let tagcase_ = x;
+            match *tagcase_ {
+                Cx::XLambda(ps, b, a) => {
+                    true
+                }
+                _ => {
+                    let y = tagcase_;
+                    false
+                }
+            }
+        }), datum_pos(e)), kayak_rt::nil())
+    } else if string_eq_p(h, str_lit("define-rec")) {
+        parse_rec_members(cdr(items(e)), kind)
+    } else if string_eq_p(h, str_lit("define-generative")) {
+        map(lambda1s(move |t: &'static Ctop| {
+            let tagcase_ = t;
+            match *tagcase_ {
+                Ctop::TDefine(n, typed, x) => {
+                    cmem(n, x, 0i64, false, datum_pos(e))
+                }
+                _ => {
+                    let y = tagcase_;
+                    cmem(str_lit(""), x_unit(0i64), 0i64, false, 0i64)
+                }
+            }
+        }), generative_conversions(sym_name(second(items(e))), datum_pos(e)))
+    } else if string_eq_p(h, str_lit("define-datatype")) {
+        map(lambda1s(move |t: &'static Ctop| {
+            let tagcase_ = t;
+            match *tagcase_ {
+                Ctop::TDefine(n, typed, x) => {
+                    cmem(n, x, kind, true, datum_pos(e))
+                }
+                _ => {
+                    let y = tagcase_;
+                    cmem(str_lit(""), x_unit(0i64), 0i64, false, 0i64)
+                }
+            }
+        }), dt_constructors(cdr(cdr(items(e))), datum_pos(e)))
+    } else if string_eq_p(h, str_lit("import")) {
+        map(lambda1s(move |t: &'static Ctop| {
+            let tagcase_ = t;
+            match *tagcase_ {
+                Ctop::TDefine(n, typed, x) => {
+                    cmem(n, x, kind, false, datum_pos(e))
+                }
+                _ => {
+                    let y = tagcase_;
+                    cmem(str_lit(""), x_unit(0i64), 0i64, false, 0i64)
+                }
+            }
+        }), imports(e))
+    } else if string_eq_p(h, str_lit("hide")) {
+        parse_items(cdr(items(e)), 1i64)
+    } else if (string_eq_p(h, str_lit("define-type")) || string_eq_p(h, str_lit("define-effect")) || string_eq_p(h, str_lit("define-convention")) || string_eq_p(h, str_lit("include")) || string_eq_p(h, str_lit("%loaded"))) {
+        nil::<&'static Cmem>()
+    } else if {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Str(t, f, p) => {
+                true
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    } {
+        nil::<&'static Cmem>()
+    } else {
+        match cg_fail(string_append(str_lit("not yet: a module's "), h)) {};
+        nil::<&'static Cmem>()
+    }
+}
+
+/// A `define-rec`'s members, each `(name type expression)`, each where
+/// its binding is.
+pub fn parse_rec_members(bs: Sexps, kind: i64) -> List<&'static Cmem> {
+    if null_p(bs) {
+        nil::<&'static Cmem>()
+    } else {
+        let x = parse_x(third(items(car(bs))));
+        kayak_rt::heap_cons(cmem(sym_name(car(items(car(bs)))), x, kind, {
+            let tagcase_ = x;
+            match *tagcase_ {
+                Cx::XLambda(ps, body, a) => {
+                    true
+                }
+                _ => {
+                    let y = tagcase_;
+                    false
+                }
+            }
+        }, datum_pos(car(bs))), parse_rec_members(cdr(bs), kind))
+    }
+}
+
+/// `(import m x …)`: each value `x` defined as `(with m x)`; `(type t
+/// …)` and `(effect e …)` name no value.
+pub fn imports(e: &'static Sexp) -> List<&'static Ctop> {
+    import_names(second(items(e)), cdr(cdr(items(e))), datum_pos(e))
+}
+
+pub fn import_names(mut m: &'static Sexp, mut xs: Sexps, mut a: i64) -> List<&'static Ctop> {
+    loop {
+        if null_p(xs) {
+            return nil::<&'static Ctop>();
+        } else if {
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        } {
+            let tagcase_ = car(xs);
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    return kayak_rt::heap_cons(t_define(n, false, parse_with(m, x_var(n, p), f, a)), import_names(m, cdr(xs), a));
+                }
+                _ => {
+                    let other = tagcase_;
+                    return nil::<&'static Ctop>();
+                }
+            }
+        } else {
+            xs = cdr(xs);
+            continue;
+        }
     }
 }
 
@@ -1870,37 +2893,6 @@ pub fn parse_else(mut arms: Sexps) -> Cbinds {
     }
 }
 
-// A datatype's constructors, as Fixpt's parser expands `define-datatype`:
-// each `(define tag type (lambda (x1 …) (sum tag (product (1 x1) …))))`, the
-// lambda where the form starts, its body where the variant does.
-pub fn dt_vars(i: i64, n: i64) -> Strings {
-    if i64_gt(i, n) {
-        nil::<Str>()
-    } else {
-        kayak_rt::heap_cons(string_append(str_lit("%x"), i64_to_string(i)), dt_vars(i64_plus(i, 1i64), n))
-    }
-}
-
-pub fn dt_fields(xs: Strings, i: i64, a: i64) -> Cbinds {
-    if null_p(xs) {
-        nil::<&'static Cbind>()
-    } else {
-        kayak_rt::heap_cons(cbind(i64_to_string(i), x_var(car(xs), a)), dt_fields(cdr(xs), i64_plus(i, 1i64), a))
-    }
-}
-
-pub fn dt_constructors(vs: Sexps, a: i64) -> List<&'static Ctop> {
-    if null_p(vs) {
-        nil::<&'static Ctop>()
-    } else {
-        let parts = items(car(vs));
-        let tag = sym_name(car(parts));
-        let at = datum_pos(car(vs));
-        let xs = dt_vars(1i64, size(cdr(parts)));
-        kayak_rt::heap_cons(t_define(tag, true, x_lambda(xs, x_sum(tag, x_product(dt_fields(xs, 1i64, at), at), at), a)), dt_constructors(cdr(vs), a))
-    }
-}
-
 pub fn parse_top(e: &'static Sexp) -> List<&'static Ctop> {
     let h = {
         let tagcase_ = e;
@@ -1929,10 +2921,19 @@ pub fn parse_top(e: &'static Sexp) -> List<&'static Ctop> {
     };
     if (string_eq_p(h, str_lit("define")) || string_eq_p(h, str_lit("define*"))) {
         let xs = items(e);
-        if i64_eq(size(xs), 3i64) {
-            kayak_rt::heap_cons(t_define(sym_name(second(xs)), false, parse_x(car(cdr(cdr(xs))))), kayak_rt::nil())
+        let typed = not(i64_eq(size(xs), 3i64));
+        let n = sym_name(second(xs));
+        let x = parse_x(if typed {
+            fourth(xs)
         } else {
-            kayak_rt::heap_cons(t_define(sym_name(second(xs)), true, parse_x(car(cdr(cdr(cdr(xs)))))), kayak_rt::nil())
+            third(xs)
+        });
+        note_layout_x(n, x);
+        if (made_here_name_p(n) && module_made_p(x)) {
+            set(cg_made(), kayak_rt::heap_cons(cmade(n, x), get(cg_made())));
+            nil::<&'static Ctop>()
+        } else {
+            kayak_rt::heap_cons(t_define(n, typed, x), kayak_rt::nil())
         }
     } else if string_eq_p(h, str_lit("define-rec")) {
         kayak_rt::heap_cons(t_define_rec(parse_typed_binds(cdr(items(e)))), kayak_rt::nil())
@@ -1940,7 +2941,11 @@ pub fn parse_top(e: &'static Sexp) -> List<&'static Ctop> {
         nil::<&'static Ctop>()
     } else if string_eq_p(h, str_lit("define-datatype")) {
         dt_constructors(cdr(cdr(items(e))), datum_pos(e))
-    } else if (string_eq_p(h, str_lit("define-generative")) || string_eq_p(h, str_lit("import")) || string_eq_p(h, str_lit("include"))) {
+    } else if string_eq_p(h, str_lit("define-generative")) {
+        generative_conversions(sym_name(second(items(e))), datum_pos(e))
+    } else if string_eq_p(h, str_lit("import")) {
+        imports(e)
+    } else if string_eq_p(h, str_lit("include")) {
         match cg_fail(string_append(str_lit("not yet: "), h)) {};
         nil::<&'static Ctop>()
     } else {
@@ -2065,6 +3070,24 @@ pub fn word(f0: Str, f1: Citems) -> &'static Word {
     kayak_rt::heap_alloc(Word::Word(f0, f1))
 }
 
+// A word's name as the listing says it: up to a tab.
+pub fn before_tab(mut cs: Chars, mut acc: Chars) -> Str {
+    loop {
+        if null_p(cs) {
+            return list_to_string(reverse(acc));
+        } else if char_eq_p(car(cs), '\t') {
+            return list_to_string(reverse(acc));
+        } else {
+            (cs, acc) = (cdr(cs), kayak_rt::heap_cons(car(cs), acc));
+            continue;
+        }
+    }
+}
+
+pub fn shown_name(n: Str) -> Str {
+    before_tab(string_chars(n), nil::<char>())
+}
+
 // The program's words, the newest first.
 pub fn cg_words() -> Ref<List<&'static Word>> {
     kayak_rt::kept_constant!(ONCE: Ref<List<&'static Word>>);
@@ -2161,10 +3184,353 @@ pub fn c_unbind(c: Code, slot: i64, n: i64, tail: bool) -> () {
     }
 }
 
-// A word assembled: made one of the program's, under `name`.
+pub fn hex_digits(mut n: i64, mut acc: Chars) -> Chars {
+    loop {
+        let d = i64_remainder(n, 16i64);
+        let ch = i64_to_char(if i64_lt(d, 10i64) {
+            i64_plus(48i64, d)
+        } else {
+            i64_plus(87i64, d)
+        });
+        if i64_lt(n, 16i64) {
+            return kayak_rt::heap_cons(ch, acc);
+        } else {
+            (n, acc) = (i64_quotient(n, 16i64), kayak_rt::heap_cons(ch, acc));
+            continue;
+        }
+    }
+}
+
+pub fn hex(n: i64) -> Str {
+    list_to_string(hex_digits(n, nil::<char>()))
+}
+
+// A string's characters, each not printable ASCII (and `quote` and `\`) by
+// its code, `\xHH;`.
+pub fn lit_escaped(s: Str, quote: char) -> Str {
+    list_to_string(concat(map(lambda1s(move |ch: char| {
+        let k = char_to_i64(ch);
+        if (char_eq_p(ch, quote) || i64_eq(k, 92i64) || i64_lt(k, 32i64) || i64_gt(k, 126i64)) {
+            string_chars(string_append(str_lit("\\x"), string_append(hex(k), str_lit(";"))))
+        } else {
+            kayak_rt::heap_cons(ch, kayak_rt::nil())
+        }
+    }), string_chars(s))))
+}
+
+pub fn lit_text(l: &'static Lit) -> Str {
+    let tagcase_ = l;
+    match *tagcase_ {
+        Lit::LInt(n) => {
+            int_to_string(n)
+        }
+        Lit::LBool(v) => {
+            if v {
+                str_lit("#t")
+            } else {
+                str_lit("#f")
+            }
+        }
+        Lit::LUnit() => {
+            str_lit("|#u|")
+        }
+        Lit::LNil() => {
+            str_lit("()")
+        }
+        Lit::LStr(s) => {
+            string_append(str_lit("\""), string_append(lit_escaped(s, '"'), str_lit("\"")))
+        }
+        Lit::LChar(ch) => {
+            string_append(str_lit("#\\x"), hex(char_to_i64(ch)))
+        }
+        Lit::LSym(s) => {
+            string_append(str_lit("|"), string_append(lit_escaped(s, '|'), str_lit("|")))
+        }
+        Lit::LPair(a, d) => {
+            string_append(str_lit("("), string_append(lit_text(a), string_append(str_lit(" . "), string_append(lit_text(d), str_lit(")")))))
+        }
+        Lit::LWord(w) => {
+            string_append(str_lit("word "), shown_name(w))
+        }
+    }
+}
+
+pub fn item_size(i: &'static Item) -> i64 {
+    let tagcase_ = i;
+    match *tagcase_ {
+        Item::ItIns(r, os) => {
+            i64_plus(1i64, size(os))
+        }
+        Item::ItLabel(n) => {
+            0i64
+        }
+        Item::ItBranch(n) => {
+            2i64
+        }
+        Item::ItZbranch(n) => {
+            2i64
+        }
+    }
+}
+
+// Where each label is: a list of (label, cell) pairs.
+pub enum Place {
+    Place(i64, i64),
+}
+
+pub fn place(f0: i64, f1: i64) -> &'static Place {
+    kayak_rt::heap_alloc(Place::Place(f0, f1))
+}
+
+pub fn places_of(mut xs: Citems, mut at: i64, mut acc: List<&'static Place>) -> List<&'static Place> {
+    loop {
+        if null_p(xs) {
+            return acc;
+        } else {
+            (xs, at, acc) = (cdr(xs), i64_plus(at, item_size(car(xs))), {
+                let tagcase_ = car(xs);
+                match *tagcase_ {
+                    Item::ItLabel(n) => {
+                        kayak_rt::heap_cons(place(n, at), acc)
+                    }
+                    _ => {
+                        let y = tagcase_;
+                        acc
+                    }
+                }
+            });
+            continue;
+        }
+    }
+}
+
+pub fn place_at(mut ps: List<&'static Place>, mut n: i64) -> i64 {
+    loop {
+        if null_p(ps) {
+            return -1i64;
+        } else if {
+            let tagcase_ = car(ps);
+            match *tagcase_ {
+                Place::Place(m, at) => {
+                    i64_eq(m, n)
+                }
+            }
+        } {
+            let tagcase_ = car(ps);
+            match *tagcase_ {
+                Place::Place(m, at) => {
+                    return at;
+                }
+            }
+        } else {
+            ps = cdr(ps);
+            continue;
+        }
+    }
+}
+
+pub fn range_from(i: i64, n: i64) -> List<i64> {
+    if i64_gt_eq(i, n) {
+        nil::<i64>()
+    } else {
+        kayak_rt::heap_cons(i, range_from(i64_plus(i, 1i64), n))
+    }
+}
+
+pub fn range_to(n: i64) -> List<i64> {
+    range_from(0i64, n)
+}
+
+pub fn padded(n: i64) -> Str {
+    let s = i64_to_string(n);
+    string_append(list_to_string(map(lambda1s(move |k: i64| {
+        ' '
+    }), range_to(i64_minus(4i64, string_length_i64(s))))), s)
+}
+
+pub fn second_opnd(os: List<&'static Opnd>) -> &'static Opnd {
+    car(cdr(os))
+}
+
+pub fn line(at: i64, text: Str) -> Str {
+    string_append(str_lit("  "), string_append(padded(at), string_append(str_lit(": "), text)))
+}
+
+pub fn put_sep_lines(ss: Strings) -> Str {
+    if null_p(ss) {
+        str_lit("")
+    } else {
+        string_append(car(ss), string_append(str_lit("\n"), put_sep_lines(cdr(ss))))
+    }
+}
+
+pub fn opnd_text(o: &'static Opnd) -> Str {
+    let tagcase_ = o;
+    match *tagcase_ {
+        Opnd::OInt(n) => {
+            i64_to_string(n)
+        }
+        Opnd::OLit(l) => {
+            lit_text(l)
+        }
+        Opnd::OWord(w) => {
+            string_append(str_lit("word "), shown_name(w))
+        }
+        Opnd::OGlobal(g) => {
+            g
+        }
+        Opnd::OPrim(p) => {
+            p
+        }
+    }
+}
+
+pub fn words_said(os: List<&'static Opnd>) -> Strings {
+    if null_p(os) {
+        nil::<Str>()
+    } else {
+        onto({
+            let tagcase_ = car(os);
+            match *tagcase_ {
+                Opnd::OWord(w) => {
+                    kayak_rt::heap_cons(w, kayak_rt::nil())
+                }
+                Opnd::OLit(l) => {
+                    let tagcase_ = l;
+                    match *tagcase_ {
+                        Lit::LWord(w) => {
+                            kayak_rt::heap_cons(w, kayak_rt::nil())
+                        }
+                        _ => {
+                            let y = tagcase_;
+                            nil::<Str>()
+                        }
+                    }
+                }
+                _ => {
+                    let y = tagcase_;
+                    nil::<Str>()
+                }
+            }
+        }, words_said(cdr(os)))
+    }
+}
+
+pub fn ins_text(r: Str, os: List<&'static Opnd>) -> Str {
+    if string_eq_p(r, str_lit("closure")) {
+        string_append(str_lit("closure "), string_append(opnd_text(car(os)), string_append(str_lit(" over "), opnd_text(second_opnd(os)))))
+    } else {
+        if null_p(os) {
+            r
+        } else {
+            string_append(r, string_append(str_lit(" "), put_sep_words(map(&opnd_text, os))))
+        }
+    }
+}
+
+// One word's lines, and the words its lines name, in order.
+pub enum Wsaid {
+    Wsaid(Str, Strings),
+}
+
+pub fn wsaid(f0: Str, f1: Strings) -> &'static Wsaid {
+    kayak_rt::heap_alloc(Wsaid::Wsaid(f0, f1))
+}
+
+pub fn lines_of_items(mut xs: Citems, mut at: i64, mut ps: List<&'static Place>, mut out: Strings, mut named: Strings) -> &'static Wsaid {
+    loop {
+        if null_p(xs) {
+            return wsaid(put_sep_lines(reverse(out)), reverse(named));
+        } else {
+            let x = car(xs);
+            let next = i64_plus(at, item_size(x));
+            let tagcase_ = x;
+            match *tagcase_ {
+                Item::ItLabel(n) => {
+                    (xs, at) = (cdr(xs), next);
+                    continue;
+                }
+                Item::ItBranch(n) => {
+                    (xs, at, out) = (cdr(xs), next, kayak_rt::heap_cons(line(at, string_append(str_lit("branch → "), i64_to_string(place_at(ps, n)))), out));
+                    continue;
+                }
+                Item::ItZbranch(n) => {
+                    (xs, at, out) = (cdr(xs), next, kayak_rt::heap_cons(line(at, string_append(str_lit("0branch → "), i64_to_string(place_at(ps, n)))), out));
+                    continue;
+                }
+                Item::ItIns(r, os) => {
+                    (xs, at, out, named) = (cdr(xs), next, kayak_rt::heap_cons(line(at, ins_text(r, os)), out), onto(reverse(words_said(os)), named));
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+// A word's lines, as the listing writes them.
+pub fn word_text(xs: Citems) -> Str {
+    let tagcase_ = lines_of_items(xs, 0i64, places_of(xs, 0i64, nil::<&'static Place>()), nil::<Str>(), nil::<Str>());
+    match *tagcase_ {
+        Wsaid::Wsaid(text, named) => {
+            text
+        }
+    }
+}
+
+// Whether a word named `name`, as the listing names it, is listed: none,
+// one whose lines are `text`, or only others.
+pub fn c_named(mut ws: List<&'static Word>, mut name: Str, mut text: Str, mut k: i64) -> i64 {
+    loop {
+        if null_p(ws) {
+            return k;
+        } else if {
+            let tagcase_ = car(ws);
+            match *tagcase_ {
+                Word::Word(m, xs) => {
+                    string_eq_p(shown_name(m), name)
+                }
+            }
+        } {
+            if {
+                let tagcase_ = car(ws);
+                match *tagcase_ {
+                    Word::Word(m, xs) => {
+                        string_eq_p(word_text(xs), text)
+                    }
+                }
+            } {
+                return 1i64;
+            } else {
+                (ws, k) = (cdr(ws), 2i64);
+                continue;
+            }
+        } else {
+            ws = cdr(ws);
+            continue;
+        }
+    }
+}
+
+// A word assembled: made one of the program's, under `name`. Two words
+// may have one name in Fixpt's listing (C144): an abstract type's two
+// conversions, a datatype's constructors in a module that includes one, a
+// global defined again. One the same as a word of its name, cell for cell,
+// is listed under it too, as Fixpt lists it (told apart by a tab and a
+// number, which the listing leaves out), and kayak-cells takes it as that
+// word; one not the same is named apart, `name~N`, so that it runs.
 pub fn c_assemble(c: Code, name: Str) -> Str {
-    set(cg_words(), kayak_rt::heap_cons(word(name, reverse(get(c))), get(cg_words())));
-    name
+    let xs = the::<Citems>(reverse(get(c)));
+    let k = c_named(get(cg_words()), name, word_text(xs), 0i64);
+    let n = i64_to_string(size(get(cg_words())));
+    let own = if i64_eq(k, 0i64) {
+        name
+    } else if i64_eq(k, 1i64) {
+        string_append(name, string_append(str_lit("\t"), n))
+    } else {
+        string_append(name, string_append(str_lit("~"), n))
+    };
+    set(cg_words(), kayak_rt::heap_cons(word(own, xs), get(cg_words())));
+    own
 }
 
 // Where a variable is (Fixpt's `loc`): a slot of the frame, a free value
@@ -2307,158 +3673,6 @@ pub fn c_global_p(l: &'static Loc) -> bool {
     }
 }
 
-pub fn c_adjoin(xs: Strings, n: Str) -> Strings {
-    if string_member_p(n, xs) {
-        xs
-    } else {
-        kayak_rt::heap_cons(n, xs)
-    }
-}
-
-pub fn c_bound_names(mut bs: Cbinds, mut bound: Strings) -> Strings {
-    loop {
-        if null_p(bs) {
-            return bound;
-        } else {
-            (bs, bound) = (cdr(bs), {
-                let tagcase_ = car(bs);
-                match *tagcase_ {
-                    Cbind::Cbind(n, x) => {
-                        kayak_rt::heap_cons(n, bound)
-                    }
-                }
-            });
-            continue;
-        }
-    }
-}
-
-pub fn c_bound_exps(bs: Cbinds) -> Cxs {
-    map(lambda1s(move |b: &'static Cbind| {
-        let tagcase_ = b;
-        match *tagcase_ {
-            Cbind::Cbind(n, x) => {
-                x
-            }
-        }
-    }), bs)
-}
-
-pub fn c_names(mut ns: Strings, mut bound: Strings) -> Strings {
-    loop {
-        if null_p(ns) {
-            return bound;
-        } else {
-            (ns, bound) = (cdr(ns), kayak_rt::heap_cons(car(ns), bound));
-            continue;
-        }
-    }
-}
-
-// The names free in `x`, not `bound`, onto `acc`, the newest first, in
-// Fixpt's order: what an expression's parts are walked in.
-pub fn c_free_all(mut es: Cxs, mut bound: Strings, mut acc: Strings) -> Strings {
-    loop {
-        if null_p(es) {
-            return acc;
-        } else {
-            (es, acc) = (cdr(es), c_free(car(es), bound, acc));
-            continue;
-        }
-    }
-}
-
-pub fn c_free(mut x: &'static Cx, mut bound: Strings, mut acc: Strings) -> Strings {
-    loop {
-        let tagcase_ = x;
-        match *tagcase_ {
-            Cx::XVar(n, a) => {
-                if string_member_p(n, bound) {
-                    return acc;
-                } else {
-                    return c_adjoin(acc, n);
-                }
-            }
-            Cx::XLambda(ps, body, a) => {
-                (x, bound) = (body, c_names(ps, bound));
-                continue;
-            }
-            Cx::XApp(f, args, a) => {
-                (x, acc) = (f, c_free_all(args, bound, acc));
-                continue;
-            }
-            Cx::XIf(t, th, el, a) => {
-                (x, acc) = (t, c_free(th, bound, c_free(el, bound, acc)));
-                continue;
-            }
-            Cx::XLetrec(bs, body, a) => {
-                let inner = c_bound_names(bs, bound);
-                (x, bound, acc) = (body, inner, c_free_all(c_bound_exps(bs), inner, acc));
-                continue;
-            }
-            Cx::XLet(bs, body, a) => {
-                (x, bound, acc) = (body, c_bound_names(bs, bound), c_free_all(c_bound_exps(bs), bound, acc));
-                continue;
-            }
-            Cx::XBegin(es, a) => {
-                return c_free_all(es, bound, acc);
-            }
-            Cx::XProduct(fs, a) => {
-                return c_free_all(c_bound_exps(fs), bound, acc);
-            }
-            Cx::XExtract(p, i, a) => {
-                x = p;
-                continue;
-            }
-            Cx::XSum(t, v, a) => {
-                x = v;
-                continue;
-            }
-            Cx::XTagcase(s, arms, els, a) => {
-                (x, acc) = (s, c_free_arms(arms, bound, c_free_else(els, bound, acc)));
-                continue;
-            }
-            _ => {
-                let y = tagcase_;
-                return acc;
-            }
-        }
-    }
-}
-
-pub fn c_free_arms(mut arms: List<&'static Carm>, mut bound: Strings, mut acc: Strings) -> Strings {
-    loop {
-        if null_p(arms) {
-            return acc;
-        } else {
-            let tagcase_ = car(arms);
-            match *tagcase_ {
-                Carm::Carm(t, p, ns, body) => {
-                    (arms, acc) = (cdr(arms), c_free(body, c_names(ns, bound), acc));
-                    continue;
-                }
-            }
-        }
-    }
-}
-
-pub fn c_free_else(els: Cbinds, bound: Strings, acc: Strings) -> Strings {
-    if null_p(els) {
-        acc
-    } else {
-        let tagcase_ = car(els);
-        match *tagcase_ {
-            Cbind::Cbind(n, x) => {
-                c_free(x, kayak_rt::heap_cons(n, bound), acc)
-            }
-        }
-    }
-}
-
-pub fn c_mentions_p(x: &'static Cx, n: Str) -> bool {
-    string_member_p(n, c_free(x, nil::<Str>(), nil::<Str>()))
-}
-
 pub fn c_count<A: Copy + 'static>(xs: List<A>) -> i64 {
     size(xs)
 }
@@ -2519,6 +3733,16 @@ pub fn c_calls_only(mut x: &'static Cx, mut f: Str, mut n: i64, mut tail: bool, 
             }
             Cx::XTagcase(s, arms, els, a) => {
                 return (c_calls_only(s, f, n, false, loops) && c_calls_only_arms(arms, f, n, tail, loops) && c_calls_only_else(els, f, n, tail, loops));
+            }
+            Cx::XModule(its, a) => {
+                return false;
+            }
+            Cx::XWith(m, ns, ks, body, a) => {
+                return false;
+            }
+            Cx::XReshape(y, ps, a) => {
+                (x, tail) = (y, false);
+                continue;
             }
             _ => {
                 let y = tagcase_;
@@ -3260,6 +4484,126 @@ pub fn c_letrec_patch(mut made: List<Patches>, mut depth: i64, mut i: i64, mut c
     }
 }
 
+// A closure in slot `d` waiting for slot `s`'s value, as its free value
+// `j`.
+pub enum Wait {
+    Wait(i64, i64, i64),
+}
+
+pub fn wait(f0: i64, f1: i64, f2: i64) -> &'static Wait {
+    kayak_rt::heap_alloc(Wait::Wait(f0, f1, f2))
+}
+
+pub fn c_module_slots(its: List<&'static Cmem>, d: i64) -> Cenv {
+    if null_p(its) {
+        nil::<&'static Centry>()
+    } else {
+        kayak_rt::heap_cons(centry(cmem_name(car(its)), at_slot(d)), c_module_slots(cdr(its), i64_plus(d, 1i64)))
+    }
+}
+
+// Whether `x` names any of `later`'s.
+pub fn c_names_any_p(x: &'static Cx, later: Cenv) -> bool {
+    any_p(lambda1s(move |n: Str| {
+        not(null_p(c_find(later, n)))
+    }), c_free(x, nil::<Str>(), nil::<Str>()))
+}
+
+// Item `n`'s lambda's scope while it is made: each of `later` pending, and
+// itself a loop if it only calls itself in loops.
+pub fn c_module_own(mut n: Str, mut e: Cenv, mut later: Cenv, mut body: &'static Cx, mut nps: i64) -> Cenv {
+    loop {
+        if null_p(later) {
+            return e;
+        } else {
+            let tagcase_ = car(later);
+            match *tagcase_ {
+                Centry::Centry(m, l) => {
+                    let loops = (string_eq_p(m, n) && c_loops_only(body, n, nps, true));
+                    (e, later) = (c_extend(m, if loops {
+                        at_loop()
+                    } else {
+                        let tagcase_ = l;
+                        match *tagcase_ {
+                            Loc::AtSlot(s) => {
+                                at_pending(s)
+                            }
+                            _ => {
+                                let y = tagcase_;
+                                l
+                            }
+                        }
+                    }, e), cdr(later));
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+// Each closure of `ws` waiting for slot `d`, given it.
+pub fn c_give_waiting(mut c: Code, mut ws: List<&'static Wait>, mut d: i64) -> () {
+    loop {
+        if null_p(ws) {
+            return ();
+        } else {
+            let tagcase_ = car(ws);
+            match *tagcase_ {
+                Wait::Wait(at, j, s) => {
+                    if i64_eq(s, d) {
+                        c_op1(c, str_lit("slot"), o_int(d));
+                        c_op1(c, str_lit("slot"), o_int(at));
+                        c_field_set(c, i64_plus(3i64, j))
+                    } else {
+                        ()
+                    };
+                    ws = cdr(ws);
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+pub fn c_slots_load(mut c: Code, mut ss: List<i64>) -> () {
+    loop {
+        if null_p(ss) {
+            return ();
+        } else {
+            c_op1(c, str_lit("slot"), o_int(car(ss)));
+            ss = cdr(ss);
+            continue;
+        }
+    }
+}
+
+// Each of `ps` of the module in slot `d` pushed: a field, a field of that,
+// ...
+pub fn c_fields_in(mut c: Code, mut ks: List<i64>) -> () {
+    loop {
+        if null_p(ks) {
+            return ();
+        } else {
+            c_field(c, i64_plus(car(ks), 2i64));
+            ks = cdr(ks);
+            continue;
+        }
+    }
+}
+
+pub fn c_reshape_fields(mut c: Code, mut d: i64, mut ps: Paths) -> () {
+    loop {
+        if null_p(ps) {
+            return ();
+        } else {
+            c_op1(c, str_lit("slot"), o_int(d));
+            c_fields_in(c, car(ps));
+            ps = cdr(ps);
+            continue;
+        }
+    }
+}
+
 pub fn c_exps(es: Cxs, e: Cenv, depth: i64, c: Code) -> i64 {
     if null_p(es) {
         0i64
@@ -3376,6 +4720,97 @@ pub fn c_exp(x: &'static Cx, e: Cenv, depth: i64, c: Code, tail: bool) -> () {
             c_exp(s, e, depth, c, false);
             c_arms(arms, els, e, depth, c, tail, end);
             c_emit(c, it_label(end))
+        }
+        Cx::XModule(its, a) => {
+            c_module(its, e, depth, c, tail)
+        }
+        Cx::XWith(m, ns, ks, body, a) => {
+            let fv = c_free(body, nil::<Str>(), nil::<Str>());
+            let inner = c_with_fields(m, ns, ks, fv, e, e, depth, c);
+            let n = size(filter(lambda1s(move |k: Str| {
+                string_member_p(k, fv)
+            }), ns));
+            c_exp(body, inner, i64_plus(depth, n), c, tail);
+            c_unbind(c, depth, n, tail)
+        }
+        Cx::XReshape(y, ps, a) => {
+            c_exp(y, e, depth, c, false);
+            c_int(c, 37i64);
+            c_reshape_fields(c, depth, ps);
+            c_prim(c, str_lit("%make-frozen"), i64_plus(1i64, size(ps)));
+            c_op1(c, str_lit("slot!"), o_int(depth));
+            c_done(c, tail)
+        }
+    }
+}
+
+pub fn c_with_fields(mut m: &'static Cx, mut ns: Strings, mut ks: List<i64>, mut fv: Strings, mut outer: Cenv, mut inner: Cenv, mut depth: i64, mut c: Code) -> Cenv {
+    loop {
+        if null_p(ns) {
+            return inner;
+        } else if string_member_p(car(ns), fv) {
+            c_exp(m, outer, depth, c, false);
+            c_field(c, i64_plus(car(ks), 2i64));
+            (ns, ks, inner, depth) = (cdr(ns), cdr(ks), c_extend(car(ns), at_slot(depth), inner), i64_plus(depth, 1i64));
+            continue;
+        } else {
+            (ns, ks) = (cdr(ns), cdr(ks));
+            continue;
+        }
+    }
+}
+
+pub fn c_module(its: List<&'static Cmem>, e: Cenv, depth: i64, c: Code, tail: bool) -> () {
+    let later = c_module_slots(its, depth);
+    let given = c_module_make(its, e, depth, later, nil::<&'static Wait>(), nil::<i64>(), c);
+    c_int(c, 37i64);
+    c_slots_load(c, reverse(given));
+    c_prim(c, str_lit("%make-frozen"), i64_plus(1i64, size(given)));
+    c_done(c, tail);
+    c_unbind(c, depth, size(its), tail)
+}
+
+pub fn c_module_make(mut its: List<&'static Cmem>, mut e: Cenv, mut d: i64, mut later: List<&'static Centry>, mut ws: List<&'static Wait>, mut given: List<i64>, mut c: Code) -> List<i64> {
+    loop {
+        if null_p(its) {
+            return given;
+        } else {
+            let tagcase_ = car(its);
+            match *tagcase_ {
+                Cmem::Cmem(n, x, k, lam, at) => {
+                    let ps = if (lam && c_names_any_p(x, later)) {
+                        let tagcase_ = x;
+                        match *tagcase_ {
+                            Cx::XLambda(qs, body, a) => {
+                                c_lambda(qs, body, c_module_own(n, e, later, body, size(qs)), d, c, kayak_rt::heap_cons(n, kayak_rt::nil()))
+                            }
+                            _ => {
+                                let y = tagcase_;
+                                match cg_fail(str_lit("a module's typed lambda is a lambda")) {};
+                                nil::<&'static Patch>()
+                            }
+                        }
+                    } else {
+                        c_exp(x, e, d, c, false);
+                        the::<Patches>(nil::<&'static Patch>())
+                    };
+                    let waits = onto(ws, map(lambda1s(move |p: &'static Patch| {
+                        let tagcase_ = p;
+                        match *tagcase_ {
+                            Patch::Patch(j, s) => {
+                                wait(d, j, s)
+                            }
+                        }
+                    }), ps));
+                    c_give_waiting(c, waits, d);
+                    (its, e, d, later, ws, given) = (cdr(its), c_extend(n, at_slot(d), e), i64_plus(d, 1i64), cdr(later), waits, if i64_gt(k, 0i64) {
+                        kayak_rt::heap_cons(d, given)
+                    } else {
+                        given
+                    });
+                    continue;
+                }
+            }
         }
     }
 }
@@ -3726,6 +5161,16 @@ pub fn c_tops(mut ts: List<&'static Ctop>, mut c: Code, mut has_value: bool) -> 
 pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
     let c = the::<Code>(kayak_rt::heap_new(nil::<&'static Item>()));
     set(cg_facts(), fs);
+    set(cg_module_facts(), filter(lambda1s(move |x: &'static Fact| {
+        let tagcase_ = x;
+        match *tagcase_ {
+            Fact::Fact(f, p, what) => {
+                (has_prefix_p(what, str_lit("with-spec ")) || has_prefix_p(what, str_lit("module-arg ")))
+            }
+        }
+    }), fs));
+    set(cg_layouts(), nil::<&'static Clayout>());
+    set(cg_made(), nil::<&'static Cmade>());
     set(cg_words(), nil::<&'static Word>());
     set(cg_globals(), nil::<Str>());
     set(cg_standard_words(), nil::<Str>());
@@ -3738,299 +5183,6 @@ pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
     c_op(c, str_lit("exit"));
     c_assemble(c, str_lit("program"));
     ()
-}
-
-pub fn hex_digits(mut n: i64, mut acc: Chars) -> Chars {
-    loop {
-        let d = i64_remainder(n, 16i64);
-        let ch = i64_to_char(if i64_lt(d, 10i64) {
-            i64_plus(48i64, d)
-        } else {
-            i64_plus(87i64, d)
-        });
-        if i64_lt(n, 16i64) {
-            return kayak_rt::heap_cons(ch, acc);
-        } else {
-            (n, acc) = (i64_quotient(n, 16i64), kayak_rt::heap_cons(ch, acc));
-            continue;
-        }
-    }
-}
-
-pub fn hex(n: i64) -> Str {
-    list_to_string(hex_digits(n, nil::<char>()))
-}
-
-// A string's characters, each not printable ASCII (and `quote` and `\`) by
-// its code, `\xHH;`.
-pub fn lit_escaped(s: Str, quote: char) -> Str {
-    list_to_string(concat(map(lambda1s(move |ch: char| {
-        let k = char_to_i64(ch);
-        if (char_eq_p(ch, quote) || i64_eq(k, 92i64) || i64_lt(k, 32i64) || i64_gt(k, 126i64)) {
-            string_chars(string_append(str_lit("\\x"), string_append(hex(k), str_lit(";"))))
-        } else {
-            kayak_rt::heap_cons(ch, kayak_rt::nil())
-        }
-    }), string_chars(s))))
-}
-
-pub fn lit_text(l: &'static Lit) -> Str {
-    let tagcase_ = l;
-    match *tagcase_ {
-        Lit::LInt(n) => {
-            int_to_string(n)
-        }
-        Lit::LBool(v) => {
-            if v {
-                str_lit("#t")
-            } else {
-                str_lit("#f")
-            }
-        }
-        Lit::LUnit() => {
-            str_lit("|#u|")
-        }
-        Lit::LNil() => {
-            str_lit("()")
-        }
-        Lit::LStr(s) => {
-            string_append(str_lit("\""), string_append(lit_escaped(s, '"'), str_lit("\"")))
-        }
-        Lit::LChar(ch) => {
-            string_append(str_lit("#\\x"), hex(char_to_i64(ch)))
-        }
-        Lit::LSym(s) => {
-            string_append(str_lit("|"), string_append(lit_escaped(s, '|'), str_lit("|")))
-        }
-        Lit::LPair(a, d) => {
-            string_append(str_lit("("), string_append(lit_text(a), string_append(str_lit(" . "), string_append(lit_text(d), str_lit(")")))))
-        }
-        Lit::LWord(w) => {
-            string_append(str_lit("word "), w)
-        }
-    }
-}
-
-pub fn item_size(i: &'static Item) -> i64 {
-    let tagcase_ = i;
-    match *tagcase_ {
-        Item::ItIns(r, os) => {
-            i64_plus(1i64, size(os))
-        }
-        Item::ItLabel(n) => {
-            0i64
-        }
-        Item::ItBranch(n) => {
-            2i64
-        }
-        Item::ItZbranch(n) => {
-            2i64
-        }
-    }
-}
-
-// Where each label is: a list of (label, cell) pairs.
-pub enum Place {
-    Place(i64, i64),
-}
-
-pub fn place(f0: i64, f1: i64) -> &'static Place {
-    kayak_rt::heap_alloc(Place::Place(f0, f1))
-}
-
-pub fn places_of(mut xs: Citems, mut at: i64, mut acc: List<&'static Place>) -> List<&'static Place> {
-    loop {
-        if null_p(xs) {
-            return acc;
-        } else {
-            (xs, at, acc) = (cdr(xs), i64_plus(at, item_size(car(xs))), {
-                let tagcase_ = car(xs);
-                match *tagcase_ {
-                    Item::ItLabel(n) => {
-                        kayak_rt::heap_cons(place(n, at), acc)
-                    }
-                    _ => {
-                        let y = tagcase_;
-                        acc
-                    }
-                }
-            });
-            continue;
-        }
-    }
-}
-
-pub fn place_at(mut ps: List<&'static Place>, mut n: i64) -> i64 {
-    loop {
-        if null_p(ps) {
-            return -1i64;
-        } else if {
-            let tagcase_ = car(ps);
-            match *tagcase_ {
-                Place::Place(m, at) => {
-                    i64_eq(m, n)
-                }
-            }
-        } {
-            let tagcase_ = car(ps);
-            match *tagcase_ {
-                Place::Place(m, at) => {
-                    return at;
-                }
-            }
-        } else {
-            ps = cdr(ps);
-            continue;
-        }
-    }
-}
-
-pub fn range_from(i: i64, n: i64) -> List<i64> {
-    if i64_gt_eq(i, n) {
-        nil::<i64>()
-    } else {
-        kayak_rt::heap_cons(i, range_from(i64_plus(i, 1i64), n))
-    }
-}
-
-pub fn range_to(n: i64) -> List<i64> {
-    range_from(0i64, n)
-}
-
-pub fn padded(n: i64) -> Str {
-    let s = i64_to_string(n);
-    string_append(list_to_string(map(lambda1s(move |k: i64| {
-        ' '
-    }), range_to(i64_minus(4i64, string_length_i64(s))))), s)
-}
-
-pub fn second_opnd(os: List<&'static Opnd>) -> &'static Opnd {
-    car(cdr(os))
-}
-
-pub fn put_sep_strings(ss: Strings) -> Str {
-    if null_p(ss) {
-        str_lit("")
-    } else if null_p(cdr(ss)) {
-        car(ss)
-    } else {
-        string_append(car(ss), string_append(str_lit(" "), put_sep_strings(cdr(ss))))
-    }
-}
-
-pub fn line(at: i64, text: Str) -> Str {
-    string_append(str_lit("  "), string_append(padded(at), string_append(str_lit(": "), text)))
-}
-
-pub fn put_sep_lines(ss: Strings) -> Str {
-    if null_p(ss) {
-        str_lit("")
-    } else {
-        string_append(car(ss), string_append(str_lit("\n"), put_sep_lines(cdr(ss))))
-    }
-}
-
-pub fn opnd_text(o: &'static Opnd) -> Str {
-    let tagcase_ = o;
-    match *tagcase_ {
-        Opnd::OInt(n) => {
-            i64_to_string(n)
-        }
-        Opnd::OLit(l) => {
-            lit_text(l)
-        }
-        Opnd::OWord(w) => {
-            string_append(str_lit("word "), w)
-        }
-        Opnd::OGlobal(g) => {
-            g
-        }
-        Opnd::OPrim(p) => {
-            p
-        }
-    }
-}
-
-pub fn words_said(os: List<&'static Opnd>) -> Strings {
-    if null_p(os) {
-        nil::<Str>()
-    } else {
-        onto({
-            let tagcase_ = car(os);
-            match *tagcase_ {
-                Opnd::OWord(w) => {
-                    kayak_rt::heap_cons(w, kayak_rt::nil())
-                }
-                Opnd::OLit(l) => {
-                    let tagcase_ = l;
-                    match *tagcase_ {
-                        Lit::LWord(w) => {
-                            kayak_rt::heap_cons(w, kayak_rt::nil())
-                        }
-                        _ => {
-                            let y = tagcase_;
-                            nil::<Str>()
-                        }
-                    }
-                }
-                _ => {
-                    let y = tagcase_;
-                    nil::<Str>()
-                }
-            }
-        }, words_said(cdr(os)))
-    }
-}
-
-pub fn ins_text(r: Str, os: List<&'static Opnd>) -> Str {
-    if string_eq_p(r, str_lit("closure")) {
-        string_append(str_lit("closure "), string_append(opnd_text(car(os)), string_append(str_lit(" over "), opnd_text(second_opnd(os)))))
-    } else {
-        if null_p(os) {
-            r
-        } else {
-            string_append(r, string_append(str_lit(" "), put_sep_strings(map(&opnd_text, os))))
-        }
-    }
-}
-
-// One word's lines, and the words its lines name, in order.
-pub enum Wsaid {
-    Wsaid(Str, Strings),
-}
-
-pub fn wsaid(f0: Str, f1: Strings) -> &'static Wsaid {
-    kayak_rt::heap_alloc(Wsaid::Wsaid(f0, f1))
-}
-
-pub fn lines_of_items(mut xs: Citems, mut at: i64, mut ps: List<&'static Place>, mut out: Strings, mut named: Strings) -> &'static Wsaid {
-    loop {
-        if null_p(xs) {
-            return wsaid(put_sep_lines(reverse(out)), reverse(named));
-        } else {
-            let x = car(xs);
-            let next = i64_plus(at, item_size(x));
-            let tagcase_ = x;
-            match *tagcase_ {
-                Item::ItLabel(n) => {
-                    (xs, at) = (cdr(xs), next);
-                    continue;
-                }
-                Item::ItBranch(n) => {
-                    (xs, at, out) = (cdr(xs), next, kayak_rt::heap_cons(line(at, string_append(str_lit("branch → "), i64_to_string(place_at(ps, n)))), out));
-                    continue;
-                }
-                Item::ItZbranch(n) => {
-                    (xs, at, out) = (cdr(xs), next, kayak_rt::heap_cons(line(at, string_append(str_lit("0branch → "), i64_to_string(place_at(ps, n)))), out));
-                    continue;
-                }
-                Item::ItIns(r, os) => {
-                    (xs, at, out, named) = (cdr(xs), next, kayak_rt::heap_cons(line(at, ins_text(r, os)), out), onto(reverse(words_said(os)), named));
-                    continue;
-                }
-            }
-        }
-    }
 }
 
 pub fn cells_of(mut xs: Citems, mut n: i64) -> i64 {
@@ -4085,7 +5237,7 @@ pub fn listing_from(mut todo: Strings, mut seen: Strings, mut out: Str) -> Str {
                         let tagcase_ = lines_of_items(xs, 0i64, places_of(xs, 0i64, nil::<&'static Place>()), nil::<Str>(), nil::<Str>());
                         match *tagcase_ {
                             Wsaid::Wsaid(text, named) => {
-                                (todo, seen, out) = (onto(reverse(named), cdr(todo)), kayak_rt::heap_cons(name, seen), string_append(out, string_append(str_lit("\nword "), string_append(name, string_append(str_lit(" ("), string_append(i64_to_string(cells_of(xs, 0i64)), string_append(str_lit(" cells, cellular):\n"), text)))))));
+                                (todo, seen, out) = (onto(reverse(named), cdr(todo)), kayak_rt::heap_cons(name, seen), string_append(out, string_append(str_lit("\nword "), string_append(shown_name(name), string_append(str_lit(" ("), string_append(i64_to_string(cells_of(xs, 0i64)), string_append(str_lit(" cells, cellular):\n"), text)))))));
                                 continue;
                             }
                         }

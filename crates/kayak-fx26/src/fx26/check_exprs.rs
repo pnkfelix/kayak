@@ -524,6 +524,14 @@ pub mod expressions {
         }), spec_items(spec, str_lit("abs"))))
     }
 
+    /// A moduleof's values' names, in order: where a module of its type
+    /// keeps each, which FX-26's cellular code is told (C144).
+    pub fn spec_value_words(spec: &'static Sexp) -> Str {
+        words_of(map(lambda1s(move |x: Sexps| {
+            sym_name(second(x))
+        }), spec_items(spec, str_lit("val"))))
+    }
+
     /// The moduleof a module type names, as a list of one; or none.
     pub fn module_spec(v: &'static Cv, t: &'static Ty) -> Sexps {
         let tagcase_ = t;
@@ -4379,6 +4387,7 @@ pub mod expressions {
                     }
                 }));
                 let w = module_scope(v, spec, m, str_lit(""));
+                let s = note_fact(s, cv_file(v), cv_pos(v), string_append(str_lit("with-spec "), spec_value_words(spec)));
                 found_then_fitted(v, body(with_binds(w, module_type_values(w, spec)), s, cdr(xs), nil::<&'static Ty>()), expected)
             } else if (null_p(found) || not({
                 let tagcase_ = car(found);
@@ -7667,7 +7676,7 @@ pub mod expressions {
         })) {
             match refuse(v, str_lit("KFX's module argument is a module defined at the top level, by its name")) {}
         } else {
-            res(t, kayak_rt::heap_cons(string_append(str_lit("g:"), name), kayak_rt::nil()), conforms(v, s, name, {
+            res(t, kayak_rt::heap_cons(string_append(str_lit("g:"), name), kayak_rt::nil()), note_fact(conforms(v, s, name, {
                 let tagcase_ = t;
                 match *tagcase_ {
                     Ty::TyData(d, args) => {
@@ -7678,7 +7687,7 @@ pub mod expressions {
                         str_lit("")
                     }
                 }
-            }, car(module_spec(v, t))))
+            }, car(module_spec(v, t))), datum_file(arg), datum_pos(arg), string_append(str_lit("module-arg "), spec_value_words(car(module_spec(v, t))))))
         }
     }
 

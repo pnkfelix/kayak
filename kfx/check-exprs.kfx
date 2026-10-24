@@ -234,6 +234,12 @@
                            (else other nil)))
                        (spec-items spec "abs")))))
 
+      (define spec-value-words (subr kfx (sexp) string)
+        (lambda (spec)
+          "A moduleof's values' names, in order: where a module of its type
+           keeps each, which FX-26's cellular code is told (C144)."
+          (words-of (map (lambda ((x sexps)) (sym-name (second x))) (spec-items spec "val")))))
+
       (define module-spec (subr kfx (cv ty) sexps)
         (lambda (v t)
           "The moduleof a module type names, as a list of one; or none."
@@ -2016,7 +2022,8 @@
                                (not (null? (module-spec v (tagcase (car found) (bind (n sc wher) (tagcase sc (scheme (tv t) t))))))))
                           "A module parameter's values, of its abstract types `m..t`."
                           (let* ((spec (car (module-spec v (tagcase (car found) (bind (n sc wher) (tagcase sc (scheme (tv t) t)))))))
-                                 (w (module-scope v spec m "")))
+                                 (w (module-scope v spec m ""))
+                                 (s (note-fact s (cv-file v) (cv-pos v) (string-append "with-spec " (spec-value-words spec)))))
                             (found-then-fitted v (body (with-binds w (module-type-values w spec)) s (cdr xs) nil) expected)))
                          ((or (null? found) (not (tagcase (car found) (bind (n sc wher) (string=? wher "module")))))
                           (refuse v (string-append "KFX's with opens a module defined at the top level, or a module parameter, by its name: " m)))
@@ -3515,8 +3522,10 @@
                     (not (tagcase (car (find-bind name (cv-binds v))) (bind (n sc wher) (string=? wher "module")))))
                 (refuse v "KFX's module argument is a module defined at the top level, by its name")
                 (res t (list (string-append "g:" name))
-                     (conforms v s name (tagcase t (ty-data (d args) (after-prefix d "%module ")) (else other ""))
-                               (car (module-spec v t))))))))
+                     (note-fact (conforms v s name (tagcase t (ty-data (d args) (after-prefix d "%module ")) (else other ""))
+                                          (car (module-spec v t)))
+                                (datum-file arg) (datum-pos arg)
+                                (string-append "module-arg " (spec-value-words (car (module-spec v t))))))))))
 
       (call-args-pass (subr kfx (cv st sexps tys bool i64s i64) res)
         (lambda (v s args ps later fixed k)

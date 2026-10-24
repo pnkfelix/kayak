@@ -3995,3 +3995,58 @@ them, `incremental.py`'s 62 compiles.
   each generated program's) under it; nor `codegen-units = 1` alone,
   3%. Nor fewer polls at `--compiled --slice 2`, which gives tier 1 back
   nearly every cell: that is what the way tests.
+
+## C144. kayak's code generator: modules (2026-10-24)
+
+The user: "do 1" (TODO §31 item 5, the generator's gaps by count): 59
+programs the checker accepts stopped at `module`. Fixpt's compiler in
+FX-26 (`compile-exps.fx`'s `c-module`, `c-with`; `compile-state.fx`'s
+module values and waits; `parser.fx`'s `with-includes`) ported to
+`fx26/cg.kfx`, decision for decision, as C133 began.
+- **A module** is a frozen product (`%make-frozen`, tag 37) of its own
+  members, made in slots in order as a `letrec*`'s: a lambda written with
+  its type that names a member not made yet captures a placeholder, given
+  the member once it is made (`c-give-waiting`), as a `letrec`'s
+  siblings are. An abstract type's conversions are identity lambdas
+  where its form is, in slots but not the product.
+- **Its type**: where it is not the module's own members (a `hide`'s are
+  members, not in its type; an `include`'s values are), the product is
+  made again of the type's values, each a path of fields into it
+  (Fixpt's checker's `k-reshapes`): the values of the modules it
+  includes, not hidden, then its own that it gives.
+- **`include`**: a first member `%include`, the module of the modules
+  included, made again of their values; the names of theirs the members
+  use, in the order they first use them, bound once in slots after it;
+  each member's value where its item is (a lambda's body, so its word is
+  named for the item's place, `lambda@P`). **`extend`**: a module of
+  `e0`, then `e1` in a `with` of it, made again of `e0`'s values, `e1`'s
+  in their place, then `e1`'s others. A module kfx's reader defines
+  where it is included or extended (`made--P`, C90) is made in place
+  again; a load (`made--load--`) is the global of the module its file
+  is, as Fixpt's `%shared:`. `import` is `(define x (with m x))`; a
+  top-level `define-generative` its two conversions, named for them.
+- **`with`**: the module's values the body names, each loaded and its
+  field taken, in slots. Where each is: a module made in the program, by
+  its members, which the generator keeps as it reads them; a module
+  parameter, by its type, which **the checker now notes** (`with-spec`,
+  at the `with`), and a module given for one is made again of that
+  type's values unless it is that already (`module-arg`, at the
+  argument). Fixpt's checker notes both (its `with` facts and reshapes).
+- **Words named alike**: Fixpt lists two words of one name, an abstract
+  type's conversions say; the listing now does (cg-words were found by
+  name), and kayak-cells takes a word listed twice cell for cell the same
+  as one (C122). Two of one name that differ (a global defined again, a
+  datatype's constructors in a module that includes one, named for the
+  item's place) Fixpt lists alike too, and kayak-cells refuses that
+  listing: ours names the second `name~N`, so that it runs.
+  `redefine/compatible.fx` had agreed by chance, its words found by name
+  (both closures the newer `f`, and the last value the same).
+- **Fixpt's conservatism kept**: whether a procedure is only called
+  (`c-calls-only`) is said of no module and no `with`, as Fixpt says.
+- **Results**: 132 programs agree (77 before), 116 of them Fixpt's words
+  exactly (68). Of the 60 that stopped at a module, 49 are Fixpt's words;
+  the loads differ in names only (Fixpt's `lambda@1001:P`, a loaded
+  file's places), `letrec-select.fx` by Fixpt's lambda lifting (not yet),
+  the made-code programs and `run/conditions.fx` stop later (`case`,
+  `letregion`), `convention-read.fx` needs `%fx26-native-convention` of
+  tier 1.
