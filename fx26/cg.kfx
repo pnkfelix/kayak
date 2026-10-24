@@ -10,10 +10,10 @@
  compiler then follows `compile-exps.fx`: a lambda's arguments are its
  frame on the data stack, a `let`'s values are pushed onto the frame and
  are slots of it, closures are flat, globals are cells, and a call in tail
- position is a tail call; a module is a product of its values (C144).
- Not yet: Fixpt's middle phase (its plans, inlining, specialization),
- lambda lifting, register code (the words' twins), regions, bloblets,
- prompts.
+ position is a tail call; a module is a product of its values (C144); a
+ region an arena or a reap entered and left (C145). Not yet: Fixpt's
+ middle phase (its plans, inlining, specialization), lambda lifting,
+ register code (the words' twins), bloblets, prompts.
  fixpt-source: crates/fixpt-fx26/src/compile.fx@bb3f570
  fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@8f76d65
  fixpt-source: crates/fixpt-fx26/src/compile-state.fx@8f76d65
@@ -53,6 +53,8 @@
   (x-extract cx i64 i64)
   (x-sum string cx i64)
   (x-tagcase cx (listof carm acyclic) (listof cbind acyclic) i64)
+  (x-region i64 string cx i64)
+  (x-rlambda cx cx i64)
   (x-module (listof cmem acyclic) i64)
   (x-with cx strings (listof i64 acyclic) cx i64)
   (x-reshape cx paths i64))
@@ -97,7 +99,18 @@
       (x-sym (s a) a) (x-unit (a) a) (x-lambda (ps b a) a) (x-app (f xs a) a)
       (x-if (t y n a) a) (x-let (bs b a) a) (x-letrec (bs b a) a) (x-begin (xs a) a)
       (x-product (fs a) a) (x-extract (p i a) a) (x-sum (t v a) a) (x-tagcase (s arms els a) a)
+      (x-region (k r body a) a) (x-rlambda (r l a) a)
       (x-module (its a) a) (x-with (m ns ks body a) a) (x-reshape (y ps a) a))))
+
+"A lambda's parameters, body, and region (an `rlambda`'s, one or none), if
+ `x` is one; else none."
+(define-datatype lparts (lparts strings cx (listof cx acyclic)))
+(define lambda-of (subr kfx (cx) (listof lparts acyclic))
+  (lambda (x)
+    (tagcase x
+      (x-lambda (ps body a) (list (lparts ps body nil)))
+      (x-rlambda (r l a) (tagcase l (x-lambda (ps body b) (list (lparts ps body (list r)))) (else y nil)))
+      (else y nil))))
 
 ;;; --------------------------------------------------------- free names
 
@@ -137,6 +150,8 @@
         (x-extract (p i a) (c-free p bound acc))
         (x-sum (t v a) (c-free v bound acc))
         (x-tagcase (s arms els a) (c-free s bound (c-free-arms arms bound (c-free-else els bound acc))))
+        (x-region (k r body a) (c-free body (cons r bound) acc))
+        (x-rlambda (r l a) (c-free r bound (c-free l bound acc)))
         ;; A module's items see all of them, as a `letrec*`'s.
         (x-module (its a)
           (let ((inner (c-names (map cmem-name its) bound)))
@@ -391,8 +406,16 @@
             ((string=? h "module") (parse-module (cdr xs) a))
             ((string=? h "extend") (parse-extend (second xs) (third xs) a))
             ((string=? h "with") (parse-with (second xs) (parse-body (cdr (cdr xs)) a) f a))
-            ((or (string=? h "letregion") (string=? h "letrena") (string=? h "letreap") (string=? h "rlambda")
-                 (string=? h "prompt") (string=? h "case")
+            ((or (string=? h "letregion") (string=? h "letrena") (string=? h "letreap") (string=? h "letfreeze"))
+             ;; What it makes besides the region: nothing, an arena, a reap,
+             ;; or nothing, its data frozen as it ends (Fixpt's `region-kind`).
+             (x-region (cond ((string=? h "letregion") 0) ((string=? h "letrena") 1) ((string=? h "letreap") 2) (else 3))
+                       (tagcase (second xs) (lst (ns f2 l2 p2) (sym-name (car ns))) (else other (sym-name (second xs))))
+                       (parse-body (cdr (cdr xs)) a) a))
+            ;; `(rlambda r (param …) body …)`: the region, and the lambda.
+            ((string=? h "rlambda")
+             (x-rlambda (parse-x (second xs)) (x-lambda (map binder-name (items (third xs))) (parse-body (cdr (cdr (cdr xs))) a) a) a))
+            ((or (string=? h "prompt") (string=? h "case")
                  (string=? h "typecase") (string=? h "quasiquote") (string=? h "load-module") (string=? h "vlambda"))
              (begin (cg-fail (string-append "not yet: " h)) (x-unit a)))
             (else (x-app (parse-x (car xs)) (parse-args (cdr xs)) a)))))
@@ -553,7 +576,7 @@
                (let* ((xs (items e)) (typed (i64= (size xs) 4)) (n (sym-name (second xs)))
                       (x (parse-x (if typed (fourth xs) (third xs)))))
                  (begin (note-layout! n x)
-                        (list (cmem n x kind (and typed (tagcase x (x-lambda (ps b a) #t) (else y #f))) (datum-pos e))))))
+                        (list (cmem n x kind (and typed (not (null? (lambda-of x)))) (datum-pos e))))))
               ((string=? h "define-rec") (parse-rec-members (cdr (items e)) kind))
               ((string=? h "define-generative")
                (map (lambda ((t ctop)) (tagcase t (t-define (n typed x) (cmem n x 0 #f (datum-pos e))) (else y (cmem "" (x-unit 0) 0 #f 0))))
@@ -579,7 +602,7 @@
       (if (null? bs)
           nil
           (let ((x (parse-x (third (items (car bs))))))
-            (cons (cmem (sym-name (car (items (car bs)))) x kind (tagcase x (x-lambda (ps body a) #t) (else y #f)) (datum-pos (car bs)))
+            (cons (cmem (sym-name (car (items (car bs)))) x kind (not (null? (lambda-of x))) (datum-pos (car bs)))
                   (parse-rec-members (cdr bs) kind))))))
 
   (imports (subr gen (sexp) (listof ctop acyclic))
@@ -1002,6 +1025,8 @@
         (x-sum (t v a) (c-calls-only v f n #f loops))
         (x-tagcase (s arms els a)
           (and (c-calls-only s f n #f loops) (c-calls-only-arms arms f n tail loops) (c-calls-only-else els f n tail loops)))
+        (x-region (k r body a) (or (string=? r f) (c-calls-only body f n #f loops)))
+        (x-rlambda (r l a) (and (c-calls-only r f n #f loops) (c-calls-only l f n #f loops)))
         ;; Said of no module, as Fixpt's compilers say.
         (x-module (its a) #f)
         (x-with (m ns ks body a) #f)
@@ -1429,7 +1454,23 @@
         (x-char (ch a) (begin (c-lit c (l-char ch)) (c-done c tail)))
         (x-sym (s a) (begin (c-lit c (l-sym s)) (c-done c tail)))
         (x-unit (a) (begin (c-lit c (l-unit)) (c-done c tail)))
-        (x-lambda (ps body a) (begin (c-lambda ps body e depth c nil) (c-done c tail)))
+        (x-lambda (ps body a) (begin (c-lambda ps body e depth c nil nil) (c-done c tail)))
+        (x-rlambda (r l a)
+          (tagcase l
+            (x-lambda (ps body b) (begin (c-lambda ps body e depth c nil (list r)) (c-done c tail)))
+            (else y (cg-fail "an rlambda's lambda"))))
+        ;; The region's name bound in a slot, as a `let`'s, to a region
+        ;; entered (an arena, or a reap), and left with the body's value,
+        ;; which is so not in tail position.
+        (x-region (k r body a)
+          (if (or (i64= k 0) (i64= k 3))
+              ;; A region for analysis only: nothing at run time.
+              (c-exp body e depth c tail)
+              (begin
+                (c-prim c (if (i64= k 1) "%region-enter" "%reap-enter") 0)
+                (c-exp body (c-extend r (at-slot depth) e) (i64+ depth 1) c #f)
+                (c-prim c "%region-exit" 2)
+                (c-done c tail))))
         (x-app (f args a)
           (tagcase f
             ;; A lambda applied at once: a `let`.
@@ -1512,10 +1553,9 @@
           (tagcase (car its)
             (cmem (n x k lam at)
               (let* ((ps (if (and lam (c-names-any? x later))
-                             (tagcase x
-                               (x-lambda (qs body a)
-                                 (c-lambda qs body (c-module-own n e later body (size qs)) d c (list n)))
-                               (else y (begin (cg-fail "a module's typed lambda is a lambda") nil)))
+                             (tagcase (car (lambda-of x))
+                               (lparts (qs body region)
+                                 (c-lambda qs body (c-module-own n e later body (size qs)) d c (list n) region)))
                              (begin (c-exp x e d c #f) (the patches nil))))
                      (waits (onto ws (map (lambda ((p patch)) (tagcase p (patch (j s) (wait d j s)))) ps))))
                 (begin
@@ -1561,22 +1601,29 @@
           nil
           (tagcase (car bs)
             (cbind (name x)
-              (tagcase x
-                (x-lambda (ps body a)
-                  (let* ((made (c-lambda ps body (c-letrec-own all e depth 0 i body (size ps)) (i64+ depth i) c (list name)))
-                         (rest (c-letrec-make all (cdr bs) e depth (i64+ i 1) c)))
-                    (cons made rest)))
-                (else y (begin (cg-fail "a letrec binds only lambdas") nil))))))))
+              (if (null? (lambda-of x))
+                  (begin (cg-fail "a letrec binds only lambdas") nil)
+                  (tagcase (car (lambda-of x))
+                    (lparts (ps body region)
+                      (let* ((made (c-lambda ps body (c-letrec-own all e depth 0 i body (size ps)) (i64+ depth i) c (list name) region))
+                             (rest (c-letrec-make all (cdr bs) e depth (i64+ i 1) c)))
+                        (cons made rest))))))))))
 
-  ;; A lambda: its free values pushed, then its word closed over them. `own`
-  ;; is the `letrec` name it is bound to, or none: its tail calls in its body
-  ;; are loops.
-  (c-lambda (subr gen (strings cx cenv i64 code strings) patches)
-    (lambda (ps body e depth c own0)
-      (tagcase (c-lambda-word ps body e own0)
-        (cclosing (w fv)
-          (let ((ps2 (c-push-all fv e 0 c)))
-            (begin (c-emit c (it-ins "closure" (list (o-word w) (o-int (size fv))))) ps2))))))
+  ;; A lambda: its free values pushed, then its word closed over them; with
+  ;; a region (an `rlambda`'s, one or none), that region first, and the
+  ;; closure made there by `%region-closure`. `own` is the `letrec` name it
+  ;; is bound to, or none: its tail calls in its body are loops.
+  (c-lambda (subr gen (strings cx cenv i64 code strings cxs) patches)
+    (lambda (ps body e depth c own0 region)
+      (begin
+        (if (null? region) #u (c-exp (car region) e depth c #f))
+        (tagcase (c-lambda-word ps body e own0)
+          (cclosing (w fv)
+            (let ((ps2 (c-push-all fv e 0 c)))
+              (begin (if (null? region)
+                         (c-emit c (it-ins "closure" (list (o-word w) (o-int (size fv)))))
+                         (begin (c-lit c (l-word w)) (c-prim c "%region-closure" (i64+ 2 (size fv)))))
+                     ps2)))))))
 
   ;; A lambda's word, and the names its closure captures, in order.
   (c-lambda-word (subr gen (strings cx cenv strings) cclosing)
@@ -1700,7 +1747,7 @@
                   (x-lambda (ps body a)
                     (if typed
                         (begin (c-push-global! n) (set c-word-name (list n))
-                               (c-lambda ps body nil 0 c nil) (c-op1 c "global!" (o-global n)))
+                               (c-lambda ps body nil 0 c nil nil) (c-op1 c "global!" (o-global n)))
                         (begin (c-exp x nil 0 c #f) (c-push-global! n) (c-op1 c "global!" (o-global n)))))
                   (else y (begin (c-exp x nil 0 c #f) (c-push-global! n) (c-op1 c "global!" (o-global n)))))
                 (c-tops (cdr ts) c #f)))

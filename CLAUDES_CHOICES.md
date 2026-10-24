@@ -4050,3 +4050,18 @@ module values and waits; `parser.fx`'s `with-includes`) ported to
   the made-code programs and `run/conditions.fx` stop later (`case`,
   `letregion`), `convention-read.fx` needs `%fx26-native-convention` of
   tier 1.
+
+## C145. kayak's code generator: regions (2026-10-24)
+
+Next of TODO §31 item 5's gaps, 13 programs: Fixpt's `e-letregion` and
+`e-rlambda` arms (`compile-exps.fx`). A `letregion` or `letfreeze` makes
+nothing at run time; a `letrena` or `letreap` binds its region in a slot,
+entered by `%region-enter` (`%reap-enter`) before the body and left by
+`%region-exit` after it, the body so not in tail position. An `rlambda`
+(`(rlambda r (param …) body …)`) makes its closure in its region:
+the region, the values it captures, its word as a literal, then
+`%region-closure`. Whether a procedure is only called is said through a
+region's body as not in tail position, as Fixpt says it. 142 programs
+agree (132), 120 of them Fixpt's words exactly (116); most of the others
+differ by Fixpt's lambda lifting (`sum-to/build@382` called with its
+closure as a literal), not ported yet.

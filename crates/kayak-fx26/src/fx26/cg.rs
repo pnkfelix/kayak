@@ -15,10 +15,10 @@ use super::*;
 // compiler then follows `compile-exps.fx`: a lambda's arguments are its
 // frame on the data stack, a `let`'s values are pushed onto the frame and
 // are slots of it, closures are flat, globals are cells, and a call in tail
-// position is a tail call; a module is a product of its values (C144).
-// Not yet: Fixpt's middle phase (its plans, inlining, specialization),
-// lambda lifting, register code (the words' twins), regions, bloblets,
-// prompts.
+// position is a tail call; a module is a product of its values (C144); a
+// region an arena or a reap entered and left (C145). Not yet: Fixpt's
+// middle phase (its plans, inlining, specialization), lambda lifting,
+// register code (the words' twins), bloblets, prompts.
 // fixpt-source: crates/fixpt-fx26/src/compile.fx@bb3f570
 // fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@8f76d65
 // fixpt-source: crates/fixpt-fx26/src/compile-state.fx@8f76d65
@@ -1320,6 +1320,8 @@ pub enum Cx {
     XExtract(&'static Cx, i64, i64),
     XSum(Str, &'static Cx, i64),
     XTagcase(&'static Cx, List<&'static Carm>, List<&'static Cbind>, i64),
+    XRegion(i64, Str, &'static Cx, i64),
+    XRlambda(&'static Cx, &'static Cx, i64),
     XModule(List<&'static Cmem>, i64),
     XWith(&'static Cx, Strings, List<i64>, &'static Cx, i64),
     XReshape(&'static Cx, Paths, i64),
@@ -1391,6 +1393,14 @@ pub fn x_sum(f0: Str, f1: &'static Cx, f2: i64) -> &'static Cx {
 
 pub fn x_tagcase(f0: &'static Cx, f1: List<&'static Carm>, f2: List<&'static Cbind>, f3: i64) -> &'static Cx {
     kayak_rt::heap_alloc(Cx::XTagcase(f0, f1, f2, f3))
+}
+
+pub fn x_region(f0: i64, f1: Str, f2: &'static Cx, f3: i64) -> &'static Cx {
+    kayak_rt::heap_alloc(Cx::XRegion(f0, f1, f2, f3))
+}
+
+pub fn x_rlambda(f0: &'static Cx, f1: &'static Cx, f2: i64) -> &'static Cx {
+    kayak_rt::heap_alloc(Cx::XRlambda(f0, f1, f2))
 }
 
 pub fn x_module(f0: List<&'static Cmem>, f1: i64) -> &'static Cx {
@@ -1552,6 +1562,12 @@ pub fn cx_start(x: &'static Cx) -> i64 {
         Cx::XTagcase(s, arms, els, a) => {
             a
         }
+        Cx::XRegion(k, r, body, a) => {
+            a
+        }
+        Cx::XRlambda(r, l, a) => {
+            a
+        }
         Cx::XModule(its, a) => {
             a
         }
@@ -1560,6 +1576,41 @@ pub fn cx_start(x: &'static Cx) -> i64 {
         }
         Cx::XReshape(y, ps, a) => {
             a
+        }
+    }
+}
+
+// A lambda's parameters, body, and region (an `rlambda`'s, one or none), if
+// `x` is one; else none.
+pub enum Lparts {
+    Lparts(Strings, &'static Cx, List<&'static Cx>),
+}
+
+pub fn lparts(f0: Strings, f1: &'static Cx, f2: List<&'static Cx>) -> &'static Lparts {
+    kayak_rt::heap_alloc(Lparts::Lparts(f0, f1, f2))
+}
+
+pub fn lambda_of(x: &'static Cx) -> List<&'static Lparts> {
+    let tagcase_ = x;
+    match *tagcase_ {
+        Cx::XLambda(ps, body, a) => {
+            kayak_rt::heap_cons(lparts(ps, body, nil::<&'static Cx>()), kayak_rt::nil())
+        }
+        Cx::XRlambda(r, l, a) => {
+            let tagcase_ = l;
+            match *tagcase_ {
+                Cx::XLambda(ps, body, b) => {
+                    kayak_rt::heap_cons(lparts(ps, body, kayak_rt::heap_cons(r, kayak_rt::nil())), kayak_rt::nil())
+                }
+                _ => {
+                    let y = tagcase_;
+                    nil::<&'static Lparts>()
+                }
+            }
+        }
+        _ => {
+            let y = tagcase_;
+            nil::<&'static Lparts>()
         }
     }
 }
@@ -1673,6 +1724,14 @@ pub fn c_free(mut x: &'static Cx, mut bound: Strings, mut acc: Strings) -> Strin
             }
             Cx::XTagcase(s, arms, els, a) => {
                 (x, acc) = (s, c_free_arms(arms, bound, c_free_else(els, bound, acc)));
+                continue;
+            }
+            Cx::XRegion(k, r, body, a) => {
+                (x, bound) = (body, kayak_rt::heap_cons(r, bound));
+                continue;
+            }
+            Cx::XRlambda(r, l, a) => {
+                (x, acc) = (r, c_free(l, bound, acc));
                 continue;
             }
             Cx::XModule(its, a) => {
@@ -2249,7 +2308,30 @@ pub fn parse_form(h: Str, xs: Sexps, e: &'static Sexp, f: Str, a: i64) -> &'stat
         parse_extend(second(xs), third(xs), a)
     } else if string_eq_p(h, str_lit("with")) {
         parse_with(second(xs), parse_body(cdr(cdr(xs)), a), f, a)
-    } else if (string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("letrena")) || string_eq_p(h, str_lit("letreap")) || string_eq_p(h, str_lit("rlambda")) || string_eq_p(h, str_lit("prompt")) || string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("typecase")) || string_eq_p(h, str_lit("quasiquote")) || string_eq_p(h, str_lit("load-module")) || string_eq_p(h, str_lit("vlambda"))) {
+    } else if (string_eq_p(h, str_lit("letregion")) || string_eq_p(h, str_lit("letrena")) || string_eq_p(h, str_lit("letreap")) || string_eq_p(h, str_lit("letfreeze"))) {
+        x_region(if string_eq_p(h, str_lit("letregion")) {
+            0i64
+        } else if string_eq_p(h, str_lit("letrena")) {
+            1i64
+        } else if string_eq_p(h, str_lit("letreap")) {
+            2i64
+        } else {
+            3i64
+        }, {
+            let tagcase_ = second(xs);
+            match *tagcase_ {
+                Sexp::Lst(ns, f2, l2, p2) => {
+                    sym_name(car(ns))
+                }
+                _ => {
+                    let other = tagcase_;
+                    sym_name(second(xs))
+                }
+            }
+        }, parse_body(cdr(cdr(xs)), a), a)
+    } else if string_eq_p(h, str_lit("rlambda")) {
+        x_rlambda(parse_x(second(xs)), x_lambda(map(&binder_name, items(third(xs))), parse_body(cdr(cdr(cdr(xs))), a), a), a)
+    } else if (string_eq_p(h, str_lit("prompt")) || string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("typecase")) || string_eq_p(h, str_lit("quasiquote")) || string_eq_p(h, str_lit("load-module")) || string_eq_p(h, str_lit("vlambda"))) {
         match cg_fail(string_append(str_lit("not yet: "), h)) {};
         x_unit(a)
     } else {
@@ -2591,18 +2673,7 @@ pub fn parse_item(e: &'static Sexp, kind: i64) -> List<&'static Cmem> {
             third(xs)
         });
         note_layout_x(n, x);
-        kayak_rt::heap_cons(cmem(n, x, kind, (typed && {
-            let tagcase_ = x;
-            match *tagcase_ {
-                Cx::XLambda(ps, b, a) => {
-                    true
-                }
-                _ => {
-                    let y = tagcase_;
-                    false
-                }
-            }
-        }), datum_pos(e)), kayak_rt::nil())
+        kayak_rt::heap_cons(cmem(n, x, kind, (typed && not(null_p(lambda_of(x)))), datum_pos(e)), kayak_rt::nil())
     } else if string_eq_p(h, str_lit("define-rec")) {
         parse_rec_members(cdr(items(e)), kind)
     } else if string_eq_p(h, str_lit("define-generative")) {
@@ -2674,18 +2745,7 @@ pub fn parse_rec_members(bs: Sexps, kind: i64) -> List<&'static Cmem> {
         nil::<&'static Cmem>()
     } else {
         let x = parse_x(third(items(car(bs))));
-        kayak_rt::heap_cons(cmem(sym_name(car(items(car(bs)))), x, kind, {
-            let tagcase_ = x;
-            match *tagcase_ {
-                Cx::XLambda(ps, body, a) => {
-                    true
-                }
-                _ => {
-                    let y = tagcase_;
-                    false
-                }
-            }
-        }, datum_pos(car(bs))), parse_rec_members(cdr(bs), kind))
+        kayak_rt::heap_cons(cmem(sym_name(car(items(car(bs)))), x, kind, not(null_p(lambda_of(x))), datum_pos(car(bs))), parse_rec_members(cdr(bs), kind))
     }
 }
 
@@ -3734,6 +3794,12 @@ pub fn c_calls_only(mut x: &'static Cx, mut f: Str, mut n: i64, mut tail: bool, 
             Cx::XTagcase(s, arms, els, a) => {
                 return (c_calls_only(s, f, n, false, loops) && c_calls_only_arms(arms, f, n, tail, loops) && c_calls_only_else(els, f, n, tail, loops));
             }
+            Cx::XRegion(k, r, body, a) => {
+                return (string_eq_p(r, f) || c_calls_only(body, f, n, false, loops));
+            }
+            Cx::XRlambda(r, l, a) => {
+                return (c_calls_only(r, f, n, false, loops) && c_calls_only(l, f, n, false, loops));
+            }
             Cx::XModule(its, a) => {
                 return false;
             }
@@ -4613,133 +4679,163 @@ pub fn c_exps(es: Cxs, e: Cenv, depth: i64, c: Code) -> i64 {
     }
 }
 
-pub fn c_exp(x: &'static Cx, e: Cenv, depth: i64, c: Code, tail: bool) -> () {
-    let tagcase_ = x;
-    match *tagcase_ {
-        Cx::XVar(n, a) => {
-            let l = c_where(e, n);
-            if null_p(l) {
-                if std_nil_name_p(n) {
-                    c_lit(c, l_nil())
-                } else {
-                    c_standard_value(n, c)
-                }
-            } else {
-                c_load(c, car(l))
-            };
-            c_done(c, tail)
-        }
-        Cx::XInt(n, a) => {
-            c_lit(c, l_int(n));
-            c_done(c, tail)
-        }
-        Cx::XBool(v, a) => {
-            c_lit(c, l_bool(v));
-            c_done(c, tail)
-        }
-        Cx::XStr(s, a) => {
-            c_lit(c, l_str(s));
-            c_done(c, tail)
-        }
-        Cx::XChar(ch, a) => {
-            c_lit(c, l_char(ch));
-            c_done(c, tail)
-        }
-        Cx::XSym(s, a) => {
-            c_lit(c, l_sym(s));
-            c_done(c, tail)
-        }
-        Cx::XUnit(a) => {
-            c_lit(c, l_unit());
-            c_done(c, tail)
-        }
-        Cx::XLambda(ps, body, a) => {
-            c_lambda(ps, body, e, depth, c, nil::<Str>());
-            c_done(c, tail)
-        }
-        Cx::XApp(f, args, a) => {
-            let tagcase_ = f;
-            match *tagcase_ {
-                Cx::XLambda(ps, body, b) => {
-                    if i64_eq(size(ps), size(args)) {
-                        c_let(map2(lambda2s(move |p: Str, y: &'static Cx| {
-                            cbind(p, y)
-                        }), ps, args), body, e, depth, c, tail)
+pub fn c_exp(mut x: &'static Cx, mut e: Cenv, mut depth: i64, mut c: Code, mut tail: bool) -> () {
+    loop {
+        let tagcase_ = x;
+        match *tagcase_ {
+            Cx::XVar(n, a) => {
+                let l = c_where(e, n);
+                if null_p(l) {
+                    if std_nil_name_p(n) {
+                        c_lit(c, l_nil())
                     } else {
-                        c_app(f, args, e, depth, c, tail)
+                        c_standard_value(n, c)
+                    }
+                } else {
+                    c_load(c, car(l))
+                };
+                return c_done(c, tail);
+            }
+            Cx::XInt(n, a) => {
+                c_lit(c, l_int(n));
+                return c_done(c, tail);
+            }
+            Cx::XBool(v, a) => {
+                c_lit(c, l_bool(v));
+                return c_done(c, tail);
+            }
+            Cx::XStr(s, a) => {
+                c_lit(c, l_str(s));
+                return c_done(c, tail);
+            }
+            Cx::XChar(ch, a) => {
+                c_lit(c, l_char(ch));
+                return c_done(c, tail);
+            }
+            Cx::XSym(s, a) => {
+                c_lit(c, l_sym(s));
+                return c_done(c, tail);
+            }
+            Cx::XUnit(a) => {
+                c_lit(c, l_unit());
+                return c_done(c, tail);
+            }
+            Cx::XLambda(ps, body, a) => {
+                c_lambda(ps, body, e, depth, c, nil::<Str>(), nil::<&'static Cx>());
+                return c_done(c, tail);
+            }
+            Cx::XRlambda(r, l, a) => {
+                let tagcase_ = l;
+                match *tagcase_ {
+                    Cx::XLambda(ps, body, b) => {
+                        c_lambda(ps, body, e, depth, c, nil::<Str>(), kayak_rt::heap_cons(r, kayak_rt::nil()));
+                        return c_done(c, tail);
+                    }
+                    _ => {
+                        let y = tagcase_;
+                        return match cg_fail(str_lit("an rlambda's lambda")) {};
                     }
                 }
-                _ => {
-                    let y = tagcase_;
-                    c_app(f, args, e, depth, c, tail)
+            }
+            Cx::XRegion(k, r, body, a) => {
+                if (i64_eq(k, 0i64) || i64_eq(k, 3i64)) {
+                    x = body;
+                    continue;
+                } else {
+                    c_prim(c, if i64_eq(k, 1i64) {
+                        str_lit("%region-enter")
+                    } else {
+                        str_lit("%reap-enter")
+                    }, 0i64);
+                    c_exp(body, c_extend(r, at_slot(depth), e), i64_plus(depth, 1i64), c, false);
+                    c_prim(c, str_lit("%region-exit"), 2i64);
+                    return c_done(c, tail);
                 }
             }
-        }
-        Cx::XIf(t, th, el, a) => {
-            let (no, end) = (c_fresh(), c_fresh());
-            c_exp(t, e, depth, c, false);
-            c_emit(c, it_zbranch(no));
-            c_exp(th, e, depth, c, tail);
-            if tail {
-                ()
-            } else {
-                c_emit(c, it_branch(end))
-            };
-            c_emit(c, it_label(no));
-            c_exp(el, e, depth, c, tail);
-            c_emit(c, it_label(end))
-        }
-        Cx::XLet(bs, body, a) => {
-            c_let(bs, body, e, depth, c, tail)
-        }
-        Cx::XLetrec(bs, body, a) => {
-            c_letrec(bs, body, e, depth, c, tail)
-        }
-        Cx::XBegin(es, a) => {
-            c_begin(es, e, depth, c, tail)
-        }
-        Cx::XProduct(fs, a) => {
-            c_int(c, 37i64);
-            c_prim(c, str_lit("%make-frozen"), i64_plus(1i64, c_exps(c_bound_exps(fs), e, i64_plus(depth, 1i64), c)));
-            c_done(c, tail)
-        }
-        Cx::XExtract(p, i, a) => {
-            c_exp(p, e, depth, c, false);
-            c_field(c, i64_plus(i, 2i64));
-            c_done(c, tail)
-        }
-        Cx::XSum(t, v, a) => {
-            c_int(c, 36i64);
-            c_lit(c, l_sym(t));
-            c_exp(v, e, i64_plus(depth, 2i64), c, false);
-            c_prim(c, str_lit("%make-frozen"), 3i64);
-            c_done(c, tail)
-        }
-        Cx::XTagcase(s, arms, els, a) => {
-            let end = c_fresh();
-            c_exp(s, e, depth, c, false);
-            c_arms(arms, els, e, depth, c, tail, end);
-            c_emit(c, it_label(end))
-        }
-        Cx::XModule(its, a) => {
-            c_module(its, e, depth, c, tail)
-        }
-        Cx::XWith(m, ns, ks, body, a) => {
-            let fv = c_free(body, nil::<Str>(), nil::<Str>());
-            let inner = c_with_fields(m, ns, ks, fv, e, e, depth, c);
-            let n = size(filter(lambda1s(move |k: Str| {
-                string_member_p(k, fv)
-            }), ns));
-            c_exp(body, inner, i64_plus(depth, n), c, tail);
-            c_unbind(c, depth, n, tail)
-        }
-        Cx::XReshape(y, ps, a) => {
-            c_exp(y, e, depth, c, false);
-            c_int(c, 37i64);
-            c_reshape_fields(c, depth, ps);
-            c_prim(c, str_lit("%make-frozen"), i64_plus(1i64, size(ps)));
-            c_op1(c, str_lit("slot!"), o_int(depth));
-            c_done(c, tail)
+            Cx::XApp(f, args, a) => {
+                let tagcase_ = f;
+                match *tagcase_ {
+                    Cx::XLambda(ps, body, b) => {
+                        if i64_eq(size(ps), size(args)) {
+                            return c_let(map2(lambda2s(move |p: Str, y: &'static Cx| {
+                                cbind(p, y)
+                            }), ps, args), body, e, depth, c, tail);
+                        } else {
+                            return c_app(f, args, e, depth, c, tail);
+                        }
+                    }
+                    _ => {
+                        let y = tagcase_;
+                        return c_app(f, args, e, depth, c, tail);
+                    }
+                }
+            }
+            Cx::XIf(t, th, el, a) => {
+                let (no, end) = (c_fresh(), c_fresh());
+                c_exp(t, e, depth, c, false);
+                c_emit(c, it_zbranch(no));
+                c_exp(th, e, depth, c, tail);
+                if tail {
+                    ()
+                } else {
+                    c_emit(c, it_branch(end))
+                };
+                c_emit(c, it_label(no));
+                c_exp(el, e, depth, c, tail);
+                return c_emit(c, it_label(end));
+            }
+            Cx::XLet(bs, body, a) => {
+                return c_let(bs, body, e, depth, c, tail);
+            }
+            Cx::XLetrec(bs, body, a) => {
+                return c_letrec(bs, body, e, depth, c, tail);
+            }
+            Cx::XBegin(es, a) => {
+                return c_begin(es, e, depth, c, tail);
+            }
+            Cx::XProduct(fs, a) => {
+                c_int(c, 37i64);
+                c_prim(c, str_lit("%make-frozen"), i64_plus(1i64, c_exps(c_bound_exps(fs), e, i64_plus(depth, 1i64), c)));
+                return c_done(c, tail);
+            }
+            Cx::XExtract(p, i, a) => {
+                c_exp(p, e, depth, c, false);
+                c_field(c, i64_plus(i, 2i64));
+                return c_done(c, tail);
+            }
+            Cx::XSum(t, v, a) => {
+                c_int(c, 36i64);
+                c_lit(c, l_sym(t));
+                c_exp(v, e, i64_plus(depth, 2i64), c, false);
+                c_prim(c, str_lit("%make-frozen"), 3i64);
+                return c_done(c, tail);
+            }
+            Cx::XTagcase(s, arms, els, a) => {
+                let end = c_fresh();
+                c_exp(s, e, depth, c, false);
+                c_arms(arms, els, e, depth, c, tail, end);
+                return c_emit(c, it_label(end));
+            }
+            Cx::XModule(its, a) => {
+                return c_module(its, e, depth, c, tail);
+            }
+            Cx::XWith(m, ns, ks, body, a) => {
+                let fv = c_free(body, nil::<Str>(), nil::<Str>());
+                let inner = c_with_fields(m, ns, ks, fv, e, e, depth, c);
+                let n = size(filter(lambda1s(move |k: Str| {
+                    string_member_p(k, fv)
+                }), ns));
+                c_exp(body, inner, i64_plus(depth, n), c, tail);
+                return c_unbind(c, depth, n, tail);
+            }
+            Cx::XReshape(y, ps, a) => {
+                c_exp(y, e, depth, c, false);
+                c_int(c, 37i64);
+                c_reshape_fields(c, depth, ps);
+                c_prim(c, str_lit("%make-frozen"), i64_plus(1i64, size(ps)));
+                c_op1(c, str_lit("slot!"), o_int(depth));
+                return c_done(c, tail);
+            }
         }
     }
 }
@@ -4779,15 +4875,10 @@ pub fn c_module_make(mut its: List<&'static Cmem>, mut e: Cenv, mut d: i64, mut 
             match *tagcase_ {
                 Cmem::Cmem(n, x, k, lam, at) => {
                     let ps = if (lam && c_names_any_p(x, later)) {
-                        let tagcase_ = x;
+                        let tagcase_ = car(lambda_of(x));
                         match *tagcase_ {
-                            Cx::XLambda(qs, body, a) => {
-                                c_lambda(qs, body, c_module_own(n, e, later, body, size(qs)), d, c, kayak_rt::heap_cons(n, kayak_rt::nil()))
-                            }
-                            _ => {
-                                let y = tagcase_;
-                                match cg_fail(str_lit("a module's typed lambda is a lambda")) {};
-                                nil::<&'static Patch>()
+                            Lparts::Lparts(qs, body, region) => {
+                                c_lambda(qs, body, c_module_own(n, e, later, body, size(qs)), d, c, kayak_rt::heap_cons(n, kayak_rt::nil()), region)
                             }
                         }
                     } else {
@@ -4872,17 +4963,17 @@ pub fn c_letrec_make(all: Cbinds, bs: Cbinds, e: Cenv, depth: i64, i: i64, c: Co
         let tagcase_ = car(bs);
         match *tagcase_ {
             Cbind::Cbind(name, x) => {
-                let tagcase_ = x;
-                match *tagcase_ {
-                    Cx::XLambda(ps, body, a) => {
-                        let made = c_lambda(ps, body, c_letrec_own(all, e, depth, 0i64, i, body, size(ps)), i64_plus(depth, i), c, kayak_rt::heap_cons(name, kayak_rt::nil()));
-                        let rest = c_letrec_make(all, cdr(bs), e, depth, i64_plus(i, 1i64), c);
-                        kayak_rt::heap_cons(made, rest)
-                    }
-                    _ => {
-                        let y = tagcase_;
-                        match cg_fail(str_lit("a letrec binds only lambdas")) {};
-                        nil::<List<&'static Patch>>()
+                if null_p(lambda_of(x)) {
+                    match cg_fail(str_lit("a letrec binds only lambdas")) {};
+                    nil::<List<&'static Patch>>()
+                } else {
+                    let tagcase_ = car(lambda_of(x));
+                    match *tagcase_ {
+                        Lparts::Lparts(ps, body, region) => {
+                            let made = c_lambda(ps, body, c_letrec_own(all, e, depth, 0i64, i, body, size(ps)), i64_plus(depth, i), c, kayak_rt::heap_cons(name, kayak_rt::nil()), region);
+                            let rest = c_letrec_make(all, cdr(bs), e, depth, i64_plus(i, 1i64), c);
+                            kayak_rt::heap_cons(made, rest)
+                        }
                     }
                 }
             }
@@ -4890,12 +4981,22 @@ pub fn c_letrec_make(all: Cbinds, bs: Cbinds, e: Cenv, depth: i64, i: i64, c: Co
     }
 }
 
-pub fn c_lambda(ps: Strings, body: &'static Cx, e: Cenv, depth: i64, c: Code, own0: Strings) -> Patches {
+pub fn c_lambda(ps: Strings, body: &'static Cx, e: Cenv, depth: i64, c: Code, own0: Strings, region: Cxs) -> Patches {
+    if null_p(region) {
+        ()
+    } else {
+        c_exp(car(region), e, depth, c, false)
+    };
     let tagcase_ = c_lambda_word(ps, body, e, own0);
     match *tagcase_ {
         Cclosing::Cclosing(w, fv) => {
             let ps2 = c_push_all(fv, e, 0i64, c);
-            c_emit(c, it_ins(str_lit("closure"), kayak_rt::heap_cons(o_word(w), kayak_rt::heap_cons(o_int(size(fv)), kayak_rt::nil()))));
+            if null_p(region) {
+                c_emit(c, it_ins(str_lit("closure"), kayak_rt::heap_cons(o_word(w), kayak_rt::heap_cons(o_int(size(fv)), kayak_rt::nil()))))
+            } else {
+                c_lit(c, l_word(w));
+                c_prim(c, str_lit("%region-closure"), i64_plus(2i64, size(fv)))
+            };
             ps2
         }
     }
@@ -5107,7 +5208,7 @@ pub fn c_tops(mut ts: List<&'static Ctop>, mut c: Code, mut has_value: bool) -> 
                                 if typed {
                                     c_push_global_x(n);
                                     set(c_word_name(), kayak_rt::heap_cons(n, kayak_rt::nil()));
-                                    c_lambda(ps, body, nil::<&'static Centry>(), 0i64, c, nil::<Str>());
+                                    c_lambda(ps, body, nil::<&'static Centry>(), 0i64, c, nil::<Str>(), nil::<&'static Cx>());
                                     c_op1(c, str_lit("global!"), o_global(n))
                                 } else {
                                     c_exp(x, nil::<&'static Centry>(), 0i64, c, false);
