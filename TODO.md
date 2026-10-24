@@ -682,8 +682,8 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
 - Tier 1 on a long run (C142, the user: "support long running
   programs/services"): what it still makes of the runtime's, never let
   go (C43). ~~The scheduler's lists and closures, at each scheduling~~
-  (C148: at a slice of 2, as without one). A message's copy (`copy-within!`: lists
-  of what was copied, found by a walk, so quadratic too). The
+  (C148: at a slice of 2, as without one). ~~A message's copy~~ (C149: a table, kept
+  from copy to copy). The
   primitives of any number of arguments (`append`, `string`,
   `string=?`, `make-bloblet`, ...), which still take a list.
   `string-text`, a `string-append` for each character.

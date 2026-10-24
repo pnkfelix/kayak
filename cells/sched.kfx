@@ -231,90 +231,187 @@
          (let ((k (kind-of v)))
            (not (or (i64= k k-string) (i64= k k-bytevector) (i64= k k-bloblet) (i64= k k-sum) (i64= k k-product) (i64= k k-flat-array)))))))
 
-(define-datatype moved (moved i64 i64))
-(define copy-made (ref (listof moved @c) @c) (new nil))
-(define copy-order (ref (listof i64 @c) @c) (new nil))
+"What the copy has copied (C149): a table, open addressing, each key a
+ value copied and beside it its copy, the slots used kept to be emptied
+ after; and what was copied, in order, and what is still to be looked at,
+ stacks. All kept from copy to copy and grown as needed, since what tier
+ 1 makes of its own is never let go (C43): so they hold the most one
+ message has needed, not every message's, and a copy is no longer
+ quadratic, as a list walked for each value found made it. No pair or
+ bloblet is 0, the key of none."
+(define copy-table (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 128 0)))
+(define copy-held (ref i64 @c) (new 0))
+(define copy-used (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 64 0)))
+(define copy-order (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 64 0)))
+(define copy-ordered (ref i64 @c) (new 0))
+(define copy-todo (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 64 0)))
+(define copy-pending (ref i64 @c) (new 0))
 (define copy-words (ref i64 @c) (new 0))
 
 (define-rec
-  (moved-to (->* ((listof moved @c) i64) i64)
-    (lambda (ms v) (if (null? ms) 0 (tagcase (car ms) (moved (a b) (if (i64= a v) b (moved-to (cdr ms) v))))))))
+  (stack-copied! (->* ((flatarrayof i64 @c) (flatarrayof i64 @c) i64 i64) unit)
+    (lambda (from to i n)
+      (if (i64>= i n) #u (begin (flatarray-set-i64! to i (flatarray-ref-i64 from i)) (stack-copied! from to (i64+ i 1) n))))))
+
+(define pushed-on! (->* ((ref (flatarrayof i64 @c) @c) (ref i64 @c) i64) unit)
+  (lambda (s n x)
+    "`x` on stack `s` of `n` items, grown twice as big if full."
+    (let ((k (get n)))
+      (begin
+        (if (i64>= k (flatarray-length-i64 (get s)))
+            (let ((more (the (flatarrayof i64 @c) (make-flatarray-i64 (i64* 2 (flatarray-length-i64 (get s))) 0))))
+              (begin (stack-copied! (get s) more 0 k) (set s more)))
+            #u)
+        (flatarray-set-i64! (get s) k x)
+        (set n (i64+ k 1))))))
+
+(define copy-hash (->* (i64 i64) i64)
+  (lambda (v entries)
+    (i64-and (i64-xor v (i64-xor (i64-shr v 13) (i64-shr v 29))) (i64- entries 1))))
+
+(define-rec
+  (copy-slot (->* ((flatarrayof i64 @c) i64 i64 i64) i64)
+    (lambda (t v i entries)
+      "Where `v` is in table `t`, or the empty slot where it would go."
+      (let ((k (flatarray-ref-i64 t (i64* 2 i))))
+        (if (or (i64= k 0) (i64= k v)) i (copy-slot t v (i64-and (i64+ i 1) (i64- entries 1)) entries))))))
+
+(define moved-to (->* (i64) i64)
+  (lambda (v)
+    "`v`'s copy, or 0."
+    (let* ((t (get copy-table)) (entries (i64-quotient (flatarray-length-i64 t) 2))
+           (i (copy-slot t v (copy-hash v entries) entries)))
+      (flatarray-ref-i64 t (i64+ (i64* 2 i) 1)))))
+
+(define-rec
+  (table-placed! (->* ((flatarrayof i64 @c) (flatarrayof i64 @c) i64 i64) unit)
+    (lambda (old new i n)
+      "Each entry of `old` from `i` put in `new`, the slots used noted again."
+      (if (i64>= i n)
+          #u
+          (let ((k (flatarray-ref-i64 old (i64* 2 i))))
+            (begin
+              (if (i64= k 0)
+                  #u
+                  (let* ((entries (i64-quotient (flatarray-length-i64 new) 2)) (j (copy-slot new k (copy-hash k entries) entries)))
+                    (begin
+                      (flatarray-set-i64! new (i64* 2 j) k)
+                      (flatarray-set-i64! new (i64+ (i64* 2 j) 1) (flatarray-ref-i64 old (i64+ (i64* 2 i) 1)))
+                      (pushed-on! copy-used copy-held j))))
+              (table-placed! old new (i64+ i 1) n)))))))
+
+(define copy-noted! (->* (i64 i64) unit)
+  (lambda (v c)
+    "That `v` is copied as `c`, the table grown if half full."
+    (begin
+      (if (i64>= (i64* 4 (get copy-held)) (flatarray-length-i64 (get copy-table)))
+          (let* ((old (get copy-table)) (new (the (flatarrayof i64 @c) (make-flatarray-i64 (i64* 2 (flatarray-length-i64 old)) 0))))
+            (begin (set copy-held 0) (table-placed! old new 0 (i64-quotient (flatarray-length-i64 old) 2)) (set copy-table new)))
+          #u)
+      (let* ((t (get copy-table)) (entries (i64-quotient (flatarray-length-i64 t) 2)) (i (copy-slot t v (copy-hash v entries) entries)))
+        (begin
+          (flatarray-set-i64! t (i64* 2 i) v)
+          (flatarray-set-i64! t (i64+ (i64* 2 i) 1) c)
+          (pushed-on! copy-used copy-held i)
+          (pushed-on! copy-order copy-ordered v))))))
+
+(define-rec
+  (table-emptied! (->* (i64) unit)
+    (lambda (k)
+      "The slots used, from the `k`th, emptied."
+      (if (i64>= k (get copy-held))
+          (set copy-held 0)
+          (let ((i (flatarray-ref-i64 (get copy-used) k)))
+            (begin
+              (flatarray-set-i64! (get copy-table) (i64* 2 i) 0)
+              (flatarray-set-i64! (get copy-table) (i64+ (i64* 2 i) 1) 0)
+              (table-emptied! (i64+ k 1))))))))
 
 (define has-trailer? (->* (i64) bool) (lambda (v) (i64= (tag-of (word-at (i64- (address v) 1))) t-trailer)))
 
 (define-rec
-  (slots-onto (->* (i64 i64 i64 (listof i64 @c)) (listof i64 @c))
-    (lambda (v k last acc) (if (i64> k last) acc (slots-onto v (i64+ k 1) last (cons (slot-of v k) acc))))))
+  (slots-pending! (->* (i64 i64 i64) unit)
+    (lambda (v k last) (if (i64> k last) #u (begin (pushed-on! copy-todo copy-pending (slot-of v k)) (slots-pending! v (i64+ k 1) last))))))
 
 (define-rec
-  (discovered! (->* ((listof i64 @c)) unit)
-    (lambda (todo)
-      (if (null? todo)
+  (discovered! (->* () unit)
+    (lambda ()
+      "What is still to be looked at, each copied if it is to be, and what
+       it reaches looked at after, the last pushed first."
+      (if (i64= (get copy-pending) 0)
           #u
-          (let ((v (car todo)) (rest (cdr todo)))
-            (cond ((is-sref? v) (discovered! (cons (sref-owner v) rest)))
-                  ((not (or (is-pair? v) (is-bloblet? v))) (discovered! rest))
-                  ((shared? v) (discovered! rest))
-                  ((not (i64= (moved-to (get copy-made) v) 0)) (discovered! rest))
-                  ((is-pair? v)
-                   (begin
-                     (set copy-made (cons (moved v (cons! v-null v-null)) (get copy-made)))
-                     (set copy-order (cons v (get copy-order)))
-                     (set copy-words (i64+ (get copy-words) 2))
-                     (discovered! (cons (pair-cdr v) (cons (pair-car v) rest)))))
-                  (else
-                   (let* ((tr (has-trailer? v))
-                          (from (if tr (the i64 2) (the i64 1)))
-                          (copy (make-bloblet! (kind-of v) (if tr (i64- (fields-of v) 1) (fields-of v)) (bytes-of v) tr #f)))
+          (let ((v (begin (set copy-pending (i64- (get copy-pending) 1)) (flatarray-ref-i64 (get copy-todo) (get copy-pending)))))
+            (begin
+              (cond ((is-sref? v) (pushed-on! copy-todo copy-pending (sref-owner v)))
+                    ((not (or (is-pair? v) (is-bloblet? v))) #u)
+                    ((shared? v) #u)
+                    ((not (i64= (moved-to v) 0)) #u)
+                    ((is-pair? v)
                      (begin
-                       (set copy-made (cons (moved v copy) (get copy-made)))
-                       (set copy-order (cons v (get copy-order)))
-                       (set copy-words (i64+ (get copy-words) (i64+ (i64+ 1 (fields-of v)) (i64-quotient (i64+ (bytes-of v) 7) 8))))
-                       (discovered! (slots-onto v from (fields-of v) rest)))))))))))
+                       (copy-noted! v (cons! v-null v-null))
+                       (set copy-words (i64+ (get copy-words) 2))
+                       (pushed-on! copy-todo copy-pending (pair-car v))
+                       (pushed-on! copy-todo copy-pending (pair-cdr v))))
+                    (else
+                     (let* ((tr (has-trailer? v))
+                            (from (if tr (the i64 2) (the i64 1)))
+                            (copy (make-bloblet! (kind-of v) (if tr (i64- (fields-of v) 1) (fields-of v)) (bytes-of v) tr #f)))
+                       (begin
+                         (copy-noted! v copy)
+                         (set copy-words (i64+ (get copy-words) (i64+ (i64+ 1 (fields-of v)) (i64-quotient (i64+ (bytes-of v) 7) 8))))
+                         (slots-pending! v from (fields-of v))))))
+              (discovered!)))))))
 
 (define copied-value (->* (i64) i64)
   (lambda (x)
     "What `x` is in the copy."
     (cond ((is-sref? x)
-           (let ((o (moved-to (get copy-made) (sref-owner x))))
+           (let ((o (moved-to (sref-owner x))))
              (if (i64= o 0) x (make-sref (address o) (sref-offset x)))))
           ((or (is-pair? x) (is-bloblet? x))
-           (let ((c (moved-to (get copy-made) x))) (if (i64= c 0) x c)))
+           (let ((c (moved-to x))) (if (i64= c 0) x c)))
           (else x))))
 
 (define-rec
-  (filled-copy! (->* ((listof i64 @c)) unit)
-    (lambda (vs)
-      (if (null? vs)
+  (fields-copied! (->* (i64 i64 i64) unit)
+    (lambda (v c k) (if (i64> k (fields-of v)) #u (begin (slot-set! c k (copied-value (slot-of v k))) (fields-copied! v c (i64+ k 1)))))))
+
+(define-rec
+  (suffix-copied! (->* (i64 i64 i64) unit)
+    (lambda (v c j)
+      (if (i64>= j (i64-quotient (i64+ (bytes-of v) 7) 8))
           #u
-          (let* ((v (car vs)) (c (moved-to (get copy-made) v)))
+          (begin (word-set! (i64+ (address c) j) (word-at (i64+ (address v) j))) (suffix-copied! v c (i64+ j 1)))))))
+
+(define-rec
+  (filled-copy! (->* (i64) unit)
+    (lambda (k)
+      "Each copy, from the `k`th made, filled: its fields what the original's
+       are in the copy, its raw suffix as it is."
+      (if (i64>= k (get copy-ordered))
+          #u
+          (let* ((v (flatarray-ref-i64 (get copy-order) k)) (c (moved-to v)))
             (begin
               (if (is-pair? v)
                   (begin (word-set! (address c) (copied-value (pair-car v)))
                          (word-set! (i64+ (address c) 1) (copied-value (pair-cdr v))))
-                  (letrec ((copy-fields (subr cm (i64) unit)
-                             (lambda (k) (if (i64> k (fields-of v)) #u (begin (slot-set! c k (copied-value (slot-of v k))) (copy-fields (i64+ k 1))))))
-                           (copy-suffix (subr cm (i64) unit)
-                             (lambda (j)
-                               (if (i64>= j (i64-quotient (i64+ (bytes-of v) 7) 8))
-                                   #u
-                                   (begin (word-set! (i64+ (address c) j) (word-at (i64+ (address v) j))) (copy-suffix (i64+ j 1)))))))
-                    (begin
-                      (copy-fields (if (has-trailer? v) (the i64 2) (the i64 1)))
-                      (copy-suffix 0)
-                      (frozen-as! c (fields-frozen? v) (suffix-frozen? v)))))
-              (filled-copy! (cdr vs))))))))
+                  (begin
+                    (fields-copied! v c (if (has-trailer? v) (the i64 2) (the i64 1)))
+                    (suffix-copied! v c 0)
+                    (frozen-as! c (fields-frozen? v) (suffix-frozen? v))))
+              (filled-copy! (i64+ k 1))))))))
 
 (define copy-within! (->* (i64) i64)
   (lambda (root)
     "A copy of what `root` reaches, but for what is shared; the words
      copied counted in the state."
     (begin
-      (set copy-made nil) (set copy-order nil) (set copy-words 0)
-      (discovered! (list root))
-      (filled-copy! (reverse (get copy-order)))
+      (set copy-ordered 0) (set copy-pending 0) (set copy-words 0)
+      (pushed-on! copy-todo copy-pending root)
+      (discovered!)
+      (filled-copy! 0)
       (st-set! s-copied (fix (i64+ (fix-val (st s-copied)) (get copy-words))))
-      (let ((m (copied-value root))) (begin (set copy-made nil) (set copy-order nil) m)))))
+      (let ((m (copied-value root))) (begin (table-emptied! 0) (set copy-ordered 0) m)))))
 
 "I-cells: whether full, the value, the waiters; mailboxes: messages,
  oldest first, then newest first, and the task waiting."

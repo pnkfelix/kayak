@@ -4125,3 +4125,24 @@ never let go (C43); at each scheduling it made some:
   is the listing read, once (8.3 MB of characters).
 - **Left as it was**: `groups-within` and `task-failed!`, which run when a
   monitored task fails, once for the group.
+
+## C149. A message's copy, by a table, kept from copy to copy (2026-10-24)
+
+Next of tier 1's long-run leaks (TODO §31): `copy-within!`, which copies
+each message a process is sent (Fixpt's `copy_within`). It kept what it
+had copied as a list of pairs, original and copy, and found each value
+by walking it: quadratic in a message's size, and the lists, the
+runtime's own, never let go (C43), a message's size each time; its
+`letrec` of the fields to copy a closure for each bloblet copied, too.
+- **Now**: a table, open addressing, keyed by the value (an address,
+  which nothing moves while the copy is made: `cons!` and
+  `make-bloblet!` never collect), its copy beside it; the slots used
+  noted, to empty them after; what is still to be looked at, and what
+  was copied in order, stacks of flat arrays. All are kept from copy to
+  copy and grown twice as big when needed, so the runtime holds the most
+  one message has needed, not the sum of all. The fields copied by
+  procedures of their own.
+- **Measured** (`heap-stats`): a program of 2,000 messages, each a list
+  of 200 integers, answered by their sum: 53.3 MB of the runtime's own
+  never let go, now 14.5 MB, of which the listing read is 8.4 MB and
+  most of the rest the string primitives' code points (next).

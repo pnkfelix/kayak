@@ -468,25 +468,60 @@ pub fn shared_p(v: i64) -> bool {
     })
 }
 
-pub enum Moved {
-    Moved(i64, i64),
-}
-
-pub fn moved(f0: i64, f1: i64) -> &'static Moved {
-    kayak_rt::heap_alloc(Moved::Moved(f0, f1))
-}
-
-pub fn copy_made() -> Ref<List<&'static Moved>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<&'static Moved>>);
+// What the copy has copied (C149): a table, open addressing, each key a
+// value copied and beside it its copy, the slots used kept to be emptied
+// after; and what was copied, in order, and what is still to be looked at,
+// stacks. All kept from copy to copy and grown as needed, since what tier
+// 1 makes of its own is never let go (C43): so they hold the most one
+// message has needed, not every message's, and a copy is no longer
+// quadratic, as a list walked for each value found made it. No pair or
+// bloblet is 0, the key of none.
+pub fn copy_table() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<&'static Moved>())
+        kayak_rt::heap_new(make_flatarray_i64(128i64, 0i64))
     })
 }
 
-pub fn copy_order() -> Ref<List<i64>> {
-    kayak_rt::kept_constant!(ONCE: Ref<List<i64>>);
+pub fn copy_held() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
     once(&ONCE, || {
-        kayak_rt::heap_new(nil::<i64>())
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn copy_used() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(64i64, 0i64))
+    })
+}
+
+pub fn copy_order() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(64i64, 0i64))
+    })
+}
+
+pub fn copy_ordered() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
+    })
+}
+
+pub fn copy_todo() -> Ref<FlatArray<i64>> {
+    kayak_rt::kept_constant!(ONCE: Ref<FlatArray<i64>>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(make_flatarray_i64(64i64, 0i64))
+    })
+}
+
+pub fn copy_pending() -> Ref<i64> {
+    kayak_rt::kept_constant!(ONCE: Ref<i64>);
+    once(&ONCE, || {
+        kayak_rt::heap_new(0i64)
     })
 }
 
@@ -497,22 +532,110 @@ pub fn copy_words() -> Ref<i64> {
     })
 }
 
-pub fn moved_to(mut ms: List<&'static Moved>, mut v: i64) -> i64 {
+pub fn stack_copied_x(mut from: FlatArray<i64>, mut to: FlatArray<i64>, mut i: i64, mut n: i64) -> () {
     loop {
-        if null_p(ms) {
-            return 0i64;
+        if i64_gt_eq(i, n) {
+            return ();
         } else {
-            let tagcase_ = car(ms);
-            match *tagcase_ {
-                Moved::Moved(a, b) => {
-                    if i64_eq(a, v) {
-                        return b;
-                    } else {
-                        ms = cdr(ms);
-                        continue;
-                    }
-                }
-            }
+            flatarray_set_i64_x(to, i, flatarray_ref_i64(from, i));
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+/// `x` on stack `s` of `n` items, grown twice as big if full.
+pub fn pushed_on_x(s: Ref<FlatArray<i64>>, n: Ref<i64>, x: i64) -> () {
+    let k = get(n);
+    if i64_gt_eq(k, flatarray_length_i64(get(s))) {
+        let more = the::<FlatArray<i64>>(make_flatarray_i64(i64_star(2i64, flatarray_length_i64(get(s))), 0i64));
+        stack_copied_x(get(s), more, 0i64, k);
+        set(s, more)
+    } else {
+        ()
+    };
+    flatarray_set_i64_x(get(s), k, x);
+    set(n, i64_plus(k, 1i64))
+}
+
+pub fn copy_hash(v: i64, entries: i64) -> i64 {
+    i64_and(i64_xor(v, i64_xor(i64_shr(v, int_lit(13)), i64_shr(v, int_lit(29)))), i64_minus(entries, 1i64))
+}
+
+/// Where `v` is in table `t`, or the empty slot where it would go.
+pub fn copy_slot(mut t: FlatArray<i64>, mut v: i64, mut i: i64, mut entries: i64) -> i64 {
+    loop {
+        let k = flatarray_ref_i64(t, i64_star(2i64, i));
+        if (i64_eq(k, 0i64) || i64_eq(k, v)) {
+            return i;
+        } else {
+            i = i64_and(i64_plus(i, 1i64), i64_minus(entries, 1i64));
+            continue;
+        }
+    }
+}
+
+/// `v`'s copy, or 0.
+pub fn moved_to(v: i64) -> i64 {
+    let t = get(copy_table());
+    let entries = i64_quotient(flatarray_length_i64(t), 2i64);
+    let i = copy_slot(t, v, copy_hash(v, entries), entries);
+    flatarray_ref_i64(t, i64_plus(i64_star(2i64, i), 1i64))
+}
+
+/// Each entry of `old` from `i` put in `new`, the slots used noted again.
+pub fn table_placed_x(mut old: FlatArray<i64>, mut new: FlatArray<i64>, mut i: i64, mut n: i64) -> () {
+    loop {
+        if i64_gt_eq(i, n) {
+            return ();
+        } else {
+            let k = flatarray_ref_i64(old, i64_star(2i64, i));
+            if i64_eq(k, 0i64) {
+                ()
+            } else {
+                let entries = i64_quotient(flatarray_length_i64(new), 2i64);
+                let j = copy_slot(new, k, copy_hash(k, entries), entries);
+                flatarray_set_i64_x(new, i64_star(2i64, j), k);
+                flatarray_set_i64_x(new, i64_plus(i64_star(2i64, j), 1i64), flatarray_ref_i64(old, i64_plus(i64_star(2i64, i), 1i64)));
+                pushed_on_x(copy_used(), copy_held(), j)
+            };
+            i = i64_plus(i, 1i64);
+            continue;
+        }
+    }
+}
+
+/// That `v` is copied as `c`, the table grown if half full.
+pub fn copy_noted_x(v: i64, c: i64) -> () {
+    if i64_gt_eq(i64_star(4i64, get(copy_held())), flatarray_length_i64(get(copy_table()))) {
+        let old = get(copy_table());
+        let new = the::<FlatArray<i64>>(make_flatarray_i64(i64_star(2i64, flatarray_length_i64(old)), 0i64));
+        set(copy_held(), 0i64);
+        table_placed_x(old, new, 0i64, i64_quotient(flatarray_length_i64(old), 2i64));
+        set(copy_table(), new)
+    } else {
+        ()
+    };
+    let t = get(copy_table());
+    let entries = i64_quotient(flatarray_length_i64(t), 2i64);
+    let i = copy_slot(t, v, copy_hash(v, entries), entries);
+    flatarray_set_i64_x(t, i64_star(2i64, i), v);
+    flatarray_set_i64_x(t, i64_plus(i64_star(2i64, i), 1i64), c);
+    pushed_on_x(copy_used(), copy_held(), i);
+    pushed_on_x(copy_order(), copy_ordered(), v)
+}
+
+/// The slots used, from the `k`th, emptied.
+pub fn table_emptied_x(mut k: i64) -> () {
+    loop {
+        if i64_gt_eq(k, get(copy_held())) {
+            return set(copy_held(), 0i64);
+        } else {
+            let i = flatarray_ref_i64(get(copy_used()), k);
+            flatarray_set_i64_x(get(copy_table()), i64_star(2i64, i), 0i64);
+            flatarray_set_i64_x(get(copy_table()), i64_plus(i64_star(2i64, i), 1i64), 0i64);
+            k = i64_plus(k, 1i64);
+            continue;
         }
     }
 }
@@ -521,41 +644,42 @@ pub fn has_trailer_p(v: i64) -> bool {
     i64_eq(tag_of(word_at(i64_minus(address(v), 1i64))), t_trailer())
 }
 
-pub fn slots_onto(mut v: i64, mut k: i64, mut last: i64, mut acc: List<i64>) -> List<i64> {
+pub fn slots_pending_x(mut v: i64, mut k: i64, mut last: i64) -> () {
     loop {
         if i64_gt(k, last) {
-            return acc;
+            return ();
         } else {
-            (k, acc) = (i64_plus(k, 1i64), kayak_rt::heap_cons(slot_of(v, k), acc));
+            pushed_on_x(copy_todo(), copy_pending(), slot_of(v, k));
+            k = i64_plus(k, 1i64);
             continue;
         }
     }
 }
 
-pub fn discovered_x(mut todo: List<i64>) -> () {
+/// What is still to be looked at, each copied if it is to be, and what
+/// it reaches looked at after, the last pushed first.
+pub fn discovered_x() -> () {
     loop {
-        if null_p(todo) {
+        if i64_eq(get(copy_pending()), 0i64) {
             return ();
         } else {
-            let (v, rest) = (car(todo), cdr(todo));
+            let v = {
+                set(copy_pending(), i64_minus(get(copy_pending()), 1i64));
+                flatarray_ref_i64(get(copy_todo()), get(copy_pending()))
+            };
             if is_sref_p(v) {
-                todo = kayak_rt::heap_cons(sref_owner(v), rest);
-                continue;
+                pushed_on_x(copy_todo(), copy_pending(), sref_owner(v))
             } else if not((is_pair_p(v) || is_bloblet_p(v))) {
-                todo = rest;
-                continue;
+                ()
             } else if shared_p(v) {
-                todo = rest;
-                continue;
-            } else if not(i64_eq(moved_to(get(copy_made()), v), 0i64)) {
-                todo = rest;
-                continue;
+                ()
+            } else if not(i64_eq(moved_to(v), 0i64)) {
+                ()
             } else if is_pair_p(v) {
-                set(copy_made(), kayak_rt::heap_cons(moved(v, cons_x(v_null(), v_null())), get(copy_made())));
-                set(copy_order(), kayak_rt::heap_cons(v, get(copy_order())));
+                copy_noted_x(v, cons_x(v_null(), v_null()));
                 set(copy_words(), i64_plus(get(copy_words()), 2i64));
-                todo = kayak_rt::heap_cons(pair_cdr(v), kayak_rt::heap_cons(pair_car(v), rest));
-                continue;
+                pushed_on_x(copy_todo(), copy_pending(), pair_car(v));
+                pushed_on_x(copy_todo(), copy_pending(), pair_cdr(v))
             } else {
                 let tr = has_trailer_p(v);
                 let from = if tr {
@@ -568,12 +692,11 @@ pub fn discovered_x(mut todo: List<i64>) -> () {
                 } else {
                     fields_of(v)
                 }, bytes_of(v), tr, false);
-                set(copy_made(), kayak_rt::heap_cons(moved(v, copy), get(copy_made())));
-                set(copy_order(), kayak_rt::heap_cons(v, get(copy_order())));
+                copy_noted_x(v, copy);
                 set(copy_words(), i64_plus(get(copy_words()), i64_plus(i64_plus(1i64, fields_of(v)), i64_quotient(i64_plus(bytes_of(v), 7i64), 8i64))));
-                todo = slots_onto(v, from, fields_of(v), rest);
-                continue;
-            }
+                slots_pending_x(v, from, fields_of(v))
+            };
+            continue;
         }
     }
 }
@@ -581,14 +704,14 @@ pub fn discovered_x(mut todo: List<i64>) -> () {
 /// What `x` is in the copy.
 pub fn copied_value(x: i64) -> i64 {
     if is_sref_p(x) {
-        let o = moved_to(get(copy_made()), sref_owner(x));
+        let o = moved_to(sref_owner(x));
         if i64_eq(o, 0i64) {
             x
         } else {
             make_sref(address(o), sref_offset(x))
         }
     } else if (is_pair_p(x) || is_bloblet_p(x)) {
-        let c = moved_to(get(copy_made()), x);
+        let c = moved_to(x);
         if i64_eq(c, 0i64) {
             x
         } else {
@@ -599,52 +722,52 @@ pub fn copied_value(x: i64) -> i64 {
     }
 }
 
-pub fn filled_copy_x(mut vs: List<i64>) -> () {
+pub fn fields_copied_x(mut v: i64, mut c: i64, mut k: i64) -> () {
     loop {
-        if null_p(vs) {
+        if i64_gt(k, fields_of(v)) {
             return ();
         } else {
-            let v = car(vs);
-            let c = moved_to(get(copy_made()), v);
+            slot_set_x(c, k, copied_value(slot_of(v, k)));
+            k = i64_plus(k, 1i64);
+            continue;
+        }
+    }
+}
+
+pub fn suffix_copied_x(mut v: i64, mut c: i64, mut j: i64) -> () {
+    loop {
+        if i64_gt_eq(j, i64_quotient(i64_plus(bytes_of(v), 7i64), 8i64)) {
+            return ();
+        } else {
+            word_set_x(i64_plus(address(c), j), word_at(i64_plus(address(v), j)));
+            j = i64_plus(j, 1i64);
+            continue;
+        }
+    }
+}
+
+/// Each copy, from the `k`th made, filled: its fields what the original's
+/// are in the copy, its raw suffix as it is.
+pub fn filled_copy_x(mut k: i64) -> () {
+    loop {
+        if i64_gt_eq(k, get(copy_ordered())) {
+            return ();
+        } else {
+            let v = flatarray_ref_i64(get(copy_order()), k);
+            let c = moved_to(v);
             if is_pair_p(v) {
                 word_set_x(address(c), copied_value(pair_car(v)));
                 word_set_x(i64_plus(address(c), 1i64), copied_value(pair_cdr(v)))
             } else {
-                let copy_fields__knot = knot::<&'static dyn Fn(i64) -> ()>();
-                let copy_suffix__knot = knot::<&'static dyn Fn(i64) -> ()>();
-                let copy_fields = lambda1(move |mut k: i64| {
-                    loop {
-                        if i64_gt(k, fields_of(v)) {
-                            return ();
-                        } else {
-                            slot_set_x(c, k, copied_value(slot_of(v, k)));
-                            k = i64_plus(k, 1i64);
-                            continue;
-                        }
-                    }
-                });
-                let copy_suffix = lambda1(move |mut j: i64| {
-                    loop {
-                        if i64_gt_eq(j, i64_quotient(i64_plus(bytes_of(v), 7i64), 8i64)) {
-                            return ();
-                        } else {
-                            word_set_x(i64_plus(address(c), j), word_at(i64_plus(address(v), j)));
-                            j = i64_plus(j, 1i64);
-                            continue;
-                        }
-                    }
-                });
-                copy_fields__knot.set(copy_fields);
-                copy_suffix__knot.set(copy_suffix);
-                copy_fields(if has_trailer_p(v) {
+                fields_copied_x(v, c, if has_trailer_p(v) {
                     the::<i64>(2i64)
                 } else {
                     the::<i64>(1i64)
                 });
-                copy_suffix(0i64);
+                suffix_copied_x(v, c, 0i64);
                 frozen_as_x(c, fields_frozen_p(v), suffix_frozen_p(v))
             };
-            vs = cdr(vs);
+            k = i64_plus(k, 1i64);
             continue;
         }
     }
@@ -653,15 +776,16 @@ pub fn filled_copy_x(mut vs: List<i64>) -> () {
 /// A copy of what `root` reaches, but for what is shared; the words
 /// copied counted in the state.
 pub fn copy_within_x(root: i64) -> i64 {
-    set(copy_made(), nil::<&'static Moved>());
-    set(copy_order(), nil::<i64>());
+    set(copy_ordered(), 0i64);
+    set(copy_pending(), 0i64);
     set(copy_words(), 0i64);
-    discovered_x(kayak_rt::heap_cons(root, kayak_rt::nil()));
-    filled_copy_x(reverse(get(copy_order())));
+    pushed_on_x(copy_todo(), copy_pending(), root);
+    discovered_x();
+    filled_copy_x(0i64);
     st_set_x(s_copied(), fix(i64_plus(fix_val(st(s_copied())), get(copy_words()))));
     let m = copied_value(root);
-    set(copy_made(), nil::<&'static Moved>());
-    set(copy_order(), nil::<i64>());
+    table_emptied_x(0i64);
+    set(copy_ordered(), 0i64);
     m
 }
 
