@@ -11,9 +11,10 @@
  frame on the data stack, a `let`'s values are pushed onto the frame and
  are slots of it, closures are flat, globals are cells, and a call in tail
  position is a tail call; a module is a product of its values (C144); a
- region an arena or a reap entered and left (C145). Not yet: Fixpt's
- middle phase (its plans, inlining, specialization), lambda lifting,
- register code (the words' twins), bloblets, prompts.
+ region an arena or a reap entered and left (C145); a prompt the routine
+ that runs its body, a procedure of nothing, under its tag (C146). Not
+ yet: Fixpt's middle phase (its plans, inlining, specialization), lambda
+ lifting, register code (the words' twins), bloblets.
  fixpt-source: crates/fixpt-fx26/src/compile.fx@bb3f570
  fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@8f76d65
  fixpt-source: crates/fixpt-fx26/src/compile-state.fx@8f76d65
@@ -53,6 +54,7 @@
   (x-extract cx i64 i64)
   (x-sum string cx i64)
   (x-tagcase cx (listof carm acyclic) (listof cbind acyclic) i64)
+  (x-prompt cx cx cx i64)
   (x-region i64 string cx i64)
   (x-rlambda cx cx i64)
   (x-module (listof cmem acyclic) i64)
@@ -99,7 +101,7 @@
       (x-sym (s a) a) (x-unit (a) a) (x-lambda (ps b a) a) (x-app (f xs a) a)
       (x-if (t y n a) a) (x-let (bs b a) a) (x-letrec (bs b a) a) (x-begin (xs a) a)
       (x-product (fs a) a) (x-extract (p i a) a) (x-sum (t v a) a) (x-tagcase (s arms els a) a)
-      (x-region (k r body a) a) (x-rlambda (r l a) a)
+      (x-prompt (t body h a) a) (x-region (k r body a) a) (x-rlambda (r l a) a)
       (x-module (its a) a) (x-with (m ns ks body a) a) (x-reshape (y ps a) a))))
 
 "A lambda's parameters, body, and region (an `rlambda`'s, one or none), if
@@ -150,6 +152,7 @@
         (x-extract (p i a) (c-free p bound acc))
         (x-sum (t v a) (c-free v bound acc))
         (x-tagcase (s arms els a) (c-free s bound (c-free-arms arms bound (c-free-else els bound acc))))
+        (x-prompt (t body h a) (c-free t bound (c-free body bound (c-free h bound acc))))
         (x-region (k r body a) (c-free body (cons r bound) acc))
         (x-rlambda (r l a) (c-free r bound (c-free l bound acc)))
         ;; A module's items see all of them, as a `letrec*`'s.
@@ -415,7 +418,9 @@
             ;; `(rlambda r (param …) body …)`: the region, and the lambda.
             ((string=? h "rlambda")
              (x-rlambda (parse-x (second xs)) (x-lambda (map binder-name (items (third xs))) (parse-body (cdr (cdr (cdr xs))) a) a) a))
-            ((or (string=? h "prompt") (string=? h "case")
+            ;; `(prompt tag body handler)`.
+            ((string=? h "prompt") (x-prompt (parse-x (second xs)) (parse-x (third xs)) (parse-x (fourth xs)) a))
+            ((or (string=? h "case")
                  (string=? h "typecase") (string=? h "quasiquote") (string=? h "load-module") (string=? h "vlambda"))
              (begin (cg-fail (string-append "not yet: " h)) (x-unit a)))
             (else (x-app (parse-x (car xs)) (parse-args (cdr xs)) a)))))
@@ -1025,6 +1030,8 @@
         (x-sum (t v a) (c-calls-only v f n #f loops))
         (x-tagcase (s arms els a)
           (and (c-calls-only s f n #f loops) (c-calls-only-arms arms f n tail loops) (c-calls-only-else els f n tail loops)))
+        (x-prompt (t body h a)
+          (and (c-calls-only t f n #f loops) (c-calls-only h f n #f loops) (c-calls-only-inside body f n loops)))
         (x-region (k r body a) (or (string=? r f) (c-calls-only body f n #f loops)))
         (x-rlambda (r l a) (and (c-calls-only r f n #f loops) (c-calls-only l f n #f loops)))
         ;; Said of no module, as Fixpt's compilers say.
@@ -1459,6 +1466,14 @@
           (tagcase l
             (x-lambda (ps body b) (begin (c-lambda ps body e depth c nil (list r)) (c-done c tail)))
             (else y (cg-fail "an rlambda's lambda"))))
+        ;; The tag, the handler, and the body as a procedure of nothing; then
+        ;; the routine that runs it under the prompt.
+        (x-prompt (t body h a)
+          (begin (c-exp t e depth c #f)
+                 (c-exp h e (i64+ depth 1) c #f)
+                 (c-lambda nil body e (i64+ depth 2) c nil nil)
+                 (c-op c "prompt")
+                 (c-done c tail)))
         ;; The region's name bound in a slot, as a `let`'s, to a region
         ;; entered (an arena, or a reap), and left with the body's value,
         ;; which is so not in tail position.

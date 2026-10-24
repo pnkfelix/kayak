@@ -4065,3 +4065,14 @@ region's body as not in tail position, as Fixpt says it. 142 programs
 agree (132), 120 of them Fixpt's words exactly (116); most of the others
 differ by Fixpt's lambda lifting (`sum-to/build@382` called with its
 closure as a literal), not ported yet.
+
+## C146. kayak's code generator: prompts (2026-10-24)
+
+Next of TODO §31 item 5's gaps, 8 programs: Fixpt's `e-prompt` arm.
+`(prompt tag body handler)`: the tag, the handler, the body as a
+procedure of no parameters, then the `prompt` routine, which runs it
+under the tag. Whether a procedure is only called is said of the body as
+of a lambda's (`c-calls-only-inside`), as Fixpt says it. 153 programs
+agree (142), 124 of them Fixpt's words exactly (120); the prompt programs
+that are not differ by Fixpt's specialization (`climb-n@lambda@1466`), its
+middle phase, not ported yet.

@@ -16,9 +16,10 @@ use super::*;
 // frame on the data stack, a `let`'s values are pushed onto the frame and
 // are slots of it, closures are flat, globals are cells, and a call in tail
 // position is a tail call; a module is a product of its values (C144); a
-// region an arena or a reap entered and left (C145). Not yet: Fixpt's
-// middle phase (its plans, inlining, specialization), lambda lifting,
-// register code (the words' twins), bloblets, prompts.
+// region an arena or a reap entered and left (C145); a prompt the routine
+// that runs its body, a procedure of nothing, under its tag (C146). Not
+// yet: Fixpt's middle phase (its plans, inlining, specialization), lambda
+// lifting, register code (the words' twins), bloblets.
 // fixpt-source: crates/fixpt-fx26/src/compile.fx@bb3f570
 // fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@8f76d65
 // fixpt-source: crates/fixpt-fx26/src/compile-state.fx@8f76d65
@@ -1320,6 +1321,7 @@ pub enum Cx {
     XExtract(&'static Cx, i64, i64),
     XSum(Str, &'static Cx, i64),
     XTagcase(&'static Cx, List<&'static Carm>, List<&'static Cbind>, i64),
+    XPrompt(&'static Cx, &'static Cx, &'static Cx, i64),
     XRegion(i64, Str, &'static Cx, i64),
     XRlambda(&'static Cx, &'static Cx, i64),
     XModule(List<&'static Cmem>, i64),
@@ -1393,6 +1395,10 @@ pub fn x_sum(f0: Str, f1: &'static Cx, f2: i64) -> &'static Cx {
 
 pub fn x_tagcase(f0: &'static Cx, f1: List<&'static Carm>, f2: List<&'static Cbind>, f3: i64) -> &'static Cx {
     kayak_rt::heap_alloc(Cx::XTagcase(f0, f1, f2, f3))
+}
+
+pub fn x_prompt(f0: &'static Cx, f1: &'static Cx, f2: &'static Cx, f3: i64) -> &'static Cx {
+    kayak_rt::heap_alloc(Cx::XPrompt(f0, f1, f2, f3))
 }
 
 pub fn x_region(f0: i64, f1: Str, f2: &'static Cx, f3: i64) -> &'static Cx {
@@ -1562,6 +1568,9 @@ pub fn cx_start(x: &'static Cx) -> i64 {
         Cx::XTagcase(s, arms, els, a) => {
             a
         }
+        Cx::XPrompt(t, body, h, a) => {
+            a
+        }
         Cx::XRegion(k, r, body, a) => {
             a
         }
@@ -1724,6 +1733,10 @@ pub fn c_free(mut x: &'static Cx, mut bound: Strings, mut acc: Strings) -> Strin
             }
             Cx::XTagcase(s, arms, els, a) => {
                 (x, acc) = (s, c_free_arms(arms, bound, c_free_else(els, bound, acc)));
+                continue;
+            }
+            Cx::XPrompt(t, body, h, a) => {
+                (x, acc) = (t, c_free(body, bound, c_free(h, bound, acc)));
                 continue;
             }
             Cx::XRegion(k, r, body, a) => {
@@ -2331,7 +2344,9 @@ pub fn parse_form(h: Str, xs: Sexps, e: &'static Sexp, f: Str, a: i64) -> &'stat
         }, parse_body(cdr(cdr(xs)), a), a)
     } else if string_eq_p(h, str_lit("rlambda")) {
         x_rlambda(parse_x(second(xs)), x_lambda(map(&binder_name, items(third(xs))), parse_body(cdr(cdr(cdr(xs))), a), a), a)
-    } else if (string_eq_p(h, str_lit("prompt")) || string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("typecase")) || string_eq_p(h, str_lit("quasiquote")) || string_eq_p(h, str_lit("load-module")) || string_eq_p(h, str_lit("vlambda"))) {
+    } else if string_eq_p(h, str_lit("prompt")) {
+        x_prompt(parse_x(second(xs)), parse_x(third(xs)), parse_x(fourth(xs)), a)
+    } else if (string_eq_p(h, str_lit("case")) || string_eq_p(h, str_lit("typecase")) || string_eq_p(h, str_lit("quasiquote")) || string_eq_p(h, str_lit("load-module")) || string_eq_p(h, str_lit("vlambda"))) {
         match cg_fail(string_append(str_lit("not yet: "), h)) {};
         x_unit(a)
     } else {
@@ -3794,6 +3809,9 @@ pub fn c_calls_only(mut x: &'static Cx, mut f: Str, mut n: i64, mut tail: bool, 
             Cx::XTagcase(s, arms, els, a) => {
                 return (c_calls_only(s, f, n, false, loops) && c_calls_only_arms(arms, f, n, tail, loops) && c_calls_only_else(els, f, n, tail, loops));
             }
+            Cx::XPrompt(t, body, h, a) => {
+                return (c_calls_only(t, f, n, false, loops) && c_calls_only(h, f, n, false, loops) && c_calls_only_inside(body, f, n, loops));
+            }
             Cx::XRegion(k, r, body, a) => {
                 return (string_eq_p(r, f) || c_calls_only(body, f, n, false, loops));
             }
@@ -4736,6 +4754,13 @@ pub fn c_exp(mut x: &'static Cx, mut e: Cenv, mut depth: i64, mut c: Code, mut t
                         return match cg_fail(str_lit("an rlambda's lambda")) {};
                     }
                 }
+            }
+            Cx::XPrompt(t, body, h, a) => {
+                c_exp(t, e, depth, c, false);
+                c_exp(h, e, i64_plus(depth, 1i64), c, false);
+                c_lambda(nil::<Str>(), body, e, i64_plus(depth, 2i64), c, nil::<Str>(), nil::<&'static Cx>());
+                c_op(c, str_lit("prompt"));
+                return c_done(c, tail);
             }
             Cx::XRegion(k, r, body, a) => {
                 if (i64_eq(k, 0i64) || i64_eq(k, 3i64)) {
