@@ -8,7 +8,76 @@
 
 (define-type families (listof family acyclic))
 
-(define-datatype ctx (ctx strings tagofs strings strings typeds facts families typeds typeds))
+"The program's facts by position (C143), a balanced tree: the facts at
+ each position in the order the list has them (of every file: a search
+ still asks the file), found in a few comparisons, where the program's
+ list took as many as it has facts, at every name the emitter asks of."
+(define-datatype fidx (fempty) (fnode fidx i64 facts fidx))
+(define-datatype fgroup (fgroup i64 facts))
+(define-type fgroups (listof fgroup acyclic))
+
+(define fact-pos (subr kfx (fact) i64) (lambda (f) (tagcase f (fact (ff fp fw) fp))))
+
+(define-rec
+  (facts-rev-onto (subr kfx (facts facts) facts)
+    (lambda (xs acc) (if (null? xs) acc (facts-rev-onto (cdr xs) (cons (car xs) acc)))))
+  (facts-dropped (subr kfx (facts i64) facts)
+    (lambda (xs n) (if (or (null? xs) (i64<= n 0)) xs (facts-dropped (cdr xs) (i64- n 1)))))
+  (facts-merged (subr kfx (facts facts facts) facts)
+    (lambda (a b acc)
+      "`a` and `b`, each by position, merged onto `acc` reversed; of two at
+       one position, `a`'s first."
+      (cond ((null? a) (facts-rev-onto acc b))
+            ((null? b) (facts-rev-onto acc a))
+            ((i64< (fact-pos (car b)) (fact-pos (car a))) (facts-merged a (cdr b) (cons (car b) acc)))
+            (else (facts-merged (cdr a) b (cons (car a) acc))))))
+  (facts-sorted (subr kfx (facts i64) facts)
+    (lambda (xs n)
+      "The first `n` of `xs` by position, those at one in the order they
+       were."
+      (cond ((i64<= n 0) nil)
+            ((i64= n 1) (cons (car xs) nil))
+            (else
+             (let ((half (i64-quotient n 2)))
+               (facts-merged (facts-sorted xs half) (facts-sorted (facts-dropped xs half) (i64- n half)) nil)))))))
+
+(define-rec
+  (fgroups-rev-onto (subr kfx (fgroups fgroups) fgroups)
+    (lambda (xs acc) (if (null? xs) acc (fgroups-rev-onto (cdr xs) (cons (car xs) acc)))))
+  (grouped (subr kfx (facts i64 facts fgroups) fgroups)
+    (lambda (xs pos cur acc)
+      "Facts by position grouped by it: `cur` those at `pos` so far,
+       reversed, and `acc` the groups before, reversed."
+      (cond ((null? xs) (fgroups-rev-onto (if (null? cur) acc (cons (fgroup pos (facts-rev-onto cur nil)) acc)) nil))
+            ((and (not (null? cur)) (i64= (fact-pos (car xs)) pos)) (grouped (cdr xs) pos (cons (car xs) cur) acc))
+            (else (grouped (cdr xs) (fact-pos (car xs)) (cons (car xs) nil)
+                           (if (null? cur) acc (cons (fgroup pos (facts-rev-onto cur nil)) acc))))))))
+
+(define-rec
+  (fgroups-dropped (subr kfx (fgroups i64) fgroups)
+    (lambda (xs n) (if (or (null? xs) (i64<= n 0)) xs (fgroups-dropped (cdr xs) (i64- n 1)))))
+  (fidx-tree (subr kfx (fgroups i64) fidx)
+    (lambda (gs n)
+      "The first `n` of `gs`, by position, as a balanced tree."
+      (if (i64<= n 0)
+          (fempty)
+          (let* ((half (i64-quotient n 2))
+                 (rest (fgroups-dropped gs half)))
+            (tagcase (car rest)
+              (fgroup (p fs) (fnode (fidx-tree gs half) p fs (fidx-tree (cdr rest) (i64- (i64- n half) 1))))))))))
+
+(define fidx-of (subr kfx (facts) fidx)
+  (lambda (fs) (let ((gs (grouped (facts-sorted fs (size fs)) 0 nil nil))) (fidx-tree gs (size gs)))))
+
+(define-rec
+  (fidx-at (subr kfx (fidx i64) facts)
+    (lambda (x pos)
+      "The facts at `pos`, in the order the list has them."
+      (tagcase x
+        (fempty () nil)
+        (fnode (l p fs r) (cond ((i64= pos p) fs) ((i64< pos p) (fidx-at l pos)) (else (fidx-at r pos))))))))
+
+(define-datatype ctx (ctx strings tagofs strings strings typeds facts fidx families typeds typeds))
 
 (define-datatype tail
   (value)
@@ -44,7 +113,7 @@
                 (else (filter-typed name (cdr xs))))))
 
       (define ctx-effects (subr kfx (ctx) typeds)
-        (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms es mods) es))))
+        (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs fx ms es mods) es))))
 
       (define effect-binder? (subr kfx (ctx string) bool)
         (lambda (c n)
@@ -52,16 +121,16 @@
            an effect given a family carries (C46): it may stand for an effect
            that aborts or suspends."
           (or (string=? n "%effect-given")
-              (tagcase c (ctx (ds ts ks ls xs fs ms es mods) (string-member? (string-append "%evar " n) ls))))))
+              (tagcase c (ctx (ds ts ks ls xs fs fx ms es mods) (string-member? (string-append "%evar " n) ls))))))
 
       (define ctx-fact? (subr kfx (ctx string i64 string) bool)
         (lambda (c file pos what)
           "Whether the checker found `what` about the place `file`, `pos`."
           (tagcase c
-            (ctx (ds ts ks ls xs fs ms es mods)
+            (ctx (ds ts ks ls xs fs fx ms es mods)
               (any? (lambda ((f fact))
                       (tagcase f (fact (ff fp fw) (and (i64= fp pos) (string=? fw what) (string=? ff file)))))
-                    fs)))))
+                    (fidx-at fx pos))))))
 
       (define-rec
         (first-fact (subr kfx (facts string i64 string) string)
@@ -87,7 +156,7 @@
       (define facts-at (subr kfx (ctx sexp) facts)
         (lambda (c e)
           "The facts at the datum `e`, found once (C84)."
-          (tagcase c (ctx (ds ts ks ls xs fs ms es mods) (facts-at-place fs (datum-file e) (datum-pos e))))))
+          (tagcase c (ctx (ds ts ks ls xs fs fx ms es mods) (facts-at-place (fidx-at fx (datum-pos e)) (datum-file e) (datum-pos e))))))
 
       (define fact-in (subr kfx (facts sexp string) string)
         (lambda (fs e prefix) (first-fact fs (datum-file e) (datum-pos e) prefix)))
@@ -100,7 +169,7 @@
           "What the checker found about the datum `e` that begins `prefix`, the
            rest of it; or ``."
           (tagcase c
-            (ctx (ds ts ks ls xs fs ms es mods) (first-fact fs (datum-file e) (datum-pos e) prefix)))))
+            (ctx (ds ts ks ls xs fs fx ms es mods) (first-fact (fidx-at fx (datum-pos e)) (datum-file e) (datum-pos e) prefix)))))
 
       "Products and sums, FX-26's structural data (check.kfx, `ty-shape`): one
        generic Rust type for each list of labels, a tuple struct for a product,
@@ -122,13 +191,13 @@
           (if (has-prefix? n "r#") (after-prefix n "r#") n)))
 
       (define ctx-datatypes (subr kfx (ctx) strings)
-        (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms es mods) ds))))
+        (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs fx ms es mods) ds))))
 
       (define ctx-tags (subr kfx (ctx) tagofs)
-        (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms es mods) ts))))
+        (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs fx ms es mods) ts))))
 
       (define ctx-constants (subr kfx (ctx) strings)
-        (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms es mods) ks))))
+        (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs fx ms es mods) ks))))
 
       (define strings-onto (subr kfx (strings strings) strings)
         (lambda (xs ys) (if (null? xs) ys (strings-onto (cdr xs) (cons (car xs) ys)))))
@@ -221,7 +290,7 @@
       (define find-family-of (subr kfx (ctx string) families)
         (lambda (c name)
           (tagcase c
-            (ctx (ds ts ks ls xs fs ms es mods)
+            (ctx (ds ts ks ls xs fs fx ms es mods)
               (let ((found (filter-family name ms))) found)))))
 
       (define-rec
@@ -241,8 +310,8 @@
                  (let ((d (string-append m (string-append ".." (type-head-name (second (items (car forms))))))))
                    (note-module-datatypes m (cdr forms)
                      (tagcase c
-                       (ctx (ds ts ks ls xs fs ms es mods)
-                         (ctx (cons d ds) (note-tags (cdr (cdr (items (car forms)))) d ts) ks ls xs fs ms es mods))))))
+                       (ctx (ds ts ks ls xs fs fx ms es mods)
+                         (ctx (cons d ds) (note-tags (cdr (cdr (items (car forms)))) d ts) ks ls xs fs fx ms es mods))))))
                 ((and (head-is? (car forms) "define-type") (not (head-is? (third (items (car forms))) "moduleof"))
                       (tagcase (second (items (car forms))) (lst (ys f l p) #t) (else other #f)))
                  "A module's type family (C89): no Rust alias (one over a `Value`
@@ -260,8 +329,8 @@
                         (qhead (tagcase head (lst (ys f l p) (lst (cons (sym q f p) (cdr ys)) f l p)) (else other head))))
                    (note-module-datatypes m (cdr forms)
                      (tagcase c
-                       (ctx (ds ts ks ls xs fs ms es mods)
-                         (ctx ds ts ks ls xs fs (note-family qhead #f (note-family head #f ms)) es
+                       (ctx (ds ts ks ls xs fs fx ms es mods)
+                         (ctx ds ts ks ls xs fs fx (note-family qhead #f (note-family head #f ms)) es
                               (cons (typed (string-append "%expand " t) (sym t "" 0))
                                     (cons (typed (string-append "%expand " q) (sym q "" 0))
                                           (cons (typed (string-append "%abbreviation " t) (lst (list head (third (items (car forms)))) "" 0 0))
@@ -278,13 +347,13 @@
       (define note (subr kfx (sexp ctx) ctx)
         (lambda (form c)
           (tagcase c
-            (ctx (ds ts ks ls xs fs ms es mods)
+            (ctx (ds ts ks ls xs fs fx ms es mods)
               (cond ((head-is? form "define-datatype")
                      (let ((d (type-head-name (second (items form)))))
-                       (ctx (cons d ds) (note-tags (cdr (cdr (items form))) d ts) ks ls xs fs
+                       (ctx (cons d ds) (note-tags (cdr (cdr (items form))) d ts) ks ls xs fs fx
                             (note-family (second (items form)) #t ms) es mods)))
                     ((and (head-is? form "define-type") (head-is? (third (items form)) "moduleof"))
-                     (ctx ds ts ks ls xs fs ms es (cons (typed (string-append "%moduleof " (sym-name (second (items form)))) (third (items form))) mods)))
+                     (ctx ds ts ks ls xs fs fx ms es (cons (typed (string-append "%moduleof " (sym-name (second (items form)))) (third (items form))) mods)))
                     ((and (head-is? form "define-type") (head-is? (third (items form)) "select")
                           (not (null? (module-body c (string-append "%abbreviation " (selected-name (third (items form))))))))
                      "An abbreviation of a module's family (C89): that family, expanded
@@ -295,7 +364,7 @@
                             (params (cdr (items qhead)))
                             (names (map (lambda ((b sexp)) (sym (sym-name (car (items b))) "" 0)) params))
                             (head (lst (cons (sym t "" 0) params) "" 0 0)))
-                       (ctx ds ts ks ls xs fs (note-family head #f ms) es
+                       (ctx ds ts ks ls xs fs fx (note-family head #f ms) es
                             (cons (typed (string-append "%expand " t) (sym t "" 0))
                                   (cons (typed (string-append "%abbreviation " t)
                                                (lst (list head (lst (cons (third (items form)) names) "" 0 0)) "" 0 0))
@@ -303,7 +372,7 @@
                     ((and (head-is? form "define-type") (tagcase (second (items form)) (sym (n f p) #t) (else other #f)))
                      "A type abbreviation's body, kept for the typed suffixes (C32), which
                       compare types as written out."
-                     (ctx ds ts ks ls xs fs (note-family (second (items form)) #f ms) es
+                     (ctx ds ts ks ls xs fs fx (note-family (second (items form)) #f ms) es
                           (cons (typed (string-append "%alias " (sym-name (second (items form)))) (third (items form))) mods)))
                     ((head-is? form "define-type")
                      "A family abbreviation: its regions Rust lifetimes (C39), as a
@@ -311,27 +380,27 @@
                       is expanded where applied, as that family is (C89); so is one
                       whose body is a union, a `Value` in Rust, which an alias could not
                       give its parameters (C119: Fixpt's `entry`)."
-                     (ctx ds ts ks ls xs fs (note-family (second (items form)) #f ms) es
+                     (ctx ds ts ks ls xs fs fx (note-family (second (items form)) #f ms) es
                           (onto (if (or (head-is? (car (items (third (items form)))) "select")
                                         (head-is? (third (items form)) "union"))
                                     (the typeds (list (typed (string-append "%expand " (type-head-name (second (items form)))) (sym "" "" 0))))
                                     nil)
                                 (cons (typed (string-append "%abbreviation " (type-head-name (second (items form)))) (lst (list (second (items form)) (third (items form))) "" 0 0)) mods))))
                     ((head-is? form "define-generative")
-                     (ctx ds ts ks ls xs fs (note-family (second (items form)) #f ms) es mods))
+                     (ctx ds ts ks ls xs fs fx (note-family (second (items form)) #f ms) es mods))
                     ((head-is? form "define-effect")
-                     (ctx ds ts ks ls xs fs ms (cons (typed (sym-name (second (items form))) (third (items form))) es) mods))
+                     (ctx ds ts ks ls xs fs fx ms (cons (typed (sym-name (second (items form))) (third (items form))) es) mods))
                     ((module-def? form)
                      (let ((m (sym-name (second (items form)))))
                        (note-module-datatypes m (unhidden (module-written form))
-                                              (ctx ds ts ks ls xs fs ms es (cons (typed m (lst (cons (sym "module" "" 0) (module-written form)) "" 0 0)) mods)))))
+                                              (ctx ds ts ks ls xs fs fx ms es (cons (typed m (lst (cons (sym "module" "" 0) (module-written form)) "" 0 0)) mods)))))
                     ((and (head-is? form "define")
                           (or (i64= (size (items form)) 3) (i64= (size (items form)) 4))
                           (not (lambda-form? (last (items form))))
                           ;; A module's poly procedure given on is that procedure (C107).
                           (not (any? (lambda ((x typed)) (tagcase x (typed (n t) (and (string=? n (sym-name (second (items form)))) (head-is? t "%reexport")))))
                                      xs)))
-                     (ctx ds ts (cons (sym-name (second (items form))) ks) ls xs fs ms es mods))
+                     (ctx ds ts (cons (sym-name (second (items form))) ks) ls xs fs fx ms es mods))
                     (else c))))))
 
       "Writing Rust"
@@ -490,18 +559,18 @@
         (lambda (c file pos prefix)
           "What the checker found at `file`, `pos` that begins `prefix`, the rest;
            or ``."
-          (tagcase c (ctx (ds ts ks ls xs fs ms es mods) (first-fact fs file pos prefix)))))
+          (tagcase c (ctx (ds ts ks ls xs fs fx ms es mods) (first-fact (fidx-at fx pos) file pos prefix)))))
 
       (define all-facts-at (subr kfx (ctx string i64 string) strings)
         (lambda (c file pos prefix)
           "Everything the checker found at `file`, `pos` that begins `prefix`."
           (tagcase c
-            (ctx (ds ts ks ls xs fs ms es mods)
+            (ctx (ds ts ks ls xs fs fx ms es mods)
               (concat (map (lambda ((f fact))
                              (tagcase f
                                (fact (ff fp fw)
                                  (if (and (i64= fp pos) (string=? ff file) (has-prefix? fw prefix)) (the strings (list fw)) nil))))
-                           fs))))))
+                           (fidx-at fx pos)))))))
 
       (define digits-number (subr kfx (string) i64)
         (lambda (s) (i64- 0 (digits-value (string-chars s) 0 "" 0))))
@@ -1116,14 +1185,14 @@
                                             labels)))))
 
     (define ctx-locals (subr kfx (ctx) strings)
-      (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs ms es mods) ls))))
+      (lambda (c) (tagcase c (ctx (ds ts ks ls xs fs fx ms es mods) ls))))
 
     (define module-body (subr kfx (ctx string) sexps)
       (lambda (c name)
         "What `mods` keeps under `name`, as a list of one: a module, or, under
          `%moduleof x`, a module type."
         (tagcase c
-          (ctx (ds ts ks ls xs fs ms es mods)
+          (ctx (ds ts ks ls xs fs fx ms es mods)
             (concat (map (lambda ((x typed)) (tagcase x (typed (n body) (if (string=? n name) (the sexps (list body)) nil))))
                          mods))))))
 
@@ -1215,7 +1284,7 @@
         "The type the checker found for a definition written with none, as a
          list of one."
         (tagcase c
-          (ctx (ds ts ks ls xs fs ms es mods)
+          (ctx (ds ts ks ls xs fs fx ms es mods)
             (map (lambda ((x typed)) (tagcase x (typed (n t) t)))
                  (filter-typed (if (string=? (after-in ls) "") name (string-append (after-in ls) (string-append " " name)))
                                xs))))))
@@ -1223,15 +1292,15 @@
     (define with-locals (subr kfx (ctx strings) ctx)
       (lambda (c names)
         "`c`, where `names` are bound too."
-        (tagcase c (ctx (ds ts ks ls xs fs ms es mods) (ctx ds ts ks (strings-onto names ls) xs fs ms es mods)))))
+        (tagcase c (ctx (ds ts ks ls xs fs fx ms es mods) (ctx ds ts ks (strings-onto names ls) xs fs fx ms es mods)))))
 
     (define in-heap (subr kfx (ctx) ctx)
       (lambda (c)
         "`c`, but with no `letrena` around: where a type is a message's, an
          I-cell's or a mailbox's, which is transmissible, so nothing in it is
          in a place, and its procedures are `'static` (C101)."
-        (tagcase c (ctx (ds ts ks ls xs fs ms es mods)
-                     (ctx ds ts ks (concat (map (lambda ((l string)) (if (has-prefix? l "%letrena ") nil (the strings (list l)))) ls)) xs fs ms es mods)))))
+        (tagcase c (ctx (ds ts ks ls xs fs fx ms es mods)
+                     (ctx ds ts ks (concat (map (lambda ((l string)) (if (has-prefix? l "%letrena ") nil (the strings (list l)))) ls)) xs fs fx ms es mods)))))
 
     (define head-region-params (subr kfx (sexp) strings)
       (lambda (head) (tagcase head (lst (xs src-file src-line src-pos) (region-params-of (cdr xs))) (else other nil))))
@@ -1290,7 +1359,7 @@
       (lambda (c prefix)
         "Everything the checker found anywhere that begins `prefix`, the rest."
         (tagcase c
-          (ctx (ds ts ks ls xs fs ms es mods)
+          (ctx (ds ts ks ls xs fs fx ms es mods)
             (concat (map (lambda ((f fact))
                            (tagcase f
                              (fact (ff fp fw) (if (has-prefix? fw prefix) (the strings (list (after-prefix fw prefix))) nil))))
@@ -1299,7 +1368,7 @@
     (define uses-blobrefs? (subr kfx (ctx) bool)
       (lambda (c)
         (tagcase c
-          (ctx (ds ts ks ls xs fs ms es mods)
+          (ctx (ds ts ks ls xs fs fx ms es mods)
             (any? (lambda ((f fact)) (tagcase f (fact (ff fp fw) (has-prefix? fw "blob-at ")))) fs)))))
 
     (define tags-noted (subr kfx (sexps string tagofs) tagofs)
@@ -1546,7 +1615,7 @@
            bytes otherwise (`blobref+`, `-owner`, `-offset`, `bloblet-byte`...);
            and makes every one of literal size, room for that flat."
           (let* ((key (owner-key c b))
-                 (fs (tagcase c (ctx (ds ts ks ls xs fs ms es mods) fs)))
+                 (fs (tagcase c (ctx (ds ts ks ls xs fs fx ms es mods) fs)))
                  (ats (concat (map (lambda ((f fact))
                                      (tagcase f
                                        (fact (file pos what)

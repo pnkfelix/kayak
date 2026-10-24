@@ -2304,7 +2304,7 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
             expected_x(str_lit("a string"))
         }
     } else if i64_eq(n, 31i64) {
-        let w = (is_kind_p(get(sched_state()), k_vector()) && wanted_x(true));
+        let w = (sched_p() && wanted_x(true));
         if w {
             quiet_enter_x()
         } else {

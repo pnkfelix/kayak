@@ -194,7 +194,7 @@ pub mod writing {
     pub fn module_impls(c: &'static Ctx) -> Strings {
         let tagcase_ = c;
         match *tagcase_ {
-            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
                 reverse_strings(concat(map(lambda1s(move |f: &'static Fact| {
                     let tagcase_ = f;
                     match *tagcase_ {
@@ -888,7 +888,7 @@ pub mod writing {
     pub fn program_shapes(c: &'static Ctx, forms: Sexps) -> Strings {
         let tagcase_ = c;
         match *tagcase_ {
-            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
                 reverse_strings(shapes_in_all(onto(map(lambda1s(move |x: &'static Typed| {
                     let tagcase_ = x;
                     match *tagcase_ {
@@ -1389,7 +1389,7 @@ pub mod writing {
         let outer = {
             let tagcase_ = c;
             match *tagcase_ {
-                Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
                     ctx(onto(concat(map(lambda1s(move |f: &'static Sexp| {
                         if (head_is_p(f, str_lit("include")) || head_is_p(f, str_lit("%use"))) {
                             concat(map(lambda1s(move |g: &'static Sexp| {
@@ -1421,7 +1421,7 @@ pub mod writing {
                         } else {
                             nil::<Str>()
                         }
-                    }), forms)), without(ks, item_values(forms))), ls, xs, fs, ms, es, mods)
+                    }), forms)), without(ks, item_values(forms))), ls, xs, fs, fx, ms, es, mods)
                 }
             }
         };

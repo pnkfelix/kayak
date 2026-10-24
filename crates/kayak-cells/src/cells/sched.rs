@@ -116,6 +116,11 @@ pub fn sched_state() -> Ref<i64> {
     })
 }
 
+// Whether there is a state: it is `#f` until made, and stays a vector.
+pub fn sched_p() -> bool {
+    not(i64_eq(get(sched_state()), v_false()))
+}
+
 pub fn filled_x(mut v: i64, mut i: i64, mut xs: List<i64>) -> i64 {
     loop {
         if null_p(xs) {
@@ -130,7 +135,7 @@ pub fn filled_x(mut v: i64, mut i: i64, mut xs: List<i64>) -> i64 {
 
 /// The state's vector, made if there is none yet (Fixpt's `state`).
 pub fn state_x() -> i64 {
-    if is_kind_p(get(sched_state()), k_vector()) {
+    if sched_p() {
         get(sched_state())
     } else {
         let s = filled_x(make_bloblet_x(k_vector(), 17i64, 0i64, true, false), 0i64, kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_false(), kayak_rt::heap_cons(v_false(), kayak_rt::heap_cons(fix(0i64), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_false(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(fix(0i64), kayak_rt::heap_cons(v_false(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_false(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::heap_cons(v_null(), kayak_rt::nil()))))))))))))))))));
@@ -698,11 +703,14 @@ pub fn timer_add_x(t: i64, w: i64) -> i64 {
     v_unit()
 }
 
+pub fn due_in_p(l: i64, now: i64) -> bool {
+    (is_pair_p(l) && (i64_lt_eq(fix_val(pair_car(pair_car(l))), now) || due_in_p(pair_cdr(l), now)))
+}
+
+/// Whether a timer is due; the clock not read if none is set.
 pub fn timer_due_p() -> bool {
-    let now = clock();
-    any_of_p(st(s_timers()), lambda1(move |e: i64| {
-        i64_lt_eq(fix_val(pair_car(e)), now)
-    }))
+    let ts = st(s_timers());
+    (is_pair_p(ts) && due_in_p(ts, clock()))
 }
 
 pub fn timers_earliest(mut l: i64, mut e: i64) -> i64 {
@@ -807,7 +815,7 @@ pub fn assq_cdr(mut l: i64, mut t: i64) -> i64 {
 
 /// The group task `t` is of, or `#f`.
 pub fn group_of(t: i64) -> i64 {
-    if is_kind_p(get(sched_state()), k_vector()) {
+    if sched_p() {
         assq_cdr(st(s_groups()), t)
     } else {
         v_false()
@@ -857,43 +865,58 @@ pub fn reaped_x() -> i64 {
 }
 
 // Preemption and failure, for the machine.
+/// Whether the scheduler would have the current task preempted here: 0,
+/// no; 1, yes; 2, in a task, if the scheduler's prompt is on the
+/// machine's stack, which the machine asks only then, as walking its
+/// stack costs (`wanted`, its `reachable` called last).
+pub fn wanted_how_x() -> i64 {
+    if (quiet_p() || take_grace_x()) {
+        0i64
+    } else if i64_eq(get(task_now()), 0i64) {
+        if ((is_pair_p(st(s_front())) || is_pair_p(st(s_back())) || is_pair_p(st(s_parked())) || timer_due_p()) && i64_eq(fix_val(st(s_running())), 0i64)) {
+            1i64
+        } else {
+            0i64
+        }
+    } else if i64_eq(st(s_tag()), v_false()) {
+        0i64
+    } else {
+        2i64
+    }
+}
+
 /// Whether the scheduler would have the current task preempted here; in
 /// a task, `reach` says whether the scheduler's prompt is on the
 /// machine's stack (`wanted`).
 pub fn wanted_x(reach: bool) -> bool {
-    if (quiet_p() || take_grace_x()) {
-        false
-    } else if i64_eq(get(task_now()), 0i64) {
-        ((is_pair_p(st(s_front())) || is_pair_p(st(s_back())) || is_pair_p(st(s_parked())) || timer_due_p()) && i64_eq(fix_val(st(s_running())), 0i64))
-    } else {
-        (not(i64_eq(st(s_tag()), v_false())) && reach)
-    }
+    let w = wanted_how_x();
+    (i64_eq(w, 1i64) || (i64_eq(w, 2i64) && reach))
 }
 
 /// The scheduler's prompt tag, or `#f`.
 pub fn sched_tag() -> i64 {
-    if is_kind_p(get(sched_state()), k_vector()) {
+    if sched_p() {
         st(s_tag())
     } else {
         v_false()
     }
 }
 
-/// At a poll whose slice is spent: the scheduler's `preempt`, for the
-/// machine to call there, the task then quiet until it has; or `#f`
-/// (`preempt_due_with`).
-pub fn preempt_due_x(reach: bool) -> i64 {
-    if not(is_kind_p(get(sched_state()), k_vector())) {
-        v_false()
+/// At a poll whose slice is spent: as `wanted-how!`, 0 too if there is
+/// no scheduler's `preempt` to call (`preempt_due_with`).
+pub fn preempt_wanted_x() -> i64 {
+    if (sched_p() && is_kind_p(st(s_preempt()), k_closure())) {
+        wanted_how_x()
     } else {
-        let f = st(s_preempt());
-        if (is_kind_p(f, k_closure()) && wanted_x(reach)) {
-            quiet_enter_x();
-            f
-        } else {
-            v_false()
-        }
+        0i64
     }
+}
+
+/// The scheduler's `preempt`, wanted, for the machine to call at the
+/// poll, the task then quiet until it has.
+pub fn preempt_due_x() -> i64 {
+    quiet_enter_x();
+    st(s_preempt())
 }
 
 /// `gs`, with every group inside one of them (`BRANCH_GROUP`).

@@ -1288,15 +1288,18 @@ pub fn poll_due_x() -> i64 {
     };
     set(fuel(), take);
     set(reserve(), i64_minus(get(reserve()), take));
-    let f = preempt_due_x(reach_p());
-    if i64_eq(f, v_false()) {
-        v_false()
-    } else if not(limits_ok_p()) {
-        quiet_leave_x();
-        take_grace_x();
+    let w = preempt_wanted_x();
+    if (i64_eq(w, 0i64) || (i64_eq(w, 2i64) && not(reach_p()))) {
         v_false()
     } else {
-        f
+        let f = preempt_due_x();
+        if limits_ok_p() {
+            f
+        } else {
+            quiet_leave_x();
+            take_grace_x();
+            v_false()
+        }
     }
 }
 

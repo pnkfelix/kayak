@@ -20,18 +20,28 @@ use std::thread::LocalKey;
 /// it not to be.
 pub const KEPT_FOR_PROGRAM: bool = cfg!(feature = "unsafe-par");
 
-/// Where a constant is kept.
+/// Where a constant is kept: what it keeps, if made yet, asked first, as
+/// nearly every use finds it made; else made.
 pub trait OnceSlot<T> {
+    fn made(&'static self) -> Option<T>;
     fn kept(&'static self, make: &mut dyn FnMut() -> T) -> T;
 }
 
 impl<T: Copy + 'static> OnceSlot<T> for LocalKey<OnceCell<T>> {
+    #[inline]
+    fn made(&'static self) -> Option<T> {
+        self.with(|c| c.get().copied())
+    }
     fn kept(&'static self, make: &mut dyn FnMut() -> T) -> T {
         self.with(|c| *c.get_or_init(make))
     }
 }
 
 impl<T: Copy> OnceSlot<T> for OnceLock<T> {
+    #[inline]
+    fn made(&'static self) -> Option<T> {
+        self.get().copied()
+    }
     fn kept(&'static self, make: &mut dyn FnMut() -> T) -> T {
         *self.get_or_init(make)
     }
@@ -39,13 +49,27 @@ impl<T: Copy> OnceSlot<T> for OnceLock<T> {
 
 #[cfg(feature = "unsafe-par")]
 impl<T: Copy> OnceSlot<T> for kayak_sync::Global<T> {
+    #[inline]
+    fn made(&'static self) -> Option<T> {
+        self.get().copied()
+    }
     fn kept(&'static self, make: &mut dyn FnMut() -> T) -> T {
         *self.get_or_init(make)
     }
 }
 
 /// The value `slot` keeps, made by `make` the first time.
+#[inline]
 pub fn once<T, S: OnceSlot<T> + ?Sized>(slot: &'static S, make: impl FnOnce() -> T) -> T {
+    match slot.made() {
+        Some(v) => v,
+        None => made_first(slot, make),
+    }
+}
+
+#[cold]
+#[inline(never)]
+fn made_first<T, S: OnceSlot<T> + ?Sized>(slot: &'static S, make: impl FnOnce() -> T) -> T {
     let mut make = Some(make);
     slot.kept(&mut || (make.take().expect("a constant made twice"))())
 }

@@ -257,8 +257,12 @@
             ((char=? (car cs) #\:) (cdr cs))
             (else (after-colon (cdr cs)))))))
 
+"Each of `region-kinds` with its colon, as an atom begins."
+(define region-prefixes strings
+  (list "read:" "write:" "alloc:" "goto:" "comefrom:" "send:" "receive:" "init:" "await:"))
+
 (define region-atom? (subr kfx (string) bool)
-  (lambda (x) (any? (lambda ((k string)) (has-prefix? x (string-append k ":"))) region-kinds)))
+  (lambda (x) (any? (lambda ((k string)) (has-prefix? x k)) region-prefixes)))
 
 (define atom-kind (subr kfx (string) string)
   (lambda (x) (substring-of x (i64- (string-length-i64 x) (size (after-colon (string->list x)))))))
@@ -1652,11 +1656,13 @@
   (lambda (s x)
     "An effect atom, its region an inference variable solved replaced by
      the region found."
-    (let ((r (atom-region x)))
-      (if (and (region-atom? x) (char=? (string-ref-i64 r 0) #\?))
-          (string-append (atom-kind x)
-                         (region-string s (ty-meta (meta-number r))))
-          x))))
+    (if (region-atom? x)
+        (let ((r (atom-region x)))
+          (if (char=? (string-ref-i64 r 0) #\?)
+              (string-append (atom-kind x)
+                             (region-string s (ty-meta (meta-number r))))
+              x))
+        x)))
 
 (define-rec
   (zonk (subr kfx (st ty) ty)
@@ -1742,30 +1748,33 @@
        grown to hold an atom of `a` (C46): the state, or none."
       (if (null? a)
           (list s)
-          (let* ((ax (expand-effs s a))
-                 (es (map (lambda ((y string)) (resolve-atom s y)) (expand-effs s e))))
-            (if (null? ax)
-                (list s)
-                (let ((x (resolve-atom s (car ax))))
-                  (cond ((effs-within? (list x) es) (fit-effs s (cdr ax) e))
-                        ((effect-meta? x)
-                         "An effect variable of `a` not solved, that `e` does not hold:
-                          nothing more, the least it may be."
-                         (fit-effs (solve s (meta-number (after-prefix x "~")) (effect-row nil)) (cdr ax) e))
-                        ((not (null? (open-atom s x e)))
-                         (tagcase (region-ty (atom-region (car (open-atom s x e))))
-                           (ty-meta (k) (fit-effs (solve s k (region-ty (atom-region x))) (cdr ax) e))
-                           (else other nil)))
-                        ((not (null? (open-row es)))
-                         (tagcase (fresh s)
-                           (res (m u s)
-                             (tagcase m
-                               (ty-meta (j)
-                                 (fit-effs (solve s (meta-number (after-prefix (car (open-row es)) "~"))
-                                                  (effect-row (list x (string-append "~" (meta-name j)))))
-                                           (cdr ax) e))
-                               (else other nil)))))
-                        (else nil)))))))))
+          (fit-expanded s (expand-effs s a) e (map (lambda ((y string)) (resolve-atom s y)) (expand-effs s e))))))
+  (fit-expanded (subr kfx (st strings strings strings) (listof st acyclic))
+    (lambda (s ax e es)
+      "`fit-effs`, `a` and `e` expanded in `s` (`ax`, `es`): kept while `s`
+       is, as expanding them again would give the same (C143)."
+      (if (null? ax)
+          (list s)
+          (let ((x (resolve-atom s (car ax))))
+            (cond ((effs-within? (list x) es) (fit-expanded s (cdr ax) e es))
+                  ((effect-meta? x)
+                   "An effect variable of `a` not solved, that `e` does not hold:
+                    nothing more, the least it may be."
+                   (fit-effs (solve s (meta-number (after-prefix x "~")) (effect-row nil)) (cdr ax) e))
+                  ((not (null? (open-atom s x e)))
+                   (tagcase (region-ty (atom-region (car (open-atom s x e))))
+                     (ty-meta (k) (fit-effs (solve s k (region-ty (atom-region x))) (cdr ax) e))
+                     (else other nil)))
+                  ((not (null? (open-row es)))
+                   (tagcase (fresh s)
+                     (res (m u s)
+                       (tagcase m
+                         (ty-meta (j)
+                           (fit-effs (solve s (meta-number (after-prefix (car (open-row es)) "~"))
+                                            (effect-row (list x (string-append "~" (meta-name j)))))
+                                     (cdr ax) e))
+                         (else other nil)))))
+                  (else nil)))))))
 
 (define same-effs (subr kfx (st strings strings) (listof st acyclic))
   (lambda (s a b)

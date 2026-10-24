@@ -24,12 +24,191 @@ pub fn family(f0: Str, f1: bool, f2: Strings) -> &'static Family {
 
 pub type Families = List<&'static Family>;
 
-pub enum Ctx {
-    Ctx(Strings, Tagofs, Strings, Strings, Typeds, Facts, Families, Typeds, Typeds),
+// The program's facts by position (C143), a balanced tree: the facts at
+// each position in the order the list has them (of every file: a search
+// still asks the file), found in a few comparisons, where the program's
+// list took as many as it has facts, at every name the emitter asks of.
+pub enum Fidx {
+    Fempty(),
+    Fnode(&'static Fidx, i64, Facts, &'static Fidx),
 }
 
-pub fn ctx(f0: Strings, f1: Tagofs, f2: Strings, f3: Strings, f4: Typeds, f5: Facts, f6: Families, f7: Typeds, f8: Typeds) -> &'static Ctx {
-    kayak_rt::heap_alloc(Ctx::Ctx(f0, f1, f2, f3, f4, f5, f6, f7, f8))
+pub fn fempty() -> &'static Fidx {
+    kayak_rt::heap_alloc(Fidx::Fempty())
+}
+
+pub fn fnode(f0: &'static Fidx, f1: i64, f2: Facts, f3: &'static Fidx) -> &'static Fidx {
+    kayak_rt::heap_alloc(Fidx::Fnode(f0, f1, f2, f3))
+}
+
+pub enum Fgroup {
+    Fgroup(i64, Facts),
+}
+
+pub fn fgroup(f0: i64, f1: Facts) -> &'static Fgroup {
+    kayak_rt::heap_alloc(Fgroup::Fgroup(f0, f1))
+}
+
+pub type Fgroups = List<&'static Fgroup>;
+
+pub fn fact_pos(f: &'static Fact) -> i64 {
+    let tagcase_ = f;
+    match *tagcase_ {
+        Fact::Fact(ff, fp, fw) => {
+            fp
+        }
+    }
+}
+
+pub fn facts_rev_onto(mut xs: Facts, mut acc: Facts) -> Facts {
+    loop {
+        if null_p(xs) {
+            return acc;
+        } else {
+            (xs, acc) = (cdr(xs), kayak_rt::heap_cons(car(xs), acc));
+            continue;
+        }
+    }
+}
+
+pub fn facts_dropped(mut xs: Facts, mut n: i64) -> Facts {
+    loop {
+        if (null_p(xs) || i64_lt_eq(n, 0i64)) {
+            return xs;
+        } else {
+            (xs, n) = (cdr(xs), i64_minus(n, 1i64));
+            continue;
+        }
+    }
+}
+
+/// `a` and `b`, each by position, merged onto `acc` reversed; of two at
+/// one position, `a`'s first.
+pub fn facts_merged(mut a: Facts, mut b: Facts, mut acc: Facts) -> Facts {
+    loop {
+        if null_p(a) {
+            return facts_rev_onto(acc, b);
+        } else if null_p(b) {
+            return facts_rev_onto(acc, a);
+        } else if i64_lt(fact_pos(car(b)), fact_pos(car(a))) {
+            (b, acc) = (cdr(b), kayak_rt::heap_cons(car(b), acc));
+            continue;
+        } else {
+            (a, acc) = (cdr(a), kayak_rt::heap_cons(car(a), acc));
+            continue;
+        }
+    }
+}
+
+/// The first `n` of `xs` by position, those at one in the order they
+/// were.
+pub fn facts_sorted(xs: Facts, n: i64) -> Facts {
+    if i64_lt_eq(n, 0i64) {
+        nil::<&'static Fact>()
+    } else if i64_eq(n, 1i64) {
+        kayak_rt::heap_cons(car(xs), nil::<&'static Fact>())
+    } else {
+        let half = i64_quotient(n, 2i64);
+        facts_merged(facts_sorted(xs, half), facts_sorted(facts_dropped(xs, half), i64_minus(n, half)), nil::<&'static Fact>())
+    }
+}
+
+pub fn fgroups_rev_onto(mut xs: Fgroups, mut acc: Fgroups) -> Fgroups {
+    loop {
+        if null_p(xs) {
+            return acc;
+        } else {
+            (xs, acc) = (cdr(xs), kayak_rt::heap_cons(car(xs), acc));
+            continue;
+        }
+    }
+}
+
+/// Facts by position grouped by it: `cur` those at `pos` so far,
+/// reversed, and `acc` the groups before, reversed.
+pub fn grouped(mut xs: Facts, mut pos: i64, mut cur: Facts, mut acc: Fgroups) -> Fgroups {
+    loop {
+        if null_p(xs) {
+            return fgroups_rev_onto(if null_p(cur) {
+                acc
+            } else {
+                kayak_rt::heap_cons(fgroup(pos, facts_rev_onto(cur, nil::<&'static Fact>())), acc)
+            }, nil::<&'static Fgroup>());
+        } else if (not(null_p(cur)) && i64_eq(fact_pos(car(xs)), pos)) {
+            (xs, cur) = (cdr(xs), kayak_rt::heap_cons(car(xs), cur));
+            continue;
+        } else {
+            (xs, pos, cur, acc) = (cdr(xs), fact_pos(car(xs)), kayak_rt::heap_cons(car(xs), nil::<&'static Fact>()), if null_p(cur) {
+                acc
+            } else {
+                kayak_rt::heap_cons(fgroup(pos, facts_rev_onto(cur, nil::<&'static Fact>())), acc)
+            });
+            continue;
+        }
+    }
+}
+
+pub fn fgroups_dropped(mut xs: Fgroups, mut n: i64) -> Fgroups {
+    loop {
+        if (null_p(xs) || i64_lt_eq(n, 0i64)) {
+            return xs;
+        } else {
+            (xs, n) = (cdr(xs), i64_minus(n, 1i64));
+            continue;
+        }
+    }
+}
+
+/// The first `n` of `gs`, by position, as a balanced tree.
+pub fn fidx_tree(gs: Fgroups, n: i64) -> &'static Fidx {
+    if i64_lt_eq(n, 0i64) {
+        fempty()
+    } else {
+        let half = i64_quotient(n, 2i64);
+        let rest = fgroups_dropped(gs, half);
+        let tagcase_ = car(rest);
+        match *tagcase_ {
+            Fgroup::Fgroup(p, fs) => {
+                fnode(fidx_tree(gs, half), p, fs, fidx_tree(cdr(rest), i64_minus(i64_minus(n, half), 1i64)))
+            }
+        }
+    }
+}
+
+pub fn fidx_of(fs: Facts) -> &'static Fidx {
+    let gs = grouped(facts_sorted(fs, size(fs)), 0i64, nil::<&'static Fact>(), nil::<&'static Fgroup>());
+    fidx_tree(gs, size(gs))
+}
+
+/// The facts at `pos`, in the order the list has them.
+pub fn fidx_at(mut x: &'static Fidx, mut pos: i64) -> Facts {
+    loop {
+        let tagcase_ = x;
+        match *tagcase_ {
+            Fidx::Fempty() => {
+                return nil::<&'static Fact>();
+            }
+            Fidx::Fnode(l, p, fs, r) => {
+                if i64_eq(pos, p) {
+                    return fs;
+                } else if i64_lt(pos, p) {
+                    x = l;
+                    continue;
+                } else {
+                    x = r;
+                    continue;
+                }
+            }
+        }
+    }
+}
+
+pub enum Ctx {
+    Ctx(Strings, Tagofs, Strings, Strings, Typeds, Facts, &'static Fidx, Families, Typeds, Typeds),
+}
+
+pub fn ctx(f0: Strings, f1: Tagofs, f2: Strings, f3: Strings, f4: Typeds, f5: Facts, f6: &'static Fidx, f7: Families, f8: Typeds, f9: Typeds) -> &'static Ctx {
+    kayak_rt::heap_alloc(Ctx::Ctx(f0, f1, f2, f3, f4, f5, f6, f7, f8, f9))
 }
 
 pub enum Tail {
@@ -100,7 +279,7 @@ pub mod emitter {
     pub fn ctx_effects(c: &'static Ctx) -> Typeds {
         let tagcase_ = c;
         match *tagcase_ {
-            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
                 es
             }
         }
@@ -113,7 +292,7 @@ pub mod emitter {
         (string_eq_p(n, str_lit("%effect-given")) || {
             let tagcase_ = c;
             match *tagcase_ {
-                Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
                     string_member_p(string_append(str_lit("%evar "), n), ls)
                 }
             }
@@ -124,7 +303,7 @@ pub mod emitter {
     pub fn ctx_fact_p(c: &'static Ctx, file: Str, pos: i64, what: Str) -> bool {
         let tagcase_ = c;
         match *tagcase_ {
-            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
                 any_p(lambda1s(move |f: &'static Fact| {
                     let tagcase_ = f;
                     match *tagcase_ {
@@ -132,7 +311,7 @@ pub mod emitter {
                             (i64_eq(fp, pos) && string_eq_p(fw, what) && string_eq_p(ff, file))
                         }
                     }
-                }), fs)
+                }), fidx_at(fx, pos))
             }
         }
     }
@@ -183,8 +362,8 @@ pub mod emitter {
     pub fn facts_at(c: &'static Ctx, e: &'static Sexp) -> Facts {
         let tagcase_ = c;
         match *tagcase_ {
-            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-                facts_at_place(fs, datum_file(e), datum_pos(e))
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
+                facts_at_place(fidx_at(fx, datum_pos(e)), datum_file(e), datum_pos(e))
             }
         }
     }
@@ -209,8 +388,8 @@ pub mod emitter {
     pub fn fact_with(c: &'static Ctx, e: &'static Sexp, prefix: Str) -> Str {
         let tagcase_ = c;
         match *tagcase_ {
-            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-                first_fact(fs, datum_file(e), datum_pos(e), prefix)
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
+                first_fact(fidx_at(fx, datum_pos(e)), datum_file(e), datum_pos(e), prefix)
             }
         }
     }
@@ -255,7 +434,7 @@ pub mod emitter {
     pub fn ctx_datatypes(c: &'static Ctx) -> Strings {
         let tagcase_ = c;
         match *tagcase_ {
-            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
                 ds
             }
         }
@@ -264,7 +443,7 @@ pub mod emitter {
     pub fn ctx_tags(c: &'static Ctx) -> Tagofs {
         let tagcase_ = c;
         match *tagcase_ {
-            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
                 ts
             }
         }
@@ -273,7 +452,7 @@ pub mod emitter {
     pub fn ctx_constants(c: &'static Ctx) -> Strings {
         let tagcase_ = c;
         match *tagcase_ {
-            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
                 ks
             }
         }
@@ -467,7 +646,7 @@ pub mod emitter {
     pub fn find_family_of(c: &'static Ctx, name: Str) -> Families {
         let tagcase_ = c;
         match *tagcase_ {
-            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
                 let found = filter_family(name, ms);
                 found
             }
@@ -511,8 +690,8 @@ pub mod emitter {
                 (forms, c) = (cdr(forms), {
                     let tagcase_ = c;
                     match *tagcase_ {
-                        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-                            ctx(kayak_rt::heap_cons(d, ds), note_tags(cdr(cdr(items(car(forms)))), d, ts), ks, ls, xs, fs, ms, es, mods)
+                        Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
+                            ctx(kayak_rt::heap_cons(d, ds), note_tags(cdr(cdr(items(car(forms)))), d, ts), ks, ls, xs, fs, fx, ms, es, mods)
                         }
                     }
                 });
@@ -558,8 +737,8 @@ pub mod emitter {
                 (forms, c) = (cdr(forms), {
                     let tagcase_ = c;
                     match *tagcase_ {
-                        Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-                            ctx(ds, ts, ks, ls, xs, fs, note_family(qhead, false, note_family(head, false, ms)), es, kayak_rt::heap_cons(typed(string_append(str_lit("%expand "), t), sym(t, str_lit(""), 0i64)), kayak_rt::heap_cons(typed(string_append(str_lit("%expand "), q), sym(q, str_lit(""), 0i64)), kayak_rt::heap_cons(typed(string_append(str_lit("%abbreviation "), t), lst(kayak_rt::heap_cons(head, kayak_rt::heap_cons(third(items(car(forms))), kayak_rt::nil())), str_lit(""), 0i64, 0i64)), kayak_rt::heap_cons(typed(string_append(str_lit("%abbreviation "), q), lst(kayak_rt::heap_cons(qhead, kayak_rt::heap_cons(qualified_types(m, local_types, third(items(car(forms)))), kayak_rt::nil())), str_lit(""), 0i64, 0i64)), mods)))))
+                        Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
+                            ctx(ds, ts, ks, ls, xs, fs, fx, note_family(qhead, false, note_family(head, false, ms)), es, kayak_rt::heap_cons(typed(string_append(str_lit("%expand "), t), sym(t, str_lit(""), 0i64)), kayak_rt::heap_cons(typed(string_append(str_lit("%expand "), q), sym(q, str_lit(""), 0i64)), kayak_rt::heap_cons(typed(string_append(str_lit("%abbreviation "), t), lst(kayak_rt::heap_cons(head, kayak_rt::heap_cons(third(items(car(forms))), kayak_rt::nil())), str_lit(""), 0i64, 0i64)), kayak_rt::heap_cons(typed(string_append(str_lit("%abbreviation "), q), lst(kayak_rt::heap_cons(qhead, kayak_rt::heap_cons(qualified_types(m, local_types, third(items(car(forms)))), kayak_rt::nil())), str_lit(""), 0i64, 0i64)), mods)))))
                         }
                     }
                 });
@@ -579,12 +758,12 @@ pub mod emitter {
     pub fn note(form: &'static Sexp, c: &'static Ctx) -> &'static Ctx {
         let tagcase_ = c;
         match *tagcase_ {
-            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
                 if head_is_p(form, str_lit("define-datatype")) {
                     let d = type_head_name(second(items(form)));
-                    ctx(kayak_rt::heap_cons(d, ds), note_tags(cdr(cdr(items(form))), d, ts), ks, ls, xs, fs, note_family(second(items(form)), true, ms), es, mods)
+                    ctx(kayak_rt::heap_cons(d, ds), note_tags(cdr(cdr(items(form))), d, ts), ks, ls, xs, fs, fx, note_family(second(items(form)), true, ms), es, mods)
                 } else if (head_is_p(form, str_lit("define-type")) && head_is_p(third(items(form)), str_lit("moduleof"))) {
-                    ctx(ds, ts, ks, ls, xs, fs, ms, es, kayak_rt::heap_cons(typed(string_append(str_lit("%moduleof "), sym_name(second(items(form)))), third(items(form))), mods))
+                    ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, kayak_rt::heap_cons(typed(string_append(str_lit("%moduleof "), sym_name(second(items(form)))), third(items(form))), mods))
                 } else if (head_is_p(form, str_lit("define-type")) && head_is_p(third(items(form)), str_lit("select")) && not(null_p(module_body(c, string_append(str_lit("%abbreviation "), selected_name(third(items(form)))))))) {
                     // An abbreviation of a module's family (C89): that family, expanded
                     // where applied, under this name too; no Rust alias.
@@ -596,7 +775,7 @@ pub mod emitter {
                         sym(sym_name(car(items(b))), str_lit(""), 0i64)
                     }), params);
                     let head = lst(kayak_rt::heap_cons(sym(t, str_lit(""), 0i64), params), str_lit(""), 0i64, 0i64);
-                    ctx(ds, ts, ks, ls, xs, fs, note_family(head, false, ms), es, kayak_rt::heap_cons(typed(string_append(str_lit("%expand "), t), sym(t, str_lit(""), 0i64)), kayak_rt::heap_cons(typed(string_append(str_lit("%abbreviation "), t), lst(kayak_rt::heap_cons(head, kayak_rt::heap_cons(lst(kayak_rt::heap_cons(third(items(form)), names), str_lit(""), 0i64, 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64)), mods)))
+                    ctx(ds, ts, ks, ls, xs, fs, fx, note_family(head, false, ms), es, kayak_rt::heap_cons(typed(string_append(str_lit("%expand "), t), sym(t, str_lit(""), 0i64)), kayak_rt::heap_cons(typed(string_append(str_lit("%abbreviation "), t), lst(kayak_rt::heap_cons(head, kayak_rt::heap_cons(lst(kayak_rt::heap_cons(third(items(form)), names), str_lit(""), 0i64, 0i64), kayak_rt::nil())), str_lit(""), 0i64, 0i64)), mods)))
                 } else if (head_is_p(form, str_lit("define-type")) && {
                     let tagcase_ = second(items(form));
                     match *tagcase_ {
@@ -611,25 +790,25 @@ pub mod emitter {
                 }) {
                     // A type abbreviation's body, kept for the typed suffixes (C32), which
                     // compare types as written out.
-                    ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms), es, kayak_rt::heap_cons(typed(string_append(str_lit("%alias "), sym_name(second(items(form)))), third(items(form))), mods))
+                    ctx(ds, ts, ks, ls, xs, fs, fx, note_family(second(items(form)), false, ms), es, kayak_rt::heap_cons(typed(string_append(str_lit("%alias "), sym_name(second(items(form)))), third(items(form))), mods))
                 } else if head_is_p(form, str_lit("define-type")) {
                     // A family abbreviation: its regions Rust lifetimes (C39), as a
                     // generative type's are not. One whose body applies a module's family
                     // is expanded where applied, as that family is (C89); so is one
                     // whose body is a union, a `Value` in Rust, which an alias could not
                     // give its parameters (C119: Fixpt's `entry`).
-                    ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms), es, onto(if (head_is_p(car(items(third(items(form)))), str_lit("select")) || head_is_p(third(items(form)), str_lit("union"))) {
+                    ctx(ds, ts, ks, ls, xs, fs, fx, note_family(second(items(form)), false, ms), es, onto(if (head_is_p(car(items(third(items(form)))), str_lit("select")) || head_is_p(third(items(form)), str_lit("union"))) {
                         the::<Typeds>(kayak_rt::heap_cons(typed(string_append(str_lit("%expand "), type_head_name(second(items(form)))), sym(str_lit(""), str_lit(""), 0i64)), kayak_rt::nil()))
                     } else {
                         nil::<&'static Typed>()
                     }, kayak_rt::heap_cons(typed(string_append(str_lit("%abbreviation "), type_head_name(second(items(form)))), lst(kayak_rt::heap_cons(second(items(form)), kayak_rt::heap_cons(third(items(form)), kayak_rt::nil())), str_lit(""), 0i64, 0i64)), mods)))
                 } else if head_is_p(form, str_lit("define-generative")) {
-                    ctx(ds, ts, ks, ls, xs, fs, note_family(second(items(form)), false, ms), es, mods)
+                    ctx(ds, ts, ks, ls, xs, fs, fx, note_family(second(items(form)), false, ms), es, mods)
                 } else if head_is_p(form, str_lit("define-effect")) {
-                    ctx(ds, ts, ks, ls, xs, fs, ms, kayak_rt::heap_cons(typed(sym_name(second(items(form))), third(items(form))), es), mods)
+                    ctx(ds, ts, ks, ls, xs, fs, fx, ms, kayak_rt::heap_cons(typed(sym_name(second(items(form))), third(items(form))), es), mods)
                 } else if module_def_p(form) {
                     let m = sym_name(second(items(form)));
-                    note_module_datatypes(m, unhidden(module_written(form)), ctx(ds, ts, ks, ls, xs, fs, ms, es, kayak_rt::heap_cons(typed(m, lst(kayak_rt::heap_cons(sym(str_lit("module"), str_lit(""), 0i64), module_written(form)), str_lit(""), 0i64, 0i64)), mods)))
+                    note_module_datatypes(m, unhidden(module_written(form)), ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, kayak_rt::heap_cons(typed(m, lst(kayak_rt::heap_cons(sym(str_lit("module"), str_lit(""), 0i64), module_written(form)), str_lit(""), 0i64, 0i64)), mods)))
                 } else if (head_is_p(form, str_lit("define")) && (i64_eq(size(items(form)), 3i64) || i64_eq(size(items(form)), 4i64)) && not(lambda_form_p(last(items(form)))) && not(any_p(lambda1s(move |x: &'static Typed| {
                     let tagcase_ = x;
                     match *tagcase_ {
@@ -638,7 +817,7 @@ pub mod emitter {
                         }
                     }
                 }), xs))) {
-                    ctx(ds, ts, kayak_rt::heap_cons(sym_name(second(items(form))), ks), ls, xs, fs, ms, es, mods)
+                    ctx(ds, ts, kayak_rt::heap_cons(sym_name(second(items(form))), ks), ls, xs, fs, fx, ms, es, mods)
                 } else {
                     c
                 }
@@ -921,8 +1100,8 @@ pub mod emitter {
     pub fn fact_at_place(c: &'static Ctx, file: Str, pos: i64, prefix: Str) -> Str {
         let tagcase_ = c;
         match *tagcase_ {
-            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-                first_fact(fs, file, pos, prefix)
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
+                first_fact(fidx_at(fx, pos), file, pos, prefix)
             }
         }
     }
@@ -931,7 +1110,7 @@ pub mod emitter {
     pub fn all_facts_at(c: &'static Ctx, file: Str, pos: i64, prefix: Str) -> Strings {
         let tagcase_ = c;
         match *tagcase_ {
-            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
                 concat(map(lambda1s(move |f: &'static Fact| {
                     let tagcase_ = f;
                     match *tagcase_ {
@@ -943,7 +1122,7 @@ pub mod emitter {
                             }
                         }
                     }
-                }), fs))
+                }), fidx_at(fx, pos)))
             }
         }
     }
@@ -2031,7 +2210,7 @@ pub mod emitter {
     pub fn ctx_locals(c: &'static Ctx) -> Strings {
         let tagcase_ = c;
         match *tagcase_ {
-            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
                 ls
             }
         }
@@ -2042,7 +2221,7 @@ pub mod emitter {
     pub fn module_body(c: &'static Ctx, name: Str) -> Sexps {
         let tagcase_ = c;
         match *tagcase_ {
-            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
                 concat(map(lambda1s(move |x: &'static Typed| {
                     let tagcase_ = x;
                     match *tagcase_ {
@@ -2208,7 +2387,7 @@ pub mod emitter {
     pub fn ctx_typed(c: &'static Ctx, name: Str) -> Sexps {
         let tagcase_ = c;
         match *tagcase_ {
-            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
                 map(lambda1s(move |x: &'static Typed| {
                     let tagcase_ = x;
                     match *tagcase_ {
@@ -2229,8 +2408,8 @@ pub mod emitter {
     pub fn with_locals(c: &'static Ctx, names: Strings) -> &'static Ctx {
         let tagcase_ = c;
         match *tagcase_ {
-            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
-                ctx(ds, ts, ks, strings_onto(names, ls), xs, fs, ms, es, mods)
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
+                ctx(ds, ts, ks, strings_onto(names, ls), xs, fs, fx, ms, es, mods)
             }
         }
     }
@@ -2241,14 +2420,14 @@ pub mod emitter {
     pub fn in_heap(c: &'static Ctx) -> &'static Ctx {
         let tagcase_ = c;
         match *tagcase_ {
-            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
                 ctx(ds, ts, ks, concat(map(lambda1s(move |l: Str| {
                     if has_prefix_p(l, str_lit("%letrena ")) {
                         nil::<Str>()
                     } else {
                         the::<Strings>(kayak_rt::heap_cons(l, kayak_rt::nil()))
                     }
-                }), ls)), xs, fs, ms, es, mods)
+                }), ls)), xs, fs, fx, ms, es, mods)
             }
         }
     }
@@ -2382,7 +2561,7 @@ pub mod emitter {
     pub fn all_facts_prefixed(c: &'static Ctx, prefix: Str) -> Strings {
         let tagcase_ = c;
         match *tagcase_ {
-            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
                 concat(map(lambda1s(move |f: &'static Fact| {
                     let tagcase_ = f;
                     match *tagcase_ {
@@ -2402,7 +2581,7 @@ pub mod emitter {
     pub fn uses_blobrefs_p(c: &'static Ctx) -> bool {
         let tagcase_ = c;
         match *tagcase_ {
-            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
                 any_p(lambda1s(move |f: &'static Fact| {
                     let tagcase_ = f;
                     match *tagcase_ {
@@ -2855,7 +3034,7 @@ pub mod emitter {
         let fs = {
             let tagcase_ = c;
             match *tagcase_ {
-                Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+                Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
                     fs
                 }
             }

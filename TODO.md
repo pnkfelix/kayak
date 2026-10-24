@@ -688,10 +688,16 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
   primitives of any number of arguments (`append`, `string`,
   `string=?`, `make-bloblet`, ...), which still take a list.
   `string-text`, a `string-append` for each character.
-- Tier 1's preemption: some 6,500 steps of the scheduler at each, so
-  `--slice 2` of `preempt/allocating.fx` takes 126 s, now
-  `cells-programs.py`'s wait (C142); Fixpt's machine on the same
-  program, twice its time at no slice.
+- Tier 1 at `--slice 2` (C143): a resumed task has a step or two
+  before its next preemption, so each turn of a loop costs some 6,700
+  steps (C142 put that at each preemption; one is some 160). Fixpt's
+  machine runs the same rule; tier 1's step is what costs, its slice's
+  end now asked lazily. Left: `--compiled --slice 2` of
+  `preempt/allocating.fx`, 139 s, gives tier 1 back nearly every cell
+  (21.6 million entries in the short one), the hand-back itself
+  (`hand!`'s copies of the registers) its cost; and fat LTO, 18% more
+  of tier 1, not taken: every release build of the check would be under
+  it (C143).
 
 ## 32. `wcell`, `tword`, `wglobal` out of FX-26 (the user, 2026-10-16; C120)
 

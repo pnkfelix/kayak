@@ -690,10 +690,11 @@
       (begin
         (set fuel take)
         (set reserve (i64- (get reserve) take))
-        (let ((f (preempt-due! (reach?))))
-          (cond ((i64= f v-false) v-false)
-                ((not (limits-ok?)) (begin (quiet-leave!) (take-grace!) v-false))
-                (else f)))))))
+        (let ((w (preempt-wanted!)))
+          (cond ((or (i64= w 0) (and (i64= w 2) (not (reach?)))) v-false)
+                (else
+                 (let ((f (preempt-due!)))
+                   (if (limits-ok?) f (begin (quiet-leave!) (take-grace!) v-false))))))))))
 
 (define preempt-entered! (subr cm (i64) unit)
   (lambda (f)

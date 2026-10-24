@@ -50,6 +50,9 @@
  forwards it (machine.kfx)."
 (define sched-state (ref i64 @c) (new 3))
 
+"Whether there is a state: it is `#f` until made, and stays a vector."
+(define sched? (->* () bool) (lambda () (not (i64= (get sched-state) v-false))))
+
 (define-rec
   (filled! (->* (i64 i64 (listof i64 @c)) i64)
     (lambda (v i xs) (if (null? xs) v (begin (obj-set! v i (car xs)) (filled! v (i64+ i 1) (cdr xs)))))))
@@ -57,7 +60,7 @@
 (define state! (->* () i64)
   (lambda ()
     "The state's vector, made if there is none yet (Fixpt's `state`)."
-    (if (is-kind? (get sched-state) k-vector)
+    (if (sched?)
         (get sched-state)
         (let ((s (filled! (make-bloblet! k-vector 17 0 #t #f) 0
                           (list v-null v-null v-false v-false (fix 0) v-null v-null v-false v-null (fix 0)
@@ -343,8 +346,14 @@
           (st-cons! s-timers (cons! (fix (cond ((i64> t fix-max) fix-max) ((i64< t fix-min) fix-min) (else t))) w)))
       v-unit)))
 
+(define-rec
+  (due-in? (->* (i64 i64) bool)
+    (lambda (l now) (and (is-pair? l) (or (i64<= (fix-val (pair-car (pair-car l))) now) (due-in? (pair-cdr l) now))))))
+
 (define timer-due? (->* () bool)
-  (lambda () (let ((now (clock))) (any-of? (st s-timers) (lambda (e) (i64<= (fix-val (pair-car e)) now))))))
+  (lambda ()
+    "Whether a timer is due; the clock not read if none is set."
+    (let ((ts (st s-timers))) (and (is-pair? ts) (due-in? ts (clock))))))
 
 (define-rec
   (timers-earliest (->* (i64 i64) i64)
@@ -396,7 +405,7 @@
             (else (assq-cdr (pair-cdr l) t))))))
 
 (define group-of (->* (i64) i64)
-  (lambda (t) "The group task `t` is of, or `#f`." (if (is-kind? (get sched-state) k-vector) (assq-cdr (st s-groups) t) v-false)))
+  (lambda (t) "The group task `t` is of, or `#f`." (if (sched?) (assq-cdr (st s-groups) t) v-false)))
 
 (define forget-task! (->* (i64) unit)
   (lambda (t)
@@ -422,31 +431,42 @@
       (begin (st-set! s-waiting (without! ws gone)) (list-of them)))))
 
 "Preemption and failure, for the machine."
+(define wanted-how! (->* () i64)
+  (lambda ()
+    "Whether the scheduler would have the current task preempted here: 0,
+     no; 1, yes; 2, in a task, if the scheduler's prompt is on the
+     machine's stack, which the machine asks only then, as walking its
+     stack costs (`wanted`, its `reachable` called last)."
+    (cond ((or (quiet?) (take-grace!)) 0)
+          ((i64= (get task-now) 0)
+           (if (and (or (is-pair? (st s-front)) (is-pair? (st s-back)) (is-pair? (st s-parked)) (timer-due?))
+                    (i64= (fix-val (st s-running)) 0))
+               1
+               0))
+          ((i64= (st s-tag) v-false) 0)
+          (else 2))))
+
 (define wanted! (->* (bool) bool)
   (lambda (reach)
     "Whether the scheduler would have the current task preempted here; in
      a task, `reach` says whether the scheduler's prompt is on the
      machine's stack (`wanted`)."
-    (cond ((or (quiet?) (take-grace!)) #f)
-          ((i64= (get task-now) 0)
-           (and (or (is-pair? (st s-front)) (is-pair? (st s-back)) (is-pair? (st s-parked)) (timer-due?))
-                (i64= (fix-val (st s-running)) 0)))
-          (else (and (not (i64= (st s-tag) v-false)) reach)))))
+    (let ((w (wanted-how!))) (or (i64= w 1) (and (i64= w 2) reach)))))
 
 (define sched-tag (->* () i64)
-  (lambda () "The scheduler's prompt tag, or `#f`." (if (is-kind? (get sched-state) k-vector) (st s-tag) v-false)))
+  (lambda () "The scheduler's prompt tag, or `#f`." (if (sched?) (st s-tag) v-false)))
 
-(define preempt-due! (->* (bool) i64)
-  (lambda (reach)
-    "At a poll whose slice is spent: the scheduler's `preempt`, for the
-     machine to call there, the task then quiet until it has; or `#f`
-     (`preempt_due_with`)."
-    (if (not (is-kind? (get sched-state) k-vector))
-        v-false
-        (let ((f (st s-preempt)))
-          (if (and (is-kind? f k-closure) (wanted! reach))
-              (begin (quiet-enter!) f)
-              v-false)))))
+(define preempt-wanted! (->* () i64)
+  (lambda ()
+    "At a poll whose slice is spent: as `wanted-how!`, 0 too if there is
+     no scheduler's `preempt` to call (`preempt_due_with`)."
+    (if (and (sched?) (is-kind? (st s-preempt) k-closure)) (wanted-how!) 0)))
+
+(define preempt-due! (->* () i64)
+  (lambda ()
+    "The scheduler's `preempt`, wanted, for the machine to call at the
+     poll, the task then quiet until it has."
+    (begin (quiet-enter!) (st s-preempt))))
 
 (define-rec
   (groups-within (->* ((listof i64 @c)) (listof i64 @c))

@@ -506,10 +506,18 @@ pub fn after_colon(mut cs: List<char>) -> List<char> {
     }
 }
 
+// Each of `region-kinds` with its colon, as an atom begins.
+pub fn region_prefixes() -> Strings {
+    static ONCE: std::sync::OnceLock<Strings> = std::sync::OnceLock::new();
+    once(&ONCE, || {
+        kayak_rt::heap_cons(str_lit("read:"), kayak_rt::heap_cons(str_lit("write:"), kayak_rt::heap_cons(str_lit("alloc:"), kayak_rt::heap_cons(str_lit("goto:"), kayak_rt::heap_cons(str_lit("comefrom:"), kayak_rt::heap_cons(str_lit("send:"), kayak_rt::heap_cons(str_lit("receive:"), kayak_rt::heap_cons(str_lit("init:"), kayak_rt::heap_cons(str_lit("await:"), kayak_rt::nil())))))))))
+    })
+}
+
 pub fn region_atom_p(x: Str) -> bool {
     any_p(lambda1s(move |k: Str| {
-        has_prefix_p(x, string_append(k, str_lit(":")))
-    }), region_kinds())
+        has_prefix_p(x, k)
+    }), region_prefixes())
 }
 
 pub fn atom_kind(x: Str) -> Str {
@@ -3442,9 +3450,13 @@ pub fn has_open_p(s: &'static St, t: &'static Ty) -> bool {
 /// An effect atom, its region an inference variable solved replaced by
 /// the region found.
 pub fn resolve_atom(s: &'static St, x: Str) -> Str {
-    let r = atom_region(x);
-    if (region_atom_p(x) && char_eq_p(string_ref_i64(r, 0i64), '?')) {
-        string_append(atom_kind(x), region_string(s, ty_meta(meta_number(r))))
+    if region_atom_p(x) {
+        let r = atom_region(x);
+        if char_eq_p(string_ref_i64(r, 0i64), '?') {
+            string_append(atom_kind(x), region_string(s, ty_meta(meta_number(r))))
+        } else {
+            x
+        }
     } else {
         x
     }
@@ -3584,58 +3596,60 @@ pub fn close_effs(s: &'static St, es: Strings) -> Strings {
 /// Whether effect `a` is within `e`, an inference variable for a region
 /// in `e` solved for one in `a` if need be, and one for an effect in `e`
 /// grown to hold an atom of `a` (C46): the state, or none.
-pub fn fit_effs(mut s: &'static St, mut a: Strings, mut e: Strings) -> List<&'static St> {
+pub fn fit_effs(s: &'static St, a: Strings, e: Strings) -> List<&'static St> {
+    if null_p(a) {
+        kayak_rt::heap_cons(s, kayak_rt::nil())
+    } else {
+        fit_expanded(s, expand_effs(s, a), e, map(lambda1s(move |y: Str| {
+            resolve_atom(s, y)
+        }), expand_effs(s, e)))
+    }
+}
+
+/// `fit-effs`, `a` and `e` expanded in `s` (`ax`, `es`): kept while `s`
+/// is, as expanding them again would give the same (C143).
+pub fn fit_expanded(mut s: &'static St, mut ax: Strings, mut e: Strings, mut es: Strings) -> List<&'static St> {
     loop {
-        if null_p(a) {
+        if null_p(ax) {
             return kayak_rt::heap_cons(s, kayak_rt::nil());
         } else {
-            let ax = expand_effs(s, a);
-            let es = map(lambda1s(move |y: Str| {
-                resolve_atom(s, y)
-            }), expand_effs(s, e));
-            if null_p(ax) {
-                return kayak_rt::heap_cons(s, kayak_rt::nil());
-            } else {
-                let x = resolve_atom(s, car(ax));
-                if effs_within_p(kayak_rt::heap_cons(x, kayak_rt::nil()), es) {
-                    a = cdr(ax);
-                    continue;
-                } else if effect_meta_p(x) {
-                    // An effect variable of `a` not solved, that `e` does not hold:
-                    // nothing more, the least it may be.
-                    (s, a) = (solve(s, meta_number(after_prefix(x, str_lit("~"))), effect_row(nil::<Str>())), cdr(ax));
-                    continue;
-                } else if not(null_p(open_atom(s, x, e))) {
-                    let tagcase_ = region_ty(atom_region(car(open_atom(s, x, e))));
-                    match *tagcase_ {
-                        Ty::TyMeta(k) => {
-                            (s, a) = (solve(s, k, region_ty(atom_region(x))), cdr(ax));
-                            continue;
-                        }
-                        _ => {
-                            let other = tagcase_;
-                            return nil::<&'static St>();
-                        }
+            let x = resolve_atom(s, car(ax));
+            if effs_within_p(kayak_rt::heap_cons(x, kayak_rt::nil()), es) {
+                ax = cdr(ax);
+                continue;
+            } else if effect_meta_p(x) {
+                // An effect variable of `a` not solved, that `e` does not hold:
+                // nothing more, the least it may be.
+                return fit_effs(solve(s, meta_number(after_prefix(x, str_lit("~"))), effect_row(nil::<Str>())), cdr(ax), e);
+            } else if not(null_p(open_atom(s, x, e))) {
+                let tagcase_ = region_ty(atom_region(car(open_atom(s, x, e))));
+                match *tagcase_ {
+                    Ty::TyMeta(k) => {
+                        return fit_effs(solve(s, k, region_ty(atom_region(x))), cdr(ax), e);
                     }
-                } else if not(null_p(open_row(es))) {
-                    let tagcase_ = fresh(s);
-                    match *tagcase_ {
-                        Res::Res(m, u, s) => {
-                            let tagcase_ = m;
-                            match *tagcase_ {
-                                Ty::TyMeta(j) => {
-                                    return fit_effs(solve(s, meta_number(after_prefix(car(open_row(es)), str_lit("~"))), effect_row(kayak_rt::heap_cons(x, kayak_rt::heap_cons(string_append(str_lit("~"), meta_name(j)), kayak_rt::nil())))), cdr(ax), e);
-                                }
-                                _ => {
-                                    let other = tagcase_;
-                                    return nil::<&'static St>();
-                                }
+                    _ => {
+                        let other = tagcase_;
+                        return nil::<&'static St>();
+                    }
+                }
+            } else if not(null_p(open_row(es))) {
+                let tagcase_ = fresh(s);
+                match *tagcase_ {
+                    Res::Res(m, u, s) => {
+                        let tagcase_ = m;
+                        match *tagcase_ {
+                            Ty::TyMeta(j) => {
+                                return fit_effs(solve(s, meta_number(after_prefix(car(open_row(es)), str_lit("~"))), effect_row(kayak_rt::heap_cons(x, kayak_rt::heap_cons(string_append(str_lit("~"), meta_name(j)), kayak_rt::nil())))), cdr(ax), e);
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                return nil::<&'static St>();
                             }
                         }
                     }
-                } else {
-                    return nil::<&'static St>();
                 }
+            } else {
+                return nil::<&'static St>();
             }
         }
     }

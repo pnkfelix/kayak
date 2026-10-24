@@ -1045,7 +1045,7 @@
       ((i64= n 38)
        (if (str? a) (task-failed! (string-text a) #t) (expected! "a string")))
       ((i64= n 31)
-       (let ((w (and (is-kind? (get sched-state) k-vector) (wanted! #t))))
+       (let ((w (and (sched?) (wanted! #t))))
          (begin (if w (quiet-enter!) #u) (boolean w))))
       ((i64= n 32) (begin (quiet-leave!) v-unit))
       ((i64= n 33) (begin (quiet-enter!) v-unit))

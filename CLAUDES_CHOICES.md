@@ -3939,3 +3939,59 @@ scanning both stacks, so a cost of their product.
   `--slice 2` ways of `preempt/allocating.fx` (126 s and more): some
   6,500 steps of the scheduler's at each preemption, against 20 a loop's
   turn without.
+
+## C143. A slice's end asked lazily; the emitter's facts by position; effects expanded once a state (2026-10-24)
+
+The user: "Keep looking for improvements". With C142 the check's
+waits were the `--slice 2` ways of `preempt/allocating.fx` and, beside
+them, `incremental.py`'s 62 compiles.
+- **C142 corrected**: counted (a run's counters, taken out again), a
+  preemption is some 160 steps, not 6,500: at a slice of 2, a task
+  resumed has a step or two before the next, so a turn of the loop
+  costs some 6,700 steps (40 preemptions), 300 times its 23. Fixpt's
+  machine runs the same rule (a poll each step, a grace after
+  `preempt-done`); what tier 1 paid more was its own work at each
+  slice's end, every second step.
+- **The slice's end** (`poll-due!`): whether the scheduler's prompt is
+  on the return stack, a walk of it, was asked at every one; now only
+  where the answer counts, a task's preemption otherwise wanted, as
+  Fixpt's `wanted` calls `reachable` last (`wanted-how!`,
+  `preempt-wanted!`). `timer-due?` reads the clock only with a timer set,
+  and makes no closure (C43). Whether the scheduler has a state, its
+  vector's header read at each `st`, is now whether `sched-state` is not
+  `#f` (`sched?`): it is that or the vector, which the collector forwards.
+  The short program at a slice of 2: 5.9 s to 2.2 s.
+- **`kayak-rt`'s `once`**, under every global KFX reads: it made the
+  maker an `Option` on the stack and called through `&mut dyn FnMut`
+  even when the value was made, so small procedures (`slot-of`) stayed
+  out of line. Now the value is asked first, inlined, and the making is
+  a cold procedure of its own (`made_first`). Tier 1 some 12% faster;
+  kfx no faster (its time is its own, below).
+- **kfx's facts by position** (`fidx`, emit.kfx): every fact of the
+  program in one list, and the emitter's questions at each name
+  (`fact-with`, `facts-at`, `ctx-fact?`, `fact-at-place`,
+  `all-facts-at`) a search of all of it: a cost of the program's size
+  squared. kfx compiling itself took 2.0 s at `2a6b2af` (11,100 lines),
+  4.3 s now (16,800); `fixpoint.sh`'s note said 0.8 s then, recording.
+  Now a balanced tree of the facts by position, each position's in the
+  list's order, so that the first found is the same; the list kept in
+  `ctx` too, beside it (`fx`), for the questions of the whole program
+  (`module-impls`, `all-facts-prefixed`, ...). A stable merge sort, its
+  merge by an accumulator, as the list may hold some hundred thousand.
+- **Effects fitted** (`fit-effs`, check.kfx): both effects expanded
+  again at each atom of the first, though the state had not changed,
+  and expanding an expanded effect gives it again (no effect variable
+  solved in it, no atom twice, none frozen). Now kept while the state
+  is (`fit-expanded`), expanded again only after a `solve`.
+  `region-atom?` made nine strings at each call; `resolve-atom` the
+  region of an atom that has none.
+- **Measured**, kfx's output byte for byte the same as before on every
+  unit kayak has: itself 4.3 s to 1.9 s, `cells/cells.unit` 13.4 s to
+  1.9 s, `fx26/fx26.unit` 6.2 s to 2.8 s.
+  The check 339 s to 209 s; `incremental.py` ends at 178 s, the
+  cells programs at 193 s (their `--slice 2` ways still the longest).
+- **Not taken**: fat LTO for the workspace's release builds, tier 1 18%
+  faster, but every release build of the check (`cargo test`, clippy,
+  each generated program's) under it; nor `codegen-units = 1` alone,
+  3%. Nor fewer polls at `--compiled --slice 2`, which gives tier 1 back
+  nearly every cell: that is what the way tests.

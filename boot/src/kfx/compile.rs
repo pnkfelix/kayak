@@ -39,7 +39,7 @@ pub fn restrict_checked(checked: &'static Verdict, forms: Sexps) -> &'static Ver
 pub fn compile_named(file: Str, src: Str, loaded: Fileds) -> Str {
     let forms = with_loads(read_all(string_chars(src), file, 1i64), file, loaded);
     let checked = restrict_checked(check_program(forms), forms);
-    let c = emitter::collect(forms, ctx(nil::<Str>(), nil::<&'static Tagof>(), nil::<Str>(), nil::<Str>(), verdict_typeds(checked), verdict_facts(checked), nil::<&'static Family>(), nil::<&'static Typed>(), nil::<&'static Typed>()));
+    let c = emitter::collect(forms, ctx(nil::<Str>(), nil::<&'static Tagof>(), nil::<Str>(), nil::<Str>(), verdict_typeds(checked), verdict_facts(checked), fidx_of(verdict_facts(checked)), nil::<&'static Family>(), nil::<&'static Typed>(), nil::<&'static Typed>()));
     rev_to_string(writing::put_module_impls(c, writing::put_tops(c, forms, writing::put_shapes(c, forms, false, put(header(), nil::<char>())))))
 }
 
@@ -48,7 +48,7 @@ pub fn compile_named(file: Str, src: Str, loaded: Fileds) -> Str {
 pub fn compile_toplevel(file: Str, src: Str, loaded: Fileds) -> Str {
     let forms = with_loads(read_all(string_chars(src), file, 1i64), file, loaded);
     let checked = restrict_checked(check_program(forms), forms);
-    let c = emitter::collect(forms, ctx(nil::<Str>(), nil::<&'static Tagof>(), nil::<Str>(), nil::<Str>(), verdict_typeds(checked), verdict_facts(checked), nil::<&'static Family>(), nil::<&'static Typed>(), nil::<&'static Typed>()));
+    let c = emitter::collect(forms, ctx(nil::<Str>(), nil::<&'static Tagof>(), nil::<Str>(), nil::<Str>(), verdict_typeds(checked), verdict_facts(checked), fidx_of(verdict_facts(checked)), nil::<&'static Family>(), nil::<&'static Typed>(), nil::<&'static Typed>()));
     rev_to_string(writing::put_toplevel(c, forms, writing::put_module_impls(c, writing::put_tops(emitter::with_locals(c, kayak_rt::heap_cons(str_lit("%toplevel"), kayak_rt::nil())), forms, writing::put_shapes(c, forms, true, put(header(), nil::<char>()))))))
 }
 
@@ -104,7 +104,7 @@ pub fn compile_units(ss: Sources) -> Outputs {
         source_forms(s)
     }), ss));
     let checked = restrict_checked(check_program(forms), forms);
-    let c = emitter::collect(forms, ctx(nil::<Str>(), nil::<&'static Tagof>(), nil::<Str>(), nil::<Str>(), verdict_typeds(checked), verdict_facts(checked), nil::<&'static Family>(), nil::<&'static Typed>(), nil::<&'static Typed>()));
+    let c = emitter::collect(forms, ctx(nil::<Str>(), nil::<&'static Tagof>(), nil::<Str>(), nil::<Str>(), verdict_typeds(checked), verdict_facts(checked), fidx_of(verdict_facts(checked)), nil::<&'static Family>(), nil::<&'static Typed>(), nil::<&'static Typed>()));
     let modules = map(lambda1s(move |s: &'static Source| {
         let tagcase_ = s;
         match *tagcase_ {
@@ -189,7 +189,7 @@ pub fn compile_units_memo(ss: Sources, old: Memos) -> &'static Compiled {
     };
     match *tagcase_ {
         CheckedMemo::CheckedMemo(done, found, checks) => {
-            let c = emitter::collect(forms, ctx(nil::<Str>(), nil::<&'static Tagof>(), nil::<Str>(), nil::<Str>(), found, cv_facts(done), nil::<&'static Family>(), nil::<&'static Typed>(), nil::<&'static Typed>()));
+            let c = emitter::collect(forms, ctx(nil::<Str>(), nil::<&'static Tagof>(), nil::<Str>(), nil::<Str>(), found, cv_facts(done), fidx_of(cv_facts(done)), nil::<&'static Family>(), nil::<&'static Typed>(), nil::<&'static Typed>()));
             let tagcase_ = memo_modules(c, cv_facts(done), incremental::ctx_fingerprint(c), old, ss, nil::<&'static Output>(), checks);
             match *tagcase_ {
                 Compiled::Compiled(modules, made) => {

@@ -67,6 +67,12 @@ impl<T> Global<T> {
     pub fn get_or_init(&self, make: impl FnOnce() -> T) -> &T {
         self.0.get_or_init(make)
     }
+
+    /// The value, if made yet.
+    #[inline]
+    pub fn get(&self) -> Option<&T> {
+        self.0.get()
+    }
 }
 
 impl<T> Default for Global<T> {

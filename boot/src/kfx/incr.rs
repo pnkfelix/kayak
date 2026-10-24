@@ -1062,7 +1062,7 @@ pub mod incremental {
     pub fn ctx_fingerprint(c: &'static Ctx) -> i64 {
         let tagcase_ = c;
         match *tagcase_ {
-            Ctx::Ctx(ds, ts, ks, ls, xs, fs, ms, es, mods) => {
+            Ctx::Ctx(ds, ts, ks, ls, xs, fs, fx, ms, es, mods) => {
                 fnv_strings(concat(kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("datatypes"), ds), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("tags"), map(lambda1s(move |t: &'static Tagof| {
                     let tagcase_ = t;
                     match *tagcase_ {

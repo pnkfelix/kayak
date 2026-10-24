@@ -562,7 +562,7 @@
     (define ctx-fingerprint (subr kfx (ctx) i64)
       (lambda (c)
         (tagcase c
-          (ctx (ds ts ks ls xs fs ms es mods)
+          (ctx (ds ts ks ls xs fs fx ms es mods)
             (fnv-strings
               (concat (list (cons "datatypes" ds)
                             (cons "tags" (map (lambda ((t tagof)) (tagcase t (tagof (n d) (string-append n (string-append " " d))))) ts))

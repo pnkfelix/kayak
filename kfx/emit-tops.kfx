@@ -102,7 +102,7 @@
         (lambda (c)
           "Each module given for a module type, `m x`, once."
           (tagcase c
-            (ctx (ds ts ks ls xs fs ms es mods)
+            (ctx (ds ts ks ls xs fs fx ms es mods)
               (reverse-strings
                (concat (map (lambda ((f fact))
                               (tagcase f (fact (ff fp fw) (if (has-prefix? fw "module-impl ") (the strings (list (after-prefix fw "module-impl "))) nil))))
@@ -490,7 +490,7 @@
       (define program-shapes (subr kfx (ctx sexps) strings)
         (lambda (c forms)
           (tagcase c
-            (ctx (ds ts ks ls xs fs ms es mods)
+            (ctx (ds ts ks ls xs fs fx ms es mods)
               (reverse-strings
                (shapes-in-all (onto (map (lambda ((x typed)) (tagcase x (typed (n t) t))) xs)
                                     (concat (map (lambda ((f fact))
@@ -807,7 +807,7 @@
                                            (the sexps (list f))))
                                      written)))
                  (forms (types-once c forms nil))
-                 (outer (tagcase c (ctx (ds ts ks ls xs fs ms es mods)
+                 (outer (tagcase c (ctx (ds ts ks ls xs fs fx ms es mods)
                                      ;; An included module's datatypes are this one's by their
                                      ;; names, references as every datatype is (C116: Fixpt's
                                      ;; `convention.fx`, its types included hidden).
@@ -843,7 +843,7 @@
                                                                    nil))
                                                              forms))
                                                 (without ks (item-values forms)))
-                                          ls xs fs ms es mods)))))
+                                          ls xs fs fx ms es mods)))))
             (mparts (with-locals (collect forms outer) (list (string-append "%in " m))) forms))))
 
       (put-module-around (subr kfx (ctx string chars chars) chars)

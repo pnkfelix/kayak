@@ -19,7 +19,7 @@
     "The same, its messages naming `file`; the files it loads, `loaded`."
     (let* ((forms (with-loads (read-all (string-chars src) file 1) file loaded))
            (checked (restrict-checked (check-program forms) forms))
-           (c (with emitter (collect forms (ctx nil nil nil nil (verdict-typeds checked) (verdict-facts checked) nil nil nil)))))
+           (c (with emitter (collect forms (ctx nil nil nil nil (verdict-typeds checked) (verdict-facts checked) (fidx-of (verdict-facts checked)) nil nil nil)))))
       (rev->string (with writing (put-module-impls c (with writing (put-tops c forms (with writing (put-shapes c forms #f (put header nil)))))))))))
 
 (define compile-toplevel (subr kfx (string string fileds) string)
@@ -28,7 +28,7 @@
      `kfx_toplevel`, which writes their values (emit.kfx)."
     (let* ((forms (with-loads (read-all (string-chars src) file 1) file loaded))
            (checked (restrict-checked (check-program forms) forms))
-           (c (with emitter (collect forms (ctx nil nil nil nil (verdict-typeds checked) (verdict-facts checked) nil nil nil)))))
+           (c (with emitter (collect forms (ctx nil nil nil nil (verdict-typeds checked) (verdict-facts checked) (fidx-of (verdict-facts checked)) nil nil nil)))))
       (rev->string (with writing (put-toplevel c forms (with writing (put-module-impls c (with writing (put-tops (with emitter (with-locals c (list "%toplevel"))) forms (with writing (put-shapes c forms #t (put header nil)))))))))))))
 
 (define compile (subr kfx (string) string)
@@ -72,7 +72,7 @@
      The whole program is checked, and each file written as a module."
     (let* ((forms (concat (map (lambda ((s source)) (source-forms s)) ss)))
            (checked (restrict-checked (check-program forms) forms))
-           (c (with emitter (collect forms (ctx nil nil nil nil (verdict-typeds checked) (verdict-facts checked) nil nil nil))))
+           (c (with emitter (collect forms (ctx nil nil nil nil (verdict-typeds checked) (verdict-facts checked) (fidx-of (verdict-facts checked)) nil nil nil))))
            (modules (map (lambda ((s source))
                            (tagcase s
                              (source (name text)
@@ -121,7 +121,7 @@
            (texts (concat (map source-texts ss))))
       (tagcase (let ((c (with incremental (check-program-memo forms texts old)))) (begin (with restrictions (restrict forms)) c))
         (checked-memo (done found checks)
-          (let ((c (with emitter (collect forms (ctx nil nil nil nil found (cv-facts done) nil nil nil)))))
+          (let ((c (with emitter (collect forms (ctx nil nil nil nil found (cv-facts done) (fidx-of (cv-facts done)) nil nil nil)))))
             (tagcase (memo-modules c (cv-facts done) (with incremental (ctx-fingerprint c)) old ss nil checks)
               (compiled (modules made)
                 (compiled (onto modules
