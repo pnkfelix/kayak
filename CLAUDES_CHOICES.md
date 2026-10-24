@@ -4172,3 +4172,17 @@ as did those of a list the heap's (`list-copy`, `list->vector`,
 - **Left**: `list->bytevector` and `string->utf8`, of lists still;
   `string-text`, a string of the heap's as KFX's, which only a failure's
   message and the value shown use.
+
+## C151. UTF-8, `list->bytevector`, `string-text` by index (2026-10-24)
+
+The last of C150's "left": `string->utf8` and `utf8->string` went
+through lists of code points and of bytes, the runtime's own;
+`list->bytevector` through a list of the runtime's of the heap's, and a
+`letrec` closure made at each call; `string-text`, a string of the
+heap's as KFX's (a failure's message, the value shown), made a KFX
+string again for each character. Now each counts first (bytes, code
+points), makes its result, and writes it by index; `list->bytevector`
+walks the heap's list; `string-text` makes its string once, of a list of
+its characters. Six list helpers no longer used, gone. A string of one,
+two, three and four byte code points, to UTF-8 and back: 11051, as
+Fixpt.

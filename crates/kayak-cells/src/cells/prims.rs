@@ -988,14 +988,6 @@ pub fn pargs_heap_list(mut i: i64, mut acc: i64) -> i64 {
     }
 }
 
-pub fn list_items(v: i64) -> List<i64> {
-    if is_pair_p(v) {
-        kayak_rt::heap_cons(pair_car(v), list_items(pair_cdr(v)))
-    } else {
-        nil::<i64>()
-    }
-}
-
 pub fn onto_list(xs: List<i64>, tail: i64) -> i64 {
     if null_p(xs) {
         tail
@@ -1104,44 +1096,6 @@ pub fn str_ref(v: i64, i: i64) -> i64 {
     } else {
         i64_and(i64_shr(w, int_lit(32)), 4294967295i64)
     }
-}
-
-pub fn points_from(v: i64, i: i64, n: i64) -> List<i64> {
-    if i64_gt_eq(i, n) {
-        nil::<i64>()
-    } else {
-        kayak_rt::heap_cons(str_ref(v, i), points_from(v, i64_plus(i, 1i64), n))
-    }
-}
-
-pub fn points_of(v: i64) -> List<i64> {
-    points_from(v, 0i64, str_length(v))
-}
-
-pub fn points_written_x(mut p: i64, mut i: i64, mut xs: List<i64>) -> () {
-    loop {
-        if null_p(xs) {
-            return ();
-        } else {
-            let at = i64_plus(p, i64_plus(1i64, i64_quotient(i, 2i64)));
-            word_set_x(at, i64_or(word_at(at), if i64_eq(i64_remainder(i, 2i64), 0i64) {
-                car(xs)
-            } else {
-                i64_shl(car(xs), int_lit(32))
-            }));
-            (i, xs) = (i64_plus(i, 1i64), cdr(xs));
-            continue;
-        }
-    }
-}
-
-/// A string of code points `xs` (Fixpt's `string_from_points`).
-pub fn string_of_points_x(xs: List<i64>) -> i64 {
-    let n = args_count(xs, 0i64);
-    let v = make_bloblet_x(k_string(), 0i64, i64_star(8i64, i64_plus(1i64, i64_quotient(i64_plus(n, 1i64), 2i64))), false, false);
-    word_set_x(address(v), n);
-    points_written_x(address(v), 0i64, xs);
-    v
 }
 
 /// A string of `n` code points, each 0, to be written (`point-set!`).
@@ -1353,18 +1307,6 @@ pub fn fields_max() -> i64 {
 
 pub fn bytes_max() -> i64 {
     4294967295i64
-}
-
-pub fn fields_from_x(mut b: i64, mut k: i64, mut xs: List<i64>) -> () {
-    loop {
-        if null_p(xs) {
-            return ();
-        } else {
-            slot_set_x(b, k, car(xs));
-            (k, xs) = (i64_plus(k, 1i64), cdr(xs));
-            continue;
-        }
-    }
 }
 
 pub fn fields_filled_x(mut b: i64, mut k: i64, mut last: i64, mut x: i64) -> () {
@@ -2206,67 +2148,138 @@ pub fn utf8_valid_up_to(mut b: i64, mut i: i64) -> i64 {
     }
 }
 
-pub fn utf8_points(b: i64, i: i64, n: i64) -> List<i64> {
-    if i64_gt_eq(i, n) {
-        nil::<i64>()
+/// How many bytes follow a lead byte `x`.
+pub fn utf8_width(x: i64) -> i64 {
+    if i64_lt(x, 128i64) {
+        0i64
+    } else if i64_lt(x, 224i64) {
+        1i64
+    } else if i64_lt(x, 240i64) {
+        2i64
     } else {
-        let x = bv_ref(b, i);
-        let k = the::<i64>(if i64_lt(x, 128i64) {
-            0i64
-        } else if i64_lt(x, 224i64) {
-            1i64
-        } else if i64_lt(x, 240i64) {
-            2i64
-        } else {
-            3i64
-        });
-        let c = if i64_eq(k, 0i64) {
-            x
-        } else if i64_eq(k, 1i64) {
-            i64_or(i64_shl(i64_and(x, 31i64), int_lit(6)), i64_and(bv_ref(b, i64_plus(i, 1i64)), 63i64))
-        } else if i64_eq(k, 2i64) {
-            i64_or(i64_shl(i64_and(x, 15i64), int_lit(12)), i64_or(i64_shl(i64_and(bv_ref(b, i64_plus(i, 1i64)), 63i64), int_lit(6)), i64_and(bv_ref(b, i64_plus(i, 2i64)), 63i64)))
-        } else {
-            i64_or(i64_shl(i64_and(x, 7i64), int_lit(18)), i64_or(i64_shl(i64_and(bv_ref(b, i64_plus(i, 1i64)), 63i64), int_lit(12)), i64_or(i64_shl(i64_and(bv_ref(b, i64_plus(i, 2i64)), 63i64), int_lit(6)), i64_and(bv_ref(b, i64_plus(i, 3i64)), 63i64))))
-        };
-        kayak_rt::heap_cons(c, utf8_points(b, i64_plus(i, i64_plus(k, 1i64)), n))
+        3i64
     }
 }
 
-pub fn utf8_of(cs: List<i64>) -> List<i64> {
-    if null_p(cs) {
-        nil::<i64>()
+/// The code point of the `k + 1` bytes from `i` of bytevector `b`.
+pub fn utf8_point(b: i64, i: i64, k: i64) -> i64 {
+    let x = bv_ref(b, i);
+    if i64_eq(k, 0i64) {
+        x
+    } else if i64_eq(k, 1i64) {
+        i64_or(i64_shl(i64_and(x, 31i64), int_lit(6)), i64_and(bv_ref(b, i64_plus(i, 1i64)), 63i64))
+    } else if i64_eq(k, 2i64) {
+        i64_or(i64_shl(i64_and(x, 15i64), int_lit(12)), i64_or(i64_shl(i64_and(bv_ref(b, i64_plus(i, 1i64)), 63i64), int_lit(6)), i64_and(bv_ref(b, i64_plus(i, 2i64)), 63i64)))
     } else {
-        let (c, rest) = (car(cs), utf8_of(cdr(cs)));
-        if i64_lt(c, 128i64) {
-            kayak_rt::heap_cons(c, rest)
-        } else if i64_lt(c, 2048i64) {
-            kayak_rt::heap_cons(i64_or(192i64, i64_shr(c, int_lit(6))), kayak_rt::heap_cons(i64_or(128i64, i64_and(c, 63i64)), rest))
-        } else if i64_lt(c, 65536i64) {
-            kayak_rt::heap_cons(i64_or(224i64, i64_shr(c, int_lit(12))), kayak_rt::heap_cons(i64_or(128i64, i64_and(i64_shr(c, int_lit(6)), 63i64)), kayak_rt::heap_cons(i64_or(128i64, i64_and(c, 63i64)), rest)))
-        } else {
-            kayak_rt::heap_cons(i64_or(240i64, i64_shr(c, int_lit(18))), kayak_rt::heap_cons(i64_or(128i64, i64_and(i64_shr(c, int_lit(12)), 63i64)), kayak_rt::heap_cons(i64_or(128i64, i64_and(i64_shr(c, int_lit(6)), 63i64)), kayak_rt::heap_cons(i64_or(128i64, i64_and(c, 63i64)), rest))))
-        }
+        i64_or(i64_shl(i64_and(x, 7i64), int_lit(18)), i64_or(i64_shl(i64_and(bv_ref(b, i64_plus(i, 1i64)), 63i64), int_lit(12)), i64_or(i64_shl(i64_and(bv_ref(b, i64_plus(i, 2i64)), 63i64), int_lit(6)), i64_and(bv_ref(b, i64_plus(i, 3i64)), 63i64))))
     }
 }
 
-pub fn bv_of_list_x(mut b: i64, mut i: i64, mut xs: List<i64>) -> i64 {
+// UTF-8, as strings and bytevectors, by index (C151): no list of the
+// runtime's made of the code points or bytes, as none is let go (C43).
+/// How many code points the valid bytes from `i` to `n` of `b` are.
+pub fn utf8_count(mut b: i64, mut i: i64, mut n: i64, mut k: i64) -> i64 {
     loop {
-        if null_p(xs) {
-            return b;
+        if i64_gt_eq(i, n) {
+            return k;
         } else {
-            bv_set_x(b, i, car(xs));
-            (i, xs) = (i64_plus(i, 1i64), cdr(xs));
+            (i, k) = (i64_plus(i, i64_plus(1i64, utf8_width(bv_ref(b, i)))), i64_plus(k, 1i64));
             continue;
         }
     }
 }
 
-pub fn map_fix_val(xs: List<i64>) -> List<i64> {
-    if null_p(xs) {
-        nil::<i64>()
+/// Code point `j` on of string `v`, those of bytes `i` on of `b`.
+pub fn utf8_decoded_x(mut v: i64, mut j: i64, mut b: i64, mut i: i64) -> () {
+    loop {
+        if i64_gt_eq(j, str_length(v)) {
+            return ();
+        } else {
+            let k = utf8_width(bv_ref(b, i));
+            point_set_x(v, j, utf8_point(b, i, k));
+            (j, i) = (i64_plus(j, 1i64), i64_plus(i, i64_plus(k, 1i64)));
+            continue;
+        }
+    }
+}
+
+/// How many bytes code point `c` is in UTF-8.
+pub fn utf8_bytes(c: i64) -> i64 {
+    if i64_lt(c, 128i64) {
+        1i64
+    } else if i64_lt(c, 2048i64) {
+        2i64
+    } else if i64_lt(c, 65536i64) {
+        3i64
     } else {
-        kayak_rt::heap_cons(fix_val(car(xs)), map_fix_val(cdr(xs)))
+        4i64
+    }
+}
+
+pub fn utf8_length(mut s: i64, mut i: i64, mut n: i64) -> i64 {
+    loop {
+        if i64_gt_eq(i, str_length(s)) {
+            return n;
+        } else {
+            (i, n) = (i64_plus(i, 1i64), i64_plus(n, utf8_bytes(str_ref(s, i))));
+            continue;
+        }
+    }
+}
+
+/// Byte `j` on of `b`, code points `i` on of string `s`, in UTF-8.
+pub fn utf8_encoded_x(mut b: i64, mut j: i64, mut s: i64, mut i: i64) -> () {
+    loop {
+        if i64_gt_eq(i, str_length(s)) {
+            return ();
+        } else {
+            let c = str_ref(s, i);
+            if i64_lt(c, 128i64) {
+                bv_set_x(b, j, c)
+            } else if i64_lt(c, 2048i64) {
+                bv_set_x(b, j, i64_or(192i64, i64_shr(c, int_lit(6))));
+                bv_set_x(b, i64_plus(j, 1i64), i64_or(128i64, i64_and(c, 63i64)))
+            } else if i64_lt(c, 65536i64) {
+                bv_set_x(b, j, i64_or(224i64, i64_shr(c, int_lit(12))));
+                bv_set_x(b, i64_plus(j, 1i64), i64_or(128i64, i64_and(i64_shr(c, int_lit(6)), 63i64)));
+                bv_set_x(b, i64_plus(j, 2i64), i64_or(128i64, i64_and(c, 63i64)))
+            } else {
+                bv_set_x(b, j, i64_or(240i64, i64_shr(c, int_lit(18))));
+                bv_set_x(b, i64_plus(j, 1i64), i64_or(128i64, i64_and(i64_shr(c, int_lit(12)), 63i64)));
+                bv_set_x(b, i64_plus(j, 2i64), i64_or(128i64, i64_and(i64_shr(c, int_lit(6)), 63i64)));
+                bv_set_x(b, i64_plus(j, 3i64), i64_or(128i64, i64_and(c, 63i64)))
+            };
+            (j, i) = (i64_plus(j, utf8_bytes(c)), i64_plus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+/// Why list `l` is not one of bytes, or "".
+pub fn not_bytes(mut l: i64) -> Str {
+    loop {
+        if not(is_pair_p(l)) {
+            return str_lit("");
+        } else if not(is_fixnum_p(pair_car(l))) {
+            return string_append(str_lit("expected "), machine_word());
+        } else if (i64_lt(fix_val(pair_car(l)), 0i64) || i64_gt(fix_val(pair_car(l)), 255i64)) {
+            return str_lit("byte out of range");
+        } else {
+            l = pair_cdr(l);
+            continue;
+        }
+    }
+}
+
+pub fn bytes_of_list_x(mut b: i64, mut i: i64, mut l: i64) -> i64 {
+    loop {
+        if is_pair_p(l) {
+            bv_set_x(b, i, fix_val(pair_car(l)));
+            (i, l) = (i64_plus(i, 1i64), pair_cdr(l));
+            continue;
+        } else {
+            return b;
+        }
     }
 }
 
@@ -3446,8 +3459,9 @@ pub fn prim_apply_x(p: i64) -> i64 {
         }
     } else if i64_eq(op, o_string_utf8()) {
         if str_p(a) {
-            let bs = utf8_of(points_of(a));
-            bv_of_list_x(make_bv_x(args_count(bs, 0i64)), 0i64, bs)
+            let b = make_bv_x(utf8_length(a, 0i64, 0i64));
+            utf8_encoded_x(b, 0i64, a, 0i64);
+            b
         } else {
             expected_x(str_lit("a string"))
         }
@@ -3457,7 +3471,11 @@ pub fn prim_apply_x(p: i64) -> i64 {
         } else {
             let k = utf8_valid_up_to(a, 0i64);
             if i64_eq(k, bv_length(a)) {
-                fx26_sum_x(str_lit("text"), string_of_points_x(utf8_points(a, 0i64, k)))
+                fx26_sum_x(str_lit("text"), {
+                    let v = string_made_x(utf8_count(a, 0i64, k, 0i64));
+                    utf8_decoded_x(v, 0i64, a, 0i64);
+                    v
+                })
             } else {
                 fx26_sum_x(str_lit("bad"), fix(k))
             }
@@ -3465,29 +3483,10 @@ pub fn prim_apply_x(p: i64) -> i64 {
     } else if i64_eq(op, o_bytevector_of()) {
         if i64_lt(proper_length(a), 0i64) {
             expected_x(str_lit("a list"))
+        } else if not(string_eq_p(not_bytes(a), str_lit(""))) {
+            fail_x(not_bytes(a))
         } else {
-            let bad__knot = knot::<&'static dyn Fn(List<i64>) -> Str>();
-            let bad = lambda1(move |mut xs: List<i64>| {
-                loop {
-                    if null_p(xs) {
-                        return str_lit("");
-                    } else if not(is_fixnum_p(car(xs))) {
-                        return string_append(str_lit("expected "), machine_word());
-                    } else if (i64_lt(fix_val(car(xs)), 0i64) || i64_gt(fix_val(car(xs)), 255i64)) {
-                        return str_lit("byte out of range");
-                    } else {
-                        xs = cdr(xs);
-                        continue;
-                    }
-                }
-            });
-            bad__knot.set(bad);
-            let why = bad(list_items(a));
-            if string_eq_p(why, str_lit("")) {
-                bv_of_list_x(make_bv_x(proper_length(a)), 0i64, map_fix_val(list_items(a)))
-            } else {
-                fail_x(why)
-            }
+            bytes_of_list_x(make_bv_x(proper_length(a)), 0i64, a)
         }
     } else if i64_eq(op, o_unit_cell()) {
         symbol_x(str_lit("#u"))

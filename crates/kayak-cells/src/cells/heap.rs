@@ -425,29 +425,29 @@ pub fn make_string_x(s: Str) -> i64 {
     v
 }
 
-/// A string's text, as KFX's.
-pub fn string_text(v: i64) -> Str {
-    let p = address(v);
-    let n = word_at(p);
-    let text__knot = knot::<&'static dyn Fn(i64, Str) -> Str>();
-    let text = lambda2(move |mut i: i64, mut acc: Str| {
-        loop {
-            if i64_gt_eq(i, n) {
-                return acc;
+/// String `v`'s characters before the `i`th, onto `acc`.
+pub fn text_chars(mut v: i64, mut i: i64, mut acc: Chars) -> Chars {
+    loop {
+        if i64_lt_eq(i, 0i64) {
+            return acc;
+        } else {
+            let j = i64_minus(i, 1i64);
+            let w = word_at(i64_plus(address(v), i64_plus(1i64, i64_quotient(j, 2i64))));
+            let cp = if i64_eq(i64_remainder(j, 2i64), 0i64) {
+                i64_and(w, 4294967295i64)
             } else {
-                let w = word_at(i64_plus(p, i64_plus(1i64, i64_quotient(i, 2i64))));
-                let cp = if i64_eq(i64_remainder(i, 2i64), 0i64) {
-                    i64_and(w, 4294967295i64)
-                } else {
-                    i64_and(i64_shr(w, int_lit(32)), 4294967295i64)
-                };
-                (i, acc) = (i64_plus(i, 1i64), string_append(acc, char_to_string(i64_to_char(cp))));
-                continue;
-            }
+                i64_and(i64_shr(w, int_lit(32)), 4294967295i64)
+            };
+            (i, acc) = (j, kayak_rt::heap_cons(i64_to_char(cp), acc));
+            continue;
         }
-    });
-    text__knot.set(text);
-    text(0i64, str_lit(""))
+    }
+}
+
+/// A string's text, as KFX's: made once, of its characters (C151), not a
+/// string made again for each.
+pub fn string_text(v: i64) -> Str {
+    list_to_string(text_chars(v, word_at(address(v)), nil::<char>()))
 }
 
 // Symbols, interned: an object of its name, its hash and its global slot,

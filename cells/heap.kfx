@@ -224,18 +224,22 @@
            (p (address v)))
       (begin (word-set! p n) (points-filled! s p 0 n) v))))
 
+(define-rec
+  (text-chars (subr cm (i64 i64 chars) chars)
+    (lambda (v i acc)
+      "String `v`'s characters before the `i`th, onto `acc`."
+      (if (i64<= i 0)
+          acc
+          (let* ((j (i64- i 1))
+                 (w (word-at (i64+ (address v) (i64+ 1 (i64-quotient j 2)))))
+                 (cp (if (i64= (i64-remainder j 2) 0) (i64-and w 4294967295) (i64-and (i64-shr w 32) 4294967295))))
+            (text-chars v j (cons (i64->char cp) acc)))))))
+
 (define string-text (subr cm (i64) string)
   (lambda (v)
-    "A string's text, as KFX's."
-    (let* ((p (address v)) (n (word-at p)))
-      (letrec ((text (subr cm (i64 string) string)
-                 (lambda (i acc)
-                   (if (i64>= i n)
-                       acc
-                       (let* ((w (word-at (i64+ p (i64+ 1 (i64-quotient i 2)))))
-                              (cp (if (i64= (i64-remainder i 2) 0) (i64-and w 4294967295) (i64-and (i64-shr w 32) 4294967295))))
-                         (text (i64+ i 1) (string-append acc (char->string (i64->char cp)))))))))
-        (text 0 "")))))
+    "A string's text, as KFX's: made once, of its characters (C151), not a
+     string made again for each."
+    (list->string (text-chars v (word-at (address v)) nil))))
 
 "Symbols, interned: an object of its name, its hash and its global slot,
  in `alloc`'s order (Fixpt's `intern`), one for each name. Tier 1 keeps

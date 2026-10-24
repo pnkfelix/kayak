@@ -371,10 +371,6 @@
       "The arguments up to `i`, consed onto `acc`, a list of the heap's."
       (if (i64<= i 0) acc (pargs-heap-list (i64- i 1) (cons! (flatarray-ref-i64 (get pargs) (i64- i 1)) acc))))))
 (define-rec
-  (list-items (subr cm (i64) (listof i64 @c))
-    (lambda (v) (if (is-pair? v) (cons (pair-car v) (list-items (pair-cdr v))) nil))))
-
-(define-rec
   (onto-list (subr cm ((listof i64 @c) i64) i64)
     (lambda (xs tail) (if (null? xs) tail (cons! (car xs) (onto-list (cdr xs) tail))))))
 
@@ -427,28 +423,6 @@
   (lambda (v i)
     (let ((w (word-at (i64+ (address v) (i64+ 1 (i64-quotient i 2))))))
       (if (i64= (i64-remainder i 2) 0) (i64-and w 4294967295) (i64-and (i64-shr w 32) 4294967295)))))
-
-(define-rec
-  (points-from (subr cm (i64 i64 i64) (listof i64 @c))
-    (lambda (v i n) (if (i64>= i n) nil (cons (str-ref v i) (points-from v (i64+ i 1) n))))))
-(define points-of (subr cm (i64) (listof i64 @c)) (lambda (v) (points-from v 0 (str-length v))))
-
-(define-rec
-  (points-written! (subr cm (i64 i64 (listof i64 @c)) unit)
-    (lambda (p i xs)
-      (if (null? xs)
-          #u
-          (let ((at (i64+ p (i64+ 1 (i64-quotient i 2)))))
-            (begin
-              (word-set! at (i64-or (word-at at) (if (i64= (i64-remainder i 2) 0) (car xs) (i64-shl (car xs) 32))))
-              (points-written! p (i64+ i 1) (cdr xs))))))))
-
-(define string-of-points! (subr cm ((listof i64 @c)) i64)
-  (lambda (xs)
-    "A string of code points `xs` (Fixpt's `string_from_points`)."
-    (let* ((n (args-count xs 0))
-           (v (make-bloblet! k-string 0 (i64* 8 (i64+ 1 (i64-quotient (i64+ n 1) 2))) #f #f)))
-      (begin (word-set! (address v) n) (points-written! (address v) 0 xs) v))))
 
 (define string-made! (subr cm (i64) i64)
   (lambda (n)
@@ -545,10 +519,6 @@
  which tier 1 does not make yet."
 (define fields-max i64 262143)
 (define bytes-max i64 4294967295)
-
-(define-rec
-  (fields-from! (subr cm (i64 i64 (listof i64 @c)) unit)
-    (lambda (b k xs) (if (null? xs) #u (begin (slot-set! b k (car xs)) (fields-from! b (i64+ k 1) (cdr xs)))))))
 
 (define-rec
   (fields-filled! (subr cm (i64 i64 i64 i64) unit)
@@ -969,37 +939,71 @@
             (if (and (i64>= k 0) (or (i64= k 0) second-ok) (cont-ok? b (i64+ i 1) k))
                 (utf8-valid-up-to b (i64+ i (i64+ k 1)))
                 i))))))
+(define utf8-width (subr cm (i64) i64)
+  (lambda (x) "How many bytes follow a lead byte `x`." (cond ((i64< x 128) 0) ((i64< x 224) 1) ((i64< x 240) 2) (else 3))))
+
+(define utf8-point (subr cm (i64 i64 i64) i64)
+  (lambda (b i k)
+    "The code point of the `k + 1` bytes from `i` of bytevector `b`."
+    (let ((x (bv-ref b i)))
+      (cond ((i64= k 0) x)
+            ((i64= k 1) (i64-or (i64-shl (i64-and x 31) 6) (i64-and (bv-ref b (i64+ i 1)) 63)))
+            ((i64= k 2) (i64-or (i64-shl (i64-and x 15) 12) (i64-or (i64-shl (i64-and (bv-ref b (i64+ i 1)) 63) 6) (i64-and (bv-ref b (i64+ i 2)) 63))))
+            (else (i64-or (i64-shl (i64-and x 7) 18) (i64-or (i64-shl (i64-and (bv-ref b (i64+ i 1)) 63) 12)
+                           (i64-or (i64-shl (i64-and (bv-ref b (i64+ i 2)) 63) 6) (i64-and (bv-ref b (i64+ i 3)) 63)))))))))
+
+"UTF-8, as strings and bytevectors, by index (C151): no list of the
+ runtime's made of the code points or bytes, as none is let go (C43)."
 (define-rec
-  (utf8-points (subr cm (i64 i64 i64) (listof i64 @c))
-    (lambda (b i n)
-      (if (i64>= i n)
-          nil
-          (let* ((x (bv-ref b i))
-                 (k (the i64 (cond ((i64< x 128) 0) ((i64< x 224) 1) ((i64< x 240) 2) (else 3))))
-                 (c (cond ((i64= k 0) x)
-                          ((i64= k 1) (i64-or (i64-shl (i64-and x 31) 6) (i64-and (bv-ref b (i64+ i 1)) 63)))
-                          ((i64= k 2) (i64-or (i64-shl (i64-and x 15) 12) (i64-or (i64-shl (i64-and (bv-ref b (i64+ i 1)) 63) 6) (i64-and (bv-ref b (i64+ i 2)) 63))))
-                          (else (i64-or (i64-shl (i64-and x 7) 18) (i64-or (i64-shl (i64-and (bv-ref b (i64+ i 1)) 63) 12)
-                                         (i64-or (i64-shl (i64-and (bv-ref b (i64+ i 2)) 63) 6) (i64-and (bv-ref b (i64+ i 3)) 63))))))))
-            (cons c (utf8-points b (i64+ i (i64+ k 1)) n)))))))
-(define-rec
-  (utf8-of (subr cm ((listof i64 @c)) (listof i64 @c))
-    (lambda (cs)
-      (if (null? cs)
-          nil
-          (let ((c (car cs)) (rest (utf8-of (cdr cs))))
-            (cond ((i64< c 128) (cons c rest))
-                  ((i64< c 2048) (cons (i64-or 192 (i64-shr c 6)) (cons (i64-or 128 (i64-and c 63)) rest)))
-                  ((i64< c 65536) (cons (i64-or 224 (i64-shr c 12)) (cons (i64-or 128 (i64-and (i64-shr c 6) 63)) (cons (i64-or 128 (i64-and c 63)) rest))))
-                  (else (cons (i64-or 240 (i64-shr c 18)) (cons (i64-or 128 (i64-and (i64-shr c 12) 63))
-                                (cons (i64-or 128 (i64-and (i64-shr c 6) 63)) (cons (i64-or 128 (i64-and c 63)) rest)))))))))))
-(define-rec
-  (bv-of-list! (subr cm (i64 i64 (listof i64 @c)) i64)
-    (lambda (b i xs) (if (null? xs) b (begin (bv-set! b i (car xs)) (bv-of-list! b (i64+ i 1) (cdr xs)))))))
+  (utf8-count (subr cm (i64 i64 i64 i64) i64)
+    (lambda (b i n k) "How many code points the valid bytes from `i` to `n` of `b` are." (if (i64>= i n) k (utf8-count b (i64+ i (i64+ 1 (utf8-width (bv-ref b i)))) n (i64+ k 1))))))
 
 (define-rec
-  (map-fix-val (subr cm ((listof i64 @c)) (listof i64 @c))
-    (lambda (xs) (if (null? xs) nil (cons (fix-val (car xs)) (map-fix-val (cdr xs)))))))
+  (utf8-decoded! (subr cm (i64 i64 i64 i64) unit)
+    (lambda (v j b i)
+      "Code point `j` on of string `v`, those of bytes `i` on of `b`."
+      (if (i64>= j (str-length v))
+          #u
+          (let ((k (utf8-width (bv-ref b i))))
+            (begin (point-set! v j (utf8-point b i k)) (utf8-decoded! v (i64+ j 1) b (i64+ i (i64+ k 1)))))))))
+
+(define utf8-bytes (subr cm (i64) i64)
+  (lambda (c) "How many bytes code point `c` is in UTF-8." (cond ((i64< c 128) 1) ((i64< c 2048) 2) ((i64< c 65536) 3) (else 4))))
+
+(define-rec
+  (utf8-length (subr cm (i64 i64 i64) i64)
+    (lambda (s i n) (if (i64>= i (str-length s)) n (utf8-length s (i64+ i 1) (i64+ n (utf8-bytes (str-ref s i))))))))
+
+(define-rec
+  (utf8-encoded! (subr cm (i64 i64 i64 i64) unit)
+    (lambda (b j s i)
+      "Byte `j` on of `b`, code points `i` on of string `s`, in UTF-8."
+      (if (i64>= i (str-length s))
+          #u
+          (let ((c (str-ref s i)))
+            (begin
+              (cond ((i64< c 128) (bv-set! b j c))
+                    ((i64< c 2048) (begin (bv-set! b j (i64-or 192 (i64-shr c 6))) (bv-set! b (i64+ j 1) (i64-or 128 (i64-and c 63)))))
+                    ((i64< c 65536)
+                     (begin (bv-set! b j (i64-or 224 (i64-shr c 12))) (bv-set! b (i64+ j 1) (i64-or 128 (i64-and (i64-shr c 6) 63)))
+                            (bv-set! b (i64+ j 2) (i64-or 128 (i64-and c 63)))))
+                    (else
+                     (begin (bv-set! b j (i64-or 240 (i64-shr c 18))) (bv-set! b (i64+ j 1) (i64-or 128 (i64-and (i64-shr c 12) 63)))
+                            (bv-set! b (i64+ j 2) (i64-or 128 (i64-and (i64-shr c 6) 63))) (bv-set! b (i64+ j 3) (i64-or 128 (i64-and c 63))))))
+              (utf8-encoded! b (i64+ j (utf8-bytes c)) s (i64+ i 1))))))))
+
+(define-rec
+  (not-bytes (subr cm (i64) string)
+    (lambda (l)
+      "Why list `l` is not one of bytes, or \"\"."
+      (cond ((not (is-pair? l)) "")
+            ((not (is-fixnum? (pair-car l))) (string-append "expected " machine-word))
+            ((or (i64< (fix-val (pair-car l)) 0) (i64> (fix-val (pair-car l)) 255)) "byte out of range")
+            (else (not-bytes (pair-cdr l)))))))
+
+(define-rec
+  (bytes-of-list! (subr cm (i64 i64 i64) i64)
+    (lambda (b i l) (if (is-pair? l) (begin (bv-set! b i (fix-val (pair-car l))) (bytes-of-list! b (i64+ i 1) (pair-cdr l))) b))))
 
 (define fx26-sum! (subr cm (string i64) i64)
   (lambda (tag v)
@@ -1532,27 +1536,19 @@
                (else (boolean (and (i64= (bv-length a) (bv-length b)) (bv-same? a b 0 (bv-length a)))))))
         ((i64= op o-string-utf8)
          (if (str? a)
-             (let ((bs (utf8-of (points-of a)))) (bv-of-list! (make-bv! (args-count bs 0)) 0 bs))
+             (let ((b (make-bv! (utf8-length a 0 0)))) (begin (utf8-encoded! b 0 a 0) b))
              (expected! "a string")))
         ((i64= op o-utf8-string)
          (if (not (bv? a))
              (expected! "a bytevector")
              (let ((k (utf8-valid-up-to a 0)))
                (if (i64= k (bv-length a))
-                   (fx26-sum! "text" (string-of-points! (utf8-points a 0 k)))
+                   (fx26-sum! "text" (let ((v (string-made! (utf8-count a 0 k 0)))) (begin (utf8-decoded! v 0 a 0) v)))
                    (fx26-sum! "bad" (fix k))))))
         ((i64= op o-bytevector-of)
-         (if (i64< (proper-length a) 0)
-             (expected! "a list")
-             (letrec ((bad (subr cm ((listof i64 @c)) string)
-                       (lambda (xs) (cond ((null? xs) "")
-                                          ((not (is-fixnum? (car xs))) (string-append "expected " machine-word))
-                                          ((or (i64< (fix-val (car xs)) 0) (i64> (fix-val (car xs)) 255)) "byte out of range")
-                                          (else (bad (cdr xs)))))))
-               (let ((why (bad (list-items a))))
-                 (if (string=? why "")
-                     (bv-of-list! (make-bv! (proper-length a)) 0 (map-fix-val (list-items a)))
-                     (fail! why))))))
+         (cond ((i64< (proper-length a) 0) (expected! "a list"))
+               ((not (string=? (not-bytes a) "")) (fail! (not-bytes a)))
+               (else (bytes-of-list! (make-bv! (proper-length a)) 0 a))))
         ((i64= op o-unit-cell) (symbol! "#u"))
         ((i64= op o-nil-cell) v-null)
         ((i64= op o-sum-cell) (frozen2! k-sum a b))

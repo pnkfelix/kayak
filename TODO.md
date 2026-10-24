@@ -671,23 +671,24 @@ double-mapped code area as Fixpt's (code beside its fields), `unsafe` in one cra
    (C133, 2026-10-17)**: kayak's own code generator, Fixpt's compiler
    written in FX-26 ported to KFX (`fx26/cg.kfx`, `kayak-fx26 --cells`),
    its words run every way Fixpt's are (`cells-programs.py --ours`): 77
-   programs agree, 68 of them Fixpt's words exactly. ~~Modules~~ (C144:
-   132 agree, 116 Fixpt's words exactly); ~~regions~~ (C145: 142, 120);
-   ~~prompts~~ (C146: 153, 124). Next, by how many programs wait on
-   each: bloblets; `typecase`,
-   `case`, `quasiquote`, `vlambda`, floats; then Fixpt's middle phase (inlining,
-   specialization), lambda lifting, register code (twins), so that the
-   words are Fixpt's; then the REPL's forms through it (§33's
-   `,disassemble`). Most programs not compiled wait on the checker (§30).
+   programs agree, 68 of them Fixpt's words exactly. Done since:
+   modules (C144), regions (C145), prompts (C146): 153 agree, 124 of
+   them Fixpt's words exactly. Next, by how many programs wait on each:
+   bloblets (12); `case` and `typecase` (10); floats; `vlambda`;
+   `quasiquote`. Then Fixpt's middle phase (inlining, specialization),
+   lambda lifting, register code (twins), so that the words are
+   Fixpt's; then the REPL's forms through it (§33's `,disassemble`).
+   Most programs not compiled wait on the checker (§30).
 - Tier 1 on a long run (C142, the user: "support long running
-  programs/services"): what it still makes of the runtime's, never let
-  go (C43). ~~The scheduler's lists and closures, at each scheduling~~
-  (C148: at a slice of 2, as without one). ~~A message's copy~~ (C149: a table, kept
-  from copy to copy). ~~The
-  primitives of any number of arguments~~ (C150, and the string
-  primitives' code points). Left: `list->bytevector`, `string->utf8`, of
-  lists; `string-text`, a `string-append` for each character (a
-  failure's message, the value shown).
+  programs/services"): what it makes of the runtime's own, never let go
+  (C43), on a path a program takes again and again. Done: the
+  scheduler's lists and closures (C148), a message's copy (C149), the
+  primitives of any number of arguments and the strings' code points
+  (C150), UTF-8 and `list->bytevector` (C151): a run's own memory is
+  now the listing read, whatever the run's length. What a failure's
+  message and the value shown make (`string-text`, KFX's strings) is
+  made once each, as it must be. Left, as found: whatever `heap-stats`
+  shows growing with a run's length.
 - Tier 1 at `--slice 2` (C143): a resumed task has a step or two
   before its next preemption, so each turn of a loop costs some 6,700
   steps (C142 put that at each preemption; one is some 160). Fixpt's
@@ -760,12 +761,11 @@ compilers, on x86_64, at the same places; every `--compiled` way of
 the link there too). Left:
 ~~5. Tier 6~~ (begun, C138: register code as native procedures, which
 leave for tier 5 rather than give back; `--direct`). Next, by what keeps
-words out or makes them leave: ~~allocation (`cons`, `lambda`, `prim`)
-by the heap's top as tier 5 allocates~~ (C147: tier 5's in-place
-allocations; where it would collect, tier 6 leaves first); next the
-runtime primitives register code calls most (`%fx26-sched`, `%make-box`,
-`%make-frozen`, `setfield`), made in place; the same on arm64, measured
-on macOS.
+words out or makes them leave: allocation as tier 5 allocates (done,
+C147: where it would collect, tier 6 leaves first); next the runtime
+primitives register code calls most (`%fx26-sched`, `%make-box`,
+`%make-frozen`, `setfield`), made in place; the same on arm64,
+measured on macOS.
 - ~~`REG1`… in registers~~ (`REG1`, `REG2`, C137; `REG3` in `r10` with
   addresses, C139).
 - Values as tagged addresses (C139): done, and on x86_64 without the
