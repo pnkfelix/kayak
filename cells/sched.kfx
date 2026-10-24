@@ -146,18 +146,48 @@
     (lambda (xs drop) (cond ((null? xs) nil) ((drop (car xs)) (kept-of (cdr xs) drop)) (else (cons (car xs) (kept-of (cdr xs) drop)))))))
 
 (define-rec
-  (any-of? (->* (i64 (subr cm (i64) bool)) bool)
-    (lambda (l f) (and (is-pair? l) (or (f (pair-car l)) (any-of? (pair-cdr l) f))))))
-
-(define without! (->* (i64 (subr cm (i64) bool)) i64)
-  (lambda (l drop)
-    "List `l` without the items `drop` picks, in order; `l` itself if it
-     has none."
-    (if (any-of? l drop) (list-of (kept-of (heap-items l) drop)) l)))
-
-(define-rec
   (reversed-onto! (->* (i64 i64) i64)
     (lambda (l acc) (if (is-pair? l) (reversed-onto! (pair-cdr l) (cons! (pair-car l) acc)) acc))))
+
+"The scheduler's lists, sifted where they are, in the heap, which is
+ collected, with no closure made (C148): what tier 1 makes of its own is
+ never let go (C43), and these are asked at every scheduling. How an
+ item `e` is matched: `e` is `x` (0); its car is (1); its cdr is (2);
+ either is (3); its car is an item of list `x` (4); its car is a time
+ not after `x` (5)."
+(define-rec
+  (heap-member? (->* (i64 i64) bool)
+    (lambda (l x) (and (is-pair? l) (or (i64= (pair-car l) x) (heap-member? (pair-cdr l) x))))))
+
+(define matches? (->* (i64 i64 i64) bool)
+  (lambda (e how x)
+    (cond ((i64= how 0) (i64= e x))
+          ((i64= how 1) (i64= (pair-car e) x))
+          ((i64= how 2) (i64= (pair-cdr e) x))
+          ((i64= how 3) (or (i64= (pair-car e) x) (i64= (pair-cdr e) x)))
+          ((i64= how 4) (heap-member? x (pair-car e)))
+          (else (i64<= (fix-val (pair-car e)) x)))))
+
+(define-rec
+  (any-match? (->* (i64 i64 i64) bool)
+    (lambda (l how x) (and (is-pair? l) (or (matches? (pair-car l) how x) (any-match? (pair-cdr l) how x))))))
+
+(define-rec
+  (sifted! (->* (i64 i64 i64 bool i64) i64)
+    (lambda (l how x keep acc)
+      "The items of `l` that match (`keep`) or not, reversed, onto `acc`."
+      (cond ((not (is-pair? l)) acc)
+            ((let ((m (matches? (pair-car l) how x))) (if keep m (not m))) (sifted! (pair-cdr l) how x keep (cons! (pair-car l) acc)))
+            (else (sifted! (pair-cdr l) how x keep acc))))))
+
+(define without! (->* (i64 i64 i64) i64)
+  (lambda (l how x)
+    "List `l` without the items that match, in order; `l` itself if it has
+     none."
+    (if (any-match? l how x) (reversed-onto! (sifted! l how x #f v-null) v-null) l)))
+
+(define only! (->* (i64 i64 i64) i64)
+  (lambda (l how x) "The items of list `l` that match, in order." (reversed-onto! (sifted! l how x #t v-null) v-null)))
 
 (define-rec
   (i64-in? (->* ((listof i64 @c) i64) bool)
@@ -167,8 +197,8 @@
 (define queue-push! (->* (i64) unit) (lambda (thunk) (st-cons! s-back thunk)))
 
 (define-rec
-  (pushed-each! (->* ((listof i64 @c)) unit)
-    (lambda (ws) (if (null? ws) #u (begin (queue-push! (car ws)) (pushed-each! (cdr ws)))))))
+  (pushed-each! (->* (i64) unit)
+    (lambda (ws) (if (is-pair? ws) (begin (queue-push! (pair-car ws)) (pushed-each! (pair-cdr ws))) #u))))
 
 (define queue-pop! (->* () i64)
   (lambda ()
@@ -186,10 +216,10 @@
     (let ((t (queue-pop!)))
       (if (not (i64= t v-false))
           t
-          (let ((ps (reverse (heap-items (st s-parked)))))
-            (if (null? ps)
-                v-false
-                (begin (st-set! s-parked (list-of (reverse (cdr ps)))) (car ps))))))))
+          (let ((ps (reversed-onto! (st s-parked) v-null)))
+            (if (is-pair? ps)
+                (begin (st-set! s-parked (reversed-onto! (pair-cdr ps) v-null)) (pair-car ps))
+                v-false))))))
 
 "Messages, copied: what a message shares with its sender rather than
  copies (Fixpt's `shared`), and the copy (`copy_within`): pairs and
@@ -306,7 +336,7 @@
                (slot-set! c 3 v)
                (slot-set! c 2 v-true)
                (slot-set! c 4 v-null)
-               (pushed-each! (reverse (heap-items ws)))
+               (pushed-each! (reversed-onto! ws v-null))
                v-unit))))))
 
 (define make-mailbox! (->* () i64)
@@ -360,19 +390,20 @@
     (lambda (l e) (if (is-pair? l) (timers-earliest (pair-cdr l) (let ((t (fix-val (pair-car (pair-car l))))) (if (i64< t e) t e))) e))))
 
 (define-rec
-  (timer-by-time (->* (i64 (listof i64 @c)) (listof i64 @c))
-    (lambda (e xs)
-      "Timer `e` among `xs`, sorted by time, after those of its own."
-      (cond ((null? xs) (list e))
-            ((i64< (fix-val (pair-car e)) (fix-val (pair-car (car xs)))) (cons e xs))
-            (else (cons (car xs) (timer-by-time e (cdr xs))))))))
+  (timer-by-time! (->* (i64 i64) i64)
+    (lambda (e l)
+      "Timer `e` in list `l`, sorted by time, after those of its own."
+      (cond ((not (is-pair? l)) (cons! e v-null))
+            ((i64< (fix-val (pair-car e)) (fix-val (pair-car (pair-car l)))) (cons! e l))
+            (else (cons! (pair-car l) (timer-by-time! e (pair-cdr l))))))))
 
 (define-rec
-  (timers-sorted (->* ((listof i64 @c) (listof i64 @c)) (listof i64 @c))
-    (lambda (xs acc) (if (null? xs) acc (timers-sorted (cdr xs) (timer-by-time (car xs) acc))))))
+  (timers-sorted! (->* (i64 i64) i64)
+    (lambda (l acc) (if (is-pair? l) (timers-sorted! (pair-cdr l) (timer-by-time! (pair-car l) acc)) acc))))
 
 (define-rec
-  (heap-cdrs (->* ((listof i64 @c)) (listof i64 @c)) (lambda (xs) (if (null? xs) nil (cons (pair-cdr (car xs)) (heap-cdrs (cdr xs)))))))
+  (wakers-pushed! (->* (i64) unit)
+    (lambda (l) (if (is-pair? l) (begin (queue-push! (pair-cdr (pair-car l))) (wakers-pushed! (pair-cdr l))) #u))))
 (define-rec
   (heap-cars (->* ((listof i64 @c)) (listof i64 @c)) (lambda (xs) (if (null? xs) nil (cons (pair-car (car xs)) (heap-cars (cdr xs)))))))
 
@@ -388,11 +419,10 @@
             (else
              (begin
                (if sleep (sleep-until (timers-earliest ts fix-max)) #u)
-               (let* ((now (clock))
-                      (due (lambda ((e i64)) (i64<= (fix-val (pair-car e)) now))))
+               (let ((now (clock)))
                  (begin
-                   (st-set! s-timers (without! ts due))
-                   (pushed-each! (heap-cdrs (timers-sorted (reverse (kept-of (heap-items ts) (lambda ((e i64)) (not (due e))))) nil)))
+                   (st-set! s-timers (without! ts 5 now))
+                   (wakers-pushed! (timers-sorted! (reversed-onto! (only! ts 5 now) v-null) v-null))
                    v-true))))))))
 
 "Tasks the scheduler keeps."
@@ -411,24 +441,21 @@
   (lambda (t)
     "What the scheduler kept of task `t`, ended (`forget_task`)."
     (begin
-      (st-set! s-cancelled (without! (st s-cancelled) (lambda (c) (i64= c t))))
-      (st-set! s-groups (without! (st s-groups) (lambda (e) (i64= (pair-car e) t))))
-      (st-set! s-monitors (without! (st s-monitors) (lambda (e) (i64= (pair-car e) t))))
-      (st-set! s-parents (without! (st s-parents) (lambda (e) (or (i64= (pair-car e) t) (i64= (pair-cdr e) t)))))
-      (st-set! s-waiting (without! (st s-waiting) (lambda (e) (i64= (pair-car e) t)))))))
+      (st-set! s-cancelled (without! (st s-cancelled) 0 t))
+      (st-set! s-groups (without! (st s-groups) 1 t))
+      (st-set! s-monitors (without! (st s-monitors) 1 t))
+      (st-set! s-parents (without! (st s-parents) 3 t))
+      (st-set! s-waiting (without! (st s-waiting) 1 t)))))
 
 (define cancelled? (->* (i64) bool)
-  (lambda (t) (any-of? (st s-cancelled) (lambda (c) (i64= c t)))))
+  (lambda (t) (heap-member? (st s-cancelled) t)))
 
 (define reaped! (->* () i64)
   (lambda ()
     "Each cancelled task that waits, `(task . stop)`, taken from those that
      wait (`REAP`)."
-    (let* ((cs (st s-cancelled))
-           (gone (lambda ((e i64)) (any-of? cs (lambda (c) (i64= c (pair-car e))))))
-           (ws (st s-waiting))
-           (them (kept-of (heap-items ws) (lambda ((e i64)) (not (gone e))))))
-      (begin (st-set! s-waiting (without! ws gone)) (list-of them)))))
+    (let* ((cs (st s-cancelled)) (ws (st s-waiting)) (them (only! ws 4 cs)))
+      (begin (st-set! s-waiting (without! ws 4 cs)) them))))
 
 "Preemption and failure, for the machine."
 (define wanted-how! (->* () i64)

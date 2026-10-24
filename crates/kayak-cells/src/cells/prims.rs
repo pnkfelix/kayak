@@ -2191,6 +2191,15 @@ pub fn frozen_of_x(k: i64, xs: List<i64>) -> i64 {
     b
 }
 
+/// `frozen-of!` of two fields, `x` and `y`, with no list made of them (C148).
+pub fn frozen2_x(k: i64, x: i64, y: i64) -> i64 {
+    let b = make_bloblet_x(k, 2i64, 0i64, true, false);
+    slot_set_x(b, 2i64, x);
+    slot_set_x(b, 3i64, y);
+    frozen_whole_x(b);
+    b
+}
+
 /// A cellular closure of word `w` over `free` (Fixpt's `region_closure`).
 pub fn closure_of_x(w: i64, free: List<i64>) -> i64 {
     let c = make_bloblet_x(k_closure(), i64_plus(args_count(free, 0i64), 1i64), 0i64, true, false);
@@ -2396,17 +2405,13 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
         st_cons_x(s_stdin(), a);
         v_unit()
     } else if i64_eq(n, 45i64) {
-        st_set_x(s_stdin(), without_x(st(s_stdin()), lambda1(move |w: i64| {
-            i64_eq(w, a)
-        })));
+        st_set_x(s_stdin(), without_x(st(s_stdin()), 0i64, a));
         v_unit()
     } else if i64_eq(n, 40i64) {
         st_cons_x(s_waiting(), cons_x(a, b));
         v_unit()
     } else if i64_eq(n, 41i64) {
-        st_set_x(s_waiting(), without_x(st(s_waiting()), lambda1(move |e: i64| {
-            i64_eq(pair_car(e), a)
-        })));
+        st_set_x(s_waiting(), without_x(st(s_waiting()), 1i64, a));
         v_unit()
     } else if i64_eq(n, 42i64) {
         reaped_x()
@@ -2454,9 +2459,7 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
         };
         v_unit()
     } else if i64_eq(n, 22i64) {
-        slot_set_x(a, 4i64, without_x(slot_of(a, 4i64), lambda1(move |w: i64| {
-            i64_eq(w, b)
-        })));
+        slot_set_x(a, 4i64, without_x(slot_of(a, 4i64), 0i64, b));
         v_unit()
     } else if i64_eq(n, 23i64) {
         if i64_eq(slot_of(a, 4i64), b) {
@@ -2466,9 +2469,7 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
         };
         v_unit()
     } else if i64_eq(n, 20i64) {
-        st_set_x(s_timers(), without_x(st(s_timers()), lambda1(move |t: i64| {
-            i64_eq(pair_cdr(t), a)
-        })));
+        st_set_x(s_timers(), without_x(st(s_timers()), 2i64, a));
         v_unit()
     } else if i64_eq(n, 14i64) {
         cell_put_x(a, b)
@@ -2480,9 +2481,9 @@ pub fn sched_op_x(n: i64, a: i64, b: i64) -> i64 {
         }
     } else if i64_eq(n, 12i64) {
         if i64_eq(st(s_tag()), v_false()) {
-            frozen_of_x(k_sum(), kayak_rt::heap_cons(symbol_x(str_lit("none")), kayak_rt::heap_cons(v_unit(), kayak_rt::nil())))
+            frozen2_x(k_sum(), symbol_x(str_lit("none")), v_unit())
         } else {
-            frozen_of_x(k_sum(), kayak_rt::heap_cons(symbol_x(str_lit("some")), kayak_rt::heap_cons(st(s_tag()), kayak_rt::nil())))
+            frozen2_x(k_sum(), symbol_x(str_lit("some")), st(s_tag()))
         }
     } else if i64_eq(n, 13i64) {
         st_set_x(s_tag(), a);
@@ -3382,7 +3383,7 @@ pub fn prim_apply_x(p: i64) -> i64 {
     } else if i64_eq(op, o_nil_cell()) {
         v_null()
     } else if i64_eq(op, o_sum_cell()) {
-        frozen_of_x(k_sum(), kayak_rt::heap_cons(a, kayak_rt::heap_cons(b, kayak_rt::nil())))
+        frozen2_x(k_sum(), a, b)
     } else if i64_eq(op, o_pair_cell()) {
         cons_x(a, b)
     } else if i64_eq(op, o_product_cell()) {

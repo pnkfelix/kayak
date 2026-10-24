@@ -4102,3 +4102,26 @@ nothing else changed.
   each instruction it does not have (its way out is there for each):
   `closures` 2% faster, `captures` 2% slower, the rest the same. What
   would pay is those primitives made in place, as tier 5 makes `cons`.
+
+## C148. Tier 1's scheduler lets go of what it makes (2026-10-24)
+
+The user: "then 3" (TODO §31, tier 1 on a long run, C142's "support long
+running programs/services"). What tier 1 makes of the runtime's own is
+never let go (C43); at each scheduling it made some:
+- the scheduler's lists, which are the machine heap's, copied into KFX
+  lists to be sifted (`heap-items`, `kept-of`, `list-of`), and the
+  closures that said what to sift (`cancelled?`'s, `sched-op!`'s). Now
+  sifted where they are, in the heap, which is collected: `without!`
+  and `only!` take how an item is matched as a number, not a procedure
+  (an item, its car, its cdr, either, its car among a list's, its car a
+  time not after); `pop-any!`, `cell-put!` and the timers due reverse
+  and sort in the heap too. `cons!` never collects (the heap grows, its
+  values kept), so a list is walked while it is made.
+- `%fx26-sched`'s operation 12, the scheduler's tag as a sum, of a KFX
+  list of its two fields: now `frozen2!`, as `o-sum-cell` too.
+- **Measured** (`kayak-rt`'s `heap-stats`), at a slice of 2:
+  `preempt/allocating-short.fx` 31.0 MB to 9.0 MB, `preempt/allocating.fx`
+  (ten times as long) 9.0 MB, the same as without a slice: what is left
+  is the listing read, once (8.3 MB of characters).
+- **Left as it was**: `groups-within` and `task-failed!`, which run when a
+  monitored task fails, once for the group.

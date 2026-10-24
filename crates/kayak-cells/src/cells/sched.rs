@@ -324,20 +324,6 @@ pub fn kept_of(mut xs: List<i64>, mut drop: &'static dyn Fn(i64) -> bool) -> Lis
     }
 }
 
-pub fn any_of_p(l: i64, f: &'static dyn Fn(i64) -> bool) -> bool {
-    (is_pair_p(l) && (f(pair_car(l)) || any_of_p(pair_cdr(l), f)))
-}
-
-/// List `l` without the items `drop` picks, in order; `l` itself if it
-/// has none.
-pub fn without_x(l: i64, drop: &'static dyn Fn(i64) -> bool) -> i64 {
-    if any_of_p(l, drop) {
-        list_of(kept_of(heap_items(l), drop))
-    } else {
-        l
-    }
-}
-
 pub fn reversed_onto_x(mut l: i64, mut acc: i64) -> i64 {
     loop {
         if is_pair_p(l) {
@@ -349,6 +335,73 @@ pub fn reversed_onto_x(mut l: i64, mut acc: i64) -> i64 {
     }
 }
 
+// The scheduler's lists, sifted where they are, in the heap, which is
+// collected, with no closure made (C148): what tier 1 makes of its own is
+// never let go (C43), and these are asked at every scheduling. How an
+// item `e` is matched: `e` is `x` (0); its car is (1); its cdr is (2);
+// either is (3); its car is an item of list `x` (4); its car is a time
+// not after `x` (5).
+pub fn heap_member_p(l: i64, x: i64) -> bool {
+    (is_pair_p(l) && (i64_eq(pair_car(l), x) || heap_member_p(pair_cdr(l), x)))
+}
+
+pub fn matches_p(e: i64, how: i64, x: i64) -> bool {
+    if i64_eq(how, 0i64) {
+        i64_eq(e, x)
+    } else if i64_eq(how, 1i64) {
+        i64_eq(pair_car(e), x)
+    } else if i64_eq(how, 2i64) {
+        i64_eq(pair_cdr(e), x)
+    } else if i64_eq(how, 3i64) {
+        (i64_eq(pair_car(e), x) || i64_eq(pair_cdr(e), x))
+    } else if i64_eq(how, 4i64) {
+        heap_member_p(x, pair_car(e))
+    } else {
+        i64_lt_eq(fix_val(pair_car(e)), x)
+    }
+}
+
+pub fn any_match_p(l: i64, how: i64, x: i64) -> bool {
+    (is_pair_p(l) && (matches_p(pair_car(l), how, x) || any_match_p(pair_cdr(l), how, x)))
+}
+
+/// The items of `l` that match (`keep`) or not, reversed, onto `acc`.
+pub fn sifted_x(mut l: i64, mut how: i64, mut x: i64, mut keep: bool, mut acc: i64) -> i64 {
+    loop {
+        if not(is_pair_p(l)) {
+            return acc;
+        } else if {
+            let m = matches_p(pair_car(l), how, x);
+            if keep {
+                m
+            } else {
+                not(m)
+            }
+        } {
+            (l, acc) = (pair_cdr(l), cons_x(pair_car(l), acc));
+            continue;
+        } else {
+            l = pair_cdr(l);
+            continue;
+        }
+    }
+}
+
+/// List `l` without the items that match, in order; `l` itself if it has
+/// none.
+pub fn without_x(l: i64, how: i64, x: i64) -> i64 {
+    if any_match_p(l, how, x) {
+        reversed_onto_x(sifted_x(l, how, x, false, v_null()), v_null())
+    } else {
+        l
+    }
+}
+
+/// The items of list `l` that match, in order.
+pub fn only_x(l: i64, how: i64, x: i64) -> i64 {
+    reversed_onto_x(sifted_x(l, how, x, true, v_null()), v_null())
+}
+
 pub fn i64_in_p(xs: List<i64>, x: i64) -> bool {
     (not(null_p(xs)) && (i64_eq(car(xs), x) || i64_in_p(cdr(xs), x)))
 }
@@ -358,14 +411,14 @@ pub fn queue_push_x(thunk: i64) -> () {
     st_cons_x(s_back(), thunk)
 }
 
-pub fn pushed_each_x(mut ws: List<i64>) -> () {
+pub fn pushed_each_x(mut ws: i64) -> () {
     loop {
-        if null_p(ws) {
-            return ();
-        } else {
-            queue_push_x(car(ws));
-            ws = cdr(ws);
+        if is_pair_p(ws) {
+            queue_push_x(pair_car(ws));
+            ws = pair_cdr(ws);
             continue;
+        } else {
+            return ();
         }
     }
 }
@@ -394,12 +447,12 @@ pub fn pop_any_x() -> i64 {
     if not(i64_eq(t, v_false())) {
         t
     } else {
-        let ps = reverse(heap_items(st(s_parked())));
-        if null_p(ps) {
-            v_false()
+        let ps = reversed_onto_x(st(s_parked()), v_null());
+        if is_pair_p(ps) {
+            st_set_x(s_parked(), reversed_onto_x(pair_cdr(ps), v_null()));
+            pair_car(ps)
         } else {
-            st_set_x(s_parked(), list_of(reverse(cdr(ps))));
-            car(ps)
+            v_false()
         }
     }
 }
@@ -637,7 +690,7 @@ pub fn cell_put_x(c: i64, v: i64) -> i64 {
         slot_set_x(c, 3i64, v);
         slot_set_x(c, 2i64, v_true());
         slot_set_x(c, 4i64, v_null());
-        pushed_each_x(reverse(heap_items(ws)));
+        pushed_each_x(reversed_onto_x(ws, v_null()));
         v_unit()
     }
 }
@@ -731,33 +784,37 @@ pub fn timers_earliest(mut l: i64, mut e: i64) -> i64 {
     }
 }
 
-/// Timer `e` among `xs`, sorted by time, after those of its own.
-pub fn timer_by_time(e: i64, xs: List<i64>) -> List<i64> {
-    if null_p(xs) {
-        kayak_rt::heap_cons(e, kayak_rt::nil())
-    } else if i64_lt(fix_val(pair_car(e)), fix_val(pair_car(car(xs)))) {
-        kayak_rt::heap_cons(e, xs)
+/// Timer `e` in list `l`, sorted by time, after those of its own.
+pub fn timer_by_time_x(e: i64, l: i64) -> i64 {
+    if not(is_pair_p(l)) {
+        cons_x(e, v_null())
+    } else if i64_lt(fix_val(pair_car(e)), fix_val(pair_car(pair_car(l)))) {
+        cons_x(e, l)
     } else {
-        kayak_rt::heap_cons(car(xs), timer_by_time(e, cdr(xs)))
+        cons_x(pair_car(l), timer_by_time_x(e, pair_cdr(l)))
     }
 }
 
-pub fn timers_sorted(mut xs: List<i64>, mut acc: List<i64>) -> List<i64> {
+pub fn timers_sorted_x(mut l: i64, mut acc: i64) -> i64 {
     loop {
-        if null_p(xs) {
-            return acc;
-        } else {
-            (xs, acc) = (cdr(xs), timer_by_time(car(xs), acc));
+        if is_pair_p(l) {
+            (l, acc) = (pair_cdr(l), timer_by_time_x(pair_car(l), acc));
             continue;
+        } else {
+            return acc;
         }
     }
 }
 
-pub fn heap_cdrs(xs: List<i64>) -> List<i64> {
-    if null_p(xs) {
-        nil::<i64>()
-    } else {
-        kayak_rt::heap_cons(pair_cdr(car(xs)), heap_cdrs(cdr(xs)))
+pub fn wakers_pushed_x(mut l: i64) -> () {
+    loop {
+        if is_pair_p(l) {
+            queue_push_x(pair_cdr(pair_car(l)));
+            l = pair_cdr(l);
+            continue;
+        } else {
+            return ();
+        }
     }
 }
 
@@ -787,13 +844,8 @@ pub fn timers_wait_x(sleep: bool) -> i64 {
             ()
         };
         let now = clock();
-        let due = lambda1(move |e: i64| {
-            i64_lt_eq(fix_val(pair_car(e)), now)
-        });
-        st_set_x(s_timers(), without_x(ts, due));
-        pushed_each_x(heap_cdrs(timers_sorted(reverse(kept_of(heap_items(ts), lambda1(move |e: i64| {
-            not(due(e))
-        }))), nil::<i64>())));
+        st_set_x(s_timers(), without_x(ts, 5i64, now));
+        wakers_pushed_x(timers_sorted_x(reversed_onto_x(only_x(ts, 5i64, now), v_null()), v_null()));
         v_true()
     }
 }
@@ -824,44 +876,25 @@ pub fn group_of(t: i64) -> i64 {
 
 /// What the scheduler kept of task `t`, ended (`forget_task`).
 pub fn forget_task_x(t: i64) -> () {
-    st_set_x(s_cancelled(), without_x(st(s_cancelled()), lambda1(move |c: i64| {
-        i64_eq(c, t)
-    })));
-    st_set_x(s_groups(), without_x(st(s_groups()), lambda1(move |e: i64| {
-        i64_eq(pair_car(e), t)
-    })));
-    st_set_x(s_monitors(), without_x(st(s_monitors()), lambda1(move |e: i64| {
-        i64_eq(pair_car(e), t)
-    })));
-    st_set_x(s_parents(), without_x(st(s_parents()), lambda1(move |e: i64| {
-        (i64_eq(pair_car(e), t) || i64_eq(pair_cdr(e), t))
-    })));
-    st_set_x(s_waiting(), without_x(st(s_waiting()), lambda1(move |e: i64| {
-        i64_eq(pair_car(e), t)
-    })))
+    st_set_x(s_cancelled(), without_x(st(s_cancelled()), 0i64, t));
+    st_set_x(s_groups(), without_x(st(s_groups()), 1i64, t));
+    st_set_x(s_monitors(), without_x(st(s_monitors()), 1i64, t));
+    st_set_x(s_parents(), without_x(st(s_parents()), 3i64, t));
+    st_set_x(s_waiting(), without_x(st(s_waiting()), 1i64, t))
 }
 
 pub fn cancelled_p(t: i64) -> bool {
-    any_of_p(st(s_cancelled()), lambda1(move |c: i64| {
-        i64_eq(c, t)
-    }))
+    heap_member_p(st(s_cancelled()), t)
 }
 
 /// Each cancelled task that waits, `(task . stop)`, taken from those that
 /// wait (`REAP`).
 pub fn reaped_x() -> i64 {
     let cs = st(s_cancelled());
-    let gone = lambda1(move |e: i64| {
-        any_of_p(cs, lambda1(move |c: i64| {
-            i64_eq(c, pair_car(e))
-        }))
-    });
     let ws = st(s_waiting());
-    let them = kept_of(heap_items(ws), lambda1(move |e: i64| {
-        not(gone(e))
-    }));
-    st_set_x(s_waiting(), without_x(ws, gone));
-    list_of(them)
+    let them = only_x(ws, 4i64, cs);
+    st_set_x(s_waiting(), without_x(ws, 4i64, cs));
+    them
 }
 
 // Preemption and failure, for the machine.
