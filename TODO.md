@@ -763,10 +763,14 @@ the link there too). Left:
 ~~5. Tier 6~~ (begun, C138: register code as native procedures, which
 leave for tier 5 rather than give back; `--direct`). Next, by what keeps
 words out or makes them leave: allocation as tier 5 allocates (done,
-C147: where it would collect, tier 6 leaves first); next the runtime
-primitives register code calls most (`%fx26-sched`, `%make-box`,
-`%make-frozen`, `setfield`), made in place; the same on arm64,
-measured on macOS.
+C147: where it would collect, tier 6 leaves first). Looked at
+2026-10-24, not taken: making the runtime primitives register code
+calls most (`%fx26-sched`, `%make-box`, `%make-frozen`, `setfield`) in
+place. Every hot word of the benchmarks and of `preempt/allocating.fx`
+is tier 6's already; what those primitives keep out is the scheduler's
+library and words run once a spawn, a send or a preemption. Left of
+tier 6's: the control routines (`prompt`, `callcomp`, `abort`, in
+`captures`), and the same on arm64, measured on macOS.
 - ~~`REG1`… in registers~~ (`REG1`, `REG2`, C137; `REG3` in `r10` with
   addresses, C139).
 - Values as tagged addresses (C139): done, and on x86_64 without the
