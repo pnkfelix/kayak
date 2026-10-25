@@ -4919,6 +4919,20 @@ Fixpt merges and pushes, a clone of GitHub's alone has no such commit
   control primitives' are checked against). Its `symbol-name-hash` the
   engine has not yet: not run there. The checkers' comparison: of 433
   programs Fixpt accepts, 298 the same, 74 differ, 61 refused; K1 0.
+
+## C178. The pin at Fixpt b9dae98 (2026-10-25)
+
+The user's checkout moved one commit past C177's pin, `b9dae986`, "The
+heap's memory in huge pages" (Fixpt's heap mapping asks for transparent
+huge pages); the user: "Move the pin now". Fetched from that checkout as
+before; not on GitHub yet. Its one ported file, `heap.rs`
+(`cells/heap.kfx`, `kayak-rt`'s `text.rs`), decided against: kayak's
+heap is not mapped by Fixpt's `Words`. No program, built-in or answer
+changed. Stage 0 here, one core, two runs: 21.7G cycles to 20.3G
+(19.1G of them the user's), 5.3 s to 4.9 s, 68.6K page faults; the same
+output. The checkers' comparison at this pin: of 433 programs Fixpt
+accepts, 299 the same (C177's `char-in?` counted), 74 differ, 60
+refused; K1 0.
 - Refused 73 to 60, the same 283 to 294; K1 0 (five breaches on the way,
   each a rule above). Left: the kind `flat` (`flat-kind.fx`), `narrayof`
   (`narrayof-lengths.fx`); printing a blobref's owner by its
