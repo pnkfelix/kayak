@@ -5093,6 +5093,31 @@ Subtyping FX-26 has that kayak's checker had not, each refused for KFX
   pairs: `cons` of a tail that is no list, a general pair, as Fixpt's
   `cons` is (`width-infer`, `run/recursion`, `bidirectional/bounds`,
   `native/adapters`); paths narrowed by a test (`unions/paths-narrow`).
+
+## C184. `cons` of a tail that is no list (2026-10-25)
+
+Fixpt's `cons` is `(poly r (t1 t2) (subr (alloc r) (t1 t2) (pairof t1 t2
+r)))`; a list's `cons` only where the tail is a list. Kayak's was the
+list's alone, a pair of another tail only where one was expected (C68).
+- **Where nothing is expected** (or what is, not solved yet) and the
+  tail synthesized is no list (`list-like?`: a list, `nil`, a pair of a
+  list, a list of a size, a union, or not known yet, are), `(cons a b)`
+  is `(pairof A B r)` at a fresh region, printed `@r.1` with its
+  allocation, as Fixpt's (`bloblet/width-infer`, `run/recursion`). The
+  tail is synthesized first on a state then dropped, so a list's `cons`
+  is checked as before; a hole in a draft is not looked at (the REPL's
+  hints session found it: `(cons 1 ` had lost its hint). The same
+  session's `(set-car! (cons 1 #t) ` now hints `set-car!`'s argument, as
+  `(cons 1 #t)` is a pair (`tests/repl/hints.out` blessed).
+- **`nil` where the type `nil` is expected** is it
+  (`bidirectional/bounds`: `(pairof int nil @r)`); FX-26's: KFX's `nil`
+  is a list's, and kfx had accepted the program and written Rust that
+  did not build (the check's `run-fixpt-programs` found it).
+- Left: `cons` as a value at Fixpt's type (`native/adapters`).
+- `processes/pselect-deadline.fx` differed once under `cells-programs`'
+  `--slice 2` (a deadlock reported, Fixpt's run none), then agreed on
+  four runs: a race in tier 1's time slicing, noted in TODO §30.
+- Refused 35 to 32, the same 337 to 340; K1 0.
 - Refused 73 to 60, the same 283 to 294; K1 0 (five breaches on the way,
   each a rule above). Left: the kind `flat` (`flat-kind.fx`), `narrayof`
   (`narrayof-lengths.fx`); printing a blobref's owner by its

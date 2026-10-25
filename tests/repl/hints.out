@@ -7,8 +7,8 @@ kayak-fx26 0.1 — FX-26, the engine written in KFX (an interpreter over a heap 
 [Jfx26> [Jfx26> (+ 1 
 [2margument 2 of + wants int[0m[1A[11C[Jfx26> (car 
 [2margument 1 of car wants (listof t 'r)[0m[1A[11C[Jfx26> (cons 1 
-[2margument 2 of cons wants (listof int 'r)[0m[1A[14C[Jfx26> (set-car! (cons 1 [4m#t[24m) 
-[31ma bool is here, where a (listof int 'r) is expected[0m[1A[28C[Jfx26> (tagcase v 
+[2margument 2 of cons wants (listof int 'r)[0m[1A[14C[Jfx26> (set-car! (cons 1 #t) 
+[2margument 2 of set-car! wants int[0m[1A[28C[Jfx26> (tagcase v 
 [2mnext: an arm `(tag name body …)` for `x` (int), `y` (int), or `(else name body…[0m[1A[17C[Jfx26> (tagcase v (x n n) 
 [2mnext: an arm `(tag name body …)` for `y` (int), or `(else name body …)`[0m[1A[25C[Jfx26> (tagcase v (x n n) (y m m) 
 [2mnext: nothing: every tag has an arm[0m[1A[33C[Jfx26> (the t (sum 

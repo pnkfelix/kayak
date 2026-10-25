@@ -4364,6 +4364,21 @@ pub mod expressions {
                                 // `nil` where a union with a `nil` member is wanted (C84): that
                                 // member, as FX-26 has it.
                                 res(ty_data(str_lit("nil"), nil::<&'static Ty>()), nil::<Str>(), s)
+                            } else if (string_eq_p(name, str_lit("nil")) && std_prim_p(v, str_lit("nil")) && {
+                                let tagcase_ = x;
+                                match *tagcase_ {
+                                    Ty::TyData(d, args) => {
+                                        string_eq_p(d, str_lit("nil"))
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        false
+                                    }
+                                }
+                            }) {
+                                // `nil` where the type `nil` is wanted: it (C184; Fixpt's `(pairof
+                                // int nil @r)`, `bidirectional/bounds`); KFX's `nil` is a list's.
+                                res(x, nil::<Str>(), kfx_restricted(v, s, str_lit("`nil` where the type `nil` is wanted, FX-26's, which KFX's Rust lists have not (C184)")))
                             } else if string_eq_p(name, str_lit("nil")) {
                                 let tagcase_ = x;
                                 match *tagcase_ {
@@ -9124,6 +9139,44 @@ pub mod expressions {
                         return match refuse(v, str_lit("a pair that is none")) {};
                     }
                 }
+            } else if (string_eq_p(h, str_lit("cons")) && i64_eq(size(args), 2i64) && not(null_p(found)) && prim_p(car(found)) && (null_p(expected) || {
+                let tagcase_ = walk(s, car(expected));
+                match *tagcase_ {
+                    Ty::TyMeta(k) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) && not(draft_hole_p(second(args))) && not(draft_hole_p(car(args))) && {
+                let tagcase_ = synth(v, s, second(args));
+                match *tagcase_ {
+                    Res::Res(t2, es2, s2) => {
+                        not(list_like_p(s2, t2))
+                    }
+                }
+            }) {
+                // A pair whose tail is no list, where none is expected: Fixpt's `cons`
+                // is `(t1 t2) -> (pairof t1 t2 r)` (C184; `bloblet/width-infer`), a
+                // list's only where its tail is one. At a region of its own.
+                let tagcase_ = synth(v, s, car(args));
+                match *tagcase_ {
+                    Res::Res(t1, es1, s1) => {
+                        let tagcase_ = synth(v, s1, second(args));
+                        match *tagcase_ {
+                            Res::Res(t2, es2, s2) => {
+                                let pt = ty_data(str_lit("%pairof"), kayak_rt::heap_cons(t1, kayak_rt::heap_cons(t2, kayak_rt::heap_cons(ty_rconst(str_lit("%fresh")), kayak_rt::nil()))));
+                                return res(pt, effs_union(kayak_rt::heap_cons(str_lit("alloc:%fresh"), kayak_rt::nil()), effs_union(es1, es2)), if general_pair_p(s2, pt) {
+                                    note_fact(s2, cv_file(v), cv_pos(v), str_lit("value-cons"))
+                                } else {
+                                    s2
+                                });
+                            }
+                        }
+                    }
+                }
             } else if (null_p(found) && string_eq_p(h, str_lit("abort-with-continuation"))) {
                 return suspend_call(v, s, args, expected);
             } else if (null_p(found) && string_eq_p(h, str_lit("make-continuation-prompt-tag"))) {
@@ -9256,6 +9309,27 @@ pub mod expressions {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    /// Whether `t` may be a list's tail: a list, `nil`, a pair of a list, a
+    /// list of a size, or not known yet.
+    pub fn list_like_p(s: &'static St, t: &'static Ty) -> bool {
+        let tagcase_ = walk(s, t);
+        match *tagcase_ {
+            Ty::TyList(e, r) => {
+                true
+            }
+            Ty::TyMeta(k) => {
+                true
+            }
+            Ty::TyData(d, args) => {
+                (string_eq_p(d, str_lit("nil")) || string_eq_p(d, str_lit("%nlist")) || string_eq_p(d, str_lit("%union")) || (string_eq_p(d, str_lit("%pairof")) && list_like_p(s, car(cdr(args)))))
+            }
+            _ => {
+                let other = tagcase_;
+                false
             }
         }
     }
