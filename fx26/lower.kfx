@@ -377,7 +377,7 @@
                     (names (if (null? statics) (any-module gs) statics)))
                (i-let (list (lower m sc gs)) (lower-body (cdr xs) (cons (cons "%with" names) sc) gs))))
             ((string=? h "select") (error "the engine: a select as a value"))
-            ((string=? h "module") (lower-module xs sc gs))
+            ((or (string=? h "module") (string=? h "%module-value")) (lower-module xs sc gs))
             ((string=? h "extend") (lower-module (module-written (lst (list (sym "define" "" 0) (sym "%extend" "" 0) e) "" 0 0)) sc gs))
             ((string=? h "and")
              (cond ((null? xs) (i-lit (v-bool #t)))

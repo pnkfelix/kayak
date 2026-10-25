@@ -450,6 +450,9 @@
     "What `fixpt check` writes of `form`, checked: `v`, the checker's
      environment after it; `all`, the program's forms."
     (cond ((module-def? form) (module-line v all form))
+          ((and (head-is? form "define") (tagcase (second (items form)) (sym (n f p) (has-prefix? n "%shared:")) (else other #f)))
+           "A loaded file's value, a hidden global (C171): Fixpt prints none."
+           nil)
           ((or (head-is? form "define") (head-is? form "define*"))
            (let ((xs (items form)))
              (list (bound-line v (binder-name (second xs)) (if (i64= (size xs) 4) (third xs) no-form) (value-effect v (binder-name (second xs)) (last xs))))))

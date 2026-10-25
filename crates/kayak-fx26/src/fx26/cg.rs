@@ -2528,6 +2528,11 @@ pub fn parse_form(h: Str, xs: Sexps, e: &'static Sexp, f: Str, a: i64) -> &'stat
         x_sum(label_of(second(xs)), parse_x(car(cdr(cdr(xs)))), a)
     } else if string_eq_p(h, str_lit("tagcase")) {
         x_tagcase(parse_x(second(xs)), parse_arms(cdr(cdr(xs))), parse_else(cdr(cdr(xs))), a)
+    } else if ((string_eq_p(h, str_lit("module")) || string_eq_p(h, str_lit("%module-value")) || string_eq_p(h, str_lit("extend"))) && module_fact_p(a, str_lit("module-value"))) {
+        // A module made as a value where the checker's first-class modules
+        // have it (C170): not yet the generator's.
+        match cg_fail(str_lit("not yet: a module made as a value (C170)")) {};
+        x_var(str_lit("%none"), a)
     } else if string_eq_p(h, str_lit("module")) {
         parse_module(cdr(xs), a)
     } else if string_eq_p(h, str_lit("extend")) {
@@ -2724,6 +2729,17 @@ pub fn parse_arg(e: &'static Sexp) -> &'static Cx {
     }
 }
 
+pub fn module_fact_p(a: i64, what: Str) -> bool {
+    any_p(lambda1s(move |x: &'static Fact| {
+        let tagcase_ = x;
+        match *tagcase_ {
+            Fact::Fact(f, p, w) => {
+                (i64_eq(p, a) && string_eq_p(w, what))
+            }
+        }
+    }), get(cg_module_facts()))
+}
+
 /// `(with m body …)`: `m`'s values bound in the body, those it names. A
 /// module parameter's are its type's, as the checker said; else `m` is
 /// a module whose items were read.
@@ -2740,7 +2756,10 @@ pub fn parse_with(m: &'static Sexp, body: &'static Cx, f: Str, a: i64) -> &'stat
             }
         }
     });
-    if not(string_eq_p(spec, str_lit(""))) {
+    if module_fact_p(a, str_lit("with-value")) {
+        match cg_fail(str_lit("not yet: a with of a module value (C170)")) {};
+        body
+    } else if not(string_eq_p(spec, str_lit(""))) {
         with_layout(m, split_words(spec), body, a)
     } else if not(null_p(known)) {
         with_layout(m, car(known), body, a)
@@ -5771,7 +5790,7 @@ pub fn compile_cells(forms: Sexps, fs: Facts) -> () {
         let tagcase_ = x;
         match *tagcase_ {
             Fact::Fact(f, p, what) => {
-                (has_prefix_p(what, str_lit("with-spec ")) || has_prefix_p(what, str_lit("module-arg ")))
+                (has_prefix_p(what, str_lit("with-spec ")) || has_prefix_p(what, str_lit("module-arg ")) || string_eq_p(what, str_lit("module-value")) || string_eq_p(what, str_lit("with-value")))
             }
         }
     }), fs));

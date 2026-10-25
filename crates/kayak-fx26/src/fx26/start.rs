@@ -1080,6 +1080,20 @@ pub fn module_line(v: &'static Cv, all: Sexps, form: &'static Sexp) -> Strings {
 pub fn form_lines(v: &'static Cv, all: Sexps, form: &'static Sexp) -> Strings {
     if module_def_p(form) {
         module_line(v, all, form)
+    } else if (head_is_p(form, str_lit("define")) && {
+        let tagcase_ = second(items(form));
+        match *tagcase_ {
+            Sexp::Sym(n, f, p) => {
+                has_prefix_p(n, str_lit("%shared:"))
+            }
+            _ => {
+                let other = tagcase_;
+                false
+            }
+        }
+    }) {
+        // A loaded file's value, a hidden global (C171): Fixpt prints none.
+        nil::<Str>()
     } else if (head_is_p(form, str_lit("define")) || head_is_p(form, str_lit("define*"))) {
         let xs = items(form);
         kayak_rt::heap_cons(bound_line(v, binder_name(second(xs)), if i64_eq(size(xs), 4i64) {

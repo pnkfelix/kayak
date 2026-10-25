@@ -303,11 +303,18 @@ pub fn scheme_text(sc: &'static Scheme) -> Str {
 /// names and kayak-rt's. A module's item may shadow a primitive or a
 /// global (C87), as FX-26's may, and as a Rust `mod`'s item shadows what
 /// it imports by a glob.
-pub fn global(v: &'static Cv, name: Str, sc: &'static Scheme) -> &'static Bind {
+pub fn global(v: &'static Cv, name: Str, sc0: &'static Scheme) -> &'static Bind {
     if (keyword_p(name) && null_p(find_bind(str_lit("%module"), cv_binds(v)))) {
         match refuse(v, string_append(str_lit("a keyword names nothing: "), name)) {}
     } else {
-        let found = find_bind(name, cv_binds(v));
+        let (found, sc) = (find_bind(name, cv_binds(v)), {
+            let tagcase_ = sc0;
+            match *tagcase_ {
+                Scheme::Scheme(tv, t) => {
+                    scheme(tv, mtype_named(name, t))
+                }
+            }
+        });
         if null_p(found) {
             bind(name, sc, if null_p(find_bind(str_lit("%module"), cv_binds(v))) {
                 str_lit("global")
@@ -318,7 +325,7 @@ pub fn global(v: &'static Cv, name: Str, sc: &'static Scheme) -> &'static Bind {
             let tagcase_ = car(found);
             match *tagcase_ {
                 Bind::Bind(n, sc0, wher) => {
-                    if (string_eq_p(scheme_text(sc0), scheme_text(sc)) || (not(null_p(find_bind(str_lit("%module"), cv_binds(v)))) && (string_eq_p(wher, str_lit("prim")) || string_eq_p(wher, str_lit("global"))))) {
+                    if (string_eq_p(scheme_text(sc0), scheme_text(sc)) || string_eq_p(wher, str_lit("prim")) || (not(null_p(find_bind(str_lit("%module"), cv_binds(v)))) && (string_eq_p(wher, str_lit("prim")) || string_eq_p(wher, str_lit("global"))))) {
                         bind(name, sc, if null_p(find_bind(str_lit("%module"), cv_binds(v))) {
                             str_lit("global")
                         } else {
@@ -445,7 +452,11 @@ pub fn constant_made(v: &'static Cv, s: &'static St, e: &'static Sexp, es: Strin
     }), es)) {
         // In a file loaded (C88): FX-26 makes it once, for all its loads, so
         // making it must be pure but for reading globals.
-        match refuse(v, string_append(str_lit("a loaded file is one value for all its loads, made once, so making it must be pure, and this one has "), string_append(show_effs(es), str_lit(": make its state in a `lambda` it gives, which each caller applies")))) {}
+        if null_p(find_bind(str_lit("%instance"), cv_binds(v))) {
+            match refuse(v, string_append(str_lit("a loaded file is one value for all its loads, made once, so making it must be pure, and this one has "), string_append(show_effs(es), str_lit(": make its state in a `lambda` it gives, which each caller applies")))) {}
+        } else {
+            kfx_restricted(v, s, string_append(str_lit("a loaded file is one value for all its loads, made once, so making it must be pure, and this one has "), string_append(show_effs(es), str_lit(": make its state in a `lambda` it gives, which each caller applies"))))
+        }
     } else if (any_p(lambda1s(move |x: Str| {
         has_prefix_p(x, str_lit("alloc:"))
     }), es) || makes_pairs_p(e)) {
@@ -1153,7 +1164,18 @@ pub fn check_top(v: &'static Cv, form: &'static Sexp) -> &'static Cv {
             } else if string_eq_p(h, str_lit("define-type")) {
                 // Its body read where it stands, used or not: so that one that
                 // mentions itself, or names no type, is refused.
-                if head_is_p(third(xs), str_lit("moduleof")) {
+                if (head_is_p(third(xs), str_lit("moduleof")) && trait_moduleof_p(third(xs)) && {
+                    let tagcase_ = second(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            true
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }) {
                     expressions::spec_well_formed(v, third(xs));
                     expressions::module_type_values(expressions::module_scope(v, third(xs), str_lit(""), str_lit("")), third(xs));
                     v
@@ -1984,6 +2006,72 @@ pub fn module_effects(m: Str, forms: Sexps, es: Effdefs) -> Effdefs {
     }), forms))
 }
 
+/// A module's own items, those bound after its mark.
+pub fn own_items(bs: Binds) -> Binds {
+    if (null_p(bs) || {
+        let tagcase_ = car(bs);
+        match *tagcase_ {
+            Bind::Bind(n, sc, w) => {
+                string_eq_p(n, str_lit("%module"))
+            }
+        }
+    }) {
+        nil::<&'static Bind>()
+    } else {
+        kayak_rt::heap_cons(car(bs), own_items(cdr(bs)))
+    }
+}
+
+/// A module's items, none of a type that mentions an abstract type of a
+/// module an item names, `m..t`, which is not known outside it (C170;
+/// Fixpt's `modules/inner-escape.fx`).
+pub fn items_kept_in(v: &'static Cv, bs: Binds) -> Binds {
+    let mods = concat(map(lambda1s(move |b: &'static Bind| {
+        let tagcase_ = b;
+        match *tagcase_ {
+            Bind::Bind(n, sc, w) => {
+                if {
+                    let tagcase_ = sc;
+                    match *tagcase_ {
+                        Scheme::Scheme(tv, t) => {
+                            mtype_p(t)
+                        }
+                    }
+                } {
+                    the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                } else {
+                    nil::<Str>()
+                }
+            }
+        }
+    }), own_items(bs)));
+    map(lambda1s(move |b: &'static Bind| {
+        let tagcase_ = b;
+        match *tagcase_ {
+            Bind::Bind(n, sc, w) => {
+                let m = if null_p(mods) {
+                    str_lit("")
+                } else {
+                    let tagcase_ = sc;
+                    match *tagcase_ {
+                        Scheme::Scheme(tv, t) => {
+                            mentions_module_of_p(t, filter(lambda1s(move |x: Str| {
+                                not(string_eq_p(x, n))
+                            }), mods))
+                        }
+                    }
+                };
+                if string_eq_p(m, str_lit("")) {
+                    ()
+                } else {
+                    match refuse(v, string_append(str_lit("`"), string_append(n, string_append(str_lit("`'s type mentions `"), string_append(m, str_lit("`, which is not known outside the module")))))) {}
+                }
+            }
+        }
+    }), own_items(bs));
+    bs
+}
+
 /// The items' values, before the module's mark, as `m x`.
 pub fn module_exports(mut m: Str, mut conversions: Strings, mut bs: Binds) -> Binds {
     loop {
@@ -2542,7 +2630,26 @@ pub fn refs_in(e: &'static Sexp, names: &'static Nset, forms: Sexps, bs: Binds) 
                 let m = sym_name(second(xs));
                 let own = concat(map(lambda1s(move |g: &'static Sexp| {
                     if (module_def_p(g) && string_eq_p(sym_name(second(items(g))), m)) {
-                        concat(map(&item_names, module_written(g)))
+                        onto(concat(map(&item_names, module_written(g))), concat(map(lambda1s(move |h: &'static Sexp| {
+                            if (head_is_p(h, str_lit("include")) && {
+                                let tagcase_ = second(items(h));
+                                match *tagcase_ {
+                                    Sexp::Sym(n, f2, p2) => {
+                                        true
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        false
+                                    }
+                                }
+                            }) {
+                                filter(lambda1s(move |n: Str| {
+                                    not(null_p(find_bind(string_append(sym_name(second(items(h))), string_append(str_lit(" "), n)), bs)))
+                                }), nset_names(names))
+                            } else {
+                                nil::<Str>()
+                            }
+                        }), module_written(g))))
                     } else {
                         nil::<Str>()
                     }
@@ -2625,7 +2732,11 @@ pub fn standard_scope(v: &'static Cv, sees: Strings) -> &'static Cv {
                     }
                 }
             }), es), here, group, file, line, fs, tv, at);
-            with_binds(bare, kayak_rt::heap_cons(bind(str_lit("%loaded"), scheme(nil::<Str>(), ty_unit()), str_lit("mark")), prim_binds(bare)))
+            with_binds(bare, kayak_rt::heap_cons(bind(str_lit("%loaded"), scheme(nil::<Str>(), ty_unit()), str_lit("mark")), onto(if string_member_p(str_lit("%instance"), sees) {
+                the::<Binds>(kayak_rt::heap_cons(bind(str_lit("%instance"), scheme(nil::<Str>(), ty_unit()), str_lit("mark")), kayak_rt::nil()))
+            } else {
+                nil::<&'static Bind>()
+            }, prim_binds(bare))))
         }
     }
 }
@@ -3464,7 +3575,7 @@ pub fn module_finish(p: &'static Mprep, checked: &'static Elab) -> &'static Elab
                                         n
                                     }
                                 }
-                            }), conversions)), bs), cv_binds(outer))), if loaded {
+                            }), conversions)), items_kept_in(v, bs)), cv_binds(outer))), if loaded {
                                 onto(ds, cv_dts(outer))
                             } else {
                                 ds
@@ -4217,93 +4328,187 @@ pub fn imports_in(e: &'static Sexp) -> &'static Sexp {
 }
 
 /// `e`, each load in it the module its file is, shared.
-pub fn spliced(e: &'static Sexp, dir: Str, loaded: Fileds, chain: Strings, known: Keyeds) -> &'static SplicedTo {
-    let tagcase_ = e;
-    match *tagcase_ {
-        Sexp::Lst(xs, f, l, p) => {
-            let load = load_of(e);
-            if null_p(load) {
-                spliced_each(xs, dir, loaded, chain, known, nil::<&'static Sexp>(), nil::<&'static Sexp>(), f, l, p)
-            } else {
-                let path = {
-                    let tagcase_ = car(load);
+pub fn spliced(mut e: &'static Sexp, mut dir: Str, mut loaded: Fileds, mut chain: Strings, mut known: Keyeds) -> &'static SplicedTo {
+    loop {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                let load = load_of(e);
+                if (head_is_p(e, str_lit("load-input")) && i64_eq(size(xs), 2i64) && {
+                    let tagcase_ = second(xs);
                     match *tagcase_ {
                         Sexp::Str(s, f2, p2) => {
-                            if built_in_path_p(s) {
-                                s
-                            } else {
-                                path_joined(dir, s)
-                            }
+                            true
                         }
                         _ => {
                             let other = tagcase_;
-                            str_lit("")
+                            false
                         }
                     }
-                };
-                let args = cdr(load);
-                let key = string_append(path, string_append(str_lit(" "), show_sexps(args)));
-                let had = concat(map(lambda1s(move |k: &'static Keyed| {
-                    let tagcase_ = k;
-                    match *tagcase_ {
-                        Keyed::Keyed(kk, n) => {
-                            if string_eq_p(kk, key) {
-                                the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
-                            } else {
-                                nil::<Str>()
+                }) {
+                    // A file of one expression, its value (C171; FX-26's `load-input`):
+                    // FX-26's alone, a value made once for all its loads, here a global
+                    // defined before the form that first loads it,
+                    // `%shared:input:PATH` as Fixpt names it, which the restriction pass
+                    // refuses.
+                    let path = {
+                        let tagcase_ = second(xs);
+                        match *tagcase_ {
+                            Sexp::Str(s, f2, p2) => {
+                                if built_in_path_p(s) {
+                                    s
+                                } else {
+                                    path_joined(dir, s)
+                                }
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                str_lit("")
                             }
                         }
-                    }
-                }), known));
-                if not(null_p(had)) {
-                    spliced_to(included_module(car(had), f, l, p), nil::<&'static Sexp>(), known)
-                } else {
-                    let found = if built_in_path_p(path) {
-                        if string_eq_p(built_in_text(path), str_lit("")) {
-                            nil::<Str>()
-                        } else {
-                            the::<Strings>(kayak_rt::heap_cons(built_in_text(path), kayak_rt::nil()))
+                    };
+                    let key = string_append(str_lit("input:"), path);
+                    let had = concat(map(lambda1s(move |k: &'static Keyed| {
+                        let tagcase_ = k;
+                        match *tagcase_ {
+                            Keyed::Keyed(kk, n) => {
+                                if string_eq_p(kk, key) {
+                                    the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                                } else {
+                                    nil::<Str>()
+                                }
+                            }
                         }
+                    }), known));
+                    if not(null_p(had)) {
+                        return spliced_to(sym(car(had), f, p), nil::<&'static Sexp>(), known);
                     } else {
-                        concat(map(lambda1s(move |x: &'static Filed| {
-                            let tagcase_ = x;
-                            match *tagcase_ {
-                                Filed::Filed(n, text) => {
-                                    if string_eq_p(n, path) {
-                                        the::<Strings>(kayak_rt::heap_cons(text, kayak_rt::nil()))
-                                    } else {
-                                        nil::<Str>()
+                        let found = if built_in_path_p(path) {
+                            if string_eq_p(built_in_text(path), str_lit("")) {
+                                nil::<Str>()
+                            } else {
+                                the::<Strings>(kayak_rt::heap_cons(built_in_text(path), kayak_rt::nil()))
+                            }
+                        } else {
+                            concat(map(lambda1s(move |x: &'static Filed| {
+                                let tagcase_ = x;
+                                match *tagcase_ {
+                                    Filed::Filed(n, text) => {
+                                        if string_eq_p(n, path) {
+                                            the::<Strings>(kayak_rt::heap_cons(text, kayak_rt::nil()))
+                                        } else {
+                                            nil::<Str>()
+                                        }
                                     }
                                 }
+                            }), loaded))
+                        };
+                        if null_p(found) {
+                            return error(string_append(str_lit("kfx: cannot read "), path));
+                        } else {
+                            let es = read_all(string_chars(car(found)), path, 1i64);
+                            if not(i64_eq(size(es), 1i64)) {
+                                return error(string_append(str_lit("kfx: "), string_append(path, str_lit(": not a file of one expression"))));
+                            } else {
+                                let inner = spliced(imports_in(car(es)), directory_of(path), loaded, kayak_rt::heap_cons(path, chain), known);
+                                let name = string_append(str_lit("%shared:"), key);
+                                let made = lst(kayak_rt::heap_cons(sym(str_lit("define"), f, p), kayak_rt::heap_cons(sym(name, f, p), kayak_rt::heap_cons(spliced_form(inner), kayak_rt::nil()))), f, l, p);
+                                return spliced_to(sym(name, f, p), onto(spliced_defs(inner), kayak_rt::heap_cons(made, kayak_rt::nil())), kayak_rt::heap_cons(keyed(key, name), spliced_known(inner)));
                             }
-                        }), loaded))
-                    };
-                    if string_member_p(path, chain) {
-                        error(string_append(str_lit("kfx: "), string_append(f, string_append(str_lit(": a load cycle: "), words_of(reverse(the::<Strings>(kayak_rt::heap_cons(path, chain))))))))
-                    } else if null_p(found) {
-                        error(string_append(str_lit("kfx: cannot read "), path))
-                    } else {
-                        let forms = import_items(read_all(string_chars(car(found)), path, 1i64));
-                        let its = parameters_given(forms, args, path);
-                        let inner = spliced_each(its, directory_of(path), loaded, kayak_rt::heap_cons(path, chain), known, nil::<&'static Sexp>(), nil::<&'static Sexp>(), f, l, p);
-                        let name = string_append(str_lit("made--load--"), string_append(i64_to_string(size(spliced_known(inner))), string_append(str_lit("--"), file_tag(f))));
-                        let sees = map(lambda1s(move |k: &'static Keyed| {
-                            let tagcase_ = k;
-                            match *tagcase_ {
-                                Keyed::Keyed(kk, n) => {
-                                    sym(n, f, p)
+                        }
+                    }
+                } else if (null_p(load) && head_is_p(e, str_lit("proj")) && i64_gt(size(xs), 2i64) && head_is_p(second(xs), str_lit("load-module"))) {
+                    // A file of module parameters given them, not called (C171): the
+                    // procedure that makes the module, `(lambda () ((proj ...)))`.
+                    e = lst(kayak_rt::heap_cons(sym(str_lit("lambda"), f, p), kayak_rt::heap_cons(lst(nil::<&'static Sexp>(), f, l, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(e, kayak_rt::nil()), f, l, p), kayak_rt::nil()))), f, l, p);
+                    continue;
+                } else if null_p(load) {
+                    return spliced_each(xs, dir, loaded, chain, known, nil::<&'static Sexp>(), nil::<&'static Sexp>(), f, l, p);
+                } else {
+                    let path = {
+                        let tagcase_ = car(load);
+                        match *tagcase_ {
+                            Sexp::Str(s, f2, p2) => {
+                                if built_in_path_p(s) {
+                                    s
+                                } else {
+                                    path_joined(dir, s)
                                 }
                             }
-                        }), spliced_known(inner));
-                        let made = lst(kayak_rt::heap_cons(sym(str_lit("define"), f, p), kayak_rt::heap_cons(sym(name, f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("module"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("%loaded"), f, p), kayak_rt::heap_cons(str(path, f, p), sees)), f, l, p), items(spliced_form(inner)))), f, l, p), kayak_rt::nil()))), f, l, p);
-                        spliced_to(included_module(name, f, l, p), onto(spliced_defs(inner), kayak_rt::heap_cons(made, kayak_rt::nil())), kayak_rt::heap_cons(keyed(key, name), spliced_known(inner)))
+                            _ => {
+                                let other = tagcase_;
+                                str_lit("")
+                            }
+                        }
+                    };
+                    let args = cdr(load);
+                    let key = string_append(path, string_append(str_lit(" "), show_sexps(args)));
+                    let had = concat(map(lambda1s(move |k: &'static Keyed| {
+                        let tagcase_ = k;
+                        match *tagcase_ {
+                            Keyed::Keyed(kk, n) => {
+                                if string_eq_p(kk, key) {
+                                    the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                                } else {
+                                    nil::<Str>()
+                                }
+                            }
+                        }
+                    }), known));
+                    if not(null_p(had)) {
+                        return spliced_to(included_module(car(had), f, l, p), nil::<&'static Sexp>(), known);
+                    } else {
+                        let found = if built_in_path_p(path) {
+                            if string_eq_p(built_in_text(path), str_lit("")) {
+                                nil::<Str>()
+                            } else {
+                                the::<Strings>(kayak_rt::heap_cons(built_in_text(path), kayak_rt::nil()))
+                            }
+                        } else {
+                            concat(map(lambda1s(move |x: &'static Filed| {
+                                let tagcase_ = x;
+                                match *tagcase_ {
+                                    Filed::Filed(n, text) => {
+                                        if string_eq_p(n, path) {
+                                            the::<Strings>(kayak_rt::heap_cons(text, kayak_rt::nil()))
+                                        } else {
+                                            nil::<Str>()
+                                        }
+                                    }
+                                }
+                            }), loaded))
+                        };
+                        if string_member_p(path, chain) {
+                            return error(string_append(str_lit("kfx: "), string_append(f, string_append(str_lit(": a load cycle: "), words_of(reverse(the::<Strings>(kayak_rt::heap_cons(path, chain))))))));
+                        } else if null_p(found) {
+                            return error(string_append(str_lit("kfx: cannot read "), path));
+                        } else {
+                            let forms = import_items(read_all(string_chars(car(found)), path, 1i64));
+                            let its = parameters_given(forms, args, path);
+                            let inner = spliced_each(its, directory_of(path), loaded, kayak_rt::heap_cons(path, chain), known, nil::<&'static Sexp>(), nil::<&'static Sexp>(), f, l, p);
+                            let name = string_append(str_lit("made--load--"), string_append(i64_to_string(size(spliced_known(inner))), string_append(str_lit("--"), file_tag(f))));
+                            let sees = map(lambda1s(move |k: &'static Keyed| {
+                                let tagcase_ = k;
+                                match *tagcase_ {
+                                    Keyed::Keyed(kk, n) => {
+                                        sym(n, f, p)
+                                    }
+                                }
+                            }), spliced_known(inner));
+                            let made = lst(kayak_rt::heap_cons(sym(str_lit("define"), f, p), kayak_rt::heap_cons(sym(name, f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("module"), f, p), kayak_rt::heap_cons(lst(kayak_rt::heap_cons(sym(str_lit("%loaded"), f, p), kayak_rt::heap_cons(str(path, f, p), if null_p(args) {
+                                sees
+                            } else {
+                                kayak_rt::heap_cons(sym(str_lit("%instance"), f, p), sees)
+                            })), f, l, p), items(spliced_form(inner)))), f, l, p), kayak_rt::nil()))), f, l, p);
+                            return spliced_to(included_module(name, f, l, p), onto(spliced_defs(inner), kayak_rt::heap_cons(made, kayak_rt::nil())), kayak_rt::heap_cons(keyed(key, name), spliced_known(inner)));
+                        }
                     }
                 }
             }
-        }
-        _ => {
-            let other = tagcase_;
-            spliced_to(e, nil::<&'static Sexp>(), known)
+            _ => {
+                let other = tagcase_;
+                return spliced_to(e, nil::<&'static Sexp>(), known);
+            }
         }
     }
 }
@@ -4586,7 +4791,7 @@ pub fn input_expanded(f: &'static Sexp, dir: Str, loaded: Fileds) -> Sexps {
                 if (not(head_is_p(body, str_lit("module"))) || (head_is_p(e, str_lit("let")) && not(i64_eq(size(items(e)), 3i64))) || any_p(lambda1s(move |b: &'static Sexp| {
                     not(head_is_p(second(items(b)), str_lit("load-module")))
                 }), bound)) {
-                    error(string_append(str_lit("kfx: "), string_append(path, str_lit(": a load-input of what KFX reads not yet: a module, or a let of loaded modules around one"))))
+                    kayak_rt::heap_cons(f, kayak_rt::nil())
                 } else {
                     onto(map2(lambda2s(move |b: &'static Sexp, n: Str| {
                         lst(kayak_rt::heap_cons(sym(str_lit("define"), fl, p), kayak_rt::heap_cons(sym(n, fl, p), kayak_rt::heap_cons(second(items(b)), kayak_rt::nil()))), fl, l, p)
@@ -4620,13 +4825,74 @@ pub fn spliced_tops(forms: Sexps, dir: Str, loaded: Fileds, known: Keyeds) -> Se
     }
 }
 
+// A module defined at the top level that KFX's modules cannot be (C171): one
+// that includes a module made where it is (but a module written there,
+// C90), or has a module of its own that includes one not named. It is a
+// module value, `(%module-value item ...)`, as FX-26's are all (C170).
+/// Whether module items `its` include a module neither named nor (where
+/// `outer`, a module defined at the top level) written in place.
+pub fn include_of_value_p(its: Sexps, outer: bool) -> bool {
+    any_p(lambda1s(move |f: &'static Sexp| {
+        if (head_is_p(f, str_lit("include")) && i64_gt(size(items(f)), 1i64)) {
+            let e = second(items(f));
+            not(({
+                let tagcase_ = e;
+                match *tagcase_ {
+                    Sexp::Sym(n, f2, p2) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            } || (outer && (head_is_p(e, str_lit("module")) || head_is_p(e, str_lit("load-module"))))))
+        } else if head_is_p(f, str_lit("hide")) {
+            include_of_value_p(cdr(items(f)), outer)
+        } else if (head_is_p(f, str_lit("define")) && i64_eq(size(items(f)), 3i64) && head_is_p(third(items(f)), str_lit("module"))) {
+            include_of_value_p(cdr(items(third(items(f)))), false)
+        } else {
+            false
+        }
+    }), its)
+}
+
+pub fn as_module_value(f: &'static Sexp) -> &'static Sexp {
+    if (module_def_p(f) && head_is_p(third(items(f)), str_lit("module")) && include_of_value_p(cdr(items(third(items(f)))), true)) {
+        let tagcase_ = f;
+        match *tagcase_ {
+            Sexp::Lst(xs, fl, l, p) => {
+                lst(kayak_rt::heap_cons(car(xs), kayak_rt::heap_cons(second(xs), kayak_rt::heap_cons({
+                    let tagcase_ = third(xs);
+                    match *tagcase_ {
+                        Sexp::Lst(ys, f2, l2, p2) => {
+                            lst(kayak_rt::heap_cons(sym(str_lit("%module-value"), f2, p2), cdr(ys)), f2, l2, p2)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            third(xs)
+                        }
+                    }
+                }, kayak_rt::nil()))), fl, l, p)
+            }
+            _ => {
+                let other = tagcase_;
+                f
+            }
+        }
+    } else {
+        f
+    }
+}
+
 /// A program's forms: what it loads spliced in (C88), and what its modules
 /// make in place defined before them (C90); a `poly` in a `poly` around a
-/// definition, one (C107); a `load-input` of a module, the module (C116).
+/// definition, one (C107); a `load-input` of a module, the module (C116);
+/// a module KFX's cannot be, a module value (C171).
 pub fn with_loads(forms: Sexps, file: Str, loaded: Fileds) -> Sexps {
-    let forms = concat(map(lambda1s(move |f: &'static Sexp| {
+    let forms = map(&as_module_value, concat(map(lambda1s(move |f: &'static Sexp| {
         input_expanded(f, directory_of(file), loaded)
-    }), import_items(forms)));
+    }), import_items(forms))));
     map(&flat_definition, concat(map(&hoisted, if (null_p(loaded) && not(any_p(&loads_p, forms))) {
         forms
     } else {

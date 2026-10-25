@@ -369,6 +369,39 @@ pub fn after_prefix(x: Str, p: Str) -> Str {
     list_to_string(drop_chars(string_to_list(x), string_length_i64(p)))
 }
 
+pub fn chars_after_dots(mut cs: List<char>) -> List<char> {
+    loop {
+        if (null_p(cs) || null_p(cdr(cs))) {
+            return nil::<char>();
+        } else if (char_eq_p(car(cs), '.') && char_eq_p(car(cdr(cs)), '.')) {
+            return cdr(cdr(cs));
+        } else {
+            cs = cdr(cs);
+            continue;
+        }
+    }
+}
+
+pub fn chars_before_dots(cs: List<char>) -> List<char> {
+    if (null_p(cs) || null_p(cdr(cs))) {
+        cs
+    } else if (char_eq_p(car(cs), '.') && char_eq_p(car(cdr(cs)), '.')) {
+        nil::<char>()
+    } else {
+        kayak_rt::heap_cons(car(cs), chars_before_dots(cdr(cs)))
+    }
+}
+
+/// What precedes the first `..` of `x`.
+pub fn before_dots(x: Str) -> Str {
+    list_to_string(chars_before_dots(string_to_list(x)))
+}
+
+/// What follows the first `..` of `x`.
+pub fn after_dots(x: Str) -> Str {
+    list_to_string(chars_after_dots(string_to_list(x)))
+}
+
 pub fn char_from_p(s: Str, c: char, i: i64, n: i64) -> bool {
     (i64_lt(i, n) && (char_eq_p(string_ref_i64(s, i), c) || char_from_p(s, c, i64_plus(i, 1i64), n)))
 }
@@ -680,6 +713,10 @@ pub fn region_name(v: &'static Cv, tvars: Strings, r: &'static Sexp) -> Str {
         string_append(str_lit("'"), s)
     } else if (char_eq_p(string_ref_i64(s, 0i64), '\'') && string_member_p(s, tvars)) {
         s
+    } else if string_eq_p(s, str_lit("heap")) {
+        // The heap place, a region as any place is (C34): `@heap` (C171;
+        // Fixpt's `with-shadows-applied.fx`).
+        str_lit("@heap")
     } else {
         match refuse(v, string_append(str_lit("a region KFX-0 does not have: "), s)) {}
     }
@@ -715,6 +752,468 @@ pub fn io_kind_p(k: Str) -> bool {
     string_member_p(k, kayak_rt::heap_cons(str_lit("stdin"), kayak_rt::heap_cons(str_lit("stdout"), kayak_rt::heap_cons(str_lit("stderr"), kayak_rt::heap_cons(str_lit("fs-read"), kayak_rt::heap_cons(str_lit("fs-write"), kayak_rt::heap_cons(str_lit("clock"), kayak_rt::heap_cons(str_lit("args"), kayak_rt::heap_cons(str_lit("exit"), kayak_rt::heap_cons(str_lit("terminal"), kayak_rt::heap_cons(str_lit("native"), kayak_rt::nil())))))))))))
 }
 
+pub fn cv_dts(v: &'static Cv) -> Dts {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+            ds
+        }
+    }
+}
+
+pub fn cv_aliases(v: &'static Cv) -> Aliases {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+            als
+        }
+    }
+}
+
+pub fn cv_binds(v: &'static Cv) -> Binds {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+            bs
+        }
+    }
+}
+
+pub fn cv_group(v: &'static Cv) -> Strings {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+            group
+        }
+    }
+}
+
+pub fn cv_tvars(v: &'static Cv) -> Strings {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+            tv
+        }
+    }
+}
+
+/// The innermost binding of `name`, as a list of one, or none.
+pub fn find_bind(mut name: Str, mut bs: Binds) -> Binds {
+    loop {
+        if null_p(bs) {
+            return nil::<&'static Bind>();
+        } else {
+            let tagcase_ = car(bs);
+            match *tagcase_ {
+                Bind::Bind(n, sc, wher) => {
+                    if string_eq_p(n, name) {
+                        return kayak_rt::heap_cons(car(bs), kayak_rt::nil());
+                    } else {
+                        bs = cdr(bs);
+                        continue;
+                    }
+                }
+            }
+        }
+    }
+}
+
+// First-class modules (C170; Fixpt's `docs/research/first-class-modules.md`):
+// a module's type, `(ty-data "%mtype" (item ...))`, each item `%abs t`, a
+// description `%desc t` of its type, an effect's `%edesc e` (its atoms a
+// `ty-proc`'s effect), or a value `%val x` of its type. An abstract type
+// inside is `ID..t`, `ID` the moduleof's or the module's own (`mt@POS`),
+// renamed `p..t` once the module is bound to `p`. A name a module gives as
+// a type, in a `with` or inside the module, is a binding `%type t`.
+pub fn type_bind(n: Str, t: &'static Ty) -> &'static Bind {
+    bind(string_append(str_lit("%type "), n), scheme(nil::<Str>(), t), str_lit("type"))
+}
+
+pub fn with_type_binds(v: &'static Cv, tbs: Binds, eds: Effdefs) -> &'static Cv {
+    let tagcase_ = v;
+    match *tagcase_ {
+        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
+            cv(onto(tbs, bs), ds, als, onto(eds, es), here, group, file, line, fs, tv, at)
+        }
+    }
+}
+
+pub fn mtype_p(t: &'static Ty) -> bool {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            string_eq_p(d, str_lit("%mtype"))
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+pub fn mitem_kind(x: &'static Ty) -> Str {
+    let tagcase_ = x;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            if has_prefix_p(d, str_lit("%abs ")) {
+                str_lit("%abs")
+            } else if has_prefix_p(d, str_lit("%desc ")) {
+                str_lit("%desc")
+            } else if has_prefix_p(d, str_lit("%edesc ")) {
+                str_lit("%edesc")
+            } else if has_prefix_p(d, str_lit("%val ")) {
+                str_lit("%val")
+            } else {
+                str_lit("")
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("")
+        }
+    }
+}
+
+pub fn mitem_name(x: &'static Ty) -> Str {
+    let tagcase_ = x;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            after_prefix(d, string_append(mitem_kind(x), str_lit(" ")))
+        }
+        _ => {
+            let other = tagcase_;
+            str_lit("")
+        }
+    }
+}
+
+pub fn mtype_items(t: &'static Ty) -> Tys {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            if string_eq_p(d, str_lit("%mtype")) {
+                args
+            } else {
+                nil::<&'static Ty>()
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            nil::<&'static Ty>()
+        }
+    }
+}
+
+/// The item of module type `t` of `kind` (`%abs`, `%desc`, ...) named `n`.
+pub fn mtype_find(t: &'static Ty, kind: Str, n: Str) -> Tys {
+    filter(lambda1s(move |x: &'static Ty| {
+        (string_eq_p(mitem_kind(x), kind) && string_eq_p(mitem_name(x), n))
+    }), mtype_items(t))
+}
+
+pub fn string_index(mut x: Str, mut xs: Strings, mut i: i64) -> i64 {
+    loop {
+        if null_p(xs) {
+            return -1i64;
+        } else if string_eq_p(car(xs), x) {
+            return i;
+        } else {
+            (xs, i) = (cdr(xs), i64_plus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+pub fn string_nth(mut xs: Strings, mut i: i64) -> Str {
+    loop {
+        if i64_eq(i, 0i64) {
+            return car(xs);
+        } else {
+            (xs, i) = (cdr(xs), i64_minus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+/// `t`, each type named one of `from` (of no arguments) replaced by the
+/// type of `to` in its place.
+pub fn data_replaced(from: Strings, to: Tys, t: &'static Ty) -> &'static Ty {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            if null_p(args) {
+                let i = string_index(d, from, 0i64);
+                if i64_lt(i, 0i64) {
+                    t
+                } else {
+                    ty_nth(to, i)
+                }
+            } else {
+                ty_data(d, map(lambda1s(move |x: &'static Ty| {
+                    data_replaced(from, to, x)
+                }), args))
+            }
+        }
+        Ty::TyList(e, r) => {
+            ty_list(data_replaced(from, to, e), r)
+        }
+        Ty::TyRef(e, r) => {
+            ty_ref(data_replaced(from, to, e), r)
+        }
+        Ty::TyFlat(e, r) => {
+            ty_flat(data_replaced(from, to, e), r)
+        }
+        Ty::TyProc(es, ps, r) => {
+            ty_proc(es, map(lambda1s(move |x: &'static Ty| {
+                data_replaced(from, to, x)
+            }), ps), data_replaced(from, to, r))
+        }
+        Ty::TyShape(p, ls, ts) => {
+            ty_shape(p, ls, map(lambda1s(move |x: &'static Ty| {
+                data_replaced(from, to, x)
+            }), ts))
+        }
+        Ty::TyTag(a, h, es, r) => {
+            ty_tag(data_replaced(from, to, a), data_replaced(from, to, h), es, r)
+        }
+        _ => {
+            let other = tagcase_;
+            t
+        }
+    }
+}
+
+pub fn ty_nth(mut xs: Tys, mut i: i64) -> &'static Ty {
+    loop {
+        if i64_eq(i, 0i64) {
+            return car(xs);
+        } else {
+            (xs, i) = (cdr(xs), i64_minus(i, 1i64));
+            continue;
+        }
+    }
+}
+
+/// The names of the types of no arguments in `t` that begin `pre`.
+pub fn data_names_with(mut pre: Str, mut t: &'static Ty) -> Strings {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                if (null_p(args) && has_prefix_p(d, pre)) {
+                    return the::<Strings>(kayak_rt::heap_cons(d, kayak_rt::nil()));
+                } else {
+                    return concat(map(lambda1s(move |x: &'static Ty| {
+                        data_names_with(pre, x)
+                    }), args));
+                }
+            }
+            Ty::TyList(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyRef(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyFlat(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyProc(es, ps, r) => {
+                return concat(map(lambda1s(move |x: &'static Ty| {
+                    data_names_with(pre, x)
+                }), kayak_rt::heap_cons(r, ps)));
+            }
+            Ty::TyShape(p, ls, ts) => {
+                return concat(map(lambda1s(move |x: &'static Ty| {
+                    data_names_with(pre, x)
+                }), ts));
+            }
+            Ty::TyTag(a, h, es, r) => {
+                return onto(data_names_with(pre, a), data_names_with(pre, h));
+            }
+            _ => {
+                let other = tagcase_;
+                return nil::<Str>();
+            }
+        }
+    }
+}
+
+pub fn data_renamed(from: Strings, to: Strings, t: &'static Ty) -> &'static Ty {
+    data_replaced(from, map(lambda1s(move |n: Str| {
+        ty_data(n, nil::<&'static Ty>())
+    }), to), t)
+}
+
+pub fn abs_ref(x: &'static Ty) -> &'static Ty {
+    let tagcase_ = x;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            if null_p(args) {
+                x
+            } else {
+                car(args)
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            x
+        }
+    }
+}
+
+/// A module type bound to `p`: its abstract types named `p..t` for the
+/// binding, opaque, equal to no other (Fixpt's `k-name-module`; Sheldon's
+/// `let` rule, `modules/let-opaque.fx`); any other type as it is.
+pub fn mtype_named(p: Str, t: &'static Ty) -> &'static Ty {
+    if not(mtype_p(t)) {
+        t
+    } else {
+        let refs = concat(map(lambda1s(move |x: &'static Ty| {
+            if string_eq_p(mitem_kind(x), str_lit("%abs")) {
+                let tagcase_ = x;
+                match *tagcase_ {
+                    Ty::TyData(d, args) => {
+                        let tagcase_ = car(args);
+                        match *tagcase_ {
+                            Ty::TyData(r, a2) => {
+                                the::<Strings>(kayak_rt::heap_cons(r, kayak_rt::nil()))
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                nil::<Str>()
+                            }
+                        }
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<Str>()
+                    }
+                }
+            } else {
+                nil::<Str>()
+            }
+        }), mtype_items(t)));
+        if null_p(refs) {
+            t
+        } else {
+            data_renamed(refs, map(lambda1s(move |r: Str| {
+                string_append(p, string_append(str_lit(".."), after_dots(r)))
+            }), refs), t)
+        }
+    }
+}
+
+/// The first type `p..t` in `t` of a module `p` of `ps`, or "".
+pub fn mentions_module_of_p(mut t: &'static Ty, mut ps: Strings) -> Str {
+    loop {
+        let tagcase_ = t;
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                if (null_p(args) && any_p(lambda1s(move |p: Str| {
+                    has_prefix_p(d, string_append(p, str_lit("..")))
+                }), ps)) {
+                    return d;
+                } else {
+                    return mentions_module_in(args, ps);
+                }
+            }
+            Ty::TyList(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyRef(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyFlat(e, r) => {
+                t = e;
+                continue;
+            }
+            Ty::TyProc(es, ps2, r) => {
+                return mentions_module_in(kayak_rt::heap_cons(r, ps2), ps);
+            }
+            Ty::TyShape(p, ls, ts) => {
+                return mentions_module_in(ts, ps);
+            }
+            Ty::TyTag(a, h, es, r) => {
+                return mentions_module_in(kayak_rt::heap_cons(a, kayak_rt::heap_cons(h, kayak_rt::nil())), ps);
+            }
+            _ => {
+                let other = tagcase_;
+                return str_lit("");
+            }
+        }
+    }
+}
+
+pub fn mentions_module_in(mut ts: Tys, mut ps: Strings) -> Str {
+    loop {
+        if null_p(ts) {
+            return str_lit("");
+        } else {
+            let m = mentions_module_of_p(car(ts), ps);
+            if string_eq_p(m, str_lit("")) {
+                ts = cdr(ts);
+                continue;
+            } else {
+                return m;
+            }
+        }
+    }
+}
+
+/// The type of the value named `n` in scope, or `unit` if none is.
+pub fn bound_type(v: &'static Cv, n: Str) -> &'static Ty {
+    let found = find_bind(n, cv_binds(v));
+    if null_p(found) {
+        ty_unit()
+    } else {
+        let tagcase_ = car(found);
+        match *tagcase_ {
+            Bind::Bind(m, sc, w) => {
+                let tagcase_ = sc;
+                match *tagcase_ {
+                    Scheme::Scheme(tv, t) => {
+                        t
+                    }
+                }
+            }
+        }
+    }
+}
+
+pub fn selected_type(v: &'static Cv, p: Str, t: &'static Ty, n: Str) -> &'static Ty {
+    let d = mtype_find(t, str_lit("%desc"), n);
+    if not(null_p(d)) {
+        let tagcase_ = car(d);
+        match *tagcase_ {
+            Ty::TyData(k, args) => {
+                car(args)
+            }
+            _ => {
+                let other = tagcase_;
+                ty_unit()
+            }
+        }
+    } else if not(null_p(mtype_find(t, str_lit("%abs"), n))) {
+        let tagcase_ = car(mtype_find(t, str_lit("%abs"), n));
+        match *tagcase_ {
+            Ty::TyData(k, args) => {
+                car(args)
+            }
+            _ => {
+                let other = tagcase_;
+                ty_unit()
+            }
+        }
+    } else {
+        match refuse(v, string_append(p, string_append(str_lit(" gives no type "), n))) {}
+    }
+}
+
 pub fn parse_effect(v: &'static Cv, tvars: Strings, e: &'static Sexp) -> Strings {
     let tagcase_ = e;
     match *tagcase_ {
@@ -739,6 +1238,43 @@ pub fn parse_effect(v: &'static Cv, tvars: Strings, e: &'static Sexp) -> Strings
         Sexp::Lst(xs, src_file, src_line, src_pos) => {
             if sym_is_p(car(xs), str_lit("maxeff")) {
                 parse_effects(v, tvars, cdr(xs))
+            } else if (sym_is_p(car(xs), str_lit("select")) && i64_eq(size(xs), 3i64) && {
+                let tagcase_ = second(xs);
+                match *tagcase_ {
+                    Sexp::Sym(n, f, p) => {
+                        true
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            } && mtype_p(bound_type(v, sym_name(second(xs))))) {
+                // An effect a module value gives (C170).
+                let found = mtype_find(bound_type(v, sym_name(second(xs))), str_lit("%edesc"), name_of(v, third(xs)));
+                if null_p(found) {
+                    match refuse(v, string_append(sym_name(second(xs)), string_append(str_lit(" gives no effect "), name_of(v, third(xs))))) {}
+                } else {
+                    let tagcase_ = car(found);
+                    match *tagcase_ {
+                        Ty::TyData(d, args) => {
+                            let tagcase_ = car(args);
+                            match *tagcase_ {
+                                Ty::TyProc(es, ps, r) => {
+                                    es
+                                }
+                                _ => {
+                                    let other = tagcase_;
+                                    nil::<Str>()
+                                }
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            nil::<Str>()
+                        }
+                    }
+                }
             } else if (sym_is_p(car(xs), str_lit("select")) && i64_eq(size(xs), 3i64)) {
                 // A module's effect, as the module defined at the top level gives it.
                 find_effdef(v, string_append(name_of(v, second(xs)), string_append(str_lit(" "), name_of(v, third(xs)))), cv_effdefs(v))
@@ -1036,51 +1572,6 @@ pub fn poly_written(args: Tys) -> &'static Ty {
 }
 
 // Types
-pub fn cv_dts(v: &'static Cv) -> Dts {
-    let tagcase_ = v;
-    match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-            ds
-        }
-    }
-}
-
-pub fn cv_aliases(v: &'static Cv) -> Aliases {
-    let tagcase_ = v;
-    match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-            als
-        }
-    }
-}
-
-pub fn cv_binds(v: &'static Cv) -> Binds {
-    let tagcase_ = v;
-    match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-            bs
-        }
-    }
-}
-
-pub fn cv_group(v: &'static Cv) -> Strings {
-    let tagcase_ = v;
-    match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-            group
-        }
-    }
-}
-
-pub fn cv_tvars(v: &'static Cv) -> Strings {
-    let tagcase_ = v;
-    match *tagcase_ {
-        Cv::Cv(bs, ds, als, es, here, group, file, line, fs, tv, at) => {
-            tv
-        }
-    }
-}
-
 /// `v`, with the type and region variables `names` in scope.
 pub fn with_tvars(v: &'static Cv, names: Strings) -> &'static Cv {
     let tagcase_ = v;
@@ -1157,27 +1648,6 @@ pub fn expanding(mut tvars: Strings) -> Strings {
         } else {
             tvars = cdr(tvars);
             continue;
-        }
-    }
-}
-
-/// The innermost binding of `name`, as a list of one, or none.
-pub fn find_bind(mut name: Str, mut bs: Binds) -> Binds {
-    loop {
-        if null_p(bs) {
-            return nil::<&'static Bind>();
-        } else {
-            let tagcase_ = car(bs);
-            match *tagcase_ {
-                Bind::Bind(n, sc, wher) => {
-                    if string_eq_p(n, name) {
-                        return kayak_rt::heap_cons(car(bs), kayak_rt::nil());
-                    } else {
-                        bs = cdr(bs);
-                        continue;
-                    }
-                }
-            }
         }
     }
 }
@@ -2413,6 +2883,74 @@ pub fn logic_head(x: &'static Sexp) -> Str {
             str_lit("")
         }
     }
+}
+
+/// Whether `e`, a description's, is an effect: `pure`, an effect named, or
+/// an effect's form (C170).
+pub fn effect_written_p(v: &'static Cv, e: &'static Sexp) -> bool {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Sym(n, f, p) => {
+            (string_member_p(n, kayak_rt::heap_cons(str_lit("pure"), kayak_rt::heap_cons(str_lit("spin"), kayak_rt::heap_cons(str_lit("nondet"), kayak_rt::nil())))) || any_p(lambda1s(move |d: &'static Effdef| {
+                let tagcase_ = d;
+                match *tagcase_ {
+                    Effdef::Effdef(m, atoms) => {
+                        string_eq_p(m, n)
+                    }
+                }
+            }), cv_effdefs(v)))
+        }
+        Sexp::Lst(xs, f, l, p) => {
+            string_member_p(logic_head(e), kayak_rt::heap_cons(str_lit("maxeff"), kayak_rt::heap_cons(str_lit("read"), kayak_rt::heap_cons(str_lit("write"), kayak_rt::heap_cons(str_lit("alloc"), kayak_rt::heap_cons(str_lit("init"), kayak_rt::heap_cons(str_lit("await"), kayak_rt::heap_cons(str_lit("send"), kayak_rt::heap_cons(str_lit("receive"), kayak_rt::heap_cons(str_lit("goto"), kayak_rt::heap_cons(str_lit("comefrom"), kayak_rt::heap_cons(str_lit("io"), kayak_rt::nil()))))))))))))
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+/// Whether a moduleof is one KFX has, a Rust trait (C24): of abstract
+/// types, descriptions of types, and values; any other, FX-26's alone, a
+/// module value's type (C170).
+pub fn trait_moduleof_p(m: &'static Sexp) -> bool {
+    not(any_p(lambda1s(move |x: &'static Sexp| {
+        let ys = {
+            let tagcase_ = x;
+            match *tagcase_ {
+                Sexp::Lst(zs, f, l, p) => {
+                    zs
+                }
+                _ => {
+                    let other = tagcase_;
+                    nil::<&'static Sexp>()
+                }
+            }
+        };
+        not((i64_eq(size(ys), 3i64) && ((sym_is_p(car(ys), str_lit("abs")) && sym_is_p(third(ys), str_lit("type"))) || (sym_is_p(car(ys), str_lit("desc")) && {
+            let tagcase_ = second(ys);
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        } && not(string_member_p(logic_head(third(ys)), kayak_rt::heap_cons(str_lit("maxeff"), kayak_rt::heap_cons(str_lit("read"), kayak_rt::heap_cons(str_lit("write"), kayak_rt::heap_cons(str_lit("alloc"), kayak_rt::heap_cons(str_lit("init"), kayak_rt::heap_cons(str_lit("await"), kayak_rt::heap_cons(str_lit("send"), kayak_rt::heap_cons(str_lit("receive"), kayak_rt::heap_cons(str_lit("goto"), kayak_rt::heap_cons(str_lit("comefrom"), kayak_rt::heap_cons(str_lit("io"), kayak_rt::nil()))))))))))))) && not(sym_is_p(third(ys), str_lit("pure")))) || (sym_is_p(car(ys), str_lit("val")) && {
+            let tagcase_ = second(ys);
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }))))
+    }), cdr(items(m))))
 }
 
 pub fn spec_clause_p(x: &'static Sexp) -> bool {
@@ -3819,6 +4357,19 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     return ty_void();
                 } else if string_member_p(s, tvars) {
                     return ty_var(s);
+                } else if not(null_p(find_bind(string_append(str_lit("%type "), s), cv_binds(v)))) {
+                    // A type a module gives, in a `with` of it or inside it (C170).
+                    let tagcase_ = car(find_bind(string_append(str_lit("%type "), s), cv_binds(v)));
+                    match *tagcase_ {
+                        Bind::Bind(n, sc, w) => {
+                            let tagcase_ = sc;
+                            match *tagcase_ {
+                                Scheme::Scheme(tv, u) => {
+                                    return u;
+                                }
+                            }
+                        }
+                    }
                 } else if (string_eq_p(s, str_lit("io-error")) && not(dt_named_p(s, cv_dts(v))) && null_p(find_alias(s, cv_aliases(v)))) {
                     t = car(read_all(string_chars(io_error_text()), str_lit(""), 1i64));
                     continue;
@@ -3851,7 +4402,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                                     return match refuse(v, string_append(str_lit("a type with parameters, given none: "), s)) {};
                                 } else if string_member_p(string_append(str_lit("%expanding "), s), tvars) {
                                     return match refuse(v, string_append(str_lit("a type abbreviation that mentions itself, "), string_append(s, str_lit(": Rust's type aliases cannot; a datatype can")))) {};
-                                } else if head_is_p(body, str_lit("moduleof")) {
+                                } else if (head_is_p(body, str_lit("moduleof")) && trait_moduleof_p(body)) {
                                     return ty_data(string_append(str_lit("%module "), s), nil::<&'static Ty>());
                                 } else if {
                                     let tagcase_ = body;
@@ -4109,7 +4660,10 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                 } else if sym_is_p(car(xs), str_lit("prompt-tag")) {
                     return ty_tag(parse_type(v, tvars, second(xs)), parse_type(v, tvars, third(xs)), parse_effect(v, tvars, fourth(xs)), parse_mutable_region(v, tvars, car(cdr(cdr(cdr(cdr(xs)))))));
                 } else if sym_is_p(car(xs), str_lit("moduleof")) {
-                    return match refuse(v, str_lit("a moduleof is a module's type when a define-type names it: KFX's is a Rust trait (C24)")) {};
+                    // A module's type (C170), structural: FX-26's, not KFX's, whose
+                    // module types are Rust traits named by a `define-type` (C24; the
+                    // restriction pass).
+                    return ty_data(str_lit("%mtype"), parse_moduleof(v, tvars, cdr(xs), string_append(str_lit("mt@"), i64_to_string(datum_pos(t)))));
                 } else if (sym_is_p(car(xs), str_lit("sumof")) && not(null_p(cdr(xs))) && {
                     let tagcase_ = second(xs);
                     match *tagcase_ {
@@ -4237,6 +4791,25 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     // A module's family applied (C89): `((select m t) arg ...)`.
                     let s = items(car(xs));
                     return parse_application(v, tvars, string_append(name_of(v, second(s)), string_append(str_lit(" "), name_of(v, third(s)))), cdr(xs));
+                } else if (sym_is_p(car(xs), str_lit("select")) && i64_eq(size(xs), 3i64) && {
+                    let tagcase_ = second(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            true
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                } && mtype_p(as_mtype(v, bound_type(v, sym_name(second(xs)))))) {
+                    // A type a module value gives (C170): its abstract type, named for
+                    // the binding, or what its description describes.
+                    return selected_type(v, sym_name(second(xs)), if mtype_p(bound_type(v, sym_name(second(xs)))) {
+                        bound_type(v, sym_name(second(xs)))
+                    } else {
+                        mtype_named(sym_name(second(xs)), as_mtype(v, bound_type(v, sym_name(second(xs)))))
+                    }, name_of(v, third(xs)));
                 } else if sym_is_p(car(xs), str_lit("select")) {
                     let name = string_append(name_of(v, second(xs)), string_append(str_lit(" "), name_of(v, third(xs))));
                     if null_p(find_alias(name, cv_aliases(v))) {
@@ -4304,7 +4877,8 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                         return match refuse(v, string_append(str_lit("a convention KFX does not have: "), show_sexp(second(xs)))) {};
                     }
                 } else if sym_is_p(car(xs), str_lit("subr")) {
-                    return ty_proc(parse_effect(v, tvars, second(xs)), parse_params(v, tvars, items(third(xs))), parse_type(v, tvars, fourth(xs)));
+                    let w = dep_scope(v, tvars, items(third(xs)), 1i64);
+                    return ty_proc(parse_effect(v, tvars, second(xs)), parse_params(w, tvars, items(third(xs))), parse_type(w, tvars, fourth(xs)));
                 } else if {
                     let tagcase_ = car(xs);
                     match *tagcase_ {
@@ -4332,10 +4906,124 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
     }
 }
 
+/// A moduleof's items, each seeing the types and effects before it; an
+/// abstract type `ID..t`.
+pub fn parse_moduleof(v: &'static Cv, tvars: Strings, its: Sexps, id: Str) -> Tys {
+    if null_p(its) {
+        nil::<&'static Ty>()
+    } else {
+        let x = car(its);
+        let ys = items(x);
+        let hd = logic_head(x);
+        let n = if (i64_eq(size(ys), 3i64) && {
+            let tagcase_ = second(ys);
+            match *tagcase_ {
+                Sexp::Sym(m, f, p) => {
+                    true
+                }
+                _ => {
+                    let other = tagcase_;
+                    false
+                }
+            }
+        }) {
+            sym_name(second(ys))
+        } else {
+            str_lit("")
+        };
+        if (string_eq_p(hd, str_lit("abs")) && i64_eq(size(ys), 3i64) && sym_is_p(third(ys), str_lit("type"))) {
+            let names = {
+                let tagcase_ = second(ys);
+                match *tagcase_ {
+                    Sexp::Sym(m, f, p) => {
+                        the::<Strings>(kayak_rt::heap_cons(m, kayak_rt::nil()))
+                    }
+                    Sexp::Lst(ns, f, l, p) => {
+                        map(&sym_name, ns)
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        nil::<Str>()
+                    }
+                }
+            };
+            onto(map(lambda1s(move |m: Str| {
+                ty_data(string_append(str_lit("%abs "), m), kayak_rt::heap_cons(ty_data(string_append(id, string_append(str_lit(".."), m)), nil::<&'static Ty>()), kayak_rt::nil()))
+            }), names), parse_moduleof(with_type_binds(v, map(lambda1s(move |m: Str| {
+                type_bind(m, ty_data(string_append(id, string_append(str_lit(".."), m)), nil::<&'static Ty>()))
+            }), names), nil::<&'static Effdef>()), tvars, cdr(its), id))
+        } else if (string_eq_p(hd, str_lit("desc")) && not(string_eq_p(n, str_lit(""))) && effect_written_p(v, third(ys))) {
+            let atoms = parse_effect(v, tvars, third(ys));
+            kayak_rt::heap_cons(ty_data(string_append(str_lit("%edesc "), n), kayak_rt::heap_cons(ty_proc(atoms, nil::<&'static Ty>(), ty_unit()), kayak_rt::nil())), parse_moduleof(with_type_binds(v, nil::<&'static Bind>(), kayak_rt::heap_cons(effdef(n, atoms), kayak_rt::nil())), tvars, cdr(its), id))
+        } else if (string_eq_p(hd, str_lit("desc")) && not(string_eq_p(n, str_lit("")))) {
+            let u = parse_type(v, tvars, third(ys));
+            kayak_rt::heap_cons(ty_data(string_append(str_lit("%desc "), n), kayak_rt::heap_cons(u, kayak_rt::nil())), parse_moduleof(with_type_binds(v, kayak_rt::heap_cons(type_bind(n, u), kayak_rt::nil()), nil::<&'static Effdef>()), tvars, cdr(its), id))
+        } else if (string_eq_p(hd, str_lit("val")) && not(string_eq_p(n, str_lit("")))) {
+            kayak_rt::heap_cons(ty_data(string_append(str_lit("%val "), n), kayak_rt::heap_cons(parse_type(v, tvars, third(ys)), kayak_rt::nil())), parse_moduleof(v, tvars, cdr(its), id))
+        } else {
+            match refuse(v, string_append(str_lit("a module type's item KFX does not have: "), show_sexp(x))) {}
+        }
+    }
+}
+
 pub fn parse_types(v: &'static Cv, tvars: Strings, ts: Sexps) -> Tys {
     map(lambda1s(move |t: &'static Sexp| {
         parse_type(v, tvars, t)
     }), ts)
+}
+
+/// Where a procedure type's parameters after a module parameter named,
+/// and its result, are read (a dependent procedure, C170; Fixpt's M5):
+/// that parameter's types `(select m t)` are the `i`th parameter's,
+/// `$i..t`, its argument's at a call.
+pub fn dep_scope(mut v: &'static Cv, mut tvars: Strings, mut ps: Sexps, mut i: i64) -> &'static Cv {
+    loop {
+        if null_p(ps) {
+            return v;
+        } else {
+            let n = param_name_written(v, tvars, car(ps));
+            if string_eq_p(n, str_lit("")) {
+                (ps, i) = (cdr(ps), i64_plus(i, 1i64));
+                continue;
+            } else {
+                let t = as_mtype(v, parse_type(v, tvars, param_type_written(v, tvars, car(ps))));
+                (v, ps, i) = (if mtype_p(t) {
+                    with_type_binds(v, kayak_rt::heap_cons(bind(n, scheme(nil::<Str>(), mtype_named(string_append(str_lit("$"), i64_to_string(i)), t)), str_lit("local")), kayak_rt::nil()), nil::<&'static Effdef>())
+                } else {
+                    v
+                }, cdr(ps), i64_plus(i, 1i64));
+                continue;
+            }
+        }
+    }
+}
+
+/// A module type named by a `define-type` (C24), as a module value's.
+pub fn as_mtype(v: &'static Cv, t: &'static Ty) -> &'static Ty {
+    let tagcase_ = t;
+    match *tagcase_ {
+        Ty::TyData(d, args) => {
+            if has_prefix_p(d, str_lit("%module ")) {
+                let found = find_alias(after_prefix(d, str_lit("%module ")), cv_aliases(v));
+                if null_p(found) {
+                    t
+                } else {
+                    let tagcase_ = car(found);
+                    match *tagcase_ {
+                        Alias::Alias(n, ps, body) => {
+                            parse_type(v, nil::<Str>(), body)
+                        }
+                    }
+                }
+            } else {
+                t
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            t
+        }
+    }
 }
 
 /// A procedure type's parameters, each named or not (C162).
@@ -4770,8 +5458,22 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
             if has_prefix_p(d, str_lit("%module ")) {
                 // A module type, by its abbreviation's name (C166).
                 after_prefix(d, str_lit("%module "))
+            } else if has_prefix_p(d, str_lit("mt@")) {
+                // A module type's own abstract type, by its name (C170).
+                after_dots(d)
+            } else if (has_prefix_p(d, str_lit("$")) && null_p(args)) {
+                // A dependent parameter's type (C170).
+                string_append(str_lit("(select "), string_append(before_dots(d), string_append(str_lit(" "), string_append(after_dots(d), str_lit(")")))))
             } else if null_p(args) {
                 d
+            } else if string_eq_p(d, str_lit("%mtype")) {
+                string_append(str_lit("(moduleof"), string_append(run_together(map(lambda1s(move |x: &'static Ty| {
+                    string_append(str_lit(" "), show_mitem(s, x))
+                }), onto(filter(lambda1s(move |x: &'static Ty| {
+                    not(string_eq_p(mitem_kind(x), str_lit("%val")))
+                }), args), filter(lambda1s(move |x: &'static Ty| {
+                    string_eq_p(mitem_kind(x), str_lit("%val"))
+                }), args)))), str_lit(")")))
             } else if has_prefix_p(d, str_lit("%spec ")) {
                 show_specified(s, d, car(args))
             } else if string_eq_p(d, str_lit("%bloblet")) {
@@ -4889,6 +5591,39 @@ pub fn show_ty(s: &'static St, t: &'static Ty) -> Str {
         Ty::TyMeta(k) => {
             string_append(str_lit("?"), i64_to_string(k))
         }
+    }
+}
+
+pub fn show_mitem(s: &'static St, x: &'static Ty) -> Str {
+    let (k, n, args) = (mitem_kind(x), mitem_name(x), {
+        let tagcase_ = x;
+        match *tagcase_ {
+            Ty::TyData(d, a) => {
+                a
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<&'static Ty>()
+            }
+        }
+    });
+    if string_eq_p(k, str_lit("%abs")) {
+        string_append(str_lit("(abs "), string_append(n, str_lit(" type)")))
+    } else if string_eq_p(k, str_lit("%edesc")) {
+        string_append(str_lit("(desc "), string_append(n, string_append(str_lit(" "), string_append({
+            let tagcase_ = car(args);
+            match *tagcase_ {
+                Ty::TyProc(es, ps, r) => {
+                    show_effs(es)
+                }
+                _ => {
+                    let other = tagcase_;
+                    str_lit("?")
+                }
+            }
+        }, str_lit(")")))))
+    } else {
+        string_append(str_lit("("), string_append(after_prefix(k, str_lit("%")), string_append(str_lit(" "), string_append(n, string_append(str_lit(" "), string_append(show_ty(s, car(args)), str_lit(")")))))))
     }
 }
 
@@ -6642,6 +7377,12 @@ pub fn fits_shapes_of(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'stati
                     if (string_eq_p(x, str_lit("%native")) && string_eq_p(y, str_lit("%fx"))) {
                         // A native procedure where one of any convention is (C116).
                         fits(v, s, car(xs), car(ys))
+                    } else if (string_eq_p(x, str_lit("%mtype")) && string_eq_p(y, str_lit("%mtype"))) {
+                        mtype_fits(v, kfx_restricted(v, s, str_lit("a module value, FX-26's first-class modules', which KFX has not yet (C170)")), a, e)
+                    } else if (string_eq_p(x, str_lit("%mtype")) && has_prefix_p(y, str_lit("%module "))) {
+                        mtype_fits(v, kfx_restricted(v, s, str_lit("a module value, FX-26's first-class modules', which KFX has not yet (C170)")), a, module_alias_type(v, y))
+                    } else if (has_prefix_p(x, str_lit("%module ")) && string_eq_p(y, str_lit("%mtype"))) {
+                        mtype_fits(v, kfx_restricted(v, s, str_lit("a module value, FX-26's first-class modules', which KFX has not yet (C170)")), module_alias_type(v, x), e)
                     } else if (string_eq_p(x, str_lit("%bloblet")) && string_eq_p(y, str_lit("%bloblet")) && i64_gt(size(xs), size(ys))) {
                         // A bloblet of more fields where one of fewer is wanted (C167; Fixpt's
                         // `TODO.md` §77): its fields count from the suffix, so each keeps its
@@ -6792,6 +7533,124 @@ pub fn fits_each(mut v: &'static Cv, mut s: &'static St, mut actuals: Tys, mut e
         } else {
             (s, actuals, expecteds) = (fits(v, s, car(actuals), car(expecteds)), cdr(actuals), cdr(expecteds));
             continue;
+        }
+    }
+}
+
+/// The module type a `define-type` of a moduleof names (C24), as a module
+/// value's is (C170).
+pub fn module_alias_type(v: &'static Cv, d: Str) -> &'static Ty {
+    let found = find_alias(after_prefix(d, str_lit("%module ")), cv_aliases(v));
+    if null_p(found) {
+        ty_unit()
+    } else {
+        let tagcase_ = car(found);
+        match *tagcase_ {
+            Alias::Alias(n, ps, body) => {
+                parse_type(v, nil::<Str>(), body)
+            }
+        }
+    }
+}
+
+/// A module of type `a` where one of `e` is wanted (C170; Fixpt's M4):
+/// each abstract type `e` names given by `a`, abstract or described;
+/// each description the same; each value fitting; `a` may give more.
+pub fn mtype_fits(v: &'static Cv, s: &'static St, a: &'static Ty, e: &'static Ty) -> &'static St {
+    let eabs = filter(lambda1s(move |x: &'static Ty| {
+        string_eq_p(mitem_kind(x), str_lit("%abs"))
+    }), mtype_items(e));
+    let froms = map(lambda1s(move |x: &'static Ty| {
+        let tagcase_ = abs_ref(x);
+        match *tagcase_ {
+            Ty::TyData(n, args) => {
+                n
+            }
+            _ => {
+                let other = tagcase_;
+                str_lit("")
+            }
+        }
+    }), eabs);
+    let tos = map(lambda1s(move |x: &'static Ty| {
+        mtype_provided(v, a, mitem_name(x))
+    }), eabs);
+    let e2 = data_replaced(froms, tos, e);
+    mitems_fit(v, s, a, filter(lambda1s(move |x: &'static Ty| {
+        not(string_eq_p(mitem_kind(x), str_lit("%abs")))
+    }), mtype_items(e2)))
+}
+
+pub fn mtype_provided(v: &'static Cv, a: &'static Ty, n: Str) -> &'static Ty {
+    let (ab, de) = (mtype_find(a, str_lit("%abs"), n), mtype_find(a, str_lit("%desc"), n));
+    if not(null_p(ab)) {
+        abs_ref(car(ab))
+    } else if not(null_p(de)) {
+        let tagcase_ = car(de);
+        match *tagcase_ {
+            Ty::TyData(d, args) => {
+                car(args)
+            }
+            _ => {
+                let other = tagcase_;
+                ty_unit()
+            }
+        }
+    } else {
+        match refuse(v, string_append(str_lit("a module that gives no type "), n)) {}
+    }
+}
+
+pub fn mitems_fit(mut v: &'static Cv, mut s: &'static St, mut a: &'static Ty, mut xs: Tys) -> &'static St {
+    loop {
+        if null_p(xs) {
+            return s;
+        } else {
+            let x = car(xs);
+            let k = mitem_kind(x);
+            let n = mitem_name(x);
+            let mine = mtype_find(a, k, n);
+            let want = {
+                let tagcase_ = x;
+                match *tagcase_ {
+                    Ty::TyData(d, args) => {
+                        car(args)
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        ty_unit()
+                    }
+                }
+            };
+            if null_p(mine) {
+                return match refuse(v, string_append(str_lit("a module that gives no "), string_append(if string_eq_p(k, str_lit("%val")) {
+                    str_lit("value ")
+                } else {
+                    str_lit("type ")
+                }, n))) {};
+            } else if string_eq_p(k, str_lit("%edesc")) {
+                xs = cdr(xs);
+                continue;
+            } else {
+                let got = {
+                    let tagcase_ = car(mine);
+                    match *tagcase_ {
+                        Ty::TyData(d, args) => {
+                            car(args)
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            ty_unit()
+                        }
+                    }
+                };
+                (s, xs) = (if string_eq_p(k, str_lit("%desc")) {
+                    fits(v, fits(v, s, got, want), want, got)
+                } else {
+                    fits(v, s, got, want)
+                }, cdr(xs));
+                continue;
+            }
         }
     }
 }
@@ -7608,9 +8467,10 @@ pub fn with_binds(v: &'static Cv, more: Binds) -> &'static Cv {
 }
 
 /// A local may be named by a keyword, as FX-26 has it; it may not then be
-/// called, since FX-26 reads such a call as its form (`synth-call`).
+/// called, since FX-26 reads such a call as its form (`synth-call`). A
+/// module's, its abstract types named for it (C170).
 pub fn local(v: &'static Cv, name: Str, t: &'static Ty) -> &'static Bind {
-    bind(name, scheme(nil::<Str>(), t), str_lit("local"))
+    bind(name, scheme(nil::<Str>(), mtype_named(name, t)), str_lit("local"))
 }
 
 /// A local narrowed by a test (C62): the same Rust local, its type known

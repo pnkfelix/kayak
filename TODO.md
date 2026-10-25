@@ -565,8 +565,9 @@ accepts: 22 the same, 52 alike, 110 different, 173 refused by kayak.
    of types and sizes, rank 2 (C159), the confirm forms (C160); `const`
    regions and `letfreeze` (C161); specifications (C162); what a test
    proves (C163); a bloblet's width (C167); `cwcc` (C168); `race`
-   (C169). 120 of the 428 programs Fixpt accepts still refused
-   (2026-10-25); 56 differ (1, above); 252 the same.
+   (C169); first-class modules (C170, C171). 93 of the 428 programs
+   Fixpt accepts still refused (2026-10-25); 72 differ (1, above); 263
+   the same.
    Left: `nat?` (kfx defines its own), `certify-nat`; sizes' rest
    (`narrayof`, fixed widths); `(const p)` into a place
    not the heap; then `poly` over other kinds, `const` regions with

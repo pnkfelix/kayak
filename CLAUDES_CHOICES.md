@@ -4615,3 +4615,72 @@ run at once, the first to end gives the value, the rest are cancelled.
 - **KFX**: still refused, now by `kfx-restricted`, with C108's message
   (`tests/kfx-stricter/race.kfx`).
 - Refused 126 to 120, the same 246 to 252.
+
+## C170. First-class modules, in the checker (2026-10-25)
+
+Fixpt's `docs/research/first-class-modules.md` (M1, M4, M5): modules as
+values, typed by module types, `with` and `select` on them, dependent
+procedures. KFX's modules stay Rust's (C19, C24): every new form is
+FX-26's, `kfx-restricted` or refused by the restriction pass.
+- **A module type**, `(ty-data "%mtype" (item ...))`, structural: `%abs t`
+  (its type, `ID..t`), `%desc t` (its type), `%edesc e` (an effect),
+  `%val x` (its type). `(moduleof ...)` reads as one anywhere; a
+  `define-type` of one KFX's traits cannot be (an effect described, or
+  parameters) is one too (`trait-moduleof?`). Printed as Fixpt prints:
+  types first, then values.
+- **Named for its binding**: a module bound to `p` (a local, a global, a
+  module's item) has its abstract types renamed `p..t`, equal to no other
+  (Fixpt's `k-name-module`; a `let`-bound module opaque,
+  `modules/let-opaque.fx`); none may leave the scope that binds `p`
+  (`escape.fx`, `inner-escape.fx`).
+- **`(module item ...)` as a value**: its types first, then its values,
+  each typed one in scope for all and an untyped one not before it is made
+  (`capture.fx`); a datatype a sum (a recursive one waits for `mu`); a
+  name given twice refused; an `include` of a module value takes its
+  items, its abstract types described (`include-abstract-escape.fx`).
+- **`with`** of a module value opens its values, types and effects;
+  **`(select m t)`** of one, and an effect's; a module defined at the top
+  level is a value too, of the type its items give.
+- **Fitting**: width, an abstract type given abstract or described, each
+  description the same, each value fitting (M4).
+- **Dependent procedures** (M5): a procedure type's parameter named, of a
+  module type, its types `(select m t)` in the parameters after it and the
+  result, `$i..t`, printed `(select $1 t)`; a lambda's own parameter names
+  them inside; a call takes them from its arguments.
+- C24's refusals of module parameters other than a top-level procedure's
+  are `kfx-restricted` now; the termination check walks a module value's
+  items' values.
+- Refused 119 to 103, the same 252 to 260. Left: loaded files as values,
+  `extend` as an expression, `include` of a value in a module defined at
+  the top level, module types' families applied, printing.
+
+## C171. Modules: loads, `extend`, and module values at the top level (2026-10-25)
+
+After C170.
+- **`load-input` of a file of one expression** (FX-26's M7, not only a
+  module): its value a global defined before the form that first loads
+  it, `%shared:input:PATH` as Fixpt names it, one for all its loads, not
+  printed; KFX's restriction pass refuses it.
+- **A file of module parameters given them but not called**, `(proj
+  (load-module "f") r ...)`: the procedure that makes it, `(lambda ()
+  ((proj ...)))`. A loaded file's making must be pure (kept), but a file
+  of module parameters, made for each call in FX-26: there it is KFX's
+  rule alone (`kfx-restricted`).
+- **`(extend e0 e1)` as a value**: `e0`'s items `e1` does not name, then
+  `e1`'s; one of `e0`'s kept whose type mentions an abstract type of
+  `e0`'s that `e1` replaces refused (`extend-abstract-replaced.fx`).
+- **A module defined at the top level that KFX's cannot be** (it includes
+  a module made when the program runs, or has a module of its own that
+  includes one not named): read as a module value, `(%module-value ...)`
+  (C170).
+- `(proj (with m x) a ...)` is `(with m (proj x a ...))`; `heap` names the
+  heap's region; a global may shadow a primitive at another type
+  (FX-26's; KFX names none; `heap` refused by KFX's restriction pass, its
+  Rust from a `with` of shadowing families wrong); a `with` in a module's item of a module that
+  includes a loaded one does not take the included names for the item's.
+- **The generator** (`fx26/cg.kfx`, C133) declines a module made as a
+  value and a `with` of one (facts `module-value`, `with-value`), which it
+  has not yet, rather than make wrong words.
+- Refused 103 to 93, the same 260 to 263. Left of modules: `load-layers.fx`
+  (a module's effect read from an item made before it, which the module
+  mechanism of KFX reads first), `types-mutual.fx` (`mu`); and printing.

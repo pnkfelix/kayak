@@ -828,7 +828,9 @@ pub mod termination {
                     }
                 }
                 Sexp::Lst(xs, src_file, src_line, src_pos) => {
-                    let h = {
+                    let h = if null_p(xs) {
+                        str_lit("")
+                    } else {
                         let tagcase_ = car(xs);
                         match *tagcase_ {
                             Sexp::Sym(n, at_file, at_pos) => {
@@ -840,7 +842,19 @@ pub mod termination {
                             }
                         }
                     };
-                    if (not(well_formed_p(h, cdr(xs))) || ((string_eq_p(h, str_lit("lambda")) || string_eq_p(h, str_lit("the"))) && i64_lt(size(xs), 3i64))) {
+                    if null_p(xs) {
+                        return st;
+                    } else if string_eq_p(h, str_lit("module")) {
+                        // A module made as a value (C170): its items' values walked as a
+                        // `let*`'s would be, its types not.
+                        return walk_all(c, st, concat(map(lambda1s(move |f: &'static Sexp| {
+                            if ((head_is_p(f, str_lit("define")) || head_is_p(f, str_lit("define*"))) && i64_gt(size(items(f)), 2i64)) {
+                                the::<Sexps>(kayak_rt::heap_cons(last(items(f)), kayak_rt::nil()))
+                            } else {
+                                nil::<&'static Sexp>()
+                            }
+                        }), cdr(xs))));
+                    } else if (not(well_formed_p(h, cdr(xs))) || ((string_eq_p(h, str_lit("lambda")) || string_eq_p(h, str_lit("the"))) && i64_lt(size(xs), 3i64))) {
                         return st;
                     } else if string_eq_p(h, str_lit("if")) {
                         let st = walk_exp(c, st, second(xs));
@@ -888,6 +902,19 @@ pub mod termination {
                     } else if string_eq_p(h, str_lit("the")) {
                         e = third(xs);
                         continue;
+                    } else if (string_eq_p(h, str_lit("with")) && {
+                        let tagcase_ = second(xs);
+                        match *tagcase_ {
+                            Sexp::Sym(n, f, p) => {
+                                false
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                true
+                            }
+                        }
+                    }) {
+                        return walk_all(c, st, cdr(xs));
                     } else if string_eq_p(h, str_lit("with")) {
                         let tagcase_ = c;
                         match *tagcase_ {

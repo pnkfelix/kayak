@@ -240,6 +240,36 @@
            keeps each, which FX-26's cellular code is told (C144)."
           (words-of (map (lambda ((x sexps)) (sym-name (second x))) (spec-items spec "val")))))
 
+      (define mtype-value-names (subr kfx (ty) strings)
+        (lambda (t) (map mitem-name (filter (lambda ((x ty)) (string=? (mitem-kind x) "%val")) (mtype-items t)))))
+
+      (define mtype-opened (subr kfx (cv ty) cv)
+        (lambda (v t)
+          "`v` in a `with` of a module of type `t` (C170): its values, its types
+           (an abstract one as its type names it) and its effects in scope,
+           shadowing what is outside."
+          (let ((its (mtype-items t)))
+            (with-binds
+              (with-type-binds v
+                (concat (map (lambda ((x ty))
+                               (tagcase x
+                                 (ty-data (d args)
+                                   (cond ((string=? (mitem-kind x) "%desc") (the binds (list (type-bind (mitem-name x) (car args)))))
+                                         ((string=? (mitem-kind x) "%abs") (the binds (list (type-bind (mitem-name x) (car args)))))
+                                         (else nil)))
+                                 (else other nil)))
+                             its))
+                (concat (map (lambda ((x ty))
+                               (if (string=? (mitem-kind x) "%edesc")
+                                   (tagcase x (ty-data (d args) (the effdefs (list (effdef (mitem-name x) (tagcase (car args) (ty-proc (es ps r) es) (else other nil)))))) (else other nil))
+                                   nil))
+                             its)))
+              (concat (map (lambda ((x ty))
+                             (if (string=? (mitem-kind x) "%val")
+                                 (tagcase x (ty-data (d args) (the binds (list (local v (mitem-name x) (car args))))) (else other nil))
+                                 nil))
+                           its))))))
+
       (define module-spec (subr kfx (cv ty) sexps)
         (lambda (v t)
           "The moduleof a module type names, as a list of one; or none."
@@ -603,6 +633,15 @@
             (else other ""))))
 
       (define-datatype narrowing (narrowing cv cv))
+
+
+      (define-rec
+        (counting-labels (subr kfx (i64 i64) strings)
+          (lambda (i n) (if (i64> i n) nil (cons (i64->string i) (counting-labels (i64+ i 1) n))))))
+
+      (define with-alias (subr kfx (cv alias) cv)
+        (lambda (v a)
+          (tagcase v (cv (bs ds als es here group file line fs tv at) (cv bs ds (cons a als) es here group file line fs tv at)))))
 
       "Uniform values (C75; docs/research/uniform-values.md): a union's value
        is a `Value` in Rust. A member given for its union is boxed there, and a
@@ -1616,6 +1655,10 @@
           (else other #f))))
 
 
+    "A module value made (C170): the scope its items have made so far, its
+     items' types (newest first), the effect of making it, the state."
+    (define-datatype mres (mres cv tys strings st))
+
     (define-rec
       (synth (subr kfx (cv st sexp) res)
         (lambda (v s e)
@@ -1682,13 +1725,19 @@
                        (refuse (at-offset v at-pos) (string-append "nothing is named " name))
                        (tagcase (car found)
                          (bind (n sc wher)
-                           (cond ((or (string=? wher "module")
-                                      (not (null? (module-spec v (tagcase sc (scheme (tv t) t))))))
-                                  (refuse v (string-append "a module as a value: KFX's modules are Rust's, opened by with: " name)))
-                                 ((tagcase sc (scheme (tv t) (tagcase t (ty-proc (es ps r) (any? (lambda ((p ty)) (not (null? (module-spec v p)))) ps)) (else other #f))))
-                                  (refuse v (string-append "a procedure of a module parameter, a Rust generic fn, named as a value: " name)))
+                           (cond ((string=? wher "unmade")
+                                  (refuse v (string-append "`" (string-append name "` here is the module's own item, made after this, not the one bound outside it"))))
+                                 ((string=? wher "module")
+                                  "A module defined at the top level, as a value (C170): of the
+                                   type its items give. FX-26's; KFX's modules are Rust's."
+                                  (res (module-type-of v name) (list (string-append "g:" name))
+                                       (kfx-restricted v s (string-append "a module as a value: KFX's modules are Rust's, opened by with: " name))))
                                  (else
-                               (tagcase (named-instance v (held v s name found (process-marks (cv-tvars v))) sc)
+                               (tagcase (named-instance v (held v (if (or (not (null? (module-spec v (tagcase sc (scheme (tv t) t)))))
+                                                                         (tagcase sc (scheme (tv t) (tagcase t (ty-proc (es ps r) (any? (lambda ((p ty)) (not (null? (module-spec v p)))) ps)) (else other #f)))))
+                                                                     (kfx-restricted v s (string-append "a module parameter, or a procedure of one, a Rust generic fn, named as a value: " name))
+                                                                     s)
+                                                                 name found (process-marks (cv-tvars v))) sc)
                                  (inst (t s regions effects) (res t (naming-effs s name wher t (cv-group v)) s)))))))))))))
 
       (quasi-items (subr kfx (cv st sexps i64) res)
@@ -2309,9 +2358,24 @@
                   shadowing what is outside, locals too, as FX-26 has it; `m` a
                   module defined at the top level, reading which is reading a
                   global."
-                 (let* ((m (name-of v (car xs)))
-                        (found (find-bind m (cv-binds v))))
-                   (cond ((and (not (null? found))
+                 (let* ((m (tagcase (car xs) (sym (n f p) n) (else other "")))
+                        (found (if (string=? m "") nil (find-bind m (cv-binds v)))))
+                   (cond ((or (string=? m "")
+                              (and (not (null? found))
+                                   (tagcase (car found) (bind (n sc wher) (and (not (string=? wher "module")) (tagcase sc (scheme (tv t) (mtype? (walk s t)))))))))
+                          "A module value's (C170): the value a variable names, or one an
+                           expression makes; FX-26's, not KFX's."
+                          (tagcase (synth v s (car xs))
+                            (res (t es s)
+                              (if (not (mtype? (walk s t)))
+                                  (refuse v (string-append "a with of no module: a " (show-ty s t)))
+                                  (with-effs (found-then-fitted v (body (mtype-opened v (walk s t))
+                                                                        (kfx-restricted v (note-fact (note-fact s (cv-file v) (cv-pos v) "with-value") (cv-file v) (cv-pos v) (string-append "with-spec " (words-of (mtype-value-names (walk s t)))))
+                                                                                        "a with of a module value, FX-26's first-class modules', which KFX has not yet (C170)")
+                                                                        (cdr xs) nil)
+                                                                expected)
+                                             es)))))
+                         ((and (not (null? found))
                                (tagcase (car found) (bind (n sc wher) (string=? wher "local")))
                                (not (null? (module-spec v (tagcase (car found) (bind (n sc wher) (tagcase sc (scheme (tv t) t))))))))
                           "A module parameter's values, of its abstract types `m..t`."
@@ -2668,7 +2732,8 @@
           "A `let`'s or `let*`'s bindings, then its body. `bound`: those made
            so far, which a `let*`'s next binding sees and a `let`'s does not."
           (if (null? bindings)
-              (body (with-binds v bound) s forms expected)
+              (module-escape v (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (if (tagcase sc (scheme (tv t) (mtype? t))) (the strings (list n)) nil)))) bound))
+                             (body (with-binds v bound) s forms expected))
               (let* ((b (items (car bindings)))
                      (sees (if sequential (with-binds v bound) v)))
                 (tagcase (synth sees s (second b))
@@ -2676,6 +2741,19 @@
                     (with-effs (let-values v s (cdr bindings) forms expected
                                            (cons (local v (name-of v (car b)) t) bound) sequential)
                                es)))))))
+
+      (module-escape (subr kfx (cv strings res) res)
+        (lambda (v ps r)
+          "No module's abstract type `p..t`, of a module bound to `p` in a scope,
+           leaves that scope (Fixpt's `modules/escape.fx`)."
+          (if (null? ps)
+              r
+              (tagcase r
+                (res (t es s)
+                  (let ((m (mentions-module-of? (zonk s t) ps)))
+                    (if (string=? m "")
+                        r
+                        (refuse v (string-append "this is a " (string-append (show-ty s t) (string-append ", and `" (string-append m "` is a module's abstract type, not known outside the scope where the module is named"))))))))))))
 
       (letrec-form (subr kfx (cv st sexps sexps tys) res)
         (lambda (v s bindings forms expected)
@@ -3046,6 +3124,12 @@
           (cond
            ((and (not (null? xs)) (head-is? (car xs) "proj"))
               (proj-form v s (onto (cdr (items (car xs))) (cdr xs))))
+           ((and (not (null? xs)) (head-is? (car xs) "with") (i64= (size (items (car xs))) 3)
+                 (tagcase (third (items (car xs))) (sym (n f p) #t) (else other #f)))
+            "`(proj (with m x) a ...)`, `(with m (proj x a ...))` (C171)."
+            (synth v s (lst (list (sym "with" "" 0) (second (items (car xs)))
+                                  (lst (cons (sym "proj" "" 0) (cons (third (items (car xs))) (cdr xs))) "" 0 (cv-pos v)))
+                            "" 0 (cv-pos v))))
            ((and (not (null? xs)) (tagcase (car xs) (lst (ys f l p) #t) (else other #f)))
             "A proj of an expression of a poly type, a `letrec`'s, as FX-26's
              programs write it (C158): its body at the arguments given, each by
@@ -3189,15 +3273,23 @@
       (synth-lambda (subr kfx (cv st sexps sexps) res)
         (lambda (v s params forms)
           "A lambda with nothing expected: its parameters' types written."
-          (let ((types (map (lambda ((p sexp))
-                              (tagcase p
-                                (lst (pt src-file src-line src-pos) (parse-type v (cv-tvars v) (second pt)))
-                                (else other (refuse v (string-append "a lambda with nothing expected needs its parameters' types: " (show-sexp other))))))
-                            params)))
-            (if (any? (lambda ((p ty)) (not (null? (module-spec v p)))) types)
-                (refuse v "a module parameter is a top-level procedure's (C24)")
+          (let ((types (synth-param-types v params)))
+            (let ((s (if (any? (lambda ((p ty)) (not (null? (module-spec v p)))) types)
+                         (kfx-restricted v s "a module parameter is a top-level procedure's (C24)")
+                         s)))
             (tagcase (body (with-binds v (bind-params v params types)) s forms nil)
-              (res (r es s) (res (ty-proc es types r) nil (synced-lambda v (noted-lambda v s es) es params forms))))))))
+              (res (r es s) (res (deps-of-params params types 1 (ty-proc es types r)) nil (synced-lambda v (noted-lambda v s es) es params forms))))))))
+
+      (synth-param-types (subr kfx (cv sexps) tys)
+        (lambda (v params)
+          "A lambda's parameters' types, as written, each seeing the module
+           parameters before it (C170)."
+          (if (null? params)
+              nil
+              (let ((t (tagcase (car params)
+                         (lst (pt src-file src-line src-pos) (parse-type v (cv-tvars v) (second pt)))
+                         (else other (refuse v (string-append "a lambda with nothing expected needs its parameters' types: " (show-sexp other)))))))
+                (cons t (synth-param-types (module-param-bound v (car params) t) (cdr params)))))))
 
       (module-params-apart (subr kfx (cv sexps tys st) st)
         (lambda (v params types s)
@@ -3218,16 +3310,20 @@
                     (cons (param-name (car params)) rest))))))
 
       (check-lambda (subr kfx (cv st sexps sexps ty) res)
-        (lambda (v s params forms expected)
+        (lambda (v s params forms expected0)
+          (let ((expected (deps-named params 1 expected0)))
           (tagcase expected
             (ty-proc (ees eps er)
               (if (not (i64= (size params) (size eps)))
                   (refuse v "a lambda of the wrong number of parameters")
-                  (let ((s (module-params-apart v params eps (check-written-params v s params eps))))
-                    (if (or (not (null? (module-spec v (walk s er))))
-                            (and (any? (lambda ((p ty)) (not (null? (module-spec v (walk s p))))) eps)
-                                 (not (top-lambda? v))))
-                        (refuse v "a module parameter is a top-level procedure's, and no procedure gives a module back (C24)")
+                  (let* ((s (module-params-apart v params eps (check-written-params v s params eps)))
+                         (s (if (or (not (null? (module-spec v (walk s er)))) (mtype? (walk s er))
+                                    (and (any? (lambda ((p ty)) (or (not (null? (module-spec v (walk s p)))) (mtype? (walk s p)))) eps)
+                                         (not (top-lambda? v))))
+                                (kfx-restricted v s "a module parameter is a top-level procedure's, and no procedure gives a module back (C24)")
+                                s)))
+                    (if #f
+                        (refuse v "")
                     (tagcase (body (with-binds v (cons (bind "%toplambda" (scheme nil (ty-unit)) "no") (bind-params v params eps)))
                                    s forms (list er))
                       (res (r es s)
@@ -3261,7 +3357,7 @@
                                               params forms (poly-body args))
                          (res (t es s2) (res expected es s2)))))
                     (else (refuse v "a lambda where no procedure is expected"))))
-            (else other (refuse v "a lambda where no procedure is expected")))))
+            (else other (refuse v "a lambda where no procedure is expected"))))))
 
       (lambda-effects (subr kfx (cv st sexps sexps ty) res)
         (lambda (v s params forms t)
@@ -3275,6 +3371,63 @@
                         (check-written-params v s params eps) forms (list er))))
             (else other (refuse v "a lambda where no procedure is expected")))))
 
+      (module-param-bound (subr kfx (cv sexp ty) cv)
+        (lambda (v p t)
+          "`v` with parameter `p` in scope if it is a module's, for the types
+           of the parameters after it (C170)."
+          (if (or (mtype? t) (tagcase t (ty-data (d args) (has-prefix? d "%module ")) (else other #f)))
+              (with-binds v (list (local v (param-name p) (as-mtype v t))))
+              v)))
+
+      (dep-substituted (subr kfx (cv st ty sexps) ty)
+        (lambda (v s t args)
+          "A dependent procedure's type at a call (C170): each `$i..t` the type
+           its `i`th argument, a module, gives as `t`."
+          (let ((names (data-names-with "$" t)))
+            (if (null? names)
+                t
+                (data-replaced names
+                               (map (lambda ((n string))
+                                      (let* ((i (string->i64 (after-prefix (before-dots n) "$")))
+                                             (arg (if (and (i64> i 0) (i64<= i (size args))) (list (nth-sexp args (i64- i 1))) nil)))
+                                        (if (null? arg)
+                                            (ty-data n nil)
+                                            (tagcase (synth v s (car arg))
+                                              (res (a es s2) (mtype-provided v (as-mtype v (walk s2 a)) (after-dots n)))))))
+                                    names)
+                               t)))))
+
+      (nth-sexp (subr kfx (sexps i64) sexp)
+        (lambda (xs i) (if (i64= i 0) (car xs) (nth-sexp (cdr xs) (i64- i 1)))))
+
+      (deps-named (subr kfx (sexps i64 ty) ty)
+        (lambda (params i t)
+          "A dependent procedure's type, as its lambda's parameters name its
+           modules: `$i..t` its `i`th parameter's `p..t` (C170)."
+          (if (null? params)
+              t
+              (let ((pre (string-append "$" (string-append (i64->string i) ".."))))
+                (deps-named (cdr params) (i64+ i 1)
+                            (data-renamed (data-names-with pre t)
+                                          (map (lambda ((n string)) (string-append (param-name (car params)) (string-append ".." (after-dots n))))
+                                               (data-names-with pre t))
+                                          t))))))
+
+      (deps-of-params (subr kfx (sexps tys i64 ty) ty)
+        (lambda (params types i t)
+          "`t`, a lambda's type, its parameters' modules' types `m..t` written
+           `$i..t`, as a dependent procedure's are (C170)."
+          (if (or (null? params) (null? types))
+              t
+              (deps-of-params (cdr params) (cdr types) (i64+ i 1)
+                              (if (or (mtype? (car types)) (tagcase (car types) (ty-data (d args) (has-prefix? d "%module ")) (else other #f)))
+                                  (let ((pre (string-append (param-name (car params)) "..")))
+                                    (data-renamed (data-names-with pre t)
+                                                  (map (lambda ((n string)) (string-append "$" (string-append (i64->string i) (string-append ".." (after-dots n)))))
+                                                       (data-names-with pre t))
+                                                  t))
+                                  t)))))
+
       (check-written-params (subr kfx (cv st sexps tys) st)
         (lambda (v s params types)
           "A parameter written `(x T)` must be of the type expected. One written
@@ -3283,7 +3436,7 @@
            closure's parameter types no other way."
           (if (null? params)
               s
-              (check-written-params v
+              (check-written-params (module-param-bound v (car params) (car types))
                                     (tagcase (car params)
                                       (lst (pt src-file src-line src-pos) (fits v s (car types) (parse-type v (cv-tvars v) (second pt))))
                                       (else other
@@ -3294,6 +3447,237 @@
                                             s)))
                                     (cdr params) (cdr types)))))
 
+      (module-type-of (subr kfx (cv string) ty)
+        (lambda (v m)
+          "The type of module `m`, defined at the top level, as a value (C170):
+           its generative types and datatypes abstract, `m..t`; its other
+           types described; its effects; its values."
+          (let* ((pre (string-append m " "))
+                 (types (the aliases (reverse (filter (lambda ((a alias)) (tagcase a (alias (n ps body) (and (has-prefix? n pre) (null? ps))))) (cv-aliases v)))))
+                 (effs (the effdefs (reverse (filter (lambda ((d effdef)) (tagcase d (effdef (n atoms) (has-prefix? n pre)))) (cv-effdefs v)))))
+                 (vals (the binds (reverse (filter (lambda ((b bind)) (tagcase b (bind (n sc w) (and (has-prefix? n pre) (not (has-prefix? (after-prefix n pre) "%")))))) (cv-binds v))))))
+            (ty-data "%mtype" (newest-items (reverse (the tys
+              (onto (map (lambda ((a alias))
+                           (tagcase a
+                             (alias (n ps body)
+                               (let ((t (after-prefix n pre)))
+                                 (if (and (tagcase body (sym (b f p) (string=? b (string-append m (string-append ".." t)))) (else other #f))
+                                          (dt-named? (string-append m (string-append ".." t)) (cv-dts v)))
+                                     (ty-data (string-append "%abs " t) (list (ty-data (string-append m (string-append ".." t)) nil)))
+                                     (ty-data (string-append "%desc " t) (list (parse-type v nil body))))))))
+                         types)
+                    (onto (map (lambda ((d effdef)) (tagcase d (effdef (n atoms) (ty-data (string-append "%edesc " (after-prefix n pre)) (list (ty-proc atoms nil (ty-unit)))))))
+                               effs)
+                          (map (lambda ((b bind)) (tagcase b (bind (n sc w) (ty-data (string-append "%val " (after-prefix n pre)) (list (tagcase sc (scheme (tv t) t)))))))
+                               vals))))) nil)))))
+
+      (newest-items (subr kfx (tys strings) tys)
+        (lambda (ts seen)
+          "Items, the last of each kind and name only, in order (`ts` reversed)."
+          (if (null? ts)
+              nil
+              (let ((key (string-append (if (string=? (mitem-kind (car ts)) "%val") "v " "t ") (mitem-name (car ts)))))
+                (if (string-member? key seen)
+                    (newest-items (cdr ts) seen)
+                    (append-ty (newest-items (cdr ts) (cons key seen)) (car ts)))))))
+
+      (append-ty (subr kfx (tys ty) tys)
+        (lambda (ts t) (if (null? ts) (list t) (cons (car ts) (append-ty (cdr ts) t)))))
+
+      (module-extend (subr kfx (cv st sexps) res)
+        (lambda (v s args)
+          "`(extend e0 e1)` made as a value (C171; FX-91's, Fixpt's `TODO.md`
+           §69): a module of the values and types of both, `e1`'s where both
+           give a name."
+          (tagcase (synth v s (car args))
+            (res (a es0 s)
+              (tagcase (synth v s (second args))
+                (res (b es1 s)
+                  (if (not (and (mtype? (walk s a)) (mtype? (walk s b))))
+                      (refuse v "an extend of two modules")
+                      (let* ((bs (mtype-items (walk s b)))
+                             (types-of-b (map mitem-name (filter (lambda ((x ty)) (not (string=? (mitem-kind x) "%val"))) bs)))
+                             (vals-of-b (map mitem-name (filter (lambda ((x ty)) (string=? (mitem-kind x) "%val")) bs)))
+                             (replaced (lambda ((x ty)) (string-member? (mitem-name x) (if (string=? (mitem-kind x) "%val") vals-of-b types-of-b))))
+                             (kept (filter (lambda ((x ty)) (not (replaced x))) (mtype-items (walk s a))))
+                             (lost (concat (map (lambda ((x ty)) (if (and (string=? (mitem-kind x) "%abs") (replaced x))
+                                                                     (tagcase (abs-ref x) (ty-data (r a2) (the strings (list r))) (else other nil))
+                                                                     nil))
+                                                (mtype-items (walk s a))))))
+                        (begin
+                          (map (lambda ((x ty))
+                                 (if (any? (lambda ((n string)) (string-member? n lost))
+                                           (data-names-with "" (tagcase x (ty-data (d xs) (if (null? xs) (ty-unit) (car xs))) (else other (ty-unit)))))
+                                     (refuse v (string-append "`" (string-append (mitem-name x) "`'s type mentions the first module's abstract type, which the second's replaces")))
+                                     #u))
+                               kept)
+                        (res (ty-data "%mtype" (onto kept bs))
+                             (effs-union es0 es1)
+                             (note-fact (kfx-restricted v s "an extend made as a value, FX-26's first-class modules', which KFX has not yet (C170)")
+                                        (cv-file v) (cv-pos v) "module-value")))))))))))
+
+      (module-expr (subr kfx (cv st sexps) res)
+        (lambda (v s its)
+          "`(module item ...)` made as a value (C170; Fixpt's first-class
+           modules): its types, generative ones abstract, `mt@P..t`, each
+           seeing those before it; then its values, each typed one in scope for
+           all, each seeing those made before it. Its type a `moduleof` of what
+           it gives, a hidden item not. Not KFX's, whose modules are Rust's,
+           defined at the top level (C19)."
+          (let ((s (note-fact (kfx-restricted v s "a module made as a value, FX-26's first-class modules', which KFX has not yet: KFX's are defined at the top level (C19, C170)")
+                              (cv-file v) (cv-pos v) "module-value"))
+                (id (string-append "mt@" (i64->string (cv-pos v)))))
+            (tagcase (mod-types v s its id #t nil nil)
+              (mres (w items es s)
+                (tagcase (mod-values (with-binds w (mod-typed w its)) s its #t items es)
+                  (mres (w2 items2 es2 s2)
+                    (let* ((its2 (the tys (reverse items2)))
+                           (types (map mitem-name (filter (lambda ((x ty)) (not (string=? (mitem-kind x) "%val"))) its2)))
+                           (vals (map mitem-name (filter (lambda ((x ty)) (string=? (mitem-kind x) "%val")) its2)))
+                           (twice (the strings (onto (repeated-names types) (repeated-names vals))))
+                           (inner (mod-module-names its)))
+                      (cond ((not (null? twice)) (refuse v (string-append "`" (string-append (car twice) "` is defined twice in this module"))))
+                            (else
+                             (begin
+                               (map (lambda ((x ty))
+                                      (let ((m (mentions-module-of? (tagcase x (ty-data (d args) (if (null? args) (ty-unit) (car args))) (else other (ty-unit))) inner)))
+                                        (if (string=? m "")
+                                            #u
+                                            (refuse v (string-append "`" (string-append (mitem-name x) (string-append "`'s type mentions `" (string-append m "`, which is not known outside the module"))))))))
+                                    its2)
+                               (res (ty-data "%mtype" its2) es2 s2))))))))))))
+
+      (repeated-names (subr kfx (strings) strings)
+        (lambda (ns)
+          (cond ((null? ns) nil)
+                ((string-member? (car ns) (cdr ns)) (list (car ns)))
+                (else (repeated-names (cdr ns))))))
+
+      (mod-module-names (subr kfx (sexps) strings)
+        (lambda (fs)
+          "The names a module's items bind, whose abstract types, named for the
+           binding, stay in the module."
+          (concat (map (lambda ((f sexp))
+                         (cond ((and (or (head-is? f "define") (head-is? f "define*")) (i64> (size (items f)) 2)
+                                     (tagcase (second (items f)) (sym (n f2 p2) #t) (else other #f)))
+                                (the strings (list (sym-name (second (items f))))))
+                               ((head-is? f "hide") (mod-module-names (cdr (items f))))
+                               (else nil)))
+                       fs))))
+
+      (mod-types (subr kfx (cv st sexps string bool tys strings) mres)
+        (lambda (v s fs id export got es)
+          (if (null? fs)
+              (mres v got es s)
+              (let* ((f (car fs)) (xs (tagcase f (lst (ys f1 l1 p1) ys) (else other nil))) (hd (logic-head f)) (tv (cv-tvars v))
+                     (n (if (and (i64> (size xs) 1) (tagcase (second xs) (sym (m f2 p2) #t) (else other #f))) (sym-name (second xs)) ""))
+                     (more (lambda ((w cv) (its tys)) (mod-types w s (cdr fs) id export (if export (onto its got) got) es))))
+                (cond ((null? xs) (mod-types v s (cdr fs) id export got es))
+                      ((and (string=? hd "define-type") (i64= (size xs) 3) (not (string=? n "")))
+                       (let ((u (parse-type v tv (third xs))))
+                         (more (with-type-binds v (list (type-bind n u)) nil) (the tys (list (ty-data (string-append "%desc " n) (list u)))))))
+                      ((and (string=? hd "define-type") (i64= (size xs) 3))
+                       (let ((name (tagcase (second xs) (lst (hs hf hl hp) (sym-name (car hs))) (else other (sym-name (second xs))))))
+                         (more (with-alias v (alias name (family-params v (second xs)) (third xs))) nil)))
+                      ((and (string=? hd "define-generative") (i64= (size xs) 3) (not (string=? n "")))
+                       (let ((ref (ty-data (string-append id (string-append ".." n)) nil)) (r (parse-type v tv (third xs))))
+                         (more (with-binds (with-type-binds v (list (type-bind n ref)) nil)
+                                           (list (local v (string-append "up-" n) (ty-proc nil (list r) ref))
+                                                 (local v (string-append "down-" n) (ty-proc nil (list ref) r))))
+                               (the tys (list (ty-data (string-append "%abs " n) (list ref)))))))
+                      ((and (string=? hd "define-datatype") (not (string=? n "")))
+                       (let* ((vs (map items (cdr (cdr xs))))
+                              (tags (map (lambda ((x sexps)) (sym-name (car x))) vs))
+                              (fields (map (lambda ((x sexps)) (map (lambda ((t sexp)) (parse-type v tv t)) (cdr x))) vs))
+                              (sum (ty-shape #f tags (map (lambda ((fs2 tys)) (ty-shape #t (counting-labels 1 (size fs2)) fs2)) fields))))
+                         (if (any? (lambda ((x sexps)) (any? (lambda ((t sexp)) (sexp-mentions? t n)) (cdr x))) vs)
+                             (refuse v "a recursive datatype in a module value, which kayak's checker has not yet (C170)")
+                             (more (with-binds (with-type-binds v (list (type-bind n sum)) nil)
+                                               (map2 (lambda ((t string) (fs2 tys)) (local v t (ty-proc nil fs2 sum))) tags fields))
+                                   (onto (reverse (map2 (lambda ((t string) (fs2 tys)) (ty-data (string-append "%val " t) (list (ty-proc nil fs2 sum)))) tags fields))
+                                         (the tys (list (ty-data (string-append "%desc " n) (list sum)))))))))
+                      ((and (string=? hd "define-effect") (i64= (size xs) 3) (not (string=? n "")))
+                       (let ((atoms (parse-effect v tv (third xs))))
+                         (more (with-type-binds v nil (list (effdef n atoms))) (the tys (list (ty-data (string-append "%edesc " n) (list (ty-proc atoms nil (ty-unit)))))))))
+                      ((and (string=? hd "include") (i64= (size xs) 2))
+                       (tagcase (synth v s (second xs))
+                         (res (t ies s2)
+                           (if (not (mtype? (walk s2 t)))
+                               (refuse v (string-append "an include of no module: a " (show-ty s2 t)))
+                               (mod-types (mtype-opened v (walk s2 t)) s2 (cdr fs) id export
+                                          (if export (onto (reverse (map included-item (mtype-items (walk s2 t)))) got) got) (effs-union ies es))))))
+                      ((string=? hd "hide")
+                       (tagcase (mod-types v s (cdr xs) id #f nil es)
+                         (mres (w its2 es2 s2) (mod-types w s2 (cdr fs) id export got es2))))
+                      ((or (string=? hd "define") (string=? hd "define*") (string=? hd "define-rec"))
+                       (mod-types v s (cdr fs) id export got es))
+                      (else (refuse v (string-append "an item kayak's checker has not yet in a module value: " (show-sexp f)))))))))
+
+      (included-item (subr kfx (ty) ty)
+        (lambda (x)
+          "An included module's item, as the including module gives it: an
+           abstract type of a module named elsewhere described, `(desc t
+           c..t)` (Fixpt's `include-abstract-escape.fx`)."
+          (if (and (string=? (mitem-kind x) "%abs") (not (tagcase (abs-ref x) (ty-data (r a) (has-prefix? r "mt@")) (else other #f))))
+              (ty-data (string-append "%desc " (mitem-name x)) (list (abs-ref x)))
+              x)))
+
+      (mod-typed (subr kfx (cv sexps) binds)
+        (lambda (v fs)
+          "A module's values of the types written, each in scope for all."
+          (concat (map (lambda ((f sexp))
+                         (let ((xs (tagcase f (lst (ys f1 l1 p1) ys) (else other nil))))
+                           (cond ((and (or (head-is? f "define") (head-is? f "define*")) (i64= (size xs) 4) (tagcase (second xs) (sym (m f2 p2) #t) (else other #f)))
+                                  (the binds (list (local v (sym-name (second xs)) (parse-type v (cv-tvars v) (third xs))))))
+                                 ((and (head-is? f "define") (i64= (size xs) 3) (tagcase (second xs) (sym (m f2 p2) #t) (else other #f)))
+                                  "An item of no type written: in scope for all, as FX-26's are, but
+                                   not before it is made."
+                                  (the binds (list (bind (sym-name (second xs)) (scheme nil (ty-unit)) "unmade"))))
+                                 ((head-is? f "define-rec")
+                                  (concat (map (lambda ((g sexp)) (let ((gs (items g))) (if (i64= (size gs) 3) (the binds (list (local v (sym-name (car gs)) (parse-type v (cv-tvars v) (second gs))))) nil))) (cdr xs))))
+                                 ((head-is? f "hide") (mod-typed v (cdr xs)))
+                                 (else nil))))
+                       fs))))
+
+      (mod-values (subr kfx (cv st sexps bool tys strings) mres)
+        (lambda (v s fs export got es)
+          (if (null? fs)
+              (mres v got es s)
+              (let* ((f (car fs)) (xs (tagcase f (lst (ys f1 l1 p1) ys) (else other nil))) (hd (logic-head f))
+                     (n (if (and (i64> (size xs) 1) (tagcase (second xs) (sym (m f2 p2) #t) (else other #f))) (sym-name (second xs)) "")))
+                (cond ((and (or (string=? hd "define") (string=? hd "define*")) (i64= (size xs) 4) (not (string=? n "")))
+                       (let ((t (bound-type v n)) (written (parse-type v (cv-tvars v) (third xs))))
+                         (tagcase (check v s (fourth xs) t)
+                           (res (u ves s2)
+                             (mod-values v s2 (cdr fs) export (if export (cons (ty-data (string-append "%val " n) (list written)) got) got) (effs-union ves es))))))
+                      ((and (string=? hd "define") (i64= (size xs) 3) (not (string=? n "")))
+                       (tagcase (synth v s (third xs))
+                         (res (t ves s2)
+                           (let ((b (local v n (walk s2 t))))
+                             (mod-values (with-binds v (list b)) s2 (cdr fs) export
+                                         (if export (cons (ty-data (string-append "%val " n) (list (walk s2 t))) got) got)
+                                         (effs-union ves es))))))
+                      ((string=? hd "define-rec")
+                       (mod-values v (mod-rec-checked v s (cdr xs)) (cdr fs) export
+                                   (if export
+                                       (onto (reverse (map (lambda ((g sexp)) (let ((gs (items g))) (ty-data (string-append "%val " (sym-name (car gs))) (list (bound-type v (sym-name (car gs))))))) (cdr xs))) got)
+                                       got)
+                                   es))
+                      ((string=? hd "hide")
+                       (tagcase (mod-values v s (cdr xs) #f nil es)
+                         (mres (w its2 es2 s2) (mod-values w s2 (cdr fs) export got es2))))
+                      (else (mod-values v s (cdr fs) export got es)))))))
+
+      (mod-rec-checked (subr kfx (cv st sexps) st)
+        (lambda (v s gs)
+          (if (null? gs)
+              s
+              (let ((g (items (car gs))))
+                (if (not (i64= (size g) 3))
+                    (refuse v "a module value's define-rec member is (name type value)")
+                    (tagcase (check v s (third g) (bound-type v (sym-name (car g))))
+                      (res (u es s2) (mod-rec-checked v s2 (cdr gs)))))))))
+
       (synth-call (subr kfx (cv st string sexps tys) res)
         (lambda (v s h args expected)
           "A call of a name: a procedure in this group is `spin`, one that is a
@@ -3303,7 +3687,11 @@
           (let ((found (if (process-call? h)
                            (find-bind (string-append "%form " h) (cv-binds v))
                            (find-bind h (cv-binds v)))))
-            (cond ((keyword? h)
+            (cond ((and (or (string=? h "module") (string=? h "%module-value")) (null? found))
+                   (module-expr v s args))
+                  ((and (string=? h "extend") (null? found) (i64= (size args) 2))
+                   (module-extend v s args))
+                  ((keyword? h)
                    (refuse v (string-append "(" (string-append h " ...) is FX-26's form, which KFX does not have, or a call of a local named by that keyword"))))
                   ((and (null? found) (string=? h "abort-current-continuation")) (abort-call v s args))
                   ((and (null? found) (string=? h "native-procedure")) (native-call v s args expected))
@@ -3961,7 +4349,7 @@
           (tagcase (poly-callee callee)
             (res (t es0 s)
               (let ((args (if (string=? (cv-file v) "<draft>") (through-hole args) args)))
-              (tagcase (vsubr-as-proc (composable-as-proc s (walk s t)) (size args))
+              (tagcase (vsubr-as-proc (composable-as-proc s (dep-substituted v s (walk s t) args)) (size args))
                 (ty-proc (latent ps r)
                   (cond ((and (not (i64= (size ps) (size args))) (not (any? draft-hole? args)))
                          (refuse v (string-append "a call of the wrong number of arguments: "
@@ -4047,7 +4435,8 @@
            `k`. The REPL's hole as one is said to be in it (C97)."
           (cond ((null? args) (res (ty-unit) nil s))
                 ((eqv-bool? (deferred? (car args) (car ps)) later)
-                 (tagcase (cond ((not (null? (module-spec v (walk s (car ps)))))
+                 (tagcase (cond ((and (not (null? (module-spec v (walk s (car ps)))))
+                                      (tagcase (car args) (sym (n f p) (let ((b (find-bind n (cv-binds v)))) (and (not (null? b)) (tagcase (car b) (bind (m sc w) (string=? w "module")))))) (else other #f)))
                                  (module-argument (in-draft v (car args)) s (car args) (walk s (car ps))))
                                 ((and (not (lambda-form? (car args)))
                                       (has-open? s (car ps)))

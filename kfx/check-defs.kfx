@@ -363,7 +363,7 @@
   (lambda (sc) (tagcase sc (scheme (tvars t) (string-append (words-of tvars) (string-append " | " (show-ty (st nil 0 nil) t)))))))
 
 (define global (subr kfx (cv string scheme) bind)
-  (lambda (v name sc)
+  (lambda (v name sc0)
     "A global. FX-26 may define a name again, at the same type (C61), and
      what used it sees the new one; at another type its users would break,
      which FX-26 says at their use, and the checker here at the
@@ -376,12 +376,17 @@
     (cond ((and (keyword? name) (null? (find-bind "%module" (cv-binds v))))
            (refuse v (string-append "a keyword names nothing: " name)))
           (else
-           (let ((found (find-bind name (cv-binds v))))
+           (let ((found (find-bind name (cv-binds v)))
+                 ;; A module value's abstract types named for it (C170).
+                 (sc (tagcase sc0 (scheme (tv t) (scheme tv (mtype-named name t))))))
              (if (null? found)
                  (bind name sc (if (null? (find-bind "%module" (cv-binds v))) "global" "item"))
                  (tagcase (car found)
                    (bind (n sc0 wher)
                      (if (or (string=? (scheme-text sc0) (scheme-text sc))
+                             ;; FX-26's program shadows the standard environment (C171);
+                             ;; KFX's names none of it (the restriction pass).
+                             (string=? wher "prim")
                              (and (not (null? (find-bind "%module" (cv-binds v)))) (or (string=? wher "prim") (string=? wher "global"))))
                          (bind name sc (if (null? (find-bind "%module" (cv-binds v))) "global" "item"))
                          (refuse v (string-append name " is defined again, at another type, which would break what uses it")))))))))))
@@ -463,8 +468,12 @@
                 (any? (lambda ((x string)) (not (or (string=? x "@globals") (global-atom? x)))) es))
            "In a file loaded (C88): FX-26 makes it once, for all its loads, so
             making it must be pure but for reading globals."
-           (refuse v (string-append "a loaded file is one value for all its loads, made once, so making it must be pure, and this one has "
-                                    (string-append (show-effs es) ": make its state in a `lambda` it gives, which each caller applies"))))
+           (if (null? (find-bind "%instance" (cv-binds v)))
+               (refuse v (string-append "a loaded file is one value for all its loads, made once, so making it must be pure, and this one has "
+                                        (string-append (show-effs es) ": make its state in a `lambda` it gives, which each caller applies")))
+               ;; A file of module parameters, made for each call in FX-26 (C171).
+               (kfx-restricted v s (string-append "a loaded file is one value for all its loads, made once, so making it must be pure, and this one has "
+                                        (string-append (show-effs es) ": make its state in a `lambda` it gives, which each caller applies")))))
           ((or (any? (lambda ((x string)) (has-prefix? x "alloc:")) es) (makes-pairs? e))
            "Kept for the whole program if its type's Rust is `Sync`, which a
             process may hold; else for each thread, which none may (C102)."
@@ -829,7 +838,7 @@
                 ((string=? h "define-type")
                  "Its body read where it stands, used or not: so that one that
                   mentions itself, or names no type, is refused."
-                 (cond ((head-is? (third xs) "moduleof")
+                 (cond ((and (head-is? (third xs) "moduleof") (trait-moduleof? (third xs)) (tagcase (second xs) (sym (n f p) #t) (else other #f)))
                      (begin (with expressions (spec-well-formed v (third xs)))
                             (with expressions (module-type-values (with expressions (module-scope v (third xs) "" "")) (third xs)))
                             v))
@@ -1255,6 +1264,29 @@
                  forms))))
 
 (define-rec
+  (own-items (subr kfx (binds) binds)
+    (lambda (bs)
+      "A module's own items, those bound after its mark."
+      (if (or (null? bs) (tagcase (car bs) (bind (n sc w) (string=? n "%module")))) nil (cons (car bs) (own-items (cdr bs)))))))
+
+(define items-kept-in (subr kfx (cv binds) binds)
+  (lambda (v bs)
+    "A module's items, none of a type that mentions an abstract type of a
+     module an item names, `m..t`, which is not known outside it (C170;
+     Fixpt's `modules/inner-escape.fx`)."
+    (let ((mods (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (if (tagcase sc (scheme (tv t) (mtype? t))) (the strings (list n)) nil)))) (own-items bs)))))
+      (begin
+        (map (lambda ((b bind))
+               (tagcase b
+                 (bind (n sc w)
+                   (let ((m (if (null? mods) "" (tagcase sc (scheme (tv t) (mentions-module-of? t (filter (lambda ((x string)) (not (string=? x n))) mods)))))))
+                     (if (string=? m "")
+                         #u
+                         (refuse v (string-append "`" (string-append n (string-append "`'s type mentions `" (string-append m "`, which is not known outside the module"))))))))))
+             (own-items bs))
+        bs))))
+
+(define-rec
   (module-exports (subr kfx (string strings binds) binds)
     (lambda (m conversions bs)
       "The items' values, before the module's mark, as `m x`."
@@ -1522,7 +1554,15 @@
               (let* ((m (sym-name (second xs)))
                      (own (concat (map (lambda ((g sexp))
                                          (if (and (module-def? g) (string=? (sym-name (second (items g))) m))
-                                             (concat (map item-names (module-written g)))
+                                             (onto (concat (map item-names (module-written g)))
+                                                   ;; An included module's names too, given by its items, `x y`
+                                                   ;; (C171: a loaded file's, `modules/load-reexport.fx`).
+                                                   (concat (map (lambda ((h sexp))
+                                                                  (if (and (head-is? h "include") (tagcase (second (items h)) (sym (n f2 p2) #t) (else other #f)))
+                                                                      (filter (lambda ((n string)) (not (null? (find-bind (string-append (sym-name (second (items h))) (string-append " " n)) bs))))
+                                                                              (nset-names names))
+                                                                      nil))
+                                                                (module-written g))))
                                              nil))
                                        forms)))
                      (given (if (or (not (null? own)) (any? (lambda ((g sexp)) (and (module-def? g) (string=? (sym-name (second (items g))) m))) forms))
@@ -1553,7 +1593,9 @@
                          (filter (lambda ((a alias)) (tagcase a (alias (n ps b) (of n)))) als)
                          (filter (lambda ((e effdef)) (tagcase e (effdef (n xs) (of n)))) es)
                          here group file line fs tv at)))
-          (with-binds bare (cons (bind "%loaded" (scheme nil (ty-unit)) "mark") (prim-binds bare))))))))
+          (with-binds bare (cons (bind "%loaded" (scheme nil (ty-unit)) "mark")
+                                 (onto (if (string-member? "%instance" sees) (the binds (list (bind "%instance" (scheme nil (ty-unit)) "mark"))) nil)
+                                       (prim-binds bare)))))))))
 
 (define letrec-items (subr kfx (sexps binds) mitems)
   (lambda (forms bs)
@@ -1893,7 +1935,7 @@
           (elab (done found)
             (tagcase done
               (cv (bs ds als es here group file line fs tv at)
-                (elab (cv (cons made (bind-onto (module-exports m (onto hidden (map (lambda ((b bind)) (tagcase b (bind (n sc w) n))) conversions)) bs)
+                (elab (cv (cons made (bind-onto (module-exports m (onto hidden (map (lambda ((b bind)) (tagcase b (bind (n sc w) n))) conversions)) (items-kept-in v bs))
                                                 (cv-binds outer)))
                           (if loaded (onto ds (cv-dts outer)) ds)
                           (onto (without-aliases hidden-types m (module-aliases v m names forms #f))
@@ -2243,8 +2285,38 @@
       (tagcase e
         (lst (xs f l p)
           (let ((load (load-of e)))
-            (if (null? load)
-                (spliced-each xs dir loaded chain known nil nil f l p)
+            (cond
+             ((and (head-is? e "load-input") (i64= (size xs) 2) (tagcase (second xs) (str (s f2 p2) #t) (else other #f)))
+              "A file of one expression, its value (C171; FX-26's `load-input`):
+               FX-26's alone, a value made once for all its loads, here a global
+               defined before the form that first loads it,
+               `%shared:input:PATH` as Fixpt names it, which the restriction pass
+               refuses."
+              (let* ((path (tagcase (second xs) (str (s f2 p2) (if (built-in-path? s) s (path-joined dir s))) (else other "")))
+                     (key (string-append "input:" path))
+                     (had (concat (map (lambda ((k keyed)) (tagcase k (keyed (kk n) (if (string=? kk key) (the strings (list n)) nil)))) known))))
+                (if (not (null? had))
+                    (spliced-to (sym (car had) f p) nil known)
+                    (let ((found (if (built-in-path? path)
+                                     (if (string=? (built-in-text path) "") nil (the strings (list (built-in-text path))))
+                                     (concat (map (lambda ((x filed)) (tagcase x (filed (n text) (if (string=? n path) (the strings (list text)) nil)))) loaded)))))
+                      (if (null? found)
+                          (error (string-append "kfx: cannot read " path))
+                          (let ((es (read-all (string-chars (car found)) path 1)))
+                            (if (not (i64= (size es) 1))
+                                (error (string-append "kfx: " (string-append path ": not a file of one expression")))
+                                (let* ((inner (spliced (imports-in (car es)) (directory-of path) loaded (cons path chain) known))
+                                       (name (string-append "%shared:" key))
+                                       (made (lst (list (sym "define" f p) (sym name f p) (spliced-form inner)) f l p)))
+                                  (spliced-to (sym name f p) (onto (spliced-defs inner) (list made))
+                                              (cons (keyed key name) (spliced-known inner)))))))))))
+             ((and (null? load) (head-is? e "proj") (i64> (size xs) 2) (head-is? (second xs) "load-module"))
+              "A file of module parameters given them, not called (C171): the
+               procedure that makes the module, `(lambda () ((proj ...)))`."
+              (spliced (lst (list (sym "lambda" f p) (lst nil f l p) (lst (list e) f l p)) f l p) dir loaded chain known))
+             ((null? load)
+                (spliced-each xs dir loaded chain known nil nil f l p))
+             (else
                 (let* ((path (tagcase (car load) (str (s f2 p2) (if (built-in-path? s) s (path-joined dir s))) (else other "")))
                        (args (cdr load))
                        (key (string-append path (string-append " " (show-sexps args))))
@@ -2265,13 +2337,13 @@
                                       (sees (map (lambda ((k keyed)) (tagcase k (keyed (kk n) (sym n f p)))) (spliced-known inner)))
                                       (made (lst (list (sym "define" f p) (sym name f p)
                                                        (lst (cons (sym "module" f p)
-                                                                  (cons (lst (cons (sym "%loaded" f p) (cons (str path f p) sees)) f l p)
+                                                                  (cons (lst (cons (sym "%loaded" f p) (cons (str path f p) (if (null? args) sees (cons (sym "%instance" f p) sees)))) f l p)
                                                                         (items (spliced-form inner))))
                                                             f l p))
                                                  f l p)))
                                  (spliced-to (included-module name f l p)
                                              (onto (spliced-defs inner) (list made))
-                                             (cons (keyed key name) (spliced-known inner))))))))))))
+                                             (cons (keyed key name) (spliced-known inner)))))))))))))
         (else other (spliced-to e nil known)))))
   (spliced-each (subr kfx (sexps string fileds strings keyeds sexps sexps string i64 i64) spliced-to)
     (lambda (xs dir loaded chain known done defs f l p)
@@ -2427,7 +2499,8 @@
               (if (or (not (head-is? body "module"))
                       (and (head-is? e "let") (not (i64= (size (items e)) 3)))
                       (any? (lambda ((b sexp)) (not (head-is? (second (items b)) "load-module"))) bound))
-                  (error (string-append "kfx: " (string-append path ": a load-input of what KFX reads not yet: a module, or a let of loaded modules around one")))
+                  ;; Any other file of one expression, a value (C171): `spliced`'s.
+                  (list f)
                   (onto (map2 (lambda ((b sexp) (n string)) (lst (list (sym "define" fl p) (sym n fl p) (second (items b))) fl l p)) bound lifted)
                         (list (lst (list (car xs) (second xs)
                                          (lst (cons (sym "module" fl p)
@@ -2448,12 +2521,44 @@
           (tagcase (spliced (car forms) dir loaded nil known)
             (spliced-to (x defs known2) (onto defs (cons x (spliced-tops (cdr forms) dir loaded known2)))))))))
 
+"A module defined at the top level that KFX's modules cannot be (C171): one
+ that includes a module made where it is (but a module written there,
+ C90), or has a module of its own that includes one not named. It is a
+ module value, `(%module-value item ...)`, as FX-26's are all (C170)."
+(define-rec
+  (include-of-value? (subr kfx (sexps bool) bool)
+    (lambda (its outer)
+      "Whether module items `its` include a module neither named nor (where
+       `outer`, a module defined at the top level) written in place."
+      (any? (lambda ((f sexp))
+              (cond ((and (head-is? f "include") (i64> (size (items f)) 1))
+                     (let ((e (second (items f))))
+                       (not (or (tagcase e (sym (n f2 p2) #t) (else other #f))
+                                (and outer (or (head-is? e "module") (head-is? e "load-module")))))))
+                    ((head-is? f "hide") (include-of-value? (cdr (items f)) outer))
+                    ((and (head-is? f "define") (i64= (size (items f)) 3) (head-is? (third (items f)) "module"))
+                     (include-of-value? (cdr (items (third (items f)))) #f))
+                    (else #f)))
+            its))))
+
+(define as-module-value (subr kfx (sexp) sexp)
+  (lambda (f)
+    (if (and (module-def? f) (head-is? (third (items f)) "module") (include-of-value? (cdr (items (third (items f)))) #t))
+        (tagcase f
+          (lst (xs fl l p)
+            (lst (list (car xs) (second xs)
+                       (tagcase (third xs) (lst (ys f2 l2 p2) (lst (cons (sym "%module-value" f2 p2) (cdr ys)) f2 l2 p2)) (else other (third xs))))
+                 fl l p))
+          (else other f))
+        f)))
+
 (define with-loads (subr kfx (sexps string fileds) sexps)
   (lambda (forms file loaded)
     "A program's forms: what it loads spliced in (C88), and what its modules
      make in place defined before them (C90); a `poly` in a `poly` around a
-     definition, one (C107); a `load-input` of a module, the module (C116)."
-    (let ((forms (concat (map (lambda ((f sexp)) (input-expanded f (directory-of file) loaded)) (import-items forms)))))
+     definition, one (C107); a `load-input` of a module, the module (C116);
+     a module KFX's cannot be, a module value (C171)."
+    (let ((forms (map as-module-value (concat (map (lambda ((f sexp)) (input-expanded f (directory-of file) loaded)) (import-items forms))))))
       (map flat-definition
            (concat (map hoisted (if (and (null? loaded) (not (any? loads? forms)))
                                     forms

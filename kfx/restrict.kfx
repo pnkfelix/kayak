@@ -55,6 +55,9 @@
                       ((and (tagcase (car xs) (sym (h f2 p2) (string-member? h (list "listof" "ref" "pairof" "arrayof" "bytevectorof" "blobref" "bloblet" "icell" "addr" "inbox" "read" "write" "alloc" "init"))) (else other #f))
                             (any? (lambda ((a sexp)) (or (sym-is? a "const") (head-is? a "const"))) (cdr xs)))
                        (restriction-refused f l "a const region, FX-26's data frozen, which KFX has not yet (C161)"))
+                      ((and (tagcase (car xs) (sym (h f2 p2) (string-member? h (list "listof" "ref" "pairof" "arrayof" "bytevectorof" "blobref" "bloblet" "icell" "addr" "inbox" "read" "write" "alloc" "init"))) (else other #f))
+                            (any? (lambda ((a sexp)) (sym-is? a "heap")) (cdr xs)))
+                       (restriction-refused f l "the heap's region written `heap`, FX-26's, which KFX writes `@heap` (C171)"))
                       ((or (sym-is? (car xs) "confirm-nat") (sym-is? (car xs) "confirm-length")
                            (and (sym-is? (car xs) "acyclic") (i64= (size xs) 4)))
                        (restriction-refused f l (string-append (sym-name (car xs)) ", FX-26's, which KFX has not yet (C159)")))
@@ -86,6 +89,26 @@
               (else other #u))))
         (restricted-all (subr kfx (sexps string i64) unit)
           (lambda (es file line) (if (null? es) #u (begin (restricted (car es) file line) (restricted-all (cdr es) file line))))))
+
+      (define-rec
+        (moduleof-restricted (subr kfx (sexp) unit)
+          (lambda (e)
+            "A module type other than a `define-type`'s, FX-26's first-class
+             modules' (C170), which KFX has not: its module types are Rust
+             traits, named (C24)."
+            (tagcase e
+              (lst (xs f l p)
+                (cond ((null? xs) #u)
+                      ((and (sym-is? (car xs) "define-type") (i64= (size xs) 3) (head-is? (third xs) "moduleof")
+                            (not (and (trait-moduleof? (third xs)) (tagcase (second xs) (sym (n f2 p2) #t) (else other #f)))))
+                       (restriction-refused f l "a module type KFX has not as a Rust trait: of an effect's description, or with parameters, FX-26's (C24, C170)"))
+                      ((and (sym-is? (car xs) "define-type") (i64= (size xs) 3) (head-is? (third xs) "moduleof"))
+                       (begin (map moduleof-restricted (cdr (items (third xs)))) #u))
+                      ((sym-is? (car xs) "moduleof")
+                       (restriction-refused f l "a module type not named by a define-type, FX-26's first-class modules', which KFX has not yet (C24, C170)"))
+                      ((sym-is? (car xs) "quote") #u)
+                      (else (begin (map moduleof-restricted xs) #u))))
+              (else other #u)))))
 
       (define param-named? (subr kfx (sexp strings) bool)
         (lambda (q types)
@@ -214,4 +237,10 @@
          what each uses."
         (begin (noted-restricted (reverse fs)) (names-restricted forms) (restricted-all forms "the program" 0)
                (let ((types (concat (type-scopes forms))))
-                 (begin (map (lambda ((f sexp)) (specs-restricted f types)) forms) #u)))))))
+                 (begin (map (lambda ((f sexp)) (specs-restricted f types)) forms) (map moduleof-restricted forms)
+                        (map (lambda ((f sexp))
+                               (if (and (head-is? f "define") (tagcase (second (items f)) (sym (n f2 p2) (has-prefix? n "%shared:input:")) (else other #f)))
+                                   (tagcase f (lst (xs f2 l2 p2) (restriction-refused f2 l2 "a load-input of a file whose expression is no module, FX-26's, which KFX reads not yet (C116, C171)")) (else other #u))
+                                   #u))
+                             forms)
+                        #u)))))))

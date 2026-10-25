@@ -482,6 +482,10 @@
             ((string=? h "sum") (x-sum (label-of (second xs)) (parse-x (car (cdr (cdr xs)))) a))
             ((string=? h "tagcase")
              (x-tagcase (parse-x (second xs)) (parse-arms (cdr (cdr xs))) (parse-else (cdr (cdr xs))) a))
+            ((and (or (string=? h "module") (string=? h "%module-value") (string=? h "extend")) (module-fact? a "module-value"))
+             "A module made as a value where the checker's first-class modules
+              have it (C170): not yet the generator's."
+             (begin (cg-fail "not yet: a module made as a value (C170)") (x-var "%none" a)))
             ((string=? h "module") (parse-module (cdr xs) a))
             ((string=? h "extend") (parse-extend (second xs) (third xs) a))
             ((string=? h "with") (parse-with (second xs) (parse-body (cdr (cdr xs)) a) f a))
@@ -586,6 +590,10 @@
                   (else (x-reshape (parse-x e) (map (lambda ((w string)) (list (index-in w (car have) 0))) (split-words want)) p)))))
         (else other (parse-x e)))))
 
+  (module-fact? (subr gen (i64 string) bool)
+    (lambda (a what)
+      (any? (lambda ((x fact)) (tagcase x (fact (f p w) (and (i64= p a) (string=? w what))))) (get cg-module-facts))))
+
   (parse-with (subr gen (sexp cx string i64) cx)
     (lambda (m body f a)
       "`(with m body …)`: `m`'s values bound in the body, those it names. A
@@ -593,7 +601,8 @@
        a module whose items were read."
       (let ((spec (fact-text (get cg-module-facts) f a "with-spec "))
             (known (tagcase m (sym (n f2 p2) (layout-in (get cg-layouts) n)) (else other nil))))
-        (cond ((not (string=? spec "")) (with-layout m (split-words spec) body a))
+        (cond ((module-fact? a "with-value") (begin (cg-fail "not yet: a with of a module value (C170)") body))
+              ((not (string=? spec "")) (with-layout m (split-words spec) body a))
               ((not (null? known)) (with-layout m (car known) body a))
               (else (begin (cg-fail "not yet: a with of a module not named") body))))))
 
@@ -1984,7 +1993,7 @@
       (begin
         (set cg-facts fs)
         (set cg-module-facts
-             (filter (lambda ((x fact)) (tagcase x (fact (f p what) (or (has-prefix? what "with-spec ") (has-prefix? what "module-arg "))))) fs))
+             (filter (lambda ((x fact)) (tagcase x (fact (f p what) (or (has-prefix? what "with-spec ") (has-prefix? what "module-arg ") (string=? what "module-value") (string=? what "with-value"))))) fs))
         (set cg-layouts nil)
         (set cg-made nil)
         (set cg-words nil)

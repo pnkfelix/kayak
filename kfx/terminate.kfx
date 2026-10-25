@@ -365,8 +365,13 @@
             (tagcase e
               (sym (n at-file at-pos) (if (i64< (wc-member c n) 0) st (escaping st)))
               (lst (xs src-file src-line src-pos)
-                (let ((h (tagcase (car xs) (sym (n at-file at-pos) n) (else other ""))))
-                  (cond ((or (not (well-formed? h (cdr xs)))
+                (let ((h (if (null? xs) "" (tagcase (car xs) (sym (n at-file at-pos) n) (else other "")))))
+                  (cond ((null? xs) st)
+                        ((string=? h "module")
+                         "A module made as a value (C170): its items' values walked as a
+                          `let*`'s would be, its types not."
+                         (walk-all c st (concat (map (lambda ((f sexp)) (if (and (or (head-is? f "define") (head-is? f "define*")) (i64> (size (items f)) 2)) (the sexps (list (last (items f)))) nil)) (cdr xs)))))
+                        ((or (not (well-formed? h (cdr xs)))
                              (and (or (string=? h "lambda") (string=? h "the")) (i64< (size xs) 3)))
                          st)
                         ((string=? h "if")
@@ -401,6 +406,8 @@
                         ((string=? h "lambda") (walk-all (hiding c (param-names (items (second xs)))) st (cdr (cdr xs))))
                         ((string=? h "rlambda") (walk-all (hiding c (param-names (items (third xs)))) st (cdr (cdr (cdr xs)))))
                         ((string=? h "the") (walk-exp c st (third xs)))
+                        ((and (string=? h "with") (tagcase (second xs) (sym (n f p) #f) (else other #t)))
+                         (walk-all c st (cdr xs)))
                         ((string=? h "with")
                          (tagcase c
                            (wc (v ms cur sc gs nats inv)

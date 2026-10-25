@@ -92,6 +92,21 @@ pub mod restrictions {
                     (sym_is_p(a, str_lit("const")) || head_is_p(a, str_lit("const")))
                 }), cdr(xs))) {
                     match restriction_refused(f, l, str_lit("a const region, FX-26's data frozen, which KFX has not yet (C161)")) {}
+                } else if ({
+                    let tagcase_ = car(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(h, f2, p2) => {
+                            string_member_p(h, kayak_rt::heap_cons(str_lit("listof"), kayak_rt::heap_cons(str_lit("ref"), kayak_rt::heap_cons(str_lit("pairof"), kayak_rt::heap_cons(str_lit("arrayof"), kayak_rt::heap_cons(str_lit("bytevectorof"), kayak_rt::heap_cons(str_lit("blobref"), kayak_rt::heap_cons(str_lit("bloblet"), kayak_rt::heap_cons(str_lit("icell"), kayak_rt::heap_cons(str_lit("addr"), kayak_rt::heap_cons(str_lit("inbox"), kayak_rt::heap_cons(str_lit("read"), kayak_rt::heap_cons(str_lit("write"), kayak_rt::heap_cons(str_lit("alloc"), kayak_rt::heap_cons(str_lit("init"), kayak_rt::nil())))))))))))))))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                } && any_p(lambda1s(move |a: &'static Sexp| {
+                    sym_is_p(a, str_lit("heap"))
+                }), cdr(xs))) {
+                    match restriction_refused(f, l, str_lit("the heap's region written `heap`, FX-26's, which KFX writes `@heap` (C171)")) {}
                 } else if (sym_is_p(car(xs), str_lit("confirm-nat")) || sym_is_p(car(xs), str_lit("confirm-length")) || (sym_is_p(car(xs), str_lit("acyclic")) && i64_eq(size(xs), 4i64))) {
                     match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", FX-26's, which KFX has not yet (C159)"))) {}
                 } else if (sym_is_p(car(xs), str_lit("nlist")) || (sym_is_p(car(xs), str_lit("nat")) && i64_eq(size(xs), 2i64)) || (sym_is_p(car(xs), str_lit("poly")) && not(null_p(cdr(xs))) && {
@@ -167,6 +182,47 @@ pub mod restrictions {
                 restricted(car(es), file, line);
                 es = cdr(es);
                 continue;
+            }
+        }
+    }
+
+    /// A module type other than a `define-type`'s, FX-26's first-class
+    /// modules' (C170), which KFX has not: its module types are Rust
+    /// traits, named (C24).
+    pub fn moduleof_restricted(e: &'static Sexp) -> () {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                if null_p(xs) {
+                    ()
+                } else if (sym_is_p(car(xs), str_lit("define-type")) && i64_eq(size(xs), 3i64) && head_is_p(third(xs), str_lit("moduleof")) && not((trait_moduleof_p(third(xs)) && {
+                    let tagcase_ = second(xs);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f2, p2) => {
+                            true
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                }))) {
+                    match restriction_refused(f, l, str_lit("a module type KFX has not as a Rust trait: of an effect's description, or with parameters, FX-26's (C24, C170)")) {}
+                } else if (sym_is_p(car(xs), str_lit("define-type")) && i64_eq(size(xs), 3i64) && head_is_p(third(xs), str_lit("moduleof"))) {
+                    map(&moduleof_restricted, cdr(items(third(xs))));
+                    ()
+                } else if sym_is_p(car(xs), str_lit("moduleof")) {
+                    match restriction_refused(f, l, str_lit("a module type not named by a define-type, FX-26's first-class modules', which KFX has not yet (C24, C170)")) {}
+                } else if sym_is_p(car(xs), str_lit("quote")) {
+                    ()
+                } else {
+                    map(&moduleof_restricted, xs);
+                    ()
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                ()
             }
         }
     }
@@ -413,6 +469,34 @@ pub mod restrictions {
         let types = concat(type_scopes(forms));
         map(lambda1s(move |f: &'static Sexp| {
             specs_restricted(f, types)
+        }), forms);
+        map(&moduleof_restricted, forms);
+        map(lambda1s(move |f: &'static Sexp| {
+            if (head_is_p(f, str_lit("define")) && {
+                let tagcase_ = second(items(f));
+                match *tagcase_ {
+                    Sexp::Sym(n, f2, p2) => {
+                        has_prefix_p(n, str_lit("%shared:input:"))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            }) {
+                let tagcase_ = f;
+                match *tagcase_ {
+                    Sexp::Lst(xs, f2, l2, p2) => {
+                        match restriction_refused(f2, l2, str_lit("a load-input of a file whose expression is no module, FX-26's, which KFX reads not yet (C116, C171)")) {}
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        ()
+                    }
+                }
+            } else {
+                ()
+            }
         }), forms);
         ()
     }

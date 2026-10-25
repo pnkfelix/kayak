@@ -773,7 +773,7 @@ pub fn lower_form(mut h: Str, mut xs: Sexps, mut e: &'static Sexp, mut sc: Scope
             return i_let(kayak_rt::heap_cons(lower(m, sc, gs), kayak_rt::nil()), lower_body(cdr(xs), kayak_rt::heap_cons(kayak_rt::heap_cons(str_lit("%with"), names), sc), gs));
         } else if string_eq_p(h, str_lit("select")) {
             return error(str_lit("the engine: a select as a value"));
-        } else if string_eq_p(h, str_lit("module")) {
+        } else if (string_eq_p(h, str_lit("module")) || string_eq_p(h, str_lit("%module-value"))) {
             return lower_module(xs, sc, gs);
         } else if string_eq_p(h, str_lit("extend")) {
             return lower_module(module_written(lst(kayak_rt::heap_cons(sym(str_lit("define"), str_lit(""), 0i64), kayak_rt::heap_cons(sym(str_lit("%extend"), str_lit(""), 0i64), kayak_rt::heap_cons(e, kayak_rt::nil()))), str_lit(""), 0i64, 0i64)), sc, gs);
