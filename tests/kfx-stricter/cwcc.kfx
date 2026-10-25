@@ -1,0 +1,5 @@
+"FX-26's `cwcc`, a continuation that may be resumed again and again, which
+ a Rust future is once: KFX's is abort-with-continuation's (C45, C168)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define main (subr kfx () i64)
+  (lambda () (int->i64 (+ (cwcc (lambda (f) (f 0))) 1))))

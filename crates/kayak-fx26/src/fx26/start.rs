@@ -336,7 +336,7 @@ pub fn no_form() -> &'static Sexp {
 /// `acyclic`, or at a region still unsolved, nothing, as Fixpt's.
 pub fn settled_effs(s: &'static St, es: Strings) -> Strings {
     filter(lambda1s(move |a: Str| {
-        not((string_eq_p(a, str_lit("alloc:acyclic")) || has_prefix_p(a, str_lit("alloc:?"))))
+        not((string_eq_p(a, str_lit("alloc:acyclic")) || has_prefix_p(a, str_lit("alloc:?")) || string_eq_p(a, str_lit("goto:acyclic")) || string_eq_p(a, str_lit("comefrom:acyclic"))))
     }), map(lambda1s(move |a: Str| {
         resolve_atom(s, a)
     }), es))

@@ -3158,6 +3158,50 @@
         (ty-shape (p ls ts) (any? (lambda ((x ty)) (region-var-in? s x)) ts))
         (else other #f)))))
 
+"`cwcc`'s `spin` (C168; Fixpt's `k-may-spin?`): a continuation called after
+ `cwcc` returns comes back to it as often as it is called; only a receiver
+ `(lambda (k) ...)` whose `k` is only called, so can only leave while
+ `cwcc` runs, and which captures no continuation itself, needs none."
+(define-rec
+  (sexp-mentions? (subr kfx (sexp string) bool)
+    (lambda (e n)
+      (tagcase e
+        (sym (m f p) (string=? m n))
+        (lst (xs f l p) (any? (lambda ((x sexp)) (sexp-mentions? x n)) xs))
+        (else other #f))))
+  (only-called? (subr kfx (sexp string) bool)
+    (lambda (e k)
+      "Whether `k` is in `e` only as a call's operator, never inside a
+       procedure made there (conservatively: never mentioned in one)."
+      (tagcase e
+        (sym (m f p) (not (string=? m k)))
+        (lst (xs f l p)
+          (cond ((null? xs) #t)
+                ((tagcase (car xs) (sym (h f2 p2) (string-member? h (list "lambda" "plambda" "rlambda" "letrec" "prompt" "module" "with" "quote" "define-rec" "vlambda"))) (else other #f))
+                 (not (sexp-mentions? e k)))
+                ((sym-is? (car xs) k) (not (any? (lambda ((x sexp)) (not (only-called? x k))) (cdr xs))))
+                (else (not (any? (lambda ((x sexp)) (not (only-called? x k))) xs)))))
+        (else other #t)))))
+
+(define-rec
+  (escape-only? (subr kfx (sexps) bool)
+    (lambda (args)
+      "Whether `cwcc`'s arguments are one receiver that can only leave."
+      (and (not (null? args)) (null? (cdr args))
+           (let ((r (car args)))
+             (cond ((and (head-is? r "the") (i64= (size (items r)) 3)) (escape-only? (cdr (cdr (items r)))))
+                   ((and (head-is? r "lambda") (i64> (size (items r)) 2))
+                    (let ((ps (items (second (items r)))))
+                      (and (i64= (size ps) 1)
+                           (let ((k (tagcase (car ps) (sym (n f p) n) (lst (ys f l p) (if (null? ys) "" (tagcase (car ys) (sym (n f2 p2) n) (else other "")))) (else other ""))))
+                             (and (not (string=? k ""))
+                                  (not (sexp-mentions? r "cwcc"))
+                                  (not (any? (lambda ((b sexp)) (not (only-called? b k))) (cdr (cdr (items r))))))))))
+                   (else #f)))))))
+
+(define cwcc-spin (subr kfx (string sexps) strings)
+  (lambda (name args) (if (and (string=? name "cwcc") (not (escape-only? args))) (the strings (list "spin")) nil)))
+
 (define finite-may? (subr kfx (string ty) bool)
   (lambda (n t)
     "Whether size binder `n` of a procedure's type `t` may be instantiated

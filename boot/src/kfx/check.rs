@@ -7116,6 +7116,124 @@ pub fn region_var_in_p(s: &'static St, t: &'static Ty) -> bool {
     }
 }
 
+// `cwcc`'s `spin` (C168; Fixpt's `k-may-spin?`): a continuation called after
+// `cwcc` returns comes back to it as often as it is called; only a receiver
+// `(lambda (k) ...)` whose `k` is only called, so can only leave while
+// `cwcc` runs, and which captures no continuation itself, needs none.
+pub fn sexp_mentions_p(e: &'static Sexp, n: Str) -> bool {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Sym(m, f, p) => {
+            string_eq_p(m, n)
+        }
+        Sexp::Lst(xs, f, l, p) => {
+            any_p(lambda1s(move |x: &'static Sexp| {
+                sexp_mentions_p(x, n)
+            }), xs)
+        }
+        _ => {
+            let other = tagcase_;
+            false
+        }
+    }
+}
+
+/// Whether `k` is in `e` only as a call's operator, never inside a
+/// procedure made there (conservatively: never mentioned in one).
+pub fn only_called_p(e: &'static Sexp, k: Str) -> bool {
+    let tagcase_ = e;
+    match *tagcase_ {
+        Sexp::Sym(m, f, p) => {
+            not(string_eq_p(m, k))
+        }
+        Sexp::Lst(xs, f, l, p) => {
+            if null_p(xs) {
+                true
+            } else if {
+                let tagcase_ = car(xs);
+                match *tagcase_ {
+                    Sexp::Sym(h, f2, p2) => {
+                        string_member_p(h, kayak_rt::heap_cons(str_lit("lambda"), kayak_rt::heap_cons(str_lit("plambda"), kayak_rt::heap_cons(str_lit("rlambda"), kayak_rt::heap_cons(str_lit("letrec"), kayak_rt::heap_cons(str_lit("prompt"), kayak_rt::heap_cons(str_lit("module"), kayak_rt::heap_cons(str_lit("with"), kayak_rt::heap_cons(str_lit("quote"), kayak_rt::heap_cons(str_lit("define-rec"), kayak_rt::heap_cons(str_lit("vlambda"), kayak_rt::nil())))))))))))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            } {
+                not(sexp_mentions_p(e, k))
+            } else if sym_is_p(car(xs), k) {
+                not(any_p(lambda1s(move |x: &'static Sexp| {
+                    not(only_called_p(x, k))
+                }), cdr(xs)))
+            } else {
+                not(any_p(lambda1s(move |x: &'static Sexp| {
+                    not(only_called_p(x, k))
+                }), xs))
+            }
+        }
+        _ => {
+            let other = tagcase_;
+            true
+        }
+    }
+}
+
+/// Whether `cwcc`'s arguments are one receiver that can only leave.
+pub fn escape_only_p(args: Sexps) -> bool {
+    (not(null_p(args)) && null_p(cdr(args)) && {
+        let r = car(args);
+        if (head_is_p(r, str_lit("the")) && i64_eq(size(items(r)), 3i64)) {
+            escape_only_p(cdr(cdr(items(r))))
+        } else if (head_is_p(r, str_lit("lambda")) && i64_gt(size(items(r)), 2i64)) {
+            let ps = items(second(items(r)));
+            (i64_eq(size(ps), 1i64) && {
+                let k = {
+                    let tagcase_ = car(ps);
+                    match *tagcase_ {
+                        Sexp::Sym(n, f, p) => {
+                            n
+                        }
+                        Sexp::Lst(ys, f, l, p) => {
+                            if null_p(ys) {
+                                str_lit("")
+                            } else {
+                                let tagcase_ = car(ys);
+                                match *tagcase_ {
+                                    Sexp::Sym(n, f2, p2) => {
+                                        n
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        str_lit("")
+                                    }
+                                }
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            str_lit("")
+                        }
+                    }
+                };
+                (not(string_eq_p(k, str_lit(""))) && not(sexp_mentions_p(r, str_lit("cwcc"))) && not(any_p(lambda1s(move |b: &'static Sexp| {
+                    not(only_called_p(b, k))
+                }), cdr(cdr(items(r))))))
+            })
+        } else {
+            false
+        }
+    })
+}
+
+pub fn cwcc_spin(name: Str, args: Sexps) -> Strings {
+    if (string_eq_p(name, str_lit("cwcc")) && not(escape_only_p(args))) {
+        the::<Strings>(kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil()))
+    } else {
+        nil::<Str>()
+    }
+}
+
 /// Whether size binder `n` of a procedure's type `t` may be instantiated
 /// with `finite`: it is in its parameters once, the size of one of them,
 /// itself (Fixpt's rule: else `finite` would not keep two sizes the same).

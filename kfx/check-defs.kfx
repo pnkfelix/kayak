@@ -51,6 +51,7 @@
    (>= (subr pure (int int) (bool (then (<= 1 0)) (else (< 0 1)))))
    (int->string (subr pure (int) string)) (int->i64 (subr pure (int) i64)) (i64->int (subr pure (i64) int))
    (zero? (subr pure (int) (bool (then (= 0 (lit 0))) (else (not (= 0 (lit 0)))))))
+   (cwcc (poly ((r region) (t type) (e effect)) (subr (maxeff (comefrom r) e) ((subr e ((subr (goto r) (t) void)) t)) t)))
    (assume (subr pure ((p bool)) unit (ensures r p))) (assert (subr pure ((p bool)) unit (requires p))) (max (subr pure (int int) int)) (min (subr pure (int int) int))
    (f64+ (subr pure (f64 f64) f64)) (f64- (subr pure (f64 f64) f64)) (f64* (subr pure (f64 f64) f64))
    (f64/ (subr pure (f64 f64) f64)) (f64-min (subr pure (f64 f64) f64)) (f64-max (subr pure (f64 f64) f64))

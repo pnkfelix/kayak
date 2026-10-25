@@ -4578,3 +4578,25 @@ programs Fixpt refuses (K1), each its own case of it.
 - **KFX**: refused (`kfx-restricted`): a bloblet's Rust type is its
   fields' (`tests/kfx-stricter/bloblet-width.kfx`).
 - Refused 133 to 131, the same 239 to 241.
+
+## C168. `cwcc` (2026-10-25)
+
+FX-26's `call-with-current-continuation`, `cwcc`, at Fixpt's type
+`(poly ((r region)) (poly ((t type)) (poly ((e effect)) (subr (maxeff
+(comefrom r) e) ((subr e ((subr (goto r) (t) void)) t)) t))))`, is a
+primitive of kayak's checker (as one poly of three binders, which a
+chain of `proj`s instantiates, C60), with Fixpt's rules for it
+(`check-calls.fx`'s `k-may-spin?`, `soundness-findings.md` F3, F9):
+- **`spin`**: a continuation called after `cwcc` returns comes back to it
+  as often as it is called; only a receiver `(lambda (k) ...)` whose `k`
+  is only called (never inside a procedure made there) and which itself
+  calls no `cwcc` needs none.
+- **Masked**: such a receiver's continuation is called only while `cwcc`
+  runs, so its `comefrom R` and `goto R` stay within the call
+  (`terminate/cwcc-escape.fx`); and a call of `cwcc` itself, its region
+  one nothing names, fresh, masks its control there
+  (`bidirectional/cwcc.fx`). The printer leaves out control at
+  `acyclic`, where a region nothing names settles.
+- **KFX**: refused, as `call/cc` is (C45;
+  `tests/kfx-stricter/cwcc.kfx`).
+- Refused 131 to 126, the same 241 to 246.

@@ -1646,11 +1646,14 @@
                     (let ((hr (synth v s head)))
                       (tagcase hr
                         (res (ht hes hs)
+                          (cwcc-masked v head (cdr xs)
                           (mark-lifted v (if (head-is? head "proj") (proj-base v head) "") (cdr xs)
                           (void-call v #f #f (synth-call-of v s hr (cdr xs) nil nil
-                                                            (if (or (head-is? head "proj") (head-is? head "lambda") (not (self-applicable? v hs ht)))
-                                                                nil
-                                                                (list "spin"))))))))))))))))
+                                                            (effs-union
+                                                              (if (head-is? head "proj") (cwcc-spin (proj-base v head) (cdr xs)) nil)
+                                                              (if (or (head-is? head "proj") (head-is? head "lambda") (not (self-applicable? v hs ht)))
+                                                                  nil
+                                                                  (list "spin"))))))))))))))))))
 
       (async-global (subr kfx (cv st string string i64) st)
         (lambda (v s name file pos)
@@ -3400,6 +3403,7 @@
                              (from (st-next s)))
                       (tagcase (named-instance v s sc)
                         (inst (t s regions effects)
+                          (cwcc-fresh-masked v h wher
                           (place-needed v h wher sc from
                           (regions-freshened v h wher regions
                           (static-instance v h wher (binder-metas from (st-next s) (onto effects regions))
@@ -3409,12 +3413,50 @@
                           (mark-lifted v (if (string=? wher "prim") h "") args
                           (poly-self-application v sc t (knot-free-call v (synth-call-of v s (res t nil (head-unboxed v s h wher t)) args regions expected
                                          (effs-union
+                                           (if (string=? wher "prim") (cwcc-spin h args) nil)
+                                           (effs-union
                                            (if (string=? wher "global") (list (string-append "g:" h)) nil)
                                            (if (or (string=? wher "rec")
                                                    (and (or (string=? wher "local") (string=? wher "narrowed")) (self-applicable? v s t))
                                                    (and (string-member? h (cv-group v)) (or (string=? wher "global") (string=? wher "item"))))
                                                (list "spin")
-                                               nil)))))))))))))))))))))
+                                               nil)))))))))))))))))))))))
+
+      (cwcc-fresh-masked (subr kfx (cv string string res) res)
+        (lambda (v h wher r)
+          "A call of `cwcc` itself, its region one nothing names, fresh (C168):
+           its control there masked, as Fixpt's."
+          (if (and (string=? h "cwcc") (string=? wher "prim"))
+              (tagcase r
+                (res (t es s)
+                  (res t (filter (lambda ((a string))
+                                   (let ((x (resolve-atom s a)))
+                                     (not (and (or (has-prefix? x "goto:") (has-prefix? x "comefrom:"))
+                                               (or (string-has? x ":?") (string=? x "goto:acyclic") (string=? x "comefrom:acyclic"))))))
+                                 es)
+                       s)))
+              r)))
+
+      (cwcc-masked (subr kfx (cv sexp sexps res) res)
+        (lambda (v head args r)
+          "A `cwcc` at region `R` (`(proj cwcc R)`) whose receiver can only leave
+           (C168): its continuation is called only while it runs, so its
+           `comefrom R` and `goto R` stay within the call, masked, as Fixpt's."
+          (if (and (head-is? head "proj") (string=? (proj-base v head) "cwcc") (escape-only? args))
+              (let ((reg (proj-innermost-arg head)))
+                (tagcase reg
+                  (sym (n f p)
+                    (tagcase r
+                      (res (t es s) (res t (filter (lambda ((a string)) (not (or (string=? a (string-append "goto:" n)) (string=? a (string-append "comefrom:" n))))) es) s))))
+                  (else other r)))
+              r)))
+
+      (proj-innermost-arg (subr kfx (sexp) sexp)
+        (lambda (e)
+          "The first argument of the innermost of a chain of `proj`s."
+          (if (head-is? (second (items e)) "proj")
+              (proj-innermost-arg (second (items e)))
+              (if (i64> (size (items e)) 2) (third (items e)) e))))
 
       (proj-base (subr kfx (cv sexp) string)
         (lambda (v e)

@@ -58,7 +58,7 @@ pub mod restrictions {
         let tagcase_ = e;
         match *tagcase_ {
             Sexp::Sym(n, f, p) => {
-                if (string_eq_p(n, str_lit("call-with-composable-continuation")) || string_eq_p(n, str_lit("call-with-current-continuation")) || string_eq_p(n, str_lit("call/cc"))) {
+                if (string_eq_p(n, str_lit("call-with-composable-continuation")) || string_eq_p(n, str_lit("call-with-current-continuation")) || string_eq_p(n, str_lit("call/cc")) || string_eq_p(n, str_lit("cwcc"))) {
                     match restriction_refused(file, line, string_append(n, str_lit(" keeps a continuation FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)"))) {}
                 } else if string_member_p(n, kayak_rt::heap_cons(str_lit("current-marks"), kayak_rt::heap_cons(str_lit("marks-of"), kayak_rt::nil()))) {
                     match restriction_refused(file, line, string_append(n, str_lit(", which KFX has not yet: its marks' list would tell a with-mark in tail position from one that is not (C106)"))) {}

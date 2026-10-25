@@ -142,7 +142,9 @@
   (lambda (s es)
     "An effect as printed (C166): its regions as solved; an allocation at
      `acyclic`, or at a region still unsolved, nothing, as Fixpt's."
-    (filter (lambda ((a string)) (not (or (string=? a "alloc:acyclic") (has-prefix? a "alloc:?"))))
+    (filter (lambda ((a string)) (not (or (string=? a "alloc:acyclic") (has-prefix? a "alloc:?")
+                                          ;; Control at a region nothing names (C168): a fresh one, masked.
+                                          (string=? a "goto:acyclic") (string=? a "comefrom:acyclic"))))
             (map (lambda ((a string)) (resolve-atom s a)) es))))
 
 (define value-effect (subr kfx (cv string sexp) string)

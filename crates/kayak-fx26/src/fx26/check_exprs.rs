@@ -3670,15 +3670,19 @@ pub mod expressions {
                             let tagcase_ = hr;
                             match *tagcase_ {
                                 Res::Res(ht, hes, hs) => {
-                                    mark_lifted(v, if head_is_p(head, str_lit("proj")) {
+                                    cwcc_masked(v, head, cdr(xs), mark_lifted(v, if head_is_p(head, str_lit("proj")) {
                                         proj_base(v, head)
                                     } else {
                                         str_lit("")
-                                    }, cdr(xs), void_call(v, false, false, synth_call_of(v, s, hr, cdr(xs), nil::<i64>(), nil::<&'static Ty>(), if (head_is_p(head, str_lit("proj")) || head_is_p(head, str_lit("lambda")) || not(self_applicable_p(v, hs, ht))) {
+                                    }, cdr(xs), void_call(v, false, false, synth_call_of(v, s, hr, cdr(xs), nil::<i64>(), nil::<&'static Ty>(), effs_union(if head_is_p(head, str_lit("proj")) {
+                                        cwcc_spin(proj_base(v, head), cdr(xs))
+                                    } else {
+                                        nil::<Str>()
+                                    }, if (head_is_p(head, str_lit("proj")) || head_is_p(head, str_lit("lambda")) || not(self_applicable_p(v, hs, ht))) {
                                         nil::<Str>()
                                     } else {
                                         kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil())
-                                    })))
+                                    })))))
                                 }
                             }
                         }
@@ -7605,7 +7609,7 @@ pub mod expressions {
                         let tagcase_ = named_instance(v, s, sc);
                         match *tagcase_ {
                             Inst::Inst(t, s, regions, effects) => {
-                                return place_needed(v, h, wher, sc, from, regions_freshened(v, h, wher, regions, static_instance(v, h, wher, binder_metas(from, st_next(s), onto(effects, regions)), poly_settled(v, h, wher, args, binder_metas(from, st_next(s), onto(effects, regions)), result_only_p(s, t, binder_metas(from, st_next(s), onto(effects, regions))), void_call(v, (string_eq_p(h, str_lit("error")) && string_eq_p(wher, str_lit("prim"))), (not(null_p(expected)) && {
+                                return cwcc_fresh_masked(v, h, wher, place_needed(v, h, wher, sc, from, regions_freshened(v, h, wher, regions, static_instance(v, h, wher, binder_metas(from, st_next(s), onto(effects, regions)), poly_settled(v, h, wher, args, binder_metas(from, st_next(s), onto(effects, regions)), result_only_p(s, t, binder_metas(from, st_next(s), onto(effects, regions))), void_call(v, (string_eq_p(h, str_lit("error")) && string_eq_p(wher, str_lit("prim"))), (not(null_p(expected)) && {
                                     let tagcase_ = walk(s, car(expected));
                                     match *tagcase_ {
                                         Ty::TyMeta(k) => {
@@ -7620,7 +7624,11 @@ pub mod expressions {
                                     h
                                 } else {
                                     str_lit("")
-                                }, args, poly_self_application(v, sc, t, knot_free_call(v, synth_call_of(v, s, res(t, nil::<Str>(), head_unboxed(v, s, h, wher, t)), args, regions, expected, effs_union(if string_eq_p(wher, str_lit("global")) {
+                                }, args, poly_self_application(v, sc, t, knot_free_call(v, synth_call_of(v, s, res(t, nil::<Str>(), head_unboxed(v, s, h, wher, t)), args, regions, expected, effs_union(if string_eq_p(wher, str_lit("prim")) {
+                                    cwcc_spin(h, args)
+                                } else {
+                                    nil::<Str>()
+                                }, effs_union(if string_eq_p(wher, str_lit("global")) {
                                     kayak_rt::heap_cons(string_append(str_lit("g:"), h), kayak_rt::nil())
                                 } else {
                                     nil::<Str>()
@@ -7628,10 +7636,72 @@ pub mod expressions {
                                     kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil())
                                 } else {
                                     nil::<Str>()
-                                }))))))))));
+                                }))))))))))));
                             }
                         }
                     }
+                }
+            }
+        }
+    }
+
+    /// A call of `cwcc` itself, its region one nothing names, fresh (C168):
+    /// its control there masked, as Fixpt's.
+    pub fn cwcc_fresh_masked(v: &'static Cv, h: Str, wher: Str, r: &'static Res) -> &'static Res {
+        if (string_eq_p(h, str_lit("cwcc")) && string_eq_p(wher, str_lit("prim"))) {
+            let tagcase_ = r;
+            match *tagcase_ {
+                Res::Res(t, es, s) => {
+                    res(t, filter(lambda1s(move |a: Str| {
+                        let x = resolve_atom(s, a);
+                        not(((has_prefix_p(x, str_lit("goto:")) || has_prefix_p(x, str_lit("comefrom:"))) && (string_has_p(x, str_lit(":?")) || string_eq_p(x, str_lit("goto:acyclic")) || string_eq_p(x, str_lit("comefrom:acyclic")))))
+                    }), es), s)
+                }
+            }
+        } else {
+            r
+        }
+    }
+
+    /// A `cwcc` at region `R` (`(proj cwcc R)`) whose receiver can only leave
+    /// (C168): its continuation is called only while it runs, so its
+    /// `comefrom R` and `goto R` stay within the call, masked, as Fixpt's.
+    pub fn cwcc_masked(v: &'static Cv, head: &'static Sexp, args: Sexps, r: &'static Res) -> &'static Res {
+        if (head_is_p(head, str_lit("proj")) && string_eq_p(proj_base(v, head), str_lit("cwcc")) && escape_only_p(args)) {
+            let reg = proj_innermost_arg(head);
+            let tagcase_ = reg;
+            match *tagcase_ {
+                Sexp::Sym(n, f, p) => {
+                    let tagcase_ = r;
+                    match *tagcase_ {
+                        Res::Res(t, es, s) => {
+                            res(t, filter(lambda1s(move |a: Str| {
+                                not((string_eq_p(a, string_append(str_lit("goto:"), n)) || string_eq_p(a, string_append(str_lit("comefrom:"), n))))
+                            }), es), s)
+                        }
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    r
+                }
+            }
+        } else {
+            r
+        }
+    }
+
+    /// The first argument of the innermost of a chain of `proj`s.
+    pub fn proj_innermost_arg(mut e: &'static Sexp) -> &'static Sexp {
+        loop {
+            if head_is_p(second(items(e)), str_lit("proj")) {
+                e = second(items(e));
+                continue;
+            } else {
+                if i64_gt(size(items(e)), 2i64) {
+                    return third(items(e));
+                } else {
+                    return e;
                 }
             }
         }

@@ -38,7 +38,7 @@
              what KFX does not have, else each of its parts."
             (tagcase e
               (sym (n f p)
-                (cond ((or (string=? n "call-with-composable-continuation") (string=? n "call-with-current-continuation") (string=? n "call/cc"))
+                (cond ((or (string=? n "call-with-composable-continuation") (string=? n "call-with-current-continuation") (string=? n "call/cc") (string=? n "cwcc"))
                        (restriction-refused file line (string-append n " keeps a continuation FX-26 may resume again and again, and a Rust future once: KFX's is abort-with-continuation's (C45)")))
                       ((string-member? n (list "current-marks" "marks-of"))
                        (restriction-refused file line (string-append n ", which KFX has not yet: its marks' list would tell a with-mark in tail position from one that is not (C106)")))
