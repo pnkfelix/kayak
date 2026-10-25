@@ -52,6 +52,36 @@ pub mod restrictions {
         error(string_append(str_lit("kfx: "), string_append(file, string_append(str_lit(":"), string_append(i64_to_string(line), string_append(str_lit(": "), message))))))
     }
 
+    pub fn items_of(e: &'static Sexp) -> Sexps {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Lst(ys, f, l, p) => {
+                ys
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<&'static Sexp>()
+            }
+        }
+    }
+
+    pub fn cdr_items_of(e: &'static Sexp) -> Sexps {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Lst(ys, f, l, p) => {
+                if null_p(ys) {
+                    nil::<&'static Sexp>()
+                } else {
+                    cdr(ys)
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                nil::<&'static Sexp>()
+            }
+        }
+    }
+
     /// `e`, whose nearest list began at `line` of `file`: refused if it is
     /// what KFX does not have, else each of its parts.
     pub fn restricted(e: &'static Sexp, file: Str, line: i64) -> () {
@@ -137,6 +167,39 @@ pub mod restrictions {
                     match restriction_refused(f, l, string_append(sym_name(car(xs)), str_lit(", FX-26's variadic procedures, which KFX has not yet: a Rust fn has its arity (C71)"))) {}
                 } else if (sym_is_p(car(xs), str_lit("arrayof")) && i64_eq(size(xs), 3i64) && (sym_is_p(third(xs), str_lit("finite")) || head_is_p(third(xs), str_lit("+")) || head_is_p(third(xs), str_lit("-")))) {
                     match restriction_refused(f, l, str_lit("a flat array of a length not literal, FX-26's, which KFX has not yet (C175)")) {}
+                } else if {
+                    let binders = if ((sym_is_p(car(xs), str_lit("poly")) || sym_is_p(car(xs), str_lit("plambda"))) && i64_gt(size(xs), 1i64)) {
+                        items_of(second(xs))
+                    } else if ((sym_is_p(car(xs), str_lit("define-type")) || sym_is_p(car(xs), str_lit("define-generative"))) && i64_gt(size(xs), 1i64)) {
+                        cdr_items_of(second(xs))
+                    } else {
+                        nil::<&'static Sexp>()
+                    };
+                    any_p(lambda1s(move |b: &'static Sexp| {
+                        let tagcase_ = b;
+                        match *tagcase_ {
+                            Sexp::Lst(ys, f2, l2, p2) => {
+                                (i64_eq(size(ys), 2i64) && {
+                                    let tagcase_ = second(ys);
+                                    match *tagcase_ {
+                                        Sexp::Sym(k, f3, p3) => {
+                                            string_member_p(k, kayak_rt::heap_cons(str_lit("data"), kayak_rt::heap_cons(str_lit("sendable"), kayak_rt::heap_cons(str_lit("flat"), kayak_rt::heap_cons(str_lit("conv"), kayak_rt::nil())))))
+                                        }
+                                        _ => {
+                                            let other = tagcase_;
+                                            false
+                                        }
+                                    }
+                                })
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                false
+                            }
+                        }
+                    }), binders)
+                } {
+                    match restriction_refused(f, l, str_lit("a binder of the kind data, sendable, flat or conv, FX-26's, which KFX's Rust generics have not (C186)")) {}
                 } else if (sym_is_p(car(xs), str_lit("proves")) && i64_eq(size(xs), 2i64)) {
                     match restriction_refused(f, l, str_lit("a lemma, `proves`, FX-26's, which KFX has not: its Rust's types have no subtyping to prove (C185)")) {}
                 } else if (sym_is_p(car(xs), str_lit("flatarrayof")) && i64_eq(size(xs), 3i64) && not(sym_is_p(second(xs), str_lit("i64")))) {

@@ -5152,6 +5152,32 @@ types have no subtyping to prove).
   `nest` accepted, printed the same; the eight it refuses refused.
   Refused 32 to 29, the same 340 to 343; K1 0. Test:
   `tests/kfx-stricter/lemma.kfx`.
+
+## C186. Binders of the kinds `data`, `sendable`, `flat` (2026-10-25)
+
+Fixpt's kinds that say what a type binder takes (fx26.md, "The `data`
+kind"; processes' `sendable`; Fixpt's TODO §77, `flat`). FX-26's: KFX
+refuses each binder (the restriction pass, in a `poly`'s, `plambda`'s or
+family's binders).
+- **The binder** is a type binder marked as an arrow kind's is (C173),
+  `^data^t`, so printed `(t data)`; named alone in a type, the variable.
+- **Checked where instantiated** (`kind-holds`): at a `proj`, the type
+  given; at a call, each binder's inference variable once the arguments
+  have solved it (`kinds-held`, around `poly-settled`). `data` (`not-data`):
+  base types, `datum`, products and sums, frozen pairs, lists and
+  datatypes of data; no procedure, nothing writable, no generative type.
+  `sendable`: transmissible (C101's `untransmissible`, a `sendable`
+  binder itself so). `flat`: `flat?`. The refusals say Fixpt's words:
+  "`m` is bound as sendable, and a (ref int @c) is not: a reference at
+  @c, which can be written".
+- **A `flat` binder is no type**: named only where a flat is (a blobref's
+  flat, a flat array's element, a family's `flat` parameter, under the
+  marker `%flat-ok`), else "`f` is a flat, not a type" (two K1 breaches
+  on the way, `flat-not-type.fx`, `flat-family-not-type.fx`). A family's
+  `flat` argument is checked a flat; a family's `data` or `sendable`
+  parameter kayak still refuses, having no check for it there.
+- Left: `conv` binders, `(t data p)` at a place. Refused 29 to 26, the
+  same 343 to 346; K1 0. Test: `tests/kfx-stricter/data-binder.kfx`.
 - Refused 73 to 60, the same 283 to 294; K1 0 (five breaches on the way,
   each a rule above). Left: the kind `flat` (`flat-kind.fx`), `narrayof`
   (`narrayof-lengths.fx`); printing a blobref's owner by its

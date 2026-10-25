@@ -3129,10 +3129,10 @@ pub mod expressions {
                     return str_lit("a value whose type is not known here: say it, with `the`");
                 }
                 Ty::TyVar(n) => {
-                    if string_member_p(n, bound) {
+                    if (string_member_p(n, bound) || has_prefix_p(n, str_lit("^sendable^"))) {
                         return str_lit("");
                     } else {
-                        return string_append(str_lit("a `"), string_append(n, str_lit("`, which could be anything")));
+                        return string_append(str_lit("a `"), string_append(written_binder(n), str_lit("`, which could be anything")));
                     }
                 }
                 Ty::TyList(e, r) => {
@@ -7794,6 +7794,11 @@ pub mod expressions {
                     parse_region(v, cv_tvars(v), car(args))
                 } else if char_eq_p(string_ref_i64(car(tvars), 0i64), '~') {
                     effect_row(kayak_rt::heap_cons(str_lit("~!"), parse_effect(v, cv_tvars(v), car(args))))
+                } else if string_member_p(binder_kind(car(tvars)), kayak_rt::heap_cons(str_lit("data"), kayak_rt::heap_cons(str_lit("sendable"), kayak_rt::heap_cons(str_lit("flat"), kayak_rt::nil())))) {
+                    // A type where a binder of a kind is bound (C186): checked.
+                    let t = parse_type(v, cv_tvars(v), car(args));
+                    kind_holds(v, st(nil::<&'static Sb>(), 0i64, nil::<&'static Fact>()), car(tvars), t);
+                    t
                 } else if char_eq_p(string_ref_i64(car(tvars), 0i64), '^') {
                     // A function where one of arrow kind is bound (C173).
                     fun_of_kind(v, cv_tvars(v), car(args), binder_kind(car(tvars)), written_binder(car(tvars)))
@@ -9277,7 +9282,7 @@ pub mod expressions {
                         let tagcase_ = named_instance(v, s, sc);
                         match *tagcase_ {
                             Inst::Inst(t, s, regions, effects) => {
-                                return cwcc_fresh_masked(v, h, wher, place_needed(v, h, wher, sc, from, regions_freshened(v, h, wher, regions, static_instance(v, h, wher, binder_metas(from, st_next(s), onto(effects, regions)), poly_settled(v, h, wher, args, binder_metas(from, st_next(s), onto(effects, regions)), result_only_p(s, t, binder_metas(from, st_next(s), onto(effects, regions))), void_call(v, (string_eq_p(h, str_lit("error")) && string_eq_p(wher, str_lit("prim"))), (not(null_p(expected)) && {
+                                return cwcc_fresh_masked(v, h, wher, place_needed(v, h, wher, sc, from, regions_freshened(v, h, wher, regions, static_instance(v, h, wher, binder_metas(from, st_next(s), onto(effects, regions)), kinds_held(v, sc, from, poly_settled(v, h, wher, args, binder_metas(from, st_next(s), onto(effects, regions)), result_only_p(s, t, binder_metas(from, st_next(s), onto(effects, regions))), void_call(v, (string_eq_p(h, str_lit("error")) && string_eq_p(wher, str_lit("prim"))), (not(null_p(expected)) && {
                                     let tagcase_ = walk(s, car(expected));
                                     match *tagcase_ {
                                         Ty::TyMeta(k) => {
@@ -9304,7 +9309,7 @@ pub mod expressions {
                                     kayak_rt::heap_cons(str_lit("spin"), kayak_rt::nil())
                                 } else {
                                     nil::<Str>()
-                                }))))))))))));
+                                })))))))))))));
                             }
                         }
                     }
@@ -9653,6 +9658,198 @@ pub mod expressions {
             _ => {
                 let other = tagcase_;
                 false
+            }
+        }
+    }
+
+    /// A poly's call: each binder of a kind that says what it takes, `data`,
+    /// `sendable`, `flat`, given what it takes, where the call solved it
+    /// (C186; its inference variable the binder's place among the scheme's
+    /// from `from`).
+    pub fn kinds_held(v: &'static Cv, sc: &'static Scheme, from: i64, r: &'static Res) -> &'static Res {
+        let tagcase_ = r;
+        match *tagcase_ {
+            Res::Res(t, es, s) => {
+                let tagcase_ = sc;
+                match *tagcase_ {
+                    Scheme::Scheme(tvars, u) => {
+                        kinds_each(v, s, tvars, from);
+                        r
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn kinds_each(mut v: &'static Cv, mut s: &'static St, mut tvars: Strings, mut k: i64) -> () {
+        loop {
+            if null_p(tvars) {
+                return ();
+            } else {
+                {
+                    let kind = binder_kind(car(tvars));
+                    if string_member_p(kind, kayak_rt::heap_cons(str_lit("data"), kayak_rt::heap_cons(str_lit("sendable"), kayak_rt::heap_cons(str_lit("flat"), kayak_rt::nil())))) {
+                        let tagcase_ = walk(s, ty_meta(k));
+                        match *tagcase_ {
+                            Ty::TyMeta(j) => {
+                                ()
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                kind_holds(v, s, car(tvars), zonk(s, other))
+                            }
+                        }
+                    } else {
+                        ()
+                    }
+                };
+                (tvars, k) = (cdr(tvars), i64_plus(k, 1i64));
+                continue;
+            }
+        }
+    }
+
+    /// That `t` is what `binder`, of kind `data`, `sendable` or `flat`, takes
+    /// (Fixpt's words: "`m` is bound as sendable, and a T is not: why").
+    pub fn kind_holds(v: &'static Cv, s: &'static St, binder: Str, t: &'static Ty) -> () {
+        let kind = binder_kind(binder);
+        let why = if string_eq_p(kind, str_lit("sendable")) {
+            untransmissible(v, s, t, nil::<Str>(), nil::<Str>())
+        } else if string_eq_p(kind, str_lit("flat")) {
+            if flat_p(t) {
+                str_lit("")
+            } else {
+                str_lit("not a flat")
+            }
+        } else {
+            not_data(v, s, t, nil::<Str>())
+        };
+        if string_eq_p(why, str_lit("")) {
+            ()
+        } else {
+            match refuse(v, string_append(str_lit("`"), string_append(written_binder(binder), string_append(str_lit("` is bound as "), string_append(kind, string_append(str_lit(", and a "), string_append(show_ty(s, t), string_append(str_lit(" is not: "), why)))))))) {}
+        }
+    }
+
+    /// Why `t` is not data (Fixpt's fx26.md, "The `data` kind"): data is built
+    /// from base types, `datum`, products and sums, and pairs and bloblets
+    /// frozen (`const`, `acyclic`), of data; no procedure, no storage that
+    /// can be written, no generative type; "" if it is.
+    pub fn not_data(mut v: &'static Cv, mut s: &'static St, mut t: &'static Ty, mut seen: Strings) -> Str {
+        loop {
+            let frozen_p = lambda1s(move |r: &'static Ty| {
+                let tagcase_ = walk(s, r);
+                match *tagcase_ {
+                    Ty::TyRconst(n) => {
+                        (string_eq_p(n, str_lit("acyclic")) || string_eq_p(n, str_lit("const")))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            });
+            let tagcase_ = walk(s, t);
+            match *tagcase_ {
+                Ty::TyInt() => {
+                    return str_lit("");
+                }
+                Ty::TyNat() => {
+                    return str_lit("");
+                }
+                Ty::TyI64() => {
+                    return str_lit("");
+                }
+                Ty::TyF64() => {
+                    return str_lit("");
+                }
+                Ty::TyChar() => {
+                    return str_lit("");
+                }
+                Ty::TyBool() => {
+                    return str_lit("");
+                }
+                Ty::TyString() => {
+                    return str_lit("");
+                }
+                Ty::TyUnit() => {
+                    return str_lit("");
+                }
+                Ty::TyVar(n) => {
+                    if has_prefix_p(n, str_lit("^data^")) {
+                        return str_lit("");
+                    } else {
+                        return str_lit("a type that could be anything");
+                    }
+                }
+                Ty::TyList(e, r) => {
+                    if frozen_p(r) {
+                        t = e;
+                        continue;
+                    } else {
+                        return str_lit("a list that can be written");
+                    }
+                }
+                Ty::TyShape(p, ls, ts) => {
+                    return or_else_all(v, s, ts, seen);
+                }
+                Ty::TyProc(es, ps, r) => {
+                    return str_lit("a procedure");
+                }
+                Ty::TyRef(e, r) => {
+                    return str_lit("a reference, which can be written");
+                }
+                Ty::TyData(d, args) => {
+                    if (string_eq_p(d, str_lit("datum")) || string_eq_p(d, str_lit("nil")) || string_eq_p(d, str_lit("false")) || string_eq_p(d, str_lit("symbol")) || string_eq_p(d, str_lit("i8")) || string_eq_p(d, str_lit("u8")) || string_eq_p(d, str_lit("i32")) || string_eq_p(d, str_lit("u32")) || string_eq_p(d, str_lit("u64")) || string_eq_p(d, str_lit("f32"))) {
+                        return str_lit("");
+                    } else if string_eq_p(d, str_lit("%union")) {
+                        return or_else_all(v, s, args, seen);
+                    } else if string_eq_p(d, str_lit("%pairof")) {
+                        if frozen_p(car(cdr(cdr(args)))) {
+                            return or_else_all(v, s, kayak_rt::heap_cons(car(args), kayak_rt::heap_cons(car(cdr(args)), kayak_rt::nil())), seen);
+                        } else {
+                            return str_lit("a pair that can be written");
+                        }
+                    } else if string_eq_p(d, str_lit("%mu")) {
+                        t = car(cdr(args));
+                        continue;
+                    } else if generative_p(v, walk(s, t)) {
+                        return str_lit("a generative type, which reading in would make");
+                    } else if string_member_p(d, seen) {
+                        return str_lit("");
+                    } else if dt_named_p(d, cv_dts(v)) {
+                        return or_else_all(v, s, concat(map(lambda1s(move |x: &'static Variant| {
+                            let tagcase_ = x;
+                            match *tagcase_ {
+                                Variant::Variant(tag, fields) => {
+                                    fields
+                                }
+                            }
+                        }), instantiate_variants(family_of(v, d), args, variants_of(v, d)))), kayak_rt::heap_cons(d, seen));
+                    } else {
+                        return string_append(str_lit("a "), string_append(show_ty(s, t), str_lit(", which is not data")));
+                    }
+                }
+                _ => {
+                    let other = tagcase_;
+                    return string_append(str_lit("a "), string_append(show_ty(s, t), str_lit(", which is not data")));
+                }
+            }
+        }
+    }
+
+    pub fn or_else_all(mut v: &'static Cv, mut s: &'static St, mut ts: Tys, mut seen: Strings) -> Str {
+        loop {
+            if null_p(ts) {
+                return str_lit("");
+            } else {
+                let w = not_data(v, s, car(ts), seen);
+                if string_eq_p(w, str_lit("")) {
+                    ts = cdr(ts);
+                    continue;
+                } else {
+                    return w;
+                }
             }
         }
     }

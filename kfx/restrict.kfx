@@ -31,6 +31,9 @@
           (error (string-append "kfx: " (string-append file (string-append ":" (string-append (i64->string line)
                    (string-append ": " message))))))))
 
+      (define items-of (subr kfx (sexp) sexps) (lambda (e) (tagcase e (lst (ys f l p) ys) (else other nil))))
+      (define cdr-items-of (subr kfx (sexp) sexps) (lambda (e) (tagcase e (lst (ys f l p) (if (null? ys) nil (cdr ys))) (else other nil))))
+
       (define-rec
         (restricted (subr kfx (sexp string i64) unit)
           (lambda (e file line)
@@ -73,6 +76,14 @@
                        (restriction-refused f l (string-append (sym-name (car xs)) ", FX-26's variadic procedures, which KFX has not yet: a Rust fn has its arity (C71)")))
                       ((and (sym-is? (car xs) "arrayof") (i64= (size xs) 3) (or (sym-is? (third xs) "finite") (head-is? (third xs) "+") (head-is? (third xs) "-")))
                        (restriction-refused f l "a flat array of a length not literal, FX-26's, which KFX has not yet (C175)"))
+                      ((let ((binders (cond ((and (or (sym-is? (car xs) "poly") (sym-is? (car xs) "plambda")) (i64> (size xs) 1)) (items-of (second xs)))
+                                            ((and (or (sym-is? (car xs) "define-type") (sym-is? (car xs) "define-generative")) (i64> (size xs) 1)) (cdr-items-of (second xs)))
+                                            (else nil))))
+                         (any? (lambda ((b sexp)) (tagcase b
+                                                    (lst (ys f2 l2 p2) (and (i64= (size ys) 2) (tagcase (second ys) (sym (k f3 p3) (string-member? k (list "data" "sendable" "flat" "conv"))) (else other #f))))
+                                                    (else other #f)))
+                               binders))
+                       (restriction-refused f l "a binder of the kind data, sendable, flat or conv, FX-26's, which KFX's Rust generics have not (C186)"))
                       ((and (sym-is? (car xs) "proves") (i64= (size xs) 2))
                        (restriction-refused f l "a lemma, `proves`, FX-26's, which KFX has not: its Rust's types have no subtyping to prove (C185)"))
                       ((and (sym-is? (car xs) "flatarrayof") (i64= (size xs) 3) (not (sym-is? (second xs) "i64")))

@@ -2790,6 +2790,10 @@ pub fn flat_sum_variants(args: Tys) -> Fvars {
 pub fn flat_p(t: &'static Ty) -> bool {
     let tagcase_ = t;
     match *tagcase_ {
+        Ty::TyVar(n) => {
+            // A binder of kind `flat` (C186).
+            has_prefix_p(n, str_lit("^flat^"))
+        }
         Ty::TyI64() => {
             true
         }
@@ -5802,6 +5806,16 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     return ty_void();
                 } else if string_member_p(s, tvars) {
                     return ty_var(s);
+                } else if string_member_p(binder_kind(arrow_binder(tvars, s)), kayak_rt::heap_cons(str_lit("data"), kayak_rt::heap_cons(str_lit("sendable"), kayak_rt::nil()))) {
+                    // A type binder of a kind (C186).
+                    return ty_var(arrow_binder(tvars, s));
+                } else if string_eq_p(binder_kind(arrow_binder(tvars, s)), str_lit("flat")) {
+                    // A flat binder: no type, only where a flat is (C186; `flat-not-type.fx`).
+                    if string_member_p(str_lit("%flat-ok"), tvars) {
+                        return ty_var(arrow_binder(tvars, s));
+                    } else {
+                        return match refuse(v, string_append(str_lit("`"), string_append(s, str_lit("` is a flat, not a type")))) {};
+                    }
                 } else if string_member_p(string_append(str_lit("%muvar "), s), tvars) {
                     return ty_var(string_append(str_lit("%mu "), s));
                 } else if not(null_p(scope_bind(string_append(str_lit("%type "), s), v))) {
@@ -5969,7 +5983,7 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     if not(i64_eq(size(xs), 3i64)) {
                         return match refuse(v, str_lit("(blobref B F)")) {};
                     } else {
-                        let (b, f, b_as, f_as) = (unnamed_top(parse_type(v, tvars, second(xs))), as_flat(unnamed_top(parse_type(v, tvars, third(xs)))), parse_type(v, tvars, second(xs)), as_flat(parse_type(v, tvars, third(xs))));
+                        let (b, f, b_as, f_as) = (unnamed_top(parse_type(v, tvars, second(xs))), as_flat(unnamed_top(parse_type(v, kayak_rt::heap_cons(str_lit("%flat-ok"), tvars), third(xs)))), parse_type(v, tvars, second(xs)), as_flat(parse_type(v, kayak_rt::heap_cons(str_lit("%flat-ok"), tvars), third(xs))));
                         if not({
                             let tagcase_ = b;
                             match *tagcase_ {
@@ -6008,10 +6022,10 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     // `finite` or a size variable; it runs to the end of its owner's
                     // suffix. FX-26's: the restriction pass refuses it for KFX.
                     if {
-                        let e = as_flat(unnamed_top(parse_type(v, tvars, second(xs))));
+                        let e = as_flat(unnamed_top(parse_type(v, kayak_rt::heap_cons(str_lit("%flat-ok"), tvars), second(xs))));
                         (flat_p(e) && not(unsized_p(e)))
                     } {
-                        return ty_data(str_lit("%flat-array"), kayak_rt::heap_cons(as_flat(parse_type(v, tvars, second(xs))), kayak_rt::heap_cons(parse_size(v, tvars, third(xs)), kayak_rt::nil())));
+                        return ty_data(str_lit("%flat-array"), kayak_rt::heap_cons(as_flat(parse_type(v, kayak_rt::heap_cons(str_lit("%flat-ok"), tvars), second(xs))), kayak_rt::heap_cons(parse_size(v, tvars, third(xs)), kayak_rt::nil())));
                     } else {
                         return match refuse(v, string_append(str_lit("a flat array is of a flat: "), show_sexp(t))) {};
                     }
@@ -6036,13 +6050,13 @@ pub fn parse_type(mut v: &'static Cv, mut tvars: Strings, mut t: &'static Sexp) 
                     let tagcase_ = third(xs);
                     match *tagcase_ {
                         Sexp::Num(k, f, p) => {
-                            let e = as_flat(unnamed_top(parse_type(v, tvars, second(xs))));
+                            let e = as_flat(unnamed_top(parse_type(v, kayak_rt::heap_cons(str_lit("%flat-ok"), tvars), second(xs))));
                             if (i64_lt(k, 0i64) || i64_gt(k, 268435454i64)) {
                                 // Below FX-26's length that means "to the end of the suffix".
                                 return match refuse(v, str_lit("a flat array's literal length is 0 to 268435454")) {};
                             } else if (flat_p(e) && not(unsized_p(e))) {
                                 // Its element as written, an abbreviation by its name (C164).
-                                return ty_data(str_lit("%flat-array"), kayak_rt::heap_cons(as_flat(parse_type(v, tvars, second(xs))), kayak_rt::heap_cons(ty_rconst(i64_to_string(k)), kayak_rt::nil())));
+                                return ty_data(str_lit("%flat-array"), kayak_rt::heap_cons(as_flat(parse_type(v, kayak_rt::heap_cons(str_lit("%flat-ok"), tvars), second(xs))), kayak_rt::heap_cons(ty_rconst(i64_to_string(k)), kayak_rt::nil())));
                             } else {
                                 return match refuse(v, string_append(str_lit("a flat array is of a flat, its length a literal (KFX has no arrays of values yet): "), show_sexp(t))) {};
                             }
@@ -6659,6 +6673,20 @@ pub fn family_params(v: &'static Cv, head: &'static Sexp) -> Strings {
                 } else if head_is_p(second(b), str_lit("=>")) {
                     // A function among a family's parameters (C173), invariant.
                     binder_named(kind_text(v, second(b)), name_of(v, car(b)))
+                } else if {
+                    let tagcase_ = second(b);
+                    match *tagcase_ {
+                        Sexp::Sym(k, f, p) => {
+                            string_eq_p(k, str_lit("flat"))
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            false
+                        }
+                    }
+                } {
+                    // A flat parameter, what it takes checked where given (C186).
+                    binder_named(sym_name(second(b)), name_of(v, car(b)))
                 } else {
                     match refuse(v, string_append(str_lit("a family over a kind KFX does not have: "), show_sexp(lst(b, str_lit(""), 0i64, 0i64)))) {}
                 }
@@ -7092,6 +7120,14 @@ pub fn parse_arguments(v: &'static Cv, tvars: Strings, params: Strings, args: Se
     } else {
         kayak_rt::heap_cons(if char_eq_p(string_ref_i64(car(params), 0i64), '\'') {
             parse_region(v, tvars, car(args))
+        } else if string_eq_p(binder_kind(car(params)), str_lit("flat")) {
+            // A flat where the family takes one (C186): a flat.
+            let t = parse_type(v, kayak_rt::heap_cons(str_lit("%flat-ok"), tvars), car(args));
+            if flat_p(unnamed_top(t)) {
+                t
+            } else {
+                match refuse(v, string_append(str_lit("`"), string_append(written_binder(car(params)), string_append(str_lit("` is bound as flat, and a "), string_append(show_sexp(car(args)), str_lit(" is not a flat")))))) {}
+            }
         } else if char_eq_p(string_ref_i64(car(params), 0i64), '^') {
             // A function where the family takes one (C173), of its kind.
             fun_of_kind(v, tvars, car(args), binder_kind(car(params)), written_binder(car(params)))
@@ -7263,6 +7299,23 @@ pub fn poly_binders(v: &'static Cv, t: &'static Sexp, own: bool) -> Strings {
             } else if head_is_p(second(b), str_lit("=>")) {
                 // A function, of arrow kind (C173).
                 binder_named(kind_text(v, second(b)), name_of(v, car(b)))
+            } else if {
+                let tagcase_ = second(b);
+                match *tagcase_ {
+                    Sexp::Sym(k, f, p) => {
+                        string_member_p(k, kayak_rt::heap_cons(str_lit("data"), kayak_rt::heap_cons(str_lit("sendable"), kayak_rt::heap_cons(str_lit("flat"), kayak_rt::nil()))))
+                    }
+                    _ => {
+                        let other = tagcase_;
+                        false
+                    }
+                }
+            } {
+                // A type binder of a kind that says what it takes (C186; Fixpt's
+                // `data`, `sendable`, `flat`): marked `^K^t`, as an arrow kind's
+                // binder is, printed `(t K)`; what it stands for checked where
+                // it is instantiated (`kind-holds`).
+                binder_named(sym_name(second(b)), name_of(v, car(b)))
             } else {
                 match refuse(v, string_append(str_lit("KFX's poly is over types, effects, regions and places: "), show_sexp(lst(b, str_lit(""), 0i64, 0i64)))) {}
             }

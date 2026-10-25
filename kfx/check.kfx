@@ -1297,6 +1297,7 @@
   (flat? (subr kfx (ty) bool)
     (lambda (t)
       (tagcase t
+        (ty-var (n) "A binder of kind `flat` (C186)." (has-prefix? n "^flat^"))
         (ty-i64 () #t)
         (ty-f64 () #t)
         (ty-data (d args)
@@ -2550,6 +2551,14 @@
                 ((string=? s "string") (ty-string))
                 ((string=? s "void") (ty-void))
                 ((string-member? s tvars) (ty-var s))
+                ((string-member? (binder-kind (arrow-binder tvars s)) (list "data" "sendable"))
+                 "A type binder of a kind (C186)."
+                 (ty-var (arrow-binder tvars s)))
+                ((string=? (binder-kind (arrow-binder tvars s)) "flat")
+                 "A flat binder: no type, only where a flat is (C186; `flat-not-type.fx`)."
+                 (if (string-member? "%flat-ok" tvars)
+                     (ty-var (arrow-binder tvars s))
+                     (refuse v (string-append "`" (string-append s "` is a flat, not a type")))))
                 ((string-member? (string-append "%muvar " s) tvars) (ty-var (string-append "%mu " s)))
                 ((not (null? (scope-bind (string-append "%type " s) v)))
                  "A type a module gives, in a `with` of it or inside it (C170)."
@@ -2629,10 +2638,10 @@
                  (if (not (i64= (size xs) 3))
                      (refuse v "(blobref B F)")
                      (let ((b (unnamed-top (parse-type v tvars (second xs))))
-                           (f (as-flat (unnamed-top (parse-type v tvars (third xs)))))
+                           (f (as-flat (unnamed-top (parse-type v (cons "%flat-ok" tvars) (third xs)))))
                            ;; As written, an abbreviation by its name (C164).
                            (b-as (parse-type v tvars (second xs)))
-                           (f-as (as-flat (parse-type v tvars (third xs)))))
+                           (f-as (as-flat (parse-type v (cons "%flat-ok" tvars) (third xs)))))
                        (cond ((not (tagcase b (ty-data (d args) (string=? d "%bloblet")) (else other #f)))
                               (refuse v (string-append "a blobref's owner is a bloblet: " (show-sexp t))))
                              ((not (flat? f)) (refuse v (string-append "a blobref's flat is a scalar, or a product or array of them (KFX has no f32 yet): " (show-sexp t))))
@@ -2645,8 +2654,8 @@
                  "A flat array of a length not literal (C175; Fixpt's TODO §77): a size,
                   `finite` or a size variable; it runs to the end of its owner's
                   suffix. FX-26's: the restriction pass refuses it for KFX."
-                 (if (let ((e (as-flat (unnamed-top (parse-type v tvars (second xs)))))) (and (flat? e) (not (unsized? e))))
-                     (ty-data "%flat-array" (list (as-flat (parse-type v tvars (second xs))) (parse-size v tvars (third xs))))
+                 (if (let ((e (as-flat (unnamed-top (parse-type v (cons "%flat-ok" tvars) (second xs)))))) (and (flat? e) (not (unsized? e))))
+                     (ty-data "%flat-array" (list (as-flat (parse-type v (cons "%flat-ok" tvars) (second xs))) (parse-size v tvars (third xs))))
                      (refuse v (string-append "a flat array is of a flat: " (show-sexp t)))))
                 ((and (sym-is? (car xs) "arrayof") (i64= (size xs) 3) (tagcase (third xs) (num (k f p) #f) (else other #t)))
                  "An array of values (C56), `(arrayof T R)`, at a region: kayak-rt's
@@ -2655,13 +2664,13 @@
                 ((sym-is? (car xs) "arrayof")
                  (tagcase (third xs)
                    (num (k f p)
-                     (let ((e (as-flat (unnamed-top (parse-type v tvars (second xs))))))
+                     (let ((e (as-flat (unnamed-top (parse-type v (cons "%flat-ok" tvars) (second xs))))))
                        (cond ((or (i64< k 0) (i64> k 268435454))
                               "Below FX-26's length that means \"to the end of the suffix\"."
                               (refuse v "a flat array's literal length is 0 to 268435454"))
                              ((and (flat? e) (not (unsized? e)))
                               "Its element as written, an abbreviation by its name (C164)."
-                              (ty-data "%flat-array" (list (as-flat (parse-type v tvars (second xs))) (ty-rconst (i64->string k)))))
+                              (ty-data "%flat-array" (list (as-flat (parse-type v (cons "%flat-ok" tvars) (second xs))) (ty-rconst (i64->string k)))))
                              (else (refuse v (string-append "a flat array is of a flat, its length a literal (KFX has no arrays of values yet): " (show-sexp t)))))))
                    (else other (refuse v (string-append "a flat array's length is a literal (KFX has no arrays of values yet): " (show-sexp t))))))
                 ((and (or (sym-is? (car xs) "addr") (sym-is? (car xs) "inbox") (sym-is? (car xs) "icell")) (i64= (size xs) 3))
@@ -2917,6 +2926,9 @@
                        ((head-is? (second b) "=>")
                         "A function among a family's parameters (C173), invariant."
                         (binder-named (kind-text v (second b)) (name-of v (car b))))
+                       ((tagcase (second b) (sym (k f p) (string=? k "flat")) (else other #f))
+                        "A flat parameter, what it takes checked where given (C186)."
+                        (binder-named (sym-name (second b)) (name-of v (car b))))
                        (else (refuse v (string-append "a family over a kind KFX does not have: "
                                                       (show-sexp (lst b "" 0 0))))))))
              (cdr xs)))
@@ -3097,6 +3109,10 @@
             ((or (null? params) (null? args)) (refuse v "a type given the wrong number of arguments"))
             (else
              (cons (cond ((char=? (string-ref-i64 (car params) 0) #\') (parse-region v tvars (car args)))
+                         ((string=? (binder-kind (car params)) "flat")
+                          "A flat where the family takes one (C186): a flat."
+                          (let ((t (parse-type v (cons "%flat-ok" tvars) (car args))))
+                            (if (flat? (unnamed-top t)) t (refuse v (string-append "`" (string-append (written-binder (car params)) (string-append "` is bound as flat, and a " (string-append (show-sexp (car args)) " is not a flat"))))))))
                          ((char=? (string-ref-i64 (car params) 0) #\^)
                           "A function where the family takes one (C173), of its kind."
                           (fun-of-kind v tvars (car args) (binder-kind (car params)) (written-binder (car params))))
@@ -3200,6 +3216,12 @@
                        ((head-is? (second b) "=>")
                         "A function, of arrow kind (C173)."
                         (binder-named (kind-text v (second b)) (name-of v (car b))))
+                       ((tagcase (second b) (sym (k f p) (string-member? k (list "data" "sendable" "flat"))) (else other #f))
+                        "A type binder of a kind that says what it takes (C186; Fixpt's
+                         `data`, `sendable`, `flat`): marked `^K^t`, as an arrow kind's
+                         binder is, printed `(t K)`; what it stands for checked where
+                         it is instantiated (`kind-holds`)."
+                        (binder-named (sym-name (second b)) (name-of v (car b))))
                        (else (refuse v (string-append "KFX's poly is over types, effects, regions and places: " (show-sexp (lst b "" 0 0))))))))
              (items (second (items t))))))
           (begin

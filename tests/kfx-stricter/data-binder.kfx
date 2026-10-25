@@ -1,0 +1,5 @@
+"FX-26's binder of the kind `data`, which takes only data, which KFX's
+ Rust generics have not (C186)."
+(define-effect kfx (maxeff (read @globals) spin))
+(define same (poly ((t data)) (subr pure (t) t)) (lambda (x) x))
+(define main (subr kfx () i64) (lambda () (same 1)))

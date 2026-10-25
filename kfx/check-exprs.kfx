@@ -1355,7 +1355,7 @@
                                  (string-append "a " (string-append what (string-append " at " (string-append (show-ty s r) ", which can be written")))))))))
             (tagcase (walk s t)
               (ty-meta (k) "a value whose type is not known here: say it, with `the`")
-              (ty-var (n) (if (string-member? n bound) "" (string-append "a `" (string-append n "`, which could be anything"))))
+              (ty-var (n) (if (or (string-member? n bound) (has-prefix? n "^sendable^")) "" (string-append "a `" (string-append (written-binder n) "`, which could be anything"))))
               (ty-list (e r) (or-else (data-at r "list") (untransmissible v s e bound seen)))
               (ty-ref (e r) (or-else (data-at r "reference") (untransmissible v s e bound seen)))
               (ty-flat (e r) (data-at r "flat array"))
@@ -3452,6 +3452,10 @@
                          (replace-var (car tvars)
                                       (cond ((char=? (string-ref-i64 (car tvars) 0) #\') (parse-region v (cv-tvars v) (car args)))
                                             ((char=? (string-ref-i64 (car tvars) 0) #\~) (effect-row (cons "~!" (parse-effect v (cv-tvars v) (car args)))))
+                                            ((string-member? (binder-kind (car tvars)) (list "data" "sendable" "flat"))
+                                             "A type where a binder of a kind is bound (C186): checked."
+                                             (let ((t (parse-type v (cv-tvars v) (car args))))
+                                               (begin (kind-holds v (st nil 0 nil) (car tvars) t) t)))
                                             ((char=? (string-ref-i64 (car tvars) 0) #\^)
                                              "A function where one of arrow kind is bound (C173)."
                                              (fun-of-kind v (cv-tvars v) (car args) (binder-kind (car tvars)) (written-binder (car tvars))))
@@ -4127,7 +4131,7 @@
                           (place-needed v h wher sc from
                           (regions-freshened v h wher regions
                           (static-instance v h wher (binder-metas from (st-next s) (onto effects regions))
-                          (poly-settled v h wher args (binder-metas from (st-next s) (onto effects regions)) (result-only? s t (binder-metas from (st-next s) (onto effects regions)))
+                          (kinds-held v sc from (poly-settled v h wher args (binder-metas from (st-next s) (onto effects regions)) (result-only? s t (binder-metas from (st-next s) (onto effects regions)))
                           (void-call v (and (string=? h "error") (string=? wher "prim"))
                                      (and (not (null? expected)) (tagcase (walk s (car expected)) (ty-meta (k) #t) (else other #f)))
                           (mark-lifted v (if (string=? wher "prim") h "") args
@@ -4140,7 +4144,7 @@
                                                    (and (or (string=? wher "local") (string=? wher "narrowed")) (self-applicable? v s t))
                                                    (and (string-member? h (cv-group v)) (or (string=? wher "global") (string=? wher "item"))))
                                                (list "spin")
-                                               nil)))))))))))))))))))))))
+                                               nil))))))))))))))))))))))))
 
       (list-like? (subr kfx (st ty) bool)
         (lambda (s t)
@@ -4308,6 +4312,81 @@
           (tagcase (walk s t)
             (ty-proc (es ps r) (any? (lambda ((k i64)) (not (any? (lambda ((p ty)) (occurs? s k p)) ps))) ks))
             (else other #f))))
+
+      (kinds-held (subr kfx (cv scheme i64 res) res)
+        (lambda (v sc from r)
+          "A poly's call: each binder of a kind that says what it takes, `data`,
+           `sendable`, `flat`, given what it takes, where the call solved it
+           (C186; its inference variable the binder's place among the scheme's
+           from `from`)."
+          (tagcase r
+            (res (t es s)
+              (tagcase sc
+                (scheme (tvars u)
+                  (begin
+                    (kinds-each v s tvars from)
+                    r)))))))
+
+      (kinds-each (subr kfx (cv st strings i64) unit)
+        (lambda (v s tvars k)
+          (if (null? tvars)
+              #u
+              (begin
+                (let ((kind (binder-kind (car tvars))))
+                  (if (string-member? kind (list "data" "sendable" "flat"))
+                      (tagcase (walk s (ty-meta k))
+                        (ty-meta (j) #u)
+                        (else other (kind-holds v s (car tvars) (zonk s other))))
+                      #u))
+                (kinds-each v s (cdr tvars) (i64+ k 1))))))
+
+      (kind-holds (subr kfx (cv st string ty) unit)
+        (lambda (v s binder t)
+          "That `t` is what `binder`, of kind `data`, `sendable` or `flat`, takes
+           (Fixpt's words: \"`m` is bound as sendable, and a T is not: why\")."
+          (let* ((kind (binder-kind binder))
+                 (why (cond ((string=? kind "sendable") (untransmissible v s t nil nil))
+                            ((string=? kind "flat") (if (flat? t) "" "not a flat"))
+                            (else (not-data v s t nil)))))
+            (if (string=? why "")
+                #u
+                (refuse v (string-append "`" (string-append (written-binder binder) (string-append "` is bound as " (string-append kind
+                          (string-append ", and a " (string-append (show-ty s t) (string-append " is not: " why))))))))))))
+
+      (not-data (subr kfx (cv st ty strings) string)
+        (lambda (v s t seen)
+          "Why `t` is not data (Fixpt's fx26.md, \"The `data` kind\"): data is built
+           from base types, `datum`, products and sums, and pairs and bloblets
+           frozen (`const`, `acyclic`), of data; no procedure, no storage that
+           can be written, no generative type; \"\" if it is."
+          (let ((frozen? (lambda ((r ty)) (tagcase (walk s r) (ty-rconst (n) (or (string=? n "acyclic") (string=? n "const"))) (else other #f)))))
+            (tagcase (walk s t)
+              (ty-int () "") (ty-nat () "") (ty-i64 () "") (ty-f64 () "") (ty-char () "") (ty-bool () "") (ty-string () "") (ty-unit () "")
+              (ty-var (n) (if (has-prefix? n "^data^") "" "a type that could be anything"))
+              (ty-list (e r) (if (frozen? r) (not-data v s e seen) "a list that can be written"))
+              (ty-shape (p ls ts) (or-else-all v s ts seen))
+              (ty-proc (es ps r) "a procedure")
+              (ty-ref (e r) "a reference, which can be written")
+              (ty-data (d args)
+                (cond ((or (string=? d "datum") (string=? d "nil") (string=? d "false") (string=? d "symbol")
+                           (string=? d "i8") (string=? d "u8") (string=? d "i32") (string=? d "u32") (string=? d "u64") (string=? d "f32"))
+                       "")
+                      ((string=? d "%union") (or-else-all v s args seen))
+                      ((string=? d "%pairof") (if (frozen? (car (cdr (cdr args)))) (or-else-all v s (list (car args) (car (cdr args))) seen) "a pair that can be written"))
+                      ((string=? d "%mu") (not-data v s (car (cdr args)) seen))
+                      ((generative? v (walk s t)) "a generative type, which reading in would make")
+                      ((string-member? d seen) "")
+                      ((dt-named? d (cv-dts v))
+                       (or-else-all v s (concat (map (lambda ((x variant)) (tagcase x (variant (tag fields) fields)))
+                                                     (instantiate-variants (family-of v d) args (variants-of v d))))
+                                    (cons d seen)))
+                      (else (string-append "a " (string-append (show-ty s t) ", which is not data")))))
+              (else other (string-append "a " (string-append (show-ty s t) ", which is not data")))))))
+
+      (or-else-all (subr kfx (cv st tys strings) string)
+        (lambda (v s ts seen)
+          (cond ((null? ts) "")
+                (else (let ((w (not-data v s (car ts) seen))) (if (string=? w "") (or-else-all v s (cdr ts) seen) w))))))
 
       (poly-settled (subr kfx (cv string string sexps (listof i64 acyclic) bool res) res)
         (lambda (v h wher args ks fish r)
