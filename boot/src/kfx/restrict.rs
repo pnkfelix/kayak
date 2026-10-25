@@ -94,7 +94,7 @@ pub mod restrictions {
                     match restriction_refused(file, line, string_append(n, str_lit(", which KFX has not yet: its marks' list would tell a with-mark in tail position from one that is not (C106)"))) {}
                 } else if string_eq_p(n, str_lit("list")) {
                     match restriction_refused(file, line, str_lit("list as a value, FX-26's variadic procedure, which KFX has not yet: a Rust fn has its arity (C71)")) {}
-                } else if string_member_p(n, kayak_rt::heap_cons(str_lit("call-with-oneshot-continuation"), kayak_rt::heap_cons(str_lit("rmake-array"), kayak_rt::heap_cons(str_lit("datum-int?"), kayak_rt::heap_cons(str_lit("oneshot"), kayak_rt::heap_cons(str_lit("letfreeze"), kayak_rt::heap_cons(str_lit("assume"), kayak_rt::heap_cons(str_lit("assert"), kayak_rt::heap_cons(str_lit("char-in?"), kayak_rt::heap_cons(str_lit("make-flatarray"), kayak_rt::heap_cons(str_lit("flatarray-ref"), kayak_rt::heap_cons(str_lit("flatarray-set!"), kayak_rt::heap_cons(str_lit("flatarray-length"), kayak_rt::heap_cons(str_lit("flatlayout"), kayak_rt::heap_cons(str_lit("i32-flat"), kayak_rt::heap_cons(str_lit("u32-flat"), kayak_rt::heap_cons(str_lit("i64-flat"), kayak_rt::heap_cons(str_lit("u64-flat"), kayak_rt::heap_cons(str_lit("f32-flat"), kayak_rt::heap_cons(str_lit("f64-flat"), kayak_rt::nil())))))))))))))))))))) {
+                } else if string_member_p(n, kayak_rt::heap_cons(str_lit("call-with-oneshot-continuation"), kayak_rt::heap_cons(str_lit("rmake-array"), kayak_rt::heap_cons(str_lit("datum-int?"), kayak_rt::heap_cons(str_lit("oneshot"), kayak_rt::heap_cons(str_lit("letfreeze"), kayak_rt::heap_cons(str_lit("assume"), kayak_rt::heap_cons(str_lit("assert"), kayak_rt::heap_cons(str_lit("char-in?"), kayak_rt::heap_cons(str_lit("nat?"), kayak_rt::heap_cons(str_lit("certify-nat"), kayak_rt::heap_cons(str_lit("rmake-icell"), kayak_rt::heap_cons(str_lit("make-flatarray"), kayak_rt::heap_cons(str_lit("flatarray-ref"), kayak_rt::heap_cons(str_lit("flatarray-set!"), kayak_rt::heap_cons(str_lit("flatarray-length"), kayak_rt::heap_cons(str_lit("flatlayout"), kayak_rt::heap_cons(str_lit("i32-flat"), kayak_rt::heap_cons(str_lit("u32-flat"), kayak_rt::heap_cons(str_lit("i64-flat"), kayak_rt::heap_cons(str_lit("u64-flat"), kayak_rt::heap_cons(str_lit("f32-flat"), kayak_rt::heap_cons(str_lit("f64-flat"), kayak_rt::nil()))))))))))))))))))))))) {
                     match restriction_refused(file, line, string_append(n, str_lit(", FX-26's, which KFX has not yet (C156)"))) {}
                 } else if string_member_p(n, kayak_rt::heap_cons(str_lit("no-pair"), kayak_rt::heap_cons(str_lit("eq?"), kayak_rt::heap_cons(str_lit("set-car!"), kayak_rt::heap_cons(str_lit("set-cdr!"), kayak_rt::heap_cons(str_lit("stay-cellular"), kayak_rt::nil())))))) {
                     match restriction_refused(file, line, string_append(n, str_lit(", which KFX has not: it tells apart, or writes through, what a union's value in Rust (C75) would copy"))) {}
@@ -657,11 +657,101 @@ pub mod restrictions {
         }
     }
 
+    /// A name kayak-rt or the emitter writes, bound (C187): FX-26's, which
+    /// KFX's names are not (C27).
+    pub fn reserved_bound(e: &'static Sexp) -> () {
+        let tagcase_ = e;
+        match *tagcase_ {
+            Sexp::Lst(xs, f, l, p) => {
+                let bound = lambda1s(move |b: &'static Sexp| {
+                    let tagcase_ = b;
+                    match *tagcase_ {
+                        Sexp::Sym(n, f2, p2) => {
+                            the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                        }
+                        Sexp::Lst(ys, f2, l2, p2) => {
+                            if null_p(ys) {
+                                nil::<Str>()
+                            } else {
+                                let tagcase_ = car(ys);
+                                match *tagcase_ {
+                                    Sexp::Sym(n, f3, p3) => {
+                                        the::<Strings>(kayak_rt::heap_cons(n, kayak_rt::nil()))
+                                    }
+                                    _ => {
+                                        let other = tagcase_;
+                                        nil::<Str>()
+                                    }
+                                }
+                            }
+                        }
+                        _ => {
+                            let other = tagcase_;
+                            nil::<Str>()
+                        }
+                    }
+                });
+                let names = if null_p(xs) {
+                    nil::<Str>()
+                } else if (sym_is_p(car(xs), str_lit("let")) || sym_is_p(car(xs), str_lit("let*")) || sym_is_p(car(xs), str_lit("letrec"))) {
+                    if i64_gt(size(xs), 1i64) {
+                        let tagcase_ = second(xs);
+                        match *tagcase_ {
+                            Sexp::Lst(bs, f2, l2, p2) => {
+                                concat(map(bound, bs))
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                nil::<Str>()
+                            }
+                        }
+                    } else {
+                        nil::<Str>()
+                    }
+                } else if (sym_is_p(car(xs), str_lit("lambda")) || sym_is_p(car(xs), str_lit("rlambda"))) {
+                    if i64_gt(size(xs), 1i64) {
+                        let tagcase_ = second(xs);
+                        match *tagcase_ {
+                            Sexp::Lst(bs, f2, l2, p2) => {
+                                concat(map(bound, bs))
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                nil::<Str>()
+                            }
+                        }
+                    } else {
+                        nil::<Str>()
+                    }
+                } else if (sym_is_p(car(xs), str_lit("define")) || sym_is_p(car(xs), str_lit("define*"))) {
+                    if i64_gt(size(xs), 1i64) {
+                        bound(second(xs))
+                    } else {
+                        nil::<Str>()
+                    }
+                } else {
+                    nil::<Str>()
+                };
+                if any_p(&kfx_reserved_p, names) {
+                    match restriction_refused(f, l, string_append(str_lit("a name KFX's names are not (lower case, digits, `-` and `?!<>=+*/%`, no `--`, none Rust writes): "), car(filter(&kfx_reserved_p, names)))) {}
+                } else {
+                    map(&reserved_bound, xs);
+                    ()
+                }
+            }
+            _ => {
+                let other = tagcase_;
+                ()
+            }
+        }
+    }
+
     /// A type abbreviation that mentions itself, FX-26's recursive type
     /// (C174), which a Rust type alias is not; and `(mu t T)`, written.
     pub fn recursion_restricted(forms: Sexps) -> () {
         let abbrevs = abbreviations(forms);
         map(&mu_written, forms);
+        map(&reserved_bound, forms);
         map(lambda1s(move |f: &'static Sexp| {
             let n = abbreviation_name(f);
             if (not(string_eq_p(n, str_lit(""))) && reaches_p(abbrevs, sexp_names(third(items(f))), nil::<Str>(), n)) {

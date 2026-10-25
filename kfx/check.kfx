@@ -1161,6 +1161,13 @@
                                                  "make_continuation_prompt_tag" "nil" "cons" "bloblet_written"
                                                  "native_procedure0" "native_procedure1" "native_procedure2" "native_procedure3" "native_procedure4")))))))
 
+(define kfx-reserved? (subr kfx (string) bool)
+  (lambda (n)
+    "Whether `n` is spelled as a KFX name but is one kayak-rt or the emitter
+     writes (`nil`, `cons`, ...): an FX-26 name, refused for KFX by the
+     restriction pass wherever it is bound (C187)."
+    (string-member? n (list "nil" "cons" "once" "alloc" "the" "unwind" "knot" "fail"))))
+
 (define label-name? (subr kfx (string) bool)
   (lambda (n)
     "Whether `n` may be a product's or a sum's label: as a KFX name (C27),
@@ -4719,7 +4726,7 @@
      a `_` (`i64_plus`, `tagcase_`), so none is ever hidden."
     (if (any? (lambda ((b bind))
                 (tagcase b (bind (n sc w) (and (not (has-prefix? n "%")) (not (has-char-in? n #\space)) (not (string=? w "prim"))
-                                               (not (kfx-name? n))))))
+                                               (not (kfx-name? n)) (not (kfx-reserved? n))))))
               more)
         (refuse v (string-append "a name KFX's names are not (lower case, digits, `-` and `?!<>=+*/%`, no `--`, none Rust writes): "
                                  (car (concat (map (lambda ((b bind)) (tagcase b (bind (n sc w) (if (kfx-name? n) nil (the strings (list n)))))) more)))))
@@ -4961,7 +4968,7 @@
 (define prim? (subr kfx (bind) bool)
   (lambda (b) (tagcase b (bind (n sc wher) (string=? wher "prim")))))
 
-(define nat? (subr kfx (st ty) bool)
+(define nat-typed? (subr kfx (st ty) bool)
   (lambda (s t) (tagcase (walk s t) (ty-nat () #t) (else other #f))))
 
 

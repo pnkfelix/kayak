@@ -5178,6 +5178,30 @@ family's binders).
   parameter kayak still refuses, having no check for it there.
 - Left: `conv` binders, `(t data p)` at a place. Refused 29 to 26, the
   same 343 to 346; K1 0. Test: `tests/kfx-stricter/data-binder.kfx`.
+
+## C187. `nat?`, `certify-nat`, `rmake-icell`; names kayak-rt writes (2026-10-25)
+
+Standard operations and names FX-26 has that kayak's checker had not:
+- **`nat?` and `certify-nat`** at Fixpt's types, `nat?`'s result saying
+  `(nat 0)` where true (C163's latent propositions, a size fact `x ≥ 0`).
+  `certify-nat` only called by name, on what the facts in scope show no
+  less than 0 (`size-shown?`), as Fixpt's "on the binding `nat?` has just
+  confirmed"; named any other way, refused (Fixpt's F16:
+  `certify-nat-alias.fx`, `certify-nat-outside.fx`, two K1 breaches on
+  the way). The checker's own `nat?` (whether a type is `nat`) renamed
+  `nat-typed?`, the standard one's name now, as KFX's restriction pass
+  refuses it.
+- **`rmake-icell`**: an I-cell in a region within a place, as `rnew` and
+  `rmake-array` are (`run/region-allocators`).
+- **Names kayak-rt or the emitter writes** (`nil`, `cons`, `once`, ...)
+  are FX-26's to bind (`datum/quote-shadowed`: a `let` of `cons`, `append`
+  and `nil`); the checker takes them, and the restriction pass refuses
+  one bound for KFX (`reserved-bound`: a `let`'s, `let*`'s, `letrec`'s,
+  a `lambda`'s, a definition's).
+- `processes/pselect-deadline.fx` failed again under the full check's
+  `--slice 2` (a deadlock reported); not reproduced in 200 runs alone nor
+  100 with every core busy. TODO §30.
+- Refused 26 to 23, the same 346 to 349; K1 0.
 - Refused 73 to 60, the same 283 to 294; K1 0 (five breaches on the way,
   each a rule above). Left: the kind `flat` (`flat-kind.fx`), `narrayof`
   (`narrayof-lengths.fx`); printing a blobref's owner by its

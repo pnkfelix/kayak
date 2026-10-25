@@ -48,7 +48,7 @@
                       ((string=? n "list")
                        (restriction-refused file line "list as a value, FX-26's variadic procedure, which KFX has not yet: a Rust fn has its arity (C71)"))
                       ((string-member? n (list "call-with-oneshot-continuation" "rmake-array" "datum-int?" "oneshot" "letfreeze" "assume" "assert"
-                                              "char-in?" "make-flatarray" "flatarray-ref" "flatarray-set!" "flatarray-length" "flatlayout"
+                                              "char-in?" "nat?" "certify-nat" "rmake-icell" "make-flatarray" "flatarray-ref" "flatarray-set!" "flatarray-length" "flatlayout"
                                               "i32-flat" "u32-flat" "i64-flat" "u64-flat" "f32-flat" "f64-flat"))
                        (restriction-refused file line (string-append n ", FX-26's, which KFX has not yet (C156)")))
                       ((string-member? n (list "no-pair" "eq?" "set-car!" "set-cdr!" "stay-cellular"))
@@ -287,6 +287,30 @@
                       (else (begin (map mu-written xs) #u))))
               (else other #u)))))
 
+      (define-rec
+        (reserved-bound (subr kfx (sexp) unit)
+          (lambda (e)
+            "A name kayak-rt or the emitter writes, bound (C187): FX-26's, which
+             KFX's names are not (C27)."
+            (tagcase e
+              (lst (xs f l p)
+                (let* ((bound (lambda ((b sexp)) (tagcase b (sym (n f2 p2) (the strings (list n)))
+                                                            (lst (ys f2 l2 p2) (if (null? ys) nil (tagcase (car ys) (sym (n f3 p3) (the strings (list n))) (else other nil))))
+                                                            (else other nil))))
+                       (names (cond ((null? xs) nil)
+                                    ((or (sym-is? (car xs) "let") (sym-is? (car xs) "let*") (sym-is? (car xs) "letrec"))
+                                     (if (i64> (size xs) 1) (tagcase (second xs) (lst (bs f2 l2 p2) (concat (map bound bs))) (else other nil)) nil))
+                                    ((or (sym-is? (car xs) "lambda") (sym-is? (car xs) "rlambda"))
+                                     (if (i64> (size xs) 1) (tagcase (second xs) (lst (bs f2 l2 p2) (concat (map bound bs))) (else other nil)) nil))
+                                    ((or (sym-is? (car xs) "define") (sym-is? (car xs) "define*"))
+                                     (if (i64> (size xs) 1) (bound (second xs)) nil))
+                                    (else nil))))
+                  (if (any? kfx-reserved? names)
+                      (restriction-refused f l (string-append "a name KFX's names are not (lower case, digits, `-` and `?!<>=+*/%`, no `--`, none Rust writes): "
+                                                              (car (filter kfx-reserved? names))))
+                      (begin (map reserved-bound xs) #u))))
+              (else other #u)))))
+
       (define recursion-restricted (subr kfx (sexps) unit)
         (lambda (forms)
           "A type abbreviation that mentions itself, FX-26's recursive type
@@ -294,6 +318,7 @@
           (let ((abbrevs (abbreviations forms)))
             (begin
               (map mu-written forms)
+              (map reserved-bound forms)
               (map (lambda ((f sexp))
                      (let ((n (abbreviation-name f)))
                        (if (and (not (string=? n "")) (reaches? abbrevs (sexp-names (third (items f))) nil n))

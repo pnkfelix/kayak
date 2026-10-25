@@ -1817,6 +1817,10 @@
         (lambda (v s name at-pos)
           (cond ((or (string=? name "#t") (string=? name "#f")) (res (ty-bool) nil s))
                 ((string=? name "#u") (res (ty-unit) nil s))
+                ((and (string=? name "certify-nat") (std-prim? v name))
+                 "Named only to call it (C187; Fixpt's F16): bound to another name,
+                  its call would escape the rule."
+                 (refuse v "certify-nat is named only to call it"))
                 (else
                  (let ((found (scope-bind name v)))
                    (if (null? found)
@@ -3117,7 +3121,19 @@
           "`(rcons r x xs)`, `(rnew r v)`: made in the arena of the place `r`, at
            its region (FX-26 allows one within it, which KFX does not write yet).
            What is made is noted, for the arena's type."
-          (cond ((not (i64= (size args) (if (string=? h "rnew") 2 3)))
+          (cond ((and (string=? h "rmake-icell") (i64= (size args) 1))
+                 "`(rmake-icell p)`: an I-cell in a region within place `p` (Fixpt's
+                  `(poly ((p place) (r region p)) ...)`; C187); FX-26's, as KFX's
+                  I-cells are made by `make-icell` alone."
+                 (let ((r (place-of v s (car args))))
+                   (tagcase (fresh s)
+                     (res (m es0 s)
+                       (let* ((at (region-within v s r expected))
+                              (made (ty-data "%icell" (list m at)))
+                              (s (if (null? expected) s (fits v s made (car expected)))))
+                         (res made (list (string-append "alloc:" (region-string s r)) (string-append "alloc:" (region-string s at)))
+                              (kfx-restricted v s "rmake-icell, FX-26's, which KFX has not yet (C187)")))))))
+                ((not (i64= (size args) (if (string=? h "rnew") 2 3)))
                  (refuse v (string-append h (cond ((string=? h "rcons") " takes a place and two values")
                                                   ((string=? h "rmake-array") " takes a place, a length and a value")
                                                   (else " takes a place and a value")))))
@@ -4079,7 +4095,7 @@
                   ((and (null? found) (string=? h "abort-with-continuation")) (suspend-call v s args expected))
                   ((and (null? found) (string=? h "make-continuation-prompt-tag")) (make-tag-call v s args expected))
                   ((and (null? found) (string=? h "escape")) (escape-call v s args))
-                  ((and (null? found) (or (string=? h "rcons") (string=? h "rnew") (string=? h "rmake-array"))) (region-alloc-call v s h args expected))
+                  ((and (null? found) (or (string=? h "rcons") (string=? h "rnew") (string=? h "rmake-array") (string=? h "rmake-icell"))) (region-alloc-call v s h args expected))
 
                   ((null? found)
                    (refuse v (string-append "nothing is named " h)))
@@ -4109,7 +4125,18 @@
                        (res (u es s)
                          (let ((r (if (string=? h "cdr") (cdr-size v s t) (ty-data "%natof" (list (sized-size t))))))
                            (res (if (and (string=? h "length") (size-finite? s (sized-size t))) (ty-nat) r) es (if (null? expected) s (fits v s r (car expected)))))))))
-                  ((and (string=? h "-") (prim? (car found)) (i64= (size args) 2) (not (null? expected)) (nat? s (car expected))
+                  ((and (string=? h "certify-nat") (prim? (car found)))
+                   "`(certify-nat e)` only where the facts in scope show `e` no less
+                    than 0, as a `nat?` that held has just said (C187; Fixpt's
+                    fx26.md: on the binding `nat?` has just confirmed)."
+                   (if (not (i64= (size args) 1))
+                       (refuse v "(certify-nat e)")
+                       (let ((a (linear-of v s (car args))))
+                         (if (and (not (null? a)) (size-shown? v s (car a)))
+                             (tagcase (call-args v s args (list (ty-int)) nil)
+                               (res (u es s) (res (ty-nat) es (kfx-restricted v s "certify-nat, FX-26's, which KFX has not (C187)"))))
+                             (refuse v "certify-nat only where `nat?` has just said so, of what it is given")))))
+                  ((and (string=? h "-") (prim? (car found)) (i64= (size args) 2) (not (null? expected)) (nat-typed? s (car expected))
                         (let ((a (linear-of v s (car args))) (b (linear-of v s (second args))))
                           (and (not (null? a)) (not (null? b)) (size-shown? v s (lin-add (car a) (car b) -1)))))
                    "A difference where a `nat` is expected, which the facts in scope
@@ -4432,7 +4459,7 @@
               (and (tagcase (car args)
                      (num (k f p) (and (not (i64< k 0)) (not (i64> k 1152921504606846975))))
                      (big (text f p) #f)
-                     (sym (n f p) (and (not (draft-hole? (car args))) (tagcase (synth v s (car args)) (res (t es s2) (nat? s2 t)))))
+                     (sym (n f p) (and (not (draft-hole? (car args))) (tagcase (synth v s (car args)) (res (t es s2) (nat-typed? s2 t)))))
                      (lst (xs f l p)
                        (and (head-is? (car args) "+") (not (null? (scope-bind "+" v)))
                             (tagcase (car (scope-bind "+" v)) (bind (n sc w) (string=? w "prim")))

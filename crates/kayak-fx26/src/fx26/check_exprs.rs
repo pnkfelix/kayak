@@ -4040,6 +4040,10 @@ pub mod expressions {
             res(ty_bool(), nil::<Str>(), s)
         } else if string_eq_p(name, str_lit("#u")) {
             res(ty_unit(), nil::<Str>(), s)
+        } else if (string_eq_p(name, str_lit("certify-nat")) && std_prim_p(v, name)) {
+            // Named only to call it (C187; Fixpt's F16): bound to another name,
+            // its call would escape the rule.
+            match refuse(v, str_lit("certify-nat is named only to call it")) {}
         } else {
             let found = scope_bind(name, v);
             if null_p(found) {
@@ -7000,7 +7004,25 @@ pub mod expressions {
     /// its region (FX-26 allows one within it, which KFX does not write yet).
     /// What is made is noted, for the arena's type.
     pub fn region_alloc_call(v: &'static Cv, s: &'static St, h: Str, args: Sexps, expected: Tys) -> &'static Res {
-        if not(i64_eq(size(args), if string_eq_p(h, str_lit("rnew")) {
+        if (string_eq_p(h, str_lit("rmake-icell")) && i64_eq(size(args), 1i64)) {
+            // `(rmake-icell p)`: an I-cell in a region within place `p` (Fixpt's
+            // `(poly ((p place) (r region p)) ...)`; C187); FX-26's, as KFX's
+            // I-cells are made by `make-icell` alone.
+            let r = place_of(v, s, car(args));
+            let tagcase_ = fresh(s);
+            match *tagcase_ {
+                Res::Res(m, es0, s) => {
+                    let at = region_within(v, s, r, expected);
+                    let made = ty_data(str_lit("%icell"), kayak_rt::heap_cons(m, kayak_rt::heap_cons(at, kayak_rt::nil())));
+                    let s = if null_p(expected) {
+                        s
+                    } else {
+                        fits(v, s, made, car(expected))
+                    };
+                    res(made, kayak_rt::heap_cons(string_append(str_lit("alloc:"), region_string(s, r)), kayak_rt::heap_cons(string_append(str_lit("alloc:"), region_string(s, at)), kayak_rt::nil())), kfx_restricted(v, s, str_lit("rmake-icell, FX-26's, which KFX has not yet (C187)")))
+                }
+            }
+        } else if not(i64_eq(size(args), if string_eq_p(h, str_lit("rnew")) {
             2i64
         } else {
             3i64
@@ -9188,7 +9210,7 @@ pub mod expressions {
                 return make_tag_call(v, s, args, expected);
             } else if (null_p(found) && string_eq_p(h, str_lit("escape"))) {
                 return escape_call(v, s, args);
-            } else if (null_p(found) && (string_eq_p(h, str_lit("rcons")) || string_eq_p(h, str_lit("rnew")) || string_eq_p(h, str_lit("rmake-array")))) {
+            } else if (null_p(found) && (string_eq_p(h, str_lit("rcons")) || string_eq_p(h, str_lit("rnew")) || string_eq_p(h, str_lit("rmake-array")) || string_eq_p(h, str_lit("rmake-icell")))) {
                 return region_alloc_call(v, s, h, args, expected);
             } else if null_p(found) {
                 return match refuse(v, string_append(str_lit("nothing is named "), h)) {};
@@ -9250,7 +9272,26 @@ pub mod expressions {
                         });
                     }
                 }
-            } else if (string_eq_p(h, str_lit("-")) && prim_p(car(found)) && i64_eq(size(args), 2i64) && not(null_p(expected)) && nat_p(s, car(expected)) && {
+            } else if (string_eq_p(h, str_lit("certify-nat")) && prim_p(car(found))) {
+                // `(certify-nat e)` only where the facts in scope show `e` no less
+                // than 0, as a `nat?` that held has just said (C187; Fixpt's
+                // fx26.md: on the binding `nat?` has just confirmed).
+                if not(i64_eq(size(args), 1i64)) {
+                    return match refuse(v, str_lit("(certify-nat e)")) {};
+                } else {
+                    let a = linear_of(v, s, car(args));
+                    if (not(null_p(a)) && size_shown_p(v, s, car(a))) {
+                        let tagcase_ = call_args(v, s, args, kayak_rt::heap_cons(ty_int(), kayak_rt::nil()), nil::<i64>());
+                        match *tagcase_ {
+                            Res::Res(u, es, s) => {
+                                return res(ty_nat(), es, kfx_restricted(v, s, str_lit("certify-nat, FX-26's, which KFX has not (C187)")));
+                            }
+                        }
+                    } else {
+                        return match refuse(v, str_lit("certify-nat only where `nat?` has just said so, of what it is given")) {};
+                    }
+                }
+            } else if (string_eq_p(h, str_lit("-")) && prim_p(car(found)) && i64_eq(size(args), 2i64) && not(null_p(expected)) && nat_typed_p(s, car(expected)) && {
                 let (a, b) = (linear_of(v, s, car(args)), linear_of(v, s, second(args)));
                 (not(null_p(a)) && not(null_p(b)) && size_shown_p(v, s, lin_add(car(a), car(b), -1i64)))
             }) {
@@ -9954,7 +9995,7 @@ pub mod expressions {
                         let tagcase_ = synth(v, s, car(args));
                         match *tagcase_ {
                             Res::Res(t, es, s2) => {
-                                nat_p(s2, t)
+                                nat_typed_p(s2, t)
                             }
                         }
                     })

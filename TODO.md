@@ -568,8 +568,8 @@ accepts: 22 the same, 52 alike, 110 different, 173 refused by kayak.
    (C169); first-class modules (C170, C171, C172); higher kinds (C173);
    recursive types, `mu` (C174); flat arrays of any flat, flat sums with
    no key, arrays to the end of the suffix (C175).
-   26 of the 433 programs Fixpt accepts still refused (2026-10-25, C186);
-   61 differ; 346 the same.
+   23 of the 433 programs Fixpt accepts still refused (2026-10-25, C187);
+   61 differ; 349 the same.
    The user (2026-10-25), on C183: Fixpt taking fixed-width integers as
    `int`s was probably a mistake, an ABI matter (an `i64` boxed where an
    `int` is wanted); perhaps `(raw i32)` apart from `i32`. Kayak follows
@@ -577,7 +577,9 @@ accepts: 22 the same, 52 alike, 110 different, 173 refused by kayak.
    the one rule in `fits` goes. Next: paths narrowed (C183); `cons` as a
    value at Fixpt's type (C184).
    Flaky: `processes/pselect-deadline.fx` under `cells-programs.py`'s
-   `--slice 2` once reported a deadlock Fixpt's run has not (C184). Next among them: redefinition at another
+   `--slice 2` reported a deadlock Fixpt's run has not, twice in the full
+   check (C184, C187); never in 300 runs alone, idle or with every core
+   busy. Next among them: redefinition at another
    type, re-run and broken (2; C180); `conv` binders (C181). Of flats left: the kind `flat`
    (`flat-kind.fx`), `narrayof` (`narrayof-lengths.fx`). Of modules left: `load-layers.fx` (an effect
    read from an item made before it, in a loaded file); printing, where
