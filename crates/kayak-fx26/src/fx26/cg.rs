@@ -21,10 +21,10 @@ use super::*;
 // yet: Fixpt's middle phase (its plans, inlining, specialization), lambda
 // lifting, register code (the words' twins). Bloblets and floats: C152.
 // fixpt-source: crates/fixpt-fx26/src/compile.fx@bb3f570
-// fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@8f76d65
-// fixpt-source: crates/fixpt-fx26/src/compile-state.fx@8f76d65
+// fixpt-source: crates/fixpt-fx26/src/compile-exps.fx@ae397dc
+// fixpt-source: crates/fixpt-fx26/src/compile-state.fx@ae397dc
 // fixpt-source: crates/fixpt-fx26/src/compile-lift.fx@bb3f570
-// fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@8f76d65
+// fixpt-source: crates/fixpt-fx26/src/compile-programs.fx@ae397dc
 // fixpt-source: crates/fixpt-fx26/src/parser-exps.fx@bb3f570
 // fixpt-source: crates/fixpt-fx26/src/parser.fx@8f76d65
 

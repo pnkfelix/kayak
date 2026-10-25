@@ -6,7 +6,7 @@
  header, its fields below its suffix (field `k` at `p - k`, the trailer
  field 1, its payload the distance back to the header), its suffix's
  bytes. Collected by Coopt's collector's baseline, below (C122).
- fixpt-source: crates/fixpt-heap/src/heap.rs@8f76d65"
+ fixpt-source: crates/fixpt-heap/src/heap.rs@ae397dc"
 
 (define mem (ref (flatarrayof i64 @c) @c) (new (make-flatarray-i64 4096 0)))
 "The next free index. Indices 0 to 7 are never an object's."

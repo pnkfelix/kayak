@@ -1,0 +1,24 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"char-reads.fx"
+],
+"code": 0,
+"out": [
+"spaces : (subr (maxeff spin (read (globals spaces))) (int int int) int) ! pure",
+"far-spaces : (subr (maxeff spin (read (globals spaces))) () int) ! pure",
+"points : (subr (maxeff spin (read (globals points))) (string int int) int) ! pure",
+"ins : (subr (maxeff spin (read (globals ins))) (string int int) int) ! pure",
+"below : (subr (maxeff (read @heap) spin (read (globals below))) (string strs int) int) ! pure",
+"pairs : (subr (maxeff (read @heap) spin (read (globals below pairs))) (strs strs int) int) ! pure",
+"hashes : (subr (maxeff (read @heap) spin (read (globals hashes))) (strs int) int) ! pure",
+"char-reads : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals below far-spaces hashes ins pairs points spaces))) (int) int) ! pure",
+"729235854 : int ! (maxeff (read @heap) (alloc @heap) spin (read (globals below char-reads far-spaces hashes ins pairs points spaces)))",
+""
+],
+"err": [
+""
+]
+}

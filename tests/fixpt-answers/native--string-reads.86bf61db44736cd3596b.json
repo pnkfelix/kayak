@@ -1,0 +1,21 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"string-reads.fx"
+],
+"code": 0,
+"out": [
+"char-sum : (subr (maxeff spin (read (globals char-sum))) (string int int) int) ! pure",
+"equals : (subr (maxeff (read @heap) spin (read (globals equals))) (string strs int) int) ! pure",
+"pairs : (subr (maxeff (read @heap) spin (read (globals char-sum equals pairs))) (strs strs int) int) ! pure",
+"words : (subr (alloc @heap) (int) strs) ! pure",
+"string-reads : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals char-sum equals pairs words))) (int) int) ! pure",
+"280031086435 : int ! (maxeff (read @heap) (alloc @heap) spin (read (globals char-sum equals pairs string-reads words)))",
+""
+],
+"err": [
+""
+]
+}

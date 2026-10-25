@@ -45,7 +45,7 @@
                       ((string=? n "list")
                        (restriction-refused file line "list as a value, FX-26's variadic procedure, which KFX has not yet: a Rust fn has its arity (C71)"))
                       ((string-member? n (list "call-with-oneshot-continuation" "rmake-array" "datum-int?" "oneshot" "letfreeze" "assume" "assert"
-                                              "make-flatarray" "flatarray-ref" "flatarray-set!" "flatarray-length" "flatlayout"
+                                              "char-in?" "make-flatarray" "flatarray-ref" "flatarray-set!" "flatarray-length" "flatlayout"
                                               "i32-flat" "u32-flat" "i64-flat" "u64-flat" "f32-flat" "f64-flat"))
                        (restriction-refused file line (string-append n ", FX-26's, which KFX has not yet (C156)")))
                       ((string-member? n (list "no-pair" "eq?" "set-car!" "set-cdr!" "stay-cellular"))

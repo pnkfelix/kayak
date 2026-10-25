@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"char-reads.fx"
+],
+"code": 0,
+"out": [
+"define spaces : (subr (maxeff (read (globals spaces)) spin) (int int int) int) ! pure",
+"define far-spaces : (subr (maxeff (read (globals spaces)) spin) () int) ! pure",
+"define points : (subr (maxeff (read (globals points)) spin) (string int int) int) ! pure",
+"define ins : (subr (maxeff (read (globals ins)) spin) (string int int) int) ! pure",
+"define below : (subr (maxeff (read (globals below)) (read @heap) spin) (string strs int) int) ! pure",
+"define pairs : (subr (maxeff (read (globals below pairs)) (read @heap) spin) (strs strs int) int) ! pure",
+"define hashes : (subr (maxeff (read (globals hashes)) (read @heap) spin) (strs int) int) ! pure",
+"define char-reads : (subr (maxeff (alloc @heap) (read (globals below far-spaces hashes ins pairs points spaces)) (read @heap) spin) (int) int) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals below char-reads far-spaces hashes ins pairs points spaces)) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

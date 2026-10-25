@@ -1,0 +1,20 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"held-slots.fx"
+],
+"code": 0,
+"out": [
+"define fact : (subr pure (string i64 string) fact) ! pure",
+"define first-fact : (subr (maxeff (read (globals first-fact)) (read @heap) spin) (facts string i64 string) string) ! pure",
+"define held-slots : (subr (maxeff (alloc @heap) (read (globals fact first-fact)) (read @heap) spin) (int) int) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals fact first-fact held-slots)) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

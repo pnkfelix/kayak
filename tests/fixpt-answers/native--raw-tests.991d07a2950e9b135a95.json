@@ -1,0 +1,25 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"raw-tests.fx"
+],
+"code": 0,
+"out": [
+"define bump : (subr pure (int int) int) ! pure",
+"define signed-tests : (subr (maxeff (read (globals bump)) spin) (i64 i64 string int) int) ! pure",
+"define unsigned-tests : (subr (maxeff (read (globals bump)) spin) (u64 u64 string int) int) ! pure",
+"define each-i64 : (subr (maxeff (read (globals bump each-i64 signed-tests)) (read @heap) spin) (i64 i64s int) int) ! pure",
+"define all-i64 : (subr (maxeff (read (globals all-i64 bump each-i64 signed-tests)) (read @heap) spin) (i64s i64s int) int) ! pure",
+"define each-u64 : (subr (maxeff (read (globals bump each-u64 unsigned-tests)) (read @heap) spin) (u64 u64s int) int) ! pure",
+"define all-u64 : (subr (maxeff (read (globals all-u64 bump each-u64 unsigned-tests)) (read @heap) spin) (u64s u64s int) int) ! pure",
+"define raw-tests : (subr (maxeff (alloc @heap) (read (globals all-i64 all-u64 bump each-i64 each-u64 signed-tests unsigned-tests)) (read @heap) spin) (int) int) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals all-i64 all-u64 bump each-i64 each-u64 raw-tests signed-tests unsigned-tests)) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}

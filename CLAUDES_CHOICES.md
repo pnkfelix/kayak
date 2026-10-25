@@ -4879,6 +4879,46 @@ and half its L2 misses on their measure. Both parts, at once:
 - Not done: names interned to symbols (the team: not needed for the main
   gain); `mangled-clash`, which `with-binds` runs over the whole list for
   a name that might clash in Rust, still a walk (rare: `might-clash?`).
+
+## C177. The pin at Fixpt ae397dc (2026-10-25)
+
+The user: "upgrading your local Fixpt to the latest commit". Fixpt's
+`main` has two heads today: the user's checkout, `ae397dc8` (11:09, 15
+commits not pushed: x86_64's native convention reading strings and
+characters in line, Rust allocating less, the code area's collection
+policy, a definition compiled on its own calling itself in a loop), and
+GitHub's, `e7cddc0e` (03:22, 8 commits of arm64 work from the Mac).
+Neither holds the other. The pin is the latest, `ae397dc8`, fetched from
+the user's checkout into `../kayak-refs/fixpt` as C141's was; until
+Fixpt merges and pushes, a clone of GitHub's alone has no such commit
+(macOS's check with it).
+- **Stage 0**, here, one core, two runs: 65G cycles (C176, at 8f76d65)
+  to 21.7G; 160G instructions to 46.4G; L2 misses 0.56G to 0.27G; 15.7 s
+  to 5.3 s; the same output. The full check 4 min 34 s.
+- **The drift, decided against**, each line moved to the pin: in
+  `heap.rs` (`cells/heap.kfx`, `kayak-rt`'s `text.rs`), the code area's
+  dirty cards and major collections' budget, strings made from code
+  points in the heap, allocation sampling, native call-outs without a
+  vector, the native front end kept: kayak's heap has no code area to
+  collect and its strings are its own; in `prim.rs` (`cells/prims.kfx`),
+  `reverse`, `string->list`, `list->string`, `substring`, `string-search`
+  and the symbol conversions without Rust's vectors, and `run-word` of a
+  native closure: the same answers, Rust's allocation not kayak's, and no
+  native closures in tier 1; in `cellular.rs` (`cells/hand.kfx`), native
+  closures and the collection budget, likewise; in `docs/object-model.md`
+  (`kayak-jit`), when code is collected, which kayak-jit does not; in
+  `compile-exps.fx`, `compile-state.fx`, `compile-programs.fx`
+  (`fx26/cg.kfx`), a definition compiled on its own by `native_define`
+  knowing its lambda, for register code: kayak's generator compiles a
+  program whole and has no register code yet.
+- **Taken**: `built-in.kfx` (its stamp only); Fixpt's programs, 5 new.
+  Of them `native/char-reads.fx` used `char-in?`, a standard operation
+  kayak's checker had not: now in its table (FX-26's; KFX refuses the
+  name), in tier 1's primitives (`%fx26-char-in?`, `cells/prims.kfx`) and
+  the engine's (`fx26/prims.kfx`, last in `prim-list`, whose numbers the
+  control primitives' are checked against). Its `symbol-name-hash` the
+  engine has not yet: not run there. The checkers' comparison: of 433
+  programs Fixpt accepts, 298 the same, 74 differ, 61 refused; K1 0.
 - Refused 73 to 60, the same 283 to 294; K1 0 (five breaches on the way,
   each a rule above). Left: the kind `flat` (`flat-kind.fx`), `narrayof`
   (`narrayof-lengths.fx`); printing a blobref's owner by its

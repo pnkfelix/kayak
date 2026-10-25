@@ -1,0 +1,18 @@
+{
+"args": [
+"--fx26-machine",
+"fx-cells-rsinterp",
+"eval",
+"cyclic-list-string.fx"
+],
+"code": 1,
+"out": [
+"f : (subr (maxeff (read @r) (write @r) (alloc @r)) () string) ! pure",
+" : string ! (maxeff (read @r) (write @r) (alloc @r) (read (globals f)))",
+""
+],
+"err": [
+"! evaluation failed: expected a proper list",
+""
+]
+}

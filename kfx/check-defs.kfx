@@ -131,6 +131,7 @@
    (char<? (subr pure (char char) bool)) (char<=? (subr pure (char char) bool)) (char>? (subr pure (char char) bool)) (char>=? (subr pure (char char) bool))
    (char-downcase (subr pure (char) char))
    (string<? (subr pure (string string) bool)) (string<=? (subr pure (string string) bool)) (string>? (subr pure (string string) bool)) (string>=? (subr pure (string string) bool))
+   (char-in? (subr pure (char string) bool))
    (string-compare (subr pure (string string) int)) (string-search (subr pure (string string int) int))
    (string-ci=? (subr pure (string string) bool)) (string-downcase (subr pure (string) string)) (substring (subr pure (string int int) string))
    (string->symbol (subr pure (string) symbol)) (symbol->string (subr pure (symbol) string)) (symbol=? (subr pure (symbol symbol) bool))

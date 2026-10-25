@@ -1,0 +1,28 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"raw-tests.fx"
+],
+"code": 0,
+"out": [
+"bump : (subr pure (int int) int) ! pure",
+"signed-tests : (subr (maxeff spin (read (globals bump))) (i64 i64 string int) int) ! pure",
+"unsigned-tests : (subr (maxeff spin (read (globals bump))) (u64 u64 string int) int) ! pure",
+"each-i64 : (subr (maxeff (read @heap) spin (read (globals bump each-i64 signed-tests))) (i64 i64s int) int) ! pure",
+"all-i64 : (subr (maxeff (read @heap) spin (read (globals all-i64 bump each-i64 signed-tests))) (i64s i64s int) int) ! pure",
+"each-u64 : (subr (maxeff (read @heap) spin (read (globals bump each-u64 unsigned-tests))) (u64 u64s int) int) ! pure",
+"all-u64 : (subr (maxeff (read @heap) spin (read (globals all-u64 bump each-u64 unsigned-tests))) (u64s u64s int) int) ! pure",
+"raw-tests : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals all-i64 all-u64 bump each-i64 each-u64 signed-tests unsigned-tests))) (int) int) ! pure",
+"83536 : int ! (maxeff (read @heap) (alloc @heap) spin (read (globals all-i64 all-u64 bump each-i64 each-u64 raw-tests signed-tests unsigned-tests)))",
+""
+],
+"err": [
+""
+]
+}

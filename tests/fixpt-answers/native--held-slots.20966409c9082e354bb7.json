@@ -1,0 +1,23 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"--fx26-machine",
+"fx-regs-rsjit-nativecc",
+"--step-limit",
+"none",
+"eval",
+"held-slots.fx"
+],
+"code": 0,
+"out": [
+"fact : (subr pure (string i64 string) fact) ! pure",
+"first-fact : (subr (maxeff (read @heap) spin (read (globals first-fact))) (facts string i64 string) string) ! pure",
+"held-slots : (subr (maxeff (read @heap) (alloc @heap) spin (read (globals fact first-fact))) (int) int) ! pure",
+"1 : int ! (maxeff (read @heap) (alloc @heap) spin (read (globals fact first-fact held-slots)))",
+""
+],
+"err": [
+""
+]
+}

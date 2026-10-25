@@ -6,7 +6,7 @@
  takes, at least and at most; Fixpt's own numbers, later, with the
  layout. What tier 1 does not do yet as Fixpt does is marked `(C122)`,
  and counted as not yet, never as an answer.
- fixpt-source: crates/fixpt-runtime/src/prim.rs@8f76d65"
+ fixpt-source: crates/fixpt-runtime/src/prim.rs@ae397dc"
 
 "Each primitive: its name, how many arguments it takes, at least and at
  most (-1: any), and its operation."
@@ -179,6 +179,7 @@
 (define o-clock i64 167)
 (define o-sleep-until i64 168)
 (define o-address-identity i64 169)
+(define o-char-in i64 170)
 (define o-fixed i64 1000)
 (define o-f64 i64 1200)
 (define o-f32-ops i64 1300)
@@ -283,7 +284,8 @@
          (pdef "%fx26-nil-cell" 0 0 o-nil-cell) (pdef "%fx26-sum-cell" 2 2 o-sum-cell) (pdef "%fx26-pair-cell" 2 2 o-pair-cell)
          (pdef "%fx26-product-cell" 1 1 o-product-cell) (pdef "%fx26-list?" 1 1 o-list-p) (pdef "%fx26-convert" 2 2 o-convert)
          (pdef "%fx26-sched" 3 3 o-sched) (pdef "%fx26-icell-put!" 2 2 o-icell-put) (pdef "%fx26-preempt-done" 0 0 o-preempt-done)
-         (pdef "%fx26-clock" 0 0 o-clock) (pdef "%fx26-sleep-until" 1 1 o-sleep-until) (pdef "%fx26-address-identity" 0 0 o-address-identity))
+         (pdef "%fx26-clock" 0 0 o-clock) (pdef "%fx26-sleep-until" 1 1 o-sleep-until) (pdef "%fx26-address-identity" 0 0 o-address-identity)
+         (pdef "%fx26-char-in?" 2 2 o-char-in))
    (onto (fixed-families fixed-widths 0)
          (onto (family "%fx26-f64" f64-suffixes o-f64 0 13)
                (family "%fx26-f32" f32-suffixes o-f32-ops 0 13)))))
@@ -423,6 +425,12 @@
   (lambda (v i)
     (let ((w (word-at (i64+ (address v) (i64+ 1 (i64-quotient i 2))))))
       (if (i64= (i64-remainder i 2) 0) (i64-and w 4294967295) (i64-and (i64-shr w 32) 4294967295)))))
+
+(define-rec
+  (char-found? (subr cm (i64 i64 i64 i64) bool)
+    (lambda (c v i n)
+      "Whether code point `c` is among string `v`'s, from the `i`th of its `n`."
+      (cond ((i64>= i n) #f) ((i64= (str-ref v i) c) #t) (else (char-found? c v (i64+ i 1) n))))))
 
 (define string-made! (subr cm (i64) i64)
   (lambda (n)
@@ -1290,6 +1298,12 @@
         ((i64= op o-product) (boolean (is-kind? a k-product)))
         ((i64= op o-datum-f64) (boolean (is-flonum? a)))
         ((i64= op o-string-length) (if (str? a) (fix (str-length a)) (expected! "a string")))
+        ((i64= op o-char-in)
+         "FX-26's `char-in?` (Fixpt's `%fx26-char-in?`): whether the character
+          is one of the string's, looked for in place."
+         (cond ((not (is-char? a)) (expected! "a character"))
+               ((not (str? b)) (expected! "a string"))
+               (else (boolean (char-found? (char-code a) b 0 (str-length b))))))
         ((i64= op o-string-ref)
          (cond ((not (str? a)) (expected! "a string"))
                ((not (string=? (index-trouble b (str-length a) "string") "")) (fail! (index-trouble b (str-length a) "string")))

@@ -60,7 +60,7 @@
                                    "string-append" "string=?" "string<?" "string>?" "char=?" "char<?" "char>?" "bool=?"
                                    "string-ref" "string-ref-i64" "cons" "set" "symbol=?" "array-ref" "make-array"
                                    "abort-current-continuation" "call-with-composable-continuation" "abort-with-continuation"
-                                   "string-compare"))
+                                   "string-compare" "char-in?"))
            2)
           ((string-member? n (list "i64-not" "not" "zero?" "int->i64" "i64->int" "int->string" "i64->string" "bitwise-not"
                                    "string-length" "string-length-i64" "char->i64" "i64->char" "char->integer" "integer->char"
@@ -322,6 +322,7 @@
             ((string=? n "char-upcase") (v-char (char-upcase (char-of a))))
             ((string=? n "char-downcase") (v-char (char-downcase (char-of a))))
             ((string=? n "char-whitespace?") (flag (char-whitespace? (char-of a))))
+            ((string=? n "char-in?") (flag (has-char-in? (string-of b) (char-of a))))
             ((string=? n "char-numeric?") (flag (char-numeric? (char-of a))))
             ((string=? n "char-alphabetic?") (flag (char-alphabetic? (char-of a))))
             ((string=? n "string->list") (chars-val (the (listof char acyclic) (string->list (string-of a)))))

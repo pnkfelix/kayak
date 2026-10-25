@@ -1,0 +1,22 @@
+{
+"args": [
+"--dialect",
+"fx26",
+"check",
+"string-reads.fx"
+],
+"code": 0,
+"out": [
+"define char-sum : (subr (maxeff (read (globals char-sum)) spin) (string int int) int) ! pure",
+"define equals : (subr (maxeff (read (globals equals)) (read @heap) spin) (string strs int) int) ! pure",
+"define pairs : (subr (maxeff (read (globals char-sum equals pairs)) (read @heap) spin) (strs strs int) int) ! pure",
+"define words : (subr (alloc @heap) (int) strs) ! pure",
+"define string-reads : (subr (maxeff (alloc @heap) (read (globals char-sum equals pairs words)) (read @heap) spin) (int) int) ! pure",
+"int ! (maxeff (alloc @heap) (read (globals char-sum equals pairs string-reads words)) (read @heap) spin)",
+"; both checkers agree",
+""
+],
+"err": [
+""
+]
+}
