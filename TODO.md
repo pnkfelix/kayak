@@ -860,3 +860,46 @@ bound), asked of every such form.
 Expected: most of `find-bind`'s 12% and about half of the L2 misses.
 Fixpt will measure what lands, on a new pinned snapshot.
 
+## 36. `letfreeze` and eq-tables in KFX (the Fixpt team, 2026-10-25)
+
+For the compiler on kayak's own FX-26 runtime, tasks on several threads:
+frozen data tasks share without copying (a form's checked interface,
+read by many checkers), and tables keyed by identity (memo tables, what
+was visited, facts about a node). Also now, in the Rust path: frozen data
+crossing processes and `par` branches under C102's `Send`/`Sync`.
+Today KFX refuses `letfreeze` and any `const` region (C156, C161), and
+`eq?` (C75: a union's value in Rust is a box, a new object). The checker
+and built-in.kfx know the eq-table operations; the engine and tier 1
+have them (kind 43, `%fx26-eqtable` primitives); only Rust is missing.
+1. **`letfreeze` into the heap**, the value's type holding no mutable
+   kind (no ref, array, flat array, bytevector, I-cell: lists, products,
+   sums, datatypes, strings, scalars): the body with `r` as `'static`,
+   what it allocates at `r` in the heap's arenas, the value the Rust type
+   it would have at the heap. `Cons` has no `Cell`, so such data is
+   `Sync` where its elements are, rustc checking it, no `unsafe`. A type
+   at `const`, or at `acyclic` made so, written as at the heap.
+2. **Frozen data holding a mutable kind**: a frozen ref is still a `Cell`,
+   not `Sync`. (a) frozen to the checker, crossing no thread in Rust; (b)
+   `kayak-sync` asserting `Sync` at `const` (a SAFETY comment on the
+   checker's rule that nothing writes `const`); (c) a second, Cell-less
+   representation, a copy at the freeze. The team recommends (a).
+   `(letfreeze (r p) ...)` into another place later, on `letreap`'s.
+3. **Eq-tables by key kind**: Fixpt keys them only by mutable objects
+   (`ref-identity`, `array-identity`, `icell-identity`, `pair-identity`),
+   its operations writing the keys' region, so no table is keyed by frozen
+   data (fx26.md, "Identity"). In kayak-rt a ref is a `&Cell`, an array a
+   slice of `Cell`s, an I-cell a reference, none copied boxed into a
+   `Value` (`value::other` boxes the pointer): a `HashMap` by address
+   (`std::ptr::eq`, the fixed hasher), its type carrying the keys'
+   lifetime, so rustc refuses a table outliving a `letrena` of its keys.
+   No iteration (`ref`, `has?`, `set!`, `delete!`, `count`), so the address
+   order is never seen: answers deterministic, Fixpt's. Pair keys wait:
+   §24's list-as-union view might rebuild a list, until the emitter shows
+   no conversion copies a pair at a writable region. `eq?` may stay
+   refused; later, perhaps, at those kinds' types.
+Checks: corpus programs with Fixpt's answers: a frozen list shared by
+`par` branches on threads (default and `unsafe-par`); a frozen ref sent
+to a process refused (choice a); an eq-table keyed by refs, with deletes
+and counts, inside and outside a `letrena`; refused, a table outliving its
+keys' `letrena`, and `pair-identity` until allowed.
+
