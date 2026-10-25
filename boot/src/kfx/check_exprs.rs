@@ -4386,6 +4386,112 @@ pub mod expressions {
         }
     }
 
+    /// Each branch of a `race` checked against `t`, each cancellable: it
+    /// does nothing another could see (Fixpt's `k-race-cancellable`).
+    pub fn race_branches(v: &'static Cv, s: &'static St, xs: Sexps, t: &'static Ty, effs: List<Strings>) -> &'static Res {
+        if null_p(xs) {
+            race_clash(v, effs);
+            res(t, effs_union(kayak_rt::heap_cons(str_lit("nondet"), kayak_rt::nil()), fold_effs(effs)), s)
+        } else {
+            let tagcase_ = {
+                let tagcase_ = synth(v, s, car(xs));
+                match *tagcase_ {
+                    Res::Res(u, es, s) => {
+                        res(u, es, fits(v, s, u, t))
+                    }
+                }
+            };
+            match *tagcase_ {
+                Res::Res(u, es, s) => {
+                    let es = map(lambda1s(move |a: Str| {
+                        resolve_atom(s, a)
+                    }), es);
+                    let seen = any_of(lambda1s(move |a: Str| {
+                        (has_prefix_p(a, str_lit("write:")) || has_prefix_p(a, str_lit("init:")) || has_prefix_p(a, str_lit("send:")) || has_prefix_p(a, str_lit("io:")) || has_prefix_p(a, str_lit("goto:")) || has_prefix_p(a, str_lit("comefrom:")) || has_prefix_p(a, str_lit("~")))
+                    }), es);
+                    if not(null_p(seen)) {
+                        match refuse(v, string_append(str_lit("a `race` branch, which loses by being cancelled, must do nothing another could see, and this one has "), show_effs(seen))) {}
+                    } else {
+                        race_branches(v, s, cdr(xs), t, kayak_rt::heap_cons(es, effs))
+                    }
+                }
+            }
+        }
+    }
+
+    /// No two branches of `race` interfere.
+    pub fn race_clash(mut v: &'static Cv, mut effs: List<Strings>) -> () {
+        loop {
+            if null_p(effs) {
+                return ();
+            } else {
+                map(lambda1s(move |other: Strings| {
+                    let c = clash_of(other, car(effs));
+                    if null_p(c) {
+                        ()
+                    } else {
+                        match refuse(v, string_append(str_lit("`race`'s branches interfere: one has "), string_append(show_effs(kayak_rt::heap_cons(car(c), kayak_rt::nil())), string_append(str_lit(" and another "), show_effs(cdr(c)))))) {};
+                        ()
+                    }
+                }), cdr(effs));
+                effs = cdr(effs);
+                continue;
+            }
+        }
+    }
+
+    /// FX-26's `(race e ...)` (C169; Fixpt's `k-race-te`): its branches run
+    /// at once, the first to end gives the value and the rest are
+    /// cancelled; each of one type, cancellable, no two interfering; its
+    /// effect theirs and `nondet`. Not KFX's yet (C108).
+    pub fn race_form(v: &'static Cv, s: &'static St, xs: Sexps, expected: Tys) -> &'static Res {
+        if i64_lt(size(xs), 2i64) {
+            match refuse(v, str_lit("`(race expression expression …)`")) {}
+        } else {
+            let s = kfx_restricted(v, s, str_lit("`(race e …)` is FX-26's form, which KFX does not have yet"));
+            if null_p(expected) {
+                race_branches(v, s, xs, race_type(v, s, xs), nil::<List<Str>>())
+            } else {
+                race_branches(v, s, xs, car(expected), nil::<List<Str>>())
+            }
+        }
+    }
+
+    /// A `race`'s type, the first of its branches' not `void` (one that
+    /// fails only loses).
+    pub fn race_type(mut v: &'static Cv, mut s: &'static St, mut xs: Sexps) -> &'static Ty {
+        loop {
+            if null_p(xs) {
+                return ty_void();
+            } else {
+                let tagcase_ = synth(v, s, car(xs));
+                match *tagcase_ {
+                    Res::Res(t, es, s2) => {
+                        let tagcase_ = walk(s2, t);
+                        match *tagcase_ {
+                            Ty::TyVoid() => {
+                                xs = cdr(xs);
+                                continue;
+                            }
+                            _ => {
+                                let other = tagcase_;
+                                return t;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    pub fn fold_effs(effs: List<Strings>) -> Strings {
+        if null_p(effs) {
+            nil::<Str>()
+        } else {
+            effs_union(car(effs), fold_effs(cdr(effs)))
+        }
+    }
+
     /// Each arm's wait, its value bound for its body; the arms of one type,
     /// the first found, if none is expected, and the rest checked against
     /// it.
@@ -4440,7 +4546,7 @@ pub mod expressions {
             } else if string_eq_p(h, str_lit("race")) {
                 // FX-26's `race`, a form wherever it heads a list: refused, not a
                 // call of what a program names `race` (C108).
-                return match refuse(v, str_lit("`(race e …)` is FX-26's form, which KFX does not have yet")) {};
+                return race_form(v, s, xs, nil::<&'static Ty>());
             } else if string_eq_p(h, str_lit("par")) {
                 return par_form(v, s, xs, nil::<&'static Ty>());
             } else if string_eq_p(h, str_lit("pselect")) {

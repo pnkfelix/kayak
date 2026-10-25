@@ -1989,6 +1989,64 @@
                 (else (par-values v s (items (car xs)) (cdr xs) expected nil nil (items (car xs)))))))
 
 
+      (race-branches (subr kfx (cv st sexps ty (listof strings acyclic)) res)
+          (lambda (v s xs t effs)
+            "Each branch of a `race` checked against `t`, each cancellable: it
+             does nothing another could see (Fixpt's `k-race-cancellable`)."
+            (if (null? xs)
+                (begin (race-clash v effs) (res t (effs-union (list "nondet") (fold-effs effs)) s))
+                (tagcase (tagcase (synth v s (car xs)) (res (u es s) (res u es (fits v s u t))))
+                  (res (u es s)
+                    (let* ((es (map (lambda ((a string)) (resolve-atom s a)) es))
+                           (seen (any-of (lambda ((a string)) (or (has-prefix? a "write:") (has-prefix? a "init:") (has-prefix? a "send:")
+                                                                  (has-prefix? a "io:") (has-prefix? a "goto:") (has-prefix? a "comefrom:")
+                                                                  (has-prefix? a "~")))
+                                         es)))
+                      (if (not (null? seen))
+                          (refuse v (string-append "a `race` branch, which loses by being cancelled, must do nothing another could see, and this one has " (show-effs seen)))
+                          (race-branches v s (cdr xs) t (cons es effs)))))))))
+
+      (race-clash (subr kfx (cv (listof strings acyclic)) unit)
+        (lambda (v effs)
+          "No two branches of `race` interfere."
+          (if (null? effs)
+              #u
+              (begin
+                (map (lambda ((other strings))
+                       (let ((c (clash-of other (car effs))))
+                         (if (null? c)
+                             #u
+                             (begin (refuse v (string-append "`race`'s branches interfere: one has " (string-append (show-effs (list (car c)))
+                                                (string-append " and another " (show-effs (cdr c))))))
+                                    #u))))
+                     (cdr effs))
+                (race-clash v (cdr effs))))))
+
+      (race-form (subr kfx (cv st sexps tys) res)
+        (lambda (v s xs expected)
+          "FX-26's `(race e ...)` (C169; Fixpt's `k-race-te`): its branches run
+           at once, the first to end gives the value and the rest are
+           cancelled; each of one type, cancellable, no two interfering; its
+           effect theirs and `nondet`. Not KFX's yet (C108)."
+          (if (i64< (size xs) 2)
+              (refuse v "`(race expression expression …)`")
+              (let ((s (kfx-restricted v s "`(race e …)` is FX-26's form, which KFX does not have yet")))
+                (if (null? expected)
+                    (race-branches v s xs (race-type v s xs) nil)
+                    (race-branches v s xs (car expected) nil))))))
+
+      (race-type (subr kfx (cv st sexps) ty)
+        (lambda (v s xs)
+          "A `race`'s type, the first of its branches' not `void` (one that
+           fails only loses)."
+          (if (null? xs)
+              (ty-void)
+              (tagcase (synth v s (car xs))
+                (res (t es s2) (tagcase (walk s2 t) (ty-void () (race-type v s (cdr xs))) (else other t)))))))
+
+      (fold-effs (subr kfx ((listof strings acyclic)) strings)
+        (lambda (effs) (if (null? effs) nil (effs-union (car effs) (fold-effs (cdr effs))))))
+
       (pselect-arms (subr kfx (cv st sexps tys) res)
           (lambda (v s arms expected)
             "Each arm's wait, its value bound for its body; the arms of one type,
@@ -2026,7 +2084,7 @@
                 ((string=? h "race")
                  "FX-26's `race`, a form wherever it heads a list: refused, not a
                   call of what a program names `race` (C108)."
-                 (refuse v "`(race e …)` is FX-26's form, which KFX does not have yet"))
+                 (race-form v s xs nil))
                 ((string=? h "par") (par-form v s xs nil))
                 ((string=? h "pselect") (pselect-form v s xs nil))
                 ((string=? h "quote")

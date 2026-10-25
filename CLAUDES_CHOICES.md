@@ -4600,3 +4600,18 @@ chain of `proj`s instantiates, C60), with Fixpt's rules for it
 - **KFX**: refused, as `call/cc` is (C45;
   `tests/kfx-stricter/cwcc.kfx`).
 - Refused 131 to 126, the same 241 to 246.
+
+## C169. `race` (2026-10-25)
+
+FX-26's `(race e ...)` (Fixpt's `check-processes.fx`, `k-race-te`), which
+kayak's checker had refused as a form KFX has not (C108): its branches
+run at once, the first to end gives the value, the rest are cancelled.
+- Its type the first branch's not `void` (one that only fails loses,
+  `monitors/race-lost.fx`), each branch fitted to it; its effect theirs
+  and `nondet`.
+- A branch must be cancellable, doing nothing another could see (no
+  `write`, `init`, `send`, `io`, `goto`, `comefrom`, or effect variable);
+  no two may interfere (`par`'s `clash-of`).
+- **KFX**: still refused, now by `kfx-restricted`, with C108's message
+  (`tests/kfx-stricter/race.kfx`).
+- Refused 126 to 120, the same 246 to 252.
